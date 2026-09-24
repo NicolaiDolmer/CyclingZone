@@ -10,6 +10,7 @@ import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
+import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
@@ -17,6 +18,7 @@ import {
   SEED_DEV_TRANSITION, ACTIVE_SEASON, SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
 import { SEED_SURVEY } from "./surveyMock.js";
+import { previewYouthSquadsPayload, previewYouthRiderRows } from "./youthSquadsMock.ts"; // #5519
 import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 
@@ -42,6 +44,69 @@ function readAccept(input, init) {
   return "";
 }
 
+// #4981 · indbakkens bud-aggregat. Bevidst KUN her og ikke i mockHandlers.js
+// (samme lagdeling som NPS-bundbaren og onboarding-mocken nedenfor):
+// Playwright-fixtures deler mockHandlers, og notifikations-rækker her ville
+// flytte eksisterende snapshots. mockHandlers svarer [] for "notifications", så
+// indbakken stod tom på preview og grupperingen kunne hverken ses eller klikkes
+// igennem. To auktioner dækker begge tilstande:
+//   auc-proxy-1 — fire autobud-hævninger, ingen tabt føring (ren bøtte).
+//   auc-proxy-2 — nyeste er en hævning, men to ældre var reelle føringstab
+//                 (blandet bøtte, så indbakkens "heraf N"-linje kan ses).
+// Tal og navne er opdigtet preview-data, ikke prod-tal.
+function proxyOutbidRow(id, auctionId, createdAt, { bidderName, riderName, amount }) {
+  return {
+    id,
+    user_id: TEST_USER.id,
+    type: "auction_proxy_outbid",
+    // EN-fallback (player-facing copy er EN-først). Den viste tekst kommer fra
+    // metadata-koderne nedenfor; fallbacken ses kun hvis en kode mangler.
+    title: "Your auto-bid held the lead",
+    message: `${bidderName} tried to outbid you on ${riderName}. Your auto-bid rose to ${amount.toLocaleString("en-US")} CZ$ to stay ahead.`,
+    related_id: auctionId,
+    is_read: false,
+    created_at: createdAt,
+    metadata: {
+      titleCode: "notif.autoBidRaised.title",
+      titleParams: {},
+      messageCode: "notif.autoBidRaised.message",
+      messageParams: { riderName, bidderName, amount },
+    },
+  };
+}
+
+// Samme form som backend/lib/transferNotifications.js'
+// buildAuctionOutbidNotification: EN-fallback + {titleCode,messageCode}, saa den
+// udfoldede liste er lokaliseret ligesom i prod og ikke viser dansk i et EN-UI.
+function outbidRow(id, auctionId, createdAt, { bidderName, riderName, amount }) {
+  return {
+    id,
+    user_id: TEST_USER.id,
+    type: "auction_outbid",
+    title: "You've been outbid!",
+    message: `${bidderName} bid ${amount.toLocaleString("en-US")} CZ$ on ${riderName}`,
+    related_id: auctionId,
+    is_read: false,
+    created_at: createdAt,
+    metadata: {
+      titleCode: "notif.transfer.auctionOutbid.title",
+      titleParams: {},
+      messageCode: "notif.transfer.bidReceived.message",
+      messageParams: { bidderName, amount, riderName },
+    },
+  };
+}
+
+const PREVIEW_AUTOBID_NOTIFICATIONS = [
+  proxyOutbidRow("prev-proxy-1-4", "auc-proxy-1", "2026-08-05T10:42:00.000Z", { bidderName: "Northwind Cycling", riderName: "Théo Journal", amount: 412000 }),
+  proxyOutbidRow("prev-proxy-1-3", "auc-proxy-1", "2026-08-05T10:31:00.000Z", { bidderName: "Northwind Cycling", riderName: "Théo Journal", amount: 388000 }),
+  proxyOutbidRow("prev-proxy-1-2", "auc-proxy-1", "2026-08-05T10:18:00.000Z", { bidderName: "Solera Continental", riderName: "Théo Journal", amount: 361000 }),
+  proxyOutbidRow("prev-proxy-1-1", "auc-proxy-1", "2026-08-05T10:04:00.000Z", { bidderName: "Solera Continental", riderName: "Théo Journal", amount: 340000 }),
+  proxyOutbidRow("prev-proxy-2-3", "auc-proxy-2", "2026-08-05T09:55:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 214000 }),
+  outbidRow("prev-proxy-2-2", "auc-proxy-2", "2026-08-05T09:40:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 198000 }),
+  outbidRow("prev-proxy-2-1", "auc-proxy-2", "2026-08-05T09:22:00.000Z", { bidderName: "Alpine Grit", riderName: "Mats Verhoeven", amount: 176000 }),
+];
+
 function jsonResponse(data, status = 200, extraHeaders = {}) {
   const count = Array.isArray(data) ? data.length : data ? 1 : 0;
   return new Response(JSON.stringify(data), {
@@ -53,6 +118,36 @@ function jsonResponse(data, status = 200, extraHeaders = {}) {
       ...extraHeaders,
     },
   });
+}
+
+// #5435: rating-visningen "bedste rolle nu" er ON på preview-deployet (ejeren
+// skal kunne se den før flaget flippes), men kan slås fra med ?bestRole=off for
+// et før/efter-par — også på en telefon uden devtools. Valget huskes i
+// localStorage (cz_mock_best_role), så det overlever navigation.
+function previewBestRoleEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("bestRole");
+    if (param === "on") localStorage.setItem("cz_mock_best_role", "1");
+    if (param === "off") localStorage.setItem("cz_mock_best_role", "0");
+    return localStorage.getItem("cz_mock_best_role") !== "0";
+  } catch {
+    return true;
+  }
+}
+
+// #5519: U23 team- og Junior team-siderne er ON på preview-deployet (ejeren
+// skal kunne se dem før flaget flippes), men kan slås fra med ?youthSquads=off
+// for et før/efter-par af menuen og Akademiets Coming soon-kort. Samme mønster
+// og samme localStorage-huske som previewBestRoleEnabled ovenfor.
+function previewYouthSquadsEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("youthSquads");
+    if (param === "on") localStorage.setItem("cz_mock_youth_squads", "1");
+    if (param === "off") localStorage.setItem("cz_mock_youth_squads", "0");
+    return localStorage.getItem("cz_mock_youth_squads") !== "0";
+  } catch {
+    return true;
+  }
 }
 
 export function installPreviewMock() {
@@ -126,6 +221,21 @@ export function installPreviewMock() {
       }
       if (method === "GET" && /\/rest\/v1\/survey_completions/.test(url)) {
         return jsonResponse(wantsObject(accept) ? null : []);
+      }
+
+      // #4981 · indbakkens bud-aggregat, se PREVIEW_AUTOBID_NOTIFICATIONS ovenfor.
+      // Skal stå FØR den generiske REST-blok, som ellers svarer [] for tabellen.
+      if (method === "GET" && /\/rest\/v1\/notifications/.test(url)) {
+        return jsonResponse(
+          wantsObject(accept) ? PREVIEW_AUTOBID_NOTIFICATIONS[0] : PREVIEW_AUTOBID_NOTIFICATIONS,
+        );
+      }
+
+      // #5519: rytter-opslaget fra U23 team-/Junior team-siden. Svarer KUN når
+      // opslaget gælder netop preview-ungdomsrytterne (youthSquadsMock.ts).
+      if (method === "GET") {
+        const youthRows = previewYouthRiderRows(url);
+        if (youthRows) return jsonResponse(wantsObject(accept) ? youthRows[0] ?? null : youthRows);
       }
 
       // Supabase REST (PostgREST).
@@ -258,6 +368,21 @@ export function installPreviewMock() {
       // fail-safe off-default (season_signup_enabled i app_config er 'off' i
       // prod), så ejeren kan se og gennemklikke kortet på preview FØR flaget
       // nogensinde flippes (docs' "ejeren skal kunne teste på preview"-regel).
+      // #5435: se previewBestRoleEnabled ovenfor. Kun her (ikke i
+      // mockHandlers.js), så Playwright-snapshots beholder dagens visning.
+      if (method === "GET" && /\/api\/display-flags$/.test(url)) {
+        return jsonResponse({
+          rider_best_role_display: previewBestRoleEnabled(),
+          youth_squad_pages: previewYouthSquadsEnabled(), // #5519
+        });
+      }
+      // #5519: trup-sidernes rytter-id'er. 409 når kontakten er slået fra med
+      // ?youthSquads=off, præcis som serveren svarer med flaget slukket.
+      if (method === "GET" && /\/api\/youth-squads$/.test(url)) {
+        return previewYouthSquadsEnabled()
+          ? jsonResponse(previewYouthSquadsPayload())
+          : jsonResponse({ error: "youth_squad_pages_disabled" }, 409);
+      }
       if (method === "GET" && /\/api\/season\/signup-status$/.test(url)) {
         return jsonResponse({
           enabled: true,
@@ -355,6 +480,15 @@ export function installPreviewMock() {
       if (/\/api\/admin\/surveys\/[^/]+\/results/.test(url)) {
         const parsed = new URL(url, window.location.origin);
         return jsonResponse(buildMockSurveyResults(parsed.searchParams.get("segment")));
+      }
+
+      // #5259 · Beta-adgang (spiller + admin + stadie-tavlen). Statefuld, og
+      // routet FØR den generiske /api-blok, som ellers ville svare {} på GET og
+      // { ok: true } på POST — og så ville tavlen stå tom og opt-in-kortet
+      // aldrig skifte tilstand ved et klik.
+      {
+        const betaResponse = betaAccessMockRoute(url, method, init);
+        if (betaResponse) return betaResponse;
       }
 
       // Express-API (/api/...).

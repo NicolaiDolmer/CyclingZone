@@ -62,7 +62,7 @@ Hver (rytter, evne)-kombination hører til én af fem rolleklasser, afgjort af `
 |---|---|---|---|
 | signatur | rytterens primære type-evner | `ROLE_CLASS_TAG.signatur` | `ROLE_CLASS_RATE.signatur` — **ankeret** til dagens ratingniveau, se §6 |
 | sekundær | rytterens sekundære type-evner | `ROLE_CLASS_TAG.sekundaer` | `ROLE_CLASS_RATE.sekundaer` |
-| håndværk | KUN `positioning` + `tactics` (`CRAFT_ABILITIES`) | `craftFactor`-løftet tag | `ROLE_CLASS_RATE.haandvaerk` |
+| håndværk | `positioning`, `tactics`, `teamwork`, `leadership` (`CRAFT_ABILITIES`) | `craftFactor`-løftet tag | `ROLE_CLASS_RATE.haandvaerk` |
 | anden rolle | evner uden for rytterens type | `neutralFactor` | `ROLE_CLASS_RATE.andenRolle` |
 | svaghed | evner rytterens type er dårlig til | `oppositeFactor` | `ROLE_CLASS_RATE.svaghed` |
 
@@ -71,6 +71,26 @@ Låst 14/8 (spec `2026-08-14-3659-rytterudvikling-og-traening-design.md`, beslut
 > ⚠ **Status er 🟡, ikke ✅.** Trin 4's rolle-tag blev leveret 14/8 og RULLET TILBAGE 15/8 (PR #3791), fordi 748 ryttere brød loftet. Nuværende `ROLE_CLASS_TAG` er en genopbygning via #3709/#3798, og er ikke genmålt mod de oprindelige success-kriterier siden. Se audit-filen §C1, §C6.
 
 > 🔧 **4/9 ([#4634](https://github.com/NicolaiDolmer/CyclingZone/issues/4634)/[#4098](https://github.com/NicolaiDolmer/CyclingZone/issues/4098), ejer-beslutning, variant A3+C2 af `docs/audits/4634-cap-varianter-2026-09-04.md`):** `roleTags.svaghed` hævet — 635 ryttere/867 evne-felter stod på bund-loftet ("done") i prod, halvdelen 29+ (aldersaftrapning, urørt). Samtidig fik `gc`-ryttere et nyt gulv på `punch`-taget (`GC_PUNCH_FLOOR`, `riderProgression.js`), fordi `gc` ikke har en `punch`-post i `CAPS_SHAPING_WEIGHTS` og derfor arvede sit punch-tag alene fra sekundærtypen. `ROLE_CLASS_RATE.svaghed` er UÆNDRET — raten er en separat beslutning (egen session, se opfølger-issue). Præcise tal: se konstanterne selv (hard rule 17).
+
+> 🔧 **15/9 ([#5268](https://github.com/NicolaiDolmer/CyclingZone/issues/5268)/[#3668](https://github.com/NicolaiDolmer/CyclingZone/issues/3668), ejer-beslutning):** to nye mentale evner, `teamwork` (Holdarbejde) og `leadership` (Lederskab), og et LOFT på de mentale evners tag (`MENTAL_ABILITY_TAG_CEILING` i `riderProgression.js`).
+>
+> Loftet er ikke pynt. Træningen er gap-proportional (`dailyTraining.js`: `gap = max(0, cap − current)`), så en sænket evne under et uændret loft bare får et større gap og bliver trukket op igen. `tactics` havde et fladt håndværks-tag sat dengang taktik-medianen var alder frem for kunnen, og `aggression` kunne nå signatur-taget hos en baroudeur. Begge er nu skåret ned, og de to nye evner får samme håndværks-tag. Præcise tal: se konstanten selv (hard rule 17).
+>
+> `teamwork`/`leadership` har KUN positive vægte i `capsShapingWeights.js`. Det er en regel, ikke et tilfælde: `abilityRoleClass` sætter klassen `svaghed` så snart primær- ELLER sekundærtypen har en negativ vægt, og en "dobbelt svaghed" på en evne alle skal kunne lære er forbudt (spec `2026-09-15-holdarbejde-og-lederskab-evner-design.md` §3.1, retning A i `TRAINING_RULES.md` §12). En test i `riderProgression.test.js` går alle 64 typepar igennem.
+
+---
+
+## 1.1 Taktik og aggression bygger ikke længere på alder (#5268, 15/9)
+
+Ejer-beslutning 15/9, ordret: *"taktik og aggression må fremadrettet hverken bygge på alder eller på en anden evne; de er egne evner med egen udvikling."*
+
+Før havde begge et additivt alders-led i `abilityDerivation.js`. Målt i prod 15/9 gjorde det taktik til et aldersmålerur: median 14 ved 16-21 år mod 57 ved 31-33 år, uden sammenhæng med rytterens kunnen — mens `descending`, der har samme kilde-kvalitet og intet alders-led, faldt pænt med alderen som man ville forvente. Aggression gav op til +15 gratis point til unge. Fuld måling: [`docs/audits/2026-09-15-3668-ability-scale-investigation.md`](audits/2026-09-15-3668-ability-scale-investigation.md) §1.2-§1.3.
+
+Efter #5268 har hver mental evne sin EGEN prior: rytterens profil (rå stats, aldrig en anden afledt evne) plus deterministisk, centreret støj salted pr. (rytter, evne). `leadership` er den eneste undtagelse — dér er alder en lovlig faktor (GDD D-030: lederskab er lavt hos unge og topper sent), og vægten er bevidst lille, netop fordi et tungt alders-led er den fejl taktik havde.
+
+To tests i `abilityDerivation.test.js` er forward-guarden: den ene fejler hvis nogen lægger et alders-led tilbage i taktik, aggression eller holdarbejde; den anden kræver at lederskab stadig stiger med alderen.
+
+De eksisterende ryttere migreres som en ÉN samlet delta-migration (`backend/scripts/dry-run-5268-mental-abilities.js`, ejer-gated apply): træningsfremgangen bevares, og de point taktik/aggression afgiver flyttes til de to nye evner, så ingen rytter mister evne-masse.
 
 ---
 
@@ -113,17 +133,22 @@ Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI vis
 
 ## 5. Løbsdags-motoren: træning og løb på samme dag
 
+**Reglen (variant A, S1; ejer 24/9 i [#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850), valgt efter simuleringen i PR #5640):** på en løbsdag kører en rytter løb ELLER træner, aldrig begge dele. Kører han en etape, udvikler han sig som efter et **mellem-pas** i de evner etapens profil kræver (bjerg → klatring, flad → spurt, enkeltstart → tempo osv.), de øvrige evner får den sædvanlige off-fokus-andel, og reglen **maks +1 pr. evne pr. løbsdag** gælder med carry-over. **Planen er ikke input** (ejer-dom 24/8). Ingen ekstra faktor oven på passet. Motor-detaljer og simuleringens tal: [`TRAINING_RULES.md` §6.2](TRAINING_RULES.md). Variant B (dagens intention som modifikator, #4632) lægges ovenpå når v4 tændes.
+
 | Regel | Konstant | Fil | Status |
 |---|---|---|---|
-| Løb udvikler mere end det pas det erstatter, kun i løbets relevante evner | `RACE_DEV_CONFIG.devMult` | `backend/lib/dailyTraining.js` | ✅ |
-| Løbsprofil → hvilke evner der udvikles | `RACE_PROFILE_ABILITY_MAP` | `dailyTrainingEngine.js` | ✅ |
+| Løbsdagens program = etapens profil-evner ved mellem-intensitet, off-fokus med | `raceDayProgram(profileType)`, `RACE_DAY_YIELD_CONFIG` | `backend/lib/raceDayYield.js` | 🚧 PR #5640, flip 28/9 |
+| Løbsprofil → hvilke evner der udvikles (ukendt profil → `rolling`) | `RACE_PROFILE_ABILITY_MAP`, `RACE_DAY_FALLBACK_PROFILE` | `backend/lib/raceDayYield.js` | 🚧 PR #5640 |
+| Udbyttet går gennem den samme tick som en træningsdag, med +1-loft | `applyDailyTick({ program: raceDayProgram(profil), hardDailyCap: 1 })` | `backend/lib/dailyTrainingEngine.js` | 🚧 PR #5654 |
+| Hvem kørte hvilken etape på løbsdagen: resultater ⋈ kalender, ikke bindingen (den slettes ved `completed`) | `loadRaceDayStagesByRider` | `backend/lib/raceDayStageLookup.js` | 🚧 PR #5654 |
+| Den gamle model (det planlagte pas × `devMult`) står i koden men kaldes ikke af motoren; sømmen til variant B | `RACE_DEV_CONFIG`, `applyRaceDevelopmentTick` | `backend/lib/dailyTraining.js` | ⏸ variant B (#4632) |
 | Restitution + AI-paritet (D3+D4) er styret af feature-flag | `race_day_engine_enabled` i `app_config` | — | ✅ on siden 7/8 |
-| Løbsdags-UDVIKLINGEN (D1+D2) er styret af sit EGET flag | `race_day_development_enabled` i `app_config` | `backend/lib/raceDayDevelopmentFlag.js` | ⛔ off for S3 (#4277), tilbage til S4 |
+| Løbsdags-UDVIKLINGEN er styret af sit EGET flag; off = en rytter der kørte får hvile, intet tick, score-række "løb" | `race_day_development_enabled` i `app_config` | `backend/lib/raceDayDevelopmentFlag.js` | ⛔ off i S3 (#4277); flippes off → on 28/9 sammen med `training_tick_per_race_day` på ejer-go |
 | Restitution justeres når `race_day_engine_enabled` er on | `RACE_DAY_ENGINE_RECOVERY_CONFIG` | `backend/lib/riderCondition.js` | ✅ |
 | Trænings-UI'ets løbsdags-badge følger UDVIKLINGS-flaget, ikke motor-flaget | `racingToday` i `GET /api/training/me` | `backend/routes/api.js` | ✅ rettet i #4375 |
-| `rest`-intensitet giver ingen udvikling | `abilityMult(ability, {intensity:"rest"})` → 0 | `dailyTraining.js` | ✅ |
+| `rest`-intensitet giver ingen udvikling på en TRÆNINGSDAG; på en løbsdag er planen ikke input, så Hvile-planen giver stadig løbsdagens udbytte | `abilityMult(ability, {intensity:"rest"})` → 0 | `dailyTraining.js` | ✅ |
 
-> ⚠ **Kendt afvigelse fra spec (A4, ikke rettet endnu).** Spec 6/8 siger det planlagte pas ikke udføres på en løbsdag. Koden bruger i stedet det planlagte pas × `devMult` som løbets udbytte (`applyRaceDevelopmentTick`) — planen ER stadig input. Konsekvens: en rytter sat til Hvile eller Aktiv restitution som alligevel tilmeldes et løb får NUL udvikling af at køre, og disse to indstillinger har de højeste løbsandele af alle. Ejerens dom 24/8, ordret: *"Hvis man kører løb eller træner, så kan man ikke begge dele."* Hvad der SKAL bestemme udbyttet i stedet er en åben beslutning — se audit-fil, afsnit "Det vigtigste at kigge på" nr. 1.
+> ✅ **Afvigelsen A4 er afgjort (ejer 24/9).** Spec 6/8 sagde at det planlagte pas ikke udføres på en løbsdag; den gamle kode brugte alligevel det planlagte pas × `devMult` som løbets udbytte, så en rytter på Hvile fik nul udvikling af at køre løb (målt 24/8, #4192: 1.520 ryttere på 103 hold). Ejerens dom 24/8: *"Hvis man kører løb eller træner, så kan man ikke begge dele."* Reglen ovenfor erstatter den gamle model; flaget var off i hele S3, så ingen spiller har set den gamle adfærd i S3. Flip-dagens verifikation (28/9): en rytter i et afsluttet endagsløb og én på et etapeløbs sidste etape skal have `race_day: true` i `training_day_runs.report` og en `rider_ability_race_day_history`-række med `source: race_development`, og ingen `daily_training`-række samme løbsdag.
 
 ---
 
@@ -183,7 +208,7 @@ Det sidste niveau er nøjagtig det hul kalenderen havde før [#4176](https://git
 |---|---|---|
 | 1 | Spec 9/8's trin 1 (potentiale migreres 1-99) er overhalet af "tredje vej" (13/8), men spec'en er ikke rettet | audit §B1, §B2, §B7 |
 | 2 | Rolle-taget blev leveret 14/8, rullet tilbage 15/8, genopbygget via #3709/#3798 — ikke genmålt mod de oprindelige kriterier | audit §C1, §B4 |
-| 3 | Planen er stadig input på en løbsdag, selvom spec 6/8 og ejerens dom 24/8 siger den ikke skal være det (A4) | denne fil §5, audit "Det vigtigste at kigge på" nr. 1 |
+| 3 | ~~Planen er stadig input på en løbsdag, selvom spec 6/8 og ejerens dom 24/8 siger den ikke skal være det (A4)~~ **Afgjort 24/9 (variant A/S1, #4850):** etapens profil som mellem-pas, +1-loft, planen er ikke input. Live fra flippet 28/9 | denne fil §5, `TRAINING_RULES.md` §6.2 |
 | 4 | Specialiserings-gabet er langt over det ejeren eksplicit fravalgte, verifikationskravet er aldrig indfriet | denne fil §7, audit §B13 |
 | 5 | "8 type-loftprofiler" (spec 9/8) findes ikke — der er én fælles rolleklasse-tabel for alle 8 typer | audit §B4 |
 | 6 | Toprytterens form ("mesterlig i primæren, jævn i resten") er princip, ikke kalibreret profil pr. type | audit §B9 |

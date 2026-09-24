@@ -247,7 +247,7 @@ if (Test-Path "CLAUDE.md") {
 $agentsMdAnchors = @(
   @{ Anchor = "TaskStop"; Rule = "10 terminal-tilstand du har SET" },
   @{ Anchor = "positiv observation"; Rule = "11 paastand om systemtilstand" },
-  @{ Anchor = "maks 5 aabne PR|maks 5 åbne PR"; Rule = "12 loft paa igangvaerende arbejde" },
+  @{ Anchor = "PR-loftet er fjernet"; Rule = "12 PR-loftet fjernet (#5510), lanerne+semaforen er bremsen" },
   @{ Anchor = "GENMAALES|GENMÅLES"; Rule = "13 ingen paastand uden maaling" },
   @{ Anchor = "Isolation er infrastruktur"; Rule = "14 isolation foer skala" },
   @{ Anchor = "Mennesket beslutter"; Rule = "15 AI fremskaffer beviset" },

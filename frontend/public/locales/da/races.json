@@ -51,7 +51,7 @@
         "peaks": "Peak-planer er uændrede",
         "wages": "Løn og rytterværdier opdateres søndag"
       },
-      "firstRaceDay": "Første løbsdag: tirsdag. Mandag er løbsfri.",
+      "firstRaceDay": "Løbene starter dagen efter sæsonskiftet, mindst 24 timer efter den gamle sæsons sidste løb.",
       "readMore": "Fuld forklaring i Hjælp"
     },
     "errorTitle": "Sæsonkalenderen kunne ikke hentes"
@@ -75,6 +75,7 @@
     "errorTitle": "Udtagelsesmatrixen kunne ikke hentes",
     "empty": "Ingen løb i denne sæson endnu",
     "restDay": "Hviledag",
+    "withdrawnHint": "Du har meldt fra til dette løb. Den gemte opstilling bliver stående, hvis du melder til igen, men rytterne stiller ikke op.",
     "dayAria": "Løbsdag {index}, {date}. Åbn dagens board.",
     "cellEmptyAria": "{rider}, {race}: ikke udtaget. Klik for at tilføje.",
     "cellFilledAria": "{rider}, {race}: {role}. Klik for at skifte.",
@@ -93,6 +94,7 @@
     "error": {
       "title": "Holdudtagelsen kunne ikke hentes",
       "body": "Intet gik tabt. Dine opstillinger er sikre.",
+      "parse": "Løbstavlen kunne ikke hentes. Genindlæs siden.",
       "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
       "retry": "Prøv igen"
     },
@@ -461,6 +463,7 @@
     "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
+    "hunter": "Udbrudsjæger",
     "freeRole": "Fri rolle",
     "noRole": "Ingen",
     "thRider": "Rytter",
@@ -508,12 +511,19 @@
     "draftRestored": "Jeg holdt fast i dine ugemte valg. Husk at gemme dem inden starten.",
     "autoFill": "Auto-udtag",
     "autoFillError": "Auto-udtag mislykkedes. Prøv igen.",
+    "autoFillReloadFailed": "Auto-udtag gemte din trup, men genindlæsning her fejlede. Prøv igen før du laver flere ændringer.",
+    "retry": "Prøv igen",
     "save": "Gem udtagelse",
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
     "wrongPool": {
       "title": "Dette løb er i en anden division",
       "note": "Du kan kun udtage hold til løb i din egen division, så der er ingen opstilling at sætte her."
+    },
+    "withdrawnPanel": {
+      "title": "Du har meldt fra til dette løb",
+      "note": "Holdet stiller frivilligt ikke op, så der er ingen opstilling at sætte. Meld til igen fra løbstavlen, hvis du ombestemmer dig inden start.",
+      "keptHeading": "{count, plural, one {# rytter gemt til en gentilmelding} other {# ryttere gemt til en gentilmelding}}"
     },
     "errors": {
       "selection_wrong_size": "Du kan højst udtage {max} ryttere.",
@@ -532,6 +542,7 @@
       "selection_duplicate_rider": "Hver rytter kan kun udtages én gang.",
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
       "selection_race_started": "Løbet er gået i gang, så truppen er låst.",
+      "selection_season_not_active": "Løbet hører til en sæson, der ikke er startet endnu.",
       "selection_rider_bound": "Rytteren kører allerede et overlappende løb.",
       "selection_rider_bound_named": "{rider} kører allerede {race}, som overlapper. Fjern ham der, eller vælg en anden rytter.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",

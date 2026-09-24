@@ -30,6 +30,21 @@ const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
 
 const HOW_ICONS = [TeamIcon, CoinIcon, StarIcon, FlagIcon, CalendarIcon];
 
+// #5495 — footer-linkliste til de offentlige info-sider (SEO: orphan pages
+// får et indgående link herfra). Samme sti-par bruges af marketing/site-chrome.tsx
+// (SiteFooter), så en ny side tilføjes ÉT sted i hver fil, ikke to.
+const EXPLORE_LINKS = [
+  { key: "howItWorks", en: "/how-it-works", da: "/da/saadan-fungerer-det" },
+  { key: "compare", en: "/pro-cycling-manager-alternative", da: "/da/pro-cycling-manager-alternativ" },
+  { key: "help", en: "/help", da: "/help" },
+  { key: "rules", en: "/rules", da: "/rules" },
+  { key: "roadmap", en: "/roadmap", da: "/roadmap" },
+  { key: "patchNotes", en: "/patch-notes", da: "/patch-notes" },
+  { key: "founderSupporter", en: "/founder-supporter", da: "/founder-supporter" },
+  { key: "terms", en: "/terms", da: "/handelsbetingelser" },
+  { key: "privacy", en: "/privacy-policy", da: "/privatlivspolitik" },
+];
+
 function DiscordGlyph({ size = 18, className = "" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
@@ -325,18 +340,32 @@ export default function LandingPage() {
 
       {/* ───────── Footer ───────── */}
       <footer className="border-t border-cz-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-5 py-8 sm:flex-row sm:items-center sm:px-8">
-          <div className="flex items-center gap-3">
-            <Wordmark className="h-4" />
-            <span className="text-xs text-cz-3">{t("footer.tagline")}</span>
+        <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+          <div className="flex flex-col gap-3 border-b border-cz-border pb-6 sm:flex-row sm:items-baseline sm:gap-8">
+            <span className="font-data text-2xs font-semibold uppercase tracking-wider text-cz-3">
+              {t("footer.exploreHeading")}
+            </span>
+            <nav aria-label={t("footer.exploreHeading")} className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              {EXPLORE_LINKS.map((link) => (
+                <a key={link.key} href={link[lang]} className="text-cz-2 hover:text-cz-1">
+                  {t(`footer.explore.${link.key}`)}
+                </a>
+              ))}
+            </nav>
           </div>
-          <nav className="flex flex-wrap items-center gap-4 text-sm sm:gap-5">
-            <LanguageToggle />
-            <a href={t("waitlist.privacyPath")} className="text-cz-2 hover:text-cz-1">{t("footer.privacy")}</a>
-            <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="text-cz-2 hover:text-cz-1">
-              {t("footer.discord")}
-            </a>
-          </nav>
+          <div className="mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <Wordmark className="h-4" />
+              <span className="text-xs text-cz-3">{t("footer.tagline")}</span>
+            </div>
+            <nav className="flex flex-wrap items-center gap-4 text-sm sm:gap-5">
+              <LanguageToggle />
+              <a href={t("waitlist.privacyPath")} className="text-cz-2 hover:text-cz-1">{t("footer.privacy")}</a>
+              <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="text-cz-2 hover:text-cz-1">
+                {t("footer.discord")}
+              </a>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>

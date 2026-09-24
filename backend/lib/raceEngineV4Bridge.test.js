@@ -16,6 +16,7 @@ import {
   ENGINE_VERSION_V4,
   breakawayRiderIdsFromSnapshots,
   buildV4StageInput,
+  raceContextForStage,
   createRaceEngineV4Adapter,
   loadRaceEngineV4,
   loadTeamOrderRows,
@@ -167,7 +168,7 @@ test("#3855/#4246 buildV4StageInput: adapteren får startlistens roller, ikke ba
     entrants: { entrantFromAbilitiesRow: (row, opts) => ({ rider_id: opts.riderId, condition: opts.condition }) },
     tuning: { RACE_V4_TUNING: { marker: true } },
     orders: {
-      buildStageOrders: (args) => args,
+      buildStageOrderPlan: (args) => ({ orders: args, aiEffortByRider: new Map() }),
     },
   };
   const input = buildV4StageInput({
@@ -188,13 +189,78 @@ test("#3855/#4246 buildV4StageInput: adapteren får startlistens roller, ikke ba
   // #4246: rollen ER standardordren, så adapteren skal have (hold, rytter, rolle).
   // Ryttere uden hold hører ikke til en holdplan og sendes ikke med.
   assert.deepEqual(input.orders.roster, [
-    { team_id: "T2", rider_id: "a", role: "hunter" },
-    { team_id: "T1", rider_id: "b", role: "captain" },
+    { team_id: "T2", rider_id: "a", role: "hunter", is_ai: false, abilities: {} },
+    { team_id: "T1", rider_id: "b", role: "captain", is_ai: false, abilities: {} },
   ]);
   assert.equal(input.orders.stageNumber, 1);
   assert.equal(input.orders.rows.length, 1);
+  // Uden løbets etaper er løbet ukendt for M14 (#5571).
+  assert.equal(input.orders.context.race, undefined);
   // fatigue 0-100 → condition 1-0.
   assert.deepEqual(input.startlist.map((e) => e.condition), [1, 0, 0.5]);
+});
+
+// ── #5571: AI-holdene får M14's taktik gennem broen ────────────────────────
+
+test("#5571 raceContextForStage: etapeløb + senere etapers rute-type, i kørselsorden", () => {
+  const ctx = raceContextForStage({
+    raceStages: [
+      { stage_number: 3, profile_type: "flat", finale_type: "bunch_sprint" },
+      { stage_number: 1, profile_type: "itt", finale_type: "solo_tt" },
+      { stage_number: 2, profile_type: "mountain", finale_type: "long_climb" },
+    ],
+    stageNumber: 1,
+    isStageRace: true,
+    routeFromStageProfileRow: (row) => ({ profile_type: row.profile_type, finale_type: row.finale_type }),
+  });
+  assert.deepEqual(ctx, {
+    is_stage_race: true,
+    later_stages: [
+      { profile_type: "mountain", finale_type: "long_climb" },
+      { profile_type: "flat", finale_type: "bunch_sprint" },
+    ],
+  });
+  assert.equal(raceContextForStage({ raceStages: null, stageNumber: 1, isStageRace: true, routeFromStageProfileRow: () => ({}) }), undefined);
+});
+
+test("#5571 buildV4StageInput (rigtige adaptere): AI-holdets indsats lander på Entrant.effort, menneskets gør ikke", async () => {
+  const [entrantsMod, routeMod, ordersMod] = await Promise.all([
+    import("./engine/v4/adapters/entrantAdapter.ts"),
+    import("./engine/v4/adapters/routeAdapter.ts"),
+    import("./engine/v4/orders/teamOrdersAdapter.ts"),
+  ]);
+  const modules = { entrants: entrantsMod, route: routeMod, orders: ordersMod, tuning: { RACE_V4_TUNING: {} } };
+  const team = (teamId, isAi) => [
+    { rider_id: `${teamId}-cap`, team_id: teamId, race_role: "captain", abilities: { climbing: 60, sprint: 10 }, fatigue: 0, team_is_ai: isAi },
+    { rider_id: `${teamId}-spr`, team_id: teamId, race_role: "sprint_captain", abilities: { climbing: 5, sprint: 60 }, fatigue: 0, team_is_ai: isAi },
+    { rider_id: `${teamId}-dom`, team_id: teamId, race_role: "helper", abilities: { climbing: 45, sprint: 10 }, fatigue: 0, team_is_ai: isAi },
+  ];
+  const others = Array.from({ length: 20 }, (_, i) => ({
+    rider_id: `o${i}`, team_id: `o${i}`, race_role: "free_role", abilities: { climbing: 5 + i, sprint: 5 + i }, fatigue: 0,
+  }));
+  const mountain = { stage_number: 1, profile_type: "mountain", finale_type: "long_climb", distance_km: 150 };
+  const flat = { stage_number: 2, profile_type: "flat", finale_type: "bunch_sprint", distance_km: 180 };
+  const input = buildV4StageInput({
+    modules,
+    entrants: [...team("ai", true), ...team("hum", undefined), ...others],
+    stageProfile: mountain,
+    seedString: "race:5571:1",
+    stageNumber: 1,
+    isStageRace: true,
+    raceStages: [mountain, flat],
+  });
+  const effort = new Map(input.startlist.map((e) => [e.rider_id, e.effort]));
+  // Sidste bjergetape i etapeløbet: kaptajnen alt ud, hjælperen ved ham, sprinteren i grupettoen.
+  assert.equal(effort.get("ai-cap"), "all_out");
+  assert.equal(effort.get("ai-dom"), "protect");
+  assert.equal(effort.get("ai-spr"), "grupetto");
+  // Menneskeholdet: ingen autopilot, rollens standard.
+  assert.equal(effort.get("hum-cap"), "normal");
+  assert.equal(effort.get("hum-spr"), "normal");
+  const aiOrder = input.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics");
+  assert.equal(aiOrder.params.breakaway_stance, "chase");
+  const humOrder = input.orders.find((o) => o.team_id === "hum" && o.kind === "team_tactics");
+  assert.equal(humOrder.params.breakaway_stance, "neutral");
 });
 
 // ── 3. Determinisme (rigtig motor) ─────────────────────────────────────────

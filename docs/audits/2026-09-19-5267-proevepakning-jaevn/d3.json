@@ -1,0 +1,1749 @@
+{
+ "_om": "S4-proevepakning, #5267. READ-ONLY dry-run. Loebsnavne er anonymiseret til bogstaver (repoet er offentligt).",
+ "noegletal": {
+  "saeson": 4,
+  "foersteLoebsdato": "2026-09-28",
+  "kalenderdatoer": 28,
+  "maal": 140,
+  "naturligeLoebsdage": 56,
+  "division": 3,
+  "loebsdageIAlt": 140,
+  "loebsdageMedLoeb": 56,
+  "traeningsdage": 84,
+  "gtHviledage": 0,
+  "loebsdagePrDatoMin": 5,
+  "loebsdagePrDatoMax": 5,
+  "traeningsdageIndeISpaend": 76,
+  "traeningsdageIndeISpaendPct": 90.5,
+  "datoerMedFuldNaturligKvote": 0,
+  "datoerOverKvote": 0,
+  "overlapAndelPct": 50,
+  "overlapGulvPct": 40,
+  "etaperPrKalenderdatoMin": 3,
+  "etaperPrKalenderdatoMax": 3,
+  "laengsteStimeUdenTraeningsdag": 0,
+  "friePositionerPaaAksen": 5
+ },
+ "loebsdage": [
+  {
+   "loebsdag": 0,
+   "dato": "2026-09-28",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 1,
+   "dato": "2026-09-28",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 2,
+   "dato": "2026-09-28",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "A",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "B",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 3,
+   "dato": "2026-09-28",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "A"
+   ]
+  },
+  {
+   "loebsdag": 4,
+   "dato": "2026-09-28",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "A",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 5,
+   "dato": "2026-09-29",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "A"
+   ]
+  },
+  {
+   "loebsdag": 6,
+   "dato": "2026-09-29",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "A"
+   ]
+  },
+  {
+   "loebsdag": 7,
+   "dato": "2026-09-29",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "C",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "A",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 8,
+   "dato": "2026-09-29",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "A"
+   ]
+  },
+  {
+   "loebsdag": 9,
+   "dato": "2026-09-29",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "A",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 10,
+   "dato": "2026-09-30",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "A"
+   ]
+  },
+  {
+   "loebsdag": 11,
+   "dato": "2026-09-30",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "A"
+   ]
+  },
+  {
+   "loebsdag": 12,
+   "dato": "2026-09-30",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "D",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "A",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 13,
+   "dato": "2026-09-30",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "D"
+   ]
+  },
+  {
+   "loebsdag": 14,
+   "dato": "2026-09-30",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "D",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 15,
+   "dato": "2026-10-01",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "D"
+   ]
+  },
+  {
+   "loebsdag": 16,
+   "dato": "2026-10-01",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "D"
+   ]
+  },
+  {
+   "loebsdag": 17,
+   "dato": "2026-10-01",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "E",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "D",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 18,
+   "dato": "2026-10-01",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "D"
+   ]
+  },
+  {
+   "loebsdag": 19,
+   "dato": "2026-10-01",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "D",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 20,
+   "dato": "2026-10-02",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "D"
+   ]
+  },
+  {
+   "loebsdag": 21,
+   "dato": "2026-10-02",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "D"
+   ]
+  },
+  {
+   "loebsdag": 22,
+   "dato": "2026-10-02",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "F",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "D",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 23,
+   "dato": "2026-10-02",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "F"
+   ]
+  },
+  {
+   "loebsdag": 24,
+   "dato": "2026-10-02",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "F",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 25,
+   "dato": "2026-10-03",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "F"
+   ]
+  },
+  {
+   "loebsdag": 26,
+   "dato": "2026-10-03",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "F"
+   ]
+  },
+  {
+   "loebsdag": 27,
+   "dato": "2026-10-03",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "G",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "F",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 28,
+   "dato": "2026-10-03",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "F"
+   ]
+  },
+  {
+   "loebsdag": 29,
+   "dato": "2026-10-03",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "F",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 30,
+   "dato": "2026-10-04",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "F"
+   ]
+  },
+  {
+   "loebsdag": 31,
+   "dato": "2026-10-04",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "F"
+   ]
+  },
+  {
+   "loebsdag": 32,
+   "dato": "2026-10-04",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "H",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "F",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 33,
+   "dato": "2026-10-04",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "H"
+   ]
+  },
+  {
+   "loebsdag": 34,
+   "dato": "2026-10-04",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "H",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 35,
+   "dato": "2026-10-05",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "H"
+   ]
+  },
+  {
+   "loebsdag": 36,
+   "dato": "2026-10-05",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "H"
+   ]
+  },
+  {
+   "loebsdag": 37,
+   "dato": "2026-10-05",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "I",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "H",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 38,
+   "dato": "2026-10-05",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "H"
+   ]
+  },
+  {
+   "loebsdag": 39,
+   "dato": "2026-10-05",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "H",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 40,
+   "dato": "2026-10-06",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "H"
+   ]
+  },
+  {
+   "loebsdag": 41,
+   "dato": "2026-10-06",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "H"
+   ]
+  },
+  {
+   "loebsdag": 42,
+   "dato": "2026-10-06",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "J",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "H",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 43,
+   "dato": "2026-10-06",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "J"
+   ]
+  },
+  {
+   "loebsdag": 44,
+   "dato": "2026-10-06",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "J",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 45,
+   "dato": "2026-10-07",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "J"
+   ]
+  },
+  {
+   "loebsdag": 46,
+   "dato": "2026-10-07",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "J"
+   ]
+  },
+  {
+   "loebsdag": 47,
+   "dato": "2026-10-07",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "K",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "J",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 48,
+   "dato": "2026-10-07",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "J"
+   ]
+  },
+  {
+   "loebsdag": 49,
+   "dato": "2026-10-07",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "J",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 50,
+   "dato": "2026-10-08",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "J"
+   ]
+  },
+  {
+   "loebsdag": 51,
+   "dato": "2026-10-08",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "J"
+   ]
+  },
+  {
+   "loebsdag": 52,
+   "dato": "2026-10-08",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "L",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "J",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 53,
+   "dato": "2026-10-08",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "L"
+   ]
+  },
+  {
+   "loebsdag": 54,
+   "dato": "2026-10-08",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "L",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 55,
+   "dato": "2026-10-09",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "L"
+   ]
+  },
+  {
+   "loebsdag": 56,
+   "dato": "2026-10-09",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "L"
+   ]
+  },
+  {
+   "loebsdag": 57,
+   "dato": "2026-10-09",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "M",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "L",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 58,
+   "dato": "2026-10-09",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "L"
+   ]
+  },
+  {
+   "loebsdag": 59,
+   "dato": "2026-10-09",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "L",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 60,
+   "dato": "2026-10-10",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "L"
+   ]
+  },
+  {
+   "loebsdag": 61,
+   "dato": "2026-10-10",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "L"
+   ]
+  },
+  {
+   "loebsdag": 62,
+   "dato": "2026-10-10",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "N",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "L",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 63,
+   "dato": "2026-10-10",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "N"
+   ]
+  },
+  {
+   "loebsdag": 64,
+   "dato": "2026-10-10",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "N",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 65,
+   "dato": "2026-10-11",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "N"
+   ]
+  },
+  {
+   "loebsdag": 66,
+   "dato": "2026-10-11",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "N"
+   ]
+  },
+  {
+   "loebsdag": 67,
+   "dato": "2026-10-11",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "O",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "N",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 68,
+   "dato": "2026-10-11",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "N"
+   ]
+  },
+  {
+   "loebsdag": 69,
+   "dato": "2026-10-11",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "N",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 70,
+   "dato": "2026-10-12",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "N"
+   ]
+  },
+  {
+   "loebsdag": 71,
+   "dato": "2026-10-12",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "N"
+   ]
+  },
+  {
+   "loebsdag": 72,
+   "dato": "2026-10-12",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "P",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "N",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 73,
+   "dato": "2026-10-12",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "P"
+   ]
+  },
+  {
+   "loebsdag": 74,
+   "dato": "2026-10-12",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "P",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 75,
+   "dato": "2026-10-13",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "P"
+   ]
+  },
+  {
+   "loebsdag": 76,
+   "dato": "2026-10-13",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "P"
+   ]
+  },
+  {
+   "loebsdag": 77,
+   "dato": "2026-10-13",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "Q",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "P",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 78,
+   "dato": "2026-10-13",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "P"
+   ]
+  },
+  {
+   "loebsdag": 79,
+   "dato": "2026-10-13",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "P",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 80,
+   "dato": "2026-10-14",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "P"
+   ]
+  },
+  {
+   "loebsdag": 81,
+   "dato": "2026-10-14",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "P"
+   ]
+  },
+  {
+   "loebsdag": 82,
+   "dato": "2026-10-14",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "P",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 83,
+   "dato": "2026-10-14",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R"
+   ]
+  },
+  {
+   "loebsdag": 84,
+   "dato": "2026-10-14",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 85,
+   "dato": "2026-10-15",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R"
+   ]
+  },
+  {
+   "loebsdag": 86,
+   "dato": "2026-10-15",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R"
+   ]
+  },
+  {
+   "loebsdag": 87,
+   "dato": "2026-10-15",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "S",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "R",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 88,
+   "dato": "2026-10-15",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R"
+   ]
+  },
+  {
+   "loebsdag": 89,
+   "dato": "2026-10-15",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 90,
+   "dato": "2026-10-16",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R"
+   ]
+  },
+  {
+   "loebsdag": 91,
+   "dato": "2026-10-16",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R"
+   ]
+  },
+  {
+   "loebsdag": 92,
+   "dato": "2026-10-16",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "T",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "R",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 93,
+   "dato": "2026-10-16",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "T"
+   ]
+  },
+  {
+   "loebsdag": 94,
+   "dato": "2026-10-16",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "T",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 95,
+   "dato": "2026-10-17",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "T"
+   ]
+  },
+  {
+   "loebsdag": 96,
+   "dato": "2026-10-17",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "T"
+   ]
+  },
+  {
+   "loebsdag": 97,
+   "dato": "2026-10-17",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "U",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "T",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 98,
+   "dato": "2026-10-17",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "T"
+   ]
+  },
+  {
+   "loebsdag": 99,
+   "dato": "2026-10-17",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "T",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 100,
+   "dato": "2026-10-18",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "T"
+   ]
+  },
+  {
+   "loebsdag": 101,
+   "dato": "2026-10-18",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "T"
+   ]
+  },
+  {
+   "loebsdag": 102,
+   "dato": "2026-10-18",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "V",
+     "etape": 1,
+     "af": 5,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "T",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 103,
+   "dato": "2026-10-18",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "V"
+   ]
+  },
+  {
+   "loebsdag": 104,
+   "dato": "2026-10-18",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "V",
+     "etape": 2,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 105,
+   "dato": "2026-10-19",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "V"
+   ]
+  },
+  {
+   "loebsdag": 106,
+   "dato": "2026-10-19",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "V"
+   ]
+  },
+  {
+   "loebsdag": 107,
+   "dato": "2026-10-19",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "W",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "V",
+     "etape": 3,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 108,
+   "dato": "2026-10-19",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "V"
+   ]
+  },
+  {
+   "loebsdag": 109,
+   "dato": "2026-10-19",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "V",
+     "etape": 4,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 110,
+   "dato": "2026-10-20",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "V"
+   ]
+  },
+  {
+   "loebsdag": 111,
+   "dato": "2026-10-20",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "V"
+   ]
+  },
+  {
+   "loebsdag": 112,
+   "dato": "2026-10-20",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "X",
+     "etape": 1,
+     "af": 4,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "V",
+     "etape": 5,
+     "af": 5,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 113,
+   "dato": "2026-10-20",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "X"
+   ]
+  },
+  {
+   "loebsdag": 114,
+   "dato": "2026-10-20",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "X",
+     "etape": 2,
+     "af": 4,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 115,
+   "dato": "2026-10-21",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "X"
+   ]
+  },
+  {
+   "loebsdag": 116,
+   "dato": "2026-10-21",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "X"
+   ]
+  },
+  {
+   "loebsdag": 117,
+   "dato": "2026-10-21",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "Y",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "X",
+     "etape": 3,
+     "af": 4,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 118,
+   "dato": "2026-10-21",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "X"
+   ]
+  },
+  {
+   "loebsdag": 119,
+   "dato": "2026-10-21",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "X",
+     "etape": 4,
+     "af": 4,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 120,
+   "dato": "2026-10-22",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 121,
+   "dato": "2026-10-22",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 122,
+   "dato": "2026-10-22",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "Z",
+     "etape": 1,
+     "af": 4,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "R27",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 123,
+   "dato": "2026-10-22",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "Z"
+   ]
+  },
+  {
+   "loebsdag": 124,
+   "dato": "2026-10-22",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "Z",
+     "etape": 2,
+     "af": 4,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 125,
+   "dato": "2026-10-23",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "Z"
+   ]
+  },
+  {
+   "loebsdag": 126,
+   "dato": "2026-10-23",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "Z"
+   ]
+  },
+  {
+   "loebsdag": 127,
+   "dato": "2026-10-23",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R28",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "Z",
+     "etape": 3,
+     "af": 4,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 128,
+   "dato": "2026-10-23",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "Z"
+   ]
+  },
+  {
+   "loebsdag": 129,
+   "dato": "2026-10-23",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "Z",
+     "etape": 4,
+     "af": 4,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 130,
+   "dato": "2026-10-24",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 131,
+   "dato": "2026-10-24",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 132,
+   "dato": "2026-10-24",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R29",
+     "etape": 1,
+     "af": 3,
+     "type": "etapeloeb"
+    },
+    {
+     "loeb": "R30",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 133,
+   "dato": "2026-10-24",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R29"
+   ]
+  },
+  {
+   "loebsdag": 134,
+   "dato": "2026-10-24",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R29",
+     "etape": 2,
+     "af": 3,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 135,
+   "dato": "2026-10-25",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": true,
+   "spaendLoeb": [
+    "R29"
+   ]
+  },
+  {
+   "loebsdag": 136,
+   "dato": "2026-10-25",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R31",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    },
+    {
+     "loeb": "R29",
+     "etape": 3,
+     "af": 3,
+     "type": "etapeloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 137,
+   "dato": "2026-10-25",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  },
+  {
+   "loebsdag": 138,
+   "dato": "2026-10-25",
+   "type": "loebsdag",
+   "loeb": [
+    {
+     "loeb": "R32",
+     "etape": 1,
+     "af": 1,
+     "type": "endagsloeb"
+    }
+   ]
+  },
+  {
+   "loebsdag": 139,
+   "dato": "2026-10-25",
+   "type": "traeningsdag",
+   "loeb": [],
+   "indeISpaend": false,
+   "spaendLoeb": []
+  }
+ ]
+}

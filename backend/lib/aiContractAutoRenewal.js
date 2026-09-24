@@ -36,18 +36,20 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { computeContractExtension } from "./contractSeed.js";
+import { applySeniorSquadFilter } from "./squads.js";
 import { captureException } from "./sentry.js";
 
 async function defaultFetchExpiringAiContractRiders({ supabase, seasonNumber }) {
   return fetchAllRows(() =>
-    supabase
-      .from("riders")
-      .select(
-        "id, firstname, lastname, team_id, contract_length, contract_end_season, current_production_value, " +
-          "team:team_id!inner(is_ai, is_bank, is_frozen, is_test_account, division)"
-      )
-      .not("team_id", "is", null)
-      .eq("is_academy", false)
+    applySeniorSquadFilter(
+      supabase
+        .from("riders")
+        .select(
+          "id, firstname, lastname, team_id, contract_length, contract_end_season, current_production_value, " +
+            "team:team_id!inner(is_ai, is_bank, is_frozen, is_test_account, division)"
+        )
+        .not("team_id", "is", null)
+    )
       .eq("is_retired", false)
       .lte("contract_end_season", seasonNumber)
       .eq("team.is_ai", true)

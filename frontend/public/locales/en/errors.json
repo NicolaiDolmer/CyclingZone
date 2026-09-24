@@ -17,6 +17,12 @@
     "unknown": "Unexpected error. Try again"
   },
   "api": {
+    "trade_feed_invalid_limit": "That page size isn't valid",
+    "trade_feed_invalid_offset": "That page isn't valid",
+    "trade_feed_offset_too_deep": "The trade list doesn't go back that far. Use the filters to narrow it down",
+    "trade_feed_invalid_type": "That trade type isn't valid",
+    "trade_feed_invalid_division": "That division isn't valid",
+    "trade_feed_invalid_team": "That team isn't valid",
     "flash_deadline_day_only": "Flash auctions are only available during Deadline Day",
     "rider_not_found": "Rider not found",
     "rider_unavailable": "This rider isn't available",
@@ -93,7 +99,7 @@
     "cannot_afford_offer": "You can't afford this offer",
     "squad_full": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders})",
     "squad_full_buffer": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders})",
-    "no_eligible_room_bid": "No room in your academy ({maxAcademy}/{maxAcademy}) or senior squad ({maxRiders}/{maxRiders}). Sell a rider before you bid.",
+    "no_eligible_room_bid": "No room on the youth team he would join ({maxAcademy}/{maxAcademy}) or in your senior squad ({maxRiders}/{maxRiders}). Sell a rider before you bid.",
     "squad_full_bid": "Your squad is full ({maxRiders} riders). Sell a rider before you bid on a new one.",
     "offer_not_found": "Offer not found",
     "not_involved_offer": "You're not involved in this offer",
@@ -256,6 +262,14 @@
     "dm_not_found": "That conversation is gone.",
     "dm_invalid_block_target": "Pick a manager first.",
     "dm_report_reason_required": "Tell me what is wrong, in a sentence or two.",
-    "dm_report_reason_too_long": "That reason is too long."
+    "dm_report_reason_too_long": "That reason is too long.",
+    "beta_already_member": "You are already in the beta group.",
+    "beta_request_pending": "Your request is already waiting for me.",
+    "beta_not_member": "You are not in the beta group.",
+    "beta_migration_pending": "Beta sign-up is not ready yet. Try again shortly.",
+    "beta_invalid_payload": "That beta setting could not be read.",
+    "flag_unknown": "That feature flag does not exist.",
+    "flag_invalid_stage": "A feature can only be off, beta or on.",
+    "flag_boolean_only": "This flag is on/off only and has no beta stage."
   }
 }

@@ -13,6 +13,12 @@
 //
 // Scriptet starter SELV den statiske server paa worktreets egen port og lukker
 // den igen — ingen efterladt proces.
+//
+// FOER/EFTER (20/9): scriptet koeres TO gange mod TO builds af `frontend/dist`
+// — een fra basis-committen og een fra arbejdskopien. Mocks, login og data er
+// identiske i begge koersler, saa hver forskel paa billederne ER aendringen.
+// Mobilfladen er den NYE loebsdags-tabel (`mobileTable: true`, flaget
+// `training_mobile_table`), fordi det er dér scoren manglede helt.
 
 import { chromium } from "@playwright/test";
 import { spawn } from "node:child_process";
@@ -32,7 +38,10 @@ const PORT = resolveRuntimePort(FRONTEND);
 const HOST = "127.0.0.1";
 const BASE = `http://${HOST}:${PORT}`;
 
-const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "timetrialist", "allrounder", "baroudeur"];
+// Kun de 8 typer der findes i locales/*/riderTypes.json. "timetrialist" og
+// "allrounder" stod her foer og fandtes ikke: i18n faldt tilbage til den raa
+// noegle, saa billedet viste "types.allrounder" i stedet for en ryttertype.
+const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "tt", "gc", "baroudeur", "brostensrytter"];
 const FOCUSES = ["vo2max", "threshold", "sprint", "endurance", "technique", "aero"];
 const base = RIDERS.find((r) => r.team_id === TEST_TEAM.id) || RIDERS[0];
 
@@ -131,13 +140,17 @@ const TRAINING_ME = {
   weekPlan: null,
   riderWeekPlans: {},
   todayRun: null,
+  // #3643: telefonens NYE loebsdags-tabel. Det er den flade fundet 20/9 handler
+  // om — scoren stod slet ikke paa den.
+  mobileTable: true,
   // Flaget tvunget ON i preview: feltet er til stede.
   trainingScore,
 };
 
-async function stabilizeEnglish(page) {
-  await page.addInitScript(() => {
+async function stabilizeEnglish(page, theme) {
+  await page.addInitScript((mode) => {
     window.localStorage.setItem("cz_lang", "en");
+    window.localStorage.setItem("cz-theme", mode);
     window.localStorage.setItem("cz_consent_v1", JSON.stringify({
       version: 1, necessary: true, analytics: false, marketing: false,
       email_marketing: false, updated_at: "2026-05-13T00:00:00.000Z",
@@ -150,7 +163,7 @@ async function stabilizeEnglish(page) {
     };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", inject, { once: true });
     else inject();
-  });
+  }, theme);
 }
 
 async function login(page) {
@@ -182,21 +195,28 @@ const server = spawn(
   { cwd: FRONTEND, stdio: "inherit" },
 );
 
+// Samme grund som i 4851-mobile-columns.shots.mjs (CodeRabbit 20/9): fejler en
+// capture, springer vi til finally, og en Chromium der aldrig blev lukket
+// holder kommandoen i live. Hard rule #4920: ingen efterladte processer.
+let browser;
+
 try {
   await waitForServer(`${BASE}/app.html`);
 
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
   const VIEWPORTS = [
     { name: "desktop", width: 1440, height: 900 },
     { name: "mobile", width: 390, height: 844 },
   ];
+  const THEMES = ["light", "dark"];
 
-  for (const vp of VIEWPORTS) {
+  for (const vp of VIEWPORTS) for (const theme of THEMES) {
     const context = await browser.newContext({
       baseURL: BASE,
       viewport: { width: vp.width, height: vp.height },
       deviceScaleFactor: 1,
       locale: "en-US",
+      colorScheme: theme,
     });
     const page = await context.newPage();
     await installNetworkMocks(page);
@@ -218,25 +238,42 @@ try {
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
       return json(route, TRAINING_ME);
     });
-    await stabilizeEnglish(page);
+    await stabilizeEnglish(page, theme);
     await login(page);
+    const tag = `${vp.name}-${theme}`;
 
-    // (a) Rytterlisten med Score-kolonnen.
+    // (a) Traeningssiden. Paa desktop er det rytterlisten med Score-kolonnen;
+    //     paa 390 px er det den NYE loebsdags-tabel (mockup 2), hvor scoren
+    //     manglede helt indtil nu.
     await page.goto("/training");
-    await page.locator("table[data-sortable]").waitFor();
-    await page.waitForTimeout(400);
-    await page.screenshot({ path: resolve(OUT, `4851-training-score-list-${vp.name}.png`), fullPage: true });
+    await page.locator('table[data-sortable], [data-testid="training-mobile-roster"]').first().waitFor();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: resolve(OUT, `4851-training-score-list-${tag}.png`), fullPage: true });
+
+    // (a2) Kun paa telefonen: det udfoldede rytterkort, hvor tallet og kurven
+    //      staar. Den oeverste rytter er valgt fra start (mockup 2).
+    if (vp.name === "mobile") {
+      const roster = page.locator('[data-testid="training-mobile-roster"]');
+      if (await roster.count()) {
+        await roster.locator("tbody tr").first().locator("button").first().click();
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: resolve(OUT, `4851-training-score-mobile-card-${tag}.png`), fullPage: true });
+      }
+    }
 
     // (b) Profilkortet paa rytterens traeningsfane.
     await page.goto(`/riders/${base.id}?tab=training`);
     await page.waitForTimeout(900);
-    await page.screenshot({ path: resolve(OUT, `4851-training-score-card-${vp.name}.png`), fullPage: true });
+    await page.screenshot({ path: resolve(OUT, `4851-training-score-card-${tag}.png`), fullPage: true });
 
     await context.close();
   }
 
-  await browser.close();
   console.log(`Screenshots → ${OUT}`);
 } finally {
-  server.kill();
+  try {
+    await browser?.close();
+  } finally {
+    server.kill();
+  }
 }

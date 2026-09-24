@@ -184,6 +184,20 @@ test("buildCalendarModel: isMine=false når holdet ingen pulje har", () => {
   assert.ok(entries.every((e) => e.isMine === false));
 });
 
+// #5405: kalender-ruten sender teamDivisionId=null for en sæson hvis division
+// endnu ikke er afgjort ('upcoming'). Kontrakten er at markeringen forsvinder
+// HELT — også for løb hvor holdet har gamle entries liggende: entered/leaderSet
+// beskriver holdets egne data og er stadig sande, men isMine er en påstand om
+// hvilken pulje holdet kommer til at køre i, og den påstand har vi ikke.
+test("#5405: teamDivisionId=null fjerner isMine på hvert løb, også hvor holdet har entries", () => {
+  const { entries } = buildCalendarModel(sampleInput({ teamDivisionId: null }));
+  const single = entries.find((e) => e.id === "r-single");
+  assert.equal(single.isMine, false, "ingen 'mit holds løb'-markering uden en kendt pulje");
+  assert.equal(single.entered, true, "holdets egne entries er stadig et faktum og må ikke tabes");
+  assert.equal(single.leaderSet, true);
+  assert.ok(entries.every((e) => toCalendarWireEntry(e).isMine === false), "wire-formatet bærer den samme sandhed");
+});
+
 test("buildCalendarModel springer løb uden schedule OG uden game_day_start over", () => {
   const input = sampleInput();
   input.races.push({ id: "r-ghost", name: "Phantom", race_type: "single", stages: 1, status: "scheduled", league_division_id: 4, game_day_start: null });

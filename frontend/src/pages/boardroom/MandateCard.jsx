@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
-import { endSentence, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { appendDate, formatGoalValue, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
 import StatusPill from "./StatusPill.jsx";
@@ -27,7 +27,10 @@ function GoalReceipt({ receipt, t }) {
     lines.push(
       <span key="lastMovement">
         <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
-        {t(receipt.lastMovementKey, receipt.lastMovementParams || {})}, {endSentence(formatWeekdayShortDate(receipt.lastMovementAt))}
+        {appendDate(
+          t(receipt.lastMovementKey, receipt.lastMovementParams || {}),
+          formatWeekdayShortDate(receipt.lastMovementAt),
+        )}
       </span>,
     );
   }
@@ -68,7 +71,10 @@ function GoalRow({ goal, t, expanded, onToggle }) {
         <div className="flex min-w-0 items-center gap-3">
           <MonogramAvatar sizeClass="h-7 w-7" initials={goal.owner?.initials} initialsClass="text-2xs" />
           <div className="min-w-0">
-            <p className="text-[13.5px] font-medium text-cz-1">
+            {/* #5633 · [text-wrap:balance] fordeler linjebrud jaevnt i stedet for
+                at laegge et enkelt ord alene paa sidste linje ("Maaltitler
+                brydes ujaevnt", spillerrapport). Ren CSS, ingen ny mekanik. */}
+            <p className="text-[13.5px] font-medium leading-snug text-cz-1 [text-wrap:balance]">
               {resolveGoalTitle(t, goal)}
               {goal.isStretch && (
                 <span className="ms-1.5 rounded-cz-pill border border-cz-border px-[7px] py-px align-middle text-3xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">
@@ -85,7 +91,10 @@ function GoalRow({ goal, t, expanded, onToggle }) {
               )}
             </p>
             <p className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
-              {t("boardroom.mandate.achievedTarget", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
+              {t("boardroom.mandate.achievedTarget", {
+                achieved: formatGoalValue(goal.achievedDisplay, goal.type),
+                target: formatGoalValue(goal.targetDisplay, goal.type),
+              })}
             </p>
           </div>
         </div>
@@ -99,9 +108,65 @@ function GoalRow({ goal, t, expanded, onToggle }) {
   );
 }
 
-export default function MandateCard({ mandate, bonusOffer = null, onReload }) {
+// #5632 · Afstand til et bonustilbud (lag 6) + sponsoreffekten (lag 1) —
+// spillerrapport: begge var synlige i det gamle rum (BoardPage.jsx's
+// PassiveModifierLine/BonusOfferProgressLine) men forsvandt helt i det nye
+// Boardroom. SAMME i18n-nøgler genbruges her (transparency.*), ikke ny copy —
+// kun layoutet er tilpasset det nye korts stil.
+function PassiveModifierLine({ info, t }) {
+  if (!info) return null;
+  // #5632 · IKKE et genopdaget "+"-fortegn her: transparency.passiveModifier.
+  // {strong_boost,boost}-strengene baerer allerede et bogstaveligt "+" foer
+  // {pct} (begge sprog), saa et ekstra fortegn fra JS gav "++10%" i det gamle
+  // rum (BoardPage.jsx's PassiveModifierLine, samme bug, out of scope her).
+  // penalty/strong_penalty har intet bogstaveligt fortegn, og pct er allerede
+  // negativt, saa "{pct}%" bliver korrekt "-10%" uden hjaelp.
+  return (
+    <p className="mb-1 text-2xs text-cz-3">
+      {t(`transparency.passiveModifier.${info.band}`, { pct: info.pct })}
+    </p>
+  );
+}
+
+function BonusOfferProgressLine({ progress, t }) {
+  if (!progress) return null;
+  if (progress.eligible) {
+    return <p className="mb-1 text-2xs font-medium text-cz-success">{t("transparency.bonusOfferEligible")}</p>;
+  }
+  if (!progress.satisfaction_ok) {
+    return (
+      <p className="mb-1 text-2xs text-cz-3">
+        {t("transparency.bonusOfferSatisfactionGap", { threshold: progress.satisfaction_threshold })}
+      </p>
+    );
+  }
+  if (progress.goals_gap != null && progress.goals_gap > 0) {
+    return (
+      <p className="mb-1 text-2xs text-cz-3">
+        {t("transparency.bonusOfferClose", { count: progress.goals_gap })}
+      </p>
+    );
+  }
+  return null;
+}
+
+export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, onReload }) {
   const { t } = useTranslation("board");
-  const [expandedId, setExpandedId] = useState(null);
+  // #5633 · Var et enkelt `expandedId` (kun ÉT maal ad gangen). Spillerønske:
+  // fold flere ud, eller alle/ingen ad gangen — se Set-baseret expandedIds +
+  // "Expand all"/"Collapse all" nedenfor.
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const toggleGoal = (goal) => {
+    // #4557 (S-M2d) · instrumentering (#1141) uændret: fyrer kun ved AABNING,
+    // ligger UDENFOR updateren (React.StrictMode dobbelt-kalder updaters, se
+    // ret-runde #4732).
+    if (!expandedIds.has(goal.id)) logEvent("board_receipt_opened", { goalStatus: goal.status, surface: "boardroom" });
+    setExpandedIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(goal.id)) next.delete(goal.id); else next.add(goal.id);
+      return next;
+    });
+  };
 
   if (!mandate) {
     return (
@@ -117,6 +182,12 @@ export default function MandateCard({ mandate, bonusOffer = null, onReload }) {
   }
 
   const goals = mandate.goals || [];
+  // #5633 · Kun maal MED en kvittering kan foldes ud (samme regel som
+  // GoalRow's `canExpand`) — "Expand all" skal ikke laade tom for maal uden
+  // en receipt, og vises kun naar der reelt er noget at folde ud/ind.
+  const expandableGoalIds = goals.filter((g) => g.receipt).map((g) => g.id);
+  const allExpanded = expandableGoalIds.length > 0
+    && expandableGoalIds.every((id) => expandedIds.has(id));
 
   return (
     <Section>
@@ -124,26 +195,34 @@ export default function MandateCard({ mandate, bonusOffer = null, onReload }) {
         title={t("boardroom.mandate.cardTitle", { season: mandate.seasonNumber })}
         meta={t("boardroom.mandate.goalsMeta", { count: goals.length, date: formatShortDate(mandate.signedAt) })}
       />
+      {expandableGoalIds.length > 1 && (
+        <div className="-mt-2 mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setExpandedIds(allExpanded ? new Set() : new Set(expandableGoalIds))}
+            className="text-2xs font-medium text-cz-accent-t transition-colors hover:underline"
+          >
+            {t(allExpanded ? "boardroom.mandate.collapseAll" : "boardroom.mandate.expandAll")}
+          </button>
+        </div>
+      )}
       <div>
         {goals.map((goal) => (
           <GoalRow
             key={goal.id}
             goal={goal}
             t={t}
-            expanded={expandedId === goal.id}
-            onToggle={() => {
-              // #4557 (S-M2d) · instrumentering (#1141: kvitterings-åbninger)
-              // — fyrer kun ved AABNING, ikke ved luk, saa tallet er antal
-              // gange en spiller faktisk søgte forklaringen, ikke dobbelt-
-              // talt af toggle-klik. Kaldet ligger UDENFOR updateren, fordi
-              // React.StrictMode (main.jsx) dobbelt-kalder updater-
-              // funktioner i dev — en side effect derinde ville dobbelt-
-              // taelle hver kvitterings-aabning (ret-runde #4732).
-              if (expandedId !== goal.id) logEvent("board_receipt_opened", { goalStatus: goal.status, surface: "boardroom" });
-              setExpandedId((cur) => (cur === goal.id ? null : goal.id));
-            }}
+            expanded={expandedIds.has(goal.id)}
+            onToggle={() => toggleGoal(goal)}
           />
         ))}
+      </div>
+
+      {/* #5632 · afstand til NÆSTE tilbud + sponsoreffekten, lige over det
+          eksisterende tilbud/striben (samme rækkefølge som det gamle rum). */}
+      <div className="mt-3.5 border-t border-cz-border pt-3">
+        <PassiveModifierLine info={passiveModifier} t={t} />
+        <BonusOfferProgressLine progress={bonusOfferProgress} t={t} />
       </div>
 
       {/* #4557 - bonustilbuddet i fuld laengde (lag 6). Striben paa overblikket

@@ -12,7 +12,17 @@ import {
   ARCHETYPE_BY_TYPE,
   scaleMinTypes,
   SECONDARY_SIGNATURE_WEIGHT,
+  BIRTH_MODE_PCM,
+  BIRTH_MODE_OWN_PRIORS,
+  DEFAULT_BIRTH_MODE,
+  PRIMARY_TYPE_MODE_TIER,
+  PRIMARY_TYPE_MODE_DISTRIBUTION,
+  DEFAULT_PRIMARY_TYPE_MODE,
+  PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY,
 } from "./fictionalRiderGenerator.js";
+import {
+  isBornFromPriors, deriveBirthAbilities, BIRTH_TIER_KEYS, birthAbilityKeys,
+} from "./riderBirthPriors.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
 import { drawArchetypePair, DEFAULT_DISTRIBUTION, ARCHETYPE_TYPES } from "./archetypeDistribution.js";
@@ -81,8 +91,11 @@ test("nationality_code er gyldig ISO2 (to store bogstaver)", () => {
   for (const r of gen().riders) assert.match(r.nationality_code, /^[A-Z]{2}$/);
 });
 
+// #5269: stat-kontrakten gælder KUN den gamle PCM-sti. Default-stien
+// ("own-priors") skriver ingen stats overhovedet — se fødsels-blokken nederst
+// i denne fil for dens egne kontrakt-tests.
 test("alle 14 stats til stede som heltal i [50,85] (ægte PCM-skala)", () => {
-  for (const r of gen().riders) {
+  for (const r of gen({ mode: BIRTH_MODE_PCM }).riders) {
     for (const key of STAT_KEYS) {
       assert.equal(typeof r[key], "number");
       assert.ok(Number.isInteger(r[key]), `${key} skal være heltal`);
@@ -187,7 +200,7 @@ test("garanterede ikke-vestlige nationer er repræsenteret", () => {
 // ── Arketype ↔ stats korrelerer ───────────────────────────────────────────────
 
 test("arketyper booster signatur-stats over andre arketyper (aggregeret)", () => {
-  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR });
+  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM });
   const avg = (archetype, key) => {
     const subset = riders.filter((r) => r._meta.archetype === archetype);
     return subset.reduce((s, r) => s + r[key], 0) / subset.length;
@@ -200,7 +213,7 @@ test("arketyper booster signatur-stats over andre arketyper (aggregeret)", () =>
 
 // Rolle-svaghed ON (ejer-beslutning): off-type-stats dæmpes, så typen bliver skarp.
 test("rolle-svagheder dæmper off-type-stats (signatur ≫ dæmpet)", () => {
-  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR });
+  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM });
   const avg = (archetype, key) => {
     const subset = riders.filter((r) => r._meta.archetype === archetype);
     return subset.reduce((s, r) => s + r[key], 0) / subset.length;
@@ -417,8 +430,12 @@ test("#3606 anlæggets form matcher akademi-stiens præcist (primary/secondary)"
   const academyShape = drawArchetypePair(makeRng(7));
   const { riders } = generateFictionalRiders({ seed: 99, count: 40, referenceYear: REF_YEAR });
   for (const row of toInsertPayload(riders)) {
+    // #5269: `birth` (fødsels-markøren) er det ENESTE felt der må ligge ud over
+    // akademi-formen. Den læses kun af riderBirthPriors; primary/secondary er
+    // uændrede, så resolveRiderTypes/caps-kæden ser præcis det samme som før.
+    const shapeKeys = Object.keys(row.archetype_draw).filter((k) => k !== "birth").sort();
     assert.deepEqual(
-      Object.keys(row.archetype_draw).sort(), Object.keys(academyShape).sort(),
+      shapeKeys, Object.keys(academyShape).sort(),
       "archetype_draw's nøglesæt afviger fra akademi-stiens",
     );
     // #3634: sekundæren er ikke længere null — kroppen formes nu efter BEGGE
@@ -509,7 +526,7 @@ test("#3634 forward-guard: bi-type-vægten æder ikke rolle-svagheden (bindende 
     ["climber", "stat_bj", "sprinter", "stat_bj", 5],
   ];
   for (const seed of [5, 17, 2026]) {
-    const { riders } = generateFictionalRiders({ seed, count: 800, referenceYear: REF_YEAR });
+    const { riders } = generateFictionalRiders({ seed, count: 800, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM });
     const avg = (arche, key) => {
       const sub = riders.filter((r) => r._meta.archetype === arche);
       return sub.reduce((s, r) => s + r[key], 0) / sub.length;
@@ -530,8 +547,8 @@ test("#3634 forward-guard: bi-type-vægten æder ikke rolle-svagheden (bindende 
 // #3634-rettelsen reduceret til at skrive en løsrevet sekundær ind i anlægget,
 // præcis det issuet advarer imod ("et evne-loft i en retning kroppen ikke peger").
 test("#3634 NEGATIV-TEST: secondarySignatureWeight former faktisk statsene", () => {
-  const uden = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR, secondarySignatureWeight: 0 });
-  const med = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR, secondarySignatureWeight: 0.5 });
+  const uden = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR, secondarySignatureWeight: 0, mode: BIRTH_MODE_PCM });
+  const med = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR, secondarySignatureWeight: 0.5, mode: BIRTH_MODE_PCM });
   // Anlægget er det SAMME (sekundæren trækkes fra en egen rng-understrøm), så
   // enhver forskel i statsene kommer fra vægten alene.
   assert.deepEqual(
@@ -629,7 +646,7 @@ test("ARCHETYPES eksporteret med boost/damp pr. type", () => {
 
 test("override bevarer kontrakten (stats i [50,85], pcm_id null)", () => {
   const { riders } = generateFictionalRiders({
-    seed: 7, count: 400, referenceYear: REF_YEAR,
+    seed: 7, count: 400, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM,
     tierFractions: { superstar: 0.06, star: 0.16, solid: 0.35 },
     tierTypeWeights: (() => {
       const w = {};
@@ -697,4 +714,212 @@ test("#4180: navne-understroemmen aendrer ikke determinismen (samme seed -> samm
   const a = generateFictionalRiders({ seed: 7, count: 200, referenceYear: REF_YEAR }).riders;
   const b = generateFictionalRiders({ seed: 7, count: 200, referenceYear: REF_YEAR }).riders;
   assert.deepEqual(a, b);
+});
+
+// ── #5269: fødsel uden PCM-stats ─────────────────────────────────────────────
+//
+// Ejer-beslutning 15/9: "Intet skal vaere vaegtet paa pcm stats mere."
+// Blokken herunder er kontrakten for den nye default-sti.
+
+test("#5269: default-stien er own-priors", () => {
+  assert.equal(DEFAULT_BIRTH_MODE, BIRTH_MODE_OWN_PRIORS);
+  assert.equal(gen().mode, BIRTH_MODE_OWN_PRIORS);
+});
+
+test("#5269: en nyfoedt rytter baerer INGEN stat_*-felter overhovedet", () => {
+  // Ikke "stat = 0" og ikke "stat = null": nøglen må slet ikke findes i
+  // payloaden, ellers skriver INSERT en eksplicit værdi hvor DB-default (NULL)
+  // er meningen — og enhver kaldsted der summerer stats ville læse et 0 som en
+  // ægte, meget lav PCM-værdi.
+  for (const row of toInsertPayload(gen({ count: 200 }).riders)) {
+    for (const key of STAT_KEYS) {
+      assert.ok(!(key in row), `${key} findes stadig i insert-payloaden`);
+    }
+  }
+});
+
+test("#5269: hver nyfoedt baerer en fødsels-markør der kan reproducere evnerne", () => {
+  const { riders } = gen({ count: 120 });
+  for (const row of toInsertPayload(riders)) {
+    const draw = row.archetype_draw;
+    assert.ok(draw.birth, "archetype_draw mangler birth-markøren");
+    assert.equal(draw.birth.v, 1);
+    assert.ok(BIRTH_TIER_KEYS.includes(draw.birth.tier), `ukendt tier ${draw.birth.tier}`);
+    assert.ok(Number.isInteger(draw.birth.seed) && draw.birth.seed >= 0);
+    assert.ok(isBornFromPriors(row));
+  }
+});
+
+test("#5269: re-derivation af den PERSISTEREDE raekke giver PRAECIS fødsels-evnerne", () => {
+  // Dette er den vigtigste gate i hele lanen: deriveForRiderIds kaldes igen ved
+  // hver heal-sweep. Reproducerer den ikke trækket, nulstilles hele kuldet.
+  const { riders } = gen({ count: 150 });
+  const rows = toInsertPayload(riders);
+  rows.forEach((row, i) => {
+    const again = deriveBirthAbilities(
+      { ...row, id: `r${i}` },
+      { age: riders[i]._meta.age },
+    );
+    for (const key of birthAbilityKeys()) {
+      assert.equal(again[key], riders[i]._meta.birthAbilities[key], `${key} drev ved re-derivation`);
+    }
+  });
+});
+
+test("#5269: alle registrets evner faar en vaerdi i [1,99]", () => {
+  for (const r of gen({ count: 300 }).riders) {
+    for (const key of birthAbilityKeys()) {
+      const v = r._meta.birthAbilities[key];
+      assert.ok(Number.isInteger(v), `${key} er ikke et heltal`);
+      assert.ok(v >= 1 && v <= 99, `${key}=${v} uden for [1,99]`);
+    }
+  }
+});
+
+test("#5269: arketyperne er stadig aflaeselige i de fødte evner", () => {
+  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR });
+  const avg = (archetype, key) => {
+    const subset = riders.filter((r) => r._meta.archetype === archetype);
+    return subset.reduce((s, r) => s + r._meta.birthAbilities[key], 0) / subset.length;
+  };
+  assert.ok(avg("sprinter", "sprint") > avg("climber", "sprint") + 14);
+  assert.ok(avg("climber", "climbing") > avg("sprinter", "climbing") + 14);
+  assert.ok(avg("tt", "time_trial") > avg("sprinter", "time_trial") + 14);
+  assert.ok(avg("brostensrytter", "cobblestone") > avg("climber", "cobblestone") + 14);
+  // Rolle-svaghed ON: off-type dæmpes, så typen bliver skarp.
+  assert.ok(avg("climber", "climbing") > avg("climber", "sprint") + 28);
+  assert.ok(avg("sprinter", "sprint") > avg("sprinter", "climbing") + 28);
+});
+
+test("#5269: taktik og aggression er IKKE laengere et aldersmaalerur", () => {
+  // docs/audits/2026-09-15-3668-ability-scale-investigation.md §1.3: i dag
+  // firedobles taktik fra 16-21-aarige til 31-33-aarige alene pga. formlen.
+  // Paa fødsels-stien maa alder ikke kunne ses i de to evner.
+  const { riders } = generateFictionalRiders({ seed: 11, count: 3000, referenceYear: REF_YEAR });
+  const band = (lo, hi) => riders.filter((r) => r._meta.age >= lo && r._meta.age <= hi);
+  const mean = (rows, key) => rows.reduce((s, r) => s + r._meta.birthAbilities[key], 0) / rows.length;
+  const ung = band(18, 23);
+  const gammel = band(31, 39);
+  assert.ok(ung.length > 100 && gammel.length > 100, "for faa ryttere i aldersbaandene");
+  for (const key of ["tactics", "aggression"]) {
+    const diff = Math.abs(mean(ung, key) - mean(gammel, key));
+    assert.ok(diff < 4, `${key} varierer ${diff.toFixed(1)} evne-point med alderen — alders-leddet er tilbage`);
+  }
+});
+
+test("#5269: pcm-stien er uaendret ved siden af (samme seed -> samme stats som foer)", () => {
+  const a = generateFictionalRiders({ seed: 2026, count: 200, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM }).riders;
+  const b = generateFictionalRiders({ seed: 2026, count: 200, referenceYear: REF_YEAR, mode: BIRTH_MODE_PCM }).riders;
+  assert.deepEqual(a, b);
+  for (const r of a) {
+    for (const key of STAT_KEYS) assert.ok(r[key] >= 50 && r[key] <= 85);
+    assert.equal(r._meta.archetypeDraw.birth, undefined, "pcm-stien maa ikke saette en fødsels-markør");
+  }
+});
+
+test("#5269: ukendt mode afvises hårdt", () => {
+  assert.throws(() => gen({ mode: "pcm-ish" }), /unknown mode/);
+});
+
+// ── #5327: primær type fra DEFAULT_DISTRIBUTION bag kontakt ─────────────────
+// Ejer-omskrivning 22/9: PRIMÆR type skal (bag kontakt, OFF som default) kunne
+// trækkes fra archetypeDistribution.js' DEFAULT_DISTRIBUTION i stedet for den
+// tier-aware TIER_TYPE_WEIGHTS. Kontakten er rent additiv: default-grenen
+// ("tier") skal forblive byte-identisk med koden før #5327.
+
+test("#5327: default primaryTypeMode er 'tier' (uændret adfærd, OFF som default)", () => {
+  assert.equal(DEFAULT_PRIMARY_TYPE_MODE, PRIMARY_TYPE_MODE_TIER);
+});
+
+test("#5327: app_config-flagnøglen er eksporteret (kaldestedet slår den op, ikke denne fil)", () => {
+  assert.equal(typeof PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY, "string");
+  assert.ok(PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY.length > 0);
+});
+
+test("#5327: eksplicit primaryTypeMode 'tier' === ingen override (byte-identisk determinisme)", () => {
+  const plain = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const explicitTier = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_TIER,
+  });
+  assert.deepEqual(explicitTier.riders, plain.riders);
+});
+
+test("#5327: 'distribution'-mode ændrer den realiserede fordeling (tier-pyramiden forsvinder)", () => {
+  const tierMode = generateFictionalRiders({
+    seed: 2026, count: 2000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_TIER,
+  }).riders;
+  const distMode = generateFictionalRiders({
+    seed: 2026, count: 2000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  }).riders;
+  assert.notDeepEqual(distMode, tierMode, "distribution-mode skal give et andet træk end tier-mode");
+  // rng-forbrugets SEKVENS er uændret (kun værdien af type-trækket ændrer sig):
+  // navne/nationaliteter/tier-kvote/count skal derfor stadig matche 1:1.
+  assert.deepEqual(distMode.map((r) => r.firstname + " " + r.lastname), tierMode.map((r) => r.firstname + " " + r.lastname));
+  assert.deepEqual(distMode.map((r) => r._meta.tier), tierMode.map((r) => r._meta.tier));
+});
+
+test("#5327: 'distribution'-mode konvergerer mod DEFAULT_DISTRIBUTION (tier-uafhængigt, ikke leder/hjælper-pyramiden)", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 4, count: 20000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  });
+  const counts = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, 0]));
+  for (const r of riders) counts[r._meta.archetype]++;
+  for (const t of ARCHETYPE_TYPES) {
+    const pct = (counts[t] / riders.length) * 100;
+    assert.ok(Math.abs(pct - DEFAULT_DISTRIBUTION[t]) <= 2.5,
+      `${t}: målt ${pct.toFixed(2)}% vs mål ${DEFAULT_DISTRIBUTION[t]}% (distribution-mode)`);
+  }
+});
+
+test("#5327: 'distribution'-mode respekterer stadig ENSURE_MIN_TYPES-gulvet (gc/sprinter) ved launch-skala", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  });
+  const counts = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, 0]));
+  for (const r of riders) counts[r._meta.archetype]++;
+  assert.ok(counts.gc >= 30, `gc=${counts.gc} under launch-gulvet 30`);
+  assert.ok(counts.sprinter >= 40, `sprinter=${counts.sprinter} under launch-gulvet 40`);
+});
+
+test("#5327: 'distribution'-mode + secondary — sekundæren er stadig altid forskellig fra primær", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 9, count: 3000, referenceYear: REF_YEAR, primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  });
+  for (const r of riders) {
+    assert.notEqual(r._meta.archetypeDraw.secondary, r._meta.archetypeDraw.primary);
+  }
+});
+
+test("#5327: primaryDistribution-override lader 'distribution'-mode trække fra en anden fordeling end DEFAULT_DISTRIBUTION", () => {
+  const skewed = Object.fromEntries(ARCHETYPE_TYPES.map((t) => [t, t === "sprinter" ? 60 : 40 / (ARCHETYPE_TYPES.length - 1)]));
+  const { riders } = generateFictionalRiders({
+    seed: 3, count: 3000, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION, primaryDistribution: skewed,
+  });
+  const sprinterPct = (riders.filter((r) => r._meta.archetype === "sprinter").length / riders.length) * 100;
+  assert.ok(sprinterPct > 50, `sprinter=${sprinterPct.toFixed(1)}% — override respekteres ikke`);
+});
+
+test("#5327: ukendt primaryTypeMode afvises hårdt", () => {
+  assert.throws(() => gen({ primaryTypeMode: "random-ish" }), /unknown primaryTypeMode/);
+});
+
+// CodeRabbit-fund (#5327, rettet uden ny CLI-runde): et EKSPLICIT
+// `primaryDistribution: null` er dokumenteret som "= DEFAULT_DISTRIBUTION",
+// men destructuring-defaultet rammer kun `undefined` — null skulle før denne
+// rettelse nå drawArchetype() og kaste på distribution[t].
+test("#5327: eksplicit primaryDistribution: null falder tilbage til DEFAULT_DISTRIBUTION (kaster ikke)", () => {
+  assert.doesNotThrow(() => generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION, primaryDistribution: null,
+  }));
+  const withNull = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION, primaryDistribution: null,
+  }).riders;
+  const withDefault = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    primaryTypeMode: PRIMARY_TYPE_MODE_DISTRIBUTION,
+  }).riders;
+  assert.deepEqual(withNull, withDefault);
 });

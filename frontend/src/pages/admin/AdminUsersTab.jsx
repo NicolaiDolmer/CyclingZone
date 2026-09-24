@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { applyNameSearch } from "../../lib/riderNameSearch";
 import { formatCz, getRiderMarketValue } from "../../lib/marketValues";
@@ -8,6 +8,8 @@ import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../../components/ui/SortableTh.jsx";
 import { ChevronRightIcon } from "../../components/ui/icons/index.jsx";
+// #5259: nye kaldsteder bruger apiFetch (Retry-After-respekt, central 401-vej).
+import { apiFetch } from "../../lib/apiFetch.ts";
 
 // Sorterbare kolonner (#2294) — bruger/email/rolle er tekst, hold sorteres på
 // holdnavn (division indgår ikke i sort-nøglen, kun i visningen).
@@ -42,7 +44,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
     if (!selectedRider) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/override-rider`, {
+      const res = await apiFetch(`${API}/api/admin/override-rider`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ rider_id: selectedRider.id, team_id: selectedTeam || null }),
       });
@@ -60,7 +62,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
     if (!selectedRider) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
+      const res = await apiFetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ is_retired: isRetired }),
       });
@@ -141,20 +143,41 @@ export default function AdminUsersTab() {
   const { getAuth, showMsg, msg } = useAdminAuth();
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [betaPending, setBetaPending] = useState([]); // #5259
   const [loading, setLoading] = useState({});
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
 
-  async function loadData() {
-    const [u, t] = await Promise.all([
-      supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division, is_test_account)").order("created_at", { ascending: false }),
+  // #5259: useCallback frem for en bar funktion. loadData læser nu getAuth, og
+  // dermed begyndte react-hooks/exhaustive-deps at flage mount-effekten. Den
+  // rigtige rettelse er at give effekten en STABIL reference (getAuth er selv
+  // useCallback'et i useAdminAuth), ikke at slå advarslen fra: repoet har en
+  // ratchet på både advarsler OG eslint-disable-direktiver.
+  const loadData = useCallback(async () => {
+    // #5259: beta-ansøgningerne læses gennem backenden (service-role), ikke
+    // direkte fra tabellen — beta_requests har INGEN admin-skrive-grants til
+    // authenticated, og listen skal sammenstilles med users.is_beta_tester.
+    const betaPromise = (async () => {
+      try {
+        const res = await apiFetch(
+          `${API}/api/admin/beta-access`, { headers: await getAuth() }, { source: "admin-beta-access" },
+        );
+        if (!res.ok) return { pending: [], members: [] };
+        return res.data ?? { pending: [], members: [] };
+      } catch { return { pending: [], members: [] }; }
+    })();
+
+    const [u, t, b] = await Promise.all([
+      supabase.from("users").select("id, email, username, role, is_beta_tester, created_at, teams(id, name, division, is_test_account)").order("created_at", { ascending: false }),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
+      betaPromise,
     ]);
     setUsers(u.data || []);
     setTeams(t.data || []);
-  }
+    setBetaPending(b.pending || []);
+  }, [getAuth]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const { rows: sortedUsers, sort: usersSort, sortDir: usersSortDir, handleSort: handleUsersSort } =
     useTableSort(users, USERS_SORT_ACCESSORS, { initialDir: "asc" });
@@ -169,7 +192,7 @@ export default function AdminUsersTab() {
     }
     setLoad(`del_user_${userId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/users/${userId}`, {
+      const res = await apiFetch(`${API}/api/admin/users/${userId}`, {
         method: "DELETE", headers: await getAuth(),
         body: JSON.stringify({ confirm_test_account: isTestAccount }),
       });
@@ -187,7 +210,7 @@ export default function AdminUsersTab() {
     if (!confirm(`Skift ${username} til ${newRole}?`)) return;
     setLoad(`role_${userId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/users/${userId}/role`, {
+      const res = await apiFetch(`${API}/api/admin/users/${userId}/role`, {
         method: "PATCH", headers: await getAuth(),
         body: JSON.stringify({ role: newRole }),
       });
@@ -201,9 +224,94 @@ export default function AdminUsersTab() {
     }
   }
 
+  // #5259: kontakten pr. bruger. Sætter KUN users.is_beta_tester — hvad en
+  // beta-tester så faktisk kan se, afgøres server-side af evaluateFlagStage
+  // og stadiet på det enkelte flag (Admin > System).
+  async function handleToggleBeta(userId, next, username) {
+    setLoad(`beta_${userId}`, true);
+    try {
+      const res = await apiFetch(`${API}/api/admin/users/${userId}/beta`, {
+        method: "PATCH", headers: await getAuth(),
+        body: JSON.stringify({ is_beta_tester: next }),
+      }, { source: "admin-beta-toggle" });
+      if (res.limited) return;
+      const data = res.data ?? {};
+      if (res.ok) { showMsg(`${username} ${next ? "er nu beta-tester" : "er ikke længere beta-tester"}`); loadData(); }
+      else showMsg(adminErrorMessage(data, res), "error");
+    } catch (e) {
+      showMsg(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`beta_${userId}`, false);
+    }
+  }
+
+  // Svar på en ansøgning. Modsat kontakten ovenfor lægger denne vej ÉN besked i
+  // spillerens indbakke — han spurgte om noget, og skal have svaret.
+  async function handleDecideBeta(userId, approved, username) {
+    if (!confirm(`${approved ? "Godkend" : "Afvis"} beta-ansøgning fra ${username || userId}?\n\nSpilleren får en besked i indbakken.`)) return;
+    setLoad(`beta_req_${userId}`, true);
+    try {
+      const res = await apiFetch(`${API}/api/admin/beta-requests/${userId}/decide`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ approved }),
+      }, { source: "admin-beta-decide" });
+      if (res.limited) return;
+      const data = res.data ?? {};
+      if (res.ok) {
+        showMsg(`Ansøgning ${approved ? "godkendt" : "afvist"}${data.notified ? "" : " (beskeden kunne ikke leveres)"}`);
+        loadData();
+      } else if (res.status === 503) {
+        showMsg("Beta-tabellen er ikke migreret endnu — prøv igen om lidt", "error");
+      } else {
+        showMsg(adminErrorMessage(data, res), "error");
+      }
+    } catch (e) {
+      showMsg(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`beta_req_${userId}`, false);
+    }
+  }
+
   return (
     <>
       <AdminMessageBanner msg={msg} />
+
+      {/* #5259: ansøgningerne står ØVERST — de er den eneste liste her der
+          venter på et svar fra dig. Er der ingen, forsvinder blokken helt. */}
+      {betaPending.length > 0 && (
+        <AdminSection title={`Beta-ansøgninger (${betaPending.length})`}>
+          <p className="text-cz-3 text-xs mb-4">
+            Spilleren har selv bedt om adgang fra sin profil. Ved godkendelse sættes beta-tester-kontakten,
+            og han får én besked i indbakken. Et afslag kan han spørge videre fra.
+          </p>
+          <div className="flex flex-col divide-y divide-cz-border">
+            {betaPending.map(r => (
+              <div key={r.user_id} className="py-2.5 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-cz-1 text-sm font-medium">{r.username || r.user_id.slice(0, 8)}</p>
+                  <p className="text-cz-3 text-xs truncate">
+                    {r.email} · ansøgte {new Date(r.requested_at).toLocaleDateString("da-DK")}
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleDecideBeta(r.user_id, true, r.username)}
+                    disabled={loading[`beta_req_${r.user_id}`]}
+                    className="text-xs px-2 py-1 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded hover:brightness-110 disabled:opacity-50 transition-all">
+                    {loading[`beta_req_${r.user_id}`] ? "..." : "Godkend"}
+                  </button>
+                  <button
+                    onClick={() => handleDecideBeta(r.user_id, false, r.username)}
+                    disabled={loading[`beta_req_${r.user_id}`]}
+                    className="text-xs px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded hover:text-cz-1 disabled:opacity-50 transition-all">
+                    Afvis
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </AdminSection>
+      )}
 
       <AdminSection title="Brugere">
         {users.length === 0 ? (
@@ -242,11 +350,19 @@ export default function AdminUsersTab() {
                     </td>
                     <td className="px-3 py-2.5 text-cz-2 hidden sm:table-cell">{u.email}</td>
                     <td className="px-3 py-2.5">
-                      <span className={`text-xs border px-2 py-0.5 rounded-full ${
-                        u.role === "admin"
-                          ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                          : "bg-cz-subtle text-cz-2 border-cz-border"
-                      }`}>{u.role}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`text-xs border px-2 py-0.5 rounded-full ${
+                          u.role === "admin"
+                            ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                            : "bg-cz-subtle text-cz-2 border-cz-border"
+                        }`}>{u.role}</span>
+                        {/* #5259: admin ER beta-tester i forvejen (isViewerBetaTester
+                            = admin ELLER is_beta_tester), så mærket ville lyve hvis
+                            det kun fulgte kolonnen for en admin. */}
+                        {u.is_beta_tester && (
+                          <span className="text-xs border px-2 py-0.5 rounded-full bg-cz-info/10 text-cz-info border-cz-info/30">beta</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-cz-2 hidden md:table-cell">
                       {u.teams?.[0]
@@ -265,6 +381,17 @@ export default function AdminUsersTab() {
                               {u.role === "admin" ? "Manager" : "Admin"}
                             </>
                           )}
+                        </button>
+                        <button
+                          onClick={() => handleToggleBeta(u.id, !u.is_beta_tester, u.username)}
+                          disabled={loading[`beta_${u.id}`]}
+                          title={u.is_beta_tester ? "Fjern beta-tester" : "Gør til beta-tester"}
+                          className={`text-xs px-2 py-1 border rounded disabled:opacity-50 transition-all ${
+                            u.is_beta_tester
+                              ? "bg-cz-info/10 text-cz-info border-cz-info/30"
+                              : "bg-cz-subtle text-cz-2 border-cz-border hover:text-cz-1"
+                          }`}>
+                          {loading[`beta_${u.id}`] ? "..." : (u.is_beta_tester ? "Beta fra" : "Beta til")}
                         </button>
                         <button
                           onClick={() => handleDeleteUser(u.id, u.username, isTestAccount)}

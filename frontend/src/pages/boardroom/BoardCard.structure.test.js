@@ -40,11 +40,20 @@ test("#4557 medlems-panel: 'in his own words' render altid via t(), aldrig en r�
 });
 
 test("#4570-afstemning: ejede-mål-titlen i medlems-panelet bruger samme delte resolver som mandatkortet", () => {
-  assert.match(memberPanelSource, /import \{ formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT \} from "\.\/boardroomFormat";/);
+  assert.match(memberPanelSource, /import \{ formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT \} from "\.\/boardroomFormat(?:\.js)?";/);
   assert.match(memberPanelSource, /\{resolveGoalTitle\(t, g\)\}/);
   assert.doesNotMatch(memberPanelSource, /t\(g\.labelKey/, "skal ikke længere kalde t(g.labelKey, ...) direkte");
 });
 
 test("#4570-afstemning: 'on the board since S{n}' vises kun naar member.sinceSeason er sat (aldrig gættet)", () => {
   assert.match(memberPanelSource, /member\.sinceSeason != null \? t\("boardroom\.member\.sinceSeason", \{ season: member\.sinceSeason \}\) : null/);
+});
+
+test("#5633 board: synlig instruktion over medlems-gitteret (ikke kun en hover-only title-tooltip, usynlig paa mobil)", () => {
+  assert.match(source, /t\("boardroom\.board\.memberGridHint"\)/);
+});
+
+test("#5633 board: medlems-tiles reserverer samme navne-hoejde uanset navnelaengde (ingen ujaevnt gitter)", () => {
+  assert.match(source, /line-clamp-2 min-h-\[26px\] w-full break-words/);
+  assert.match(source, /className="flex w-full min-w-0 flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"/);
 });

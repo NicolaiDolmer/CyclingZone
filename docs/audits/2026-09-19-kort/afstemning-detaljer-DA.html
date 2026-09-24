@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<title>S&aelig;son 4 tr&aelig;ning - detaljer (DA)</title>
+<style>
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-400-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-ext-400-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  :root {
+    --navy: #1A1F38;
+    --bg: #F4F2ED;
+    --text: #14161F;
+    --muted: #6B6F7B;
+    --border: #DDD9CF;
+    --gold: #E8C547;
+    --blue: #DCE6F2;
+    --green: #DCF2E4;
+    --radius: 5px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .topbar {
+    background: var(--navy);
+    padding: 18px 0;
+    text-align: center;
+  }
+
+  .wordmark {
+    font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+    color: var(--gold);
+    font-size: 26px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .page {
+    padding: 32px 30px 34px 30px;
+  }
+  .container {
+    max-width: 1140px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+  .subtitle {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0 0 18px 0;
+    line-height: 1.5;
+    max-width: 900px;
+  }
+
+  .toplegend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+    margin: 0 0 24px 0;
+  }
+  .toplegend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .swatch {
+    display: inline-block;
+    width: 16px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  .swatch.gold { background: var(--gold); border-color: var(--gold); }
+  .swatch.blue { background: var(--blue); }
+  .swatch.green { background: var(--green); }
+  .swatch.white { background: #fff; }
+  .swatch-pair { display: inline-flex; gap: 3px; }
+
+  .mode-heading {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+  }
+  .mode-heading.second {
+    margin-top: 26px;
+  }
+
+  /* ---- three day columns ---- */
+  .cols {
+    display: flex;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .col {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 15px 16px 15px;
+    display: flex;
+    flex-direction: column;
+  }
+  .col-header {
+    font-size: 14.5px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section {
+    margin-bottom: 14px;
+  }
+  .section:last-child {
+    margin-bottom: 0;
+  }
+  .section-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px 0;
+  }
+
+  .race-group {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 9px;
+    margin-bottom: 7px;
+  }
+  .race-group:last-child {
+    margin-bottom: 0;
+  }
+  .race-group.gold {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .race-group-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .race-group-sub {
+    font-size: 10.5px;
+    color: var(--text);
+    opacity: 0.72;
+    line-height: 1.4;
+    margin-top: 6px;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 10.5px;
+    line-height: 1.3;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .chip.L { background: var(--blue); }
+  .chip.N { background: var(--green); }
+  .chip.O { background: #fff; }
+
+  .section-body {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .rider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+  .rider-row:first-child {
+    border-top: none;
+    padding-top: 2px;
+  }
+  .rider-left {
+    min-width: 0;
+  }
+  .rider-name {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin: 0 0 2px 0;
+  }
+  .rider-note {
+    font-size: 10.5px;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .rider-number {
+    font-size: 24px;
+    font-weight: 700;
+    flex: 0 0 auto;
+  }
+
+  /* ---- pins ---- */
+  .pin {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  /* ---- legend ---- */
+  .legend {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 980px;
+  }
+  .legend-pin {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  .bottomline {
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 22px;
+    line-height: 1.5;
+    max-width: 1000px;
+  }
+</style>
+</head>
+<body>
+<div class="topbar"><span class="wordmark">CYCLING ZONE</span></div>
+<div class="page">
+<div class="container">
+
+  <h1>En ekstra tr&aelig;ningsdag er IKKE en rigtig dag uden l&oslash;b</h1>
+  <p class="subtitle">Tre rigtige dage i Division 4 fra pr&oslash;vekalenderen for s&aelig;son 4. Der k&oslash;res l&oslash;b hver eneste rigtige dag.</p>
+
+  <div class="toplegend">
+    <div class="toplegend-item"><span class="swatch gold"></span>Ekstra tr&aelig;ningsdag (ingen l&oslash;b)</div>
+    <div class="toplegend-item"><span class="swatch-pair"><span class="swatch blue"></span><span class="swatch green"></span></span>Etape i et etapel&oslash;b</div>
+    <div class="toplegend-item"><span class="swatch white"></span>Endagsl&oslash;b</div>
+  </div>
+
+  <div class="mode-heading">M&aring;de A: ekstra tr&aelig;ningsdage kun, hvor intet etapel&oslash;b er i gang</div>
+
+  <div class="cols">
+
+    <div class="col">
+      <div class="col-header">Fredag 9/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens l&oslash;b (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 25</div>
+          <div class="chip-row">
+            <span class="chip L">Etapel&oslash;b L, etape 3</span>
+            <span class="chip O">Endagsl&oslash;b</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="pin">2</div>
+          <div class="race-group-label">L&oslash;bsdag 26</div>
+          <div class="chip-row">
+            <span class="chip L">Etapel&oslash;b L, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: tr&aelig;ningen g&oslash;res op</div>
+        <div class="section-body">2 l&oslash;bsdage = 2 tr&aelig;ningspas til de ryttere, der ikke k&oslash;rte l&oslash;b.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A k&oslash;rer etapel&oslash;b N</div>
+            <div class="rider-note">k&oslash;rer ikke l&oslash;b i dag</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B k&oslash;rer ingen l&oslash;b</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">L&oslash;rdag 10/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens l&oslash;b (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="pin">1</div>
+          <div class="race-group-label">9 ekstra tr&aelig;ningsdage</div>
+          <div class="race-group-sub">Ingen l&oslash;b. Hele truppen tr&aelig;ner. Har ikke noget klokkesl&aelig;t.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 30</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 1</span>
+            <span class="chip O">Endagsl&oslash;b</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 31</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: tr&aelig;ningen g&oslash;res op</div>
+        <div class="section-body">2 l&oslash;bsdage + 9 ekstra tr&aelig;ningsdage = op til 11 tr&aelig;ningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A k&oslash;rer etapel&oslash;b N</div>
+            <div class="rider-note">k&oslash;rer N begge l&oslash;bsdage, men f&aring;r de 9 ekstra</div>
+          </div>
+          <div class="rider-number">9</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B k&oslash;rer ingen l&oslash;b</div>
+          </div>
+          <div class="rider-number">11</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">S&oslash;ndag 11/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens l&oslash;b (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 32</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 3</span>
+            <span class="chip O">Endagsl&oslash;b</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 33</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: tr&aelig;ningen g&oslash;res op</div>
+        <div class="section-body">2 l&oslash;bsdage = 2 tr&aelig;ningspas til de ryttere, der ikke k&oslash;rte l&oslash;b.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A k&oslash;rer etapel&oslash;b N</div>
+            <div class="rider-note">k&oslash;rer N begge l&oslash;bsdage</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B k&oslash;rer ingen l&oslash;b</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-pin">1</div>
+      <div>De ekstra tr&aelig;ningsdage ligger p&aring; en rigtig dag, der ogs&aring; har l&oslash;b. De er bare flere tr&aelig;ningspas samme aften.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-pin">2</div>
+      <div>De kan kun ligge her, fordi etapel&oslash;b L er slut, og etapel&oslash;b N ikke er begyndt. Midt i et etapel&oslash;b m&aring; der ikke ligge tr&aelig;ning.</div>
+    </div>
+  </div>
+
+  <div class="mode-heading second">M&aring;de B: 5 l&oslash;bsdage hver eneste rigtige dag (j&aelig;vnt)</div>
+
+  <div class="cols">
+
+    <div class="col">
+      <div class="col-header">Fredag 9/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens l&oslash;b (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="race-group-label">3 ekstra tr&aelig;ningsdage</div>
+          <div class="race-group-sub">Ingen l&oslash;b. Ryttere i et etapel&oslash;b hviler. Alle andre tr&aelig;ner.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 25</div>
+          <div class="chip-row">
+            <span class="chip L">Etapel&oslash;b L, etape 3</span>
+            <span class="chip O">Endagsl&oslash;b</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 26</div>
+          <div class="chip-row">
+            <span class="chip L">Etapel&oslash;b L, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: tr&aelig;ningen g&oslash;res op</div>
+        <div class="section-body">2 l&oslash;bsdage + 3 ekstra tr&aelig;ningsdage = op til 5 tr&aelig;ningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A k&oslash;rer etapel&oslash;b N</div>
+            <div class="rider-note">k&oslash;rer ikke l&oslash;b i dag</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B k&oslash;rer ingen l&oslash;b</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">L&oslash;rdag 10/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens l&oslash;b (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="pin">3</div>
+          <div class="race-group-label">3 ekstra tr&aelig;ningsdage</div>
+          <div class="race-group-sub">Ingen l&oslash;b. Ryttere i et etapel&oslash;b hviler. Alle andre tr&aelig;ner.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 30</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 1</span>
+            <span class="chip O">Endagsl&oslash;b</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 31</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: tr&aelig;ningen g&oslash;res op</div>
+        <div class="section-body">2 l&oslash;bsdage + 3 ekstra tr&aelig;ningsdage = op til 5 tr&aelig;ningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A k&oslash;rer etapel&oslash;b N</div>
+            <div class="rider-note">bundet i etapel&oslash;b N: k&oslash;rer eller hviler, tr&aelig;ner ikke</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B k&oslash;rer ingen l&oslash;b</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">S&oslash;ndag 11/10</div>
+
+      <div class="section">
+        <div class="section-title">Dagens l&oslash;b (3 etaper: kl. 12, 15 og 18)</div>
+
+        <div class="race-group gold">
+          <div class="race-group-label">3 ekstra tr&aelig;ningsdage</div>
+          <div class="race-group-sub">Ingen l&oslash;b. Ryttere i et etapel&oslash;b hviler. Alle andre tr&aelig;ner.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 32</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 3</span>
+            <span class="chip O">Endagsl&oslash;b</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">L&oslash;bsdag 33</div>
+          <div class="chip-row">
+            <span class="chip N">Etapel&oslash;b N, etape 4 (sidste etape)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Om aftenen: tr&aelig;ningen g&oslash;res op</div>
+        <div class="section-body">2 l&oslash;bsdage + 3 ekstra tr&aelig;ningsdage = op til 5 tr&aelig;ningspas.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">To ryttere</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter A k&oslash;rer etapel&oslash;b N</div>
+            <div class="rider-note">bundet i etapel&oslash;b N: k&oslash;rer eller hviler, tr&aelig;ner ikke</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rytter B k&oslash;rer ingen l&oslash;b</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-pin">3</div>
+      <div>Her ligger de ekstra dage ogs&aring; midt i et etapel&oslash;b. Ryttere i det l&oslash;b hviler de dage. Alle andre tr&aelig;ner.</div>
+    </div>
+  </div>
+
+  <div class="bottomline">
+    Alle divisioner f&aring;r lige mange l&oslash;bsdage pr. s&aelig;son. L&oslash;b, etaper og starttider er ens i A og B. Forskellen er kun, hvor de ekstra tr&aelig;ningsdage ligger.
+  </div>
+
+</div>
+</div>
+</body>
+</html>

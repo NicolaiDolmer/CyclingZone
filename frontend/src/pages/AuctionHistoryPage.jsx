@@ -325,7 +325,7 @@ export default function AuctionHistoryPage() {
       ) : loadError ? (
         // #2849 bølge 2: canonical error-state, samme genbrugte kopi som
         // AuctionsPage's loadError (#1350) — retry er altid secondary sm.
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("auctions:loadError.message")}
             action={<Button size="sm" variant="secondary" onClick={loadAuctions}>{t("auctions:loadError.retry")}</Button>}

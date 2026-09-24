@@ -4,8 +4,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// #58 — de 6 sideordnede transfer-faner er grupperet i 3 handlingsorienterede modes
-// (Skal handles / Forhandlinger / Marked). Modes er ren UI-gruppering ovenpå det
+// #58 — de 6 sideordnede transfer-faner er grupperet i handlingsorienterede modes
+// (Skal handles / Forhandlinger / Marked, og fra #5257 også Alle handler, den
+// globale handelsliste). Modes er ren UI-gruppering ovenpå det
 // eksisterende ?tab=-dataflow: de gamle tab-værdier (og deres deep-links) skal route
 // uændret. Disse guards sikrer at grupperingen forbliver TOTAL og disjunkt — hver
 // VALID_TAB hører til præcis ét mode, og intet ukendt tab sniger sig ind.
@@ -28,7 +29,10 @@ function extractModeTabs() {
   assert.ok(block, "TAB_MODES skal være defineret i TransfersPage.jsx");
   const modes = [...block[1].matchAll(/tabs:\s*\[([^\]]*)\]/g)]
     .map((m) => [...m[1].matchAll(/["']([a-z_]+)["']/g)].map((x) => x[1]));
-  assert.ok(modes.length === 3, "der skal være præcis 3 modes (#58)");
+  // Antallet er ikke selve kontrakten (den er "total og disjunkt" nedenfor) —
+  // men et mode der forsvinder i en refaktor uden at nogen opdager det ER et
+  // fund, så tallet holdes eksplicit. 3 ved #58, 4 fra #5257 ("Alle handler").
+  assert.ok(modes.length === 4, `der skal være præcis 4 modes (#58, #5257) — fandt ${modes.length}`);
   return modes;
 }
 

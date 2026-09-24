@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 // #5011 — de managernavne der kan @-tagges. Bruges to steder på forummet:
 // autocomplete i editoren og den klikbare rendering af @navn i hvert eneste
@@ -36,9 +37,11 @@ async function fetchMentionableManagers() {
   // best-effort: loadOnce() nedenfor fanger og logger; listen falder til tom,
   // og fladen viser da bare teksten uden klikbare navne. Ingen loading-tilstand
   // at rydde op i, ingen knap der kan blive hængende.
-  const res = await fetch(`${API}/api/forum/mentionable-managers`, { headers }); // best-effort
+  const res = await apiFetch(`${API}/api/forum/mentionable-managers`, { headers }); // best-effort
+  // dækker også limited/unauthorized/networkError — loadOnce()'s catch neder
+  // falder tilbage til EMPTY, som den kastede fetch-fejl gjorde før.
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+  const data = res.data;
   return Array.isArray(data?.managers) ? data.managers : EMPTY;
 }
 

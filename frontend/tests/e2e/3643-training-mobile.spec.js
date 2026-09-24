@@ -1,0 +1,595 @@
+// #3643 — træningssiden på mobil, bygget efter ejerens valg 18/9 (mockup 2,
+// tabel). Guarden her holder på det formen LOVER, ikke på pixels:
+//
+//   1) Ingen vandret scroll på hverken 412 px, 375 px eller i landskab
+//      (892 × 412) — målt på `document.scrollingElement.scrollWidth`, ikke håbet.
+//   2) Rækker er ryttere, kolonner er dagens løbsdage. Med
+//      `training_tick_per_race_day` OFF er der PRÆCIS én kolonne ("I dag"),
+//      og tabellen skifter ikke form når tallet en dag bliver 4.
+//   3) Den rytter man trykker på får sit fulde kort ÉN gang — foldet ud LIGE
+//      UNDER sin egen række, inde i listen (ejer-beslutning 21/9, variant A,
+//      efter beta-feedback 19/9: "Der bliver meget scrolleri når rytteren
+//      folder sig ud under tabellen"). Målt før: 201 px fra række til kort ved
+//      rytter nr. 6 af 10. Guarden her måler nu 0 px og kræver at kortet er
+//      DOM-naboen. Form, træthed og "tæller for <rolle>" er dér, ikke bag
+//      vandret scroll. Ingen rytter er foldet ud ved indlæsning.
+//   4) "Skift" i kortet åbner det SAMME dagspanel som desktop bruger, så
+//      sidens hovedhandling er to tryk væk uden nogen "Fuld tabel".
+//   5) Alle tryk-mål ≥ 44 px.
+//   6) #5350: navnet er forkortet ("A. Pedersen"), og ryttertypen er en dæmpet
+//      underlinje i stedet for en badge der æder bredden.
+//   7) Desktop (1280 px) har sin egen tabel (#5485), ingen mobil-tabel.
+//
+// Testene sætter selv viewport, så alle tre Playwright-projekter kører de samme
+// mobil-assertions (desktop-chromium inkluderet) — mobil-formen må ikke kunne
+// drive i én motor uden at de to andre ser det.
+import { test, expect } from "./e2e-base.js";
+import { installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, RIDERS, evidenceShotPath } from "./fixtures.js";
+import { scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.js";
+import { isKnownContrastDebt } from "./lib/text-overflow-allowlist.js";
+
+// Kun ægte type-nøgler (locales/*/riderTypes.json) — en opdigtet nøgle ville
+// vise en rå i18n-nøgle i skærmbillederne og gøre beviset misvisende.
+const TYPES = ["sprinter", "climber", "rouleur", "puncheur", "tt", "gc"];
+const SESSIONS = ["sprint", "threshold", "endurance", "vo2max", "tempo", "technique"];
+
+// En trup i realistisk størrelse. Den ægte fixture-rytter (rider-1, Ada
+// Pedersen) beholdes som første række, så de andre træningsspecs' navne stadig
+// betyder det samme her.
+const base = RIDERS.find((r) => r.id === "rider-1");
+const SQUAD = [
+  base,
+  ...Array.from({ length: 10 }, (_, i) => ({
+    ...base,
+    id: `rider-3643-${i}`,
+    firstname: ["Mathias", "Tom", "Luca", "Rafael", "Viktor", "Antoine", "Søren", "Jonas", "Emil", "Nikolaj"][i],
+    lastname: ["Sørensen", "Van Aerde", "Colombo", "Duran", "Lindqvist", "Fabre", "Mikkelsen", "Halvorsen", "Bakker", "Riis"][i],
+    team_id: TEST_TEAM.id,
+    primary_type: TYPES[i % TYPES.length],
+    secondary_type: TYPES[(i + 2) % TYPES.length],
+    is_academy: false,
+  })),
+];
+
+const plans = {};
+const condition = {};
+const progress = {};
+for (const [i, rider] of SQUAD.entries()) {
+  plans[rider.id] = { focus: SESSIONS[i % SESSIONS.length], intensity: ["normal", "hard", "easy"][i % 3] };
+  condition[rider.id] = { form: 55 + ((i * 7) % 35), fatigue: 18 + ((i * 11) % 45), injured_until: null, risk: 0 };
+  progress[rider.id] = { sprint: 0.64, flat: 0.2, threshold: 0.41, endurance: 0.55, tempo: 0.3, vo2max: 0.47 };
+}
+
+const TRAINING_ME = {
+  enabled: true,
+  betaTester: true,
+  // #3643 (ejer 19/9): den nye visning er beta-only. Serveren evaluerer
+  // `training_mobile_table` (stadie beta) mod viewerens beta-status og sender
+  // resultatet som en bar boolean — her er den TÆNDT, så denne spec måler den
+  // nye flade. Flag-off-stien (alle andre spillere) er dækket af
+  // 5124-training-mobile.spec.js, hvis mock bevidst udelader feltet.
+  mobileTable: true,
+  teamId: TEST_TEAM.id,
+  slots: { total: null, used: SQUAD.length, remaining: null },
+  focuses: SESSIONS,
+  intensities: ["easy", "normal", "hard", "rest"],
+  plans,
+  condition,
+  progress,
+  capped: { "rider-1": ["durability"] },
+  trainability: {},
+  smartDefaultFocus: {},
+  weekPlan: null,
+  riderWeekPlans: {},
+  racingToday: {},
+  todayRun: null,
+};
+
+test.beforeEach(async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await page.route("**/rest/v1/riders**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, SQUAD);
+  });
+  await page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, TRAINING_ME);
+  });
+});
+
+const roster = (page) => page.locator('[data-testid="training-mobile-roster"]');
+// Rytter-rækkerne, uden den udfoldede kort-række: kun rytter-rækker bærer en
+// knap med aria-expanded. Uden filtret ville nth(n) pege på en anden rytter så
+// snart ét kort er åbent.
+const riderRows = (page) => roster(page).locator("tbody tr").filter({ has: page.locator("button[aria-expanded]") });
+const detailRow = (page) => page.locator('[data-testid="training-mobile-rider-detail"]');
+
+// Den faste bundnavigation (MobileQuickNav) ligger OVEN PÅ indholdet, så et
+// element der slutter under denne linje er gemt bag den — ikke bare "langt nede".
+async function visibleBottom(page) {
+  return page.evaluate(() => {
+    const nav = document.querySelector("[data-mobile-quick-nav]");
+    return window.innerHeight - (nav ? nav.getBoundingClientRect().height : 0);
+  });
+}
+
+// Vandret side-scroll måles på dokumentet selv: en tabel der stikker ud af sin
+// ramme flytter netop dette tal, uanset hvilken container den ligger i.
+async function pageScrollOverflow(page) {
+  return page.evaluate(
+    () => document.scrollingElement.scrollWidth - document.scrollingElement.clientWidth,
+  );
+}
+
+async function openTraining(page, width, height) {
+  await page.setViewportSize({ width, height });
+  await page.goto("/training");
+  await roster(page).waitFor();
+  await expect(page.getByText("A. Pedersen")).toBeVisible();
+}
+
+test("412 px: tabel med dagens løbsdage, ingen vandret scroll, ingen 'Fuld tabel'", async ({ page }, testInfo) => {
+  await login(page);
+  await openTraining(page, 412, 915);
+
+  await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+
+  // Flaget er OFF i alle miljøer i dag → præcis én løbsdags-kolonne, og den
+  // hedder "I dag" i stedet for at nummerere en model der ikke kører endnu.
+  const headers = roster(page).locator("thead th");
+  await expect(headers).toHaveCount(2);
+  await expect(headers.nth(1)).toHaveText("I dag");
+
+  // #5350: navnet er forkortet, og typen er en dæmpet underlinje — ikke en badge.
+  await expect(page.getByText("A. Pedersen")).toBeVisible();
+  await expect(roster(page).getByText(/SPRINTER\/ROULEUR · F\d+ · T\d+/i).first()).toBeVisible();
+
+  // D-047's chip-række og "Fuld tabel" hører til desktop-tabellens gamle
+  // mobil-tilstand og findes ikke i den nye visning.
+  await expect(page.getByRole("button", { name: "Fuld tabel" })).toHaveCount(0);
+
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-412-${testInfo.project.name}.png`), fullPage: true });
+});
+
+test("412 px: rytteren man trykker på får sit fulde kort ÉN gang, og 'Skift' åbner dagspanelet", async ({ page }, testInfo) => {
+  await login(page);
+  await openTraining(page, 412, 915);
+
+  // Ejer 21/9: INGEN rytter er foldet ud ved indlæsning. Et åbent kort øverst
+  // ville skubbe hele truppen ned og tage netop det overblik fladen er til for.
+  await expect(page.getByRole("button", { name: /A\. Pedersen/ })).toHaveAttribute("aria-expanded", "false");
+  await expect(detailRow(page)).toHaveCount(0);
+  await expect(page.locator('[data-tour="training-focus"]')).toHaveCount(1);
+
+  // Et tryk på en ANDEN rytter flytter kortet.
+  await page.getByRole("button", { name: /M\. Sørensen/ }).click();
+  await expect(page.getByRole("button", { name: /M\. Sørensen/ })).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: /A\. Pedersen/ }).click();
+
+  // Kortet bærer præcis det beslutningen kræver: form + træthed som tal,
+  // rollens opskrift som evne-chips, og loftet som chip i evnelisten.
+  const card = page.locator("section", { hasText: "Tæller for" }).first();
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Tæller for Sprinter")).toBeVisible();
+  await expect(card.getByText("på loftet")).toBeVisible();
+
+  // ÉN gang: præcis ét åbent kort, ikke ét pr. række.
+  await expect(page.getByText("Tæller for Sprinter")).toHaveCount(1);
+  await expect(detailRow(page)).toHaveCount(1);
+  await expect(page.locator('[data-tour="training-next-up"]')).toHaveCount(1);
+  await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-412-card-${testInfo.project.name}.png`), fullPage: true });
+
+  // Sidens hovedhandling: "Skift" åbner det SAMME dagspanel desktop bruger.
+  // Knappen sidder nu INDE i tabellen; et tryk på den må ikke lukke kortet
+  // ved at boble ud som et rækkeklik.
+  await card.getByRole("button", { name: "Skift" }).click();
+  await expect(page.getByText(/1 · Hvad er det for en dag/)).toBeVisible();
+  await expect(detailRow(page)).toHaveCount(1);
+});
+
+// ── Ejer-beslutning 21/9: kortet folder ud LIGE UNDER rytteren ──────────────
+//
+// Beta-tester @egomadsen 19/9: "Der bliver meget scrolleri når rytteren folder
+// sig ud under tabellen. Den burde måske bare folde sig ud lige under den
+// pågældende rytter." Målt 21/9 på den gamle form: 201 px fra rækkens bund til
+// kortets top ved rytter nr. 6 af 10 — og en rigtig trup er 25-30 ryttere.
+//
+// Rytteren i MIDTEN er hele pointen: for den øverste række var afstanden altid
+// lille, og en guard der kun måler ham ville have været grøn før rettelsen.
+
+test("412 px: kortet er DOM-naboen lige efter rækken — 0 px, ikke 201", async ({ page }) => {
+  await login(page);
+  await openTraining(page, 412, 915);
+
+  const rows = riderRows(page);
+  const rowCount = await rows.count();
+  expect(rowCount, "guarden skal måle en trup i realistisk størrelse").toBeGreaterThanOrEqual(10);
+  const mid = Math.floor(rowCount / 2);
+
+  await rows.nth(mid).locator("button[aria-expanded]").click();
+  await expect(detailRow(page)).toHaveCount(1);
+
+  const geometry = await page.evaluate((index) => {
+    const roster = document.querySelector('[data-testid="training-mobile-roster"]');
+    const riderRows = [...roster.querySelectorAll("tbody tr")].filter((tr) => tr.querySelector("button[aria-expanded]"));
+    const row = riderRows[index];
+    const next = row.nextElementSibling;
+    return {
+      nextIsCard: next?.getAttribute("data-testid") === "training-mobile-rider-detail",
+      // Absolutte dokument-koordinater: den reelle afstand spilleren skal
+      // scrolle for at komme fra rækken til kortet.
+      gap: next ? Math.round(next.getBoundingClientRect().top - row.getBoundingClientRect().bottom) : null,
+      expanded: row.querySelector("button[aria-expanded]").getAttribute("aria-expanded"),
+      controls: row.querySelector("button[aria-expanded]").getAttribute("aria-controls"),
+      cardId: next?.querySelector("section")?.id ?? null,
+    };
+  }, mid);
+
+  expect(geometry.nextIsCard, "kortet skal være rækkens umiddelbare DOM-nabo").toBe(true);
+  expect(geometry.gap).toBeLessThanOrEqual(1);
+  expect(geometry.expanded).toBe("true");
+  // aria-controls skal pege på PRÆCIS det kort der foldede ud — ikke på et id
+  // der lever et andet sted på fladen.
+  expect(geometry.controls).toBe(geometry.cardId);
+  expect(geometry.controls).toBeTruthy();
+});
+
+test("412 px: tryk igen lukker, og et skift holder den trykkede række i synsfeltet", async ({ page }) => {
+  await login(page);
+  await openTraining(page, 412, 915);
+
+  const rows = riderRows(page);
+  const rowCount = await rows.count();
+  const mid = Math.floor(rowCount / 2);
+  const midButton = rows.nth(mid).locator("button[aria-expanded]");
+
+  // Tryk igen på den SAMME rytter lukker kortet.
+  await midButton.click();
+  await expect(detailRow(page)).toHaveCount(1);
+  await midButton.click();
+  await expect(detailRow(page)).toHaveCount(0);
+  await expect(midButton).toHaveAttribute("aria-expanded", "false");
+
+  // Et kort OVER den række man trykker på er det farlige tilfælde: når det
+  // lukker, forsvinder dets højde fra flowet og rækken under fingeren hopper
+  // op. Den må ikke ryge ud af syne — og slet ikke ind bag bundnavigationen.
+  await rows.nth(1).locator("button[aria-expanded]").click();
+  await expect(detailRow(page)).toHaveCount(1);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await midButton.click();
+  await expect(detailRow(page)).toHaveCount(1);
+
+  const bottom = await visibleBottom(page);
+  const rect = await rows.nth(mid).evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom };
+  });
+  expect(rect.top, "den trykkede række må ikke være rullet op over skærmkanten").toBeGreaterThanOrEqual(-1);
+  expect(rect.bottom, "den trykkede række må ikke gemme sig bag bundnavigationen").toBeLessThanOrEqual(bottom + 1);
+
+  // Og kortets første linje skal være at se, ellers er "det foldede ud" en
+  // påstand spilleren ikke kan efterprøve.
+  const cardTop = await detailRow(page).evaluate((el) => el.getBoundingClientRect().top);
+  expect(cardTop).toBeLessThan(bottom);
+});
+
+for (const width of [412, 390, 375]) {
+  test(`${width} px: ingen vandret scroll med kortet ÅBENT`, async ({ page }) => {
+    await login(page);
+    await openTraining(page, width, 915);
+
+    const rows = riderRows(page);
+    const mid = Math.floor((await rows.count()) / 2);
+    await rows.nth(mid).locator("button[aria-expanded]").click();
+    await expect(detailRow(page)).toHaveCount(1);
+
+    // colSpan-cellen spænder hele tabellen; den må ikke gøre tabellen bredere
+    // end sin egen ramme. Måles på dokumentet, ikke på kortet.
+    await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+  });
+}
+
+// Tekst-vagten (#5383) mod HELE mobil-visningen med kortet åbent. 4851-specen
+// måler kun selve tabellen, og vagtens egen spec måler /training med en mock
+// der ikke tænder den nye visning — kortets indhold i en colSpan-celle er
+// derfor kun dækket her.
+for (const lang of ["da", "en"]) {
+  test(`tekst-vagten (#5383) på hele visningen med kortet åbent · ${lang}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chromium", "Tekst-målingen er ét skud pr. sprog; formen er dækket i alle tre projekter ovenfor.");
+    await login(page);
+    await openTraining(page, 412, 915);
+    await page.evaluate(async (next) => {
+      window.localStorage.setItem("cz_lang", next);
+      if (window.__i18n) await window.__i18n.changeLanguage(next);
+    }, lang);
+    await expect.poll(() => page.evaluate(() => window.__i18n?.language)).toBe(lang);
+
+    const rows = riderRows(page);
+    const mid = Math.floor((await rows.count()) / 2);
+    await rows.nth(mid).locator("button[aria-expanded]").click();
+    await expect(detailRow(page)).toHaveCount(1);
+    await page.evaluate(async () => {
+      // Uden ventetid på fonten måles Inter Tights metric-fallback, og et
+      // overløb på 2-3 px ville komme og gå mellem kørsler.
+      if (document.fonts?.ready) await document.fonts.ready;
+    });
+
+    // Kendt kontrast-gæld dømmes pr. FARVEPAR i vagtens egen allowlist (én
+    // token-værdi på 11 sider) — den hører ikke til i denne geometri-guard.
+    const findings = (await scanPageForTextDefects(page, { root: '[data-testid="training-mobile-today"]' }))
+      .filter((finding) => !isKnownContrastDebt(finding));
+
+    expect(
+      findings.map((f) => formatFinding({ ...f, where: `${lang} · 412 px` })).join("\n"),
+      `Tekst-vagten fandt ${findings.length} problemer i mobil-træningsvisningen med kortet åbent (${lang}, 412 px).\n`,
+    ).toBe("");
+  });
+}
+
+test("375 px: stadig ingen vandret scroll, og alle tryk-mål er mindst 44 px", async ({ page }, testInfo) => {
+  await login(page);
+  await openTraining(page, 375, 812);
+
+  await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+
+  // Rækkeknapperne, den ene gold primary, "Redigér", assistent-panelet. 44 px
+  // er #1602's krav. Målingen er scopet til MOBIL-VISNINGEN selv: sidens
+  // øvrige chrome (fanebjælken, sprogskifteren i sidehovedet) er delte
+  // primitiver, og et krav om at rette dem her ville gøre denne guard til en
+  // guard om noget helt andet end træningssiden.
+  const tooSmall = await page.evaluate(() => {
+    const root = document.querySelector('[data-testid="training-mobile-today"]');
+    const out = [];
+    for (const el of root.querySelectorAll("button")) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      // Begge led: et 44px højt men 30px bredt mål er stadig for lille.
+      if (r.height < 44 || r.width < 44) {
+        out.push(`${el.textContent.trim().slice(0, 30)}=${Math.round(r.width)}x${Math.round(r.height)}`);
+      }
+    }
+    return out;
+  });
+  expect(tooSmall).toEqual([]);
+
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-375-${testInfo.project.name}.png`), fullPage: true });
+});
+
+test("landskab 892 × 412 (#4982): tabellen fylder bredden ud uden boks-scroll", async ({ page }, testInfo) => {
+  await login(page);
+  await page.setViewportSize({ width: 892, height: 412 });
+  await page.goto("/training");
+
+  // Over 640 px er det desktop-fladen der tegnes — landskabs-kravet er at
+  // INGEN af de to former lægger siden bag en vandret scroll.
+  await page.locator("table").first().waitFor();
+  await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-mobile-892x412-${testInfo.project.name}.png`), fullPage: false });
+});
+
+test("412 px i mørkt tema: samme form, ingen rå farver der falder ud", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "Tema-beviset er ét skud; formen er dækket i alle tre projekter ovenfor.");
+  await page.addInitScript(() => {
+    try { localStorage.setItem("cz-theme", "dark"); } catch { /* ingen storage */ }
+  });
+  await login(page);
+  await openTraining(page, 412, 915);
+  await page.getByRole("button", { name: /A\. Pedersen/ }).click();
+  await expect(page.getByText("Tæller for Sprinter")).toBeVisible();
+  await expect.poll(() => pageScrollOverflow(page)).toBeLessThanOrEqual(1);
+
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-training-mobile-412-dark.png"), fullPage: true });
+});
+
+// #3643 (ejer 19/9): "Jeg vil have det kun live for beta testere i starten".
+// Gaten er serverens — klienten får en bar boolean — så guarden her er: med
+// `mobileTable: false` findes den nye tabel SLET IKKE på telefonen, og det er
+// den gamle mobil-visning (#5124's D-047-gren, med "Fuld tabel") der tegnes.
+// Uden denne test ville en gate der altid var sand se grøn ud i hele suiten.
+test("412 px med flaget OFF: ingen ny mobil-tabel — den gamle visning står uændret", async ({ page }) => {
+  await page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { ...TRAINING_ME, mobileTable: false });
+  });
+  await login(page);
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("/training");
+  await page.locator("table[data-sortable]").first().waitFor();
+
+  await expect(roster(page)).toHaveCount(0);
+  await expect(page.locator('[data-testid="training-mobile-today"]')).toHaveCount(0);
+  // Den gamle gren ER tegnet: chip-rækkens "Fuld tabel" hører KUN til den.
+  await expect(page.getByRole("button", { name: "Fuld tabel" })).toBeVisible();
+  // Og det fulde navn står i tabellen (den nye visning forkorter til "A. Pedersen").
+  await expect(page.getByText("Ada Pedersen")).toBeVisible();
+});
+
+// ── Paritets-audit 21/9: tre rene fejl i den nye visning ────────────────────
+//
+// (1) Mobil-primaryen manglede #4847's dayClose-gate og "Kør dagens træning
+//     nu"-labelen. Latent i prod (training_tick_per_race_day er off), men den
+//     dag flaget tændes, ville telefonen kunne køre dagen før sidste løb.
+// (2) RosterMobileSortControl manglede Score, selvom desktop-headeren sorterer
+//     på den.
+// (3) Ugeplan-fanens "Gå til rosteret" skiftede fane og landede ingen steder,
+//     fordi roster-tabellen ikke findes i den nye visning.
+
+function mockTrainingMe(page, overrides) {
+  return page.route("**/api/training/me**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, { ...TRAINING_ME, ...overrides });
+  });
+}
+
+// Samme form som serverens `trainingScore` (se 4851-specen). Scorerne er valgt
+// så en sortering ikke kan falde sammen med truppens egen rækkefølge: den
+// højeste står som rytter nr. 4, og tre ryttere har ingen måling i dag.
+function scoreRow(today) {
+  return { today, todayIsRaceDay: false, todaySession: null, spark: [], avg: null, best: null, days: 0, contributions: [] };
+}
+const SCORES = {
+  [SQUAD[0].id]: scoreRow(41),
+  [SQUAD[1].id]: scoreRow(63),
+  [SQUAD[2].id]: scoreRow(null),
+  [SQUAD[3].id]: scoreRow(88),
+  [SQUAD[4].id]: scoreRow(57),
+};
+
+const DAY_CLOSE_WAITING = { open: false, reason: "awaiting_finalization", gameDays: [40, 41, 42], opensAtHour: 20 };
+const DAY_CLOSE_READY = { open: true, reason: "closed", gameDays: [40, 41, 42], opensAtHour: 20 };
+
+// Sidens ENE primary. På telefonen står den i fuld bredde over fanerne, på
+// desktop i sidehovedet — der er aldrig to på samme skærm.
+const primary = (page) => page.getByTestId("training-primary");
+const overview = (page) => page.getByTestId("training-overview");
+
+// #5485 (A2, ejer-go 23/9): guld-knappen står aldrig grå. Kan dagen ikke køres
+// endnu (gaten er lukket), er der INGEN knap — kun statuslinjen i overblikket.
+// Gaten fra #3643/PR #5552 gælder stadig på begge flader: ingen vej til at køre
+// dagen før dagens sidste løb er lukket, heller ikke overblikkets "Kør nu".
+// `status` er sidehovedets statuslinje, som står på begge flader.
+const DAY_CLOSE_CASES = [
+  { name: "venter på dagens sidste løb", dayClose: DAY_CLOSE_WAITING, label: null, status: "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. 20." },
+  { name: "klar", dayClose: DAY_CLOSE_READY, label: "Kør dagens træning nu", status: "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv." },
+  // Flaget off: serveren sender slet ikke feltet, og knappen er den gamle.
+  { name: "flaget off", dayClose: undefined, label: "Træn i dag (+25% konsistens-bonus)", status: "Ikke trænet endnu i dag" },
+];
+
+for (const c of DAY_CLOSE_CASES) {
+  test(`390 px + 1440 px: primaryen har samme dayClose-gate og label (${c.name})`, async ({ page }) => {
+    await mockTrainingMe(page, c.dayClose ? { dayClose: c.dayClose } : {});
+    await login(page);
+
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/training");
+      await expect(page.getByText(c.status, { exact: true })).toBeVisible();
+      if (c.label) {
+        await expect(primary(page)).toHaveCount(1);
+        await expect(primary(page)).toHaveText(c.label);
+        await expect(primary(page)).toBeEnabled();
+      } else {
+        await expect(primary(page)).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /Kør nu|Kør dagens træning|Træn i dag/ })).toHaveCount(0);
+      }
+    }
+  });
+}
+
+test("390 px: Score kan vælges i mobil-sorteringen når scoren er synlig, og sorterer efter dagens tal", async ({ page }) => {
+  await mockTrainingMe(page, { trainingScore: SCORES });
+  await login(page);
+  await openTraining(page, 390, 900);
+
+  const select = page.locator('[data-testid="training-mobile-today"] select');
+  await expect(select.locator('option[value="score"]')).toHaveCount(1);
+  await expect(select.locator('option[value="score"]')).toHaveText("Score");
+
+  await select.selectOption("score");
+  // Score er en "høj-først"-nøgle ligesom desktop-headeren: højeste tal øverst,
+  // ryttere uden måling i dag nederst uanset retning.
+  const names = riderRows(page).locator("button[aria-expanded]");
+  await expect(names.nth(0)).toContainText("L. Colombo");
+  await expect(names.nth(1)).toContainText("M. Sørensen");
+  await expect(names.nth(2)).toContainText("R. Duran");
+  await expect(names.nth(3)).toContainText("A. Pedersen");
+});
+
+test("390 px: uden synlig score findes Score-sorteringen ikke", async ({ page }) => {
+  // Standard-mocken udelader `trainingScore`, præcis som serveren gør når
+  // training_score_visible er off.
+  await login(page);
+  await openTraining(page, 390, 900);
+
+  const select = page.locator('[data-testid="training-mobile-today"] select');
+  await expect(select.locator('option[value="form"]')).toHaveCount(1);
+  await expect(select.locator('option[value="score"]')).toHaveCount(0);
+});
+
+// #5485: fanen Week plan er bygget om. Den døde "Gå til rosteret" findes ikke
+// længere i NOGEN visning; rytterens egen plan åbnes på fanen selv via "Plan
+// for", og det virker på telefonen (ny og gammel visning) som på desktop.
+test("390 px + 1440 px: ugeplan-fanen har ingen død 'Gå til rosteret', og Plan for åbner rytterens egen plan", async ({ page }) => {
+  await login(page);
+  const views = [
+    { width: 390, mobileTable: true },
+    { width: 1440, mobileTable: true },
+    { width: 390, mobileTable: false },
+  ];
+  for (const view of views) {
+    if (!view.mobileTable) await mockTrainingMe(page, { mobileTable: false });
+    await page.setViewportSize({ width: view.width, height: 900 });
+    await page.goto("/training?tab=weekplan");
+    await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Gå til rosteret" })).toHaveCount(0);
+
+    const plan = page.getByTestId("training-week-plan");
+    await plan.getByRole("combobox", { name: "Plan for" }).selectOption(SQUAD[1].id);
+    await expect(plan).toContainText(`${SQUAD[1].firstname} ${SQUAD[1].lastname}`);
+  }
+});
+
+// Bevis-billeder til PR'en: ét pr. skærmstørrelse og fane, taget på den motor
+// der svarer til skærmen (mock-data; ejeren ser ægte data på preview).
+test("bevis 390 px: dayClose-gaten, Score-sortering og ugeplan-fanen", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile-chromium", "Ét sæt billeder; formen er dækket i alle tre projekter ovenfor.");
+  await mockTrainingMe(page, { dayClose: DAY_CLOSE_WAITING, trainingScore: SCORES });
+  await login(page);
+  await openTraining(page, 390, 844);
+  await page.locator('[data-testid="training-mobile-today"] select').selectOption("score");
+  await expect(riderRows(page).first().locator("button[aria-expanded]")).toContainText("L. Colombo");
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-390-today.png"), fullPage: false });
+
+  await page.getByRole("tab", { name: "Ugeplan" }).click();
+  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+  // Kortet ligger under folden på 390 px. Rullet til bunds frem for fullPage:
+  // den faste bundnavigation ville ellers ligge midt hen over kortet.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-390-weekplan.png"), fullPage: false });
+});
+
+test("bevis 1440 px: dayClose-gaten og ugeplan-fanen på desktop", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop-chromium", "Ét sæt billeder; formen er dækket i alle tre projekter ovenfor.");
+  await mockTrainingMe(page, { dayClose: DAY_CLOSE_WAITING, trainingScore: SCORES });
+  await login(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/training");
+  await page.locator("table[data-sortable]").first().waitFor();
+  // #5485 (A2): gaten er lukket → ingen grå knap, kun statuslinjen.
+  await expect(primary(page)).toHaveCount(0);
+  await expect(overview(page)).toContainText("Kører af sig selv fra kl. 20:00");
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-today.png"), fullPage: false });
+
+  await page.getByRole("tab", { name: "Ugeplan" }).click();
+  await expect(page.getByTestId("training-week-plan").getByRole("combobox", { name: "Plan for" })).toBeVisible();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/3643-mobile-bugs-1440-weekplan.png"), fullPage: false });
+});
+
+test("desktop 1280 px: desktop-tabellen, ingen mobil-tabel", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "Desktop-regressionstjek; mobil-formen dækkes af testene ovenfor.");
+  await login(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/training");
+  await page.locator("table[data-sortable]").first().waitFor();
+
+  // #5485: desktop har sin egen tabel — Vælg, rytter, form, træthed, dagens
+  // dag, en celle pr. løbsdag og sæsonens point. Ingen mobil-tabel.
+  await expect(page.getByTestId("training-today-table")).toBeVisible();
+  for (const name of ["Vælg", "Rytter", "Form", "Træthed", "Dagens dag", "Sæsonpoint"]) {
+    await expect(page.getByRole("columnheader", { name: new RegExp(`^${name}`) })).toBeVisible();
+  }
+  await expect(roster(page)).toHaveCount(0);
+  // "Gruppér efter type" bliver stående på desktop (ejer 18/9), og fjernes kun
+  // på mobil.
+  await expect(page.getByText("Gruppér efter type")).toBeVisible();
+
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/3643-training-desktop-1280-${testInfo.project.name}.png`), fullPage: false });
+});

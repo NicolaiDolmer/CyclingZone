@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import {
   Button, DataTable, ZonePill, EmptyState, ErrorState, SkeletonLines, GlobeIcon,
 } from "../../components/ui";
@@ -50,7 +51,7 @@ export default function AdminForumTab() {
       const params = new URLSearchParams();
       if (status) params.set("status", status);
       if (cursor != null) params.set("cursor", String(cursor));
-      const res = await fetch(`${API}/api/admin/forum/reports?${params}`, { headers });
+      const res = await apiFetch(`${API}/api/admin/forum/reports?${params}`, { headers });
       const data = await readAdminJson(res);
       if (!res.ok) throw new Error(adminErrorMessage(data, res));
       setState((s) => ({
@@ -82,7 +83,7 @@ export default function AdminForumTab() {
 
   async function resolveReport(report) {
     const headers = await getAuth();
-    const res = await fetch(`${API}/api/admin/forum/reports/${report.id}/resolve`, { method: "PATCH", headers });
+    const res = await apiFetch(`${API}/api/admin/forum/reports/${report.id}/resolve`, { method: "PATCH", headers });
     const data = await readAdminJson(res);
     if (!res.ok) throw new Error(adminErrorMessage(data, res));
   }
@@ -91,8 +92,8 @@ export default function AdminForumTab() {
     const headers = await getAuth();
     // Fuld path inline i fetch-kaldet (Detector B-scanneren, se ForumPostPage).
     const res = report.target_type === "post"
-      ? await fetch(`${API}/api/admin/forum/posts/${report.target_id}`, { method: "DELETE", headers })
-      : await fetch(`${API}/api/admin/forum/replies/${report.target_id}`, { method: "DELETE", headers });
+      ? await apiFetch(`${API}/api/admin/forum/posts/${report.target_id}`, { method: "DELETE", headers })
+      : await apiFetch(`${API}/api/admin/forum/replies/${report.target_id}`, { method: "DELETE", headers });
     const data = await readAdminJson(res);
     if (!res.ok) throw new Error(adminErrorMessage(data, res));
   }

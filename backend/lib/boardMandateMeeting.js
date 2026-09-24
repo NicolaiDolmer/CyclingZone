@@ -530,6 +530,10 @@ export async function signMandate(supabase, {
   // `CHAIRMAN_BEAT_BY_REASON` → beat `meeting_keep`, så Boardroom-payloaden
   // denne funktion returnerer NEDENFOR selv genfinder formandens linje
   // (samme mønster som milepæls-kvitteringerne, #4578) — ingen dobbelt-kilde.
+  // #5359 · `board_satisfaction_events.season_id` er NOT NULL (samme kolonne
+  // persistConfidenceChange altid har udfyldt). Begge kvitteringer nedenfor
+  // manglede den, så hver underskrift på et hold med relation + formand
+  // fejlede EFTER mandatet var sat active — dual-write + svar blev sprunget over.
   const chairmanKey = assignedMembers.find((m) => m.is_chairman)?.archetype_key
     ?? assignedMembers[0]?.archetype_key
     ?? null;
@@ -538,6 +542,7 @@ export async function signMandate(supabase, {
     const { error: signedReceiptError } = await supabase.from("board_satisfaction_events").insert({
       team_id: teamId,
       mandate_id: mandateId,
+      season_id: mandate.season_id,
       satisfaction_before: confidenceNow,
       satisfaction_after: confidenceNow,
       satisfaction_delta: 0,
@@ -553,6 +558,7 @@ export async function signMandate(supabase, {
     const { error: requestReceiptError } = await supabase.from("board_satisfaction_events").insert({
       team_id: teamId,
       mandate_id: mandateId,
+      season_id: mandate.season_id,
       satisfaction_before: confidenceNow,
       satisfaction_after: confidenceNow,
       satisfaction_delta: 0,

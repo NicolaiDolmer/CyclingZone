@@ -29,6 +29,7 @@ function parsedFilterAmount(raw) {
 import { labelClass } from "./ui/fieldStyles.js";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
+import { useBestRoleDisplay } from "../lib/useBestRoleDisplay.js";
 // Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig),
 // som nu re-eksporterer de 15 CZ-evne-keys fra lib/abilities.js (#1529).
 // Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
@@ -60,6 +61,9 @@ export const DEFAULT_FILTERS = {
   sort_dir: "desc",
   nationality_code: "",
   rider_type: "",
+  // #5435: "Best role now"-filter — kun synligt og kun virksomt når rating-
+  // kontakten er tændt (useRiderFilters.js ignorerer det ellers).
+  best_role: "",
   min_value: "",
   max_value: "",
   min_salary: "",
@@ -92,7 +96,7 @@ export const DEFAULT_FILTERS = {
 // #960: alle ikke-stat filter-nøgler, i samme rækkefølge som chips'ene nedenfor.
 // Bruges både til "har aktivt filter"-tjek og til "Nulstil alt (N)"-tælleren.
 const BASIC_FILTER_KEYS = [
-  "q", "nationality_code", "rider_type", "min_value", "max_value", "min_salary", "max_salary",
+  "q", "nationality_code", "rider_type", "best_role", "min_value", "max_value", "min_salary", "max_salary",
   "min_age", "max_age",
   "min_auction_price", "max_auction_price", "min_asking_price", "max_asking_price",
   "min_value_deviation_pct", "max_value_deviation_pct",
@@ -258,6 +262,7 @@ export default function RiderFilters({
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
+  const bestRoleOn = useBestRoleDisplay(); // #5435
   const [statsOpen, setStatsOpen] = useState(false);
   // #2464: på mobil fyldte panelet ~40% af skærmen før første rytter — kollapset
   // som default bag en disclosure (samme mønster som evne-sliderne, statsOpen).
@@ -293,8 +298,16 @@ export default function RiderFilters({
     { value: "", label: t("fields.countryAll") },
     ...sortedNationalities.map(code => ({ value: code, label: getCountryName(code, countryLocale) })),
   ];
+  // #5435 (spec §2): med kontakten tændt er typefiltret anlægget ("Natural
+  // role"), og "Best role now" er sit eget felt ved siden af. Baren har ingen
+  // synlige labels, så "alle"-valget siger selv hvilket af de to felter det er.
   const typeOptions = [
-    { value: "", label: tTypes("filter.all") },
+    { value: "", label: bestRoleOn ? tTypes("natural.filterAll") : tTypes("filter.all") },
+    ...RIDER_TYPE_KEYS.map(key => ({ value: key, label: tTypes(`types.${key}`) })),
+  ];
+  const typeFilterLabel = bestRoleOn ? tTypes("natural.roleLabel") : tTypes("filter.label");
+  const bestRoleOptions = [
+    { value: "", label: tTypes("bestRole.filterAll") },
     ...RIDER_TYPE_KEYS.map(key => ({ value: key, label: tTypes(`types.${key}`) })),
   ];
 
@@ -312,9 +325,17 @@ export default function RiderFilters({
       key: "rider_type",
       value: filters.rider_type,
       onChange: e => onChange("rider_type", e.target.value),
-      ariaLabel: tTypes("filter.label"),
+      ariaLabel: typeFilterLabel,
       options: typeOptions,
     },
+    // #5435: tredje (og sidste tilladte) select i baren, kun med kontakten tændt.
+    ...(bestRoleOn ? [{
+      key: "best_role",
+      value: filters.best_role ?? "",
+      onChange: e => onChange("best_role", e.target.value),
+      ariaLabel: tTypes("bestRole.label"),
+      options: bestRoleOptions,
+    }] : []),
   ];
 
   // #2238: "Vis AI-ryttere" er en boolean og hoerer i FilterBar's checkbox-slot,
@@ -339,10 +360,17 @@ export default function RiderFilters({
 
   const typeSelect = (
     <Select value={filters.rider_type} onChange={e => onChange("rider_type", e.target.value)}
-      aria-label={tTypes("filter.label")}>
+      aria-label={typeFilterLabel}>
       {optionNodes(typeOptions)}
     </Select>
   );
+
+  const bestRoleSelect = bestRoleOn ? (
+    <Select value={filters.best_role ?? ""} onChange={e => onChange("best_role", e.target.value)}
+      aria-label={tTypes("bestRole.label")} data-testid="filter-best-role">
+      {optionNodes(bestRoleOptions)}
+    </Select>
+  ) : null;
 
   const teamSelect = showTeamFilter && teams.length > 0 ? (
     <Select value={filters.team_id} onChange={e => onChange("team_id", e.target.value)} aria-label={t("fields.team")}>
@@ -459,6 +487,9 @@ export default function RiderFilters({
         />
       )}
       {filters.rider_type && <Chip t={t} label={tTypes(`types.${filters.rider_type}`)} onRemove={() => onChange("rider_type", "")} />}
+      {bestRoleOn && filters.best_role && (
+        <Chip t={t} label={`${tTypes("bestRole.label")}: ${tTypes(`types.${filters.best_role}`)}`} onRemove={() => onChange("best_role", "")} />
+      )}
       {filters.min_value && <Chip t={t} label={t("chips.value.min", { amount: formatNumber(parseInt(filters.min_value)) })} onRemove={() => onChange("min_value", "")} />}
       {filters.max_value && <Chip t={t} label={t("chips.value.max", { amount: formatNumber(parseInt(filters.max_value)) })} onRemove={() => onChange("max_value", "")} />}
       {filters.min_salary && <Chip t={t} label={t("chips.salary.min", { amount: formatNumber(parseInt(filters.min_salary)) })} onRemove={() => onChange("min_salary", "")} />}
@@ -574,11 +605,19 @@ export default function RiderFilters({
             {countrySelect}
           </div>
 
-          {/* Rider type (#49) */}
+          {/* Rider type (#49) — "Natural role" med #5435-kontakten tændt */}
           <div>
-            <label className={labelClass()}>{tTypes("filter.label")}</label>
+            <label className={labelClass()}>{typeFilterLabel}</label>
             {typeSelect}
           </div>
+
+          {/* #5435: Best role now */}
+          {bestRoleSelect && (
+            <div>
+              <label className={labelClass()}>{tTypes("bestRole.label")}</label>
+              {bestRoleSelect}
+            </div>
+          )}
 
           {/* Vaerdi / loen / alder (+ bud, salgspris, vaerdi-afvigelse pr. side) */}
           {rangeFieldNodes}

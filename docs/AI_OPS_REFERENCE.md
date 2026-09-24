@@ -50,16 +50,33 @@ _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/Nicola
 
 Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, ellers fejler CI på mobile (#536, 21/5).
 
+**Billedstationen (#5565): ægte-data-billeder af en PR's Vercel-preview.** Hver UI-PR får billederne (desktop 1440 + mobil 390) FØR ejeren spørges om go; go-kortet linker til previewet og vedhæfter billederne (aldrig på GitHub: ægte spillernavne).
+
+```
+node scripts/pr-shots.mjs --pr <N> --routes /dashboard,/academy --viewports 1440,390
+```
+
+- Preview-URL'en slås op via `gh` (GitHub Deployments fra Vercel, ellers Vercel-bottens kommentar); branch-aliaset `...-git-<gren>-...vercel.app` foretrækkes, så origin er den samme for hvert push på PR'en. `--url <origin>` springer opslaget over.
+- Én fast Playwright-profil i `.claude/run/pr-shots-profile/` (gitignoreret). **Ejeren logger ind én gang pr. preview-origin:** `node scripts/pr-shots.mjs --pr <N> --login` åbner Edge (headed) på previewets `/login`; ejeren taster selv, scriptet lukker når login er gemt. Et login gælder kun den origin (Supabase-sessionen ligger pr. origin), så en ny PR = et nyt login, et nyt push på samme PR ikke.
+- Hver billedserie kører i en KOPI af profilen, som slettes bagefter; alle skrivende kald (API, Supabase REST/RPC, PostHog, Sentry) besvares lokalt med 204, og et `signOut` fra appen tælles i rapporten uden at ramme mesterprofilen. Scriptet læser, skriver eller logger aldrig tokens/cookies og skruer aldrig browser-uret (`--shot-at` afvises; læring 24/9).
+- Output: `pr-screens/live/<pr>-<route>-<viewport>.png` (gitignoreret undermappe — `pr-screens/` selv er IKKE gitignoreret). `--dry-run` viser plan og filnavne uden browser. Tests: `node --test scripts/lib/prShots.test.mjs`.
+
 **E2E-kommandoerne er uændrede efter #4647, kun hastigheden er det.** `npm run test:e2e` kører stadig alle specs i alle 3 projekter, men nu parallelt: `workers` er `"50%"` lokalt (halvdelen af kernerne, så maskinen kan bruges imens) og `"100%"` i CI. `PW_WORKERS=1 npm run test:e2e` isolerer en enkelt flaky test igen.
 
-**Sådan ser e2e ud i CI efter #4647:**
+**Sådan ser e2e ud i CI efter #4647, omlagt i #5309:**
 
 | Del | Job | Note |
 |---|---|---|
-| Kørslen | `e2e-shard (desktop-chromium / mobile-chromium / mobile-webkit)` | ét job pr. Playwright-projekt, windows-latest (snapshots er Windows-baselines) |
-| Dommen | `frontend-smoke` | required check på main. Samle-job, `if: always()`. Rødt hvis en shard fejlede, hvis en shard tog over **12 min**, eller hvis en tidsmåling mangler |
+| Planen | `plan` | udfolder [`frontend/tests/e2e/shard-plan.json`](../frontend/tests/e2e/shard-plan.json) til matrixen. **Antal laner ændres ved at rette ét tal i den fil** — aldrig i workflowet |
+| Kørslen | `e2e-shard (<projekt>-<i>of<n>)` | én lane pr. post i planen, windows-latest (snapshots er Windows-baselines). Playwright `--shard` deler projektets testliste efter grep-filteret |
+| Dommen | `frontend-smoke` | required check på main. Samle-job, `if: always()`. Rødt hvis en lane fejlede, hvis en lane brød **loftet pr. lane** (`ceilingSecondsPerShard`, i dag 10 min), eller hvis en tidsmåling mangler |
+| Vækst-alarmen | `frontend-smoke` på **schedule** | kun den natlige main-kørsel kører `--enforce-plan`. Er et projekts samlede tid vokset forbi `targetSecondsPerShard × laner`, bliver natten rød med det præcise nye lanetal. På PR'er står anbefalingen i job-summary som info |
 | Flake-sporing | artifact `e2e-flakes` | tests der fejlede første forsøg og bestod ved retry (#4292s klasse). Rapporten er IKKE en gate |
-| Karantæne | tag en test `@flaky` | den blokerende kørsel ekskluderer den (`--grep-invert @flaky`), et separat ikke-blokerende step kører den. Listen skal være tom for at #4647 kan lukkes |
+| Karantæne | tag en test `@flaky` | den blokerende kørsel ekskluderer den (`--grep-invert @flaky`), et separat ikke-blokerende step kører den på projektets FØRSTE lane. Listen skal være tom for at #4647 kan lukkes |
+
+**Hvorfor loftet har så meget luft:** de samme 323 tests har målt fra 514 s til 961 s på GitHubs delte runnere (33 kørsler 15.–16/9). En grænse man kører tæt på er et møntkast — #5308 blev blokeret af 3 sekunder uden selv at fejle noget, og gaten var allerede rød dagen før på uændret testantal. Luft er kuren; loftet er sikkerhedsnettet mod ÉN løbsk test, ikke vækst-alarmen.
+
+**Vokser suiten?** Det er ventet — hver bugfix får sin regressionstest (207 → 335 tests pr. projekt på 14 dage, målt 16/9). Svaret er en lane mere i planen, aldrig en test mindre. Overforsyning er gratis på et public repo og er tavs; underforsyning koster ventetid og melder sig selv om natten.
 
 Omdøb aldrig `frontend-smoke`-jobbet: navnet er en kontrakt med branch protection (`scripts/ci-required-checks.json`), og et matrix-job kan aldrig bære et required check-navn (GitHub suffikser det med matrix-værdien).
 
@@ -104,6 +121,37 @@ CodeRabbit (plan Essentials, `.coderabbit.yaml` `auto_review.enabled=true`) tæl
 _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682)._
 
 Efter et `git pull` der rører ved en `*package-lock.json`: kør `npm run sync-deps` (eller `npm run doctor` → tjek `install-parity`-rækken). `npm install` kan lyve med "up to date" mens direkte dependencies er bagud lockfilen ([#616](https://github.com/NicolaiDolmer/CyclingZone/issues/616)/[#618](https://github.com/NicolaiDolmer/CyclingZone/issues/618)); `npm ci` er den eneste pålidelige sync.
+
+---
+
+## SQL migrations mandat detaljer
+
+_Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._
+
+**SQL/migrations-mandat (ejer 18/7, [#2642](https://github.com/NicolaiDolmer/CyclingZone/issues/2642)) — afløser "ejer applier"-reglen:** Claude kører selv SQL/migrationer mod prod (`apply_migration`/`execute_sql`) under disse rammer:
+
+- **Rækkefølge:** migration committes i PR → PR merges → apply. Aldrig apply af u-merget SQL (eneste undtagelse: additiv/idempotent fil hvor featuren ellers er brudt live — dokumentér i issue/PR).
+- **Idempotens:** alle filer følger `IF NOT EXISTS`/`DROP POLICY IF EXISTS`-mønstret (håndhævet af migration-idempotency-CI).
+- **Post-apply-verifikation:** read-only-tjek (`information_schema`/`pg_*`) + notér resultatet i issue- eller PR-kommentar. ⚠️ Skaber migrationen en NY tabel/kolonne der tilgås via supabase-js/PostgREST: kør OGSÅ `NOTIFY pgrst, 'reload schema';` — API'ets schema-cache genindlæser IKKE selv efter MCP-apply (bidt 19/7: drip-boot fandt ikke `academy_intake_ticks` trods verificeret CREATE; auto-migrate/psql-stien har samme hul).
+- **Destruktive klasser er FORTSAT ejer-gated pr. tilfælde:** `DROP TABLE`/kolonne, masse-DELETE/UPDATE af spillerdata, RLS-lempelser — jf. "ejer ser live-tilstand før atombomber".
+- **Mekanik:** filer i `database/2026-*.sql` (top-niveau) auto-applies desuden af `auto-migrate.yml` ved push til main (~3 min delay). MCP-apply bruges til at fremrykke/verificere en merged migration samt til one-off data-SQL under rammerne ovenfor — begge veje er idempotente via `schema_migrations`-tracking hhv. filkonventionen. ⚠️ **"Forberedt-men-ikke-kørt" SQL må derfor ALDRIG committes som `database/2026-*.sql`** — den KØRER ved merge uanset kommentarer i filen (bidt 18/7: backfill-2623 auto-applied trods "IKKE KØRT"-header). Udkast/forslag til ejer-review → `database/proposals/` (uden for auto-migrate-globben). **Anvender du en fil derfra i hånden, SKAL den flyttes til top-niveau bagefter** — ellers er den ikke længere til at skelne fra et uanvendt udkast (kostede #3765). Håndhæves hver 6. time af `scripts/proposals-reconcile.mjs`.
+- **Backup-forudsætning:** Supabase-org er på Pro-plan (daglige automatiske backups) — verificeret 2026-07-18. PITR-add-on-status kan ikke aflæses via MCP; ejer bekræfter i dashboard.
+
+---
+
+## Masterplan artifact sync
+
+_Flyttet hertil fra `AGENTS.md` regel 34 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._
+
+**Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md` (rækkefølge, status, nye spor), republiceres artifacten *"Cycling Zone — Masterplan"* (find den med `Artifact action=list`; samme URL, aldrig en ny) FØR sessionen lukker, og commit-beskeden nævner det. Artifacten er ejerens læseflade; en plan der kun er rettet i markdown er en parallel plan (samme princip som hard rule 30). Ejeren 25/8: *"hver gang masterplanen opdateres, så opdateres artifacten også."*
+
+---
+
+## Guard commit branch dir parameter
+
+_Flyttet hertil fra `AGENTS.md` regel 18 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen selv er uændret — dette er kun hændelses-historikken bag `<dir>`-parameteren._
+
+Uden `<dir>` tjekker `guard-commit-branch.sh` shell-cwd'en, som agent-shells nulstiller mellem kald — det gav en **falsk blokering 2/9** ([#4658](https://github.com/NicolaiDolmer/CyclingZone/issues/4658)): en worktree-worker committede korrekt via `git -C <dir>`, men guarden så main-checkoutets cwd og blokerede et gyldigt commit. Fixet ved at guarden nu tager samme `<dir>` som `git -C` og tjekker DEN mappes branch i stedet for shell-cwd.
 
 ---
 
@@ -163,7 +211,14 @@ Prod-backenden (service **CyclingZone**, projekt **fantastic-connection**, envir
   infisical run --env=dev -- railway run -s CyclingZone -- node <script.mjs>
   ```
 - **Gotcha:** `railway whoami` returnerer `Unauthorized` med en project-token — det er **forventet** (tokenen har ingen user-kontekst). Brug `railway status`/`railway logs` som liveness-tjek, ikke `whoami`.
-- **Railway MCP** kan også være logget ind via interaktiv session, men den udløber; Infisical-token-vejen er den kanoniske, ikke-udløbende adgang.
+- **Railway MCP** (`railway mcp`, user-scope) bruger CLI'ens `railway login` og fornyer selv tokenet ved hvert kald fra CLI 5.30.3. Ældre CLI frøs tokenet og gav `Unauthorized` efter ~1 time (#2409, se `docs/CROSS_PC_SETUP.md` → Troubleshooting). Infisical-token-vejen ovenfor er stadig fallback, hvis CLI-login er væk.
+- **Gotcha (HTTP-logs ser tomme ud) — bidt 17/9 under #5312:** docs-only commits giver **SKIPPED** deploys, så den ØVERSTE række i `list-deployments` er typisk en deploy der aldrig kørte. Kald der peger på én død deployment svarer så `No HTTP logs found`. Det ligner et nedbrud, men er et tomt opslag. Fra CLI v5 (kebab-case-værktøjer) er det nemmest at læse på service-niveau eller filtrere på `SUCCESS`:
+  ```
+  get-logs projectId=<id> serviceId=<id> types=["http"] startDate=<ISO>   → på tværs af seneste deploys
+  list-deployments projectId=<id> status=SUCCESS limit=1                  → nyeste kørende deploy-id
+  ```
+  Deploy-logs (`log_type=deploy`) er også den hurtigste måde at afgøre om processen levede i et givent vindue: de periodiske sweeps (prize-sweep hvert 5. min, board auto-accept) er et livstegn man kan aflæse direkte.
+- **Kendt begrænsning:** `until` sammen med `log_type=http` fejler med `Problem processing request`. Brug `since` + `path`/`status`-filtre i stedet; et vindue langt tilbage i tiden kan ikke nås præcist ad den vej.
 - **Secret-hygiejne:** dump aldrig tokenen. `railway logs`/`status` er sikre; undgå `railway variables` (dumper alle secret-værdier — jf. secret-leak-reglerne).
 
 ---

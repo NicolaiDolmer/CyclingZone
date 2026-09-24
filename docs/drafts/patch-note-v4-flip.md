@@ -33,4 +33,4 @@
 
 - `refs` ovenfor er et forslag, ikke en facitliste: opdatér med de faktiske PR-numre fra paritets-bølgen (byggekø rk. 1-9, `docs/superpowers/specs/2026-09-06-race-engine-v4-flip-and-tactics-design.md` §3) når de er kendt.
 - Denne note antager at ALLE fem emner (uheldstrappen, tidsgrænse, intention, holdspil, vejr/brosten) er koblet ind samtidig, jf. flip-scope-beslutningen (RACE_ENGINE_RULES.md §9 punkt 1: "v3-paritet + de tre krav"). Lander de i flere puljer, skal noten splittes tilsvarende, én entry pr. reelt spillerrettet skift.
-- `sections.raceDay` i help.json er allerede skrevet og flag-gated (#4910); intet nyt hjælpe-arbejde kræves samme dag, kun at fjerne flag-gaten (se `HelpPage.jsx`'s `raceDayEnabled`) når det globale flag-svar findes.
+- `sections.raceDay` i help.json er allerede skrevet og flag-gated (#4910); siden #4948 følger sektionen `race_engine_v4` automatisk via `GET /api/feature-flags`, så flippet kræver ingen kodeændring på Hjælp-siden. Ejer-go på selve teksten udestår stadig.

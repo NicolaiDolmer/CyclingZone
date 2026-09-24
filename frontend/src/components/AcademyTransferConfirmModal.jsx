@@ -2,9 +2,11 @@
 // begge retninger via direction='promote'|'demote':
 //   • promote (op): akademi → senior. Viser cap-effekt (senior-trup nu → efter)
 //     + ny senior-løn. Accent = guld (cz-accent).
-//   • demote (ned): senior → akademi. Viser ny ungdomsløn (delta fra nuværende)
+//   • demote (ned): senior → akademi. Viser lønnen efter flytningen
 //     + akademi-cap-effekt + antal fremtidige løb der ryddes. Accent = amber
-//     (cz-warning).
+//     (cz-warning). #4582: har rytteren en komplet kontrakt, ARVES den (løn +
+//     term) uændret ned i akademiet — dialogen siger det med rene ord og
+//     dropper delta-rækken i stedet for at vise "ungdomsløn" over to ens tal.
 // Spejler AcademySignConfirmModal: overlay + cz-card-panel + useModalA11y +
 // editorial dl-tabel. INGEN slop (ingen glow/gradient/emoji-ikon).
 import { useTranslation } from "react-i18next";
@@ -17,12 +19,22 @@ export function AcademyTransferConfirmModal({
   riderName,
   newSalary,            // promote: frossen senior-løn; demote: ungdomsløn. null = stadig indlæses.
   currentSalary = null, // vises som delta (demote)
-  capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: akademi 3/8)
+  capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: mål-truppens loft, fx 5 / 12)
   capAfterLabel = null,
+  // #5568: demote — den ungdomstrup rytteren rykker ned i ("u23" | "junior").
+  // Styrer etiketten, så "5 / 12" står ud for "U23 team places" og ikke for
+  // hele akademiet. null = generisk akademi-etiket.
+  capSquad = null,
   racesCleared = null,  // demote: antal KOMMENDE løb der ryddes (entries slettes; kan være 0/null)
   racesOngoing = null,  // #3805: demote: antal IGANGVÆRENDE løb rytteren falder ud af (entry
                          // bevares, men rytteren er ikke længere løbsberettiget — kan være 0/null)
-  keepsContract = false, // promote: rytteren har allerede en kontrakt (#3620)
+  // Rytteren har allerede en komplet kontrakt, så flytningen arver den UÆNDRET
+  // i stedet for at skrive en ny. Gælder BEGGE retninger: promote siden #3620,
+  // demote siden #4589/#4582 (én regel begge veje, ejer-beslutning 4/9).
+  // Promote udleder flaget frontend-side (keepsExistingContractOnPromote);
+  // demote får det fra academy-demote-quote-routens `keepsContract`, samme
+  // prædikat backend selv grener på (#4582).
+  keepsContract = false,
   onCancel,
   onConfirm,
   busy = false,
@@ -45,7 +57,12 @@ export function AcademyTransferConfirmModal({
   const salaryLoading = newSalary == null;
   const newSalaryNum = Number(newSalary);
   const curSalaryNum = currentSalary != null ? Number(currentSalary) : null;
-  const hasSalaryDelta = curSalaryNum != null && Number.isFinite(newSalaryNum);
+  // #4582: arver demote kontrakten, ER de to tal det samme tal — en "nuværende
+  // løn"-række under en identisk "ny løn"-række lover en ændring der ikke sker
+  // og inviterer spilleren til at lede efter forskellen. Så: én række, og
+  // etiketten siger selv at lønnen er uændret.
+  const keepsContractOnDemote = !isPromote && keepsContract;
+  const hasSalaryDelta = curSalaryNum != null && Number.isFinite(newSalaryNum) && !keepsContractOnDemote;
   const racesNum = Number(racesCleared);
   const showRaces = !isPromote && Number.isFinite(racesNum) && racesNum > 0;
   const ongoingNum = Number(racesOngoing);
@@ -76,7 +93,11 @@ export function AcademyTransferConfirmModal({
           {/* Ny løn (begge retninger). Demote viser delta fra nuværende. */}
           <div className="flex items-center justify-between px-3 py-2">
             <dt className="text-cz-3">
-              {isPromote ? t("academy:transferModal.seniorSalaryLabel") : t("academy:transferModal.youthSalaryLabel")}
+              {isPromote
+                ? t("academy:transferModal.seniorSalaryLabel")
+                : keepsContractOnDemote
+                  ? t("academy:transferModal.unchangedSalaryLabel")
+                  : t("academy:transferModal.youthSalaryLabel")}
             </dt>
             <dd className="font-mono font-bold text-cz-1">
               {salaryLoading ? "..." : `${formatNumber(newSalaryNum)} CZ$`}
@@ -92,7 +113,13 @@ export function AcademyTransferConfirmModal({
           {capLabel != null && capAfterLabel != null && (
             <div className="flex items-center justify-between px-3 py-2">
               <dt className="text-cz-3">
-                {isPromote ? t("academy:transferModal.seniorCapLabel") : t("academy:transferModal.academyCapLabel")}
+                {isPromote
+                  ? t("academy:transferModal.seniorCapLabel")
+                  : capSquad === "u23"
+                    ? t("academy:transferModal.u23CapLabel")
+                    : capSquad === "junior"
+                      ? t("academy:transferModal.juniorCapLabel")
+                      : t("academy:transferModal.academyCapLabel")}
               </dt>
               <dd className="font-mono text-cz-2">
                 {capLabel} <span className="text-cz-3" aria-hidden="true">&rarr;</span>{" "}
@@ -122,13 +149,28 @@ export function AcademyTransferConfirmModal({
 
         {/* Konsekvens-note pr. retning. Promote har to sandheder efter #3620:
             har rytteren allerede en kontrakt, regenereres den IKKE, så lønnen
-            bliver hverken erstattet eller genberegnet. #3805: demote har nu to
-            sandheder også — er rytteren midt i et løb, må teksten sige at han
-            udgår af DET løb (ikke kun "kommende løb"), ellers underrapporterer
-            den præcis som den bug der blev rapporteret. */}
+            bliver hverken erstattet eller genberegnet. #3805: demote har to
+            sandheder på løbs-aksen — er rytteren midt i et løb, må teksten sige
+            at han udgår af DET løb (ikke kun "kommende løb"), ellers
+            underrapporterer den præcis som den bug der blev rapporteret.
+            #4582: demote har nu ogsaa to sandheder på KONTRAKT-aksen. Den var
+            selve bugget: 3 spillere så lønnen stige 17k → 22k ved en flytning
+            ned i akademiet (1/9), og dialogen sagde intet om kontrakten
+            overhovedet. Backend arver nu kontrakten (#4589), men en rettelse
+            spilleren ikke kan SE i det øjeblik han bekræfter, er ikke en
+            rettelse af den tvivl han meldte. De to akser er uafhængige, så
+            teksten vælges af dem begge (4 kombinationer, 4 nøgler) — en note
+            der taber den ene for at nævne den anden ville underrapportere
+            igen. */}
         <p className="text-cz-3 text-xs mb-4">
           {!isPromote
-            ? (showOngoing ? t("academy:transferModal.demoteNoteOngoing") : t("academy:transferModal.demoteNote"))
+            ? keepsContractOnDemote
+              ? (showOngoing
+                  ? t("academy:transferModal.demoteNoteKeepsContractOngoing")
+                  : t("academy:transferModal.demoteNoteKeepsContract"))
+              : (showOngoing
+                  ? t("academy:transferModal.demoteNoteOngoing")
+                  : t("academy:transferModal.demoteNote"))
             : keepsContract
               ? t("academy:transferModal.promoteNoteKeepsContract")
               : t("academy:transferModal.promoteNote")}

@@ -38,7 +38,16 @@ if (!fs.existsSync(path.join(DIST, "index.html"))) {
   process.exit(1);
 }
 
-const serve = sirv(DIST, { single: true, etag: true, dev: true });
+// #5494: SPA-fallbacken er app.html, ikke index.html. Sådan gør produktionen:
+// Vercel matcher filsystemet først (dist/index.html for "/", dist/<rute>/
+// index.html for de prerendrede offentlige ruter) og rewriter FØRST derefter
+// alt andet til /app.html (frontend/vercel.json). Med `single: true` faldt
+// e2e-serveren tilbage til dist/index.html, så en app-rute som /dashboard fik
+// den prerendrede forsides HTML — inklusive dens <title> og canonical. Det er
+// en false-green-kilde for alt head-relateret og blev synligt da forsiden fik
+// en rigtig titel i server-HTML (#5494). app.html er samme fil som før
+// prerenderen skrev index.html, så alt andet er uændret.
+const serve = sirv(DIST, { single: "app.html", etag: true, dev: true });
 const server = http.createServer(serve);
 // Keep-alive-racet (maalt 1/9, run 33510693713): Node lukker idle keep-alive-
 // sockets efter 5s (default). Genbruger browseren socketen i praecis dét

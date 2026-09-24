@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T15:19:06.419Z",
-  "main_sha": "0daee3c219b5ccc6b8cd25f237a6f20ffadcf592",
+  "generated_at": "2026-09-23T00:49:34.520Z",
+  "main_sha": "ee5b304a33a0d57efc249ec5f05fc070543021c1",
   "population_file": "backend/scripts/baselines/population-snapshot-2026-09-07.json",
   "population_file_sha256_16": "d59b8cf3d03b2d71",
   "population_riders": 5955,
@@ -10,7 +10,9 @@
   "seeds": [
     "s1",
     "s2",
-    "s3"
+    "s3",
+    "s4",
+    "s5"
   ],
   "field_size": 180,
   "order_mode": "none",
@@ -22,25 +24,25 @@
       "band_label": "80.0%-95.0%",
       "source": "#3917-maalingen (mor-spec §5: \"80-95% af feltet paa vinderens tid\")",
       "v3": {
-        "value": 0.01969004994880819,
-        "sampleCount": 96,
+        "value": 0.02072013289831579,
+        "sampleCount": 160,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 0.01847470290604692,
-          "max": 0.020571844721782178,
-          "seeds": 3
+          "max": 0.025137443900434413,
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 0.8802662037037036,
-        "sampleCount": 96,
+        "value": 0.881111111111111,
+        "sampleCount": 160,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0.8590277777777775,
           "max": 0.914236111111111,
-          "seeds": 3
+          "seeds": 5
         }
       }
     },
@@ -50,25 +52,25 @@
       "band_label": "<= 0.5",
       "source": "#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)",
       "v3": {
-        "value": 0.5633577009491794,
-        "sampleCount": 42,
+        "value": 0.584089011041541,
+        "sampleCount": 70,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 0.4653333333333333,
-          "max": 0.6145374449339207,
-          "seeds": 3
+          "max": 0.6164556962025316,
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 0.43681295616115284,
-        "sampleCount": 42,
+        "value": 0.3946450552071542,
+        "sampleCount": 70,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.29675516160832993,
-          "max": 0.5851369215330575,
-          "seeds": 3
+          "min": 0.241330216036302,
+          "max": 0.5816966345033545,
+          "seeds": 5
         }
       }
     },
@@ -86,13 +88,13 @@
       },
       "v4": {
         "value": 20,
-        "sampleCount": 1515,
+        "sampleCount": 2563,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 20,
           "max": 20,
-          "seeds": 3
+          "seeds": 5
         }
       }
     },
@@ -102,25 +104,25 @@
       "band_label": "spearman > 0.2",
       "source": "#3965-harnesset (mor-spec §5)",
       "v3": {
-        "value": 0.7562246297524945,
-        "sampleCount": 51,
+        "value": 0.7521182154236045,
+        "sampleCount": 85,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.7510988295296265,
+          "min": 0.7447972158410814,
           "max": 0.7623701985520639,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 0.8316267300412933,
-        "sampleCount": 51,
+        "value": 0.8315478176430384,
+        "sampleCount": 85,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.827808164238697,
-          "max": 0.8359575523656201,
-          "seeds": 3
+          "min": 0.8240639660584346,
+          "max": 0.8387215676260099,
+          "seeds": 5
         }
       }
     },
@@ -130,25 +132,25 @@
       "band_label": "loeft >= 0.03 (FORSLAG, ikke ejer-godkendt)",
       "source": "FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 \"brostensevnen taeller kun paa etaper med brosten/grus\"; taersklen er valgt af denne harness, ikke ejer-godkendt",
       "v3": {
-        "value": 0.2939165717161622,
-        "sampleCount": 9,
+        "value": 0.29460161870854423,
+        "sampleCount": 15,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0.2768651846652481,
           "max": 0.3239601539337813,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 0.09275008242444864,
-        "sampleCount": 9,
+        "value": 0.062150025420766086,
+        "sampleCount": 15,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.03814532662610559,
-          "max": 0.14278460183584007,
-          "seeds": 3
+          "min": -0.009563441814938511,
+          "max": 0.1426979830916434,
+          "seeds": 5
         }
       }
     },
@@ -158,25 +160,25 @@
       "band_label": "25.0%-40.0%",
       "source": "v3-spec §2 + ejer-valg 20/8 (mor-spec §5: \"i dag 80-88%\")",
       "v3": {
-        "value": 0.3900709219858156,
-        "sampleCount": 423,
+        "value": 0.3843971631205674,
+        "sampleCount": 705,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.3617021276595745,
+          "min": 0.3475177304964539,
           "max": 0.4397163120567376,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 0.6264775413711584,
-        "sampleCount": 423,
+        "value": 0.6156028368794326,
+        "sampleCount": 705,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 0.5886524822695035,
-          "max": 0.6595744680851063,
-          "seeds": 3
+          "max": 0.6453900709219859,
+          "seeds": 5
         }
       }
     },
@@ -187,24 +189,24 @@
       "source": "v3-spec §2 (mor-spec §5: \"4+ fra samme hold i top 10 sjaeldent, < 3%\")",
       "v3": {
         "value": 0,
-        "sampleCount": 423,
+        "sampleCount": 705,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0,
           "max": 0,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
         "value": 0,
-        "sampleCount": 423,
+        "sampleCount": 705,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0,
           "max": 0,
-          "seeds": 3
+          "seeds": 5
         }
       }
     },
@@ -214,14 +216,14 @@
       "band_label": "race:gate-baand (ingen fast tal her — se gate-konfig)",
       "source": "race:gate + #3426 (mor-spec §5)",
       "v3": {
-        "value": 0.21749408983451538,
-        "sampleCount": 423,
+        "value": 0.21702127659574472,
+        "sampleCount": 705,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0.16312056737588654,
           "max": 0.2553191489361702,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
@@ -238,25 +240,25 @@
       "band_label": ">= 90.0%",
       "source": "race:gate + #3149 (mor-spec §5: \"sprinter-vinderrate paa flat >= 90%\")",
       "v3": {
-        "value": 0.8476190476190476,
-        "sampleCount": 105,
+        "value": 0.8628571428571428,
+        "sampleCount": 175,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 0.8,
           "max": 0.9142857142857143,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 1,
-        "sampleCount": 105,
+        "value": 0.9885714285714287,
+        "sampleCount": 175,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 1,
+          "min": 0.9428571428571428,
           "max": 1,
-          "seeds": 3
+          "seeds": 5
         }
       }
     },
@@ -266,25 +268,25 @@
       "band_label": "spearman > 0.3",
       "source": "race:gate + #3149 (mor-spec §5: \"ITT-korrelation synlig\" — tærskel valgt af denne harness)",
       "v3": {
-        "value": 0.7514862945671857,
-        "sampleCount": 36,
+        "value": 0.7608365537062804,
+        "sampleCount": 60,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0.7447803598868137,
-          "max": 0.7566191938997023,
-          "seeds": 3
+          "max": 0.7774783692308279,
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 0.8330112642569731,
-        "sampleCount": 36,
+        "value": 0.8348429714088637,
+        "sampleCount": 60,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 0.8086374709469785,
           "max": 0.8454537559007026,
-          "seeds": 3
+          "seeds": 5
         }
       }
     },
@@ -295,24 +297,24 @@
       "source": "#2413-kravet (mor-spec §5)",
       "v3": {
         "value": 13,
-        "sampleCount": 396,
+        "sampleCount": 660,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 13,
           "max": 13,
-          "seeds": 3
+          "seeds": 5
         }
       },
       "v4": {
         "value": 10,
-        "sampleCount": 387,
+        "sampleCount": 645,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 10,
           "max": 10,
-          "seeds": 3
+          "seeds": 5
         }
       }
     },
@@ -322,25 +324,25 @@
       "band_label": "180-240s (~3-4 min)",
       "source": "#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)",
       "v3": {
-        "value": 108.61904761904763,
-        "sampleCount": 63,
+        "value": 110.94285714285715,
+        "sampleCount": 105,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 107.14285714285714,
-          "max": 110.61904761904762,
-          "seeds": 3
+          "max": 116,
+          "seeds": 5
         }
       },
       "v4": {
-        "value": 205.95714285714288,
-        "sampleCount": 63,
+        "value": 197.23504761904792,
+        "sampleCount": 105,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 197.40190476190452,
-          "max": 221.71476190476253,
-          "seeds": 3
+          "min": 164.06238095238137,
+          "max": 220.4314285714295,
+          "seeds": 5
         }
       }
     },

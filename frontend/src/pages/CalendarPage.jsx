@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../lib/actionTelemetry.js";
-import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, InfoIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import { densityForDivision } from "../lib/calendarTierDensity";
 import { toTerrainBucket } from "../lib/terrainBucket";
@@ -138,18 +138,30 @@ export default function CalendarPage() {
 
   const todayISO = useMemo(() => copenhagenTodayISO(), []);
 
+  // #5405: serveren siger at holdets division for DEN VISTE sæson ikke er afgjort
+  // endnu (sæsonen er 'upcoming' — op-/nedrykningen sker først ved sæsonskiftet).
+  // Der findes derfor ingen sand "mit holds løb"-markering at vise: fanen, filteret
+  // og chip-fremhævningen udgår alle sammen, og siden siger hvorfor i én linje.
+  // Samme felt og samme begrundelse som planlæggeren (#3018 → SeasonPlannerPage).
+  const divisionPending = Boolean(data?.divisionPending);
+  const visibleTabs = divisionPending ? TABS.filter((k) => k !== "mine") : TABS;
+  // "Mit hold" kan stå som valgt tab fra en aktiv sæson da manageren skiftede
+  // sæson. Vi nulstiller ikke state (så valget er der igen når han skifter
+  // tilbage) — vi lader bare en ventende division vinde over det.
+  const effectiveTab = divisionPending && tab === "mine" ? "all" : tab;
+
   // The active division for filtering: tab "divisions" honours the dropdown; "mine"
   // pins to the player's own division; "all" shows every division.
   const activeDivision = useMemo(() => {
-    if (tab === "all") return null;
-    if (tab === "mine") return ownDivisionTier(data);
+    if (effectiveTab === "all") return null;
+    if (effectiveTab === "mine") return ownDivisionTier(data);
     return division; // "divisions" tab → dropdown value
-  }, [tab, division, data]);
+  }, [effectiveTab, division, data]);
 
   // #2756: pulje-filteret virker kun sammen med en KONKRET division (samme regel
   // som Resultat-hubbens hasPoolSubtabs, #3197) — "Alle divisioner"/"Mit hold"/
   // "Alle hold" har ingen mening at snævre til én gruppe.
-  const activePool = tab === "divisions" ? pool : null;
+  const activePool = effectiveTab === "divisions" ? pool : null;
 
   // Division-vælger: nulstiller ALTID pulje-valget — en pulje fra forrige division
   // giver ikke mening under den nye (samme reset-regel som ResultaterPage #3197).
@@ -161,7 +173,9 @@ export default function CalendarPage() {
 
   // "Mit hold"-tab is the strongest filter: only the player's own races. The legend
   // checkbox ("Mit holds løb") provides the same filter on the other tabs.
-  const effectiveMineOnly = tab === "mine" || mineOnly;
+  // #5405: med en ventende division er der ingen egne løb at filtrere på — et
+  // aktivt filter ville tømme kalenderen helt og påstå at manageren ingen løb har.
+  const effectiveMineOnly = !divisionPending && (effectiveTab === "mine" || mineOnly);
 
   // Hver etape er sin egen kalender-event (på sin dag), så et etapeløb vises på hver dag det køres.
   const allStageEvents = useMemo(() => expandStageEvents(data?.entries || []), [data]);
@@ -203,7 +217,7 @@ export default function CalendarPage() {
           t={t} division={division} onDivision={setDivision} data={data}
           availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange}
         />
-        <div role="alert">
+        <div>
           <ErrorState
             title={t("error.title")}
             description={loadError.kind === "auth" ? t("error.session") : t("error.description")}
@@ -260,17 +274,28 @@ export default function CalendarPage() {
         onSeasonChange={onSeasonChange}
       />
 
+      {/* #5405: ÉN linje kontekst (TASTE P9) i sidens egen 13px/--text-2-stil —
+          ingen ny komponent, intet kort, ingen accent-bjælke. Den forklarer
+          hvorfor "Mit hold"-fanen og -filteret ikke er der lige nu; uden den
+          ville fladen bare være tavs om en markering der plejer at være der. */}
+      {divisionPending && (
+        <p className="mb-4 flex items-start gap-1.5 text-[13px] text-cz-2" data-testid="calendar-division-pending">
+          <InfoIcon size={14} aria-hidden="true" className="mt-[3px] shrink-0 text-cz-3" />
+          <span>{t("divisionPending", { number: data.season.number })}</span>
+        </p>
+      )}
+
       {/* Tab group + month navigation */}
       <div className="mt-5 mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-cz-border pb-3">
         <div className="flex items-center gap-1" role="tablist" aria-label={t("title")}>
-          {TABS.map((key) => (
+          {visibleTabs.map((key) => (
             <button
               key={key}
               role="tab"
-              aria-selected={tab === key}
+              aria-selected={effectiveTab === key}
               onClick={() => setTab(key)}
               className={`px-3 py-1.5 text-sm transition-colors border-b-2 -mb-[calc(0.75rem+1px)]
-                ${tab === key
+                ${effectiveTab === key
                   ? "border-cz-accent text-cz-1 font-semibold"
                   : "border-transparent text-cz-2 hover:text-cz-1"}`}
             >
@@ -303,7 +328,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Division dropdown only matters on the "divisions" tab */}
-      {tab === "divisions" && (
+      {effectiveTab === "divisions" && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-xs uppercase tracking-[0.12em] text-cz-3">{t("divisionMenu.label")}</span>
           <Select
@@ -401,8 +426,9 @@ export default function CalendarPage() {
             </span>
           ))}
         </div>
-        {/* The "mine only" filter is redundant on the "mine" tab (already filtered). */}
-        {tab !== "mine" && (
+        {/* The "mine only" filter is redundant on the "mine" tab (already filtered).
+            #5405: og meningsløst når divisionen for sæsonen ikke er afgjort. */}
+        {!divisionPending && effectiveTab !== "mine" && (
           <Checkbox
             id="cal-mine-only"
             checked={mineOnly}

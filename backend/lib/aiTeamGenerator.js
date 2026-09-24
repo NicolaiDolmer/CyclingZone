@@ -7,14 +7,18 @@
 // POLITIK (frosset, ejer-direktiv #1688):
 //   • tier 1 OG tier 2-puljer → fyld ALTID med AI op til POOL_TARGET_SIZE (24).
 //     (Toppen skal være levende selv før spillere er rykket op dertil.)
-//   • tier 3 OG tier 4-puljer → fyld med AI KUN i puljer med >=1 ægte manager.
-//     (Bunden/midten er bred; AI spildes ikke i tomme puljer der aldrig afvikler løb.)
+//   • tier 3-puljer → fyld med AI KUN i puljer med >=1 ægte manager.
+//     (Midten er bred; AI spildes ikke i tomme puljer der aldrig afvikler løb.)
+//   • tier 4-puljer (#5642, ejer 24/9, pyramide 1/2/4/4) → fyld ALTID, som tier 1/2.
+//     D4 har 4 aktive puljer fra S4 og skal have løb fra dag ét.
+//   • pensionerede puljer (league_divisions.retired_at, #5642: D4 E-H) → 0 AI.
 //
 // IDEMPOTENT: hver pulje top-up'es kun til target ud fra det LIVE antal — re-run
 // duplikerer aldrig. REMOVE-AI-WHEN-MANAGER-ARRIVES (reconcile): når en ægte manager
 // joiner en pulje, trimmes overskuds-AI så pulje-størrelse <= target; ægte managere
-// tælles FØRST og fjernes ALDRIG. En tier-3/4-pulje der mister sin sidste manager
-// tømmes for AI (target falder til 0 → al AI trimmes).
+// tælles FØRST og fjernes ALDRIG. En tier-3-pulje der mister sin sidste manager
+// tømmes for AI (target falder til 0 → al AI trimmes); det samme gælder en
+// pensioneret pulje.
 //
 // DETERMINISTISK: holdnavne + per-hold rytter-seed udledes af basis-seed XOR
 // hash(pulje+indeks), så en re-run/replay giver identiske hold.
@@ -36,6 +40,8 @@ import {
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
+import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
+import { readPrimaryTypeMode } from "./primaryTypeModeFlag.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { teamInflightRaceIds } from "./aiTeamRaceObligations.js";
@@ -44,6 +50,10 @@ import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { isAiTeamRetireEnabled } from "./aiTeamRetireFlag.js";
 import { retireExcessAiTeamsForPool } from "./aiPoolRetirement.js";
 import { retireAiTeam, teamHasLiveTransferOffers } from "./aiTeamRetirement.js";
+// #5517: AI-hold allokeres KUN i seniorpuljer. En ungdomspulje (league_divisions.squad
+// <> 'senior') er ikke et sted et hold kan bo — holdets ungdomspulje er en separat FK
+// (teams.u23_league_division_id), ikke teams.league_division_id.
+import { withSeniorSquadScope } from "./squads.js";
 
 const INSERT_BATCH = 500;
 
@@ -64,16 +74,68 @@ function isAiTeam(team) {
 }
 
 // Politik: hvor mange AI skal en pulje have, givet antal ægte managere i den?
+//   pensioneret pulje (league_divisions.retired_at sat, #5642): altid 0.
 //   tier 1/2: altid op til target.
-//   tier 3/4: kun hvis >=1 manager — og da op til target (managere medregnes i feltet).
+//   tier 4 (bunden, #5642 / ejer 24/9 "D4 med AI fra dag ét"): altid op til target,
+//     også uden ægte managere — nye managers og comebacks lander her og skal have
+//     modstandere og løb fra første dag.
+//   tier 3: kun hvis >=1 manager — og da op til target (managere medregnes i feltet).
 // Eksporteret (#2407): aiTeamTrimHealSweep genbruger politikken som hard-gate
 // (sweep'en må aldrig slette en pulje under target).
-export function targetAiCountForPool(tier, realManagerCount, occupiedNonAi = realManagerCount) {
-  const alwaysFill = tier === MIN_DIVISION || tier === MIN_DIVISION + 1; // tier 1 og 2
+// SQL-spejl: plan_ai_pool_retirements (database/2026-09-25-4592-d4-retire-pools.sql).
+export function targetAiCountForPool(tier, realManagerCount, occupiedNonAi = realManagerCount, { retired = false } = {}) {
+  if (retired) return 0;
+  const alwaysFill = tier === MIN_DIVISION || tier === MIN_DIVISION + 1 || tier === MAX_DIVISION; // tier 1, 2 og 4
   if (alwaysFill) return Math.max(0, POOL_TARGET_SIZE - occupiedNonAi);
-  // tier 3/4: kun puljer med mindst én ægte manager.
+  // tier 3: kun puljer med mindst én ægte manager.
   if (realManagerCount <= 0) return 0;
   return Math.max(0, POOL_TARGET_SIZE - occupiedNonAi);
+}
+
+// #5642: league_divisions.retired_at. En pensioneret pulje (D4 E-H fra S4) findes
+// stadig som række, fordi historiske hold, stillinger og løb peger på den.
+export const POOL_RETIRED_COLUMN = "retired_at";
+
+/** Er puljen pensioneret? Manglende felt (projektion uden kolonnen, fixtures) = aktiv. */
+export function isPoolRetired(pool) {
+  return pool?.[POOL_RETIRED_COLUMN] != null;
+}
+
+/**
+ * Svarer databasen at league_divisions.retired_at ikke findes (42703)? Det sker kun i
+ * auto-migrate-vinduet, hvor backend'en er deployet før migrationen er applied. Samme
+ * dom som isMissingSquadColumnError (#5330): en PGRST204/stale schema-cache er IKKE et
+ * bevis for at kolonnen mangler, og dér fejler vi lukket.
+ */
+export function isMissingPoolRetiredColumnError(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+  if (!text.includes(POOL_RETIRED_COLUMN)) return false;
+  if (code === "PGRST204" || text.includes("schema cache")) return false;
+  if (code === "42703") return true;
+  return /does not exist|undefined column/.test(text);
+}
+
+/**
+ * Kør en league_divisions-læsning med `retired_at` i projektionen, og falder tilbage
+ * til en læsning uden kolonnen i auto-migrate-vinduet (før
+ * 2026-09-25-4592-d4-retire-pools.sql er applied findes ingen pensionerede puljer,
+ * så "alle aktive" er det korrekte svar). `run(extraColumns)` skal bygge en frisk
+ * builder ved hvert kald og tilføje `extraColumns` til sin select-streng.
+ * Fallback'et caches ikke: næste kald prøver kolonnen igen.
+ */
+export async function withPoolRetiredColumn(run) {
+  const extra = `, ${POOL_RETIRED_COLUMN}`;
+  let result;
+  try {
+    result = await run(extra);
+  } catch (err) {
+    if (!isMissingPoolRetiredColumnError(err)) throw err;
+    return run("");
+  }
+  if (result?.error && isMissingPoolRetiredColumnError(result.error)) return run("");
+  return result;
 }
 
 // Indsæt ÉT AI-hold i en pulje (deterministisk navn + seed), allokér dets 8-rytter-
@@ -452,11 +514,12 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
   const allocateSquadForTeam = deps.allocateSquadForTeam || defaultAllocateSquadForTeam;
   const baseSeed = (Number(seed) >>> 0);
 
-  const { data: pools, error: poolErr } = await supabase
-    .from("league_divisions")
-    .select("id, tier, pool_index, label")
-    .order("tier")
-    .order("pool_index");
+  const { data: pools, error: poolErr } = await withPoolRetiredColumn((retiredCol) =>
+    withSeniorSquadScope((senior) => senior(supabase
+      .from("league_divisions")
+      .select(`id, tier, pool_index, label${retiredCol}`))
+      .order("tier")
+      .order("pool_index")));
   if (poolErr) throw new Error(`league_divisions: ${poolErr.message}`);
   if (!pools || !pools.length) return { created: 0, removed: 0, pools: [] };
 
@@ -477,7 +540,7 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
     const realManagers = inPool.filter(isRealManager);
     const aiTeams = inPool.filter(isAiTeam);
     const targetAi = targetAiCountForPool(pool.tier, realManagers.length,
-      inPool.filter(t => !t.is_ai && !t.is_bank).length);
+      inPool.filter(t => !t.is_ai && !t.is_bank).length, { retired: isPoolRetired(pool) });
     const delta = targetAi - aiTeams.length;
 
     if (delta > 0) {
@@ -518,17 +581,31 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
 //   • tier 3/4: uændret clamp-vindue-sti (kerne+hale, lagdelt) — proven i prod.
 // Gælder KUN nye AI-hold; eksisterende AI-rosters er urørte (ejer-beslutning).
 // Indsætter med team_id sat (intet orphan-vindue). Deterministisk per-hold seed.
-async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, ordinal }) {
+// `generate` er kun en test-søm (#5327); produktionen bruger altid den ægte generator.
+async function defaultAllocateSquadForTeam(supabase, teamId, {
+  pool, baseSeed, ordinal, generate = generateFictionalRiders,
+}) {
   const referenceYear = LAUNCH_POPULATION.referenceYear;
   const existingFoldedNames = await fetchExistingFoldedNamesForAi(supabase);
   const tierFractions = aiTierFractionsForTier(pool.tier);
+
+  // #5443: modellen læses ÉN gang for HELE denne allokering og sendes til
+  // begge trin. Cap-gaten nedenfor og deriveForRiderIds til sidst skriver til
+  // samme loft-kontrakt (#2065-klassen): læste de hver sin gang, kunne et flip
+  // af app_config midt imellem lade en kandidat passere gaten på én model og
+  // få persisteret en værdi fra en anden — over tier-loftet.
+  const valuationModel = await loadValuationModel(supabase);
+  const productionValuationModel = await loadProductionValueModel(supabase);
+  // #5327: samme mønster for primær-type-kilden — én læsning, sendt til alle
+  // generator-kald i denne allokering (cap-batchen hhv. kerne + hale).
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
 
   let poolPayload;
   if (tierFractions) {
     const seed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
     poolPayload = generateAiRiderBatchWithCap({
       count: AI_SQUAD.TOTAL_SIZE, tierFractions, valueCap: aiValueCapForTier(pool.tier),
-      seed, referenceYear, existingFoldedNames,
+      seed, referenceYear, existingFoldedNames, valuationModel, generate, primaryTypeMode,
     }).map((r) => ({ ...r, team_id: teamId }));
   } else {
     const { core: coreWindow, tail: tailWindow } = aiStatWindowsForTier(pool.tier);
@@ -540,11 +617,11 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
     const tailSeed = deriveTeamSeed((baseSeed + 1688 + 7) >>> 0, `${pool.id}:${ordinal}`);
     const corePayload = buildWeakStarterPool({
       count: AI_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
-      window: coreWindow, generate: generateFictionalRiders,
+      window: coreWindow, generate, primaryTypeMode,
     }).map((r) => ({ ...r, team_id: teamId }));
     const tailPayload = buildWeakStarterPool({
       count: AI_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
-      window: tailWindow, generate: generateFictionalRiders,
+      window: tailWindow, generate, primaryTypeMode,
     }).map((r) => ({ ...r, team_id: teamId }));
     poolPayload = [...corePayload, ...tailPayload];
   }
@@ -556,8 +633,10 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
     if (error) throw new Error(`AI starter-squad insert ${teamId}: ${error.message}`);
     insertedIds.push(...(data || []).map((r) => r.id));
   }
-  // Data-hale-garanti.
-  await deriveForRiderIds(supabase, insertedIds, { dryRun: false });
+  // Data-hale-garanti. #5443: SAMME model som cap-gaten ovenfor brugte.
+  await deriveForRiderIds(supabase, insertedIds, {
+    dryRun: false, valuationModel, productionValuationModel,
+  });
   return insertedIds;
 }
 
@@ -589,10 +668,10 @@ export async function reconcileAiTeamsForPool({ supabase, poolId, seed = LAUNCH_
   const allocateSquadForTeam = deps.allocateSquadForTeam || defaultAllocateSquadForTeam;
   const baseSeed = (Number(seed) >>> 0);
 
-  const { data: poolRows, error: poolErr } = await supabase
+  const { data: poolRows, error: poolErr } = await withPoolRetiredColumn((retiredCol) => supabase
     .from("league_divisions")
-    .select("id, tier, pool_index, label")
-    .eq("id", poolId);
+    .select(`id, tier, pool_index, label${retiredCol}`)
+    .eq("id", poolId));
   if (poolErr) throw new Error(`league_divisions (pulje ${poolId}): ${poolErr.message}`);
   const pool = (poolRows || [])[0];
   if (!pool) {
@@ -611,7 +690,7 @@ export async function reconcileAiTeamsForPool({ supabase, poolId, seed = LAUNCH_
   const realManagers = teamsInPool.filter(isRealManager);
   const aiTeams = teamsInPool.filter(isAiTeam);
   const targetAi = targetAiCountForPool(pool.tier, realManagers.length,
-    teamsInPool.filter(t => !t.is_ai && !t.is_bank).length);
+    teamsInPool.filter(t => !t.is_ai && !t.is_bank).length, { retired: isPoolRetired(pool) });
   const delta = targetAi - aiTeams.length;
 
   let created = 0;

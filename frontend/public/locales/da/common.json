@@ -11,6 +11,8 @@
     "item": {
       "dashboard": "Dashboard",
       "team": "Mit Hold",
+      "u23Team": "U23-hold",
+      "juniorTeam": "Juniorhold",
       "training": "Daglig træning",
       "planning": "Planlægning",
       "academy": "Akademi",
@@ -118,5 +120,6 @@
     "fullTable": "Fuld tabel",
     "columnsLabel": "Vælg kolonner",
     "moreRight": "Flere kolonner til højre"
-  }
+  },
+  "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen."
 }

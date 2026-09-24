@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
+import DiscordJoinLink from "../components/DiscordJoinLink.jsx"; // #2761
 import ActivityPage from "./ActivityPage.jsx";
 import MessagesPanel from "../components/messages/MessagesPanel.jsx"; // #3200
 import { fetchUnreadSummary } from "../lib/messagesApi.js"; // #3200
@@ -12,7 +13,8 @@ import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
-import { resolveNotificationLink } from "../lib/notificationLink";
+import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
+import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -25,6 +27,7 @@ import {
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
   ClipboardIcon, PodiumIcon, BellIcon, SearchIcon, InboxIcon,
   ChevronRightIcon, ChevronDownIcon, InfoIcon, MessageIcon, UserIcon,
+  DiscordIcon, Link,
 } from "../components/ui";
 
 // #5130: et link uden for appen (Discord-invite) — klik åbner en ny fane i
@@ -32,6 +35,40 @@ import {
 // fuld https://-URL. Ren funktion så adfærden er testbar uden DOM.
 function isExternalNotificationLink(link) {
   return typeof link === "string" && /^https?:\/\//.test(link);
+}
+
+// #2761 (ejer-go 23/9 "Ret foerst", foer backfill-udsendelsen): hele kortet
+// var klikbart uden en synlig knap, saa det lignede en almindelig besked.
+// Kortet faar nu (1) en linje om manager-forummet til den der hellere vil
+// blive paa siden, og (2) en synlig, ikke-guld knap der aabner invitationen.
+// Den godkendte besked fra 15/9 er uroert; begge dele er egne noegler under
+// notif.discordWelcome. Klik paa knappen/forum-linket maa ikke boble op til
+// kortets onClick (det ville aabne Discord en gang til eller navigere forkert).
+function DiscordWelcomeExtras({ notification, onRead, tBackend }) {
+  const markIfUnread = (e) => {
+    e.stopPropagation();
+    if (!notification.is_read) onRead(notification.id);
+  };
+  return (
+    <>
+      <p className="text-cz-2 text-xs mt-1.5 leading-relaxed">
+        <Trans
+          t={tBackend}
+          i18nKey="notif.discordWelcome.forumLine"
+          components={{
+            forum: <Link as={RouterLink} to="/forum" onClick={markIfUnread} />,
+          }}
+        />
+      </p>
+      <DiscordJoinLink
+        variant="secondary"
+        source="notification_button"
+        label={tBackend("notif.discordWelcome.cta")}
+        onClick={markIfUnread}
+        className="mt-3"
+      />
+    </>
+  );
 }
 
 // Role key for PENDING_ROLE — mapped to i18n via pending.role.<key>
@@ -101,6 +138,10 @@ const TYPE_CONFIG = {
   // #2180/#3310: 36t-varsel uden manuel udtagelse — deep-link til løbets
   // selection-panel; kalender-boardet som fallback uden raceId.
   selection_warning:         { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/planning?tab=calendar" },
+  // #4759: assistenten udtog en HELT tom trup for holdet (sen redning eller
+  // late_fill/opt_in-sweepen) — informativ, ikke en advarsel (truppen ER
+  // udtaget), samme raceId-metadata-mønster som selection_warning ovenfor.
+  assistant_filled_squad:    { Icon: InfoIcon,          color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/planning?tab=calendar" },
   // #3334: chefscout-skift-forklaring — ingen enkelt rytter at linke til
   // (rammer HELE holdets rapporter), så CTA'en er Scouting-centralen.
   scout_changed:             { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },
@@ -123,7 +164,15 @@ const TYPE_CONFIG = {
   // #5130: én gang pr. hold — inviterer til Discord-communityet. Eksternt
   // link (ikke en intern rute), åbnes i ny fane af den generiske
   // isExternalNotificationLink-gren i klik-handleren nedenfor.
-  discord_welcome:           { Icon: UserIcon,         color: "text-cz-discord", bg: "bg-cz-discord/10 border-cz-discord/20", link: DISCORD_INVITE_URL },
+  // #2761: Discord-maerket (stroke) i stedet for person-ikonet, og kortet faar
+  // en synlig knap + en linje om forummet via DiscordWelcomeExtras nedenfor.
+  discord_welcome:           { Icon: DiscordIcon,      color: "text-cz-discord", bg: "bg-cz-discord/10 border-cz-discord/20", link: DISCORD_INVITE_URL },
+
+  // #5259: svaret paa en beta-ansoegning. Linket gaar til profilen — det er
+  // DER beta-kortet staar, og der spilleren kan traede ud igen eller spoerge
+  // en gang til efter et afslag. Uden entry'en ville beskeden falde til
+  // DEFAULT_TYPE_CONFIG og give et doedt klik (#4501).
+  beta_access_decided:       { Icon: UserIcon,         color: "text-cz-info",    bg: "bg-cz-info/10 border-cz-info/20",         link: "/profile" },
 
   // #4501: de 19 typer nedenfor fandtes i backendens NOTIFICATION_TYPES, men
   // manglede en TYPE_CONFIG-entry og faldt derfor til DEFAULT_TYPE_CONFIG:
@@ -137,7 +186,8 @@ const TYPE_CONFIG = {
   academy_drip:              { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
   academy_signed:            { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
   academy_rejected:          { Icon: XIcon,            color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/academy" },
-  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
+  // #2491: valget bor paa Graduation Day-siden, ikke laengere paa Academy.
+  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy/graduation" },
   academy_graduated:         { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
   // Forfremmelse/degradering flytter rytteren mellem akademi og seniortrup —
   // truppen er stedet hvor spilleren ser resultatet.
@@ -159,6 +209,18 @@ const TYPE_CONFIG = {
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
+
+// #4981: auction_outbid (du MISTEDE føringen) og auction_proxy_outbid (dit
+// autobud beholdt den) samles nu i én bøtte pr. auktion. Gruppens titel er den
+// nyeste besked, så en BLANDET bøtte skal sige hvor mange af de øvrige der var
+// reelle føringstab. Er bøtten ren, siger titlen allerede sandheden om dem
+// alle, og linjen ville kun være støj — derfor 0.
+function lostLeadCount(entry) {
+  const counts = entry.type_counts ?? {};
+  const lost = counts.auction_outbid ?? 0;
+  const held = counts.auction_proxy_outbid ?? 0;
+  return lost > 0 && held > 0 ? lost : 0;
+}
 
 const MINE_FILTER_TYPES = {
   all:       null,
@@ -654,7 +716,7 @@ export default function NotificationsPage() {
           {notifLoading ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : notifLoadError ? (
-            <Section role="alert">
+            <Section>
               <ErrorState
                 description={t("error.notifications")}
                 action={<Button size="sm" variant="secondary" onClick={loadNotifications}>{t("error.retry")}</Button>}
@@ -728,6 +790,9 @@ export default function NotificationsPage() {
                             {renderNotificationMessage(n, tBackend)}
                           </RiderLink>
                         </p>
+                        {n.type === "discord_welcome" && (
+                          <DiscordWelcomeExtras notification={n} onRead={markRead} tBackend={tBackend} />
+                        )}
                         <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
@@ -750,6 +815,14 @@ export default function NotificationsPage() {
                 const isExpanded = expandedAggregates.has(entry.key);
                 const allRead = !entry.any_unread;
                 const ids = entry.items.map(i => i.id);
+                // #5384-followup (ejer 19/9): en samlet løbs-linje er ÉN
+                // hændelse — løbet — ikke en stak gentagelser. Derfor ingen
+                // tæller-badge, intet "(×N)" og ÉN tidsangivelse. Auktions-
+                // bøtterne er uændrede: dér ER N'et selve pointen (hvor mange
+                // gange blev du overbudt).
+                const isRaceCompleted = entry.group === "race_completed";
+                // #5417: en samlet løbslinje går til LØBET, ikke resultat-hubben.
+                const aggregateLink = resolveAggregateLink(entry, config.link);
                 return (
                   <div key={entry.key}
                     className={`rounded-cz border transition-colors
@@ -764,18 +837,56 @@ export default function NotificationsPage() {
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
                         flex-shrink-0 mt-0.5 relative ${config.color}`}>
                         {AggIcon ? <AggIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
-                          bg-cz-accent text-cz-on-accent text-3xs font-bold flex items-center justify-center leading-none">
-                          {entry.count > 99 ? "99+" : entry.count}
-                        </span>
+                        {!isRaceCompleted && (
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
+                            bg-cz-accent text-cz-on-accent text-3xs font-bold flex items-center justify-center leading-none">
+                            {entry.count > 99 ? "99+" : entry.count}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${allRead ? "text-cz-2" : "text-cz-1"}`}>
-                          {renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)} <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span>
+                          {/* #5384-followup: linjens ansigt er LØBET når navnet
+                              findes som struktureret data (groupNotifications'
+                              race_name). Ellers resultat-beskedens egen titel —
+                              vi parser aldrig løbsnavnet ud af fritekst. */}
+                          {entry.race_name
+                            ? t("aggregate.raceResultTitle", { race: entry.race_name })
+                            : renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)}
+                          {!isRaceCompleted && (
+                            <> <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span></>
+                          )}
                         </p>
                         <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage({ metadata: entry.sample_metadata, message: entry.sample_message }, tBackend)}</p>
+                        {/* #5384-followup: hver career-milepæl i bøtten får sin
+                            egen dæmpede linje, synlig UDEN at folde ud — det er
+                            netop den sætning ("X won for the first time in Y")
+                            der før forsvandt bag et tæller-tal. Ren tekst, ingen
+                            RiderLink: hele kortet er klik-fladen (markér læst +
+                            fold ud), og et link midt i den ville stjæle klikket.
+                            Rytterprofilen er stadig ét klik væk i den udfoldede
+                            liste nedenfor. */}
+                        {entry.extra_items?.length > 0 && (
+                          <div className="mt-1 flex flex-col gap-0.5">
+                            {entry.extra_items.map(item => (
+                              <p key={item.id} className="text-cz-3 text-xs leading-relaxed">
+                                {renderNotificationMessage(item, tBackend)}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-cz-3 text-xs mt-1.5">
-                          {t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
+                          {isRaceCompleted
+                            ? timeAgo(entry.latest_at)
+                            : t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
+                          {/* #4981: bøtten "auction_bidding" blander auction_outbid (du
+                              MISTEDE føringen) og auction_proxy_outbid (dit autobud
+                              beholdt den). Titlen følger den nyeste besked, så en blandet
+                              bøtte må sige hvor mange af de andre der var reelle tab —
+                              ellers kunne "Dit autobud beholdt føringen (×4)" skjule dem. */}
+                          {lostLeadCount(entry) > 0 && (
+                            <> · {t("aggregate.lostLeadShare", { count: lostLeadCount(entry) })}</>
+                          )}
                         </p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
@@ -809,10 +920,15 @@ export default function NotificationsPage() {
                             </li>
                           ))}
                         </ul>
-                        {config.link && (
+                        {aggregateLink && (
                           <Button variant="secondary" size="sm" className="self-end inline-flex items-center gap-1"
-                            onClick={e => { e.stopPropagation(); navigate(config.link); }}>
-                            {t("actions.viewAuction")} <ChevronRightIcon size={14} aria-hidden="true" />
+                            onClick={e => { e.stopPropagation(); navigate(aggregateLink); }}>
+                            {/* #5384: bøtten dækker nu også race_completed (race_result/
+                                stage_result/career_milestone), ikke kun auktioner.
+                                Teksten afgøres af DESTINATIONEN, ikke bøtte-navnet —
+                                se aggregateCtaKey (bid_received linker også til
+                                /auctions og skal blive ved med at hedde "Vis auktion"). */}
+                            {t(aggregateCtaKey(aggregateLink))} <ChevronRightIcon size={14} aria-hidden="true" />
                           </Button>
                         )}
                       </div>
@@ -901,7 +1017,7 @@ export default function NotificationsPage() {
           {feedLoading ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : feedLoadError ? (
-            <Section role="alert">
+            <Section>
               <ErrorState
                 description={t("error.feed")}
                 action={<Button size="sm" variant="secondary" onClick={loadFeed}>{t("error.retry")}</Button>}

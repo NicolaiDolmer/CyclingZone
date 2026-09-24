@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { generateLaunchPopulation } from "../../lib/fictionalLaunchPopulation.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
+import { isBornFromPriors, deriveBirthAbilities } from "../../lib/riderBirthPriors.js";
 import { computeRiderTypes } from "../../lib/riderTypes.js";
 import { predictBaseValue } from "../../lib/riderValuation.js";
 import { allocateStarterSquads, STARTER_SQUAD } from "../../lib/starterSquadAllocator.js";
@@ -43,7 +44,14 @@ export function computeFreshSalaryBurden() {
   const pool = [];
   for (let i = 0; i < riders.length; i++) {
     const r = riders[i];
-    const abilities = deriveAbilities({}, { ...r, id: `fic-${i}` }, { asOfYear: REFERENCE_YEAR });
+    // #5269: spejler deriveForRiderIds' foedsels-forgrening. Uden den udleder
+    // scorecardet evne 1 for hver nyfoedt -> base_value i bund -> loenbyrden
+    // kollapser til fallback-konstanten (praecis den #3360-signatur testen
+    // nedenunder bevogter).
+    const riderRow = { ...r, id: `fic-${i}`, archetype_draw: r._meta?.archetypeDraw ?? null };
+    const abilities = isBornFromPriors(riderRow)
+      ? deriveBirthAbilities(riderRow, { age: r._meta?.age ?? null })
+      : deriveAbilities({}, riderRow, { asOfYear: REFERENCE_YEAR });
     const { primary } = computeRiderTypes(abilities, baseline);
     const visible = {};
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) visible[k] = abilities[k];

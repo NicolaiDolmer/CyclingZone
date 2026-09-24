@@ -84,6 +84,61 @@ test("kalenderen er response-cached per hold og trimmer payloaden til wire-forma
   assert.doesNotMatch(block, /\.\.\.model,/, "spread af hele read-modellen sender 67-73 kB døde felter med");
 });
 
+// ── #5405: en kommende sæson markerer ikke "mit holds løb" ───────────────────
+//
+// Rapportens §3f: kalender-ruten sendte holdets NUVÆRENDE pulje-id videre som
+// teamDivisionId, uanset hvilken sæsons kalender der blev vist. For en sæson med
+// status 'upcoming' er op-/nedrykningen ikke afgjort endnu, så markeringen ville
+// være forkert for langt de fleste managers. Gaten er den samme diskriminator
+// planlæggeren allerede bruger (teamDivisionKnownForSeason, #3018).
+
+test("#5405: sæson-opslaget henter status, så division-gaten kan afgøres", () => {
+  const block = calendarHandler();
+  assert.match(
+    block,
+    /\.select\("id, number, status,[^"]*race_days_total[^"]*"\)/,
+    "uden seasons.status kan handleren ikke se om sæsonen er 'upcoming'",
+  );
+});
+
+test("#5405: divisionPending afledes af teamDivisionKnownForSeason, ikke af et lokalt statusgæt", () => {
+  const block = calendarHandler();
+  assert.match(
+    block,
+    /const divisionPending = !teamDivisionKnownForSeason\(season\.status\)/,
+    "samme feltnavn OG samme diskriminator som planlægger-endpointet (#3018) — ikke en ny parallel regel",
+  );
+});
+
+test("#5405: en sæson med ventende division markerer ikke ét eneste løb som holdets", () => {
+  const block = calendarHandler();
+  assert.match(
+    block,
+    /const ownPoolId = divisionPending \? null : \(req\.team\?\.league_division_id \?\? null\)/,
+    "egen-pulje er ukendt for en kommende sæson — vi låner ikke den nuværende",
+  );
+  assert.match(
+    block,
+    /teamDivisionId: ownPoolId,/,
+    "teamDivisionId=null er dét der gør isMine=false på hvert løb i buildCalendarModel",
+  );
+  assert.doesNotMatch(
+    block,
+    /teamDivisionId: req\.team\?\.league_division_id/,
+    "det gamle direkte gennemslag af den nuværende pulje må ikke komme tilbage",
+  );
+});
+
+test("#5405: divisionPending sendes med i svaret, så fladen kan sige det rent ud", () => {
+  const block = calendarHandler();
+  assert.match(block, /^\s*divisionPending,\s*$/m, "UI'et skal kunne vise den ærlige 'din division afgøres ved sæsonskiftet'-tilstand");
+  assert.match(
+    block,
+    /season: null, availableSeasons[^}]*divisionPending: false/,
+    "tom-svaret skal bære feltet med, så klienten aldrig læser undefined",
+  );
+});
+
 test("hver race-muterende invalidering rammer også kalender-cachen (#2861)", () => {
   const racesHits = (apiSource.match(/invalidateNamespace\("races"\)/g) || []).length;
   const calendarHits = (apiSource.match(/invalidateNamespace\("calendar"\)/g) || []).length;

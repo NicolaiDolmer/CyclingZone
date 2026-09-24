@@ -271,7 +271,7 @@ export async function runRiderDoubleBookingWatch({ supabase, captureExceptionFn,
   let entries = rawEntries || [];
   if (entryRiderIds.length) {
     const { data: riderRows, error: riderErr } = await selectInChunksPaged({
-      supabase, table: "riders", columns: "id, team_id, is_academy, is_retired",
+      supabase, table: "riders", columns: "id, team_id, squad, is_academy, is_retired",
       inColumn: "id", ids: entryRiderIds, orderBy: ["id"],
     });
     if (riderErr) throw new Error(`riders (ghost-kryds): ${riderErr.message}`);

@@ -2,7 +2,7 @@
 
 > **Læs hvornår:** Når du står med en opgave og er i tvivl om hvilken AI-kanal du skal bruge. Ellers skipper du den.
 > **Kilde:** Klassificering fra workflow-analyse 2026-05-22 (`docs/archive/2026-05-22-workflow-analyse.md`, sektion 3-4). Tracker: [#556](https://github.com/NicolaiDolmer/CyclingZone/issues/556).
-> **Sidst opdateret:** 2026-05-22.
+> **Sidst opdateret:** 2026-09-24 (cloud-session + go fra telefonen, ejer 24/9).
 
 ## Hvorfor docen findes
 
@@ -16,6 +16,7 @@ Du har 5 Claude-kanaler i daglig drift (Claude Code, Claude chat PC, Claude chat
 | **Claude chat (PC)** | Project Knowledge søgning, strategi/prioritering, web search, issue-grooming, generere Claude Code-prompts | Direkte fil-edits, lange agentiske workflows |
 | **Claude chat (mobil)** | Læse status, godkende plans, mini-beslutninger, dispatch-trigger | Lange kodeblokke, multi-fil context, komplekse prompts |
 | **Claude Cowork** | Lokale filsystem-tasks der IKKE er kode (Excel, screenshots, doc-formatering) | Kode-implementation, tasks der kræver løbende beslutning |
+| **Claude Code i cloud** (web, `cloud/`-grene, draft-PR'er) | Specs til næste bølge dagen før, docs, read-only audits, stackede kode-spor uden prod-adgang | Merge, flag, prod-skrivninger, billeder med ægte data (intet login), filer en lokal bølge ejer |
 | **Dispatch (mobil→PC)** | Asynkrone fetches/audits uden beslutninger | Beslutninger undervejs, high-blast-radius (deploy, migrations, sletninger) |
 
 > Cowork-note: "research preview" per Anthropic — vent med kritiske workflows til det er stable.
@@ -43,6 +44,10 @@ Du har 5 Claude-kanaler i daglig drift (Claude Code, Claude chat PC, Claude chat
 | Doc-konsolidering (fx 3 epics → 1) | PC-chat (planning) + Claude Code (commits) | Claude Code direkte | Mobil |
 | Tjek "hvor var jeg?" efter pause | Mobil-chat (`NOW.md`-læsning) | Claude Code SessionStart-hook | — |
 | Brand/marketing-tekst | PC-chat | Cowork (hvis lokale filer) | Claude Code |
+| Spec til næste bølge (ejer 24/9) | Claude Code i cloud, dagen før | PC-chat (beslutninger) | Lokal bølge uden færdig spec |
+| Go på et UI-kort (ejer 24/9) | Mobil-chat: Vercel-preview-link + billeder i kortet | PC-chat | Tekst-beskrivelse uden billeder |
+
+**Arbejdsform 24/9 (ejer):** specs skrives i cloud dagen før; lokal bygger kun fra en færdig spec; ejeren giver go fra telefonen, og hvert UI-kort bærer et Vercel-preview-link + billeder (desktop + mobil).
 
 **Vigtigste indsigt:** De fleste tasks involverer 2 kanaler, ikke 1. `PC-chat planlægger → Claude Code implementerer` er det mest almindelige mønster. Det er ikke ineffektivt — det er det rigtige.
 

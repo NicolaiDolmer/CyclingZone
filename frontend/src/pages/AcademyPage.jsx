@@ -43,10 +43,13 @@ import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js
 import { keepsExistingContractOnPromote } from "../lib/academyPromoteContract.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
+import { riderShortName } from "../lib/riderName.ts";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
+import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
+import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -89,9 +92,11 @@ export default function AcademyPage() {
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
+  // #5519: med U23/Junior-siderne tændt forsvinder Youth squads-kortet (3a).
+  const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance,
-    intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider,
+    enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance,
+    intakePull, loading, error, signCandidate, rejectCandidate, promoteRider,
     fetchReleaseQuote, releaseRider,
     pullIntake,
   } = useAcademy();
@@ -114,7 +119,11 @@ export default function AcademyPage() {
   const [releaseConfirm, setReleaseConfirm] = useState(null);
   const [releaseBusy, setReleaseBusy] = useState(false);
 
-  const isFull = slots.used >= slots.max;
+  // #5568: pladserne tælles PR. UNGDOMSTRUP (U23 / junior) mod squadCaps.ts.
+  // En kandidat spærres kun når DEN trup han lander i er fuld. Før spærrede det
+  // flade akademi-loft alle signeringer for et hold med 8 akademiryttere.
+  const squadCounts = { u23: squads?.u23?.used ?? null, junior: squads?.junior?.used ?? null };
+  const squadRows = squadCapRows(squadCounts);
   // Senior-truppen er fuld → promote blokeres (en op-rykning ville sprænge cap'en).
   const seniorFull = seniorCount >= seniorMax;
 
@@ -139,6 +148,32 @@ export default function AcademyPage() {
   // Rating som kvalitetssignalet — men forbliver en almindelig (ikke-foldet)
   // kolonne, fordi ScoutablePotentiale er et scoutet stjerne-bånd uden en kort,
   // meningsfuld tekst-repræsentation til underlinjen (se PR-beskrivelsen).
+  //
+  // Navnecellen tegnes af EEN funktion, saa desktop-formen og mobilens korte
+  // form (#5383) ikke kan drive fra hinanden i alt ANDET end selve navnet.
+  const renderRosterName = (r, displayName) => {
+    // Forkortelsen er et PLADSVALG paa skaermen, ikke en omdoebning: linkets
+    // tilgaengelige navn er altid det fulde navn (#5383).
+    const fullName = `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
+    const abbreviated = Boolean(fullName) && displayName !== fullName;
+    return (
+      <>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <RiderLink
+            id={r.id}
+            className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors"
+            aria-label={abbreviated ? fullName : undefined}
+            title={abbreviated ? fullName : undefined}
+          >
+            {displayName}
+          </RiderLink>
+          <RiderBadges badges={["academy"]} />
+        </div>
+        {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
+      </>
+    );
+  };
+
   const rosterColumns = [
     {
       key: "nation",
@@ -151,28 +186,24 @@ export default function AcademyPage() {
       header: t("colRider"),
       sticky: true,
       sortKey: "name",
-      render: (r) => (
-        <>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <RiderLink id={r.id} className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-              {r.firstname} {r.lastname}
-            </RiderLink>
-            <RiderBadges badges={["academy"]} />
-          </div>
-          {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
-        </>
-      ),
+      render: (r) => renderRosterName(r, `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim()),
+      // #5383: paa mobil staar navnet i den korte form (#5350, ejer-valgt
+      // 18/9) saa det bliver paa EEN linje i den smalle navnekolonne.
+      renderShort: (r) => renderRosterName(r, riderShortName(r)),
     },
     {
       key: "type",
       header: t("colType"),
       sortKey: "primary_type",
       fold: true,
+      // #5383: KORT type-etiket i mobilens meta-linje — se samme kommentar i
+      // RidersPage.jsx. `riderTypes.short.*` er eksisterende copy; desktopens
+      // type-badge nedenfor er uaendret.
       foldValue: (r) => {
         if (!r.primary_type) return "";
-        const primary = tTypes(`types.${r.primary_type}`);
+        const primary = tTypes(`short.${r.primary_type}`);
         const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
-        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+        return hasSecondary ? `${primary}/${tTypes(`short.${r.secondary_type}`)}` : primary;
       },
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
     },
@@ -308,16 +339,6 @@ export default function AcademyPage() {
     setPullBusy(false);
   }
 
-  async function handleGraduate(riderId, action) {
-    setActionState(prev => ({ ...prev, [riderId]: action }));
-    setActionErrors(prev => ({ ...prev, [riderId]: null }));
-    const result = await resolveGraduate(riderId, action);
-    if (!result.ok) {
-      setActionErrors(prev => ({ ...prev, [riderId]: mapActionError(result.error) }));
-    }
-    setActionState(prev => ({ ...prev, [riderId]: null }));
-  }
-
   // Åbn promote-bekræftelse (#932 S7) — selve op-rykningen sker i confirmPromote.
   function handlePromote(rider) {
     setActionErrors(prev => ({ ...prev, [rider.id]: null }));
@@ -448,95 +469,56 @@ export default function AcademyPage() {
                 {t("balance", { amount: formatMoney(balance) })}
               </span>
             )}
-            <span
-              className={`font-data text-sm tabular-nums ${isFull ? "text-cz-warning" : "text-cz-2"}`}
-              title={isFull ? t("fullTooltip", { max: slots.max }) : undefined}
-            >
-              {t("slots", { used: slots.used, max: slots.max })}
+            {/* #5568: "U23 5/12 · Junior 3/10" — loftet pr. trup, ikke ét akademital. */}
+            <span className="font-data text-sm tabular-nums text-cz-2" data-testid="academy-squad-caps">
+              {squadRows.map((row, i) => (
+                <span key={row.squad}>
+                  {i > 0 && <span className="text-cz-3" aria-hidden="true"> · </span>}
+                  <span
+                    className={row.full ? "text-cz-warning" : undefined}
+                    title={row.full
+                      ? (row.squad === "junior" ? t("fullTooltipJunior", { max: row.max }) : t("fullTooltipU23", { max: row.max }))
+                      : undefined}
+                  >
+                    {row.squad === "junior"
+                      ? t("slotsJunior", { used: row.used, max: row.max })
+                      : t("slotsU23", { used: row.used, max: row.max })}
+                  </span>
+                </span>
+              ))}
             </span>
           </div>
         }
       />
 
       <div className="space-y-6">
-      {/* GRADUERINGS-sektion (#932) — akademiryttere der har passeret 21 og skal
-          promoveres/sælges/slippes inden override-vinduets udløb. Vises kun når der
-          er pending graduates (call-to-action, ikke permanent tom-tilstand). */}
+      {/* GRADUATION DAY-BANNER (#2491) — selve valget bor nu paa sin egen T1-side
+          (/academy/graduation, ejer-godkendt mockup 3g). Her staar kun banneret,
+          og KUN naar der er nogen at traeffe valg om.
+
+          Den gamle blok — ét kort pr. rytter med tre knapper — er slettet, ikke
+          gemt bag et flag: to flader med samme irreversible valg er praecis den
+          dobbelt-flade HANDOFF pkt. 8 forbyder ("banner on Academy only, plus
+          the Inbox notification"). Kortene kunne desuden hverken vise
+          rating-plade, potentiale-baand eller traenerens vurdering, og havde
+          ingen faelles bekraeftelse. */}
       {graduations.length > 0 && (
         <section>
-          {/* #4628: eyebrow-idiomet (11px uppercase meta) var sidens fjerde
-              overskrifts-stil og fik Youth squads-kortets kanoniske 15/600-titel
-              til at skille sig ud fra sine naboer (audit 2026-09, /academy).
-              Alle fire blokke bruger nu SectionHeader-recipen. */}
           <SectionHeader title={t("graduationHeading")} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {graduations.map((g) => {
-              const busy = actionState[g.riderId] != null;
-              const err = actionErrors[g.riderId];
-              const days = daysUntil(g.deadline);
-              const overdue = days != null && days <= 0;
-              return (
-                <Card key={g.riderId} className="p-4 flex flex-col gap-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm leading-snug truncate">
-                        <RiderLink id={g.riderId} className="text-cz-1 hover:text-cz-accent-t transition-colors">{g.name}</RiderLink>
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        {g.nationality_code && <NationCell code={g.nationality_code} />}
-                        {g.age != null && (
-                          <span className="text-xs text-cz-3">{t("ageLabel", { age: g.age })}</span>
-                        )}
-                      </div>
-                    </div>
-                    {days != null && (
-                      <span
-                        className={`flex-shrink-0 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill ${overdue ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-accent/15 text-cz-accent-t"}`}
-                      >
-                        {overdue ? t("graduationOverdue") : t("graduationDeadline", { days })}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* #2796: valget var konsekvensblindt — type, værdi og løn er nu på kortet.
-                      self-start: kortet er en flex-kolonne, så badgen ville ellers
-                      strække sig i fuld bredde og læses som en bjælke, ikke en badge. */}
-                  <RiderTypeBadge primaryType={g.primary_type} secondaryType={g.secondary_type} className="self-start" />
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                    <dt className="text-cz-3">{t("colValue")}</dt>
-                    <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(g.market_value)} CZ$</dd>
-                    <dt className="text-cz-3">{t("colSalary")}</dt>
-                    <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(g.salary)} CZ$</dd>
-                  </dl>
-
-                  {err && <p className="text-xs text-cz-danger">{err}</p>}
-
-                  {/* #4628: kortene gentages (ét pr. graduerende rytter), saa en
-                      guld-primary pr. kort giver N guld-knapper paa ét view.
-                      Guld er rationeret til ÉN primaer handling pr. view
-                      (TASTE P3 / fork 3) — kort-handlingerne er secondary,
-                      og den destruktive er en ghost i --danger. */}
-                  <div className="flex gap-2 mt-auto pt-1">
-                    <Button size="sm" variant="secondary" className="flex-1"
-                      onClick={() => handleGraduate(g.riderId, "promote")}
-                      disabled={busy} loading={actionState[g.riderId] === "promote"}>
-                      {t("promoteBtn")}
-                    </Button>
-                    <Button size="sm" variant="secondary" className="flex-1"
-                      onClick={() => handleGraduate(g.riderId, "sell")}
-                      disabled={busy} loading={actionState[g.riderId] === "sell"}>
-                      {t("sellBtn")}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="flex-1 text-cz-danger hover:text-cz-danger"
-                      onClick={() => handleGraduate(g.riderId, "release")}
-                      disabled={busy} loading={actionState[g.riderId] === "release"}>
-                      {t("releaseBtn")}
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <Card className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-medium text-cz-1">
+                {t("graduationBanner.title", { count: graduations.length })}
+              </p>
+              <p className="mt-1 text-xs text-cz-2">{t("graduationBanner.body")}</p>
+            </div>
+            <Link
+              to="/academy/graduation"
+              className={`${buttonClass({ variant: "secondary", size: "sm" })} shrink-0`}
+            >
+              {t("graduationBanner.action")}
+            </Link>
+          </Card>
         </section>
       )}
 
@@ -595,6 +577,14 @@ export default function AcademyPage() {
               // så kortet ikke spejler en økonomi-regel der kan drive fra hinanden.
               const fee = item.signingFee;
               const tooExpensive = fee != null && balance != null && fee > balance;
+              // #5568: spær kun mod loftet i den trup han lander i. targetSquad
+              // kommer fra backend (samme valg som signeringen); mangler det,
+              // afgør sæsonalderen det med samme regel.
+              const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
+              const isFull = isSquadFull(targetSquad, squadCounts);
+              const fullTooltip = targetSquad === "junior"
+                ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
+                : t("fullTooltipU23", { max: SQUAD_CAPS.u23 });
 
               return (
                 <Card key={item.intakeId} className="p-4 flex flex-col gap-3">
@@ -689,7 +679,7 @@ export default function AcademyPage() {
                       onClick={() => handleSign(rider.id)}
                       disabled={busy || isFull || tooExpensive}
                       loading={actionState[rider.id] === "signing"}
-                      title={isFull ? t("fullTooltip", { max: slots.max }) : tooExpensive ? t("error.insufficientBalance") : undefined}>
+                      title={isFull ? fullTooltip : tooExpensive ? t("error.insufficientBalance") : undefined}>
                       {t("signBtn")}
                     </Button>
                     <Button size="sm" variant="ghost" className="flex-1"
@@ -701,7 +691,9 @@ export default function AcademyPage() {
 
                   {/* Blokerings-forklaring under knapperne */}
                   {isFull && !err && (
-                    <p className="text-3xs text-cz-3 text-center">{t("fullNote", { max: slots.max })}</p>
+                    <p className="text-3xs text-cz-3 text-center">
+                      {targetSquad === "junior" ? t("fullNoteJunior") : t("fullNoteU23")}
+                    </p>
                   )}
                   {!isFull && tooExpensive && !err && (
                     <p className="text-3xs text-cz-danger text-center">{t("error.insufficientBalance")}</p>
@@ -759,7 +751,11 @@ export default function AcademyPage() {
           Beskrivelseslinjen er en fuld sætning, ikke en meta-label, så den
           IKKE bruger PAGE_TEMPLATES' uppercase-11px-meta-stil (den stil er til
           korte labels/tal, ikke løbende tekst) — samme valg som
-          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2). */}
+          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2).
+          #5519 (artboard 3a): med kontakten youth_squad_pages tændt ER
+          trupperne ægte og bor i menuen lige efter My Team, så kortet
+          forsvinder. Slukket = dagens visning uændret. */}
+      {!youthSquadPagesOn && (
       <Section>
         <SectionHeader
           title={t("youthSquads.title")}
@@ -782,6 +778,7 @@ export default function AcademyPage() {
           ))}
         </div>
       </Section>
+      )}
 
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />

@@ -125,7 +125,7 @@ Format og pligt er låst i `TONE_OF_VOICE.md` (låst 14/8). To ting hører hjemm
 - **Skriv aldrig en separat Discord-tekst.** Discord får titlen plus feltet "What changed", ordret.
 - Patch notes er råstoffet til mandagens uge-note (§3). Har du skrevet dem, er uge-noten næsten skrevet.
 
-Selve produktions-SSOT'et for begge flader (site + Discord) er stadig udestående, se #4521.
+Selve produktions-SSOT'et for begge flader (site + Discord) står nu i [`PATCH_NOTES_RULES.md`](PATCH_NOTES_RULES.md) (#4521).
 
 ### 2.5 Mail
 
@@ -429,7 +429,6 @@ Guard: `node scripts/tone-check-terms.mjs` (§8.4).
 |---|---|---|
 | [#4235](https://github.com/NicolaiDolmer/CyclingZone/issues/4235) | Forum vs Discord: hvilken flade bærer communityet? Beslutning **15/9** på tærsklerne i §6.2 | Kanal-prioritering i §2 |
 | [#1283](https://github.com/NicolaiDolmer/CyclingZone/issues/1283) | Founder-stemme: 2-3 ejer-godkendte kalibrerings-tekster mangler | AI må ikke skrive færdig founder-prosa |
-| [#4521](https://github.com/NicolaiDolmer/CyclingZone/issues/4521) | Patch-notes-produktions-SSOT (site + Discord) | §2.4 er ufuldstændig |
 | [#2761](https://github.com/NicolaiDolmer/CyclingZone/issues/2761) | Discord-invite i in-app-indbakken (ny + backfill) | Discord-vækst fra eksisterende managere |
 | [#4820](https://github.com/NicolaiDolmer/CyclingZone/issues/4820) | 7 af 9 forum-emner ikke postet (§5.2) | Indholdsplanen |
 | [#4117](https://github.com/NicolaiDolmer/CyclingZone/issues/4117) | Status på de 13 tråde er ukendt (§5.1) | Kan ikke planlægge uden at vide hvad der er postet |
@@ -458,6 +457,7 @@ Guard: `node scripts/tone-check-terms.mjs` (§8.4).
 ### 8.3 Relateret
 
 - [`TONE_OF_VOICE.md`](TONE_OF_VOICE.md) · stemme, forbudte termer, patch-notes-format, founder-skelet
+- [`PATCH_NOTES_RULES.md`](PATCH_NOTES_RULES.md) · produktions-SSOT for patch notes (site + Discord, #4521)
 - [`SOCIAL_RULES.md`](SOCIAL_RULES.md) · §0-reglen og hele den tekniske sociale flade
 - [`GROWTH_STACK.md`](GROWTH_STACK.md) · UTM-konvention, mandagstal, distributionsdagen, kanal-måling
 - [`ANALYTICS_STACK.md`](ANALYTICS_STACK.md) · definitioner af aktiv, signup, retention

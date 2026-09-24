@@ -15,7 +15,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 
 test("#3459 racingToday hentes fra useTraining (ingen ny fetch/config-endpoint på siden)", () => {
-  assert.match(src, /racingToday,\s*\n?\s*\} = training;/, "skal destrukturere racingToday fra useTraining()");
+  // #4851/#4847: destruktureringens SIDSTE linjer er ikke længere `racingToday,`
+  // alene — `trainingScore` står før og `dayClose` efter, hver med sin kommentar.
+  // Mønstret binder derfor kun det gaten faktisk handler om: at `racingToday`
+  // kommer fra `useTraining()`s destrukturering, ikke fra et nyt fetch på siden.
+  assert.match(
+    src,
+    /const \{[\s\S]{0,1200}?\bracingToday,[\s\S]{0,400}?\} = training;/,
+    "skal destrukturere racingToday fra useTraining()",
+  );
   assert.match(src, /const raceToday = racingToday\[rider\.id\] \?\? null;/, "tilstedeværelse pr. rytter er hele gaten");
 });
 
@@ -41,9 +49,14 @@ test("#3459 løbsdags-linjen ERSTATTER (ikke supplerer) den normale weekRhythmTo
 });
 
 test("#3459 intensitets-knapperne dæmpes (opacity) på løbsdage, men forbliver AKTIVE (ingen ny disabled-betingelse)", () => {
+  // #5124: gruppen bryder til to linjer på mobil (flex-wrap i stedet for
+  // overflow-hidden, ingen vandret scroll-garanti brydes) — desktop beholder
+  // overflow-hidden uændret (isMobile er altid false dér). Regexen tolererer
+  // begge grene af `isMobile ? "flex-wrap" : "overflow-hidden"`, men kræver
+  // stadig den samme raceToday-dæmpning som før #5124.
   assert.match(
     src,
-    /className=\{`inline-flex rounded-cz border border-cz-border overflow-hidden \$\{raceToday \? "opacity-\[0\.55\]" : ""\}`\}/,
+    /className=\{`inline-flex rounded-cz border border-cz-border \$\{[\s\S]{0,120}"overflow-hidden"[\s\S]{0,20}\} \$\{raceToday \? "opacity-\[0\.55\]" : ""\}`\}/,
     "intensitets-gruppen skal dæmpes visuelt når raceToday er sat",
   );
   // disabled-betingelsen på selve knapperne er UÆNDRET (kun busy) — raceToday må

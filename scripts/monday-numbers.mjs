@@ -44,7 +44,24 @@ const AI_ASSISTANT_HOSTS = [
 // klik i VORES egne mails, ikke en tredjepartskanal (#3796-kommentar 27/8).
 const OWN_EMAIL_HOSTS = ["com.google.android.gm", "mail.google.com", "outlook.live.com", "outlook.office.com"];
 const REDDIT_HOSTS = ["reddit.com", "com.reddit.frontpage", "redd.it"];
-const SEARCH_HOSTS = ["google.", "bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com"];
+const DISCORD_HOSTS = ["discord.com", "discordapp.com"];
+// Google har eet soegedomaene pr. land/marked (~190 ccTLD-varianter, fx
+// google.co.id, google.com.ar) - en opremset liste risikerer altid at mangle
+// en (CodeRabbit-fund paa foerste udgave af denne guard). Domaene-forankret
+// via et moenster i stedet: "google." skal staa lige efter start ELLER en
+// "."-forankret label (subdomaener som sub.google.com er stadig Google), og
+// SLUTTE strengen som enten en 2-3-bogstavs-TLD eller "<2-3 bogstaver>.<2
+// bogstaver>" (google.co.uk-formen) - "$" for enden forhindrer at
+// "google.com.evil.com" eller "google.evil.com" matcher.
+const GOOGLE_SEARCH_PATTERN = /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/;
+const SEARCH_HOSTS = ["bing.com", "duckduckgo.com", "ecosia.org", "yahoo.com", "search.brave.com"];
+// Vores eget site: app-domaenet, det gamle domaene (redirecter) og marketing-
+// origin bag rewrites. En referrer herfra er aldrig en kanal (#5310).
+const OWN_SITE_HOSTS = ["cyclingzone.org", "cycling-zone.vercel.app", "cycling-zone-marketing.vercel.app"];
+// #5310: siden marketing-forsiden overtog "/" (14/9) fangede SPA'en foerst
+// first-touch efter klikket, saa UTM og ekstern referrer var vaek, og referreren
+// blev vores egen side. Samme etiket som backend/lib/attributionDashboard.js.
+export const LOST_IN_MARKETING = "ukendt (tabt i marketing)";
 
 function parseArgs(argv) {
   const args = {};
@@ -127,20 +144,45 @@ function hostOf(referrer) {
   return host ? host.replace(/^www\d*\./, "") : null;
 }
 
+// Domaene-forankret match: praecis "suffix" eller et subdomaene af det
+// (fx "chat.openai.com" matcher "openai.com"), ALDRIG en substring midt i et
+// andet domaene (fx "evil-discord.example.com" matcher IKKE "discord.com").
+// Samme moenster som Hattrick/self-referral-fixet i #5072 (#5091).
+function hostMatches(probe, suffix) {
+  return probe === suffix || probe.endsWith(`.${suffix}`);
+}
+
+// utm_source fra en referrers query-streng, eller "" naar der ingen er.
+function utmSourceFromReferrer(referrer) {
+  try {
+    return (new URL(String(referrer).trim()).searchParams.get("utm_source") || "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 // Kanal-gruppering. Rangorden: eksplicit utm_source foerst (det er VORES egen
 // maerkning), derefter referrer-vaertsnavn. Definitionerne staar i GROWTH_STACK §2.
+// Laese-side-fallback (#5310, ingen DB-skriv): er utm_source NULL og referreren
+// vores eget site, udledes utm_source af referrerens query; uden UTM er kanalen
+// LOST_IN_MARKETING, aldrig "self-referral".
 export function classifyChannel(row) {
-  const source = (row.utm_source || "").trim().toLowerCase();
+  let source = (row.utm_source || "").trim().toLowerCase();
   const host = hostOf(row.referrer);
+  const ownSiteReferrer = Boolean(host) && OWN_SITE_HOSTS.some((h) => hostMatches(host, h));
+  if (!source && ownSiteReferrer) {
+    source = utmSourceFromReferrer(row.referrer);
+    if (!source) return LOST_IN_MARKETING;
+  }
   const probe = source || host || "";
   if (!probe) return "(direct / ukendt)";
-  if (AI_ASSISTANT_HOSTS.some((h) => probe.includes(h))) return "AI assistant";
-  if (OWN_EMAIL_HOSTS.some((h) => probe.includes(h)) || source === "email") return "email (vores egne mails)";
-  if (REDDIT_HOSTS.some((h) => probe.includes(h)) || source === "reddit") return "reddit";
-  if (probe === "hattrick.org" || probe.endsWith(".hattrick.org") || source === "hattrick") return "hattrick";
-  if (probe.includes("discord")) return "discord";
-  if (SEARCH_HOSTS.some((h) => probe.includes(h))) return "soegning (organisk)";
-  if (probe === "cyclingzone.org" || probe.endsWith(".cyclingzone.org") || probe === "cycling-zone.vercel.app" || probe.endsWith(".cycling-zone.vercel.app")) return "self-referral";
+  if (AI_ASSISTANT_HOSTS.some((h) => hostMatches(probe, h))) return "AI assistant";
+  if (OWN_EMAIL_HOSTS.some((h) => hostMatches(probe, h)) || source === "email") return "email (vores egne mails)";
+  if (REDDIT_HOSTS.some((h) => hostMatches(probe, h)) || source === "reddit") return "reddit";
+  if (hostMatches(probe, "hattrick.org") || source === "hattrick") return "hattrick";
+  if (DISCORD_HOSTS.some((h) => hostMatches(probe, h)) || source === "discord") return "discord";
+  if (SEARCH_HOSTS.some((h) => hostMatches(probe, h)) || GOOGLE_SEARCH_PATTERN.test(probe)) return "soegning (organisk)";
+  if (OWN_SITE_HOSTS.some((h) => hostMatches(probe, h))) return "self-referral";
   return probe;
 }
 
@@ -327,6 +369,12 @@ async function main() {
     .map(([channel, total]) => ({ channel, last_30d: channel30.get(channel) ?? 0, total }))
     .sort((a, b) => b.total - a.total || a.channel.localeCompare(b.channel));
   out.attribution_coverage_30d = out.signups_30d ? (channel30.size ? [...channel30.values()].reduce((a, b) => a + b, 0) : 0) : 0;
+  const lostInMarketing = channelTotal.get(LOST_IN_MARKETING) ?? 0;
+  if (lostInMarketing) {
+    notes.push(
+      `${lostInMarketing} signups har vores egen side som referrer uden UTM: kanalen blev tabt paa marketing-siden (maalebrud 14/9, #5310, GROWTH_STACK §3.5). Laes dem som ukendt, aldrig som direct.`,
+    );
+  }
 
   // --- 7. Sovende med marketing-mail-samtykke (win-back-segmentet, GROWTH_STACK §8).
   const cutDormant = new Date(daysAgo(30)).getTime();

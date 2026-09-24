@@ -15,11 +15,14 @@ En deltest beviser kun den angivne dækning, aldrig automatisk hele guardens pol
 | League-size audit / GitHub CI | Ægte puljeoverskud; ny publisher og køens dry-run | 2026-09-09 (D4 F 25 fysiske hold; ingen faktisk blokering observeret 10/9 — se Bevis) | PR #5057: league-audit fejlede, mens et andet `audit` bestod. Prod D4 F havde 25 hold; branch protection krævede ikke league-checket, og merge-køen kontrollerede kun required checks. Alarmen blev ignoreret. #5066 er installeret. 9/9: ét trusted check på hver af #5070/#5071s præcise SHAs fandt D4 F = 25; køens dry-run stoppede med required=0, league=1. Fra 9/9 21:55 CEST gik checket grønt: ét AI-hold (`pending_removal_at` 20:48:49 CEST) faldt inden for scriptets 120-timers pending-removal-grace og tælles som `waiting` (reason `inflight_entries`, 0 stallede løb) — netto 24 for pool 13, jf. `backend/scripts/audit-league-size-invariant.js`s egen eksklusionslogik. Alle league-runs 10/9 var success eller skipped; ingen ny blokering er observeret siden 9/9. [Bevis](audits/2026-09-09-4753-bootstrap-release.md). Checket er stadig ikke required; reparation af pool 13 (eller grace-udløb 2026-09-14 20:48 CEST, hvorefter holdet igen tælles med) afventer ejer-go. |
 | `.githooks/pre-commit` / Git | Staged fake-secret | 2026-09-09 | `git commit`: gitleaks BLOCKED, exit 1, HEAD uændret; installerens smoketest genkørt efter ændring |
 | `.githooks/pre-push` / Git | Forbudt env-filnavn med harmløst indhold | 2026-09-09 | `git push` til lokalt test-remote afvist med specifik filnavnsbesked |
+| `.githooks/check-commit-guard-marker.sh` via pre-commit / Git | Commit uden gyldig branch-guard-markør (manglende, forkert branch, andet træ, >300 s) | 2026-09-17 | #5094: markøren fjernet i worktree `fix/5326-5094-hook-and-commit-guard`, kontrollen kørt derfra → exit 1 med `guarden blev ikke koert for dette commit`; samme worktrees egne commits (`7e73d9aa`, `fc1ed7e8`) gik igennem MED markør. Dækker den tavse omgåelse (`bash` ikke resolvet → guarden kørte aldrig), **ikke** `--no-verify` eller repoer uden CyclingZone-origin. `scripts/guard-commit-branch.ps1`s hårde fejl uden bash er kun testet via `CZ_GUARD_TEST_NO_BASH=1`, ikke på en maskine uden Git |
 | `scripts/check-staged-docs.mjs` via pre-commit / Git | Arkivændring inkl. rename væk; staged NOW >30 linjer eller >1200 approx tokens | 2026-09-09 | Faktisk arkiv-commit afvist; budget-fixtures, CRLF/grænse/unstaged-kontrol i `test-staged-docs.mjs` |
 | `block-dangerous-secret-commands.sh` / Codex | T1 gennem frisk runner | 2026-09-09 | `Command blocked by PreToolUse hook`, specifik env-fil-læser-afvisning; shell ikke startet |
 | `block-blocking-shell-commands.sh` / Codex | T2 gennem frisk runner | 2026-09-09 | `Command blocked by PreToolUse hook: BLOCKED: git diff uden --no-pager`; shell ikke startet |
 | `block-branch-switch-in-main-checkout.sh` / Codex | T3 gennem frisk runner | 2026-09-09 | `Command blocked by PreToolUse hook: [branch-lock] BLOKERET`; branch ikke oprettet |
 | Begge delte secret-scripts / fixtures | Manglende Python, defekt stub, WindowsApps-alias, scanner-crash | 2026-09-09 | Alle returnerer exit 2 med runtime-fejl; 12 cases inkl. de fire eksisterende Claude-fixtures består |
+| `scripts/check-event-catalog.mjs` / CI `frontend-build` + preflight | `player_events`-navn uden række i `ANALYTICS_STACK.md` §3 eller uden navn i `KNOWN_EVENTS` | 2026-09-18 (lokalt; ingen CI-blokering observeret endnu) | #5369: guarden fandtes fra #5048, men blev ikke kørt noget sted. Kørt på ren main `5f177d73e` → exit 1 på tre ægte udokumenterede events (plus tre falske fra en parser-fejl, rettet i samme PR). Efter fix: et probe-`logEvent("zz_5369_probe_event")` i `frontend/src` → exit 1 med specifik besked, fjernet → exit 0. Wiret ind i det required job `frontend-build`, `scripts/preflight-pr.ps1` og `npm run check:event-catalog`. Dækker kun LITERALE event-navne; dynamiske navne springes over |
+| `scripts/check-now-md-sidecar.mjs` / CI `frontend-build` + preflight | PR rører `docs/NOW.md` uden at PR-titlen starter med `docs(now)`/`docs(close-out)` | 2026-09-18 (isoleret scratch-repo; ingen CI-blokering på en rigtig PR observeret endnu) | #5093 (ejer-valg 18/9: A). Kørt i et isoleret engangs-git-repo (aldrig i CyclingZone-worktreet) med en commit der rører en `docs/NOW.md`-stub: `PR_TITLE="feat(auction): ..."` → exit 1 med den forklarende fejlbesked; `PR_TITLE="docs(now): close-out"` og `PR_TITLE="docs(close-out): ..."` → exit 0; `GITHUB_ACTOR="dependabot[bot]"` → exit 0 (undtaget); ingen `PR_TITLE` sat (lokalt preflight-scenarie) → exit 0 med advarsel. 12/12 unit-tests grønne. Wiret ind i det required job `frontend-build` (kun på `pull_request`, `PR_TITLE` fra `github.event.pull_request.title`) og `scripts/preflight-pr.ps1`. Dækker ikke: en rigtig PR i CI (ingen ægte PR har endnu rørt `docs/NOW.md` med denne guard aktiv) |
 | `block-archived-edit.sh`, `check-now-md-edit.sh` / Codex | Inaktive for observeret apply_patch-payload | aldrig bevist | Matcher-aliaser findes, men payload mangler file_path; Git-laget giver staged beskyttelse |
 
 Frisk CLI **0.153.4**, session `01a0860b-3ece-7732-be39-c956de75a716`:
@@ -109,8 +112,12 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/calendar-scorecard-gate.yml](../.github/workflows/calendar-scorecard-gate.yml) | calendar-scorecard: calendar-scorecard | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | backend-tests: backend-tests | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | frontend-build: frontend-build | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | marketing-changes: marketing-changes | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | marketing-lint-build: marketing-lint-build | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | build-determinism-two-builds: build-determinism-two-builds | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | warning-budget: warning-budget | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | static-guards: static-guards | aldrig bevist |
+| CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | ops-script-tests: ops-script-tests | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | migration-idempotency: migration-idempotency | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | workflow-output-guard: workflow-output-guard | aldrig bevist |
 | CI | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | dependabot-exceptions-guard: dependabot-exceptions-guard | aldrig bevist |
@@ -156,9 +163,11 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/patch-notes-coverage-check.yml](../.github/workflows/patch-notes-coverage-check.yml) | patch-notes-coverage: patch-notes-coverage (advisory) | aldrig bevist |
 | CI | [.github/workflows/perf-seo-review.yml](../.github/workflows/perf-seo-review.yml) | review: review | aldrig bevist |
 | CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | changes: changes | aldrig bevist |
-| CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | e2e-shard: e2e-shard | aldrig bevist |
+| CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | plan: plan | aldrig bevist |
+| CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | e2e-shard: e2e-shard (${{ matrix.key }}) | aldrig bevist |
 | CI | [.github/workflows/playwright-smoke.yml](../.github/workflows/playwright-smoke.yml) | frontend-smoke: frontend-smoke | aldrig bevist |
 | CI | [.github/workflows/pr-verification-check.yml](../.github/workflows/pr-verification-check.yml) | check-verification: check-verification | aldrig bevist |
+| CI | [.github/workflows/priority-hygiene.yml](../.github/workflows/priority-hygiene.yml) | sweep: sweep | aldrig bevist |
 | CI | [.github/workflows/quality-inbox.yml](../.github/workflows/quality-inbox.yml) | doctor: doctor | aldrig bevist |
 | CI | [.github/workflows/railway-log-watch.yml](../.github/workflows/railway-log-watch.yml) | watch: watch | aldrig bevist |
 | CI | [.github/workflows/reset-fk-audit.yml](../.github/workflows/reset-fk-audit.yml) | audit: audit | aldrig bevist |
@@ -170,6 +179,10 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | CI | [.github/workflows/security-grants-audit.yml](../.github/workflows/security-grants-audit.yml) | live: Live grant-tjek mod prod | aldrig bevist |
 | CI | [.github/workflows/supabase-advisor-sweep.yml](../.github/workflows/supabase-advisor-sweep.yml) | sweep: sweep | aldrig bevist |
 | CI | [.github/workflows/supabase-log-watch.yml](../.github/workflows/supabase-log-watch.yml) | watch: watch | aldrig bevist |
+| CI | [.github/workflows/triage-age-guard.yml](../.github/workflows/triage-age-guard.yml) | guard: guard | aldrig bevist |
+| CI | [.github/workflows/ts-core-ratchet.yml](../.github/workflows/ts-core-ratchet.yml) | ts-core-ratchet: ts-core-ratchet | aldrig bevist |
+| CI | [.github/workflows/weekly-steering-report.yml](../.github/workflows/weekly-steering-report.yml) | report: report | aldrig bevist |
+| CI | [.github/workflows/weekly-steering-report.yml](../.github/workflows/weekly-steering-report.yml) | publish: publish | aldrig bevist |
 | CI | [.github/workflows/yaml-validate.yml](../.github/workflows/yaml-validate.yml) | actionlint: actionlint (workflow YAML) | aldrig bevist |
 | CI | [.github/workflows/yaml-validate.yml](../.github/workflows/yaml-validate.yml) | yamllint-issue-templates: yamllint (issue templates) | aldrig bevist |
 | eslint | [backend/eslint.config.js](../backend/eslint.config.js) | Samlet config inkl. importerede recommended-regelsæt; filglobs/overrides står i kilden | aldrig bevist |
@@ -198,6 +211,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | agent-hook | [scripts/hooks/clear-active-sessions.sh](../scripts/hooks/clear-active-sessions.sh) | Stop hook: recomputes the "🤖 Aktive sessioner" field in docs/NOW.md when | aldrig bevist |
 | agent-hook | [scripts/hooks/cycling-manager-cleanup.sh](../scripts/hooks/cycling-manager-cleanup.sh) | cycling-manager: SessionStart self-heal | aldrig bevist |
 | agent-hook | [scripts/hooks/ensure-scheduled-tasks.sh](../scripts/hooks/ensure-scheduled-tasks.sh) | SessionStart hook. For hver canonical task-konfiguration i | aldrig bevist |
+| agent-hook | [scripts/hooks/guard-agent-spawn.sh](../scripts/hooks/guard-agent-spawn.sh) | PreToolUse hook (matcher: Agent\|Workflow). Haandhaever orkestrator-standard v2 | aldrig bevist |
 | agent-hook | [scripts/hooks/lint-gh-issue.sh](../scripts/hooks/lint-gh-issue.sh) | PreToolUse hook (matcher: Bash). Scans `gh issue ...` invocations for | aldrig bevist |
 | agent-hook | [scripts/hooks/protect-claude-process.sh](../scripts/hooks/protect-claude-process.sh) | PreToolUse hook: block any Bash/PowerShell command that targets claude.exe | aldrig bevist |
 | agent-hook | [scripts/hooks/run-codex-hook.ps1](../scripts/hooks/run-codex-hook.ps1) | Transport only: resolve Git Bash, forward raw stdin/stdout/stderr and exit code. | aldrig bevist |
@@ -223,6 +237,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/check-frontend-env-keys.mjs](../scripts/check-frontend-env-keys.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-maybesingle-unique-scope.mjs](../scripts/check-maybesingle-unique-scope.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-memory-refs.ps1](../scripts/check-memory-refs.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/check-now-md-sidecar.mjs](../scripts/check-now-md-sidecar.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-now-md.sh](../scripts/check-now-md.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-patch-notes-coverage.js](../scripts/check-patch-notes-coverage.js) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-patch-notes-version.js](../scripts/check-patch-notes-version.js) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
@@ -236,9 +251,12 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/check-skew-protection.mjs](../scripts/check-skew-protection.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-staged-docs.mjs](../scripts/check-staged-docs.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/check-stale-branches.sh](../scripts/check-stale-branches.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/check-triage-age.mjs](../scripts/check-triage-age.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/check-ts-core-ratchet.mjs](../scripts/check-ts-core-ratchet.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/cross-pc-stop-check.sh](../scripts/cross-pc-stop-check.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/db-verify-restore.mjs](../scripts/db-verify-restore.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/generate-guard-inventory.mjs](../scripts/generate-guard-inventory.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/guard-commit-branch.ps1](../scripts/guard-commit-branch.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/guard-commit-branch.sh](../scripts/guard-commit-branch.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/guard-node-modules-junction.mjs](../scripts/guard-node-modules-junction.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/i18n-check-backend-player-strings.mjs](../scripts/i18n-check-backend-player-strings.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
@@ -281,6 +299,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/preflight-season-cutover.ps1](../scripts/preflight-season-cutover.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/run-staged-checks.mjs](../scripts/run-staged-checks.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/setup-sentry-and-verify.ps1](../scripts/setup-sentry-and-verify.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/test-guard-agent-spawn.sh](../scripts/test-guard-agent-spawn.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/test-guard-commit-branch.sh](../scripts/test-guard-commit-branch.sh) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/test-league-check.ps1](../scripts/test-league-check.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/tone-check-em-dash.mjs](../scripts/tone-check-em-dash.mjs) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
@@ -290,6 +309,7 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | script / CI eller manuel | [scripts/verify-infisical.ps1](../scripts/verify-infisical.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/verify-invariants.ps1](../scripts/verify-invariants.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | script / CI eller manuel | [scripts/verify-local.ps1](../scripts/verify-local.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
+| script / CI eller manuel | [scripts/verify-lock.ps1](../scripts/verify-lock.ps1) | Kontrolscript; kaldesteder og præcis kontrakt står i kilden. At filen findes beviser ikke aktivering | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | SessionStart:0:0; matcher=; bash scripts/session-prefetch-issue.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | SessionStart:0:1; matcher=; bash scripts/hooks/ensure-scheduled-tasks.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | SessionStart:0:2; matcher=; bash scripts/hooks/setup-worktree-if-needed.sh | aldrig bevist |
@@ -301,12 +321,13 @@ Regenerér efter staging med `node scripts/generate-guard-inventory.mjs`.
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:1:3; matcher=Bash; bash scripts/hooks/check-ci-before-push.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:1:4; matcher=Bash; bash scripts/hooks/check-preflight-before-push.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:1:5; matcher=Bash; bash scripts/hooks/block-blocking-shell-commands.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:2:0; matcher=Edit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:2:1; matcher=Edit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:0; matcher=Write; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:1; matcher=Write; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:0; matcher=NotebookEdit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
-| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:1; matcher=NotebookEdit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:2:0; matcher=Agent\|Workflow; bash scripts/hooks/guard-agent-spawn.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:0; matcher=Edit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:3:1; matcher=Edit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:0; matcher=Write; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:4:1; matcher=Write; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:5:0; matcher=NotebookEdit; bash scripts/hooks/check-now-md-edit.sh | aldrig bevist |
+| agent-binding | [.claude/settings.json](../.claude/settings.json) | PreToolUse:5:1; matcher=NotebookEdit; bash scripts/hooks/block-archived-edit.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PostToolUse:0:0; matcher=Bash; bash .claude/hooks/sanitize-secrets.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PostToolUse:1:0; matcher=PowerShell; bash .claude/hooks/sanitize-secrets.sh | aldrig bevist |
 | agent-binding | [.claude/settings.json](../.claude/settings.json) | PostToolUse:2:0; matcher=mcp__.*; bash .claude/hooks/sanitize-secrets.sh | aldrig bevist |

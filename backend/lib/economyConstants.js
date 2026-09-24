@@ -319,6 +319,13 @@ export const ADMIN_ACTION_TYPE = Object.freeze({
   RACE_POINTS_REGENERATED: "race_points_regenerated",
   TEAM_FROZEN: "team_frozen",
   TEAM_UNFROZEN: "team_unfrozen",
+  // #5259: beta-adgang. Kontakten pr. bruger og stadiet pr. flag er de to
+  // handlinger ejeren traeffer i beta-programmet, og begge skal have samme
+  // revisionsspor som ROLE_CHANGED. CHECK-constrainten udvides i
+  // database/2026-09-18-5259-admin-log-beta-actions.sql — kommer en vaerdi her
+  // uden at staa der, fejler INSERTet (samme fejlklasse som #5112).
+  BETA_TESTER_CHANGED: "beta_tester_changed",
+  FEATURE_FLAG_CHANGED: "feature_flag_changed",
 });
 
 // finance_transactions.actor_type — hvem genererede pengebevægelsen.

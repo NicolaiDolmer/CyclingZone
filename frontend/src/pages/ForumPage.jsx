@@ -80,7 +80,12 @@ function PostRow({ post, t, language }) {
               <span className="sr-only">{t("list.unread")}</span>
             </span>
           )}
-          <span className={`min-w-0 truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}>
+          {/* #5383: samme klipning som dashboardets forum-kort — `title` holder
+              hele overskriften tilgaengelig naar cellen er for smal. */}
+          <span
+            title={post.title}
+            className={`min-w-0 truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}
+          >
             {post.title}
           </span>
         </span>
@@ -623,7 +628,7 @@ export default function ForumPage() {
       {state.status === "loading" ? (
         <Section><SkeletonLines lines={6} /></Section>
       ) : state.status === "error" ? (
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("errors.loadFailed")}
             action={<Button size="sm" variant="secondary" onClick={() => load(null)}>{t("errors.retry")}</Button>}

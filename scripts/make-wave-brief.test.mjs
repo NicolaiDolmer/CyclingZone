@@ -26,6 +26,15 @@ test("kraever paakraevede felter", () => {
   assert.throws(() => generateBrief({ issue: 1 }), /slug/);
 });
 
+// 18/9: to workers lagde balance-tal og holdnavne i det offentlige repo, fordi
+// reglen kun stod i AGENTS.md og ikke i den brief de faktisk laeste.
+test("indeholder offentligheds-reglen (hard rule 17 + anonymisering) uanset input", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /REPOET ER OFFENTLIGT/);
+  assert.match(brief, /balance-internals\//);
+  assert.match(brief, /holdnavne/);
+});
+
 test("indeholder heredoc-forbuddet og guard-commit-kaeden", () => {
   const brief = generateBrief(baseConfig);
   assert.match(brief, /Heredoc er FORBUDT/);

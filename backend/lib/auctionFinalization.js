@@ -19,6 +19,7 @@ import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
+import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -312,14 +313,18 @@ async function deleteUnsoldYouthRider({ supabase, rider }) {
     return false;
   }
 
-  const { data: deleted, error: delErr } = await supabase
-    .from("riders")
-    .delete()
-    .eq("id", rider.id)
-    .is("team_id", null)
-    .is("pending_team_id", null)
-    .eq("is_academy", false)
-    .select("id");
+  // #4619: trup-leddet er delt (squads.applySeniorSquadFilter). Det er en
+  // SIKKERHEDS-gate på en sletning — den må kun ramme en rytter der reelt er
+  // gradueret ud i seniortruppen, og et strengere prædikat kan derfor kun gøre
+  // sletningen mere forsigtig, aldrig bredere.
+  const { data: deleted, error: delErr } = await applySeniorSquadFilter(
+    supabase
+      .from("riders")
+      .delete()
+      .eq("id", rider.id)
+      .is("team_id", null)
+      .is("pending_team_id", null)
+  ).select("id");
   ensureNoError(delErr);
   const wasDeleted = (deleted ?? []).length > 0;
   // #2524: rider_watchlist har ingen FK-cascade — uden dette hook forsvinder
@@ -433,10 +438,13 @@ async function tryPlaceYouthWinnerOnSenior({
     return { placed: false, reason: "squad_full" };
   }
 
-  // Placér på senior: team_id + is_academy=false (så han tæller mod 30-cap og
+  // Placér på senior: team_id + trup-patchen (så han tæller mod 30-cap og
   // behandles som senior), senior-kontrakt (kontraktløs free agent → standard-
   // kontrakt via contractOnAcquirePatch). Ingen defer-logik: en fri ungdomsrytter
   // kan ikke være i et aktivt løb for en sælger (der er ingen sælger).
+  // #4619: squad OG is_academy skrives sammen (seniorSquadPatch) — efter
+  // backfill'en ville et bart is_academy=false efterlade squad='u23'/'junior',
+  // og rytteren ville optage en ungdomsplads på vinderens loft.
   const winnerContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
   // #3580: verificér at ejerskabsskiftet FAKTISK ramte en række, FØR debiten
   // nedenfor kører — se expectMutationAffectingRows' doc-comment i marketUtils.js.
@@ -447,7 +455,7 @@ async function tryPlaceYouthWinnerOnSenior({
         team_id: bidderId,
         pending_team_id: null,
         acquired_at: actualEnd,
-        is_academy: false,
+        ...seniorSquadPatch(),
         ...winnerContractPatch,
       })
       .eq("id", rider.id),
@@ -535,7 +543,7 @@ async function tryPlaceYouthWinnerOnSenior({
 // (seller_team_id=NULL), rytteren er fri (team_id=NULL).
 // SENIOR-FØRST placering (ejer-regel 19/7): har vinderen plads på senior-truppen
 // (+ råd), placeres rytteren dér med senior-kontrakt (tæller mod 30-cap). Er senior
-// fuldt, falder vi tilbage til AKADEMIET (is_academy=true, 8-plads-cap, ungdoms-
+// fuldt, falder vi tilbage til AKADEMIET (is_academy=true, loft pr. ungdomstrup #5432, ungdoms-
 // kontrakt, betalt som academy_signing-sink). Er BEGGE fulde → auktionen annulleres
 // og rytteren slettes (#2456 "usolgt = væk"). Ingen råd → annulleres uanset (samme
 // pris begge steder). Ingen bud → rytteren slettes.
@@ -648,8 +656,13 @@ async function finalizeYouthAuctionRecord({
     current_production_value: rider.current_production_value,
   });
   const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
+  // #5432: rytteren lander i den ungdomstrup hans sæsonalder hører til, og det er
+  // DEN trups loft (squads.js SQUAD_CAPS) der tælles mod — ikke et fladt akademital.
+  const academySquad = academyPlacementSquad(rider.birthdate, activeSeasonNumber);
+  const squadArgs = squadCapRpcArgs(academySquad);
 
-  // #1558: cap-check (8-plads, hård) + balance-check + rider-update + debit sker
+  // #1558: cap-check (loft pr. mål-trup, #5432) + balance-check + rider-update
+  // (squad + is_academy i én skrivning) + debit sker
   // ATOMISK i én RPC under pg_advisory_xact_lock(team_id) — samme lock-nøgle
   // som increment_balance_with_audit, så de serialiserer på samme team. Det
   // lukker BÅDE finalize-vs-finalize OG finalize-vs-signAcademyCandidate-racen,
@@ -681,6 +694,7 @@ async function finalizeYouthAuctionRecord({
       // Cron-retry-sikring: en gen-finalize af samme auktion må ikke double-pay.
       idempotency_key: `youth_auction_winner:${auction.id}`,
     },
+    ...squadArgs,
   });
 
   // 23505 (idempotency_key-dublet) = cron-retry af en allerede-betalt auktion.
@@ -707,7 +721,8 @@ async function finalizeYouthAuctionRecord({
       {
         titleCode: "notif.auction.cancelledNoRoomTitle",
         messageCode: "notif.auction.cancelledNoRoomMessage",
-        messageParams: { rider: `${rider.firstname} ${rider.lastname}`, slots: ACADEMY.SLOTS },
+        // #5432: pladstallet er mål-truppens loft, ikke det gamle flade akademital.
+        messageParams: { rider: `${rider.firstname} ${rider.lastname}`, slots: squadArgs.p_squad_cap },
       },
       auction.id,
       { riderId: rider.id }
@@ -958,7 +973,7 @@ async function finalizeAuctionRecord({
   const activeSeasonNumber = activeSeason?.number ?? 1;
 
   // #1308 Fase B: ungdomsauktioner (is_youth) har ingen sælger og placerer
-  // vinderen i akademiet (8-plads-cap) frem for senior-truppen. Håndteres i en
+  // vinderen i akademiet (loft pr. ungdomstrup) frem for senior-truppen. Håndteres i en
   // dedikeret gren, så seller-resolution / squad-cap / transfervindue-pending
   // (ren senior-semantik) ikke forvansker youth-flowet.
   if (auction.is_youth) {
@@ -1225,8 +1240,14 @@ async function finalizeAuctionRecord({
     // IKKE rører kontraktfelterne.
     const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber);
     // #932: en graduate-salgs-auktion (akademirytter solgt af sit eget hold) skal
-    // lande hos vinderen som SENIOR — ikke i vinderens akademi. Flip is_academy=false.
-    const graduatePatch = auction.rider?.is_academy ? { is_academy: false } : {};
+    // lande hos vinderen som SENIOR — ikke i vinderens akademi.
+    // #4619: patchen sætter BEGGE trup-felter. Et bart is_academy=false ville
+    // efter backfill'en efterlade squad='u23'/'junior' på rytteren, og både
+    // effectiveSquad() og countSquadMembers ville fortsat regne ham som
+    // ungdomsrytter — dvs. han ville optage en U23-/junior-plads på vinderens
+    // loft uden at være i noget akademi.
+    const riderGraduatesOnSale = auction.rider?.is_academy === true;
+    const graduatePatch = riderGraduatesOnSale ? seniorSquadPatch() : {};
     // #3580: samme verifikation som senior-ungdomsplaceringen ovenfor — en
     // UPDATE der (fx pga. en samtidig sletning/race) rammer 0 rækker skal
     // ALDRIG kunne efterlade finance-benet nedenfor til at gennemføre alene.
@@ -1266,7 +1287,7 @@ async function finalizeAuctionRecord({
     // via et DIREKTE salg (#3845) — resolver en evt. hængende PENDING
     // academy_graduation-row hos sælgeren så academyGraduationSweep ikke senere
     // finder den og forsøger at auto-resolve en rytter der allerede er solgt.
-    if (graduatePatch.is_academy === false && auction.seller_team_id) {
+    if (riderGraduatesOnSale && auction.seller_team_id) {
       await resolvePendingGraduationOnSale(supabase, {
         teamId: auction.seller_team_id, riderId: auction.rider.id, now: new Date(actualEnd),
       });
@@ -1513,7 +1534,8 @@ async function finalizeAuctionRecord({
           // der ryger til banken paa en garanteret handel skal lande som SENIOR
           // — banken har intet akademi, og en is_academy=true rytter hos banken
           // ville vaere praecis den samme fastlaaste tilstand som #4495.
-          ...(auction.rider?.is_academy ? { is_academy: false } : {}),
+          // #4619: begge trup-felter, af samme grund som vinder-stien ovenfor.
+          ...(auction.rider?.is_academy ? seniorSquadPatch() : {}),
         })
         .eq("id", auction.rider.id),
       { context: `guaranteed_bank_sale auction=${auction.id} rider=${auction.rider.id}` }

@@ -1,47 +1,47 @@
 # MASTERPLAN — prioriteret rækkefølge (SSOT for rækkefølgen)
 
-> **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml` (#4921). **Intentionen** ejes af GDD'en: `docs/GAME_DESIGN_DOCUMENT.md` (D-001–D-048); MASTERPLAN ejer kun rækkefølgen. Spillerdata: `docs/audits/2026-09-10-*.md`.
+> **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml`. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen.
 
-**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer-mandat 10/9: "der skal ikke længere komme fejl ofte"** → 🔴 brand går foran alle baner. **Målt 15/9:** 628 åbne (21 lukket i audit 15/9; 2 done-gated: #452, #3463).
+**Reglen (ejer 6/9):** **Bane 1 deadline** = kun det der er låst til S4-cutover, fast rækkefølge, intet nyt ind. **Bane 2 forretning** = indtjening, kunder, fastholdelse; viger aldrig. **Bane 3 færdiggør** = alt over 70 % færdigt, tømmes FØR noget nyt startes. **Ejer 10/9:** færre fejl → 🔴 brand går foran alle baner. **Ejer 24/9:** intet nyt startes, før det byggede er merget og besluttet (live / ikke endnu / 28/9 / beta). Rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+
+## 🎯 Gør det lovede færdigt (ejer-godkendt 21/9; foran alt andet end brand)
+
+**🏁 Motoren (ejer 23/9): runde 1-4 (#4914) går forrest sammen med løfterne**; tændingsdatoen tages op, når byggeriet kører.
+**A · ejerens hånd:** 1-2 ✅ · 3 flip `training_score_visible` + udmelding (#4851) · 4 Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · 5 ✅ win-back sendt 22/9 (måling 29/9) · 6 "kør" `youth_squad_pages` on for alle (loft #5626 merget 24/9).
+**B · Claude, i rækkefølge:** 6 værdiskiftet #5443 = #5327 → #5435 → #5497 (ejer 22/9) · 7 ✅ S4-kalender 24 t (#5596) · 8 træning pr. løbsdag live 28/9 (flip-dag, #5281) · 9 ✅ /roadmap = fremtiden (#5387, 42 punkter 24/9; gul prik #5673).
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)
 
-**#5182** board-trinnet 72-93 % af race-finalization → rod-årsag til forsinkede løb #3624 (#5202/#5098 lukket 15/9). **15/9:** main rød 09:04-09:3x (fix #5258; postmortem `.claude/learnings/2026-09-15-*`; forward-guards: opdateret base før merge, migrationer mod ægte Postgres i CI). **Rest:** #4595 → epic #5162 (CYCLINGZONE-56 flad) · #5242 apiFetch PR 2 = 214 kaldsteder · #4872 rytterværdi står stille (9/9) · #5222 · #5256 TTT-vægt.
+✅ #5589 dashboard-vinder (#5598, 24/9) · **#5323 Quad9** (#5312): 0 låst ude; ejer-valg A/B. **Rest:** **#5443 værdisystemet** (trin 1-3 før 27/9) · epic #5162 (lige efter S4) · #5242.
 
-## Bane 1 · S4-cutover 27-28/9 (bølge-rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
+## Bane 1 · S4-cutover 27-28/9 (rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
-1. ✅ **Bølge 1 (15/9):** #4851 score merget (flag beta) · #3668 → ejer-valg E (#5268) · #5169 bygget, **parkeret til #5267** (112 vs 140).
-2. 🟠 **Bølge 2 (15/9):** ✅ #5236/#5237 sessioner · ✅ #5211 Discord · 🔵 #5264 B4 **parkeret til træningssession 16/9** · 🔵 #5263 sponsor **parkeret til ejer-gennemgang** · ⏸ #5235 mobil (D-047 revurderes, #5124) · B3 ved cutover.
-3. ⚪ **Bølge 3, rytter-fundament (ÉN migration):** #5268 evner + taktik/aggression · #5269 fødsel uden PCM · #4619 `riders.squad` + loft 12/10 → dry-run → go-kort → ejer-besked → apply.
-4. ⚪ **Bølge 4, kalender m. trupper (FØR S4-generering):** pakker pr. trup · #5262 katalog · AI U23/junior-ryttere · C1 · dry-run → go → #4270 apply (ejer). Spec `2026-09-15-u23-*.md`.
-5. ⚪ **Bølge 5, træning færdig (28/9):** skader i løbsdage · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849) · #4852-#4854 · #4848.
-6. ⚪ **Bølge 6, trup-flader:** Graduation Day (#2491, senest 20/9) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
-7. 🔵 **Bølge 7, cutover:** #4592 → #452 → #4759 · Mandatet-flip #4857 (ejer-go) → #4859 → #4858 · v4 (M12 · #4948) → **flip ejer-only** → #4916.
-8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512.
+1. 🟠 **Køen først (24/9):** #5670 #5661 (go, CI) · #5650 #5651 (rettes, go) · go-kort #5666 #5671 #5672 #5663 · "kør"-kort: `race_notify_outbox_enabled` on · `email_loop_race_digest` dry_run · `race_finalize_resumable_enabled` · gamle PR'er #5502 #5461 #5444 #5281 · GitHub-audit.
+2. 🟠 **Træning:** ✅ 140 (#5608 #5615) · ✅ kerne + motor C2 (#5640 #5654) · #5670 hjælp · flip-prep #5663 · B3 #5281 flip-dagen · #5238 · #5456 · #4852-#4854. **Rytter-fundament:** point-flyt #5268 (ejer-gated) · #5269 · #5273.
+3. 🟠 **Kalender m. trupper:** ✅ kalender pr. trup + 4 D4-puljer (#5653) · **S4-kalender genereres om** (#5405: tørkørsel → "kør" efter #2789; gate lige mange løbsdage #5658) · generator A6 `--juniors=10 --apply` på ejer-go efter transitionen · #5327 arketype (#3512) · #4270 apply (ejer).
+4. 🟠 **Trupper (alt live 28/9):** ✅ S2 #5652 · ✅ puljer #5660 · ✅ stilling backend #5665 · #5650 præmie+udtagelse (16 år) · #5666 U23/junior-sider (#5631) · #5671 frontend-scope (#5648) · Y7-hook + comeback→ungdomsgruppe (opfølgningsissues 24/9).
+5. 🔵 **Cutover:** ✅ D4→D3-script #5669 (kør 28/9) · #5651 D4 = 4 puljer · #5661 comeback efter Global Rank · ✅ parkerede hold #5603 · **Mandatet: #5618 #5632 #5633 (PR #5679, go-kort m. billeder)** → #4859 flip → #4858 · **v4:** ✅ #5524 #5521 #5579 #5576 #5614 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
+6. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512 · taktik-epic #5575 lag 2-4: #5101 → #5573 → #5574.
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
-Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Tilgang + fastholdelse er flaskehalsen, ikke penge.**
-8. ✅ **Spørgeskema #4943/#5121:** lukket 15/9 (34/246); ejeren poster forum-opslag + fog of war-afstemning selv.
-9. 🟠 **Fastholdelse:** #5241 ét klik ✅ (mål ≥ 50 % måles ca. 28/9 i #4964) · #4346 anmeld handel ✅ 15/9 (patch note 7.275) · **#5259 beta-adgang** (ejer 15/9, opt-in, høj prio) · #5257 global handelsliste · #5130 (PR #5211) · #4751 · GDD D-037/D-038. #5107 fog of war på hold. late_fill 12 t beholdt (opfølger #5246).
-10. 🟠 **Vækst-fundament:** **SEO** #5239 forside ✅ (bro; slutmål #5249 statisk + #5250 session-cookie) · #4067 rest · #3796 · #4811 · #4321 · **hastighed** #5177 (rest #5240, del i to) · #5055 · CWV-gate · **mobil** #1602 · #4982 · #5124 (#5235 fix-spor).
-11. 🔵 **Mail:** #2760 win-back ✅ bygget (ejer-prosa + go ca. 21-24/9, 92 i segmentet) · #5045 → testmail → #5038 → flip pr. type. **Nøgleblok #4616** → #4608 → #4646. Billing-vagter #4514 · #4512 · #5051 LTV (#4645).
-12. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv. #5033 chunk lag 3 (efter #4595).
+Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60 % ✅ · D7 ≥ 45 % (30 %) · aktive/7d ≥ 100 (90). **Flaskehals: tilgang + fastholdelse.**
+7. 🟠 **Fastholdelse:** #5241 måles 28/9 (#4964) · #5282 · #5320 · #4751 · #5107 fog of war · late_fill (#5246). Discord-invitation ✅ sendt 24/9 (213).
+8. 🟠 **Vækst-fundament:** **måling først** #5304 #5310 #5305 #5306 · **SEO** #5249 + #5250 · rest #4067 #3796 #4811 #4321 · **hastighed** #5177 #5055 · **mobil** #1602 #4982 #5131. Uge-blok: 2 handlinger + 1 måling.
+9. 🔵 **Mail:** #2760 ✅ (måling 29/9) · #5045 → testmail → #5038 → flip pr. type. **Nøgleblok #4616** → #4608 → #4646. Billing-vagter #4514 · #4512.
+10. 🔴 **Spiller-kommunikation #428/#4820:** ejeren poster selv (svar-udkast i morgenrapport 24/9-d). #5033.
 
-## Bane 3 · Færdiggør (>70 %; tømmes før nyt)
+## Bane 3 · Færdiggør (>70 %)
 
-13. 🟠 **Docs-SSOT:** #5088 matview-grants · #2259 78 backup-tabeller (48 MB, ejer-go til flyt).
-14. **Hygiejne-blok (ejer 11/9):** #3069/#5153/#5155/#5158/#5176 ✅ → #4812 PAT (ejer) → #5157 drafts: #4736 lukket 15/9 · #3512 → egen designsession → #5085 CI marketing → #4924 worktrees.
-15. 🔵 Akademi: #5145 (PR #5197 parkeret til U23/junior) · #4495 · #4213 · #4750. Design-rest #4622: #4627 · #4628 · #4813 · #4814 · #4815 · #4613 → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4-kæde:** #5150 ✅ → #5151 (+#3952) → #5152.
-16. Drift: #4147 · #4866 · #4877/#4900 · #4867 · #4828/#4829 · #5017 · #5015 · #2423 (rør ikke).
-17. Spillerfund: #4589 · #4702 · #4873 · #4875 · #4861 · #4981 · #4982 · #5075 · #5059 · #5030 · #5201 · #5200 · #5180 · #5179.
+11. 🟠 #2259 backup-tabeller (ejer-go) · **drift:** #5635 Discord-sweep · guarded-merge slipper filer pr. spor (issue 24/9) · session-hygiejne (issue 24/9) · #5674 status-tavle genereret · #3556 merge queue.
+12. **Hygiejne-blok (ejer 11/9):** #4812 PAT (ejer) → #5157 → budget FAIL AGENTS.md + FEATURE_STATUS.md → #5309/#5219 · #5218 · #4924 · GDD D-049+ (#5087).
+13. 🔵 Akademi: #5145 (parkeret til U23/junior) · #4750. Design-rest #4622 → **Visuel identitet #5113** (først #5115). **Tailwind 4:** #5151 → #5152.
+14. Spillerfund: #5630 (dit A/B) · #5636 · #5637 · #5634 · #5619 · #4702 #4875 #5030 #5200 #5201 #5382-#5391.
 
-## Venteliste · langsigtet værdi (ejerens område-rækkefølge 2/9; **ejer 10/9: trupper U23/junior løftet fra 8 til 3, parret med træning**)
+## Venteliste · langsigtet værdi (ejer 2/9)
 
-1 **design-kit/anti-slop** · 2 **drift/tempo** · 3 **rytterudvikling/træning + trupper U23/junior** som én pakke (#4629 · #4630 · #4633 · #3664 · #3709 · #4765 · #4831 · #4206 · #5063 · #4620/#4621) · 4 **løbsmotor/taktik** (#3855 · #4599/#4600 · #4611 · #4612 · #4614 · #4596 · #5074) · 5 **dashboard/indbakke/dag 1** (#4985 · #4984) · 6 **planlægning** (#3329 · #3049/#2794 · #4201) · 7 **kalender** (#4176 · #4103 · #4122 · #4123) · 8 **økonomi** (#3732 · #3360 · #3720 · #1441 · #1310) · 9 **fair play/roller** (#3131 · #3818 · #4537 · #4268) · 10 **vision** (#2359 · #1154 · #1177 · #1148 · #1239).
-
-**Grundreglerne B/B2/C (ejer 28/8):** efter 27/9; kun rene FEJL rettes før.
+1 design-kit/anti-slop · 2 drift/tempo · 3 rytterudvikling/træning + trupper (#4629 #4630 #4633 #3664 #3709 #4765 #4831 #4206 #5063 #4620) · 4 løbsmotor/taktik (#3855 #4599 #4600 #4611 #4612 #4614 #4596 #5074) · 5 dashboard/indbakke (#4985 #4984) · 6 planlægning (#3329 #3049 #2794) · 7 kalender (#4176 #4122 #4123) · 8 økonomi (#3732 #3360 #3720 #1441 #1310) · 9 fair play (#3131 #3818 #4537 #4268) · 10 vision (#1154 #1177 #1148 #1239 #5307 #5106). **Grundreglerne B/B2/C (ejer 28/8):** efter 27/9.
 
 ## Stående (viger aldrig)
 
-**Doktrin:** styrke straffes ALDRIG · 1 rytter = 1 løb pr. LØBSDAG · simulér-før-ship · et gulv er aldrig en godkendelse · mere fog of war (6/9; eget GDD-kapitel) · maks +1 pr. evne pr. dag (5/9). **Ejer-beslutninger 27-28/8 (genåbn ikke):** løbsdage 1-baseret · afmeldt hold stiller ikke op · løbsdag = bindings-enhed · minimum 6, fladt · to regenereringer forbudt. **Balance:** #2557 ENESTE åbne. **Race engine:** ÉN v4; v3 låst fallback; flip ejer-only. **FROSSET:** #2217/#2218 · #4099/#4100 · #2960.
+**Doktrin:** styrke straffes ALDRIG · 1 rytter = 1 løb pr. LØBSDAG · simulér-før-ship · et gulv er aldrig en godkendelse · mere fog of war · maks +1 pr. evne pr. dag. **Ejer 28/8 (låst):** løbsdage 1-baseret · afmeldt hold stiller ikke op · minimum 6, fladt · to regenereringer forbudt. **Balance:** #2557 ENESTE åbne. **Race engine:** ÉN v4; v3 låst fallback; flip ejer-only. **FROSSET:** #2217/#2218 · #4100.

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveNotificationLink } from "./notificationLink.js";
+import { resolveNotificationLink, aggregateCtaKey } from "./notificationLink.js";
 
 // #3496: tilbuds-/modbuds-/byttehandels-notifikationer skal føre til
 // beslutningen (/transfers), IKKE rytterprofilen — selvom backend altid
@@ -76,6 +76,24 @@ test("#2180/#3310 selection_warning deep-linker til /races/:raceId#selection", (
     "/planning?tab=calendar",
   );
   assert.equal(link, "/races/race-3#selection");
+});
+
+// #4759: assistant_filled_squad deep-linker til samme selection-anker som
+// selection_warning (samme raceId-metadata-mønster).
+test("#4759 assistant_filled_squad deep-linker til /races/:raceId#selection", () => {
+  const link = resolveNotificationLink(
+    { type: "assistant_filled_squad", metadata: { raceId: "race-9" } },
+    "/planning?tab=calendar",
+  );
+  assert.equal(link, "/races/race-9#selection");
+});
+
+test("#4759 assistant_filled_squad uden metadata falder tilbage til related_id", () => {
+  const link = resolveNotificationLink(
+    { type: "assistant_filled_squad", related_id: "race-10" },
+    "/planning?tab=calendar",
+  );
+  assert.equal(link, "/races/race-10#selection");
 });
 
 // #2832: season_ended bærer den AFSLUTTEDE sæsons id i related_id.
@@ -171,5 +189,32 @@ test("#4943 admin_notice uden surveySlug foelger fallbackLink som foer", () => {
     resolveNotificationLink({ type: "board_update", metadata: { surveySlug: "x" } }, "/board"),
     "/board",
     "kun admin_notice baerer survey-linket",
+  );
+});
+
+// #5384-followup: knapteksten i en udfoldet aggregat-linje. Den foerste #5384-
+// ret valgte paa entry.group === "auction_bidding" og gav dermed boetten
+// bid_received (saelgerens bud-stoej) teksten "Vis detaljer", selvom den linker
+// til /auctions og altid har heddet "Vis auktion". Destinationen afgoer nu
+// teksten, saa en ny boette ikke kan gentage fejlen.
+
+test("#5384 aggregateCtaKey — auktions-destinationer beholder 'Vis auktion'", () => {
+  // auction_bidding (auction_outbid/auction_proxy_outbid) OG bid_received
+  // deler begge dette link i TYPE_CONFIG.
+  assert.equal(aggregateCtaKey("/auctions"), "actions.viewAuction");
+});
+
+test("#5384 aggregateCtaKey — race_completed-destinationer faar 'Vis detaljer'", () => {
+  // race_result/stage_result/career_milestone peger alle paa /resultater.
+  assert.equal(aggregateCtaKey("/resultater"), "actions.viewDetails");
+});
+
+test("#5384 aggregateCtaKey — manglende link giver den generiske tekst", () => {
+  assert.equal(aggregateCtaKey(null), "actions.viewDetails");
+  assert.equal(aggregateCtaKey(undefined), "actions.viewDetails");
+  assert.equal(aggregateCtaKey(""), "actions.viewDetails");
+  assert.equal(
+    aggregateCtaKey("/transfers"), "actions.viewDetails",
+    "kun auktionshuset hedder 'Vis auktion'",
   );
 });

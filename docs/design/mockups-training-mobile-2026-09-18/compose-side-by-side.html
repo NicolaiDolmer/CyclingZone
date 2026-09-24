@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Training mobile · today vs three proposals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f2ec; --card:#fcfbf7; --border:#e5e0d5; --navy:#111429;
+  --t1:#0e0f15; --t2:#66637a; --t3:#9896b0; --accent:#e8c547; --danger:#a81e1e;
+  --font-body:'DM Sans',system-ui,sans-serif; --font-data:'Inter Tight',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--t1); font-family:var(--font-body);
+  width:1810px; -webkit-font-smoothing:antialiased}
+.sheet{padding:36px}
+h1{font-family:var(--font-data); font-size:27px; font-weight:700; letter-spacing:-.01em; margin:0}
+.da{font-size:16px; color:var(--t2); margin:5px 0 0}
+.meta{font-family:var(--font-data); font-size:12px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--t3); margin:14px 0 22px}
+
+.cols{display:flex; gap:30px}
+.col{width:412px; flex-shrink:0}
+.chead{margin-bottom:10px}
+.chead .n{font-family:var(--font-data); font-size:17px; font-weight:700; line-height:1.2}
+.chead .n.is-now{color:var(--danger)}
+.chead .s{font-family:var(--font-data); font-size:12px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--t3); margin-top:3px}
+
+.frame{position:relative; width:412px; height:1600px; overflow:hidden;
+  border:1px solid var(--border); border-radius:5px; background:var(--bg)}
+.frame img{display:block; width:412px}
+.pin{position:absolute; width:27px; height:27px; border-radius:9999px;
+  background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-data); font-size:14px; font-weight:700; line-height:1;
+  border:2px solid #fff}
+.pin.is-now{background:var(--danger)}
+.rule{position:absolute; border-top:2px dashed var(--danger)}
+
+.key{margin-top:14px}
+.key li{display:flex; gap:9px; margin-bottom:8px; align-items:flex-start}
+.key .b{flex-shrink:0; width:21px; height:21px; border-radius:9999px; background:var(--navy);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-data); font-size:11.5px; font-weight:700; line-height:1; margin-top:1px}
+.key .b.is-now{background:var(--danger)}
+.key .txt{font-size:13.5px; line-height:1.4}
+.key ul{list-style:none; margin:0; padding:0}
+
+.foot{margin-top:26px; padding-top:16px; border-top:1px solid var(--border);
+  font-family:var(--font-data); font-size:12.5px; color:var(--t2); line-height:1.6}
+.foot b{color:var(--t1); font-weight:600}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <h1>Training on a phone: today, and three ways out</h1>
+  <p class="da">Traening paa telefonen: i dag, og tre veje ud</p>
+  <p class="meta">412 px · left column is a real screenshot of the live page · the three others are mockups · names and numbers are examples</p>
+
+  <div class="cols">
+
+    <!-- ══ TODAY ══════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="chead">
+        <div class="n is-now">Today</div>
+        <div class="s">Real screenshot · 14 riders</div>
+      </div>
+      <div class="frame">
+        <img src="today-412-tall.png" alt="Training page today at 412 px">
+        <span class="pin is-now" style="left:268px; top:175px">1</span>
+        <span class="pin is-now" style="left:140px; top:350px">2</span>
+        <span class="pin is-now" style="left:378px; top:600px">3</span>
+        <span class="pin is-now" style="left:24px; top:620px">4</span>
+      </div>
+      <div class="key">
+        <ul>
+          <li><span class="b is-now">1</span><span class="txt">Two gold calls at once: the bonus button, and a gold session chip inside every single row.</span></li>
+          <li><span class="b is-now">2</span><span class="txt">"Group by type" takes a full row above the riders, on the screen with the least room.</span></li>
+          <li><span class="b is-now">3</span><span class="txt">The table is 494 px wide in a 412 px screen, so 82 px of it sits behind the edge.</span></li>
+          <li><span class="b is-now">4</span><span class="txt">Full first names wrap over two lines: one rider row is 166 px tall, and four fill the screen.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ══ 1 CARDS ════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="chead">
+        <div class="n">1 · Card per rider</div>
+        <div class="s">Depth first · 3 riders per screen</div>
+      </div>
+      <div class="frame">
+        <img src="m1-cards.png" alt="Mockup 1, card per rider">
+        <span class="pin" style="left:24px; top:239px">5</span>
+        <span class="pin" style="left:22px; top:450px">6</span>
+        <span class="pin" style="left:22px; top:496px">7</span>
+        <span class="pin" style="left:358px; top:556px">8</span>
+      </div>
+      <div class="key">
+        <ul>
+          <li><span class="b">5</span><span class="txt">The day is a strip of race days read left to right, each one racing over training.</span></li>
+          <li><span class="b">6</span><span class="txt">The rider's four race days: one race or one session per day, never both.</span></li>
+          <li><span class="b">7</span><span class="txt">The bar is the one thing that moves every race day, and the next point is a speed, not a date.</span></li>
+          <li><span class="b">8</span><span class="txt">The role recipe and the ability sitting at its cap are right where the choice is made.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ══ 2 TABLE ════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="chead">
+        <div class="n">2 · Table</div>
+        <div class="s">Overview first · 9 riders per screen</div>
+      </div>
+      <div class="frame">
+        <img src="m2-table.png" alt="Mockup 2, table">
+        <span class="pin" style="left:24px; top:337px">9</span>
+        <span class="pin" style="left:24px; top:634px">10</span>
+        <span class="pin" style="left:24px; top:1128px">11</span>
+      </div>
+      <div class="key">
+        <ul>
+          <li><span class="b">9</span><span class="txt">The program is 7 weekdays by 4 race days, drawn as the grid it actually is.</span></li>
+          <li><span class="b">10</span><span class="txt">Nine riders in the height where cards show three, and not one column behind the edge.</span></li>
+          <li><span class="b">11</span><span class="txt">The rider you tap gets the full card under the table, once, instead of in every row.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ══ 3 HYBRID ═══════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="chead">
+        <div class="n">3 · Hybrid</div>
+        <div class="s">List that opens · 6 rows plus one open</div>
+      </div>
+      <div class="frame">
+        <img src="m3-hybrid.png" alt="Mockup 3, hybrid">
+        <span class="pin" style="left:24px; top:391px">12</span>
+        <span class="pin" style="left:22px; top:744px">13</span>
+      </div>
+      <div class="key">
+        <ul>
+          <li><span class="b">12</span><span class="txt">The day splits by what a rider actually does: racing now on top, training now under it.</span></li>
+          <li><span class="b">13</span><span class="txt">The row you tap opens in place with the whole choice, so nothing sits behind a swipe.</span></li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <b>All three share the same spine:</b> the unit is the race day, the day reads left to right as a row of race days, a rider either races or trains on each one, and the whole day is worked out together at 20:00. The one gold button runs it early, without a bonus.<br>
+    <b>Two questions to answer:</b> may the phone and the computer show different content, not just a different layout? And should "Group by type" be gone on the phone?
+  </div>
+
+</div>
+</body>
+</html>

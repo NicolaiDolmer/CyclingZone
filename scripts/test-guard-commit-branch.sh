@@ -182,6 +182,181 @@ run "cwd er ikke et repo og intet <dir> -> exit 2, ikke 'detached HEAD'" \
   2 "<dir>" "$OUTSIDE" "$MAIN_GUARD" main
 last_err_lacks "...ingen misvisende detached-HEAD-besked" "detached HEAD"
 
+# ===== #5094: markoer + pre-commit-kontrol + PowerShell-wrapper =====
+#
+# Fejlklassen: kaeden `bash guard && git commit` kan fortsaette forbi guarden
+# naar `bash` ikke resolves i den kaldende proces. Guarden kan ikke sige fra naar
+# den aldrig blev startet, saa Git skal. Guarden skriver en engangs-markoer;
+# .githooks/check-commit-guard-marker.sh kraever den.
+#
+# Bemaerk mappingen: "bash mangler" og "guarden koerte ikke" er SAMME tilstand
+# set fra commit'ets side - ingen markoer. Testene nedenfor daekker den tilstand.
+
+CHECK="$REPO_ROOT/.githooks/check-commit-guard-marker.sh"
+
+ok() { PASS=$((PASS+1)); echo "PASS  $1"; }
+bad() { FAIL=$((FAIL+1)); echo "FAIL  $1"; [ -n "${2:-}" ] && echo "  $2"; }
+
+marker_path() { git -C "$1" rev-parse --absolute-git-dir 2>/dev/null; }
+
+# Fixture-repoerne faar en origin der ligner CyclingZone: markoer-kontrollen
+# springer bevidst repoer UDEN den over (temp-/fixture-repoer).
+g -C "$MAIN" remote add origin https://github.com/NicolaiDolmer/CyclingZone.git
+
+# --- markoer skrives af en BESTAAET guard, i det rigtige trae ---
+rm -f "$(marker_path "$MAIN")/cz-commit-guard-ok" "$(marker_path "$WT")/cz-commit-guard-ok" 2>/dev/null || true
+run "markoer: bestaaet guard er stadig tavs" 0 "" "$MAIN" scripts/guard-commit-branch.sh main
+if [ -f "$(marker_path "$MAIN")/cz-commit-guard-ok" ]; then
+  ok "markoer: bestaaet guard skriver markoer i traeets egen git-dir"
+else
+  bad "markoer: bestaaet guard skriver markoer i traeets egen git-dir" "ingen fil i $(marker_path "$MAIN")"
+fi
+
+# --- markoeren er per-worktree: guard paa WT maa ikke laegge en markoer i MAIN ---
+rm -f "$(marker_path "$MAIN")/cz-commit-guard-ok" "$(marker_path "$WT")/cz-commit-guard-ok" 2>/dev/null || true
+run "markoer: guard mod worktree er tavs" 0 "" "$MAIN" "$MAIN_GUARD" feat/x "$WT"
+if [ -f "$(marker_path "$WT")/cz-commit-guard-ok" ] && [ ! -f "$(marker_path "$MAIN")/cz-commit-guard-ok" ]; then
+  ok "markoer: worktree-guard skriver KUN i worktreets egen git-dir"
+else
+  bad "markoer: worktree-guard skriver KUN i worktreets egen git-dir"
+fi
+
+# --- BLOKERET guard efterlader ingen markoer ---
+rm -f "$(marker_path "$WT")/cz-commit-guard-ok" 2>/dev/null || true
+run "markoer: blokeret guard -> exit 1" 1 "BLOKERET" "$MAIN" "$MAIN_GUARD" main "$WT"
+if [ ! -f "$(marker_path "$WT")/cz-commit-guard-ok" ]; then
+  ok "markoer: en BLOKERET guard efterlader ingen markoer"
+else
+  bad "markoer: en BLOKERET guard efterlader ingen markoer"
+fi
+
+# --- pre-commit-kontrollen ---
+check_in() { (cd "$1" && bash "$CHECK") >"$STDOUT_TMP" 2>"$STDERR_TMP"; }
+
+rm -f "$(marker_path "$MAIN")/cz-commit-guard-ok" 2>/dev/null || true
+if check_in "$MAIN"; then
+  bad "pre-commit: uden markoer skal commit blokeres" "exit 0"
+else
+  if grep -qF "blev ikke koert" "$STDERR_TMP"; then
+    ok "pre-commit: guarden ikke koert (= bash manglede) -> BLOKERET med aarsag"
+  else
+    bad "pre-commit: guarden ikke koert -> BLOKERET med aarsag" "$(head -c 200 "$STDERR_TMP")"
+  fi
+fi
+
+bash "$MAIN_GUARD" main "$MAIN"
+if check_in "$MAIN"; then
+  ok "pre-commit: guard koert -> commit slipper igennem"
+else
+  bad "pre-commit: guard koert -> commit slipper igennem" "$(head -c 200 "$STDERR_TMP")"
+fi
+
+# ... og markoeren er brugt op: anden commit i traek kraever en ny guard-koersel.
+if check_in "$MAIN"; then
+  bad "pre-commit: markoeren er engangsbrug" "samme markoer daekkede to commits"
+else
+  ok "pre-commit: markoeren er engangsbrug (anden commit blokeres)"
+fi
+
+# DEFER: pre-commit forbruger foerst markoeren naar HELE hooken er bestaaet.
+# Blokerer gitleaks/lint-staged bagefter, skal naeste forsoeg kunne bruge samme
+# godkendelse - ellers faar man "guarden blev ikke koert" om en guard der KOERTE.
+bash "$MAIN_GUARD" main "$MAIN"
+if (cd "$MAIN" && CZ_GUARD_DEFER_MARKER=1 bash "$CHECK") >"$STDOUT_TMP" 2>"$STDERR_TMP"; then
+  if [ -f "$(marker_path "$MAIN")/cz-commit-guard-ok" ]; then
+    ok "pre-commit: DEFER beholder markoeren, saa et senere trins fejl ikke kraever ny guard"
+  else
+    bad "pre-commit: DEFER beholder markoeren" "markoeren blev slettet alligevel"
+  fi
+else
+  bad "pre-commit: DEFER beholder markoeren" "$(head -c 200 "$STDERR_TMP")"
+fi
+rm -f "$(marker_path "$MAIN")/cz-commit-guard-ok" 2>/dev/null || true
+
+# --- markoer fra en anden branch daekker ikke ---
+bash "$MAIN_GUARD" main "$MAIN"
+g -C "$MAIN" checkout -q -b other
+if check_in "$MAIN"; then
+  bad "pre-commit: markoer fra anden branch afvises" "exit 0"
+else
+  grep -qF 'gjaldt branch' "$STDERR_TMP" \
+    && ok "pre-commit: markoer fra anden branch afvises" \
+    || bad "pre-commit: markoer fra anden branch afvises" "$(head -c 200 "$STDERR_TMP")"
+fi
+g -C "$MAIN" checkout -q main
+g -C "$MAIN" branch -q -D other
+
+# --- markoer fra et ANDET trae daekker ikke ---
+# Branchen SKAL matche, ellers stopper branch-tjekket markoeren foer trae-tjekket
+# naas, og testen ville bevise noget andet end den paastaar.
+printf 'v1\nbranch=main\nepoch=%s\ntree=%s\npid=1\n' \
+  "$(date +%s)" "$(git -C "$WT" rev-parse --show-toplevel)" \
+  > "$(marker_path "$MAIN")/cz-commit-guard-ok"
+if check_in "$MAIN"; then
+  bad "pre-commit: markoer med fremmed trae-sti afvises" "exit 0"
+else
+  grep -qF 'andet arbejdstrae' "$STDERR_TMP" \
+    && ok "pre-commit: markoer med fremmed trae-sti afvises" \
+    || bad "pre-commit: markoer med fremmed trae-sti afvises" "$(head -c 200 "$STDERR_TMP")"
+fi
+
+# --- for gammel markoer daekker ikke ---
+bash "$MAIN_GUARD" main "$MAIN"
+MK="$(marker_path "$MAIN")/cz-commit-guard-ok"
+printf 'v1\nbranch=main\nepoch=%s\ntree=%s\npid=1\n' \
+  "$(( $(date +%s) - 4000 ))" "$(git -C "$MAIN" rev-parse --show-toplevel)" > "$MK"
+if check_in "$MAIN"; then
+  bad "pre-commit: for gammel markoer afvises" "exit 0"
+else
+  grep -qF 'graense 300s' "$STDERR_TMP" \
+    && ok "pre-commit: for gammel markoer afvises" \
+    || bad "pre-commit: for gammel markoer afvises" "$(head -c 200 "$STDERR_TMP")"
+fi
+
+# --- repo uden origin springes bevidst over (fixture-/temp-repoer) ---
+g -C "$MAIN" remote remove origin
+rm -f "$MK" 2>/dev/null || true
+if check_in "$MAIN"; then
+  ok "pre-commit: repo uden CyclingZone-origin springes over"
+else
+  bad "pre-commit: repo uden CyclingZone-origin springes over" "$(head -c 200 "$STDERR_TMP")"
+fi
+g -C "$MAIN" remote add origin https://github.com/NicolaiDolmer/CyclingZone.git
+
+# --- PowerShell-wrapperen ---
+PS_GUARD="$REPO_ROOT/scripts/guard-commit-branch.ps1"
+if command -v pwsh >/dev/null 2>&1; then
+  ps_run() { pwsh -NoProfile -File "$PS_GUARD" "$@" >"$STDOUT_TMP" 2>"$STDERR_TMP"; }
+
+  rm -f "$MK" 2>/dev/null || true
+  if ps_run main "$MAIN"; then
+    [ -f "$MK" ] && ok "ps1: korrekt branch -> exit 0 og markoer skrevet" \
+                 || bad "ps1: korrekt branch -> exit 0 og markoer skrevet" "ingen markoer"
+  else
+    bad "ps1: korrekt branch -> exit 0 og markoer skrevet" "$(head -c 200 "$STDERR_TMP")"
+  fi
+
+  if ps_run main "$WT"; then
+    bad "ps1: forkert branch -> exit 1 (guardens kode gives videre)" "exit 0"
+  else
+    ok "ps1: forkert branch -> exit 1 (guardens kode gives videre)"
+  fi
+
+  # Den praecise #5094-tilstand: bash findes ingen steder. Wrapperen SKAL fejle
+  # haardt, saa en `&&`-kaede ikke kan fortsaette til git commit.
+  if CZ_GUARD_TEST_NO_BASH=1 ps_run main "$MAIN"; then
+    bad "ps1: bash mangler -> kaeden stopper (exit 1)" "exit 0 uden at guarden koerte"
+  else
+    if grep -qF 'bash kunne ikke findes' "$STDOUT_TMP" "$STDERR_TMP"; then
+      ok "ps1: bash mangler -> kaeden stopper (exit 1) med aarsag"
+    else
+      bad "ps1: bash mangler -> kaeden stopper med aarsag" "$(head -c 200 "$STDOUT_TMP")"
+    fi
+  fi
+else
+  echo "SKIP  ps1-tests (pwsh ikke paa PATH)"
+fi
+
 # ===== Summary =====
 echo ""
 echo "================================"

@@ -5,14 +5,32 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders, supabase } from "./supabase.js"; // #4348: kanonisk kopi
+// #5242: Retry-After-respekt paa 429 + centraliseret 401-vej. Alle ni kaldsteder
+// herunder læser kroppen som `res.data || {}` i stedet for
+// `await res.json().catch(() => ({}))`; apiFetch har allerede parset den og
+// giver null ved limited/unauthorized/networkError og ved et tomt svar.
+import { apiFetch } from "./apiFetch.ts";
 import { getAuthedUser } from "./getAuthedUser.js";
+// #5242/#5322: apiFetch KASTER ikke ved et netværksudfald — den returnerer
+// `networkError: true` med status 0. Hver handling herunder skelnede FØR mellem
+// "backenden sagde nej" (fejlkode fra kroppen) og "vi naaede aldrig serveren"
+// (fetch'ens rejection → catch → error: "network"), og AcademyPage viser to
+// forskellige beskeder for de to. Den skelnen bevares med NETWORK_FAILURE i
+// stedet for at lade transportfejlen falde i `!res.ok` og blive til "failed".
+const NETWORK_FAILURE = { ok: false, error: "network" };
 import { logEvent } from "./logEvent.js";
+import { squadCapRows } from "./squadCaps.ts";
+
+// #5568: brugte pladser + loft PR. UNGDOMSTRUP ({ u23:{used,max}, junior:{used,max} })
+// fra /api/academy/me. Default = tomme trupper med lofterne fra squadCaps.ts, så
+// fladen aldrig falder tilbage til det gamle flade akademi-loft.
+const EMPTY_SQUADS = Object.fromEntries(squadCapRows(null).map(({ squad, used, max }) => [squad, { used, max }]));
 
 const API = import.meta.env.VITE_API_URL;
 
 export function useAcademy() {
   const [enabled, setEnabled]   = useState(false);
-  const [slots, setSlots]       = useState({ used: 0, max: 8 });
+  const [squads, setSquads]     = useState(EMPTY_SQUADS);
   const [roster, setRoster]     = useState([]);
   const [intake, setIntake]     = useState([]);
   const [graduations, setGraduations] = useState([]);
@@ -51,25 +69,30 @@ export function useAcademy() {
     if (!headers) { setLoading(false); return; }
     refreshBalance();
     try {
-      const res = await fetch(`${API}/api/academy/me`, { headers });
-      if (res.status === 409) {
+      const res = await apiFetch(`${API}/api/academy/me`, { headers });
+      // Et netværksudfald må ikke sætte en fejl-tilstand på fladen: catch'en
+      // nedenfor beholdt FØR den forrige visning ved et fetch-rejection, og et
+      // kortvarigt udfald skal stadig bare lade akademiet stå som det var.
+      if (res.networkError) { setLoading(false); return; }
+      // #5242: res.data kan læses flere gange. Det rå Response kunne ikke — den
+      // anden json() på SAMME svar afviste altid med "body stream already read",
+      // så et 409 der IKKE var academy_disabled mistede sin fejlkode og endte på
+      // det generiske "failed". Nu vises backendens egen kode.
+      const body = res.data || {};
+      if (res.status === 409 && body.error === "academy_disabled") {
         // Flag disabled — graceful disabled state.
-        const body = await res.json().catch(() => ({}));
-        if (body.error === "academy_disabled") {
-          setEnabled(false);
-          setLoading(false);
-          return;
-        }
+        setEnabled(false);
+        setLoading(false);
+        return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         setError(body.error || "failed");
         setLoading(false);
         return;
       }
-      const data = await res.json();
+      const data = body;
       setEnabled(data.enabled ?? false);
-      setSlots(data.slots ?? { used: 0, max: 8 });
+      setSquads(data.squads ?? EMPTY_SQUADS);
       setRoster(data.roster ?? []);
       setIntake(data.intake ?? []);
       setGraduations(data.graduations ?? []);
@@ -91,10 +114,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/sign`, {
+      const res = await apiFetch(`${API}/api/academy/sign`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         const errKey = data.error || "failed";
         return { ok: false, error: errKey };
@@ -112,10 +136,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/reject`, {
+      const res = await apiFetch(`${API}/api/academy/reject`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -128,19 +153,26 @@ export function useAcademy() {
   }, [refresh]);
 
   // Resolvér en graduate (#932). action ∈ promote|sell|release. Returnerer { ok, error? }.
-  const resolveGraduate = useCallback(async (riderId, action) => {
+  //
+  // #2491: `options.refresh = false` springer den efterfølgende hentning over.
+  // Graduation Day's "Confirm all" kører N valg i træk, og en refetch efter
+  // HVERT kald ville sende N-1 overflødige requests og lade listen hoppe under
+  // kæden. Siden henter selv ÉN gang til sidst. Default er uændret true, så de
+  // eksisterende kaldsteder (AcademyPage) opfører sig præcis som før.
+  const resolveGraduate = useCallback(async (riderId, action, { refresh: doRefresh = true } = {}) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/graduate`, {
+      const res = await apiFetch(`${API}/api/academy/graduate`, {
         method: "POST", headers, body: JSON.stringify({ riderId, action }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
       logEvent("academy_graduate", { riderId, action });
-      await refresh();
+      if (doRefresh) await refresh();
       return { ok: true };
     } catch {
       return { ok: false, error: "network" };
@@ -152,10 +184,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/promote`, {
+      const res = await apiFetch(`${API}/api/academy/promote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -172,8 +205,9 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/academy/intake/pull`, { method: "POST", headers });
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -190,10 +224,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/academy/demote`, {
+      const res = await apiFetch(`${API}/api/academy/demote`, {
         method: "POST", headers, body: JSON.stringify({ riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.error || "failed" };
       }
@@ -214,8 +249,8 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, data: {} };
     try {
-      const res = await fetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
-      const data = await res.json().catch(() => ({}));
+      const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release-quote`, { headers });
+      const data = res.data || {};
       return { ok: res.ok, data };
     } catch {
       return { ok: false, data: {} };
@@ -229,10 +264,11 @@ export function useAcademy() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/riders/${riderId}/academy-release`, {
+      const res = await apiFetch(`${API}/api/riders/${riderId}/academy-release`, {
         method: "POST", headers, body: JSON.stringify({}),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
       if (!res.ok) {
         return { ok: false, error: data.errorCode || data.error || "failed" };
       }
@@ -244,5 +280,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, fetchReleaseQuote, releaseRider, pullIntake, refresh };
+  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, fetchReleaseQuote, releaseRider, pullIntake, refresh };
 }

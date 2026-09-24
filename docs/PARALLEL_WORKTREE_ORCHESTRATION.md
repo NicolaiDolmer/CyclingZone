@@ -1,16 +1,100 @@
 
 # Parallel Worktree Orchestration — Playbook
 
-## ⚠️ Eneste indgang siden 2026-09-11: `.claude/workflows/wave.js` ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142))
+## Godkendte runtime-indgange (#5142, #5467)
+
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer. PR-loftet paa 8 er fjernet 22/9 (variant B, ejer-beslutning, #5510) - lanerne (4) og verifikations-semaforen (2) er fortsat bremsen. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+
+## Codex-boelger (#5467)
+
+SSOT for roller og claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md#runtime-synlighed-og-boelger-4016-5467). Ejerens valg af issues, design-go og filansvar skal vaere afklaret foer en plan koeres.
+
+```powershell
+node scripts/codex-wave.mjs plan.json --dry-run
+node scripts/codex-wave.mjs plan.json --run
+```
+
+Planen indeholder `lanes` (default 2, maks 4) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `ownNodeModules` og `checkedMergedPrs`. Ingen model tilsidesaettes automatisk. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
+
+Runneren reserverer alle planens nye PR-pladser, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
+
+Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
+
+| Egenskab | Haandhaevelse og graense |
+|---|---|
+| Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
+| Otte aabne PR'er | Live GitHub-tal inkl. drafts plus planlagte nye PR'er; Claude-hook og Codex-runner deler koden |
+| Filansvar | Plan-overlap afvises; Codex kontrollerer committed diff foer review. Ikke en fil-ACL |
+| Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
+| Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
+| Semafor | Maks 2 for kommandoer gennem wrapperen. Wrapping er fortsat brief-/reviewdisciplin |
+| Oprydning | Optaget ejerproces, dens levende procestrae og registreret watch-identitet; ingen global proces- eller worktree-pruning |
+| Claudes setup/cleanup | Hookens admission er kode; setup-agentens rapport og terminal-observation er stadig agentdisciplin |
+| Merge | Kun efter ejerens ordrette `merge`, separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig. Under en koerende boelge kun PR'er uden ownership-overlap med boelgens aktive spor, laast til det tjekkede head (`--match-head-commit`), fail-closed (#5562) |
+
+Rapporten ligger lokalt under `.claude/run/waves/<waveId>/report.json`; hver lane har privat scratch med brief, processtatus og output. Publicer en anonymiseret status og testbevis paa issue/PR inden close-out. Lokale logs er ikke varigt handoff. Maaling: tid til merget PR, ejerens aktive minutter (ejer-oplyst) og reviewrettelser. Ingen hastighedsgevinst paastaas ud fra fixture-tests.
+
+Recovery: kontroller markoer, processtatus, branch, dirty filer, pushes og eksisterende PR. Bekraeft at gammel writer er stoppet foer nyt skrivearbejde i samme worktree. En ukendt terminaltilstand beholder markoeren. En ny normal `--run` afviser eksisterende worktree/PR; recovery maa ikke stiltiende bygge samme spor igen.
+
+### Ejerskab ved release og resume (22/9, #5468)
+
+Normal `release --wave-id ... --children-stopped` kraever det procesbevis der blev optaget ved admission: samme boot, ejer-PID og startidentitet, og kalderen skal vaere ejeren eller dens levende efterkommer. Et kendt waveId eller en paastand om stoppede boern giver ikke adgang. Manglende bevis, PID-genbrug og et fremmed procestrae bevarer markoeren med `Another session owns this wave`. Identiteten kan ikke omskrives, og startet dispatch kan ikke nulstilles.
+
+Claude-admission kraever en entydig ejerproces i harness-registret. `Workflow({resumeFromRunId})` er ikke ny admission: den kraever en eksisterende Claude-markoer, samme session, samme procestrae og netop det run-ID der er bundet til admission. PostToolUse binder kun `tool_response.runId` fra det oprindelige `tool_use_id`; manglende eller ukendt harness-metadata holder resume lukket. Uden aktiv admission afvises resume; start i stedet en ny normal boelge efter lovlig recovery. Recovery efter genstart og ejerens interaktive genvej har deres egne beviskrav nedenfor. Dette er koordinationskontrol, ikke en fil-ACL mod vilkaarlig kode under samme OS-bruger.
+
+Merge-koeen kalder `assert-merge-allowed` foer planen og `assert-merge-allowed --pr N` efter ventepunktet og igen umiddelbart foer merge (#5562). Uden markoer er alt som foer. En legacy- eller ulaeselig markoer, eller en markoer uden ownership, blokerer stadig alt, ogsaa dry-run. Med en moderne markoer maa en PR kun merges, hvis INGEN af dens filer (ved rename ogsaa den gamle sti) overlapper boelgens aktive ownership: markoerens spor minus `finishedBranches`, plus ventende spor. Fejlbeskeden naevner filen og sporets issue. Fil-listen hentes med `gh api repos/<repo>/pulls/<N>/files --paginate` og skal have praecis PR'ens `changed_files`; enhver fejl, et svar der ikke er et array eller en kort liste blokerer (fail-closed). `guarded-merge` laeser head, filer og head igen (uaendret) FOER state-laasen; under samme state-laas som admission og intake genlaeses markoeren, overlap tjekkes, og der merges med `--match-head-commit <sha>`, saa et push efter tjekket ikke kan smugle nye filer ind. Selve merge-kaldet og alle gh-retries koeres under laasen; en boelge kan derfor ikke starte mellem sidste tjek og merge, og en boelge der startede mens merget blev forberedt, blokerer det. Fordi en merge nu kan holde laasen midt i en boelge, venter `enqueue`, `intake`, `release` og `watch` op til ca. 2 min paa laasen, og hookens foerste dispatch-skrivning og dens binding af `workflowRunId` (PostToolUse) ca. 1 min, inden for hookens 90 sek (#5602; andre kaldere som foer ca. 5 sek). Fejlbeskeden ved optaget laas siger nu foerst "proev igen"; genstart af Windows er kun for en ejer der er gaaet ned. `assert-idle` findes stadig uaendret. Et hard-crash mens state-laasen holdes kraever samme genstartsvej som anden state-lock-recovery.
+
+### Recovery-kommando (Windows, #5468)
+
+Laes foerst `node scripts/wave-policy.mjs inspect` og brug markoerens PRAECISE `waveId` og `owner`. Frigiv en doed boelge med een kommando:
+
+```powershell
+node scripts/wave-policy.mjs recover --wave-id "<waveId>" --owner "<owner>"
+```
+
+Kommandoen kontrollerer ejerskab og Windows-boot-identitet. Naar arbejde har vaeret startet, kraever automatisk recovery en KONSTATERET GENSTART AF WINDOWS: et aktuelt procestrae kan ikke bevise, at gamle efterkommere er vaek, naar mellemprocesserne er afsluttet. Genstart Windows og koer samme kommando igen. Ingen filer skal slettes i haanden.
+
+Foer nogen dispatch kan samme-boot recovery frigive efter et frisk procesoverblik, hvis ejeren og kendte efterkommere er doede. Ukendt boot/PID, ufuldstaendig spawn, fejlet maaling eller aendret markoer bevarer laasen. Efter genstart roeres ingen gammel watch-PID, som kan vaere genbrugt af en anden proces. Recovery-laasen er boot-kvalificeret, saa et crash under recovery ikke blokerer naeste boot. Bevis gemmes under `waves/<waveId>/recovery.json`. Worktrees og dirty/ikke-pushet arbejde roeres ikke.
+
+Alle markoer-skrivere serialiserer read/modify/replace med samme boot-kvalificerede state-laas; temp + rename beskytter laesere mod halve JSON-filer. En state-laas efter et hard-crash overtages ikke paa tid eller PID-gaet. Naeste boot bruger en ny laas, og recovery kan frigive den gamle boelge med ovenstaaende kommando.
+
+Claude-ejerens PID hentes fra harness-registret ved admission. Begge indgange registrerer boot-identitet og om dispatch er begyndt. Codex registrerer child-spawn foer start og PID/terminaltilstand bagefter. Manglende procesidentitet kan ikke bruges som bevis paa ophoer; en ny boot er det konservative bevis ved et hard-crash. Processer startet uden om indgangen er ikke registreret her.
+
+Legacy-markoerer uden `waveId`, `runtime` eller `owner` afvises tydeligt af inspect/release/recover. Der findes ingen automatisk force- eller TTL-genvej. Lad den oprindelige Claude-boelge afslutte dem; skriv aldrig det nye format oven paa en koerende gammel boelge.
+
+### Ejerens interaktive genvej (21/9, #5468)
+
+Ejeren kan i sin egen interaktive terminal koere:
+
+```powershell
+node scripts/wave-policy.mjs recover --owner-override
+```
+
+Kommandoen afviser redirected/non-TTY stdin eller stdout. Den viser waveId/owner og et frisk procesoverblik med registrerede PID'er, worktree-match, lane-watch og kendte efterkommere. Fuld command line udskrives eller logges ikke, da den kan indeholde credentials. Ejeren kontrollerer selv, at skrivende arbejde er stoppet, og indtaster praecis `FRIGIV BOELGE <waveId>`. Forkert svar, nye matchende processer eller en aendret markoer afbryder. Der findes ingen `--yes`, bekraeftelse via miljovariabel eller pipet genvej.
+
+Kun markoeren frigives; genvejen draeber ingen processer og sletter ingen worktrees. OS-brugernavn, vaertsnavn, tidspunkt og procesoverblik gemmes foer frigivelsen i `waves/<waveId>/owner-override-<id>.json`. En optaget state-laas overtages ikke; automatisk recovery efter genstart bevares.
+
+Agenter maa ALDRIG allokere en PTY eller indtaste saetningen for ejeren. TTY-kontrollen blokerer ikke-interaktive kald, men er ikke et identitetsbevis: et program med PTY-adgang kan teknisk emulere en terminal. Den eksplicitte ejerbetjening er derfor fortsat en del af kontrakten.
+
+### Foerste Claude-proeve efter merge (#5468)
+
+Merge kraever ejerens ordrette `merge`. Under en koerende boelge kraever det desuden, at PR'en ikke overlapper boelgens aktive ownership (#5562): koer `node scripts/wave-policy.mjs assert-merge-allowed --pr <N>` fra det bekraeftede repo/worktree umiddelbart foer merge, og merge kun via `scripts/merge-queue.ps1`, der gentager tjekket under state-laasen og merger med `--match-head-commit`. Kommandoen udleder faelles run-mappe fra Git's common directory. En legacy- eller ulaeselig markoer stopper handlingen uanset alder, og enhver tvivl om fil-listen blokerer (fail-closed).
+
+Hook-timeout er 90 sekunder, med plads til GitHub-, boot- og procesidentitetsmaalingerne. Foerste rigtige Claude-boelge efter merge er praecis eet ejer-valgt, ufarligt docs-spor i eget worktree, ingen produktkode/prod. Sporet SKAL have en konkret, ejer-valgt fil i ownership, `ownership: ["docs/audits/5468-first-wave-smoke.md"]`; ingen tom ownership-liste eller generel docs-glob. Kontroller i den rigtige session: Workflow med `scriptPath` leverer `session_id`, markoeren har korrekt runtime/owner/PID/bootId, egne `WAVE-LANE:` og `WAVE-REVIEW:` passerer, og markerfrigivelse sker efter observeret stop. Fixture-tests erstatter ikke denne klientproeve.
+
+Fejler proeven: stop og observer alle egne agenter, behold ukendte claims, og brug ovenstaaende recovery naar kriterierne er opfyldt. Rollback sker i en ny isoleret branch med `git revert --no-commit <merge-SHA-for-5468>`, guard-commit, push og en ejer-godkendt revert-PR. Det konkrete merge-SHA og hele rollback-kommandoen skal staa i PR-body ved merge. Main eller hoved-checkoutet resettes aldrig.
+
+### Claude-indgangen
 
 Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })`, aldrig med håndskrevne Agent-spawns. Resten af dette dokument beskriver **hvorfor** protokollen ser ud som den gør; workflowet er **hvordan** den udføres, og det håndhæver den selv.
 
 - **Loftet er 4 laner** hele døgnet (DOLMERPC, 8 kerner, 32 GB). Erstatter det tidligere "3 parallelle subagents" i TL;DR nedenfor — tallet var dimensioneret efter en ældre maskine og en ældre arbejdsform.
 - **Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees (`scripts/verify-lock.ps1`). Erstatter "maks 3 tunge verifikationer samtidig" i AGENTS.md hard rule 24. Målt 11/9 på DOLMERPC: 9 workers uden semafor = 100 % CPU i timevis, 6 = 83 %. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; brief-generatoren er det eneste sted der håndhæver wrappingen, så en kørsel der starter udenom er usynlig for loftet.
-- **Håndhævelse:** `scripts/hooks/guard-agent-spawn.sh` (PreToolUse på `Agent`/`Workflow`) afviser spawns mens `.claude/run/wave-active.json` findes, og mere end 4 spawns pr. 45 min uden for bølger. Igennem slipper bølgens egne præfikser (`WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:`, `WAVE-CLEANUP:`), read-only-agenter (`READ-ONLY:` eller subagent_type `Explore`/`Plan`) og `Workflow({ scriptPath: ".claude/workflows/wave.js" })` selv. Håndskrevet byggearbejde: kun én opfølgning ad gangen med præfikset `WAVE-FOLLOWUP:`.
+- **Håndhævelse:** `scripts/hooks/guard-agent-spawn.sh` (PreToolUse på `Agent`/`Workflow`) afviser spawns mens `.claude/run/wave-active.json` findes, og mere end 4 spawns pr. 45 min uden for bølger. Igennem slipper bølgens egne præfikser (`WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:` - også den delte intake-agent `WAVE-SETUP: intake` ved rullende optag, #5562 - og `WAVE-CLEANUP:`), read-only-agenter (`READ-ONLY:` eller subagent_type `Explore`/`Plan`) og `Workflow({ scriptPath: ".claude/workflows/wave.js" })` selv. Håndskrevet byggearbejde: kun én opfølgning ad gangen med præfikset `WAVE-FOLLOWUP:`.
 - **Livstegn måles på branchen, ikke på tavshed** (#5178, se [Livstegn og frys](#livstegn-og-frys) nedenfor): spor-vindue 120 min, hårdt loft 180, frys først når branchen har stået stille i 45 min.
-- **Dry-run før en rigtig bølge:** `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { dryRun: true, tracks: [...] } })` printer planen uden at starte noget (nu i **blandet koe**-raekkefoelge, se punkt 3 nedenfor).
-- **Fire regler tilføjet 14/9** (#5220): investigate-spor (fast 60-min-vindue), maks 1 CodeRabbit CLI-runde/spor, blandet koe (lette spor forrest), livstegn-prik ved 15 min. Se [Fire regler tilfoejet 14/9](#fire-regler-tilfoejet-149-5220) nedenfor.
+- **Dry-run før en rigtig bølge:** `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { dryRun: true, tracks: [...] } })` printer planen uden at starte noget (i **tungeste foerst**-raekkefoelge med hvert spors vaegt, se [Fem regler tilfoejet 23-24/9](#fem-regler-tilfoejet-23-249-5562-5567)).
+- **Fire regler tilføjet 14/9** (#5220): investigate-spor (fast 60-min-vindue), maks 1 CodeRabbit CLI-runde/spor, livstegn-prik ved 15 min. Den blandede koe (lette spor forrest) er erstattet af tungeste foerst 23/9. Se [Fire regler tilfoejet 14/9](#fire-regler-tilfoejet-149-5220) nedenfor.
+- **Fem regler tilføjet 23-24/9** (#5562, #5567): tungeste spor foerst, rullende optag, merge uden ownership-overlap under en boelge, reviewer paa opus med skema-bevisregel, hale-tomgang i rapporten. Se [Fem regler tilfoejet 23-24/9](#fem-regler-tilfoejet-23-249-5562-5567) nedenfor.
 
 > Etableret 2026-05-23 efter Session K (3 PRs merged i én parallel run, ~30 min wall-clock vs. 2-3h sekventielt).
 > Postmortem: [`.claude/learnings/2026-05-23-parallel-orchestration.md`](../.claude/learnings/2026-05-23-parallel-orchestration.md)
@@ -193,7 +277,7 @@ Eskalering ved haandholdt opfoelgning: 30 min uden push -> krav om status og oej
 | Foerste spor-vindue | 120 min (`args.trackTimeoutMinutes`, klemmes til 10-180) | Naar det loeber ud, **maales branchen** - der doemmes ikke paa tavshed |
 | Branch-stall | 45 min uden commit | Commit yngre end det = sporet lever, vinduet forlaenges paa SAMME agent |
 | Haardt loft | 180 min | Naaet med en levende branch: sporet stoppes, men **boelgen koerer videre** (stort spor, ikke frossent) |
-| Reviewer | 30 min | Praecis **eet** automatisk gen-spawn foer sporet meldes uden review |
+| Reviewer | 30 min, **opus** | Praecis **eet** automatisk gen-spawn foer sporet meldes uden review. Et blokerende data-/skema-fund uden opslag i `database/schema-snapshot.json`, en read-only `SELECT ... FROM` eller fil:linje fra diffen nedgraderes til bemaerkning (#5567, #5602) |
 | Draft-PR / push | 30 min / 15 min | Uaendret - brief-generatoren skriver dem ind i hver lane |
 
 Maalingen sker via en kort read-only probe-agent i worktreet (`git log -1 --format=%ct`, `git status --porcelain`, `git rev-list --count @{u}..HEAD`), som koerer `node scripts/wave-freeze.mjs` for selve dommen. Regelen er ren, testet kode - [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) med [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs); `wave.js` spejler konstanterne (workflow-scripts kan ikke importere), og testen fejler hvis de to drifter fra hinanden.
@@ -217,9 +301,53 @@ Et tredje svar ("ved ikke") er ikke tilladt.
 
 **2. Maks EEN CodeRabbit CLI-runde pr. spor.** `coderabbit review --base main --committed` koeres praecis eengang foer `gh pr ready`. Finder den aegte fund, rettes de og pushes - men CLI'en koeres IKKE igen (den er kvote-begraenset og adskilt fra skyens auto-review paa PR-niveau, som stadig koerer uafhaengigt). Ret i `scripts/make-wave-brief.mjs`s PR-skabelon-blok.
 
-**3. Blandet koe.** `wave.js` sorterer spor-koeen stabilt saa lette spor (`model: "sonnet"` + `tier: "TARGETED"`) staar forrest, foer tunge spor (opus og/eller FULL) - uden at aendre den indbyrdes raekkefoelge inden for hver gruppe. Formaal: hver af de 4 laner starter med stor sandsynlighed paa et let spor, saa verifikations-semaforen (maks 2 tunge koersler) ikke bliver flaskehalsen fra minut eet, hvis koeen tilfaeldigvis starter med flere tunge spor paa raekke. `dryRun` printer den sorterede koe. Den rene regel: [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) (`isLightTrack`/`sortMixedQueue`), spejlet i `wave.js`.
+**3. Blandet koe - ERSTATTET 23/9 af tungeste foerst (#5562).** Reglen stillede lette spor (`sonnet` + `TARGETED`) forrest, for at 4 tunge spor ikke skulle starte paa een gang og goere semaforen til flaskehals. Bekymringen holder ikke laengere: maks EET FULL-spor pr. boelge og verifikations-semaforen (maks 2 tunge koersler) haandhaeves begge uafhaengigt af koeen. Prisen ved den blandede koe var til gengaeld maalbar: det tungeste spor startede sidst og koerte alene i halen. Se [Fem regler tilfoejet 23-24/9](#fem-regler-tilfoejet-23-249-5562-5567).
 
 **4. Livstegn-prik ved 15 min (ikke frys).** Naar en branch har staaet uden commit i 15 min, mens boelgen stadig er aktiv, sender `wave-lane-watch.ps1` en `[PRIK]`-besked i loop-tilstanden - IKKE en frys, ingen recovery-brief, intet exit-kode-flag. Frys-graensen er stadig 45 min (se [Livstegn og frys](#livstegn-og-frys) ovenfor); prikken er et tidligt, harmloest tegn-tjek, ikke en eskalering, og nulstilles saa snart branchen viser fremdrift igen.
+
+## Fem regler tilfoejet 23-24/9 (#5562, #5567)
+
+Bevis 23/9: i boelge A startede det tungeste spor (FULL, opus) sidst og koerte alene til sidst, og 1-3 laner stod tomme i knap en time, ca. 18 % af boelgens kapacitet. I boelge B laa de lette spor forrest, og ejeren havde en stak godkendte merges der ventede paa at boelgen blev faerdig. 22-23/9 gav sonnet-reviewere et forkert BLOKERENDE (en "manglende" kolonne der er NOT NULL i prod) og godkendte to PR'er der ikke virkede. Alle rene regler ligger i [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) og er spejlet i `wave.js`; [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs) sammenligner baade konstanterne og de normaliserede funktionskroppe, saa en rettelse det ene sted og ikke det andet fejler.
+
+**1. Tungeste spor foerst.** `sortHeavyFirst()` sorterer koeen faldende paa `trackWeight()` = FULL giver 2, opus giver 1, og stabilt inden for samme vaegt (orkestratorens raekkefoelge er tie-breaker). Semaforen er uaendret: `verify-lock.ps1 -Max 2` i hver brief og prompt, `verifyMax: 2` i rapporten og maks EET FULL-spor (`wave.js` og `validateTracks`). `dryRun` viser koeen med hvert spors vaegt.
+
+**2. Rullende optag.** Der findes kun een markoer, og hooken afviser en ny boelge mens den findes. Naeste boelges spor optages derfor i den KOERENDE boelge:
+
+```powershell
+# Orkestratoren (samme session som boelgen - ejerskab bevises som ved release):
+node scripts/wave-policy.mjs inspect                                   # waveId
+node scripts/wave-policy.mjs enqueue --wave-id <waveId> --tracks-file docs/drafts/wave-next.json
+```
+
+Filen har samme format som `wave.js`-args: `{ "tracks": [...] }` eller et rent array. `enqueue` validerer sporene med `validateTracks` og krydstjekker dem mod boelgens aktive saet (spor minus faerdige, plus ventende): ingen dublet paa issue/branch/slug, intet ownership-overlap (samme helper som admission og merge-gaten), maks EET FULL i alt og maks 12 ventende. Siden #5602 afvises ogsaa: en ukendt `model` (kun `opus`, `sonnet` eller ingen), et spor med `ownNodeModules: true` (dets `npm ci` kan overskride intake-loftet, saa det koeres i sin egen boelge), og en branch boelgen allerede har koert, ogsaa en faerdig (ellers slap dens ejerskab forbi merge-gaten). En ny branch til samme issue er fortsat tilladt. En afvisning lader markoeren vaere uroert. Boelgen skal vaere startet med rullende optag slaaet til (default; `args.rollingIntake: false` slaar det fra).
+
+I `wave.js` starter alle laner, ogsaa naar koeen er kortere. En lane uden spor spoerger den rene `planIdleLane()`: `take` (koeen har et spor), `intake` (koeen er tom - se det billige tjek herunder), `wait` (intake gav intet, men andre laner koerer stadig et spor: vent og proev igen) eller `exit`.
+
+**Billigt intake-tjek (#5602).** Boelge R 24/9 brugte ca. 0,5M tokens paa fem tomme intake-agenter. Nu koerer EET delt tjek ad gangen paa den mindste model (haiku, lav effort) med en minimal prompt uden brief og uden repo-laesning: kun `wave-policy.mjs intake --wave-id <id> --peek [--finished ...]`, som markerer faerdige branches og TAELLER koeen uden at flytte noget. Kun naar koeen har spor, eller tjekket ikke gav et brugbart svar (fejl eller intet svar inden 5 min, som IKKE taeller som tom koe), starter den fulde `WAVE-SETUP: intake`-agent (sonnet), som atomisk flytter ALLE ventende spor ind i boelgen og derefter koerer samme worktree-, brief- og PR-tjek som fase 0. Et tjek der svarer forkert, kan derfor forsinke et spor, men aldrig tabe det. Alle branches der har frigivet ejerskab, sendes med hvert kald (`--finished` er idempotent). Pauserne mellem tomme tjek vokser: 10, 20, 40 og derefter loftet 60 min (`intakeBackoffMinutes()`). Efter 5 tomme tjek i traek (`INTAKE_MAX_EMPTY_CHECKS`) stopper de ledige laner sig selv (`planIdleLane` giver `exit`), ogsaa mens andre laner koerer; det logges og staar i rapportens `selfStoppedLanes`. Den SIDSTE ledige lane bliver og tjekker med loft-pausen (60 min), saa laenge et spor koerer, saa et spor der koees senere, altid kan optages, ogsaa hvis den sidste optagne lane lukker paa det haarde loft. Et faerdigt spor nulstiller pause og taelling, og lanen der blev fri, tjekker igen. Pris: en lane der stoppede sig selv, kommer ikke tilbage i den boelge, saa spor der koees derefter, koeres af de laner der stadig lever. Optagne spor springes over paa samme betingelser som i fase 0 og sorteres tungeste foerst. Et spor frigiver kun sit ejerskab (`--finished`) naar `releasesOwnership()` siger det: status bygget, rettet, undersoegt eller undersoegt-ufuldstaendig - aldrig timeout, frys, doed, fejl eller rettelse-mangler, hvor en agent stadig kan skrive. Lukkede laner (timeout) traekker stadig aldrig nye spor. Et spor der stadig staar i koe ved release, rapporteres som `unstarted` med grunden "koeet men aldrig optaget"; `inspect` viser ventende spor undervejs.
+
+**3. Merge under boelge uden overlap.** Se [Ejerskab ved release og resume](#ejerskab-ved-release-og-resume-229-5468): `assert-merge-allowed` + `guarded-merge` tillader en merge under en koerende boelge, naar ingen af PR'ens filer overlapper boelgens aktive ownership. Samtidig er et hul lukket: et glob der stopper midt i et segment (`scripts/wave-*.mjs`) daekker nu enhver sti der starter med samme streng, ogsaa ved admission.
+
+**4. Reviewer paa opus med skema-bevisregel.** Reviewer-agenten koerer paa opus (proben og stop-agenten er fortsat sonnet, ret-trinnet bruger sporets model). Hvert fund har `category` og `evidence`. Paastaar reviewer noget om kolonne, tabel, constraint, NOT NULL, RLS, enum eller datatilstand, slaar den op i `database/schema-snapshot.json` og, hvor det giver mening, med en read-only SELECT mod prod. Reglen haandhaeves i kode af `applySchemaEvidenceRule()`: et blokerende fund med category `data-skema` - eller uden category men med skema-ord - der hverken naevner `schema-snapshot.json`, indeholder en `SELECT ... FROM` eller peger paa fil:linje i diffen (fx `database/x.sql:12` i `evidence`; et linjenummer alene i `file` taeller ikke, #5602), nedgraderes til bemaerkning. Reglen rammer altsaa kun paastande om prod-tilstand uden opslag; et fund underbygget af selve diffen (fx en `DROP COLUMN` i en migration, som auto-migrate koerer efter merge) bliver staaende. Er intet blokerende tilbage, bliver dommen BEMAERKNINGER, og ret-trinnet springes over. Nedgraderinger logges og staar i sporets `reviewDowngraded`. Billedtjek af UI-PR'er via billedstationen (#5565) er ikke en del af dette.
+
+**5. Hale-tomgang.** `wave.js` har intet `Date.now()`, saa den maaler med et monotont minut-ur (et selv-genplanlagt `setTimeout`, ryddet foer scriptet returnerer). Start- og slutminut pr. spor og lane giver via `tailIdleLaneMinutes()` tre tal i rapportens `tailIdle`: `tailStartMinute` (seneste sporstart), `idleLaneMinutes` (tomme lane-minutter derfra til boelgens slut; en lukket lane taeller som optaget) og `capacityPct` (tomgang i procent af lanes x boelgens varighed). Loggen skriver `Hale-tomgang: X lane-minutter (Y % af kapacitet)`. Minut 0 er lane-fasens start.
+
+## Reviewer-tjeklisten: input og punkt 10-12 (24/9, #5507)
+
+Spejl af `reviewPrompt()` i [`.claude/workflows/wave.js`](../.claude/workflows/wave.js), som er kilden. Samme tekst staar i [`NIGHT_WAVE_RUNBOOK.md`](NIGHT_WAVE_RUNBOOK.md); [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs) fejler, hvis et af punkterne 10-12 i prompten mangler i en af de to filer. Baggrund: tre PR'er kom igennem review med en body der paastod noget koden ikke bar (#5501 en preview-parameter der kun fandtes i mocken, #5503 en kontakt uden kaldested, #5446 en kontakt som tre laesere gik udenom).
+
+**Input foer tjeklisten** (koeres i forgrunden; outputtet er grundlaget, og et script-fund citeres i fundets evidence):
+
+- a. `node scripts/check-pr-claims.mjs --pr <N>` - PR-bodyens `?param=`, kontaktnoegler, filstier, endpoints og env-navne slaaet op i diffen og paa main (findes / findes-ikke / kun-mock-preview), med kaldesteder pr. kontakt.
+- b. `node scripts/check-flag-liveness.mjs` - kontakt-vagten (laeser, migration, test med kontakten taendt) mod baselinen.
+- c. `gh issue view <N> --repo NicolaiDolmer/CyclingZone --comments` - issuets seneste kommentarer: maalepunkt, ejer-beslutninger og rettelser efter issuet blev skrevet.
+
+Fejler a eller b, skriver revieweren det i summary og tjekker punkt 10-12 i haanden.
+
+- **10. BEVIS** - hvert `- [x]` i PR-bodyen der siger verificeret/maalt/testet/koert/groen, skal have kommandoen + outputtet (eller et CI-link) i bodyen. Et flueben uden bevis er en bemaerkning (category `verifikation`). En preview/prod-paastand som input a svarer `findes-ikke` eller `kun-mock-preview` til, er en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5501).
+- **11. NY KONTAKT** - indfoerer diffen en kontakt (app_config-noegle, `*_FLAG_KEY`, opts-felt), lister revieweren ALLE kaldesteder i summary (fra input a eller `git grep -n <navn>`) og de filer der laeser det GAMLE, som kontakten skulle erstatte (#5446: kontakten daekkede 2 af 5 laesere). En kontakt uden laeser/kaldested, eller med laesere udenom, som bodyen kalder faerdig, er en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5503). Staar hullet aabent erklaeret under "Ikke daekket", er det en bemaerkning.
+- **12. MAALEPUNKT** - issuets maalepunkt (issue-body + seneste kommentarer, input c) holdes op mod PR-bodyens foer/efter. Flag hvis maalepunktet er uaendret efter PR'en, hvis "foer" allerede var groent (saa beviser "efter" intet), eller hvis bodyen paastaar en rod-aarsag som ingen maaling i PR'en viser (#5503).
+
+Dom: punkt 10 og 11 er advarsel foerst - BEMAERKNINGER foer 2026-10-01, BLOKERENDE fra 2026-10-01. Samme dato som det planlagte skift af CI-vagten `.github/workflows/done-guard.yml` til blokerende; trinnene til det skift staar i workflowets header.
 
 ## Ejer-regel 14/9: backend-only-merges kan spoerges igennem uden go-kort
 
@@ -267,7 +395,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 1. `git fetch origin && git rebase origin/main`
 2. `git add <specifikke-filer>` (ALDRIG `git add -A` — lint-staged-pitfall sweeper untracked ind)
 3. Write commit-msg-fil — ALDRIG PowerShell heredoc (`@'...'@` / `<<EOF`) — kendt bug i Bash-tool på Windows. Filnavn: `.tmp-<N>-commit.txt`. Indhold: <commit-msg-template>
-4. `bash "<path>/scripts/guard-commit-branch.sh" <branch> "<path>" && git -C "<path>" commit -F .tmp-<N>-commit.txt && rm .tmp-<N>-commit.txt`. Guarden faar SAMME mappe som `git -C`. Uden <dir> tjekker den shell-cwd, som agent-shells nulstiller mellem kald; det gav en falsk blokering fra et korrekt worktree 2/9 (#4658). Guarden exiter 1 ved forkert branch/detached HEAD og 2 hvis den ikke kan afgoere hvilket trae du committer i. Blokerer den, saa gentag ALDRIG uden guarden.
+4. `bash "<path>/scripts/guard-commit-branch.sh" <branch> "<path>" && git -C "<path>" commit -F .tmp-<N>-commit.txt && rm .tmp-<N>-commit.txt`. Guarden faar SAMME mappe som `git -C`. Uden <dir> tjekker den shell-cwd, som agent-shells nulstiller mellem kald; det gav en falsk blokering fra et korrekt worktree 2/9 (#4658). Guarden exiter 1 ved forkert branch/detached HEAD og 2 hvis den ikke kan afgoere hvilket trae du committer i. Blokerer den, saa gentag ALDRIG uden guarden. Guarden skriver desuden en engangs-markoer i traeets egen git-dir, og `.githooks/pre-commit` afviser et commit uden den (#5094) — saa en kaede der loeb forbi guarden fordi `bash` ikke kunne resolves, stoppes af Git selv. Fra PowerShell: `pwsh -File scripts/guard-commit-branch.ps1 <branch> "<path>"` + `if ($LASTEXITCODE -ne 0) { exit 1 }`; den finder Git Bash selv og fejler haardt hvis den ikke findes.
 5. `git push -u origin <branch>`
 6. Write PR-body til `.tmp-<N>-pr.md`. Skal indeholde Brugerverifikation-sektion ELLER tilføj backend-only/docs-only label.
 7. `gh pr create --base main --head <branch> --title "..." --body-file .tmp-<N>-pr.md --label <label>`

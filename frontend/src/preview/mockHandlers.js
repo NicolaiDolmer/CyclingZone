@@ -47,6 +47,7 @@ import {
   SEED_SCOUTING_REPORT,
   SEED_MANAGER_TRANSFERS,
   SEED_TRANSFER_HISTORY,
+  SEED_TRADE_FEED,
   SEED_RIDER_HISTORY,
   seedManagerAchievements,
   SEED_SEASON_HONOURS,
@@ -57,6 +58,9 @@ import {
   COMPLETED_AUCTION_BIDS,
   SEED_TEAM_RACE_POINTS_MV,
   SEED_TEAM_STANDINGS_EXT,
+  SEED_YOUTH_STANDINGS,
+  SEED_YOUTH_TEAMS,
+  SEED_YOUTH_POOLS,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -150,6 +154,14 @@ export function restRows(table, requestUrl = "") {
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return [TEST_TEAM, RIVAL_TEAM].filter(t => t.id === id);
+      }
+      // #5631: ungdomsstillingens navneopslag (.in("id", teamIds)) - endpointet
+      // sender kun team_id, klienten henter holdnavnet her.
+      const teamIdIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
+      if (teamIdIn) {
+        const ids = new Set(teamIdIn[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")));
+        const byId = new Map([...SEED_YOUTH_TEAMS, TEST_TEAM, RIVAL_TEAM].map(t => [t.id, t]));
+        return [...byId.values()].filter(t => ids.has(t.id));
       }
       return [TEST_TEAM, RIVAL_TEAM];
     }
@@ -303,8 +315,17 @@ export function restRows(table, requestUrl = "") {
       return SEED_STAGE_SCHEDULE;
     }
     // #3197: Resultat-/Standings-/Kalender-fladens sæson/division/pulje-vælgere.
-    case "league_divisions":
+    case "league_divisions": {
+      // #5631: ungdomsstillingens gruppe-opslag (.in("id", poolIds)). Uden
+      // id-filter er svaret uændret (seniorpuljerne), så ingen pulje-vælger
+      // eller snapshot ser ungdomsgrupperne.
+      const poolIdIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
+      if (poolIdIn) {
+        const ids = new Set(poolIdIn[1].split(",").map(s => Number(s.trim())));
+        return [...SEED_LEAGUE_DIVISIONS, ...SEED_YOUTH_POOLS].filter(d => ids.has(d.id));
+      }
       return SEED_LEAGUE_DIVISIONS;
+    }
     // Sub-4 (#2448): KOM/mellemsprint/mål-passager. Samme race_id=eq-scoping som
     // race_stage_profiles ovenfor — RaceDetailPage henter med .eq("race_id", raceId)
     // (RaceDetailPage.jsx:254-264) og filtrerer selv videre på stage_number/
@@ -857,6 +878,13 @@ const SEASON_MATRIX_SEED = {
     { raceId: "smx-tsa", riderId: "smx-r6", raceRole: "helper" },
     { raceId: "smx-ocean", riderId: "smx-r4", raceRole: "free_role" },
   ],
+  // #5301: ét afmeldt loeb i seeden, formet som prod-sagen (Discord 16/9,
+  // egomadsen): et fler-dages loeb holdet har trukket sig fra, hvis BEVAREDE
+  // opstilling (#4306) stadig ligger i `entries` ovenfor. Uden feltet her ville
+  // preview vise praecis den bug fixet fjerner — r2/r6 laast ude af de
+  // overlappende endagsloeb (smx-open dag 1, smx-ocean dag 3) af et loeb de
+  // ikke stiller op i.
+  withdrawnRaceIds: ["smx-tsa"],
   dayDates: [
     { gameDay: 1, date: "2026-08-28" }, { gameDay: 2, date: "2026-08-28" },
     { gameDay: 3, date: "2026-08-29" }, { gameDay: 4, date: "2026-08-29" },
@@ -883,6 +911,14 @@ export function apiResponse(pathname, search = "") {
     if (riderIds) rows = rows.filter(row => riderIds.includes(row.rider_id));
     if (rankingQuery.get("top") === "5") rows = [...rows].sort((a, b) => Number(b.points) - Number(a.points)).slice(0, 5);
     return { data: rows };
+  }
+  // #5631: ungdomsstillingen (spor Y7 #5647). ?squad= påkrævet, ?pool= valgfri.
+  if (pathname.endsWith("/api/rankings/youth/standings")) {
+    const pool = rankingQuery.get("pool");
+    return {
+      data: SEED_YOUTH_STANDINGS.filter(row => row.squad === rankingQuery.get("squad")
+        && (!pool || String(row.league_division_id) === pool)),
+    };
   }
   if (pathname.endsWith("/api/rankings/standings")) {
     return { data: SEED_TEAM_STANDINGS_EXT.filter(row => row.season_id === rankingQuery.get("season_id")) };
@@ -1296,7 +1332,36 @@ export function apiResponse(pathname, search = "") {
   // FØR de generiske /api/transfers*-grene nedenfor (disjunkt sti, men holder
   // rækkefølgen eksplicit robust hvis stien ændrer sig).
   if (pathname.match(/\/api\/teams\/[^/]+\/transfer-history$/)) return SEED_TRANSFER_HISTORY;
+  // #5257: den globale handelsliste ("Alle handler"-fanen). Filtrene håndteres
+  // her, ikke bare ignoreret — ellers ville et screenshot af et sat filter vise
+  // den ufiltrerede liste og se ud som om filtret ikke virker.
+  if (pathname.endsWith("/api/transfers/feed")) {
+    const params = new URLSearchParams(search);
+    const type = params.get("type");
+    const division = params.get("division");
+    const team = params.get("team");
+    const limit = Number.parseInt(params.get("limit") ?? "25", 10) || 25;
+    const offset = Number.parseInt(params.get("offset") ?? "0", 10) || 0;
+    const matches = SEED_TRADE_FEED.filter((ev) => {
+      if (type && ev.type !== type) return false;
+      if (division && ![ev.from_team?.division, ev.to_team?.division].includes(Number(division))) return false;
+      if (team && ![ev.from_team?.id, ev.to_team?.id].includes(team)) return false;
+      return true;
+    });
+    return {
+      events: matches.slice(offset, offset + limit),
+      limit,
+      offset,
+      has_more: matches.length > offset + limit,
+    };
+  }
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
+  // #5435: rating-kontakten. OFF her (Playwright deler denne fil, og den kører
+  // i Node — eksisterende snapshots skal vise dagens visning). En spec tænder
+  // den ved at registrere sin egen route på /api/display-flags (se
+  // rider-best-role-display.spec.js); preview-deployet overstyrer i
+  // installPreviewMock.js, så ejeren ser den nye visning.
+  if (pathname.endsWith("/api/display-flags")) return { rider_best_role_display: false };
   if (pathname.endsWith("/api/notifications")) return [];
   // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers
   // ikke fange den, men rækkefølgen holder de to adskilte hvis stien ændrer sig.

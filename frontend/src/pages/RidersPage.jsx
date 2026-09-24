@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { useTranslation } from "react-i18next";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { fetchRidersPage } from "../lib/useRiderFilters";
@@ -6,16 +6,22 @@ import { ABILITY_STATS as STATS } from "../lib/abilities";
 import {
   filtersToSearchParams,
   initialFiltersFromUrlOrSession,
+  searchParamsToFilters,
   saveFiltersToSession,
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
-import { useNavigate, Link, useSearchParams } from "react-router";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
+import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import { riderShortName } from "../lib/riderName.ts";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
+import { useScouting } from "../lib/useScouting.js";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
@@ -186,10 +192,15 @@ export default function RidersPage() {
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
+  const typeColumnLabel = useTypeColumnLabel(t("table.type")); // #5435
   const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const filterWriterId = useId();
+  const scouting = useScouting();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -200,6 +211,20 @@ export default function RidersPage() {
   const [filters, setFilters] = useState(() =>
     initialFiltersFromUrlOrSession(searchParams, FILTER_DEFAULTS),
   );
+  const currentSearch = searchParams.toString();
+  const [lastSearch, setLastSearch] = useState(currentSearch);
+  // #5292: history can change the URL without unmounting this page. Restore
+  // before effects run, so stale filters cannot overwrite the history entry.
+  // Our own REPLACE can arrive after newer typing. Identify its writer rather
+  // than comparing it to current input, or an older query can undo a clear.
+  // POP must restore history even when that entry was originally written here.
+  if (lastSearch !== currentSearch) {
+    setLastSearch(currentSearch);
+    const ownWrite = navigationType === "REPLACE" && location.state?.ridersFilterWriter === filterWriterId;
+    if (!ownWrite && filtersToSearchParams(filters, FILTER_DEFAULTS).toString() !== currentSearch) {
+      setFilters(searchParamsToFilters(searchParams, FILTER_DEFAULTS));
+    }
+  }
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
   // #4649: gemte filtre (del C) — Pro-gated i UI, se SavedFiltersBar.
@@ -372,9 +397,14 @@ export default function RidersPage() {
   // navigation (klik på rytter → tilbage).
   useEffect(() => {
     const params = filtersToSearchParams(filters, FILTER_DEFAULTS);
-    setSearchParams(params, { replace: true });
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, {
+        replace: true,
+        state: { ...location.state, ridersFilterWriter: filterWriterId },
+      });
+    }
     saveFiltersToSession(filters);
-  }, [filters, setSearchParams]);
+  }, [filters, searchParams, setSearchParams, location.state, filterWriterId]);
 
   // #229: scroll til toppen ved side-skift, så en ny side ikke starter i bunden
   // (window er scroll-containeren — <main> i Layout er ikke en overflow-scroll-boks).
@@ -429,6 +459,19 @@ export default function RidersPage() {
           className="text-cz-1 hover:text-cz-accent-t transition-colors"
         />
       ),
+      // #5383: paa mobil er navnekolonnen smal nok til at "Ada Pedersen" brod
+      // til to linjer. Den korte form (#5350, ejer-valgt 18/9) staar paa een —
+      // samme navneform som Mit Hold og traeningssiden.
+      renderShort: (r) => (
+        <RiderNameCell
+          id={r.id}
+          firstname={r.firstname}
+          lastname={r.lastname}
+          name={riderShortName(r)}
+          stopPropagation
+          className="text-cz-1 hover:text-cz-accent-t transition-colors"
+        />
+      ),
     },
     {
       key: "compare",
@@ -469,13 +512,30 @@ export default function RidersPage() {
       compact: true,
       render: (r) => {
         const ovr = riderOverallRating(r);
+        // #5435: bedste rolle nu ved tallet når kontakten er tændt.
         return Number.isFinite(ovr) ? (
-          <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
-            style={statPlateStyle(ovr)}>
-            {ovr}
-          </span>
+          <WithBestRole rider={r}>
+            <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+              style={statPlateStyle(ovr)}>
+              {ovr}
+            </span>
+          </WithBestRole>
         ) : <span className="text-cz-3">—</span>;
       },
+    },
+    // #5292: keep value and the shared scout action beside rating, before
+    // secondary identity columns, so desktop scouting is not off-screen.
+    {
+      key: "value",
+      header: t("table.value"),
+      sortKey: "value",
+      numeric: true,
+      render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
+    },
+    {
+      key: "potential",
+      header: tRider("header.potential"),
+      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} showScout />,
     },
     {
       key: "team",
@@ -520,24 +580,23 @@ export default function RidersPage() {
     },
     {
       key: "type",
-      header: t("table.type"),
+      // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
+      header: typeColumnLabel,
       sortKey: "primary_type",
       fold: true,
+      // #5383: KORT type-etiket i mobilens meta-linje. Det fulde navn
+      // ("Bjergrytter/Etapeløbsrytter" = 27 tegn i eet ord) var linjens
+      // laengste tekst og loeb ud over kolonnen. `riderTypes.short.*` findes
+      // allerede i repoet (rytterprofilens type-radar bruger dem), saa dette er
+      // ikke ny copy. Desktop-badget nedenfor er uaendret — det fulde navn
+      // staar stadig i sin egen kolonne dér.
       foldValue: (r) => {
         if (!r.primary_type) return "";
-        const primary = tTypes(`types.${r.primary_type}`);
+        const primary = tTypes(`short.${r.primary_type}`);
         const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
-        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+        return hasSecondary ? `${primary}/${tTypes(`short.${r.secondary_type}`)}` : primary;
       },
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
-    },
-    // #1537: Potentiale-kolonnen fjernet — potentiale skjules helt i visningen (doctrine #1138).
-    {
-      key: "value",
-      header: t("table.value"),
-      sortKey: "value",
-      numeric: true,
-      render: (r) => <span className="text-cz-accent-t font-bold">{formatNumber(getRiderMarketValue(r))}</span>,
     },
     {
       key: "salary",
@@ -673,9 +732,9 @@ export default function RidersPage() {
                 columns={columns}
                 rows={riders}
                 rowKey={(r) => r.id}
-                /* D-047 (#5102): rating, vaerdi og loen er de tre tal markedet
-                   sammenlignes paa; evner og popularitet er et chip-tryk vaek. */
-                mobileDefaults={["rating", "value", "salary"]}
+                /* #5292, design A: scouting is available without opening a
+                   profile. Salary and abilities remain one column-chip away. */
+                mobileDefaults={["rating", "value", "potential"]}
                 rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
                 sort={filters.sort}
                 sortDir={filters.sort_dir}

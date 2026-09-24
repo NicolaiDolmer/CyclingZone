@@ -7,10 +7,13 @@
 //   2) Toolbaren bærer et stille "How training works"-link til
 //      /help?section=dailytraining i stedet for FAQ-prosaen.
 //   3) "Week plan"-fanen viser ugerytme-editoren åben (ingen <details>) + en
-//      kompakt oversigt over ryttere med individuel ugeplan.
+//      kompakt oversigt over ryttere med individuel ugeplan. #5485: ugeplanen
+//      er 7 dage med én vælger pr. dag, og "Plan for" skifter mellem holdet og
+//      én rytters egen plan.
 //   4) Development-fanen viser én række pr. rytter: navn+alder, glyf-tallene
 //      "now · lo-hi · loft", og en fungerende fokus-knap (samme FocusPanel).
-//   5) History-fanen viser den uændrede træningshistorik.
+//   5) History-fanen viser den uændrede træningshistorik. #5485: den hedder nu
+//      Report og samler historikken med dagens rapport; ?tab=history lander dér.
 //   6) ?tab=development og ?tab=weekplan er gyldige dyb-links (samme mønster
 //      som RiderStatsPage).
 //
@@ -42,6 +45,12 @@ const TRAINING_ME = {
 
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
+  // #3643: denne spec maaler DESKTOP-rosterets indhold. Telefonen har siden
+  // 18/9 sin egen visning (tabel med dagens loebsdage, mockup 2), og den er
+  // daekket af 3643-training-mobile.spec.js. Viewporten saettes derfor
+  // eksplicit, saa alle tre projekter bliver ved med at koere DENNE flade i
+  // deres egen motor i stedet for at teste en flade der ikke findes laengere.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await installNetworkMocks(page);
   await page.route("**/api/training/me**", (route) => {
     const request = route.request();
@@ -74,7 +83,7 @@ test("Train today er default: rosteret er synligt, den slettede FAQ er væk, uge
   await expect(helpLink).toHaveAttribute("href", "/help?section=dailytraining");
 });
 
-test("Week plan-fanen viser ugerytme-editoren åben (ingen accordion) + den individuelle ugeplan-oversigt", async ({ page }) => {
+test("Week plan-fanen viser ugeplanen åben (ingen accordion) + den individuelle ugeplan-oversigt", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
@@ -85,19 +94,23 @@ test("Week plan-fanen viser ugerytme-editoren åben (ingen accordion) + den indi
   // Rosterets tabel er væk (kun Week plan-fanens indhold rendres).
   await expect(page.locator("table[data-sortable]")).toHaveCount(0);
 
-  // Ugerytme-editoren er synlig UDEN at skulle åbnes — ingen <details>-element.
-  await expect(page.getByText("Ugentlig rytme")).toBeVisible();
-  await expect(page.locator("details:has-text('Ugentlig rytme')")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Gem rytme" })).toBeVisible();
+  // #5485 (aendring 6): ugeplanen er synlig UDEN at skulle åbnes — ingen
+  // <details>-element — som 7 dage med en vælger pr. dag og en Gem-knap.
+  const plan = page.getByTestId("training-week-plan");
+  await expect(plan.getByRole("heading", { name: "Ugeplan", exact: true })).toBeVisible();
+  await expect(page.locator("details")).toHaveCount(0);
+  await expect(plan.getByTestId("training-week-plan-row")).toHaveCount(7);
+  await expect(plan.getByRole("button", { name: "Gem plan" })).toBeVisible();
 
   // Den individuelle ugeplan-oversigt (tom i denne fixture — riderWeekPlans: {}).
-  await expect(page.getByText("Individuelle ugeplaner")).toBeVisible();
-  await expect(page.getByText("Ingen ryttere har en individuel ugeplan endnu.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
+  await expect(page.getByText("Ingen rytter har sin egen plan endnu.", { exact: false })).toBeVisible();
 
-  // "Gå til rosteret"-knappen springer tilbage til Train today.
-  await page.getByRole("button", { name: "Gå til rosteret" }).click();
-  await expect(page).toHaveURL(/\/training\?tab=today$/);
-  await expect(page.locator("table[data-sortable]")).toBeVisible();
+  // #3643/PR #5552 fandt "Gå til rosteret" død på telefonen. Rytterens egen
+  // plan åbnes nu på fanen selv via "Plan for" — samme kladde/gem som holdets.
+  await expect(page.getByRole("button", { name: "Gå til rosteret" })).toHaveCount(0);
+  await plan.getByRole("combobox", { name: "Plan for" }).selectOption("rider-1");
+  await expect(plan).toContainText("Ada Pedersen");
 });
 
 test("Development-fanen viser navn+alder, glyf-tallene og en fungerende fokus-knap", async ({ page }) => {
@@ -128,15 +141,24 @@ test("Development-fanen viser navn+alder, glyf-tallene og en fungerende fokus-kn
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
-test("History-fanen viser den uændrede træningshistorik, roster er væk", async ({ page }) => {
+test("Rapport-fanen viser den uændrede træningshistorik, roster er væk", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
 
-  await page.getByRole("tab", { name: "Historik" }).click();
-  await expect(page).toHaveURL(/\/training\?tab=history$/);
+  // #5485: History + dagens rapport er samlet i fanen Report ("Rapport").
+  await page.getByRole("tab", { name: "Rapport" }).click();
+  await expect(page).toHaveURL(/\/training\?tab=report$/);
 
   await expect(page.locator("table[data-sortable]")).toHaveCount(0);
+  await expect(page.getByText("Træningshistorik")).toBeVisible();
+});
+
+test("?tab=history er stadig et gyldigt dyb-link og lander på Rapport", async ({ page }) => {
+  await login(page);
+  await page.goto("/training?tab=history");
+
+  await expect(page.getByRole("tab", { name: "Rapport", selected: true })).toBeVisible();
   await expect(page.getByText("Træningshistorik")).toBeVisible();
 });
 
@@ -153,5 +175,5 @@ test("?tab=weekplan er et gyldigt dyb-link", async ({ page }) => {
   await page.goto("/training?tab=weekplan");
 
   await expect(page.getByRole("tab", { name: "Ugeplan", selected: true })).toBeVisible();
-  await expect(page.getByText("Ugentlig rytme")).toBeVisible();
+  await expect(page.getByTestId("training-week-plan").getByRole("heading", { name: "Ugeplan", exact: true })).toBeVisible();
 });

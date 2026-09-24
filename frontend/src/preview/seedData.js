@@ -3,6 +3,8 @@
 // (installPreviewMock.js). Ingen @playwright/test-import her, så modulet kan
 // køre i Node (node --test) og i browseren (Vite preview-bundle).
 
+import { SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568: ungdomstruppernes loft
+
 export const TEST_USER = {
   id: "00000000-0000-4000-8000-000000000001",
   aud: "authenticated",
@@ -130,6 +132,9 @@ export const RIDERS = [
       climbing: 19, time_trial: 22, flat: 29, tempo: 23, sprint: 31, acceleration: 29,
       punch: 26, endurance: 24, recovery: 25, durability: 26, descending: 23,
       cobblestone: 21, positioning: 27, aggression: 22, tactics: 25,
+      // #5268: de to nye mentale evner. Ada er sprint-kaptajn, så lederskab
+      // ligger over holdarbejde; begge på samme skala som de øvrige mentale.
+      teamwork: 18, leadership: 26,
     },
   },
   {
@@ -161,6 +166,8 @@ export const RIDERS = [
       climbing: 28, time_trial: 24, flat: 18, tempo: 23, sprint: 13, acceleration: 19,
       punch: 24, endurance: 27, recovery: 25, durability: 23, descending: 22,
       cobblestone: 16, positioning: 22, aggression: 21, tactics: 24,
+      // #5268: Mikkel er bjerg-domestique for sin kaptajn — holdarbejde over lederskab.
+      teamwork: 27, leadership: 19,
     },
   },
 ];
@@ -188,11 +195,13 @@ export const SEED_ABILITY_CAPS = Object.freeze({
     climbing: 25, time_trial: 28, flat: 45, tempo: 29, sprint: 47, acceleration: 45,
     punch: 32, endurance: 30, recovery: 31, durability: 45, descending: 29,
     cobblestone: 27, positioning: 41, aggression: 28, tactics: 31,
+    teamwork: 24, leadership: 34,
   }),
   "rider-2": Object.freeze({
     climbing: 38, time_trial: 28, flat: 22, tempo: 28, sprint: 17, acceleration: 23,
     punch: 26, endurance: 32, recovery: 29, durability: 27, descending: 24,
     cobblestone: 20, positioning: 26, aggression: 25, tactics: 28,
+    teamwork: 33, leadership: 24,
   }),
 });
 
@@ -767,6 +776,49 @@ export const SEED_TEAM_RACE_POINTS_MV = [
 // #5176: preserve the formerly empty standings-extension mock explicitly.
 export const SEED_TEAM_STANDINGS_EXT = [];
 
+// #5631: ungdomsstillingen (youth_season_standings via GET
+// /api/rankings/youth/standings, spor Y7 #5647) til Standings-fanen på U23
+// team- og Junior team-siden og Youth races. Opdigtede eksempel-hold som resten
+// af seedet; TEST_TEAM står i U23-gruppe A og junior-gruppe A, så "dig"-rækken
+// kan ses. league_division_id'erne er ungdomsgrupper (tier 1 pr. trup) og
+// deler ikke id med seniorpuljerne i SEED_LEAGUE_DIVISIONS.
+//
+// Svaret har KUN endpointets egne kolonner (backend/lib/youthStandings.js
+// YOUTH_STANDINGS_COLUMNS): intet holdnavn, intet pool_index. Klienten slår dem
+// op i teams (SEED_YOUTH_TEAMS) og league_divisions (SEED_YOUTH_POOLS), så
+// preview og e2e kører samme vej som prod.
+const youthTeamNames = new Map();
+function youthRow(squad, poolId, rank, teamId, teamName, points, wins, podiums, races) {
+  youthTeamNames.set(teamId, teamName);
+  return {
+    season_id: ACTIVE_SEASON.id, squad, league_division_id: poolId,
+    team_id: teamId, rank_in_pool: rank,
+    total_points: points, wins, podiums, races,
+    updated_at: "2026-09-20T18:00:00Z",
+  };
+}
+export const SEED_YOUTH_POOLS = [
+  { id: 901, tier: 1, pool_index: 0, label: null, squad: "u23" },
+  { id: 902, tier: 1, pool_index: 1, label: null, squad: "u23" },
+  { id: 911, tier: 1, pool_index: 0, label: null, squad: "junior" },
+];
+export const SEED_YOUTH_STANDINGS = [
+  youthRow("u23", 901, 1, "team-leader-preview", "Étoile du Léman", 64, 2, 3, 4),
+  youthRow("u23", 901, 2, TEST_TEAM.id, TEST_TEAM.name, 51, 1, 2, 4),
+  youthRow("u23", 901, 3, "team-ai-youth-1", "Vallée Verte", 38, 1, 1, 4),
+  youthRow("u23", 901, 4, "team-ai-youth-2", "Kustlijn Continental", 22, 0, 1, 4),
+  youthRow("u23", 901, 5, "team-ai-youth-3", "Alto Douro Ciclismo", 9, 0, 0, 3),
+  youthRow("u23", 902, 1, RIVAL_TEAM.id, RIVAL_TEAM.name, 58, 2, 2, 4),
+  youthRow("u23", 902, 2, "team-rookie-preview", "Nordkyst CK", 40, 1, 2, 4),
+  youthRow("u23", 902, 3, "team-ai-youth-4", "Sierra Norte", 17, 0, 1, 4),
+  youthRow("u23", 902, 4, "team-ai-youth-5", "Fjellvegen Sykkel", 6, 0, 0, 2),
+  youthRow("junior", 911, 1, "team-ai-youth-1", "Vallée Verte", 30, 1, 2, 2),
+  youthRow("junior", 911, 2, TEST_TEAM.id, TEST_TEAM.name, 24, 1, 1, 2),
+  youthRow("junior", 911, 3, RIVAL_TEAM.id, RIVAL_TEAM.name, 12, 0, 1, 2),
+  youthRow("junior", 911, 4, "team-ai-youth-2", "Kustlijn Continental", 5, 0, 0, 2),
+];
+export const SEED_YOUTH_TEAMS = [...youthTeamNames].map(([id, name]) => ({ id, name }));
+
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────
 // global_rank_mv — bevidst UDEN "team-ai-preview" (AI-holdet fra
 // SEED_SEASON_STANDINGS ovenfor): efter #2792 filtrerer selve matview'et
@@ -986,6 +1038,100 @@ export const SEED_TRANSFER_HISTORY = [
     amount: 415000,
     status: "accepted",
     season_number: ACTIVE_SEASON.season_number,
+  },
+];
+
+// GET /api/transfers/feed — #5257: den GLOBALE handelsliste ("Alle handler").
+// Samme event-shape som backendens buildGlobalTradeFeed (tradeListFeed.js):
+// fra/til-hold i stedet for en viewer-relativ modpart, og `reportable` afgjort
+// af serveren. Dækker med vilje alle fem tilstande fanen skal kunne vise:
+// auktion med vinder, auktion uden bud, direkte transfer, bytte med to ryttere
+// og en handel mellem to hold der ikke er mit eget.
+const FEED_AI_TEAM = { id: "team-ai-mock", name: "Nordic Continental", is_ai: true, division: 3 };
+const FEED_THIRD_TEAM = { id: "team-third-mock", name: "Bastogne Pro", is_ai: false, division: 1 };
+
+export const SEED_TRADE_FEED = [
+  {
+    id: "transfer:feed-1",
+    type: "transfer",
+    date: "2026-07-18T16:40:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-5", firstname: "Emil", lastname: "Kjær" },
+    rider_swapped: null,
+    from_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: RIVAL_TEAM.division },
+    to_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    amount: 415000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "auction:feed-2",
+    type: "auction",
+    date: "2026-07-17T20:05:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-9", firstname: "Matteo", lastname: "Ferrari" },
+    rider_swapped: null,
+    from_team: FEED_THIRD_TEAM,
+    to_team: FEED_AI_TEAM,
+    amount: 1240000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "swap:feed-3",
+    type: "swap",
+    date: "2026-07-16T09:12:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-7", firstname: "Lukas", lastname: "Meyer" },
+    rider_swapped: { id: "rider-8", firstname: "Tomas", lastname: "Novak" },
+    from_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    to_team: FEED_THIRD_TEAM,
+    amount: 75000,
+    cash_direction: "proposing_pays",
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    // Fri-agent-auktion: rytteren kom fra puljen, ikke fra et hold. Prod-audit
+    // 18/9 viser at det er den hyppigste auktionsform, så den SKAL være med i
+    // mocken — ellers ser et screenshot ikke ud som virkeligheden.
+    id: "auction:feed-4",
+    type: "auction",
+    date: "2026-07-15T09:30:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-4", firstname: "Jonas", lastname: "Brandt" },
+    rider_swapped: null,
+    from_team: null,
+    to_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    amount: 118000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "auction:feed-5",
+    type: "auction",
+    date: "2026-07-09T14:02:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-3", firstname: "Sofie", lastname: "Lund" },
+    rider_swapped: null,
+    from_team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: TEST_TEAM.division },
+    to_team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: RIVAL_TEAM.division },
+    amount: 640000,
+    is_guaranteed_sale: false,
+    reportable: true,
+  },
+  {
+    id: "transfer:feed-6",
+    type: "transfer",
+    date: "2026-07-02T13:25:00.000Z",
+    season_number: ACTIVE_SEASON.season_number,
+    rider: { id: "rider-10", firstname: "Pieter", lastname: "de Vries" },
+    rider_swapped: null,
+    from_team: FEED_AI_TEAM,
+    to_team: FEED_THIRD_TEAM,
+    amount: 285000,
+    is_guaranteed_sale: false,
+    reportable: true,
   },
 ];
 
@@ -1410,7 +1556,8 @@ const INTAKE_CREATED = { fresh: daysAgoIso(1), mid: daysAgoIso(3), urgent: daysA
 // specs afhænger af præcis denne form (3 intakes, 2 roster-ryttere).
 export const SEED_ACADEMY = {
   enabled: true,
-  slots: { used: 2, max: 8 },
+  // #5568: loft pr. ungdomstrup (lofterne fra squadCaps.ts, aldrig et håndskrevet tal).
+  squads: { u23: { used: 1, max: SQUAD_CAPS.u23 }, junior: { used: 1, max: SQUAD_CAPS.junior } },
   // #932 S7: senior-cap-tæller til promote/demote-confirm-dialogerne.
   seniorCount: 18,
   seniorMax: 30,
@@ -1549,7 +1696,7 @@ export const SEED_ACADEMY = {
 // synlige i preview uden en live backend.
 export const SEED_ACADEMY_PNL = {
   enabled: true,
-  current: { slotsUsed: 2, slotsMax: 8, payroll: 22000 },
+  current: { slotsUsed: 2, slotsMax: SQUAD_CAPS.u23 + SQUAD_CAPS.junior, payroll: 22000 },
   cumulative: {
     driftPaid: 25000,
     signingFeesPaid: 18000,
@@ -1763,6 +1910,10 @@ export const SEED_SCOUTING_REPORT = {
     { key: "puncheur", now: 25, progLo: 28, progHi: 36, ceilLo: 28, ceilHi: 36, loft: 61 },
     { key: "brostensrytter", now: 24, progLo: 30, progHi: 39, ceilLo: 30, ceilHi: 39, loft: 73 },
     { key: "baroudeur", now: 24, progLo: 29, progHi: 37, ceilLo: 29, ceilHi: 37, loft: 64 },
+    // #5321: 26 → 27 igen. #5268 satte den til 26 fordi `teamwork` kom ind i
+    // rouleur-opskriften; den vægt er rullet ud igen (evnen har ikke værdier på
+    // alle ryttere endnu). Loft-båndet rummer stadig sandheden (37 i [33,42])
+    // og er derfor urørt.
     { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
     { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35, loft: 55 },
   ],
@@ -1888,6 +2039,12 @@ export const SEED_TRAINING = {
   smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max" },
   weekPlan: null,
   riderWeekPlans: {},
+  // #4847: knappens aabne-tilstand naar `training_tick_per_race_day` er on.
+  // ADDITIV for preview: `todayRun` ovenfor er sat, saa headeren og knappen staar
+  // i "trained today"-tilstanden praecis som foer — feltet aendrer altsaa ingen
+  // eksisterende skaermbilleder. Det findes for at fladen kan renderes i den nye
+  // tilstand ved at nulstille `todayRun` lokalt under en capture.
+  dayClose: { open: false, reason: "awaiting_finalization", gameDays: [40, 41, 42], opensAtHour: 20 },
 };
 
 // ── #2863 · Sæsonens bedste ryttere (get_season_honours-RPC) ───────────────────────

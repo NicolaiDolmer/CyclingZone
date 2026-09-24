@@ -1,6 +1,11 @@
 {
   "title": "Daglig træning",
   "trainToday": "Træn i dag",
+  "runDayNow": "Kør dagens træning nu",
+  "dayClose": {
+    "waiting": "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. {hour}.",
+    "ready": "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv."
+  },
   "trainedToday_you": "Trænet i dag (af dig)",
   "trainedToday_assistant": "Trænet i dag (af assistenten)",
   "trainedTodayAt_you": "Trænet i dag kl. {time} (af dig)",
@@ -16,10 +21,76 @@
     "descAria": "Sorterer faldende, tryk for stigende"
   },
   "tabs": {
-    "today": "Træn i dag",
+    "today": "I dag",
     "weekplan": "Ugeplan",
     "development": "Udvikling",
-    "history": "Historik"
+    "history": "Historik",
+    "report": "Rapport"
+  },
+  "primary": {
+    "setDays": "Sæt dag for {n, plural, one {# rytter} other {# ryttere}}"
+  },
+  "overview": {
+    "label": "Dagen på et blik",
+    "needsDay": "Mangler en dag",
+    "racing": "Kører løb i dag",
+    "training": "Træner i dag",
+    "tired": "Trætte · træthed {from}+",
+    "needsDayShort": "Uden dag",
+    "racingShort": "Løb",
+    "trainingShort": "Træner",
+    "tiredShort": "Trætte",
+    "restRecovery": "{rest} hviler · {recovery} restitution",
+    "more": "+{n} mere",
+    "filterAria": "Vis kun: {label}",
+    "status": "Dagens træning",
+    "statusPaused": "Sat på pause",
+    "statusNotYet": "Ikke kørt endnu",
+    "statusWaiting": "Kører af sig selv fra kl. {hour}:00",
+    "statusReady": "Klar til at køre",
+    "runNow": "Kør nu",
+    "showing": "Viser: {label}",
+    "showAll": "Vis alle",
+    "emptyFiltered": "Ingen ryttere her lige nu.",
+    "changesTomorrow": "Ændringer gælder nu fra i morgen."
+  },
+  "today": {
+    "colSelect": "Vælg",
+    "colDay": "Dagens dag",
+    "colSeasonPoints": "Sæsonpoint",
+    "selectRider": "Vælg {name}",
+    "applyTo": "Brug på {n}",
+    "clear": "Ryd",
+    "noDaySet": "Ingen dag valgt endnu",
+    "useAssistantPick": "Brug assistentens bud: {session}",
+    "count": "{n, plural, one {# rytter} other {# ryttere}}"
+  },
+  "daySelect": {
+    "placeholder": "Vælg dag",
+    "saved": "Gemt",
+    "aria": "Dagens dag for {name}"
+  },
+  "card": {
+    "changeDay": "Skift dag",
+    "profile": "Rytterprofil",
+    "weekPlan": "Ugeplan",
+    "followsTeam": "Følger holdets plan",
+    "ownPlan": "Har sin egen plan",
+    "giveOwnPlan": "Giv ham sin egen plan",
+    "editOwnPlan": "Ret hans plan"
+  },
+  "weekPlan": {
+    "title": "Ugeplan",
+    "planFor": "Plan for",
+    "team": "Hold · {n, plural, one {# rytter} other {# ryttere}}",
+    "teamIntro": "Sæt intensiteten for hver af ugens dage.",
+    "colDay": "Dag",
+    "colWholeDay": "Hele dagen",
+    "today": "I dag",
+    "save": "Gem plan",
+    "undo": "Fortryd ændringer",
+    "unsaved": "{n, plural, one {# ændring ikke gemt} other {# ændringer ikke gemt}}",
+    "ownPlansEmpty": "Ingen rytter har sin egen plan endnu. Vælg en rytter under Plan for for at give ham en."
   },
   "howTrainingWorksLink": "Sådan virker træning",
   "development": {
@@ -33,6 +104,9 @@
   "injuryRisk": "Høj skaderisiko",
   "injured": "Skadet: {days} dag tilbage",
   "injured_plural": "Skadet: {days} dage tilbage",
+  "injuredRaceDays": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage (ca. {date})",
+  "injuredRaceDaysPlain": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage",
+  "injuredApprox": "Tilbage ca. {date}",
   "noRiders": "Ingen ryttere på holdet endnu.",
   "report": "Dagens træningsrapport",
   "bonusApplied": "Trænet af dig",
@@ -102,8 +176,6 @@
   "riderHistorySubtitle": "Rytterens daglige træning de seneste 30 dage",
   "riderHistoryEmpty": "Ingen træningshistorik for rytteren endnu.",
   "riderHistoryRest": "Hviledag",
-  "weekRhythmTitle": "Ugentlig rytme",
-  "weekRhythmIntro": "Sæt holdets ønskede intensitet pr. ugedag. Dette er kun default for ryttere UDEN egen indstilling: en rytters eget fokus og intensitet, eller deres individuelle ugeplan, vinder altid over holdets rytme for netop den rytter. \"Træn i dag\" kræver stadig dit klik, hvis du vil have passet kørt med det samme i stedet for i aften.",
   "weekday_mon": "Man",
   "weekday_tue": "Tir",
   "weekday_wed": "Ons",
@@ -111,7 +183,6 @@
   "weekday_fri": "Fre",
   "weekday_sat": "Lør",
   "weekday_sun": "Søn",
-  "weekRhythmSave": "Gem rytme",
   "weekRhythmResetButton": "Nulstil (ingen rytme)",
   "weekRhythmSaved": "Ugentlig rytme gemt.",
   "weekRhythmReset": "Ugentlig rytme fjernet: ryttere følger igen deres sæson-intensitet hver dag.",
@@ -121,7 +192,6 @@
   "planActionError_not_own_rider": "Du kan kun træne dine egne ryttere.",
   "planActionError_auth": "Din session er udløbet. Log ind igen.",
   "planActionError_network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen.",
-  "weekRhythmBonusNote": "Rytmen er en default: den gælder kun for ryttere uden egen fokus/intensitet eller individuel ugeplan, og den rører aldrig fokus. Klikker du selv \"Træn i dag\", ændrer det kun HVORNÅR passet køres, ikke hvor meget rytteren udvikler sig.",
   "weekRhythmTodayShort": "I dag: {intensity}",
   "weekRhythmTodayHint": "i dag: {intensity} (holdets ugentlige rytme)",
   "weekRhythmTodayHintOwn": "i dag: {intensity} (egen ugeplan)",
@@ -175,9 +245,6 @@
   "individualWeekPlanBadge": "Egen plan",
   "individualWeekPlanBadgeTitle": "Denne rytter har sin egen individuelle ugeplan, som overstyrer holdets ugentlige rytme.",
   "individualWeekPlanOverviewTitle": "Individuelle ugeplaner",
-  "individualWeekPlanOverviewEmpty": "Ingen ryttere har en individuel ugeplan endnu. Sæt en fra en rytters række på Træn i dag.",
-  "individualWeekPlanOverviewOverridesNote": "Overstyrer holdrytmen",
-  "individualWeekPlanOverviewGoToRoster": "Gå til rosteret",
   "momentLabelToday": "Dagens historie",
   "momentLabelLatest": "Seneste træningshistorie",
   "momentBreakthrough_0": "{riderName} gennembryder i {ability}: {from} → {to}.",
@@ -212,6 +279,22 @@
     "runToday": {
       "title": "Træn én gang om dagen",
       "body": "Trykker du her, træner truppen med det samme. Springer du over, kører din assistent samme pas efter kl. 22, med samme resultat. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
+    },
+    "runNow": {
+      "title": "Kør dagens træning",
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Tryk én gang om dagen for +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus."
+    },
+    "runTodayDayClose": {
+      "title": "Kør dagens træning",
+      "body": "Tryk her for at køre dagens træning nu i stedet for at vente. Det er samme træning som den automatiske kørsel, uden bonus: dagen kører også af sig selv, når dagens sidste løb er slut."
+    },
+    "runNowDayClose": {
+      "title": "Kør dagens træning",
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Det er samme træning som den automatiske kørsel, uden bonus: dagen kører også af sig selv, når dagens sidste løb er slut."
+    },
+    "runStatus": {
+      "title": "Træn én gang om dagen",
+      "body": "Linjen viser dagens træning: om den er kørt, eller hvornår den kan køres. Når dagen kan køres, står knappen der kører den lige her."
     },
     "nextUp": {
       "title": "Hvor træningen viser sig",
@@ -271,7 +354,7 @@
     "session_attack_repeats": "Angrebsintervaller",
     "sessionNote_cobbled_sectors": "Bygget til brostenene. Brosten får mest, robusthed og positionering følger med i prisen.",
     "sessionNote_echelon_drills": "Bygget til sidevind. Fladt terræn får mest, positionering og robusthed følger med i prisen.",
-    "sessionNote_attack_repeats": "Bygget til at køre aggressivt. Aggression får mest, punch og acceleration følger med i prisen.",
+    "sessionNote_attack_repeats": "Bygget til at køre aggressivt. Angrebslyst får mest, punch og acceleration følger med i prisen.",
     "session_technique": "Teknik",
     "session_aero": "Aero",
     "session_loebslaere": "Løbslære",
@@ -281,6 +364,8 @@
     "chooseDay": "Vælg dag",
     "clear": "Fjern plan",
     "save": "Gem dag",
+    "done": "Færdig",
+    "pickSession": "Vælg først en session i trin 2.",
     "bulkSetDay": "Sæt dag",
     "bulkWholeDay": "Hele dagen"
   },
@@ -288,6 +373,10 @@
     "column": "Score",
     "raceDay": "Løb",
     "sparkAria": "Træningsscore, seneste 7 dage: {name}",
+    "columnHint": "Hvor godt dagens pas var, 1-99. Løbsdage viser \"Løb\".",
+    "columnHelpAria": "Hvad træningsscoren betyder: læs det i Hjælp",
+    "latest": "seneste",
+    "latestHint": "Dagens pas er ikke kørt endnu. Det her er den seneste score.",
     "factor_intensity": "Passet",
     "factor_focusMatch": "Fokus-match",
     "factor_condition": "Form og træthed",
@@ -296,5 +385,49 @@
     "factor_potential": "Talentet",
     "factor_youth": "Alderen",
     "factor_noise": "Dagen"
+  },
+  "mobile": {
+    "today": "I dag",
+    "raceDayShort": "LD {n}",
+    "raceDayState_done": "Kørt",
+    "raceDayState_now": "Nu",
+    "raceDayState_upcoming": "Senere",
+    "stripLegend": "Ryttere med en dag valgt · et løb eller en session",
+    "programTitle": "Program",
+    "programEdit": "Redigér",
+    "programNote": "7 ugedage × {n} løbsdage · en løbsdag er ét løb eller én session",
+    "programNoteSingle": "7 ugedage · én session om dagen",
+    "raceShort": "Løb",
+    "rosterTitle": "Truppen i dag",
+    "riderCount": "{n, plural, one {# rytter} other {# ryttere}}",
+    "noDay": "Ikke valgt",
+    "formShort": "F",
+    "fatigueShort": "T",
+    "countsFor": "Tæller for {role}",
+    "atCap": "på loftet",
+    "pace": "Tempo · ca. {n} evne-point om ugen",
+    "seasonPoints": "Denne sæson: +{n, plural, one {# point} other {# point}}",
+    "change": "Skift",
+    "assistantTitle": "Assistent",
+    "assistantCount": "{n, plural, one {# forslag} other {# forslag}}",
+    "sessionShort_rest": "Hvile",
+    "sessionShort_recovery": "Restit.",
+    "sessionShort_endurance": "Lang",
+    "sessionShort_tempo": "Tempo",
+    "sessionShort_vo2max": "VO2",
+    "sessionShort_vo2max_climb": "Bjerg",
+    "sessionShort_vo2max_punch": "Punch",
+    "sessionShort_threshold": "Tærskel",
+    "sessionShort_sprint": "Sprint",
+    "sessionShort_cobbled_sectors": "Brosten",
+    "sessionShort_echelon_drills": "Vifte",
+    "sessionShort_attack_repeats": "Angreb",
+    "sessionShort_technique": "Teknik",
+    "sessionShort_aero": "Aero",
+    "sessionShort_loebslaere": "Løbslære",
+    "selectRiders": "Vælg ryttere",
+    "selectDone": "Færdig",
+    "restSelected": "Sæt til hvile",
+    "pickHint": "Tryk på de ryttere, du vil ændre."
   }
 }

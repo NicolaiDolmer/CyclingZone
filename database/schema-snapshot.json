@@ -12,7 +12,9 @@
         "status",
         "deadline",
         "created_at",
-        "resolved_at"
+        "resolved_at",
+        "from_squad",
+        "to_squad"
       ]
     },
     "academy_intake": {
@@ -2018,7 +2020,8 @@
         "id",
         "tier",
         "pool_index",
-        "label"
+        "label",
+        "squad"
       ]
     },
     "loan_config": {
@@ -2235,7 +2238,8 @@
         "replied_at",
         "replied_by",
         "status_changed_at",
-        "seq"
+        "seq",
+        "metadata"
       ]
     },
     "prize_tables": {
@@ -2554,7 +2558,8 @@
         "league_division_id",
         "game_day_start",
         "finalize_state",
-        "finalize_updated_at"
+        "finalize_updated_at",
+        "squad"
       ]
     },
     "rider_caps_3591_backup_20260813": {
@@ -2890,7 +2895,8 @@
         "reputation_updated_at",
         "retirement_notice_season",
         "retirement_notice_after_season",
-        "retirement_notice_given_at"
+        "retirement_notice_given_at",
+        "squad"
       ]
     },
     "riders_3570_backup_20260811": {
@@ -3374,7 +3380,9 @@
         "reputation",
         "reputation_updated_at",
         "pending_removal_blocked_reason",
-        "pending_removal_blocked_since"
+        "pending_removal_blocked_since",
+        "u23_league_division_id",
+        "junior_league_division_id"
       ]
     },
     "traffic_events": {
@@ -3743,9 +3751,11 @@
     "team_rider_role_rules.rider_id": "riders",
     "team_rider_role_rules.team_id": "teams",
     "team_staff.team_id": "teams",
+    "teams.junior_league_division_id": "league_divisions",
     "teams.league_division_id": "league_divisions",
     "teams.my_result_seen_race_id": "races",
     "teams.team_dna_key": "team_dna",
+    "teams.u23_league_division_id": "league_divisions",
     "teams.user_id": "users",
     "training_day_runs.team_id": "teams",
     "training_plans.rider_id": "riders",

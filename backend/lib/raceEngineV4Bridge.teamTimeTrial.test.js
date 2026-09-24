@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 
 import { buildV4StageInput, createRaceEngineV4Adapter, loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
+import { computePassages } from "./racePassages.js";
 
 const TEAM_SIZE = 9; // #3463's egen formulering: "ni ryttere fra samme hold"
 const TEAMS = 6;
@@ -110,9 +111,77 @@ test("broen: ttt-etapen giver en gyldig tidslinje der faktisk persisteres", asyn
   );
 });
 
-test("broen: ingen uheldsrækker og ingen OTL på en TTT (M10/M15 rører ikke holdtidskørslen)", async () => {
-  const { incidents } = await runStage("ttt");
-  assert.deepEqual(incidents, []);
+test("#4915 broen: TTT'ens uheld og tidsgrænse oversættes præcis som en vejetapes", async () => {
+  // M10 og M15 kører nu også på holdtidskørslen. Broen skal ikke vide noget
+  // om TTT: uheldsrækkerne er motorens uheld + OTL-ryttere, og de udgåede og
+  // OTL-ramte står ikke i `ranked`.
+  //
+  // Uheld er sjældne med den rigtige tuning, så feltet får den laveste
+  // positioning-evne (højeste risiko), og testen tager det første seed i en
+  // fast række der faktisk giver et uheld — ellers kunne den bestå uden at
+  // have set ét.
+  const modules = await loadRaceEngineV4();
+  const entrants = makeEntrants().map((e) => ({ ...e, abilities: { ...e.abilities, positioning: 0 } }));
+  let stage = null;
+  for (let n = 0; n < 200 && !stage; n++) {
+    const candidate = modules.simulateStage({
+      entrants,
+      stageProfile: stageProfile("ttt"),
+      seedString: `race-v4-ttt-uheld:${n}`,
+      stageNumber: 4,
+      teamOrderRows: [],
+    });
+    if ((candidate.v4Output.incidents ?? []).length > 0) stage = candidate;
+  }
+  assert.ok(stage, "ingen af seedene gav et uheld på holdtidskørslen — M10 er ikke koblet på TTT-grenen");
+  const { incidents, ranked, v4Output } = stage;
+  const outOfRace = new Set(
+    v4Output.results.filter((r) => r.status === "abandoned" || r.status === "otl").map((r) => r.rider_id),
+  );
+  const expectedIncidentRiders = new Set([
+    ...(v4Output.incidents ?? []).map((i) => i.rider_id),
+    ...v4Output.results.filter((r) => r.status === "otl").map((r) => r.rider_id),
+  ]);
+  assert.deepEqual(new Set(incidents.map((row) => row.rider_id)), expectedIncidentRiders);
+  assert.ok(ranked.every((row) => !outOfRace.has(row.rider_id)));
+  assert.equal(ranked.length, v4Output.results.length - outOfRace.size);
+});
+
+test("#4915 broen: en TTT giver point som v3's passagelag — samme passager, samme point pr. rytter", async () => {
+  // Paritet: v4's egen maalpassage skal give PRÆCIS det v3's lag
+  // (racePassages.computePassages) ville have givet for den samme
+  // målrækkefølge. Før #4915 gav TTT-grenen ingen passager, og broen gaten
+  // v3's lag af for v4 — så en TTT gav nul point.
+  const entrants = makeEntrants();
+  const modules = await loadRaceEngineV4();
+  const out = modules.simulateStage({
+    entrants,
+    stageProfile: stageProfile("ttt"),
+    seedString: "race-v4-ttt-test:4",
+    stageNumber: 4,
+    teamOrderRows: [],
+    isStageRace: true,
+  });
+  assert.ok(out.passages, "v4 er passage-kilden på en etape i et etapeløb");
+
+  const v3 = computePassages({
+    ranked: out.ranked,
+    stageProfile: stageProfile("ttt"),
+    entrants,
+    seed: "race-v4-ttt-test:4",
+    isStageRace: true,
+  });
+  assert.deepEqual(out.passages.passages, v3.passages);
+  assert.deepEqual(out.passages.perRider, v3.perRider);
+
+  const sprintTotal = [...out.passages.perRider.values()].reduce((sum, r) => sum + r.sprint_points, 0);
+  assert.ok(sprintTotal > 0, "TTT'en giver point til pointkonkurrencen");
+  assert.ok([...out.passages.perRider.values()].every((r) => r.bonus_seconds === 0), "ingen bonussekunder på en tidskørsel");
+});
+
+test("#4915 broen: et endagsløb giver stadig ingen passager fra v4 (samme gate som v3)", async () => {
+  const { passages } = await runStage("ttt");
+  assert.equal(passages, null);
 });
 
 test("broen: determinisme — samme etape to gange giver identiske rækker", async () => {

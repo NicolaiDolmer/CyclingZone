@@ -19,7 +19,15 @@
     "Eller diff den mod denne fil i eet hug (manuel tilstand, aldrig i CI):",
     "  node scripts/check-required-ci-jobs.mjs --verify-against-github",
     "Saet capturedAt til dagens dato naar du opdaterer contexts.",
-    "Refs #4330."
+    "",
+    "PENDING (#4123, 17/9): 'calendar-invariant-ci-gate' er tilfoejet HER foer det er",
+    "tilfoejet i branch protection paa GitHub. Retningen er den sikre: et navn der staar",
+    "her men ikke paa GitHub blokerer INGENTING (modsat et navn GitHub kraever og intet",
+    "job producerer - det er doedvandet guarden findes for). Ejeren gor det blokerende med:",
+    "  gh api -X PATCH repos/NicolaiDolmer/CyclingZone/branches/main/protection/required_status_checks \\",
+    "    -f 'contexts[]=calendar-invariant-ci-gate'",
+    "Indtil da vil --verify-against-github rapportere netop denne ene som 'extra'.",
+    "Refs #4330 #4123."
   ],
   "capturedAt": "2026-09-03",
   "contexts": [
@@ -50,6 +58,7 @@
     "riders-column-grant-guard",
     "gitleaks",
     "key-coverage",
-    "delta-pending"
+    "delta-pending",
+    "calendar-invariant-ci-gate"
   ]
 }

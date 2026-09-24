@@ -31,13 +31,36 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
   // svaret KUN her indtil Send er igennem. `done` lukker porten igen — saa er der
   // ikke laengere noget usendt. Hookene kaldes foer det tidlige return
   // (rules-of-hooks).
+  //
+  // #5440: blokeringen haenger paa KLADDEN, ikke paa `visible`. Baren kan nu
+  // skjules midlertidigt uden at spilleren har lukket den (release-banneret har
+  // bund-slotten, eller samtykke-banneret er genaabnet). Fulgte blokeringen
+  // `visible`, ville den slippe i netop det oejeblik, porten ville melde "sikkert
+  // punkt", og release-watcheren ville genindlaese oven i den skjulte kladde.
+  // Luk/Faerdig rydder kladden (clearDraft), saa en lukket bar aldrig efterlader
+  // en haengende blokering.
   useReloadBlock(
-    Boolean(visible && !done && (score !== null || reason)),
+    Boolean(!done && (score !== null || reason)),
     RELOAD_BLOCK_REASONS.DIRTY,
   );
   useReloadBlock(Boolean(submitting), RELOAD_BLOCK_REASONS.BUSY);
 
   if (!visible) return null;
+
+  function clearDraft() {
+    setScore(null);
+    setReason("");
+  }
+
+  function handleDismiss(scoreSelected) {
+    clearDraft();
+    onDismiss({ scoreSelected });
+  }
+
+  function handleClose() {
+    clearDraft();
+    onClose();
+  }
 
   async function handleSubmit() {
     if (score === null) return;
@@ -48,7 +71,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
     <div
       role="region"
       aria-label={t("nps.regionAriaLabel")}
-      className="fixed inset-x-0 bottom-0 z-toast px-3 pb-3 sm:px-4 sm:pb-4 pointer-events-none"
+      className="fixed inset-x-0 bottom-[var(--cz-mobile-nav-offset,0px)] z-toast px-3 pb-3 sm:px-4 sm:pb-4 pointer-events-none"
     >
       <div className="mx-auto max-w-3xl bg-cz-card border border-cz-border rounded-cz pointer-events-auto">
         {done ? (
@@ -56,7 +79,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
             <p className="flex-1 text-[13px] text-cz-1">{t("nps.thanks")}</p>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label={t("nps.dismissAriaLabel")}
               className="shrink-0 text-cz-3 hover:text-cz-1 transition-colors p-1"
             >
@@ -109,7 +132,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
 
                 <button
                   type="button"
-                  onClick={() => onDismiss({ scoreSelected: score !== null })}
+                  onClick={() => handleDismiss(score !== null)}
                   disabled={submitting}
                   aria-label={t("nps.dismissAriaLabel")}
                   className="shrink-0 text-cz-3 hover:text-cz-1 transition-colors p-1 disabled:opacity-40 disabled:pointer-events-none"
@@ -141,7 +164,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                     size="sm"
                     variant="ghost"
                     disabled={submitting}
-                    onClick={() => onDismiss({ scoreSelected: true })}
+                    onClick={() => handleDismiss(true)}
                   >
                     {t("nps.notNow")}
                   </Button>

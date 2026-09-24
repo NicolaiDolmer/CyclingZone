@@ -7,6 +7,18 @@
     "ariaLabel": "Rider type: {primary} / {secondary}",
     "ariaLabelSingle": "Rider type: {primary}"
   },
+  "natural": {
+    "label": "Natural",
+    "roleLabel": "Natural role",
+    "filterAll": "Natural role: all",
+    "ariaLabel": "Natural role: {primary} / {secondary}",
+    "ariaLabelSingle": "Natural role: {primary}"
+  },
+  "bestRole": {
+    "label": "Best role now",
+    "filterAll": "Best role now: all",
+    "title": "{role} is the role he rates highest in right now. The number is his rating as {role}."
+  },
   "types": {
     "sprinter": "Sprinter",
     "tt": "Time-trialist",

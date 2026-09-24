@@ -60,6 +60,117 @@ export function resolveStageEntrant(entrant, overridesForStage) {
   return resolved;
 }
 
+// #5223: roller der må findes HØJST ÉN gang pr. (hold, etape). Samme tre som
+// holdudtagelsens partielle unique-indexes (uq_race_entries_captain/
+// _sprint_captain/_hunter, database/2026-06-12-race-entries-roles.sql) og samme
+// tre som gemme-guarden i raceStageRolesApi.validateStageRoleOverrides tæller.
+// `helper`/`free_role` er ikke eksklusive.
+export const EXCLUSIVE_STAGE_ROLES = Object.freeze(["captain", "sprint_captain", "hunter"]);
+// Rollen en degraderet indehaver falder til. RACE_ENGINE_RULES.md §1 (rolle-
+// vokabularet, kanonisk): `helper` = "Domestique — arbejder for kaptajnen".
+// Samme degraderings-mål som entry-generatorens rolle-oprydning bruger
+// (raceEntryGenerator.js:704, `.update({ race_role: "helper" })`).
+export const DEMOTED_STAGE_ROLE = "helper";
+
+/**
+ * #5223 — HOLD-NIVEAU sammenfletning af basisrolle og etape-rolle for ÉN etape.
+ *
+ * `resolveStageEntrant` ovenfor er PR. RYTTER: den kender kun den ene rytters
+ * basisrolle og hans egen override. Den kan derfor ikke se, at holdets basis-
+ * sprint_captain (rytter A, `race_entries.race_role`) og en etape-override på
+ * rytter B ender som TO sprint_captains i det rollesæt motoren får — netop den
+ * dublet `raceSimulator.buildTeamContext` rapporterede i Sentry CYCLINGZONE-5Z
+ * (#5223), hvor motoren beholdt den første og tavst ignorerede den anden.
+ *
+ * Gemme-guarden (`raceStageRolesApi.validateStageRoleOverrides`, #4344/#4746/
+ * #5202) afviser et PUT der ville skabe dubletten, men den er et øjebliksbillede
+ * af `race_entries` PÅ GEMME-TIDSPUNKTET: en senere ændring af basisrollen
+ * (holdudtagelsen skriver `race_entries` uden at røre `race_stage_roles`),
+ * legacy-rækker fra før guarden, og direkte DB-skrivninger kan alle lade et
+ * gyldigt gem blive til en dublet bagefter. RACE_ENGINE_RULES.md §7 modsigelse
+ * 12 siger det direkte om præcis samme mekanik for `hunter`: "App-lag løst 4/9
+ * (#4746), DB-lag stadig åbent" — der er INGEN DB-constraint på
+ * `race_stage_roles`, og 119 af 760 hold-etape-hunter-grupper stod målt 3/9 med
+ * mere end én indehaver. Motoren skal derfor kunne flette et urent datasæt
+ * deterministisk, ikke antage at det er rent.
+ *
+ * Regel (deterministisk, uafhængig af DB-rækkefølge):
+ *   1. Etape-rollen VINDER over basisrollen — manageren har valgt den for netop
+ *      denne dag, og basisrollen gælder "hele løbet" som standard (spec §11.1's
+ *      fallback-kæde peger samme vej: stage-række FØR race_entries).
+ *   2. Øvrige indehavere af samme eksklusive rolle på holdet degraderes til
+ *      `helper` for DENNE etape (basisrollen i DB røres ikke).
+ *   3. Er begge (eller ingen) indehavere etape-overrides — kun muligt med
+ *      legacy/rå data, da hverken DB-indexet eller gemme-guarden tillader det —
+ *      vinder den LAVESTE rider_id. Bevidst IKKE "første i entrants-rækkefølgen"
+ *      (#4357): DB-rækkefølgen er ingen kontrakt, og simulateStage sorterer selv
+ *      på rider_id for rng-determinisme. Disse tilfælde rapporteres i
+ *      `conflicts` — de er en data-anomali, i modsætning til punkt 1, som er
+ *      almindelig, tilsigtet taktik.
+ *
+ * Ingen dublet → outputtet er bit-identisk med `entrants.map(resolveStageEntrant)`.
+ *
+ * @param {Array<{rider_id: string, team_id?: string, race_role?: string}>} entrants ORIGINALE entrants (basisrolle fra race_entries)
+ * @param {Map<string, {race_role:string, effort:string}>} [overridesForStage] KUN denne etapes overrides
+ * @param {{ineligibleRiderIds?: Set<string>}} [opts] ryttere der ikke kører DENNE
+ *   etape (udgået/skadet, `race_incidents.outcome='abandon'`). De deltager ikke i
+ *   konflikt-afgørelsen: en udgået rytter må hverken vinde en eksklusiv rolle
+ *   (kald-stedet filtrerer ham væk bagefter, og holdet ville da stå HELT uden
+ *   lederen) eller degradere en aktiv holdkammerat. Deres egen resolverede rolle
+ *   er uændret — den bliver alligevel aldrig læst. Stage-by-stage-stien
+ *   (simulateStageByIndex) filtrerer allerede abandons FØR den kalder motoren og
+ *   behøver den ikke; hele-løbs-stien (buildRaceResults) filtrerer først EFTER
+ *   resolution og sender derfor sin egen abandonedSet med.
+ * @returns {{entrants: Array<object>, conflicts: Array<{teamId: string, role: string, source: "stage_override"|"base_role", keptRiderId: string, droppedRiderIds: string[]}>}}
+ */
+export function resolveStageEntrants(entrants = [], overridesForStage, { ineligibleRiderIds } = {}) {
+  const resolved = entrants.map((e) => resolveStageEntrant(e, overridesForStage));
+  const conflicts = [];
+
+  // Indehavere pr. (hold, eksklusiv rolle) — som INDEKS i `resolved`, så vi kan
+  // erstatte dem uden at lede efter dem igen.
+  const holders = new Map();
+  resolved.forEach((r, idx) => {
+    if (!r.team_id || !r.race_role) return;
+    if (ineligibleRiderIds?.has(r.rider_id)) return;
+    if (!EXCLUSIVE_STAGE_ROLES.includes(r.race_role)) return;
+    const key = `${r.team_id} ${r.race_role}`;
+    if (!holders.has(key)) holders.set(key, []);
+    holders.get(key).push(idx);
+  });
+
+  for (const [key, idxs] of holders) {
+    if (idxs.length < 2) continue;
+    const sep = key.indexOf(" ");
+    const teamId = key.slice(0, sep);
+    const role = key.slice(sep + 1);
+    // Puljen der kan vinde: etape-overrides hvis der er nogen, ellers alle.
+    const fromOverride = idxs.filter(
+      (i) => overridesForStage?.get(resolved[i].rider_id)?.race_role === role
+    );
+    const pool = fromOverride.length ? fromOverride : idxs;
+    const sorted = [...pool].sort((a, b) =>
+      String(resolved[a].rider_id).localeCompare(String(resolved[b].rider_id))
+    );
+    const winner = sorted[0];
+    if (pool.length > 1) {
+      conflicts.push({
+        teamId,
+        role,
+        source: fromOverride.length ? "stage_override" : "base_role",
+        keptRiderId: resolved[winner].rider_id,
+        droppedRiderIds: sorted.slice(1).map((i) => resolved[i].rider_id),
+      });
+    }
+    for (const i of idxs) {
+      if (i === winner) continue;
+      resolved[i] = { ...resolved[i], race_role: DEMOTED_STAGE_ROLE };
+    }
+  }
+
+  return { entrants: resolved, conflicts };
+}
+
 /**
  * Per-etape effort-sekvens for ÉN rytter, i etape-rækkefølge — til
  * raceFatigue.stageEnteringFatigues({efforts}) (whole-race-stien, #2034 punkt 4a).

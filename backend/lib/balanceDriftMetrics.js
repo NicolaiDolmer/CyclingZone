@@ -813,6 +813,159 @@ export function findConsecutiveTierBreaches(rows = [], { minConsecutiveDays = 3 
   return breaches.sort((a, b) => (a.tier === b.tier ? (a.metric < b.metric ? -1 : 1) : a.tier < b.tier ? -1 : 1));
 }
 
+// ── #5516: separat v4-serie (løbsmotor v4, engine_version=4) ────────────────
+//
+// HVORFOR: v3-serien ovenfor bygger sine observationer af
+// race_simulation_rider_scores.components, som v4 bevidst ikke skriver (se
+// balanceDriftWatch.js' header). Den dag race_engine_v4 er ON for alle løb,
+// ville vagten derfor måle ingenting og se grøn ud. v4-serien er vagtens egen
+// v4-kilde: favoritten bestemmes af evnerne med SAMME definition som
+// harnessets favorite_win_rate-anker (headToHeadAnchors.scoreDominance →
+// headToHeadObservers.observeStageV4), og aggregeringen er den SAMME
+// aggregateObservations()/aggregateIncidentObservations() som v3 bruger.
+//
+// ALDRIG BLANDET: serien lever under sin egen under-nøgle (`metrics.v4` /
+// `statuses.v4`) og skrives KUN på dage med mindst én v4-run. Uden v4-runs er
+// den persisterede række bit-identisk med før (#5516-accepten, låst af test).
+// De kanoniske bånd er de SAMME (BALANCE_DRIFT_BANDS) — kun kilden er ny.
+export const ENGINE_SERIES_V4 = "v4";
+
+// De metrikker v4-serien kan måle ud fra race_results + evner + race_incidents.
+// maxRiderWinRate/maxRiderDominantWinCount er motor-agnostiske allerede (de
+// læser race_results i et 14-dages vindue uden motor-filter), jourSans er en
+// v3-score-komponent, og udbruds-andelen er report-only — ingen af dem hører
+// hjemme i en v4-serie.
+export const V4_SERIES_METRICS = Object.freeze([
+  "favoriteWinRate",
+  "favoritePodiumRate",
+  "share4PlusSameTeamTop10",
+  "avgDistinctTeamsTop10",
+  "dnfRatePct",
+]);
+
+/**
+ * #5516 — aggregér ÉN dags v4-observationer til v4-seriens metrikker.
+ *
+ * `observations` er observeStageV4()-output (samme kontrakt som observeRace),
+ * så aggregeringen er den uændrede aggregateObservations().
+ *
+ * DNF-raten måles som i v3: andel `outcome='abandon'` pr. etape (observeIncidents).
+ * v4's tidsgrænse (#2582, kind='time_limit') skriver også `outcome='abandon'`,
+ * men v3 har ingen tidsgrænse — at tælle den med ville måle noget andet end
+ * båndet er kalibreret til. Den holdes derfor ude af dnfRatePct og rapporteres
+ * separat som timeLimitRatePct (report-only, klassificeres aldrig), så intet
+ * skjules.
+ *
+ * @param {object} args
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeRace>>} [args.observations]
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeIncidents>>} [args.incidentObservations]  uden time_limit-rækker
+ * @param {Array<ReturnType<typeof import("./raceDominanceMetrics.js").observeIncidents>>} [args.timeLimitObservations]  kun time_limit-rækker
+ * @returns {Record<string, number|null>}
+ */
+export function computeV4DayMetrics({
+  observations = [],
+  incidentObservations = [],
+  timeLimitObservations = [],
+} = {}) {
+  const dom = aggregateObservations(observations);
+  const inc = aggregateIncidentObservations(incidentObservations);
+  const otl = aggregateIncidentObservations(timeLimitObservations);
+  return {
+    favoriteWinRate: dom.favoriteWinRate,
+    favoritePodiumRate: dom.favoritePodiumRate,
+    share4PlusSameTeamTop10: dom.share4PlusSameTeamTop10,
+    avgDistinctTeamsTop10: dom.avgDistinctTeamsTop10,
+    dnfRatePct: inc.meanDnfRatePct,
+    timeLimitRatePct: otl.meanDnfRatePct,
+    // Etaper hvor ingen rytter havde en evne-række: favoritten kan ikke
+    // bestemmes (observeStageV4 giver favoriteId=null ⇒ tæller som "ikke
+    // vundet"). Synlig her i stedet for at forsvinde i raten.
+    favoriteUnknownStages: observations.filter((o) => o?.favoriteId == null).length,
+    stageInstances: dom.races,
+    incidentStages: inc.stages,
+  };
+}
+
+/**
+ * #5516 — klassificér v4-serien mod de SAMME kanoniske bånd som v3.
+ *
+ * Genbruger classifyDay (samme celle-form, samme robust-mode-estimatorer) og
+ * beholder kun V4_SERIES_METRICS. `recentRows` er de FULDE persisterede rækker;
+ * pooling i robust-mode læser udelukkende deres `metrics.v4`, så en v3-dag
+ * aldrig kan blive poolet ind i v4-raten (eller omvendt).
+ *
+ * @param {Record<string, number|null>} metricsV4  computeV4DayMetrics()-output
+ * @param {object} [opts]  samme som classifyDay
+ * @returns {Record<string, {value:number|null, band:object, status:string, basis:string, dayValue:number|null}>}
+ */
+export function classifyV4Day(metricsV4 = {}, {
+  recentRows = null,
+  robust = BALANCE_DRIFT_TUNING.ROBUST_ESTIMATORS,
+  poolWindowDays = BALANCE_DRIFT_TUNING.POOL_WINDOW_DAYS,
+} = {}) {
+  const v4Rows = Array.isArray(recentRows)
+    ? recentRows.map((r) => ({ date: r?.date, metrics: r?.metrics?.[ENGINE_SERIES_V4] ?? undefined }))
+    : null;
+  const all = classifyDay(metricsV4 || {}, { recentRows: v4Rows, robust, poolWindowDays });
+  const out = {};
+  for (const key of V4_SERIES_METRICS) out[key] = all[key];
+  return out;
+}
+
+/**
+ * #5516 — 3-dages-brud i v4-serien. SAMME algoritme som findConsecutiveBreaches,
+ * kørt på `statuses.v4`; hvert brud mærkes `engine: "v4"`, så alarmteksten og
+ * dedup-signaturen kan skelne det fra et v3-brud på samme metrik.
+ * En dag uden v4-runs har ingen `statuses.v4` og bryder derfor en streak — vi
+ * gætter aldrig på en dag uden data.
+ *
+ * @param {Array<{date:string, statuses?:Record<string, any>}>} rows  fulde rækker, vilkårlig rækkefølge
+ * @param {{minConsecutiveDays?:number}} [opts]
+ * @returns {Array<{metric:string, days:number, since:string, engine:string}>}
+ */
+export function findConsecutiveV4Breaches(rows = [], { minConsecutiveDays = 3 } = {}) {
+  const v4Rows = rows.map((r) => ({ date: r.date, statuses: r.statuses?.[ENGINE_SERIES_V4] || {} }));
+  return findConsecutiveBreaches(v4Rows, { minConsecutiveDays })
+    .map((b) => ({ ...b, engine: ENGINE_SERIES_V4 }));
+}
+
+const ENGINE_LABELS = Object.freeze({ v3: "v3", v4: "v4" });
+
+function breachEngine(breach) {
+  return breach?.engine || "v3";
+}
+
+/**
+ * #5516 — Discord-embeddets tekst for et sæt 3-dages-brud. Nævner altid
+ * motorversionen. Kun v3-brud ⇒ PRÆCIS den tekst vagten sendte før #5516
+ * (låst af test), så en vagt uden v4-runs er bit-identisk også i alarmen.
+ *
+ * @param {object} args
+ * @param {Array<{metric:string, days:number, since:string, engine?:string}>} args.breaches
+ * @param {Record<string, any>} args.metrics  dagens persisterede metrics (v4-værdier under `metrics.v4`)
+ * @param {string} args.targetDate
+ * @returns {{title:string, description:string, fields:Array<{name:string, value:string}>}}
+ */
+export function formatBreachAlert({ breaches = [], metrics = {}, targetDate } = {}) {
+  const engines = [...new Set(breaches.map(breachEngine))].sort();
+  const onlyV3 = engines.length === 0 || (engines.length === 1 && engines[0] === "v3");
+  const engineText = onlyV3
+    ? "Race v3-kalibreringen"
+    : `Race ${engines.map((e) => ENGINE_LABELS[e] ?? e).join("- og ")}-kalibreringen`;
+  return {
+    title: `⚠️ Balance-drift-vagt: ${breaches.length} bånd-brud i 3+ dage`,
+    description: `${engineText} har drevet uden for kanoniske bånd i mindst 3 på hinanden følgende dage (seneste målt: ${targetDate}). Read-only vagt — ingen automatisk handling.`,
+    fields: breaches.map((b) => {
+      const engine = breachEngine(b);
+      const latest = engine === "v3" ? metrics?.[b.metric] : metrics?.[engine]?.[b.metric];
+      return {
+        name: onlyV3 ? b.metric : `${ENGINE_LABELS[engine] ?? engine} · ${b.metric}`,
+        value: `${b.days} dage i træk (siden ${b.since}) · seneste værdi ${latest}`,
+      };
+    }),
+  };
+}
+
 /**
  * #2730 — edge-triggered dedup for balance-drift-Discord-alarmen.
  *
@@ -826,7 +979,7 @@ export function findConsecutiveTierBreaches(rows = [], { minConsecutiveDays = 3 
  * FORSVINDER, eller et brud hvis streak er brudt og genstartet (ny `since`)
  * udløser en ny alarm.
  *
- * @param {Array<{metric:string, since:string}>} breaches  findConsecutiveBreaches()-output
+ * @param {Array<{metric:string, since:string, engine?:string}>} breaches  findConsecutiveBreaches()-/findConsecutiveV4Breaches()-output
  * @param {string} [prevSignature]  sidst-persisterede signatur ("" hvis aldrig alarmeret)
  * @returns {{ shouldAlert: boolean, signature: string, changed: boolean }}
  *   shouldAlert: send Discord-alarm nu (signaturen ændrede sig OG er ikke-tom).
@@ -835,8 +988,12 @@ export function findConsecutiveTierBreaches(rows = [], { minConsecutiveDays = 3 
  *                så et fremtidigt identisk brud alarmerer igen).
  */
 export function evaluateBreachAlert(breaches, prevSignature = "") {
+  // #5516: et v4-brud får motor-præfiks, så "favoriteWinRate i v4" aldrig
+  // deler signatur med "favoriteWinRate i v3". v3-brud har intet præfiks —
+  // signaturen for en vagt uden v4-runs er derfor uændret (ingen gen-alarm
+  // ved deploy af denne ændring).
   const signature = (breaches || [])
-    .map((b) => `${b.metric}@${b.since}`)
+    .map((b) => `${b.engine && b.engine !== "v3" ? `${b.engine}:` : ""}${b.metric}@${b.since}`)
     .sort()
     .join("|");
   const changed = signature !== (prevSignature || "");

@@ -98,7 +98,7 @@ Canonical docs live in `docs/`:
 - [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md): index of all docs (read this if you're looking for something specific).
 - [`docs/GUARDRAILS_CORE.md`](docs/GUARDRAILS_CORE.md): invariants and stop conditions (read when changing shared contracts).
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): production deployment, observability, env vars.
-- [`docs/PUBLIC_ROADMAP.md`](docs/PUBLIC_ROADMAP.md): what's planned, in player-facing language.
+- Public roadmap: https://cyclingzone.org/roadmap (player-facing); `docs/MASTERPLAN.md` holds the build order.
 
 If you're an AI coding agent: start with [`CLAUDE.md`](CLAUDE.md) (Claude Code) or [`AGENTS.md`](AGENTS.md) (OpenAI Codex).
 

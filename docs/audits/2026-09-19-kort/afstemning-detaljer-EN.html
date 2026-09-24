@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Season 4 training poll - details (EN)</title>
+<style>
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-400-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    src: url('fonts/bebas-neue-latin-ext-400-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 100 1000;
+    src: url('fonts/dm-sans-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  :root {
+    --navy: #1A1F38;
+    --bg: #F4F2ED;
+    --text: #14161F;
+    --muted: #6B6F7B;
+    --border: #DDD9CF;
+    --gold: #E8C547;
+    --blue: #DCE6F2;
+    --green: #DCF2E4;
+    --radius: 5px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .topbar {
+    background: var(--navy);
+    padding: 18px 0;
+    text-align: center;
+  }
+
+  .wordmark {
+    font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+    color: var(--gold);
+    font-size: 26px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .page {
+    padding: 32px 30px 34px 30px;
+  }
+  .container {
+    max-width: 1140px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+  .subtitle {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0 0 18px 0;
+    line-height: 1.5;
+    max-width: 900px;
+  }
+
+  .toplegend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+    margin: 0 0 24px 0;
+  }
+  .toplegend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .swatch {
+    display: inline-block;
+    width: 16px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  .swatch.gold { background: var(--gold); border-color: var(--gold); }
+  .swatch.blue { background: var(--blue); }
+  .swatch.green { background: var(--green); }
+  .swatch.white { background: #fff; }
+  .swatch-pair { display: inline-flex; gap: 3px; }
+
+  .mode-heading {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+  }
+  .mode-heading.second {
+    margin-top: 26px;
+  }
+
+  /* ---- three day columns ---- */
+  .cols {
+    display: flex;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .col {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 15px 16px 15px;
+    display: flex;
+    flex-direction: column;
+  }
+  .col-header {
+    font-size: 14.5px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section {
+    margin-bottom: 14px;
+  }
+  .section:last-child {
+    margin-bottom: 0;
+  }
+  .section-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px 0;
+  }
+
+  .race-group {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 9px;
+    margin-bottom: 7px;
+  }
+  .race-group:last-child {
+    margin-bottom: 0;
+  }
+  .race-group.gold {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .race-group-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .race-group-sub {
+    font-size: 10.5px;
+    color: var(--text);
+    opacity: 0.72;
+    line-height: 1.4;
+    margin-top: 6px;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 10.5px;
+    line-height: 1.3;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .chip.L { background: var(--blue); }
+  .chip.N { background: var(--green); }
+  .chip.O { background: #fff; }
+
+  .section-body {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .rider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+  .rider-row:first-child {
+    border-top: none;
+    padding-top: 2px;
+  }
+  .rider-left {
+    min-width: 0;
+  }
+  .rider-name {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin: 0 0 2px 0;
+  }
+  .rider-note {
+    font-size: 10.5px;
+    color: var(--muted);
+    line-height: 1.35;
+  }
+  .rider-number {
+    font-size: 24px;
+    font-weight: 700;
+    flex: 0 0 auto;
+  }
+
+  /* ---- pins ---- */
+  .pin {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  /* ---- legend ---- */
+  .legend {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 980px;
+  }
+  .legend-pin {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  .bottomline {
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 22px;
+    line-height: 1.5;
+    max-width: 1000px;
+  }
+</style>
+</head>
+<body>
+<div class="topbar"><span class="wordmark">CYCLING ZONE</span></div>
+<div class="page">
+<div class="container">
+
+  <h1>An extra training day is NOT a real day without races</h1>
+  <p class="subtitle">Three real days in Division 4 from the season 4 test calendar. There are races every single real day.</p>
+
+  <div class="toplegend">
+    <div class="toplegend-item"><span class="swatch gold"></span>Extra training day (no races)</div>
+    <div class="toplegend-item"><span class="swatch-pair"><span class="swatch blue"></span><span class="swatch green"></span></span>Stage of a stage race</div>
+    <div class="toplegend-item"><span class="swatch white"></span>One-day race</div>
+  </div>
+
+  <div class="mode-heading">Option A: extra training days only where no stage race is running</div>
+
+  <div class="cols">
+
+    <div class="col">
+      <div class="col-header">Friday 9 Oct</div>
+
+      <div class="section">
+        <div class="section-title">Today's races (3 stages: 12:00, 15:00 and 18:00)</div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 25</div>
+          <div class="chip-row">
+            <span class="chip L">Stage race L, stage 3</span>
+            <span class="chip O">One-day race</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="pin">2</div>
+          <div class="race-group-label">Race day 26</div>
+          <div class="chip-row">
+            <span class="chip L">Stage race L, stage 4 (final stage)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">In the evening: training is settled</div>
+        <div class="section-body">2 race days = 2 training sessions for riders who did not race.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Two riders</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider A rides stage race N</div>
+            <div class="rider-note">not racing today</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider B rides no races</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Saturday 10 Oct</div>
+
+      <div class="section">
+        <div class="section-title">Today's races (3 stages: 12:00, 15:00 and 18:00)</div>
+
+        <div class="race-group gold">
+          <div class="pin">1</div>
+          <div class="race-group-label">9 extra training days</div>
+          <div class="race-group-sub">No races. The whole squad trains. No start time.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 30</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 1</span>
+            <span class="chip O">One-day race</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 31</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">In the evening: training is settled</div>
+        <div class="section-body">2 race days + 9 extra training days = up to 11 training sessions.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Two riders</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider A rides stage race N</div>
+            <div class="rider-note">rides N on both race days, but gets the 9 extra</div>
+          </div>
+          <div class="rider-number">9</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider B rides no races</div>
+          </div>
+          <div class="rider-number">11</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Sunday 11 Oct</div>
+
+      <div class="section">
+        <div class="section-title">Today's races (3 stages: 12:00, 15:00 and 18:00)</div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 32</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 3</span>
+            <span class="chip O">One-day race</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 33</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 4 (final stage)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">In the evening: training is settled</div>
+        <div class="section-body">2 race days = 2 training sessions for riders who did not race.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Two riders</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider A rides stage race N</div>
+            <div class="rider-note">rides N on both race days</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider B rides no races</div>
+          </div>
+          <div class="rider-number">2</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-pin">1</div>
+      <div>The extra training days sit on a real day that also has races. They are simply more training sessions that evening.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-pin">2</div>
+      <div>They can only sit here because stage race L is over and stage race N has not started. No training in the middle of a stage race.</div>
+    </div>
+  </div>
+
+  <div class="mode-heading second">Option B: 5 race days every real day (evenly spread)</div>
+
+  <div class="cols">
+
+    <div class="col">
+      <div class="col-header">Friday 9 Oct</div>
+
+      <div class="section">
+        <div class="section-title">Today's races (3 stages: 12:00, 15:00 and 18:00)</div>
+
+        <div class="race-group gold">
+          <div class="race-group-label">3 extra training days</div>
+          <div class="race-group-sub">No races. Riders in a stage race rest. Everyone else trains.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 25</div>
+          <div class="chip-row">
+            <span class="chip L">Stage race L, stage 3</span>
+            <span class="chip O">One-day race</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 26</div>
+          <div class="chip-row">
+            <span class="chip L">Stage race L, stage 4 (final stage)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">In the evening: training is settled</div>
+        <div class="section-body">2 race days + 3 extra training days = up to 5 training sessions.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Two riders</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider A rides stage race N</div>
+            <div class="rider-note">not racing today</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider B rides no races</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Saturday 10 Oct</div>
+
+      <div class="section">
+        <div class="section-title">Today's races (3 stages: 12:00, 15:00 and 18:00)</div>
+
+        <div class="race-group gold">
+          <div class="pin">3</div>
+          <div class="race-group-label">3 extra training days</div>
+          <div class="race-group-sub">No races. Riders in a stage race rest. Everyone else trains.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 30</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 1</span>
+            <span class="chip O">One-day race</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 31</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 2</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">In the evening: training is settled</div>
+        <div class="section-body">2 race days + 3 extra training days = up to 5 training sessions.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Two riders</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider A rides stage race N</div>
+            <div class="rider-note">tied to stage race N: races or rests, does not train</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider B rides no races</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="col-header">Sunday 11 Oct</div>
+
+      <div class="section">
+        <div class="section-title">Today's races (3 stages: 12:00, 15:00 and 18:00)</div>
+
+        <div class="race-group gold">
+          <div class="race-group-label">3 extra training days</div>
+          <div class="race-group-sub">No races. Riders in a stage race rest. Everyone else trains.</div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 32</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 3</span>
+            <span class="chip O">One-day race</span>
+          </div>
+        </div>
+
+        <div class="race-group">
+          <div class="race-group-label">Race day 33</div>
+          <div class="chip-row">
+            <span class="chip N">Stage race N, stage 4 (final stage)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">In the evening: training is settled</div>
+        <div class="section-body">2 race days + 3 extra training days = up to 5 training sessions.</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Two riders</div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider A rides stage race N</div>
+            <div class="rider-note">tied to stage race N: races or rests, does not train</div>
+          </div>
+          <div class="rider-number">0</div>
+        </div>
+        <div class="rider-row">
+          <div class="rider-left">
+            <div class="rider-name">Rider B rides no races</div>
+          </div>
+          <div class="rider-number">5</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-pin">3</div>
+      <div>Here the extra days also fall in the middle of a stage race. Riders in that race rest on those days. Everyone else trains.</div>
+    </div>
+  </div>
+
+  <div class="bottomline">
+    Every division gets the same number of race days per season. Races, stages and start times are identical in A and B. The only difference is where the extra training days land.
+  </div>
+
+</div>
+</div>
+</body>
+</html>

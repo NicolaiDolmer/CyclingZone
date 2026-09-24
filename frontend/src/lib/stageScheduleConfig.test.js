@@ -110,6 +110,47 @@ test("relativeDayKey returns null for invalid input", () => {
   assert.equal(relativeDayKey("not-a-date"), null);
 });
 
+// #5302: efterårs-DST i København (sidste søndag i oktober) — dagen har 25
+// timer, urene stilles 1 time tilbage kl. 03:00 CEST → 02:00 CET. Et naivt
+// "now + 24h elapsed ms" rammer derfor IKKE næste kalenderdag, og 'tomorrow'
+// forsvinder fra StageScheduleCard. Repro fra issuet: now 2026-10-24T22:30:00Z
+// (= 2026-10-25 00:30 CEST, altså allerede København-dag 25.), scheduled_at
+// 2026-10-26T12:00:00Z (= 2026-10-26 13:00 CET) → forventet 'tomorrow'.
+test("#5302: relativeDayKey overlever efterårs-DST (25-timers-dag)", () => {
+  const now = new Date("2026-10-24T22:30:00Z");
+  const scheduledAt = new Date("2026-10-26T12:00:00Z");
+  assert.equal(relativeDayKey(scheduledAt, now), "tomorrow");
+  // Selve DST-dagen (25.) er stadig "today" for et løb samme København-dag.
+  assert.equal(relativeDayKey(new Date("2026-10-25T10:00:00Z"), now), "today");
+});
+
+// Forårs-DST (sidste søndag i marts) — dagen har kun 23 timer, urene stilles
+// 1 time frem kl. 02:00 CET → 03:00 CEST. Her ville et naivt "+24h" i
+// virkeligheden overskyde næste kalenderdag — modsat retning af efterårs-
+// bugget, men samme rodårsag (elapsed ms i stedet for kalenderdag).
+test("#5302: relativeDayKey overlever forårs-DST (23-timers-dag)", () => {
+  const now = new Date("2026-03-28T22:30:00Z"); // 2026-03-28 23:30 CET → København-dag 28.
+  assert.equal(relativeDayKey(new Date("2026-03-29T12:00:00Z"), now), "tomorrow");
+  assert.equal(relativeDayKey(new Date("2026-03-28T12:00:00Z"), now), "today");
+});
+
+// Almindelig dag uden DST-skift — kontrolgruppe der skal blive ved med at virke.
+test("#5302: relativeDayKey virker uændret på en almindelig dag", () => {
+  const now = new Date("2026-06-10T08:00:00Z");
+  assert.equal(relativeDayKey(new Date("2026-06-11T12:00:00Z"), now), "tomorrow");
+  assert.equal(relativeDayKey(new Date("2026-06-10T20:00:00Z"), now), "today");
+});
+
+// Årsskifte — Date.UTC skal selv normalisere måneds-/årsskiftet når dagen
+// (31.) + 1 kalenderdag ruller over i januar næste år.
+test("#5302: relativeDayKey ruller korrekt over årsskiftet", () => {
+  // 2025-12-31 23:30 CET = 2025-12-31 22:30 UTC.
+  const now = new Date("2025-12-31T22:30:00Z");
+  // 2026-01-01 13:00 CET = 2026-01-01 12:00 UTC.
+  assert.equal(relativeDayKey(new Date("2026-01-01T12:00:00Z"), now), "tomorrow");
+  assert.equal(relativeDayKey(new Date("2025-12-31T20:00:00Z"), now), "today");
+});
+
 test("RACE_TIMEZONE is the Copenhagen IANA zone", () => {
   assert.equal(RACE_TIMEZONE, "Europe/Copenhagen");
 });
@@ -130,4 +171,19 @@ test("formatCountdown falls back to minutes-only under an hour", () => {
   const nowMs = 0;
   const scheduledMs = 12 * 60 * 1000; // 12 min
   assert.equal(formatCountdown(scheduledMs, nowMs, fakeT), "in 12 min");
+});
+
+test("#5290: explicit Copenhagen dates before and after midnight", () => {
+  const nextStage = "2026-09-16T12:00:00Z";
+  const previousStage = "2026-09-15T13:00:00Z";
+  for (const now of ["2026-09-15T16:06:00Z", "2026-09-15T21:30:00Z"]) {
+    const reference = new Date(now);
+    assert.equal(relativeDayKey(nextStage, reference), "tomorrow");
+    assert.equal(relativeDayKey(previousStage, reference), "today");
+  }
+  const afterMidnight = new Date("2026-09-15T22:30:00Z");
+  assert.equal(relativeDayKey(nextStage, afterMidnight), "today");
+  assert.equal(relativeDayKey(previousStage, afterMidnight), null);
+  assert.equal(relativeDayKey("2026-09-17T12:00:00Z", afterMidnight), "tomorrow");
+  assert.equal(relativeDayKey("not-a-date", afterMidnight), null);
 });

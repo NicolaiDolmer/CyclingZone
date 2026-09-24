@@ -11,20 +11,53 @@ let enabled = false;
 // details, og STRIP stacken — den syntetiske stack ville pege på denne fil for
 // alle fejl og få Sentry til at gruppere ALT som ét issue; uden stack grupperer
 // Sentry på type+besked, hvilket er præcis den ønskede adfærd for DB-fejl.
+
+// #5224: en tom `message` er ikke en grund til at give op — PostgREST sætter
+// ofte `code` selvom `message` er tom (fx et HEAD-svar hvor body er strippet af
+// protokollen, eller et postgres-svar uden tekst). En kort `code=…`-linje er
+// langt mere brugbar i en Sentry-issue-titel end det uforudsigelige
+// `JSON.stringify(error)`-fallback nedenfor.
+//
+// CodeRabbit (denne PR): `details`/`hint` er BEVIDST udeladt her — PostgREST
+// lægger ofte de faktiske rækkeværdier i `details` (fx en unique-constraint-
+// fejl: "Key (email)=(bruger@eksempel.dk) already exists"), og `hint` kan
+// citere samme data. `code` er et stabilt, dataløst enum-lignende felt
+// (Postgres SQLSTATE / PostgREST-kode) og er det eneste af de tre der er
+// sikkert at sende til Sentry uden risiko for at lække PII.
+function postgrestFieldsSummary(error) {
+  if (!error || typeof error !== "object") return "";
+  return error.code ? `code=${error.code}` : "";
+}
+
 export function toSentryError(error) {
-  if (error instanceof Error) return error;
+  // #5224: @supabase/postgrest-js' `PostgrestError`-KLASSE arver fra Error (den
+  // bruges når et kald har `.throwOnError()`), så "instanceof Error" alene ikke
+  // er nok til at afgøre om fejlen bærer en brugbar besked — en PostgrestError
+  // kan sagtens have `message: ""` mens code/details/hint ER sat. Den tidligere
+  // `if (error instanceof Error) return error;` lod den slags event'er passere
+  // med en tom besked ({message:""} i Sentry, CYCLINGZONE-5X) uden at kigge på
+  // de PostgREST-felter der rent faktisk var der.
+  const hasOwnMessage = error instanceof Error && typeof error.message === "string" && error.message.length > 0;
+  if (hasOwnMessage) return error;
+
   const rawMessage = error == null
     ? ""
     : (typeof error.message === "string" && error.message) ||
       (typeof error === "string" ? error : "") ||
+      postgrestFieldsSummary(error) ||
       (() => { try { return JSON.stringify(error); } catch { return String(error); } })();
-  const err = new Error(normalizeSupabaseErrorMessage(rawMessage) || "Unknown error (non-Error captured)");
+  const message = normalizeSupabaseErrorMessage(rawMessage) || "Unknown error (non-Error captured)";
+
+  // Er `error` allerede en Error-instans (bare med en tom besked), genbruges DEN
+  // — vi mister ellers dens ægte stack/name/øvrige felter for ingenting.
+  const err = error instanceof Error ? error : new Error(message);
+  if (error instanceof Error) err.message = message;
   if (error && typeof error === "object") {
     if (error.code != null) err.code = error.code;
     if (error.details != null) err.details = error.details;
     if (error.hint != null) err.hint = error.hint;
   }
-  err.stack = ""; // gruppér på besked, ikke på den syntetiske wrap-stack
+  if (!(error instanceof Error)) err.stack = ""; // gruppér på besked, ikke på den syntetiske wrap-stack
   return err;
 }
 
@@ -206,17 +239,38 @@ export function initSentry() {
   });
 }
 
-// context: { tags?, fingerprint?, ...extra }. fingerprint (#2434) tvinger Sentry-
-// gruppering — sæt en FAST fingerprint på en aggregeret alarm, så den lander i ÉT
-// issue uanset at beskeden/antallet varierer pr. tick (ellers splitter Sentry på
-// den variable besked). Øvrige nøgler ender som `extra` på eventet.
+// #5224: code sidder på selve Error-objektet (toSentryError), men uden en
+// ExtraErrorData-integration ser Sentry det IKKE automatisk. Løftet ud som sin
+// egen (testbar) funktion, så `captureException` selv forbliver utestet uden
+// om `enabled`-flaget (Sentry er altid disabled i test-env).
+//
+// CodeRabbit (denne PR): kun `code` — se `postgrestFieldsSummary` ovenfor for
+// hvorfor `details`/`hint` bevidst ALDRIG forwardes (kan bære rækkeværdier/PII).
+export function postgrestExtraFields(error) {
+  const extra = {};
+  if (!error || typeof error !== "object") return extra;
+  if (error.code != null) extra.pg_code = error.code;
+  return extra;
+}
+
+// context: { tags?, fingerprint?, level?, ...extra }. fingerprint (#2434) tvinger
+// Sentry-gruppering — sæt en FAST fingerprint på en aggregeret alarm, så den
+// lander i ÉT issue uanset at beskeden/antallet varierer pr. tick (ellers
+// splitter Sentry på den variable besked). `level` (#5015) nedgraderer en
+// forventet/selv-helende hændelse (fx en netværks-blip der overlevede sine
+// retries) fra Sentrys default "error" til "warning", uden at ændre hvordan
+// den logges lokalt. Øvrige nøgler ender som `extra` på eventet.
 export function captureException(error, context = {}) {
   if (!enabled) return;
-  const { tags, fingerprint, ...extra } = context;
-  Sentry.captureException(toSentryError(error), {
-    extra,
+  const { tags, fingerprint, level, ...extra } = context;
+  const sentryError = toSentryError(error);
+  Sentry.captureException(sentryError, {
+    // #5224: code/details/hint søgbare i Sentrys "Additional Data", ikke kun
+    // begravet i den sammensatte besked-tekst.
+    extra: { ...postgrestExtraFields(sentryError), ...extra },
     ...(tags ? { tags } : {}),
     ...(fingerprint ? { fingerprint } : {}),
+    ...(level ? { level } : {}),
   });
 }
 

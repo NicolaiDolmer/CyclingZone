@@ -21,16 +21,12 @@
 // da RPC'en forhindrer dobbelt-anvendelse rammes determinismen aldrig af en
 // re-run (en allerede-committet rytter genudvikles aldrig fra sin NYE evne).
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { fetchAllRows } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { developRiderSeason, buildCapsForRider, sameCaps } from "./riderProgression.js";
+import { developRiderSeason, buildCapsForRider, sameCaps, resolveSeasonRetirement } from "./riderProgression.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   frozenNoticeFor,
@@ -42,9 +38,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { detectGraduates } from "./academyGraduation.js";
-import { applyTypeDampening } from "./riderValuationTypeDampening.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { loadValuationModelStrict, loadProductionValueModelStrict } from "./riderValuationModelSelect.js";
 
 // Sæson 1 = launch-året (2026). Alder er SÆSON-drevet (ikke real-world-tid), så
 // ryttere ældes troværdigt over sæsoner. ageForSeason(birthdate, N) = år N − fødselsår.
@@ -57,23 +51,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export { LAUNCH_REFERENCE_YEAR, ageForSeason } from "./riderSeasonAge.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 
-let cachedModel = null;
-function defaultModel() {
-  if (!cachedModel) {
-    // #2594 cutover: v4-modellen (karriere-NPV) er nu den live værdi-model.
-    // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-    // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-    cachedModel = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8")));
-  }
-  return cachedModel;
-}
 
 // #3345: valuation_type er med — sæson-progressionen genberegner
 // base_value/current_production_value for HVER aktiv rytter HVER sæson. Uden det
 // frosne felt ville denne sti stille revaluere hele populationen efter enhver
 // primary_type-reklassificering (#3325/#3343), på den allerførste
 // sæson-transition efter merge — præcis det #3345 fryser mod.
-const SEASON_RIDER_COLUMNS =
+// #5443: eksporteret, så vagten kan bevise at sæson-transitionen henter de
+// samme værdi-relevante felter som søndagskørslen (valuationRatingParity.test.js).
+export const SEASON_RIDER_COLUMNS =
   "id, primary_type, secondary_type, valuation_type, potentiale, birthdate, base_value, is_u25, is_retired, team_id, firstname, lastname";
 
 // #5073: varsel-kolonnerne SKAL med — cutover læser det svar spilleren allerede
@@ -109,6 +95,68 @@ async function fetchRidersForSeason(supabase) {
   }
 }
 
+/**
+ * #4153 · Motorens pensions-input for ÉN rytter ved sæsonstart `seasonNumber`.
+ * Det ENESTE sted input'et sammensættes: developRidersForSeason bruger det selv,
+ * og willRetireAtSeasonStart (sæson-payrollens spørgsmål) bruger det også.
+ *
+ * Returnerer null når motoren springer rytteren over (mangler type, potentiale
+ * eller en alder) — en sådan rytter pensioneres ikke i skiftet.
+ *
+ * `endingSeason` er null ved kald uden sæsonnummer (tests/orchestrator), og så
+ * er der intet frosset varsel at læse (#5073).
+ */
+export function seasonStartRetirementInputs(riderRow, seasonNumber) {
+  if (!riderRow?.primary_type || riderRow.potentiale == null) return null;
+  const age = ageForSeason(riderRow.birthdate, seasonNumber);
+  if (age == null) return null;
+  const endingSeason = seasonNumber != null ? Number(seasonNumber) - 1 : null;
+  const frozenRetirementNotice = endingSeason != null ? frozenNoticeFor(riderRow, endingSeason) : null;
+  return { age, endingSeason, frozenRetirementNotice };
+}
+
+/**
+ * #4153 · Pensioneres rytteren af motoren, når sæson `seasonNumber` starter?
+ * Samme input (seasonStartRetirementInputs) og samme regel
+ * (riderProgression.resolveSeasonRetirement) som developRiderSeason bruger i
+ * developRidersForSeason — ingen kopi af reglen.
+ */
+export function willRetireAtSeasonStart(riderRow, seasonNumber) {
+  const inputs = seasonStartRetirementInputs(riderRow, seasonNumber);
+  if (!inputs) return false;
+  return resolveSeasonRetirement(
+    { id: riderRow.id, frozenRetirementNotice: inputs.frozenRetirementNotice },
+    inputs.age,
+    seasonNumber,
+  ).retire;
+}
+
+/**
+ * #4153 · Id'erne på de ryttere developRidersForSeason vil pensionere ved
+ * sæsonstart `seasonNumber`. Samme rytter-grundlag som motoren
+ * (fetchRidersForSeason: aktive ryttere + varsel-kolonnerne, med samme
+ * fallback) og samme spring-over-regel for ryttere uden evne-række.
+ * Kun ryttere på et hold er relevante for lønnen.
+ *
+ * Read-only. Kaldes af sæson-payrollen FØR motoren kører, så en rytter der
+ * pensioneres i skiftet ikke får den nye sæsons løn trukket.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+export async function loadRetiringRiderIds({ supabase, seasonNumber }) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  const [riders, abilityRows] = await Promise.all([
+    fetchRidersForSeason(supabase),
+    fetchAllRows(() => supabase.from("rider_derived_abilities").select("rider_id").order("rider_id")),
+  ]);
+  const hasAbilities = new Set(abilityRows.map((a) => a.rider_id));
+  return new Set(
+    riders
+      .filter((r) => r.team_id != null && hasAbilities.has(r.id) && willRetireAtSeasonStart(r, seasonNumber))
+      .map((r) => r.id),
+  );
+}
+
 async function runBatched(items, concurrency, fn) {
   for (let i = 0; i < items.length; i += concurrency) {
     await Promise.all(items.slice(i, i + concurrency).map(fn));
@@ -124,7 +172,17 @@ async function runBatched(items, concurrency, fn) {
  * @param {number}  args.seasonNumber   — sæson-nummer (alder + seed)
  * @param {string}  [args.trainingSeasonId] — UUID på den AFSLUTTEDE sæson hvis træningsfokus
  *                  (#1163) skal biase udviklingen. Udeladt → ingen træningsbias (ren passiv).
- * @param {object}  [args.model]        — base_value-model (default: riderValuationModel.json)
+ * @param {object}  [args.model]        — base_value-model. Udeladt ⇒ den model
+ *                  app_config peger på (#5443, riderValuationModelSelect.js);
+ *                  defaulten dér er v4, så adfærden er uændret indtil ejeren
+ *                  flipper nøglen. Sæson-cutoveren SKAL regne med samme model
+ *                  som søndagskørslen — ellers revalueres hele populationen
+ *                  forkert timer efter en model-begivenhed.
+ * @param {object}  [args.productionModel] — model for current_production_value
+ *                  (løngrundlaget). Udeladt ⇒ app_config-nøglen
+ *                  `rider_production_value_model` (#5443 ejer-beslutning 2,
+ *                  20/9 aften), som seedes 'v4'. Prisen og løngrundlaget vælger
+ *                  model hver for sig, så en v5-pris ikke flytter lønkrav.
  * @param {boolean} [args.notify=true]  — send retirement-notifikationer
  * @param {Date}    [args.now]          — til notifikations-dedup (default new Date())
  * @param {boolean} [args.dailyTrainingEnabled] — injiceret flag (test/orchestrator); udefineret →
@@ -134,13 +192,30 @@ async function runBatched(items, concurrency, fn) {
  */
 export async function developRidersForSeason({
   supabase, seasonId, seasonNumber, trainingSeasonId = null,
-  model = defaultModel(), notify = true, now = new Date(),
+  model: modelArg = null, productionModel: productionModelArg = null,
+  notify = true, now = new Date(),
   notifyTeamOwnerFn = notifyTeamOwner,
   dailyTrainingEnabled: dailyTrainingEnabledArg,
   detectGraduatesFn = detectGraduates,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
+
+  // #5443: samme model-valg som søndagskørslen (app_config, default v4).
+  // STRIKS af samme grund: sæson-transitionen skriver hele populationen, så en
+  // ulæselig nøgle skal stoppe kørslen, ikke gætte en model.
+  const model = modelArg || await loadValuationModelStrict(supabase);
+  // #5443 ejer-beslutning 2: løngrundlaget har sin egen nøgle. Læses ÉN gang
+  // pr. transition, præcis som prisens model — hele populationen skal regnes
+  // med det samme par.
+  //
+  // Har kalderen PINNET prismodellen (tests, harnesses, cutover-værktøjet),
+  // følger løngrundlaget den model — præcis som før de to nøgler fandtes. Et
+  // halvt app_config-opslag i en pinned kørsel ville gøre resultatet
+  // afhængigt af prod-tilstand, hvilket er det modsatte af at pinne.
+  const productionModel = productionModelArg
+    || modelArg
+    || await loadProductionValueModelStrict(supabase);
 
   // ── Idempotens: hvilke ryttere er allerede udviklet for denne sæson? ──────────
   const alreadyRows = await fetchAllRows(() =>
@@ -207,9 +282,12 @@ export async function developRidersForSeason({
 
   for (const r of riders) {
     if (alreadyDeveloped.has(r.id)) { summary.skipped_already_done++; continue; }
-    if (!r.primary_type || r.potentiale == null) continue;
-    const age = ageForSeason(r.birthdate, seasonNumber);
-    if (age == null) continue;
+    // #4153: alder + frosset varsel sammensættes ét sted (seasonStartRetirementInputs),
+    // så sæson-payroll kan spørge "pensioneres han i dette skifte?" med præcis
+    // samme input som motoren selv bruger nedenfor.
+    const retirementInputs = seasonStartRetirementInputs(r, seasonNumber);
+    if (!retirementInputs) continue;
+    const { age, endingSeason, frozenRetirementNotice } = retirementInputs;
     const abRow = abilityByRider.get(r.id);
     if (!abRow) continue;
 
@@ -241,11 +319,8 @@ export async function developRidersForSeason({
 
     // #5073: pensionen for den AFSLUTTEDE sæson (seasonNumber − 1) er et løfte
     // rytterkortet allerede har vist. Er svaret frosset for netop den sæson,
-    // læses det; ellers rulles som hidtil — og resultatet skrives ned nedenfor,
-    // så det aldrig kan flytte sig igen. `endingSeason` er null ved kald uden
-    // sæsonnummer (tests/orchestrator), og så er adfærden præcis som før.
-    const endingSeason = seasonNumber != null ? Number(seasonNumber) - 1 : null;
-    const frozenRetirementNotice = endingSeason != null ? frozenNoticeFor(r, endingSeason) : null;
+    // læses det (frozenRetirementNotice ovenfor); ellers rulles som hidtil — og
+    // resultatet skrives ned nedenfor, så det aldrig kan flytte sig igen.
     if (frozenRetirementNotice !== null) summary.retirement_notice_read++;
 
     const { next, retirement } = developRiderSeason(
@@ -264,9 +339,25 @@ export async function developRidersForSeason({
     // #3345: valuation_type medsendes så predictBaseValue/currentProductionValue
     // bruger den FROSNE type (se riderValuation.js) — primary_type ovenfor er kun
     // fallback for rækker uden valuation_type sat.
-    const valueRider = { primary_type: r.primary_type, valuation_type: r.valuation_type, potentiale: r.potentiale, age };
+    // #5443: secondary_type SKAL med. Søndagskørslen (riderValueRefresh
+    // `withType`) sender hele rytter-rækken videre til værdi-funktionerne,
+    // inklusive sekundær-typen; sæson-transitionen byggede sit eget lille
+    // objekt UDEN den. De to kaldeveje skriver til de samme kolonner, så et
+    // grundlag der ikke er identisk er en tavs divergens der først ses som
+    // "min rytter skiftede værdi ved sæsonskiftet uden grund". Ingen nuværende
+    // model læser feltet, så rettelsen er værdi-neutral i dag — den lukker
+    // hullet før en model der gør. Vagt: valuationRatingParity.test.js
+    // ("de to kaldeveje sender det samme rytter-grundlag").
+    const valueRider = {
+      primary_type: r.primary_type,
+      secondary_type: r.secondary_type,
+      valuation_type: r.valuation_type,
+      potentiale: r.potentiale,
+      age,
+    };
     const newBaseValue = predictBaseValue(valueRider, next, model);
-    const newCpv = currentProductionValue(valueRider, next, model);
+    // #5443: løngrundlaget regnes med SIN egen model (default v4), ikke prisens.
+    const newCpv = currentProductionValue(valueRider, next, productionModel);
 
     const abilityPatch = { ...next };
     if (capsChanged) abilityPatch.ability_caps = caps;

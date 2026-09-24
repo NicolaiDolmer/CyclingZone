@@ -151,6 +151,18 @@
     "tagline": "A browser-based cycling manager.",
     "privacy": "Privacy",
     "discord": "Discord",
-    "rights": "Cycling Zone"
+    "rights": "Cycling Zone",
+    "exploreHeading": "Explore",
+    "explore": {
+      "howItWorks": "How it works",
+      "compare": "Cycling Zone vs Pro Cycling Manager",
+      "help": "Help",
+      "rules": "Rules",
+      "roadmap": "Roadmap",
+      "patchNotes": "Patch notes",
+      "founderSupporter": "Founder",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    }
   }
 }

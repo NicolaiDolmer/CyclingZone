@@ -175,6 +175,37 @@ test("all_out giver ALTID strengt hoejere belastning end normal for samme rytter
   }
 });
 
+test("#4914: all_out paa en FLAD etape kan loefte selv feltets staerkeste rytter over CP (all_out er ikke gratis paa fladt)", () => {
+  // Rytteren er feltets staerkeste, altsaa FORREST i gruppen: kravet er
+  // gruppens flad-andel x front-faktoren x all_out-trinnet. Med den faelles
+  // multiplikator naaede det aldrig CP dér (fundet i #4909's tvillinge-maaling),
+  // saa all_out kostede intet i loebet. Profil-tabellen skal lukke det.
+  // Feltets top (frontFraction af 60 = 12 ryttere) er lige staerk, saa
+  // rytteren koerer i fronten og gruppens kollektive CP er hans eget niveau — det
+  // er netop den rytter den faelles multiplikator lod slippe gratis.
+  const field = mixedField(48);
+  const front = Array.from({ length: 12 }, (_, i): Entrant => ({
+    ...field[0],
+    rider_id: i === 0 ? "boss" : `front${i}`,
+    abilities: abilitiesAt(70),
+    effort: i === 0 ? "all_out" : "normal",
+  }));
+  const startlist = [...field, ...front];
+  for (const seed of SEEDS.slice(0, 5)) {
+    const allOut = simulateStageV4(stage(startlist, FLAT_ROUTE, seed));
+    const normal = simulateStageV4(stage(withEffort(startlist, "boss", "normal"), FLAT_ROUTE, seed));
+    assert.ok(secondsOverCpOf(allOut, "boss") > 0, `${seed}: all_out paa fladt skal koste sekunder over CP`);
+    assert.equal(secondsOverCpOf(normal, "boss"), 0, `${seed}: kontrol — samme rytter paa normal ligger under CP`);
+  }
+});
+
+test("#4914: all_out-profiltabellen roerer IKKE bjergetaper (samme krav som den faelles multiplikator)", () => {
+  assert.equal(
+    effortDemandMultiplier("all_out", undefined, MOUNTAIN_ROUTE.profile_type),
+    effortDemandMultiplier("all_out"),
+  );
+});
+
 test("de fem trin er strengt ordnede: grupetto < save < normal < protect < all_out", () => {
   const order: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
   for (const demand of [0, 0.05, 0.4, 1, 7.5]) {

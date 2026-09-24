@@ -8,6 +8,7 @@ import NationCell from "./rider/NationCell";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { DataTable, EmptyState, ErrorState, SkeletonLines, Button, TrophyIcon } from "./ui";
+import { squadGroupFilterToolbar } from "./squad/SquadGroupFilter.tsx";
 
 // #3190: samme seks sejrs-kategorier som rytter-ranglisten (hooks/useRiderRankings.js's
 // WIN_KEYS, #925's total_wins-definition) — dupliceret her i stedet for importeret,
@@ -31,7 +32,20 @@ const EMPTY_STATS = { raceDays: 0, wins: 0, points: 0, prize: 0 };
 //
 // `riders` = holdets NUVÆRENDE trup (samme `currentRiders`-array TeamPage.jsx
 // allerede beregner til sine egne sum-linjer — ingen ekstra fetch her).
-export default function TeamStatsTab({ riders }) {
+//
+// #5075 (spillerforslag @cybersimon 9/9): gruppe-filteret er den SAMME
+// state som Trup-fanen (løftet til TeamPage.jsx, se squad/SquadGroupFilter.tsx) —
+// tabellens rækker filtreres på den her, så tallene (i dag pr. rytter; en
+// fremtidig sum-/gennemsnitslinje ville arve det samme) altid regnes på den
+// viste, filtrerede liste. `riders` holder BEVIDST hele holdet (ikke det
+// filtrerede sæt): stats hentes én gang for alle rytter-id'er, så et filter-
+// klik ikke udløser en ny fetch — kun `rows` nedenfor filtreres.
+//
+// #5631: `squadFilter` (useSquadGroupFilter i TeamPage) erstatter de fire
+// showSeniors/showAcademy-props: Senior / U23 / Junior. Uden squadFilter
+// (U23 team- og Junior team-siden, SquadPage.tsx) vises hele den givne trup
+// uden filter-kontrol, fordi siden allerede ER én trup.
+export default function TeamStatsTab({ riders, squadFilter = null }) {
   const { t } = useTranslation("team");
   const navigate = useNavigate();
   const [season, setSeason] = useState(null);
@@ -44,6 +58,19 @@ export default function TeamStatsTab({ riders }) {
 
   const riderIds = riders.map((r) => r.id);
   const riderIdsKey = riderIds.join(",");
+  // CodeRabbit (#5075 rettespor 23/9): riderIdsKey alene fanger IKKE en rytter
+  // der skifter is_academy UDEN at skifte id (fx en graduering) — `rows`-memoet
+  // nedenfor ville ellers beholde den GAMLE akademi-/senior-gruppering, indtil
+  // noget andet (sort/statsByRider) tvang en genberegning. Samme stabile
+  // streng-proxy-mønster som riderIdsKey, blot for is_academy-feltet.
+  const academyFlagsKey = riders.map((r) => (r.is_academy ? "1" : "0")).join("");
+  // #5075 rettespor 23/9: DataTable's toolbar-slot tjekker kun `toolbar && (...)`
+  // (DataTable.jsx) — et React-element er ALTID sandt, også når komponenten selv
+  // returnerer null. squadGroupFilterToolbar giver derfor null (ikke et element
+  // der renderer null) når der intet er at filtrere, så DataTable ikke monterer
+  // en tom toolbar-bjælke (148 af 258 menneskestyrede hold har ingen
+  // akademiryttere).
+  const filterKey = squadFilter?.key ?? "";
 
   useEffect(() => {
     let cancelled = false;
@@ -97,13 +124,17 @@ export default function TeamStatsTab({ riders }) {
   }
 
   const rows = useMemo(() => {
-    const withStats = riders.map((r) => ({ ...r, ...(statsByRider[r.id] || EMPTY_STATS) }));
+    // #5075: samme akademi-/senior-filter som Trup-fanen — filtreres FØR sort,
+    // så tabellens indhold (og enhver fremtidig sum-/gennemsnitslinje) matcher
+    // den viste, filtrerede liste.
+    const filtered = squadFilter ? riders.filter((r) => squadFilter.isVisible(r)) : riders;
+    const withStats = filtered.map((r) => ({ ...r, ...(statsByRider[r.id] || EMPTY_STATS) }));
     return [...withStats].sort((a, b) => {
       const diff = (b[sortKey] || 0) - (a[sortKey] || 0);
       return sortDir === "desc" ? diff : -diff;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- memoet læser kun id/navn/nationalitet fra riders — felter der ikke ændrer sig når riderIdsKey er uændret; tallene kommer fra statsByRider, som ER en dependency
-  }, [riderIdsKey, statsByRider, sortKey, sortDir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- memoet læser id/navn/nationalitet fra riders (stabile når riderIdsKey er uændret) og is_academy (stabilt når academyFlagsKey er uændret, CodeRabbit-fund #5075 23/9); tallene kommer fra statsByRider, som ER en dependency
+  }, [riderIdsKey, academyFlagsKey, statsByRider, sortKey, sortDir, filterKey]);
 
   if (loading) return <SkeletonLines lines={6} />;
 
@@ -211,6 +242,14 @@ export default function TeamStatsTab({ riders }) {
         sortDir={sortDir}
         onSort={handleSort}
         rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
+        /* #5075: samme kontrol + state som Trup-fanen — ligger i tabellens egen
+           toolbar, samme placering/mønster som SquadTab (#4628). Sendes KUN når
+           filteret har noget at vise (se rettespor-kommentaren ovenfor) — ellers
+           null, så DataTable ikke monterer en tom toolbar-bjælke. */
+        toolbar={squadFilter ? squadGroupFilterToolbar(squadFilter, riders) : null}
+        /* Holdet har ryttere, men filteret skjuler dem alle — toolbaren (og dermed
+           til-/fravalget) skal blive stående, så spilleren kan slå det fra igen. */
+        empty={<EmptyState icon={<TrophyIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />}
         count={t("squad.count", { count: rows.length })}
       />
     </div>

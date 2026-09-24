@@ -68,3 +68,18 @@ Rammer vi ikke tærsklerne, er problemet ikke synlighed men indhold — og så e
 ## 4. Forbehold ved kildegrundlaget
 
 De skarpeste udsagn om forummet kommer fra `#staff-chat` — en lille testergruppe, ikke den brede spillerbase. For L1 betød det ikke noget, fordi ønskerne var entydige og billige. Men hviler en fremtidig beslutning på "spillerne siger", så hviler den reelt på en håndfuld mennesker. Benchmarken har samme svaghed: Hattrick-wikien blokerede fetch, så dele af den er søge-snippets, ikke verificeret sideindhold.
+
+## 5. Links i indlaeg og svar (Refs #3517, ejer-direktiv 21/9)
+
+Fuld broedtekst i `ForumPostPage.jsx` vises via `MentionText.jsx`: URL'er
+segmenteres af `frontend/src/lib/forumLinkify.ts` foer eksisterende @-mentions.
+Kun `http://`, `https://` og `www.` bliver klikbare; `www.` normaliseres til
+HTTPS, og `new URL()` validerer adressen med eksplicit protokolkontrol.
+Brugerindhold fortolkes aldrig som HTML. Tegnsaetning og umatchede afsluttende
+parenteser bliver uden for linket. Links midt i ord genkendes ikke.
+Alle URL-links, ogsaa interne, aabner i ny fane med
+`rel="noopener noreferrer nofollow ugc"`. Kun selve URL-linket maa bryde lange
+ord. @-mentions beholder deres eksisterende managerprofil-link.
+Uddrag i traadlisten, dashboardkort og citater forbliver ren tekst.
+Verifikation: `forumLinkify.test.ts` og `3517-forum-links.spec.js`, herunder
+390 px uden vandret scroll og XSS-tekst der forbliver tekst.

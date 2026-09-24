@@ -11,6 +11,19 @@ name: Deploy verify
 # frontend/-ændringer, Railway kun ved backend/-ændringer — spejler Vercels
 # Ignored Build Step i frontend/vercel.json), smoke-tester prod, kommenterer ✅/❌
 # på den merged PR. Brugeren kan trygt være offline efter mobile-merge.
+#
+# Railway-status (#5489): GitHub-deployment-status for Railway kan hænge bag
+# Railway selv — set 22/9 og 23/9 (PR #5542), begge gange stod GH-deployment
+# "in_progress" i 10+ min mens Railway selv meldte SUCCESS, og merge-køen
+# stoppede på et FALSK rødt signal. Når secrets.RAILWAY_TOKEN er sat, bruger
+# "Wait for Vercel + Railway deployments" derfor scripts/railway-deploy-status.mjs
+# (Railways egen GraphQL-API) som PRIMÆR kilde for Railway: "success" markerer
+# Railway-kravet opfyldt med det samme, "failed" stopper trinnet med det
+# samme (rødt, ikke 10-min timeout), og "pending" falder tilbage til den
+# hidtidige GitHub-deployment-status-polling. Uden RAILWAY_TOKEN er trinnet
+# BIT-IDENTISK med adfærden før #5489 (kun GitHub-deployment-status). Smoke-
+# test-trinnet nedenfor kører uændret — altid når dette trin lykkes, uanset
+# hvilken kilde der gav grønt.
 
 on:
   push:
@@ -48,16 +61,60 @@ jobs:
           INPUT_SHA: ${{ github.event.inputs.sha }}
           INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
+          # workflow-output-guard (#4463): steppet skriver til GITHUB_OUTPUT og
+          # piper til `jq` nedenfor — uden pipefail ville et fejlende `gh api`
+          # kunne skjules bag jq's egen exit-kode. `resolve_pr_number()` undgår
+          # allerede det via $()+if, men pipefail slås til for hele steppet så
+          # den statiske vagt (og enhver FREMTIDIG pipe her) er dækket.
+          set -o pipefail
+
+          # #5286: `gh api ... --jq` lader jq læse et TOMT svar direkte, og et
+          # transient tomt body (ikke en fejl-exit, bare intet output) giver
+          # "unexpected end of JSON input" og vælter hele trinnet. Hent derfor
+          # raw body FØRST, tjek at det ikke er tomt, og pip den til jq bagefter
+          # — og prøv 3 gange med 2s mellemrum, fordi det er set at rette sig
+          # selv på gen-kørsel (flake 15/9). En commit uden nogen PR (direkte
+          # push, docs/chore) er en LOVLIG sti — den skal give et tomt NUMBER,
+          # ikke en fejl.
+          #
+          # CodeRabbit (denne PR): `|| true` må ikke sluge en RIGTIG gh-fejl
+          # (rate-limit/auth/netværk) og lade den se ud som "ingen PR" — så
+          # skipper begge PR-kommentar-trin stille for en commit der RENT
+          # FAKTISK har en PR. Derfor holdes exit-koden ($rc) adskilt fra et
+          # tomt-men-succesfuldt svar: kun et ægte 200-svar (evt. med et tomt
+          # `[]`) tæller som "bekræftet ingen PR"; blev alle 3 forsøg ved med
+          # at FEJLE (rc != 0) kan vi ikke afgøre det, og trinnet vælter
+          # bevidst med en tydelig fejl i stedet for at gætte "ingen PR".
+          resolve_pr_number() {
+            local sha="$1"
+            local attempt out rc
+            for attempt in 1 2 3; do
+              if out=$(gh api "repos/${{ github.repository }}/commits/$sha/pulls" 2>/dev/null); then
+                rc=0
+              else
+                rc=$?
+              fi
+              if [[ "$rc" -eq 0 && -n "$out" ]]; then
+                echo "$out" | jq -r '.[0].number // empty'
+                return 0
+              fi
+              echo "::warning::gh api commits/$sha/pulls fejlede eller gav tomt svar (forsøg $attempt/3, exit=$rc)" >&2
+              [[ "$attempt" -lt 3 ]] && sleep 2
+            done
+            echo "::error::gh api commits/$sha/pulls blev ved med at fejle/give tomt svar efter 3 forsøg (sidste exit=$rc) — kan ikke afgøre PR-tilknytning" >&2
+            return 1
+          }
+
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SHA="${INPUT_SHA:-$(gh api repos/${{ github.repository }}/commits/main --jq .sha)}"
             if [[ -n "$INPUT_PR_NUMBER" ]]; then
               NUMBER="$INPUT_PR_NUMBER"
             else
-              NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
+              NUMBER=$(resolve_pr_number "$SHA")
             fi
           else
             SHA="$PUSH_SHA"
-            NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
+            NUMBER=$(resolve_pr_number "$SHA")
           fi
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
@@ -92,6 +149,27 @@ jobs:
           echo "need_vercel=$NEED_VERCEL" >> "$GITHUB_OUTPUT"
           echo "need_railway=$NEED_RAILWAY" >> "$GITHUB_OUTPUT"
 
+      # Flyttet hertil fra lige før "Verify CDN cache-headers" (#5489): jobbet
+      # kørte ellers UDEN arbejdstræ indtil da (alle trin før var rene curl-/
+      # gh-kald mod deployede URL'er — se den gamle kommentar, bevaret ved det
+      # oprindelige kaldested). scripts/railway-deploy-status.mjs skal kunne
+      # køres af "Wait for Vercel + Railway deployments" lige nedenfor, så
+      # checkout skal ske FØR den, ikke bagefter. Alle senere trin der også
+      # bruger arbejdstræet (cache-header-guarden m.fl.) er upåvirkede af at
+      # checkout nu sker tidligere — ingen af dem er tidsafhængige.
+      # Pinnet til fuld commit-SHA (samme som claude.yml/ci.yml m.fl. bruger,
+      # CodeRabbit-fund #5489) — en tag som @v7 kan flytte sig og aendre hvad
+      # der koerer i et trin der laeser secrets.RAILWAY_TOKEN.
+      # persist-credentials: false — ingen af de trin der bruger dette
+      # arbejdstraee (Railway-status-scriptet, cache-header-guarden,
+      # asset-miss-proben) laver authenticated Git-kald; de trin der rent
+      # faktisk kalder GitHub-API'et bruger deres eget GH_TOKEN via env,
+      # ikke det persisterede checkout-credential.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
       - name: Wait for Vercel + Railway deployments
         id: deployments
         env:
@@ -99,6 +177,7 @@ jobs:
           SHA: ${{ steps.pr.outputs.sha }}
           NEED_VERCEL: ${{ steps.required.outputs.need_vercel }}
           NEED_RAILWAY: ${{ steps.required.outputs.need_railway }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         shell: bash
         run: |
           # #4463: uden pipefail sluger `jq` gh's exit-kode, saa et fejlsvar fra
@@ -117,6 +196,37 @@ jobs:
               if [[ "$CREATOR" == vercel* && "$STATE" == "success" ]]; then VERCEL_OK=true; fi
               if [[ "$CREATOR" == railway* && "$STATE" == "success" ]]; then RAILWAY_OK=true; fi
             done
+
+            # #5489: GitHub-deployment-status for Railway er sat som fallback —
+            # naar RAILWAY_TOKEN er sat, spoerger vi Railways egen GraphQL-API
+            # direkte (samme kilde som `railway deployment list`) og bruger DEN
+            # som primaer kilde. "success" her overstyrer (OR'er ind i) RAILWAY_OK
+            # ovenfor — GitHub-signalet kan stadig gaa foerst og taeller ligesaa
+            # meget, dette er en STRIKT UDVIDELSE af hvornaar RAILWAY_OK bliver
+            # true, aldrig en indskraenkning. "failed" stopper med det samme
+            # (rødt, IKKE 10-min timeout) — det er selve pointen med #5489: en
+            # aegte Railway-fejl skal ikke vente paa at et laenge-forsinket
+            # GitHub-signal til sidst ogsaa siger nej. Uden RAILWAY_TOKEN
+            # (secret ikke sat) er denne blok en no-op og adfaerden er
+            # bit-identisk med foer #5489.
+            if [[ "$NEED_RAILWAY" == "true" && -n "${RAILWAY_TOKEN:-}" ]]; then
+              # Command substitution fanger kun stdout (den ENE statuslinje);
+              # scriptets diagnostik paa stderr flyder uaendret til dette trins
+              # log. `|| echo pending` daekker det usandsynlige tilfaelde at
+              # node-processen selv craeshede haardt (scriptet exit'er ellers
+              # altid 0, se dets egen top-level catch).
+              RAILWAY_API_STATUS=$(node scripts/railway-deploy-status.mjs || echo "pending")
+              echo "  Railway API-status (primaer kilde, #5489): $RAILWAY_API_STATUS"
+              if [[ "$RAILWAY_API_STATUS" == "failed" ]]; then
+                echo "::error::Railway API meldte FAILED for ${SHA:0:7} — stopper med det samme (ikke 10-min timeout, #5489). Se scripts/railway-deploy-status.mjs' stderr-diagnostik i dette trins log ovenfor."
+                echo "railway=failed" >> "$GITHUB_OUTPUT"
+                echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
+                exit 1
+              fi
+              if [[ "$RAILWAY_API_STATUS" == "success" ]]; then
+                RAILWAY_OK=true
+              fi
+            fi
 
             VERCEL_SATISFIED=$VERCEL_OK
             RAILWAY_SATISFIED=$RAILWAY_OK
@@ -177,14 +287,14 @@ jobs:
             exit 1
           fi
 
-      # Jobbet kører ellers UDEN arbejdstræ (alle øvrige trin er rene curl-/gh-kald mod
-      # de deployede URL'er). Uden dette checkout fejlede trinnet nedenfor med
-      # MODULE_NOT_FOUND på hvert eneste push siden 7/8 — dvs. cache-guarden fra #3484
-      # har aldrig kørt, samtidig med at en permanent rød Deploy verify gjorde at ægte
-      # fejl druknede. Se #3565.
-      - name: Checkout (kun til cache-header-guarden)
-        uses: actions/checkout@v7
-
+      # Checkout skete tidligere frem til #5489 (kun her, "kun til cache-header-
+      # guarden") — flyttet op til før "Wait for Vercel + Railway deployments",
+      # fordi det trin nu også skal kunne køre scripts/railway-deploy-status.mjs.
+      # Uden ARBEJDSTRÆET fejlede trinnet nedenfor med MODULE_NOT_FOUND på hvert
+      # eneste push siden 7/8 — dvs. cache-guarden fra #3484 har aldrig kørt,
+      # samtidig med at en permanent rød Deploy verify gjorde at ægte fejl
+      # druknede (#3565). Denne pointe gælder stadig — den tidligere checkout
+      # dækker den blot nu også.
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
 

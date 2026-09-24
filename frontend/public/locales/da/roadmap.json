@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "title": "Roadmap · Cycling Zone",
+    "description": "Hvad der bygges som det næste i Cycling Zone, og hvordan spillerne bedømmer planerne."
+  },
   "page": {
     "title": "Roadmap",
     "subtitle": "Hvor Cycling Zone er på vej hen"
@@ -8,7 +12,7 @@
     "next": "Hvor det er på vej hen"
   },
   "voting": {
-    "intro": "Bedøm planerne herunder. Dine stemmer er med til at afgøre hvad der bliver bygget som det næste.",
+    "intro": "Bedøm planerne herunder. Dine stemmer er med til at afgøre, hvad der bliver bygget som det næste. Hvad der kommer efter sæson 4, beslutter jeg sammen med dig i Roadmap-trådene på forummet.",
     "idea": "Hvor god en idé?",
     "importance": "Hvor vigtigt er det for dig?",
     "saved": "Gemt",
@@ -44,53 +48,50 @@
   "engines": {
     "races": {
       "title": "Løb",
-      "today": "En fuld sæsonkalender med planlagte løb, resultater, stillinger, præmiepenge og historik.",
+      "today": "En fuld sæsonkalender med planlagte løb, resultater, stillinger, præmiepenge og historik, plus en løbsfilm af hver afsluttet etape.",
       "next": [
         "En klogere sæsonplanlægger: overlappende løb, træthed og kvalifikationsregler du kan planlægge en hel sæson omkring.",
-        "Nationale mesterskaber og landshold: kør for dit land, vind trøjen.",
+        "Nationale mesterskaber, VM og EM: kør for dit land, vind trøjen, og bliv landstræner.",
         "Realistiske løbsruter modelleret efter rigtig cykling.",
         "Løbs-matematikken forklaret i klare ord, uden at afsløre de præcise tal."
       ]
     },
     "training": {
       "title": "Træning",
-      "today": "Træningsfokus er live: et sæson-langt fokus og intensitet på dine nøgleryttere, med ægte trade-offs.",
+      "today": "Daglig træning: vælg en session til hver rytter hver dag, planlæg formtoppe, og lad assistenten foreslå en plan.",
       "next": [
-        "Rigtig træningsdybde: programmer til den enkelte rytter, ikke kun ét fokus.",
-        "Langsigtet udvikling du kan se og styre, sæson efter sæson.",
-        "Meningsfulde valg med konsekvenser, aldrig regnearks-lektier.",
+        "Træning pr. løbsdag: én ny træningsside, hvor du planlægger hver rytter omkring hans løb.",
+        "Træningsscoren for alle: se hvor god hver træningsdag var, og styr dine rytteres udvikling sæson efter sæson.",
         "Trænere som en ægte ressource: balancér træningsbelastningen og risikér nedslidning hvis du presser for hårdt.",
-        "Standardtræningsprogrammer og en workshop til at dele dine egne."
+        "Færdige træningsprogrammer, og senere en måde at dele dine egne på."
       ]
     },
     "youth": {
       "title": "Ungdomsudvikling",
-      "today": "Scouting er live: afdæk en rytters skjulte potentiale med begrænsede scout-slots og estimater der er personlige for dit hold.",
+      "today": "Dit eget akademi og en talentspejder: find unge ryttere, udvikl dem, og bestem på Graduation Day, hvem der rykker op.",
       "next": [
-        "Unge ryttere du selv opdagede, udviklede og gjorde til dine stjerner.",
-        "Generationsskifte, så din klub har en fremtid ud over den nuværende trup.",
-        "U19- og U23-hold med ægte oprykningsveje fra akademi til toppen."
+        "Dine egne unge stjerner: vælg hvilket land dine unge ryttere kommer fra, og styr hvilke ryttertyper dit akademi får frem.",
+        "U23- og juniortrupper: to rigtige trupper under dit førstehold, med en vej fra akademiet til toppen."
       ]
     },
     "market": {
       "title": "Transfers & auktioner",
-      "today": "Den stærkeste del af spillet lige nu: live-auktioner, autobud, transfers, lån og forhandlinger mellem managers.",
+      "today": "Live-auktioner, autobud, transfers, byttehandler og forhandlinger med andre managers.",
       "next": [
         "Dybere forhandling mellem managers.",
         "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om.",
-        "Rytterværdier der følger markedet: priser formet af rigtige auktioner og transfers."
+        "Rytterværdier der giver mening: værdien følger rytterens evner og det, markedet reelt betaler, og jeg forklarer, hvordan den bliver sat."
       ]
     },
     "club": {
       "title": "Klub & verden",
-      "today": "En krævende bestyrelse med ægte mål, klubøkonomi med lån og konsekvenser, og en fælles verden af managers.",
+      "today": "En bestyrelse med mål, du skal nå, klubøkonomi med konsekvenser, din egen stab, og et forum og beskeder til at tale med andre managers.",
       "next": [
-        "Optjen renommé: sejre, rekorder og historie der bygger din klubs omdømme i verden.",
-        "Vejkaptajner og mentorer: ryttere der løfter holdet omkring sig.",
+        "Optjen renommé: statistik, rekorder og historie der bygger din klubs omdømme i verden.",
+        "Vejkaptajner, mentorer og holdarbejde: ryttere der løfter holdet omkring sig.",
         "Et klubmuseum: mestre, legendariske ryttere og løbene folk stadig taler om.",
         "Venner og følg-funktion: følg managers og ryttere på tværs af verden.",
         "Forhandl bestyrelsens mål op, for en større belønning.",
-        "Direkte beskeder og @-omtaler mellem managers.",
         "Inviter en ven og byg jeres rivalisering sammen.",
         "Et levende verdensfeed med resultater, transfers og rivaliseringer."
       ]

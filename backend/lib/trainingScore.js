@@ -46,10 +46,11 @@
 //
 // ── STOEJ-SEED (arkitekt-beslutning A3) ─────────────────────────────────────
 // Dagsstoejen kommer ind som en faerdig `noise` fra `applyDailyTick`, som i fase
-// A noegler den paa `tick_date`. TODO(#4846 fase B2): naar loebsdagen er
-// tick-enheden, noegles den paa `${seasonId}#gd${gameDay}` (seamen findes
-// allerede som `tickSeedKey` i dailyTraining.js) — ellers ville tre loebsdage
-// samme kalenderdag give tre IDENTISKE scorer.
+// A noegler den paa `tick_date`. Loebsdags-noeglen er allerede bygget: naar
+// loebsdagen er tick-enheden, seedes dagen paa `${seasonId}#gd${gameDay}` via
+// `raceDaySeedKey` i `trainingRaceDayTick.js` — ellers ville tre loebsdage
+// samme kalenderdag give tre IDENTISKE scorer. Denne fil kender ikke noeglen;
+// den modtager kun det faerdige tal.
 //
 // Ren funktion: ingen DB, ingen Date, ingen Math.random.
 
@@ -117,7 +118,9 @@ function finiteOr(value, fallback) {
 // Evnerne sessionen faktisk traener, med deres vaegt (#4631's FOCUS_ABILITY_WEIGHT).
 function sessionAbilityWeights(program) {
   const focus = program?.focus ?? null;
-  const abilities = TRAINING_FOCUSES[focus] ?? [];
+  // #4850: loebsdagens program (raceDayYield.js) baerer sin egen fokus-liste,
+  // samme override som abilityMult i dailyTraining.js.
+  const abilities = program?.focusAbilities ?? TRAINING_FOCUSES[focus] ?? [];
   return abilities.map((ability) => ({ ability, weight: focusAbilityWeight(focus, ability) }));
 }
 

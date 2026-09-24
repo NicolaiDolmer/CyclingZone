@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildRaceResults,
+  buildStageRowsAccumulated,
   loadEntrantsForRace,
   simulateRace,
   deriveIsU25FromBirthdate,
@@ -358,6 +359,48 @@ test("checksum: samme overrides → deterministisk (samme checksum på tværs af
   assert.deepEqual(a.runs.map((r) => r.input_checksum), b.runs.map((r) => r.input_checksum));
 });
 
+// ── #5223: dublet sprint_captain i rolle-sammenfletningen ────────────────────
+//
+// Sentry CYCLINGZONE-5Z kom fra stage-scheduler-stien (runStageSchedulerCron →
+// simulateStageByIndex → buildStageRowsAccumulated). Kontrakten her: et
+// DUBLET-input (basis-sprint_captain på A + etape-override sprint_captain på B)
+// skal give PRÆCIS samme udfald som det allerede rene input, hvor A's basisrolle
+// er 'helper'. Holder den, kan motoren pr. konstruktion ikke se to indehavere.
+
+// A = basis-sprint_captain, B (sprinter) får etape-overriden på etape 1.
+const DUP_ENTRANTS = ENTRANTS.map((e) => (e.rider_id === "climber" ? { ...e, race_role: "sprint_captain" } : { ...e, race_role: "helper" }));
+const CLEAN_ENTRANTS = DUP_ENTRANTS.map((e) => (e.rider_id === "climber" ? { ...e, race_role: "helper" } : e));
+const SC_OVERRIDE = new Map([[1, new Map([["sprinter", { race_role: "sprint_captain", effort: "normal" }]])]]);
+
+test("#5223 buildStageRowsAccumulated: basis-sprint_captain + etape-override på en anden rytter → samme udfald som rent input (ingen dublet)", () => {
+  const args = { race: STAGE_RACE, stagesSorted: STAGES_3, stageIndex: 0, pointsLookup: POINTS, priorStageRows: [], v3: true, stageRoleOverrides: SC_OVERRIDE };
+  const dup = buildStageRowsAccumulated({ ...args, entrants: DUP_ENTRANTS.map((e) => ({ ...e, fatigue: 0 })) });
+  const clean = buildStageRowsAccumulated({ ...args, entrants: CLEAN_ENTRANTS.map((e) => ({ ...e, fatigue: 0 })) });
+  assert.deepEqual(dup, clean, "dublet-inputtet må ikke kunne skelnes fra det rene input");
+});
+
+test("#5223 buildRaceResults: samme garanti på hele-løbs-stien (etape 1, hvor overriden ligger)", () => {
+  const args = { race: STAGE_RACE, stages: STAGES_3, pointsLookup: POINTS, v3: true, stageRoleOverrides: SC_OVERRIDE };
+  const dup = buildRaceResults({ ...args, entrants: DUP_ENTRANTS });
+  const clean = buildRaceResults({ ...args, entrants: CLEAN_ENTRANTS });
+  const stage1 = (out) => out.resultRows.filter((r) => r.result_type === "stage" && r.stage_number === 1);
+  // KUN etape 1: på etape 2-3 har DUP_ENTRANTS ingen override, så climber ER
+  // holdets sprint_captain dér — de to input er da reelt forskellige, og et
+  // afvigende udfald er korrekt (basisrollen gælder når etapen ingen override har).
+  assert.equal(dup.runs[0].input_checksum, clean.runs[0].input_checksum);
+  assert.deepEqual(stage1(dup), stage1(clean));
+});
+
+test("#5223: etape-rollen gælder KUN sin egen etape — basisrollen er intakt på etape 2", () => {
+  // Overriden ligger på etape 1. På etape 2 skal climber igen være holdets
+  // sprint_captain (ingen degradering lækker videre).
+  const args = { race: STAGE_RACE, stagesSorted: STAGES_3, pointsLookup: POINTS, priorStageRows: [], v3: true, stageRoleOverrides: SC_OVERRIDE };
+  const entrants = DUP_ENTRANTS.map((e) => ({ ...e, fatigue: 0 }));
+  const withDup = buildStageRowsAccumulated({ ...args, stageIndex: 1, entrants });
+  const noOverride = buildStageRowsAccumulated({ ...args, stageIndex: 1, entrants, stageRoleOverrides: new Map() });
+  assert.deepEqual(withDup.resultRows, noOverride.resultRows, "etape 2 er upåvirket af etape 1's override");
+});
+
 test("endagsløb: kun gc(all) + team — ingen stage/dag-ledere", () => {
   const single = { id: "race-single-1", race_type: "single", race_class: "ProSeries", season_id: "s1" };
   const stages = [{ stage_number: 1, profile_type: "hilly", demand_vector: DEMAND_VECTORS.hilly }];
@@ -492,6 +535,35 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   assert.equal(r1.is_u25, true);
   assert.equal(r1.team_id, "T1");
   assert.equal(r1.abilities.climbing, 80);
+});
+
+// #5571: AI-holdets markering følger med på entrant, så løbsmotor v4 kan give
+// KUN AI-hold M14's taktik. Et menneskehold får aldrig feltet.
+test("loadEntrantsForRace: markerer AI-holdets ryttere (team_is_ai), aldrig et menneskeholds", async () => {
+  const supabase = makeSupabase({
+    ...padToFloor(padToFloor({
+      race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T2" }],
+      riders: [
+        { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
+        { id: "r2", team_id: "T2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+      ],
+      rider_derived_abilities: [
+        { rider_id: "r1", ...abil({ climbing: 80 }) },
+        { rider_id: "r2", ...abil({ sprint: 80 }) },
+      ],
+    }, "T1", "padA"), "T2", "padB"),
+    teams: [
+      { id: "T1", name: "Hold A", is_ai: true },
+      { id: "T2", name: "Hold B", is_ai: false },
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  const aiRiders = entrants.filter((e) => e.team_id === "T1");
+  const humanRiders = entrants.filter((e) => e.team_id === "T2");
+  assert.ok(aiRiders.length > 0 && humanRiders.length > 0);
+  assert.ok(aiRiders.every((e) => e.team_is_ai === true));
+  assert.ok(humanRiders.every((e) => e.team_is_ai === undefined));
+  assert.equal(aiRiders[0].team_name, "Hold A");
 });
 
 // #4357: Postgres garanterer ingen rækkefølge uden ORDER BY — regressionstest der
@@ -1270,6 +1342,7 @@ test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp 
       "rpc:refresh_team_standings_ext_mv",
       "rpc:refresh_team_race_points_mv",
       "rpc:refresh_global_rank_mv",
+      "rpc:refresh_youth_rider_rankings_mv", // #5647: ungdoms-rytterranglisten, sidst i samme refresh
       "recomputeRaceDays",
       "notifyDiscord",
       "notifyInApp",
@@ -1416,4 +1489,40 @@ test("simulateRace: applyFatigue-fejl vælter ikke afviklingen (#1306)", async (
     applyFatigue: async () => { throw new Error("fatigue boom"); },
   });
   assert.ok(report.rowsImported > 0, "finalization skal fuldføre selv om applyFatigue kaster");
+});
+
+// ── #5645 (Y4): præmievagt ved kilden ────────────────────────────────────────
+// Ungdomsløb (races.squad = u23/junior) udbetaler ingen præmiepenge i v1. Point er
+// sportsdata og uændrede; kun prize_money nulstilles. Senior: bit-identisk.
+test("#5645 buildRaceResults: seniorløb (squad 'senior' eller udeladt) er bit-identisk", () => {
+  const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const senior = buildRaceResults({ race: { ...STAGE_RACE, squad: "senior" }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  assert.deepEqual(senior.resultRows, base.resultRows);
+  const paid = base.resultRows.filter((r) => r.prize_money > 0);
+  assert.ok(paid.length > 0, "fixture giver præmier i et seniorløb");
+  for (const r of paid) assert.equal(r.prize_money, r.points_earned * PRIZE_PER_POINT);
+});
+
+for (const squad of ["u23", "junior"]) {
+  test(`#5645 buildRaceResults: ${squad}-løb giver prize_money = 0 på hver række, point uændrede`, () => {
+    const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    assert.equal(youth.resultRows.length, base.resultRows.length);
+    for (const r of youth.resultRows) assert.equal(r.prize_money, 0, `${r.result_type} rank ${r.rank} bar en præmie`);
+    assert.deepEqual(
+      youth.resultRows.map((r) => r.points_earned),
+      base.resultRows.map((r) => r.points_earned),
+      "point er uændrede",
+    );
+  });
+}
+
+test("#5645 buildStageRowsAccumulated: u23-løb giver prize_money = 0 (etape-for-etape-stien)", () => {
+  const stagesSorted = [...STAGES_3].sort((a, b) => a.stage_number - b.stage_number);
+  const { resultRows } = buildStageRowsAccumulated({
+    race: { ...STAGE_RACE, squad: "u23" }, stagesSorted, stageIndex: 0, entrants: ENTRANTS, pointsLookup: POINTS,
+  });
+  assert.ok(resultRows.length > 0);
+  assert.ok(resultRows.some((r) => r.points_earned > 0), "fixture giver point");
+  for (const r of resultRows) assert.equal(r.prize_money, 0);
 });

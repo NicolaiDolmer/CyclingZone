@@ -11,6 +11,7 @@ import {
   expireAndRenewContracts,
   recomputeActivationRate,
   resolveStageDivisor,
+  loadSeasonStageCounts,
   evaluateSeasonObjectives,
   resolveContractForNewSeason,
   contractRaceDayPool,
@@ -31,8 +32,8 @@ import { computeDivisionAdjustment } from "./divisionAdjustment.js";
 //   seasons:          .select(...).eq("number", N).maybeSingle()  (renown + stageCounts)
 //                      .select("race_days_total").eq("status","active").maybeSingle() (calendarDays)
 //   season_standings: .select(...).eq("season_id", id)  (thenable → array)
-//   races:            .select("league_division_id, stages").eq("season_id", id) (thenable)
-//   league_divisions: .select("id, tier")  (thenable, ingen filter)
+//   races:            .select("league_division_id, stages").or(<senior>).eq("season_id", id) (thenable)
+//   league_divisions: .select("id, tier").or(<senior>)  (thenable)
 //   sponsor_contracts:
 //     .select("*").eq("team_id").eq("status","active"|"pending").maybeSingle()
 //     .select(...).eq("status","active")                 (thenable, bulk — evaluateSeasonObjectives)
@@ -126,23 +127,40 @@ function makeSupabase({
     return b;
   }
 
+  // #5536: withSeniorSquadScope kæder .or("squad.is.null,squad.eq.senior") på; mocken
+  // fortolker det, så ungdomsrækker i en fixture faktisk filtreres fra.
+  const isSeniorRow = (row) => row.squad == null || row.squad === "senior";
+  function seniorOr(ctx, expr) {
+    assert.equal(expr, "squad.is.null,squad.eq.senior");
+    ctx.seniorOnly = true;
+  }
+
   function racesBuilder() {
     const ctx = {};
     const b = {
       select: () => b,
+      or: (expr) => { seniorOr(ctx, expr); return b; },
       eq: (col, val) => {
         if (col === "season_id") ctx.seasonId = val;
         return b;
       },
-      then: (resolve) => resolve({ data: racesBySeasonId[ctx.seasonId] ?? [], error: null }),
+      then: (resolve) => resolve({
+        data: (racesBySeasonId[ctx.seasonId] ?? []).filter((r) => !ctx.seniorOnly || isSeniorRow(r)),
+        error: null,
+      }),
     };
     return b;
   }
 
   function leagueDivisionsBuilder() {
+    const ctx = {};
     const b = {
       select: () => b,
-      then: (resolve) => resolve({ data: poolsList, error: null }),
+      or: (expr) => { seniorOr(ctx, expr); return b; },
+      then: (resolve) => resolve({
+        data: poolsList.filter((p) => !ctx.seniorOnly || isSeniorRow(p)),
+        error: null,
+      }),
     };
     return b;
   }
@@ -425,6 +443,163 @@ test("getOffers falder tilbage til division-base × 1.0 når intet sidste-sæson
     renownTargetValue: 400000,
   });
   assert.deepEqual(offers, expected);
+});
+
+// ─── #4860 A: fallback til sidste AFSLUTTEDE sæsons slutstilling ──────────────
+// Ejer-beslutning 17/9. Et S4-tilbud prissættes mod S3, men S3's season_standings
+// er tom indtil sæsonens første løb er kørt. Et etableret hold der valgte FØR
+// første løb fik derfor 1,00, mens samme valg en uge senere gav op til 1,40
+// (30 af 43 pending S4-aftaler målt i prod 6/9). Nu bruges S2's slutstilling.
+
+test("#4860 A: getOffers falder tilbage til start_season − 2's slutstilling når sæsonen før endnu ikke har en stilling", async () => {
+  // Tilbud for sæson 4. Sæson 3 er i gang men har INGEN standings endnu (tom
+  // tabel — ingen løb kørt). Sæson 2 er afsluttet, og holdet vandt sin D2-pulje.
+  const season2Standings = [
+    { season_id: "s2", team_id: "t1", division: 2, rank_in_division: 1, total_points: 900 },
+    { season_id: "s2", team_id: "t2", division: 2, rank_in_division: 2, total_points: 300 },
+    { season_id: "s2", team_id: "t3", division: 2, rank_in_division: 3, total_points: 100 },
+  ];
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: { id: "s2", number: 2 }, 3: { id: "s3", number: 3 } },
+    standingsBySeasonId: { s3: [], s2: season2Standings },
+  });
+
+  const offers = await getOffers({ supabase, teamId: "t1", seasonNumber: 4 });
+
+  const expectedTarget = renownTarget({
+    division: 2,
+    lastSeasonStanding: season2Standings[0],
+    divisionStandings: season2Standings,
+  });
+  assert.deepEqual(
+    offers,
+    generateOffers({ teamId: "t1", seasonNumber: 4, renownTargetValue: expectedTarget }),
+  );
+  // Forward-guard mod regressionen: den flade 1,00-pris må IKKE være svaret.
+  assert.ok(
+    expectedTarget > 400000,
+    `S2-formen (rank 1) skal løfte target over D2's flade base, fik ${expectedTarget}`,
+  );
+});
+
+test("#4860 A: getOffers falder tilbage til 1,00 når HVERKEN start_season − 1 eller − 2 har en stilling", async () => {
+  // Nyt hold: hverken sæson 3 (i gang, tom) eller sæson 2 kender holdet.
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: { id: "s2", number: 2 }, 3: { id: "s3", number: 3 } },
+    standingsBySeasonId: {
+      s3: [],
+      s2: [{ season_id: "s2", team_id: "other", division: 2, rank_in_division: 1, total_points: 900 }],
+    },
+  });
+
+  const offers = await getOffers({ supabase, teamId: "t1", seasonNumber: 4 });
+
+  assert.deepEqual(
+    offers,
+    generateOffers({ teamId: "t1", seasonNumber: 4, renownTargetValue: 400000 }),
+  );
+});
+
+// ─── #4860 D: tavshed må aldrig give mere end handling samme dag ──────────────
+// Default-'safe' ved sæsonskiftet prissættes til den pris tilbuddet blev VIST til
+// da tilbudsvinduet åbnede (starten af sæson N−1, hvor standings var tom og
+// A-fallbacken derfor gælder), begrænset opad af slutstillingen.
+
+// Samme verden, to stier: manageren der klikker 'safe' på skiftedagen, og
+// manageren der aldrig svarede. Begge prissættes mod D2.
+function makeSilenceVsActionWorld({ windowOpenRank, finalRank }) {
+  const row = (seasonId, teamId, rank, points) => ({
+    season_id: seasonId,
+    team_id: teamId,
+    division: 2,
+    rank_in_division: rank,
+    total_points: points,
+  });
+  // Sæson 2 (afsluttet før vinduet åbnede) og sæson 3 (netop afsluttet).
+  const pointsByRank = { 1: 900, 5: 120 };
+  const s2 = [
+    row("s2", "t1", windowOpenRank, pointsByRank[windowOpenRank]),
+    row("s2", "t2", windowOpenRank === 1 ? 2 : 1, 400),
+    row("s2", "t3", 6, 60),
+  ];
+  const s3 = [
+    row("s3", "t1", finalRank, pointsByRank[finalRank]),
+    row("s3", "t2", finalRank === 1 ? 2 : 1, 400),
+    row("s3", "t3", 6, 60),
+  ];
+  return {
+    seasonsByNumber: { 2: { id: "s2", number: 2 }, 3: { id: "s3", number: 3 } },
+    standingsBySeasonId: { s2, s3 },
+  };
+}
+
+async function baseFromSilence(world) {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    ...world,
+    activeContractByTeam: {
+      t1: { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 3 },
+    },
+    pendingContractByTeam: { t1: null },
+  });
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 4, teamIds: ["t1"] });
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].variant, DEFAULT_RENEW_VARIANT);
+  return supabase.state.inserts[0].guaranteed_base;
+}
+
+async function baseFromActingOnTransitionDay(world) {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    ...world,
+    activeContractByTeam: {
+      t1: { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 3 },
+    },
+    pendingContractByTeam: { t1: null },
+  });
+  const contract = await acceptOffer({
+    supabase,
+    teamId: "t1",
+    upcomingSeasonNumber: 4,
+    variant: DEFAULT_RENEW_VARIANT,
+  });
+  return contract.guaranteed_base;
+}
+
+test("#4860 D: tavshed giver ALDRIG en højere base end et manuelt valg af samme tilbud samme dag — hold i fremgang", async () => {
+  // Holdet var nr. 5 i D2 da vinduet åbnede og sluttede som nr. 1. Før fixet fik
+  // tavsheden slutstillingens 1,40 og dermed MERE end holdet der valgte 'safe'
+  // tidligt i sæsonen. Nu koster tavsheden vindues-prisen.
+  const world = makeSilenceVsActionWorld({ windowOpenRank: 5, finalRank: 1 });
+
+  const silence = await baseFromSilence(world);
+  const action = await baseFromActingOnTransitionDay(world);
+
+  assert.ok(
+    silence <= action,
+    `tavshed (${silence}) må aldrig overstige et manuelt valg samme dag (${action})`,
+  );
+  assert.ok(
+    silence < action,
+    "vindues-prisen skal bide for et hold i fremgang (ellers tester fixturen ingenting)",
+  );
+});
+
+test("#4860 D: tavshed giver ALDRIG en højere base end et manuelt valg samme dag — hold i tilbagegang", async () => {
+  // Modsat vej: holdet var nr. 1 da vinduet åbnede og sluttede som nr. 5. En ren
+  // frysning ville lade tavsheden vinde på den gamle form; ejerens invariant
+  // vejer tungere, så der tages min af vindues- og slutstillings-prisen.
+  const world = makeSilenceVsActionWorld({ windowOpenRank: 1, finalRank: 5 });
+
+  const silence = await baseFromSilence(world);
+  const action = await baseFromActingOnTransitionDay(world);
+
+  assert.ok(
+    silence <= action,
+    `tavshed (${silence}) må aldrig overstige et manuelt valg samme dag (${action})`,
+  );
 });
 
 test("getOffers bruger seasons.race_days_total som per-dag-divisor (#1663)", async () => {
@@ -1134,17 +1309,24 @@ test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold de
   // tidspunkt. Samtidig skal den elevated-renown-regression fra #2909 stadig
   // holde: rank-1-formen i D3 skal stadig løfte target over D3s flade base,
   // ikke falde tilbage til 1,0-multiplikatoren.
+  //
+  // #4860 D: default-fornyelsen prissættes nu til den pris tilbudsvinduet åbnede
+  // på (sæson 1s slutstilling), begrænset opad af slutstillingen. Fixturen bærer
+  // derfor BEGGE sæsoner, med samme D3-rank-1-form i dem begge, så det er
+  // #2909/#4376-adfærden testen måler — ikke et hul i fixturen.
   const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
   const prevSeason = { id: "s1", number: 2 };
+  const windowOpenSeason = { id: "s0", number: 1 };
   const standings = [
     { season_id: "s1", team_id: "t1", division: 3, rank_in_division: 1, total_points: 900 },
     { season_id: "s1", team_id: "t3b", division: 3, rank_in_division: 2, total_points: 200 },
     { season_id: "s1", team_id: "t2a", division: 2, rank_in_division: 1, total_points: 500 },
   ];
+  const windowOpenStandings = standings.map((s) => ({ ...s, season_id: "s0" }));
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 }, // NYE division efter oprykning fra D3
-    seasonsByNumber: { 2: prevSeason },
-    standingsBySeasonId: { s1: standings },
+    seasonsByNumber: { 1: windowOpenSeason, 2: prevSeason },
+    standingsBySeasonId: { s0: windowOpenStandings, s1: standings },
     activeContractByTeam: { t1: expiring },
     pendingContractByTeam: { t1: null },
   });
@@ -1654,6 +1836,43 @@ test("evaluateSeasonObjectives: ingen aktive kontrakter med season_objective-kla
   });
   const result = await evaluateSeasonObjectives({ supabase, finishedSeasonNumber: 2 });
   assert.deepEqual(result, { evaluated: 0, paid: 0 });
+});
+
+// ─── #5536: sponsor-divisoren tæller kun seniorløb og seniorpuljer ────────────
+
+test("#5536 loadSeasonStageCounts: ungdomsløb og ungdomspuljer i fixturen ændrer intet (senior bit-identisk)", async () => {
+  const seniorRaces = [
+    { league_division_id: "pool-a", stages: 3 },
+    { league_division_id: "pool-a", stages: 2 },
+    { league_division_id: "pool-b", stages: 5 },
+    { league_division_id: "pool-c", stages: 1 },
+  ];
+  const seniorPools = [{ id: "pool-a", tier: 2 }, { id: "pool-b", tier: 2 }, { id: "pool-c", tier: 3 }];
+  const base = { seasonsByNumber: { 3: { id: "s3", number: 3, race_days_total: 60 } } };
+
+  const plain = await loadSeasonStageCounts({
+    supabase: makeSupabase({ ...base, racesBySeasonId: { s3: seniorRaces }, poolsList: seniorPools }),
+    seasonNumber: 3,
+  });
+
+  // Ungdomspuljer med samme tier og mange etaper + ungdomsløb, også ét i en seniorpulje-id.
+  const mixed = await loadSeasonStageCounts({
+    supabase: makeSupabase({
+      ...base,
+      racesBySeasonId: { s3: [
+        ...seniorRaces,
+        { league_division_id: "u23-a", stages: 40, squad: "u23" },
+        { league_division_id: "u23-b", stages: 40, squad: "u23" },
+        { league_division_id: "pool-a", stages: 40, squad: "junior" },
+      ] },
+      poolsList: [...seniorPools, { id: "u23-a", tier: 2, squad: "u23" }, { id: "u23-b", tier: 3, squad: "u23" }],
+    }),
+    seasonNumber: 3,
+  });
+
+  assert.deepEqual(mixed, plain);
+  assert.deepEqual(plain.byPool, { "pool-a": 5, "pool-b": 5, "pool-c": 1 });
+  assert.equal(mixed.byPool["u23-a"], undefined, "ingen ungdomspulje i divisor-opslaget");
 });
 
 // ─── #2913: resolveStageDivisor fallback-kæde (pure) ──────────────────────────

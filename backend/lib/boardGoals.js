@@ -53,6 +53,21 @@ export function buildGoalKey(goal = {}) {
   return `${type}|${target}|${nationalityCode}|${raceScope}|${cumulative}`;
 }
 
+// #5618 · Samme identitet som buildGoalKey, men UDEN target. buildGoalKey
+// inkluderer target med vilje (en genforhandling starter måls kvitterings-
+// historik forfra, se kommentaren ovenfor) — men det betyder den ALDRIG kan
+// bruges til at genfinde "samme mål" hen over en target-ændring. Det er
+// præcis hvad reconcileMandateGoalsWithLegacyBoard (boardMandate.js) skal
+// gøre: finde det mandat-mål der SVARER til et legacy-forhandlet mål, selvom
+// target er ændret siden mandatet sidst blev skrevet.
+export function buildGoalIdentityKey(goal = {}) {
+  const type = goal?.type ?? "";
+  const nationalityCode = goal?.nationality_code ?? "";
+  const raceScope = goal?.race_scope ?? "";
+  const cumulative = goal?.cumulative ? 1 : 0;
+  return `${type}|${nationalityCode}|${raceScope}|${cumulative}`;
+}
+
 export function parseBoardGoals(rawGoals) {
   const parsedGoals = Array.isArray(rawGoals)
     ? rawGoals

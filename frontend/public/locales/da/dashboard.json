@@ -1,5 +1,6 @@
 {
   "loadError": "Kunne ikke indlæse dashboardet. Prøv igen.",
+  "offlineError": "Kan ikke få forbindelse til spillets server. Tjek din forbindelse, og prøv igen.",
   "retry": "Prøv igen",
   "todayStages": {
     "title": "Dagens etaper",
@@ -71,10 +72,14 @@
   "seasonSignup": {
     "titleParked": "Dit hold blev parkeret",
     "titleDormant": "Behold din plads til sæson {number}",
-    "bodyParked": "Manglende login flyttede dit hold ud af ligaen. Tilmeld dig for at vende tilbage til sæson {number}.",
+    "bodyParkedComeback": "Manglende login flyttede dit hold ud af ligaen. Kom tilbage nu, så kører du igen i denne sæson, placeret efter din Global Rank.",
     "bodyDormant": "Du har været væk et stykke tid. Tilmeld dig nu for at sikre din plads til sæson {number}.",
     "cta": "Tilmeld dig næste sæson",
+    "ctaComeback": "Vend tilbage til ligaen",
     "confirmed": "Du er tilmeldt sæson {number}",
+    "comebackTitle": "Velkommen tilbage",
+    "comebackConfirmed": "Dit hold er tilbage i division {division} og kører igen i denne sæson.",
+    "comebackError": "Kunne ikke hente dit hold tilbage. Prøv igen.",
     "error": "Kunne ikke tilmelde. Prøv igen."
   },
   "squadWarning": {
@@ -258,7 +263,7 @@
       "satisfaction": "Tilfredshed",
       "focus": "Fokus",
       "budgetMultiplier": "Budget multiplikator",
-      "exceeds": "Overget",
+      "exceeds": "Overgået",
       "exceedsTitle": "Denne kategori scorede over 100%. Du har overgået bestyrelsens forventninger her.",
       "meetingNudge": {
         "title": "Årsmødet er åbent",

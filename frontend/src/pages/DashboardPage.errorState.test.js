@@ -42,9 +42,16 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
     /if \(error\) return \(/,
     "der skal være et eksplicit error-early-return, ligesom loading-checket",
   );
+  // #5312: titlen er nu betinget — "naaede aldrig serveren" skal sige noget
+  // ANDET end "kunne ikke indlaese dashboardet", fordi de to fejl kraever hver
+  // sin handling af spilleren. Komponenten er stadig den kanoniske ErrorState,
+  // og loadError er stadig faldbagsteksten; det er hele pointen med guarden.
+  // #5322: klassifikatoren er nu isNetworkError, som daekker BEGGE former
+  // fejlen kan have — en kastet exception (Supabase-opslagene) OG apiFetch's
+  // resultat, der efter #5322 ikke laengere kaster ved en transportfejl.
   assert.match(
     source,
-    /<ErrorState[\s\S]{0,200}?title=\{t\("dashboard:loadError"\)\}/,
+    /<ErrorState[\s\S]{0,300}?title=\{isNetworkError\(error\) \? t\("dashboard:offlineError"\) : t\("dashboard:loadError"\)\}/,
     "ErrorState skal bruge den kanoniske komponent (docs/design/PAGE_TEMPLATES.md), ikke ny markup",
   );
   assert.match(
@@ -57,6 +64,28 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
     source,
     /<Button size="sm" variant="secondary" onClick=\{\(\) => \{ setLoading\(true\); loadAll\(\); \}\}>\{t\("dashboard:retry"\)\}<\/Button>/,
     "retry-knappen skal være secondary sm, aldrig gold",
+  );
+});
+
+test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, ikke stille til null", () => {
+  // apiFetch kaster ikke laengere ved en transportfejl (#5322). Uden dette
+  // loeft ville de to BLOKERENDE kald falde ned i deres `res.ok`-gren, og
+  // spilleren ville se et halvtomt dashboard i stedet for "kan ikke naa
+  // serveren" — praecis den tilstand #5312 handlede om.
+  assert.match(
+    source,
+    /function failOnUnreachable\(res\) \{\s*if \(res\.networkError\) throw res;\s*return res;\s*\}/,
+    "der skal findes en helper der kaster apiFetch-resultatet videre ved networkError",
+  );
+  assert.match(
+    source,
+    /apiFetch\(`\$\{API\}\/api\/board\/status`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
+    "board/status (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
+  );
+  assert.match(
+    source,
+    /apiFetch\(`\$\{API\}\/api\/transfers\/my-offers`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
+    "my-offers (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
   );
 });
 
@@ -153,7 +182,13 @@ test("locale keys referenced by the new dashboard error surface exist in both en
   assert.ok(en.retry, "en dashboard.json mangler retry");
   assert.ok(da.loadError, "da dashboard.json mangler loadError");
   assert.ok(da.retry, "da dashboard.json mangler retry");
+  // #5312 — den separate "kan ikke naa serveren"-tekst skal findes i BEGGE
+  // sprog, ellers falder den ene ned i raa-noegle-visning paa fejlfladen.
+  assert.ok(en.offlineError, "en dashboard.json mangler offlineError");
+  assert.ok(da.offlineError, "da dashboard.json mangler offlineError");
   // #2849 — no em-dash in player-facing copy (tone-check-em-dash.mjs gate).
   assert.doesNotMatch(en.loadError, /—/);
   assert.doesNotMatch(da.loadError, /—/);
+  assert.doesNotMatch(en.offlineError, /—/);
+  assert.doesNotMatch(da.offlineError, /—/);
 });

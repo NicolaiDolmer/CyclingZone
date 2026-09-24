@@ -21,7 +21,10 @@ import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { ABILITY_REGISTRY } from "./abilityRegistry.js";
 import { computeFrozenSalary } from "./contractSeed.js";
+import { isBornFromPriors, deriveBirthAbilities, statLevelToAbility } from "./riderBirthPriors.js";
+import { PRIMARY_TYPE_MODE_FLAG_KEY } from "./primaryTypeModeFlag.js";
 
 // ── In-memory riders+teams-mock til single-team-allokering (#1560/#1563) ───────
 // Riders: select(firstname/lastname).order().range() (navne-fetch),
@@ -32,8 +35,12 @@ import { computeFrozenSalary } from "./contractSeed.js";
 // select(number).eq(status).maybeSingle() (#2894/#2902 aktiv-sæson-opslag). Ukendte
 // hold auto-vivifies som markør-NULL (et nyt hold) så happy-path-tests ikke behøver
 // seede teams.
-function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1 } = {}) {
+// #5327: app_config (select(value).eq(key).maybeSingle()) for primær-type-kontakten.
+// `appConfig` er nøgle → værdi; en udeladt nøgle = rækken findes ikke. Hver læsning
+// logges i `appConfigReads`, så "læses ÉN gang pr. allokering" kan måles.
+function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1, appConfig = {} } = {}) {
   const store = new Map();
+  const appConfigReads = [];
   for (const r of seedRiders) store.set(r.id, { ...r });
   const teams = new Map(Object.entries(teamMarkers));
   const getTeam = (id) => {
@@ -66,6 +73,18 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
         };
         return api;
       }
+      if (table === "app_config") {
+        let key;
+        const api = {
+          select() { return api; },
+          eq(_col, val) { key = val; return api; },
+          maybeSingle() {
+            appConfigReads.push(key);
+            return Promise.resolve({ data: key in appConfig ? { value: appConfig[key] } : null, error: null });
+          },
+        };
+        return api;
+      }
       if (table === "teams") {
         let idFilter;
         const tb = {
@@ -78,7 +97,7 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
         };
         return tb;
       }
-      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams + seasons");
+      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams + seasons + app_config");
       let teamFilter = undefined;
       let inIds = null;
       const builder = {
@@ -121,7 +140,7 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
     },
   };
 
-  return { supabase, store, teams, fakeDerive };
+  return { supabase, store, teams, fakeDerive, appConfigReads };
 }
 
 // Fake-generator: stærke stats (80) som SKAL clampes i buildWeakStarterPool, med
@@ -271,7 +290,14 @@ test("buildWeakStarterPool: alle stats clampet til vinduet, pcm_id null, korrekt
 // give svage ryttere. Fanger en fremtidig generator-/kalibrerings-ændring der ved
 // et uheld gør start-puljen stærk igen. Tærskel 25 = ejer-målet "ingen over ~25".
 test("svag start-pulje: afledte styrke-evner forbliver svage (≤25) (#1487 forward-guard)", () => {
-  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  // De MENTALE evner er undtaget, og det er ikke en bekvemmelighed: de foedes af
+  // en egen prior (profil + bred, deterministisk stoej, og for leadership et lille
+  // alders-led), ikke af en enkelt stat. Et stat-vindue siger derfor intet om dem,
+  // og denne gate maaler netop om STYRKE-evnerne foelger stat-klemmen. Foer #5268
+  // stod tactics og aggression navngivet her af samme grund; listen udledes nu af
+  // registret, saa en fremtidig mental evne ikke skal huskes ind i haanden.
+  const MENTAL = new Set(ABILITY_REGISTRY.filter((a) => a.category === "mental").map((a) => a.key));
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => !MENTAL.has(k));
   const pool = buildWeakStarterPool({ count: 200, seed: 2026, referenceYear: 2026 });
   let globalMax = 0;
   for (const r of pool) {
@@ -559,36 +585,61 @@ test("#2894/#2902 single-team heal (re-derived): eksisterende TOTAL_SIZE-trup ud
 // svage afledte evner (top ≤25) + trup-styrke i [50,57]. Spejler den eksisterende
 // multi-team forward-guard, men for single-team-seedet (deriveTeamSeed).
 test("#1560 forward-guard: single-team gen-kæde → top-evne ≤25 + stats i [50,57]", () => {
-  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  // De MENTALE evner er undtaget, og det er ikke en bekvemmelighed: de foedes af
+  // en egen prior (profil + bred, deterministisk stoej, og for leadership et lille
+  // alders-led), ikke af en enkelt stat. Et stat-vindue siger derfor intet om dem,
+  // og denne gate maaler netop om STYRKE-evnerne foelger stat-klemmen. Foer #5268
+  // stod tactics og aggression navngivet her af samme grund; listen udledes nu af
+  // registret, saa en fremtidig mental evne ikke skal huskes ind i haanden.
+  const MENTAL = new Set(ABILITY_REGISTRY.filter((a) => a.category === "mental").map((a) => a.key));
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => !MENTAL.has(k));
   const teamSeed = deriveTeamSeed((2026 + 1487) >>> 0, "fwd-guard-team");
   const pool = buildWeakStarterPool({ count: STARTER_SQUAD.CORE_SIZE, seed: teamSeed, referenceYear: 2026 });
   assert.equal(pool.length, STARTER_SQUAD.CORE_SIZE);
 
+  // #5269: vinduet er ikke længere et STAT-vindue — de felter findes ikke for en
+  // nyfødt. Det er oversat til et EVNE-loft der PERSISTERES i
+  // archetype_draw.birth.cap, så en re-derive ikke kan genoplive en uklemt
+  // profil. Oversættelsen er den samme lineære afbildning stats altid har haft.
+  const abilitiesOf = (r, i) => {
+    const row = { ...r, id: `fwd-${i}` };
+    return isBornFromPriors(row) ? deriveBirthAbilities(row, { age: 27 }) : deriveAbilities({}, row, { asOfYear: 2026 });
+  };
+  const coreCap = Math.round(statLevelToAbility(STARTER_POOL_STAT_WINDOW.hi));
+  const tailCap = Math.round(statLevelToAbility(STARTER_TAIL_STAT_WINDOW.hi));
+
   let globalMax = 0;
-  for (const r of pool) {
-    // Alle clampede stats inde i ejer-vinduet.
-    for (const k of STAT_KEYS) {
-      assert.ok(r[k] >= STARTER_POOL_STAT_WINDOW.lo && r[k] <= STARTER_POOL_STAT_WINDOW.hi,
-        `${k}=${r[k]} udenfor [${STARTER_POOL_STAT_WINDOW.lo},${STARTER_POOL_STAT_WINDOW.hi}]`);
+  pool.forEach((r, i) => {
+    if (isBornFromPriors(r)) {
+      assert.equal(r.archetype_draw.birth.cap, coreCap, "kerne-puljen mangler sit persisterede evne-loft");
+    } else {
+      for (const k of STAT_KEYS) {
+        assert.ok(r[k] >= STARTER_POOL_STAT_WINDOW.lo && r[k] <= STARTER_POOL_STAT_WINDOW.hi,
+          `${k}=${r[k]} udenfor [${STARTER_POOL_STAT_WINDOW.lo},${STARTER_POOL_STAT_WINDOW.hi}]`);
+      }
     }
-    // Prod-fallback-sti (relaunch/akademi/signup): tomt fysiologi-objekt.
-    const abilities = deriveAbilities({}, r, { asOfYear: 2026 });
+    const abilities = abilitiesOf(r, i);
     globalMax = Math.max(globalMax, ...STAT_DRIVEN.map((k) => abilities[k]));
-  }
+  });
   assert.ok(globalMax <= 25, `stærkeste styrke-evne ${globalMax} > 25 — single-team-puljen er ikke svag`);
 
-  // Halen ([50,52]) er endnu svagere end kernen.
+  // Halen ([50,52] → evne-loft 7) er endnu svagere end kernen.
   const tailSeed = deriveTeamSeed((2026 + 1487 + 7) >>> 0, "fwd-guard-team");
   const tailPool = buildWeakStarterPool({ count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear: 2026, window: STARTER_TAIL_STAT_WINDOW });
   let tailMax = 0;
-  for (const r of tailPool) {
-    for (const k of STAT_KEYS) {
-      assert.ok(r[k] >= STARTER_TAIL_STAT_WINDOW.lo && r[k] <= STARTER_TAIL_STAT_WINDOW.hi, `${k}=${r[k]} udenfor hale-vindue`);
+  tailPool.forEach((r, i) => {
+    if (isBornFromPriors(r)) {
+      assert.equal(r.archetype_draw.birth.cap, tailCap, "hale-puljen mangler sit persisterede evne-loft");
+    } else {
+      for (const k of STAT_KEYS) {
+        assert.ok(r[k] >= STARTER_TAIL_STAT_WINDOW.lo && r[k] <= STARTER_TAIL_STAT_WINDOW.hi, `${k}=${r[k]} udenfor hale-vindue`);
+      }
     }
-    const abilities = deriveAbilities({}, r, { asOfYear: 2026 });
+    const abilities = abilitiesOf(r, i);
     tailMax = Math.max(tailMax, ...STAT_DRIVEN.map((k) => abilities[k]));
-  }
+  });
   assert.ok(tailMax <= 12, `hale-top-evne ${tailMax} > 12 — halen er ikke ekstra-svag`);
+  assert.ok(tailMax < globalMax, `halen (${tailMax}) skal være svagere end kernen (${globalMax})`);
 });
 
 test("#1560 determinisme + variation: forskellige hold → forskellige reproducerbare trupper", async () => {
@@ -794,4 +845,118 @@ test("#4876 forward-guard: ingen start-trup-rytter er på/over pensionsalderen i
         `${teamId}/${r.id}: sæson-alder ${age} er på/over den garanterede pensionsalder (${RETIREMENT_AGE}) — en ny spiller ville miste ham ved sæsonskiftet`);
     }
   }
+});
+
+// ── #5327 · primær-type-kontakten når frem til generatoren ─────────────────────
+// Kontakten (app_config) læses ÉN gang pr. allokering og sendes til ALLE
+// generator-kald (kerne + hale). Slukket = byte-identisk med koden før kontakten.
+
+// Spion omkring en generator: logger primaryTypeMode for hvert kald.
+function spyGenerate(inner, seen) {
+  return (opts) => {
+    seen.push(opts.primaryTypeMode);
+    return inner(opts);
+  };
+}
+
+// Kaldformen FØR #5327: generatoren fik aldrig en primaryTypeMode. Fjerner nøglen,
+// så sammenligningen er mod den gamle kaldform, ikke mod en ny default.
+function legacyGenerate({ primaryTypeMode: _dropped, ...opts }) {
+  return generateFictionalRiders(opts);
+}
+
+test("#5327 buildWeakStarterPool: primaryTypeMode sendes til generatoren (default tier)", () => {
+  const seen = [];
+  buildWeakStarterPool({ count: 8, seed: 11, referenceYear: 2026, generate: spyGenerate(makeFakeGenerate(), seen) });
+  buildWeakStarterPool({
+    count: 8, seed: 11, referenceYear: 2026, generate: spyGenerate(makeFakeGenerate(), seen),
+    primaryTypeMode: "distribution",
+  });
+  assert.deepEqual(seen, ["tier", "distribution"]);
+});
+
+test("#5327 generateAiRiderBatchWithCap: primaryTypeMode sendes til hver runde (default tier)", () => {
+  for (const mode of [undefined, "distribution"]) {
+    const seen = [];
+    generateAiRiderBatchWithCap({
+      count: 8, tierFractions: { superstar: 0, star: 0, solid: 0 }, valueCap: null, seed: 5327,
+      referenceYear: 2026, generate: spyGenerate(generateFictionalRiders, seen),
+      ...(mode ? { primaryTypeMode: mode } : {}),
+    });
+    assert.ok(seen.length > 0, "generatoren blev aldrig kaldt");
+    for (const m of seen) assert.equal(m, mode ?? "tier");
+  }
+});
+
+test("#5327 allocateStarterSquadForTeam: kontakten on → distribution til kerne OG hale, læst én gang", async () => {
+  const seen = [];
+  const { supabase, fakeDerive, appConfigReads } = createRidersMock({
+    appConfig: { [PRIMARY_TYPE_MODE_FLAG_KEY]: "on" },
+  });
+  await allocateStarterSquadForTeam(supabase, "flag-on-team", {
+    seed: 2026, generate: spyGenerate(makeFakeGenerate(), seen), derive: fakeDerive,
+  });
+  assert.deepEqual(seen, ["distribution", "distribution"], "kerne- og hale-kaldet");
+  assert.equal(appConfigReads.filter((k) => k === PRIMARY_TYPE_MODE_FLAG_KEY).length, 1, "kontakten læses én gang");
+});
+
+test("#5327 allocateStarterSquadForTeam: off, beta, ukendt og manglende række → tier", async () => {
+  for (const value of ["off", "beta", "maybe", undefined]) {
+    const seen = [];
+    const { supabase, fakeDerive } = createRidersMock({
+      appConfig: value === undefined ? {} : { [PRIMARY_TYPE_MODE_FLAG_KEY]: value },
+    });
+    await allocateStarterSquadForTeam(supabase, `flag-${value}-team`, {
+      seed: 2026, generate: spyGenerate(makeFakeGenerate(), seen), derive: fakeDerive,
+    });
+    assert.deepEqual(seen, ["tier", "tier"], `app_config = ${value}`);
+  }
+});
+
+test("#5327 allocateStarterSquadForTeam: kontakten slukket = byte-identisk med kaldformen før kontakten", async () => {
+  const runWith = async (appConfig, generate) => {
+    const { supabase, store, fakeDerive } = createRidersMock({ appConfig });
+    await allocateStarterSquadForTeam(supabase, "byte-identical-team", { seed: 2026, generate, derive: fakeDerive });
+    return [...store.values()];
+  };
+  const legacy = await runWith({}, legacyGenerate);
+  assert.equal(legacy.length, STARTER_SQUAD.TOTAL_SIZE);
+  assert.deepEqual(await runWith({}, generateFictionalRiders), legacy, "manglende række");
+  assert.deepEqual(await runWith({ [PRIMARY_TYPE_MODE_FLAG_KEY]: "off" }, generateFictionalRiders), legacy, "off");
+
+  // Modprøve: tændt skal faktisk flytte den ægte generator, ellers beviser
+  // byte-identiteten ovenfor ingenting.
+  const on = await runWith({ [PRIMARY_TYPE_MODE_FLAG_KEY]: "on" }, generateFictionalRiders);
+  assert.notDeepEqual(
+    on.map((r) => r.archetype_draw?.primary),
+    legacy.map((r) => r.archetype_draw?.primary),
+    "tændt kontakt gav samme primære typer som slukket",
+  );
+});
+
+test("#5327 runStarterSquadAllocation: kontakten on → distribution til begge puljer, også i dry-run", async () => {
+  const seen = [];
+  const { supabase, appConfigReads } = createRidersMock({
+    appConfig: { [PRIMARY_TYPE_MODE_FLAG_KEY]: "on" },
+  });
+  const result = await runStarterSquadAllocation(supabase, {
+    dryRun: true, seed: 2026,
+    getManagerTeams: async () => [{ id: "t1" }, { id: "t2" }],
+    deps: { generate: spyGenerate(makeFakeGenerate(), seen) },
+  });
+  assert.deepEqual(seen, ["distribution", "distribution"], "kerne- og hale-puljen");
+  assert.equal(result.primaryTypeMode, "distribution", "tørkørslen viser kilden");
+  assert.equal(appConfigReads.filter((k) => k === PRIMARY_TYPE_MODE_FLAG_KEY).length, 1, "kontakten læses én gang");
+});
+
+test("#5327 runStarterSquadAllocation: kontakten slukket → tier", async () => {
+  const seen = [];
+  const { supabase } = createRidersMock();
+  const result = await runStarterSquadAllocation(supabase, {
+    dryRun: true, seed: 2026,
+    getManagerTeams: async () => [{ id: "t1" }],
+    deps: { generate: spyGenerate(makeFakeGenerate(), seen) },
+  });
+  assert.deepEqual(seen, ["tier", "tier"]);
+  assert.equal(result.primaryTypeMode, "tier");
 });

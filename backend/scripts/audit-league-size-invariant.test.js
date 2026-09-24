@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runLeagueSizeAudit, excessScore, REQUIRED_TEAM_COUNT } from "./audit-league-size-invariant.js";
+import {
+  runLeagueSizeAudit, excessScore, REQUIRED_TEAM_COUNT, expectedTeamCount, isMissingRetiredAtError,
+} from "./audit-league-size-invariant.js";
 
 // Mock for audit-stien:
 //   league_divisions.select().order().range()
@@ -240,16 +242,17 @@ test("multiple divisions: only the ones deviating from 24 are reported", async (
 
 // ── Dormant-undtagelsen (#2851/#1688, S1→S2-cutover 26/7) ─────────────────────
 
-test("dormant tier 4-pulje (0 ægte managere, 0 hold) giver ingen findings (#2851)", async () => {
-  const divisions = [makeDivision(9, 4, 2, "Division 4 — C")];
+// #5642: dormant-reglen gælder kun tier 3 nu; tier 4 er altid fyldt (se S4-testene).
+test("dormant tier 3-pulje (0 ægte managere, 0 hold) giver ingen findings (#2851)", async () => {
+  const divisions = [makeDivision(9, 3, 2, "Division 3 — C")];
   const supabase = makeMock({ divisions, teams: [], riders: [] });
 
   const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
-  assert.equal(summary.total_findings, 0, "tom tier 3/4-pulje uden ægte managere er forventet tilstand");
+  assert.equal(summary.total_findings, 0, "tom tier 3-pulje uden ægte managere er forventet tilstand");
 });
 
-test("dormant tier 4-pulje med AI-rest flagges (forventet 0)", async () => {
-  const divisions = [makeDivision(9, 4, 2, "Division 4 — C")];
+test("dormant tier 3-pulje med AI-rest flagges (forventet 0)", async () => {
+  const divisions = [makeDivision(9, 3, 2, "Division 3 — C")];
   const teams = Array.from({ length: 16 }, (_, i) => makeTeam(`ai${i}`, { league_division_id: 9, is_ai: true }));
   const supabase = makeMock({ divisions, teams, riders: [] });
 
@@ -271,6 +274,70 @@ test("tier 4-pulje MED ægte manager kræver stadig præcis 24", async () => {
   assert.equal(summary.total_findings, 1, "19 hold i en aktiv tier 4-pulje = shortage");
   assert.equal(summary.findings[0].required, 24);
   assert.equal(summary.findings[0].delta, -5);
+});
+
+// ── S4-formen (#5642, pyramide 1/2/4/4): D4 A-D aktive, E-H pensioneret ──────────
+
+test("#5642 aktiv tier 4-pulje UDEN ægte managere kræver 24 (D4 fyldes med AI fra dag ét)", async () => {
+  const divisions = [{ ...makeDivision(9, 4, 2, "Division 4 — C"), retired_at: null }];
+  const teams = Array.from({ length: 20 }, (_, i) => makeTeam(`ai${i}`, { league_division_id: 9, is_ai: true }));
+  const supabase = makeMock({ divisions, teams, riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-09-28T12:00:00Z") });
+  assert.equal(summary.total_findings, 1);
+  assert.equal(summary.findings[0].required, 24);
+  assert.equal(summary.findings[0].delta, -4);
+});
+
+test("#5642 pensioneret pulje forventes TOM: 0 hold = ingen fund, AI-rest = fund", async () => {
+  const retired = { ...makeDivision(13, 4, 5, "Division 4 — F"), retired_at: "2026-09-27T20:00:00Z" };
+  const empty = await runLeagueSizeAudit({
+    supabase: makeMock({ divisions: [retired], teams: [], riders: [] }), now: new Date("2026-09-28T12:00:00Z"),
+  });
+  assert.equal(empty.total_findings, 0);
+
+  const teams = [makeTeam("human", { league_division_id: 13 }), makeTeam("ai", { league_division_id: 13, is_ai: true })];
+  const leftover = await runLeagueSizeAudit({
+    supabase: makeMock({ divisions: [retired], teams, riders: [] }), now: new Date("2026-09-28T12:00:00Z"),
+  });
+  assert.equal(leftover.total_findings, 1, "et hold i en pensioneret pulje er et fund, også et ægte hold");
+  assert.equal(leftover.findings[0].required, 0);
+  assert.equal(leftover.findings[0].delta, 2);
+});
+
+test("#5642 expectedTeamCount: pensioneret 0; tier 1/2/4 altid 24; tier 3 kun med managere", () => {
+  assert.equal(expectedTeamCount({ tier: 1, retired_at: "x" }, 5), 0);
+  assert.equal(expectedTeamCount({ tier: 4 }, 0), REQUIRED_TEAM_COUNT);
+  assert.equal(expectedTeamCount({ tier: 2 }, 0), REQUIRED_TEAM_COUNT);
+  assert.equal(expectedTeamCount({ tier: 3 }, 0), 0);
+  assert.equal(expectedTeamCount({ tier: 3 }, 1), REQUIRED_TEAM_COUNT);
+});
+
+test("#5642 auto-migrate-vinduet: 42703 på league_divisions.retired_at → én læsning til uden kolonnen", async () => {
+  const selects = [];
+  const base = makeMock({ divisions: [makeDivision(1, 1, 0, "Division 1")], teams: [], riders: [] });
+  const supabase = {
+    rpc: base.rpc,
+    from(table) {
+      if (table !== "league_divisions") return base.from(table);
+      let cols = "";
+      const b = {
+        select(c) { cols = c; selects.push(c); return b; },
+        order() { return b; },
+        range() {
+          return Promise.resolve(cols.includes("retired_at")
+            ? { data: null, error: { code: "42703", message: "column league_divisions.retired_at does not exist" } }
+            : { data: [makeDivision(1, 1, 0, "Division 1")], error: null });
+        },
+      };
+      return b;
+    },
+  };
+  const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-09-25T12:00:00Z") });
+  assert.equal(selects.length, 2);
+  assert.equal(summary.findings[0].required, 24, "puljen blev læst og tjekket");
+  assert.equal(isMissingRetiredAtError({ code: "PGRST204", message: "retired_at not in schema cache" }), false,
+    "stale schema-cache fejler lukket");
 });
 
 test("tier 1/2-puljer kræver 24 selv uden ægte managere (alwaysFill-politikken)", async () => {

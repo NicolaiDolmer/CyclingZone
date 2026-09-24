@@ -16,6 +16,9 @@
  *   - 5xx / netværksfejl → retry med lille stigende backoff.
  *   - 4xx ≠ 429       → permanent (webhook slettet/fejlkonfigureret, #2395) —
  *                        INGEN retry.
+ *   - timeout (#3624) → hvert POST har et loft (WEBHOOK_REQUEST_TIMEOUT_MS);
+ *                        rammes det, stopper leveringen med en retryable
+ *                        "timeout"-fejl uden inline-retry (outbox'en tager den).
  *
  * IDEMPOTENS: Discord opretter kun beskeden ved 2xx. Et 429/5xx-svar betyder
  * beskeden ALDRIG blev oprettet, så et retry-forsøg kan pr. definition ikke
@@ -32,6 +35,12 @@ import { parseRetryAfterMs } from "./discordDmDelivery.js";
 // pato­logisk lang retry_after (Discord beder om minutter) ikke låser en
 // cron-tick eller en admin-HTTP-request fast.
 const MAX_INLINE_RETRY_WAIT_MS = 15_000;
+
+// #3624: loft pr. POST. Uden det kunne et Discord-kald der aldrig svarer (hverken
+// svar eller socket-fejl) holde afviklings-koeen fast paa ubestemt tid, fordi
+// kalderen awaiter leveringen foer naeste etape. 10 s er langt over et normalt
+// webhook-svar (under 1 s).
+export const WEBHOOK_REQUEST_TIMEOUT_MS = 10_000;
 
 /** Klassificér en HTTP-status fra Discords webhook-endpoint. */
 export function classifyWebhookFailure(status) {
@@ -50,13 +59,16 @@ export function classifyWebhookFailure(status) {
 
 export { parseRetryAfterMs };
 
-async function postOnce({ webhookUrl, payload, fetchFn }) {
+async function postOnce({ webhookUrl, payload, fetchFn, timeoutMs }) {
+  // Samme signal daekker ogsaa laesningen af svar-body'en nedenfor.
+  const signal = AbortSignal.timeout(timeoutMs);
   let res;
   try {
     res = await fetchFn(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal,
     });
   } catch (err) {
     // best-effort: fetch selv kastede (netværks-/DNS-/socket-fejl) — konverteret
@@ -64,15 +76,31 @@ async function postOnce({ webhookUrl, payload, fetchFn }) {
     // det "network"/retryable) i stedet for at rethrow'e her. attemptWebhookDelivery
     // retries det som enhver anden retryable fejl, og overlever fejlen ALLE forsøg,
     // capturer sendWebhook (discordNotifier.js) den til Sentry — ingen tavs tab.
-    return { ok: false, status: null, errorText: err.message, retryAfterMs: null };
+    // #3624: en timeout markeres, saa kalderen kan lade vaere med at proeve igen inline.
+    const timedOut = signal.aborted || err?.name === "TimeoutError";
+    return {
+      ok: false,
+      status: null,
+      errorText: timedOut ? `timeout efter ${timeoutMs} ms` : err.message,
+      retryAfterMs: null,
+      timedOut,
+    };
   }
   if (res.ok) return { ok: true, status: res.status };
-  const text = await res.text().catch(() => "");
+  let bodyTimedOut = false;
+  const text = await res.text().catch(() => {
+    // best-effort: body'en er kun til fejlteksten. Men staar den stille til loftet
+    // rammer, er endpointet lige saa haengende som ved et udeblevet svar (#3624):
+    // markeres som timeout, saa kalderen heller ikke her proever igen inline.
+    bodyTimedOut = signal.aborted;
+    return "";
+  });
   return {
     ok: false,
     status: res.status,
-    errorText: text.slice(0, 300),
+    errorText: bodyTimedOut ? `svar-body timeout efter ${timeoutMs} ms` : text.slice(0, 300),
     retryAfterMs: res.status === 429 ? parseRetryAfterMs(res, text) : null,
+    timedOut: bodyTimedOut,
   };
 }
 
@@ -92,13 +120,14 @@ export async function attemptWebhookDelivery({
   sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   maxAttempts = 4,
   maxInlineWaitMs = MAX_INLINE_RETRY_WAIT_MS,
+  timeoutMs = WEBHOOK_REQUEST_TIMEOUT_MS,
 }) {
   let lastStatus = null;
   let lastError = "";
   let waitedMs = 0;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const result = await postOnce({ webhookUrl, payload, fetchFn });
+    const result = await postOnce({ webhookUrl, payload, fetchFn, timeoutMs });
     if (result.ok) return { ok: true, status: result.status, attempts: attempt };
 
     lastStatus = result.status;
@@ -107,6 +136,22 @@ export async function attemptWebhookDelivery({
     const failure = classifyWebhookFailure(result.status);
     if (failure.kind === "permanent") {
       return { ok: false, status: lastStatus, failure, error: lastError, attempts: attempt };
+    }
+
+    // #3624: timeout → ingen inline-retry. Et endpoint der ikke svarede paa
+    // timeoutMs, svarer sjaeldent et halvt sekund senere, og hvert nyt forsoeg
+    // ville holde koeen fast i endnu et loft. POST'en kan desuden vaere naaet
+    // frem, saa et straks-retry risikerer en dublet. Fejlen er stadig retryable:
+    // kalderens outbox tager den (sendWebhook → discord_webhook_outbox,
+    // race_notify_outbox-drainen → naeste forsoeg efter backoff).
+    if (result.timedOut) {
+      return {
+        ok: false,
+        status: lastStatus,
+        failure: { kind: "retryable", reason: "timeout", deferred: true },
+        error: lastError,
+        attempts: attempt,
+      };
     }
 
     if (attempt < maxAttempts) {

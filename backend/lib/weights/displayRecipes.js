@@ -45,6 +45,28 @@
 // det var en sideeffekt af at hver opskrift blev bredere, ikke et designmål, og
 // vagten er der for at sideeffekten ikke kan krybe tilbage ubemærket.
 
+// #5321 — TILBAGERULNING af #5268's fire vægte (ejer-go 17/9 kl. 19:35).
+//
+// #5268 (PR #5280, 15/9) gav `leadership` en vægt hos `sprinter`/`gc` og
+// `teamwork` hos `climber`/`rouleur`. Kommentaren her antog at en NULL evne
+// blev sprunget over i både tæller og nævner — det gjorde den ikke:
+// `Number(null)` er 0 og 0 er finite, så alle 8.731 eksisterende ryttere fik
+// et ægte nul med i snittet. Spillerne så ratings falde uden at nogen rytter
+// var blevet dårligere (Ryan Cooper 44 → 41, Nathan Maillot 53 → 49), og
+// samtidig forskelligt pr. flade, fordi rytterprofilens hero ikke henter de to
+// kolonner (undefined → NaN → sprunget over) mens Mit hold og Scouting-fanen
+// gør (NULL → 0). NULL-fejlen er rettet i `ratingForRole` nedenfor, men selve
+// vægtene ruller ud igen, fordi ejerens regel (c) står over bekvemmeligheden:
+// en ny evne tæller først med i ratingen når rytterne reelt HAR den.
+//
+// De to evner bliver i registret som DATA (kolonner, derivation, træning,
+// lofter) — kun display-vægtene er væk. De kommer ind i opskriften igen i
+// SAMME deploy som #5268-point-flytningen, efter ejerens beslutning på #5351.
+// Indtil da står de i PENDING_DISPLAY_ABILITIES, som vagt 1 kender.
+//
+// Forward-guard mod at det sker igen: `ratingGolden.5321.json` fryser ratingen
+// pr. rolle på et fast fixture-sæt. Ændrer nogen opskriften eller regnestykket,
+// bliver testen rød — synlige ratings må aldrig flytte sig ubemærket.
 export const DISPLAY_RECIPES = Object.freeze([
   { key: "sprinter", weights: Object.freeze({ sprint: 4, acceleration: 3, positioning: 2, flat: 2, durability: 1 }) },
   { key: "tt", weights: Object.freeze({ time_trial: 5, tempo: 2, endurance: 1, durability: 1, positioning: 1 }) },
@@ -64,23 +86,91 @@ export const DISPLAY_RECIPES = Object.freeze([
 
 export const DISPLAY_RECIPE_KEYS = Object.freeze(DISPLAY_RECIPES.map((t) => t.key));
 
+// Registry-evner der BEVIDST står uden for enhver visnings-opskrift, fordi de
+// endnu ikke har værdier på alle ryttere (#5321, ejer-go 17/9 kl. 19:35).
+//
+// Vagt 1 i `abilityRegistryGuards.test.js` kræver normalt at hver registry-evne
+// tæller mindst ét sted — en evne spilleren kan træne uden at se effekt er en
+// usynlig evne. Denne liste er den ENESTE lovlige undtagelse, og vagten
+// sammenligner mod den PRÆCIST: en evne der falder ud af opskrifterne ved et
+// uheld fejler stadig bygningen, og en evne der står her uden at være orphan
+// fejler også.
+//
+// REGLEN (hard rule 30, docs/HOWTO_ADD_ABILITY.md trin 4): en ny evne må ikke
+// ind i display-opskrifterne før den har værdier på ALLE ryttere. Ellers
+// ændrer den synlige ratings for hele bestanden uden at nogen rytter har
+// flyttet sig — præcis det der skete 15/9 og som spillerne meldte 16-17/9.
+//
+// At fjerne en key herfra er det samme som at ændre spillernes synlige ratings
+// og kræver et ejer-go i samme PR (#5351 bærer beslutningen for disse to).
+export const PENDING_DISPLAY_ABILITIES = Object.freeze(["teamwork", "leadership"]);
+
 /**
- * Rating for ét sæt evner som én rolle. Vægtet snit, afrundet, klampet [0,99].
- * Evner der mangler på rækken tæller ikke med i hverken tæller eller nævner, så
- * en delvist udfyldt række ikke trækkes kunstigt mod 0.
- * Ukendt rolle eller ingen brugbare evner → null (kalderen bestemmer visningen).
+ * Én evne-værdi, eller null hvis rækken ikke har et tal for den.
+ *
+ * #5321: HER lå fejlen. Den gamle form var `Number(v)` + `Number.isFinite`, og
+ * `Number(null)` er 0 — et finite tal. En NULL-kolonne (evnen findes, men er
+ * ikke beregnet for denne rytter endnu) talte derfor som et ægte nul i BÅDE
+ * tæller og nævner og trak ratingen ned, mens en helt manglende nøgle gav
+ * `Number(undefined)` = NaN og blev sprunget over. Samme rytter fik dermed
+ * forskellig rating på to flader, alt efter hvilke kolonner fladen hentede.
+ * `Number("")` er 0 af samme grund, og `Number(true)` er 1.
+ *
+ * Regel: kun et tal — eller en streng der ER et tal — tæller med. `0` er en
+ * ægte værdi og skal tælle; der findes ryttere i prod hvis rolle-rating er
+ * præcis 0 (#3666), og de skal vise 0, ikke blive maskeret væk.
  */
-export function ratingForRole(abilities, roleKey) {
+export function abilityValue(raw) {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw === "string") {
+    if (raw.trim() === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Rollens UAFRUNDEDE vægtede snit — selve regnestykket bag rating-tallet.
+ * Evner der mangler på rækken — eller står NULL — tæller ikke med i hverken
+ * tæller eller nævner, så en delvist udfyldt række ikke trækkes kunstigt mod 0.
+ * Ukendt rolle eller ingen brugbare evner → null.
+ *
+ * #5443: værdimodellen kalder DENNE funktion, ikke en kopi af den. Det er hele
+ * pointen i "værdien regnes på de samme evner som ratingen": der findes ét
+ * regnestykke og én vægttabel, så de to tal ikke kan skride fra hinanden ved en
+ * fremtidig rettelse. `ratingForRole` er den afrundede, klampede visnings-form
+ * af præcis det samme tal. Forward-guard: `valuationRatingParity.test.js`.
+ */
+export function roleOutputRaw(abilities, roleKey) {
   const recipe = DISPLAY_RECIPES.find((r) => r.key === roleKey);
   if (!recipe) return null;
   let sum = 0;
   let wsum = 0;
   for (const [ability, weight] of Object.entries(recipe.weights)) {
-    const v = Number(abilities?.[ability]);
-    if (!Number.isFinite(v)) continue;
+    const v = abilityValue(abilities?.[ability]);
+    if (v === null) continue;
     sum += v * weight;
     wsum += weight;
   }
   if (wsum <= 0) return null;
-  return Math.max(0, Math.min(99, Math.round(sum / wsum)));
+  return sum / wsum;
 }
+
+/**
+ * Rating for ét sæt evner som én rolle. Vægtet snit, afrundet, klampet [0,99].
+ * Ukendt rolle eller ingen brugbare evner → null (kalderen bestemmer visningen).
+ */
+export function ratingForRole(abilities, roleKey) {
+  const raw = roleOutputRaw(abilities, roleKey);
+  if (raw === null) return null;
+  return Math.max(0, Math.min(99, Math.round(raw)));
+}
+
+/** Alle evner der indgår i mindst én visnings-opskrift (= alle evner ratingen
+ *  — og dermed #5443-værdimodellen — læser). Sorteret, så den kan bruges direkte
+ *  i en SQL-kolonneliste uden at rækkefølgen flakker mellem kørsler. */
+export const DISPLAY_RECIPE_ABILITIES = Object.freeze(
+  [...new Set(DISPLAY_RECIPES.flatMap((r) => Object.keys(r.weights)))].sort()
+);

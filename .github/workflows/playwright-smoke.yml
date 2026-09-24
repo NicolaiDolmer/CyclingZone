@@ -3,14 +3,24 @@ name: Playwright Smoke
 # Kører den FULDE Playwright-suite (alle specs i frontend/tests/e2e, alle tre
 # projekter) - navnet "smoke" er historisk.
 #
-# FORM (#4647, 2/9): suiten er delt i ÉT JOB PR. PLAYWRIGHT-PROJEKT
-# (`e2e-shard`-matrixen) plus ét samle-job. Før: ét windows-job, workers=1,
-# 26-28 min pr. PR. Efter: tre parallelle shards med workers="100%" på hver
-# runner, og et samle-job der fælder dommen.
+# FORM (#4647, 2/9): suiten er delt i parallelle laner plus ét samle-job. Før:
+# ét windows-job, workers=1, 26-28 min pr. PR.
 #
-#   e2e-shard (desktop-chromium) ─┐
-#   e2e-shard (mobile-chromium)  ─┼─→ frontend-smoke  ← required check på main
-#   e2e-shard (mobile-webkit)    ─┘
+# #5309 (16/9): laneantallet er ikke længere skrevet i denne fil. Det står i
+# frontend/tests/e2e/shard-plan.json og udfoldes af `plan`-jobbet, fordi suiten
+# vokser eksponentielt ved politik - hver bugfix får sin regressionstest, og
+# testantallet gik fra 207 til 335 pr. projekt på 14 dage. En håndskrevet
+# matrix med en fast grænse fælder i den situation dom over den tilfældige PR
+# der krydser stregen (#5308) i stedet for over væksten.
+#
+#   plan ─→ e2e-shard (desktop-chromium-1of2) ─┐
+#           e2e-shard (mobile-webkit-1of3)     ─┼─→ frontend-smoke  ← required check på main
+#           … én lane pr. post i planen        ─┘
+#
+# Loftet pr. lane er sikkerhedsnettet mod ÉN løbsk test og er bevidst sat ~2,4x
+# over faktisk forbrug: de samme 323 tests har målt 514-961 s på GitHubs delte
+# runnere, så en grænse der køres tæt på er et møntkast. Vokser suiten forbi
+# planen, melder den NATLIGE main-kørsel det (--enforce-plan) - aldrig en PR.
 #
 # Samle-jobbet SKAL hedde præcis `frontend-smoke`: det er navnet branch
 # protection kræver. Matrix-jobs kan aldrig bære et required check-navn -
@@ -64,6 +74,13 @@ on:
   schedule:
     - cron: '10 4 * * *' # dagligt 04:10 UTC - efter calendar-invariant-audit + clock-drift-test-check (begge 03:50)
 
+# Annuller foraeldede koersler paa samme PR-gren: boelgens laner pusher hvert kvarter, og hver push
+# koerte foer fuld CI til ende (24/9: 20 forældede koersler i koe, frontend-smoke pending 60+ min).
+# main og merge_group faar egen gruppe pr. SHA og annulleres aldrig.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -102,26 +119,61 @@ jobs:
             echo "frontend=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # ÉT job pr. Playwright-projekt. fail-fast: false - en rød mobile-webkit må
-  # ikke aflyse de to andre shards, ellers mister samle-jobbet sine målinger og
-  # kan ikke sige HVAD der var galt.
+  # #5309: matrixen er DATA, ikke YAML. frontend/tests/e2e/shard-plan.json
+  # bestemmer hvor mange laner hvert Playwright-projekt får, og dette job
+  # ekspanderer den. Et laneantal ændres dermed med ÉT tal i en datafil, aldrig
+  # med en workflow-refaktor — og det samme script der ekspanderer planen er
+  # det der dømmer bagefter, så formatet kun er forstået ét sted.
+  #
+  # Jobbet hænger bevidst IKKE på `changes`: det er ti sekunder på ubuntu og
+  # kører parallelt med path-filteret, så det aldrig ligger på kritisk sti.
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Kun `matrix` eksponeres: samle-jobbet laeser planen direkte fra filen, saa
+    # laner og loft aldrig kan komme fra to kilder. `keys`/`ceiling-minutes`
+    # skrives stadig af scriptet og staar i step-loggen til fejlsoegning.
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Jobbet koerer kun `node` paa en committet fil og skal aldrig tale
+          # med GitHub. Samme mindste-privilegium som league-size-invariant-audit,
+          # priority-hygiene og ts-core-ratchet allerede bruger.
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      # Planen VALIDERES her (readPlan kaster ved enhver uklarhed). En plan der
+      # ikke kan læses må aldrig degradere til en tom matrix: nul laner = nul
+      # tests = et grønt samle-job uden at noget blev kørt.
+      - name: Expand shard plan to matrix
+        id: plan
+        run: node scripts/check-e2e-shard-budget.mjs --plan frontend/tests/e2e/shard-plan.json --emit-github-output >> "$GITHUB_OUTPUT"
+
+  # ÉN lane pr. (projekt, shard). fail-fast: false - en rød mobile-webkit-lane
+  # må ikke aflyse de andre, ellers mister samle-jobbet sine målinger og kan
+  # ikke sige HVAD der var galt.
   e2e-shard:
-    needs: changes
+    needs: [changes, plan]
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
+    # Uden en `name:` ville GitHub navngive jobbet efter ALLE matrix-værdier
+    # ("e2e-shard (chromium, desktop-chromium-1of2, ...)"). Lanens key er den
+    # eneste identitet der betyder noget, og den er stabil på tværs af kørsler.
+    # Dynamisk navn er ufarligt her: e2e-shard er IKKE et required check —
+    # matrix-jobs kan aldrig bære et (se scripts/check-required-ci-jobs.mjs).
+    name: e2e-shard (${{ matrix.key }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        project: [desktop-chromium, mobile-chromium, mobile-webkit]
-        include:
-          # Kun den browser shard'en faktisk bruger installeres: `npx playwright
-          # install chromium webkit` hentede før begge på ALLE kørsler.
-          - project: desktop-chromium
-            browser: chromium
-          - project: mobile-chromium
-            browser: chromium
-          - project: mobile-webkit
-            browser: webkit
+        # Kun den browser lanen faktisk bruger installeres: `npx playwright
+        # install chromium webkit` hentede før begge på ALLE kørsler.
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     permissions:
       contents: read
     defaults:
@@ -146,7 +198,7 @@ jobs:
       # browser hvis snapshots kunne drive uset - se playwright.config.js for
       # hvorfor #1342's rodårsag ikke findes længere.
       - name: Install Playwright browser
-        run: npx playwright install ${{ matrix.browser }}
+        run: npx playwright install "${{ matrix.browser }}"
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
       # den statiske server (én proces). `npm run build && npm run preview` i én
@@ -169,32 +221,37 @@ jobs:
       - name: Run e2e guards (static)
         run: node --test tests/e2e/guards.test.js
 
-      # Selve shard'en. `--grep-invert @flaky` er karantæne-mekanismen: en test
+      # Selve lanen. `--grep-invert @flaky` er karantæne-mekanismen: en test
       # der tagges `@flaky` køres stadig (steppet nedenfor), men kan ikke gøre
       # dette blokerende step rødt. Karantæne-listen bor dermed synligt i
-      # spec-filerne, ikke i en sidekanal.
+      # spec-filerne, ikke i en sidekanal. `--shard` deler projektets testliste
+      # EFTER grep-filteret, så lanerne er lige store.
       #
       # Tiden måles omkring PRÆCIS denne kommando (ikke hele jobbet): det er
       # suitens egen tid, uafhængig af npm ci/browser-download, og det er den
-      # scripts/check-e2e-shard-budget.mjs holder op mod tidsbudgettet.
+      # scripts/check-e2e-shard-budget.mjs holder op mod loftet pr. lane.
+      # `group` bærer projektet videre, så samle-jobbet kan lægge lanerne sammen
+      # og regne ud om planen har laner nok (#5309).
       # timeout-minutes: backstop mod et teardown-hæng (#1342 kørte 48 min før
-      # cancel). 20 er rigeligt over budgettets 12 og stadig stramt.
+      # cancel). 20 er rigeligt over loftets 10 og stadig stramt.
       - name: Run Playwright shard
         id: shard
         shell: bash
         timeout-minutes: 20
         env:
           PW_PROJECT: ${{ matrix.project }}
+          PW_SHARD: ${{ matrix.shard }}
+          PW_KEY: ${{ matrix.key }}
         run: |
           start=$(date +%s)
           set +e
-          npm run test:e2e -- --project="$PW_PROJECT" --grep-invert @flaky
+          npm run test:e2e -- --project="$PW_PROJECT" --shard="$PW_SHARD" --grep-invert @flaky
           status=$?
           set -e
           elapsed=$(( $(date +%s) - start ))
           mkdir -p ../e2e-shard-metrics
-          printf '{"project":"%s","seconds":%s,"exitCode":%s}\n' "$PW_PROJECT" "$elapsed" "$status" > "../e2e-shard-metrics/$PW_PROJECT.json"
-          echo "shard $PW_PROJECT: ${elapsed}s, exit $status"
+          printf '{"project":"%s","group":"%s","seconds":%s,"exitCode":%s}\n' "$PW_KEY" "$PW_PROJECT" "$elapsed" "$status" > "../e2e-shard-metrics/$PW_KEY.json"
+          echo "lane $PW_KEY: ${elapsed}s, exit $status"
           exit $status
 
       # Flake-sporing: en test der fejlede første forsøg og bestod ved retry er
@@ -202,20 +259,27 @@ jobs:
       # json-rapporten markerer netop den klasse som "flaky"; her høstes den til
       # en artifact. Kører før karantæne-steppet nedenfor, som overskriver
       # rapporten.
+      # Filnavnet bærer LANEN (unikt pr. job), men rapporten mærkes med
+      # PROJEKTET, så --merge lægger et projekts laner sammen til én linje.
       - name: Collect flake report
         if: always()
         shell: bash
         working-directory: .
         env:
           PW_PROJECT: ${{ matrix.project }}
-        run: node scripts/extract-e2e-flakes.mjs --report frontend/playwright-report/results.json --project "$PW_PROJECT" --out "e2e-shard-metrics/flakes-$PW_PROJECT.json"
+          PW_KEY: ${{ matrix.key }}
+        run: node scripts/extract-e2e-flakes.mjs --report frontend/playwright-report/results.json --project "$PW_PROJECT" --out "e2e-shard-metrics/flakes-$PW_KEY.json"
 
       # Karantæne-kørslen: `@flaky`-tagede tests KØRER, men blokerer ikke.
       # `--pass-with-no-tests` fordi listen normalt er tom - og den skal være tom
       # for at #4647 kan lukkes. continue-on-error gør resultatet synligt i
       # step-listen uden at farve jobbet.
+      #
+      # #5309: karantænen er IKKE shardet - den kører kun på projektets første
+      # lane. Ellers ville de samme @flaky-tests køre én gang pr. lane, og
+      # webkit ville betale for dem tre gange uden at dække mere.
       - name: Run quarantined @flaky tests (non-blocking)
-        if: success()
+        if: success() && startsWith(matrix.shard, '1/')
         continue-on-error: true
         shell: bash
         timeout-minutes: 10
@@ -246,7 +310,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: e2e-shard-metrics-${{ matrix.project }}
+          name: e2e-shard-metrics-${{ matrix.key }}
           path: e2e-shard-metrics/
           retention-days: 7
 
@@ -254,7 +318,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: playwright-report-${{ matrix.project }}
+          name: playwright-report-${{ matrix.key }}
           path: frontend/playwright-report/
           retention-days: 7
 
@@ -264,7 +328,7 @@ jobs:
   # et skipped shard-sæt ser ens ud for GitHub, men kun det første kan bære
   # tidsbudget-gaten.
   frontend-smoke:
-    needs: [changes, e2e-shard]
+    needs: [changes, plan, e2e-shard]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -287,6 +351,15 @@ jobs:
         if: needs.changes.result == 'failure' || needs.changes.result == 'cancelled'
         run: |
           echo "::error::changes-jobbet endte som ${{ needs.changes.result }} - vi ved ikke om e2e-suiten skulle køre. frontend-smoke kan ikke give grønt lys."
+          exit 1
+
+      # Samme klasse som ovenfor: en ugyldig shard-plan giver nul laner, og nul
+      # laner ser ud som en grøn suite. Uden planen ved vi heller ikke HVILKE
+      # laner der skulle have rapporteret, så gaten kan ikke dømme.
+      - name: Fail if the shard plan could not be expanded
+        if: needs.plan.result != 'success'
+        run: |
+          echo "::error::plan-jobbet endte som ${{ needs.plan.result }} - frontend/tests/e2e/shard-plan.json kunne ikke udfoldes til en matrix. frontend-smoke kan ikke give grønt lys."
           exit 1
 
       # Gaten tester sig selv FØR den dømmer. Sekunder på ubuntu, og den fanger
@@ -315,18 +388,23 @@ jobs:
           path: e2e-flakes.json
           retention-days: 14
 
-      # Tidsbudget-gaten. 12 min pr. shard: målt før-tilstand var 26-28 min for
-      # ALLE tre projekter i serie, så en enkelt shard over 12 min betyder at
-      # suiten er vokset forbi det den blev shardet for at fikse.
-      - name: Time budget gate + shard verdict
+      # Dommen. Loft og forventede laner kommer nu fra shard-planen, så YAML og
+      # plan aldrig kan drive fra hinanden (#5309).
+      #
+      # `--enforce-plan` KUN på den natlige main-kørsel: vokser suiten forbi sin
+      # plan, er det main der skal melde det, ikke den tilfældige PR der lagde
+      # de sidste sekunder på. Præcis den forveksling blokerede #5308, som ikke
+      # fejlede noget. På PR'er står anbefalingen i job-summary som info.
+      - name: Lane ceiling gate + plan verdict
         env:
           SHARDS_RESULT: ${{ needs.e2e-shard.result }}
+          ENFORCE_PLAN: ${{ github.event_name == 'schedule' }}
         run: |
-          node scripts/check-e2e-shard-budget.mjs \
-            --dir e2e-shard-metrics \
-            --budget-minutes 12 \
-            --shards-result "$SHARDS_RESULT" \
-            --projects desktop-chromium,mobile-chromium,mobile-webkit
+          args=(--dir e2e-shard-metrics
+                --plan frontend/tests/e2e/shard-plan.json
+                --shards-result "$SHARDS_RESULT")
+          if [ "$ENFORCE_PLAN" = "true" ]; then args+=(--enforce-plan); fi
+          node scripts/check-e2e-shard-budget.mjs "${args[@]}"
 
       # Rød suite skal være synlig i PR-samtalen (også på mobil, hvor
       # checks-boksen let overses - #2037 blev merget med rød frontend-smoke).
@@ -341,7 +419,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **frontend-smoke fejlede** - enten fandt en Playwright-shard regressioner, eller en shard brød tidsbudgettet. [Se run + artifacts]($RUN_URL): \`playwright-report-<projekt>\` for fejlene, \`e2e-flakes\` for tests der først bestod ved retry.
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **frontend-smoke fejlede** - enten fandt en Playwright-lane regressioner, eller en enkelt lane brød loftet. [Se run + artifacts]($RUN_URL): \`playwright-report-<lane>\` for fejlene, \`e2e-flakes\` for tests der først bestod ved retry.
 
           Rød e2e må ikke merges stille (#2000-spec-rot → PR #2114): fix koden eller opdatér spec'en i samme PR. Auto-merge venter nu eksplicit på dette check."
 
@@ -363,7 +441,11 @@ jobs:
                 'som ingen PR-kørsel nødvendigvis vil fange igen (se [#4281](https://github.com/${{ github.repository }}/issues/4281)).',
               '',
               'main kan have stået rød siden den PR der introducerede fejlen blev merget - check artifacts på run-linket: ' +
-                '`playwright-report-<projekt>` for selve fejlene, `e2e-flakes` for tests der kun bestod ved retry.',
+                '`playwright-report-<lane>` for selve fejlene, `e2e-flakes` for tests der kun bestod ved retry.',
+              '',
+              'Er kørslen rød UDEN en fejlet test, er det vækst-alarmen (#5309): den natlige kørsel er den eneste der ' +
+                'håndhæver shard-planen. Se `Lane ceiling gate + plan verdict` i job-summary - den skriver det præcise ' +
+                'nye laneantal, som rettes i `frontend/tests/e2e/shard-plan.json`.',
               '',
               `Run-link: ${runUrl}`,
             ].join('\n');

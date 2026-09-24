@@ -50,22 +50,53 @@ export function SortIndicator({ active, dir }) {
 // bliver på <th> uændret (så eksisterende hidden/table-cell/padding-klasser
 // stadig virker), knappen arver farve/typografi via CSS-inheritance og får kun
 // en hairline fokus-ring (ingen skygge, ingen anden visuel ændring).
-export default function SortableTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
+// `help` er en VALGFRI slot til en forklaring ved siden af overskriften — fx et
+// link til Hjaelp for en kolonne hvis navn ikke forklarer sig selv (#4851's
+// Score). Den ligger inde i <th> men UDEN FOR <button>: et <a> inde i en
+// <button> er ugyldig HTML, og browseren ville saa give to konkurrerende
+// aktiveringer paa samme klikflade. Uden `help` er markup'en bit-for-bit den
+// samme som foer (button beholder `block w-full`), saa ingen eksisterende
+// kolonne aendrer udseende.
+/**
+ * Prop-typerne for .ts/.tsx-kaldere (#5485's TrainingTodayTable). Uden dem
+ * udleder TypeScript `title` som paakraevet og `help` som `null`.
+ * @param {{
+ *   children: import("react").ReactNode,
+ *   sortKey: string,
+ *   sort: string | null | undefined,
+ *   sortDir: string,
+ *   onSort: (key: string) => void,
+ *   className?: string,
+ *   title?: string,
+ *   help?: import("react").ReactNode,
+ * }} props
+ */
+export default function SortableTh({ children, sortKey, sort, sortDir, onSort, className = "", title, help = null }) {
   const active = sort === sortKey;
+  const button = (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`${help ? "" : "block w-full "}bg-transparent border-0 p-0 m-0 text-inherit cursor-pointer select-none transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent-t/60 ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}
+    >
+      {children}
+      <SortIndicator active={active} dir={sortDir} />
+    </button>
+  );
   return (
     <th
       title={title}
       aria-sort={active ? (sortDir === "desc" ? "descending" : "ascending") : "none"}
       className={className}
     >
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className={`block w-full bg-transparent border-0 p-0 m-0 text-inherit cursor-pointer select-none transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent-t/60 ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}
-      >
-        {children}
-        <SortIndicator active={active} dir={sortDir} />
-      </button>
+      {help ? (
+        // `justify-end` findes ikke her: <th> baerer allerede text-right/left fra
+        // thClass, og `inline-flex` arver den justering fra tekst-flowet.
+        <span className="inline-flex items-center gap-1 align-middle">
+          {button}
+          {help}
+        </span>
+      ) : button}
     </th>
   );
 }

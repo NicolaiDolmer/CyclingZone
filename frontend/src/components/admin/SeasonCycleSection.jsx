@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formatCz } from "../../lib/marketValues";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { summarizeTransitionReadiness } from "../../lib/seasonTransitionGate";
 
 const API = import.meta.env.VITE_API_URL;
@@ -17,6 +19,7 @@ const API = import.meta.env.VITE_API_URL;
  *   4. Result vises med per-fase-log
  */
 export default function SeasonCycleSection({ getAuth, onMsg }) {
+  const { t } = useTranslation("admin");
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,8 +31,8 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     setLoading(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/season-transition/preview`, { headers });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/admin/season-transition/preview`, { headers });
+      const data = res.data || {}; // #5242: null ved limited/unauthorized/networkError
       if (!res.ok) throw new Error(data.error || "Kunne ikke hente forhåndsvisning");
       setPreview(data.plan);
       setReadiness(data.readiness ?? null);
@@ -61,6 +64,10 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
   const sponsorPayoutTotal = preview
     ? preview.sponsor_payout_total ?? preview.sponsor_base_total
     : 0;
+  // #4592: parkerede hold får ingen sponsor ved sæsonstarten og er derfor hverken
+  // med i teams_affected eller i sponsor-totalen. Mangler feltet (ældre backend),
+  // vises intet.
+  const teamsParked = preview?.teams_parked ?? 0;
 
   async function executeTransition() {
     if (!preview) return;
@@ -75,6 +82,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       `  • Markere sæson ${preview.from_season.number} som færdig\n` +
       `  • Oprette sæson ${preview.to_season.number} (status='active')\n` +
       `  • Udbetale ${formatCz(sponsorPayoutTotal)} i sponsor til ${preview.teams_affected} hold\n` +
+      (teamsParked > 0 ? `  • ${t("seasonCycle.confirmParked", { count: teamsParked })}\n` : "") +
       `  • Lukke sæson ${preview.from_season.number}'s transfervindue\n` +
       `  • Logge handlingen i admin-loggen\n\n` +
       `Er du sikker?`;
@@ -83,12 +91,12 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     setExecuting(true);
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/season-transition`, {
+      const res = await apiFetch(`${API}/api/admin/season-transition`, {
         method: "POST",
         headers,
         body: JSON.stringify({ force: forcing }),
       });
-      const data = await res.json();
+      const data = res.data || {}; // #5242, se fetchPreview()
       if (!res.ok) {
         // #1346: 409 = readiness-gaten afviste server-side. Opdatér checklisten
         // så admin ser de aktuelle årsager (preview kan være stale).
@@ -158,6 +166,13 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
             value={formatCz(sponsorPayoutTotal)}
             sub={`(${formatCz(sponsorPayoutTotal / Math.max(preview.teams_affected, 1))} pr. hold)`}
           />
+          {teamsParked > 0 && (
+            <Row
+              label={t("seasonCycle.parkedLabel")}
+              value={teamsParked.toString()}
+              sub={t("seasonCycle.parkedSub")}
+            />
+          )}
           {/* #2753: basen er IKKE det der udbetales når bestyrelses-modifier eller
               sponsor-pullout er i spil - previewet skal vise det tal der rammer
               holdenes balance, med basen som reference. */}

@@ -34,8 +34,11 @@ import { appShellHeaders, fetchAppShell } from "./lib/fetchAppShell.mjs";
 const ORIGIN = (process.argv[2] || "https://cyclingzone.org").replace(/\/$/, "");
 
 // Krav pr. sti-klasse. minMaxAge i sekunder; requireImmutable for content-hashede filer.
+// "hashed build-assets" har intet `pick` — den håndteres separat i main() via
+// checkHashedAssetWithRetry (#5253), fordi den skal kunne gen-hente HTML'en og prøve
+// et NYT hash igen ved en 404 under et Vercel-alias-skift.
 const RULES = [
-  { label: "hashed build-assets", pick: pickHashedAsset, minMaxAge: 31536000, requireImmutable: true },
+  { label: "hashed build-assets", minMaxAge: 31536000, requireImmutable: true },
   { label: "fonts", pick: () => "/fonts/dm-sans-latin-wght-normal.woff2", minMaxAge: 86400, requireImmutable: false },
   { label: "brand-assets", pick: () => "/brand/wordmark-ondark.svg", minMaxAge: 86400, requireImmutable: false },
   { label: "favicon", pick: () => "/favicon.svg", minMaxAge: 86400, requireImmutable: false },
@@ -71,15 +74,75 @@ async function head(path, extraHeaders = {}) {
 // Find en rigtig hashet asset-URL i den serverede HTML i stedet for at hardcode et filnavn
 // (hashen skifter ved hvert build). Hentes MED cz_session-cookien (#5251) så vi altid får
 // appens egen SPA-HTML, uanset om '/' for anonyme lige nu proxy'er marketing-sitet ind.
-let cachedHtml = null;
-async function getHtml() {
-  if (cachedHtml === null) {
-    cachedHtml = await (await fetchAppShell(`${ORIGIN}/`)).text();
-  }
-  return cachedHtml;
+async function pickHashedAsset(fetchHtml) {
+  return extractHashedAssetPath(await fetchHtml());
 }
-async function pickHashedAsset() {
-  return extractHashedAssetPath(await getHtml());
+
+// #5253 — Vercel-alias-skiftet under et deploy er ikke atomisk: et par sekunder kan
+// index.html stadig pege på det GAMLE builds asset-hash, mens de NYE assets allerede
+// er live (eller omvendt), så det hashede asset vi lige udtrak fra HTML'en svarer 404.
+// Det er en forbigående tilstand, ikke en regression — derfor retry i stedet for at
+// fejle på første 404: vent, hent index.html igen (hashen kan have skiftet i mellemtiden),
+// og prøv det (potentielt nye) asset igen. `fetchHtml`/`headAsset`/`wait` er injicerbare
+// så testen kan mocke netværk og tid uden at vente ægte 30 sekunder.
+export async function checkHashedAssetWithRetry({
+  fetchHtml,
+  headAsset,
+  maxAttempts = 3,
+  delayMs = 10000,
+  wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  log = () => {},
+} = {}) {
+  let previousPath = null;
+  let path = null;
+  let result = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    path = await pickHashedAsset(fetchHtml);
+    result = await headAsset(path);
+    log(
+      `hashed build-assets forsøg ${attempt}/${maxAttempts}: ` +
+        `${previousPath ?? "(intet tidligere hash)"} -> ${path} (status ${result.status})`,
+    );
+    if (result.status !== 404) {
+      return { path, result, attempts: attempt };
+    }
+    previousPath = path;
+    if (attempt < maxAttempts) {
+      await wait(delayMs);
+    }
+  }
+  return { path, result, attempts: maxAttempts };
+}
+
+// Fælles evaluering af ét path+head-svar mod en RULES-regel — brugt af både den
+// almindelige regel-løkke og hashed-asset-retry'en ovenfor, så semantikken (200-krav,
+// SPA-fallback-detektion, max-age/immutable) kun findes ét sted.
+function evaluateRuleResult(rule, path, { status, cc, ct }, failures, lines) {
+  if (status !== 200) {
+    failures.push(`${rule.label}: ${path} svarede ${status}`);
+    return;
+  }
+  // SPA-rewriten `/(.*)` → /app.html gør at ENHVER ukendt sti svarer 200 med HTML.
+  // Uden dette tjek ville et forkert filnavn i RULES fejle med en forvirrende
+  // cache-besked i stedet for "filen findes ikke".
+  if (/text\/html/.test(ct)) {
+    failures.push(`${rule.label}: ${path} returnerede HTML (SPA-fallback) — filen findes ikke, ret stien i RULES`);
+    return;
+  }
+  const maxAge = parseMaxAge(cc);
+  const problems = [];
+  if (maxAge === null || maxAge < rule.minMaxAge) {
+    problems.push(`max-age=${maxAge ?? "mangler"} < krævet ${rule.minMaxAge}`);
+  }
+  if (rule.requireImmutable && !/immutable/.test(cc)) {
+    problems.push("mangler `immutable`");
+  }
+  if (problems.length) {
+    failures.push(`${rule.label} (${path}): ${problems.join("; ")} — fik "${cc}"`);
+    lines.push(`  ✗ ${rule.label.padEnd(20)} ${cc}`);
+  } else {
+    lines.push(`  ✓ ${rule.label.padEnd(20)} ${cc}`);
+  }
 }
 
 async function main() {
@@ -87,6 +150,19 @@ async function main() {
   const lines = [];
 
   for (const rule of RULES) {
+    if (rule.label === "hashed build-assets") {
+      // #5253: retry ved alias-skift i stedet for at fejle på en forbigående 404.
+      const { path, result, attempts } = await checkHashedAssetWithRetry({
+        fetchHtml: async () => (await fetchAppShell(`${ORIGIN}/`)).text(),
+        headAsset: (p) => head(p, appShellHeaders()),
+        log: (line) => console.log(`  … ${line}`),
+      });
+      if (attempts > 1 && result.status !== 404) {
+        console.log(`  ⚠ hashed build-assets: lykkedes først efter ${attempts} forsøg (alias-skift)`);
+      }
+      evaluateRuleResult(rule, path, result, failures, lines);
+      continue;
+    }
     let path;
     try {
       path = typeof rule.pick === "function" ? await rule.pick() : rule.pick;
@@ -94,32 +170,8 @@ async function main() {
       failures.push(`${rule.label}: ${e.message}`);
       continue;
     }
-    const { status, cc, ct } = await head(path, appShellHeaders());
-    if (status !== 200) {
-      failures.push(`${rule.label}: ${path} svarede ${status}`);
-      continue;
-    }
-    // SPA-rewriten `/(.*)` → /app.html gør at ENHVER ukendt sti svarer 200 med HTML.
-    // Uden dette tjek ville et forkert filnavn i RULES fejle med en forvirrende
-    // cache-besked i stedet for "filen findes ikke".
-    if (/text\/html/.test(ct)) {
-      failures.push(`${rule.label}: ${path} returnerede HTML (SPA-fallback) — filen findes ikke, ret stien i RULES`);
-      continue;
-    }
-    const maxAge = parseMaxAge(cc);
-    const problems = [];
-    if (maxAge === null || maxAge < rule.minMaxAge) {
-      problems.push(`max-age=${maxAge ?? "mangler"} < krævet ${rule.minMaxAge}`);
-    }
-    if (rule.requireImmutable && !/immutable/.test(cc)) {
-      problems.push("mangler `immutable`");
-    }
-    if (problems.length) {
-      failures.push(`${rule.label} (${path}): ${problems.join("; ")} — fik "${cc}"`);
-      lines.push(`  ✗ ${rule.label.padEnd(20)} ${cc}`);
-    } else {
-      lines.push(`  ✓ ${rule.label.padEnd(20)} ${cc}`);
-    }
+    const headResult = await head(path, appShellHeaders());
+    evaluateRuleResult(rule, path, headResult, failures, lines);
   }
 
   // Omvendt krav: SPA-entry må IKKE cache længe. Sendes MED cz_session-cookien (#5251)

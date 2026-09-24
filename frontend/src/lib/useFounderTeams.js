@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase.js";
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 let cachedPromise = null;
 // Loftet (FOUNDER_SEAT_CAP=50, backend/lib/founderSeats.js) — samme offentlige
@@ -38,8 +39,15 @@ function fetchFounderMap() {
 function fetchFounderCap() {
   if (!cachedCapPromise) {
     const API = import.meta.env.VITE_API_URL || "";
-    cachedCapPromise = fetch(`${API}/api/billing/founder-seats`)
-      .then((res) => (res.ok ? res.json() : null))
+    cachedCapPromise = apiFetch(`${API}/api/billing/founder-seats`)
+      .then((res) => {
+        // #5242 (CodeRabbit-fund 23/9): apiFetch kaster ikke ved en transportfejl
+        // (#5322) — uden dette kast blev det uændrede loft (50) cachet for resten
+        // af sessionen efter ÉT tabt kald, og catch'ens "næste mount prøver igen"
+        // nedenfor blev aldrig nået.
+        if (res.networkError) throw res.error ?? new Error("Network request failed");
+        return res.ok ? res.data : null;
+      })
       .then((data) => data?.cap ?? 50)
       .catch(() => {
         cachedCapPromise = null;

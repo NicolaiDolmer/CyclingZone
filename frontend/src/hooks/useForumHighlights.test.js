@@ -14,8 +14,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(__dirname, "useForumHighlights.js"), "utf8");
 
 test("ét HTTP-kald mod GET /api/forum/posts med limit=2 (ikke N+1, kun det nødvendige)", () => {
-  const fetchCalls = [...src.matchAll(/fetch\(/g)];
-  assert.equal(fetchCalls.length, 1, "hooket må kun kalde fetch præcis ét sted");
+  // #5242: hooket kalder nu apiFetch (Retry-After-respekt på 429 + centraliseret
+  // 401-vej) i stedet for et bart fetch. Guardens formål er uændret — ÉT kald,
+  // ikke N+1 — så den tæller nu BEGGE stavemåder. Alternationen kan ikke matche
+  // "fetch" inde i "apiFetch" (stort F), og lookbehind'et holder den fra at
+  // matche et vilkårligt ord der ender på fetch.
+  const fetchCalls = [...src.matchAll(/(?<![A-Za-z0-9_])(?:fetch|apiFetch)\(/g)];
+  assert.equal(fetchCalls.length, 1, "hooket må kun lave præcis ét HTTP-kald");
   assert.match(src, /\/api\/forum\/posts\?limit=\$\{HIGHLIGHT_COUNT\}/);
   assert.match(src, /const HIGHLIGHT_COUNT = 2;/);
 });

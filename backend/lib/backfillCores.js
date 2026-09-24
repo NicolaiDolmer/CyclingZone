@@ -14,18 +14,30 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "./supabasePagination.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { deriveAbilities, VISIBLE_ABILITIES, FORMULA_VERSION } from "./abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "./riderProgression.js";
-import { computeRiderTypes, resolveRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE } from "./riderTypes.js";
+import { computeRiderTypes, resolveRiderTypes, RIDER_TYPE_KEYS, NEUTRAL_BASELINE, RIDER_TYPES } from "./riderTypes.js";
+import {
+  isBornFromPriors, deriveBirthAbilities, physiologySeedInputFromAbilities,
+} from "./riderBirthPriors.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { computeFrozenSalary } from "./contractSeed.js";
-import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// #5269: klassifikator-vægtene som opslagstabel, sendt IND i riderBirthPriors
+// (ungdoms-signaturen er proportional med dem, #3458 fase 2). Vægt-tabellen
+// læses READ-ONLY her og ejes af weights/classifierWeights.js — den er FROSSET
+// (ejer 13/8) og må ikke ændres fra denne sti.
+const CLASSIFIER_WEIGHTS_BY_TYPE = Object.freeze(
+  Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights])),
+);
+
 const UPSERT_BATCH = 500;
 const WRITE_CONCURRENCY = 25;
 // Hvor mange id'er der må stå i ÉT `.in(...)`-filter. PostgREST sender filteret i
@@ -55,8 +67,15 @@ const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
 // #3570: unge (< 22 år, se riderTypesBaselineSelect.js) klassificeres mod DENNE
 // baseline i den ENDELIGE type-tildeling i stedet for voksen-baselinen ovenfor.
 const TYPES_BASELINE_YOUTH_PATH = join(__dirname, "./riderTypesBaselineYouth.json");
-// #2594 cutover: v4 (karriere-NPV) er den live værdi-model.
-const VALUATION_MODEL_PATH = join(__dirname, "./riderValuationModelV4.json");
+// #2594 cutover: v4 (karriere-NPV) var den live værdi-model, og denne fil
+// indlæste dens JSON direkte.
+// #5443 (hul fundet 20/9 aften): DET var fejlen. Filen er en PRODUKTIONS-skriver
+// (nye ryttere ved akademi-intake/startrup, heal-sweep, base_value-backfill), så
+// den skal vælge model gennem SAMME kontakt som søndagskørslen —
+// riderValuationModelSelect.js, app_config, fail-safe til v4. Ellers ville en
+// tænding af v5 give nye ryttere en v4-pris indtil næste søndag.
+// Modellerne læses ÉN gang pr. kørsel (ikke pr. rytter): en backfill skal regne
+// hele sit batch med det samme par modeller, også hvis nøglen flippes undervejs.
 
 // v4 forankrer alder i den aktive sæson (ageForSeason). Fallback: sæson 1.
 async function activeSeasonNumber(supabase) {
@@ -111,16 +130,39 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
   // generation_tag med i selectet (#4311): fyld-ryttere ('fill_tail') skal have deres
   // evner klemt AF deriveAbilities selv (abilityDerivation.js) ved enhver re-derive —
   // uden taggen i rider-rækken kan deriveAbilities ikke se den.
-  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", ...STAT_KEYS].join(", ");
+  // #5269: archetype_draw med i selectet af PRÆCIS samme grund som
+  // generation_tag ovenfor — uden den kan denne globale backfill ikke se at en
+  // rytter er født af spillets egne priors, og ville udlede hele hans evne-sæt
+  // til 1 fra de stat_* han aldrig fik. Den her sti kører over ALLE ryttere på
+  // én gang, så den fejl ville ikke ramme én rytter, men hele årgangen.
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", "archetype_draw", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).order("id", { ascending: true }));
   log(`physiology: ${riders.length} ryttere`);
 
-  const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
+  const seasonNumber = await activeSeasonNumber(supabase);
+  const bornById = new Map();
+  for (const r of riders) {
+    if (!isBornFromPriors(r)) continue;
+    bornById.set(r.id, deriveBirthAbilities(r, {
+      age: ageForSeason(r.birthdate, seasonNumber),
+      classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+    }));
+  }
+  if (bornById.size) log(`  prior-fødte ryttere (evner reproduceres, ikke udledt): ${bornById.size}`);
+
+  const profiles = riders.map((r) => {
+    const born = bornById.get(r.id);
+    return { ...seedPhysiologyFromLegacy(born ? physiologySeedInputFromAbilities(r, born) : r), updated_at: stamp };
+  });
   log(`  ftp_wkg: ${spread(profiles.map((p) => p.ftp_wkg))}`);
   let abilities = [];
   if (!physiologyOnly) {
-    abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
+    abilities = profiles.map((p, i) => {
+      const born = bornById.get(riders[i].id);
+      if (born) return { rider_id: riders[i].id, formula_version: FORMULA_VERSION, ...born, generated_at: stamp };
+      return { ...deriveAbilities(p, riders[i]), generated_at: stamp };
+    });
     log(`  climbing: ${spread(abilities.map((a) => a.climbing))}`);
     log(`  sprint:   ${spread(abilities.map((a) => a.sprint))}`);
   }
@@ -208,6 +250,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
   typesBaseline,
   youthTypesBaseline,
   valuationModel,
+  productionValuationModel,
   now,
   log = noop,
 } = {}) {
@@ -223,9 +266,15 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const youthTypesModel = youthTypesBaseline !== undefined
     ? youthTypesBaseline
     : JSON.parse(readFileSync(TYPES_BASELINE_YOUTH_PATH, "utf8"));
-  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-  const valModel = valuationModel || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
+  // #5443: modellen VÆLGES af app_config (riderValuationModelSelect.js), præcis
+  // som søndagskørslen — ikke af en direkte JSON-indlæsning. Dæmpnings-
+  // behandlingen (#4000, TYPE_DAMPENING_ENABLED) sker inde i loaderen, som før.
+  // Fail-safe: enhver læsefejl ⇒ v4, altså den model der allerede er live.
+  const valModel = valuationModel || await loadValuationModel(supabase);
+  // #5443 ejer-beslutning 2: løngrundlaget har sin egen nøgle (default v4), så
+  // en ny rytter får en v5-PRIS og et v4-LØNGRUNDLAG, præcis som en rytter der
+  // er blevet genberegnet af søndagskørslen.
+  const prodModel = productionValuationModel || await loadProductionValueModel(supabase);
   // #1673's egentlige beskyttelses-objekt, flyttet FØR skrivningerne (CYCLINGZONE-51):
   // en UBRUGELIG værdi-model (koefficienter der ikke er endelige tal) efterlader HELE
   // batchet uden base_value. Den klasse skal fejle hårdt ved kilden — og den kan
@@ -259,8 +308,41 @@ export async function deriveForRiderIds(supabase, riderIds, {
   log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);
 
   // 1) Physiology + abilities (rene transformationer).
-  const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
-  const abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
+  //
+  // #5269 (ejer 15/9, "fremadrettet skal det stoppe"): en rytter FØDT af
+  // spillets egne priors bærer `archetype_draw.birth` og har `stat_* = NULL`.
+  // For ham REPRODUCERES evnerne fra fødsels-seed'en i stedet for at blive
+  // udledt af stats. Det er ikke en bekvemmelighed — det er nødvendigt:
+  // deriveForRiderIds kaldes IGEN ved hver re-derive (riderDeriveHealSweep
+  // #1673, starterSquadHealSweep, backfill-scripts), og PCM-fallbacken i
+  // deriveAbilities ville udlede evne 1 af en NULL-stat og dermed nulstille
+  // hele kuldet ved næste sweep.
+  //
+  // Ryttere UDEN `birth`-markøren — hver eneste eksisterende rytter i spillet —
+  // rammer PRÆCIS samme kodesti som før: `isBornFromPriors` er falsk, og
+  // `deriveAbilities` kaldes uændret med den uændrede legacy-profil.
+  const birthAbilitiesByRider = new Map();
+  const profiles = riders.map((r) => {
+    const born = isBornFromPriors(r)
+      ? deriveBirthAbilities(r, {
+        age: ageForSeason(r.birthdate, seasonNumber),
+        classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE,
+      })
+      : null;
+    if (born) birthAbilitiesByRider.set(r.id, born);
+    // Fysiologien seedes af rytterens EGNE evner (samme 0-99-skala som
+    // seedPhysiologyFromLegacy forventer) i stedet for filens 60-default, som
+    // ville gøre hver eneste nyfødt fysiologisk identisk. Profilen forbliver
+    // version 1 / seeded_from_legacy som resten af populationen.
+    const seedRow = born ? physiologySeedInputFromAbilities(r, born) : r;
+    return { ...seedPhysiologyFromLegacy(seedRow), updated_at: stamp };
+  });
+  const abilities = profiles.map((p, i) => {
+    const r = riders[i];
+    const born = birthAbilitiesByRider.get(r.id);
+    if (born) return { rider_id: r.id, formula_version: FORMULA_VERSION, ...born, generated_at: stamp };
+    return { ...deriveAbilities(p, r), generated_at: stamp };
+  });
 
   // 2) BOOTSTRAP-type (#3325): en helt ny rytter har intet forudgående primary_type
   // at seede ability_caps' rolle-faktor med (buildYouthCaps/buildCapsForRider læser
@@ -380,7 +462,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
     const valueRider = { ...r, primary_type: t.primary_type, age: ageForSeason(r.birthdate, seasonNumber) };
     const ab = abilityByRider.get(r.id);
     const bv = predictBaseValue(valueRider, ab, valModel);
-    const cpv = currentProductionValue(valueRider, ab, valModel);
+    const cpv = currentProductionValue(valueRider, ab, prodModel);
     return {
       id: r.id,
       ...t,
@@ -471,10 +553,12 @@ export async function deriveForRiderIds(supabase, riderIds, {
 }
 
 // ── base_value SHADOW (fra backfillRiderBaseValue.js) ─────────────────────────
-export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
-  // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-  // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-  const m = model || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
+export async function runBaseValueBackfill(supabase, { dryRun = true, model, productionModel, log = noop } = {}) {
+  // #5443: samme model-kontakt som søndagskørslen (app_config, fail-safe v4);
+  // dæmpnings-behandlingen sker inde i loaderen. Løngrundlaget har sin egen
+  // nøgle (ejer-beslutning 2, 20/9 aften) — derfor to opslag, ikke ét.
+  const m = model || await loadValuationModel(supabase);
+  const pm = productionModel || await loadProductionValueModel(supabase);
   // #3345: valuation_type (den FROSNE type) skal med i selectet — predictBaseValue/
   // currentProductionValue læser den FØR primary_type (se riderValuation.js). Uden
   // den ville denne sweep stille revaluere hele populationen efter enhver
@@ -498,7 +582,7 @@ export async function runBaseValueBackfill(supabase, { dryRun = true, model, log
     const ab = abilityByRider.get(r.id);
     const bv = predictBaseValue(valueRider, ab, m);
     if (bv == null) { noAbilities++; continue; }
-    const cpv = currentProductionValue(valueRider, ab, m);
+    const cpv = currentProductionValue(valueRider, ab, pm);
     const update = { id: r.id, base_value: bv, ...(cpv != null ? { current_production_value: cpv } : {}) };
     // #2083 forward-guard: hold in-academy-rytteres frosne løn i sync med den
     // genberegnede værdi. #2594: løn-basen er nu current_production_value ×

@@ -45,8 +45,19 @@ try {
   $process = [Diagnostics.Process]::Start($start)
   $stdout = $process.StandardOutput.BaseStream.CopyToAsync([Console]::OpenStandardOutput())
   $stderr = $process.StandardError.BaseStream.CopyToAsync([Console]::OpenStandardError())
-  [Console]::OpenStandardInput().CopyTo($process.StandardInput.BaseStream)
-  $process.StandardInput.Close()
+  # A hook that is done before it has read all of stdin closes its end of the pipe
+  # (an early `exit 0`, or a guard that only needs the first bytes of a large
+  # apply_patch payload). That is the hook's decision, not a startup failure: the
+  # write fails with IOException, and turning it into exit 2 blocked every large
+  # Codex tool call (21/9, "Pipen er blevet afsluttet"). Swallow ONLY that case and
+  # let the hook's own exit code speak. Anything else still fails loudly below.
+  try {
+    [Console]::OpenStandardInput().CopyTo($process.StandardInput.BaseStream)
+    $process.StandardInput.Close()
+  } catch {
+    $pipeClosed = $_.Exception -is [IO.IOException] -or $_.Exception.InnerException -is [IO.IOException]
+    if (-not $pipeClosed) { throw }
+  }
   $process.WaitForExit()
   [void]$stdout.GetAwaiter().GetResult()
   [void]$stderr.GetAwaiter().GetResult()

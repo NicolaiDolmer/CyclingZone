@@ -67,12 +67,16 @@
  * per-load-flag der blokerer et andet forsoeg mens det foerste stadig afventer
  * sin bekraeftelses-fetch). Kan sessionStorage ikke laeses eller skrives,
  * reloader vi IKKE (fail-closed) — et uendeligt reload-loop er vaerre end en
- * sort side med en manuel genindlaesning. Er reload-slottet brugt (eller
- * sessionStorage utilgaengelig) OG `#root` staar tom, viser vi i stedet en
- * minimal fallback-UI med en manuel reload-knap, saa spilleren ikke bare ser en
- * sort side uden nogen udvej.
+ * sort side med en manuel genindlaesning. Ud over 60-sekunders-noeglen traekker
+ * vagten paa det FAELLES recovery-budget (`cz:recovery-budget`, samme noegle og
+ * format som src/lib/chunkErrors.js) og bogfoerer sit reload dér FOER det sker
+ * (#5440 punkt 2) — saa en fane der aldrig naar at boote, ogsaa er under
+ * loftet. Er reload-slottet eller budgettet brugt (eller sessionStorage
+ * utilgaengelig) OG `#root` staar tom, viser vi i stedet en minimal fallback-UI
+ * med en manuel reload-knap, saa spilleren ikke bare ser en sort side uden
+ * nogen udvej.
  *
- * Refs #4595 #2423 #4545 #906
+ * Refs #4595 #2423 #4545 #906 #5440
  */
 (function (global) {
   "use strict";
@@ -80,6 +84,14 @@
   var GUARD_KEY = "cz_chunk_selfheal_at";
   var MIN_RELOAD_INTERVAL_MS = 60000;
   var REFETCH_TIMEOUT_MS = 4000;
+  // Det FAELLES recovery-budget (#5159 M3, #5440 punkt 2). Skal matche
+  // RECOVERY_BUDGET_KEY/_MAX/_WINDOW_MS og BOOT_GUARD_ACCOUNTED_KEY i
+  // src/lib/chunkErrors.js — kan ikke importeres i et classic script, saa en
+  // unit-test sammenligner vaerdierne (chunkSelfHeal.test.js).
+  var RECOVERY_BUDGET_KEY = "cz:recovery-budget";
+  var RECOVERY_BUDGET_MAX = 3;
+  var RECOVERY_BUDGET_WINDOW_MS = 60 * 60 * 1000;
+  var BOOT_GUARD_ACCOUNTED_KEY = "cz:recovery-budget-bootguard-at";
   // Id'et paa JSON-datablokken vite-plugin'et cz-boot-assets-manifest skriver.
   // Skal matche BOOT_ASSETS_ELEMENT_ID i vite-plugins/boot-assets-manifest.js.
   var BOOT_ASSETS_ELEMENT_ID = "cz-boot-assets";
@@ -198,8 +210,50 @@
       return bootUrls.length === 0 && tag === "script";
     }
 
+    // Laes det faelles recovery-budget. Samme regler som readBudget() i
+    // src/lib/chunkErrors.js: ingen post = ubrugt budget, et udloebet vindue
+    // starter forfra, og en post vi ikke kan laese er FAIL-CLOSED (null) — et
+    // reload-loop der naaede at skrive skrald i noeglen, maa ikke faa tre friske
+    // forsoeg hver gang. Kaster selve getItem, er svaret ogsaa null.
+    function readRecoveryBudget(storage, now) {
+      var raw = storage.getItem(RECOVERY_BUDGET_KEY);
+      // Kun en FRAVAERENDE noegle er et ubrugt budget; en tom streng er en
+      // ulaeselig post og fejler lukket i JSON.parse nedenfor.
+      if (raw === null || raw === undefined) return { used: 0, windowStart: now };
+      var parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return null;
+      }
+      if (!parsed || typeof parsed !== "object") return null;
+      var used = parsed.used;
+      var windowStart = parsed.windowStart;
+      if (typeof used !== "number" || !isFinite(used)) return null;
+      if (typeof windowStart !== "number" || !isFinite(windowStart)) return null;
+      if (used < 0 || windowStart > now) return null;
+      if (now - windowStart > RECOVERY_BUDGET_WINDOW_MS) return { used: 0, windowStart: now };
+      return { used: used, windowStart: windowStart };
+    }
+
     // Fail-closed: uden laesbar sessionStorage kan vi ikke bevise at vi ikke
     // allerede har reloadet, og saa reloader vi ikke.
+    //
+    // #5440 punkt 2: vagten bogfoerer nu SELV sit reload i det faelles
+    // recovery-budget, FOER reloadet. Foer efterlod den kun sit eget
+    // tidsstempel og lod main.jsx (`accountBootGuardReload`) bogfoere det — men
+    // main.jsx koerer kun hvis appen booter, og en fane der aldrig booter var
+    // derfor kun begraenset af 60-sekunders-noeglen: praecis loop-scenariet
+    // budgettet findes for. Nu:
+    //   1. 60-sekunders-noeglen (uaendret),
+    //   2. budgettet: er det brugt op (af et hvilket som helst lag), reloader
+    //      vagten ikke, og fallback-UI'en tager over,
+    //   3. bogfoering + markoer + egen noegle skrives; fejler NOGEN af dem,
+    //      reloader vi ikke (et ubogfoert reload er et reload uden loft).
+    // Markoeren (BOOT_GUARD_ACCOUNTED_KEY = samme tidsstempel) fortaeller
+    // main.jsx at netop dette reload allerede er bogfoert, saa det ikke tælles
+    // to gange. `accountBootGuardReload` bliver staaende for en aeldre, cachet
+    // udgave af denne fil der ikke selv bogfoerer.
     function claimReloadSlot(now) {
       var storage;
       try {
@@ -207,6 +261,14 @@
         if (!storage) return false;
         var last = Number(storage.getItem(GUARD_KEY)) || 0;
         if (last && now - last < MIN_RELOAD_INTERVAL_MS) return false;
+        var budget = readRecoveryBudget(storage, now);
+        if (!budget) return false;
+        if (budget.used >= RECOVERY_BUDGET_MAX) return false;
+        storage.setItem(
+          RECOVERY_BUDGET_KEY,
+          JSON.stringify({ used: budget.used + 1, windowStart: budget.windowStart, last: "boot-guard" }),
+        );
+        storage.setItem(BOOT_GUARD_ACCOUNTED_KEY, String(now));
         storage.setItem(GUARD_KEY, String(now));
         return true;
       } catch {
@@ -409,7 +471,10 @@
             return;
           }
           if (!claimReloadSlot(Date.now())) {
-            warn(reason + " — reload sprunget over (allerede forsoegt, eller sessionStorage utilgaengelig)");
+            warn(
+              reason +
+                " — reload sprunget over (allerede forsoegt, recovery-budget brugt op, eller sessionStorage utilgaengelig)",
+            );
             showFallbackUI();
             return;
           }
@@ -560,7 +625,18 @@
     return { install: install, heal: heal, moduleUrls: moduleUrls };
   }
 
-  global.__czChunkSelfHeal = { create: createChunkSelfHeal };
+  global.__czChunkSelfHeal = {
+    create: createChunkSelfHeal,
+    // Kun til drift-vagten i chunkSelfHeal.test.js: vaerdierne skal matche
+    // src/lib/chunkErrors.js, og et classic script kan ikke importere dem.
+    budget: {
+      key: RECOVERY_BUDGET_KEY,
+      max: RECOVERY_BUDGET_MAX,
+      windowMs: RECOVERY_BUDGET_WINDOW_MS,
+      accountedKey: BOOT_GUARD_ACCOUNTED_KEY,
+      guardKey: GUARD_KEY,
+    },
+  };
 
   if (global && global.document) {
     try {

@@ -3,7 +3,7 @@
     {
       "stage_number": 1,
       "profile_type": "mountain",
-      "finale_type": "punch",
+      "finale_type": "long_climb",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,
@@ -86,7 +86,7 @@
     {
       "stage_number": 3,
       "profile_type": "mountain",
-      "finale_type": "punch",
+      "finale_type": "long_climb",
       "demand_vector": {
         "climbing": 0.5,
         "tempo": 0.12,

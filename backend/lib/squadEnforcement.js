@@ -44,6 +44,7 @@ import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.js";
+import { applySeniorSquadFilter } from "./squads.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.
 // Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
@@ -78,12 +79,13 @@ async function getSquadSnapshot(supabase, teamId) {
   // (retirementRelease.js) og skal aldrig kunne udløse en bøde eller blive valgt
   // som tvangssalg. Uden filteret ville en pensioneret rytter kunne skubbe et hold
   // over max og koste manageren en ÆGTE rytter i pickRidersToSell.
-  const { data: ownedRiders, error: ownedError } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, ai_team_id, market_value, acquired_at, created_at")
-    .eq("team_id", teamId)
-    .eq("is_academy", false)
-    .eq("is_retired", false);
+  // #4619: trup-leddet er delt (squads.applySeniorSquadFilter).
+  const { data: ownedRiders, error: ownedError } = await applySeniorSquadFilter(
+    supabase
+      .from("riders")
+      .select("id, firstname, lastname, ai_team_id, market_value, acquired_at, created_at")
+      .eq("team_id", teamId)
+  ).eq("is_retired", false);
   ensureNoError(ownedError);
 
   return {

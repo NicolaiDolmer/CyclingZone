@@ -189,6 +189,7 @@ const TRANSLATED_PAGE_SMOKE = [
 ];
 
 async function forceEnglish(page) {
+  await expect.poll(() => page.evaluate(() => window.__i18n?.isInitialized === true)).toBe(true);
   await page.evaluate(async () => {
     window.localStorage.setItem("cz_lang", "en");
     if (window.__i18n) await window.__i18n.changeLanguage("en");

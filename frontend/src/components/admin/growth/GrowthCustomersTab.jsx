@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../shared/useAdminAuth";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import Card from "../../ui/Card";
 import Button from "../../ui/Button";
 import { Table, Tr, Th, Td } from "../../ui/Table";
@@ -62,7 +63,7 @@ export default function GrowthCustomersTab() {
     setError(null);
     try {
       const auth = await getAuth();
-      const res = await fetch(`${API}/api/admin/growth/customers`, { headers: auth });
+      const res = await apiFetch(`${API}/api/admin/growth/customers`, { headers: auth });
       const json = await readAdminJson(res);
       if (res.ok) setData(json);
       else setError(adminErrorMessage(json, res));

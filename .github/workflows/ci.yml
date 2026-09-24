@@ -9,6 +9,13 @@ on:
   # ellers timer køen ud. Alle jobs her er fil-/test-baserede og kører uændret.
   merge_group:
 
+# Annuller foraeldede koersler paa samme PR-gren: boelgens laner pusher hvert kvarter, og hver push
+# koerte foer fuld CI til ende (24/9: 20 forældede koersler i koe, frontend-smoke pending 60+ min).
+# main og merge_group faar egen gruppe pr. SHA og annulleres aldrig.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -59,8 +66,21 @@ jobs:
       run:
         working-directory: frontend
     steps:
+      # fetch-depth: 0 (fuld historik) - PR #5381 review-fund paa #5093:
+      # standard checkout@v7-adfaerd (depth 1) tjekker KUN den ene HEAD-commit
+      # ud uden foraeldre-kaeden, saa now-md-sidecar-guardens tre-punktums-diff
+      # (git diff origin/main...HEAD, se scripts/check-now-md-sidecar.mjs) ikke
+      # kan finde en faelles merge-base med origin/main - selv efter denne fetches
+      # separat nedenfor. Guarden fejler derfor LUKKET (bevidst, jf. dens egne
+      # kommentarer) for ENHVER PR, uanset om docs/NOW.md er roert, fordi
+      # frontend-build er et required check. Samme shallow-graf gjorde
+      # PatchNotes-guardens egen tre-punktums-diff (check-patch-notes-version.js)
+      # utilstraekkelig i forvejen - den fejler bare AABENT (tom diff) i stedet
+      # for lukket, saa den har aldrig vist sig som en rod CI-fejl. Refs #5093.
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -69,10 +89,18 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Fetch main for PatchNotes guard
+      # Fælles for PatchNotes- og now-md-sidecar-guarden: begge regner en
+      # tre-punktums-diff (`origin/main...HEAD`), som kræver en reel
+      # merge-base, ikke bare at "origin/main" opløser sig til en SHA.
+      # `--depth=1` her gav "origin/main" en enkelt-commit-graf uden
+      # forældre-kæde, saa git ALDRIG kunne finde en fælles historik med den
+      # (nu fuldt hentede, jf. checkout-trinnets fetch-depth: 0) HEAD -
+      # bekræftet lokalt: samme `--depth=1`-fetch reproducerer PR #5381's
+      # eksakte "no merge base"-fejl, en fuld fetch her retter den. Refs #5093.
+      - name: Fetch main for merge-base guards (PatchNotes, now-md-sidecar)
         if: github.event_name == 'pull_request'
         working-directory: .
-        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+        run: git fetch --no-tags origin main:refs/remotes/origin/main
 
       - name: Test PatchNotes version guard
         working-directory: .
@@ -81,6 +109,51 @@ jobs:
       - name: Check PatchNotes version uniqueness
         working-directory: .
         run: node scripts/check-patch-notes-version.js
+
+      # #5369: event-katalog-guarden (#5048) laa i repoet uden at blive koert
+      # noget sted, og stod roed paa en ren main i ugevis uden at nogen saa det:
+      # tre events manglede i ANALYTICS_STACK.md §3, og parseren laeste citerede
+      # ord i kommentarer som events. Den bor HER og ikke i et advisory job, fordi
+      # frontend-build ER et required check - samme begrundelse som
+      # required-ci-jobs-guarden i migration-idempotency (#4330): et ikke-required
+      # job gaar roedt OG merger alligevel. Ren fil-laesning, ingen dependencies,
+      # saa den koerer foer `npm ci` og fejler hurtigt.
+      - name: Test event-catalog guard
+        working-directory: .
+        run: node --test scripts/check-event-catalog.test.mjs
+
+      - name: Run event-catalog guard
+        working-directory: .
+        run: node scripts/check-event-catalog.mjs
+
+      # #5484: den lokale read-only Discord-MCP (scripts/discord/mcp-readonly-server.mjs).
+      # Testene laaser at serveren ingen skrive-tools har, og at handshaket ikke
+      # venter paa netvaerk. Ingen dependencies, saa den koerer foer `npm ci`.
+      - name: Test read-only Discord MCP server
+        working-directory: .
+        run: node --test scripts/discord/mcp-readonly-server.test.mjs
+
+      # #5093 (ejer-valg 18/9: A): docs/NOW.md er den eneste kilde til "aktivt
+      # issue" + "Working agent"-claim (CLAUDE.md-Start-rutinen). En PR der
+      # roerer den skal fejle, medmindre PR-titlen er en close-out
+      # (docs(now)/docs(close-out)). Hoerer HER, ikke i et advisory-job, af
+      # samme grund som event-katalog-guarden ovenfor: frontend-build ER et
+      # required check (#4330-begrundelsen) - et ikke-required job gaar roedt
+      # og merger alligevel. PR_TITLE laeses fra selve GitHub-eventet, ikke fra
+      # commit-beskeder - afloeser en tidligere, commit-praefiks-baseret
+      # variant der blev reverteret i PR #5364, fordi ejer-valget dengang
+      # manglede. Guarden koerer kun paa pull_request (direkte close-out-
+      # commits paa main er upaavirkede).
+      - name: Test now-md-sidecar guard
+        working-directory: .
+        run: node --test scripts/check-now-md-sidecar.test.mjs
+
+      - name: Run now-md-sidecar guard
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/check-now-md-sidecar.mjs
 
       - name: Install frontend dependencies
         run: npm ci
@@ -94,6 +167,16 @@ jobs:
       # en select mod en kolonne skemaet ikke har giver nu en typefejl i editoren.
       - name: Type-check frontend
         run: npm run typecheck
+
+      # #5534: hard rule 31 kraever nu .ts/.tsx for nye frontend-filer, ogsaa
+      # e2e-specs — men frontend/tsconfig.json's include daekker kun src/**, saa
+      # .ts-filer i tests/e2e/ (og krydsimports mellem dem, fx tests/e2e/lib)
+      # fik ingen typecheck. Egen frontend/tests/tsconfig.json (extends
+      # ovenstaaende) lukker det hul. Startede paa 0 fejl (kun 3 implicit-any i
+      # 4346-report-trade.spec.ts, rettet i samme PR), saa gaten er en hard
+      # fejl fra dag ét — ingen advarsels-periode noedvendig.
+      - name: Type-check e2e specs (#5534)
+        run: npx tsc --noEmit -p tests
 
       - name: Run frontend tests
         run: npm test -- --test-reporter=spec
@@ -173,6 +256,80 @@ jobs:
           VERCEL_DEPLOYMENT_ID: dpl_ci_test
           VERCEL_ENV: preview
         run: node scripts/check-skew-protection.mjs
+
+  # #5085: marketing/ (Next.js App Router, offentligt SEO-site på
+  # cyclingzone.org) havde ingen CI-vagt overhovedet - kun Vercels
+  # preview-deploy byggede den, så en lint-/build-fejl blev først synlig i
+  # Vercels UI, ikke i PR-tjeklisten. Workflow-niveau `paths:` på ci.yml selv
+  # kan ikke bruges: filen har allerede required jobs der SKAL rapportere på
+  # enhver PR (se i18n-check.yml's begrundelse ovenfor for samme faldgrube).
+  # Path-filteret ligger derfor i sit eget lette `marketing-changes`-job, samme
+  # mønster som playwright-smoke.yml's `changes`-job. Jobbet er bevidst IKKE i
+  # scripts/ci-required-checks.json endnu (ejer-beslutning i issuet: required
+  # efter en uges stabil kørsel).
+  marketing-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      marketing: ${{ steps.filter.outputs.marketing }}
+    steps:
+      - name: Detect marketing changes
+        id: filter
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
+          # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
+          # svaret til falsk "ingen marketing-ændringer" (samme fælde som
+          # playwright-smoke.yml's changes-job).
+          if printf '%s\n' "$FILES" | grep -E '^marketing/' > /dev/null; then
+            echo "marketing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "marketing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  marketing-lint-build:
+    needs: marketing-changes
+    if: needs.marketing-changes.outputs.marketing == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: marketing
+    steps:
+      # Pinnet til fuld commit-SHA (samme v7 som playwright-smoke.yml bruger),
+      # ikke @v7 - .coderabbit.yaml kræver pinning af actions for .github/workflows/**.
+      # persist-credentials: false, fordi jobbet kører `npm ci` (PR-styrede
+      # install-scripts) og ikke har noget senere Git-trin der behøver tokenet.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install marketing dependencies
+        run: npm ci
+
+      - name: Lint marketing
+        run: npm run lint
+
+      # Buildet kræver ingen env (waitlist-form.tsx opretter kun sin
+      # Supabase-klient lazy ved submit, se komponentens egen kommentar) - så
+      # ingen dummy-værdier er nødvendige her, i modsætning til frontend- og
+      # backend-jobbene ovenfor.
+      - name: Build marketing
+        run: npm run build
 
   # #5160 (audit 11/9, fund H1): det TO-BUILD-BEVIS `frontend-build`s
   # markoer-guard ikke kan give. Den bygger EET build UDEN Sentry-
@@ -580,6 +737,79 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/retirement-notice-freeze-5073.test.mjs
 
+      # --- guard-inventory-cell escaping (#5092) ---
+      # scripts/guard-inventory-cell.test.mjs fandtes, men koerte ingen steder i
+      # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
+      # verify-kaeden. Ren streng-escaping (backslash foer pipe-delimiter for
+      # generate-guard-inventory.mjs's Markdown-tabel), nul npm-afhaengigheder,
+      # saa den hoerer hjemme her ligesom de oevrige npm-ci-frie guards.
+      - name: Test guard-inventory-cell escaping
+        if: ${{ !cancelled() }}
+        run: node --test scripts/guard-inventory-cell.test.mjs
+
+      # #5565: billedstationens rene dele (argumenter, preview-opslag uden net,
+      # filnavne, skrive-vagt, "aldrig et falsk ur"). Nul npm-afhaengigheder;
+      # browseren er mocket vaek, saa testen hoerer hjemme blandt de npm-ci-frie
+      # guards (samme laering som #5092: en test uden CI-step er usynlig).
+      - name: Test pr-shots pure parts (#5565)
+        if: ${{ !cancelled() }}
+        run: node --test scripts/lib/prShots.test.mjs
+
+  ops-script-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #5092: scripts/monday-numbers.test.mjs fandtes, men koerte ingen steder i
+    # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
+    # verify-kaeden. Eget job og ikke en del af static-guards: monday-numbers.mjs
+    # importerer @supabase/supabase-js paa modul-niveau (classifyChannel selv er
+    # ren, men importet koerer alligevel ved load), saa testen kraever root
+    # `npm ci` - static-guards er bevidst UDEN npm ci (se #5073-kommentaren
+    # ovenfor: samme fejlklasse ville give ERR_MODULE_NOT_FOUND der).
+    steps:
+      # Pinnet til fuld commit-SHA (samme v7 som marketing-lint-build/playwright-
+      # smoke.yml bruger) - .coderabbit.yaml kraever pinning af actions for
+      # .github/workflows/**. persist-credentials: false, fordi jobbet koerer
+      # `npm ci` (PR-styrede install-scripts) og ikke har noget senere Git-trin
+      # der behoever tokenet.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      # #5091: kanal-klassificeringen skal vaere domaene-forankret (samme
+      # moenster som Hattrick/self-referral-fixet i #5072), ellers klassificerer
+      # et lookalike-domaene (fx evil-discord.example.com) sig som en aegte kanal.
+      - name: Test monday-numbers channel classification
+        run: node --test scripts/monday-numbers.test.mjs
+
+      - name: Test shared wave admission and Codex lifecycle fixtures
+        run: |
+          node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/make-wave-brief.test.mjs
+          python3 scripts/hooks/lib/test_codex_sessions.py
+          bash scripts/test-guard-agent-spawn.sh
+
+      # #5489: deploy-verify.yml laeser Railway-status via scripts/railway-deploy-status.mjs
+      # (#5560). Klassifikationen (success/failed/pending, API-fejl = pending) skal
+      # koere i CI, ellers er den usynlig ligesom monday-numbers var (#5092).
+      - name: Test Railway deploy-status classifier (#5489)
+        run: node --test scripts/railway-deploy-status.test.mjs
+
+      # #5508: merge-queue.ps1 printer hard rule 35's kategori (a)/(b)/(c) pr. PR
+      # via scripts/merge-queue-classify.mjs. Ren Node, gh er injiceret vaek i
+      # testen. Uden et CI-step er den usynlig (samme laering som #5092).
+      - name: Test merge-queue category classifier (#5508)
+        run: node --test scripts/merge-queue-classify.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:
@@ -953,12 +1183,21 @@ jobs:
     # Genererer S3-kalenderen 100 % OFFLINE (lib/__fixtures__/racePoolCatalog.prod.json +
     # scripts/dev/lib/s3OfflineCalendarPlan.mjs). Ingen secrets, ingen prod-adgang.
     #
-    # RÅDGIVENDE, IKKE PÅKRÆVET: står bevidst UDENFOR scripts/ci-required-checks.json i
-    # første omgang (spawn-prompt-direktiv #4270) — samme mønster som
-    # supabase-ops-scripts ovenfor. En rød diff her er ikke nødvendigvis en fejl (se
-    # lib/calendarGoldenSnapshot.test.js's egen docstring: kan også være en TILSIGTET
-    # ændring der mangler en `refreshCalendarGoldenSnapshot.mjs`-kørsel), så den skal
-    # kunne læses og vurderes af et menneske før den evt. gøres blokerende.
+    # BLOKERENDE FRA 17/9 (#4123). Jobbet stod indtil da bevidst UDENFOR
+    # scripts/ci-required-checks.json (spawn-prompt-direktiv #4270), så en rød diff kunne
+    # læses og vurderes af et menneske først. Den vurdering er gjort: begge tests har kørt
+    # grønt mod main, og determinismen er selv en test (to regenereringer skal være
+    # byte-identiske), så et rødt resultat her er enten en ægte regression eller en
+    # TILSIGTET ændring der mangler sin snapshot-opdatering.
+    #
+    # Er den tilsigtet, er rettelsen ét skridt og hører til i SAMME PR:
+    #   cd backend && node scripts/dev/refreshCalendarGoldenSnapshot.mjs
+    # Vil du se HVAD der ændrede sig, pr. division/dag/løbstype, før du beslutter:
+    #   cd backend && node scripts/dev/calendarGoldenDiff.mjs
+    # (samme offline kilde, ingen credentials — se docs/CALENDAR_RULES.md §2d).
+    #
+    # Navnet er tilføjet til scripts/ci-required-checks.json; selve branch protection er
+    # ejerens flag at vippe (kommandoen står i den fils _comment).
     steps:
       - name: Check out repository
         uses: actions/checkout@v7

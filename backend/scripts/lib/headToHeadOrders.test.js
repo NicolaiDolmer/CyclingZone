@@ -13,7 +13,6 @@ import {
   RACE_ROLES,
   assignFieldRoles,
   assignTeamRoles,
-  buildLeadoutOrder,
   buildStageTeamOrders,
   groupByTeam,
   sumOrderEffects,
@@ -95,34 +94,57 @@ test("ordrer: hvert hold faar praecis én team_tactics-ordre", () => {
   assert.equal(new Set(tactics.map((o) => o.team_id)).size, 6, "et hold maa ikke faa to taktik-ordrer");
 });
 
-test("ordrer: sprint-tog kun paa massefinaler", () => {
+test("ordrer: massefinale-flaget foelger ruten", () => {
   const riders = population(6, 8);
   const flat = buildStageTeamOrders({ riders, route: flatRoute });
   const mountain = buildStageTeamOrders({ riders, route: mountainRoute });
-
   assert.ok(flat.orders.some((o) => o.kind === "leadout"), "en massespurt skal give mindst ét sprint-tog");
-  assert.equal(
-    mountain.orders.filter((o) => o.kind === "leadout").length,
-    0,
-    "ingen saetter et sprint-tog op paa en bjergetape med topankomst",
-  );
   assert.equal(flat.effect.massFinish, true);
   assert.equal(mountain.effect.massFinish, false);
 });
 
-test("ordrer: sprint-toget bestaar af kaptajnens holdkammerater, aldrig kaptajnen selv", () => {
+test("#5571 ordrer: sprint-toget er rollens standard — holdets hjaelpere, aldrig kaptajnen selv", () => {
   const riders = population(4, 8);
-  const roles = assignFieldRoles(riders);
-  for (const [teamId, teamRiders] of groupByTeam(riders)) {
-    const leadout = buildLeadoutOrder(teamId, teamRiders, roles);
-    if (!leadout) continue;
-    const teamIds = new Set(teamRiders.map((r) => r.id));
+  const { orders, roles } = buildStageTeamOrders({ riders, route: flatRoute });
+  const byTeam = groupByTeam(riders);
+  for (const leadout of orders.filter((o) => o.kind === "leadout")) {
+    const teamIds = new Set(byTeam.get(leadout.team_id).map((r) => r.id));
     assert.ok(!leadout.params.leadout_rider_ids.includes(leadout.params.captain_rider_id), "kaptajnen koerer ikke sit eget tog");
     for (const id of leadout.params.leadout_rider_ids) {
-      assert.ok(teamIds.has(id), `${id} er ikke paa hold ${teamId}`);
+      assert.ok(teamIds.has(id), `${id} er ikke paa hold ${leadout.team_id}`);
+      assert.equal(roles.get(id), "helper");
     }
     assert.equal(roles.get(leadout.params.captain_rider_id), "sprint_captain");
   }
+});
+
+test("#5571 ordrer: indsatsen pr. rytter er PRAECIS ordrens (det motoren laeser paa Entrant.effort)", () => {
+  const riders = population(6, 8);
+  const race = { is_stage_race: true, later_stages: [flatRoute] };
+  const { orders, effortByRider } = buildStageTeamOrders({ riders, route: mountainRoute, race });
+  const fromOrders = new Map();
+  for (const o of orders.filter((x) => x.kind === "team_tactics")) {
+    for (const r of o.params.riders) fromOrders.set(r.rider_id, r.effort);
+  }
+  assert.deepEqual([...effortByRider].sort(), [...fromOrders].sort());
+  assert.equal(effortByRider.size, riders.length, "alle holdenes ryttere er AI-ryttere i harnessen");
+});
+
+test("#5571 ordrer: bjergetape i et etapeloeb — sprint-kaptajnerne koerer grupetto og er ude af toget", () => {
+  const riders = population(6, 8);
+  const race = { is_stage_race: true, later_stages: [flatRoute] };
+  const { orders, roles, effortByRider, effect } = buildStageTeamOrders({ riders, route: mountainRoute, race });
+  for (const [riderId, role] of roles) {
+    if (role === "sprint_captain") assert.equal(effortByRider.get(riderId), "grupetto", riderId);
+  }
+  assert.ok(effect.effort.grupetto > 0);
+  for (const leadout of orders.filter((o) => o.kind === "leadout")) {
+    for (const id of leadout.params.leadout_rider_ids) assert.notEqual(effortByRider.get(id), "grupetto");
+  }
+  // Uden loebs-kontekst: ingen grupetto og intet alt-ud (loebet er ukendt).
+  const unknown = buildStageTeamOrders({ riders, route: mountainRoute });
+  assert.equal(unknown.effect.effort.grupetto, 0);
+  assert.equal(unknown.effect.effort.all_out, 0);
 });
 
 test("ordrer: deterministiske — samme felt + samme rute giver identiske ordrer", () => {

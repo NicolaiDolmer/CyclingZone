@@ -108,12 +108,31 @@ test("pairKey parrer samme modul paa tvaers af to indholds-hashes", () => {
 });
 
 test("tillad-listen daekker HTML og release-metadata, og kun det", () => {
+  // #5494: listen er nu index.html + app.html + de 10 oevrige prerendrede
+  // offentlige ruter (dist/<rute>/index.html) + version.json. Literalerne staar
+  // med vilje her og afledes ikke af kilden: en ny variabel sti skal tilfoejes
+  // bevidst BEGGE steder, ellers er gaten ikke laengere en gate.
   assert.deepEqual(
     VARIABLE_PATH_RULES.map((rule) => rule.path).sort(),
-    ["app.html", "index.html", "version.json"]
+    [
+      "app.html",
+      "founder-supporter/index.html",
+      "handelsbetingelser/index.html",
+      "help/index.html",
+      "index.html",
+      "login/index.html",
+      "patch-notes/index.html",
+      "privacy-policy/index.html",
+      "privatlivspolitik/index.html",
+      "roadmap/index.html",
+      "rules/index.html",
+      "terms/index.html",
+      "version.json",
+    ]
   );
   assert.equal(isVariablePath("index.html"), true);
   assert.equal(isVariablePath("app.html"), true);
+  assert.equal(isVariablePath("help/index.html"), true);
   assert.equal(isVariablePath("version.json"), true);
   assert.equal(isVariablePath("assets/index-aaaa1111.js"), false);
   assert.equal(isVariablePath("assets/index-aaaa1111.js.map"), false);

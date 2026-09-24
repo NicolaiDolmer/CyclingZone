@@ -58,6 +58,7 @@ import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { buildDiscordWelcomeNotification } from "./discordWelcomeNotification.js";
 import { captureException } from "./sentry.js";
+import { applySeniorSquadFilter } from "./squads.js";
 
 export const DISCORD_WELCOME_FALLBACK_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -135,11 +136,12 @@ async function defaultClaimTeam({ supabase, teamId, now, leaseMs }) {
 async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
   if (!teamIds.length) return new Map();
   const rows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
-    supabase
-      .from("riders")
-      .select("id, team_id")
-      .in("team_id", chunk)
-      .eq("is_academy", false)
+    applySeniorSquadFilter(
+      supabase
+        .from("riders")
+        .select("id, team_id")
+        .in("team_id", chunk)
+    )
       .eq("is_retired", false)
       .order("id"),
   );

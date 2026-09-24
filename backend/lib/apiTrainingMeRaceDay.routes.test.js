@@ -25,14 +25,30 @@ import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 
-// #4851: vinduet er en HEURISTIK, ikke en kontrakt — det skal bare daekke hele
-// /training/me-handleren. Hævet fra 7200 da traeningsscoren lagde et flag-opslag,
-// en query og et betinget responsfelt ind i samme route; res.json faldt ellers
-// uden for vinduet og guarderne holdt op med at maale noget.
-function routeBlock(marker, len = 9200) {
-  const start = apiSource.indexOf(marker);
+// #5488: api.js staar ikke paa .gitattributes' eol=lf-liste, saa et Windows-
+// checkout med core.autocrlf=true giver CRLF (\r\n). Alle maalinger herunder
+// (routeBlock-vinduet + forward-guardens handlerLength) regner derfor paa en
+// LF-normaliseret kopi af kilden, saa tegn-taellingen er den samme uanset
+// checkoutets linjeskift — ellers puster hvert \r vinduet op og guarden
+// rammer 14000-graensen paa Windows alene, groen paa Linux-CI.
+const apiSourceLF = apiSource.replace(/\r\n/g, "\n");
+
+// VINDUET ER EN HEURISTIK, ikke en kontrakt — det skal bare daekke hele
+// /training/me-handleren. Hævet 7200 → 9200 af #4851 (traeningsscoren lagde et
+// flag-opslag, en query og et betinget responsfelt ind i route'n), 9200 → 10400 af
+// #3643 (mobil-flaget training_mobile_table lagde endnu et flag-opslag +
+// responsfelt ind i samme handler), 10400 → 13000 af #4847 (dayClose-blokken,
+// knappens aabne-tilstand) og 13000 → 14000 af #5462 (skadens loebsdags-felt i
+// condition-projektionen + condition-mappen). Faldt res.json uden for vinduet, holdt guarderne
+// herunder op med at maale noget UDEN at blive roede. Samme fejlklasse hver gang:
+// racingToday-spreadet faldt uden for vinduet og guarden matchede ikke laengere.
+// Testen "routeBlock-vinduet daekker hele /training/me-handleren" nedenfor er
+// forward-guarden: den maaler den FAKTISKE afstand til naeste router.*-kald, saa
+// vinduet ikke kan blive for lille igen uden at noget bliver roedt.
+function routeBlock(marker, len = 14000) {
+  const start = apiSourceLF.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
-  return apiSource.slice(start, start + len);
+  return apiSourceLF.slice(start, start + len);
 }
 
 // Fake app_config-klient: returnerer `valueByKey[key]` for det opslag route'n
@@ -61,6 +77,32 @@ async function trainingMeRaceDayGate(supabase, { isBetaTester = false } = {}, lo
   const racingToday = raceDayDevelopmentOn ? await loader() : {};
   return { ...(raceDayDevelopmentOn ? { racingToday } : {}) };
 }
+
+// FORWARD-GUARD paa selve vinduet (#4847). `routeBlock`s `len` er vokset fire gange
+// (7200 → 9200 → 10400 → 13000), og hver gang paa samme maade: en ny feature lagde et
+// flag-opslag og et responsfelt ind i /training/me, res.json gled ud af vinduet, og
+// doesNotMatch-guarderne herunder holdt stille op med at maale noget. Denne test maaler
+// den FAKTISKE afstand fra markoeren til route'ns afslutning, saa det bliver ROEDT i
+// stedet for tavst naeste gang handleren vokser.
+test("#4847 forward-guard: routeBlock-vinduet daekker hele /training/me-handleren", () => {
+  const marker = 'router.get("/training/me"';
+  const start = apiSourceLF.indexOf(marker);
+  assert.ok(start !== -1, `${marker} skal findes i api.js`);
+  // Naeste route-registrering efter handleren = handlerens ende.
+  const next = apiSourceLF.indexOf("\nrouter.", start + marker.length);
+  assert.ok(next !== -1, "der skal findes en route efter /training/me");
+  const handlerLength = next - start;
+  const block = routeBlock(marker);
+  assert.ok(
+    block.length >= handlerLength,
+    `routeBlock-vinduet (${block.length}) er mindre end /training/me-handleren (${handlerLength}) — haev len i routeBlock, ellers maaler guarderne herunder kun en del af route'n`,
+  );
+  // Og ikke saa stort at vi laeser ind i den NAESTE route (falsk positiv den anden vej).
+  assert.ok(
+    block.length <= handlerLength + 1500,
+    `routeBlock-vinduet (${block.length}) raekker mere end 1500 tegn ind i naeste route (handler: ${handlerLength}) — saenk len`,
+  );
+});
 
 test("api.js importerer racingToday-lookuppet + gater på race_day_development_enabled (#4375)", () => {
   assert.match(

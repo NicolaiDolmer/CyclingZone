@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickNextSelectableRace, selectableRaces } from "./nextSelectableRace.js";
+import { pickNextSelectableRace, selectableRaces, orderedSelectableRaces } from "./nextSelectableRace.js";
 
 // #1681 — discoverability for holdudtagelse. Den rene logik "hvilket kommende løb
 // kan jeg udtage hold til lige nu" skal være enhedstestet, så dashboard-CTA'en
@@ -79,4 +79,42 @@ test("uændret input-array (ingen mutation)", () => {
   const snapshot = races.map((r) => r.id);
   pickNextSelectableRace(races);
   assert.deepEqual(races.map((r) => r.id), snapshot);
+});
+
+// #5301 — Dashboard-nudgen skal kunne SPRINGE afmeldte loeb over, ikke bare
+// stoppe ved det foerste. Den har derfor brug for raekkefoelgen, ikke kun det
+// foerste element. pickNextSelectableRace er nu bygget paa denne.
+test("orderedSelectableRaces: kalenderorden, tidligste foerst", () => {
+  const races = [
+    { id: "c", status: "scheduled", stages: 1, stages_completed: 0, pool_race: { date_text: "20/7" } },
+    { id: "a", status: "scheduled", stages: 1, stages_completed: 0, pool_race: { date_text: "2/7" } },
+    { id: "b", status: "scheduled", stages: 1, stages_completed: 0, pool_race: { date_text: "11/7" } },
+  ];
+  assert.deepEqual(orderedSelectableRaces(races).map((r) => r.id), ["a", "b", "c"]);
+});
+
+test("orderedSelectableRaces: frafiltrerer det samme som selectableRaces (igangvaerende etapeloeb)", () => {
+  const races = [
+    { id: "live", status: "scheduled", stages: 5, stages_completed: 2, pool_race: { date_text: "1/7" } },
+    { id: "open", status: "scheduled", stages: 5, stages_completed: 0, pool_race: { date_text: "2/7" } },
+    { id: "done", status: "completed", stages: 1, stages_completed: 1, pool_race: { date_text: "3/7" } },
+  ];
+  assert.deepEqual(orderedSelectableRaces(races).map((r) => r.id), ["open"]);
+});
+
+test("orderedSelectableRaces: muterer ikke input, og pickNextSelectableRace er foerste element", () => {
+  const races = [
+    { id: "b", status: "scheduled", stages: 1, stages_completed: 0, pool_race: { date_text: "11/7" } },
+    { id: "a", status: "scheduled", stages: 1, stages_completed: 0, pool_race: { date_text: "2/7" } },
+  ];
+  const before = races.map((r) => r.id);
+  const ordered = orderedSelectableRaces(races);
+  assert.deepEqual(races.map((r) => r.id), before, "input skal vaere uroert");
+  assert.equal(pickNextSelectableRace(races)?.id, ordered[0].id);
+});
+
+test("orderedSelectableRaces: tom/ugyldig input giver tom liste", () => {
+  assert.deepEqual(orderedSelectableRaces([]), []);
+  assert.deepEqual(orderedSelectableRaces(null), []);
+  assert.equal(pickNextSelectableRace(null), null);
 });

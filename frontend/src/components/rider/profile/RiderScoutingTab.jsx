@@ -16,9 +16,11 @@ import { useTranslation } from "react-i18next";
 import PotentialeStars from "../../PotentialeStars";
 import { SearchIcon, CheckIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
+import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { formatCz } from "../../../lib/marketValues";
 import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
+import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -120,7 +122,8 @@ function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
 // DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
 // samme tal, og må ikke kunne se forskellige ud.
 // #3746: progLo/progHi + progressionLabel — se TypeRow.
-function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, progressionLabel, loftLabel, loftTitle }) {
+// #5435: `extra` = anlæggets anden rolle, vist inde i samme sektion (kun ny visning).
+function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, progressionLabel, loftLabel, loftTitle, extra = null }) {
   return (
     <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
@@ -156,6 +159,7 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, 
         />
         <LoftTick loft={loft} title={loftTitle} />
       </div>
+      {extra}
     </div>
   );
 }
@@ -195,6 +199,7 @@ function PrecisionNote({ precision, t, lang }) {
 export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
+  const bestRoleOn = useBestRoleDisplay();
   const [report, setReport] = useState(null);   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
   // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
@@ -225,11 +230,12 @@ export default function RiderScoutingTab({ rider, scouting }) {
       const { data } = await getSession();
       const token = data?.session?.access_token;
       if (!token) { setFailed(true); return; }
-      const res = await fetch(`${API}/api/riders/${riderId}/scouting-report`, {
+      const res = await apiFetch(`${API}/api/riders/${riderId}/scouting-report`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // dækker også limited/unauthorized/networkError — alle ender i setFailed(true)
       if (!res.ok) throw new Error("report_failed");
-      setReport(await res.json());
+      setReport(res.data ?? null);
       setFailed(false);
     } catch {
       setFailed(true);
@@ -367,7 +373,18 @@ export default function RiderScoutingTab({ rider, scouting }) {
   // et estimat bevægede sig. Mangler den (ældre payload), falder kortet tilbage
   // til den flade liste af otte, som før.
   const primaryRow = primaryKey ? orderedTypes.find((r) => r.key === primaryKey) : null;
-  const secondaryRows = primaryRow ? orderedTypes.filter((r) => r.key !== primaryRow.key) : orderedTypes;
+  // #5435 (D-049, spec §2): med kontakten tændt deles listen i anlæggets to
+  // roller ("His natural roles") og de seks andre, og loft-tallene er ude
+  // (ejer 21/9). Den naturlige sekundærrolle er rytterens persisterede
+  // secondary_type — samme kilde som badget, så de to aldrig er uenige.
+  const naturalSecondaryRow = bestRoleOn && primaryRow && rider?.secondary_type && rider.secondary_type !== primaryRow.key
+    ? orderedTypes.find((r) => r.key === rider.secondary_type) ?? null
+    : null;
+  const secondaryRows = primaryRow
+    ? orderedTypes.filter((r) => r.key !== primaryRow.key && r.key !== naturalSecondaryRow?.key)
+    : orderedTypes;
+  // Loft-tal vises kun i den gamle visning.
+  const loftOf = (row) => (bestRoleOn ? null : row.loft);
   // Ukendt/manglende scout-provenance (fx ældre klient-cache) degraderer sikkert
   // til "default"-linjen frem for at interpolere undefined navn/tier.
   const isDefaultScout = scoutMeta?.isDefault !== false;
@@ -452,9 +469,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
         {verdict && primaryRow
           && Number.isFinite(primaryRow.progLo ?? primaryRow.ceilLo)
           && Number.isFinite(primaryRow.progHi ?? primaryRow.ceilHi)
-          && Number.isFinite(primaryRow.loft) && (
+          && (bestRoleOn || Number.isFinite(primaryRow.loft)) && (
           <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-3 mb-0 max-w-prose">
-            {t("profile.scouting.verdictText", {
+            {/* #5435: uden loft-tal i den nye visning. */}
+            {t(bestRoleOn ? "profile.scouting.verdictTextNoLoft" : "profile.scouting.verdictText", {
               progLo: primaryRow.progLo ?? primaryRow.ceilLo,
               progHi: primaryRow.progHi ?? primaryRow.ceilHi,
               loft: primaryRow.loft,
@@ -491,7 +509,9 @@ export default function RiderScoutingTab({ rider, scouting }) {
             <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
               {t("profile.scouting.typesTitle")}
             </h3>
-            <span className="text-3xs text-cz-3">{t("profile.scouting.typesSubtitle")}</span>
+            <span className="text-3xs text-cz-3">
+              {t(bestRoleOn ? "profile.scouting.typesSubtitleNoLoft" : "profile.scouting.typesSubtitle")}
+            </span>
           </div>
           {primaryRow && (
             <PrimaryTypeRow
@@ -499,9 +519,17 @@ export default function RiderScoutingTab({ rider, scouting }) {
               now={primaryRow.now}
               progLo={primaryRow.progLo ?? primaryRow.ceilLo}
               progHi={primaryRow.progHi ?? primaryRow.ceilHi}
-              loft={primaryRow.loft}
+              loft={loftOf(primaryRow)}
               label={tTypes(`types.${primaryRow.key}`)}
-              roleLabel={t("profile.scouting.primaryRoleLabel")}
+              roleLabel={t(bestRoleOn ? "profile.scouting.naturalRolesLabel" : "profile.scouting.primaryRoleLabel")}
+              extra={naturalSecondaryRow && (
+                <div className="mt-3" data-testid="scouting-natural-secondary">
+                  <TypeRow typeKey={naturalSecondaryRow.key} now={naturalSecondaryRow.now}
+                    progLo={naturalSecondaryRow.progLo ?? naturalSecondaryRow.ceilLo}
+                    progHi={naturalSecondaryRow.progHi ?? naturalSecondaryRow.ceilHi}
+                    loft={null} label={tTypes(`types.${naturalSecondaryRow.key}`)} />
+                </div>
+              )}
               progressionLabel={t("profile.scouting.primaryProgressionLabel")}
               loftLabel={pastPeak
                 ? t("scouting.loftPastPeakShort", { value: primaryRow.loft })
@@ -513,20 +541,25 @@ export default function RiderScoutingTab({ rider, scouting }) {
           )}
           {primaryRow && secondaryRows.length > 0 && (
             <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2">
-              {t("profile.scouting.otherRolesLabel")}
+              {t(bestRoleOn ? "profile.scouting.otherRolesNaturalLabel" : "profile.scouting.otherRolesLabel")}
             </span>
+          )}
+          {bestRoleOn && primaryRow && secondaryRows.length > 0 && (
+            <p className="text-cz-3 text-3xs mt-0 mb-2">{t("profile.scouting.otherRolesNote")}</p>
           )}
           <div className="space-y-2">
             {secondaryRows.map((row) => (
               <TypeRow key={row.key} typeKey={row.key} now={row.now}
                 progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
-                loft={row.loft} label={tTypes(`types.${row.key}`)}
+                loft={loftOf(row)} label={tTypes(`types.${row.key}`)}
                 loftTitle={pastPeak
                   ? t("scouting.loftPastPeakTitle", { value: row.loft })
                   : t("scouting.loftTitle", { role: tTypes(`types.${row.key}`), value: row.loft })} />
             ))}
           </div>
-          <p className="text-cz-3 text-3xs mt-3 mb-0">{t("profile.scouting.typesLegend")}</p>
+          <p className="text-cz-3 text-3xs mt-3 mb-0">
+            {t(bestRoleOn ? "profile.scouting.typesLegendNoLoft" : "profile.scouting.typesLegend")}
+          </p>
           {/* #3334: den forklaring der var savnet i nosyaras sag — hvorfor
               båndet kan se anderledes ud fra én visning til den næste, og at
               rytterens egne evner aldrig er berørt af det. */}

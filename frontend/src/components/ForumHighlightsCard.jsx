@@ -61,7 +61,11 @@ export default function ForumHighlightsCard() {
                       <span className="sr-only">{t("forum:list.unread")}</span>
                     </span>
                   )}
+                  {/* #5383: titlen klippes haardt i den smalle celle paa mobil.
+                      `title` goer afkortningen tilsigtet OG omgaaelig — hele
+                      overskriften er stadig tilgaengelig uden at aabne traaden. */}
                   <span
+                    title={thread.title}
                     className={`min-w-0 truncate text-[13.5px] text-cz-1 ${thread.is_unread ? "font-semibold" : "font-medium text-cz-2"}`}
                   >
                     {thread.title}

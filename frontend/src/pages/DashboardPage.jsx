@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getRaceDayPoints } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
+import { isNetworkError } from "../lib/networkErrorGuards.ts"; // #5312/#5322
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
@@ -41,7 +42,7 @@ import TodayStagesStrip from "../components/TodayStagesStrip";
 import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
-import { pickNextSelectableRace } from "../lib/nextSelectableRace";
+import { orderedSelectableRaces } from "../lib/nextSelectableRace";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces, filterTeamEnteredRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
@@ -90,6 +91,7 @@ import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEve
 // se komponent-monteringen nederst i filen.
 import NpsPrompt from "../components/NpsPrompt.jsx";
 import { useNpsPrompt } from "../hooks/useNpsPrompt.js";
+import { withActiveSeniorPools } from "../lib/seniorScope.ts";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -98,6 +100,27 @@ const API = import.meta.env.VITE_API_URL;
 // finaliserings-signal — hver etape/løbs-afslutning bumper races-rækken, så UX er
 // identisk, men realtime slipper for at WAL-dekode masseskrivningerne.
 const REALTIME_TABLES = ["seasons", "races"];
+
+/**
+ * #5322 — loeft et "naaede aldrig serveren"-resultat til sidens fejlflade.
+ *
+ * apiFetch kaster ikke laengere ved en transportfejl; den returnerer
+ * `{ networkError: true }`. De to kald nedenfor ligger i loadAll'ets
+ * blokerende Promise.all, hvor en kastet transportfejl FOER #5322 boblede op
+ * i loadAll's catch og gav spilleren "kan ikke naa serveren" (#5312). Uden
+ * dette ville samme fejl nu falde stille ned i `res.ok`-grenen og vise et
+ * halvtomt dashboard uden forklaring. Resultatet kastes som det ER — det
+ * baerer baade flaget og den oprindelige exception, saa isNetworkError paa
+ * fejlfladen kan klassificere det.
+ *
+ * Gaelder KUN de blokerende kald. De best-effort-kald der hver styrer sit
+ * eget lille kort (DASHBOARD_RULES.md §3: et modul maa aldrig vaelte
+ * dashboardet) beholder deres stille fallback.
+ */
+function failOnUnreachable(res) {
+  if (res.networkError) throw res;
+  return res;
+}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -110,6 +133,19 @@ function getAuctionLeaderId(auction) {
   }
   return null;
 }
+
+// #5301: hvor mange kommende loeb nudgen hoejst gaar igennem, naar de foerste er
+// afmeldte.
+//
+// Tallet er MAALT, ikke gaettet. Lidl-Leffe Pro Drinking (D3) havde 16/9 tre
+// afmeldte loeb i TRAEK - Tour Wallon (16/9), Tour Belge (17/9), Tour des Hauts
+// Plateaux (19/9) - foer Danmark Rundt (19/9), som han faktisk stiller op i. Et
+// loft paa 3 ville have tiet om netop det loeb han skulle mindes om. En spiller
+// der melder fra ofte er praecis den nudgen skal virke for.
+//
+// Prisen bæres KUN af den spiller: loekken stopper ved det foerste loeb der ikke
+// er afmeldt, saa normaltilfaeldet er ét kald - uaendret fra foer #5301.
+const SQUAD_NUDGE_LOOKAHEAD = 5;
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -408,7 +444,7 @@ export default function DashboardPage() {
     const boardStatusPromise = token
       ? apiFetch(`${API}/api/board/status`, {
         headers: { Authorization: `Bearer ${token}` },
-      }).then((res) => (res.limited || res.unauthorized ? null : (res.ok ? res.data : null)))
+      }).then(failOnUnreachable).then((res) => (res.limited || res.unauthorized ? null : (res.ok ? res.data : null)))
       : Promise.resolve(null);
 
     // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
@@ -481,11 +517,13 @@ export default function DashboardPage() {
         // for et tomt/ikke-JSON 5xx-svar, og offersRes.received nedenfor ville
         // ellers kaste på en null-læsning i stedet for at falde tilbage.
         ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(failOnUnreachable)
             .then((r) => (r.ok ? (r.data ?? { sent: [], received: [] }) : { sent: [], received: [] }))
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
       // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
-      supabase.from("league_divisions").select("id, tier, pool_index, label"),
+      // #5648 (Y2): kun senior + ikke-pensionerede puljer (spec-s4-struktur risiko 3).
+      withActiveSeniorPools((scope) => scope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
       // #3508: reserveret beløb i førende bud + proxy-max — delt helper med
       // FinancePage (lib/availableBalance.js), se kommentar ved state-deklarationen.
       fetchReservedBalance(supabase, teamData.id),
@@ -632,22 +670,39 @@ export default function DashboardPage() {
   // en trup raceEntryGenerator havde top-fyldt fuldt automatisk (0 manuelle
   // entries) blev fejlagtigt vist som "udtagelse mangler" på Dashboard, selvom
   // løbssiden viste en fuld trup (#3042, Discord-bug 25/7).
+  // #5301: nudgen SPRINGER afmeldte løb over i stedet for at stoppe ved dem.
+  // Endpointet siger nu `withdrawn`, saa nudgen holder op med at bede om en trup
+  // til et løb spilleren har forladt (knud_r_flink 16/9: Tour Wallon, afmeldt ni
+  // dage før). Men den tjekkede kun ÉT løb, saa "tavs ved afmeldt" ville have
+  // skjult et ÆGTE manglende udtag i det NÆSTE løb. Derfor gaas kandidaterne
+  // igennem i kalenderorden indtil ét ikke er afmeldt. Loftet er lavt: nudgen
+  // handler om det nære løb, og hver kandidat koster ét kald.
   useEffect(() => {
     let cancelled = false;
-    const nextRace = pickNextSelectableRace(nextRaces);
-    if (!nextRace || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
+    const candidates = orderedSelectableRaces(nextRaces).slice(0, SQUAD_NUDGE_LOOKAHEAD);
+    if (!candidates.length || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
-      try {
-        const r = await apiFetch(`${API}/api/races/${nextRace.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
-        // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
-        // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
-        // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
-        if (!r.ok || r.limited || r.unauthorized || cancelled) return;
-        if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(r.data) ? nextRace : null);
-      } catch { /* netværk — nudgen forbliver som den var */ }
+      for (const race of candidates) {
+        if (cancelled) return;
+        try {
+          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
+          // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
+          // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
+          // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
+          // Her stopper den ogsaa gennemloebet: et ukendt svar er ikke et bevis paa
+          // at loebet er afmeldt, saa vi maa ikke springe det over og nudge om et
+          // senere loeb i stedet.
+          if (!r.ok || r.limited || r.unauthorized || cancelled) return;
+          if (r.data?.withdrawn) continue; // afmeldt — se efter det naeste loeb
+          if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(r.data) ? race : null);
+          return;
+        } catch { return; /* netværk — nudgen forbliver som den var */ }
+      }
+      // Alle kandidater inden for loftet er afmeldt: intet at minde om.
+      if (!cancelled) setSquadSelectionMissingRace(null);
     })();
     return () => { cancelled = true; };
   }, [nextRaces, team?.id]);
@@ -982,10 +1037,17 @@ export default function DashboardPage() {
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
   // (samme mønster som StandingsPage/#2175); setLoading(true) genviser
   // PageLoader mens den nye forespørgsel er i flugt.
+  // #5312: skeln "naaede aldrig serveren" fra "serveren svarede en fejl".
+  // En spiller hvis netvaerk ikke kan naa backenden fik foer "Kunne ikke
+  // indlaese dashboardet" — en besked der peger paa spillet og ikke giver
+  // ham noget at handle paa. `error` er selve fejl-objektet fra loadAll's
+  // catch, saa klassifikationen kan ske her uden ekstra plumbing.
+  // #5322: `error` kan nu OGSAA vaere apiFetch's resultat (som ikke laengere
+  // kaster ved en transportfejl) — isNetworkError daekker begge former.
   if (error) return (
     <div translate="no" className="max-w-5xl mx-auto">
       <ErrorState
-        title={t("dashboard:loadError")}
+        title={isNetworkError(error) ? t("dashboard:offlineError") : t("dashboard:loadError")}
         action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("dashboard:retry")}</Button>}
       />
     </div>
@@ -1274,10 +1336,31 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — lige under
+          trup-/kontrakt-advarslerne, over dagens etaper (ejer-go 23/9: kortet
+          lå nederst på første skærm på desktop og under folden på telefonen).
+          Samme klasse som de to advarsler ovenfor (docs/DASHBOARD_RULES.md
+          §2): en manager der er ved at miste sin plads skal se det først, og
+          kortet har heller ingen dismiss. Stadig et Card, ikke et banner (§3),
+          og guld-knappen følger uændret computeDashboardGoldCta — står
+          holdudtagelsen eller første-løbs-øjeblikket med guld længere nede,
+          er knappen her sekundær (én guld pr. view). */}
+      {showSeasonSignupCard && (
+        <SeasonSignupCard
+          nextSeasonNumber={seasonSignupStatus?.next_season_number}
+          parked={Boolean(seasonSignupStatus?.parked)}
+          signedUp={Boolean(seasonSignupStatus?.signed_up)}
+          submitting={seasonSignupSubmitting}
+          primary={seasonSignupPrimary}
+          onSignUp={handleSeasonSignup}
+        />
+      )}
+
       {/* #3915 — dagens etaper/løb for holdet, herefter i indholdsflowet (under
           page-header + advarsler ovenfor). #3915 satte den oprindeligt
           allerøverst; ejer besluttede 25/8 at KUN advarsler (trup + kontrakt-
-          fornyelse, se blokken ovenfor) må stå over dagens etaper — se docs/
+          fornyelse, se blokken ovenfor — og fra 23/9 tilmeldingskortet, #452)
+          må stå over dagens etaper — se docs/
           DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
           dag (mindst-støj-valg, ejer 18/8). */}
       <TodayStagesStrip teamId={team?.id} />
@@ -1445,22 +1528,6 @@ export default function DashboardPage() {
           primary={seasonWrapPrimary}
           onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
           onDismiss={dismissSeasonWrap}
-        />
-      )}
-
-      {/* [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — placeret mellem
-          sæson-opsummeringen og sæsonstart-guiden (docs/DASHBOARD_RULES.md §4/
-          §5: ikke en af de historisk ejer-låste rækker i §2, bygget som Card
-          ikke banner jf. §3). Tematisk nabo til de to andre sæson-kort:
-          "sæsonen sluttede" → "beholder du din plads" → "sæsonen startede". */}
-      {showSeasonSignupCard && (
-        <SeasonSignupCard
-          nextSeasonNumber={seasonSignupStatus?.next_season_number}
-          parked={Boolean(seasonSignupStatus?.parked)}
-          signedUp={Boolean(seasonSignupStatus?.signed_up)}
-          submitting={seasonSignupSubmitting}
-          primary={seasonSignupPrimary}
-          onSignUp={handleSeasonSignup}
         />
       )}
 

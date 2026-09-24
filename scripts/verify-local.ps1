@@ -48,7 +48,38 @@ if ($normalizedResolvedRoot -ne $repoRoot) {
   throw "Scriptet kores ikke fra den forventede repo-root. Forventet: $repoRoot. Git siger: $resolvedRoot."
 }
 
-Write-Host "[1/3] Backend tests"
+# #5092: scripts/monday-numbers.test.mjs og scripts/guard-inventory-cell.test.mjs
+# koerte ingen steder i verify-kaeden (ingen test:*-entry, intet workflow-step,
+# ikke her) - "usynlige" for hele kaeden. Kaeder direkte paa node --test (samme
+# moenster som backend/frontend-trinnene nedenfor) i stedet for npm run, saa et
+# manglende npm-script ikke stille springes over. Koeres foerst: rene/billige
+# guards uden build-afhaengighed, samme rationale som now-md-sidecar-guarden i
+# ops-script-tests-jobbet i ci.yml.
+$rootNodeModules = Join-Path $repoRoot "node_modules"
+if (-not (Test-Path $rootNodeModules)) {
+  Write-Warning "Root ops-script-tests (#5092) blev sprunget over, fordi node_modules mangler i repo-roden. Koer npm ci eller stol paa GitHub Actions for gaten."
+} else {
+  Write-Host "[1/4] Root ops-script tests (#5092)"
+  Push-Location $repoRoot
+  try {
+    & $nodePath --test scripts/monday-numbers.test.mjs
+    if ($LASTEXITCODE -ne 0) {
+      exit $LASTEXITCODE
+    }
+
+    & $nodePath --test scripts/guard-inventory-cell.test.mjs
+    if ($LASTEXITCODE -ne 0) {
+      exit $LASTEXITCODE
+    }
+
+    & $nodePath --test scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  } finally {
+    Pop-Location
+  }
+}
+
+Write-Host "[2/4] Backend tests"
 Push-Location (Join-Path $repoRoot "backend")
 try {
   # #3172: brug samme scripts/run-tests.js som `npm test`, ikke rå `node --test`
@@ -72,7 +103,7 @@ if (-not (Test-Path $vitePath)) {
 # extensionless relative imports, men Node's ESM-loader i node --test goer ikke.
 # Uden dette step slipper sadanne imports forbi lokalt og fejler foerst i CI
 # (frontend-build-jobbets "Run frontend tests"). Refs #803.
-Write-Host "[2/3] Frontend tests"
+Write-Host "[3/4] Frontend tests"
 Push-Location (Join-Path $repoRoot "frontend")
 try {
   & $nodePath --test
@@ -83,7 +114,7 @@ try {
   Pop-Location
 }
 
-Write-Host "[3/3] Frontend build"
+Write-Host "[4/4] Frontend build"
 Push-Location (Join-Path $repoRoot "frontend")
 try {
   & $nodePath $vitePath build

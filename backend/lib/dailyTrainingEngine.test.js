@@ -4,12 +4,14 @@ import assert from "node:assert/strict";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
-import { conditionMultiplier, nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
+import { conditionMultiplier, nextFatigue, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "./raceDayDevelopmentFlag.js";
 import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
 import { raceDaySeedKey } from "./trainingRaceDayTick.js";
 import { buildCapsForRider } from "./riderProgression.js";
+import { incidentInjuryUpsertRows } from './raceRunner.js';
+import { resolveIncidentInjuryEndDate } from './injuryRaceDays.js';
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
 // Understøtter: select/eq/in/update/insert/upsert/delete — de operationer engine'n bruger.
@@ -28,6 +30,9 @@ function createMockSupabase(state, opts = {}) {
         if (fop === "gte") return !(row[col] >= val);
         if (fop === "lt") return !(row[col] < val);
         if (fop === "lte") return !(row[col] <= val);
+        // #4850 C2: etape-opslaget bruger TO .in()-filtre paa samme query
+        // (race_id + rider_id), saa .in() rejser nu med i filter-listen.
+        if (fop === "in") return !val.includes(row[col]);
         return row[col] !== val;
       })) return false;
       if (inList && !inList[1].includes(row[inList[0]])) return false;
@@ -57,7 +62,7 @@ function createMockSupabase(state, opts = {}) {
         return builder(table, op, [...filters, [col, val, "lt"]], patch, inList);
       },
       in(col, vals) {
-        return builder(table, op, filters, patch, [col, vals]);
+        return builder(table, op, [...filters, [col, vals, "in"]], patch, inList);
       },
       lte(col, val) {
         return builder(table, op, [...filters, [col, val, "lte"]], patch, inList);
@@ -85,18 +90,21 @@ function createMockSupabase(state, opts = {}) {
           opts.injectUniqueViolation = false; // kun én gang
           return Promise.resolve({ error: { code: "23505", message: "duplicate key" } });
         }
-        // #4846: spejler de TO partielle unikke indexe fra migrationen.
+        // #4846/#4847: spejler de TO partielle unikke indexe fra migrationerne.
         //   game_day IS NULL     → UNIQUE (team_id, tick_date)
-        //   game_day IS NOT NULL → UNIQUE (team_id, season_id, game_day)
+        //   game_day IS NOT NULL → UNIQUE (team_id, season_id, COALESCE(squad,'senior'), game_day)
         // En raekke med game_day kolliderer ALDRIG med en raekke uden (og omvendt),
-        // praecis som partielle indexe opfoerer sig i Postgres.
+        // praecis som partielle indexe opfoerer sig i Postgres. COALESCE'en spejles
+        // ogsaa her: en manglende squad ER 'senior' i noeglen.
         const r = Array.isArray(row) ? row[0] : row;
         const hasGameDay = r.game_day !== null && r.game_day !== undefined;
+        const squadOf = (x) => x.squad ?? "senior";
         const exists = state[table].some((x) => {
           const xHasGameDay = x.game_day !== null && x.game_day !== undefined;
           if (hasGameDay !== xHasGameDay) return false;
           return hasGameDay
-            ? x.team_id === r.team_id && x.season_id === r.season_id && x.game_day === r.game_day
+            ? x.team_id === r.team_id && x.season_id === r.season_id
+              && squadOf(x) === squadOf(r) && x.game_day === r.game_day
             : x.team_id === r.team_id && x.tick_date === r.tick_date;
         });
         if (exists) {
@@ -144,6 +152,10 @@ function createMockSupabase(state, opts = {}) {
           } else if (opts.injectRaceResultsError && table === "race_results") {
             // #3459 D1 fail-safe-test: race_results-lookuppet fejler.
             result = { data: null, error: { message: opts.injectRaceResultsError } };
+          } else if (opts.injectRaceEntryDaysError && table === "race_entry_days") {
+            // #4847: bindings-opslaget fejler. Modsat de to ovenfor er dette IKKE
+            // en best-effort-berigelse — motoren skal KASTE, ikke gaette.
+            result = { data: null, error: { message: opts.injectRaceEntryDaysError } };
           } else if (opts.injectRaceStageProfilesError && table === "race_stage_profiles") {
             // #3459 D2 fail-safe-test: race_stage_profiles-lookuppet (profil-typen) fejler.
             result = { data: null, error: { message: opts.injectRaceStageProfilesError } };
@@ -1377,6 +1389,50 @@ test("#4846 (flag on): to forskellige løbsdage på SAMME kalenderdato kører be
   );
 });
 
+// ── #4847: trup-aksen i nøglen ───────────────────────────────────────────────
+test("#4847 (flag on): reservationen bærer squad, default 'senior'", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  const result = await runDay(state);
+
+  assert.equal(result.squad, "senior", "motoren rapporterer truppen");
+  assert.equal(state.training_day_runs[0].squad, "senior",
+    "uden squad i nøglen kolliderer #4620's U23-akse med senior på samme game_day");
+});
+
+test("#4847 (flag on): motoren AFVISER en ikke-senior trup indtil rytter-udvælgelsen er trup-scopet", async () => {
+  // Nøglen er klar til #4620's tre akser (migrationen), men rytter-queryet vælger
+  // stadig HELE holdet. Et 'u23'-tick ville derfor træne hele truppen én gang til
+  // under en anden nøgle — dobbelt-kredit, ikke en U23-session. Grænsen er dét der
+  // gør det sikkert at have nøglen liggende før #4620 lander.
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  const senior = await runDay(state, { squad: "senior" });
+  assert.equal(senior.alreadyRan, false);
+  assert.equal(senior.squad, "senior");
+
+  await assert.rejects(
+    () => runDay(state, { squad: "u23" }),
+    /squad 'u23' not supported yet/,
+    "en trup uden verificeret medlemskab må ALDRIG kunne åbne en ny nøgle",
+  );
+  assert.equal(state.training_day_runs.length, 1, "afvisningen må ikke efterlade en reservation");
+});
+
+test("#4847 (flag on): ingen manager-bonus på løbsdags-stien", async () => {
+  // Ejer 15/9 (§13.3 beslutning 3): knappen giver ingen fordel, kun utålmodighed.
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  const result = await runDay(state, { executedBy: "manager" });
+
+  assert.equal(result.report.bonus_applied, false,
+    "de 25 % er væk når løbsdagen er tick-enheden (beslutning 2, 6/9)");
+  assert.equal(state.training_day_runs[0].bonus_applied, false);
+});
+
 test("#4846 (flag on): støj-seedet følger løbsdagen, ikke datoen (A3)", async () => {
   const dayA = seedState();
   seedRaceDayTick(dayA, { gameDay: 12 });
@@ -1399,6 +1455,7 @@ test("#4846 (flag on): støj-seedet følger løbsdagen, ikke datoen (A3)", async
         !== JSON.stringify(dayB.rider_derived_abilities[i]?.ability_progress)),
     "to løbsdage samme kalenderdato må ikke give identisk udfald (seed = sæson + løbsdag)",
   );
+  assert.ok(a.report.riders[0].score >= 0 && b.report.riders[0].score >= 0);
   assert.equal(raceDaySeedKey({ seasonId: SEASON_ID, gameDay: 12 }), `${SEASON_ID}#gd12`);
 });
 
@@ -1482,3 +1539,634 @@ test("#4846 (flag off, default): hverken season_id eller game_day skrives — bi
   assert.equal((state.rider_ability_race_day_history ?? []).length, 0, "løbsdags-historikken røres ikke når flaget er off");
 });
 
+
+// ── #4847: ejerens realisme-regler 2 + 3 (18/9) ──────────────────────────────
+//
+// Ejeren gennemgik 18/9 denne PR mod sin egen laaste regel (#5267-kommentaren
+// samme aften) og fandt to brud. Testene herunder er de to fund, hver for sig.
+//
+//   Regel 2 — "Paa en loebsdag koerer rytteren ét loeb ELLER traener. Aldrig
+//              begge." Detektionen hang paa `race_day_development_enabled`, som
+//              er dormant. Med kun `training_tick_per_race_day` taendt var
+//              racedRiderIds derfor ALTID tom, og en rytter der koerte loeb fik
+//              en traeningsdag ovenpaa.
+//   Regel 3 — "Et etapeloeb binder rytteren fra foerste til sidste etape."
+//              Detektionen laeste dagens etaperesultater, ikke rytterens
+//              binding, saa en GT-hviledag faldt igennem til en normal
+//              traeningsdag.
+//
+// Kilden er nu `race_entry_days`, som siden #4217 baerer HELE spaendet
+// min(game_day)..max(game_day) pr. udtagelse — GT-hviledagene inklusive.
+
+/** Bind `riderId` paa `gameDay` — praecis den raekke race_entry_days_rebuild skriver. */
+function seedBinding(state, { riderId = "r1", gameDay = 12, raceId = "race-1" } = {}) {
+  state.race_entry_days = [
+    ...(state.race_entry_days ?? []),
+    { race_id: raceId, rider_id: riderId, season_id: SEASON_ID, game_day: gameDay, team_id: TEAM_ID },
+  ];
+}
+
+test("#4847 regel 3: en GT-HVILEDAG er hvile, ikke traening (bindingen, ikke etaperesultatet, afgoer)", async () => {
+  // Rytteren er inde i et etapeloeb og koerer IKKE i dag — der findes derfor
+  // INTET race_results-hit. Foer denne rettelse betoed det "fri rytter" og gav
+  // ham en helt normal traeningsdag midt i sin Grand Tour.
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 40, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedFlagOn(state, "on");           // udviklingen ER taendt — det er ikke dét der redder os
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedBinding(state, { gameDay: 12 });
+  // Ingen state.race_results: han kaempede ikke i dag, han hvilede.
+
+  const result = await runDay(state, { gameDay: 12 });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.bound_race_day, true, "rytteren ER bundet paa loebsdag 12");
+  assert.equal(rr.race_day, false, "han koerte ingen etape — det er ikke en udviklings-loebsdag");
+  assert.equal(rr.intensity, "rest", "hviledag i et etapeloeb = hvile");
+  assert.deepEqual(rr.gains, {}, "ingen evne-gevinst: han traenede ikke");
+  assert.equal(
+    (state.rider_training_scores ?? []).length, 0,
+    "ingen score-raekke — der var intet pas at maale (spec par. 4.4)",
+  );
+  assert.equal(
+    (state.rider_derived_ability_history ?? []).length, 0,
+    "ingen historik-snapshot paa en dag uden gevinst",
+  );
+  // Restitutionen SKAL stadig koere — en hviledag er ikke en udeblevet dag.
+  assert.equal(state.rider_condition.length, 1);
+  assert.ok(
+    Number(state.rider_condition[0].fatigue) < 40,
+    "traetheden falder paa hviledagen (condition skrives altid)",
+  );
+});
+
+test("#4847 regel 2: en rytter der KOERTE loeb faar INGEN traening — ogsaa naar udviklings-flaget er slukket", async () => {
+  // Dette er praecis ejerens andet fund: med kun training_tick_per_race_day
+  // taendt var racedRiderIds tom, og rytteren fik loeb OG traening samme loebsdag.
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlags(state, { engine: "on", development: "off" }); // udviklingen DORMANT
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedBinding(state, { gameDay: 12 });
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+
+  const result = await runDay(state, { gameDay: 12 });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.bound_race_day, true);
+  assert.equal(rr.race_day, false, "udviklingen er slukket — han faar ingen race-udviklings-dag");
+  assert.deepEqual(rr.gains, {}, "og han faar HELLER INGEN traening: loeb ELLER traening, aldrig begge");
+  // ... men fladen skal stadig kunne vise "loeb" paa den dag. Uden raekken blev
+  // der et hul praecis paa de dage hvor der skete mest (spec par. 4.4).
+  const scores = state.rider_training_scores ?? [];
+  assert.equal(scores.length, 1);
+  assert.equal(scores[0].was_race_day, true);
+  assert.equal(scores[0].score, null, "et loeb har ingen traeningsscore");
+  assert.equal(scores[0].game_day, 12);
+});
+
+test("#4847 regel 2: en FRI rytter paa samme loebsdag traener helt normalt", async () => {
+  // Negativ-kontrol: rettelsen maa ikke slukke for traeningen bredt. Samme
+  // opsaetning som ovenfor, men uden en race_entry_days-raekke.
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlags(state, { engine: "on", development: "off" });
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  // Ingen binding: han er ikke udtaget til noget paa loebsdag 12.
+
+  const result = await runDay(state, { gameDay: 12 });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.bound_race_day, false);
+  assert.equal(rr.intensity, "hard", "programmets intensitet staar uroert");
+  assert.equal((state.rider_training_scores ?? []).length, 1, "en rigtig traeningsdag giver en score-raekke");
+});
+
+test("#4847 regel 2: bindingen er noeglet paa LOEBSDAGEN, ikke paa kalenderdatoen", async () => {
+  // To loebsdage deler samme danske kalenderdato. Rytteren koerte paa loebsdag 12.
+  // race_results (kalenderdags-noeglet) ville sige "racede i dag" paa BEGGE ticks;
+  // bindingen siger korrekt kun loebsdag 12. Uden skaeringen fik han en
+  // udviklings-dag paa loebsdag 13 han aldrig koerte for.
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedBinding(state, { gameDay: 12 });
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+
+  const onRaceDay = await runDay(state, { gameDay: 12 });
+  const onTrainingDay = await runDay(state, { gameDay: 13 });
+
+  assert.equal(onRaceDay.report.riders[0].race_day, true, "loebsdag 12: han koerte");
+  assert.equal(onTrainingDay.report.riders[0].race_day, false,
+    "loebsdag 13 er en anden loebsdag — samme dato, men han koerte ikke DEN dag");
+  assert.equal(onTrainingDay.report.riders[0].bound_race_day, false);
+  assert.equal(onTrainingDay.report.riders[0].intensity, "hard", "loebsdag 13 er en almindelig traeningsdag for ham");
+});
+
+test("#4847: en FEJLET bindings-opslag KASTER — vi gaetter aldrig paa 'loeb ELLER traening'", async () => {
+  // Modsat loebsdags-BERIGELSEN (race_results), som er best-effort. Her ville et
+  // gaet enten give traening oven i et loeb eller tage dagen fra hele truppen.
+  // Tick'et er idempotent og sweepens dags-claim saettes kun ved failed === 0,
+  // saa den rigtige adfaerd er at fejle holdet og lade naeste tick proeve igen.
+  const state = seedState();
+  seedFlagOn(state, "on");
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  await assert.rejects(
+    () => runTeamTrainingDay({
+      supabase: createMockSupabase(state, { injectRaceEntryDaysError: "entry days boom" }),
+      teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "assistant", now: NOW, gameDay: 12,
+    }),
+    /race-day binding load/,
+  );
+  assert.equal(
+    (state.training_day_runs ?? []).length, 0,
+    "Phase 1-fejlen sletter reservationen, saa naeste tick kan proeve samme loebsdag igen",
+  );
+});
+
+test("#4847 (flag off): bindingen slaas ALDRIG op — den gamle sti er bit-identisk", async () => {
+  // Flag off maa ikke koste et eneste ekstra DB-kald, og en race_entry_days-raekke
+  // maa ikke kunne paavirke kalenderdags-stien.
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedRaceDayTick(state, { gameDay: 12, value: "off" });
+  seedBinding(state, { gameDay: 12 });
+
+  const result = await runDay(state);
+
+  const rr = result.report.riders[0];
+  assert.equal(result.gameDay, null, "den gamle kalenderdags-sti");
+  assert.equal(rr.bound_race_day, false, "ingen binding uden en loebsdag at binde paa");
+  assert.equal(rr.intensity, "hard", "rytteren traener praecis som i dag");
+  assert.equal((state.rider_training_scores ?? []).length, 1);
+});
+
+// ── #5462: skadesvarighed i LOEBSDAGE (ejer-laast 15/9, §13.3 pkt. 7) ────────
+//
+// Skriver 1 af 2 (traeningsskaden). Skriver 2 (styrt i loeb) og udtagelses-gaten
+// maales i injuryRaceDaysWriters.test.js; den rene akse-matematik i
+// injuryRaceDays.test.js.
+
+// S4-formen: flere loebsdage pr. KALENDERDATO (CALENDAR_RULES §1e-b). Det er
+// praecis dét der goer forskellen paa de to akser maalbar — loebsdag 13 og 14
+// ligger paa SAMME dato som loebsdag 12.
+const INJURY_DATE_BY_GAME_DAY = Object.fromEntries(Array.from({ length: 35 }, (_, i) => [
+  12 + i, new Date(Date.UTC(2026, 5, 12 + Math.floor(i / 5))).toISOString().slice(0, 10),
+]));
+
+function seedInjuryCalendar(state) {
+  state.race_stage_schedule = Object.entries(INJURY_DATE_BY_GAME_DAY).map(([gd, date]) => ({
+    race_id: "race-1", stage_number: Number(gd) - 11, game_day: Number(gd),
+    scheduled_at: `${date}T${Number(gd) === 12 ? '06' : '09'}:00:00Z`,
+  }));
+}
+
+// Find et rytter-id der FAKTISK ruller en skade paa det givne seed-scope.
+// Bevidst SOEGT frem for hardkodet: skade-rullet er en hash af (rytter, scope),
+// og et hardkodet id ville vaere en tavs no-op-test den dag scopet aendres.
+function findInjuringRider(seedScope, fatigue = 95) {
+  const risk = injuryRisk({ intensity: "hard", fatigue });
+  assert.ok(risk > 0, "testen forudsaetter en reel skaderisiko ved hard + hoej traethed");
+  for (let i = 1; i <= 500; i++) {
+    const id = `inj-${i}`;
+    const roll = rollInjury({ riderId: id, dateStr: seedScope, risk });
+    if (roll.injured) return { id, days: roll.days };
+  }
+  throw new Error("fandt intet rytter-id der ruller en skade — juster soegningen");
+}
+
+function seedInjuryRider(id, extraCondition = {}) {
+  return seedState({
+    riders: [makeRider({ id })],
+    abilities: [makeAbilityRow(id)],
+    conditions: [makeCondition(id, { fatigue: 95, form: 50, ...extraCondition })],
+    plans: [{ rider_id: id, team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+}
+
+test("#5462 (flag on): en ny traeningsskade varer akse-skalerede LOEBSDAGE, og injured_until er slut-loebsdagens dato", async () => {
+  const { id, days } = findInjuringRider(raceDaySeedKey({ seasonId: SEASON_ID, gameDay: 12 }));
+  const state = seedInjuryRider(id);
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+
+  const result = await runDay(state, { seasonNumber: 4 });
+
+  assert.equal(result.report.riders[0].injury_days, days, "rapporten baerer stadig varigheden");
+  const cond = state.rider_condition.find((c) => c.rider_id === id);
+  assert.equal(cond.injury_end_game_day, 12 + days * 5, "slut-loebsdag = start + skaleret varighed");
+  assert.equal(cond.injury_season_id, SEASON_ID, "aksen er saeson-relativ og kan ikke baere betydningen alene");
+  assert.equal(cond.injury_race_days_left, days * 5 + 1, "resten taelles INKLUSIV den indevaerende loebsdag");
+  assert.equal(cond.injury_cause, "training_overload");
+  assert.equal(
+    cond.injured_until, INJURY_DATE_BY_GAME_DAY[12 + days * 5],
+    "injured_until er UDLEDT af slut-loebsdagen — gaten og alle flader laeser derfor det samme felt",
+  );
+});
+
+test("#5462 (flag off): BIT-IDENTISK — kalenderdato, og ingen af de tre loebsdags-kolonner skrives", async () => {
+  // Kalenderstiens seed er tick-DATOEN, ikke loebsdagen.
+  const { id, days } = findInjuringRider("2026-06-12");
+  const state = seedInjuryRider(id);
+  seedRaceDayTick(state, { gameDay: 12, value: "off" });
+  seedInjuryCalendar(state);
+
+  await runDay(state);
+
+  const cond = state.rider_condition.find((c) => c.rider_id === id);
+  const forventet = new Date(Date.UTC(2026, 5, 12 + days)).toISOString().slice(0, 10);
+  assert.equal(cond.injured_until, forventet, "tickDate + N KALENDERDAGE, praecis som foer #5462");
+  for (const kolonne of ["injury_end_game_day", "injury_season_id", "injury_race_days_left"]) {
+    assert.ok(!(kolonne in cond), `${kolonne} maa ikke findes i payloaden naar flaget er off`);
+  }
+});
+
+test("#5462 (flag on): raskmeldingen foelger LOEBSDAGEN, ikke datoen", async () => {
+  // Slut-loebsdagen er passeret (11 < 12), men datoen ligger langt ude i fremtiden.
+  // Paa dato-aksen ville rytteren stadig vaere skadet; paa loebsdags-aksen er han rask.
+  const state = seedInjuryRider("r-healed", {
+    fatigue: 20,
+    injured_until: "2026-06-30",
+    injury_end_game_day: 11,
+    injury_season_id: SEASON_ID,
+    injury_race_days_left: 1,
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+
+  const result = await runDay(state);
+
+  assert.equal(result.report.riders[0].injured, false, "\"tilbage om N loebsdage\" betyder praecis dét");
+  const cond = state.rider_condition.find((c) => c.rider_id === "r-healed");
+  assert.equal(cond.injured_until, null);
+  assert.equal(cond.injury_end_game_day, null);
+  assert.equal(cond.injury_season_id, null);
+  assert.equal(cond.injury_race_days_left, null);
+});
+
+test('#5462 delayed crash date survives the next training tick beyond the old axis endpoint', async () => {
+  const [crash] = incidentInjuryUpsertRows({ incidents: [{ rider_id: 'fixture-delayed', kind: 'crash',
+    outcome: 'abandon', injury_days: 1, stage_number: 1 }], todayStr: '2026-06-12',
+    gameDayByStage: new Map([[1, 0]]), seasonId: SEASON_ID, seasonNumber: 4, raceDayInjuries: true });
+  const protectedCondition = resolveIncidentInjuryEndDate(crash, '2026-06-10');
+  const state = seedInjuryRider('fixture-delayed', { fatigue: 20, ...protectedCondition });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+  const result = await runDay(state, { seasonNumber: 4, gameDay: 12 });
+  const condition = state.rider_condition.find(c => c.rider_id === 'fixture-delayed');
+  assert.equal(result.report.riders[0].injured, true);
+  assert.equal(condition.injured_until, '2026-06-13');
+  assert.equal(condition.injury_end_game_day, null);
+  assert.equal(condition.injury_race_days_left, null);
+});
+
+test('#5462 rollover keeps the date fallback and clears the previous season axis', async () => {
+  const state = seedInjuryRider('fixture-rollover', { fatigue: 20, injured_until: '2026-06-15',
+    injury_end_game_day: 145, injury_season_id: 'previous-season', injury_race_days_left: 20 });
+  seedRaceDayTick(state, { gameDay: 0 });
+  state.race_stage_schedule.push({ race_id: 'race-1', stage_number: 2, game_day: 145, scheduled_at: '2026-07-10T09:00:00Z' });
+  const result = await runDay(state, { seasonNumber: 5, gameDay: 0 });
+  assert.equal(result.report.riders[0].injured, true);
+  const condition = state.rider_condition.find(c => c.rider_id === 'fixture-rollover');
+  assert.equal(condition.injured_until, '2026-06-15');
+  assert.equal(condition.injury_end_game_day, null);
+  assert.equal(condition.injury_season_id, null);
+  assert.equal(condition.injury_race_days_left, null);
+});
+
+test("#5462 overgangen: en skade fra FOER flippet loeber faerdig paa KALENDERDAGE", async () => {
+  // Ingen af de tre loebsdags-kolonner er sat (migrationen skriver dem ikke).
+  // Skaden maa ikke skifte betydning tavst, saa datoen bliver ved med at gaelde.
+  const state = seedInjuryRider("r-legacy", { fatigue: 20, injured_until: "2026-06-15" });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedInjuryCalendar(state);
+
+  const result = await runDay(state);
+
+  assert.equal(result.report.riders[0].injured, true, "stadig skadet — datoen ligger i fremtiden");
+  const cond = state.rider_condition.find((c) => c.rider_id === "r-legacy");
+  assert.equal(cond.injured_until, "2026-06-15", "datoen roeres ikke af flippet");
+  assert.equal(cond.injury_end_game_day, null, "en gammel skade faar ikke en opfundet loebsdag");
+});
+
+// ── #4850 spor C2: loebsdags-udbytte variant A + praecist etape-opslag ────────
+//
+// Ejer 24/9: "etapens profil [...] i et fast tempo svarende til et 'mellem'-
+// traeningspas, under reglen maks +1 pr. evne pr. dag. Planen er IKKE input."
+// Kilden til "koerte han i dag" er nu race_results ⋈ race_stage_schedule paa
+// loebsdagen (raceDayStageLookup.js), ikke bindingen — se risiko 1 nedenfor.
+
+import { RACE_DAY_FOCUS } from "./raceDayYield.js";
+
+/** Rytteren koerte `stageNumber` i `raceId`; etapen ligger paa `gameDay` med `profile`. */
+function seedRodeStage(state, { riderId = "r1", raceId = "race-1", stageNumber = 1, gameDay = 12, profile = "mountain" } = {}) {
+  state.race_stage_schedule = [
+    ...(state.race_stage_schedule ?? []).filter((s) => !(s.race_id === raceId && s.stage_number === stageNumber)),
+    { race_id: raceId, stage_number: stageNumber, game_day: gameDay, scheduled_at: "2026-06-12T06:00:00Z" },
+  ];
+  if (!(state.races ?? []).some((r) => r.id === raceId)) {
+    state.races = [...(state.races ?? []), { id: raceId, season_id: SEASON_ID, league_division_id: DIVISION_ID }];
+  }
+  state.race_results = [
+    ...(state.race_results ?? []),
+    { rider_id: riderId, result_type: "stage", race_id: raceId, stage_number: stageNumber, imported_at: IMPORTED_AT_TODAY },
+  ];
+  state.race_stage_profiles = [
+    ...(state.race_stage_profiles ?? []),
+    { race_id: raceId, stage_number: stageNumber, profile_type: profile },
+  ];
+}
+
+const REST_PLAN = { rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "sprint", intensity: "rest" };
+
+test("#4850 C2 risiko 1: et AFSLUTTET loeb (bindingen slettet) giver ALDRIG almindelig traening oven i loebet", async () => {
+  // race_entry_days_rebuild fjerner bindingen ved status `completed`, og sweepen
+  // koerer efter dagens sidste finalisering. Foer C2 hang "koerte i dag" paa
+  // bindingen: uden raekken var rytteren "fri" og fik sit haarde pas oven i loebet.
+  for (const development of ["off", "on"]) {
+    const state = seedState({
+      conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+      plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+      abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999, sprint: 0.999 } })],
+    });
+    seedRaceDayTick(state, { gameDay: 12 });
+    seedFlags(state, { engine: "on", development });
+    state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+    seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+    assert.equal(state.race_entry_days, undefined, "ingen binding: loebet er afsluttet");
+
+    const result = await runDay(state, { gameDay: 12 });
+    const rr = result.report.riders[0];
+
+    assert.equal(rr.bound_race_day, true, `[${development}] at koere loebet binder ham, ogsaa uden bindings-raekke`);
+    assert.notEqual(rr.intensity, "hard", `[${development}] planens haarde pas koerer IKKE oven i loebet`);
+    assert.equal(rr.gains.sprint, undefined, `[${development}] plan-fokus (sprint) faar ingen +1 fra et bjergloeb`);
+    if (development === "off") {
+      assert.equal(rr.race_day, false);
+      assert.equal(rr.intensity, "rest", "udviklingen slukket: hvile, som i dag");
+      assert.deepEqual(rr.gains, {}, "ingen gevinst overhovedet");
+    } else {
+      assert.equal(rr.race_day, true);
+      assert.equal(rr.intensity, "race");
+      assert.equal(rr.gains.climbing, 1, "bjergetapen giver klatring");
+    }
+  }
+});
+
+test("#4850 C2 (flag off): race_day_development_enabled off = INGEN aendring — hvile paa loebsdagen, score-raekke 'loeb'", async () => {
+  const state = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlags(state, { engine: "on", development: "off" });
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedBinding(state, { gameDay: 12 });
+  seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+  const abilitiesBefore = JSON.parse(JSON.stringify(state.rider_derived_abilities));
+
+  const result = await runDay(state, { gameDay: 12 });
+  const rr = result.report.riders[0];
+
+  assert.equal(rr.race_day, false);
+  assert.equal(rr.intensity, "rest");
+  assert.deepEqual(rr.gains, {});
+  assert.deepEqual(
+    state.rider_derived_abilities.map(({ ability_caps: _c, ...rest }) => rest),
+    abilitiesBefore.map(({ ability_caps: _c, ...rest }) => rest),
+    "evner og fremdrift er uroerte (kun caps genberegnes, som altid)",
+  );
+  const scores = state.rider_training_scores ?? [];
+  assert.equal(scores.length, 1);
+  assert.equal(scores[0].was_race_day, true);
+  assert.equal(scores[0].score, null);
+  assert.equal((state.rider_ability_race_day_history ?? []).length, 0, "ingen udviklings-snapshot uden udvikling");
+});
+
+test("#4850 C2: en racer med HVILE-plan udvikler sig alligevel (planen er ikke input)", async () => {
+  const state = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedBinding(state, { gameDay: 12 });
+  seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+
+  const result = await runDay(state, { gameDay: 12 });
+  const rr = result.report.riders[0];
+
+  assert.equal(rr.race_day, true);
+  assert.equal(rr.gains.climbing, 1, "hvile-planen gav 0 foer (TRAINING_RULES §6.2); nu giver bjergetapen klatring");
+  assert.ok(rr.score > 0, "loebsdagen har et udbytte");
+  assert.equal(rr.focus_source, "plan", "rapportens plan-felter roeres ikke");
+  const row = state.rider_derived_abilities[0];
+  assert.equal(row.climbing, 51);
+  assert.ok(row.ability_progress.endurance > 0, "de oevrige profil-evner faar fremdrift");
+});
+
+test("#4850 C2: bjergetape traener klatring, rullende etape traener tempo — og profilen foelger LOEBSDAGEN, ikke datoen", async () => {
+  // To loebsdage samme kalenderdato: bjerg paa 12, rullende paa 13. Den gamle
+  // kalenderdags-noegle lod "sidste raekke vinde" for begge ticks. (Rytteren er
+  // klatrer: spurt-evnerne ligger paa deres loft og kan ikke bruges som maaler,
+  // derfor tempo.)
+  const state = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999, tempo: 0.5 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedRodeStage(state, { raceId: "race-1", stageNumber: 1, gameDay: 12, profile: "mountain" });
+  seedRodeStage(state, { raceId: "race-2", stageNumber: 1, gameDay: 13, profile: "rolling" });
+
+  const mountainDay = await runDay(state, { gameDay: 12 });
+  const m = mountainDay.report.riders[0];
+  assert.equal(m.race_day, true);
+  assert.equal(m.gains.climbing, 1, "loebsdag 12: klatring");
+  assert.equal(m.gains.tempo, undefined, "loebsdag 12: tempo er off-fokus (0,35) og krydser ikke 1");
+  const after12 = { ...state.rider_derived_abilities[0].ability_progress };
+  assert.ok(after12.tempo > 0.5 && after12.tempo < 0.999, "off-fokus gav tempo lidt fremdrift (S1: mellem-pas med off-fokus)");
+
+  const rollingDay = await runDay(state, { gameDay: 13 });
+  const r = rollingDay.report.riders[0];
+  assert.equal(r.race_day, true, "loebsdag 13 er ogsaa en loebsdag for ham (race-2)");
+  assert.equal(r.gains.climbing, undefined, "loebsdag 13: ikke klatring");
+  const after13 = state.rider_derived_abilities[0].ability_progress;
+  const tempoDelta = after13.tempo - after12.tempo;
+  const climbingDelta = after13.climbing - after12.climbing;
+  assert.ok(tempoDelta > climbingDelta, `loebsdag 13: tempo (fokus, ${tempoDelta.toFixed(3)}) vokser mere end klatring (off-fokus, ${climbingDelta.toFixed(3)})`);
+  assert.ok(climbingDelta > 0 && climbingDelta < tempoDelta * 0.5, "klatring faar kun off-fokus-andelen");
+});
+
+test("#4850 C2: aldrig +2 i samme evne paa én loebsdag, og overskuddet baeres videre (ikke klippet)", async () => {
+  const state = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 2.4 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+
+  const result = await runDay(state, { gameDay: 12 });
+  const rr = result.report.riders[0];
+  assert.equal(rr.gains.climbing, 1, "loftet: praecis +1");
+  const progress = state.rider_derived_abilities[0].ability_progress.climbing;
+  assert.ok(progress >= 1.4, `resten (${progress}) baeres videre til naeste loebsdag i stedet for at klippes til 0,999`);
+});
+
+test("#4850 C2: den gamle kalenderdags-sti (tick pr. loebsdag off) faar OGSAA +1-loftet paa loebs-grenen", async () => {
+  // Ikke en prod-tilstand (begge flag flippes sammen 28/9), men reglen "aldrig +2
+  // samme dag" gaelder loebs-grenen uanset tick-enhed (spec punkt 6).
+  const state = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 2.4 } })],
+  });
+  seedFlagOn(state, "on");
+  state.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  state.race_stage_profiles = [{ race_id: "race-1", stage_number: 1, profile_type: "mountain" }];
+
+  const result = await runDay(state);
+  assert.equal(result.gameDay, null, "kalenderdags-stien");
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, true);
+  assert.equal(rr.gains.climbing, 1, "+1, ikke +2");
+});
+
+test("#4850 C2: skadet racer faar intet tick, og en GT-hviledag er stadig hvile", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })],
+    abilities: [
+      makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } }),
+      makeAbilityRow("r2", { ability_progress: { climbing: 0.999 } }),
+    ],
+    conditions: [makeCondition("r1", { injured_until: "2026-06-20" }), makeCondition("r2")],
+    plans: [REST_PLAN, { ...REST_PLAN, rider_id: "r2", intensity: "hard" }],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedRodeStage(state, { riderId: "r1", gameDay: 12, profile: "mountain" }); // skadet, men med et resultat
+  seedBinding(state, { riderId: "r2", gameDay: 12 });                          // bundet, koerte ikke
+
+  const result = await runDay(state, { gameDay: 12 });
+  const r1 = result.report.riders.find((r) => r.rider_id === "r1");
+  const r2 = result.report.riders.find((r) => r.rider_id === "r2");
+  assert.equal(r1.injured, true);
+  assert.equal(r1.race_day, false, "skaden har forrang");
+  assert.deepEqual(r1.gains, {});
+  assert.equal(r2.bound_race_day, true);
+  assert.equal(r2.race_day, false);
+  assert.equal(r2.intensity, "rest", "GT-hviledag: hvile, ikke traening (regel 3)");
+  assert.deepEqual(r2.gains, {});
+});
+
+test("#4850 C2: udviklings-loebsdagen skrives som source 'race_development' med session 'race_day'", async () => {
+  const state = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+
+  await runDay(state, { gameDay: 12 });
+
+  const hist = state.rider_ability_race_day_history ?? [];
+  assert.equal(hist.length, 1);
+  assert.equal(hist[0].source, "race_development", "UI og maalinger kan skelne loebsdag fra traeningsdag");
+  assert.equal(hist[0].game_day, 12);
+  const scores = state.rider_training_scores ?? [];
+  assert.equal(scores.length, 1);
+  assert.equal(scores[0].was_race_day, true);
+  assert.equal(scores[0].score, null, "fladen viser 'loeb', ikke et tal (spec par. 4.4)");
+  assert.equal(scores[0].session, RACE_DAY_FOCUS);
+  assert.equal(scores[0].day_type, "training", "et mellem-pas, ikke en haandvaerksdag");
+});
+
+test("#4850 C2: ukendt profil falder til 'rolling' (udvikling anvendes stadig), og en fejlet profil-query er best-effort", async () => {
+  const state = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { tempo: 0.999 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedFlagOn(state, "on");
+  state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+  state.race_stage_profiles = []; // ingen profil-raekke
+
+  const result = await runDay(state, { gameDay: 12 });
+  assert.equal(result.report.riders[0].gains.tempo, 1, "rolling: punch/tempo/endurance");
+
+  const state2 = seedState({
+    plans: [REST_PLAN],
+    abilities: [makeAbilityRow("r1", { ability_progress: { tempo: 0.999 } })],
+  });
+  seedRaceDayTick(state2, { gameDay: 12 });
+  seedFlagOn(state2, "on");
+  state2.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+  seedRodeStage(state2, { gameDay: 12, profile: "mountain" });
+  const result2 = await runTeamTrainingDay({
+    supabase: createMockSupabase(state2, { injectRaceStageProfilesError: "profiles boom" }),
+    teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "assistant", now: NOW, gameDay: 12,
+  });
+  assert.equal(result2.alreadyRan, false, "dagen vaeltes ikke af en fejlet berigelse");
+  assert.equal(result2.report.riders[0].race_day, true);
+  assert.equal(result2.report.riders[0].gains.tempo, 1, "fallback rolling");
+});
+
+test("#4850 C2: et FEJLET etape-opslag KASTER paa loebsdags-aksen — vi gaetter aldrig paa 'loeb ELLER traening'", async () => {
+  // Samme kontrakt som bindingen (#4847). Paa den gamle kalenderdags-sti er
+  // race_results-opslaget stadig best-effort (test "D1 fail-safe" ovenfor).
+  const state = seedState();
+  seedFlagOn(state, "on");
+  seedRaceDayTick(state, { gameDay: 12 });
+
+  await assert.rejects(
+    () => runTeamTrainingDay({
+      supabase: createMockSupabase(state, { injectRaceResultsError: "results boom" }),
+      teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "assistant", now: NOW, gameDay: 12,
+    }),
+    /race-day stage lookup/,
+  );
+  assert.equal((state.training_day_runs ?? []).length, 0, "reservationen slettes, naeste sweep proever igen");
+});
+
+test("#4850 C2 (tick pr. loebsdag off): bit-identisk — etape-opslaget koerer aldrig, og udvikling off aendrer intet", async () => {
+  const state = seedState({
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+  });
+  seedRaceDayTick(state, { gameDay: 12, value: "off" });
+  // Udviklingen off (ingen app_config-raekke = fail-safe off).
+  seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+
+  const result = await runDay(state);
+  assert.equal(result.gameDay, null);
+  const rr = result.report.riders[0];
+  assert.equal(rr.race_day, false);
+  assert.equal(rr.bound_race_day, false);
+  assert.equal(rr.intensity, "hard", "rytteren traener praecis som i dag");
+  assert.ok(rr.gains.climbing >= 1);
+});

@@ -3,6 +3,7 @@ import { Navigate } from "react-router";
 import { supabase } from "../lib/supabase";
 import { Button, Card, Chip, EmptyState, ErrorState, PageLoader, SkeletonLines, Textarea } from "../components/ui";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 
 // #3138 — ejerens fair-play review-kø: viser fairplay_flags (det daglige
 // scoring-sweeps mistænkte hændelser) med evidens i klar tekst, og lader
@@ -175,7 +176,7 @@ export default function AdminFairplayPage() {
   const load = useCallback(async (currentScope) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await fetch(`${API}/api/admin/fairplay/flags?status=${currentScope === "all" ? "all" : "open"}`, {
+      const res = await apiFetch(`${API}/api/admin/fairplay/flags?status=${currentScope === "all" ? "all" : "open"}`, {
         headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -194,7 +195,7 @@ export default function AdminFairplayPage() {
     async (id, status, ownerNote) => {
       setBusy(true);
       try {
-        const res = await fetch(`${API}/api/admin/fairplay/flags/${id}`, {
+        const res = await apiFetch(`${API}/api/admin/fairplay/flags/${id}`, {
           method: "POST",
           headers: await getAuth(),
           body: JSON.stringify({ status, owner_note: ownerNote }),

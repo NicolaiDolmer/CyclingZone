@@ -403,6 +403,11 @@ test("hook'en scoper til de etaper finaliseringen dækker", async () => {
           update: () => ({ eq: async () => ({ error: null }) }),
         };
       }
+      // #5537: race-objektet fra raceRunner bærer ikke `squad`, så krogen slår
+      // truppen op (kun seniorløb giver omdømme).
+      if (table === "races") {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { squad: "senior" }, error: null }) }) }) };
+      }
       throw new Error(`uventet tabel ${table}`);
     },
   };

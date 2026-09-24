@@ -33,6 +33,7 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { logEvent } from "../lib/logEvent";
 import { computeBidRoom } from "../lib/auctionBidRoom";
+import { fetchAcademySquadCounts, EMPTY_SQUAD_COUNTS } from "../lib/squadCaps.ts"; // #5568
 import { BidRoomBlockNotice, BidDestinationHint } from "../components/AuctionBidRoomNotice";
 import {
   isOverbidEvent,
@@ -55,6 +56,8 @@ import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { parseAmountInput } from "../lib/amountInput.js";
 import { riderOverallRating } from "../lib/riderRating";
+import { useBestRoleDisplay, useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import BestRoleTag, { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import SortTh from "../components/rider/RiderSortTh";
@@ -193,7 +196,7 @@ function AuctionLeaderLine({ auction, t, className = "" }) {
   );
 }
 
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -206,7 +209,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   const canBid    = !isMyRider && auction.status !== "completed";
   // #2701 bud-gate: ung rytter egnet til både senior og akademi. Et forsvars-bud
   // (imWinning) blokeres aldrig — du fører allerede.
-  const bidRoom   = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
+  const bidRoom   = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academySquadCounts, birthdate: r?.birthdate, seasonYear });
   const roomBlocked = canBid && !imWinning && bidRoom.blocked;
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
@@ -387,13 +390,16 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
       {/* OVR — spillets samlede 1-99-rating (type-vægtet, #2000/#2464) */}
       <td className="px-2 py-1.5 text-center">
-        <span
-          className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded-cz"
-          style={statStyle(ovr, { scale: "rating" })}
-          title={t("auctions:table.ovrTitle")}
-        >
-          {ovr || "—"}
-        </span>
+        {/* #5435: bedste rolle nu ved tallet når kontakten er tændt. */}
+        <WithBestRole rider={r}>
+          <span
+            className="inline-block min-w-[28px] text-center text-xs font-mono font-bold px-1 py-0.5 rounded-cz"
+            style={statStyle(ovr, { scale: "rating" })}
+            title={t("auctions:table.ovrTitle")}
+          >
+            {ovr || "—"}
+          </span>
+        </WithBestRole>
       </td>
 
       {/* Potentiale */}
@@ -423,11 +429,11 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-table-col min-w-[260px] border-l border-cz-border transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           roomBlocked ? (
-            <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
+            <BidRoomBlockNotice reason={bidRoom.reason} squad={bidRoom.academySquad} max={bidRoom.academyMax} t={t} />
           ) : (
           <div className="flex flex-col gap-0.5">
             {auction.is_youth && bidRoom.destination && (
-              <BidDestinationHint destination={bidRoom.destination} t={t} />
+              <BidDestinationHint destination={bidRoom.destination} squad={bidRoom.academySquad} t={t} />
             )}
             {/* #228 v2: input + Byd + autobud på ÉN vandret linje. Kolonnen er
                 udvidet (260px) og input smallere (w-20) så de tre elementer
@@ -554,8 +560,9 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
+  const bestRoleOn = useBestRoleDisplay(); // #5435
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
@@ -564,7 +571,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   const isOverbid = isOverbidForMe(auction, myTeamId);
   const canBid = !isMyRider && auction.status !== "completed";
   // #2701 bud-gate (samme logik som AuctionRow).
-  const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
+  const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academySquadCounts, birthdate: r?.birthdate, seasonYear });
   const roomBlocked = canBid && !imWinning && bidRoom.blocked;
   // #3071: sæson-år (fra seasonYear-prop, useActiveSeasonYear i AuctionsPage), ikke wall-clock.
   const age = ageForSeason(r?.birthdate, seasonYear);
@@ -626,7 +633,19 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                   {ovr}
                 </span>
               )}
-              {r?.primary_type && (
+              {/* #5435 (D-049): kontakten tændt → "54 Climber" = bedste rolle nu,
+                  og anlægget står bagefter med sin egen etiket, så de to roller
+                  aldrig kan forveksles. Slukket: uændret. */}
+              {bestRoleOn ? (
+                <>
+                  {Number.isFinite(ovr) && <BestRoleTag rider={r} variant="full" />}
+                  {r?.primary_type && (
+                    <span className="text-cz-3 text-xs" data-testid="auction-card-natural-role">
+                      {t("riderTypes:natural.label")}: {t(`riderTypes:types.${r.primary_type}`)}
+                    </span>
+                  )}
+                </>
+              ) : r?.primary_type && (
                 <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
               )}
               {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill font-bold">{t("auctions:badge.firstBidPick")}</span>}
@@ -763,11 +782,11 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
       <div className="mt-4">
         {canBid ? (
           roomBlocked ? (
-            <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
+            <BidRoomBlockNotice reason={bidRoom.reason} squad={bidRoom.academySquad} max={bidRoom.academyMax} t={t} />
           ) : (
           <div className="flex flex-col gap-1">
             {auction.is_youth && bidRoom.destination && (
-              <BidDestinationHint destination={bidRoom.destination} t={t} />
+              <BidDestinationHint destination={bidRoom.destination} squad={bidRoom.academySquad} t={t} />
             )}
             {/* #228: autobud-knappen/-badget flyttet vandret til højre for bud-
                 knappen (side om side, ikke stablet under). flex-wrap er kun en
@@ -908,7 +927,8 @@ export default function AuctionsPage() {
   const [myBalance, setMyBalance] = useState(0);
   const [currentRiderCount, setCurrentRiderCount] = useState(null);
   // #2701: akademi-tal til bud-gaten (ung rytter egnet til både senior og akademi).
-  const [academyCount, setAcademyCount] = useState(null);
+  // #5568: pr. ungdomstrup (U23 / junior), ikke hele akademiet mod et fladt loft.
+  const [academySquadCounts, setAcademySquadCounts] = useState(EMPTY_SQUAD_COUNTS);
   const [loading, setLoading] = useState(true);
   // #1350: terminal load-fejl-state — uden den kunne en rejected request efterlade
   // en evig spinner, og en Supabase-fejl ligne et tomt auktionsmarked.
@@ -1144,7 +1164,7 @@ export default function AuctionsPage() {
       if (wl) setWatchlist(new Set(wl.map(w => w.rider_id)));
     }
 
-    const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes, academyCountRes] = await Promise.all([
+    const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes, academySquadCountsRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
@@ -1162,9 +1182,9 @@ export default function AuctionsPage() {
            : Promise.resolve({ count: 0 }),
       team ? supabase.from("auction_proxy_bids").select("auction_id, max_amount").eq("team_id", team.id)
            : Promise.resolve({ data: [] }),
-      // #2701: akademi-tal (is_academy=true) til youth-bud-gaten.
-      team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id).eq("is_academy", true)
-           : Promise.resolve({ count: 0 }),
+      // #2701/#5568: akademi-tal pr. ungdomstrup til youth-bud-gaten.
+      team ? fetchAcademySquadCounts(supabase, team.id)
+           : Promise.resolve(EMPTY_SQUAD_COUNTS),
     ]);
 
     // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
@@ -1176,7 +1196,7 @@ export default function AuctionsPage() {
     }
 
     if (riderCountRes.count !== null) setCurrentRiderCount(riderCountRes.count);
-    if (academyCountRes?.count !== null && academyCountRes?.count !== undefined) setAcademyCount(academyCountRes.count);
+    if (academySquadCountsRes) setAcademySquadCounts(academySquadCountsRes);
 
     if (auctionsRes.data) {
       const myBidMap = {};
@@ -1425,6 +1445,11 @@ export default function AuctionsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     });
+    // #5242/#3619: apiFetch returnerer networkError i stedet for at kaste. Uden
+    // dette kast rammer et tabt netværk `!res.ok` her og viser den generiske
+    // resolveApiError-fallback i stedet for useAuctionBidding.handleBid's
+    // "errors:generic.networkError" + reportActionFailure(reason:"network").
+    if (res.networkError) throw res.error ?? new Error("Network request failed");
     if (res.status === 409) {
       const raceData = res.data || {};
       if (raceData.error === "price_changed") {
@@ -1466,6 +1491,7 @@ export default function AuctionsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ max_amount: maxAmount }),
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
     if (res.ok) { loadAll(); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
@@ -1481,6 +1507,7 @@ export default function AuctionsPage() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
+    if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
     if (res.ok) { loadAll(); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyRemoveFailed")) };
@@ -1797,7 +1824,7 @@ export default function AuctionsPage() {
         // #1350: terminal, retry-bar fejl — aldrig en evig spinner og aldrig en
         // tom-state der ligner "ingen aktive auktioner". Canonical ErrorState
         // inde i en Section (chrome renderer altid, kun body swapper).
-        <Section role="alert">
+        <Section>
           <ErrorState
             description={t("auctions:loadError.message")}
             action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("auctions:loadError.retry")}</Button>}
@@ -1823,7 +1850,7 @@ export default function AuctionsPage() {
           myBalance={myBalance}
           reservedBalance={reservedBalance}
           seniorCount={currentRiderCount}
-          academyCount={academyCount}
+          academySquadCounts={academySquadCounts}
           watchlist={watchlist}
           toggleWatchlist={toggleWatchlist}
           handleBid={handleBid}
@@ -1888,6 +1915,7 @@ const TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06em]";
 
 function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
   const { t } = useTranslation("auctions");
+  const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
     // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
@@ -1908,7 +1936,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         {/* #228 v2: Ryttertype — samme komponent/mønster som ryttersiden, lige efter Status. */}
         <SortTh sortKey="primary_type" sort={activeSort("primary_type") ? "primary_type" : riderFiltersSort}
           sortDir={activeSortDir("primary_type")} onSort={handleSort}
-          className={`px-3 py-3 text-left ${TH_BASE}`}>{t("table.type")}</SortTh>
+          className={`px-3 py-3 text-left ${TH_BASE}`}>{typeLabel}</SortTh>
         {/* #228: kolonneprioritet — navn, alder, løn, højeste bud, tid tilbage
             forrest (altid synlige, ikke gemt bag et breakpoint). */}
         <SortTh sortKey="birthdate" sort={activeSort("birthdate") ? "birthdate" : riderFiltersSort}
@@ -1981,6 +2009,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
 // efter navn, jf. issue-rapportens konkrete ønske ("sort for time").
 function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
   const { t } = useTranslation("auctions");
+  const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const options = [
     { key: "firstname", label: t("table.rider") },
@@ -1988,7 +2017,7 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
     { key: "current_price", label: t("table.highestBid") },
     { key: "nationality_code", label: t("table.nation") },
     { key: "is_u25", label: t("table.status") },
-    { key: "primary_type", label: t("table.type") },
+    { key: "primary_type", label: typeLabel },
     { key: "birthdate", label: t("table.age") },
     { key: "salary", label: t("table.salary") },
     { key: "value", label: t("table.value") },
@@ -2035,6 +2064,15 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
 // genbruges cz-table-recipens VÆRDIER direkte (WRAP-radius/border, header-
 // typografi, border-rule i stedet for box-shadow) uden at bytte selve
 // tabel-primitivet.
+//
+// #5124-audit (D-047 til de fire håndrullede tabeller): tabellen med den
+// sticky bud-kolonne herunder er `hidden md:block` og vises ALDRIG under
+// 768px — under den grænse viser `md:hidden`-grenen ovenfor AuctionCard i
+// stedet, en fuldt stablet kort-visning uden tabel/sticky-kolonne/vandret
+// scroll, bygget før #5124 (se AuctionCard's egne #228/#2849 bølge 6/#3956-
+// kommentarer). Der er derfor ingen sticky bud-kolonne at gøre "brugbar" på
+// mobil — den findes ikke dér. Verificeret med
+// frontend/tests/e2e/5124-auctions-mobile.spec.js.
 function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
   const sorted = applyAuctionSort(auctions, sharedProps.auctionSort);
   return (
@@ -2055,7 +2093,7 @@ function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
             myBalance={sharedProps.myBalance}
             reservedBalance={sharedProps.reservedBalance}
             seniorCount={sharedProps.seniorCount}
-            academyCount={sharedProps.academyCount}
+            academySquadCounts={sharedProps.academySquadCounts}
             watchlist={sharedProps.watchlist}
             onToggleWatchlist={sharedProps.toggleWatchlist}
             onBid={sharedProps.handleBid}
@@ -2092,7 +2130,7 @@ function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
                   myBalance={sharedProps.myBalance}
                   reservedBalance={sharedProps.reservedBalance}
                   seniorCount={sharedProps.seniorCount}
-                  academyCount={sharedProps.academyCount}
+                  academySquadCounts={sharedProps.academySquadCounts}
                   watchlist={sharedProps.watchlist}
                   onToggleWatchlist={sharedProps.toggleWatchlist}
                   onBid={sharedProps.handleBid}

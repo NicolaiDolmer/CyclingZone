@@ -5,9 +5,9 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "./riderEligibility.js";
+import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
-import { isRiderDayInvariantViolation, teamInRacePool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
+import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
@@ -127,12 +127,20 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 // Returnerer { ok:false, status, error, errors? } ved afvisning (samme fejlkoder/rækkefølge
 // som den oprindelige inline-blok), ellers { ok:true, riderIds, captainId, sprintCaptainId,
 // hunterId, freeRoleIds, ctx }.
-export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, body }) {
+//
+// #5645 (Y4): `team` (valgfri) = holdets række med puljekolonnerne pr. trup. Et ungdomsløb
+// (race.squad = u23/junior) matches mod holdets pulje for TRUPPEN (raceBinding.
+// teamInRaceSquadPool). Uden `team` kendes kun seniorpuljen (teamDivisionId), og et
+// ungdomsløb afvises derfor med selection_wrong_pool (fejl lukket). Seniorløb: uændret.
+export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body }) {
   if (race.status !== "scheduled") return { ok: false, status: 409, error: "selection_race_not_open" };
 
   // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje (se #1146-
   // kommentaren i api.js for den fulde begrundelse — uændret her).
-  if (!teamInRacePool({ teamDivisionId, racePoolId: race.league_division_id })) {
+  const inPool = raceSquadOf(race) === "senior"
+    ? teamInRacePool({ teamDivisionId, racePoolId: race.league_division_id })
+    : teamInRaceSquadPool({ team: team ?? { league_division_id: teamDivisionId }, race });
+  if (!inPool) {
     return { ok: false, status: 409, error: "selection_wrong_pool" };
   }
 
@@ -153,6 +161,17 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 409, error: "selection_race_started" };
   }
 
+  // #5405: loebets saeson SKAL vaere den aktive. Se seasonAllowsSelectionWrites for hvorfor
+  // (en pre-oprettet 'upcoming'-saesons loeb har status 'scheduled' + 0 koerte etaper og
+  // slipper derfor gennem alle gates ovenfor). Tjekket ligger her — EFTER alle de rene,
+  // gratis afvisninger, men FOER getSelectionContext — saa det koster praecis EET opslag,
+  // og kun for de kald der ellers ville have skrevet. Fail-closed: intet season_id, ingen
+  // saeson-raekke eller en anden status end 'active' → afvisning, aldrig et gem.
+  const seasonStatus = await loadRaceSeasonStatus({ supabase, seasonId: race.season_id });
+  if (!seasonAllowsSelectionWrites(seasonStatus)) {
+    return { ok: false, status: 409, error: "selection_season_not_active" };
+  }
+
   const ctx = await getSelectionContext({ supabase, race, teamId });
 
   const result = validateSelection({
@@ -167,6 +186,39 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   if (!result.ok) return { ok: false, status: 400, error: result.errors[0], errors: result.errors };
 
   return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, ctx };
+}
+
+// #5405: maa der SKRIVES udtagelse i et loeb der hoerer til en saeson med DENNE status?
+//
+// HVORFOR. Kalender-LAESNINGEN er med vilje status-blind (seasonLookup.js slaar op paa
+// `number` uden status-filter), saa en pre-oprettet saeson med status 'upcoming' kan vises
+// i saeson-vaelgeren FOER den starter. Materializeren opretter samtidig den kommende
+// saesons loeb med status 'scheduled' og stages_completed = 0 — praecis de to vaerdier
+// prepareSelectionChange's oevrige gates accepterer. Uden denne gate kunne en manager
+// altsaa gemme en trup i naeste saesons loeb i samme oejeblik de findes.
+//
+// Skaden er ikke kosmetisk: langt de fleste hold skifter pulje ved saesonskiftets
+// komprimering, saa en udtagelse gemt foer skiftet peger typisk paa loeb holdet slet
+// ikke skal koere — og skal ryddes op bagefter.
+//
+// HVORFOR IKKE teamDivisionKnownForSeason (plannerBoard.js). Den er planlaeggerens
+// LAESE-diskriminator og er bevidst fail-OPEN: `status !== "upcoming"`, hvilket goer
+// baade en ukendt/manglende status og en 'completed' saeson til "afgjort". En SKRIVE-gate
+// skal vaere fail-CLOSED: kender vi ikke saesonen, skriver vi ikke. Derfor er dette
+// praedikat en aegte delmaengde af den — strikt 'active', intet andet.
+export function seasonAllowsSelectionWrites(seasonStatus) {
+  return seasonStatus === "active";
+}
+
+// #5405: loebets saeson-status, eller null hvis loebet ingen season_id har / raekken ikke
+// findes (begge dele fail-closed hos kalderen). Kaster paa en DB-fejl, samme kontrakt som
+// getSelectionContext — en ulaeselig saeson maa aldrig degradere til "saa skriver vi bare".
+export async function loadRaceSeasonStatus({ supabase, seasonId }) {
+  if (!seasonId) return null;
+  const { data, error } = await supabase
+    .from("seasons").select("id, status").eq("id", seasonId).maybeSingle();
+  if (error) throw new Error(`seasons (selection season gate): ${error.message}`);
+  return data?.status ?? null;
 }
 
 // #1146/#4310-refutation: binding-konflikt-klassifikationen for EN HEL bulk-batch — ren
@@ -326,6 +378,9 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // Holdet har maks ~30 ryttere, så plain .in() er tilstrækkeligt her
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
 export async function getSelectionContext({ supabase, race, teamId }) {
+  // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
+  const raceSquad = raceSquadOf(race);
+  const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id";
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
     // #1307/#1308: akademiryttere er ikke løbs-berettigede. Rod B: delt eligibility-filter.
     // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
@@ -335,7 +390,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     // udtage ham til NYE loeb (#2579) ligger nu paa `outgoing`-flaget i
     // prepareSelectionChange, ikke paa at han er usynlig.
     applyRosterVisibilityFilter(
-      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type, pending_team_id").eq("team_id", teamId)
+      supabase.from("riders").select(riderColumns).eq("team_id", teamId), { squad: raceSquad }
     ),
     supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
       .eq("race_id", race.id).order("stage_number", { ascending: true }),
@@ -345,6 +400,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   for (const [name, res] of [["riders", ridersRes], ["race_stage_profiles", profilesRes], ["race_entries", entriesRes]]) {
     if (res.error) throw new Error(`${name}: ${res.error.message}`);
   }
+  // #5645: enhver rytter i løbets trup må udtages — ejer 24/9: ingen separat aldersgate.
   const riders = ridersRes.data || [];
   const stages = profilesRes.data || [];
   const riderIds = riders.map((r) => r.id);

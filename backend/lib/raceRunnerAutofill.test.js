@@ -2,7 +2,7 @@
 // #1307: per-hold autopick. Mock-builder følger raceFatigue.test.js-mønstret.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadEntrantsForRace } from "./raceRunner.js";
+import { loadEntrantsForRace, fillMissingTeamEntries } from "./raceRunner.js";
 
 const ab = (v) => ({
   climbing: v, time_trial: v, sprint: v, punch: v, endurance: v,
@@ -24,6 +24,15 @@ function makeSupabase(state) {
     }
     return result;
   }
+  // #4619: riders.squad er NOT NULL DEFAULT 'senior' i prod
+  // (database/2026-09-15-4619-riders-squad.sql), og udtagelses-filteret spørger nu
+  // på den. En fixture-rytter uden feltet ER en seniorrytter; uden dette default
+  // ville hver eneste rytter falde ud (undefined !== 'senior').
+  function rowsFor(table) {
+    const rows = [...(state[table] || [])];
+    if (table !== "riders") return rows;
+    return rows.map((r) => (r.squad === undefined ? { ...r, squad: "senior" } : r));
+  }
   function builder(table) {
     const q = { table, filters: [] };
     const api = {
@@ -34,7 +43,13 @@ function makeSupabase(state) {
       // race_stage_schedule gav thisWindow=null og loaderen returnerede tidligt.
       neq(col, val) { q.filters.push(["neq", col, val]); return api; },
       maybeSingle() {
-        const rows = applyFilters([...(state[table] || [])], q.filters);
+        const rows = applyFilters(rowsFor(table), q.filters);
+        return Promise.resolve({ data: rows[0] ?? null, error: null });
+      },
+      // #4759: notifyTeamOwner (notificationService.js) slår hold-ejerens
+      // user_id op via .single() — mocken manglede den (kun .maybeSingle()).
+      single() {
+        const rows = applyFilters(rowsFor(table), q.filters);
         return Promise.resolve({ data: rows[0] ?? null, error: null });
       },
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
@@ -42,15 +57,23 @@ function makeSupabase(state) {
       is(col, val) { q.filters.push(["is", col, val]); return api; },
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
       order() { return api; },
+      limit() { return api; },
       // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
       // (.order("id").range()) — anvender samme filtre som .then(), sliced til siden.
       range(from, to) {
-        const rows = applyFilters([...(state[table] || [])], q.filters);
+        const rows = applyFilters(rowsFor(table), q.filters);
         return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
       },
-      insert(rows) { calls.push({ table, insert: rows }); state[table] = [...(state[table] || []), ...rows]; return Promise.resolve({ error: null }); },
+      insert(rowsArg) {
+        // #4759: notifyUser (notificationService.js) insertér ÉT objekt, ikke et
+        // array — normalisér, samme som Postgrest selv accepterer begge.
+        const rows = Array.isArray(rowsArg) ? rowsArg : [rowsArg];
+        calls.push({ table, insert: rows });
+        state[table] = [...(state[table] || []), ...rows];
+        return Promise.resolve({ error: null });
+      },
       then(resolve) {
-        const rows = applyFilters([...(state[table] || [])], q.filters);
+        const rows = applyFilters(rowsFor(table), q.filters);
         resolve({ data: rows, error: null });
       },
     };
@@ -340,4 +363,120 @@ test("#4295: gulvet gælder også et hold uden entries — for få raske ryttere
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
   assert.equal(entrants.filter((e) => e.team_id === "t1").length, 0, "t1 stiller ikke op");
   assert.equal(entrants.filter((e) => e.team_id === "t2").length, 8, "t2 er upåvirket");
+});
+
+// ── #4759: "assistenten udtog dit hold"-notifikationen (sen redning) ────────
+// Kun grenen med 0 eksisterende entries (fuld udtagelse) er notifikationsværdig
+// — 1..5 er en REDNING af managerens EGEN delvise trup og udløser den ALDRIG
+// (§10 i docs/ASSISTANT_RULES.md, "manageren vinder"). late_fill/opt_in-sweepens
+// tests bor i raceEntryGenerator.test.js.
+
+test("#4759 menneske-hold med 0 entries: notify kaldes ÉN gang, AI-hold (uden user_id) aldrig", async () => {
+  const state = baseState();
+  state.teams[0].user_id = "u-t1"; // t1 er et menneske-hold
+  // t2 har ingen user_id (AI-hold) — samme baseState-fixtures.
+  const supabase = makeSupabase(state);
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: true, notify });
+  assert.equal(calls.length, 1, "kun ÉT kald i alt");
+  assert.deepEqual(calls[0], { supabase, teamId: "t1", raceId: "race1", raceName: null });
+});
+
+test("#4759 sen redning (1..5 eksisterende entries): notify kaldes ALDRIG — manageren havde selv en udtagelse", async () => {
+  const state = baseState();
+  state.teams[0].user_id = "u-t1";
+  state.race_entries = [
+    { race_id: "race1", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
+    { race_id: "race1", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  const added = await fillMissingTeamEntries({
+    supabase, race, stages, existingEntries: state.race_entries, persist: true, notify,
+  });
+  assert.ok(added.some((r) => r.team_id === "t1"), "redningen fyldte faktisk op til gulvet");
+  assert.deepEqual(calls, [], "1..5 er en redning af en EGEN delvis trup, ikke 'du havde intet inde'");
+});
+
+test("#4759: persist=false sender aldrig en notifikation (intet blev rent faktisk skrevet)", async () => {
+  const state = baseState();
+  state.teams[0].user_id = "u-t1";
+  const supabase = makeSupabase(state);
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: false, notify });
+  assert.deepEqual(calls, [], "dry-run: ingen skrivning, saa intet at notificere om");
+});
+
+test("#4759: idempotent ved genkoersel — et hold på/over gulvet er slet ikke i eligibleTeams anden gang", async () => {
+  const state = baseState();
+  state.teams[0].user_id = "u-t1";
+  const supabase = makeSupabase(state);
+  const calls = [];
+  const notify = async (args) => { calls.push(args); return { delivered: true }; };
+  const firstRun = await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: true, notify });
+  assert.equal(calls.length, 1, "første kørsel: én besked");
+  // Anden kørsel: eksisterende entries er nu de netop indsatte (gulvet er nået).
+  await fillMissingTeamEntries({ supabase, race, stages, existingEntries: firstRun, persist: true, notify });
+  assert.equal(calls.length, 1, "anden kørsel: t1 er på/over gulvet → slet ikke i eligibleTeams, ingen ny besked");
+});
+
+// Verificerer den FAKTISKE default-notifikation (ikke en injiceret stub) mod et
+// rigtigt insert i "notifications", inkl. teksten og related_id.
+test("#4759: notifyAssistantFilledSquad (default) skriver en rigtig assistant_filled_squad-raekke", async () => {
+  const state = baseState();
+  state.teams[0].user_id = "u-t1";
+  const supabase = makeSupabase(state);
+  const namedRace = { ...race, name: "Testløbet Rundt om Fjeldet" };
+  await fillMissingTeamEntries({ supabase, race: namedRace, stages, existingEntries: [], persist: true });
+  const rows = state.notifications || [];
+  assert.equal(rows.length, 1, "netop én notifikation blev skrevet");
+  assert.equal(rows[0].type, "assistant_filled_squad");
+  assert.equal(rows[0].user_id, "u-t1");
+  assert.equal(rows[0].related_id, "race1");
+  assert.match(rows[0].message, /Testløbet Rundt om Fjeldet/);
+  assert.match(rows[0].message, /no selection in/i);
+});
+
+// ── #5246 ────────────────────────────────────────────────────────────────────────────
+
+test("#5246: redningen ved start skriver kilden start_rescue paa hver raekke", async () => {
+  const state = baseState();
+  const supabase = makeSupabase(state);
+  await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: true, notify: async () => {} });
+  const inserted = supabase.__calls.filter((c) => c.table === "race_entries").flatMap((c) => c.insert);
+  assert.ok(inserted.length > 0);
+  assert.ok(inserted.every((r) => r.auto_filled_source === "start_rescue"));
+});
+
+// Rettelse 23/9 (a): backend deployes ca. 3 min FOER auto-migrate.yml tilfoejer
+// kolonnen. Foer rettelsen fejlede hele loebsstartens autofyld i det vindue.
+test("#5246 (a): kolonnen auto_filled_source findes ikke endnu (PGRST204) → raekkerne skrives alligevel, uden kilden", async () => {
+  const state = baseState();
+  const supabase = makeSupabase(state);
+  const origFrom = supabase.from;
+  let rejected = 0;
+  supabase.from = (table) => {
+    const b = origFrom(table);
+    if (table !== "race_entries") return b;
+    const origInsert = b.insert;
+    b.insert = (rows) => {
+      if (rows.some((r) => "auto_filled_source" in r)) {
+        rejected += 1;
+        return Promise.resolve({
+          error: { code: "PGRST204", message: "Could not find the 'auto_filled_source' column of 'race_entries' in the schema cache" },
+        });
+      }
+      return origInsert(rows);
+    };
+    return b;
+  };
+  const picked = await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: true, notify: async () => {} });
+  assert.equal(rejected, 1, "sanity: foerste forsoeg ramte den manglende kolonne");
+  assert.ok(picked.length > 0, "loebsstartens autofyld vaelter ikke");
+  const written = state.race_entries.filter((e) => e.race_id === "race1");
+  assert.equal(written.length, picked.length);
+  assert.ok(written.every((r) => r.is_auto_filled === true && !("auto_filled_source" in r)));
 });

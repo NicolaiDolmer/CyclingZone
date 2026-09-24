@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import useMentionableManagers from "../../hooks/useMentionableManagers.js";
 import { splitMentionSegments } from "../../lib/forumMentions.js";
+import { splitForumLinks } from "../../lib/forumLinkify.ts";
 
 // #5011 (ejer-direktiv 3/9, #4751) — brødtekst med klikbare @navne.
 //
@@ -19,11 +20,26 @@ import { splitMentionSegments } from "../../lib/forumMentions.js";
 // sætning, ikke et badge (TASTE — ingen dekoration der ikke bærer information).
 export default function MentionText({ body }) {
   const managers = useMentionableManagers();
-  const segments = splitMentionSegments(body, managers);
+  const segments = splitForumLinks(typeof body === "string" ? body : "").flatMap(segment =>
+    segment.type === "link" ? [segment] : splitMentionSegments(segment.value, managers)
+  );
 
   // Nøglen er positionel med vilje: segmenterne er ren afledning af teksten og
   // har ingen stabil identitet at nøgle på.
   return segments.map((segment, i) => {
+    if (segment.type === "link") {
+      return (
+        <a
+          key={i}
+          href={segment.href}
+          target="_blank"
+          rel="noopener noreferrer nofollow ugc"
+          className="font-medium text-cz-accent-t transition-colors hover:underline [overflow-wrap:anywhere]"
+        >
+          {segment.value}
+        </a>
+      );
+    }
     if (segment.type !== "mention") {
       return <span key={i}>{segment.text}</span>;
     }

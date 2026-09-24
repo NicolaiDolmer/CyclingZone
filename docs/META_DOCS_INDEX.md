@@ -37,6 +37,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/ANALYTICS_STACK.md` | **SSOT for måling:** ét ansvar pr. værktøj, samtykke pr. vendor, event-katalog, definitioner ("aktiv", D7). Læs FØR du bygger et event eller læser et dashboard |
 | `docs/EMAIL_STACK.md` | **SSOT for mail:** typer, gate-kæde, samtykke-hjemmel pr. type, drift-tærskler, kendte huller. Læs FØR du rører noget der sender mail |
 | `docs/COMMS_PLAYBOOK.md` | **SSOT for spillerkommunikation:** kadence, kanaler, skabeloner, opslags-bank. Læs FØR du skriver noget der skal ud til spillerne. Stemmen bor i `TONE_OF_VOICE.md`, teknikken i `SOCIAL_RULES.md` |
+| `docs/PATCH_NOTES_RULES.md` | **SSOT for patch notes-produktion (site + Discord, #4521):** `patchNotes.js` som eneste kilde, Discord som ordret udsnit, hvem poster, åben kadence-diskussion. Format-detaljerne bor stadig i `TONE_OF_VOICE.md` |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
 | `docs/RIDER_GENERATION.md` | SSOT for hvordan ryttere SKABES: determinisme, navne-pools, trupstørrelser, AI-fyld-politik, derive-kæden. Skal opdateres ved enhver ændring i generationen (#4178) |
 | `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |

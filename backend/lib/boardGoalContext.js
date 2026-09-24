@@ -22,10 +22,19 @@
 // (CLASSIC_RACE_CLASSES, Monuments ⊂ klassikere) og splittes i JS via
 // isMonumentRace/isClassicRace, så monument_podium-mål med race_scope
 // "classics" (klassiker-orienterede boards) kan honorere alle WT-endagsløb.
+//
+// #5537 (S9, spec 2026-09-15 C3) · Bestyrelsesmålene tæller KUN seniorløb. Efter
+// A2 (#5517) bor U23-/juniorløb i samme `races`-tabel, og deres race_results-rækker
+// bærer holdets team_id ligesom seniorresultaterne. Uden et scope ville et
+// ungdomsløbs podie tælle som monument-/klassiker-podie, en ungdomstrøje som
+// jersey_wins og en ungdomsendagssejr som stage_wins i seniorbestyrelsens plan.
+// Se "Senior-dommen på de indlejrede races" nedenfor for HVORDAN.
 
 import { CLASSIC_RACE_CLASSES, isClassicRace, isMonumentRace } from "./boardConstants.js";
 import { getPlanDuration } from "./boardGoals.js";
 import { FINANCE_REASON } from "./economyConstants.js";
+import { isMissingSquadColumnError } from "./racePoolCatalog.js";
+import { isSeniorSquadRow, SQUAD_COLUMN } from "./squads.js";
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 // #3494 · sponsor_growth re-pointet fra det døde teams.sponsor_income-felt til
@@ -41,6 +50,64 @@ const SPONSOR_GROWTH_REASON_CODES = [
   FINANCE_REASON.MIDSEASON_SPONSOR_PRORATA,
   FINANCE_REASON.SPONSOR_RACE_DAY,
 ];
+
+// ── #5537 · Senior-dommen på de indlejrede races ─────────────────────────────
+//
+// race_results har INGEN squad-kolonne — truppen bor på løbet. squads.
+// withSeniorSquadScope lægger sit filter på TOP-niveau og ville her få 42703 fra
+// Postgres, som dens fallback (korrekt, for races/league_divisions) læser som
+// "kolonnen er ikke migreret endnu" og derfor kører læsningen tavst UDEN scope.
+// Den må derfor ikke bruges rundt om en race_results-læsning.
+//
+// I stedet tager alle seks læsere (tre i prefetchen, tre pr. board) `squad` med i
+// det INDLEJREDE `races!inner(...)`-select, og dommen fældes i JS med squads.
+// isSeniorSquadRow på rækkens `races` — ÉT sted i loadGoalContextForBoard efter
+// begge læse-stier, så prefetch og pr.-board-læsning ikke kan blive uenige.
+//
+// Bevidst intet SQL-filter på det indlejrede races (`races.or=(…)` via
+// referencedTable): JS-dommen er tilstrækkelig og bit-identisk i dag, læserne
+// har de samme rank-filtre for ungdomsløbenes rækker (podier, trøjer,
+// endagssejre), så række-lofterne i "pagination-safe"-kommentarerne rykker sig
+// ikke nær 1000, og kaldstedernes test-fakes (economyEngine,
+// boardWeekendFinalization) kender ikke `.or`. Et SQL-filter kan lægges oven på
+// senere uden at ændre dommen.
+//
+// 42703-vinduet (auto-migrate applier først efter deploy): findes races.squad ikke,
+// fejler det indlejrede select med 42703. Det beviser at intet ungdomsløb kan
+// findes, og læsningen gentages én gang uden squad — rækkerne mangler så feltet og
+// dømmes senior. Kun 42703 tæller (isMissingSquadColumnError, samme dom som
+// race_pool-scopet #5330); en schema-cache-fejl bobler op som enhver anden fejl.
+const racesWithSquad = (columns) => `races!inner(${columns}, ${SQUAD_COLUMN})`;
+const racesWithoutSquad = (columns) => `races!inner(${columns})`;
+
+/**
+ * Kør en race_results-læsning med løbets trup i det indlejrede races-select.
+ *
+ * `run(races)` bygger og kører læsningen og bruger `races(<kolonner>)` som det
+ * indlejrede select. `run` kaldes med squad først og ÉN gang til uden, hvis
+ * databasen svarer 42703 på squad. Begge fejl-former håndteres (returneret
+ * `{ error }` og kastet fejl fra fetchAllRowsChunkedIn); alt andet returneres/
+ * kastes uændret. `run` skal bygge en frisk builder ved hvert kald.
+ */
+async function withEmbeddedRaceSquad(run) {
+  let result;
+  try {
+    result = await run(racesWithSquad);
+  } catch (err) {
+    if (!isMissingSquadColumnError(err)) throw err;
+    return run(racesWithoutSquad);
+  }
+  if (result?.error && isMissingSquadColumnError(result.error)) return run(racesWithoutSquad);
+  return result;
+}
+
+// JS-dommen. En række uden indlejret `races` (kan ikke ske med `!inner`, kun i
+// fixtures) dømmes som en række uden squad: senior. Kun en eksplicit ungdomstrup
+// på løbet fjerner rækken.
+function onlySeniorRaceRows(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.filter((row) => isSeniorSquadRow(row?.races ?? {}));
+}
 
 // #2469 · Fælles kontekst-bygger for bestyrelses-motoren. #2308 fandt at tre
 // live-stier håndbyggede hver sit context-objekt til calculateBoardPerformance/
@@ -198,23 +265,24 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
 
   const [classicResults, jerseyResults, transferTxs, oneDayResults, sponsorTxs] = await Promise.all([
     // Samme prædikater som den pr.-board-query den erstatter (se nedenfor).
-    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
+    // #5537: race_results-læserne tager løbets trup med (senior-dommen, se headeren).
+    loadPrefetchSource(() => withEmbeddedRaceSquad((races) => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("race_results")
-      .select("team_id, rank, races!inner(race_class, race_type, season_id)")
+      .select(`team_id, rank, ${races("race_class, race_type, season_id")}`)
       .in("team_id", chunk)
       .eq("result_type", "gc")
       .lte("rank", 3)
       .in("races.race_class", CLASSIC_RACE_CLASSES)
       .in("races.season_id", seasons)
-      .order("id", { ascending: true }))),
-    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
+      .order("id", { ascending: true })))),
+    loadPrefetchSource(() => withEmbeddedRaceSquad((races) => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("race_results")
-      .select("team_id, rank, races!inner(season_id)")
+      .select(`team_id, rank, ${races("season_id")}`)
       .in("team_id", chunk)
       .in("result_type", ["points", "mountain", "young"])
       .eq("rank", 1)
       .in("races.season_id", seasons)
-      .order("id", { ascending: true }))),
+      .order("id", { ascending: true })))),
     loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("finance_transactions")
       // season_id er tilføjet i forhold til den gamle pr.-board-select: den
@@ -225,15 +293,15 @@ export async function prefetchGoalContextSources({ supabase, teamIds, seasonIds 
       .in("type", ["transfer_in", "transfer_out"])
       .in("season_id", seasons)
       .order("id", { ascending: true }))),
-    loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
+    loadPrefetchSource(() => withEmbeddedRaceSquad((races) => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("race_results")
-      .select("team_id, races!inner(season_id)")
+      .select(`team_id, ${races("season_id")}`)
       .in("team_id", chunk)
       .eq("result_type", "gc")
       .eq("rank", 1)
       .eq("races.race_type", "single")
       .in("races.season_id", seasons)
-      .order("id", { ascending: true }))),
+      .order("id", { ascending: true })))),
     loadPrefetchSource(() => fetchAllRowsChunkedIn(ids, (/** @type {string[]} */ chunk) => supabase
       .from("finance_transactions")
       .select("team_id, amount, season_id")
@@ -417,25 +485,26 @@ export async function loadGoalContextForBoard({
       // classic-only races within the plan's season window — verified max 54
       // rows per team repo-wide even WITHOUT the race_class/season narrowing
       // (#3331 audit, 2026-08-05), far under the 1000-row cap.
-      supabase
+      // #5537: løbets trup med i det indlejrede select (senior-dommen, se headeren).
+      withEmbeddedRaceSquad((races) => supabase
         .from("race_results")
-        .select("rank, races!inner(race_class, race_type, season_id)")
+        .select(`rank, ${races("race_class, race_type, season_id")}`)
         .eq("team_id", teamId)
         .eq("result_type", "gc")
         .lte("rank", 3)
         .in("races.race_class", CLASSIC_RACE_CLASSES)
-        .in("races.season_id", planSeasonIds),
+        .in("races.season_id", planSeasonIds)),
       // Etapeløb-trøjer (point/bjerg/young, rank=1)
       // pagination-safe: one team's rank=1 jersey wins, further narrowed to
       // the plan's season window — verified max 23 rows per team repo-wide
       // even WITHOUT the season narrowing (#3331 audit, 2026-08-05).
-      supabase
+      withEmbeddedRaceSquad((races) => supabase
         .from("race_results")
-        .select("rank, races!inner(season_id)")
+        .select(`rank, ${races("season_id")}`)
         .eq("team_id", teamId)
         .in("result_type", ["points", "mountain", "young"])
         .eq("rank", 1)
-        .in("races.season_id", planSeasonIds),
+        .in("races.season_id", planSeasonIds)),
       // Netto transfer-balance (positive = transfer_in/salg, negative = transfer_out/køb)
       // pagination-safe: one team's transfer-only transactions, narrowed to
       // the plan's season window — verified max 114 rows per team repo-wide
@@ -455,14 +524,14 @@ export async function loadGoalContextForBoard({
       // narrowed to the plan's season window — a season has ~28 race days, so
       // wins per team are bounded far under the 1000-row cap (same bound class
       // as the rank<=3 classic query above, #3331 audit).
-      supabase
+      withEmbeddedRaceSquad((races) => supabase
         .from("race_results")
-        .select("races!inner(season_id)")
+        .select(races("season_id"))
         .eq("team_id", teamId)
         .eq("result_type", "gc")
         .eq("rank", 1)
         .eq("races.race_type", "single")
-        .in("races.season_id", planSeasonIds),
+        .in("races.season_id", planSeasonIds)),
       // #3494 · Sponsor-udbetalinger (kontrakt-base + løbsdags-indtægt, se
       // SPONSOR_GROWTH_REASON_CODES) for hele plan-cyklussens sæson-vindue.
       // Summeres pr. sæson i JS herunder — nuværende sæson = "actual",
@@ -478,6 +547,13 @@ export async function loadGoalContextForBoard({
         .in("season_id", planSeasonIds),
       ]);
     }
+    // #5537: senior-dommen på de tre race_results-kilder, ÉT sted efter begge
+    // læse-stier (prefetch + pr. board), så de to stier ikke kan blive uenige.
+    // finance_transactions-kilderne har ingen løbs-trup og røres ikke
+    // (løbsdags-sponsoren er selv senior-only fra sponsorRaceDayIncome, #5537).
+    classicResults = onlySeniorRaceRows(classicResults);
+    jerseyResults = onlySeniorRaceRows(jerseyResults);
+    oneDayResults = onlySeniorRaceRows(oneDayResults);
     // #3494 (CodeRabbit-fund, PR #4550) · `sponsorTxs || []` ville stille sig
     // tavst tilfreds med et malformet svar (error faldsk, data IKKE et array —
     // teoretisk uden for den ægte Supabase-klient, men denne funktion kaldes

@@ -77,10 +77,15 @@ export function getChunkReloadKey(release = "unknown") {
 // ét reload pr. MÅL-release. Tre budgetter der ikke kender hinanden kan lægge
 // deres reloads oven i hinanden i ét og samme reparationsforløb.
 //
-// Nu deler alle tre ét tælleværk i sessionStorage. Boot-vagten skriver stadig
-// kun sin egen nøgle (den er ren, tidlig JS uden adgang til dette modul), så
-// dens reload bogføres bagefter af `accountBootGuardReload` ved app-boot — så
-// koordineringen sker gennem storage-nøglerne, uden at røre vagtens kode.
+// Nu deler alle tre ét tælleværk i sessionStorage. Boot-vagten er ren, tidlig
+// JS uden adgang til dette modul, så koordineringen sker gennem storage-
+// nøglerne: siden #5440 (punkt 2) bogfører vagten SELV sit reload i
+// RECOVERY_BUDGET_KEY før det sker, med samme format og samme fail-closed-regler
+// som readBudget herunder (værdierne er kopieret ind i public/chunk-selfheal.js,
+// og chunkSelfHeal.test.js fejler hvis de driver). Før skete bogføringen først
+// ved app-boot, så en fane der aldrig bootede kun var begrænset af vagtens
+// 60-sekunders-nøgle. `accountBootGuardReload` står tilbage for en ældre, cachet
+// udgave af vagten; markør-nøglen forhindrer at samme reload tælles to gange.
 //
 // Vinduet er rullende og ikke hele fanens levetid: et loop sker inden for
 // sekunder til minutter, mens en fane der står åben i dage stadig skal kunne
@@ -92,7 +97,8 @@ export const RECOVERY_BUDGET_MAX = 3;
 export const RECOVERY_BUDGET_WINDOW_MS = 60 * 60 * 1000;
 
 // Boot-vagtens egen nøgle (public/chunk-selfheal.js) plus markøren der siger at
-// vi allerede har bogført netop dét reload. Læses her, skrives aldrig af vagten.
+// netop dét reload allerede er bogført. Siden #5440 skriver vagten markøren selv
+// (samme tidsstempel som sin egen nøgle), når den bogfører i budgettet.
 export const BOOT_GUARD_KEY = "cz_chunk_selfheal_at";
 export const BOOT_GUARD_ACCOUNTED_KEY = "cz:recovery-budget-bootguard-at";
 
@@ -118,7 +124,9 @@ function readBudget(storage, now) {
   } catch {
     return null;
   }
-  if (!raw) return { used: 0, windowStart: now };
+  // Kun en FRAVAERENDE noegle er et ubrugt budget (CodeRabbit #5551). En tom
+  // streng er en post nogen har skrevet, og den er ulaeselig: fail-closed nedenfor.
+  if (raw === null || raw === undefined) return { used: 0, windowStart: now };
   try {
     const parsed = JSON.parse(raw);
     // FAIL-CLOSED paa en ugyldig post (CodeRabbit 11/9). Foer blev baade
@@ -182,8 +190,10 @@ export function spendRecoverySlot(storage, source = "unknown", { now = Date.now(
 }
 
 /**
- * Bogfør boot-vagtens reload i det fælles budget. Vagten kører før moduler
- * findes og kan derfor ikke selv gøre det; den efterlader blot sit tidsstempel.
+ * Bogfør boot-vagtens reload i det fælles budget, HVIS vagten ikke allerede selv
+ * har gjort det. Den nuværende vagt bogfører selv og skriver markøren (#5440);
+ * denne vej dækker en ældre, cachet udgave af public/chunk-selfheal.js der kun
+ * efterlod sit tidsstempel.
  *
  * Kun ét tidsstempel bogføres én gang (markør-nøglen), og kun hvis det er
  * friskt — en nøgle fra i går er ikke "lige sket". Samme friskheds-vindue som

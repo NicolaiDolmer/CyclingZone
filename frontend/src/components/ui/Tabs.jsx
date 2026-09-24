@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useRef } from "react";
 import { tabClass, tabListClass } from "./tabsStyles.js";
 
 const TabsContext = createContext(null);
+// #5485: `fit` saettes paa TabList og gaelder alle dens faner (se tabsStyles.js).
+const TabListFitContext = createContext(false);
 
 export function Tabs({ value, onChange, className = "", children }) {
   return (
@@ -13,7 +15,7 @@ export function Tabs({ value, onChange, className = "", children }) {
 
 // #4625 (slice 3 af #4622) — WAI-ARIA tabs-mønsteret i fuld: Left/Right flytter
 // ét tab, Home/End hopper til første/sidste (audit-krav "tastaturnavigation").
-export function TabList({ label, className = "", children }) {
+export function TabList({ label, className = "", fit = false, children }) {
   const listRef = useRef(null);
   const onKeyDown = (e) => {
     if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
@@ -36,15 +38,16 @@ export function TabList({ label, className = "", children }) {
       aria-label={label}
       aria-orientation="horizontal"
       onKeyDown={onKeyDown}
-      className={tabListClass({ className })}
+      className={tabListClass({ className, fit })}
     >
-      {children}
+      <TabListFitContext.Provider value={fit}>{children}</TabListFitContext.Provider>
     </div>
   );
 }
 
 export function Tab({ value: tabValue, className = "", children }) {
   const ctx = useContext(TabsContext);
+  const fit = useContext(TabListFitContext);
   const active = ctx?.value === tabValue;
   const ref = useRef(null);
 
@@ -82,7 +85,7 @@ export function Tab({ value: tabValue, className = "", children }) {
       aria-selected={active}
       tabIndex={active ? 0 : -1}
       onClick={() => ctx?.onChange?.(tabValue)}
-      className={`${tabClass({ active })} ${className}`}
+      className={`${tabClass({ active, fit })} ${className}`}
     >
       {children}
     </button>

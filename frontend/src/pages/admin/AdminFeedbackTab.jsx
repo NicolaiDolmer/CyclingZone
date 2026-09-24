@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
+import TeamLink from "../../components/TeamLink";
+import RiderLink from "../../components/RiderLink";
 import {
   Button, DataTable, ZonePill, EmptyState, ErrorState, Modal, Select, Textarea,
-  SkeletonLines, InboxIcon,
+  SkeletonLines, InboxIcon, FlagIcon, ExchangeIcon, ChevronRightIcon,
 } from "../../components/ui";
 
 // #2842 — spillerfeedback-indbakke.
@@ -42,7 +45,50 @@ const CATEGORY_LABELS = {
   feedback: "Feedback",
   bug: "Bug",
   idea: "Idé",
+  // #5284: delte tidligere kategorien "fairplay" uden label — faldt tilbage
+  // til det rå kolonnenavn i både listen og modal-overskriften.
+  fairplay: "Fair play",
 };
+
+const TRADE_TYPE_LABELS = {
+  auction: "Auktion",
+  transfer: "Transfer",
+  swap: "Bytte",
+};
+
+function tradeRiderName(rider) {
+  if (!rider) return null;
+  return [rider.firstname, rider.lastname].filter(Boolean).join(" ") || null;
+}
+
+// Kort linje til listerækken: rytter, A → B, pris (acceptkriterie #5284).
+// JSX i stedet for en samlet streng, fordi holdovergangen skal vises med et
+// stroke-ikon (lint-ui-slop.mjs forbyder unicode-pile i UI-tekst, PAGE_TEMPLATES.md).
+function TradeRowSummary({ trade }) {
+  const riderLabel = trade.rider
+    ? tradeRiderName(trade.rider)
+    : trade.riders
+      ? `${tradeRiderName(trade.riders.offered) || "?"} / ${tradeRiderName(trade.riders.requested) || "?"}`
+      : null;
+  const hasTeams = Boolean(trade.team_a?.name && trade.team_b?.name);
+  const priceLabel = typeof trade.price === "number" ? `${trade.price.toLocaleString("da-DK")} CZ$` : null;
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5 font-data tabular-nums text-cz-1">
+      {riderLabel && <span>{riderLabel}</span>}
+      {riderLabel && (hasTeams || priceLabel) && <span className="text-cz-3">·</span>}
+      {hasTeams && (
+        <span className="inline-flex items-center gap-1">
+          {trade.team_a.name}
+          <ChevronRightIcon size={12} className="text-cz-3" aria-hidden="true" />
+          {trade.team_b.name}
+        </span>
+      )}
+      {hasTeams && priceLabel && <span className="text-cz-3">·</span>}
+      {priceLabel && <span>{priceLabel}</span>}
+    </span>
+  );
+}
 
 const STATUS_FILTERS = [
   { key: "", label: "Alle" },
@@ -96,7 +142,7 @@ export default function AdminFeedbackTab() {
       if (category) params.set("category", category);
       if (cursor != null) params.set("cursor", String(cursor));
 
-      const res = await fetch(`${API}/api/admin/feedback?${params}`, { headers: await getAuth() });
+      const res = await apiFetch(`${API}/api/admin/feedback?${params}`, { headers: await getAuth() });
       const data = await readAdminJson(res);
       if (!res.ok) {
         setLoadError(adminErrorMessage(data, res));
@@ -124,7 +170,7 @@ export default function AdminFeedbackTab() {
 
   async function changeStatus(item, nextStatus) {
     try {
-      const res = await fetch(`${API}/api/admin/feedback/${item.id}/status`, {
+      const res = await apiFetch(`${API}/api/admin/feedback/${item.id}/status`, {
         method: "PATCH",
         headers: await getAuth(),
         body: JSON.stringify({ status: nextStatus }),
@@ -184,7 +230,15 @@ export default function AdminFeedbackTab() {
     {
       key: "message",
       header: "Besked",
-      render: (row) => <span className="text-cz-2">{excerpt(row.message)}</span>,
+      render: (row) => {
+        // Fair play-rapporter med en opløst handel viser den korte handelslinje
+        // i stedet for fritekst-uddraget — rapporter uden metadata eller med en
+        // handel der ikke længere findes falder tilbage til fritekst uændret.
+        const trade = row.category === "fairplay" ? row.trade : null;
+        return trade
+          ? <TradeRowSummary trade={trade} />
+          : <span className="text-cz-2">{excerpt(row.message)}</span>;
+      },
     },
     {
       key: "status",
@@ -240,6 +294,7 @@ export default function AdminFeedbackTab() {
             <option value="feedback">Feedback</option>
             <option value="bug">Bug</option>
             <option value="idea">Idé</option>
+            <option value="fairplay">Fair play</option>
           </Select>
         </div>
 
@@ -309,6 +364,69 @@ export default function AdminFeedbackTab() {
 
 const REPLY_MAX_LENGTH = 4000;
 
+function TradeRiderLink({ rider }) {
+  if (!rider) return <span className="text-cz-3">Ukendt rytter</span>;
+  const name = tradeRiderName(rider) || "Ukendt rytter";
+  return (
+    <RiderLink id={rider.id} className="font-semibold text-cz-accent-t hover:underline">
+      {name}
+    </RiderLink>
+  );
+}
+
+// Handelskort — vises OVER spillerens fritekst i detalje-modalen (acceptkriterie
+// #5284): rytter, sælger → køber, pris mod markedsværdi med ratio, dato,
+// rapportør, med links til begge holds sider og rytterens side.
+function TradeCard({ trade }) {
+  const priceLabel = typeof trade.price === "number" ? `${trade.price.toLocaleString("da-DK")} CZ$` : "—";
+  const ratioLabel = trade.market_value_ratio != null ? `${Math.round(trade.market_value_ratio * 100)}% af markedsværdi` : null;
+
+  return (
+    <div className="mb-4 rounded-cz border border-cz-border bg-cz-card p-4">
+      <div className="flex items-center gap-1.5 font-data text-2xs uppercase tracking-[.06em] text-cz-3">
+        <FlagIcon size={14} aria-hidden="true" />
+        {TRADE_TYPE_LABELS[trade.type] || trade.type}
+        {trade.trade_date && <span>· {formatWhen(trade.trade_date)}</span>}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[13.5px]">
+        {trade.rider && <TradeRiderLink rider={trade.rider} />}
+        {trade.riders && (
+          <>
+            <TradeRiderLink rider={trade.riders.offered} />
+            <ExchangeIcon size={14} className="text-cz-3" aria-hidden="true" />
+            <TradeRiderLink rider={trade.riders.requested} />
+          </>
+        )}
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13.5px] text-cz-2">
+        <TeamLink id={trade.team_a?.id} className="hover:text-cz-accent-t hover:underline">
+          {trade.team_a?.name || "Ukendt hold"}
+        </TeamLink>
+        <ChevronRightIcon size={14} className="text-cz-3" aria-hidden="true" />
+        <TeamLink id={trade.team_b?.id} className="hover:text-cz-accent-t hover:underline">
+          {trade.team_b?.name || "Ukendt hold"}
+        </TeamLink>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 font-data text-sm tabular-nums text-cz-1">
+        <span>{trade.type === "swap" ? "Kontantjustering" : "Pris"}: {priceLabel}</span>
+        {ratioLabel && <span className="text-2xs text-cz-3">{ratioLabel}</span>}
+      </div>
+
+      {trade.reporting_team && (
+        <p className="mt-2 font-data text-2xs text-cz-3">
+          Rapporteret af{" "}
+          <TeamLink id={trade.reporting_team.id} className="hover:text-cz-accent-t hover:underline">
+            {trade.reporting_team.name}
+          </TeamLink>
+        </p>
+      )}
+    </div>
+  );
+}
+
 function FeedbackDetailModal({ item, onClose, onStatusChange, onReplied, getAuth, onError }) {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
@@ -325,7 +443,7 @@ function FeedbackDetailModal({ item, onClose, onStatusChange, onReplied, getAuth
     if (!reply.trim()) return;
     setSending(true);
     try {
-      const res = await fetch(`${API}/api/admin/feedback/${item.id}/reply`, {
+      const res = await apiFetch(`${API}/api/admin/feedback/${item.id}/reply`, {
         method: "POST",
         headers: await getAuth(),
         body: JSON.stringify({ reply: reply.trim() }),
@@ -357,6 +475,13 @@ function FeedbackDetailModal({ item, onClose, onStatusChange, onReplied, getAuth
           <p className="mt-0.5 font-data text-2xs text-cz-3">{item.user.email}</p>
         )}
       </div>
+
+      {item.category === "fairplay" && item.trade && <TradeCard trade={item.trade} />}
+      {item.category === "fairplay" && !item.trade && item.trade_missing && (
+        <div className="mb-4 rounded-cz border border-cz-border bg-cz-subtle p-3 text-xs text-cz-3">
+          Den rapporterede handel findes ikke længere (slettet eller annulleret).
+        </div>
+      )}
 
       <div className="rounded-cz border border-cz-border bg-cz-subtle p-4">
         <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{item.message}</p>

@@ -20,7 +20,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS } from "./fictionalRiderGenerator.js";
+import {
+  makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS, DEFAULT_PRIMARY_TYPE_MODE,
+} from "./fictionalRiderGenerator.js";
+import { readPrimaryTypeMode } from "./primaryTypeModeFlag.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
@@ -33,19 +36,42 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
-import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { loadValuationModelById, DEFAULT_VALUATION_MODEL_ID } from "./riderValuationModelSelect.js";
 import { birthYearFrom, seasonReferenceYear } from "./riderSeasonAge.js";
+import {
+  statLevelToAbility, withBirthAbilityCap, isBornFromPriors, deriveBirthAbilities,
+} from "./riderBirthPriors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
 // #3570: unge (< 22 år) AI-kandidater klassificeres mod DENNE — se riderTypesBaselineSelect.js.
 const YOUTH_TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaselineYouth.json"), "utf8"));
 // #2594 cutover: cap-gaten SKAL bruge samme model som deriveForRiderIds persisterer
-// med (v4) — ellers kan en kandidat passere en v3-beregnet gate og lande over
-// tier-loftet når v4-værdien skrives (#2065-klassen, fanget af aiTeamGenerator-testen).
-// #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
-// bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
-const VALUATION_MODEL = applyTypeDampening(JSON.parse(readFileSync(join(__dirname, "./riderValuationModelV4.json"), "utf8")));
+// med — ellers kan en kandidat passere en gate regnet på én model og lande over
+// tier-loftet når den ANDEN models værdi skrives (#2065-klassen, fanget af
+// aiTeamGenerator-testen).
+// #5443 (hul fundet 20/9 aften): filen indlæste v4's JSON direkte og kendte
+// derfor ikke model-kontakten. Nu er modellen et ARGUMENT: kaldere med en
+// supabase-klient sender den valgte model (aiTeamGenerator.js), og defaulten
+// hentes gennem riderValuationModelSelect.js — samme dæmpnings-behandling og
+// samme fail-safe (v4) som resten af værdi-stien, uden en ny JSON-læsning her.
+function defaultValuationModel() {
+  return loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
+}
+
+// #5269: spejler backfillCores.deriveForRiderIds' fødsels-forgrening for en
+// IKKE-persisteret kandidat (generator-record eller payload-formet række).
+// Enhver gate der prissætter en kandidat FØR insert skal se præcis de evner
+// deriveForRiderIds bagefter persisterer — ellers vurderer gaten en anden rytter
+// end den der lander i DB'en (#2065-klassen).
+function abilitiesForCandidate(candidate, referenceYear) {
+  const draw = candidate?._meta?.archetypeDraw ?? candidate?.archetype_draw ?? null;
+  const row = { ...candidate, archetype_draw: draw };
+  if (isBornFromPriors(row)) {
+    return deriveBirthAbilities(row, { age: computeAge(candidate.birthdate, referenceYear) });
+  }
+  return deriveAbilities(seedPhysiologyFromLegacy(candidate), candidate);
+}
 
 export const STARTER_SQUAD = Object.freeze({
   CORE_SIZE: MIN_RIDERS_FOR_RACE,         // 8 — den løbsklare kerne (= løbs-minimum)
@@ -176,11 +202,18 @@ export function aiValueCapForTier(tier) {
 // fix af klassifikatoren selv (det er #1378's scope), men et lokalt loft der
 // giver reel variation i AI-holdenes trup uden at røre den delte model.
 // Returnerer ren INSERT-payload (samme form som buildWeakStarterPool).
+// #5443: `valuationModel` er den model cap-gaten prissætter kandidater med.
+// Udeladt ⇒ defaulten (v4) — bit-identisk med adfærden før parameteren fandtes.
+// Produktionsstien (aiTeamGenerator.js) sender app_config-valget med.
+// #5327: `primaryTypeMode` er generatorens primær-type-kilde, læst af kalderen
+// fra app_config (primaryTypeModeFlag.js). Default "tier" = uændret adfærd.
 export function generateAiRiderBatchWithCap({
   count, tierFractions, valueCap, seed, referenceYear,
   existingFoldedNames = new Set(), generate = generateFictionalRiders,
-  typeShareCap = 0.4, maxRounds = 60,
+  typeShareCap = 0.4, maxRounds = 60, valuationModel = null,
+  primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE,
 }) {
+  const model = valuationModel || defaultValuationModel();
   const accepted = [];
   const typeCounts = new Map();
   const maxPerType = Math.max(1, Math.ceil(count * typeShareCap));
@@ -193,12 +226,20 @@ export function generateAiRiderBatchWithCap({
     const batchSize = Math.max(needed * 6, 30);
     const { riders } = generate({
       seed: attemptSeed, count: batchSize, referenceYear, existingFoldedNames: usedNames, tierFractions,
+      primaryTypeMode,
     });
     attemptSeed = (attemptSeed + 104729) >>> 0; // næste rundes seed (primtal-spring)
     for (const candidate of riders) {
       if (accepted.length >= count) break;
-      const physiology = seedPhysiologyFromLegacy(candidate);
-      const abilities = deriveAbilities(physiology, candidate);
+      // #5269: FEMTE spejling — fødsels-stien. En kandidat født af spillets egne
+      // priors har ingen stat_*, så `deriveAbilities` ville give ham evne 1 hele
+      // vejen rundt, en base_value nær bunden, og dermed lade HVER eneste
+      // kandidat passere værdiloftet — mens deriveForRiderIds bagefter
+      // persisterer hans faktiske (langt højere) evner. Det er nøjagtig
+      // #2065-klassen: gaten vurderer en anden rytter end den der lander i DB'en.
+      // Målt uden denne linje: en tier-1-rytter med base_value 856.501 mod
+      // AI_TIER_VALUE_CAP 200.000.
+      const abilities = abilitiesForCandidate(candidate, referenceYear);
       // #3325: TYPES_BASELINE er nu caps-fittet (type = potentiale) — spejler
       // deriveForRiderIds' to-trins kæde (bootstrap-type fra live abilities mod
       // NEUTRAL_BASELINE → ability_caps → ENDELIG type mod TYPES_BASELINE), ellers
@@ -258,7 +299,7 @@ export function generateAiRiderBatchWithCap({
       const value = predictBaseValue(
         { ...candidate, primary_type: primary.key, age },
         abilities,
-        VALUATION_MODEL
+        model
       );
       const withinValueCap = value == null || valueCap == null || value <= valueCap;
       const withinTypeCap = (typeCounts.get(primary.key) || 0) < maxPerType;
@@ -402,6 +443,7 @@ const INSERT_BATCH = 500;
 // (typer/demografi/potentiale/alder bevares) og clamper KUN stat-felterne ind i
 // vinduet før derivation → lave afledte styrke-evner. Returnerer ren INSERT-payload
 // (pcm_id null, intet id/base_value — DB/derive ejer dem).
+// #5327: `primaryTypeMode` sendes uændret til generatoren (default "tier").
 export function buildWeakStarterPool({
   count,
   seed,
@@ -409,17 +451,33 @@ export function buildWeakStarterPool({
   existingFoldedNames = new Set(),
   window = STARTER_POOL_STAT_WINDOW,
   generate = generateFictionalRiders,
+  primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE,
 }) {
-  const { riders } = generate({ seed, count, referenceYear, existingFoldedNames });
+  const { riders } = generate({ seed, count, referenceYear, existingFoldedNames, primaryTypeMode });
+  // #5269: stat-vinduet oversat til et EVNE-loft. Den gamle sti klemte
+  // stat-felterne FØR derivationen; på own-priors-stien findes de felter ikke,
+  // så loftet skal ligge dér hvor evnerne fødes — og det skal PERSISTERES
+  // (archetype_draw.birth.cap), ellers ville en re-derive (riderDeriveHealSweep
+  // #1673) genoplive en uklemt profil. Oversættelsen er den samme lineære
+  // afbildning PCM-stats altid har haft: evne = (stat − 50) · 98/35 + 1.
+  const windowAbilityCap = Math.round(statLevelToAbility(window.hi));
   const clamped = riders.map((r) => {
+    const ownPriors = Boolean(r._meta?.archetypeDraw?.birth);
     const stats = {};
-    for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
+    if (!ownPriors) {
+      for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
+    }
     // #4311 (ejer-beslutning 27/8): klem ogsaa potentiale — hidden_potential afledes
     // af potentiale, ikke stats, og ville ellers laekke uden om stat-klemmen ovenfor.
     const potentiale = Number.isFinite(r.potentiale)
       ? Math.min(FILL_TAIL_MAX_POTENTIALE, r.potentiale)
       : r.potentiale;
-    return { ...r, ...stats, potentiale };
+    if (!ownPriors) return { ...r, ...stats, potentiale };
+    return {
+      ...r,
+      potentiale,
+      _meta: { ...r._meta, archetypeDraw: withBirthAbilityCap(r._meta.archetypeDraw, windowAbilityCap) },
+    };
   });
   const payload = toInsertPayload(clamped);
   // #4311: generation_tag markoerer fyld-ryttere saa deriveAbilities (abilityDerivation.js)
@@ -576,7 +634,9 @@ async function setSquadMarker(supabase, teamId, nowIso) {
 // Det lukker orphan-vinduet: fejler noget efter insert, er rytterne EJET (ikke
 // ejerløse i markedet), og en re-derive heler dem. Genbruger den svage pulje-mekanik
 // (#1487) + derive-kæden (data-hale).
-async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, startSeason, contractRng }) {
+async function insertWeakSquadForTeam(supabase, teamId, {
+  seed, referenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
+}) {
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
   // Per-hold seed: basis-offset (+1487, samme som relaunch) XOR hash(teamId).
   // Eget seed-offset pr. tier (kerne vs hale) → distinkte pools.
@@ -584,11 +644,11 @@ async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, g
   const tailSeed = deriveTeamSeed((seed + 1487 + 7) >>> 0, teamId);
   const corePayload = buildWeakStarterPool({
     count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
-    window: STARTER_POOL_STAT_WINDOW, generate,
+    window: STARTER_POOL_STAT_WINDOW, generate, primaryTypeMode,
   }).map((r) => ({ ...r, team_id: teamId }));
   const tailPayload = buildWeakStarterPool({
     count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
-    window: STARTER_TAIL_STAT_WINDOW, generate,
+    window: STARTER_TAIL_STAT_WINDOW, generate, primaryTypeMode,
   }).map((r) => ({ ...r, team_id: teamId }));
   const poolPayload = [...corePayload, ...tailPayload];
 
@@ -660,10 +720,17 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   // koster ingen ekstra rundtur. SSOT for formlen: riderSeasonAge.js.
   const poolReferenceYear = referenceYear ?? seasonReferenceYear(startSeason);
 
+  // #5327: kontakten læses ÉN gang pr. allokering, så kerne og hale altid
+  // genereres med samme primær-type-kilde (et flip midt imellem kan ikke give
+  // et hold med to forskellige kilder). Slukket/ulæselig = "tier" = uændret.
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
+
   let assigned;
   let recovered = null;
   if (n === 0) {
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, {
+      seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
+    });
     assigned = ids.length;
   } else if (n === SIZE) {
     // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
@@ -683,7 +750,9 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   } else {
     // 0<n<SIZE: en yderst sjælden delvis-insert. Ryd det halve forsøg + re-allokér rent.
     await deleteRiders(supabase, existingIds);
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, {
+      seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
+    });
     assigned = ids.length;
     recovered = "cleaned-partial";
   }
@@ -728,18 +797,25 @@ export async function runStarterSquadAllocation(supabase, {
 
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
 
+  // #5327: ÉN læsning for hele kørslen (kerne- og hale-puljen), også i dry-run,
+  // så tørkørslen viser den kilde en rigtig kørsel ville bruge.
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
+
   // To svage pools: kerne [50,57] + hale [50,52]. Eget seed-offset pr. pulje.
   const corePayload = buildWeakStarterPool({
     count: corePerPool, seed: (seed + 1487) >>> 0, referenceYear: poolReferenceYear,
-    existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate,
+    existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate, primaryTypeMode,
   });
   const tailPayload = buildWeakStarterPool({
     count: tailPerPool, seed: (seed + 1487 + 7) >>> 0, referenceYear: poolReferenceYear,
-    existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate,
+    existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate, primaryTypeMode,
   });
 
   if (dryRun) {
-    return { dryRun: true, teams: teamIds.length, poolSize: corePerPool + tailPerPool, assigned: 0, toAssign: corePerPool + tailPerPool };
+    return {
+      dryRun: true, teams: teamIds.length, poolSize: corePerPool + tailPerPool, assigned: 0,
+      toAssign: corePerPool + tailPerPool, primaryTypeMode,
+    };
   }
 
   // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage (begge pools).
@@ -790,5 +866,8 @@ export async function runStarterSquadAllocation(supabase, {
       console.error(`[runStarterSquadAllocation] markér ${teamId} fejlede:`, err?.message || err);
     })));
 
-  return { dryRun: false, teams: teamIds.length, poolSize: corePool.length + tailPool.length, assigned, leftToMarket: leftToMarket.length, stats };
+  return {
+    dryRun: false, teams: teamIds.length, poolSize: corePool.length + tailPool.length, assigned,
+    leftToMarket: leftToMarket.length, stats, primaryTypeMode,
+  };
 }

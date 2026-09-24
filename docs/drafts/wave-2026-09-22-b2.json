@@ -1,0 +1,130 @@
+{
+  "tracks": [
+    {
+      "issue": 5327,
+      "branch": "feat/5327-primary-type-from-distribution",
+      "title": "[ryttere] Primaer type fra DEFAULT_DISTRIBUTION (kalender-efterspoergsel + FLOOR_PCT 8,5) bag kontakt, paa #5269's own-priors",
+      "scopeText": "Ejer-omskrivning 22/9 (seneste kommentar paa #5327): traek rytterens PRIMAERE type fra DEFAULT_DISTRIBUTION i backend/lib/archetypeDistribution.js (kalender-efterspoergsel + FLOOR_PCT 8,5) i stedet for TIER_TYPE_WEIGHTS, bag en opts-/app_config-kontakt (OFF som default), oven paa #5269's own-priors-underlag (merget). Ingen signatur-boost, ingen AI_SIGNATURE_CFG. Gaelder alle genererings-stier (AI-fill, launch-population, akademi-intake, pool-import) via samme prior-model - ingen dobbelt implementering. Verifikation: foer/efter-typefordeling paa 1.000 genererede ryttere (script under backend/scripts/dev/, tabel i PR-body uden rytternavne) + eksisterende sim-harness groent + node --test for beroerte filer. Spillerklage 30/7 (for faa sprinter-/brostens-/rouleur-talenter) er kilden. Patch note: ingen foer flip (bag kontakt). FEATURE_REGISTRY: tilfoej flaget hvis registry-konventionen kraever det. Spec: docs/superpowers/specs/2026-08-06-ryttertype-fundament-v2-design.md fase 2 del A.",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": [
+        "backend/lib/archetypeDistribution.js",
+        "backend/lib/archetypeDistribution.test.js",
+        "backend/lib/fictionalRiderGenerator.js",
+        "backend/lib/fictionalRiderGenerator.test.js",
+        "backend/lib/fictionalRiderMixPresets.js",
+        "backend/lib/fictionalRiderMixPresets.test.js",
+        "backend/scripts/lib/populationAbilityDistribution.js",
+        "backend/scripts/dev/typeDistribution5327.mjs",
+        "docs/FEATURE_REGISTRY.yml"
+      ],
+      "verifyCommands": [
+        "node --test backend/lib/archetypeDistribution.test.js backend/lib/fictionalRiderGenerator.test.js backend/lib/fictionalRiderMixPresets.test.js backend/lib/archetypeGenerationGates.test.js",
+        "npm --prefix backend run lint"
+      ],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5435,
+      "branch": "feat/5435-rating-best-role-display",
+      "title": "[feature] D-049: rating = bedste rolle nu + badge 'Naturlig rolle' paa rytterprofil, Mit hold og rytterdatabase (bag kontakt)",
+      "scopeText": "LAES FOERST docs/audits/2026-09-22-5435-rating-visning-research-memo.md (alle kaldsteder af riderOverallRating med linjenumre, hvilke routes der mangler best_role (GET /riders 1250-1259 + GET /auctions 6671-6672; /riders/:id har det), app_config-kontakt-moenster via backend/lib/featureStage.js + FEATURE_REGISTRY, tests der skal opdateres (riderRating.test.js, seedData.consistency.test.js), shots.mjs-moenster, og at ratingGolden.5321-testene SKAL forblive groenne). Ejer-direktiv 22/9 (Codex-prompt 1d): KUN model A, INGEN loft-tal. Rating paa kortet = bedste rolle nu med rollenavn ('54 Bjergrytter'), type-badget = 'Natural role / Naturlig rolle' paa rytterprofil (RiderProfileHero.jsx + RiderScoutingTab.jsx uden loft-blokke), Mit hold (TeamPage.jsx; samme moenster i TeamProfilePage.jsx, WatchlistPage.jsx, RiderStatsPage.jsx) og rytterdatabasen/marked (RidersPage.jsx, RiderFilters.jsx, AuctionsPage.jsx + auktionskort). Fundament: frontend/src/lib/riderRating.js faar riderBestRole(rider) -> { rating, role } og riderOverallRating = max over rollerne; RiderTypeBadge.jsx faar label 'Natural/Naturlig'; i18n riderTypes EN foerst, DA under. Datagrundlag: riders.best_role + best_role_rating er live siden #5487 (1a) - brug dem hvor backend leverer, ellers klientberegning med SAMME afrundede tie-regel som backend (ECONOMY_RULES 1.1). Hele visningen bag app_config-kontakt (OFF) saa den taendes i samme deploy som vaerdikoerslen (#5443/#5497). ratingGolden.5321.json ROERES IKKE (kun med ejer-go). Sortering/filter paa 'bedste rolle nu' i rytterdatabasen: brug best_role_rating-kolonnen server-side hvis endpointet allerede eksponerer den; ellers klient-side og noter det i PR. Verifikation: node --test for riderRating + beroerte komponenter, npm run lint, build, e2e for rytterprofil/Mit hold/rytterdatabase, og FOER/EFTER-skaermbilleder (kontakt off/on) desktop 1440 + mobil 390 for de tre flader med aegte preview-data i PR-body. Vercel-preview-link i PR. Spec: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md paragraf 2 (loft-elementer udelades). Patch note: ingen foer flip. help.json: udkast til ny tekst om 'bedste rolle nu' EN+DA i PR (merges paa flip-dagen sammen med #5461, ikke nu).",
+      "model": "opus",
+      "tier": "FULL",
+      "ownership": [
+        "frontend/src/lib/riderRating.js",
+        "frontend/src/lib/riderRating.test.js",
+        "frontend/src/lib/riderColumnSort.js",
+        "frontend/src/components/rider/**",
+        "frontend/src/pages/TeamPage.jsx",
+        "frontend/src/pages/TeamProfilePage.jsx",
+        "frontend/src/pages/WatchlistPage.jsx",
+        "frontend/src/pages/RiderStatsPage.jsx",
+        "frontend/src/pages/RidersPage.jsx",
+        "frontend/src/pages/AuctionsPage.jsx",
+        "frontend/src/components/auctions/**",
+        "frontend/public/locales/en/riderTypes.json",
+        "frontend/public/locales/da/riderTypes.json",
+        "frontend/public/locales/en/rider.json",
+        "frontend/public/locales/da/rider.json",
+        "frontend/public/locales/en/team.json",
+        "frontend/public/locales/da/team.json",
+        "frontend/public/locales/en/riders.json",
+        "frontend/public/locales/da/riders.json",
+        "frontend/tests/e2e/rider-best-role-display.spec.js",
+        "backend/routes/api.js"
+      ],
+      "verifyCommands": [
+        "npm --prefix frontend run lint",
+        "npm --prefix frontend run build",
+        "pwsh -File scripts/verify-lock.ps1 -Max 2 -- npm --prefix frontend run test:e2e"
+      ],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5497,
+      "branch": "feat/5497-typefri-vaerdi-design",
+      "title": "[economy] Typefri rytterværdi med marked: design + maaling til build-go (R1-R6)",
+      "scopeText": "LAES FOERST docs/audits/2026-09-22-5497-typefri-vaerdi-research-memo.md (kort med fil:linje over alt der skal aendres, v4-harness, markedsdata, privat evidens, scorecard og 12 faldgruber - isaer: ny model = NYT model-id registreret i riderValuationModelSelect.js MODEL_PATHS, v4-stien skal regne bit-identisk; eliteUnbuyableGate skal omformuleres; computeSupport i marketValueModel.js skal defineres paa evner/praestation/alder). Byg det Codex ikke leverede: et konkret 'forslag til beregning' med tal ejeren kan vaelge ud fra. Laeste beslutninger staar i issuet - genaabn INGEN af dem. Start med R2+R3+R4 paa eksisterende data (S3/v3-simulering + v4-harness + det betalingsafstemte markedsudtraek i worktreet C:/Dev/CyclingZone-worktrees/codex-5443-best-role-refit/balance-internals/2026-09-22-best-role-refit/ - laes CLAUDE_REVIEW_README.md foerst; privat, kopier aldrig navne/beloeb til repo/PR/issue). R1 (referenceprogram) tages paa S4-kalenderens toerkoersel UDEN uniform-tilt saa snart #5405 leverer den; indtil da brug S3-kalenderen og skriv det som begraensning. Leverancer i PR: (1) docs/superpowers/specs/2026-09-2x-typefri-vaerdi-beregning.md = forslag til beregning i hverdagsord + formler (grundvaerdi fra evner via forventet praestation paa faelles program, typefri karriereprognose med uaendret potentiale-rate, markedskomponent faelles+lokal med misbrugsfilter fra #3818/#3438 og holdout efter fit-dato); (2) dev-only kode under backend/scripts/dev/ + backend/lib/valuationTypefree/ (ingen aendring af riderValuation.js dispatch, marketValueModel.js live-sti eller riderValuationModelV5.json); (3) foer/efter paa HELE populationen (kontanter separat, tabsliste, rolle-tie-glathed: eet evnepoint maa ikke give spring, identiske ryttere med kun typebyte -> identisk vaerdi) som privat rapport under balance-internals/ + offentlig sammenfatning uden navne/beloeb i PR-body; (4) hoejst 2-3 valg til ejeren, hvert som EEN saetning i hverdagsord med anbefaling, skrevet i PR-body under 'Ejer-valg'. Tunge koersler: pwsh -File scripts/verify-lock.ps1 -Max 2 -- infisical run --env=prod --silent -- node ... (read-only; INGEN skrivninger til prod, ingen --apply, ingen flag). Scorecard: eksisterende valuationV4Scorecard-graenser rapporteres separat fra nye kvalitetsmaal. Ingen patch note. Ingen merge - PR er beslutningsgrundlag (R5), ejeren siger 'godkendt til build' (R6).",
+      "model": "opus",
+      "tier": "TARGETED",
+      "ownership": [
+        "backend/lib/valuationTypefree/**",
+        "backend/scripts/dev/typefree5497*.mjs",
+        "docs/superpowers/specs/2026-09-2*-typefri-vaerdi-beregning.md",
+        "docs/audits/2026-09-2*-typefri-vaerdi-5497.md"
+      ],
+      "verifyCommands": [
+        "node --test backend/lib/valuationTypefree/",
+        "npm --prefix backend run lint"
+      ],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 2760,
+      "branch": "feat/2760-winback-mail-text",
+      "title": "[growth] Win-back-mail: buildWinbackEmail (EN + DA) ordret efter ejerens godkendte tekst 22/9",
+      "scopeText": "Ejer 22/9 (seneste kommentar paa #2760): teksten i docs/drafts/2026-09-22-winback-mail.md er godkendt og klar til send. Ret backend/lib/emailTemplates.js buildWinbackEmail (linje ~537) saa EN og DA gengiver udkastet ORDRET (samme afsnit, samme raekkefoelge, jeg/du-stemme, ingen em-dash, 'arrives with season 4' for bestyrelse + traening uafhaengigt af flag). Behold eksisterende parametre (teamName, daysSinceLastSeen, rankInDivision, poolLabel, unsubscribeUrl, language) og unsubscribe-flow. Opdater backend/lib/emailTemplates.test.js + evt. snapshot. INGEN afsendelse, ingen flag-aendring, ingen aendring i winbackSegment.js. PR-body: rendret HTML-skaermbillede EN + DA (render templaten til en HTML-fil og tag skaermbillede med Playwright, desktop-bredde 700px). Patch note: ingen (mail, ikke app). Efter merge koerer orkestratoren toerkoersel (frisk segment, antal EN/DA, 3 eksempler) og ejeren siger 'send'.",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": [
+        "backend/lib/emailTemplates.js",
+        "backend/lib/emailTemplates.test.js",
+        "backend/lib/__snapshots__/**"
+      ],
+      "verifyCommands": [
+        "node --test backend/lib/emailTemplates.test.js backend/lib/winbackSegment.test.js",
+        "npm --prefix backend run lint"
+      ],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 4707,
+      "branch": "feat/4707-v4-chase-model-scale-invariant",
+      "title": "[race-engine] v4 jagt-modellen kalibreres skala-invariant saa bjerg-ankeret holder (RULES par. 7 raekke 14+16)",
+      "scopeText": "LAES FOERST docs/audits/2026-09-22-v4-foer-s4-research-memo.md (par. 0, 2, 6, 7) og docs/RACE_ENGINE_RULES.md par. 5, 7, 7b, 9. Bag race_engine_v4 (off). Opgave: de to absolutte led i netChaseAdvantage (backend/lib/engine/v4/mechanics/breakaway.ts:287-320: lateRaceUrgency x lateRaceUrgencyWeight, og countFactor -> countResistanceWeight) goeres evne-relative saa de holder over evne-niveauer 5/11/30/60/99 (skala-invarianter som test i fieldIntegrity.test.ts-stil), UDEN at bjerg-top-10-ankeret ryger (overskuds-grenen tuning.ts:776-794 surplusWeight/deficitWeight). Maal FOER/EFTER med backend/scripts/headToHeadV4.js --seeds=s1,s2,s3,s4,s5 paa de pinnede baselines (re-eksporter ALDRIG population/etaper) + v4TailSpread.js --gate (3 seeds, ejer-laast). Alle F3-ankre (sprinter-vinderrate flat, bjerg-top-10-spredning, nedkoersel vs summit) groenne samtidig i 5-seed-middel; felt-sammenhaeng og felt-favoritters win-rate rapporteres foer/efter (den sidste er ejer-gated, loes den IKKE ved at straffe styrke). Golden fixtures (engine/v4/fixtures/*/expected.json) opdateres kun hvis output aendres af den tilsigtede kalibrering, og aendringen forklares i PR. Regenerer baseline: buildV4AnchorBaseline.mjs + renderV4AnchorTable.mjs --write i samme PR (par. 7b i RULES). Du EJER tuning.ts i denne boelge. v4-suiten groen: cd backend && node --test --import ./test-setup.js \"lib/engine/v4/**/*.test.ts\". Hard rule 17: ingen motor-interne vaegte i PR-body; anker-tal (offentlige) med i PR som foer/efter-tabel. Ingen patch note (bag flag). Ingen flip.",
+      "model": "opus",
+      "tier": "TARGETED",
+      "ownership": [
+        "backend/lib/engine/v4/mechanics/breakaway.ts",
+        "backend/lib/engine/v4/mechanics/breakaway.test.ts",
+        "backend/lib/engine/v4/finale.ts",
+        "backend/lib/engine/v4/finale.test.ts",
+        "backend/lib/engine/v4/segmentLoop.ts",
+        "backend/lib/engine/v4/segmentLoop.*.test.ts",
+        "backend/lib/engine/v4/fieldIntegrity.test.ts",
+        "backend/lib/engine/v4/tuning.ts",
+        "backend/lib/engine/v4/fixtures/**",
+        "backend/scripts/baselines/v4-anchor-baseline.json",
+        "docs/RACE_ENGINE_RULES.md"
+      ],
+      "verifyCommands": [
+        "node --test --import ./backend/test-setup.js \"backend/lib/engine/v4/**/*.test.ts\"",
+        "node backend/scripts/renderV4AnchorTable.mjs --check",
+        "npm --prefix backend run lint"
+      ],
+      "ownNodeModules": false
+    }
+  ],
+  "trackTimeoutMinutes": 150
+}

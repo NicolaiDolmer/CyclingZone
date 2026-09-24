@@ -56,6 +56,55 @@ export const RACE_HUB_SCHEMA_FILES = [
   "2026-06-13-academy-mvp.sql",
   "2026-06-25-team-race-strategy.sql",
   "2026-07-18-riders-pending-team-id-drift-closer.sql",
+  // #4619 · riders.squad. SKAL loades: senior-læsernes delte filter
+  // (squads.applySeniorSquadFilter) spørger på kolonnen, så uden migrationen
+  // ville contract-testenes endpoints fejle mod PGlite — præcis den drift-fælde
+  // listens egen header advarer om.
+  "2026-09-15-4619-riders-squad.sql",
+  // #5517 · league_divisions.squad + races.squad + teams' ungdomspulje-FK'er. SKAL
+  // loades af samme grund som riders.squad ovenfor: senior-læsernes delte scope
+  // (squads.withSeniorSquadScope) filtrerer på kolonnen, og PGlite-skemaet skal
+  // bevise at migrationen faktisk kan køres (idempotent, to gange) oven på base-
+  // skemaets inline UNIQUE (tier, pool_index).
+  "2026-09-24-5517-squad-leagues-races-teams.sql",
+];
+
+// #5535 (spor S1) · Kolonner som senior-resultat-aggregaterne læser, og som prod
+// har fra migrationer der IKKE kan loades alene her: begge filer rører også
+// tabeller uden for base-skemaet (transfer_windows hhv. admin_log). Statements er
+// kopieret ordret fra kildefilen, så typen og defaulten er prods.
+export const RESULT_AGGREGATE_DRIFT_DDL = {
+  label: "drift: season_standings.penalty_points + finance_transactions.related_entity_type",
+  sql: `
+    -- 2026-05-04-squad-enforcement.sql §3
+    ALTER TABLE season_standings
+      ADD COLUMN IF NOT EXISTS penalty_points BIGINT NOT NULL DEFAULT 0;
+    -- 2026-05-09-audit-log-foundation.sql
+    ALTER TABLE finance_transactions
+      ADD COLUMN IF NOT EXISTS related_entity_type TEXT;
+  `,
+};
+
+// #5535 (spor S1) · Skemaet bag seniorstillingen, de tre rangliste-matviews og
+// dashboard/recap-funktionerne. SQL-funktioner og matviews valideres mod skemaet
+// når de OPRETTES, så hver kolonne de nævner skal findes før S1-migrationen:
+//   - teams.is_test_account, finance_transactions.metadata, races.league_division_id
+//     fra deres egne (PGlite-loadbare) migrationer, resten via drift-DDL'en ovenfor.
+//   - 2026-07-04-ranking-matviews.sql loader prods matviews som de så ud FØR S1, så
+//     S1's DROP + CREATE køres oven på eksisterende views, præcis som i prod.
+// S4 (ungdomsstilling) og S5 (ungdoms-rytterrangliste) bygger videre på listen.
+export const RESULT_AGGREGATE_PRE_S1_FILES = [
+  ...RACE_HUB_SCHEMA_FILES,
+  "2026-05-08-teams-is-test-account.sql",
+  "2026-05-26-backend-message-codes.sql",
+  "2026-06-22-races-league-division.sql",
+  RESULT_AGGREGATE_DRIFT_DDL,
+  "2026-07-04-ranking-matviews.sql",
+];
+
+export const RESULT_AGGREGATE_SCHEMA_FILES = [
+  ...RESULT_AGGREGATE_PRE_S1_FILES,
+  "2026-09-25-5535-senior-only-result-aggregates.sql",
 ];
 
 // Supabase-prærekvisitter som migrationerne antager findes i prod, men som PGlite
@@ -93,7 +142,9 @@ const PREREQ = `
  * Opret en frisk in-memory Postgres med det ægte (sanerede) skema loadet.
  *
  * @param {object} [opts]
- * @param {string[]} [opts.files] ordnet liste af filnavne i database/ (default RACE_HUB_SCHEMA_FILES)
+ * @param {Array<string | {label: string, sql: string}>} [opts.files] ordnet liste af
+ *   filnavne i database/ (default RACE_HUB_SCHEMA_FILES). Et `{label, sql}`-element er
+ *   inline drift-DDL (fx RESULT_AGGREGATE_DRIFT_DDL) og loades på sin plads i listen.
  * @returns {Promise<import("@electric-sql/pglite").PGlite>} klar PGlite-instans
  */
 export async function createTestDb({ files = RACE_HUB_SCHEMA_FILES } = {}) {
@@ -101,18 +152,29 @@ export async function createTestDb({ files = RACE_HUB_SCHEMA_FILES } = {}) {
   await db.exec(PREREQ);
 
   for (const file of files) {
-    const raw = readFileSync(join(DATABASE_DIR, file), "utf8");
+    const label = typeof file === "string" ? file : file.label;
+    const raw = typeof file === "string" ? readFileSync(join(DATABASE_DIR, file), "utf8") : file.sql;
     const sql = sanitizeForPglite(raw);
     try {
       await db.exec(sql);
     } catch (err) {
       // Wrap med filnavn så en DDL-fejl er debugbar (hvilken migration fejlede).
-      throw new Error(`createTestDb: load af '${file}' fejlede i PGlite: ${err.message}`, {
+      throw new Error(`createTestDb: load af '${label}' fejlede i PGlite: ${err.message}`, {
         cause: err,
       });
     }
   }
   return db;
+}
+
+/**
+ * Indholdet af en migrationsfil i database/ (til tests der kører en fil igen).
+ *
+ * @param {string} file filnavn i database/
+ * @returns {string} rå SQL
+ */
+export function readMigration(file) {
+  return readFileSync(join(DATABASE_DIR, file), "utf8");
 }
 
 /**

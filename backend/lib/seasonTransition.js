@@ -61,6 +61,7 @@ import { renewExpiringAiContracts as defaultRenewExpiringAiContracts } from "./a
 import { releaseRetiredRiders as defaultReleaseRetiredRiders } from "./retirementRelease.js";
 import { detectAndNotifySquadsBelowMinimum as defaultDetectAndNotifySquadsBelowMinimum } from "./squadBelowMinimumCheck.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { captureException } from "./sentry.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
@@ -70,6 +71,7 @@ import {
   buildPersonalSeasonEndedMessage,
 } from "./seasonEndedPersonalization.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
+import { isParkedTeam } from "./managerParking.js";
 import { carryOverManagerSetup as defaultCarryOverManagerSetup } from "./seasonCarryOver.js";
 
 let processSeasonStartImpl;
@@ -490,15 +492,22 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   // så den ikke kan drive fra notifikations-/board-stierne igen.
   // #2753 · board_profiles embeddes med (samme join som processSeasonStart), fordi
   // previewet nu regner den FAKTISKE payout - ikke bare den garanterede base.
+  // #4592 · parked_at med i selecten: processSeasonStart springer parkerede hold
+  // over i sponsor-loopet, så previewet skal kunne gøre det samme.
   const { data: humanTeams, error: teamsError } = await applyHumanTeamFilter(
     supabase
       .from("teams")
-      .select("id, name, sponsor_income, division, board_profiles(budget_modifier, negotiation_status)")
+      .select("id, name, sponsor_income, division, parked_at, board_profiles(budget_modifier, negotiation_status)")
   );
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
   const sponsorStandingsContext = await loadSponsorPreviewStandings({
     supabase,
     fromSeasonId: fromSeason.id,
+    toSeasonNumber,
+  });
+  // #4860 D: stillingen fra da tilbudsvinduet åbnede — default-'safe' prissættes mod den.
+  const sponsorWindowOpenContext = await loadSponsorWindowOpenStandings({
+    supabase,
     toSeasonNumber,
   });
   const contractsByTeamId = await loadSponsorContractStock({ supabase });
@@ -511,21 +520,37 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   // #2753 · sponsor_payout er det der FAKTISK krediteres: base × board-modifier
   // × pullout, cappet af kontraktloftet - samme regnestykke som udbetalingen
   // (resolveSponsorPayout). Det er payout-tallet ejeren planlægger skiftet på.
-  const sponsorPreview = (humanTeams || []).map((team) => ({
-    team_id: team.id,
-    team_name: team.name,
-    division: team.division,
-    ...buildSponsorPreviewRow(
-      team,
-      toSeasonNumber,
-      sponsorStandingsContext,
-      contractsByTeamId.get(team.id) || {},
-      {
-        pulloutFactor: pulloutFactorByTeamId.get(team.id) ?? 1.0,
-        boardTestMode,
-      }
-    ),
+  const contractRows = (humanTeams || []).map((team) => ({
+    parked: isParkedTeam(team),
+    row: {
+      team_id: team.id,
+      team_name: team.name,
+      division: team.division,
+      ...buildSponsorPreviewRow(
+        team,
+        toSeasonNumber,
+        sponsorStandingsContext,
+        contractsByTeamId.get(team.id) || {},
+        {
+          pulloutFactor: pulloutFactorByTeamId.get(team.id) ?? 1.0,
+          boardTestMode,
+        },
+        sponsorWindowOpenContext
+      ),
+    },
   }));
+  // #4592 · processSeasonStart springer parkerede hold over i sponsor-loopet
+  // (isParkedTeam, samme definition). Sponsor-tallene, teams_affected og
+  // breakdown'en regnes derfor kun på de hold der faktisk får sponsor, så
+  // bekræftelses-dialogen og admin_log ikke overdriver udbetalingen. Parkerede
+  // hold tælles for sig (teams_parked). Parkering læses NU: sweepen kører ved
+  // 'Afslut sæson', før skiftet, så værdien er den samme som udbetalingen ser.
+  const sponsorPreview = contractRows.filter((entry) => !entry.parked).map((entry) => entry.row);
+  const teamsParked = contractRows.length - sponsorPreview.length;
+  // Kontrakt-fornyelsen (expireAndRenewContracts) filtrerer IKKE på parkering:
+  // et parkeret hold får stadig sin kontrakt fornyet og en eventuel signing
+  // bonus. De to kontrakt-tal nedenfor regnes derfor stadig på alle menneskehold.
+  const allContractRows = contractRows.map((entry) => entry.row);
 
   const sponsorContractSources = { locked: 0, pending: 0, default: 0 };
   for (const row of sponsorPreview) {
@@ -544,7 +569,10 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
       transfer_window_id: toWindowId,
     },
     already_transitioned: Boolean(existingTo),
+    // Hold der får sponsor ved sæsonstarten (parkerede hold er ikke med, #4592).
     teams_affected: sponsorPreview.length,
+    // #4592 · menneskehold der er parkeret og derfor ikke får sponsor denne sæson.
+    teams_parked: teamsParked,
     // Kontrakternes garanterede base, FØR board-modifier/pullout. Reference-tal -
     // ikke det der rammer holdenes balance.
     sponsor_base_total: sponsorPreview.reduce((s, p) => s + p.sponsor_base, 0),
@@ -553,10 +581,12 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     sponsor_payout_total: sponsorPreview.reduce((s, p) => s + p.sponsor_payout, 0),
     sponsor_board_test_mode: boardTestMode,
     // Udbetales ÉN gang ved aktivering af et pending valg (loyal-arketypen, #2948).
-    sponsor_signing_bonus_total: sponsorPreview.reduce((s, p) => s + p.sponsor_signing_bonus, 0),
+    // Alle menneskehold, også parkerede: fornyelsen udbetaler den uanset parkering.
+    sponsor_signing_bonus_total: allContractRows.reduce((s, p) => s + p.sponsor_signing_bonus, 0),
     // IKKE en udbetaling ved skiftet: den variable puljes samlede størrelse, som
-    // holdene optjener pr. etape hen over sæsonen ved fuld deltagelse.
-    sponsor_race_day_pool_total: sponsorPreview.reduce((s, p) => s + p.sponsor_race_day_pool, 0),
+    // holdene optjener pr. etape hen over sæsonen ved fuld deltagelse. Alle
+    // menneskehold, fordi kontrakten fornyes for parkerede hold også.
+    sponsor_race_day_pool_total: allContractRows.reduce((s, p) => s + p.sponsor_race_day_pool, 0),
     sponsor_contract_sources: sponsorContractSources,
     sponsor_breakdown: sponsorPreview,
   };
@@ -618,6 +648,39 @@ async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNum
   return buildSponsorStandingsContext(data || []);
 }
 
+// #4860 D: default-'safe'-aftalen prissættes ved skiftet til den pris tilbuddet blev
+// VIST til da vinduet åbnede — sæsonen FØR den der lige sluttede (toSeasonNumber − 2).
+// Previewet skal læse samme kilde som expireAndRenewContracts, ellers viser det en
+// anden base end den fornyelsen skriver. Findes sæsonen ikke (tidlig i spillets
+// levetid), er konteksten tom og previewet falder tilbage til slutstillingen — samme
+// resultat som fornyelsen selv giver dér.
+async function loadSponsorWindowOpenStandings({ supabase, toSeasonNumber }) {
+  const windowOpenSeasonNumber = toSeasonNumber - 2;
+  // Ingen afsluttet sæson før vinduet (sæson 1 → 2) → ingen vist pris at fryse til;
+  // null betyder "brug slutstillingen som hidtil", samme guard som fornyelsen har.
+  if (toSeasonNumber < FIRST_VARIABLE_SPONSOR_SEASON || windowOpenSeasonNumber < 1) {
+    return null;
+  }
+  const { data: season, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number")
+    .eq("number", windowOpenSeasonNumber)
+    .maybeSingle();
+  if (seasonError) {
+    throw new Error(`Could not load sponsor window-open season: ${seasonError.message}`);
+  }
+  if (!season?.id) return null;
+
+  const { data, error } = await supabase
+    .from("season_standings")
+    .select("team_id, division, rank_in_division, total_points")
+    .eq("season_id", season.id);
+  if (error) {
+    throw new Error(`Could not load sponsor window-open standings: ${error.message}`);
+  }
+  return buildSponsorStandingsContext(data || []);
+}
+
 /**
  * #2926 · Previewet modellerede tidligere en KONTRAKTFRI tilstand (division-base
  * + variabel pulje) — men udbetalingen sker EFTER fase 5b (expireAndRenewContracts),
@@ -631,7 +694,8 @@ function buildSponsorPreviewRow(
   toSeasonNumber,
   sponsorStandingsContext,
   contracts = {},
-  modifierContext = {}
+  modifierContext = {},
+  windowOpenStandingsContext = null
 ) {
   const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
   const divisionStandings = lastSeasonStanding
@@ -651,12 +715,37 @@ function buildSponsorPreviewRow(
     lastSeasonStanding,
     divisionStandings,
   });
+  // #4860 D: den pris default-'safe' ville blive tildelt til — vindues-prisen
+  // (stillingen fra toSeasonNumber − 2), begrænset opad af slutstillingen, præcis
+  // som loadDefaultRenewTargetValue gør i fornyelsen. Kender previewet ingen
+  // vindues-stilling for holdet, står den på null og default-grenen bruger
+  // slutstillingen som hidtil.
+  // Ét kendt, bevidst hul: har holdet ingen stilling i toSeasonNumber − 2, men én i
+  // toSeasonNumber − 3, går fornyelsen ét trin længere tilbage (§1-fallbacken), mens
+  // previewet stopper ved 1,00. Previewet er da konservativt (for lavt), aldrig for højt.
+  const windowOpenStanding =
+    windowOpenStandingsContext?.standingByTeamId?.get(team.id) || null;
+  const windowOpenTarget = windowOpenStandingsContext
+    ? renownTarget({
+        division: priceDivision,
+        lastSeasonStanding: windowOpenStanding,
+        divisionStandings: windowOpenStanding
+          ? windowOpenStandingsContext.divisionStandingsByDivision.get(
+              windowOpenStanding.division
+            ) || []
+          : [],
+      })
+    : null;
+  const defaultRenownTargetValue =
+    windowOpenTarget === null ? null : Math.min(windowOpenTarget, renownTargetValue);
+
   const { source, contract } = resolveContractForNewSeason({
     teamId: team.id,
     newSeasonNumber: toSeasonNumber,
     activeContract: contracts.activeContract ?? null,
     pendingContract: contracts.pendingContract ?? null,
     renownTargetValue,
+    defaultRenownTargetValue,
     // #4376: previewets default-aftale skal baere samme signed_division som
     // fornyelsen skriver, ellers viser previewet et divisions-tillaeg der ikke opstaar.
     teamDivision: priceDivision,
@@ -909,6 +998,8 @@ async function writeAdminLog(supabase, payload) {
         to_season_number: toNumber,
         transition_at: transitionAtIso,
         teams_affected: plan.teams_affected,
+        // #4592 · parkerede hold uden sponsor, så loggen kan revideres bagefter.
+        teams_parked: plan.teams_parked ?? 0,
         sponsor_base_total: plan.sponsor_base_total,
         // #2753 · den faktiske udbetaling (modifier × pullout × loft) logges ved
         // siden af den garanterede base, så admin-loggen kan revideres bagefter.
@@ -1363,6 +1454,11 @@ export async function transitionToNextSeason({
     const materializeFn = deps.materializeTierCalendars ?? (await getMaterializeTierCalendars());
     const gatePlanFn = deps.gatePlan ?? (await getGatePlan());
     let calendarApplied = false;
+    // #4845/#5267: sæsonens fælles løbsdags-mål SKAL med her. Uden det bygger forever-stien
+    // den NATURLIGE (skæve) akse — og så gater den en anden kalender end den den skriver,
+    // eller skriver en kalender hvor D1 har ~40 % flere trænings-ticks end D4. Fanget af
+    // CodeRabbit 19/9 på PR #5169. null = sæsonen har intet mål (adfærd som før #4845).
+    const seasonRaceDayTarget = SEASON_RACE_DAY_TARGET[Number(plan.to_season.number)] ?? null;
     try {
       const dryPlan = await materializeFn({
         supabase,
@@ -1370,6 +1466,11 @@ export async function transitionToNextSeason({
         seasonStartDate: transitionAtIso,
         from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
         dryRun: true,
+        raceDayTarget: seasonRaceDayTarget,
+        // #5592: første etape mindst 24 timer efter det FAKTISKE sæsonskifte, ikke
+        // konventionens kl. 18. Kan dagen ikke nå det inden kl. 22, kaster planen og
+        // fanges af catch'en nedenfor (ingen kalender hellere end natte-etaper).
+        seasonTransitionAt: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
       });
       const { blocking, compositionDrift, tierCompositionDrift } = gatePlanFn(dryPlan);
 
@@ -1389,6 +1490,8 @@ export async function transitionToNextSeason({
           seasonStartDate: transitionAtIso,
           from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
           dryRun: false,
+          raceDayTarget: seasonRaceDayTarget,
+          seasonTransitionAt: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso), // #5592, samme som dry-run
         });
         log.push({ phase: "season_calendar", ...applied, compositionDrift, tierCompositionDrift });
         calendarApplied = true;

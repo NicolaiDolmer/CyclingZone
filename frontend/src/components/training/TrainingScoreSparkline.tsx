@@ -1,45 +1,37 @@
-// TrainingScoreSparkline — traeningsscorens kurve (#4851).
+// TrainingScoreSparkline — traeningsscorens kurve (#4851, #5486).
 //
 // Opskriften er LAAST i docs/design/TASTE.md:40 (fork 5, ejerens valg A
 // "monokrom streg"): 2 px streg i `--text-1`, flad `--bg-subtle`-fyld under
 // kurven, slutpunktet markeret. Kurven skifter ALDRIG farve efter retning —
 // deltaet ved siden af tallet baerer groent/roedt, ikke stregen.
 //
-// Loebsdage har ingen score (spec §4.4: fladen skriver "loeb", ikke et tal), og
-// kurven skal have et HUL dér. Punkterne tegnes derfor som sammenhaengende
-// SEGMENTER, ikke som én polyline med interpolerede huller — en linje der
-// fortsaetter hen over en loebsdag ville paastaa en maaling der ikke findes.
+// Loebsdage har ingen score (spec §4.4: fladen skriver "loeb", ikke et tal).
+// FOER #5486 tegnede kurven et HUL dér (sammenhaengende SEGMENTER med et brud
+// per loebsdag). Ejeren (22/9, #5486) aendrede det: loebsdage skal udelades
+// helt af SERIEN, saa kurven er ubrudt — ikke vise et hul, ikke vise 0. Derfor
+// filtreres `points` gennem `filterTrainingScoreSpark` (lib/trainingScoreView.ts)
+// FOER x-aksen udregnes: en filtreret loebsdag optager intet slot, saa de
+// tilbagevaerende dage tegnes som ÉN sammenhaengende linje. Filteret virker
+// ens uanset `training_tick_per_race_day` (spec's flag), fordi det kun kigger
+// paa om raekken HAR et tal — ikke paa hvordan raekken blev til.
 //
 // Hard rule 31: nye frontend-filer skrives i .ts/.tsx, saa filen faar fuld
 // strict-daekning fra `frontend/tsconfig.json` med det samme.
 
-// Ét punkt i kurven. `score` er NULLABLE, fordi en loebsdag faar en raekke uden
-// tal (backend/lib/trainingScore.js, buildTrainingScoreView).
+import { filterTrainingScoreSpark } from "../../lib/trainingScoreView.ts";
+
+// Ét raat punkt fra API'et. `score` er NULLABLE, fordi en loebsdag faar en
+// raekke uden tal (backend/lib/trainingScore.js, buildTrainingScoreView) —
+// komponenten filtrerer dem selv vaek, se filterTrainingScoreSpark ovenfor.
 export type TrainingScorePoint = {
   date: string;
   score: number | null;
   raceDay?: boolean;
 };
 
-// Et punkt der HAR et tal, plus dets plads paa den faste x-akse.
-type ScoredPoint = TrainingScorePoint & { score: number; i: number };
-
 const VIEW_W = 100;
 const VIEW_H = 28;
 const PAD = 3;
-
-// Sammenhaengende stykker af punkter der HAR et tal.
-function segmentsOf(points: TrainingScorePoint[]): ScoredPoint[][] {
-  const out: ScoredPoint[][] = [];
-  let current: ScoredPoint[] = [];
-  points.forEach((p, i) => {
-    const score = p?.score;
-    if (typeof score === "number" && Number.isFinite(score)) current.push({ ...p, score, i });
-    else if (current.length) { out.push(current); current = []; }
-  });
-  if (current.length) out.push(current);
-  return out;
-}
 
 export default function TrainingScoreSparkline({ points, label, width = VIEW_W, height = VIEW_H }: {
   points: TrainingScorePoint[] | null | undefined;
@@ -47,24 +39,20 @@ export default function TrainingScoreSparkline({ points, label, width = VIEW_W, 
   width?: number;
   height?: number;
 }) {
-  const list = Array.isArray(points) ? points : [];
-  const segments = segmentsOf(list);
-  if (segments.length === 0) return null;
+  const list = filterTrainingScoreSpark(points);
+  if (list.length === 0) return null;
 
   // Fast 1-99-akse. En auto-skaleret akse ville faa to helt forskellige uger til
   // at ligne hinanden — og scoren ER en absolut skala, ikke en relativ.
   const x = (i: number) => (list.length <= 1 ? width / 2 : PAD + (i / (list.length - 1)) * (width - 2 * PAD));
   const y = (score: number) => PAD + (1 - (Math.max(1, Math.min(99, score)) - 1) / 98) * (height - 2 * PAD);
 
-  const lastSegment = segments[segments.length - 1];
-  const last = lastSegment[lastSegment.length - 1];
-  // Fyldet lukkes mod bunden pr. segment, saa hullet ogsaa er et hul i fyldet.
-  const fillPaths = segments
-    .filter((seg) => seg.length > 1)
-    .map((seg) => {
-      const line = seg.map((p) => `${x(p.i)},${y(p.score)}`).join(" L");
-      return `M${x(seg[0].i)},${height} L${line} L${x(seg[seg.length - 1].i)},${height} Z`;
-    });
+  const last = list[list.length - 1];
+  // Ingen huller tilbage i den filtrerede liste, saa fyldet er ÉN flade under
+  // hele kurven i stedet for et fyld pr. segment.
+  const fillPath = list.length > 1
+    ? `M${x(0)},${height} L${list.map((p, i) => `${x(i)},${y(p.score as number)}`).join(" L")} L${x(list.length - 1)},${height} Z`
+    : null;
 
   return (
     <svg
@@ -75,18 +63,14 @@ export default function TrainingScoreSparkline({ points, label, width = VIEW_W, 
       aria-label={label}
       className="block overflow-visible"
     >
-      {fillPaths.map((d) => (
-        <path key={d} d={d} className="fill-cz-subtle" />
-      ))}
-      {/* Et segment med ÉT punkt giver kun "M x,y", som SVG ikke tegner. Uden
-          denne gren ville en maalt dag mellem to loebsdage forsvinde helt —
-          hullet ville sluge selve maalingen. Den tegnes som en prik i stedet. */}
-      {segments.map((seg) => (seg.length === 1 ? (
-        <circle key={seg[0].date} cx={x(seg[0].i)} cy={y(seg[0].score)} r="2" className="fill-cz-1" />
+      {fillPath && <path d={fillPath} className="fill-cz-subtle" />}
+      {/* Kun ÉT maalt punkt i hele vinduet: "M x,y" alene tegner intet i SVG,
+          saa punktet tegnes som en prik i stedet for en linje. */}
+      {list.length === 1 ? (
+        <circle cx={x(0)} cy={y(list[0].score as number)} r="2" className="fill-cz-1" />
       ) : (
         <path
-          key={seg[0].date}
-          d={`M${seg.map((p) => `${x(p.i)},${y(p.score)}`).join(" L")}`}
+          d={`M${list.map((p, i) => `${x(i)},${y(p.score as number)}`).join(" L")}`}
           fill="none"
           strokeWidth="2"
           strokeLinecap="round"
@@ -94,8 +78,8 @@ export default function TrainingScoreSparkline({ points, label, width = VIEW_W, 
           vectorEffect="non-scaling-stroke"
           className="stroke-cz-1"
         />
-      )))}
-      <circle cx={x(last.i)} cy={y(last.score)} r="2.4" className="fill-cz-1" />
+      )}
+      <circle cx={x(list.length - 1)} cy={y(last.score as number)} r="2.4" className="fill-cz-1" />
     </svg>
   );
 }

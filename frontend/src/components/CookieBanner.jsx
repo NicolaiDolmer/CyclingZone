@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useConsent } from "../lib/consent.jsx";
+import { useBottomSlot } from "../lib/bottomSlot.ts";
 
 // Kategorierne er datadrevne; labels/beskrivelser resolves via i18n (#1170 —
 // banneret var 100 % hardcodet dansk og vises for alle nye brugere, også EN).
@@ -42,6 +43,11 @@ export default function CookieBanner() {
     setMounted(true);
   }, []);
 
+  // #5440: samtykke ejer bundkanten i den delte bund-slot (højeste prioritet),
+  // så release-banneret og NPS-baren viger mens banneret står. Returværdien
+  // bruges ikke: samtykke taber aldrig kanten.
+  useBottomSlot("consent", mounted && bannerOpen);
+
   if (!mounted || !bannerOpen) return null;
 
   // Dual-page-mønster (jf. WaitlistConsentText): EN har sin egen privacy-side.
@@ -56,7 +62,7 @@ export default function CookieBanner() {
       role="dialog"
       aria-modal="false"
       aria-labelledby="cookie-banner-title"
-      className="fixed inset-x-0 bottom-0 z-toast px-3 pb-3 sm:px-6 sm:pb-6"
+      className="fixed inset-x-0 bottom-[var(--cz-mobile-nav-offset,0px)] z-toast px-3 pb-3 sm:px-6 sm:pb-6"
     >
       <div className="mx-auto max-w-3xl bg-cz-card rounded-cz shadow-2xl border border-cz-border p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3 mb-3">

@@ -9,6 +9,7 @@
 // engelske fallback-streng.
 
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -26,29 +27,29 @@ async function call(path, { method = "GET", body = null } = {}) {
     err.errorCode = "unauthorized";
     throw err;
   }
-  // fetch() REJECTER ved netværksudfald (mobil-WebKit: "TypeError: Load
-  // failed"). Uden denne oversættelse ville hver enkelt kalder skulle skelne
-  // mellem "netværket faldt ud" og "backenden sagde nej" — her bliver begge
-  // til den samme Error med en errorCode, som kaldestederne allerede fanger og
-  // viser som en fejltekst (#3628).
-  let res;
-  try {
-    res = await fetch(`${API}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch (cause) {
-    const err = new Error("Network request failed", { cause });
+  // Netværksudfald (mobil-WebKit: "TypeError: Load failed") skal se ud som
+  // enhver anden fejl for kaldestederne: den samme Error med en errorCode de
+  // allerede fanger og viser som en fejltekst (#3628).
+  //
+  // #5242/#5322: apiFetch KASTER ikke længere ved et netværksudfald — den
+  // returnerer `networkError: true` med `status: 0` og den oprindelige
+  // exception i `error`. Oversættelsen herunder er derfor flyttet fra en
+  // catch-blok til et fladt tjek, men producerer nøjagtig den samme Error:
+  // samme besked, samme `errorCode: "network"`, samme `cause`. Kaldestederne
+  // slår fortsat `errors:api.network` op.
+  const res = await apiFetch(`${API}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.networkError) {
+    const err = new Error("Network request failed", { cause: res.error });
     err.errorCode = "network";
     throw err;
   }
-  let payload;
-  try {
-    payload = await res.json();
-  } catch {
-    payload = null;
-  }
+  // apiFetch har allerede parset kroppen og giver null ved et tomt/ikke-JSON
+  // svar — samme resultat som try/catch-parsen gav her før.
+  const payload = res.data;
   if (!res.ok) {
     const err = new Error(payload?.error || `Request failed (${res.status})`);
     err.errorCode = payload?.errorCode || null;

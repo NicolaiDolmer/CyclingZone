@@ -70,6 +70,11 @@ function reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules) {
     `- Din scratch-mappe er \`${scratchDir}\` - ALLE midlertidige filer laegges DER, aldrig i en delt temp-mappe og aldrig i worktreet. Commit-besked-filen er \`${msgFile}\` (uden for worktreet, med branch-slug i navnet, saa en anden lane ikke kan overskrive den).`,
     "- `git add <konkrete filer>`, ALDRIG `git add -A` (lint-staged-pitfall sweeper untracked ind).",
     "- Ingen patch note i denne PR - boelger samler patch notes ved close-out (undgaar merge-konflikter i patchNotes.js). Aflever patch note-tekst (EN foerst, DA under) i din slutrapport i stedet.",
+    // 18/9 (dagboelgen): to workers lagde balance-tal i docs/audits/ og holdnavne +
+    // et Discord-brugernavn i en fair-play-rapport/PR-body. Orkestratorens brief
+    // bad selv om rapporten i docs/audits/. Postmortem:
+    // .claude/learnings/2026-09-18-wave-briefs-og-hard-rule-17.md
+    "- REPOET ER OFFENTLIGT (hard rule 17 + anonymisering). I committede filer, PR-body, issue-kommentarer og commit-beskeder maa der ALDRIG staa: praecise balance-tal (vaegte, formler, konstanter, taerskler, maalte fordelinger fra motor/generator), holdnavne, manager-/Discord-brugernavne, user_id/team_id eller e-mails. Skriv kvalitativt + aliaser (Hold A/B) i repoet; den fulde udgave med tal og navne laegges i `balance-internals/` (gitignoreret) og naevnes kun ved filnavn. Beder din opgavetekst om det modsatte, er det en briefing-fejl: foelg DENNE regel og skriv afvigelsen i slutrapporten.",
     "- Start ALDRIG en watcher eller dev-server der overlever dig (`--watch`, `npm run dev`, `vite`, `playwright` i baggrunden). CI-status laeses med enkelte `gh pr checks`-kald, aldrig `--watch`.",
     // 8/9 (bidt 3x): workers der lagde preflight i baggrunden og derefter
     // "ventede paa monitoren" stod reelt stille - der kom aldrig et svar.

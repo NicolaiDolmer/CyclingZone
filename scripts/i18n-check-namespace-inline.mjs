@@ -66,6 +66,7 @@ const INLINE_EXEMPT = new Set([
   "watchlist", // WatchlistPage — ready-gate
   "staffOverview", // StaffOverviewPage (tab i KlubPage) — ready-gate
   "standings",
+  "squad", // #5519 SquadPage (U23 team / Junior team): I18nReadyGate i App.jsx
 
   // #4231: backendMessages var det tungeste tilbagevaerende inlinede namespace
   // (56 KB raw da+en, ~15 KB gzipped). Backend sender {code, params}; frontend
@@ -175,9 +176,34 @@ function extractInlinedNamespaces() {
   return inlined;
 }
 
+// #5177: dansk ligger ikke længere i `resources` — det er én lazy chunk,
+// frontend/src/i18n/messages.da.js, som LocaleBundleBackend henter FØR mount.
+// Garantien "ingen rå nøgler på first paint" holder derfor kun hvis den fil
+// dækker NØJAGTIG de samme namespaces som `resources.en`. Et namespace tilføjet
+// til index.js men glemt i messages.da.js ville give raw keys for danske
+// spillere alene — præcis den bug-klasse #470 findes for, bare sprog-asymmetrisk.
+const DA_BUNDLE = join(SRC_DIR, "i18n", "messages.da.js");
+
+function extractDaBundleNamespaces() {
+  const src = readFileSync(DA_BUNDLE, "utf8");
+  const block = src.match(/export default \{([\s\S]*?)\n\};/);
+  if (!block) {
+    throw new Error(
+      `Could not locate 'export default { … }' in ${relative(ROOT, DA_BUNDLE)} (#5177)`
+    );
+  }
+  const out = new Set();
+  for (const line of block[1].split(",")) {
+    const key = line.trim().split(":")[0].trim();
+    if (/^[\w-]+$/.test(key)) out.add(key);
+  }
+  return out;
+}
+
 const srcFiles = walk(SRC_DIR);
 const { used, dynamicWarnings } = extractUsedNamespaces(srcFiles);
 const inlined = extractInlinedNamespaces();
+const daBundled = extractDaBundleNamespaces();
 
 let errorCount = 0;
 const missing = [];
@@ -219,6 +245,23 @@ if (gateless.length > 0) {
       `  render fladen rå nøgler på first paint (useSuspense: false, #470).\n` +
       `  Fix: wrap forbrugeren i <I18nReadyGate ns="…"> (frontend/src/components/I18nReadyGate.jsx)\n` +
       `  ELLER gate in-page på \`const { t, ready } = useTranslation("…")\`.\n`
+  );
+}
+
+// #5177 forward-guard: sprog-symmetri mellem `resources.en` (index.js) og den
+// lazy danske bundle (messages.da.js). Uden den ville et nyt namespace i
+// index.js alene give rå nøgler for danske spillere på first paint.
+const daMissing = [...inlined].filter((ns) => !daBundled.has(ns)).sort();
+const daExtra = [...daBundled].filter((ns) => !inlined.has(ns)).sort();
+if (daMissing.length > 0 || daExtra.length > 0) {
+  errorCount += daMissing.length + daExtra.length;
+  console.error(
+    `✗ i18n sprog-symmetri FAILED — frontend/src/i18n/messages.da.js matcher ikke \`resources.en\`:\n` +
+      (daMissing.length ? `  mangler i messages.da.js: ${daMissing.join(", ")}\n` : "") +
+      (daExtra.length ? `  kun i messages.da.js: ${daExtra.join(", ")}\n` : "") +
+      `  Begge lister er first-paint-sættet (#411/#412/#470). Er de ikke ens,\n` +
+      `  renderer danske spillere rå nøgler på præcis de namespaces der mangler.\n` +
+      `  Fix: tilføj/fjern samme namespace begge steder (#5177).\n`
   );
 }
 

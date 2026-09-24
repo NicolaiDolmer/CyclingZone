@@ -20,6 +20,8 @@ import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
 import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
@@ -29,9 +31,11 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
+import { useSquadGroupFilter, squadGroupFilterToolbar } from "../components/squad/SquadGroupFilter.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
+import { demoteCapLabels } from "../lib/squadCaps.ts"; // #5568
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
@@ -581,10 +585,11 @@ function OwnTransferListingBadge({ listing }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, squadFilter }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
+  const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
   // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
   // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
   // /riders (RiderRow). Navn-linket + Handling-knappen stopper propagation.
@@ -596,8 +601,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // #1929 (redesign 3/7): akademiryttere lever på holdet men uden for senior-cap'en (30)
   // og vises nu i SAMME tabel som seniorerne, styret af to gruppe-filtre (begge on som
   // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
-  const [showSeniors, setShowSeniors] = useState(true);
-  const [showAcademy, setShowAcademy] = useState(true);
+  // #5075: filter-state'en er LØFTET op i TeamPage (props her) så Stats-fanen
+  // kan dele nøjagtig samme state. #5631: grupperne er Senior / U23 / Junior
+  // (Seniors / Academy med youth_squad_pages slukket), se SquadGroupFilter.tsx.
   // #2906 punkt 1 (ejer 25/7: "muligt/nemmere at se alle evner på samme tid"):
   // to kolonne-tilstande i stedet for én 25-kolonners tabel ingen skærm kan vise.
   // "overview" = de beskrivende kolonner (værdi, løn, status, kontrakt, handling);
@@ -610,11 +616,6 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 
-  // Gruppe-tællere til filter-knapperne. Seniorer i den aktive transfer-visning;
-  // akademiryttere er off-cap og har hverken ind-/udgående flag.
-  const seniorGroupCount  = riders.filter(r => !r.is_academy && (squadView === "upcoming" ? !r._isOutgoing : !r._isIncoming)).length;
-  const academyGroupCount = riders.filter(r => r.is_academy && !r._isIncoming).length;
-
   // Nuværende = senior-truppen nu (inkl. udgående, ekskl. indgående).
   // Kommende = senior-truppen efter ventende transfers (uden udgående, med indgående).
   const currentCount  = riders.filter(r => !r._isIncoming && !r.is_academy).length;
@@ -622,11 +623,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
 
   // #1929-redesign: ÉT samlet roster. Base = aktiv transfer-visning (akademiryttere
   // passerer begge ind-/udgående filtre) → filtrér efter gruppe-toggles (default begge on).
-  const displayRidersBase = (squadView === "upcoming"
+  // Gruppe-tællerne i filteret regnes på den aktive transfer-visning (viewRiders).
+  const viewRiders = squadView === "upcoming"
     ? riders.filter(r => !r._isOutgoing)
-    : riders.filter(r => !r._isIncoming)
-  )
-    .filter(r => (r.is_academy ? showAcademy : showSeniors))
+    : riders.filter(r => !r._isIncoming);
+  const displayRidersBase = viewRiders
+    .filter(r => squadFilter.isVisible(r))
     // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
     // uden den rå (server-skjulte) potentiale.
     // #2906 punkt 2: `_ovr` = den samme 1-99-rating som rytterprofilen og
@@ -692,11 +694,15 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     numeric: true,
     compact: true,
     mobileLabel: t("squad.headers.rating"),
+    // #5435: med kontakten tændt står bedste rolle nu ved tallet (BestRoleTag
+    // renderer intet når den er slukket).
     render: (r) => (Number.isFinite(r._ovr) ? (
-      <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
-        style={statPlateStyle(r._ovr)}>
-        {r._ovr}
-      </span>
+      <WithBestRole rider={r}>
+        <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+          style={statPlateStyle(r._ovr)}>
+          {r._ovr}
+        </span>
+      </WithBestRole>
     ) : <span className="text-cz-3">—</span>),
   };
 
@@ -707,7 +713,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // tilstande i stedet for at evne-tilstanden opfinder sin egen placering.
   const typeColumn = {
     key: "type",
-    header: t("squad.headers.type"),
+    // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
+    header: typeColumnLabel,
     sortKey: "primary_type",
     compact: true,
     render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
@@ -893,20 +900,10 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           synligt når holdet har akademiryttere (ellers er der intet at filtrere).
           #3188: "Vis" + de to filter-piller ligger i deres EGEN wrapper, så et
           klik i mellemrummet fanges lokalt i stedet for at boble op til en række
-          uden handler (1.306 dead clicks, Clarity 27/7-3/8). */}
-      {academyGroupCount > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
-          <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-            {t("squad.filter.seniors", { count: seniorGroupCount })}
-          </button>
-          <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-            {t("squad.filter.academy", { count: academyGroupCount })}
-          </button>
-        </div>
-      )}
+          uden handler (1.306 dead clicks, Clarity 27/7-3/8).
+          #5075: markup + state udtrukket, delt med Stats-fanen.
+          #5631: Senior / U23 / Junior, se SquadGroupFilter.tsx. */}
+      {squadGroupFilterToolbar(squadFilter, viewRiders)}
 
       {/* #1095: segmenteret nuværende/kommende-visning */}
       {hasTransfers && (
@@ -1011,6 +1008,12 @@ export function TeamPage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [activeTab, setActiveTab] = useState("squad");
+  // #5075: gruppe-filteret boede tidligere kun i SquadTab — Stats-fanen
+  // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så
+  // Trup- og Stats-fanen deler PRÆCIS samme state i stedet for at hver fane
+  // opfinder sin egen variant. Default = alle grupper på.
+  // #5631: Senior / U23 / Junior (spillere 24/9), se SquadGroupFilter.tsx.
+  const squadFilter = useSquadGroupFilter();
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ddActive, setDdActive] = useState(false);
@@ -1066,31 +1069,26 @@ export function TeamPage() {
   // kommer fra backendens academy-demote-quote-route — SAMME funktioner
   // (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries) som selve
   // demote() bruger til at udføre flyttet, se RiderManageActions.jsx's
-  // openDemote() for den fulde root-cause-forklaring. Akademi-cap-tællingen
-  // (8-cap-effekten) er uafhængig af quoten og hentes stadig direkte.
+  // openDemote() for den fulde root-cause-forklaring. #5568: loft-rækken kommer
+  // OGSÅ fra quoten (mål-truppen og dens loft, samme trup-valg som demote());
+  // før talte holdsiden alle akademiryttere mod 8 og kunne vise "9 / 8".
   async function handleDemote(rider) {
     setDemoteError(null);
     let quote = null;
-    let academyCount = null;
     try {
-      const [quoteRes, academyRes] = await Promise.all([
-        fetchRiderQuote(rider.id, "academy-demote-quote"),
-        // Akademi-cap-effekt: tæl holdets nuværende akademiryttere (8-cap).
-        team?.id
-          ? supabase.from("riders").select("id", { count: "exact", head: true })
-              .eq("team_id", team.id).eq("is_academy", true)
-          : Promise.resolve({ count: null }),
-      ]);
+      const quoteRes = await fetchRiderQuote(rider.id, "academy-demote-quote");
       if (quoteRes.ok) quote = quoteRes.data;
-      academyCount = academyRes.count ?? null;
     } catch { /* fallback nedenfor; vis dialogen uanset */ }
     setDemoteConfirm({
       rider,
       newSalary: quote?.newSalary ?? null,
       currentSalary: quote?.currentSalary ?? rider.salary ?? null,
+      // #4582: samme kilde som rytterprofilens openDemote — backendens
+      // keepsContract, ikke en frontend-sammenligning af de to løn-tal.
+      keepsContract: quote?.keepsContract ?? false,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
-      academyCount,
+      cap: demoteCapLabels(quote),
     });
   }
 
@@ -1333,13 +1331,19 @@ export function TeamPage() {
       </Tabs>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
+          squadFilter={squadFilter} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />
       )}
       {activeTab === "stats" && (
-        <TeamStatsTab riders={currentRiders} />
+        // #5075: samme gruppe-filter-state som Trup-fanen ovenfor —
+        // Statistik-fanen har ingen sum-/gennemsnitslinjer i dag, men rækkerne
+        // filtreres på nøjagtig den samme delte state, så den viste liste
+        // matcher Trup-fanens til-/fravalg.
+        <TeamStatsTab riders={currentRiders}
+          squadFilter={squadFilter} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />
@@ -1361,10 +1365,12 @@ export function TeamPage() {
         riderName={demoteConfirm ? `${demoteConfirm.rider.firstname} ${demoteConfirm.rider.lastname}`.trim() : ""}
         newSalary={demoteConfirm?.newSalary ?? null}
         currentSalary={demoteConfirm?.currentSalary ?? 0}
-        capLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount} / 8` : null}
-        capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
+        capLabel={demoteConfirm?.cap?.capLabel ?? null}
+        capAfterLabel={demoteConfirm?.cap?.capAfterLabel ?? null}
+        capSquad={demoteConfirm?.cap?.capSquad ?? null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
         racesOngoing={demoteConfirm?.racesOngoing ?? 0}
+        keepsContract={!!demoteConfirm?.keepsContract}
         busy={demoteBusy}
         onCancel={() => { if (!demoteBusy) { setDemoteConfirm(null); setDemoteError(null); } }}
         onConfirm={confirmDemote}

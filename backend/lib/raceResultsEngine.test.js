@@ -7,6 +7,8 @@ import {
   buildRaceResultsFromPending,
   rederiveSeasonRacePoints,
   PRIZE_PER_POINT,
+  isPrizeMoneyRace,
+  prizeMoneyForPoints,
 } from "./raceResultsEngine.js";
 
 function createSupabaseDouble(initialBalances = {}) {
@@ -669,4 +671,57 @@ test("rederiveSeasonRacePoints validates required deps", async () => {
   await assert.rejects(() => rederiveSeasonRacePoints({ supabase: null, seasonId: "s", updateStandings: async () => {} }));
   await assert.rejects(() => rederiveSeasonRacePoints({ supabase: { from() {} }, seasonId: null, updateStandings: async () => {} }));
   await assert.rejects(() => rederiveSeasonRacePoints({ supabase: { from() {} }, seasonId: "s", updateStandings: null }));
+});
+
+// ── #5645 (Y4): præmievagt ved kilden ────────────────────────────────────────
+test("#5645 prizeMoneyForPoints: senior/ukendt trup uændret, u23/junior = 0", () => {
+  for (const race of [null, undefined, {}, { squad: null }, { squad: "senior" }]) {
+    assert.equal(isPrizeMoneyRace(race), true, JSON.stringify(race));
+    assert.equal(prizeMoneyForPoints(10, race), 10 * PRIZE_PER_POINT);
+  }
+  for (const squad of ["u23", "junior"]) {
+    assert.equal(isPrizeMoneyRace({ squad }), false);
+    assert.equal(prizeMoneyForPoints(10, { squad }), 0);
+  }
+});
+
+test("#5645 buildRaceResultsFromPending: ungdomsløb giver prize_money 0, point uændrede; uden race uændret", () => {
+  const pendingRows = [{ rider_id: "r1", result_type: "gc", rank: 1, rider: { team_id: "t1", firstname: "A", lastname: "B" } }];
+  const pointsLookup = { gc__1: 100 };
+  const senior = buildRaceResultsFromPending({ pendingRows, pointsLookup, raceId: "race-1" });
+  assert.equal(senior[0].prize_money, 100 * PRIZE_PER_POINT);
+  const youth = buildRaceResultsFromPending({ pendingRows, pointsLookup, raceId: "race-1", race: { squad: "u23" } });
+  assert.equal(youth[0].prize_money, 0);
+  assert.equal(youth[0].points_earned, 100);
+});
+
+test("#5645 applyRaceResults: et ungdomsløb gemmer prize_money 0 selv om rækken bærer et beløb", async () => {
+  const { supabase, state } = createSupabaseDouble({});
+  await applyRaceResults({
+    supabase,
+    race: { id: "race-u", season_id: "season-1", squad: "junior" },
+    resultRows: [{ rider_id: "r1", team_id: "t1", result_type: "gc", rank: 1, stage_number: 1, prize_money: 500, points_earned: 20 }],
+  });
+  assert.equal(state.raceResults.length, 1);
+  assert.equal(state.raceResults[0].prize_money, 0);
+  assert.equal(state.raceResults[0].points_earned, 20);
+});
+
+test("#5645 rederiveSeasonRacePoints: et U23-løb re-deriveres med point men prize_money 0", async () => {
+  const { supabase, state } = createRederiveDouble({
+    races: [
+      { id: "race-s", race_class: "uci_wt", race_type: "stage_race", prize_paid_at: null, squad: "senior" },
+      { id: "race-u", race_class: "uci_wt", race_type: "stage_race", prize_paid_at: null, squad: "u23" },
+    ],
+    racePointsByClass: { uci_wt: [{ result_type: "Klassement", rank: 1, points: 200 }] },
+    raceResults: [
+      { id: "rr-s", race_id: "race-s", result_type: "gc", rank: 1, points_earned: 100, prize_money: 100 * PRIZE_PER_POINT },
+      { id: "rr-u", race_id: "race-u", result_type: "gc", rank: 1, points_earned: 100, prize_money: 100 * PRIZE_PER_POINT },
+    ],
+  });
+  await rederiveSeasonRacePoints({ supabase, seasonId: "season-1", updateStandings: async () => {} });
+  const byId = Object.fromEntries(state.raceResults.map((r) => [r.id, r]));
+  assert.equal(byId["rr-s"].prize_money, 200 * PRIZE_PER_POINT);
+  assert.equal(byId["rr-u"].points_earned, 200);
+  assert.equal(byId["rr-u"].prize_money, 0);
 });

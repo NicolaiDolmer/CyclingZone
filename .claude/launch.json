@@ -281,6 +281,21 @@
       "env": {
         "VITE_PREVIEW_MOCK": "1"
       }
+    },
+    {
+      "name": "notif-dashboard-5384-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
+      "port": 5384,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     }
   ]
 }

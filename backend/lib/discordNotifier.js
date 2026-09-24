@@ -24,6 +24,7 @@ import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 import { recordDmAttempt } from "./discordDmRateGuard.js";
 import { attemptWebhookDelivery } from "./discordWebhookDelivery.js";
 import { enqueueWebhook, processWebhookOutboxDrain } from "./discordWebhookOutbox.js";
+import { enqueueRaceNotify, processRaceNotifyOutboxDrain } from "./raceNotifyOutbox.js"; // #3624
 import { serializeByUrl } from "./discordWebhookQueue.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -570,6 +571,68 @@ export async function drainDiscordWebhookOutbox({ now = new Date() } = {}) {
 }
 
 /**
+ * Aflever ét loebs-resultat-embed i den udgaaende notify-koe (#3624).
+ *
+ * Kaldes fra afviklingens notify-trin i stedet for sendWebhook, naar
+ * race_notify_outbox_enabled er on. Returnerer `enqueued:false` naar koen ikke
+ * tog imod — kalderen falder saa tilbage til synkron afsendelse, saa flaget ON
+ * aldrig er daarligere end flaget OFF.
+ *
+ * Live-guarden gaelder her som ved sendWebhook: en ikke-prod-backend skal
+ * hverken sende ELLER parkere prod-payloads. Den falder igennem til
+ * sendWebhook, som selv no-op'er — dvs. praecis dagens adfaerd i staging.
+ */
+export async function enqueueRaceResultNotify({ raceId, messageType, webhookUrl, payload, now = new Date() }) {
+  if (!webhookUrl) return { enqueued: false, duplicate: false, missingTable: false };
+  if (liveDiscordBlocked("race-notify-enqueue")) {
+    return { enqueued: false, duplicate: false, missingTable: false };
+  }
+  let safeWebhookUrl;
+  try {
+    safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
+  } catch {
+    // best-effort: en ugyldig webhook-URL er ikke noget koen skal baere videre,
+    // og en kø-aflevering maa aldrig kunne kaste ind i afviklingen. Kalderens
+    // fallback rammer sendWebhook, som afviser URL'en igen og logger/capturer
+    // den ÉT sted — en capture her ville give to events for samme fejl.
+    return { enqueued: false, duplicate: false, missingTable: false };
+  }
+  return enqueueRaceNotify({
+    supabase,
+    raceId,
+    messageType,
+    webhookUrl: safeWebhookUrl,
+    payload,
+    captureExceptionFn: sentryCapture,
+    now,
+  });
+}
+
+/**
+ * Afsender-tikket for notify-koen (#3624) — soester til drainDiscordWebhookOutbox.
+ *
+ * Samme to valg som dér, af samme grunde: deliverFn gaar direkte til
+ * attemptWebhookDelivery (sendWebhook ville laegge en fejlet levering i #3545's
+ * retry-koe OGSAA, og saa ville to koer proeve at levere samme besked), og
+ * serializeByUrl bevares, saa drain-POSTs og live-POSTs mod SAMME webhook aldrig
+ * rammer Discord som en samtidig byge (#2882).
+ */
+export async function drainRaceNotifyOutbox({ now = new Date() } = {}) {
+  if (liveDiscordBlocked("race-notify-outbox-drain")) {
+    return { processed: 0, sent: 0, rescheduled: 0, failed: 0, skipped: 0, purged: 0 };
+  }
+  return processRaceNotifyOutboxDrain({
+    supabase,
+    deliverFn: ({ webhookUrl, payload }) =>
+      serializeByUrl(webhookUrl, () => attemptWebhookDelivery({ webhookUrl, payload })),
+    sendWebhookFn: (url, payload) => sendOpsWebhook(url, payload, { enqueueOnFailure: false }),
+    getAlarmWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
+    now,
+  });
+}
+
+/**
  * High-level wrapper: send a typed embed as DM to a team owner.
  * Honors users.discord_dm_enabled opt-out and never blocks the caller.
  *
@@ -899,19 +962,62 @@ const FEEDBACK_CATEGORY_LABELS = {
   feedback: "💬 Feedback",
   bug: "🐛 Bug report",
   idea: "💡 Idea",
+  // #5284: fairplay-rapporter delte tidligere "fairplay" som rå kategorinavn
+  // (samme fallback som en helt ukendt kategori ville få) — usynligt i en
+  // kanal fuld af feedback/bug/idea-embeds.
+  fairplay: "🚩 Fair play report",
 };
 
-export async function notifyPlayerFeedback({ category, message, pagePath, teamName, sendWebhookFn = sendWebhook }) {
+function tradeRiderName(rider) {
+  if (!rider) return null;
+  return [rider.firstname, rider.lastname].filter(Boolean).join(" ") || null;
+}
+
+// Bygger de ekstra Discord-felter for en fairplay-rapport HVOR handlen kunne
+// opløses (trade != null) — rytter, A → B, pris og ratio. Ingen af felterne
+// tilføjes for andre kategorier eller når trade er null (manglende/slettet
+// handel, eller en kontaktformular-fairplay-rapport uden metadata) — samme
+// fritekst-only-visning som før #5284 i så fald.
+function buildTradeFields(trade) {
+  if (!trade) return [];
+  const fields = [];
+
+  const riderName = trade.rider
+    ? tradeRiderName(trade.rider)
+    : trade.riders
+      ? [tradeRiderName(trade.riders.offered) || "?", tradeRiderName(trade.riders.requested) || "?"].join(" ↔ ")
+      : null;
+  if (riderName) fields.push({ name: "Rider", value: riderName });
+
+  if (trade.team_a?.name && trade.team_b?.name) {
+    fields.push({ name: "Teams", value: `${trade.team_a.name} → ${trade.team_b.name}` });
+  }
+
+  if (typeof trade.price === "number") {
+    fields.push({ name: trade.type === "swap" ? "Cash adjustment" : "Price", value: trade.price.toLocaleString("en-US") });
+  }
+
+  if (trade.market_value_ratio != null) {
+    fields.push({ name: "Ratio vs. market value", value: `${Math.round(trade.market_value_ratio * 100)}%` });
+  }
+
+  return fields;
+}
+
+export async function notifyPlayerFeedback({ category, message, pagePath, teamName, trade = null, sendWebhookFn = sendWebhook }) {
   const url = (process.env.DISCORD_FEEDBACK_WEBHOOK_URL || "").trim();
   if (!url) return;
   const fields = [];
   if (teamName) fields.push({ name: "Team", value: teamName });
   if (pagePath) fields.push({ name: "Page", value: pagePath });
+  // Trade-felter er fairplay-only og kommer FØR footer men EFTER team/page —
+  // andre kategorier sender aldrig `trade`, så adfærden for dem er uændret.
+  if (category === "fairplay") fields.push(...buildTradeFields(trade));
   const payload = {
     embeds: [{
       title: FEEDBACK_CATEGORY_LABELS[category] || category,
       description: message.length > 1800 ? `${message.slice(0, 1800)}…` : message,
-      color: category === "bug" ? 0xe74c3c : category === "idea" ? 0xe8c547 : 0x3498db,
+      color: category === "bug" ? 0xe74c3c : category === "idea" ? 0xe8c547 : category === "fairplay" ? 0xe67e22 : 0x3498db,
       fields,
       footer: { text: "Cycling Zone · in-game feedback" },
       timestamp: new Date().toISOString(),

@@ -187,10 +187,10 @@ test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre eta
   const panel = page.getByTestId("race-tactics-tab");
   await expect(panel).toBeVisible();
 
-  // Etape 2 er dagens og aabner som den foerste der kan saettes.
+  // Etape 2 aabner som den foerste der kan saettes. Uden tidsplan loves ingen dato.
   // Etape-knapperne baerer et eksplicit navn ("Intentioner for etape N") fordi
   // loebssidens egen etape-stribe allerede har knapper der hedder "Etape N".
-  await expect(visible(panel.getByRole("button", { name: "Intentioner for etape 2, i dag" })))
+  await expect(visible(panel.getByRole("button", { name: "Intentioner for etape 2", exact: true })))
     .toHaveAttribute("aria-pressed", "true");
   // Rollen gaelder hele loebet og saettes i holdudtagelsen — ingen vaelger her.
   await expect(panel.getByRole("combobox")).toHaveCount(0);
@@ -320,4 +320,60 @@ test("taktik: endagsløb har ingen etape-vælger, og fanen forsvinder ved start"
 
   await expect(tab(page, "Resultater")).toBeVisible();
   await expect(tab(page, "Taktik")).toHaveCount(0);
+});
+
+// #5290: the reported screenshot is this toolbar, not Planning or Dashboard.
+// Inject the reporting instant and both sides of Copenhagen midnight.
+test.describe("#5290 tactics calendar date", () => {
+  test.use({ timezoneId: "America/Los_Angeles" });
+  for (const { label, now, today } of [
+    { label: "report at 18:06", now: "2026-09-15T16:06:00Z", today: false },
+    { label: "23:30 Copenhagen", now: "2026-09-15T21:30:00Z", today: false },
+    { label: "00:30 Copenhagen", now: "2026-09-15T22:30:00Z", today: true },
+  ]) {
+    test(label, async ({ page }, testInfo) => {
+      await page.clock.setFixedTime(new Date(now));
+      await stabilizePage(page);
+      await installNetworkMocks(page);
+      await mockTacticsRace(page, {
+        race: raceFixture({ stages: 5, stagesCompleted: 3, raceType: "stage_race" }),
+        validEfforts: FIVE_STEPS,
+        results: LIVE_RESULTS,
+      });
+      await page.route(`**/api/races/${RACE_ID}/team-orders`, (route) => {
+        if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
+        return json(route, {
+          stage_count: 5, stages_completed: 3, riders: RIDERS,
+          stages: [
+            { stage_number: 1, locked: true, scheduled_at: "2026-09-14T09:00:00Z" },
+            { stage_number: 2, locked: true, scheduled_at: "2026-09-14T11:00:00Z" },
+            { stage_number: 3, locked: true, scheduled_at: "2026-09-15T13:00:00Z" },
+            { stage_number: 4, locked: false, scheduled_at: "2026-09-16T12:00:00Z" },
+            { stage_number: 5, locked: false, scheduled_at: "2026-09-17T12:00:00Z" },
+          ],
+        });
+      });
+      await login(page);
+      await page.goto(`/races/${RACE_ID}?tab=tactics`);
+      const panel = page.getByTestId("race-tactics-tab");
+      await expect(panel).toBeVisible();
+      await expect(panel.getByRole("button", {
+        name: `Intentioner for etape 4${today ? ", i dag" : ""}`, exact: true,
+      })).toHaveAttribute("aria-pressed", "true");
+      // Yesterday and tomorrow cannot inherit the next stage's date label.
+      await expect(panel.getByRole("button", { name: "Intentioner for etape 1", exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: "Intentioner for etape 5", exact: true })).toBeVisible();
+      if (today) await expect(panel.getByRole("button", { name: "Intentioner for etape 3", exact: true })).toBeVisible();
+      await panel.getByRole("button", {
+        name: `Intentioner for etape 4${today ? ", i dag" : ""}`, exact: true,
+      }).scrollIntoViewIfNeeded();
+      await panel.screenshot({ path: evidenceShotPath(`pr-screens/5290-tactics-${today ? "today" : "tomorrow"}-${testInfo.project.name}.png`) });
+      if (label === "23:30 Copenhagen") {
+        await page.clock.setFixedTime(new Date("2026-09-15T22:30:00Z"));
+        await page.clock.fastForward(30_000);
+        await expect(panel.getByRole("button", { name: "Intentioner for etape 4, i dag", exact: true })).toBeVisible();
+        await expect(panel.getByRole("button", { name: "Intentioner for etape 3", exact: true })).toBeVisible();
+      }
+    });
+  }
 });

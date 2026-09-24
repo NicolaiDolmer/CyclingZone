@@ -43,86 +43,60 @@ async function mockTrainingMe(page, overrides = {}) {
 
 test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
+  // #3643: denne spec maaler DESKTOP-rosterets indhold. Telefonen har siden
+  // 18/9 sin egen visning (tabel med dagens loebsdage, mockup 2), og den er
+  // daekket af 3643-training-mobile.spec.js. Viewporten saettes derfor
+  // eksplicit, saa alle tre projekter bliver ved med at koere DENNE flade i
+  // deres egen motor i stedet for at teste en flade der ikke findes laengere.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await installNetworkMocks(page);
 });
 
-test("#3459 racingToday sat: badge + dæmpede men AKTIVE intensitets-knapper, tooltip nævner løbet", async ({ page }, testInfo) => {
+// #5485 (A1): dagens celle viser dagtypen. En rytter der kører løb i dag står
+// som "Løb" med løbets navn i tooltip'et, og overblikket tæller ham under
+// "Kører løb i dag". Planen er urørt: dagsvælgeren er stadig aktiv og står
+// på rytterens dag — løbet dæmper ikke og låser ikke planen.
+const rowFor = (page) => page.getByTestId("training-today-row").filter({ hasText: "Ada Pedersen" });
+// Dagens celle er den eneste celle i rækken der bærer et title-tooltip.
+const dayCellFor = (page) => rowFor(page).locator("td span[title]");
+
+test("#3459 racingToday sat: Løb i dagens celle, tooltip nævner løbet, planen er urørt", async ({ page }, testInfo) => {
   await mockTrainingMe(page, { racingToday: { "rider-1": { race: "Trofeo Ligure" } } });
   await login(page);
   await page.goto("/training");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
+  const row = rowFor(page);
+  const raceCell = dayCellFor(page);
+  await expect(raceCell).toHaveText("Løb");
+  await expect(raceCell).toHaveAttribute("title", /Trofeo Ligure/);
 
-  // Badge (DA-locale via stabilizePage) ERSTATTER den normale rytme-linje.
-  const badgeLine = row.getByText("Løbsdag");
-  await expect(badgeLine).toBeVisible();
-  await expect(badgeLine).toHaveAttribute("title", /Trofeo Ligure/);
-  await expect(row.getByText(/^I dag:/)).toHaveCount(0);
+  // Overblikket tæller rytteren under "Kører løb i dag" med løbets navn.
+  const racing = page.getByTestId("training-overview").getByRole("button", { name: /Kører løb i dag/ });
+  await expect(racing).toContainText("1");
+  await expect(racing).toContainText("Trofeo Ligure");
 
-  // Planen er urørt: dags-knapperne er stadig synlige og AKTIVE (ikke disabled)
-  // — racedagen dæmper visuelt (opacity), den låser ikke.
-  // #3762: knapperne skifter nu DAGEN, ikke intensiteten. Rytterens plan er
-  // `endurance` (Lang tur), så sessions-knappen bærer det navn og er trykket.
-  const dayGroup = row.locator('[role="group"]');
-  await expect(dayGroup).toHaveClass(/opacity-\[0\.55\]/);
-  const sessionBtn = row.getByRole("button", { name: "Lang tur" });
-  await expect(sessionBtn).toBeVisible();
-  await expect(sessionBtn).toBeEnabled();
-  await expect(sessionBtn).toHaveAttribute("aria-pressed", "true");
+  // Planen er urørt og kan stadig skiftes: rytterens dag er `endurance`.
+  const daySelect = row.getByRole("combobox", { name: /Ada Pedersen/ });
+  await expect(daySelect).toHaveValue("endurance");
+  await expect(daySelect).toBeEnabled();
 
   // Ægte Playwright-screenshot til PR-body (#3459 — flag off i prod pt., derfor
-  // mocket tilstand). Kun ét skud pr. viewport-klasse, taget fra de faktiske
-  // playwright-projekter (desktop-chromium / mobile-*), ikke en hardcodet path.
-  // MobileQuickNav (fixed bottom-tab-bar, kun md:hidden) overlapper reelt denne
-  // korte sides nederste ~56px uanset scroll-position (den er position:fixed på
-  // selve viewporten, ikke chrome om indholdet) — skjules rent kosmetisk for
-  // screenshot'et alene, så badge-linjen ikke ligger fysisk under nav-baren.
-  await page.addStyleTag({ content: "nav.fixed.bottom-0 { display: none !important; }" });
+  // mocket tilstand). Kun ét skud pr. viewport-klasse.
   const isMobile = testInfo.project.name.startsWith("mobile");
-  const screenshotPath = evidenceShotPath(`pr-screens/3459-race-day-training-${isMobile ? "mobile" : "desktop"}.png`);
-  if (isMobile) {
-    // #3194 T2 mobil-kontrakten: Intensitet-kolonnen scroller VANDRET under den
-    // fastgjorte (sticky) navnekolonne (~194px, opak baggrund) — et skud af hele
-    // rækken (som på desktop) ville enten vise den opake sticky-kolonne oven på
-    // badge't, eller (locator.screenshot() på hele <tr>, bredere end scroll-
-    // vinduet) hvid tomrum for alt uden for det aktuelt scrollede udsnit. Cellen
-    // scrolles derfor en anelse forbi sticky-grænsen (kalibreret margin) og
-    // skærmbilledet klippes til netop den celle.
-    const intensityCell = badgeLine.locator("xpath=ancestor::td[1]");
-    await badgeLine.scrollIntoViewIfNeeded();
-    await intensityCell.evaluate((el) => {
-      const scroller = el.closest(".overflow-x-auto");
-      if (scroller) scroller.scrollLeft -= 95;
-    });
-    const cellBox = await intensityCell.boundingBox();
-    const viewportSize = page.viewportSize();
-    const clip = {
-      x: Math.max(0, cellBox.x),
-      y: Math.max(0, cellBox.y),
-      width: Math.min(cellBox.width, viewportSize.width - Math.max(0, cellBox.x)),
-      height: Math.min(cellBox.height, viewportSize.height - Math.max(0, cellBox.y)),
-    };
-    await page.screenshot({ path: screenshotPath, clip });
-  } else {
-    // Desktop viser alle kolonner uden vandret scroll — hele rækken (rytternavn
-    // + fokus + intensitet + badge) i ét skud giver mere kontekst end en ren
-    // celle-crop, og der er ingen sticky-occlusion at tage højde for.
-    await row.screenshot({ path: screenshotPath });
-  }
+  await row.screenshot({ path: evidenceShotPath(`pr-screens/3459-race-day-training-${isMobile ? "mobile" : "desktop"}.png`) });
 });
 
-test("#3459 racingToday fraværende (samme kontrakt som flag off): ingen badge, normal knapvisning uændret", async ({ page }) => {
+test("#3459 racingToday fraværende (samme kontrakt som flag off): ingen Løb, dagens session i cellen", async ({ page }) => {
   await mockTrainingMe(page); // ingen racingToday-nøgle overhovedet
   await login(page);
   await page.goto("/training");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
+  const row = rowFor(page);
+  await expect(dayCellFor(page)).toHaveText("Lang");
+  await expect(dayCellFor(page)).toHaveAttribute("title", "Lang tur");
+  await expect(row.getByText("Løb", { exact: true })).toHaveCount(0);
 
-  await expect(row.getByText("Løbsdag")).toHaveCount(0);
-
-  const dayGroup = row.locator('[role="group"]');
-  await expect(dayGroup).not.toHaveClass(/opacity-\[0\.55\]/);
-  const sessionBtn = row.getByRole("button", { name: "Lang tur" });
-  await expect(sessionBtn).toBeVisible();
-  await expect(sessionBtn).toBeEnabled();
+  const daySelect = row.getByRole("combobox", { name: /Ada Pedersen/ });
+  await expect(daySelect).toHaveValue("endurance");
+  await expect(daySelect).toBeEnabled();
 });

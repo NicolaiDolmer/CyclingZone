@@ -14,14 +14,26 @@
 // respekterer scroll-margin på DET element, ikke på en forælder
 // (CodeRabbit-fund under denne PR).
 const TAB_BASE =
-  "whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors duration-150 scroll-mb-14 md:scroll-mb-0";
+  "whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition-colors duration-150 scroll-mb-14 md:scroll-mb-0";
 
-export function tabClass({ active = false } = {}) {
+// #5485 (training, 23/9): `fit` er et OPT-IN for en fanerække der skal staa
+// HELT paa en telefon (360-390 px) uden vandret scroll: faste 4 faner, hvor
+// den sidste ellers blev skaaret af ("Report"/"Rapport"). Under `sm` bliver
+// vandret padding 8 px i stedet for 16 px, og raekken fordeler fanerne over
+// bredden; fra `sm` og op er fanerne identiske med standarden. Samme
+// underline, samme typografi, samme 14 px-labels: kun luften flytter sig.
+// Standarden (uden `fit`) er uaendret, saa ingen anden side flytter sig.
+const TAB_PAD = "px-4";
+const TAB_PAD_FIT = "px-2 sm:px-4";
+
+export function tabClass({ active = false, fit = false } = {}) {
+  const base = `${TAB_BASE} ${fit ? TAB_PAD_FIT : TAB_PAD}`;
   return active
-    ? `${TAB_BASE} border-cz-accent text-cz-1`
-    : `${TAB_BASE} border-transparent text-cz-3 hover:text-cz-2`;
+    ? `${base} border-cz-accent text-cz-1`
+    : `${base} border-transparent text-cz-3 hover:text-cz-2`;
 }
 
-export function tabListClass({ className = "" } = {}) {
-  return `flex gap-1 overflow-x-auto border-b border-cz-border ${className}`.trim();
+export function tabListClass({ className = "", fit = false } = {}) {
+  const spacing = fit ? "justify-between sm:justify-start sm:gap-1" : "gap-1";
+  return `flex ${spacing} overflow-x-auto border-b border-cz-border ${className}`.trim();
 }

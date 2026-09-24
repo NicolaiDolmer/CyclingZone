@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Section, SectionHeader } from "../../components/ui";
 import MemberPanel from "./MemberPanel";
 import MonogramAvatar from "../../components/MonogramAvatar";
-import { formatWeekdayOnly, MOOD_DOT } from "./boardroomFormat";
+import { formatWeekdayOnly, MOOD_DOT } from "./boardroomFormat.js";
 
 function MemberTile({ member, selected, onSelect, t }) {
   return (
@@ -12,7 +12,12 @@ function MemberTile({ member, selected, onSelect, t }) {
       onClick={onSelect}
       aria-pressed={selected}
       title={t("boardroom.member.viewHint")}
-      className="flex flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"
+      // #5633 · full width + min-w-0 saa navnet kan wrappe/trunkere INDE i
+      // tile'ens egen kolonne i stedet for at presse naboerne (den "trange"
+      // spillerrapport). w-full erstatter det implicitte shrink-to-content,
+      // der gjorde 3-kolonners mobil-gitteret ujaevnt naar navne har
+      // forskellig laengde.
+      className="flex w-full min-w-0 flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"
     >
       <MonogramAvatar sizeClass="h-11 w-11" initials={member.initials} initialsClass="text-lg" navy>
         <span
@@ -20,8 +25,14 @@ function MemberTile({ member, selected, onSelect, t }) {
           className={`absolute -bottom-[3px] -right-[3px] h-[10px] w-[10px] rounded-full border-2 border-cz-card ${MOOD_DOT[member.mood] || MOOD_DOT.neutral}`}
         />
       </MonogramAvatar>
-      <p className="mt-[7px] text-2xs font-semibold text-cz-1">{member.name}</p>
-      <p className="mt-[2px] text-3xs uppercase tracking-[.08em] text-cz-3">
+      {/* #5633 · line-clamp-2 + min-h reserverer SAMME hoejde uanset navnets
+          laengde ("underlige mellemrum i navnene", vaerre paa mobil) — uden
+          det fik et 1-ords og et 3-ords navn i samme raekke forskellig
+          tile-hoejde, og gitteret saa ujaevnt ud. */}
+      <p className="mt-[7px] line-clamp-2 min-h-[26px] w-full break-words text-2xs font-semibold leading-tight text-cz-1">
+        {member.name}
+      </p>
+      <p className="mt-[2px] w-full truncate text-3xs uppercase tracking-[.08em] text-cz-3">
         {t("boardroom.board.role." + member.role, { defaultValue: member.role })}
       </p>
     </button>
@@ -31,11 +42,18 @@ function MemberTile({ member, selected, onSelect, t }) {
 function MinuteRow({ minute, t }) {
   const isPositive = minute.delta > 0;
   const deltaClass = isPositive ? "text-cz-success" : "text-cz-danger";
+  // #5472 · `delta` er null naar haendelsen ikke flyttede tilliden
+  // (satisfaction_delta mangler): ingen tom, roed tal-plads foran teksten.
+  const hasDelta = minute.delta != null;
   return (
     <div className="flex items-center justify-between gap-3 border-b border-cz-border py-[11px] last:border-b-0">
-      <p className="text-[13px] text-cz-1">
-        <span className={`font-semibold tabular-nums ${deltaClass}`}>{isPositive ? "+" : ""}{minute.delta}</span>
-        {" · "}
+      <p className="min-w-0 text-[13px] text-cz-1">
+        {hasDelta && (
+          <>
+            <span className={`font-semibold tabular-nums ${deltaClass}`}>{isPositive ? "+" : ""}{minute.delta}</span>
+            {" · "}
+          </>
+        )}
         {t(minute.textKey, minute.textParams || {})}
       </p>
       <p className="flex-shrink-0 whitespace-nowrap text-2xs uppercase tracking-[.06em] text-cz-3">
@@ -87,7 +105,10 @@ export default function BoardCard({ board, mandate, minutes = [], dna = null, on
   const [selectedKey, setSelectedKey] = useState(null);
   const members = board?.members || [];
   const selectedMember = members.find((m) => m.archetypeKey === selectedKey) || null;
-  const feedRows = minutes.slice(0, 3);
+  // #5472 · boardRoom.js sender `textKey: null` for en haendelse uden taler
+  // (ingen formand, eller en tom stemme-bucket). Den raekke har intet at sige
+  // og ville staa som en tom linje i referatet, saa den springes over.
+  const feedRows = minutes.filter((minute) => minute.textKey).slice(0, 3);
 
   return (
     <Section>
@@ -95,6 +116,10 @@ export default function BoardCard({ board, mandate, minutes = [], dna = null, on
         title={t("boardroom.board.cardTitle")}
         meta={t("boardroom.board.minutesLink")}
       />
+      {/* #5633 · Synlig ét-linjes instruktion i stedet for kun en hover-only
+          `title`-tooltip (usynlig paa mobil/touch) — spillerrapport: "kun ét
+          medlem sagde noget, vidste ikke hvad jeg skulle bruge det til". */}
+      <p className="mb-3 text-2xs text-cz-3">{t("boardroom.board.memberGridHint")}</p>
       <div className="grid grid-cols-3 gap-3.5 sm:grid-cols-5">
         {members.map((member) => (
           <MemberTile

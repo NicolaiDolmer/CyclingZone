@@ -21,6 +21,7 @@ import {
 } from "./squadRiskGuard.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { applySeniorSquadFilter } from "./squads.js";
 
 // "contract_expiring": eneste eksisterende type i notifications_type_check-
 // constrainten der matcher varslets indhold og har frontend-rendering
@@ -85,10 +86,11 @@ async function defaultFetchHumanTeamRiskRows({ supabase, activeSeasonNumber }) {
   if (teamById.size === 0) return [];
 
   const riders = await fetchAllRows(() =>
-    supabase
-      .from("riders")
-      .select("id, team_id, birthdate, contract_end_season")
-      .eq("is_academy", false)
+    applySeniorSquadFilter(
+      supabase
+        .from("riders")
+        .select("id, team_id, birthdate, contract_end_season")
+    )
       .eq("is_retired", false)
       .in("team_id", [...teamById.keys()])
       .order("id")

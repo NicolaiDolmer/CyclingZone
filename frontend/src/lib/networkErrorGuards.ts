@@ -44,6 +44,55 @@ import {
   isDefinitiveAuthDenial,
   markSessionExpired,
 } from "./sessionExpiry.js";
+import { isBackendUnreachable } from "./backendReachability.js";
+
+/**
+ * #5322 — den DELTE i18n-nøgle for "vi kan ikke nå serveren lige nu".
+ *
+ * Nøglen bor her, ikke i hvert kaldsted, så de ~22 apiFetch-kaldsteder (og de
+ * kaldsteder #5242 flytter over bagefter) siger det SAMME til spilleren i
+ * stedet for hver sin variant af "noget gik galt". En flade med sin egen,
+ * mere specifikke ordlyd (fx dashboardets `dashboard:offlineError`) må stadig
+ * bruge den — det er faldbagsteksten for alle de andre.
+ */
+export const NETWORK_ERROR_MESSAGE_KEY = "common:networkError";
+
+/** Den del af apiFetch's resultat denne klassifikator har brug for. */
+interface ApiFetchResultLike {
+  status: number;
+  ok: boolean;
+  networkError?: boolean;
+  error?: unknown;
+}
+
+function isApiFetchResult(value: unknown): value is ApiFetchResultLike {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { status?: unknown; ok?: unknown };
+  return typeof candidate.status === "number" && typeof candidate.ok === "boolean";
+}
+
+/**
+ * #5322 — "nåede kaldet aldrig serveren?" for BEGGE former et kaldsted kan
+ * sidde med: apiFetch's resultat (`{ networkError: true }`) og en kastet fejl
+ * (Supabase-klienten, `fetch()` uden for apiFetch, en fejl videresendt fra et
+ * andet lag).
+ *
+ * Et apiFetch-RESULTAT afgøres KUN på sit eget flag (plus den bevarede
+ * oprindelige exception). Uden den afgrænsning ville tekst-klassifikationen
+ * nedenfor også læse et 500-svars KROP, og en serverfejl der tilfældigvis
+ * indeholder ordene "Failed to fetch" ville blive vist som et netværksproblem
+ * hos spilleren.
+ *
+ * Selve ordlyds-klassifikationen genbruges fra backendReachability.js (#5324)
+ * — der er kun ét sted der ved hvordan de fire browsere formulerer den samme
+ * transportfejl, og chunk-fejl vinder stadig over den (se modulet).
+ */
+export function isNetworkError(value: unknown): boolean {
+  if (isApiFetchResult(value)) {
+    return value.networkError === true || isBackendUnreachable(value.error);
+  }
+  return isBackendUnreachable(value);
+}
 
 /** Minimal form af Supabase-clienten dette modul har brug for — injicérbar for test. */
 export interface AuthClientLike {

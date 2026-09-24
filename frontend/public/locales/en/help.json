@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "title": "Help · Cycling Zone",
+    "description": "Guides and FAQ for Cycling Zone: transfers, auctions, training, races and the season calendar."
+  },
   "page": {
     "title": "Help",
     "subtitle": "Everything you need to know about Cycling Zone Manager",
@@ -45,6 +49,10 @@
       "season1Baseline": {
         "title": "Your board is open from day one",
         "text": "The board of directors is unlocked from the start of your first season, so you can pick your Club DNA and negotiate your plans right away rather than waiting a season. Your sponsor modifier stays at 1.0× until you sign your first plan, so the season-1 sponsor is neutral while you set up. During this baseline season the board already watches your race results and club finances weekend by weekend, and its satisfaction moves within a 30-75 range accordingly, even though there are no hard consequences yet. The board also reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot that feeds your 5-year plan suggestions."
+      },
+      "nationalCoreRule": {
+        "title": "How your national core is decided",
+        "text": "Your national core is set by whichever nationality has the most riders in your squad, never by a combined score across several. It becomes an established core once that nationality has at least 4 riders and makes up at least 35% of your full squad; below that threshold your board card shows 'Mixed' and 'No clear core yet', however close a runner-up nationality is. Once established, the card names that nationality with its rider count and share of your squad. Only the single largest nationality is ever checked against these numbers: if two nationalities are both close to qualifying, the smaller one gets no core of its own, even when it trails by just one rider. When two nationalities are exactly tied on rider count, the tie goes to whichever country code sorts first alphabetically."
       },
       "season2Onboarding": {
         "title": "Sequential board onboarding",
@@ -220,6 +228,10 @@
       "whatTransfers": {
         "title": "What is the transfer system?",
         "text": "The transfer system lets you negotiate directly with other managers to buy or sell riders, like in Football Manager. You can send an offer on any rider, whether listed for sale or not."
+      },
+      "allTrades": {
+        "title": "See every trade in the game",
+        "text": "The 'All trades' tab on Transfers lists every rider move in the game, newest first: auction sales, direct transfers and swaps. You can filter by type, by division and down to your own team. Each row carries a quiet review action. If a trade looks off to you, send it my way with a sentence about what caught your eye, and I read it. Reporting is not an accusation, and the other manager is never told who reported it."
       },
       "sellOnTransferList": {
         "title": "Sell via the transfer list",
@@ -692,7 +704,7 @@
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
           "Wages and rider values update on the Sunday of changeover.",
-          "The new season's first race day is a Tuesday. The Monday before it has no races."
+          "The new season's first race day is the day after the changeover. Its first stage starts at least 24 hours after the old season's last stage, so you have time to pick your race squads."
         ]
       }
     },
@@ -833,7 +845,7 @@
         "text": "Each rider's annual salary is set at signing based on what the rider is expected to produce in the current season, and is then frozen: it does not change automatically as the rider develops. Value and salary answer two different questions: value is the price of the rider's future, salary is the cost of what he delivers right now. Young talents are therefore cheap to keep on the payroll, while established stars earn wages that match their output. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
       "abilitiesExplained": {
-        "title": "The 15 abilities and where they matter",
+        "title": "The 17 abilities and where they matter",
         "rows": [
           [
             "Ability",
@@ -914,6 +926,16 @@
             "Tactics",
             "Race-craft and reading a race",
             "Team time trials, tactical races"
+          ],
+          [
+            "Teamwork",
+            "How much a helper is worth to his captain",
+            "Any day you ride for someone else"
+          ],
+          [
+            "Leadership",
+            "Whether the squad rides behind him",
+            "Captain days, and passing it on to a young rider"
           ]
         ]
       },
@@ -1029,9 +1051,17 @@
         "title": "Train today",
         "text": "Click 'Train today' once per day to run all active programs right now. If you skip the button, the assistant runs the exact same training automatically after 22:00. You never lose a day of training, and clicking the button never gains you more than waiting."
       },
+      "runDayNow": {
+        "title": "Run today's training now",
+        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again."
+      },
       "raceDays": {
         "title": "Race days and training",
         "text": "A race day does not change that day's training. Your rider still does the session you planned, and the race adds its own fatigue on top of the training load. Racing itself does not raise abilities: development comes from training, whether a rider races that day or not. What racing does cost is freshness, and every stage adds its own load while recovery only comes once a day, so a rider on a heavy stage race tires fast. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest before their Form falls away."
+      },
+      "raceDaysPerRaceDay": {
+        "title": "Race days and training",
+        "text": "On a race day your rider either races or trains, never both. When he races, his program doesn't run for that race day, and the race brings its own fatigue instead. A stage race binds him from the first stage to the last, rest days included, so he doesn't train until it's over. Racing develops him too: a race day counts as a medium session in the abilities the stage profile demands, so a mountain stage trains climbing and a flat stage trains sprinting, capped at one point per ability per race day. Your training plan doesn't change what the race gives; only the stage does. Every division has 140 race days per season, and every race day without a race for your rider is a training day. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest between their races."
       },
       "smartDefault": {
         "title": "What trains a rider with no focus set?",
@@ -1045,17 +1075,21 @@
         "title": "Form and Fatigue",
         "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day, after 22:00 Danish time (or right away if you click 'Train today' yourself), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
+      "formFatiguePerRaceDay": {
+        "title": "Form and Fatigue",
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. After every race day each rider recovers some Fatigue, race days with a race included: rest and easy race days recover the most, normal training settles at a sustainable level, and hard training still builds it up. The day's race days are trained and recovered in one run, once the last race of the day is done and no earlier than 20:00 Danish time. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update after every race day. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Races build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+      },
       "injuryRisk": {
         "title": "Injury risk",
-        "text": "Running Hard intensity training on a rider who already has high Fatigue triggers an injury risk. A risk badge appears on the rider before training runs. If the roll is unlucky, the rider picks up a mild injury and is out for 1-5 days. Dropping intensity to Normal or Rest removes the risk."
+        "text": "Hard training at high Fatigue carries an injury risk. Check the risk badge before training. A mild injury normally costs 1-5 calendar days. When your rider's card counts race days, the duration follows the season calendar and the return date is approximate. In season 4 that means 5-25 missed training days. Normal or Rest removes the risk."
       },
       "progressBars": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 15 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
       },
       "trainingScore": {
         "title": "The training score",
-        "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number and the curve leaves a gap. Only you can see the scores for your own riders."
+        "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number. Today's number appears once today's session has run, and until then the column shows the latest one in grey. Only you can see the scores for your own riders."
       },
       "longTermGrowth": {
         "title": "Long-term growth",
@@ -1161,8 +1195,8 @@
         ]
       },
       "academySize": {
-        "title": "Academy size (8 places)",
-        "text": "Your Academy holds up to {academySlots} riders. These {academySlots} places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "title": "Academy size (per team)",
+        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1170,15 +1204,24 @@
       },
       "youthAuctions": {
         "title": "Youth auctions",
-        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (one of the 8 places) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
+        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (a place on the U23 or junior team, by his age) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season."
       },
       "graduation": {
-        "title": "Graduating at 22",
-        "text": "When an academy rider turns 22 they age out of the Academy and you make a choice for each one: promote them into your senior squad (needs a free senior place and gives them a senior contract), sell them on the transfer market, or release them as a free agent. You get a window to decide; if you do not act in time, the club picks a sensible default for you (promote when there is room, otherwise sell). This gives home-grown talent a clear path to your senior team."
+        "title": "Graduation Day",
+        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains and races in his old squad. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room, otherwise sell. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
+      },
+      "graduationDayPage": {
+        "title": "Where to make the choice",
+        "steps": [
+          "A banner appears on the Academy page, and you get a message in your inbox, when riders are waiting.",
+          "Open Graduation Day from either one.",
+          "Each transition gets its own card, with one row per rider: rating, potential, contract and your coach's read.",
+          "Set Move up, Sell or Release per rider, then press Confirm all."
+        ]
       },
       "promoteDemote": {
         "title": "Promoting up and moving riders down",
@@ -1271,7 +1314,7 @@
       },
       "suitability": {
         "title": "Reading the selection table",
-        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. A rider still injured on the race's own start date can't be picked for it; use Hide injured to remove them from the list while you choose. A rider whose injury ends before the race starts is not marked injured here, even if he's injured right now, so you can plan a race weeks ahead without waiting for him to heal first."
+        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. A rider still injured on the race's own start date can't be picked for it; use Hide injured to remove them from the list while you choose. A rider whose injury ends before the race starts is not marked injured here, even if he's injured right now, so you can plan a race weeks ahead without waiting for him to heal first. If his card shows race days, the date shown is approximate."
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
@@ -1295,7 +1338,7 @@
       },
       "assistantFill": {
         "title": "When the assistant fills a line-up",
-        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting I run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start."
+        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting I run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start. If your squad was completely empty and the assistant filled it for you, you get a message in your inbox so you can check the picks and change them if you want."
       },
       "scouting": {
         "title": "Scouting other divisions",
@@ -1310,7 +1353,7 @@
       },
       "crashesAndIncidents": {
         "title": "Crashes and incidents",
-        "text": "A crash on the road is no longer all or nothing. A light crash costs a small amount of time, and the rider rides on unhurt. A hard crash costs a lot more time and leaves him marked with injury days, but he still finishes the stage. A serious crash ends his race and comes with injury days too, and it is rare. A mechanical problem, a puncture, a dropped chain, a wheel, always costs only time: it can never force a rider out and it can never injure him, and a teammate riding nearby gets him back on his bike faster. Only an actual crash can hurt a rider."
+        "text": "A crash on the road is no longer all or nothing. A light crash costs a small amount of time, and the rider rides on unhurt. A hard crash costs a lot more time and leaves him marked with injury days, but he still finishes the stage. A serious crash ends his race and comes with injury days too, and it is rare. A mechanical problem, a puncture, a dropped chain, a wheel, always costs only time: it can never force a rider out and it can never injure him, and a teammate riding nearby gets him back on his bike faster. Only an actual crash can hurt a rider. Crash injuries use the same time scale as training injuries. Your rider's card shows whether the remaining time is counted in calendar days or race days."
       },
       "timeLimitAndGrupetto": {
         "title": "The time limit and the grupetto",
@@ -1467,13 +1510,33 @@
       "q": "Does my chosen intensity still matter on a day my rider races?",
       "a": "Yes, exactly as on any other day. Racing doesn't change what that day's session gives: Rest gives zero gain, Hard gives the most gain and the most fatigue (plus injury risk once Fatigue is high), same as a non-race day. The race is a separate load on top: its own fatigue adds to whatever the session already built, so a rider who races and trains Hard the same day carries both."
     },
+    "raceDayIntensityPerRaceDayFaq": {
+      "q": "Does my chosen intensity still matter on a day my rider races?",
+      "a": "Not on the race days he races. On a race day your rider races or trains, never both, so his session doesn't run while he's in a race: no training load and no injury risk from training, only the race's own fatigue. The race gives its own development instead, as a medium session in the abilities the stage demands, whatever intensity you chose. Your intensity decides every race day he isn't racing: Rest gives zero gain, Hard gives the most gain and the most fatigue, plus injury risk once Fatigue is high."
+    },
     "raceDayProfileMatchFaq": {
       "q": "Does my rider's training session need to match the race's terrain (flat, mountain, cobbles)?",
-      "a": "No, not right now. Season 3 runs on season 2's race-day rules (patch 7.196): a race doesn't hand out its own ability reward, so there is nothing for a session to 'match'. Train each rider toward what he needs long-term. A design that links the session to the stage terrain is planned for season 4, but it isn't locked yet, so don't plan around a specific version of it."
+      "a": "No. Your rider's training session and his races are separate. What a race gives him is decided by the stage he rides, never by the session you planned, so there is nothing for a session to 'match'. Train each rider toward what he needs long-term, and pick his races for the terrain you want him to ride."
     },
     "raceDayAcademyFaq": {
       "q": "Is it worth racing young Academy talents, or is Academy training always better?",
       "a": "Racing costs no ability development in season 3: your talent still gets the exact session you planned that day, whether he races or not. The real cost is fatigue: a race adds its own load on top of training, and a talent who races often needs lighter sessions and real rest days to stay under the injury threshold, same as any senior rider. There's no Academy-specific penalty for racing, so the trade-off is about managing fatigue, not lost development."
+    },
+    "raceDayAcademyPerRaceDayFaq": {
+      "q": "Is it worth racing young Academy talents, or is Academy training always better?",
+      "a": "Both develop him, in different ways. On a race day your talent races or trains, never both. A race day he races counts as a medium session in the abilities the stage demands, capped at one point per ability per race day, so he isn't standing still while he races. A training day is more precise: you pick the session, and a hard session gives more than a race does. A stage race takes every race day from the first stage to the last, and on its rest days he gains nothing. There's no Academy-specific penalty: the same rule applies to every rider. If one ability matters most, train it; if you want him developing broadly while he learns to race, race him on stages that suit it."
+    },
+    "lowerDivisionTrainingFaq": {
+      "q": "Do lower divisions get more training?",
+      "a": "Usually, yes. Every division has 140 race days per season, but the lower divisions have fewer stages to ride. A race day with no race for your rider is a training day, so fewer stages means more training days. In any division, a rider who isn't racing on a race day trains that day."
+    },
+    "multipleStagesTrainingFaq": {
+      "q": "Do several stages on the same day give more training?",
+      "a": "No. Each stage is ridden on its own race day, and on a race day your rider races or trains, never both. A rider who rides three stages in one day races three race days and trains on none of them. Each stage adds its own fatigue and its own race-day development, and each race day gives its own recovery. Teammates who aren't racing train on each of that day's race days. Training per race day is scaled to a season of 140 race days, so a day with many race days doesn't speed up development over the season."
+    },
+    "stageRaceRestDayFaq": {
+      "q": "What happens on a rest day in a stage race?",
+      "a": "Your rider rests. A stage race binds him from the first stage to the last, rest days included, so he doesn't train on a rest day either. His program doesn't run, he gains no development that day, and there's no injury risk from training. The stages he rides develop him, the rest day doesn't. What he does get is recovery: a rest day lowers his Fatigue."
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Can I train Flat or Cobbles at Hard intensity?",
@@ -1517,11 +1580,11 @@
     },
     "sponsorPayoutTiming": {
       "q": "When is sponsor money paid out?",
-      "a": "Sponsor money is paid at season start. One exception at the very beginning: if you start your first season with your full founding budget, you do not also receive a season-1 sponsor payout on top (that would be double income at the start). From season 2 onwards sponsor is always paid. What you receive comes from the deal you signed: a guaranteed base paid at season start, plus a per-stage rate you earn during the season. The size of the deal is set when you sign it, from your division's base (D1 600,000 · D2 400,000 · D3 340,000 · D4 315,000 CZ$) multiplied by your club's reputation, which can lift it by up to 40 percent. If you later race in a division above the one the deal was priced for, a separate division adjustment is paid on top, every season the difference lasts: it lifts you to the base of the division just below your current one, then adds half of what remains up to your current division's base. The guaranteed base and the division adjustment are then multiplied by the board's budget modifier and any sponsor pullout; your per-stage income is not."
+      "a": "Sponsor money is paid at season start. One exception at the very beginning: if you start your first season with your full founding budget, you do not also receive a season-1 sponsor payout on top (that would be double income at the start). From season 2 onwards sponsor is always paid. What you receive comes from the deal you signed: a guaranteed base paid at season start, plus a per-stage rate you earn during the season. The size of the deal is set on the day you sign it, from the division you are in and the results you have at that point: your division's base (D1 600,000 · D2 400,000 · D3 340,000 · D4 315,000 CZ$) multiplied by your club's reputation, which can lift it by up to 40 percent. That guaranteed base then stays exactly as signed for the whole contract. It is not re-priced if you are later promoted or relegated. What you do get if you later race in a division above the one the deal was priced for is a separate division adjustment paid on top, every season the difference lasts: it lifts you to the base of the division just below your current one, then adds half of what remains up to your current division's base. The guaranteed base and the division adjustment are then multiplied by the board's budget modifier and any sponsor pullout; your per-stage income is not."
     },
     "sponsorNegotiation": {
       "q": "How do I negotiate my sponsor, and what do the offers mean?",
-      "a": "You choose your sponsor on the Sponsors page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your results over recent seasons, so a strong, established club is offered larger deals than a fresh or low-standing one. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-stage rate: you earn it for every stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap that resets at every season change), or a season objective that pays out at season end if you finish in the top 40 percent of your division. Contracts run 1 to 3 seasons depending on the deal. Your choice locks when the new season starts, and if you don't choose, the club signs the 1-season safe deal for you. The active contract, its clauses and what it has earned you so far are shown on the Sponsors page; you negotiate again when it expires. One more thing to weigh before you sign: the deal is priced for the division you are in right now. If you get promoted, you're first lifted to the base of the division just below your new one, then get half of what remains up to your new division's base, on top each season, so a promotion is no longer a deal that has fallen behind. The offer screen shows you that amount for each division before you choose."
+      "a": "You choose your sponsor on the Sponsors page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your latest ranked season, so a strong, established club is offered larger deals than a fresh or low-standing one. Before the running season has a standing of its own, the season before it is used, so an established club is never offered a beginner's deal just because it looked early. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-stage rate: you earn it for every stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap that resets at every season change), or a season objective that pays out at season end if you finish in the top 40 percent of your division. Contracts run 1 to 3 seasons depending on the deal. The amount locks the moment you sign, from the division and results you have that day, and it never moves again for the length of the contract; the deal itself starts when the new season starts. If you don't choose at all, the club signs the 1-season safe deal for you at the price the offers opened at, so saying nothing never pays more than picking the same deal would. The active contract, its clauses and what it has earned you so far are shown on the Sponsors page; you negotiate again when it expires. One more thing to weigh before you sign: the deal is priced for the division you are in right now, and a promotion does not re-price it. Your guaranteed base stays what you signed. What a promotion gives you is a separate division adjustment on top each season you race above the division the deal was priced for: it lifts you to the base of the division just below your current one, then adds half of what remains. The offer screen shows you that amount for each division before you choose."
     },
     "sponsorMidSeasonOnboarding": {
       "q": "I created my team mid-season, do I get a sponsor right away?",
@@ -1688,8 +1751,8 @@
       "a": "Results are decided by how well your riders' abilities fit the terrain. Every race is split into stages, and each stage has a terrain type (flat, hilly, mountain, time trial, cobbles and so on) that asks for specific abilities. A flat stage rewards Sprint above all; a mountain stage rewards Climbing; a time trial rewards Time trial; a cobbled stage rewards Cobbles; a hilly stage rewards Punch. For each rider the engine adds up the matching abilities, weighted by what the stage demands, into a stage score. On top of that score sit a few smaller effects: good form gives a small edge and high fatigue a small penalty (each capped at about ±3%, so a fresh rider beats a tired one of equal ability but a favourite still wins on class), a captain protected by strong, fresh helpers gets a boost, breakaways occasionally stay away on the right terrain, and a small random factor means the strongest rider wins most of the time but not always. Across a stage race, the time gaps from every stage add up into the overall classification: mountains and time trials open the biggest gaps and usually decide the GC, while flat stages finish in a bunch. Finishing positions become points, and points become both your leaderboard score and your prize money. The practical takeaway: match each rider to the stages that suit him, keep your stars rested for the days that matter, and set the right captain in Team selection. Each race also has a team classification, won by the team whose best three riders have the lowest combined time."
     },
     "riderAbilities": {
-      "q": "What do the 15 rider abilities mean?",
-      "a": "Every rider is rated 0-99 on 15 abilities, grouped in three families. Physical (10): Climbing (long ascents and mountain stages), Time trial (riding alone against the clock), Flat (holding speed on flat roads as a rouleur), Tempo (sustained efforts on mid-mountain and rolling terrain), Sprint (top-end speed for a bunch finish), Acceleration (the explosive kick to launch a sprint or jump a gap), Punch (short steep climbs and hilly finales), Endurance (lasting the full distance of long and hard days), Recovery (bouncing back between stages and days), and Durability (resisting fatigue so the rider fades less late in hard races). Technical (3): Descending (a small edge on stages that finish on a downhill), Cobbles (the bike-handling and power for cobbled classics), and Positioning (staying near the front to avoid splits, and a factor in time trials). Tactical/mental (2): Aggression (the willingness to attack and get into breakaways) and Tactics (race-craft that helps in team time trials and reading a race). The race engine matches these to each stage's terrain, so the same rider can be a star on one profile and ordinary on another. Tip: a balanced squad covering several profiles scores more consistently across a calendar than a one-trick team."
+      "q": "What do the 17 rider abilities mean?",
+      "a": "Every rider is rated 0-99 on 17 abilities, grouped in three families. Physical (10): Climbing (long ascents and mountain stages), Time trial (riding alone against the clock), Flat (holding speed on flat roads as a rouleur), Tempo (sustained efforts on mid-mountain and rolling terrain), Sprint (top-end speed for a bunch finish), Acceleration (the explosive kick to launch a sprint or jump a gap), Punch (short steep climbs and hilly finales), Endurance (lasting the full distance of long and hard days), Recovery (bouncing back between stages and days), and Durability (resisting fatigue so the rider fades less late in hard races). Technical (3): Descending (a small edge on stages that finish on a downhill), Cobbles (the bike-handling and power for cobbled classics), and Positioning (staying near the front to avoid splits, and a factor in time trials). Tactical/mental (4): Aggression (the willingness to attack and get into breakaways), Tactics (race-craft that helps in team time trials and reading a race), Teamwork (how much a helper is worth to the captain he rides for) and Leadership (whether the squad rides behind him, and what he passes on to a young rider). Teamwork and Leadership are new: you can see and train them now, and they start changing races in a later update. The race engine matches these to each stage's terrain, so the same rider can be a star on one profile and ordinary on another. Tip: a balanced squad covering several profiles scores more consistently across a calendar than a one-trick team."
     },
     "riderRating": {
       "q": "What does a rider's overall rating mean?",
@@ -1778,6 +1841,10 @@
     "forumUnreadFaq": {
       "q": "What does the dot next to a forum thread mean?",
       "a": "A thread is marked unread until you open it, based on its most recent post or reply, not when it was created. The same gold dot shows up next to \"Forum\" in the menu whenever any thread has unread activity. If someone replies to a thread you started, you also get a notification in your inbox; replying to your own thread never notifies you."
+    },
+    "betaGroupFaq": {
+      "q": "What is the beta group, and how do I join?",
+      "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone."
     }
   },
   "knownIssues": {

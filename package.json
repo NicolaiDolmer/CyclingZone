@@ -15,7 +15,7 @@
     "cleanup:worktrees:run": "pwsh -File scripts/prune-merged-worktrees.ps1 -Execute",
     "race:cockpit": "pwsh -File scripts/race-cockpit.ps1",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
-    "check:i18n": "node scripts/i18n-check-keys.mjs && node --test scripts/i18n-check-delta-pending.test.mjs && node scripts/i18n-check-delta-pending.mjs && node --test scripts/i18n-translate-delta.test.mjs && node --test scripts/i18n-check-duplicate-keys.test.mjs && node scripts/i18n-check-duplicate-keys.mjs && node scripts/i18n-check-namespace-inline.mjs && node scripts/i18n-check-nav-strings.mjs && node scripts/i18n-check-page-untranslated.mjs && node scripts/i18n-check-lib-strings.mjs && node scripts/i18n-check-leaks.mjs && node --test scripts/tone-check-em-dash.test.mjs && node scripts/tone-check-em-dash.mjs && node --test scripts/tone-check-terms.test.mjs && node scripts/tone-check-terms.mjs && node --test scripts/i18n-check-icu-braces.test.mjs && node scripts/i18n-check-icu-braces.mjs && node --test scripts/i18n-check-terrain-coverage.test.mjs && node scripts/i18n-check-terrain-coverage.mjs && node --test scripts/i18n-check-error-codes.test.mjs && node scripts/i18n-check-error-codes.mjs && node scripts/build-backend-locales.mjs --check && node --test scripts/i18n-check-backend-player-strings.test.mjs && node scripts/i18n-check-backend-player-strings.mjs",
+    "check:i18n": "node --test scripts/i18n-check-keys.test.mjs && node scripts/i18n-check-keys.mjs && node --test scripts/i18n-check-delta-pending.test.mjs && node scripts/i18n-check-delta-pending.mjs && node --test scripts/i18n-translate-delta.test.mjs && node --test scripts/i18n-check-duplicate-keys.test.mjs && node scripts/i18n-check-duplicate-keys.mjs && node scripts/i18n-check-namespace-inline.mjs && node scripts/i18n-check-nav-strings.mjs && node scripts/i18n-check-page-untranslated.mjs && node scripts/i18n-check-lib-strings.mjs && node scripts/i18n-check-leaks.mjs && node --test scripts/tone-check-em-dash.test.mjs && node scripts/tone-check-em-dash.mjs && node --test scripts/tone-check-terms.test.mjs && node scripts/tone-check-terms.mjs && node --test scripts/i18n-check-icu-braces.test.mjs && node scripts/i18n-check-icu-braces.mjs && node --test scripts/i18n-check-terrain-coverage.test.mjs && node scripts/i18n-check-terrain-coverage.mjs && node --test scripts/i18n-check-error-codes.test.mjs && node scripts/i18n-check-error-codes.mjs && node scripts/build-backend-locales.mjs --check && node --test scripts/i18n-check-backend-player-strings.test.mjs && node scripts/i18n-check-backend-player-strings.mjs",
     "build:backend-locales": "node scripts/build-backend-locales.mjs",
     "check:backend-locales": "node scripts/build-backend-locales.mjs --check",
     "check:backend-player-strings": "node scripts/i18n-check-backend-player-strings.mjs",
@@ -28,6 +28,8 @@
     "check:i18n-terrain": "node scripts/i18n-check-terrain-coverage.mjs",
     "check:i18n-error-codes": "node scripts/i18n-check-error-codes.mjs",
     "check:frontend-env": "node scripts/check-frontend-env-keys.mjs",
+    "check:event-catalog": "node scripts/check-event-catalog.mjs",
+    "test:event-catalog": "node --test scripts/check-event-catalog.test.mjs",
     "test:i18n-leaks": "node --test scripts/i18n-check-leaks.test.mjs",
     "test:i18n-terrain": "node --test scripts/i18n-check-terrain-coverage.test.mjs",
     "test:i18n-error-codes": "node --test scripts/i18n-check-error-codes.test.mjs",
@@ -93,6 +95,8 @@
     "test:token": "node scripts/get-test-token.mjs",
     "sync-deps": "node scripts/guard-node-modules-junction.mjs && npm ci && npm ci --prefix backend && npm ci --prefix frontend",
     "test:guard-node-modules-junction": "node --test scripts/guard-node-modules-junction.test.mjs",
+    "test:monday-numbers": "node --test scripts/monday-numbers.test.mjs",
+    "test:guard-inventory-cell": "node --test scripts/guard-inventory-cell.test.mjs",
     "dev:backend": "npm --prefix backend run dev",
     "audit:rls": "infisical run --env=dev -- node backend/scripts/audit-rls-coverage.js",
     "audit:liveness": "infisical run --env=dev -- node backend/scripts/audit-feature-liveness.js",
@@ -102,13 +106,13 @@
     "db:selftest": "node scripts/db-selftest.mjs"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.123.0",
-    "lint-staged": "^17.4.1",
+    "@anthropic-ai/sdk": "^0.125.0",
+    "lint-staged": "^17.5.1",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.4"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.115.0",
+    "@supabase/supabase-js": "^2.116.0",
     "dotenv": "^16.4.5"
   }
 }

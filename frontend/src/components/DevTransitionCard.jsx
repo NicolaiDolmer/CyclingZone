@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { Card, ArrowUpIcon } from "./ui";
 import RiderLink from "./RiderLink";
 
@@ -32,11 +33,11 @@ export default function DevTransitionCard() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const res = await fetch(`${API}/api/development/transition`, {
+        const res = await apiFetch(`${API}/api/development/transition`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
-        if (!res.ok) return;
-        const body = await res.json();
+        if (!res.ok) return; // dækker også limited/unauthorized/networkError
+        const body = res.data;
         if (!cancelled && body?.active) setData(body);
       } catch { /* silent — panelet er en forklaring, ikke en funktion */ }
     })();
@@ -52,7 +53,7 @@ export default function DevTransitionCard() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await fetch(`${API}/api/development/transition/dismiss`, {
+      await apiFetch(`${API}/api/development/transition/dismiss`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });

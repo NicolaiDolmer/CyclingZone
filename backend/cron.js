@@ -32,9 +32,13 @@ import {
   getBotToken,
   drainDiscordDmOutbox,
   drainDiscordWebhookOutbox,
+  enqueueRaceResultNotify, // #3624
+  drainRaceNotifyOutbox, // #3624
   getOpsWebhook,
   sendOpsWebhook,
 } from "./lib/discordNotifier.js";
+import { deliverRaceResultNotify, RACE_RESULT_MESSAGE_TYPE } from "./lib/raceNotifyOutbox.js"; // #3624
+import { isRaceNotifyOutboxEnabled } from "./lib/raceNotifyOutboxFlag.js"; // #3624
 import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
 import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
@@ -51,6 +55,7 @@ import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { checkSeasonTransitionKeyDrift } from "./lib/seasonTransitionKeyGuard.js"; // #4129
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
+import { runTrainingDayCloseSweep } from "./lib/trainingDayCloseTrigger.js"; // #4847
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
 import { runScoutSweep } from "./lib/scoutSweep.js";
 import { runWageDeductionSweep } from "./lib/wageDeductionSweep.js";
@@ -58,6 +63,7 @@ import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
+import { startClockAlignedInterval } from "./lib/schedulerTick.js"; // #3624 trin 1
 import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
 import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
@@ -563,6 +569,22 @@ async function runDiscordWebhookOutboxDrain() {
   }
 }
 
+// ─── Notify-outbox drain (#3624) ─────────────────────────────────────────────
+// Afsenderen af den udgående notify-kø. Dette tick er hele pointen med #3624:
+// afviklingen afleverer resultat-beskeden og går videre, og VENTETIDEN på
+// Discord flytter herhen, hvor ingen etape står i kø bagved. Tikker hvert
+// minut — beskeden må gerne komme efter siden, men ikke længe efter.
+// No-op så længe race_notify_outbox_enabled er off (køen er tom).
+
+async function runRaceNotifyOutboxDrain() {
+  const result = await drainRaceNotifyOutbox({ now: new Date() });
+  if (result.processed || result.failed) {
+    console.log(
+      `📨 Notify-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.failed} opgivet, ${result.skipped} taget af andet tick`
+    );
+  }
+}
+
 // ─── Discord division-role sync (#2153) ──────────────────────────────────────
 // Spillet ejer sandheden om hvilken division/gruppe en spiller er i. Denne
 // daglige reconcile holder Discord-gruppe-rollen i sync (op-/nedrykning, sæson-
@@ -653,6 +675,39 @@ async function runTrainingSweepCron() {
     sentryCapture(new Error(`training sweep: ${result.failed} hold fejlede`), {
       tags: { cron: "training sweep" },
       extra: { swept: result.swept, failed: result.failed },
+    });
+  }
+}
+
+// ─── Samlet daglig traening naar dagens loebsdage lukker (#4847, fase B4) ─────
+// Ejer-beslutning 15/9 (TRAINING_RULES.md §13.3 beslutning 3+4): EEN sweep pr.
+// kalenderdag, tidligst kl. 20 dansk tid OG foerst naar dagens sidste finalization
+// er faerdig. Gated bag `training_tick_per_race_day` (off i dag) — flag off er et
+// rent no-op-tick, saa den kan sameksistere med runTrainingSweepCron ovenfor indtil
+// cutover. Overlap-guarden bor i modulet (kode-invariant, testet), ikke her.
+async function runTrainingDayCloseCron() {
+  const result = await runTrainingDayCloseSweep({
+    supabase,
+    now: new Date(),
+    // Maks-ventetids-alarmen (etaper der stadig var aabne efter kl. 23) gaar til
+    // Sentry med praecis hvilke etaper det var — ellers ville en haengende
+    // finalization koste en loebsdags udvikling uden spor.
+    onAlarm: (err, ctx) => {
+      sentryCapture(err, {
+        tags: { cron: "training-day-close" },
+        extra: { tickDate: ctx?.tickDate, pending: ctx?.pending?.slice(0, 20) },
+      });
+    },
+  });
+  if (result.ran) {
+    console.log(`🚴 Traenings-lukning: ${result.swept} tick(s) koert paa loebsdag(e) ${result.gameDays.join(", ")} (${result.divisions} division(er), ${result.alreadyRan} allerede koert, ${result.failed} fejl, ${Math.round(result.durationMs / 1000)} s)`);
+  }
+  if (result.failed) {
+    // #2389 A2-moenstret: én aggregeret capture pr. tick. Daglig traening er
+    // kerne-gameplay; systemiske fejl maa ikke vaere usynlige i Sentry.
+    sentryCapture(new Error(`training day-close sweep: ${result.failed} tick(s) fejlede`), {
+      tags: { cron: "training-day-close" },
+      extra: { swept: result.swept, failed: result.failed, failures: result.failures?.slice(0, 20) },
     });
   }
 }
@@ -1176,13 +1231,30 @@ async function runStageSchedulerCron() {
       isRaceEngineV2Enabled,
       seenKeys: stageSchedulerSeenKeys,
       runStageFn: async ({ raceId, stageIndex, resume = false }) => {
+        // #3624 · Den EKSTERNE resultat-besked. Flag OFF: sendes synkront her,
+        // bit-identisk med før — og hele køen af forfaldne etaper venter imens
+        // (målt til 25-62 s pr. afslutning, docs/audits/2026-09-18-3624-*).
+        // Flag ON: beskeden afleveres i race_notify_outbox og sendes af sit eget
+        // tick; afviklingen rører ikke Discord. Embeddet bygges i BEGGE tilfælde
+        // her, mens vi har resultatrækkerne — kun afsendelsen flytter.
+        //
+        // Rækkefølge-kontrakten (#3624 punkt 1): dette kald sker inde i #4147's
+        // notify-trin, som først markerer trinnet udført i sit `finally`. Kø-
+        // rækken er derfor committet FØR races.finalize_state siger "notify kørt".
         const notifyDiscord = async ({ race, resultRows, incidents }) => {
           const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
           const embed = buildRaceSimEmbed({ race, resultRows, incidents, divisionLabel: label });
-          for (const url of urls) {
-            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
-          }
+          const payload = { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] };
+          await deliverRaceResultNotify({
+            urls,
+            payload,
+            raceId: race.id,
+            messageType: RACE_RESULT_MESSAGE_TYPE,
+            queueEnabled: await isRaceNotifyOutboxEnabled(supabase),
+            enqueueFn: enqueueRaceResultNotify,
+            sendFn: sendWebhook,
+          });
         };
         // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
         const notifyInApp = async ({ race }) => {
@@ -1646,6 +1718,69 @@ export function trackedTick(label, fn, deps = {}) {
   };
 }
 
+// ─── Boot-only netværks-retry for Alunta-vagterne (#5015, CYCLINGZONE-5N) ───
+// Backend'en forsøger disse read-only vagter STRAKS ved boot (se kaldene i
+// startCron() nedenfor) — men Railway-containerens netværk er ikke altid klar
+// i det første sekund efter en kold start (IPv6 uden rute, DNS ikke varmet
+// op), og Alunta-klienten kaster en ren netværksfejl der intet siger om
+// vagten selv eller om Alunta som tjeneste. Uden dette retry-lag rejste HVER
+// kold boot et generisk error-issue uden fingerprint, så en harmløs
+// opstarts-blip så ud som en driftshændelse.
+//
+// KUN boot-kaldene bruger dette — den periodiske setInterval-kørsel har fået
+// lov at vente på at netværket varmer op og skal stadig fejle normalt
+// (error-niveau via trackedTick) hvis Alunta reelt er nede eller svarer en
+// ægte HTTP-fejl (4xx/5xx bliver ALDRIG klassificeret som netværksfejl her,
+// jf. issuets eget krav: "ægte HTTP-fejl forbliver error som i dag").
+const BOOT_NETWORK_ERROR_RE = /\b(fetch failed|ECONNRESET|ETIMEDOUT|ENETUNREACH)\b/;
+
+// True hvis fejlen (eller en af en AggregateErrors underliggende fejl) hører
+// til netværksklassen fra #5015. Eksporteret for tests.
+export function isBootNetworkError(err) {
+  if (!err) return false;
+  if (err.name === "AggregateError" && Array.isArray(err.errors)) {
+    return err.errors.some((inner) => isBootNetworkError(inner));
+  }
+  const haystack = `${err.message || ""} ${err.code || ""}`;
+  return BOOT_NETWORK_ERROR_RE.test(haystack);
+}
+
+// Kører `fn` med op til `attempts` forsøg, men KUN retry'er netværksklassen
+// (se isBootNetworkError) — enhver anden fejl (ægte Alunta-svar, programfejl)
+// kastes videre med det samme, uændret, til trackedTick's normale error-vej.
+// Overlever fejlen alle forsøg, capturer VI selv som "warning" med en FAST
+// fingerprint (så hver kolde boot ikke bliver et nyt Sentry-issue) og sluger
+// den derefter — trackedTick skal IKKE capture den en gang til som "error".
+export async function runBootWithNetworkRetry(label, fn, {
+  attempts = 3,
+  minDelayMs = 15_000,
+  maxDelayMs = 30_000,
+  captureExceptionFn = sentryCapture,
+  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  randomFn = Math.random,
+} = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      if (!isBootNetworkError(err)) throw err; // ægte fejl — bobler uændret til trackedTick
+      lastErr = err;
+      if (attempt === attempts) break; // sidste forsøg brugt — fald til warning-capture nedenfor
+      const delay = minDelayMs + randomFn() * (maxDelayMs - minDelayMs);
+      console.warn(`[${label}] boot-netværksfejl (forsøg ${attempt}/${attempts}), prøver igen om ~${Math.round(delay / 1000)}s: ${err.message}`);
+      await sleepFn(delay);
+    }
+  }
+  console.warn(`[${label}] boot-netværksfejl efter ${attempts} forsøg — Alunta uden for rækkevidde ved opstart: ${lastErr.message}`);
+  captureExceptionFn(lastErr, {
+    level: "warning",
+    fingerprint: ["alunta-network-unreachable"],
+    tags: { flow: "billing", cron: label },
+  });
+}
+
 // ─── Deploy-grace: boot-priming af cron-monitors (#2440) ────────────────────
 // Rod-årsag: hver Railway-redeploy genstarter processen midt i en cron-cyklus.
 // Ved en deploy-KLYNGE (flere redeploys på kort tid — 6 på 30 min 12/7,
@@ -1815,9 +1950,25 @@ export function startCron() {
     5 * 60 * 1000
   );
 
+  // Every minute: notify-outbox drain (#3624 — afsendelsen af de eksterne
+  // resultat-beskeder, ude af den blokerende afviklingssti).
+  setInterval(
+    trackedTick("race notify-outbox drain", monitorCron("race-notify-outbox-drain", runRaceNotifyOutboxDrain, CRON_MONITOR_1MIN)),
+    60 * 1000
+  );
+
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
   setInterval(
     trackedTick("training sweep", monitorCron("training-sweep", runTrainingSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Samlet daglig træning når dagens løbsdage lukker (#4847, fase B4).
+  // 5-min-kadence fordi betingelsen "dagens sidste finalization er færdig" først kan
+  // besvares når den er det — sweepen selv er gated (kl. 20 + finalization + flag)
+  // og har både overlap-guard og dags-claim, så en tæt polling er gratis.
+  setInterval(
+    trackedTick("training day-close", monitorCron("training-day-close", runTrainingDayCloseCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 
@@ -1902,9 +2053,14 @@ export function startCron() {
   // Bevidst INGEN immediate-run: det periodiske tick er nok, og en etape skal ikke
   // fyre ved hver genstart (mirror auto-prize-mønstret).
   // #2077: Sentry-heartbeat (monitorCron) → MISSED-alarm hvis tick'et udebliver.
-  setInterval(
-    trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+  // #3624 trin 1: tikket ligger paa klokken (hh:00:05, hh:05:05 ...) i stedet for
+  // 5 min efter processens start — ventetiden fra planlagt etape til foerste tick
+  // afhang ellers af hvornaar Railway sidst genstartede. Samme kadence, samme
+  // overlap-guard (runStageSchedulerCron), samme daglige cap. To instanser der
+  // overlapper under et deploy, tikker nu samtidig; #4026-claimet
+  // (race_stage_claims) lader kun den ene afvikle etapen.
+  startClockAlignedInterval(
+    trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN))
   );
 
   // Every 15 minutes: halv-finaliserings-vagt (#4147) — read-only detektion af løb
@@ -2113,14 +2269,19 @@ export function startCron() {
     trackedTick("alunta forfalds-vagt", monitorCron("alunta-overdue-watch", runAluntaOverdueWatchCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
-  void trackedTick("alunta forfalds-vagt (boot)", runAluntaOverdueWatchCron)();
+  // #5015: boot-kaldet får sit eget netværks-retry-lag FØR trackedTick — se
+  // runBootWithNetworkRetry ovenfor. En netværks-blip der overlever 3 forsøg
+  // capture'es der selv som warning+fingerprint; alt andet (inkl. en ægte
+  // Alunta-fejl) bobler uændret videre til trackedTick's normale error-vej.
+  void trackedTick("alunta forfalds-vagt (boot)", () => runBootWithNetworkRetry("alunta-overdue-watch (boot)", runAluntaOverdueWatchCron))();
 
   // #4555 — periode-rul-vagt. Read-only, samme boot-run-rationale som ovenfor.
   setInterval(
     trackedTick("alunta periode-rul-vagt", monitorCron("alunta-period-roll-watch", runAluntaPeriodRollWatchCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
   );
-  void trackedTick("alunta periode-rul-vagt (boot)", runAluntaPeriodRollWatchCron)();
+  // #5015: samme boot-only netværks-retry som forfalds-vagten ovenfor.
+  void trackedTick("alunta periode-rul-vagt (boot)", () => runBootWithNetworkRetry("alunta-period-roll-watch (boot)", runAluntaPeriodRollWatchCron))();
 
   // #3138 — dagligt fair-play scoring-sweep. Read-only analyse (upsert i
   // service-role-only fairplay_flags); skipper roligt indtil migrationen er

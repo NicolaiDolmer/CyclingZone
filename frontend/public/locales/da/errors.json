@@ -17,6 +17,12 @@
     "unknown": "Uventet fejl. Prøv igen"
   },
   "api": {
+    "trade_feed_invalid_limit": "Den sidestørrelse er ikke gyldig",
+    "trade_feed_invalid_offset": "Den side er ikke gyldig",
+    "trade_feed_offset_too_deep": "Handelslisten går ikke så langt tilbage. Brug filtrene til at indsnævre den",
+    "trade_feed_invalid_type": "Den handelstype er ikke gyldig",
+    "trade_feed_invalid_division": "Den division er ikke gyldig",
+    "trade_feed_invalid_team": "Det hold er ikke gyldigt",
     "flash_deadline_day_only": "Flash Auktioner er kun tilgængelige under Deadline Day",
     "rider_not_found": "Rytteren blev ikke fundet",
     "rider_unavailable": "Rytteren er ikke tilgængelig",
@@ -93,7 +99,7 @@
     "cannot_afford_offer": "Du har ikke råd til dette tilbud",
     "squad_full": "Dit hold er fyldt ({effectiveCap} ryttere, Div {division} cap {maxRiders})",
     "squad_full_buffer": "Dit hold er fyldt ({effectiveCap} ryttere, Div {division} cap {maxRiders})",
-    "no_eligible_room_bid": "Ingen plads i dit akademi ({maxAcademy}/{maxAcademy}) eller seniortrup ({maxRiders}/{maxRiders}). Sælg en rytter, før du byder.",
+    "no_eligible_room_bid": "Ingen plads på det ungdomshold han skal på ({maxAcademy}/{maxAcademy}) eller i din seniortrup ({maxRiders}/{maxRiders}). Sælg en rytter, før du byder.",
     "squad_full_bid": "Dit hold er fyldt ({maxRiders} ryttere). Sælg en rytter, før du byder på en ny.",
     "offer_not_found": "Tilbud ikke fundet",
     "not_involved_offer": "Ikke involveret i dette tilbud",
@@ -256,6 +262,14 @@
     "dm_not_found": "Den samtale findes ikke længere.",
     "dm_invalid_block_target": "Vælg en manager først.",
     "dm_report_reason_required": "Fortæl mig hvad der er galt, i en sætning eller to.",
-    "dm_report_reason_too_long": "Begrundelsen er for lang."
+    "dm_report_reason_too_long": "Begrundelsen er for lang.",
+    "beta_already_member": "Du er allerede med i beta-gruppen.",
+    "beta_request_pending": "Din ansøgning ligger allerede hos mig.",
+    "beta_not_member": "Du er ikke med i beta-gruppen.",
+    "beta_migration_pending": "Beta-tilmelding er ikke klar endnu. Prøv igen om lidt.",
+    "beta_invalid_payload": "Den beta-indstilling kunne ikke læses.",
+    "flag_unknown": "Det funktionsflag findes ikke.",
+    "flag_invalid_stage": "En funktion kan kun være fra, beta eller til.",
+    "flag_boolean_only": "Dette flag er kun til/fra og har intet beta-stadie."
   }
 }

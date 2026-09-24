@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "title": "Roadmap · Cycling Zone",
+    "description": "What is being built next in Cycling Zone, and how players rate the plans."
+  },
   "page": {
     "title": "Roadmap",
     "subtitle": "Where Cycling Zone is heading"
@@ -8,7 +12,7 @@
     "next": "Where it's heading"
   },
   "voting": {
-    "intro": "Rate the plans below. Your votes help decide what gets built next.",
+    "intro": "Rate the plans below. Your votes help decide what gets built next. What comes after season 4, I decide with you in the Roadmap threads on the forum.",
     "idea": "How good an idea?",
     "importance": "How important is it to you?",
     "saved": "Saved",
@@ -44,53 +48,50 @@
   "engines": {
     "races": {
       "title": "Races",
-      "today": "A full season calendar with scheduled races, results, standings, prize money and history.",
+      "today": "A full season calendar with scheduled races, results, standings, prize money and history, plus a race film of every finished stage.",
       "next": [
         "A smarter season planner: overlapping races, fatigue and qualification rules you can plan a whole season around.",
-        "National championships and national teams: ride for your country, win the jersey.",
+        "National championships, worlds and europeans: ride for your country, win the jersey, and coach a national team.",
         "Realistic race routes modeled on real racing.",
         "The racing math explained in plain words, without revealing exact numbers."
       ]
     },
     "training": {
       "title": "Training",
-      "today": "Training focus is live: a season-long focus and intensity on your key riders, with real trade-offs.",
+      "today": "Daily training: pick a session for each rider every day, plan form peaks, and let the assistant suggest a plan.",
       "next": [
-        "Real training depth: programs for individual riders, not just a single focus.",
-        "Long-term development you can see and steer, season over season.",
-        "Meaningful choices with consequences, never spreadsheet homework.",
+        "Training per race day: one rebuilt training page where you plan each rider around his races.",
+        "The training score for everyone: see how good each training day was, and steer your riders' development season over season.",
         "Coaches as a real resource: balance training load and risk burnout if you push too hard.",
-        "Default training programs, and a workshop to share your own."
+        "Ready-made training programs, and later a way to share your own."
       ]
     },
     "youth": {
       "title": "Youth development",
-      "today": "Scouting is live: uncover a rider's hidden potential with limited scout slots and estimates personal to your team.",
+      "today": "Your own academy and a talent scout: find young riders, develop them, and decide on Graduation Day who moves up.",
       "next": [
-        "Young riders you discovered, developed and made your stars.",
-        "Generational renewal, so your club has a future beyond its current squad.",
-        "U19 and U23 squads with real promotion paths from academy to the top."
+        "Your own young stars: choose the country your young riders come from, and steer which rider types your academy produces.",
+        "U23 and junior squads: two real squads under your first team, with a path from the academy to the top."
       ]
     },
     "market": {
       "title": "Transfers & auctions",
-      "today": "The strongest part of the game right now: live auctions, autobids, transfers, loans and negotiations between managers.",
+      "today": "Live auctions, auto-bids, transfers, swaps and negotiations with other managers.",
       "next": [
         "Deeper negotiation between managers.",
         "A market that tells stories: rumors, rivalries and big moves the whole world talks about.",
-        "Rider values that follow the market: prices shaped by real auctions and transfers."
+        "Rider values that make sense: values follow your rider's abilities and what the market really pays, and I explain how they are set."
       ]
     },
     "club": {
       "title": "Club & world",
-      "today": "A demanding board with real goals, club finances with loans and consequences, and a shared world of managers.",
+      "today": "A board with goals you have to hit, club finances with consequences, your own staff, and a forum and messages to talk with other managers.",
       "next": [
-        "Earn renown: wins, records and history that build your club's reputation in the world.",
-        "Road captains and mentors: riders who lift the team around them.",
+        "Earn renown: statistics, records and history that build your club's reputation in the world.",
+        "Road captains, mentors and teamwork: riders who lift the team around them.",
         "A club museum: champions, legendary riders and the races people still talk about.",
         "Friends and following: follow managers and riders across the world.",
         "Negotiate your board's goals upward, for a bigger reward.",
-        "Direct messages and mentions between managers.",
         "Invite a friend and build your rivalry together.",
         "A living world feed of results, transfers and rivalries."
       ]

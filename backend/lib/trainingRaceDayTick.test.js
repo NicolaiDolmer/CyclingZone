@@ -4,10 +4,13 @@ import assert from "node:assert/strict";
 
 import {
   TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
+  resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor, loadBoundRiderIdsForRaceDay,
+  resolveCalendarRaceDayTarget,
 } from "./trainingRaceDayTick.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { isTrainingTickPerRaceDayEnabled, TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
 // ── Mini-mock: kun det resolveTeamRaceDay/flaget faktisk kalder ───────────────
 function mockSupabase(tables, opts = {}) {
@@ -65,11 +68,13 @@ function calendarTables({ divisionId = DIVISION_ID } = {}) {
 
 // ── G1: sæsonens samlede udvikling ───────────────────────────────────────────
 test("G1: deleren holder forholdet mellem antal ticks og deler konstant", () => {
-  assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, 80);
+  // #4847 (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 2): 140 loebsdage pr. saeson,
+  // ikke 80. Tallet er ejer-besluttet og samtidig kalenderpakkerens maal.
+  assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, 140);
   assert.equal(TRAINING_RACE_DAY_CONFIG.legacyDaysPerSeason, DAILY_TRAINING_CONFIG.daysPerSeason,
     "referencen i formlen skal foelge den faktiske deler i DAILY_TRAINING_CONFIG");
   const D = raceDayBudgetDivisor();
-  assert.ok(Math.abs(D - (80 * 28) / 31) < 1e-9, `D = ${D}`);
+  assert.ok(Math.abs(D - (140 * 28) / 31) < 1e-9, `D = ${D}`);
   const before = TRAINING_RACE_DAY_CONFIG.calendarTicksPerSeasonToday / DAILY_TRAINING_CONFIG.daysPerSeason;
   const after = TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason / D;
   assert.ok(Math.abs(before - after) < 1e-9, "T/D er uaendret");
@@ -102,7 +107,7 @@ test("G1: sæsonens samlede evne-udvikling er uændret i ALLE fire alders-bånd 
   }
 });
 
-test("G1: UDEN rekalibrering ville 80 ticks overtræne markant (negativ-test)", () => {
+test("G1: UDEN rekalibrering ville flere ticks overtræne markant (negativ-test)", () => {
   const program = { focus: "endurance", intensity: "normal" };
   const run = (ticks, divisor) => {
     let current = 40;
@@ -115,8 +120,76 @@ test("G1: UDEN rekalibrering ville 80 ticks overtræne markant (negativ-test)", 
     return current - 40;
   };
   const today = run(31, null);
-  const naive = run(80, null); // samme deler, 80 ticks — den fejl gaten fanger
+  // Samme deler, men det NYE antal ticks (140) — praecis den fejl gaten fanger.
+  const naive = run(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, null);
   assert.ok(naive / today > 1.8, `uden rekalibrering ${(naive / today).toFixed(2)}x — gaten skal kunne se det`);
+});
+
+// ── #4847 punkt 5: deleren LAESER maalet, duplikerer det ikke ─────────────────
+test("#4847: maalet laeses fra calendarRaceDayTargets.js (statisk import, #4846)", () => {
+  assert.equal(
+    resolveRaceDaysPerSeason({ seasonNumber: 4 }),
+    SEASON_RACE_DAY_TARGET[4],
+    "traeningsdeleren og kalenderpakkeren skal dele ÉN sandhed — ikke to kopier af 140",
+  );
+  // Ejerens laaste tal (TRAINING_RULES.md §13.3 beslutning 2).
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4 }), 140);
+});
+
+test("#4846: opslaget er SYNKRONT — ingen dynamisk import at vente paa", () => {
+  const out = resolveRaceDaysPerSeason({ seasonNumber: 4 });
+  assert.equal(typeof out, "number", "et Promise her ville betyde at den dynamiske import er tilbage");
+  assert.equal(typeof resolveRaceDayBudgetDivisor({ seasonNumber: 4 }), "number");
+});
+
+test("#4847: en ukendt saeson arver det hoejeste kendte maal, aldrig 0", () => {
+  const n = resolveRaceDaysPerSeason({ seasonNumber: 99 });
+  assert.ok(Number.isFinite(n) && n > 0, `maalet skal altid vaere et positivt tal, fik ${n}`);
+  assert.ok(n >= 80, "et maal under D1's naturlige antal loebsdage ville vaere uopnaaeligt");
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: null }), n, "ukendt saesonnummer = samme arv");
+});
+
+test("#4846: en tabel uden et eneste positivt maal falder tilbage paa konfigurationens tal", () => {
+  const cfg = { ...TRAINING_RACE_DAY_CONFIG, raceDaysPerSeason: 77 };
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: {} }), 77);
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: { 4: 0, 5: -3 } }), 77);
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 5, cfg, table: { 4: 120, 6: 150 } }), 150,
+    "en saeson uden eget tal arver det HOEJESTE kendte maal");
+});
+
+// Diff-tjekket af PR #5608 (24/9): aksens laengde maa IKKE arves. Kalenderen pakker
+// efter `SEASON_RACE_DAY_TARGET[n] ?? null`, saa en saeson uden eget tal har intet maal.
+test("#4846: aksens maal laeses med kalenderens regel — en saeson uden eget tal arver IKKE", () => {
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4 }), SEASON_RACE_DAY_TARGET[4]);
+  for (const seasonNumber of [3, 5, 99]) {
+    assert.equal(resolveCalendarRaceDayTarget({ seasonNumber }), SEASON_RACE_DAY_TARGET[seasonNumber] ?? null,
+      `saeson ${seasonNumber}: samme svar som kalenderen`);
+  }
+  // Tabellen som i dag ({ 4: 140 }), laast lokalt saa testen ikke raadner naar et nyt
+  // saesonmaal tilfoejes.
+  const today = { 4: 140 };
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 3, table: today }), null,
+    "en saeson uden eget maal: ingen forlaengelse");
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 3, table: today }), 140,
+    "budget-deleren arver stadig (uaendret) — netop derfor maa aksen ikke bruge den");
+});
+
+test("#4846: kalenderens maal — ukendt, ugyldigt eller ikke-positivt giver null, aldrig 0", () => {
+  const table = { 4: 140, 5: 0, 6: -3, 7: "x", 8: 12.5, 9: null, 10: "120" };
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4, table }), 140);
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: "4", table }), 140, "tal som tekst, som seasonTransition.js' Number()");
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 10, table }), 120);
+  for (const seasonNumber of [5, 6, 7, 8, 9, 11, null, undefined, Number.NaN, 4.5]) {
+    assert.equal(resolveCalendarRaceDayTarget({ seasonNumber, table }), null, `saeson ${String(seasonNumber)}`);
+  }
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4, table: null }), null);
+});
+
+test("#4847: deleren matcher den synkrone formel", () => {
+  const D = resolveRaceDayBudgetDivisor({ seasonNumber: 4 });
+  const raceDays = resolveRaceDaysPerSeason({ seasonNumber: 4 });
+  assert.ok(Math.abs(D - (raceDays * 28) / 31) < 1e-9, `D = ${D}`);
+  assert.ok(Math.abs(D - raceDayBudgetDivisor()) < 1e-9, "S4's deler = konfigurationens deler (140)");
 });
 
 // ── Seed-nøglen (A3) ─────────────────────────────────────────────────────────
@@ -190,4 +263,73 @@ test("flaget: on gælder alle, beta kun motor-skrivninger", async () => {
   const beta = mockSupabase({ app_config: [{ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "beta" }] });
   assert.equal(await isTrainingTickPerRaceDayEnabled(beta), false, "ingen viewer, ingen motor-flag → lukket");
   assert.equal(await isTrainingTickPerRaceDayEnabled(beta, { engineWrite: true }), true);
+});
+
+// ── #4847: loebsdags-bindingen (ejer-regel 2 + 3, 18/9) ──────────────────────
+// Kilden er race_entry_days, som siden #4217 baerer HELE spaendet pr. udtagelse —
+// GT-hviledagene inklusive. Det er praecis mængden "bundet, maa ikke traene".
+
+const BIND_SEASON = "season-b";
+
+function bindingTables(rows) {
+  return { race_entry_days: rows };
+}
+
+test("#4847: bindingen laeser race_entry_days paa (saeson, loebsdag) — GT-hviledagen er MED", async () => {
+  // Et 3-etapers loeb med en hviledag paa loebsdag 21: rebuild-funktionen skriver
+  // hele spaendet 20..23, saa rytteren er bundet ogsaa paa den dag han ikke koerer.
+  const supabase = mockSupabase(bindingTables([
+    { rider_id: "a", season_id: BIND_SEASON, game_day: 20, race_id: "gt", team_id: "t1" },
+    { rider_id: "a", season_id: BIND_SEASON, game_day: 21, race_id: "gt", team_id: "t1" },
+    { rider_id: "a", season_id: BIND_SEASON, game_day: 22, race_id: "gt", team_id: "t1" },
+    { rider_id: "b", season_id: BIND_SEASON, game_day: 20, race_id: "gt", team_id: "t1" },
+  ]));
+
+  const restDay = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: ["a", "b"], seasonId: BIND_SEASON, gameDay: 21,
+  });
+  assert.equal(restDay.error, null);
+  assert.deepEqual([...restDay.data], ["a"], "a er bundet paa hviledagen, b er fri");
+});
+
+test("#4847: en anden SAESONS binding paa samme loebsdag taeller ikke (game_day nulstilles hver saeson)", async () => {
+  const supabase = mockSupabase(bindingTables([
+    { rider_id: "a", season_id: "en-anden-saeson", game_day: 21, race_id: "gt", team_id: "t1" },
+  ]));
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: 21,
+  });
+  assert.deepEqual([...out.data], [], "samme fejlklasse som #3070 — saesonen SKAL med i noeglen");
+});
+
+test("#4847: en query-fejl RETURNERES (kald-stedet kaster) — bindingen gaettes aldrig", async () => {
+  const supabase = mockSupabase(bindingTables([]), { errorOn: "race_entry_days" });
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: 21,
+  });
+  assert.equal(out.data, null, "null = 'ved det ikke', ikke 'ingen er bundet'");
+  assert.ok(out.error, "fejlen skjules ikke bag en tom maengde");
+});
+
+test("#4847: daarlige argumenter giver en fejl, ikke en tavs tom maengde", async () => {
+  const supabase = mockSupabase(bindingTables([]));
+  for (const args of [
+    { supabase, riderIds: ["a"], seasonId: null, gameDay: 3 },
+    { supabase, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: null },
+    { supabase: {}, riderIds: ["a"], seasonId: BIND_SEASON, gameDay: 3 },
+  ]) {
+    const out = await loadBoundRiderIdsForRaceDay(args);
+    assert.equal(out.data, null);
+    assert.ok(out.error);
+  }
+});
+
+test("#4847: en tom trup koster ingen DB-tur", async () => {
+  let calls = 0;
+  const supabase = { from() { calls += 1; return {}; } };
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase, riderIds: [], seasonId: BIND_SEASON, gameDay: 3,
+  });
+  assert.equal(calls, 0);
+  assert.deepEqual([...out.data], []);
 });

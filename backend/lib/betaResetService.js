@@ -3,6 +3,7 @@ import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 import { MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
+import { seniorSquadPatch, withSeniorSquadScope } from "./squads.js";
 
 export const DEFAULT_BETA_BALANCE = 500000; // #1717: sænket 800000 → 500000 (matcher INITIAL_BALANCE)
 
@@ -166,7 +167,11 @@ export async function resetBetaRosters(supabase) {
         .from("riders")
         // #2264: nulstil is_academy ved frigivelse til fri agent — en akademi-
         // rytter uden hold er ulovlig tilstand (markedet viser den, auktion afviser).
-        .update({ team_id: null, pending_team_id: null, is_academy: false })
+        // #4619: squad nulstilles SAMMEN med is_academy (seniorSquadPatch). En fri
+        // agent med squad='u23'/'junior' ville blive læst som ungdomsrytter af
+        // effectiveSquad() og optage en ungdomsplads i det øjeblik et hold hentede
+        // ham — netop den uenighed mellem de to kolonner der skal undgås.
+        .update({ team_id: null, pending_team_id: null, ...seniorSquadPatch() })
         .in("id", withoutAi)
     );
   }
@@ -235,10 +240,12 @@ export async function allocateLeaguePools(supabase) {
     return { allocated: 0, pools: 0 };
   }
 
-  const poolsResult = ensureOk(await supabase
+  // #5536: kun seniorpuljer. Ungdomspuljerne har samme tier 1-4, og et managerhold må
+  // aldrig få en ungdomspulje som sin seniorpulje.
+  const poolsResult = ensureOk(await withSeniorSquadScope((senior) => senior(supabase
     .from("league_divisions")
-    .select("id")
-    .eq("tier", MANAGER_ENTRY_DIVISION));
+    .select("id"))
+    .eq("tier", MANAGER_ENTRY_DIVISION)));
   const entryPools = poolsResult.data || [];
 
   if (entryPools.length === 0) {

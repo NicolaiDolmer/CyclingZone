@@ -11,6 +11,8 @@
     "item": {
       "dashboard": "Dashboard",
       "team": "My Team",
+      "u23Team": "U23 team",
+      "juniorTeam": "Junior team",
       "training": "Daily Training",
       "planning": "Planning",
       "academy": "Academy",
@@ -118,5 +120,6 @@
     "fullTable": "Full table",
     "columnsLabel": "Choose columns",
     "moreRight": "More columns to the right"
-  }
+  },
+  "networkError": "Can't reach the server right now. Check your connection and try again."
 }

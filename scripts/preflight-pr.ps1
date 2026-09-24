@@ -167,11 +167,43 @@ try {
   node scripts/check-required-ci-jobs.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "required-ci-jobs-guard" }
 
+  # #5369: guarden fandtes fra #5048, men blev ikke koert noget sted og stod roed
+  # paa en ren main uden at nogen saa det. CI koerer den i frontend-build
+  # (required); her fanges et nyt logEvent("...") uden raekke i
+  # ANALYTICS_STACK.md §3 eller uden navn i KNOWN_EVENTS foer push.
+  Write-Host "== event-catalog-guard (player_events-navne i KNOWN_EVENTS + ANALYTICS_STACK §3, #5369) ==" -ForegroundColor Cyan
+  node --test scripts/check-event-catalog.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "event-catalog-guard (selvtest)" }
+  node scripts/check-event-catalog.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "event-catalog-guard" }
+
+  # #5093 (ejer-valg 18/9: A): docs/NOW.md er den eneste kilde til "aktivt
+  # issue" + "Working agent"-claim - en PR der roerer den skal fejle i CI
+  # medmindre PR-titlen er en close-out (docs(now)/docs(close-out)). Lokalt
+  # (her) er PR_TITLE typisk usat foer PR'en er oprettet - scriptet advarer i
+  # det tilfaelde i stedet for at fejle; CI paa selve PR'en haandhaever.
+  Write-Host "== now-md-sidecar-guard (PR der roerer docs/NOW.md kraever docs(now)/docs(close-out)-titel, #5093) ==" -ForegroundColor Cyan
+  node --test scripts/check-now-md-sidecar.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "now-md-sidecar-guard (selvtest)" }
+  node scripts/check-now-md-sidecar.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "now-md-sidecar-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint
   if ($LASTEXITCODE -ne 0) { $failed += "frontend-lint" }
   Pop-Location
+
+  # #5004: CI's static-guards-job koerer BEGGE disse (ci.yml, "Test anti-slop
+  # guard" + "Run anti-slop guard"), men preflight koerte dem ikke - saa et
+  # nyt slop-fund (docs/design/TASTE.md §3: unicode-pile-som-ikon, arbitraer
+  # text-[Npx] under 12px, shadow-* uden for shadow-overlay, CSS/Tailwind-
+  # gradient) blev foerst synligt i CI, aldrig lokalt.
+  Write-Host "== anti-slop-guard (TASTE.md §3 forbudsliste, #4626/#5004) ==" -ForegroundColor Cyan
+  node --test scripts/check-anti-slop.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "anti-slop-guard (selvtest)" }
+  node scripts/check-anti-slop.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "anti-slop-guard" }
 
   # Forward-guard mod bart React.lazy() i frontend/src (#5014) — se scriptets
   # header for hvorfor et stale-chunk-load ellers klassificeres forkert
