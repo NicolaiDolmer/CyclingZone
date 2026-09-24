@@ -37,7 +37,8 @@ export const HELP_NUMBER_KEYS = Object.freeze([
   "prizePerPoint",
   "squadCap",
   "initialSquad",
-  "academySlots",
+  "u23SquadCap",
+  "juniorSquadCap",
   "academySigningFeePct",
   ...BONUS_KEYS,
 ]);
@@ -55,7 +56,8 @@ export function buildHelpNumbers(lang) {
     prizePerPoint: String(RULES_NUMBERS.prizePerPoint),
     squadCap: String(RULES_NUMBERS.squadCap),
     initialSquad: String(RULES_NUMBERS.initialSquadSize),
-    academySlots: String(RULES_NUMBERS.academySlots),
+    u23SquadCap: String(RULES_NUMBERS.u23SquadCap),
+    juniorSquadCap: String(RULES_NUMBERS.juniorSquadCap),
     academySigningFeePct: String(RULES_NUMBERS.academySigningFeePct),
     ...bonuses,
   };

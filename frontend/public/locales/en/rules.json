@@ -146,7 +146,7 @@
       "blocks": {
         "slots": {
           "title": "Academy size",
-          "text": "Your academy holds up to {academySlots} young riders (a hard cap), separate from your senior squad."
+          "text": "Your academy has two teams with a hard cap each: up to {u23SquadCap} riders on the U23 team and {juniorSquadCap} on the junior team, separate from your senior squad."
         },
         "age": {
           "title": "Age range",

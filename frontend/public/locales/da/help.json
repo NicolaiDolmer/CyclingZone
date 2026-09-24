@@ -1187,8 +1187,8 @@
         ]
       },
       "academySize": {
-        "title": "Akademistørrelse (8 pladser)",
-        "text": "Dit Akademi rummer op til {academySlots} ryttere. Disse {academySlots} pladser er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+        "title": "Akademistørrelse (pr. hold)",
+        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
@@ -1196,11 +1196,11 @@
       },
       "youthAuctions": {
         "title": "Ungdomsauktioner",
-        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Du kan kun byde, hvis du har plads til rytteren, enten en ledig senior-plads eller en ledig akademi-plads; er begge fulde, er bud-knappen deaktiveret. Det vindende hold betaler det vindende bud, og prospektet ryger på senior-truppen, når der er en ledig plads (med senior-kontrakt og tæller mod 30-rytter-grænsen), og falder først tilbage til Akademiet (en af de 8 pladser), når senior-truppen er fuld. Hver auktion viser, hvor rytteren lander. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
+        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Du kan kun byde, hvis du har plads til rytteren, enten en ledig senior-plads eller en ledig akademi-plads; er begge fulde, er bud-knappen deaktiveret. Det vindende hold betaler det vindende bud, og prospektet ryger på senior-truppen, når der er en ledig plads (med senior-kontrakt og tæller mod 30-rytter-grænsen), og falder først tilbage til Akademiet (en plads på U23- eller juniorholdet efter hans alder), når senior-truppen er fuld. Hver auktion viser, hvor rytteren lander. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
-        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi ({u23SquadCap} U23- og {juniorSquadCap} juniorryttere) har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
         "title": "Graduation Day",

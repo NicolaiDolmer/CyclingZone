@@ -146,7 +146,7 @@
       "blocks": {
         "slots": {
           "title": "Akademistørrelse",
-          "text": "Dit akademi rummer op til {academySlots} unge ryttere (et hårdt loft), adskilt fra din seniortrup."
+          "text": "Dit akademi har to hold med hvert sit hårde loft: op til {u23SquadCap} ryttere på U23-holdet og {juniorSquadCap} på juniorholdet, adskilt fra din seniortrup."
         },
         "age": {
           "title": "Aldersinterval",
