@@ -19,8 +19,12 @@ export function AcademyTransferConfirmModal({
   riderName,
   newSalary,            // promote: frossen senior-løn; demote: ungdomsløn. null = stadig indlæses.
   currentSalary = null, // vises som delta (demote)
-  capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: akademi 3/8)
+  capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: mål-truppens loft, fx 5 / 12)
   capAfterLabel = null,
+  // #5568: demote — den ungdomstrup rytteren rykker ned i ("u23" | "junior").
+  // Styrer etiketten, så "5 / 12" står ud for "U23 team places" og ikke for
+  // hele akademiet. null = generisk akademi-etiket.
+  capSquad = null,
   racesCleared = null,  // demote: antal KOMMENDE løb der ryddes (entries slettes; kan være 0/null)
   racesOngoing = null,  // #3805: demote: antal IGANGVÆRENDE løb rytteren falder ud af (entry
                          // bevares, men rytteren er ikke længere løbsberettiget — kan være 0/null)
@@ -109,7 +113,13 @@ export function AcademyTransferConfirmModal({
           {capLabel != null && capAfterLabel != null && (
             <div className="flex items-center justify-between px-3 py-2">
               <dt className="text-cz-3">
-                {isPromote ? t("academy:transferModal.seniorCapLabel") : t("academy:transferModal.academyCapLabel")}
+                {isPromote
+                  ? t("academy:transferModal.seniorCapLabel")
+                  : capSquad === "u23"
+                    ? t("academy:transferModal.u23CapLabel")
+                    : capSquad === "junior"
+                      ? t("academy:transferModal.juniorCapLabel")
+                      : t("academy:transferModal.academyCapLabel")}
               </dt>
               <dd className="font-mono text-cz-2">
                 {capLabel} <span className="text-cz-3" aria-hidden="true">&rarr;</span>{" "}

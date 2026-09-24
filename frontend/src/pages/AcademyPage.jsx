@@ -48,6 +48,8 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
+import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
+import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -90,8 +92,10 @@ export default function AcademyPage() {
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
+  // #5519: med U23/Junior-siderne tændt forsvinder Youth squads-kortet (3a).
+  const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance,
+    enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate, promoteRider,
     fetchReleaseQuote, releaseRider,
     pullIntake,
@@ -115,7 +119,11 @@ export default function AcademyPage() {
   const [releaseConfirm, setReleaseConfirm] = useState(null);
   const [releaseBusy, setReleaseBusy] = useState(false);
 
-  const isFull = slots.used >= slots.max;
+  // #5568: pladserne tælles PR. UNGDOMSTRUP (U23 / junior) mod squadCaps.ts.
+  // En kandidat spærres kun når DEN trup han lander i er fuld. Før spærrede det
+  // flade akademi-loft alle signeringer for et hold med 8 akademiryttere.
+  const squadCounts = { u23: squads?.u23?.used ?? null, junior: squads?.junior?.used ?? null };
+  const squadRows = squadCapRows(squadCounts);
   // Senior-truppen er fuld → promote blokeres (en op-rykning ville sprænge cap'en).
   const seniorFull = seniorCount >= seniorMax;
 
@@ -461,11 +469,23 @@ export default function AcademyPage() {
                 {t("balance", { amount: formatMoney(balance) })}
               </span>
             )}
-            <span
-              className={`font-data text-sm tabular-nums ${isFull ? "text-cz-warning" : "text-cz-2"}`}
-              title={isFull ? t("fullTooltip", { max: slots.max }) : undefined}
-            >
-              {t("slots", { used: slots.used, max: slots.max })}
+            {/* #5568: "U23 5/12 · Junior 3/10" — loftet pr. trup, ikke ét akademital. */}
+            <span className="font-data text-sm tabular-nums text-cz-2" data-testid="academy-squad-caps">
+              {squadRows.map((row, i) => (
+                <span key={row.squad}>
+                  {i > 0 && <span className="text-cz-3" aria-hidden="true"> · </span>}
+                  <span
+                    className={row.full ? "text-cz-warning" : undefined}
+                    title={row.full
+                      ? (row.squad === "junior" ? t("fullTooltipJunior", { max: row.max }) : t("fullTooltipU23", { max: row.max }))
+                      : undefined}
+                  >
+                    {row.squad === "junior"
+                      ? t("slotsJunior", { used: row.used, max: row.max })
+                      : t("slotsU23", { used: row.used, max: row.max })}
+                  </span>
+                </span>
+              ))}
             </span>
           </div>
         }
@@ -557,6 +577,14 @@ export default function AcademyPage() {
               // så kortet ikke spejler en økonomi-regel der kan drive fra hinanden.
               const fee = item.signingFee;
               const tooExpensive = fee != null && balance != null && fee > balance;
+              // #5568: spær kun mod loftet i den trup han lander i. targetSquad
+              // kommer fra backend (samme valg som signeringen); mangler det,
+              // afgør sæsonalderen det med samme regel.
+              const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
+              const isFull = isSquadFull(targetSquad, squadCounts);
+              const fullTooltip = targetSquad === "junior"
+                ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
+                : t("fullTooltipU23", { max: SQUAD_CAPS.u23 });
 
               return (
                 <Card key={item.intakeId} className="p-4 flex flex-col gap-3">
@@ -651,7 +679,7 @@ export default function AcademyPage() {
                       onClick={() => handleSign(rider.id)}
                       disabled={busy || isFull || tooExpensive}
                       loading={actionState[rider.id] === "signing"}
-                      title={isFull ? t("fullTooltip", { max: slots.max }) : tooExpensive ? t("error.insufficientBalance") : undefined}>
+                      title={isFull ? fullTooltip : tooExpensive ? t("error.insufficientBalance") : undefined}>
                       {t("signBtn")}
                     </Button>
                     <Button size="sm" variant="ghost" className="flex-1"
@@ -663,7 +691,9 @@ export default function AcademyPage() {
 
                   {/* Blokerings-forklaring under knapperne */}
                   {isFull && !err && (
-                    <p className="text-3xs text-cz-3 text-center">{t("fullNote", { max: slots.max })}</p>
+                    <p className="text-3xs text-cz-3 text-center">
+                      {targetSquad === "junior" ? t("fullNoteJunior") : t("fullNoteU23")}
+                    </p>
                   )}
                   {!isFull && tooExpensive && !err && (
                     <p className="text-3xs text-cz-danger text-center">{t("error.insufficientBalance")}</p>
@@ -721,7 +751,11 @@ export default function AcademyPage() {
           Beskrivelseslinjen er en fuld sætning, ikke en meta-label, så den
           IKKE bruger PAGE_TEMPLATES' uppercase-11px-meta-stil (den stil er til
           korte labels/tal, ikke løbende tekst) — samme valg som
-          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2). */}
+          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2).
+          #5519 (artboard 3a): med kontakten youth_squad_pages tændt ER
+          trupperne ægte og bor i menuen lige efter My Team, så kortet
+          forsvinder. Slukket = dagens visning uændret. */}
+      {!youthSquadPagesOn && (
       <Section>
         <SectionHeader
           title={t("youthSquads.title")}
@@ -744,6 +778,7 @@ export default function AcademyPage() {
           ))}
         </div>
       </Section>
+      )}
 
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />

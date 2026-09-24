@@ -34,49 +34,60 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
+import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
 
 const NOOP = () => {};
-// Spejler ACADEMY.SLOTS (academyFlag.js) — dupliceret som et LILLE, statisk
-// tal (samme stil som hashStringToSeed i academyIntake.js) frem for at
-// importere academyFlag.js her og risikere en cyklus; RPC'en (SQL) har sin
-// egen litterale 8-cap af samme grund. Ændrer akademi-cap'en sig nogensinde,
-// skal begge steder (+ finalize_academy_acquisition + demote_rider_to_academy)
-// opdateres sammen — samme aftale som de øvrige hårdkodede 8-tal i koden.
-const ACADEMY_CAP = 8;
+
+// flush_pending_academy_signing-RPC'ens "ikke nu"-svar (database/2026-09-24-
+// 5432-squad-caps-rpc.sql): mål-truppen er fuld, eller rytteren venter ikke
+// længere (allerede flushet af en parallel kørsel). Begge betyder "prøv igen
+// senere / intet at gøre", ikke en fejl.
+const FLUSH_NOT_NOW = new Set(["academy_full", "not_pending"]);
 
 /**
- * Flush ÉN udskudt akademi-optagelse: flip is_academy=true hvis holdets
- * akademi-cap (8) ikke er nået. TOCTOU-guard på pending_academy_signing (kun
- * flip hvis den STADIG er sat), så en genkørsel er sikker. Er cap'en fyldt
- * (sjældent — flere udskudte optagelser på samme hold, eller holdet har
- * fyldt akademiet på anden vis i mellemtiden), forbliver rytteren pending og
- * prøves igen ved næste finalisering af et af hans andre aktive løb (eller
- * forbliver pending indtil en plads frigøres — ingen anden sti rører flaget).
+ * @param {any} supabase
+ * @returns {Promise<number|null>}
+ */
+async function activeSeasonNumber(supabase) {
+  const { data, error } = await supabase
+    .from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`flushDeferredAcademySigningsForRace: season lookup failed: ${error.message}`);
+  return data?.number ?? null;
+}
+
+/**
+ * Flush ÉN udskudt akademi-optagelse: flip is_academy=true OG skriv truppen,
+ * hvis mål-truppen har en ledig plads.
+ *
+ * #5432: tællingen og skrivningen sker i flush_pending_academy_signing-RPC'en
+ * under holdets advisory-lås, pr. MÅL-trup med loftet fra squads.js. Før lå
+ * her en JS-tælling mod en flad cap på HELE akademiet; med loft pr. trup kan et
+ * hold lovligt have flere akademiryttere end det tal, og en udskudt optagelse
+ * ville så aldrig kunne fuldføres. TOCTOU-guarden (kun flip hvis
+ * pending_academy_signing STADIG er sat) sidder i RPC'en. Er truppen fuld,
+ * forbliver rytteren pending og prøves igen ved næste finalisering af et af hans
+ * andre aktive løb (eller forbliver pending indtil en plads frigøres).
  *
  * @param {object} supabase
- * @param {{ id: string, firstname?: string, lastname?: string, team_id: string }} rider
- * @param {{ notifyTeamOwner: Function }} opts
+ * @param {{ id: string, firstname?: string, lastname?: string, team_id: string, birthdate?: string|null }} rider
+ * @param {{ notifyTeamOwner: Function, seasonNumber?: number|null }} opts
  * @returns {Promise<boolean>} true hvis rytteren rent faktisk blev flippet nu.
  */
-export async function flushPendingAcademySigning(supabase, rider, { notifyTeamOwner } = {}) {
-  const { count, error: countErr } = await supabase
-    .from("riders")
-    .select("id", { count: "exact", head: true })
-    .eq("team_id", rider.team_id)
-    .eq("is_academy", true);
-  if (countErr) {
-    throw new Error(`flushPendingAcademySigning: cap-tjek fejlede (${rider.id}): ${countErr.message}`);
+export async function flushPendingAcademySigning(supabase, rider, { notifyTeamOwner, seasonNumber = null } = {}) {
+  // Uden en aktiv sæson kan sæsonalderen ikke regnes ud. Rytteren bliver hellere
+  // stående som ventende end at blive gættet ned i junior-truppen (CodeRabbit).
+  if (!Number.isFinite(seasonNumber)) return false;
+  const squad = academyPlacementSquad(rider.birthdate, seasonNumber);
+  const { data, error } = await supabase.rpc("flush_pending_academy_signing", {
+    p_team_id: rider.team_id,
+    p_rider_id: rider.id,
+    ...squadCapRpcArgs(squad),
+  });
+  if (error) throw new Error(`flushPendingAcademySigning: flip fejlede (${rider.id}): ${error.message}`);
+  if (data?.ok !== true) {
+    if (FLUSH_NOT_NOW.has(data?.code)) return false;
+    throw new Error(`flushPendingAcademySigning: uventet svar (${rider.id}): ${JSON.stringify(data)}`);
   }
-  if ((count ?? 0) >= ACADEMY_CAP) return false;
-
-  const { data: updated, error: uErr } = await supabase
-    .from("riders")
-    .update({ is_academy: true, pending_academy_signing: false })
-    .eq("id", rider.id)
-    .eq("pending_academy_signing", true)
-    .select("id");
-  if (uErr) throw new Error(`flushPendingAcademySigning: flip fejlede (${rider.id}): ${uErr.message}`);
-  if (!updated || updated.length === 0) return false;
 
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   await notifyTeamOwner(
@@ -129,7 +140,7 @@ export async function flushDeferredAcademySigningsForRace(supabase, race, { noti
     pending = await fetchAllRows(() =>
       supabase
         .from("riders")
-        .select("id, firstname, lastname, team_id")
+        .select("id, firstname, lastname, team_id, birthdate")
         .in("id", riderIds)
         .eq("pending_academy_signing", true)
         .order("id")
@@ -148,9 +159,13 @@ export async function flushDeferredAcademySigningsForRace(supabase, race, { noti
   const toFlush = pending.filter((r) => !stillActive.has(r.id));
   if (toFlush.length === 0) return empty;
 
+  // #5432: mål-truppen afhænger af sæsonalderen, så den aktive sæson hentes én
+  // gang pr. flush (samme opslag som /academy/promote + /academy/demote).
+  const seasonNumber = await activeSeasonNumber(supabase);
+
   const flushedIds = [];
   for (const rider of toFlush) {
-    const flushed = await flushPendingAcademySigning(supabase, rider, { notifyTeamOwner });
+    const flushed = await flushPendingAcademySigning(supabase, rider, { notifyTeamOwner, seasonNumber });
     if (flushed) flushedIds.push(rider.id);
   }
 

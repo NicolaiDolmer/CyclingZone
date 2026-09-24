@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import {
@@ -28,6 +28,10 @@ import {
 const BODY_MAX_LENGTH = 2000;
 const THREAD_POLL_MS = 20_000;
 const REPORT_REASON_MIN = 10;
+// #5313: hvor tæt på bunden brugeren skal være for at nye beskeder stadig
+// ruller traaden med ned. Rullet laengere op end dette = "laeser historik",
+// og saa maa en ny besked ikke rykke visningen.
+const SCROLL_STICK_THRESHOLD_PX = 80;
 
 function ConversationRow({ conversation, active, onOpen, t }) {
   const name = conversation.otherManagerName || conversation.otherTeamName || "";
@@ -91,7 +95,49 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
   const [reportError, setReportError] = useState(null);
   const [reporting, setReporting] = useState(false);
 
-  const bottomRef = useRef(null);
+  // Traadens eget scroll-container (overflow-y-auto). Bruges baade til at
+  // rulle til bunden og til at maale afstanden til bunden (#5313).
+  const scrollRef = useRef(null);
+  // Om traaden skal foelge med til bunden ved naeste besked. Sand ved
+  // mount/traadskift og saa laenge brugeren selv er taet paa bunden; falsk
+  // saa snart brugeren har rullet op for at laese aeldre beskeder, og naar
+  // brugeren trykker "Load more" (se knappen nedenfor).
+  const stickToBottomRef = useRef(true);
+  const handleThreadScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom <= SCROLL_STICK_THRESHOLD_PX;
+  }, []);
+  const scrollToBottomIfSticking = useCallback(() => {
+    const el = scrollRef.current;
+    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+  }, []);
+  // Callback-ref på scroll-containeren (#5313, ejer-review 23/9). Containeren
+  // monteres FØRST når både samtalelisten og tråden er hentet (indtil da står
+  // der et skelet). Ved et direkte link (?c=<id> fra en notifikation) hentes de
+  // parallelt, og svarer tråden før listen, kørte scroll-effekten nedenfor mens
+  // containeren endnu ikke fandtes. Når listen så kom, var der ingen ny besked
+  // til at udløse effekten igen, og tråden stod ved den ældste besked. Derfor
+  // rulles der her, i det øjeblik containeren (med beskederne i) sættes i DOM'en.
+  //
+  // ResizeObserver'en holder tråden ved bunden når indholdet ændrer højde EFTER
+  // første render (fx en webfont der loader og ombryder lange beskeder), men kun
+  // så længe brugeren står ved bunden (stickToBottomRef).
+  const attachScrollContainer = useCallback((el) => {
+    scrollRef.current = el;
+    scrollToBottomIfSticking();
+    let observer = null;
+    if (typeof ResizeObserver === "function") {
+      observer = new ResizeObserver(scrollToBottomIfSticking);
+      observer.observe(el); // containerens egen højde (fx rotation)
+      if (el.firstElementChild) observer.observe(el.firstElementChild); // indholdets højde
+    }
+    return () => {
+      observer?.disconnect();
+      if (scrollRef.current === el) scrollRef.current = null;
+    };
+  }, [scrollToBottomIfSticking]);
   // Monotont voksende id pr. traad-hentning. Et svar for samtale A kan naa
   // frem EFTER at brugeren har valgt samtale B; uden guarden ville A's
   // beskeder erstatte B, og menuens Bloker/Anmeld ville ramme A mens URL'en
@@ -153,6 +199,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     setDraft("");
     setSendError(null);
     setThread(null);
+    stickToBottomRef.current = true; // en (gen)aabnet traad aabner altid ved bunden (#5313)
     loadThread(conversationId);
     markThreadRead(conversationId)
       .then(() => loadList())
@@ -172,9 +219,16 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
   // bad om (CodeRabbit 8/9).
   const messages = thread?.messages;
   const latestMessageId = messages?.length ? messages[messages.length - 1].id : null;
-  useEffect(() => {
-    if (latestMessageId) bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [latestMessageId]);
+  // useLayoutEffect, ikke useEffect (#5313): scrollen skal sidde FØR browseren
+  // maler frame'et. Med en almindelig (passiv) effect ville traaden kortvarigt
+  // males ved toppen og først derefter hoppe til bunden — det var netop det
+  // brugeren oplevede som "traaden aabner i toppen".
+  // Effekten dækker kun NYE beskeder i en tråd der allerede står fremme;
+  // åbningen dækkes af attachScrollContainer ovenfor. Har brugeren selv rullet
+  // op, er stickToBottomRef falsk, og positionen bevares.
+  useLayoutEffect(() => {
+    if (latestMessageId) scrollToBottomIfSticking();
+  }, [latestMessageId, scrollToBottomIfSticking]);
 
   async function handleSend(event) {
     event.preventDefault();
@@ -188,6 +242,10 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     setSendError(null);
     try {
       await sendMessage({ conversationId, body });
+      // Foerst NAAR sendingen reelt lykkes: en fejlet afsendelse maa ikke
+      // tvinge traaden ned til bunden ved naeste poll, mens brugeren stadig
+      // laeser historik og forsoeget slog fejl (CodeRabbit 22/9, #5313).
+      stickToBottomRef.current = true; // min egen besked skal altid vaere synlig med det samme
       setDraft("");
       await loadThread(conversationId, { silent: true });
       await loadList();
@@ -381,48 +439,62 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
               )}
 
               {/* Beskeder */}
-              <div className="max-h-[52vh] min-h-[180px] overflow-y-auto px-3 py-3">
-                {thread.hasMore && (
-                  <div className="mb-3 text-center">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => loadThread(conversationId, { silent: true, before: thread.nextBefore })}
-                    >
-                      {t("thread.loadMore")}
-                    </Button>
-                  </div>
-                )}
-                {/* `dm-thread-messages`: samtalelistens forhåndsvisning gengiver
-                    den seneste besked ordret, så en tekst-locator på siden som
-                    helhed rammer BÅDE boblen og forhåndsvisningen. Hvilken af
-                    dem der står malet når en e2e-assertion kører, afhænger af om
-                    listen nåede at genhente — det gjorde blokér-testen flaky i
-                    CI. Tråden skal kunne udpeges for sig. */}
-                {thread.messages.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-cz-3">{t("thread.emptyBody")}</p>
-                ) : (
-                  <ul data-testid="dm-thread-messages" className="flex flex-col gap-2.5">
-                    {thread.messages.map(message => (
-                      <li key={message.id} className={`flex ${message.fromMe ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[85%] border px-3 py-2 rounded-cz ${
-                            message.fromMe
-                              ? "border-cz-accent/30 bg-cz-accent/8 text-cz-1"
-                              : "border-cz-border bg-cz-subtle text-cz-1"
-                          }`}
-                        >
-                          <MessageQuote context={message.context} t={t} />
-                          <MessageBody text={message.body} />
-                          <p className="mt-1 font-data text-2xs tabular-nums text-cz-3">
-                            {formatDateTime(message.createdAt)}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div ref={bottomRef} />
+              <div
+                ref={attachScrollContainer}
+                onScroll={handleThreadScroll}
+                className="max-h-[52vh] min-h-[180px] overflow-y-auto px-3 py-3"
+              >
+                {/* Eneste barn med vilje: attachScrollContainer måler dets højde
+                    med ResizeObserver (#5313). Ingen styling, ændrer ikke layoutet. */}
+                <div>
+                  {thread.hasMore && (
+                    <div className="mb-3 text-center">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          // Ældre beskeder = brugeren læser historik. Uden dette
+                          // ville ResizeObserver'en rulle de netop hentede beskeder
+                          // ud af billedet igen, når tråden var kort nok til at
+                          // brugeren stod ved bunden (#5313).
+                          stickToBottomRef.current = false;
+                          loadThread(conversationId, { silent: true, before: thread.nextBefore });
+                        }}
+                      >
+                        {t("thread.loadMore")}
+                      </Button>
+                    </div>
+                  )}
+                  {/* `dm-thread-messages`: samtalelistens forhåndsvisning gengiver
+                      den seneste besked ordret, så en tekst-locator på siden som
+                      helhed rammer BÅDE boblen og forhåndsvisningen. Hvilken af
+                      dem der står malet når en e2e-assertion kører, afhænger af om
+                      listen nåede at genhente — det gjorde blokér-testen flaky i
+                      CI. Tråden skal kunne udpeges for sig. */}
+                  {thread.messages.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-cz-3">{t("thread.emptyBody")}</p>
+                  ) : (
+                    <ul data-testid="dm-thread-messages" className="flex flex-col gap-2.5">
+                      {thread.messages.map(message => (
+                        <li key={message.id} className={`flex ${message.fromMe ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className={`max-w-[85%] border px-3 py-2 rounded-cz ${
+                              message.fromMe
+                                ? "border-cz-accent/30 bg-cz-accent/8 text-cz-1"
+                                : "border-cz-border bg-cz-subtle text-cz-1"
+                            }`}
+                          >
+                            <MessageQuote context={message.context} t={t} />
+                            <MessageBody text={message.body} />
+                            <p className="mt-1 font-data text-2xs tabular-nums text-cz-3">
+                              {formatDateTime(message.createdAt)}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
 
               {/* Skrivefelt */}

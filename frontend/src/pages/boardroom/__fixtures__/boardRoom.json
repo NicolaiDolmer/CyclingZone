@@ -289,5 +289,22 @@
       "target": 1,
       "label": "Top 3 i mindst 1 monument"
     }
+  },
+  "bonusOfferProgress": {
+    "eligible": false,
+    "satisfaction_ok": false,
+    "satisfaction_gap": 5,
+    "goals_met": 0,
+    "goals_total": 4,
+    "goals_needed": 3,
+    "goals_gap": 3,
+    "satisfaction_threshold": 75,
+    "goals_threshold_pct": 75
+  },
+  "passiveModifier": {
+    "satisfaction": 71,
+    "modifier": 1.1,
+    "pct": 10,
+    "band": "boost"
   }
 }

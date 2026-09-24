@@ -3,6 +3,7 @@ import { Navigate } from "react-router";
 import { supabase } from "../lib/supabase";
 import { Button, Card, DataTable, EmptyState, ErrorState, Input, PageLoader, Select, SkeletonLines } from "../components/ui";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import {
   buildValueRows,
   buildSalaryRows,
@@ -115,14 +116,14 @@ export default function AdminValueTransitionPage() {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const headers = await getAuth();
-      const res = await fetch(`${API}/api/admin/value-transition`, { headers });
+      const res = await apiFetch(`${API}/api/admin/value-transition`, { headers });
       if (res.status === 403) { setAdminStatus("not_admin"); return; }
       const data = await readAdminJson(res);
       if (!res.ok) throw new Error(adminErrorMessage(data, res));
       // Gate-status er sekundær: fejler den, vises siden stadig (uden presets).
       let gate = null;
       try {
-        const gres = await fetch(`${API}/api/admin/market-value-level-correction/gate`, { headers });
+        const gres = await apiFetch(`${API}/api/admin/market-value-level-correction/gate`, { headers });
         const gdata = gres.ok ? await readAdminJson(gres) : null;
         gate = gdata?.gate ?? null;
       } catch {

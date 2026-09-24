@@ -9,6 +9,8 @@ import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { youthRateForPotential } from "./riderProgression.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { effortDevelopmentMultiplier } from "./raceRoles.js";
 
 test("default-program bruges når plan mangler OG type ukendt (spec 6.3: følger ALTID program)", () => {
   assert.deepEqual(resolveProgram(null), DEFAULT_PROGRAM);
@@ -596,4 +598,234 @@ test("#4846 · +1-loftet pr. evne klipper bar-loopet (hardDailyCap)", () => {
   const medLoft = applyDailyTick({ ...args, hardDailyCap: 1 });
   assert.ok(utenLoft.gains.endurance >= 2, `uden loft: ${utenLoft.gains.endurance}`);
   assert.equal(medLoft.gains.endurance, 1);
+});
+
+// ── #4750: overskydende fremdrift bæres videre når løbsdags-loftet binder ─────
+//
+// Delta'en er ikke en parameter, men budgetDivisor (applyDailyTick) og devMult
+// (applyRaceDevelopmentTick) er ren proportionalitet (se #4846 G1-testen). Vi
+// maaler delta'en ved en kendt knap-vaerdi og skalerer knappen, saa delta'en
+// rammer et valgt maal. Maalingen sker med SAMME evner og seed som selve ticket.
+
+const near = (actual, expected, msg) =>
+  assert.ok(Math.abs(actual - expected) < 1e-9, `${msg}: ${actual} ≠ ${expected}`);
+
+const CARRY_TICK_ARGS = Object.freeze({
+  riderId: "r-4750", dateStr: "2026-09-23", age: 22,
+  abilities: { endurance: 40 }, caps: { endurance: 90 },
+  progress: {}, program: { focus: "endurance", intensity: "normal" },
+  conditionMult: 1, bonus: false, potentiale: 4,
+});
+
+function divisorForDelta(args, ability, target) {
+  const refDivisor = 1e6; // saa stor at baren aldrig naar 1 under maalingen
+  const probe = applyDailyTick({ ...args, progress: {}, hardDailyCap: undefined, budgetDivisor: refDivisor });
+  const measured = probe.progress[ability];
+  assert.ok(measured > 0 && measured < 0.999 && !probe.gains[ability], `maaling: ${measured}`);
+  return (refDivisor * measured) / target;
+}
+
+function devMultForPerAbility(args, ability, target) {
+  const refMult = 1e-4;
+  const probe = applyRaceDevelopmentTick({ ...args, progress: {}, hardDailyCap: undefined, devMult: refMult });
+  const measured = probe.progress[ability];
+  assert.ok(measured > 0 && measured < 0.999 && !probe.gains[ability], `maaling: ${measured}`);
+  return (refMult * target) / measured;
+}
+
+// Ét tick med en given delta for `ability` (resten af input som `args`).
+function dailyTickWithDelta(args, ability, delta) {
+  return applyDailyTick({ ...args, budgetDivisor: divisorForDelta(args, ability, delta) });
+}
+
+test("#4750 · applyDailyTick: delta 1,6 to ticks i træk giver +1 og +1, resten bæres videre", () => {
+  const args1 = { ...CARRY_TICK_ARGS, tickSeedKey: "s4#gd1", hardDailyCap: 1 };
+  const tick1 = dailyTickWithDelta(args1, "endurance", 1.6);
+  assert.equal(tick1.gains.endurance, 1);
+  assert.equal(tick1.abilities.endurance, 41);
+  near(tick1.progress.endurance, 0.6, "tick 1: 0 + 1,6 − 1");
+
+  const args2 = {
+    ...CARRY_TICK_ARGS, abilities: tick1.abilities, progress: tick1.progress,
+    tickSeedKey: "s4#gd2", hardDailyCap: 1,
+  };
+  const tick2 = dailyTickWithDelta(args2, "endurance", 1.6);
+  assert.equal(tick2.gains.endurance, 1, "loftet holder: stadig kun +1");
+  assert.equal(tick2.abilities.endurance, 42);
+  near(tick2.progress.endurance, 1.2, "tick 2: 0,6 + 1,6 − 1 bæres uklippet (før: 0,999)");
+
+  // Resten udbetales senere: et lille tick bagefter giver +1 af den baarne rest.
+  const args3 = {
+    ...CARRY_TICK_ARGS, abilities: tick2.abilities, progress: tick2.progress,
+    tickSeedKey: "s4#gd3", hardDailyCap: 1,
+  };
+  const tick3 = dailyTickWithDelta(args3, "endurance", 0.1);
+  assert.equal(tick3.gains.endurance, 1);
+  near(tick3.progress.endurance, 0.3, "tick 3: 1,2 + 0,1 − 1");
+  // Intet forsvinder: point + rest = summen af deltaer (1,6 + 1,6 + 0,1).
+  near(tick3.abilities.endurance - 40 + tick3.progress.endurance, 3.3, "bevarelse");
+});
+
+test("#4750 · applyRaceDevelopmentTick: perAbility 1,6 to ticks i træk giver +1 og +1, resten bæres videre", () => {
+  const relevant = RACE_PROFILE_ABILITY_MAP.flat;
+  const base = {
+    ...CARRY_TICK_ARGS,
+    abilities: Object.fromEntries(relevant.map((a) => [a, 40])),
+    caps: Object.fromEntries(relevant.map((a) => [a, 90])),
+    program: { focus: "sprint", intensity: "normal" },
+    profileType: "flat", hardDailyCap: 1,
+  };
+  const args1 = { ...base, tickSeedKey: "s4#gd1" };
+  const tick1 = applyRaceDevelopmentTick({ ...args1, devMult: devMultForPerAbility(args1, relevant[0], 1.6) });
+  const args2 = { ...base, abilities: tick1.abilities, progress: tick1.progress, tickSeedKey: "s4#gd2" };
+  const tick2 = applyRaceDevelopmentTick({ ...args2, devMult: devMultForPerAbility(args2, relevant[0], 1.6) });
+
+  for (const ability of relevant) {
+    assert.equal(tick1.gains[ability], 1, `${ability} tick 1`);
+    near(tick1.progress[ability], 0.6, `${ability} tick 1 rest`);
+    assert.equal(tick2.gains[ability], 1, `${ability} tick 2`);
+    assert.equal(tick2.abilities[ability], 42, `${ability} efter to ticks`);
+    near(tick2.progress[ability], 1.2, `${ability} tick 2 rest bæres uklippet`);
+  }
+});
+
+test("#4750 · evnens eget loft (potentiale eller 99) klipper stadig — intet at bære hen til", () => {
+  // Potentiale-loftet: 89 → 90 = cap. Dagsloftet og cap binder samtidig; cap vinder.
+  const potArgs = {
+    ...CARRY_TICK_ARGS, abilities: { endurance: 89 }, caps: { endurance: 90 },
+    progress: { endurance: 0.6 }, tickSeedKey: "s4#gd1", hardDailyCap: 1,
+  };
+  const pot = dailyTickWithDelta(potArgs, "endurance", 1.6);
+  assert.equal(pot.gains.endurance, 1);
+  assert.equal(pot.abilities.endurance, 90);
+  assert.equal(pot.progress.endurance, 0.999);
+
+  // 99-væggen: et loft over 99 hjaelper ikke — 99 er stadig graensen.
+  const wallArgs = {
+    ...CARRY_TICK_ARGS, abilities: { endurance: 98 }, caps: { endurance: 120 },
+    progress: { endurance: 0.6 }, tickSeedKey: "s4#gd1", hardDailyCap: 1,
+  };
+  const wall = dailyTickWithDelta(wallArgs, "endurance", 1.6);
+  assert.equal(wall.gains.endurance, 1);
+  assert.equal(wall.abilities.endurance, 99);
+  assert.equal(wall.progress.endurance, 0.999);
+
+  // Samme regel paa loebsdags-udviklingen.
+  const relevant = RACE_PROFILE_ABILITY_MAP.flat;
+  const raceArgs = {
+    ...CARRY_TICK_ARGS,
+    abilities: Object.fromEntries(relevant.map((a) => [a, 89])),
+    caps: Object.fromEntries(relevant.map((a) => [a, 90])),
+    progress: Object.fromEntries(relevant.map((a) => [a, 0.6])),
+    program: { focus: "sprint", intensity: "normal" },
+    profileType: "flat", tickSeedKey: "s4#gd1", hardDailyCap: 1,
+  };
+  const race = applyRaceDevelopmentTick({ ...raceArgs, devMult: devMultForPerAbility(raceArgs, relevant[0], 1.6) });
+  for (const ability of relevant) {
+    assert.equal(race.abilities[ability], 90, ability);
+    assert.equal(race.progress[ability], 0.999, ability);
+  }
+});
+
+// Orakel: bar-loopet fra FOER #4750, tegn for tegn. Uden hardDailyCap skal begge
+// tick-typer give praecis dette (bit-identisk), ogsaa naar et tidligere loebsdags-
+// tick har efterladt en baaret rest over 1 i progress.
+function preCarrySettle({ current, cap, before, delta, dailyCeiling = Infinity }) {
+  let bar = before + delta;
+  let gained = 0;
+  while (bar >= 1 && gained < dailyCeiling && current + gained < Math.min(99, cap ?? 99)) {
+    bar -= 1;
+    gained += 1;
+  }
+  return { gained, progress: Math.min(bar, 0.999) };
+}
+
+function expectFromOracle(args, settleFor) {
+  const abilities = { ...args.abilities };
+  const progress = { ...(args.progress ?? {}) };
+  const gains = {};
+  for (const [ability, amount] of settleFor) {
+    const current = Number(args.abilities[ability] ?? 0);
+    const res = preCarrySettle({
+      current, cap: args.caps?.[ability], before: Number(progress[ability] ?? 0), delta: amount,
+    });
+    if (res.gained) {
+      gains[ability] = res.gained;
+      abilities[ability] = current + res.gained;
+    }
+    progress[ability] = res.progress;
+  }
+  return { abilities, progress, gains };
+}
+
+const FLAG_OFF_SCENARIOS = Object.freeze([
+  { ...CARRY_TICK_ARGS },
+  { ...CARRY_TICK_ARGS, progress: { endurance: 2.3 } }, // baaret rest fra en flag-on-periode
+  { ...CARRY_TICK_ARGS, abilities: { endurance: 97 }, caps: { endurance: 99 }, progress: { endurance: 1.4 } },
+  { ...CARRY_TICK_ARGS, budgetDivisor: 1, progress: { endurance: 0.5 } }, // stor delta, flere point paa én dag
+  {
+    ...CARRY_TICK_ARGS, age: 17, bonus: true, potentiale: 6, budgetDivisor: 2,
+    abilities: { climbing: 30, sprint: 88, endurance: 60 },
+    caps: { climbing: 95, sprint: 89, endurance: 99 },
+    progress: { climbing: 0.9, sprint: 3.1 },
+    program: { focus: "vo2max", intensity: "hard" },
+  },
+]);
+
+test("#4750 · applyDailyTick uden hardDailyCap er bit-identisk med bar-loopet før #4750", () => {
+  for (const args of FLAG_OFF_SCENARIOS) {
+    const out = applyDailyTick(args);
+    assert.deepEqual(applyDailyTick({ ...args, hardDailyCap: null }), out, "null = udeladt");
+    const settleFor = [];
+    for (const ability of VISIBLE_ABILITIES) {
+      const current = Number(args.abilities[ability] ?? 0);
+      const delta = dailyAbilityDelta({
+        ability, current, cap: args.caps?.[ability], age: args.age, program: args.program,
+        conditionMult: args.conditionMult, bonus: args.bonus, noise: out.noise, potentiale: args.potentiale,
+        budgetDivisor: args.budgetDivisor ?? null, riderQualityMult: out.trainingScore?.deltaQualityMult ?? null,
+      });
+      if (delta > 0) settleFor.push([ability, delta]);
+    }
+    const expected = expectFromOracle(args, settleFor);
+    assert.deepEqual(
+      { abilities: out.abilities, progress: out.progress, gains: out.gains },
+      expected,
+      JSON.stringify(args.progress),
+    );
+  }
+});
+
+test("#4750 · applyRaceDevelopmentTick uden hardDailyCap er bit-identisk med bar-loopet før #4750", () => {
+  const relevant = RACE_PROFILE_ABILITY_MAP.flat;
+  for (const scenario of FLAG_OFF_SCENARIOS) {
+    const args = {
+      ...scenario,
+      abilities: { ...Object.fromEntries(relevant.map((a) => [a, 50])), ...scenario.abilities },
+      caps: { ...Object.fromEntries(relevant.map((a) => [a, 80])), ...scenario.caps },
+      progress: { sprint: 1.7, ...scenario.progress },
+      profileType: "flat", devMult: 4,
+    };
+    const out = applyRaceDevelopmentTick(args);
+    assert.deepEqual(applyRaceDevelopmentTick({ ...args, hardDailyCap: null }), out, "null = udeladt");
+    let replacedTotal = 0;
+    for (const ability of VISIBLE_ABILITIES) {
+      const current = Number(args.abilities[ability] ?? 0);
+      replacedTotal += dailyAbilityDelta({
+        ability, current, cap: args.caps?.[ability], age: args.age, program: args.program,
+        conditionMult: args.conditionMult, bonus: args.bonus, noise: out.noise, potentiale: args.potentiale,
+        budgetDivisor: args.budgetDivisor ?? null, riderQualityMult: out.trainingScore?.deltaQualityMult ?? null,
+      });
+    }
+    const perAbility = (replacedTotal * args.devMult * effortDevelopmentMultiplier(null)) / relevant.length;
+    assert.ok(perAbility > 0);
+    const settleFor = relevant
+      .filter((ability) => !(args.caps[ability] != null && Number(args.abilities[ability]) >= args.caps[ability]))
+      .map((ability) => [ability, perAbility]);
+    const expected = expectFromOracle(args, settleFor);
+    assert.deepEqual(
+      { abilities: out.abilities, progress: out.progress, gains: out.gains },
+      expected,
+      JSON.stringify(args.progress),
+    );
+  }
 });

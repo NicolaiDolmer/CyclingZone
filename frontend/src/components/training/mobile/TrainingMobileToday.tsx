@@ -77,7 +77,14 @@ export default function TrainingMobileToday({
   assistantSlot,
   sortSlot,
   scoreFor = null,
+  scoreSettled = true,
   openFirstForTour = false,
+  overviewLayout = false,
+  cardFooterFor = null,
+  changeLabel,
+  picked = null,
+  onTogglePick,
+  bulkSlot = null,
 }: {
   riders: MobileRider[];
   columns: RaceDayColumn[];
@@ -117,9 +124,26 @@ export default function TrainingMobileToday({
   // `training_score_visible` er off, og saa findes hverken kolonnen eller
   // blokken i kortet — praecis som paa desktop.
   scoreFor?: ((riderId: string) => MobileScoreView | null) | null;
+  // #5485 (ejer-valg A 23/9): er dagens pas koert? Foer det viser scoren det
+  // SENESTE tal daempet (mobileScoreCell), bagefter dagens tal.
+  scoreSettled?: boolean;
   // #2819: sandt naar onboarding-touren koerer paa denne side. Se effekten
   // nedenfor — det er den ENESTE grund til at et kort aabner af sig selv.
   openFirstForTour?: boolean;
+  // #5485: siden har faaet sit eget overblik oeverst (Needs a day / Racing /
+  // Training / Tired), og programmet er flyttet til fanen Week plan. I den
+  // struktur tegnes hverken dagens stribe, programmet eller tabellens titel-
+  // linje her, saa mindst 8 ryttere staar paa foerste skaerm (390 x 844).
+  overviewLayout?: boolean;
+  // Rytterens ugeplan + profil-linket, inde i kortet (A3).
+  cardFooterFor?: ((riderId: string) => React.ReactNode) | null;
+  changeLabel?: string;
+  // #5620/#5485: markerings-tilstanden til hurtig hvile, sendt uaendret videre
+  // til TrainingMobileRoster. `bulkSlot` er vaerktoejslinjen (TrainingMobileBulkBar)
+  // og staar lige over tabellen, under sorteringen.
+  picked?: ReadonlySet<string> | null;
+  onTogglePick?: (riderId: string) => void;
+  bulkSlot?: React.ReactNode;
 }) {
   const { t } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -140,7 +164,22 @@ export default function TrainingMobileToday({
         const sub = [type, `${t("mobile.formShort")}${cond.form ?? "—"}`, `${t("mobile.fatigueShort")}${cond.fatigue ?? "—"}`]
           .filter(Boolean)
           .join(" · ");
-        return { id: rider.id, name: riderShortName(rider), sub };
+        // #5485 (ejer-valg 23/9): skaden staar i raekken. Samme kerne og
+        // samme korte noegler som desktop-raekkens badge (injuryBadgeMessage
+        // compact): loebsdage naar backenden har skrevet dem, ellers
+        // kalenderdage fra injured_until. Ca.-datoen staar i title.
+        const injuryLeft = injuryTimeLeft(cond);
+        let injury: { label: string; title: string | null } | null = null;
+        if (injuryLeft.count > 0) {
+          const msg = injuryBadgeMessage(injuryLeft, { compact: true });
+          injury = {
+            label: t(msg.key, { days: msg.days }),
+            title: injuryLeft.approxDate
+              ? t("injuredApprox", { date: formatDate(injuryLeft.approxDate, "medium") })
+              : null,
+          };
+        }
+        return { id: rider.id, name: riderShortName(rider), sub, injury };
       }),
     [riders, conditionFor, tTypes, t],
   );
@@ -201,21 +240,25 @@ export default function TrainingMobileToday({
   // aldrig forsvinder helt fra telefonen (ejer 18/9).
   const scoreColumn =
     scoreFor && canShowScoreColumn(columns)
-      ? (riderId: string) => mobileScoreCell(scoreFor(riderId))
+      ? (riderId: string) => mobileScoreCell(scoreFor(riderId), { settled: scoreSettled })
       : null;
   const selectedScore = selected && scoreFor ? scoreFor(selected.id) : null;
 
   return (
     <div className="space-y-3" data-testid="training-mobile-today">
-      <TrainingRaceDayStrip columns={columns} splitFor={splitFor} />
+      {!overviewLayout && <TrainingRaceDayStrip columns={columns} splitFor={splitFor} />}
 
-      <TrainingProgramGrid weekdays={weekdays} rows={programRows} onEdit={onEditProgram} />
+      {!overviewLayout && <TrainingProgramGrid weekdays={weekdays} rows={programRows} onEdit={onEditProgram} />}
 
       {yesterdaySlot}
 
       {sortSlot}
 
+      {bulkSlot}
+
       <TrainingMobileRoster
+        picked={picked}
+        onTogglePick={onTogglePick}
         riders={rosterRiders}
         columns={columns}
         cellFor={cellFor}
@@ -223,6 +266,7 @@ export default function TrainingMobileToday({
         onSelect={onSelectRider}
         detailId={detailId}
         scoreFor={scoreColumn}
+        showHeader={!overviewLayout}
         detail={selected && (
         <TrainingMobileRiderCard
           id={detailId}
@@ -260,8 +304,10 @@ export default function TrainingMobileToday({
           seasonPoints={seasonPointsFor(selected.id)}
           onChangeDay={() => onOpenDay(selected.id)}
           changeDisabled={dayBusyFor(selected.id)}
-          score={scoreFor ? mobileScoreCell(selectedScore) : null}
+          score={scoreFor ? mobileScoreCell(selectedScore, { settled: scoreSettled }) : null}
           scoreSpark={selectedScore?.spark ? [...selectedScore.spark] : null}
+          changeLabel={changeLabel}
+          footer={cardFooterFor ? cardFooterFor(selected.id) : null}
           scoreAria={t("score.sparkAria", {
             name: `${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim(),
           })}

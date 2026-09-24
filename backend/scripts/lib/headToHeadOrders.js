@@ -12,33 +12,34 @@
 // ordrer kan de tre ankre der forudsaetter holdtaktik (felt-favoritters
 // win-rate, felt-sammenhaeng, udbruds-rater) hverken bekraeftes eller afvises.
 //
-// AI-holdenes ordrer genereres gennem M14's egen `generateAiTeamOrder` —
-// PRAECIS samme kontrakt som spillerne indsender (mor-spec addendum 22: ingen
-// side-kanaler). Harnessen opfinder altsaa ikke sin egen taktik-model; den
-// koerer den der skal i produktion.
+// AI-holdenes ordrer bygges af PROD-adapterens egen `buildStageOrderPlan`
+// (#5571), som kalder M14's `generateAiTeamOrder` for hvert AI-hold — PRAECIS
+// samme vej som i produktion, inkl. sprint-toget (rollens standard) og den
+// indsats pr. rytter motoren laeser paa `Entrant.effort`. Foer #5571 byggede
+// harnessen sit eget tog og satte alle til `normal`, saa kalibreringen maalte
+// en anden fordeling af ordrer end den prod faar.
 //
-// #4246-AFGRAENSNING (bevidst): rolle-vs-ordre-modsigelsen (`hunter` vs
-// `try_break`, `sprint_captain` vs `leadout_for`) er ejer-gated og afgoeres
-// IKKE her. Denne fil saetter begge flader som specen beskriver dem — rollen
-// fra holdudtagelsen, ordren fra taktik-kortet — og lader dem staa side om
-// side. Naar #4246 er afgjort, er det `assignTeamRoles`/`buildTeamOrders` der
-// skal baere afgoerelsen: enten skal rollen udlede ordrens default (rollen
-// ejer intentionen), eller ordren skal overskrive rollen for etapen.
+// Rollen fra holdudtagelsen ER standardordren (#4246, ejer 2/9); M14 er et
+// AI-holds standardordre oven paa rollerne. `assignTeamRoles` nedenfor
+// stiller holdene op, fordi population-snapshottet ikke baerer roller.
 //
 // 100% REN: ingen IO, ingen DB, ingen rng, ingen Date. Samme roster + samme
-// rute giver altid samme roller og samme ordrer.
+// rute + samme loeb giver altid samme roller og samme ordrer.
 
-import { generateAiTeamOrder } from "../../lib/engine/v4/ai/aiTactics.ts";
+import { buildStageOrderPlan } from "../../lib/engine/v4/orders/teamOrdersAdapter.ts";
 import { isMassFinishRoute } from "../../lib/engine/v4/finale.ts";
 import { TEAM_TACTICS_ORDER_KIND } from "../../lib/engine/v4/mechanics/breakaway.ts";
+import { LEADOUT_ORDER_KIND } from "../../lib/engine/v4/mechanics/leadout.ts";
 
 /** Rolle-vokabularet, RACE_ENGINE_RULES.md §1. Fem vaerdier, ikke til forhandling. */
 export const RACE_ROLES = Object.freeze(["captain", "sprint_captain", "helper", "hunter", "free_role"]);
 
-// Hvor stort et sprint-tog et hold saetter op naar dagen er en massefinale.
-// Samme stoerrelsesorden som LEADOUT_EXTRA_TUNING.fullTrainSize — flere ryttere
-// giver aftagende marginalnytte, saa der er ingen grund til at binde hele holdet.
-const LEADOUT_TRAIN_SIZE = 3;
+/** Indsatstrappen (RACE_ENGINE_RULES.md §1b), i trappens orden. */
+export const EFFORT_LEVELS = Object.freeze(["grupetto", "save", "normal", "protect", "all_out"]);
+
+function emptyEffortCounts() {
+  return Object.fromEntries(EFFORT_LEVELS.map((level) => [level, 0]));
+}
 
 // Et hold skal have et minimum af ryttere paa etapen foer en rollefordeling
 // giver mening; derunder er alle fri rolle (samme aand som T4's neutrale
@@ -142,91 +143,60 @@ export function assignFieldRoles(riders) {
 }
 
 /**
- * Sprint-tog for ÉT hold (M6): holdets sprint-kaptajn plus de bedste
- * positioning/tempo/acceleration-motorer blandt de oevrige. Returnerer null
- * naar holdet ikke har en sprint-kaptajn paa etapen eller ikke kan stille et
- * tog — et hold uden sprinter saetter ikke et tog op, og et tomt tog giver
- * (per M6's egen kontrakt) ingen bonus overhovedet.
- */
-export function buildLeadoutOrder(teamId, teamRiders, roles) {
-  const captain = teamRiders.find((r) => roles.get(r.id) === "sprint_captain");
-  if (!captain) return null;
-  const train = bestBy(
-    teamRiders.filter((r) => r.id !== captain.id),
-    (r) => ability(r, "positioning") + ability(r, "tempo") + ability(r, "acceleration"),
-  ).slice(0, LEADOUT_TRAIN_SIZE);
-  if (train.length === 0) return null;
-  return {
-    team_id: teamId,
-    kind: "leadout",
-    params: { captain_rider_id: captain.id, leadout_rider_ids: train.map((r) => r.id) },
-  };
-}
-
-/**
- * Bygger hele etapens `StageInput.orders` for et startfelt.
+ * Bygger hele etapens `StageInput.orders` for et startfelt, hvor ALLE hold er
+ * AI-hold, gennem prod-adapterens egen vej (#5571).
  *
- * Pr. hold:
- *  - ÉN `team_tactics`-ordre (M5/M12): AI-taktikkens egen beslutning om
- *    breakaway_stance + effort + try_break pr. rytter, genereret af M14's
- *    `generateAiTeamOrder` gennem den frosne kontrakt.
- *  - Paa massefinale-etaper desuden ÉN `leadout`-ordre (M6), hvis holdet har
- *    en sprint-kaptajn med mindst én mand til at koere for sig. Paa selektive
- *    etaper saetter ingen et sprint-tog op.
+ * Pr. hold (se orders/teamOrdersAdapter.ts):
+ *  - ÉN `team_tactics`-ordre (M5/M12): M14's beslutning om breakaway_stance +
+ *    effort + try_break pr. rytter.
+ *  - ÉN `leadout`-ordre (M6), naar holdet har en sprint-kaptajn og mindst én
+ *    tog-rytter (rollens standard; en grupetto-rytter er aldrig i toget).
  *
- * @returns {{orders: Array<object>, roles: Map<string,string>, effect: object}}
+ * `race` er loebet omkring etapen (etapeloeb + senere etapers rute-type) — uden
+ * den bruger M14 hverken grupettoen eller alt-ud, praecis som i prod.
+ *
+ * @returns {{orders: Array<object>, roles: Map<string,string>, effect: object, effortByRider: Map<string,string>}}
  */
-export function buildStageTeamOrders({ riders, route }) {
+export function buildStageTeamOrders({ riders, route, race }) {
   const roles = assignFieldRoles(riders);
   const massFinish = isMassFinishRoute(route);
-  const orders = [];
+  const plan = buildStageOrderPlan({
+    rows: [],
+    stageNumber: 1,
+    roster: riders.map((rider) => ({
+      team_id: rider.team_id ?? null,
+      rider_id: rider.id,
+      role: roles.get(rider.id) ?? "free_role",
+      is_ai: true,
+      abilities: rider.abilities,
+    })),
+    context: { route: { profile_type: route.profile_type, finale_type: route.finale_type ?? null }, race },
+  });
+
   const effect = {
     teams: 0,
     stance: { chase: 0, neutral: 0, let_go: 0 },
     tryBreakRiders: 0,
-    effort: { protect: 0, normal: 0, save: 0 },
+    effort: emptyEffortCounts(),
     leadoutTrains: 0,
     leadoutRiders: 0,
     massFinish,
   };
-
-  for (const [teamId, teamRiders] of groupByTeam(riders)) {
-    if (teamId === null) continue; // hold-loese ryttere har ingen holdplan
-    effect.teams += 1;
-
-    const decision = generateAiTeamOrder({
-      team_id: teamId,
-      route: { profile_type: route.profile_type, finale_type: route.finale_type ?? null },
-      roster: teamRiders.map((rider) => ({
-        rider_id: rider.id,
-        role: roles.get(rider.id) ?? "free_role",
-        abilities: rider.abilities,
-      })),
-    });
-
-    effect.stance[decision.order.breakaway_stance] += 1;
-    for (const rider of decision.order.riders) {
-      if (rider.try_break) effect.tryBreakRiders += 1;
-      effect.effort[rider.effort] += 1;
-    }
-
-    orders.push({
-      team_id: teamId,
-      kind: TEAM_TACTICS_ORDER_KIND,
-      params: { breakaway_stance: decision.order.breakaway_stance, riders: decision.order.riders },
-    });
-
-    if (massFinish) {
-      const leadout = buildLeadoutOrder(teamId, teamRiders, roles);
-      if (leadout) {
-        orders.push(leadout);
-        effect.leadoutTrains += 1;
-        effect.leadoutRiders += leadout.params.leadout_rider_ids.length;
+  for (const order of plan.orders) {
+    if (order.kind === TEAM_TACTICS_ORDER_KIND) {
+      effect.teams += 1;
+      effect.stance[order.params.breakaway_stance] += 1;
+      for (const rider of order.params.riders) {
+        if (rider.try_break) effect.tryBreakRiders += 1;
+        effect.effort[rider.effort] += 1;
       }
+    } else if (order.kind === LEADOUT_ORDER_KIND) {
+      effect.leadoutTrains += 1;
+      effect.leadoutRiders += order.params.leadout_rider_ids.length;
     }
   }
 
-  return { orders, roles, effect };
+  return { orders: plan.orders, roles, effect, effortByRider: plan.aiEffortByRider };
 }
 
 /** Summerer per-etape-effekter til ét koerselstal (til harnessens rapport). */
@@ -236,7 +206,7 @@ export function sumOrderEffects(effects) {
     teams: 0,
     stance: { chase: 0, neutral: 0, let_go: 0 },
     tryBreakRiders: 0,
-    effort: { protect: 0, normal: 0, save: 0 },
+    effort: emptyEffortCounts(),
     leadoutTrains: 0,
     leadoutRiders: 0,
     massFinishStages: 0,
@@ -264,9 +234,7 @@ export function formatOrderEffect(total) {
     `Udbruds-stance: chase ${total.stance.chase} · neutral ${total.stance.neutral} · let_go ${total.stance.let_go}`,
   );
   lines.push(`Ryttere med "try the break": ${total.tryBreakRiders}`);
-  lines.push(
-    `Effort: protect ${total.effort.protect} · normal ${total.effort.normal} · save ${total.effort.save}`,
-  );
+  lines.push(`Effort: ${EFFORT_LEVELS.map((level) => `${level} ${total.effort[level]}`).join(" · ")}`);
   lines.push(`Sprint-tog: ${total.leadoutTrains} (${total.leadoutRiders} leadout-ryttere)`);
   return lines.join("\n");
 }

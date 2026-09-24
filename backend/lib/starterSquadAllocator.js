@@ -20,7 +20,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS } from "./fictionalRiderGenerator.js";
+import {
+  makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS, DEFAULT_PRIMARY_TYPE_MODE,
+} from "./fictionalRiderGenerator.js";
+import { readPrimaryTypeMode } from "./primaryTypeModeFlag.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
@@ -202,10 +205,13 @@ export function aiValueCapForTier(tier) {
 // #5443: `valuationModel` er den model cap-gaten prissætter kandidater med.
 // Udeladt ⇒ defaulten (v4) — bit-identisk med adfærden før parameteren fandtes.
 // Produktionsstien (aiTeamGenerator.js) sender app_config-valget med.
+// #5327: `primaryTypeMode` er generatorens primær-type-kilde, læst af kalderen
+// fra app_config (primaryTypeModeFlag.js). Default "tier" = uændret adfærd.
 export function generateAiRiderBatchWithCap({
   count, tierFractions, valueCap, seed, referenceYear,
   existingFoldedNames = new Set(), generate = generateFictionalRiders,
   typeShareCap = 0.4, maxRounds = 60, valuationModel = null,
+  primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE,
 }) {
   const model = valuationModel || defaultValuationModel();
   const accepted = [];
@@ -220,6 +226,7 @@ export function generateAiRiderBatchWithCap({
     const batchSize = Math.max(needed * 6, 30);
     const { riders } = generate({
       seed: attemptSeed, count: batchSize, referenceYear, existingFoldedNames: usedNames, tierFractions,
+      primaryTypeMode,
     });
     attemptSeed = (attemptSeed + 104729) >>> 0; // næste rundes seed (primtal-spring)
     for (const candidate of riders) {
@@ -436,6 +443,7 @@ const INSERT_BATCH = 500;
 // (typer/demografi/potentiale/alder bevares) og clamper KUN stat-felterne ind i
 // vinduet før derivation → lave afledte styrke-evner. Returnerer ren INSERT-payload
 // (pcm_id null, intet id/base_value — DB/derive ejer dem).
+// #5327: `primaryTypeMode` sendes uændret til generatoren (default "tier").
 export function buildWeakStarterPool({
   count,
   seed,
@@ -443,8 +451,9 @@ export function buildWeakStarterPool({
   existingFoldedNames = new Set(),
   window = STARTER_POOL_STAT_WINDOW,
   generate = generateFictionalRiders,
+  primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE,
 }) {
-  const { riders } = generate({ seed, count, referenceYear, existingFoldedNames });
+  const { riders } = generate({ seed, count, referenceYear, existingFoldedNames, primaryTypeMode });
   // #5269: stat-vinduet oversat til et EVNE-loft. Den gamle sti klemte
   // stat-felterne FØR derivationen; på own-priors-stien findes de felter ikke,
   // så loftet skal ligge dér hvor evnerne fødes — og det skal PERSISTERES
@@ -625,7 +634,9 @@ async function setSquadMarker(supabase, teamId, nowIso) {
 // Det lukker orphan-vinduet: fejler noget efter insert, er rytterne EJET (ikke
 // ejerløse i markedet), og en re-derive heler dem. Genbruger den svage pulje-mekanik
 // (#1487) + derive-kæden (data-hale).
-async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, startSeason, contractRng }) {
+async function insertWeakSquadForTeam(supabase, teamId, {
+  seed, referenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
+}) {
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
   // Per-hold seed: basis-offset (+1487, samme som relaunch) XOR hash(teamId).
   // Eget seed-offset pr. tier (kerne vs hale) → distinkte pools.
@@ -633,11 +644,11 @@ async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, g
   const tailSeed = deriveTeamSeed((seed + 1487 + 7) >>> 0, teamId);
   const corePayload = buildWeakStarterPool({
     count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
-    window: STARTER_POOL_STAT_WINDOW, generate,
+    window: STARTER_POOL_STAT_WINDOW, generate, primaryTypeMode,
   }).map((r) => ({ ...r, team_id: teamId }));
   const tailPayload = buildWeakStarterPool({
     count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
-    window: STARTER_TAIL_STAT_WINDOW, generate,
+    window: STARTER_TAIL_STAT_WINDOW, generate, primaryTypeMode,
   }).map((r) => ({ ...r, team_id: teamId }));
   const poolPayload = [...corePayload, ...tailPayload];
 
@@ -709,10 +720,17 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   // koster ingen ekstra rundtur. SSOT for formlen: riderSeasonAge.js.
   const poolReferenceYear = referenceYear ?? seasonReferenceYear(startSeason);
 
+  // #5327: kontakten læses ÉN gang pr. allokering, så kerne og hale altid
+  // genereres med samme primær-type-kilde (et flip midt imellem kan ikke give
+  // et hold med to forskellige kilder). Slukket/ulæselig = "tier" = uændret.
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
+
   let assigned;
   let recovered = null;
   if (n === 0) {
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, {
+      seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
+    });
     assigned = ids.length;
   } else if (n === SIZE) {
     // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
@@ -732,7 +750,9 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   } else {
     // 0<n<SIZE: en yderst sjælden delvis-insert. Ryd det halve forsøg + re-allokér rent.
     await deleteRiders(supabase, existingIds);
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, {
+      seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
+    });
     assigned = ids.length;
     recovered = "cleaned-partial";
   }
@@ -777,18 +797,25 @@ export async function runStarterSquadAllocation(supabase, {
 
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
 
+  // #5327: ÉN læsning for hele kørslen (kerne- og hale-puljen), også i dry-run,
+  // så tørkørslen viser den kilde en rigtig kørsel ville bruge.
+  const primaryTypeMode = await readPrimaryTypeMode(supabase);
+
   // To svage pools: kerne [50,57] + hale [50,52]. Eget seed-offset pr. pulje.
   const corePayload = buildWeakStarterPool({
     count: corePerPool, seed: (seed + 1487) >>> 0, referenceYear: poolReferenceYear,
-    existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate,
+    existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate, primaryTypeMode,
   });
   const tailPayload = buildWeakStarterPool({
     count: tailPerPool, seed: (seed + 1487 + 7) >>> 0, referenceYear: poolReferenceYear,
-    existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate,
+    existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate, primaryTypeMode,
   });
 
   if (dryRun) {
-    return { dryRun: true, teams: teamIds.length, poolSize: corePerPool + tailPerPool, assigned: 0, toAssign: corePerPool + tailPerPool };
+    return {
+      dryRun: true, teams: teamIds.length, poolSize: corePerPool + tailPerPool, assigned: 0,
+      toAssign: corePerPool + tailPerPool, primaryTypeMode,
+    };
   }
 
   // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage (begge pools).
@@ -839,5 +866,8 @@ export async function runStarterSquadAllocation(supabase, {
       console.error(`[runStarterSquadAllocation] markér ${teamId} fejlede:`, err?.message || err);
     })));
 
-  return { dryRun: false, teams: teamIds.length, poolSize: corePool.length + tailPool.length, assigned, leftToMarket: leftToMarket.length, stats };
+  return {
+    dryRun: false, teams: teamIds.length, poolSize: corePool.length + tailPool.length, assigned,
+    leftToMarket: leftToMarket.length, stats, primaryTypeMode,
+  };
 }

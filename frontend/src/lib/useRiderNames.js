@@ -10,6 +10,7 @@
 // allerede-kendte.
 import { useState, useEffect, useRef } from "react";
 import { getSession } from "./supabase";
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -27,13 +28,13 @@ export function useRiderNames(ids) {
       if (!token) return;
       const fetched = Object.fromEntries(toFetch.map((id) => [id, null]));
       try {
-        const res = await fetch(`${API}/api/riders/names`, {
+        const res = await apiFetch(`${API}/api/riders/names`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ ids: toFetch }),
         });
         if (res.ok) {
-          const { riders } = await res.json();
+          const { riders } = res.data || {};
           for (const r of riders ?? []) fetched[r.id] = r.name ?? null;
         }
       } catch {

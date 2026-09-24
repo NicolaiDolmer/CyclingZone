@@ -71,8 +71,32 @@ function unimprovableSpecs() {
   ];
 }
 
+// #5536: league_divisions-builder der fortolker motorens senior-scope (.or) og
+// aktiv-filter (.is("retired_at", null)). Senior-fixturen uden squad/retired_at passerer
+// uændret.
+function poolRowsQuery(rows) {
+  const filters = [];
+  const builder = {
+    or(expr) {
+      assert.equal(expr, "squad.is.null,squad.eq.senior");
+      filters.push((p) => p.squad == null || p.squad === "senior");
+      return builder;
+    },
+    is(column, value) {
+      filters.push((p) => (p[column] ?? null) === value);
+      return builder;
+    },
+    then(resolve, reject) {
+      const data = rows.map((p) => ({ ...p })).filter((p) => filters.every((f) => f(p)));
+      return Promise.resolve({ data, error: null }).then(resolve, reject);
+    },
+  };
+  return builder;
+}
+
 function createReseedSupabase({
   specs = improvableSpecs(),
+  pools = POOLS,
   flagValue = "on",
   flagMissing = false,
   thresholdValue,
@@ -120,7 +144,7 @@ function createReseedSupabase({
         };
       }
       if (table === "league_divisions") {
-        return { select: () => Promise.resolve({ data: POOLS.map((p) => ({ ...p })), error: null }) };
+        return { select: () => poolRowsQuery(pools) };
       }
       if (table === "teams") {
         return {
@@ -250,6 +274,30 @@ test("reseedTierPools: sender pulje-besked til manageren med i18n-koder", async 
   }
 });
 
+// ── #5536: ungdomspuljer og pensionerede puljer er ikke reseed-mål ──────────
+
+test("#5536 reseedTierPools: ungdomspuljer og pensionerede puljer i fixturen ændrer intet (senior bit-identisk)", async () => {
+  const plain = createReseedSupabase({ userIdByTeam: { mid2: "user-mid2" } });
+  const plainResult = await reseedTierPools("season-2", { supabase: plain });
+
+  // Samme tier/pool_index som seniorpuljerne (spec §6.1) + en pensioneret seniorpulje.
+  const youth = POOLS.map((p) => ({ ...p, id: p.id + 100, squad: "u23", label: `U23 ${p.label}` }));
+  const retired = { id: 6, tier: 3, pool_index: 2, label: "Division 3 - C", retired_at: "2026-09-28T00:00:00Z" };
+  const mixed = createReseedSupabase({
+    pools: [...POOLS, ...youth, retired],
+    userIdByTeam: { mid2: "user-mid2" },
+  });
+  const mixedResult = await reseedTierPools("season-2", { supabase: mixed });
+
+  assert.ok(plain.updates.length > 0, "kontrol: fixturen skal give flytninger");
+  assert.deepEqual(mixedResult, plainResult);
+  assert.deepEqual(mixed.updates, plain.updates);
+  assert.deepEqual(mixed.notifications, plain.notifications);
+  for (const u of mixed.updates) {
+    assert.ok([4, 5].includes(u.payload.league_division_id), `hold ${u.id} flyttet til pulje ${u.payload.league_division_id}`);
+  }
+});
+
 // ── 4. Forbedrings-kravet ────────────────────────────────────────────────────
 
 test("reseedTierPools: udfører IKKE en plan der ikke forbedrer skævheden", async () => {
@@ -294,15 +342,17 @@ test("reseedTierPools: ugyldig tærskel i app_config falder tilbage til default 
 // Reseed'et SKAL ligge efter hele op/nedryknings-loopet (tierens medlemsliste er
 // først endelig dér) og før AI-fyld-sweepen (så reconcile ser de endelige
 // ægte-hold-tal). Rækkefølgen verificeres statisk mod kilden, fordi et fuldt
-// processSeasonEnd-mock ville skjule præcis den detalje.
+// processSeasonEnd-mock ville skjule præcis den detalje. (#4592 gjorde
+// processDivisionEnd/reconcileAiTeamsForPool injicérbare; den kørende
+// rækkefølge bevises også adfærdsmæssigt i economyEngine.test.js.)
 
 test("processSeasonEnd kalder reseed EFTER processDivisionEnd og FØR reconcileAiTeamsForPool", async () => {
   const { readFile } = await import("node:fs/promises");
   const src = await readFile(new URL("./economyEngine.js", import.meta.url), "utf8");
 
-  const divisionLoop = src.indexOf("await processDivisionEnd(divStandings");
+  const divisionLoop = src.indexOf("await processDivisionEndFn(divStandings");
   const reseedCall = src.indexOf("const reseedFn = deps.reseedTierPools");
-  const reconcile = src.indexOf("await reconcileAiTeamsForPool(");
+  const reconcile = src.indexOf("await reconcileAiTeamsFn(");
 
   assert.ok(divisionLoop > 0 && reseedCall > 0 && reconcile > 0, "alle tre kald skal findes");
   assert.ok(divisionLoop < reseedCall, "reseed skal kaldes EFTER op/nedryknings-loopet");

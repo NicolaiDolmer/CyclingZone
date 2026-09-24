@@ -1,0 +1,272 @@
+{
+ "allowExistingPr": false,
+ "trackTimeoutMinutes": 150,
+ "tracks": [
+  {
+   "issue": 3624,
+   "branch": "fix/3624-race-delay-tick-and-firsttimer",
+   "title": "[drift] Loebsforsinkelser: scheduler-tick efter klokken + first-timer-opslag som EXISTS + fetch-timeout (trin 1+2 fra 23/9-maalingen)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#3624\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST kommentaren fra natbolgen 23/9 paa #3624 (maaling: median 4,4 min, p90 12 min; 47 % opsamlings-ventetid, ca. 18 % first-timer-opslaget) og den private evidens C:/Dev/CyclingZone-worktrees/.wave-scratch/investigate-3624-race-delays/evidence-3624-2026-09-23.md hvis den findes. Byg KUN trin 1+2 (+ fetch-timeout): (1) backend/cron.js (ca. :2055-2058): scheduler-tikket koerer efter klokken (hh:00:05, hh:05:05, ... dvs. naeste hele 5-minut + 5 s efter start, derefter hvert 5. min justeret mod klokken, saa drift og genstart ikke flytter fasen); overlap-guard, dagsloft og samme antal DB-opslag bevaret. Ren funktion til at beregne naeste tick-tidspunkt + unit-tests (genstart kl. xx:02:37 giver foerste tick xx:05:05; drift korrigeres). (2) backend/lib/notificationService.js defaultFetchFirstTimeManagers (ca. :499-535): erstat den fulde race_results-hentning med et EXISTS-tjek pr. hold (indekset idx_race_results_team_id findes; gerne een SQL/RPC-fri PostgREST-query pr. hold med limit 1 eller en batch med select distinct team_id paa de deltagende hold - samme semantik: foerstegangs-hold = ingen tidligere race_results). Tests: veteran-hold og foerstegangs-hold giver samme svar som i dag. (3) backend/lib/discordWebhookDelivery.js postOnce: tilfoej AbortSignal.timeout (fx 10 s) saa et haengende Discord-kald ikke kan stoppe koeen; test. Roer IKKE trin 3 (etaper foer afslutninger), race_notify_outbox-flaget eller motoren. Maal i PR-body: forventet effekt med henvisning til maalingen (ingen nye prod-tal noedvendige). Merges ikke uden ejer-go (runtime-backend). CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/cron.js",
+    "backend/lib/schedulerTick.js",
+    "backend/lib/schedulerTick.test.js",
+    "backend/lib/notificationService.js",
+    "backend/lib/notificationService.test.js",
+    "backend/lib/notificationServiceFirstTimer.test.js",
+    "backend/lib/discordWebhookDelivery.js",
+    "backend/lib/discordWebhookDelivery.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/schedulerTick.test.js backend/lib/notificationService.test.js backend/lib/discordWebhookDelivery.test.js",
+    "npm --prefix backend run lint",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5327,
+   "branch": "feat/5327-wire-primary-type-mode",
+   "title": "[riders] #5327: kobl primaryTypeMode paa kaldestederne bag een kontakt + gate mod skaev potentiale pr. type",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5327\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Undersoegelsen 23/9 (kommentar paa #5327) er BEKRAEFTET + fix-plan: rod-aarsagen er gamle data, generatoren er neutral i distribution-mode. Byg KUN: (1) Ny laeser backend/lib/primaryTypeModeFlag.js: readPrimaryTypeMode(supabase) paa readFlagStage/evaluateFlagStage (moenster: academyFlag.js), noegle = PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY fra fictionalRiderGenerator.js (:229), falder tilbage til 'tier' ved fejl. (2) Idempotent migration database/2026-09-24-5327-primary-type-flag.sql der opretter app_config-raekken (off) + docs/FEATURE_REGISTRY.yml (posten i backend/lib/stageFlagCatalog.js tilfoejer orkestratoren bagefter, fordi filen er laast af et andet spor i boelgen - skriv praecis linjen i PR-body) (faerdig = kan taendes, #5507). (3) starterSquadAllocator.js: parameter primaryTypeMode (default 'tier') paa buildWeakStarterPool og generateAiRiderBatchWithCap, sendt videre til generate; allocateStarterSquadForTeam og runStarterSquadAllocation laeser kontakten EEN gang og sender den til kerne- og hale-kaldet. (4) aiTeamGenerator.js defaultAllocateSquadForTeam: laes kontakten een gang (samme moenster som valuationModel), send videre. (5) fictionalLaunchPopulation.js generateLaunchPopulation: valgfrit {primaryTypeMode} default 'tier'; relaunchOrchestrator.js laeser og sender. (6) Gate-test i backend/lib/archetypeGenerationGates.test.js i distribution-mode: for kald paa 8, 24 og 1.000 ryttere over N seeds skal hver types andel blandt unge store talenter / andel blandt alle ligge over et loft (tal kun i testen, ikke i PR-body). (7) Tests: kontakt slukket = byte-identisk; een spion-test pr. kaldested der viser at 'distribution' naar frem. Maa IKKE: flippe kontakten, skrive til prod, aendre potentiale pr. type, roere de gamle data (ejer-valg A/B paa issuet). PR-body: 'Foer kontakten taendes: previewFictionalPopulation, vaerdi-baand-gaten, race:gate og AI-truppens loft i distribution-mode' som tjekliste til ejeren. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/primaryTypeModeFlag.js",
+    "backend/lib/primaryTypeModeFlag.test.js",
+    "database/2026-09-24-5327-primary-type-flag.sql",
+    "backend/lib/starterSquadAllocator.js",
+    "backend/lib/starterSquadAllocator.test.js",
+    "backend/lib/aiTeamGenerator.js",
+    "backend/lib/fictionalLaunchPopulation.js",
+    "backend/lib/relaunchOrchestrator.js",
+    "backend/lib/archetypeGenerationGates.test.js",
+    "docs/FEATURE_REGISTRY.yml"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/archetypeGenerationGates.test.js backend/lib/starterSquadAllocator.test.js backend/lib/primaryTypeModeFlag.test.js",
+    "npm --prefix backend run lint",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5432,
+   "branch": "feat/5432-squad-caps-rpc",
+   "title": "[trupper] Loft pr. trup i RPC'erne (U23 12 / junior 10) + moveRider (junior-U23-senior)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5432\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Idempotent migration database/2026-09-24-5432-squad-caps-rpc.sql, hvor RPC'erne taeller pr. maal-trup, faar truppen og loftet ind fra JS (backend/lib/squads.js SQUAD_CAPS er eneste kilde, intet tredje tal) og skriver squad atomisk sammen med is_academy. moveRider(riderId, targetSquad) i backend/lib/academyTransfer.js: opad frit, nedad kun inden for aldersloftet, ledig plads, ingen aktiv auktion, ikke midt i et etapeloeb (dagens gates). Atomicitets-tests for demote, auktion og intake. HTTP-ROUTEN BYGGES IKKE i denne PR (backend/routes/api.js ejes af et andet spor i boelgen) - skriv route-kontrakten i PR-body som opfoelgning. OBS fra issuet: #4619 backfill --apply skal koeres FOER merge (ellers taeller en squad-baseret optaelling 522 ryttere forkert) - skriv det oeverst i PR-body. Maa IKKE: roere UI, kontraktmodel, flags, prod. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "database/2026-09-24-5432-squad-caps-rpc.sql",
+    "backend/lib/academyTransfer.js",
+    "backend/lib/academyTransfer.test.js",
+    "backend/lib/auctionFinalization.js",
+    "backend/lib/squads.js",
+    "backend/lib/squads.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/academyTransfer.test.js backend/lib/squads.test.js",
+    "node --test backend/lib/testdb/createTestDb.integration.test.js",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5518,
+   "branch": "feat/5518-youth-squads-generator",
+   "title": "[trupper] A6 + C1: dry-run-generator til AI-holdenes U23-/juniortrupper + felt-gate-maaling",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5518\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Se issue #5518 + spec 2026-09-15-u23-kalender-og-trup-datamodel-design.md (A6, C1) + docs/YOUTH_RULES.md. Nyt script backend/scripts/generateYouthSquadsS4.js: --dry-run er default; --apply kraever --owner-go og koeres IKKE. Pr. aktivt AI-hold 6-9 U23-ryttere (19-22 aar i S4, ejer-laast variant A 15/9) via drawU23BirthAbilities med birth-tier 'u23'; N juniorer (16-18) via akademibaandet, hvor N er et PAAKRAEVET argument uden default (ejer-valg). Squad + is_academy skrives sammen; derefter deriveForRiderIds + spejlings-gaten (#2065). Navne/kontrakt/loen via den eksisterende generator-sti. Tjek og rapporter RLS is_offered_intake_rider() (AI-ryttere med is_academy=true), akademi-drift paa AI-hold og belastning i sweeps/vaerdi/rider_rankings_mv. C1-script backend/scripts/measureYouthFieldGate.mjs (read-only): feltstoerrelse pr. ungdomsloeb pr. loebsdag for pyramideformerne 1/2/4/8, 1/2/4, 1/2 og 1. Output kun til balance-internals/. Koer dry-run read-only mod prod (infisical run --env=prod) og saet de PRIVATE tal i balance-internals/, kun kvalitativ opsummering i PR-body. Ejer-valg som A/B i PR-body: antal AI-juniorer pr. AI-hold, antal ungdomsdivisioner efter C1, go paa --apply ved cutover. Maa IKKE skrive til prod eller aendre YOUTH_BIRTH_BAND/G5. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/scripts/generateYouthSquadsS4.js",
+    "backend/scripts/generateYouthSquadsS4.test.js",
+    "backend/scripts/measureYouthFieldGate.mjs",
+    "docs/RIDER_GENERATION.md",
+    "docs/YOUTH_RULES.md"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/riderBirthPriors.test.js backend/lib/riderBirthDistribution.test.js backend/scripts/generateYouthSquadsS4.test.js",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5519,
+   "branch": "feat/5519-youth-squad-pages",
+   "title": "[trupper] U23 team- og Junior team-sider + Academy-kortet bliver aegte (bag youth_squad_pages)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5519\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Roadbook-loefte. LAES FOERST docs/design/PAGE_TEMPLATES.md, docs/design/TASTE.md, HANDOFF 2/9 (find den under docs/design eller docs/superpowers - hi-fi 3a/3c) og spec 2026-09-15-u23-kalender-og-trup-datamodel-design.md. To nye Klubhus-menupunkter efter My Team. Truppens side bruger TeamPage-skabelonen (T2) med trup-parameter (ny frontend/src/pages/SquadPage.tsx eller trup-param paa TeamPage). Fanerne Squad og Development viser aegte data (riders.squad / effectiveSquad server-side); Calendar/Results/Standings viser EmptyState indtil ungdomsloeb findes (ingen tal for loeb der ikke findes). Academy mister Youth squads-kortet (3a). Ny kontakt youth_squad_pages (default off) efter moenstret backend/lib/riderBestRoleDisplayFlag.js + stageFlagCatalog.js + /api/display-flags (backend/routes/api.js, kun display-flags-handleren) + app_config-migration + FEATURE_REGISTRY-post (faerdig = kan taendes). Kontakt slukket = dagens visning uaendret. EN foerst, DA under (docs/TONE_OF_VOICE.md, jeg/du, ingen em-dash, kort paa fladen). Een guld-knap, hairline-borders, 5px radius, tabular figures, stroke-ikoner. Nye filer .tsx. Playwright-spec + snapshots i alle 3 projekter. Mock-data-billeder i PR er ok; orkestratoren tager aegte-data-billeder med ejeren. Maa IKKE merges uden ejer-go. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/SquadPage.tsx",
+    "frontend/src/pages/AcademyPage.jsx",
+    "frontend/src/components/layout/**",
+    "frontend/src/components/squad/**",
+    "frontend/public/locales/en/squad.json",
+    "frontend/public/locales/da/squad.json",
+    "frontend/public/locales/en/academy.json",
+    "frontend/public/locales/da/academy.json",
+    "backend/lib/youthSquadPagesFlag.js",
+    "database/2026-09-24-5519-youth-squad-pages-flag.sql",
+    "frontend/tests/e2e/youth-squad-pages.spec.ts",
+    "backend/lib/stageFlagCatalog.js",
+    "backend/routes/api.js"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/youth-squad-pages.spec.ts\""
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 4153,
+   "branch": "fix/4153-no-wage-for-retiring",
+   "title": "[oekonomi] Saesonloenen traekkes ikke for ryttere der pensioneres i samme skifte",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#4153\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Rene FEJL maa rettes (MASTERPLAN). Byg variant A (anbefalet, mindst indgreb): processTeamSeasonPayroll i backend/lib/economyEngine.js ekskluderer ryttere via SAMME praedikat som motorens faktiske pensionsregel (genbrug fra riderProgression.js/retirementNotice.js, ingen kopi). Test: transition-fixture hvor en rytter der pensioneres ikke loennes, og en der ikke pensioneres stadig loennes. Roer KUN processTeamSeasonPayroll + test. A/B i PR-body (A: spring over hvis pension allerede er givet af den afsluttede saesons alder; B: flyt loenfasen efter pension) med anbefaling A. Ingen prod-skrivning. Merges ikke uden ejer-go. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/economyEngine.js",
+    "backend/lib/economyEngine.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/economyEngine.test.js",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5310,
+   "branch": "fix/5310-attribution-utm",
+   "title": "[growth] Attribution brudt siden 14/9: marketing-forsiden taber UTM + ekstern referrer foer signup",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5310\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Genskab first-touch gennem marketing->signup. (1) marketing/app/(en)/layout.tsx + (da)/layout.tsx: lille klient-script der skriver localStorage['cz_attribution_v1'] i SAMME format som frontend/src/lib/attribution.js (utm_*, referrer=document.referrer, landing_path, first_seen_at) KUN hvis noeglen mangler (samme origin via rewrites); tilfoej de tilladte utm_*-parametre fra location.search til signup/login-links i marketing-komponenterne. Respekter samtykke-logikken uaendret (skriv kun det attribution.js allerede maa skrive). (2) frontend/src/lib/attribution.js: et same-origin referrer maa aldrig gemmes som kanal; har referreren utm_* i query, udled dem derfra. (3) Laese-side-fallback uden prod-skriv: backend/lib/attributionDashboard.js + scripts/monday-numbers.mjs parser utm_* fra same-origin-referrer naar utm_source er NULL og klassificerer same-origin uden UTM som 'ukendt (tabt i marketing)'. Tests: attribution.test.js, scripts/monday-numbers.test.mjs, unit paa marketing-helperen. Docs: ANALYTICS_STACK + GROWTH_STACK §3. Maa IKKE: frontend/middleware.ts-routing (#5249), samtykke-logik, DB-skema, backfill/UPDATE af signup_attribution. Foer forsiden aendres: node scripts/check-cdn-cache-headers.mjs. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "marketing/app/(en)/layout.tsx",
+    "marketing/app/(da)/layout.tsx",
+    "marketing/components/**",
+    "marketing/lib/**",
+    "frontend/src/lib/attribution.js",
+    "frontend/src/lib/attribution.test.js",
+    "backend/lib/attributionDashboard.js",
+    "scripts/monday-numbers.mjs",
+    "scripts/monday-numbers.test.mjs",
+    "docs/ANALYTICS_STACK.md",
+    "docs/GROWTH_STACK.md"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/lib/attribution.test.js scripts/monday-numbers.test.mjs",
+    "npm --prefix marketing run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 4943,
+   "branch": "fix/4943-survey-card-after-close",
+   "title": "[ux] Spoergeskema-paamindelsen skjules naar skemaet er lukket (ejer 21/9)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#4943\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Prod 23/9: surveys '2026-09-features' har stadig status=open med closes_at 14/9, og SurveyInviteCard.jsx filtrerer kun paa status. Ret: SurveyInviteCard.jsx selecter closes_at og skjuler kortet naar isSurveyPastClose(closes_at) (genbrug frontend/src/lib/survey.js). Test: aabent skema med passeret closes_at giver intet kort. Ingen migration, ingen status-flip i prod. Roer IKKE SurveyPage eller admin-resultatsiden. Patch note-linje kun i PR-body (EN foerst, DA under). HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/components/SurveyInviteCard.jsx",
+    "frontend/src/lib/survey.js",
+    "frontend/src/lib/survey.test.js"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/lib/survey.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5440,
+   "branch": "fix/5440-5306-bottom-slot-nps",
+   "title": "[brand] Een bund-slot (samtykke > release > NPS) + NPS-cooldown braendes ikke af cookiebanneret (#5306)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5440\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Samler #5440 punkt 1-2 og #5306 (samme filer). (a) #5306: flyt skrivningen af nps_last_prompted_at i frontend/src/hooks/useNpsPrompt.js til en effect der foerst koerer naar visible && !bannerOpen; unit-test af begge tilstande; ingen aendring af 90-dages-throttle eller hasResponded (ejer-beslutninger). (b) #5440 punkt 1: een delt bund-slot (samtykke > release > NPS), saa ReleaseUpdateBanner og NpsPrompt aldrig ligger oven i hinanden. (c) #5440 punkt 2: frontend/public/chunk-selfheal.js skriver selv til det faelles recovery-budget (samme storage-noegle, fail-closed), foer appen booter. Punkt 3-6 besvares som 'ret' eller 'accepteret' med begrundelse i en kommentar paa #5440. Epic-gaten: A->B-browserproeve i Chromium og WebKit (aaben A-fane, udgiv B, naviger til en ikke-hentet route), ingen tabte kladder, ingen reload-loop. Roer IKKE Skew Protection (ejer 11/9) eller service worker. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/hooks/useNpsPrompt.js",
+    "frontend/src/hooks/useNpsPrompt.test.ts",
+    "frontend/public/chunk-selfheal.js",
+    "frontend/src/components/ReleaseUpdateBanner.jsx",
+    "frontend/src/components/NpsPrompt.jsx",
+    "frontend/src/lib/reloadCoordinator",
+    "frontend/tests/e2e/5159-reload-gate.spec.js",
+    "frontend/tests/e2e/chunk-reload-navigation-guard.spec.js"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend test",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/5159-reload-gate.spec.js tests/e2e/chunk-reload-navigation-guard.spec.js\"",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5375,
+   "branch": "fix/5375-rls-smoketest-false-alarm",
+   "title": "[ci] RLS-role-smoketest melder CRITICAL uden reelt fund (falsk alarm)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5375\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Tilfoej -q til psql-kaldet i smoketest-trinnet (eller filtrer kun linjer i formatet severity|check|detail), og goer det samme for de andre psql-trin i workflowet hvis de har samme moenster. Test i scripts/security-rls-role-smoketest.test.mjs der simulerer kommando-tags uden fund. Roer IKKE whitelist-indholdet. Kategori 3 (CI): orkestratoren merger naar CI er groen. Efter merge og en groen koersel kommenterer orkestratoren paa #5375. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    ".github/workflows/security-grants-audit.yml",
+    "scripts/security-rls-role-smoketest.test.mjs",
+    "scripts/security-rls-role-smoketest.mjs"
+   ],
+   "verifyCommands": [
+    "node --test scripts/security-rls-role-smoketest.test.mjs",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 3643,
+   "branch": "fix/3643-mobile-training-bugs",
+   "title": "[traening] Mobil-traening: rene fejl foer tick-flippet (dayClose-gate, Score-sortering, doed knap)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#3643\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Kun tre rettelser i frontend/src/pages/TrainingPage.jsx: (1) mobil-primaryen faar samme dayClose-gate og label som desktop, (2) 'score'-option i RosterMobileSortControl naar scoren er synlig, (3) den doede knap skjules i den nye visning (en rigtig vej til ugeplanen hoerer til #5485). Intet nyt layout og ingen landscape-aendring (T2-kontrakten, hoerer til #5485-mockuppen). e2e i frontend/tests/e2e/3643-training-mobile.spec.js. Billeder desktop 1440 + mobil 390 (mock-data ok; orkestratoren tager aegte-data-billeder med ejeren). Patch note-linje kun i PR-body. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/TrainingPage.jsx",
+    "frontend/tests/e2e/3643-training-mobile.spec.js"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/3643-training-mobile.spec.js tests/e2e/4851-training-score.spec.js\""
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5533,
+   "branch": "fix/5533-stable-boot-identity",
+   "title": "[ops] Stabil Windows boot-identitet saa boelge-markoeren kan frigives (sub-ms drift)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5533\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Se issue #5533 (bevis fra natbolgen 23/9: bootId 639256957975000000 vs maalt 639256957975007720, 0,772 ms drift, samme boot). Ret: EEN delt helper (fx scripts/wave-boot-identity.mjs) der maaler LastBootUpTime og normaliserer den til hele sekunder (afrund ticks til 10^7), brugt af baade hostBootId() i scripts/wave-policy.mjs og processSnapshot() i scripts/wave-process-snapshot.mjs; sammenligninger (assertWaveOwnership, wave-recovery.mjs rebooted, withWaveStateLock-noeglen) bruger den normaliserede vaerdi, og eksisterende markoerer med raa ticks sammenlignes efter samme normalisering (bagudkompatibelt). Tests: sub-sekund-drift = samme boot (release lykkes); ægte genstart (forskel i minutter) = ny boot (recover som i dag). Roer IKKE owner-override-flowet eller admission-reglerne i oevrigt. Kategori 3 (scripts/test): orkestratoren merger naar CI er groen. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen.",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "scripts/wave-boot-identity.mjs",
+    "scripts/wave-boot-identity.test.mjs",
+    "scripts/wave-policy.mjs",
+    "scripts/wave-policy.test.mjs",
+    "scripts/wave-process-snapshot.mjs",
+    "scripts/wave-recovery.mjs",
+    "scripts/wave-recovery.test.mjs",
+    "scripts/wave-hook.test.mjs"
+   ],
+   "verifyCommands": [
+    "node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-hook.test.mjs",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}

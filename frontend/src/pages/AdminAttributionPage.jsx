@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Select from "../components/ui/Select";
@@ -171,8 +172,8 @@ export function AttributionContent() {
     try {
       const auth = await getAuth();
       const [res, mRes] = await Promise.all([
-        fetch(`${API}/api/admin/attribution?limit=${limit}`, { headers: auth }),
-        fetch(`${API}/api/admin/metrics?days=30`, { headers: auth }),
+        apiFetch(`${API}/api/admin/attribution?limit=${limit}`, { headers: auth }),
+        apiFetch(`${API}/api/admin/metrics?days=30`, { headers: auth }),
       ]);
       const json = await readAdminJson(res);
       if (res.ok) setData(json);

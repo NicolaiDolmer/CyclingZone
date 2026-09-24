@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { XIcon } from "../../components/ui";
-import { formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT } from "./boardroomFormat";
+import { formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 
 // #4557 · Medlems-relations-panel (Member.dc.html) — inline expand fra
@@ -19,7 +19,9 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
   if (!member) return null;
 
   const ownedGoals = (mandate?.goals || []).filter((g) => g.owner?.archetypeKey === member.archetypeKey);
-  const ownWords = minutes.filter((m) => m.memberName === member.name);
+  // #5472 · samme regel som referatet i BoardCard: en raekke uden textKey har
+  // ingen replik og ville staa som tomme anfoerselstegn.
+  const ownWords = minutes.filter((m) => m.memberName === member.name && m.textKey);
 
   const personality = t(`archetypes.${member.archetypeKey}.longDescription`, {
     defaultValue: t(`archetypes.${member.archetypeKey}.shortDescription`, { defaultValue: "" }),
@@ -28,13 +30,15 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
   return (
     <div className="mt-3 rounded-cz border border-cz-border bg-cz-card p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          {/* #5472 · text-3xs (10 px) er skalaens gulv (PAGE_TEMPLATES: intet
+              under 10 px); de 8 px var et off-scale trin. */}
           <MonogramAvatar sizeClass="h-[72px] w-[72px]" initials={member.initials} initialsClass="text-[28px]" navy column>
-            <span className="mt-1 text-[8px] uppercase tracking-[.1em] text-cz-sidebar-2">
+            <span className="mt-1 text-3xs uppercase tracking-[.1em] text-cz-sidebar-2">
               {t("boardroom.member.portraitLabel")}
             </span>
           </MonogramAvatar>
-          <div>
+          <div className="min-w-0">
             <p className="font-display text-[30px] leading-[0.92] tracking-[.01em] text-cz-1">
               {member.name.toUpperCase()}
             </p>

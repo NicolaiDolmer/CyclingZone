@@ -1,0 +1,96 @@
+{
+  "page": {
+    "title": {
+      "u23": "{team} U23",
+      "junior": "{team} Juniors"
+    },
+    "fallbackTitle": {
+      "u23": "U23 team",
+      "junior": "Junior team"
+    },
+    "subtitle": {
+      "u23": "U23 team, ages 19 to 22",
+      "junior": "Junior team, ages 16 to 18"
+    },
+    "squadValue": "Squad value: {value} CZ$",
+    "rosterCount": "{count}/{cap} riders in the squad"
+  },
+  "tabs": {
+    "ariaLabel": "Squad sections",
+    "calendar": "Calendar",
+    "results": "Results",
+    "standings": "Standings"
+  },
+  "empty": {
+    "squad": {
+      "title": "Sign a talent in your academy",
+      "description": {
+        "u23": "Academy riders aged 19 to 22 are on your U23 team.",
+        "junior": "Academy riders aged 16 to 18 are on your junior team."
+      },
+      "action": "Go to academy"
+    },
+    "races": {
+      "title": "See when youth races start",
+      "action": "Roadmap",
+      "calendar": {
+        "u23": "Your U23 team has no races in the calendar yet.",
+        "junior": "Your junior team has no races in the calendar yet."
+      },
+      "results": {
+        "u23": "Your U23 team has not raced yet.",
+        "junior": "Your junior team has not raced yet."
+      },
+      "standings": {
+        "u23": "U23 standings start with the first U23 race.",
+        "junior": "Junior standings start with the first junior race."
+      }
+    }
+  },
+  "error": {
+    "title": "Could not load your squad",
+    "description": "Nothing was changed. Your riders are safe.",
+    "retry": "Try again"
+  },
+  "development": {
+    "hint": "How each rider's rating is expected to grow with your training, and the highest rating his role can reach."
+  },
+  "filter": {
+    "u23": "U23 ({count})",
+    "junior": "Juniors ({count})"
+  },
+  "standings": {
+    "headers": {
+      "team": "Team",
+      "races": "Races",
+      "wins": "Wins",
+      "podiums": "Podiums",
+      "points": "Points"
+    },
+    "count": "{count, plural, one {1 team} other {# teams}}",
+    "group": "Group {letter}",
+    "ownGroup": "Your group",
+    "groupLabel": "Group",
+    "allGroups": "All groups",
+    "noGroup": {
+      "title": "See the youth groups",
+      "description": {
+        "u23": "Your U23 team is not in a group yet. The groups are on Youth races.",
+        "junior": "Your junior team is not in a group yet. The groups are on Youth races."
+      }
+    },
+    "error": {
+      "title": "Could not load the standings",
+      "description": "Nothing was changed. Try again in a moment."
+    }
+  },
+  "youthRaces": {
+    "title": "Youth races",
+    "subtitle": {
+      "u23": "U23 standings, one group at a time",
+      "junior": "Junior standings, one group at a time"
+    },
+    "squadLabel": "Squad",
+    "tabsLabel": "Youth races sections"
+  }
+}

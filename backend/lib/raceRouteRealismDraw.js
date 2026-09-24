@@ -40,7 +40,7 @@
 // ingen ny mekanisme, kun den eksisterende terning kastet med ét ekstra øje på den.
 // Nulrisiko for tiers der allerede bestod attempt 0 på begge fronter (uændret variant=0).
 
-import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas } from "./raceStageProfileGenerator.js";
 import { scoreSeason } from "./raceRouteRealismMetrics.js";
 import { computeStageOrderStats, detectStageOrderViolations } from "./stageOrderMetrics.js";
 
@@ -75,6 +75,12 @@ export function drawTierAttempt({ tier, seedRaces = [], errors = [], attempt = 0
     }
     races.push({ name: seedRace.name ?? null, race_type: seedRace.race_type, terrain_archetype: seedRace.terrain_archetype ?? null, stages });
   }
+  // #5405: finale-typerne fordeles efter kvote over HELE tierens løbssæt (se
+  // balanceFinaleQuotas). Det sker HER, før scoringen, så gen-træk-søgningen, gaten,
+  // realisme-scorecardet og skrive-stierne alle ser samme finaler — ikke et frit træk
+  // ét sted og en fordeling et andet.
+  const balanced = balanceFinaleQuotas(races.map((r) => r.stages));
+  races.forEach((r, i) => { r.stages = balanced[i]; });
   const entry = { tier, races, errors: drawErrors };
   // scoreSeason på ÉN tier: failures indeholder både tier-båndene og tierens GT-bånd.
   // unassessed (manglende datagrundlag) tæller IKKE som båndbrud — et re-draw kan ikke

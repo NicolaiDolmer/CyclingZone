@@ -583,6 +583,84 @@ test("#4579 relative_rank: ACHIEVED når beatCount >= target (divisionManagerCou
   assert.equal(payload.mandate.goals[0].awaitingData, false);
 });
 
+// ── #5618 · legacy-forhandling nyere end mandatet synkroniseres ind i payloaden ──
+// Rodårsag: POST /board/sign skriver kun til board_profiles.current_goals,
+// aldrig til board_mandates.goals. Spillerrapport: forhandlet top_n_finish
+// target=7 (7. plads OK), Boardroom viste stadig target=5 (mandatets stale
+// værdi) efter beta-skift. Uden reconcileMandateGoalsWithLegacyBoard-kaldet i
+// buildBoardRoomPayload er denne test RØD (targetDisplay: "5"); med kaldet er
+// den GRØN (targetDisplay: "7").
+test("#5618 nyere legacy-forhandling (board_profiles.current_goals) overtager mandatets stale target", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" },
+    {
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
+      board_profiles: [{
+        id: "board-1yr-5618", team_id: TEAM_ID, plan_type: "1yr",
+        // Forhandlet EFTER mandatets signed_at (2026-08-01) — spillerens "i dag".
+        negotiated_at: "2026-09-24T10:11:00Z",
+        current_goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+      }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  const goal = payload.mandate.goals[0];
+  assert.equal(goal.target, 7, "mandatets stale target=5 skal overskrives af den nyere legacy-forhandling (target=7)");
+  assert.equal(goal.targetDisplay, "7");
+  assert.equal(goal.label, "Slut i top 7");
+  // 7. plads == target 7 -> opnået, ikke "behind" som med det stale target=5.
+  assert.equal(goal.status, "achieved");
+});
+
+test("#5618 legacy-forhandling ÆLDRE end mandatet rører intet (mandatet er allerede det friske mandat-native flow)", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
+    {
+      board_mandates: [{
+        id: "mand-5618b", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: "2026-08-01T00:00:00Z", updated_at: "2026-09-10T00:00:00Z",
+        goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+      }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
+      board_profiles: [{
+        id: "board-1yr-5618b", team_id: TEAM_ID, plan_type: "1yr",
+        negotiated_at: "2026-08-15T00:00:00Z",
+        current_goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+      }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.mandate.goals[0].target, 7, "mandatet er nyere end den gamle forhandling og skal ikke overskrives");
+});
+
+test("#5618 mandat UDEN updated_at falder tilbage til signed_at (CodeRabbit-fund: uden fallback ville epoken 0 lade selv en ÆLDRE forhandling vinde)", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
+    {
+      // #5618: INGEN updated_at på mandatet — kun signed_at.
+      board_mandates: [{
+        id: "mand-5618c", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: "2026-09-15T00:00:00Z",
+        goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+      }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
+      // Legacy-forhandlingen er ÆLDRE end mandatets signed_at (15/9) — uden
+      // signed_at-fallback ville mandateMs blive 0 (epoken), og denne ÆLDRE
+      // forhandling ville fejlagtigt "vinde" og overskrive mandatets target.
+      board_profiles: [{
+        id: "board-1yr-5618c", team_id: TEAM_ID, plan_type: "1yr",
+        negotiated_at: "2026-09-01T00:00:00Z",
+        current_goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+      }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.mandate.goals[0].target, 7, "signed_at-fallback skal beskytte mandatet mod en ÆLDRE legacy-forhandling");
+});
+
 test("#4579 sponsor_growth: BEHIND når vækst < target (sponsorGrowth*Income stubbet)", async () => {
   const tables = tablesWithSingleGoal({ type: "sponsor_growth", target: 20, category: "economy" });
   const supabase = makeSupabase(tables);
@@ -1158,4 +1236,110 @@ test("buildBoardRoomPayload: et accepteret bonus-maal markeres isBonus (ikke isS
   const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
   assert.equal(payload.mandate.goals[0].isBonus, true);
   assert.equal(payload.mandate.goals[0].isStretch, false);
+});
+
+// ── #5632 · afstand til bonustilbud + sponsoreffekt (genbrugt fra /board/status) ──
+// Spillerrapport: begge var synlige i det gamle rum (PassiveModifierLine +
+// BonusOfferProgressLine, BoardPage.jsx) men manglede helt i det nye
+// Boardroom. Samme rene funktioner (boardTransparency.js), samme tal.
+
+test("#5632 bonusOfferProgress: under taerskel viser en reel afstand (ikke bare eligible:false)", async () => {
+  const goal = { type: "stage_wins", target: 4, category: "results" };
+  const tables = tablesWithSingleGoal(goal, {
+    // confidence 50 < SATISFACTION_THRESHOLDS.BONUS_OFFER (75).
+    board_relations: [{ id: "rel-5632", team_id: TEAM_ID, confidence: 50, category_scores: {} }],
+    season_standings: [{ team_id: TEAM_ID, stage_wins: 0, updated_at: "2026-08-20T00:00:00Z" }],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.bonusOfferProgress.eligible, false);
+  assert.equal(payload.bonusOfferProgress.satisfaction_ok, false);
+  // 75 - 50 + 1 = 26.
+  assert.equal(payload.bonusOfferProgress.satisfaction_gap, 26);
+  assert.equal(payload.bonusOfferProgress.goals_met, 0);
+  assert.equal(payload.bonusOfferProgress.goals_total, 1);
+});
+
+test("#5632 bonusOfferProgress taeller EFTER #5618-reconciliation (aldrig et andet tal end goal-kortene selv)", async () => {
+  // Mandatets EGET mål er target=5 (ikke opnået ved rank 7), men en nyere
+  // legacy-forhandling overtager target=7 (opnået) — bonusOfferProgress'
+  // goals_met skal følge DEN reconcilerede status, ikke mandatets rå værdi.
+  const tables = tablesWithSingleGoal(
+    { type: "top_n_finish", target: 5, category: "results" },
+    {
+      board_relations: [{ id: "rel-5632b", team_id: TEAM_ID, confidence: 90, category_scores: {} }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
+      board_profiles: [{
+        id: "board-5632b", team_id: TEAM_ID, plan_type: "1yr",
+        negotiated_at: "2026-09-24T10:11:00Z",
+        current_goals: [{ type: "top_n_finish", target: 7, category: "results" }],
+      }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.bonusOfferProgress.goals_met, 1);
+  assert.equal(payload.bonusOfferProgress.goals_total, 1);
+});
+
+test("#5632 passiveModifier: sponsoreffekten (lag 1) afledes af confidence.value, samme bånd som det gamle rum", async () => {
+  const goal = { type: "min_riders", target: 5, category: "economy" };
+  const tables = tablesWithSingleGoal(goal, {
+    board_relations: [{ id: "rel-5632c", team_id: TEAM_ID, confidence: 85, category_scores: {} }],
+    riders: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, team_id: TEAM_ID })),
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.passiveModifier.satisfaction, 85);
+  assert.equal(payload.passiveModifier.band, "strong_boost");
+  assert.ok(payload.passiveModifier.modifier > 1, "confidence 85 skal give en POSITIV sponsor-effekt");
+});
+
+test("#5632 passiveModifier bruger board_profiles.budget_modifier (den PERSISTEREDE modifier sponsorEngine/economyEngine anvender), ikke kun et confidence-afledt fallback (reviewer-fund)", async () => {
+  // confidence 85 ville via satisfactionToModifier ALENE give modifier 1.20
+  // (strong_boost) — men holdets 1yr-board har en PERSISTERET budget_modifier
+  // på 0.65 (fx en ældre straf der endnu ikke er udlignet af den nyere
+  // confidence-stigning). Det gamle rum viste 0.65 (samme tal sponsorEngine/
+  // economyEngine faktisk anvender på sponsorindtægten); uden fixet ville
+  // Boardroom i stedet vise 1.20 — et helt andet bånd og fortegn.
+  const goal = { type: "min_riders", target: 5, category: "economy" };
+  const tables = tablesWithSingleGoal(goal, {
+    board_relations: [{ id: "rel-5632d", team_id: TEAM_ID, confidence: 85, category_scores: {} }],
+    riders: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, team_id: TEAM_ID })),
+    board_profiles: [{
+      id: "board-5632d", team_id: TEAM_ID, plan_type: "1yr",
+      budget_modifier: 0.65,
+    }],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.passiveModifier.modifier, 0.65, "skal bruge board_profiles.budget_modifier, ikke satisfactionToModifier(confidence)");
+  assert.equal(payload.passiveModifier.pct, -35);
+});
+
+test("#5632 bonusOfferProgress/passiveModifier er null uden et mandat (samme null-disciplin som mandate/vision)", async () => {
+  const supabase = makeSupabase(baseTables());
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  assert.equal(payload.mandate, null);
+  assert.equal(payload.bonusOfferProgress, null);
+  assert.equal(payload.passiveModifier, null);
+});
+
+test("#5632 bonusOfferProgress/passiveModifier er null naar mandatet findes MEN confidence er ukendt (CodeRabbit-fund: ingen falsk straf fra et umaalt 0-tal)", async () => {
+  // Mandat findes (goals[0] er stadig sat), men INGEN board_relations-raekke
+  // -> confidence.value er null. Uden guarden ville begge transparency-
+  // funktioner laese null som 0 internt og vise en falsk "staerk straf"-
+  // sponsoreffekt + en beregnet bonus-afstand ud fra et tal der aldrig er maalt.
+  const goal = { type: "min_riders", target: 5, category: "economy" };
+  const tables = tablesWithSingleGoal(goal, {
+    board_relations: [],
+    riders: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, team_id: TEAM_ID })),
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.confidence.value, null);
+  assert.ok(payload.mandate, "mandatet skal stadig findes/vises");
+  assert.equal(payload.bonusOfferProgress, null);
+  assert.equal(payload.passiveModifier, null);
 });

@@ -1,0 +1,22 @@
+{
+ "tracks": [
+  {
+   "issue": 5635,
+   "branch": "fix/5635-discord-sweep-forum-ids",
+   "title": "[ops/discord] sweep-daily.mjs finder forums paa id, ikke navn: #bugs forvekslet 21-24/9 og beta-forummet aldrig sweepet",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5635\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST #5635 (alle kommentarer) og scripts/discord/sweep-daily.mjs. OPGAVE: forums vaelges paa kanal-id (konfiguration i en lille tabel oeverst i scriptet eller en JSON ved siden af), ikke paa navn; #bugs og beta-forummet er med; navnet bruges kun til logning. Sweepen logger hvilke kanaler den har laest med id + navn + antal traade. Tests: scripts/discord/sweep-daily.test.mjs (ny) med fixtures: to kanaler med samme navn giver ikke forveksling; beta-forummet indgaar. Ingen Discord-skrivning; MCP'en/REST er read-only. Roer ikke scripts/discord/mcp-readonly-server.mjs (PR #5639). CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note (usynlig for spillere).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "scripts/discord/sweep-daily.mjs",
+    "scripts/discord/sweep-daily.test.mjs",
+    "scripts/discord/sweep-forums.json",
+    "docs/DISCORD_SWEEP.md"
+   ],
+   "verifyCommands": [
+    "node --test scripts/discord/sweep-daily.test.mjs"
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}

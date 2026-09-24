@@ -21,6 +21,7 @@
 // Fuld kalibrering/tuning sker i 23-24/8-scope (F2-core-design.md §7).
 
 import { observeRace, aggregateObservations } from "../../lib/raceDominanceMetrics.js";
+import { isTimeTrial } from "../../lib/raceStageProfileGenerator.js";
 import { observeStageV4, cohesionFraction, spreadAtRank, descentAttackGainStats } from "./headToHeadObservers.js";
 import { mean, spearmanCorrelation, percentile, fmt, fmtPct } from "./headToHeadStats.js";
 
@@ -64,6 +65,26 @@ export const ANCHOR_BANDS = {
   gtWinnerMarginSeconds: {
     min: 60, max: 480,
     source: "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
+  },
+  // #5576: enkeltstartens TIDER, ikke kun dens rang. ITT-korrelationen ovenfor
+  // er spearman paa placeringen og var groen, mens naesten hele feltet delte
+  // én tid — de to ankre herunder maaler det rangen ikke kan se.
+  ittTop10SpreadPer40KmSeconds: {
+    min: 60, max: 180,
+    source: "#2415 (gap-realisme-baand: \"ITT 1-3 min over 40 km\", PCS-niveau; mor-spec'ens konsekvens for §5) — top-10-spredning skaleret til 40 km",
+  },
+  // FORSLAG — IKKE et ejer-godkendt maal. Regressionsvagt for RULES §3
+  // invariant 7 ("selektive finaler, herunder ITT, beholder individuelle
+  // tider"): #5576's fejl samlede naesten hele feltet paa én tid, og en
+  // top-10-maaling alene kunne ikke se det, fordi finalens placerings-tiers gav
+  // toppen individuelle tider. Maales paa den VAERSTE enkeltstart i koerslen,
+  // saa én sammenklumpet etape ikke kan midles vaek. Loftet er valgt af denne
+  // harness med plads til v3's afrunding til hele sekunder (paa en kort prolog
+  // deler naboer aegte samme sekund dér).
+  ittLargestSameTimeShare: {
+    max: 0.25,
+    source: "FORSLAG (#5576) — regressionsvagt for RULES §3 invariant 7 (individuelle tider paa ITT); "
+      + "loftet er valgt af denne harness, ikke ejer-godkendt",
   },
   // M8-wiring 6/9 (#2789/#4105). FORSLAG — IKKE et ejer-godkendt maal.
   // Taersklen er valgt af denne harness som REGRESSIONSVAGT for ejer-reglen 3/9
@@ -292,6 +313,177 @@ export function scoreCobblestoneLift(rows, abilitiesByRider) {
 //    ÉN aggregateObservations()-implementering dækker begge motorer).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// 5b. Favorit-definitioner side om side (#5583) — INFORMATIVT, ingen dom.
+//
+// Gatens v4-favorit (observeStageV4's default) er naesten cirkulaer: finalen
+// sorterer paa samme evne-score. Ved siden af den maales v4 med v3's EGEN
+// favorit-definition (hoejeste v3-terrainScore mod etapens v3-kravvektor), saa
+// v3 og v4 maales mod samme rytter. Resultatet ligger i ankrets
+// `favoriteDefinitions`, uden for v3/v4-cellerne: dommen, baandet og JSON-
+// eksporten (headToHeadV4.js's buildJsonExport laeser kun v3/v4) er uaendrede.
+// ---------------------------------------------------------------------------
+
+/** Etapetype-noegle naar profile_type mangler (aldrig gaettet til en rigtig type). */
+const UNKNOWN_STAGE_TYPE = "ukendt";
+
+/**
+ * Favorit-sejre talt samlet og pr. etapetype (profile_type). Raa taellinger,
+ * ikke rater, saa flere seeds kan laegges sammen uden at midle rater.
+ * @param {Array<{terrain?:string, favoriteWon:boolean}>} observations
+ * @returns {{races:number, wins:number, perStageType: Record<string, {races:number, wins:number}>}}
+ */
+export function countFavoriteWins(observations) {
+  const perStageType = {};
+  let wins = 0;
+  for (const obs of observations) {
+    const key = obs.terrain ?? UNKNOWN_STAGE_TYPE;
+    if (!perStageType[key]) perStageType[key] = { races: 0, wins: 0 };
+    perStageType[key].races++;
+    if (obs.favoriteWon) {
+      wins++;
+      perStageType[key].wins++;
+    }
+  }
+  return { races: observations.length, wins, perStageType };
+}
+
+const FAVORITE_DEFINITION_KEYS = ["v3", "v4Finale", "v4Terrain"];
+
+function rateOf(counts) {
+  return counts && counts.races > 0 ? counts.wins / counts.races : null;
+}
+
+/** Ét seeds samlede rate pr. definition — bruges til spaendet over seeds. */
+function seedRates(definitions) {
+  return Object.fromEntries(FAVORITE_DEFINITION_KEYS.map((key) => [key, rateOf(definitions[key])]));
+}
+
+function sumCounts(countsList) {
+  const out = { races: 0, wins: 0, perStageType: {} };
+  for (const counts of countsList) {
+    out.races += counts.races;
+    out.wins += counts.wins;
+    for (const [stageType, c] of Object.entries(counts.perStageType)) {
+      if (!out.perStageType[stageType]) out.perStageType[stageType] = { races: 0, wins: 0 };
+      out.perStageType[stageType].races += c.races;
+      out.perStageType[stageType].wins += c.wins;
+    }
+  }
+  return out;
+}
+
+/**
+ * Laegger flere seeds' `favoriteDefinitions` sammen: taellinger summeres (hvert
+ * seed koerer de samme etaper, saa den samlede rate er seed-middelet), og hvert
+ * seeds egen rate bevares til spaendet. Uden denne ville aggregateScorecards()
+ * kun vise FOERSTE seeds tal — samme fejlklasse som #4947.
+ * @param {Array<object|undefined>} list  ét `favoriteDefinitions` pr. seed
+ * @returns {object|null}
+ */
+export function mergeFavoriteDefinitions(list) {
+  const present = (list ?? []).filter(Boolean);
+  if (present.length === 0) return null;
+  const merged = Object.fromEntries(FAVORITE_DEFINITION_KEYS.map((key) => [key, sumCounts(present.map((d) => d[key]))]));
+  return {
+    ...merged,
+    v4TerrainSkippedStages: present.reduce((sum, d) => sum + d.v4TerrainSkippedStages, 0),
+    sameFavoriteAsV3: {
+      same: present.reduce((sum, d) => sum + d.sameFavoriteAsV3.same, 0),
+      stages: present.reduce((sum, d) => sum + d.sameFavoriteAsV3.stages, 0),
+    },
+    seedRates: present.flatMap((d) => d.seedRates ?? []),
+  };
+}
+
+const FAVORITE_DEFINITION_LABELS = {
+  v3: "v3 (felt-bedste terrain)",
+  v4Finale: "v4 nu (finale-score, gatens)",
+  v4Terrain: "v4 ikke-cirkulaer (v3-terrain)",
+};
+
+function formatRateCell(counts) {
+  const rate = rateOf(counts);
+  return rate === null ? "n/a" : `${fmtPct(rate)} (${counts.wins}/${counts.races})`;
+}
+
+/**
+ * Tekst-blok under favorit-ankret: samlet + pr. etapetype for alle tre
+ * definitioner, andelen af etaper hvor v4's ikke-cirkulaere favorit er v3's
+ * favorit, og spaendet over seeds.
+ * @param {ReturnType<typeof mergeFavoriteDefinitions>} defs
+ * @returns {string[]}
+ */
+export function formatFavoriteDefinitions(defs) {
+  if (!defs) return [];
+  const width = 32;
+  const lines = [];
+  lines.push("  Favorit-definitioner side om side (#5583, informativt — dommen ovenfor er uaendret):");
+  lines.push(`    ${"etapetype".padEnd(14)}${FAVORITE_DEFINITION_KEYS.map((k) => FAVORITE_DEFINITION_LABELS[k].padEnd(width)).join("")}`);
+  lines.push(`    ${"samlet".padEnd(14)}${FAVORITE_DEFINITION_KEYS.map((k) => formatRateCell(defs[k]).padEnd(width)).join("")}`);
+  const stageTypes = [...new Set(FAVORITE_DEFINITION_KEYS.flatMap((k) => Object.keys(defs[k].perStageType)))].sort();
+  for (const stageType of stageTypes) {
+    const cells = FAVORITE_DEFINITION_KEYS.map((k) => formatRateCell(defs[k].perStageType[stageType]).padEnd(width));
+    lines.push(`    ${stageType.padEnd(14)}${cells.join("")}`);
+  }
+  const { same, stages } = defs.sameFavoriteAsV3;
+  lines.push(`    Samme rytter som v3's favorit: ${stages > 0 ? `${same}/${stages} etaper (${fmtPct(same / stages)})` : "n/a"}`);
+  if (defs.v4TerrainSkippedStages > 0) {
+    lines.push(`    Uden v3-kravvektor (ikke maalt med v3-terrain): ${defs.v4TerrainSkippedStages} etaper`);
+  }
+  if (defs.seedRates.length > 1) {
+    const spread = FAVORITE_DEFINITION_KEYS.map((k) => {
+      const values = defs.seedRates.map((s) => s[k]).filter((v) => v !== null);
+      return values.length > 0
+        ? `${FAVORITE_DEFINITION_LABELS[k]} ${fmtPct(Math.min(...values))}-${fmtPct(Math.max(...values))}`
+        : `${FAVORITE_DEFINITION_LABELS[k]} n/a`;
+    });
+    lines.push(`    Spaend over ${defs.seedRates.length} seeds (samlet): ${spread.join(" · ")}`);
+  }
+  return lines;
+}
+
+function compareFavoriteDefinitions(rows, v3Observations, v4Observations, { teamByRider, v4EntrantsById }) {
+  const terrainRows = [];
+  const terrainObservations = [];
+  rows.forEach((r, i) => {
+    const stageDemandVector = r.raw.stageRow?.demand_vector;
+    if (!stageDemandVector) return;
+    terrainRows.push(i);
+    terrainObservations.push(observeStageV4({
+      results: r.raw.v4Output.results,
+      entrants: v4EntrantsById,
+      teamByRider,
+      route: r.raw.route,
+      tuning: r.raw.tuning,
+      raceId: r.raw.stageRow?.race_id ?? null,
+      terrain: r.raw.route.profile_type,
+      favoriteBy: "v3_terrain",
+      stageDemandVector,
+    }));
+  });
+
+  // Peger de to motorer paa SAMME rytter? Kun etaper hvor begge har en favorit.
+  // Forskel kan kun opstaa naar v3's favorit udgik (v3 fjerner udgaaede fra ranked).
+  let sameFavorite = 0;
+  let comparedStages = 0;
+  terrainRows.forEach((rowIndex, j) => {
+    const v3Id = v3Observations[rowIndex].favoriteId;
+    const v4Id = terrainObservations[j].favoriteId;
+    if (v3Id === null || v4Id === null) return;
+    comparedStages++;
+    if (v3Id === v4Id) sameFavorite++;
+  });
+
+  return {
+    v3: countFavoriteWins(v3Observations),
+    v4Finale: countFavoriteWins(v4Observations),
+    v4Terrain: countFavoriteWins(terrainObservations),
+    v4TerrainSkippedStages: rows.length - terrainRows.length,
+    sameFavoriteAsV3: { same: sameFavorite, stages: comparedStages },
+  };
+}
+
 export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
   const v3Observations = rows.map((r) =>
     observeRace({ ranked: r.raw.v3Output.ranked, teamByRider, terrain: r.raw.route.profile_type, raceId: r.raw.stageRow?.race_id ?? null }));
@@ -305,9 +497,21 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
       raceId: r.raw.stageRow?.race_id ?? null,
       terrain: r.raw.route.profile_type,
     }));
+  const favoriteDefinitions = compareFavoriteDefinitions(rows, v3Observations, v4Observations, { teamByRider, v4EntrantsById });
 
   const v3Agg = aggregateObservations(v3Observations);
   const v4Agg = aggregateObservations(v4Observations);
+
+  // Samme-hold-top-10 udelader TIDSKOERSLER (#4915): baandet ("4+ fra samme
+  // hold i top 10 sjaeldent") maaler holddominans i MASSESTARTS-etaper. Paa en
+  // holdtidskoersel deler holdets ryttere tiden og fylder top 10 med rette,
+  // saa ankret ville maale strukturelt 100 %; en enkeltstart har intet holdspil
+  // at maale. "Tidskoersel" er generatorens egen definition (isTimeTrial:
+  // itt, itt_hilly, ttt), ikke en liste her. Favorit-ankret ovenfor maaler
+  // stadig alle etaper.
+  const isMassStart = (index) => !isTimeTrial(rows[index].raw.route.profile_type);
+  const v3TeamAgg = aggregateObservations(v3Observations.filter((_, i) => isMassStart(i)));
+  const v4TeamAgg = aggregateObservations(v4Observations.filter((_, i) => isMassStart(i)));
 
   const winBand = ANCHOR_BANDS.favoriteWinRate;
   const teamBand = ANCHOR_BANDS.sameTeamTop10Share4Plus;
@@ -320,14 +524,15 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
       source: winBand.source,
       v3: { ...judge(v3Agg.favoriteWinRate, winBand, v3Agg.races), display: fmtPct },
       v4: { ...judge(v4Agg.favoriteWinRate, winBand, v4Agg.races), display: fmtPct },
+      favoriteDefinitions: { ...favoriteDefinitions, seedRates: [seedRates(favoriteDefinitions)] },
     },
     {
       id: "same_team_top10_share_4plus",
-      label: "Samme-hold-top-10 (andel etaper med 4+ fra ét hold)",
+      label: "Samme-hold-top-10 (andel massestarts-etaper med 4+ fra ét hold)",
       bandLabel: `< ${fmtPct(teamBand.max)}`,
       source: teamBand.source,
-      v3: { ...judge(v3Agg.share4PlusSameTeamTop10, teamBand, v3Agg.races), display: fmtPct },
-      v4: { ...judge(v4Agg.share4PlusSameTeamTop10, teamBand, v4Agg.races), display: fmtPct },
+      v3: { ...judge(v3TeamAgg.share4PlusSameTeamTop10, teamBand, v3TeamAgg.races), display: fmtPct },
+      v4: { ...judge(v4TeamAgg.share4PlusSameTeamTop10, teamBand, v4TeamAgg.races), display: fmtPct },
     },
   ];
 }
@@ -539,6 +744,98 @@ export function scoreGapRealism(rows) {
 }
 
 // ---------------------------------------------------------------------------
+// 11. Enkeltstartens tider (#5576) — gap-realisme + individuelle tider
+// ---------------------------------------------------------------------------
+
+const INDIVIDUAL_TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly"]);
+const ITT_REFERENCE_DISTANCE_KM = 40; // #2415-baandets egen distance ("1-3 min over 40 km")
+// Begge ITT-ankre maaler kun felter med mindst ti i maal: top-10 kraever ti,
+// og i et mindre felt er én rytter alene over klump-loftet (1/n).
+const ITT_MIN_FINISHERS = 10;
+
+/** Tider for de ryttere der krydsede stregen (v4). En udgaaet rytters tid er frosset ved styrtet og ikke en maaltid. */
+function v4FinisherTimes(row) {
+  return row.raw.v4Output.results.filter((x) => x.status !== "abandoned").map((x) => x.time_seconds);
+}
+
+/** Stoerste andel af feltet paa én og samme tid (afrundet til 1/100 s, samme oploesning som StageResult). */
+export function largestSameTimeShare(times) {
+  if (!times || times.length === 0) return null;
+  const counts = new Map();
+  for (const t of times) {
+    const key = Math.round(t * 100);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Math.max(...counts.values()) / times.length;
+}
+
+/**
+ * To ankre paa enkeltstarternes TIDER (itt, itt_hilly — ttt er et holdresultat
+ * og har sin egen model):
+ *
+ *   1. Top-10-spredningen skaleret til 40 km mod #2415's "ITT 1-3 min over
+ *      40 km". Skaleringen er lineaer i distancen: en prolog paa 6 km og en
+ *      enkeltstart paa 40 km maales paa samme skala.
+ *   2. Den stoerste andel af feltet paa én tid (invariant 7), paa den VAERSTE
+ *      enkeltstart. Det er DEN maaling #5576's fejl ville have fejlet: toppen
+ *      havde individuelle tider fra finalens placerings-tiers, saa
+ *      spredningen i (1) saa rimelig ud, mens resten af feltet delte én tid.
+ *
+ * Kun felter med mindst `ITT_MIN_FINISHERS` i maal taeller (se konstanten).
+ */
+export function scoreIttTimeRealism(rows) {
+  const ittRows = stagesWhere(rows, (route) => INDIVIDUAL_TIME_TRIAL_PROFILES.has(route.profile_type));
+  const spreadBand = ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds;
+  const tieBand = ANCHOR_BANDS.ittLargestSameTimeShare;
+
+  function measurable(getTimes) {
+    return ittRows.map((r) => ({ row: r, times: getTimes(r) })).filter((x) => x.times.length >= ITT_MIN_FINISHERS);
+  }
+
+  function spreadFor(getTimes) {
+    const values = [];
+    for (const { row, times } of measurable(getTimes)) {
+      const km = Number(row.raw.route.distance_km);
+      const spread = spreadAtRank(times, 10);
+      if (spread === null || !(km > 0)) continue;
+      values.push((spread / km) * ITT_REFERENCE_DISTANCE_KM);
+    }
+    return { value: mean(values), n: values.length };
+  }
+
+  function worstTieShareFor(getTimes) {
+    const values = measurable(getTimes).map(({ times }) => largestSameTimeShare(times)).filter((v) => v !== null);
+    return { value: values.length > 0 ? Math.max(...values) : null, n: values.length };
+  }
+
+  const v3Times = (r) => r.raw.v3Output.ranked.map((x) => x.stageGap);
+  const naNote = "ingen enkeltstarter (itt/itt_hilly) i input";
+  const v3Spread = spreadFor(v3Times);
+  const v4Spread = spreadFor(v4FinisherTimes);
+  const v3Tie = worstTieShareFor(v3Times);
+  const v4Tie = worstTieShareFor(v4FinisherTimes);
+
+  return [
+    {
+      id: "itt_top10_spread_per_40km",
+      label: "ITT top-10-spredning pr. 40 km (#2415)",
+      bandLabel: `${spreadBand.min}-${spreadBand.max}s (1-3 min)`,
+      source: spreadBand.source,
+      v3: { ...judge(v3Spread.value, spreadBand, v3Spread.n, naNote), display: (v) => fmt(v, 0) },
+      v4: { ...judge(v4Spread.value, spreadBand, v4Spread.n, naNote), display: (v) => fmt(v, 0) },
+    },
+    {
+      id: "itt_largest_same_time_share",
+      label: "ITT: stoerste andel af feltet paa samme tid, vaerste etape (invariant 7)",
+      bandLabel: `<= ${fmtPct(tieBand.max)} (FORSLAG, ikke ejer-godkendt)`,
+      source: tieBand.source,
+      v3: { ...judge(v3Tie.value, tieBand, v3Tie.n, naNote), display: fmtPct },
+      v4: { ...judge(v4Tie.value, tieBand, v4Tie.n, naNote), display: fmtPct },
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Samlet scorecard
 // ---------------------------------------------------------------------------
 
@@ -564,6 +861,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
     ...scoreTypeIntegrity(rows, abilitiesByRider),
     scoreBonusSecondsBounded(rows),
     ...scoreGapRealism(rows),
+    ...scoreIttTimeRealism(rows),
   ];
 }
 
@@ -580,7 +878,8 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
  * @param {Array<ReturnType<typeof buildScorecard>>} scorecards  ét pr. seed
  * @returns {Array<object>}  samme form som buildScorecard, plus .spread pr. motor
  */
-// ALLE 13 anker-id'er fra buildScorecard() SKAL have en indgang her (#4947).
+// ALLE anker-id'er fra buildScorecard() SKAL have en indgang her (#4947;
+// 15 siden #5576's to ITT-tids-ankre).
 // Et manglende id gjorde at aggregateEngine() faldt tilbage til
 // `measured[0].verdict` — dommen fra FOERSTE seed — i stedet for at doemme
 // 3-seed-middelvaerdien mod baandet, praecis den aggregerings-fejl §7 raekke 8
@@ -605,6 +904,8 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   bonus_seconds_bounded: { max: 10 },
   mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
   gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
+  itt_top10_spread_per_40km: ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds,
+  itt_largest_same_time_share: ANCHOR_BANDS.ittLargestSameTimeShare,
 };
 
 export function aggregateScorecards(scorecards) {
@@ -633,7 +934,11 @@ export function aggregateScorecards(scorecards) {
     const band = bandById[anchor.id] ?? null;
     const v3Cells = scorecards.map((card) => card[index].v3);
     const v4Cells = scorecards.map((card) => card[index].v4);
-    return { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
+    const aggregated = { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
+    if (anchor.favoriteDefinitions) {
+      aggregated.favoriteDefinitions = mergeFavoriteDefinitions(scorecards.map((card) => card[index].favoriteDefinitions));
+    }
+    return aggregated;
   });
 }
 
@@ -662,6 +967,7 @@ export function formatScorecard(scorecard) {
     lines.push(`  Baand: ${anchor.bandLabel}  (kilde: ${anchor.source})`);
     lines.push(`  v3: ${formatCell(anchor.v3)}`);
     lines.push(`  v4: ${formatCell(anchor.v4)}`);
+    lines.push(...formatFavoriteDefinitions(anchor.favoriteDefinitions));
   }
   const totals = { PASS: 0, FAIL: 0, "N/A": 0 };
   for (const anchor of scorecard) {

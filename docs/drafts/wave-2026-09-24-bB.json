@@ -1,0 +1,220 @@
+{
+ "allowExistingPr": false,
+ "trackTimeoutMinutes": 150,
+ "tracks": [
+  {
+   "issue": 4592,
+   "branch": "feat/4592-4153-season-switch-economy",
+   "title": "[saesonskifte] Parkering af inaktive del 2+3 klar til cutover (bag season_signup_enabled) + ingen loen for ryttere der pensioneres i skiftet (#4153)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#4592\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Samler #4592 og #4153 (samme fil, samme saesonskifte-sti). DEL 1 (#4592, bag uaendret flag season_signup_enabled=off, ingen prod-skrivning): Bag uaendret flag (off), ingen prod-skrivning. (1) managerParking.js: udeluk hold med subscriptions.status='active' (ren funktion faar activeSubscriptionTeamIds; parkDormantTeams henter dem). (2) Ny ren selectTeamsToUnpark (parked_at!=null OG next_season_signup_at!=null) + unparkTeam (parked_at=null, division+league_division_id via samme regel som pickDivisionForNewTeam i teamProfileEngine.js: entry D3 m. occupancy, ellers D4; eksportér helperen i stedet for at kopiere). (3) Nulstil next_season_signup_at for alle hold efter sweepen har brugt feltet. (4) economyEngine.js: kør park+unpark EFTER processDivisionEnd men FOER reseedTierPools/reconcileAiTeamsForPool (kun hvis ejeren siger ja; ellers behold raekkefoelgen og skriv det i PR-body). (5) Tests: rene funktioner + economyEngine-test via deps der beviser raekkefoelgen. (6) parkingDryRun.js printer pr. division, abonnement-skip, genindplaceringer og forventet puljestoerrelse. Maa IKKE: flippe flag, koere --apply, roere frontend-copy, roere loen/sponsor (separat beslutning), nye migrationer. EJER-VALG som A/B i PR-body: (a) parkering flyttes foer AI-genopfyldningen (anbefalet, 5/5 spillere sagde AI 3/9) vs behold raekkefoelgen; (b) parkerede hold staar oekonomisk stille (anbefalet) vs koerer videre - byg IKKE (b), skriv den som naeste skridt. DEL 2 (#4153, variant A anbefalet): processTeamSeasonPayroll ekskluderer ryttere via SAMME praedikat som motorens pensionsregel (genbrug, ingen kopi); test med transition-fixture. Tænd intet, ingen --apply. Tændingsplanen #5506 trin 5 og 12 opdateres IKKE her (docs ejes af orkestratoren). HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "FULL",
+   "ownership": [
+    "backend/lib/managerParking.js",
+    "backend/lib/managerParking.test.js",
+    "backend/lib/economyEngine.js",
+    "backend/lib/economyEngine.test.js",
+    "backend/lib/teamProfileEngine.js",
+    "backend/scripts/parkingDryRun.js",
+    "backend/scripts/parkInactiveTeams.mjs"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/managerParking.test.js backend/lib/economyEngine.test.js",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -File scripts/verify-local.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 4948,
+   "branch": "feat/4948-feature-flags-endpoint-help-raceday",
+   "title": "[flip] Globalt spiller-synligt flag-endpoint + Hjaelp-sektionen raceDay foelger race_engine_v4",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#4948\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/audits/2026-09-22-v4-foer-s4-research-memo.md par. 4-5. Loesning A (anbefalet i issuet): nyt letvaegts endpoint GET /api/feature-flags med en ALLOWLIST af spiller-synlige flag (start: race_engine_v4, board_mandate_model_enabled, training_tick_per_race_day) laest via backend/lib/featureStage.js-moensteret, aldrig alle app_config-raekker; katalog i backend/lib/stageFlagCatalog.js. frontend/src/pages/HelpPage.jsx: fjern de hardkodede gates (raceDayEnabled=false linje ~771, TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED linje ~78) og mandat-sektionens saerkald, saa alle tre flag-gatede sektioner bruger EEN mekanisme. Test: raceDay vises naar flaget er on, skjult ellers (node --test paa HelpPage + backend route-test). Roer IKKE teksten i help.json sections.raceDay (ejer-go udestaar; noter i PR). Preview-mock frontend/src/preview/betaAccessMock.js opdateres. Ingen patch note (usynlig til flip).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/HelpPage.jsx",
+    "frontend/src/pages/HelpPage.*.test.js",
+    "frontend/src/preview/betaAccessMock.js",
+    "backend/api/featureFlagsApi.js",
+    "backend/api/featureFlagsApi.test.js",
+    "backend/lib/stageFlagCatalog.js",
+    "backend/routes/api.js"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/pages/HelpPage.sectionBlocks.test.js frontend/src/pages/HelpPage.faqKeys.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5386,
+   "branch": "fix/5386-forum-quote-op",
+   "title": "[forum] Traadens foerste indlaeg kan citeres (ejer 18/9)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5386\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Additiv idempotent migration database/2026-09-24-5386-forum-quote-op.sql: forum_replies.quotes_post boolean not null default false (eller quoted_post_id). Backend createForumReply accepterer quoteOp, og getForumPost former citatet af aabningsindlaegget med samme excerpt/removed-logik som svar-citater. Frontend ForumPostPage: samme ghost-knap Citer/Quote paa aabningsindlaegget, og QuotedReplyBlock hopper til toppen. Ingen ekstra notifikation (traadstarteren faar allerede forum_thread_reply). Tests: forum.test.js + e2e. Billeder desktop + 390 (mock ok). Patch note-linje kun i PR-body. Merges ikke uden ejer-go. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, skrives i .ts/.tsx (ikke .js/.jsx); eksisterende filer beholder deres endelse. Hver paastand i PR-body skal kunne findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "database/2026-09-24-5386-forum-quote-op.sql",
+    "backend/lib/forum.js",
+    "backend/lib/forum.test.js",
+    "backend/routes/forum.js",
+    "frontend/src/pages/ForumPostPage.jsx",
+    "frontend/src/components/forum/**",
+    "frontend/tests/e2e/5386-forum-quote-op.spec.ts"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/forum.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5375,
+   "branch": "fix/5375-rls-smoketest-false-alarm",
+   "title": "[ci] RLS-role-smoketest melder CRITICAL uden reelt fund (falsk alarm)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5375\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Tilfoej -q til psql-kaldet i smoketest-trinnet (eller filtrer kun linjer i formatet severity|check|detail), og goer det samme for de andre psql-trin i workflowet hvis de har samme moenster. Test i scripts/security-rls-role-smoketest.test.mjs der simulerer kommando-tags uden fund. Roer IKKE whitelist-indholdet. Kategori 3 (CI): orkestratoren merger naar CI er groen. Efter merge og en groen koersel kommenterer orkestratoren paa #5375. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen (forward-guard fejler backend-tests).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    ".github/workflows/security-grants-audit.yml",
+    "scripts/security-rls-role-smoketest.test.mjs",
+    "scripts/security-rls-role-smoketest.mjs"
+   ],
+   "verifyCommands": [
+    "node --test scripts/security-rls-role-smoketest.test.mjs",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5242,
+   "branch": "fix/5242-apifetch-slice-b",
+   "title": "[brand] apiFetch PR 2 skive B: hooks + admin + Finance/Sponsors/Strategy/RiderStats",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5242\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Skive B: lib/use*.js-hooks (useFacilities, useScouting*, useStaff*, usePlanner m.fl.) + admin-siderne (pages/admin/*, Admin*Page.jsx) + FinancePage, SponsorsPage, StrategyPage og RiderStatsPage. Kør apiFetch med netværksfejl-grenen gennemgået pr. kaldsted, som i #5372's tabel. Adfærden er uændret, og baseline-filen sænkes. UDELAD filer som andre spor ejer i nat: BoardPage.jsx (#5472), ForumPage/ForumPostPage (#5386), ProfilePage (#5402), SeasonView/SeasonMatrix, CalendarPage, RaceDetailPage. Ingen nye brugertekster. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/lib/use*.js",
+    "frontend/src/pages/admin/**",
+    "frontend/src/pages/Admin*Page.jsx",
+    "frontend/src/pages/FinancePage.jsx",
+    "frontend/src/pages/SponsorsPage.jsx",
+    "frontend/src/pages/StrategyPage.jsx",
+    "frontend/src/pages/RiderStatsPage.jsx",
+    "frontend/scripts/fetch-wiring-baseline.json"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend test",
+    "npm --prefix frontend run build",
+    "node scripts/verify-affected.mjs"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5075,
+   "branch": "fix/5075-stats-academy-toggle",
+   "title": "[ux] Stats-fanen under Mit hold faar til-/fravalg af akademiryttere",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5075\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis.  HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/TeamPage.jsx",
+    "frontend/src/components/TeamStatsTab.jsx"
+   ],
+   "verifyCommands": [],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 4875,
+   "branch": "fix/4875-calendar-stage-glyphs",
+   "title": "[ux] Kalenderen bruger de nye etapetype-ikoner",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#4875\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Skift kalenderens etapetype-markering til TerrainTypeGlyph (samme ikoner som løbssiden). Ingen ny legende-design ud over ikonbyttet. Skærmbilleder desktop + 390; ejer-go før merge. Rør IKKE farvekodning (#5200). HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/components/racehub/SeasonView.jsx",
+    "frontend/src/pages/CalendarPage.jsx"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend test",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5246,
+   "branch": "feat/5246-late-fill-log",
+   "title": "[maaling] Maal egen holdudtagelse: late-fill-log + bevar auto-flag",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5246\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Praecis som issuet: idempotent migration med race_entry_generator_runs + race_entries.auto_filled_at/source + race_entry_overrides (RLS enabled uden policy, service-role), sweepen logger een raekke pr. koersel, replace_race_selection skriver override-raekke foer delete+insert; maale-SQL i docs. Nye tabeller -> FLAG_GATED_EMPTY_TABLES hvis relevant. Unit-tests. Ingen adfaerdsaendring, ingen patch note. Migrationer applies af auto-migrate, post-verify med SELECT. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/raceEntryGeneratorSweep.js",
+    "backend/lib/raceRunner.js",
+    "database/2026-09-23-5246-*.sql",
+    "docs/ASSISTANT_LATE_FILL.md"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/raceEntryGeneratorSweep.test.js",
+    "pwsh -File scripts/verify-local.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 2761,
+   "branch": "feat/2761-discord-invite-backfill",
+   "title": "[vaekst] Discord-invitation i indbakken: dry-run-script + faerdig tekst (send = ejer)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#2761\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Byg backend/scripts/sendDiscordInviteBackfill.mjs efter moenstret i backend/scripts/sendSurveyInvite.mjs: --dry-run (default) / --execute; segment = menneskehold (ikke ai/bank/test/frozen) hvis bruger mangler discord_id og ikke har faaet discord_welcome/backfill-besked; dedupe paa notifications type + metadata.backfill='2026-09'; EN/DA efter users.language. Faerdigskrevet tekst (EN foerst, DA under, jeg-stemme) i docs/drafts/discord-invite-backfill-2026-09-23.md. Unit-tests. Koer KUN --dry-run (read-only) og skriv antal EN/DA i PR-body. Maa IKKE: --execute, aendre discordWelcomeSweep.js eller teams.discord_welcome_sent_at. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/scripts/sendDiscordInviteBackfill.mjs",
+    "backend/scripts/sendDiscordInviteBackfill.test.js",
+    "docs/drafts/discord-invite-backfill-2026-09-23.md"
+   ],
+   "verifyCommands": [
+    "node --test backend/scripts/sendDiscordInviteBackfill.test.js",
+    "infisical run --env=prod -- node backend/scripts/sendDiscordInviteBackfill.mjs --dry-run"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5387,
+   "branch": "fix/5387-roadmap-today-texts",
+   "title": "[roadmap] De 5 Today-tekster paa /roadmap goeres sande (locale) + statisk fallback",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5387\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Kun locale-delen af docs/drafts/5387-roadmap-indhold.md afsnit 4: engines.*.today (5 motorer) og voting.intro i frontend/public/locales/{en,da}/roadmap.json + engines.*.next (statisk fallback) til de nye titler. SQL-forslaget (database/proposals/) roeres IKKE (ejer-gated). EN foerst, DA under, TONE_OF_VOICE, ingen em-dash. Test: RoadmapPage-test groen; billeder desktop 1440 + mobil 390 (mock ok). Spillertekst: merges kun paa ejer-go. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/public/locales/en/roadmap.json",
+    "frontend/public/locales/da/roadmap.json"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/pages/RoadmapPage.test.js",
+    "npm --prefix frontend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5534,
+   "branch": "ci/5534-e2e-typecheck",
+   "title": "[ci] e2e-specs i .ts faar typecheck (frontend/tests/tsconfig.json + CI-trin)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5534\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. Se issue #5534. Egen frontend/tests/tsconfig.json (extends frontend/tsconfig.json, include e2e/**/*.ts, Playwright-typer) + tsc --noEmit -p frontend/tests som CI-trin (advarsel foerst hvis der er mange eksisterende fejl; ret de enkle). Kategori 3: orkestratoren merger naar CI er groen. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/tests/tsconfig.json",
+    ".github/workflows/ci.yml",
+    "frontend/tests/e2e/lib"
+   ],
+   "verifyCommands": [
+    "npx --prefix frontend tsc --noEmit -p frontend/tests"
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}

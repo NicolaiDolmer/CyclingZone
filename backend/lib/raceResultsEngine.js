@@ -20,6 +20,22 @@ import { applyRaceResultsBatchAtomic as applyRaceResultsBatchAtomicDefault } fro
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
 import { captureException } from "./sentry.js";
+import { isSeniorSquadRow } from "./squads.js";
+
+// #5645 (Y4, spec 2026-09-15 §5.4 + YOUTH_RULES §2.3): ungdomsløb (races.squad =
+// u23/junior) udbetaler INGEN præmiepenge i v1 — ingen ny guldkilde uden økonomi-sim.
+// Vagten sidder ved KILDEN, der hvor prize_money udledes af pointene, så race_results
+// aldrig bærer et ungdomsbeløb og prizePayoutEngine (der summerer prize_money > 0)
+// derfor aldrig kan udbetale et. Point (points_earned) er uændrede: de er sportsdata.
+// Ukendt/manglende trup = senior (squads.isSeniorSquadRow) → bit-identisk i dag.
+export function isPrizeMoneyRace(race) {
+  if (race == null) return true;
+  return isSeniorSquadRow(race);
+}
+
+export function prizeMoneyForPoints(pts, race) {
+  return isPrizeMoneyRace(race) ? pts * PRIZE_PER_POINT : 0;
+}
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {
@@ -59,7 +75,9 @@ export function buildRacePointsLookup({ racePoints = [], raceType = "stage_race"
   return lookup;
 }
 
-export function buildRaceResultsFromPending({ pendingRows = [], pointsLookup = {}, raceId } = {}) {
+// #5645: `race` (valgfri) bærer løbets trup; et ungdomsløb giver prize_money = 0.
+// Udeladt = senior (uændret for eksisterende kald).
+export function buildRaceResultsFromPending({ pendingRows = [], pointsLookup = {}, raceId, race = null } = {}) {
   return (pendingRows || []).map((row) => {
     const pts = pointsLookup[`${row.result_type}__${row.rank}`] || 0;
     const teamId = row.rider?.team_id || null;
@@ -80,7 +98,7 @@ export function buildRaceResultsFromPending({ pendingRows = [], pointsLookup = {
       stage_number: row.stage_number || 1,
       finish_time: null,
       points_earned: pts,
-      prize_money: pts * PRIZE_PER_POINT,
+      prize_money: prizeMoneyForPoints(pts, race),
     };
   });
 }
@@ -118,7 +136,9 @@ export async function applyRaceResults({
     rank: row.rank,
     stage_number: row.stage_number || 1,
     finish_time: row.finish_time || null,
-    prize_money: Number(row.prize_money) || 0,
+    // #5645: sidste værn for ungdomsløb (fx admin-import af resultater), hvis
+    // `race` bærer sin trup. Senior/ukendt trup → uændret.
+    prize_money: isPrizeMoneyRace(race) ? (Number(row.prize_money) || 0) : 0,
     points_earned: row.points_earned ?? 0,
     // #1499: deskriptive udbruds-etiketter (false for importerede/PCM-rækker uden flag).
     in_breakaway: row.in_breakaway === true,
@@ -200,7 +220,8 @@ export async function rederiveSeasonRacePoints({
 
   const { data: races, error: racesError } = await supabase
     .from("races")
-    .select("id, race_class, race_type, prize_paid_at")
+    // #5645: squad med, så re-derivationen ikke giver et ungdomsløb præmiepenge.
+    .select("id, race_class, race_type, prize_paid_at, squad")
     .eq("season_id", seasonId);
   if (racesError) throw new Error(racesError.message);
 
@@ -240,7 +261,7 @@ export async function rederiveSeasonRacePoints({
 
     for (const row of results || []) {
       const pts = lookup[`${row.result_type}__${row.rank}`] || 0;
-      const prize = pts * PRIZE_PER_POINT;
+      const prize = prizeMoneyForPoints(pts, race);
       // Skip rækker der allerede matcher → undgå unødige writes.
       if (row.points_earned === pts && row.prize_money === prize) continue;
 

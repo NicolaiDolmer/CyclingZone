@@ -7,6 +7,7 @@ import { projectDivisionAdjustment } from "../lib/divisionAdjustment";
 import { buildSponsorPayments, projectRemainingStages } from "../lib/sponsorPayments";
 import { projectOffer } from "../lib/sponsorOfferProjection";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
+import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import {
   BriefcaseIcon,
@@ -143,14 +144,20 @@ export default function SponsorsPage() {
         // null = ingen brugbar session (kontrakten i lib/supabase.ts) — send ikke kaldet.
         if (!headers) throw new Error("no session");
         const [contractRes, offersRes] = await Promise.all([
-          fetch(`${API}/api/sponsor/contract`, { headers }),
-          fetch(`${API}/api/sponsor/offers`, { headers }),
+          apiFetch(`${API}/api/sponsor/contract`, { headers }),
+          apiFetch(`${API}/api/sponsor/offers`, { headers }),
         ]);
+        // #5242: !contractRes.ok daekker allerede networkError (apiFetch saetter
+        // ok:false ogsaa ved transportfejl), saa dette konvergerer uaendret med
+        // den tidligere kastede fejl. offersRes' networkError falder nu i
+        // "sekundaer"-grenen nedenfor i stedet for at vaelte hele Promise.all,
+        // hvilket rent faktisk MATCHER kommentarens tiltaenkte graceful-degradering
+        // (foer kunne en offers-transportfejl uventet fejle hele siden, jf. #5322).
         if (!contractRes.ok) throw new Error(`HTTP ${contractRes.status}`);
-        const contractBody = await contractRes.json();
+        const contractBody = contractRes.data;
         // Tilbuds-tilstanden er sekundaer: fejler den, skal siden stadig vise
         // kontrakten (samme degraderings-holdning som Board havde).
-        const offersBody = offersRes.ok ? await offersRes.json() : null;
+        const offersBody = offersRes.ok ? offersRes.data : null;
         if (!alive) return;
         setContract(contractBody.contract ?? null);
         setSeason(contractBody.season ?? null);
@@ -230,11 +237,12 @@ export default function SponsorsPage() {
     try {
       const headers = await authHeaders();
       if (!headers) throw new Error("no session");
-      const res = await fetch(`${API}/api/sponsor/offers/accept`, {
+      const res = await apiFetch(`${API}/api/sponsor/offers/accept`, {
         method: "POST",
         headers,
         body: JSON.stringify({ variant }),
       });
+      // #5242: !res.ok daekker allerede networkError, saa uaendret adfaerd.
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setConfirming(null);
       setReloadKey((k) => k + 1);

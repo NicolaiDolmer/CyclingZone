@@ -19,7 +19,7 @@
 // Type-mix: alle 8 repræsenteret (gulv gc≥30, sprinter≥40); klatrer/tt tungest,
 // realistisk peloton-form. Detaljer: docs/slices/669-fictional-riders.md.
 
-import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
+import { generateFictionalRiders, DEFAULT_PRIMARY_TYPE_MODE } from "./fictionalRiderGenerator.js";
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
@@ -72,8 +72,15 @@ export function checkLaunchTypeMix(typeCounts = {}) {
  * @param {Set<string>} [existingFoldedNames] foldNameNordic af alle eksisterende
  *   DB-navne — håndhæver navne-unikhed mod evt. tilbageværende PCM-ryttere
  *   (§3-fælden i 669-slicen). Orchestratoren henter dette fra DB før insert.
+ * @param {object} [opts]
+ * @param {"tier"|"distribution"} [opts.primaryTypeMode] #5327: primær-type-kilde.
+ *   Default "tier" = den låste population, byte-identisk med før parameteren
+ *   fandtes. Orchestratoren læser app_config-kontakten (primaryTypeModeFlag.js).
  * @returns se generateFictionalRiders
  */
-export function generateLaunchPopulation(existingFoldedNames = new Set()) {
-  return generateFictionalRiders({ ...LAUNCH_POPULATION, existingFoldedNames });
+export function generateLaunchPopulation(
+  existingFoldedNames = new Set(),
+  { primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE } = {},
+) {
+  return generateFictionalRiders({ ...LAUNCH_POPULATION, existingFoldedNames, primaryTypeMode });
 }

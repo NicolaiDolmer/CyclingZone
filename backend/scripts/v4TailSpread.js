@@ -21,16 +21,19 @@
 // etapetyper (hilly/rolling/classic/cobbles/itt* m.fl.) har INGEN ejer-baand
 // og rapporteres kun.
 //
-// 100% READ-ONLY og DB-FRIT: population laeses fra den committede snapshot,
-// kalenderen bygges offline af raceStageProfileGenerator (ren funktion, ingen
-// DB), eller laeses fra en --stages-fil i samme format som headToHeadV4.js.
+// 100% READ-ONLY og DB-FRIT: population og etaper laeses fra committede filer.
+// Uden flag er det de PINNEDE filer og de ejer-laaste seeds (se
+// DEFAULT_POPULATION_FILE/DEFAULT_STAGES_FILE/DEFAULT_SEEDS nedenfor), saa
+// `--gate` uden flag er praecis den gate RULES §2d og §9 raekke 13 henviser
+// til. En frisk offline proxy-kalender (raceStageProfileGenerator, ren
+// funktion, ingen DB) bygges med `--emit-stages` og koeres med `--stages`.
 //
 // Usage:
-//   node backend/scripts/v4TailSpread.js
-//   node backend/scripts/v4TailSpread.js --seeds=s1,s2,s3 --races=24 --field-size=180
+//   node backend/scripts/v4TailSpread.js --gate         # pinnede filer, seeds s1-s3; exit 1 ved FAIL paa et laast baand
+//   node backend/scripts/v4TailSpread.js --seeds=s1,s2,s3 --field-size=180
 //   node backend/scripts/v4TailSpread.js --population=<fil> --stages=<fil>
+//   node backend/scripts/v4TailSpread.js --emit-stages=<fil> --races=24   # skriv en frisk proxy-kalender
 //   node backend/scripts/v4TailSpread.js --json=<fil>   # skriv raa maalinger
-//   node backend/scripts/v4TailSpread.js --gate         # exit 1 ved FAIL paa et laast baand
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -48,8 +51,18 @@ import { stableSeed } from "../lib/raceSimulator.js";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..", "..");
 
-const DEFAULT_POPULATION = join(REPO_ROOT, "backend", "scripts", "baselines", "population-snapshot-2026-07-11.json");
-const DEFAULT_SEEDS = ["tail-spread-1", "tail-spread-2", "tail-spread-3"];
+// #5579: standardvaerdierne er de PINNEDE filer og de ejer-laaste seeds, som
+// hale-gaten ogsaa koeres med i v4FlipReadiness.mjs (POPULATION_FILE,
+// STAGES_FILE, TAIL_GATE_SEEDS). Foer pegede default-populationen paa juli-
+// snapshottet, som #4936 erklaerede foraeldet, og etaperne blev bygget som en
+// frisk proxy-kalender paa egne seeds — saa `--gate` uden flag maalte noget
+// andet end den gate reglerne beskriver. v4TailSpread.test.js holder de tre
+// vaerdier i takt med v4FlipReadiness.mjs.
+export const DEFAULT_POPULATION_FILE = "backend/scripts/baselines/population-snapshot-2026-09-07.json";
+export const DEFAULT_STAGES_FILE = "backend/scripts/baselines/v4-proxy-stages-2026-09-06.json";
+export const DEFAULT_SEEDS = Object.freeze(["s1", "s2", "s3"]);
+const DEFAULT_POPULATION = join(REPO_ROOT, DEFAULT_POPULATION_FILE);
+const DEFAULT_STAGES = join(REPO_ROOT, DEFAULT_STAGES_FILE);
 const DEFAULT_FIELD_SIZE = 180; // samme laaste feltstoerrelse som headToHeadV4.LOCKED_FIELD_SIZE
 const DEFAULT_RACE_COUNT = 24;
 
@@ -856,17 +869,15 @@ function main() {
     return;
   }
 
-  let stages;
-  if (stagesPath) {
-    const file = readJson(stagesPath);
-    stages = Array.isArray(file) ? file : file.stages;
-  } else {
-    stages = buildProxyCalendar({ raceCount });
-  }
+  // #5579: uden --stages er det de pinnede proxy-etaper (DEFAULT_STAGES_FILE),
+  // ikke en frisk proxy-kalender — gaten skal maale de SAMME etaper som
+  // v4FlipReadiness.mjs og ankertabellen i RULES §7b.
+  const stagesFile = readJson(stagesPath ?? DEFAULT_STAGES);
+  const stages = Array.isArray(stagesFile) ? stagesFile : stagesFile.stages;
 
   console.log(
     `Population: ${population.riders?.length ?? 0} ryttere (${populationPath}). ` +
-      `Etaper: ${stages.length}${stagesPath ? "" : " (offline proxy-kalender)"}. ` +
+      `Etaper: ${stages.length} (${stagesPath ?? DEFAULT_STAGES}). ` +
       `Seeds: ${seeds.join(", ")}. Feltstoerrelse: ${fieldSize ?? "hele populationen"}.`,
   );
   console.log(

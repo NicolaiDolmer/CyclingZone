@@ -25,6 +25,7 @@ import {
   mergeCategoryScoresForMigration,
   planToMandate,
   planToMilestones,
+  reconcileMandateGoalsWithLegacyBoard,
 } from "./boardMandate.js";
 import { buildGoalKey } from "./boardGoals.js";
 import { CONSEQUENCE_CONSTANTS } from "./boardConsequences.js";
@@ -387,4 +388,111 @@ test("finalizeMandateGoals: ukendt goalKey i adjustments påvirker intet (Keep-d
   });
   assert.equal(adjustments_used, 0);
   assert.equal(goals[0].target, 4);
+});
+
+// ── #5618 · reconcileMandateGoalsWithLegacyBoard ────────────────────────────
+// Rodårsag: en legacy 1yr-forhandling (POST /board/sign,
+// board_profiles.current_goals) skriver aldrig til board_mandates.goals.
+// Spillerrapport: forhandlet top_n_finish target=7, mandatet viste stadig
+// target=5 efter beta-skift, fordi mandat-rækken ikke var blevet skrevet
+// siden FØR forhandlingen.
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: nyere legacy-forhandling overtager target (7/7 i stedet for 7/5)", () => {
+  const mandateGoals = [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }];
+  const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
+    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+  });
+
+  assert.equal(reconciled[0].target, 7);
+  assert.equal(reconciled[0].label, "Slut i top 7");
+  // Mandatets EGET goal-objekt må ikke muteres (rene funktioner, delt reference-hygiejne).
+  assert.equal(mandateGoals[0].target, 5);
+});
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: ÆLDRE legacy-forhandling rører intet (mandatet er allerede friskt)", () => {
+  const mandateGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }];
+  const legacyGoals = [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiatedAt: "2026-08-01T00:00:00Z",
+    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+  });
+
+  assert.equal(reconciled[0].target, 7);
+  assert.equal(reconciled, mandateGoals);
+});
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: intet legacy-board (ny mandat-only team) er en no-op", () => {
+  const mandateGoals = [{ type: "top_n_finish", target: 7 }];
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals: [],
+    legacyNegotiatedAt: null,
+    mandateUpdatedAt: null,
+  });
+  assert.equal(reconciled, mandateGoals);
+});
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: mål uden legacy-modstykke (fx bonustilbuds ekstra-mål, #4856) bevares uændret", () => {
+  const mandateGoals = [
+    { type: "top_n_finish", target: 5, label: "Slut i top 5" },
+    { type: "monument_podium", target: 1, source: "bonus_offer" },
+  ];
+  const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7" }];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
+    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+  });
+
+  assert.equal(reconciled[0].target, 7);
+  assert.equal(reconciled[1].target, 1);
+  assert.equal(reconciled[1].source, "bonus_offer");
+});
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: legacy-forhandling PRÆCIS samme tidsstempel som mandatet rører intet", () => {
+  const mandateGoals = [{ type: "top_n_finish", target: 5 }];
+  const legacyGoals = [{ type: "top_n_finish", target: 7 }];
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiatedAt: "2026-09-01T00:00:00Z",
+    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+  });
+  assert.equal(reconciled[0].target, 5);
+});
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: bonustilbuds-mål (source: bonus_offer) overskrives ALDRIG, selv ved identitets-kollision (CodeRabbit-fund)", () => {
+  // Mandatets NATIVE top_n_finish-mål (target=5) OG et bonustilbuds ekstra-mål
+  // af SAMME type (target=1, source: bonus_offer, tilføjet direkte i
+  // board_mandates af #4856-stien) deler identitet (type+nationality+
+  // race_scope+cumulative — buildGoalIdentityKey inkluderer bevidst hverken
+  // target eller source). Uden bonus_offer-undtagelsen ville BEGGE matche
+  // samme legacy-mål og få target overskrevet — men bonusmålet har ALDRIG
+  // eksisteret i board_profiles.current_goals.
+  const mandateGoals = [
+    { type: "top_n_finish", target: 5, label: "Slut i top 5" },
+    { type: "top_n_finish", target: 1, label: "Bonus: slut i top 1", source: "bonus_offer" },
+  ];
+  const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7" }];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
+    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+  });
+
+  assert.equal(reconciled[0].target, 7, "det native mål overtager stadig legacy-targetet");
+  assert.equal(reconciled[1].target, 1, "bonusmålet må ALDRIG overskrives");
+  assert.equal(reconciled[1].source, "bonus_offer");
 });

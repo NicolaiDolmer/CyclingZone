@@ -2122,3 +2122,233 @@ test("#4759 CodeRabbit-fund: ghost-residual under et ANDET hold optager PK'en fo
   assert.equal(mgrRows.length, 0, "sanity: mgr's enhed endte rent faktisk tom (alle picks ghost-kolliderede)");
   assert.deepEqual(calls, [], "ingen besked om en trup der i virkeligheden aldrig blev fyldt");
 });
+
+// ── #5246 rettelse 23/9 (c): eksplicit kilde pr. skrevet raekke ─────────────────────
+// AI-holdenes raekker maa ikke ende som late_fill (det var triggerens default foer
+// rettelsen). Menneskehold faar den EFFEKTIVE tilstand som kilde.
+
+const noNotify = async () => ({ delivered: true });
+
+test("#5246 (c) late_fill: menneskeholdets raekker faar kilden late_fill, AI-holdets ai_generator", async () => {
+  const { state, seasonId } = seedModeScenario();
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  const mgr = entriesFor(state, "NEAR", "mgr");
+  const ai = state.race_entries.filter((e) => e.team_id === "ai1");
+  assert.ok(mgr.length > 0 && ai.length > 0, "sanity: begge hold fyldt");
+  assert.ok(mgr.every((e) => e.auto_filled_source === "late_fill"));
+  assert.ok(ai.every((e) => e.auto_filled_source === "ai_generator"), "AI-hold er ALDRIG late_fill");
+});
+
+test("#5246 (c) proactive (saesonskifte/admin/sweep-default): AI-holdets raekker er ai_generator", async () => {
+  const { state, seasonId } = seedModeScenario();
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false, now: Date.parse("2026-07-10T08:00:00Z") });
+  const ai = state.race_entries.filter((e) => e.team_id === "ai1");
+  assert.ok(ai.length > 0);
+  assert.ok(ai.every((e) => e.auto_filled_source === "ai_generator"));
+});
+
+test("#5246 (c) opt_in: et menneskehold der har sagt ja faar kilden opt_in (ikke late_fill)", async () => {
+  const { state, seasonId } = seedModeScenario({ managerOptIn: true });
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "opt_in",
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  const mgr = state.race_entries.filter((e) => e.team_id === "mgr");
+  assert.ok(mgr.length > 0, "sanity: opt_in fyldte menneskeholdet");
+  assert.ok(mgr.every((e) => e.auto_filled_source === "opt_in"));
+});
+
+test("#5246 (c) batch-RPC-vejen: hver ny raekke i p_units.inserts baerer holdets kilde", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state, { batchRpc: true });
+  await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  const rpcCalls = supabase.__calls.filter((c) => c.rpc === "apply_race_entry_unit_batch");
+  assert.ok(rpcCalls.length >= 2, "sanity: en batch pr. hold");
+  for (const call of rpcCalls) {
+    const expected = call.args.p_team_id === "mgr" ? "late_fill" : "ai_generator";
+    const inserts = call.args.p_units.flatMap((u) => u.inserts);
+    assert.ok(inserts.length > 0);
+    assert.ok(inserts.every((i) => i.auto_filled_source === expected), `hold ${call.args.p_team_id}: ${expected}`);
+  }
+});
+
+// ── #5246 rettelse 23/9 (d): teams_written = hold der FAKTISK fik nye raekker ────────
+
+test("#5246 (d) teams_written taeller kun hold med nye raekker; en gentaget koersel skriver intet → 0", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state);
+  const args = {
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  };
+  const first = await runRaceEntryGenerator(args);
+  assert.equal(first.teams_written, 2, "mgr (NEAR) + ai1 fik nye raekker");
+  const second = await runRaceEntryGenerator(args);
+  assert.ok(second.teams > 0, "sanity: holdene behandles stadig");
+  assert.equal(second.inserted, 0, "sanity: idempotent, intet nyt at skrive");
+  assert.equal(second.teams_written, 0, "behandlet men intet skrevet taeller ikke som fyldt");
+});
+
+test("#5246 (d) teams_written via batch-RPC-vejen", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const res = await runRaceEntryGenerator({
+    supabase: makeSupabase(state, { batchRpc: true }), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  assert.equal(res.teams_written, 2);
+});
+
+test("#5246 (d) ingen loeb i saesonen → teams_written 0 og inserted 0 i det tidlige svar", async () => {
+  const state = emptyState();
+  const res = await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId: "none", dryRun: false });
+  assert.equal(res.teams_written, 0);
+  assert.equal(res.inserted, 0);
+});
+
+// ── #5246 rettelse 23/9 (a): deploy-vinduet foer migrationen ─────────────────────────
+// Backend deployes ca. 3 min foer auto-migrate.yml tilfoejer kolonnen. PostgREST svarer
+// PGRST204 paa et ukendt felt; per-enheds-upserten skal da skrive uden kilden.
+
+function withMissingSourceColumn(supabase) {
+  let rejected = 0;
+  return {
+    ...supabase,
+    get rejected() { return rejected; },
+    from(table) {
+      const b = supabase.from(table);
+      if (table !== "race_entries") return b;
+      const origUpsert = b.upsert.bind(b);
+      b.upsert = (rows, opts) => {
+        if (rows.some((r) => "auto_filled_source" in r)) {
+          rejected += 1;
+          return Promise.resolve({
+            error: { code: "PGRST204", message: "Could not find the 'auto_filled_source' column of 'race_entries' in the schema cache" },
+          });
+        }
+        return origUpsert(rows, opts);
+      };
+      return b;
+    },
+  };
+}
+
+test("#5246 (a) kolonnen findes ikke endnu (PGRST204) → raekkerne skrives uden kilde, ingen fejlet enhed", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = withMissingSourceColumn(makeSupabase(state));
+  const res = await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  assert.ok(supabase.rejected > 0, "sanity: foerste forsoeg ramte den manglende kolonne");
+  assert.equal(res.failed_units, 0);
+  assert.ok(res.inserted > 0);
+  assert.ok(entriesFor(state, "NEAR", "mgr").length > 0, "late-fill skete alligevel");
+  assert.ok(state.race_entries.every((e) => !("auto_filled_source" in e)), "skrevet uden feltet");
+});
+
+// ── #5645 (Y4): trup-bevidst generator ─────────────────────────────────────────
+// Et hold har én pulje pr. trup. Et U23-løb (races.squad = 'u23') skal fyldes med
+// holdets U23-ryttere fra holdets U23-pulje, aldrig seniorer, og et hold uden U23-
+// pulje er ikke i feltet. Juniorløb: kun sæsonalder >= 17.
+function seedSquadRiders(state, teamId, squad, count, { birthdate = null } = {}) {
+  for (let i = 0; i < count; i++) {
+    const id = `${teamId}-${squad}${i}`;
+    state.riders.push({ id, team_id: teamId, squad, is_academy: true, is_retired: false, birthdate });
+    state.rider_derived_abilities.push({ rider_id: id, ...ab(90 - i * 3) });
+    state.rider_condition.push({ rider_id: id, fatigue: 0 });
+  }
+}
+
+function youthGeneratorState() {
+  const state = emptyState();
+  state.seasons = [{ id: "season1", number: 4 }];
+  state.races = [
+    { id: "S", season_id: "season1", race_class: "Class2", league_division_id: 1, squad: "senior" },
+    { id: "U", season_id: "season1", race_class: "Class2", league_division_id: 10, squad: "u23" },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "S", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z", game_day: 5 },
+    { race_id: "U", stage_number: 1, scheduled_at: "2026-07-01T12:00:00Z", game_day: 5 },
+  ];
+  state.race_stage_profiles = [{ race_id: "S", ...flatProfile(1) }, { race_id: "U", ...flatProfile(1) }];
+  state.teams = [
+    { id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1, u23_league_division_id: 10 },
+    // t2 har ingen U23-pulje (null) → aldrig i et U23-felt.
+    { id: "t2", is_test_account: false, is_frozen: false, league_division_id: 1, u23_league_division_id: null },
+  ];
+  for (const t of ["t1", "t2"]) {
+    seedTeamRiders(state, t, 8);
+    seedSquadRiders(state, t, "u23", 7);
+  }
+  return state;
+}
+
+test("#5645 generator: U23-løb får kun U23-ryttere fra hold i løbets U23-pulje, aldrig seniorer", async () => {
+  const state = youthGeneratorState();
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false });
+
+  const riderById = new Map(state.riders.map((r) => [r.id, r]));
+  const uEntries = state.race_entries.filter((e) => e.race_id === "U");
+  assert.ok(uEntries.length > 0, "U23-løbet fik et felt");
+  for (const e of uEntries) {
+    assert.equal(e.team_id, "t1", "kun holdet med U23-pulje 10 er i feltet");
+    assert.equal(riderById.get(e.rider_id).squad, "u23", `${e.rider_id} er ikke en U23-rytter`);
+  }
+  const sEntries = state.race_entries.filter((e) => e.race_id === "S");
+  assert.ok(sEntries.length > 0, "seniorløbet fik stadig sit felt");
+  for (const e of sEntries) {
+    assert.equal(riderById.get(e.rider_id).squad ?? "senior", "senior", `${e.rider_id} (ungdom) kom i seniorløbet`);
+  }
+  assert.deepEqual([...new Set(sEntries.map((e) => e.team_id))].sort(), ["t1", "t2"]);
+});
+
+test("#5645 (ejer 24/9): juniorløb udtager 16-årige — ingen separat aldersgate ud over trup-medlemskab", async () => {
+  const state = emptyState();
+  state.seasons = [{ id: "season1", number: 4 }];
+  state.races = [{ id: "J", season_id: "season1", race_class: "Class2", league_division_id: 20, squad: "junior" }];
+  state.race_stage_schedule = [{ race_id: "J", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z", game_day: 5 }];
+  state.race_stage_profiles = [{ race_id: "J", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1, junior_league_division_id: 20 }];
+  seedTeamRiders(state, "t1", 8);
+  // De 16-årige er de STÆRKESTE (seedes først med højeste evner) — de skal derfor
+  // være dem udtagelsen vælger nu, hvor der ikke er nogen aldersgate.
+  for (let i = 0; i < 3; i++) {
+    const id = `t1-j16-${i}`;
+    state.riders.push({ id, team_id: "t1", squad: "junior", is_academy: true, is_retired: false, birthdate: "2013-05-01" });
+    state.rider_derived_abilities.push({ rider_id: id, ...ab(99) });
+    state.rider_condition.push({ rider_id: id, fatigue: 0 });
+  }
+  seedSquadRiders(state, "t1", "junior", 7, { birthdate: "2012-05-01" });
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false });
+
+  const jEntries = state.race_entries.filter((e) => e.race_id === "J");
+  assert.ok(jEntries.length > 0, "juniorløbet fik et felt");
+  assert.ok(jEntries.some((e) => e.rider_id.startsWith("t1-j16-")), "16-årig blev udtaget (ejer 24/9)");
+});
+
+test("#5645 generator (risiko 7): en rytter med en manuel seniorentry samme løbsdag udtages ikke til U23-løbet", async () => {
+  const state = youthGeneratorState();
+  // t1-u23x0 blev udtaget manuelt til seniorløbet S og derefter flyttet til U23-truppen.
+  state.race_entries = [
+    { race_id: "S", rider_id: "t1-u23x0", team_id: "t1", race_role: "helper", is_auto_filled: false },
+  ];
+  state.riders.push({ id: "t1-u23x0", team_id: "t1", squad: "u23", is_academy: true, is_retired: false });
+  state.rider_derived_abilities.push({ rider_id: "t1-u23x0", ...ab(99) });
+  state.rider_condition.push({ rider_id: "t1-u23x0", fatigue: 0 });
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false });
+
+  const uRiders = state.race_entries.filter((e) => e.race_id === "U").map((e) => e.rider_id);
+  assert.ok(uRiders.length > 0, "U23-løbet fik et felt");
+  assert.ok(!uRiders.includes("t1-u23x0"), "rytteren er bundet af seniorløbet samme løbsdag");
+});

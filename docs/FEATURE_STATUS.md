@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-73 poster: live 46 · beta 4 · dormant 7 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+75 poster: live 50 · beta 3 · dormant 5 · building 12 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -16,9 +16,9 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Form and fatigue in scoring (`form-and-fatigue`) | live | - | [TRAINING_RULES](TRAINING_RULES.md) | #2353 | 2026-09-06 | Reel vægt via formRaceWeightV3. |
 | Race engine v3 (`race-engine-v3`) | live | `race_engine_v2_enabled` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #1306 | 2026-09-06 | Autoritativ; flagnavn historisk. |
 | v3 scoring components (`race-engine-v3-scoring`) | live | `race_engine_v3_scoring` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #2353 | 2026-09-06 | 4 score-faktorer i raceSimulator. |
+| Async delivery of race result posts (`race-notify-outbox`) | live | `race_notify_outbox_enabled` | [3624-loebsforsinkelser](audits/2026-09-18-3624-loebsforsinkelser.md) | #3624 | 2026-09-24 | Flag on 24/9 kl. 18:45 (ejer-kør). Udbakke-tick hvert minut (race-notify-outbox-drain). |
 | Team selection, captain and breakaway (`team-selection-and-roles`) | live | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #1307 | 2026-09-06 | - |
 | Race engine v4 (`race-engine-v4`) | dormant | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #3855 | 2026-09-07 | Off i prod (#4951). |
-| Async delivery of race result posts (`race-notify-outbox`) | dormant | - | [3624-loebsforsinkelser](audits/2026-09-18-3624-loebsforsinkelser.md) | #3624 | 2026-09-18 | Off i prod; flip er ejer-only. |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #4632 | 2026-09-07 | UI live; effekt venter v4-flip. |
 
 ## race-day
@@ -31,7 +31,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Race page as tabs (v2) (`race-page-tabs-v2`) | live | - | - | #4613 | 2026-09-07 | PR #4913, 6/9; patch note 7.259. |
 | Stage replay and timeline film (`race-replay`) | live | `race_stage_timeline` | - | - | 2026-09-06 | 3 replay-komponenter i UI. |
 | Stage scheduler (`stage-scheduler`) | live | `stage_scheduler_enabled` | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-09-06 | - |
-| Race day development (`race-day-development`) | dormant | `race_day_development_enabled` | [PROGRESSION_RULES](PROGRESSION_RULES.md) | #4850 | 2026-09-07 | Bygget (D2); afventer #4850. |
+| Race day development (`race-day-development`) | dormant | `race_day_development_enabled` | [PROGRESSION_RULES](PROGRESSION_RULES.md) | #4850 | 2026-09-24 | Variant A/S1 (etapens profil som mellem-pas, +1 pr. evne pr. løbsdag, planen ikke input; PR #5640 + #5654). Flippes off → on 28/9 sammen med training_tick_per_race_day, ejer-go. |
 
 ## market
 
@@ -53,8 +53,10 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Contracts, renewal and expiry (`contracts`) | live | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Tre kontrakt-stier ved sæsonskifte. |
 | Rider comparison and watchlist (`rider-compare-and-watchlist`) | live | - | - | - | 2026-09-06 | - |
 | Squad management (`squad-management`) | live | - | - | - | 2026-09-06 | 4 faner i TeamPage. |
+| Rating shows best role now (`rider-rating-best-role-display`) | beta | `rider_best_role_display` | [ryttertype-visning-og-punch-loft-design](superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md) | #5435 | 2026-09-24 | Beta 24/9 kl. 19:05 (ejer: test med beta-testerne foerst); til alle sammen med vaerdiskiftet #5443/#5497 (ejer-gated). |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only (#5268), resten senere. |
-| Rating shows best role now (`rider-rating-best-role-display`) | building | `rider_best_role_display` | [ryttertype-visning-og-punch-loft-design](superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md) | #5435 | 2026-09-22 | Merget 22/9 (#5501), app_config-raekken verificeret off i prod; flippes med vaerdiskiftet #5443/#5497 (ejer-gated). |
+| New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated. |
+| U23 team and Junior team pages (`youth-squad-pages`) | building | - | [HANDOFF](design/youth-tiers/HANDOFF.md) | #2492 | 2026-09-23 | Flag-noegle youth_squad_pages (#5519, default off); flyttes til flag-feltet naar app_config-raekken er applied efter merge. Ejer flipper efter visuelt go. |
 
 ## training
 
@@ -64,8 +66,8 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
 | Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | - | 2026-09-06 | - |
 | Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) | live | - | [TRAINING_RULES](TRAINING_RULES.md) | #4874 | 2026-09-15 | PR #5265; TRAINING_RULES §3.2. |
-| Training page on mobile (`training-mobile-table`) | beta | - | [TRAINING_RULES](TRAINING_RULES.md) | #3643 | 2026-09-19 | Flag training_mobile_table; sat naar raekken er i prod. |
-| Training score 1-99 (`training-score`) | beta | `training_score_visible` | [TRAINING_RULES](TRAINING_RULES.md) | #4851 | 2026-09-21 | Flag beta. Graf, mobilside, tooltip og UI-test rettet 21/9 (#5451, #5453); mangler ejer-flip til alle. |
+| Training page on mobile (`training-mobile-table`) | live | `training_mobile_table` | [TRAINING_RULES](TRAINING_RULES.md) | #3643 | 2026-09-24 | Flag on for alle siden 23/9 (ejer). |
+| Training score 1-99 (`training-score`) | live | `training_score_visible` | [TRAINING_RULES](TRAINING_RULES.md) | #4851 | 2026-09-24 | Flag on for alle siden 23/9 (ejer). Graf, mobilside, tooltip og UI-test rettet 21/9 (#5451, #5453). |
 | Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4846 | 2026-09-15 | A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
@@ -87,8 +89,8 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | --- | --- | --- | --- | --- | --- | --- |
 | AI team retirement (`ai-team-retire`) | live | `ai_team_retire_enabled` | - | - | 2026-09-06 | On; v2 kræver særskilt go. |
 | Season recap (`season-end-recap`) | live | - | - | #1311 | 2026-09-06 | SeasonEndPage m. recap. |
+| Season signup (`season-signup`) | live | `season_signup_enabled` | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-09-24 | Tilmeldingskortet live 24/9 (flag on, S4-tilmelding). |
 | Season transition (`season-transition`) | live | - | [SEASON_TRANSITION_CHECKLIST](SEASON_TRANSITION_CHECKLIST.md) | - | 2026-09-06 | - |
-| Season signup (`season-signup`) | dormant | `season_signup_enabled` | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-09-07 | Dormant til S4-cutover (#452). |
 | AI pool retirement (`ai-pool-retirement-v2`) | building | - | - | - | 2026-09-09 | v2-flag: off, afventer ejer-go. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 

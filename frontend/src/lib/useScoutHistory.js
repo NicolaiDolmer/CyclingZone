@@ -5,6 +5,7 @@
 // delt apiFetch-util i repoet).
 import { useState, useEffect } from "react";
 import { getSession } from "./supabase.js";
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -23,11 +24,11 @@ export function useScoutHistory(staffId) {
       const token = data?.session?.access_token;
       if (!token) { if (alive) setError(true); return; }
       try {
-        const res = await fetch(`${API}/api/club/staff/${staffId}/scouting-history`, {
+        const res = await apiFetch(`${API}/api/club/staff/${staffId}/scouting-history`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("scouting_history_failed");
-        const body = await res.json();
+        const body = res.data || {};
         if (!alive) return;
         setHistory(body.history ?? []);
         if (body.maxLevel) setMaxLevel(body.maxLevel);

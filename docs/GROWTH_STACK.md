@@ -76,6 +76,8 @@ To af fem mål er slået to en halv uge før deadline. De tre der mangler er all
 | dugout-online.com | 1 | 2 | Ikke opgjort |
 | Self-referral | 1 | 1 | Måle-artefakt, ikke en kanal |
 
+Tabellen er målt 8/9, før målebruddet. Fra #5310 tæller en egen-site-referrer uden UTM som "ukendt (tabt i marketing)" og ikke som self-referral, se §3.5.
+
 **AI assistant er en selvstændig kanal** (#4322), ikke støj i referrer-listen. Gruppen samler `chatgpt.com`, `perplexity.ai`, `claude.ai`, `copilot.microsoft.com`, `gemini.google.com`. ChatGPT alene leverede 27/8 flere signups end DuckDuckGo, Bing og dugout-online tilsammen. 7 af de 10 kom ind med `utm_source=chatgpt.com`, altså ChatGPT's egen mærkning, ikke vores. Definitionen findes ét sted i kode: `AI_ASSISTANT_HOSTS` i `scripts/monday-numbers.mjs`.
 
 **Gmail-app-referreren er ikke en tredjepartskanal.** `android-app://com.google.android.gm/` betyder at nogen klikkede et link i en mail fra os (eller videresendte spillet pr. mail). Den tælles derfor som "vores egne mails". 📄 (#3796-kommentar 27/8).
@@ -98,11 +100,18 @@ Tre kanaler man kunne tro vi har. Vi har dem ikke:
 
 ### 3.1 Mekanikken (first-touch)
 
-📄 `frontend/src/lib/attribution.js` + `backend/lib/signupAttribution.js`.
+📄 `frontend/src/lib/attribution.js` + `marketing/lib/attribution.ts` + `backend/lib/signupAttribution.js`.
 
 ```
 Første besøg   → captureFirstTouch() skriver UTM + referrer + landing_path
                  til localStorage["cz_attribution_v1"]. Skriver ÉN gang, første besøg vinder.
+                 SPA'en kører den i main.jsx. Marketing-siderne (/, /da og informations-
+                 siderne, samme origin via rewrites) kører samme capture som inline-script
+                 forrest i root-layoutet, før noget link kan klikkes (#5310).
+Egen referrer  → en same-origin referrer er vores egen side og gemmes aldrig som kanal.
+                 Står der utm_* i dens query, udledes de derfra. UTM på den aktuelle URL vinder.
+Klik til app   → login/signup-links på marketing-siderne bærer de tilladte utm_* med videre
+                 (AppLink), så SPA'en også ser kampagnen hvis localStorage er blokeret.
 Holdoprettelse → PUT /api/teams/my (kun når result.created === true) sender payloaden med;
                  backend/routes/api.js skriver rækken til signup_attribution (service_role-only).
 Aflæsning      → GET /api/admin/attribution, Attribution-fanen i AdminGrowthPage.
@@ -147,6 +156,23 @@ Betalt test             https://cyclingzone.org/?utm_source=reddit&utm_medium=pa
 Reglen fra #2236 er en del af konventionen: **UTM pr. community**, ikke pr. platform. `utm_campaign=<community>` gør at r/WebGames kan skelnes fra r/playmygame.
 
 **Prioriteret rækkefølge for at tagge** 📄 (#3796, anbefaling 27/8): mail-templates og Discords info-kanaler først. Det er de to steder hvor vi ved der er trafik (11 signups via Gmail-app, Discord sender slet ingen referrer), og hvor et tag derfor flytter mest fra "ukendt" til "kendt".
+
+### 3.5 Målebruddet fra 14/9 (#5310)
+
+📄 **Hvad der skete.** Fra 14/9 serverer marketing-sitet den anonyme forside (`/`, #4067). Marketing-siderne fangede ikke first-touch, og deres signup-links var faste. SPA'en fangede derfor først på `/login`, efter klikket: UTM'erne var væk fra URL'en, og referreren var vores egen forside. Den eksterne referrer (fx reddit.com) gik tabt. UTM'erne overlevede kun inde i referrerens query-streng, fordi en same-origin referrer sendes med fuld URL.
+
+**Skrive-siden er rettet** (§3.1): marketing-siderne skriver selv first-touch-rækken, SPA'en gemmer aldrig en same-origin referrer som kanal, og login/signup-links bærer UTM'erne med.
+
+**Læse-siden har en fallback uden prod-skriv.** `backend/lib/attributionDashboard.js` (Attribution-fanen) og `scripts/monday-numbers.mjs` gør det samme ved en række hvor `utm_source` er NULL og referreren er vores eget site (`cyclingzone.org`, `cycling-zone.vercel.app`, `cycling-zone-marketing.vercel.app`, domæne-forankret):
+
+| Referrerens query | Kanal |
+|---|---|
+| har `utm_source` | kanalen udledes af de UTM'er |
+| ingen UTM | **"ukendt (tabt i marketing)"** |
+
+En egen-site-referrer vises heller aldrig som referrer-kanal i Attribution-fanen. "Self-referral" bruges nu kun når `utm_source` selv er vores domæne. Rækkerne i `signup_attribution` er uændrede: ingen backfill, ingen UPDATE.
+
+**Hvad der ikke kan genskabes:** den eksterne referrer for signups mellem 14/9 og deployet af rettelsen. Læs "ukendt (tabt i marketing)" som ukendt, aldrig som direct. Marketing-sidernes traffic-beacon-dækning er ikke en del af rettelsen.
 
 ## 4. Tragten og dag 1
 

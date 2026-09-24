@@ -1,19 +1,20 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, FlagIcon } from "../../components/ui";
+import { resolveGoalTitle } from "./boardroomFormat.js";
 
 // Milepael-prik pr. status (Main.dc.html §3): "current" = gold fyld + navy
 // kant (2px, sidebar-navy — samme token som app-shellets altid-moerke
 // sidebar), alt andet er en neutral/status-kant-cirkel.
 function MilestoneDot({ status }) {
   if (status === "current") {
-    return <div className="mx-auto h-4 w-4 rounded-full border-2 border-cz-sidebar bg-cz-accent" />;
+    return <div className="h-4 w-4 rounded-full border-2 border-cz-sidebar bg-cz-accent sm:mx-auto" />;
   }
   const borderClass = status === "achieved"
     ? "border-cz-success"
     : status === "missed"
       ? "border-cz-danger"
       : "border-cz-3";
-  return <div className={`mx-auto mt-[2px] h-3 w-3 rounded-full border-2 bg-cz-card ${borderClass}`} />;
+  return <div className={`mt-[2px] h-3 w-3 rounded-full border-2 bg-cz-card sm:mx-auto ${borderClass}`} />;
 }
 
 export default function VisionCard({ vision }) {
@@ -46,23 +47,42 @@ export default function VisionCard({ vision }) {
         title={title}
         meta={t("boardroom.vision.meta", { start: vision.startSeason, end: vision.endSeason })}
       />
+      {/* #5617 · Paa mobil er milepaelene en lodret liste (prik + linje til
+          venstre, tekst i fuld bredde). Det vandrette gitter med én kolonne pr.
+          milepael gav ca. 70 px pr. kolonne paa 390 px, og efter #5472's hele
+          saetninger ("Finish ahead of at least 12 other managers in the
+          division") blev hver titel en smal soejle paa fem linjer. Fra sm og op
+          er gitteret uaendret. */}
       <div className="relative pt-2">
-        <div className="absolute left-10 right-10 top-[17px] h-px bg-cz-border" aria-hidden="true" />
-        <div className="relative grid gap-3.5" style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}>
+        <div className="absolute bottom-2 left-[7.5px] top-4 w-px bg-cz-border sm:hidden" aria-hidden="true" />
+        <div className="absolute left-10 right-10 top-[17px] hidden h-px bg-cz-border sm:block" aria-hidden="true" />
+        <ol
+          data-testid="vision-milestones"
+          className="relative flex flex-col gap-4 sm:grid sm:gap-3.5"
+          style={{ gridTemplateColumns: `repeat(${milestones.length}, minmax(0, 1fr))` }}
+        >
           {milestones.map((m) => (
-            <div key={m.id} className="text-center">
-              <MilestoneDot status={m.status} />
-              <p className={`mt-2 text-3xs font-semibold uppercase tracking-[.1em] ${m.isCurrentSeason ? "text-cz-accent-t" : "text-cz-3"}`}>
-                {m.isCurrentSeason
-                  ? t("boardroom.vision.currentSeasonLabel", { season: m.seasonNumber })
-                  : t("boardroom.vision.seasonLabel", { season: m.seasonNumber })}
-              </p>
-              <p className="mt-[3px] text-[13px] font-medium text-cz-1">
-                {t(m.labelKey, m.labelParams || {})}
-              </p>
-            </div>
+            <li key={m.id} data-testid="vision-milestone" className="flex items-start gap-3 sm:block sm:text-center">
+              <div className="flex w-4 shrink-0 justify-center pt-[1px] sm:block sm:w-auto sm:pt-0">
+                <MilestoneDot status={m.status} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`text-3xs font-semibold uppercase tracking-[.1em] sm:mt-2 ${m.isCurrentSeason ? "text-cz-accent-t" : "text-cz-3"}`}>
+                  {m.isCurrentSeason
+                    ? t("boardroom.vision.currentSeasonLabel", { season: m.seasonNumber })
+                    : t("boardroom.vision.seasonLabel", { season: m.seasonNumber })}
+                </p>
+                {/* #5472 · Samme hele saetning som overblikkets "Next milestone"
+                    (resolveGoalTitle, fx "Top 40 in the division"), ikke goalType-
+                    korttitlen: fire ens "Division finish" sagde ikke hvad maalet
+                    var. Korttitlen er kun fallback for en ukendt maaltype. */}
+                <p data-testid="vision-milestone-title" className="mt-[3px] break-words text-[13px] font-medium text-cz-1">
+                  {resolveGoalTitle(t, m) || t(m.labelKey, m.labelParams || {})}
+                </p>
+              </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
       <div className="mt-[18px] border-t border-cz-border pt-3 text-[13px] text-cz-2">
         {t("boardroom.vision.explainer")}

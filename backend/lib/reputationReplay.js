@@ -17,9 +17,23 @@
 //
 // Pagineringen er keyset (fetchAllRowsKeyset) — offset ville betale for alt
 // den springer over på en tabel af denne størrelse (#4010).
+//
+// #5537 (S9, spec 2026-09-15 C3) · v1 er SENIOR-ONLY. Efter A2 (#5517) bor
+// U23-/juniorløb i samme `races`-tabel, og omdømme-motoren har ingen trup-
+// dimension: en ungdomssejr ville give samme omdømme som en seniorsejr i samme
+// løbsklasse. Afspilningen springer derfor ungdomsløbenes resultater over — samme
+// dom som live-krogen (reputationHook.js), så backfill og prod ikke kan blive
+// uenige. Ungdomsresultaterne tælles FOR SIG (youthResults/youthRaceIds): de er
+// ikke "ukendte løb" (unknownRaceIds/skippedResults betyder fortsat "resultater på
+// et løb der ikke er completed"), og de indgår ikke i dækningstallet, som beskriver
+// den population motoren faktisk afspiller. Et ungdoms-omdømme er en senere
+// beslutning, ikke en default. I dag er hvert løb 'senior', så afspilningen er
+// bit-identisk.
 
 import { fetchAllRows, fetchAllRowsKeyset } from "./supabasePagination.js";
 import { eventsFromResultRows } from "./reputationEngine.js";
+import { isMissingSquadColumnError } from "./racePoolCatalog.js";
+import { isSeniorSquadRow, SQUAD_COLUMN } from "./squads.js";
 
 // Resultattyper der KAN give en hændelse med rank 1-10.
 export const RANKED_RESULT_TYPES = Object.freeze(["gc", "stage", "points", "mountain", "young"]);
@@ -28,13 +42,23 @@ export const MAX_RELEVANT_RANK = 10;
 const RACE_COLUMNS = "id, season_id, race_type, race_class, stages, status";
 const RESULT_COLUMNS = "id, race_id, stage_number, result_type, rank, rider_id, team_id";
 
+// ALLE afsluttede løb, med trup — også ungdomsløbene, så replayEvents kan skelne
+// "ungdomsløb" fra "ukendt løb". Findes `races.squad` ikke endnu (42703 i
+// auto-migrate-vinduet), hentes de uden: så findes intet ungdomsløb, og rækkerne
+// uden feltet dømmes senior af isSeniorSquadRow.
 export async function loadCompletedRaces(supabase) {
-  return fetchAllRowsKeyset((after) => {
+  const load = (columns) => fetchAllRowsKeyset((after) => {
     let query = supabase
-      .from("races").select(RACE_COLUMNS).eq("status", "completed").order("id", { ascending: true });
+      .from("races").select(columns).eq("status", "completed").order("id", { ascending: true });
     if (after) query = query.gt("id", after);
     return query;
   }, { keyColumn: "id" });
+  try {
+    return await load(`${RACE_COLUMNS}, ${SQUAD_COLUMN}`);
+  } catch (err) {
+    if (!isMissingSquadColumnError(err)) throw err;
+    return load(RACE_COLUMNS);
+  }
 }
 
 export async function loadRelevantResults(supabase) {
@@ -68,11 +92,13 @@ export async function loadSeasons(supabase) {
 }
 
 /**
- * REN afspilning (ingen I/O): kør hvert afsluttet løbs resultatrækker gennem
- * motoren og saml hændelserne.
+ * REN afspilning (ingen I/O): kør hvert afsluttet SENIORløbs resultatrækker
+ * gennem motoren og saml hændelserne. Ungdomsløbenes rækker afspilles ikke, men
+ * tælles for sig (#5537, se headeren).
  *
  * @returns {{events:Array, byRider:Map, perSeasonClass:Array, racesWithEvents:number,
- *            skippedResults:number, unknownRaceIds:Set<string>}}
+ *            skippedResults:number, unknownRaceIds:Set<string>,
+ *            youthResults:number, youthRaceIds:Set<string>}}
  */
 export function replayEvents({ races = [], results = [], seasons = [], constants = null } = {}) {
   const raceById = new Map(races.map((r) => [r.id, r]));
@@ -81,6 +107,9 @@ export function replayEvents({ races = [], results = [], seasons = [], constants
   const resultsByRace = new Map();
   const unknownRaceIds = new Set();
   let skippedResults = 0;
+  // #5537: resultater på afsluttede UNGDOMSløb — kendte løb, bevidst ikke afspillet.
+  const youthRaceIds = new Set();
+  let youthResults = 0;
   // Dækningstal, ikke en fejl: 42 % af de relevante resultatrækker i S1-S2 har
   // rider_id = NULL (ryttere der er slettet siden, fx sammen med nedlagte
   // AI-hold). Motoren kan pr. definition ikke give omdømme for dem. Tallet
@@ -88,7 +117,15 @@ export function replayEvents({ races = [], results = [], seasons = [], constants
   // som en for lav vægt, i stedet for som manglende historik.
   const coverage = new Map();
   for (const row of results) {
-    const seasonNumber = seasonNumberById.get(raceById.get(row.race_id)?.season_id) ?? null;
+    const knownRace = raceById.get(row.race_id);
+    if (knownRace && !isSeniorSquadRow(knownRace)) {
+      // #5537: v1 senior-only. Før dækningstallet, så det kun beskriver den
+      // population motoren afspiller.
+      youthRaceIds.add(row.race_id);
+      youthResults += 1;
+      continue;
+    }
+    const seasonNumber = seasonNumberById.get(knownRace?.season_id) ?? null;
     const key = seasonNumber ?? "?";
     if (!coverage.has(key)) coverage.set(key, { season_number: seasonNumber, rows: 0, without_rider: 0 });
     const bucket = coverage.get(key);
@@ -151,6 +188,7 @@ export function replayEvents({ races = [], results = [], seasons = [], constants
   return {
     events, byRider, perSeasonClass: perSeasonClassRows, racesWithEvents,
     skippedResults, unknownRaceIds, coverage: coverageRows,
+    youthResults, youthRaceIds,
   };
 }
 

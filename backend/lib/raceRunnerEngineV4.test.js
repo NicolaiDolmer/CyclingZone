@@ -135,6 +135,35 @@ test("#3855 (a) flag off: motoren kaldes ALDRIG, og v3-stien er uændret (engine
   assert.equal(calls, 1);
 });
 
+// ── #5571: AI-holdets markering + løbets etaper når v4 (begge stier) ─────────
+
+test("#5571 flag on: v4 får AI-holdets markering og løbets etaper; et menneskehold markeres aldrig", () => {
+  const entrants = ENTRANTS.map((e) => (e.team_id === "A" ? { ...e, team_is_ai: true } : e));
+  const calls = [];
+  const spyEngine = {
+    version: ENGINE_VERSION_V4,
+    simulateStage: (args) => {
+      calls.push(args);
+      return {
+        ranked: args.entrants.map((e, i) => ({ rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: i * 5, components: {} })),
+        incidents: [],
+        passages: null,
+        timeline: null,
+      };
+    },
+  };
+  buildRaceResults(baseArgs({ entrants, v4Engine: spyEngine }));
+  buildStageRowsAccumulated({
+    race: RACE, stagesSorted: STAGES, stageIndex: 1, entrants, pointsLookup: POINTS, v3: true, v4Engine: spyEngine,
+  });
+  assert.equal(calls.length, STAGES.length + 1);
+  for (const args of calls) {
+    assert.deepEqual(args.raceStages.map((s) => s.stage_number), [1, 2]);
+    assert.ok(args.entrants.filter((e) => e.team_id === "A").every((e) => e.team_is_ai === true));
+    assert.ok(args.entrants.filter((e) => e.team_id === "B").every((e) => !("team_is_ai" in e)));
+  }
+});
+
 // ── (b) Flag ON: samme kolonner som v3 ─────────────────────────────────────
 
 test("#3855 (b) flag on: race_results-rækkerne har PRÆCIS samme kolonner og typer som v3", async () => {

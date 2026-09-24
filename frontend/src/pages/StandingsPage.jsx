@@ -23,6 +23,7 @@ import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
 import { POOL_ALL, matchesPoolTab } from "../lib/standingsPoolFilter.js";
+import { applySeniorSquadFilter, filterSeniorSquadRows, withActiveSeniorPools } from "../lib/seniorScope.ts";
 
 // #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
 // Tier-tallet hentes fra den delte konstant-mirror (rulesNumbers), så frontend ikke
@@ -134,7 +135,11 @@ export default function StandingsPage() {
       .select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).order("division").order("name");
     // #1688: alle 15 puljer (reference-data) til pulje-sub-fanerne. Offentlig
     // læse-policy findes (league-divisions-pyramid-migrationen).
-    const poolsPromise = supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
+    // #5648 (Y2): kun senior + ikke-pensionerede puljer for den aktive sæson
+    // (delt filter/dom med backend's withSeniorSquadScope, spec-s4-struktur
+    // risiko 3). Defensiv: retired_at-migrationen (#5642) er ikke kørt endnu.
+    const poolsPromise = withActiveSeniorPools((scope) =>
+      scope(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index"));
 
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -167,12 +172,16 @@ export default function StandingsPage() {
         ? supabase.from("season_standings")
             // #1688: league_division_id med (GRANT på plads i league-divisions-pyramid-
             // migrationen) + join til league_divisions for puljens label.
-            .select("*, team:team_id(id, name, division, is_ai, league_division_id), pool:league_division_id(id, tier, pool_index, label)")
+            // #5648: squad med i puljeembeddet — season_standings har ingen egen
+            // squad-kolonne, så senior-dommen fældes i JS på det indlejrede pool.squad.
+            .select("*, team:team_id(id, name, division, is_ai, league_division_id), pool:league_division_id(id, tier, pool_index, label, squad)")
             .eq("season_id", activeSeason.id)
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("races")
-        .select("id, name, edition_year, pool_race:pool_race_id(date_text)")
+      // #5648 (Y2): races.squad findes (A2 #5525) — direkte or-filter, ingen
+      // fallback nødvendig.
+      applySeniorSquadFilter(supabase.from("races")
+        .select("id, name, edition_year, pool_race:pool_race_id(date_text)"))
         .eq("season_id", activeSeason?.id || "")
         .order("name"),
       poolsPromise,
@@ -181,8 +190,9 @@ export default function StandingsPage() {
 
     // Index actual standings by team_id. #1718: AI-rækker beholdes nu — de skal
     // vises (markeres diskret i tabellen), ikke filtreres væk.
+    // #5648: senior-scope på det indlejrede pool.squad (JS-dom, se seniorScope.ts).
     const standingsMap = {};
-    (standingsRes.data || []).forEach(s => {
+    filterSeniorSquadRows(standingsRes.data, (row) => row?.pool?.squad).forEach(s => {
       standingsMap[s.team_id] = s;
     });
 
@@ -466,29 +476,46 @@ export default function StandingsPage() {
   function renderTeamCell(s, i) {
     const isSelected = selected.includes(s.team_id);
     const isLeader = lens === LENS_STANDINGS && i === 0;
+    // #5471 (ejer 21/9: "Dette maa aldrig kunne ske"): paa mobil var navne-
+    // cellen EEN flex-linje i ca. 90px med rang, prik, navn og op til fire
+    // badges. Badges er `shrink-0`, navnet `min-w-0`, saa et Founder-hold i
+    // zonen fik 0px navn og en raekke paa 500px. Nu er hele cellen EET barn af
+    // DataTable-linjen, og under 640px WRAPPER det (samme moenster som
+    // RiderNameCell): rang + prik + navn er een gruppe der altid staar sammen
+    // paa foerste linje (`max-w-full`: er navnet bredere end cellen, bryder det
+    // ved ordgraenserne INDE i gruppen), og badges rykker ned paa naeste linje i
+    // stedet for at tage navnets plads. Desktop er uaendret (ingen wrap).
     return (
-      <>
-        <button
-          type="button"
-          onClick={(e) => toggleSelect(s.team_id, e)}
-          aria-pressed={isSelected}
-          aria-label={t("compare.select", { team: s.team?.name })}
-          title={t("compare.selectHint")}
-          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
-            ${isSelected
-              ? "border-cz-accent bg-cz-accent text-cz-on-accent"
-              : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
-        >
-          {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
-        </button>
-        {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min. */}
-        <span aria-hidden="true"
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
-          title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
-        {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
-            stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
-            uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
-        <TeamLink id={s.team_id} tab="results" stopPropagation className="truncate">{s.team?.name}</TeamLink>
+      <span className="flex min-w-0 items-center gap-2 [@media(max-width:640px)]:flex-wrap [@media(max-width:640px)]:gap-y-1">
+        <span className="inline-flex min-w-0 max-w-full items-center gap-2">
+          <span className="relative inline-flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => toggleSelect(s.team_id, e)}
+              aria-pressed={isSelected}
+              aria-label={t("compare.select", { team: s.team?.name })}
+              title={t("compare.selectHint")}
+              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
+                ${isSelected
+                  ? "border-cz-accent bg-cz-accent text-cz-on-accent"
+                  : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
+            >
+              {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
+            </button>
+            {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min.
+                #5471: paa mobil (<=640px) sidder prikken i rang-knappens hjoerne i stedet
+                for paa sin egen plads. Navnecellen er ca. 90px bred paa 390px, og
+                de 14px (prik + mellemrum) var forskellen paa at et ord som
+                "Continental" staar helt eller braekkes midt over. Desktop uaendret. */}
+            <span aria-hidden="true"
+              className={`h-1.5 w-1.5 shrink-0 rounded-full [@media(max-width:640px)]:absolute [@media(max-width:640px)]:-right-0.5 [@media(max-width:640px)]:-top-0.5 ${onlineIds.has(s.team_id) ? "bg-cz-success" : "bg-cz-subtle"}`}
+              title={onlineIds.has(s.team_id) ? t("onlineNow") : t("offline")} />
+          </span>
+          {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen.
+              stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
+              uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
+          <TeamLink id={s.team_id} tab="results" stopPropagation className="min-w-0 truncate">{s.team?.name}</TeamLink>
+        </span>
         {/* #4649: Founder-mærke — synligt for ALLE, ikke kun køberen selv. */}
         <FounderMark teamId={s.team_id} />
         {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
@@ -517,7 +544,7 @@ export default function StandingsPage() {
             {t("relegationBadge")}
           </ZonePill>
         )}
-      </>
+      </span>
     );
   }
 
@@ -554,11 +581,15 @@ export default function StandingsPage() {
     },
     // D-047 (#5102): sejre/podier folder ikke laengere ind i underlinjen — de er
     // chip-kolonner, saa et umaerket tal aldrig staar alene under holdnavnet.
-    { key: "stageWins", header: t("thStageWins"), numeric: true, render: (s) => s.stage_wins || 0 },
+    // #5471: paa mobil er talkolonnernes HEADERE det der afgoer navnets plads —
+    // "ETAPESEJRE" gjorde kolonnen ca. 90px bred for et tal paa et ciffer.
+    { key: "stageWins", header: t("thStageWins"), mobileHeader: t("thStageWinsShort"), numeric: true, render: (s) => s.stage_wins || 0 },
     { key: "teamComp", header: t("thTeamComp"), numeric: true, render: (s) => teamComp[s.team_id]?.wins || 0 },
     { key: "podiums", header: t("thPodiums"), numeric: true, render: (s) => podiums[s.team_id] || 0 },
     {
-      key: "prize", header: t("thPrize"), numeric: true,
+      // #5471: den korte label paa mobil (thPrizeShort fandtes allerede) — et
+      // langt header-ord tog plads fra holdnavnet paa 390px.
+      key: "prize", header: t("thPrize"), mobileHeader: t("thPrizeShort"), numeric: true,
       render: (s) => <>{formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-3xs text-cz-3">CZ$</span></>,
     },
     {
@@ -592,7 +623,7 @@ export default function StandingsPage() {
       subline: (s) => <ShareBar pct={Math.round((strengthVal(s) / maxValue) * 100)} color={colorSoft} />,
     },
     {
-      key: "squadValue", header: t("thSquadValue"), numeric: true,
+      key: "squadValue", header: t("thSquadValue"), mobileHeader: t("thSquadValueShort"), numeric: true,
       render: (s) => (strengthLoading && !strength?.[s.team_id]
         ? <span className="text-cz-3">…</span>
         : <>{formatNumber(strength?.[s.team_id]?.totalValue || 0)} <span className="text-3xs text-cz-3">CZ$</span></>),

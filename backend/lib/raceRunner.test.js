@@ -537,6 +537,35 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   assert.equal(r1.abilities.climbing, 80);
 });
 
+// #5571: AI-holdets markering følger med på entrant, så løbsmotor v4 kan give
+// KUN AI-hold M14's taktik. Et menneskehold får aldrig feltet.
+test("loadEntrantsForRace: markerer AI-holdets ryttere (team_is_ai), aldrig et menneskeholds", async () => {
+  const supabase = makeSupabase({
+    ...padToFloor(padToFloor({
+      race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T2" }],
+      riders: [
+        { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
+        { id: "r2", team_id: "T2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+      ],
+      rider_derived_abilities: [
+        { rider_id: "r1", ...abil({ climbing: 80 }) },
+        { rider_id: "r2", ...abil({ sprint: 80 }) },
+      ],
+    }, "T1", "padA"), "T2", "padB"),
+    teams: [
+      { id: "T1", name: "Hold A", is_ai: true },
+      { id: "T2", name: "Hold B", is_ai: false },
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  const aiRiders = entrants.filter((e) => e.team_id === "T1");
+  const humanRiders = entrants.filter((e) => e.team_id === "T2");
+  assert.ok(aiRiders.length > 0 && humanRiders.length > 0);
+  assert.ok(aiRiders.every((e) => e.team_is_ai === true));
+  assert.ok(humanRiders.every((e) => e.team_is_ai === undefined));
+  assert.equal(aiRiders[0].team_name, "Hold A");
+});
+
 // #4357: Postgres garanterer ingen rækkefølge uden ORDER BY — regressionstest der
 // fælder hvis nogen fjerner .order()-kaldet på race_entries-forespørgslen. Bygger
 // sin egen mock (i stedet for makeSupabase, hvis order() er et no-op) netop for at
@@ -1313,6 +1342,7 @@ test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp 
       "rpc:refresh_team_standings_ext_mv",
       "rpc:refresh_team_race_points_mv",
       "rpc:refresh_global_rank_mv",
+      "rpc:refresh_youth_rider_rankings_mv", // #5647: ungdoms-rytterranglisten, sidst i samme refresh
       "recomputeRaceDays",
       "notifyDiscord",
       "notifyInApp",
@@ -1459,4 +1489,40 @@ test("simulateRace: applyFatigue-fejl vælter ikke afviklingen (#1306)", async (
     applyFatigue: async () => { throw new Error("fatigue boom"); },
   });
   assert.ok(report.rowsImported > 0, "finalization skal fuldføre selv om applyFatigue kaster");
+});
+
+// ── #5645 (Y4): præmievagt ved kilden ────────────────────────────────────────
+// Ungdomsløb (races.squad = u23/junior) udbetaler ingen præmiepenge i v1. Point er
+// sportsdata og uændrede; kun prize_money nulstilles. Senior: bit-identisk.
+test("#5645 buildRaceResults: seniorløb (squad 'senior' eller udeladt) er bit-identisk", () => {
+  const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const senior = buildRaceResults({ race: { ...STAGE_RACE, squad: "senior" }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  assert.deepEqual(senior.resultRows, base.resultRows);
+  const paid = base.resultRows.filter((r) => r.prize_money > 0);
+  assert.ok(paid.length > 0, "fixture giver præmier i et seniorløb");
+  for (const r of paid) assert.equal(r.prize_money, r.points_earned * PRIZE_PER_POINT);
+});
+
+for (const squad of ["u23", "junior"]) {
+  test(`#5645 buildRaceResults: ${squad}-løb giver prize_money = 0 på hver række, point uændrede`, () => {
+    const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    assert.equal(youth.resultRows.length, base.resultRows.length);
+    for (const r of youth.resultRows) assert.equal(r.prize_money, 0, `${r.result_type} rank ${r.rank} bar en præmie`);
+    assert.deepEqual(
+      youth.resultRows.map((r) => r.points_earned),
+      base.resultRows.map((r) => r.points_earned),
+      "point er uændrede",
+    );
+  });
+}
+
+test("#5645 buildStageRowsAccumulated: u23-løb giver prize_money = 0 (etape-for-etape-stien)", () => {
+  const stagesSorted = [...STAGES_3].sort((a, b) => a.stage_number - b.stage_number);
+  const { resultRows } = buildStageRowsAccumulated({
+    race: { ...STAGE_RACE, squad: "u23" }, stagesSorted, stageIndex: 0, entrants: ENTRANTS, pointsLookup: POINTS,
+  });
+  assert.ok(resultRows.length > 0);
+  assert.ok(resultRows.some((r) => r.points_earned > 0), "fixture giver point");
+  for (const r of resultRows) assert.equal(r.prize_money, 0);
 });

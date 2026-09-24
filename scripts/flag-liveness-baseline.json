@@ -1,0 +1,64 @@
+{
+  "_comment": "Kendt gaeld for scripts/check-flag-liveness.mjs (#5507). Kun huller der staar her, er tilladt. Lukker du et hul, saa slet det her (vagten melder det). Tilfoej ALDRIG et nyt hul uden ejer-go.",
+  "known": {
+    "academy_intake_pull_enabled": [
+      "test-on"
+    ],
+    "ai_pool_retirement_v2_enabled": [
+      "migration"
+    ],
+    "ai_team_retire_enabled": [
+      "migration"
+    ],
+    "auto_calendar_enabled": [
+      "migration"
+    ],
+    "auto_prize_enabled": [
+      "migration"
+    ],
+    "email_loop_enabled": [
+      "migration"
+    ],
+    "intake_offer_expiry_enabled": [
+      "migration",
+      "test-on"
+    ],
+    "peak_planner_enabled": [
+      "migration"
+    ],
+    "race_day_intention_enabled": [
+      "migration",
+      "test-on"
+    ],
+    "race_finalize_resumable_enabled": [
+      "migration",
+      "test-on"
+    ],
+    "race_notify_outbox_enabled": [
+      "test-on"
+    ],
+    "race_stage_timeline": [
+      "migration",
+      "test-on"
+    ],
+    "rider_values_bulk_write_enabled": [
+      "migration",
+      "test-on"
+    ],
+    "scout_system_enabled": [
+      "migration"
+    ],
+    "season_documentary_llm_enabled": [
+      "test-on"
+    ],
+    "season_end_skip_division_movement": [
+      "migration"
+    ],
+    "stage_scheduler_enabled": [
+      "migration"
+    ],
+    "training_score_visible": [
+      "test-on"
+    ]
+  }
+}

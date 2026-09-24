@@ -11,6 +11,7 @@ const ALL_RPCS = [
   "refresh_team_standings_ext_mv",
   "refresh_team_race_points_mv",
   "refresh_global_rank_mv",
+  "refresh_youth_rider_rankings_mv", // #5647: sidst, efter de fire seniorviews
 ];
 
 function createMockSupabase({ rpcErrors = {}, heartbeatError = null } = {}) {
@@ -37,7 +38,7 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null } = {}) {
   };
 }
 
-test("refreshRankingMatviewsSafe — alle fire lykkes: kalder alle RPC'er + upserter heartbeat", async () => {
+test("refreshRankingMatviewsSafe — alle lykkes: kalder alle RPC'er + upserter heartbeat", async () => {
   const supabase = createMockSupabase();
   const captured = [];
   const result = await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) });
@@ -50,17 +51,17 @@ test("refreshRankingMatviewsSafe — alle fire lykkes: kalder alle RPC'er + upse
   assert.equal(captured.length, 0);
 });
 
-test("refreshRankingMatviewsSafe — én RPC fejler: de andre tre kaldes stadig, heartbeat springes over, Sentry rapporteres", async () => {
+test("refreshRankingMatviewsSafe — én RPC fejler: de andre kaldes stadig, heartbeat springes over, Sentry rapporteres", async () => {
   const supabase = createMockSupabase({ rpcErrors: { refresh_team_race_points_mv: "boom" } });
   const captured = [];
   const result = await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) });
 
   assert.equal(result, false);
-  // Best-effort pr. matview: alle fire RPC'er kaldes, uanset om en tidligere fejlede.
+  // Best-effort pr. matview: alle RPC'er kaldes, uanset om en tidligere fejlede.
   assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
-  assert.equal(supabase.upsertCalls.length, 0, "heartbeat må IKKE opdateres hvis ikke alle fire lykkedes");
+  assert.equal(supabase.upsertCalls.length, 0, "heartbeat må IKKE opdateres hvis ikke alle lykkedes");
   assert.equal(captured.length, 1);
-  assert.match(captured[0].err.message, /1\/4 matview-refresh fejlede/);
+  assert.match(captured[0].err.message, /1\/5 matview-refresh fejlede/);
   assert.equal(captured[0].ctx.extra.failures.length, 1);
   assert.equal(captured[0].ctx.extra.failures[0].label, "team_race_points_mv");
 });
@@ -80,6 +81,34 @@ test("refreshRankingMatviewsSafe — uden captureExceptionFn kaster den ikke (be
   const supabase = createMockSupabase({ rpcErrors: { refresh_global_rank_mv: "boom" } });
   const result = await refreshRankingMatviewsSafe(supabase);
   assert.equal(result, false);
+});
+
+test("#5647 refreshRankingMatviewsSafe — ungdoms-rytterranglisten refreshes SIDST, efter de fire seniorviews", async () => {
+  const supabase = createMockSupabase();
+  await refreshRankingMatviewsSafe(supabase);
+  assert.equal(supabase.rpcCalls.at(-1), "refresh_youth_rider_rankings_mv");
+  assert.deepEqual(supabase.rpcCalls.slice(0, 4), ALL_RPCS.slice(0, 4));
+});
+
+test("#5647 refreshRankingMatviewsSafe — mangler ungdoms-RPC'en (migration ikke applied): seniorviews refreshes stadig, heartbeat springes over", async () => {
+  const supabase = createMockSupabase({
+    rpcErrors: { refresh_youth_rider_rankings_mv: "Could not find the function public.refresh_youth_rider_rankings_mv" },
+  });
+  const captured = [];
+  const result = await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) });
+  assert.equal(result, false);
+  assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
+  assert.equal(supabase.upsertCalls.length, 0);
+  assert.equal(captured[0].ctx.extra.failures[0].label, "youth_rider_rankings_mv");
+});
+
+test("#5647 forward-guard — migrationen bag ungdoms-refresh-RPC'en findes og holder matviewet lukket for anon/authenticated", () => {
+  const file = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."), "database", "2026-09-25-4620-youth-rider-rankings-mv.sql");
+  assert.ok(fs.existsSync(file), "youth_rider_rankings_mv-migrationen mangler");
+  const sql = fs.readFileSync(file, "utf8").replace(/--[^\n]*/g, " ");
+  assert.match(sql, /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.refresh_youth_rider_rankings_mv\(\)/i);
+  assert.match(sql, /ra\.squad\s*<>\s*'senior'/i, "matviewet må kun tælle ungdomsløb");
+  assert.match(sql, /REVOKE\s+ALL\s+ON\s+TABLE\s+public\.youth_rider_rankings_mv\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/i);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

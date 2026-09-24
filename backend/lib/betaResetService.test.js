@@ -77,6 +77,7 @@ function createBetaResetSupabase(initialState, fkConstraints = []) {
         if (filter.type === "neq") return row[filter.column] !== filter.value;
         if (filter.type === "in") return filter.values.includes(row[filter.column]);
         if (filter.type === "not-is-null") return row[filter.column] !== null && row[filter.column] !== undefined;
+        if (filter.type === "senior") return row.squad == null || row.squad === "senior";
         return true;
       });
     }
@@ -135,6 +136,12 @@ function createBetaResetSupabase(initialState, fkConstraints = []) {
         if (operator === "is" && value === null) {
           filters.push({ type: "not-is-null", column });
         }
+        return query;
+      },
+      // #5536: withSeniorSquadScope's prædikat. Andre .or()-udtryk kendes ikke af mocken.
+      or(expr) {
+        assert.equal(expr, "squad.is.null,squad.eq.senior");
+        filters.push({ type: "senior" });
         return query;
       },
       order() {
@@ -554,6 +561,33 @@ test("allocateLeaguePools placerer ægte managere i tier 4 + spreder dem på div
   // Ingen NULL league_division_id på manager-hold efter kørsel.
   for (const id of managerIds) {
     assert.notEqual(supabase.state.teams.find((t) => t.id === id).league_division_id, null);
+  }
+});
+
+test("#5536 allocateLeaguePools placerer aldrig et managerhold i en ungdomspulje (senior bit-identisk)", async () => {
+  const withTeams = (state) => {
+    state.teams.push(
+      { id: "team-2", user_id: "user-2", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 2, league_division_id: 1 },
+      { id: "team-3", user_id: "user-3", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 2, league_division_id: 1 },
+    );
+    return state;
+  };
+  const plain = createBetaResetSupabase(withTeams(createInitialState()));
+  const plainResult = await allocateLeaguePools(plain);
+
+  // Ungdomspuljer med samme tier, FØRST i tabellen: uden scope ville mindst-fyldte-først
+  // (første pulje ved lige fyldning) vælge dem. Negative id'er gør dem lette at genkende.
+  const mixedState = withTeams(createInitialState());
+  const youthPools = seedDiv4Pools().map((p, i) => ({ ...p, id: -1 - i, squad: "u23", label: `U23 ${p.label}` }));
+  mixedState.league_divisions = [...youthPools, ...mixedState.league_divisions];
+  const mixed = createBetaResetSupabase(mixedState);
+  const mixedResult = await allocateLeaguePools(mixed);
+
+  assert.deepEqual(mixedResult, plainResult);
+  const placement = (supabase) => supabase.state.teams.map((t) => [t.id, t.division, t.league_division_id]);
+  assert.deepEqual(placement(mixed), placement(plain));
+  for (const team of mixed.state.teams.filter((t) => ["team-1", "team-2", "team-3"].includes(t.id))) {
+    assert.ok(team.league_division_id > 0, `${team.id} i en seniorpulje, ikke ungdomspulje ${team.league_division_id}`);
   }
 });
 

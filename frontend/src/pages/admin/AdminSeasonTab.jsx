@@ -6,6 +6,7 @@ import DeadlineReadinessSection from "../../components/admin/DeadlineReadinessSe
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej; readAdminJson tager begge former
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../../components/ui/SortableTh.jsx";
 import { formatSeasonEndedToast } from "../../components/admin/shared/seasonEndedToast.js";
@@ -58,8 +59,8 @@ export default function AdminSeasonTab() {
 
   async function loadActiveAuctions() {
     try {
-      const res = await fetch(`${API}/api/admin/auctions/active`, { headers: await getAuth() });
-      const data = await res.json();
+      const res = await apiFetch(`${API}/api/admin/auctions/active`, { headers: await getAuth() });
+      const data = res.data || {}; // #5242: apiFetch parser allerede, giver null i stedet for en kastet parse-fejl
       if (res.ok) setActiveAuctions(data.auctions || []);
     } catch { /* silent */ }
   }
@@ -90,7 +91,7 @@ export default function AdminSeasonTab() {
   async function handleCreateSeason(e) {
     e.preventDefault(); setLoad("season", true);
     try {
-      const res = await fetch(`${API}/api/admin/seasons`, {
+      const res = await apiFetch(`${API}/api/admin/seasons`, {
         method: "POST", headers: await getAuth(),
         body: JSON.stringify({ number: parseInt(seasonForm.number), race_days_total: parseInt(seasonForm.race_days_total) }),
       });
@@ -108,7 +109,7 @@ export default function AdminSeasonTab() {
     if (action === "end" && !confirm("Afslut sæson? Dette kører divisionsbonus, op/nedrykning (aktiv fra sæson 1) og board-eval. Løn + renter trækkes IKKE her — det er flyttet til næste sæsons start (v3.78).")) return;
     setLoad(`${action}_${seasonId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/seasons/${seasonId}/${action}`, {
+      const res = await apiFetch(`${API}/api/admin/seasons/${seasonId}/${action}`, {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -128,7 +129,7 @@ export default function AdminSeasonTab() {
     if (!confirm("Genberegn standings for denne sæson ud fra gemte løbsresultater?")) return;
     setLoad(`rebuild_${seasonId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/seasons/${seasonId}/rebuild-standings`, {
+      const res = await apiFetch(`${API}/api/admin/seasons/${seasonId}/rebuild-standings`, {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -150,7 +151,7 @@ export default function AdminSeasonTab() {
     if (!confirm("Genberegn point + præmiepenge på alle løbsresultater ud fra den aktuelle point-config? Rytternes markedsværdi opdateres samtidig. Allerede udbetalte løb røres ikke.")) return;
     setLoad(`rederive_${seasonId}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/seasons/${seasonId}/rederive-points`, {
+      const res = await apiFetch(`${API}/api/admin/seasons/${seasonId}/rederive-points`, {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -176,7 +177,7 @@ export default function AdminSeasonTab() {
     if (!closesAtInput) { showMsg("❌ Vælg en lukketid", "error"); return; }
     setLoad("closesAt", true);
     try {
-      const res = await fetch(`${API}/api/admin/transfer-window/closes-at`, {
+      const res = await apiFetch(`${API}/api/admin/transfer-window/closes-at`, {
         method: "PUT", headers: await getAuth(),
         body: JSON.stringify({ closes_at: new Date(closesAtInput).toISOString() }),
       });
@@ -194,7 +195,7 @@ export default function AdminSeasonTab() {
   async function updateDeadlineDayOverride(override) {
     setLoad(`dd_${override}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/deadline-day/override`, {
+      const res = await apiFetch(`${API}/api/admin/deadline-day/override`, {
         method: "PUT", headers: await getAuth(),
         body: JSON.stringify({ override }),
       });
@@ -215,7 +216,7 @@ export default function AdminSeasonTab() {
     if (!confirm(`Annullér auktion på ${riderName}?\n\n${bidderCount} budgivere notificeres. Bud frigives automatisk.`)) return;
     setLoad(`cancel_auction_${auction.id}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/auctions/${auction.id}/cancel`, {
+      const res = await apiFetch(`${API}/api/admin/auctions/${auction.id}/cancel`, {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -236,7 +237,7 @@ export default function AdminSeasonTab() {
     setLoad("cal_preview", true);
     setCalResult(null);
     try {
-      const res = await fetch(`${API}/api/admin/seasons/${calSeasonId}/generate-calendar/preview`, { headers: await getAuth() });
+      const res = await apiFetch(`${API}/api/admin/seasons/${calSeasonId}/generate-calendar/preview`, { headers: await getAuth() });
       const data = await readAdminJson(res);
       if (res.ok) setCalPreview(data);
       else { setCalPreview(null); showMsg(`❌ ${adminErrorMessage(data, res)}`, "error"); }
@@ -255,7 +256,7 @@ export default function AdminSeasonTab() {
     if (!confirm(`Generér sæson-kalenderen? Dette indsætter ca. ${raceCount || "?"} løb (+ etape-profiler/schedule) for sæsonen. Kør altid preview først.`)) return;
     setLoad("cal_generate", true);
     try {
-      const res = await fetch(`${API}/api/admin/seasons/${calSeasonId}/generate-calendar?dryRun=false`, {
+      const res = await apiFetch(`${API}/api/admin/seasons/${calSeasonId}/generate-calendar?dryRun=false`, {
         method: "POST", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
@@ -276,7 +277,7 @@ export default function AdminSeasonTab() {
     if (!previewSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
     setLoadingPreview(true);
     try {
-      const res = await fetch(`${API}/api/admin/season-end-preview/${previewSeason}`, { headers: await getAuth() });
+      const res = await apiFetch(`${API}/api/admin/season-end-preview/${previewSeason}`, { headers: await getAuth() });
       const data = await readAdminJson(res);
       if (res.ok) setSeasonPreview(data.preview);
       else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");

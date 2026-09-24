@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen. (Codex genindført 2026-09-09 pr. [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065) efter udfasning 2026-06-12; Manus er fortsat udfaset.)_
+_Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen (Codex genindført 9/9, [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065))._
 
 > **Lean core (split 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).** Denne fil holder kun det der reelt skal i HVER session — hard rules (fuld tekst), start-sekvens og delt handoff-format. Rolle-matrix, cross-PC-detaljer, session-rytme-signaler, token-effektivitets-vejledning og loops-quick-ref er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md)** (WARM, on-demand). Intet indhold er slettet — kun flyttet.
 
@@ -44,7 +44,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 11. **Påstande om systemtilstand kræver en positiv observation.** "Jeg fandt ingen" er ikke "der er ingen". Brug det værktøj der ser den tilstand du udtaler dig om, og sig hvilket.
 
-12. **Loft på igangværende arbejde: maks 8 åbne PR'er.** Er køen fuld, merges før der startes nyt.
+12. **PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510).** Bremsen på igangværende arbejde er lanerne (4) og verifikations-semaforen (2), ikke et antal åbne PR'er.
 
 13. **Ingen påstand uden en måling. Issue-tal ældre end en uge GENMÅLES, de citeres ikke.**
 
@@ -58,7 +58,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 18. **Commit i hoved-checkoutet kun bag den blokerende branch-guard.** Kør `bash scripts/guard-commit-branch.sh <forventet-branch> && git commit ...`. Committer du via `git -C <dir>` (worktree-workers), så giv guarden SAMME mappe: `bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit ...`; uden `<dir>` tjekker den shell-cwd, som agent-shells nulstiller mellem kald — hændelsen bag: [`docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter`](docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter). Guarden exiter 1 ved mismatch og ved detached HEAD. `git branch --show-current` er IKKE en guard: den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad. Blokerer guarden, så gentag ALDRIG uden den; en blokeret guard er signalet om at checkoutet står forkert. Er der fremmed ucommitteret arbejde i træet, så skift ikke branch (et `checkout` bærer deres filer med) men commit via `git worktree add <tmp> <branch>`.
 
-19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main.GIT_PREVIOUS
+19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main.
 
 20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out.
 
@@ -93,9 +93,13 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 ### Backlog-disciplin (ejer-direktiv 25/8, [#4267](https://github.com/NicolaiDolmer/CyclingZone/issues/4267))
 
-33. **Dublet-tjek er obligatorisk FØR `gh issue create`.** Søg mindst to gange på nøgleord fra titlen (`gh issue list --search "<ord>" --state all` og `gh search issues --repo NicolaiDolmer/CyclingZone --match title,body "<ord>"`) og læs hits'ene før du opretter. Findes emnet allerede (åbent ELLER lukket-uden-leverance), så kommentér på det eksisterende issue i stedet — og reopen hvis det blev lukket som dublet af noget der aldrig blev leveret. Et nyt issue nævner de beslægtede numre det tjekkede mod. Ejeren 25/8: *"Der skal aldrig oprettes en opgave til github, hvis den er der i forvejen."* Housekeeping-skillen lukkede 20 dubletpar 31/8 og 26 par 30/7 — hver af dem var et brud på denne regel.
+33. **Dublet-tjek er obligatorisk FØR `gh issue create`.** Søg mindst to gange på nøgleord fra titlen (`gh issue list --search "<ord>" --state all` og `gh search issues --repo NicolaiDolmer/CyclingZone --match title,body "<ord>"`) og læs hits'ene før du opretter. Findes emnet allerede (åbent ELLER lukket-uden-leverance), så kommentér på det eksisterende issue i stedet — og reopen hvis det blev lukket som dublet af noget der aldrig blev leveret. Et nyt issue nævner de beslægtede numre det tjekkede mod. Ejeren 25/8: *"Der skal aldrig oprettes en opgave til github, hvis den er der i forvejen."*
 
 34. **Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md`, republiceres Masterplan-artifacten (samme URL, aldrig en ny) FØR sessionen lukker. Fuld tekst: [`docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync`](docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync).
+
+### Merge-regler (ejer 22/9 + 24/9, #5508)
+
+35. **Stående merge-regler.** Merges UDEN ejerens ordrette "merge", når CI er grøn, et uafhængigt read-only diff-tjek er rent, CodeRabbit ikke har blokerende fund, og hvert merge står i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter · **(b)** motor-PR'er bag slukket `race_engine_v4`, når intet ændrer sig for spillerne og ingen måling bliver NY rød (#5580/#5581 undtaget) · **(c)** Dependabot patch/minor, docs uden spillertekst, CI/hooks/test-only. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger. `scripts/merge-queue.ps1`s klassifikator skal kende (a)-(c) og logge kategorien på PR'en.
 
 ### §LOKAL lokal-only-state
 

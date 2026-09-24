@@ -9,7 +9,8 @@ import { isBornFromPriors, deriveBirthAbilities, birthAbilityKeys, statLevelToAb
 
 // #1688 — AI-fill-generator. Politik (frosset):
 //   tier 1 OG tier 2-puljer  → fyld ALTID med AI op til POOL_TARGET_SIZE (24).
-//   tier 3 OG tier 4-puljer  → fyld med AI KUN i puljer med >=1 ægte manager.
+//   tier 3-puljer            → fyld med AI KUN i puljer med >=1 ægte manager.
+//   tier 4-puljer (#5642)    → fyld ALTID (som tier 1/2); pensionerede puljer → 0.
 // Idempotent (re-run top-up'er kun). Reconcile fjerner overskuds-AI så
 // pulje-størrelse <= target og ægte managere aldrig fortrænges; en tier-3/4-pulje
 // der mister sin sidste manager tømmes for AI.
@@ -29,8 +30,19 @@ function makeSupabase(initial = {}) {
     if (!state[table]) state[table] = [];
     const rows = () => state[table];
     const filters = [];
+    // #5517: .or("squad.is.null,squad.eq.senior") — puljernes senior-scope
+    // (squads.withSeniorSquadScope). Samme mini-grammatik som tierCalendarMaterializer-
+    // testens mock; enhver anden operator fælder højlydt i stedet for at matche alt.
+    function matchOrCond(row, cond) {
+      const [col, op, ...rest] = String(cond).split(".");
+      const raw = rest.join(".");
+      if (op === "is") return (row[col] ?? null) === (raw === "null" ? null : raw);
+      if (op === "eq") return row[col] === raw;
+      throw new Error(`mock-supabase: uunderstøttet .or()-operator "${op}" i "${cond}"`);
+    }
     function matches(row) {
       return filters.every((f) => {
+        if (f.t === "or") return f.conds.some((cond) => matchOrCond(row, cond));
         if (f.t === "eq") return row[f.c] === f.v;
         if (f.t === "neq") return row[f.c] !== f.v;
         if (f.t === "in") return f.v.includes(row[f.c]);
@@ -48,6 +60,7 @@ function makeSupabase(initial = {}) {
       gt(c, v) { filters.push({ t: "gt", c, v }); return builder; },
       gte(c, v) { filters.push({ t: "gte", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
+      or(expr) { filters.push({ t: "or", conds: String(expr).split(",") }); return builder; },
       order() { return builder; },
       // fetchAllRows-paginering (supabasePagination.js): én side rummer alt i denne
       // in-memory mock; from=0 → alle matchende rækker, ellers tom (loopet stopper).
@@ -133,14 +146,19 @@ function makeSupabase(initial = {}) {
   return { from, state };
 }
 
-// 15-pulje-pyramide (tier1×1, tier2×2, tier3×4, tier4×8).
+// 15 pulje-rækker (tier1×1, tier2×2, tier3×4, tier4×8) i S4-formen (#5642, pyramide
+// 1/2/4/4): D4 E-H (pool_index 4-7) står stadig i league_divisions, men er pensioneret.
+const S4_RETIRED_AT = "2026-09-27T20:00:00Z";
 function seedPools() {
   const pools = [];
   let id = 1;
   const layout = [[1, 1], [2, 2], [3, 4], [4, 8]];
   for (const [tier, n] of layout) {
     for (let i = 0; i < n; i++) {
-      pools.push({ id: id++, tier, pool_index: i, label: `Division ${tier} — ${String.fromCharCode(65 + i)}` });
+      pools.push({
+        id: id++, tier, pool_index: i, label: `Division ${tier} — ${String.fromCharCode(65 + i)}`,
+        retired_at: tier === 4 && i >= 4 ? S4_RETIRED_AT : null,
+      });
     }
   }
   return pools;
@@ -181,16 +199,101 @@ test("tier 1 + tier 2-puljer fyldes ALTID til target, selv uden ægte managere",
   assert.equal(countTeamsInPool(supabase.state, t1.id, { ai: false }), 0, "ingen ægte hold opfundet");
 });
 
-test("tier 3 + tier 4-puljer UDEN ægte manager fyldes IKKE", async () => {
+test("tier 3-puljer UDEN ægte manager fyldes IKKE", async () => {
   const pools = seedPools();
   const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
 
   await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
 
   const t3a = poolByTierIndex(pools, 3, 0);
-  const t4a = poolByTierIndex(pools, 4, 0);
   assert.equal(countTeamsInPool(supabase.state, t3a.id), 0, "tom tier-3-pulje må ikke fyldes");
-  assert.equal(countTeamsInPool(supabase.state, t4a.id), 0, "tom tier-4-pulje må ikke fyldes");
+});
+
+test("#5642 aktive tier 4-puljer (D4 A-D) fyldes ALTID til target, også uden ægte managere", async () => {
+  const pools = seedPools();
+  const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+
+  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+
+  for (let i = 0; i < 4; i++) {
+    const pool = poolByTierIndex(pools, 4, i);
+    assert.equal(countTeamsInPool(supabase.state, pool.id, { ai: true }), POOL_TARGET_SIZE, `${pool.label} fyldt med AI`);
+  }
+});
+
+test("#5642 pensionerede puljer (D4 E-H) får ALDRIG AI, og eksisterende AI i dem er overskud", async () => {
+  const pools = seedPools();
+  const t4e = poolByTierIndex(pools, 4, 4);
+  const t4h = poolByTierIndex(pools, 4, 7);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [
+      // Et ægte hold i en pensioneret pulje må ikke gøre den "levende" igen.
+      { id: "mgr-e", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 4, league_division_id: t4e.id },
+      { id: "ai-h", name: "AI H", is_ai: true, is_bank: false, division: 4, league_division_id: t4h.id },
+    ],
+    riders: [],
+  });
+
+  const summary = await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+
+  for (let i = 4; i < 8; i++) {
+    const pool = poolByTierIndex(pools, 4, i);
+    const row = summary.pools.find((p) => p.pool_id === pool.id);
+    assert.equal(row.target_ai, 0, `${pool.label}: mål 0`);
+  }
+  // Ingen nye AI-hold i E-H. Selve nedlæggelsen af overskuddet går gennem
+  // retire_ai_pool_team (flag-gated, dækket i SQL-testene), så her låses kun deltaet.
+  assert.equal(countTeamsInPool(supabase.state, t4e.id, { ai: true }), 0, "E: ingen AI oprettet");
+  assert.equal(summary.pools.find((p) => p.pool_id === t4h.id).delta, -1, "H: det ene AI-hold er overskud");
+  assert.equal(countTeamsInPool(supabase.state, t4e.id, { ai: false }), 1, "ægte hold røres aldrig");
+});
+
+test("#5642 targetAiCountForPool: pensioneret → 0 for alle tiers; tier 4 aktiv fylder; tier 3 kræver manager", () => {
+  const { targetAiCountForPool } = __testables;
+  for (const tier of [1, 2, 3, 4]) {
+    assert.equal(targetAiCountForPool(tier, 5, 5, { retired: true }), 0, `tier ${tier} pensioneret`);
+  }
+  assert.equal(targetAiCountForPool(4, 0, 0), POOL_TARGET_SIZE, "tier 4 uden managere");
+  assert.equal(targetAiCountForPool(4, 3, 4), POOL_TARGET_SIZE - 4, "tier 4: frosne/test-hold optager også en plads");
+  assert.equal(targetAiCountForPool(3, 0, 0), 0, "tier 3 uden managere (uændret)");
+  assert.equal(targetAiCountForPool(3, 1, 1), POOL_TARGET_SIZE - 1, "tier 3 med én manager (uændret)");
+});
+
+test("#5642 reconcileAiTeamsForPool: pensioneret pulje → target 0; auto-migrate-vinduet (42703 på retired_at) = aktiv", async () => {
+  const pools = seedPools();
+  const t4f = poolByTierIndex(pools, 4, 5);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [{ id: "ai-f", name: "AI F", is_ai: true, is_bank: false, division: 4, league_division_id: t4f.id }],
+    riders: [],
+  });
+  const retired = await reconcileAiTeamsForPool({ supabase, poolId: t4f.id, seed: 2026, deps: DEPS });
+  assert.equal(retired.targetAi, 0);
+
+  // Før migrationen er applied: select med retired_at svarer 42703 → én læsning til
+  // uden kolonnen, og puljen behandles som aktiv (tier 4 → fyld).
+  const t4a = poolByTierIndex(pools, 4, 0);
+  const selects = [];
+  const preMigration = {
+    from(table) {
+      if (table !== "league_divisions") return supabase.from(table);
+      const q = {
+        select(cols) { selects.push(cols); q.cols = cols; return q; },
+        eq() { return q; },
+        then(res, rej) {
+          const out = String(q.cols).includes("retired_at")
+            ? { data: null, error: { code: "42703", message: "column league_divisions.retired_at does not exist" } }
+            : { data: [{ id: t4a.id, tier: 4, pool_index: 0, label: t4a.label }], error: null };
+          return Promise.resolve(out).then(res, rej);
+        },
+      };
+      return q;
+    },
+  };
+  const active = await reconcileAiTeamsForPool({ supabase: preMigration, poolId: t4a.id, seed: 2026, deps: DEPS });
+  assert.equal(active.targetAi, POOL_TARGET_SIZE);
+  assert.equal(selects.length, 2, "præcis ét fallback-kald");
 });
 
 test("tier 3 + tier 4-pulje MED ægte manager fyldes til target (managere medregnes)", async () => {
@@ -280,8 +383,9 @@ test("returnerer et opsummerings-objekt med created/removed pr. kørsel", async 
   assert.ok(summary && typeof summary === "object");
   assert.ok(Number.isInteger(summary.created), "summary.created er et heltal");
   assert.ok(Number.isInteger(summary.removed), "summary.removed er et heltal");
-  // tier1 (1×24) + tier2 (2×24) = 72 AI-hold ved tom start; tier 3/4 tomme.
-  assert.equal(summary.created, POOL_TARGET_SIZE * 3, "1 tier-1-pulje + 2 tier-2-puljer fyldt");
+  // tier1 (1×24) + tier2 (2×24) + aktive tier 4 A-D (4×24, #5642) = 168 AI-hold ved
+  // tom start; tier 3 tom, pensionerede D4 E-H tomme.
+  assert.equal(summary.created, POOL_TARGET_SIZE * 7, "1 tier-1 + 2 tier-2 + 4 aktive tier-4-puljer fyldt");
   assert.equal(summary.removed, 0);
   void MAX_DIVISION;
 });
@@ -651,4 +755,25 @@ test("defaultAllocateSquadForTeam bruger tier-4-vinduet for en tier-4-pulje", as
   // Sanity: tier-4-vinduet skal være strengt svagere end tier-3's (division-realisme).
   const t3Window = AI_TIER_STAT_WINDOWS[3];
   assert.ok(core.hi < t3Window.core.hi, "tier-4 kerne-loft skal være under tier-3's");
+});
+
+test("#5517: en ungdomspulje i league_divisions får ALDRIG AI-hold (kun seniorpuljer allokeres)", async () => {
+  // Efter A2 kan league_divisions rumme U23-/juniorpuljer med samme tier 1-4 som
+  // seniorerne. En tier 1-ungdomspulje ville ellers blive fyldt til target, præcis som
+  // seniorernes tier 1 (se første test i filen).
+  const run = async (youthSquad) => {
+    const pools = [...seedPools(), { id: 101, tier: 1, pool_index: 0, label: "U23 Division 1", squad: youthSquad }];
+    const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+    const summary = await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+    return { supabase, summary };
+  };
+
+  const youth = await run("u23");
+  const control = await run("senior");
+
+  assert.equal(countTeamsInPool(youth.supabase.state, 101), 0, "ingen AI-hold i ungdomspuljen");
+  assert.ok(!youth.summary.pools.some((p) => p.pool_id === 101), "ungdomspuljen optræder ikke i opsummeringen");
+  assert.ok(control.summary.pools.some((p) => p.pool_id === 101), "kontrol: som seniorpulje står den i opsummeringen");
+  assert.equal(countTeamsInPool(youth.supabase.state, 1), POOL_TARGET_SIZE, "seniorernes tier 1 fyldes uændret");
+  assert.equal(countTeamsInPool(control.supabase.state, 101), POOL_TARGET_SIZE, "kontrol: mærket 'senior' ville den blive fyldt");
 });

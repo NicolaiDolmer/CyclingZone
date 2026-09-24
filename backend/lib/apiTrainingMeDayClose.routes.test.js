@@ -66,7 +66,10 @@ test("POST /training/run-today: loebsdags-stien gates paa BAADE vinduet og lukni
 // Spejler route'ns udtryk med de AEGTE helpers (samme moenster som
 // apiTrainingMeRaceDay.routes.test.js's trainingMeRaceDayGate).
 
-function fakeSupabase({ flagValue, races = [], stages = [], priorStages = [] }) {
+// #4846: default er "gaarsdagen sluttede paa loebsdag 39". Et TOMT prior-opslag
+// betyder nu saesonens foerste loebsdato (spaendet starter paa loebsdag 0), og det er
+// ikke den tilstand fixturerne her beskriver.
+function fakeSupabase({ flagValue, races = [], stages = [], priorStages = [{ race_id: "r1", game_day: 39 }] }) {
   return {
     from(table) {
       // #4847 regel 4: resolveDayCloseStatus laver TO race_stage_schedule-opslag —
@@ -206,8 +209,17 @@ test("frontend behandler et manglende dayClose som den GAMLE knap", () => {
   const pageSource = readFileSync(
     resolve(__dirname, "../../frontend/src/pages/TrainingPage.jsx"), "utf8",
   );
-  // Knappens tekst OG disabled-tilstand skal begge haenge paa feltets
-  // tilstedevaerelse — ellers ville flag off kunne laase den gamle knap.
+  // Knappens tekst OG gate skal begge haenge paa feltets tilstedevaerelse —
+  // ellers ville flag off kunne laase den gamle knap.
   assert.match(pageSource, /dayClose \? t\("runDayNow"\) : t\("trainToday"\)/);
-  assert.match(pageSource, /!!\(dayClose && !dayClose\.open\)/);
+  // #5485: gaten bor eet sted, i guld-knappens regel (primaryActionFor) og den
+  // sekundaere "Run now" (canRunToday). Siden skal sende feltet ind i begge.
+  assert.match(pageSource, /primaryActionFor\(\{[^}]*\bdayClose,?\s*\}\)/);
+  assert.match(pageSource, /canRunToday\(\{[^}]*\bdayClose\s*\}\)/);
+  const overviewSource = readFileSync(
+    resolve(__dirname, "../../frontend/src/components/training/trainingOverview.ts"), "utf8",
+  );
+  // null (flag off) aabner; kun et felt med open=false lukker.
+  assert.match(overviewSource, /if \(dayClose && !dayClose\.open\) return \{ kind: "none" \}/);
+  assert.match(overviewSource, /return !\(dayClose && !dayClose\.open\)/);
 });

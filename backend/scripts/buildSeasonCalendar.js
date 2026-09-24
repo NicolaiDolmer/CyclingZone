@@ -5,6 +5,8 @@
 //   node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt          # DRY-RUN
 //   node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt --apply  # skriver
 //   ... --apply --replace-existing   # REGENERERING: sletter sæsonens nuværende kalender først
+//   ... --squad u23 | --squad junior # #5644: truppens egen kalender (EFTER seniorens); en
+//                                    # --replace-existing sletter da KUN truppens løb
 //
 // HVORFOR SCRIPTET FINDES (ejer-valg 6/8, SEASON_CUTOVER_RUNBOOK.md punkt 1):
 // S3-kalenderen fandtes ikke, og der var to veje: (A) byg den manuelt i god tid, eller
@@ -86,6 +88,15 @@
 //      sted man kan MÅLE hvor langt der er igen, og nogle af bruddene lukkes af kataloget
 //      frem for af en regel (§5b).
 //
+// #5592 — MINDST 24 TIMER TIL TRUPUDTAGELSE, KUN VED SÆSONSKIFTET (ejer 23/9 + 24/9):
+//   Sæsonens sidste løbsdag (§2-vinduets sidste søndag) slutter kl. 15, og sæsonens første
+//   etape ligger i HVER division mindst 24 timer efter det TIDLIGST MULIGE sæsonskifte:
+//   forrige sæsons seneste etape på tværs af alle divisioner + afviklingsbufferen, eller et
+//   senere planlagt skifte (resolveEarliestSeasonTransition). Alle andre dage, også søndage
+//   og mandage, har de normale tider (lib/calendarPlanningWindow.js). Ankrene læses
+//   read-only her og sendes til dry-run, apply og app_config-skrivningen; dry-runnet
+//   printer de to dage pr. division. Brud er kalender-invarianter (ingen override).
+//
 // EFTER APPLY kører scriptet en post-verify (rækketal pr. tier + at ingen etape er
 // planlagt i fortiden) og printer den, så resultatet ikke skal tages på tro.
 //
@@ -109,13 +120,76 @@ import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../
 import { withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
-import { ensureSeasonTransitionPlannedAt } from "../lib/seasonTransitionBoundary.js";
+import { ensureSeasonTransitionPlannedAt, SEASON_TRANSITION_PLANNED_AT_KEY } from "../lib/seasonTransitionBoundary.js";
+import {
+  copenhagenClock, measurePlanningWindows, PLANNING_WINDOW_HOURS, latestInstant, resolveEarliestSeasonTransition,
+  TIER_STAGE_SLOTS,
+} from "../lib/calendarPlanningWindow.js";
+import { withSeniorSquadScope } from "../lib/squads.js";
+import { SENIOR_SQUAD_OR_FILTER } from "../lib/racePoolCatalog.js";
+import { assertCalendarSquad } from "../lib/tierCalendarMaterializer.js";
+import { SENIOR_CALENDAR_POOLS_FROM_S4, SENIOR_CALENDAR_POOLS_FIRST_SEASON } from "../lib/calendarTierCaps.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
 
 export function seasonUuid(n) {
   return `00000000-0000-0000-0000-${Number(n).toString(16).padStart(12, "0")}`;
+}
+
+/**
+ * #5644 (risiko 6): afgræns en races-læsning ELLER -sletning til EN trup. Senior = squad
+ * NULL/'senior' (samme filter som #5517's seniorlæsere); u23/junior = squad = truppen.
+ * Uden det sletter en ungdomskørsel med --replace-existing hele sæsonens seniorkalender.
+ */
+export function scopeRacesToSquad(query, squad = "senior") {
+  assertCalendarSquad(squad);
+  return squad === "senior" ? query.or(SENIOR_SQUAD_OR_FILTER) : query.eq("squad", squad);
+}
+
+/**
+ * #5644 / #4592 A3 (spec-s4-struktur risiko 1): fra S4 må seniorkalenderen kun skrives når
+ * PRÆCIS pyramidens aktive puljer får en kalender (1/2/4/4, SENIOR_CALENDAR_POOLS_FROM_S4).
+ * Flere D4-puljer = E-H er ikke pensioneret endnu; færre = en D3-pulje er uden managers
+ * (sammenlægningen er ikke kørt). Begge dele er "kalenderen er kørt i forkert rækkefølge".
+ * Ren; måler på planens puljer pr. tier.
+ * @returns {string[]} brud (tom = ren, eller sæsonen er før S4)
+ */
+export function detectSeniorPoolStructureViolations({ planTiers = [], seasonNumber, expected = SENIOR_CALENDAR_POOLS_FROM_S4 } = {}) {
+  if (!(Number(seasonNumber) >= SENIOR_CALENDAR_POOLS_FIRST_SEASON)) return [];
+  const violations = [];
+  const byTier = new Map(planTiers.map((t) => [Number(t.tier), (t.pools ?? []).length]));
+  for (const [tierKey, want] of Object.entries(expected)) {
+    const got = byTier.get(Number(tierKey)) ?? 0;
+    if (got !== want) {
+      violations.push(`D${tierKey}: ${got} puljer får en kalender, pyramiden kræver ${want} (#4592: sammenlægningen skal give hver D3-pulje managers, og D4 E-H skal være pensioneret, FØR kalenderen)`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * #5644 (Y5): dry-run-rapporten for en trups kalender. Løb pr. gruppe, løb der starter pr.
+ * uge og løbsdage — de tal ejeren skal se, i klart sprog.
+ */
+export function formatSquadPlanReport({ plan, squad }) {
+  const lines = [`\n── #5644 ${squad}-kalenderen (1 kalender delt af alle truppens grupper i en tier) ──`];
+  for (const t of plan?.planTiers ?? []) {
+    const groups = (t.pools ?? []).length;
+    const races = t.raceCount ?? 0;
+    lines.push(
+      `  tier ${t.tier}: ${groups} gruppe(r) · ${races} løb pr. gruppe (${races * groups} i alt)` +
+      ` · løb der starter pr. uge: ${(t.weeklyRaceStarts ?? []).join("/") || "—"}` +
+      ` (tilladt ${t.racesPerWeek?.min ?? "?"}-${t.racesPerWeek?.max ?? "?"})` +
+      ` · ${t.racingDates ?? 0} af ${t.realDays} datoer med en etape` +
+      ` · ${t.raceDayAxisLength ?? 0} løbsdage (${t.trainingGameDayCount ?? 0} rene træningsdage)`,
+    );
+    for (const v of t.calendarViolations ?? []) lines.push(`    ❌ ${v}`);
+  }
+  for (const t of plan?.tiers ?? []) {
+    if (t.coverageMeasurements?.length) lines.push(`  tier ${t.tier}: senior-dæknings-gulve (kun måling for en trup): ${t.coverageMeasurements.length} under seniorens gulv`);
+  }
+  return lines;
 }
 
 // #3469 (leverance 5): gatePlan flyttet til lib/seasonCalendarGate.js, så
@@ -220,7 +294,10 @@ export async function countRaceDependencies({ supabase, raceIds }) {
  * kalderen stopper før materialiseringen — der efterlades aldrig en HALV kalender uden at
  * det kan ses og rulles tilbage.
  */
-export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumber, races, snapshotDir, log = () => {} }) {
+export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumber, races, snapshotDir, log = () => {}, squad = "senior" }) {
+  // #5644 (risiko 6): erstatningen er pr. TRUP. Før #5644 slettede den hele sæsonens løb,
+  // så en ungdomskørsel med --replace-existing ville have slettet seniorkalenderen.
+  assertCalendarSquad(squad);
   const raceIds = races.map((r) => r.id);
   if (!raceIds.length) return { snapshotPath: null, deletedRaces: 0 };
 
@@ -233,9 +310,10 @@ export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumb
 
   if (!existsSync(snapshotDir)) mkdirSync(snapshotDir, { recursive: true });
   const takenAt = new Date().toISOString();
-  const snapshotPath = join(snapshotDir, `replace-snapshot-season${seasonNumber}-${takenAt.slice(0, 10)}-${takenAt.slice(11, 19).replaceAll(":", "")}.json`);
+  const squadTag = squad === "senior" ? "" : `-${squad}`;
+  const snapshotPath = join(snapshotDir, `replace-snapshot-season${seasonNumber}${squadTag}-${takenAt.slice(0, 10)}-${takenAt.slice(11, 19).replaceAll(":", "")}.json`);
   writeFileSync(snapshotPath, JSON.stringify({
-    takenAt, seasonId, seasonNumber, raceIds, races,
+    takenAt, seasonId, seasonNumber, squad, raceIds, races,
     race_stage_profiles: profiles, race_stage_schedule: schedules,
     teams_my_result_seen_race_id_before: seenTeams,
   }, null, 1), "utf8");
@@ -259,18 +337,21 @@ export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumb
     log(`  ✓ slettet fra ${dep.table}`);
   }
 
-  // Races slettes scopet på season_id — ikke på en id-liste. Så kan en id fra en anden
-  // sæson ikke snige sig med, uanset hvad der ellers står i listen ovenfor.
-  {
-    const { error } = await withSupabaseRetry(async () => supabase.from("races").delete().eq("season_id", seasonId));
-    if (error) throw new Error(`races.delete(season_id=${seasonId}): ${error.message}`);
+  // Races slettes scopet på season_id OG truppen — ikke på en id-liste. Så kan en id fra en
+  // anden sæson eller en anden trup ikke snige sig med, uanset hvad der ellers står i listen.
+  // #5644 (CodeRabbit): og kun de id'er der er snapshottet og talt af erstatnings-gaten. Et løb
+  // der er kommet til imellem, slettes ikke uden snapshot; post-verify'en nedenfor stopper så.
+  for (let i = 0; i < raceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = raceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const { error } = await withSupabaseRetry(async () => scopeRacesToSquad(supabase.from("races").delete().eq("season_id", seasonId), squad).in("id", chunk));
+    if (error) throw new Error(`races.delete(season_id=${seasonId}, squad=${squad}): ${error.message}`);
   }
-  log(`  ✓ slettet ${races.length} løb (season_id=${seasonId})`);
+  log(`  ✓ slettet ${races.length} ${squad}-løb (season_id=${seasonId})`);
 
-  // Post-verify: 0 tilbage. Uden den er "slettet" bare noget scriptet påstår.
-  const { count: left, error: vErr } = await supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId);
+  // Post-verify: 0 tilbage I TRUPPEN. Uden den er "slettet" bare noget scriptet påstår.
+  const { count: left, error: vErr } = await scopeRacesToSquad(supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId), squad);
   if (vErr) throw new Error(`post-verify races: ${vErr.message}`);
-  if (left !== 0) throw new Error(`erstatningen efterlod ${left} løb for season_id=${seasonId} — STOP før materialisering. Rollback fra ${snapshotPath}`);
+  if (left !== 0) throw new Error(`erstatningen efterlod ${left} ${squad}-løb for season_id=${seasonId} — STOP før materialisering. Rollback fra ${snapshotPath}`);
 
   return { snapshotPath, deletedRaces: races.length };
 }
@@ -280,26 +361,215 @@ export function quotasForRaceDays(raceDays, density = TIER_DENSITY) {
   return Object.fromEntries(Object.entries(density).map(([tier, d]) => [Number(tier), d * raceDays]));
 }
 
+/**
+ * #5592: seneste etape pr. division i FORRIGE sæson (seniorløb), så første etape også ligger
+ * mindst 24 t efter divisionens egen sidste etape. Forrige sæsons sidste løbsdag står
+ * allerede i databasen. Kun SELECT. Rent aggregat i `lastStageAtByTier`, testbart uden DB.
+ * Det tidligst mulige sæsonskifte regnes fra den seneste af ALLE etaperne (latestAt i
+ * fetchPreviousSeasonLastStages), også en etape i en pulje uden kendt division.
+ */
+export function lastStageAtByTier({ races = [], divisions = [], schedule = [] } = {}) {
+  const tierByDivision = new Map(divisions.map((d) => [d.id, d.tier]));
+  const tierByRace = new Map(races.map((r) => [r.id, tierByDivision.get(r.league_division_id)]));
+  const out = {};
+  for (const s of schedule) {
+    const tier = tierByRace.get(s.race_id);
+    const t = Date.parse(s.scheduled_at);
+    if (tier == null || !Number.isFinite(t)) continue;
+    if (out[tier] == null || t > Date.parse(out[tier])) out[tier] = new Date(t).toISOString();
+  }
+  return out;
+}
+
+/**
+ * #5592: forrige sæsons sidste etaper. `byTier` = pr. division, `latestAt` = den seneste
+ * på tværs af ALLE divisioner (ankeret for det tidligst mulige sæsonskifte). Kun SELECT.
+ * @returns {Promise<{ byTier: Record<number, string>, latestAt: string|null }>}
+ */
+export async function fetchPreviousSeasonLastStages({ supabase, seasonNumber }) {
+  const none = { byTier: {}, latestAt: null };
+  if (!(seasonNumber > 1)) return none;
+  const prevSeasonId = seasonUuid(seasonNumber - 1);
+  const races = await withSeniorSquadScope((senior) => fetchAllRows(() => (
+    senior(supabase.from("races").select("id, league_division_id"))
+      .eq("season_id", prevSeasonId)
+      .order("id", { ascending: true })
+  )));
+  if (!races?.length) return none;
+  const { data: divisions, error: dErr } = await supabase.from("league_divisions").select("id, tier");
+  if (dErr) throw new Error(`league_divisions (#5592): ${dErr.message}`);
+  const schedule = await fetchAllRowsChunkedIn(races.map((r) => r.id), (chunk) => (
+    supabase.from("race_stage_schedule").select("race_id, scheduled_at")
+      .in("race_id", chunk)
+      .order("race_id", { ascending: true })
+      .order("stage_number", { ascending: true })
+  ));
+  const latest = latestInstant(schedule.map((s) => s.scheduled_at));
+  return {
+    byTier: lastStageAtByTier({ races, divisions: divisions ?? [], schedule }),
+    latestAt: latest ? latest.toISOString() : null,
+  };
+}
+
+/** "YYYY-MM-DD HH:MM" i dansk tid. */
+function fmtLocal(instant) {
+  if (instant == null) return "—";
+  const { date, minutes } = copenhagenClock(instant);
+  return `${date} ${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+const fmtHours = (h) => `${h.toFixed(1).replace(".", ",")} t`;
+
+/**
+ * #5592: datoer hvor mindst én etape IKKE ligger på divisionens normale slots
+ * (TIER_STAGE_SLOTS). Kun sæsonens første og sidste løbsdag må stå her.
+ * @returns {{ dates: number, off: string[] }}
+ */
+export function datesOffNormalSlots({ tier, stageRows = [], slots = TIER_STAGE_SLOTS }) {
+  const normal = new Set(slots?.[tier] ?? slots?.[3] ?? []);
+  const all = new Set();
+  const off = new Set();
+  for (const s of stageRows) {
+    if (s?.scheduled_at == null) continue;
+    const local = fmtLocal(s.scheduled_at);
+    const date = local.slice(0, 10);
+    all.add(date);
+    if (!normal.has(local.slice(11))) off.add(date);
+  }
+  return { dates: all.size, off: [...off].sort() };
+}
+
+/**
+ * #5592: de to dage omkring sæsonskiftet pr. division, som tekst til dry-runnet. Tallene er
+ * spillervendte (ejeren godkender dem), så de står her i klart sprog og dansk tid.
+ */
+export function formatPlanningWindowReport({ planTiers = [], transition, previousByTier = {}, previousLatestAt = null }) {
+  const lines = [];
+  lines.push(`\n── #5592 planlægningsvindue ved sæsonskiftet (mindst ${PLANNING_WINDOW_HOURS} t til trupudtagelse, dansk tid) ──`);
+  lines.push(`  forrige sæsons seneste etape (alle divisioner): ${fmtLocal(previousLatestAt)}`);
+  lines.push(`  app_config.season_transition_planned_at: ${transition?.plannedAt ? fmtLocal(transition.plannedAt) : "ikke sat"}`);
+  lines.push(`  sæsonskifte der planlægges mod (tidligst mulige): ${fmtLocal(transition?.at)} (${transition?.source ?? "ukendt"})`);
+  for (const t of planTiers) {
+    const rows = t?.pools?.[0]?.stageRows ?? [];
+    const { firstStageAt, days } = measurePlanningWindows(rows);
+    const firstDate = firstStageAt ? copenhagenClock(firstStageAt).date : null;
+    const firstDay = firstDate ? days.get(firstDate) : null;
+    const prev = previousByTier?.[t.tier] ?? null;
+    const sinceHours = (anchor) => (anchor && firstStageAt ? (Date.parse(firstStageAt) - new Date(anchor).getTime()) / 3_600_000 : null);
+    const fromPrev = sinceHours(prev);
+    const fromTransition = sinceHours(transition?.at);
+    const planningBreaches = (t.calendarViolations ?? []).filter((v) => v.includes("#5592"));
+    lines.push(
+      `  D${t.tier}: første dag ${firstDay ? `${fmtLocal(firstDay.first)}–${fmtLocal(firstDay.last).slice(11)}` : "—"}` +
+      ` · tidligst tilladt ${fmtLocal(t.planningWindow?.notBefore)}` +
+      (fromPrev != null ? ` · pause fra divisionens sidste etape i forrige sæson (${fmtLocal(prev)}): ${fmtHours(fromPrev)}` : " · forrige sæson: ingen etaper") +
+      (fromTransition != null ? ` · fra tidligst mulige skifte: ${fmtHours(fromTransition)}` : "") +
+      `  ${planningBreaches.length ? "❌" : "✅"}`,
+    );
+    const lastDate = t.planningWindow?.seasonLastRaceDay ?? null;
+    const lastDay = lastDate ? days.get(lastDate) : null;
+    lines.push(
+      `      sidste løbsdag ${lastDate ?? "—"}: ${lastDay ? `${fmtLocal(lastDay.first).slice(11)}–${fmtLocal(lastDay.last).slice(11)}` : "ingen etaper"}`,
+    );
+    // Beviset for "kun ved sæsonskiftet": alle andre datoer ligger på de normale slots.
+    const { dates, off } = datesOffNormalSlots({ tier: t.tier, stageRows: rows });
+    const allowedOff = new Set([firstDate, lastDate].filter(Boolean));
+    const unexpected = off.filter((d) => !allowedOff.has(d));
+    lines.push(
+      `      normale tider på ${dates - off.length} af ${dates} datoer · afviger: ${off.join(", ") || "ingen"}` +
+      (unexpected.length ? `  ❌ kun første og sidste løbsdag må afvige` : "  ✅"),
+    );
+    for (const v of planningBreaches) lines.push(`      ❌ ${v}`);
+  }
+  return lines;
+}
+
 /** Post-verify EFTER apply: tæl det der faktisk står i DB, og fang etaper i fortiden. */
-export async function postVerify({ supabase, seasonId }) {
-  const { count: raceCount } = await supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId);
-  const { data: races } = await supabase.from("races").select("id, league_division_id").eq("season_id", seasonId).limit(5000);
+export async function postVerify({ supabase, seasonId, squad = "senior" }) {
+  // #5644: tæller kun truppens egne løb, så en ungdomskørsel ikke "verificeres" af seniorløbene.
+  // #5644 (CodeRabbit): en fejlet læsning må ikke ligne "0 etaper i fortiden" — den kaster.
+  const { count: raceCount, error: cErr } = await scopeRacesToSquad(supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId), squad);
+  if (cErr) throw new Error(`post-verify races count (${squad}): ${cErr.message}`);
+  const races = await fetchAllRows(() =>
+    scopeRacesToSquad(supabase.from("races").select("id, league_division_id").eq("season_id", seasonId), squad).order("id"));
   const raceIds = (races || []).map((r) => r.id);
 
   let profileCount = 0, scheduleCount = 0, pastStages = 0;
   const nowIso = new Date().toISOString();
+  const countOrThrow = async (label, query) => {
+    const { count, error } = await query;
+    if (error) throw new Error(`post-verify ${label}: ${error.message}`);
+    return count ?? 0;
+  };
   for (let i = 0; i < raceIds.length; i += 200) {
     const chunk = raceIds.slice(i, i + 200);
-    const { count: pc } = await supabase.from("race_stage_profiles").select("race_id", { count: "exact", head: true }).in("race_id", chunk);
-    const { count: sc } = await supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk);
-    const { count: past } = await supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk).lte("scheduled_at", nowIso);
-    profileCount += pc ?? 0; scheduleCount += sc ?? 0; pastStages += past ?? 0;
+    profileCount += await countOrThrow("race_stage_profiles", supabase.from("race_stage_profiles").select("race_id", { count: "exact", head: true }).in("race_id", chunk));
+    scheduleCount += await countOrThrow("race_stage_schedule", supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk));
+    pastStages += await countOrThrow("race_stage_schedule (fortid)", supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk).lte("scheduled_at", nowIso));
   }
 
   const poolCounts = new Map();
   for (const r of races || []) poolCounts.set(r.league_division_id, (poolCounts.get(r.league_division_id) ?? 0) + 1);
 
   return { raceCount: raceCount ?? 0, profileCount, scheduleCount, pastStages, pools: [...poolCounts.entries()].sort((a, b) => a[0] - b[0]) };
+}
+
+/**
+ * #5644 (Y5): gates + (ved --apply) skrivning for en TRUPS kalender (u23/junior). Samme
+ * §2c-gates som senioren, plus: truppens kalender bygges EFTER seniorkalenderen (sæson-rækken
+ * og seniorløbene skal findes), og --replace-existing sletter kun truppens løb.
+ * Sætter process.exitCode; kaster ved I/O-fejl.
+ */
+export async function runSquadCalendar({
+  supabase, squad, seasonId, seasonNumber, seasonRow, writeGate, replacement, existingRaces,
+  apply, replaceExisting, snapshotDir, firstDay, window, plan, materializeArgs,
+  materialize = materializeTierCalendars, log = (m) => console.log(m), logError = (m) => console.error(m),
+}) {
+  for (const line of formatSquadPlanReport({ plan, squad })) log(line);
+  const blocking = [];
+  for (const t of plan?.tiers ?? []) for (const v of t.calendarViolations ?? []) blocking.push(`kalender-invariant — ${v}`);
+  if (!(plan?.planTiers ?? []).length) blocking.push(`${squad}: ingen aktive grupper i league_divisions (squad='${squad}') — seed truppens grupper først (#4620)`);
+  if ((plan?.planTiers ?? []).some((t) => (t.raceCount ?? 0) === 0)) blocking.push(`${squad}: en tier har 0 løb — kalenderen ville være tom`);
+
+  const { count: seniorRaces, error: sErr } = await scopeRacesToSquad(
+    supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId), "senior",
+  );
+  if (sErr) throw new Error(`races (senior-optælling): ${sErr.message}`);
+  log(`  seniorløb i sæson ${seasonNumber}: ${seniorRaces ?? 0} (truppens kalender bygges EFTER seniorens)`);
+  if (!seasonRow || !(seniorRaces > 0)) blocking.push(`${squad}: sæson ${seasonNumber} har ingen seniorkalender endnu — byg den først (buildSeasonCalendar uden --squad)`);
+
+  if (blocking.length) {
+    logError(`\n❌ BLOKERENDE (${blocking.length}):`);
+    for (const b of blocking) logError(`   · ${b}`);
+  }
+  if (!apply) {
+    log(`\nDRY-RUN slut — intet skrevet (trup ${squad}).`);
+    process.exitCode = blocking.length || !writeGate.allowed || replacement.mode === "denied" ? 1 : 0;
+    return { applied: false, blocking };
+  }
+  if (blocking.length) { process.exitCode = 1; return { applied: false, blocking }; }
+  if (!firstDay) { logError("\n❌ --first-day YYYY-MM-DD kræves ved --apply."); process.exitCode = 2; return { applied: false, blocking }; }
+  if (window?.derived) { logError("\n❌ Sæsonlængden er UDLEDT — sæt --race-days N eller --last-day ved --apply (§2d)."); process.exitCode = 2; return { applied: false, blocking }; }
+  if (!writeGate.allowed) { logError(`\n❌ STOP: §2c skrive-gaten nægter (${writeGate.code}).`); process.exitCode = 1; return { applied: false, blocking }; }
+
+  if (existingRaces.length > 0) {
+    if (replacement.mode === "denied") {
+      logError(`\n❌ STOP: ${existingRaces.length} ${squad}-løb har spillerdata — erstatning nægtet. Intet slettet.`);
+      process.exitCode = 1; return { applied: false, blocking };
+    }
+    if (!replaceExisting) {
+      logError(`\n❌ STOP: sæson ${seasonNumber} har allerede ${existingRaces.length} ${squad}-løb. Gentag med --replace-existing for at erstatte KUN dem.`);
+      process.exitCode = 1; return { applied: false, blocking };
+    }
+    const replaced = await replaceSeasonCalendarRows({ supabase, seasonId, seasonNumber, races: existingRaces, snapshotDir, log, squad });
+    log(`  ✓ ${squad}-kalenderen er ryddet (${replaced.deletedRaces} løb). Seniorkalenderen er urørt. Rollback: ${replaced.snapshotPath}`);
+  }
+
+  const applied = await materialize({ supabase, seasonId, dryRun: false, log, squad, ...materializeArgs });
+  log(`\n  ${applied.racesInserted} ${squad}-løb · ${applied.stageProfiles} etape-profiler · ${applied.stageSchedules} etape-tider indsat.`);
+  const v = await postVerify({ supabase, seasonId, squad });
+  log(`  POST-VERIFY: ${squad}-løb=${v.raceCount} · profiler=${v.profileCount} · etape-tider=${v.scheduleCount} · i fortiden=${v.pastStages}`);
+  process.exitCode = v.pastStages > 0 || v.raceCount === 0 ? 1 : 0;
+  return { applied: true, blocking, summary: applied, verify: v };
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────────
@@ -324,10 +594,21 @@ if (isMain) {
   // aldrig ske som bivirkning af at nogen kørte --apply én gang til.
   const replaceExisting = process.argv.includes("--replace-existing");
   const snapshotDir = resolve(argOf("--snapshot-dir") || join(__dirname, "../../docs/snapshots/5405"));
+  // #5644 (Y5): hvilken trups kalender. Default senior (uændret). u23/junior bygger truppens
+  // egen kalender fra truppens katalog; --replace-existing rører da KUN truppens løb.
+  // En tom --squad (sidste argument, eller efterfulgt af et andet flag) må ALDRIG falde
+  // tilbage til senior: "--replace-existing --squad" ville ellers slette seniorkalenderen.
+  const squadArg = argOf("--squad");
+  if (process.argv.includes("--squad") && (!squadArg || squadArg.startsWith("--"))) {
+    console.error("--squad kræver en værdi (senior | u23 | junior)"); process.exit(2);
+  }
+  const squad = squadArg ?? "senior";
+  const isSenior = squad === "senior";
 
   if (!Number.isInteger(seasonNumber) || seasonNumber < 1) {
     console.error("--season <N> kræves (heltal ≥ 1)"); process.exit(2);
   }
+  try { assertCalendarSquad(squad); } catch (e) { console.error(`--squad: ${e.message}`); process.exit(2); }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("⚠ Missing SUPABASE creds"); process.exit(2); }
@@ -335,7 +616,7 @@ if (isMain) {
   const seasonId = seasonUuid(seasonNumber);
 
   try {
-    console.log(`\n=== Byg sæson ${seasonNumber}-kalender (${apply ? "APPLY — SKRIVER TIL PROD" : "DRY-RUN — skriver intet"}) ===`);
+    console.log(`\n=== Byg sæson ${seasonNumber}-kalender, trup: ${squad} (${apply ? "APPLY — SKRIVER TIL PROD" : "DRY-RUN — skriver intet"}) ===`);
     console.log(`  season_id = ${seasonId}`);
 
     // `from` = dagen FØR første løbsdag. resolveCalendarFrom kaster hvis datoen ikke er
@@ -404,13 +685,14 @@ if (isMain) {
 
     // #5405 ERSTATNINGS-GATEN: findes der allerede løb for sæsonen? Kun SELECT — også i
     // tørkørslen, hvor den er ren rapportering.
+    // #5644 (risiko 6): KUN truppens løb — det er dem en erstatning ville slette.
     const existingRaces = await fetchAllRows(() =>
-      supabase.from("races").select("id, name, league_division_id, status").eq("season_id", seasonId).order("id"));
+      scopeRacesToSquad(supabase.from("races").select("id, name, league_division_id, status").eq("season_id", seasonId), squad).order("id"));
     const dependentCounts = await countRaceDependencies({ supabase, raceIds: existingRaces.map((r) => r.id) });
     const replacement = evaluateCalendarReplacementGate({ existingRaceCount: existingRaces.length, dependentCounts });
 
     console.log(`\n── §2c erstatnings-gate (#5405) ──`);
-    console.log(`  eksisterende løb for sæson ${seasonNumber}: ${existingRaces.length}`);
+    console.log(`  eksisterende ${squad}-løb for sæson ${seasonNumber}: ${existingRaces.length}`);
     if (replacement.mode !== "fresh") {
       for (const r of replacement.rows) {
         if (r.group === "gameplay" && r.count === 0) continue; // 0 er det forventede — støj at liste 19 nuller
@@ -455,12 +737,51 @@ if (isMain) {
       ? `${raceDayTarget}${raceDayTargetExplicit != null ? " (--race-day-target)" : ` (saeson ${seasonNumber}'s maal)`}`
       : "FRA — aksen er et soegeresultat pr. division, som foer #4845"}`);
 
+    // #5592 (ejer 23/9): mindst 24 timer til trupudtagelse ved sæsonstarten, regnet fra det
+    // TIDLIGST MULIGE sæsonskifte: forrige sæsons seneste etape på tværs af alle divisioner
+    // + afviklings-bufferen (sæsonafslutningen er spærret til sidste løb er afviklet), eller
+    // et senere planlagt skifte. Læses her (kun SELECT) og sendes UÆNDRET til dry-run, apply
+    // og app_config-skrivningen, så kalender og app_config planlægger mod samme tidspunkt.
+    const { data: plannedAtRow, error: plannedAtErr } = await supabase
+      .from("app_config").select("value").eq("key", SEASON_TRANSITION_PLANNED_AT_KEY).maybeSingle();
+    if (plannedAtErr) throw new Error(`app_config.${SEASON_TRANSITION_PLANNED_AT_KEY} (#5592): ${plannedAtErr.message}`);
+    const previousSeasonLastStages = await fetchPreviousSeasonLastStages({ supabase, seasonNumber });
+    const transition = resolveEarliestSeasonTransition({
+      previousSeasonLastStageAt: previousSeasonLastStages.latestAt,
+      plannedAt: plannedAtRow?.value ?? null,
+      firstRaceDay,
+    });
+    const previousSeasonLastStageAtByTier = previousSeasonLastStages.byTier;
+    // Sæsonens sidste løbsdag = §2-vinduets sidste dag (en søndag), samme dato som
+    // kalenderens sidste (from + realDays). Den slutter kl. 15, så skiftet kan ske tidligt.
+    const planningWindowArgs = {
+      seasonTransitionAt: transition.at, previousSeasonLastStageAtByTier, seasonLastRaceDay: window.lastRaceDay,
+    };
+
     // 1) Planlæg (altid dry-run først — også når vi skal apply'e).
     const plan = await materializeTierCalendars({
       supabase, seasonId, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {},
-      realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget,
+      realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, squad,
     });
+
+    // #5644 (Y5): en trups kalender har sin egen, kortere vej: ingen K-B-komposition,
+    // scorecard eller realisme-bånd (de er kalibreret mod seniordivisionerne, spec 2026-09-15
+    // §4.3), men de samme kalender-invarianter, planlægningsvinduet og truppens tæthed.
+    if (!isSenior) {
+      await runSquadCalendar({
+        supabase, squad, seasonId, seasonNumber, seasonRow, writeGate, replacement, existingRaces,
+        apply, replaceExisting, snapshotDir, firstDay, window, plan,
+        materializeArgs: { seasonStartDate: firstDay, from, realDays, quotas, raceDayTarget, ...planningWindowArgs },
+      });
+      process.exit(process.exitCode ?? 0);
+    }
+
     const { blocking, compositionDrift, tierCompositionDrift, report } = gatePlan(plan, { allowTierCompositionDrift: allowTierDrift });
+    // #5644 / #4592 A3: fra S4 skal præcis pyramidens aktive puljer have en kalender (1/2/4/4).
+    const poolStructure = detectSeniorPoolStructureViolations({ planTiers: plan.planTiers ?? [], seasonNumber });
+    console.log(`\n── #4592 puljer med kalender (fra S${SENIOR_CALENDAR_POOLS_FIRST_SEASON}: ${Object.values(SENIOR_CALENDAR_POOLS_FROM_S4).join("/")}) ──`);
+    console.log(`  ${(plan.planTiers ?? []).map((t) => `D${t.tier} ${(t.pools ?? []).length}`).join(" · ")}  ${poolStructure.length ? "❌" : "✅"}`);
+    for (const v of poolStructure) blocking.push(`pulje-struktur — ${v}`);
 
     console.log(`\n── Plan ──`);
     for (const t of plan.tiers) {
@@ -519,6 +840,13 @@ if (isMain) {
     } else if (raceDayTarget != null) {
       console.log(`  ✅ alle divisioner har ${raceDayTarget} løbsdage — #4846's tick tæller ens i hele spillet.`);
     }
+    // #5592: planlægningsvinduet pr. division. Selve gaten er detectPlanningWindowViolations
+    // i materializeren (calendarViolations → gatePlan's blocking); her printes tallene.
+    for (const line of formatPlanningWindowReport({
+      planTiers: plan.planTiers ?? [], transition, previousByTier: previousSeasonLastStageAtByTier,
+      previousLatestAt: previousSeasonLastStages.latestAt,
+    })) console.log(line);
+
     console.log(`\n── Komposition mod K-B ──`);
     for (const r of report.rows) {
       console.log(`  ${r.label.padEnd(9)} ${r.actual.toFixed(1).padStart(5)} %  mål ${String(r.target).padStart(2)} %  ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(1)} pp  ${r.pass ? "OK" : "UDENFOR"}`);
@@ -672,12 +1000,22 @@ if (isMain) {
       // uskrevne start_date-gæt, fordi ingen kode nogensinde satte nøglen (kun
       // manuel SQL på selve cutover-aftenen, se issue #4129). Idempotent — se
       // ensureSeasonTransitionPlannedAt for hvornår den (ikke) overskriver.
+      // #5592: værdien der skrives er PRÆCIS det skifte kalenderen er planlagt mod
+      // (transition.at), så app_config og kalender ikke kan komme ud af trit. En senere
+      // værdi i app_config bevares altid; den var allerede med i transition.at, så ligger
+      // der NU en senere værdi end kalenderens, er den ændret under kørslen → stop før
+      // kalenderen skrives.
       const transitionKeyResult = await ensureSeasonTransitionPlannedAt({
         supabase,
         seasonStartDate: seasonRow?.start_date ?? firstDay,
+        target: transition.at,
       });
       if (transitionKeyResult.updated) {
-        console.log(`  ✓ season_transition_planned_at sat til ${transitionKeyResult.value} (#4129, årsag: ${transitionKeyResult.reason}).`);
+        console.log(`  ✓ season_transition_planned_at sat til ${transitionKeyResult.value} (#4129/#5592, årsag: ${transitionKeyResult.reason}).`);
+      } else if (transitionKeyResult.reason === "existing-later-kept") {
+        console.error(`\n❌ STOP (#5592): app_config.season_transition_planned_at (${transitionKeyResult.existing}) er SENERE end det skifte kalenderen er planlagt mod (${transitionKeyResult.target}).`);
+        console.error(`   Værdien er ændret under kørslen. Den bevares, og INGEN kalender er skrevet. Kør scriptet igen, så kalenderen planlægges mod den nye værdi.`);
+        process.exit(1);
       } else {
         console.log(`  · season_transition_planned_at ikke ændret (${transitionKeyResult.reason}).`);
       }
@@ -689,7 +1027,7 @@ if (isMain) {
       // ikke rettes bagefter.
       const applied = await materializeTierCalendars({
         supabase, seasonId, seasonStartDate: firstDay, from, dryRun: false, log: (m) => console.log(m),
-        realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget,
+        realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs,
       });
       console.log(`\n  ${applied.racesInserted} løb · ${applied.stageProfiles} etape-profiler · ${applied.stageSchedules} etape-tider indsat.`);
 

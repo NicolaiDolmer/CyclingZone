@@ -14,7 +14,7 @@ import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
-import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -35,8 +35,61 @@ import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 // #5272: remaining-horizon-målet for en pulje der aktiveres midt i sæsonen.
 import { resolveActivationRaceDayTarget } from "./calendarActivationRaceDays.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
+// #5517: puljernes og løbenes senior-scope. Materializeren bygger SENIORkalenderen;
+// ungdomspuljer og ungdomsløb (league_divisions.squad / races.squad) må hverken få
+// en seniorkalender, tælle i navne-dedup'en eller måles med i løbsdags-aksen.
+import { withSeniorSquadScope } from "./squads.js";
+// #5644 (Y5): en trups kalender (u23/junior) bygges fra truppens eget katalog med sin egen
+// lille pakker og sin egen taethed (SQUAD_CALENDAR). Senior er default og bit-identisk.
+import { SQUAD_CALENDAR, CALENDAR_SQUADS } from "./calendarTierCaps.js";
+import { packSquadCalendar } from "./squadCalendarPacker.js";
 
 export { TIER_CLASS_WHITELIST };
+
+/**
+ * #5644: er fejlen "kolonnen league_divisions.retired_at findes IKKE"? Kolonnen tilfoejes af
+ * #4592 spor A2 (#5642) og applies post-merge af auto-migrate.yml, saa der er et vindue hvor
+ * denne kode koerer mod et skema uden den. Findes kolonnen ikke, kan ingen pulje vaere
+ * pensioneret, og en laesning uden filteret er per definition korrekt. Samme dom som
+ * isMissingSquadColumnError (#5330): kun 42703 taeller; PGRST204 / "schema cache" er IKKE et
+ * bevis for at kolonnen mangler, og dér fejler vi lukket.
+ */
+export function isMissingRetiredAtColumnError(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+  if (!text.includes("retired_at")) return false;
+  if (code === "PGRST204" || text.includes("schema cache")) return false;
+  if (code === "42703") return true;
+  return /does not exist|undefined column/.test(text);
+}
+
+/** #5644: kendt trup, ellers kast (en tastefejl maa aldrig blive til en seniorkalender). */
+export function assertCalendarSquad(squad) {
+  if (!CALENDAR_SQUADS.includes(squad)) {
+    throw new Error(`ukendt trup "${squad}" — kalenderen findes for ${CALENDAR_SQUADS.join(", ")}`);
+  }
+  return squad;
+}
+
+/**
+ * #5644: truppens AKTIVE puljer. Senior = squad NULL/'senior' (withSeniorSquadScope, #5517);
+ * u23/junior = squad = truppen. Pensionerede puljer (retired_at sat, #4592 A2) er aldrig med.
+ * Returnerer PostgREST-formen { data, error }.
+ */
+export async function loadCalendarPools({ supabase, squad = "senior" }) {
+  const run = (withRetired) => {
+    const columns = withRetired ? "id, tier, pool_index, label, retired_at" : "id, tier, pool_index, label";
+    const active = (q) => (withRetired ? q.is("retired_at", null) : q);
+    if (squad === "senior") {
+      return withSeniorSquadScope((senior) => active(senior(supabase.from("league_divisions").select(columns))));
+    }
+    return active(supabase.from("league_divisions").select(columns).eq("squad", squad));
+  };
+  const first = await run(true);
+  if (first?.error && isMissingRetiredAtColumnError(first.error)) return run(false);
+  return first;
+}
 
 const INSERT_BATCH = 500;
 
@@ -50,14 +103,15 @@ export { TIER_DENSITY, TIER_OVERLAP_CAP };
 
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
-// #4270 (ejer-beslutning 3/9): D4 2 -> 3 slots, samme klokkeslaet som D3 (12/15/18).
-// Antal slots skal FOELGE TIER_DENSITY - en dag maa aldrig have flere etaper end slots.
-export const TIER_STAGE_SLOTS = Object.freeze({
-  1: ["11:00", "13:00", "15:00", "17:00", "19:00"],
-  2: ["12:00", "14:00", "16:00", "18:00"],
-  3: ["12:00", "15:00", "18:00"],
-  4: ["12:00", "15:00", "18:00"],
-});
+// #5592 (ejer 23/9 + præcisering 24/9): tabellen bor nu i calendarPlanningWindow.js og
+// beskriver en ALMINDELIG dag, også søndage og mandage midt i sæsonen. Kun sæsonens sidste
+// løbsdag (slutter kl. 15) og den nye sæsons første (tidligst 24 t efter det tidligst mulige
+// skifte) udledes af den med slotsFor(). Re-eksporteres her, så importstierne virker uændret.
+import {
+  TIER_STAGE_SLOTS, slotsFor, resolveSeasonStartNotBefore, detectPlanningWindowViolations, measurePlanningWindows,
+  lastCalendarDay,
+} from "./calendarPlanningWindow.js";
+export { TIER_STAGE_SLOTS };
 
 function isRealManagerRow(t) {
   return t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account;
@@ -91,10 +145,13 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
 // materializeTierCalendars({ useUniformTierTilt: true }) er slået til for dette kald —
 // ellers undefined, og generateRaceStageProfiles falder tilbage til sin egen default
 // (bit-identisk med før #4103).
+// #5405: finale-typerne fordeles efter kvote over tierens HELE løbssæt
+// (balanceFinaleQuotas), samme skridt som realisme-gen-trækket tager i drawTierAttempt.
+// Kortet her er derfor også det skrive-stien persisterer — se insert-løkken nedenfor.
 function coverageProfilesFor(raceRows, ctx) {
-  const map = new Map();
-  for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles }));
-  return map;
+  const generated = raceRows.map((r) => generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles }));
+  const balanced = balanceFinaleQuotas(generated);
+  return new Map(raceRows.map((r, i) => [r.pool_race_id, balanced[i]]));
 }
 
 // #3295/#3326/#3371: form de allerede-genererede profiler som den {race_type,
@@ -236,6 +293,113 @@ export function detectPoolSignatureMismatch({ tier, pools = [] } = {}) {
 }
 
 /**
+ * #5644 (Y5): EN trups tier-plan (u23/junior). Samme form som seniorens tierPlans-post, saa
+ * materializeTierCalendars' skrive-sti, dry-run-rapporten og gates virker uaendret. Alle
+ * truppens puljer i tieren faar den SAMME kalender (spec 2026-09-15 §4.2 + #2276's
+ * identiske-puljer-invariant): i S4 er det ca. 9 grupper i tier 1 pr. trup (ejer 24/9), og
+ * de deler eet katalog-udsnit og een plan — ikke en kalender pr. gruppe.
+ */
+function buildSquadTierPlan({
+  tier, tierPools, squad, squadCfg, catalog, catalogById, from, realDays, raceDayTarget, seed,
+  usedRaceNamesBeforeTier, seasonFractionOf, seasonTransitionAt, previousSeasonLastStageAtByTier, lastRaceDay,
+  usedRaceIds, usedRaceNamesRunning,
+}) {
+  const packed = packSquadCalendar({
+    squad, catalog, days: realDays, racesPerWeek: squadCfg.racesPerWeek, maxRacingDayShare: squadCfg.maxRacingDayShare,
+    raceDayTarget, seed, usedNames: usedRaceNamesBeforeTier, seasonFractionOf,
+  });
+  for (const id of packed.selectedIds) {
+    usedRaceIds.add(id);
+    const name = catalogById.get(id)?.name;
+    if (name != null) usedRaceNamesRunning.add(name);
+  }
+
+  // #5592: samme planlaegningsvindue som senioren (foerste etape mindst 24 t efter skiftet,
+  // sidste loebsdag slutter kl. 15) — men paa truppens ene etape-tid (SQUAD_CALENDAR.stageSlot).
+  const planningNotBefore = resolveSeasonStartNotBefore({
+    from, seasonTransitionAt, previousSeasonLastStageAt: previousSeasonLastStageAtByTier?.[tier] ?? null,
+  });
+  const squadSlots = { [tier]: [squadCfg.stageSlot] };
+  const slotsByDate = new Map();
+  const slotsForDate = (localDate) => {
+    if (!slotsByDate.has(localDate)) {
+      slotsByDate.set(localDate, slotsFor(tier, localDate, { slots: squadSlots, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }));
+    }
+    return slotsByDate.get(localDate);
+  };
+  const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: slotsForDate });
+  const planningWindows = measurePlanningWindows(stageRows);
+  const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
+
+  const poolPlans = tierPools.slice().sort((a, b) => a.id - b.id).map((pool) => ({
+    leagueDivisionId: pool.id, tier,
+    raceRows: packed.placements.map((pl) => {
+      const cat = catalogById.get(pl.id) || {};
+      return {
+        pool_race_id: pl.id,
+        name: cat.name ?? null,
+        race_class: cat.race_class ?? pl.race_class ?? null,
+        race_type: cat.race_type ?? (pl.type === "single" ? "single" : "stage_race"),
+        stages: pl.stages,
+        game_day_start: pl.startRealDay,
+        scheduled_for: scheduledForById.get(pl.id) ?? null,
+      };
+    }),
+    stageRows: stageRows.map((s) => ({ pool_race_id: s.race_id, stage_number: s.stage_number, scheduled_at: s.scheduled_at, game_day: s.game_day })),
+  }));
+
+  const calendarViolations = [
+    ...packed.violations,
+    // Ingen klasse-kaskade for en trup: kataloget ER truppens (race_pool.squad), og alle
+    // truppens grupper ligger i samme tier. Navne-dedup'en gaelder stadig inden for truppen.
+    ...detectCalendarViolations({ tier, placements: packed.placements, catalogById, classWhitelist: {}, usedRaceNamesBeforeTier }),
+    ...detectPoolSignatureMismatch({ tier, pools: poolPlans }),
+    ...detectPlanningWindowViolations({ tier, stageRows, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }),
+  ];
+
+  return {
+    tier, squad, quota: packed.totalGameDays, density: 1, realDays, overlapCap: squadCfg.overlapCap, calendarViolations,
+    totalGameDays: packed.totalGameDays, quotaHit: true, shortfall: 0,
+    raceCount: packed.raceCount,
+    // #5644: truppens taethed, som den gates (loeb der STARTER pr. uge) + datoer med en etape.
+    weeklyRaceStarts: packed.weeklyStarts,
+    racingDates: packed.racingDates,
+    racesPerWeek: squadCfg.racesPerWeek,
+    load: null, emptyDays: realDays - packed.racingDates, underfilledDays: 0,
+    overlapDays: 0, maxOverlap: packed.raceCount ? 1 : 0, overlapHistogram: null,
+    timelineLength: packed.timelineLength,
+    raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : null,
+    raceDayAxisLength: packed.timelineLength,
+    naturalRaceDays: packed.naturalRaceDays,
+    raceDayDeficit: 0,
+    trainingGameDays: packed.trainingGameDays,
+    trainingGameDayRealDays: packed.dateOfTrainingGameDay,
+    trainingGameDayCount: packed.trainingGameDays.length,
+    restDayGameDayCount: 0,
+    raceDayPaddingHeld: true,
+    freeAxisPositions: 0,
+    longestDateStreakWithoutTraining: null,
+    raceDaysPerDate: packed.raceDaysPerDate,
+    trainingDaysInsideStageRaceSpans: 0,
+    raceDayPerDateDeviations: [],
+    straddleGameDays: 0,
+    gtRealDaySeparationViolations: [],
+    daysWithoutDecision: [], daysWithoutDecisionCount: 0,
+    monuments: null, monumentRulesHeld: true, solveAttempts: [],
+    unplacedStages: 0, unplacedSingles: 0,
+    planningWindow: {
+      notBefore: planningNotBefore ? planningNotBefore.toISOString() : null,
+      firstStageAt: planningWindows.firstStageAt,
+      seasonLastRaceDay: lastRaceDay,
+      lastStageAt: planningWindows.lastStageAt,
+    },
+    chronologyRaces: [],
+    grandTourRestDays: [],
+    pools: poolPlans,
+  };
+}
+
+/**
  * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed? }} args
  * @returns {{ tierPlans: Array<object> }}
  */
@@ -269,8 +433,28 @@ export function buildTierMaterializationPlan({
   // races i DB for tier 1-3, når tier 4 aktiveres i et separat reconcile-kald der ikke ser
   // de andre tiers' selection i hukommelsen). Seedes af materializeTierCalendars.
   usedRaceNames = new Set(),
+  // #5592 sæsonskifte-reglen: første etape mindst 24 timer efter sæsonskiftet.
+  // undefined = konventionen (aftenen før første kalenderdag kl. 18); null = slået fra
+  // (en pulje der aktiveres midt i sæsonen, §2e); en værdi = det faktiske sæsonskifte.
+  seasonTransitionAt = undefined,
+  // #5592: divisionens sidste etape i forrige sæson ({ [tier]: ISO }), så første etape også
+  // ligger mindst 24 t efter den (spillerteksten lover 24 t fra den gamle sæsons sidste løb).
+  // null = ukendt (kun sæsonskiftet tæller).
+  previousSeasonLastStageAtByTier = null,
+  // #5592: sæsonens SIDSTE løbsdag (dansk dato "YYYY-MM-DD"), der slutter kl. 15 så skiftet
+  // kan ske tidligt. undefined = kalenderens sidste dato (from + realDays, lastCalendarDay);
+  // null = slået fra; en dato = eksplicit (buildSeasonCalendar sender §2-vinduets sidste dag).
+  seasonLastRaceDay = undefined,
+  // #5644 (Y5): hvilken trups kalender. "senior" = den eksisterende division-kalender
+  // (bit-identisk). "u23"/"junior" = truppens egen, med SQUAD_CALENDAR's taethed og
+  // packSquadCalendar i stedet for selectTierRaceSet + packLaneCalendar. Alle truppens
+  // puljer i samme tier deler EEN kalender (samme fan-out som senioren, #2276).
+  squad = "senior",
 } = {}) {
+  assertCalendarSquad(squad);
+  const squadCfg = squad === "senior" ? null : SQUAD_CALENDAR[squad];
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
+  const lastRaceDay = seasonLastRaceDay === undefined ? lastCalendarDay(from, realDays) : seasonLastRaceDay;
   const forced = new Set(forceTiers);
 
   // #3469: sæson-spændet beregnes ÉN GANG af det FULDE katalog (før tier-filtrering/dedup),
@@ -298,7 +482,10 @@ export function buildTierMaterializationPlan({
 
   const liveByTier = new Map();
   for (const p of pools) {
-    if (!poolHasCalendar(p.tier, p.realManagerCount) && !forced.has(p.tier)) continue;
+    // #5644: en pensioneret pulje faar ALDRIG en kalender — heller ikke via forceTiers.
+    const retired = p.retiredAt != null || p.retired_at != null;
+    if (retired) continue;
+    if (!poolHasCalendar(p.tier, p.realManagerCount, { squad: p.squad ?? squad }) && !forced.has(p.tier)) continue;
     if (!liveByTier.has(p.tier)) liveByTier.set(p.tier, []);
     liveByTier.get(p.tier).push(p);
   }
@@ -339,7 +526,6 @@ export function buildTierMaterializationPlan({
     const quota = quotas[tier] ?? 0;
     const dens = density[tier] ?? 1;
     const cap = overlapCaps[tier] ?? 2;
-    const tierSlots = slots[tier] ?? slots[3];
     const usedRaceNamesBeforeTier = new Set(usedRaceNamesRunning);
 
     // #2251: GT'er (≥15 etaper) er KUN tilladt i tier 1 (spec'ens GT-rygrad).
@@ -372,6 +558,18 @@ export function buildTierMaterializationPlan({
         for (const c of wl) unionClasses.add(c);
       }
       downstreamProtectedArchetypes[arch] = unrestricted ? null : [...unionClasses];
+    }
+
+    // #5644 (Y5): en trups kalender springer seniorens udvalg + pakker over — se
+    // squadCalendarPacker.js for hvorfor. Resten af planen (tider, fan-out, gates) er faelles.
+    if (squadCfg) {
+      tierPlans.push(buildSquadTierPlan({
+        tier, tierPools, squad, squadCfg, catalog: availableCatalog, catalogById, from, realDays,
+        raceDayTarget, seed: (baseSeed ^ tier) >>> 0, usedRaceNamesBeforeTier, seasonFractionOf,
+        seasonTransitionAt, previousSeasonLastStageAtByTier, lastRaceDay,
+        usedRaceIds, usedRaceNamesRunning,
+      }));
+      continue;
     }
 
     const sel = selectTierRaceSet({
@@ -419,7 +617,23 @@ export function buildTierMaterializationPlan({
     });
     const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;
-    const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
+    // #5592: etape-tiderne pr. DATO fra den ene kilde (slotsFor). Kun de to dage omkring
+    // sæsonskiftet afviger fra TIER_STAGE_SLOTS: sæsonens sidste løbsdag slutter kl. 15, og
+    // sæsonens første dag starter tidligst 24 timer efter sæsonskiftet. Alle andre dage,
+    // også søndage og mandage, er uændrede. Kun klokkeslættet flytter sig — dato, bane og
+    // game_day er urørte.
+    const planningNotBefore = resolveSeasonStartNotBefore({
+      from, seasonTransitionAt, previousSeasonLastStageAt: previousSeasonLastStageAtByTier?.[tier] ?? null,
+    });
+    const slotsByDate = new Map();
+    const slotsForDate = (localDate) => {
+      if (!slotsByDate.has(localDate)) {
+        slotsByDate.set(localDate, slotsFor(tier, localDate, { slots, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }));
+      }
+      return slotsByDate.get(localDate);
+    };
+    const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: slotsForDate });
+    const planningWindows = measurePlanningWindows(stageRows);
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
     // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (game_day).
@@ -463,6 +677,9 @@ export function buildTierMaterializationPlan({
     const calendarViolations = [
       ...detectCalendarViolations({ tier, placements: packed.placements, catalogById, classWhitelist, usedRaceNamesBeforeTier }),
       ...detectPoolSignatureMismatch({ tier, pools: poolPlans }),
+      // #5592: første etape mindst 24 timer efter sæsonskiftet, sidste løbsdag slutter
+      // kl. 15. Hårdt krav uden override, målt på de tider der faktisk ville blive skrevet.
+      ...detectPlanningWindowViolations({ tier, stageRows, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }),
     ];
 
     tierPlans.push({
@@ -509,6 +726,14 @@ export function buildTierMaterializationPlan({
       monumentRulesHeld: Boolean(packed.monumentRulesHeld),
       solveAttempts: packed.solveAttempts ?? [],
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
+      // #5592: planlægningsvinduet — rent rapporterings-data til dry-runnet (dommen er
+      // detectPlanningWindowViolations ovenfor, i calendarViolations).
+      planningWindow: {
+        notBefore: planningNotBefore ? planningNotBefore.toISOString() : null,
+        firstStageAt: planningWindows.firstStageAt,
+        seasonLastRaceDay: lastRaceDay,
+        lastStageAt: planningWindows.lastStageAt,
+      },
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.
       pools: poolPlans,
@@ -557,27 +782,47 @@ export async function materializeTierCalendars({
   // ARCHETYPE_PROFILES-tabel i stedet for den globale default, i BÅDE
   // dæknings-verifikationen og selve skrive-stien (samme parcours måles og persisteres).
   useUniformTierTilt = false,
+  // #5592 pass-through til buildTierMaterializationPlan (sæsonens første og sidste løbsdag)
+  // — se dér. seasonTransitionAt: undefined = konventionen (aftenen før første kalenderdag
+  // kl. 18), null = slået fra. seasonLastRaceDay: undefined = kalenderens sidste dato.
+  seasonTransitionAt = undefined,
+  previousSeasonLastStageAtByTier = null,
+  seasonLastRaceDay = undefined,
+  // #5644 (Y5): hvilken trups kalender der bygges. "senior" (default) er bit-identisk med
+  // foer. "u23"/"junior" laeser KUN truppens puljer (league_divisions.squad), truppens
+  // katalog (race_pool.squad) og truppens eksisterende loeb, og skriver races.squad.
+  squad = "senior",
 } = {}) {
+  assertCalendarSquad(squad);
+  const isSenior = squad === "senior";
   const editionYear = editionYearFrom(seasonStartDate);
 
-  const { data: divisions, error: dErr } = await supabase.from("league_divisions").select("id, tier, pool_index, label");
+  // #5644: kun AKTIVE puljer (retired_at IS NULL, #4592 A2) i truppen.
+  const { data: divisions, error: dErr } = await loadCalendarPools({ supabase, squad });
   if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
   // #2962: helt ufiltreret teams-select (369 rækker 25/7, samme #2951-klasse) —
   // pagineret via fetchAllRows; .order("id") som stabilt tiebreak.
-  let teams;
-  try {
-    teams = await fetchAllRows(() => (
-      supabase
-        .from("teams")
-        .select("league_division_id, is_ai, is_bank, is_frozen, is_test_account")
-        .order("id", { ascending: true })
-    ));
-  } catch (tErr) {
-    throw new Error(`teams: ${tErr.message}`, { cause: tErr });
+  // #5644: kun senioren tæller ægte managers (teams.league_division_id er seniorpuljen);
+  // en trups grupper er altid live (poolHasCalendar), så læsningen springes over dér.
+  let teams = [];
+  if (isSenior) {
+    try {
+      teams = await fetchAllRows(() => (
+        supabase
+          .from("teams")
+          .select("league_division_id, is_ai, is_bank, is_frozen, is_test_account")
+          .order("id", { ascending: true })
+      ));
+    } catch (tErr) {
+      throw new Error(`teams: ${tErr.message}`, { cause: tErr });
+    }
   }
   const realByDiv = new Map();
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
-  const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
+  const pools = (divisions || []).map((d) => ({
+    id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0,
+    retiredAt: d.retired_at ?? null, squad,
+  }));
 
   // #3469: date_text tilføjet — race_pool's VIRKELIGE dato, kilden til seasonFraction
   // (se buildTierMaterializationPlan). READ-ONLY overalt: external_id = sha256(name|date_text)
@@ -588,11 +833,18 @@ export async function materializeTierCalendars({
   // #5330: SENIOR-læser. race_pool rummer efter #4620/#5262 også U23-/juniorløb; uden
   // squad-filteret ville de kunne vælges til seniorkalenderen. NULL/manglende kolonne =
   // senior (se racePoolCatalog.js).
-  const { data: dbCatalog, error: cErr } = await selectSeniorRacePool(
-    (columns) => supabase.from("race_pool").select(columns).is("retired_at", null),
-    { columns: "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text" },
-  );
+  // #5644 (Y5): en trup laeser KUN sit eget katalog (race_pool.squad = truppen).
+  const catalogColumns = "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text";
+  const { data: dbCatalog, error: cErr } = isSenior
+    ? await selectSeniorRacePool(
+      (columns) => supabase.from("race_pool").select(columns).is("retired_at", null),
+      { columns: catalogColumns },
+    )
+    : await supabase.from("race_pool").select(`${catalogColumns}, squad`).is("retired_at", null).eq("squad", squad);
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
+  if (!isSenior && extraCatalogRows.length) {
+    throw new Error("extraCatalogRows er seniorens katalog-analyse — de kan ikke laegges paa en trups katalog");
+  }
   // #3295: HYPOTETISKE katalog-rækker til "hvad nu hvis vi tilføjede disse løb?"-analyse
   // (scripts/proposeCatalogExpansion.js). De findes ikke i race_pool, så de kan aldrig
   // materialiseres — apply afvises højlydt hvis nogen prøver. Analyse-stien kører altid
@@ -617,7 +869,13 @@ export async function materializeTierCalendars({
   // immunt over for at nogen aendrer selectet senere.
   const raceClassByPoolRace = new Map((catalog || []).map((c) => [c.id, c.race_class ?? null]));
 
-  const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id, name").eq("season_id", seasonId);
+  // #5517: kun SENIORløbene — idempotens-nøglen og cross-tier-dedup'en gælder
+  // seniorkalenderen (spec §4.2: navne-dedup pr. trup, ikke på tværs af trupper).
+  // #5644: en trup ser kun sine egne løb — dedup og idempotens er pr. trup (spec §4.2).
+  // squad-scope-ok: ungdomsgrenen er scopet med .eq("squad", <trup>), seniorgrenen med withSeniorSquadScope
+  const { data: existing, error: exErr } = isSenior
+    ? await withSeniorSquadScope((senior) => senior(supabase.from("races").select("league_division_id, pool_race_id, name")).eq("season_id", seasonId))
+    : await supabase.from("races").select("league_division_id, pool_race_id, name").eq("squad", squad).eq("season_id", seasonId);
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
   const existingKey = new Set((existing || []).map((r) => `${r.league_division_id}:${r.pool_race_id}`));
 
@@ -641,15 +899,17 @@ export async function materializeTierCalendars({
   const { tierPlans } = buildTierMaterializationPlan({
     pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames,
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
+    seasonTransitionAt, previousSeasonLastStageAtByTier, seasonLastRaceDay, squad,
   });
-  const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
+  const summary = { dryRun, squad, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
 
     // #4103: ÉN gang pr. tier, genbrugt af BÅDE dæknings-verifikationen og skrive-stien
     // nedenfor — undefined (default-adfærd) medmindre useUniformTierTilt er slået til.
-    const archetypeProfilesForTier = useUniformTierTilt ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
+    // #5644: tilten er kalibreret pr. SENIORdivision (§6b) og gælder ikke en trup.
+    const archetypeProfilesForTier = useUniformTierTilt && isSenior ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
 
     // #3327/#3328: dækningsverifikation EFTER selection/packing men FØR apply-gaten —
     // beregnet fra ÉN repræsentativ pulje (identisk kalender pr. tier, #2276). Fejl her
@@ -660,21 +920,32 @@ export async function materializeTierCalendars({
     // gate-scorecard og de rækker der faktisk INSERTES alle beskriver det SAMME parcours.
     // attempt 0 (det kanoniske træk) er det normale svar og er bit-identisk med før #3347.
     let seasonVariant = 0;
+    // #5405: tierens profiler (med kvote-fordelte finaler) — SAMME kort bruges af
+    // dæknings-verifikationen, dry-run-scorecardet OG insert'et nedenfor.
+    let tierProfiles = null;
     if (repPool) {
       const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }));
-      const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces });
-      seasonVariant = draw.attempt;
-      tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures };
-      if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
-      if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
+      // #5644: realisme-båndene er seniordivisionernes (#2755/#2769) — en trup bruger det
+      // kanoniske træk (attempt 0) og måles ikke mod dem.
+      if (isSenior) {
+        const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces });
+        seasonVariant = draw.attempt;
+        tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures };
+        if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
+        if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
+      }
 
       const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier });
+      tierProfiles = profiles;
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
       const coverageViolations = detectCoverageViolations({
         tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
       });
       tierPlan.coverageStats = coverageStats;
-      tierPlan.calendarViolations = [...(tierPlan.calendarViolations ?? []), ...coverageViolations];
+      // #5644 (spec 2026-09-15 §4.3): dæknings-gulvene er kalibreret mod SENIORformen. For
+      // en trup med 1-2 løb om ugen rapporteres de som måling, ikke som brud.
+      if (isSenior) tierPlan.calendarViolations = [...(tierPlan.calendarViolations ?? []), ...coverageViolations];
+      else tierPlan.coverageMeasurements = coverageViolations;
 
       // #3295 (K-B-komposition) + #3326/#3371 (rækkefølge + arketype-variation):
       // RAPPORTERES, gater IKKE. Kalibreringen mod K-B er ikke i mål endnu (målt
@@ -717,6 +988,11 @@ export async function materializeTierCalendars({
       realismDraw: tierPlan.realismDraw ?? null,
       chronologyRaces: tierPlan.chronologyRaces ?? null, // #3469: dry-run-rapportering (Kronologi-sektionen)
       grandTourRestDays: tierPlan.grandTourRestDays ?? [], // #3470: dry-run-rapportering (hviledage + fillere)
+      // #5644: en trups taethed (løb der starter pr. uge) + dæknings-måling uden gate.
+      squad,
+      weeklyRaceStarts: tierPlan.weeklyRaceStarts ?? null,
+      racingDates: tierPlan.racingDates ?? null,
+      coverageMeasurements: tierPlan.coverageMeasurements ?? [],
       pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
@@ -728,6 +1004,9 @@ export async function materializeTierCalendars({
         season_id: seasonId, league_division_id: poolPlan.leagueDivisionId, pool_race_id: r.pool_race_id,
         name: r.name, race_class: r.race_class, race_type: r.race_type, stages: r.stages,
         edition_year: editionYear, status: "scheduled", game_day_start: r.game_day_start, scheduled_for: r.scheduled_for,
+        // #5644 (Y5): SKAL skrives — uden den bliver et ungdomsløb et seniorløb (kolonnens
+        // default er 'senior', #5525).
+        squad,
       }));
       const inserted = [];
       for (let i = 0; i < toInsert.length; i += INSERT_BATCH) {
@@ -740,14 +1019,21 @@ export async function materializeTierCalendars({
 
       const profileRows = [];
       for (const race of inserted) {
-        // external_id (samme parcours i alle puljer) + terrain_archetype (terrænkarakter)
-        // + season_id (variation pr. sæson) fra konteksten.
-        // season_variant (#3347) er tierens resolverede re-draw — SAMME tal som
-        // dæknings-verifikationen og realisme-scorecardet bruger.
-        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
-        for (const p of generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier })) {
-          profileRows.push(toStageProfileRow(race.id, p));
+        // #5405: profilerne tages fra tierens kort (dæknings-verifikationen ovenfor), ikke
+        // fra et nyt træk pr. løb. Finale-typerne er fordelt efter kvote over hele tierens
+        // løbssæt, og det kan et enkelt løbs træk ikke genskabe. Alle puljer i en tier har
+        // samme løbssæt (#2276, detectPoolSignatureMismatch nægter apply ellers), så kortet
+        // dækker hvert løb i hver pulje.
+        //
+        // Faldbagud (bør ikke ske): et løb uden for kortet genereres som før — external_id
+        // (samme parcours i alle puljer) + terrain_archetype + season_id + season_variant
+        // (#3347, tierens resolverede re-draw) fra konteksten.
+        let profiles = tierProfiles?.get(race.pool_race_id);
+        if (!profiles) {
+          const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
+          profiles = generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier });
         }
+        for (const p of profiles) profileRows.push(toStageProfileRow(race.id, p));
       }
       for (let i = 0; i < profileRows.length; i += INSERT_BATCH) {
         const { error } = await supabase.from("race_stage_profiles").insert(profileRows.slice(i, i + INSERT_BATCH));
@@ -870,10 +1156,16 @@ export async function reconcilePoolCalendarOnActivation({
   if (rErr) throw new Error(`races (precheck): ${rErr.message}`);
   if ((existingRaces || []).length > 0) return { skipped: "has-calendar", races: existingRaces.length };
 
+  // #5644: "*" i stedet for en kolonneliste, så læsningen virker både før og efter
+  // league_divisions.retired_at findes (#4592 A2 applies post-merge). En pensioneret pulje
+  // får aldrig en kalender, og en trups gruppe (u23/junior) bygges af
+  // buildSeasonCalendar --squad, ikke af en seniorpulje-aktivering.
   const { data: division, error: dErr } = await supabase
-    .from("league_divisions").select("id, tier").eq("id", poolId).maybeSingle();
+    .from("league_divisions").select("*").eq("id", poolId).maybeSingle();
   if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
   if (!division) return { skipped: "unknown-pool" };
+  if (division.retired_at != null) return { skipped: "retired-pool", poolId };
+  if (division.squad != null && division.squad !== "senior") return { skipped: "squad-pool", poolId, squad: division.squad };
 
   const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
 
@@ -887,13 +1179,15 @@ export async function reconcilePoolCalendarOnActivation({
   // sæson — stage-læsningen er altså allerede OVER loftet i dag. En afkortet side ville
   // give en for tidlig sæson-slut OG (efter #5272) en for kort løbsdags-akse, begge
   // tavst. Fanget af CodeRabbit 17/9.
+  // #5517: kun SENIORløbene. Ungdomsaksen (140 løbsdage, de fleste tomme) må hverken
+  // trække sæson-slut eller løbsdags-målet for en seniorpulje der vågner midt i sæsonen.
   let seasonRaces;
   try {
-    seasonRaces = await fetchAllRows(() => (
-      supabase.from("races").select("id, league_division_id")
+    seasonRaces = await withSeniorSquadScope((senior) => fetchAllRows(() => (
+      senior(supabase.from("races").select("id, league_division_id"))
         .eq("season_id", season.id)
         .order("id", { ascending: true })
-    ));
+    )));
   } catch (allErr) {
     throw new Error(`races (season horizon): ${allErr.message}`, { cause: allErr });
   }
@@ -961,6 +1255,10 @@ export async function reconcilePoolCalendarOnActivation({
   const summary = await materialize({
     supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
     from, tiers: [division.tier], dryRun: false, log, ...horizon, ...coverageOverrides,
+    // #5592: en pulje der vågner midt i sæsonen er ikke en sæsonstart — første-dags-reglen
+    // gælder ikke her. Sidste-dags-reglen gælder stadig: horisonten slutter på sæsonens
+    // sidste etape-dato, så puljens sidste dag slutter kl. 15 som de øvrige divisioners.
+    seasonTransitionAt: null,
   });
   return {
     skipped: null, poolId, tier: division.tier, from: from.toISOString(),
