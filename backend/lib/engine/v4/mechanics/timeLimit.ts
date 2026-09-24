@@ -33,7 +33,37 @@
 // der sker med ham i DB'en er FLIP-lagets ansvar, ikke motorkernens (se
 // FLIP-KONTRAKT nederst i filen og i types.ts).
 
-import type { ProfileType, StageResult, StageResultStatus, TimelineEvent } from "../types.ts";
+//
+// ── #5582 JURYEN (ejer-beslutning 23/9, Tourens reglement) ────────────────────
+// Reglen er ikke laengere HELT uden holdakse: juryen genindsaetter ogsaa en
+// holdkammerat, der koerte med det uheldsramte offer. Det er stadig ingen
+// spiller/AI-skelnen (punkt 5 staar ved magt): et AI-hold og et spillerhold
+// behandles ens, og holdet afgoer kun HVEM der koerte med offeret.
+//   - Kun ryttere med et styrt eller en defekt MED TIDSTAB kan genindsaettes.
+//     Tidsgraensen doemmer dem paa sluttid minus uheldets tidstab (Tour 2014,
+//     etape 10: juryen trak tiden i ambulancen fra).
+//   - Kun ryttere, der kaempede videre: indsatsvalget grupetto/save udelukker.
+//   - En holdkammerat i SAMME maalgruppe som et genindsat offer genindsaettes
+//     med ham (han har samme tid, og juryen doemmer ham paa samme maade).
+//   - Juryen koerer EFTER grupetto-kaedningen. Kaeden bygges paa de faktiske
+//     sluttider, saa ingen rytter uden uheld kan blive OTL, fordi et offer blev
+//     trukket ud af en kaede.
+//   - Ingen genindsaettelse uden et uheld. Grupetto-redningen er uaendret.
+//
+// POINTSTRAFFEN (ejer 23/9, UCI 2.6.032): ALLE genindsatte, baade juryens og
+// en reddet grupetto, mister deres point i loebets point- og bjergkonkurrence.
+// Modulet maerker dem (`StageResult.reinstated_by`) og leverer
+// `applyReinstatementPointPenalty` til etapens egne point; index.ts kalder den.
+
+import type {
+  EffortLevel,
+  ProfileType,
+  RiderPassageTotals,
+  StageIncident,
+  StageResult,
+  StageResultStatus,
+  TimelineEvent,
+} from "../types.ts";
 import { TIME_LIMIT_EXTRA_TUNING } from "../tuning.ts";
 
 /**
@@ -59,6 +89,12 @@ export const OTL_STATUS: StageResultStatus = "otl";
 // praecedens som mechanics/bonusSeconds.ts's bonus_seconds_awarded.
 export const OUTSIDE_TIME_LIMIT_EVENT = "outside_time_limit";
 export const GRUPETTO_SAVED_EVENT = "grupetto_saved";
+// #5582: "Genindsat af juryen efter styrtet". Params baerer hvem og hvor
+// mange, aldrig et tidstab, en graense eller en procent (fog-gate).
+export const JURY_REINSTATED_EVENT = "jury_reinstated";
+
+/** Indsatsvalg der betyder "kaempede ikke videre" — juryen genindsaetter dem ikke. */
+const JURY_INELIGIBLE_EFFORTS: ReadonlySet<EffortLevel> = new Set<EffortLevel>(["grupetto", "save"]);
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -156,7 +192,120 @@ export type TimeLimitOutcome = {
   otlRiderIds: string[];
   /** Ryttere der laa uden for graensen men blev reddet af grupetto-reglen. */
   rescuedRiderIds: string[];
+  /** #5582: ryttere der laa uden for graensen men blev genindsat af juryen efter et uheld. */
+  juryReinstatedRiderIds: string[];
 };
+
+/**
+ * #5582: hvad juryen skal vide. Udelades den, er der ingen jury (den gamle
+ * M15-adfaerd, bit-uaendret).
+ */
+export type TimeLimitJuryInput = {
+  /** Etapens uheldsprotokol (StageOutput.incidents-formen). */
+  incidents: readonly Pick<StageIncident, "rider_id" | "outcome" | "time_loss_seconds">[];
+  /** Rytterens indsatsvalg paa etapen. grupetto/save = kaempede ikke videre. */
+  effortByRider?: Readonly<Record<string, EffortLevel | undefined>>;
+  /** Hold-id pr. rytter. Kun til hjaelper-reglen; tom/manglende = intet hold. */
+  teamByRider?: Readonly<Record<string, string | null | undefined>>;
+};
+
+/**
+ * Rytterens samlede uhelds-tidstab paa etapen (#5582): summen af
+ * `time_loss_seconds` over hans uheld med udfaldet "time_loss" (styrt eller
+ * defekt). 3 km-reglens beskyttede uheld og udgaaelser koster ingen tid og
+ * taeller ikke. Ren; ryttere uden tidstab er ikke med i mappet.
+ */
+export function incidentTimeLossByRider(
+  incidents: TimeLimitJuryInput["incidents"],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const incident of incidents) {
+    if (incident.outcome !== "time_loss") continue;
+    const loss = Number(incident.time_loss_seconds);
+    if (!Number.isFinite(loss) || loss <= 0) continue;
+    out.set(incident.rider_id, round2((out.get(incident.rider_id) ?? 0) + loss));
+  }
+  return out;
+}
+
+function juryTeamOf(jury: TimeLimitJuryInput, riderId: string): string | null {
+  const raw = jury.teamByRider?.[riderId];
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Juryen (#5582): hvem af de OTL-doemte genindsaettes. Ren; returnerer id'er i
+ * resultatlistens egen raekkefoelge.
+ *
+ * 1. Offeret: har et uheld med tidstab, kaempede videre (ikke grupetto/save),
+ *    og sluttid minus uhelds-tidstabet ligger inden for graensen.
+ * 2. Hjaelperen: en OTL-doemt holdkammerat i SAMME maalgruppe som et
+ *    genindsat offer.
+ */
+export function juryReinstatements(args: {
+  results: readonly StageResult[];
+  otlRiderIds: ReadonlySet<string>;
+  limitSeconds: number;
+  jury: TimeLimitJuryInput;
+}): string[] {
+  const { results, otlRiderIds, limitSeconds, jury } = args;
+  if (otlRiderIds.size === 0) return [];
+  const lossByRider = incidentTimeLossByRider(jury.incidents);
+  if (lossByRider.size === 0) return [];
+
+  const victims = new Set<string>();
+  for (const r of results) {
+    if (!otlRiderIds.has(r.rider_id)) continue;
+    const loss = lossByRider.get(r.rider_id);
+    if (!loss) continue;
+    const effort = jury.effortByRider?.[r.rider_id];
+    if (effort && JURY_INELIGIBLE_EFFORTS.has(effort)) continue;
+    if (round2(r.time_seconds - loss) <= limitSeconds) victims.add(r.rider_id);
+  }
+  if (victims.size === 0) return [];
+
+  // Hjaelper-reglen: (maalgruppe, hold) for hvert genindsat offer.
+  const victimKeys = new Set<string>();
+  for (const r of results) {
+    if (!victims.has(r.rider_id)) continue;
+    const team = juryTeamOf(jury, r.rider_id);
+    if (team !== null) victimKeys.add(`${r.group_id}\u0000${team}`);
+  }
+  const reinstated = new Set(victims);
+  for (const r of results) {
+    if (!otlRiderIds.has(r.rider_id) || reinstated.has(r.rider_id)) continue;
+    const team = juryTeamOf(jury, r.rider_id);
+    if (team !== null && victimKeys.has(`${r.group_id}\u0000${team}`)) reinstated.add(r.rider_id);
+  }
+  return results.filter((r) => reinstated.has(r.rider_id)).map((r) => r.rider_id);
+}
+
+/**
+ * POINTSTRAFFEN (#5582, ejer 23/9, UCI 2.6.032): en genindsat rytter mister
+ * sine point i point- og bjergkonkurrencen. Her nulstilles ETAPENS point i
+ * `passage_totals` (det flip-laget skriver pr. rytter). Bonussekunder er GC-tid,
+ * ikke point, og roeres ikke. Passagerne selv (hvem der var foerst over
+ * toppen) er uaendrede: de er hvad der skete paa vejen.
+ *
+ * Point fra TIDLIGERE etaper kan motoren ikke se; flip-laget laeser
+ * `StageResult.reinstated_by`. Ren: nyt array, samme raekkefoelge.
+ */
+export function applyReinstatementPointPenalty(
+  totals: readonly RiderPassageTotals[],
+  reinstatedRiderIds: ReadonlySet<string>,
+): RiderPassageTotals[] {
+  if (reinstatedRiderIds.size === 0) return totals.map((t) => ({ ...t }));
+  return totals.map((t) =>
+    reinstatedRiderIds.has(t.rider_id) ? { ...t, sprint_points: 0, kom_points: 0 } : { ...t },
+  );
+}
+
+/** Alle genindsatte i en M15-afgoerelse (#5582): juryens + den reddede grupetto. */
+export function reinstatedRiderIdsOf(outcome: Pick<TimeLimitOutcome, "results">): Set<string> {
+  return new Set(outcome.results.filter((r) => r.reinstated_by).map((r) => r.rider_id));
+}
 
 export type ApplyTimeLimitArgs = {
   /** Resultatlisten som index.ts allerede har bygget (rank + sluttid sat). */
@@ -172,6 +321,8 @@ export type ApplyTimeLimitArgs = {
    */
   cohesionWindowSeconds?: number;
   tuning?: TimeLimitTuning;
+  /** #5582: juryen. Udeladt = ingen jury (M15 som foer). */
+  jury?: TimeLimitJuryInput;
 };
 
 /**
@@ -204,6 +355,7 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
     winnerTimeSeconds: 0,
     otlRiderIds: [],
     rescuedRiderIds: [],
+    juryReinstatedRiderIds: [],
   };
   if (finishers.length === 0) return empty;
 
@@ -235,12 +387,25 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
     for (const entry of group) otlIds.add(entry.rider_id);
   }
 
-  const results = args.results.map((r) => (otlIds.has(r.rider_id) ? { ...r, status: OTL_STATUS } : { ...r }));
+  // #5582: juryen koerer EFTER grupetto-kaedningen (se filhovedet). Den kan
+  // kun flytte en rytter fra OTL til genindsat, aldrig den anden vej.
+  const juryIds = new Set(
+    args.jury ? juryReinstatements({ results: args.results, otlRiderIds: otlIds, limitSeconds, jury: args.jury }) : [],
+  );
+  for (const id of juryIds) otlIds.delete(id);
+
+  const results = args.results.map((r) => {
+    if (otlIds.has(r.rider_id)) return { ...r, status: OTL_STATUS };
+    if (juryIds.has(r.rider_id)) return { ...r, reinstated_by: "jury" as const };
+    if (rescuedIds.has(r.rider_id)) return { ...r, reinstated_by: "grupetto" as const };
+    return { ...r };
+  });
 
   // Stabil, deterministisk raekkefoelge i event-params: resultatlistens egen
   // (dvs. rank-orden), ikke Set-indsaettelses-orden.
   const otlRiderIds = args.results.filter((r) => otlIds.has(r.rider_id)).map((r) => r.rider_id);
   const rescuedRiderIds = args.results.filter((r) => rescuedIds.has(r.rider_id)).map((r) => r.rider_id);
+  const juryReinstatedRiderIds = args.results.filter((r) => juryIds.has(r.rider_id)).map((r) => r.rider_id);
 
   const finishKm = round2(args.distanceKm);
   const events: TimelineEvent[] = [];
@@ -253,6 +418,14 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
       params: { rider_ids: rescuedRiderIds, rider_count: rescuedRiderIds.length },
     });
   }
+  if (juryReinstatedRiderIds.length > 0) {
+    // "Genindsat af juryen efter styrtet" (#5582). Aldrig et tal ud over antal.
+    events.push({
+      km: finishKm,
+      type: JURY_REINSTATED_EVENT,
+      params: { rider_ids: juryReinstatedRiderIds, rider_count: juryReinstatedRiderIds.length },
+    });
+  }
   if (otlRiderIds.length > 0) {
     events.push({
       km: finishKm,
@@ -261,7 +434,7 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
     });
   }
 
-  return { results, events, limitSeconds, winnerTimeSeconds, otlRiderIds, rescuedRiderIds };
+  return { results, events, limitSeconds, winnerTimeSeconds, otlRiderIds, rescuedRiderIds, juryReinstatedRiderIds };
 }
 
 // ── FLIP-KONTRAKT: hvad `feat/v4-flip-infrastructure` skal goere med OTL ──────

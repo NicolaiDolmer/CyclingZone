@@ -37,7 +37,12 @@ import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
 // simulateStageV4 nedenfor for hvorfor den koeres netop dér.
-import { applyTimeLimit } from "./mechanics/timeLimit.ts";
+import {
+  applyReinstatementPointPenalty,
+  applyTimeLimit,
+  reinstatedRiderIdsOf,
+  type TimeLimitJuryInput,
+} from "./mechanics/timeLimit.ts";
 // M13 (#3463/#2412, ejer-beslutning 6/9): holdtidskoerslen. Den er IKKE et hook
 // i segment-loopet men en hel ALTERNATIV etape-model (ét hold = én gruppe der
 // koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
@@ -258,6 +263,11 @@ export function simulateStageV4(input: StageInput): StageOutput {
     // mergeThresholdSeconds + margin fra hinanden, saa det vindue kunne aldrig
     // kaede to tiers til én grupetto. Modulet bruger sin egen ANKOMST-graense
     // (TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds, se maalingen dér).
+    //
+    // #5582 (ejer 23/9): juryen. Et uheldsoffer doemmes paa sin tid minus
+    // uheldets tidstab, og en holdkammerat der koerte med ham doemmes ens.
+    // Reglen bor i mechanics/timeLimit.ts's juryReinstatements.
+    jury: juryInputFor(input, state),
   });
   const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km);
@@ -302,6 +312,19 @@ export function simulateStageV4(input: StageInput): StageOutput {
     groupSnapshots,
     incidents: buildIncidents(state),
     passages,
-    passage_totals: passageTotals(passages),
+    // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
+    // reddet grupetto) mister sine point i point- og bjergkonkurrencen.
+    passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
   };
+}
+
+/** #5582: juryens input — etapens uheld, indsatsvalg og hold pr. rytter. */
+function juryInputFor(input: StageInput, state: SegmentLoopResult["state"]): TimeLimitJuryInput {
+  const effortByRider: Record<string, StageInput["startlist"][number]["effort"]> = {};
+  const teamByRider: Record<string, string | null | undefined> = {};
+  for (const entrant of input.startlist) {
+    effortByRider[entrant.rider_id] = entrant.effort;
+    teamByRider[entrant.rider_id] = entrant.team_id;
+  }
+  return { incidents: state.stage_incidents ?? [], effortByRider, teamByRider };
 }
