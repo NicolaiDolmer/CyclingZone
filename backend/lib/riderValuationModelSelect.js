@@ -132,7 +132,12 @@ export function loadValuationModelById(id) {
 function parseMarketFit(raw) {
   if (raw == null) return null;
   if (typeof raw === "string") {
-    try { return parseMarketFit(JSON.parse(raw)); } catch { return null; }
+    try {
+      return parseMarketFit(JSON.parse(raw));
+    } catch {
+      // best-effort: en ulæselig tekst-værdi er det samme som intet fit (fail-safe = intet marked).
+      return null;
+    }
   }
   return typeof raw === "object" && hydrateMarketFit(raw) ? raw : null;
 }
