@@ -10,7 +10,8 @@
 //      direkte URL sender videre til My Team.
 //   2. ON: U23 team + Junior team står lige efter My Team, Academy mister kortet.
 //   3. Squad-fanen viser præcis truppen serveren gav, Development de samme ryttere.
-//   4. Calendar/Results/Standings er tomme tilstande uden tal, med roadmap-knap.
+//   4. Calendar/Results er tomme tilstande uden tal, med roadmap-knap.
+//      (Standings viser ungdomsgruppen siden #5631, se 5631-youth-squad-parity.spec.ts.)
 import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks, login, stabilizePage, json, corsHeaders, collectBrowserErrors,
@@ -102,7 +103,7 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await expect(page.getByRole("heading", { name: "E2E Racing U23" })).toBeVisible();
 
     const tabs = page.getByRole("tablist");
-    await expect(tabs.getByRole("tab")).toHaveCount(5);
+    await expect(tabs.getByRole("tab")).toHaveCount(6); // #5631: + Stats
     await expect(tabs.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
 
     const table = page.locator("table").first();
@@ -131,14 +132,14 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("Junior team: Calendar, Results og Standings er tomme tilstande uden tal", async ({ page }) => {
+  test("Junior team: Calendar og Results er tomme tilstande uden tal", async ({ page }) => {
     await setup(page, { on: true });
     await login(page);
     await page.goto("/squads/junior");
     await expect(page.getByRole("heading", { name: /^E2E Racing Juniors?$/ })).toBeVisible();
 
     const tabs = page.getByRole("tablist");
-    for (const name of [/Calendar|Kalender/, /Results|Resultater/, /Standings|Stilling/]) {
+    for (const name of [/Calendar|Kalender/, /Results|Resultater/]) {
       await tabs.getByRole("tab", { name }).click();
       const main = page.locator("main");
       await expect(main.getByText(/See when youth races start|Se hvornår ungdomsløbene starter/)).toBeVisible();
@@ -147,7 +148,7 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     }
 
     await waitForStableSnapshotTarget(page);
-    await expect(page).toHaveScreenshot("youth-squad-junior-standings.png", {
+    await expect(page).toHaveScreenshot("youth-squad-junior-results.png", {
       animations: "disabled",
       caret: "hide",
       scale: "css",
