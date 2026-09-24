@@ -952,8 +952,8 @@ test("#5645 prepareSelectionChange: seniorløb bruger teamDivisionId præcis som
   assert.deepEqual(res.ctx.riders.map((r) => r.id).sort(), ["s1", "s2"]);
 });
 
-test("#5645 getSelectionContext: juniorløb viser kun juniorer fra sæsonalder 17", async () => {
+test("#5645 (ejer 24/9): getSelectionContext: juniorløb viser alle juniorer, også 16-årige", async () => {
   const race = { id: "raceJ", status: "scheduled", league_division_id: "j-pool", squad: "junior", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
   const ctx = await getSelectionContext({ supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1" });
-  assert.deepEqual(ctx.riders.map((r) => r.id), ["j17"]);
+  assert.deepEqual(ctx.riders.map((r) => r.id).sort(), ["j16", "j17"]);
 });

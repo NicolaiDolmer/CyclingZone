@@ -5,7 +5,7 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, filterSquadRaceAge } from "./riderEligibility.js";
+import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
@@ -213,17 +213,6 @@ export function seasonAllowsSelectionWrites(seasonStatus) {
 // #5405: loebets saeson-status, eller null hvis loebet ingen season_id har / raekken ikke
 // findes (begge dele fail-closed hos kalderen). Kaster paa en DB-fejl, samme kontrakt som
 // getSelectionContext — en ulaeselig saeson maa aldrig degradere til "saa skriver vi bare".
-// #5645: sæsonnummeret til juniorernes aldersgate. null (ingen sæson / ingen række)
-// → filterSquadRaceAge afviser alle juniorer (fejl lukket). Kaster på en DB-fejl,
-// samme kontrakt som getSelectionContext.
-export async function loadRaceSeasonNumber({ supabase, seasonId }) {
-  if (!seasonId) return null;
-  const { data, error } = await supabase
-    .from("seasons").select("id, number").eq("id", seasonId).maybeSingle();
-  if (error) throw new Error(`seasons (junior age gate): ${error.message}`);
-  return Number.isFinite(data?.number) ? data.number : null;
-}
-
 export async function loadRaceSeasonStatus({ supabase, seasonId }) {
   if (!seasonId) return null;
   const { data, error } = await supabase
@@ -391,9 +380,7 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 export async function getSelectionContext({ supabase, race, teamId }) {
   // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
   const raceSquad = raceSquadOf(race);
-  const riderColumns = raceSquad === "junior"
-    ? "id, firstname, lastname, primary_type, secondary_type, pending_team_id, birthdate"
-    : "id, firstname, lastname, primary_type, secondary_type, pending_team_id";
+  const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id";
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
     // #1307/#1308: akademiryttere er ikke løbs-berettigede. Rod B: delt eligibility-filter.
     // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
@@ -413,12 +400,8 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   for (const [name, res] of [["riders", ridersRes], ["race_stage_profiles", profilesRes], ["race_entries", entriesRes]]) {
     if (res.error) throw new Error(`${name}: ${res.error.message}`);
   }
-  // #5645: juniorer er først løbsberettigede fra sæsonalder 17 (YOUTH_RULES §2.1).
-  const riders = raceSquad === "junior"
-    ? filterSquadRaceAge(ridersRes.data || [], {
-      squad: raceSquad, seasonNumber: await loadRaceSeasonNumber({ supabase, seasonId: race.season_id }),
-    })
-    : (ridersRes.data || []);
+  // #5645: enhver rytter i løbets trup må udtages — ejer 24/9: ingen separat aldersgate.
+  const riders = ridersRes.data || [];
   const stages = profilesRes.data || [];
   const riderIds = riders.map((r) => r.id);
 

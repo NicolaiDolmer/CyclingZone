@@ -2309,17 +2309,16 @@ test("#5645 generator: U23-løb får kun U23-ryttere fra hold i løbets U23-pulj
   assert.deepEqual([...new Set(sEntries.map((e) => e.team_id))].sort(), ["t1", "t2"]);
 });
 
-test("#5645 generator: juniorløb udtager kun sæsonalder >= 17 (16-årige afvises)", async () => {
+test("#5645 (ejer 24/9): juniorløb udtager 16-årige — ingen separat aldersgate ud over trup-medlemskab", async () => {
   const state = emptyState();
-  // Sæson 4 → referenceår 2029: født 2012 = 17, født 2013 = 16.
   state.seasons = [{ id: "season1", number: 4 }];
   state.races = [{ id: "J", season_id: "season1", race_class: "Class2", league_division_id: 20, squad: "junior" }];
   state.race_stage_schedule = [{ race_id: "J", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z", game_day: 5 }];
   state.race_stage_profiles = [{ race_id: "J", ...flatProfile(1) }];
   state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1, junior_league_division_id: 20 }];
   seedTeamRiders(state, "t1", 8);
-  // De 16-årige er de STÆRKESTE (seedes først med højeste evner) — en alders-blind
-  // udtagelse ville vælge dem.
+  // De 16-årige er de STÆRKESTE (seedes først med højeste evner) — de skal derfor
+  // være dem udtagelsen vælger nu, hvor der ikke er nogen aldersgate.
   for (let i = 0; i < 3; i++) {
     const id = `t1-j16-${i}`;
     state.riders.push({ id, team_id: "t1", squad: "junior", is_academy: true, is_retired: false, birthdate: "2013-05-01" });
@@ -2333,10 +2332,7 @@ test("#5645 generator: juniorløb udtager kun sæsonalder >= 17 (16-årige afvis
 
   const jEntries = state.race_entries.filter((e) => e.race_id === "J");
   assert.ok(jEntries.length > 0, "juniorløbet fik et felt");
-  for (const e of jEntries) {
-    assert.ok(!e.rider_id.startsWith("t1-j16-"), `16-årig ${e.rider_id} blev udtaget`);
-    assert.ok(e.rider_id.startsWith("t1-junior"), `${e.rider_id} er ikke en 17+-junior`);
-  }
+  assert.ok(jEntries.some((e) => e.rider_id.startsWith("t1-j16-")), "16-årig blev udtaget (ejer 24/9)");
 });
 
 test("#5645 generator (risiko 7): en rytter med en manuel seniorentry samme løbsdag udtages ikke til U23-løbet", async () => {

@@ -17,7 +17,7 @@ import {
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
-import { applyRiderEligibilityFilter, applyInjuredFilter, raceSquadOf, filterSquadRaceAge } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, applyInjuredFilter, raceSquadOf } from "./riderEligibility.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { DEFAULT_SQUAD } from "./squads.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
@@ -159,16 +159,6 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
 export function poolKeyFor(squad, poolId) {
   if (squad === DEFAULT_SQUAD) return poolId ?? null;
   return `${squad}|${poolId ?? "none"}`;
-}
-
-// #5645: sæsonnummeret til juniorernes aldersgate. En DB-fejl kaster (samme kontrakt som
-// generatorens øvrige læsninger); en manglende sæson/nummer giver null → filterSquadRaceAge
-// afviser alle juniorer (fejl lukket: hellere et tomt juniorfelt end en 16-årig).
-async function loadSeasonNumberForGenerator({ supabase, seasonId }) {
-  const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId);
-  if (error) throw new Error(`seasons (junior age gate): ${error.message}`);
-  const n = Array.isArray(data) ? data[0]?.number : data?.number;
-  return Number.isFinite(n) ? n : null;
 }
 
 export async function runRaceEntryGenerator({
@@ -497,21 +487,19 @@ export async function runRaceEntryGenerator({
     });
     if (riderErr) throw new Error(`riders: ${riderErr.message}`);
     // #5645: ungdomstruppernes ryttere — kun for trupper med løb i spil og kun for hold
-    // med en pulje for truppen. Juniorer først fra sæsonalder 17 (YOUTH_RULES §2.1).
+    // med en pulje for truppen. Ejer 24/9: enhver rytter i juniortruppen (16-18) må
+    // køre juniorløb — ingen separat aldersgate, kun trup-medlemskabet (#5645).
     const youthRiders = [];
-    const seasonNumber = youthSquadsInPlay.includes("junior")
-      ? await loadSeasonNumberForGenerator({ supabase, seasonId })
-      : null;
     for (const squad of youthSquadsInPlay) {
       const teamIds = youthTeamIdsBySquad.get(squad) || [];
       if (!teamIds.length) continue;
       const { data: squadRiders, error: sqErr } = await selectInChunks({
-        supabase, table: "riders", columns: squad === "junior" ? "id, team_id, birthdate" : "id, team_id",
+        supabase, table: "riders", columns: "id, team_id",
         inColumn: "team_id", ids: teamIds, orderBy: ["id"],
         extra: (q) => applyRiderEligibilityFilter(q, { squad }),
       });
       if (sqErr) throw new Error(`riders (${squad}): ${sqErr.message}`);
-      for (const r of filterSquadRaceAge(squadRiders || [], { squad, seasonNumber })) youthRiders.push({ ...r, youthSquad: squad });
+      for (const r of squadRiders || []) youthRiders.push({ ...r, youthSquad: squad });
     }
     const riders = [...(seniorRiders || []), ...youthRiders];
     const riderIds = riders.map((r) => r.id);

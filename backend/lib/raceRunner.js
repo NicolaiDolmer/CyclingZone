@@ -109,7 +109,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, filterSquadRaceAge } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
@@ -1140,21 +1140,16 @@ export async function fillMissingTeamEntries({
   let missingTeamIds = eligibleTeams.map((t) => t.id);
   if (!missingTeamIds.length) return [];
 
-  const { data: fetchedRiders, error: riderErr } = await selectInChunks({
-    supabase, table: "riders", columns: raceSquad === "junior" ? "id, team_id, base_value, birthdate" : "id, team_id, base_value",
+  const { data: riders, error: riderErr } = await selectInChunks({
+    supabase, table: "riders", columns: "id, team_id, base_value",
     // Rod B: delt eligibility-filter (ikke-akademi + ikke-pensioneret). Manglede
     // is_academy → akademiryttere kunne sim-tids-autofyldes (#1742/#1800).
-    // #5645: trup-parameteren — et U23-løb fylder KUN med holdets U23-ryttere.
+    // #5645: trup-parameteren — et U23-/juniorløb fylder KUN med holdets egen trup.
+    // Ejer 24/9: ingen separat aldersgate — trup-medlemskabet er hele kravet.
     inColumn: "team_id", ids: missingTeamIds,
     extra: (q) => applyRiderEligibilityFilter(q, { squad: raceSquad }),
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
-  // #5645: juniorer kører først fra sæsonalder 17 (YOUTH_RULES §2.1). No-op for senior/U23.
-  const riders = raceSquad === "junior"
-    ? filterSquadRaceAge(fetchedRiders, {
-      squad: raceSquad, seasonNumber: await loadSeasonNumber({ supabase, seasonId: race.season_id }),
-    })
-    : fetchedRiders;
 
   // #1688 felt-cap: er der flere end POOL_TARGET_SIZE egnede hold, behold de 24
   // stærkeste på aggregeret roster-base_value. Beregnes FØR skade-/abilities-
@@ -1418,17 +1413,6 @@ export async function resolveRaceSquad({ supabase, race }) {
   return { ...race, squad: data?.squad ?? "senior" };
 }
 
-// #5645: sæsonnummeret for juniorernes aldersgate (riderSeasonAge.ageForSeason). Kun
-// kaldt for juniorløb. En DB-fejl kaster (ellers ville den ligne "ingen løbsberettigede
-// juniorer"); en manglende sæson/nummer giver null → filterSquadRaceAge afviser alle.
-async function loadSeasonNumber({ supabase, seasonId }) {
-  if (!seasonId) return null;
-  const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId);
-  if (error) throw new Error(`seasons (junior age gate): ${error.message}`);
-  const n = Array.isArray(data) ? data[0]?.number : data?.number;
-  return Number.isFinite(n) ? n : null;
-}
-
 // Indlæs startfeltet (race_entries → per-hold autopick for hold UDEN entries) beriget
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
@@ -1472,21 +1456,14 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: entryRiders, error: erErr } = await selectInChunks({
       supabase, table: "riders",
-      columns: raceSquad === "junior" ? "id, team_id, squad, is_academy, is_retired, birthdate" : "id, team_id, squad, is_academy, is_retired",
+      columns: "id, team_id, squad, is_academy, is_retired",
       inColumn: "id", ids: entryRiderIds,
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
     const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
     // #5645: ghost-tjekket mod LØBETS trup — en U23-rytter i et U23-løb er ikke en ghost,
-    // en senior i et U23-løb er.
+    // en senior i et U23-løb er. Ejer 24/9: ingen separat juniors-aldersgate herudover.
     existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: raceSquad });
-    // #5645 (CodeRabbit): juniorernes aldersgate gælder også committede entries, ikke
-    // kun autofyldets kandidater — en 16-årig må ikke starte, uanset hvordan han kom ind.
-    if (raceSquad === "junior" && existingEntries.length) {
-      const seasonNumber = await loadSeasonNumber({ supabase, seasonId: race.season_id });
-      const ageOk = new Set(filterSquadRaceAge([...ridersById.values()], { squad: raceSquad, seasonNumber }).map((r) => r.id));
-      existingEntries = existingEntries.filter((e) => ageOk.has(e.rider_id));
-    }
   }
   // #3896: skadede committede entries må hverken starte eller simuleres — motoren
   // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),

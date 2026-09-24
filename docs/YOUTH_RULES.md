@@ -81,14 +81,14 @@ Ejer 16/7, ordret: *"Spillet skal have Senior løb, U23 løb og Junior løb. Lig
 
 ```
 Intake (tilbud)  →  Junior team 16-18  →  U23 team 19-22  →  Senior team 23+
-                    (løb fra 17)          (U23-løb)           (senior-løb)
+                    (juniorløb)           (U23-løb)           (senior-løb)
                     └──── Akademiet = paraplyen over de to ungdomstrupper ────┘
 ```
 
 | Regel | Beslutning | Kilde |
 |---|---|---|
 | Akademiet er en paraply, ikke en trup | Der findes ikke en fjerde "akademi-trup". Akademi-siden viser intake, Graduation Day og regnskab; Junior team og U23 team er egne sider i Klubhus-navigationen (§2.6, ejer 2/9 handoff, amenderer svar 1's "én side") | ejer 2/9, svar 1 (A+B) + handoff 2/9 |
-| 16-årige | Sidder i Junior team, men er IKKE løbsberettigede før sæsonalder 17. Første år er træning + scouting | ejer 2/9 (A+B) + teknisk valg godkendt 2/9 |
+| 16-årige | Alle ryttere i juniortruppen (16-18) må køre juniorløb (ejer 24/9) | ejer 24/9, #5645 |
 | Junior team | Sæsonalder 16-18. Bliver rytteren 19, skal han ud | ejer 2/9, svar 2 ("junior max 18") |
 | U23 team | Sæsonalder 19-22. Bliver rytteren 23, skal han ud | ejer 2/9, svar 2; matcher `isU23ForSeason` |
 | Senior team | Ingen aldersgrænse, 30-cap uændret | `GAME_INVARIANTS.md` |

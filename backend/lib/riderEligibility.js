@@ -2,7 +2,6 @@
 // #1800/#1742/#1823 Rod B: ÉN definition af "valgbar/løbs-berettiget rytter".
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applySeniorSquadFilter, isSeniorSquadRider, isSquad, isYouthSquad, DEFAULT_SQUAD } from "./squads.js";
-import { ageForSeason } from "./riderSeasonAge.js";
 
 // #5645 (Y4, epic #2492): TRUP-parameteren. Hver funktion nedenfor tager en valgfri
 // `squad` (løbets trup). Default "senior", så ALLE eksisterende kald er bit-identiske:
@@ -18,10 +17,6 @@ import { ageForSeason } from "./riderSeasonAge.js";
 // (YOUTH_RULES §2.2: "1 rytter = 1 løb pr. løbsdag", også på tværs af trupper).
 export const ANY_SQUAD = "*";
 
-// YOUTH_RULES §2.1: juniorer (sæsonalder 16-18) er løbsberettigede fra sæsonalder 17.
-// Strukturregel (ikke et balance-tal), derfor ordret her og i YOUTH_RULES.
-export const JUNIOR_MIN_RACE_AGE = 17;
-
 // Løbets trup. Manglende/ukendt felt = senior (samme dom som squads.isSeniorSquadRow:
 // en række uden `squad` i projektionen er per definition fra før trupperne).
 export function raceSquadOf(race) {
@@ -35,23 +30,6 @@ function assertKnownSquad(squad, fn) {
   }
 }
 
-// Alders-gaten for løbsudtagelse: kun juniorløb har en (sæsonalder >= 17). Alderen
-// kommer fra riderSeasonAge.js (SSOT) og beregnes aldrig i SQL. Ukendt fødselsdato
-// eller sæsonnummer → ikke berettiget (fejl lukket; ageForSeason gætter aldrig).
-export function meetsSquadRaceAge({ squad = DEFAULT_SQUAD, birthdate = null, seasonNumber = null } = {}) {
-  if (squad !== "junior") return true;
-  const age = ageForSeason(birthdate, seasonNumber);
-  return Number.isFinite(age) && age >= JUNIOR_MIN_RACE_AGE;
-}
-
-// Filtrér en kandidat-liste (rækker med `birthdate`) til dem der må køre løbets trup.
-// No-op for senior og u23. Bevarer rækkefølgen.
-export function filterSquadRaceAge(riders, { squad = DEFAULT_SQUAD, seasonNumber = null } = {}) {
-  const list = Array.isArray(riders) ? riders : [];
-  if (squad !== "junior") return list;
-  return list.filter((r) => meetsSquadRaceAge({ squad, birthdate: r?.birthdate ?? null, seasonNumber }));
-}
-//
 // En rytter er løbs-berettiget for et hold når han: er på holdet (team_id matcher),
 // IKKE er akademirytter (is_academy), og IKKE er pensioneret (is_retired). Tidligere
 // var dette afgrænset tre+ steder med let forskellige filtre — generatoren og
@@ -78,8 +56,8 @@ export function filterSquadRaceAge(riders, { squad = DEFAULT_SQUAD, seasonNumber
 //     entries — se isEligibleRider/filterEligibleEntries, som bevidst IKKE tjekker
 //     pending_team_id, da de bruges til at validere det låste løbs EGNE entries).
 //   - #5645: `squad` (default senior) vælger truppen, se ANY_SQUAD-headeren øverst.
-//     Junior-aldersgaten (>= 17) kan ikke udtrykkes i SQL uden en kopi af
-//     aldersformlen; kalderen kører filterSquadRaceAge på resultatet.
+//     Ejer 24/9: enhver rytter i truppen (16-18 for junior) må køre løbets trup —
+//     ingen separat aldersgate ud over trup-medlemskabet.
 export function applyRiderEligibilityFilter(query, { squad = DEFAULT_SQUAD } = {}) {
   return applyRosterVisibilityFilter(query, { squad }).is("pending_team_id", null);
 }
