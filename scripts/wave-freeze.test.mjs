@@ -342,48 +342,67 @@ test("#5602: det billige tjek har et kort loft under den fulde intake", () => {
 
 test("#5602: planIdleLane stopper lanen efter INTAKE_MAX_EMPTY_CHECKS tomme tjek, ogsaa mens andre laner koerer", () => {
   const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
-  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max - 1 }), "wait");
-  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max }), "exit");
-  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max + 3 }), "exit");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max - 1, idleLanes: 2 }), "wait");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max, idleLanes: 2 }), "exit");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max + 3, idleLanes: 3 }), "exit");
+});
+
+test("#5602 (CodeRabbit): den sidste ledige lane stopper aldrig sig selv, mens et spor koerer", () => {
+  // Ellers kunne et spor koeet senere aldrig optages, hvis den sidste optagne
+  // lane lukker paa det haarde loft (timeout-grenen traekker ikke nye spor).
+  const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 1, intakeEmpty: true, emptyStreak: max + 5, idleLanes: 1 }), "wait");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 1, intakeEmpty: true, emptyStreak: max, idleLanes: undefined }), "wait", "ukendt antal: stop ikke");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 0, intakeEmpty: true, emptyStreak: max, idleLanes: 1 }), "exit", "intet koerer: boelgen slutter som foer");
 });
 
 test("#5602: selv-stop vinder aldrig over et spor i koen eller et friskt tjek", () => {
   const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
-  assert.equal(planIdleLane({ queued: 1, activeLanes: 2, intakeEmpty: true, emptyStreak: max }), "take");
+  assert.equal(planIdleLane({ queued: 1, activeLanes: 2, intakeEmpty: true, emptyStreak: max, idleLanes: 2 }), "take");
   // Timeren eller et faerdigt spor har sat intakeEmpty=false: et tjek til.
-  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: false, emptyStreak: max - 1 }), "intake");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: false, emptyStreak: max - 1, idleLanes: 2 }), "intake");
 });
 
-// Simulerer de ledige laner mod een lane der er optaget i busyMinutes. Kun de
-// rene funktioner - samme beslutningsloekke som laneWorker/runIntake i wave.js.
-function simulateIdleLanes(busyMinutes) {
-  let minute = 0, streak = 0, checks = 0, intakeEmpty = false;
-  const waits = [];
+// Simulerer `idle` ledige laner mod een lane der er optaget i busyMinutes. Kun
+// de rene funktioner - samme beslutningsloekke som laneWorker/runIntake i
+// wave.js: alle levende laner vaagner paa samme signal, og intake er delt.
+function simulateIdleLanes(busyMinutes, idle = 1) {
+  let minute = 0, streak = 0, checks = 0, intakeEmpty = false, living = idle;
+  const waits = [], stops = [];
   for (let guard = 0; guard < 1000; guard += 1) {
-    const decision = planIdleLane({ queued: 0, activeLanes: minute < busyMinutes ? 1 : 0, intakeEmpty, emptyStreak: streak });
-    if (decision === "exit") return { checks, minute, waits };
-    if (decision === "intake") {
+    const decisions = [];
+    for (let i = 0, n = living; i < n; i += 1) {
+      const d = planIdleLane({ queued: 0, activeLanes: minute < busyMinutes ? 1 : 0, intakeEmpty, emptyStreak: streak, idleLanes: living });
+      if (d === "exit") {
+        living -= 1;
+        stops.push(minute);
+      } else decisions.push(d);
+    }
+    if (living === 0) return { checks, minute, waits, stops };
+    if (decisions.includes("intake")) {
       checks += 1;
       streak += 1;
       intakeEmpty = true;
-    } else if (decision === "wait") {
+    } else if (decisions.every((d) => d === "wait")) {
       const pause = intakeBackoffMinutes(streak);
       waits.push(pause);
       minute += pause;
       intakeEmpty = false;
     } else {
-      throw new Error(`uventet beslutning ${decision}`);
+      throw new Error(`uventede beslutninger ${decisions.join(",")}`);
     }
   }
   throw new Error("loekken stoppede aldrig");
 }
 
-test("#5602: en lang boelge med tom koe giver hoejst INTAKE_MAX_EMPTY_CHECKS tjek, ikke eet pr. 10 min", () => {
+test("#5602: en lang boelge med tom koe - tre ledige laner stopper, den sidste tjekker med loft-pausen", () => {
   const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
-  const run = simulateIdleLanes(180);
-  assert.equal(run.checks, max);
-  assert.deepEqual(run.waits, [10, 20, 40, 60].slice(0, max - 1));
-  assert.ok(run.minute < 180, "de ledige laner stoppede, foer det sidste spor var faerdigt");
+  const run = simulateIdleLanes(180, 3);
+  // Pauserne 10+20+40+60 = 130 min efter 5 tomme tjek; to laner stopper der,
+  // den sidste venter loftet (60) og tjekker, da sporet er faerdigt.
+  assert.deepEqual(run.waits, [10, 20, 40, 60, 60]);
+  assert.deepEqual(run.stops, [130, 130, 190]);
+  assert.equal(run.checks, max + 1);
   // Den gamle model (fast 10 min) ville have tjekket ca. 18 gange paa 180 min.
   assert.ok(run.checks < 180 / WAVE_FREEZE.INTAKE_POLL_MINUTES);
 });
@@ -392,7 +411,7 @@ test("#5602: naar ingen lane koerer mere, slutter de ledige laner efter naeste t
   const run = simulateIdleLanes(25);
   assert.equal(run.checks, 3, "tjek ved 0, 10 og 30 min");
   assert.deepEqual(run.waits, [10, 20]);
-  assert.equal(simulateIdleLanes(0).checks, 1, "ingen andre laner: eet sidste tjek, saa slut");
+  assert.equal(simulateIdleLanes(0, 3).checks, 1, "ingen andre laner: eet sidste tjek, saa slut");
 });
 
 // ===== Reviewerens skema-bevisregel (#5567) =====
@@ -462,7 +481,6 @@ test("#5602: applySchemaEvidenceRule - et fund med fil:linje fra diffen er under
   for (const extra of [
     { category: "data-skema", what: "migrationen dropper en kolonne", evidence: "database/fixture_migration.sql:12 DROP COLUMN fixture_col" },
     { what: "migrationen dropper en kolonne", evidence: "se backend/lib/fixture.js:40" },
-    { category: "data-skema", what: "kolonnen mangler", file: "database/fixture_migration.sql:7", evidence: "" },
   ]) {
     const review = { verdict: "BLOKERENDE", findings: [blocking(extra)] };
     const { review: out, downgraded } = applySchemaEvidenceRule(review);
@@ -476,6 +494,9 @@ test("#5602: applySchemaEvidenceRule - en prod-paastand uden fil:linje eller ops
     const { downgraded } = applySchemaEvidenceRule({ verdict: "BLOKERENDE", findings: [blocking({ category: "data-skema", evidence })] });
     assert.equal(downgraded.length, 1, evidence);
   }
+  // CodeRabbit (#5602): et linjenummer alene i file er ikke bevis for en prod-paastand.
+  const onlyFile = blocking({ category: "data-skema", what: "prod-kolonnen mangler", file: "database/fixture_migration.sql:7", evidence: "" });
+  assert.equal(applySchemaEvidenceRule({ verdict: "BLOKERENDE", findings: [onlyFile] }).downgraded.length, 1);
 });
 
 // ===== Hale-tomgang (#5562) =====
@@ -771,7 +792,11 @@ test("#5602: det billige intake-tjek koerer paa haiku med en minimal prompt, der
   assert.ok(!prompt.includes("trackSetupSteps") && !prompt.includes("brief"), "tjekket faar hverken brief eller setup-trin");
   const runIntake = extractFunction(src, "runIntake");
   assert.ok(runIntake.indexOf("runIntakeCheck(finished)") < runIntake.indexOf("agent(intakePrompt("), "den fulde intake startes foerst efter tjekket");
-  assert.ok(runIntake.includes("if (check.pending === 0) {"), "et tomt tjek starter ingen fuld intake");
+  assert.ok(runIntake.includes("if (check.answered && check.pending === 0) {"), "kun et besvaret, tomt tjek springer den fulde intake over");
+  // CodeRabbit (#5602): et fejlet tjek er ikke en tom koe - det faar den fulde intake.
+  assert.ok(runIntake.includes("if (!check.answered) log("), "et fejlet tjek skal logges og gaa videre til den fulde intake");
+  const worker = extractFunction(src, "laneWorker");
+  assert.ok(worker.includes("idleLanes: livingLanes - busyLanes,") && /\} finally \{\s*livingLanes -= 1\s*\}/.test(worker), "planIdleLane skal kende antallet af ledige laner, talt ned synkront ved lanens return");
 });
 
 test("#5602: voksende pauser og selv-stop er koblet ind i lane-loekken", () => {

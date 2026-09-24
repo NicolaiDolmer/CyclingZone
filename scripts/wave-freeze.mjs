@@ -91,14 +91,15 @@ export const WAVE_FREEZE = {
   INTAKE_POLL_MAX_MINUTES: 60,
   /**
    * #5602: saa mange tomme intake-tjek i traek, og de ledige laner stopper
-   * sig selv (planIdleLane giver 'exit'). Et faerdigt spor nulstiller
-   * taellingen. 5 tjek = pauser paa 10+20+40+60 min, ca. 130 min.
+   * sig selv (planIdleLane giver 'exit') - paa naer den sidste, som bliver og
+   * tjekker med loft-pausen, saa laenge et spor koerer. Et faerdigt spor
+   * nulstiller taellingen. 5 tjek = pauser paa 10+20+40+60 min, ca. 130 min.
    */
   INTAKE_MAX_EMPTY_CHECKS: 5,
   /**
    * #5602: loft paa det billige intake-tjek (mindste model, taeller kun
-   * koeen). Tjekket flytter intet, saa et tjek der ikke svarer, er bare et
-   * tomt tjek.
+   * koeen). Tjekket flytter intet. Svarer det ikke brugbart, koerer wave.js
+   * den fulde intake i stedet - et fejlet tjek taeller ikke som tomt.
    */
   INTAKE_CHECK_TIMEOUT_MINUTES: 5,
   /**
@@ -314,9 +315,13 @@ export function sortHeavyFirst(list) {
  *              intakeBackoffMinutes(emptyStreak) og proev igen (#5602)
  *   'exit'   - frys, optag slaaet fra, intet mere at vente paa, eller
  *              INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek (#5602: lanen
- *              stopper sig selv, ogsaa mens andre laner koerer)
+ *              stopper sig selv, ogsaa mens andre laner koerer - men kun
+ *              naar en anden ledig lane bliver tilbage (idleLanes > 1), saa
+ *              et spor der koees senere, stadig kan optages, ogsaa hvis den
+ *              sidste optagne lane lukker paa det haarde loft)
  * Lukkede laner (timeout) taeller aldrig med i activeLanes. emptyStreak er
  * antallet af tomme intake-tjek i traek; et faerdigt spor nulstiller det.
+ * idleLanes er de levende laner uden spor, denne lane medregnet.
  *
  * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
  */
@@ -326,7 +331,7 @@ export function planIdleLane(state) {
   if (Number(s.queued) > 0) return 'take'
   if (s.intakeEnabled === false) return 'exit'
   if (!s.intakeEmpty) return 'intake'
-  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) return 'exit'
+  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS && Number(s.idleLanes) > 1) return 'exit'
   if (Number(s.activeLanes) > 0) return 'wait'
   return 'exit'
 }
@@ -365,8 +370,9 @@ export function releasesOwnership(status) {
  * bruger skema-ord. Er der derefter ingen blokerende fund tilbage, bliver
  * dommen BEMAERKNINGER (og ret-trinnet springes over). En BLOKERENDE-dom
  * uden findings-liste roeres ikke.
- * #5602 fund 4: et fund der peger paa fil:linje (fx database/x.sql:12 i
- * evidence eller file) er underbygget af selve diffen og roeres ikke. Reglen
+ * #5602 fund 4: et fund hvis evidence peger paa fil:linje (fx
+ * database/x.sql:12) er underbygget af selve diffen og roeres ikke. Et
+ * linjenummer alene i file er IKKE bevis (CodeRabbit, #5602). Reglen
  * rammer kun paastande om prod-tilstand uden opslag. Ellers blev fx en
  * DROP COLUMN i en migration nedgraderet, og auto-migrate koerer den efter
  * merge.
@@ -385,7 +391,7 @@ export function applySchemaEvidenceRule(review) {
   const findings = review.findings.map((f) => {
     if (!f || f.severity !== 'blokerende') return f
     const isData = f.category === 'data-skema' || (!f.category && schemaWords.test(String(f.what || '')))
-    if (!isData || hasEvidence(`${f.evidence || ''} ${f.file || ''}`)) return f
+    if (!isData || hasEvidence(String(f.evidence || ''))) return f
     const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler fil:linje, skema- eller prod-opslag (#5567, #5602)' }
     downgraded.push(next)
     return next

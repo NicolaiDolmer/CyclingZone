@@ -146,15 +146,19 @@
 //    (a) En ledig lane starter foerst et TJEK paa den mindste model (haiku)
 //        med en minimal prompt: kun `wave-policy.mjs intake --peek`, der
 //        markerer faerdige branches og TAELLER koeen uden at flytte noget.
-//        Kun naar koeen har spor, startes den fulde intake-agent (sonnet,
-//        optag + worktrees + briefs). Et tjek der svarer forkert, kan altsaa
-//        forsinke et spor, men aldrig tabe det.
+//        Kun naar koeen har spor - eller tjekket ikke gav et brugbart svar -
+//        startes den fulde intake-agent (sonnet, optag + worktrees +
+//        briefs). Et tjek der svarer forkert, kan altsaa forsinke et spor,
+//        men aldrig tabe det.
 //    (b) Voksende pauser mellem tomme tjek: intakeBackoffMinutes() giver 10,
 //        20, 40 og derefter loftet 60 min. Et faerdigt spor nulstiller.
 //    (c) Efter INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek stopper de ledige
 //        laner sig selv (planIdleLane -> 'exit'), ogsaa mens andre laner
-//        koerer. Det logges og staar i rapportens selfStoppedLanes. Laner der
-//        stadig koerer et spor, tjekker igen, naar sporet er faerdigt.
+//        koerer - paa naer den sidste ledige lane, som tjekker med
+//        loft-pausen, saa laenge et spor koerer (saa et spor der koees
+//        senere, stadig optages, ogsaa hvis den sidste optagne lane lukker
+//        paa det haarde loft). Det logges og staar i rapportens
+//        selfStoppedLanes.
 //
 // Refs #5142, #5178, #4918, #4919, #4920, #4924, #5220, #5562, #5567, #5602.
 
@@ -463,14 +467,15 @@ function sortHeavyFirst(list) {
 
 // SPEJLING af planIdleLane() i scripts/wave-freeze.mjs (#5562, rullende
 // optag): 'take' | 'intake' | 'wait' | 'exit' for en lane uden spor.
-// #5602: efter INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek stopper lanen sig selv.
+// #5602: efter INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek stopper lanen sig
+// selv - medmindre den er den sidste ledige lane (idleLanes).
 function planIdleLane(state) {
   const s = state || {}
   if (s.stoppedByFreeze) return 'exit'
   if (Number(s.queued) > 0) return 'take'
   if (s.intakeEnabled === false) return 'exit'
   if (!s.intakeEmpty) return 'intake'
-  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) return 'exit'
+  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS && Number(s.idleLanes) > 1) return 'exit'
   if (Number(s.activeLanes) > 0) return 'wait'
   return 'exit'
 }
@@ -491,7 +496,7 @@ function releasesOwnership(status) {
 
 // SPEJLING af applySchemaEvidenceRule() i scripts/wave-freeze.mjs (#5567).
 // Et blokerende data-/skema-fund uden opslag nedgraderes til bemaerkning.
-// #5602: fil:linje fra diffen taeller som bevis; kun prod-paastande rammes.
+// #5602: fil:linje i evidence taeller som bevis; kun prod-paastande rammes.
 function applySchemaEvidenceRule(review) {
   if (!review || typeof review !== 'object' || !Array.isArray(review.findings)) {
     return { review, downgraded: [] }
@@ -503,7 +508,7 @@ function applySchemaEvidenceRule(review) {
   const findings = review.findings.map((f) => {
     if (!f || f.severity !== 'blokerende') return f
     const isData = f.category === 'data-skema' || (!f.category && schemaWords.test(String(f.what || '')))
-    if (!isData || hasEvidence(`${f.evidence || ''} ${f.file || ''}`)) return f
+    if (!isData || hasEvidence(String(f.evidence || ''))) return f
     const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler fil:linje, skema- eller prod-opslag (#5567, #5602)' }
     downgraded.push(next)
     return next
@@ -1343,6 +1348,9 @@ let intakeRuns = 0
 let intakeChecks = 0
 let emptyStreak = 0
 const selfStoppedLanes = []
+// Levende laner (ikke returneret fra laneWorker). idleLanes = livingLanes -
+// busyLanes; den sidste ledige lane stopper aldrig sig selv (planIdleLane).
+let livingLanes = lanes
 let intakeInFlight = null
 let pollTimer = null
 let pollWaiters = []
@@ -1379,7 +1387,7 @@ function noteEmptyIntake(label) {
   intakeEmpty = true
   emptyStreak += 1
   if (emptyStreak >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) {
-    log(`${label}: koeen er tom for ${emptyStreak}. gang i traek - ledige laner stopper sig selv (loft ${WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS}). Laner med et spor tjekker igen, naar sporet er faerdigt.`)
+    log(`${label}: koeen er tom for ${emptyStreak}. gang i traek - ledige laner stopper sig selv (loft ${WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS}), paa naer den sidste, der tjekker hvert ${intakeBackoffMinutes(emptyStreak)}. min, saa laenge et spor koerer.`)
   } else {
     log(`${label}: koeen er tom (${emptyStreak}. gang i traek) - naeste tjek om ${intakeBackoffMinutes(emptyStreak)} min, hvis andre laner stadig koerer.`)
   }
@@ -1402,19 +1410,22 @@ async function runIntakeCheck(finished) {
     check = null
     log(`${label}: ${String((err && err.message) || err)}`)
   }
-  const answered = Boolean(check) && check !== TIMED_OUT && check.ok === true
+  const pending = check && check !== TIMED_OUT && check.ok === true ? Number(check.pending) : NaN
+  const answered = Number.isFinite(pending) && pending >= 0
   if (!answered && check && check !== TIMED_OUT && check.problem) log(`${label}: ${check.problem}`)
-  const pending = answered ? Number(check.pending) : 0
-  return { label, pending: Number.isFinite(pending) && pending > 0 ? pending : 0 }
+  return { label, answered, pending: answered ? pending : 0 }
 }
 
 async function runIntake() {
   const finished = finishedInWave.slice()
   const check = await runIntakeCheck(finished)
-  if (check.pending === 0) {
+  if (check.answered && check.pending === 0) {
     noteEmptyIntake(check.label)
     return
   }
+  // CodeRabbit (#5602): et tjek der fejlede eller ikke svarede, er IKKE en tom
+  // koe - ellers kunne fem forbigaaende fejl stoppe laner med spor i koeen.
+  if (!check.answered) log(`${check.label} gav intet brugbart svar - koerer den fulde intake i stedet.`)
   // Koeen har spor: den fulde intake-agent (optag + worktrees + briefs).
   // --finished sendes igen - det er idempotent.
   intakeRuns += 1
@@ -1494,94 +1505,102 @@ function sharedIntake() {
 }
 
 async function laneWorker(laneIndex) {
-  for (;;) {
-    const decision = planIdleLane({
-      queued: queue.length,
-      activeLanes: busyLanes,
-      stoppedByFreeze: Boolean(stoppedByFreeze),
-      intakeEmpty,
-      emptyStreak,
-      intakeEnabled: rollingIntake && !intakeBroken,
-    })
-    if (decision === 'exit') {
-      // #5602: selv-stop - tomme tjek i traek, mens andre laner stadig koerer.
-      // Rapporteres, saa en lane der stoppede tidligt, ikke ligner en fejl.
-      if (queue.length === 0 && intakeEmpty && busyLanes > 0 && !stoppedByFreeze
-        && emptyStreak >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) {
-        selfStoppedLanes.push({ lane: laneIndex, minute: clock.minute, emptyChecks: emptyStreak })
-        log(`Lane ${laneIndex + 1} stopper sig selv efter ${emptyStreak} tomme intake-tjek i traek (${busyLanes} lane(r) koerer stadig et spor).`)
+  // #5602: finally koerer synkront ved lanens return (samme async-funktion),
+  // saa naeste lane der vaagner paa samme signal, ser det rigtige antal
+  // ledige laner.
+  try {
+    for (;;) {
+      const decision = planIdleLane({
+        queued: queue.length,
+        activeLanes: busyLanes,
+        stoppedByFreeze: Boolean(stoppedByFreeze),
+        intakeEmpty,
+        emptyStreak,
+        idleLanes: livingLanes - busyLanes,
+        intakeEnabled: rollingIntake && !intakeBroken,
+      })
+      if (decision === 'exit') {
+        // #5602: selv-stop - tomme tjek i traek, mens andre laner stadig koerer.
+        // Rapporteres, saa en lane der stoppede tidligt, ikke ligner en fejl.
+        if (queue.length === 0 && intakeEmpty && busyLanes > 0 && !stoppedByFreeze
+          && emptyStreak >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) {
+          selfStoppedLanes.push({ lane: laneIndex, minute: clock.minute, emptyChecks: emptyStreak })
+          log(`Lane ${laneIndex + 1} stopper sig selv efter ${emptyStreak} tomme intake-tjek i traek (${busyLanes} lane(r) koerer stadig et spor).`)
+        }
+        return
       }
-      return
-    }
-    if (decision === 'wait') {
-      await waitForIntakePoll()
-      continue
-    }
-    if (decision === 'intake') {
-      await sharedIntake()
-      continue
-    }
-    const track = queue.shift()
-    if (!track) continue
-    busyLanes += 1
-    const interval = { lane: laneIndex, issue: track.issue, start: clock.minute, end: null, closed: false }
-    intervals.push(interval)
-    let row = null
-    try {
-      row = await runTrack(track, trackTimeoutMinutes)
-    } catch (err) {
-      row = {
-        issue: track.issue,
-        branch: track.branch,
-        status: 'fejl',
-        note: String((err && err.message) || err),
+      if (decision === 'wait') {
+        await waitForIntakePoll()
+        continue
       }
-    } finally {
-      busyLanes -= 1
-      interval.end = clock.minute
-    }
-    results.push(row)
-    // Kun en beviseligt faerdig agent frigiver sporets ejerskab (#5562).
-    if (releasesOwnership(row.status)) finishedInWave.push(track.branch)
-    // En lane er blevet fri: naeste ledige lane laver et friskt optag.
-    // #5602: og pausen/selv-stop-taellingen starter forfra.
-    intakeEmpty = false
-    emptyStreak = 0
-    // KUN 'frys' stopper boelgen. Et 'timeout' er nu et spor der ramte det
-    // haarde loft med en LEVENDE branch (#5178) - stort, ikke frossent - og
-    // maa ikke koste de oevrige laner deres spor, som det gjorde 11/9.
-    if (row.status === 'frys') {
-      stoppedByFreeze = { issue: track.issue, branch: track.branch, reason: (row.freeze && row.freeze.reason) || 'ukendt' }
-      log(`FRYS bekraeftet paa #${track.issue} ${track.branch} (${stoppedByFreeze.reason}): branchen har staaet stille, og den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
-      log('Boelgen stopper her. De resterende spor rapporteres som "unstarted" og skal relanceres i en NY boelge (natboelgen 5-6/9: bolge A koerte reelt paa 2 laner i 2,5 time uden at det kunne ses).')
+      if (decision === 'intake') {
+        await sharedIntake()
+        continue
+      }
+      const track = queue.shift()
+      if (!track) continue
+      busyLanes += 1
+      const interval = { lane: laneIndex, issue: track.issue, start: clock.minute, end: null, closed: false }
+      intervals.push(interval)
+      let row = null
+      try {
+        row = await runTrack(track, trackTimeoutMinutes)
+      } catch (err) {
+        row = {
+          issue: track.issue,
+          branch: track.branch,
+          status: 'fejl',
+          note: String((err && err.message) || err),
+        }
+      } finally {
+        busyLanes -= 1
+        interval.end = clock.minute
+      }
+      results.push(row)
+      // Kun en beviseligt faerdig agent frigiver sporets ejerskab (#5562).
+      if (releasesOwnership(row.status)) finishedInWave.push(track.branch)
+      // En lane er blevet fri: naeste ledige lane laver et friskt optag.
+      // #5602: og pausen/selv-stop-taellingen starter forfra.
+      intakeEmpty = false
+      emptyStreak = 0
+      // KUN 'frys' stopper boelgen. Et 'timeout' er nu et spor der ramte det
+      // haarde loft med en LEVENDE branch (#5178) - stort, ikke frossent - og
+      // maa ikke koste de oevrige laner deres spor, som det gjorde 11/9.
+      if (row.status === 'frys') {
+        stoppedByFreeze = { issue: track.issue, branch: track.branch, reason: (row.freeze && row.freeze.reason) || 'ukendt' }
+        log(`FRYS bekraeftet paa #${track.issue} ${track.branch} (${stoppedByFreeze.reason}): branchen har staaet stille, og den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
+        log('Boelgen stopper her. De resterende spor rapporteres som "unstarted" og skal relanceres i en NY boelge (natboelgen 5-6/9: bolge A koerte reelt paa 2 laner i 2,5 time uden at det kunne ses).')
+        wakeIdleLanes()
+        return
+      }
+      if (row.status === 'timeout') {
+        log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
+        // Lanen er IKKE fri. withTimeout afbryder ikke agenten, saa den
+        // gamle agent holder stadig sin plads i samtidigheds-loftet. Trak vi
+        // et nyt spor ind her, ville boelgen koere med flere byggeagenter end
+        // laner - praecis den oversubscription 4-lane-loftet og semaforen
+        // findes for at forhindre. Denne lane lukkes (ogsaa for rullende
+        // optag); de oevrige toemmer koen. I hale-maalingen taeller den som
+        // optaget til boelgens slut.
+        interval.closed = true
+        log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
+        wakeIdleLanes()
+        return
+      }
+      // #5220: undersoegelsesspor har sit eget, adskilte timeout-navn (se
+      // runInvestigateTrack) - samme lane-lukning, men uden byggesporets
+      // "levende branch/haardt loft"-tekst, som ikke giver mening her.
+      if (row.status === 'investigate-timeout') {
+        log(`#${track.issue} ${track.branch} (undersoegelsesspor) svarede ikke inden det faste ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES}-min-vindue (ingen forlaengelse, #5220).`)
+        interval.closed = true
+        log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
+        wakeIdleLanes()
+        return
+      }
       wakeIdleLanes()
-      return
     }
-    if (row.status === 'timeout') {
-      log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
-      // Lanen er IKKE fri. withTimeout afbryder ikke agenten, saa den
-      // gamle agent holder stadig sin plads i samtidigheds-loftet. Trak vi
-      // et nyt spor ind her, ville boelgen koere med flere byggeagenter end
-      // laner - praecis den oversubscription 4-lane-loftet og semaforen
-      // findes for at forhindre. Denne lane lukkes (ogsaa for rullende
-      // optag); de oevrige toemmer koen. I hale-maalingen taeller den som
-      // optaget til boelgens slut.
-      interval.closed = true
-      log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
-      wakeIdleLanes()
-      return
-    }
-    // #5220: undersoegelsesspor har sit eget, adskilte timeout-navn (se
-    // runInvestigateTrack) - samme lane-lukning, men uden byggesporets
-    // "levende branch/haardt loft"-tekst, som ikke giver mening her.
-    if (row.status === 'investigate-timeout') {
-      log(`#${track.issue} ${track.branch} (undersoegelsesspor) svarede ikke inden det faste ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES}-min-vindue (ingen forlaengelse, #5220).`)
-      interval.closed = true
-      log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
-      wakeIdleLanes()
-      return
-    }
-    wakeIdleLanes()
+  } finally {
+    livingLanes -= 1
   }
 }
 
