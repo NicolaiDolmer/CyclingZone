@@ -5,7 +5,7 @@ import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
-import { isHelpBlockVisible, isHelpSectionVisible } from "./helpFlagGates.js";
+import { isHelpBlockVisible, isHelpFaqVisible, isHelpSectionVisible } from "./helpFlagGates.js";
 import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
@@ -51,10 +51,11 @@ import {
   MessageIcon,
 } from "../components/ui/icons/index.jsx";
 
-// #4948 · Flag-gatede sektioner (mandate, raceDay) og blokke (dailytraining:
-// runDayNow/trainToday) er defineret ét sted, i ./helpFlagGates.js, og foelger
-// ét kald til GET /api/feature-flags (se useEffect i HelpPage nedenfor). Et
-// flag-flip kraever ingen kodeaendring her.
+// #4948 · Flag-gatede sektioner (mandate, raceDay), blokke (dailytraining:
+// runDayNow/trainToday, raceDays/raceDaysPerRaceDay, formFatigue/
+// formFatiguePerRaceDay) og FAQ'er (#4849) er defineret ét sted, i
+// ./helpFlagGates.js, og foelger ét kald til GET /api/feature-flags (se
+// useEffect i HelpPage nedenfor). Et flag-flip kraever ingen kodeaendring her.
 
 const SECTION_DEFS = [
   {
@@ -371,6 +372,9 @@ const SECTION_DEFS = [
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
       { id: "raceDays", kind: "text" },
+      // #4849: raceDays' tvilling for loebsdags-modellen (loeb ELLER traening,
+      // etapeloebet binder inkl. hviledage). Kun én af de to vises ad gangen.
+      { id: "raceDaysPerRaceDay", kind: "text" },
       // #4066: wired in — what trains a rider with no focus set follows the
       // "Train today" action it applies to.
       { id: "smartDefault", kind: "text" },
@@ -378,6 +382,9 @@ const SECTION_DEFS = [
       // after the smart default it builds on.
       { id: "assistantSuggestions", kind: "text" },
       { id: "formFatigue", kind: "text" },
+      // #4849: formFatigue' tvilling (restitution pr. loebsdag, samlet koersel
+      // tidligst kl. 20 i stedet for kl. 22). Kun én af de to vises ad gangen.
+      { id: "formFatiguePerRaceDay", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —
@@ -525,8 +532,17 @@ const FAQ_KEYS = [
   // #4261: løb-som-træning-FAQ — svar på fem konkrete spørgsmål fra Discord om
   // hvordan løbsdage og daglig træning spiller sammen i sæson 3 (dev-flag off).
   "raceDayIntensityFaq",
+  // #4849: on-tvilling til svaret ovenfor (loebsdags-modellen). HELP_FAQ_FLAGS i
+  // ./helpFlagGates.js viser kun én af de to ad gangen. Samme for akademi-svaret.
+  "raceDayIntensityPerRaceDayFaq",
   "raceDayProfileMatchFaq",
   "raceDayAcademyFaq",
+  "raceDayAcademyPerRaceDayFaq",
+  // #4849: tre nye loebsdags-FAQ'er, kun synlige naar loebsdags-modellen er
+  // taendt (lavere divisioner, flere etaper samme dag #4164, hviledag i etapeloeb).
+  "lowerDivisionTrainingFaq",
+  "multipleStagesTrainingFaq",
+  "stageRaceRestDayFaq",
   "flatCobblesHardTrainingFaq",
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
@@ -670,8 +686,9 @@ function buildSections(t, vars, flags) {
   });
 }
 
-function buildFaq(t, vars) {
-  return FAQ_KEYS.map((id) => ({
+function buildFaq(t, vars, flags) {
+  // #4849: flag-gatede FAQ'er filtreres FOER de oversaettes, som blokkene.
+  return FAQ_KEYS.filter((id) => isHelpFaqVisible(id, flags)).map((id) => ({
     id,
     q: t(`faq.${id}.q`, vars),
     a: t(`faq.${id}.a`, vars),
@@ -715,11 +732,12 @@ export default function HelpPage() {
     return "start";
   });
   const [search, setSearch] = useState("");
-  const [faqOpen, setFaqOpen] = useState(() => {
-    if (!faqParam) return null;
-    const idx = FAQ_KEYS.indexOf(faqParam);
-    return idx !== -1 ? idx : null;
-  });
+  // #4849: den aabne FAQ huskes paa sit id, ikke sin plads i listen. Listen
+  // filtreres nu gennem flag-svaret (HELP_FAQ_FLAGS), saa en plads flytter sig
+  // naar svaret lander, og et dyb-link ville ellers aabne det forkerte spoergsmaal.
+  const [faqOpen, setFaqOpen] = useState(() => (
+    faqParam && FAQ_KEYS.includes(faqParam) ? faqParam : null
+  ));
 
   // #3941 — "Kendte problemer": aktive + seneste 14 dages ops_notices, samme
   // datakilde som driftsbanneret i Layout.jsx. Hooken skal stå FØR den tidlige
@@ -756,7 +774,7 @@ export default function HelpPage() {
   const sections = buildSections(t, helpNumbers, playerFlags).filter(
     (s) => isHelpSectionVisible(s.key, playerFlags),
   );
-  const faq = buildFaq(t, helpNumbers);
+  const faq = buildFaq(t, helpNumbers, playerFlags);
 
   // Et dyb-link til en gated sektion (?section=mandate uden flaget) maa ikke
   // efterlade indholdsfeltet tomt - fald tilbage til den foerste sektion.
@@ -970,21 +988,21 @@ export default function HelpPage() {
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4">{t("page.faqHeading")}</h2>
                 <div className="flex flex-col gap-2">
-                  {faq.map((f, i) => (
+                  {faq.map((f) => (
                     <Card key={f.id} className="overflow-hidden">
                       <button
-                        onClick={() => setFaqOpen(faqOpen === i ? null : i)}
+                        onClick={() => setFaqOpen(faqOpen === f.id ? null : f.id)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left"
                       >
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
                         <ChevronDownIcon
                           aria-hidden="true"
                           className={`w-4 h-4 text-cz-3 ms-3 flex-shrink-0 transition-transform ${
-                            faqOpen === i ? "rotate-180" : ""
+                            faqOpen === f.id ? "rotate-180" : ""
                           }`}
                         />
                       </button>
-                      {faqOpen === i && (
+                      {faqOpen === f.id && (
                         <div className="px-4 pb-3 border-t border-cz-border pt-3">
                           <p className="text-cz-2 text-sm leading-relaxed">{f.a}</p>
                         </div>
