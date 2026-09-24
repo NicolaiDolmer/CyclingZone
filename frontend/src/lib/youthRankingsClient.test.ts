@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyYouthStandingNames,
   createYouthRankingsClient,
+  missingYouthNameIds,
   groupLetter,
   hasYouthResults,
   normalizeYouthStandings,
@@ -90,4 +92,84 @@ test("getYouthStandings uden session svarer fejl uden netværkskald", async () =
   });
   assert.equal((await client.getYouthStandings({ squad: "u23" })).status, "error");
   assert.equal(calls.length, 0);
+});
+
+// #5631: backend-PR #5665 sender KUN youth_season_standings' egne kolonner
+// (backend/lib/youthStandings.js YOUTH_STANDINGS_COLUMNS) - intet holdnavn,
+// intet pool_index. Samme form her, så testen fanger det prod ser.
+const BACKEND_ROWS = [
+  { season_id: "s1", squad: "u23", league_division_id: 902, team_id: "t-x", total_points: 12, wins: 0, podiums: 1, races: 2, rank_in_pool: 1, updated_at: "2026-09-20T18:00:00Z" },
+  { season_id: "s1", squad: "u23", league_division_id: 901, team_id: "t-y", total_points: 20, wins: 1, podiums: 1, races: 2, rank_in_pool: 1, updated_at: "2026-09-20T18:00:00Z" },
+];
+
+test("missingYouthNameIds finder hold og grupper serveren ikke har navngivet", () => {
+  const pools = normalizeYouthStandings({ data: [...BACKEND_ROWS, ROWS[0]] }) ?? [];
+  const ids = missingYouthNameIds(pools);
+  assert.deepEqual(ids.teamIds.sort(), ["t-x", "t-y"]);
+  // Gruppe 21 har pool_index men ingen label, så den slås også op.
+  assert.deepEqual(ids.poolIds.sort((a, b) => a - b), [21, 901, 902]);
+});
+
+test("applyYouthStandingNames fylder navn og gruppe ind og sorterer grupperne efter det opslåede pool_index", () => {
+  const pools = normalizeYouthStandings({ data: BACKEND_ROWS }) ?? [];
+  const named = applyYouthStandingNames(pools, {
+    teams: { "t-x": "Hold X", "t-y": "Hold Y" },
+    pools: { "901": { index: 1, label: null }, "902": { index: 0, label: null } },
+  });
+  assert.deepEqual(named.map((p) => [p.id, p.index]), [[902, 0], [901, 1]]);
+  assert.equal(named[0].rows[0].teamName, "Hold X");
+  assert.equal(groupLetter(named[1].index), "B");
+  // Serverens egne værdier vinder over opslaget.
+  const own = applyYouthStandingNames(normalizeYouthStandings({ data: [ROWS[0]] }) ?? [], {
+    teams: { "t-b": "Forkert" }, pools: { "21": { index: 7, label: "Label" } },
+  });
+  assert.equal(own[0].rows[0].teamName, "Hold B");
+  assert.equal(own[0].index, 1);
+  assert.equal(own[0].label, "Label");
+});
+
+test("getYouthStandings slår navne op for et svar i backend-formen", async () => {
+  const lookups: { teamIds: string[]; poolIds: number[] }[] = [];
+  const client = createYouthRankingsClient({
+    baseUrl: "",
+    headers: async () => ({ Authorization: "Bearer x" }),
+    request: async () => ({ ok: true, status: 200, data: { data: BACKEND_ROWS } }),
+    lookupNames: async (ids) => {
+      lookups.push(ids);
+      return { teams: { "t-x": "Hold X", "t-y": "Hold Y" }, pools: { "901": { index: 0, label: null }, "902": { index: 1, label: null } } };
+    },
+  });
+  const result = await client.getYouthStandings({ squad: "u23" });
+  assert.equal(result.status, "ok");
+  assert.equal(lookups.length, 1);
+  const pools = result.status === "ok" ? result.pools : [];
+  assert.deepEqual(pools.map((p) => groupLetter(p.index)), ["A", "B"]);
+  assert.deepEqual(pools.map((p) => p.rows[0].teamName), ["Hold Y", "Hold X"]);
+});
+
+test("getYouthStandings: fejlet navneopslag giver stadig stillingen, og fejlen rapporteres", async () => {
+  const reports: string[] = [];
+  const client = createYouthRankingsClient({
+    baseUrl: "",
+    headers: async () => ({ Authorization: "Bearer x" }),
+    request: async () => ({ ok: true, status: 200, data: { data: BACKEND_ROWS } }),
+    lookupNames: async () => { throw new Error("boom"); },
+    reportError: (_e, ctx) => { reports.push(ctx.path); },
+  });
+  const result = await client.getYouthStandings({ squad: "u23" });
+  assert.equal(result.status, "ok");
+  assert.equal(result.status === "ok" && result.pools[0].rows[0].teamName, null);
+  assert.deepEqual(reports, ["/api/rankings/youth/standings#names"]);
+});
+
+test("getYouthStandings springer opslaget over når serveren allerede sender navne og grupper", async () => {
+  let called = 0;
+  const client = createYouthRankingsClient({
+    baseUrl: "",
+    headers: async () => ({ Authorization: "Bearer x" }),
+    request: async () => ({ ok: true, status: 200, data: { data: [{ team_id: "t-a", team_name: "A", league_division_id: 20, pool_index: 0, pool_label: "A", races: 1 }] } }),
+    lookupNames: async () => { called += 1; return { teams: {}, pools: {} }; },
+  });
+  assert.equal((await client.getYouthStandings({ squad: "u23" })).status, "ok");
+  assert.equal(called, 0);
 });

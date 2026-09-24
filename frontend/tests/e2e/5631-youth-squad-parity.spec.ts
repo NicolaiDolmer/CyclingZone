@@ -90,6 +90,8 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
     await expect(me).toContainText("E2E Racing U23");
     await expect(page.locator("main")).toContainText(/Group A|Gruppe A/);
     await expect(page.locator("main")).not.toContainText("Regression VC U23"); // gruppe B står på Youth races
+    // Endpointet sender kun team_id (#5665); holdnavnet er slået op i teams.
+    await expect(page.locator("main")).toContainText("Étoile du Léman");
     await expect(page.locator("main").getByRole("link", { name: /^(All groups|Alle grupper)$/ })).toHaveAttribute("href", "/youth-races?squad=u23");
     if (takeShots) await shots(page, "u23-standings");
   });
@@ -118,6 +120,8 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
     await expect(page.getByTestId("youth-standings-me").first()).toContainText("E2E Racing U23");
     if (takeShots) await shots(page, "youth-races");
 
+    // Gruppe-bogstavet kommer fra league_divisions.pool_index (ikke fra endpointet).
+    await expect(page.locator("#youth-group option[value='902']")).toHaveText(/Group B|Gruppe B/);
     // Værdien er gruppens league_division_id (SEED_YOUTH_STANDINGS: gruppe B = 902).
     await page.locator("#youth-group").selectOption("902");
     await expect(page.locator("main")).toContainText("Regression VC U23");

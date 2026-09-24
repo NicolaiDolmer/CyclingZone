@@ -59,6 +59,8 @@ import {
   SEED_TEAM_RACE_POINTS_MV,
   SEED_TEAM_STANDINGS_EXT,
   SEED_YOUTH_STANDINGS,
+  SEED_YOUTH_TEAMS,
+  SEED_YOUTH_POOLS,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -152,6 +154,14 @@ export function restRows(table, requestUrl = "") {
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
         return [TEST_TEAM, RIVAL_TEAM].filter(t => t.id === id);
+      }
+      // #5631: ungdomsstillingens navneopslag (.in("id", teamIds)) - endpointet
+      // sender kun team_id, klienten henter holdnavnet her.
+      const teamIdIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
+      if (teamIdIn) {
+        const ids = new Set(teamIdIn[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")));
+        const byId = new Map([...SEED_YOUTH_TEAMS, TEST_TEAM, RIVAL_TEAM].map(t => [t.id, t]));
+        return [...byId.values()].filter(t => ids.has(t.id));
       }
       return [TEST_TEAM, RIVAL_TEAM];
     }
@@ -305,8 +315,17 @@ export function restRows(table, requestUrl = "") {
       return SEED_STAGE_SCHEDULE;
     }
     // #3197: Resultat-/Standings-/Kalender-fladens sæson/division/pulje-vælgere.
-    case "league_divisions":
+    case "league_divisions": {
+      // #5631: ungdomsstillingens gruppe-opslag (.in("id", poolIds)). Uden
+      // id-filter er svaret uændret (seniorpuljerne), så ingen pulje-vælger
+      // eller snapshot ser ungdomsgrupperne.
+      const poolIdIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
+      if (poolIdIn) {
+        const ids = new Set(poolIdIn[1].split(",").map(s => Number(s.trim())));
+        return [...SEED_LEAGUE_DIVISIONS, ...SEED_YOUTH_POOLS].filter(d => ids.has(d.id));
+      }
       return SEED_LEAGUE_DIVISIONS;
+    }
     // Sub-4 (#2448): KOM/mellemsprint/mål-passager. Samme race_id=eq-scoping som
     // race_stage_profiles ovenfor — RaceDetailPage henter med .eq("race_id", raceId)
     // (RaceDetailPage.jsx:254-264) og filtrerer selv videre på stage_number/

@@ -1,16 +1,21 @@
 // #5631: tynd klient til ungdomsstillingen (GET /api/rankings/youth/standings).
 //
-// Endpointet bygges parallelt af spor Y7 backend (#5647, tabellen
-// youth_season_standings). Kontrakten klienten forventer, med vilje tolerant
-// over for små navneforskelle, så siden ikke knækker hvis backend'en vælger et
-// andet feltnavn for holdnavnet eller puljens etiket:
+// Endpointet bygges af spor Y7 backend (#5647, PR #5665, tabellen
+// youth_season_standings). Serverens kolonner er KUN tabellens egne
+// (backend/lib/youthStandings.js YOUTH_STANDINGS_COLUMNS):
 //
 //   GET /api/rankings/youth/standings?squad=u23|junior[&pool=<league_division_id>][&season_id=<uuid>]
-//   200 { data: [{ team_id, team_name | teams.name, league_division_id,
-//                  pool_index?, pool_label?, rank_in_pool, total_points,
-//                  wins, podiums, races }] }
+//   200 { data: [{ season_id, squad, league_division_id, team_id, total_points,
+//                  wins, podiums, races, rank_in_pool, updated_at }] }
 //   409 = kontakten youth_squad_pages er slukket (som /api/youth-squads)
 //   404 = endpointet er ikke deployet endnu (staggered deploy)
+//
+// Holdnavn og gruppe (pool_index/label) er IKKE i svaret. Dem slår klienten
+// selv op via den injicerede lookupNames (teams + league_divisions, begge
+// læsbare for en indlogget manager), så siden ikke viser "U23 team" og "Your
+// group" på hver række. Kommer felterne alligevel med i svaret (team_name,
+// teams-embed, pool_index, league_divisions-embed), bruges de, og kun det der
+// mangler slås op.
 //
 // Klienten regner ALDRIG en placering ud selv: rank_in_pool kommer fra
 // serveren. Den grupperer kun rækkerne pr. pulje og sorterer dem til visning.
@@ -161,13 +166,68 @@ export function groupLetter(index: number | null | undefined): string | null {
   return String.fromCharCode(65 + index);
 }
 
-export function createYouthRankingsClient({ baseUrl, headers, request, reportError = () => {} }: {
+/** Opslag af det serveren ikke sender: holdnavne og gruppernes pool_index/label. */
+export interface YouthStandingsNames {
+  teams: Record<string, string>;
+  pools: Record<string, { index: number | null; label: string | null }>;
+}
+
+/** Hold- og gruppe-id'er hvis navn/bogstav mangler i serverens svar. */
+export function missingYouthNameIds(pools: YouthStandingsPool[]): { teamIds: string[]; poolIds: number[] } {
+  const teamIds = new Set<string>();
+  const poolIds = new Set<number>();
+  for (const pool of pools) {
+    if (pool.id != null && (pool.index == null || pool.label == null)) poolIds.add(pool.id);
+    for (const row of pool.rows) if (row.teamName == null) teamIds.add(row.teamId);
+  }
+  return { teamIds: [...teamIds], poolIds: [...poolIds] };
+}
+
+/** Fylder manglende holdnavne og gruppe-index/label ind; serverens egne værdier vinder. */
+export function applyYouthStandingNames(pools: YouthStandingsPool[], names: YouthStandingsNames): YouthStandingsPool[] {
+  const filled = pools.map((pool) => {
+    const lookup = pool.id == null ? null : names.pools[String(pool.id)];
+    const index = pool.index ?? lookup?.index ?? null;
+    const label = pool.label ?? lookup?.label ?? null;
+    return {
+      ...pool,
+      index,
+      label,
+      rows: pool.rows.map((row) => ({
+        ...row,
+        teamName: row.teamName ?? names.teams[row.teamId] ?? null,
+        poolIndex: row.poolIndex ?? index,
+        poolLabel: row.poolLabel ?? label,
+      })),
+    };
+  });
+  // Gruppe-rækkefølgen hænger på pool_index, som først kendes nu.
+  return filled.sort(comparePools);
+}
+
+export function createYouthRankingsClient({ baseUrl, headers, request, lookupNames, reportError = () => {} }: {
   baseUrl: string;
   headers: () => Promise<Record<string, string> | null>;
   request: (url: string, init: { headers: Record<string, string> }) => Promise<YouthRequestResult>;
+  /** Slår holdnavne og grupper op, som serveren ikke sender. Uden den vises fallback-titler. */
+  lookupNames?: (ids: { teamIds: string[]; poolIds: number[] }) => Promise<YouthStandingsNames>;
   reportError?: (error: Error, context: { path: string; status?: number }) => void;
 }) {
   const path = "/api/rankings/youth/standings";
+
+  // Et fejlet navneopslag vælter ikke stillingen: tallene er serverens og
+  // stadig rigtige, rækkerne får bare fallback-titlen. Fejlen rapporteres.
+  async function withNames(pools: YouthStandingsPool[]): Promise<YouthStandingsPool[]> {
+    if (!lookupNames) return pools;
+    const ids = missingYouthNameIds(pools);
+    if (ids.teamIds.length === 0 && ids.poolIds.length === 0) return pools;
+    try {
+      return applyYouthStandingNames(pools, await lookupNames(ids));
+    } catch (error) {
+      reportError(error instanceof Error ? error : new Error("Youth standings name lookup failed"), { path: `${path}#names` });
+      return pools;
+    }
+  }
 
   async function getYouthStandings({ squad, pool, seasonId }: {
     squad: YouthStandingsSquad;
@@ -194,7 +254,7 @@ export function createYouthRankingsClient({ baseUrl, headers, request, reportErr
         reportError(error, { path, status: res.status });
         return { status: "error", error };
       }
-      return { status: "ok", pools };
+      return { status: "ok", pools: await withNames(pools) };
     } catch (error) {
       return { status: "error", error: error instanceof Error ? error : new Error("Youth standings request failed") };
     }
