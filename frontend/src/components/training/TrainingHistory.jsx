@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { formatDate } from "../../lib/intl.js";
 import RiderLink from "../RiderLink.jsx";
 import { daySummary, breakthroughJumps, isBreakthrough } from "../../lib/trainingReport.js";
+import { sortTrainingRiders, trainingReportRowName } from "../../lib/trainingSort.ts";
 import { ChevronDownIcon, ClockIcon } from "../ui/icons/index.jsx";
 import { SkeletonLines } from "../ui/Skeleton.jsx";
 import Section, { SectionHeader } from "../ui/Section.jsx";
@@ -104,8 +105,14 @@ function DayRiderTable({ rows, t, tRider }) {
 
 function DayCard({ run, t, tRider }) {
   const [open, setOpen] = useState(false);
-  const rows = run.report?.riders ?? [];
-  const summary = daySummary(rows);
+  // #5682: rapporten viste ryttere i genererings-/DB-raekkefoelge (reelt
+  // tilfaeldig), forskellig fra Daglig traenings egen standard-visning.
+  // sortTrainingRiders (delt med TrainingPage) giver samme standard-
+  // sortering begge steder. daySummary er raekkefoelge-uafhaengig (tal-
+  // opsummering), saa den kan roligt bruge den USORTEREDE rapport.
+  const reportRows = run.report?.riders ?? [];
+  const rows = sortTrainingRiders(reportRows, null, "asc", { name: trainingReportRowName });
+  const summary = daySummary(reportRows);
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <button
