@@ -8,7 +8,18 @@ Ejer-direktiv 24/9: modellen der går live har alt med fra start, så spillerne 
 
 **Nøglen.** `v6` i `riderValuationModelSelect.js` (`MODEL_PATHS`, `VALUATION_MODEL_IDS`). Model-filen er `backend/lib/riderValuationModelV6Typefree.json` med de fittede parametre fra målescriptet (samme tal som den private model-fil). Fail-safe er uændret: alt ukendt og enhver læsefejl giver v4. Løn-nøglen (`rider_production_value_model`) accepterer ikke `v6` og falder tilbage til v4.
 
-**Kaldestien.** `recomputeRiderValue` genkender den typefri model og regner prisen med `valueTypefree`: typefri grundværdi, elitepræmien på det valgte trin, markedsfaktoren ovenpå. `predictBaseValue` (rytterkort, backfill, progression) dispatcher også, altid på trin 0. v4 og v5 er bit-identiske med før.
+**Kaldestien.** `recomputeRiderValue` genkender den typefri model og regner prisen med `valueTypefree`: typefri grundværdi, elitepræmien på det valgte trin, markedsfaktoren ovenpå. `predictBaseValue` (rytterkort, backfill, progression) dispatcher også, på det trin loaderen har lagt på modellen (se "Trin-tælleren"). v4 og v5 er bit-identiske med før.
+
+**Trin-tælleren (25/9, indfasningsplanen §5 valg 1).** app_config-nøglen `rider_value_phase_step` (heltal 0-4, manglende/ugyldig = 0, uden for intervallet klemmes) er det trin der **sidst er skrevet** til rytterne.
+
+- Den ekstraordinære kørsel sætter den til 0 ved `--apply`, som første skrivning. Tørkørslen rører den ikke.
+- Søndagskørslen læser den strikst og regner hele populationen med **nøgle + 1** (loft 4). Er prisen `v6` og refresh'en fuldført, skrives trinnet tilbage i samme afslutning som `completed_at`. Under v4/v5 røres nøglen ikke. En læsefejl frigiver dagen som enhver anden refresh-fejl; en fejlet op-tælling lader nøglen stå, så præmien bliver et trin længere, aldrig et trin for tidligt væk.
+- Hvorfor "sidst skrevet" og ikke "næste": søndag 1 skal være 75 % (indfasningsplanen §2), og læse-fladerne kan bruge nøglen direkte som det trin databasen står på.
+- Loaderne (`loadValuationModel`, `…Strict`, `…Cached`, `…ByIdWithMarket`) lægger trinnet på v6-modellen som `current_phase_step` sammen med markeds-fittet. `valueTypefree`, `predictBaseValue` og `recomputeRiderValue` bruger det, når kalderen ikke sender et eksplicit `phaseStep`; et eksplicit trin vinder altid. `refreshChangedRiderValues` sender altid sit eget trin (default 0), så et gemt trin aldrig tavst overtager en skrivende kørsel.
+- Søndagens log-linje (cron) viser `model · phase step N · production_value changed: N` til post-verify i Railway.
+- Rollback: nøglen nulstilles til 0 sammen med model-nøglen (runbooken #5443).
+
+**Gamle læsere (reviewer 24/9).** Rytterkortets forventede pris og base_value-previewet (`predictBaseValue` via `loadValuationModelCached`) og sæson-transitionen (`riderProgressionEngine`, via `loadValuationModelStrict`) regner nu på samme trin som søndagen senest skrev, ikke trin 0. Admin-ruten `/admin/rider-valuation-preview-v4` kaldte `predictBaseValueV4` direkte og gav null for v6; den kalder nu `predictBaseValue`, som for v4/v5 dispatcher til præcis samme funktion (test). Sæson-transitionen med en pinnet v6 trækker ikke længere løngrundlaget med: det slås op med løn-nøglen, som aldrig giver v6. Løngrundlaget er dermed v4 på alle stier.
 
 **Kontrakten med admin-forhåndsvisningen (#5686).**
 
@@ -42,11 +53,11 @@ recomputeRiderValue(riderRow, abilities, baseline, model,
 
 **Hvad v3 IKKE dækker:**
 
-1. **Trin-tælleren.** Søndagskørslen kalder stadig med trin 0. Et gemt trin-tal, der tælles op efter hver kørsel, hører til build-planen (afsnit 5 punkt 3) og indfasningsplanen.
+1. **Den ekstraordinære kørsels model-lås.** `riderValueExtraordinaryRun5443.js` kræver stadig `rider_valuation_model = 'v5'` og nægter derfor at køre med `v6`. Det skal rettes, før kørselsdagen kan køre den samlede model (uden for dette spor).
 2. **Markeds-fittet i prod.** Nøglen `rider_valuation_v6_market` findes ikke endnu. Den skrives først efter ejerens "kør" (et prod-skridt med tal, ejer-gated). Indtil da viser admin-siden v6 uden marked, medmindre fittet gives direkte.
 3. **Gaterne.** `eliteUnbuyableGate` og udvikl-og-sælg-gaten er ikke omformuleret (afsnit 4 punkt 1 er stadig et ejer-valg).
 4. **R1** (S4-programmet) og en re-fit af markedet efter udfasningen (afsnit 6).
-5. **Andre læsere af modellen.** `backfillCores`, `riderProgressionEngine` og rytterkortet går gennem `predictBaseValue` og får trin 0. Hvis de skal følge trinnet, skal de have trin-tallet fra punkt 1.
+5. **Trin-nøglen i prod.** `rider_value_phase_step` findes ikke endnu (= 0). Den skrives første gang af den ekstraordinære kørsels `--apply`.
 
 Tal og navne står kun i de private rapporter (`balance-internals/2026-09-24-5497-typefree-v3/`, `balance-internals/2026-09-24-5497-v6-dryrun-trin0/`) og i ejerens private valg-fil. Låste beslutninger i #5497 genåbnes ikke.
 
