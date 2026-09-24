@@ -20,7 +20,15 @@
 // assertions.
 import type { Locator, Page, Route } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
-import { installNetworkMocks, stabilizePage, login, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
+import {
+  installNetworkMocks,
+  stabilizePage,
+  login,
+  json,
+  corsHeaders,
+  evidenceShotPath,
+  waitForStableSnapshotTarget,
+} from "./fixtures.js";
 
 type SignupStatus = {
   enabled: boolean;
@@ -89,9 +97,19 @@ async function openDashboard(
   // navigation, så sproget flyttes EFTER login (samme greb som #5485).
   await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
   await page.setViewportSize({ width, height });
-  await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "E2E Racing" })).toBeVisible();
+  await gotoDashboard(page);
   if (withRace) await expect(page.getByTestId("team-selection-cta")).toBeVisible();
+}
+
+// Venter på at signup-status faktisk er besvaret (ellers er "intet kort" sandt
+// bare fordi kaldet ikke er landet endnu) og på stabil geometri, så en
+// y-måling ikke rammer midt i indlæsningen af kortene ovenover.
+async function gotoDashboard(page: Page) {
+  const statusAnswered = page.waitForResponse((res) => res.url().includes("/api/season/signup-status"));
+  await page.goto("/dashboard");
+  await statusAnswered;
+  await expect(page.getByRole("heading", { name: "E2E Racing" })).toBeVisible();
+  await waitForStableSnapshotTarget(page);
 }
 
 // Første skærm = viewporten minus den faste bundnavigation på telefonen
@@ -153,8 +171,7 @@ for (const size of SIZES) {
 
     // Flaget on, men holdet er aktivt (ikke kandidat): intet ændrer sig.
     await mockSignupStatus(page, ACTIVE);
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "E2E Racing" })).toBeVisible();
+    await gotoDashboard(page);
     const squad = page.getByTestId("team-selection-cta");
     await expect(squad).toBeVisible();
     await expect(page.getByTestId("season-signup-card")).toHaveCount(0);
