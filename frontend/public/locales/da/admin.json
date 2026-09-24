@@ -126,7 +126,7 @@
   "seasonCycle": {
     "parkedLabel": "Parkerede hold",
     "parkedSub": "Ingen sponsor denne sæson. Lønnen betales stadig.",
-    "confirmParked": "  • Springe sponsor over for {{count}} parkerede hold"
+    "confirmParked": "Springe sponsor over for {count, plural, one {# parkeret hold} other {# parkerede hold}}"
   },
   "racePoints": {
   "model": {

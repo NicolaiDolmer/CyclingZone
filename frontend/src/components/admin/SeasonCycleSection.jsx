@@ -82,7 +82,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       `  • Markere sæson ${preview.from_season.number} som færdig\n` +
       `  • Oprette sæson ${preview.to_season.number} (status='active')\n` +
       `  • Udbetale ${formatCz(sponsorPayoutTotal)} i sponsor til ${preview.teams_affected} hold\n` +
-      (teamsParked > 0 ? `${t("seasonCycle.confirmParked", { count: teamsParked })}\n` : "") +
+      (teamsParked > 0 ? `  • ${t("seasonCycle.confirmParked", { count: teamsParked })}\n` : "") +
       `  • Lukke sæson ${preview.from_season.number}'s transfervindue\n` +
       `  • Logge handlingen i admin-loggen\n\n` +
       `Er du sikker?`;

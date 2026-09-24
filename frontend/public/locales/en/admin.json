@@ -126,7 +126,7 @@
   "seasonCycle": {
     "parkedLabel": "Parked teams",
     "parkedSub": "No sponsor this season. Wages are still paid.",
-    "confirmParked": "  • Skip sponsor for {{count}} parked teams"
+    "confirmParked": "Skip sponsor for {count, plural, one {# parked team} other {# parked teams}}"
   },
   "racePoints": {
   "model": {
