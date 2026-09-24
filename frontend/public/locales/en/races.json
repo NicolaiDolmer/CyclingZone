@@ -51,7 +51,7 @@
         "peaks": "Peak plans stay unchanged",
         "wages": "Wages and rider values update Sunday"
       },
-      "firstRaceDay": "First race day: Tuesday. Monday is race-free.",
+      "firstRaceDay": "Racing starts the day after the changeover, at least 24 hours after the old season's last race.",
       "readMore": "Full details in Help"
     },
     "errorTitle": "Season calendar could not be loaded"

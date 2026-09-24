@@ -155,7 +155,59 @@ test("ensureSeasonTransitionPlannedAt: eksisterende værdi PÅ/EFTER ny sæsons 
   const supabase = makeWritableSupabase({ appConfigRow: { value: "2026-12-01T00:00:00.000Z" } });
   const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-11-30" });
   assert.equal(result.updated, false);
-  assert.equal(result.reason, "existing-value-not-stale");
+  assert.equal(result.reason, "existing-later-kept");
+  assert.equal(supabase.upsertCalls.length, 0);
+});
+
+// ── #5592 (diff-tjek 24/9): et bevidst SENERE skifte bevares, og værdien der skrives er
+// den kalenderen er planlagt mod ─────────────────────────────────────────────────────
+
+test("#5592 ensureSeasonTransitionPlannedAt: senere skifte FØR start_date (27/9 kl. 21) bevares — blev før overskrevet med kl. 18", async () => {
+  const supabase = makeWritableSupabase({ appConfigRow: { value: "2026-09-27T19:00:00.000Z" } });
+  const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-09-28" });
+  assert.equal(result.updated, false);
+  assert.equal(result.reason, "existing-later-kept");
+  assert.equal(result.existing, "2026-09-27T19:00:00.000Z");
+  assert.equal(supabase.upsertCalls.length, 0);
+});
+
+test("#5592 ensureSeasonTransitionPlannedAt: target = det skifte kalenderen er bygget mod → PRÆCIS den værdi skrives", async () => {
+  // S4: S3's seneste etape 27/9 kl. 19 + 30 min → 27/9 kl. 19:30 dansk tid (17:30Z).
+  const target = new Date("2026-09-27T17:30:00.000Z");
+  const missing = makeWritableSupabase({ appConfigRow: null });
+  const r1 = await ensureSeasonTransitionPlannedAt({ supabase: missing, seasonStartDate: "2026-09-28", target });
+  assert.equal(r1.updated, true);
+  assert.equal(r1.value, "2026-09-27T17:30:00.000Z");
+  assert.equal(missing.upsertCalls[0].payload.value, "2026-09-27T17:30:00.000Z", "ikke konventionens kl. 18");
+
+  // Et tidligere skifte (konventionens kl. 18) kan ikke nås og overskrives med kalenderens.
+  const earlier = makeWritableSupabase({ appConfigRow: { value: "2026-09-27T16:00:00.000Z" } });
+  const r2 = await ensureSeasonTransitionPlannedAt({ supabase: earlier, seasonStartDate: "2026-09-28", target });
+  assert.equal(r2.updated, true);
+  assert.equal(r2.reason, "stale");
+  assert.equal(earlier.upsertCalls[0].payload.value, "2026-09-27T17:30:00.000Z");
+
+  // Samme værdi → idempotent.
+  const same = makeWritableSupabase({ appConfigRow: { value: "2026-09-27T17:30:00.000Z" } });
+  const r3 = await ensureSeasonTransitionPlannedAt({ supabase: same, seasonStartDate: "2026-09-28", target: target.toISOString() });
+  assert.equal(r3.reason, "already-correct");
+  assert.equal(same.upsertCalls.length, 0);
+
+  // En senere værdi end kalenderens bevares og meldes, så kalderen kan stoppe.
+  const later = makeWritableSupabase({ appConfigRow: { value: "2026-09-27T19:00:00.000Z" } });
+  const r4 = await ensureSeasonTransitionPlannedAt({ supabase: later, seasonStartDate: "2026-09-28", target });
+  assert.equal(r4.updated, false);
+  assert.equal(r4.reason, "existing-later-kept");
+  assert.equal(r4.target, "2026-09-27T17:30:00.000Z");
+  assert.equal(later.upsertCalls.length, 0);
+});
+
+test("#5592 ensureSeasonTransitionPlannedAt: ugyldig target kastes (skriver aldrig et gæt)", async () => {
+  const supabase = makeWritableSupabase({ appConfigRow: null });
+  await assert.rejects(
+    () => ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-09-28", target: "ikke en dato" }),
+    /not a valid timestamp/,
+  );
   assert.equal(supabase.upsertCalls.length, 0);
 });
 
