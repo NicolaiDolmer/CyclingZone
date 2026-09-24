@@ -12,12 +12,14 @@ import {
   APPLY_CONFIRM_PHRASE,
   BACKED_UP_COLUMNS,
   DEFAULT_WAGE_MODEL_ID,
+  EXTRAORDINARY_PHASE_STEP,
   OWNER_ACK_ENV,
   REQUIRED_MODEL_ID,
   ROLLBACK_CONFIRM_PHRASE,
   applyBlockers,
   rollbackBlockers,
   rollbackUpdates,
+  runExtraordinaryValueEvent,
   summariseUpdates,
 } from "./riderValueExtraordinaryRun5443.js";
 
@@ -144,4 +146,68 @@ test("opsummeringen taeller op, ned og loengrundlag hver for sig", () => {
     { id: "c", base_value: 100, current_production_value: 12 },
   ];
   assert.deepEqual(summariseUpdates(updates, before), { up: 1, down: 1, cpvMoved: 1 });
+});
+
+// ── #5497 trin-tælleren ─────────────────────────────────────────────────────
+// Minimal app_config-mock: model-nøglerne læses, alt andet registreres, så
+// testen kan bevise at ingen rytter-/backup-tabel røres før trin-nulstillingen.
+function configOnlySupabase({ modelId = REQUIRED_MODEL_ID, wageModelId = DEFAULT_WAGE_MODEL_ID } = {}) {
+  const tables = [];
+  const values = { rider_valuation_model: modelId, rider_production_value_model: wageModelId };
+  return {
+    tables,
+    from(table) {
+      tables.push(table);
+      if (table !== "app_config") throw new Error(`uventet tabel ${table}`);
+      return {
+        select() {
+          return { eq(_col, key) { return { maybeSingle: async () => ({ data: { value: values[key] ?? null }, error: null }) }; } };
+        },
+      };
+    },
+  };
+}
+
+const WEDNESDAY = new Date("2026-09-23T10:00:00Z");
+
+test("#5497: toerkoerslen regner trin 0 og roerer IKKE trin-taelleren", async () => {
+  const sb = configOnlySupabase();
+  const resets = [];
+  const refreshOpts = [];
+  const res = await runExtraordinaryValueEvent(sb, {
+    apply: false, now: WEDNESDAY, log: () => {},
+    refreshFn: async (_sb, opts) => { refreshOpts.push(opts); return { scanned: 0, changed: 0, updates: [], before: [] }; },
+    resetPhaseStepFn: async (_sb, step) => { resets.push(step); },
+  });
+  assert.equal(res.dryRun, true);
+  assert.equal(refreshOpts[0].phaseStep, EXTRAORDINARY_PHASE_STEP);
+  assert.equal(refreshOpts[0].dryRun, true);
+  assert.deepEqual(resets, [], "en toerkoersel maa aldrig skrive noeglen");
+});
+
+test("#5497: en blokeret --apply roerer heller ikke trin-taelleren", async () => {
+  const resets = [];
+  const res = await runExtraordinaryValueEvent(configOnlySupabase(), {
+    apply: true, confirm: "forkert", ownerAck: true, now: WEDNESDAY, log: () => {},
+    resetPhaseStepFn: async (_sb, step) => { resets.push(step); },
+  });
+  assert.equal(res.ran, false);
+  assert.deepEqual(resets, []);
+});
+
+test("#5497: --apply nulstiller trin-taelleren til 0 som FOERSTE skrivning", async () => {
+  const sb = configOnlySupabase();
+  const resets = [];
+  await assert.rejects(
+    () => runExtraordinaryValueEvent(sb, {
+      apply: true, confirm: APPLY_CONFIRM_PHRASE, ownerAck: true, now: WEDNESDAY, log: () => {},
+      // Stopper kørslen lige efter nulstillingen, så testen kan se at intet
+      // andet (rytter-snapshot, backup, dags-claim) er rørt først.
+      resetPhaseStepFn: async (_sb, step) => { resets.push(step); throw new Error("stop efter reset"); },
+    }),
+    /stop efter reset/
+  );
+  assert.deepEqual(resets, [0]);
+  assert.equal(EXTRAORDINARY_PHASE_STEP, 0);
+  assert.deepEqual([...new Set(sb.tables)], ["app_config"], "kun model-noeglerne maa vaere laest foer nulstillingen");
 });

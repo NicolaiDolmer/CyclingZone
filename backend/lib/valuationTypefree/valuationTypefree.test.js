@@ -27,13 +27,15 @@ import { fitTypefreeProduction } from "./fitProduction.js";
 import { fitCommon, fitLocal, hydrateMarketFit, marketAdjustedValue, qualifyMarketEvidence, serializeMarketFit } from "./marketComponent.js";
 import { readFileSync } from "node:fs";
 import { predictBaseValue } from "../riderValuation.js";
-import { recomputeRiderValue, selectChangedValueUpdates } from "../riderValueRefresh.js";
+import { predictBaseValueV4 } from "../riderCareerNpv.js";
+import { countProductionValueChanges, recomputeRiderValue, selectChangedValueUpdates } from "../riderValueRefresh.js";
 import {
   VALUATION_MODEL_IDS,
   loadValuationModelById,
   resolveProductionValueModelId,
   resolveValuationModelId,
   withMarketFit,
+  withPhaseStep,
 } from "../riderValuationModelSelect.js";
 import {
   TYPEFREE_MODEL_ID,
@@ -465,6 +467,60 @@ test("v3: en rytter på et managerhold regnes som alle andre og ændrer værdi",
   const updates = selectChangedValueUpdates([{ ...managed, primary_type: "gc", secondary_type: "tt" }], new Map([["m", V3_ABIL]]), V3_BASELINE, v6, new Map(), V3_YOUTH, v4);
   assert.equal(updates.length, 1, "søndagskørslens diff skriver managerholdets rytter");
   assert.equal(updates[0].base_value, vManaged);
+});
+
+// ── Trin-tælleren og de gamle læsere (#5497, reviewer 24/9) ─────────────────
+test("trin-tæller: læse-fladerne regner samme trin som databasen står på", () => {
+  const v6 = loadValuationModelById("v6");
+  const rider = { id: "e", age: 27, potentiale: 3 };
+  const atStep = (n) => recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { youthBaseline: V3_YOUTH, phaseStep: n }).base_value;
+  for (const step of [0, 1, 2, 3, 4]) {
+    // Loaderen lægger app_config-trinnet på modellen (withPhaseStep).
+    const live = withPhaseStep(v6, step);
+    // predictBaseValue = rytterkortets forventede pris, admin-preview, nye ryttere, sæson-transitionen.
+    assert.equal(predictBaseValue(rider, V3_ABIL, live), atStep(step), `predictBaseValue trin ${step}`);
+    // recomputeRiderValue uden eksplicit trin (fx værdi-trenden) følger modellens trin.
+    assert.equal(recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, live, { youthBaseline: V3_YOUTH }).base_value, atStep(step));
+  }
+  // Et eksplicit trin vinder altid over modellens (søndagen regner nøgle + 1).
+  const live2 = withPhaseStep(v6, 2);
+  assert.equal(predictBaseValue(rider, V3_ABIL, live2, { phaseStep: 3 }), atStep(3));
+  assert.equal(recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, live2, { youthBaseline: V3_YOUTH, phaseStep: 0 }).base_value, atStep(0));
+  assert.notEqual(atStep(2), atStep(0), "fixturen er elite, ellers beviser testen intet");
+  // Uden trin på modellen: trin 0, som før.
+  assert.equal(predictBaseValue(rider, V3_ABIL, v6), atStep(0));
+});
+
+test("trin-tæller: søndagens diff regner på det trin kørslen sender, og løngrundlaget flytter sig ikke", () => {
+  const v4 = loadValuationModelById("v4");
+  const v6 = withPhaseStep(loadValuationModelById("v6"), 1);
+  const r = { id: "s", age: 27, potentiale: 3, primary_type: "gc", secondary_type: "tt" };
+  const at1 = recomputeRiderValue(r, V3_ABIL, V3_BASELINE, v6, { youthBaseline: V3_YOUTH, productionModel: v4, phaseStep: 1 });
+  const before = { ...r, base_value: at1.base_value, current_production_value: at1.current_production_value, primary_type: at1.primary_type, secondary_type: at1.secondary_type };
+  const updates = selectChangedValueUpdates([before], new Map([["s", V3_ABIL]]), V3_BASELINE, v6, new Map(), V3_YOUTH, v4, 2);
+  const at2 = recomputeRiderValue(r, V3_ABIL, V3_BASELINE, v6, { youthBaseline: V3_YOUTH, productionModel: v4, phaseStep: 2 });
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].base_value, at2.base_value, "trin 2 fra kørslen, ikke modellens trin 1");
+  assert.equal(countProductionValueChanges(updates, [before]), 0, "løn følger ikke værdi");
+  assert.equal(countProductionValueChanges([{ id: "s", current_production_value: before.current_production_value + 1 }], [before]), 1);
+  assert.equal(countProductionValueChanges([{ id: "s", best_role: "tt" }], [before]), 0, "kun rolle-cache tæller ikke");
+});
+
+test("gamle læsere: admin-preview-v4-ruten regner v4/v5 bit-identisk via predictBaseValue", () => {
+  // api.js /admin/rider-valuation-preview-v4 kaldte predictBaseValueV4 direkte og
+  // gav null for v6. Nu kalder den predictBaseValue, som for v4/v5 dispatcher til
+  // samme predictBaseValueV4. Samme tal for v4/v5; v6 får et rigtigt tal.
+  for (const id of ["v4", "v5"]) {
+    const m = loadValuationModelById(id);
+    for (const [age, potentiale] of [[19, 5], [24, 3], [31, 2]]) {
+      const rider = { primary_type: "gc", valuation_type: "gc", age, potentiale };
+      assert.equal(predictBaseValue(rider, V3_ABIL, m), predictBaseValueV4(rider, V3_ABIL, m), `${id} alder ${age}`);
+    }
+  }
+  const live = withPhaseStep(loadValuationModelById("v6"), 3);
+  const v6Value = predictBaseValue({ age: 27, potentiale: 3 }, V3_ABIL, live);
+  assert.ok(v6Value > 0);
+  assert.equal(v6Value, valueTypefree({ age: 27, potentiale: 3 }, V3_ABIL, live, { phaseStep: 3 }).value);
 });
 
 test("v3: typebyte giver 0 afvigelser gennem recomputeRiderValue på alle fem trin", () => {
