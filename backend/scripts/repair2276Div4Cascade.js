@@ -139,6 +139,7 @@ async function buildDiv4RepairPlan({ supabase, tier4PoolIds, tier1to3Names, from
   const { tierPlans } = buildTierMaterializationPlan({
     pools, catalog: catalog || [], from, realDays, quotas, density, forceTiers: [4],
     usedRaceNames: tier1to3Names,
+    seasonTransitionAt: null, // #5592: midt-sæson-reparation, ikke en sæsonstart
   });
   return { tier4Plan: tierPlans.find((tp) => tp.tier === 4) ?? null, quotas, density };
 }
@@ -225,6 +226,7 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
       tiers: [4], forceTiers: [4], dryRun, realDays,
       quotas: { ...TIER_GAME_DAY_QUOTA, 4: DIV4_REPAIR_DENSITY * realDays },
       density: { ...TIER_DENSITY, 4: DIV4_REPAIR_DENSITY },
+      seasonTransitionAt: null, // #5592: midt-sæson-reparation, ikke en sæsonstart
       log,
     });
     log(`re-materialiseret: +${summary.racesInserted} løb, ${summary.stageSchedules} etape-tider`);
@@ -392,6 +394,7 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
     tiers: [4], forceTiers: [4], dryRun: false, realDays,
     quotas: { ...TIER_GAME_DAY_QUOTA, 4: DIV4_REPAIR_DENSITY * realDays },
     density: { ...TIER_DENSITY, 4: DIV4_REPAIR_DENSITY },
+    seasonTransitionAt: null, // #5592: midt-sæson-reparation, ikke en sæsonstart
     log,
   });
   log(`\nre-materialiseret: +${summary.racesInserted} løb, ${summary.stageSchedules} etape-tider`);
