@@ -300,12 +300,21 @@ export async function loadValuationModelCached(supabase, opts) {
   const model = loadValuationModelById(await readModelIdCached(supabase, RIDER_VALUATION_MODEL_KEY, opts));
   if (!isTypefreeModel(model)) return model;
   // v6: markeds-fittet caches med samme TTL som model-id'et.
-  const t = (opts?.now ?? Date.now)();
+  // Samme af-duplikering som model-id'et: samtidige rytterkort giver ÉT opslag.
+  const now = opts?.now ?? Date.now;
   const hit = idCache.get(TYPEFREE_MARKET_APP_CONFIG);
-  if (hit && hit.expiresAt > t) return hit.model;
-  const withMarket = await attachMarket(supabase, model);
-  idCache.set(TYPEFREE_MARKET_APP_CONFIG, { model: withMarket, expiresAt: t + (opts?.ttlMs ?? MODEL_ID_CACHE_TTL_MS) });
-  return withMarket;
+  if (hit && hit.expiresAt > now()) return hit.model;
+  let pending = inFlight.get(TYPEFREE_MARKET_APP_CONFIG);
+  if (!pending) {
+    pending = attachMarket(supabase, model)
+      .then((withMarket) => {
+        idCache.set(TYPEFREE_MARKET_APP_CONFIG, { model: withMarket, expiresAt: now() + (opts?.ttlMs ?? MODEL_ID_CACHE_TTL_MS) });
+        return withMarket;
+      })
+      .finally(() => inFlight.delete(TYPEFREE_MARKET_APP_CONFIG));
+    inFlight.set(TYPEFREE_MARKET_APP_CONFIG, pending);
+  }
+  return pending;
 }
 
 /** Løngrundlagets model til LÆSE-flader. Samme cache-kontrakt som ovenfor. Aldrig v6. */

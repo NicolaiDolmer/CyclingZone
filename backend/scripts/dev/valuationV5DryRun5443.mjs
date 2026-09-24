@@ -243,7 +243,7 @@ function typefreeStepReport({ perRider, humanTeamIds, baseline, youthBaseline, t
     "",
     "| trin | prospects | dyreste: ROI | dyreste: ikke-dominant | dyreste: net-positiv | over ROI-loft | net-negative | median ROI |",
     "|---|--:|--:|--:|--:|--:|--:|--:|",
-    ...dev.map((d) => `| ${d.i} | ${d.n} | ${d.best ? fmt(d.best.g.roi * 100) : "-"} % | ${d.best ? (d.best.g.roi <= MAX_DEVELOP_SELL_ROI ? "ja" : "NEJ") : "-"} | ${d.best ? (d.best.g.pnl > 0 ? "ja" : "NEJ") : "-"} | ${d.overCap} | ${d.netNeg} | ${fmt((d.medianRoi ?? NaN) * 100)} % |`),
+    ...dev.map((d) => `| ${d.i} | ${d.n} | ${Number.isFinite(d.best?.g?.roi) ? `${fmt(d.best.g.roi * 100)} %` : "-"} | ${Number.isFinite(d.best?.g?.roi) ? (d.best.g.roi <= MAX_DEVELOP_SELL_ROI ? "ja" : "NEJ") : "-"} | ${d.best ? (d.best.g.pnl > 0 ? "ja" : "NEJ") : "-"} | ${d.overCap} | ${d.netNeg} | ${fmt((d.medianRoi ?? NaN) * 100)} % |`),
     "",
     "## Til PR-body (kvalitativt, ingen navne/beløb)",
     "",
@@ -251,7 +251,7 @@ function typefreeStepReport({ perRider, humanTeamIds, baseline, youthBaseline, t
     `- Menneskeholds ryttere ændrer sig: ${share(humanChanged, human.length)} af dem får ny pris på kørselsdagen.`,
     `- Typebyte: ${swapDiff} afvigelser.`,
     `- +1 evnepoint sænker prisen i ${share(smooth[0].neg, smooth[0].n)} af tilfældene på kørselsdagen og ${share(smooth[4].neg, smooth[4].n)} i den nye normal.`,
-    `- Udvikl-og-sælg "ikke dominant" for den dyreste prospect: ${dev.every((d) => !d.best || d.best.g.roi <= MAX_DEVELOP_SELL_ROI) ? "grøn på alle fem trin" : "RØD på mindst ét trin"}; net-positiv: ${dev.map((d) => (d.best && d.best.g.pnl > 0 ? "grøn" : "rød")).join(" / ")}.`,
+    `- Udvikl-og-sælg "ikke dominant" for den dyreste prospect: ${dev.every((d) => Number.isFinite(d.best?.g?.roi) && d.best.g.roi <= MAX_DEVELOP_SELL_ROI) ? "grøn på alle fem trin" : "RØD på mindst ét trin"}; net-positiv: ${dev.map((d) => (d.best && d.best.g.pnl > 0 ? "grøn" : "rød")).join(" / ")}.`,
     ...pubLines,
     "",
   );

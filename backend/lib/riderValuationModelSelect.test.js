@@ -258,6 +258,21 @@ test("v6 får markeds-fittet fra app_config på alle læse-stier; v4/v5 slår de
   assert.ok(!v5.asked.includes(TYPEFREE_MARKET_APP_CONFIG));
 });
 
+test("v6 på request-stien: samtidige læsninger af markeds-fittet af-dublerer til ét opslag", async () => {
+  resetValuationModelCache();
+  let marketReads = 0;
+  const { supabase } = stubConfig(
+    { [RIDER_VALUATION_MODEL_KEY]: "v6", [TYPEFREE_MARKET_APP_CONFIG]: FAKE_FIT },
+    { onRead: (key) => { if (key === TYPEFREE_MARKET_APP_CONFIG) marketReads++; } },
+  );
+  const models = await Promise.all(Array.from({ length: 20 }, () => loadValuationModelCached(supabase)));
+  assert.equal(marketReads, 1);
+  assert.ok(models.every((m) => m.market_fit === models[0].market_fit));
+  await loadValuationModelCached(supabase);
+  assert.equal(marketReads, 1, "inden for TTL'en: intet nyt opslag");
+  resetValuationModelCache();
+});
+
 test("v6 uden (gyldigt) markeds-fit regner uden marked; striks læsefejl på fittet stopper kørslen", async () => {
   for (const raw of [undefined, null, "skrald", { schema: "andet" }, { ...FAKE_FIT, weight: -1 }]) {
     const { supabase } = stubConfig({ [RIDER_VALUATION_MODEL_KEY]: "v6", [TYPEFREE_MARKET_APP_CONFIG]: raw });
