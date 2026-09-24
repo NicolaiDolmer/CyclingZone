@@ -118,7 +118,9 @@ function finiteOr(value, fallback) {
 // Evnerne sessionen faktisk traener, med deres vaegt (#4631's FOCUS_ABILITY_WEIGHT).
 function sessionAbilityWeights(program) {
   const focus = program?.focus ?? null;
-  const abilities = TRAINING_FOCUSES[focus] ?? [];
+  // #4850: loebsdagens program (raceDayYield.js) baerer sin egen fokus-liste,
+  // samme override som abilityMult i dailyTraining.js.
+  const abilities = program?.focusAbilities ?? TRAINING_FOCUSES[focus] ?? [];
   return abilities.map((ability) => ({ ability, weight: focusAbilityWeight(focus, ability) }));
 }
 

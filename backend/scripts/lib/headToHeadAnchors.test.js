@@ -21,6 +21,9 @@ import {
   buildScorecard,
   aggregateScorecards,
   formatScorecard,
+  countFavoriteWins,
+  mergeFavoriteDefinitions,
+  formatFavoriteDefinitions,
 } from "./headToHeadAnchors.js";
 
 function ability(overrides = {}) {
@@ -340,6 +343,130 @@ test("#4915 scoreDominance: kun tidskoersler i input => samme-hold-ankret er N/A
   const [, sameTeam] = scoreDominance([oneTeamTop10Row("ttt", "solo_tt")], { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
   assert.equal(sameTeam.v3.verdict, "N/A");
   assert.equal(sameTeam.v4.verdict, "N/A");
+});
+
+// ── #5583: favorit-definitioner side om side (den ekstra kolonne) ─────────
+//
+// Syntetisk felt: "rouleur" er bedst paa etapens (kunstige) v3-kravvektor,
+// "sprinter" paa v4-finalens bunch_sprint-vektor. v3's components.terrain er
+// sat, som simulateStage ville saette den: rouleuren hoejest.
+
+const DEFINITION_ENTRANTS = {
+  rouleur: { rider_id: "rouleur", abilities: ability({ flat: 95, sprint: 40, acceleration: 40, positioning: 40 }) },
+  sprinter: { rider_id: "sprinter", abilities: ability({ flat: 40, sprint: 95, acceleration: 95, positioning: 95 }) },
+};
+const DEFINITION_TEAMS = new Map([["rouleur", "t1"], ["sprinter", "t2"]]);
+
+function definitionRow({ profile_type, winner, demandVector = { flat: 1 } }) {
+  const order = winner === "rouleur" ? ["rouleur", "sprinter"] : ["sprinter", "rouleur"];
+  const terrain = { rouleur: 0.9, sprinter: 0.4 };
+  return makeRow({
+    profile_type, finale_type: "bunch_sprint",
+    stageRow: { race_id: "race1", ...(demandVector ? { demand_vector: demandVector } : {}) },
+    v3Entries: order.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: i, terrain: terrain[id], team_id: DEFINITION_TEAMS.get(id) })),
+    v4Entries: order.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 + i })),
+  });
+}
+
+function winRateAnchor(rows) {
+  return scoreDominance(rows, { teamByRider: DEFINITION_TEAMS, v4EntrantsById: DEFINITION_ENTRANTS })
+    .find((a) => a.id === "favorite_win_rate");
+}
+
+test("#5583 scoreDominance: tre definitioner side om side pr. etapetype", () => {
+  const rows = [
+    definitionRow({ profile_type: "flat", winner: "sprinter" }),
+    definitionRow({ profile_type: "flat", winner: "rouleur" }),
+    definitionRow({ profile_type: "hilly", winner: "rouleur" }),
+  ];
+  const { favoriteDefinitions: defs } = winRateAnchor(rows);
+  // v4 nu (finale-score) peger paa sprinteren, v3 og v4 ikke-cirkulaer paa rouleuren.
+  assert.deepEqual(defs.v4Finale, {
+    races: 3, wins: 1, perStageType: { flat: { races: 2, wins: 1 }, hilly: { races: 1, wins: 0 } },
+  });
+  assert.deepEqual(defs.v4Terrain, {
+    races: 3, wins: 2, perStageType: { flat: { races: 2, wins: 1 }, hilly: { races: 1, wins: 1 } },
+  });
+  assert.deepEqual(defs.v3, defs.v4Terrain, "v3 og v4 maales mod samme rytter");
+  assert.deepEqual(defs.sameFavoriteAsV3, { same: 3, stages: 3 });
+  assert.equal(defs.v4TerrainSkippedStages, 0);
+  assert.equal(defs.seedRates.length, 1);
+});
+
+test("#5583 scoreDominance: gatens dom og baand er uaendrede af den ekstra kolonne", () => {
+  const rows = [
+    definitionRow({ profile_type: "flat", winner: "sprinter" }),
+    definitionRow({ profile_type: "flat", winner: "rouleur" }),
+    definitionRow({ profile_type: "hilly", winner: "rouleur" }),
+  ];
+  const withVector = winRateAnchor(rows);
+  const withoutVector = winRateAnchor(rows.map((r) => ({ raw: { ...r.raw, stageRow: { race_id: "race1" } } })));
+  assert.deepEqual(stripDisplays(withVector.v4), stripDisplays(withoutVector.v4));
+  assert.deepEqual(stripDisplays(withVector.v3), stripDisplays(withoutVector.v3));
+  // v4-cellen er stadig den nuvaerende (finale-score) definition: 1 af 3.
+  assert.equal(withVector.v4.value, 1 / 3);
+  assert.equal(withVector.bandLabel, `${(ANCHOR_BANDS.favoriteWinRate.min * 100).toFixed(1)}%-${(ANCHOR_BANDS.favoriteWinRate.max * 100).toFixed(1)}%`);
+  assert.equal(AGGREGATION_BAND_BY_ANCHOR_ID.favorite_win_rate, ANCHOR_BANDS.favoriteWinRate);
+  // Kolonnen ligger UDEN for v3/v4-cellerne, saa JSON-eksporten (v3/v4) er uaendret.
+  assert.equal("favoriteDefinitions" in withVector.v4, false);
+  assert.equal("favoriteDefinitions" in withVector.v3, false);
+});
+
+function stripDisplays(cell) {
+  const { display: _display, ...rest } = cell;
+  return rest;
+}
+
+test("#5583 scoreDominance: etaper uden v3-kravvektor maales ikke med v3-terrain (aldrig gaettet)", () => {
+  const rows = [
+    definitionRow({ profile_type: "flat", winner: "rouleur" }),
+    definitionRow({ profile_type: "flat", winner: "rouleur", demandVector: null }),
+  ];
+  const { favoriteDefinitions: defs } = winRateAnchor(rows);
+  assert.equal(defs.v4Terrain.races, 1);
+  assert.equal(defs.v4TerrainSkippedStages, 1);
+  assert.equal(defs.v4Finale.races, 2, "gatens kolonne maaler stadig alle etaper");
+  assert.deepEqual(defs.sameFavoriteAsV3, { same: 1, stages: 1 });
+});
+
+test("#5583 aggregateScorecards: favorit-kolonnen summeres over ALLE seeds, ikke kun foerste (#4947-klassen)", () => {
+  const seedA = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "rouleur" })])];
+  const seedB = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "sprinter" })])];
+  const [aggregated] = aggregateScorecards([seedA, seedB]);
+  const defs = aggregated.favoriteDefinitions;
+  assert.deepEqual(defs.v4Terrain, { races: 2, wins: 1, perStageType: { flat: { races: 2, wins: 1 } } });
+  assert.deepEqual(defs.v4Finale, { races: 2, wins: 1, perStageType: { flat: { races: 2, wins: 1 } } });
+  assert.deepEqual(defs.sameFavoriteAsV3, { same: 2, stages: 2 });
+  assert.deepEqual(defs.seedRates.map((s) => s.v4Terrain), [1, 0]);
+  assert.deepEqual(defs.seedRates.map((s) => s.v4Finale), [0, 1]);
+  // Gatens celle er stadig seed-middel mod baandet.
+  assert.equal(aggregated.v4.value, 0.5);
+  assert.equal(aggregated.v4.verdict, "FAIL");
+});
+
+test("#5583 mergeFavoriteDefinitions: ingen kolonne i input -> null (intet opfundet)", () => {
+  assert.equal(mergeFavoriteDefinitions([undefined, null]), null);
+  assert.equal(mergeFavoriteDefinitions([]), null);
+});
+
+test("#5583 countFavoriteWins: manglende etapetype taeller som 'ukendt', ikke som en rigtig type", () => {
+  const counts = countFavoriteWins([{ favoriteWon: true }, { terrain: "flat", favoriteWon: false }]);
+  assert.deepEqual(counts, { races: 2, wins: 1, perStageType: { ukendt: { races: 1, wins: 1 }, flat: { races: 1, wins: 0 } } });
+});
+
+test("#5583 formatScorecard: viser de tre definitioner side om side, pr. etapetype og med seed-spaend", () => {
+  const seedA = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "rouleur" }), definitionRow({ profile_type: "hilly", winner: "sprinter" })])];
+  const seedB = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "sprinter" }), definitionRow({ profile_type: "hilly", winner: "sprinter" })])];
+  const text = formatScorecard(aggregateScorecards([seedA, seedB]));
+  assert.match(text, /Favorit-definitioner side om side \(#5583/);
+  assert.match(text, /v4 ikke-cirkulaer \(v3-terrain\)/);
+  assert.match(text, /\n {4}flat {10}/);
+  assert.match(text, /\n {4}hilly {9}/);
+  assert.match(text, /Samme rytter som v3's favorit: 4\/4 etaper/);
+  assert.match(text, /Spaend over 2 seeds/);
+  // Linjerne fra formatFavoriteDefinitions staar under favorit-ankret.
+  const lines = formatFavoriteDefinitions(aggregateScorecards([seedA, seedB])[0].favoriteDefinitions);
+  for (const line of lines) assert.ok(text.includes(line));
 });
 
 // ── scoreBreakawayRates ───────────────────────────────────────────────────

@@ -50,6 +50,17 @@ _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/Nicola
 
 Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, ellers fejler CI på mobile (#536, 21/5).
 
+**Billedstationen (#5565): ægte-data-billeder af en PR's Vercel-preview.** Hver UI-PR får billederne (desktop 1440 + mobil 390) FØR ejeren spørges om go; go-kortet linker til previewet og vedhæfter billederne (aldrig på GitHub: ægte spillernavne).
+
+```
+node scripts/pr-shots.mjs --pr <N> --routes /dashboard,/academy --viewports 1440,390
+```
+
+- Preview-URL'en slås op via `gh` (GitHub Deployments fra Vercel, ellers Vercel-bottens kommentar); branch-aliaset `...-git-<gren>-...vercel.app` foretrækkes, så origin er den samme for hvert push på PR'en. `--url <origin>` springer opslaget over.
+- Én fast Playwright-profil i `.claude/run/pr-shots-profile/` (gitignoreret). **Ejeren logger ind én gang pr. preview-origin:** `node scripts/pr-shots.mjs --pr <N> --login` åbner Edge (headed) på previewets `/login`; ejeren taster selv, scriptet lukker når login er gemt. Et login gælder kun den origin (Supabase-sessionen ligger pr. origin), så en ny PR = et nyt login, et nyt push på samme PR ikke.
+- Hver billedserie kører i en KOPI af profilen, som slettes bagefter; alle skrivende kald (API, Supabase REST/RPC, PostHog, Sentry) besvares lokalt med 204, og et `signOut` fra appen tælles i rapporten uden at ramme mesterprofilen. Scriptet læser, skriver eller logger aldrig tokens/cookies og skruer aldrig browser-uret (`--shot-at` afvises; læring 24/9).
+- Output: `pr-screens/live/<pr>-<route>-<viewport>.png` (gitignoreret undermappe — `pr-screens/` selv er IKKE gitignoreret). `--dry-run` viser plan og filnavne uden browser. Tests: `node --test scripts/lib/prShots.test.mjs`.
+
 **E2E-kommandoerne er uændrede efter #4647, kun hastigheden er det.** `npm run test:e2e` kører stadig alle specs i alle 3 projekter, men nu parallelt: `workers` er `"50%"` lokalt (halvdelen af kernerne, så maskinen kan bruges imens) og `"100%"` i CI. `PW_WORKERS=1 npm run test:e2e` isolerer en enkelt flaky test igen.
 
 **Sådan ser e2e ud i CI efter #4647, omlagt i #5309:**
@@ -200,11 +211,11 @@ Prod-backenden (service **CyclingZone**, projekt **fantastic-connection**, envir
   infisical run --env=dev -- railway run -s CyclingZone -- node <script.mjs>
   ```
 - **Gotcha:** `railway whoami` returnerer `Unauthorized` med en project-token — det er **forventet** (tokenen har ingen user-kontekst). Brug `railway status`/`railway logs` som liveness-tjek, ikke `whoami`.
-- **Railway MCP** kan også være logget ind via interaktiv session, men den udløber; Infisical-token-vejen er den kanoniske, ikke-udløbende adgang.
-- **Gotcha (HTTP-logs ser tomme ud) — bidt 17/9 under #5312:** docs-only commits giver **SKIPPED** deploys, så den ØVERSTE række i `list_deployments` er typisk en deploy der aldrig kørte. Alle MCP-kald der defaulter til "latest deployment" (`get_logs`, `http_requests`, `http_error_rate`) svarer så `No HTTP logs found` — det ligner et nedbrud, men er tom-hændet opslag på en død deployment. **Find først den nyeste `SUCCESS`-deploy og send dens id med:**
+- **Railway MCP** (`railway mcp`, user-scope) bruger CLI'ens `railway login` og fornyer selv tokenet ved hvert kald fra CLI 5.30.3. Ældre CLI frøs tokenet og gav `Unauthorized` efter ~1 time (#2409, se `docs/CROSS_PC_SETUP.md` → Troubleshooting). Infisical-token-vejen ovenfor er stadig fallback, hvis CLI-login er væk.
+- **Gotcha (HTTP-logs ser tomme ud) — bidt 17/9 under #5312:** docs-only commits giver **SKIPPED** deploys, så den ØVERSTE række i `list-deployments` er typisk en deploy der aldrig kørte. Kald der peger på én død deployment svarer så `No HTTP logs found`. Det ligner et nedbrud, men er et tomt opslag. Fra CLI v5 (kebab-case-værktøjer) er det nemmest at læse på service-niveau eller filtrere på `SUCCESS`:
   ```
-  list_deployments                              → find nyeste SUCCESS-id
-  get_logs log_type=http deployment_id=<SUCCESS-id> since=3h
+  get-logs projectId=<id> serviceId=<id> types=["http"] startDate=<ISO>   → på tværs af seneste deploys
+  list-deployments projectId=<id> status=SUCCESS limit=1                  → nyeste kørende deploy-id
   ```
   Deploy-logs (`log_type=deploy`) er også den hurtigste måde at afgøre om processen levede i et givent vindue: de periodiske sweeps (prize-sweep hvert 5. min, board auto-accept) er et livstegn man kan aflæse direkte.
 - **Kendt begrænsning:** `until` sammen med `log_type=http` fejler med `Problem processing request`. Brug `since` + `path`/`status`-filtre i stedet; et vindue langt tilbage i tiden kan ikke nås præcist ad den vej.

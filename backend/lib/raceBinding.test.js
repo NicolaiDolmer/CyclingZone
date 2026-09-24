@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRetiredAiRiderRejection } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..");
@@ -806,4 +806,112 @@ test("isRetiredAiRiderRejection: matcher kun rytter-RAISE-teksten fra guard-SQL'
       `isRetiredAiRiderRejection matcher forkert for: "${message}"`
     );
   }
+});
+
+// ── #5645 (Y4): trup-bevidst pulje + binding på tværs af trupper ────────────────
+const SQUAD_TEAM = { league_division_id: 1, u23_league_division_id: 10, junior_league_division_id: 20 };
+
+test("#5645 teamPoolIdForSquad: vælger holdets pulje efter trup, manglende = null", () => {
+  assert.equal(teamPoolIdForSquad(SQUAD_TEAM, "senior"), 1);
+  assert.equal(teamPoolIdForSquad(SQUAD_TEAM, "u23"), 10);
+  assert.equal(teamPoolIdForSquad(SQUAD_TEAM, "junior"), 20);
+  assert.equal(teamPoolIdForSquad({ league_division_id: 1 }, "u23"), null);
+  assert.equal(teamPoolIdForSquad(null, "senior"), null);
+});
+
+test("#5645 teamInRaceSquadPool: seniorløb = teamInRacePool med seniorpuljen (bit-identisk)", () => {
+  for (const race of [
+    { league_division_id: 1 }, { league_division_id: 1, squad: "senior" },
+    { league_division_id: 2 }, { league_division_id: null }, { league_division_id: null, squad: null },
+  ]) {
+    assert.equal(
+      teamInRaceSquadPool({ team: SQUAD_TEAM, race }),
+      teamInRacePool({ teamDivisionId: SQUAD_TEAM.league_division_id, racePoolId: race.league_division_id }),
+      JSON.stringify(race),
+    );
+  }
+});
+
+test("#5645 teamInRaceSquadPool: ungdomsløb matcher holdets pulje for truppen, null = ikke i puljen", () => {
+  assert.equal(teamInRaceSquadPool({ team: SQUAD_TEAM, race: { squad: "u23", league_division_id: 10 } }), true);
+  assert.equal(teamInRaceSquadPool({ team: SQUAD_TEAM, race: { squad: "u23", league_division_id: 11 } }), false);
+  // Seniorpuljens id i et U23-løb tæller ikke.
+  assert.equal(teamInRaceSquadPool({ team: SQUAD_TEAM, race: { squad: "u23", league_division_id: 1 } }), false);
+  assert.equal(teamInRaceSquadPool({ team: SQUAD_TEAM, race: { squad: "junior", league_division_id: 20 } }), true);
+  // Hold uden U23-pulje, eller U23-løb uden pulje → aldrig i feltet (fejl lukket).
+  assert.equal(teamInRaceSquadPool({ team: { league_division_id: 1 }, race: { squad: "u23", league_division_id: 10 } }), false);
+  assert.equal(teamInRaceSquadPool({ team: SQUAD_TEAM, race: { squad: "u23", league_division_id: null } }), false);
+});
+
+// Risiko 7 (spec-ungdomsløb): 1 rytter = 1 løb pr. løbsdag, også på tværs af trupper.
+// Mock: rytterne har en eksplicit trup; entries ligger i et løb af en ANDEN trup.
+function squadBindingSupabase({ riders, teamEntries, scheduleByRace, raceSeasonById }) {
+  function from(table) {
+    const f = {};
+    const b = {
+      select() { return b; },
+      eq(col, val) { f[col] = val; return b; },
+      neq(col, val) { f["neq_" + col] = val; return b; },
+      in(col, vals) { f["in_" + col] = vals; return b; },
+      then(resolve, reject) {
+        let data = [];
+        if (table === "race_stage_schedule") {
+          if (f.race_id) data = scheduleByRace[f.race_id] || [];
+          else if (f.in_race_id) data = f.in_race_id.flatMap((id) => scheduleByRace[id] || []);
+        } else if (table === "race_entries") {
+          data = teamEntries;
+        } else if (table === "riders") {
+          data = riders.filter((r) => (f.in_id || []).includes(r.id));
+        } else if (table === "races") {
+          data = (f.in_id || []).map((id) => ({ id, season_id: raceSeasonById[id] ?? null }));
+        }
+        return Promise.resolve({ data, error: null }).then(resolve, reject);
+      },
+    };
+    return b;
+  }
+  return { from };
+}
+
+for (const [label, riderSquad, otherRaceId] of [
+  ["U23-rytter med en seniorentry samme løbsdag", "u23", "race-senior"],
+  ["seniorrytter med en U23-entry samme løbsdag", "senior", "race-u23"],
+]) {
+  test(`#5645 risiko 7: ${label} afvises af bindingen`, async () => {
+    const supabase = squadBindingSupabase({
+      riders: [{ id: "r1", team_id: "team-1", squad: riderSquad, is_academy: riderSquad !== "senior", is_retired: false }],
+      teamEntries: [{ race_id: otherRaceId, rider_id: "r1", team_id: "team-1" }],
+      scheduleByRace: {
+        "race-this": [{ race_id: "race-this", scheduled_at: "2026-10-01T10:00:00Z", game_day: 12 }],
+        [otherRaceId]: [{ race_id: otherRaceId, scheduled_at: "2026-10-01T14:00:00Z", game_day: 12 }],
+      },
+      raceSeasonById: { [otherRaceId]: "s4" },
+    });
+    const ctx = await loadTeamBindingContext({
+      supabase, race: { id: "race-this", season_id: "s4", squad: riderSquad === "senior" ? "senior" : "u23" }, teamId: "team-1",
+    });
+    assert.equal(ctx.otherRaces.length, 1, "entryen i den anden trups løb binder");
+    const conflicts = findRiderBindingConflicts({ riderIds: ["r1"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces });
+    assert.deepEqual(conflicts, ["r1"]);
+  });
+}
+
+test("#5645 binding: off-team og pensionerede ryttere er stadig ghosts (binder ikke)", async () => {
+  const supabase = squadBindingSupabase({
+    riders: [
+      { id: "sold", team_id: "team-2", squad: "u23", is_academy: true, is_retired: false },
+      { id: "old", team_id: "team-1", squad: "senior", is_academy: false, is_retired: true },
+    ],
+    teamEntries: [
+      { race_id: "race-a", rider_id: "sold", team_id: "team-1" },
+      { race_id: "race-a", rider_id: "old", team_id: "team-1" },
+    ],
+    scheduleByRace: {
+      "race-this": [{ race_id: "race-this", scheduled_at: "2026-10-01T10:00:00Z", game_day: 12 }],
+      "race-a": [{ race_id: "race-a", scheduled_at: "2026-10-01T14:00:00Z", game_day: 12 }],
+    },
+    raceSeasonById: { "race-a": "s4" },
+  });
+  const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this", season_id: "s4" }, teamId: "team-1" });
+  assert.deepEqual(ctx.otherRaces, []);
 });

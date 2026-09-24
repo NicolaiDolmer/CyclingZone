@@ -24,6 +24,14 @@
 // afvist med 23505 — funktionelt harmløst, men O(alle completede løb) sekventielle
 // round-trips pr. tick (~40 ms stykket). Ved sæsonslut ville ét tick tage længere
 // end sit eget 5-minutters-interval og begynde at overlappe.
+//
+// #5537 (S9, spec 2026-09-15 C3): KUN seniorløb udbetaler. Efter A2 (#5517) bor
+// U23-/juniorløb i samme `races`-tabel som seniorløbene, og uden et scope ville
+// hvert afviklet ungdomsløb udbetale løbsdags-indtægt og resultat-bonus fra
+// seniorkontrakten — en ny guldkilde, ikke en senior-indtægt. Scopet ligger på
+// løbs-listen (withSeniorSquadScope), så et ungdomsløb aldrig bliver en kandidat
+// og aldrig hentes race_results for. I dag er hvert løb 'senior' (kolonnens
+// DEFAULT), så udbetalingen er bit-identisk.
 
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -31,6 +39,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { getRaceResultsSnapshot, setRaceResultsSnapshot } from "./raceResultsSnapshotCache.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { withSeniorSquadScope } from "./squads.js";
 
 // PostgREST returnerer maks 1000 rækker pr. request uanset filter. Sæsonens
 // sponsor-nøgler overstiger det længe før sæsonslut, så vi SKAL paginere —
@@ -182,11 +191,14 @@ async function notifySponsorPaidSafe(supabase, { teamId, sponsorName, amount, ra
 export async function payRaceDaySponsorsToDate(seasonId, supabase, opts = {}) {
   const actorType = opts.actorType ?? FINANCE_ACTOR_TYPE.SYSTEM;
 
-  const { data: races, error: racesError } = await supabase
+  // #5537: kun sæsonens SENIORløb (se headeren). 42703-vinduet før A2's migration
+  // er applied håndteres af withSeniorSquadScope: uden kolonnen findes intet
+  // ungdomsløb, og samme læsning uden scope er per definition ren senior.
+  const { data: races, error: racesError } = await withSeniorSquadScope((senior) => senior(supabase
     .from("races")
-    .select("id, name, stages, status")
+    .select("id, name, stages, status"))
     .eq("season_id", seasonId)
-    .eq("status", "completed");
+    .eq("status", "completed"));
   if (racesError) throw new Error(racesError.message);
   if (!races?.length) return { credited: 0, result_bonuses: 0 };
 
