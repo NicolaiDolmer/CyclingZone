@@ -7,12 +7,14 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   SWEEP_FROM_HOUR, MAX_WAIT_HOUR, DEFAULT_SQUAD,
-  MAX_GAME_DAY_CATCH_UP,
+  MAX_GAME_DAY_CATCH_UP, NO_PRIOR_GAME_DAY,
   shouldSweepNow, waitedLongEnough, pendingStagesFor, gameDaysByDivision, buildSweepPlan,
-  gameDaySpansByDivision, groupRaceIdsByDivision,
+  gameDaySpansByDivision, groupRaceIdsByDivision, axisEndByDivisionFor,
+  loadPriorMaxGameDayByDivision, loadLastRaceDateByDivision,
   runTrainingDayCloseSweep, resolveDayCloseStatus, isTrainingDayCloseSweepRunning,
   __resetTrainingDayCloseStateForTests,
 } from "./trainingDayCloseTrigger.js";
+import { resolveRaceDaysPerSeason } from "./trainingRaceDayTick.js";
 
 // ── Rene funktioner ──────────────────────────────────────────────────────────
 
@@ -155,18 +157,28 @@ function makeSupabase({
   // spoerger med .lt("scheduled_at") UDEN .gte(), saa vi kan skelne de to
   // race_stage_schedule-opslag paa netop det.
   priorStages = null,
+  // #4846: etaper EFTER dagens doegn. loadLastRaceDateByDivision spoerger med
+  // .gte("scheduled_at") UDEN .lt(). null = dagens egne etaper (altsaa "der kommer
+  // mere"), saa de oevrige tests ikke rammer saesonens sidste loebsdato ved et uheld.
+  laterStages = null,
+  priorError = false,
+  laterError = false,
+  seasonError = false,
+  // Kun til bit-identitets-testen: hvilke tabeller blev der spurgt paa?
+  tableLog = null,
   teams = [],
   raceDayRuns = [],
   legacyRuns = [],
 } = {}) {
   return {
     from(table) {
-      const ctx = { table, key: null, gte: false, order: null, limit: null };
+      tableLog?.push(table);
+      const ctx = { table, key: null, gte: false, lt: false, order: null, limit: null };
       const chain = {
         select() { return this; },
         in() { return this; },
         gte() { ctx.gte = true; return this; },
-        lt() { return this; },
+        lt() { ctx.lt = true; return this; },
         is() { return this; },
         order(col, o = {}) { ctx.order = { col, ascending: o.ascending !== false }; return this; },
         limit(n) { ctx.limit = n; return this; },
@@ -178,12 +190,21 @@ function makeSupabase({
         maybeSingle() { return Promise.resolve(this.__resolve()); },
         __resolve() {
           if (table === "app_config") return { data: { value: flags[ctx.key] ?? false }, error: null };
-          if (table === "seasons") return { data: season, error: null };
+          if (table === "seasons") {
+            return seasonError ? { data: null, error: { message: "boom" } } : { data: season, error: null };
+          }
           if (table === "races") return { data: races, error: null };
           if (table === "race_stage_schedule") {
             // Dagens etaper filtreres med .gte(dayStart).lt(dayEnd); "sidste
-            // loebsdag foer i dag" med .lt(dayStart) + order desc + limit 1.
-            if (ctx.gte) return { data: stages, error: null };
+            // loebsdag foer i dag" med .lt(dayStart) + order desc + limit 1; "findes
+            // der etaper efter i dag" (#4846) med .gte(dayEnd) + limit 1.
+            if (ctx.gte && ctx.lt) return { data: stages, error: null };
+            if (ctx.gte) {
+              if (laterError) return { data: null, error: { message: "boom" } };
+              const rows = laterStages ?? stages;
+              return { data: Number.isFinite(ctx.limit) ? rows.slice(0, ctx.limit) : rows, error: null };
+            }
+            if (priorError) return { data: null, error: { message: "boom" } };
             let rows = priorStages ?? stages;
             if (ctx.order) {
               rows = [...rows].sort((a, b) => (ctx.order.ascending
@@ -229,6 +250,23 @@ describe("runTrainingDayCloseSweep", () => {
     });
     assert.deepEqual(result, { ran: false, skipped: "flag_off" });
     assert.equal(calls, 0);
+  });
+
+  it("#4846 flag off = bit-identisk: kun flag-opslaget, ingen af kanternes opslag", async () => {
+    // De nye opslag (sidste-dato-query, saesonens maal) ligger EFTER flag-gaten.
+    // Med flaget off maa sweepen ikke spoerge paa andet end sit eget flag.
+    const tableLog = [];
+    const supabase = makeSupabase({
+      flags: { training_tick_per_race_day: false, daily_training_enabled: true },
+      tableLog,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 3, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 3, game_day: 138, scheduled_at: "2026-09-15T09:00:00Z" }],
+      laterStages: [],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const result = await runTrainingDayCloseSweep({ supabase, now: inWindow, runDay: async () => ({}) });
+    assert.deepEqual(result, { ran: false, skipped: "flag_off" });
+    assert.deepEqual(tableLog, ["app_config"]);
   });
 
   // #4848: off-season er en DEFINERET, LOGGET tilstand — ikke en stille no-op.
@@ -474,11 +512,54 @@ describe("gameDaySpansByDivision (#4847 regel 4: rene traeningsdage faar ogsaa e
     assert.deepEqual(out.get("d1").skippedGameDays, []);
   });
 
-  it("uden en tidligere loebsdag (saesonens foerste loebsdato) tickes KUN dagens egne", () => {
+  // #4846: den tidligere test her ("uden en tidligere loebsdag tickes KUN dagens
+  // egne") laaste den FORKERTE adfaerd. Pakkeren (#5267) lae­gger tomme loebsdage
+  // foran datoens foerste loeb — ogsaa paa loebsdag 0 — saa saesonens foerste
+  // loebsdato skal starte paa loebsdag 0, ellers ender divisionen under 140.
+  // "Ved det ikke" (null) og "der er ingen" (NO_PRIOR_GAME_DAY) er to svar.
+  it("#4846 saesonens foerste loebsdato (NO_PRIOR_GAME_DAY): spaendet starter paa loebsdag 0", () => {
     const out = gameDaySpansByDivision(
-      [{ race_id: "r1", game_day: 3 }, { race_id: "r1", game_day: 4 }], div, new Map([["d1", null]]),
+      [{ race_id: "r1", game_day: 2 }, { race_id: "r1", game_day: 4 }], div,
+      new Map([["d1", NO_PRIOR_GAME_DAY]]),
     );
-    assert.deepEqual(out.get("d1").gameDays, [3, 4], "vi opfinder ikke traeningsdage foer saesonen begyndte");
+    assert.deepEqual(out.get("d1").gameDays, [0, 1, 2, 3, 4],
+      "loebsdag 0 og 1 er tomme traeningsdage paa saesonens foerste dato og SKAL tickes");
+    assert.deepEqual(out.get("d1").skippedGameDays, []);
+  });
+
+  it("#4846 UKENDT tidligere loebsdag (opslaget fejlede): fail-safe, kun dagens egne", () => {
+    for (const prior of [null, undefined]) {
+      const out = gameDaySpansByDivision(
+        [{ race_id: "r1", game_day: 3 }, { race_id: "r1", game_day: 4 }], div, new Map([["d1", prior]]),
+      );
+      assert.deepEqual(out.get("d1").gameDays, [3, 4], "vi opfinder aldrig en loebsdag paa et gaet");
+    }
+  });
+
+  it("#4846 saesonens sidste loebsdato: spaendet forlaenges til aksens sidste loebsdag", () => {
+    // Sidste dato baerer loeb paa 136 og 138; 137 og 139 er tomme. 139 ligger EFTER
+    // aksens sidste loeb og har ingen senere dato der kan lukke den.
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 136 }, { race_id: "r1", game_day: 138 }], div,
+      new Map([["d1", 134]]), { axisEndByDivision: new Map([["d1", 139]]) },
+    );
+    assert.deepEqual(out.get("d1").gameDays, [135, 136, 137, 138, 139]);
+  });
+
+  it("#4846 uden en akse-ende (null, eller ikke i mappen) forlaenges intet", () => {
+    const rows = [{ race_id: "r1", game_day: 138 }, { race_id: "r2", game_day: 60 }];
+    const prior = new Map([["d1", 137], ["d2", 59]]);
+    const out = gameDaySpansByDivision(rows, div, prior, { axisEndByDivision: new Map([["d1", null]]) });
+    assert.deepEqual(out.get("d1").gameDays, [138]);
+    assert.deepEqual(out.get("d2").gameDays, [60], "en division uden akse-ende roeres ikke");
+  });
+
+  it("#4846 en akse-ende FOER dagens egne loebsdage afkorter aldrig dagen", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 150 }], div, new Map([["d1", 149]]),
+      { axisEndByDivision: new Map([["d1", 139]]) },
+    );
+    assert.deepEqual(out.get("d1").gameDays, [150], "en kalender laengere end maalet mister intet");
   });
 
   it("er gaarsdagens sidste loebsdag naboen, er der intet hul", () => {
@@ -488,7 +569,7 @@ describe("gameDaySpansByDivision (#4847 regel 4: rene traeningsdage faar ogsaa e
     assert.deepEqual(out.get("d1").gameDays, [41]);
   });
 
-  it("en division UDEN loeb i dag faar intet spaend (den dokumenterede rest indtil #5169)", () => {
+  it("en division UDEN loeb i dag faar intet spaend (dagens hoejeste loebsdag kan ikke laeses)", () => {
     const out = gameDaySpansByDivision(
       [{ race_id: "r1", game_day: 43 }], div, new Map([["d1", 40], ["d2", 12]]),
     );
@@ -557,11 +638,17 @@ describe("runTrainingDayCloseSweep + regel 4 (rene traeningsdage i sweepen)", ()
     assert.deepEqual(result.gameDays, [41, 42]);
   });
 
-  it("uden en tidligere loebsdag koeres kun dagens egne (uaendret adfaerd)", async () => {
+  // #4846: her stod "uden en tidligere loebsdag koeres kun dagens egne (uaendret
+  // adfaerd)". Den laaste netop den adfaerd der tabte loebsdag 0 og 1 paa saesonens
+  // foerste dato. Et VELLYKKET, tomt prior-opslag betyder nu loebsdag 0.
+  it("#4846 saesonens foerste loebsdato: sweepen starter paa loebsdag 0", async () => {
     const supabase = makeSupabase({
       flags: ALL_ON,
-      races: [{ id: "r1", league_division_id: "d1", stages_completed: 1, finalize_state: null }],
-      stages: [{ race_id: "r1", stage_number: 1, game_day: 5, scheduled_at: "2026-09-15T17:00:00Z" }],
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 2, finalize_state: null }],
+      stages: [
+        { race_id: "r1", stage_number: 1, game_day: 2, scheduled_at: "2026-09-15T09:00:00Z" },
+        { race_id: "r1", stage_number: 2, game_day: 4, scheduled_at: "2026-09-15T15:00:00Z" },
+      ],
       priorStages: [],
       teams: [{ id: "t1", league_division_id: "d1" }],
     });
@@ -570,7 +657,188 @@ describe("runTrainingDayCloseSweep + regel 4 (rene traeningsdage i sweepen)", ()
       supabase, now: inWindow,
       runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
     });
-    assert.deepEqual(ran, [5]);
+    assert.deepEqual(ran, [0, 1, 2, 3, 4], "loebsdag 0 og 1 er tomme traeningsdage og maa ikke tabes");
     assert.deepEqual(result.skippedGameDays, []);
+  });
+
+  it("#4846 en FEJLET prior-query beholder fail-safen: kun dagens egne loebsdage", async () => {
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 2, finalize_state: null }],
+      stages: [
+        { race_id: "r1", stage_number: 1, game_day: 2, scheduled_at: "2026-09-15T09:00:00Z" },
+        { race_id: "r1", stage_number: 2, game_day: 4, scheduled_at: "2026-09-15T15:00:00Z" },
+      ],
+      priorError: true,
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.deepEqual(ran, [2, 3, 4], "ved det ikke ⇒ ingen loebsdag foran dagens foerste loeb");
+  });
+
+  it("#4846 saesonens sidste loebsdato: sweepen forlaenger til maalet - 1", async () => {
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      season: { id: "s1", number: 4 },
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+      stages: [
+        { race_id: "r1", stage_number: 8, game_day: 136, scheduled_at: "2026-09-15T09:00:00Z" },
+        { race_id: "r1", stage_number: 9, game_day: 138, scheduled_at: "2026-09-15T15:00:00Z" },
+      ],
+      priorStages: [{ race_id: "r1", game_day: 134 }],
+      laterStages: [],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    const lastGameDay = resolveRaceDaysPerSeason({ seasonNumber: 4 }) - 1;
+    assert.equal(lastGameDay, 139, "ejerens laaste maal: 140 loebsdage, altsaa sidste loebsdag 139");
+    assert.deepEqual(ran, [135, 136, 137, 138, 139]);
+    assert.deepEqual(result.gameDays, [135, 136, 137, 138, 139]);
+  });
+
+  it("#4846 en FEJLET sidste-dato-query forlaenger ikke (fail-safe)", async () => {
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 9, game_day: 138, scheduled_at: "2026-09-15T15:00:00Z" }],
+      priorStages: [{ race_id: "r1", game_day: 137 }],
+      laterError: true,
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.deepEqual(ran, [138]);
+  });
+
+  it("#4846 etaper efter i dag ⇒ ingen forlaengelse", async () => {
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 9, game_day: 60, scheduled_at: "2026-09-15T15:00:00Z" }],
+      priorStages: [{ race_id: "r1", game_day: 59 }],
+      laterStages: [{ race_id: "r1", game_day: 61 }],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.deepEqual(ran, [60]);
+  });
+});
+
+describe("axisEndByDivisionFor (#4846)", () => {
+  it("kun divisioner der BEVISLIGT er paa sidste loebsdato faar en akse-ende (maalet - 1)", () => {
+    const out = axisEndByDivisionFor({
+      lastRaceDateByDivision: new Map([["d1", true], ["d2", false], ["d3", null]]),
+      raceDaysPerSeason: 140,
+    });
+    assert.deepEqual([...out], [["d1", 139]]);
+  });
+
+  it("et ukendt eller ugyldigt maal giver ingen forlaengelse", () => {
+    for (const raceDaysPerSeason of [null, undefined, 0, -5, Number.NaN, 140.5, Infinity]) {
+      const out = axisEndByDivisionFor({
+        lastRaceDateByDivision: new Map([["d1", true]]), raceDaysPerSeason,
+      });
+      assert.equal(out.size, 0, `maal ${String(raceDaysPerSeason)} maa ikke forlaenge`);
+    }
+  });
+});
+
+describe("loadPriorMaxGameDayByDivision / loadLastRaceDateByDivision (#4846: tre svar)", () => {
+  const dayStart = new Date("2026-09-14T22:00:00Z");
+  const dayEnd = new Date("2026-09-15T22:00:00Z");
+  const racesByDiv = new Map([["d1", ["r1"]]]);
+  const fake = (result) => ({
+    from() {
+      const chain = {
+        select() { return chain; }, in() { return chain; }, lt() { return chain; }, gte() { return chain; },
+        order() { return chain; }, limit() { return chain; },
+        then(resolve, reject) {
+          return (result instanceof Error ? Promise.reject(result) : Promise.resolve(result)).then(resolve, reject);
+        },
+      };
+      return chain;
+    },
+  });
+
+  it("prior: raekke ⇒ tal · tomt ⇒ NO_PRIOR_GAME_DAY · fejl/kast/ulaeseligt ⇒ null", async () => {
+    const run = (result) => loadPriorMaxGameDayByDivision({ supabase: fake(result), raceIdsByDivision: racesByDiv, dayStart });
+    assert.equal((await run({ data: [{ game_day: 41 }], error: null })).get("d1"), 41);
+    assert.equal((await run({ data: [], error: null })).get("d1"), NO_PRIOR_GAME_DAY);
+    assert.equal((await run({ data: null, error: { message: "boom" } })).get("d1"), null);
+    assert.equal((await run(new Error("netvaerk"))).get("d1"), null);
+    assert.equal((await run({ data: null, error: null })).get("d1"), null, "intet svar er ikke 'ingen raekker'");
+    assert.equal((await run({ data: [{ game_day: null }], error: null })).get("d1"), null);
+  });
+
+  it("sidste dato: tomt ⇒ true · raekke ⇒ false · fejl/kast ⇒ null", async () => {
+    const run = (result) => loadLastRaceDateByDivision({ supabase: fake(result), raceIdsByDivision: racesByDiv, dayEnd });
+    assert.equal((await run({ data: [], error: null })).get("d1"), true);
+    assert.equal((await run({ data: [{ game_day: 61 }], error: null })).get("d1"), false);
+    assert.equal((await run({ data: null, error: { message: "boom" } })).get("d1"), null);
+    assert.equal((await run(new Error("netvaerk"))).get("d1"), null);
+    assert.equal((await run({ data: null, error: null })).get("d1"), null);
+  });
+});
+
+describe("resolveDayCloseStatus + #4846-kanterne (knappen = sweepen)", () => {
+  const inWindow = new Date("2026-09-15T18:30:00Z");
+  const lastDate = {
+    races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+    stages: [{ race_id: "r1", stage_number: 9, game_day: 138, scheduled_at: "2026-09-15T15:00:00Z" }],
+    priorStages: [{ race_id: "r1", game_day: 137 }],
+    laterStages: [],
+  };
+
+  it("paa sidste loebsdato slaas saesonens maal op, og knappen lover samme dage som sweepen", async () => {
+    const out = await resolveDayCloseStatus({
+      supabase: makeSupabase({ ...lastDate, season: { id: "s1", number: 4 } }),
+      seasonId: "s1", now: inWindow, divisionId: "d1",
+    });
+    assert.equal(out.closed, true);
+    assert.deepEqual(out.gameDays, [138, 139]);
+  });
+
+  it("et medsendt saesonnummer bruges direkte", async () => {
+    const out = await resolveDayCloseStatus({
+      supabase: makeSupabase({ ...lastDate, seasonError: true }),
+      seasonId: "s1", now: inWindow, divisionId: "d1", seasonNumber: 4,
+    });
+    assert.deepEqual(out.gameDays, [138, 139]);
+  });
+
+  it("fejler saeson-opslaget, forlaenges intet — knappen lover hellere faerre dage end flere", async () => {
+    const out = await resolveDayCloseStatus({
+      supabase: makeSupabase({ ...lastDate, seasonError: true }),
+      seasonId: "s1", now: inWindow, divisionId: "d1",
+    });
+    assert.equal(out.closed, true);
+    assert.deepEqual(out.gameDays, [138]);
+  });
+
+  it("saesonens foerste loebsdato: knappen lover ogsaa loebsdag 0", async () => {
+    const out = await resolveDayCloseStatus({
+      supabase: makeSupabase({
+        races: [{ id: "r1", league_division_id: "d1", stages_completed: 1, finalize_state: null }],
+        stages: [{ race_id: "r1", stage_number: 1, game_day: 2, scheduled_at: "2026-09-15T09:00:00Z" }],
+        priorStages: [],
+      }),
+      seasonId: "s1", now: inWindow, divisionId: "d1",
+    });
+    assert.deepEqual(out.gameDays, [0, 1, 2]);
   });
 });

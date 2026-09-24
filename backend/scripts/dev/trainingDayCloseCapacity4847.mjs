@@ -92,7 +92,11 @@ function buildFixture() {
       stages.push({
         race_id: raceId,
         stage_number: g + 1,
-        game_day: d * 100 + g,
+        // Hver division har sin EGEN akse fra loebsdag 0 (CALENDAR_RULES §0b). Det er
+        // ogsaa det der holder maalingen aerlig efter #4846: prior-opslaget nedenfor er
+        // tomt (saesonens foerste loebsdato), saa spaendet starter paa loebsdag 0 og er
+        // dermed praecis dagens RACE_DAYS loebsdage, som foer.
+        game_day: g,
         scheduled_at: new Date(NOW.getTime() - (RACE_DAYS - g) * 3600 * 1000).toISOString(),
       });
     }
@@ -138,9 +142,12 @@ function makeSupabase({ races, stages, teams }) {
           if (table === "race_stage_schedule") {
             if (ctx.gte) return { data: stages, error: null };
             // Prior-opslaget. Harnessens fixture lader alle etaper ligge INDE i
-            // dagens doegn, saa der findes ingen tidligere loebsdag — spaendet er
-            // dagens egne loebsdage, praecis som foer regel 4. Sorteringen/limit
-            // spejles alligevel, saa mock'en ikke lyver om formen.
+            // dagens doegn, saa der findes ingen tidligere loebsdag — et tomt svar,
+            // altsaa saesonens foerste loebsdato (#4846): spaendet starter paa
+            // loebsdag 0, og aksen starter ogsaa dér, saa spaendet er dagens egne
+            // loebsdage. (Sidste-dato-opslaget, .gte uden .lt, rammer grenen ovenfor
+            // og faar dagens etaper: "der kommer mere", ingen forlaengelse.)
+            // Sorteringen/limit spejles alligevel, saa mock'en ikke lyver om formen.
             let rows = [];
             if (ctx.order) {
               rows = [...rows].sort((a, b) => (ctx.order.ascending
