@@ -33,8 +33,8 @@ test("groupLetter/label følger seniorpuljernes bogstav-mønster", () => {
   assert.equal(groupLetter(0), "A");
   assert.equal(groupLetter(8), "I");
   assert.equal(groupLetter(26), "AA");
-  assert.equal(youthGroupLabel("u23", 0), "U23 — Group A");
-  assert.equal(youthGroupLabel("junior", 2), "Junior — Group C");
+  assert.equal(youthGroupLabel("u23", 0), "U23 Group A");
+  assert.equal(youthGroupLabel("junior", 2), "Junior Group C");
   assert.throws(() => youthGroupLabel("senior", 0));
 });
 

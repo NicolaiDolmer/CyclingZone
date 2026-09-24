@@ -1,6 +1,6 @@
 {
   "issue": 4620,
-  "generated_at": "2026-09-24T11:04:51.301Z",
+  "generated_at": "2026-09-24T11:12:46.948Z",
   "mode": "dry-run",
   "input": {
     "eligibleManagers": 257,
@@ -50,7 +50,7 @@
       "groups": [
         {
           "poolIndex": 0,
-          "label": "U23 — Group A",
+          "label": "U23 Group A",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -58,7 +58,7 @@
         },
         {
           "poolIndex": 1,
-          "label": "U23 — Group B",
+          "label": "U23 Group B",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -66,7 +66,7 @@
         },
         {
           "poolIndex": 2,
-          "label": "U23 — Group C",
+          "label": "U23 Group C",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -74,7 +74,7 @@
         },
         {
           "poolIndex": 3,
-          "label": "U23 — Group D",
+          "label": "U23 Group D",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -82,7 +82,7 @@
         },
         {
           "poolIndex": 4,
-          "label": "U23 — Group E",
+          "label": "U23 Group E",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -90,7 +90,7 @@
         },
         {
           "poolIndex": 5,
-          "label": "U23 — Group F",
+          "label": "U23 Group F",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -98,7 +98,7 @@
         },
         {
           "poolIndex": 6,
-          "label": "U23 — Group G",
+          "label": "U23 Group G",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -106,7 +106,7 @@
         },
         {
           "poolIndex": 7,
-          "label": "U23 — Group H",
+          "label": "U23 Group H",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -114,7 +114,7 @@
         },
         {
           "poolIndex": 8,
-          "label": "U23 — Group I",
+          "label": "U23 Group I",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -122,7 +122,7 @@
         },
         {
           "poolIndex": 9,
-          "label": "U23 — Group J",
+          "label": "U23 Group J",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -130,7 +130,7 @@
         },
         {
           "poolIndex": 10,
-          "label": "U23 — Group K",
+          "label": "U23 Group K",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -138,7 +138,7 @@
         },
         {
           "poolIndex": 11,
-          "label": "U23 — Group L",
+          "label": "U23 Group L",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -146,7 +146,7 @@
         },
         {
           "poolIndex": 12,
-          "label": "U23 — Group M",
+          "label": "U23 Group M",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -154,7 +154,7 @@
         },
         {
           "poolIndex": 13,
-          "label": "U23 — Group N",
+          "label": "U23 Group N",
           "managers": 18,
           "aiTeams": 5,
           "size": 23,
@@ -162,7 +162,7 @@
         },
         {
           "poolIndex": 14,
-          "label": "U23 — Group O",
+          "label": "U23 Group O",
           "managers": 18,
           "aiTeams": 5,
           "size": 23,
@@ -190,7 +190,7 @@
       "groups": [
         {
           "poolIndex": 0,
-          "label": "Junior — Group A",
+          "label": "Junior Group A",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -198,7 +198,7 @@
         },
         {
           "poolIndex": 1,
-          "label": "Junior — Group B",
+          "label": "Junior Group B",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -206,7 +206,7 @@
         },
         {
           "poolIndex": 2,
-          "label": "Junior — Group C",
+          "label": "Junior Group C",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -214,7 +214,7 @@
         },
         {
           "poolIndex": 3,
-          "label": "Junior — Group D",
+          "label": "Junior Group D",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -222,7 +222,7 @@
         },
         {
           "poolIndex": 4,
-          "label": "Junior — Group E",
+          "label": "Junior Group E",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -230,7 +230,7 @@
         },
         {
           "poolIndex": 5,
-          "label": "Junior — Group F",
+          "label": "Junior Group F",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -238,7 +238,7 @@
         },
         {
           "poolIndex": 6,
-          "label": "Junior — Group G",
+          "label": "Junior Group G",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -246,7 +246,7 @@
         },
         {
           "poolIndex": 7,
-          "label": "Junior — Group H",
+          "label": "Junior Group H",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -254,7 +254,7 @@
         },
         {
           "poolIndex": 8,
-          "label": "Junior — Group I",
+          "label": "Junior Group I",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -262,7 +262,7 @@
         },
         {
           "poolIndex": 9,
-          "label": "Junior — Group J",
+          "label": "Junior Group J",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -270,7 +270,7 @@
         },
         {
           "poolIndex": 10,
-          "label": "Junior — Group K",
+          "label": "Junior Group K",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -278,7 +278,7 @@
         },
         {
           "poolIndex": 11,
-          "label": "Junior — Group L",
+          "label": "Junior Group L",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -286,7 +286,7 @@
         },
         {
           "poolIndex": 12,
-          "label": "Junior — Group M",
+          "label": "Junior Group M",
           "managers": 17,
           "aiTeams": 7,
           "size": 24,
@@ -294,7 +294,7 @@
         },
         {
           "poolIndex": 13,
-          "label": "Junior — Group N",
+          "label": "Junior Group N",
           "managers": 18,
           "aiTeams": 5,
           "size": 23,
@@ -302,7 +302,7 @@
         },
         {
           "poolIndex": 14,
-          "label": "Junior — Group O",
+          "label": "Junior Group O",
           "managers": 18,
           "aiTeams": 5,
           "size": 23,

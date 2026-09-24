@@ -59,9 +59,9 @@ test("buildSquadPlan fresh: opretter grupperne og en FK-opdatering pr. placeret 
   assert.equal(sp.mode, "fresh");
   assert.equal(sp.plan.groups.length, 3);
   assert.deepEqual(sp.poolsToCreate.map((p) => [p.squad, p.tier, p.pool_index, p.label]), [
-    ["u23", 1, 0, "U23 — Group A"],
-    ["u23", 1, 1, "U23 — Group B"],
-    ["u23", 1, 2, "U23 — Group C"],
+    ["u23", 1, 0, "U23 Group A"],
+    ["u23", 1, 1, "U23 Group B"],
+    ["u23", 1, 2, "U23 Group C"],
   ]);
   assert.equal(sp.updates.length, 60);
   assert.ok(sp.updates.every((u) => u.column === "u23_league_division_id"));
@@ -113,5 +113,5 @@ test("publicSummary/renderMarkdown indeholder ingen holdnavne eller team-id'er",
   assert.match(renderMarkdown(summary), /Prognose efter sæsonskiftets parkering/);
   assert.doesNotMatch(text, /Hold M|AI 0|\bm0\d\d\b|\ba0\d\d\b/);
   assert.equal(summary.squads[0].groupCount, 3);
-  assert.match(renderMarkdown(summary), /U23 — Group A/);
+  assert.match(renderMarkdown(summary), /U23 Group A/);
 });

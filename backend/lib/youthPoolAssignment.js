@@ -41,11 +41,11 @@ export function groupLetter(poolIndex) {
   return out;
 }
 
-/** EN-label i samme form som seniorpuljerne ("Division 4 — A"). */
+/** EN-label, uden tankestreg (tone-reglen), fx "U23 Group A". */
 export function youthGroupLabel(squad, poolIndex) {
   assertYouthSquad(squad);
   const name = squad === "u23" ? "U23" : "Junior";
-  return `${name} — Group ${groupLetter(poolIndex)}`;
+  return `${name} Group ${groupLetter(poolIndex)}`;
 }
 
 function assertYouthSquad(squad) {
