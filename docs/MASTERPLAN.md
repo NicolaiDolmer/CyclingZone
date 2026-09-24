@@ -21,9 +21,9 @@ Intet nyt startes før A+B er live. **🏁 Motoren (ejer 23/9): runde 1-4 (#4914
 2. 🟠 **Bølge 2:** træning (140 låst, måde B, B4 bag flag → B3 #5281 flip-dagen) · mobil-træning (beta).
 3. 🟠 **Bølge 3, rytter-fundament:** point-flyt #5268 (ejer-gated) · #5269 · #5273.
 4. ⚪ **Bølge 4, kalender m. trupper:** 🟠 **S4-kalender** (#5405: tørkørsel 0 regelbrud; "kør" efter #2789) · pakker pr. trup · generator A6 (U23-bånd variant A) → AI U23/junior-ryttere · #5327 arketype (#3512) m. #5269 · C1 · dry-run → go → #4270 apply (ejer).
-5. 🟠 **Bølge 5, træning færdig (28/9):** ✅ skader i løbsdage (#5465) · program 7×5 (mockup først) · #5238 Åbnere · B6 træningssiden én gang (#4849 #5485 #5486) · #4852-#4854 · #4848.
-6. 🟠 **Bølge 6, trup-flader:** ✅ Graduation Day-siden (#2491) · U23/junior-sider · udtagelse/standings/Youth races · præmie-gren.
-7. 🔵 **Bølge 7, cutover:** #4592 + hent tilbage før 27/9 · ✅ #452 #4759 · Mandatet: #4857 lukket (løst af #4842) → #4859 flip → #4858 · **v4:** ✅ #5524 → #5521 → #5579 → flip-blokkere #5576 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 (realisme-gate m. ejer-måltal) · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
+5. 🟠 **Bølge 5, træning færdig (28/9):** løbsdags-udbytte A (ejer 24/9) · program 7×5 · #5238 · træningssiden (#4849 #5485 #5486 #5630) · #5456 · #4852-#4854.
+6. 🟠 **Bølge 6, trupper (alt live 28/9):** U23/junior-sider + #5631 · ungdomsløb (#5536, puljer, kalender, AI-ryttere, udtagelse) · præmie-gren.
+7. 🔵 **Bølge 7, cutover:** D3+D4 samlet, D4 = 4 puljer (ejer 24/9) · #4592 + hent tilbage · Mandatet: #5618 #5632 #5633 → #4859 flip → #4858 · **v4:** ✅ #5524 → #5521 → #5579 → flip-blokkere #5576 → #5577 · #5582 · lag 1 #5059 #5570 #5571 #5572 · indsats #5580 → #5581 (realisme-gate m. ejer-måltal) · målinger #5578 #5583 → #5515 → **flip ejer-only** → #4916.
 8. ⚪ **Efter apply:** Holdarbejde i v4 + mentorpar (bag flag) · #3458/#3512 · taktik-epic #5575 lag 2-4: #5101 → #5573 → #5574 (needs-design).
 
 ## Bane 2 · Forretning (viger aldrig; SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
@@ -40,8 +40,8 @@ Mål 2/10: ≥ 450 kr / ≥ 10 ✅ (Alunta 14/9: 659 kr / 18) · checkout ≥ 60
 13. 🟠 #2259 backup-tabeller (ejer-go til flyt).
 14. **Hygiejne-blok (ejer 11/9):** #4812 PAT (ejer) → #5157 (#3512 → #5327) → budget FAIL AGENTS.md + FEATURE_STATUS.md → #5309/#5219 · #5218 · #4924 · GDD D-049+ (#5087) + registry DM v1.
 15. 🔵 Akademi: #5145 (PR #5197 parkeret til U23/junior) · #4750. Design-rest #4622 (#4627 · #4628 · #4813-#4815 · #4613) → **Visuel identitet #5113** (3D-first; først #5115 livery). **Tailwind 4:** #5151 (+#3952) → #5152.
-16. Drift: #4867 #4829 · #2423 (rør ikke).
-17. Spillerfund: #4702 #4875 #4982 #5075 #5059 #5030 #5200 #5201 #5382-#5391 · `audits/2026-09-17-*.md`. Rating-regel: #5351.
+16. Drift: **#5635 Discord-sweep + #5484 MCP** · #4867 #4829 · #2423 (rør ikke).
+17. Spillerfund: #5636 #5637 #5634 #5619 #4702 #4875 #5030 #5200 #5201 #5382-#5391.
 
 ## Venteliste · langsigtet værdi (ejer 2/9; 10/9: trupper løftet til 3, parret med træning)
 
