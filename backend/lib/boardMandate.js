@@ -18,7 +18,13 @@
 
 import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
 import { stampGoalsOwners } from "./boardMembers.js";
-import { addGoalMetadata, buildGoalKey, buildNegotiatedGoal, buildStretchGoal } from "./boardGoals.js";
+import {
+  addGoalMetadata,
+  buildGoalIdentityKey,
+  buildGoalKey,
+  buildNegotiatedGoal,
+  buildStretchGoal,
+} from "./boardGoals.js";
 
 // ---------------------------------------------------------------------------
 // 1. Migrations-vægte (ejer-beslutning 7 af 7/8)
@@ -463,4 +469,69 @@ export function finalizeMandateGoals({
   }
 
   return { goals: finalGoals, adjustments_used: adjustmentsUsed };
+}
+
+/**
+ * #5618 · Rodårsag: `POST /board/sign` (den gamle 1yr-forhandlingsside,
+ * `board_profiles.current_goals`) skriver ALDRIG til `board_mandates.goals`
+ * — kun mandatets egne stier (årsmødet, `boardMandateMeeting.js`; ekstra-
+ * ordinær anmodning) og engangs-migreringsscriptet
+ * (`mandateShadowRebuild3514.mjs`) gør det. Et hold der forhandler på den
+ * gamle side og SAMME dag flippes til beta ser derfor et mandat-mål hvis
+ * target er ældre end den forhandling spilleren netop fik accepteret —
+ * spillerrapport #5618: forhandlet 7. plads (top_n_finish target=7), men
+ * Boardroom viste stadig target=5 fra mandatets sidste skrivning.
+ *
+ * Ren funktion (intet Supabase-kald) — kaldes fra boardRoom.js's aggregator,
+ * som allerede slår det 1yr-board mandatet stammer fra op (#4579). Er den
+ * legacy 1yr-forhandling NYERE end mandatets egen sidste skrivning, overtager
+ * dens target/label/satisfaction-felter for hvert mandat-mål der matcher på
+ * IDENTITET (type + nationality_code + race_scope + cumulative — se
+ * buildGoalIdentityKey; buildGoalKey inkluderer target med vilje og kan
+ * derfor per definition aldrig matche et mål mod sig selv efter en
+ * target-ændring).
+ *
+ * Mål mandatet har, som ikke findes i legacy-listen (fx et bonustilbuds
+ * ekstra-mål, `source: "bonus_offer"`, tilføjet direkte i `board_mandates`
+ * af #4856-stien) bevares UÆNDREDE — reconciliation kan kun opdatere mål der
+ * findes i BEGGE lister, aldrig fjerne eller tilføje et mål.
+ *
+ * Dette retter kun VISNINGEN (best-effort, ved hver GET /board/room) — den
+ * underliggende `board_mandates.goals`-række i databasen forbliver ureguleret
+ * indtil en ejer-gated data-reparation (samme mønster som
+ * `mandateShadowRebuild3514.mjs`) kører den igen for berørte hold.
+ */
+export function reconcileMandateGoalsWithLegacyBoard({
+  mandateGoals = [],
+  legacyGoals = null,
+  legacyNegotiatedAt = null,
+  mandateUpdatedAt = null,
+} = {}) {
+  const goals = Array.isArray(mandateGoals) ? mandateGoals : [];
+  if (!Array.isArray(legacyGoals) || !legacyGoals.length || !legacyNegotiatedAt) {
+    return goals;
+  }
+
+  const legacyMs = new Date(legacyNegotiatedAt).getTime();
+  const mandateMs = mandateUpdatedAt ? new Date(mandateUpdatedAt).getTime() : 0;
+  if (!Number.isFinite(legacyMs) || legacyMs <= mandateMs) {
+    return goals;
+  }
+
+  const legacyByIdentity = new Map();
+  for (const legacyGoal of legacyGoals) {
+    legacyByIdentity.set(buildGoalIdentityKey(legacyGoal), legacyGoal);
+  }
+
+  return goals.map((goal) => {
+    const legacyMatch = legacyByIdentity.get(buildGoalIdentityKey(goal));
+    if (!legacyMatch || legacyMatch.target === goal.target) return goal;
+    return {
+      ...goal,
+      target: legacyMatch.target,
+      label: legacyMatch.label ?? goal.label,
+      satisfaction_bonus: legacyMatch.satisfaction_bonus ?? goal.satisfaction_bonus,
+      satisfaction_penalty: legacyMatch.satisfaction_penalty ?? goal.satisfaction_penalty,
+    };
+  });
 }

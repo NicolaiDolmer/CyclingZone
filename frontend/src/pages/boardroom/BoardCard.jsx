@@ -12,7 +12,12 @@ function MemberTile({ member, selected, onSelect, t }) {
       onClick={onSelect}
       aria-pressed={selected}
       title={t("boardroom.member.viewHint")}
-      className="flex flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"
+      // #5633 · full width + min-w-0 saa navnet kan wrappe/trunkere INDE i
+      // tile'ens egen kolonne i stedet for at presse naboerne (den "trange"
+      // spillerrapport). w-full erstatter det implicitte shrink-to-content,
+      // der gjorde 3-kolonners mobil-gitteret ujaevnt naar navne har
+      // forskellig laengde.
+      className="flex w-full min-w-0 flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"
     >
       <MonogramAvatar sizeClass="h-11 w-11" initials={member.initials} initialsClass="text-lg" navy>
         <span
@@ -20,8 +25,14 @@ function MemberTile({ member, selected, onSelect, t }) {
           className={`absolute -bottom-[3px] -right-[3px] h-[10px] w-[10px] rounded-full border-2 border-cz-card ${MOOD_DOT[member.mood] || MOOD_DOT.neutral}`}
         />
       </MonogramAvatar>
-      <p className="mt-[7px] text-2xs font-semibold text-cz-1">{member.name}</p>
-      <p className="mt-[2px] text-3xs uppercase tracking-[.08em] text-cz-3">
+      {/* #5633 · line-clamp-2 + min-h reserverer SAMME hoejde uanset navnets
+          laengde ("underlige mellemrum i navnene", vaerre paa mobil) — uden
+          det fik et 1-ords og et 3-ords navn i samme raekke forskellig
+          tile-hoejde, og gitteret saa ujaevnt ud. */}
+      <p className="mt-[7px] line-clamp-2 min-h-[26px] w-full break-words text-2xs font-semibold leading-tight text-cz-1">
+        {member.name}
+      </p>
+      <p className="mt-[2px] w-full truncate text-3xs uppercase tracking-[.08em] text-cz-3">
         {t("boardroom.board.role." + member.role, { defaultValue: member.role })}
       </p>
     </button>
@@ -105,6 +116,10 @@ export default function BoardCard({ board, mandate, minutes = [], dna = null, on
         title={t("boardroom.board.cardTitle")}
         meta={t("boardroom.board.minutesLink")}
       />
+      {/* #5633 · Synlig ét-linjes instruktion i stedet for kun en hover-only
+          `title`-tooltip (usynlig paa mobil/touch) — spillerrapport: "kun ét
+          medlem sagde noget, vidste ikke hvad jeg skulle bruge det til". */}
+      <p className="mb-3 text-2xs text-cz-3">{t("boardroom.board.memberGridHint")}</p>
       <div className="grid grid-cols-3 gap-3.5 sm:grid-cols-5">
         {members.map((member) => (
           <MemberTile

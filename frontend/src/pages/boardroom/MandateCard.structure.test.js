@@ -63,11 +63,38 @@ test("#4557 mandate: bonustilbuddet i fuld laengde bor i Mandat-fanen, koblet ti
   assert.match(source, /import \{ BonusOfferBlock, BonusAcceptedLine \} from "\.\/BonusOffer\.jsx"/);
   assert.match(source, /<BonusOfferBlock offer=\{bonusOffer\}/);
   assert.match(source, /<BonusAcceptedLine offer=\{bonusOffer\}/);
-  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, onReload \}\)/);
+  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, onReload \}\)/);
 });
 
 test("#4557 mandate: 'Discuss target' er eksplicit disabled (no-op, årsmødet er S-M2c)", () => {
   assert.match(source, /<button type="button" disabled aria-disabled="true"/);
+});
+
+test("#5633 mandate: flere maal kan foldes ud samtidig (Set, ikke et enkelt scalar-id)", () => {
+  assert.match(source, /const \[expandedIds, setExpandedIds\] = useState\(\(\) => new Set\(\)\);/);
+  assert.doesNotMatch(source, /useState\(null\)/, "et enkelt expandedId-scalar ville igen laase til ét maal ad gangen");
+  assert.match(source, /expanded=\{expandedIds\.has\(goal\.id\)\}/);
+});
+
+test("#5633 mandate: 'Expand all'/'Collapse all' vises kun naar der er MERE end ét foldbart maal", () => {
+  assert.match(source, /expandableGoalIds\.length > 1 &&/);
+  assert.match(source, /"boardroom\.mandate\.expandAll"/);
+  assert.match(source, /"boardroom\.mandate\.collapseAll"/);
+  assert.match(source, /t\(allExpanded \? "boardroom\.mandate\.collapseAll" : "boardroom\.mandate\.expandAll"\)/);
+});
+
+test("#5632 mandate: passiveModifier sender IKKE et ekstra '+'-fortegn (locale-strengen har det allerede — undgår '++10%', samme fund som det gamle rum ikke rettede)", () => {
+  assert.match(source, /t\(`transparency\.passiveModifier\.\$\{info\.band\}`, \{ pct: info\.pct \}\)/);
+  assert.doesNotMatch(source, /const sign = info\.pct > 0/, "det dobbelte fortegn kom netop fra denne linje i det gamle rum");
+});
+
+test("#5632 mandate: afstand til bonustilbud + sponsoreffekt genbruger de EKSISTERENDE transparency.*-nøgler (samme copy som det gamle rum)", () => {
+  assert.match(source, /t\(`transparency\.passiveModifier\.\$\{info\.band\}`/);
+  assert.match(source, /t\("transparency\.bonusOfferEligible"\)/);
+  assert.match(source, /t\("transparency\.bonusOfferSatisfactionGap"/);
+  assert.match(source, /t\("transparency\.bonusOfferClose"/);
+  assert.match(source, /<PassiveModifierLine info=\{passiveModifier\} t=\{t\} \/>/);
+  assert.match(source, /<BonusOfferProgressLine progress=\{bonusOfferProgress\} t=\{t\} \/>/);
 });
 
 // #5472 (ejer-review 23/9) · Målets tal kommer som rå tal-strenge fra
