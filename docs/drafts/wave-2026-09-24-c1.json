@@ -1,0 +1,311 @@
+{
+ "allowExistingPr": false,
+ "trackTimeoutMinutes": 150,
+ "tracks": [
+  {
+   "issue": 5536,
+   "branch": "feat/5536-s2-economy-engine-senior-scope",
+   "title": "[trupper] S2: economyEngine + betaReset + sponsorContracts scopes til senior, buildPoolTree ignorerer retired_at, ratchet saenkes (seed-gaten bliver groen)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5536\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST spec'en docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y1 og risiko 1, og docs/drafts/spec-s4-struktur-2026-09-24.md afsnit A5 (ligger paa main efter PR #5628; ellers: git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/<fil>). Laes ogsaa seneste kommentarer paa #5536 og #2492 (ejer-valg 24/9). OPGAVE (Y1 + A5 i EEN PR, samme funktion): (1) backend/lib/economyEngine.js: buildPoolTree (ca. :2492-2522, kaldt :1576, :2546, :2680), reseed-label (:2715-2716) og Node-fallbacken i updateStandings (:2846) scopes til senior via withSeniorSquadScope (backend/lib/squads.js:534). I SAMME buildPoolTree: ignorer league_divisions med retired_at IS NOT NULL (D4 gaar fra 8 til 4 puljer ved S4; uden filteret rykker D3 ned i de tomme puljer E-H ved S4-slut). Kolonnen retired_at tilfoejes af et parallelt spor (A2); brug .is(\"retired_at\", null) og skriv en test der viser at pensionerede puljer ikke indgaar i traeet. (2) backend/lib/betaResetService.js:243-246 (allocateLeaguePools) og backend/lib/sponsorContractsService.js:118-120 + loebslaeseren :105-108: senior-scope. (3) backend/lib/squadSeniorReaders.test.js: classifyReads (:146-164) skal godkende et eksplicit .eq(\"squad\", <trup>) som scoped; ratchet-listen saenkes pr. rettet fil, saa seed-gaten (:348-361) bliver groen. teamProfileEngine.js:182-185 roeres IKKE (ejes af spor A2). (4) Adfaerdstests: ungdomspuljer i fixtures ignoreres, senior bit-identisk. VIGTIGT om economyEngine.js: PR #5603 (parkerede hold, aaben draft) aendrer processSeasonEnd-omraadet (:1461-1630) og loadHumanSeasonEndTeams (:154-170). Roer IKKE de omraader. Hold dine aendringer til buildPoolTree/reseed/updateStandings. Hvis #5603 merges mens du arbejder, merg origin/main ind og verificer igen. Ingen migrationer, ingen flag-flip, ingen prod-skrivning. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body). Flag-loeb i PR-body: hvilke tests i squadSeniorReaders.test.js er sat fra roed til groen.",
+   "model": "opus",
+   "tier": "FULL",
+   "ownership": [
+    "backend/lib/economyEngine.js",
+    "backend/lib/economyEngine.test.js",
+    "backend/lib/betaResetService.js",
+    "backend/lib/betaResetService.test.js",
+    "backend/lib/sponsorContractsService.js",
+    "backend/lib/sponsorContractsService.test.js",
+    "backend/lib/squadSeniorReaders.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/economyEngine.test.js backend/lib/squadSeniorReaders.test.js backend/lib/betaResetService.test.js backend/lib/sponsorContractsService.test.js",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -File scripts/verify-local.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5642,
+   "branch": "feat/5642-a2-d4-four-pools-ai-fill",
+   "title": "[saesonskifte] A2: D4 fra 8 til 4 puljer - retired_at, AI fylder D4 A-D fra dag eet, nye managers udenom pensionerede puljer",
+   "scopeText": "Delissue #5642 (foraeldre-epik #4592; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5642\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-s4-struktur-2026-09-24.md afsnit A2 + Risici + Spor-opdeling (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-s4-struktur-2026-09-24.md) og ejer-beslutningerne i seneste kommentarer paa #4592 (24/9: pyramide 1/2/4/4, D4 med AI fra dag eet). OPGAVE: (1) Ny idempotent migration database/2026-09-25-4592-d4-retire-pools.sql: KUN alter table league_divisions add column if not exists retired_at timestamptz null + plan_ai_pool_retirements-opdatering (database/2026-09-09-4753-ai-pool-retirement.sql:44-80): maal 0 for retired_at is not null; maal 24 minus menneskehold for tier 4 med retired_at is null, ogsaa uden aegte managers. Selve UPDATE der pensionerer E-H ligger IKKE i migrationen (ejer-gated) men i scriptet i pkt. 4. (2) backend/lib/aiTeamGenerator.js:77-83 targetAiCountForPool: pensioneret -> 0; tier 4 aktiv -> altid fyld (som tier 1-2); tier 3 uaendret. (3) backend/lib/teamProfileEngine.js:181-290 pickDivisionForNewTeam/choosePoolForNewTeam: udelad pensionerede puljer; nye managers: D3 hvis en D3-pulje har plads (<24, #4183-reglen), ellers D4 A-D. I SAMME fil: linjen :182-185 scopes til senior via withSeniorSquadScope (backend/lib/squads.js:534) (S2-delen, #5536, som spor Y1 IKKE tager). (4) Nyt script backend/scripts/retireD4PoolsS4.js (dry-run default; --apply --owner-go): flytter AI-hold fra E-H til A-D op til 24 pr. pulje (update teams set league_division_id), pensionerer overskuddet med retire_ai_pool_team (kraever ai_team_retire_enabled + ai_pool_retirement_v2_enabled), saetter retired_at paa E-H, kraever saeson completed, skriver snapshot + restore-SQL som compressPyramid.js:281-292. Idempotent. (5) backend/scripts/audit-league-size-invariant.js:199-204 + docs/GAME_INVARIANTS.md:67-92: dormant-reglen gaelder ikke D4 A-D; pensionerede puljer forventes tomme; naevn distributeCompression d4PoolCount. (6) Test-fixtures med 8 D4-puljer opdateres KUN hvor testen handler om S4-formen: aiTeamGenerator.test.js:148-157, teamProfileEngine.test.js:50-60, pyramidCompression.test.js:245-263. pyramidCompression.js selv roeres ikke. Koer dry-run af scriptet mod prod (READ-ONLY, ingen --apply) og laeg tallene i PR-body (AI-hold pr. pulje foer/efter). Ingen flag-flip, ingen prod-skrivning, ingen --apply. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "database/2026-09-25-4592-d4-retire-pools.sql",
+    "backend/lib/aiTeamGenerator.js",
+    "backend/lib/aiTeamGenerator.test.js",
+    "backend/lib/teamProfileEngine.js",
+    "backend/lib/teamProfileEngine.test.js",
+    "backend/lib/pyramidCompression.test.js",
+    "backend/scripts/retireD4PoolsS4.js",
+    "backend/scripts/retireD4PoolsS4.test.js",
+    "backend/scripts/audit-league-size-invariant.js",
+    "docs/GAME_INVARIANTS.md"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/aiTeamGenerator.test.js backend/lib/teamProfileEngine.test.js backend/lib/pyramidCompression.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5644,
+   "branch": "feat/5644-calendar-per-squad-d4-four-pools",
+   "title": "[kalender] A3+Y5: kalender pr. trup fra katalogerne (U23 + junior) og S4-seniorkalender med 4 D4-puljer (retired_at)",
+   "scopeText": "Delissue #5644 (foraeldre-epik #2492; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5644\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-s4-struktur-2026-09-24.md afsnit A3 og docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y5 + risiko 6 (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/<fil>), docs/superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md afsnit 10 og docs/YOUTH_RULES.md par. 2.3. Ejer-valg 24/9 (#2492): ungdom i S4 = ca. 9 grupper a 24 pr. trup, tier 1, pool_index 0-8. OPGAVE, del A (4 D4-puljer): backend/lib/divisionCalendarGenerator.js:17-20 poolHasCalendar(tier, realManagerCount): tier 4 aktiv pulje -> true uden aegte managers; pensioneret (retired_at) -> false. backend/lib/tierCalendarMaterializer.js:532-567 materializeTierCalendars: laes retired_at, spring pensionerede puljer over (:570-587). Kolonnen retired_at tilfoejes af spor A2; brug .is(\"retired_at\", null) og fixtures. backend/lib/__fixtures__/racePoolCatalog.prod.json: D4 til 4 puljer; koer scripts/dev/refreshCalendarGoldenSnapshot.mjs og laeg calendarGoldenDiff.mjs-output i PR-body. docs/SEASON_CUTOVER_RUNBOOK.md:229, 253-282, 493-525: S4-kalenderen bygges EFTER Afslut saeson + sammenlaegning + pensionering, FOER Start naeste saeson. docs/CALENDAR_RULES.md:106: D4 = 4 puljer. Del B (kalender pr. trup): materializeTierCalendars faar squad-option (default \"senior\"); scope puljer (:570), katalog (:598-601, :613), eksisterende loeb + dedup (:629, :636-642) med .eq(\"squad\", squad); INSERT :740-744 SKAL skrive squad. backend/scripts/buildSeasonCalendar.js: --squad u23|junior (CLI :308-326); --replace-existing / replaceSeasonCalendarRows :223 SKAL scopes til trup (i dag sletter den hele saesonen - risiko 6). Taethed: U23 1-2 loeb/uge, junior 1/uge som egne vaerdier ved siden af TIER_DENSITY / TIER_GAME_DAY_QUOTA i backend/lib/calendarTierCaps.js. Grupperne ligger alle i tier 1 pr. trup: kalenderen skal virke med 9 puljer i samme tier (en tier-kalender pr. pulje eller delt katalog - vaelg det spec 10.5 siger, og skriv valget i PR-body). Tests: materializer med squad u23 skriver races.squad = 'u23' og roerer ikke seniorloeb; --replace-existing --squad u23 sletter kun U23; taethed; poolHasCalendar tier 4/pensioneret. Koer INTET mod prod ud over read-only; ingen --apply; ingen kalender genereres. Dry-run-tal (loeb pr. division, loebsdage) i PR-body. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/divisionCalendarGenerator.js",
+    "backend/lib/divisionCalendarGenerator.test.js",
+    "backend/lib/tierCalendarMaterializer.js",
+    "backend/lib/tierCalendarMaterializer.test.js",
+    "backend/scripts/buildSeasonCalendar.js",
+    "backend/scripts/buildSeasonCalendar.test.js",
+    "backend/lib/calendarTierCaps.js",
+    "backend/lib/calendarTierCaps.test.js",
+    "backend/lib/__fixtures__/racePoolCatalog.prod.json",
+    "backend/lib/__fixtures__/calendarGolden*",
+    "docs/SEASON_CUTOVER_RUNBOOK.md",
+    "docs/CALENDAR_RULES.md"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/tierCalendarMaterializer.test.js backend/lib/divisionCalendarGenerator.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5645,
+   "branch": "feat/5645-y4-youth-prize-guard-selection",
+   "title": "[ungdomsloeb] Y4: praemievagt (ungdomsloeb udbetaler 0) + trup-bevidst udtagelse, autofill og binding (senior bit-identisk)",
+   "scopeText": "Delissue #5645 (foraeldre-epik #2492; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5645\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y4 + risiko 4 og 7 (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-ungdomslob-2026-09-24.md), docs/superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md par. 5.1, 5.4 og 6, docs/YOUTH_RULES.md par. 1-2. OPGAVE: (1) Praemier: backend/lib/raceRunner.js:203, 224 og backend/lib/raceResultsEngine.js:83 saetter prize_money uden trup-vagt; tilfoej ved kilden: if (race.squad && race.squad !== \"senior\") prize = 0 (spec par. 5.4). backend/lib/prizePayoutEngine.js:49 kun hvis noedvendigt. (2) backend/lib/riderEligibility.js: applyRiderEligibilityFilter :31 -> applyRosterVisibilityFilter :49-51 -> squads.applySeniorSquadFilter: ny squad-parameter med default \"senior\" saa alle eksisterende kald er uaendrede (ca. 14 kaldesteder). Junior: kun saesonalder >= 17 (riderSeasonAge.js). (3) backend/lib/raceBinding.js:322 teamInRacePool: vaelg holdets pulje efter loebets squad (senior -> league_division_id, u23 -> u23_league_division_id, junior -> junior_league_division_id; kolonnerne kommer med spor Y3's migration - brug dem defensivt, null = ikke i puljen). (4) backend/lib/raceEntryGenerator.js: loeb :169, gruppering :236-240, hold :263-265 og :310-315, ryttere :441-446 -> trup-bevidst. (5) backend/lib/raceRunner.js fillMissingTeamEntries: pulje-filter :1120-1127, ryttere :1133-1138, eksisterende tilmeldinger :1398-1402 -> trup-bevidst. (6) backend/lib/raceSelection.js:130-135 prepareSelectionChange. Manuel udtagelse via api.js roeres IKKE (assistentens auto-udtagelse er standard, spec par. 2.3). Ungdoms-stilling: byg IKKE hooket her; spor Y7 leverer refreshYouthStandings, og orkestratoren wirer det som followup. Tests: praemie = 0 for u23/junior-loeb, uaendret for senior; junior 16 afvist, 17 godkendt; senior-kald uaendrede (bit-identiske fixtures); U23-loeb faar U23-ryttere fra holdets U23-pulje, aldrig seniorer; autofill samme; risiko 7: een rytter i baade senior- og U23-loeb samme loebsdag afvises af bindingen. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/raceRunner.js",
+    "backend/lib/raceRunner.test.js",
+    "backend/lib/raceResultsEngine.js",
+    "backend/lib/raceResultsEngine.test.js",
+    "backend/lib/prizePayoutEngine.js",
+    "backend/lib/prizePayoutEngine.test.js",
+    "backend/lib/riderEligibility.js",
+    "backend/lib/riderEligibility.test.js",
+    "backend/lib/raceBinding.js",
+    "backend/lib/raceBinding.test.js",
+    "backend/lib/raceSelection.js",
+    "backend/lib/raceSelection.test.js",
+    "backend/lib/raceEntryGenerator.js",
+    "backend/lib/raceEntryGenerator.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/raceRunner.test.js backend/lib/riderEligibility.test.js backend/lib/raceEntryGenerator.test.js backend/lib/raceBinding.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5646,
+   "branch": "feat/5646-y3-youth-groups-seed",
+   "title": "[ungdomsloeb] Y3: ca. 9 ungdomsgrupper pr. trup (tier 1), snake efter senior-Global Rank, AI fylder op, seed-script med dry-run",
+   "scopeText": "Delissue #5646 (foraeldre-epik #2492; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5646\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y3 + Ejer-valg (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-ungdomslob-2026-09-24.md), ejer-beslutningerne i seneste kommentarer paa #2492 (24/9 ca. 11:30: alle managers i grupper a 24 pr. trup i S4, snake efter seniorholdets Global Rank, divisioner foerst fra S5; nye managers/comebacks overtager en AI-plads), og datamodel-planen docs/superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md S3 (l.280-299). OPGAVE: (1) Ny idempotent migration database/2026-09-25-4620-youth-pools-seed.sql: teams.u23_league_division_id / teams.junior_league_division_id (uuid null, FK league_divisions) + insert af grupperne (squad u23/junior, tier 1, pool_index 0..N-1) - antallet N beregnes af scriptet, saa migrationen opretter kun kolonnerne og evt. en funktion; grupperne oprettes af scriptet i pkt. 3 (skriv valget i PR-body). Bemaerk: seed-gaten i squadSeniorReaders.test.js:348-361 stopper ungdomspulje-seed, indtil spor #5536 (S2) er merget; din PR kan derfor vaere roed paa den gate indtil da - skriv det i PR-body og hold PR som draft indtil #5536 er inde. (2) Ny ren backend/lib/youthPoolAssignment.js: planYouthGroups({ teams, globalRanks, aiTeams, squad, groupSize: 24 }) -> grupper med snake efter senior-Global Rank (rankTeamsByGlobalRank + snakeAssign i backend/lib/pyramidCompression.js:172, :212 genbruges, kopieres ikke), AI-hold fylder op til 24 pr. gruppe; input-filter som d4-sammenlaegningen: !is_ai && !is_bank && !is_frozen && !is_test_account && parked_at == null; Global Rank NULL -> sidst i raekken. Eksporter ogsaa pickYouthGroupForNewTeam({ groups, squad }) (gruppe med flest AI-hold, saa laveste pool_index) til nye managers/comebacks - wiringen i teamProfileEngine/comeback sker som followup, ikke her. (3) Nyt backend/scripts/seedYouthPools.js: dry-run default (skriver plan til docs/snapshots/4620/ som JSON + MD), --apply --owner-go: opretter grupperne i league_divisions, saetter teams.u23_/junior_league_division_id, idempotent (koeres igen efter A6 for AI-hold). Koer dry-run mod prod READ-ONLY og laeg tallene i PR-body (managers, AI-hold, antal grupper pr. trup, stoerste/mindste gruppe). Tests: youthPoolAssignment.test.js (snake-balance, parkeret/frosset/test udelukket, NULL-rank sidst, ingen gruppe under MIN_RACE_ENTRIES startende hold, determinisme). Ingen --apply, ingen prod-skrivning, ingen flag-flip. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "database/2026-09-25-4620-youth-pools-seed.sql",
+    "backend/lib/youthPoolAssignment.js",
+    "backend/lib/youthPoolAssignment.test.js",
+    "backend/scripts/seedYouthPools.js",
+    "backend/scripts/seedYouthPools.test.js",
+    "docs/snapshots/4620/**"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/youthPoolAssignment.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5643,
+   "branch": "feat/5643-a4-comeback-global-rank",
+   "title": "[saesonskifte] A4: comeback efter Global Rank ved tilmelding - hent hold tilbage straks, AI-plads, pro rata sponsor (nye filer)",
+   "scopeText": "Delissue #5643 (foraeldre-epik #4592; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5643\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-s4-struktur-2026-09-24.md afsnit A4 + Risici (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-s4-struktur-2026-09-24.md) og ejer-beslutning 2 i seneste kommentarer paa #4592 (24/9: 1-24 -> D1, 25-72 -> D2, 73-168 -> D3, resten D4; holdet overtager en AI-plads, ingen plads = naeste division ned; forholdsmaessig sponsor; ingen bestyrelsesdom i comeback-saesonen). api.js og managerParking*.js roeres IKKE. OPGAVE: (1) Ny ren backend/lib/comebackPlacement.js: tierForGlobalRank(rank) og pickComebackPool({ tier, pools, teams }) (pulje i tieren med mindst eet AI-hold og retired_at null; flest AI foerst, saa laveste pool_index; ingen -> tier+1 ... D4). Global Rank NULL: ranger paa global_points blandt menneskehold; ingen point -> D4. (2) Ny backend/lib/comebackService.js returnParkedTeam({ supabase, teamId, now }): kraever parked_at != null og aktiv saeson; saet league_division_id, division, parked_at = null, next_season_signup_at = null, comeback_season_id = aktiv saeson; AI-pladsen haandteres af trg_ai_pool_placement_reserve + retire_ai_pool_team (dokumenter, byg ikke om); pro rata sponsor via proRataShare/proRataAmount (backend/lib/midSeasonSponsor.js:46-63) paa guaranteedBase med idempotens-noegle comeback_sponsor:<season>:<team> (ensureMidSeasonSponsor kan IKKE bruges direkte, :101-102); reconcilePoolCalendarOnActivation (tierCalendarMaterializer.js:865) for maal-puljen. (3) Ny route-fil backend/routes/comeback.js (POST /api/season/comeback, requireAuth, flag season_signup_enabled), monteret i backend/server.js:74 FOER apiRoutes. (4) Ny idempotent migration database/2026-09-25-4592-team-comeback-season.sql: teams.comeback_season_id uuid null references seasons(id). (5) Frontend: frontend/src/components/SeasonSignupCard.jsx: for parked: true kalder knappen /api/season/comeback og viser den nye division; tekst EN foerst, DA under, jeg/du, ingen em-dash, i dashboard.json (en+da). DashboardPage.jsx roeres kun hvis strengt noedvendigt (spor Y2 og PR #5598 arbejder i den). Bestyrelses-filerne (boardWeekend*.js, boardMidSeason.js) roeres IKKE (andet spor). (6) Skaermbilleder med Playwright (vite i eget worktree, mock-data ok): desktop 1440 + mobil 390 af kortet foer/efter, i pr-screens/4592-comeback-*.png. Tests: comebackPlacement.test.js (taerskler, AI-plads, fallback ned, NULL-rank), comebackService.test.js (idempotens, sponsor-beloeb pro rata, ingen dobbelt-sponsor), route-test. Ingen flag-flip, ingen prod-skrivning. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/comebackPlacement.js",
+    "backend/lib/comebackPlacement.test.js",
+    "backend/lib/comebackService.js",
+    "backend/lib/comebackService.test.js",
+    "backend/routes/comeback.js",
+    "backend/routes/comeback.test.js",
+    "backend/server.js",
+    "database/2026-09-25-4592-team-comeback-season.sql",
+    "frontend/src/components/SeasonSignupCard.jsx",
+    "frontend/src/components/SeasonSignupCard.*.test.*",
+    "frontend/public/locales/en/dashboard.json",
+    "frontend/public/locales/da/dashboard.json",
+    "frontend/tests/e2e/4592-comeback*.ts",
+    "pr-screens/4592-comeback-*.png"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/comebackPlacement.test.js backend/lib/comebackService.test.js",
+    "npm --prefix backend run lint",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5647,
+   "branch": "feat/5647-y7-youth-standings-backend",
+   "title": "[ungdomsloeb] Y7 backend: youth_season_standings + youthStandings.js + rangliste-matview + /rankings/youth/*",
+   "scopeText": "Delissue #5647 (foraeldre-epik #2492; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5647\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y7 (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-ungdomslob-2026-09-24.md) og planens S4/S5 i docs/superpowers/specs/2026-09-15-u23-kalender-og-trup-datamodel-design.md. Ejer-valg 24/9 (#2492): S4 = grupper a 24 pr. trup, tier 1; stilling pr. gruppe; ved S4-slut rangeres U23-holdene paa S4-resultater. OPGAVE: (1) Ny idempotent migration database/2026-09-25-4620-youth-season-standings.sql: youth_season_standings (season_id, squad, league_division_id, team_id, total_points, wins, podiums, races, updated_at; unik pr. season+squad+team) + RPC til opdatering fra race_results for loeb med races.squad != 'senior'. RLS som season_standings. (2) Ny backend/lib/youthStandings.js: refreshYouthStandings({ supabase, raceId }) (idempotent, genberegner holdets raekke fra race_results) + listYouthStandings({ seasonId, squad, leagueDivisionId }). economyEngine.updateStandings roeres IKKE (andet spor); hooket fra raceRunner.js wires af orkestratoren som followup - skriv praecis EEN linje i PR-body om hvor kaldet skal ind (raceRunner finalisering). (3) S5: youth_rider_rankings_mv (spejl af senior-rytterranglisten, kun ungdomsloeb) + refresh i backend/lib/refreshRankingMatviews.js. (4) Ruter i backend/routes/rankings.ts: GET /rankings/youth/standings?squad=&pool= og GET /rankings/youth/riders?squad= (requireAuth, samme svarform som seniorruterne, bag flag youth_squad_pages). Tests: youthStandings.test.js (genberegning, idempotens, senior-loeb ignoreres), route-tests. Ingen frontend (spor #5631 ejer SquadPage.tsx). Ingen flag-flip, ingen prod-skrivning. Slaa kolonnenavne op i database/schema-snapshot.json FOER SQL. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "database/2026-09-25-4620-youth-season-standings.sql",
+    "database/2026-09-25-4620-youth-rider-rankings-mv.sql",
+    "backend/lib/youthStandings.js",
+    "backend/lib/youthStandings.test.js",
+    "backend/lib/refreshRankingMatviews.js",
+    "backend/lib/refreshRankingMatviews.test.js",
+    "backend/routes/rankings.ts",
+    "backend/routes/rankings.*.test.*"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/youthStandings.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5631,
+   "branch": "feat/5631-youth-squad-pages-parity-standings",
+   "title": "[trupper] U23-/Junior-siderne paa niveau med My Team: evner, Stats-fane, ens kolonner, Standings-fane, Youth races, filter Senior/U23/Junior",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5631\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST #5631 (alle kommentarer), docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y7 S7/S8 (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-ungdomslob-2026-09-24.md), docs/design/PAGE_TEMPLATES.md (T3 profile) og docs/design/TASTE.md. OPGAVE: (1) frontend/src/pages/SquadPage.tsx (bag youth_squad_pages): samme evne-visning, Stats-fane og kolonner som My Team (genbrug My Teams komponenter/hooks, kopier ikke markup). (2) Standings-fanen (i dag EmptyState :108-114): stilling pr. ungdomsgruppe fra GET /rankings/youth/standings?squad=&pool= (bygges parallelt af spor Y7 backend; lav en tynd klient i frontend/src/lib/youthRankingsClient.ts med mock i preview/seedData.js saa siden virker i preview uden backend). (3) Ny frontend/src/pages/YouthRacesPage.tsx (Youth races, v1 bag youth_squad_pages) + route. (4) My Team-filteret Senior/U23/Junior: frontend/src/pages/TeamPage.jsx roeres KUN i filteret (PR #5626 aendrer samme fil - hold diffen lille og merg origin/main ind naar #5626 er inde). Roer IKKE loft-linjen i SquadPage.tsx :89-90 (eget followup paa #5626). Tekster EN foerst, DA under, jeg/du, ingen em-dash, i squad.json (en+da). Skaermbilleder med Playwright (vite i eget worktree, preview-mock ok): desktop 1440 + mobil 390 af U23-siden (Overview, Stats, Standings) og Youth races, i pr-screens/5631-*.png. Tests: komponent-tests + e2e for fanerne. Kun T3-skabelonen; ingen egen sidehoved/padding/radius; stroke-ikoner, tabular figures. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/SquadPage.tsx",
+    "frontend/src/pages/SquadPage.*.test.*",
+    "frontend/src/pages/YouthRacesPage.tsx",
+    "frontend/src/pages/YouthRacesPage.*.test.*",
+    "frontend/src/components/squad/**",
+    "frontend/src/lib/youthRankingsClient.ts",
+    "frontend/src/lib/youthRankingsClient.test.ts",
+    "frontend/src/pages/TeamPage.jsx",
+    "frontend/src/preview/seedData.js",
+    "frontend/src/App.jsx",
+    "frontend/public/locales/en/squad.json",
+    "frontend/public/locales/da/squad.json",
+    "frontend/tests/e2e/5631-*.ts",
+    "pr-screens/5631-*.png"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend test",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5641,
+   "branch": "feat/5641-a1-d4-merge-into-d3",
+   "title": "[saesonskifte] A1: sammenlaegning D4 -> D3 ved S3-slut, snake efter S3-point, dry-run med frossen liste (nye filer)",
+   "scopeText": "Delissue #5641 (foraeldre-epik #4592; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5641\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-s4-struktur-2026-09-24.md afsnit Raekkefoelgen ved skiftet + A1 + Risici (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/spec-s4-struktur-2026-09-24.md) og ejer-beslutning 1 i seneste kommentarer paa #4592 (24/9: alle nuvaerende D4-managers rykker op i D3, snake efter point, ca. 17 pr. pulje). OPGAVE: (1) Ny ren backend/lib/d4MergeS4.js: planD4Merge({ teams, standings, countback, d3Pools }) -> { assignments: [{ teamId, fromPoolId, toPoolId, rank }], byPool }. Genbrug rankTeamsGlobally (backend/lib/pyramidCompression.js:105-140) og snakeAssign (:212-221) - IKKE distributeCompression. Input-filter: !is_ai && !is_bank && !is_frozen && !is_test_account && parked_at == null og league_division_id i tier 3 eller 4 (parked_at-filteret er nyt; compressPyramid.js:109 og compressPyramidS3.js:287 mangler det). Afvis > 96 managers. Idempotent: hold der allerede staar i maal-puljen springes over. (2) Nyt backend/scripts/mergeD4IntoD3S4.js som compressPyramidS3.js: dry-run default skriver frossen liste til docs/snapshots/4592/ (JSON + MD til ejeren); --apply --snapshot=<json> --owner-go laeser kun den frosne liste, kraever saeson completed, skriver snapshot + restore-SQL (som compressPyramid.js:281-292), opdaterer teams.division=3 + league_division_id, sender notifikation via notifyTeamOwner (som compressPyramid.js:311-334), koerer reconcileAiTeamsForPool for alle puljer + verifikationsrunde. (3) Koer dry-run mod prod READ-ONLY og laeg tallene i PR-body (managers pr. D3-pulje foer/efter, point-spaend). Tests: d4MergeS4.test.js (snake-balance, parkeret/frosset/test udelukket, > 96 afvises, determinisme ved pointlighed, idempotens). Ingen --apply, ingen prod-skrivning, ingen flag-flip. pyramidCompression.js roeres ikke. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/d4MergeS4.js",
+    "backend/lib/d4MergeS4.test.js",
+    "backend/scripts/mergeD4IntoD3S4.js",
+    "backend/scripts/mergeD4IntoD3S4.test.js",
+    "docs/snapshots/4592/**"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/d4MergeS4.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5648,
+   "branch": "feat/5648-y2-frontend-senior-scope",
+   "title": "[trupper] Y2: frontend senior-scope (seniorScope.ts) paa Standings, Rider rankings, Results, Dashboard-puljer og Race Centre + retired_at-filter",
+   "scopeText": "Delissue #5648 (foraeldre-epik #5536; Refs begge i PR-body). TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5648\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/drafts/spec-ungdomslob-2026-09-24.md afsnit Y2 + risiko 5 og docs/drafts/spec-s4-struktur-2026-09-24.md risiko 3 (paa main efter #5628; ellers git --no-pager show origin/cloud/specs-s4-2026-09-24:docs/drafts/<fil>). OPGAVE: (1) Ny frontend/src/lib/seniorScope.ts med det delte or-filter (squad.is.null,squad.eq.senior) + retired_at is null for aktiv saeson (kolonnen retired_at kommer med spor A2's migration; brug .is('retired_at', null) kun paa league_divisions-forespoergsler og goer det defensivt). (2) Anvend den: frontend/src/pages/StandingsPage.jsx (puljer :137, loeb :174-177, season_standings :167-172), RiderRankingsPage.jsx:145 (pulje-vaelger), ResultaterPage.jsx (puljer :191, afsluttede loeb :262-266), DashboardPage.jsx KUN :524 (puljer), RaceCentrePage.jsx:141 (puljer) + loebene via race_stage_schedule :125-130 (ellers dukker ungdomsloeb op i Race Centre). PR #5598 aendrer RaceCentrePage.jsx (Today's stages) og spor A4 kan roere DashboardPage.jsx: hold diffen minimal og merg origin/main ind naar #5598 er inde. (3) Tests: unit for seniorScope.ts; e2e Standings + Race Centre med en ungdomspulje + ungdomsloeb i mocks viser kun senior, desktop 1440 + mobil 390 (skaermbilleder i pr-screens/5536-y2-*.png). Ingen nye brugertekster. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs og tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/lib/seniorScope.ts",
+    "frontend/src/lib/seniorScope.test.ts",
+    "frontend/src/pages/StandingsPage.jsx",
+    "frontend/src/pages/RiderRankingsPage.jsx",
+    "frontend/src/pages/ResultaterPage.jsx",
+    "frontend/src/pages/DashboardPage.jsx",
+    "frontend/src/pages/RaceCentrePage.jsx",
+    "frontend/tests/e2e/5536-y2-*.ts",
+    "pr-screens/5536-y2-*.png"
+   ],
+   "verifyCommands": [
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend test",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5602,
+   "branch": "fix/5602-wave-intake-cheap-checks",
+   "title": "[ops] Boelge-motoren: billigt intake-tjek (mindste model, minimal prompt), voksende pauser, lanen stopper selv efter tomme tjek + fund 1, 3, 4, 6, 7",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5602\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST #5602 (hele issuet + alle kommentarer, ejer 24/9: boelge R brugte ca. 0,5M tokens paa tomme intake-tjek) og docs/PARALLEL_WORKTREE_ORCHESTRATION.md. OPGAVE i .claude/workflows/wave.js + scripts/wave-policy.mjs + scripts/wave-freeze.mjs (+ tests): (1) Intake-tjekket koerer paa den mindste model (haiku) med en minimal prompt der KUN kalder wave-policy.mjs intake og returnerer JSON - ingen brief, ingen repo-laesning. (2) Voksende pauser mellem tomme tjek (fx 10 -> 20 -> 40 min, loft 60) i stedet for fast INTAKE_POLL_MINUTES. (3) En lane stopper sig selv efter N tomme tjek i traek (N i konstant, spejlet i wave-freeze.mjs), og rapporterer det. (4) Fund 1, 3, 4, 6 og 7 fra issuet (laase-ventetid, intake-loft, for bred skema-nedgradering, enqueue-validering m.fl. - laes de praecise fund i issuet og skriv pr. fund i PR-body hvad der er rettet og hvor). Konstanter der spejles mellem wave.js og wave-freeze.mjs SKAL rettes begge steder (wave-freeze.test.mjs sammenligner). Den koerende boelge laeser ikke din fil, saa du kan ikke bryde den. Tests: scripts/wave-freeze.test.mjs + scripts/wave-policy.test.mjs groenne + nye tests for pauser og selv-stop. Ingen andre filer i .claude/ roeres. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note (usynlig for spillere).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    ".claude/workflows/wave.js",
+    "scripts/wave-policy.mjs",
+    "scripts/wave-policy.test.mjs",
+    "scripts/wave-freeze.mjs",
+    "scripts/wave-freeze.test.mjs",
+    "docs/PARALLEL_WORKTREE_ORCHESTRATION.md"
+   ],
+   "verifyCommands": [
+    "node --test scripts/wave-freeze.test.mjs scripts/wave-policy.test.mjs"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5632,
+   "branch": "fix/5632-5633-5618-boardroom-beta",
+   "title": "[bestyrelse beta] Bonus-afstand + sponsoreffekt vises (#5632), lokalets layout-fejl (#5633) og forhandlet maal 7/7 vist som 7/5 (#5618)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5632\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES FOERST #5632, #5633 og #5618 (alle kommentarer, inkl. spillernes skaermbilleder), docs/design/PAGE_TEMPLATES.md og docs/design/TASTE.md. Bestyrelseslokalet ligger i frontend/src/pages/boardroom/*. VisionCard.jsx roeres IKKE (PR #5629 aendrer den). OPGAVE: (A) #5618 foerst - find rodaarsagen til at et forhandlet placeringsmaal 7/7 vises som 7/5 efter skift til beta (backend/lib/boardMandate*.js, boardGoals.js, boardRoom.js eller frontend-formatering); skriv rodaarsag + bevis (test der er roed foer, groen efter) i PR-body. Datareparation af eksisterende raekker foreslaas som SQL i PR-body, koeres IKKE. (B) #5632: afstand til bonustilbud og bestyrelsens sponsoreffekt vises i det nye lokale (samme tal som det gamle rum viste; genbrug beregningen, kopier ikke). (C) #5633: skjult medlemsfunktion, trange navne, eet maal ad gangen, ujaevne maaltitler - ret det i lokalets komponenter inden for T1/T3-skabelonen, hairline-borders, 5px radius, tabular figures. Tekster EN foerst, DA under, jeg/du, ingen em-dash, i board-locale-filerne. Skaermbilleder med Playwright (vite i eget worktree, mock/fixtures ok): desktop 1440 + mobil 390 foer/efter, i pr-screens/5632-boardroom-*.png. Tests: structure-tests i boardroom/ + backend-test for #5618. Ingen flag-flip, ingen prod-skrivning. HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjerne for #5632/#5633/#5618 i PR-body).",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/pages/boardroom/**",
+    "frontend/src/pages/BoardPage.jsx",
+    "frontend/public/locales/en/board*.json",
+    "frontend/public/locales/da/board*.json",
+    "backend/lib/boardMandate.js",
+    "backend/lib/boardMandate.test.js",
+    "backend/lib/boardMandateEngine.js",
+    "backend/lib/boardMandateEngine.test.js",
+    "backend/lib/boardGoals.js",
+    "backend/lib/boardRoom.js",
+    "backend/lib/boardRoom.test.js",
+    "backend/lib/boardBonusGoal.js",
+    "backend/lib/boardBonusGoal.test.js",
+    "frontend/tests/e2e/5632-*.ts",
+    "pr-screens/5632-boardroom-*.png"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/boardMandate.test.js backend/lib/boardRoom.test.js backend/lib/boardBonusGoal.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend test",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}

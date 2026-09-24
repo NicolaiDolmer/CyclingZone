@@ -11,4 +11,6 @@
 2. Skrive-vagten skal også fange `signOut` på klientsiden: route-vagten stopper kaldet, men supabase-js rydder alligevel localStorage. Billedstationen (#5565) bør åbne en KOPI af profilen pr. kørsel (eller gemme `sb-*-auth-token` og lægge den tilbage bagefter), så en uheldig kørsel aldrig logger stationen ud.
 3. Tjek login-status med en kort probe FØR en lang billedserie.
 
+**Bygget ind i `scripts/pr-shots.mjs` (#5565, cloud 24/9-d):** profil-kopi pr. kørsel (mesterprofilen åbnes kun af `--login`), `signOut` besvares 204 og tælles, login-probe (`/dashboard` → `/login`?) før serien, og `--shot-at`/`--clock` afvises med henvisning hertil. Scriptet læser aldrig storage; proben er kun en URL-sammenligning.
+
 Refs #5565 #5589

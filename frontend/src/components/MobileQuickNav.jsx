@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { NavLink, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
+import { useMobileNavOffset } from "../lib/mobileNavOffset.ts";
 
 function pathMatches(pathname, to) {
   return pathname === to || pathname.startsWith(`${to}/`);
@@ -72,9 +74,14 @@ const TABS = [
 export default function MobileQuickNav({ unread }) {
   const location = useLocation();
   const { t } = useTranslation("common");
+  // #5561: menuens højde publiceres som --cz-mobile-nav-offset, så samtykke-,
+  // release- og NPS-bjælken står OVER menuen i stedet for oven på den.
+  const navRef = useRef(null);
+  useMobileNavOffset(navRef);
 
   return (
     <nav
+      ref={navRef}
       // #3643: en målekrog, ikke en stilart. Baren ligger OVEN PÅ indholdet, så
       // en flade der ruller noget i synsfeltet skal kunne trække dens højde fra
       // — og måle den frem for at gentage 56 som et tal endnu et sted.

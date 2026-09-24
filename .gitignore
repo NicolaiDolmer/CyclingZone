@@ -134,6 +134,10 @@ scripts/discord/.feedback-dump-*.md
 
 # Bolge-screenshots der ikke skal i repoet (30/8-koeen)
 pr-screens/queue/
+# Aegte-data-billeder fra pr-shots.mjs (#5565/#5662): pr-screens/ selv er IKKE
+# gitignoreret (bevidst, se ovenfor), saa et rutine-`git add` kan tage aegte
+# spillerdata med. DEFAULT_OUT_DIR peger derfor paa denne undermappe, aldrig i repoet.
+pr-screens/live/
 
 # Hard rule 17 (#3436): praecise balance-tal hoerer til i en PRIVAT fil, ikke i
 # det offentligt laesbare repo. `balance-internals/` er den mappe reglen navngiver.

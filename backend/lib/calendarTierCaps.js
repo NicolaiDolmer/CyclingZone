@@ -78,6 +78,38 @@ export const TIER_MULTI_RACE_DAY_MIN_SHARE = Object.freeze({ 1: 0.45, 2: 0.55, 3
 export const MONUMENT_MIN_CALENDAR_GAP_DAYS = 2;
 export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS = 14;
 
+// ── Seniorpyramiden fra S4: aktive puljer pr. division (#4592, ejer 24/9) ─────────────
+//
+// "D4 går fra 8 til 4 puljer" - pyramiden er 1/2/4/4 fra S4 (CALENDAR_RULES.md §1f). D4's
+// puljer E-H pensioneres (league_divisions.retired_at, spor A2 #5642) og faar aldrig en
+// kalender. buildSeasonCalendar.js bruger tabellen som strukturvagt: en seniorkalender fra
+// S4 maa kun skrives naar praecis disse puljer faar en kalender (spec-s4-struktur risiko 1:
+// koerer kalenderen foer sammenlaegning + pensionering, faar E-H loeb).
+export const SENIOR_CALENDAR_POOLS_FROM_S4 = Object.freeze({ 1: 1, 2: 2, 3: 4, 4: 4 });
+export const SENIOR_CALENDAR_POOLS_FIRST_SEASON = 4;
+
+// ── Ungdomskalenderen (#2492 Y5, ejer 15/9 spec §10.5 + YOUTH_RULES.md §2.3) ──────────
+//
+// Truppernes egen kalender kører paa samme motor, men IKKE efter seniorens taethed: U23
+// 1-2 loeb om ugen, junior 1 om ugen. Samme antal loebsdage som senioren (140 i S4), "hvoraf
+// de fleste er rene traeningsdage" (spec §10.5). Loebene taelles efter START-uge.
+//
+//   racesPerWeek   min/max loeb der STARTER i hver kalenderuge. Generatoren planlaegger max,
+//                  min er gulvet gaten doemmer paa.
+//   maxRacingDayShare  loft for andelen af kalenderdatoerne der baerer en ungdomsetape.
+//                  0,5 er §10.5's "de fleste er rene traeningsdage" som et tal: hoejst
+//                  halvdelen af datoerne har et loeb.
+//   overlapCap     1: aldrig to ungdomsloeb samtidig. En ungdomstrup er 6-12 ryttere (U23-loft
+//                  12, AI-trup 6-9) og MIN_RACE_ENTRIES er 6, saa to samtidige loeb ville
+//                  tvinge holdene til at vaelge.
+//   stageSlot      dagens ene etape-tid (dansk tid). Halve timer, saa den aldrig falder paa
+//                  samme minut som en senior-slot (TIER_STAGE_SLOTS er hele timer).
+export const SQUAD_CALENDAR = Object.freeze({
+  u23: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 2 }), maxRacingDayShare: 0.5, overlapCap: 1, stageSlot: "16:30" }),
+  junior: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 1 }), maxRacingDayShare: 0.5, overlapCap: 1, stageSlot: "14:30" }),
+});
+export const CALENDAR_SQUADS = Object.freeze(["senior", ...Object.keys(SQUAD_CALENDAR)]);
+
 // Game-dage pr. IRL-dag — NEDRE GRAENSE, ikke et facit.
 //
 // Pakkeren lae­gger flere hele in-game-dage inden i hver kalenderdag, saa density etaper kan

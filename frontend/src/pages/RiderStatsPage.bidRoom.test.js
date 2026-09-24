@@ -17,7 +17,9 @@ const source = readFileSync(join(__dirname, "RiderStatsPage.jsx"), "utf8");
 test("RiderBidPanel bruger computeBidRoom (#3066)", () => {
   assert.match(
     source,
-    /computeBidRoom\(\{\s*isYouth:\s*auction\.is_youth,\s*seniorCount,\s*academyCount\s*\}\)/,
+    // #5568: akademi-delen tæller pr. MÅL-trup, som afgøres af rytterens
+    // fødselsdato + sæsonen — derfor birthdate/seasonYear med ind.
+    /computeBidRoom\(\{\s*isYouth:\s*auction\.is_youth,\s*seniorCount,\s*academySquadCounts,\s*birthdate:\s*riderBirthdate,\s*seasonYear\s*\}\)/,
     "RiderBidPanel skal spejle samme bud-plads-gate som AuctionsPage.jsx (AuctionRow/AuctionCard)",
   );
 });
@@ -25,7 +27,7 @@ test("RiderBidPanel bruger computeBidRoom (#3066)", () => {
 test("RiderBidPanel skjuler bud-/autobud-UI'et når pladsen er fuld (#3066)", () => {
   assert.match(
     source,
-    /roomBlocked\s*\?\s*\(\s*<BidRoomBlockNotice reason=\{bidRoom\.reason\} t=\{t\} \/>/,
+    /roomBlocked\s*\?\s*\(\s*<BidRoomBlockNotice reason=\{bidRoom\.reason\} squad=\{bidRoom\.academySquad\} max=\{bidRoom\.academyMax\} t=\{t\} \/>/,
     "et bud der er garanteret afvist (fuld trup) skal blokeres FØR POST'en, ikke bare fejle pænere bagefter",
   );
 });
@@ -38,8 +40,8 @@ test("RiderStatsPage henter senior-/akademi-optælling til gaten (#3066)", () =>
   );
   assert.match(
     source,
-    /eq\("team_id", t\.id\)\.eq\("is_academy", true\)/,
-    "akademi-optællingen mangler — uden den kan youth-auktioners akademi-fallback ikke vises",
+    /fetchAcademySquadCounts\(supabase, t\.id\)/,
+    "akademi-optællingen pr. ungdomstrup mangler — uden den kan youth-auktioners akademi-fallback ikke vises (#5568)",
   );
 });
 

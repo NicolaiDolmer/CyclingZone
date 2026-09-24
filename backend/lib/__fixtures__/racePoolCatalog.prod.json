@@ -1,5 +1,5 @@
 {
-  "_note": "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL + league_divisions. Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs). #5405 (20/9): de tre nye ProSeries-summit_tour-loeb er tilfoejet i HAANDEN i samme PR som migrationen database/2026-09-20-5405-tre-nye-bjergloeb.sql, saa CI ser samme forsyning som de haevede summit_tour-reservationer forudsaetter. Deres id er en deterministisk pladsholder (ffffffff-...), ikke prods rigtige uuid - prod faar sin ved insert. id indgaar KUN som tiebreaker i udvaelgelsens raekkefoelge (tierRaceSelection.seededKey), ikke i parcours-seeden (den er external_id). Naeste dumpRacePoolFixture.mjs-koersel mod prod erstatter pladsholderen.",
+  "_note": "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL + league_divisions. Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs). #5405 (20/9): de tre nye ProSeries-summit_tour-loeb er tilfoejet i HAANDEN i samme PR som migrationen database/2026-09-20-5405-tre-nye-bjergloeb.sql, saa CI ser samme forsyning som de haevede summit_tour-reservationer forudsaetter. Deres id er en deterministisk pladsholder (ffffffff-...), ikke prods rigtige uuid - prod faar sin ved insert. id indgaar KUN som tiebreaker i udvaelgelsens raekkefoelge (tierRaceSelection.seededKey), ikke i parcours-seeden (den er external_id). Naeste dumpRacePoolFixture.mjs-koersel mod prod erstatter pladsholderen. #5644 (24/9): puljerne har S4-formen efter #4592 (ejer 24/9): D4 E-H er pensioneret (retired_at, spor A2) og D4 A-D har ingen aegte managers (alle rykket op i D3). Saa viser den gyldne kalender-diff S4's 1/2/4/4-pyramide. dumpRacePoolFixture.mjs laeser endnu ikke retired_at, saa en ny dump skal bevare de to felter i haanden.",
   "hentet": "2026-09-03",
   "pools": [
     {
@@ -48,49 +48,53 @@
       "id": 8,
       "tier": 4,
       "label": "Division 4 — A",
-      "realManagerCount": 9
+      "realManagerCount": 0
     },
     {
       "id": 9,
       "tier": 4,
       "label": "Division 4 — B",
-      "realManagerCount": 9
+      "realManagerCount": 0
     },
     {
       "id": 10,
       "tier": 4,
       "label": "Division 4 — C",
-      "realManagerCount": 9
+      "realManagerCount": 0
     },
     {
       "id": 11,
       "tier": 4,
       "label": "Division 4 — D",
-      "realManagerCount": 9
+      "realManagerCount": 0
     },
     {
       "id": 12,
       "tier": 4,
       "label": "Division 4 — E",
-      "realManagerCount": 8
+      "realManagerCount": 8,
+      "retired_at": "2026-09-27T20:00:00Z"
     },
     {
       "id": 13,
       "tier": 4,
       "label": "Division 4 — F",
-      "realManagerCount": 8
+      "realManagerCount": 8,
+      "retired_at": "2026-09-27T20:00:00Z"
     },
     {
       "id": 14,
       "tier": 4,
       "label": "Division 4 — G",
-      "realManagerCount": 8
+      "realManagerCount": 8,
+      "retired_at": "2026-09-27T20:00:00Z"
     },
     {
       "id": 15,
       "tier": 4,
       "label": "Division 4 — H",
-      "realManagerCount": 8
+      "realManagerCount": 8,
+      "retired_at": "2026-09-27T20:00:00Z"
     }
   ],
   "catalog": [

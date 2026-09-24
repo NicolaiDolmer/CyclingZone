@@ -34,7 +34,7 @@ import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   applyRaceResults as applyRaceResultsShared,
   buildRacePointsLookup,
-  PRIZE_PER_POINT,
+  prizeMoneyForPoints,
 } from "./raceResultsEngine.js";
 // #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
 import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
@@ -107,10 +107,11 @@ import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
-import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection } from "./raceBinding.js";
+import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
@@ -200,7 +201,7 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
       team_name: e?.team_name ?? null,
       finish_time,
       points_earned: pts,
-      prize_money: pts * PRIZE_PER_POINT,
+      prize_money: prizeMoneyForPoints(pts, race),
       in_breakaway,
       breakaway_caught,
       sprint_points,
@@ -221,7 +222,7 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
       team_name: teamNameByTeam.get(team_id) ?? null,
       finish_time: null,
       points_earned: pts,
-      prize_money: pts * PRIZE_PER_POINT,
+      prize_money: prizeMoneyForPoints(pts, race),
       in_breakaway: false,
       breakaway_caught: false,
     });
@@ -1065,6 +1066,10 @@ export async function fillMissingTeamEntries({
   // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
   // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
   // fetchAllRows; stabilt .order("id") som tiebreak.
+  // #5645 (Y4): løbets trup. Senior = alt nedenfor er uændret (samme selects, samme
+  // filtre). Ungdom = holdets pulje for truppen, truppens ryttere og junior-aldersgaten.
+  const raceSquad = raceSquadOf(race);
+  const isYouthRace = raceSquad !== "senior";
   let teams;
   try {
     teams = await fetchAllRows(() => (
@@ -1072,7 +1077,9 @@ export async function fillMissingTeamEntries({
         .from("teams")
         // #4759: user_id med, så vi kan skelne menneske- fra AI-hold til
         // "assistenten udtog dit hold"-notifikationen nedenfor.
-        .select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
+        .select(isYouthRace
+          ? "id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, u23_league_division_id, junior_league_division_id, user_id"
+          : "id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
         .or("is_test_account.is.null,is_test_account.eq.false")
         .order("id", { ascending: true })
     ));
@@ -1123,7 +1130,11 @@ export async function fillMissingTeamEntries({
     (t) => !t.is_frozen && !(drainingEnabled && t.is_ai && t.pending_removal_at) && !teamsAtOrAboveFloor.has(t.id)
       && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
   );
-  if (racePoolId != null) {
+  if (isYouthRace) {
+    // #5645: holdets U23-/juniorpulje, ikke seniorpuljen. Et hold uden pulje for
+    // truppen, eller et ungdomsløb uden pulje, giver intet felt (fejl lukket).
+    eligibleTeams = eligibleTeams.filter((t) => teamInRaceSquadPool({ team: t, race }));
+  } else if (racePoolId != null) {
     eligibleTeams = eligibleTeams.filter((t) => t.league_division_id === racePoolId);
   }
   let missingTeamIds = eligibleTeams.map((t) => t.id);
@@ -1133,8 +1144,10 @@ export async function fillMissingTeamEntries({
     supabase, table: "riders", columns: "id, team_id, base_value",
     // Rod B: delt eligibility-filter (ikke-akademi + ikke-pensioneret). Manglede
     // is_academy → akademiryttere kunne sim-tids-autofyldes (#1742/#1800).
+    // #5645: trup-parameteren — et U23-/juniorløb fylder KUN med holdets egen trup.
+    // Ejer 24/9: ingen separat aldersgate — trup-medlemskabet er hele kravet.
     inColumn: "team_id", ids: missingTeamIds,
-    extra: (q) => applyRiderEligibilityFilter(q),
+    extra: (q) => applyRiderEligibilityFilter(q, { squad: raceSquad }),
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
@@ -1374,6 +1387,32 @@ async function loadSeasonReferenceYear({ supabase, seasonId }) {
   }
 }
 
+// #5645 (Y4): løbets trup SKAL kendes før feltet bygges og præmierne udledes. Stage-
+// schedulerens vej (adminSimulateRace) projicerer ikke `squad`, så vi slår den op her,
+// én gang pr. afvikling — samme mønster som reputationHook.isSeniorRaceForReputation.
+//   - race-objektet bærer allerede `squad` (også null) → brug den, intet opslag.
+//   - 42703 (kolonnen findes ikke endnu) → senior: uden kolonnen findes intet ungdomsløb.
+//   - ingen række → senior: race-objektet kom fra samme tabel, så det sker kun i
+//     minimale test-mocks; en ægte, slettet række fejler andre steder først.
+//   - enhver anden DB-fejl → kast (fejl lukket: et gæt kunne give et ungdomsløb
+//     præmiepenge eller et seniorfelt). Løbet prøves igen ved næste tick.
+export async function resolveRaceSquad({ supabase, race }) {
+  if (!race || race.squad !== undefined) return race;
+  let result;
+  try {
+    result = await supabase.from("races").select("squad").eq("id", race.id).maybeSingle();
+  } catch (err) {
+    if (isMissingSquadColumnError(err)) return { ...race, squad: "senior" };
+    throw err;
+  }
+  const { data, error } = result || {};
+  if (error) {
+    if (isMissingSquadColumnError(error)) return { ...race, squad: "senior" };
+    throw new Error(`races.squad lookup failed for race ${race.id}: ${error.message}`);
+  }
+  return { ...race, squad: data?.squad ?? "senior" };
+}
+
 // Indlæs startfeltet (race_entries → per-hold autopick for hold UDEN entries) beriget
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
@@ -1395,10 +1434,17 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   let existingEntries = existing || [];
   // #1846: drop stale cross-division entries — et hold der har skiftet division (op/nedrykning)
   // efterlod entries i den gamle divisions løb. Kun hold i løbets EGEN division må være i feltet.
+  // #5645: for et ungdomsløb sammenlignes løbets pulje med holdets pulje FOR TRUPPEN.
+  const raceSquad = raceSquadOf(race);
   if (race.league_division_id != null && existingEntries.length) {
     const teamIds = [...new Set(existingEntries.map((e) => e.team_id).filter(Boolean))];
-    const { data: teamDivs } = await supabase.from("teams").select("id, league_division_id").in("id", teamIds);
-    const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, t.league_division_id]));
+    const { data: teamDivs, error: teamDivErr } = await supabase.from("teams")
+      .select(raceSquad === "senior" ? "id, league_division_id" : "id, league_division_id, u23_league_division_id, junior_league_division_id")
+      .in("id", teamIds);
+    // #5645 (CodeRabbit): en fejlet læsning må ikke tømme feltet for hold med
+    // committede entries (tom map → alle hold "ukendt pulje"). Kast i stedet.
+    if (teamDivErr) throw new Error(`teams (race pool filter): ${teamDivErr.message}`);
+    const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, teamPoolIdForSquad(t, raceSquad)]));
     existingEntries = filterEntriesToRaceDivision({ entries: existingEntries, teamDivisionById, raceDivisionId: race.league_division_id });
   }
   // Rod B (#1742/#1800): drop committede ghost-entries — rytter solgt/fyret (off-team),
@@ -1409,12 +1455,15 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   if (existingEntries.length) {
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: entryRiders, error: erErr } = await selectInChunks({
-      supabase, table: "riders", columns: "id, team_id, squad, is_academy, is_retired",
+      supabase, table: "riders",
+      columns: "id, team_id, squad, is_academy, is_retired",
       inColumn: "id", ids: entryRiderIds,
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
     const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
-    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById });
+    // #5645: ghost-tjekket mod LØBETS trup — en U23-rytter i et U23-løb er ikke en ghost,
+    // en senior i et U23-løb er. Ejer 24/9: ingen separat juniors-aldersgate herudover.
+    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: raceSquad });
   }
   // #3896: skadede committede entries må hverken starte eller simuleres — motoren
   // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),
@@ -2029,6 +2078,8 @@ export async function simulateRace({
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
+  // #5645: løbets trup (felt + præmievagt), se resolveRaceSquad.
+  race = await resolveRaceSquad({ supabase, race });
 
   // #1187 · race_days_completed FØR afviklingen — checkpoint-udgangspunkt for
   // board-weekend-wiring nedenfor. Defensiv: manglende række → null (ingen
@@ -2686,6 +2737,8 @@ export async function simulateStageByIndex({
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
+  // #5645: løbets trup (felt + præmievagt), se resolveRaceSquad.
+  race = await resolveRaceSquad({ supabase, race });
   if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
 
   // #4148: instrumentér afslutningsstien — måler varighed + Supabase-kald pr. fase

@@ -193,7 +193,8 @@ test("desktop 1440 × 900: parkeret hold uden holdudtagelse — tilmeldingen få
   await expect(card).toContainText(/Your team was parked/);
   await expect(page.getByTestId("team-selection-cta")).toHaveCount(0);
   expect(await onFirstScreen(page, card)).toBe(true);
-  await expect(card.getByRole("button", { name: /Sign up for next season/ })).toHaveClass(GOLD);
+  // #5643: et parkeret hold vender tilbage med det samme (POST /api/season/comeback).
+  await expect(card.getByRole("button", { name: /Return to the league/ })).toHaveClass(GOLD);
 
   await page.screenshot({ path: evidenceShotPath("pr-screens/452-dashboard-1440-parked.png") });
 });

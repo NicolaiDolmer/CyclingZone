@@ -161,10 +161,14 @@
     "outbid": "Outbid · yours {amount}"
   },
   "bidGate": {
-    "bothFull": "No room in your academy (8/8) or senior squad (30/30). Sell a rider to bid.",
+    "bothFull": "No room in your academy or senior squad (30/30). Sell a rider to bid.",
+    "bothFullU23": "No room on your U23 team ({max}/{max}) or senior squad (30/30). Sell a rider to bid.",
+    "bothFullJunior": "No room on your junior team ({max}/{max}) or senior squad (30/30). Sell a rider to bid.",
     "seniorFull": "Your senior squad is full (30/30). Sell a rider to bid.",
     "toSenior": "-> joins your senior squad",
-    "toAcademy": "-> joins your academy"
+    "toAcademy": "-> joins your academy",
+    "toU23": "-> joins your U23 team",
+    "toJunior": "-> joins your junior team"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",

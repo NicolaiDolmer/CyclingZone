@@ -35,8 +35,24 @@ test("PATCH /auctions/:id/proxy bruger getAuctionBidRoomBlock (samme delte helpe
     "proxy-route må ikke længere kalde den senior-only getAuctionBidSquadBlock direkte"
   );
   assert.match(block, /isYouth:\s*auction\.is_youth/);
-  assert.match(block, /academySlots:\s*ACADEMY\.SLOTS/);
+  // #5568: loftet er rytterens MÅL-trup (youthAuctionAcademyRoom), ikke det
+  // flade ACADEMY.SLOTS — samme helper som bud-routen.
+  assert.match(block, /youthAuctionAcademyRoom\(req\.team\.id,\s*auction\.rider_id\)/);
+  assert.match(block, /academySlots:\s*proxyAcademyRoom\?\.max/);
+  assert.doesNotMatch(block, /ACADEMY\.SLOTS/);
   assert.match(block, /errorCode:\s*"no_eligible_room_bid"/);
+});
+
+test("#5568: POST /auctions/:id/bid tæller akademi-grenen pr. mål-trup, ikke mod ACADEMY.SLOTS", () => {
+  const block = routeBlock('router.post("/auctions/:id/bid"');
+  assert.match(block, /youthAuctionAcademyRoom\(req\.team\.id,\s*auction\.rider_id\)/);
+  assert.match(block, /academySlots:\s*academyRoom\?\.max/);
+  assert.doesNotMatch(block, /ACADEMY\.SLOTS/);
+});
+
+test("PATCH /auctions/:id/proxy henter rider_id på auktionen (mål-truppen afgøres af rytterens alder)", () => {
+  const block = routeBlock('router.patch("/auctions/:id/proxy"');
+  assert.match(block, /\.from\("auctions"\)\s*\n\s*\.select\("[^"]*\brider_id\b[^"]*"\)/);
 });
 
 test("PATCH /auctions/:id/proxy henter is_youth på auktionen (ellers er akademi-fallbacken altid falsk)", () => {

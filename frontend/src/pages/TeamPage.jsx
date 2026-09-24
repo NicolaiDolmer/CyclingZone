@@ -35,6 +35,7 @@ import AcademySquadFilter from "../components/team/AcademySquadFilter.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
+import { demoteCapLabels } from "../lib/squadCaps.ts"; // #5568
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
@@ -1078,23 +1079,15 @@ export function TeamPage() {
   // kommer fra backendens academy-demote-quote-route — SAMME funktioner
   // (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries) som selve
   // demote() bruger til at udføre flyttet, se RiderManageActions.jsx's
-  // openDemote() for den fulde root-cause-forklaring. Akademi-cap-tællingen
-  // (8-cap-effekten) er uafhængig af quoten og hentes stadig direkte.
+  // openDemote() for den fulde root-cause-forklaring. #5568: loft-rækken kommer
+  // OGSÅ fra quoten (mål-truppen og dens loft, samme trup-valg som demote());
+  // før talte holdsiden alle akademiryttere mod 8 og kunne vise "9 / 8".
   async function handleDemote(rider) {
     setDemoteError(null);
     let quote = null;
-    let academyCount = null;
     try {
-      const [quoteRes, academyRes] = await Promise.all([
-        fetchRiderQuote(rider.id, "academy-demote-quote"),
-        // Akademi-cap-effekt: tæl holdets nuværende akademiryttere (8-cap).
-        team?.id
-          ? supabase.from("riders").select("id", { count: "exact", head: true })
-              .eq("team_id", team.id).eq("is_academy", true)
-          : Promise.resolve({ count: null }),
-      ]);
+      const quoteRes = await fetchRiderQuote(rider.id, "academy-demote-quote");
       if (quoteRes.ok) quote = quoteRes.data;
-      academyCount = academyRes.count ?? null;
     } catch { /* fallback nedenfor; vis dialogen uanset */ }
     setDemoteConfirm({
       rider,
@@ -1105,7 +1098,7 @@ export function TeamPage() {
       keepsContract: quote?.keepsContract ?? false,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
-      academyCount,
+      cap: demoteCapLabels(quote),
     });
   }
 
@@ -1382,8 +1375,9 @@ export function TeamPage() {
         riderName={demoteConfirm ? `${demoteConfirm.rider.firstname} ${demoteConfirm.rider.lastname}`.trim() : ""}
         newSalary={demoteConfirm?.newSalary ?? null}
         currentSalary={demoteConfirm?.currentSalary ?? 0}
-        capLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount} / 8` : null}
-        capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
+        capLabel={demoteConfirm?.cap?.capLabel ?? null}
+        capAfterLabel={demoteConfirm?.cap?.capAfterLabel ?? null}
+        capSquad={demoteConfirm?.cap?.capSquad ?? null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
         racesOngoing={demoteConfirm?.racesOngoing ?? 0}
         keepsContract={!!demoteConfirm?.keepsContract}

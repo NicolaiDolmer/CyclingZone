@@ -25,6 +25,7 @@ import { isAllowedOrigin } from "./lib/corsOrigin.js";
 import { errorMiddleware, shouldReportToSentry } from "./lib/errorMiddleware.js";
 import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
+import { createComebackRouter } from "./routes/comeback.js"; // #5643
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 
 const app = express();
@@ -71,6 +72,13 @@ app.use(express.json({ limit: "10mb" }));
 // webhook-analyse i lib/normalizeRequestBody.js. Skal stå EFTER alle parsere.
 app.use(normalizeRequestBody);
 
+// #5643: POST /api/season/comeback (parkeret hold tilbage efter Global Rank). Egen
+// route-fil, monteret FØR apiRoutes, fordi routes/api.js er låst af en anden bølge.
+app.use("/api/season/comeback", createComebackRouter({
+  supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+  }),
+}));
 app.use("/api", apiRoutes);
 // POST /api/admin/sync-uci fjernet 2026-06-12 (#1207, ejer-Option A): UCI-sync er
 // pensioneret efter relaunch til fiktive ryttere — uci_points er frossen, og

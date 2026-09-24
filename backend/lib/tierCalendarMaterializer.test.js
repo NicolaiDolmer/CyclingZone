@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
+import { readFileSync } from "node:fs";
+import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST, isMissingRetiredAtColumnError, loadCalendarPools } from "./tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
-import { TIER_DENSITY } from "./calendarTierCaps.js";
+import { TIER_DENSITY, SQUAD_CALENDAR } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveEarliestSeasonTransition, latestInstant, TIER_STAGE_SLOTS } from "./calendarPlanningWindow.js";
 
@@ -448,18 +449,68 @@ test("forceTiers: en tier-4-pulje uden rigtige managers får alligevel en kalend
   assert.equal(tier4Plan.pools.length, 2, "begge tier-4-puljer skal have fået samme plan");
 });
 
-test("forceTiers: uden flaget (default) springes en mandagsløs tier-4-pulje stadig over (uændret adfærd)", () => {
+test("forceTiers: uden flaget (default) springes en managerløs tier-3-pulje stadig over (uændret adfærd)", () => {
+  // #5644: tier 4 er altid live fra S4 (#4592 A3); den sovende regel gælder nu kun tier 3.
   const pools = [
     { id: 1, tier: 1, label: "Division 1", realManagerCount: 5 },
-    { id: 8, tier: 4, label: "Division 4 — A", realManagerCount: 0 },
+    { id: 4, tier: 3, label: "Division 3 — A", realManagerCount: 0 },
   ];
   const catalog = [
     { id: "r1", name: "Test Tour", race_class: "TourFrance", race_type: "stage_race", stages: 21 },
   ];
 
-  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 1: 21, 4: 1 } });
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 1: 21, 3: 1 } });
 
-  assert.equal(tierPlans.find((p) => p.tier === 4), undefined, "uden forceTiers er adfærden uændret: tier 4 uden managers får ingen plan");
+  assert.equal(tierPlans.find((p) => p.tier === 3), undefined, "uden forceTiers er adfærden uændret: tier 3 uden managers får ingen plan");
+});
+
+// ── #5644 / #4592 A3: 4 aktive D4-puljer, pensionerede puljer uden kalender ──────────
+
+test("#5644 plan: aktive tier-4-puljer får kalender uden ægte managers; pensionerede får ingen — heller ikke via forceTiers", () => {
+  const pools = [
+    ...[0, 1, 2, 3].map((i) => ({ id: 40 + i, tier: 4, realManagerCount: 0 })),
+    ...[4, 5, 6, 7].map((i) => ({ id: 40 + i, tier: 4, realManagerCount: 3, retiredAt: "2026-09-27T20:00:00Z" })),
+  ];
+  const catalog = [];
+  [5, 4, 4, 4, 3].forEach((st, i) => catalog.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
+  for (let i = 0; i < 30; i++) catalog.push({ id: `c2-od-${i}`, name: `C2 Classic ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
+
+  for (const forceTiers of [[], [4]]) {
+    const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 4: 20 }, forceTiers, ...LEGACY_MIX });
+    const t4 = tierPlans.find((p) => p.tier === 4);
+    assert.ok(t4, "tier 4 skal have en plan");
+    assert.deepEqual(t4.pools.map((p) => p.leagueDivisionId), [40, 41, 42, 43], `kun de 4 aktive puljer (forceTiers=${JSON.stringify(forceTiers)})`);
+  }
+});
+
+test("#5644 materialize: læser kun aktive puljer (retired_at IS NULL) — E-H får 0 løb", async () => {
+  const league_divisions = [
+    ...[0, 1, 2, 3].map((i) => ({ id: 40 + i, tier: 4, pool_index: i, label: `Division 4 — ${i}`, retired_at: null })),
+    ...[4, 5, 6, 7].map((i) => ({ id: 40 + i, tier: 4, pool_index: i, label: `Division 4 — ${i}`, retired_at: "2026-09-27T20:00:00Z" })),
+  ];
+  const catalog = [];
+  [5, 4, 4, 4, 3].forEach((st, i) => catalog.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
+  for (let i = 0; i < 30; i++) catalog.push({ id: `c2-od-${i}`, name: `C2 Classic ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
+  const sb = makeSupabase({ league_divisions, teams: [], race_pool: catalog });
+  const summary = await materializeTierCalendars({
+    supabase: sb, seasonId: "s4", from: FROM, dryRun: false, quotas: { 4: 20 }, seasonTransitionAt: null, ...LEGACY_MIX,
+  });
+  assert.ok(summary.racesInserted > 0);
+  const byPool = new Map();
+  for (const r of sb.state.races) byPool.set(r.league_division_id, (byPool.get(r.league_division_id) ?? 0) + 1);
+  assert.deepEqual([...byPool.keys()].sort((a, b) => a - b), [40, 41, 42, 43], "kun de aktive D4-puljer har løb");
+  assert.ok(sb.state.races.every((r) => r.squad === "senior"), "seniorløb skrives med squad = 'senior'");
+});
+
+test("#5644 reconcile: en pensioneret pulje og en trups gruppe aktiveres aldrig af seniorens reconcile", async () => {
+  const state = tier4ActivationState();
+  state.league_divisions.push({ id: 90, tier: 1, pool_index: 0, label: "U23 — A", squad: "u23" });
+  const sb = makeSupabase(state);
+  const retired = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 9, now: FROM });
+  assert.equal(retired.skipped, "retired-pool");
+  const youth = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 90, now: FROM });
+  assert.equal(youth.skipped, "squad-pool");
+  assert.equal(sb.state.races.length, 0);
 });
 
 // ── #2251 · GT-gate + kalender-invarianter ──────────────────────────────────────
@@ -549,9 +600,11 @@ function tier4ActivationState() {
     seasons: [{ id: "s1", number: 2, status: "active", start_date: "2026-06-22" }],
     league_divisions: [
       { id: 8, tier: 4, pool_index: 0, label: "Division 4 — A" },
-      { id: 9, tier: 4, pool_index: 1, label: "Division 4 — B" },
+      // #5644: tier 4 er altid live fra S4 (#4592 A3). Søster-puljen er derfor PENSIONERET
+      // her (retired_at, #4592 A2) — det er den eneste måde en D4-pulje står uden kalender.
+      { id: 9, tier: 4, pool_index: 1, label: "Division 4 — B", retired_at: "2026-09-27T20:00:00Z" },
     ],
-    teams: [mgrTeam("m1", 8)], // første ægte manager aktiverer pulje 8; pulje 9 forbliver sovende
+    teams: [mgrTeam("m1", 8)], // første ægte manager aktiverer pulje 8; pulje 9 er pensioneret
     race_pool: tier3Catalog(),
   };
 }
@@ -564,7 +617,7 @@ test("#2149 aktivering af sovende tier-4-pulje materialiserer kalender for den p
   assert.equal(summary.tier, 4);
   assert.ok(summary.racesInserted > 0, "der skal indsættes løb for den aktiverede pulje");
   assert.ok(sb.state.races.filter((r) => r.league_division_id === 8).length > 0, "pulje 8 har løb");
-  assert.equal(sb.state.races.filter((r) => r.league_division_id === 9).length, 0, "managerløs pulje 9 må IKKE få kalender (ingen forceTiers)");
+  assert.equal(sb.state.races.filter((r) => r.league_division_id === 9).length, 0, "pensioneret pulje 9 må IKKE få kalender (#5644)");
   // from = næste dags UTC-midnat efter now — dagens afvikling forstyrres ikke.
   assert.equal(summary.from, "2026-06-29T00:00:00.000Z");
 });
@@ -669,10 +722,12 @@ test("#2149 aktivering på/efter sæsonens sidste dag: no-op (season-ending) i s
 test("#2149 sovende pulje der STADIG er managerløs: materializeren gater selv (0 løb indsat)", async () => {
   // Defensivt hjørne: kaldes reconcile'n for en pulje uden ægte manager (fx race mellem
   // insert og læsning), holder poolHasCalendar-gaten i materializeren stadig — intet indsættes.
+  // #5644: tier 4 er altid live fra S4 (#4592 A3), så det sovende hjørne findes kun i tier 3.
   const state = tier4ActivationState();
+  state.league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
   state.teams = []; // ingen managere overhovedet
   const sb = makeSupabase(state);
-  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 4, now: FROM });
   assert.equal(summary.skipped, null, "reconcile'n når materialiseringen");
   assert.equal(summary.racesInserted, 0, "poolHasCalendar-gaten holder — 0 løb");
   assert.equal(sb.state.races.length, 0);
@@ -1386,4 +1441,133 @@ test("#5592 reconcile: en pulje der vågner midt i sæsonen er ikke en sæsonsta
   assert.equal(calls.length, 1);
   assert.equal(calls[0].seasonTransitionAt, null);
   assert.equal(calls[0].seasonLastRaceDay, undefined, "udledes af horisonten, der slutter på sæsonens sidste etape-dato");
+});
+
+// ── #5644 (Y5) · kalender pr. trup fra katalogerne (u23 + junior) ──────────────────────
+
+const YOUTH_CATALOG = JSON.parse(readFileSync(new URL("./__fixtures__/racePoolCatalog.youth.json", import.meta.url), "utf8")).catalog;
+
+// S4-formen (ejer 24/9): ca. 9 grupper à 24 pr. trup, alle i tier 1, pool_index 0-8.
+function youthState(squad, { seniorRaces = true } = {}) {
+  const groups = Array.from({ length: 9 }, (_, i) => ({
+    id: (squad === "u23" ? 500 : 600) + i, tier: 1, pool_index: i, label: `${squad} — ${i}`, squad, retired_at: null,
+  }));
+  return {
+    league_divisions: [
+      { id: 1, tier: 1, pool_index: 0, label: "Division 1", squad: "senior" },
+      ...groups,
+    ],
+    teams: [],
+    race_pool: [...tier3Catalog(), ...YOUTH_CATALOG],
+    races: seniorRaces
+      ? [{ id: "senior-1", season_id: "s4", league_division_id: 1, pool_race_id: "ps-od-0", name: "Classic 0", squad: "senior" }]
+      : [],
+  };
+}
+
+async function materializeSquad(sb, squad, extra = {}) {
+  return materializeTierCalendars({
+    supabase: sb, seasonId: "s4", seasonStartDate: "2026-09-28", from: FROM, dryRun: false,
+    raceDayTarget: 140, seasonTransitionAt: null, squad, ...extra,
+  });
+}
+
+const startsPerWeek = (races) => {
+  const weeks = [0, 0, 0, 0];
+  for (const r of races) weeks[Math.floor(r.game_day_start / 7)] += 1;
+  return weeks;
+};
+
+test("#5644 materialize squad u23: skriver races.squad = 'u23' i de 9 grupper, identisk kalender, rører ikke seniorløb", async () => {
+  const sb = makeSupabase(youthState("u23"));
+  const before = JSON.stringify(sb.state.races.filter((r) => r.squad === "senior"));
+  const summary = await materializeSquad(sb, "u23");
+
+  assert.equal(summary.squad, "u23");
+  const u23 = sb.state.races.filter((r) => r.squad === "u23");
+  assert.ok(u23.length > 0, "U23-løb skal indsættes");
+  assert.equal(u23.length, summary.racesInserted, "alle indsatte løb er U23-løb");
+  assert.deepEqual([...new Set(u23.map((r) => r.league_division_id))].sort((a, b) => a - b), Array.from({ length: 9 }, (_, i) => 500 + i), "alle 9 grupper, ingen seniorpulje");
+  assert.equal(JSON.stringify(sb.state.races.filter((r) => r.squad === "senior")), before, "seniorløbet er urørt");
+  assert.ok(u23.every((r) => YOUTH_CATALOG.some((c) => c.id === r.pool_race_id && c.squad === "u23")), "kun løb fra U23-kataloget");
+
+  const perGroup = (id) => u23.filter((r) => r.league_division_id === id).map((r) => `${r.pool_race_id}:${r.game_day_start}`).sort().join("|");
+  for (let i = 1; i < 9; i++) assert.equal(perGroup(500 + i), perGroup(500), `gruppe ${i} har samme kalender som gruppe 0`);
+});
+
+test("#5644 tæthed: U23 1-2 løb pr. uge, junior 1 pr. uge (efter start-dato), aldrig to ungdomsløb samme dato", async () => {
+  for (const squad of ["u23", "junior"]) {
+    const sb = makeSupabase(youthState(squad));
+    await materializeSquad(sb, squad);
+    const groupId = squad === "u23" ? 500 : 600;
+    const races = sb.state.races.filter((r) => r.league_division_id === groupId);
+    const { min, max } = SQUAD_CALENDAR[squad].racesPerWeek;
+    for (const [w, n] of startsPerWeek(races).entries()) {
+      assert.ok(n >= min && n <= max, `${squad} uge ${w + 1}: ${n} løb, skal være ${min}-${max}`);
+    }
+    const raceIds = new Set(races.map((r) => r.id));
+    const dates = sb.state.race_stage_schedule.filter((s) => raceIds.has(s.race_id)).map((s) => s.scheduled_at.slice(0, 10));
+    assert.equal(new Set(dates).size, dates.length, `${squad}: højst én etape pr. dato`);
+    assert.ok(new Set(dates).size <= 28 * SQUAD_CALENDAR[squad].maxRacingDayShare, `${squad}: de fleste datoer er træningsdage`);
+  }
+});
+
+test("#5644 idempotent pr. trup: anden U23-kørsel indsætter 0, og en junior-kørsel ser ikke U23-løbene", async () => {
+  const state = youthState("u23");
+  state.league_divisions.push(...youthState("junior").league_divisions.filter((d) => d.squad === "junior"));
+  const sb = makeSupabase(state);
+  const first = await materializeSquad(sb, "u23");
+  const second = await materializeSquad(sb, "u23");
+  assert.ok(first.racesInserted > 0);
+  assert.equal(second.racesInserted, 0, "samme trup: dedup på (pulje, pool_race)");
+  const junior = await materializeSquad(sb, "junior");
+  assert.ok(junior.racesInserted > 0, "junior bygges uafhængigt af U23");
+  assert.ok(sb.state.races.filter((r) => r.squad === "junior").every((r) => r.league_division_id >= 600));
+});
+
+test("#5644 dry-run for en trup: senior-dæknings-gulvene er måling, ikke brud; ukendt trup kastes", async () => {
+  const sb = makeSupabase(youthState("u23"));
+  const plan = await materializeTierCalendars({
+    supabase: sb, seasonId: "s4", from: FROM, dryRun: true, raceDayTarget: 140, seasonTransitionAt: null, squad: "u23",
+  });
+  assert.equal(sb.state.races.length, 1, "dry-run skriver intet");
+  const t1 = plan.tiers[0];
+  assert.deepEqual(t1.calendarViolations, [], "ingen brud i U23-planen");
+  assert.ok(Array.isArray(t1.coverageMeasurements));
+  assert.equal(plan.planTiers[0].raceDayAxisLength, 140, "samme løbsdags-akse som senioren");
+  await assert.rejects(() => materializeTierCalendars({ supabase: sb, seasonId: "s4", from: FROM, squad: "U23" }), /ukendt trup/);
+});
+
+test("#5644 retired_at: 42703 på retired_at → læs uden filteret (ingen pulje kan være pensioneret endnu); PGRST204 fejler lukket", async () => {
+  assert.equal(isMissingRetiredAtColumnError({ code: "42703", message: "column league_divisions.retired_at does not exist" }), true);
+  assert.equal(isMissingRetiredAtColumnError({ code: "PGRST204", message: "Could not find the 'retired_at' column in the schema cache" }), false);
+  assert.equal(isMissingRetiredAtColumnError({ code: "42703", message: "column league_divisions.squad does not exist" }), false);
+
+  const calls = [];
+  const rows = [{ id: 1, tier: 1, pool_index: 0, label: "Division 1" }];
+  const supabase = {
+    from() {
+      const call = { filters: [] };
+      calls.push(call);
+      const b = {
+        select(cols) { call.cols = cols; return b; },
+        or(expr) { call.filters.push(`or:${expr}`); return b; },
+        eq(c, v) { call.filters.push(`eq:${c}=${v}`); return b; },
+        is(c, v) { call.filters.push(`is:${c}=${v}`); return b; },
+        then(res, rej) {
+          const missing = call.filters.some((f) => f.startsWith("is:retired_at"));
+          const out = missing
+            ? { data: null, error: { code: "42703", message: "column league_divisions.retired_at does not exist" } }
+            : { data: rows, error: null };
+          return Promise.resolve(out).then(res, rej);
+        },
+      };
+      return b;
+    },
+  };
+  const { data, error } = await loadCalendarPools({ supabase, squad: "senior" });
+  assert.equal(error ?? null, null);
+  assert.deepEqual(data, rows);
+  assert.equal(calls.length, 2, "ét forsøg med filteret, ét uden");
+  assert.ok(calls[1].filters.includes("or:squad.is.null,squad.eq.senior"), "senior-scopet bevares i fallback'et");
 });
