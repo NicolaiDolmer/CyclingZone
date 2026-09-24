@@ -654,10 +654,12 @@ helt), og at **"Gruppér efter type" fjernes på mobil** og bliver stående på 
 
 Formen er tegnet efter realisme-reglen: enheden er løbsdagen, rytteren kører ét løb **eller** træner.
 To ting er bevidst holdt adskilt her: **kalenderens tæthed** og **træningens tick-model**.
-Kalendertætheden ER ejer-låst pr. division (`backend/lib/calendarTierCaps.js`, `TIER_DENSITY` = 5/4/3/3 for
-division 1-4), så "fem løbsdage om dagen" gælder Division 1, ikke alle divisioner. **Træningens** tick pr.
-løbsdag (`training_tick_per_race_day`) er derimod OFF i prod, og hvor mange løbsdags-kolonner en spillers
-dag har, afhænger af hans division. Kolonne-modellen er derfor skrevet til at bære **1-5** løbsdage:
+Kalendertætheden ER ejer-låst pr. division (`backend/lib/calendarTierCaps.js`, `TIER_DENSITY` = 5/4/3/3
+**etaper** pr. kalenderdag for division 1-4). Tætheden er ikke løbsdags-aksen: siden #5267 (ejer-valg 20/9)
+bærer hver kalenderdato 5 løbsdage (`game_day`) i alle divisioner, og de løbsdage der ikke har en etape er
+rene træningsdage (§13.3b). **Træningens** tick pr. løbsdag (`training_tick_per_race_day`) er derimod OFF i
+prod, og antallet af løbsdags-kolonner følger kalenderens løbsdage pr. dato. Kolonne-modellen er derfor
+skrevet til at bære **1-5** løbsdage:
 flag OFF giver præcis én kolonne, "I dag" (løb eller dagens session), i nøjagtig samme tabelform, og
 fladen viser **aldrig** et hårdkodet sæson-tal. Modellen ligger i `frontend/src/lib/trainingMobileModel.ts`
 (unit-testet), visningen i `frontend/src/components/training/mobile/`. Designbeslutningen står også i
@@ -697,7 +699,7 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
-**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage. Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). De to ting sweepen skulle kunne for at udnytte det (drives af løbsdags-aksen, og et rytter-filter på `race_entry_days` i stedet for `race_results`) er bygget i B4 (#4847, rettet 20/9), se §13.3b. Kanterne ved sæsonens første og sidste løbsdato er lukket bag flaget (#4846, 24/9), så hver division tikker præcis 140 løbsdage; se §13.3b.
+**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage på aksen (`game_day`-slots, også dem uden etape; tætheden 5/4/3/3 tæller etaper, ikke løbsdage). Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). De to ting sweepen skulle kunne for at udnytte det (drives af løbsdags-aksen, og et rytter-filter på `race_entry_days` i stedet for `race_results`) er bygget i B4 (#4847, rettet 20/9), se §13.3b. Kanterne ved sæsonens første og sidste løbsdato er lukket bag flaget (#4846, 24/9), så hver division tikker præcis 140 løbsdage; se §13.3b.
 
 ### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
 
