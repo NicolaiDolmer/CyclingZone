@@ -161,10 +161,14 @@
     "outbid": "Overbudt · dit {amount}"
   },
   "bidGate": {
-    "bothFull": "Ingen plads i dit akademi (8/8) eller din senior-trup (30/30). Sælg en rytter for at byde.",
+    "bothFull": "Ingen plads i dit akademi eller din senior-trup (30/30). Sælg en rytter for at byde.",
+    "bothFullU23": "Ingen plads på dit U23-hold ({max}/{max}) eller din senior-trup (30/30). Sælg en rytter for at byde.",
+    "bothFullJunior": "Ingen plads på dit juniorhold ({max}/{max}) eller din senior-trup (30/30). Sælg en rytter for at byde.",
     "seniorFull": "Din senior-trup er fuld (30/30). Sælg en rytter for at byde.",
     "toSenior": "-> ryger på din senior-trup",
-    "toAcademy": "-> ryger i dit akademi"
+    "toAcademy": "-> ryger i dit akademi",
+    "toU23": "-> ryger på dit U23-hold",
+    "toJunior": "-> ryger på dit juniorhold"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",
