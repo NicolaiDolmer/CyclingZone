@@ -64,18 +64,23 @@ test("demoteCapLabels: manglende/ufuldstændig quote -> null (rækken udelades, 
 test("fetchAcademySquadCounts: én head-optælling pr. trup på riders.squad", async () => {
   const calls: Array<Record<string, unknown>> = [];
   const counts: Record<string, number> = { u23: 8, junior: 2 };
-  const client = {
+  type Client = Parameters<typeof fetchAcademySquadCounts>[0];
+  type Builder = ReturnType<ReturnType<Client["from"]>["select"]>;
+  type Result = { count?: number | null; error?: unknown };
+  const makeBuilder = (filters: Record<string, unknown>): Builder => ({
+    eq: (col: string, val: unknown) => makeBuilder({ ...filters, [col]: val }),
+    then<T1 = Result, T2 = never>(
+      onfulfilled?: ((value: Result) => T1 | PromiseLike<T1>) | null,
+      onrejected?: ((reason: unknown) => T2 | PromiseLike<T2>) | null,
+    ): PromiseLike<T1 | T2> {
+      calls.push({ ...filters });
+      return Promise.resolve<Result>({ count: counts[filters.squad as string], error: null }).then(onfulfilled, onrejected);
+    },
+  });
+  const client: Client = {
     from(table: "riders") {
       assert.equal(table, "riders");
-      const filters: Record<string, unknown> = {};
-      const builder = {
-        eq(col: string, val: unknown) { filters[col] = val; return builder; },
-        then(resolve: (v: { count: number; error: null }) => unknown) {
-          calls.push({ ...filters });
-          return Promise.resolve({ count: counts[filters.squad as string], error: null }).then(resolve);
-        },
-      };
-      return { select: () => builder };
+      return { select: () => makeBuilder({}) };
     },
   };
   assert.deepEqual(await fetchAcademySquadCounts(client, "team-A"), { u23: 8, junior: 2 });
