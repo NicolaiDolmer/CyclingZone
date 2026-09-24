@@ -5,6 +5,8 @@ import { z } from "zod";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { toSupabaseError, isLockTimeoutError, isRaceCountLockTimeoutError } from "../lib/supabaseErrorNormalize.js";
 import { readHonours } from "./rankingHonours.ts";
+import { listYouthStandings } from "../lib/youthStandings.js";
+import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js";
 
 // #5452: matviews genopfriskes via en PLAIN (eksklusiv) REFRESH (database/2026-07-27
 // -3013-refresh-matviews-concurrently.sql) — en læser der ankommer i det vindue
@@ -55,21 +57,57 @@ const seasonQuery = z.strictObject({ season_id: seasonId });
 const raceQuery = z.strictObject({ season_id: seasonId.optional(), race_ids: ids.optional() })
   .refine(query => Boolean(query.season_id) !== Boolean(query.race_ids));
 const countQuery = z.strictObject({ team_id: uuid });
+// #5647 (Y7): ungdomsstilling og ungdoms-rytterrangliste. season_id er valgfri
+// (default = aktiv saeson); pool = league_divisions.id for en ungdomsgruppe.
+const youthSquad = z.enum(["u23", "junior"]);
+const poolId = z.string().regex(/^[1-9]\d{0,8}$/).transform(Number);
+const youthStandingsQuery = z.strictObject({ squad: youthSquad, pool: poolId.optional(), season_id: seasonId.optional() });
+const youthRidersQuery = z.strictObject({ squad: youthSquad, season_id: seasonId.optional() });
 
 // No client-controlled projections, ordering, table names or raw PostgREST filters.
 // These are public result aggregates; any signed-in manager can compare teams.
 const GLOBAL_COLUMNS = "team_id,name,division,is_ai,banked_points,season_points,global_points,active_recent,is_rookie,global_rank";
 const RIDER_COLUMNS = "season_id,rider_id,points,prize_earned,stage_wins,gc_wins,classic_wins,pts_wins,mtn_wins,young_wins,yellow_days,green_days,polka_days,white_days,top3,top10";
 const STANDINGS_COLUMNS = "season_id,team_id,comp_wins,comp_podiums,podiums,prize_earned";
+const YOUTH_RIDER_COLUMNS = `${RIDER_COLUMNS},squad`;
 
-export function createRankingsRouter({ supabase, requireAuth, reportError, viewerClient }: {
+class YouthPagesDisabled extends Error {}
+
+export function createRankingsRouter({ supabase, requireAuth, reportError, viewerClient, isViewerBetaTester }: {
   supabase: SupabaseClient;
   requireAuth: RequestHandler;
   reportError: (error: unknown) => void;
   viewerClient: (authorization: string) => SupabaseClient;
+  // Valgfri DI (samme funktion som api.js' isViewerBetaTester). Uden den slaar
+  // ruterne selv viewerens beta-status op med samme forespoergsel.
+  isViewerBetaTester?: (req: Request) => Promise<boolean>;
 }) {
   const router = Router();
   router.use(requireAuth);
+
+  async function viewerIsBetaTester(req: Request): Promise<boolean> {
+    if (isViewerBetaTester) return isViewerBetaTester(req);
+    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    if (!userId) return false;
+    const { data } = await supabase.from("users").select("role, is_beta_tester").eq("id", userId).maybeSingle();
+    return data?.role === "admin" || data?.is_beta_tester === true;
+  }
+
+  // #5647: ungdomsruterne ligger bag youth_squad_pages (samme kontakt og samme
+  // 409-svar som GET /api/youth-squads). Slukket = ingen databaselaesning.
+  async function requireYouthPages(req: Request) {
+    const isBetaTester = await viewerIsBetaTester(req);
+    if (!(await isYouthSquadPagesEnabled(supabase, { isBetaTester }))) throw new YouthPagesDisabled();
+  }
+
+  async function resolveSeasonId(requested: string | undefined): Promise<string | null> {
+    if (requested) return requested;
+    const { data, error } = await withLockTimeoutRetry(() =>
+      supabase.from("seasons").select("id").eq("status", "active")
+        .order("number", { ascending: false }).limit(1).maybeSingle());
+    if (error) throw error;
+    return data?.id ?? null;
+  }
 
   function get<T extends z.ZodType>(path: string, schema: T, read: (query: z.output<T>, req: Request) => Promise<unknown>) {
     router.get(path, async (req, res) => {
@@ -78,6 +116,7 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
       try {
         res.set("Cache-Control", "private, no-store").json(await read(parsed.data, req));
       } catch (error) {
+        if (error instanceof YouthPagesDisabled) { res.status(409).json({ error: "youth_squad_pages_disabled" }); return; }
         reportError(error);
         res.status(500).json({ error: "Unable to load rankings" });
       }
@@ -154,6 +193,28 @@ export function createRankingsRouter({ supabase, requireAuth, reportError, viewe
     }
     if (count == null) throw new Error(`race-count (HTTP ${status}): missing ranking count`);
     return { count };
+  });
+
+  // #5647 (Y7 / plan S4): holdstillingen for en ungdomstrup, pr. gruppe (pool)
+  // eller alle grupper. Samme svarform som /standings: { data: [...] }.
+  get("/youth/standings", youthStandingsQuery, async ({ squad, pool, season_id }, req) => {
+    await requireYouthPages(req);
+    const season = await resolveSeasonId(season_id);
+    if (!season) return { data: [] };
+    return { data: await listYouthStandings({ supabase, seasonId: season, squad, leagueDivisionId: pool ?? null }) };
+  });
+
+  // #5647 (Y7 / plan S5): rytterranglisten for en ungdomstrup (kun ungdomsloeb,
+  // youth_rider_rankings_mv). Samme kolonner som /riders + squad.
+  get("/youth/riders", youthRidersQuery, async ({ squad, season_id }, req) => {
+    await requireYouthPages(req);
+    const season = await resolveSeasonId(season_id);
+    if (!season) return { data: [] };
+    return {
+      data: await fetchAllRows(() => supabase.from("youth_rider_rankings_mv").select(YOUTH_RIDER_COLUMNS)
+        .eq("season_id", season).eq("squad", squad)
+        .order("points", { ascending: false }).order("rider_id")),
+    };
   });
   return router;
 }
