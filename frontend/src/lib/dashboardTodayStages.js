@@ -14,6 +14,7 @@
 
 import { terrainBucket } from "./stageTerrain.js";
 import { deriveTeamStandings } from "./raceLiveStandings.js";
+import { isRaceStageResultRow } from "./raceWinnerResultType.ts";
 
 // Mini profile silhouette bucket for TerrainGlyph (calendar's 6-name
 // vocabulary: sprint/cobbles/hilly/mountain/itt/ttt). stageTerrain.js's
@@ -60,14 +61,17 @@ export function computeStageRaceStanding(rows, teamId) {
   return mine ? { rank: mine.rank, total: teamStandings.length, final: false } : null;
 }
 
-// Today's stage winner (rank 1, result_type='stage') for one (raceId,
-// stageNumber) slot — the "vindernavn når færdig" status line. `rows` =
-// race_results rows for however many of today's own races were fetched
-// (already bounded upstream). null = results have not landed yet.
-export function todayStageWinner(rows, raceId, stageNumber) {
+// Today's winner (rank 1) for one (raceId, stageNumber) slot — the
+// "vindernavn når færdig" status line. A stage race's winner is its rank-1
+// 'stage' row; a one-day race's winner is its rank-1 'gc' row, because the
+// engine never writes 'stage' rows for one-day races (#5601). The rule lives in
+// raceWinnerResultType.ts, so a stage race's final-stage 'gc' row (the overall
+// winner) is never mistaken for the stage winner. `rows` = race_results rows
+// for however many of today's own races were fetched (already bounded
+// upstream). null = results have not landed yet.
+export function todayStageWinner(rows, { raceId, raceType, stageNumber }) {
   if (!Array.isArray(rows)) return null;
-  const row = rows.find((r) => r.race_id === raceId && (r.stage_number ?? 1) === stageNumber
-    && r.result_type === "stage" && r.rank === 1);
+  const row = rows.find((r) => r.rank === 1 && isRaceStageResultRow(r, { raceId, raceType, stageNumber }));
   return row ? row.rider_name : null;
 }
 
@@ -77,4 +81,19 @@ export function todayStageWinner(rows, raceId, stageNumber) {
 export function entryCountFor(rows, raceId) {
   if (!Array.isArray(rows)) return 0;
   return rows.filter((r) => r.race_id === raceId).length;
+}
+
+// Combine the per-race "placering" query results (#5589) into a
+// Map<raceId, rows>. Each race's rows come from its OWN Supabase query
+// (one race_id + one stage_number), so this in-memory merge can safely hold
+// MORE than 1000 rows in total across races — PostgREST's 1000-row cap
+// applies per HTTP response, not to a JS array built by combining several
+// already-bounded responses. `standingResults` is the `{ data, error }`
+// array `Promise.all` returns, in the SAME order as `standingRaces`.
+export function mergeStandingRowsByRace(standingRaces, standingResults) {
+  const byRace = new Map();
+  standingRaces.forEach((race, i) => {
+    byRace.set(race.id, standingResults[i]?.data || []);
+  });
+  return byRace;
 }
