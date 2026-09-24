@@ -574,12 +574,41 @@ export const WEATHER_EXTRA_TUNING = deepFreeze(weatherExtra);
 // over CP paa en bjergetape, grupetto sparer omtrent det samme den anden vej.
 // Det er en STOR arm — den skal kalibreres sammen med bjerg-/hale-
 // kalibreringen (#4707), ikke laases her.
+//
+// #4914 (kalibreringspakken, M12): paa FLADE etaper var all_out gratis. Kravet
+// er en andel af gruppens tempo (`terrain.baseDemand` x hjul-rabat), og den
+// andel er saa lav paa fladt/rullende terraen at den faelles multiplikator
+// aldrig loeftede en rytter over CP dér — ingen W'-taering, ingen pris i
+// loebet, kun belastning bagefter. Rettelsen er en PROFIL-tabel for all_out
+// alene: de massefinale-profiler hvor kravet aldrig naaede CP faar en hoejere
+// multiplikator, alt andet (bjerg, kuperet, brosten, enkeltstart) beholder den
+// faelles vaerdi, saa den allerede store bjerg-arm er uroert.
+//
+// HVORDAN tallene er valgt (ikke gaettet): den faelles vaerdi giver en rytter
+// FORREST i gruppen et krav paa en bestemt andel af gruppens tempo paa en
+// stigning. Profil-vaerdien er sat saa den samme forreste rytter paa profilens
+// eget terraen rammer SAMME andel — "all_out betyder det samme i forhold til
+// gruppens tempo uanset etapetype". Tallene er derfor AFLEDT af forholdet
+// mellem terraenernes `baseDemand` (regnet herunder, ikke skrevet af), ikke et
+// frit valg; segmentLoop.effortCost.test.ts laaser at kravet KAN overstige CP
+// paa fladt. Tvillinge-maalingen foer/efter: backend/scripts/
+// v4EffortTwinMeasure.js; tal i balance-internals/ (hard rule 17).
+// Work-cost-aksen (teamPlayExtra.effortCostMultiplier.all_out = 0) er
+// ejer-laast og uroert.
+const ALL_OUT_DEMAND_MULTIPLIER = 1.5; // raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker, STARTGAET
+function allOutMultiplierMatchingClimb(kind: SegmentKind): number {
+  return ALL_OUT_DEMAND_MULTIPLIER * (tuning.terrain.baseDemand.climb / tuning.terrain.baseDemand[kind]);
+}
 const effortCostExtra = {
   demandMultiplierGrupetto: 0.5, // <save: koerer med i grupettoen, gaar ikke efter noget (raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker, STARTGAET)
   demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: 1.0, // =1: baseline, ingen modulation
   demandMultiplierSave: 0.7, // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
-  demandMultiplierAllOut: 1.5, // >protect: alt ud (raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker, STARTGAET)
+  demandMultiplierAllOut: ALL_OUT_DEMAND_MULTIPLIER, // >protect: alt ud. Faelles vaerdi for alle profiler uden egen raekke nedenfor
+  demandMultiplierAllOutByProfile: {
+    flat: allOutMultiplierMatchingClimb("flat"), // #4914: flad etape — samme andel af gruppens tempo som den faelles vaerdi giver op ad en stigning
+    rolling: allOutMultiplierMatchingClimb("rolling"), // #4914: rullende etape — samme regel paa rullende terraen
+  } as Readonly<Partial<Record<ProfileType, number>>>,
 };
 
 /** M12 additiv effort-cost-tuning (deep-frosset). Se effortCostExtra-kommentaren ovenfor. */
@@ -624,6 +653,16 @@ const breakawayExtra = {
   enginePowerResistanceWeight: 0.45, // vaegt paa udbruddets kollektive endurance/tempo i moddstanden (#2416: "udbruddets samlede motorstyrke")
   countResistanceWeight: 0.2, // vaegt paa udbruds-stoerrelsen (flere ryttere ruller bedre, #2416) i modstanden
   breakawayReferenceCount: 4, // rytterantal der giver countFactor=1 (skalerer lineaert, clamp [0, 1.5] i computeNetChaseAdvantage)
+  // EVNE-REFERENCEN (#4707, RULES §7 raekke 14): jagt-modellens evne-afledte
+  // led maales relativt til feltets egen kollektive evne (breakaway.ts
+  // `chaseAbilityScale`), saa netto-fordelen er den samme uanset om aargangen
+  // er staerk eller svag. Referencen er det evne-niveau (normaliseret 0-1) hvor
+  // leddene har PRAECIS den vaegt der staar ovenfor. Kalibreret mod den PINNEDE
+  // population (baselines/population-snapshot-2026-09-07.json): sat ved dens
+  // kollektive niveau, saa et typisk felt ligger paa skala ~1 og bjerg-ankeret
+  // (overskuds-grenen i strengthSpeedExtra) ikke flyttes af omlaegningen. Foer/
+  // efter-maaling: PR'en for #4707 (tal i balance-internals/, hard rule 17).
+  abilityReferenceLevel: 0.13,
   closingSecondsPerKmPerUnit: 25, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
   stanceEffectWeight: 0.3, // T3 breakaway_stance-signalets vaegt paa netto-fordelen (bounded, se stanceMultiplierBounds)
   stanceMultiplierBounds: [0.7, 1.3] as readonly [number, number], // clamp paa stance-multiplikatoren — forhindrer at EN holdordre kan vaelte jagtens fortegn (mor-spec §5)
@@ -792,6 +831,53 @@ const strengthSpeedExtra = {
 
 /** #4885 additiv styrke/fart-tuning (deep-frosset). Se strengthSpeedExtra-kommentaren ovenfor. */
 export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
+
+// ── #4914 grupetto-tempo (segmentLoop.computeGroupTempo) — EJER-VALG, KONTAKT ─
+// HVORFOR: gruppens fart og krav regnes af de staerkeste ryttere i gruppen
+// (`work.frontFraction`), og indtil nu KUN af deres CP — ikke af hvad de har
+// valgt at koere. En gruppe af ryttere der har opgivet dagen (grupetto) koerte
+// derfor lige saa hurtigt som en gruppe af samme styrke der koerte for sejren.
+// Det er den egenskab der fik #4909's forsoeg paa at tvinge grupetto-ryttere
+// ud af klatre-splits til at bagvende: en staerk grupetto-rytter alene i sin
+// egen gruppe koerte FRA feltet i stedet for at falde tilbage til den sidste
+// gruppe paa vejen.
+//
+// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3); en
+// worker aendrer ikke defaulten:
+//   "cp_only"         (b, DEFAULT): som hidtil — tempoet foelger CP alene.
+//                                   Bit-identisk med main foer denne kontakt.
+//   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
+//                                   led der kun virker sammen:
+//                                   1. TEMPO (segmentLoop.groupEffortTempo): en
+//                                   grupetto-rytter saetter aldrig farten i en
+//                                   gruppe hvor andre koerer (han sidder paa
+//                                   hjul), og en gruppe der KUN bestaar af
+//                                   grupetto-ryttere koerer grupetto-tempo
+//                                   (andelen nedenfor af deres CP).
+//                                   2. TILBAGEFALD (climbSelection.
+//                                   grupettoDropBackForced): paa en stigning
+//                                   falder en grupetto-rytter tilbage fra en
+//                                   gruppe hvor andre koerer.
+//                                   Led 2 alene er #4909's tilbagerullede
+//                                   forsoeg (en staerk rytter alene koerte fra
+//                                   feltet); led 1 alene flytter maalt naesten
+//                                   intet (rytteren bliver hvor selektionen
+//                                   efterlader ham). De fire andre trin er
+//                                   uaendrede (faktor 1): all_out giver ALDRIG
+//                                   gruppen mere fart end rytternes CP, og
+//                                   save er at koere inden for sig selv i
+//                                   feltet, ikke at saenke feltets tempo.
+// Faktoren er en ren funktion af rytterens EGET trin, aldrig af hans evner,
+// saa invariant 3 (styrke straffes aldrig) holder per konstruktion. A/B-maaling
+// (5 seeds): backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
+export type GroupTempoModel = "cp_only" | "effort_weighted";
+const groupTempoEffortExtra = {
+  model: "cp_only" as GroupTempoModel, // EJER-VALG (#4914 punkt 3): "cp_only" = b (default, uaendret), "effort_weighted" = a
+  grupettoTempoFactor: 0.8, // kun model "effort_weighted": andel af CP'en en grupetto-rytter bidrager med til gruppens tempo (< 1, aldrig 0). STARTGAET, maalt i A/B'en
+};
+
+/** #4914 grupetto-tempo-kontakt (deep-frosset). Se groupTempoEffortExtra-kommentaren ovenfor. */
+export const GROUP_TEMPO_EFFORT_EXTRA_TUNING = deepFreeze(groupTempoEffortExtra);
 
 // ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
 // Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning

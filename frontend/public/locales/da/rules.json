@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "title": "Regler · Cycling Zone",
+    "description": "Referencen for Cycling Zones grænser, satser og formler: trup, økonomi, træning, auktioner og løb."
+  },
   "page": {
     "title": "Regler",
     "subtitle": "Den autoritative reference for Cycling Zones grænser, satser og formler.",
@@ -21,7 +25,7 @@
         },
         "academyExempt": {
           "title": "Akademiryttere er adskilt",
-          "text": "Akademiryttere tæller aldrig med i {squadCap}-rytter-senior-loftet og auto-sælges aldrig af trup-håndhævelsen. De har deres eget 8-plads akademi-loft."
+          "text": "Akademiryttere tæller aldrig med i {squadCap}-rytter-senior-loftet og auto-sælges aldrig af trup-håndhævelsen. De har deres egne lofter: {u23SquadCap} på U23-holdet og {juniorSquadCap} på juniorholdet."
         }
       }
     },
@@ -142,7 +146,7 @@
       "blocks": {
         "slots": {
           "title": "Akademistørrelse",
-          "text": "Dit akademi rummer op til {academySlots} unge ryttere (et hårdt loft), adskilt fra din seniortrup."
+          "text": "Dit akademi har to hold med hvert sit hårde loft: op til {u23SquadCap} ryttere på U23-holdet og {juniorSquadCap} på juniorholdet, adskilt fra din seniortrup."
         },
         "age": {
           "title": "Aldersinterval",
@@ -154,7 +158,7 @@
         },
         "drift": {
           "title": "Drift",
-          "text": "Hver besat akademiplads koster {academyDrift} CZ$ pr. sæson, opkrævet ved sæsonstart. Et lille akademi (3–4 pladser) er komfortabelt bæredygtigt i alle divisioner; et fuldt 8-plads-akademi er en bevidst, tungere satsning."
+          "text": "Hver besat akademiplads koster {academyDrift} CZ$ pr. sæson, opkrævet ved sæsonstart. Et lille akademi (3–4 pladser) er komfortabelt bæredygtigt i alle divisioner; et fuldt akademi er en bevidst, tungere satsning."
         }
       }
     },

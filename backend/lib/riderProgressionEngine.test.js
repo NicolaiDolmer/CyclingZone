@@ -1,7 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { developRidersForSeason, ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
+import {
+  developRidersForSeason,
+  ageForSeason,
+  LAUNCH_REFERENCE_YEAR,
+  loadRetiringRiderIds,
+  seasonStartRetirementInputs,
+  willRetireAtSeasonStart,
+} from "./riderProgressionEngine.js";
+import { PROGRESSION_CONFIG } from "./riderProgression.js";
 
 // ── Minimal in-memory Supabase-mock (kun det engine'n bruger) ──────────────────
 function createMockSupabase(state) {
@@ -302,6 +310,74 @@ test("#5073: mangler varsel-kolonnerne, kører sæsonskiftet videre uden dem (in
   assert.equal(summary.retired, 1, "rullet afgør pensionen som før #5073");
   assert.equal(summary.retirement_notice_read, 0);
   assert.equal(summary.retirement_notice_frozen, 1, "patchen bygges stadig — RPC'ens kolonneliste ignorerer den bare");
+});
+
+// ── #4153: sæson-payrollen spørger motoren FØR den kører ──────────────────────
+// loadRetiringRiderIds kaldes af processSeasonStart før payroll, så en rytter der
+// pensioneres i skiftet ikke lønnes for den nye sæson. Paritetskravet: mængden
+// den forudsiger, er PRÆCIS de holdryttere motoren derefter pensionerer — på
+// tværs af alders-grænser, det seedede vindue, frosne varsler og de ryttere
+// motoren springer over.
+test("#4153: loadRetiringRiderIds forudsiger præcis de holdryttere motoren pensionerer", async () => {
+  const seasonNumber = 4;
+  const { windowStartAge, guaranteedAge } = PROGRESSION_CONFIG.retirement;
+  const born = (endedSeasonAge) => `${LAUNCH_REFERENCE_YEAR + seasonNumber - 2 - endedSeasonAge}-01-01`;
+  const base = { primary_type: "sprinter", potentiale: 4, base_value: 50000, is_u25: false, is_retired: false, team_id: "team-1", firstname: "A", lastname: "B" };
+  const windowSpan = guaranteedAge - windowStartAge;
+  const windowRiders = Array.from({ length: 16 }, (_, i) => ({
+    ...base, id: `window-${i}`, birthdate: born(windowStartAge + (i % windowSpan)),
+  }));
+  const riders = [
+    { ...base, id: "young", birthdate: born(windowStartAge - 8) },
+    ...windowRiders,
+    { ...base, id: "guaranteed", birthdate: born(guaranteedAge) },
+    {
+      ...base, id: "frozen-no", birthdate: born(guaranteedAge - 1),
+      retirement_notice_season: seasonNumber - 1, retirement_notice_after_season: null, retirement_notice_given_at: null,
+    },
+    {
+      ...base, id: "frozen-yes", birthdate: born(windowStartAge),
+      retirement_notice_season: seasonNumber - 1, retirement_notice_after_season: seasonNumber - 1,
+      retirement_notice_given_at: "2026-09-01T00:00:00.000Z",
+    },
+    { ...base, id: "no-abilities", birthdate: born(guaranteedAge) },
+    { ...base, id: "no-type", primary_type: null, birthdate: born(guaranteedAge) },
+    { ...base, id: "free-agent", team_id: null, birthdate: born(guaranteedAge) },
+  ];
+  const state = seedState({
+    riders,
+    abilities: riders.filter((r) => r.id !== "no-abilities").map((r) => ({ rider_id: r.id, sprint: 60, ability_caps: null })),
+  });
+  const supabase = createMockSupabase(state);
+
+  // Samme rækkefølge som sæsonskiftet: opslag (payroll) FØR motoren.
+  const predicted = await loadRetiringRiderIds({ supabase, seasonNumber });
+  await developRidersForSeason({
+    supabase, seasonId: "s4", seasonNumber, model: MODEL, notify: false, dailyTrainingEnabled: false,
+  });
+  const retiredOnTeams = state.riders.filter((r) => r.is_retired && r.team_id != null).map((r) => r.id);
+
+  assert.deepEqual([...predicted].sort(), retiredOnTeams.sort(), "forudsigelse og motor skal være enige, rytter for rytter");
+  assert.ok(predicted.has("guaranteed"));
+  assert.ok(predicted.has("frozen-yes"), "et frosset ja vinder over rullet");
+  assert.ok(!predicted.has("frozen-no"), "et frosset nej vinder over rullet");
+  assert.ok(!predicted.has("young"));
+  assert.ok(!predicted.has("no-abilities"), "motoren springer ryttere uden evne-række over");
+  assert.ok(!predicted.has("no-type"), "motoren springer ryttere uden type over");
+  assert.ok(!predicted.has("free-agent"), "kun holdryttere er relevante for lønnen");
+  const windowRetired = windowRiders.filter((r) => predicted.has(r.id)).length;
+  assert.ok(windowRetired > 0 && windowRetired < windowRiders.length, "vinduet skal give begge udfald, ellers tester pariteten kun alders-grænserne");
+});
+
+test("#4153: willRetireAtSeasonStart følger motorens spring-over-regel", () => {
+  const seasonNumber = 4;
+  const { guaranteedAge } = PROGRESSION_CONFIG.retirement;
+  const birthdate = `${LAUNCH_REFERENCE_YEAR + seasonNumber - 2 - guaranteedAge}-01-01`;
+  assert.equal(willRetireAtSeasonStart({ id: "a", primary_type: "sprinter", potentiale: 3, birthdate }, seasonNumber), true);
+  assert.equal(willRetireAtSeasonStart({ id: "b", primary_type: null, potentiale: 3, birthdate }, seasonNumber), false);
+  assert.equal(willRetireAtSeasonStart({ id: "c", primary_type: "sprinter", potentiale: null, birthdate }, seasonNumber), false);
+  assert.equal(willRetireAtSeasonStart({ id: "d", primary_type: "sprinter", potentiale: 3, birthdate: null }, seasonNumber), false);
+  assert.equal(seasonStartRetirementInputs({ id: "e", primary_type: "sprinter", potentiale: 3, birthdate }, null), null);
 });
 
 test("is_u25 opdateres når rytter passerer 25 (board #813 ser aldringen)", async () => {

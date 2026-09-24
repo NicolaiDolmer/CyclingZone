@@ -7,6 +7,9 @@
     "code-modernization@claude-plugins-official": false,
     "vercel@claude-plugins-official": false
   },
+  "deniedMcpServers": [
+    { "serverUrl": "https://mcp.railway.com*" }
+  ],
   "permissions": {
     "additionalDirectories": [
       "../CyclingZone-worktrees/"
@@ -43,6 +46,10 @@
       "WebSearch",
       "mcp__ccd_session_mgmt__search_session_transcripts",
       "mcp__discord__discord_login",
+      "mcp__discord__discord_read_messages",
+      "mcp__discord__discord_get_server_info",
+      "mcp__discord__discord_get_forum_channels",
+      "mcp__discord__discord_get_forum_post",
       "mcp__392d630e-5e88-4afd-9c53-0a45062c42af__list_branches",
       "mcp__392d630e-5e88-4afd-9c53-0a45062c42af__issue_read",
       "mcp__392d630e-5e88-4afd-9c53-0a45062c42af__issue_write",
@@ -96,7 +103,9 @@
       "PowerShell(gc *.env*)",
       "PowerShell(cat *.env*)",
       "PowerShell(type *.env*)",
-      "PowerShell(Select-String *.env*)"
+      "PowerShell(Select-String *.env*)",
+      "mcp__railway__list-variables",
+      "mcp__railway__list_variables"
     ]
   },
   "hooks": {
@@ -175,7 +184,7 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/guard-agent-spawn.sh",
-            "timeout": 10
+            "timeout": 90
           }
         ]
       },
@@ -220,6 +229,16 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/wave-policy.mjs hook",
+            "timeout": 45
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [

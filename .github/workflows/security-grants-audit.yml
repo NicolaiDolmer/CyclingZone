@@ -215,7 +215,16 @@ jobs:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/security-rls-role-smoketest.sql | sed '/^$/d')
+          # -q (quiet) er kritisk her og KUN her (#5375): scriptet er den
+          # eneste af de fire psql-trin i dette workflow der wrapper sig i
+          # BEGIN/CREATE TEMP TABLE/GRANT/DO $$…$$/ROLLBACK. -t/-A styrer kun
+          # SELECT-tuple-formatering — de bare kommando-tags psql printer for
+          # ikke-SELECT-kommandoer (fx en linje der bare siger "BEGIN" eller
+          # "ROLLBACK") er UPÅVIRKET af -t og landede derfor i FINDINGS som
+          # falske fund, selv på en sund database uden et eneste reelt fund.
+          # security-grants.sql og security-rls-policy-fn-grants.sql er rene
+          # SELECT'er uden BEGIN/CREATE TABLE/GRANT/DO og har ikke mønstret.
+          FINDINGS=$(psql "$DB_URL" -q -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/security-rls-role-smoketest.sql | sed '/^$/d')
           if [ -z "$FINDINGS" ]; then
             echo "✅ SET LOCAL role-smoketest: ingen tabel fejler i praksis for anon/authenticated ud over kendte, whitelistede tilstande."
             echo "has_findings=false" >> "$GITHUB_OUTPUT"

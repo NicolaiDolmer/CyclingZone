@@ -20,13 +20,19 @@
 //     ordre-modsigelsen (#4246, `hunter` vs `try_break`) er ejer-gated og ikke
 //     afgjort. `BreakawayTeamOrder` nedenfor er specens T3-form 1:1; naar #4246
 //     er afgjort og konvolutten fryses, kollapser parseren til identitet.
-//  3. `Entrant` baerer intet `team_id` — dette modul har derfor IKKE behov for en
-//     rider->team-mapping: `try_break` laeses direkte fra
-//     `order.riders[].rider_id`, og hold-stance aggregeres holdvist (se
-//     `stanceSignal`) uden at skulle vide HVILKE ryttere der hoerer til hvilket
-//     hold. Bevidst forenkling for v1 (bounded, jf. specens T3-krav) — en
-//     rigere per-hold-model (kun sprinterhold-stancer taeller) er en naturlig
-//     F3+-opfoelgning naar team_id naar Entrant-kontrakten.
+//  3. HOLDSPECIFIK JAGT (#5570, ejer 23/9: lag 1 i "Holdmoedet"). Foer tog
+//     `stanceSignal` gennemsnittet over ALLE hold med en ordre, og
+//     teamOrdersAdapter giver hvert hold paa startlisten en ordre (default
+//     neutral) — én spillers "jag" flyttede derfor signalet med 1/N, og jagten
+//     var gratis. `Entrant.team_id` findes nu (M16), saa `teamChasePlan` goer
+//     det holdvist: et holds "jag" virker GENNEM holdets egne ryttere i
+//     jagtgruppen (antal, evne relativt til feltet, effort, og hvor meget de
+//     allerede har brugt), neutrale hold udvander intet, og "lad gaa" traekker
+//     holdets andel af jagtgruppen ud af den naturlige jagt. Jagten koster
+//     jaegerne hold-CP (`team_cp_factor`, samme valuta og samme gulv/loft som
+//     M16's holdspil) — se `applyChaseCost`. `try_break` laeses stadig direkte
+//     fra `order.riders[].rider_id`. En startliste uden `team_id` har ingen
+//     hold at jage med: signalet er 0 og ingen betaler (golden fixtures uaendret).
 //
 // MEKANIK (mor-spec §3.3 + §4 M5 + #2416):
 //  - Formation: forsoeges PRAECIS ÉN gang pr. etape, paa det foerste segment
@@ -43,7 +49,8 @@
 //    reelt GC, jf. `virtual_gc`-kommentaren i types.ts) + sen-etape-uro, MINUS
 //    udbruddets egen motorstyrke (kollektiv endurance/tempo + antal-bonus).
 //    Hold-ordrers `breakaway_stance` justerer nettofordelen BOUNDED (chase
-//    forstaerker, let_go daemper — clamp forhindrer fortegns-omvending).
+//    forstaerker, let_go daemper — clamp forhindrer fortegns-omvending), nu
+//    holdspecifikt og med en pris (punkt 3 ovenfor, #5570).
 //  - Fanget: naar den akkumulerede lukning bringer jagt-gruppens gap under
 //    `tuning.groups.mergeThresholdSeconds`, emitteres `breakaway_caught` —
 //    den FAKTISKE sammensmeltning sker af segmentLoop's egen `mergeGroups`-kald
@@ -58,13 +65,15 @@ import type {
   EngineState,
   FinaleType,
   RaceGroup,
+  RiderState,
   SegmentHookContext,
   TeamOrder,
   SegmentHookResult,
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { BREAKAWAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { helperCostMultiplier } from "./teamPlay.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -251,6 +260,12 @@ function attemptFormation(
 
 const CHASE_ENGINE_KEYS: AbilityKey[] = ["endurance", "tempo"];
 const GC_THREAT_KEYS: AbilityKey[] = ["climbing", "tempo", "time_trial"];
+/**
+ * Feltets evne-reference (#4707) maales paa PRAECIS de evner jagt-modellens
+ * evne-afledte led selv laeser (sprint + GC-trussel + motor), saa referencen
+ * og leddene skalerer med samme faktor naar feltet bliver staerkere/svagere.
+ */
+const CHASE_REFERENCE_KEYS: AbilityKey[] = ["sprint", "climbing", "tempo", "time_trial", "endurance"];
 
 function collectiveAbility(riderIds: string[], entrants: Readonly<Record<string, Entrant>>, keys: AbilityKey[]): number {
   if (riderIds.length === 0 || keys.length === 0) return 0;
@@ -267,15 +282,172 @@ function collectiveAbility(riderIds: string[], entrants: Readonly<Record<string,
   return n > 0 ? total / n : 0;
 }
 
-/** Holdstance -> signeret signal i [-1, 1] (chase=+1, neutral=0, let_go=-1), gennemsnit over hold der HAR afgivet en ordre. */
-export function stanceSignal(orders: readonly BreakawayTeamOrder[] | undefined): number {
-  if (!orders || orders.length === 0) return 0;
-  let sum = 0;
-  for (const order of orders) {
-    if (order.breakaway_stance === "chase") sum += 1;
-    else if (order.breakaway_stance === "let_go") sum -= 1;
+// ── Holdspecifik jagt (#5570) ─────────────────────────────────────────────────
+// Lokale START-KANDIDATER (samme "intern implementeringsdetalje"-praecedens som
+// formations-konstanterne ovenfor). De er reelt kalibrerbare og hoerer paa sigt
+// i tuning.ts's BREAKAWAY_EXTRA_TUNING; de bor her, fordi denne aendring kun
+// ejer breakaway.ts (boelge-lane), og flyttes naar tuning.ts alligevel roeres.
+const TEAM_CHASE = {
+  // Effektive jagt-ryttere (fuld effort, friske, feltets gennemsnits-motor) der
+  // giver ét hold dets FULDE bidrag. Flere end det flytter ikke signalet mere,
+  // men deler prisen (se applyChaseCost).
+  referenceChasers: 4,
+  // Ét holds maks. bidrag til stance-signalet i [-1, 1]. Under 1 med vilje:
+  // ét hold alene kan aldrig naa multiplikatorens loft — to hold i fuld jagt kan.
+  maxTeamSignal: 0.5,
+  // Rytterens motor (endurance/tempo) relativt til feltets gennemsnit — clampet,
+  // saa én staerk rouleur ikke er et helt hold, og en svag stadig taeller.
+  relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
+  // Prisen for at jage en HEL etape alene, som andel af rytterens egen CP —
+  // samme valuta som M16's helperCostFraction*. Betales pr. km-andel, kun
+  // mens der faktisk jages, og deles naar flere hold jager.
+  chaseCostFraction: 0.15,
+};
+
+/**
+ * En leder trækker ikke jagten: kaptajnen og sprint-kaptajnen er dem holdet
+ * jager FOR (samme rolle-skel som M16's WORKER_ROLES/protectedRoleOrder).
+ */
+const CHASE_EXEMPT_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+
+function teamIdOf(entrant: Entrant | undefined): string | null {
+  const raw = entrant?.team_id;
+  return typeof raw === "string" && raw.length > 0 ? raw : null;
+}
+
+export type TeamChasePlan = {
+  /** Signeret stance-signal i [-1, 1] — samme akse som computeNetChaseAdvantage's `stance`. */
+  signal: number;
+  /** rider_id -> arbejds-vaegt (0, 1] for de ryttere der jager dette segment (betaler i applyChaseCost). */
+  chaserWork: Map<string, number>;
+};
+
+/**
+ * Holdspecifik jagt (#5570). Erstatter det gamle 1/N-gennemsnit over alle hold.
+ *
+ *  - "chase": holdets EGNE ryttere i jagtgruppen trækker. Hver rytters traek =
+ *    effort-vaegt (M16's helperCostMultiplier: all_out arbejder ikke for
+ *    holdet, save/grupetto halvt) x friskhed (hans nuvaerende team_cp_factor,
+ *    saa et hold der har jaget laenge trækker svagere) x motor relativt til
+ *    feltet. Holdets bidrag = maxTeamSignal x min(1, sum / referenceChasers).
+ *    Et hold uden ryttere i jagtgruppen (alle i udbruddet, sat af, udgaaet)
+ *    kan ikke jage. Ledere trækker ikke.
+ *  - "let_go": holdets andel af jagtgruppens ryttere traekkes ud af den
+ *    naturlige jagt. Lader ALLE hold i jagtgruppen det gaa, er signalet -1.
+ *  - "neutral": 0 — og, modsat foer, udvander et neutralt hold intet.
+ *
+ * Summen clampes til [-1, 1], og computeNetChaseAdvantage's multiplikator-
+ * bounds er uaendrede: ét valg kan stadig aldrig vaelte et loeb.
+ *
+ * SKALA-INVARIANT (#4707): motor-leddet er et FORHOLD til feltets egen motor
+ * (homogent af grad 0), friskhed og effort har ingen evne-akse.
+ * MONOTONI: signalet paavirker kun gruppens jagt, aldrig en rytters placering
+ * direkte; prisen er en andel af rytterens EGEN CP (se applyChaseCost).
+ * DETERMINISTISK: ingen rng, fast hold- og rytter-raekkefoelge.
+ */
+export function teamChasePlan(input: {
+  orders: readonly BreakawayTeamOrder[];
+  chaseGroupRiderIds: readonly string[];
+  entrants: Readonly<Record<string, Entrant>>;
+  riders: Readonly<Record<string, RiderState>>;
+  /** Feltet motor-referencen maales paa (typisk hele det koerende felt). Default: jagtgruppen. */
+  fieldRiderIds?: readonly string[];
+}): TeamChasePlan {
+  const chaserWork = new Map<string, number>();
+  if (input.orders.length === 0) return { signal: 0, chaserWork };
+
+  const racing = [...input.chaseGroupRiderIds]
+    .filter((id) => input.entrants[id] && input.riders[id]?.status === "racing")
+    .sort((a, b) => a.localeCompare(b));
+  if (racing.length === 0) return { signal: 0, chaserWork };
+
+  const membersByTeam = new Map<string, string[]>();
+  for (const riderId of racing) {
+    const teamId = teamIdOf(input.entrants[riderId]);
+    if (!teamId) continue;
+    const list = membersByTeam.get(teamId) ?? [];
+    list.push(riderId);
+    membersByTeam.set(teamId, list);
   }
-  return clamp(sum / orders.length, -1, 1);
+  if (membersByTeam.size === 0) return { signal: 0, chaserWork };
+
+  const fieldIds =
+    input.fieldRiderIds && input.fieldRiderIds.length > 0 ? [...input.fieldRiderIds] : racing;
+  const fieldEngine = collectiveAbility(fieldIds, input.entrants, CHASE_ENGINE_KEYS);
+  const [engineLo, engineHi] = TEAM_CHASE.relativeEngineBounds;
+
+  let signal = 0;
+  for (const order of [...input.orders].sort((a, b) => a.team_id.localeCompare(b.team_id))) {
+    const members = membersByTeam.get(order.team_id);
+    if (!members || members.length === 0) continue;
+
+    if (order.breakaway_stance === "let_go") {
+      signal -= members.length / racing.length;
+      continue;
+    }
+    if (order.breakaway_stance !== "chase") continue;
+
+    let pull = 0;
+    for (const riderId of members) {
+      const entrant = input.entrants[riderId];
+      if (!entrant || CHASE_EXEMPT_ROLES.has(entrant.role)) continue;
+      const work = helperCostMultiplier(entrant.effort);
+      if (!(work > 0)) continue;
+      const factor = input.riders[riderId]?.team_cp_factor;
+      const freshness = clamp(Number.isFinite(factor) ? (factor as number) : 1, 0, 1);
+      const relativeEngine =
+        fieldEngine > 0
+          ? clamp(collectiveAbility([riderId], input.entrants, CHASE_ENGINE_KEYS) / fieldEngine, engineLo, engineHi)
+          : 1;
+      pull += work * freshness * relativeEngine;
+      chaserWork.set(riderId, work);
+    }
+    signal += TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+  }
+
+  return { signal: clamp(signal, -1, 1), chaserWork };
+}
+
+/**
+ * Jagtens pris (#5570): hver jaeger betaler en andel af sin EGEN CP via
+ * `team_cp_factor` — samme valuta, samme additive bogfoering og samme
+ * [minCpFactor, 1 + captainMaxBonusFraction]-clamp som M16's holdspil, saa de
+ * to priser deler gulv og aldrig kan stable en rytter under det.
+ *
+ * Arbejdet DELES: jager flere ryttere end referenceChasers (et stort hold, eller
+ * flere hold sammen), betaler hver mindre. Et hold der jager alene, baerer
+ * hele prisen selv. Prisen er km-andels-skaleret (samme granularitets-
+ * uafhaengighed som M16) og betales ogsaa naar jagten ikke lukker hullet —
+ * man har stadig koert forrest.
+ *
+ * GARANTIER: prisen er ALDRIG negativ (ingen gratis CP), og den er en andel af
+ * rytterens egen CP, saa to jaegere med samme effort beholder deres indbyrdes
+ * CP-orden (monotoni). Returnerer null naar ingen betaler (state uaendret).
+ */
+export function applyChaseCost(
+  riders: Readonly<Record<string, RiderState>>,
+  chaserWork: ReadonlyMap<string, number>,
+  segmentShare: number,
+): Record<string, RiderState> | null {
+  if (!(segmentShare > 0) || chaserWork.size === 0) return null;
+  let totalWork = 0;
+  for (const work of chaserWork.values()) totalWork += Math.max(0, work);
+  if (!(totalWork > 0)) return null;
+  const loadShare = Math.min(1, TEAM_CHASE.referenceChasers / totalWork);
+  const floor = TEAM_PLAY_EXTRA_TUNING.minCpFactor;
+  const ceiling = 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction;
+
+  let next: Record<string, RiderState> | null = null;
+  for (const [riderId, work] of [...chaserWork.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const riderState = riders[riderId];
+    if (!riderState) continue;
+    const paid = Math.max(0, TEAM_CHASE.chaseCostFraction * work * segmentShare * loadShare);
+    if (paid <= 0) continue;
+    const current = Number.isFinite(riderState.team_cp_factor) ? (riderState.team_cp_factor as number) : 1;
+    next ??= { ...riders };
+    next[riderId] = { ...riderState, team_cp_factor: clamp(current - paid, floor, ceiling) };
+  }
+  return next;
 }
 
 function finaleTypeChaseWeight(finaleType: FinaleType | null): number {
@@ -284,11 +456,38 @@ function finaleTypeChaseWeight(finaleType: FinaleType | null): number {
 }
 
 /**
+ * Evne-skalaen jagt-modellens evne-afledte led maales i (#4707): forholdet
+ * mellem kalibrerings-referencen (`abilityReferenceLevel`) og feltets EGEN
+ * kollektive evne paa `CHASE_REFERENCE_KEYS`. Et felt der er praecis saa
+ * staerkt som referencen faar skala 1; et felt der er dobbelt saa staerkt faar
+ * 0,5 — saa et evne-led der fordobles med feltet, forbliver uaendret.
+ * Et felt uden maalbar evne (alle 0) har ingen evne-led at skalere: 1.
+ */
+export function chaseAbilityScale(fieldRiderIds: string[], entrants: Readonly<Record<string, Entrant>>): number {
+  const fieldReference = collectiveAbility(fieldRiderIds, entrants, CHASE_REFERENCE_KEYS);
+  if (!(fieldReference > 0)) return 1;
+  return BREAKAWAY_EXTRA_TUNING.abilityReferenceLevel / fieldReference;
+}
+
+/**
  * Netto jagt-fordel for ÉT segment (eksporteret for direkte kontrakt-tests).
  * Positiv => jagt-gruppen lukker hullet; negativ => udbruddet trækker fra.
  * BOUNDED af stance-multiplikatoren (clamp forhindrer fortegns-omvending fra
  * en enkelt holdordre alene, jf. mor-spec §5's "spillerens valg aldrig kan
  * vaelte et loeb").
+ *
+ * SKALA-INVARIANT (#4707, RULES §7 raekke 14): de evne-afledte led
+ * (sprinter-interesse, GC-trussel, motorstyrke) maales RELATIVT til feltets
+ * egen evne-reference (`chaseAbilityScale`), mens sen-etape-uroen og udbruddets
+ * stoerrelse er strukturelle led (etape-fremdrift og rytterantal) uden en
+ * evne-akse. Foer stod de to strukturelle led som absolutte konstanter mod
+ * evne-led der skalerede med populationen: det samme scenarie gav en anden
+ * jagt ved median-evne 11 end ved 60, og enhver populationsaendring flyttede
+ * balancen mellem "hvem er i udbruddet" og "hvor langt er vi". Nu er netto-
+ * fordelen homogen af grad 0 i evne-niveauet: skaleres hele feltet (jagt,
+ * udbrud og reference) med samme faktor, er jagten identisk. Kalibrerings-
+ * referencen er valgt saa den aegte population ligger taet paa skala 1, saa
+ * bjerg-ankeret (overskuds-grenen i fart-modellen) ikke flyttes af omlaegningen.
  */
 export function computeNetChaseAdvantage(input: {
   chaseGroupRiderIds: string[];
@@ -296,14 +495,23 @@ export function computeNetChaseAdvantage(input: {
   entrants: Readonly<Record<string, Entrant>>;
   finaleType: FinaleType | null;
   remainingKmFraction: number; // 0 (etapestart) .. 1 (maal)
-  stance: number; // [-1, 1], se stanceSignal
+  stance: number; // [-1, 1], se teamChasePlan (#5570: holdspecifikt)
+  /** Feltet evne-referencen maales paa (typisk alle ryttere i loebet). Default: jagt-gruppe + udbrud. */
+  fieldRiderIds?: string[];
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
-  const sprinterInterest = collectiveAbility(input.chaseGroupRiderIds, input.entrants, ["sprint"]) * finaleTypeChaseWeight(input.finaleType);
-  const gcThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS);
+  const fieldRiderIds =
+    input.fieldRiderIds && input.fieldRiderIds.length > 0
+      ? input.fieldRiderIds
+      : [...input.chaseGroupRiderIds, ...input.breakawayRiderIds];
+  const abilityScale = chaseAbilityScale(fieldRiderIds, input.entrants);
+
+  const sprinterInterest =
+    collectiveAbility(input.chaseGroupRiderIds, input.entrants, ["sprint"]) * abilityScale * finaleTypeChaseWeight(input.finaleType);
+  const gcThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS) * abilityScale;
   const lateRaceUrgency = clamp(input.remainingKmFraction, 0, 1);
 
-  const enginePower = collectiveAbility(input.breakawayRiderIds, input.entrants, CHASE_ENGINE_KEYS);
+  const enginePower = collectiveAbility(input.breakawayRiderIds, input.entrants, CHASE_ENGINE_KEYS) * abilityScale;
   const countFactor = clamp(input.breakawayRiderIds.length / extra.breakawayReferenceCount, 0, 1.5);
 
   const chaseForce =
@@ -348,11 +556,25 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   if (!chaseGroup) return { state, events };
 
   const remainingKmFraction = ctx.route.distance_km > 0 ? clamp(ctx.segment.to_km / ctx.route.distance_km, 0, 1) : 0;
-  const stance = stanceSignal(parseBreakawayOrders(ctx.orders));
   const segmentLengthKm = Math.max(0, ctx.segment.to_km - ctx.segment.from_km);
+  // Evne-referencen (#4707) er hele det koerende felt — ikke kun de to grupper
+  // jagten staar imellem — saa en afhaegtet grupetto som "jagt-gruppe" ikke
+  // selv flytter skalaen den maales paa.
+  const fieldRiderIds = state.groups.flatMap((g) => g.rider_ids);
+  // #5570: holdspecifik jagt gennem holdenes egne ryttere i jagt-gruppen.
+  // Regnes én gang pr. segment — jagt-gruppen er den samme for alle udbrud.
+  const chasePlan = teamChasePlan({
+    orders: parseBreakawayOrders(ctx.orders),
+    chaseGroupRiderIds: chaseGroup.rider_ids,
+    entrants: ctx.entrants,
+    riders: state.riders,
+    fieldRiderIds,
+  });
+  const stance = chasePlan.signal;
 
   let groups = state.groups;
   let changed = false;
+  let chased = false;
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
 
   for (const breakaway of breakawayGroups) {
@@ -361,6 +583,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // samme art. Er "udbruddet" ikke foran jagt-gruppen, er der intet hul at
     // lukke, og et blindt kald ville emittere et falsk breakaway_caught.
     if (breakaway.gap_seconds > chaseGroup.gap_seconds) continue;
+    chased = true;
 
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
@@ -369,6 +592,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       finaleType: ctx.route.finale_type,
       remainingKmFraction,
       stance,
+      fieldRiderIds,
     });
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
     // et. Farten (og dermed hvor meget et udbrud traekker fra) afgoeres af
@@ -418,8 +642,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     }
   }
 
-  if (!changed) return { state, events };
-  return { state: { ...state, groups }, events };
+  // #5570: jagten koster. Kun naar der faktisk var et udbrud foran at jage
+  // (wiring-guarden ovenfor), og kun én gang pr. segment uanset antal udbrud.
+  const segmentShare = ctx.route.distance_km > 0 ? clamp(segmentLengthKm / ctx.route.distance_km, 0, 1) : 0;
+  const riders = chased ? applyChaseCost(state.riders, chasePlan.chaserWork, segmentShare) : null;
+
+  if (!changed && !riders) return { state, events };
+  return { state: { ...state, groups, ...(riders ? { riders } : {}) }, events };
 }
 
 /**

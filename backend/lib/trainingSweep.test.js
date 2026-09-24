@@ -1,7 +1,7 @@
 // Tests for trainingSweep.js (#1305)
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { shouldSweepNow, teamsNeedingSweep, runTrainingSweep } from "./trainingSweep.js";
+import { shouldSweepNow, teamsNeedingSweep, runTrainingSweep, __resetTrainingSweepStateForTests } from "./trainingSweep.js";
 
 // ── shouldSweepNow ────────────────────────────────────────────────────────────
 
@@ -130,9 +130,41 @@ describe("runTrainingSweep", () => {
   });
 
   it("returnerer no_active_season når der ikke er en aktiv sæson", async () => {
+    __resetTrainingSweepStateForTests();
     const supabase = makeFullMockSupabase({ season: null });
-    const result = await runTrainingSweep({ supabase, now: afterWindow });
-    assert.deepEqual(result, { swept: 0, skipped: "no_active_season" });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, logger: { warn() {} } });
+    assert.deepEqual(result, { swept: 0, skipped: "no_active_season", offSeason: true, tickDate: "2026-06-20" });
+  });
+
+  // #4848: off-season er en DEFINERET, LOGGET tilstand — ikke en stille no-op.
+  it("off-season: intet tick, og det logges ÉN gang pr. dansk dato (ikke hvert 5-min-tick)", async () => {
+    __resetTrainingSweepStateForTests();
+    const lines = [];
+    const logger = { warn: (msg) => lines.push(msg) };
+    const supabase = makeFullMockSupabase({ season: null, teams: [{ id: "t1" }] });
+    let calls = 0;
+    const runDay = async () => { calls++; return { alreadyRan: false }; };
+
+    await runTrainingSweep({ supabase, now: afterWindow, runDay, logger });
+    await runTrainingSweep({ supabase, now: new Date("2026-06-20T20:35:00Z"), runDay, logger });
+    assert.equal(lines.length, 1, "samme dato ⇒ én linje");
+    assert.match(lines[0], /off-season/);
+    assert.match(lines[0], /2026-06-20/);
+
+    await runTrainingSweep({ supabase, now: new Date("2026-06-21T20:30:00Z"), runDay, logger });
+    assert.equal(lines.length, 2, "ny dato ⇒ ny linje");
+    assert.equal(calls, 0, "ingen hold trænes i off-season");
+  });
+
+  it("aktiv sæson: ingen off-season-linje (S3 uændret)", async () => {
+    __resetTrainingSweepStateForTests();
+    const lines = [];
+    const supabase = makeFullMockSupabase({ teams: [{ id: "t1" }] });
+    const result = await runTrainingSweep({
+      supabase, now: afterWindow, runDay: async () => ({ alreadyRan: false }), logger: { warn: (m) => lines.push(m) },
+    });
+    assert.deepEqual(result, { swept: 1 });
+    assert.equal(lines.length, 0);
   });
 
   it("swept=0 når alle hold allerede har kørt i dag", async () => {

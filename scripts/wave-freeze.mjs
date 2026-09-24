@@ -37,9 +37,13 @@
 // VIGTIGT: .claude/workflows/wave.js SPEJLER konstanterne og classifyStall()
 // herfra (den kan ikke importere). Aendrer du en konstant her, skal den samme
 // vaerdi ind i wave.js - `node --test scripts/wave-freeze.test.mjs` har en
-// drift-vagt der laeser wave.js og fejler hvis de to ikke stemmer.
+// drift-vagt der laeser wave.js og fejler hvis de to ikke stemmer. Siden
+// #5562/#5567 sammenligner vagten ogsaa de normaliserede funktionskroppe af
+// trackWeight, sortHeavyFirst, planIdleLane, releasesOwnership,
+// applySchemaEvidenceRule og tailIdleLaneMinutes (#5602: og
+// intakeBackoffMinutes).
 //
-// Refs #5178, #5142, #4918.
+// Refs #5178, #5142, #4918, #5562, #5567, #5602.
 
 /** Konstanter. Spejles i .claude/workflows/wave.js - hold dem synkrone. */
 export const WAVE_FREEZE = {
@@ -76,6 +80,34 @@ export const WAVE_FREEZE = {
    * harmloest tegn-tjek et godt stykke under den.
    */
   POKE_MINUTES: 15,
+  /**
+   * #5562/#5602: rullende optag. Foerste pause efter et tomt intake-tjek. Hver
+   * tom omgang i traek fordobler pausen (10 -> 20 -> 40 -> 60), se
+   * intakeBackoffMinutes(). Ventetiden er et setTimeout i wave.js, ikke et
+   * vaeg-ur.
+   */
+  INTAKE_POLL_MINUTES: 10,
+  /** #5602: loft paa pausen mellem to tomme intake-tjek. */
+  INTAKE_POLL_MAX_MINUTES: 60,
+  /**
+   * #5602: saa mange tomme intake-tjek i traek, og de ledige laner stopper
+   * sig selv (planIdleLane giver 'exit') - paa naer den sidste, som bliver og
+   * tjekker med loft-pausen, saa laenge et spor koerer. Et faerdigt spor
+   * nulstiller taellingen. 5 tjek = pauser paa 10+20+40+60 min, ca. 130 min.
+   */
+  INTAKE_MAX_EMPTY_CHECKS: 5,
+  /**
+   * #5602: loft paa det billige intake-tjek (mindste model, taeller kun
+   * koeen). Tjekket flytter intet. Svarer det ikke brugbart, koerer wave.js
+   * den fulde intake i stedet - et fejlet tjek taeller ikke som tomt.
+   */
+  INTAKE_CHECK_TIMEOUT_MINUTES: 5,
+  /**
+   * #5562: loft paa den delte intake-agent (optag + worktrees + briefs). En
+   * haengt intake maa ikke holde de ledige laner og dermed boelgen i live.
+   * #5602: den startes kun, naar det billige tjek har set spor i koeen.
+   */
+  INTAKE_TIMEOUT_MINUTES: 20,
 };
 
 /**
@@ -227,11 +259,14 @@ export function wipCommitMessage(issue) {
 }
 
 /**
- * Er sporet "let" (kan koere paa faa ressourcer, ingen tung verifikation)?
- * #5220: bruges til at sortere koeen saa laner starter paa lette spor.
+ * #5562: sporets vaegt til koe-raekkefoelgen. FULL-verifikation vejer mest,
+ * opus derefter: (FULL ? 2 : 0) + (opus ? 1 : 0). Et ugyldigt spor vejer 0.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
  */
-export function isLightTrack(t) {
-  return Boolean(t) && t.model === "sonnet" && t.tier === "TARGETED";
+export function trackWeight(t) {
+  if (!t) return 0
+  return (t.tier === 'FULL' ? 2 : 0) + (t.model === 'opus' ? 1 : 0)
 }
 
 /**
@@ -254,20 +289,149 @@ export function extractInvestigateVerdict(reportText) {
 }
 
 /**
- * Blandet koe (#5220): stabil sortering der stiller lette spor (isLightTrack)
- * forrest, uden at aendre den indbyrdes raekkefoelge inden for hver gruppe -
- * orkestratorens oprindelige raekkefoelge bevares som tie-breaker. Formaal:
- * hver af de 4 laner traekker med stor sandsynlighed et let spor foerst, saa
- * verifikations-semaforen (maks 2 tunge koersler) ikke bliver flaskehalsen
- * fra minut eet, hvis koeen tilfaeldigvis starter med 4 tunge spor.
+ * Tungeste spor foerst (#5562, longest-processing-time-first). Erstatter den
+ * blandede koe fra #5220, der stillede lette spor forrest: saa startede det
+ * tungeste spor sidst og koerte alene til sidst (boelge A 23/9: ca. 18 % af
+ * kapaciteten stod tom i halen). Sorteringen er faldende paa trackWeight og
+ * STABIL inden for samme vaegt, saa orkestratorens raekkefoelge er
+ * tie-breaker. #5220-bekymringen (4 tunge spor paa een gang kvaeler
+ * maskinen) holder ikke laengere: maks EET FULL-spor og verifikations-
+ * semaforen (maks 2 tunge koersler) haandhaeves begge uafhaengigt af koeen.
  *
  * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
  */
-export function sortMixedQueue(list) {
+export function sortHeavyFirst(list) {
   return (Array.isArray(list) ? list : [])
-    .map((t, i) => ({ t, i, light: isLightTrack(t) ? 0 : 1 }))
-    .sort((a, b) => a.light - b.light || a.i - b.i)
-    .map((x) => x.t);
+    .map((t, i) => ({ t, i, w: trackWeight(t) }))
+    .sort((a, b) => b.w - a.w || a.i - b.i)
+    .map((x) => x.t)
+}
+
+/**
+ * #5562 rullende optag: hvad goer en lane uden spor?
+ *   'take'   - koeen har et spor
+ *   'intake' - koeen er tom: koer (eller vent paa) det delte intake-tjek
+ *   'wait'   - intake gav intet, men andre laner koerer stadig et spor: vent
+ *              intakeBackoffMinutes(emptyStreak) og proev igen (#5602)
+ *   'exit'   - frys, optag slaaet fra, intet mere at vente paa, eller
+ *              INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek (#5602: lanen
+ *              stopper sig selv, ogsaa mens andre laner koerer - men kun
+ *              naar en anden ledig lane bliver tilbage (idleLanes > 1), saa
+ *              et spor der koees senere, stadig kan optages, ogsaa hvis den
+ *              sidste optagne lane lukker paa det haarde loft)
+ * Lukkede laner (timeout) taeller aldrig med i activeLanes. emptyStreak er
+ * antallet af tomme intake-tjek i traek; et faerdigt spor nulstiller det.
+ * idleLanes er de levende laner uden spor, denne lane medregnet.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function planIdleLane(state) {
+  const s = state || {}
+  if (s.stoppedByFreeze) return 'exit'
+  if (Number(s.queued) > 0) return 'take'
+  if (s.intakeEnabled === false) return 'exit'
+  if (!s.intakeEmpty) return 'intake'
+  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS && Number(s.idleLanes) > 1) return 'exit'
+  if (Number(s.activeLanes) > 0) return 'wait'
+  return 'exit'
+}
+
+/**
+ * #5602: pausen efter det n'te tomme intake-tjek i traek. Voksende i stedet
+ * for et fast interval: 10, 20, 40 og derefter loftet 60 min. Et ugyldigt
+ * eller manglende tal regnes som det foerste tomme tjek.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function intakeBackoffMinutes(emptyStreak) {
+  const n = Math.max(1, Math.round(Number(emptyStreak) || 1))
+  const minutes = WAVE_FREEZE.INTAKE_POLL_MINUTES * Math.pow(2, Math.min(n - 1, 10))
+  return Math.min(WAVE_FREEZE.INTAKE_POLL_MAX_MINUTES, minutes)
+}
+
+/**
+ * #5562: frigiver sporets status dets ejerskab (--finished til intake)?
+ * KUN naar lane-agenten beviseligt er faerdig. Aldrig ved timeout,
+ * investigate-timeout, frys, doed, fejl eller rettelse-mangler: dér kan en
+ * agent stadig skrive i worktreet (en timeout afbryder ikke agenten).
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function releasesOwnership(status) {
+  return status === 'bygget' || status === 'rettet' || status === 'undersoegt' || status === 'undersoegt-ufuldstaendig'
+}
+
+/**
+ * #5567: et BLOKERENDE reviewer-fund om data/skema skal henvise til et
+ * opslag - database/schema-snapshot.json eller en read-only SELECT ... FROM
+ * mod prod. Uden det nedgraderes fundet til bemaerkning (22/9 paastod en
+ * reviewer at en kolonne manglede, men den er NOT NULL i prod). Reglen
+ * gaelder fund med category 'data-skema' og fund UDEN category hvis tekst
+ * bruger skema-ord. Er der derefter ingen blokerende fund tilbage, bliver
+ * dommen BEMAERKNINGER (og ret-trinnet springes over). En BLOKERENDE-dom
+ * uden findings-liste roeres ikke.
+ * #5602 fund 4: et fund hvis evidence peger paa fil:linje (fx
+ * database/x.sql:12) er underbygget af selve diffen og roeres ikke. Et
+ * linjenummer alene i file er IKKE bevis (CodeRabbit, #5602). Reglen
+ * rammer kun paastande om prod-tilstand uden opslag. Ellers blev fx en
+ * DROP COLUMN i en migration nedgraderet, og auto-migrate koerer den efter
+ * merge.
+ * @returns {{review: object, downgraded: object[]}}
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function applySchemaEvidenceRule(review) {
+  if (!review || typeof review !== 'object' || !Array.isArray(review.findings)) {
+    return { review, downgraded: [] }
+  }
+  const schemaWords = /\bkolonne|\bcolumn|\bnot\s+null\b|\bconstraint|\bmigration|\brls\b|\bforeign\s+key|\benums?\b/i
+  const fileLine = /[\w./\\-]+\.[a-z0-9]+:\d+/i
+  const hasEvidence = (text) => /schema-snapshot\.json/i.test(text) || /\bselect\b[\s\S]*?\bfrom\b/i.test(text) || fileLine.test(text)
+  const downgraded = []
+  const findings = review.findings.map((f) => {
+    if (!f || f.severity !== 'blokerende') return f
+    const isData = f.category === 'data-skema' || (!f.category && schemaWords.test(String(f.what || '')))
+    if (!isData || hasEvidence(String(f.evidence || ''))) return f
+    const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler fil:linje, skema- eller prod-opslag (#5567, #5602)' }
+    downgraded.push(next)
+    return next
+  })
+  if (downgraded.length === 0) return { review, downgraded }
+  const stillBlocking = findings.some((f) => f && f.severity === 'blokerende')
+  const verdict = review.verdict === 'BLOKERENDE' && !stillBlocking ? 'BEMAERKNINGER' : review.verdict
+  return { review: { ...review, findings, verdict }, downgraded }
+}
+
+/**
+ * #5562 hale-tomgang. intervals: [{lane, start, end, closed}] i minutter paa
+ * boelgens monotone minut-ur; en lukket lane (timeout) taeller som optaget
+ * til boelgens slut. Halen starter ved den SENESTE sporstart; tomgangen er
+ * de tomme lane-minutter derfra til endMinute. capacityPct er tomgangen i
+ * procent af hele boelgens kapacitet (lanes x endMinute), een decimal.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function tailIdleLaneMinutes(input) {
+  const p = input || {}
+  const lanes = Math.max(0, Math.round(Number(p.lanes) || 0))
+  const end = Math.max(0, Number(p.endMinute) || 0)
+  const list = (Array.isArray(p.intervals) ? p.intervals : []).filter((x) => x && Number.isFinite(Number(x.start)))
+  if (lanes === 0 || end === 0 || list.length === 0) {
+    return { tailStartMinute: end, idleLaneMinutes: 0, capacityPct: 0 }
+  }
+  const tailStart = Math.min(end, Math.max(...list.map((x) => Number(x.start))))
+  let busy = 0
+  for (const x of list) {
+    const open = x.closed === true || x.end === null || x.end === undefined || !Number.isFinite(Number(x.end))
+    const stop = open ? end : Math.min(end, Number(x.end))
+    busy += Math.max(0, stop - Math.max(tailStart, Number(x.start)))
+  }
+  const idle = Math.max(0, lanes * (end - tailStart) - busy)
+  return {
+    tailStartMinute: tailStart,
+    idleLaneMinutes: idle,
+    capacityPct: Math.round((idle / (lanes * end)) * 1000) / 10,
+  }
 }
 
 import { pathToFileURL } from 'node:url';

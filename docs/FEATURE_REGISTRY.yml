@@ -85,11 +85,12 @@ features:
     area: race-engine
     title_en: Async delivery of race result posts
     title_da: Asynkron udsendelse af løbsresultat-poster
-    state: dormant
+    state: live
+    flag: race_notify_outbox_enabled
     ssot: docs/audits/2026-09-18-3624-loebsforsinkelser.md
     epic: 3624
-    verified: 2026-09-18
-    note: Off i prod; flip er ejer-only.
+    verified: 2026-09-24
+    note: Flag on 24/9 kl. 18:45 (ejer-kør). Udbakke-tick hvert minut (race-notify-outbox-drain).
 
   - id: form-and-fatigue
     area: race-engine
@@ -183,8 +184,8 @@ features:
     flag: race_day_development_enabled
     ssot: docs/PROGRESSION_RULES.md
     epic: 4850
-    verified: 2026-09-07
-    note: Bygget (D2); afventer #4850.
+    verified: 2026-09-24
+    note: Variant A/S1 (etapens profil som mellem-pas, +1 pr. evne pr. løbsdag, planen ikke input; PR #5640 + #5654). Flippes off → on 28/9 sammen med training_tick_per_race_day, ejer-go.
 
   # --- market --------------------------------------------------------------
   - id: auctions
@@ -299,6 +300,37 @@ features:
     verified: 2026-09-15
     note: Data-only (#5268), resten senere.
 
+  - id: rider-rating-best-role-display
+    area: squad
+    title_en: Rating shows best role now
+    title_da: Rating viser bedste rolle nu
+    state: building
+    flag: rider_best_role_display
+    ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
+    epic: 5435
+    verified: 2026-09-22
+    note: 'Merget 22/9 (#5501), app_config-raekken verificeret off i prod; flippes med vaerdiskiftet #5443/#5497 (ejer-gated).'
+
+  - id: youth-squad-pages
+    area: squad
+    title_en: U23 team and Junior team pages
+    title_da: U23-hold- og juniorhold-sider
+    state: building
+    ssot: docs/design/youth-tiers/HANDOFF.md
+    epic: 2492
+    verified: 2026-09-23
+    note: 'Flag-noegle youth_squad_pages (#5519, default off); flyttes til flag-feltet naar app_config-raekken er applied efter merge. Ejer flipper efter visuelt go.'
+
+  - id: rider-primary-type-from-distribution
+    area: squad
+    title_en: New riders' primary type from the target distribution
+    title_da: Nye rytteres primære type fra mål-fordelingen
+    state: building
+    ssot: docs/RIDER_GENERATION.md
+    epic: 5327
+    verified: 2026-09-23
+    note: 'Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated.'
+
   # --- training ------------------------------------------------------------
   - id: daily-training
     area: training
@@ -342,22 +374,23 @@ features:
     area: training
     title_en: Training score 1-99
     title_da: Træningsscore 1-99
-    state: beta
+    state: live
     flag: training_score_visible
     ssot: docs/TRAINING_RULES.md
     epic: 4851
-    verified: 2026-09-21
-    note: Flag beta. Graf, mobilside, tooltip og UI-test rettet 21/9 (#5451, #5453); mangler ejer-flip til alle.
+    verified: 2026-09-24
+    note: Flag on for alle siden 23/9 (ejer). Graf, mobilside, tooltip og UI-test rettet 21/9 (#5451, #5453).
 
   - id: training-mobile-table
     area: training
     title_en: Training page on mobile
     title_da: Træningssiden på mobil
-    state: beta
+    state: live
+    flag: training_mobile_table
     ssot: docs/TRAINING_RULES.md
     epic: 3643
-    verified: 2026-09-19
-    note: 'Flag training_mobile_table; sat naar raekken er i prod.'
+    verified: 2026-09-24
+    note: Flag on for alle siden 23/9 (ejer).
 
   - id: training-hard-sessions-cobbles-echelon-attack
     area: training
@@ -459,11 +492,11 @@ features:
     area: season
     title_en: Season signup
     title_da: Sæsontilmelding
-    state: dormant
+    state: live
     flag: season_signup_enabled
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-09-07
-    note: Dormant til S4-cutover (#452).
+    verified: 2026-09-24
+    note: Tilmeldingskortet live 24/9 (flag on, S4-tilmelding).
 
   - id: season-end-recap
     area: season

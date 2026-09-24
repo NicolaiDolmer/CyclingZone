@@ -41,6 +41,8 @@ function createIlikeCapturingSupabase() {
       select() { return q; },
       eq() { return q; },
       in() { return q; },
+      // #5536: pickDivisionForNewTeam scoper puljerne til senior (.or).
+      or() { return q; },
       limit() { return q; },
       ilike(column, value) {
         if (table === "teams" && column === "name") captured.ilikeValues.push(value);

@@ -1,0 +1,115 @@
+{
+  "tracks": [
+    {
+      "issue": 5488,
+      "branch": "fix/5488-routeblock-guard-crlf",
+      "title": "[test] routeBlock-vagten i apiTrainingMeRaceDay.routes.test.js skal maale uafhaengigt af linjeskift (CRLF)",
+      "scopeText": "Testen backend/lib/apiTrainingMeRaceDay.routes.test.js:79 maaler routeBlock-vinduet i tegn (14000) og rammer 14067 kun lokalt paa Windows pga. core.autocrlf (CR-bytes); groen paa Linux-CI. Goer vagten linjeskifts-uafhaengig: normaliser \\r\\n -> \\n foer maaling (eller mael i linjer), og find en holdbar afgraensning af /training/me-handleren (fx slut-markoer i kildekoden) saa de efterfoelgende assertions hverken overser afslutningen eller laeser ind i naeste route. Fjern IKKE assertionen. Verifikation: node --test backend/lib/apiTrainingMeRaceDay.routes.test.js groen baade med CRLF- og LF-checkout (test begge ved at skrive en midlertidig kopi med \\r\\n). Ingen patch note.",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["backend/lib/apiTrainingMeRaceDay.routes.test.js"],
+      "verifyCommands": ["node --test backend/lib/apiTrainingMeRaceDay.routes.test.js"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5313,
+      "branch": "fix/5313-inbox-scroll-to-newest",
+      "title": "[ux] Beskedtraaden aabner ved nyeste besked i stedet for i toppen (thelamba 16/9)",
+      "scopeText": "DM-/beskedtraaden aabner i toppen (aeldste besked). Aendr saa traaden ruller til bunden (nyeste) ved mount og naar en ny besked kommer ind, men BEVARER positionen hvis brugeren selv har rullet op (afstand-til-bund-tjek). Find komponenten via grep efter messages/thread i frontend/src/pages (NotificationsPage/Inbox/DM-komponenter; roer IKKE RiderLevelCorrectionReceipt.jsx). Playwright-test: traad med 30 beskeder aabner med nyeste synlig. Skaermbillede desktop 1440 + mobil 390 i PR. Patch note: EN 'What changed: Message threads now open at the newest message.' / DA 'Hvad er aendret: Beskedtraade aabner nu ved den nyeste besked.' i PatchNotesPage/patchNotes.js under naeste version (7.295, #5481) - hvis versionen ikke findes endnu, tilfoej linjen i PR-body og lad orkestratoren samle (#5481).",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/src/pages/NotificationsPage.jsx", "frontend/src/components/messages/**", "frontend/src/pages/MessagesPage.jsx", "frontend/tests/e2e/messages-thread-scroll.spec.js"],
+      "verifyCommands": ["npm --prefix frontend run lint", "npm --prefix frontend run build"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5486,
+      "branch": "fix/5486-training-score-sparkline-no-gaps",
+      "title": "[bug] Traeningsscore-grafen uden huller paa loebsdage (ejer 22/9)",
+      "scopeText": "TrainingScoreSparkline (rytterkort + profilens traeningsfane) efterlader huller paa dage uden rider_training_scores-raekke (loebsdage). Oensket: kurven viser kun traeningsdage i raekkefoelge, ubrudt; loebsdage udelades (ikke 0, ikke gap); evt. lille markoer for 'loeb' i tooltip. Gaelder ogsaa naar training_tick_per_race_day taendes. Ret buildTrainingScoreView / sparkline-serien saa manglende dage filtreres vaek i stedet for null. Test: sekvens T,T,L,T,T giver 4 punkter. Skaermbillede foer/efter desktop 1440 + mobil 390 i PR. Patch note: EN 'What changed: The training score chart no longer shows gaps on race days.' / DA 'Hvad er aendret: Traeningsscore-grafen viser ikke laengere huller paa loebsdage.' (til 7.295 via PR-body hvis versionen ikke findes).",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/src/components/training/**", "frontend/src/lib/trainingScoreView.js", "frontend/src/lib/trainingScoreView.test.js"],
+      "verifyCommands": ["npm --prefix frontend run lint", "npm --prefix frontend run build", "node --test frontend/src/lib/trainingScoreView.test.js"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5483,
+      "branch": "docs/5483-help-national-core",
+      "title": "[docs] Hjaelpetekst for national kerne-reglen i bestyrelsen",
+      "scopeText": "Faktisk regel (backend/lib/boardIdentity.js ~307-308): national kerne er etableret naar mindst 4 ryttere af samme nationalitet udgoer mindst 35 % af truppen; styrke high >=55 %, medium >=40 %, low >=30 %, ellers none. Verificer tallene i koden FOER du skriver. Tilfoej sektion i frontend/public/locales/en/help.json + da/help.json (EN foerst, DA under, jeg/du-stemme, kort paa fladen, ingen em-dash) der forklarer taersklen og hvad der sker naar to nationaliteter begge er taet paa taersklen (laes koden: hvilken vinder?). Kun hjaelpetekst, ingen kodeaendring. Verificer at HelpPage rendrer sektionen (eksisterende HelpPage.sectionBlocks.test.js). Patch note: EN 'What changed: Help now explains the national core rule in the boardroom.' / DA 'Hvad er aendret: Hjaelp forklarer nu reglen om national kerne i bestyrelsen.'",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/public/locales/en/help.json", "frontend/public/locales/da/help.json"],
+      "verifyCommands": ["node --test frontend/src/pages/HelpPage.sectionBlocks.test.js frontend/src/pages/HelpPage.faqKeys.test.js", "npm --prefix frontend run lint"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5471,
+      "branch": "fix/5471-standings-mobile-founder-mark",
+      "title": "[bug] Rangliste paa mobil: eet hold fylder hele tabellen uden navn i D1+D2 (Founder-maerket)",
+      "scopeText": "REPRODUCER FOERST paa mobil 390px (Playwright, iPhone-viewport) paa /standings for en division med et Founder-maerket hold: StandingsPage.jsx:491-493 rendrer TeamLink (truncate) + FounderMark i samme flex-raekke. Find rod-aarsagen (truncate til 0 bredde? manglende Tailwind-klasse i bygget CSS som #5449? FounderMark uden shrink-0?) og dokumenter den med foer-skaermbillede i PR. Ret saa holdnavnet altid vises og maerket aldrig kan tage raekken (min-w-0 + shrink-0-moenster, TASTE.md). Playwright-regressionstest paa 390px: holdnavn synligt for hold med og uden maerke. Skaermbillede foer/efter mobil 390 + desktop 1440. Patch note: EN 'What changed: Standings on mobile no longer hide the team name next to the Founder mark.' / DA 'Hvad er aendret: Ranglisten paa mobil skjuler ikke laengere holdnavnet ved siden af Founder-maerket.'",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/src/pages/StandingsPage.jsx", "frontend/src/components/FounderMark.jsx", "frontend/src/components/founder/**", "frontend/tests/e2e/standings-mobile-founder-mark.spec.js"],
+      "verifyCommands": ["npm --prefix frontend run lint", "npm --prefix frontend run build"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5417,
+      "branch": "fix/5417-inbox-race-view-details-mobile",
+      "title": "[bug] Mobil: 'View details' paa indbakkebeskeden om et afviklet loeb viser ikke loebet",
+      "scopeText": "Efter sammenlaegningen til een indbakkelinje pr. loeb (#5384) kommer spilleren ikke fra indbakken til loebsresultatet paa telefon. REPRODUCER FOERST paa mobil 390px: find 'View details'-linket i den sammenlagte loebsbesked (NotificationsPage/inbox-komponenter, roer IKKE RiderLevelCorrectionReceipt.jsx), foelg det, og dokumenter om linket peger forkert (side/anker findes ikke, ruller ikke til loebet) eller om mobil-layoutet skjuler resultatblokken. Ret rod-aarsagen saa 'View details' aabner loebets resultat med rytterens hold synligt, paa mobil OG desktop. Playwright-test 390px: klik 'View details' -> resultat synligt. Skaermbillede foer/efter mobil 390. Patch note: EN 'What changed: View details on a race message now opens the race result on mobile.' / DA 'Hvad er aendret: Se detaljer paa en loebsbesked aabner nu loebsresultatet paa mobil.'",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/src/pages/NotificationsPage.jsx", "frontend/src/components/notifications/**", "frontend/src/pages/RaceResultsPage.jsx", "frontend/tests/e2e/inbox-race-view-details.spec.js"],
+      "verifyCommands": ["npm --prefix frontend run lint", "npm --prefix frontend run build"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 5472,
+      "branch": "fix/5472-board-page-desktop-layout",
+      "title": "[bug] Bestyrelsessiden bryder layoutet paa desktop i smalt vindue og fuld skaerm (friisisch 21/9)",
+      "scopeText": "REPRODUCER FOERST paa /board ved 970px og 1830px bredde (Playwright) med et hold der har bestyrelse aktiv; find layoutbruddet (overlap/overflow) og dokumenter det med foer-skaermbillede. Ret efter PAGE_TEMPLATES (T1/T2/T3 - siden skal bruge een af dem, ingen egen container-bredde) og TASTE.md. Luk ogsaa i18n-huller fra beta paa siden (manglende EN/DA-noegler: grep efter raa noegler i rendret HTML). Regressionstest: ingen horisontal overflow ved 970/1440/1830. Skaermbilleder efter ved 970 + 1440 + 1830 + mobil 390. Patch note: EN 'What changed: The boardroom page no longer breaks its layout on desktop.' / DA 'Hvad er aendret: Bestyrelsessiden bryder ikke laengere layoutet paa desktop.'",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/src/pages/BoardPage.jsx", "frontend/src/components/board/**", "frontend/public/locales/en/board.json", "frontend/public/locales/da/board.json", "frontend/tests/e2e/board-desktop-layout.spec.js"],
+      "verifyCommands": ["npm --prefix frontend run lint", "npm --prefix frontend run build"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 4948,
+      "branch": "feat/4948-feature-flags-endpoint-help-raceday",
+      "title": "[flip] Globalt spiller-synligt flag-endpoint + Hjaelp-sektionen raceDay foelger race_engine_v4",
+      "scopeText": "LAES FOERST docs/audits/2026-09-22-v4-foer-s4-research-memo.md par. 4-5. Loesning A (anbefalet i issuet): nyt letvaegts endpoint GET /api/feature-flags med en ALLOWLIST af spiller-synlige flag (start: race_engine_v4, board_mandate_model_enabled, training_tick_per_race_day) laest via backend/lib/featureStage.js-moensteret, aldrig alle app_config-raekker; katalog i backend/lib/stageFlagCatalog.js. frontend/src/pages/HelpPage.jsx: fjern de hardkodede gates (raceDayEnabled=false linje ~771, TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED linje ~78) og mandat-sektionens saerkald, saa alle tre flag-gatede sektioner bruger EEN mekanisme. Test: raceDay vises naar flaget er on, skjult ellers (node --test paa HelpPage + backend route-test). Roer IKKE teksten i help.json sections.raceDay (ejer-go udestaar; noter i PR). Preview-mock frontend/src/preview/betaAccessMock.js opdateres. Ingen patch note (usynlig til flip).",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": ["frontend/src/pages/HelpPage.jsx", "frontend/src/pages/HelpPage.*.test.js", "frontend/src/preview/betaAccessMock.js", "backend/api/featureFlagsApi.js", "backend/api/featureFlagsApi.test.js", "backend/lib/stageFlagCatalog.js", "backend/routes/api.js"],
+      "verifyCommands": ["node --test frontend/src/pages/HelpPage.sectionBlocks.test.js frontend/src/pages/HelpPage.faqKeys.test.js", "npm --prefix frontend run lint", "npm --prefix backend run lint"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 4914,
+      "branch": "feat/4914-v4-calibration-pack",
+      "title": "[engine-v4] Kalibreringspakke: all_out ikke gratis paa fladt, grupetto-tempo, 5-seed-gate",
+      "scopeText": "LAES FOERST docs/audits/2026-09-22-v4-foer-s4-research-memo.md par. 0, 1, 6, 7 og RACE_ENGINE_RULES par. 7/7b/9. FORUDSAETNING: #4707 er merget (den ejede tuning.ts); byg fra main efter det. Bag race_engine_v4 (off). (1) all_out: goer demandMultiplierAllOut (tuning.ts:577-583, effortCost.ts:87-94) profil-afhaengig saa kravet paa flade etaper kan overstige CP (all_out koster noget paa fladt); work-cost-aksen (tuning.ts:920) er ejer-laast paa 0, roer den ikke. (2) Grupetto-tempo: modellen er et EJER-VALG; byg to varianter bag en tuning-kontakt (a: effort-term i groupStrengthSpeedFactor, b: uaendret) og MAAL begge paa 5 seeds, ingen default-aendring uden ejer-go - skriv A/B med anker-tal i PR-body under 'Ejer-valg'. (3) 5-seed-gate: buildV4AnchorBaseline.mjs SEEDS -> 5 seeds (hale-gaten v4TailSpread.js forbliver 3 seeds, ejer-laast). Regenerer baseline + renderV4AnchorTable.mjs --write i samme PR. Golden fixtures kun opdateret ved tilsigtet output-aendring, forklaret. Felt-favoritters win-rate: rapporter, loes ikke. Hard rule 17: ingen motor-interne vaegte i PR-body. Ingen patch note, ingen flip.",
+      "model": "opus",
+      "tier": "TARGETED",
+      "ownership": ["backend/lib/engine/v4/mechanics/effortCost.ts", "backend/lib/engine/v4/mechanics/effortCost.test.ts", "backend/lib/engine/v4/mechanics/timeLimit.ts", "backend/lib/engine/v4/mechanics/timeLimit.test.ts", "backend/lib/engine/v4/segmentLoop.ts", "backend/lib/engine/v4/segmentLoop.*.test.ts", "backend/lib/engine/v4/tuning.ts", "backend/lib/engine/v4/fixtures/**", "backend/scripts/buildV4AnchorBaseline.mjs", "backend/scripts/teamPlayAbMeasure.mjs", "backend/scripts/baselines/v4-anchor-baseline.json", "docs/RACE_ENGINE_RULES.md"],
+      "verifyCommands": ["node --test --import ./backend/test-setup.js \"backend/lib/engine/v4/**/*.test.ts\"", "node backend/scripts/renderV4AnchorTable.mjs --check", "npm --prefix backend run lint"],
+      "ownNodeModules": false
+    },
+    {
+      "issue": 4915,
+      "branch": "feat/4915-v4-ttt-followups",
+      "title": "[engine-v4] TTT: uheld + tidsgraense + point i v4, anker uden TTT (kalender-valg forbliver ejerens)",
+      "scopeText": "LAES FOERST docs/audits/2026-09-22-v4-foer-s4-research-memo.md par. 3, 6, 7. Bag race_engine_v4 (off). Byg det der er kode og ikke ejer-valg: (a) uheld (M10) wires ind i mechanics/teamTimeTrial.ts (holdet er ankomstgruppen; et uheld rammer holdets tid), (b) tidsgraense (M15) for TTT som hold-graense (index.ts:192-197 begrundelse laeses foerst; grupetto-redning gaelder IKKE TTT), (c) TTT-point: teamTimeTrial.ts producerer passages/passage_totals saa broen raceEngineV4Bridge.js:283-298 giver point som i v3 (paritet mod v3's tal i test), (d) ankeret same_team_top10_share_4plus udelader tidskoersler (headToHeadAnchors.js:325-335 + test). IKKE i scope (ejer-valg, skriv dem som A/B i PR-body under 'Ejer-valg'): TTT i S4-kalenderen (calendarCompositionTargets.js:94-102, TTT_ENGINE_SUPPORTED), passage-raekke ved DNF, v3-bonusloft. Tilfoej IKKE ttt-raekker til de pinnede proxy-etaper (aendrer pinnet for alle); brug egen test-fixture. v4-suiten + bro-tests groenne. Hard rule 17. Ingen patch note, ingen flip.",
+      "model": "opus",
+      "tier": "TARGETED",
+      "ownership": ["backend/lib/engine/v4/mechanics/teamTimeTrial.ts", "backend/lib/engine/v4/mechanics/teamTimeTrial.test.ts", "backend/lib/engine/v4/index.ts", "backend/lib/engine/v4/index.*.test.ts", "backend/lib/engine/v4/mechanics/incidents.ts", "backend/lib/engine/v4/mechanics/incidents.test.ts", "backend/scripts/lib/headToHeadAnchors.js", "backend/scripts/lib/headToHeadAnchors.test.js", "backend/lib/raceEngineV4Bridge.js", "backend/lib/raceEngineV4Bridge.*.test.js"],
+      "verifyCommands": ["node --test --import ./backend/test-setup.js \"backend/lib/engine/v4/**/*.test.ts\"", "node --test backend/lib/raceEngineV4Bridge.teamTimeTrial.test.js backend/scripts/lib/headToHeadAnchors.test.js", "npm --prefix backend run lint"],
+      "ownNodeModules": false
+    }
+  ],
+  "trackTimeoutMinutes": 120
+}

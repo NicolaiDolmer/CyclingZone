@@ -13,7 +13,8 @@
 // forkerte samlet op igen. Skal et andet mål vises, skal det have sin egen
 // etiket — ikke ordet "rating".
 import { ABILITY_KEYS } from "./abilities.js";
-import { ratingForRole } from "./generated/displayRecipes.js";
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./generated/displayRecipes.js";
+import { isBestRoleDisplayOn } from "./riderRatingMode.js";
 
 export const STAT_KEYS = ABILITY_KEYS;
 
@@ -52,8 +53,43 @@ export function riderTypeRating(rider = {}, typeKey = null) {
   return ratingForRole(rider, typeKey);
 }
 
-// Rating for rytterens EGEN rolle. Rytter-objektet skal have evnerne fladet op
-// (rider.climbing osv.) via flattenAbilities().
+// #5435 (D-049) — "Best role now / Bedste rolle nu": den rolle rytteren rates
+// højest som LIGE NU, og det tal. Samme regel som backendens cache
+// (riderValueRefresh.bestRoleForAbilities, ECONOMY_RULES "Datakontrakt 1a"):
+// maksimum af de AFRUNDEDE rolle-ratings; ved lighed vinder første rolle i
+// opskrifternes faste rækkefølge (strengt `>`); ingen brugbare evner → null.
+//
+// Kilde: beregnes fra rækkens live evner når de findes, så tallet altid er det
+// samme som radaren og scouting-fanens nu-tal på samme side. Den cachede
+// riders.best_role/best_role_rating bruges kun når rækken ikke bærer evner
+// (fx lette lister); cachen følger værdi-refreshens kadence og kan halte en
+// træningsdag efter de live evner.
+export function riderBestRole(rider = {}) {
+  let role = null;
+  let rating = null;
+  for (const key of DISPLAY_RECIPE_KEYS) {
+    const r = ratingForRole(rider, key);
+    if (r !== null && (rating === null || r > rating)) {
+      role = key;
+      rating = r;
+    }
+  }
+  if (rating !== null) return { rating, role };
+  const cachedRating = rider?.best_role_rating;
+  const cachedRole = rider?.best_role;
+  if (Number.isFinite(cachedRating) && DISPLAY_RECIPE_KEYS.includes(cachedRole)) {
+    return { rating: cachedRating, role: cachedRole };
+  }
+  return { rating: null, role: null };
+}
+
+// Det tal der står på kortet. Kontakten (riderRatingMode.js) vælger model:
+//   off — rytterens EGEN rolle (primary_type), som før #5435.
+//   on  — bedste rolle nu (riderBestRole). Kan kun hæve tallet: egen rolle er
+//         én af de otte, så max over dem er ≥ (ejer-regel 17/9).
+// Rytter-objektet skal have evnerne fladet op (rider.climbing osv.) via
+// flattenAbilities().
 export function riderOverallRating(rider = {}) {
+  if (isBestRoleDisplayOn()) return riderBestRole(rider).rating;
   return ratingForRole(rider, rider?.primary_type ?? null);
 }

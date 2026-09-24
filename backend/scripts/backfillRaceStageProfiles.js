@@ -22,7 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { generateRaceStageProfiles, GENERATOR_VERSION, PROFILE_TYPES, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION, PROFILE_TYPES, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
 import { resolveVariantByRaceId } from "../lib/raceRouteRealismDraw.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -53,15 +53,18 @@ async function loadRaces() {
   });
 }
 
+async function loadTierByDivision() {
+  const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
+  return new Map((divisions || []).map((d) => [d.id, d.tier]));
+}
+
 // #3347: hvilken re-draw-variant hører hvert løb til? Uden det ville en backfill
 // overskrive gatens træk med det kanoniske og gøre realisme-scorecardet til en løgn.
 // Grupperings-reglen (pr. season_id+tier, laveste pulje som repræsentant) bor i
 // raceRouteRealismDraw.js, så scorecardet, materializeren og backfill'ene deler den.
-async function loadVariantByRaceId(races, catalogMeta) {
-  const divisions = await fetchAllRows(() => supabase.from("league_divisions").select("id, tier").order("id"));
+async function loadVariantByRaceId(races, catalogMeta, tierByDivision) {
   return resolveVariantByRaceId({
-    races, catalogMeta,
-    tierByDivision: new Map((divisions || []).map((d) => [d.id, d.tier])),
+    races, catalogMeta, tierByDivision,
     onDraw: ({ seasonId, tier, draw }) => {
       if (draw.attempt > 0) console.log(`  ↻ sæson ${seasonId} tier ${tier}: kanonisk træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → gen-træk ${draw.attempt} (#3347)`);
       if (draw.exhausted) console.log(`  ⚠ sæson ${seasonId} tier ${tier}: alle ${draw.attemptsTried} gen-træk brød båndene — bruger det kanoniske træk (#3347)`);
@@ -78,6 +81,39 @@ async function loadCatalogMeta() {
   return new Map((rows || []).map((r) => [r.id, { external_id: r.external_id ?? null, terrain_archetype: r.terrain_archetype ?? null }]));
 }
 
+// #5405: finale-typerne i en sæsons pulje er kvote-fordelt over puljens løbssæt
+// (balanceFinaleQuotas) — det kan et træk pr. løb ikke genskabe. Uden dette ville en
+// backfill tavst skrive frie finaler over dem materializeren skrev, og realisme-gaten ville
+// have målt et andet parcours end det der står i basen.
+//
+// Grupperet pr. (season_id, pulje), ikke pr. tier: normalt kører alle puljer i en tier
+// samme løbssæt (#2276), og fordelingen er deterministisk og uafhængig af rækkefølgen, så
+// hver pulje får præcis de samme finaler. Men en pulje der aktiveres midt i sæsonen (§2e)
+// kan have sit EGET løbssæt, og materializeren fordelte finalerne over netop det sæt. En
+// tier-repræsentant ville give den puljes løb et andet sæts fordeling (fundet af CodeRabbit).
+const raceKey = (race, tierByDivision) => {
+  const tier = tierByDivision.get(race.league_division_id);
+  return tier == null || !race.season_id || !race.pool_race_id
+    ? null
+    : `${race.season_id}|${race.league_division_id}|${race.pool_race_id}`;
+};
+
+function poolProfilesByRaceKey(races, tierByDivision, seedRaceOf) {
+  const racesByPool = new Map();
+  for (const r of races) {
+    if (raceKey(r, tierByDivision) == null) continue;
+    const pool = `${r.season_id}|${r.league_division_id}`;
+    if (!racesByPool.has(pool)) racesByPool.set(pool, []);
+    racesByPool.get(pool).push(r);
+  }
+  const out = new Map();
+  for (const poolRaces of racesByPool.values()) {
+    const balanced = balanceFinaleQuotas(poolRaces.map((r) => generateRaceStageProfiles(seedRaceOf(r))));
+    poolRaces.forEach((r, i) => out.set(raceKey(r, tierByDivision), balanced[i]));
+  }
+  return out;
+}
+
 // race_id'er der har mindst én håndredigeret etape → spring løbet helt over.
 async function loadManualRaceIds() {
   const rows = await fetchAllRows(() =>
@@ -90,7 +126,15 @@ async function main() {
   const races = await loadRaces();
   const catalogMeta = await loadCatalogMeta();
   const manualRaceIds = DRY_RUN ? new Set() : await loadManualRaceIds();
-  const variantByRaceId = await loadVariantByRaceId(races, catalogMeta);
+  const tierByDivision = await loadTierByDivision();
+  const variantByRaceId = await loadVariantByRaceId(races, catalogMeta, tierByDivision);
+  const seedRaceOf = (race) => {
+    const meta = catalogMeta.get(race.pool_race_id) || {};
+    // race.season_id er allerede på rækken → indgår i seed via seedKeyFor (sæson-akse).
+    // season_variant (#3347) = tierens resolverede re-draw, samme tal som gaten scorer.
+    return { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_variant: variantByRaceId.get(race.id) ?? 0 };
+  };
+  const poolProfiles = poolProfilesByRaceKey(races, tierByDivision, seedRaceOf);
 
   const dist = Object.fromEntries(PROFILE_TYPES.map((p) => [p, 0]));
   const sample = [];
@@ -101,11 +145,9 @@ async function main() {
   for (const race of races) {
     if (manualRaceIds.has(race.id)) { racesSkippedManual++; continue; }
 
-    const meta = catalogMeta.get(race.pool_race_id) || {};
-    // race.season_id er allerede på rækken → indgår i seed via seedKeyFor (sæson-akse).
-    // season_variant (#3347) = tierens resolverede re-draw, samme tal som gaten scorer.
-    const seedRace = { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null, season_variant: variantByRaceId.get(race.id) ?? 0 };
-    const profiles = generateRaceStageProfiles(seedRace);
+    // #5405: et sæson-løb får puljens profiler (finaler kvote-fordelt over puljens løbssæt,
+    // som materializeren skrev dem). Løb uden sæson/division genereres alene, som før.
+    const profiles = poolProfiles.get(raceKey(race, tierByDivision)) ?? generateRaceStageProfiles(seedRaceOf(race));
     for (const p of profiles) dist[p.profile_type]++;
     if (sample.length < 12) {
       sample.push(`  ${race.name}${race.race_type === "stage_race" ? ` (${profiles.length} etaper)` : ""}: ${profiles.map((p) => p.profile_type).join(" → ")}`);

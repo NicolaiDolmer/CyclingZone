@@ -78,6 +78,24 @@ test("#2180/#3310 selection_warning deep-linker til /races/:raceId#selection", (
   assert.equal(link, "/races/race-3#selection");
 });
 
+// #4759: assistant_filled_squad deep-linker til samme selection-anker som
+// selection_warning (samme raceId-metadata-mønster).
+test("#4759 assistant_filled_squad deep-linker til /races/:raceId#selection", () => {
+  const link = resolveNotificationLink(
+    { type: "assistant_filled_squad", metadata: { raceId: "race-9" } },
+    "/planning?tab=calendar",
+  );
+  assert.equal(link, "/races/race-9#selection");
+});
+
+test("#4759 assistant_filled_squad uden metadata falder tilbage til related_id", () => {
+  const link = resolveNotificationLink(
+    { type: "assistant_filled_squad", related_id: "race-10" },
+    "/planning?tab=calendar",
+  );
+  assert.equal(link, "/races/race-10#selection");
+});
+
 // #2832: season_ended bærer den AFSLUTTEDE sæsons id i related_id.
 test("#2832 season_ended deep-linker til den afsluttede sæson via related_id", () => {
   const link = resolveNotificationLink({ type: "season_ended", related_id: "season-1" }, "/seasons");

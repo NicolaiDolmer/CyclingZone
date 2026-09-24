@@ -19,11 +19,24 @@
 // tilbage" (det sidste ville laekke selve loebs-udfaldet ind i favorit-
 // definitionen og goere favoriteWon tautologisk).
 //
+// #5583: den definition ovenfor er naesten CIRKULAER — finalen sorterer paa
+// samme computeFinaleAbilityScore() uden stoej, saa paa en massefinale kan
+// favoritten kun tabe via W'-reserve eller leadout. Derfor en ANDEN, ikke-
+// cirkulaer definition ved siden af (`favoriteBy: "v3_terrain"`): hoejeste
+// v3-terrainScore() (importeret fra backend/lib/raceSimulator.js, aldrig
+// kopieret) mod etapens v3-kravvektor (`stage_profile.demand_vector`). Det er
+// PRAECIS v3's egen favorit (raceDominanceMetrics.observeRace: hoejeste
+// components.terrain, og v3's components.terrain ER terrainScore mod samme
+// vektor), saa de to motorer maales mod SAMME rytter. Den laeser hverken
+// resultatets sortering, finalens kravvektor eller nogen W'-reserve.
+// Default er uaendret "finale_score" — gatens dom flyttes ikke af denne fil.
+//
 // REN nok til at vaere let at teste: ingen IO, ingen simulator-kald her — kun
 // transformation af allerede-simulerede results/entrants til observations.
 
 import { computeFinaleAbilityScore } from "../../lib/engine/v4/finale.ts";
 import { FINALE_EXTRA_TUNING } from "../../lib/engine/v4/tuning.ts";
+import { terrainScore } from "../../lib/raceSimulator.js";
 
 // Speejler finale.ts's DEFAULT_DEMAND_VECTOR (ikke selv eksporteret derfra) —
 // bevidst 1:1-kopi, samme "duplikering er etableret moenster"-begrundelse som
@@ -31,6 +44,52 @@ import { FINALE_EXTRA_TUNING } from "../../lib/engine/v4/tuning.ts";
 const FALLBACK_DEMAND_VECTOR = { tempo: 0.3, endurance: 0.3, tactics: 0.2, positioning: 0.2 };
 
 const NEUTRAL_WPRIME_RESERVE_FRACTION = 0.5;
+
+/** Gyldige favorit-definitioner (#5583). Den foerste er default og gatens. */
+export const FAVORITE_DEFINITIONS = Object.freeze(["finale_score", "v3_terrain"]);
+
+/**
+ * Hoejeste score i feltet; lige score -> laveste rider_id (String-compare),
+ * samme tiebreak som raceDominanceMetrics.observeRace. Ryttere uden abilities
+ * springes over. Rækkefølgen i `candidates` betyder intet for udfaldet.
+ * @param {Array<{rider_id:string}>} candidates
+ * @param {Record<string, {abilities: Record<string, number>}>} entrants
+ * @param {(abilities: Record<string, number>) => number} scoreOf
+ */
+function highestScoring(candidates, entrants, scoreOf) {
+  let favorite = null;
+  let favoriteScore = -Infinity;
+  for (const r of candidates) {
+    const abilities = entrants[r.rider_id]?.abilities;
+    if (!abilities) continue;
+    const score = scoreOf(abilities);
+    if (
+      score > favoriteScore ||
+      (score === favoriteScore && favorite && String(r.rider_id) < String(favorite.rider_id))
+    ) {
+      favorite = r;
+      favoriteScore = score;
+    }
+  }
+  return favorite;
+}
+
+/**
+ * #5583: den ikke-cirkulaere favorit — feltets hoejeste v3-terrainScore mod
+ * etapens v3-kravvektor. Kandidaterne er hele startfeltet i `results` (ogsaa
+ * udgaaede: en favorit der styrter ud, har ikke vundet). Laeser KUN evner og
+ * kravvektoren; ikke rang, tid, finalens kravvektor eller W'-reserve.
+ * @param {Array<{rider_id:string}>} results
+ * @param {Record<string, {abilities: Record<string, number>}>} entrants
+ * @param {Record<string, number>} stageDemandVector  stage_profile.demand_vector (v3)
+ * @returns {object|null}  den vindende results-raekke, eller null uden kandidater
+ */
+export function pickV3TerrainFavorite(results, entrants, stageDemandVector) {
+  if (!stageDemandVector || typeof stageDemandVector !== "object") {
+    throw new Error("pickV3TerrainFavorite: stageDemandVector (stage_profile.demand_vector) kraeves");
+  }
+  return highestScoring(results, entrants, (abilities) => terrainScore(abilities, stageDemandVector));
+}
 
 /**
  * v4-analog til raceDominanceMetrics.observeRace() — SAMME output-kontrakt
@@ -46,9 +105,25 @@ const NEUTRAL_WPRIME_RESERVE_FRACTION = 0.5;
  * @param {{finale: {demandVectorByFinaleType: Record<string, Record<string, number>>}}} args.tuning
  * @param {string|null} [args.raceId]
  * @param {string} [args.terrain]  profile_type, videreført uændret (samme rolle som v3's terrain-felt)
+ * @param {"finale_score"|"v3_terrain"} [args.favoriteBy="finale_score"]  favorit-definition (#5583);
+ *   default er gatens nuvaerende definition, uaendret
+ * @param {Record<string, number>} [args.stageDemandVector]  v3-kravvektoren; kraeves af "v3_terrain"
  * @returns {ReturnType<typeof import("../../lib/raceDominanceMetrics.js").observeRace>}
  */
-export function observeStageV4({ results = [], entrants = {}, teamByRider, route, tuning, raceId, terrain } = {}) {
+export function observeStageV4({
+  results = [],
+  entrants = {},
+  teamByRider,
+  route,
+  tuning,
+  raceId,
+  terrain,
+  favoriteBy = "finale_score",
+  stageDemandVector,
+} = {}) {
+  if (!FAVORITE_DEFINITIONS.includes(favoriteBy)) {
+    throw new Error(`observeStageV4: ukendt favoriteBy "${favoriteBy}" (gyldige: ${FAVORITE_DEFINITIONS.join(", ")})`);
+  }
   const fieldSize = results.length;
 
   if (fieldSize === 0) {
@@ -69,23 +144,15 @@ export function observeStageV4({ results = [], entrants = {}, teamByRider, route
   const sorted = [...results].sort((a, b) => a.rank - b.rank);
   const winner = sorted[0];
 
-  const demandVector =
-    (route?.finale_type && tuning?.finale?.demandVectorByFinaleType?.[route.finale_type]) || FALLBACK_DEMAND_VECTOR;
-  const wprimeReserveWeight = FINALE_EXTRA_TUNING.wprimeReserveWeight;
-
-  let favorite = null;
-  let favoriteScore = -Infinity;
-  for (const r of sorted) {
-    const abilities = entrants[r.rider_id]?.abilities;
-    if (!abilities) continue;
-    const score = computeFinaleAbilityScore(abilities, NEUTRAL_WPRIME_RESERVE_FRACTION, demandVector, wprimeReserveWeight);
-    if (
-      score > favoriteScore ||
-      (score === favoriteScore && favorite && String(r.rider_id) < String(favorite.rider_id))
-    ) {
-      favorite = r;
-      favoriteScore = score;
-    }
+  let favorite;
+  if (favoriteBy === "v3_terrain") {
+    favorite = pickV3TerrainFavorite(sorted, entrants, stageDemandVector);
+  } else {
+    const demandVector =
+      (route?.finale_type && tuning?.finale?.demandVectorByFinaleType?.[route.finale_type]) || FALLBACK_DEMAND_VECTOR;
+    const wprimeReserveWeight = FINALE_EXTRA_TUNING.wprimeReserveWeight;
+    favorite = highestScoring(sorted, entrants, (abilities) =>
+      computeFinaleAbilityScore(abilities, NEUTRAL_WPRIME_RESERVE_FRACTION, demandVector, wprimeReserveWeight));
   }
 
   const teamOf = (r) => {

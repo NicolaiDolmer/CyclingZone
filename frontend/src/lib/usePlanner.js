@@ -15,6 +15,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "./actionTelemetry.js";
+import { apiFetch } from "./apiFetch.ts"; // #5242: kun mutate() — se refresh()'s #4165-kommentar
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -49,6 +50,13 @@ export function usePlanner(seasonNumber = null) {
     }
     try {
       const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
+      // #5242: bevidst IKKE migreret til apiFetch (samme undtagelse som
+      // RaceHubBoard.jsx/SeasonMatrix.jsx/SeasonView.jsx, se
+      // frontend/scripts/check-fetch-wiring.mjs's fil-header). Denne load()
+      // skelner en parse-fejl (malformet 200-krop) fra en network-fejl til
+      // Sentry-telemetrien (#4165, tre linjer nedenfor) — apiFetch parser altid
+      // selv og giver data:null for begge, saa en migrering ville taebe den
+      // skelnen. mutate() nedenfor HAR ingen tilsvarende skelnen og er migreret.
       const res = await fetch(`${API}/api/peak-plans/board${qs}`, { headers });
       // #2849 bølge 6: både !res.ok og netværks-catch returnerede tavst, så
       // `error` aldrig blev sat — planlæggeren degraderede til en tom side uden
@@ -102,10 +110,14 @@ export function usePlanner(seasonNumber = null) {
       const payload = (body || seasonNumber != null)
         ? { ...(body || {}), ...(seasonNumber != null ? { season_number: seasonNumber } : {}) }
         : undefined;
-      const res = await fetch(`${API}/api/peak-plans${path}`, {
+      const res = await apiFetch(`${API}/api/peak-plans${path}`, {
         method, headers, body: payload ? JSON.stringify(payload) : undefined,
       });
-      const data = await res.json().catch(() => ({}));
+      // #5242: catch'en herunder returnerede foer {error:"network"} (uden status)
+      // ved en transportfejl; apiFetch kaster ikke laengere (#5322), saa grenen
+      // genindfoeres eksplicit for at holde adfaerden uaendret.
+      if (res.networkError) return { ok: false, error: "network" };
+      const data = res.data || {};
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed", status: res.status };
       await refresh();
       return { ok: true, ...data };

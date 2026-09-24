@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "./sharedRequestCache.js";
+import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -40,9 +41,9 @@ export function useScoutingCentral() {
         async () => {
           // catch-ok: bobler ud gennem sharedRequestCache.get() til refresh()s
           // egen try/catch/finally, som rydder loading-tilstanden.
-          const meRes = await fetch(`${API}/api/scouting/me`, { headers }); // catch-ok
-          if (!meRes.ok) throw new Error("scouting_me_failed");
-          return meRes.json();
+          const meRes = await apiFetch(`${API}/api/scouting/me`, { headers }); // catch-ok
+          if (!meRes.ok) throw new Error("scouting_me_failed"); // apiFetch: ok:false ogsaa ved networkError, saa uaendret
+          return meRes.data;
         },
         SHARED_TTL_MS.scoutingMe,
       );
@@ -50,14 +51,19 @@ export function useScoutingCentral() {
       setEnabled(systemEnabled);
       if (!systemEnabled) { setLoading(false); return; }
 
-      const res = await fetch(`${API}/api/scouting/central`, { headers });
+      const res = await apiFetch(`${API}/api/scouting/central`, { headers });
+      // #5242: catch'en herunder beholdt foer tidligere state uaendret (ingen
+      // fejl vist) ved en transportfejl; apiFetch kaster ikke laengere (#5322),
+      // saa grenen genindfoeres eksplicit her — ellers ville en transportfejl nu
+      // falde i !res.ok og vise en fejlbesked der foer aldrig blev vist.
+      if (res.networkError) { setLoading(false); return; }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = res.data || {};
         setError(body.error || "failed");
         setLoading(false);
         return;
       }
-      const data = await res.json();
+      const data = res.data;
       setScout(data.scout ?? null);
       setActive(data.active ?? []);
       setCompleted(data.completed ?? []);
@@ -79,10 +85,13 @@ export function useScoutingCentral() {
     if (!headers) return { ok: false, error: "auth" };
     setBusy(true);
     try {
-      const res = await fetch(`${API}/api/scouting/assignments`, {
+      const res = await apiFetch(`${API}/api/scouting/assignments`, {
         method: "POST", headers, body: JSON.stringify({ kind: "target", riderId }),
       });
-      const data = await res.json().catch(() => ({}));
+      // #5242: eksplicit netvaerksfejl-gren (#5322) — se startTarget/startMission/
+      // cancelAssignment: catch'en gav foer "network", !res.ok giver "failed".
+      if (res.networkError) return { ok: false, error: "network" };
+      const data = res.data || {};
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
       sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: holdtilstand aendret
       await refresh();
@@ -99,10 +108,11 @@ export function useScoutingCentral() {
     if (!headers) return { ok: false, error: "auth" };
     setBusy(true);
     try {
-      const res = await fetch(`${API}/api/scouting/assignments`, {
+      const res = await apiFetch(`${API}/api/scouting/assignments`, {
         method: "POST", headers, body: JSON.stringify({ kind: "mission", criteria }),
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return { ok: false, error: "network" };
+      const data = res.data || {};
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
       sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: holdtilstand aendret
       await refresh();
@@ -118,10 +128,11 @@ export function useScoutingCentral() {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await fetch(`${API}/api/scouting/assignments/${assignmentId}/cancel`, {
+      const res = await apiFetch(`${API}/api/scouting/assignments/${assignmentId}/cancel`, {
         method: "POST", headers,
       });
-      const data = await res.json().catch(() => ({}));
+      if (res.networkError) return { ok: false, error: "network" };
+      const data = res.data || {};
       if (!res.ok || data.ok === false) return { ok: false, error: data.error || "failed" };
       sharedRequestCache.invalidate(SHARED_KEYS.scoutingMe); // #5089: holdtilstand aendret
       await refresh();

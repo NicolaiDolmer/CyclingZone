@@ -10,12 +10,18 @@
 //     gradueret).
 //
 //   • demote(...)   — flyt en U23-senior-rytter NED i akademiet (D5-berettigelse).
-//     Kører via demote_rider_to_academy-RPC'en under advisory-lås (akademi-8-cap +
-//     atomisk sletning af fremtidige race_entries). Løn OG kontrakt-TERM arves
+//     Kører via demote_rider_to_academy-RPC'en under advisory-lås (loft pr. mål-
+//     trup, #5432, + atomisk sletning af fremtidige race_entries). Løn OG kontrakt-TERM arves
 //     UÆNDRET hvis rytteren allerede har en komplet kontrakt (#4589 — samme
 //     #1309/#2881-invariant som promote() og contractOnAcquirePatch: en
 //     akademi-flytning er ikke en kontrakt-fornyelse); kun en reelt kontraktløs
 //     rytter får en frisk akademi-løn + -aftale (create-if-missing, #3620).
+//
+//   • moveRider(...) — flyt en rytter til en NAVNGIVET trup (junior / u23 /
+//     senior, #5432). Opad frit, nedad kun inden for mål-truppens aldersloft;
+//     altid kun med ledig plads, uden aktiv auktion og ikke midt i et etapeløb.
+//     Til/fra senior går gennem promote()/demote() ovenfor (kontrakt- og løn-
+//     reglerne bor dér); junior ↔ U23 går gennem move_academy_rider_squad-RPC'en.
 //
 // Spec: docs/superpowers/specs/2026-06-25-race-hub-program-design.md §5 S7 + D5.
 //
@@ -34,8 +40,15 @@ import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
-import { findPendingGraduation, countSquadMembers } from "./academyGraduation.js";
-import { squadForSeason, capForSquad, wouldExceedSquadCap } from "./squads.js";
+import { findPendingGraduation } from "./academyGraduation.js";
+import { ageForSeason } from "./riderSeasonAge.js";
+import { ACTIVE_AUCTION_STATUSES } from "./auctionRules.js";
+import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
+import {
+  SQUAD_MAX_AGE, DEFAULT_SQUAD, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
+  isSquad, isYouthSquad, squadForSeason, squadCapRpcArgs, effectiveSquad,
+  fitsSquadAge, squadMoveDirection,
+} from "./squads.js";
 
 /**
  * Demote-løn (#2594): samme delte formel som al anden løn —
@@ -171,8 +184,31 @@ export async function promote(supabase, {
 
 // RPC ok=false-koder → named errors (kalderen i api.js maper til HTTP-status).
 const DEMOTE_ERROR_CODES = new Set([
-  "not_owned", "already_academy", "not_u23", "rider_on_market", "rider_listed", "academy_full",
+  "not_owned", "already_academy", "not_u23", "too_old_for_squad", "rider_on_market",
+  "rider_listed", "academy_full", "invalid_squad",
 ]);
+
+/**
+ * Mål-truppen for en nedrykning: den trup kalderen har valgt (moveRider), ellers
+ * den trup rytterens sæsonalder hører til.
+ *
+ * Er rytteren for gammel til enhver ungdomstrup, eller er alderen ukendt, sendes
+ * 'u23' — den ældste ungdomstrup — så RPC'ens aldersgate afviser med 'not_u23'
+ * præcis som før #5432. Aldersreglen håndhæves dermed ÉT sted (SQL, under låsen)
+ * i stedet for at blive gentaget her.
+ *
+ * @param {{birthdate?:string|null}} rider
+ * @param {number} seasonNumber
+ * @param {"junior"|"u23"|undefined} requestedSquad
+ * @returns {"junior"|"u23"}
+ */
+// #5568: eksporteret, så academy-demote-quote viser loftet for PRÆCIS den trup
+// demote() selv vælger (ingen kopi af valget i routen).
+export function demoteTargetSquad(rider, seasonNumber, requestedSquad) {
+  if (requestedSquad !== undefined) return requestedSquad;
+  const ageSquad = squadForSeason(rider.birthdate, seasonNumber);
+  return isYouthSquad(ageSquad) ? /** @type {"junior"|"u23"} */ (ageSquad) : "u23";
+}
 
 /**
  * Demote en U23-senior-rytter ned i akademiet (D5).
@@ -183,18 +219,23 @@ const DEMOTE_ERROR_CODES = new Set([
  *   round(current_production_value × SALARY_RATE_PRODUCTION)).
  * - p_season_start_year = LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) (spejler
  *   ageForSeason, så RPC'ens alders-gate matcher motoren).
- * - kalder demote_rider_to_academy-RPC'en (advisory-lås + akademi-cap + atomisk
- *   sletning af fremtidige race_entries).
+ * - kalder demote_rider_to_academy-RPC'en (advisory-lås + loft pr. mål-trup +
+ *   aldersloft + squad/is_academy i ÉN skrivning + atomisk sletning af
+ *   fremtidige race_entries). Loftet og aldersloftet kommer fra squads.js.
  * - ok=false → kast named error; ok=true → notify 'academy_demoted'.
  *
+ * @param {any} supabase
+ * @param {{teamId:string, riderId:string, seasonNumber:number, targetSquad?:"junior"|"u23", notify?:Function}} args
+ *   targetSquad: kun moveRider sætter den; uden den afgør sæsonalderen truppen.
  * @throws 'rider_not_found' | 'not_owned' | 'already_academy' | 'not_u23'
- *         | 'rider_on_market' | 'rider_listed' | 'academy_full'
- * @returns {Promise<{riderId:string, action:'demoted', newSalary:number, racesCleared:number, racesOngoing:number}>}
+ *         | 'too_old_for_squad' | 'rider_on_market' | 'rider_listed'
+ *         | 'academy_full' | 'invalid_squad'
+ * @returns {Promise<{riderId:string, action:'demoted', squad:string, newSalary:number, racesCleared:number, racesOngoing:number}>}
  */
 export async function demote(supabase, {
-  teamId, riderId, seasonNumber, notify = notifyTeamOwner,
-  countSquad = countSquadMembers,
-} = {}) {
+  teamId, riderId, seasonNumber, targetSquad: requestedSquad, notify = notifyTeamOwner,
+  // Standard-{} er kun et værn mod et manglende argument; felterne er påkrævede.
+} = /** @type {any} */ ({})) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const { data: rider } = await supabase.from("riders")
@@ -202,29 +243,14 @@ export async function demote(supabase, {
     .eq("id", riderId).maybeSingle();
   if (!rider) throw new Error("rider_not_found");
 
-  // ── #4619: loft PR. TRUP i stedet for den flade 8-plads-cap ───────────────
-  // Mål-truppen afgøres af rytterens SÆSONALDER (squads.js → riderSeasonAge.js,
-  // aldrig en kopi af formlen). En 17-årig lander i junior-truppen (loft 10), en
-  // 20-årig i U23 (loft 12) — før delte de ét fælles 8-tal.
-  //
-  // Fejlkoden er bevidst stadig 'academy_full': frontend læser netop den streng
-  // (api.js → AcademyTransferConfirmModal), og en ny kode ville give en rå
-  // engelsk fallback i UI'en. Betydningen er nu "mål-truppen er fuld".
-  //
-  // ⚠ RPC'en `demote_rider_to_academy` har STADIG sin egen hårde 8-cap i SQL
-  //   (database/2026-06-25-academy-promote-demote.sql:114-121). Den er dermed
-  //   indtil videre STRAMMERE end U23-loftet på 12, og lofterne er først reelt
-  //   virksomme når den er hævet. Bevidst uden for slice 1: RPC'en deles med
-  //   auktions- og intake-stierne (finalize_academy_acquisition) og skal ændres
-  //   ét sted for alle tre — se PR-body "Ejer godkender". Gaten her fejler
-  //   altså KONSERVATIVT: den kan afvise tidligere end SQL, aldrig senere.
-  const targetSquad = squadForSeason(rider.birthdate, seasonNumber);
-  if (targetSquad && capForSquad(targetSquad) !== null) {
-    const occupied = await countSquad(supabase, { teamId, squad: targetSquad });
-    if (wouldExceedSquadCap({ squad: targetSquad, currentCount: occupied })) {
-      throw new Error("academy_full");
-    }
-  }
+  // ── #5432: loft PR. MÅL-TRUP, håndhævet inde i RPC'en ────────────────────
+  // Før (#4619 slice 1) lå trup-gaten her i JS, uden for låsen, mens RPC'en
+  // bagefter håndhævede sin egen flade cap på alle akademiryttere under ét. Nu
+  // tæller RPC'en selv pr. mål-trup under advisory-låsen, med loftet fra
+  // squads.js som argument (squadCapRpcArgs). Fejlkoden for en fuld trup er
+  // stadig 'academy_full': frontend læser netop den streng.
+  const targetSquad = demoteTargetSquad(rider, seasonNumber, requestedSquad);
+  const squadArgs = squadCapRpcArgs(targetSquad);
 
   // #3989: løn-satsen er global, så demote behøver ikke holdets division længere.
   const seasonStartYear = LAUNCH_REFERENCE_YEAR + (Number(seasonNumber) - 1);
@@ -255,6 +281,8 @@ export async function demote(supabase, {
     p_contract_length: contractLength,
     p_contract_end: contractEnd,
     p_season_start_year: seasonStartYear,
+    ...squadArgs,
+    p_squad_max_age: SQUAD_MAX_AGE[targetSquad],
   });
   if (error) throw new Error(`demote rpc: ${error.message}`);
 
@@ -264,22 +292,8 @@ export async function demote(supabase, {
     throw new Error(`demote failed${code ? `: ${code}` : ""}`);
   }
 
-  // #4619: RPC'en sætter kun is_academy=true (den kender ikke sæsonalderen og
-  // må ikke regne den ud — spec §3.2 forbyder aldersformlen i SQL). Truppen
-  // skrives derfor her, umiddelbart efter, så de to kolonner ikke bliver uenige.
-  //
-  // Bevidst IKKE atomisk med RPC'en, og bevidst en KONDITIONEL opdatering
-  // (is_academy=true): fejler den, eller kører den to gange, er resultatet det
-  // samme, og en rytter der imens er kommet videre ad en anden sti røres ikke.
-  // Skulle den mislykkes, er faldbagsituationen præcis dagens: is_academy bærer
-  // sandheden og effectiveSquad() i squads.js udleder truppen af alder. Slice 2
-  // flytter skrivningen ind i RPC'en når is_academy afvikles.
-  if (targetSquad) {
-    const { error: squadErr } = await supabase.from("riders")
-      .update({ squad: targetSquad })
-      .eq("id", riderId).eq("team_id", teamId).eq("is_academy", true);
-    if (squadErr) throw new Error(`demote squad update: ${squadErr.message}`);
-  }
+  // #5432: squad skrives nu af RPC'en i SAMME række-skrivning som is_academy
+  // (før: en separat, ikke-atomisk UPDATE herfra efter RPC-kaldet).
 
   const name = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   await notify({
@@ -305,8 +319,180 @@ export async function demote(supabase, {
   return {
     riderId,
     action: "demoted",
+    squad: data.squad ?? targetSquad,
     newSalary: data.new_salary ?? newSalary,
     racesCleared: data.rows_deleted ?? 0,
     racesOngoing,
   };
 }
+
+// ── moveRider: junior ↔ U23 ↔ senior (#5432) ────────────────────────────────
+
+// RPC ok=false-koder fra move_academy_rider_squad → named errors.
+const MOVE_RPC_ERROR_CODES = new Set([
+  "not_owned", "not_academy", "same_squad", "rider_on_market", "rider_in_stage_race",
+  "squad_full", "invalid_squad",
+]);
+
+// De delegerede stier (promote/demote) har hver deres historiske kode for "fuld"
+// og "for gammel" — frontend læser dem på de eksisterende knapper og de ændres
+// derfor ikke dér. moveRider giver én kontrakt for alle tre retninger.
+/** @type {Readonly<Record<string, string>>} */
+const MOVE_ERROR_ALIASES = Object.freeze({
+  academy_full: "squad_full",        // demote: mål-truppen er fuld
+  squad_cap_violation: "squad_full", // promote: seniortruppens division-cap
+  not_u23: "too_old_for_squad",      // demote: for gammel til U23
+});
+
+/** @param {any} err */
+function normalizeMoveError(err) {
+  const alias = MOVE_ERROR_ALIASES[err?.message];
+  return alias ? new Error(alias, { cause: err }) : err;
+}
+
+/**
+ * Rytterens NUVÆRENDE trup. effectiveSquad (squads.js) klarer overgangs-
+ * perioden før #4619-backfill'en; kun en akademirytter uden brugbar fødselsdato
+ * falder igennem, og han står i akademiets nederste trin (samme regel som
+ * backfill'en).
+ *
+ * @param {{squad?:string, is_academy?:boolean}|null|undefined} rider
+ * @param {number|null} seasonAge
+ * @returns {"junior"|"u23"|"senior"}
+ */
+function currentSquadOf(rider, seasonAge) {
+  return effectiveSquad(rider, seasonAge)
+    ?? (rider?.is_academy === true ? ACADEMY_SQUAD_WHEN_AGE_UNKNOWN : DEFAULT_SQUAD);
+}
+
+/**
+ * @param {any} supabase
+ * @param {string} riderId
+ * @returns {Promise<boolean>}
+ */
+async function hasActiveAuction(supabase, riderId) {
+  const { data, error } = await supabase.from("auctions")
+    .select("id")
+    .eq("rider_id", riderId)
+    .in("status", ACTIVE_AUCTION_STATUSES)
+    .limit(1);
+  if (error) throw new Error(`moveRider auction lookup: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+/**
+ * junior ↔ U23 inden for akademiet: kun truppen skifter (is_academy, løn og
+ * kontrakt er uændrede). Loft, auktion og etapeløb tjekkes igen af RPC'en under
+ * holdets advisory-lås, så to samtidige flytninger ikke kan fylde samme plads.
+ *
+ * @param {any} supabase
+ * @param {{teamId:string, riderId:string, fromSquad:string, targetSquad:string,
+ *   direction:"up"|"down"|"none"|null, now:Date}} args
+ * @returns {Promise<{riderId:string, action:'moved', from:string, to:string, squadCount:number|null}>}
+ */
+async function moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetSquad, direction, now }) {
+  const { data, error } = await supabase.rpc("move_academy_rider_squad", {
+    p_team_id: teamId,
+    p_rider_id: riderId,
+    ...squadCapRpcArgs(targetSquad),
+  });
+  if (error) throw new Error(`move rpc: ${error.message}`);
+  if (!data || data.ok !== true) {
+    const code = data?.code;
+    if (MOVE_RPC_ERROR_CODES.has(code)) throw new Error(code);
+    throw new Error(`move failed${code ? `: ${code}` : ""}`);
+  }
+
+  // Op fra junior til U23: en ventende junior → U23-overgang (Graduation Day) er
+  // dermed gennemført af manageren selv. Samme oprydning som promote() laver for
+  // U23 → senior, ellers ville sweepet køre overgangen igen bagefter. En ventende
+  // række mod en ANDEN trup (fx senior) røres ikke.
+  if (direction === "up") {
+    const grad = await findPendingGraduation(supabase, { teamId, riderId });
+    if (grad && grad.to_squad === targetSquad) {
+      const { error: gradErr } = await supabase.from("academy_graduation")
+        .update({ status: "promoted", resolved_at: now.toISOString() })
+        .eq("id", grad.id);
+      if (gradErr) throw new Error(`move grad resolve: ${gradErr.message}`);
+    }
+  }
+
+  return { riderId, action: "moved", from: fromSquad, to: targetSquad, squadCount: data.squad_count ?? null };
+}
+
+/**
+ * Flyt en rytter til en navngiven trup: junior, u23 eller senior (#5432).
+ *
+ * Regler (YOUTH_RULES §2.1/§2.2, issue #5432):
+ *   • OPAD frit: ingen aldersgrænse på vej mod senior.
+ *   • NEDAD kun inden for mål-truppens aldersloft (squads.fitsSquadAge).
+ *   • Altid: ledig plads i mål-truppen, ingen aktiv auktion, ikke midt i et
+ *     etapeløb (samme afgrænsning som #1995/#4423: race_type='stage_race',
+ *     ikke completed, stages_completed > 0).
+ *
+ * Retningen afgør stien, så kontrakt- og løn-reglerne kun findes ét sted:
+ *   → senior          promote()  (division-cap, #1309/#2881-kontrakt, grad-oprydning)
+ *   senior → ungdom   demote()   (RPC: loft pr. trup, #4589-løn, race_entries)
+ *   junior ↔ U23      move_academy_rider_squad-RPC'en
+ *
+ * Fejlkoderne er én kontrakt for alle tre retninger: 'squad_full' og
+ * 'too_old_for_squad' dækker også de delegerede stiers historiske koder.
+ *
+ * @param {any} supabase
+ * @param {{teamId:string, riderId:string, targetSquad:string, seasonNumber:number,
+ *   now?:Date, getMarketState?:typeof getTeamMarketState, notify?:typeof notifyTeamOwner,
+ *   ridersInActiveStageRace?:Function}} args
+ * @throws 'invalid_squad' | 'rider_not_found' | 'not_owned' | 'same_squad'
+ *   | 'too_old_for_squad' | 'rider_on_market' | 'rider_listed'
+ *   | 'rider_in_stage_race' | 'squad_full' | 'not_academy' | 'already_academy'
+ * @returns {Promise<{riderId:string, action:'promoted'|'demoted'|'moved', from:string, to:string}>}
+ */
+export async function moveRider(supabase, {
+  teamId, riderId, targetSquad, seasonNumber, now = new Date(),
+  getMarketState = getTeamMarketState, notify = notifyTeamOwner,
+  ridersInActiveStageRace = getRidersInActiveStageRace,
+  // Standard-{} er kun et værn mod et manglende argument; felterne er påkrævede.
+} = /** @type {any} */ ({})) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!isSquad(targetSquad)) throw new Error("invalid_squad");
+
+  // schema-columns-ok: riders.squad tilføjes af database/2026-09-15-4619-riders-squad.sql
+  // (#4619); schema-snapshot.json er ikke refreshet siden.
+  const { data: rider, error } = await supabase.from("riders")
+    .select("id, team_id, is_academy, squad, birthdate")
+    .eq("id", riderId).maybeSingle();
+  if (error) throw new Error(`moveRider rider lookup: ${error.message}`);
+  if (!rider) throw new Error("rider_not_found");
+  if (rider.team_id !== teamId) throw new Error("not_owned");
+
+  const seasonAge = ageForSeason(rider.birthdate, seasonNumber);
+  const fromSquad = currentSquadOf(rider, seasonAge);
+  const direction = squadMoveDirection(fromSquad, targetSquad);
+  if (direction === "none") throw new Error("same_squad");
+  if (direction === "down" && !fitsSquadAge({ squad: targetSquad, seasonAge })) {
+    throw new Error("too_old_for_squad");
+  }
+
+  // Dagens gates, for ALLE retninger. RPC'erne gentager dem under låsen hvor de
+  // har dem; promote() har dem ikke, så de skal stå her.
+  if (await hasActiveAuction(supabase, riderId)) throw new Error("rider_on_market");
+  const racing = await ridersInActiveStageRace(supabase, [riderId]);
+  if (racing.includes(riderId)) throw new Error("rider_in_stage_race");
+
+  try {
+    if (targetSquad === DEFAULT_SQUAD) {
+      const res = await promote(supabase, { teamId, riderId, seasonNumber, now, getMarketState, notify });
+      return { ...res, from: fromSquad, to: targetSquad };
+    }
+    if (fromSquad === DEFAULT_SQUAD) {
+      // isSquad() ovenfor + targetSquad !== senior: kun junior/u23 når hertil.
+      const youthSquad = /** @type {"junior"|"u23"} */ (targetSquad);
+      const res = await demote(supabase, { teamId, riderId, seasonNumber, targetSquad: youthSquad, notify });
+      return { ...res, from: fromSquad, to: targetSquad };
+    }
+    return await moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetSquad, direction, now });
+  } catch (err) {
+    throw normalizeMoveError(err);
+  }
+}
+

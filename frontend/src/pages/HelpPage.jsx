@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
-import { fetchBoardRoom } from "./annualMeeting/meetingApi.js";
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
+import { isHelpBlockVisible, isHelpFaqVisible, isHelpSectionVisible } from "./helpFlagGates.js";
 import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
@@ -49,39 +51,11 @@ import {
   MessageIcon,
 } from "../components/ui/icons/index.jsx";
 
-// #4855 · Sektioner der kun maa vises naar den bagvedliggende model er slaaet
-// til for MANAGEREN. Vaerdien er navnet paa den gate der afgoer det; i dag
-// findes kun én, board_mandate_model_enabled, aflaest via GET /board/room's
-// `enabled` (samme lette kald og samme sikre fallback som BoardroomRoute:
-// fejl, ingen session eller flag off -> sektionen er skjult).
-//
-// #4910 · "raceDay" er OGSAA flag-gated, men har INGEN tilsvarende letvaegts,
-// globalt GET-endpoint at kalde: race_engine_v4 og race_day_intention_enabled
-// (backend/lib/raceEngineFlag.js, raceIntentionFlag.js) laeses kun server-side
-// og er kun spiller-synlige via `valid_efforts` paa et PER-LOEB endpoint
-// (GET /api/races/:raceId/stage-roles) — Hjaelpesiden har intet raceId at
-// spoerge med. Sektionen holdes derfor HARDKODET skjult (se raceDayEnabled
-// nedenfor) indtil en opgave tilfoejer et globalt flag-svar i samme stil som
-// GET /board/room. Braekker ALDRIG denne kommentar op fra raceDayEnabled.
-const FLAG_GATED_SECTIONS = ["mandate", "raceDay"];
-
-// #4847 · BLOK-niveau-gating. `dailytraining` er en synlig sektion, men ÉN af dens
-// blokke beskriver en model der endnu ikke er taendt: "runDayNow" (dagens samlede
-// traening + den frivillige knap) gaelder foerst naar `training_tick_per_race_day`
-// er on, mens "trainToday" (+25 %-bonussen) gaelder indtil da. De to modsiger
-// hinanden, saa de maa ALDRIG staa side om side paa fladen.
-//
-// Hardkodet false efter samme moenster som `raceDayEnabled` nedenfor, og af samme
-// grund: der findes intet letvaegts, globalt flag-endpoint Hjaelpesiden kan spoerge.
-// Ved cutover flippes DENNE linje, og "trainToday" flyttes samtidig til den anden
-// side af kontakten (den beskriver da fortiden).
-const TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED = false;
-const FLAG_GATED_BLOCKS = {
-  dailytraining: {
-    runDayNow: () => TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED,
-    trainToday: () => !TRAINING_TICK_PER_RACE_DAY_HELP_ENABLED,
-  },
-};
+// #4948 · Flag-gatede sektioner (mandate, raceDay), blokke (dailytraining:
+// runDayNow/trainToday, raceDays/raceDaysPerRaceDay, formFatigue/
+// formFatiguePerRaceDay) og FAQ'er (#4849) er defineret ét sted, i
+// ./helpFlagGates.js, og foelger ét kald til GET /api/feature-flags (se
+// useEffect i HelpPage nedenfor). Et flag-flip kraever ingen kodeaendring her.
 
 const SECTION_DEFS = [
   {
@@ -102,6 +76,9 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatBoard", kind: "text" },
       { id: "season1Baseline", kind: "text" },
+      // #5483 · national kerne-taerskel forklaret lige efter den foerste
+      // omtale (season1Baseline), foer selve plan-onboardingen.
+      { id: "nationalCoreRule", kind: "text" },
       { id: "season2Onboarding", kind: "steps" },
       // #4382 · flerarsplanens livscyklus samlet ET sted (udloeb + nulstilling,
       // midtvejs-review, obligatorisk genforhandling, bonustilbud fra alle tre
@@ -123,9 +100,9 @@ const SECTION_DEFS = [
   // #4855 · Mandatet (#3514 fase 2). Sektionen SUPPLERER board-sektionen
   // ovenfor, den erstatter den ikke: indtil board_mandate_model_enabled er
   // flippet (#4859) er det board-sektionen der beskriver den model spilleren
-  // faktisk moeder. Derfor er netop denne sektion flag-gated i render'en
-  // nedenfor (FLAG_GATED_SECTIONS) - copy'en ligger klar i help.json en+da
-  // fra i dag, men vises foerst naar manageren rent faktisk har Boardroom.
+  // faktisk moeder. Derfor er netop denne sektion flag-gated (HELP_SECTION_FLAGS
+  // i ./helpFlagGates.js) - copy'en ligger klar i help.json en+da fra i dag,
+  // men vises foerst naar mandat-modellen er taendt for viewer'en.
   {
     key: "mandate",
     Icon: GavelIcon,
@@ -395,6 +372,9 @@ const SECTION_DEFS = [
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
       { id: "raceDays", kind: "text" },
+      // #4849: raceDays' tvilling for loebsdags-modellen (loeb ELLER traening,
+      // etapeloebet binder inkl. hviledage). Kun én af de to vises ad gangen.
+      { id: "raceDaysPerRaceDay", kind: "text" },
       // #4066: wired in — what trains a rider with no focus set follows the
       // "Train today" action it applies to.
       { id: "smartDefault", kind: "text" },
@@ -402,6 +382,9 @@ const SECTION_DEFS = [
       // after the smart default it builds on.
       { id: "assistantSuggestions", kind: "text" },
       { id: "formFatigue", kind: "text" },
+      // #4849: formFatigue' tvilling (restitution pr. loebsdag, samlet koersel
+      // tidligst kl. 20 i stedet for kl. 22). Kun én af de to vises ad gangen.
+      { id: "formFatiguePerRaceDay", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —
@@ -436,6 +419,9 @@ const SECTION_DEFS = [
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
+      // #2491: hvor selve valget traeffes (Graduation Day-siden). Prosaen bor
+      // her, ikke paa fladen (ejer 20/8: kort tekst paa UI, manualer i Hjaelp).
+      { id: "graduationDayPage", kind: "steps" },
       // #4066: wired in — promoting/demoting between academy and senior
       // squad outside graduation already had translated copy but no
       // reachable docs.
@@ -493,9 +479,9 @@ const SECTION_DEFS = [
     ],
   },
   // #4910 · Race engine v4 + løbsdagens intention (#4632). Copy'en ligger klar
-  // i help.json en+da fra i dag, men sektionen er flag-gated (se
-  // FLAG_GATED_SECTIONS ovenfor) og forbliver skjult indtil v4-flippet
-  // (RACE_ENGINE_RULES.md §9). Placeret lige efter raceSelection, som den
+  // i help.json en+da fra i dag, men sektionen er flag-gated på race_engine_v4
+  // (HELP_SECTION_FLAGS i ./helpFlagGates.js, #4948) og vises automatisk ved
+  // v4-flippet (RACE_ENGINE_RULES.md §9). Placeret lige efter raceSelection, som den
   // udvider: samme emne (roller, taktik, uheld), næste lag ovenpå.
   {
     key: "raceDay",
@@ -546,8 +532,17 @@ const FAQ_KEYS = [
   // #4261: løb-som-træning-FAQ — svar på fem konkrete spørgsmål fra Discord om
   // hvordan løbsdage og daglig træning spiller sammen i sæson 3 (dev-flag off).
   "raceDayIntensityFaq",
+  // #4849: on-tvilling til svaret ovenfor (loebsdags-modellen). HELP_FAQ_FLAGS i
+  // ./helpFlagGates.js viser kun én af de to ad gangen. Samme for akademi-svaret.
+  "raceDayIntensityPerRaceDayFaq",
   "raceDayProfileMatchFaq",
   "raceDayAcademyFaq",
+  "raceDayAcademyPerRaceDayFaq",
+  // #4849: tre nye loebsdags-FAQ'er, kun synlige naar loebsdags-modellen er
+  // taendt (lavere divisioner, flere etaper samme dag #4164, hviledag i etapeloeb).
+  "lowerDivisionTrainingFaq",
+  "multipleStagesTrainingFaq",
+  "stageRaceRestDayFaq",
   "flatCobblesHardTrainingFaq",
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
@@ -637,19 +632,16 @@ const FAQ_KEYS = [
   "betaGroupFaq", // #5259
 ];
 
-function buildSections(t, vars) {
+function buildSections(t, vars, flags) {
   return SECTION_DEFS.map((def) => {
     const base = `sections.${def.key}`;
     return {
       key: def.key,
       Icon: def.Icon,
       label: t(`${base}.label`, vars),
-      // #4847: blokke hvis indhold haenger paa et flag filtreres FOER de oversaettes.
-      // En blok uden en linje i FLAG_GATED_BLOCKS er altid synlig (uaendret adfaerd).
-      content: def.blocks.filter((block) => {
-        const gate = FLAG_GATED_BLOCKS[def.key]?.[block.id];
-        return typeof gate === "function" ? gate() : true;
-      }).map((block) => {
+      // #4847/#4948: blokke hvis indhold haenger paa et flag filtreres FOER de
+      // oversaettes. En blok uden en linje i HELP_BLOCK_FLAGS er altid synlig.
+      content: def.blocks.filter((block) => isHelpBlockVisible(def.key, block.id, flags)).map((block) => {
         const blockBase = `${base}.${block.id}`;
         const title = t(`${blockBase}.title`, vars);
         if (block.kind === "steps") {
@@ -694,8 +686,9 @@ function buildSections(t, vars) {
   });
 }
 
-function buildFaq(t, vars) {
-  return FAQ_KEYS.map((id) => ({
+function buildFaq(t, vars, flags) {
+  // #4849: flag-gatede FAQ'er filtreres FOER de oversaettes, som blokkene.
+  return FAQ_KEYS.filter((id) => isHelpFaqVisible(id, flags)).map((id) => ({
     id,
     q: t(`faq.${id}.q`, vars),
     a: t(`faq.${id}.a`, vars),
@@ -714,6 +707,18 @@ export default function HelpPage() {
   // gater render bag PageLoader så raw keys aldrig rammer first paint.
   // Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
   const { t, i18n, ready } = useTranslation("help");
+  // Per-route head (#5494). Titel/description først når namespacet er klar —
+  // ellers ville <title> kortvarigt vise den rå i18n-nøgle. Canonical sættes
+  // uanset, så en langsom namespace-fetch ikke efterlader ruten uden den.
+  // Build-prerenderen læser præcis disse værdier (frontend/scripts/
+  // prerender.mjs via useDocumentHead's SSR-opsamling), så server-HTML og
+  // klient siger det samme.
+  useDocumentHead({
+    title: ready ? t("meta.title") : undefined,
+    description: ready ? t("meta.description") : undefined,
+    canonical: "https://cyclingzone.org/help",
+    lang: i18n.language?.startsWith("da") ? "da" : "en",
+  });
   const [searchParams] = useSearchParams();
   // Deep-link support (#2467): ?faq=<id> opens the FAQ tab with that question
   // expanded; ?section=<key> opens a specific section. Unknown/missing values
@@ -727,11 +732,12 @@ export default function HelpPage() {
     return "start";
   });
   const [search, setSearch] = useState("");
-  const [faqOpen, setFaqOpen] = useState(() => {
-    if (!faqParam) return null;
-    const idx = FAQ_KEYS.indexOf(faqParam);
-    return idx !== -1 ? idx : null;
-  });
+  // #4849: den aabne FAQ huskes paa sit id, ikke sin plads i listen. Listen
+  // filtreres nu gennem flag-svaret (HELP_FAQ_FLAGS), saa en plads flytter sig
+  // naar svaret lander, og et dyb-link ville ellers aabne det forkerte spoergsmaal.
+  const [faqOpen, setFaqOpen] = useState(() => (
+    faqParam && FAQ_KEYS.includes(faqParam) ? faqParam : null
+  ));
 
   // #3941 — "Kendte problemer": aktive + seneste 14 dages ops_notices, samme
   // datakilde som driftsbanneret i Layout.jsx. Hooken skal stå FØR den tidlige
@@ -747,39 +753,28 @@ export default function HelpPage() {
     return () => { active = false; };
   }, []);
 
-  // #4855 · Mandat-sektionen vises kun naar manageren faktisk har Boardroom
-  // (board_mandate_model_enabled, #4859). Ét let kald, aldrig blokerende:
-  // fejler det, mangler sessionen eller staar flaget off, forbliver sektionen
-  // skjult og hjaelpen viser den model spilleren rent faktisk moeder.
-  const [mandateModelEnabled, setMandateModelEnabled] = useState(false);
+  // #4948 · ÉT let kald for alle flag-gatede dele (mandate, raceDay og
+  // traenings-blokkene, se ./helpFlagGates.js). Aldrig blokerende: null mens
+  // det hentes, og et fejlsvar giver {} = alt off, saa hjaelpen viser den
+  // model spilleren rent faktisk moeder.
+  const [playerFlags, setPlayerFlags] = useState(null);
   useEffect(() => {
     let active = true;
-    fetchBoardRoom()
-      .then((room) => { if (active && room?.enabled) setMandateModelEnabled(true); })
-      .catch(() => { /* ikke-kritisk: sektionen forbliver skjult */ });
+    fetchPlayerFeatureFlags()
+      .then((flags) => { if (active) setPlayerFlags(flags); })
+      .catch(() => { if (active) setPlayerFlags({}); });
     return () => { active = false; };
   }, []);
-
-  // #4910 · "raceDay" har intet globalt flag-endpoint at kalde endnu (se
-  // kommentaren ved FLAG_GATED_SECTIONS). Hardkodet false, ikke et
-  // useState/useEffect-par som mandatet ovenfor: der findes intet kald at
-  // lave, og en fremtidig PR der wirer det rigtige endpoint skal ÆNDRE denne
-  // linje, ikke tilføje endnu en skjult tilstand ved siden af.
-  const raceDayEnabled = false;
 
   if (!ready) return <PageLoader />;
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
   // the backend constants) so /help can't drift the way it did in #1907.
   const helpNumbers = buildHelpNumbers(i18n.language);
-  // #4855/#4910: hvert flag-gated key slaas op i sin egen kilde. En sektion i
-  // FLAG_GATED_SECTIONS uden en linje her er default SKJULT (fail-safe), ikke
-  // synlig-som-fejl.
-  const SECTION_ENABLED = { mandate: mandateModelEnabled, raceDay: raceDayEnabled };
-  const sections = buildSections(t, helpNumbers).filter(
-    (s) => !FLAG_GATED_SECTIONS.includes(s.key) || SECTION_ENABLED[s.key] === true,
+  const sections = buildSections(t, helpNumbers, playerFlags).filter(
+    (s) => isHelpSectionVisible(s.key, playerFlags),
   );
-  const faq = buildFaq(t, helpNumbers);
+  const faq = buildFaq(t, helpNumbers, playerFlags);
 
   // Et dyb-link til en gated sektion (?section=mandate uden flaget) maa ikke
   // efterlade indholdsfeltet tomt - fald tilbage til den foerste sektion.
@@ -993,21 +988,21 @@ export default function HelpPage() {
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4">{t("page.faqHeading")}</h2>
                 <div className="flex flex-col gap-2">
-                  {faq.map((f, i) => (
+                  {faq.map((f) => (
                     <Card key={f.id} className="overflow-hidden">
                       <button
-                        onClick={() => setFaqOpen(faqOpen === i ? null : i)}
+                        onClick={() => setFaqOpen(faqOpen === f.id ? null : f.id)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left"
                       >
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
                         <ChevronDownIcon
                           aria-hidden="true"
                           className={`w-4 h-4 text-cz-3 ms-3 flex-shrink-0 transition-transform ${
-                            faqOpen === i ? "rotate-180" : ""
+                            faqOpen === f.id ? "rotate-180" : ""
                           }`}
                         />
                       </button>
-                      {faqOpen === i && (
+                      {faqOpen === f.id && (
                         <div className="px-4 pb-3 border-t border-cz-border pt-3">
                           <p className="text-cz-2 text-sm leading-relaxed">{f.a}</p>
                         </div>

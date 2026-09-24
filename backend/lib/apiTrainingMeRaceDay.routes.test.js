@@ -25,21 +25,30 @@ import { RACE_DAY_ENGINE_FLAG_KEY } from "./raceDayEngineFlag.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
 
+// #5488: api.js staar ikke paa .gitattributes' eol=lf-liste, saa et Windows-
+// checkout med core.autocrlf=true giver CRLF (\r\n). Alle maalinger herunder
+// (routeBlock-vinduet + forward-guardens handlerLength) regner derfor paa en
+// LF-normaliseret kopi af kilden, saa tegn-taellingen er den samme uanset
+// checkoutets linjeskift — ellers puster hvert \r vinduet op og guarden
+// rammer 14000-graensen paa Windows alene, groen paa Linux-CI.
+const apiSourceLF = apiSource.replace(/\r\n/g, "\n");
+
 // VINDUET ER EN HEURISTIK, ikke en kontrakt — det skal bare daekke hele
 // /training/me-handleren. Hævet 7200 → 9200 af #4851 (traeningsscoren lagde et
 // flag-opslag, en query og et betinget responsfelt ind i route'n), 9200 → 10400 af
 // #3643 (mobil-flaget training_mobile_table lagde endnu et flag-opslag +
-// responsfelt ind i samme handler) og 10400 → 13000 af #4847 (dayClose-blokken,
-// knappens aabne-tilstand). Faldt res.json uden for vinduet, holdt guarderne
+// responsfelt ind i samme handler), 10400 → 13000 af #4847 (dayClose-blokken,
+// knappens aabne-tilstand) og 13000 → 14000 af #5462 (skadens loebsdags-felt i
+// condition-projektionen + condition-mappen). Faldt res.json uden for vinduet, holdt guarderne
 // herunder op med at maale noget UDEN at blive roede. Samme fejlklasse hver gang:
 // racingToday-spreadet faldt uden for vinduet og guarden matchede ikke laengere.
 // Testen "routeBlock-vinduet daekker hele /training/me-handleren" nedenfor er
 // forward-guarden: den maaler den FAKTISKE afstand til naeste router.*-kald, saa
 // vinduet ikke kan blive for lille igen uden at noget bliver roedt.
-function routeBlock(marker, len = 13000) {
-  const start = apiSource.indexOf(marker);
+function routeBlock(marker, len = 14000) {
+  const start = apiSourceLF.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
-  return apiSource.slice(start, start + len);
+  return apiSourceLF.slice(start, start + len);
 }
 
 // Fake app_config-klient: returnerer `valueByKey[key]` for det opslag route'n
@@ -77,10 +86,10 @@ async function trainingMeRaceDayGate(supabase, { isBetaTester = false } = {}, lo
 // stedet for tavst naeste gang handleren vokser.
 test("#4847 forward-guard: routeBlock-vinduet daekker hele /training/me-handleren", () => {
   const marker = 'router.get("/training/me"';
-  const start = apiSource.indexOf(marker);
+  const start = apiSourceLF.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
   // Naeste route-registrering efter handleren = handlerens ende.
-  const next = apiSource.indexOf("\nrouter.", start + marker.length);
+  const next = apiSourceLF.indexOf("\nrouter.", start + marker.length);
   assert.ok(next !== -1, "der skal findes en route efter /training/me");
   const handlerLength = next - start;
   const block = routeBlock(marker);

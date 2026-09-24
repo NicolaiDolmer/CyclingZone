@@ -54,10 +54,10 @@ Bemærk at sæson-oversigten viser et ANDET tal under samme ord: `seasonDayOrdin
 | Samtidige løb pr. **løbsdag** (loft) | `TIER_OVERLAP_CAP` | 3 | 3 | 2 | 2 | 28/6, bekræftet 24/8 | `calendarTierCaps.js` |
 | Samtidige løb pr. **løbsdag** (bund) | `TIER_OVERLAP_MIN` | 1 | 1 | 1 | 1 | ejer 3/9 ([#3329](https://github.com/NicolaiDolmer/CyclingZone/issues/3329)) | `calendarTierCaps.js` |
 | Andel løbsdage med **≥ 2 løb** | `TIER_MULTI_RACE_DAY_MIN_SHARE` | 45 % | 55 % | 40 % | 40 % | ejer 3/9 (#3329) | `calendarTierCaps.js` |
-| Tids-slots pr. dag | `TIER_STAGE_SLOTS` | 5 | 4 | 3 | **3** | ejer-låst, D4 hævet 3/9 | `tierCalendarMaterializer.js` |
+| Tids-slots pr. dag | `TIER_STAGE_SLOTS` | 5 | 4 | 3 | **3** | ejer-låst, D4 hævet 3/9 | `calendarPlanningWindow.js` (#5592) |
 | Etaper i alt (kvote), S4 | density × løbsdatoer | 140 | 112 | 84 | **84** | afledt af §2 | `buildSeasonCalendar.js` |
 
-Antal slots = density, så en dag aldrig har flere etaper end slots. Slottene er konkrete klokkeslæt: D1 11/13/15/17/19 · D2 12/14/16/18 · D3 12/15/18 · **D4 12/15/18** (samme som D3 fra S4).
+Antal slots = density, så en dag aldrig har flere etaper end slots. Slottene er konkrete klokkeslæt på **alle dage, også søndag og mandag**: D1 11/13/15/17/19 · D2 12/14/16/18 · D3 12/15/18 · **D4 12/15/18** (samme som D3 fra S4). Kun de to dage omkring sæsonskiftet afviger: sæsonens sidste løbsdag slutter kl. 15, og den nye sæsons første dag starter tidligst 24 timer efter det tidligst mulige sæsonskifte — se **§2f** (#5592).
 
 **Ejer-beslutning 3/9 ([#4270](https://github.com/NicolaiDolmer/CyclingZone/issues/4270)): Division 4 kører 3 etaper om dagen fra sæson 4.** 56 etaper over 28 dage var spillets tyndeste program, og D4 er den division med flest hold. Overlap-cap'en er **uændret** på 2 — den er binding-tryk, ikke pacing.
 
@@ -103,7 +103,7 @@ Kvoten er ikke ét tal noget sted. Den er tre, og de kender ikke hinanden:
 | D1 (1 pulje) | 37 | 155 | 31 | 86 | 0-85 |
 | D2 (2 puljer) | 46 | 124 | 31 | 64 | 0-63 |
 | D3 (4 puljer) | 40 | 85 | 31 | 54 | 0-53 |
-| D4 (8 puljer) | 30 | 62 | 31 | 31 | 0-30 |
+| D4 (8 puljer i S3; 4 fra S4, §1f) | 30 | 62 | 31 | 31 | 0-30 |
 
 Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om ingen løbsfrie dage holder. D4 kører præcis 1 løbsdag pr. kalenderdag, som `minGameDaysPerRealDay(4) = 1` foreskriver. Målt 0 brud på `TIER_OVERLAP_CAP` i alle fire divisioner.
 
@@ -193,6 +193,29 @@ Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder ryt
 > De to ting hænger sammen: i det øjeblik B4 lader aksen drive sweepen, SKAL rytter-filteret (`race_entry_days` for (rytter, sæson, løbsdag)) være med i samme ændring. 79–91 % af træningsdagene ligger inde i et forløb, så det er ikke et særtilfælde — det afgør næsten hver eneste træningsdag. Kalenderen er korrekt; det er forbruget af den der mangler. Se [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md) §5.
 
 **Synkroniserede etapeløbs-blokke (R13) er afvist med tal og fjernet fra koden.** Antallet af samtidige etapeløb skal gå op i divisionens etaper pr. dato; kun D2 kan det. Målt 19/9: D1 fandt ingen lovlig pakning, D3 faldt til 27,3 % og D4 til 35,5 % mod overlap-gulvet på 40 %. Med den jævne fordeling er etapeløbs-kæden ikke længere et problem der skal løses i søgningen. Detaljer: [`2026-09-19-5267-proevepakning.md`](audits/2026-09-19-5267-proevepakning.md) §3.
+
+### 1f. Hvilke puljer får en kalender fra S4, og truppernes egen kalender ([#5644](https://github.com/NicolaiDolmer/CyclingZone/issues/5644), ejer 24/9)
+
+**Seniorpyramiden er 1/2/4/4 fra S4** ([#4592](https://github.com/NicolaiDolmer/CyclingZone/issues/4592), ejer 24/9): *"D4 går fra 8 til 4 puljer, fyldes med AI-hold fra start og har løb fra dag ét."* Derfor:
+
+| Pulje | Kalender? | Kilde |
+|---|---|---|
+| D1, D2 | altid | `poolHasCalendar` (`divisionCalendarGenerator.js`) |
+| D3 | kun med mindst én ægte manager | uændret |
+| D4 (aktiv) | **altid**, også uden ægte managers | nyt 24/9 — spejler AI-fyldet (#5642) |
+| pensioneret (`league_divisions.retired_at` sat) | **aldrig**, heller ikke via `forceTiers` | nyt 24/9 — D4 E-H |
+
+Alle puljer i en division kører stadig den samme kalender (#2276), så D4's løbstal halveres (fire puljer i stedet for otte), mens løbene pr. pulje og de 140 løbsdage er uændrede. `buildSeasonCalendar.js` stopper en seniorkørsel fra S4 hvis antallet af puljer med kalender ikke er præcis 1/2/4/4 (`SENIOR_CALENDAR_POOLS_FROM_S4`), fordi det betyder at kalenderen køres før sammenlægningen og pensioneringen (se `SEASON_CUTOVER_RUNBOOK.md` trin 12b).
+
+**Truppernes kalender (U23 og junior, [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492) Y5).** Ejer 15/9 (spec 2026-09-15 §10.5) og [`YOUTH_RULES.md`](YOUTH_RULES.md) §2.3: U23 kører 1-2 løb om ugen, junior 1, på 140 løbsdage hvor de fleste er rene træningsdage. Bygges med `buildSeasonCalendar.js --squad u23|junior` EFTER seniorkalenderen:
+
+- **Katalog:** kun truppens egne rækker (`race_pool.squad`). Navne-dedup gælder inden for truppen, ikke på tværs af trupper (spec §4.2).
+- **Én kalender pr. trup og tier:** alle truppens grupper i samme tier deler samme kalender, præcis som seniorens puljer. I S4 er det ca. 9 grupper à 24 i tier 1 pr. trup (ejer 24/9), og de kører samme løb på samme tid.
+- **Tæthed (`SQUAD_CALENDAR` i `calendarTierCaps.js`):** løb tælles efter start-dato pr. kalenderuge; U23 skal ligge på 1-2 og junior på 1 i hver uge. Højst halvdelen af datoerne har en etape ("de fleste er rene træningsdage"). Aldrig to ungdomsløb samtidig, fordi en ungdomstrup kun har få ryttere. Udvalget er prestige-først som seniorens, og rækkefølgen følger løbenes rigtige dato.
+- **Løbsdags-aksen:** samme mål som senioren (140), fem løbsdage pr. dato (§1e-b). Ungdomsetapen ligger på datoens første løbsdag; resten er rene træningsdage.
+- **Tider:** én etape-tid pr. trup, på halve timer, så den aldrig rammer samme minut som en senior-slot. Sæsonens første og sidste dag følger §2f som seniorens.
+- **Gates:** kalender-invarianterne, identiske grupper, planlægningsvinduet (§2f) og tætheden ovenfor er hårde. Seniorens dæknings-gulve, K-B-komposition, scorecard og realisme-bånd er kalibreret mod divisionerne og er kun måling for en trup (spec §4.3).
+- **`--replace-existing` er pr. trup:** en kørsel sletter kun sin egen trups løb. Før #5644 slettede den hele sæsonen.
 
 ---
 
@@ -367,6 +390,7 @@ scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
 | Gate | Kilde | Override |
 |---|---|---|
 | Kalender-invarianter (§3 GT, whitelist, dedup, #2276-signatur) | `gatePlan` | **ingen** |
+| Mindst 24 t til trupudtagelse ved sæsonskiftet (§2f, #5592) | `gatePlan` (via `calendarViolations`) | **ingen** - ejer-regel |
 | Dækningsgarantier (§4 endagsløb, §5 terræn-gulve) | `gatePlan` | **ingen** |
 | Etaperækkefølge (§7) | `gatePlan` | **ingen** |
 | Realisme-bånd (#3347/#3469) | `gatePlan` | **ingen** |
@@ -443,6 +467,66 @@ balance-nuance, det er spillets udviklingstakt.
 > [PR #5169](https://github.com/NicolaiDolmer/CyclingZone/pull/5169) er merget. Indtil da
 > **beregnes og rapporteres** målet (returværdiens `raceDayPlan`), men det ændrer ikke den
 > skrevne kalender. Beslutningen er truffet ét sted, så #5169 kun skal landes.
+
+---
+
+## 2f. Mindst 24 timer til trupudtagelse, kun ved sæsonskiftet ([#5592](https://github.com/NicolaiDolmer/CyclingZone/issues/5592), ejer 23/9 + 24/9)
+
+**Ejeren ordret (23/9 kl. 22):** *"Sørge for at løbene om søndagen slutter tidligere og at løbene om mandagen starter senere end normalt, så der kommer til at være en noget længere periode end normalt, til at udtage trupper"* + *"gør det med flere timer, sådan det er mindst 24 timer til at planlægge. Skal også tage højde for sæsonskiftet, der skal være nok tid til planlægning for managers fremadrettet."*
+
+**Præcisering (24/9 kl. 07:35):** *"Husk det kun er i forbindelse med sæsonskiftet. Det er ikke alle mandage og søndage der skal være påvirket. Kun disse der er i forbindelse med sæsonskiftet."*
+
+Reglen gælder **kun de to dage omkring sæsonskiftet**. Alle andre dage, også søndage og mandage midt i sæsonen, har de normale tider fra §1. Begge regler er i dansk tid og målt i **virkelige** timer (ikke vægur):
+
+| Dag | Hvad | Anker |
+|---|---|---|
+| **Sæsonens sidste løbsdag** (§2's søndags-slut, dagen før skiftet) | Slutter kl. 15 i **hver** division, så skiftet kan ske tidligt på dagen, og den nye sæsons første dag ikke skubbes sent | `SEASON_LAST_DAY_END_SLOT` (15:00) |
+| **Den nye sæsons første løbsdag** | Første etape ligger i **hver** division mindst 24 timer efter det **tidligst mulige** sæsonskifte | forrige sæsons seneste etape på tværs af alle divisioner + 30 min, eller et senere planlagt skifte |
+
+**Etape-tiderne** (`slotsFor` i `backend/lib/calendarPlanningWindow.js`):
+
+| | Alle andre dage (også søndag og mandag) | Sæsonens sidste løbsdag |
+|---|---|---|
+| D1 | 11 / 13 / 15 / 17 / 19 | 11 / 12 / 13 / 14 / 15 |
+| D2 | 12 / 14 / 16 / 18 | 12 / 13 / 14 / 15 |
+| D3 | 12 / 15 / 18 | 12 / 13.30 / 15 |
+| D4 | 12 / 15 / 18 | 12 / 13.30 / 15 |
+
+Den nye sæsons første løbsdag har ingen fast tabel: dens slots presses sammen fra *tidligst mulige skifte + 24 t* (se nedenfor).
+
+**Mekanikken, så den ikke skal gættes næste gang:**
+
+- **Én kilde.** `TIER_STAGE_SLOTS` er en almindelig dag og bor i `calendarPlanningWindow.js` (re-eksporteret af `tierCalendarMaterializer.js`). `slotsFor(tier, dato, { seasonLastRaceDay, notBefore })` udleder de to dage af den: sæsonens sidste løbsdag fordeles jævnt fra dagens normale første slot til 15:00 (`seasonLastDaySlots`), og første løbsdag presses sammen fra `notBefore` (`applySeasonStartNotBefore`, rører kun datoen for `notBefore`). Uden kontekst er enhver dato en almindelig dag. Der findes ingen tabel ved siden af; ændres en divisions normale slots, følger de to dage med.
+- **Hvilken dag er "sidste løbsdag".** Materializerens `seasonLastRaceDay`: `buildSeasonCalendar.js` sender §2-vinduets sidste dag (S4: søndag 25/10). Uden værdi bruges kalenderens sidste dato (`lastCalendarDay(from, realDays)`), som er den samme dag; i en midt-sæson-aktivering (§2e) slutter horisonten på sæsonens sidste etape-dato, så en pulje der vågner midt i sæsonen også slutter kl. 15 den dag. `null` slår reglen fra.
+- **Antal slots, baner og datoer er urørte.** En dag har stadig præcis `density` slots (§1), bane k kører stadig i slot k, og det er kun klokkeslættet der flytter sig. Den gyldne kalender-diff er derfor uændret (den måler datoer), og alle §1-§7-gates er de samme. Sidste løbsdag starter som normalt; kun dens sidste etaper rykker frem.
+- **Beviset i dry-runnet.** Sektionen "#5592 planlægningsvindue ved sæsonskiftet" tæller pr. division de datoer hvor en etape ikke ligger på de normale slots (`datesOffNormalSlots`). Kun første og sidste løbsdag må stå der; enhver anden dato markeres ❌.
+- **Det tidligst mulige sæsonskifte** (`resolveEarliestSeasonTransition`, diff-tjek 24/9). "Afslut sæson" er spærret til hvert løb er afviklet (`assessSeasonEndBlockers`), så skiftet kan tidligst ske ved **starten på forrige sæsons seneste etape på tværs af alle divisioner + `SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES` (30)**: afviklingen af etapen (målt op til 10,7 min forsinket) plus selve skiftet. Er `app_config.season_transition_planned_at` sat og **senere**, vinder den; en tidligere værdi kan ikke nås og taber (det gør en efterladt værdi fra en tidligere sæson også). Kendes forrige sæsons etaper ikke, gælder det seneste af den planlagte værdi og konventionen *aftenen før første løbsdag kl. 18* (`computeSeasonTransitionBoundary`). Loftet for bufferen er 60 min: med D1's etape kl. 19 som S3's sidste kan D1's 5 etaper på S4's første dag højst starte kl. 20 for at slutte kl. 22.
+- **Samme tidspunkt i kalender og app_config.** `buildSeasonCalendar.js` sender det tidligst mulige skifte til både dry-run og apply, og `--apply` skriver **præcis** den værdi til `season_transition_planned_at` (`ensureSeasonTransitionPlannedAt` med `target`). En senere værdi i app_config overskrives aldrig; dukker der en senere værdi op end den kalenderen er planlagt mod (ændret under kørslen), stopper scriptet før kalenderen skrives.
+- **Divisionens egen sidste etape** i forrige sæson læses også (kun SELECT), så første etape også ligger mindst 24 t efter den (spillerteksten lover 24 t fra den gamle sæsons sidste løb). Den ligger aldrig senere end det globale anker.
+- **Ligger sæsonens første dag for tidligt**, presses dens slots sammen fra ankeret + 24 t med mindst 30 minutters afstand (`COMPRESSED_SLOT_MIN_GAP_MINUTES`). Kan de ikke nå at ligge inden kl. 22 (`LATEST_STAGE_SLOT`), **kaster** planlægningen i stedet for at lægge etaper om natten — så er første løbsdag og sæsonskiftet uforenelige, og det skal et menneske afgøre.
+- **Sommertid/vintertid.** S4's sidste løbsdag er søndag 25/10, hvor uret stilles tilbage kl. 03, før dagens første etape. Sidste etape kl. 15 CET, tidligst mulige skifte kl. 15:30 CET, og S5's første etape mandag 26/10 tidligst kl. 15:30 CET: 24 virkelige timer. Testet i `calendarPlanningWindow.test.js`.
+- **En pulje der vågner midt i sæsonen** (§2e) er ikke en sæsonstart: `reconcilePoolCalendarOnActivation` sender `seasonTransitionAt: null`, og det samme gør midt-sæson-reparationerne (`repair2251Tier4GrandTours.js`, `repair2276Div4Cascade.js`). Sidste-dags-reglen gælder stadig, fordi horisonten slutter på sæsonens sidste dag.
+- **Hvem sender hvad.** `buildSeasonCalendar.js` sender det tidligst mulige skifte, divisionernes sidste etaper og §2-vinduets sidste dag, og det er **den vej en ny sæsons kalender bygges**. Sæsonskiftets fase 17 (`auto_calendar_enabled`, slukket) sender det **faktiske** skiftetidspunkt, som altid ligger efter sidste etape. **Kendt begrænsning:** admin-"Generér" og relaunch (`backend/routes/api.js`) kender ikke forrige sæsons sidste etape og bruger konventionen (aftenen før første kalenderdag kl. 18); det samme gør dev-scripts.
+
+**S3 → S4** (tørkørsel mod prod): S3's sidste løbsdag søndag 27/9 står allerede i prod og røres ikke. Dens sidste etape er kl. 19 i D1 og kl. 18 i D2-D4. Det tidligst mulige skifte er derfor **27/9 kl. 19:30** (D1's etape kl. 19 + 30 min), og alle fire divisioner starter S4 tidligst 24 t senere:
+
+| | S4's første dag, mandag 28/9, før | Nu | Pause fra tidligst mulige skifte | Pause fra divisionens S3-sidste etape |
+|---|---|---|--:|--:|
+| D1 | 11:00-19:00 | 19.30 / 20 / 20.30 / 21 / 21.30 | 24 t | 24,5 t (før: 16 t) |
+| D2 | 12:00-18:00 | 19.30 / 20 / 20.30 / 21 | 24 t | 25,5 t (før: 18 t) |
+| D3 | 12:00-18:00 | 19.30 / 20 / 20.30 | 24 t | 25,5 t (før: 18 t) |
+| D4 | 12:00-18:00 | 19.30 / 20 / 20.30 | 24 t | 25,5 t (før: 18 t) |
+
+S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningssweepen venter selv på dagens sidste afslutning (`trainingDayCloseTrigger.js`, loft kl. 23).
+
+> Fra S4 slutter hver sæson på en søndag med sidste etape kl. 15, så det tidligst mulige skifte er kl. 15:30, og den nye sæsons første dag (mandag) starter tidligst kl. 15:30.
+
+| Hvor | Hvad |
+|---|---|
+| Reglen (data + ren funktion) | `slotsFor`, `seasonLastDaySlots`, `resolveEarliestSeasonTransition`, `resolveSeasonStartNotBefore` i `backend/lib/calendarPlanningWindow.js` |
+| Tidsplanen | `buildScheduleRows` (`raceCalendarScheduling.js`) tager slots pr. dato |
+| Gate | `detectPlanningWindowViolations` → `calendarViolations` → `gatePlan` — **hårdt krav uden override**, stopper `--apply` |
+| Rapportering | dry-runnets sektion "#5592 planlægningsvindue ved sæsonskiftet" pr. division, inkl. antal datoer på normale tider (`buildSeasonCalendar.js`) |
 
 ---
 
@@ -866,6 +950,36 @@ Fed = uden for ±2 pp. **7 brud pr. division** (D1 1 · D2 2 · D3 2 · D4 2), o
 
 > Dokumentet skrev indtil 30/8 *"sæsonen grøn på alle seks akser, men 11 brud fordelt på alle fire divisioner"*. **Ingen af de to led er sande længere** — det er 7 brud, og sæsonen er ikke grøn. Tallet 11 stammede fra en plan-måling, ikke fra live data.
 
+### Kalibrering 21/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)) — tredje gang vægtene er sat
+
+`ARCHETYPE_PROFILES`' filler-vægte er **re-kalibreret 21/9**, efter 6/8 og 7/8. Udløseren var katalog-udvidelsen i [#5450](https://github.com/NicolaiDolmer/CyclingZone/issues/5450): tre nye bjergrige etapeløb plus hævede summit-reservationer i D2 og D3. Den løste §6b's afgørende bjergdage, men skubbede sæsonens K-B-komposition den anden vej — bjerg over det øvre bånd og kuperet ned på den nedre grænse i S4-tørkørslen. Det er den vekselvirkning §5b beskriver: **kataloget bestemmer hvad der kan fordeles, vægtene fordeler det.**
+
+Metoden er uændret fra 7/8 — eksisterende vægte gange en tilt, afrundet til heltal:
+
+```
+cd backend   # begge scripts ligger under backend/scripts/ og køres derfra, som i §2d
+# 1) find tilt'en (read-only, kun SELECT, ingen DB-skrivning)
+infisical run --env=prod --silent -- node scripts/calibrateCalendarComposition.js --plan 4
+# 2) verificér mod den fulde tørkørsel (skriver aldrig uden --apply)
+infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+```
+
+**ÉT FÆLLES TILT, TO DATASÆT.** Første forsøg søgte mod S4-planen alene. Det ramte S4 pænt og gjorde regressionsvagten i `backend/lib/calendarCompositionCalibration.test.js` rød: det frosne kalender-snapshot i `__fixtures__` blev drevet uden for ±2 pp på kuperet. Vagten findes præcis for at fange at en velment justering af én sæsons balance skubber en anden skæv. Den gældende tilt er derfor fundet mod **begge** datasæt på én gang — som 7/8-kalibreringen gjorde med S2+S3 — og kun et tilt der holder begge inden for ±2 pp uden realisme-brud kom i betragtning. **Kalibrerer du disse vægte igen: kør altid begge datasæt, ellers rammer du det samme hul.**
+
+**Tilt'ens retning:** kuperet og bjerg let ned, flad urørt; ITT, brosten og TTT urørt. De konkrete faktorer og de målte fordelinger står i kalibrerings-blokken i `backend/lib/raceStageProfileGenerator.js` og — med fulde tal — i den gitignorerede `balance-internals/2026-09-21-s4-komposition-kalibrering/`.
+
+**Forskel fra 7/8's metode:** dér var begge sæsoner fremtidige. I dag er S2 og S3 begge materialiserede og låste — en vægt-ændring rører dem ikke. Snapshottet er derfor ikke en sæson vi bygger, men den frosne prøve vagten måler på; S4-planen er den sæson der faktisk bygges. Begge skal holde, af hver sin grund.
+
+**Hvad kalibreringen gjorde bedre (målt på tørkørslen mod prod, uden `--uniform-tilt`):**
+
+- K-B-kompositionen: to kategorier uden for ±2 pp → **nul**. Alle seks akser i mål.
+- §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner → **tre**. D1 og D2 rene, D3 én, D4 to.
+- §6b's uniforme mål holder i **alle fire** divisioner, før og efter. Højbjerg var stop-betingelsen — tilt'ens bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler kompositions-kategori — og en kraftigere bjerg-dæmpning end den valgte skubbede faktisk D1 under målet i målingen.
+- §7b's finale-bånd: **seks kendte linjer → fem**, og ingen af dem på divisions-niveau. Se §7b nedenfor.
+- Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud · terræn-gulvene (§5) holder · realisme-båndene GO.
+
+---
+
 `ARCHETYPE_PROFILES`' filler-vægte er i dag kalibreret mod **sæson-aggregatet** — én global vægttabel for alle fire divisioner. Kalibrering **pr. division** er forudsætningen for at de stramme tal kan nås; se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176). **Undtagelsen er §6b's tre kategorier** (itt/brosten/high_mountain), som fik en pr.-tier-kalibrering 31/8 — se §6b nedenfor. De resterende tre K-B-kategorier (flad/kuperet/almindelig bjerg) er stadig KUN globalt kalibreret; det er #4176's åbne rest.
 
 ---
@@ -931,7 +1045,7 @@ Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhæve
 | `high_mountain` | 80-100 % | — | maks 15 % | — |
 | `mountain` | 45-65 % | — | 20-35 % | 10-25 % |
 | `hilly` | 40-60 % | 15-30 % | — | 15-30 % |
-| `cobbles` | — | 30-50 % | — | 40-60 % |
+| `cobbles` | — | 35-55 % | — | 45-65 % |
 | `gravel` | 15-35 % | 10-30 % | — | 45-65 % |
 | `rolling` | — | 25-45 % | — | 55-75 % |
 | `flat` | — | 90-100 % | — | — |
@@ -940,6 +1054,32 @@ Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhæve
 `gravel` kom til 3/9 (ejer-beslutning, #4105). Båndet er **ikke** brostens: grus afgøres oftere i udbrud og har en opad-andel brosten ikke har. Det er afledt af generatorens egne grus-vægte, ikke af en analogi.
 
 En "—" er **ikke** "uspecificeret": klassen har vægt 0 i generatoren og gates mod 0. En bunch-sprint i højbjerget er et brud, ikke en tolereret sjældenhed. `classic` (monument-arketypen) står bevidst uden for tabellen — den rapporteres, men bånd-gates ikke.
+
+### Vægtene sigter mod båndets MIDTE, ikke mod kanten
+
+`FINALE_WEIGHTS_BY_PROFILE` skal ramme **midten** af hver celle ovenfor. Grunden er stikprøven: med n = 60-80 etaper af en terræntype på sæson-aggregatet er standardfejlen 5-6 pp, så en vægt der står på kanten ligger uden for båndet cirka **halvdelen** af trækkene — uden at generatoren er forkert.
+
+Reglen stod i generatoren fra #4272, men `mountain`'s nedad-vægt fulgte den ikke: den lå på båndets øverste kant. Konsekvensen var at "mountain slutter nedad" var rød i §7b både før og efter kompositions-kalibreringerne, og den blev fejlagtigt bogført som en *pris* for dem. Vægtene blev flyttet til midten 21/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)) og linjen er lukket.
+
+**Nedre grænse for hvor langt en nedad-vægt må sænkes:** nedkørsels-finalen er også et *gulv* (`descent_finale_min`, se nedenfor). En vægt-sænkning og et gulv trækker mod hinanden, og #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere. Sænk aldrig `descent`-vægten uden at re-derivere gulvene i samme ombæring.
+
+**Ejer-valg 21/9 (#5405):** cobbles-baandene er rettet, saa midtpunkterne er komplementaere. Hilly bruger relative midtpunktvaegte; hvor midtpunkterne ikke summer til en hel fordeling, normaliserer generatoren dem samlet.
+
+### Finalerne fordeles efter kvote pr. division, ikke trukket frit (23/9, [#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405))
+
+Vægtene stod allerede på båndenes midte, og alligevel var tre linjer røde på sæson-aggregatet (kuperet slutter i udbrud, brosten slutter fladt, brosten slutter i udbrud). Årsagen var ikke vægtene men **stikprøvestøj**: hver etape trak sin finale uafhængigt, så en divisions andel var en tilfældig stikprøve omkring vægten. På brosten, med få etaper pr. sæson, er båndet ikke bredere end én standardfejl — en korrekt generator lå uden for båndet i en stor del af sæsonerne, og ingen vægt kunne rette det. At flytte en vægt væk fra midten for at ramme ét bestemt træk ville bare have flyttet problemet til næste sæson.
+
+**Reglen nu** (`balanceFinaleQuotas` i `raceStageProfileGenerator.js`):
+
+1. Hver etape trækker stadig sin finale som før (pass 1 er bit-identisk, `pass1-golden.json` uændret).
+2. Derefter rangeres en divisions etaper af samme terræn efter det træk de fik, og etapen på plads *r* af *n* får den finale som samme vægtede afbildning giver kvantilen (*r* + ½)/*n*. Antallet af hver finale bliver dermed *n* × vægtandel, højst én etape fra. En etape der frit trak en tidlig finale i listen, får stadig en tidlig finale; kun etaper tæt på en grænse skifter, og deres rute genbygges med den nye finale.
+3. **Afrundingen** vælges inden for ejerens bånd: standard er den nærmeste, men en anden lovlig afrunding (stadig højst én etape fra kvoten) vælges, hvis den bringer divisionen inden for terræn-båndene og det samlede bånd nedenfor. Terræn-båndene går forud: en afrunding bytter aldrig et terræn-bånd væk for det samlede bånd. Ingen vægt og intet bånd ændres.
+
+**Hvor den gælder:** pr. division, over den repræsentative puljes løbssæt — samme sted og af samme grund som realisme-gen-trækket (#3347): divisioner deler ikke løb, alle puljer i en division kører samme løbssæt, og en division skal kunne bygges alene (§2e). Fordelingen sker i `drawTierAttempt`, så gen-træk-søgningen, `gatePlan`'s realisme-bånd, realisme-scorecardet, materializerens dæknings-verifikation, dry-run-scorecardet og **insert'et** måler og skriver de samme finaler. Materializeren indsætter nu tierens beregnede profiler i stedet for at generere hvert løb forfra, og `backfillRaceStageProfiles.js` genskaber samme fordeling pr. (sæson, pulje) — pr. pulje, så en pulje aktiveret midt i sæsonen med sit eget løbssæt får fordelingen over netop det sæt, som materializeren gav den.
+
+**Hvad den ikke dækker:** et løb der genereres alene uden for en sæsonkalender (admin-oprettet løb, diagnose-scripts som `checkStageProfileSeedDivergence.js`) får sit frie træk. Og en pulje der aktiveres midt i sæsonen (§2e) med et andet løbssæt end resten af divisionen, får fordelingen over sit eget sæt — samme afgrænsning som gen-trækkets variant allerede har.
+
+Målt på S4-planen (tørkørsel uden `--uniform-tilt`): de tre linjer er lukket, og §7b har nul regelbrud. Den fulde måling, også over mange simulerede sæsoner, ligger i `balance-internals/2026-09-23-5405-finale-afvigelser/`. Tilbage står én strukturel iagttagelse: med den nuværende terræn-sammensætning ligger andelen af etaper der slutter **opad** tæt på det samlede bånds loft, og i et mindretal af de simulerede sæsoner rækker afrundingens spillerum ikke. S4-planen er ikke blandt dem; spørgsmålet til ejeren står i PR'en.
 
 ### Samlet bånd på tværs af alle etaper
 
@@ -951,10 +1091,14 @@ Et løbs parcours er seedet på løbets **virkelige identitet** (`external_id`),
 
 | Lag | Mod hvad | Tolerance |
 |---|---|---|
-| **Sæson-aggregatet** (alle fire divisioner) | det rå bånd | ingen |
+| **Sæson-aggregatet** (alle fire divisioner) | det rå bånd, kun terræner med n ≥ 12 | ingen |
 | **Pr. division** | båndet + 2 standardfejl, kun ved n ≥ 12 | stikprøve-afhængig |
 
 Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, også når stikprøve-tillægget bærer den igennem — en strukturel skævhed er dermed synlig, ikke skjult bag et grønt flueben.
+
+Terræner under stikproeveminimum vises som `n<min, kun rapport` i begge lag. De er ikke kvalitetsgodkendt og producerer ikke terræn-båndbrud. Ukendte finale-typer og det samlede saeson-baand kontrolleres fortsat.
+
+**Konsekvens af ejer-valget 22/9:** i den aktuelle kalender gates `gravel` og `itt_hilly` ikke paa finale-baand nogen steder, hverken pr. division eller paa saeson-aggregatet, fordi begge stikproever er under minimum. De er kun rapport, ikke kvalitetsgodkendt. Ukendte finale-typer og det samlede saeson-baand kontrolleres fortsat. Faelles variant-valg, generatorversion og backfill-proveniens er udskilt til en separat draft; de er ikke del af dette valg.
 
 ### Afledt konsekvens: `descent_finale_min`
 
@@ -1048,6 +1192,8 @@ gør gættet til en regel næste læser tror er besluttet (§11).
 `calendar-scorecard-gate.yml` måler pakkerens output mod **et frosset prod-snapshot fra S3-æraen** (`racePoolCatalog.prod.json`). Når ejeren ændrer en regel, måler gaten den nye regel mod det gamle katalog — og resultatet er brud der er **korrekte at rapportere**, men som ikke kan lukkes af den PR der indførte reglen. Alternativet, at gøre gaten grøn ved at slække reglen, er præcis det §5b forbyder.
 
 Fixture-gaten dømmer derfor mod en **enumereret kendt tilstand** (`KENDTE_FIXTURE_BRUD` i `calendarScorecard4218.mjs`): hvert kendt brud står navngivet med sin begrundelse og det spor der lukker det. Gaten er rød både når der kommer **ét nyt** og når et **kendt forsvinder** uden at listen følger med — en stale post er en løgn om hvad vi ved.
+
+**Listen er tom fra 23/9 ([#5405](https://github.com/NicolaiDolmer/CyclingZone/issues/5405)).** De tre sidste poster var finale-linjer, lukket af kvote-fordelingen i §7b. En tom liste er målet, ikke et hul: fixture-kalenderen har nul brud, tabellen siger det, og ét nyt brud fælder gaten.
 
 > **Det er kun fixture-gaten.** `buildSeasonCalendar.js --apply` er uændret hård uden override: en kalender med et af disse brud kan ikke skrives til prod. Og tabellen bliver ved med at sige at der ER brud — forskellen på "kalenderen er i orden" og "der er ikke kommet noget nyt" må aldrig skjules bag ét grønt flueben (§9b).
 

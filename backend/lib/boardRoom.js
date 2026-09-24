@@ -122,14 +122,18 @@ import { getArchetypeByKey } from "./boardArchetypes.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
-import { buildGoalKey, evaluateGoalProgress } from "./boardGoals.js";
+import { buildGoalKey, evaluateGoalProgress, parseBoardGoals } from "./boardGoals.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 // #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til
 // no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
 import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
-import { MANDATE_CATEGORIES } from "./boardMandate.js";
+import { MANDATE_CATEGORIES, reconcileMandateGoalsWithLegacyBoard } from "./boardMandate.js";
 import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } from "./boardConsequences.js";
+// #5632 · Samme rene visnings-beregninger som det gamle bestyrelsesrum
+// (/board/status, routes/api.js) — genbrugt uændret, ikke kopieret. Se
+// derivePassiveModifierForRoom/deriveBonusOfferProgressForRoom nedenfor.
+import { computeBonusOfferProgress, computePassiveModifierInfo } from "./boardTransparency.js";
 import { captureException } from "./sentry.js";
 
 const MINUTES_LIMIT = 10;
@@ -746,18 +750,36 @@ export async function buildBoardRoomPayload({
   // loadGoalContext tilbage til goalContext={} nedenfor.
   let oneYearBoard = null;
   if (mandateRow) {
-    const BOARD_PROFILE_SELECT = "id, plan_type, seasons_completed, plan_start_season_number, plan_start_sponsor_income";
+    // #5618 · current_goals + negotiated_at tilføjet: reconcileMandateGoalsWithLegacyBoard
+    // (boardMandate.js) skal kunne se om en legacy-forhandling er NYERE end
+    // mandatets egen sidste skrivning, og i så fald hvilke mål den forhandlede.
+    // #5632 (reviewer-fund) · budget_modifier tilføjet: computePassiveModifierInfo
+    // nedenfor skal bruge det PERSISTEREDE tal sponsorEngine/economyEngine
+    // faktisk anvender (economyEngine.js:1784, sponsorEngine.js:199), ikke kun
+    // et fallback udregnet af confidence.value — se kommentaren ved kaldet.
+    const BOARD_PROFILE_SELECT = "id, plan_type, seasons_completed, plan_start_season_number, "
+      + "plan_start_sponsor_income, current_goals, negotiated_at, budget_modifier";
     try {
       const fromBoardId = mandateRow.source?.from_board_id ?? null;
       if (fromBoardId) {
         const { data, error } = await supabase.from("board_profiles")
           .select(BOARD_PROFILE_SELECT).eq("id", fromBoardId).maybeSingle();
-        if (!error) oneYearBoard = data ?? null;
+        // #5618 (CodeRabbit-fund) · Et query-error blev tidligere tavst droppet
+        // (samme som "ingen 1yr-board fundet") — en reel DB-fejl (fx et RLS-
+        // hul, ikke skema: current_goals/negotiated_at er verificeret mod
+        // database/schema-snapshot.json) ville da stille springe #5618-
+        // reconciliationen over UDEN et spor i Sentry. Logget, men stadig
+        // best-effort (vælter ikke hele Boardroom-siden) — samme resiliens-
+        // kontrakt denne funktion allerede havde for sit oprindelige formål
+        // (loadGoalContextForBoard's board_id-opslag, #4579).
+        if (error) captureException(new Error(`board_profiles (from_board_id) lookup failed: ${error.message}`));
+        else oneYearBoard = data ?? null;
       }
       if (!oneYearBoard) {
         const { data, error } = await supabase.from("board_profiles")
           .select(BOARD_PROFILE_SELECT).eq("team_id", teamId).eq("plan_type", "1yr").maybeSingle();
-        if (!error) oneYearBoard = data ?? null;
+        if (error) captureException(new Error(`board_profiles (team_id+1yr) lookup failed: ${error.message}`));
+        else oneYearBoard = data ?? null;
       }
     } catch (err) {
       captureException(err);
@@ -794,6 +816,20 @@ export async function buildBoardRoomPayload({
 
   // ---- mandate + goals ----
   let mandate = null;
+  // #5632 · Afstand til et bonustilbud (lag 6) + sponsoreffekten (lag 1) —
+  // spillerrapport: begge var synlige i det gamle rum (BoardPage.jsx's
+  // PassiveModifierLine/BonusOfferProgressLine) men manglede helt i det nye
+  // Boardroom. Samme rene funktioner som /board/status (#2310), genbrugt
+  // uændret — kun inputtet er mandat-formet i stedet for board_profiles-formet:
+  // satisfaction → confidence.value (samme 0-100-skala board_relations.confidence
+  // blev migreret fra), goalsMet/goalsTotal → mandatets EGNE mål-tæller (efter
+  // #5618-reconciliation ovenfor, så de aldrig kan vise et andet tal end
+  // goal-kortene selv). Ingen budget_modifier-kolonne på board_mandates —
+  // computePassiveModifierInfo falder da tilbage til satisfactionToModifier(
+  // confidence.value), samme fallback funktionen allerede har for et board_profiles-
+  // row uden en override.
+  let passiveModifier = null;
+  let bonusOfferProgress = null;
   if (mandateRow) {
     // #4579 · DELT bygger (samme som /board/status, weekend + season-end,
     // #2469-princippet) — boardRoom driftede før fra de andre live-stier via
@@ -811,7 +847,20 @@ export async function buildBoardRoomPayload({
       extra: { assignedMembers },
     });
 
-    const goalsSource = Array.isArray(mandateRow.goals) ? mandateRow.goals : [];
+    // #5618 · Er den legacy 1yr-forhandling (board_profiles.current_goals)
+    // nyere end mandatets egen sidste skrivning, overtager den negotiated
+    // target/label pr. mål — se modul-headeren i reconcileMandateGoalsWithLegacyBoard.
+    const goalsSource = reconcileMandateGoalsWithLegacyBoard({
+      mandateGoals: Array.isArray(mandateRow.goals) ? mandateRow.goals : [],
+      legacyGoals: parseBoardGoals(oneYearBoard?.current_goals),
+      legacyNegotiatedAt: oneYearBoard?.negotiated_at ?? null,
+      // #5618 (CodeRabbit-fund) · Uden updated_at faldt sammenligningen tilbage
+      // til Unix-epoken (0), så selv en LEGACY-forhandling ældre end mandatets
+      // egen signering ville "vinde". signed_at findes altid på et signeret
+      // mandat og er det næst-bedste tidsstempel for "hvornår blev disse mål
+      // sidst sat" når selve skrivetidspunktet (updated_at) mangler.
+      mandateUpdatedAt: mandateRow.updated_at ?? mandateRow.signed_at ?? null,
+    });
     const goals = goalsSource.map((goal) => {
       const goalKey = buildGoalKey(goal);
       const evaluation = evaluateGoalProgress(goal, standing, { riders }, evalContext);
@@ -897,6 +946,40 @@ export async function buildBoardRoomPayload({
       signedAt: mandateRow.signed_at ?? null,
       goals,
     };
+
+    // #5632 (CodeRabbit-fund) · confidence.value er `null` for et mandat UDEN
+    // en board_relations-række (fx en ny/backfillet mandat-only relation der
+    // endnu ikke har fået sit første confidence-tal). Begge transparency-
+    // funktioner behandler `null` som 0 (`satisfaction || 0` internt) — uden
+    // denne guard ville et hold med UKENDT tilfredshed vise en falsk "stærk
+    // straf"-sponsoreffekt og en beregnet bonus-afstand ud fra et tal der
+    // aldrig er målt. Begge felter forbliver `null`, samme disciplin som
+    // `mandate`/`vision` når data mangler.
+    if (confidence.value != null) {
+      // #5632 · Tælles EFTER reconciliation, af de SAMME goals frontend viser
+      // — kan aldrig drifte fra goal-kortenes egne "achieved"-mærkater.
+      const goalsMet = goals.filter((g) => g.status === "achieved").length;
+      const goalsTotal = goals.length;
+      // #5632 (reviewer-fund) · Det gamle rum kaldte computePassiveModifierInfo
+      // med HELE board_profiles-rækken, så den brugte board.budget_modifier —
+      // den PERSISTEREDE modifier sponsorEngine/economyEngine faktisk anvender
+      // (economyEngine.js:1784, sponsorEngine.js:199; se BOARD_PROFILE_SELECT
+      // ovenfor). Uden `budget_modifier` her faldt funktionen tilbage til
+      // satisfactionToModifier(confidence.value), et AFLEDT tal fra
+      // board_relations.confidence — ikke samme værdi som den persisterede
+      // modifier for knap halvdelen af de aktive mandat-hold (reviewer-fund).
+      // `oneYearBoard` er allerede slået op ovenfor til præcis dette formål
+      // (#4579/#5618), genbruges her i stedet for et nyt opslag.
+      passiveModifier = computePassiveModifierInfo({
+        satisfaction: confidence.value,
+        budget_modifier: oneYearBoard?.budget_modifier,
+      });
+      bonusOfferProgress = computeBonusOfferProgress({
+        satisfaction: confidence.value,
+        goalsMet,
+        goalsTotal,
+      });
+    }
   }
 
   // ---- vision ----
@@ -972,6 +1055,11 @@ export async function buildBoardRoomPayload({
     // #4557 (overblik + faner) · Lag 6-striben i mandat-resuméet. `null` når
     // holdet hverken har et aktivt eller et accepteret tilbud i denne sæson.
     bonusOffer: deriveBonusOffer({ rows: bonusOfferRows, currentSeasonId }),
+    // #5632 · Afstand til NÆSTE bonustilbud (lag 6, null uden et aktivt mandat)
+    // + sponsoreffekten (lag 1, samme tal det gamle rum viste) — se
+    // modul-kommentaren ved mandate-blokken ovenfor.
+    bonusOfferProgress,
+    passiveModifier,
     vision,
     board: { members: boardMembers, chairmanQuote },
     minutes,

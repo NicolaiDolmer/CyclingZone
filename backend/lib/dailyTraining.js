@@ -46,6 +46,11 @@ export const RACE_PROFILE_ABILITY_MAP = Object.freeze({
   mountain: ["climbing", "endurance", "durability"],
   high_mountain: ["climbing", "endurance", "recovery", "durability"],
   itt: ["time_trial", "tempo"],
+  // #4850 (spec-lobsdag-udbytte 24/9, arkitekt-forslag): den bakkede enkeltstart
+  // manglede og faldt tilbage til `rolling` (punch/tempo/endurance), saa den
+  // traenede ingen time_trial. Flaget race_day_development_enabled er off i
+  // prod, saa ingen rytter har faaet udbytte fra den gamle fallback.
+  itt_hilly: ["time_trial", "climbing", "tempo"],
   ttt: ["time_trial", "tactics", "positioning"],
 });
 
@@ -88,7 +93,10 @@ export function growthFractionForAge(age) {
 // frossen konstant. En gate man ikke kan køre er ikke en gate.
 export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   if (program.intensity === "rest") return 0;
-  const focusAbilities = TRAINING_FOCUSES[program.focus] ?? [];
+  // #4850 variant A: loebsdagens "pas" (raceDayYield.js) baerer sin egen
+  // fokus-liste fra etapens profil i stedet for en session-noegle. Uden
+  // `focusAbilities` er alt bit-identisk med foer.
+  const focusAbilities = program.focusAbilities ?? TRAINING_FOCUSES[program.focus] ?? [];
   const inFocus = focusAbilities.includes(ability);
   // #3762 aktiv restitution: KUN sessionens egen evne rører sig. Uden denne gren
   // ville off-fokus-multiplikatoren give hele resten af kroppen en smule vækst
@@ -100,6 +108,9 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   // alle fokus der ikke står i FOCUS_ABILITY_WEIGHT, så enhver eksisterende plan
   // er bit-identisk. Off-fokus-evner rører den ikke: en session må ikke kunne
   // ændre hvad den IKKE træner.
+  // #4850: `offFocus: false` slaar off-fokus-vaeksten fra (simuleringens S2).
+  // Kun loebsdags-programmet saetter den; en almindelig plan har den aldrig.
+  if (!inFocus && program.offFocus === false) return 0;
   return inFocus
     ? (cfg.focusGrowthMult[program.intensity] ?? 1) * focusAbilityWeight(program.focus, ability)
     : cfg.offFocusMult;
@@ -205,10 +216,27 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
   return ceiling;
 }
 
+// #4750 (ejer-beslutning 6/9): hvor meget af baren der gemmes efter bar-loopet.
+// Loopet stopper af tre grunde: baren er under 1, evnens loft (potentiale eller
+// 99) er naaet, eller dagsloftet (hardDailyCap, +1 pr. loebsdag) er brugt op.
+// KUN den sidste gemmer resten uklippet til naeste tick — ellers mistede en rytter
+// hvis fremdrift oversteg loftet point hver gang det bandt (fundet i #4801). Naar
+// evnens eget loft binder, klippes der som altid (#5275/#5351): der er intet
+// naeste point at bære fremdriften hen til. Uden hardDailyCap er dailyCeiling
+// Infinity, saa den foerste gren er uopnaaelig og adfaerden bit-identisk.
+function settleProgressBar({ bar, gained, current, cap, dailyCeiling }) {
+  const dailyCeilingBound = bar >= 1
+    && gained >= dailyCeiling
+    && current + gained < Math.min(99, cap ?? 99);
+  return dailyCeilingBound ? bar : Math.min(bar, 0.999);
+}
+
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.
 // caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
 // hardDailyCap (valgfri, #2082/#1938): maks antal hele point én evne må stige pr. dag —
 // sikkerhedsnet mod enkelt-dags-spikes. Udeladt/null = ingen ekstra grænse (uændret adfærd).
+// #4750: binder loftet, bæres resten af baren videre til næste tick (settleProgressBar),
+// så progress kan her overstige 1 — det er udskudt fremdrift, ikke en fejl.
 // #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults, så
 // eksisterende callers (uden staff) får bit-identisk adfærd. Trænings-motoren
 // (dailyTrainingEngine.js) sender dem videre til dailyAbilityDelta pr. evne.
@@ -272,7 +300,9 @@ export function applyDailyTick({
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
-    nextProgress[ability] = Math.min(bar, 0.999);
+    nextProgress[ability] = settleProgressBar({
+      bar, gained: gains[ability] ?? 0, current, cap: caps?.[ability], dailyCeiling,
+    });
   }
 
   return {
@@ -388,7 +418,9 @@ export function applyRaceDevelopmentTick({
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
-    nextProgress[ability] = Math.min(bar, 0.999);
+    nextProgress[ability] = settleProgressBar({
+      bar, gained: gains[ability] ?? 0, current, cap, dailyCeiling,
+    });
   }
 
   return {

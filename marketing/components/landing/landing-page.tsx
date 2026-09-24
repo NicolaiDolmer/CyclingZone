@@ -8,6 +8,7 @@
 
 import { makeT, type Dict } from "@/lib/t";
 import { buttonClass } from "./button-styles";
+import { AppLink } from "@/components/app-link";
 import RaceSignature from "./race-signature";
 import WaitlistForm from "./waitlist-form";
 import {
@@ -118,15 +119,15 @@ export default function LandingPage({ lang, dict }: { lang: "en" | "da"; dict: D
             <div className="hidden sm:flex">
               <LanguageToggle lang={lang} label={t("nav.languageLabel")} />
             </div>
-            <a href={`${APP}/login`} className={`${buttonClass({ variant: "ghost", size: "sm" })} whitespace-nowrap`}>
+            <AppLink href={`${APP}/login`} className={`${buttonClass({ variant: "ghost", size: "sm" })} whitespace-nowrap`}>
               {t("nav.login")}
-            </a>
-            <a
+            </AppLink>
+            <AppLink
               href={`${APP}/login?mode=signup`}
               className={`${buttonClass({ variant: "secondary", size: "sm" })} whitespace-nowrap`}
             >
               {t("nav.signup")}
-            </a>
+            </AppLink>
           </div>
         </div>
       </header>
@@ -147,9 +148,9 @@ export default function LandingPage({ lang, dict }: { lang: "en" | "da"; dict: D
             <p className="mt-5 max-w-xl text-base leading-relaxed text-cz-2 sm:text-lg">{t("hero.subtitle")}</p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <a href={`${APP}/login?mode=signup`} className={buttonClass({ variant: "primary", size: "lg" })}>
+              <AppLink href={`${APP}/login?mode=signup`} className={buttonClass({ variant: "primary", size: "lg" })}>
                 {t("hero.ctaPlay")}
-              </a>
+              </AppLink>
               <a
                 href={DISCORD_URL}
                 target="_blank"

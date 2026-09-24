@@ -1820,6 +1820,8 @@
       "cardTitleGeneric": "Season mandate",
       "goalsMeta": "{count} goals · signed {date}",
       "achievedTarget": "Achieved {achieved} / target {target}",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
       "stretch": "Stretch",
       "discussTarget": "Discuss target",
       "discussTargetDisabledHint": "Discussing targets opens at the annual meeting.",
@@ -1880,6 +1882,7 @@
     "board": {
       "cardTitle": "The board",
       "minutesLink": "Meeting minutes",
+      "memberGridHint": "Tap a member for their view of the board.",
       "role": {
         "chair": "Chair",
         "results": "Results",
@@ -2008,5 +2011,30 @@
       "fransk_klatrer": "The Mountain legacy",
       "britisk_allrounder": "The All-rounder project"
     }
+  },
+  "goalReceipt": {
+    "counted": {
+      "top_n_finish": "your current place in the division standings.",
+      "stage_wins": "race wins, stage wins and one-day wins alike.",
+      "gc_wins": "overall wins in stage races.",
+      "min_u25_riders": "U25 riders on your team right now.",
+      "min_national_riders": "riders from the goal's country on your team right now.",
+      "min_riders": "riders on your team right now.",
+      "no_outstanding_debt": "your balance minus active loans, set against one season's wage bill.",
+      "sponsor_growth": "the rise in your sponsor's season payout since the plan's first season, in percent.",
+      "monument_podium": "top-3 finishes in Monuments, or in classics when the goal names them. A bonus target counts from acceptance.",
+      "signature_rider": "high-renown riders on your team. A bonus target counts from acceptance.",
+      "jersey_wins": "points, mountains and young-rider jerseys won in stage races.",
+      "profitable_transfers": "your net transfer balance over the plan period.",
+      "u25_development_delta": "the average stat-point gain per U25 rider per season since the plan started.",
+      "relative_rank": "the managers you are ahead of in the division standings.",
+      "domestic_dominance": "not measured yet.",
+      "unknown": "your progress towards this goal."
+    }
+  },
+  "chairmanBeat": {
+    "milestone_achieved": "after a vision milestone was reached",
+    "milestone_missed": "after a missed vision milestone",
+    "meeting_keep": "after the mandate was signed"
   }
 }

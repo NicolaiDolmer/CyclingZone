@@ -50,7 +50,8 @@ test("buildHelpNumbers reflects RULES_NUMBERS (the help→RULES_NUMBERS pin)", (
   assert.equal(en.prizePerPoint, String(RULES_NUMBERS.prizePerPoint));
   assert.equal(en.squadCap, String(RULES_NUMBERS.squadCap));
   assert.equal(en.initialSquad, String(RULES_NUMBERS.initialSquadSize));
-  assert.equal(en.academySlots, String(RULES_NUMBERS.academySlots));
+  assert.equal(en.u23SquadCap, String(RULES_NUMBERS.u23SquadCap));
+  assert.equal(en.juniorSquadCap, String(RULES_NUMBERS.juniorSquadCap));
 
   // Danish formats thousands with a dot; unknown languages fall back to en-US.
   assert.equal(buildHelpNumbers("da").startingBalance, RULES_NUMBERS.startingBalance.toLocaleString("da-DK"));
@@ -89,9 +90,10 @@ for (const [lng, tree] of [["en", EN], ["da", DA]]) {
 
   test(`[${lng}] old hardcoded numbers can't sneak back into prose`, () => {
     const blob = strings.join("\n");
+    // #5568: det gamle flade akademi-loft ("8 pladser"/"8 places") er også forbudt.
     const forbidden = lng === "da"
-      ? ["500.000 CZ$", "12-rytter", "× 75 CZ$", "= 75 CZ$"]
-      : ["500,000 CZ$", "12-rider", "× 75 CZ$", "= 75 CZ$"];
+      ? ["500.000 CZ$", "12-rytter", "× 75 CZ$", "= 75 CZ$", "8 pladser", "{academySlots}"]
+      : ["500,000 CZ$", "12-rider", "× 75 CZ$", "= 75 CZ$", "8 places", "{academySlots}"];
     for (const f of forbidden) {
       assert.ok(!blob.includes(f), `re-hardcoded "${f}" in ${lng}/help.json — use the {placeholder}`);
     }

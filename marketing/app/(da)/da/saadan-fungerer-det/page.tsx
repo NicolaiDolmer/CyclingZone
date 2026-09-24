@@ -3,7 +3,7 @@ import HowItWorksPage, { type HowItWorksCopy } from "@/components/how-it-works-p
 
 const TITLE = "Sådan fungerer det";
 const DESCRIPTION =
-  "Se præcis hvordan Cycling Zone fungerer: byg en trup, byd på ryttere i live-auktioner, læg taktik og kør en hel sæson mod rigtige managere. Gratis, i browseren, ingen installation.";
+  "Gratis cycling manager i browseren: byg en trup, byd på ryttere live, læg taktik og kør en hel sæson mod rigtige managere.";
 
 export const metadata: Metadata = {
   title: TITLE,

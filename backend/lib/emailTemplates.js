@@ -516,6 +516,69 @@ export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl, langua
   };
 }
 
+// Win-back CTA label ("Go to your team" / "Gaa til dit hold") is deliberately
+// its own constant, not added to the shared COPY.dashboardButton other
+// templates use for the same URL -- welcome/day1/race_digest keep "Open your
+// dashboard" verbatim; only this template's button reads differently per the
+// owner-approved draft.
+// "4" -> "4th", "11" -> "11th", "22" -> "22nd" for the win-back rank clause.
+function englishOrdinal(n) {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  return `${n}${{ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th"}`;
+}
+
+const WINBACK_CTA = {
+  en: "Go to your team",
+  da: "Gå til dit hold",
+};
+
+// EN/DA "what changed" bullets, owner-approved verbatim 22/9 (#2760,
+// docs/drafts/2026-09-22-winback-mail.md) -- do not reword without going
+// back to the owner, same rule as the #2853 locked copy above. Board and
+// training are phrased "arrives/rebuilt for season 4" so the line stays true
+// whether or not their feature flags are on by the time this sends (ejer
+// 22/9): the sentence describes what season 4 brings, not today's flag
+// state. Each entry is [bold lead-in, rest of the sentence] so the HTML can
+// wrap the lead-in in <strong> while the plain-text part reads as one
+// sentence.
+const WINBACK_NEWS = {
+  en: [
+    [
+      "Training has been rebuilt for season 4.",
+      "Three new hard sessions, a training score from 1 to 99 on every rider, and your riders train per race day instead of per calendar day, so a busy week and a quiet week finally feel different.",
+    ],
+    ["A real board arrives with season 4.", "Your board hands you mandates and holds proper meetings. Ignore them at your own risk."],
+    [
+      "The academy got Graduation Day.",
+      "Your talents turn 23 and you decide who moves up, who is sold and who is released. U23 and junior squads are next.",
+    ],
+    ["Rider values get fixed properly.", "Value follows the rating you see on the card, so training you can see becomes value you can see."],
+    [
+      "Same chances to develop, whatever your division.",
+      "In season 4 every division has the same number of training days, so your riders develop as fast in division 4 as in division 1.",
+    ],
+    ["A new race engine arrives with season 4.", "Races are run in segments, so breaks, climbs and finales play out where they should."],
+  ],
+  da: [
+    [
+      "Træningen er bygget om til sæson 4.",
+      "Tre nye hårde pas, en træningsscore fra 1 til 99 på hver rytter, og dine ryttere træner pr. løbsdag i stedet for pr. kalenderdag, så en travl uge og en stille uge endelig føles forskelligt.",
+    ],
+    ["En rigtig bestyrelse kommer med sæson 4.", "Din bestyrelse giver dig mandater og holder rigtige møder. Ignorér dem på eget ansvar."],
+    [
+      "Akademiet har fået Graduation Day.",
+      "Dine talenter fylder 23, og du bestemmer hvem der rykker op, sælges eller frigives. U23- og juniortrupper er det næste.",
+    ],
+    ["Rytterværdierne bliver rettet ordentligt.", "Værdien følger den rating du ser på kortet, så træning du kan se bliver værdi du kan se."],
+    [
+      "Samme muligheder for udvikling, uanset division.",
+      "I sæson 4 har alle divisioner lige mange træningsdage, så dine ryttere udvikler sig lige så hurtigt i division 4 som i division 1.",
+    ],
+    ["En ny løbsmotor kommer med sæson 4.", "Løbene køres i segmenter, så udbrud, stigninger og finaler afgøres der hvor de skal."],
+  ],
+};
+
 /**
  * One-off #2760 win-back email, sent at most once ever per manager by
  * scripts/winback-send.mjs to a manager absent WINBACK_DORMANCY_DAYS+
@@ -523,18 +586,19 @@ export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl, langua
  * consent_preferences.email_marketing (audit section 1.3 -- this is
  * marketing, not a transactional/service message).
  *
- * DRAFT CONTENT -- per ejer-beslutning 14/9 (#2760) the owner writes the
- * final prose himself; this is the structure + fact points only (S4 starts
- * 28/9, what changed since August), following the skeleton rule in
- * docs/TONE_OF_VOICE.md's "Founder voice: template". Every prose line below
- * is flagged "EJER SKAL GODKENDE" in this PR's body -- do not flip
- * winback_send_enabled before the owner has reviewed/rewritten this copy.
- * rankInDivision/poolLabel are optional (a manager who never reached an
- * active-season standing has neither) -- the sentence degrades gracefully
- * instead of printing a blank/undefined.
+ * COPY LOCKED -- owner-approved verbatim 22/9 (#2760,
+ * docs/drafts/2026-09-22-winback-mail.md): same paragraphs, same order, same
+ * bullets, in the owner's jeg/du voice, no em-dash. Do not reword without
+ * going back to the owner. daysSinceLastSeen is accepted (callers keep
+ * passing it unchanged) but no longer rendered -- the draft's status line
+ * reads the same for every manager regardless of how long they have been
+ * away, replacing the old "N days ago" / "never logged back in" variants.
+ * rankInDivision/poolLabel are still optional (a manager who never reached
+ * an active-season standing has neither) -- the sentence degrades
+ * gracefully instead of printing a blank/undefined.
  * @param {{teamName: string, daysSinceLastSeen: number|null, rankInDivision: number|null, poolLabel: string|null, unsubscribeUrl: string, language?: string}} args
  */
-export function buildWinbackEmail({ teamName, daysSinceLastSeen, rankInDivision, poolLabel, unsubscribeUrl, language }) {
+export function buildWinbackEmail({ teamName, daysSinceLastSeen: _daysSinceLastSeen, rankInDivision, poolLabel, unsubscribeUrl, language }) {
   const lang = normalizeLanguage(language);
   const copy = copyFor(lang);
   const name = escapeHtml(teamName) || copy.fallbackTeamName;
@@ -542,61 +606,58 @@ export function buildWinbackEmail({ teamName, daysSinceLastSeen, rankInDivision,
   const dashboardUrl = withEmailUtm(DASHBOARD_URL, "winback");
   const eyebrow = lang === "da" ? "SÆSON 4" : "SEASON 4";
   const hasRank = rankInDivision != null && poolLabel;
+  const ctaLabel = WINBACK_CTA[lang];
+  const news = WINBACK_NEWS[lang];
 
-  const subject = lang === "da" ? `${plainName} kørte mens du var væk` : `${plainName} raced while you were away`;
+  const subject = lang === "da" ? "Vi har savnet dig. Sæson 4 starter 28. september." : "We missed you. Season 4 starts 28 September.";
 
-  // Two renderings of the same sentence: `statusLine` for the HTML body
-  // (escaped team name + pool label), `statusLinePlain` for the plaintext
-  // part (raw values) -- same split buildDay1Email/buildRaceDigestEmail use
-  // above. daysSinceLastSeen null means the manager never logged back in at
-  // all (see winbackSegment.js), a real, distinct case from "N days ago".
-  function buildStatusLine({ escaped }) {
+  // Two renderings of the same opening sentence: `openingLine` for the HTML
+  // body (escaped team name + pool label), `openingLinePlain` for the
+  // plaintext part (raw values) -- same split buildDay1Email/
+  // buildRaceDigestEmail use above. The rank/pool clause is dropped
+  // entirely (not left blank) when the manager has no active-season
+  // standing, per the draft's placeholder note.
+  function buildOpeningLine({ escaped }) {
     const teamWord = escaped ? name : plainName;
-    const checkInClause =
-      daysSinceLastSeen != null
-        ? lang === "da"
-          ? `${teamWord} kørte mens du var væk. Sidst du tjekkede ind var for ${daysSinceLastSeen} dage siden`
-          : `${teamWord} kept racing while you were away. You last checked in ${daysSinceLastSeen} days ago`
-        : lang === "da"
-          ? `${teamWord} kørte, men du har ikke været forbi et stykke tid`
-          : `${teamWord} kept racing, but you have not been by in a while`;
-    if (!hasRank) return `${checkInClause}.`;
+    const base =
+      lang === "da"
+        ? `${teamWord} er stadig dit, præcis som du forlod det. Holdet kørte videre mens du var væk`
+        : `${teamWord} is still yours, exactly as you left it. It kept racing while you were away`;
+    if (!hasRank) return `${base}.`;
     const pool = escaped ? escapeHtml(poolLabel) : poolLabel;
-    return lang === "da"
-      ? `${checkInClause}, og holdet ligger lige nu som ${rankInDivision} i ${pool}.`
-      : `${checkInClause}, and the team currently sits ${rankInDivision} in ${pool}.`;
+    return lang === "da" ? `${base} og ligger lige nu som nr. ${rankInDivision} i ${pool}.` : `${base} and currently sits ${englishOrdinal(rankInDivision)} in ${pool}.`;
   }
-  const statusLine = buildStatusLine({ escaped: true });
-  const statusLinePlain = buildStatusLine({ escaped: false });
+  const openingLine = buildOpeningLine({ escaped: true });
+  const openingLinePlain = buildOpeningLine({ escaped: false });
 
-  // Fact points only (ejer-brief 14/9): mobile, pre-race reminder, assistant
-  // late-fill, training-per-race-day "on the way". Every clause here is a
-  // verified shipped feature, not an invented one -- see PR body for the
-  // per-line "EJER SKAL GODKENDE" flags before this ships.
-  const newsLine =
-    lang === "da"
-      ? "Et par ting er nye siden du var her sidst: spillet virker nu på mobilen, du får en påmindelse før dit hold kører, og assistenten fylder din opstilling hvis du glemmer det. Træning pr. løbsdag er på vej."
-      : "A few things are new since you were last here: the game now works on your phone, you get a reminder before your team races, and the assistant fills your lineup if you forget. Training per race day is on the way.";
+  const introLine = lang === "da" ? "Der er sket meget siden sidst, og mere lander med sæson 4:" : "A lot has happened since you were last here, and more lands with season 4:";
 
-  const seasonLine =
+  const newsListHtml = `<ul style="margin:0 0 24px;padding-left:20px;">${news
+    .map(([lead, rest]) => `<li style="margin-bottom:10px;"><strong>${escapeHtml(lead)}</strong> ${escapeHtml(rest)}</li>`)
+    .join("")}</ul>`;
+  const newsListText = news.map(([lead, rest]) => `${lead} ${rest}`).join("\n\n");
+
+  const closingLine =
     lang === "da"
-      ? "Næste sæson starter 28. september. Vil du med igen inden da, er det nu."
-      : "The next season starts 28 September. If you want back in before then, now is the time.";
+      ? "Sæson 4 starter 28. september. Hold der bliver væk parkeres uden for divisionerne ved skiftet, så vil du med igen, er det denne uge."
+      : "Season 4 starts 28 September. Teams that stay away are parked outside the divisions at the switch, so if you want back in, this is the week.";
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">${copy.greeting}</p>
-    <p style="margin:0 0 16px;">${statusLine}</p>
-    <p style="margin:0 0 16px;">${newsLine}</p>
-    <p style="margin:0 0 16px;">${seasonLine}</p>
-    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, copy.dashboardButton)}</p>
+    <p style="margin:0 0 16px;">${openingLine}</p>
+    <p style="margin:0 0 16px;">${introLine}</p>
+    ${newsListHtml}
+    <p style="margin:0 0 16px;">${closingLine}</p>
+    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, ctaLabel)}</p>
   `.trim();
 
   const bodyText = [
     copy.greeting,
-    statusLinePlain,
-    newsLine,
-    seasonLine,
-    `${copy.dashboardButton}: ${dashboardUrl}`,
+    openingLinePlain,
+    introLine,
+    newsListText,
+    closingLine,
+    `${ctaLabel}: ${dashboardUrl}`,
   ].join("\n\n");
 
   return {

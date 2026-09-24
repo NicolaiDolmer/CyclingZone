@@ -56,7 +56,7 @@ import { dirname, join, resolve } from "node:path";
 import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
-import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas } from "../../lib/raceStageProfileGenerator.js";
 import { scoreCalendarPlan, formatScorecard, alleBrud } from "../../lib/calendarScorecardReport.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -140,20 +140,20 @@ export function loadFixtureCalendar() {
 
   // Samme seed-vej som skrive-stien (#3347/#4104): race_class SKAL med, ellers
   // prissættes monumenterne på terrænbåndet i stedet for klassebåndet.
+  // #5405: finale-typerne fordeles efter kvote over tierens løbssæt — samme skridt som
+  // materializerens coverageProfilesFor, så fixture-gaten måler det skrive-stien skriver.
   const profilesByTier = new Map();
   for (const plan of tierPlans) {
     const pool = (plan.pools ?? [])[0] ?? { raceRows: [] };
-    const byRace = new Map();
-    for (const r of pool.raceRows ?? []) {
-      byRace.set(r.pool_race_id, generateRaceStageProfiles({
-        id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
-        external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
-        terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
-        race_class: r.race_class ?? null,
-        season_id: SEASON_UUID, season_variant: 0,
-      }));
-    }
-    profilesByTier.set(plan.tier, byRace);
+    const rows = pool.raceRows ?? [];
+    const balanced = balanceFinaleQuotas(rows.map((r) => generateRaceStageProfiles({
+      id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
+      external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
+      terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+      race_class: r.race_class ?? null,
+      season_id: SEASON_UUID, season_variant: 0,
+    })));
+    profilesByTier.set(plan.tier, new Map(rows.map((r, i) => [r.pool_race_id, balanced[i]])));
   }
 
   return {
@@ -391,8 +391,13 @@ export function formatKendtTilstand(k) {
     ud.push("", `❌ ${k.nye.length} NYT brud der ikke står på listen:`);
     for (const n of k.nye) ud.push(`   · ${n}`);
   }
-  ud.push("", k.ok
+  // #5405: en tom liste betyder at fixture-kalenderen ingen kendte brud har. Så er "kun
+  // kendte brud" det forkerte budskab — gaten er grøn fordi der INGEN brud er.
+  const okLinje = KENDTE_FIXTURE_BRUD.length
     ? "✅ Kun kendte brud. Gaten er grøn — men den er IKKE et bevis på at kalenderen er i orden."
+    : "✅ Ingen kendte brud på listen og ingen nye. Gaten er grøn.";
+  ud.push("", k.ok
+    ? okLinje
     : "Se linjerne ovenfor. Et nyt eller forsvundet brud kræver en beslutning, ikke en opdatering af tallet.");
   return ud;
 }
@@ -413,46 +418,14 @@ export function formatKendtTilstand(k) {
 //
 // DETTE ER KUN FIXTURE-GATEN. `buildSeasonCalendar.js --apply` er UAENDRET haard uden
 // override: en kalender med et af disse brud kan ikke skrives til prod.
-export const KENDTE_FIXTURE_BRUD = Object.freeze([
-  {
-    id: "saeson-hilly-udbrud",
-    moenster: /sæson: hilly slutter udbrud/,
-    hvorfor: "§7b's finale-baand paa saeson-aggregatet: kuperede etaper afgoeres lidt oftere i udbrud end baandet tillader. Filler-vaegt-kalibrering, ikke en placerings- eller katalog-fejl.",
-    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
-  },
-  {
-    id: "saeson-cobbles-udbrud",
-    moenster: /sæson: cobbles slutter udbrud/,
-    hvorfor: "Samme kalibrering, maalt paa brostens-etaperne (n=23). Generatorens brostens-vaegte giver flere udbruds-afgoerelser end baandet.",
-    lukkesAf: "§6b/§7b's genkalibrering (S5)",
-  },
-  {
-    id: "saeson-gravel-baand",
-    moenster: /sæson: gravel slutter/,
-    hvorfor: "DAEKKER TRE LINJER (opad/fladt/udbrud) fra EEN stikproeve paa n=2. Grus fik sit eget finale-baand 3/9 (#4272), men kataloget har kun to grus-etaper, saa hver enkelt etape flytter andelen 50 pp. Baandet kan ikke rammes foer forsyningen er stoerre.",
-    lukkesAf: "flere grus-loeb i kataloget (#4105/#3864), ikke en regel- eller pakker-aendring",
-  },
-  // #5405 (20/9): BYTTET UD med saeson-samlet-udbrud, som er lukket af denne PR.
-  // Antallet af kendte brud er uaendret (6 linjer), men IKKE de samme seks.
-  //
-  // HVAD DER SKETE. De tre nye ProSeries-summit_tour-loeb + de haevede summit_tour-
-  // reservationer giver flere bjerg-etaper. Det trak saeson-totalens udbruds-andel NED
-  // under sit baand igen (saeson-samlet-udbrud lukket), men skubbede til gengaeld
-  // `mountain`-etapernes nedad-andel lige over sit baand: `mountain`-arketypen slutter pr.
-  // design nedad i en fast andel af tilfaeldene (§7b), saa flere af dem flytter aggregatet.
-  //
-  // HVORFOR DEN IKKE LUKKES HER. Den er samme klasse som de tre andre: en filler-vaegt-
-  // kalibrering paa §7b's finale-baand, ikke en placerings-regel og ikke et katalog-hul.
-  // Den taeller hverken som blokerende eller apply-blokerende fund, og den kan ikke lukkes
-  // ved at flytte et loeb. Maalt mod PRODS katalog samme dag er antallet af
-  // finale-afvigelser uaendret foer og efter aendringen (scripts/dev/gateStatus5405.mjs).
-  {
-    id: "saeson-mountain-nedad",
-    moenster: /sæson: mountain slutter nedad/,
-    hvorfor: "§7b's finale-baand paa saeson-aggregatet: mellembjergs-etaper slutter nedad lidt oftere end baandet tillader. Samme filler-vaegt-kalibrering som de oevrige poster her - ikke en placerings- eller katalog-fejl. Kom til 20/9 da bjerg-forsyningen blev stoerre (#5405).",
-    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
-  },
-]);
+//
+// #5405 (23/9): listen er TOM. De tre sidste poster (hilly slutter udbrud, brosten slutter
+// fladt, brosten slutter udbrud) var stikproevestoej fra et frit finale-traek pr. etape og
+// er lukket af kvote-fordelingen (raceStageProfileGenerator.js, balanceFinaleQuotas) — ikke
+// af et slaekket baand eller en flyttet vaegt. En tom liste er den tilstand gaten skal
+// vaere i: et nyt brud faelder den, og skal enten rettes eller staa her med begrundelse
+// og det spor der lukker det.
+export const KENDTE_FIXTURE_BRUD = Object.freeze([]);
 
 /** Del bruddene i kendte og nye, og find de kendte poster der ikke laengere rammer noget. */
 export function delEfterKendteBrud(brud, kendte = KENDTE_FIXTURE_BRUD) {

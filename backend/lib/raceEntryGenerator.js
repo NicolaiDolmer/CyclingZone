@@ -17,8 +17,13 @@ import {
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
-import { applyRiderEligibilityFilter, applyInjuredFilter } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, applyInjuredFilter, raceSquadOf } from "./riderEligibility.js";
+import { teamPoolIdForSquad } from "./raceBinding.js";
+import { DEFAULT_SQUAD } from "./squads.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
+import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
+import { captureException } from "./sentry.js";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -148,20 +153,34 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
  *   skipped:number, inserted:number, removed:number, role_updated:number,
  *   failed_units:number, errors:Array<string>, mode:string}>}
  */
+// #5645 (Y4): gruppe-nøgle for (trup, pulje). Senior = puljens id eller null, altså
+// PRÆCIS nøglen fra før trupperne (bit-identisk gruppering). Ungdom = "<trup>|<id>",
+// så et U23-løb aldrig deler gruppe med et senior- eller juniorløb.
+export function poolKeyFor(squad, poolId) {
+  if (squad === DEFAULT_SQUAD) return poolId ?? null;
+  return `${squad}|${poolId ?? "none"}`;
+}
+
 export async function runRaceEntryGenerator({
   supabase, seasonId, dryRun = true,
   mode: rawMode = DEFAULT_ASSISTANT_MODE,
   lateFillHours: rawLateFillHours = DEFAULT_LATE_FILL_HOURS,
   now = Date.now(),
+  // #4759: injicérbar for test (samme mønster som notificationService.js's
+  // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
+  notify = notifyAssistantFilledSquad,
 }) {
   let mode = normalizeAssistantMode(rawMode);
   const lateFillHours = normalizeLateFillHours(rawLateFillHours);
   const nowMs = now instanceof Date ? now.getTime() : Number(now);
-  // 1. Sæsonens løb.
+  // 1. Sæsonens løb. `name` med (#4759): kun brugt til notifikationsteksten
+  // "assistenten udtog dit hold til {race}" — påvirker intet i selve tildelingen.
+  // #5645 (Y4): `squad` med — løbets trup afgør hvilken pulje og hvilke ryttere der
+  // gælder (se poolKeyFor/ridersFor nedenfor). Manglende felt = senior.
   const { data: races, error: raceErr } = await supabase
-    .from("races").select("id, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
+    .from("races").select("id, name, race_class, league_division_id, stages_completed, squad").eq("season_id", seasonId);
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
-  if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0, mode };
+  if (!races || !races.length) return { dryRun, races: 0, teams: 0, teams_written: 0, generated: 0, skipped: 0, inserted: 0, mode };
   const raceIds = races.map((r) => r.id);
   const raceById = new Map(races.map((r) => [r.id, r])); // #2436: retry rebygger sizeRule pr. race_class
   // Frys (#1825): et igangværende etapeløb (stages_completed>0) må ALDRIG regenereres —
@@ -225,13 +244,23 @@ export async function runRaceEntryGenerator({
 
   // 4. Grupper løb pr. pulje (league_division_id; null = egen standalone-gruppe).
   // Kun løb med brugbart vindue indgår — løb uden vindue kan ikke binde.
+  //
+  // #5645 (Y4): nøglen er trup-bevidst. Seniorløb bruger præcis dagens nøgle (puljens
+  // id eller null), så en ren seniorsæson grupperes bit-identisk. Et ungdomsløb får
+  // nøglen "<trup>|<pulje-id>" og møder derfor kun hold hvis pulje FOR TRUPPEN er den
+  // samme (trin 5). Ungdomstrupperne i spil afgør om trin 5/8 overhovedet laver noget
+  // ekstra — ingen ungdomsløb = ingen ekstra opslag.
   const usableRaces = races.filter((r) => windowByRace.get(r.id));
   const racesByPool = new Map();
+  const squadByPoolKey = new Map();
   for (const r of usableRaces) {
-    const key = r.league_division_id ?? null;
+    const squad = raceSquadOf(r);
+    const key = poolKeyFor(squad, r.league_division_id ?? null);
     if (!racesByPool.has(key)) racesByPool.set(key, []);
     racesByPool.get(key).push(r);
+    squadByPoolKey.set(key, squad);
   }
+  const youthSquadsInPlay = [...new Set(usableRaces.map(raceSquadOf))].filter((s) => s !== DEFAULT_SQUAD);
 
   // 5. Egnede hold: ikke test-konto, ikke frosset, INGEN ejer. Grupper pr. pulje.
   //
@@ -253,8 +282,11 @@ export async function runRaceEntryGenerator({
   // praemisser. late_fill lader dem med, og LOEBS-gaten nedenfor (trin 9) afgoer
   // resten: kun tomme trupper, kun inden for lateFillHours. opt_in lader kun de
   // hold med der selv har slaaet assistenten til. proactive = uaendret #4217.
+  // #5645: ungdomspuljernes kolonner hentes kun når der er ungdomsløb i spil.
   const { data: allTeams, error: teamErr } = await supabase
-    .from("teams").select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
+    .from("teams").select(youthSquadsInPlay.length
+      ? "id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, u23_league_division_id, junior_league_division_id, user_id"
+      : "id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
 
@@ -290,11 +322,33 @@ export async function runRaceEntryGenerator({
   const ownerTeamIds = new Set(
     (allTeams || []).filter((t) => t.user_id).map((t) => t.id)
   );
+  // #5246: kilden paa de raekker generatoren skriver (race_entries.auto_filled_source).
+  // AI-hold er altid ai_generator. Et menneskehold naas kun i late_fill/opt_in (trin 5's
+  // filter), og kilden er den EFFEKTIVE tilstand, saa assistentens late-fill kan maales
+  // for sig. null = ukendt (burde ikke ske; maalingen taeller det som unknown).
+  const humanSource = mode === ASSISTANT_MODES.LATE_FILL
+    ? AUTO_FILL_SOURCES.LATE_FILL
+    : mode === ASSISTANT_MODES.OPT_IN ? AUTO_FILL_SOURCES.OPT_IN : null;
+  const sourceForTeam = (teamId) => (ownerTeamIds.has(teamId) ? humanSource : AUTO_FILL_SOURCES.AI_GENERATOR);
+  // #5246: hold der FAKTISK fik mindst een ny raekke skrevet i denne koersel
+  // (race_entry_generator_runs.teams_filled). `teams` nedenfor er alle behandlede hold.
+  const teamsWrittenIds = new Set();
   const teamsByPool = new Map();
-  for (const t of eligibleTeams) {
-    const key = t.league_division_id ?? null;
+  const addTeamToPool = (key, t) => {
     if (!teamsByPool.has(key)) teamsByPool.set(key, []);
     teamsByPool.get(key).push(t);
+  };
+  // #5645: hvert hold har én pulje pr. trup. Senior: uændret (null = standalone-gruppen).
+  // Ungdom: kun hvis holdet HAR en pulje for truppen — null = ikke i noget ungdomsfelt.
+  const youthTeamIdsBySquad = new Map(youthSquadsInPlay.map((s) => [s, []]));
+  for (const t of eligibleTeams) {
+    addTeamToPool(t.league_division_id ?? null, t);
+    for (const squad of youthSquadsInPlay) {
+      const poolId = teamPoolIdForSquad(t, squad);
+      if (poolId == null) continue;
+      addTeamToPool(poolKeyFor(squad, poolId), t);
+      youthTeamIdsBySquad.get(squad).push(t.id);
+    }
   }
 
   // 6. Manuelle entries: (race,team) hvor manageren selv har udtaget — generér ALDRIG der.
@@ -419,8 +473,10 @@ export async function runRaceEntryGenerator({
   // 8. Ryttere + abilities + fatigue for alle egnede hold (på tværs af puljer).
   const eligibleTeamIds = eligibleTeams.map((t) => t.id);
   const ridersByTeam = new Map();
+  // #5645: ungdomsryttere pr. "<trup>|<hold>". Seniorer bliver i ridersByTeam (uændret).
+  const youthRidersBySquadTeam = new Map();
   if (eligibleTeamIds.length) {
-    const { data: riders, error: riderErr } = await selectInChunks({
+    const { data: seniorRiders, error: riderErr } = await selectInChunks({
       supabase, table: "riders", columns: "id, team_id", inColumn: "team_id",
       // Rod B: ét delt eligibility-filter (ikke-akademi + ikke-pensioneret). Tidligere
       // manglede is_academy her → akademiryttere blev auto-valgt (#1742/#1800).
@@ -430,7 +486,23 @@ export async function runRaceEntryGenerator({
       ids: eligibleTeamIds, orderBy: ["id"], extra: (q) => applyRiderEligibilityFilter(q),
     });
     if (riderErr) throw new Error(`riders: ${riderErr.message}`);
-    const riderIds = (riders || []).map((r) => r.id);
+    // #5645: ungdomstruppernes ryttere — kun for trupper med løb i spil og kun for hold
+    // med en pulje for truppen. Ejer 24/9: enhver rytter i juniortruppen (16-18) må
+    // køre juniorløb — ingen separat aldersgate, kun trup-medlemskabet (#5645).
+    const youthRiders = [];
+    for (const squad of youthSquadsInPlay) {
+      const teamIds = youthTeamIdsBySquad.get(squad) || [];
+      if (!teamIds.length) continue;
+      const { data: squadRiders, error: sqErr } = await selectInChunks({
+        supabase, table: "riders", columns: "id, team_id",
+        inColumn: "team_id", ids: teamIds, orderBy: ["id"],
+        extra: (q) => applyRiderEligibilityFilter(q, { squad }),
+      });
+      if (sqErr) throw new Error(`riders (${squad}): ${sqErr.message}`);
+      for (const r of squadRiders || []) youthRiders.push({ ...r, youthSquad: squad });
+    }
+    const riders = [...(seniorRiders || []), ...youthRiders];
+    const riderIds = riders.map((r) => r.id);
 
     const abilityByRider = new Map();
     if (riderIds.length) {
@@ -473,14 +545,20 @@ export async function runRaceEntryGenerator({
       injuredIds = new Set((injured || []).map((r) => r.rider_id));
     }
 
-    for (const r of riders || []) {
+    for (const r of riders) {
       const abRow = abilityByRider.get(r.id);
       if (!abRow) continue; // rytter uden abilities kan ikke scores → spring over (mirror raceRunner).
       if (injuredIds.has(r.id)) continue; // #2637: skadet → aldrig kandidat til auto-udtagelse.
-      if (!ridersByTeam.has(r.team_id)) ridersByTeam.set(r.team_id, []);
-      ridersByTeam.get(r.team_id).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
+      const target = r.youthSquad ? youthRidersBySquadTeam : ridersByTeam;
+      const key = r.youthSquad ? `${r.youthSquad}|${r.team_id}` : r.team_id;
+      if (!target.has(key)) target.set(key, []);
+      target.get(key).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
     }
   }
+  // #5645: kandidat-ryttere for (hold, trup). Senior = ridersByTeam, præcis som før.
+  const ridersFor = (teamId, squad) => (squad === DEFAULT_SQUAD
+    ? ridersByTeam.get(teamId)
+    : youthRidersBySquadTeam.get(`${squad}|${teamId}`)) || [];
 
   // 8b. S3: load holdstrategier for egnede hold. rosterByTeam = holdets ryttere (til
   // stale-filter). Hold uden strategi-row/regler → null → uændret generator-adfærd.
@@ -493,17 +571,46 @@ export async function runRaceEntryGenerator({
   // 9. Pr. pulje, pr. hold: byg holdets løb-liste (vindue + ikke-afmeldt + ikke-manuel),
   // kald kernen, og stage de idempotente skrivninger.
   const staged = []; // { race_id, team_id, picks }
+  // #4759: (race,team)-enheder der er kandidater til "assistenten udtog dit
+  // hold"-notifikationen — kun menneske-hold, og kun når enheden var HELT tom
+  // (hverken manuel eller tidligere auto-række) FØR denne kørsel. Populeres i
+  // trin 10a (nedenfor); proactive når aldrig hertil for et menneske-hold
+  // (eligibleTeams-filtret i trin 5 udelukker dem allerede der).
+  const assistantNotifyCandidates = new Map(); // "race|team" → { raceId, teamId }
+  const writtenNotifyUnitKeys = new Set(); // "race|team" der rent faktisk blev skrevet
   // Top-up-løb (delvis manuel trup): den manuelle trup ejer ALLEREDE special-rollerne
   // (validering kræver en kaptajn ved ≥1 rytter). Auto-fyldet må derfor IKKE udpege en
   // anden kaptajn/sprint-kaptajn → ellers dobbelt special-rolle pr. (race,team). De
   // top-fyldte ryttere skrives som "helper".
   const topUpKeys = new Set(); // "race|team"
   let skipped = 0;
+  // #5645 (spec-risiko 7): holdets manuelle og igangværende entries i ANDRE trupper binder
+  // stadig rytterens løbsdag (1 rytter = 1 løb pr. løbsdag, på tværs af trupper). Bygges
+  // kun når der er ungdomsløb i spil; en ren seniorsæson har én pulje pr. hold og ingen
+  // ekstra låse (bit-identisk).
+  const crossSquadLocksByTeam = new Map(); // teamId → [{ squad, window, riderIds }]
+  if (youthSquadsInPlay.length) {
+    const unitKeys = new Set([...manualRidersByRaceTeam.keys(), ...startedRidersByRaceTeam.keys()]);
+    for (const key of unitKeys) {
+      const [raceId, teamId] = key.split("|");
+      const race = raceById.get(raceId);
+      const window = windowByRace.get(raceId);
+      if (!race || !window || withdrawnByRace.get(raceId)?.has(teamId)) continue;
+      const riderIds = [...new Set([...(manualRidersByRaceTeam.get(key) || []), ...(startedRidersByRaceTeam.get(key) || [])])];
+      if (!riderIds.length) continue;
+      if (!crossSquadLocksByTeam.has(teamId)) crossSquadLocksByTeam.set(teamId, []);
+      crossSquadLocksByTeam.get(teamId).push({ squad: raceSquadOf(race), window, riderIds });
+    }
+  }
   for (const [poolKey, poolRaces] of racesByPool) {
     const poolTeams = teamsByPool.get(poolKey) || [];
+    const poolSquad = squadByPoolKey.get(poolKey) ?? DEFAULT_SQUAD;
     for (const team of poolTeams) {
       const teamRaces = [];
       const lockedWindows = []; // manuelle løb: forbruger rytter-tid uden at vi genererer.
+      for (const lock of crossSquadLocksByTeam.get(team.id) || []) {
+        if (lock.squad !== poolSquad) lockedWindows.push({ window: lock.window, riderIds: lock.riderIds });
+      }
       for (const race of poolRaces) {
         const window = windowByRace.get(race.id);
         if (!window) continue; // dækket af usableRaces, men defensivt.
@@ -584,7 +691,7 @@ export async function runRaceEntryGenerator({
         });
       }
       const assignment = assignTeamAcrossRaces({
-        riders: ridersByTeam.get(team.id) || [], races: teamRaces, lockedWindows,
+        riders: ridersFor(team.id, poolSquad), races: teamRaces, lockedWindows,
         strategy: strategyByTeam.get(team.id) ?? null,
       });
       for (const [race_id, picks] of Object.entries(assignment)) {
@@ -693,6 +800,7 @@ export async function runRaceEntryGenerator({
     const toDeleteSet = new Set(toDelete);
     const toInsert = diffInsert.map(({ rider_id, race_role }) => ({
       race_id: raceId, rider_id, team_id: teamId, race_role, is_auto_filled: true,
+      auto_filled_source: sourceForTeam(teamId), // #5246
     }));
 
     let unitInserted = 0;
@@ -718,9 +826,10 @@ export async function runRaceEntryGenerator({
     // i stedet for at vælte kørslen — næste tick samler den op, når det andet holds
     // stale-delete har fjernet den.
     if (toInsert.length) {
-      const { error: insErr } = await supabase
-        .from("race_entries")
-        .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
+      // #5246: tolerant hvis auto_filled_source ikke findes endnu (deploy-vinduet).
+      const { error: insErr } = await writeRaceEntriesWithSource({
+        supabase, rows: toInsert, upsertOptions: { onConflict: "race_id,rider_id", ignoreDuplicates: true },
+      });
       if (insErr) {
         // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
         // sweepets egen kronologiske binding-tildeling (findManualOverlapConflicts/
@@ -893,7 +1002,7 @@ export async function runRaceEntryGenerator({
     lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
     const teamRaces = [{ race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule }];
     const assignment = assignTeamAcrossRaces({
-      riders: ridersByTeam.get(teamId) || [], races: teamRaces, lockedWindows,
+      riders: ridersFor(teamId, raceSquadOf(race)), races: teamRaces, lockedWindows,
       strategy: strategyByTeam.get(teamId) ?? null,
     });
     let picks = assignment[raceId] || [];
@@ -920,12 +1029,18 @@ export async function runRaceEntryGenerator({
 
   // Per-enheds skrivning med recovery-grene (#2436/#3482) — før #3934 den ENESTE
   // skrivevej, nu FALLBACK når holdets batch-RPC afvises. Muterer tællerne/errors.
+  // #4759: returnerer true/false (enhedens skrivning lykkedes eller ej) — kalderen
+  // bruger det til at afgøre om assistantNotifyCandidates for denne enhed rent
+  // faktisk blev skrevet (draining-skip og en fejlet retry er IKKE en skrivning).
   async function applyUnitWithRecovery({ race_id, team_id, desired, existing }) {
+    const countWritten = (result) => { if ((result?.inserted ?? 0) > 0) teamsWrittenIds.add(team_id); };
     try {
       const result = await applyUnitDiff({ raceId: race_id, teamId: team_id, desired, existing });
       inserted += result.inserted;
       removed += result.removed;
       roleUpdated += result.roleUpdated;
+      countWritten(result);
+      return true;
     } catch (err) {
       // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
       // opstrøms i cron.js (én Sentry-capture pr. tick, #2375-hotfix) — ikke tavst.
@@ -939,7 +1054,7 @@ export async function runRaceEntryGenerator({
         console.warn(
           `⚠️  Entry-generator ${race_id}/${team_id}: holdet blev markeret til nedlæggelse under kørslen — enheden springes over (#4959)`
         );
-        return;
+        return false;
       }
       // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
       // i vinduet inden denne skrivning — genlæs enhedens manuelle rækker friskt og
@@ -951,13 +1066,14 @@ export async function runRaceEntryGenerator({
           inserted += retryResult.inserted;
           removed += retryResult.removed;
           roleUpdated += retryResult.roleUpdated;
-          return;
+          countWritten(retryResult);
+          return true;
         } catch (retryErr) {
           // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
           // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
           failedUnits += 1;
           if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
-          return;
+          return false;
         }
       }
       // #3482: en samtidig rytter-sletning ramte insert-batchen. Filtrér de forsvundne
@@ -973,20 +1089,22 @@ export async function runRaceEntryGenerator({
           inserted += retryResult.inserted;
           removed += retryResult.removed;
           roleUpdated += retryResult.roleUpdated;
+          countWritten(retryResult);
           console.warn(
             `⚠️  Entry-generator ${race_id}/${team_id}: rytter(e) slettet under kørslen — enheden kørt om uden dem`
           );
-          return;
+          return true;
         } catch (retryErr) {
           // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
           // som failed unit og rammer cron.js-Sentry-capturen (signalet bevares).
           failedUnits += 1;
           if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${retryErr.message}`);
-          return;
+          return false;
         }
       }
       failedUnits += 1;
       if (errors.length < 5) errors.push(`${race_id}/${team_id}: ${err.message}`);
+      return false;
     }
   }
 
@@ -1014,6 +1132,17 @@ export async function runRaceEntryGenerator({
 
     const unitKey = `${race_id}|${team_id}`;
     const existing = existingByUnit.get(unitKey) || new Map();
+
+    // #4759: kandidat til "assistenten udtog dit hold"-notifikationen hvis
+    // holdet har en bruger, enheden var HELT tom (hverken manuel ELLER en
+    // tidligere auto-række) FØR denne kørsel, og der rent faktisk kommer
+    // picks ind. "Aldrig når manageren selv havde en udtagelse" (issue #4759
+    // punkt 2): manualByRaceTeam.has(unitKey) dækker den halvdel;
+    // existing.size===0 dækker "ingen tidligere auto-fyldning heller" (fx en
+    // enhed en tidligere opt_in-/late_fill-kørsel allerede har fyldt).
+    if (ownerTeamIds.has(team_id) && desired.size > 0 && existing.size === 0 && !manualByRaceTeam.has(unitKey)) {
+      assistantNotifyCandidates.set(unitKey, { raceId: race_id, teamId: team_id });
+    }
 
     // Rolle-bevidst supplement (#2375 hotfix 2, CYCLINGZONE-2D): har MANAGEREN allerede
     // sat en special-rolle blandt sine (bevarede, manuelle) entries, må ingen auto-række
@@ -1061,7 +1190,9 @@ export async function runRaceEntryGenerator({
           race_id: unit.race_id,
           vacate: diff.toVacate,
           deletes: diff.toDelete,
-          inserts: diff.toInsert,
+          // #5246: kilden pr. ny raekke. RPC'en fra foer migrationen ignorerer noeglen,
+          // saa payloaden er sikker i deploy-vinduet (apply_race_entry_unit_batch).
+          inserts: diff.toInsert.map((i) => ({ ...i, auto_filled_source: sourceForTeam(team_id) })),
           promotions: diff.promotions,
         })),
       });
@@ -1075,8 +1206,15 @@ export async function runRaceEntryGenerator({
     }
     if (!batchErr) {
       inserted += batchResult?.inserted ?? 0;
+      if ((batchResult?.inserted ?? 0) > 0) teamsWrittenIds.add(team_id); // #5246
       removed += batchResult?.removed ?? 0;
       roleUpdated += (batchResult?.role_updated ?? 0) + batchVacateNetHelper;
+      // #4759: batchen er ÉN transaktion — lykkedes den, blev ALLE dens enheder
+      // skrevet, inkl. eventuelle assistantNotifyCandidates iblandt dem.
+      for (const { unit } of changed) {
+        const unitKey = `${unit.race_id}|${unit.team_id}`;
+        if (assistantNotifyCandidates.has(unitKey)) writtenNotifyUnitKeys.add(unitKey);
+      }
       continue;
     }
     if (isConstraintNotDeferrable(batchErr) && !constraintNotDeferrable) {
@@ -1098,7 +1236,72 @@ export async function runRaceEntryGenerator({
       );
     }
     for (const { unit } of changed) {
-      await applyUnitWithRecovery(unit);
+      const ok = await applyUnitWithRecovery(unit);
+      if (ok) {
+        const unitKey = `${unit.race_id}|${unit.team_id}`;
+        if (assistantNotifyCandidates.has(unitKey)) writtenNotifyUnitKeys.add(unitKey);
+      }
+    }
+  }
+
+  // #4759 (CodeRabbit-fund): applyUnitDiff's upsert bruger ignoreDuplicates
+  // (ON CONFLICT (race_id, rider_id) DO NOTHING) — en GHOST-residual under et
+  // ANDET hold (samme rytter, samme løb, se computeUnitDiff/applyUnitDiff-
+  // kommentarerne ovenfor) kan derfor stille springe ét eller flere af de
+  // ønskede picks over. Både batch-RPC'en og applyUnitWithRecovery tæller kun
+  // "forsøgt" som "skrevet" — uden dette genlæs kunne "assistenten udtog dit
+  // hold" fyres for en enhed der reelt endte tom eller ufuldstændig. Genlæs
+  // derfor de BERØRTE enheders FAKTISKE race_entries lige før vi notificerer —
+  // billigt (kun de få enheder der rent faktisk blev skrevet i denne kørsel).
+  const verifiedNotifyUnitKeys = new Set();
+  if (writtenNotifyUnitKeys.size) {
+    const candidateRaceIds = [...new Set(
+      [...writtenNotifyUnitKeys].map((k) => assistantNotifyCandidates.get(k)?.raceId).filter(Boolean)
+    )];
+    const { data: verifyRows, error: verifyErr } = await selectInChunks({
+      supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+      inColumn: "race_id", ids: candidateRaceIds, orderBy: ["race_id", "rider_id"],
+    });
+    if (verifyErr) {
+      // Defensivt: kan vi ikke verificere, sender vi ALDRIG en muligvis forkert
+      // "din trup er fyldt"-besked. Fejlen logges/captures, sweepet fortsætter.
+      console.error(`  ⚠️  assistant-filled-squad verify fejlede (#4759, ikke-fatal): ${verifyErr.message}`);
+      captureException(new Error(`assistant-filled-squad verify: ${verifyErr.message}`), {
+        tags: { flow: "notifications", stage: "assistant-filled-squad-verify" },
+      });
+    } else {
+      const actualCountByUnit = new Map();
+      for (const row of verifyRows || []) {
+        const key = `${row.race_id}|${row.team_id}`;
+        actualCountByUnit.set(key, (actualCountByUnit.get(key) || 0) + 1);
+      }
+      for (const unitKey of writtenNotifyUnitKeys) {
+        if ((actualCountByUnit.get(unitKey) || 0) > 0) verifiedNotifyUnitKeys.add(unitKey);
+      }
+    }
+  }
+
+  // #4759: notificér de menneske-hold hvis enhed rent faktisk blev fyldt fra
+  // helt tom denne kørsel (late_fill eller opt_in — proactive når aldrig
+  // hertil, trin 5's eligibleTeams-filter udelukker dem allerede). Best-effort:
+  // en notifikationsfejl må ALDRIG vælte selve sweepet (samme A2-mønster som
+  // resten af notifikations-kaldene i notificationService.js).
+  for (const unitKey of verifiedNotifyUnitKeys) {
+    const candidate = assistantNotifyCandidates.get(unitKey);
+    if (!candidate) continue;
+    const race = raceById.get(candidate.raceId);
+    try {
+      await notify({ supabase, teamId: candidate.teamId, raceId: candidate.raceId, raceName: race?.name ?? null });
+    } catch (err) {
+      console.error(
+        `  ⚠️  assistant-filled-squad-notifikation fejlede (race ${candidate.raceId}, team ${candidate.teamId}, #4759, ikke-fatal):`,
+        err?.message || err,
+      );
+      captureException(err, {
+        tags: { flow: "notifications", stage: "assistant-filled-squad" },
+        raceId: candidate.raceId,
+        teamId: candidate.teamId,
+      });
     }
   }
 
@@ -1113,6 +1316,8 @@ export async function runRaceEntryGenerator({
     mode, // #4201: den EFFEKTIVE tilstand (fail-safe kan have sat den til proactive).
     races: usableRaces.length,
     teams: processedTeamIds.size,
+    // #5246: hold med mindst een NY raekke skrevet i denne koersel (ikke blot behandlet).
+    teams_written: teamsWrittenIds.size,
     generated,
     skipped,
     inserted,

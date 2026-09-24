@@ -25,6 +25,9 @@ import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+// #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
+// afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
+import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
@@ -159,16 +162,31 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   flat:          Object.freeze([{ value: "bunch_sprint", weight: 70 }, { value: "reduced_sprint", weight: 30 }]),
   // fladt 25-45 % → 35 · udbrud 55-75 % → 65.
   rolling:       Object.freeze([{ value: "breakaway", weight: 65 }, { value: "reduced_sprint", weight: 20 }, { value: "bunch_sprint", weight: 15 }]),
-  // opad 40-60 % → 50 · fladt 15-30 % → 25 · udbrud 15-30 % → 25.
-  hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 25 }, { value: "breakaway", weight: 25 }]),
+  // Relative band midpoints; weightedPick normalizes their sum (#5405).
+  hilly:         Object.freeze([{ value: "punch", weight: 50 }, { value: "reduced_sprint", weight: 22.5 }, { value: "breakaway", weight: 22.5 }]),
   // opad 45-65 % · nedad 20-35 % · udbrud 10-25 %. Var 60 % descent — kernen i #4272.
-  mountain:      Object.freeze([{ value: "long_climb", weight: 41 }, { value: "punch", weight: 8 }, { value: "descent", weight: 34 }, { value: "breakaway", weight: 17 }]),
+  //
+  // #5405 (21/9): descent-vægten stod på 34 — båndets ØVERSTE kant (20-35), ikke dets
+  // midte, modsat filens egen regel tre afsnit oppe ("VÆGTENE SIGTER MOD BÅNDENES MIDTE,
+  // ikke mod kanten"). Med n = 60-80 bjergetaper på sæson-aggregatet er standardfejlen
+  // 5-6 pp, så en vægt på kanten ligger uden for båndet cirka halvdelen af trækkene — og
+  // gjorde det målbart: "mountain slutter nedad" var rødt i §7b både før og efter
+  // kompositions-kalibreringen. Vægtene er derfor flyttet til båndenes midte
+  // (opad 55 · nedad 27 · udbrud 18), hvilket er den regel de skulle have fulgt hele
+  // tiden — ikke en ny beslutning om hvordan bjergetaper skal slutte.
+  //
+  // ØVRE GRÆNSE FOR HVOR LANGT NED: nedkørsels-finalen er også et GULV
+  // (descent_finale_min, raceRouteRealismMetrics.js — D1 8 · D2 5 · D3 4 · D4 3), og
+  // #4272 har allerede betalt én gang for et gulv båndet ikke kunne levere ("en deadlock
+  // med 5 % fejlrate"). 27 % er målt til at holde begge veje på S4-planen og på det
+  // frosne snapshot; gå ikke lavere uden at re-derivere gulvene i samme ombæring.
+  mountain:      Object.freeze([{ value: "long_climb", weight: 47 }, { value: "punch", weight: 8 }, { value: "descent", weight: 27 }, { value: "breakaway", weight: 18 }]),
   // opad 80-100 % · nedad maks 15 %.
   high_mountain: Object.freeze([{ value: "long_climb", weight: 84 }, { value: "punch", weight: 9 }, { value: "descent", weight: 7 }]),
   itt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
   itt_hilly:     Object.freeze([{ value: "solo_tt", weight: 100 }]),
   ttt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
-  // fladt 30-50 % → 45 · udbrud 40-60 % → 55.
+  // Owner-approved complementary bands, 21/9 (#5405): midpoint targets unchanged.
   cobbles:       Object.freeze([{ value: "reduced_sprint", weight: 45 }, { value: "breakaway", weight: 55 }]),
   // gravel HAR sit eget baand siden ejer-beslutning 3/9 (#4105/#4270, valg A) — kun
   // `classic` mangler stadig et (RACE_ENGINE_RULES.md §"Grus", #4911/#4937). Baandet
@@ -241,9 +259,9 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // 41-løbs-researchen viste 0/9 rigtige grand tours (2024-2026) sluttede på bjerg —
   // flad (77,8%) eller enkeltstart (22,2%) dominerer, og hårdeste etape lå næstsidst i
   // 88,9% af tilfældene. Se orderAndBuildGrandTour/toGrandTourFinale nedenfor.
-  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 15 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 13 }, { value: "itt", weight: 19 }] },
-  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 25 }, { value: "hilly", weight: 25 }, { value: "mountain", weight: 31 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 9 }] },
-  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 40 }, { value: "hilly", weight: 62 }, { value: "mountain", weight: 13 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 12 }] },
+  grand_tour:     { kind: "stage", grandTourOrder: true, openingItt: true, guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 15 }, { value: "rolling", weight: 21 }, { value: "hilly", weight: 24 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 12 }, { value: "itt", weight: 19 }] },
+  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 24 }, { value: "hilly", weight: 24 }, { value: "mountain", weight: 28 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 9 }] },
+  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 10 }, { value: "rolling", weight: 38 }, { value: "hilly", weight: 59 }, { value: "mountain", weight: 12 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 12 }] },
   // #3295/#3327/#3371: bjerg-garantien erstattet af en KUPERET garanti. En "sprinter-uge"
   // der pr. definition indeholder en bjergetape modsiger sit eget navn — Danmark Rundt,
   // Tour of Guangxi og Tour Down Under afgøres af sprintere og puncheurs, ikke klatrere,
@@ -256,7 +274,7 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // skabelon. Konkret konsekvens: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN (#3327) kan
   // opfyldes af tier 2/3, hvor hilly_tour hidtil var den ENESTE mulige kilde og
   // løbsudvalget ofte slet ikke fik en.
-  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 40 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 9 }] },
+  sprinters_week: { kind: "stage", guarantees: ["flat", "hilly"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 38 }, { value: "hilly", weight: 21 }, { value: "mountain", weight: 9 }, { value: "itt", weight: 9 }] },
   // #3295: itt tilføjet som GARANTI (var kun filler-vægt 10). balanced_week er
   // kalenderens største arketype (19 katalog-løb / 88 løbsdage i S2's udvalg), og den
   // manglende enkeltstart dér er hovedårsagen til at ITT lå på 6,6 % mod K-B's mål.
@@ -267,10 +285,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // Realisme: Paris-Nice, Tirreno-Adriatico, Tour de Romandie og Critérium du Dauphiné
   // har alle en enkeltstart i normalår — det er kendetegnende for formatet, ikke en
   // undtagelse. Loftet (max(garanterede, 2)) er uændret, så et løb kan stadig højst få 2.
-  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 37 }, { value: "hilly", weight: 33 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 16 }] },
+  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain", "itt"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 35 }, { value: "hilly", weight: 31 }, { value: "mountain", weight: 15 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 16 }] },
   // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
   // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
-  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 45 }, { value: "rolling", weight: 40 }] },
+  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 45 }, { value: "rolling", weight: 38 }] },
 
   // #2769 (Sub-1): fritstående enkeltstart-endagsløb (#2177 — 0 fritstående ITT i dag).
   itt_classic: { kind: "single", weights: [{ value: "itt", weight: 1 }] },
@@ -279,10 +297,10 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // sænker M-Down-andelen — mountain_tour garanterer kun mellembjerg/descent). high_mountain
   // sidst via STAGE_ORDER_HINT (7) → dronningeetape/top-finish. En itt-garanti giver samtidig
   // en enkeltstart i løbet.
-  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 8 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 22 }, { value: "mountain", weight: 19 }, { value: "high_mountain", weight: 24 }, { value: "itt", weight: 12 }] },
+  summit_tour: { kind: "stage", guarantees: ["flat", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 8 }, { value: "rolling", weight: 21 }, { value: "hilly", weight: 21 }, { value: "mountain", weight: 17 }, { value: "high_mountain", weight: 22 }, { value: "itt", weight: 12 }] },
 
   // #2769: etapeløb med GARANTERET brosten-etape (#2527/#2755 — 0 brosten i etapeløb i dag).
-  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 37 }, { value: "cobbles", weight: 8 }, { value: "hilly", weight: 30 }, { value: "mountain", weight: 12 }, { value: "itt", weight: 9 }] },
+  cobbled_tour: { kind: "stage", guarantees: ["flat", "cobbles", "mountain"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 35 }, { value: "cobbles", weight: 8 }, { value: "hilly", weight: 29 }, { value: "mountain", weight: 11 }, { value: "itt", weight: 9 }] },
 });
 
 // #3295 KALIBRERING (2026-08-06) — hvordan filler-vægtene ovenfor blev fundet.
@@ -376,6 +394,90 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 // da dens filler-vægte ændrede sig — samme "bevidst ændring, fixture regenereret"-
 // præcedens som #3326-korrektionen ovenfor).
 
+// #5405 RE-KALIBRERING (2026-09-21) — udløst af katalog-udvidelsen i #5450: tre nye
+// bjergrige etapeløb (arketype summit_tour) plus hævede summit-reservationer i D2 og D3.
+// Katalog-ændringen løste §6b's afgørende bjergdage i D2/D3, men skubbede sæsonens
+// K-B-komposition den anden vej: bjerg over det øvre bånd og kuperet ned på den nedre
+// grænse i S4-tørkørslen på main. Det er præcis den vekselvirkning der er beskrevet to
+// gange ovenfor — kataloget bestemmer HVAD der kan fordeles, vægtene fordeler det.
+//
+// NY tilt (oven på 7/8-vægtene, samme maskineri som begge kalibreringer ovenfor —
+// applyCompositionTilt over kompositions-kategorierne, ingen frie vægte):
+//
+//     flad ×1,0   ·   kuperet (rolling+hilly+classic) ×0,95   ·   bjerg ×0,9
+//     (ITT, brosten og TTT står på 1,0)
+//
+// ÉT FÆLLES TILT, TO DATASÆT — og hvorfor det er hele pointen. Den FØRSTE runde af denne
+// kalibrering søgte mod S4-planen ALENE. Den ramte S4 pænt og gjorde regressionsvagten i
+// calendarCompositionCalibration.test.js RØD: det frosne kalender-snapshot i
+// __fixtures__ blev drevet uden for ±2 pp på kuperet. Vagten er ikke en formalitet — den
+// findes præcis for at fange at en velment justering af én sæsons balance skubber en
+// anden skæv (se dens egen docstring). Runde 2 søger derfor mod BEGGE på én gang, som
+// 7/8-kalibreringen gjorde med S2+S3: kandidat-tilt'en evalueres gennem den fulde
+// pipeline (resolveSeasonDraw + scoreSeason + computeCompositionStats, dvs.
+// evaluateTilt's egne led) på både snapshottet og S4-planen, og kun et tilt der holder
+// BEGGE inden for ±2 pp uden realisme-brud kommer i betragtning. Tallene i
+// balance-internals-noten nedenfor er målt sådan.
+//
+// Fundet og verificeret med (begge read-only; buildSeasonCalendar skriver aldrig uden
+// --apply):
+//     infisical run --env=prod --silent -- node backend/scripts/calibrateCalendarComposition.js --plan 4
+//     infisical run --env=prod --silent -- node backend/scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
+//
+// FORSKEL fra 7/8-metoden: dér var begge sæsoner FREMTIDIGE (S2 materialiseret med fast
+// løbsudvalg, S3 planlagt under nye targets). I dag er S2 og S3 begge materialiserede og
+// LÅSTE — en vægt-ændring rører dem ikke. Snapshottet er derfor ikke en sæson vi bygger,
+// men den FROSNE prøve vagten måler på; S4-planen er den sæson der faktisk bygges. Begge
+// skal holde, af hver sin grund.
+//
+// MÅLT FØR/EFTER på S4-tørkørslen (kvalitativt her, jf. anonymiserings-reglen for et
+// offentligt repo — de fulde tal ligger i den gitignorerede
+// balance-internals/2026-09-21-s4-komposition-kalibrering/):
+//   · K-B-kompositionen: TO kategorier uden for ±2 pp (bjerg for højt, kuperet på den
+//     nedre grænse) → NUL. Alle seks akser inden for båndet.
+//   · §6's strenge ±2 pp pr. division: syv afvigelser fordelt på alle fire divisioner →
+//     tre. D1 og D2 er rene, D3 har én, D4 to.
+//   · §6b's uniforme mål (enkeltstart, brosten, højbjerg) holder i ALLE fire divisioner
+//     både før og efter. Højbjerg er dét tallet der kunne have knækket — tilt'ens
+//     bjerg-faktor rammer `high_mountain` og `mountain` ens, fordi de deler
+//     kompositions-kategori (PROFILE_TO_CATEGORY i calendarCompositionTargets.js), og en
+//     kraftigere bjerg-dæmpning end den valgte skubbede faktisk D1 under målet i målingen.
+//     Det var stop-betingelsen for hvor langt bjerg-faktoren måtte gå.
+//   · Kvote (§1b) 100 % i alle fire · 140 løbsdage i alle fire (§1d) · 0 placeringsbrud ·
+//     terræn-gulvene (§5) holder · realisme-båndene GO.
+//
+// §7b's FINALE-BÅND — rettet FØR der genereres, ikke rapporteret som en pris. Ejerens
+// regel 20/9 er at en rettelse ikke må gøre en anden regel værre. Runde 1 gjorde netop
+// det (antallet af linjer uden for båndet steg), og det er lukket her:
+//   · `mountain slutter nedad` var rød både FØR og EFTER kompositions-kalibreringen,
+//     fordi descent-vægten i FINALE_WEIGHTS_BY_PROFILE stod på båndets ØVERSTE KANT i
+//     stedet for dets midte. Den er flyttet til midten (se kommentaren ved tabellen).
+//     Det er ikke en ny beslutning om hvordan bjergetaper skal slutte — det er den regel
+//     tabellen selv skriver, anvendt konsekvent.
+//   · De rullende linjer og D4's bjerg-udbrud fra runde 1 var stikprøve-udfald af DEN
+//     tilt og er væk med den fælles tilt.
+// Tilbage står FEM linjer mod de seks der stod på main: `hilly slutter udbrud` (under
+// 1 pp over båndet på en stikprøve hvor standardfejlen er 5 pp), `cobbles slutter udbrud`
+// (kan ikke lukkes af vægte — brostens-båndenes to midtpunkter summer ikke til 100 %) og
+// TRE grus-linjer fra ÉN stikprøve på n=2, som er en KATALOG-grænse: ingen vægt kan
+// lukke dem, kun flere grusløb. Ingen af de fem er på divisions-niveau. Finale-båndene
+// har krævet `--allow-finale-drift` siden 3/9 (#4272); de er stadig ikke grønne, men de
+// er tættere på end før dette spor begyndte.
+//
+// OPFØLGNING 23/9 (#5405): grus blev "kun rapport" under stikprøveminimum (22/9), og de
+// tre sidste linjer (kuperet i udbrud, brosten fladt, brosten i udbrud) var stikprøvestøj
+// fra et frit træk pr. etape — ikke forkerte vægte. De er lukket af kvote-fordelingen
+// (balanceFinaleQuotas nedenfor), uden at røre en vægt eller et bånd. S4-tørkørslen har
+// nul §7b-brud; tallene står i balance-internals/2026-09-23-5405-finale-afvigelser/.
+//
+// pass1-golden.json-fixturen er REGENERERET (vægtene ændrer pass-1-output for de
+// berørte arketyper — samme "bevidst ændring, fixture regenereret"-præcedens som
+// #3326-korrektionen ovenfor). calendarGoldenSnapshot.s3.json er derimod UÆNDRET:
+// `node backend/scripts/dev/calendarGoldenDiff.mjs` er grøn (exit 0), fordi den gyldne
+// diff måler PLACERINGEN af løb (hvilke løb på hvilke dage i hvilken division), og den
+// afgøres af selection+packing — ikke af filler-vægtene, der kun bestemmer hvilket
+// TERRÆN et allerede-placeret løbs etaper får.
+
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
 // `profiles` gør tabellen injicerbar (default = produktionens ARCHETYPE_PROFILES), så en
@@ -420,8 +522,16 @@ function seedKeyFor(race) {
 }
 
 function weightedPick(rng, items) {
+  return pickByQuantile(items, rng());
+}
+
+// Samme kumulative afbildning som weightedPick, men med kvantilen givet udefra (0 ≤ u < 1).
+// weightedPick er defineret som pickByQuantile(items, rng()), saa de to kan ikke drifte fra
+// hinanden: #5405's kvote-fordeling (balanceFinaleQuotas nedenfor) vaelger finalen med
+// PRAECIS den afbildning det frie traek bruger — kun kvantilen er en anden.
+function pickByQuantile(items, u) {
   const total = items.reduce((s, it) => s + it.weight, 0);
-  let r = rng() * total;
+  let r = u * total;
   for (const it of items) {
     r -= it.weight;
     if (r < 0) return it.value;
@@ -491,29 +601,230 @@ function demandVectorFor(profileType) {
 }
 
 export function finaleFor(rng, profileType) {
-  const options = FINALE_WEIGHTS_BY_PROFILE[profileType] || [];
-  if (!options.length) return null;
-  // #4272: ét vægtet træk (weightedPick bruger præcis ÉT rng-kald, som den gamle
-  // 60/40-sti gjorde i sit hyppigste tilfælde). Vægtene bor i tabellen ovenfor, så
-  // båndene kan justeres uden at røre trækket.
-  return weightedPick(rng, options);
+  return drawFinale(rng, profileType).value;
 }
 
-function toStage(rng, profileType, stageNumber, race, isStageRace) {
-  const base = {
-    stage_number: stageNumber,
-    profile_type: profileType,
-    finale_type: finaleFor(rng, profileType),
-    demand_vector: demandVectorFor(profileType),
-  };
-  // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke `rng` ovenfor).
+// #4272: ét vægtet træk (præcis ÉT rng-kald, som den gamle 60/40-sti gjorde i sit
+// hyppigste tilfælde). Vægtene bor i tabellen ovenfor, så båndene kan justeres uden at
+// røre trækket. #5405: kvantilen returneres med, så kvote-fordelingen kan rangere
+// etaperne efter PRÆCIS det træk de fik — ingen ekstra rng-kald, pass 1 er bit-identisk.
+function drawFinale(rng, profileType) {
+  const options = FINALE_WEIGHTS_BY_PROFILE[profileType] || [];
+  if (!options.length) return { value: null, u: null };
+  const u = rng();
+  return { value: pickByQuantile(options, u), u };
+}
+
+// #5405: sidekanal fra generatoren til balanceFinaleQuotas. Pr. genereret etape-objekt:
+// finale-trækkets kvantil, en stabil sorterings-nøgle og en genbygger der laver SAMME
+// etape med en anden finale. WeakMap (ikke et felt på objektet), fordi etaperne persisteres
+// og sammenlignes feltvist (toStageProfileRow, pass1-golden.json) — konteksten må hverken
+// skrives til basen eller ændre et eneste felt. Etaper der ikke er lavet af toStage (fx
+// læst fra basen eller bygget i en test) har ingen kontekst og røres ikke af fordelingen.
+const FINALE_CONTEXT = new WeakMap();
+
+function buildStage(base, race, isStageRace) {
+  // Pass 2: rute-berigelse via DEDIKERET rng-strøm (rører ikke pass 1's rng).
   const route = attachRoute(base, race, isStageRace);
   const merged = { ...base, ...route };
   // v4 F1 (#3855): segments + weather via EGNE dedikerede rng-strømme (routeSegments.js)
   // — rører hverken pass 1's `rng` eller pass 2's route-rng. Additivt: intet eksisterende
   // felt ændres/fjernes.
-  const { segments, weather } = attachSegmentsAndWeather(merged, race, stageNumber);
+  const { segments, weather } = attachSegmentsAndWeather(merged, race, base.stage_number);
   return { ...merged, segments, weather };
+}
+
+function registerFinaleContext(stage, { u, key, race, isStageRace }) {
+  const base = { stage_number: stage.stage_number, profile_type: stage.profile_type, demand_vector: stage.demand_vector };
+  FINALE_CONTEXT.set(stage, {
+    u, key,
+    // Ruten (stigninger, spurter, segmenter) afhænger af finalen og genbygges derfor med
+    // den. Rute-, segment- og vejr-strømmene er seedet pr. (løb, etape), ikke af pass 1,
+    // så genbygningen er deterministisk og rører ingen anden etape.
+    rebuild: (finaleType) => {
+      const rebuilt = buildStage({ ...base, demand_vector: { ...base.demand_vector }, finale_type: finaleType }, race, isStageRace);
+      FINALE_CONTEXT.set(rebuilt, FINALE_CONTEXT.get(stage));
+      return rebuilt;
+    },
+  });
+}
+
+function toStage(rng, profileType, stageNumber, race, isStageRace) {
+  const { value, u } = drawFinale(rng, profileType);
+  const stage = buildStage({
+    stage_number: stageNumber,
+    profile_type: profileType,
+    finale_type: value,
+    demand_vector: demandVectorFor(profileType),
+  }, race, isStageRace);
+  if (u != null) registerFinaleContext(stage, { u, key: `${seedKeyFor(race)}#${stageNumber}`, race, isStageRace });
+  return stage;
+}
+
+/**
+ * #5405: fordel finale-typerne i ÉN divisions løbssæt efter kvote i stedet for et frit
+ * træk pr. etape.
+ *
+ * HVORFOR. Vægtene i FINALE_WEIGHTS_BY_PROFILE står på båndenes midte (§7b), men hver
+ * etape trak sin finale uafhængigt. En divisions andel var derfor en binomial stikprøve
+ * omkring vægten, og på en terræntype med få etaper (brosten) er båndet ikke bredere end
+ * én standardfejl: en korrekt generator lå uden for båndet i en stor del af sæsonerne,
+ * og ingen vægt kunne rette det. Fordelingen her fjerner stikprøvestøjen i stedet for at
+ * flytte vægtene væk fra midten for at ramme ét bestemt træk.
+ *
+ * HVORDAN. Pr. terræntype rangeres divisionens etaper efter kvantilen i deres eget frie
+ * træk. Etapen på plads r (0-baseret) af n får den finale som samme vægtede afbildning
+ * giver kvantilen (r + ½)/n — en stratificeret stikprøve i stedet for en tilfældig. Antallet
+ * af hver finale bliver dermed n × vægtandelen afrundet (højst én etape fra), mens
+ * rækkefølgen bevares: en etape der frit trak en tidlig finale i listen, får stadig en
+ * tidlig finale. Kun etaper tæt på en grænse skifter, og deres rute genbygges med den nye
+ * finale.
+ *
+ * HVORFOR PR. DIVISION, ikke pr. sæson: samme begrundelse som realisme-gen-trækket
+ * (raceRouteRealismDraw.js). Divisionerne deler ikke løb, alle puljer i en division kører
+ * samme løbssæt, og en division kan genopbygges alene (§2e) uden at de andre skal kendes.
+ * Sæson-aggregatet er summen af fire fordelinger der hver ligger under én etape fra målet.
+ *
+ * Ren og deterministisk: samme løbssæt i vilkårlig rækkefølge giver samme resultat.
+ * Inputtet muteres ikke; uændrede etaper genbruges som samme objekter.
+ *
+ * @param {Array<Array<object>>} stagesByRace  generateRaceStageProfiles-output pr. løb
+ * @returns {Array<Array<object>>} samme form og rækkefølge
+ */
+export function balanceFinaleQuotas(stagesByRace = []) {
+  const groupsByProfile = new Map();
+  const fixedClassCounts = Object.fromEntries(FINALE_CLASSES.map((c) => [c, 0]));
+  let totalStages = 0;
+  stagesByRace.forEach((stages, raceIdx) => {
+    (stages ?? []).forEach((stage, stageIdx) => {
+      if (!stage) return;
+      totalStages += 1;
+      const ctx = FINALE_CONTEXT.get(stage);
+      const options = FINALE_WEIGHTS_BY_PROFILE[stage.profile_type] || [];
+      if (!ctx || options.length < 2) {
+        const cls = FINALE_CLASS_BY_TYPE[stage.finale_type];
+        if (cls) fixedClassCounts[cls] += 1;
+        return;
+      }
+      if (!groupsByProfile.has(stage.profile_type)) groupsByProfile.set(stage.profile_type, []);
+      groupsByProfile.get(stage.profile_type).push({ raceIdx, stageIdx, stage, ctx });
+    });
+  });
+
+  const groups = [...groupsByProfile.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([profileType, members]) => {
+      members.sort((a, b) => (a.ctx.u - b.ctx.u) || (a.ctx.key < b.ctx.key ? -1 : a.ctx.key > b.ctx.key ? 1 : 0));
+      const options = FINALE_WEIGHTS_BY_PROFILE[profileType];
+      const n = members.length;
+      // Standard-kvoten: etapen på plads r får finalen for kvantilen (r + ½)/n.
+      const defaults = options.map(() => 0);
+      for (let r = 0; r < n; r++) {
+        const finale = pickByQuantile(options, (r + 0.5) / n);
+        defaults[options.findIndex((o) => o.value === finale)] += 1;
+      }
+      return { profileType, members, options, n, defaults, counts: defaults, roundings: quotaRoundings(options, n) };
+    });
+
+  chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages);
+
+  const out = stagesByRace.map((stages) => (stages ? [...stages] : stages));
+  for (const g of groups) {
+    // Rangordenen bevares: de første counts[0] etaper får første finale i listen, osv.
+    let rank = 0;
+    g.counts.forEach((count, k) => {
+      for (let i = 0; i < count; i++, rank++) {
+        const m = g.members[rank];
+        const finale = g.options[k].value;
+        if (finale !== m.stage.finale_type) out[m.raceIdx][m.stageIdx] = m.ctx.rebuild(finale);
+      }
+    });
+  }
+  return out;
+}
+
+// Alle lovlige afrundinger af kvoten n × vægtandel: hver finale får enten nedrundet eller
+// oprundet antal, og summen er n. Højst fire finaler pr. terræn → højst seks muligheder.
+function quotaRoundings(options, n) {
+  const total = options.reduce((s, o) => s + o.weight, 0);
+  const exact = options.map((o) => (n * o.weight) / total);
+  const floors = exact.map((e) => Math.floor(e + 1e-9));
+  const fractional = exact.map((e, k) => k).filter((k) => exact[k] - floors[k] > 1e-9);
+  const extra = n - floors.reduce((s, f) => s + f, 0);
+  const out = [];
+  const pick = (start, chosen) => {
+    if (chosen.length === extra) {
+      out.push(floors.map((f, k) => f + (chosen.includes(k) ? 1 : 0)));
+      return;
+    }
+    for (let i = start; i < fractional.length; i++) pick(i + 1, [...chosen, fractional[i]]);
+  };
+  pick(0, []);
+  return out.length ? out : [floors];
+}
+
+// #5405: kvoten skal rundes af — n × vægtandel er sjældent et helt tal. Standard er den
+// nærmeste afrunding ((r + ½)/n ovenfor). Men ejeren har ÉT bånd mere end terræn-båndene:
+// det samlede bånd på tværs af ALLE en divisions etaper (OVERALL_FINALE_BAND, "samme i alle
+// divisioner"). Med terræn-vægtene på båndenes midte kan summen af dem ligge på kanten af
+// det samlede bånd — så afgør afrundingen hvilken side af kanten divisionen lander på.
+//
+// Reglen: behold standard-afrundingen, medmindre en anden LOVLIG afrunding (hver finale
+// stadig højst én etape fra sin kvote) bringer divisionen tættere på at overholde både det
+// samlede bånd og terræn-båndene. Ingen vægt ændres, intet bånd ændres, og intet terræn
+// flyttes mere end afrundingen tillader. Koordinat-søgning over terrænerne i fast
+// rækkefølge; lige gode valg beholder det nuværende. Deterministisk.
+function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
+  const eps = 1e-9;
+  const outside = (count, [lo, hi], n) => Math.max(0, (lo * n) / 100 - count - eps) + Math.max(0, count - (hi * n) / 100 - eps);
+  const classCounts = (g, counts) => {
+    const byClass = Object.fromEntries(FINALE_CLASSES.map((c) => [c, 0]));
+    counts.forEach((count, k) => { byClass[FINALE_CLASS_BY_TYPE[g.options[k].value]] += count; });
+    return byClass;
+  };
+  // Tre led, i prioriteret rækkefølge: (1) etaper uden for et TERRÆN-bånd — de er de mest
+  // specifikke regler, og en afrunding må aldrig bytte dem væk for det samlede bånd;
+  // (2) etaper uden for det SAMLEDE bånd; (3) antal etaper flyttet fra standard-afrundingen.
+  const score = () => {
+    let terrain = 0, overallViolation = 0, moved = 0;
+    const overall = { ...fixedClassCounts };
+    for (const g of groups) {
+      const byClass = classCounts(g, g.counts);
+      for (const c of FINALE_CLASSES) overall[c] += byClass[c];
+      const bands = TERRAIN_FINALE_BANDS[g.profileType];
+      if (bands) for (const c of FINALE_CLASSES) terrain += outside(byClass[c], bands[c] ?? [0, 0], g.n);
+      g.counts.forEach((count, k) => { moved += Math.abs(count - g.defaults[k]); });
+    }
+    for (const [c, band] of Object.entries(OVERALL_FINALE_BAND)) overallViolation += outside(overall[c], band, totalStages);
+    return { terrain, overall: overallViolation, moved, violation: terrain + overallViolation };
+  };
+  const better = (a, b) => {
+    if (a.terrain < b.terrain - eps) return true;
+    if (a.terrain > b.terrain + eps) return false;
+    if (a.overall < b.overall - eps) return true;
+    if (a.overall > b.overall + eps) return false;
+    return a.moved < b.moved;
+  };
+
+  // Bedste enkelt-ændring ad gangen (ikke første forbedring): så vælges det terræn hvor
+  // afrundingen koster mindst, i stedet for det der tilfældigvis står først i rækkefølgen.
+  let best = score();
+  for (let step = 0; step < 64 && best.violation > eps; step++) {
+    let move = null;
+    for (const g of groups) {
+      const current = g.counts;
+      for (const candidate of g.roundings) {
+        if (candidate.every((c, k) => c === current[k])) continue;
+        g.counts = candidate;
+        const s = score();
+        if (better(s, move?.score ?? best)) move = { g, candidate, score: s };
+      }
+      g.counts = current;
+    }
+    if (!move) break;
+    move.g.counts = move.candidate;
+    best = move.score;
+  }
 }
 
 // Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.

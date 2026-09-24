@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "title": "Rules · Cycling Zone",
+    "description": "The reference for Cycling Zone's limits, rates and formulas: squad, finances, training, auctions and races."
+  },
   "page": {
     "title": "Rules",
     "subtitle": "The authoritative reference for Cycling Zone's limits, rates and formulas.",
@@ -21,7 +25,7 @@
         },
         "academyExempt": {
           "title": "Academy riders are separate",
-          "text": "Academy riders never count towards the {squadCap}-rider senior cap and are never auto-sold by squad enforcement. They have their own 8-place academy cap."
+          "text": "Academy riders never count towards the {squadCap}-rider senior cap and are never auto-sold by squad enforcement. They have their own caps: {u23SquadCap} on the U23 team and {juniorSquadCap} on the junior team."
         }
       }
     },
@@ -142,7 +146,7 @@
       "blocks": {
         "slots": {
           "title": "Academy size",
-          "text": "Your academy holds up to {academySlots} young riders (a hard cap), separate from your senior squad."
+          "text": "Your academy has two teams with a hard cap each: up to {u23SquadCap} riders on the U23 team and {juniorSquadCap} on the junior team, separate from your senior squad."
         },
         "age": {
           "title": "Age range",
@@ -154,7 +158,7 @@
         },
         "drift": {
           "title": "Upkeep",
-          "text": "Each filled academy place costs {academyDrift} CZ$ per season, charged at season start. A small academy (3–4 places) is comfortably affordable in every division; a full 8-place academy is a deliberate, heavier investment."
+          "text": "Each filled academy place costs {academyDrift} CZ$ per season, charged at season start. A small academy (3–4 places) is comfortably affordable in every division; a full academy is a deliberate, heavier investment."
         }
       }
     },

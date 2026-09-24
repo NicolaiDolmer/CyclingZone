@@ -407,3 +407,11 @@ har ikke automatisk samme runtime-bevis.
 PC1: `git pull --ff-only`, `pwsh -File scripts/setup-local.ps1`, derefter review
 og trust i `/hooks`, genstart og kør Del A i CODEX_PROMPTS.md. En aktiv hook uden
 en observeret afvisning må fortsat ikke få en bevisdato.
+
+## Tilføjelse 21/9 2026: lukket stdin-rør blev til en blokering (PR #5459)
+
+| Symptom | Rod-årsag | Rettelse | Bevis |
+|---|---|---|---|
+| Codex stoppede på `CODEX HOOK STARTUP FAILED: ... "Pipen er blevet afsluttet."` ved en stor `apply_patch` (#3517) | Launcheren kopierer hele payloaden til hookets stdin. Et hook der er færdigt før det har læst alt lukker røret; over rørets buffer (64 KiB) fejler skrivningen med `IOException`, og catch-all'en gjorde det til exit 2 | Kun `IOException` på stdin-kopien sluges; hookets egen exit-kode gælder. Alle andre startfejl er stadig exit 2 | Ny test med 4 MiB payload fejlede FØR med præcis Codex' besked; 6/6 grønne EFTER. Dækker både tidlig tillad (exit 0) og tidlig blokering (exit 2 + egen besked bevaret) |
+
+Læring: små payloads skjulte fejlen i alle tidligere tests, fordi skrivningen nåede igennem bufferen før hooket døde. En transport-test skal have en payload der er STØRRE end rørets buffer.

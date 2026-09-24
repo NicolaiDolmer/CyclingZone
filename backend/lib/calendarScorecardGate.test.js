@@ -36,23 +36,10 @@ function kør(args = []) {
   }
 }
 
-// #4270 (3/9): scorecardet måler nu S4's vindue (28/9 → 25/10, 28 dage) og S4's regler.
-// #4203 (3/9): fixturen er genopfrisket fra prod (214 løb), så gaten måler S4's regler mod
-// S4's KATALOG. Det flyttede den kendte tilstand markant, og hver af de tre klasser af brud
-// fra før er lukket af sit eget spor:
-//   · monument-i-GT-spænd    → lukket af DENNE PR's pakker-ændring (#4203)
-//   · D2 bjerg under målet   → lukket af katalog-migrationen (#4708), nu i fixturen
-//   · D4 rolling under gulvet→ samme migration
-// Tilbage står SEKS afvigelser, alle på §7b's finale-bånd på sæson-aggregatet. De er
-// ENUMERERET i KENDTE_FIXTURE_BRUD, ikke tolereret i en klump: testen fejler stadig hvis
-// der kommer ét brud mere, eller hvis et af dem forsvinder uden at listen følger med.
-//
-// HVORFOR DE IKKE KAN LUKKES I DENNE PR: fem af dem er filler-vægt-kalibrering (ejer-
-// besluttet 3/9 som en S5-opgave, CALENDAR_RULES §6b/§7b) og tre af de fem er samme
-// n=2-stikprøve på grus. Ingen af dem er en placerings-regel, og ingen af dem kan lukkes
-// ved at flytte et løb. De SAMME seks findes i dry-runnet mod prods katalog samme dag — se
-// docs/audits/season4-calendar-dryrun-2026-09-03.md, afsnittet "Dry-run efter #4203-pakker".
-const KENDTE_BALANCEBRUD = 6;
+// #5405 (23/9): de tre sidste finale-linjer er lukket af kvote-fordelingen af finale-
+// typerne (balanceFinaleQuotas) — ikke af et slaekket baand, en flyttet vaegt eller en
+// faelles variant-soegning. Smaa stikproever er stadig kun rapport.
+const KENDTE_BALANCEBRUD = 0;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();
@@ -117,22 +104,17 @@ test("#4270: kendt-tilstand-gaten fælder et NYT brud og et FORSVUNDET kendt bru
     "et kendt brud der er lukket skal kræve at listen opdateres i samme PR");
 });
 
+// #5405 (23/9): listen maa gerne vaere TOM — det er maalet, ikke et hul. Kravet er at den
+// matcher virkeligheden: tom liste <=> nul brud i fixture-kalenderen (testen ovenfor), og
+// hver post der staar der, skal kunne begrundes.
 test("#4270: hver kendt post har en begrundelse og et spor der lukker den", () => {
-  assert.ok(KENDTE_FIXTURE_BRUD.length > 0, "en tom liste ville gøre gaten til en nul-brud-gate igen");
+  assert.equal(KENDTE_FIXTURE_BRUD.length === 0, KENDTE_BALANCEBRUD === 0,
+    "en tom liste skal betyde nul brud, og nul brud skal betyde en tom liste");
   for (const post of KENDTE_FIXTURE_BRUD) {
     assert.ok(post.id && post.moenster instanceof RegExp, `${post.id}: mønster mangler`);
     assert.ok((post.hvorfor ?? "").length > 20, `${post.id}: en kendt post uden begrundelse er bare en undtagelse`);
     assert.ok(/#\d+|S5|katalog/i.test(post.lukkesAf ?? ""), `${post.id}: skal pege på det spor der lukker den`);
   }
-});
-
-// Tabellen må ALDRIG sige "overholder alle gates" mens der står brud i den. Forskellen på
-// "kalenderen er i orden" og "der er ikke kommet noget nyt" er hele pointen (§9b).
-test("#4270: den grønne gate lyver ikke i tabellen", () => {
-  const { stdout } = kør();
-  assert.match(stdout, /Se linjerne markeret FEJL/, "tabellens dom skal stadig vise at der ER brud");
-  assert.match(stdout, /Kun kendte brud/, "gatens egen dom skal stå adskilt fra tabellens");
-  assert.doesNotMatch(stdout, /Kalenderen overholder alle gates/);
 });
 
 // #4203 (3/9): TALLET FLYTTEDE SIG, IKKE KONTRAKTEN. Foer fixture-refreshen kunne 35 dage
@@ -141,6 +123,24 @@ test("#4270: den grønne gate lyver ikke i tabellen", () => {
 // begge tests nedenfor vaere blevet groenne af en helt anden grund end den de vogter -
 // "HULLER|FEJL" ville have matchet paa balance-bruddene alene.
 const FOR_MANGE_DAGE = "--days=42";
+
+// Tabellen må ALDRIG sige "overholder alle gates" mens der står brud i den. Forskellen på
+// "kalenderen er i orden" og "der er ikke kommet noget nyt" er hele pointen (§9b).
+//
+// #5405 (23/9): S4-fixturen har nu NUL brud, så tabellen maa — og skal — sige at den
+// overholder gatene. Kravet om at den ALDRIG lyver maales derfor paa en kalender der
+// beviseligt HAR brud (for mange dage), og tabellens og gatens dom skal vaere enige paa
+// den rene S4-kalender.
+test("#4270: den grønne gate lyver ikke i tabellen", () => {
+  const ren = kør();
+  assert.match(ren.stdout, /Kalenderen overholder alle gates/, "nul brud skal stå som nul brud");
+  assert.match(ren.stdout, /Gaten er grøn/, "gatens egen dom skal stå adskilt fra tabellens");
+  assert.doesNotMatch(ren.stdout, /Se linjerne markeret FEJL/);
+
+  const medBrud = kør([FOR_MANGE_DAGE]);
+  assert.match(medBrud.stdout, /Se linjerne markeret FEJL/, "tabellens dom skal vise at der ER brud");
+  assert.doesNotMatch(medBrud.stdout, /Kalenderen overholder alle gates/);
+});
 
 test("#4215: gaten fejler når kalenderen ikke kan fyldes (exit 1, ikke bare en advarsel)", () => {
   const { code, stdout } = kør([FOR_MANGE_DAGE]);

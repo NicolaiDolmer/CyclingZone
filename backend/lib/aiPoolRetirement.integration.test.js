@@ -53,6 +53,13 @@ function client() {
         eq(key,value){values.push(value);clauses.push(`${key}=$${values.length}`);return q;},
         neq(key,value){values.push(value);clauses.push(`${key}<>$${values.length}`);return q;},
         gt(key,value){values.push(value);clauses.push(`${key}>$${values.length}`);return q;},
+        // #5517: PostgREST or-grammar (col.is.null / col.eq.value) for the pools' senior scope.
+        // This fixture schema has no league_divisions.squad, so Postgres answers 42703 and
+        // squads.withSeniorSquadScope re-runs unscoped: the auto-migrate window, end to end.
+        or(expr){const parts=String(expr).split(',').map((cond)=>{const [col,op,...rest]=cond.split('.');const raw=rest.join('.');
+          if(op==='is'&&raw==='null')return `${col} IS NULL`;
+          if(op==='eq'){values.push(raw);return `${col}=$${values.length}`;}
+          throw new Error(`unsupported or-operator ${op}`);});clauses.push(`(${parts.join(' OR ')})`);return q;},
         async result(){return {data:(await db.query(`SELECT * FROM ${table}${clauses.length?' WHERE '+clauses.join(' AND '):''}`,values)).rows,error:null};},
         async range(from,to){const r=await q.result();return {...r,data:r.data.slice(from,to+1)};},
         async maybeSingle(){const r=await q.result();return {...r,data:r.data[0]??null};},
@@ -279,7 +286,8 @@ test('existing swap can re-counter with a new cash adjustment while draining',as
 test('global reconciliation and dormant pool retirement preserve history',async()=>{
   await excess();
   assert.equal((await generateAndAllocateAiTeams({supabase:client(),now:new Date(NOW)})).removed,1);
-  await db.exec("INSERT INTO teams(name,is_ai,league_division_id) VALUES ('Dormant AI',true,13); DELETE FROM teams WHERE NOT is_ai");
+  // #5642: a tier 4 pool is always filled now, so the dormant case is a tier 3 pool.
+  await db.exec("UPDATE league_divisions SET tier=3 WHERE id=13; INSERT INTO teams(name,is_ai,league_division_id) VALUES ('Dormant AI',true,13); DELETE FROM teams WHERE NOT is_ai");
   assert.equal((await generateAndAllocateAiTeams({supabase:client(),now:new Date(NOW)})).removed,1);
   assert.equal(await count(),0);
   assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE is_ai')).rows[0].n),2);

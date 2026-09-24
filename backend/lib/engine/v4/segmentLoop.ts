@@ -52,7 +52,13 @@ import {
   wprimeDepletionCpMultiplier,
 } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroupsDetailed } from "./groups.ts";
-import { GROUP_DRAFT_EXTRA_TUNING, STRENGTH_SPEED_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
+import {
+  GROUP_DRAFT_EXTRA_TUNING,
+  GROUP_TEMPO_EFFORT_EXTRA_TUNING,
+  STRENGTH_SPEED_EXTRA_TUNING,
+  WEATHER_EXTRA_TUNING,
+} from "./tuning.ts";
+import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
@@ -94,6 +100,10 @@ type GroupTempo = {
   frontRiderIds: Set<string>;
   cpByRider: Map<string, number>;
   dtSeconds: number;
+  // #4914: gruppens indsats-led (1 i default-modellen). Ganges paa baade
+  // farten (groupStrengthSpeedFactor) og gruppens krav (tickGroupRiders): en
+  // gruppe der koerer langsommere, kraever ogsaa mindre af rytterne.
+  effortTempoFactor: number;
 };
 
 // M7-wiring (#4885, 6/9): distance-slid + dag-til-dag-slid ganges paa base-CP'en
@@ -216,9 +226,17 @@ export function groupStrengthSpeedFactor(
   referenceCp: number,
   kind: SegmentKind,
   tuning: EngineTuning,
+  // #4914 (grupetto-tempo, EJER-VALG): gruppens indsats-led, 0 < faktor <= 1.
+  // Default 1 = ingen indsats-term (model "cp_only", uaendret adfaerd). Kun
+  // `groupEffortTempo` nedenfor saetter den under 1, og kun naar kontakten i
+  // GROUP_TEMPO_EFFORT_EXTRA_TUNING staar paa "effort_weighted". Faktoren
+  // ganges paa CP'en FOER sammenligningen med referencen, saa begge grene
+  // fortsat er stigende i collectiveCp (egenskab 2 ovenfor holder).
+  effortTempoFactor = 1,
 ): number {
   if (!(referenceCp > 0)) return 0;
-  const relative = collectiveCp / referenceCp - 1;
+  const effort = Number.isFinite(effortTempoFactor) && effortTempoFactor > 0 ? Math.min(1, effortTempoFactor) : 1;
+  const relative = (collectiveCp * effort) / referenceCp - 1;
   const exponent = STRENGTH_SPEED_EXTRA_TUNING.deficitExponent;
   // Overskud er lineaert og daempet (`surplusWeight`), saa fronten beholder
   // #4604's kalibrering af bjerg-top-10-spredningen; underskud er konvekst, saa
@@ -277,6 +295,7 @@ function computeSegmentSpeedKmh(
   tuning: EngineTuning,
   riderCount: number,
   referenceCp: number,
+  effortTempoFactor = 1,
 ): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
@@ -284,8 +303,80 @@ function computeSegmentSpeedKmh(
   // difference mod `terrain.baseDemand[kind]`. `baseDemand` beholder sin rolle
   // paa KRAV-siden (tickGroupRiders), hvor #4604 gjorde den relativ — den var
   // aldrig et fart-nulpunkt, den blev brugt som ét.
-  const multiplier = clamp(1 + groupStrengthSpeedFactor(collectiveCp, referenceCp, kind, tuning), lo, hi);
+  const multiplier = clamp(
+    1 + groupStrengthSpeedFactor(collectiveCp, referenceCp, kind, tuning, effortTempoFactor),
+    lo,
+    hi,
+  );
   return baseSpeed * multiplier * (1 + groupDraftSpeedGain(riderCount, kind, tuning));
+}
+
+/**
+ * #4914 (grupetto-tempo, EJER-VALG bag GROUP_TEMPO_EFFORT_EXTRA_TUNING.model):
+ * rytterens bidrag til gruppens tempo som andel af hans CP. 1 for alle trin
+ * undtagen grupetto, og ALTID 1 i default-modellen "cp_only" — saa
+ * default-motoren er bit-identisk med main foer kontakten.
+ *
+ * Eksporteret for testbarhed af kontakten, samme praecedens som
+ * `groupDraftSpeedGain`.
+ */
+export function riderTempoEffortFactor(
+  effort: Entrant["effort"] | undefined,
+  tempoTuning: { model: GroupTempoModel; grupettoTempoFactor: number } = GROUP_TEMPO_EFFORT_EXTRA_TUNING,
+): number {
+  if (tempoTuning.model !== "effort_weighted") return 1;
+  if (effort !== "grupetto") return 1;
+  const factor = tempoTuning.grupettoTempoFactor;
+  // Forsvarsmaessigt: en faktor over 1 ville vaere en bonus over egen evne, en
+  // faktor <= 0 ville stoppe gruppen. Begge falder tilbage paa "ingen term".
+  return Number.isFinite(factor) && factor > 0 && factor <= 1 ? factor : 1;
+}
+
+/**
+ * Hvem saetter gruppens tempo, og med hvor stor en del af deres CP (#4914).
+ *
+ * "cp_only" (default): de `frontFraction` staerkeste efter CP, indsats-led 1 —
+ * praecis den regel computeGroupTempo altid har brugt.
+ *
+ * "effort_weighted": i en blandet gruppe er fronten de `frontFraction`
+ * staerkeste af dem der KOERER — en grupetto-rytter er aldrig med (han sidder
+ * paa hjul, de andre koerer), uanset hvor staerk han er. En gruppe der KUN er
+ * grupetto-ryttere rangeres paa tempo-bidrag (CP x indsats-faktor), faar et
+ * indsats-led under 1 og koerer grupetto-tempo.
+ * `collectiveCp` er fortsat front-rytternes FYSISKE CP; indsats-leddet er
+ * forholdet mellem deres tempo-bidrag og den CP.
+ *
+ * Eksporteret for testbarhed af kontakten (segmentLoop.groupTempo.test.ts).
+ */
+export function groupEffortTempo(
+  cpByRider: ReadonlyMap<string, number>,
+  effortByRider: (riderId: string) => Entrant["effort"] | undefined,
+  frontFraction: number,
+  tempoTuning: { model: GroupTempoModel; grupettoTempoFactor: number } = GROUP_TEMPO_EFFORT_EXTRA_TUNING,
+): { collectiveCp: number; frontRiderIds: Set<string>; effortTempoFactor: number } {
+  const weighted = [...cpByRider.entries()].map(([id, cp]) => {
+    const factor = riderTempoEffortFactor(effortByRider(id), tempoTuning);
+    return { id, cp, tempoCp: cp * factor, slowed: factor < 1 };
+  });
+  // Sorteringen er identisk med den gamle (CP faldende, rider_id som
+  // tie-break) naar alle faktorer er 1 — det er bit-identitets-garantien.
+  weighted.sort((a, b) => b.tempoCp - a.tempoCp || a.id.localeCompare(b.id));
+  const frontCount = Math.max(1, Math.ceil(weighted.length * frontFraction));
+  // En grupetto-rytter saetter ALDRIG tempoet i en gruppe hvor andre koerer
+  // (CodeRabbit-fund: en faktor alene garanterer det ikke — en staerk
+  // grupetto-rytter kan stadig have et hoejere tempo-bidrag end en svag
+  // rytter der koerer). Kun en gruppe af udelukkende grupetto-ryttere bruger
+  // den vaegtede raekkefoelge. I "cp_only" er ingen ryttere `slowed`, saa
+  // kandidaterne er hele gruppen, praecis som foer.
+  const racers = weighted.filter((r) => !r.slowed);
+  const frontCandidates = racers.length > 0 ? racers : weighted;
+  const frontSlice = frontCandidates.slice(0, frontCount);
+  const frontRiderIds = new Set(frontSlice.map((r) => r.id));
+  if (frontSlice.length === 0) return { collectiveCp: 0, frontRiderIds, effortTempoFactor: 1 };
+  const collectiveCp = frontSlice.reduce((s, r) => s + r.cp, 0) / frontSlice.length;
+  const tempoCp = frontSlice.reduce((s, r) => s + r.tempoCp, 0) / frontSlice.length;
+  const effortTempoFactor = collectiveCp > 0 ? Math.min(1, tempoCp / collectiveCp) : 1;
+  return { collectiveCp, frontRiderIds, effortTempoFactor };
 }
 
 function computeGroupTempo(
@@ -304,15 +395,22 @@ function computeGroupTempo(
     if (!entrant || !riderState) continue;
     cpByRider.set(riderId, riderCpForSegment(entrant, riderState, segment, tuning, weather));
   }
-  const ranked = [...cpByRider.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const frontCount = Math.max(1, Math.ceil(ranked.length * tuning.work.frontFraction));
-  const frontSlice = ranked.slice(0, frontCount);
-  const frontRiderIds = new Set(frontSlice.map(([id]) => id));
-  const collectiveCp = frontSlice.length > 0 ? frontSlice.reduce((s, [, cp]) => s + cp, 0) / frontSlice.length : 0;
-  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning, ranked.length, referenceCp);
+  const { collectiveCp, frontRiderIds, effortTempoFactor } = groupEffortTempo(
+    cpByRider,
+    (riderId) => entrantsById[riderId]?.effort,
+    tuning.work.frontFraction,
+  );
+  const speedKmh = computeSegmentSpeedKmh(
+    collectiveCp,
+    segment.kind,
+    tuning,
+    cpByRider.size,
+    referenceCp,
+    effortTempoFactor,
+  );
   const distanceSegmentKm = Math.max(0, segment.to_km - segment.from_km);
   const dtSeconds = speedKmh > 0 ? (distanceSegmentKm / speedKmh) * 3600 : 0;
-  return { collectiveCp, frontRiderIds, cpByRider, dtSeconds };
+  return { collectiveCp, frontRiderIds, cpByRider, dtSeconds, effortTempoFactor };
 }
 
 function tickGroupRiders(
@@ -322,6 +420,7 @@ function tickGroupRiders(
   segment: Segment,
   tempo: GroupTempo,
   tuning: EngineTuning,
+  profileType: StageInput["route"]["profile_type"] | null = null,
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
   // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
@@ -342,7 +441,8 @@ function tickGroupRiders(
   // ordning (climb 0,8 > cobbles 0,65 > flat 0,55 > descent 0,3) er uaendret,
   // og fortolkningen er population-uafhaengig: en staerkere eller svagere
   // aargang giver samme selektions-dynamik i stedet for et kollaps.
-  const groupDemand = tempo.collectiveCp * tuning.terrain.baseDemand[segment.kind];
+  // #4914: indsats-leddet (1 i default-modellen "cp_only", saa uaendret dér).
+  const groupDemand = tempo.collectiveCp * tempo.effortTempoFactor * tuning.terrain.baseDemand[segment.kind];
   const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
   for (const riderId of group.rider_ids) {
     const entrant = entrantsById[riderId];
@@ -369,7 +469,11 @@ function tickGroupRiders(
     // multiplikatoren er en ren funktion af rytterens EGET effort-trin, ikke
     // af hans evner, saa to ryttere paa SAMME trin beholder deres indbyrdes
     // orden praecis som foer wiringen. Determinismen er uberoert — intet rng.
-    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort);
+    //
+    // #4914: etapeprofilen foelger med, fordi all_out-trinnet er
+    // profil-afhaengigt (mechanics/effortCost.ts's hoved). De fire andre trin
+    // er profil-uafhaengige, saa profilen flytter kun all_out-ryttere.
+    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, undefined, profileType);
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
@@ -484,7 +588,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         referenceCp[segment.kind],
       );
       tempoByGroup.set(group.id, tempo);
-      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
+      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, route.profile_type);
       nextRiders = { ...nextRiders, ...patch };
     }
     state = { ...state, riders: nextRiders };
@@ -573,8 +677,14 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     //   grupperne (et uheld rammer den gruppe rytteren FAKTISK er i), og
     //   FOER M4/finale-hooket, saa et styrt paa sidste segment tager rytteren
     //   ud af frontgruppen INDEN spurten gøres op — praecis som i virkeligheden.
-    //   FOER merge-trinnet, saa en uheldsramt der kun tabte faa sekunder kan
-    //   smelte tilbage i sin gruppe samme segment.
+    //   FOER merge-trinnet, saa uheldets solo-gruppe gaar gennem samme
+    //   merge-regel som alle andre splits i segmentet. Den smelter IKKE
+    //   tilbage i sin egen gruppe samme segment: det mindst mulige tidstab i
+    //   mechanics/incidents.ts (bunden af de tidstabs-intervaller
+    //   INCIDENTS_EXTRA_TUNING giver, inkl. hjaelper-faktoren) ligger over
+    //   `tuning.groups.mergeThresholdSeconds`. Den kan kun smelte sammen med
+    //   en ANDEN gruppe, der i forvejen ligger inden for merge-graensen af
+    //   dens nye tid (#5579 rettede en kommentar der paastod det modsatte).
     // Hooket er VALGFRIT (types.ts): et hook-saet uden `incidents` koerer
     // etapen helt uden uheld — det er den gamle F2-adfaerd, uaendret.
     if (hooks.incidents) {

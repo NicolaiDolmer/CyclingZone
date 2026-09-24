@@ -1546,10 +1546,14 @@ function SatisfactionProgressLine({ progress }) {
 function PassiveModifierLine({ info }) {
   const { t } = useTranslation("board");
   if (!info) return null;
-  const sign = info.pct > 0 ? "+" : "";
+  // #5632 · Intet JS-fortegn her: transparency.passiveModifier.{strong_boost,boost}-
+  // strengene bærer allerede et bogstaveligt "+" før {pct} (begge sprog), så et
+  // ekstra fortegn gav "++10%". penalty/strong_penalty har intet fortegn i
+  // strengen, og pct er allerede negativt, så "{pct}%" bliver korrekt "-10%".
+  // Samme fix som boardroom/MandateCard.jsx (PR #5679).
   return (
     <p className="text-cz-3 text-2xs -mt-1 mb-1">
-      {t(`transparency.passiveModifier.${info.band}`, { pct: `${sign}${info.pct}` })}
+      {t(`transparency.passiveModifier.${info.band}`, { pct: info.pct })}
     </p>
   );
 }

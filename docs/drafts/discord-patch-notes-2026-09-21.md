@@ -1,6 +1,6 @@
-# Discord #patch-notes: udsnit v7.290 (21/9)
+# Discord #patch-notes: udsnit v7.290 til v7.292 (21/9)
 
-> Udkast til copy-paste. Ejeren poster selv (`docs/PATCH_NOTES_RULES.md` §3: titel + "What changed" ordret fra `frontend/src/data/patchNotes.js`, ingen nye påstande). Kun EN, ejeren poster aldrig dansk i Discord. Genereret direkte fra datafilen, så teksten er ordret. Refs #5443 #5416 #5452 #4851 #5449.
+> Udkast til copy-paste. Ejeren poster selv (`docs/PATCH_NOTES_RULES.md` §3: titel + "What changed" ordret fra `frontend/src/data/patchNotes.js`, ingen nye påstande). Kun EN, ejeren poster aldrig dansk i Discord. Genereret direkte fra datafilen, så teksten er ordret. Status 21/9 aften: catch-up v7.284-7.286 + v7.289 ER postet af ejeren 20/9 kl. 18:56 (verificeret i #patch-notes); kun dette opslag mangler. Refs #5443 #5416 #5452 #4851 #5449.
 
 ---
 
@@ -14,5 +14,7 @@ v7.290 (21 Sep)
 
 **Training**
 - Training score in the beta group: a proper graph, and now on your phone. For the beta group, the small graph next to the training score was drawn as a black blob instead of a thin line. That is fixed. The score is also on the new phone training page now, in the squad table and on the rider card, and the Score column has a small info icon that takes you to the explanation in Help.
+- The rider card opens right under the rider. On the new phone training page (beta group), a rider's card now opens right under his row instead of below the whole list. Tap him again to close it.
+- Rider info line on the mobile training page. On phones, the rider's info line under the name (type, age, form, fatigue) ran into the next column. It now breaks after the slash in the rider type and between the items.
 
 Full detail as always at cyclingzone.org/patch-notes.

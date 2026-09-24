@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint && node --test scripts/*.test.mjs lib/*.test.ts",
+    "test": "node --test scripts/*.test.mjs lib/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

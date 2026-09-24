@@ -197,8 +197,12 @@ test("race_digest email no longer renders a #3399 narrative headline (#2853 v2 d
 });
 
 // ─── winback (#2760) ────────────────────────────────────────────────────────
+// Copy locked verbatim 22/9 against docs/drafts/2026-09-22-winback-mail.md
+// (owner-approved comment on #2760). daysSinceLastSeen is still accepted
+// (callers keep passing it) but is no longer rendered -- the status line
+// reads the same for every manager regardless of how long they were away.
 
-test("winback email: subject, days-since, rank/pool, dashboard link, unsubscribe link, shared footer, no em-dash", () => {
+test("winback email: subject, opening line, rank/pool, bullets, CTA, dashboard link, unsubscribe link, shared footer, no em-dash", () => {
   const t = buildWinbackEmail({
     teamName: "Team Velodrome",
     daysSinceLastSeen: 45,
@@ -206,37 +210,41 @@ test("winback email: subject, days-since, rank/pool, dashboard link, unsubscribe
     poolLabel: "D3 Pool A",
     unsubscribeUrl: UNSUB_URL,
   });
-  assert.equal(t.subject, "Team Velodrome raced while you were away");
-  assert.ok(t.html.includes("Team Velodrome"));
-  assert.ok(t.html.includes("45 days ago"));
-  assert.ok(t.html.includes("sits 4 in D3 Pool A"));
-  assert.ok(t.text.includes("45 days ago"));
-  assert.ok(t.text.includes("sits 4 in D3 Pool A"));
+  assert.equal(t.subject, "We missed you. Season 4 starts 28 September.");
+  assert.ok(t.html.includes("Team Velodrome is still yours, exactly as you left it."));
+  assert.ok(t.html.includes("and currently sits 4th in D3 Pool A."));
+  assert.ok(t.text.includes("and currently sits 4th in D3 Pool A."));
+  assert.ok(t.html.includes("<strong>Training has been rebuilt for season 4.</strong>"));
+  assert.ok(t.html.includes("<strong>A real board arrives with season 4.</strong>"));
+  assert.ok(t.html.includes("<strong>A new race engine arrives with season 4.</strong>"));
+  assert.ok(t.html.includes("Season 4 starts 28 September."));
+  assert.ok(t.html.includes(">Go to your team<"));
+  assert.ok(t.text.includes("Go to your team: https://cyclingzone.org/dashboard"));
   assert.ok(t.html.includes("https://cyclingzone.org/dashboard"));
   assertHasUnsubscribeLink(t);
   assertHasSharedFooter(t);
   assertNoEmDash(t, "winback");
 });
 
-test("winback email: rank/pool line is omitted (not blank/undefined) when the manager has no active-season standing", () => {
+test("winback email: rank/pool clause is omitted (not blank/undefined) when the manager has no active-season standing", () => {
   const t = buildWinbackEmail({ teamName: "Team Velodrome", daysSinceLastSeen: 60, rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
   assert.ok(!t.html.includes("undefined"));
   assert.ok(!t.html.includes("null"));
-  assert.ok(t.html.includes("60 days ago"));
-  assert.ok(!t.html.includes("sits"), "no dangling 'sits N in POOL' fragment when rank/pool are absent");
+  assert.ok(t.html.includes("Team Velodrome is still yours, exactly as you left it. It kept racing while you were away."));
+  assert.ok(!t.html.includes("currently sits"), "no dangling 'currently sits N in POOL' fragment when rank/pool are absent");
 });
 
-test("winback email: daysSinceLastSeen null (never logged back in) renders a truthful generic line, not an invented number", () => {
-  const t = buildWinbackEmail({ teamName: "Team Velodrome", daysSinceLastSeen: null, rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
-  assert.ok(!t.html.includes("null days"));
-  assert.ok(!t.html.includes("undefined"));
-  assert.ok(t.html.includes("have not been by in a while"));
+test("winback email: daysSinceLastSeen has no effect on the copy (locked draft reads the same for every manager)", () => {
+  const withDays = buildWinbackEmail({ teamName: "Team Velodrome", daysSinceLastSeen: 200, rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
+  const neverSeen = buildWinbackEmail({ teamName: "Team Velodrome", daysSinceLastSeen: null, rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
+  assert.equal(withDays.html, neverSeen.html);
+  assert.ok(!withDays.html.includes("200"));
 });
 
 test("winback email falls back to a generic team name when teamName is missing", () => {
   const t = buildWinbackEmail({ teamName: "", daysSinceLastSeen: 40, unsubscribeUrl: UNSUB_URL });
-  assert.equal(t.subject, "your team raced while you were away");
-  assert.ok(t.html.includes("your team"));
+  assert.equal(t.subject, "We missed you. Season 4 starts 28 September.");
+  assert.ok(t.html.includes("your team is still yours"));
 });
 
 test("winback email escapes the pool label (no HTML injection from league_divisions.label)", () => {
@@ -254,7 +262,7 @@ test("winback email escapes the pool label (no HTML injection from league_divisi
 test("winback email CTA carries utm_source=email&utm_medium=winback&utm_campaign=winback", () => {
   const t = buildWinbackEmail({ teamName: "T", daysSinceLastSeen: 40, unsubscribeUrl: UNSUB_URL });
   assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&amp;utm_medium=winback&amp;utm_campaign=winback"/);
-  assert.match(t.text, /Open your dashboard: https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&utm_medium=winback&utm_campaign=winback$/m);
+  assert.match(t.text, /Go to your team: https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&utm_medium=winback&utm_campaign=winback$/m);
 });
 
 test("winback email: language 'da' renders the Danish copy, no em-dash, no English residue", () => {
@@ -266,14 +274,15 @@ test("winback email: language 'da' renders the Danish copy, no em-dash, no Engli
     unsubscribeUrl: UNSUB_URL,
     language: "da",
   });
-  assert.equal(t.subject, "Team Velodrome kørte mens du var væk");
+  assert.equal(t.subject, "Vi har savnet dig. Sæson 4 starter 28. september.");
   assert.ok(t.html.includes("Hej,"));
-  assert.ok(t.html.includes("45 dage siden"));
-  assert.ok(t.html.includes("Åbn dit dashboard"));
-  assert.ok(t.text.includes("Åbn dit dashboard"));
+  assert.ok(t.html.includes("Team Velodrome er stadig dit, præcis som du forlod det."));
+  assert.ok(t.html.includes("og ligger lige nu som nr. 4 i D3 Pool A."));
+  assert.ok(t.html.includes("<strong>En rigtig bestyrelse kommer med sæson 4.</strong>"));
+  assert.ok(t.html.includes(">Gå til dit hold<"));
   assertNoEmDash(t, "winback da");
   assert.ok(!t.html.includes("Hi,"));
-  assert.ok(!t.html.includes("Open your dashboard"));
+  assert.ok(!t.html.includes("Go to your team<"));
 });
 
 test("unsubscribe URL is quote-escaped so a value cannot break out of the href attribute", () => {
@@ -320,7 +329,7 @@ test("buildLoopEmail dispatches by type", () => {
   const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL });
   assert.equal(digest.subject, "T raced while you were away");
   const winback = buildLoopEmail("winback", { teamName: "T", unsubscribeUrl: UNSUB_URL });
-  assert.equal(winback.subject, "T raced while you were away");
+  assert.equal(winback.subject, "We missed you. Season 4 starts 28 September.");
 });
 
 test("buildLoopEmail throws for an unknown type", () => {
@@ -432,7 +441,7 @@ test("buildLoopEmail passes language through for all three types", () => {
   const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL, language: "da" });
   assert.equal(digest.subject, "T kørte mens du var væk");
   const winback = buildLoopEmail("winback", { teamName: "T", unsubscribeUrl: UNSUB_URL, language: "da" });
-  assert.equal(winback.subject, "T kørte mens du var væk");
+  assert.equal(winback.subject, "Vi har savnet dig. Sæson 4 starter 28. september.");
 });
 
 // ─── shell: dark-mode lock, wordmark, radius (#2853 follow-up 2026-09-08) ────
@@ -585,4 +594,12 @@ test("the shell changes did not touch the locked copy or the plain-text part", (
   const da = buildWelcomeEmail({ teamName: "Holdet", unsubscribeUrl: UNSUB_URL, language: "da" });
   assert.ok(da.html.includes("Velkommen til Cycling Zone, og tak fordi du oprettede Holdet."), "DA intro unchanged");
   assert.equal(da.html.includes('<html lang="da"'), true, "html lang follows the recipient language");
+});
+
+test("winback email renders the EN rank as an ordinal (1st, 2nd, 3rd, 11th, 22nd)", () => {
+  const cases = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 11: "11th", 12: "12th", 13: "13th", 21: "21st", 22: "22nd" };
+  for (const [rank, word] of Object.entries(cases)) {
+    const t = buildWinbackEmail({ teamName: "T", daysSinceLastSeen: 30, rankInDivision: Number(rank), poolLabel: "D3 Pool A", unsubscribeUrl: UNSUB_URL });
+    assert.ok(t.text.includes(`and currently sits ${word} in D3 Pool A.`), `rank ${rank}`);
+  }
 });

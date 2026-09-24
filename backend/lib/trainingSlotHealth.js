@@ -36,8 +36,66 @@ export const TRAINING_SLOT_HEALTH_TUNING = Object.freeze({
   // Absolut dag-til-dag-stigning i helt døde slots. Ryttertype-migrationen 11/8
   // dræbte 35 slots på én dag (og befriede 28) — en ændring af den størrelse skal
   // ses uanset at NETTO-tallet kun flyttede sig +7.
+  //
+  // #4848 (gate G9): tallet er kalibreret mod ÉN KALENDERDAGS træning mellem to
+  // snapshots. På løbsdags-ticket (`training_tick_per_race_day` on) skaleres loftet
+  // med hvor mange kalenderdags-ækvivalenter træning der faktisk blev kørt i
+  // intervallet (se calendarDayEquivalents + evaluateSlotHealthAlert). Flag off ⇒
+  // skala 1 ⇒ bit-identisk.
   deadJumpAbsolute: 15,
 });
+
+/**
+ * PUR (#4848, G9): typisk antal løbsdags-ticks ét hold fik i et interval.
+ *
+ * Input er training_day_runs-rækker PÅ LØBSDAGS-NØGLEN (game_day != null). Et hold
+ * tæller hver distinkt (season_id, game_day) én gang — trupper (`squad`) på samme
+ * løbsdag kollapser, for en rytter er kun i én trup. Medianen over holdene er
+ * robust mod den enkelte division der tager et efterslæb (MAX_GAME_DAY_CATCH_UP)
+ * og mod division-løse hold på den gamle nøgle (de har ingen løbsdags-rækker).
+ *
+ * @param {Array<{team_id:string, season_id?:string|null, game_day:number|null}>} rows
+ * @returns {number} 0 når der ingen løbsdags-rækker er
+ */
+export function typicalRaceDayTicksPerTeam(rows) {
+  const perTeam = new Map();
+  for (const r of rows ?? []) {
+    if (r?.team_id == null || r.game_day == null) continue;
+    const gd = Number(r.game_day);
+    if (!Number.isFinite(gd)) continue;
+    if (!perTeam.has(r.team_id)) perTeam.set(r.team_id, new Set());
+    perTeam.get(r.team_id).add(`${r.season_id ?? ""}#${gd}`);
+  }
+  const counts = [...perTeam.values()].map((s) => s.size).sort((a, b) => a - b);
+  if (!counts.length) return 0;
+  const mid = Math.floor(counts.length / 2);
+  return counts.length % 2 ? counts[mid] : (counts[mid - 1] + counts[mid]) / 2;
+}
+
+/**
+ * PUR (#4848, G9): hvor mange KALENDERDAGS-ækvivalenter træning dækker N
+ * løbsdags-ticks?
+ *
+ * Budget-deleren (trainingRaceDayTick.js, gate G1) er kalibreret så sæsonens
+ * samlede udvikling er uændret: én løbsdags-tick leverer 1/raceDayBudgetDivisor af
+ * sæsonbudgettet, én kalenderdags-tick 1/legacyDaysPerSeason. Forholdet mellem de
+ * to er derfor præcis hvor meget træning — og dermed hvor mange nye "døde" slots —
+ * intervallet mellem to snapshots kan forventes at producere. At dividere med det
+ * rå antal ticks ville gøre vagten blind: en normal dag på løbsdags-ticket er
+ * omtrent én kalenderdags træning, ikke fem.
+ *
+ * @param {{raceDayTicks:number, raceDayBudgetDivisor:number, legacyDaysPerSeason:number}} args
+ * @returns {number|null} null ved ugyldige input
+ */
+export function calendarDayEquivalents({ raceDayTicks, raceDayBudgetDivisor, legacyDaysPerSeason } = {}) {
+  const ticks = Number(raceDayTicks);
+  const divisor = Number(raceDayBudgetDivisor);
+  const legacy = Number(legacyDaysPerSeason);
+  if (!Number.isFinite(ticks) || ticks < 0) return null;
+  if (!(Number.isFinite(divisor) && divisor > 0)) return null;
+  if (!(Number.isFinite(legacy) && legacy > 0)) return null;
+  return (ticks * legacy) / divisor;
+}
 
 // Tilstanden for ÉT fokus på ÉN rytter, målt mod backendens egne cap-nøgler.
 //   focus            : fokus-nøgle
@@ -112,11 +170,19 @@ export function computeTrainingSlotHealth({ riders = [], planByRiderId = {}, abi
 //   (b) et absolut spring siden forrige snapshot.
 //   totals   : dagens { ridersInTraining, deadSlots, partialSlots }
 //   previous : forrige dags totals, eller null (første kørsel → kun (a) kan udløse)
-// Returnerer { shouldAlert, reasons: [string], deadShare }.
-export function evaluateSlotHealthAlert(totals, previous = null, tuning = TRAINING_SLOT_HEALTH_TUNING) {
+//   opts.trainingDays : kalenderdags-ækvivalenter træning siden forrige snapshot
+//                       (#4848, G9). Udeladt/ugyldig/≤1 ⇒ skala 1 = præcis den gamle
+//                       gate (flag off er bit-identisk). >1 ⇒ spring-loftet skaleres
+//                       op, så et interval med mere træning end én kalenderdag ikke
+//                       giver falsk alarm. Skalaen går ALDRIG under 1: vagten bliver
+//                       aldrig mere følsom end i dag.
+// Andels-gaten (a) måler en TILSTAND og er kadence-uafhængig — den skaleres ikke.
+// Returnerer { shouldAlert, reasons: [string], deadShare, jumpScale }.
+export function evaluateSlotHealthAlert(totals, previous = null, tuning = TRAINING_SLOT_HEALTH_TUNING, { trainingDays } = {}) {
   const inTraining = totals?.ridersInTraining ?? 0;
   const dead = totals?.deadSlots ?? 0;
   const deadShare = inTraining > 0 ? dead / inTraining : 0;
+  const jumpScale = Number.isFinite(trainingDays) && trainingDays > 1 ? trainingDays : 1;
   const reasons = [];
   if (deadShare > tuning.deadShareCeiling) {
     reasons.push(
@@ -125,9 +191,14 @@ export function evaluateSlotHealthAlert(totals, previous = null, tuning = TRAINI
   }
   if (previous?.deadSlots != null) {
     const jump = dead - previous.deadSlots;
-    if (jump >= tuning.deadJumpAbsolute) {
-      reasons.push(`døde slots steg ${jump} på ét døgn (${previous.deadSlots} → ${dead})`);
+    const ceiling = tuning.deadJumpAbsolute * jumpScale;
+    if (jump >= ceiling) {
+      reasons.push(
+        jumpScale === 1
+          ? `døde slots steg ${jump} på ét døgn (${previous.deadSlots} → ${dead})`
+          : `døde slots steg ${jump} siden forrige snapshot (${previous.deadSlots} → ${dead}) - loft ${ceiling.toFixed(1)} for ${jumpScale.toFixed(2)} kalenderdags-ækvivalenter træning (løbsdags-tick)`
+      );
     }
   }
-  return { shouldAlert: reasons.length > 0, reasons, deadShare };
+  return { shouldAlert: reasons.length > 0, reasons, deadShare, jumpScale };
 }

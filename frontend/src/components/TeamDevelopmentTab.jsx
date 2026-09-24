@@ -5,6 +5,8 @@ import RiderLink from "./RiderLink";
 import RiderTypeBadge from "./rider/RiderTypeBadge";
 import { statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
+import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { WithBestRole } from "./rider/BestRoleTag.jsx";
 import { getRiderAge } from "../lib/riderAge";
 import { cycleSortState } from "../lib/riderSort";
 import { compareDevRows } from "../lib/teamDevelopmentSort.js";
@@ -29,6 +31,7 @@ import { DataTable, EmptyState, BikeIcon } from "./ui";
 // `currentRiders`, samme array SquadTab/TeamStatsTab allerede får).
 export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
   const { t } = useTranslation("team");
+  const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
   const navigate = useNavigate();
   const [sort, setSort] = useState("_progHi");
   const [sortDir, setSortDir] = useState("desc");
@@ -108,7 +111,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     // (ejer 25/7: typen står ALTID i sin egen kolonne, aldrig i navnecellen).
     {
       key: "type",
-      header: t("squad.headers.type"),
+      header: typeColumnLabel,
       sortKey: "primary_type",
       compact: true,
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
@@ -119,11 +122,14 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       sortKey: "_ovr",
       numeric: true,
       compact: true,
+      // #5435: bedste rolle nu ved tallet når kontakten er tændt.
       render: (r) => (r._ovr != null ? (
-        <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
-          style={statPlateStyle(r._ovr)}>
-          {r._ovr}
-        </span>
+        <WithBestRole rider={r}>
+          <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
+            style={statPlateStyle(r._ovr)}>
+            {r._ovr}
+          </span>
+        </WithBestRole>
       ) : <span className="text-cz-3">—</span>),
     },
     {

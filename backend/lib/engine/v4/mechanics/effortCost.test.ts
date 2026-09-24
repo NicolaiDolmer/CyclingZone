@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { applyEffortToDemand, EFFORT_COST_TUNING, effortDemandMultiplier } from "./effortCost.ts";
+import { allOutDemandMultiplier, applyEffortToDemand, EFFORT_COST_TUNING, effortDemandMultiplier } from "./effortCost.ts";
 import type { EffortLevel } from "../types.ts";
 
 test("effortDemandMultiplier: protect > normal > save (raceRoles FATIGUE_MULTIPLIER-anker: 1.2 / 1.0 / 0.7)", () => {
@@ -97,6 +97,46 @@ test("#4632: effortDemandMultiplier er strengt stigende over alle FEM trin (grup
 test("#4632: all_out koster ALTID strengt mere end normal, grupetto strengt mindre (ingen gratis all-out)", () => {
   assert.ok(effortDemandMultiplier("all_out") > effortDemandMultiplier("normal"));
   assert.ok(effortDemandMultiplier("grupetto") < effortDemandMultiplier("normal"));
+});
+
+// ── #4914 (kalibreringspakken, M12): all_out er profil-afhaengig ─────────────
+test("#4914: all_out paa flad/rullende etape koster MERE end paa en bjergetape; bjerg og oevrige profiler bruger den faelles vaerdi", () => {
+  const common = EFFORT_COST_TUNING.demandMultiplierAllOut;
+  assert.ok(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, "flat") > common);
+  assert.ok(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, "rolling") > common);
+  for (const profile of ["mountain", "high_mountain", "hilly", "cobbles", "gravel", "classic", "itt", "itt_hilly", "ttt"] as const) {
+    assert.equal(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, profile), common, profile);
+  }
+  assert.equal(effortDemandMultiplier("all_out"), common, "uden profil: den faelles vaerdi (bagudkompatibelt)");
+});
+
+test("#4914: profilen flytter KUN all_out — de fire andre trin er profil-uafhaengige", () => {
+  for (const effort of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
+    assert.equal(
+      effortDemandMultiplier(effort, EFFORT_COST_TUNING, "flat"),
+      effortDemandMultiplier(effort, EFFORT_COST_TUNING, "mountain"),
+      effort,
+    );
+  }
+});
+
+test("#4914: femtrins-ordenen holder paa ALLE profiler (grupetto < save < normal < protect < all_out)", () => {
+  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+  for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain", "cobbles", "itt"] as const) {
+    const values = scale.map((level) => effortDemandMultiplier(level, EFFORT_COST_TUNING, profile));
+    for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${profile}: ${scale[i]} <= ${scale[i - 1]}`);
+  }
+});
+
+test("#4914: en ugyldig profil-vaerdi (NaN, under protect) ignoreres — all_out bliver aldrig billigere end protect", () => {
+  const base = { ...EFFORT_COST_TUNING };
+  for (const bad of [Number.NaN, 0.5, base.demandMultiplierProtect]) {
+    const tuning = { ...base, demandMultiplierAllOutByProfile: { flat: bad } };
+    assert.equal(allOutDemandMultiplier("flat", tuning), base.demandMultiplierAllOut, String(bad));
+  }
+  const withoutTable = { ...base, demandMultiplierAllOutByProfile: undefined };
+  assert.equal(allOutDemandMultiplier("flat", withoutTable), base.demandMultiplierAllOut);
+  assert.equal(allOutDemandMultiplier(null), base.demandMultiplierAllOut);
 });
 
 test("#4632: applyEffortToDemand aendrer aldrig fortegn paa nogen af de fem trin", () => {

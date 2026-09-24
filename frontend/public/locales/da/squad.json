@@ -1,0 +1,95 @@
+{
+  "page": {
+    "title": {
+      "u23": "{team} U23",
+      "junior": "{team} Junior"
+    },
+    "fallbackTitle": {
+      "u23": "U23-hold",
+      "junior": "Juniorhold"
+    },
+    "subtitle": {
+      "u23": "U23-hold, 19 til 22 år",
+      "junior": "Juniorhold, 16 til 18 år"
+    },
+    "squadValue": "Trupværdi: {value} CZ$"
+  },
+  "tabs": {
+    "ariaLabel": "Truppens afsnit",
+    "calendar": "Kalender",
+    "results": "Resultater",
+    "standings": "Stilling"
+  },
+  "empty": {
+    "squad": {
+      "title": "Signér et talent i dit akademi",
+      "description": {
+        "u23": "Akademiryttere på 19 til 22 år er på dit U23-hold.",
+        "junior": "Akademiryttere på 16 til 18 år er på dit juniorhold."
+      },
+      "action": "Gå til akademiet"
+    },
+    "races": {
+      "title": "Se hvornår ungdomsløbene starter",
+      "action": "Roadmap",
+      "calendar": {
+        "u23": "Dit U23-hold har ingen løb i kalenderen endnu.",
+        "junior": "Dit juniorhold har ingen løb i kalenderen endnu."
+      },
+      "results": {
+        "u23": "Dit U23-hold har ikke kørt løb endnu.",
+        "junior": "Dit juniorhold har ikke kørt løb endnu."
+      },
+      "standings": {
+        "u23": "U23-stillingen starter med det første U23-løb.",
+        "junior": "Juniorstillingen starter med det første juniorløb."
+      }
+    }
+  },
+  "error": {
+    "title": "Truppen kunne ikke hentes",
+    "description": "Intet blev ændret. Dine ryttere er i sikkerhed.",
+    "retry": "Prøv igen"
+  },
+  "development": {
+    "hint": "Hvordan hver rytters rating ventes at vokse med din træning, og den højeste rating hans rolle kan nå."
+  },
+  "filter": {
+    "u23": "U23 ({count})",
+    "junior": "Juniorer ({count})"
+  },
+  "standings": {
+    "headers": {
+      "team": "Hold",
+      "races": "Løb",
+      "wins": "Sejre",
+      "podiums": "Podier",
+      "points": "Point"
+    },
+    "count": "{count, plural, one {1 hold} other {# hold}}",
+    "group": "Gruppe {letter}",
+    "ownGroup": "Din gruppe",
+    "groupLabel": "Gruppe",
+    "allGroups": "Alle grupper",
+    "noGroup": {
+      "title": "Se ungdomsgrupperne",
+      "description": {
+        "u23": "Dit U23-hold er ikke i en gruppe endnu. Grupperne står på Ungdomsløb.",
+        "junior": "Dit juniorhold er ikke i en gruppe endnu. Grupperne står på Ungdomsløb."
+      }
+    },
+    "error": {
+      "title": "Stillingen kunne ikke hentes",
+      "description": "Intet blev ændret. Prøv igen om lidt."
+    }
+  },
+  "youthRaces": {
+    "title": "Ungdomsløb",
+    "subtitle": {
+      "u23": "U23-stillingen, én gruppe ad gangen",
+      "junior": "Juniorstillingen, én gruppe ad gangen"
+    },
+    "squadLabel": "Trup",
+    "tabsLabel": "Ungdomsløbenes afsnit"
+  }
+}

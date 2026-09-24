@@ -565,3 +565,158 @@ test("#5182 · en fejlende prefetch-kilde giver samme null-sentinel som en fejle
   assert.equal(ctx.cumulativeOneDayWins, null);
   assert.equal(ctx.sponsorGrowthCurrentIncome, null);
 });
+
+// ─── #5537 (S9, C3) · bestyrelsesmålene tæller kun seniorløb ──────────────────
+//
+// Efter A2 bor U23-/juniorløb i samme races-tabel, og deres race_results-rækker
+// bærer holdets team_id. race_results har ingen squad-kolonne, så dommen fældes på
+// det INDLEJREDE races (squad i `races!inner(...)`). Fakes her har bevidst ingen
+// `.or`: en læser der pakkes i withSeniorSquadScope (top-niveau-filter, som på
+// race_results ville give 42703 og et tavst uscopet fallback) fælder testene med
+// det samme.
+
+// Relationel fake + registrering af hvert race_results-select, så testen kan se at
+// squad rent faktisk bedes om i det indlejrede races. `missingSquadColumn` svarer
+// som Postgres før A2's migration: 42703 på ethvert select der nævner squad.
+function makeSquadAwareFake(tables, { missingSquadColumn = false } = {}) {
+  const base = makeRelationalFake(tables);
+  const selects = [];
+  return {
+    selects,
+    from(table) {
+      const query = base.from(table);
+      if (table !== "race_results") return query;
+      const baseSelect = query.select.bind(query);
+      const baseThen = query.then.bind(query);
+      let columns = "";
+      query.select = (cols) => { columns = String(cols); selects.push(columns); return baseSelect(cols); };
+      query.then = (resolve, reject) => {
+        if (missingSquadColumn && columns.includes("squad")) {
+          return Promise.resolve({ data: null, error: { code: "42703", message: "column races_1.squad does not exist" } })
+            .then(resolve, reject);
+        }
+        return baseThen(resolve, reject);
+      };
+      return query;
+    },
+  };
+}
+
+function youthAndSeniorTables() {
+  const race = (seasonId, raceClass, raceType, squad) => ({
+    race_class: raceClass, race_type: raceType, season_id: seasonId, ...(squad === undefined ? {} : { squad }),
+  });
+  const monument = CLASSIC_RACE_CLASSES[0];
+  const rows = [];
+  let id = 0;
+  // Samme tre signaler pr. trup: et monument-podie (rank 2), en endagssejr (rank 1 i
+  // et ikke-klassiker-endagsløb) og en trøjesejr. Senior er kontrollen.
+  for (const squad of ["senior", "u23", "junior"]) {
+    rows.push({ id: ++id, team_id: "t1", result_type: "gc", rank: 2, races: race("s-3", monument, "single", squad) });
+    rows.push({ id: ++id, team_id: "t1", result_type: "gc", rank: 1, races: race("s-3", "ProSeries", "single", squad) });
+    rows.push({ id: ++id, team_id: "t1", result_type: "points", rank: 1, races: race("s-3", "ProSeries", "stage", squad) });
+  }
+  return {
+    board_plan_snapshots: [
+      { id: 1, team_id: "t1", board_id: "b1", season_id: "s-2", season_number: 4, season_within_plan: 1, u25_stat_sum: 100, u25_count: 5 },
+    ],
+    race_results: rows,
+    finance_transactions: [],
+  };
+}
+
+const SHARED_5537 = { teamId: "t1", boardId: "b1", currentSeasonId: "s-3", planStartSeasonNumber: 4 };
+
+async function viaPrefetchPath(supabase, tables) {
+  const prefetch = await prefetchGoalContextSources({ supabase, teamIds: ["t1"], seasonIds: ["s-2", "s-3"] });
+  return loadGoalContextForBoard({
+    supabase,
+    ...SHARED_5537,
+    prefetched: {
+      snapshots: tables.board_plan_snapshots.filter((row) => row.board_id === "b1"),
+      sources: selectGoalContextSourcesForTeam(prefetch, "t1"),
+    },
+  });
+}
+
+test("#5537 · ungdomsløb giver intet bestyrelsessignal (kontrol: seniorløbet tæller)", async () => {
+  const tables = youthAndSeniorTables();
+
+  const ctx = await loadGoalContextForBoard({ supabase: makeSquadAwareFake(tables), ...SHARED_5537 });
+
+  // Kun seniorrækkerne: 1 monument-podie, 1 endagssejr, 1 trøje.
+  assert.equal(ctx.cumulativeMonumentPodiums, 1);
+  assert.equal(ctx.cumulativeClassicPodiums, 1);
+  assert.equal(ctx.cumulativeOneDayWins, 1);
+  assert.equal(ctx.seasonOneDayWins, 1);
+  assert.equal(ctx.cumulativeJerseyWins, 1);
+  assert.equal(ctx.seasonJerseyWins, 1);
+});
+
+test("#5537 · prefetch og pr.-board-læsning fælder samme senior-dom", async () => {
+  const tables = youthAndSeniorTables();
+
+  const viaDb = await loadGoalContextForBoard({ supabase: makeSquadAwareFake(tables), ...SHARED_5537 });
+  const viaPrefetch = await viaPrefetchPath(makeSquadAwareFake(tables), tables);
+
+  assert.deepEqual(viaPrefetch, viaDb);
+  assert.equal(viaPrefetch.cumulativeMonumentPodiums, 1, "sanity: datasættet rammer feltet");
+});
+
+test("#5537 · alle seks race_results-læsere beder om squad på det indlejrede races", async () => {
+  const tables = youthAndSeniorTables();
+  const perBoard = makeSquadAwareFake(tables);
+  await loadGoalContextForBoard({ supabase: perBoard, ...SHARED_5537 });
+  const prefetch = makeSquadAwareFake(tables);
+  await prefetchGoalContextSources({ supabase: prefetch, teamIds: ["t1"], seasonIds: ["s-3"] });
+
+  const selects = [...perBoard.selects, ...prefetch.selects];
+  assert.equal(selects.length, 6, "tre pr. board + tre i prefetchen");
+  for (const columns of selects) {
+    assert.match(columns, /races!inner\([^)]*\bsquad\)/, `squad mangler i det indlejrede select: ${columns}`);
+  }
+});
+
+test("#5537 · skema fra før A2 (42703 på squad): ét fallback uden squad, alt tæller som i dag", async () => {
+  // Uden kolonnen kan intet ungdomsløb findes. Fixture uden squad-felter = dagens data.
+  const tables = youthAndSeniorTables();
+  for (const row of tables.race_results) delete row.races.squad;
+
+  const perBoard = makeSquadAwareFake(tables, { missingSquadColumn: true });
+  const viaDb = await loadGoalContextForBoard({ supabase: perBoard, ...SHARED_5537 });
+  const prefetchFake = makeSquadAwareFake(tables, { missingSquadColumn: true });
+  const viaPrefetch = await viaPrefetchPath(prefetchFake, tables);
+
+  // Alle tre "trupper" er nu umærkede rækker → alle tæller (bit-identisk med før #5537).
+  assert.equal(viaDb.cumulativeMonumentPodiums, 3);
+  assert.equal(viaDb.cumulativeOneDayWins, 3);
+  assert.equal(viaDb.cumulativeJerseyWins, 3);
+  assert.deepEqual(viaPrefetch, viaDb);
+  // Hver læser prøvede med squad og faldt tilbage uden (to selects pr. læser).
+  assert.equal(perBoard.selects.length, 6);
+  assert.equal(perBoard.selects.filter((c) => c.includes("squad")).length, 3);
+  assert.equal(prefetchFake.selects.filter((c) => !c.includes("squad")).length, 3);
+});
+
+test("#5537 · en anden fejl end 42703 falder IKKE tilbage (null-sentinel som før)", async () => {
+  const tables = youthAndSeniorTables();
+  const base = makeSquadAwareFake(tables);
+  const supabase = {
+    selects: base.selects,
+    from(table) {
+      const query = base.from(table);
+      if (table !== "race_results") return query;
+      query.then = (resolve, reject) =>
+        Promise.resolve({ data: null, error: { code: "PGRST204", message: "Could not find the 'squad' column of 'races' in the schema cache" } })
+          .then(resolve, reject);
+      return query;
+    },
+  };
+
+  const ctx = await loadGoalContextForBoard({ supabase, ...SHARED_5537 });
+
+  assert.equal(ctx.cumulativeMonumentPodiums, null);
+  assert.equal(ctx.cumulativeJerseyWins, null);
+  assert.equal(ctx.cumulativeOneDayWins, null);
+  assert.equal(supabase.selects.length, 3, "ingen gentagelse uden squad ved en schema-cache-fejl");
+});

@@ -9,6 +9,7 @@ import {
   toEngineTeamOrder,
   toEngineLeadoutOrder,
   buildStageOrders,
+  buildStageOrderPlan,
 } from "./teamOrdersAdapter.ts";
 import { validateTeamOrder } from "../ai/teamOrderContract.ts";
 import { parseBreakawayOrders } from "../mechanics/breakaway.ts";
@@ -258,4 +259,99 @@ test("rosterByTeam: hold-loese ryttere droppes, holdorden er deterministisk", ()
     { team_id: "a", rider_id: "a1", role: "captain" },
   ]);
   assert.deepEqual([...grouped.keys()], ["a", "b"]);
+});
+
+// ── #5571: AI-holdene faar M14 gennem samme TeamOrder-type ───────────────────
+
+function ab(overrides: Record<string, number> = {}) {
+  return { climbing: 20, sprint: 20, aggression: 20, tempo: 20, punch: 20, time_trial: 20, cobblestone: 20, ...overrides };
+}
+
+/**
+ * To hold med SAMME trup: "ai" (AI-styret) og "hum" (menneske). Holdenes
+ * kaptajn er feltets bedste klatrer, sprint-kaptajnen feltets bedste sprinter.
+ */
+function mixedField() {
+  const team = (teamId: string, isAi: boolean) => [
+    { team_id: teamId, rider_id: `${teamId}-cap`, role: "captain", is_ai: isAi, abilities: ab({ climbing: 60 }) },
+    { team_id: teamId, rider_id: `${teamId}-spr`, role: "sprint_captain", is_ai: isAi, abilities: ab({ sprint: 60, climbing: 10 }) },
+    { team_id: teamId, rider_id: `${teamId}-train`, role: "helper", is_ai: isAi, abilities: ab({ sprint: 40, climbing: 15 }) },
+    { team_id: teamId, rider_id: `${teamId}-dom`, role: "helper", is_ai: isAi, abilities: ab({ climbing: 45, sprint: 10 }) },
+    { team_id: teamId, rider_id: `${teamId}-hun`, role: "hunter", is_ai: isAi, abilities: ab({ aggression: 50 }) },
+  ];
+  const others = Array.from({ length: 20 }, (_, i) => ({
+    team_id: `o${String(i).padStart(2, "0")}`,
+    rider_id: `o${i}`,
+    role: "free_role",
+    abilities: ab({ climbing: 5 + i, sprint: 5 + i }),
+  }));
+  return [...team("ai", true), ...team("hum", false), ...others];
+}
+
+const MOUNTAIN_CTX = { route: { profile_type: "mountain" as const, finale_type: "long_climb" as const } };
+
+test("#5571: et AI-hold faar M14's ordre — jagt, beskyttet kaptajn, hjaelper ved kaptajnen", () => {
+  const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: MOUNTAIN_CTX });
+  const ai = plan.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics")!;
+  assert.equal(params(ai).breakaway_stance, "chase");
+  const byRider = new Map(params(ai).riders.map((r) => [r.rider_id as string, r]));
+  assert.equal(byRider.get("ai-cap")!.effort, "protect");
+  assert.equal(byRider.get("ai-dom")!.effort, "protect");
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "protect");
+});
+
+test("#5571: aldrig autopilot for mennesker — et menneskehold beholder rollernes standard", () => {
+  const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: MOUNTAIN_CTX });
+  const hum = plan.orders.find((o) => o.team_id === "hum" && o.kind === "team_tactics")!;
+  const humanDefault = buildStageOrders({
+    rows: [],
+    stageNumber: 1,
+    roster: mixedField().filter((r) => r.team_id === "hum"),
+  })[0];
+  assert.deepEqual(params(hum), params(humanDefault));
+  for (const riderId of plan.aiEffortByRider.keys()) {
+    assert.ok(riderId.startsWith("ai-"), `${riderId} er ikke et AI-holds rytter`);
+  }
+  assert.equal(plan.aiEffortByRider.size, 5);
+});
+
+test("#5571: uden rute-kontekst falder AI-holdet tilbage paa rollernes standard (T4)", () => {
+  const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField() });
+  const ai = plan.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics")!;
+  assert.equal(params(ai).breakaway_stance, "neutral");
+  assert.equal(plan.aiEffortByRider.size, 0);
+  assert.deepEqual(buildStageOrders({ rows: [], stageNumber: 1, roster: mixedField() }), plan.orders);
+});
+
+test("#5571: en gemt raekke er stadig et overlay oven paa AI'ens ordre", () => {
+  const rows = [{ team_id: "ai", stage_number: 1, breakaway_stance: "let_go", riders: [{ rider_id: "ai-cap", effort: "save" }] }];
+  const plan = buildStageOrderPlan({ rows, stageNumber: 1, roster: mixedField(), context: MOUNTAIN_CTX });
+  const ai = plan.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics")!;
+  assert.equal(params(ai).breakaway_stance, "let_go");
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "save");
+  // Resten af AI'ens beslutning staar urort.
+  assert.equal(plan.aiEffortByRider.get("ai-dom"), "protect");
+});
+
+test("#5571: etapeloeb i bjergene — AI-sprinterne koerer grupetto og er ude af toget", () => {
+  const context = {
+    ...MOUNTAIN_CTX,
+    race: { is_stage_race: true, later_stages: [{ profile_type: "flat" as const, finale_type: "bunch_sprint" as const }] },
+  };
+  const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context });
+  assert.equal(plan.aiEffortByRider.get("ai-spr"), "grupetto");
+  assert.equal(plan.aiEffortByRider.get("ai-train"), "grupetto");
+  // Sidste bjergetape i loebet: kaptajnen gaar alt ud.
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "all_out");
+  const aiTrain = plan.orders.find((o) => o.team_id === "ai" && o.kind === "leadout");
+  assert.deepEqual(aiTrain?.params?.leadout_rider_ids, ["ai-dom"]);
+  // Hele planen bestaar motorens egne parsere + kontrakten.
+  for (const o of plan.orders.filter((x) => x.kind === "team_tactics")) {
+    assert.deepEqual(
+      validateTeamOrder({ team_id: o.team_id, breakaway_stance: params(o).breakaway_stance, riders: params(o).riders }),
+      { ok: true },
+    );
+  }
+  assert.equal(parseBreakawayOrders(plan.orders).length, plan.orders.filter((x) => x.kind === "team_tactics").length);
+  assert.ok(parseLeadoutOrders(plan.orders).length >= 1);
 });

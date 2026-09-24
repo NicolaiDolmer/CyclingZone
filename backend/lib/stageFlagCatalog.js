@@ -41,6 +41,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
+  // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
+  { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
+  // #5519: kun visning + ét laese-endpoint. Ejeren flipper efter visuelt go.
+  { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider" },
   { key: "facilities_enabled", area: "club", label: "Faciliteter" },
   // Kill-switch for job-modellen (#2244). Semantisk binaer (on/off), men den
   // GAAR gennem evaluateFlagStage, og saa hoerer den hjemme her: bliver den
@@ -71,6 +75,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
   { key: "market_value_sweep_enabled", area: "market", label: "Markedsværdi-sweep" },
   { key: "rider_values_bulk_write_enabled", area: "market", label: "Ryttereværdier — bulk-skrivning" },
+  { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
 ]);
 
@@ -107,3 +112,16 @@ export function isUnknownStageValue(value) {
   if (typeof value === "boolean") return false;
   return !FLAG_STAGES.includes(value);
 }
+
+// #4948 · ALLOWLIST for det spiller-synlige flag-endpoint (GET /api/feature-flags,
+// backend/api/featureFlagsApi.js). Kun noegler her kan nogensinde laeses og
+// returneres derfra; resten af app_config (tal, tidsstempler, andre
+// tre-tilstande, ops-flag) forlader aldrig serveren ad den vej. Hver noegle
+// SKAL ogsaa staa i STAGE_FLAGS ovenfor, fordi endpointet evaluerer dem med
+// evaluateFlagStage. Tilfoej kun et flag her naar en spillerflade skal kunne
+// spoerge om det uden en mere specifik route at spoerge.
+export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
+  "race_engine_v4",
+  "board_mandate_model_enabled",
+  "training_tick_per_race_day",
+]);

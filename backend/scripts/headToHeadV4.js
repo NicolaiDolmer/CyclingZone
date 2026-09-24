@@ -36,7 +36,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { simulateStage, stableSeed } from "../lib/raceSimulator.js";
 import { computePassages } from "../lib/racePassages.js";
-import { rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
+import { raceContextForStage, rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
 import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdapter.ts";
@@ -75,8 +75,13 @@ function readJson(path) {
 //     tom — den oprindelige F2-stub-adfaerd, bevaret uaendret saa "foer"-siden
 //     af en foer/efter-maaling er praecis den man maalte 2/9.
 //   --orders=ai: realistiske roller pr. hold + AI-genererede TeamOrders
-//     (lib/headToHeadOrders.js). Uden denne er M6 (lead-out) og M14
-//     (AI-taktik) maalbart doed kode i scorecardet — de har intet input.
+//     (lib/headToHeadOrders.js, gennem prod-adapterens egen vej). Uden denne
+//     er M6 (lead-out) og M14 (AI-taktik) maalbart doed kode i scorecardet.
+//
+// INDSATSEN (#5571): motoren laeser `Entrant.effort`, ikke ordrens effort-felt.
+// Med --orders=ai saettes hver rytters `effort` derfor fra hans holds ordre
+// (samme kort som prod-broen bruger), i BEGGE motorer, saa --orders=ai maaler
+// indsatstrappen som AI-holdene faktisk bruger den. --orders=none er uaendret.
 //
 // TODO (F3/M7): map population.form/fatigue -> condition naar motoren
 // forbruger feltet.
@@ -85,7 +90,7 @@ const DEFAULT_EFFORT = "normal";
 
 export const ORDER_MODES = Object.freeze(["none", "ai"]);
 
-function v3EntrantsFromPopulation(riders, roles = null) {
+function v3EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
   return riders.map((r) => ({
     rider_id: r.id,
     team_id: r.team_id,
@@ -93,7 +98,7 @@ function v3EntrantsFromPopulation(riders, roles = null) {
     form: r.form ?? null,
     fatigue: r.fatigue ?? null,
     race_role: roles?.get(r.id) ?? DEFAULT_ROLE,
-    effort: DEFAULT_EFFORT,
+    effort: effortByRider?.get(r.id) ?? DEFAULT_EFFORT,
   }));
 }
 
@@ -101,15 +106,48 @@ function v3EntrantsFromPopulation(riders, roles = null) {
 // altid har gjort i v3's (`v3EntrantsFromPopulation` ovenfor). Uden det er
 // holdspils-mekanikken en no-op i harnesset, og holddominans-ankeret
 // (same_team_top10_share_4plus) ville maale en verden hvor ingen har et hold.
-function v4EntrantsFromPopulation(riders, roles = null) {
+function v4EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
   const teamByRider = new Map(riders.map((r) => [r.id, r.team_id ?? null]));
   const rows = riders.map((r) => ({ rider_id: r.id, ...r.abilities }));
   return entrantsFromAbilitiesRows(rows, (riderId) => ({
     role: roles?.get(riderId) ?? DEFAULT_ROLE,
-    effort: DEFAULT_EFFORT,
+    effort: effortByRider?.get(riderId) ?? DEFAULT_EFFORT,
     condition: 1,
     teamId: teamByRider.get(riderId) ?? null,
   }));
+}
+
+/**
+ * Loebet omkring hver etape (#5571), til M14: etaperne grupperes paa
+ * `race_id` (etape-filen baerer det), og hver etape faar samme kontekst som
+ * prod-broen bygger (`raceContextForStage`): etapeloeb eller ej + senere
+ * etapers rute-type. Etaper uden `race_id` faar ingen kontekst (ukendt loeb).
+ *
+ * @param {Array<object>} stages  stage_profile-raekker (--stages-format)
+ * @returns {Map<object, object|undefined>} etape-raekke -> kontekst
+ */
+export function buildRaceContexts(stages) {
+  const byRace = new Map();
+  for (const stageRow of stages) {
+    if (stageRow.race_id == null) continue;
+    const key = String(stageRow.race_id);
+    if (!byRace.has(key)) byRace.set(key, []);
+    byRace.get(key).push(stageRow);
+  }
+  const contexts = new Map();
+  for (const stageRow of stages) {
+    const raceStages = stageRow.race_id == null ? null : byRace.get(String(stageRow.race_id));
+    contexts.set(
+      stageRow,
+      raceContextForStage({
+        raceStages,
+        stageNumber: Number(stageRow.stage_number) || 1,
+        isStageRace: (raceStages?.length ?? 0) > 1,
+        routeFromStageProfileRow,
+      }),
+    );
+  }
+  return contexts;
 }
 
 // ---------------------------------------------------------------------------
@@ -425,6 +463,7 @@ export function runHeadToHead({
   // nummer, samme sampleField-helper som --films bruger), saa hver etape faar
   // sit eget realistiske startfelt i stedet for hele populationen.
   const rows = [];
+  const raceContexts = orderMode === "ai" ? buildRaceContexts(stages) : new Map();
   for (const stageRow of stages) {
     if (!stageRow.demand_vector) {
       throw new Error(`etape ${stageRow.stage_number ?? "?"}: demand_vector mangler (kraeves af simulateStage/v3)`);
@@ -446,15 +485,17 @@ export function runHeadToHead({
     let orders = [];
     let roles = null;
     let orderEffect = null;
+    let effortByRider = null;
     if (orderMode === "ai") {
-      const built = buildStageTeamOrders({ riders: fieldRiders, route });
+      const built = buildStageTeamOrders({ riders: fieldRiders, route, race: raceContexts.get(stageRow) });
       orders = built.orders;
       roles = built.roles;
       orderEffect = built.effect;
+      effortByRider = built.effortByRider;
     }
 
-    const v3Entrants = v3EntrantsFromPopulation(fieldRiders, roles);
-    const v4Entrants = v4EntrantsFromPopulation(fieldRiders, roles);
+    const v3Entrants = v3EntrantsFromPopulation(fieldRiders, roles, effortByRider);
+    const v4Entrants = v4EntrantsFromPopulation(fieldRiders, roles, effortByRider);
 
     const v3Output = simulateStage({ entrants: v3Entrants, stageProfile: stageRow, seed: v3Seed, v3: true });
     const v4Output = simulateStageV4({

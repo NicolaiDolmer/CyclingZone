@@ -18,6 +18,23 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 
 export const SWEEP_FROM_HOUR = 22;
 
+// ── Off-season (#4848) ───────────────────────────────────────────────────────
+// Mellem to sæsoner findes ingen aktiv sæson (målt: S2 sluttede 23/8, S3 startede
+// 28/8 — fire døgn). DEFINERET ADFÆRD, ikke en stille no-op: en off-season-dato er
+// IKKE en træningsdag. Intet tick (og dermed heller ikke tickets restitution,
+// TRAINING_RULES §5.1), ingen historik; rytternes trænings-tilstand står stille
+// til næste sæson starter, hvor sæsonskiftets nulstilling
+// (TRAINING_RULES §5.2) og planernes overførsel (seasonTransition.js) tager over.
+// Sweepen siger det højt ÉN gang pr. dansk dato (5-min-cron ⇒ ellers op til 24
+// identiske linjer pr. aften) og returnerer `offSeason: true`, så kalderen kan
+// skelne "off-season" fra "intet at gøre". Samme regel som trainingDayCloseTrigger.js.
+let lastOffSeasonLogDate = null;
+
+/** Kun til test: glem hvilken dato off-season sidst blev logget. */
+export function __resetTrainingSweepStateForTests() {
+  lastOffSeasonLogDate = null;
+}
+
 /**
  * Er det tid til assistent-sweep? (dansk tid >= kl. 22)
  * @param {Date} [now]
@@ -50,12 +67,14 @@ export function teamsNeedingSweep(teams, todaysRuns, tickDate) {
  * @param {object} args.supabase     — service-role Supabase-client
  * @param {Date}   [args.now]        — referencetid (default new Date())
  * @param {Function} [args.runDay]   — DI-hook til test; default runTeamTrainingDay
- * @returns {Promise<{swept: number, failed?: number, skipped?: string}>}
+ * @param {object} [args.logger]     — default console (off-season-linjen, #4848)
+ * @returns {Promise<{swept: number, failed?: number, skipped?: string, offSeason?: boolean, tickDate?: string}>}
  */
 export async function runTrainingSweep({
   supabase,
   now = new Date(),
   runDay = runTeamTrainingDay,
+  logger = console,
 } = {}) {
   // ── Tidsvindue ────────────────────────────────────────────────────────────────
   if (!shouldSweepNow(now)) {
@@ -101,9 +120,15 @@ export async function runTrainingSweep({
   if (!teamsResult.data) throw new Error("teams query returned null (unexpected)");
   if (!runsResult.data) throw new Error("training_day_runs query returned null (unexpected)");
 
-  // ── Ingen aktiv sæson → skip ──────────────────────────────────────────────────
+  // ── Ingen aktiv sæson → off-season: defineret, logget skip (#4848) ────────────
   if (!seasonResult.data) {
-    return { swept: 0, skipped: "no_active_season" };
+    if (lastOffSeasonLogDate !== tickDate) {
+      lastOffSeasonLogDate = tickDate;
+      logger.warn?.(
+        `  ⏸️ Trænings-sweep ${tickDate}: ingen aktiv sæson (off-season) - intet trænings-tick i dag (heller ikke tickets restitution); planerne bæres over ved sæsonstart`,
+      );
+    }
+    return { swept: 0, skipped: "no_active_season", offSeason: true, tickDate };
   }
 
   const season = seasonResult.data;

@@ -1,0 +1,245 @@
+{
+ "allowExistingPr": false,
+ "trackTimeoutMinutes": 150,
+ "tracks": [
+  {
+   "issue": 5535,
+   "branch": "feat/5535-senior-only-result-aggregates",
+   "title": "[trupper] S1: seniorstilling, rangliste-matviews og dashboard/recap taeller kun seniorloeb",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5535\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES issue #5535 og docs/superpowers/plans/2026-09-23-u23-junior-ranglister-plan.md spor S1 + §1.4/§6 risici. FORUDSAETNING: A2 (PR #5525) merget + applied (tjek at races.squad findes i prod via information_schema; findes den ikke: STOP og rapporter). Een idempotent migration database/2026-09-25-5535-senior-only-result-aggregates.sql: genskab recompute_season_standings, dashboard_rider_ranking, dashboard_my_team_season_races, get_season_recap, get_season_documentary_facts med r.squad = 'senior' (udgangspunkt: prods pg_get_functiondef via execute_sql SELECT, IKKE repo-filerne); DROP+CREATE rider_rankings_mv, team_standings_ext_mv, team_race_points_mv med filteret + samme indekser + eksplicit REVOKE ALL FROM PUBLIC, anon, authenticated (#5088/#5176). get_rider_race_days urort. Bit-identisk i dag. PGlite-test: ungdomsloeb aendrer intet i senior; kontrol med samme loeb som senior. Read-only EXCEPT-tjek mod prod (ny definition EXCEPT nuvaerende) = 0 raekker, noteret i PR-body. Ingen prod-skrivning (migrationen koeres af CI ved merge). HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "FULL",
+   "ownership": [
+    "database/2026-09-25-5535-senior-only-result-aggregates.sql",
+    "backend/lib/seniorResultAggregates.integration.test.js",
+    "backend/lib/testdb/createTestDb.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/seniorResultAggregates.integration.test.js",
+    "node --test backend/lib/testdb/createTestDb.integration.test.js",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -File scripts/verify-local.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5536,
+   "branch": "feat/5536-scope-pool-readers",
+   "title": "[trupper] S2: seed-blokerende pulje-laesere scopes + buildPoolTree faar trup-parameter",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5536\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES issue #5536 og docs/superpowers/plans/2026-09-23-u23-junior-ranglister-plan.md spor S2 + risiko 3-4. FORUDSAETNING: A2 (PR #5525) merget + applied. Backend: withSeniorSquadScope paa blocksYouthSeed-laeserne (economyEngine.js buildPoolTree + reseed-label-opslaget + races-laeseren i updateStandings-fallbacken, betaResetService.js, teamProfileEngine.js, sponsorContractsService.js); buildPoolTree(client, { squad = 'senior' }). Frontend: StandingsPage.jsx, RiderRankingsPage.jsx, ResultaterPage.jsx, DashboardPage.jsx, RaceCentrePage.jsx faar senior-filter paa league_divisions/races-laesere (samme or-filter som #5330; kun de naevnte laesere). A2-guardens ratchet-liste toemmes for disse, og guarden laerer at godkende eksplicit .eq(\"squad\", <trup>). Bit-identisk i dag. Adfaerdstests med ungdomspuljer i fixtures (senior-oprykning ender aldrig i ungdomspulje, nyt hold faar aldrig ungdomspulje, sponsor-divisor uroert) + kontrol. Frontend: lint, node --test, build. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/economyEngine.js",
+    "backend/lib/economyEngine.test.js",
+    "backend/lib/betaResetService.js",
+    "backend/lib/teamProfileEngine.js",
+    "backend/lib/sponsorContractsService.js",
+    "backend/lib/squadSeniorReaders.test.js",
+    "frontend/src/pages/StandingsPage.jsx",
+    "frontend/src/pages/RiderRankingsPage.jsx",
+    "frontend/src/pages/ResultaterPage.jsx",
+    "frontend/src/pages/DashboardPage.jsx",
+    "frontend/src/pages/RaceCentrePage.jsx"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/economyEngine.test.js backend/lib/squadSeniorReaders.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5537,
+   "branch": "feat/5537-senior-only-money-signals",
+   "title": "[trupper] S9: sponsor pr. loebsdag, bestyrelsesmaal og omdoemme taeller kun seniorloeb (C3)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5537\", git --no-pager log --grep). Er det lavet: stop og rapporter med bevis. LAES issue #5537 og docs/superpowers/plans/2026-09-23-u23-junior-ranglister-plan.md spor S9. FORUDSAETNING: A2 merget + applied. backend/lib/sponsorRaceDayIncome.js (ca. :185) og backend/lib/boardGoalContext.js begraenses til seniorloeb via withSeniorSquadScope; backend/lib/reputationReplay.js senior-only som v1-default. Tests: ungdomsloeb giver 0 kr. og intet bestyrelses-/omdoemmesignal (kontrol med seniorloeb). Bit-identisk i dag. HARD RULE 31: nye frontend-filer (ogsaa e2e-specs/tests) i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen. Hver paastand i PR-body skal kunne findes i diffen. Ingen patch note i PR (boelge-regel; linjen i PR-body).",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/sponsorRaceDayIncome.js",
+    "backend/lib/sponsorRaceDayIncome.test.js",
+    "backend/lib/boardGoalContext.js",
+    "backend/lib/boardGoalContext.test.js",
+    "backend/lib/reputationReplay.js",
+    "backend/lib/reputationReplay.test.js"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/sponsorRaceDayIncome.test.js backend/lib/boardGoalContext.test.js backend/lib/reputationReplay.test.js",
+    "npm --prefix backend run lint"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5565,
+   "branch": "feat/5565-pr-shots-station",
+   "title": "[ops] Billedstation: aegte-data-billeder af alle UI-PR'er fra een fast lokal origin med eet login (scripts/pr-shots.mjs)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state all --search \"#5565\", git --no-pager log --grep 5565, findes scripts/pr-shots.mjs paa origin/main?). Er det lavet: stop og rapporter med bevis. LAES FOERST prototypen (ikke committet): C:/Users/Nicolai/OneDrive/CyclingZone-context/tools/pr-shots-prototype.mjs (virkede 23/9: 9 UI-PRer fotograferet med eet login, 2 reelle fejl fundet). Byg scripts/pr-shots.mjs ud fra prototypen med KUN det der virkede 23/9: (1) login: chromium.launchPersistentContext med channel 'msedge' headed (Playwrights egen chromium er ikke installeret til headed) i en persistent profil UDEN for repoet; serverer scriptets eget repos frontend paa samme origin, aabner <origin>/login, ejeren taster selv; slut naar localStorage har en sb-*-auth-token-noegle; timeout (default 10 min) giver exit != 0 med klar besked. (2) shoot <label> <worktree> <route>[,<route>...]: build med <worktree>/frontend som cwd (ellers mister Tailwind sin config) via worktreets egen frontend/node_modules/vite/bin/vite.js, derefter vite preview --port 5173 --strictPort; afvis hvis porten er optaget (probe 127.0.0.1 og ::1); klar fejl hvis frontend/node_modules/vite mangler; SKIP_BUILD=1 (eller --skip-build) springer build over; preview-processen draebes altid i finally. Headless msedge med samme profil. Viewports: default desktop 1440x900 (dsf 1) + mobil 390x844 (dsf 2, isMobile, hasTouch, Android-Chrome-UA som i prototypen); SHOT_VP=\"WxH,WxH\" erstatter dem (navne w<bredde>). SHOT_CLICKS=\"tekst|css:<selector>\": klik i raekkefoelge paa foerste match (getByText exact:false, eller locator naar css:-prefix), log fejlede klik og 'landede paa: <pathname>'. Ender siden paa /login: fejl 'ikke logget ind - koer login foerst'. Filnavne <label>-<slug>-<viewport>.png med prototypens slug-regel ('/' -> 'root'), saa compose-parrene er forudsigelige. (3) compose <pr> <titel> <foer.png> <efter.png> [...]: EET samlet foer/efter-billede <pr>-foer-efter.png (main = foer, PR = efter), titel HTML-escapet, browser = msedge headless som shoot. (4) OUT = <OneDrive-rod>/CyclingZone-context/private-handoffs/pr-shots/<YYYY-MM-DD i Europe/Copenhagen>; OneDrive-rod fra env OneDrive (fallback USERPROFILE/OneDrive); aldrig i repoet. (5) Demo-tilstand (--demo eller SHOT_DEMO=1): page.route opfanger ALLE requests med anden metode end GET/HEAD/OPTIONS mod andre origins end den lokale og besvarer dem med 204, hver logget som 'blokeret: METHOD path'; eneste undtagelse er Supabase-session-refresh (POST /auth/v1/token), ellers mistes sessionen. Tilstandsskift sker via page.evaluate (visibilityState hidden -> Date.now frem N min -> visible, som prototypens SHOT_NOCLOCK-gren, fx --demo-background-min N), ALDRIG page.clock.install (fik appens boot til at haenge). Prototypens PR-specifikke #5551-mocks (cz-release-meta, version.json, nps_*, race-count) kopieres IKKE ind som hardkodet kode. Konfigurerbare konstanter (flag eller env, nuvaerende vaerdier som default): port (PR_SHOTS_PORT, default 5173; skal matche CORS-allowlisten i backend/server.js), profilmappe (PR_SHOTS_PROFILE, default %LOCALAPPDATA%\\cz-pr-shots-profile), OUT-rod (PR_SHOTS_OUT), login-timeout, goto-timeout, ventetider. Ingen hardkodet C:/Users/Nicolai eller C:/Dev/CyclingZone: @playwright/test resolves via createRequire mod repoets frontend/package.json relativt til scriptet og importeres lazy (kun naar en browser skal startes). --dry-run: print planen (frontend-mappe, build-kommando, origin, ruter, viewports, klik, demo til/fra, outputfiler) uden build, server eller browser og uden Playwright-import. Rene dele (argument-parsing, SHOT_VP- og SHOT_CLICKS-parsing, slug, filnavn, OUT-dato i Copenhagen-tid med injicerbar Date, compose-HTML, dry-run-plan, demo-filterets tillad/bloker-beslutning) ligger i scripts/pr-shots.lib.mjs uden Playwright-import; scripts/pr-shots.test.mjs (node --test) daekker dem, inkl. slug('/')='root', css:-prefix, ugyldig SHOT_VP -> fejl, escaping af titel, POST mod prod blokeres mens GET og /auth/v1/token slipper igennem. Dokumentation: ny sektion i docs/AI_OPS_REFERENCE.md 'Billedstation for UI-PR'er (#5565)': hver UI-PR faar aegte-data-billeder (main = foer, PR = efter, compose) FOER ejeren spoerges; engangs-login; eksempel-kommandoer; billeder kun i OneDrive private-handoffs (aegte data); port 5173 skal vaere fri; demo-tilstand, og at klik UDEN demo sendes til prod med ejerens session; faldgruben page.clock.install. Roer IKKE .github/workflows/ci.yml (ejes af #5566-sporet i samme boelge); skriv i PR-body at CI-step for testen tilfoejes naar ci.yml er fri. Ingen patch note (ikke spillervendt). Kategori 3 (scripts/test/docs): orkestratoren merger naar CI er groen. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "scripts/pr-shots.mjs",
+    "scripts/pr-shots.lib.mjs",
+    "scripts/pr-shots.test.mjs",
+    "docs/AI_OPS_REFERENCE.md"
+   ],
+   "verifyCommands": [
+    "node --test scripts/pr-shots.test.mjs",
+    "node scripts/pr-shots.mjs shoot dryrun-check . /dashboard,/team --dry-run",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5566,
+   "branch": "fix/5566-verify-lock-slot-leak",
+   "title": "[ops] verify-lock.ps1: afvist slot-fil laekker naar sletning kolliderer med laesning og blokerer laner",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state all --search \"#5566\", git --no-pager log --grep 5566 -- scripts/verify-lock.ps1). Er det lavet: stop og rapporter med bevis. Laes scripts/verify-lock.ps1 og scripts/verify-lock.test.mjs helt. Fejlen (boelge B 23/9): i ventelykken skriver wrapperen en kandidat-slotfil, taber rangeringen og proever Remove-Item EEN gang (catch sluger fejlen); holder en anden proces filen aaben i samme oejeblik, bliver filen liggende med wrapperens egen LEVENDE PID og taeller som optaget slot. Den blokerer baade wrapperen selv (den genkender ikke filen som sin og rangerer bag den) og andre laner, indtil processen doer. finally har samme enkeltforsoeg. Sandsynlig rod-aarsag (verificer med testen foer rettelsen): Clear-DeadSlots og -Status laeser med Get-Content, som ikke deler FileShare.Delete. Ret robust, med Max-default 2 og filnavneformatet slot-<utc-stamp>-<pid>-<guid8>.json + sortering paa navn UAENDRET (gamle og nye versioner deler .claude/run/verify-slots under og efter merge): (1) al laesning af slotfiler (Clear-DeadSlots, -Status) via [System.IO.File]::Open med FileShare ReadWrite+Delete, saa en laeser aldrig blokerer sletning; (2) EEN slet-helper med retry og kort eksponentiel backoff (fx 6 forsoeg, samlet under ca. 2 s), brugt baade ved tabt rangering og i finally; lykkes den stadig ikke, huskes filen i en pending-liste som proeves igen ved hver ventelykke-iteration og i finally; (3) egne efterladte kandidater (pid = egen PID, andet navn end den aktuelle kandidat) taeller aldrig mod en selv i rangeringen og slettes med retry; finally rydder ALLE egne slotfiler; (4) slotfilen faar processens starttid (Get-Process .StartTime i round-trip-format) ved siden af pid; Clear-DeadSlots behandler et slot som doedt hvis PID ikke lever ELLER starttiden ikke matcher (PID-genbrug), sammenlignet med tolerance paa hele sekunder (laeringen fra #5533: sub-ms-drift maa aldrig goere et levende slot doedt); slotfiler uden starttid (gammelt format) vurderes paa PID alene som i dag. Opdater headerens forklaring og KENDT HUL. Tests i scripts/verify-lock.test.mjs (bevar de 4 eksisterende): (a) win32-only (skip ellers): en pwsh-hjaelper holder slotfiler aabne med FileShare.Read uden Delete mens -Max 1 har een holder og een ventende; begge ender med exit 0 inden for en fast graense, ingen slot-*.json er tilbage, og et tredje kald med kort -Timeout faar slot straks. Testen skal kunne ses FEJLE mod den gamle version (koer den mod origin/main-kopien foerst og noter udfaldet i PR-body); (b) platform-uafhaengig: en slotfil med levende PID (testens egen process.pid) men forkert starttid ryddes, og -Max 1 faar slot; (c) en fil i gammelt format (kun pid/acquiredAt/label) med levende PID taeller stadig som optaget (kort -Timeout -> exit 75); tilfoej kun en eksplicit test-soem (fx env-variabel der faar de foerste N sletninger til at fejle) hvis det er noedvendigt for at daekke retry/pending-logikken paa Linux. CI: testen koerer i dag ingen steder i CI; tilfoej et step 'Test verify-lock semaphore' med node --test scripts/verify-lock.test.mjs i jobbet ops-script-tests i .github/workflows/ci.yml, lige efter steppet 'Test shared wave admission and Codex lifecycle fixtures' (ubuntu-latest har pwsh, saa testene koerer der; win32-only-testen springes over). Roer ikke andre jobs eller steps. Tunge kommandoer i dette spor wrappes med HOVED-checkoutets C:\\Dev\\CyclingZone\\scripts\\verify-lock.ps1 (main-versionen), aldrig worktreets ufaerdige kopi, og testene bruger altid en temp -SlotDir, aldrig den delte .claude/run/verify-slots. Ingen patch note (ikke spillervendt). Kategori 3 (scripts/test/CI): orkestratoren merger naar CI er groen. CI-VAGT #4479: naevn aldrig en testfil i docs/PR-body/kommentarer foer den findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "scripts/verify-lock.ps1",
+    "scripts/verify-lock.test.mjs",
+    ".github/workflows/ci.yml"
+   ],
+   "verifyCommands": [
+    "node --test scripts/verify-lock.test.mjs",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5568,
+   "branch": "fix/5568-academy-cap-per-squad",
+   "title": "[akademi] Loftet 8 staar stadig i budrummet og indhentnings-udsaettelsen efter #5547 (U23 12 / junior 10)",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state all --search \"5568\", git --no-pager log --grep 5568). Er det lavet: stop og rapporter med bevis. Se issue #5568. Efter PR #5547 (#5432, merget 23/9) taeller RPC'erne demote_rider_to_academy og finalize_academy_acquisition pr. maal-trup med SQUAD_CAPS fra backend/lib/squads.js (u23 12, junior 10). To steder bruger stadig det gamle faelles loft 8: frontend/src/lib/auctionBidRoom.js (ACADEMY_CAP = 8, budrummet melder akademi fuldt ved 8) og backend/lib/academySigningDefer.js (ACADEMY_CAP = 8). Ret begge til loftet pr. maal-trup (u23/junior efter rytterens alder, samme regel som RPC'erne/academySquadForSeasonAge), med backend/lib/squads.js SQUAD_CAPS som eneste kilde i backend. Frontend: en spejlet konstant i frontend/src/lib/squadCaps.ts + en backend-test der laeser frontend-filen og fejler hvis den afviger fra SQUAD_CAPS (drift-vagt); ingen tredje haandskrevet vaerdi. Forward-guard: test der fejler hvis ACADEMY_CAP = 8 eller et andet haandskrevet akademi-loft dukker op igen i frontend/src eller backend/lib. Tjek oversaettelser/tooltips der naevner 8 (academy.json, auctions.json, team.json) og ret dem til loftet pr. trup (EN foerst, DA under, jeg/du, ingen em-dash). Roer IKKE RPC-migrationerne, backend/routes/api.js (ejes af #5415 i samme boelge) eller Graduation Day-logikken. Tests: budrummet med 8 U23-ryttere er ikke fuldt; med 12 er det fuldt; junior-loftet 10. Billeder desktop 1440 + mobil 390 af budrummet ved fuldt/ikke-fuldt (mock ok). Patch note-linje kun i PR-body (EN foerst, DA under). Merges ikke uden ejer-go (spillervendt). HARD RULE 31: nye frontend-filer i .ts/.tsx. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/lib/auctionBidRoom.js",
+    "frontend/src/lib/auctionBidRoom.test.js",
+    "frontend/src/lib/squadCaps.ts",
+    "backend/lib/academySigningDefer.js",
+    "backend/lib/academySigningDefer.test.js",
+    "backend/lib/squadCapsDrift.test.js",
+    "frontend/public/locales/en/academy.json",
+    "frontend/public/locales/da/academy.json",
+    "frontend/public/locales/en/auctions.json",
+    "frontend/public/locales/da/auctions.json"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/academySigningDefer.test.js backend/lib/squadCapsDrift.test.js",
+    "node --test frontend/src/lib/auctionBidRoom.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5561,
+   "branch": "fix/5561-bottom-bars-above-mobile-nav",
+   "title": "[ux/mobil] NPS-, release- og samtykke-bjaelken ligger over bundmenuen paa mobil, ikke oven paa den",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5561\", git --no-pager log --grep 5561). Er det lavet: stop og rapporter med bevis. FORUDSAETNING: PR #5551 (een bund-slot, samtykke > release > NPS) er merget, og frontend/src/lib/bottomSlot.ts findes paa main. Er det ikke tilfaeldet: STOP og rapporter. Byg oven paa den og genopfind ikke slot-logikken. ROD-AARSAG (verificeret): NpsPrompt.jsx, ReleaseUpdateBanner.jsx og CookieBanner.jsx tegner med 'fixed inset-x-0 bottom-0 z-toast' (z 1400); MobileQuickNav.jsx er 'fixed bottom-0 z-nav md:hidden' med hoejden 56px (z 1150), saa bjaelken ligger oven paa menuen paa mobil. LOESNING (ren CSS, ingen JS, sikker for prerender): eksporter eet delt placerings-klassenavn fra frontend/src/lib/bottomSlot.ts (fx BOTTOM_SLOT_POSITION_CLASS), som alle tre flader bruger i stedet for bottom-0. Default bottom-0. Under md, og KUN naar MobileQuickNav er monteret (fx via arbitrary variant paa :root:has([data-mobile-quick-nav])), loeftes bjaelken til calc(<menuhoejde> + env(safe-area-inset-bottom, 0px)). Menuhoejden 56 staar eet sted som konstant brugt af baade MobileQuickNav og klassen. Landing, login og desktop uaendrede. Roer IKKE klasserne 'fixed ... bottom-0' paa MobileQuickNav (4 e2e-specs skjuler den med selektoren nav.fixed.bottom-0) og ikke z-skalaen. Ingen ny React-provider og intet nyt abonnement i App/AppProviders (landing-hydration og #4925). landing-hydration.spec.js roeres ikke. TESTS: (a) udvid frontend/src/lib/bottomSlot.test.ts med en test af klassen. (b) Ny e2e frontend/tests/e2e/5561-bottom-bars-above-nav.spec.ts: paa mobile-chromium og mobile-webkit med NPS-baren synlig er barens bundkant <= menuens top, og et tryk paa en knap i bundmenuen navigerer; tving baren frem med page.route (registreret EFTER installNetworkMocks) for de Supabase-kald useNpsPrompt laeser; samme for samtykke-banneret (fjern cz_consent_v1 i init-script); paa desktop-chromium sidder baren stadig i bunden. 5159-reload-gate.spec.js skal forblive groen. TASTE/PAGE_TEMPLATES: ingen ny skygge, radius eller farve; kun placeringen aendres. HARD RULE 31: ALLE nye frontend-filer, ogsaa e2e-specs og tests, i .ts/.tsx. Billeder desktop 1440 + mobil 390 af dashboardet med NPS-baren synlig, foer og efter (mock ok). UI merges kun paa ejer-go paa billederne. Patch note-linje kun i PR-body (EN foerst, DA under). Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/components/NpsPrompt.jsx",
+    "frontend/src/components/ReleaseUpdateBanner.jsx",
+    "frontend/src/components/CookieBanner.jsx",
+    "frontend/src/components/MobileQuickNav.jsx",
+    "frontend/src/lib/bottomSlot.ts",
+    "frontend/src/lib/bottomSlot.test.ts",
+    "frontend/tests/e2e/5561-bottom-bars-above-nav.spec.ts"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/lib/bottomSlot.test.ts frontend/src/hooks/useNpsPrompt.test.ts frontend/src/lib/npsGating.test.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/5561-bottom-bars-above-nav.spec.ts tests/e2e/5159-reload-gate.spec.js\""
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5416,
+   "branch": "fix/5416-rider-values-still",
+   "title": "[economy] #5416 undersoegelse med dom: vaerdi-stilstand maalt efter 20/9-rettelsen + stilstandsmaaler som vagt (ingen modelaendring)",
+   "scopeText": "TJEK FOERST om det allerede er lavet: gh issue view 5416 --comments, gh issue view 5443 --comments (epic, trin 1 sidste punkt 'Vagt'), gh pr list --state all --search \"5416\", git --no-pager log --oneline --grep=5416. Er det lavet: stop og rapporter med bevis. Kendt pr. 23/9: ejeren rettede 20/9 (ejer-go, ejeren koerte selv scriptet) typen for de ryttere paa menneskehold der STIGER (backup-tabel backup_5443_valuation_type_20260920, script backend/scripts/dev/unfreezeValuationTypeToday5443.mjs paa PR #5444-branchen). Begge spilleres navngivne ryttere er i den rettede gruppe og har nu valuation_type = primary_type. Ejeren har selv meldt rettelsen ud paa Discord 21-22/9. Resten (ryttere der skal ned eller ville overskyde maalet) venter paa den typefri model (#5497, PR #5502) og udrulningen i #5443. Prod koerer stadig v4: app_config rider_valuation_model = v4 og rider_production_value_model = v4, market_value_sweep_enabled = off. MAALING FOERST (read-only via Supabase MCP, slaa kolonner op i database/schema-snapshot.json foerst). Skriv de aggregerede tal i PR-body. Navne og vaerdier pr. rytter kun i balance-internals/ + OneDrive private-handoffs (hard rule 17). (a) rider_value_sunday_log: koersler 6/9, 13/9 og 20/9 findes alle med written = changed, saa sweepet koerer. (b) Menneskehold (teams.is_ai og is_bank false, riders.is_retired og is_academy false): antal med valuation_type <> primary_type og antal frosset som 'tt' uden at vaere tt. (c) #4986-metoden over 14 dage: seneste rider_derived_ability_history-snapshot <= D-14 mod seneste snapshot nu. Vaegtet output efter FROSSEN valuation_type (backend/lib/weights/valuationWeights.js, kun w>0) flyttet < 0,5, mens snittet af de 15 evner steg > 1. Del paa mismatch og match. Maaling 23/9: symptomet bestaar kun i en lille restgruppe, ALLE stillestaaende er mismatch-ryttere, 0 blandt de type-matchede. DOM (bekraeft eller afkraeft med tallene): klagen blev delvist loest 20/9; restgruppen skyldes frysningen (#3345); ingen sweep- eller kodefejl (selectChangedValueUpdates i backend/lib/riderValueRefresh.js:96-128 springer ingen rytter over med evner). Loesningen er #5443 trin 1 og bygges IKKE her. BYG kun vagten fra #5443 trin 1 som NYE filer: (1) backend/lib/valueStallDetector.js: ren funktion; input er to evne-snapshots pr. rytter og en vaerdifunktion; returnerer de stillestaaende (vaerdi-delta under en taerskel mens evnesnittet steg over en taerskel); taersklerne er navngivne konstanter; resultatet deles paa mismatch/match og valuation_type. (2) Unit-tests der genbruger Ryan Cooper-snapshotsene fra backend/lib/riderValueRefresh.test.js:131-180 (kopier ingen private prod-tal ind). (3) backend/scripts/dev/valueStallMeasure5416.mjs: 100 % read-only, prod via 'infisical run --env=prod --silent --'; genbruger recomputeRiderValue fra riderValueRefresh.js med SAMME model som app_config vaelger (loadValuationModelStrict / loadProductionValueModelStrict fra riderValuationModelSelect.js) og nuvaerende ability_caps; regner vaerdi ved snapshot D-14 og nu med samme alder; rapport til balance-internals/2026-09-24-5416-value-stall/ (gitignored); --strict: exit 1 ved stillestaaende blandt type-matchede eller en ny valuation_type-gruppe; uden flag rapporterer det kun (kalibrer og dokumenter taersklerne). MAA IKKE roere: backend/lib/riderValuation.js, riderCareerNpv.js, riderValueRefresh.js, riderValuationTypeDampening.js, riderValuationModelSelect.js, backend/lib/weights/*, model-JSON'er, backend/lib/valuationTypefree/ (PR #5502), backend/lib/refit5443/ og filer i PR #5444, sundayValueSweep.js, marketValueSundaySweep.js, app_config eller prod-data. Ingen migration. Det utrackede backend/scripts/dev/valuationTypeUnfreezeDryRun5416.mjs i hoved-checkoutet er fremmed arbejde: laes gerne moenstret, men commit, flyt eller slet det ikke. Luk ikke #5416. Kommenter dom + aggregerede tal paa #5416 og kryds-link paa #5443. Intet spillersvar sendes. Ingen patch note. Merges ikke uden ejer-go. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen.",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/valueStallDetector.js",
+    "backend/lib/valueStallDetector.test.js",
+    "backend/scripts/dev/valueStallMeasure5416.mjs"
+   ],
+   "verifyCommands": [
+    "node --test backend/lib/valueStallDetector.test.js",
+    "npm --prefix backend run lint",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5415,
+   "branch": "fix/5415-profile-teamwork-leadership",
+   "title": "[rider] #5415 Holdarbejde/Lederskab synlige paa alle flader: profilen rettet 22/9 (#5423), backend-embeds i api.js henter stadig kun 15 evner",
+   "scopeText": "TJEK FOERST om det allerede er lavet: gh issue view 5415 --comments, gh issue view 5423 --comments, gh pr list --state all --search \"5415\", git --no-pager log --oneline --grep=5415 --grep=5423. Er det lavet: stop og rapporter med bevis. Kendt pr. 23/9: rod-aarsagen paa rytterprofilen er rettet i commit 043e59726 (PR #5487, merget 22/9, Refs #5423): et haandskrevet 15-kolonne-select i frontend/src/pages/RiderStatsPage.jsx, som nu bruger ABILITY_KEYS. Frontendens forward-guard findes: frontend/src/lib/abilitySelect.5423.test.ts, men den fanger kun .from(\"rider_derived_abilities\").select(...) i frontend/src, ikke backend-embeds. MAALING FOERST (read-only via Supabase MCP): (a) klagens rytter (e3c7a238-524e-44df-a745-5b9deca3f233): rider_derived_ability_history viser teamwork NULL til og med 18/9, foerste vaerdi 19/9 og leadership foerst 23/9 (klagen bekraeftet). (b) antal aktive ryttere med teamwork/leadership IS NOT NULL (en lille del; resten er NULL fordi #5268 venter paa ejer-go; det er IKKE en fejl). (c) efter-maaling i PR-body: GET /api/transfers, /api/transfers/my-offers, /api/transfers/swaps, /api/auctions, /api/teams/:id og /api/managers/:teamId returnerer teamwork+leadership i rider_derived_abilities (lokal backend eller route-test). REST-ROD (verificeret 23/9, linjenumre kan have flyttet sig efter merges; find dem igen): backend/routes/api.js har 10 haandskrevne 15-evne-embeds 'rider_derived_abilities(climbing, ..., aggression, tactics)' uden teamwork/leadership (GET /auctions, GET /transfers, 4 i GET /transfers/my-offers, 2 i GET /transfers/swaps, GET /teams/:id, GET /managers/:teamId). Konsekvens: marked, mine bud, byttehandler, auktioner, manager-profil (TWK/LDR viser altid '-') og holdvisningen viser aldrig en traenet Holdarbejde/Lederskab. FIX: erstat alle 10 med en registry-afledt konstant bygget paa REGISTRY_ABILITY_KEYS fra backend/lib/abilityRegistry.js (moenstret findes allerede i api.js), fx eksporteret RIDER_ABILITY_EMBED i ny backend/lib/riderAbilityEmbed.js. Backwards-check: grep hele backend/ og frontend/src for embeds/selects paa rider_derived_abilities med haandskrevne evne-lister. Behold bevidste delmaengder (U25_ABILITY_KEYS i backend/lib/boardGoals.js, RACE_SIM_ABILITY_KEYS i api.js, fordi motoren IKKE skal have de nye evner, #5348 flag-gated) og dokumenter hver undtagelse. Forward-guard: backend-test der scanner backend/routes og backend/lib for 'rider_derived_abilities(' og .from(\"rider_derived_abilities\").select( med haandskrevne evne-navne og fejler ved fund, med allowlist for de bevidste delmaengder (spejler abilitySelect.5423.test.ts). Null forbliver null i payload, ALDRIG coalesce til 0. Rating-tallene paa siderne skal vaere uaendrede (displayRecipes vaegter ikke de to evner i dag); ratingGolden roeres ikke. Ingen frontend-aendring forventet; roeres frontend alligevel: HARD RULE 31 (.ts/.tsx) og skaermbillede af Transfers + Manager-profil med TWK/LDR foer/efter. Ingen migration, intet flag, roer ikke #5268. Ingen patch note i PR'en, men et EN+DA-linjeforslag i PR-body. Kommenter dom + tal paa #5415 og #5423, luk dem ikke. Merges ikke uden ejer-go. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen.",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/routes/api.js",
+    "backend/lib/riderAbilityEmbed.js",
+    "backend/lib/riderAbilityEmbed.test.js"
+   ],
+   "verifyCommands": [
+    "node --check backend/routes/api.js",
+    "node --test backend/lib/riderAbilityEmbed.test.js",
+    "npm --prefix backend run lint",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5219,
+   "branch": "ci/5219-nightly-smoke-autoclose",
+   "title": "[ci] Natlig Playwright Smoke er groen igen (9 naetter): luk #5219 med bevis + auto-luk tracking-issuet ved groen nat",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, om #5219 stadig er aaben, gh pr list --state merged --search \"#5219\", git --no-pager log --grep 5219). Er det lavet: stop og rapporter med bevis. DETTE ER ET LUK-SPOR, IKKE ET FIX. Verificeret 23/9: den natlige Playwright Smoke paa main har vaeret groen 9 naetter i traek (schedule-runs 15/9-23/9); den eneste roede nat var 14/9 (landing-hydration.spec.js:26 paa mobile-webkit, React #418), som ejes af #4925/PR #5531 (merget 23/9). (1) Genverificer med gh run list --workflow \"Playwright Smoke\" --event schedule --limit 10. Er seneste natlige koersel roed: STOP og rapporter fejlen i stedet for at lukke. (2) Forward-guard i .github/workflows/playwright-smoke.yml, job frontend-smoke: nyt trin efter 'Open or update tracking issue' med if: success() && github.event_name == 'schedule' og actions/github-script med samme pinnede SHA som trinnet over. Det finder et aabent issue med label playwright-smoke-audit og springer over ved labels auto-close-veto, needs-decision eller manual-review; ellers skriver det en evidens-kommentar (run-link og 'main er groen igen paa den natlige koersel'), saetter label auto-closed-by-routine og lukker med state_reason completed (moenstret fra auto-close-sikkerhedsnettet i docs/GITHUB_WORKFLOW.md). En ny roed nat opretter et nyt issue som i dag. (3) Kildetest scripts/playwright-smoke-tracking-issue.test.mjs i samme stil som scripts/league-audit-check.test.mjs (laeser yml som tekst): trinnet findes, betingelsen er success() plus schedule, veto-labels respekteres, state_reason er completed. Wire testen ind i trinnet 'Unit-test the gate scripts' i SAMME workflow; roer ikke ci.yml. (4) Naar PR'en er aaben: gh issue comment 5219 med beviset (groen-raekken med run-id'er, aarsagen 14/9, henvisning til #4925/PR #5531 og flakes set 21-22/9) og luk med gh issue close 5219 --reason completed. Soeg efter dubletter ([test-flake] i titlen) foer du eventuelt opretter EET samlet flake-issue for flakes der ikke allerede har et. Ingen frontend-aendringer, ingen patch note. Kategori 3: orkestratoren merger naar CI er groen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen.",
+   "model": "sonnet",
+   "tier": "TARGETED",
+   "ownership": [
+    ".github/workflows/playwright-smoke.yml",
+    "scripts/playwright-smoke-tracking-issue.test.mjs"
+   ],
+   "verifyCommands": [
+    "node --test scripts/playwright-smoke-tracking-issue.test.mjs scripts/check-e2e-shard-budget.test.mjs scripts/extract-e2e-flakes.test.mjs"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 5422,
+   "branch": "feat/5422-patch-notes-beta-category",
+   "title": "[patch notes] Beta-kategori: beta-only opdateringer faar egen sektion og eget filter, adskilt fra det alle har faaet",
+   "scopeText": "TJEK FOERST om det allerede er lavet (issue-kommentarer, gh pr list --state merged --search \"#5422\", git --no-pager log --grep 5422). Er det lavet: stop og rapporter med bevis. LAES FOERST docs/PATCH_NOTES_RULES.md, docs/TONE_OF_VOICE.md (patch notes-format), docs/design/PAGE_TEMPLATES.md (T1) og docs/design/TASTE.md. Ejer-direktivet 19/9 staar i issuet: beta-only opdateringer skal vaere afgraenset fra det alle har faaet. FAKTA: version-feltet label er 'Beta' paa alle versioner (spilfasen) og kan IKKE bruges. En aendring har category (new/improved/fixed) og audience (player/internal). DATAMODEL: nyt valgfrit felt pr. aendring, beta: true (kun naar sandt), i frontend/src/data/patchNotes.js; category og audience uaendrede. frontend/src/lib/patchNotes.js: groupByDay laegger beta-aendringer i en egen spand categories.beta; filterChanges faar kategorien 'beta' (kun beta), og new/improved/fixed viser kun aendringer uden beta; CATEGORY_META faar beta med en neutral prik (eksisterende token, intet guld). frontend/src/pages/PatchNotesPage.jsx (T1, eksisterende anatomi): en 5. filter-pille 'Beta group'/'Beta-gruppen' efter Fixed; hvert dag-kort faar en sidste sektion med samme overskrifts-anatomi (hoejst een kort linje), og dagens resume taeller beta med. Nye i18n-noegler i frontend/public/locales/en/patchnotes.json og da/patchnotes.json (EN foerst; jeg/du; ingen em-dash). BACKFILL: kun entries hvor funktionen reelt er begraenset til beta-gruppen, verificeret i koden (beta-adgang eller feature-stage-flag); ordet beta i teksten er ikke nok. Start med mobil-traeningssiden (#3643): 7.289, 7.290, 7.291 og 7.292. 7.288 ('Ask to join the beta group') er for alle og IKKE beta-only. List hver backfillet version og beviset i PR-body. Aendr ingen versionsnumre og tilfoej ingen ny patch-version (versionslisten uaendret, saa scripts/check-patch-notes-version.js ikke kraever bump). NB: v7.295 (dagens samlede note, #5481) kan vaere merget foer dette spor; rebase paa main. TESTS: udvid frontend/src/lib/patchNotes.test.js, frontend/src/lib/patchNotes.data.test.js og frontend/src/pages/PatchNotesPage.test.js; ny e2e frontend/tests/e2e/5422-patch-notes-beta.spec.ts der route-mocker /patch-notes.json og viser (a) beta-sektionen adskilt i dag-kortet og (b) Beta-filteret viser kun beta. DISCORD (#4521): skriv i docs/PATCH_NOTES_RULES.md afsnit 1-3 at beta: true saettes paa beta-only aendringer, og at Discord-udsnittet samler dem under 'Beta group' efter de andre. Spillertekst merges kun paa ejer-go. HARD RULE 31: nye frontend-filer i .ts/.tsx. Billeder desktop 1440 + mobil 390 af /patch-notes med beta-sektionen og Beta-filteret (mock ok). Patch note-linje kun i PR-body (EN foerst, DA under). Hver paastand i PR-body skal kunne findes i diffen. CI-VAGT #4479: naevn aldrig en testfil i docs, PR-body eller kodekommentarer foer den findes i diffen.",
+   "model": "opus",
+   "tier": "TARGETED",
+   "ownership": [
+    "frontend/src/data/patchNotes.js",
+    "frontend/src/lib/patchNotes.js",
+    "frontend/src/lib/patchNotes.test.js",
+    "frontend/src/lib/patchNotes.data.test.js",
+    "frontend/src/pages/PatchNotesPage.jsx",
+    "frontend/src/pages/PatchNotesPage.test.js",
+    "frontend/public/locales/en/patchnotes.json",
+    "frontend/public/locales/da/patchnotes.json",
+    "frontend/tests/e2e/5422-patch-notes-beta.spec.ts",
+    "docs/PATCH_NOTES_RULES.md"
+   ],
+   "verifyCommands": [
+    "node --test frontend/src/lib/patchNotes.test.js frontend/src/lib/patchNotes.data.test.js frontend/src/pages/PatchNotesPage.test.js",
+    "node scripts/check-patch-notes-version.js",
+    "npm --prefix frontend run lint",
+    "npm --prefix frontend run build",
+    "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -NoProfile -Command \"Set-Location frontend; npx playwright test tests/e2e/5422-patch-notes-beta.spec.ts\""
+   ],
+   "ownNodeModules": false
+  }
+ ]
+}

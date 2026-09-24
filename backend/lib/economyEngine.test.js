@@ -5,6 +5,8 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
 const {
+  buildPoolTree,
+  isMissingRetiredAtColumnError,
   buildSeasonEndPreviewRows,
   loadHumanSeasonEndTeams,
   payDivisionBonuses,
@@ -34,6 +36,48 @@ const { SUPABASE_PAGE_SIZE } = await import("./supabasePagination.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+// #5536: en thenable league_divisions-/races-builder der FORTOLKER de filtre motoren
+// kæder på: senior-scopet (.or("squad.is.null,squad.eq.senior")), aktiv-filteret
+// (.is("retired_at", null)) og .eq(). Rækker uden squad/retired_at passerer uændret,
+// så eksisterende fixtures er bit-identiske. `failOn` simulerer en manglende kolonne
+// (42703) første gang et filter på den kolonne bruges.
+function filteredRowsQuery(rows, { failOn = null, failCode = "42703", calls = null } = {}) {
+  const filters = [];
+  const builder = {
+    or(expr) {
+      calls?.push(`or:${expr}`);
+      if (failOn === "squad") filters.push("fail:squad");
+      assert.equal(expr, "squad.is.null,squad.eq.senior");
+      filters.push((r) => r.squad == null || r.squad === "senior");
+      return builder;
+    },
+    is(column, value) {
+      calls?.push(`is:${column}`);
+      if (failOn === column) filters.push(`fail:${column}`);
+      filters.push((r) => (r[column] ?? null) === value);
+      return builder;
+    },
+    eq(column, value) {
+      calls?.push(`eq:${column}`);
+      filters.push((r) => r[column] === value);
+      return builder;
+    },
+    then(resolve, reject) {
+      const failure = filters.find((f) => typeof f === "string");
+      if (failure) {
+        const column = failure.slice("fail:".length);
+        const message = failCode === "PGRST204"
+          ? `Could not find the '${column}' column of 'league_divisions' in the schema cache`
+          : `column league_divisions.${column} does not exist`;
+        return Promise.resolve({ data: null, error: { code: failCode, message } }).then(resolve, reject);
+      }
+      const data = clone(rows).filter((r) => filters.every((f) => f(r)));
+      return Promise.resolve({ data, error: null }).then(resolve, reject);
+    },
+  };
+  return builder;
 }
 
 function createSeasonEndSupabase({
@@ -716,7 +760,7 @@ function createSeasonEndSupabase({
       if (table === "league_divisions") {
         return {
           select() {
-            return Promise.resolve({ data: [], error: null });
+            return filteredRowsQuery([]);
           },
         };
       }
@@ -784,16 +828,23 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
         return {
           select(columns) {
             assert.equal(columns, "id");
-            return {
+            const scoped = { senior: false };
+            const builder = {
+              // #5536: Node-fallbacken senior-scoper løbene (samme prædikat som RPC'en).
+              or(expr) {
+                assert.equal(expr, "squad.is.null,squad.eq.senior");
+                scoped.senior = true;
+                return builder;
+              },
               eq(column, value) {
                 assert.equal(column, "season_id");
                 assert.equal(value, "season-1");
-                return Promise.resolve({
-                  data: clone(state.races),
-                  error: null,
-                });
+                const data = clone(state.races)
+                  .filter((race) => !scoped.senior || race.squad == null || race.squad === "senior");
+                return Promise.resolve({ data, error: null });
               },
             };
+            return builder;
           },
         };
       }
@@ -805,7 +856,10 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
             return {
               in(column, value) {
                 assert.equal(column, "race_id");
-                assert.deepEqual(value, state.races.map(race => race.id));
+                // #5536: kun de (senior-)løb updateStandings selv har læst.
+                const knownRaceIds = new Set(state.races.map(race => race.id));
+                assert.ok(value.every(id => knownRaceIds.has(id)), "race_id-listen kommer fra races-læsningen");
+                const wanted = new Set(value);
                 // updateStandings paginerer nu (fetchAllRows → .order().range()).
                 return {
                   order(orderCol, opts) {
@@ -814,7 +868,7 @@ function createStandingsSupabase({ teams, races, results, liveTeams = null, pena
                     return {
                       range(from, to) {
                         return Promise.resolve({
-                          data: clone(state.results).slice(from, to + 1),
+                          data: clone(state.results).filter(r => wanted.has(r.race_id)).slice(from, to + 1),
                           error: null,
                         });
                       },
@@ -2034,6 +2088,9 @@ test("repairSeasonEndFinanceAndBoard runs finance and board only without season 
   const result = await repairSeasonEndFinanceAndBoard("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
+    // #4592: parkerings-sweepen har ikke kørt for sæsonen (guarden dækkes i
+    // parkedTeamEconomy.test.js).
+    hasParkingSweepRunForSeason: async () => false,
   });
 
   // 2026-05-21: Repair-funktionen er nu kun board-snapshot-repair.
@@ -2112,6 +2169,7 @@ test("repairSeasonEndFinanceAndBoard resumes without duplicating existing salary
   const result = await repairSeasonEndFinanceAndBoard("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
+    hasParkingSweepRunForSeason: async () => false,
   });
 
   // 2026-05-21: Repair håndterer kun board-snapshots. Eksisterende
@@ -2495,6 +2553,47 @@ test("updateStandings falder tilbage til Node-recompute når RPC'en mangler (PGR
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 20);
 });
 
+test("#5536 updateStandings' Node-fallback tæller kun seniorløb (samme prædikat som RPC'en)", async () => {
+  const seniorOnly = {
+    teams: [{ id: "team-a", division: 1 }, { id: "team-b", division: 1 }],
+    races: [{ id: "race-1" }, { id: "race-2", squad: "senior" }],
+    results: [
+      { race_id: "race-1", team_id: "team-a", result_type: "stage", rank: 1, points_earned: 20, rider: null },
+      { race_id: "race-2", team_id: "team-b", result_type: "gc", rank: 1, points_earned: 30, rider: null },
+    ],
+  };
+  const missingRpc = (supabase) => {
+    supabase.rpc = () => Promise.resolve({
+      data: null,
+      error: { code: "PGRST202", message: "Could not find the function public.recompute_season_standings(p_season_id) in the schema cache" },
+    });
+    return supabase;
+  };
+  const plain = missingRpc(createStandingsSupabase(seniorOnly));
+  await updateStandings("season-1", null, { supabase: plain });
+
+  // Et U23- og et juniorløb i samme sæson, hvor team-a vinder stort.
+  const mixed = missingRpc(createStandingsSupabase({
+    ...seniorOnly,
+    races: [...seniorOnly.races, { id: "race-u23", squad: "u23" }, { id: "race-jr", squad: "junior" }],
+    results: [
+      ...seniorOnly.results,
+      { race_id: "race-u23", team_id: "team-a", result_type: "gc", rank: 1, points_earned: 500, rider: null },
+      { race_id: "race-jr", team_id: "team-a", result_type: "gc", rank: 1, points_earned: 500, rider: null },
+    ],
+  }));
+  await updateStandings("season-1", null, { supabase: mixed });
+
+  // updated_at er vægur-tid; alt andet skal være identisk.
+  const withoutClock = (upserts) => upserts.map(u => ({
+    ...u,
+    rows: u.rows.map(({ updated_at: _clock, ...row }) => row),
+  }));
+  assert.deepEqual(withoutClock(mixed.state.upserts), withoutClock(plain.state.upserts));
+  const teamA = mixed.state.upserts[0].rows.find(r => r.team_id === "team-a");
+  assert.equal(teamA.total_points, 20, "ungdomspoint lækker ikke ind i seniorstillingen");
+});
+
 test("updateStandings retry'er et statement timeout og lykkes (CYCLINGZONE-3D)", async () => {
   // 24/7: recompute'en sprængte de 8 s statement_timeout under samtidige etape-
   // afviklinger. Fejlen boblede op i simulateStageByIndex EFTER stages_completed var
@@ -2737,19 +2836,20 @@ const TEST_POOL_ROWS = [
 ];
 const FIRST_POOL_OF_TIER = { 1: 1, 2: 2, 3: 4, 4: 8 };
 
-function createDivisionEndSupabase() {
+function createDivisionEndSupabase({ poolRows = TEST_POOL_ROWS, failOn = null, failCode, calls = null } = {}) {
   const updates = [];
   const notifications = [];
   return {
     updates,
     notifications,
+    calls,
     rpc(name) {
       assert.equal(name, "increment_balance_with_audit");
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
       if (table === "league_divisions") {
-        return { select() { return Promise.resolve({ data: TEST_POOL_ROWS.map(r => ({ ...r })), error: null }); } };
+        return { select() { return filteredRowsQuery(poolRows, { failOn, failCode, calls }); } };
       }
       if (table === "teams") {
         return {
@@ -2853,6 +2953,103 @@ test("#1152 · Div3-pulje ALL-REAL relegerer til Div4 (aktivering)", async () =>
   const relegated = supabase.updates.filter(u => u.payload.division === 4);
   assert.equal(relegated.length, 4, "bund 4 relegeret til Div4");
   assert.deepEqual(relegated.map(u => u.payload.league_division_id).sort(), [8, 8, 9, 9], "Div4-børn = pulje 8+9");
+});
+
+// ─── #5536: pulje-træet er pr. trup og uden pensionerede puljer ──────────────
+
+// Ungdomspuljerne spejler seniorpyramiden (samme tier/pool_index, spec §6.1).
+const YOUTH_POOL_ROWS = TEST_POOL_ROWS.map(r => ({ ...r, id: r.id + 100, squad: "u23" }));
+// #4592: D4 går fra 8 til 4 puljer; E-H (pool_index 4-7, id 12-15) pensioneres.
+const RETIRED_D4_POOL_ROWS = TEST_POOL_ROWS.map(r => (
+  r.tier === 4 && r.pool_index >= 4 ? { ...r, retired_at: "2026-09-28T00:00:00Z" } : r
+));
+
+function treeShape(tree, ids) {
+  return {
+    ids: [...tree.byId.keys()].sort((a, b) => a - b),
+    poolsPerTier: [...tree.poolsPerTier].sort((a, b) => a[0] - b[0]),
+    links: ids.map(id => [id, tree.parentOf(id), tree.childrenOf(id)]),
+  };
+}
+const SENIOR_IDS = TEST_POOL_ROWS.map(r => r.id);
+
+test("#5536 buildPoolTree: ungdomspuljer med samme tier/pool_index ændrer intet i seniortræet (bit-identisk)", async () => {
+  const plain = await buildPoolTree(createDivisionEndSupabase());
+  const calls = [];
+  const mixed = await buildPoolTree(createDivisionEndSupabase({ poolRows: [...TEST_POOL_ROWS, ...YOUTH_POOL_ROWS], calls }));
+  assert.deepEqual(treeShape(mixed, SENIOR_IDS), treeShape(plain, SENIOR_IDS));
+  assert.deepEqual(calls, ["or:squad.is.null,squad.eq.senior", "is:retired_at"], "senior-scope + aktiv-filter");
+  // Kontrol: uden scope ville tier 2 have 4 puljer, og ratio'en (og dermed forælder/barn) knække.
+  assert.equal(mixed.poolsPerTier.get(2), 2);
+});
+
+test("#5536 buildPoolTree({ squad: 'u23' }) bygger ungdomstræet med et eksplicit trup-filter", async () => {
+  const calls = [];
+  const tree = await buildPoolTree(
+    createDivisionEndSupabase({ poolRows: [...TEST_POOL_ROWS, ...YOUTH_POOL_ROWS], calls }),
+    { squad: "u23" },
+  );
+  assert.deepEqual(calls, ["eq:squad", "is:retired_at"]);
+  assert.deepEqual([...tree.byId.keys()].sort((a, b) => a - b), YOUTH_POOL_ROWS.map(r => r.id));
+  assert.equal(tree.parentOf(102), 101, "U23 Div2 A → U23 Div1");
+  assert.deepEqual(tree.childrenOf(101), [102, 103]);
+});
+
+test("#5536 buildPoolTree afviser en ukendt trup", async () => {
+  await assert.rejects(buildPoolTree(createDivisionEndSupabase(), { squad: "pro" }), /ukendt trup/);
+});
+
+test("#5536/#4592 buildPoolTree: pensionerede D4-puljer (E-H) er ikke i træet, D3 og D4 A-D parres 1:1", async () => {
+  const tree = await buildPoolTree(createDivisionEndSupabase({ poolRows: RETIRED_D4_POOL_ROWS }));
+  for (const id of [12, 13, 14, 15]) assert.equal(tree.byId.has(id), false, `pensioneret pulje ${id} er ude`);
+  assert.equal(tree.poolsPerTier.get(4), 4);
+  assert.deepEqual([4, 5, 6, 7].map(id => tree.childrenOf(id)), [[8], [9], [10], [11]]);
+  assert.deepEqual([8, 9, 10, 11].map(id => tree.parentOf(id)), [4, 5, 6, 7]);
+});
+
+test("#5536/#4592 processDivisionEnd: en D3-pulje relegerer til sin aktive D4-pulje, aldrig til en pensioneret", async () => {
+  const run = async (poolRows) => {
+    const supabase = createDivisionEndSupabase({ poolRows });
+    // D3 C (id 6, pool_index 2), all-real → relegerer til Div4.
+    await processDivisionEnd(buildPoolStandings({ division: 3, poolId: 6, count: 24, aiCount: 0 }), 3, "s", 4, { supabase, now: new Date("2026-09-27T23:00:00Z") });
+    return supabase.updates.filter(u => u.payload.division === 4).map(u => u.payload.league_division_id).sort();
+  };
+  assert.deepEqual(await run(RETIRED_D4_POOL_ROWS), [10, 10, 10, 10], "D3 C → D4 C (id 10)");
+  // Kontrol: uden pensionering (8 D4-puljer) går D3 C til E/F (id 12, 13), som i S3.
+  assert.deepEqual(await run(TEST_POOL_ROWS), [12, 12, 13, 13]);
+});
+
+test("#5536 buildPoolTree: mangler retired_at-kolonnen (42703, før #4592-migrationen), bruges alle puljer (bit-identisk i dag)", async () => {
+  const calls = [];
+  const tree = await buildPoolTree(createDivisionEndSupabase({ poolRows: TEST_POOL_ROWS, failOn: "retired_at", calls }));
+  const plain = await buildPoolTree(createDivisionEndSupabase());
+  assert.deepEqual(treeShape(tree, SENIOR_IDS), treeShape(plain, SENIOR_IDS));
+  assert.deepEqual(calls, [
+    "or:squad.is.null,squad.eq.senior", "is:retired_at", // første forsøg → 42703
+    "or:squad.is.null,squad.eq.senior", // igen uden aktiv-filteret, stadig senior-scopet
+  ]);
+});
+
+test("#5536 buildPoolTree: mangler squad-kolonnen (42703), falder senior-scopet væk men aktiv-filteret bliver", async () => {
+  const calls = [];
+  const tree = await buildPoolTree(createDivisionEndSupabase({ poolRows: RETIRED_D4_POOL_ROWS, failOn: "squad", calls }));
+  assert.equal(tree.poolsPerTier.get(4), 4, "pensionerede puljer er stadig ude");
+  assert.deepEqual(calls.slice(-1), ["is:retired_at"]);
+});
+
+test("#5536 buildPoolTree fejler LUKKET på PGRST204 (skema-cache) for retired_at, i stedet for at tage pensionerede puljer med", async () => {
+  await assert.rejects(
+    buildPoolTree(createDivisionEndSupabase({ poolRows: RETIRED_D4_POOL_ROWS, failOn: "retired_at", failCode: "PGRST204" })),
+    /pool tree/,
+  );
+});
+
+test("#5536 isMissingRetiredAtColumnError: kun 42703/does-not-exist på netop retired_at", () => {
+  assert.equal(isMissingRetiredAtColumnError({ code: "42703", message: "column league_divisions.retired_at does not exist" }), true);
+  assert.equal(isMissingRetiredAtColumnError({ code: "42703", message: "column league_divisions.squad does not exist" }), false);
+  assert.equal(isMissingRetiredAtColumnError({ code: "PGRST204", message: "Could not find the 'retired_at' column of 'league_divisions' in the schema cache" }), false);
+  assert.equal(isMissingRetiredAtColumnError({ code: "57014", message: "canceling statement due to statement timeout" }), false);
+  assert.equal(isMissingRetiredAtColumnError(null), false);
 });
 
 // #1688(a) · regressions-dækning for sæson-gaten: seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON
@@ -4924,6 +5121,179 @@ test("#2840 · mode=daily springer sæson-start-løntrækket helt over (dagsswee
   assert.equal(result.emergency_loan, 0, "intet nødlån skal udløses af det (fraværende) sæson-start-løntræk");
 });
 
+// ─── #4153 · ingen ny-sæson-løn for ryttere der pensioneres i samme skifte ──────
+//
+// processSeasonStart trækker lønnen FØR rytterudviklingen pensionerer. En rytter
+// motoren pensionerer i samme skifte, kører aldrig et løb i den nye sæson og må
+// derfor ikke lønnes for den. Reglen er motorens egen
+// (riderProgressionEngine.willRetireAtSeasonStart) — ingen kopi her.
+
+const { loadRetiringRiderIds } = await import("./riderProgressionEngine.js");
+const { PROGRESSION_CONFIG } = await import("./riderProgression.js");
+const { LAUNCH_REFERENCE_YEAR } = await import("./riderSeasonAge.js");
+
+// Fødselsdato for en rytter der var `age` år i den sæson der SLUTTER, når
+// sæson `seasonNumber` starter (motoren måler pension på den afsluttede sæson).
+function bornForEndedSeasonAge(age, seasonNumber) {
+  return `${LAUNCH_REFERENCE_YEAR + seasonNumber - 2 - age}-01-01`;
+}
+
+// Read-only mock af præcis de to opslag loadRetiringRiderIds laver.
+function buildRetirementLookupMock({ riders, abilityRiderIds }) {
+  return {
+    from(table) {
+      if (table === "riders") {
+        return {
+          select() {
+            return {
+              eq(col, val) {
+                assert.equal(col, "is_retired");
+                const rows = riders.filter((r) => (r.is_retired ?? false) === val);
+                return { order() { return { range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }) }; } };
+              },
+            };
+          },
+        };
+      }
+      if (table === "rider_derived_abilities") {
+        const rows = abilityRiderIds.map((id) => ({ rider_id: id }));
+        return { select() { return { order() { return { range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }) }; } }; } };
+      }
+      throw new Error(`Unexpected table in #4153 lookup mock: ${table}`);
+    },
+  };
+}
+
+test("#4153 · processTeamSeasonPayroll lønner ikke ryttere der pensioneres i skiftet", async () => {
+  const { supabase, financeRows } = buildPayrollGateMock();
+  const team = { id: "team-4153", name: "Pension FC", division: 3, riders: [{ id: "old", salary: 5000 }, { id: "young", salary: 3000 }] };
+
+  const result = await processTeamSeasonPayroll(team, "season-4153", {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+    readWageDeductionMode: async () => "season_upfront",
+    retiringRiderIds: new Set(["old"]),
+  });
+
+  const salaryRows = financeRows.filter((r) => r.type === "salary");
+  assert.equal(salaryRows.length, 1);
+  assert.equal(salaryRows[0].amount, -3000, "kun den rytter der fortsætter, lønnes");
+  assert.equal(salaryRows[0].metadata?.params?.count, 1, "løn-posten tæller kun de lønnede ryttere");
+  assert.equal(result.total_salary, 3000);
+});
+
+test("#4153 · processTeamSeasonPayroll uden retiringRiderIds lønner alle som før", async () => {
+  const { supabase, financeRows } = buildPayrollGateMock();
+  const team = { id: "team-4153b", name: "Uaendret FC", division: 3, riders: [{ id: "old", salary: 5000 }, { id: "young", salary: 3000 }] };
+
+  await processTeamSeasonPayroll(team, "season-4153b", {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+    readWageDeductionMode: async () => "season_upfront",
+  });
+
+  assert.equal(financeRows.find((r) => r.type === "salary").amount, -8000);
+});
+
+test("#4153 · transition-fixture: en rytter over den garanterede pensionsalder lønnes ikke ved skiftet", async () => {
+  const seasonNumber = 4;
+  const { guaranteedAge, windowStartAge } = PROGRESSION_CONFIG.retirement;
+  const base = { primary_type: "sprinter", potentiale: 4, is_retired: false, team_id: "team-fixture" };
+  const riders = [
+    { ...base, id: "veteran", salary: 5000, birthdate: bornForEndedSeasonAge(guaranteedAge, seasonNumber) },
+    { ...base, id: "prime", salary: 3000, birthdate: bornForEndedSeasonAge(windowStartAge - 6, seasonNumber) },
+  ];
+
+  // Trin 1 (før payroll): motorens egen regel på motorens eget grundlag.
+  const retiringRiderIds = await loadRetiringRiderIds({
+    supabase: buildRetirementLookupMock({ riders, abilityRiderIds: riders.map((r) => r.id) }),
+    seasonNumber,
+  });
+  assert.deepEqual([...retiringRiderIds], ["veteran"]);
+
+  // Trin 2: payroll for holdet med samme mængde.
+  const { supabase, financeRows } = buildPayrollGateMock();
+  await processTeamSeasonPayroll(
+    { id: "team-fixture", name: "Fixture FC", division: 3, riders: riders.map(({ id, salary }) => ({ id, salary })) },
+    "season-fixture",
+    {
+      supabase,
+      processLoanInterest: async () => ({ charged: [] }),
+      createEmergencyLoan: async () => {},
+      getTotalDebt: async () => 0,
+      readWageDeductionMode: async () => "season_upfront",
+      retiringRiderIds,
+    },
+  );
+  assert.equal(financeRows.find((r) => r.type === "salary").amount, -3000, "veteranen lønnes ikke for en sæson han aldrig kører");
+});
+
+test("#4153 · processSeasonStart slår pensionerne op før payroll og sender dem videre (sæson ≥ 2)", async () => {
+  const seasonId = "season-4";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 4 },
+    prevSeasonId: "season-3",
+    prevStandings: [],
+    team: makeSeason1Team({ balance: INITIAL_BALANCE, division: 3, sponsor_income: 340_000 }),
+  });
+  const calls = [];
+  let payrollDeps = null;
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    loadRetiringRiderIds: async (args) => { calls.push("lookup"); assert.equal(args.seasonNumber, 4); return new Set(["r-old"]); },
+    runSeasonPayroll: async (_client, _seasonId, deps) => { calls.push("payroll"); payrollDeps = deps; return { results: [], summary: {} }; },
+    developRidersForSeason: async () => { calls.push("progression"); return { developed: 0, grew: 0, declined: 0, retired: 1 }; },
+  });
+
+  assert.deepEqual(calls, ["lookup", "payroll", "progression"]);
+  assert.deepEqual([...payrollDeps.retiringRiderIds], ["r-old"]);
+});
+
+test("#4153 · processSeasonStart i sæson 1 (ingen rytterudvikling) slår intet op og lønner alle", async () => {
+  const seasonId = "season-1";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 1 },
+    team: makeSeason1Team({ balance: INITIAL_BALANCE - 50_000 }),
+  });
+  let lookedUp = false;
+  let payrollDeps = null;
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    loadRetiringRiderIds: async () => { lookedUp = true; return new Set(["r-old"]); },
+    runSeasonPayroll: async (_client, _seasonId, deps) => { payrollDeps = deps; return { results: [], summary: {} }; },
+  });
+
+  assert.equal(lookedUp, false, "ingen motor-kørsel i sæson 1 ⇒ ingen pensioner at undtage");
+  assert.equal(payrollDeps.retiringRiderIds.size, 0);
+});
+
+test("#4153 · et fejlende pensions-opslag vælter ikke sæsonstarten — alle lønnes som før", async () => {
+  const seasonId = "season-4";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 4 },
+    prevSeasonId: "season-3",
+    prevStandings: [],
+    team: makeSeason1Team({ balance: INITIAL_BALANCE, division: 3, sponsor_income: 340_000 }),
+  });
+  let payrollDeps = null;
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    loadRetiringRiderIds: async () => { throw new Error("lookup boom"); },
+    runSeasonPayroll: async (_client, _seasonId, deps) => { payrollDeps = deps; return { results: [], summary: {} }; },
+    developRidersForSeason: async () => ({ developed: 0, grew: 0, declined: 0, retired: 0 }),
+  });
+
+  assert.ok(payrollDeps, "payroll skal stadig køre");
+  assert.equal(payrollDeps.retiringRiderIds.size, 0);
+});
+
 // ─── #1608 form-frys: tier 4 (DIVISION_BONUSES[4] + [1,2,3]→MIN..MAX-loop) ────────
 
 test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] findes)", async () => {
@@ -5869,13 +6239,25 @@ test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens norm
 
 // ─── [epic #4592 del 2] Parkerings-wiring ──────────────────────────────────
 //
-// processSeasonEnd skal kalde parkDormantTeams KUN når season_signup_enabled
-// er 'on', og en fejlende parkerings-sweep må ALDRIG vælte resten af
-// sæsonskiftet (samme fail-isolerende mønster som notifikations-loopet).
+// processSeasonEnd skal kalde parkerings-sweepen (park → genindplacér →
+// nulstil tilmeldinger) KUN når season_signup_enabled er 'on', og en fejlende
+// sweep må ALDRIG vælte resten af sæsonskiftet (samme fail-isolerende mønster
+// som notifikations-loopet).
+
+function fakeSweepResult() {
+  return {
+    alreadySwept: false,
+    seasonId: "season-1",
+    park: { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"], subscriptionProtectedTeamIds: ["t9"] },
+    unpark: { candidates: 1, unparked: 1, skipped: 0, failedTeamIds: [], placements: [{ teamId: "t5", division: 3, leagueDivisionId: "p3" }] },
+    signupsReset: 4,
+    signupsResetError: null,
+  };
+}
 
 test("[epic #4592] processSeasonEnd kalder INGEN parkering når season_signup_enabled er off (default/fail-safe)", async () => {
   const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
-  let parkCalled = false;
+  let sweepCalled = false;
 
   await processSeasonEnd("season-1", {
     supabase,
@@ -5885,16 +6267,16 @@ test("[epic #4592] processSeasonEnd kalder INGEN parkering når season_signup_en
     updateRiderValues: async () => {},
     isSeasonEndDivisionMovementSkipped: async () => true, // undgå at røre league_divisions-mocken her
     isSeasonSignupEnabled: async () => false,
-    parkDormantTeams: async () => { parkCalled = true; return { candidates: 0, parked: 0, skipped: 0, parkedTeamIds: [] }; },
+    runParkingSweep: async () => { sweepCalled = true; return fakeSweepResult(); },
   });
 
-  assert.equal(parkCalled, false, "parkDormantTeams må ikke kaldes når flaget er off");
+  assert.equal(sweepCalled, false, "parkerings-sweepen må ikke kaldes når flaget er off");
   assert.equal(supabase.state.season.status, "completed");
 });
 
-test("[epic #4592] processSeasonEnd kalder parkDormantTeams når season_signup_enabled er on, og fortsætter uændret", async () => {
+test("[epic #4592] processSeasonEnd kalder parkerings-sweepen når season_signup_enabled er on, og fortsætter uændret", async () => {
   const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
-  let parkArgs = null;
+  let sweepArgs = null;
 
   await processSeasonEnd("season-1", {
     supabase,
@@ -5904,12 +6286,31 @@ test("[epic #4592] processSeasonEnd kalder parkDormantTeams når season_signup_e
     updateRiderValues: async () => {},
     isSeasonEndDivisionMovementSkipped: async () => true,
     isSeasonSignupEnabled: async () => true,
-    parkDormantTeams: async (args) => { parkArgs = args; return { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"] }; },
+    runParkingSweep: async (args) => { sweepArgs = args; return fakeSweepResult(); },
   });
 
-  assert.ok(parkArgs, "parkDormantTeams skal kaldes når flaget er on");
-  assert.equal(parkArgs.supabase, supabase);
+  assert.ok(sweepArgs, "parkerings-sweepen skal kaldes når flaget er on");
+  assert.equal(sweepArgs.supabase, supabase);
+  assert.equal(sweepArgs.seasonId, "season-1", "sæsonen gør sweepen idempotent ved genkørsel");
+  assert.equal(sweepArgs.now, FIXED_SEASON_END_NOW);
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre normalt efter parkeringen");
+});
+
+test("[epic #4592] processSeasonEnd: en sweep der allerede har kørt for sæsonen, fuldfører stille", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    runParkingSweep: async () => ({ alreadySwept: true, seasonId: "season-1", park: null, unpark: null, signupsReset: null, signupsResetError: null }),
+  });
+
+  assert.equal(supabase.state.season.status, "completed");
 });
 
 test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE resten af sæsonskiftet", async () => {
@@ -5923,10 +6324,80 @@ test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE r
     updateRiderValues: async () => {},
     isSeasonEndDivisionMovementSkipped: async () => true,
     isSeasonSignupEnabled: async () => true,
-    parkDormantTeams: async () => { throw new Error("boom"); },
+    runParkingSweep: async () => { throw new Error("boom"); },
   });
 
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre selv om parkeringen fejler");
+});
+
+// Ejer-valg (a) = A (23/9, #4592): sweepen kører EFTER op/nedryknings-loopet og
+// FØR reseed og AI-fyld-sweepen, så AI lukker de pladser parkeringen frigør.
+// Testen låser rækkefølgen, så en flytning kun kan ske som en bevidst ændring.
+test("[epic #4592] processSeasonEnd: op/nedrykning → parkerings-sweep → reseed → AI-fyld (ejer-valg A)", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    if (table === "league_divisions") {
+      return {
+        select() {
+          return filteredRowsQuery([
+            { id: "pool-d3a", tier: 3, pool_index: 0 },
+            { id: "pool-d3b", tier: 3, pool_index: 1 },
+          ]);
+        },
+      };
+    }
+    return originalFrom(table);
+  };
+  const calls = [];
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => false,
+    processDivisionEnd: async (_standings, division) => { calls.push(`division:${division}`); },
+    reseedTierPools: async () => { calls.push("reseed"); return { enabled: false, moved: 0, tiers: [] }; },
+    reconcileAiTeamsForPool: async ({ poolId }) => { calls.push(`reconcile:${poolId}`); },
+    isSeasonSignupEnabled: async () => true,
+    runParkingSweep: async () => { calls.push("parking"); return fakeSweepResult(); },
+  });
+
+  assert.deepEqual(calls, [
+    "division:1",
+    "division:2",
+    "division:3",
+    "division:4",
+    "parking",
+    "reseed",
+    "reconcile:pool-d3a",
+    "reconcile:pool-d3b",
+  ]);
+  assert.equal(supabase.state.season.status, "completed");
+});
+
+test("[epic #4592] processSeasonEnd: parkerings-sweepen kører også når #2851-skip-flaget springer op/nedrykning over", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  const calls = [];
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    processDivisionEnd: async (_standings, division) => { calls.push(`division:${division}`); },
+    reseedTierPools: async () => { calls.push("reseed"); return { enabled: false, moved: 0, tiers: [] }; },
+    reconcileAiTeamsForPool: async ({ poolId }) => { calls.push(`reconcile:${poolId}`); },
+    isSeasonSignupEnabled: async () => true,
+    runParkingSweep: async () => { calls.push("parking"); return fakeSweepResult(); },
+  });
+
+  assert.deepEqual(calls, ["parking"]);
+  assert.equal(supabase.state.season.status, "completed");
 });
 
 // ─── #2912/#2919/#2920 · Gælds-/pengemotor-cluster ────────────────────────────

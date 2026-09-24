@@ -6,7 +6,7 @@ import {
   computeFinaleStats, mergeFinaleStats, detectFinaleViolations, finaleClass,
   TERRAIN_FINALE_BANDS, OVERALL_FINALE_BAND, BANDED_PROFILES, MIN_SAMPLE,
 } from "./stageFinaleMetrics.js";
-import { FINALE_TYPES, finaleFor } from "./raceStageProfileGenerator.js";
+import { FINALE_TYPES, finaleFor, generateRaceStageProfiles, balanceFinaleQuotas } from "./raceStageProfileGenerator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
 // Byg n etaper af ét terræn med en given finale-fordeling (antal pr. finale_type).
@@ -79,9 +79,38 @@ test("under MIN_SAMPLE rapporteres terrænet, men gates ikke pr. division", () =
     [],
     "et terræn med n < MIN_SAMPLE må ikke fælde divisions-gaten på stikprøvestøj"
   );
-  // Men sæson-aggregatet (strict) ser det stadig.
-  assert.ok(detectFinaleViolations({ stats: lille, label: "sæson", strict: true })
-    .some((x) => x.includes("mountain")));
+  // Saeson-aggregatet bruger samme minimum; lille n er rapport, ikke en dom.
+  assert.deepEqual(detectFinaleViolations({ stats: lille, label: "sæson", strict: true })
+    .filter((x) => x.includes("mountain")), []);
+});
+
+test("#5405 strict terrain gates begin at MIN_SAMPLE, not one stage earlier", () => {
+  const small = computeFinaleStats(races("gravel", { reduced_sprint: MIN_SAMPLE - 1 }));
+  assert.deepEqual(detectFinaleViolations({ stats: small, strict: true }).filter(v => v.includes("gravel")), []);
+  const assessable = computeFinaleStats(races("gravel", { reduced_sprint: MIN_SAMPLE }));
+  assert.ok(detectFinaleViolations({ stats: assessable, strict: true }).some(v => v.includes("gravel")));
+});
+
+test("#5405 owner-approved cobbles band permits its upper flat boundary but rejects crossing it", () => {
+  const atBoundary = computeFinaleStats(races("cobbles", { reduced_sprint: 55, breakaway: 45 }));
+  assert.deepEqual(detectFinaleViolations({ stats: atBoundary, strict: true }).filter(v => v.includes("cobbles")), []);
+  const overBoundary = computeFinaleStats(races("cobbles", { reduced_sprint: 56, breakaway: 44 }));
+  assert.ok(detectFinaleViolations({ stats: overBoundary, strict: true }).some(v => v.includes("cobbles")));
+});
+
+test("#5405 hilly probabilities follow normalized band midpoints", () => {
+  const bands = TERRAIN_FINALE_BANDS.hilly;
+  const middle = Object.fromEntries(Object.entries(bands).map(([name, [lo, hi]]) => [name, (lo + hi) / 2]));
+  const total = Object.values(middle).reduce((a, b) => a + b, 0);
+  const counts = {};
+  const samples = 4000;
+  for (let i = 0; i < samples; i++) {
+    const cls = finaleClass(finaleFor(() => (i + 0.5) / samples, "hilly"));
+    counts[cls] = (counts[cls] || 0) + 1;
+  }
+  for (const [cls, weight] of Object.entries(middle)) {
+    assert.ok(Math.abs((counts[cls] || 0) / samples - weight / total) < 1 / samples, cls);
+  }
 });
 
 test("stikprøve-tillægget bærer et lille afvig, men ikke et stort", () => {
@@ -119,6 +148,99 @@ test("#4272 generatorens vægte rammer hvert bånd over et stort træk", () => {
       .filter((x) => x.includes(`${profile} slutter`));
     assert.deepEqual(v, [], `${profile}: vægtene rammer ikke sit eget bånd — ${v.join(" · ")}`);
   }
+});
+
+// ── #5405: kvote-fordelingen af finaler i ÉN divisions løbssæt ────────────────
+// Et frit træk pr. etape er en binomial stikprøve omkring vægten. På brosten (få etaper
+// pr. sæson) er båndet ikke bredere end én standardfejl, så en korrekt generator lå uden
+// for båndet i en stor del af sæsonerne. balanceFinaleQuotas fjerner stikprøvestøjen.
+const endagsløb = (archetype, n, seasonId, prefix = archetype) => Array.from({ length: n }, (_, i) => ({
+  id: `${prefix}-${i}`, external_id: `ext-${prefix}-${i}`, name: `${prefix} ${i}`,
+  race_type: "single", stages: 1, terrain_archetype: archetype, season_id: seasonId,
+}));
+const genererAlle = (seedRaces) => seedRaces.map((r) => generateRaceStageProfiles(r));
+const fordeling = (stagesByRace) => computeFinaleStats(stagesByRace.map((stages) => ({ stages })));
+const terrænBrud = (stats, profile) => detectFinaleViolations({ stats, label: "t", strict: true })
+  .filter((x) => x.includes(`${profile} slutter`));
+
+// Vægtandelen pr. finale, målt gennem generatorens egen afbildning (ingen kopi af vægtene).
+function vægtandele(profile) {
+  const N = 100000;
+  const counts = {};
+  for (let i = 0; i < N; i++) {
+    const f = finaleFor(() => (i + 0.5) / N, profile);
+    counts[f] = (counts[f] ?? 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).map(([f, c]) => [f, c / N]));
+}
+
+test("#5405 brosten med få etaper lander i båndet i HVER sæson — det frie træk gør ikke", () => {
+  let frieBrud = 0;
+  for (let s = 0; s < 30; s++) {
+    const løb = endagsløb("cobbled_classic", 23, `s-5405-${s}`);
+    const fri = genererAlle(løb);
+    if (terrænBrud(fordeling(fri), "cobbles").length) frieBrud++;
+    const kvote = balanceFinaleQuotas(fri);
+    assert.deepEqual(terrænBrud(fordeling(kvote), "cobbles"), [], `sæson ${s}: kvoten skal ligge i brostens-båndet`);
+  }
+  // Uden dette ville testen være grøn uanset om kvoten virkede: stikprøvestøjen skal
+  // reelt findes i det frie træk.
+  assert.ok(frieBrud > 0, "det frie træk forventes at falde uden for båndet i mindst én sæson");
+});
+
+test("#5405 hver finale ligger højst én etape fra n × vægtandel", () => {
+  for (const [archetype, profile, n] of [["puncheur", "hilly", 41], ["cobbled_classic", "cobbles", 23], ["long_sprint_classic", "rolling", 17]]) {
+    const andel = vægtandele(profile);
+    const kvote = balanceFinaleQuotas(genererAlle(endagsløb(archetype, n, "s-5405-kvote")));
+    const counts = {};
+    for (const [stage] of kvote) counts[stage.finale_type] = (counts[stage.finale_type] ?? 0) + 1;
+    for (const [finale, p] of Object.entries(andel)) {
+      assert.ok(Math.abs((counts[finale] ?? 0) - n * p) < 1, `${profile}/${finale}: ${counts[finale] ?? 0} mod ${(n * p).toFixed(2)}`);
+    }
+  }
+});
+
+test("#5405 kvoten er uafhængig af rækkefølgen, muterer intet og genbruger uændrede etaper", () => {
+  const løb = [...endagsløb("puncheur", 20, "s-5405-orden"), ...endagsløb("cobbled_classic", 9, "s-5405-orden")];
+  const fri = genererAlle(løb);
+  const førFinaler = fri.map((stages) => stages.map((s) => s.finale_type));
+  const frem = balanceFinaleQuotas(fri);
+  const bagud = balanceFinaleQuotas([...fri].reverse()).reverse();
+  assert.deepEqual(JSON.parse(JSON.stringify(frem)), JSON.parse(JSON.stringify(bagud)), "samme løbssæt i anden rækkefølge skal give samme finaler og ruter");
+  assert.deepEqual(fri.map((stages) => stages.map((s) => s.finale_type)), førFinaler, "inputtet må ikke muteres");
+  let skiftet = 0;
+  frem.forEach((stages, i) => stages.forEach((stage, j) => {
+    const original = fri[i][j];
+    if (stage.finale_type === original.finale_type) {
+      assert.equal(stage, original, "en etape der beholder sin finale, skal være samme objekt");
+    } else {
+      skiftet++;
+      // Samme etape, ny finale: terræn, nummer og distance ligger fast (ruten genbygges kun
+      // for det der afhænger af finalen).
+      assert.equal(stage.profile_type, original.profile_type);
+      assert.equal(stage.stage_number, original.stage_number);
+      assert.equal(stage.distance_km, original.distance_km);
+      assert.ok(Array.isArray(stage.climbs) && Array.isArray(stage.segments), "den genbyggede etape skal have en fuld rute");
+    }
+  }));
+  // Et frit træk på 29 etaper rammer sjældent kvoten præcist; uden et skift tester vi intet.
+  assert.ok(skiftet > 0, "fixturen skal få mindst én etape til at skifte finale");
+});
+
+test("#5405 etaper der ikke kommer fra generatoren røres ikke", () => {
+  const fremmede = [[{ profile_type: "hilly", finale_type: "breakaway" }], [{ profile_type: "cobbles", finale_type: "breakaway" }]];
+  const ud = balanceFinaleQuotas(fremmede);
+  assert.equal(ud[0][0], fremmede[0][0]);
+  assert.equal(ud[1][0], fremmede[1][0]);
+});
+
+test("#5405 afrundingen bytter aldrig et terræn-bånd væk for det samlede bånd", () => {
+  // Kun kuperede endagsløb: "opad" er langt over det samlede bånd uanset afrunding, og
+  // "fladt" langt under. Kvoten må alligevel ALDRIG flytte et terræn mere end én etape fra
+  // sin vægt for at jagte det samlede bånd — terræn-båndet er ejerens første regel.
+  const løb = endagsløb("puncheur", 30, "s-5405-samlet");
+  const kvote = balanceFinaleQuotas(genererAlle(løb));
+  assert.deepEqual(terrænBrud(fordeling(kvote), "hilly"), [], "terræn-båndet skal holde, også når det samlede bånd ikke kan");
 });
 
 test("bånd-tabellen og det samlede bånd er interne konsistente (min ≤ max, 0-100)", () => {

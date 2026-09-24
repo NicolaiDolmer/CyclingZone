@@ -21,8 +21,10 @@ snart alt er klart. Det her er rækkefølgen for netop den ene kørsel.
 
 ### 1. Spillerbeskeden er ude
 
-Udkast: `docs/drafts/2026-09-20-vaerdimodel-spillerbesked.md`. Ejeren poster
-selv. **Beskeden skal ud FØR kørslen** — værdi-deltaer sammenligner mod forrige
+Udkast: `docs/drafts/2026-09-20-vaerdiskifte-udmelding-og-patch-note.md`
+afsnit 1 (afløser afsnit B i `2026-09-20-vaerdimodel-spillerbesked.md`). Ejeren
+poster selv, kun EN. Udmeldingen lover en besked **aftenen før** kørslen, så
+rækkefølgen er: udmelding → aftenen-før-besked → trin 4. **Beskeden skal ud FØR kørslen** — værdi-deltaer sammenligner mod forrige
 værdi, så begivenheden ser ud som en ægte ændring på hver eneste rytterprofil.
 
 ### 2. Merge

@@ -85,6 +85,62 @@ test("summarizeLeadupTraining: tom/manglende → 0 trænede dage", () => {
   assert.deepEqual(summarizeLeadupTraining(null), { trainedDays: 0, focusCounts: {} });
 });
 
+// ── #4848 / gate G8: tæl DATOER, ikke løbsdags-rækker ─────────────────────────
+
+// Den gamle optælling (før #4848), ordret, som reference for bit-identitet.
+function legacySummarize(entries) {
+  let trainedDays = 0;
+  const focusCounts = {};
+  for (const e of entries || []) {
+    if (!e || e.status === "rest") continue;
+    trainedDays++;
+    if (e.focus) focusCounts[e.focus] = (focusCounts[e.focus] || 0) + 1;
+  }
+  return { trainedDays, focusCounts };
+}
+
+test("summarizeLeadupTraining G8: flag off (ét run pr. dato) er BIT-IDENTISK med den gamle optælling", () => {
+  const statuses = ["trained", "rest", "breakthrough", "trained", "rest"];
+  const focuses = ["vo2max", "sprint", "endurance", undefined];
+  // Deterministisk "tilfældig" population: 200 inputs, ét entry pr. unik dato.
+  for (let n = 0; n < 200; n++) {
+    const entries = [];
+    for (let d = 0; d < (n % 21); d++) {
+      entries.push({ ord: 20_000 + d, status: statuses[(n + d) % statuses.length], focus: focuses[(n * 3 + d) % focuses.length] });
+    }
+    assert.deepEqual(summarizeLeadupTraining(entries), legacySummarize(entries), `input ${n}`);
+  }
+});
+
+test("summarizeLeadupTraining G8: fem trænede løbsdage på én dato tæller som ÉN dato", () => {
+  const entries = [];
+  for (let gd = 0; gd < 5; gd++) entries.push({ ord: 20_000, status: "trained", focus: "vo2max" });
+  const out = summarizeLeadupTraining(entries);
+  assert.equal(out.trainedDays, 1);
+  assert.deepEqual(out.focusCounts, { vo2max: 1 });
+});
+
+test("summarizeLeadupTraining G8: en dato bidrager med andelen af løbsdagene der blev trænet", () => {
+  const out = summarizeLeadupTraining([
+    { ord: 1, status: "trained", focus: "vo2max" },
+    { ord: 1, status: "trained", focus: "sprint" },
+    { ord: 1, status: "rest", focus: "vo2max" },
+    { ord: 1, status: "rest", focus: "vo2max" },
+    { ord: 2, status: "trained", focus: "vo2max" }, // ét run på dato 2 → fuld dato
+  ]);
+  assert.ok(Math.abs(out.trainedDays - 1.5) < 1e-12, `trainedDays ${out.trainedDays}`);
+  assert.ok(Math.abs(out.focusCounts.vo2max - 1.25) < 1e-12);
+  assert.ok(Math.abs(out.focusCounts.sprint - 0.25) < 1e-12);
+});
+
+test("summarizeLeadupTraining G8: entries uden ord tæller hver som sin egen dato (ældre kaldere)", () => {
+  const out = summarizeLeadupTraining([
+    { status: "trained", focus: "vo2max" },
+    { status: "trained", focus: "vo2max" },
+  ]);
+  assert.equal(out.trainedDays, 2);
+});
+
 // ── aggregateDemandVector (gennemsnit af mål-løbets etape-demand-vektorer) ─────
 
 test("aggregateDemandVector: gennemsnitter etape-vektorer nøgle for nøgle", () => {
@@ -307,6 +363,39 @@ test("resolvePeakTrainingQualities: 'on track' > 'behind' (koblingen skalerer)",
   const on = peakPlansByRider.get("onTrack")[0].trainingQuality;
   const beh = peakPlansByRider.get("behind")[0].trainingQuality;
   assert.ok(on > beh, `on track (${on}) skal have højere tq end behind (${beh})`);
+});
+
+test("resolvePeakTrainingQualities G8: fem løbsdags-runs pr. dato mætter IKKE konsistensen", async () => {
+  // Samme rytter-optakt, to tick-kadencer: (A) ét run pr. dato, (B) fem løbsdags-runs
+  // pr. dato. Kun hver tredje dato i optakten er trænet. Før #4848 talte (B) fem
+  // gange så mange "dage" og mættede konsistens-signalet; nu skal de være ens.
+  const mk = (runsPerDate) => {
+    const runs = [];
+    for (let d = WIN_START - LEADUP; d < WIN_START; d++) {
+      if (d % 3 !== 0) continue;
+      for (let gd = 0; gd < runsPerDate; gd++) {
+        runs.push({ team_id: "teamA", ord: d, riderMap: new Map([["climber", { status: "trained", focus: "vo2max" }]]) });
+      }
+    }
+    return runs;
+  };
+  const tqFor = async (runsPerDate) => {
+    const peakPlansByRider = new Map([
+      ["climber", [{ start: WIN_START, end: WIN_START + 4, targetRaceId: "mtn" }]],
+    ]);
+    await resolvePeakTrainingQualities({
+      supabase: null, entrants: [{ rider_id: "climber", team_id: "teamA" }], peakPlansByRider,
+      focusAbilitiesMap: TRAINING_FOCUSES,
+      loadTeamTrainingRuns: async () => mk(runsPerDate),
+      loadRiderConditions: async () => new Map([["climber", { injured_until: null, fatigue: 0 }]]),
+      loadTargetRaceDemands: async () => new Map([["mtn", HIGH_MOUNTAIN]]),
+    });
+    return peakPlansByRider.get("climber")[0].trainingQuality;
+  };
+  const single = await tqFor(1);
+  const raceDay = await tqFor(5);
+  assert.equal(raceDay, single, `løbsdags-kadence (${raceDay}) skal give samme tq som kalenderdags (${single})`);
+  assert.ok(single < 1, "en optakt med kun hver tredje dato trænet må ikke give fuld kvalitet");
 });
 
 test("resolvePeakTrainingQualities: intet at gøre (ingen vinduer) → ingen loader-kald", async () => {

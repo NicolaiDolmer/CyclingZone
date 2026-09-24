@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage } from "./fixtures.js";
+import { ORIGIN, PRERENDER_ROUTES } from "../../scripts/public-prerender-routes.mjs";
 
 // #1404/#1405 — hver public route skal have sin egen <title> + canonical/robots
 // via useDocumentHead-hooket (klient-side; SPA-baseline i index.html). Denne
@@ -36,8 +37,32 @@ test("each public route sets a unique, non-default <title>", async ({ page }) =>
   for (const route of PUBLIC_ROUTES) {
     await page.goto(route.path);
     await expect(page.locator("main, [id='root']").first()).toBeVisible();
-    // Hooket kører i en useEffect efter mount → poll til titlen har ændret sig
-    // væk fra den statiske index.html-baseline ("Cycling Zone").
+    // Vent til rutens EGEN useDocumentHead har kørt. Signalet er
+    // canonical/robots — de skrives i samme effect som titlen, så er de på
+    // plads, er titlen det også. #5494: vi kan ikke længere polle "væk fra
+    // 'Cycling Zone'" for alle ruter, fordi de prerendrede ruter allerede
+    // leverer deres rigtige titel i server-HTML.
+    if (route.canonicalEndsWith === null) {
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(() =>
+              document.querySelector('meta[name="robots"]')?.getAttribute("content"),
+            ),
+          { message: `robots-meta for ${route.path}` },
+        )
+        .toMatch(/noindex/);
+    } else {
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(
+              () => document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? "",
+            ),
+          { message: `canonical for ${route.path}` },
+        )
+        .toContain(route.canonicalEndsWith);
+    }
     await expect
       .poll(async () => page.title(), { message: `title for ${route.path}` })
       .not.toBe("Cycling Zone");
@@ -131,6 +156,57 @@ test("static Organization + WebSite JSON-LD is present on every route; VideoGame
   expect(videoGameOnLogin, "VideoGame JSON-LD må ikke lække til /login").toBe(false);
 });
 
+// #5494 forward-guard — RÅ HTML, INGEN JS. Dette er præcis det Ahrefs (og
+// enhver ikke-renderende crawler) ser. Før #5494 svarede 10 af de 11
+// frontend-ejede sitemap-URL'er med den tomme app-shell: title "Cycling Zone",
+// canonical mod forsiden, 0 H1. Testen henter dokumentet med request.get —
+// page.goto ville køre SPA'ens JS og dermed måle useDocumentHead i stedet for
+// server-HTML'en, altså netop det der IKKE var problemet.
+test("hver prerendret rute svarer med rute-matchende canonical, unik title og et H1 i RÅ HTML (#5494)", async ({
+  request,
+}) => {
+  const titles = new Map();
+
+  for (const route of PRERENDER_ROUTES) {
+    const response = await request.get(route.path);
+    expect(response.status(), `${route.path} skal svare 200`).toBe(200);
+    const html = await response.text();
+
+    const canonical = html.match(/<link\s+rel="canonical"\s+href="([^"]+)"/)?.[1];
+    expect(canonical, `${route.path} mangler canonical i server-HTML`).toBe(
+      `${ORIGIN}${route.path}`,
+    );
+
+    const title = html.match(/<title>([^<]*)<\/title>/)?.[1]?.trim();
+    expect(title, `${route.path} mangler <title> i server-HTML`).toBeTruthy();
+    expect(title, `${route.path} har stadig app-shellens default-titel`).not.toBe("Cycling Zone");
+    expect(title, `${route.path}-titel skal nævne Cycling Zone`).toContain("Cycling Zone");
+
+    const description = html.match(
+      /<meta\s+name="description"\s+content="([^"]*)"/,
+    )?.[1];
+    expect(description, `${route.path} mangler meta description i server-HTML`).toBeTruthy();
+
+    expect(/<h1[\s>]/.test(html), `${route.path} har intet <h1> i server-HTML`).toBe(true);
+
+    const lang = html.match(/<html\s+lang="([^"]+)"/)?.[1];
+    expect(lang, `${route.path} skal melde sproget ${route.lang} i <html lang>`).toBe(route.lang);
+
+    if (route.alternates) {
+      for (const [hreflang, altPath] of Object.entries(route.alternates)) {
+        expect(
+          html.includes(`hreflang="${hreflang}" href="${ORIGIN}${altPath}"`),
+          `${route.path} mangler hreflang-alternate ${hreflang} → ${altPath}`,
+        ).toBe(true);
+      }
+    }
+
+    const previous = titles.get(title);
+    expect(previous, `Titel "${title}" deles af ${previous} og ${route.path}`).toBeUndefined();
+    titles.set(title, route.path);
+  }
+});
+
 // #4067 — statisk guard, INGEN netværk: rewrites-listen i frontend/vercel.json
 // (marketing/-destinationer) skal matche 1:1 med de sider marketing/app/
 // faktisk eksponerer. Uden denne test kan en ny page.tsx i marketing/ blive
@@ -199,4 +275,24 @@ test("frontend/vercel.json's marketing-rewrites matcher marketing/app 1:1 (#4067
       true,
     );
   }
+});
+
+// #5494 — statisk guard, INGEN netværk: prerender-listen skal matche de
+// sitemap-URL'er frontend'en selv ejer. En ny offentlig rute i sitemap.xml
+// uden en prerender ville lande tilbage i præcis den tomme-app-shell-tilstand
+// issuet rettede; en prerendret rute der IKKE er i sitemap.xml ville omvendt
+// være en usynlig side vi betaler build-tid for.
+test("prerender-listen matcher de frontend-ejede sitemap-URL'er 1:1 (#5494)", () => {
+  const sitemap = readFileSync(join(repoRoot, "frontend", "public", "sitemap.xml"), "utf8");
+  const vercelConfig = JSON.parse(readFileSync(join(repoRoot, "frontend", "vercel.json"), "utf8"));
+  const marketingSources = new Set(
+    vercelConfig.rewrites.filter((r) => isMarketingDestination(r.destination)).map((r) => r.source),
+  );
+
+  const sitemapPaths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => new URL(m[1]).pathname)
+    .filter((p) => !marketingSources.has(p));
+
+  const prerendered = PRERENDER_ROUTES.map((r) => r.path);
+  expect(sitemapPaths.slice().sort()).toEqual(prerendered.slice().sort());
 });

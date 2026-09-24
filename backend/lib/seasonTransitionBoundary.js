@@ -91,19 +91,29 @@ export async function fetchSeasonTransitionBoundary(supabase) {
 // oprettes/apply'es (buildSeasonCalendar.js --apply), ikke ved selve transitionen.
 //
 // Idempotent ON-CONFLICT-DO-UPDATE-semantik via upsert: skriver KUN når nøglen
-// mangler, eller når den nuværende værdi er ÆLDRE end den nye sæsons start_date —
-// dvs. tydeligvis en efterladenskab fra en TIDLIGERE sæsons cutover, ikke et
-// bevidst sat tidspunkt for netop denne sæson. En værdi der allerede ligger på
-// eller efter den nye sæsons start_date rører vi IKKE ved: den kan ikke være vores
-// egen beregning (den ligger altid FØR start_date), så den er enten en bevidst
-// afvigende ejer-indsat værdi eller en anomali — begge dele skal et menneske se,
-// ikke en stille overskrivning.
-export async function ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate, now = new Date() } = {}) {
+// mangler, eller når den nuværende værdi er TIDLIGERE end målet — dvs. en
+// efterladenskab fra en tidligere sæsons cutover, eller et skifte der ikke kan nås.
+// En værdi der ligger SENERE end målet rører vi IKKE ved (#5592, diff-tjek 24/9): den
+// er et bevidst senere skifte (eller en anomali), og begge dele skal et menneske se,
+// ikke en stille overskrivning. Før #5592 blev en senere værdi der stadig lå før
+// sæsonens start_date (fx 27/9 kl. 21 for en sæson der starter 28/9) overskrevet med
+// konventionens kl. 18.
+//
+// `target` (#5592): det skifte kalenderen er planlagt mod (buildSeasonCalendar.js sender
+// resolveEarliestSeasonTransition's værdi), så app_config og kalender aldrig kommer ud af
+// trit. Uden `target` bruges konventionen (aftenen før start_date kl. 18), som før.
+export async function ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate, target: targetInput = null, now = new Date() } = {}) {
   if (!supabase?.from) return { updated: false, reason: "no-supabase" };
-  if (!seasonStartDate) return { updated: false, reason: "no-season-start-date" };
 
-  const target = computeSeasonTransitionBoundary({ upcomingSeasonStartDate: seasonStartDate });
-  if (!target) return { updated: false, reason: "no-target" };
+  let target;
+  if (targetInput != null) {
+    target = targetInput instanceof Date ? targetInput : new Date(targetInput);
+    if (Number.isNaN(target.getTime())) throw new Error(`${SEASON_TRANSITION_PLANNED_AT_KEY}: target is not a valid timestamp: ${targetInput}`);
+  } else {
+    if (!seasonStartDate) return { updated: false, reason: "no-season-start-date" };
+    target = computeSeasonTransitionBoundary({ upcomingSeasonStartDate: seasonStartDate });
+    if (!target) return { updated: false, reason: "no-target" };
+  }
 
   const { data: cfg, error: readErr } = await supabase
     .from("app_config")
@@ -115,13 +125,12 @@ export async function ensureSeasonTransitionPlannedAt({ supabase, seasonStartDat
   const existingRaw = cfg?.value ?? null;
   const existing = existingRaw ? new Date(existingRaw) : null;
   const existingValid = existing && !Number.isNaN(existing.getTime());
-  const seasonStart = new Date(`${String(seasonStartDate).slice(0, 10)}T00:00:00Z`);
 
   if (existingValid && existing.getTime() === target.getTime()) {
     return { updated: false, reason: "already-correct", value: target.toISOString() };
   }
-  if (existingValid && existing.getTime() >= seasonStart.getTime()) {
-    return { updated: false, reason: "existing-value-not-stale", existing: existingRaw };
+  if (existingValid && existing.getTime() > target.getTime()) {
+    return { updated: false, reason: "existing-later-kept", existing: existingRaw, target: target.toISOString() };
   }
 
   const { error: writeErr } = await supabase.from("app_config").upsert(
@@ -130,8 +139,8 @@ export async function ensureSeasonTransitionPlannedAt({ supabase, seasonStartDat
       value: target.toISOString(),
       description:
         "Eksplicit planlagt tidspunkt for sæson-transitionen (#4004-guardens anker). " +
-        "Sat automatisk af buildSeasonCalendar.js --apply ved sæson-oprettelse (#4129); " +
-        "overskriv manuelt hvis cutover flyttes.",
+        "Sat automatisk af buildSeasonCalendar.js --apply til det skifte kalenderen er planlagt mod (#4129/#5592); " +
+        "en senere værdi bevares. Sæt en senere værdi FØR kalenderen bygges, hvis cutover flyttes.",
       updated_at: now.toISOString(),
     },
     { onConflict: "key" }

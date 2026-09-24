@@ -23,6 +23,9 @@ import {
 // hente ALLE matchende rækker, ikke kun de første 1000, ellers giver merge'et
 // et forkert (stille afkortet) resultat.
 import { fetchAllRows } from "./supabasePagination.js";
+import { riderBestRole } from "./riderRating.js";
+import { isBestRoleDisplayOn } from "./riderRatingMode.js";
+import { RIDER_TYPE_KEYS } from "./riderTypeKeys.js";
 
 export { compareRidersByFilter, mergeSalarySortedIds, mergeRatingSortedIds, applyRiderColumnSort };
 
@@ -95,6 +98,12 @@ export function useClientRiderFilters(riders = [], seasonYear = null) {
     // Ryttertype (#49): match primær ELLER sekundær — som top-2-visningen.
     if (filters.rider_type) {
       result = result.filter(r => r.primary_type === filters.rider_type || r.secondary_type === filters.rider_type);
+    }
+    // #5435: "Best role now" — samme beregning som tallet i rating-kolonnen
+    // (riderBestRole), så filtret og det viste rollenavn aldrig er uenige.
+    // Kun virksomt med rating-kontakten tændt.
+    if (filters.best_role && isBestRoleDisplayOn()) {
+      result = result.filter(r => riderBestRole(r).role === filters.best_role);
     }
 
     // #1162: potentiale-min/max-filtre er fjernet — den rå potentiale findes ikke
@@ -181,6 +190,15 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
   if (filters.rider_type) {
     const orStr = `primary_type.eq.${filters.rider_type},secondary_type.eq.${filters.rider_type}`;
     query = ref ? query.or(orStr, { referencedTable: ref }) : query.or(orStr);
+  }
+
+  // #5435: "Best role now" på server-stien (Rytterdatabasen, tusindvis af
+  // rækker) bruger den cachede riders.best_role (#5487, samme tie-regel som
+  // klienten). Cachen følger værdi-refreshens kadence, så en rytter der lige
+  // har skiftet bedste rolle efter træning kan halte en refresh. Kun med
+  // rating-kontakten tændt; nøglen valideres mod den lukkede rolleliste.
+  if (filters.best_role && isBestRoleDisplayOn() && RIDER_TYPE_KEYS.includes(filters.best_role)) {
+    query = query.eq(col("best_role"), filters.best_role);
   }
 
   // #1162: INGEN filter/order på potentiale — ikke klient-læsbar (oracle-lækage).

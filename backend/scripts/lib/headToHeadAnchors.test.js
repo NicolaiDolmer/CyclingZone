@@ -16,9 +16,14 @@ import {
   scoreTypeIntegrity,
   scoreBonusSecondsBounded,
   scoreGapRealism,
+  scoreIttTimeRealism,
+  largestSameTimeShare,
   buildScorecard,
   aggregateScorecards,
   formatScorecard,
+  countFavoriteWins,
+  mergeFavoriteDefinitions,
+  formatFavoriteDefinitions,
 } from "./headToHeadAnchors.js";
 
 function ability(overrides = {}) {
@@ -42,17 +47,17 @@ function v3Ranked(entries) {
 }
 
 function v4Results(entries) {
-  // entries: [{rider_id, rank, time_seconds, group_id}]
+  // entries: [{rider_id, rank, time_seconds, group_id, status}]
   return entries.map((e) => ({
     rider_id: e.rider_id, rank: e.rank, time_seconds: e.time_seconds,
-    group_id: e.group_id ?? "g1", status: "finished",
+    group_id: e.group_id ?? "g1", status: e.status ?? "finished",
   }));
 }
 
-function makeRow({ profile_type, finale_type, v3Entries, v4Entries, events = [], stageRow = { race_id: "race1" } }) {
+function makeRow({ profile_type, finale_type, v3Entries, v4Entries, events = [], stageRow = { race_id: "race1" }, distance_km }) {
   return {
     raw: {
-      route: { profile_type, finale_type, segments: [] },
+      route: { profile_type, finale_type, segments: [], ...(distance_km === undefined ? {} : { distance_km }) },
       tuning: RACE_V4_TUNING,
       stageRow,
       v3Output: { ranked: v3Ranked(v3Entries) },
@@ -282,6 +287,188 @@ test("scoreDominance: returnerer to ankre (favorite_win_rate, same_team_top10_sh
   assert.equal(winRate.v4.value, 1);
 });
 
+// #4915: et hold der fylder top 10 — det en holdtidskoersel giver per konstruktion.
+function oneTeamTop10Row(profile_type, finale_type) {
+  const ids = Array.from({ length: 10 }, (_, i) => `r${i}`);
+  return makeRow({
+    profile_type, finale_type,
+    v3Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: 0, team_id: "t1" })),
+    v4Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 })),
+  });
+}
+
+function spreadTeamsRow(profile_type, finale_type) {
+  const ids = Array.from({ length: 10 }, (_, i) => `s${i}`);
+  return makeRow({
+    profile_type, finale_type,
+    v3Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: i, team_id: `team-${i}` })),
+    v4Entries: ids.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 + i })),
+  });
+}
+
+const DOMINANCE_TEAMS = new Map([
+  ...Array.from({ length: 10 }, (_, i) => [`r${i}`, "t1"]),
+  ...Array.from({ length: 10 }, (_, i) => [`s${i}`, `team-${i}`]),
+]);
+
+test("#4915 scoreDominance: samme-hold-top-10 udelader holdtidskoersler (strukturelt 100 %)", () => {
+  const rows = [oneTeamTop10Row("ttt", "solo_tt"), spreadTeamsRow("hilly", "punch")];
+  const [winRate, sameTeam] = scoreDominance(rows, { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  for (const engine of [sameTeam.v3, sameTeam.v4]) {
+    assert.equal(engine.value, 0, "TTT'ens top 10 fra ét hold maa ikke taelle");
+    assert.equal(engine.sampleCount, 1, "kun massestarts-etapen er maalt");
+    assert.equal(engine.verdict, "PASS");
+  }
+  // Favorit-ankret maaler stadig ALLE etaper.
+  assert.equal(winRate.v3.sampleCount, 2);
+});
+
+test("#4915 scoreDominance: enkeltstarter (itt, itt_hilly) udelades ogsaa — tidskoersel er generatorens definition", () => {
+  const rows = [oneTeamTop10Row("itt", "solo_tt"), oneTeamTop10Row("itt_hilly", "solo_tt"), spreadTeamsRow("flat", "bunch_sprint")];
+  const [, sameTeam] = scoreDominance(rows, { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  assert.equal(sameTeam.v3.value, 0);
+  assert.equal(sameTeam.v4.value, 0);
+  assert.equal(sameTeam.v4.sampleCount, 1);
+});
+
+test("#4915 scoreDominance: en massestarts-etape med 4+ fra ét hold taeller stadig (ankret er ikke slaaet fra)", () => {
+  const rows = [oneTeamTop10Row("flat", "bunch_sprint"), oneTeamTop10Row("ttt", "solo_tt")];
+  const [, sameTeam] = scoreDominance(rows, { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  assert.equal(sameTeam.v3.value, 1);
+  assert.equal(sameTeam.v4.value, 1);
+  assert.equal(sameTeam.v4.verdict, "FAIL");
+});
+
+test("#4915 scoreDominance: kun tidskoersler i input => samme-hold-ankret er N/A, aldrig et gaettet 0", () => {
+  const [, sameTeam] = scoreDominance([oneTeamTop10Row("ttt", "solo_tt")], { teamByRider: DOMINANCE_TEAMS, v4EntrantsById: {} });
+  assert.equal(sameTeam.v3.verdict, "N/A");
+  assert.equal(sameTeam.v4.verdict, "N/A");
+});
+
+// ── #5583: favorit-definitioner side om side (den ekstra kolonne) ─────────
+//
+// Syntetisk felt: "rouleur" er bedst paa etapens (kunstige) v3-kravvektor,
+// "sprinter" paa v4-finalens bunch_sprint-vektor. v3's components.terrain er
+// sat, som simulateStage ville saette den: rouleuren hoejest.
+
+const DEFINITION_ENTRANTS = {
+  rouleur: { rider_id: "rouleur", abilities: ability({ flat: 95, sprint: 40, acceleration: 40, positioning: 40 }) },
+  sprinter: { rider_id: "sprinter", abilities: ability({ flat: 40, sprint: 95, acceleration: 95, positioning: 95 }) },
+};
+const DEFINITION_TEAMS = new Map([["rouleur", "t1"], ["sprinter", "t2"]]);
+
+function definitionRow({ profile_type, winner, demandVector = { flat: 1 } }) {
+  const order = winner === "rouleur" ? ["rouleur", "sprinter"] : ["sprinter", "rouleur"];
+  const terrain = { rouleur: 0.9, sprinter: 0.4 };
+  return makeRow({
+    profile_type, finale_type: "bunch_sprint",
+    stageRow: { race_id: "race1", ...(demandVector ? { demand_vector: demandVector } : {}) },
+    v3Entries: order.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: i, terrain: terrain[id], team_id: DEFINITION_TEAMS.get(id) })),
+    v4Entries: order.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 + i })),
+  });
+}
+
+function winRateAnchor(rows) {
+  return scoreDominance(rows, { teamByRider: DEFINITION_TEAMS, v4EntrantsById: DEFINITION_ENTRANTS })
+    .find((a) => a.id === "favorite_win_rate");
+}
+
+test("#5583 scoreDominance: tre definitioner side om side pr. etapetype", () => {
+  const rows = [
+    definitionRow({ profile_type: "flat", winner: "sprinter" }),
+    definitionRow({ profile_type: "flat", winner: "rouleur" }),
+    definitionRow({ profile_type: "hilly", winner: "rouleur" }),
+  ];
+  const { favoriteDefinitions: defs } = winRateAnchor(rows);
+  // v4 nu (finale-score) peger paa sprinteren, v3 og v4 ikke-cirkulaer paa rouleuren.
+  assert.deepEqual(defs.v4Finale, {
+    races: 3, wins: 1, perStageType: { flat: { races: 2, wins: 1 }, hilly: { races: 1, wins: 0 } },
+  });
+  assert.deepEqual(defs.v4Terrain, {
+    races: 3, wins: 2, perStageType: { flat: { races: 2, wins: 1 }, hilly: { races: 1, wins: 1 } },
+  });
+  assert.deepEqual(defs.v3, defs.v4Terrain, "v3 og v4 maales mod samme rytter");
+  assert.deepEqual(defs.sameFavoriteAsV3, { same: 3, stages: 3 });
+  assert.equal(defs.v4TerrainSkippedStages, 0);
+  assert.equal(defs.seedRates.length, 1);
+});
+
+test("#5583 scoreDominance: gatens dom og baand er uaendrede af den ekstra kolonne", () => {
+  const rows = [
+    definitionRow({ profile_type: "flat", winner: "sprinter" }),
+    definitionRow({ profile_type: "flat", winner: "rouleur" }),
+    definitionRow({ profile_type: "hilly", winner: "rouleur" }),
+  ];
+  const withVector = winRateAnchor(rows);
+  const withoutVector = winRateAnchor(rows.map((r) => ({ raw: { ...r.raw, stageRow: { race_id: "race1" } } })));
+  assert.deepEqual(stripDisplays(withVector.v4), stripDisplays(withoutVector.v4));
+  assert.deepEqual(stripDisplays(withVector.v3), stripDisplays(withoutVector.v3));
+  // v4-cellen er stadig den nuvaerende (finale-score) definition: 1 af 3.
+  assert.equal(withVector.v4.value, 1 / 3);
+  assert.equal(withVector.bandLabel, `${(ANCHOR_BANDS.favoriteWinRate.min * 100).toFixed(1)}%-${(ANCHOR_BANDS.favoriteWinRate.max * 100).toFixed(1)}%`);
+  assert.equal(AGGREGATION_BAND_BY_ANCHOR_ID.favorite_win_rate, ANCHOR_BANDS.favoriteWinRate);
+  // Kolonnen ligger UDEN for v3/v4-cellerne, saa JSON-eksporten (v3/v4) er uaendret.
+  assert.equal("favoriteDefinitions" in withVector.v4, false);
+  assert.equal("favoriteDefinitions" in withVector.v3, false);
+});
+
+function stripDisplays(cell) {
+  const { display: _display, ...rest } = cell;
+  return rest;
+}
+
+test("#5583 scoreDominance: etaper uden v3-kravvektor maales ikke med v3-terrain (aldrig gaettet)", () => {
+  const rows = [
+    definitionRow({ profile_type: "flat", winner: "rouleur" }),
+    definitionRow({ profile_type: "flat", winner: "rouleur", demandVector: null }),
+  ];
+  const { favoriteDefinitions: defs } = winRateAnchor(rows);
+  assert.equal(defs.v4Terrain.races, 1);
+  assert.equal(defs.v4TerrainSkippedStages, 1);
+  assert.equal(defs.v4Finale.races, 2, "gatens kolonne maaler stadig alle etaper");
+  assert.deepEqual(defs.sameFavoriteAsV3, { same: 1, stages: 1 });
+});
+
+test("#5583 aggregateScorecards: favorit-kolonnen summeres over ALLE seeds, ikke kun foerste (#4947-klassen)", () => {
+  const seedA = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "rouleur" })])];
+  const seedB = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "sprinter" })])];
+  const [aggregated] = aggregateScorecards([seedA, seedB]);
+  const defs = aggregated.favoriteDefinitions;
+  assert.deepEqual(defs.v4Terrain, { races: 2, wins: 1, perStageType: { flat: { races: 2, wins: 1 } } });
+  assert.deepEqual(defs.v4Finale, { races: 2, wins: 1, perStageType: { flat: { races: 2, wins: 1 } } });
+  assert.deepEqual(defs.sameFavoriteAsV3, { same: 2, stages: 2 });
+  assert.deepEqual(defs.seedRates.map((s) => s.v4Terrain), [1, 0]);
+  assert.deepEqual(defs.seedRates.map((s) => s.v4Finale), [0, 1]);
+  // Gatens celle er stadig seed-middel mod baandet.
+  assert.equal(aggregated.v4.value, 0.5);
+  assert.equal(aggregated.v4.verdict, "FAIL");
+});
+
+test("#5583 mergeFavoriteDefinitions: ingen kolonne i input -> null (intet opfundet)", () => {
+  assert.equal(mergeFavoriteDefinitions([undefined, null]), null);
+  assert.equal(mergeFavoriteDefinitions([]), null);
+});
+
+test("#5583 countFavoriteWins: manglende etapetype taeller som 'ukendt', ikke som en rigtig type", () => {
+  const counts = countFavoriteWins([{ favoriteWon: true }, { terrain: "flat", favoriteWon: false }]);
+  assert.deepEqual(counts, { races: 2, wins: 1, perStageType: { ukendt: { races: 1, wins: 1 }, flat: { races: 1, wins: 0 } } });
+});
+
+test("#5583 formatScorecard: viser de tre definitioner side om side, pr. etapetype og med seed-spaend", () => {
+  const seedA = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "rouleur" }), definitionRow({ profile_type: "hilly", winner: "sprinter" })])];
+  const seedB = [winRateAnchor([definitionRow({ profile_type: "flat", winner: "sprinter" }), definitionRow({ profile_type: "hilly", winner: "sprinter" })])];
+  const text = formatScorecard(aggregateScorecards([seedA, seedB]));
+  assert.match(text, /Favorit-definitioner side om side \(#5583/);
+  assert.match(text, /v4 ikke-cirkulaer \(v3-terrain\)/);
+  assert.match(text, /\n {4}flat {10}/);
+  assert.match(text, /\n {4}hilly {9}/);
+  assert.match(text, /Samme rytter som v3's favorit: 4\/4 etaper/);
+  assert.match(text, /Spaend over 2 seeds/);
+  // Linjerne fra formatFavoriteDefinitions staar under favorit-ankret.
+  const lines = formatFavoriteDefinitions(aggregateScorecards([seedA, seedB])[0].favoriteDefinitions);
+  for (const line of lines) assert.ok(text.includes(line));
+});
+
 // ── scoreBreakawayRates ───────────────────────────────────────────────────
 
 test("scoreBreakawayRates: v3 maaler breakaway-vinderandel, v4 er altid N/A (M5 F3-scope)", () => {
@@ -391,6 +578,89 @@ test("scoreGapRealism: bjergetape med NEDKOERSELS-finale taeller IKKE med (ejer 
   assert.equal(both.v3.verdict, "PASS");
 });
 
+// ── scoreIttTimeRealism (#5576) ─────────────────────────────────────────
+
+/** `n` ryttere med `stepSeconds` mellem hver (v3: gap fra 0, v4: tid fra 3000). */
+function ittRow({ profile_type = "itt", distance_km = 40, times }) {
+  return makeRow({
+    profile_type, finale_type: "solo_tt", distance_km,
+    v3Entries: times.map((t, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: t })),
+    v4Entries: times.map((t, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 3000 + t })),
+  });
+}
+
+const spacedTimes = (n, stepSeconds) => Array.from({ length: n }, (_, i) => i * stepSeconds);
+
+test("scoreIttTimeRealism: 40 km, 10 s mellem rytterne -> top-10 90 s PASS, ingen klump PASS", () => {
+  const [spread, tie] = scoreIttTimeRealism([ittRow({ times: spacedTimes(20, 10) })]);
+  assert.equal(spread.id, "itt_top10_spread_per_40km");
+  assert.equal(spread.v4.value, 90);
+  assert.equal(spread.v4.verdict, "PASS");
+  assert.equal(tie.id, "itt_largest_same_time_share");
+  assert.equal(tie.v4.value, 1 / 20);
+  assert.equal(tie.v4.verdict, "PASS");
+});
+
+test("scoreIttTimeRealism: spredningen skaleres lineaert til 40 km (en 20 km-enkeltstart med 45 s taeller som 90 s)", () => {
+  const [spread] = scoreIttTimeRealism([ittRow({ distance_km: 20, times: spacedTimes(20, 5) })]);
+  assert.equal(spread.v4.value, 90);
+  assert.equal(spread.v3.value, 90);
+});
+
+test("#5576-regression: rangen er perfekt, men feltet deler én tid -> klump-ankret FAILER", () => {
+  // Praecis fejlens form: toppen har individuelle tider (finalens placerings-
+  // tiers), resten af feltet ankommer samlet. Rangen er uroert, saa en
+  // spearman-maaling kan ikke se det.
+  const times = [0, 8, 16, 24, 32, 40, 48, 56, 64, 72, ...Array(170).fill(90)];
+  const [spread, tie] = scoreIttTimeRealism([ittRow({ times })]);
+  assert.equal(spread.v4.verdict, "PASS", "top-10-spredningen alene ser rimelig ud — derfor er klump-ankret noedvendigt");
+  assert.ok(tie.v4.value > 0.9);
+  assert.equal(tie.v4.verdict, "FAIL");
+});
+
+test("scoreIttTimeRealism: ÉN sammenklumpet enkeltstart kan ikke midles vaek af sunde etaper", () => {
+  const healthy = Array.from({ length: 9 }, () => ittRow({ times: spacedTimes(20, 10) }));
+  const bunched = ittRow({ times: [0, 5, ...Array(18).fill(60)] });
+  const [, tie] = scoreIttTimeRealism([...healthy, bunched]);
+  assert.equal(tie.v4.value, 18 / 20, "klump-ankret maaler den vaerste etape");
+  assert.equal(tie.v4.verdict, "FAIL");
+});
+
+test("scoreIttTimeRealism: felter under ti i maal maales ikke (1/n alene ville vaere over loftet)", () => {
+  const [spread, tie] = scoreIttTimeRealism([ittRow({ times: spacedTimes(3, 10) })]);
+  assert.equal(spread.v4.verdict, "N/A");
+  assert.equal(tie.v4.verdict, "N/A");
+});
+
+test("scoreIttTimeRealism: itt_hilly taeller med, ttt og vejetaper goer ikke", () => {
+  const hilly = ittRow({ profile_type: "itt_hilly", times: spacedTimes(20, 10) });
+  const ttt = ittRow({ profile_type: "ttt", times: Array(20).fill(0) });
+  const flat = ittRow({ profile_type: "flat", times: Array(20).fill(0) });
+  const [spread, tie] = scoreIttTimeRealism([hilly, ttt, flat]);
+  assert.equal(spread.v4.sampleCount, 1);
+  assert.equal(tie.v4.sampleCount, 1);
+  assert.equal(tie.v4.verdict, "PASS", "holdtidskoerslens faelles holdtid maa ikke taelle som en klump");
+});
+
+test("scoreIttTimeRealism: en udgaaet rytters frosne tid er ikke en maaltid (v4)", () => {
+  const row = ittRow({ times: spacedTimes(12, 10) });
+  // Udgaaet efter 1 km: hans tid er lavere end vinderens, men han krydsede aldrig stregen.
+  row.raw.v4Output.results.push({ rider_id: "crash", rank: 13, time_seconds: 120, group_id: "itt-crash", status: "abandoned" });
+  const [spread] = scoreIttTimeRealism([row]);
+  assert.equal(spread.v4.value, 90);
+});
+
+test("scoreIttTimeRealism: ingen enkeltstarter i input -> N/A, aldrig et gaettet tal", () => {
+  const [spread, tie] = scoreIttTimeRealism([ittRow({ profile_type: "flat", times: spacedTimes(20, 10) })]);
+  for (const cell of [spread.v3, spread.v4, tie.v3, tie.v4]) assert.equal(cell.verdict, "N/A");
+});
+
+test("largestSameTimeShare: taeller paa 1/100 s-oploesning; tom liste -> null", () => {
+  assert.equal(largestSameTimeShare([]), null);
+  assert.equal(largestSameTimeShare([1, 1.001, 2, 3]), 0.5);
+  assert.equal(largestSameTimeShare([1, 1.01, 2, 3]), 0.25);
+});
+
 // ── buildScorecard + formatScorecard (integration af alle ankre) ────────
 
 test("buildScorecard: returnerer alle forventede anker-id'er, formatScorecard producerer laesbar tekst", () => {
@@ -413,6 +683,7 @@ test("buildScorecard: returnerer alle forventede anker-id'er, formatScorecard pr
     "punch_correlation", "cobblestone_lift_on_sectors", "favorite_win_rate", "same_team_top10_share_4plus",
     "breakaway_rate_per_terrain", "sprinter_win_rate_flat", "itt_correlation",
     "bonus_seconds_bounded", "mountain_top10_spread", "gt_winner_margin",
+    "itt_top10_spread_per_40km", "itt_largest_same_time_share",
   ]) {
     assert.ok(ids.includes(expectedId), `mangler anker "${expectedId}" i scorecardet`);
   }
@@ -447,7 +718,7 @@ test("forward-guard: ETHVERT anker-id fra buildScorecard() findes i AGGREGATION_
   const teamByRider = new Map([["a", "t1"], ["b", "t2"]]);
   const scorecard = buildScorecard([flatRow], { teamByRider, abilitiesByRider, v4EntrantsById });
 
-  assert.equal(scorecard.length, 13, "buildScorecard skal producere 13 ankre — opdatér denne test hvis et anker tilfoejes/fjernes");
+  assert.equal(scorecard.length, 15, "buildScorecard skal producere 15 ankre — opdatér denne test hvis et anker tilfoejes/fjernes");
   for (const anchor of scorecard) {
     assert.ok(
       Object.prototype.hasOwnProperty.call(AGGREGATION_BAND_BY_ANCHOR_ID, anchor.id),

@@ -39,6 +39,9 @@ import { useActionSummary } from "../hooks/useActionSummary";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
 import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
+import RiderRatingModeGate from "./rider/RiderRatingModeGate.jsx"; // #5435
+import { youthSquadNavItems, YOUTH_SQUAD_PATHS } from "../lib/youthSquadPages.ts"; // #5519
+import { useYouthSquadPages, useYouthSquadPagesSync } from "../lib/useYouthSquadPages.ts"; // #5519
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -68,7 +71,8 @@ const API = import.meta.env.VITE_API_URL;
 // #3858: "/race-centre" er en T2 wide data-side (sendefladen skal have plads til
 // tre kort-kolonner) — den capper selv på 1600px, shellen må bare ikke klemme
 // den ned i max-w-6xl.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/race-centre", "/academy"]);
+// #5519: U23 team- og Junior team-siderne er T2 som /team (samme DataTable).
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/team", "/transfers", "/training", "/planning", "/standings", "/resultater", "/race-centre", "/academy", ...YOUTH_SQUAD_PATHS]);
 // #2849 bølge 4: T3-profil/detalje-sider (PAGE_TEMPLATES.md) ejer hele fladen —
 // hero-båndet skal bleede edge-to-edge (til sidebar-kanten), og siden sætter selv
 // indre max-w-5xl + padding. Layout-containeren dropper derfor padding + cap helt
@@ -137,7 +141,7 @@ function buildAdminGroup(t, isOwner = false) {
 // brugte holdets id) flyttede til bund-menuen. Grupperne her afhænger nu kun af
 // flag-tilstand, så useEffect'ens opslag og render-kaldet ikke længere kan give
 // forskellige menuer for samme bruger.
-function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false) {
+function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, youthSquadPagesEnabled = false) {
   return [
     {
       // #3104 etape A: sorteret efter faktisk brug (Clarity, sessions/30 dage,
@@ -160,6 +164,9 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         // nedenfor.
         { to: "/forum", label: t("nav.item.forum"), dot: true, dotLabel: t("a11y.unreadForum") },
         { to: "/team",           label: t("nav.item.team") },          // 5.955
+        // #5519 (HANDOFF 2/9 pkt. 1, artboard 3a): U23 team + Junior team lige
+        // efter My Team, bag kontakten youth_squad_pages (tom liste når slukket).
+        ...youthSquadNavItems(youthSquadPagesEnabled, t),
         { to: "/training",       label: t("nav.item.training") },      // 2.732
         { to: "/finance",        label: t("nav.item.finance") },       // 2.258
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []), // 2.054
@@ -488,6 +495,10 @@ export default function Layout() {
   // #2244 Fase 3: Scouting-central-nav gater på scout_system_enabled (kill-switch,
   // ikke beta-gate) — samme flag /api/scouting/me rapporterer til siden selv.
   const { enabled: scoutSystemEnabled } = useScoutingCentral();
+  // #5519: U23 team- og Junior team-menupunkterne. Kontakten hentes via den
+  // delte display-flags-hentning (samme kald som rating-kontakten).
+  useYouthSquadPagesSync();
+  const youthSquadPagesEnabled = useYouthSquadPages();
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const heartbeatRef = useRef(null);
@@ -522,7 +533,7 @@ export default function Layout() {
   }
 
   useEffect(() => {
-    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
+    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled);
     if (isAdmin) groups.push(buildAdminGroup(t, isOwner));
     // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
     // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
@@ -530,7 +541,7 @@ export default function Layout() {
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
+  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled]);
 
   // #3034: ejer-check afhænger af `isAdmin`, som nu kommer asynkront fra den
   // delte UserProfileProvider i stedet for at blive afgjort synkront inde i
@@ -789,7 +800,7 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled);
+  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled);
   const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t, isOwner)] : baseGroups;
   const bottomItems = buildBottomItems(t, team);
 
@@ -900,7 +911,10 @@ export default function Layout() {
         <div className={isFullBleedRoute(location.pathname)
           ? ""
           : `pt-4 px-4 pb-24 md:pt-7 md:px-8 md:pb-16 mx-auto ${isWideContent ? "max-w-full" : "max-w-6xl"}`}>
-          <Outlet />
+          {/* #5435: rating-kontakten — alle sider skifter model samtidig. */}
+          <RiderRatingModeGate>
+            <Outlet />
+          </RiderRatingModeGate>
         </div>
       </main>
 

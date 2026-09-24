@@ -5,7 +5,7 @@ import HowItWorksPage, { type HowItWorksCopy } from "@/components/how-it-works-p
 // forsiden, #4067).
 const TITLE = "How It Works";
 const DESCRIPTION =
-  "See exactly how Cycling Zone works: build a roster, bid on riders in live auctions, set race tactics, and race a full season against real managers. Free, browser-based, no download.";
+  "Free browser cycling manager game: build a roster, bid on riders live, set tactics, and race a full season against real managers.";
 
 export const metadata: Metadata = {
   title: TITLE,

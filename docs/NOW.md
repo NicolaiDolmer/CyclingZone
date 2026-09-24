@@ -4,27 +4,26 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (21/9 aften):** **Rækkefølge ejer-godkendt 21/9 (MASTERPLAN øverst).** **A · ejerens hånd:** post catch-up v7.284-7.292 (#5429, kun EN) · flip `training_score_visible` + udmelding · Android-test → flip `training_mobile_table` → slet gammel gren (#3643) · win-back #2760 inden 24/9. **B · Claude:** 6 **værdiskiftet #5443** (kode merget #5446, begge kontakter v4, intet tændt; mangler patch notes + help.json; ÉN kørsel på ejerens "kør", løn efter skiftet) · 7 **S4-kalender #5405** (#5169 merget 21/9; næste: golden-diff + tørkørsel UDEN `--uniform-tilt` → `--apply`, go pr. kørsel) · 8 flip-dag 28/9 (`training_tick_per_race_day` + `race_day_development_enabled` + #5281) · 9 /roadmap #5387. **Derefter:** roadbook-løfterne 15/9 (masterplan-artifactet); ejer-kort om de ikke-startede udestår. **Codex-lane:** forum-links #3517, rør ikke forum-filer. **PR'er:** #5459 (Codex-hook) · #5281 #5444 #3512.
+> **🎯 Next action (24/9-d kl. 17:40, session d aktiv):** **ingen nye spor før køen er tom (ejer 24/9).** Session d merget: #5610, #5666 U23-sider (beta), #5679 bestyrelses-beta, #5671 senior-scope, #5663 flip-prep. `youth_squad_pages` on for alle: ejer venter på beta-testerne. #5444 åben til værdikørslen (ejer). Næste: (4) "kør"-kort: `youth_squad_pages` on for alle, `race_notify_outbox_enabled` on, `email_loop_race_digest` dry_run, `race_finalize_resumable_enabled` · (5) S4-kalender genereres om m. 4 D4-puljer → tørkørsel → "kør" (#5405) · (6) gamle PR'er #5502/#5461/#5444/#5281 + GitHub-audit · (7) bestyrelses-beta #5632/#5633/#5618: PR #5679 (draft, sidste lane i C1) → diff-tjek + billeder → go-kort. Fuld kø: OneDrive `private-handoffs/2026-09-24-morgenrapport-d.md`.
+>
+> **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort · live · Discord-kort · live (backfill sendt 213) · /roadmap · live · S4-kalender 24 t · merget · U23/junior-sider · beta, loft merget (#5626), flag-kør udestår · Mandatet · beta, #5679 draft, #5680 merget · D4→D3 + 4 puljer · #5669 merget, #5651 konflikt · comeback · #5661 CI · ungdomsløb · #5652 #5660 #5653 #5665 merget, #5650 #5666 #5671 åbne · træning fra løb · #5640 #5654 merget, #5670 CI, flip 28/9 · 140 løbsdage · merget (#5608 #5615).
 
-> **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt, overlap forbliver det almindelige. **Tallet er LÅST: 140 (ejer 15/9, TRAINING_RULES §13.3); spørg aldrig igen.** **Ejer 20/9: måde B (jævnt, 5 pr. dato); A + synkrone blokke fjernet i #5169. B4 #5264 merget 20/9 bag flag.** **§2c (ejer 19/9):** S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only.
+> **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (jævnt, 5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. `race_notify_outbox_enabled` OFF, flip ejer-only. **Junior må køre fra 16 (ejer 24/9).**
 
-> **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende. `ratingGolden.5321.json` opdateres KUN m. ejer-go.
+> **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🟡 Lofter + potentiale (ejer 18/9, byg intet):** lofterne ud, potentialet styrer farten (#5351); 6 huller efter 28/9. **#5268-point-flyt afventer.** **D-049-visning:** #5435, svar upostet #5436.
-
-> **🔴 Åbne fund:** Webkit-flake #4925: rerun. **#5323 Quad9:** aflæs målingen (live fra 17/9) før DNS-kort. **📊 Triage:** `scripts/sentry-issues.mjs --period=7d` (via infisical dev). **S3:** 529 løb, 28/8 → 27/9.
+> **🔴 Åbne fund:** #5162 chunk (lige EFTER S4-sporene) · #5618/#5617 bestyrelses-beta · #5635 Discord-sweep. **CodeRabbit:** loft nået, lokal CR på risk:high. **📊 Triage:** `scripts/sentry-issues.mjs --period=7d` via infisical. **S3:** slutter 27/9.
 
 ## Standing context (forever-relaunch)
 
-- **Liga:** pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8). Mere fog of war (#5107).
-- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder; referenceår `riderSeasonAge.js` (S3=2028). U25 = 25 og yngre. Akademi: nedrykning ≤ 21 er IKKE live (#5145 parkeret 14/9 til U23-sporet, branchen bevares; i dag ≤ 22). **Graduation Day ved 23** (live 15/9).
+- **Liga:** pyramide 1/2/4/4 fra S4 (ejer 24/9: D3+D4 samles ved skiftet, script #5669). **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder (`riderSeasonAge.js`, S3=2028). Akademi-nedrykning ≤ 21 IKKE live (#5145 parkeret). **Graduation Day ved 23** (live 15/9).
 - **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` OFF; v3 kører S3 færdig. Kalender-gaten blokerende (#4123); `calendarGoldenDiff.mjs` FØR S4-generering.
-- **Træning (ejer 15/9, §13.3):** løbsdag som tick, sweep ≥ kl. 20 + knap uden bonus, program 7×5 løbsdage. #5205 + B4 #5264 bag flag `training_tick_per_race_day` (off); live senest 28/9. **B3 #5281 er IKKE bag flag**, merges på flip-dagen.
-- **Evner (live):** taktik/aggression uden alder for nye ryttere; `teamwork`/`leadership` er data, **ikke i rating-opskriften** (17/9; motor: #5348 #5349 efter apply). Lofter `{tactics 55, teamwork 70, leadership 70}`, `aggression` UDE (#5297). Point-flyt (#5268) ejer-gated. 
-- **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396, kræver squad=senior OG is_academy=false til backfill er kørt; backfill ejer-gated). `U23_BIRTH_BAND` = variant A (#5401), generator A6 mangler. Alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
-- **Forside `/`:** anonym = marketing-sitet; ændring → `node scripts/check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms, ejerens tal ekskl. (#5215).
-- **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** (bidt 17/9).
-- **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); commit kun bag guarden (#5094); ny tabel bag flag → `FLAG_GATED_EMPTY_TABLES`; migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; skærmbilleder: vite i eget worktree + Playwright; nye frontend-filer = .ts/.tsx.
+- **Træning (ejer 15/9, §13.3):** løbsdag som tick, sweep ≥ kl. 20 + knap uden bonus, program 7×5 løbsdage. Alt bag `training_tick_per_race_day` + `race_day_development_enabled` (off); live 28/9. **B3 #5281 er IKKE bag flag**, merges på flip-dagen.
+- **Evner (live):** `teamwork`/`leadership` er data, **ikke i rating-opskriften** (17/9). Lofter `{tactics 55, teamwork 70, leadership 70}`, `aggression` UDE (#5297). Point-flyt (#5268) ejer-gated.
+- **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396); puljer og løb har `squad`. Loft U23 12/junior 10 (#5626). Alt live 28/9; spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
+- **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
+- **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
+- **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); tjek `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); stablede PR'er retargetes til main FØR base merges (#5655→#5670); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Ingen aktiv session. (PR der rører filen skal hedde `docs(now)…`/`docs(close-out)…`, #5093.)
-
+> **🤖 Working agent:** Claude Code lokal session 24/9-d (DOLMERPC), startet kl. 17:10. PR-gennemgang + go-kort. Prompt: OneDrive `private-handoffs/session-prompt-2026-09-24-d.md`.

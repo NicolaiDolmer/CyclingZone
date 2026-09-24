@@ -60,7 +60,7 @@ process.stdout.write(JSON.stringify(o));
 # workflow_payload NAME -> JSON for et Workflow-kald (ingen prompt, kun name/args)
 workflow_payload() {
   WF="$1" node -e '
-const o = { hook_event_name: "PreToolUse", tool_name: "Workflow", tool_input: { name: process.env.WF, args: { tracks: [] } } };
+const o = { hook_event_name: "PreToolUse", tool_name: "Workflow", tool_input: { name: process.env.WF, args: { dryRun: true, tracks: [] } } };
 process.stdout.write(JSON.stringify(o));
 '
 }
@@ -176,8 +176,14 @@ run "boelge aktiv: Workflow-kald uden praefiks -> BLOKERET" \
 # Et Workflow-kald har ingen "prompt", kun "name"/"args". Selve wave-workflowet
 # ER indgangen og maa aldrig blokeres af sin egen vagt - ellers kan hverken en
 # dryRun-plan eller en recovery-boelge startes mens wave-active.json ligger der.
-run "boelge aktiv: Workflow({name:'wave'}) slipper igennem" \
+run "boelge aktiv: Workflow({name:'wave', dryRun:true}) slipper igennem" \
   0 "" "$(workflow_payload wave)"
+
+run "boelge aktiv: canonical scriptPath dry-run slipper igennem" \
+  0 "" '{"tool_name":"Workflow","tool_input":{"scriptPath":".claude/workflows/wave.js","args":{"dryRun":true}}}'
+
+run "boelge aktiv: canonical scriptPath build afvises foer GitHub" \
+  2 "wave-active.json exists" '{"session_id":"fixture","tool_name":"Workflow","tool_input":{"scriptPath":".claude/workflows/wave.js","args":{"tracks":[{"issue":1,"branch":"codex/fixture","ownership":["fixtures/a"]}]}}}'
 
 run "boelge aktiv: et ANDET gemt workflow -> BLOKERET" \
   2 "en boelge koerer allerede" "$(workflow_payload andet-workflow)"

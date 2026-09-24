@@ -5,7 +5,8 @@
 //
 // Bag VITE_PREVIEW_MOCK-guarden i main.jsx ⇒ prod tree-shaker hele preview/
 // -mappen væk. Denne fil rører ALDRIG den ægte gate: den efterligner kun
-// svarene fra /api/me/beta-access* og /api/admin/beta-* + /api/admin/feature-flags.
+// svarene fra /api/me/beta-access* og /api/admin/beta-* + /api/admin/feature-flags,
+// og (#4948) spiller-svaret GET /api/feature-flags, afledt af SAMME tavle.
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -40,6 +41,7 @@ let flags = [
   { key: "daily_training_enabled", area: "training", label: "Daglig træning", stage: "on", raw_value: true, boolean_only: true, configured: true, unknown_value: false },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)", stage: "off", raw_value: "false", boolean_only: false, configured: true, unknown_value: true },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4", stage: "off", raw_value: null, boolean_only: false, configured: false, unknown_value: false },
   { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
 ];
@@ -48,8 +50,24 @@ function readBody(init) {
   try { return init?.body ? JSON.parse(init.body) : {}; } catch { return {}; }
 }
 
+// #4948 · Spiller-svaret. Samme allowlist som backendens
+// PLAYER_VISIBLE_FLAG_KEYS (stageFlagCatalog.js), afledt af tavlen ovenfor, så
+// et klik på stadie-tavlen i preview straks ændrer /help. Preview-viewer'en er
+// ejeren, som også ser admin-tavlen, og admin tæller som beta-tester
+// (isViewerBetaTester), så `beta` er synligt her ligesom `on`.
+const PLAYER_VISIBLE_FLAG_KEYS = ["race_engine_v4", "board_mandate_model_enabled", "training_tick_per_race_day"];
+
+function playerFlags() {
+  return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
+    const stage = flags.find((f) => f.key === key)?.stage;
+    return [key, stage === "on" || stage === "beta"];
+  }));
+}
+
 export function betaAccessMockRoute(url, method, init) {
   if (/\/api\/me\/beta-access$/.test(url) && method === "GET") return json(playerState);
+
+  if (/\/api\/feature-flags(\?.*)?$/.test(url) && method === "GET") return json({ flags: playerFlags() });
 
   if (/\/api\/me\/beta-access\/request$/.test(url) && method === "POST") {
     playerState = {

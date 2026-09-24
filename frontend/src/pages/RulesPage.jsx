@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import { useAcademy } from "../lib/useAcademy.js";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 import Section, { SectionHeader } from "../components/ui/Section.jsx";
@@ -82,7 +83,14 @@ export default function RulesPage() {
   // #2849 bølge 4: rules-namespacet er IKKE inlinet (lazy via HttpBackend) —
   // `ready` gater render bag PageLoader så raw keys aldrig rammer first paint.
   // Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
-  const { t, ready } = useTranslation("rules");
+  const { t, i18n, ready } = useTranslation("rules");
+  // Per-route head (#5494) — se HelpPage for hvorfor titlen venter på `ready`.
+  useDocumentHead({
+    title: ready ? t("meta.title") : undefined,
+    description: ready ? t("meta.description") : undefined,
+    canonical: "https://cyclingzone.org/rules",
+    lang: i18n.language?.startsWith("da") ? "da" : "en",
+  });
   const [activeSection, setActiveSection] = useState("squad");
   // Academy is gated behind academy_enabled (#1308); the flag is off until the
   // relaunch. We still render the section (the numbers are final) but show a
