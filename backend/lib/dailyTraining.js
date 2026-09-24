@@ -46,6 +46,11 @@ export const RACE_PROFILE_ABILITY_MAP = Object.freeze({
   mountain: ["climbing", "endurance", "durability"],
   high_mountain: ["climbing", "endurance", "recovery", "durability"],
   itt: ["time_trial", "tempo"],
+  // #4850 (spec-lobsdag-udbytte 24/9, arkitekt-forslag): den bakkede enkeltstart
+  // manglede og faldt tilbage til `rolling` (punch/tempo/endurance), saa den
+  // traenede ingen time_trial. Flaget race_day_development_enabled er off i
+  // prod, saa ingen rytter har faaet udbytte fra den gamle fallback.
+  itt_hilly: ["time_trial", "climbing", "tempo"],
   ttt: ["time_trial", "tactics", "positioning"],
 });
 
@@ -88,7 +93,10 @@ export function growthFractionForAge(age) {
 // frossen konstant. En gate man ikke kan køre er ikke en gate.
 export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   if (program.intensity === "rest") return 0;
-  const focusAbilities = TRAINING_FOCUSES[program.focus] ?? [];
+  // #4850 variant A: loebsdagens "pas" (raceDayYield.js) baerer sin egen
+  // fokus-liste fra etapens profil i stedet for en session-noegle. Uden
+  // `focusAbilities` er alt bit-identisk med foer.
+  const focusAbilities = program.focusAbilities ?? TRAINING_FOCUSES[program.focus] ?? [];
   const inFocus = focusAbilities.includes(ability);
   // #3762 aktiv restitution: KUN sessionens egen evne rører sig. Uden denne gren
   // ville off-fokus-multiplikatoren give hele resten af kroppen en smule vækst
@@ -100,6 +108,9 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   // alle fokus der ikke står i FOCUS_ABILITY_WEIGHT, så enhver eksisterende plan
   // er bit-identisk. Off-fokus-evner rører den ikke: en session må ikke kunne
   // ændre hvad den IKKE træner.
+  // #4850: `offFocus: false` slaar off-fokus-vaeksten fra (simuleringens S2).
+  // Kun loebsdags-programmet saetter den; en almindelig plan har den aldrig.
+  if (!inFocus && program.offFocus === false) return 0;
   return inFocus
     ? (cfg.focusGrowthMult[program.intensity] ?? 1) * focusAbilityWeight(program.focus, ability)
     : cfg.offFocusMult;

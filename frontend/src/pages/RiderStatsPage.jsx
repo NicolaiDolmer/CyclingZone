@@ -33,6 +33,7 @@ import {
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { computeBidRoom } from "../lib/auctionBidRoom";
+import { fetchAcademySquadCounts, EMPTY_SQUAD_COUNTS } from "../lib/squadCaps.ts"; // #5568
 import { BidRoomBlockNotice, BidDestinationHint } from "../components/AuctionBidRoomNotice";
 import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
 import { formatHour } from "../lib/auctionEndTime.js";
@@ -518,7 +519,7 @@ function AuctionCountdown({ end, status }) {
   );
 }
 
-function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing, seasonYear }) {
+function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, riderBirthdate, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing, seasonYear }) {
   // "auctions" loades med så hookets fejltekst (auctions:error.insufficientBalance)
   // kan resolves — uden den kastede klient-gaten TypeError (t var ikke givet videre)
   // og spilleren så ingen fejl overhovedet (#1184).
@@ -534,7 +535,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
   // rytterprofilens bud-panel manglede den helt, så et bud der er GARANTERET
   // afvist af serveren (fuld trup) kunne sendes uden forklaring. Et forsvars-
   // bud (imWinning) blokeres aldrig — du fører allerede.
-  const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academyCount });
+  const bidRoom = computeBidRoom({ isYouth: auction.is_youth, seniorCount, academySquadCounts, birthdate: riderBirthdate, seasonYear });
   const roomBlocked = canBid && !imWinning && bidRoom.blocked;
 
   const {
@@ -586,11 +587,11 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
           {isSeller ? t("auctionPanel.cannotBidOwn") : t("auctionPanel.fallbackDash")}
         </p>
       ) : roomBlocked ? (
-        <BidRoomBlockNotice reason={bidRoom.reason} t={t} />
+        <BidRoomBlockNotice reason={bidRoom.reason} squad={bidRoom.academySquad} max={bidRoom.academyMax} t={t} />
       ) : (
         <div className="flex flex-col gap-2">
           {auction.is_youth && bidRoom.destination && (
-            <BidDestinationHint destination={bidRoom.destination} t={t} />
+            <BidDestinationHint destination={bidRoom.destination} squad={bidRoom.academySquad} t={t} />
           )}
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <AmountInput
@@ -907,7 +908,8 @@ export default function RiderStatsPage() {
   // null = endnu ikke hentet (behandles som "ikke fuld", se auctionBidRoom.js).
   // Samme kilder som AuctionsPage.jsx's loadAll (#1308/#2701/#2748).
   const [seniorCount, setSeniorCount]       = useState(null);
-  const [academyCount, setAcademyCount]     = useState(null);
+  // #5568: pr. ungdomstrup (U23 / junior), ikke hele akademiet mod et fladt loft.
+  const [academySquadCounts, setAcademySquadCounts] = useState(EMPTY_SQUAD_COUNTS);
   const [activeAuction, setActiveAuction]   = useState(null);
   // #3490: rytterens egen åbne transfer-listing (uanset ejerskab) — hero-
   // banneret viser udbudspris + værdi-afvigelse når rytteren FAKTISK er til
@@ -1264,14 +1266,13 @@ export default function RiderStatsPage() {
     // #3066: samme to tællinger som AuctionsPage.jsx's loadAll — akademiryttere
     // tæller ikke mod senior-cap (#1308), pensionerede tæller ikke med (#2748).
     if (t?.id) {
-      const [seniorCountRes, academyCountRes] = await Promise.all([
+      const [seniorCountRes, academySquadCountsRes] = await Promise.all([
         supabase.from("riders").select("id", { count: "exact", head: true })
           .eq("team_id", t.id).eq("is_academy", false).eq("is_retired", false),
-        supabase.from("riders").select("id", { count: "exact", head: true })
-          .eq("team_id", t.id).eq("is_academy", true),
+        fetchAcademySquadCounts(supabase, t.id),
       ]);
       if (seniorCountRes.count !== null && seniorCountRes.count !== undefined) setSeniorCount(seniorCountRes.count);
-      if (academyCountRes.count !== null && academyCountRes.count !== undefined) setAcademyCount(academyCountRes.count);
+      setAcademySquadCounts(academySquadCountsRes);
     }
 
     // #1184: hent worst-case commitment (førende auktioner + autobud-lofter) så
@@ -2041,7 +2042,8 @@ export default function RiderStatsPage() {
                     myBalance={myBalance}
                     reservedBalance={myReservedBalance}
                     seniorCount={seniorCount}
-                    academyCount={academyCount}
+                    academySquadCounts={academySquadCounts}
+                    riderBirthdate={rider.birthdate}
                     riderName={`${rider.firstname} ${rider.lastname}`}
                     onBid={handleAuctionBid}
                     onSetProxy={handleSetProxy}

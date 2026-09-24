@@ -1059,6 +1059,10 @@
         "title": "Race days and training",
         "text": "A race day does not change that day's training. Your rider still does the session you planned, and the race adds its own fatigue on top of the training load. Racing itself does not raise abilities: development comes from training, whether a rider races that day or not. What racing does cost is freshness, and every stage adds its own load while recovery only comes once a day, so a rider on a heavy stage race tires fast. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest before their Form falls away."
       },
+      "raceDaysPerRaceDay": {
+        "title": "Race days and training",
+        "text": "On a race day your rider either races or trains, never both. When he races, his program doesn't run for that race day, and the race brings its own fatigue instead. A stage race binds him from the first stage to the last, rest days included, so he doesn't train until it's over. Racing itself doesn't raise abilities: development comes from the race days he trains. Every division has 140 race days per season, and every race day without a race for your rider is a training day. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest between their races."
+      },
       "smartDefault": {
         "title": "What trains a rider with no focus set?",
         "text": "A rider with no focus chosen is not left untrained: the assistant trains them toward a focus that suits their type, for example a Sprinter defaults to Sprint and a Climber to VO2max. You'll see a small 'Assistant: ... (auto)' note under the focus dropdown when this applies. Setting your own focus always overrides it. To apply a type-matched focus to several riders at once, select them and choose 'Smart focus (by rider type)' in the bulk-apply bar; riders who already have a focus set are skipped so your existing choices are never overwritten."
@@ -1070,6 +1074,10 @@
       "formFatigue": {
         "title": "Form and Fatigue",
         "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day, after 22:00 Danish time (or right away if you click 'Train today' yourself), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+      },
+      "formFatiguePerRaceDay": {
+        "title": "Form and Fatigue",
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. After every race day each rider recovers some Fatigue, race days with a race included: rest and easy race days recover the most, normal training settles at a sustainable level, and hard training still builds it up. The day's race days are trained and recovered in one run, once the last race of the day is done and no earlier than 20:00 Danish time. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update after every race day. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Races build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
       "injuryRisk": {
         "title": "Injury risk",
@@ -1187,8 +1195,8 @@
         ]
       },
       "academySize": {
-        "title": "Academy size (8 places)",
-        "text": "Your Academy holds up to {academySlots} riders. These {academySlots} places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "title": "Academy size (per team)",
+        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1196,11 +1204,11 @@
       },
       "youthAuctions": {
         "title": "Youth auctions",
-        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (one of the 8 places) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
+        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (a place on the U23 or junior team, by his age) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season."
       },
       "graduation": {
         "title": "Graduation Day",
@@ -1502,6 +1510,10 @@
       "q": "Does my chosen intensity still matter on a day my rider races?",
       "a": "Yes, exactly as on any other day. Racing doesn't change what that day's session gives: Rest gives zero gain, Hard gives the most gain and the most fatigue (plus injury risk once Fatigue is high), same as a non-race day. The race is a separate load on top: its own fatigue adds to whatever the session already built, so a rider who races and trains Hard the same day carries both."
     },
+    "raceDayIntensityPerRaceDayFaq": {
+      "q": "Does my chosen intensity still matter on a day my rider races?",
+      "a": "Not on the race days he races. On a race day your rider races or trains, never both, so his session doesn't run while he's in a race: no training load and no injury risk from training, only the race's own fatigue. Your intensity decides every race day he isn't racing: Rest gives zero gain, Hard gives the most gain and the most fatigue, plus injury risk once Fatigue is high."
+    },
     "raceDayProfileMatchFaq": {
       "q": "Does my rider's training session need to match the race's terrain (flat, mountain, cobbles)?",
       "a": "No, not right now. Season 3 runs on season 2's race-day rules (patch 7.196): a race doesn't hand out its own ability reward, so there is nothing for a session to 'match'. Train each rider toward what he needs long-term. A design that links the session to the stage terrain is planned for season 4, but it isn't locked yet, so don't plan around a specific version of it."
@@ -1509,6 +1521,22 @@
     "raceDayAcademyFaq": {
       "q": "Is it worth racing young Academy talents, or is Academy training always better?",
       "a": "Racing costs no ability development in season 3: your talent still gets the exact session you planned that day, whether he races or not. The real cost is fatigue: a race adds its own load on top of training, and a talent who races often needs lighter sessions and real rest days to stay under the injury threshold, same as any senior rider. There's no Academy-specific penalty for racing, so the trade-off is about managing fatigue, not lost development."
+    },
+    "raceDayAcademyPerRaceDayFaq": {
+      "q": "Is it worth racing young Academy talents, or is Academy training always better?",
+      "a": "Racing costs him development. On a race day your talent races or trains, never both, and racing itself doesn't raise abilities, so every race day he races is a race day without training. A stage race takes every race day from the first stage to the last, rest days included. There's no Academy-specific penalty: the same rule applies to every rider. If his development comes first, pick his races with care and let him train on the other race days."
+    },
+    "lowerDivisionTrainingFaq": {
+      "q": "Do lower divisions get more training?",
+      "a": "Usually, yes. Every division has 140 race days per season, but the lower divisions have fewer stages to ride. A race day with no race for your rider is a training day, so fewer stages means more training days. In any division, a rider who isn't racing on a race day trains that day."
+    },
+    "multipleStagesTrainingFaq": {
+      "q": "Do several stages on the same day give more training?",
+      "a": "No. Each stage is ridden on its own race day, and on a race day your rider races or trains, never both. A rider who rides three stages in one day races three race days and trains on none of them. Each stage adds its own fatigue, and each race day gives its own recovery. Teammates who aren't racing train on each of that day's race days. Training per race day is scaled to a season of 140 race days, so a day with many race days doesn't speed up development over the season."
+    },
+    "stageRaceRestDayFaq": {
+      "q": "What happens on a rest day in a stage race?",
+      "a": "Your rider rests. A stage race binds him from the first stage to the last, rest days included, so he doesn't train on a rest day either. His program doesn't run, he gains no development that day, and there's no injury risk from training. What he does get is recovery: a rest day lowers his Fatigue."
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Can I train Flat or Cobbles at Hard intensity?",

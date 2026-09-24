@@ -138,6 +138,20 @@ function Get-PrPlanEntry([int]$number) {
   }
 }
 
+function Get-PrMergeCategory([int]$number) {
+  # #5508: read-only, sikkert i -DryRun. Kalder den rene Node-klassifikator, som
+  # selv laeser PR'en via gh (labels + filer + body). Returnerer altid en streng;
+  # en fejl bliver til "ukendt (...)" og stopper ALDRIG koeen - klassifikationen
+  # er information, ikke en gate (hard rule 35 siger "logge kategorien").
+  try {
+    $line = & node (Join-Path $PSScriptRoot 'merge-queue-classify.mjs') --pr "$number" --repo $Repo 2>&1
+    if ($LASTEXITCODE -ne 0 -or -not $line) { return "ukendt (klassifikator exit $LASTEXITCODE)" }
+    return (($line | ForEach-Object { "$_" }) -join ' ').Trim()
+  } catch {
+    return "ukendt (klassifikator fejlede: $($_.Exception.Message))"
+  }
+}
+
 function Get-PrDraftState([int]$number) {
   # Let, dedikeret laesning af draft-status - IKKE et fuldt Get-PrPlanEntry-kald
   # (som ogsaa slaar checks og league-regler op), fordi denne kaldes FOERST i
@@ -237,6 +251,13 @@ $plan | ForEach-Object {
   $backendTxt = if ($_.touchesBackend) { "ja (venter paa Railway+Deploy verify)" } else { "nej (venter mindst ${MinWaitMinutesNoBackend}min)" }
   Write-Host ("  PR #{0}: checks={1}  backend/={2}  mergeable={3}  draft={4}" -f $_.number, $_.checksSummary, $backendTxt, $_.mergeable, $_.isDraft)
   Write-Host ("      $($_.title)") -ForegroundColor DarkGray
+  # #5508 / AGENTS.md hard rule 35: kategori (a)/(b)/(c) eller "kraever ejer-go".
+  # KUN information i oversigten - koeen merger praecis som foer, uanset kategori.
+  # Logikken ligger i scripts/merge-queue-classify.mjs (ren Node, node --test);
+  # dette script viser kun linjen. Fejler node-kaldet, vises det som ukendt.
+  $classification = Get-PrMergeCategory $_.number
+  $classColor = if ($classification -like 'KATEGORI *') { 'Green' } elseif ($classification -like 'EJER-GO*') { 'Yellow' } else { 'DarkGray' }
+  Write-Host ("      merge-regel: $classification") -ForegroundColor $classColor
 }
 Write-Host ""
 

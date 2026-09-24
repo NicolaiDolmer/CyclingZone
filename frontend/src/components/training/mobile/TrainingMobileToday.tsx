@@ -82,6 +82,9 @@ export default function TrainingMobileToday({
   overviewLayout = false,
   cardFooterFor = null,
   changeLabel,
+  picked = null,
+  onTogglePick,
+  bulkSlot = null,
 }: {
   riders: MobileRider[];
   columns: RaceDayColumn[];
@@ -135,6 +138,12 @@ export default function TrainingMobileToday({
   // Rytterens ugeplan + profil-linket, inde i kortet (A3).
   cardFooterFor?: ((riderId: string) => React.ReactNode) | null;
   changeLabel?: string;
+  // #5620/#5485: markerings-tilstanden til hurtig hvile, sendt uaendret videre
+  // til TrainingMobileRoster. `bulkSlot` er vaerktoejslinjen (TrainingMobileBulkBar)
+  // og staar lige over tabellen, under sorteringen.
+  picked?: ReadonlySet<string> | null;
+  onTogglePick?: (riderId: string) => void;
+  bulkSlot?: React.ReactNode;
 }) {
   const { t } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -245,7 +254,11 @@ export default function TrainingMobileToday({
 
       {sortSlot}
 
+      {bulkSlot}
+
       <TrainingMobileRoster
+        picked={picked}
+        onTogglePick={onTogglePick}
         riders={rosterRiders}
         columns={columns}
         cellFor={cellFor}

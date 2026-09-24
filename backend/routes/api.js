@@ -255,7 +255,8 @@ import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjure
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
-import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope } from "../lib/squads.js";
+import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad } from "../lib/squads.js";
+import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #5568: loft pr. ungdomstrup
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -274,7 +275,7 @@ import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
-import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract } from "../lib/academyTransfer.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
@@ -1669,9 +1670,10 @@ router.get("/physiology/division-benchmark", requireAuth, cached({ namespace: "p
 // Bruges af release/release-quote — akademi har sit eget release-flow.
 // Returnerer { rider } ved succes, eller { error: { status, body } } ved guard-fejl.
 async function loadOwnedSeniorRiderForAction(req, riderId) {
+  // #5568: birthdate med, så academy-demote-quote kan vælge mål-truppen.
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season")
+    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season, birthdate")
     .eq("id", riderId)
     .single();
   if (!rider || rider.team_id !== req.team.id) {
@@ -1760,6 +1762,20 @@ async function getActiveSeasonNumber() {
   const { data: season } = await supabase
     .from("seasons").select("number").eq("status", "active").maybeSingle();
   return season?.number ?? 1;
+}
+
+// #5568: bud-gatens akademi-gren for en ungdomsauktion. Rytteren lander i den
+// ungdomstrup hans sæsonalder hører til (academyPlacementSquad, samme valg som
+// finalize bruger ved akademi-fallbacken), og det er DEN trups loft der tæller.
+// Før sammenlignede gaten alle akademiryttere med det gamle flade akademi-loft,
+// så et hold med 8 akademiryttere blev afvist, selv om truppen havde plads.
+async function youthAuctionAcademyRoom(teamId, riderId) {
+  const [{ data: rider, error }, seasonNumber] = await Promise.all([
+    supabase.from("riders").select("birthdate").eq("id", riderId).maybeSingle(),
+    getActiveSeasonNumber(),
+  ]);
+  if (error) throw new Error(`youthAuctionAcademyRoom: ${error.message}`);
+  return youthSquadRoom(supabase, { teamId, squad: academyPlacementSquad(rider?.birthdate ?? null, seasonNumber) });
 }
 
 // #3143: hårdt loft på gentagne kontraktforlængelser. Uden dette kunne en
@@ -1862,9 +1878,14 @@ router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => 
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
-  const [racesCleared, racesOngoing] = await Promise.all([
+  // #5568: dialogen viste "9 af 8", fordi den talte ALLE akademiryttere mod det
+  // gamle flade loft. Nu viser den den trup rytteren faktisk rykker ned i, valgt
+  // af demoteTargetSquad (samme funktion som demote() selv), og den trups loft.
+  const targetSquad = demoteTargetSquad(rider, await getActiveSeasonNumber());
+  const [racesCleared, racesOngoing, squadRoom] = await Promise.all([
     countFutureRaceEntries(supabase, rider.id),
     countOngoingRaceEntries(supabase, rider.id),
+    youthSquadRoom(supabase, { teamId: req.team.id, squad: targetSquad }),
   ]);
 
   // #4582: dialogen skal SIGE at kontrakten følger med, ikke kun vise et tal der
@@ -1883,6 +1904,9 @@ router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => 
     keepsContract: hasCompleteContract(rider),
     racesCleared,
     racesOngoing,
+    targetSquad: squadRoom.squad,
+    squadUsed: squadRoom.used,
+    squadMax: squadRoom.max,
   });
 });
 
@@ -7287,23 +7311,24 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   // ført auktion). Et forsvars-bud på en auktion man allerede fører blokeres aldrig.
   // #2701: youth-auktioner blokeres kun hvis BÅDE akademi og senior er fulde (ung
   // rytter er egnet til begge). Akademi-tælling kun hentet for youth (undgå ekstra
-  // query på senior-auktioner). Samme is_academy=true-filter som finalize/UI.
-  const academyCount = auction.is_youth
-    ? await getTeamAcademyCount(supabase, req.team.id)
-    : 0;
+  // query på senior-auktioner). #5568: tællingen og loftet er rytterens MÅL-trup
+  // (U23 eller junior), ikke hele akademiet mod et fladt tal.
+  const academyRoom = auction.is_youth
+    ? await youthAuctionAcademyRoom(req.team.id, auction.rider_id)
+    : null;
   const squadBlock = getAuctionBidRoomBlock({
     isYouth: auction.is_youth,
     teamState,
-    academyCount,
-    academySlots: ACADEMY.SLOTS,
+    academyCount: academyRoom?.used ?? 0,
+    academySlots: academyRoom?.max,
     activeLeadingCount: activeLeadingExceptCurrent.length,
     alreadyLeadingThisAuction,
   });
   if (squadBlock?.code === "no_eligible_room_bid") {
     return res.status(400).json({
-      error: `No room in your academy (${squadBlock.maxAcademy}/${squadBlock.maxAcademy}) or senior squad (${squadBlock.maxRiders}/${squadBlock.maxRiders}). Sell a rider before you bid.`,
+      error: `No room in the ${academyRoom.squad === "junior" ? "junior" : "U23"} team (${squadBlock.maxAcademy}/${squadBlock.maxAcademy}) or your senior squad (${squadBlock.maxRiders}/${squadBlock.maxRiders}). Sell a rider before you bid.`,
       errorCode: "no_eligible_room_bid",
-      errorParams: { maxAcademy: squadBlock.maxAcademy, maxRiders: squadBlock.maxRiders },
+      errorParams: { maxAcademy: squadBlock.maxAcademy, maxRiders: squadBlock.maxRiders, squad: academyRoom.squad },
     });
   }
   if (squadBlock?.code === "squad_full_bid") {
@@ -7610,22 +7635,23 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   // med fuld seniortrup men ledig akademiplads afgive et almindeligt bud, men ikke
   // sætte et proxy-loft på samme auktion.
   if (openingBidAmount !== null) {
-    const proxyAcademyCount = auction.is_youth
-      ? await getTeamAcademyCount(supabase, req.team.id)
-      : 0;
+    // #5568: samme mål-trup-tælling som POST /auctions/:id/bid.
+    const proxyAcademyRoom = auction.is_youth
+      ? await youthAuctionAcademyRoom(req.team.id, auction.rider_id)
+      : null;
     const squadBlock = getAuctionBidRoomBlock({
       isYouth: auction.is_youth,
       teamState,
-      academyCount: proxyAcademyCount,
-      academySlots: ACADEMY.SLOTS,
+      academyCount: proxyAcademyRoom?.used ?? 0,
+      academySlots: proxyAcademyRoom?.max,
       activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
       alreadyLeadingThisAuction: false,
     });
     if (squadBlock?.code === "no_eligible_room_bid") {
       return res.status(400).json({
-        error: `No room in your academy (${squadBlock.maxAcademy}/${squadBlock.maxAcademy}) or senior squad (${squadBlock.maxRiders}/${squadBlock.maxRiders}). Sell a rider before you bid.`,
+        error: `No room in the ${proxyAcademyRoom.squad === "junior" ? "junior" : "U23"} team (${squadBlock.maxAcademy}/${squadBlock.maxAcademy}) or your senior squad (${squadBlock.maxRiders}/${squadBlock.maxRiders}). Sell a rider before you bid.`,
         errorCode: "no_eligible_room_bid",
-        errorParams: { maxAcademy: squadBlock.maxAcademy, maxRiders: squadBlock.maxRiders },
+        errorParams: { maxAcademy: squadBlock.maxAcademy, maxRiders: squadBlock.maxRiders, squad: proxyAcademyRoom.squad },
       });
     }
     if (squadBlock?.code === "squad_full_bid") {
@@ -7891,7 +7917,8 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
   // rytteren atomisk ved handlens gennemførelse (executeTransferOffer sætter
   // is_academy=false), samme mønster som en graduate-sælg-auktion
   // (academyGraduation.js createGraduateAuction) allerede bruger — rytteren
-  // forbliver is_academy=true (og tæller stadig mod sælgerens 8-cap) indtil
+  // forbliver is_academy=true (og tæller stadig mod loftet i sælgerens
+  // ungdomstrup, squads.js SQUAD_CAPS, #5568) indtil
   // handlen rent faktisk lukkes.
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
@@ -18138,8 +18165,10 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       .eq("status", "offered");
     if (intakeErr) throw new Error(intakeErr.message);
 
-    // Antal brugte akademi-pladser
-    const used = await getTeamAcademyCount(supabase, teamId);
+    // #5568: brugte pladser + loft PR. UNGDOMSTRUP ("U23 5/12 · Junior 3/10").
+    // Erstatter det gamle slots-felt med ét fladt loft, som spærrede
+    // signering for hold med 8 akademiryttere, selv om truppen havde plads.
+    const squads = await youthSquadRooms(supabase, teamId);
 
     // #932 S7: senior-trup-tæller til demote-confirm (cap-effekt). future_count
     // (getTeamMarketState) tæller ikke-akademi-ryttere mod division-cap'en;
@@ -18259,6 +18288,11 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       return {
         intakeId: row.id,
         riderId: row.rider_id,
+        // #5568: truppen han lander i ved signering (samme valg som
+        // signAcademyCandidate), så kortet kan spærre mod DEN trups loft.
+        targetSquad: Number.isFinite(prognosisSeasonNumber)
+          ? academyPlacementSquad(potRow.birthdate ?? rider.birthdate ?? null, prognosisSeasonNumber)
+          : null,
         is_serious: row.is_serious,
         status: row.status,
         created_at: row.created_at,
@@ -18377,7 +18411,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 
     res.json({
       enabled: true,
-      slots: { used, max: ACADEMY.SLOTS },
+      squads,
       seniorCount,
       seniorMax,
       roster,
@@ -18434,7 +18468,8 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
 
     // Kumulative akademi-specifikke pengebevægelser (drift + signing-fees, hele historikken).
     // pagination-safe: one team, academy tx types only — bounded by the
-    // 8-slot academy cap, verified max 28 rows per team repo-wide (#3331 audit).
+    // per-squad youth caps (squads.js SQUAD_CAPS, #5568) per season, far below
+    // the 1000-row cap; verified max 28 rows per team repo-wide (#3331 audit).
     const { data: financeRows, error: financeErr } = await supabase
       .from("finance_transactions")
       .select("type, amount")
@@ -18478,7 +18513,10 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       transferRows = transferRes.data ?? [];
     }
 
-    const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: ACADEMY.SLOTS });
+    // #5568: pladserne er summen af ungdomstruppernes lofter (U23 + junior),
+    // afledt af SQUAD_CAPS — ikke det gamle flade akademi-loft.
+    const youthPlacesMax = Object.values(SQUAD_CAPS).reduce((sum, cap) => sum + cap, 0);
+    const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: youthPlacesMax });
     const { driftPaid, signingFeesPaid } = computeAcademyCumulative(financeRows ?? []);
     const sales = buildAcademySales(auctionRows, transferRows, riderById);
 

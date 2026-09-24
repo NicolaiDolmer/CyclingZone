@@ -424,6 +424,10 @@
     "sessionShort_attack_repeats": "Attack",
     "sessionShort_technique": "Tech",
     "sessionShort_aero": "Aero",
-    "sessionShort_loebslaere": "Craft"
+    "sessionShort_loebslaere": "Craft",
+    "selectRiders": "Select riders",
+    "selectDone": "Done",
+    "restSelected": "Set to rest",
+    "pickHint": "Tap the riders you want to change."
   }
 }

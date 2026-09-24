@@ -424,6 +424,10 @@
     "sessionShort_attack_repeats": "Angreb",
     "sessionShort_technique": "Teknik",
     "sessionShort_aero": "Aero",
-    "sessionShort_loebslaere": "Løbslære"
+    "sessionShort_loebslaere": "Løbslære",
+    "selectRiders": "Vælg ryttere",
+    "selectDone": "Færdig",
+    "restSelected": "Sæt til hvile",
+    "pickHint": "Tryk på de ryttere, du vil ændre."
   }
 }

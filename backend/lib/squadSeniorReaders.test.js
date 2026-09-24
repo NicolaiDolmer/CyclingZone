@@ -132,6 +132,9 @@ function isScopeWrapped(src, fromIndex) {
 const WRITE_RE = /\.(insert|update|upsert|delete)\(/;
 const SINGLE_ROW_RE = /\.eq\(\s*["']id["']|\.in\(\s*["']id["']|\.maybeSingle\(|\.single\(/;
 const ONE_POOL_RE = /\.eq\(\s*["']league_division_id["']/;
+// #5536: et eksplicit trup-valg (.eq("squad", <trup>)) er et scope — læseren har valgt
+// ÉN trup, fx buildPoolTree(client, { squad: "u23" }).
+const SQUAD_EQ_RE = /\.eq\(\s*["']squad["']\s*,/;
 const OPT_OUT_RE = /squad-scope-ok:\s*\S/;
 
 function hasOptOut(lines, lineNo) {
@@ -155,6 +158,7 @@ function classifyReads(src, table, { allowOnePool = false, allowOptOut = false }
     let kind = "unscoped";
     if (isScopeWrapped(src, m.index)) kind = "scoped";
     else if (WRITE_RE.test(chain)) kind = "write";
+    else if (SQUAD_EQ_RE.test(chain)) kind = "scoped";
     else if (SINGLE_ROW_RE.test(chain)) kind = "single-row";
     else if (allowOnePool && ONE_POOL_RE.test(chain)) kind = "one-pool";
     else if (allowOptOut && hasOptOut(lines, line)) kind = "opt-out";
@@ -179,18 +183,6 @@ const KNOWN_UNSCOPED_LEAGUE_READERS = Object.freeze({
   "backend/lib/balanceDriftWatch.js": {
     count: 1, blocksYouthSeed: false,
     reason: "id→tier-opslag for allerede valgte løb; itererer ikke puljerne.",
-  },
-  "backend/lib/betaResetService.js": {
-    count: 1, blocksYouthSeed: true,
-    reason: "Entry-puljen vælges på tier alene — ville kunne placere managerhold i en ungdomspulje.",
-  },
-  "backend/lib/economyEngine.js": {
-    count: 2, blocksYouthSeed: true,
-    reason: "buildPoolTree nøgler på tier:pool_index, som ungdomspuljerne deler med seniorernes (op/nedrykning, spor B3). Label-opslaget (id→label) er harmløst.",
-  },
-  "backend/lib/sponsorContractsService.js": {
-    count: 1, blocksYouthSeed: true,
-    reason: "Tier-gennemsnittet af etaper ville tælle ungdomspuljernes kalendere med i seniorernes sponsor-divisor.",
   },
   "backend/lib/teamProfileEngine.js": {
     count: 1, blocksYouthSeed: true,
@@ -303,6 +295,16 @@ test("#5517 scanneren ville fange en ny læser (selvtest)", () => {
   assert.deepEqual(kinds('await withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("id")).order("tier"));'), ["scoped"]);
   assert.deepEqual(kinds('await withSeniorSquadScope(async (s) => fetchAllRows(() => s(supabase\n  .from("league_divisions").select("id")).order("id")));'), ["scoped"]);
   assert.deepEqual(kinds('await supabase.from("league_divisions").select("label").eq("id", poolId).maybeSingle();'), ["single-row"]);
+  // #5536: et eksplicit trup-valg er et scope (buildPoolTree(client, { squad })).
+  assert.deepEqual(kinds('await client.from("league_divisions").select("id, tier").eq("squad", squad);'), ["scoped"]);
+  assert.deepEqual(kinds("await client\n  .from('league_divisions')\n  .select('id')\n  .eq('squad', 'u23')\n  .order('tier');"), ["scoped"]);
+  // … men et filter på en ANDEN kolonne der blot hedder noget med squad er det ikke.
+  assert.deepEqual(kinds('await client.from("league_divisions").select("id").eq("squad_size", 24);'), ["unscoped"]);
+  // Og et squad-filter i NABO-udtrykket (Promise.all) låner læseren ikke.
+  assert.deepEqual(
+    kinds('await Promise.all([\n  supabase.from("league_divisions").select("id"),\n  supabase.from("races").select("id").eq("squad", "u23"),\n]);'),
+    ["unscoped"],
+  );
   assert.deepEqual(kinds('// her stod supabase.from("league_divisions").select("*")'), []);
   // En liste-læser i et Promise.all må ikke låne naboens .maybeSingle().
   assert.deepEqual(
