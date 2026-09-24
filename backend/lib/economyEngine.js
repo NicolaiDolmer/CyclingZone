@@ -2492,6 +2492,10 @@ const RETIRED_AT_COLUMN = "retired_at";
 // korrekt. PGRST204 (PostgREST's skema-cache) tæller bevidst IKKE, samme dom som
 // isMissingSquadColumnError: cachen kan mangle kolonnen EFTER migrationen har
 // pensioneret puljer, og dér fejler vi lukket i stedet for at tage dem med.
+/**
+ * @param {{code?:string, message?:string, details?:string, hint?:string}|null|undefined} error
+ * @returns {boolean}
+ */
 export function isMissingRetiredAtColumnError(error) {
   if (!error) return false;
   const code = String(error.code ?? "");
@@ -2502,13 +2506,20 @@ export function isMissingRetiredAtColumnError(error) {
   return /does not exist|undefined column/.test(text);
 }
 
+/** @type {(query: any) => any} */
 const onlyActivePools = (query) => query.is(RETIRED_AT_COLUMN, null);
+/** @type {(query: any) => any} */
 const allPoolsIncludingRetired = (query) => query;
 
 // Kør en league_divisions-læsning uden pensionerede puljer (retired_at IS NULL).
 // Samme form som withSeniorSquadScope: `run(active)` bygger en FRISK builder og pakker
 // den ind i `active(...)`. Svarer databasen 42703 på retired_at, køres `run` én gang
 // til uden filteret.
+/**
+ * @template R
+ * @param {(active: (query: any) => any) => (R|PromiseLike<R>)} run
+ * @returns {Promise<R>}
+ */
 async function withoutRetiredPools(run) {
   let result;
   try {
@@ -2523,6 +2534,10 @@ async function withoutRetiredPools(run) {
 
 // Puljerne ét træ bygges af: trup (senior = withSeniorSquadScope, ellers et eksplicit
 // squad-filter) og kun aktive puljer.
+/**
+ * @param {any} client  Supabase-klient
+ * @param {string} squad
+ */
 function loadPoolTreeRows(client, squad) {
   if (squad === DEFAULT_SQUAD) {
     return withSeniorSquadScope((senior) => withoutRetiredPools((active) =>
