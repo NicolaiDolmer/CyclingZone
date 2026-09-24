@@ -1059,6 +1059,10 @@
         "title": "Løbsdage og træning",
         "text": "En løbsdag ændrer ikke dagens træning. Rytteren gennemfører stadig det pas du har planlagt, og løbet lægger sin egen træthed oven i træningsbelastningen. Selve løbet hæver ikke evner: udviklingen kommer fra træningen, uanset om rytteren kører løb den dag eller ej. Det løb koster, er friskhed, og hver etape lægger sin egen belastning på, mens restitutionen kun kommer én gang i døgnet, så en rytter i et tungt etapeløb bliver hurtigt træt. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile inden formen falder fra."
       },
+      "raceDaysPerRaceDay": {
+        "title": "Løbsdage og træning",
+        "text": "På en løbsdag kører din rytter enten løb eller træner, aldrig begge dele. Når han kører løb, gælder hans program ikke den løbsdag, og løbet giver sin egen træthed i stedet. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner ikke, før løbet er slut. Selve løbet hæver ikke evner: udviklingen kommer fra de løbsdage han træner. Alle divisioner har 140 løbsdage pr. sæson, og hver løbsdag uden løb for din rytter er en træningsdag. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile mellem deres løb."
+      },
       "smartDefault": {
         "title": "Hvad træner en rytter uden valgt fokus?",
         "text": "En rytter uden valgt fokus står ikke uden træning: assistenten træner rytteren mod et fokus der passer til typen, fx en spurter mod Spurt og en klatrer mod VO2max. Du ser en lille 'Assistent: ... (auto)'-note under fokus-dropdownen når det gælder. Vælger du selv et fokus, vinder det altid. For at anvende et type-matchet fokus på flere ryttere ad gangen: markér dem og vælg 'Smart fokus (efter ryttertype)' i anvend-på-valgte-bjælken; ryttere der allerede har et fokus springes over, så dine eksisterende valg aldrig overskrives."
@@ -1070,6 +1074,10 @@
       "formFatigue": {
         "title": "Form og Træthed",
         "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hver dag, efter kl. 22 dansk tid (eller straks hvis du selv klikker 'Træn i dag'), restituerer hver rytter noget Træthed: hvile- og rolige dage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger den stadig op i løbet af dagen. Ved tæt løbskalender og hård belastning kan Træthed alligevel klumpe tæt på 100, fordi restitutionen ikke altid kan følge med; det er et kendt balance-område jeg arbejder på. En høj Restitution gør den daglige genopretning hurtigere. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt. I løb (aktivt siden sæson 1-relaunchen) giver god form en lille scoringsfavour og høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Løbsdage opbygger træthed efter etapeprofil: bjergetaper koster mest, flad etaper mindst. Skadede ryttere indmeldes ikke automatisk i løb."
+      },
+      "formFatiguePerRaceDay": {
+        "title": "Form og Træthed",
+        "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Efter hver løbsdag restituerer hver rytter noget Træthed, også efter en løbsdag med løb: hvile- og rolige løbsdage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger den stadig op. Dagens løbsdage trænes og restitueres i én samlet kørsel, når dagens sidste løb er kørt og tidligst kl. 20 dansk tid. Ved tæt løbskalender og hård belastning kan Træthed alligevel klumpe tæt på 100, fordi restitutionen ikke altid kan følge med; det er et kendt balance-område jeg arbejder på. En høj Restitution gør restitutionen hurtigere. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres efter hver løbsdag. I løb (aktivt siden sæson 1-relaunchen) giver god form en lille scoringsfavour og høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Løb opbygger træthed efter etapeprofil: bjergetaper koster mest, flade etaper mindst. Skadede ryttere indmeldes ikke automatisk i løb."
       },
       "injuryRisk": {
         "title": "Skaderisiko",
@@ -1187,8 +1195,8 @@
         ]
       },
       "academySize": {
-        "title": "Akademistørrelse (8 pladser)",
-        "text": "Dit Akademi rummer op til {academySlots} ryttere. Disse {academySlots} pladser er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+        "title": "Akademistørrelse (pr. hold)",
+        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
@@ -1196,11 +1204,11 @@
       },
       "youthAuctions": {
         "title": "Ungdomsauktioner",
-        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Du kan kun byde, hvis du har plads til rytteren, enten en ledig senior-plads eller en ledig akademi-plads; er begge fulde, er bud-knappen deaktiveret. Det vindende hold betaler det vindende bud, og prospektet ryger på senior-truppen, når der er en ledig plads (med senior-kontrakt og tæller mod 30-rytter-grænsen), og falder først tilbage til Akademiet (en af de 8 pladser), når senior-truppen er fuld. Hver auktion viser, hvor rytteren lander. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
+        "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Du kan kun byde, hvis du har plads til rytteren, enten en ledig senior-plads eller en ledig akademi-plads; er begge fulde, er bud-knappen deaktiveret. Det vindende hold betaler det vindende bud, og prospektet ryger på senior-truppen, når der er en ledig plads (med senior-kontrakt og tæller mod 30-rytter-grænsen), og falder først tilbage til Akademiet (en plads på U23- eller juniorholdet efter hans alder), når senior-truppen er fuld. Hver auktion viser, hvor rytteren lander. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
-        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi ({u23SquadCap} U23- og {juniorSquadCap} juniorryttere) har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
         "title": "Graduation Day",
@@ -1502,6 +1510,10 @@
       "q": "Betyder min valgte intensitet stadig noget den dag min rytter kører løb?",
       "a": "Ja, nøjagtig som på en almindelig dag. Løbet ændrer ikke hvad dagens pas giver: Hvile giver intet, Hård giver mest udbytte og mest træthed (plus skaderisiko når trætheden er høj), præcis som på en dag uden løb. Løbet er en selvstændig belastning oven i: dets egen træthed lægges oven på det pas allerede byggede, så en rytter der både kører løb og træner hårdt samme dag, bærer begge dele."
     },
+    "raceDayIntensityPerRaceDayFaq": {
+      "q": "Betyder min valgte intensitet stadig noget den dag min rytter kører løb?",
+      "a": "Ikke på de løbsdage han kører løb. På en løbsdag kører din rytter løb eller træner, aldrig begge dele, så hans pas kører ikke, mens han er i et løb: ingen træningsbelastning og ingen skaderisiko fra træning, kun løbets egen træthed. Din intensitet afgør hver løbsdag han ikke kører løb: Hvile giver intet, Hård giver mest udbytte og mest træthed, plus skaderisiko når trætheden er høj."
+    },
     "raceDayProfileMatchFaq": {
       "q": "Skal min rytters træningspas matche løbets terræn (fladt, bjerge, brosten)?",
       "a": "Nej, ikke lige nu. Sæson 3 kører på sæson 2's løbsdags-regler (patch 7.196): et løb giver ikke sin egen evne-belønning, så der er intet for et pas at \"matche\". Træn hver rytter mod det han har brug for på sigt. En model hvor pas og etapeprofil hænger sammen er planlagt til sæson 4, men den er ikke låst endnu, så byg ikke din plan omkring en bestemt udgave af den."
@@ -1509,6 +1521,22 @@
     "raceDayAcademyFaq": {
       "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
       "a": "Det koster ingen evneudvikling i sæson 3 at køre løb: dit talent får stadig præcis det pas du planlagde den dag, uanset om han kører løb eller ej. Den reelle pris er træthed: et løb lægger sin egen belastning oven i træningen, og et talent der ofte kører løb, har brug for lettere pas og rigtige hviledage for at holde sig under skadetærsklen, ligesom enhver senior-rytter. Der er ingen akademi-specifik straf for at køre løb, så afvejningen handler om at styre trætheden, ikke om tabt udvikling."
+    },
+    "raceDayAcademyPerRaceDayFaq": {
+      "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
+      "a": "Løb koster ham udvikling. På en løbsdag kører dit talent løb eller træner, aldrig begge dele, og selve løbet hæver ikke evner, så hver løbsdag han kører løb, er en løbsdag uden træning. Et etapeløb tager alle løbsdage fra første til sidste etape, hviledage medregnet. Der er ingen akademi-specifik straf: samme regel gælder for alle ryttere. Kommer hans udvikling først, så vælg hans løb med omhu, og lad ham træne på de andre løbsdage."
+    },
+    "lowerDivisionTrainingFaq": {
+      "q": "Får lavere divisioner mere træning?",
+      "a": "Som regel, ja. Alle divisioner har 140 løbsdage pr. sæson, men de lavere divisioner har færre etaper at køre. En løbsdag uden løb for din rytter er en træningsdag, så færre etaper betyder flere træningsdage. I alle divisioner træner en rytter, der ikke kører løb på en løbsdag, den dag."
+    },
+    "multipleStagesTrainingFaq": {
+      "q": "Giver flere etaper samme dag mere træning?",
+      "a": "Nej. Hver etape køres på sin egen løbsdag, og på en løbsdag kører din rytter løb eller træner, aldrig begge dele. En rytter der kører tre etaper på én dag, kører løb på tre løbsdage og træner på ingen af dem. Hver etape giver sin egen træthed, og hver løbsdag giver sin egen restitution. Holdkammerater der ikke kører løb, træner på hver af dagens løbsdage. Træningen pr. løbsdag er afstemt efter en sæson på 140 løbsdage, så en dag med mange løbsdage giver ikke hurtigere udvikling over sæsonen."
+    },
+    "stageRaceRestDayFaq": {
+      "q": "Hvad sker der på en hviledag i et etapeløb?",
+      "a": "Din rytter hviler. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner heller ikke på en hviledag. Hans program kører ikke, han får ingen udvikling den dag, og der er ingen skaderisiko fra træning. Til gengæld restituerer han: en hviledag sænker hans Træthed."
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Kan jeg træne Fladt eller Brosten med Hård intensitet?",

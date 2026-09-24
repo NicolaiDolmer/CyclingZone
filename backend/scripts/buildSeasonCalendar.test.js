@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
+  scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar,
 } from "./buildSeasonCalendar.js";
 import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
 import {
@@ -167,31 +168,40 @@ function fakeSupabase({ rowsByTable = {}, countOverrides = {}, failCountFor = nu
   const writes = [];
   const rows = (t) => rowsByTable[t] ?? [];
 
+  // #5644: builderen er en thenable, der først afgøres når den awaites, så filtre kan kædes
+  // (.eq("season_id").or(senior-filteret) / .eq("squad", ...)). Hver skrivning logger ALLE
+  // sine filtre; `column`/`value`/`ids` er det første filter (som før #5644).
   function builder(table) {
-    const state = { table, count: false, filterCol: null, filterVals: null };
+    const state = { table, count: false, op: null, filters: [] };
+    const settle = () => {
+      const first = state.filters[0];
+      if (state.op) {
+        const w = { table, kind: state.op.kind, filters: state.filters };
+        if (first?.type === "in") { w.column = first.col; w.ids = first.vals; }
+        if (first?.type === "eq") { w.column = first.col; w.value = first.val; }
+        writes.push(w);
+        return { error: null };
+      }
+      if (state.count) {
+        const key = `${table}.${first?.col}`;
+        if (failCountFor === key) return { count: null, error: { message: "boom" } };
+        return { count: countOverrides[key] ?? 0, error: null };
+      }
+      return { data: rows(table), error: null };
+    };
     const q = {
       select(_cols, opts) { state.count = Boolean(opts?.count); return q; },
       update(patch) { state.op = { kind: "update", patch }; return q; },
       delete() { state.op = { kind: "delete" }; return q; },
       insert(payload) { writes.push({ table, kind: "insert", payload }); return Promise.resolve({ error: null }); },
       order() { return q; },
+      limit() { return q; },
       range(from, to) { return Promise.resolve({ data: rows(table).slice(from, to + 1), error: null }); },
-      in(col, vals) {
-        state.filterCol = col; state.filterVals = vals;
-        if (state.op) { writes.push({ table, kind: state.op.kind, column: col, ids: vals }); return Promise.resolve({ error: null }); }
-        if (state.count) {
-          const key = `${table}.${col}`;
-          if (failCountFor === key) return Promise.resolve({ count: null, error: { message: "boom" } });
-          return Promise.resolve({ count: countOverrides[key] ?? 0, error: null });
-        }
-        return q; // videre til .order().range() via fetchAllRowsChunkedIn
-      },
-      eq(col, val) {
-        if (state.op) { writes.push({ table, kind: state.op.kind, column: col, value: val }); return Promise.resolve({ error: null }); }
-        if (state.count) return Promise.resolve({ count: countOverrides[`${table}.${col}`] ?? 0, error: null });
-        return q;
-      },
+      in(col, vals) { state.filters.push({ type: "in", col, vals }); return q; },
+      eq(col, val) { state.filters.push({ type: "eq", col, val }); return q; },
+      or(expr) { state.filters.push({ type: "or", expr }); return q; },
       maybeSingle() { return Promise.resolve({ data: rows(table)[0] ?? null, error: null }); },
+      then(res, rej) { return Promise.resolve(settle()).then(res, rej); },
     };
     return q;
   }
@@ -283,7 +293,7 @@ test("#5405 replaceSeasonCalendarRows: post-verify med løb tilbage KASTER (inge
         supabase, seasonId: "season-4", seasonNumber: 4,
         races: raceIds.map((id) => ({ id })), snapshotDir: dir,
       }),
-      /efterlod 2 løb/,
+      /efterlod 2 senior-løb/,
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -303,3 +313,114 @@ test("#5405 replaceSeasonCalendarRows: 0 løb er en no-op — intet snapshot, in
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── #5644 (risiko 6) · --replace-existing og post-verify er pr. TRUP ─────────────────
+
+test("#5644 replaceSeasonCalendarRows --squad u23: sletter KUN U23-løb (season_id + squad), snapshot mærket u23", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-5644-"));
+  try {
+    const supabase = fakeSupabase({ countOverrides: { "races.season_id": 0 } });
+    await replaceSeasonCalendarRows({
+      supabase, seasonId: "season-4", seasonNumber: 4, races: raceIds.map((id) => ({ id })), snapshotDir: dir, squad: "u23",
+    });
+    const racesDelete = supabase.writes.find((w) => w.kind === "delete" && w.table === "races");
+    assert.deepEqual(racesDelete.filters, [
+      { type: "eq", col: "season_id", val: "season-4" },
+      { type: "eq", col: "squad", val: "u23" },
+      { type: "in", col: "id", vals: raceIds },
+    ], "sletningen er scopet til sæson OG trup — seniorløbene står");
+    const [file] = readdirSync(dir);
+    assert.match(file, /season4-u23-/);
+    assert.equal(JSON.parse(readFileSync(join(dir, file), "utf8")).squad, "u23");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("#5644 replaceSeasonCalendarRows senior (default): sletter kun seniorløb, ungdomsløbene står", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-5644-"));
+  try {
+    const supabase = fakeSupabase({ countOverrides: { "races.season_id": 0 } });
+    await replaceSeasonCalendarRows({ supabase, seasonId: "season-4", seasonNumber: 4, races: raceIds.map((id) => ({ id })), snapshotDir: dir });
+    const racesDelete = supabase.writes.find((w) => w.kind === "delete" && w.table === "races");
+    assert.deepEqual(racesDelete.filters, [
+      { type: "eq", col: "season_id", val: "season-4" },
+      { type: "or", expr: "squad.is.null,squad.eq.senior" },
+      { type: "in", col: "id", vals: raceIds },
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("#5644 scopeRacesToSquad: ukendt trup kastes (en tastefejl må aldrig slette seniorløb)", () => {
+  const supabase = fakeSupabase();
+  assert.throws(() => scopeRacesToSquad(supabase.from("races").delete().eq("season_id", "s"), "U23"), /ukendt trup/);
+});
+
+// ── #5644 / #4592 A3 · strukturvagten: 1/2/4/4 fra S4 ─────────────────────────────
+
+const planWithPools = (counts) => Object.entries(counts).map(([tier, n]) => ({ tier: Number(tier), pools: Array.from({ length: n }, (_, i) => ({ leagueDivisionId: i })) }));
+
+test("#5644 detectSeniorPoolStructureViolations: S4 med 8 D4-puljer (E-H ikke pensioneret) blokerer; 1/2/4/4 er ren", () => {
+  const bad = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 8 }), seasonNumber: 4 });
+  assert.equal(bad.length, 1);
+  assert.match(bad[0], /D4: 8 puljer/);
+  assert.deepEqual(detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 4 }), seasonNumber: 4 }), []);
+  const missingD3 = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 3, 4: 4 }), seasonNumber: 4 });
+  assert.match(missingD3[0], /D3: 3 puljer/);
+  assert.deepEqual(detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 8 }), seasonNumber: 3 }), [], "før S4 gælder vagten ikke");
+});
+
+// ── #5644 (Y5) · runSquadCalendar ─────────────────────────────────────────────────
+
+const squadPlan = (violations = []) => ({
+  tiers: [{ tier: 1, calendarViolations: violations, coverageMeasurements: [] }],
+  planTiers: [{ tier: 1, pools: [{}, {}], raceCount: 8, weeklyRaceStarts: [2, 2, 2, 2], racesPerWeek: { min: 1, max: 2 }, racingDates: 14, realDays: 28, raceDayAxisLength: 140, trainingGameDayCount: 126, calendarViolations: violations }],
+});
+
+async function withExitCode(fn) {
+  const saved = process.exitCode;
+  try { return await fn(); } finally { process.exitCode = saved; }
+}
+
+test("#5644 runSquadCalendar dry-run: uden seniorkalender blokerer den, og intet skrives", () => withExitCode(async () => {
+  const supabase = fakeSupabase({ countOverrides: { "races.season_id": 0 } });
+  const res = await runSquadCalendar({
+    supabase, squad: "u23", seasonId: "season-4", seasonNumber: 4, seasonRow: { status: "upcoming" },
+    writeGate: { allowed: true, code: "upcoming" }, replacement: { mode: "fresh" }, existingRaces: [],
+    apply: false, plan: squadPlan(), log: () => {}, logError: () => {},
+  });
+  assert.ok(res.blocking.some((b) => b.includes("ingen seniorkalender")));
+  assert.equal(process.exitCode, 1);
+  assert.equal(supabase.writes.length, 0);
+}));
+
+test("#5644 runSquadCalendar --apply --replace-existing: sletter kun truppens løb og materialiserer med squad", () => withExitCode(async () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-5644-"));
+  try {
+    // Seniortællingen (season_id + senior-or) = 500; post-verify-tællingen af truppen bruger
+    // samme nøgle i fake'en, så den svarer også 500 (> 0 = verificeret).
+    const supabase = fakeSupabase({ countOverrides: { "races.season_id": 500 } });
+    const calls = [];
+    const materialize = async (args) => { calls.push(args); return { racesInserted: 72, stageProfiles: 0, stageSchedules: 0 }; };
+    // Erstatningens post-verify (0 tilbage) kører mod en fake med 0: derfor to fakes.
+    const replaceFake = fakeSupabase({ countOverrides: { "races.season_id": 0 } });
+    let n = 0;
+    const routed = { from: (t) => (t === "races" && n++ >= 1 && n <= 3 ? replaceFake.from(t) : supabase.from(t)) };
+    await runSquadCalendar({
+      supabase: routed, squad: "u23", seasonId: "season-4", seasonNumber: 4, seasonRow: { status: "upcoming" },
+      writeGate: { allowed: true, code: "upcoming" }, replacement: { mode: "replace" },
+      existingRaces: [{ id: "u1" }, { id: "u2" }], apply: true, replaceExisting: true, snapshotDir: dir,
+      firstDay: "2026-09-28", window: { derived: false }, plan: squadPlan(), materialize,
+      materializeArgs: { realDays: 28 }, log: () => {}, logError: () => {},
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].squad, "u23");
+    assert.equal(calls[0].dryRun, false);
+    const racesDelete = replaceFake.writes.find((w) => w.kind === "delete" && w.table === "races");
+    assert.ok(racesDelete.filters.some((f) => f.type === "eq" && f.col === "squad" && f.val === "u23"), "kun U23-løb slettes");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}));

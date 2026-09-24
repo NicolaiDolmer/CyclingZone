@@ -82,6 +82,8 @@ export default function TrainingMobileRoster({
   detail = null,
   scoreFor = null,
   showHeader = true,
+  picked = null,
+  onTogglePick,
 }: {
   riders: RosterRider[];
   columns: RaceDayColumn[];
@@ -102,12 +104,25 @@ export default function TrainingMobileRoster({
   // #5485: med sidens overblik oeverst er titel-linjen ("The squad today · N
   // riders") en gentagelse, og dens hoejde koster en rytter paa foerste skaerm.
   showHeader?: boolean;
+  // #5620/#5485 (spillerfund 24/9): hurtig hvile paa telefonen. `picked` !== null
+  // = markerings-tilstand: et tryk paa raekken markerer rytteren i stedet for at
+  // folde kortet ud, og der vises intet kort. Mængde-handlingen (hvile, anden
+  // dag) bor i TrainingMobileBulkBar over tabellen, samme sti som desktoppens
+  // vaerktoejslinje. `null` = alt som foer.
+  picked?: ReadonlySet<string> | null;
+  onTogglePick?: (riderId: string) => void;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
   // Navn + een pr. loebsdag + evt. score. Kortets celle skal spaende dem alle,
   // ellers ville `table-fixed` klemme den ned i navnekolonnens bredde.
   const detailColSpan = 1 + columns.length + (scoreFor ? 1 : 0);
+  const pickMode = picked != null;
+  // Een handling for hele raekken: markér i markerings-tilstand, ellers fold ud.
+  const activate = (riderId: string) => {
+    if (pickMode) onTogglePick?.(riderId);
+    else onSelect(riderId);
+  };
 
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
   const detailRowRef = useRef<HTMLTableRowElement | null>(null);
@@ -188,7 +203,8 @@ export default function TrainingMobileRoster({
         </thead>
         <tbody>
           {riders.map((rider, index) => {
-            const isSelected = rider.id === selectedId;
+            const isSelected = !pickMode && rider.id === selectedId;
+            const isPicked = pickMode && picked.has(rider.id);
             return (
               <Fragment key={rider.id}>
               <tr
@@ -196,13 +212,17 @@ export default function TrainingMobileRoster({
                   if (el) rowRefs.current.set(rider.id, el);
                   else rowRefs.current.delete(rider.id);
                 }}
-                className={isSelected ? "bg-cz-subtle" : ""}
+                className={isSelected ? "bg-cz-subtle" : isPicked ? "bg-cz-accent/5" : ""}
+                data-picked={pickMode ? String(isPicked) : undefined}
               >
                 <td className="border-b border-e border-cz-border align-middle last:border-b-0">
                   <button
                     type="button"
-                    onClick={() => onSelect(rider.id)}
-                    aria-expanded={isSelected}
+                    onClick={() => activate(rider.id)}
+                    // I markerings-tilstand er knappen en til/fra-knap
+                    // (aria-pressed), ikke en fold-ud (aria-expanded).
+                    aria-pressed={pickMode ? isPicked : undefined}
+                    aria-expanded={pickMode ? undefined : isSelected}
                     // Kortet findes kun mens raekken er foldet ud, saa
                     // `aria-controls` saettes kun dér: et id der peger paa et
                     // element der ikke er i DOM'en er et loefte skaermlaeseren
@@ -213,8 +233,26 @@ export default function TrainingMobileRoster({
                     // raekken SELV vejen til dagens valg, saa ankeret hoerer paa
                     // den oeverste raekkes knap.
                     data-tour={index === 0 ? "training-focus" : undefined}
-                    className="flex min-h-11 w-full min-w-0 flex-col justify-center px-2.5 py-1.5 text-start"
+                    className="flex min-h-11 w-full min-w-0 items-center gap-2 px-2.5 py-1.5 text-start"
                   >
+                    {pickMode && (
+                      // Afkrydsnings-feltet er visuelt; knappens aria-pressed
+                      // er det skaermlaeseren laeser. Stroke-ikon, ingen emoji.
+                      <span
+                        aria-hidden="true"
+                        data-testid="training-mobile-pick-box"
+                        className={`flex h-4 w-4 flex-none items-center justify-center rounded-cz border ${
+                          isPicked ? "border-cz-accent bg-cz-accent text-cz-on-accent" : "border-cz-3 bg-cz-card"
+                        }`}
+                      >
+                        {isPicked && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        )}
+                      </span>
+                    )}
+                    <span className="flex min-w-0 flex-1 flex-col justify-center">
                     <span
                       title={rider.name}
                       className="w-full truncate text-[13px] font-medium leading-tight text-cz-1"
@@ -248,6 +286,7 @@ export default function TrainingMobileRoster({
                         </span>
                       </span>
                     )}
+                    </span>
                   </button>
                 </td>
                 {columns.map((column) => {
@@ -255,7 +294,7 @@ export default function TrainingMobileRoster({
                   return (
                     <td
                       key={column.key}
-                      onClick={() => onSelect(rider.id)}
+                      onClick={() => activate(rider.id)}
                       className="border-b border-cz-border px-1 py-1.5 text-center align-middle"
                     >
                       <span
@@ -281,7 +320,7 @@ export default function TrainingMobileRoster({
                   const score = scoreFor(rider.id);
                   return (
                     <td
-                      onClick={() => onSelect(rider.id)}
+                      onClick={() => activate(rider.id)}
                       // `tabular-nums` (TASTE, bindende paa al numerik): cifrene
                       // flugter lodret ned gennem truppen, saa kolonnen kan
                       // skannes uden at laese hvert tal.

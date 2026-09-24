@@ -313,6 +313,177 @@ export function scoreCobblestoneLift(rows, abilitiesByRider) {
 //    ÉN aggregateObservations()-implementering dækker begge motorer).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// 5b. Favorit-definitioner side om side (#5583) — INFORMATIVT, ingen dom.
+//
+// Gatens v4-favorit (observeStageV4's default) er naesten cirkulaer: finalen
+// sorterer paa samme evne-score. Ved siden af den maales v4 med v3's EGEN
+// favorit-definition (hoejeste v3-terrainScore mod etapens v3-kravvektor), saa
+// v3 og v4 maales mod samme rytter. Resultatet ligger i ankrets
+// `favoriteDefinitions`, uden for v3/v4-cellerne: dommen, baandet og JSON-
+// eksporten (headToHeadV4.js's buildJsonExport laeser kun v3/v4) er uaendrede.
+// ---------------------------------------------------------------------------
+
+/** Etapetype-noegle naar profile_type mangler (aldrig gaettet til en rigtig type). */
+const UNKNOWN_STAGE_TYPE = "ukendt";
+
+/**
+ * Favorit-sejre talt samlet og pr. etapetype (profile_type). Raa taellinger,
+ * ikke rater, saa flere seeds kan laegges sammen uden at midle rater.
+ * @param {Array<{terrain?:string, favoriteWon:boolean}>} observations
+ * @returns {{races:number, wins:number, perStageType: Record<string, {races:number, wins:number}>}}
+ */
+export function countFavoriteWins(observations) {
+  const perStageType = {};
+  let wins = 0;
+  for (const obs of observations) {
+    const key = obs.terrain ?? UNKNOWN_STAGE_TYPE;
+    if (!perStageType[key]) perStageType[key] = { races: 0, wins: 0 };
+    perStageType[key].races++;
+    if (obs.favoriteWon) {
+      wins++;
+      perStageType[key].wins++;
+    }
+  }
+  return { races: observations.length, wins, perStageType };
+}
+
+const FAVORITE_DEFINITION_KEYS = ["v3", "v4Finale", "v4Terrain"];
+
+function rateOf(counts) {
+  return counts && counts.races > 0 ? counts.wins / counts.races : null;
+}
+
+/** Ét seeds samlede rate pr. definition — bruges til spaendet over seeds. */
+function seedRates(definitions) {
+  return Object.fromEntries(FAVORITE_DEFINITION_KEYS.map((key) => [key, rateOf(definitions[key])]));
+}
+
+function sumCounts(countsList) {
+  const out = { races: 0, wins: 0, perStageType: {} };
+  for (const counts of countsList) {
+    out.races += counts.races;
+    out.wins += counts.wins;
+    for (const [stageType, c] of Object.entries(counts.perStageType)) {
+      if (!out.perStageType[stageType]) out.perStageType[stageType] = { races: 0, wins: 0 };
+      out.perStageType[stageType].races += c.races;
+      out.perStageType[stageType].wins += c.wins;
+    }
+  }
+  return out;
+}
+
+/**
+ * Laegger flere seeds' `favoriteDefinitions` sammen: taellinger summeres (hvert
+ * seed koerer de samme etaper, saa den samlede rate er seed-middelet), og hvert
+ * seeds egen rate bevares til spaendet. Uden denne ville aggregateScorecards()
+ * kun vise FOERSTE seeds tal — samme fejlklasse som #4947.
+ * @param {Array<object|undefined>} list  ét `favoriteDefinitions` pr. seed
+ * @returns {object|null}
+ */
+export function mergeFavoriteDefinitions(list) {
+  const present = (list ?? []).filter(Boolean);
+  if (present.length === 0) return null;
+  const merged = Object.fromEntries(FAVORITE_DEFINITION_KEYS.map((key) => [key, sumCounts(present.map((d) => d[key]))]));
+  return {
+    ...merged,
+    v4TerrainSkippedStages: present.reduce((sum, d) => sum + d.v4TerrainSkippedStages, 0),
+    sameFavoriteAsV3: {
+      same: present.reduce((sum, d) => sum + d.sameFavoriteAsV3.same, 0),
+      stages: present.reduce((sum, d) => sum + d.sameFavoriteAsV3.stages, 0),
+    },
+    seedRates: present.flatMap((d) => d.seedRates ?? []),
+  };
+}
+
+const FAVORITE_DEFINITION_LABELS = {
+  v3: "v3 (felt-bedste terrain)",
+  v4Finale: "v4 nu (finale-score, gatens)",
+  v4Terrain: "v4 ikke-cirkulaer (v3-terrain)",
+};
+
+function formatRateCell(counts) {
+  const rate = rateOf(counts);
+  return rate === null ? "n/a" : `${fmtPct(rate)} (${counts.wins}/${counts.races})`;
+}
+
+/**
+ * Tekst-blok under favorit-ankret: samlet + pr. etapetype for alle tre
+ * definitioner, andelen af etaper hvor v4's ikke-cirkulaere favorit er v3's
+ * favorit, og spaendet over seeds.
+ * @param {ReturnType<typeof mergeFavoriteDefinitions>} defs
+ * @returns {string[]}
+ */
+export function formatFavoriteDefinitions(defs) {
+  if (!defs) return [];
+  const width = 32;
+  const lines = [];
+  lines.push("  Favorit-definitioner side om side (#5583, informativt — dommen ovenfor er uaendret):");
+  lines.push(`    ${"etapetype".padEnd(14)}${FAVORITE_DEFINITION_KEYS.map((k) => FAVORITE_DEFINITION_LABELS[k].padEnd(width)).join("")}`);
+  lines.push(`    ${"samlet".padEnd(14)}${FAVORITE_DEFINITION_KEYS.map((k) => formatRateCell(defs[k]).padEnd(width)).join("")}`);
+  const stageTypes = [...new Set(FAVORITE_DEFINITION_KEYS.flatMap((k) => Object.keys(defs[k].perStageType)))].sort();
+  for (const stageType of stageTypes) {
+    const cells = FAVORITE_DEFINITION_KEYS.map((k) => formatRateCell(defs[k].perStageType[stageType]).padEnd(width));
+    lines.push(`    ${stageType.padEnd(14)}${cells.join("")}`);
+  }
+  const { same, stages } = defs.sameFavoriteAsV3;
+  lines.push(`    Samme rytter som v3's favorit: ${stages > 0 ? `${same}/${stages} etaper (${fmtPct(same / stages)})` : "n/a"}`);
+  if (defs.v4TerrainSkippedStages > 0) {
+    lines.push(`    Uden v3-kravvektor (ikke maalt med v3-terrain): ${defs.v4TerrainSkippedStages} etaper`);
+  }
+  if (defs.seedRates.length > 1) {
+    const spread = FAVORITE_DEFINITION_KEYS.map((k) => {
+      const values = defs.seedRates.map((s) => s[k]).filter((v) => v !== null);
+      return values.length > 0
+        ? `${FAVORITE_DEFINITION_LABELS[k]} ${fmtPct(Math.min(...values))}-${fmtPct(Math.max(...values))}`
+        : `${FAVORITE_DEFINITION_LABELS[k]} n/a`;
+    });
+    lines.push(`    Spaend over ${defs.seedRates.length} seeds (samlet): ${spread.join(" · ")}`);
+  }
+  return lines;
+}
+
+function compareFavoriteDefinitions(rows, v3Observations, v4Observations, { teamByRider, v4EntrantsById }) {
+  const terrainRows = [];
+  const terrainObservations = [];
+  rows.forEach((r, i) => {
+    const stageDemandVector = r.raw.stageRow?.demand_vector;
+    if (!stageDemandVector) return;
+    terrainRows.push(i);
+    terrainObservations.push(observeStageV4({
+      results: r.raw.v4Output.results,
+      entrants: v4EntrantsById,
+      teamByRider,
+      route: r.raw.route,
+      tuning: r.raw.tuning,
+      raceId: r.raw.stageRow?.race_id ?? null,
+      terrain: r.raw.route.profile_type,
+      favoriteBy: "v3_terrain",
+      stageDemandVector,
+    }));
+  });
+
+  // Peger de to motorer paa SAMME rytter? Kun etaper hvor begge har en favorit.
+  // Forskel kan kun opstaa naar v3's favorit udgik (v3 fjerner udgaaede fra ranked).
+  let sameFavorite = 0;
+  let comparedStages = 0;
+  terrainRows.forEach((rowIndex, j) => {
+    const v3Id = v3Observations[rowIndex].favoriteId;
+    const v4Id = terrainObservations[j].favoriteId;
+    if (v3Id === null || v4Id === null) return;
+    comparedStages++;
+    if (v3Id === v4Id) sameFavorite++;
+  });
+
+  return {
+    v3: countFavoriteWins(v3Observations),
+    v4Finale: countFavoriteWins(v4Observations),
+    v4Terrain: countFavoriteWins(terrainObservations),
+    v4TerrainSkippedStages: rows.length - terrainRows.length,
+    sameFavoriteAsV3: { same: sameFavorite, stages: comparedStages },
+  };
+}
+
 export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
   const v3Observations = rows.map((r) =>
     observeRace({ ranked: r.raw.v3Output.ranked, teamByRider, terrain: r.raw.route.profile_type, raceId: r.raw.stageRow?.race_id ?? null }));
@@ -326,6 +497,7 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
       raceId: r.raw.stageRow?.race_id ?? null,
       terrain: r.raw.route.profile_type,
     }));
+  const favoriteDefinitions = compareFavoriteDefinitions(rows, v3Observations, v4Observations, { teamByRider, v4EntrantsById });
 
   const v3Agg = aggregateObservations(v3Observations);
   const v4Agg = aggregateObservations(v4Observations);
@@ -352,6 +524,7 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
       source: winBand.source,
       v3: { ...judge(v3Agg.favoriteWinRate, winBand, v3Agg.races), display: fmtPct },
       v4: { ...judge(v4Agg.favoriteWinRate, winBand, v4Agg.races), display: fmtPct },
+      favoriteDefinitions: { ...favoriteDefinitions, seedRates: [seedRates(favoriteDefinitions)] },
     },
     {
       id: "same_team_top10_share_4plus",
@@ -761,7 +934,11 @@ export function aggregateScorecards(scorecards) {
     const band = bandById[anchor.id] ?? null;
     const v3Cells = scorecards.map((card) => card[index].v3);
     const v4Cells = scorecards.map((card) => card[index].v4);
-    return { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
+    const aggregated = { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
+    if (anchor.favoriteDefinitions) {
+      aggregated.favoriteDefinitions = mergeFavoriteDefinitions(scorecards.map((card) => card[index].favoriteDefinitions));
+    }
+    return aggregated;
   });
 }
 
@@ -790,6 +967,7 @@ export function formatScorecard(scorecard) {
     lines.push(`  Baand: ${anchor.bandLabel}  (kilde: ${anchor.source})`);
     lines.push(`  v3: ${formatCell(anchor.v3)}`);
     lines.push(`  v4: ${formatCell(anchor.v4)}`);
+    lines.push(...formatFavoriteDefinitions(anchor.favoriteDefinitions));
   }
   const totals = { PASS: 0, FAIL: 0, "N/A": 0 };
   for (const anchor of scorecard) {

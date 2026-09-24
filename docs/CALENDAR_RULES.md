@@ -103,7 +103,7 @@ Kvoten er ikke ét tal noget sted. Den er tre, og de kender ikke hinanden:
 | D1 (1 pulje) | 37 | 155 | 31 | 86 | 0-85 |
 | D2 (2 puljer) | 46 | 124 | 31 | 64 | 0-63 |
 | D3 (4 puljer) | 40 | 85 | 31 | 54 | 0-53 |
-| D4 (8 puljer) | 30 | 62 | 31 | 31 | 0-30 |
+| D4 (8 puljer i S3; 4 fra S4, §1f) | 30 | 62 | 31 | 31 | 0-30 |
 
 Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om ingen løbsfrie dage holder. D4 kører præcis 1 løbsdag pr. kalenderdag, som `minGameDaysPerRealDay(4) = 1` foreskriver. Målt 0 brud på `TIER_OVERLAP_CAP` i alle fire divisioner.
 
@@ -193,6 +193,29 @@ Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder ryt
 > De to ting hænger sammen: i det øjeblik B4 lader aksen drive sweepen, SKAL rytter-filteret (`race_entry_days` for (rytter, sæson, løbsdag)) være med i samme ændring. 79–91 % af træningsdagene ligger inde i et forløb, så det er ikke et særtilfælde — det afgør næsten hver eneste træningsdag. Kalenderen er korrekt; det er forbruget af den der mangler. Se [`docs/audits/2026-09-19-5267-proevepakning-jaevn.md`](audits/2026-09-19-5267-proevepakning-jaevn.md) §5.
 
 **Synkroniserede etapeløbs-blokke (R13) er afvist med tal og fjernet fra koden.** Antallet af samtidige etapeløb skal gå op i divisionens etaper pr. dato; kun D2 kan det. Målt 19/9: D1 fandt ingen lovlig pakning, D3 faldt til 27,3 % og D4 til 35,5 % mod overlap-gulvet på 40 %. Med den jævne fordeling er etapeløbs-kæden ikke længere et problem der skal løses i søgningen. Detaljer: [`2026-09-19-5267-proevepakning.md`](audits/2026-09-19-5267-proevepakning.md) §3.
+
+### 1f. Hvilke puljer får en kalender fra S4, og truppernes egen kalender ([#5644](https://github.com/NicolaiDolmer/CyclingZone/issues/5644), ejer 24/9)
+
+**Seniorpyramiden er 1/2/4/4 fra S4** ([#4592](https://github.com/NicolaiDolmer/CyclingZone/issues/4592), ejer 24/9): *"D4 går fra 8 til 4 puljer, fyldes med AI-hold fra start og har løb fra dag ét."* Derfor:
+
+| Pulje | Kalender? | Kilde |
+|---|---|---|
+| D1, D2 | altid | `poolHasCalendar` (`divisionCalendarGenerator.js`) |
+| D3 | kun med mindst én ægte manager | uændret |
+| D4 (aktiv) | **altid**, også uden ægte managers | nyt 24/9 — spejler AI-fyldet (#5642) |
+| pensioneret (`league_divisions.retired_at` sat) | **aldrig**, heller ikke via `forceTiers` | nyt 24/9 — D4 E-H |
+
+Alle puljer i en division kører stadig den samme kalender (#2276), så D4's løbstal halveres (fire puljer i stedet for otte), mens løbene pr. pulje og de 140 løbsdage er uændrede. `buildSeasonCalendar.js` stopper en seniorkørsel fra S4 hvis antallet af puljer med kalender ikke er præcis 1/2/4/4 (`SENIOR_CALENDAR_POOLS_FROM_S4`), fordi det betyder at kalenderen køres før sammenlægningen og pensioneringen (se `SEASON_CUTOVER_RUNBOOK.md` trin 12b).
+
+**Truppernes kalender (U23 og junior, [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492) Y5).** Ejer 15/9 (spec 2026-09-15 §10.5) og [`YOUTH_RULES.md`](YOUTH_RULES.md) §2.3: U23 kører 1-2 løb om ugen, junior 1, på 140 løbsdage hvor de fleste er rene træningsdage. Bygges med `buildSeasonCalendar.js --squad u23|junior` EFTER seniorkalenderen:
+
+- **Katalog:** kun truppens egne rækker (`race_pool.squad`). Navne-dedup gælder inden for truppen, ikke på tværs af trupper (spec §4.2).
+- **Én kalender pr. trup og tier:** alle truppens grupper i samme tier deler samme kalender, præcis som seniorens puljer. I S4 er det ca. 9 grupper à 24 i tier 1 pr. trup (ejer 24/9), og de kører samme løb på samme tid.
+- **Tæthed (`SQUAD_CALENDAR` i `calendarTierCaps.js`):** løb tælles efter start-dato pr. kalenderuge; U23 skal ligge på 1-2 og junior på 1 i hver uge. Højst halvdelen af datoerne har en etape ("de fleste er rene træningsdage"). Aldrig to ungdomsløb samtidig, fordi en ungdomstrup kun har få ryttere. Udvalget er prestige-først som seniorens, og rækkefølgen følger løbenes rigtige dato.
+- **Løbsdags-aksen:** samme mål som senioren (140), fem løbsdage pr. dato (§1e-b). Ungdomsetapen ligger på datoens første løbsdag; resten er rene træningsdage.
+- **Tider:** én etape-tid pr. trup, på halve timer, så den aldrig rammer samme minut som en senior-slot. Sæsonens første og sidste dag følger §2f som seniorens.
+- **Gates:** kalender-invarianterne, identiske grupper, planlægningsvinduet (§2f) og tætheden ovenfor er hårde. Seniorens dæknings-gulve, K-B-komposition, scorecard og realisme-bånd er kalibreret mod divisionerne og er kun måling for en trup (spec §4.3).
+- **`--replace-existing` er pr. trup:** en kørsel sletter kun sin egen trups løb. Før #5644 slettede den hele sæsonen.
 
 ---
 

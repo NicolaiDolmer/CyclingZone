@@ -18,10 +18,17 @@
 //   3. nulstil next_season_signup_at (resetSeasonSignups): tilmeldingen gælder
 //      ÉN sæson, og sweepen har nu brugt den
 //
-// ÅBENT EJER-VALG (#4592): et parkeret hold kører i dag videre økonomisk —
-// hverken sæson-start-økonomien (processSeasonStart/humanTeamFilter) eller
-// sæson-slut-boardet (loadHumanSeasonEndTeams) filtrerer på parked_at. Om
-// parkerede hold skal stå stille (ingen sponsor, ingen løn), er næste skridt.
+// ØKONOMI MENS PARKERET (ejer-valg (b) = A med løn, 23/9, #4592): et parkeret
+// hold står økonomisk stille. isParkedTeam nedenfor er den ene definition, og
+// economyEngine bruger den to steder:
+//   - processSeasonStart: ingen sponsor (heller ikke faldskærm eller
+//     divisions-tillæg, som begge er sponsor-indtægt) og ingen nye
+//     bestyrelsesplaner/mål.
+//   - processTeamSeasonEnd: ingen bestyrelsesdom, ingen konsekvenser, intet
+//     mandat/årsmøde.
+// Payroll (løn, renter, drift) filtrerer BEVIDST ikke på parkering: lønnen
+// betales så længe rytterne er på kontrakt. Genindplaceres holdet
+// (unparkSignedUpTeams), kører økonomien normalt igen fra næste sæsonstart.
 //
 // Udvælgelsen er REN (selectTeamsToPark/selectTeamsToUnpark/
 // selectActiveSubscriptionTeamIds) — ingen DB, letter unit-test og genbrug i
@@ -54,6 +61,19 @@ export const PARKING_SUBSCRIPTION_COLUMNS = "id, team_id, status, current_period
  */
 function isHumanTeam(team) {
   return team?.is_ai === false && !team?.is_bank && !team?.is_test_account;
+}
+
+/**
+ * Er holdet parkeret? Den ene definition, som både sweepen og økonomien
+ * (economyEngine.processSeasonStart/processTeamSeasonEnd) bruger. Et felt der
+ * mangler (fx en select uden parked_at), tæller som ikke parkeret, så en
+ * glemt kolonne aldrig stopper sponsor eller bestyrelse for et aktivt hold.
+ *
+ * @param {{ parked_at?: string|null }|null|undefined} team
+ * @returns {boolean}
+ */
+export function isParkedTeam(team) {
+  return team?.parked_at != null;
 }
 
 function toIdSet(ids) {
@@ -120,7 +140,7 @@ export function selectTeamsToPark({ teams, users, now, days = 30, activeSubscrip
   const subscribed = toIdSet(activeSubscriptionTeamIds);
   return (teams || []).filter((team) => {
     if (!isHumanTeam(team)) return false;
-    if (team.parked_at != null) return false;
+    if (isParkedTeam(team)) return false;
     if (team.is_frozen === true) return false;
     if (team.next_season_signup_at != null) return false;
     if (subscribed.has(team.id)) return false;
@@ -140,7 +160,7 @@ export function selectTeamsToPark({ teams, users, now, days = 30, activeSubscrip
 export function selectTeamsToUnpark({ teams }) {
   return (teams || []).filter((team) => (
     isHumanTeam(team)
-    && team.parked_at != null
+    && isParkedTeam(team)
     && team.next_season_signup_at != null
   ));
 }
@@ -367,6 +387,23 @@ async function readSweepMarker(supabase) {
     .maybeSingle();
   if (error) throw new Error(`app_config (${PARKING_SWEEP_MARKER_KEY}): ${error.message}`);
   return data?.value ?? null;
+}
+
+/**
+ * Har sweepen allerede kørt for sæsonen? Kun sweepen skriver parked_at, så før
+ * den har kørt, viser teams.parked_at præcis hvem der var parkeret i sæsonen.
+ * Bagefter gør den ikke (genindplacerede hold har mistet deres parked_at,
+ * nyparkerede har fået et). Bruges af repair-stien i economyEngine, som ellers
+ * ville dømme sæsonen på den forkerte parkerings-tilstand. Kaster ved en
+ * læsefejl: uden markøren ved vi det ikke.
+ *
+ * @param {{ supabase: object, seasonId: string }} args
+ * @returns {Promise<boolean>}
+ */
+export async function hasParkingSweepRunForSeason({ supabase, seasonId }) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (seasonId == null) throw new Error("hasParkingSweepRunForSeason: seasonId required");
+  return await readSweepMarker(supabase) === String(seasonId);
 }
 
 async function writeSweepMarker(supabase, seasonId, now) {

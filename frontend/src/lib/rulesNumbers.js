@@ -14,6 +14,8 @@
 // the database and can change per season. Those are presented as prose on the page
 // and the literal values here are documented as "display defaults" only.
 
+import { SQUAD_CAPS } from "./squadCaps.ts";
+
 export const RULES_NUMBERS = {
   // --- Squad (backend/lib/marketUtils.js) ---
   squadCap: 30, // MAX_SQUAD_SIZE
@@ -75,7 +77,11 @@ export const RULES_NUMBERS = {
   bonusD4P3: 10000,
 
   // --- Academy (backend/lib/academyFlag.js ACADEMY) ---
-  academySlots: 8, // ACADEMY.SLOTS
+  // #5568: loft PR. UNGDOMSTRUP i stedet for det gamle flade akademi-loft. Tallene
+  // læses fra squadCaps.ts (frontendens ene spejl af squads.js SQUAD_CAPS), så der
+  // ikke står en kopi mere her.
+  u23SquadCap: SQUAD_CAPS.u23, // squads.js SQUAD_CAPS.u23
+  juniorSquadCap: SQUAD_CAPS.junior, // squads.js SQUAD_CAPS.junior
   academyMinAge: 16, // ACADEMY.MIN_AGE
   academyMaxAge: 21, // ACADEMY.MAX_AGE
   // #4479: stod 6.7 og var pinnet til ACADEMY.SALARY_RATE, som stadig peger på

@@ -47,6 +47,7 @@ import {
   playbackKm,
   stagePodium,
 } from "../lib/raceCentre.js";
+import { planRaceResultQueries, raceStageResultRows } from "../lib/raceWinnerResultType.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -159,6 +160,7 @@ export default function RaceCentrePage() {
           return {
             raceId: race.id,
             raceName: race.name,
+            raceType: race.race_type,
             stageNumber: row.stage_number,
             totalStages: race.stages ?? 1,
             stagesCompleted: race.stages_completed ?? 0,
@@ -179,26 +181,36 @@ export default function RaceCentrePage() {
 
       // 3) Resultater for dagens KØRTE etaper (live-i-vindue + færdige). Dobbelt
       // afgrænset (dagens løb × dagens etapenumre), så PostgREST-loftet aldrig
-      // er i spil.
+      // er i spil. Etapeløb står under result_type 'stage', endagsløb under
+      // 'gc' på stage_number 1 (#5601: et rent 'stage'-filter gav "No results"
+      // på hvert afsluttet endagsløb). planRaceResultQueries deler kortene op
+      // i højst to grupper, og raceStageResultRows giver hvert kort kun dets
+      // egne rækker, så et etapeløbs samlede 'gc'-podie aldrig vises som
+      // etapens podie.
       const settled = built.filter((c) => c.state !== "upcoming" && c.stagesCompleted >= c.stageNumber);
       if (settled.length) {
-        // pagination-safe: tredobbelt afgrænset — dagens løb × dagens etapenumre
-        // × rank <= 3. Maks 3 rækker pr. kort, og kortene er dagens etaper.
-        const { data: resultRows } = await supabase
-          .from("race_results")
-          .select("race_id, stage_number, result_type, rank, rider_id, rider_name, team_id")
-          .in("race_id", [...new Set(settled.map((c) => c.raceId))])
-          .in("stage_number", [...new Set(settled.map((c) => c.stageNumber))])
-          .eq("result_type", "stage")
-          .lte("rank", 3);
+        const resultGroups = planRaceResultQueries(settled);
+        const groupResults = await Promise.all(
+          resultGroups.map((group) =>
+            // pagination-safe: tredobbelt afgrænset — dagens løb for én
+            // løbstype × deres etapenumre × rank <= 3. Maks 3 rækker pr. kort,
+            // og kortene er dagens etaper.
+            supabase
+              .from("race_results")
+              .select("race_id, stage_number, result_type, rank, rider_id, rider_name, team_id")
+              .in("race_id", group.raceIds)
+              .in("stage_number", group.stageNumbers)
+              .eq("result_type", group.resultType)
+              .lte("rank", 3)
+          )
+        );
+        const resultRows = groupResults.flatMap((res) => res.data || []);
         const map = new Map();
-        for (const row of resultRows || []) {
-          const key = `${row.race_id}:${row.stage_number}`;
-          if (!map.has(key)) map.set(key, []);
-          map.get(key).push(row);
+        for (const card of settled) {
+          map.set(`${card.raceId}:${card.stageNumber}`, raceStageResultRows(resultRows, card));
         }
         setResultsBySlot(map);
-        setRiderNameById(new Map((resultRows || []).map((r) => [r.rider_id, r.rider_name])));
+        setRiderNameById(new Map(resultRows.map((r) => [r.rider_id, r.rider_name])));
       } else {
         setResultsBySlot(new Map());
         setRiderNameById(new Map());

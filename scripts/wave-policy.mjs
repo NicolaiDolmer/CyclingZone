@@ -140,8 +140,8 @@ export function hostBootId() {
 // its gh retries). Default callers still give up after ~5 s; the writers a
 // running wave depends on wait long enough to outlast one merge. The hook's
 // first-dispatch write stays inside the 90 s hook timeout.
-export const LONG_LOCK_ATTEMPTS = 2400; // ~120 s: intake, enqueue, release CLI
-const HOOK_LOCK_ATTEMPTS = 1200; // ~60 s
+export const LONG_LOCK_ATTEMPTS = 2400; // ~120 s: intake, enqueue, release, watch CLI (#5602)
+export const HOOK_LOCK_ATTEMPTS = 1200; // ~60 s: first dispatch and the PostToolUse run binding (#5602)
 
 export function withWaveStateLock(dir, action, attempts = 100) {
   // Keyed on a clock-independent boot identity (#5533), so every process in
@@ -156,7 +156,9 @@ export function withWaveStateLock(dir, action, attempts = 100) {
     catch (e) { if (e.code !== 'EEXIST') throw e; }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
   }
-  if (!acquired) throw Error('Wave state lock busy; if its owner crashed, restart Windows before recovery');
+  // #5602 fund 1: a merge may hold the lock for a while, so "busy" is normally
+  // just contention. Say so first; the reboot advice is only for a crashed owner.
+  if (!acquired) throw Error(`Wave state lock busy after ~${Math.round((attempts * 50) / 1000)} s (another wave command or a merge holds it); retry. Only if its owner crashed: restart Windows before recovery`);
   try { return action(); }
   finally { fs.rmdirSync(lock); } // Only this invocation's empty lock directory.
 }
@@ -271,14 +273,36 @@ export function readTracksFile(file) {
   return tracks;
 }
 
+// #5602: the models wave.js' normalizeTrack accepts (missing = sonnet).
+export const INTAKE_MODELS = ['opus', 'sonnet'];
+
+// #5602 fund 3 + 6: checks that only rolling intake needs. A track wave.js
+// would reject (unknown model) is taken, skipped and still holds its ownership
+// until release. An ownNodeModules track runs `npm ci` during setup, which can
+// outlast the intake agent's time limit and turn rolling intake off for the
+// rest of the wave. Both are refused before the marker is touched.
+export function assertEnqueueable(tracks) {
+  for (const t of tracks) {
+    if (t.model !== undefined && !INTAKE_MODELS.includes(t.model)) throw Error(`Invalid model for #${t.issue}: ${JSON.stringify(t.model)} (use ${INTAKE_MODELS.join(' or ')})`);
+    if (t.ownNodeModules === true) throw Error(`ownNodeModules track #${t.issue} cannot join a running wave (its npm ci can outlast intake); start it in its own wave`);
+  }
+}
+
 export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot) {
   validateTracks(tracks);
+  assertEnqueueable(tracks);
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
     if (wave.rollingIntake !== true) throw Error('Rolling intake is disabled for this wave');
     const pending = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
     if (pending.length + tracks.length > MAX_PENDING_TRACKS) throw Error(`At most ${MAX_PENDING_TRACKS} pending tracks`);
     assertCompatibleWithActive(activeTracks(wave), tracks);
+    // #5602 fund 7: activeTracks() drops finished branches, so a finished
+    // branch queued again would pass the check above. Its second copy would
+    // then be filtered out as finished too, and the merge gate would not
+    // protect its ownership. Every branch the wave ever held is refused.
+    const ran = new Set((Array.isArray(wave.tracks) ? wave.tracks : []).map(t => slugOf(String(t?.branch))));
+    for (const t of tracks) if (ran.has(slugOf(t.branch))) throw Error(`branch already ran in this wave (finished or active): ${t.branch}`);
     return { ...wave, pendingTracks: [...pending, ...tracks] };
   }, LONG_LOCK_ATTEMPTS);
   return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef) };
@@ -286,8 +310,11 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
 
 // Marks finished branches (only admitted ones) and moves ALL pending tracks
 // into marker.tracks in one locked write, so a track can be taken only once.
-export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSnapshot) {
-  let taken = [], ignoredFinished = [];
+// #5602: with { peek: true } it only marks finished branches and COUNTS the
+// queue; nothing moves. wave.js' cheap intake check uses that form, so a
+// check that answers wrongly can delay a track but never lose one.
+export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSnapshot, { peek = false } = {}) {
+  let taken = [], ignoredFinished = [], pending = 0;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
     if (!Array.isArray(wave.tracks)) throw Error('Wave marker has no tracks');
@@ -295,10 +322,15 @@ export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSna
     const done = new Set(Array.isArray(wave.finishedBranches) ? wave.finishedBranches : []);
     ignoredFinished = finished.filter(b => !known.has(b));
     for (const b of finished) if (known.has(b)) done.add(b);
-    taken = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
+    const queued = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
+    if (peek) {
+      pending = queued.length;
+      return { ...wave, finishedBranches: [...done] };
+    }
+    taken = queued;
     return { ...wave, tracks: [...wave.tracks, ...taken], pendingTracks: [], finishedBranches: [...done] };
   }, LONG_LOCK_ATTEMPTS);
-  return { taken, finishedBranches: next.finishedBranches, ignoredFinished };
+  return { taken, pending, finishedBranches: next.finishedBranches, ignoredFinished, ...(peek ? { peek: true } : {}) };
 }
 
 // ---------------------------------------------------------------- merge gate (#5562)
@@ -450,7 +482,9 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
     if (!wave.admissionToolUseId || wave.admissionToolUseId !== payload.tool_use_id || typeof runId !== 'string' || !runId) return;
     if (wave.runtime !== 'claude' || wave.owner !== payload.session_id) throw Error('Another session owns this wave');
     assertWaveOwnership(wave, ownershipSnapshot(), process.pid, payload.session_id);
-    return updateWave(dir, wave.waveId, current => ({ ...current, workflowRunId: runId }));
+    // #5602 fund 1: a merge may hold the lock at wave start; the default ~5 s
+    // would leave resume unbound. HOOK_LOCK_ATTEMPTS stays inside the 90 s hook timeout.
+    return updateWave(dir, wave.waveId, current => ({ ...current, workflowRunId: runId }), HOOK_LOCK_ATTEMPTS);
   }
   if (payload.tool_name === 'Workflow' && input.resumeFromRunId) {
     if (!fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('Workflow resume requires an existing wave admission');
@@ -513,7 +547,8 @@ async function cli() {
     console.log(JSON.stringify(enqueueTracks(dir, value('--wave-id'), readTracksFile(file))));
   } else if (command === 'intake') {
     const finished = (value('--finished') || '').split(',').map(s => s.trim()).filter(Boolean);
-    console.log(JSON.stringify(intakeTracks(dir, value('--wave-id'), finished)));
+    // #5602: --peek counts the queue and marks finished branches, moves nothing.
+    console.log(JSON.stringify(intakeTracks(dir, value('--wave-id'), finished, ownershipSnapshot, { peek: args.includes('--peek') })));
   } else if (command === 'recover') {
     if (args.includes('--owner-override')) {
       const { ownerOverride } = await import('./wave-owner-override.mjs');
@@ -534,7 +569,8 @@ async function cli() {
       '$p = Get-CimInstance Win32_Process -Filter "ProcessId = ' + pid + '"; if (!$p -or $p.CommandLine -notmatch "wave-lane-watch[.]ps1") { throw "Not a lane watch" }; $s = Get-Process -Id ' + pid + '; @{ started = $s.StartTime.ToUniversalTime().Ticks.ToString() } | ConvertTo-Json -Compress'], { encoding: 'utf8', timeout: 10000 }));
     wave.watchPid = pid;
     wave.watchStarted = info.started;
-    updateWave(dir, wave.waveId, current => ({ ...current, watchPid: pid, watchStarted: info.started }));
+    // #5602 fund 1: phase 0 registers the watch while a merge may hold the lock.
+    updateWave(dir, wave.waveId, current => ({ ...current, watchPid: pid, watchStarted: info.started }), LONG_LOCK_ATTEMPTS);
   } else throw Error('Usage: wave-policy.mjs hook|inspect|assert-idle|assert-merge-allowed|guarded-merge|enqueue|intake|release|watch|recover');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

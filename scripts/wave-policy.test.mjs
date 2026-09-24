@@ -395,6 +395,68 @@ test('#5562: intake moves every pending track exactly once and marks only admitt
   assert.deepEqual(marker.finishedBranches, ['feat/1-fixture']);
 });
 
+test('#5602: enqueue refuses an unknown model and an ownNodeModules track, and leaves the marker untouched', t => {
+  const { dir, file } = runningWave(t);
+  const before = readFileSync(file, 'utf8');
+  for (const [extra, error] of [
+    [{ model: 'haiku' }, /Invalid model for #2/],
+    [{ model: 'Opus' }, /Invalid model/],
+    [{ model: null }, /Invalid model/],
+    [{ ownNodeModules: true }, /ownNodeModules track #2 cannot join a running wave/],
+  ]) {
+    assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'], extra)], ownSnapshot), error);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  }
+  const noModel = trackWith(3, ['docs/three.md']);
+  delete noModel.model;
+  enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'], { model: 'opus', ownNodeModules: false }), noModel], ownSnapshot);
+  assert.deepEqual(markerOf(dir).pendingTracks.map(x => x.issue), [2, 3], 'opus, sonnet or no model is fine');
+});
+
+test('#5602: a finished branch cannot be queued again, so its ownership cannot slip past the merge gate', t => {
+  const { dir, file } = runningWave(t);
+  intakeTracks(dir, 'rolling-wave', ['feat/1-fixture'], ownSnapshot);
+  const before = readFileSync(file, 'utf8');
+  for (const branch of ['feat/1-fixture', 'feat-1/fixture']) {
+    assert.throws(() => enqueueTracks(dir, 'rolling-wave', [{ ...trackWith(2, ['docs/two.md']), branch }], ownSnapshot), /already ran in this wave/);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  }
+  enqueueTracks(dir, 'rolling-wave', [trackWith(1, ['docs/one-followup.md'], { branch: 'feat/1-followup' })], ownSnapshot);
+  assert.deepEqual(markerOf(dir).pendingTracks.map(x => x.branch), ['feat/1-followup'], 'a new branch for the same issue is still fine');
+});
+
+test('#5602: intake --peek counts the queue and marks finished branches, but moves nothing', t => {
+  const { dir } = runningWave(t);
+  enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md']), trackWith(3, ['docs/three.md'])], ownSnapshot);
+  assert.throws(() => intakeTracks(dir, 'rolling-wave', [], foreignSnapshot, { peek: true }), /Another session owns this wave/);
+  const peeked = intakeTracks(dir, 'rolling-wave', ['feat/1-fixture', 'feat/999-unknown'], ownSnapshot, { peek: true });
+  assert.equal(peeked.pending, 2);
+  assert.deepEqual(peeked.taken, []);
+  assert.equal(peeked.peek, true);
+  assert.deepEqual(peeked.finishedBranches, ['feat/1-fixture']);
+  assert.deepEqual(peeked.ignoredFinished, ['feat/999-unknown']);
+  let marker = markerOf(dir);
+  assert.deepEqual(marker.tracks.map(x => x.issue), [1]);
+  assert.deepEqual(marker.pendingTracks.map(x => x.issue), [2, 3]);
+  assert.equal(intakeTracks(dir, 'rolling-wave', [], ownSnapshot, { peek: true }).pending, 2, 'peeking twice loses nothing');
+  const taken = intakeTracks(dir, 'rolling-wave', ['feat/1-fixture'], ownSnapshot);
+  assert.deepEqual(taken.taken.map(x => x.issue), [2, 3]);
+  assert.equal(taken.pending, 0);
+  marker = markerOf(dir);
+  assert.deepEqual(marker.finishedBranches, ['feat/1-fixture'], 'the idempotent --finished repeat adds no duplicate');
+  assert.equal(intakeTracks(dir, 'rolling-wave', [], ownSnapshot, { peek: true }).pending, 0);
+});
+
+test('#5602: the lock-busy error says to retry first; watch and the run binding wait out a merge', t => {
+  const dir = fixture(t);
+  withWaveStateLock(dir, () => {
+    assert.throws(() => withWaveStateLock(dir, () => 'x', 1), /Wave state lock busy after ~0 s \(another wave command or a merge holds it\); retry\. Only if its owner crashed/);
+  });
+  const src = readFileSync(fileURLToPath(new URL('./wave-policy.mjs', import.meta.url)), 'utf8');
+  assert.ok(src.includes('updateWave(dir, wave.waveId, current => ({ ...current, watchPid: pid, watchStarted: info.started }), LONG_LOCK_ATTEMPTS)'), 'watch must wait as long as intake');
+  assert.ok(src.includes('updateWave(dir, wave.waveId, current => ({ ...current, workflowRunId: runId }), HOOK_LOCK_ATTEMPTS)'), 'the PostToolUse run binding must wait, inside the hook timeout');
+});
+
 test('#5562: a finished track releases its ownership to the next enqueue', t => {
   const { dir } = runningWave(t);
   assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['scripts/one.mjs'])], ownSnapshot), /ownership overlap/);
@@ -435,6 +497,10 @@ test('#5562: enqueue, intake and release CLIs work in the admitted process tree'
   assert.equal(taken.status, 0, taken.stderr);
   assert.deepEqual(JSON.parse(taken.stdout).taken.map(x => x.issue), [2, 3]);
   assert.deepEqual(JSON.parse(taken.stdout).finishedBranches, ['codex/1-fixture']);
+  // #5602: the cheap check's form - counts, moves nothing.
+  const peek = cli('intake', '--wave-id', wave.waveId, '--peek');
+  assert.equal(peek.status, 0, peek.stderr);
+  assert.deepEqual(JSON.parse(peek.stdout), { taken: [], pending: 0, finishedBranches: ['codex/1-fixture'], ignoredFinished: [], peek: true });
   const released = cli('release', '--wave-id', wave.waveId, '--children-stopped');
   assert.equal(released.status, 0, released.stderr);
   assert.deepEqual(JSON.parse(released.stdout).pendingNeverTaken, []);

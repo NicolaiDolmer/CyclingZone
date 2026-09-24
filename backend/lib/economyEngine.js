@@ -75,7 +75,7 @@ import {
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
-import { runParkingSweep } from "./managerParking.js";
+import { runParkingSweep, isParkedTeam, hasParkingSweepRunForSeason } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -96,6 +96,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
 import { captureException } from "./sentry.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
+import { DEFAULT_SQUAD, isSquad, withSeniorSquadScope } from "./squads.js";
 import { readWageDeductionMode, WAGE_DEDUCTION_MODES } from "./wageDeductionConfig.js";
 
 let defaultSupabaseClientPromise;
@@ -166,6 +167,9 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
+      // #4592: parkerede hold filtreres BEVIDST ikke her. Payroll deler listen
+      // og skal betale deres løn; bestyrelsesdommen springer dem over i
+      // processTeamSeasonEnd (isParkedTeam).
       .order("id", { ascending: true })
   ), "Could not load human teams for season end");
 
@@ -302,8 +306,22 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const parachuteSummary = { count: 0, total: 0 };
   // #4376 · divisions-tillæg — samme summary-mønster, så transition-loggen kan surface det.
   const divisionAdjustmentSummary = { count: 0, total: 0 };
+  // #4592 · parkerede hold der står økonomisk stille i denne sæsonstart.
+  const parkedSummary = { count: 0 };
 
   for (const team of teams || []) {
+    // #4592 ejer-valg (b) = A med løn (23/9): et parkeret hold står økonomisk
+    // stille. Ingen sponsor, ingen faldskærm og intet divisions-tillæg (begge er
+    // sponsor-indtægt, se nedenfor) og ingen nye bestyrelsesplaner/mål. Payroll
+    // (runSeasonPayroll → loadHumanSeasonEndTeams) springer IKKE parkerede hold
+    // over, så lønnen betales som normalt. Et hold der er genindplaceret ved
+    // sæson-slut-sweepen, er ikke parkeret her og får sin sponsor som normalt.
+    if (isParkedTeam(team)) {
+      parkedSummary.count += 1;
+      console.log(`  🅿️  ${team.name}: parkeret, ingen sponsor eller bestyrelsesplan denne sæson (#4592)`);
+      continue;
+    }
+
     const boards = team.board_profiles || [];
     // #2753 · modifier/loft-regnestykket bor i sponsorEngine, så transition-
     // previewet (buildTransitionPlan) og denne udbetaling ikke kan drive fra
@@ -642,6 +660,9 @@ export async function processSeasonStart(seasonId, deps = {}) {
     // #4376 · divisions-tillæg — samme mønster. `total` kan være negativ fra sæson 4,
     // hvor den nedadgående korrektion også gælder.
     divisionAdjustment: divisionAdjustmentSummary,
+    // #4592 · antal parkerede hold uden sponsor/bestyrelsesplan. De tæller ikke
+    // med i `sponsor` (listen er kun de hold der faktisk fik sponsor-behandling).
+    parked: parkedSummary,
   };
 }
 
@@ -1668,6 +1689,23 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   throwIfSupabaseError(seasonError, "Could not load season for season-end repair");
   if (!currentSeason) throw new Error("Season not found");
 
+  // #4592 (CodeRabbit-fund): processTeamSeasonEnd springer hold over der var
+  // parkeret I SÆSONEN og læser det fra teams.parked_at. Kun parkerings-sweepen
+  // skriver det felt, så før sweepen for denne sæson har kørt, er den nuværende
+  // værdi også sæsonens. Bagefter er den ikke: et genindplaceret hold ville få en
+  // dom for en sæson det ikke kørte, og et nyparkeret hold ville miste sin. Repair
+  // afbryder hellere (før nogen skrivning) end at dømme på den forkerte tilstand.
+  // Sweepen kører først efter hele bestyrelses-loopet i processSeasonEnd, så en
+  // repair efter et nedbrud i det loop rammer aldrig denne gren.
+  const sweepSeam = /** @type {{ hasParkingSweepRunForSeason?: typeof hasParkingSweepRunForSeason }} */ (deps);
+  const hasSweepRunFn = sweepSeam.hasParkingSweepRunForSeason ?? hasParkingSweepRunForSeason;
+  if (await hasSweepRunFn({ supabase: supabaseClient, seasonId })) {
+    throw new Error(
+      `Season-end repair for ${seasonId} aborted: the parking sweep (#4592) has already run for this season, `
+      + "so teams.parked_at no longer shows which teams were parked during it.",
+    );
+  }
+
   // 2026-05-21: Salary/loan-interest/emergency-loan flyttet til sæson-start.
   // Repair-funktionen reparerer derfor nu kun board-snapshots og division-side-
   // effects, ikke finance-rows. Salary-repair (for historiske sæsoner der
@@ -1821,6 +1859,21 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
 }
 
 async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, deps = {}) {
+  // #4592 ejer-valg (b) = A med løn (23/9): ingen bestyrelsesdom, konsekvenser,
+  // mandat eller årsmøde for et parkeret hold. Tjekket ligger HER, i den ene
+  // funktion der afsiger dommen (evaluateBoardSeason + evaluateAndApplyConsequences),
+  // så både processSeasonEnd og repair-stien er dækket. Holdlisten
+  // (loadHumanSeasonEndTeams) filtrerer ikke selv på parkering, fordi payroll
+  // deler den og skal betale løn for parkerede hold.
+  //
+  // processSeasonEnd henter holdene FØR parkerings-sweepen, så et hold der
+  // parkeres i dette skifte, får dommen for den sæson det kørte. Kun hold der
+  // allerede var parkeret hele sæsonen, springes over.
+  if (isParkedTeam(team)) {
+    console.log(`  🅿️  ${team.name}: parkeret, ingen bestyrelsesdom denne sæson (#4592)`);
+    return;
+  }
+
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
   const evaluateAndApplyConsequencesFn = deps.evaluateAndApplyConsequences ?? evaluateAndApplyConsequences;
@@ -2483,16 +2536,86 @@ export async function updateRiderValues(supabaseClient, opts = {}) {
   return { ridersUpdated };
 }
 
+const RETIRED_AT_COLUMN = "retired_at";
+
+// Findes league_divisions.retired_at IKKE endnu (#4592 A2's migration er ikke kørt)?
+// Kun Postgres' egen 42703 / "does not exist" med kolonnenavnet tæller: uden kolonnen
+// kan ingen pulje være pensioneret, så en læsning uden filteret er per definition
+// korrekt. PGRST204 (PostgREST's skema-cache) tæller bevidst IKKE, samme dom som
+// isMissingSquadColumnError: cachen kan mangle kolonnen EFTER migrationen har
+// pensioneret puljer, og dér fejler vi lukket i stedet for at tage dem med.
+/**
+ * @param {{code?:string, message?:string, details?:string, hint?:string}|null|undefined} error
+ * @returns {boolean}
+ */
+export function isMissingRetiredAtColumnError(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+  if (!text.includes(RETIRED_AT_COLUMN)) return false;
+  if (code === "PGRST204" || text.includes("schema cache")) return false;
+  if (code === "42703") return true;
+  return /does not exist|undefined column/.test(text);
+}
+
+/** @type {(query: any) => any} */
+const onlyActivePools = (query) => query.is(RETIRED_AT_COLUMN, null);
+/** @type {(query: any) => any} */
+const allPoolsIncludingRetired = (query) => query;
+
+// Kør en league_divisions-læsning uden pensionerede puljer (retired_at IS NULL).
+// Samme form som withSeniorSquadScope: `run(active)` bygger en FRISK builder og pakker
+// den ind i `active(...)`. Svarer databasen 42703 på retired_at, køres `run` én gang
+// til uden filteret.
+/**
+ * @template R
+ * @param {(active: (query: any) => any) => (R|PromiseLike<R>)} run
+ * @returns {Promise<R>}
+ */
+async function withoutRetiredPools(run) {
+  let result;
+  try {
+    result = await run(onlyActivePools);
+  } catch (err) {
+    if (!isMissingRetiredAtColumnError(err)) throw err;
+    return run(allPoolsIncludingRetired);
+  }
+  if (result?.error && isMissingRetiredAtColumnError(result.error)) return run(allPoolsIncludingRetired);
+  return result;
+}
+
+// Puljerne ét træ bygges af: trup (senior = withSeniorSquadScope, ellers et eksplicit
+// squad-filter) og kun aktive puljer.
+/**
+ * @param {any} client  Supabase-klient
+ * @param {string} squad
+ */
+function loadPoolTreeRows(client, squad) {
+  if (squad === DEFAULT_SQUAD) {
+    return withSeniorSquadScope((senior) => withoutRetiredPools((active) =>
+      active(senior(client.from("league_divisions").select("id, tier, pool_index")))));
+  }
+  return withoutRetiredPools((active) =>
+    active(client.from("league_divisions").select("id, tier, pool_index").eq("squad", squad)));
+}
+
 /**
  * Bygger pulje-træet (forælder/barn) fra league_divisions' pool_index. Strukturen er
  * et binært træ (1/2/4/8 puljer): forælder(T,i) = (T-1, ⌊i / ratio⌋); børn = pool_index
  * i tieren under der mapper tilbage. ratio = puljer(T) / puljer(T-1). Udledt fra data
  * (robust mod fremtidig pyramide-udvidelse) — INGEN migration nødvendig.
+ *
+ * Ét træ pr. trup (#5536): ungdomspuljerne deler tier/pool_index med seniorernes, så et
+ * uscopet træ ville nøgle to puljer på samme `tier:pool_index`. Default er senior.
+ * Pensionerede puljer (retired_at sat, #4592: D4 går fra 8 til 4 puljer) er ikke med,
+ * ellers ville D3 rykke ned i de tomme D4-puljer og ratio'en regnes på 8 i stedet for 4.
+ *
+ * @param {object} client  Supabase-klient
+ * @param {{ squad?: string }} [options]
  */
-export async function buildPoolTree(client) {
-  const { data: lds, error } = await client
-    .from("league_divisions")
-    .select("id, tier, pool_index");
+export async function buildPoolTree(client, { squad = DEFAULT_SQUAD } = {}) {
+  if (!isSquad(squad)) throw new TypeError(`buildPoolTree: ukendt trup ${JSON.stringify(squad)}`);
+  const { data: lds, error } = await loadPoolTreeRows(client, squad);
   throwIfSupabaseError(error, "Could not load league_divisions for pool tree");
   const byId = new Map();
   const byTierIdx = new Map();
@@ -2711,9 +2834,10 @@ export async function reseedTierPools(seasonId, deps = {}) {
 
   // Pulje-etiketten ("Division 3 — B") bruges i beskeden til manageren. 15 rækker,
   // og kun når flaget er på — derfor et selvstændigt opslag frem for at udvide
-  // buildPoolTree, som kaldes på hver sæson-slut uanset flag.
-  const { data: poolLabelRows, error: poolLabelError } = await client
-    .from("league_divisions").select("id, label");
+  // buildPoolTree, som kaldes på hver sæson-slut uanset flag. Senior-scopet (#5536):
+  // reseed flytter kun mellem seniorpuljer.
+  const { data: poolLabelRows, error: poolLabelError } = await withSeniorSquadScope((senior) =>
+    senior(client.from("league_divisions").select("id, label")));
   throwIfSupabaseError(poolLabelError, "Could not load league_division labels for reseed");
   const labelByPool = new Map((poolLabelRows || []).map((p) => [p.id, p.label]));
   const notificationDeps = { supabase: client, now: deps.now };
@@ -2843,7 +2967,10 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
         .select("id, division, league_division_id")
         .order("id", { ascending: true })
     ), "Could not load teams for standings recalculation"),
-    supabaseClient.from("races").select("id").eq("season_id", seasonId),
+    // #5536: kun seniorløb, samme prædikat som RPC'en (#5535). Et ungdomsløb må ikke
+    // give point i seniorstillingen, heller ikke i fallback-vinduet.
+    withSeniorSquadScope((senior) =>
+      senior(supabaseClient.from("races").select("id")).eq("season_id", seasonId)),
   ]);
 
   if (racesError) throw new Error(racesError.message);

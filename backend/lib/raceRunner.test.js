@@ -1342,6 +1342,7 @@ test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp 
       "rpc:refresh_team_standings_ext_mv",
       "rpc:refresh_team_race_points_mv",
       "rpc:refresh_global_rank_mv",
+      "rpc:refresh_youth_rider_rankings_mv", // #5647: ungdoms-rytterranglisten, sidst i samme refresh
       "recomputeRaceDays",
       "notifyDiscord",
       "notifyInApp",
