@@ -58,6 +58,7 @@ import {
   COMPLETED_AUCTION_BIDS,
   SEED_TEAM_RACE_POINTS_MV,
   SEED_TEAM_STANDINGS_EXT,
+  SEED_YOUTH_STANDINGS,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -891,6 +892,14 @@ export function apiResponse(pathname, search = "") {
     if (riderIds) rows = rows.filter(row => riderIds.includes(row.rider_id));
     if (rankingQuery.get("top") === "5") rows = [...rows].sort((a, b) => Number(b.points) - Number(a.points)).slice(0, 5);
     return { data: rows };
+  }
+  // #5631: ungdomsstillingen (spor Y7 #5647). ?squad= påkrævet, ?pool= valgfri.
+  if (pathname.endsWith("/api/rankings/youth/standings")) {
+    const pool = rankingQuery.get("pool");
+    return {
+      data: SEED_YOUTH_STANDINGS.filter(row => row.squad === rankingQuery.get("squad")
+        && (!pool || String(row.league_division_id) === pool)),
+    };
   }
   if (pathname.endsWith("/api/rankings/standings")) {
     return { data: SEED_TEAM_STANDINGS_EXT.filter(row => row.season_id === rankingQuery.get("season_id")) };

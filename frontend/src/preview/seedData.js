@@ -774,6 +774,35 @@ export const SEED_TEAM_RACE_POINTS_MV = [
 // #5176: preserve the formerly empty standings-extension mock explicitly.
 export const SEED_TEAM_STANDINGS_EXT = [];
 
+// #5631: ungdomsstillingen (youth_season_standings via GET
+// /api/rankings/youth/standings, spor Y7 #5647) til Standings-fanen på U23
+// team- og Junior team-siden og Youth races. Opdigtede eksempel-hold som resten
+// af seedet; TEST_TEAM står i U23-gruppe A og junior-gruppe A, så "dig"-rækken
+// kan ses. league_division_id'erne er ungdomsgrupper (tier 1 pr. trup) og
+// deler ikke id med seniorpuljerne i SEED_LEAGUE_DIVISIONS.
+function youthRow(squad, poolId, poolIndex, rank, teamId, teamName, points, wins, podiums, races) {
+  return {
+    season_id: ACTIVE_SEASON.id, squad, league_division_id: poolId, pool_index: poolIndex,
+    team_id: teamId, team_name: teamName, rank_in_pool: rank,
+    total_points: points, wins, podiums, races,
+  };
+}
+export const SEED_YOUTH_STANDINGS = [
+  youthRow("u23", 901, 0, 1, "team-leader-preview", "Étoile du Léman", 64, 2, 3, 4),
+  youthRow("u23", 901, 0, 2, TEST_TEAM.id, TEST_TEAM.name, 51, 1, 2, 4),
+  youthRow("u23", 901, 0, 3, "team-ai-youth-1", "Vallée Verte", 38, 1, 1, 4),
+  youthRow("u23", 901, 0, 4, "team-ai-youth-2", "Kustlijn Continental", 22, 0, 1, 4),
+  youthRow("u23", 901, 0, 5, "team-ai-youth-3", "Alto Douro Ciclismo", 9, 0, 0, 3),
+  youthRow("u23", 902, 1, 1, RIVAL_TEAM.id, RIVAL_TEAM.name, 58, 2, 2, 4),
+  youthRow("u23", 902, 1, 2, "team-rookie-preview", "Nordkyst CK", 40, 1, 2, 4),
+  youthRow("u23", 902, 1, 3, "team-ai-youth-4", "Sierra Norte", 17, 0, 1, 4),
+  youthRow("u23", 902, 1, 4, "team-ai-youth-5", "Fjellvegen Sykkel", 6, 0, 0, 2),
+  youthRow("junior", 911, 0, 1, "team-ai-youth-1", "Vallée Verte", 30, 1, 2, 2),
+  youthRow("junior", 911, 0, 2, TEST_TEAM.id, TEST_TEAM.name, 24, 1, 1, 2),
+  youthRow("junior", 911, 0, 3, RIVAL_TEAM.id, RIVAL_TEAM.name, 12, 0, 1, 2),
+  youthRow("junior", 911, 0, 4, "team-ai-youth-2", "Kustlijn Continental", 5, 0, 0, 2),
+];
+
 // ── Global Rank-seed (#2792/#3193) ───────────────────────────────────────────
 // global_rank_mv — bevidst UDEN "team-ai-preview" (AI-holdet fra
 // SEED_SEASON_STANDINGS ovenfor): efter #2792 filtrerer selve matview'et
