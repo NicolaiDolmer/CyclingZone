@@ -501,7 +501,9 @@
     },
     "discordWelcome": {
       "title": "Hep! Kom med på Discord",
-      "message": "Cycling Zone er mere end hjemmesiden. Det er et fællesskab, og meget af det sker på Discord: det er der, jeg hænger ud, der jeg spørger dig hvad jeg skal bygge næste gang, og der de andre managere snakker cykling hele dagen. Vær ærlig over for mig derinde, det er langt mere brugbart end ros. Kom som du er, du behøver ingen resultater for at høre til. Vi ses derinde :)"
+      "message": "Cycling Zone er mere end hjemmesiden. Det er et fællesskab, og meget af det sker på Discord: det er der, jeg hænger ud, der jeg spørger dig hvad jeg skal bygge næste gang, og der de andre managere snakker cykling hele dagen. Vær ærlig over for mig derinde, det er langt mere brugbart end ros. Kom som du er, du behøver ingen resultater for at høre til. Vi ses derinde :)",
+      "forumLine": "Vil du hellere blive på siden? <forum>Managerforummet</forum> ligger lige her i spillet.",
+      "cta": "Kom med på Discord"
     },
     "betaAccess": {
       "approved": {

@@ -119,6 +119,13 @@ jobs:
         working-directory: .
         run: node scripts/check-event-catalog.mjs
 
+      # #5484: den lokale read-only Discord-MCP (scripts/discord/mcp-readonly-server.mjs).
+      # Testene laaser at serveren ingen skrive-tools har, og at handshaket ikke
+      # venter paa netvaerk. Ingen dependencies, saa den koerer foer `npm ci`.
+      - name: Test read-only Discord MCP server
+        working-directory: .
+        run: node --test scripts/discord/mcp-readonly-server.test.mjs
+
       # #5093 (ejer-valg 18/9: A): docs/NOW.md er den eneste kilde til "aktivt
       # issue" + "Working agent"-claim (CLAUDE.md-Start-rutinen). En PR der
       # roerer den skal fejle, medmindre PR-titlen er en close-out

@@ -624,8 +624,13 @@ export function applyThreeKmRuleToResults(
 // 1. `MechanicHooks.incidents` (types.ts, VALGFRIT felt) + et ubetinget kald i
 //    segmentLoop.ts's loop — efter climb/descent-grenen og efter M5 (udbrud),
 //    FOER finale-hooket og foer merge-trinnet, saa et uheld i finalen tager
-//    rytteren ud af frontgruppen inden opgoeret, og saa splits kan merges igen
-//    samme segment.
+//    rytteren ud af frontgruppen inden opgoeret, og saa uheldets solo-gruppe
+//    gaar gennem samme merge-regel som alle andre splits i segmentet. Den
+//    smelter IKKE tilbage i rytterens egen gruppe samme segment: det mindste
+//    tidstab resolveIncident kan give (bunden af tidstabs-intervallerne i
+//    INCIDENTS_EXTRA_TUNING, inkl. hjaelper-faktoren) ligger over
+//    `tuning.groups.mergeThresholdSeconds`. Kun en ANDEN gruppe inden for
+//    merge-graensen af den nye tid kan samle ham op (#5579).
 // 2. `applyThreeKmRuleToResults()` kaldes i index.ts's simulateStageV4 EFTER
 //    buildResults(state) og FOER buildFinishEvent(...) — se JSDoc'en ovenfor.
 // 3. Rider-status "abandoned" saettes NU af denne fil, men KUN paa trin 3
