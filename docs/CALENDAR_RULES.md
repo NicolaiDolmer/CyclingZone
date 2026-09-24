@@ -57,7 +57,7 @@ Bemærk at sæson-oversigten viser et ANDET tal under samme ord: `seasonDayOrdin
 | Tids-slots pr. dag | `TIER_STAGE_SLOTS` | 5 | 4 | 3 | **3** | ejer-låst, D4 hævet 3/9 | `calendarPlanningWindow.js` (#5592) |
 | Etaper i alt (kvote), S4 | density × løbsdatoer | 140 | 112 | 84 | **84** | afledt af §2 | `buildSeasonCalendar.js` |
 
-Antal slots = density, så en dag aldrig har flere etaper end slots. Slottene er konkrete klokkeslæt på en **almindelig dag (tirsdag-lørdag)**: D1 11/13/15/17/19 · D2 12/14/16/18 · D3 12/15/18 · **D4 12/15/18** (samme som D3 fra S4). Søndag slutter kl. 15, mandag starter kl. 15, og sæsonens første dag starter tidligst 24 timer efter det tidligst mulige sæsonskifte — se **§2f** (#5592).
+Antal slots = density, så en dag aldrig har flere etaper end slots. Slottene er konkrete klokkeslæt på **alle dage, også søndag og mandag**: D1 11/13/15/17/19 · D2 12/14/16/18 · D3 12/15/18 · **D4 12/15/18** (samme som D3 fra S4). Kun de to dage omkring sæsonskiftet afviger: sæsonens sidste løbsdag slutter kl. 15, og den nye sæsons første dag starter tidligst 24 timer efter det tidligst mulige sæsonskifte — se **§2f** (#5592).
 
 **Ejer-beslutning 3/9 ([#4270](https://github.com/NicolaiDolmer/CyclingZone/issues/4270)): Division 4 kører 3 etaper om dagen fra sæson 4.** 56 etaper over 28 dage var spillets tyndeste program, og D4 er den division med flest hold. Overlap-cap'en er **uændret** på 2 — den er binding-tryk, ikke pacing.
 
@@ -367,7 +367,7 @@ scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
 | Gate | Kilde | Override |
 |---|---|---|
 | Kalender-invarianter (§3 GT, whitelist, dedup, #2276-signatur) | `gatePlan` | **ingen** |
-| Mindst 24 t til trupudtagelse (§2f, #5592) | `gatePlan` (via `calendarViolations`) | **ingen** - ejer-regel |
+| Mindst 24 t til trupudtagelse ved sæsonskiftet (§2f, #5592) | `gatePlan` (via `calendarViolations`) | **ingen** - ejer-regel |
 | Dækningsgarantier (§4 endagsløb, §5 terræn-gulve) | `gatePlan` | **ingen** |
 | Etaperækkefølge (§7) | `gatePlan` | **ingen** |
 | Realisme-bånd (#3347/#3469) | `gatePlan` | **ingen** |
@@ -447,58 +447,63 @@ balance-nuance, det er spillets udviklingstakt.
 
 ---
 
-## 2f. Mindst 24 timer til trupudtagelse ([#5592](https://github.com/NicolaiDolmer/CyclingZone/issues/5592), ejer 23/9)
+## 2f. Mindst 24 timer til trupudtagelse, kun ved sæsonskiftet ([#5592](https://github.com/NicolaiDolmer/CyclingZone/issues/5592), ejer 23/9 + 24/9)
 
 **Ejeren ordret (23/9 kl. 22):** *"Sørge for at løbene om søndagen slutter tidligere og at løbene om mandagen starter senere end normalt, så der kommer til at være en noget længere periode end normalt, til at udtage trupper"* + *"gør det med flere timer, sådan det er mindst 24 timer til at planlægge. Skal også tage højde for sæsonskiftet, der skal være nok tid til planlægning for managers fremadrettet."*
 
-To regler, begge i dansk tid og målt i **virkelige** timer (ikke vægur):
+**Præcisering (24/9 kl. 07:35):** *"Husk det kun er i forbindelse med sæsonskiftet. Det er ikke alle mandage og søndage der skal være påvirket. Kun disse der er i forbindelse med sæsonskiftet."*
 
-| Regel | Hvad | Anker |
+Reglen gælder **kun de to dage omkring sæsonskiftet**. Alle andre dage, også søndage og mandage midt i sæsonen, har de normale tider fra §1. Begge regler er i dansk tid og målt i **virkelige** timer (ikke vægur):
+
+| Dag | Hvad | Anker |
 |---|---|---|
-| **Ugedags-reglen** | I **hver** division ligger mandagens første etape mindst 24 timer efter søndagens sidste | søndagens sidste etape |
-| **Sæsonskifte-reglen** | En ny sæsons første etape ligger i **hver** division mindst 24 timer efter det **tidligst mulige** sæsonskifte | forrige sæsons seneste etape på tværs af alle divisioner + 30 min, eller et senere planlagt skifte |
+| **Sæsonens sidste løbsdag** (§2's søndags-slut, dagen før skiftet) | Slutter kl. 15 i **hver** division, så skiftet kan ske tidligt på dagen, og den nye sæsons første dag ikke skubbes sent | `SEASON_LAST_DAY_END_SLOT` (15:00) |
+| **Den nye sæsons første løbsdag** | Første etape ligger i **hver** division mindst 24 timer efter det **tidligst mulige** sæsonskifte | forrige sæsons seneste etape på tværs af alle divisioner + 30 min, eller et senere planlagt skifte |
 
 **Etape-tiderne** (`slotsFor` i `backend/lib/calendarPlanningWindow.js`):
 
-| | Almindelig dag (tir-lør) | Søndag | Mandag | Pause søn → man |
-|---|---|---|---|--:|
-| D1 | 11 / 13 / 15 / 17 / 19 | 11 / 12 / 13 / 14 / 15 | 15 / 16 / 17 / 18 / 19 | 24 t (før: 16 t) |
-| D2 | 12 / 14 / 16 / 18 | 12 / 13 / 14 / 15 | 15 / 16 / 17 / 18 | 24 t (før: 18 t) |
-| D3 | 12 / 15 / 18 | 12 / 13.30 / 15 | 15 / 16.30 / 18 | 24 t (før: 18 t) |
-| D4 | 12 / 15 / 18 | 12 / 13.30 / 15 | 15 / 16.30 / 18 | 24 t (før: 18 t) |
+| | Alle andre dage (også søndag og mandag) | Sæsonens sidste løbsdag |
+|---|---|---|
+| D1 | 11 / 13 / 15 / 17 / 19 | 11 / 12 / 13 / 14 / 15 |
+| D2 | 12 / 14 / 16 / 18 | 12 / 13 / 14 / 15 |
+| D3 | 12 / 15 / 18 | 12 / 13.30 / 15 |
+| D4 | 12 / 15 / 18 | 12 / 13.30 / 15 |
+
+Den nye sæsons første løbsdag har ingen fast tabel: dens slots presses sammen fra *tidligst mulige skifte + 24 t* (se nedenfor).
 
 **Mekanikken, så den ikke skal gættes næste gang:**
 
-- **Én kilde.** `TIER_STAGE_SLOTS` er en almindelig dag og bor i `calendarPlanningWindow.js` (re-eksporteret af `tierCalendarMaterializer.js`). Søndag og mandag **udledes** af den: søndagens slots fordeles jævnt fra dagens normale første slot til `WEEKEND_HANDOVER_SLOT` (15:00), mandagens fra 15:00 til dagens normale sidste. Der findes ingen søndags- eller mandags-tabel ved siden af; ændres en divisions normale slots, følger weekenden med.
-- **Dagens yderpunkter flytter sig ikke.** Søndag starter som normalt og mandag slutter som normalt, så ingen almindelig uge får en etape efter kl. 19 — træningssweepen kører fra kl. 20 (`trainingDayCloseTrigger.js`).
-- **Antal slots, baner og datoer er urørte.** En dag har stadig præcis `density` slots (§1), bane k kører stadig i slot k, og det er kun klokkeslættet der flytter sig. Den gyldne kalender-diff er derfor uændret (den måler datoer), og alle §1-§7-gates er de samme.
-- **Sommertid/vintertid.** Samme klokkeslæt søndag og mandag er præcis 24 timer — også søndag 25/10 og 28/3, fordi skiftet sker kl. 02-03 søndag nat, før søndagens første etape. Testet over et helt år i `calendarPlanningWindow.test.js`.
+- **Én kilde.** `TIER_STAGE_SLOTS` er en almindelig dag og bor i `calendarPlanningWindow.js` (re-eksporteret af `tierCalendarMaterializer.js`). `slotsFor(tier, dato, { seasonLastRaceDay, notBefore })` udleder de to dage af den: sæsonens sidste løbsdag fordeles jævnt fra dagens normale første slot til 15:00 (`seasonLastDaySlots`), og første løbsdag presses sammen fra `notBefore` (`applySeasonStartNotBefore`, rører kun datoen for `notBefore`). Uden kontekst er enhver dato en almindelig dag. Der findes ingen tabel ved siden af; ændres en divisions normale slots, følger de to dage med.
+- **Hvilken dag er "sidste løbsdag".** Materializerens `seasonLastRaceDay`: `buildSeasonCalendar.js` sender §2-vinduets sidste dag (S4: søndag 25/10). Uden værdi bruges kalenderens sidste dato (`lastCalendarDay(from, realDays)`), som er den samme dag; i en midt-sæson-aktivering (§2e) slutter horisonten på sæsonens sidste etape-dato, så en pulje der vågner midt i sæsonen også slutter kl. 15 den dag. `null` slår reglen fra.
+- **Antal slots, baner og datoer er urørte.** En dag har stadig præcis `density` slots (§1), bane k kører stadig i slot k, og det er kun klokkeslættet der flytter sig. Den gyldne kalender-diff er derfor uændret (den måler datoer), og alle §1-§7-gates er de samme. Sidste løbsdag starter som normalt; kun dens sidste etaper rykker frem.
+- **Beviset i dry-runnet.** Sektionen "#5592 planlægningsvindue ved sæsonskiftet" tæller pr. division de datoer hvor en etape ikke ligger på de normale slots (`datesOffNormalSlots`). Kun første og sidste løbsdag må stå der; enhver anden dato markeres ❌.
 - **Det tidligst mulige sæsonskifte** (`resolveEarliestSeasonTransition`, diff-tjek 24/9). "Afslut sæson" er spærret til hvert løb er afviklet (`assessSeasonEndBlockers`), så skiftet kan tidligst ske ved **starten på forrige sæsons seneste etape på tværs af alle divisioner + `SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES` (30)**: afviklingen af etapen (målt op til 10,7 min forsinket) plus selve skiftet. Er `app_config.season_transition_planned_at` sat og **senere**, vinder den; en tidligere værdi kan ikke nås og taber (det gør en efterladt værdi fra en tidligere sæson også). Kendes forrige sæsons etaper ikke, gælder det seneste af den planlagte værdi og konventionen *aftenen før første løbsdag kl. 18* (`computeSeasonTransitionBoundary`). Loftet for bufferen er 60 min: med D1's etape kl. 19 som S3's sidste kan D1's 5 etaper på S4's første dag højst starte kl. 20 for at slutte kl. 22.
 - **Samme tidspunkt i kalender og app_config.** `buildSeasonCalendar.js` sender det tidligst mulige skifte til både dry-run og apply, og `--apply` skriver **præcis** den værdi til `season_transition_planned_at` (`ensureSeasonTransitionPlannedAt` med `target`). En senere værdi i app_config overskrives aldrig; dukker der en senere værdi op end den kalenderen er planlagt mod (ændret under kørslen), stopper scriptet før kalenderen skrives.
-- **Divisionens egen sidste etape** i forrige sæson læses også (kun SELECT), så ugedags-reglen holder hen over sæsongrænsen. Den ligger aldrig senere end det globale anker.
+- **Divisionens egen sidste etape** i forrige sæson læses også (kun SELECT), så første etape også ligger mindst 24 t efter den (spillerteksten lover 24 t fra den gamle sæsons sidste løb). Den ligger aldrig senere end det globale anker.
 - **Ligger sæsonens første dag for tidligt**, presses dens slots sammen fra ankeret + 24 t med mindst 30 minutters afstand (`COMPRESSED_SLOT_MIN_GAP_MINUTES`). Kan de ikke nå at ligge inden kl. 22 (`LATEST_STAGE_SLOT`), **kaster** planlægningen i stedet for at lægge etaper om natten — så er første løbsdag og sæsonskiftet uforenelige, og det skal et menneske afgøre.
-- **En pulje der vågner midt i sæsonen** (§2e) er ikke en sæsonstart: `reconcilePoolCalendarOnActivation` sender `seasonTransitionAt: null`, og det samme gør midt-sæson-reparationerne (`repair2251Tier4GrandTours.js`, `repair2276Div4Cascade.js`). Ugedags-reglen gælder stadig.
-- **Hvem sender hvad.** `buildSeasonCalendar.js` sender det tidligst mulige skifte + divisionernes sidste etaper, og det er **den vej en ny sæsons kalender bygges**. Sæsonskiftets fase 17 (`auto_calendar_enabled`, slukket) sender det **faktiske** skiftetidspunkt, som altid ligger efter sidste etape. **Kendt begrænsning:** admin-"Generér" og relaunch (`backend/routes/api.js`) kender ikke forrige sæsons sidste etape og bruger konventionen (aftenen før første kalenderdag kl. 18); det samme gør dev-scripts.
+- **Sommertid/vintertid.** S4's sidste løbsdag er søndag 25/10, hvor uret stilles tilbage kl. 03, før dagens første etape. Sidste etape kl. 15 CET, tidligst mulige skifte kl. 15:30 CET, og S5's første etape mandag 26/10 tidligst kl. 15:30 CET: 24 virkelige timer. Testet i `calendarPlanningWindow.test.js`.
+- **En pulje der vågner midt i sæsonen** (§2e) er ikke en sæsonstart: `reconcilePoolCalendarOnActivation` sender `seasonTransitionAt: null`, og det samme gør midt-sæson-reparationerne (`repair2251Tier4GrandTours.js`, `repair2276Div4Cascade.js`). Sidste-dags-reglen gælder stadig, fordi horisonten slutter på sæsonens sidste dag.
+- **Hvem sender hvad.** `buildSeasonCalendar.js` sender det tidligst mulige skifte, divisionernes sidste etaper og §2-vinduets sidste dag, og det er **den vej en ny sæsons kalender bygges**. Sæsonskiftets fase 17 (`auto_calendar_enabled`, slukket) sender det **faktiske** skiftetidspunkt, som altid ligger efter sidste etape. **Kendt begrænsning:** admin-"Generér" og relaunch (`backend/routes/api.js`) kender ikke forrige sæsons sidste etape og bruger konventionen (aftenen før første kalenderdag kl. 18); det samme gør dev-scripts.
 
-**S4's første dag, mandag 28/9** (tørkørsel mod prod): S3's sidste etape søndag 27/9 er kl. 19 i D1 og kl. 18 i D2-D4. Det tidligst mulige skifte er derfor **27/9 kl. 19:30** (D1's etape kl. 19 + 30 min), og alle fire divisioner starter tidligst 24 t senere:
+**S3 → S4** (tørkørsel mod prod): S3's sidste løbsdag søndag 27/9 står allerede i prod og røres ikke. Dens sidste etape er kl. 19 i D1 og kl. 18 i D2-D4. Det tidligst mulige skifte er derfor **27/9 kl. 19:30** (D1's etape kl. 19 + 30 min), og alle fire divisioner starter S4 tidligst 24 t senere:
 
-| | Første dag før | Første dag nu | Pause fra tidligst mulige skifte | Pause fra divisionens S3-sidste etape |
+| | S4's første dag, mandag 28/9, før | Nu | Pause fra tidligst mulige skifte | Pause fra divisionens S3-sidste etape |
 |---|---|---|--:|--:|
 | D1 | 11:00-19:00 | 19.30 / 20 / 20.30 / 21 / 21.30 | 24 t | 24,5 t (før: 16 t) |
 | D2 | 12:00-18:00 | 19.30 / 20 / 20.30 / 21 | 24 t | 25,5 t (før: 18 t) |
 | D3 | 12:00-18:00 | 19.30 / 20 / 20.30 | 24 t | 25,5 t (før: 18 t) |
 | D4 | 12:00-18:00 | 19.30 / 20 / 20.30 | 24 t | 25,5 t (før: 18 t) |
 
-Første dag er den eneste dag hvor en etape ligger efter kl. 19; træningssweepen venter selv på dagens sidste afslutning (`trainingDayCloseTrigger.js`, loft kl. 23).
+S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningssweepen venter selv på dagens sidste afslutning (`trainingDayCloseTrigger.js`, loft kl. 23).
 
-> Fra S4 slutter hver sæson på en søndag med sidste etape kl. 15, så det tidligst mulige skifte er kl. 15:30, og den nye sæsons mandag starter tidligst kl. 15:30.
+> Fra S4 slutter hver sæson på en søndag med sidste etape kl. 15, så det tidligst mulige skifte er kl. 15:30, og den nye sæsons første dag (mandag) starter tidligst kl. 15:30.
 
 | Hvor | Hvad |
 |---|---|
-| Reglen (data + ren funktion) | `slotsFor`, `resolveEarliestSeasonTransition`, `resolveSeasonStartNotBefore` i `backend/lib/calendarPlanningWindow.js` |
+| Reglen (data + ren funktion) | `slotsFor`, `seasonLastDaySlots`, `resolveEarliestSeasonTransition`, `resolveSeasonStartNotBefore` i `backend/lib/calendarPlanningWindow.js` |
 | Tidsplanen | `buildScheduleRows` (`raceCalendarScheduling.js`) tager slots pr. dato |
 | Gate | `detectPlanningWindowViolations` → `calendarViolations` → `gatePlan` — **hårdt krav uden override**, stopper `--apply` |
-| Rapportering | dry-runnets sektion "#5592 planlægningsvindue" pr. division (`buildSeasonCalendar.js`) |
+| Rapportering | dry-runnets sektion "#5592 planlægningsvindue ved sæsonskiftet" pr. division, inkl. antal datoer på normale tider (`buildSeasonCalendar.js`) |
 
 ---
 

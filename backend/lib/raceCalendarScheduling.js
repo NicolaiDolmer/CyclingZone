@@ -43,7 +43,7 @@ export const DEFAULT_STAGE_SLOTS = Object.freeze(["12:00", "15:00", "18:00"]);
  * @param {{ placements: Array<{id, stagesPlaced: Array<{stage_number, real_day, game_day, lane}>}>,
  *           from?: Date, slots?: string[] | ((localDate: string) => string[]) }} args
  *   slots: én liste for alle dage, ELLER en funktion af den danske kalenderdato (#5592:
- *   søndag/mandag/sæsonstart har andre klokkeslæt, se calendarPlanningWindow.slotsFor).
+ *   sæsonens sidste og første løbsdag har andre klokkeslæt, se calendarPlanningWindow.slotsFor).
  * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at, game_day}> }}
  */
 export function buildScheduleRows({ placements = [], from = new Date(), slots = DEFAULT_STAGE_SLOTS } = {}) {

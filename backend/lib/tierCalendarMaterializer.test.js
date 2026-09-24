@@ -4,7 +4,7 @@ import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCa
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
-import { resolveEarliestSeasonTransition, latestInstant } from "./calendarPlanningWindow.js";
+import { resolveEarliestSeasonTransition, latestInstant, TIER_STAGE_SLOTS } from "./calendarPlanningWindow.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
@@ -1279,30 +1279,52 @@ test("#5517 reconcile: ungdomsløb i sæsonen trækker hverken løbsdags-målet 
   assert.notDeepEqual(control, youth, "kontrol: som seniorløb ville ungdomsløbet flytte mål og/eller sæson-slut");
 });
 
-// ── #5592 · mindst 24 timer til trupudtagelse (søndag tidligt, mandag sent, sæsonstart) ──
+// ── #5592 · mindst 24 timer til trupudtagelse, KUN ved sæsonskiftet (ejer 23/9 + 24/9) ──
 
 const localClock = (iso) => new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/Copenhagen", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
 }).format(new Date(iso));
+const localDate = (iso) => new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit",
+}).format(new Date(iso));
+const localHHMM = (iso) => localClock(iso).slice(-5);
 
-test("#5592 plan: ingen planlægningsvindue-brud, søndag ≤ 15:00, mandag ≥ 15:00, og kun klokkeslæt flytter sig", () => {
+// FROM = søn 28/6 00:00Z → første kalenderdag mandag 29/6, sidste (realDays 28) søndag 26/7.
+const PLAN_FIRST_DAY = "2026-06-29";
+const PLAN_LAST_DAY = "2026-07-26";
+
+test("#5592 plan: KUN sæsonens første og sidste løbsdag afviger; alle andre datoer (også søndage og mandage) er som før #5592", () => {
   const { tierPlans } = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM });
-  for (const tp of tierPlans) {
+  // Før-#5592-formen: begge regler slået fra = TIER_STAGE_SLOTS på alle dage (bane k → slot k).
+  const before = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM, seasonTransitionAt: null, seasonLastRaceDay: null });
+  for (const [i, tp] of tierPlans.entries()) {
+    const b = before.tierPlans[i];
+    assert.equal(b.tier, tp.tier);
     assert.deepEqual(tp.calendarViolations.filter((v) => v.includes("#5592")), [], `tier ${tp.tier}`);
-    assert.ok(tp.planningWindow.weekends.length >= 3, `tier ${tp.tier}: weekender målt`);
-    for (const w of tp.planningWindow.weekends) assert.ok(w.pauseHours >= 24, `tier ${tp.tier} ${w.sunday}: ${w.pauseHours} t`);
+    assert.equal(tp.planningWindow.seasonLastRaceDay, PLAN_LAST_DAY, `tier ${tp.tier}: kalenderens sidste dato`);
+    const normal = new Set(TIER_STAGE_SLOTS[tp.tier]);
+    for (const s of b.pools[0].stageRows) assert.ok(normal.has(localHHMM(s.scheduled_at)), `tier ${tp.tier}: før-formen ${localClock(s.scheduled_at)}`);
+    const beforeAt = new Map(b.pools[0].stageRows.map((s) => [`${s.pool_race_id}:${s.stage_number}:${s.game_day}`, s.scheduled_at]));
+    const changed = new Set();
+    let sundays = 0;
+    let mondays = 0;
     for (const s of tp.pools[0].stageRows) {
-      const clock = localClock(s.scheduled_at);
-      if (clock.startsWith("Sun")) assert.ok(clock.slice(-5) <= "15:00", `tier ${tp.tier}: søndag ${clock}`);
-      if (clock.startsWith("Mon")) assert.ok(clock.slice(-5) >= "15:00", `tier ${tp.tier}: mandag ${clock}`);
+      const prev = beforeAt.get(`${s.pool_race_id}:${s.stage_number}:${s.game_day}`);
+      assert.ok(prev, `tier ${tp.tier}: ${s.pool_race_id}:${s.stage_number} findes i før-formen`);
+      assert.equal(localDate(s.scheduled_at), localDate(prev), `tier ${tp.tier}: datoen flytter sig aldrig`);
+      const date = localDate(s.scheduled_at);
+      if (s.scheduled_at !== prev) changed.add(date);
+      if (date !== PLAN_FIRST_DAY && date !== PLAN_LAST_DAY) {
+        assert.equal(s.scheduled_at, prev, `tier ${tp.tier}: ${localClock(s.scheduled_at)} ${date} skal være uændret`);
+        if (localClock(s.scheduled_at).startsWith("Sun")) sundays += 1;
+        if (localClock(s.scheduled_at).startsWith("Mon")) mondays += 1;
+      }
+      if (date === PLAN_LAST_DAY) assert.ok(localHHMM(s.scheduled_at) <= "15:00", `tier ${tp.tier}: sidste løbsdag ${localClock(s.scheduled_at)}`);
     }
+    assert.ok(sundays > 0 && mondays > 0, `tier ${tp.tier}: almindelige søndage og mandage er målt`);
+    assert.deepEqual([...changed].sort(), [PLAN_FIRST_DAY, PLAN_LAST_DAY], `tier ${tp.tier}: præcis to datoer ændret`);
+    assert.equal(tp.pools[0].stageRows.length, b.pools[0].stageRows.length);
   }
-  // Med og uden sæsonskifte-reglen er løb, etaper, game_days og DATOER identiske — kun
-  // klokkeslættet flytter sig. (At datoerne også er uændret mod før #5592, dømmer den
-  // gyldne kalender-diff: calendarGoldenSnapshot.test.js.)
-  const before = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM, seasonTransitionAt: null });
-  const shape = (plans) => plans.map((tp) => tp.pools[0].stageRows.map((s) => `${s.race_id}:${s.stage_number}:${s.game_day}:${s.scheduled_at.slice(0, 10)}`));
-  assert.deepEqual(shape(tierPlans), shape(before.tierPlans));
 });
 
 test("#5592 plan: sæsonens første dag starter tidligst 24 t efter sæsonskiftet — og efter forrige sæsons sidste etape", () => {
@@ -1320,7 +1342,23 @@ test("#5592 plan: sæsonens første dag starter tidligst 24 t efter sæsonskifte
   const off = byTier({ seasonTransitionAt: null });
   for (const tp of Object.values(off)) {
     assert.equal(tp.planningWindow.notBefore, null);
-    assert.equal(localClock(tp.planningWindow.firstStageAt), "Mon 15:00", `tier ${tp.tier}: almindelig mandag uden sæsonskifte`);
+    assert.equal(localClock(tp.planningWindow.firstStageAt), `Mon ${TIER_STAGE_SLOTS[tp.tier][0]}`, `tier ${tp.tier}: almindelig mandag uden sæsonskifte`);
+  }
+});
+
+test("#5592 plan: sidste løbsdag — undefined = kalenderens sidste dato, en dato = eksplicit, null = slået fra", () => {
+  const byTier = (args) => Object.fromEntries(buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM, ...args }).tierPlans.map((t) => [t.tier, t]));
+  const lastDayClock = (tp, date) => tp.pools[0].stageRows.filter((s) => localDate(s.scheduled_at) === date).map((s) => localHHMM(s.scheduled_at));
+  const explicit = byTier({ seasonLastRaceDay: PLAN_LAST_DAY });
+  const derived = byTier({});
+  const off = byTier({ seasonLastRaceDay: null });
+  for (const t of Object.keys(derived)) {
+    assert.deepEqual(explicit[t].pools[0].stageRows, derived[t].pools[0].stageRows, `tier ${t}: eksplicit = udledt`);
+    const offTimes = lastDayClock(off[t], PLAN_LAST_DAY);
+    assert.ok(offTimes.length > 0, `tier ${t}: har etaper på sidste dato`);
+    assert.ok(offTimes.some((h) => h > "15:00"), `tier ${t}: uden reglen slutter dagen som normalt`);
+    assert.equal(off[t].planningWindow.seasonLastRaceDay, null);
+    assert.ok(lastDayClock(derived[t], PLAN_LAST_DAY).every((h) => h <= "15:00"), `tier ${t}: med reglen senest kl. 15`);
   }
 });
 
@@ -1337,14 +1375,15 @@ test("#5592 plan: det tidligst mulige skifte (seneste etape på tværs af divisi
     assert.equal(tp.planningWindow.notBefore, "2026-06-29T17:30:00.000Z", `tier ${tp.tier}: samme anker som D1`);
     assert.ok(Date.parse(tp.planningWindow.firstStageAt) - transition.at.getTime() >= 24 * 3_600_000, `tier ${tp.tier}: ${tp.planningWindow.firstStageAt}`);
     assert.deepEqual(tp.calendarViolations.filter((v) => v.includes("#5592")), [], `tier ${tp.tier}`);
-    for (const s of tp.pools[0].stageRows) assert.ok(localClock(s.scheduled_at).slice(-5) <= "22:00", `tier ${tp.tier}: ${localClock(s.scheduled_at)}`);
+    for (const s of tp.pools[0].stageRows) assert.ok(localHHMM(s.scheduled_at) <= "22:00", `tier ${tp.tier}: ${localClock(s.scheduled_at)}`);
   }
 });
 
-test("#5592 reconcile: en pulje der vågner midt i sæsonen er ikke en sæsonstart (seasonTransitionAt: null)", async () => {
+test("#5592 reconcile: en pulje der vågner midt i sæsonen er ikke en sæsonstart; sidste løbsdag følger horisonten", async () => {
   const calls = [];
   const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
   await reconcilePoolCalendarOnActivation({ supabase: makeSupabase(tier4ActivationState()), poolId: 8, now: FROM, materialize: recording });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].seasonTransitionAt, null);
+  assert.equal(calls[0].seasonLastRaceDay, undefined, "udledes af horisonten, der slutter på sæsonens sidste etape-dato");
 });
