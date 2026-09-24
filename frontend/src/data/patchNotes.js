@@ -148,11 +148,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Quick rest on your phone",
-          "body": "What changed: On Daily training on your phone, tap Select riders, tap the riders and tap Set to rest. Before, you had to open each rider one at a time.\n\nWhat it means for you: Resting a tired group takes three taps."
+          "body": "What changed: On Daily training on your phone, turn on rider selection, tap the riders and tap Set to rest. Before, you had to open each rider one at a time.\n\nWhat it means for you: Resting a tired group takes three taps."
         },
         "da": {
           "title": "Hurtig hvile på din telefon",
-          "body": "Hvad er ændret: På Daglig træning på din telefon trykker du Vælg ryttere, trykker på rytterne og trykker Sæt til hvile. Før skulle du åbne hver rytter enkeltvis.\n\nHvad det betyder for dig: At give en træt gruppe hvile tager tre tryk."
+          "body": "Hvad er ændret: På Daglig træning på din telefon slår du rytter-markering til, trykker på rytterne og trykker Sæt til hvile. Før skulle du åbne hver rytter enkeltvis.\n\nHvad det betyder for dig: At give en træt gruppe hvile tager tre tryk."
         },
         "refs": [
           5620,
