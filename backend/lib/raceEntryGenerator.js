@@ -1250,10 +1250,17 @@ export async function runRaceEntryGenerator({
     // findes i én enheds toDelete OG en ANDEN enheds toInsert i SAMME batch) og
     // slet dem FØR fallback-loopet kører. De resterende ændringer (rene prunes
     // eller inserts uden søsterkonflikt) beholder deres normale insert-før-
-    // delete-rækkefølge uændret — kun den ægte flytning får sin "gamle" række
-    // fjernet et øjeblik tidligere, så målenheden aldrig ser en midlertidig
-    // dobbeltbooking. Fejler pre-sletningen, falder vi tilbage til den kendte
-    // (rapporterede) fejl i stedet for en ny, tavs fejlklasse.
+    // delete-rækkefølge uændret.
+    //
+    // CodeRabbit-fund (#5693, samme runde): en pre-slettet rytters MÅL-enhed kan
+    // stadig fejle bagefter (uq-kollision der ikke reddes af retry, FK-brud, en
+    // afvist drænende-AI-guard) — uden en modvægt ville rytteren simpelthen
+    // forsvinde fra BEGGE løb i stedet for at blive i det gamle, hvilket er
+    // værre end dødvandet vi retter. Derfor: husk hver pre-slettet rækkes
+    // oprindelige rolle + hvilken enhed den skulle lande i, og GENSKAB den i
+    // kilde-løbet hvis mål-enheden ikke lykkedes. Pre-sletningens eget
+    // Supabase-kald er desuden try/catch'et — en transportfejl (kastet, ikke
+    // returneret som `{error}`) må aldrig vælte resten af sweepet.
     const deleteRaceIdsByRider = new Map(); // rider_id → Set(race_id) enheden vil slette rytteren fra
     for (const { unit, diff } of changed) {
       for (const riderId of diff.toDelete) {
@@ -1262,6 +1269,7 @@ export async function runRaceEntryGenerator({
       }
     }
     const swapDeleteRidersByRace = new Map(); // race_id → [rider_id] der skal forudslettes
+    const swapTargetRaceByRider = new Map(); // rider_id → race_id enheden skal lande i
     for (const { unit, diff } of changed) {
       for (const { rider_id: riderId } of diff.toInsert) {
         const sourceRaceIds = deleteRaceIdsByRider.get(riderId);
@@ -1270,30 +1278,72 @@ export async function runRaceEntryGenerator({
           if (sourceRaceId === unit.race_id) continue; // samme enhed — ikke en cross-enheds-flytning
           if (!swapDeleteRidersByRace.has(sourceRaceId)) swapDeleteRidersByRace.set(sourceRaceId, []);
           swapDeleteRidersByRace.get(sourceRaceId).push(riderId);
+          swapTargetRaceByRider.set(riderId, unit.race_id);
         }
       }
     }
+    const unitByRaceId = new Map(changed.map(({ unit }) => [unit.race_id, unit]));
+    const preDeletedRows = []; // { sourceRaceId, riderId, role, targetRaceId }
     for (const [sourceRaceId, riderIds] of swapDeleteRidersByRace) {
-      const { error: preDelErr } = await supabase
-        .from("race_entries").delete()
-        .eq("race_id", sourceRaceId).eq("team_id", team_id).eq("is_auto_filled", true)
-        .in("rider_id", riderIds);
+      let preDelErr = null;
+      try {
+        const preDelRes = await supabase
+          .from("race_entries").delete()
+          .eq("race_id", sourceRaceId).eq("team_id", team_id).eq("is_auto_filled", true)
+          .in("rider_id", riderIds);
+        preDelErr = preDelRes?.error ?? null;
+      } catch (thrown) {
+        preDelErr = thrown;
+      }
       if (preDelErr) {
         // #5693: bevidst uden danske specialtegn på denne linje (æ/ø/å) —
         // scripts/i18n-check-leaks.mjs's backend-detektor slår ned på danske
         // strenge på linjer med "message"/"error"/"throw"/"reason" (#1068's
         // ratchet), og denne log-linje refererer netop preDelErr.message.
-        const preDelMsg = preDelErr.message;
+        const preDelMsg = preDelErr.message || String(preDelErr);
         console.warn(
           `⚠️  Entry-generator ${team_id}/${sourceRaceId}: pre-sletning af cross-enheds rytter-flytning fejlede (${preDelMsg}) - falder tilbage til normal raekkefoelge (#5693)`
         );
+        continue; // intet blev slettet — ingen restore-kandidater herfra.
+      }
+      const sourceUnit = unitByRaceId.get(sourceRaceId);
+      for (const riderId of riderIds) {
+        const role = sourceUnit?.existing?.get(riderId) ?? "helper";
+        preDeletedRows.push({
+          sourceRaceId, riderId, role, targetRaceId: swapTargetRaceByRider.get(riderId),
+        });
       }
     }
+    const unitOkByRaceId = new Map();
     for (const { unit } of changed) {
       const ok = await applyUnitWithRecovery(unit);
+      unitOkByRaceId.set(unit.race_id, ok);
       if (ok) {
         const unitKey = `${unit.race_id}|${unit.team_id}`;
         if (assistantNotifyCandidates.has(unitKey)) writtenNotifyUnitKeys.add(unitKey);
+      }
+    }
+    // Genskab pre-slettede rækker hvis MÅL-enheden ikke landede (se begrundelse
+    // ovenfor) — en rytter må ALDRIG forsvinde fra begge løb pga. denne rettelse.
+    const toRestore = preDeletedRows.filter((r) => unitOkByRaceId.get(r.targetRaceId) !== true);
+    if (toRestore.length) {
+      const restoreRows = toRestore.map((r) => ({
+        race_id: r.sourceRaceId, rider_id: r.riderId, team_id, race_role: r.role, is_auto_filled: true,
+        auto_filled_source: sourceForTeam(team_id),
+      }));
+      const { error: restoreErr } = await writeRaceEntriesWithSource({
+        supabase, rows: restoreRows, upsertOptions: { onConflict: "race_id,rider_id", ignoreDuplicates: true },
+      });
+      if (restoreErr) {
+        // Dobbelt uheld (pre-sletning OG genskabelse fejlede) — rytteren er nu
+        // faktisk væk fra kilde-løbet. Dette SKAL rapporteres, ikke sluges.
+        failedUnits += 1;
+        const restoreErrMsg = restoreErr.message || String(restoreErr);
+        if (errors.length < 5) {
+          errors.push(`${team_id}: genskabelse af ${toRestore.length} pre-slettet(e) raekke(r) fejlede (${restoreErrMsg}) - #5693`);
+        }
+      } else {
+        removed -= toRestore.length; // #5693: nettoeffekten er uaendret — ingen reel fjernelse.
       }
     }
   }

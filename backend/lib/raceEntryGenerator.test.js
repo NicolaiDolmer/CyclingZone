@@ -1673,6 +1673,44 @@ test("#3934/#5693: uden batch-RPC gennemfører fallback-loopet nu samme swap ude
   for (const rid of ids("B")) assert.ok(!aSet.has(rid), `${rid} dobbeltbooket A↔B efter fallback-swap`);
 });
 
+// CodeRabbit-fund (#5693, samme review-runde): pre-sletningen ovenfor kan efterlade
+// en rytter i INGEN af løbene, hvis MÅL-enhedens insert bagefter fejler af en HELT
+// urelateret grund (uq-kollision der ikke reddes, FK-brud, en injiceret DB-fejl —
+// her: en simpel injiceret skrivefejl). Testen flytter PRÆCIS ÉN rytter (ikke hele
+// truppen, mirror Sentry-formen "én rytter" snarere end #3934-testenes fulde
+// mutual swap) og lader MÅL-løbets insert fejle vedvarende — beviser at rytteren
+// GENSKABES i sit gamle løb i stedet for at forsvinde fra begge.
+test("#5693 (CodeRabbit): fejler mål-enhedens insert efter pre-sletning, genskabes rytteren i kilde-løbet", async () => {
+  const { desiredA, desiredB } = await crossedSeedFromDesired();
+  const { state, seasonId } = seedSwapScenario();
+  const movingRider = desiredA[0]; // findes i A's ønskede trup denne kørsel
+  // Eksisterende (FØR denne kørsel): A mangler PRÆCIS movingRider, B har ham
+  // ekstra (i stedet for en fuld mutual swap af HELE begge trupper).
+  state.race_entries = [
+    ...desiredA.filter((p) => p.rider_id !== movingRider.rider_id)
+      .map((p) => ({ race_id: "A", rider_id: p.rider_id, team_id: "t1", race_role: p.race_role, is_auto_filled: true })),
+    ...desiredB.map((p) => ({ race_id: "B", rider_id: p.rider_id, team_id: "t1", race_role: p.race_role, is_auto_filled: true })),
+    { race_id: "B", rider_id: movingRider.rider_id, team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+  // A's insert (movingRider ind i A) fejler VEDVARENDE — urelateret til dagens
+  // invariant, blot en generisk skrivefejl (fx en netvaerksfejl eller en uq-
+  // kollision retry'en ikke reddede).
+  const supabase = makeSupabase(state, {
+    failUpsert: ({ table, rows }) => table === "race_entries" && rows.some((r) => r.race_id === "A" && r.rider_id === movingRider.rider_id),
+  });
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  assert.ok(res.failed_units >= 1, "A's enhed rapporteres som fejlet (den ægte, urelaterede skrivefejl skal IKKE sluges)");
+  const aRiders = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B").map((e) => e.rider_id);
+  assert.ok(!aRiders.includes(movingRider.rider_id), "movingRider landede IKKE i A (insertet fejlede reelt)");
+  assert.ok(bRiders.includes(movingRider.rider_id), "movingRider er GENSKABT i B — forsvandt ikke fra begge løb");
+  assert.equal(
+    bRiders.filter((r) => r === movingRider.rider_id).length, 1,
+    "movingRider optræder præcis ÉN gang i B efter genskabelse (ingen dublet)"
+  );
+});
+
 test("#3934: batch-RPC'en (deferred constraint) gennemfører samme swap uden fejl", async () => {
   const { desiredA, desiredB, crossed } = await crossedSeedFromDesired();
   const { state, seasonId } = seedSwapScenario();
