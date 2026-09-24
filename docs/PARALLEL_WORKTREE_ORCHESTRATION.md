@@ -331,6 +331,24 @@ I `wave.js` starter alle laner, ogsaa naar koeen er kortere. En lane uden spor s
 
 **5. Hale-tomgang.** `wave.js` har intet `Date.now()`, saa den maaler med et monotont minut-ur (et selv-genplanlagt `setTimeout`, ryddet foer scriptet returnerer). Start- og slutminut pr. spor og lane giver via `tailIdleLaneMinutes()` tre tal i rapportens `tailIdle`: `tailStartMinute` (seneste sporstart), `idleLaneMinutes` (tomme lane-minutter derfra til boelgens slut; en lukket lane taeller som optaget) og `capacityPct` (tomgang i procent af lanes x boelgens varighed). Loggen skriver `Hale-tomgang: X lane-minutter (Y % af kapacitet)`. Minut 0 er lane-fasens start.
 
+## Reviewer-tjeklisten: input og punkt 10-12 (24/9, #5507)
+
+Spejl af `reviewPrompt()` i [`.claude/workflows/wave.js`](../.claude/workflows/wave.js), som er kilden. Samme tekst staar i [`NIGHT_WAVE_RUNBOOK.md`](NIGHT_WAVE_RUNBOOK.md); [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs) fejler, hvis et af punkterne 10-12 i prompten mangler i en af de to filer. Baggrund: tre PR'er kom igennem review med en body der paastod noget koden ikke bar (#5501 en preview-parameter der kun fandtes i mocken, #5503 en kontakt uden kaldested, #5446 en kontakt som tre laesere gik udenom).
+
+**Input foer tjeklisten** (koeres i forgrunden; outputtet er grundlaget, og et script-fund citeres i fundets evidence):
+
+- a. `node scripts/check-pr-claims.mjs --pr <N>` - PR-bodyens `?param=`, kontaktnoegler, filstier, endpoints og env-navne slaaet op i diffen og paa main (findes / findes-ikke / kun-mock-preview), med kaldesteder pr. kontakt.
+- b. `node scripts/check-flag-liveness.mjs` - kontakt-vagten (laeser, migration, test med kontakten taendt) mod baselinen.
+- c. `gh issue view <N> --repo NicolaiDolmer/CyclingZone --comments` - issuets seneste kommentarer: maalepunkt, ejer-beslutninger og rettelser efter issuet blev skrevet.
+
+Fejler a eller b, skriver revieweren det i summary og tjekker punkt 10-12 i haanden.
+
+- **10. BEVIS** - hvert `- [x]` i PR-bodyen der siger verificeret/maalt/testet/koert/groen, skal have kommandoen + outputtet (eller et CI-link) i bodyen. Et flueben uden bevis er en bemaerkning (category `verifikation`). En preview/prod-paastand som input a svarer `findes-ikke` eller `kun-mock-preview` til, er en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5501).
+- **11. NY KONTAKT** - indfoerer diffen en kontakt (app_config-noegle, `*_FLAG_KEY`, opts-felt), lister revieweren ALLE kaldesteder i summary (fra input a eller `git grep -n <navn>`) og de filer der laeser det GAMLE, som kontakten skulle erstatte (#5446: kontakten daekkede 2 af 5 laesere). En kontakt uden laeser/kaldested, eller med laesere udenom, som bodyen kalder faerdig, er en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5503). Staar hullet aabent erklaeret under "Ikke daekket", er det en bemaerkning.
+- **12. MAALEPUNKT** - issuets maalepunkt (issue-body + seneste kommentarer, input c) holdes op mod PR-bodyens foer/efter. Flag hvis maalepunktet er uaendret efter PR'en, hvis "foer" allerede var groent (saa beviser "efter" intet), eller hvis bodyen paastaar en rod-aarsag som ingen maaling i PR'en viser (#5503).
+
+Dom: punkt 10 og 11 er advarsel foerst - BEMAERKNINGER foer 2026-10-01, BLOKERENDE fra 2026-10-01. Samme dato som det planlagte skift af CI-vagten `.github/workflows/done-guard.yml` til blokerende; trinnene til det skift staar i workflowets header.
+
 ## Ejer-regel 14/9: backend-only-merges kan spoerges igennem uden go-kort
 
 Rene backend-fixes (ingen UI-aendring, reviewer-verdikt GODKENDT, CI groen) maa orkestratoren **SPOERGE** ejeren om at merge uden et fuldt go-kort med skaermbillede - men ALDRIG antage det stiltiende og merge uden svar. Forskellen fra den generelle UI-regel ("aldrig merge uden ejer-go paa en preview med skaermbillede") er at et backend-only spor ikke har noget visuelt at godkende; et konkret spoergsmaal ("PR #N: backend-fix, reviewer GODKENDT, CI groen - maa jeg merge?") traeder i stedet for kortet, det fjerner ikke selve godkendelsen.

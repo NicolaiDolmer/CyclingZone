@@ -7,7 +7,7 @@
 // Run: node --test scripts/wave-freeze.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
@@ -820,6 +820,44 @@ test("#5567: reviewer koerer paa opus, og skema-bevisreglen haandhaeves i koden"
   assert.ok(src.includes("enum: ['data-skema', 'scope', 'forbudte-filer', 'secrets', 'verifikation', 'andet']"), "REVIEW_SCHEMA skal have category-enum");
   assert.ok(src.includes("database/schema-snapshot.json (relations.<tabel>.columns)"), "reviewPrompt skal kraeve skema-opslag (punkt 9)");
   assert.ok(/label: `frys-probe #\$\{track\.issue\}`,\s*phase: 'Laner',\s*model: 'sonnet'/.test(src), "proben forbliver sonnet");
+});
+
+test("#5507: reviewPrompt faar script-output + issuets seneste kommentarer og har bevis-, kaldesteds- og maalepunkts-tjek", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const prompt = extractFunction(src, "reviewPrompt");
+  assert.ok(prompt, "wave.js mangler reviewPrompt()");
+  assert.ok(prompt.includes("scripts\\\\check-pr-claims.mjs\" --pr <PR-nummer>"), "revieweren skal koere paastands-tjekket som input");
+  assert.ok(prompt.includes("scripts\\\\check-flag-liveness.mjs"), "revieweren skal koere kontakt-vagten som input");
+  assert.ok(prompt.includes("--comments"), "revieweren skal laese issuets seneste kommentarer");
+  assert.ok(/'10\. BEVIS \(#5507\)/.test(prompt), "punkt 10: bevis for hvert verificeret-[x]");
+  assert.ok(/'11\. NY KONTAKT \(#5507\)/.test(prompt) && prompt.includes("ALLE kaldesteder"), "punkt 11: list alle kaldesteder for en ny kontakt");
+  assert.ok(/'12\. MAALEPUNKT \(#5507\)/.test(prompt) && prompt.includes("allerede var groent"), "punkt 12: maalepunkt uaendret eller allerede groent");
+  assert.equal((prompt.match(/en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01/g) || []).length, 2, "punkt 10 og 11: advarsel foerst - bemaerkning foer 2026-10-01, samme dato som done-guard.yml");
+  assert.ok(prompt.includes("foer 2026-10-01 er de to BEMAERKNINGER"), "Dom-linjen: punkt 10/11 blokerer foerst fra 2026-10-01");
+  for (const script of ["check-pr-claims.mjs", "check-flag-liveness.mjs"]) {
+    assert.ok(existsSync(fileURLToPath(new URL(`./${script}`, import.meta.url))), `reviewPrompt peger paa scripts/${script}, som skal findes`);
+  }
+});
+
+test("#5507: reviewPrompt-punkt 10-12 og input a-c er spejlet i begge docs, som tjekliste-linjen siger", () => {
+  const prompt = extractFunction(readFileSync(WAVE_JS_PATH, "utf8"), "reviewPrompt");
+  const docsLine = prompt.match(/'Tjekliste \(samme som ([^)]*)\):'/);
+  assert.ok(docsLine, "reviewPrompt skal navngive de docs tjeklisten er spejlet i");
+  const docs = [...docsLine[1].matchAll(/docs\/[A-Z_]+\.md/g)].map((m) => m[0]);
+  assert.deepEqual(docs.sort(), ["docs/NIGHT_WAVE_RUNBOOK.md", "docs/PARALLEL_WORKTREE_ORCHESTRATION.md"]);
+  // Punkternes overskrifter ("10. BEVIS", "11. NY KONTAKT", "12. MAALEPUNKT") laeses fra prompten,
+  // saa et nyt eller omdoebt punkt ogsaa skal ind i docs.
+  const labels = [...prompt.matchAll(/'(1\d)\. ([A-Z][A-Z ]*[A-Z]) \(#5507\)/g)].map((m) => `${m[1]}. ${m[2]}`);
+  assert.deepEqual(labels, ["10. BEVIS", "11. NY KONTAKT", "12. MAALEPUNKT"]);
+  const ascii = (s) => s.replace(/Å/g, "AA").replace(/å/g, "aa").replace(/Æ/g, "AE").replace(/æ/g, "ae").replace(/Ø/g, "OE").replace(/ø/g, "oe");
+  for (const doc of docs) {
+    const text = ascii(readFileSync(fileURLToPath(new URL(`../${doc}`, import.meta.url)), "utf8"));
+    for (const label of labels) assert.ok(text.includes(`**${label}**`), `${doc} mangler reviewer-punkt "${label}"`);
+    for (const input of ["scripts/check-pr-claims.mjs --pr <N>", "scripts/check-flag-liveness.mjs", "--comments"]) {
+      assert.ok(text.includes(input), `${doc} mangler reviewer-input ${input}`);
+    }
+    assert.ok(/BEMAERKNINGER foer 2026-10-01/.test(text) && /BLOKERENDE fra 2026-10-01/.test(text), `${doc} skal have samme skifte-dato for punkt 10/11 som reviewPrompt`);
+  }
 });
 
 test("#5562: hale-tomgang maales med et minut-ur der ryddes foer return", () => {
