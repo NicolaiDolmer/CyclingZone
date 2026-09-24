@@ -667,12 +667,12 @@ const effortGainExtra = {
   //    finalePush[effort] x reserve01 - finaleCrack[effort] x (1 - reserve01).
   //    all_out presser hardest med fuld reserve og taber mest med tom; save
   //    koerer inden for sig selv og faar en del af sin sparede reserve
-  //    modregnet (han presser ikke i finalen). grupetto er 0: hans reserve
+  //    modregnet (han presser ikke i finalen). grupetto deler save's tal: hans reserve
   //    taeller allerede som 0 i finalen (finale.ts scoreOf).
   //    Kontrakt: wprimeReserveWeight + finalePush + finaleCrack >= 0 for alle
   //    trin, saa scoren forbliver monotont ikke-faldende i reserven.
   finalePush: {
-    grupetto: 0,
+    grupetto: -0.04, // som save (trappen maa ikke vende); virker ikke i praksis, grupettoens reserve taeller som 0 i finalen
     save: -0.04,
     normal: 0,
     protect: 0.02,
