@@ -1061,7 +1061,7 @@
       },
       "raceDaysPerRaceDay": {
         "title": "Løbsdage og træning",
-        "text": "På en løbsdag kører din rytter enten løb eller træner, aldrig begge dele. Når han kører løb, gælder hans program ikke den løbsdag, og løbet giver sin egen træthed i stedet. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner ikke, før løbet er slut. Selve løbet hæver ikke evner: udviklingen kommer fra de løbsdage han træner. Alle divisioner har 140 løbsdage pr. sæson, og hver løbsdag uden løb for din rytter er en træningsdag. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile mellem deres løb."
+        "text": "På en løbsdag kører din rytter enten løb eller træner, aldrig begge dele. Når han kører løb, gælder hans program ikke den løbsdag, og løbet giver sin egen træthed i stedet. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner ikke, før løbet er slut. Løbet udvikler ham også: en løbsdag tæller som et mellem-pas i de evner etapens profil kræver, så en bjergetape træner klatring og en flad etape træner spurt, med højst ét point pr. evne pr. løbsdag. Din træningsplan ændrer ikke, hvad løbet giver; det gør kun etapen. Alle divisioner har 140 løbsdage pr. sæson, og hver løbsdag uden løb for din rytter er en træningsdag. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile mellem deres løb."
       },
       "smartDefault": {
         "title": "Hvad træner en rytter uden valgt fokus?",
@@ -1512,7 +1512,7 @@
     },
     "raceDayIntensityPerRaceDayFaq": {
       "q": "Betyder min valgte intensitet stadig noget den dag min rytter kører løb?",
-      "a": "Ikke på de løbsdage han kører løb. På en løbsdag kører din rytter løb eller træner, aldrig begge dele, så hans pas kører ikke, mens han er i et løb: ingen træningsbelastning og ingen skaderisiko fra træning, kun løbets egen træthed. Din intensitet afgør hver løbsdag han ikke kører løb: Hvile giver intet, Hård giver mest udbytte og mest træthed, plus skaderisiko når trætheden er høj."
+      "a": "Ikke på de løbsdage han kører løb. På en løbsdag kører din rytter løb eller træner, aldrig begge dele, så hans pas kører ikke, mens han er i et løb: ingen træningsbelastning og ingen skaderisiko fra træning, kun løbets egen træthed. Løbet giver i stedet sin egen udvikling, som et mellem-pas i de evner etapen kræver, uanset hvilken intensitet du valgte. Din intensitet afgør hver løbsdag han ikke kører løb: Hvile giver intet, Hård giver mest udbytte og mest træthed, plus skaderisiko når trætheden er høj."
     },
     "raceDayProfileMatchFaq": {
       "q": "Skal min rytters træningspas matche løbets terræn (fladt, bjerge, brosten)?",
@@ -1524,7 +1524,7 @@
     },
     "raceDayAcademyPerRaceDayFaq": {
       "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
-      "a": "Løb koster ham udvikling. På en løbsdag kører dit talent løb eller træner, aldrig begge dele, og selve løbet hæver ikke evner, så hver løbsdag han kører løb, er en løbsdag uden træning. Et etapeløb tager alle løbsdage fra første til sidste etape, hviledage medregnet. Der er ingen akademi-specifik straf: samme regel gælder for alle ryttere. Kommer hans udvikling først, så vælg hans løb med omhu, og lad ham træne på de andre løbsdage."
+      "a": "Begge dele udvikler ham, på hver sin måde. På en løbsdag kører dit talent løb eller træner, aldrig begge dele. En løbsdag han kører løb, tæller som et mellem-pas i de evner etapen kræver, med højst ét point pr. evne pr. løbsdag, så han står ikke stille, mens han kører. En træningsdag er mere præcis: du vælger passet, og et hårdt pas giver mere, end et løb gør. Et etapeløb tager alle løbsdage fra første til sidste etape, og på dets hviledage får han intet. Der er ingen akademi-specifik straf: samme regel gælder for alle ryttere. Betyder én evne mest, så træn den; vil du have ham udviklet bredt, mens han lærer at køre løb, så kør ham på etaper der passer til det."
     },
     "lowerDivisionTrainingFaq": {
       "q": "Får lavere divisioner mere træning?",
@@ -1532,11 +1532,11 @@
     },
     "multipleStagesTrainingFaq": {
       "q": "Giver flere etaper samme dag mere træning?",
-      "a": "Nej. Hver etape køres på sin egen løbsdag, og på en løbsdag kører din rytter løb eller træner, aldrig begge dele. En rytter der kører tre etaper på én dag, kører løb på tre løbsdage og træner på ingen af dem. Hver etape giver sin egen træthed, og hver løbsdag giver sin egen restitution. Holdkammerater der ikke kører løb, træner på hver af dagens løbsdage. Træningen pr. løbsdag er afstemt efter en sæson på 140 løbsdage, så en dag med mange løbsdage giver ikke hurtigere udvikling over sæsonen."
+      "a": "Nej. Hver etape køres på sin egen løbsdag, og på en løbsdag kører din rytter løb eller træner, aldrig begge dele. En rytter der kører tre etaper på én dag, kører løb på tre løbsdage og træner på ingen af dem. Hver etape giver sin egen træthed og sin egen løbsdags-udvikling, og hver løbsdag giver sin egen restitution. Holdkammerater der ikke kører løb, træner på hver af dagens løbsdage. Træningen pr. løbsdag er afstemt efter en sæson på 140 løbsdage, så en dag med mange løbsdage giver ikke hurtigere udvikling over sæsonen."
     },
     "stageRaceRestDayFaq": {
       "q": "Hvad sker der på en hviledag i et etapeløb?",
-      "a": "Din rytter hviler. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner heller ikke på en hviledag. Hans program kører ikke, han får ingen udvikling den dag, og der er ingen skaderisiko fra træning. Til gengæld restituerer han: en hviledag sænker hans Træthed."
+      "a": "Din rytter hviler. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner heller ikke på en hviledag. Hans program kører ikke, han får ingen udvikling den dag, og der er ingen skaderisiko fra træning. De etaper han kører, udvikler ham; hviledagen gør ikke. Til gengæld restituerer han: en hviledag sænker hans Træthed."
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Kan jeg træne Fladt eller Brosten med Hård intensitet?",
