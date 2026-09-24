@@ -15,8 +15,11 @@ import {
   Tabs as TabsJs,
   TabList as TabListJs,
   Tab as TabJs,
+  Segmented as SegmentedJs,
+  Select as SelectJs,
 } from "../ui/index.js";
 import RiderLinkJs from "../RiderLink.jsx";
+import RiderBadgesJs from "../rider/RiderBadges.jsx";
 import { WithBestRole as WithBestRoleJs } from "../rider/BestRoleTag.jsx";
 
 export interface DataTableColumn<Row> {
@@ -57,6 +60,20 @@ interface TabListProps { label: string; className?: string; children: ReactNode 
 interface TabProps { value: string; className?: string; children: ReactNode }
 interface RiderLinkProps { id: string; className?: string; stopPropagation?: boolean; children: ReactNode }
 interface WithBestRoleProps { rider: object; children: ReactNode }
+// #5631: Segmented.jsx (kolonne-tilstand), Select.jsx (trup-/gruppevælger) og
+// RiderBadges.jsx (status-kolonnen), læst direkte fra filerne.
+interface SegmentedOption { value: string; label: ReactNode; title?: string; disabled?: boolean }
+interface SegmentedProps { label: string; value: string; onChange: (next: string) => void; options: SegmentedOption[]; className?: string }
+interface SelectProps {
+  size?: "sm" | "md";
+  value: string;
+  onChange: (event: { target: { value: string } }) => void;
+  className?: string;
+  children: ReactNode;
+  "aria-label"?: string;
+  id?: string;
+}
+interface RiderBadgesProps { badges: Array<string | false | null | undefined> }
 
 export const DataTable = DataTableJs as unknown as <Row>(props: DataTableProps<Row>) => ReactNode;
 export const EmptyState = EmptyStateJs as unknown as (props: EmptyStateProps) => ReactNode;
@@ -67,3 +84,6 @@ export const TabList = TabListJs as unknown as (props: TabListProps) => ReactNod
 export const Tab = TabJs as unknown as (props: TabProps) => ReactNode;
 export const RiderLink = RiderLinkJs as unknown as (props: RiderLinkProps) => ReactNode;
 export const WithBestRole = WithBestRoleJs as unknown as (props: WithBestRoleProps) => ReactNode;
+export const Segmented = SegmentedJs as unknown as (props: SegmentedProps) => ReactNode;
+export const Select = SelectJs as unknown as (props: SelectProps) => ReactNode;
+export const RiderBadges = RiderBadgesJs as unknown as (props: RiderBadgesProps) => ReactNode;
