@@ -1296,6 +1296,28 @@ test("#5632 passiveModifier: sponsoreffekten (lag 1) afledes af confidence.value
   assert.ok(payload.passiveModifier.modifier > 1, "confidence 85 skal give en POSITIV sponsor-effekt");
 });
 
+test("#5632 passiveModifier bruger board_profiles.budget_modifier (den PERSISTEREDE modifier sponsorEngine/economyEngine anvender), ikke kun et confidence-afledt fallback (reviewer-fund)", async () => {
+  // confidence 85 ville via satisfactionToModifier ALENE give modifier 1.20
+  // (strong_boost) — men holdets 1yr-board har en PERSISTERET budget_modifier
+  // på 0.65 (fx en ældre straf der endnu ikke er udlignet af den nyere
+  // confidence-stigning). Det gamle rum viste 0.65 (samme tal sponsorEngine/
+  // economyEngine faktisk anvender på sponsorindtægten); uden fixet ville
+  // Boardroom i stedet vise 1.20 — et helt andet bånd og fortegn.
+  const goal = { type: "min_riders", target: 5, category: "economy" };
+  const tables = tablesWithSingleGoal(goal, {
+    board_relations: [{ id: "rel-5632d", team_id: TEAM_ID, confidence: 85, category_scores: {} }],
+    riders: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, team_id: TEAM_ID })),
+    board_profiles: [{
+      id: "board-5632d", team_id: TEAM_ID, plan_type: "1yr",
+      budget_modifier: 0.65,
+    }],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.passiveModifier.modifier, 0.65, "skal bruge board_profiles.budget_modifier, ikke satisfactionToModifier(confidence)");
+  assert.equal(payload.passiveModifier.pct, -35);
+});
+
 test("#5632 bonusOfferProgress/passiveModifier er null uden et mandat (samme null-disciplin som mandate/vision)", async () => {
   const supabase = makeSupabase(baseTables());
   const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });

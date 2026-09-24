@@ -17780,10 +17780,23 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
       // S-02g · Persist tradeoff_active_until_season_id + tradeoff_payload + major_pivot_used_at
       // sammen med focus + goals. Auto-accept + buildBoardProposal læser disse felter
       // ved næste plan-renewal og anvender stramning via applyTradeoffTighteningToGoals.
+      const requestAppliedAt = new Date().toISOString();
       const updatePayload = {
         focus: requestResult.updated_board.focus ?? board.focus,
         current_goals: requestResult.updated_board.current_goals ?? board.current_goals,
-        updated_at: new Date().toISOString(),
+        updated_at: requestAppliedAt,
+        // #5618 (reviewer-fund) · En accepteret anmodning HER er præcis den
+        // slags ægte spillerforhandling `negotiated_at` allerede betyder
+        // andre steder (#5103-guarden ovenfor: "kun sat af /board/sign og
+        // signMandate, ALDRIG af auto-accept"). Før denne linje satte
+        // /board/request KUN `updated_at`, aldrig `negotiated_at` — så
+        // `reconcileMandateGoalsWithLegacyBoard` (boardMandate.js) sammenlignede
+        // mandatets sidste skrivning mod det gamle, ÆLDRE sign-tidspunkt i
+        // stedet for netop DENNE anmodnings tidspunkt, og en mands-mandat der
+        // var skrevet efter signeringen (men før denne anmodning) "vandt"
+        // uforskyldt over den friskere forhandling — spillerrapportens
+        // "forhandlet 7/7, viser 7/5" mønster.
+        negotiated_at: requestAppliedAt,
       };
       if (requestResult.updated_board.tradeoff_active_until_season_id !== undefined
           || requestResult.updated_board.tradeoff_payload !== undefined) {

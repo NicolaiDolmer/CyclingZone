@@ -753,8 +753,12 @@ export async function buildBoardRoomPayload({
     // #5618 · current_goals + negotiated_at tilføjet: reconcileMandateGoalsWithLegacyBoard
     // (boardMandate.js) skal kunne se om en legacy-forhandling er NYERE end
     // mandatets egen sidste skrivning, og i så fald hvilke mål den forhandlede.
+    // #5632 (reviewer-fund) · budget_modifier tilføjet: computePassiveModifierInfo
+    // nedenfor skal bruge det PERSISTEREDE tal sponsorEngine/economyEngine
+    // faktisk anvender (economyEngine.js:1784, sponsorEngine.js:199), ikke kun
+    // et fallback udregnet af confidence.value — se kommentaren ved kaldet.
     const BOARD_PROFILE_SELECT = "id, plan_type, seasons_completed, plan_start_season_number, "
-      + "plan_start_sponsor_income, current_goals, negotiated_at";
+      + "plan_start_sponsor_income, current_goals, negotiated_at, budget_modifier";
     try {
       const fromBoardId = mandateRow.source?.from_board_id ?? null;
       if (fromBoardId) {
@@ -956,7 +960,20 @@ export async function buildBoardRoomPayload({
       // — kan aldrig drifte fra goal-kortenes egne "achieved"-mærkater.
       const goalsMet = goals.filter((g) => g.status === "achieved").length;
       const goalsTotal = goals.length;
-      passiveModifier = computePassiveModifierInfo({ satisfaction: confidence.value });
+      // #5632 (reviewer-fund) · Det gamle rum kaldte computePassiveModifierInfo
+      // med HELE board_profiles-rækken, så den brugte board.budget_modifier —
+      // den PERSISTEREDE modifier sponsorEngine/economyEngine faktisk anvender
+      // (economyEngine.js:1784, sponsorEngine.js:199; se BOARD_PROFILE_SELECT
+      // ovenfor). Uden `budget_modifier` her faldt funktionen tilbage til
+      // satisfactionToModifier(confidence.value), et AFLEDT tal fra
+      // board_relations.confidence — ikke samme værdi som den persisterede
+      // modifier for knap halvdelen af de aktive mandat-hold (reviewer-fund).
+      // `oneYearBoard` er allerede slået op ovenfor til præcis dette formål
+      // (#4579/#5618), genbruges her i stedet for et nyt opslag.
+      passiveModifier = computePassiveModifierInfo({
+        satisfaction: confidence.value,
+        budget_modifier: oneYearBoard?.budget_modifier,
+      });
       bonusOfferProgress = computeBonusOfferProgress({
         satisfaction: confidence.value,
         goalsMet,
