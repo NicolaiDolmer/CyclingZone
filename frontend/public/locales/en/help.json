@@ -1195,8 +1195,8 @@
         ]
       },
       "academySize": {
-        "title": "Academy size (8 places)",
-        "text": "Your Academy holds up to {academySlots} riders. These {academySlots} places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "title": "Academy size (per team)",
+        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1204,11 +1204,11 @@
       },
       "youthAuctions": {
         "title": "Youth auctions",
-        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (one of the 8 places) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
+        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. You can only bid if you have room for the rider, either a free senior place or a free academy place; if both are full the bid button is disabled. The winning club pays the winning bid, and the prospect joins its senior squad when there's a free place (taking a senior contract and counting toward the 30-rider limit), falling back to its Academy (a place on the U23 or junior team, by his age) only when the senior squad is full. Each auction shows where the rider will land. A prospect nobody bids on leaves the sport for good, so rejecting a candidate is a real decision. No real money is ever involved, only in-game points."
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season."
       },
       "graduation": {
         "title": "Graduation Day",
