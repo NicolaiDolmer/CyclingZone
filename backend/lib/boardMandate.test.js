@@ -470,3 +470,29 @@ test("#5618 reconcileMandateGoalsWithLegacyBoard: legacy-forhandling PRÆCIS sam
   });
   assert.equal(reconciled[0].target, 5);
 });
+
+test("#5618 reconcileMandateGoalsWithLegacyBoard: bonustilbuds-mål (source: bonus_offer) overskrives ALDRIG, selv ved identitets-kollision (CodeRabbit-fund)", () => {
+  // Mandatets NATIVE top_n_finish-mål (target=5) OG et bonustilbuds ekstra-mål
+  // af SAMME type (target=1, source: bonus_offer, tilføjet direkte i
+  // board_mandates af #4856-stien) deler identitet (type+nationality+
+  // race_scope+cumulative — buildGoalIdentityKey inkluderer bevidst hverken
+  // target eller source). Uden bonus_offer-undtagelsen ville BEGGE matche
+  // samme legacy-mål og få target overskrevet — men bonusmålet har ALDRIG
+  // eksisteret i board_profiles.current_goals.
+  const mandateGoals = [
+    { type: "top_n_finish", target: 5, label: "Slut i top 5" },
+    { type: "top_n_finish", target: 1, label: "Bonus: slut i top 1", source: "bonus_offer" },
+  ];
+  const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7" }];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
+    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+  });
+
+  assert.equal(reconciled[0].target, 7, "det native mål overtager stadig legacy-targetet");
+  assert.equal(reconciled[1].target, 1, "bonusmålet må ALDRIG overskrives");
+  assert.equal(reconciled[1].source, "bonus_offer");
+});

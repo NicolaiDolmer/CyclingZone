@@ -635,6 +635,32 @@ test("#5618 legacy-forhandling ÆLDRE end mandatet rører intet (mandatet er all
   assert.equal(payload.mandate.goals[0].target, 7, "mandatet er nyere end den gamle forhandling og skal ikke overskrives");
 });
 
+test("#5618 mandat UDEN updated_at falder tilbage til signed_at (CodeRabbit-fund: uden fallback ville epoken 0 lade selv en ÆLDRE forhandling vinde)", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
+    {
+      // #5618: INGEN updated_at på mandatet — kun signed_at.
+      board_mandates: [{
+        id: "mand-5618c", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: "2026-09-15T00:00:00Z",
+        goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+      }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
+      // Legacy-forhandlingen er ÆLDRE end mandatets signed_at (15/9) — uden
+      // signed_at-fallback ville mandateMs blive 0 (epoken), og denne ÆLDRE
+      // forhandling ville fejlagtigt "vinde" og overskrive mandatets target.
+      board_profiles: [{
+        id: "board-1yr-5618c", team_id: TEAM_ID, plan_type: "1yr",
+        negotiated_at: "2026-09-01T00:00:00Z",
+        current_goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+      }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.mandate.goals[0].target, 7, "signed_at-fallback skal beskytte mandatet mod en ÆLDRE legacy-forhandling");
+});
+
 test("#4579 sponsor_growth: BEHIND når vækst < target (sponsorGrowth*Income stubbet)", async () => {
   const tables = tablesWithSingleGoal({ type: "sponsor_growth", target: 20, category: "economy" });
   const supabase = makeSupabase(tables);
@@ -1274,6 +1300,24 @@ test("#5632 bonusOfferProgress/passiveModifier er null uden et mandat (samme nul
   const supabase = makeSupabase(baseTables());
   const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
   assert.equal(payload.mandate, null);
+  assert.equal(payload.bonusOfferProgress, null);
+  assert.equal(payload.passiveModifier, null);
+});
+
+test("#5632 bonusOfferProgress/passiveModifier er null naar mandatet findes MEN confidence er ukendt (CodeRabbit-fund: ingen falsk straf fra et umaalt 0-tal)", async () => {
+  // Mandat findes (goals[0] er stadig sat), men INGEN board_relations-raekke
+  // -> confidence.value er null. Uden guarden ville begge transparency-
+  // funktioner laese null som 0 internt og vise en falsk "staerk straf"-
+  // sponsoreffekt + en beregnet bonus-afstand ud fra et tal der aldrig er maalt.
+  const goal = { type: "min_riders", target: 5, category: "economy" };
+  const tables = tablesWithSingleGoal(goal, {
+    board_relations: [],
+    riders: Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, team_id: TEAM_ID })),
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.confidence.value, null);
+  assert.ok(payload.mandate, "mandatet skal stadig findes/vises");
   assert.equal(payload.bonusOfferProgress, null);
   assert.equal(payload.passiveModifier, null);
 });

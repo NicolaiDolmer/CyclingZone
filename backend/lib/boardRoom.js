@@ -760,12 +760,22 @@ export async function buildBoardRoomPayload({
       if (fromBoardId) {
         const { data, error } = await supabase.from("board_profiles")
           .select(BOARD_PROFILE_SELECT).eq("id", fromBoardId).maybeSingle();
-        if (!error) oneYearBoard = data ?? null;
+        // #5618 (CodeRabbit-fund) · Et query-error blev tidligere tavst droppet
+        // (samme som "ingen 1yr-board fundet") — en reel DB-fejl (fx et RLS-
+        // hul, ikke skema: current_goals/negotiated_at er verificeret mod
+        // database/schema-snapshot.json) ville da stille springe #5618-
+        // reconciliationen over UDEN et spor i Sentry. Logget, men stadig
+        // best-effort (vælter ikke hele Boardroom-siden) — samme resiliens-
+        // kontrakt denne funktion allerede havde for sit oprindelige formål
+        // (loadGoalContextForBoard's board_id-opslag, #4579).
+        if (error) captureException(new Error(`board_profiles (from_board_id) lookup failed: ${error.message}`));
+        else oneYearBoard = data ?? null;
       }
       if (!oneYearBoard) {
         const { data, error } = await supabase.from("board_profiles")
           .select(BOARD_PROFILE_SELECT).eq("team_id", teamId).eq("plan_type", "1yr").maybeSingle();
-        if (!error) oneYearBoard = data ?? null;
+        if (error) captureException(new Error(`board_profiles (team_id+1yr) lookup failed: ${error.message}`));
+        else oneYearBoard = data ?? null;
       }
     } catch (err) {
       captureException(err);
@@ -840,7 +850,12 @@ export async function buildBoardRoomPayload({
       mandateGoals: Array.isArray(mandateRow.goals) ? mandateRow.goals : [],
       legacyGoals: parseBoardGoals(oneYearBoard?.current_goals),
       legacyNegotiatedAt: oneYearBoard?.negotiated_at ?? null,
-      mandateUpdatedAt: mandateRow.updated_at ?? null,
+      // #5618 (CodeRabbit-fund) · Uden updated_at faldt sammenligningen tilbage
+      // til Unix-epoken (0), så selv en LEGACY-forhandling ældre end mandatets
+      // egen signering ville "vinde". signed_at findes altid på et signeret
+      // mandat og er det næst-bedste tidsstempel for "hvornår blev disse mål
+      // sidst sat" når selve skrivetidspunktet (updated_at) mangler.
+      mandateUpdatedAt: mandateRow.updated_at ?? mandateRow.signed_at ?? null,
     });
     const goals = goalsSource.map((goal) => {
       const goalKey = buildGoalKey(goal);
@@ -928,16 +943,26 @@ export async function buildBoardRoomPayload({
       goals,
     };
 
-    // #5632 · Tælles EFTER reconciliation, af de SAMME goals frontend viser —
-    // kan aldrig drifte fra goal-kortenes egne "achieved"-mærkater.
-    const goalsMet = goals.filter((g) => g.status === "achieved").length;
-    const goalsTotal = goals.length;
-    passiveModifier = computePassiveModifierInfo({ satisfaction: confidence.value });
-    bonusOfferProgress = computeBonusOfferProgress({
-      satisfaction: confidence.value,
-      goalsMet,
-      goalsTotal,
-    });
+    // #5632 (CodeRabbit-fund) · confidence.value er `null` for et mandat UDEN
+    // en board_relations-række (fx en ny/backfillet mandat-only relation der
+    // endnu ikke har fået sit første confidence-tal). Begge transparency-
+    // funktioner behandler `null` som 0 (`satisfaction || 0` internt) — uden
+    // denne guard ville et hold med UKENDT tilfredshed vise en falsk "stærk
+    // straf"-sponsoreffekt og en beregnet bonus-afstand ud fra et tal der
+    // aldrig er målt. Begge felter forbliver `null`, samme disciplin som
+    // `mandate`/`vision` når data mangler.
+    if (confidence.value != null) {
+      // #5632 · Tælles EFTER reconciliation, af de SAMME goals frontend viser
+      // — kan aldrig drifte fra goal-kortenes egne "achieved"-mærkater.
+      const goalsMet = goals.filter((g) => g.status === "achieved").length;
+      const goalsTotal = goals.length;
+      passiveModifier = computePassiveModifierInfo({ satisfaction: confidence.value });
+      bonusOfferProgress = computeBonusOfferProgress({
+        satisfaction: confidence.value,
+        goalsMet,
+        goalsTotal,
+      });
+    }
   }
 
   // ---- vision ----

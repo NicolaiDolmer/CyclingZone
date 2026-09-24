@@ -496,6 +496,15 @@ export function finalizeMandateGoals({
  * af #4856-stien) bevares UÆNDREDE — reconciliation kan kun opdatere mål der
  * findes i BEGGE lister, aldrig fjerne eller tilføje et mål.
  *
+ * #5618 (CodeRabbit-fund) · Et bonusmål er ALDRIG en kandidat til at blive
+ * overskrevet: `buildGoalIdentityKey` inkluderer bevidst hverken target
+ * eller source, så et bonusmål (fx `monument_podium`) med samme identitet
+ * som et NATIVT legacy-mål af samme type ellers ville matche det forkerte
+ * legacy-mål og få sit target overskrevet — selvom bonusmålet aldrig har
+ * eksisteret i `board_profiles.current_goals` (det blev tilføjet direkte i
+ * `board_mandates` af #4856-stien). Mål med `source === "bonus_offer"`
+ * springes derfor over UBETINGET, uanset om de matcher et legacy-mål.
+ *
  * Dette retter kun VISNINGEN (best-effort, ved hver GET /board/room) — den
  * underliggende `board_mandates.goals`-række i databasen forbliver ureguleret
  * indtil en ejer-gated data-reparation (samme mønster som
@@ -524,6 +533,7 @@ export function reconcileMandateGoalsWithLegacyBoard({
   }
 
   return goals.map((goal) => {
+    if (goal?.source === "bonus_offer") return goal;
     const legacyMatch = legacyByIdentity.get(buildGoalIdentityKey(goal));
     if (!legacyMatch || legacyMatch.target === goal.target) return goal;
     return {
