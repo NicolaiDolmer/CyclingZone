@@ -378,7 +378,7 @@ export default function AdminValuePreviewPage() {
   const riderColumns: Column<PreviewRow>[] = [
     {
       key: "name", header: t("valuePreview.columns.rider"), sticky: true, sortKey: "name",
-      render: (r) => <RiderLink id={r.id} className="text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>,
+      render: (r) => <RiderLink id={r.id} tab={undefined} className="text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>,
       subline: (r) => [
         r.teamName ?? t("valuePreview.noTeam"),
         r.isAcademy ? t("valuePreview.academy") : null,
