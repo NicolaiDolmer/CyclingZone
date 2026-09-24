@@ -71,7 +71,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
     <div
       role="region"
       aria-label={t("nps.regionAriaLabel")}
-      className="fixed inset-x-0 bottom-0 z-toast px-3 pb-3 sm:px-4 sm:pb-4 pointer-events-none"
+      className="fixed inset-x-0 bottom-[var(--cz-mobile-nav-offset,0px)] z-toast px-3 pb-3 sm:px-4 sm:pb-4 pointer-events-none"
     >
       <div className="mx-auto max-w-3xl bg-cz-card border border-cz-border rounded-cz pointer-events-auto">
         {done ? (

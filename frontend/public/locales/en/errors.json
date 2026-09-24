@@ -99,7 +99,7 @@
     "cannot_afford_offer": "You can't afford this offer",
     "squad_full": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders})",
     "squad_full_buffer": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders})",
-    "no_eligible_room_bid": "No room in your academy ({maxAcademy}/{maxAcademy}) or senior squad ({maxRiders}/{maxRiders}). Sell a rider before you bid.",
+    "no_eligible_room_bid": "No room on the youth team he would join ({maxAcademy}/{maxAcademy}) or in your senior squad ({maxRiders}/{maxRiders}). Sell a rider before you bid.",
     "squad_full_bid": "Your squad is full ({maxRiders} riders). Sell a rider before you bid on a new one.",
     "offer_not_found": "Offer not found",
     "not_involved_offer": "You're not involved in this offer",

@@ -212,7 +212,7 @@ export async function runTeamTrainingDay({
   const seedScope = tickSeedKey ?? tickDate;
   // #4847 punkt 5: deleren kalibreres mod det maal kalenderpakkeren faktisk pakker
   // efter (calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET, 140 fra S4) i stedet
-  // for et duplikeret tal. Async fordi kilden er en defensiv dynamisk import.
+  // for et duplikeret tal. Synkron siden #4846 (statisk import); await'en er harmloes.
   const budgetDivisor = useRaceDayKey
     ? await resolveRaceDayBudgetDivisor({ seasonNumber })
     : null;
