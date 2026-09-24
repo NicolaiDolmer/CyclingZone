@@ -868,3 +868,92 @@ test("buildRiderRows: ingen evner → suitability null + stageSuitability null",
   assert.equal(rows[0].tactics, null); // ingen evner → tactics null
   assert.equal(rows[0].abilities, null); // #3809: ingen evner → hele abilities-objektet null
 });
+
+// ── #5645 (Y4): trup-bevidst udtagelses-kontekst ──────────────────────────────
+// Egen stub: filtrerer riders på ALLE .eq-kolonner (også squad), så trup-leddet testes.
+function makeSquadSelectionSupabase(state) {
+  function from(table) {
+    const f = { eqs: {}, is: {} };
+    const b = {
+      select() { return b; },
+      eq(col, val) { f.eqs[col] = val; return b; },
+      in() { return b; },
+      or() { return b; },
+      is(col, val) { f.is[col] = val; return b; },
+      order() { return b; },
+      maybeSingle() { return b.then((res) => ({ data: res.data?.[0] ?? null, error: res.error })); },
+      then(resolve, reject) {
+        let rows = state[table] || [];
+        if (table === "riders" || table === "seasons") {
+          rows = rows.filter((r) => Object.entries(f.eqs).every(([col, val]) => (r[col] ?? "senior") === val || r[col] === val));
+        } else {
+          rows = [];
+        }
+        return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+      },
+    };
+    return b;
+  }
+  return { from };
+}
+
+function squadSelectionState() {
+  const rider = (id, squad, birthdate = null) => ({
+    id, team_id: "t1", squad, is_academy: squad !== "senior", is_retired: false, firstname: id, lastname: "X", birthdate,
+  });
+  return {
+    seasons: [{ id: ACTIVE_SEASON_ID, status: "active", number: 4 }], // referenceår 2029
+    riders: [
+      rider("s1", "senior"), rider("s2", "senior"),
+      rider("u1", "u23"), rider("u2", "u23"),
+      rider("j16", "junior", "2013-04-01"), rider("j17", "junior", "2012-04-01"),
+    ],
+  };
+}
+
+test("#5645 prepareSelectionChange: U23-løb uden holdets U23-pulje afvises med selection_wrong_pool", async () => {
+  const race = { id: "raceU", status: "scheduled", stages_completed: 0, league_division_id: "u23-pool", squad: "u23", season_id: ACTIVE_SEASON_ID };
+  // Kun seniorpuljen kendt (sådan kalder api.js i dag) → fejl lukket.
+  const withoutTeam = await prepareSelectionChange({
+    supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "u23-pool", body: {},
+  });
+  assert.deepEqual(withoutTeam, { ok: false, status: 409, error: "selection_wrong_pool" });
+  const otherPool = await prepareSelectionChange({
+    supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1",
+    team: { league_division_id: "d1", u23_league_division_id: "u23-other" }, body: {},
+  });
+  assert.deepEqual(otherPool, { ok: false, status: 409, error: "selection_wrong_pool" });
+});
+
+test("#5645 prepareSelectionChange: U23-løb i holdets U23-pulje ser kun U23-ryttere", async () => {
+  const race = { id: "raceU", status: "scheduled", stages_completed: 0, league_division_id: "u23-pool", squad: "u23", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+  const team = { league_division_id: "d1", u23_league_division_id: "u23-pool" };
+  const ok = await prepareSelectionChange({
+    supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1", team,
+    body: { rider_ids: ["u1", "u2"], captain_id: "u1" },
+  });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.ctx.riders.map((r) => r.id).sort(), ["u1", "u2"]);
+  const senior = await prepareSelectionChange({
+    supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1", team,
+    body: { rider_ids: ["s1"], captain_id: "s1" },
+  });
+  assert.equal(senior.ok, false, "en senior kan ikke udtages til et U23-løb");
+  assert.equal(senior.error, "selection_rider_not_on_team");
+});
+
+test("#5645 prepareSelectionChange: seniorløb bruger teamDivisionId præcis som før, også med team", async () => {
+  const race = { id: "raceS", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+  const res = await prepareSelectionChange({
+    supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1",
+    team: { league_division_id: "d1", u23_league_division_id: "u23-pool" }, body: { rider_ids: ["s1"], captain_id: "s1" },
+  });
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.ctx.riders.map((r) => r.id).sort(), ["s1", "s2"]);
+});
+
+test("#5645 getSelectionContext: juniorløb viser kun juniorer fra sæsonalder 17", async () => {
+  const race = { id: "raceJ", status: "scheduled", league_division_id: "j-pool", squad: "junior", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+  const ctx = await getSelectionContext({ supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1" });
+  assert.deepEqual(ctx.riders.map((r) => r.id), ["j17"]);
+});
