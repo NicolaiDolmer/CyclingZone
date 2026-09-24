@@ -270,6 +270,23 @@ test("150 hold → præcis 48 i D2 (24+24), 96 i D3 (4×24), 6 spredt over ALLE 
   assert.equal(byRank.get(145).toTier, 4);
 });
 
+test("#5642 S4-formen (1/2/4/4): med d4PoolCount 4 fordeles resten KUN på D4 A-D, aldrig på de pensionerede E-H", () => {
+  // league_divisions har stadig 8 tier 4-rækker efter S4 (E-H pensioneret, retired_at
+  // sat). distributeCompression kender ikke retired_at; defaulten ville bruge alle 8.
+  // En kalder i S4-formen SKAL sende d4PoolCount 4 (E-H har pool_index 4-7 og
+  // skæres fra bunden, fordi puljerne sorteres på pool_index).
+  const pools = makePools().map((p) => (
+    p.tier === 4 && p.pool_index >= 4 ? { ...p, retired_at: "2026-09-27T20:00:00Z" } : p
+  ));
+  const { teams, standings } = makeRankedField(160);
+  const ranked = rankTeamsGlobally({ teams, standings });
+  const { assignments, byPool } = distributeCompression(ranked, pools, { d4PoolCount: 4 });
+
+  assert.equal(assignments.filter((a) => a.toTier === 4).length, 16);
+  for (const p of ["a", "b", "c", "d"]) assert.equal(byPool.get(`d4-${p}`), 4, `D4-${p}: 16 hold over 4 puljer`);
+  for (const p of ["e", "f", "g", "h"]) assert.equal(byPool.get(`d4-${p}`) ?? 0, 0, `D4-${p} er pensioneret`);
+});
+
 test("movement-klassifikation: D4→D2 = promoted, D3→D4 = relegated, samme tier = unchanged/pool-move", () => {
   const pools = makePools();
   const teams = [];
