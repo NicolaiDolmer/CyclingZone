@@ -16,6 +16,7 @@ import {
   classifyStall,
   commitAgeMinutes,
   extractInvestigateVerdict,
+  intakeBackoffMinutes,
   needsGracefulStop,
   planIdleLane,
   planReviewAttempt,
@@ -320,6 +321,80 @@ test("INTAKE_POLL_MINUTES er 10 og intake-loftet ligger over poll-intervallet", 
   assert.ok(WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES > WAVE_FREEZE.INTAKE_POLL_MINUTES);
 });
 
+// ===== #5602: billigt intake-tjek, voksende pauser og selv-stop =====
+
+test("#5602: pausen vokser 10 -> 20 -> 40 og stopper ved loftet 60", () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 50].map(intakeBackoffMinutes), [10, 20, 40, 60, 60, 60, 60]);
+  assert.equal(WAVE_FREEZE.INTAKE_POLL_MAX_MINUTES, 60);
+});
+
+test("#5602: et ugyldigt eller manglende tal giver den foerste pause, aldrig 0 eller NaN", () => {
+  for (const n of [0, -3, undefined, null, "n/a", NaN]) {
+    assert.equal(intakeBackoffMinutes(n), WAVE_FREEZE.INTAKE_POLL_MINUTES, String(n));
+  }
+});
+
+test("#5602: det billige tjek har et kort loft under den fulde intake", () => {
+  assert.ok(WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES > 0);
+  assert.ok(WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES < WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES);
+  assert.ok(WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS >= 2, "mindst eet gentjek foer lanen stopper");
+});
+
+test("#5602: planIdleLane stopper lanen efter INTAKE_MAX_EMPTY_CHECKS tomme tjek, ogsaa mens andre laner koerer", () => {
+  const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max - 1 }), "wait");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max }), "exit");
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: true, emptyStreak: max + 3 }), "exit");
+});
+
+test("#5602: selv-stop vinder aldrig over et spor i koen eller et friskt tjek", () => {
+  const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
+  assert.equal(planIdleLane({ queued: 1, activeLanes: 2, intakeEmpty: true, emptyStreak: max }), "take");
+  // Timeren eller et faerdigt spor har sat intakeEmpty=false: et tjek til.
+  assert.equal(planIdleLane({ queued: 0, activeLanes: 2, intakeEmpty: false, emptyStreak: max - 1 }), "intake");
+});
+
+// Simulerer de ledige laner mod een lane der er optaget i busyMinutes. Kun de
+// rene funktioner - samme beslutningsloekke som laneWorker/runIntake i wave.js.
+function simulateIdleLanes(busyMinutes) {
+  let minute = 0, streak = 0, checks = 0, intakeEmpty = false;
+  const waits = [];
+  for (let guard = 0; guard < 1000; guard += 1) {
+    const decision = planIdleLane({ queued: 0, activeLanes: minute < busyMinutes ? 1 : 0, intakeEmpty, emptyStreak: streak });
+    if (decision === "exit") return { checks, minute, waits };
+    if (decision === "intake") {
+      checks += 1;
+      streak += 1;
+      intakeEmpty = true;
+    } else if (decision === "wait") {
+      const pause = intakeBackoffMinutes(streak);
+      waits.push(pause);
+      minute += pause;
+      intakeEmpty = false;
+    } else {
+      throw new Error(`uventet beslutning ${decision}`);
+    }
+  }
+  throw new Error("loekken stoppede aldrig");
+}
+
+test("#5602: en lang boelge med tom koe giver hoejst INTAKE_MAX_EMPTY_CHECKS tjek, ikke eet pr. 10 min", () => {
+  const max = WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS;
+  const run = simulateIdleLanes(180);
+  assert.equal(run.checks, max);
+  assert.deepEqual(run.waits, [10, 20, 40, 60].slice(0, max - 1));
+  assert.ok(run.minute < 180, "de ledige laner stoppede, foer det sidste spor var faerdigt");
+  // Den gamle model (fast 10 min) ville have tjekket ca. 18 gange paa 180 min.
+  assert.ok(run.checks < 180 / WAVE_FREEZE.INTAKE_POLL_MINUTES);
+});
+
+test("#5602: naar ingen lane koerer mere, slutter de ledige laner efter naeste tomme tjek", () => {
+  const run = simulateIdleLanes(25);
+  assert.equal(run.checks, 3, "tjek ved 0, 10 og 30 min");
+  assert.deepEqual(run.waits, [10, 20]);
+  assert.equal(simulateIdleLanes(0).checks, 1, "ingen andre laner: eet sidste tjek, saa slut");
+});
+
 // ===== Reviewerens skema-bevisregel (#5567) =====
 
 const blocking = (extra) => ({ severity: "blokerende", file: "backend/x.js", what: "kolonnen fixture_col mangler i tabellen", ...extra });
@@ -329,7 +404,7 @@ test("applySchemaEvidenceRule: et data-fund uden bevis nedgraderes, og dommen bl
   const { review: out, downgraded } = applySchemaEvidenceRule(review);
   assert.equal(downgraded.length, 1);
   assert.equal(out.findings[0].severity, "bemaerkning");
-  assert.equal(out.findings[0].note, "nedgraderet: mangler skema-/prod-opslag (#5567)");
+  assert.equal(out.findings[0].note, "nedgraderet: mangler fil:linje, skema- eller prod-opslag (#5567, #5602)");
   assert.equal(out.verdict, "BEMAERKNINGER", "ingen blokerende fund tilbage -> ret-trinnet springes over");
   assert.equal(review.findings[0].severity, "blokerende", "input muteres ikke");
 });
@@ -381,6 +456,26 @@ test("applySchemaEvidenceRule: BLOKERENDE uden findings-liste og ugyldigt input 
   assert.equal(applySchemaEvidenceRule(bare).review, bare);
   assert.deepEqual(applySchemaEvidenceRule(bare).downgraded, []);
   assert.equal(applySchemaEvidenceRule(null).review, null);
+});
+
+test("#5602: applySchemaEvidenceRule - et fund med fil:linje fra diffen er underbygget og bevares", () => {
+  for (const extra of [
+    { category: "data-skema", what: "migrationen dropper en kolonne", evidence: "database/fixture_migration.sql:12 DROP COLUMN fixture_col" },
+    { what: "migrationen dropper en kolonne", evidence: "se backend/lib/fixture.js:40" },
+    { category: "data-skema", what: "kolonnen mangler", file: "database/fixture_migration.sql:7", evidence: "" },
+  ]) {
+    const review = { verdict: "BLOKERENDE", findings: [blocking(extra)] };
+    const { review: out, downgraded } = applySchemaEvidenceRule(review);
+    assert.equal(downgraded.length, 0, JSON.stringify(extra));
+    assert.equal(out.verdict, "BLOKERENDE");
+  }
+});
+
+test("#5602: applySchemaEvidenceRule - en prod-paastand uden fil:linje eller opslag nedgraderes stadig", () => {
+  for (const evidence of ["prod har ikke kolonnen", "laeste diffen", "backend/x.js uden linjenummer"]) {
+    const { downgraded } = applySchemaEvidenceRule({ verdict: "BLOKERENDE", findings: [blocking({ category: "data-skema", evidence })] });
+    assert.equal(downgraded.length, 1, evidence);
+  }
 });
 
 // ===== Hale-tomgang (#5562) =====
@@ -527,6 +622,9 @@ test("wave.js spejler konstanterne fra dette modul", () => {
     INVESTIGATE_TIMEOUT_MINUTES: WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES,
     POKE_MINUTES: WAVE_FREEZE.POKE_MINUTES,
     INTAKE_POLL_MINUTES: WAVE_FREEZE.INTAKE_POLL_MINUTES,
+    INTAKE_POLL_MAX_MINUTES: WAVE_FREEZE.INTAKE_POLL_MAX_MINUTES,
+    INTAKE_MAX_EMPTY_CHECKS: WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS,
+    INTAKE_CHECK_TIMEOUT_MINUTES: WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES,
     INTAKE_TIMEOUT_MINUTES: WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES,
   };
   assert.deepEqual(
@@ -632,7 +730,7 @@ function normalizeFunction(text) {
 test("#5562/#5567: de spejlede funktioner er identiske i wave.js og modulet", () => {
   const waveSrc = readFileSync(WAVE_JS_PATH, "utf8");
   const moduleSrc = readFileSync(MODULE_PATH, "utf8");
-  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes"]) {
+  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes"]) {
     const inWave = extractFunction(waveSrc, name);
     const inModule = extractFunction(moduleSrc, name);
     assert.ok(inWave, `wave.js mangler den spejlede funktion ${name}()`);
@@ -661,6 +759,31 @@ test("#5562: rullende optag bruger WAVE-SETUP-praefikset og deler trin 2-3b med 
   assert.ok(src.includes("cleanupPrompt(allTracks,"), "oprydningen skal have ALLE boelgens branches, ogsaa de optagne");
   assert.ok(src.includes("'koeet men aldrig optaget'"), "spor der stod i koe ved release skal rapporteres som unstarted");
   assert.ok(src.includes("input.rollingIntake !== false"), "args.rollingIntake: false slaar optaget fra; default er til");
+});
+
+test("#5602: det billige intake-tjek koerer paa haiku med en minimal prompt, der kun taeller koeen", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(/agent\(intakeCheckPrompt\(setup\.waveId, finished\), \{ label, phase: 'Laner', model: 'haiku', effort: 'low', schema: INTAKE_CHECK_SCHEMA \}\)/.test(src), "tjekket skal koere paa haiku med INTAKE_CHECK_SCHEMA");
+  const prompt = extractFunction(src, "intakeCheckPrompt");
+  assert.ok(prompt, "wave.js mangler intakeCheckPrompt()");
+  assert.ok(prompt.includes("'WAVE-SETUP: intake-tjek (#5602)'"), "tjekket skal have WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader det passere");
+  assert.ok(prompt.includes("intake --wave-id ${waveId} --peek"), "tjekket maa kun taelle koeen (--peek flytter intet)");
+  assert.ok(!prompt.includes("trackSetupSteps") && !prompt.includes("brief"), "tjekket faar hverken brief eller setup-trin");
+  const runIntake = extractFunction(src, "runIntake");
+  assert.ok(runIntake.indexOf("runIntakeCheck(finished)") < runIntake.indexOf("agent(intakePrompt("), "den fulde intake startes foerst efter tjekket");
+  assert.ok(runIntake.includes("if (check.pending === 0) {"), "et tomt tjek starter ingen fuld intake");
+});
+
+test("#5602: voksende pauser og selv-stop er koblet ind i lane-loekken", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  assert.ok(src.includes("}, intakeBackoffMinutes(emptyStreak) * 60 * 1000)"), "poll-timeren skal bruge den voksende pause, ikke et fast interval");
+  assert.ok(!src.includes("}, WAVE_FREEZE.INTAKE_POLL_MINUTES * 60 * 1000)"), "det faste 10-min-interval maa ikke staa tilbage");
+  const worker = extractFunction(src, "laneWorker");
+  assert.ok(/planIdleLane\(\{[\s\S]*?emptyStreak,[\s\S]*?\}\)/.test(worker), "planIdleLane skal have emptyStreak");
+  assert.ok(worker.includes("selfStoppedLanes.push("), "et selv-stop skal registreres");
+  assert.ok(/intakeEmpty = false\s*emptyStreak = 0/.test(worker), "et faerdigt spor nulstiller pausen og selv-stop-taellingen");
+  assert.ok(/\n\s*selfStoppedLanes,\n/.test(src) && /\n\s*intakeChecks,\n/.test(src), "rapporten skal have selfStoppedLanes og intakeChecks");
+  assert.ok(src.includes("finishedInWave.slice()") && !src.includes("finishedSinceIntake"), "alle frigivne branches sendes med hvert tjek (idempotent)");
 });
 
 test("#5567: reviewer koerer paa opus, og skema-bevisreglen haandhaeves i koden", () => {
