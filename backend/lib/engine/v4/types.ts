@@ -264,6 +264,14 @@ export type StageResult = {
   // mapping (v4 -> race_incidents/rider_condition) kan tages i to skridt uden
   // at braekke paa en manglende noegle.
   injury_days?: number | null;
+  // #5582 (ADDITIVT, valgfrit — ejer 23/9, UCI 2.6.032): rytteren laa uden for
+  // tidsgraensen men blev GENINDSAT, enten af juryen efter et uheld ("jury")
+  // eller som del af en reddet grupetto ("grupetto", §2d). Status forbliver
+  // "finished". Straffen: han mister ALLE sine point i loebets point- og
+  // bjergkonkurrence. Motoren nulstiller etapens egne point
+  // (index.ts, `passage_totals`); flip-laget skal bruge markoeren til at se
+  // bort fra hans point fra tidligere etaper. Udeladt = ikke genindsat.
+  reinstated_by?: "jury" | "grupetto";
 };
 
 // ── #2944 incident-trappen (mechanics/incidents.ts) ──────────────────────────
@@ -475,6 +483,15 @@ export type RaceGroup = {
   rider_ids: string[];
   gap_seconds: number; // til front (foerende gruppe / etapens spids)
   cohesion: number; // 0-1, fundament for brosten-kaos-hook (fuld M8 i F3)
+  // #5582 (ADDITIVT, valgfrit): gruppen er et uheldsoffer paa JAGT TILBAGE bag
+  // foelgebilerne. Saettes KUN af uheldets split (mechanics/incidents.ts og
+  // M3's nedkoerselsstyrt i mechanics/descent.ts). "assisted" = en
+  // holdkammerat/hjaelper var i hans gruppe, da uheldet skete, og venter paa
+  // ham. Maerket forsvinder af sig selv, naar gruppen smelter sammen med en
+  // anden (groups.mergeGroupsDetailed bygger den samlede gruppe uden det):
+  // saa er han inde igen. Laeses af segmentLoop.ts via
+  // incidents.incidentChaseDtSeconds. `undefined` = en helt almindelig gruppe.
+  chase_back?: "alone" | "assisted";
 };
 
 export type RiderState = {

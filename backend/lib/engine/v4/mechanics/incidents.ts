@@ -432,6 +432,120 @@ export function makeIncidentSoloGroupId(segmentIndex: number, seq: number): stri
   return `solo-m10-${segmentIndex}-${seq}`;
 }
 
+// ── #5582: JAGTEN TILBAGE bag foelgebilerne (ejer-beslutning 23/9) ──────────
+//
+// Fundet (flip-klar-rapporten #5523, roede punkt 1): uheldets solo-gruppe
+// havde intet lae. `groupDraftSpeedGain` giver en gruppe paa én rytter 0, og
+// hans kollektive CP er hans egen i stedet for de staerkeste i feltet, saa
+// hullet VOKSEDE resten af etapen. Det faktiske tidstab blev mange gange det
+// lovede (det spilleren og `race_incidents` ser), og tidsgraensen sendte
+// uheldsofre hjem, som oftest efter en punktering.
+//
+// I virkeligheden koerer offeret tilbage BAG FOELGEBILERNE: bilerne giver lae,
+// og han holder tempoet i gruppen foran ham. Modellen:
+//   - Paa terraen hvor bilerne kan hjaelpe (`pacedSegmentKinds`) koerer
+//     jagtgruppen MINDST lige saa hurtigt som naermeste almindelige gruppe
+//     foran. Hullet holdes derfor paa uheldets tidstab: det lovede tal.
+//   - Venter en holdkammerat/hjaelper (maerket "assisted"), lukker de hullet
+//     med `assistedClosingSecondsPerKm`, men aldrig forbi gruppen foran.
+//     Kommer han inden for merge-graensen, smelter han ind (segmentLoop's
+//     merge-trin) og er inde igen.
+//   - Paa stigning og brosten er loebet i gang, og bilerne kan ikke holde ham
+//     oppe: han koerer sit eget tempo og kan stadig tabe tid (eller vinde,
+//     hvis han er staerkere end gruppen foran).
+//   - Reserven: rytteren tikkes fortsat som en solo-rytter i vinden
+//     (segmentLoop's `tickGroupRiders`, front-arbejde, ikke laeplads). Jagten
+//     koster altsaa af hans W', ogsaa naar bilerne holder tempoet.
+//
+// Invariant 2 (samme gruppe = samme tid) er uroert: offeret er sin egen
+// gruppe, indtil merge-trinnet samler ham op. Invariant 3 er uroert:
+// overstyringen er en funktion af gruppernes tider, ikke af evner.
+//
+// Konstanterne er STARTGAET (samme forbehold som tuning.ts) og kalibreres i
+// harnesset. De bor her og ikke i tuning.ts, fordi de kun laeses af denne fil
+// og segmentLoop's ene kaldssted.
+export const INCIDENT_CHASE_TUNING = Object.freeze({
+  pacedSegmentKinds: Object.freeze(["flat", "rolling", "descent"]) as readonly SegmentKind[],
+  assistedClosingSecondsPerKm: 0.5,
+});
+
+export type IncidentChaseTuning = {
+  pacedSegmentKinds: readonly SegmentKind[];
+  assistedClosingSecondsPerKm: number;
+};
+
+/**
+ * Maerker gruppen `groupId` som et uheldsoffer paa jagt tilbage (#5582). Ren:
+ * nyt array, kun den ene gruppe er et nyt objekt. Ukendt id => samme array.
+ * Eksporteret, saa M3's nedkoerselsstyrt (descent.ts) maerker sin gruppe paa
+ * praecis samme maade som M10.
+ */
+export function markIncidentChaseGroup(
+  groups: readonly RaceGroup[],
+  groupId: string,
+  mode: NonNullable<RaceGroup["chase_back"]>,
+): RaceGroup[] {
+  let found = false;
+  const next = groups.map((g) => {
+    if (g.id !== groupId) return g;
+    found = true;
+    return { ...g, chase_back: mode };
+  });
+  return found ? next : [...groups];
+}
+
+/**
+ * Segment-tiden for en jagtgruppe (#5582), eller `null` naar gruppen koerer
+ * sit eget tempo (ingen overstyring).
+ *
+ * `dtByGroupId` er segmentets krydsningstid pr. gruppe som segment-loopet
+ * allerede har regnet den (eget tempo, eget lae). Maalet er den NAERMESTE
+ * almindelige gruppe foran (stoerste gap under jagtgruppens eget, tie-break paa
+ * id); en anden jagtgruppe er aldrig maal. Uden en gruppe foran (han ER
+ * fronten) eller paa terraen uden bil-lae: `null`.
+ *
+ * Ren aritmetik, ingen rng. Resultatet er aldrig negativt og aldrig mindre end
+ * det, der ville bringe ham FORBI maalgruppen.
+ */
+export function incidentChaseDtSeconds(
+  chaseGroup: RaceGroup,
+  groups: readonly RaceGroup[],
+  dtByGroupId: (groupId: string) => number | undefined,
+  segment: Pick<Segment, "kind" | "from_km" | "to_km">,
+  tuning: IncidentChaseTuning = INCIDENT_CHASE_TUNING,
+): number | null {
+  const mode = chaseGroup.chase_back;
+  if (!mode) return null;
+  if (!tuning.pacedSegmentKinds.includes(segment.kind)) return null;
+
+  let target: RaceGroup | null = null;
+  for (const g of groups) {
+    if (g.id === chaseGroup.id || g.chase_back) continue;
+    if (!(g.gap_seconds < chaseGroup.gap_seconds)) continue;
+    if (
+      !target ||
+      g.gap_seconds > target.gap_seconds ||
+      (g.gap_seconds === target.gap_seconds && g.id.localeCompare(target.id) < 0)
+    ) {
+      target = g;
+    }
+  }
+  if (!target) return null;
+
+  const ownDt = dtByGroupId(chaseGroup.id);
+  const targetDt = dtByGroupId(target.id);
+  if (!Number.isFinite(ownDt) || !Number.isFinite(targetDt)) return null;
+
+  let dt = Math.min(ownDt as number, targetDt as number);
+  if (mode === "assisted") {
+    const lengthKm = Math.max(0, (Number(segment.to_km) || 0) - (Number(segment.from_km) || 0));
+    const closing = Math.max(0, tuning.assistedClosingSecondsPerKm) * lengthKm;
+    const hole = Math.max(0, chaseGroup.gap_seconds - target.gap_seconds);
+    dt = Math.min(dt, (targetDt as number) - Math.min(closing, hole));
+  }
+  return Math.max(0, dt);
+}
+
 export function createIncidentHook(
   tuning: IncidentsTuning,
 ): (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult {
@@ -508,11 +622,18 @@ export function createIncidentHook(
         // han skal hverken traekke tempo eller arve gruppens maaltid.
         const gapDelta =
           resolved.outcome === "abandoned" ? tuning.abandonedGapSeconds : (resolved.timeLossSeconds ?? 0);
+        const soloId = makeIncidentSoloGroupId(segmentIndex, seq);
         groups = splitGroup(groups, group.id, [riderId], {
-          id: makeIncidentSoloGroupId(segmentIndex, seq),
+          id: soloId,
           kind: "solo",
           gapSecondsDelta: gapDelta,
         });
+        // #5582: et tidstab (ikke en udgaaelse) sender ham paa jagt tilbage
+        // bag foelgebilerne. Hjaelperen er den samme, der gav hjulskift-
+        // rabatten: en holdkammerat/hjaelper i hans gruppe i dette segment.
+        if (resolved.outcome === "time_loss") {
+          groups = markIncidentChaseGroup(groups, soloId, helperNearby ? "assisted" : "alone");
+        }
         seq += 1;
         changed = true;
       }

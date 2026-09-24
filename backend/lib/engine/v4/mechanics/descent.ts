@@ -67,7 +67,13 @@ import type {
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
-import { hasHelperNearby, maxIncidentsForField, resolveCrashIncident, threeKmRuleApplies } from "./incidents.ts";
+import {
+  hasHelperNearby,
+  markIncidentChaseGroup,
+  maxIncidentsForField,
+  resolveCrashIncident,
+  threeKmRuleApplies,
+} from "./incidents.ts";
 import { weatherAdjustedRiskBase } from "./weather.ts";
 
 function round2(n: number): number {
@@ -515,11 +521,17 @@ export const descentHook: DescentHook = (
         const laterGapDelta = resolved.outcome === "abandoned"
           ? INCIDENTS_EXTRA_TUNING.abandonedGapSeconds
           : (resolved.timeLossSeconds ?? 0);
+        const soloId = makeGroupId("solo", ctx.segmentIndex * 1000 + seq);
         groups = splitGroup(groups, newGroupId, [attacker.riderId], {
-          id: makeGroupId("solo", ctx.segmentIndex * 1000 + seq),
+          id: soloId,
           kind: "solo",
           gapSecondsDelta: gainSeconds + laterGapDelta,
         });
+        // #5582: samme jagt tilbage bag foelgebilerne som M10's uheldsofre
+        // (mechanics/incidents.ts). Kun ved et tidstab, aldrig ved udgaaelse.
+        if (resolved.outcome === "time_loss") {
+          groups = markIncidentChaseGroup(groups, soloId, helperNearby ? "assisted" : "alone");
+        }
         seq += 1;
         changed = true;
       }
