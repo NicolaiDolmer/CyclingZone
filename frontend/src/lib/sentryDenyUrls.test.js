@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DENY_URLS, isDeniedUrl, isKnownExtensionNoise } from "./sentryDenyUrls.js";
+import { DENY_URLS, isDeniedUrl, isKnownExtensionNoise, isProxiedOrigin } from "./sentryDenyUrls.js";
 
 // #2018: Vercel Live Feedback / Toolbar injicerer /_next-live/feedback/instrument.js
 // og kaster tredjeparts-fejl (CYCLINGZONE-18/19/1A/1B/1C). Disse SKAL filtreres,
@@ -78,6 +78,36 @@ test("normale app-fejl filtreres IKKE (filteret er ikke for bredt)", () => {
   for (const url of appUrls) {
     assert.equal(isDeniedUrl(url), false, `app-URL burde IKKE filtreres: ${url}`);
   }
+});
+
+// #5694 (CYCLINGZONE-68): Google Translate-proxy — SecurityError fra
+// history.replaceState paa origin cyclingzone-org.translate.goog.
+
+test("isProxiedOrigin: .translate.goog-hostnames genkendes", () => {
+  assert.equal(isProxiedOrigin("cyclingzone-org.translate.goog"), true);
+  assert.equal(isProxiedOrigin("cycling-zone-vercel-app.translate.goog"), true);
+  assert.equal(isProxiedOrigin("CYCLINGZONE-ORG.TRANSLATE.GOOG"), true, "case-insensitivt");
+});
+
+test("isProxiedOrigin: egne/normale hostnames rammes IKKE", () => {
+  assert.equal(isProxiedOrigin("cyclingzone.org"), false);
+  assert.equal(isProxiedOrigin("cycling-zone.vercel.app"), false);
+  assert.equal(isProxiedOrigin("localhost"), false);
+  // Delstreng-forsøg maa ikke matche — kun hostnamet der reelt SLUTTER på .translate.goog.
+  assert.equal(isProxiedOrigin("translate.goog.evil.example"), false);
+});
+
+test("isProxiedOrigin: tom/undefined/null haandteres uden at kaste", () => {
+  assert.equal(isProxiedOrigin(""), false);
+  assert.equal(isProxiedOrigin(undefined), false);
+  assert.equal(isProxiedOrigin(null), false);
+});
+
+test("DENY_URLS indeholder et .translate.goog-moenster (blame-URL-fallback for beforeSend-tjekket)", () => {
+  const hasTranslateGoogPattern = DENY_URLS.some((re) =>
+    re.test("https://cyclingzone-org.translate.goog/assets/index-a1b2c3.js")
+  );
+  assert.equal(hasTranslateGoogPattern, true);
 });
 
 test("isDeniedUrl haandterer tom/undefined URL uden at kaste", () => {

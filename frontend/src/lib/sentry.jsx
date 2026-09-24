@@ -13,7 +13,7 @@ import {
 import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
-import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
+import { DENY_URLS, isKnownExtensionNoise, isProxiedOrigin } from "./sentryDenyUrls.js";
 // #5312: fire browser-ordlyd for "kaldet naaede aldrig frem" — ét sted, i en
 // ren .js-fil uden sidevirkninger (samme begrundelse som DENY_URLS ovenfor).
 import { isBackendUnreachableMessage } from "./backendReachability.js";
@@ -69,6 +69,13 @@ export function initSentry() {
     // hvis "blame"-frame stammer fra tredjeparts-injiceret kode. Se DENY_URLS.
     denyUrls: DENY_URLS,
     beforeSend(event) {
+      // #5694 (CYCLINGZONE-68): siden kører under Google Translate-proxyens
+      // eget origin (fx cyclingzone-org.translate.goog) — proxyen er ikke vores
+      // app, og en SecurityError fra dens URL-omskrivning kan vi ikke rette.
+      // Tjekkes FØRST, før noget andet beforeSend-arbejde.
+      if (typeof window !== "undefined" && isProxiedOrigin(window.location?.hostname)) {
+        return null;
+      }
       const value = event.exception?.values?.[0]?.value || event.message || "";
       if (/ResizeObserver loop completed/i.test(value)) {
         return null;
