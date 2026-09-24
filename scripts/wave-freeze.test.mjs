@@ -7,7 +7,7 @@
 // Run: node --test scripts/wave-freeze.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
@@ -672,6 +672,21 @@ test("#5567: reviewer koerer paa opus, og skema-bevisreglen haandhaeves i koden"
   assert.ok(src.includes("enum: ['data-skema', 'scope', 'forbudte-filer', 'secrets', 'verifikation', 'andet']"), "REVIEW_SCHEMA skal have category-enum");
   assert.ok(src.includes("database/schema-snapshot.json (relations.<tabel>.columns)"), "reviewPrompt skal kraeve skema-opslag (punkt 9)");
   assert.ok(/label: `frys-probe #\$\{track\.issue\}`,\s*phase: 'Laner',\s*model: 'sonnet'/.test(src), "proben forbliver sonnet");
+});
+
+test("#5507: reviewPrompt faar script-output + issuets seneste kommentarer og har bevis-, kaldesteds- og maalepunkts-tjek", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const prompt = extractFunction(src, "reviewPrompt");
+  assert.ok(prompt, "wave.js mangler reviewPrompt()");
+  assert.ok(prompt.includes("scripts\\\\check-pr-claims.mjs\" --pr <PR-nummer>"), "revieweren skal koere paastands-tjekket som input");
+  assert.ok(prompt.includes("scripts\\\\check-flag-liveness.mjs"), "revieweren skal koere kontakt-vagten som input");
+  assert.ok(prompt.includes("--comments"), "revieweren skal laese issuets seneste kommentarer");
+  assert.ok(/'10\. BEVIS \(#5507\)/.test(prompt), "punkt 10: bevis for hvert verificeret-[x]");
+  assert.ok(/'11\. NY KONTAKT \(#5507\)/.test(prompt) && prompt.includes("ALLE kaldesteder"), "punkt 11: list alle kaldesteder for en ny kontakt");
+  assert.ok(/'12\. MAALEPUNKT \(#5507\)/.test(prompt) && prompt.includes("allerede var groent"), "punkt 12: maalepunkt uaendret eller allerede groent");
+  for (const script of ["check-pr-claims.mjs", "check-flag-liveness.mjs"]) {
+    assert.ok(existsSync(fileURLToPath(new URL(`./${script}`, import.meta.url))), `reviewPrompt peger paa scripts/${script}, som skal findes`);
+  }
 });
 
 test("#5562: hale-tomgang maales med et minut-ur der ryddes foer return", () => {
