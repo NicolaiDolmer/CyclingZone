@@ -2,17 +2,24 @@
 // Kontakt-vagten (#5507). Fixtures i hukommelsen - ingen git, ingen DB.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import {
+  BASELINE_PATH,
   baselineFrom,
+  baselineGrowth,
   buildIndex,
   classifyPath,
   compareToBaseline,
   evaluateFlags,
   findReaders,
   parseStageFlagKeys,
+  ratchetBaseline,
+  readBaselineAt,
   readerApi,
   stripComments,
 } from "./check-flag-liveness.mjs";
@@ -156,6 +163,76 @@ test("baselinen: kendt gaeld er tilladt, nye huller fejler, lukkede huller skal 
   assert.deepEqual(cmp.closed, [{ key: "c", check: "test-on" }]);
   assert.deepEqual(cmp.orphaned, ["gone"]);
   assert.deepEqual(baselineFrom(rows).known, { a: ["migration"], b: ["reader", "test-on"] });
+});
+
+test("ratchet: baselineGrowth finder nye noegler og nye checks paa kendte noegler, ikke det der er fjernet", () => {
+  const base = { known: { a: ["migration"], b: ["reader", "test-on"] } };
+  assert.deepEqual(baselineGrowth(base, base), [], "uaendret baseline vokser ikke");
+  assert.deepEqual(baselineGrowth(base, { known: { b: ["reader"] } }), [], "en baseline der skrumper, vokser ikke");
+  assert.deepEqual(
+    baselineGrowth(base, { known: { a: ["migration", "test-on"], b: ["reader", "test-on"], c: ["reader"] } }),
+    [
+      { key: "a", check: "test-on" },
+      { key: "c", check: "reader" },
+    ],
+  );
+  assert.deepEqual(baselineGrowth(null, { known: { a: ["reader"] } }), [{ key: "a", check: "reader" }]);
+});
+
+// Et rigtigt (midlertidigt) git-repo: ratchet'en laeser baselinen paa base-commit'et
+// med `git show`, praecis som done-guard.yml koerer den mod PR'ens base.sha.
+function tempRepo() {
+  const dir = mkdtempSync(join(tmpdir(), "flag-ratchet-"));
+  const git = (...args) =>
+    execFileSync("git", ["-C", dir, "-c", "user.name=vagt", "-c", "user.email=vagt@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=.ingen-hooks", ...args], { encoding: "utf8" }).trim();
+  git("init", "-q");
+  const commit = (files, msg) => {
+    for (const [p, text] of Object.entries(files)) {
+      mkdirSync(join(dir, p, ".."), { recursive: true });
+      writeFileSync(join(dir, p), text);
+      git("add", p);
+    }
+    git("commit", "-q", "-m", msg);
+    return git("rev-parse", "HEAD");
+  };
+  return { dir, commit };
+}
+
+test("ratchet mod et base-commit: baselinen der vokser fejler, en der skrumper er ok, uden fil springes over", () => {
+  const { dir, commit } = tempRepo();
+  try {
+    const small = { known: { a: ["migration"] } };
+    const grown = { known: { a: ["migration", "test-on"], b: ["reader"] } };
+    const noFile = commit({ "README.md": "x\n" }, "uden baseline");
+    const baseSmall = commit({ [BASELINE_PATH]: JSON.stringify(small) }, "baseline lille");
+    const baseGrown = commit({ [BASELINE_PATH]: JSON.stringify(grown) }, "baseline vokset");
+
+    assert.deepEqual(readBaselineAt(dir, baseSmall), small);
+    assert.equal(readBaselineAt(dir, noFile), null);
+
+    const grew = ratchetBaseline(dir, baseSmall, grown);
+    assert.equal(grew.skipped, false);
+    assert.deepEqual(grew.growth, [
+      { key: "a", check: "test-on" },
+      { key: "b", check: "reader" },
+    ]);
+    assert.deepEqual(ratchetBaseline(dir, baseGrown, small).growth, [], "at skrumpe er altid tilladt");
+    assert.deepEqual(ratchetBaseline(dir, noFile, grown), { ref: noFile, skipped: true, growth: [] });
+    assert.throws(() => readBaselineAt(dir, "0".repeat(40)), /ukendt commit/, "en base der ikke er hentet, maa ikke springes stille over");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("done-guard.yml koerer ratchet'en mod PR'ens base-commit og beskriver alle trin til blokerende", () => {
+  const yml = readFileSync(new URL("../.github/workflows/done-guard.yml", import.meta.url), "utf8");
+  assert.match(yml, /run: node scripts\/check-flag-liveness\.mjs --baseline-base "\$BASE_SHA"/);
+  assert.match(yml, /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  // Skiftet 2026-10-01: at fjerne continue-on-error goer intet, hvis jobbet ikke er required.
+  assert.match(yml, /2026-10-01/);
+  assert.match(yml, /scripts\/ci-required-checks\.json/, "trin b: kontrakt-spejlet af required checks");
+  assert.match(yml, /-X POST repos\/NicolaiDolmer\/CyclingZone\/branches\/main\/protection\/required_status_checks\/contexts/, "trin c: branch protection");
+  assert.match(yml, /`name: done-guard`/, "trin a: stabilt check-navn uden '(advarsel)'");
 });
 
 test("stripComments fjerner hele kommentarlinjer, men aeder ikke kode efter en streng med '/*'", () => {
