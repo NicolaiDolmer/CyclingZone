@@ -684,6 +684,8 @@ test("#5507: reviewPrompt faar script-output + issuets seneste kommentarer og ha
   assert.ok(/'10\. BEVIS \(#5507\)/.test(prompt), "punkt 10: bevis for hvert verificeret-[x]");
   assert.ok(/'11\. NY KONTAKT \(#5507\)/.test(prompt) && prompt.includes("ALLE kaldesteder"), "punkt 11: list alle kaldesteder for en ny kontakt");
   assert.ok(/'12\. MAALEPUNKT \(#5507\)/.test(prompt) && prompt.includes("allerede var groent"), "punkt 12: maalepunkt uaendret eller allerede groent");
+  assert.equal((prompt.match(/en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01/g) || []).length, 2, "punkt 10 og 11: advarsel foerst - bemaerkning foer 2026-10-01, samme dato som done-guard.yml");
+  assert.ok(prompt.includes("foer 2026-10-01 er de to BEMAERKNINGER"), "Dom-linjen: punkt 10/11 blokerer foerst fra 2026-10-01");
   for (const script of ["check-pr-claims.mjs", "check-flag-liveness.mjs"]) {
     assert.ok(existsSync(fileURLToPath(new URL(`./${script}`, import.meta.url))), `reviewPrompt peger paa scripts/${script}, som skal findes`);
   }
