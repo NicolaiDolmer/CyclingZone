@@ -284,10 +284,14 @@ export function lookupClaim(claim, ctx) {
       res.homes = r.homes;
       res.bypass = bypassReaders(key, r, head);
     } else {
-      // camelCase opts-felt: kaldesteder = produktionsfiler der naevner det.
+      // camelCase opts-felt: hjemmet er filen der LAESER feltet af et
+      // options-objekt; kaldestederne er de oevrige produktionsfiler.
       const prod = headHits.filter((p) => classifyPath(p) === "prod");
-      res.homes = prod.slice(0, 1);
-      res.callSites = prod.slice(1);
+      const t = escapeRe(key);
+      const readsOpt = new RegExp(`\\b(?:opts|options|args|params|config|cfg)\\s*\\??\\.\\s*${t}\\b|\\bconst\\s*\\{[^}]*\\b${t}\\b[^}]*\\}\\s*=`);
+      const homes = prod.filter((p) => readsOpt.test(head.byPath.get(p).text));
+      res.homes = homes.length > 0 ? homes : prod.slice(0, 1);
+      res.callSites = prod.filter((p) => !res.homes.includes(p));
       res.bypass = [];
     }
   }

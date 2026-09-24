@@ -90,8 +90,12 @@ test("BAGLAENS PR #5503: opts-kontakten og *_FLAG_KEY uden kaldested fanges", ()
 test("en opts-kontakt som et produktions-kaldested sender, giver ingen advarsel", () => {
   const body = "- `primaryTypeMode` er et opts-felt bag kontakten.";
   const caller = { path: "backend/lib/aiTeamGenerator.js", text: 'generateFictionalRiders({ primaryTypeMode: "distribution" });' };
-  const report = run({ body, head: [GEN_5503, caller] });
-  assert.deepEqual(claim(report, "kontakt", "primaryTypeMode").callSites, ["backend/lib/aiTeamGenerator.js"]);
+  // Kalderen staar FOERST (som i git's alfabetiske raekkefoelge): hjemmet skal
+  // findes paa `opts.primaryTypeMode`, ikke paa raekkefoelgen.
+  const report = run({ body, head: [caller, GEN_5503] });
+  const r = claim(report, "kontakt", "primaryTypeMode");
+  assert.deepEqual(r.homes, ["backend/lib/fictionalRiderGenerator.js"]);
+  assert.deepEqual(r.callSites, ["backend/lib/aiTeamGenerator.js"]);
   assert.deepEqual(report.warnings, []);
 });
 
