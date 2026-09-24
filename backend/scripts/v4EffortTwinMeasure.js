@@ -32,13 +32,19 @@
 //
 // Usage:
 //   node backend/scripts/v4EffortTwinMeasure.js [--label=A] [--seeds=s1,s2,s3,s4,s5] [--json=<fil>]
+//     [--population=<fil>] [--out=<fil>]
+//
+// #5572: `--population=` maaler paa en anden population (side om side med den
+// pinnede; default UAENDRET = POPULATION_FILE nedenfor). `--out=` er et alias
+// for `--json=` (samme flagnavn som buildV4AnchorBaseline.mjs); `--json=`
+// vinder hvis begge er givet.
 //
 // 100% READ-ONLY: laeser kun de pinnede JSON-filer. Skriver kun til --json.
 // HARD RULE 17: tallene er motor-interne maalinger og hoerer i
 // balance-internals/, ikke i PR-body/issue — kun anker-tal er offentlige.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { stableSeed } from "../lib/raceSimulator.js";
@@ -82,7 +88,8 @@ function argValue(name, fallback = null) {
 }
 
 function readJson(relPath) {
-  return JSON.parse(readFileSync(join(REPO_ROOT, relPath), "utf8"));
+  // resolve (ikke join): en absolut --population= skal virke som den er.
+  return JSON.parse(readFileSync(resolve(REPO_ROOT, relPath), "utf8"));
 }
 
 /**
@@ -328,7 +335,8 @@ export function formatReport(result) {
 
 function main() {
   const seeds = (argValue("seeds") ?? DEFAULT_SEEDS.join(",")).split(",").map((s) => s.trim()).filter(Boolean);
-  const population = readJson(POPULATION_FILE);
+  const populationFile = argValue("population") ?? POPULATION_FILE;
+  const population = readJson(populationFile);
   const stagesFile = readJson(STAGES_FILE);
   const allStages = Array.isArray(stagesFile) ? stagesFile : stagesFile.stages;
   // --profiles=flat,rolling: kun de etapetyper (hurtig kalibrerings-sweep).
@@ -341,7 +349,7 @@ function main() {
     schema_version: 1,
     label: argValue("label"),
     generated_at: new Date().toISOString(),
-    population_file: POPULATION_FILE,
+    population_file: populationFile,
     stages_file: STAGES_FILE,
     seeds,
     field_size: FIELD_SIZE,
@@ -351,7 +359,7 @@ function main() {
     grupetto_scenario: skipScenario ? null : runGrupettoScenario({ population, stages: allStages, seeds }),
   };
   console.log(formatReport(result));
-  const jsonPath = argValue("json");
+  const jsonPath = argValue("json") ?? argValue("out");
   if (jsonPath) {
     mkdirSync(dirname(jsonPath), { recursive: true });
     writeFileSync(jsonPath, `${JSON.stringify(result, null, 2)}\n`);
