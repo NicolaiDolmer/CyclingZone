@@ -155,6 +155,13 @@ function bootGuard({
   const win = {
     document: doc,
     URL,
+    // #4827: vagtens ENESTE tidskilde er det bare `Date.now()` i claimReloadSlot()
+    // (public/chunk-selfheal.js). Uden denne linje opretter vm.runInNewContext sin
+    // egen, ægte Date-intrinsic i sandboxen — adskilt fra testens (og CI's
+    // klokke-skub, CZ_TEST_CLOCK_OFFSET_DAYS/#3385-mekanismen) Date. Vagten og
+    // testen skal dele SAMME klokke, ellers regner budget-/60-sekunders-vinduet på
+    // to forskellige "nu"'er og fejler netop når uret er skubbet.
+    Date,
     addEventListener: (type, handler, capture) => {
       listeners.set(`${type}:${capture ? "capture" : "bubble"}`, handler);
     },

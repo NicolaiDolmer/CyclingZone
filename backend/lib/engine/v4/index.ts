@@ -55,7 +55,8 @@ import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mecha
 // segment-loopet. Harness/tests kan stadig injicere egne hooks via
 // runSegmentLoop direkte.
 //
-// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246 + #2770).
+// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246 + #2770;
+// M12-linjen rettet 24/9, #5579).
 // Audit'en 5/9 talte otte faerdige mekanikker uden ét eneste kaldssted. M10
 // (incidents), M8 (brosten/grus), M7 (distance-slid), M11 (vejr), M16
 // (holdspil) og M9 (passager/bonussekunder) er nu KOBLET IND og staar altsaa
@@ -64,7 +65,10 @@ import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mecha
 // `riderCpForSegment`) og er dermed ikke terraen-udloeste hooks men et lag
 // under dem. M11's anden arm — vejr-forstaerket styrt-risiko — ligger i
 // mechanics/descent.ts og mechanics/cobbles.ts.
-// Stadig bygget-men-ikke-kaldt: M12 (effort).
+// M12 (effort) er ogsaa koblet ind (#4632, 6/9) og har af samme grund INTET
+// hook her: rytterens eget indsatsvalg ganges paa kraftkravet i
+// segmentLoop.ts's `tickGroupRiders` (`applyEffortToDemand`, se M12-blokken
+// dér) og i enkeltstarten (mechanics/individualTimeTrial.ts).
 // (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for M13/
 // holdtidskoerslen, der er wiret 6/9 som forgreningen i simulateStageV4
 // nedenfor. Ordre-adapteren kaldes af broen.)
