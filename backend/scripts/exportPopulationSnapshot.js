@@ -23,9 +23,22 @@
 // Holdnavne udelades BEVIDST (privatliv — repoet er publicly viewable, og
 // snapshots kan blive committet ved en fejl).
 //
+// EVNERNE (#5572): eksporten skriver ALLE registry-evner (REGISTRY_ABILITY_KEYS),
+// dvs. samme noegleliste som v4-motorens entrant-adapter laeser fra en
+// rider_derived_abilities-raekke i prod. Tidligere brugte den klassifikatorens
+// 13 (riderTypes.js ABILITY_KEYS), saa `tactics` og `positioning` manglede i
+// ALLE pinnede snapshots — motoren fik 0 for dem i maalingen, mens prod-
+// rytterne har dem. Snapshottet baerer nu selv sin noegleliste (`ability_keys`).
+//
+// HOLD-ID'ER (#5572): `--pseudonymize-teams` erstatter hvert hold-id med et
+// alias (`team-0001` ...), tildelt i leksikografisk orden af de rigtige id'er,
+// saa gruppering OG sortering er uaendret for harnesset (M16 holdspil grupperer
+// paa team_id). Brug flaget til ethvert snapshot der committes under
+// backend/scripts/baselines/ — repoet er offentligt.
+//
 // Usage:
 //   cd backend && node scripts/exportPopulationSnapshot.js
-//   node scripts/exportPopulationSnapshot.js --out=path/to/file.json
+//   node scripts/exportPopulationSnapshot.js --out=path/to/file.json [--pseudonymize-teams]
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role required for fuld læsning)
 
@@ -34,21 +47,22 @@ import "dotenv/config";
 import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ABILITY_KEYS } from "../lib/riderTypes.js";
+import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { fetchAllPaged, selectInChunks } from "../lib/dbChunk.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 
-const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("Mangler SUPABASE_URL og/eller SUPABASE_SERVICE_KEY (se backend/.env).");
-  process.exit(2);
-}
+/**
+ * Evne-noeglerne eksporten laeser og skriver. Samme kilde som v4-motorens
+ * entrant-adapter (adapters/entrantAdapter.ts afleder sin liste af
+ * ABILITY_REGISTRY), IKKE klassifikatorens delmaengde — ellers falder evner som
+ * `tactics`/`positioning` tavst paa 0 i enhver maaling paa snapshottet.
+ */
+export const EXPORT_ABILITY_KEYS = REGISTRY_ABILITY_KEYS;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false },
-});
+// Saettes i main() — modulet skal kunne importeres af tests uden env/DB.
+let supabase = null;
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -192,7 +206,7 @@ async function loadCandidateRiders(includedTeamIds) {
 
 async function loadAbilitiesByRider(riderIds) {
   if (riderIds.length === 0) return new Map();
-  const columns = ["rider_id", ...ABILITY_KEYS].join(", ");
+  const columns = ["rider_id", ...EXPORT_ABILITY_KEYS].join(", ");
   const { data, error } = await selectInChunks({
     supabase, table: "rider_derived_abilities", columns, inColumn: "rider_id", ids: riderIds,
   });
@@ -228,10 +242,77 @@ function formatMB(bytes) {
 }
 
 // ---------------------------------------------------------------------------
+// Rene helpers (testet i exportPopulationSnapshot.test.js)
+// ---------------------------------------------------------------------------
+
+/**
+ * Én snapshot-rytter fra kandidat-raekken + abilities-raekken + condition.
+ * Alle `abilityKeys` skrives altid (manglende/NULL i DB → null), saa
+ * noeglesaettet er ens for hver rytter og kan tjekkes mod `ability_keys`.
+ */
+export function buildRiderRecord(rider, abilitiesRow, cond, abilityKeys = EXPORT_ABILITY_KEYS) {
+  const abilities = {};
+  for (const key of abilityKeys) abilities[key] = abilitiesRow?.[key] ?? null;
+  return {
+    id: rider.id,
+    name: `${rider.firstname} ${rider.lastname}`,
+    team_id: rider.effective_team_id,
+    is_u25: !!rider.is_u25,
+    form: cond ? cond.form : null,
+    fatigue: cond ? cond.fatigue : null,
+    abilities,
+  };
+}
+
+/**
+ * Erstatter hold-id'er med aliaser (`team-0001` ...), tildelt i leksikografisk
+ * orden af de rigtige id'er. Sortering og gruppering er dermed uaendret for
+ * alt der laeser snapshottet (samme relative orden, samme ryttere pr. hold);
+ * kun selve id'erne forsvinder. Ren funktion — returnerer et nyt snapshot.
+ */
+export function pseudonymizeTeamIds(snapshot) {
+  const realIds = new Set();
+  for (const t of snapshot.teams ?? []) if (t.id != null) realIds.add(t.id);
+  for (const r of snapshot.riders ?? []) if (r.team_id != null) realIds.add(r.team_id);
+  const sorted = [...realIds].sort();
+  const width = Math.max(4, String(sorted.length).length);
+  const alias = new Map(sorted.map((id, i) => [id, `team-${String(i + 1).padStart(width, "0")}`]));
+  const mapId = (id) => (id == null ? id : alias.get(id));
+  return {
+    ...snapshot,
+    team_ids: "pseudonymized",
+    teams: (snapshot.teams ?? []).map((t) => ({ ...t, id: mapId(t.id) })),
+    riders: (snapshot.riders ?? []).map((r) => ({ ...r, team_id: mapId(r.team_id) })),
+  };
+}
+
+/**
+ * Hvor mange ryttere har en evne > 0 — eksportens egen daeknings-rapport
+ * (#5572: verificér at prod-rytterne faktisk baerer tactics/positioning).
+ */
+export function abilityCoverage(riders, abilityKeys = EXPORT_ABILITY_KEYS) {
+  return abilityKeys.map((key) => ({
+    ability: key,
+    positive: (riders ?? []).filter((r) => Number(r?.abilities?.[key]) > 0).length,
+    total: (riders ?? []).length,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main() {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.error("Mangler SUPABASE_URL og/eller SUPABASE_SERVICE_KEY (se backend/.env).");
+    process.exit(2);
+  }
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+  });
+  const pseudonymizeTeams = process.argv.includes("--pseudonymize-teams");
+
   console.log("Henter hold (prod, read-only)...");
   const { allTeams, included: includedTeamsRaw, hasIsBank } = await loadTeams();
   const teamsResolved = await resolveTeamTiers(includedTeamsRaw);
@@ -265,20 +346,7 @@ async function main() {
   console.log("Henter condition (form/fatigue)...");
   const conditionByRider = await loadConditionByRider(withAbilities.map((r) => r.id));
 
-  const finalRiders = withAbilities.map((r) => {
-    const cond = conditionByRider.get(r.id);
-    const abilitiesOut = {};
-    for (const key of ABILITY_KEYS) abilitiesOut[key] = r.abilities[key] ?? null;
-    return {
-      id: r.id,
-      name: `${r.firstname} ${r.lastname}`,
-      team_id: r.effective_team_id,
-      is_u25: !!r.is_u25,
-      form: cond ? cond.form : null,
-      fatigue: cond ? cond.fatigue : null,
-      abilities: abilitiesOut,
-    };
-  });
+  const finalRiders = withAbilities.map((r) => buildRiderRecord(r, r.abilities, conditionByRider.get(r.id)));
 
   // ---------------------------------------------------------------------------
   // Output
@@ -289,11 +357,13 @@ async function main() {
     + (hasIsBank ? ", teams.is_bank=true" : " (is_bank-kolonne ikke fundet — sprunget over)")
     + "; ekskluderer riders.is_academy=true og is_retired=true; ryttere uden rider_derived_abilities-række droppet.";
 
-  const snapshot = {
+  const rawSnapshot = {
     schema_version: 1,
     exported_at: new Date().toISOString(),
     source: "prod (read-only)",
     filters: filtersDescription,
+    ability_keys: [...EXPORT_ABILITY_KEYS],
+    team_ids: "raw",
     counts: {
       teams: teamsResolved.length,
       riders: finalRiders.length,
@@ -307,6 +377,7 @@ async function main() {
     })),
     riders: finalRiders,
   };
+  const snapshot = pseudonymizeTeams ? pseudonymizeTeamIds(rawSnapshot) : rawSnapshot;
 
   mkdirSync(dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, JSON.stringify(snapshot, null, 2));
@@ -341,6 +412,11 @@ async function main() {
   console.log(`Ryttere pr. hold — p10=${percentile(ridersPerTeamSorted, 10)} median=${percentile(ridersPerTeamSorted, 50)} p90=${percentile(ridersPerTeamSorted, 90)}`);
   console.log(`Droppet — ingen abilities: ${droppedNoAbilities}`);
   console.log(`Condition-dækning: ${ridersWithForm}/${finalRiders.length} (${conditionCoveragePct}%) har form != null`);
+  console.log("Evne-dækning (ryttere med værdi > 0):");
+  for (const row of abilityCoverage(finalRiders)) {
+    console.log(`  ${row.ability}: ${row.positive}/${row.total}`);
+  }
+  console.log(`Hold-id'er: ${snapshot.team_ids}`);
   console.log(`Output: ${OUT_PATH} (${formatMB(fileSizeBytes)} MB)`);
 
   if (schemaSurprises.length > 0) {
@@ -349,7 +425,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(`Fejl: ${err.message}`);
-  process.exit(1);
-});
+if (process.argv[1]?.endsWith("exportPopulationSnapshot.js")) {
+  main().catch((err) => {
+    console.error(`Fejl: ${err.message}`);
+    process.exit(1);
+  });
+}
