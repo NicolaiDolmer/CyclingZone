@@ -99,42 +99,50 @@ test("#4632: all_out koster ALTID strengt mere end normal, grupetto strengt mind
   assert.ok(effortDemandMultiplier("grupetto") < effortDemandMultiplier("normal"));
 });
 
-// ── #4914 (kalibreringspakken, M12): all_out er profil-afhaengig ─────────────
-test("#4914: all_out paa flad/rullende etape koster MERE end paa en bjergetape; bjerg og oevrige profiler bruger den faelles vaerdi", () => {
+// ── #4914 -> #5580 (M1 punkt 4): all_out er SEGMENT-terraen-afhaengig ────────
+test("#5580: all_out paa flade/rullende SEGMENTER koster MERE end paa en stigning; oevrige terraener bruger den faelles vaerdi", () => {
   const common = EFFORT_COST_TUNING.demandMultiplierAllOut;
   assert.ok(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, "flat") > common);
   assert.ok(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, "rolling") > common);
-  for (const profile of ["mountain", "high_mountain", "hilly", "cobbles", "gravel", "classic", "itt", "itt_hilly", "ttt"] as const) {
-    assert.equal(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, profile), common, profile);
+  for (const kind of ["climb", "descent", "cobbles"] as const) {
+    assert.equal(effortDemandMultiplier("all_out", EFFORT_COST_TUNING, kind), common, kind);
   }
-  assert.equal(effortDemandMultiplier("all_out"), common, "uden profil: den faelles vaerdi (bagudkompatibelt)");
+  assert.equal(effortDemandMultiplier("all_out"), common, "uden terraen: den faelles vaerdi (bagudkompatibelt)");
 });
 
-test("#4914: profilen flytter KUN all_out — de fire andre trin er profil-uafhaengige", () => {
+test("#5580: tabellen er noeglet paa segment-terraen, ikke etapeprofil (#4914's flat/rolling-vaerdier overfoert 1:1)", () => {
+  const table = EFFORT_COST_TUNING.demandMultiplierAllOutBySegmentKind ?? {};
+  assert.deepEqual(Object.keys(table).sort(), ["flat", "rolling"]);
+  assert.equal("demandMultiplierAllOutByProfile" in EFFORT_COST_TUNING, false, "den gamle profil-noegle maa ikke leve videre ved siden af");
+});
+
+test("#5580: terraenet flytter KUN all_out — de fire andre trin er terraen-uafhaengige", () => {
   for (const effort of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
-    assert.equal(
-      effortDemandMultiplier(effort, EFFORT_COST_TUNING, "flat"),
-      effortDemandMultiplier(effort, EFFORT_COST_TUNING, "mountain"),
-      effort,
-    );
+    for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
+      assert.equal(
+        effortDemandMultiplier(effort, EFFORT_COST_TUNING, kind),
+        effortDemandMultiplier(effort, EFFORT_COST_TUNING),
+        `${effort}/${kind}`,
+      );
+    }
   }
 });
 
-test("#4914: femtrins-ordenen holder paa ALLE profiler (grupetto < save < normal < protect < all_out)", () => {
+test("#5580: femtrins-ordenen holder paa ALLE segment-terraener (grupetto < save < normal < protect < all_out)", () => {
   const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
-  for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain", "cobbles", "itt"] as const) {
-    const values = scale.map((level) => effortDemandMultiplier(level, EFFORT_COST_TUNING, profile));
-    for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${profile}: ${scale[i]} <= ${scale[i - 1]}`);
+  for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
+    const values = scale.map((level) => effortDemandMultiplier(level, EFFORT_COST_TUNING, kind));
+    for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${kind}: ${scale[i]} <= ${scale[i - 1]}`);
   }
 });
 
-test("#4914: en ugyldig profil-vaerdi (NaN, under protect) ignoreres — all_out bliver aldrig billigere end protect", () => {
+test("#4914: en ugyldig tabel-vaerdi (NaN, under protect) ignoreres — all_out bliver aldrig billigere end protect", () => {
   const base = { ...EFFORT_COST_TUNING };
   for (const bad of [Number.NaN, 0.5, base.demandMultiplierProtect]) {
-    const tuning = { ...base, demandMultiplierAllOutByProfile: { flat: bad } };
+    const tuning = { ...base, demandMultiplierAllOutBySegmentKind: { flat: bad } };
     assert.equal(allOutDemandMultiplier("flat", tuning), base.demandMultiplierAllOut, String(bad));
   }
-  const withoutTable = { ...base, demandMultiplierAllOutByProfile: undefined };
+  const withoutTable = { ...base, demandMultiplierAllOutBySegmentKind: undefined };
   assert.equal(allOutDemandMultiplier("flat", withoutTable), base.demandMultiplierAllOut);
   assert.equal(allOutDemandMultiplier(null), base.demandMultiplierAllOut);
 });
