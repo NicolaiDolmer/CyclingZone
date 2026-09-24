@@ -1,6 +1,18 @@
 type Row = Record<string, unknown>;
 type Result<T> = { data: T | null; error: Error | null };
 
+// #5694 (CYCLINGZONE-69, triage 24/9): status 0 er transportlagets konvention
+// for "intet HTTP-svar nåede frem" (netværk/abort/offline — se apiFetch.ts'
+// samme konvention), ALDRIG en rigtig serverfejl. Delt med youthRankingsClient
+// så begge klienter er enige om samme regel — se #5694 CYCLINGZONE-69: youth-
+// klienten fik Sentry-støj fra netop denne klasse fejl, fordi den (i modsætning
+// til denne klients egen `fetcher`, som KASTER ved netværksfejl og derfor aldrig
+// når reportError nedenfor) bruger en transportfunktion der returnerer
+// { status: 0 } i stedet for at kaste.
+export function isNetworkOrAbortStatus(status: number): boolean {
+  return status === 0;
+}
+
 export function createRankingsClient({ baseUrl, headers, fetcher, reportError = () => {} }: {
   baseUrl: string;
   headers: () => Promise<Record<string, string> | null>;
@@ -23,7 +35,10 @@ export function createRankingsClient({ baseUrl, headers, fetcher, reportError = 
       // 404 paa /honours: dokumenteret staggered-deploy-kontrakt (se getSeasonHonours).
       const isSessionExpired = response.status === 401;
       const isUndeployedHonours = response.status === 404 && path === "/api/rankings/honours";
-      if (!isSessionExpired && !isUndeployedHonours) reportError(error, { path, status: response.status });
+      // Uopnåeligt i praksis her (fetch KASTER ved netværksfejl, se ovenfor) —
+      // tjekket holdes alligevel for at dele reglen eksplicit med youthRankingsClient.
+      const isTransportFailure = isNetworkOrAbortStatus(response.status);
+      if (!isSessionExpired && !isUndeployedHonours && !isTransportFailure) reportError(error, { path, status: response.status });
       throw error;
     }
     return response.json();

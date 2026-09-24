@@ -59,6 +59,8 @@ export interface YouthRequestResult {
   data: unknown;
 }
 
+import { isNetworkOrAbortStatus } from "./rankingsClient.ts";
+
 type Raw = Record<string, unknown>;
 
 function num(value: unknown): number | null {
@@ -245,7 +247,10 @@ export function createYouthRankingsClient({ baseUrl, headers, request, lookupNam
       if (res.status === 404) return { status: "unavailable" };
       if (!res.ok) {
         const error = Object.assign(new Error(`Youth standings request failed (${res.status})`), { status: res.status });
-        if (res.status !== 401) reportError(error, { path, status: res.status });
+        // #5694 (CYCLINGZONE-69): status 0 (netværk/abort/offline) er IKKE en
+        // serverfejl - ens håndtering med rankingsClient (delt regel, se
+        // isNetworkOrAbortStatus). 401 er session-udløb, ejet af auth-flowet.
+        if (res.status !== 401 && !isNetworkOrAbortStatus(res.status)) reportError(error, { path, status: res.status });
         return { status: "error", error };
       }
       const pools = normalizeYouthStandings(res.data);

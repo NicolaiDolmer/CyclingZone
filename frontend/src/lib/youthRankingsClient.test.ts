@@ -83,6 +83,15 @@ test("getYouthStandings: 409 = slukket, 404 = ikke deployet, 500 = fejl med tele
   assert.deepEqual(reports, [500]);
 });
 
+// #5694 (CYCLINGZONE-69): status 0 = netværk/abort/offline, ALDRIG en
+// serverfejl - ingen Sentry-capture, ens håndtering med rankingsClient.
+test("getYouthStandings: status 0 (netværk/abort) rapporteres IKKE til Sentry", async () => {
+  const reports: number[] = [];
+  const result = await clientWith({ ok: false, status: 0, data: null }, [], reports).getYouthStandings({ squad: "junior" });
+  assert.equal(result.status, "error");
+  assert.deepEqual(reports, [], "status 0 må aldrig nå reportError");
+});
+
 test("getYouthStandings uden session svarer fejl uden netværkskald", async () => {
   const calls: string[] = [];
   const client = createYouthRankingsClient({
