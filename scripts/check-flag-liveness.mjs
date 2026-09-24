@@ -74,7 +74,7 @@ export function classifyPath(rawPath) {
   if (!CODE_EXT.test(p)) return "other";
   if (/(^|\/)(tests?|__tests__|e2e)\//.test(p) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(p)) return "test";
   if (p.startsWith("frontend/src/preview/")) return "mock";
-  if (/^(scripts|\.claude|\.github|backend\/scripts)\//.test(p)) return "script";
+  if (/^(scripts|\.claude|\.github|backend\/scripts|frontend\/scripts)\//.test(p)) return "script";
   if (/^(backend|frontend|shared|api)\//.test(p)) return "prod";
   return "other";
 }

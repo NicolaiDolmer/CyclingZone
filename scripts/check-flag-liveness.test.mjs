@@ -67,6 +67,7 @@ test("classifyPath skelner produktion, test, mock og scripts", () => {
   assert.equal(classifyPath("frontend/src/preview/installPreviewMock.js"), "mock");
   assert.equal(classifyPath("frontend/src/preview/mockHandlers.test.js"), "test");
   assert.equal(classifyPath("backend/scripts/dev/x.mjs"), "script");
+  assert.equal(classifyPath("frontend/scripts/dev-preview.mjs"), "script");
   assert.equal(classifyPath("database/2026-01-01-x.sql"), "sql");
   assert.equal(classifyPath("docs/x.md"), "docs");
 });
