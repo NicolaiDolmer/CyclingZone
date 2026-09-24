@@ -103,28 +103,27 @@ export function planD4PoolRetirement({ pools = [], teams = [], assumeMerged = fa
   const remaining = new Map(keep.map((p) => [p.id,
     Math.max(0, POOL_TARGET_SIZE - d4Teams.filter((t) => t.league_division_id === p.id).length)]));
 
-  // Kilde-puljernes flytbare AI, flettet (E1, F1, G1, H1, E2, …), så hver A-D-pulje
-  // får en blanding fra alle fire puljer i stedet for én hel pulje.
-  const bySource = retire.map((p) => d4Teams
+  // Ledige pladser i A-D, delt ud på skift (A, B, C, D, A, …, fulde puljer springes
+  // over), og de flytbare AI-hold i kilde-orden (alle fra E, så F, …). Sammen giver
+  // det hver A-D-pulje en blanding fra alle fire kilde-puljer. Overskuddet er de
+  // sidste i kilde-ordenen.
+  const slots = [];
+  const left = new Map(remaining);
+  while (keep.some((p) => left.get(p.id) > 0)) {
+    for (const p of keep) {
+      if (left.get(p.id) > 0) { slots.push(p); left.set(p.id, left.get(p.id) - 1); }
+    }
+  }
+  const movable = retire.flatMap((p) => d4Teams
     .filter((t) => t.league_division_id === p.id && isMovableAi(t))
     .sort((a, b) => String(a.id).localeCompare(String(b.id))));
-  const movable = [];
-  for (let i = 0; bySource.some((list) => i < list.length); i++) {
-    for (const list of bySource) if (i < list.length) movable.push(list[i]);
-  }
 
   const moves = [];
   const leftover = [];
-  for (const team of movable) {
-    let target = null;
-    for (const p of keep) {
-      const left = remaining.get(p.id);
-      if (left > 0 && (target == null || left > remaining.get(target.id))) target = p;
-    }
-    if (!target) { leftover.push(team); continue; }
-    remaining.set(target.id, remaining.get(target.id) - 1);
-    moves.push({ teamId: team.id, fromPoolId: team.league_division_id, toPoolId: target.id });
-  }
+  movable.forEach((team, i) => {
+    if (i >= slots.length) { leftover.push(team); return; }
+    moves.push({ teamId: team.id, fromPoolId: team.league_division_id, toPoolId: slots[i].id });
+  });
 
   const retireTeams = [
     ...leftover,
