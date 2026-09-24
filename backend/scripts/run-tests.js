@@ -47,16 +47,21 @@ import { fileURLToPath } from "node:url";
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ISOLATED_RELATIVE = path.join("lib", "economyEngine.test.js");
 const IGNORED_DIRS = new Set(["node_modules", ".git"]);
+const TEST_FILE_SUFFIXES = Object.freeze([".test.js", ".test.ts", ".test.mjs"]);
 
 function findTestFiles(dir, out) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       if (IGNORED_DIRS.has(entry.name)) continue;
       findTestFiles(path.join(dir, entry.name), out);
-    } else if (entry.isFile() && (entry.name.endsWith(".test.js") || entry.name.endsWith(".test.ts"))) {
+    } else if (entry.isFile() && TEST_FILE_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) {
       // .test.ts: kun lib/engine/v4/**/*.test.ts (#4030) — Node 24 koerer .ts
       // direkte via type stripping, ingen build-step. Andre .ts-testfiler
       // findes ikke i backend endnu; udvid mønsteret hvis flere kommer.
+      // .test.mjs (#5579): testfiler til .mjs-scripts (fx
+      // renderV4AnchorTable.test.mjs, der skal faelde §7b-drift). Indtil
+      // #5579 samlede denne funktion dem ikke op, og CI kalder dem ikke
+      // andre steder, saa de blev aldrig koert.
       out.push(path.join(dir, entry.name));
     }
   }
