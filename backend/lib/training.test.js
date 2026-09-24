@@ -675,37 +675,29 @@ test("#5236/#5237 · de nye sessioner rører ikke technique/tempo/loebslaere (in
   assert.deepEqual([...TRAINING_FOCUSES.loebslaere], ["positioning", "tactics", "aggression"]);
 });
 
-test("#5236/#5237 · UDBYTTE-SUMMEN er den samme for brosten og angreb (ingen power creep)", () => {
-  const sum = focusWeightSum("cobbled_sectors");
-  assert.equal(focusWeightSum("attack_repeats"), sum, "angreb må ikke indeholde mere dag end brosten");
-});
-
-test("#5456 (ejer offentligt 23/9, retning A) · vifteøvelsers vægtsum matcher vo2max-familien, brosten/angreb er urørte", () => {
-  const echelonSum = focusWeightSum("echelon_drills");
+test("#5456 (ejer offentligt 23/9, retning A: 'de tre nye formers vægtsum sænkes fra 4 til vo2max-familiens 3') · UDBYTTE-SUMMEN er den samme i alle tre nye hårde sessioner OG matcher vo2max-familien (ingen power creep)", () => {
   const vo2maxSum = focusWeightSum("vo2max_climb");
-  assert.equal(vo2maxSum, focusWeightSum("vo2max_punch"), "sanity: vo2max-familien er intern-ens");
-  assert.equal(echelonSum, vo2maxSum, "vifteøvelser skal have samme vægtsum som vo2max-familien efter tone-down");
-  assert.notEqual(echelonSum, focusWeightSum("cobbled_sectors"), "vifte er lavere end brosten/angreb efter tone-down");
-  assert.notEqual(echelonSum, focusWeightSum("attack_repeats"), "vifte er lavere end brosten/angreb efter tone-down");
+  assert.equal(focusWeightSum("vo2max_punch"), vo2maxSum, "sanity: vo2max-familien er intern-ens");
+  assert.equal(focusWeightSum("cobbled_sectors"), vo2maxSum, "brosten må ikke indeholde mere dag end vo2max-familien");
+  assert.equal(focusWeightSum("echelon_drills"), vo2maxSum, "vifte må ikke indeholde mere dag end vo2max-familien");
+  assert.equal(focusWeightSum("attack_repeats"), vo2maxSum, "angreb må ikke indeholde mere dag end vo2max-familien");
 });
 
-test("#5236/#5237 · hovedevnen vejer mere end de to evner der betaler prisen (brosten, angreb)", () => {
-  assert.equal(focusAbilityWeight("cobbled_sectors", "cobblestone"), 2);
+test("#5456 · alle tre nye hårde sessioners evnevægte efter tone-down (hovedevne og støtte-evner vejer lige meget)", () => {
+  assert.equal(focusAbilityWeight("cobbled_sectors", "cobblestone"), 1);
   assert.equal(focusAbilityWeight("cobbled_sectors", "durability"), 1);
   assert.equal(focusAbilityWeight("cobbled_sectors", "positioning"), 1);
 
-  assert.equal(focusAbilityWeight("attack_repeats", "aggression"), 2);
+  assert.equal(focusAbilityWeight("echelon_drills", "flat"), 1);
+  assert.equal(focusAbilityWeight("echelon_drills", "positioning"), 1);
+  assert.equal(focusAbilityWeight("echelon_drills", "durability"), 1);
+
+  assert.equal(focusAbilityWeight("attack_repeats", "aggression"), 1);
   assert.equal(focusAbilityWeight("attack_repeats", "punch"), 1);
   assert.equal(focusAbilityWeight("attack_repeats", "acceleration"), 1);
 
   // Uden for pakken vejer enhver evne stadig 1,0 (sikker default).
   assert.equal(focusAbilityWeight("cobbled_sectors", "tempo"), 1);
-});
-
-test("#5456 · vifteøvelsers evnevægte efter tone-down", () => {
-  assert.equal(focusAbilityWeight("echelon_drills", "flat"), 1);
-  assert.equal(focusAbilityWeight("echelon_drills", "positioning"), 1);
-  assert.equal(focusAbilityWeight("echelon_drills", "durability"), 1);
 });
 
 test("#5236/#5237 · smartDefaultFocus er UÆNDRET (SMART_DEFAULT_FOCUS_KEYS er frosset)", () => {

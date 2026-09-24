@@ -136,25 +136,28 @@ export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
 //
 // Fokus uden en post her vægter 1,0 pr. evne, dvs. bit-identisk med før.
 // #5236/#5237: samme greb som #4631 — uden en vægt ville tre-evners-pakken
-// bare være tre lige store tredjedele, og hovedevnen (brosten/angreb) ville
-// ikke stå tydeligere end de to evner der er der for at holde prisen
-// (durability/positioning). INVARIANTEN: cobbled_sectors og attack_repeats
-// har samme vægtsum som hinanden — pinnet i training.test.js, samme mønster
-// som vo2max-familiens interne invariant. Uden det ville én pakke give mere
-// "dag" end en anden for samme pris, hvilket er power creep.
+// bare være tre lige store tredjedele. Oprindeligt vejede hovedevnen
+// (brosten/vifte/angreb) mere end de to evner der betaler prisen
+// (durability/positioning), men se #5456 nedenfor for hvorfor det ikke
+// længere er tilfældet.
 //
-// #5456 (ejer offentligt 23/9, retning A): echelon_drills gav markant flere
-// flerpoint-stigninger end resten af den hårde familie, fordi dens vægtsum lå
-// over vo2max-familiens. Vægtsummen er sænket til at matche vo2max-familien
-// — samme rod-årsag-fix som invarianten ovenfor beskytter mod, bare anvendt
-// retroaktivt på den ene session. cobbled_sectors og attack_repeats er
-// URØRTE af denne ændring.
+// #5456 (ejer offentligt 23/9, retning A; ejer-beslutning 23/9: "de tre nye
+// formers vægtsum sænkes fra 4 til vo2max-familiens 3"): alle tre nye hårde
+// sessioner gav markant flere flerpoint-stigninger end resten af den hårde
+// familie, fordi deres samlede vægtsum (4) lå over vo2max-familiens (3).
+// Vægtsummen for cobbled_sectors, echelon_drills OG attack_repeats er sænket
+// til at matche vo2max-familien, ved at sænke hver sessions hovedevnevægt fra
+// 2 til 1 (support-evnerne er urørte). INVARIANTEN (håndhævet i
+// training.test.js): alle tre nye hårde sessioner har samme vægtsum som
+// vo2max-familien (3) — samme mønster som vo2max-familiens interne
+// invariant. Uden det ville én pakke give mere "dag" end en anden for samme
+// pris, hvilket er power creep.
 export const FOCUS_ABILITY_WEIGHT = Object.freeze({
   vo2max_climb: Object.freeze({ climbing: 2, tempo: 1 }),
   vo2max_punch: Object.freeze({ punch: 2, tempo: 1 }),
-  cobbled_sectors: Object.freeze({ cobblestone: 2, durability: 1, positioning: 1 }),
+  cobbled_sectors: Object.freeze({ cobblestone: 1, durability: 1, positioning: 1 }),
   echelon_drills:  Object.freeze({ flat: 1, positioning: 1, durability: 1 }),
-  attack_repeats:  Object.freeze({ aggression: 2, punch: 1, acceleration: 1 }),
+  attack_repeats:  Object.freeze({ aggression: 1, punch: 1, acceleration: 1 }),
 });
 
 // Vægten for én evne i ét fokus. Ren opslag med sikker default.
