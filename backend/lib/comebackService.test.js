@@ -10,6 +10,26 @@ import {
   ComebackError,
 } from "./comebackService.js";
 
+// createFakeSupabase kender ikke PostgREST's .or(); withSeniorSquadScope bruger den til
+// senior-scopet (#5517). Her registreres kaldet og ignoreres, så puljefiltreringen testes
+// i pickComebackPool (som også selv springer ungdomspuljer over).
+function fakeDb(state) {
+  const supabase = createFakeSupabase(state);
+  const from = supabase.from.bind(supabase);
+  supabase.orFilters = [];
+  supabase.from = (table) => {
+    const t = from(table);
+    const select = t.select;
+    t.select = (cols) => {
+      const q = select(cols);
+      q.or = (filter) => { supabase.orFilters.push({ table, filter }); return q; };
+      return q;
+    };
+    return t;
+  };
+  return supabase;
+}
+
 const SEASON = "season-4";
 const TEAM = "team-a";
 const PARKED_AT = "2026-09-27T20:00:00+00:00";
@@ -74,7 +94,7 @@ function makeDeps(supabase, overrides = {}) {
 }
 
 test("parkeret hold med rang 30 lander i D2-puljen med flest AI-pladser", async () => {
-  const supabase = createFakeSupabase(baseState({ rank: 30 }));
+  const supabase = fakeDb(baseState({ rank: 30 }));
   const { deps, calls } = makeDeps(supabase);
 
   const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -91,10 +111,11 @@ test("parkeret hold med rang 30 lander i D2-puljen med flest AI-pladser", async 
   assert.equal(team.comeback_season_id, SEASON);
   assert.deepEqual(calls.ai, [3]);
   assert.deepEqual(calls.calendar, [3]);
+  assert.ok(supabase.orFilters.some((f) => f.table === "league_divisions"), "puljerne læses senior-scopet (#5517)");
 });
 
 test("pro rata sponsor: garanteret base × resterende andel af løbsdagene", async () => {
-  const supabase = createFakeSupabase(baseState());
+  const supabase = fakeDb(baseState());
   const { deps, calls } = makeDeps(supabase);
 
   const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -109,7 +130,7 @@ test("pro rata sponsor: garanteret base × resterende andel af løbsdagene", asy
 });
 
 test("idempotens: to kald giver én betaling og én placering", async () => {
-  const supabase = createFakeSupabase(baseState());
+  const supabase = fakeDb(baseState());
   const { deps, calls } = makeDeps(supabase);
 
   await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -125,7 +146,7 @@ test("idempotens: to kald giver én betaling og én placering", async () => {
 
 test("ingen dobbelt sponsor: holdet fik allerede sæsonstartens sponsor", async () => {
   const [seasonStartKey] = seasonSponsorKeys(SEASON, TEAM);
-  const supabase = createFakeSupabase(baseState({
+  const supabase = fakeDb(baseState({
     extraFinance: [{ id: "ft-start", team_id: TEAM, amount: 400000, idempotency_key: seasonStartKey }],
   }));
   const { deps, calls } = makeDeps(supabase);
@@ -139,7 +160,7 @@ test("ingen dobbelt sponsor: holdet fik allerede sæsonstartens sponsor", async 
 
 test("ingen dobbelt sponsor: holdet fik allerede midt-sæson-sponsoren", async () => {
   const [, midSeasonKey] = seasonSponsorKeys(SEASON, TEAM);
-  const supabase = createFakeSupabase(baseState({
+  const supabase = fakeDb(baseState({
     extraFinance: [{ id: "ft-mid", team_id: TEAM, amount: 1, idempotency_key: midSeasonKey }],
   }));
   const { deps, calls } = makeDeps(supabase);
@@ -149,7 +170,7 @@ test("ingen dobbelt sponsor: holdet fik allerede midt-sæson-sponsoren", async (
 });
 
 test("uden aktiv kontrakt: kontrakt og betaling som for et nyt hold", async () => {
-  const supabase = createFakeSupabase(baseState({ contract: false }));
+  const supabase = fakeDb(baseState({ contract: false }));
   const { deps, calls } = makeDeps(supabase);
 
   const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -162,7 +183,7 @@ test("uden aktiv kontrakt: kontrakt og betaling som for et nyt hold", async () =
 test("sæsonen er slut: ingen sponsor, men holdet kommer tilbage", async () => {
   const state = baseState();
   state.seasons[0].race_days_completed = 140;
-  const supabase = createFakeSupabase(state);
+  const supabase = fakeDb(state);
   const { deps, calls } = makeDeps(supabase);
 
   const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -173,7 +194,7 @@ test("sæsonen er slut: ingen sponsor, men holdet kommer tilbage", async () => {
 
 test("NULL-rang: rangeres på point blandt menneskehold", async () => {
   const above = Array.from({ length: 80 }, (_, i) => ({ team_id: `h-${i}`, global_rank: i + 1, global_points: 5000 }));
-  const supabase = createFakeSupabase(baseState({ rank: null, points: 900, extraRank: above }));
+  const supabase = fakeDb(baseState({ rank: null, points: 900, extraRank: above }));
   const { deps } = makeDeps(supabase);
 
   const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -186,7 +207,7 @@ test("NULL-rang uden point går til bunden (D4)", async () => {
   const state = baseState({ rank: null, points: 0 });
   state.league_divisions.push({ id: 5, tier: 4, pool_index: 0, label: "4A" });
   state.teams.push(aiTeam("ai-4b", 5));
-  const supabase = createFakeSupabase(state);
+  const supabase = fakeDb(state);
   const { deps } = makeDeps(supabase);
 
   const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
@@ -195,7 +216,7 @@ test("NULL-rang uden point går til bunden (D4)", async () => {
 });
 
 test("ikke parkeret → ComebackError not_parked (409), intet ændres", async () => {
-  const supabase = createFakeSupabase(baseState({ parkedAt: null }));
+  const supabase = fakeDb(baseState({ parkedAt: null }));
   const { deps, calls } = makeDeps(supabase);
 
   await assert.rejects(
@@ -208,7 +229,7 @@ test("ikke parkeret → ComebackError not_parked (409), intet ændres", async ()
 test("ingen aktiv sæson → no_active_season (409)", async () => {
   const state = baseState();
   state.seasons[0].status = "completed";
-  const supabase = createFakeSupabase(state);
+  const supabase = fakeDb(state);
   const { deps } = makeDeps(supabase);
 
   await assert.rejects(
@@ -219,7 +240,7 @@ test("ingen aktiv sæson → no_active_season (409)", async () => {
 });
 
 test("ukendt hold → team_not_found (404)", async () => {
-  const supabase = createFakeSupabase(baseState());
+  const supabase = fakeDb(baseState());
   const { deps } = makeDeps(supabase);
   await assert.rejects(
     () => returnParkedTeam({ supabase, teamId: "ghost", deps }),
@@ -228,7 +249,7 @@ test("ukendt hold → team_not_found (404)", async () => {
 });
 
 test("en fejlet sponsor-udbetaling vælter ikke comebacket, og et nyt kald betaler", async () => {
-  const supabase = createFakeSupabase(baseState());
+  const supabase = fakeDb(baseState());
   let fail = true;
   const { deps, calls } = makeDeps(supabase);
   const realCredit = deps.creditFn;
@@ -250,7 +271,7 @@ test("en fejlet sponsor-udbetaling vælter ikke comebacket, og et nyt kald betal
 });
 
 test("fejl i AI- eller kalender-opfølgning er ikke-fatal", async () => {
-  const supabase = createFakeSupabase(baseState());
+  const supabase = fakeDb(baseState());
   const { deps, calls } = makeDeps(supabase, {
     reconcileAiTeamsFn: async () => { throw new Error("ai boom"); },
     reconcilePoolCalendarFn: async () => { throw new Error("cal boom"); },
@@ -265,7 +286,7 @@ test("fejl i AI- eller kalender-opfølgning er ikke-fatal", async () => {
 test("payComebackSponsor: base 0 betaler intet", async () => {
   const state = baseState();
   state.sponsor_contracts[0].guaranteed_base = 0;
-  const supabase = createFakeSupabase(state);
+  const supabase = fakeDb(state);
   const { deps, calls } = makeDeps(supabase);
   const result = await payComebackSponsor({
     supabase,

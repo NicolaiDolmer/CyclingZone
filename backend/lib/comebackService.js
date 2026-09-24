@@ -35,6 +35,7 @@ import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { withSeniorSquadScope } from "./squads.js";
 import { captureException } from "./sentry.js";
 
 // Fejl med en HTTP-status, så route-filen kan oversætte uden at kende detaljerne.
@@ -94,9 +95,11 @@ async function loadRank(supabase, teamId) {
 }
 
 async function loadPlacementInputs(supabase) {
-  // select("*"): league_divisions.retired_at (spor A2) og .squad findes måske ikke i
-  // alle miljøer endnu; en manglende kolonne skal læses som "aktiv senior-pulje".
-  const { data: pools, error: poolsError } = await supabase.from("league_divisions").select("*");
+  // select("*"): league_divisions.retired_at (spor A2) findes måske ikke i alle miljøer
+  // endnu; en manglende kolonne skal læses som "aktiv pulje". Kun seniorpuljer (#5517):
+  // et comeback lander aldrig i en ungdomspulje. pickComebackPool filtrerer også selv.
+  const { data: pools, error: poolsError } = await withSeniorSquadScope((senior) =>
+    senior(supabase.from("league_divisions").select("*")));
   if (poolsError) throw new Error(`league_divisions: ${poolsError.message}`);
   const teams = await fetchAllRows(() => supabase
     .from("teams")
