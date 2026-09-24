@@ -1467,6 +1467,10 @@ export async function transitionToNextSeason({
         from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
         dryRun: true,
         raceDayTarget: seasonRaceDayTarget,
+        // #5592: første etape mindst 24 timer efter det FAKTISKE sæsonskifte, ikke
+        // konventionens kl. 18. Kan dagen ikke nå det inden kl. 22, kaster planen og
+        // fanges af catch'en nedenfor (ingen kalender hellere end natte-etaper).
+        seasonTransitionAt: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
       });
       const { blocking, compositionDrift, tierCompositionDrift } = gatePlanFn(dryPlan);
 
@@ -1487,6 +1491,7 @@ export async function transitionToNextSeason({
           from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
           dryRun: false,
           raceDayTarget: seasonRaceDayTarget,
+          seasonTransitionAt: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso), // #5592, samme som dry-run
         });
         log.push({ phase: "season_calendar", ...applied, compositionDrift, tierCompositionDrift });
         calendarApplied = true;
