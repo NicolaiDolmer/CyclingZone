@@ -1293,6 +1293,9 @@ export async function runRaceEntryGenerator({
           .in("rider_id", riderIds);
         preDelErr = preDelRes?.error ?? null;
       } catch (thrown) {
+        // best-effort: en kastet transportfejl her behandles som en almindelig
+        // {error}-afvisning (haandteres nedenfor) i stedet for at vaelte resten
+        // af sweepet for de OEVRIGE hold (CodeRabbit-fund, #5693).
         preDelErr = thrown;
       }
       if (preDelErr) {
