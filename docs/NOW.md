@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); tjek `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); stablede PR'er retargetes til main FØR base merges (#5655→#5670); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Claude Code DOLMERPC 25/9-a (fra 24/9 kl. 20): værdi-bølge kører (#5686→PR 5690, #5497→PR 5502, #5689→PR 5691).
+> **🤖 Working agent:** Claude Code DOLMERPC 25/9-a (fra 24/9 kl. 20). Bølge 1: #5691 merget; PR 5690 + 5502 grønne, afventer ejer-merge. Bølge 2 kører: trin-tæller, #5693, #5694, #5682.
