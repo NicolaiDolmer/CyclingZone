@@ -11,6 +11,7 @@ import {
   chaseAbilityScale,
   computeJoinScore,
   computeNetChaseAdvantage,
+  effortJoinBoost,
   joinProbability,
   selectBreakawayRiders,
   teamChasePlan,
@@ -18,6 +19,7 @@ import {
   type BreakawayStance,
   type BreakawayTeamOrder,
   TEAM_TACTICS_ORDER_KIND,
+  TRY_BREAK_JOIN_SCORE_BOOST,
 } from "./breakaway.ts";
 import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
@@ -858,4 +860,34 @@ test("#5570 realisme 3: lader alle holdene det gaa, vinder udbruddet oftere", ()
   for (const o of sweep(stancesWith(0, "let_go"))) {
     for (const r of Object.values(o.riders)) assert.equal(r.team_cp_factor, undefined, `${r.rider_id} lod gaa og maa ikke betale`);
   }
+});
+
+// ── #5580 (M1 punkt 3): protect = "arbejd eller angrib" ───────────────────────
+
+test("#5580 effortJoinBoost: kun en kaptajn/sprint-kaptajn paa protect faar plusset", () => {
+  const efforts: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+  const roles: RiderRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
+  for (const role of roles) {
+    for (const effort of efforts) {
+      const boost = effortJoinBoost(role, effort);
+      const leaderOnProtect = effort === "protect" && (role === "captain" || role === "sprint_captain");
+      if (leaderOnProtect) assert.ok(boost > 0, `${role}/${effort}`);
+      else assert.equal(boost, 0, `${role}/${effort}: en hjaelper paa protect arbejder, han angriber ikke`);
+    }
+  }
+});
+
+test("#5580 effortJoinBoost: altid mindre end try_break (en eksplicit ordre vejer tungere end trinnet) og aldrig negativt", () => {
+  assert.ok(effortJoinBoost("captain", "protect") < TRY_BREAK_JOIN_SCORE_BOOST);
+  assert.equal(effortJoinBoost("captain", "protect", -1), 0);
+  assert.equal(effortJoinBoost("captain", "protect", Number.NaN), 0);
+});
+
+test("#5580 computeJoinScore: plusset loefter scoren bounded og aldrig over 1", () => {
+  const ab = abilities({ aggression: 60, endurance: 60, tempo: 60 });
+  const base = computeJoinScore(ab, false);
+  const withBoost = computeJoinScore(ab, false, effortJoinBoost("captain", "protect"));
+  assert.ok(withBoost > base);
+  assert.equal(computeJoinScore(ab, false, 0), base, "uden plus: uaendret score");
+  assert.ok(computeJoinScore(abilities({ aggression: 99, endurance: 99, tempo: 99 }), true, 0.5) <= 1);
 });
