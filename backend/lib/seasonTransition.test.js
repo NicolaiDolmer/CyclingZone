@@ -1265,6 +1265,34 @@ test("transitionToNextSeason — auto_calendar ON + gatePlan blokerer: nægter a
   assert.equal(result.log.find((p) => p.phase === "season_entry_generator"), undefined, "entry-generatoren må IKKE køre når kalenderen blev nægtet");
 });
 
+// #5592: fase 17 planlægger mod det FAKTISKE sæsonskifte (første etape ≥ 24 t efter), i
+// både dry-run og apply — ikke konventionens kl. 18, som kan ligge før et sent skifte.
+test("transitionToNextSeason — auto_calendar ON: dry-run OG apply får seasonTransitionAt = transitionAt (#5592)", async () => {
+  const materializeCalls = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  const transitionAt = new Date("2026-05-15T19:30:00Z");
+  await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt,
+    deps: {
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
+      isAutoCalendarEnabled: async () => true,
+      isAutoEntryGeneratorEnabled: async () => false,
+      materializeTierCalendars: async (args) => { materializeCalls.push(args); return { racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] }; },
+      gatePlan: () => ({ blocking: [], compositionDrift: [], tierCompositionDrift: [] }),
+    },
+  });
+  assert.deepEqual(materializeCalls.map((a) => a.dryRun), [true, false]);
+  for (const a of materializeCalls) assert.equal(new Date(a.seasonTransitionAt).toISOString(), transitionAt.toISOString());
+});
+
 test("transitionToNextSeason — auto_calendar OFF (fail-safe default): ingen kalender-fase", async () => {
   let called = false;
   const supabase = createMockSupabase({
