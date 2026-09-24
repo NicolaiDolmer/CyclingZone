@@ -639,6 +639,9 @@ export default function TrainingPage() {
   // mobil-visningen læser den; desktop-fladen kender den ikke. `null` fra start
   // (ejer 21/9): ingen rytter er foldet ud ved indlæsning.
   const [mobileRiderId, setMobileRiderId] = useState(null);
+  // #5620/#5485: telefonens markerings-tilstand (hurtig hvile). Markeringen selv
+  // er den samme `selected` som desktoppens afkrydsning.
+  const [mobilePickMode, setMobilePickMode] = useState(false);
 
   // #2819: kørte onboarding-touren da siden blev mountet? Tourens tredje trin
   // peger på fremgangen pr. evne, som på telefonen kun findes i rytterens kort,
@@ -1602,17 +1605,24 @@ export default function TrainingPage() {
     );
   }
 
-  async function handleBulkApply() {
+  function handleBulkApply() {
+    return applyBulkChoice(bulkDay);
+  }
+
+  // #5620/#5485: telefonens "Rest"-knap er den samme mængde-sti som "Apply to N"
+  // med valget "rest" (bulkChoiceToDay → setPlanBulk). Returnerer true når alle
+  // valgte fik dagen, så telefonen kan forlade markerings-tilstanden.
+  async function applyBulkChoice(choice) {
     setBulkMsg(null);
-    if (!bulkDay) {
+    if (!choice) {
       setBulkMsg({ type: "warn", text: t("bulkPickFocus") });
-      return;
+      return false;
     }
     // #5485: "Apply to N" rammer aldrig en rytter der ikke står i filtret,
     // heller ikke i det øjeblik før markeringen er skåret ned (effekten nedenfor).
     const ids = [...pruneSelection(selected, filterIds)];
-    if (ids.length === 0) return;
-    const { dayType, session } = bulkChoiceToDay(bulkDay);
+    if (ids.length === 0) return false;
+    const { dayType, session } = bulkChoiceToDay(choice);
     const result = await setPlanBulk(ids, dayType, session);
     // #1894 variant 3: smart-mode springer ryttere MED eksisterende plan over
     // (server-håndhævet — overskriver ALDRIG en managers eget valg). Det er en
@@ -1624,14 +1634,15 @@ export default function TrainingPage() {
         : t("bulkApplied", { n: result.applied });
       setBulkMsg({ type: skippedHasPlan.length > 0 ? "partial" : "ok", text });
       setSelected(new Set());
-    } else {
-      setBulkMsg({
-        type: "partial",
-        text: t("bulkPartial", { applied: result.applied, total: ids.length, failed: result.failed.length }),
-      });
-      // Behold de fejlede valgte, så brugeren kan prøve igen.
-      setSelected(new Set(result.failed.map((f) => f.riderId)));
+      return true;
     }
+    setBulkMsg({
+      type: "partial",
+      text: t("bulkPartial", { applied: result.applied, total: ids.length, failed: result.failed.length }),
+    });
+    // Behold de fejlede valgte, så brugeren kan prøve igen.
+    setSelected(new Set(result.failed.map((f) => f.riderId)));
+    return false;
   }
 
   // #4522: assistent-forslagene til panelet. Ren afledning af data siden
@@ -2021,6 +2032,82 @@ export default function TrainingPage() {
   // antal løbsdage pr. dato. `buildRaceDayColumns` uden tal giver PRÆCIS én
   // kolonne ("I dag"), og den samme tabel bærer 1-5 kolonner den dag tallet
   // kommer. Der står aldrig et hårdkodet sæson-tal på fladen.
+  // #5620/#5485 (spillerfund 24/9): hurtig hvile på telefonen. "Select riders"
+  // slår markerings-tilstanden til; et tryk på en række markerer rytteren, og
+  // "Rest" eller en anden dag sættes for alle valgte på én gang, samme mængde-
+  // sti som desktoppens værktøjslinje. Ingen guld her: sidens ene guld-knap er
+  // stadig primaryAction.
+  function startMobilePick() {
+    setMobileRiderId(null);
+    setSelected(new Set());
+    setBulkMsg(null);
+    setMobilePickMode(true);
+  }
+  function endMobilePick() {
+    setMobilePickMode(false);
+    setSelected(new Set());
+  }
+  async function applyMobileBulk(choice) {
+    const ok = await applyBulkChoice(choice);
+    if (ok) setMobilePickMode(false);
+  }
+
+  function renderMobileBulkBar() {
+    // Uden markering står indgangen ("Select riders") i assistent-rækken; her
+    // vises kun en evt. besked fra sidste mængde-handling.
+    if (!mobilePickMode) {
+      return bulkMsgNode ? <div data-testid="training-mobile-bulk-bar">{bulkMsgNode}</div> : null;
+    }
+    return (
+      <div data-testid="training-mobile-bulk-bar" className="flex flex-wrap items-center gap-2">
+        {(
+          <>
+            <div className="flex w-full items-center justify-between gap-2">
+              <span className="min-w-0 text-[13px] font-semibold tabular-nums text-cz-1">
+                {selectedCount > 0 ? t("selected", { n: selectedCount }) : t("mobile.pickHint")}
+              </span>
+              <Button type="button" variant="ghost" size="sm" className="min-h-11 flex-none" onClick={endMobilePick} disabled={bulkApplying}>
+                {t("mobile.selectDone")}
+              </Button>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="min-h-11"
+              onClick={() => applyMobileBulk("rest")}
+              disabled={bulkApplying || selectedCount === 0}
+            >
+              {bulkApplying ? t("bulkApplying") : t("mobile.restSelected")}
+            </Button>
+            <div className="min-w-0 flex-1 basis-36">
+              <Select
+                size="sm"
+                value={bulkDay}
+                disabled={bulkApplying}
+                aria-label={t("dayPanel.bulkSetDay")}
+                onChange={(e) => setBulkDay(e.target.value)}
+              >
+                {renderBulkDayOptions()}
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="min-h-11"
+              onClick={() => applyMobileBulk(bulkDay)}
+              disabled={bulkApplying || selectedCount === 0 || !bulkDay}
+            >
+              {t("today.applyTo", { n: selectedCount })}
+            </Button>
+          </>
+        )}
+        {bulkMsgNode}
+      </div>
+    );
+  }
+
   function renderMobileToday() {
     const columns = raceDayColumns;
     // #5485: overblikkets filter gælder også telefonens tabel.
@@ -2041,6 +2128,9 @@ export default function TrainingPage() {
           <TrainingMobileToday
             riders={rows}
             columns={columns}
+            picked={mobilePickMode ? selected : null}
+            onTogglePick={toggleSelect}
+            bulkSlot={renderMobileBulkBar()}
             selectedRiderId={mobileRiderId}
             // Tryk på den samme rytter igen LUKKER kortet; tryk på en anden
             // flytter det. Der er højst ét åbent kort ad gangen.
@@ -2222,11 +2312,15 @@ export default function TrainingPage() {
   // mockup 2; trykket åbner det samme panel lige under rækken.
   const assistantRow = (
     <div className="space-y-3">
+      {/* #5620/#5485: "Select riders" står i SAMME række som assistenten, så
+          indgangen til hurtig hvile ikke skubber tabellen ned (mindst 8 ryttere
+          på første skærm, 390 × 844). Kun telefonens tabel-visning. */}
+      <div className="flex items-stretch gap-2">
       <button
         type="button"
         onClick={handleOpenAssistantPanel}
         data-testid="training-assistant-row"
-        className="flex min-h-11 w-full items-center gap-2.5 rounded-cz border border-cz-border bg-cz-card px-3 text-start transition-colors hover:bg-cz-subtle"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-cz border border-cz-border bg-cz-card px-3 text-start transition-colors hover:bg-cz-subtle"
       >
         <StarIcon size={16} className="flex-none text-cz-3" aria-hidden="true" />
         <span className="flex-1 text-[13px] font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
@@ -2235,6 +2329,19 @@ export default function TrainingPage() {
         </span>
         <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
       </button>
+      {mobileTableView && activeTab === "today" && !mobilePickMode && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="min-h-11 flex-none"
+          onClick={startMobilePick}
+          data-testid="training-mobile-select-riders"
+        >
+          {t("mobile.selectRiders")}
+        </Button>
+      )}
+      </div>
       {assistantPanel}
     </div>
   );

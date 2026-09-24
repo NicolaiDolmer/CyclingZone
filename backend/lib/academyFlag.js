@@ -8,7 +8,10 @@ import { SALARY_RATE } from "./economyConstants.js";
 
 export const ACADEMY = Object.freeze({
   FLAG_KEY: "academy_enabled",
-  SLOTS: 8,                 // pladser pr. akademi (hård cap)
+  SLOTS: 8,                 // #5568: IKKE længere et loft. Lofterne er pr. ungdomstrup
+                            // (squads.js SQUAD_CAPS). Tallet lever kun som intake-
+                            // pipelinens mål (seasonAcademyIntake TARGET_PIPELINE) og i
+                            // sim-scripts; squadCapsDrift.test.js fælder ny loft-brug.
   MIN_AGE: 16,
   MAX_AGE: 21,
   INTAKE_MIN: 3,            // kandidater pr. kuld
