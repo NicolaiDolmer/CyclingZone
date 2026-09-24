@@ -872,6 +872,7 @@ export async function materializeTierCalendars({
   // #5517: kun SENIORløbene — idempotens-nøglen og cross-tier-dedup'en gælder
   // seniorkalenderen (spec §4.2: navne-dedup pr. trup, ikke på tværs af trupper).
   // #5644: en trup ser kun sine egne løb — dedup og idempotens er pr. trup (spec §4.2).
+  // squad-scope-ok: ungdomsgrenen er scopet med .eq("squad", <trup>), seniorgrenen med withSeniorSquadScope
   const { data: existing, error: exErr } = isSenior
     ? await withSeniorSquadScope((senior) => senior(supabase.from("races").select("league_division_id, pool_race_id, name")).eq("season_id", seasonId))
     : await supabase.from("races").select("league_division_id, pool_race_id, name").eq("squad", squad).eq("season_id", seasonId);
