@@ -255,13 +255,20 @@ export function groupRaceIdsByDivision(raceRows) {
  *     divisionen ingen etaper efter i dag, forlaenges spaendet derfor til aksens sidste
  *     loebsdag (`axisEndByDivision`, = kalenderens eget saesonmaal - 1). Ukendt ⇒ ingen
  *     forlaengelse. Forlaengelsen er ALT-ELLER-INTET: kan hele aftenens spaend inkl.
- *     forlaengelsen ikke vaere under ops-loftet, passer aksen ikke til maalet (kalenderen
- *     er pakket uden det eller med et andet), og ingen af de dage findes med sikkerhed.
- *     Saa droppes forlaengelsen helt og rapporteres i `droppedExtensionGameDays`, og
- *     aftenen koerer praecis som uden forlaengelse. Den kan dermed aldrig skubbe dagens
+ *     forlaengelsen ikke vaere under ops-loftet, kan forlaengelsen ikke bevises. Enten
+ *     passer aksen ikke til maalet (kalenderen er pakket uden det eller med et andet),
+ *     eller aftenen baerer et efterslaeb (en dato uden loeb foran i dag); loftet alene
+ *     kan ikke skelne de to. Saa droppes forlaengelsen helt og rapporteres i
+ *     `droppedExtensionGameDays`, og aftenen koerer praecis som uden forlaengelse. Paa
+ *     sidste loebsdato kan de dage ikke hentes igen, men en loebsdag der maaske ikke
+ *     findes tickes aldrig paa et gaet. Forlaengelsen kan dermed aldrig skubbe dagens
  *     egne loebsdage ud i `skippedGameDays` (diff-tjekket af PR #5608: med et arvet maal
  *     paa en kortere akse tikkede loftet 8 loebsdage der ikke fandtes og sprang dagens
  *     egne over).
+ *     BEGRAENSNING: en akse der kun er LIDT kortere end maalet (forlaengelsen passer
+ *     stadig under loftet) kan ikke skelnes fra en rigtig her — den pakkede akses laengde
+ *     gemmes ikke, saa sweepen kender kun maalet. Det lukkes i kalenderen (en gate der
+ *     kraever aksen = maalet i alle divisioner), ikke i traenings-lukningen.
  *   · Ingen loeb i divisionen i dag ⇒ INTET spaend. E er ukendt. I en kalender med
  *     eksakt kvote (§1b: hver dato baerer praecis `density` etaper) opstaar kanten
  *     ikke; ellers samles dagene op af naeste dato med loeb.
@@ -313,7 +320,8 @@ export function gameDaySpansByDivision(
       for (let gd = todaysLast + 1; gd <= axisEnd; gd += 1) extension.push(gd);
     }
     // ALT-ELLER-INTET (se doc-blokken): forlaengelsen maa aldrig kunne fortraenge
-    // aftenens egne loebsdage under loftet. Passer den ikke, droppes den synligt.
+    // aftenens egne loebsdage under loftet. Faar den ikke plads, droppes den synligt —
+    // aarsagen (akse != maal eller efterslaeb) kan loftet ikke afgoere.
     const extensionFits = core.length + extension.length <= maxCatchUp;
     const full = extensionFits ? [...core, ...extension] : core;
     const droppedExtensionGameDays = extensionFits ? [] : extension;
@@ -778,10 +786,11 @@ export async function runTrainingDayCloseSweep({
       .filter(([, span]) => span.droppedExtensionGameDays?.length)
       .map(([divisionId, span]) => ({ divisionId, gameDays: span.droppedExtensionGameDays }));
     if (droppedExtensionGameDays.length) {
-      // Synligt, ikke tavst: aksen passer ikke til saesonmaalet (se
-      // gameDaySpansByDivision). ASCII-only: ops-log.
+      // Synligt, ikke tavst. Aarsagen er enten en akse der ikke passer til
+      // saesonmaalet eller et efterslaeb foran i dag (se gameDaySpansByDivision) —
+      // loglinjen paastaar ingen af dem. ASCII-only: ops-log.
       logger.warn?.(
-        `  ⚠️ Traenings-lukning: ${droppedExtensionGameDays.length} division(er) paa sidste loebsdato - forlaengelsen til saesonmaalet passer ikke med aksen og er IKKE koert`,
+        `  ⚠️ Traenings-lukning: ${droppedExtensionGameDays.length} division(er) paa sidste loebsdato - forlaengelsen til saesonmaalet fik ikke plads under loftet (${MAX_GAME_DAY_CATCH_UP}) og er IKKE koert (akse != maal eller efterslaeb)`,
       );
     }
 
