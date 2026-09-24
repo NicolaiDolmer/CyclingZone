@@ -123,6 +123,11 @@
     },
     "orphan": "{n} svar ligger på nøgler skemaet ikke længere har: {keys}"
   },
+  "seasonCycle": {
+    "parkedLabel": "Parkerede hold",
+    "parkedSub": "Ingen sponsor denne sæson. Lønnen betales stadig.",
+    "confirmParked": "  • Springe sponsor over for {{count}} parkerede hold"
+  },
   "racePoints": {
   "model": {
     "tabModel": "Model (kaskade)",

@@ -123,6 +123,11 @@
     },
     "orphan": "{n} answers sit on keys the survey no longer has: {keys}"
   },
+  "seasonCycle": {
+    "parkedLabel": "Parked teams",
+    "parkedSub": "No sponsor this season. Wages are still paid.",
+    "confirmParked": "  • Skip sponsor for {{count}} parked teams"
+  },
   "racePoints": {
   "model": {
     "tabModel": "Model (cascade)",
