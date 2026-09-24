@@ -125,17 +125,25 @@ test("#5645 autofyld: seniorløb i samme pulje-id-rum er uændret (kun seniorer,
   for (const e of entrants) assert.equal(riderById.get(e.rider_id).squad, "senior");
 });
 
-test("#5645 autofyld: juniorløb tager kun sæsonalder >= 17, aldrig 16-årige", async () => {
+test("#5645 autofyld: juniorløb fylder truppens juniorer uanset alder — 16-årige autofyldes nu (ejer 24/9)", async () => {
   const state = youthState();
-  // Født 2013 = 16 i sæson 4 (stærkest), født 2012 = 17.
+  // Født 2013 = 16 i sæson 4 (stærkest), født 2012 = 17. Ejer 24/9: "kan man være i
+  // spillet som 16-årig, kan man også deltage i løb som 16-årig" — aldersgaten på 17
+  // er fjernet (raceRunner.js:1465/1444, riderEligibility.js:59), kun trup-medlemskab
+  // (squad === "junior") afgør. Begge årgange skal derfor kunne autofyldes.
   addRiders(state, "t1", "junior", 4, { prefix: "j16-", birthdate: "2013-03-01", strength: 99 });
   addRiders(state, "t1", "junior", 8, { prefix: "j17-", birthdate: "2012-03-01", strength: 70 });
   const race = { id: "raceJ", race_type: "single", season_id: "s1", league_division_id: 20, squad: "junior" };
   const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false });
   assert.ok(entrants.length > 0, "juniorfeltet blev fyldt");
+  const riderById = new Map(state.riders.map((r) => [r.id, r]));
   for (const e of entrants) {
-    assert.ok(e.rider_id.startsWith("t1-j17-"), `${e.rider_id} er ikke en 17-årig junior`);
+    assert.equal(riderById.get(e.rider_id).squad, "junior", `${e.rider_id} er ikke en juniorrytter`);
   }
+  assert.ok(
+    entrants.some((e) => e.rider_id.startsWith("t1-j16-")),
+    "16-årig junior blev ikke autofyldt — aldersgaten ser ud til stadig at være aktiv",
+  );
 });
 
 test("#5645 startfelt: committede entries krydses mod løbets trup (senior i U23-løb = ghost)", async () => {
@@ -185,7 +193,7 @@ test("#5645 resolveRaceSquad: 42703 (kolonnen findes ikke) = senior, anden DB-fe
   );
 });
 
-test("#5645 startfelt: en committet 16-årig junior-entry starter ikke (aldersgaten gælder også entries)", async () => {
+test("#5645 startfelt: en committet 16-årig junior-entry starter (ejer 24/9: ingen aldersgate for entries)", async () => {
   const state = youthState();
   addRiders(state, "t1", "junior", 1, { prefix: "j16-", birthdate: "2013-03-01" });
   addRiders(state, "t1", "junior", 6, { prefix: "j17-", birthdate: "2012-03-01" });
@@ -196,6 +204,6 @@ test("#5645 startfelt: en committet 16-årig junior-entry starter ikke (aldersga
   ];
   const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false, allowAutofill: false });
   const ids = entrants.map((e) => e.rider_id);
-  assert.ok(!ids.includes("t1-j16-0"), "16-årig junior må ikke starte");
+  assert.ok(ids.includes("t1-j16-0"), "16-årig junior-entry skal starte — trup-medlemskab er hele kravet (ejer 24/9)");
   for (let i = 0; i < 6; i++) assert.ok(ids.includes(`t1-j17-${i}`));
 });
