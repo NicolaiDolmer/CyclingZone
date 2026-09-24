@@ -2,8 +2,8 @@
 /**
  * READ-ONLY daglig sweep af "Cycling Zone"-guilden (#2758-automationen, ejer-go 3/8).
  * Cutoff = sidste kørsel fra .sweep-state.json (fallback: 26 timer tilbage).
- * Forum-tråde (#feedback-and-ideas, #bugs): OP + nye beskeder for tråde med aktivitet
- * siden cutoff. Tekst-kanaler: beskeder siden cutoff.
+ * Forum-tråde (#feedback-and-ideas, #bugs, beta-forummet): OP + nye beskeder
+ * for tråde med aktivitet siden cutoff. Tekst-kanaler: beskeder siden cutoff.
  *
  * Token fra DISCORD_TOKEN/DISCORD_BOT_TOKEN env; printes aldrig.
  * Output: scripts/discord/.sweep-daily-<YYYY-MM-DD>.md (gitignored via dot-prefix)
@@ -11,6 +11,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const API = 'https://discord.com/api/v10';
 const GUILD = '1504615050831466669';
@@ -134,19 +135,124 @@ async function dumpForum(token, channelId, label) {
   return out;
 }
 
+// --- Forum-identifikation (#5635) ------------------------------------------
+// Forums identificeres IKKE længere på et rent kanalnavn (gammel kode: `Map`
+// keyed på `channel.name`). Et navn kan genbruges på tværs af kategorier —
+// beta-forummet hed 'bugs' 21-24/9 og skyggede derfor det rigtige #bugs,
+// som blev 0-tråde uden nogen advarsel. I stedet, i prioriteret rækkefølge:
+//   1. Pinnet kanal-id vinder altid, hvis sat via DISCORD_FORUM_IDS
+//      (JSON-objekt: {"feedback-and-ideas":"<id>","bugs":"<id>","beta":"<id>"}).
+//      Ingen prod-id'er i repoet (hard rule 17) — sæt env lokalt/CI/Infisical.
+//   2. Ellers matches på (kategori + navn): kandidaten skal have type 15
+//      (GUILD_FORUM) og bestå `def.match(name, categoryName)`.
+// 0 eller >1 kandidater for en forventet forum => MISSING (aldrig et tavst
+// gæt), og sweepen advarer højt i output + stderr i stedet for at springe
+// kilden stille over.
+const FORUM_CHANNEL_TYPE = 15;
+const CATEGORY_CHANNEL_TYPE = 4;
+
+function isBetaCategory(categoryName) {
+  return /beta/i.test(categoryName || '');
+}
+
+// Beta-forummet tilføjes som FAST sweep-kilde (#5635) og matches på
+// kategorien 'beta-testing', ikke på navn — navnet har allerede skiftet én
+// gang ('bugs' -> 'feedback-and-bugs') og kan skifte igen. Kategorien er den
+// stabile identifikator.
+export const EXPECTED_FORUMS = [
+  {
+    key: 'feedback-and-ideas',
+    label: '#feedback-and-ideas',
+    match: (name, categoryName) => name === 'feedback-and-ideas' && !isBetaCategory(categoryName),
+  },
+  {
+    key: 'bugs',
+    label: '#bugs',
+    match: (name, categoryName) => name === 'bugs' && !isBetaCategory(categoryName),
+  },
+  {
+    key: 'beta',
+    label: '#feedback-and-bugs (beta-testing)',
+    match: (_name, categoryName) => isBetaCategory(categoryName),
+  },
+];
+
+export function readPinnedForumIds(env = process.env) {
+  const raw = env.DISCORD_FORUM_IDS;
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+  } catch {
+    console.error('WARN: DISCORD_FORUM_IDS er ikke gyldig JSON — ignoreres');
+    return {};
+  }
+}
+
+export function categoryNameMap(channels) {
+  const map = new Map();
+  for (const c of channels) if (c.type === CATEGORY_CHANNEL_TYPE) map.set(c.id, c.name);
+  return map;
+}
+
+/**
+ * Ren funktion (ingen Discord-kald) — matcher forventede forums mod en flad
+ * kanal-liste, som `GET /guilds/{id}/channels` returnerer.
+ * @returns {{resolved: Array<{key:string,label:string,id:string,name:string}>,
+ *            missing: Array<{key:string,label:string,reason:string}>}}
+ */
+export function resolveForums(channels, expected = EXPECTED_FORUMS, pinnedIds = {}) {
+  const catNames = categoryNameMap(channels);
+  const forumChannels = channels.filter((c) => c.type === FORUM_CHANNEL_TYPE);
+  const resolved = [];
+  const missing = [];
+
+  for (const def of expected) {
+    const pinnedId = pinnedIds[def.key];
+    if (pinnedId) {
+      const byId = channels.find((c) => c.id === pinnedId);
+      if (byId) { resolved.push({ key: def.key, label: def.label, id: byId.id, name: byId.name }); continue; }
+      missing.push({ key: def.key, label: def.label, reason: `pinnet id ${pinnedId} (DISCORD_FORUM_IDS) findes ikke i guilden` });
+      continue;
+    }
+    const matches = forumChannels.filter((c) => def.match(c.name, catNames.get(c.parent_id)));
+    if (matches.length === 1) {
+      resolved.push({ key: def.key, label: def.label, id: matches[0].id, name: matches[0].name });
+    } else if (matches.length === 0) {
+      missing.push({ key: def.key, label: def.label, reason: 'ingen forum-kanal matcher' });
+    } else {
+      missing.push({
+        key: def.key,
+        label: def.label,
+        reason: `${matches.length} forum-kanaler matcher samtidig (${matches.map((m) => m.name).join(', ')}) — tvetydigt, pin med DISCORD_FORUM_IDS`,
+      });
+    }
+  }
+  return { resolved, missing };
+}
+
+function formatMissingWarning(missing) {
+  const lines = missing.map((m) => `- **${m.label}**: ${m.reason}`);
+  return `## ⚠️ ADVARSEL — ${missing.length} forventet(e) forum(s) fundet IKKE\n\n${lines.join('\n')}\n`;
+}
+
 async function main() {
   const token = readToken();
   if (!token) { console.error('NO_TOKEN'); process.exit(3); }
 
   const channels = await dapi(token, `/guilds/${GUILD}/channels`);
-  const byName = new Map(channels.map((c) => [c.name, c]));
+  const pinnedIds = readPinnedForumIds();
+  const { resolved, missing } = resolveForums(channels, EXPECTED_FORUMS, pinnedIds);
 
   let out = `# Discord daglig sweep ${today} — "Cycling Zone" (${GUILD})\nSince: ${SINCE_ISO} (fra .sweep-state.json)\n\n`;
 
-  const feedback = byName.get('feedback-and-ideas');
-  const bugs = byName.get('bugs');
-  if (feedback) out += await dumpForum(token, feedback.id, '#feedback-and-ideas');
-  if (bugs) out += await dumpForum(token, bugs.id, '#bugs');
+  if (missing.length) {
+    const warning = formatMissingWarning(missing);
+    console.error(`ADVARSEL: ${missing.length} forventet(e) forum(s) mangler i sweepen:\n${missing.map((m) => `  - ${m.label}: ${m.reason}`).join('\n')}`);
+    out += `\n${warning}\n`;
+  }
+
+  for (const f of resolved) out += await dumpForum(token, f.id, f.label);
 
   const textChannels = channels.filter((c) => c.type === 0);
   out += `\n\n# Text channels (beskeder siden ${SINCE_ISO})\n`;
@@ -163,7 +269,10 @@ async function main() {
 
   writeSweepOutput(OUT, out, now);
   fs.writeFileSync(STATE, JSON.stringify({ lastRunISO: now.toISOString(), lastOutput: OUT }, null, 2), 'utf8');
-  console.log(`WROTE ${OUT} (${out.length} chars) · next cutoff = ${now.toISOString()}`);
+  console.log(`WROTE ${OUT} (${out.length} chars) · forums: ${resolved.length} fundet, ${missing.length} mangler · next cutoff = ${now.toISOString()}`);
+  if (missing.length) process.exitCode = 1;
 }
 
-main().catch((e) => { console.error('FAIL', e.message); process.exit(1); });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => { console.error('FAIL', e.message); process.exit(1); });
+}
