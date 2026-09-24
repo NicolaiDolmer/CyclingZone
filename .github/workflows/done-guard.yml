@@ -7,15 +7,33 @@ name: Done guard
 #      hver noegle i STAGE_FLAGS og hver eksporteret *_FLAG_KEY skal have en
 #      laeser uden for tests, en database/*.sql der opretter app_config-raekken
 #      og en test med kontakten taendt. Kendt gaeld: scripts/flag-liveness-baseline.json.
+#      Ratchet (--baseline-base): fejler hvis baseline-filen er VOKSET i forhold
+#      til PR'ens base-commit - et nyt hul maa ikke lovliggoeres i stilhed.
 #   2. Paastands-tjek  scripts/check-pr-claims.mjs
 #      ?param=, kontaktnoegler, filstier, endpoints og env-navne fra PR-bodyen,
 #      slaaet op i diffen og paa main: findes / findes ikke / kun i mock-preview.
 #
 # ADVARSEL FOERST (ejer-ja 22/9, #5507): de to vagt-steps har
-# continue-on-error og skriver ::warning::-annotationer. Planlagt skift til
-# blokerende: 2026-10-01 (merge + 7 dage) - fjern de to `continue-on-error:
-# true`-linjer herunder. Scriptenes egne unit-tests er IKKE advarsel: fejler de,
-# er vagten selv i stykker.
+# continue-on-error og skriver ::warning::-annotationer. Scriptenes egne
+# unit-tests er IKKE advarsel: fejler de, er vagten selv i stykker.
+#
+# SKIFT TIL BLOKERENDE 2026-10-01 (merge + 7 dage). At fjerne continue-on-error
+# er IKKE nok: jobbet staar ikke i branch protection, og scripts/merge-queue.ps1
+# gater kun paa `gh pr checks --required` - et roedt check der ikke er required,
+# stopper ingen merge. Alle fire trin:
+#   a. Her: fjern de to `continue-on-error: true`-linjer, og omdoeb jobbet fra
+#      `name: done-guard (advarsel)` til `name: done-guard` (check-navnet er
+#      jobbets name:, og et required navn skal vaere stabilt).
+#   b. Samme PR: tilfoej "done-guard" til contexts i scripts/ci-required-checks.json
+#      (+ capturedAt). `node scripts/check-required-ci-jobs.mjs` skal vaere
+#      groen - den bekraefter at navnet produceres af et pull_request-job.
+#   c. Efter merge, ejeren (kraever admin): tilfoej check'et til main's branch
+#      protection. POST tilfoejer til listen; PATCH paa required_status_checks
+#      med contexts[] ERSTATTER hele listen:
+#        gh api -X POST repos/NicolaiDolmer/CyclingZone/branches/main/protection/required_status_checks/contexts -f 'contexts[]=done-guard'
+#   d. Bekraeft: `node scripts/check-required-ci-jobs.mjs --verify-against-github`
+#      er i sync, og en ny PR viser "done-guard" som Required. Aabne PR'er skal
+#      have main merget ind, ellers venter de paa et check de aldrig producerer.
 #
 # Workflowet er med vilje sit eget (ikke et job i ci.yml), saa en advarsel her
 # aldrig kan forveksles med den paakraevede CI-gate.
@@ -52,9 +70,12 @@ jobs:
       - name: Unit-tests for vagterne
         run: node --test scripts/check-flag-liveness.test.mjs scripts/check-pr-claims.test.mjs
 
-      - name: Kontakt-vagt (advarsel)
+      - name: Kontakt-vagt + baseline-ratchet (advarsel)
         continue-on-error: true
-        run: node scripts/check-flag-liveness.mjs
+        env:
+          # Tom uden PR-event (workflow_dispatch) - saa springes ratchet'en over.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-flag-liveness.mjs --baseline-base "$BASE_SHA"
 
       - name: Paastands-tjek af PR-bodyen (advarsel)
         if: github.event_name == 'pull_request'

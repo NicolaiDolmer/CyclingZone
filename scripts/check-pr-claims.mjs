@@ -31,10 +31,11 @@
 // kaldested, en kontakt som produktionskode gaar udenom. Oevrige "findes-ikke"
 // er BEMAERKNINGER (en body maa gerne sige "X findes ikke"). Vagten er
 // advarsel-foerst: .github/workflows/done-guard.yml koerer den med
-// continue-on-error.
+// continue-on-error; trinnene til skiftet til blokerende staar i workflowets
+// header.
 //
 // BRUG
-//   node scripts/check-pr-claims.mjs --pr <N>                    (gh + git fetch)
+//   node scripts/check-pr-claims.mjs --pr <N>                    (gh --repo NicolaiDolmer/CyclingZone + git fetch)
 //   node scripts/check-pr-claims.mjs --pr <N> --body-file <f>    (en aeldre body)
 //   node scripts/check-pr-claims.mjs --body-file <f> --base origin/main --head HEAD
 //   ... [--diff-file <f>] [--json] [--markdown <out.md>]
@@ -49,6 +50,11 @@ import { fileURLToPath } from "node:url";
 import { buildIndex, classifyPath, findReaders, loadRepoFiles, loadTreeFiles, parseStageFlagKeys, stripComments, CATALOG_PATH } from "./check-flag-liveness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// Altid --repo paa gh-kaldene: uden det gaetter gh repoet ud fra cwd og
+// remotes, og et worktree/en fork kan saa slaa den forkerte PR op (#5507).
+export const REPO = "NicolaiDolmer/CyclingZone";
+export const ghPrViewArgs = (pr) => ["pr", "view", String(pr), "--repo", REPO, "--json", "body,baseRefOid,headRefOid"];
+export const ghPrDiffArgs = (pr) => ["pr", "diff", String(pr), "--repo", REPO];
 const CLAIM_DIRS = Object.freeze(["backend", "frontend", "database", "shared", "api", "scripts", ".github", ".claude/workflows"]);
 const PATH_EXT = "js|mjs|cjs|jsx|ts|tsx|sql|json|md|yml|yaml|ps1|sh|css|html|toml";
 const PATH_RE = new RegExp(`(?:^|[\\s\`'"(|])((?:\\.{0,2}/)?(?:[\\w@*.-]+/)+[\\w@*.-]+\\.(?:${PATH_EXT}))(?::\\d+)?(?=$|[\\s\`'"),.;:|])`, "g");
@@ -422,13 +428,13 @@ function main(argv) {
   let diffText = arg(argv, "--diff-file") ? readFileSync(arg(argv, "--diff-file"), "utf8") : null;
 
   if (pr) {
-    const meta = JSON.parse(execFileSync("gh", ["pr", "view", pr, "--json", "body,baseRefOid,headRefOid"], { encoding: "utf8" }));
+    const meta = JSON.parse(execFileSync("gh", ghPrViewArgs(pr), { encoding: "utf8" }));
     body = meta.body;
     base = base || meta.baseRefOid;
     headRef = headRef || meta.headRefOid;
     if (!hasCommit(headRef)) git(["fetch", "-q", "origin", `refs/pull/${pr}/head`], { stdio: "ignore" });
     if (!hasCommit(base)) git(["fetch", "-q", "origin", base], { stdio: "ignore" });
-    if (!diffText) diffText = execFileSync("gh", ["pr", "diff", pr], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+    if (!diffText) diffText = execFileSync("gh", ghPrDiffArgs(pr), { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   }
   if (arg(argv, "--body-file")) body = readFileSync(arg(argv, "--body-file"), "utf8");
   base = base || "origin/main";

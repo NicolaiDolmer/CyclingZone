@@ -5,9 +5,10 @@
 // sagen, i hukommelsen: ingen git, intet netvaerk.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { checkClaims, cleanBody, extractClaims, parseDiff, toMarkdown } from "./check-pr-claims.mjs";
+import { checkClaims, cleanBody, extractClaims, ghPrDiffArgs, ghPrViewArgs, parseDiff, REPO, toMarkdown } from "./check-pr-claims.mjs";
 
 function run({ body, head, base = head, diff = "", isIgnored }) {
   return checkClaims({ body, diffText: diff, headFiles: head, baseFiles: base, isIgnored });
@@ -249,4 +250,19 @@ test("toMarkdown giver en tabel med kaldesteder til revieweren", () => {
   assert.match(md, /\| kontakt \| `primaryTypeMode` \| findes \|/);
   assert.match(md, /kaldesteder: INGEN/);
   assert.match(md, /ADVARSEL/);
+});
+
+test("gh-kaldene (pr view + pr diff) har altid --repo NicolaiDolmer/CyclingZone", () => {
+  assert.equal(REPO, "NicolaiDolmer/CyclingZone");
+  for (const args of [ghPrViewArgs(5501), ghPrDiffArgs("5501")]) {
+    const i = args.indexOf("--repo");
+    assert.ok(i >= 0, `${args.join(" ")} mangler --repo`);
+    assert.equal(args[i + 1], REPO);
+    assert.equal(args[2], "5501");
+  }
+  // Drift-vagt: et nyt gh-kald i scriptet skal ogsaa gaa gennem en af de to.
+  const src = readFileSync(new URL("./check-pr-claims.mjs", import.meta.url), "utf8");
+  const ghCalls = [...src.matchAll(/execFileSync\(\s*["']gh["']\s*,\s*([^,]+),/g)].map((m) => m[1].trim());
+  assert.ok(ghCalls.length >= 2, "forventede mindst to gh-kald i check-pr-claims.mjs");
+  for (const a of ghCalls) assert.match(a, /^gh(?:PrViewArgs|PrDiffArgs)\(/, `gh-kald uden --repo-hjaelperen: ${a}`);
 });

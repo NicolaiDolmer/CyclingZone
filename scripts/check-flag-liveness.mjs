@@ -23,12 +23,17 @@
 //
 // KENDT GAELD staar i scripts/flag-liveness-baseline.json, saa vagten kan blive
 // blokerende uden at vaelte CI paa dag et. Kun NYE huller fejler. Et hul der er
-// lukket, men stadig staar i baselinen, meldes som "fjern fra baselinen", saa
-// listen kun kan skrumpe (ratchet).
+// lukket, men stadig staar i baselinen, meldes som "fjern fra baselinen".
+//
+// RATCHET (--baseline-base <ref>): baselinen maa kun skrumpe. Hvert
+// (noegle, check)-par i baseline-filen, som ikke stod i filen paa <ref>, er et
+// nyt hul der er lovliggjort (fx med --write-baseline), og giver exit 1.
+// done-guard.yml koerer det mod PR'ens base-commit. Findes filen ikke paa
+// <ref>, springes ratchet'en over (den PR der indfoerer baselinen).
 //
 // STATUS: advarsel foerst. .github/workflows/done-guard.yml koerer den med
-// continue-on-error; skiftet til blokerende er at fjerne den linje (dato i PR'en
-// der indfoerte vagten, #5507).
+// continue-on-error; trinnene til skiftet til blokerende (2026-10-01) staar i
+// workflowets header - det er IKKE nok at fjerne continue-on-error (#5507).
 //
 // BEGRAENSNINGER (bevidste - heuristik, ikke en parser):
 //   - En dynamisk laesning (noeglen bygget af strenge, eller laest generisk via
@@ -41,7 +46,9 @@
 //   node scripts/check-flag-liveness.mjs                 tabel + exit 1 ved nye huller
 //   node scripts/check-flag-liveness.mjs --json          maskinlaesbart
 //   node scripts/check-flag-liveness.mjs --write-baseline  skriv dagens huller som baseline
+//                                                          (ratchet'en i CI fejler, hvis filen dermed vokser)
 //   node scripts/check-flag-liveness.mjs --ref <sha>     doem et andet commit (baglaens)
+//   node scripts/check-flag-liveness.mjs --baseline-base <ref>  ratchet: fejl hvis baselinen er vokset siden <ref>
 //
 // Refs #5507.
 
@@ -327,6 +334,55 @@ export function compareToBaseline(rows, baseline) {
   return { newGaps, closed, orphaned };
 }
 
+/**
+ * Ratchet: de (noegle, check)-par der staar i head-baselinen, men ikke i
+ * base-baselinen. Tom liste = baselinen er uaendret eller skrumpet.
+ * @param {{known?: Record<string, string[]>}|null} baseBaseline
+ * @param {{known?: Record<string, string[]>}|null} headBaseline
+ * @returns {Array<{key: string, check: string}>}
+ */
+export function baselineGrowth(baseBaseline, headBaseline) {
+  const base = (baseBaseline && baseBaseline.known) || {};
+  const head = (headBaseline && headBaseline.known) || {};
+  const out = [];
+  for (const key of Object.keys(head).sort()) {
+    const allowed = new Set(base[key] || []);
+    for (const check of head[key] || []) if (!allowed.has(check)) out.push({ key, check });
+  }
+  return out;
+}
+
+/**
+ * Baseline-filen som den stod paa et commit/ref (`git show <ref>:<sti>`).
+ * Kaster hvis ref'en ikke er et kendt commit (fx en for flad checkout), saa
+ * ratchet'en aldrig springes stille over.
+ * @returns {{known?: Record<string, string[]>}|null} null hvis filen ikke findes paa ref'en
+ */
+export function readBaselineAt(root, ref, path = BASELINE_PATH) {
+  try {
+    execFileSync("git", ["-C", root, "cat-file", "-e", `${ref}^{commit}`], { stdio: "ignore" });
+  } catch {
+    throw new Error(`ukendt commit/ref "${ref}" - kan ikke laese ${path} der (for flad checkout?)`);
+  }
+  let text;
+  try {
+    text = execFileSync("git", ["-C", root, "show", `${ref}:${path}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    return null;
+  }
+  return JSON.parse(text);
+}
+
+/**
+ * Ratchet mod et base-commit: er baselinen vokset siden `ref`?
+ * @returns {{ref: string, skipped: boolean, growth: Array<{key: string, check: string}>}}
+ */
+export function ratchetBaseline(root, ref, headBaseline) {
+  const base = readBaselineAt(root, ref);
+  if (base === null) return { ref, skipped: true, growth: [] };
+  return { ref, skipped: false, growth: baselineGrowth(base, headBaseline) };
+}
+
 export function baselineFrom(rows, previous = {}) {
   const known = {};
   for (const r of rows) if (r.gaps.length > 0) known[r.key] = [...r.gaps];
@@ -407,10 +463,24 @@ function main(argv) {
     return 0;
   }
 
+  // Ratchet mod base (#5507). En tom vaerdi (fx BASE_SHA uden PR-event) = slaaet fra.
+  const baseAt = argv.indexOf("--baseline-base");
+  const baselineBase = baseAt >= 0 && argv[baseAt + 1] && !argv[baseAt + 1].startsWith("--") ? argv[baseAt + 1] : null;
+  let ratchet = null;
+  if (baselineBase) {
+    try {
+      ratchet = ratchetBaseline(ROOT, baselineBase, baseline);
+    } catch (err) {
+      console.error(`Kontakt-vagt: ratchet'en kunne ikke koere - ${err.message}`);
+      return 2;
+    }
+  }
+  const grew = ratchet ? ratchet.growth.length > 0 : false;
+
   const cmp = compareToBaseline(rows, baseline);
   if (args.has("--json")) {
-    console.log(JSON.stringify({ rows, ...cmp }, null, 2));
-    return cmp.newGaps.length > 0 ? 1 : 0;
+    console.log(JSON.stringify({ rows, ...cmp, ratchet }, null, 2));
+    return cmp.newGaps.length > 0 || grew ? 1 : 0;
   }
 
   const gh = process.env.GITHUB_ACTIONS === "true";
@@ -431,9 +501,22 @@ function main(argv) {
     const msg = `${k} staar i baselinen men findes ikke laengere - slet posten.`;
     console.log(gh ? `::notice title=Kontakt-vagt::${msg}` : `NOTE ${msg}`);
   }
+  if (ratchet) {
+    const short = ratchet.ref.slice(0, 12);
+    if (ratchet.skipped) {
+      const msg = `${BASELINE_PATH} findes ikke paa ${short} - ratchet'en springes over (den PR der indfoerer baselinen).`;
+      console.log(gh ? `::notice title=Kontakt-vagt::${msg}` : `NOTE ${msg}`);
+    } else if (!grew) {
+      console.log(`Ratchet: ${BASELINE_PATH} er ikke vokset siden ${short}.`);
+    }
+    for (const g of ratchet.growth) {
+      const msg = `${g.key}: "${g.check}" er tilfoejet til ${BASELINE_PATH} siden ${short} - baselinen maa kun skrumpe. Luk hullet i stedet; et nyt hul i baselinen kraever ejer-go.`;
+      console.log(gh ? `::warning title=Kontakt-vagt ratchet (#5507)::${msg}` : `BASELINE VOKSER ${msg}`);
+    }
+  }
   if (cmp.newGaps.length === 0) {
     console.log("Ingen nye huller ud over baselinen.");
-    return 0;
+    return grew ? 1 : 0;
   }
   const why = { reader: "ingen laeser i produktionskode", migration: "ingen database/*.sql opretter app_config-raekken", "test-on": "ingen test med kontakten taendt" };
   for (const g of cmp.newGaps) {
