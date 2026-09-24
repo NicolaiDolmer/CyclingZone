@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-75 poster: live 48 · beta 2 · dormant 7 · building 13 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+75 poster: live 49 · beta 2 · dormant 6 · building 13 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -89,8 +89,8 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | --- | --- | --- | --- | --- | --- | --- |
 | AI team retirement (`ai-team-retire`) | live | `ai_team_retire_enabled` | - | - | 2026-09-06 | On; v2 kræver særskilt go. |
 | Season recap (`season-end-recap`) | live | - | - | #1311 | 2026-09-06 | SeasonEndPage m. recap. |
+| Season signup (`season-signup`) | live | `season_signup_enabled` | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-09-24 | Tilmeldingskortet live 24/9 (flag on, S4-tilmelding). |
 | Season transition (`season-transition`) | live | - | [SEASON_TRANSITION_CHECKLIST](SEASON_TRANSITION_CHECKLIST.md) | - | 2026-09-06 | - |
-| Season signup (`season-signup`) | dormant | `season_signup_enabled` | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-09-07 | Dormant til S4-cutover (#452). |
 | AI pool retirement (`ai-pool-retirement-v2`) | building | - | - | - | 2026-09-09 | v2-flag: off, afventer ejer-go. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 

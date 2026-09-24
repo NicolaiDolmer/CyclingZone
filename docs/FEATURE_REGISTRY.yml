@@ -491,11 +491,11 @@ features:
     area: season
     title_en: Season signup
     title_da: Sæsontilmelding
-    state: dormant
+    state: live
     flag: season_signup_enabled
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-09-07
-    note: Dormant til S4-cutover (#452).
+    verified: 2026-09-24
+    note: Tilmeldingskortet live 24/9 (flag on, S4-tilmelding).
 
   - id: season-end-recap
     area: season
