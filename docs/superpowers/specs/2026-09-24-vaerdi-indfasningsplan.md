@@ -24,6 +24,9 @@ Låst, ikke til diskussion i denne plan:
 2. **Markedet tæller med fra første aktivering**, med lille vægt og et loft pr.
    rytter (ejer-valg 22/9, #5497-kommentar). Vægten er lille ved start og kan
    øges i senere, separate ejer-go — den stiger ikke af sig selv i denne plan.
+   Vægt, loft og markeds-fittet bor i `app_config`-nøglen
+   `rider_valuation_v6_market` (PR #5502), ikke i kode. Nøglen skrives som et
+   eget ejer-"kør" **før** trin 0; mangler den, regner modellen uden marked.
 3. **Elitepræmien udfases i fire lige trin, ét pr. søndagskørsel**: 100 % → 75 %
    → 50 % → 25 % → 0 %. Efter fjerde søndag er eliten prissat på præstation
    alene, uden præmie-tillæg. Ejerens egen formulering: *"falder stille og
@@ -70,7 +73,11 @@ plan flytter sig.
    falder denne søndag sammen med **søndag 27/9 kl. 06 — sidste ordinære
    søndagskørsel i S3, samme dag som sæsonskiftet kører om aftenen** (trin 11
    og trin 12 i `SEASON_CUTOVER_RUNBOOK.md`). Rækkefølgen den dag er: søndags-
-   kørslen kl. 06 (trin 1 af denne plan) → cutover om aftenen. Sæsonskiftet
+   kørslen kl. 06 (trin 1 af denne plan) → cutover om aftenen. **Ejer-valg
+   (runbookens punkt 4, ikke afgjort her):** lad søndagskørslen 27/9 køre med
+   backup (så er den trin 1), eller spring den over med et claim på forhånd
+   (#5443 trin 3). Springes den over, er trin 1 den første søndag i S4, og
+   alle senere trin rykker en uge. Sæsonskiftet
    rører ikke rytterværdier; det slår kontrakter, sponsorer, løn, pension og
    formnulstilling om.
 6. **Søndag 2 (trin 2, 50 %):** første søndagskørsel i S4 (mandag 28/9 og frem
@@ -120,6 +127,10 @@ logik, med én vigtig forskel beskrevet nedenfor.
   (samme statement som runbookens trin 9). Nøglen læses ved hver kørsel, ikke
   ved boot — sæt den tilbage **med det samme** en rollback besluttes, ellers
   regner den førstkommende søndagskørsel videre med den nye model.
+- **Markedsnøglen:** `app_config.rider_valuation_v6_market` fjernes (eller
+  sættes til null) i samme statement-sæt som model-nøglen. Bliver den stående,
+  gør den intet, så længe model-nøglen er `'v4'`, men den skal væk, så et
+  senere skifte ikke arver et gammelt fit.
 - **Backup-tabellen** (`backup_5443_value_event_20260920`) dækker de seks
   kolonner fra trin 0's snapshot: `base_value`, `current_production_value`,
   `primary_type`, `secondary_type`, `best_role`, `best_role_rating` — **taget
@@ -192,15 +203,25 @@ efter afsnittet om "Everyone at once":**
 > an extra premium built into their price, on top of what their racing
 > actually earns. That premium is stepping down gradually over the following
 > Sundays, until it is gone and the price is performance alone. You will not
-> see a cliff — just their price settling a little more each week.
+> see a cliff, just their price settling a little more each week.
 
 **Discord, #the-roadbook (DA):**
 
 > Én del af det her lander ikke på én gang. Rytterne helt i toppen havde en
 > ekstra præmie bygget ind i deres pris, oven i det deres resultater reelt
 > tjener. Den præmie glider ned over de følgende søndage, indtil den er væk,
-> og prisen er præstation alene. Du kommer ikke til at se et fald på én gang —
+> og prisen er præstation alene. Du kommer ikke til at se et fald på én gang,
 > bare deres pris, der falder lidt mere hver uge.
+
+**Udkastets punkt "The right type" udgår.** Det lover "Every rider is priced
+as the type he actually is today", og det er ikke længere sandt: grundværdien
+er typefri. Punktet erstattes af:
+
+> - **One rule for everyone.** A rider's price no longer depends on which type
+>   he is. Two riders with the same abilities and age get the same base price.
+
+> - **Én regel for alle.** En rytters pris afhænger ikke længere af hvilken
+>   type han er. To ryttere med samme evner og alder får samme grundpris.
 
 **#5461-patch noten (kørselsdagen):** teksten "every rider is priced as the
 type he is today" skal justeres, fordi grundværdien nu er typefri, ikke
@@ -210,9 +231,9 @@ type-genberegnet. Forslag til den ene sætning der ændres, resten af noten
 - **Før (#5461):** *"A rider's value is calculated from the same abilities as
   his rating, and every rider is priced as the type he is today."*
 - **Efter (forslag):** *"A rider's value is now calculated the same way for
-  every rider, based on ability, age, and expected career — not on which type
+  every rider, based on ability, age, and expected career, not on which type
   he plays."* / DA: *"En rytters værdi regnes nu ens for alle ryttere, ud fra
-  evner, alder og forventet karriere — ikke ud fra hvilken type han spiller."*
+  evner, alder og forventet karriere, ikke ud fra hvilken type han spiller."*
 
 En sætning om den gradvise elitepræmie, i samme stil som Discord-tilføjelsen
 ovenfor, bør tilføjes patch noten som sidste sætning før "Wages did not
@@ -274,7 +295,13 @@ select count(*) as loengrundlag_flyttet
   from public.riders r
   join public.backup_5443_value_event_20260920 b on b.rider_id = r.id
  where r.current_production_value is distinct from b.current_production_value;
--- forventet: 0
+-- forventet: 0 KUN indtil sæsonskiftet. Efter cutover (kontraktforlængelser,
+-- pension, evt. flip af løn-nøglen) flytter løngrundlaget sig af lovlige
+-- årsager, og tallet siger ikke længere noget om værdikørslen. Fra første
+-- søndag i S4 kontrolleres i stedet søndagskørslens egen log i Railway
+-- (sundayValueSweep: antal ændrede løngrundlag i netop den kørsel); forventet
+-- 0, så længe løn-nøglen står på 'v4'. #5497 bør skrive tallet i
+-- rider_value_sunday_log, så kontrollen kan blive en SQL igen.
 ```
 
 Kontrollér desuden i appen (alle trin): et rytterkort viser samme værdi som
