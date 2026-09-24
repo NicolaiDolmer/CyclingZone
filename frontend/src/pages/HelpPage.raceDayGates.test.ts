@@ -118,7 +118,9 @@ test("de gatede dele er praecis de forventede (ingen eksisterende del er skjult 
   assert.deepEqual(gatedBlocks, [...ON_ONLY_BLOCKS, ...BLOCK_PAIRS.map(([off]) => off)].sort());
   const gatedFaqs = Object.keys(HELP_FAQ_FLAGS).sort();
   assert.deepEqual(gatedFaqs, [...ON_ONLY_FAQS, ...FAQ_PAIRS.map(([off]) => off)].sort());
-  assert.deepEqual(helpGateFlagKeys().includes(FLAG), true);
+  // Flaget skal med i krydstjekket mod backendens allowlist (HelpPage.flagGates.test.js).
+  const gateKeys: string[] = helpGateFlagKeys();
+  assert.ok(gateKeys.includes(FLAG), `${FLAG} mangler i helpGateFlagKeys()`);
 });
 
 test("flag on: loebsdags-teksterne vises, og de gamle er vaek", () => {
