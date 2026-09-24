@@ -96,6 +96,26 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
     if (takeShots) await shots(page, "u23-standings");
   });
 
+  test("truppens loft vises i meta-linjen, også ved en tom trup", async ({ page }, testInfo) => {
+    // #5631: beta-tester 24/9 rapporterede at siden ikke viser truppens loft,
+    // selvom SQUAD_CAPS (backend/lib/squads.js) har været live siden #5626.
+    const takeShots = testInfo.project.name === "desktop-chromium";
+    await setup(page);
+    await login(page);
+    await page.goto("/squads/u23");
+    await expect(page.getByRole("heading", { name: "E2E Racing U23" })).toBeVisible();
+    await expect(page.getByText(`${U23.length}/12`)).toBeVisible();
+    if (takeShots) await shots(page, "cap-u23");
+
+    await page.route("**/api/youth-squads", (route) => {
+      if (preflight(route)) return;
+      return json(route, { seasonNumber: 1, squads: { u23: { riderIds: [] }, junior: { riderIds: [] } }, caps: { u23: 12, junior: 10 } });
+    });
+    await page.reload();
+    await expect(page.getByText(/^0\/12 riders in the squad$|^0\/12 ryttere i truppen$/)).toBeVisible();
+    if (takeShots) await shots(page, "cap-u23-empty");
+  });
+
   test("Standings er en tom tilstand uden tabel før det første ungdomsløb", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop-chromium", "Tom-tilstanden er ens på alle projekter.");
     await setup(page);

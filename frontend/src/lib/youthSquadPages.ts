@@ -46,6 +46,7 @@ export function youthSquadNavItems(enabled: boolean, t: (key: string) => string)
 
 interface YouthSquadsResponse {
   squads?: Partial<Record<YouthSquad, { riderIds?: unknown }>>;
+  caps?: Partial<Record<YouthSquad, unknown>>;
 }
 
 /**
@@ -56,6 +57,22 @@ interface YouthSquadsResponse {
 export function riderIdsForSquad(payload: unknown, squad: YouthSquad): string[] {
   const ids = (payload as YouthSquadsResponse | null)?.squads?.[squad]?.riderIds;
   return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string" && id.length > 0) : [];
+}
+
+/**
+ * Fallback hvis en ældre backend endnu ikke sender `caps` (#5631). Spejler
+ * squads.js' SQUAD_CAPS (u23: 12, junior: 10) — ingen ny konstant, kun en
+ * bagstopper for et svar der mangler feltet.
+ */
+export const YOUTH_SQUAD_CAP_FALLBACK: Record<YouthSquad, number> = { u23: 12, junior: 10 };
+
+/**
+ * Truppens loft fra GET /api/youth-squads' `caps`-felt, eller fallback-tallet
+ * hvis feltet mangler eller ikke er et tal.
+ */
+export function capForSquad(payload: unknown, squad: YouthSquad): number {
+  const cap = (payload as YouthSquadsResponse | null)?.caps?.[squad];
+  return typeof cap === "number" && Number.isFinite(cap) ? cap : YOUTH_SQUAD_CAP_FALLBACK[squad];
 }
 
 // ── Kontakt-store ───────────────────────────────────────────────────────────
