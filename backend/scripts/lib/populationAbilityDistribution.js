@@ -16,6 +16,10 @@ import { percentile } from "./headToHeadStats.js";
 // endurance/tempo = 1 af 99" + flat/sprint-skaevheden fra samme audit).
 // Bevidst IKKE hele ABILITY_KEYS — punch/time_trial/etc. er ikke en del af
 // #4936's rapporterede skaevhed, og en kortere liste holder linjen laesbar.
+// #5572: + tactics/positioning. Finalens krav-vektorer bruger dem, og alle
+// pinnede snapshots foer 2026-09-24 manglede dem helt — med dem her viser et
+// snapshot uden evnerne `n=0` oeverst i harnessets output i stedet for tavst
+// at maale med 0.
 export const DEFAULT_DISTRIBUTION_ABILITIES = Object.freeze([
   "climbing",
   "flat",
@@ -23,6 +27,8 @@ export const DEFAULT_DISTRIBUTION_ABILITIES = Object.freeze([
   "endurance",
   "tempo",
   "descending",
+  "tactics",
+  "positioning",
 ]);
 
 /**

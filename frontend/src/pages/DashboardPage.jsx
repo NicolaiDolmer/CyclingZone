@@ -1334,10 +1334,31 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — lige under
+          trup-/kontrakt-advarslerne, over dagens etaper (ejer-go 23/9: kortet
+          lå nederst på første skærm på desktop og under folden på telefonen).
+          Samme klasse som de to advarsler ovenfor (docs/DASHBOARD_RULES.md
+          §2): en manager der er ved at miste sin plads skal se det først, og
+          kortet har heller ingen dismiss. Stadig et Card, ikke et banner (§3),
+          og guld-knappen følger uændret computeDashboardGoldCta — står
+          holdudtagelsen eller første-løbs-øjeblikket med guld længere nede,
+          er knappen her sekundær (én guld pr. view). */}
+      {showSeasonSignupCard && (
+        <SeasonSignupCard
+          nextSeasonNumber={seasonSignupStatus?.next_season_number}
+          parked={Boolean(seasonSignupStatus?.parked)}
+          signedUp={Boolean(seasonSignupStatus?.signed_up)}
+          submitting={seasonSignupSubmitting}
+          primary={seasonSignupPrimary}
+          onSignUp={handleSeasonSignup}
+        />
+      )}
+
       {/* #3915 — dagens etaper/løb for holdet, herefter i indholdsflowet (under
           page-header + advarsler ovenfor). #3915 satte den oprindeligt
           allerøverst; ejer besluttede 25/8 at KUN advarsler (trup + kontrakt-
-          fornyelse, se blokken ovenfor) må stå over dagens etaper — se docs/
+          fornyelse, se blokken ovenfor — og fra 23/9 tilmeldingskortet, #452)
+          må stå over dagens etaper — se docs/
           DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
           dag (mindst-støj-valg, ejer 18/8). */}
       <TodayStagesStrip teamId={team?.id} />
@@ -1505,22 +1526,6 @@ export default function DashboardPage() {
           primary={seasonWrapPrimary}
           onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
           onDismiss={dismissSeasonWrap}
-        />
-      )}
-
-      {/* [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — placeret mellem
-          sæson-opsummeringen og sæsonstart-guiden (docs/DASHBOARD_RULES.md §4/
-          §5: ikke en af de historisk ejer-låste rækker i §2, bygget som Card
-          ikke banner jf. §3). Tematisk nabo til de to andre sæson-kort:
-          "sæsonen sluttede" → "beholder du din plads" → "sæsonen startede". */}
-      {showSeasonSignupCard && (
-        <SeasonSignupCard
-          nextSeasonNumber={seasonSignupStatus?.next_season_number}
-          parked={Boolean(seasonSignupStatus?.parked)}
-          signedUp={Boolean(seasonSignupStatus?.signed_up)}
-          submitting={seasonSignupSubmitting}
-          primary={seasonSignupPrimary}
-          onSignUp={handleSeasonSignup}
         />
       )}
 

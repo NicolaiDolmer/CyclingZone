@@ -37,7 +37,7 @@ test("computeAbilityDistribution: null/manglende evne-vaerdier tælles ikke med"
   assert.equal(row.p50, 5);
 });
 
-test("computeAbilityDistribution: default-listen er de 6 evner fra #4936 (issue-title)", () => {
+test("computeAbilityDistribution: default-listen er de 6 evner fra #4936 + finale-evnerne fra #5572", () => {
   assert.deepEqual(DEFAULT_DISTRIBUTION_ABILITIES, [
     "climbing",
     "flat",
@@ -45,7 +45,16 @@ test("computeAbilityDistribution: default-listen er de 6 evner fra #4936 (issue-
     "endurance",
     "tempo",
     "descending",
+    "tactics",
+    "positioning",
   ]);
+});
+
+test("formatAbilityDistribution: et snapshot uden tactics/positioning viser n=0 (#5572)", () => {
+  const riders = [{ abilities: { climbing: 10, flat: 12 } }];
+  const output = formatAbilityDistribution(riders);
+  assert.match(output, /tactics: p10=n\/a p50=n\/a p90=n\/a \(n=0\)/);
+  assert.match(output, /positioning: p10=n\/a p50=n\/a p90=n\/a \(n=0\)/);
 });
 
 test("formatAbilityDistribution: én linje pr. evne, n/a for tom population", () => {
