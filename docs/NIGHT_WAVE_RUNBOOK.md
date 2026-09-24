@@ -99,6 +99,24 @@ Kombinér: `status="running"` ≠ fremdrift (jf. memory `feedback_verify_backgro
 
 > **Natbølge 17/7-læring (orkestratoren vågnede aldrig):** én frossen agent holdt chunk-barrieren åben → ingen completion-notifikation, og ScheduleWakeup-fallback-heartbeaten fyrede aldrig (tavs single point of failure). Maskinen sov IKKE (keep-awake virkede). Konsekvens: 4. lag er obligatorisk — **per-agent timeout i workflow-scriptet** så barrieren aldrig kan hænge evigt, og heartbeat må ALDRIG være eneste vækning. Keep-awake kan orkestratoren selv starte som baggrundsproces ved preflight-GO (bekræftet 17/7). Detaljer: `.claude/learnings/2026-07-17-night-wave-orchestrator-never-woke.md`.
 
+## Reviewer-tjeklisten: input og punkt 10-12 (24/9, #5507)
+
+Spejl af `reviewPrompt()` i `.claude/workflows/wave.js`, som er kilden; samme tekst står i `docs/PARALLEL_WORKTREE_ORCHESTRATION.md`, og `scripts/wave-freeze.test.mjs` fejler hvis et af punkterne 10-12 mangler her. Hvorfor: tre PR'er kom igennem review med en body der påstod noget koden ikke bar (#5501 en preview-parameter der kun fandtes i mocken, #5503 en kontakt uden kaldested, #5446 en kontakt som tre læsere gik udenom).
+
+**Input før tjeklisten** (køres i forgrunden; et script-fund citeres i fundets evidence):
+
+- a. `node scripts/check-pr-claims.mjs --pr <N>` - PR-bodyens `?param=`, kontaktnøgler, filstier, endpoints og env-navne slået op i diffen og på main (findes / findes-ikke / kun-mock-preview), med kaldesteder pr. kontakt.
+- b. `node scripts/check-flag-liveness.mjs` - kontakt-vagten (læser, migration, test med kontakten tændt) mod baselinen.
+- c. `gh issue view <N> --repo NicolaiDolmer/CyclingZone --comments` - issuets seneste kommentarer: målepunkt, ejer-beslutninger og rettelser.
+
+Fejler a eller b, skriver revieweren det i summary og tjekker punkt 10-12 i hånden.
+
+- **10. BEVIS** - hvert `- [x]` der siger verificeret/målt/testet/kørt/grøn, skal have kommando + output (eller et CI-link) i bodyen. Et flueben uden bevis er en bemærkning (category `verifikation`). En preview/prod-påstand som input a svarer `findes-ikke` eller `kun-mock-preview` til, er en bemærkning før 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5501).
+- **11. NY KONTAKT** - indfører diffen en kontakt (app_config-nøgle, `*_FLAG_KEY`, opts-felt), lister revieweren ALLE kaldesteder (input a eller `git grep -n <navn>`) og de filer der læser det GAMLE, som kontakten skulle erstatte (#5446). En kontakt uden læser/kaldested, eller med læsere udenom, som bodyen kalder færdig, er en bemærkning før 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5503). Står hullet åbent erklæret under "Ikke dækket", er det en bemærkning.
+- **12. MÅLEPUNKT** - issuets målepunkt (body + seneste kommentarer, input c) holdes op mod PR-bodyens før/efter. Flag hvis målepunktet er uændret, hvis "før" allerede var grønt, eller hvis bodyen påstår en rod-årsag som ingen måling i PR'en viser (#5503).
+
+Dom: punkt 10 og 11 er BEMÆRKNINGER før 2026-10-01 og BLOKERENDE fra 2026-10-01 - samme dato som det planlagte skift af `.github/workflows/done-guard.yml` (trinnene står i workflowets header).
+
 ## Læringer 2-3/9 (den store natbølge, 29 spor, 32 PR'er, 31 merget næste formiddag)
 
 - **Lane-pool i stedet for chunk-barrierer:** to Workflow-kald (6 + 2 laner, cap pr. workflow = CPU−2) over én prioriteret kø, hver lane tager næste spor, per-spor `Promise.race`-timeout. Ingen tomme slots; et spor der døde tavst (anti-slop 00:22) kostede kun sin lane i 90 min. Skabelon: memory `project_night_wave_lane_pool_design`. Lette spor: 45-60 min timeout, ikke 90.

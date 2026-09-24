@@ -730,6 +730,14 @@ function reviewPrompt(track, attempt) {
     `Kontekst: issue #${track.issue} - ${track.title}`,
     track.scopeText ? `Forventet scope: ${track.scopeText}` : '',
     '',
+    // #5507: revieweren faar deterministisk input FOER tjeklisten - PR-bodyens
+    // paastande slaaet op i koden, kontakt-vagten og issuets seneste kommentarer.
+    'INPUT (koer foerst, i FORGRUNDEN, og brug outputtet som grundlag - #5507):',
+    `a. \`node "${track.worktree}\\scripts\\check-pr-claims.mjs" --pr <PR-nummer>\` - PR-bodyens ?param=, kontaktnoegler, filstier, endpoints og env-navne slaaet op i diffen og paa main (findes / findes-ikke / kun-mock-preview), med kaldesteder pr. kontakt.`,
+    `b. \`node "${track.worktree}\\scripts\\check-flag-liveness.mjs"\` - kontakt-vagten (laeser, migration, test med kontakten taendt) mod baselinen.`,
+    `c. \`gh issue view ${track.issue} --repo ${REPO} --comments\` - laes issuets SENESTE kommentarer: maalepunkt, ejer-beslutninger og rettelser efter issuet blev skrevet.`,
+    'Fejler a eller b, saa skriv det i summary og tjek punkt 10-12 i haanden. Et script-fund er et fund: citer linjen i evidence.',
+    '',
     'Tjekliste (samme som docs/PARALLEL_WORKTREE_ORCHESTRATION.md og docs/NIGHT_WAVE_RUNBOOK.md):',
     '1. Loeser diffen det issuet beder om - hele vejen, ikke halvt?',
     '2. Er der arbejde UDEN FOR scope, eller filer der tilhoerer en anden lane?',
@@ -744,9 +752,16 @@ function reviewPrompt(track, attempt) {
     '   ALDRIG skrivende SQL (ingen INSERT/UPDATE/DELETE/DDL). Skriv opslaget i fundets evidence og saet category "data-skema".',
     '   Et blokerende data-/skema-fund uden et saadant opslag nedgraderes automatisk til bemaerkning (#5567 - 22/9 paastod en reviewer at en kolonne manglede; den er NOT NULL i prod).',
     '   Bygger fundet paa selve diffen (fx en DROP COLUMN i en migration), saa skriv fil:linje i evidence (fx database/x.sql:12) - det taeller som bevis og nedgraderes ikke (#5602).',
+    '10. BEVIS (#5507): hvert `- [x]` i PR-body der siger verificeret/maalt/testet/koert/groen skal have kommandoen + outputtet (eller et CI-link) i bodyen.',
+    '    Et flueben uden bevis er en bemaerkning (category "verifikation"). Paastaar bodyen noget om preview/prod, som input a svarer findes-ikke eller kun-mock-preview til, er det en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5501; advarsel foerst, #5507).',
+    '11. NY KONTAKT (#5507): indfoerer diffen en kontakt (app_config-noegle, *_FLAG_KEY, opts-felt), saa list ALLE kaldesteder i summary - fra input a, eller `git -C "' + track.worktree + '" --no-pager grep -n <navn>`.',
+    '    Og list de filer der laeser det GAMLE, som kontakten skulle erstatte (#5446: kontakten daekkede 2 af 5 laesere). En kontakt uden laeser/kaldested, eller med laesere udenom, som bodyen kalder faerdig, er en bemaerkning foer 2026-10-01 og BLOKERENDE fra 2026-10-01 (#5503; advarsel foerst, #5507).',
+    '    Staar hullet aabent erklaeret under "Ikke daekket", er det en bemaerkning.',
+    '12. MAALEPUNKT (#5507): sammenhold issuets maalepunkt (issue-body + seneste kommentarer, input c) med PR-bodyens foer/efter.',
+    '    Flag hvis maalepunktet er uaendret efter PR\'en, hvis "foer" allerede var groent (saa beviser "efter" intet), eller hvis bodyen paastaar en rod-aarsag som ingen maaling i PR\'en viser (#5503).',
     '',
     'Hvert fund har category (data-skema | scope | forbudte-filer | secrets | verifikation | andet) og evidence: hvad fundet bygger paa (fil:linje, kommando + output, opslag).',
-    'Dom: BLOKERENDE kun ved noget der ikke maa merges (forkert scope, forbudte filer, secrets, manglende verifikation af en ny regel). Smagsting er BEMAERKNINGER.',
+    'Dom: BLOKERENDE kun ved noget der ikke maa merges (forkert scope, forbudte filer, secrets, manglende verifikation af en ny regel; fra 2026-10-01 ogsaa en preview/prod-paastand der kun findes i mock (punkt 10) og en kontakt uden kaldested kaldt faerdig (punkt 11) - foer 2026-10-01 er de to BEMAERKNINGER, advarsel foerst (#5507)). Smagsting er BEMAERKNINGER.',
     'Vaer konkret: fil + hvad der er galt. Ingen ros, ingen opsummering af hvad diffen goer.',
   ].filter(Boolean).join('\n')
 }
