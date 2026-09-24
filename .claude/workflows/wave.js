@@ -41,7 +41,8 @@
 //     allowExistingPr: false,         // true = koer spor der allerede har en aaben PR
 //     expiresInMinutes: 240,          // kun metadata i planen; markoeren har ingen TTL, ejerskab + liveness afgoer (wave-policy.mjs)
 //     lanes: 4,                       // override af lane-loftet (brug sjaeldent)
-//     trackTimeoutMinutes: 120        // foerste spor-vindue (klemmes til 10-180)
+//     trackTimeoutMinutes: 120,       // foerste spor-vindue (klemmes til 10-180)
+//     rollingIntake: true             // false = ingen rullende optag (#5562, se punkt 7)
 //   }
 //
 // FEM VALG DER IKKE ER OPLAGTE:
@@ -111,12 +112,35 @@
 //    fast, ikke-forlaengeligt 60-min-vindue og skal levere en af to domme
 //    ("bekraeftet + fix-plan" / "afvist + bevis-test") - se
 //    runInvestigateTrack + investigateBlok. (b) Maks EEN CodeRabbit CLI-runde
-//    pr. spor (skrevet i briefen). (c) Blandet koe: sortMixedQueue() stiller
-//    lette spor (sonnet+TARGETED) forrest, stabilt, saa hver lane med stor
-//    sandsynlighed starter paa et let spor foer et tungt. (d) Livstegn-prik:
-//    wave-lane-watch.ps1 sender en besked (IKKE frys) ved 15 min uden commit.
+//    pr. spor (skrevet i briefen). (c) Koe-raekkefoelge: ERSTATTET 23/9 af
+//    tungeste spor foerst (punkt 7a). Den blandede koe (lette spor forrest)
+//    fik det tungeste spor til at starte sidst og koere alene i halen. (d)
+//    Livstegn-prik: wave-lane-watch.ps1 sender en besked (IKKE frys) ved 15
+//    min uden commit.
 //
-// Refs #5142, #5178, #4918, #4919, #4920, #4924, #5220.
+// 7. FEM REGLER TILFOEJET 23-24/9 (#5562, #5567):
+//    (a) Tungeste spor foerst: sortHeavyFirst() sorterer faldende paa
+//        trackWeight() = (FULL ? 2 : 0) + (opus ? 1 : 0), stabilt. Boelge A
+//        23/9 havde ca. 18 % tom kapacitet i halen, fordi det tunge spor
+//        startede sidst. Semaforen er uaendret: maks EET FULL-spor (kastes
+//        herunder) og verify-lock.ps1 -Max 2 i hver brief/prompt.
+//    (b) Rullende optag: orkestratoren koeer naeste boelges spor i den
+//        KOERENDE boelge (`wave-policy.mjs enqueue`), og en ledig lane tager
+//        dem via EEN delt 'WAVE-SETUP: intake'-agent (`wave-policy.mjs
+//        intake`). Valget er den rene planIdleLane(); kun spor hvis status
+//        opfylder releasesOwnership() frigiver deres ejerskab (--finished).
+//        Spor der aldrig blev optaget, rapporteres som unstarted.
+//    (c) Merge under boelge uden ownership-overlap: haandhaeves i
+//        wave-policy.mjs (assert-merge-allowed + guarded-merge), ikke her.
+//    (d) Reviewer paa opus, og applySchemaEvidenceRule() nedgraderer et
+//        blokerende data-/skema-fund uden opslag i schema-snapshot.json
+//        eller en SELECT ... FROM til bemaerkning.
+//    (e) Hale-tomgang: et monotont minut-ur (setTimeout, ingen Date.now())
+//        maaler hver lanes spor; tailIdleLaneMinutes() giver rapportens tal.
+//    Alle rene funktioner er SPEJLET i scripts/wave-freeze.mjs, og
+//    wave-freeze.test.mjs sammenligner funktionskroppene.
+//
+// Refs #5142, #5178, #4918, #4919, #4920, #4924, #5220, #5562, #5567.
 
 export const meta = {
   name: 'wave',
@@ -124,8 +148,8 @@ export const meta = {
   whenToUse: 'Naar 2+ uafhaengige issues skal bygges parallelt. Eneste godkendte indgang til parallelt byggearbejde - haandskrevne Agent-spawns er blokeret af scripts/hooks/guard-agent-spawn.sh mens en boelge koerer.',
   phases: [
     { title: 'Fase 0 - opsaetning', detail: 'wave-active.json, worktrees, briefs, lane-watch' },
-    { title: 'Laner', detail: '4 laner over koen, spor-vindue 120 min (loft 180), frys maalt paa branch-aktivitet' },
-    { title: 'Review', detail: 'read-only reviewer pr. spor (30 min, eet gen-spawn) + ret-trin ved BLOKERENDE' },
+    { title: 'Laner', detail: '4 laner, tungeste spor foerst, rullende optag, spor-vindue 120 min (loft 180), frys maalt paa branch-aktivitet' },
+    { title: 'Review', detail: 'read-only reviewer pr. spor paa opus (30 min, eet gen-spawn), skema-bevisregel + ret-trin ved BLOKERENDE' },
     { title: 'Oprydning', detail: 'stop lane-watch, fjern wave-active.json, prune mergede worktrees' },
   ],
 }
@@ -151,6 +175,8 @@ const WAVE_FREEZE = {
   STOP_TIMEOUT_MINUTES: 15,
   INVESTIGATE_TIMEOUT_MINUTES: 60,
   POKE_MINUTES: 15,
+  INTAKE_POLL_MINUTES: 10,
+  INTAKE_TIMEOUT_MINUTES: 20,
 }
 const FIX_TIMEOUT_MS = WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES * 60 * 1000
 const REPO = 'NicolaiDolmer/CyclingZone'
@@ -186,6 +212,34 @@ const SETUP_SCHEMA = {
   required: ['ok', 'lanes'],
 }
 
+// #5562: intake-agenten svarer som fase 0 PLUS de optagne spors config,
+// uaendret fra `wave-policy.mjs intake`, saa normalizeTrack kan koeres paa dem.
+const TRACK_CONFIG_SCHEMA = {
+  type: 'object',
+  properties: {
+    issue: { type: 'number' },
+    branch: { type: 'string' },
+    title: { type: 'string' },
+    scopeText: { type: 'string' },
+    model: { type: 'string' },
+    tier: { type: 'string' },
+    kind: { type: 'string' },
+    ownership: { type: 'array', items: { type: 'string' } },
+    verifyCommands: { type: 'array', items: { type: 'string' } },
+    ownNodeModules: { type: 'boolean' },
+  },
+  required: ['issue', 'branch'],
+}
+
+const INTAKE_SCHEMA = {
+  ...SETUP_SCHEMA,
+  properties: {
+    ...SETUP_SCHEMA.properties,
+    tracks: { type: 'array', description: 'de optagne spor UAENDRET fra intake-kommandoens "taken"', items: TRACK_CONFIG_SCHEMA },
+  },
+  required: ['ok', 'lanes', 'tracks'],
+}
+
 const REVIEW_SCHEMA = {
   type: 'object',
   properties: {
@@ -199,6 +253,9 @@ const REVIEW_SCHEMA = {
           severity: { type: 'string', enum: ['blokerende', 'bemaerkning'] },
           file: { type: 'string' },
           what: { type: 'string' },
+          // #5567: category + evidence. applySchemaEvidenceRule() laeser dem.
+          category: { type: 'string', enum: ['data-skema', 'scope', 'forbudte-filer', 'secrets', 'verifikation', 'andet'] },
+          evidence: { type: 'string', description: 'hvad fundet bygger paa: fil:linje, kommando + output, schema-snapshot.json-opslag eller SELECT ... FROM' },
         },
         required: ['severity', 'what'],
       },
@@ -246,6 +303,10 @@ const CLEANUP_SCHEMA = {
     prunedWorktrees: { type: 'array', items: { type: 'string' } },
     prunedBranches: { type: 'array', items: { type: 'string' } },
     notes: { type: 'array', items: { type: 'string' } },
+    // #5562: fra release-outputtet (eller inspect), saa et koeet spor der
+    // aldrig blev optaget, ikke forsvinder tavst.
+    pendingNeverTaken: { type: 'array', items: { type: 'object', properties: { issue: { type: 'number' }, branch: { type: 'string' } }, required: ['branch'] } },
+    markerTracks: { type: 'array', items: { type: 'object', properties: { issue: { type: 'number' }, branch: { type: 'string' } }, required: ['branch'] } },
   },
   required: ['activeFileRemoved'],
 }
@@ -354,20 +415,85 @@ function resolveTrackTimeoutMinutes(requested) {
   )
 }
 
-// SPEJLING af isLightTrack()/sortMixedQueue() i scripts/wave-freeze.mjs - hold
-// dem identiske (#5220, "blandet koe"). Stiller lette spor (sonnet+TARGETED)
-// forrest i koen, stabilt, saa hver af de 4 laner med stor sandsynlighed
-// starter paa et let spor foer et tungt - uden det kunne koeen tilfaeldigvis
-// starte med 4 tunge spor paa een gang og goere verifikations-semaforen
-// (maks 2 tunge koersler) til flaskehalsen fra minut eet.
-function isLightTrack(t) {
-  return Boolean(t) && t.model === 'sonnet' && t.tier === 'TARGETED'
+// SPEJLING af trackWeight()/sortHeavyFirst() i scripts/wave-freeze.mjs - hold
+// dem identiske (#5562, erstatter #5220's blandede koe). Tungeste spor foerst:
+// (FULL ? 2 : 0) + (opus ? 1 : 0), faldende og stabilt, saa orkestratorens
+// raekkefoelge er tie-breaker. Maks EET FULL-spor og semaforen (maks 2 tunge
+// koersler) haandhaeves uafhaengigt af koeen, saa to FULL kan ikke starte.
+function trackWeight(t) {
+  if (!t) return 0
+  return (t.tier === 'FULL' ? 2 : 0) + (t.model === 'opus' ? 1 : 0)
 }
-function sortMixedQueue(list) {
+function sortHeavyFirst(list) {
   return (Array.isArray(list) ? list : [])
-    .map((t, i) => ({ t, i, light: isLightTrack(t) ? 0 : 1 }))
-    .sort((a, b) => a.light - b.light || a.i - b.i)
+    .map((t, i) => ({ t, i, w: trackWeight(t) }))
+    .sort((a, b) => b.w - a.w || a.i - b.i)
     .map((x) => x.t)
+}
+
+// SPEJLING af planIdleLane() i scripts/wave-freeze.mjs (#5562, rullende
+// optag): 'take' | 'intake' | 'wait' | 'exit' for en lane uden spor.
+function planIdleLane(state) {
+  const s = state || {}
+  if (s.stoppedByFreeze) return 'exit'
+  if (Number(s.queued) > 0) return 'take'
+  if (s.intakeEnabled === false) return 'exit'
+  if (!s.intakeEmpty) return 'intake'
+  if (Number(s.activeLanes) > 0) return 'wait'
+  return 'exit'
+}
+
+// SPEJLING af releasesOwnership() i scripts/wave-freeze.mjs (#5562). Kun en
+// beviseligt faerdig lane-agent frigiver ejerskab; en timeout afbryder ikke.
+function releasesOwnership(status) {
+  return status === 'bygget' || status === 'rettet' || status === 'undersoegt' || status === 'undersoegt-ufuldstaendig'
+}
+
+// SPEJLING af applySchemaEvidenceRule() i scripts/wave-freeze.mjs (#5567).
+// Et blokerende data-/skema-fund uden opslag nedgraderes til bemaerkning.
+function applySchemaEvidenceRule(review) {
+  if (!review || typeof review !== 'object' || !Array.isArray(review.findings)) {
+    return { review, downgraded: [] }
+  }
+  const schemaWords = /\bkolonne|\bcolumn|\bnot\s+null\b|\bconstraint|\bmigration|\brls\b|\bforeign\s+key|\benums?\b/i
+  const hasEvidence = (text) => /schema-snapshot\.json/i.test(text) || /\bselect\b[\s\S]*?\bfrom\b/i.test(text)
+  const downgraded = []
+  const findings = review.findings.map((f) => {
+    if (!f || f.severity !== 'blokerende') return f
+    const isData = f.category === 'data-skema' || (!f.category && schemaWords.test(String(f.what || '')))
+    if (!isData || hasEvidence(String(f.evidence || ''))) return f
+    const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler skema-/prod-opslag (#5567)' }
+    downgraded.push(next)
+    return next
+  })
+  if (downgraded.length === 0) return { review, downgraded }
+  const stillBlocking = findings.some((f) => f && f.severity === 'blokerende')
+  const verdict = review.verdict === 'BLOKERENDE' && !stillBlocking ? 'BEMAERKNINGER' : review.verdict
+  return { review: { ...review, findings, verdict }, downgraded }
+}
+
+// SPEJLING af tailIdleLaneMinutes() i scripts/wave-freeze.mjs (#5562).
+function tailIdleLaneMinutes(input) {
+  const p = input || {}
+  const lanes = Math.max(0, Math.round(Number(p.lanes) || 0))
+  const end = Math.max(0, Number(p.endMinute) || 0)
+  const list = (Array.isArray(p.intervals) ? p.intervals : []).filter((x) => x && Number.isFinite(Number(x.start)))
+  if (lanes === 0 || end === 0 || list.length === 0) {
+    return { tailStartMinute: end, idleLaneMinutes: 0, capacityPct: 0 }
+  }
+  const tailStart = Math.min(end, Math.max(...list.map((x) => Number(x.start))))
+  let busy = 0
+  for (const x of list) {
+    const open = x.closed === true || x.end === null || x.end === undefined || !Number.isFinite(Number(x.end))
+    const stop = open ? end : Math.min(end, Number(x.end))
+    busy += Math.max(0, stop - Math.max(tailStart, Number(x.start)))
+  }
+  const idle = Math.max(0, lanes * (end - tailStart) - busy)
+  return {
+    tailStartMinute: tailStart,
+    idleLaneMinutes: idle,
+    capacityPct: Math.round((idle / (lanes * end)) * 1000) / 10,
+  }
 }
 
 // SPEJLING af extractInvestigateVerdict() i scripts/wave-freeze.mjs - hold
@@ -566,7 +692,12 @@ function reviewPrompt(track, attempt) {
     '6. Staar der `Refs #N` og ikke `Closes #N`?',
     '7. Er der nye/aendrede regler uden test, eller tests der er slaaet fra?',
     '8. Er nye frontend-filer skrevet i .ts/.tsx (hard rule 31)?',
+    '9. Paastaar du noget om en kolonne, tabel, constraint, NOT NULL, RLS, enum eller datatilstand? SLAA DET OP FOERST:',
+    '   database/schema-snapshot.json (relations.<tabel>.columns) og, hvor det giver mening, en read-only SELECT ... FROM mod prod via Supabase MCP.',
+    '   ALDRIG skrivende SQL (ingen INSERT/UPDATE/DELETE/DDL). Skriv opslaget i fundets evidence og saet category "data-skema".',
+    '   Et blokerende data-/skema-fund uden et saadant opslag nedgraderes automatisk til bemaerkning (#5567 - 22/9 paastod en reviewer at en kolonne manglede; den er NOT NULL i prod).',
     '',
+    'Hvert fund har category (data-skema | scope | forbudte-filer | secrets | verifikation | andet) og evidence: hvad fundet bygger paa (fil:linje, kommando + output, opslag).',
     'Dom: BLOKERENDE kun ved noget der ikke maa merges (forkert scope, forbudte filer, secrets, manglende verifikation af en ny regel). Smagsting er BEMAERKNINGER.',
     'Vaer konkret: fil + hvad der er galt. Ingen ros, ingen opsummering af hvad diffen goer.',
   ].filter(Boolean).join('\n')
@@ -600,12 +731,15 @@ function fixPrompt(track, review) {
   ].join('\n')
 }
 
-function setupPrompt(tracks, lanes, expiresInMinutes) {
-  const rows = tracks.map((t) => ({
+// Config-objektet make-wave-brief.mjs laeser. kind kommer med, saa et
+// investigate-spor ogsaa faar undersoegelses-briefen fra fil (#5220).
+function trackConfigRow(t) {
+  return {
     issue: t.issue,
     slug: t.slug,
     branch: t.branch,
     model: t.model,
+    kind: t.kind,
     title: t.title,
     scopeText: t.scopeText,
     ownership: t.ownership,
@@ -614,7 +748,33 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     ownNodeModules: t.ownNodeModules,
     repoWorktreesRoot: WORKTREES_ROOT,
     scratchRoot: SCRATCH_ROOT,
-  }))
+  }
+}
+
+// #5562: trin 2, 3 og 3b deles af fase 0 og intake-agenten. EEN kilde, saa
+// et optaget spor faar praecis samme worktree-, brief- og PR-tjek som et spor
+// fra boelgens start.
+function trackSetupSteps() {
+  return [
+    '## 2. Worktree pr. spor',
+    'For hvert spor: findes worktreet allerede, saa lad det staa (recovery skal kunne genbruge det).',
+    `Ellers: \`pwsh -File ${MAIN_CHECKOUT}\\scripts\\new-worktree.ps1 -Branch <branch>\`.`,
+    `Opret ogsaa scratch-mappen ${SCRATCH_ROOT}\\<slug>.`,
+    '',
+    '## 3. Brief pr. spor',
+    'Skriv hvert spors config-objekt (se afsnittet "Spor" nederst) som JSON til <scratch>\\brief-<slug>.json og koer:',
+    `\`node ${MAIN_CHECKOUT}\\scripts\\make-wave-brief.mjs <scratch>\\brief-<slug>.json --out <scratch>\\brief-<slug>.md\``,
+    'Verificér bagefter at hver .md-fil findes og ikke er tom. En lane uden brief maa IKKE meldes ready.',
+    '',
+    '## 3b. Har sporet allerede en aaben PR?',
+    `For hver branch: \`gh pr list --repo ${REPO} --head <branch> --state open --json number,url,isDraft\`.`,
+    'Er der en aaben PR, saa rapportér dens nummer i "openPr" (ellers "ingen"). Sporet springes saa over:',
+    'en genstartet boelge (resumeFromRunId) maa ikke saette en ny agent i gang oven i et spor der allerede er bygget.',
+  ]
+}
+
+function setupPrompt(tracks, lanes, expiresInMinutes) {
+  const rows = tracks.map(trackConfigRow)
   return [
     'WAVE-SETUP: fase 0 for en boelge (#5142)',
     '',
@@ -626,20 +786,7 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     'Kraev runtime=claude, state=running og et waveId. Mangler det, returner ok=false og STOP foer setup.',
     'Returner waveId fra markoeren. Skriv eller overskriv ALDRIG wave-active.json selv. En udloebet markoer er ikke et ledigt slot.',
     '',
-    '## 2. Worktree pr. spor',
-    'For hvert spor herunder: findes worktreet allerede, saa lad det staa (recovery skal kunne genbruge det).',
-    `Ellers: \`pwsh -File ${MAIN_CHECKOUT}\\scripts\\new-worktree.ps1 -Branch <branch>\`.`,
-    `Opret ogsaa scratch-mappen ${SCRATCH_ROOT}\\<slug>.`,
-    '',
-    '## 3. Brief pr. spor',
-    'Skriv hvert spors config-objekt (herunder) som JSON til <scratch>\\brief-<slug>.json og koer:',
-    `\`node ${MAIN_CHECKOUT}\\scripts\\make-wave-brief.mjs <scratch>\\brief-<slug>.json --out <scratch>\\brief-<slug>.md\``,
-    'Verificér bagefter at hver .md-fil findes og ikke er tom. En lane uden brief maa IKKE meldes ready.',
-    '',
-    '## 3b. Har sporet allerede en aaben PR?',
-    `For hver branch: \`gh pr list --repo ${REPO} --head <branch> --state open --json number,url,isDraft\`.`,
-    'Er der en aaben PR, saa rapportér dens nummer i "openPr" (ellers "ingen"). Sporet springes saa over:',
-    'en genstartet boelge (resumeFromRunId) maa ikke saette en ny agent i gang oven i et spor der allerede er bygget.',
+    ...trackSetupSteps(),
     '',
     '## 4. Lane-watch i baggrunden',
     'Start vagten som en SELVSTAENDIG proces (den skal overleve dig - det er den ene undtagelse fra baggrundsforbuddet, og den er orkestratorens, ikke en lanes):',
@@ -656,6 +803,35 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
   ].join('\n')
 }
 
+// #5562: EEN delt intake-agent ad gangen. Praefikset 'WAVE-SETUP:' lader den
+// passere scripts/hooks/guard-agent-spawn.sh; trin 2-3b er de samme som i fase 0.
+function intakePrompt(waveId, finishedBranches) {
+  const finishedArg = finishedBranches.length > 0 ? ` --finished ${finishedBranches.join(',')}` : ''
+  return [
+    'WAVE-SETUP: intake til rullende optag (#5562)',
+    '',
+    `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.`,
+    'Du bygger INTET og roerer ingen kildekode - du optager kun ventende spor i den koerende boelge.',
+    '',
+    '## 1. Optag (praecis EET kald)',
+    `Koer \`node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs intake --wave-id ${waveId}${finishedArg}\`.`,
+    'Kommandoen flytter ALLE ventende spor atomisk ind i boelgen og skriver JSON paa stdout: {"taken":[...],"finishedBranches":[...],"ignoredFinished":[...]}.',
+    'Koer den ALDRIG igen i denne omgang: et andet kald giver en tom liste, og de spor du allerede fik, ville forsvinde.',
+    'Fejler kommandoen (exit-kode forskellig fra 0): returner ok=false, tracks=[], lanes=[] og fejlteksten i problems. STOP.',
+    'Er "taken" tom: returner ok=true, tracks=[], lanes=[]. STOP.',
+    'Ellers: returner HVERT spor fra "taken" UAENDRET i "tracks" (samme felter og vaerdier) - ogsaa hvis et trin herunder fejler for det sporet.',
+    '',
+    ...trackSetupSteps(),
+    '',
+    '## 4. Spor',
+    'Et optaget spors config-objekt er sporet fra "taken" plus "slug" (branch med "/" og "\\" erstattet af "-", fx feat/123-x -> feat-123-x) og disse to felter:',
+    JSON.stringify({ repoWorktreesRoot: WORKTREES_ROOT, scratchRoot: SCRATCH_ROOT }),
+    '',
+    'Returnér struktureret: ok, tracks, lanes (branch, worktree, briefPath, ready, openPr, note), problems.',
+    'ready=false for ethvert spor hvor worktree eller brief mangler - saa springer boelgen sporet over i stedet for at starte en lane i blinde.',
+  ].join('\n')
+}
+
 function cleanupPrompt(tracks, cleanupMode, watchPid, waveId) {
   return [
     'WAVE-CLEANUP: sidste fase af en boelge (#5142)',
@@ -665,11 +841,13 @@ function cleanupPrompt(tracks, cleanupMode, watchPid, waveId) {
     `1. Kontroller ejerskab: node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs inspect. waveId SKAL vaere ${waveId}. Ellers STOP.`,
     '2. Bekraeft at ALLE boelgens agenter er stoppet. Timeout alene er ikke terminal tilstand. Kan det ikke bevises, behold markoeren og rapporter det.',
     `3. Koer node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs release --wave-id ${waveId} --children-stopped. Scriptet stopper kun markoerens registrerede lane-watch. Ingen generel process- eller worktree-oprydning.`,
+    '   Release skriver JSON: {"released":true,"pendingNeverTaken":[...],"tracks":[...]}. Kopier "pendingNeverTaken" og "tracks" UAENDRET (issue + branch) til felterne pendingNeverTaken og markerTracks.',
+    '   Blev release IKKE koert (markoeren beholdes), saa tag i stedet "pendingTracks" og "tracks" fra inspect i trin 1 (kun issue + branch). Spor der stod i koe og aldrig blev optaget, maa ikke forsvinde tavst (#5562).',
     `4. Rapportér status pr. branch: \`gh pr list --repo ${REPO} --state all --json number,url,state,isDraft,headRefName --limit 50\` og filtrér paa boelgens branches: ${tracks.map((t) => t.branch).join(', ')}.`,
     '',
     'Slet ALDRIG en worktree med ucommitted arbejde eller en branch der ikke er merged - rapportér den i stedet under notes.',
     '',
-    'Returnér struktureret: activeFileRemoved, watchStopped, prunedWorktrees, prunedBranches, notes.',
+    'Returnér struktureret: activeFileRemoved, watchStopped, prunedWorktrees, prunedBranches, notes, pendingNeverTaken, markerTracks.',
   ].join('\n')
 }
 
@@ -683,11 +861,15 @@ if (rawTracks.length > MAX_TRACKS) {
   throw new Error(`wave: ${rawTracks.length} spor er for mange (loft ${MAX_TRACKS}). Koer boelgen i flere omgange.`)
 }
 
-// #5220: blandet koe - sorteret stabilt saa lette spor (sonnet+TARGETED)
-// staar forrest. Paavirker BAADE dryRun-udskriften og den faktiske koe
-// herunder (queue bygges af 'tracks' i denne raekkefoelge).
-const tracks = sortMixedQueue(rawTracks.map(normalizeTrack))
-const lanes = Math.max(1, Math.min(Number(input.lanes) || DEFAULT_LANES, tracks.length))
+// #5562: tungeste spor foerst (FULL/opus forrest), stabilt. Paavirker BAADE
+// dryRun-udskriften og den faktiske koe herunder (queue bygges af 'tracks' i
+// denne raekkefoelge).
+const tracks = sortHeavyFirst(rawTracks.map(normalizeTrack))
+// #5562: rullende optag er default. Med optag kan en lane faa spor der ikke
+// stod i args, saa lane-tallet klemmes ikke ned til antallet af start-spor.
+const rollingIntake = input.rollingIntake !== false
+const requestedLanes = Number(input.lanes) || DEFAULT_LANES
+const lanes = Math.max(1, rollingIntake ? requestedLanes : Math.min(requestedLanes, tracks.length))
 const dryRun = input.dryRun === true
 // Compatibility metadata only; cleanup is always scoped to the owned wave.
 const cleanupMode = input.cleanup === 'execute' ? 'execute' : 'dry-run'
@@ -701,7 +883,7 @@ if (fullTiers.length > 1) {
 }
 
 const planLines = tracks.map((t, i) => `  ${i + 1}. #${t.issue} ${t.branch} [${t.model}/${t.tier}] -> ${t.worktree}`)
-log(`Boelgeplan: ${tracks.length} spor, ${lanes} laner, verifikations-semafor 2, spor-vindue ${trackTimeoutMinutes} min (haardt loft ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min).`)
+log(`Boelgeplan: ${tracks.length} spor (tungeste foerst), ${lanes} laner, verifikations-semafor 2, spor-vindue ${trackTimeoutMinutes} min (haardt loft ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min), rullende optag ${rollingIntake ? 'til' : 'fra'}.`)
 log(`Frys maales paa BRANCH-aktivitet (#5178): et udloebet vindue forlaenges saa laenge seneste commit er under ${WAVE_FREEZE.BRANCH_STALL_MINUTES} min gammel.`)
 for (const line of planLines) log(line)
 
@@ -718,12 +900,14 @@ if (dryRun) {
     reviewMaxAttempts: WAVE_FREEZE.REVIEW_MAX_ATTEMPTS,
     cleanup: cleanupMode,
     expiresInMinutes,
+    rollingIntake,
     tracks: tracks.map((t) => ({
       issue: t.issue,
       branch: t.branch,
       slug: t.slug,
       model: t.model,
       tier: t.tier,
+      weight: trackWeight(t),
       worktree: t.worktree,
       scratch: t.scratch,
       briefPath: t.briefPath,
@@ -742,28 +926,36 @@ const setup = await agent(setupPrompt(tracks, lanes, expiresInMinutes), {
 
 if (!setup || setup.ok !== true || !setup.waveId) throw new Error('wave: fase 0 fejlede (ingen gyldig admission). Ingen laner startet.')
 
-const readyByBranch = new Map()
-for (const lane of setup.lanes || []) readyByBranch.set(lane.branch, lane)
-
-const skipped = []
-const queue = []
-for (const track of tracks) {
-  const laneInfo = readyByBranch.get(track.branch)
-  if (!laneInfo || laneInfo.ready !== true) {
-    skipped.push({ ...track, reason: (laneInfo && laneInfo.note) || 'worktree eller brief mangler efter fase 0' })
-    continue
+// Fase 0 og intake (#5562) deler denne sortering, saa et optaget spor
+// springes over paa praecis samme betingelser som et spor fra starten.
+function admitReadyTracks(candidates, setupAnswer) {
+  const readyByBranch = new Map()
+  for (const lane of (setupAnswer && setupAnswer.lanes) || []) readyByBranch.set(lane.branch, lane)
+  const ready = []
+  const notReady = []
+  for (const track of candidates) {
+    const laneInfo = readyByBranch.get(track.branch)
+    if (!laneInfo || laneInfo.ready !== true) {
+      notReady.push({ ...track, reason: (laneInfo && laneInfo.note) || 'worktree eller brief mangler efter opsaetning' })
+      continue
+    }
+    // Resume-beskyttelse: lane-poolens raekkefoelge er ikke deterministisk, saa
+    // en genstart med resumeFromRunId kan ramme et spor der allerede er bygget.
+    // En aaben PR er det billigste bevis paa at sporet er koert.
+    const openPr = String((laneInfo && laneInfo.openPr) || '').trim()
+    const hasOpenPr = openPr !== '' && !/^(ingen|none|nej|-)$/i.test(openPr)
+    if (hasOpenPr && !allowExistingPr) {
+      notReady.push({ ...track, reason: `existing-pr (${openPr}) - sporet har allerede en aaben PR. Send args.allowExistingPr = true for at koere det alligevel.` })
+      continue
+    }
+    ready.push(track)
   }
-  // Resume-beskyttelse: lane-poolens raekkefoelge er ikke deterministisk, saa
-  // en genstart med resumeFromRunId kan ramme et spor der allerede er bygget.
-  // En aaben PR er det billigste bevis paa at sporet er koert.
-  const openPr = String((laneInfo && laneInfo.openPr) || '').trim()
-  const hasOpenPr = openPr !== '' && !/^(ingen|none|nej|-)$/i.test(openPr)
-  if (hasOpenPr && !allowExistingPr) {
-    skipped.push({ ...track, reason: `existing-pr (${openPr}) - sporet har allerede en aaben PR. Send args.allowExistingPr = true for at koere det alligevel.` })
-    continue
-  }
-  queue.push(track)
+  return { ready, skipped: notReady }
 }
+
+const admitted = admitReadyTracks(tracks, setup)
+const skipped = admitted.skipped
+const queue = admitted.ready
 for (const s of skipped) log(`SPRINGER OVER #${s.issue} ${s.branch}: ${s.reason}`)
 if (setup.problems && setup.problems.length) {
   for (const p of setup.problems) log(`fase 0: ${p}`)
@@ -779,7 +971,9 @@ if (queue.length === 0) {
 // koster sin egen lane.
 phase('Laner')
 const results = []
-const laneCount = Math.max(1, Math.min(lanes, queue.length || 1))
+// #5562: alle laner starter, ogsaa hvis koeen er kortere - en ledig lane
+// tager spor fra rullende optag (planIdleLane) i stedet for at lukke.
+const laneCount = lanes
 
 // Maaler branchen naar et spor-vindue er udloebet. Returnerer altid et objekt;
 // en probe der selv fejler eller tier giver den konservative dom (frys).
@@ -994,10 +1188,12 @@ async function runTrack(track, trackTimeoutMinutes) {
   for (let attempt = 1; attempt <= WAVE_FREEZE.REVIEW_MAX_ATTEMPTS; attempt += 1) {
     const plan = planReviewAttempt(attempt)
     const answer = await withTimeout(
+      // #5567: reviewer paa opus, sat eksplicit (22-23/9: sonnet-reviewere gav
+      // et forkert BLOKERENDE og godkendte to PR'er der ikke virkede).
       agent(reviewPrompt(track, attempt), {
         label: attempt > 1 ? `review ${label} (gen-spawn)` : `review ${label}`,
         phase: 'Review',
-        model: 'sonnet',
+        model: 'opus',
         schema: REVIEW_SCHEMA,
       }),
       plan.timeoutMinutes * 60 * 1000,
@@ -1018,6 +1214,15 @@ async function runTrack(track, trackTimeoutMinutes) {
     row.review = 'ikke gennemfoert'
     row.note = `Reviewer svarede ikke i ${WAVE_FREEZE.REVIEW_MAX_ATTEMPTS} forsoeg - PR'en skal menneske-reviewes foer merge.`
     return row
+  }
+  // #5567: skema-bevisreglen haandhaeves i KODE, ikke kun i prompten. Et
+  // blokerende data-/skema-fund uden opslag bliver en bemaerkning; er intet
+  // blokerende tilbage, bliver dommen BEMAERKNINGER og ret-trinnet springes over.
+  const evidence = applySchemaEvidenceRule(review)
+  if (evidence.downgraded.length > 0) {
+    review = evidence.review
+    row.reviewDowngraded = evidence.downgraded.map((f) => ({ file: f.file || '', what: f.what, note: f.note }))
+    for (const f of evidence.downgraded) log(`Reviewer-fund nedgraderet paa ${label}: ${f.file ? f.file + ': ' : ''}${f.what} - ${f.note}`)
   }
   row.review = review.verdict
   row.reviewSummary = review.summary
@@ -1042,52 +1247,233 @@ async function runTrack(track, trackTimeoutMinutes) {
 // rapporterer resten til relancering i en ny, ren boelge.
 let stoppedByFreeze = null
 
-if (queue.length > 0) {
-  await parallel(Array.from({ length: laneCount }, () => async () => {
-    while (queue.length > 0 && !stoppedByFreeze) {
-      const track = queue.shift()
-      if (!track) return
-      try {
-        const row = await runTrack(track, trackTimeoutMinutes)
-        results.push(row)
-        // KUN 'frys' stopper boelgen. Et 'timeout' er nu et spor der ramte det
-        // haarde loft med en LEVENDE branch (#5178) - stort, ikke frossent - og
-        // maa ikke koste de oevrige laner deres spor, som det gjorde 11/9.
-        if (row.status === 'frys') {
-          stoppedByFreeze = { issue: track.issue, branch: track.branch, reason: (row.freeze && row.freeze.reason) || 'ukendt' }
-          log(`FRYS bekraeftet paa #${track.issue} ${track.branch} (${stoppedByFreeze.reason}): branchen har staaet stille, og den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
-          log('Boelgen stopper her. De resterende spor rapporteres som "unstarted" og skal relanceres i en NY boelge (natboelgen 5-6/9: bolge A koerte reelt paa 2 laner i 2,5 time uden at det kunne ses).')
-          return
-        }
-        if (row.status === 'timeout') {
-          log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
-          // Lanen er IKKE fri. withTimeout afbryder ikke agenten, saa den
-          // gamle agent holder stadig sin plads i samtidigheds-loftet. Trak vi
-          // et nyt spor ind her, ville boelgen koere med flere byggeagenter end
-          // laner - praecis den oversubscription 4-lane-loftet og semaforen
-          // findes for at forhindre. Denne lane lukkes; de oevrige toemmer koen.
-          log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
-          return
-        }
-        // #5220: undersoegelsesspor har sit eget, adskilte timeout-navn (se
-        // runInvestigateTrack) - samme lane-lukning, men uden byggesporets
-        // "levende branch/haardt loft"-tekst, som ikke giver mening her.
-        if (row.status === 'investigate-timeout') {
-          log(`#${track.issue} ${track.branch} (undersoegelsesspor) svarede ikke inden det faste ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES}-min-vindue (ingen forlaengelse, #5220).`)
-          log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
-          return
-        }
-      } catch (err) {
-        results.push({
-          issue: track.issue,
-          branch: track.branch,
-          status: 'fejl',
-          note: String((err && err.message) || err),
-        })
-      }
-    }
-  }))
+// --- Hale-tomgang (#5562) ----------------------------------------------------
+// Workflow-scripts har ingen Date.now(). Et monotont minut-ur er derfor et
+// selv-genplanlagt setTimeout - samme primitive som withTimeout. Det ryddes
+// (finally herunder) foer scriptet returnerer, saa det aldrig holder det i live.
+const clock = { minute: 0, timer: null }
+function startMinuteClock() {
+  const tick = () => {
+    clock.minute += 1
+    clock.timer = setTimeout(tick, 60 * 1000)
+  }
+  clock.timer = setTimeout(tick, 60 * 1000)
 }
+function stopMinuteClock() {
+  if (clock.timer !== null) clearTimeout(clock.timer)
+  clock.timer = null
+}
+
+// --- Rullende optag (#5562) --------------------------------------------------
+// Alle spor boelgen kender (start + optagne): oprydningen faar dem alle, og et
+// optaget spor maa ikke koere en branch der allerede er koert i boelgen.
+const allTracks = tracks.slice()
+const knownBranches = new Set(tracks.map((t) => t.branch))
+const intervals = []
+const finishedSinceIntake = []
+let busyLanes = 0
+let intakeEmpty = false
+let intakeBroken = false
+let intakeRuns = 0
+let intakeInFlight = null
+let pollTimer = null
+let pollWaiters = []
+
+// Vaekker ventende laner (nyt spor i koen, et spor blev faerdigt, frys) og
+// rydder poll-timeren, saa den heller ikke holder scriptet i live.
+function wakeIdleLanes() {
+  if (pollTimer !== null) clearTimeout(pollTimer)
+  pollTimer = null
+  const waiters = pollWaiters
+  pollWaiters = []
+  for (const resolve of waiters) resolve()
+}
+
+// EEN delt timer for alle ventende laner: naar den udloeber, maa naeste ledige
+// lane proeve intake igen.
+function waitForIntakePoll() {
+  return new Promise((resolve) => {
+    pollWaiters.push(resolve)
+    if (pollTimer === null) {
+      pollTimer = setTimeout(() => {
+        pollTimer = null
+        intakeEmpty = false
+        wakeIdleLanes()
+      }, WAVE_FREEZE.INTAKE_POLL_MINUTES * 60 * 1000)
+    }
+  })
+}
+
+async function runIntake() {
+  const finished = finishedSinceIntake.splice(0)
+  intakeRuns += 1
+  const label = `intake ${intakeRuns}`
+  let answer = null
+  try {
+    answer = await withTimeout(
+      agent(intakePrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', schema: INTAKE_SCHEMA }),
+      WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES * 60 * 1000,
+      label,
+    )
+  } catch (err) {
+    answer = null
+    log(`${label}: ${String((err && err.message) || err)}`)
+  }
+  if (!answer || answer === TIMED_OUT) {
+    // Kommandoen kan have flyttet spor ind i markoeren uden at vi fik dem at
+    // vide. De rapporteres af oprydningen (markerTracks); optaget slaas fra, saa
+    // der ikke startes endnu en intake oven i en der maaske stadig koerer.
+    intakeBroken = true
+    finishedSinceIntake.unshift(...finished)
+    log(`${label} svarede ikke inden ${WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES} min - rullende optag er slaaet fra resten af boelgen. Spor der naaede ind i markoeren, rapporteres ved oprydningen.`)
+    wakeIdleLanes()
+    return
+  }
+  for (const p of answer.problems || []) log(`${label}: ${p}`)
+  if (answer.ok !== true) {
+    // intake-kommandoen fejlede, saa intet er flyttet. --finished er
+    // idempotent og sendes igen naeste gang.
+    finishedSinceIntake.unshift(...finished)
+    intakeEmpty = true
+    return
+  }
+  const taken = []
+  const rawTaken = Array.isArray(answer.tracks) ? answer.tracks : []
+  for (let i = 0; i < rawTaken.length; i += 1) {
+    const raw = rawTaken[i]
+    let track = null
+    try {
+      track = normalizeTrack(raw, i)
+    } catch (err) {
+      skipped.push({ issue: raw && raw.issue, branch: raw && raw.branch, reason: `optaget, men ugyldigt spor: ${String((err && err.message) || err)}` })
+      continue
+    }
+    if (knownBranches.has(track.branch)) {
+      skipped.push({ ...track, reason: 'optaget, men branchen er allerede koert i denne boelge' })
+      continue
+    }
+    knownBranches.add(track.branch)
+    allTracks.push(track)
+    taken.push(track)
+  }
+  const intake = admitReadyTracks(taken, answer)
+  for (const s of intake.skipped) {
+    skipped.push(s)
+    log(`SPRINGER OVER (optag) #${s.issue} ${s.branch}: ${s.reason}`)
+  }
+  const sorted = sortHeavyFirst(intake.ready)
+  queue.push(...sorted)
+  intakeEmpty = sorted.length === 0
+  if (sorted.length > 0) {
+    log(`Rullende optag: ${sorted.length} spor optaget (${sorted.map((t) => '#' + t.issue).join(', ')}), tungeste foerst.`)
+    wakeIdleLanes()
+  }
+}
+
+// EEN intake-agent ad gangen: ledige laner der kommer til mens den koerer,
+// venter paa samme svar i stedet for at starte deres egen.
+function sharedIntake() {
+  if (!intakeInFlight) {
+    intakeInFlight = runIntake().finally(() => {
+      intakeInFlight = null
+    })
+  }
+  return intakeInFlight
+}
+
+async function laneWorker(laneIndex) {
+  for (;;) {
+    const decision = planIdleLane({
+      queued: queue.length,
+      activeLanes: busyLanes,
+      stoppedByFreeze: Boolean(stoppedByFreeze),
+      intakeEmpty,
+      intakeEnabled: rollingIntake && !intakeBroken,
+    })
+    if (decision === 'exit') return
+    if (decision === 'wait') {
+      await waitForIntakePoll()
+      continue
+    }
+    if (decision === 'intake') {
+      await sharedIntake()
+      continue
+    }
+    const track = queue.shift()
+    if (!track) continue
+    busyLanes += 1
+    const interval = { lane: laneIndex, issue: track.issue, start: clock.minute, end: null, closed: false }
+    intervals.push(interval)
+    let row = null
+    try {
+      row = await runTrack(track, trackTimeoutMinutes)
+    } catch (err) {
+      row = {
+        issue: track.issue,
+        branch: track.branch,
+        status: 'fejl',
+        note: String((err && err.message) || err),
+      }
+    } finally {
+      busyLanes -= 1
+      interval.end = clock.minute
+    }
+    results.push(row)
+    // Kun en beviseligt faerdig agent frigiver sporets ejerskab (#5562).
+    if (releasesOwnership(row.status)) finishedSinceIntake.push(track.branch)
+    // En lane er blevet fri: naeste ledige lane laver et friskt optag.
+    intakeEmpty = false
+    // KUN 'frys' stopper boelgen. Et 'timeout' er nu et spor der ramte det
+    // haarde loft med en LEVENDE branch (#5178) - stort, ikke frossent - og
+    // maa ikke koste de oevrige laner deres spor, som det gjorde 11/9.
+    if (row.status === 'frys') {
+      stoppedByFreeze = { issue: track.issue, branch: track.branch, reason: (row.freeze && row.freeze.reason) || 'ukendt' }
+      log(`FRYS bekraeftet paa #${track.issue} ${track.branch} (${stoppedByFreeze.reason}): branchen har staaet stille, og den frosne agent holder stadig sin plads i samtidigheds-loftet.`)
+      log('Boelgen stopper her. De resterende spor rapporteres som "unstarted" og skal relanceres i en NY boelge (natboelgen 5-6/9: bolge A koerte reelt paa 2 laner i 2,5 time uden at det kunne ses).')
+      wakeIdleLanes()
+      return
+    }
+    if (row.status === 'timeout') {
+      log(`#${track.issue} ${track.branch} ramte det haarde loft paa ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min med en levende branch - boelgen venter ikke laengere. Ingen stop-agent sendt ind (to agenter i samme worktree slaas om index.lock); foelg sporet i haanden.`)
+      // Lanen er IKKE fri. withTimeout afbryder ikke agenten, saa den
+      // gamle agent holder stadig sin plads i samtidigheds-loftet. Trak vi
+      // et nyt spor ind her, ville boelgen koere med flere byggeagenter end
+      // laner - praecis den oversubscription 4-lane-loftet og semaforen
+      // findes for at forhindre. Denne lane lukkes (ogsaa for rullende
+      // optag); de oevrige toemmer koen. I hale-maalingen taeller den som
+      // optaget til boelgens slut.
+      interval.closed = true
+      log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
+      wakeIdleLanes()
+      return
+    }
+    // #5220: undersoegelsesspor har sit eget, adskilte timeout-navn (se
+    // runInvestigateTrack) - samme lane-lukning, men uden byggesporets
+    // "levende branch/haardt loft"-tekst, som ikke giver mening her.
+    if (row.status === 'investigate-timeout') {
+      log(`#${track.issue} ${track.branch} (undersoegelsesspor) svarede ikke inden det faste ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES}-min-vindue (ingen forlaengelse, #5220).`)
+      interval.closed = true
+      log(`Lane lukket efter #${track.issue}: den gamle agent holder stadig sin plads i samtidigheds-loftet, saa lanen traekker ikke et nyt spor.`)
+      wakeIdleLanes()
+      return
+    }
+    wakeIdleLanes()
+  }
+}
+
+let laneEndMinute = 0
+startMinuteClock()
+try {
+  if (queue.length > 0) {
+    await parallel(Array.from({ length: laneCount }, (_, laneIndex) => () => laneWorker(laneIndex)))
+  }
+} finally {
+  laneEndMinute = clock.minute
+  stopMinuteClock()
+  wakeIdleLanes()
+}
+const tailIdle = tailIdleLaneMinutes({ intervals, lanes: laneCount, endMinute: laneEndMinute })
+log(`Hale-tomgang: ${tailIdle.idleLaneMinutes} lane-minutter (${tailIdle.capacityPct} % af kapacitet)`)
 
 // Alt der stadig staar i koen naaede aldrig en lane - enten fordi boelgen
 // stoppede paa et frys, eller fordi alle laner faldt fra. Det MAA rapporteres:
@@ -1104,14 +1490,32 @@ for (const u of unstarted) log(`IKKE STARTET #${u.issue} ${u.branch}: ${u.reason
 
 // --- Oprydning --------------------------------------------------------------
 phase('Oprydning')
-const cleanup = await agent(cleanupPrompt(tracks, cleanupMode, setup.watchPid || 'none', setup.waveId), {
+const cleanup = await agent(cleanupPrompt(allTracks, cleanupMode, setup.watchPid || 'none', setup.waveId), {
   label: 'oprydning + statusrapport',
   phase: 'Oprydning',
   schema: CLEANUP_SCHEMA,
 })
 
+// #5562: spor der stod i koe (enqueue) men aldrig blev optaget, og spor som
+// en intake der ikke svarede naaede at flytte ind i markoeren. Ingen af dem maa
+// forsvinde tavst (punkt 4 i headeren).
+const pendingNeverTaken = cleanup && Array.isArray(cleanup.pendingNeverTaken) ? cleanup.pendingNeverTaken : []
+for (const p of pendingNeverTaken) {
+  if (!p || !p.branch) continue
+  const u = { issue: p.issue, branch: p.branch, worktree: '', reason: 'koeet men aldrig optaget' }
+  unstarted.push(u)
+  log(`IKKE STARTET #${u.issue} ${u.branch}: ${u.reason}`)
+}
+const markerTracks = cleanup && Array.isArray(cleanup.markerTracks) ? cleanup.markerTracks : []
+for (const m of markerTracks) {
+  if (!m || !m.branch || knownBranches.has(m.branch)) continue
+  const u = { issue: m.issue, branch: m.branch, worktree: '', reason: 'optaget i markoeren, men intake svarede ikke - sporet blev aldrig startet' }
+  unstarted.push(u)
+  log(`IKKE STARTET #${u.issue} ${u.branch}: ${u.reason}`)
+}
+
 const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeout' || r.status === 'investigate-timeout' || r.status === 'undersoegt-ufuldstaendig' || r.status === 'doed' || r.status === 'fejl')
-log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${tracks.length} i alt).`)
+log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${allTracks.length} kendte, heraf ${allTracks.length - tracks.length} via rullende optag i ${intakeRuns} intake-kald).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
 // Fire tilstande der alle skal raabes op, og ingen flere:
@@ -1162,6 +1566,9 @@ return {
   cleanup: cleanup || { activeFileRemoved: false, notes: ['oprydnings-agenten svarede ikke'] },
   cleanupMode,
   stoppedByFreeze,
+  rollingIntake,
+  intakeRuns,
+  tailIdle,
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
   stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop })),

@@ -2122,3 +2122,132 @@ test("#4759 CodeRabbit-fund: ghost-residual under et ANDET hold optager PK'en fo
   assert.equal(mgrRows.length, 0, "sanity: mgr's enhed endte rent faktisk tom (alle picks ghost-kolliderede)");
   assert.deepEqual(calls, [], "ingen besked om en trup der i virkeligheden aldrig blev fyldt");
 });
+
+// ── #5246 rettelse 23/9 (c): eksplicit kilde pr. skrevet raekke ─────────────────────
+// AI-holdenes raekker maa ikke ende som late_fill (det var triggerens default foer
+// rettelsen). Menneskehold faar den EFFEKTIVE tilstand som kilde.
+
+const noNotify = async () => ({ delivered: true });
+
+test("#5246 (c) late_fill: menneskeholdets raekker faar kilden late_fill, AI-holdets ai_generator", async () => {
+  const { state, seasonId } = seedModeScenario();
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  const mgr = entriesFor(state, "NEAR", "mgr");
+  const ai = state.race_entries.filter((e) => e.team_id === "ai1");
+  assert.ok(mgr.length > 0 && ai.length > 0, "sanity: begge hold fyldt");
+  assert.ok(mgr.every((e) => e.auto_filled_source === "late_fill"));
+  assert.ok(ai.every((e) => e.auto_filled_source === "ai_generator"), "AI-hold er ALDRIG late_fill");
+});
+
+test("#5246 (c) proactive (saesonskifte/admin/sweep-default): AI-holdets raekker er ai_generator", async () => {
+  const { state, seasonId } = seedModeScenario();
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false, now: Date.parse("2026-07-10T08:00:00Z") });
+  const ai = state.race_entries.filter((e) => e.team_id === "ai1");
+  assert.ok(ai.length > 0);
+  assert.ok(ai.every((e) => e.auto_filled_source === "ai_generator"));
+});
+
+test("#5246 (c) opt_in: et menneskehold der har sagt ja faar kilden opt_in (ikke late_fill)", async () => {
+  const { state, seasonId } = seedModeScenario({ managerOptIn: true });
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "opt_in",
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  const mgr = state.race_entries.filter((e) => e.team_id === "mgr");
+  assert.ok(mgr.length > 0, "sanity: opt_in fyldte menneskeholdet");
+  assert.ok(mgr.every((e) => e.auto_filled_source === "opt_in"));
+});
+
+test("#5246 (c) batch-RPC-vejen: hver ny raekke i p_units.inserts baerer holdets kilde", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state, { batchRpc: true });
+  await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  const rpcCalls = supabase.__calls.filter((c) => c.rpc === "apply_race_entry_unit_batch");
+  assert.ok(rpcCalls.length >= 2, "sanity: en batch pr. hold");
+  for (const call of rpcCalls) {
+    const expected = call.args.p_team_id === "mgr" ? "late_fill" : "ai_generator";
+    const inserts = call.args.p_units.flatMap((u) => u.inserts);
+    assert.ok(inserts.length > 0);
+    assert.ok(inserts.every((i) => i.auto_filled_source === expected), `hold ${call.args.p_team_id}: ${expected}`);
+  }
+});
+
+// ── #5246 rettelse 23/9 (d): teams_written = hold der FAKTISK fik nye raekker ────────
+
+test("#5246 (d) teams_written taeller kun hold med nye raekker; en gentaget koersel skriver intet → 0", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state);
+  const args = {
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  };
+  const first = await runRaceEntryGenerator(args);
+  assert.equal(first.teams_written, 2, "mgr (NEAR) + ai1 fik nye raekker");
+  const second = await runRaceEntryGenerator(args);
+  assert.ok(second.teams > 0, "sanity: holdene behandles stadig");
+  assert.equal(second.inserted, 0, "sanity: idempotent, intet nyt at skrive");
+  assert.equal(second.teams_written, 0, "behandlet men intet skrevet taeller ikke som fyldt");
+});
+
+test("#5246 (d) teams_written via batch-RPC-vejen", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const res = await runRaceEntryGenerator({
+    supabase: makeSupabase(state, { batchRpc: true }), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  assert.equal(res.teams_written, 2);
+});
+
+test("#5246 (d) ingen loeb i saesonen → teams_written 0 og inserted 0 i det tidlige svar", async () => {
+  const state = emptyState();
+  const res = await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId: "none", dryRun: false });
+  assert.equal(res.teams_written, 0);
+  assert.equal(res.inserted, 0);
+});
+
+// ── #5246 rettelse 23/9 (a): deploy-vinduet foer migrationen ─────────────────────────
+// Backend deployes ca. 3 min foer auto-migrate.yml tilfoejer kolonnen. PostgREST svarer
+// PGRST204 paa et ukendt felt; per-enheds-upserten skal da skrive uden kilden.
+
+function withMissingSourceColumn(supabase) {
+  let rejected = 0;
+  return {
+    ...supabase,
+    get rejected() { return rejected; },
+    from(table) {
+      const b = supabase.from(table);
+      if (table !== "race_entries") return b;
+      const origUpsert = b.upsert.bind(b);
+      b.upsert = (rows, opts) => {
+        if (rows.some((r) => "auto_filled_source" in r)) {
+          rejected += 1;
+          return Promise.resolve({
+            error: { code: "PGRST204", message: "Could not find the 'auto_filled_source' column of 'race_entries' in the schema cache" },
+          });
+        }
+        return origUpsert(rows, opts);
+      };
+      return b;
+    },
+  };
+}
+
+test("#5246 (a) kolonnen findes ikke endnu (PGRST204) → raekkerne skrives uden kilde, ingen fejlet enhed", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = withMissingSourceColumn(makeSupabase(state));
+  const res = await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), notify: noNotify,
+  });
+  assert.ok(supabase.rejected > 0, "sanity: foerste forsoeg ramte den manglende kolonne");
+  assert.equal(res.failed_units, 0);
+  assert.ok(res.inserted > 0);
+  assert.ok(entriesFor(state, "NEAR", "mgr").length > 0, "late-fill skete alligevel");
+  assert.ok(state.race_entries.every((e) => !("auto_filled_source" in e)), "skrevet uden feltet");
+});

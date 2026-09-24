@@ -361,7 +361,7 @@ test("#4879 broens validator fælder en tidslinje der bryder §2.3, og etapen k�
       tuning: { RACE_V4_TUNING: {} },
       entrants: { entrantFromAbilitiesRow: (_a, o) => ({ rider_id: o.riderId }) },
       route: { routeFromStageProfileRow: () => ({ distance_km: 180, profile_type: "flat", segments: [] }) },
-      orders: { buildStageOrders: () => [] },
+      orders: { buildStageOrderPlan: () => ({ orders: [], aiEffortByRider: new Map() }) },
       timeline: modules,
     });
     ({ timeline } = leaky.simulateStage({ entrants: ENTRANTS, stageProfile: STAGES[0], seedString: "seed-x", stageNumber: 1 }));
