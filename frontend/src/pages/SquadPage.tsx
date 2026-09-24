@@ -10,11 +10,20 @@
 // Faner (HANDOFF pkt. 2): Squad · Calendar · Results · Standings · Development.
 //   • Squad og Development viser ægte data: truppen afgøres server-side
 //     (GET /api/youth-squads → effectiveSquad), visningen er My Teams.
-//   • Calendar, Results og Standings er tomme tilstande indtil ungdomsløb
-//     findes. Ingen tal for løb der ikke findes (TASTE P11).
+//   • Calendar og Results er tomme tilstande indtil ungdomsløb findes (og
+//     Standings indtil det første er kørt). Ingen tal for løb der ikke findes
+//     (TASTE P11).
 //
 // Bag kontakten youth_squad_pages: slukket svarer serveren 409, og siden sender
 // videre til My Team, så en gammel URL aldrig viser en halv side.
+//
+// #5631 (spillere i beta-forummet 24/9: "I would also like the U23 and Junior
+// tabs to be the same as the 'My Team' tab"):
+//   • Squad-fanen har My Teams to kolonne-tilstande (Overview / Abilities).
+//   • Stats-fanen er My Teams egen (TeamStatsTab), på truppens ryttere.
+//   • Standings viser holdets ungdomsgruppe (GET /api/rankings/youth/standings),
+//     og er tom indtil det første ungdomsløb er kørt.
+//   • Development har én linje om hvad fanen viser.
 //
 // Hard rule 31: nye frontend-filer skrives i .ts/.tsx.
 import { useState } from "react";
@@ -28,13 +37,16 @@ import { isYouthSquad, type YouthSquad } from "../lib/youthSquadPages.ts";
 import { PageLoader } from "../components/ui/index.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab.jsx";
+import TeamStatsTab from "../components/TeamStatsTab.jsx";
 import { ErrorState, PageHeader, Tab, TabList, Tabs } from "../components/squad/squadUi.ts";
 import { useYouthSquad } from "../components/squad/useYouthSquad.ts";
 import YouthSquadTable from "../components/squad/YouthSquadTable.tsx";
+import YouthStandingsTab from "../components/squad/YouthStandingsTab.tsx";
 import { YouthRacesEmptyState, YouthSquadEmptyState } from "../components/squad/SquadEmptyStates.tsx";
 
-type SquadTabKey = "squad" | "calendar" | "results" | "standings" | "development";
-const TAB_ORDER: SquadTabKey[] = ["squad", "calendar", "results", "standings", "development"];
+type SquadTabKey = "squad" | "calendar" | "results" | "standings" | "development" | "stats";
+// HANDOFF-rækkefølgen (#5519) + Stats sidst, efter Development som på My Team.
+const TAB_ORDER: SquadTabKey[] = ["squad", "calendar", "results", "standings", "development", "stats"];
 
 export default function SquadPage() {
   const { squad } = useParams();
@@ -67,6 +79,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
     results: t("tabs.results"),
     standings: t("tabs.standings"),
     development: tTeam("tabs.development"),
+    stats: tTeam("tabs.stats"),
   };
 
   return (
@@ -109,8 +122,17 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             : <YouthSquadTable riders={riders} scouting={scouting} seasonYear={seasonYear} label={tabLabel.squad} />)}
           {tab === "development" && (riders.length === 0
             ? <YouthSquadEmptyState squad={squad} />
-            : <TeamDevelopmentTab riders={riders} scouting={scouting} seasonYear={seasonYear} />)}
-          {(tab === "calendar" || tab === "results" || tab === "standings") && (
+            : (
+              <div>
+                <p className="mb-3 text-[13px] text-cz-2">{t("development.hint")}</p>
+                <TeamDevelopmentTab riders={riders} scouting={scouting} seasonYear={seasonYear} />
+              </div>
+            ))}
+          {tab === "stats" && (riders.length === 0
+            ? <YouthSquadEmptyState squad={squad} />
+            : <TeamStatsTab riders={riders} />)}
+          {tab === "standings" && <YouthStandingsTab squad={squad} myTeamId={team?.id ?? null} />}
+          {(tab === "calendar" || tab === "results") && (
             <YouthRacesEmptyState squad={squad} tab={tab} />
           )}
         </>

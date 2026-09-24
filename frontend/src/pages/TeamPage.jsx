@@ -31,7 +31,7 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
-import AcademySquadFilter from "../components/team/AcademySquadFilter.tsx";
+import { useSquadGroupFilter, squadGroupFilterToolbar } from "../components/squad/SquadGroupFilter.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
@@ -585,7 +585,7 @@ function OwnTransferListingBadge({ listing }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, showSeniors, showAcademy, onToggleSeniors, onToggleAcademy }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, squadFilter }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -601,8 +601,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // #1929 (redesign 3/7): akademiryttere lever på holdet men uden for senior-cap'en (30)
   // og vises nu i SAMME tabel som seniorerne, styret af to gruppe-filtre (begge on som
   // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
-  // #5075: showSeniors/showAcademy er LØFTET op i TeamPage (props her) så Stats-fanen
-  // kan dele nøjagtig samme state — se AcademySquadFilter.tsx.
+  // #5075: filter-state'en er LØFTET op i TeamPage (props her) så Stats-fanen
+  // kan dele nøjagtig samme state. #5631: grupperne er Senior / U23 / Junior
+  // (Seniors / Academy med youth_squad_pages slukket), se SquadGroupFilter.tsx.
   // #2906 punkt 1 (ejer 25/7: "muligt/nemmere at se alle evner på samme tid"):
   // to kolonne-tilstande i stedet for én 25-kolonners tabel ingen skærm kan vise.
   // "overview" = de beskrivende kolonner (værdi, løn, status, kontrakt, handling);
@@ -615,11 +616,6 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 
-  // Gruppe-tællere til filter-knapperne. Seniorer i den aktive transfer-visning;
-  // akademiryttere er off-cap og har hverken ind-/udgående flag.
-  const seniorGroupCount  = riders.filter(r => !r.is_academy && (squadView === "upcoming" ? !r._isOutgoing : !r._isIncoming)).length;
-  const academyGroupCount = riders.filter(r => r.is_academy && !r._isIncoming).length;
-
   // Nuværende = senior-truppen nu (inkl. udgående, ekskl. indgående).
   // Kommende = senior-truppen efter ventende transfers (uden udgående, med indgående).
   const currentCount  = riders.filter(r => !r._isIncoming && !r.is_academy).length;
@@ -627,11 +623,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
 
   // #1929-redesign: ÉT samlet roster. Base = aktiv transfer-visning (akademiryttere
   // passerer begge ind-/udgående filtre) → filtrér efter gruppe-toggles (default begge on).
-  const displayRidersBase = (squadView === "upcoming"
+  // Gruppe-tællerne i filteret regnes på den aktive transfer-visning (viewRiders).
+  const viewRiders = squadView === "upcoming"
     ? riders.filter(r => !r._isOutgoing)
-    : riders.filter(r => !r._isIncoming)
-  )
-    .filter(r => (r.is_academy ? showAcademy : showSeniors))
+    : riders.filter(r => !r._isIncoming);
+  const displayRidersBase = viewRiders
+    .filter(r => squadFilter.isVisible(r))
     // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
     // uden den rå (server-skjulte) potentiale.
     // #2906 punkt 2: `_ovr` = den samme 1-99-rating som rytterprofilen og
@@ -904,15 +901,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           #3188: "Vis" + de to filter-piller ligger i deres EGEN wrapper, så et
           klik i mellemrummet fanges lokalt i stedet for at boble op til en række
           uden handler (1.306 dead clicks, Clarity 27/7-3/8).
-          #5075: markup + state udtrukket til AcademySquadFilter, delt med Stats-fanen. */}
-      <AcademySquadFilter
-        showSeniors={showSeniors}
-        showAcademy={showAcademy}
-        onToggleSeniors={onToggleSeniors}
-        onToggleAcademy={onToggleAcademy}
-        seniorCount={seniorGroupCount}
-        academyCount={academyGroupCount}
-      />
+          #5075: markup + state udtrukket, delt med Stats-fanen.
+          #5631: Senior / U23 / Junior, se SquadGroupFilter.tsx. */}
+      {squadGroupFilterToolbar(squadFilter, viewRiders)}
 
       {/* #1095: segmenteret nuværende/kommende-visning */}
       {hasTransfers && (
@@ -1017,13 +1008,12 @@ export function TeamPage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [activeTab, setActiveTab] = useState("squad");
-  // #5075: showSeniors/showAcademy boede tidligere kun i SquadTab — Stats-fanen
+  // #5075: gruppe-filteret boede tidligere kun i SquadTab — Stats-fanen
   // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så
-  // Trup- og Stats-fanen deler PRÆCIS samme state (samme kontrol i begge, se
-  // AcademySquadFilter.tsx) i stedet for at hver fane opfinder sin egen variant.
-  // Default = begge på, uændret fra Trup-fanens hidtidige default.
-  const [showSeniors, setShowSeniors] = useState(true);
-  const [showAcademy, setShowAcademy] = useState(true);
+  // Trup- og Stats-fanen deler PRÆCIS samme state i stedet for at hver fane
+  // opfinder sin egen variant. Default = alle grupper på.
+  // #5631: Senior / U23 / Junior (spillere 24/9), se SquadGroupFilter.tsx.
+  const squadFilter = useSquadGroupFilter();
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ddActive, setDdActive] = useState(false);
@@ -1342,18 +1332,18 @@ export function TeamPage() {
 
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
-          showSeniors={showSeniors} showAcademy={showAcademy} onToggleSeniors={() => setShowSeniors(v => !v)} onToggleAcademy={() => setShowAcademy(v => !v)} />
+          squadFilter={squadFilter} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />
       )}
       {activeTab === "stats" && (
-        // #5075: samme showSeniors/showAcademy-state som Trup-fanen ovenfor —
+        // #5075: samme gruppe-filter-state som Trup-fanen ovenfor —
         // Statistik-fanen har ingen sum-/gennemsnitslinjer i dag, men rækkerne
         // filtreres på nøjagtig den samme delte state, så den viste liste
         // matcher Trup-fanens til-/fravalg.
         <TeamStatsTab riders={currentRiders}
-          showSeniors={showSeniors} showAcademy={showAcademy} onToggleSeniors={() => setShowSeniors(v => !v)} onToggleAcademy={() => setShowAcademy(v => !v)} />
+          squadFilter={squadFilter} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />

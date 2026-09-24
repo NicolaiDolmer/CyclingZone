@@ -50,5 +50,46 @@
     "title": "Truppen kunne ikke hentes",
     "description": "Intet blev ændret. Dine ryttere er i sikkerhed.",
     "retry": "Prøv igen"
+  },
+  "development": {
+    "hint": "Hvordan hver rytters rating ventes at vokse med din træning, og den højeste rating hans rolle kan nå."
+  },
+  "filter": {
+    "u23": "U23 ({count})",
+    "junior": "Juniorer ({count})"
+  },
+  "standings": {
+    "headers": {
+      "team": "Hold",
+      "races": "Løb",
+      "wins": "Sejre",
+      "podiums": "Podier",
+      "points": "Point"
+    },
+    "count": "{count, plural, one {1 hold} other {# hold}}",
+    "group": "Gruppe {letter}",
+    "ownGroup": "Din gruppe",
+    "groupLabel": "Gruppe",
+    "allGroups": "Alle grupper",
+    "noGroup": {
+      "title": "Se ungdomsgrupperne",
+      "description": {
+        "u23": "Dit U23-hold er ikke i en gruppe endnu. Grupperne står på Ungdomsløb.",
+        "junior": "Dit juniorhold er ikke i en gruppe endnu. Grupperne står på Ungdomsløb."
+      }
+    },
+    "error": {
+      "title": "Stillingen kunne ikke hentes",
+      "description": "Intet blev ændret. Prøv igen om lidt."
+    }
+  },
+  "youthRaces": {
+    "title": "Ungdomsløb",
+    "subtitle": {
+      "u23": "U23-stillingen, én gruppe ad gangen",
+      "junior": "Juniorstillingen, én gruppe ad gangen"
+    },
+    "squadLabel": "Trup",
+    "tabsLabel": "Ungdomsløbenes afsnit"
   }
 }

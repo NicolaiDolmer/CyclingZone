@@ -5,15 +5,21 @@
 // Kolonnerne og deres rækkefølge er derfor My Teams (nation · rytter · rating ·
 // type · alder · potentiale · værdi · løn · kontrakt), og overskrifterne
 // læses fra team-namespacet, så de to sider aldrig kalder den samme kolonne to
-// ting. My Teams senior-specifikke kolonner (popularitet, status, handling) er
-// ikke med: status-badgesne er senior-vagter, og rækkehandlingerne (Move up /
-// Move down) hører til trup-flyt-slicen, ikke til denne side.
+// ting. Rækkehandlingerne (Move up / Move down) hører til trup-flyt-slicen,
+// ikke til denne side.
 //
 // Værdien står i --text-1 og ikke i guld-tekst som på My Team: TASTE fork 3
 // forbyder guld-tal.
 //
 // Mobil (D-047): rating, værdi og løn, præcis som My Team (ejer 10/9).
-import { useMemo } from "react";
+//
+// #5631 (spillere i beta-forummet 24/9: "Abilities is also missing and is only
+// accessible from the My Team"): samme to kolonne-tilstande som My Team
+// (Overview / Abilities, Segmented i tabellens toolbar, #2906 punkt 1), og
+// Overview har nu My Teams popularitet og status, så kolonnerne står i samme
+// rækkefølge på de tre trup-sider. Kun rækkehandlingen (Sell / Auction) er
+// stadig My Teams alene.
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import NationCell from "../rider/NationCell.jsx";
@@ -28,7 +34,10 @@ import { getRiderAge } from "../../lib/riderAge.js";
 import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { scoutSortValue } from "../../lib/scouting.js";
 import { formatNumber } from "../../lib/intl.js";
-import { DataTable, RiderLink, WithBestRole, type DataTableColumn } from "./squadUi.ts";
+import { isRiderInjured } from "../../lib/training.js";
+import { ABILITY_STATS } from "../../lib/abilities.js";
+import { DataTable, RiderBadges, RiderLink, Segmented, WithBestRole, type DataTableColumn } from "./squadUi.ts";
+import { ABILITY_MODE_MOBILE_DEFAULTS, useAbilityColumns } from "./abilityColumns.tsx";
 import type { YouthSquadRider } from "./useYouthSquad.ts";
 
 interface Scouting {
@@ -43,6 +52,7 @@ interface Row extends YouthSquadRider {
 }
 
 // Modul-konstant: useTableSort re-sorterer ellers på hver render.
+const ABILITY_KEYS = (ABILITY_STATS as Array<{ key: string }>).map((s) => s.key);
 const ACCESSORS: Record<string, (r: Row) => unknown> = {
   nationality_code: (r) => r.nationality_code,
   name: (r) => `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
@@ -52,11 +62,15 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   _scoutMid: (r) => r._scoutMid,
   _value: (r) => r._value,
   salary: (r) => r.salary,
+  popularity: (r) => (Number.isFinite(r.popularity) ? r.popularity : null),
   contract_end_season: (r) => r.contract_end_season,
+  ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, (r: Row) => Number(r[k]) || 0])),
 };
-const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_value", "salary", "contract_end_season"]);
+const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_value", "salary", "popularity", "contract_end_season", ...ABILITY_KEYS]);
 const SORT_OPTS = { descFirstKeys: DESC_FIRST };
 const MOBILE_DEFAULTS = ["rating", "value", "salary"];
+
+type TableMode = "overview" | "abilities";
 
 export default function YouthSquadTable({ riders, scouting, seasonYear, label }: {
   riders: YouthSquadRider[];
@@ -67,6 +81,8 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   const { t } = useTranslation("team");
   const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
   const navigate = useNavigate();
+  const [tableMode, setTableMode] = useState<TableMode>("overview");
+  const abilityColumns = useAbilityColumns<Row>();
 
   const decorated = useMemo<Row[]>(() => riders.map((r) => {
     const ovr = riderOverallRating(r);
@@ -81,7 +97,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
 
   const { rows, sort, sortDir, handleSort } = useTableSort(decorated, ACCESSORS, SORT_OPTS);
 
-  const columns: DataTableColumn<Row>[] = [
+  const overviewColumns: DataTableColumn<Row>[] = [
     {
       key: "nation",
       header: t("squad.headers.nation"),
@@ -158,6 +174,29 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       compact: true,
       render: (r) => <span className="text-cz-2">{formatNumber(r.salary ?? 0)}</span>,
     },
+    // #5631: My Teams popularitet og status (#3956 / #1482), samme plads i
+    // rækkefølgen. Status viser kun skade: alders-badgen ville stå på hver
+    // eneste række af en ungdomstrup, og akademi-/transfer-badgesne hører til
+    // My Team.
+    {
+      key: "popularity",
+      header: <span title={t("squad.headers.popularityTitle")}>{t("squad.headers.popularity")}</span>,
+      mobileLabel: t("squad.headers.popularity"),
+      sortKey: "popularity",
+      numeric: true,
+      compact: true,
+      render: (r) => (
+        <span className="text-cz-2 font-mono text-xs">
+          {Number.isFinite(r.popularity) ? String(r.popularity) : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "badges",
+      header: t("squad.headers.badges"),
+      compact: true,
+      render: (r) => <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured"]} />,
+    },
     {
       key: "contract",
       header: t("squad.headers.contract"),
@@ -171,18 +210,36 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
     },
   ];
 
+  // Evne-tilstand som på My Team: navn + rating + type + de 15 evner.
+  const pick = (key: string) => overviewColumns.filter((c) => c.key === key);
+  const columns = tableMode === "abilities"
+    ? [...pick("name"), ...pick("rating"), ...pick("type"), ...abilityColumns]
+    : overviewColumns;
+
   return (
     <DataTable
       label={label}
       columns={columns}
       rows={rows}
       rowKey={(r) => r.id}
-      mobileDefaults={MOBILE_DEFAULTS}
+      mobileDefaults={tableMode === "abilities" ? ABILITY_MODE_MOBILE_DEFAULTS : MOBILE_DEFAULTS}
       dense
       rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
       sort={sort}
       sortDir={sortDir}
       onSort={handleSort}
+      toolbar={
+        <Segmented
+          className="ms-auto"
+          label={t("squad.mode.ariaLabel")}
+          value={tableMode}
+          onChange={(next) => setTableMode(next as TableMode)}
+          options={[
+            { value: "overview", label: t("squad.mode.overview") },
+            { value: "abilities", label: t("squad.mode.abilities") },
+          ]}
+        />
+      }
       count={t("squad.count", { count: rows.length })}
     />
   );

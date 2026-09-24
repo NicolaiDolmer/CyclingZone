@@ -8,7 +8,7 @@ import NationCell from "./rider/NationCell";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { DataTable, EmptyState, ErrorState, SkeletonLines, Button, TrophyIcon } from "./ui";
-import AcademySquadFilter from "./team/AcademySquadFilter.tsx";
+import { squadGroupFilterToolbar } from "./squad/SquadGroupFilter.tsx";
 
 // #3190: samme seks sejrs-kategorier som rytter-ranglisten (hooks/useRiderRankings.js's
 // WIN_KEYS, #925's total_wins-definition) — dupliceret her i stedet for importeret,
@@ -33,14 +33,19 @@ const EMPTY_STATS = { raceDays: 0, wins: 0, points: 0, prize: 0 };
 // `riders` = holdets NUVÆRENDE trup (samme `currentRiders`-array TeamPage.jsx
 // allerede beregner til sine egne sum-linjer — ingen ekstra fetch her).
 //
-// #5075 (spillerforslag @cybersimon 9/9): showSeniors/showAcademy er den SAMME
-// state som Trup-fanen (løftet til TeamPage.jsx, se AcademySquadFilter.tsx) —
+// #5075 (spillerforslag @cybersimon 9/9): gruppe-filteret er den SAMME
+// state som Trup-fanen (løftet til TeamPage.jsx, se squad/SquadGroupFilter.tsx) —
 // tabellens rækker filtreres på den her, så tallene (i dag pr. rytter; en
 // fremtidig sum-/gennemsnitslinje ville arve det samme) altid regnes på den
 // viste, filtrerede liste. `riders` holder BEVIDST hele holdet (ikke det
 // filtrerede sæt): stats hentes én gang for alle rytter-id'er, så et filter-
 // klik ikke udløser en ny fetch — kun `rows` nedenfor filtreres.
-export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggleSeniors, onToggleAcademy }) {
+//
+// #5631: `squadFilter` (useSquadGroupFilter i TeamPage) erstatter de fire
+// showSeniors/showAcademy-props: Senior / U23 / Junior. Uden squadFilter
+// (U23 team- og Junior team-siden, SquadPage.tsx) vises hele den givne trup
+// uden filter-kontrol, fordi siden allerede ER én trup.
+export default function TeamStatsTab({ riders, squadFilter = null }) {
   const { t } = useTranslation("team");
   const navigate = useNavigate();
   const [season, setSeason] = useState(null);
@@ -59,18 +64,13 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
   // noget andet (sort/statsByRider) tvang en genberegning. Samme stabile
   // streng-proxy-mønster som riderIdsKey, blot for is_academy-feltet.
   const academyFlagsKey = riders.map((r) => (r.is_academy ? "1" : "0")).join("");
-  const seniorCount = riders.filter((r) => !r.is_academy).length;
-  const academyCount = riders.filter((r) => r.is_academy).length;
   // #5075 rettespor 23/9: DataTable's toolbar-slot tjekker kun `toolbar && (...)`
   // (DataTable.jsx) — et React-element er ALTID sandt, også når komponenten selv
-  // returnerer null. AcademySquadFilter.tsx returnerer null når holdet ikke har
-  // akademiryttere og seniorer ikke er skjult, men fordi vi hidtil sendte
-  // ELEMENTET til `toolbar` uanset, viste DataTable stadig sin tomme
-  // toolbar-bjælke (streg foroven, desktop og mobil) — synlig for hold uden
-  // akademiryttere (148 af 258 menneskestyrede hold i prod). Betingelsen her
-  // spejler PRÆCIS AcademySquadFilter.tsx's egen null-check, så vi kun sender
-  // elementet når det faktisk render'er noget.
-  const showAcademyFilter = academyCount > 0 || (seniorCount > 0 && !showSeniors);
+  // returnerer null. squadGroupFilterToolbar giver derfor null (ikke et element
+  // der renderer null) når der intet er at filtrere, så DataTable ikke monterer
+  // en tom toolbar-bjælke (148 af 258 menneskestyrede hold har ingen
+  // akademiryttere).
+  const filterKey = squadFilter?.key ?? "";
 
   useEffect(() => {
     let cancelled = false;
@@ -127,14 +127,14 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
     // #5075: samme akademi-/senior-filter som Trup-fanen — filtreres FØR sort,
     // så tabellens indhold (og enhver fremtidig sum-/gennemsnitslinje) matcher
     // den viste, filtrerede liste.
-    const filtered = riders.filter((r) => (r.is_academy ? showAcademy : showSeniors));
+    const filtered = squadFilter ? riders.filter((r) => squadFilter.isVisible(r)) : riders;
     const withStats = filtered.map((r) => ({ ...r, ...(statsByRider[r.id] || EMPTY_STATS) }));
     return [...withStats].sort((a, b) => {
       const diff = (b[sortKey] || 0) - (a[sortKey] || 0);
       return sortDir === "desc" ? diff : -diff;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- memoet læser id/navn/nationalitet fra riders (stabile når riderIdsKey er uændret) og is_academy (stabilt når academyFlagsKey er uændret, CodeRabbit-fund #5075 23/9); tallene kommer fra statsByRider, som ER en dependency
-  }, [riderIdsKey, academyFlagsKey, statsByRider, sortKey, sortDir, showAcademy, showSeniors]);
+  }, [riderIdsKey, academyFlagsKey, statsByRider, sortKey, sortDir, filterKey]);
 
   if (loading) return <SkeletonLines lines={6} />;
 
@@ -244,13 +244,9 @@ export default function TeamStatsTab({ riders, showSeniors, showAcademy, onToggl
         rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
         /* #5075: samme kontrol + state som Trup-fanen — ligger i tabellens egen
            toolbar, samme placering/mønster som SquadTab (#4628). Sendes KUN når
-           showAcademyFilter er sand (se rettespor-kommentaren ovenfor) — ellers
+           filteret har noget at vise (se rettespor-kommentaren ovenfor) — ellers
            null, så DataTable ikke monterer en tom toolbar-bjælke. */
-        toolbar={showAcademyFilter ? (
-          <AcademySquadFilter showSeniors={showSeniors} showAcademy={showAcademy}
-            onToggleSeniors={onToggleSeniors} onToggleAcademy={onToggleAcademy}
-            seniorCount={seniorCount} academyCount={academyCount} />
-        ) : null}
+        toolbar={squadFilter ? squadGroupFilterToolbar(squadFilter, riders) : null}
         /* Holdet har ryttere, men filteret skjuler dem alle — toolbaren (og dermed
            til-/fravalget) skal blive stående, så spilleren kan slå det fra igen. */
         empty={<EmptyState icon={<TrophyIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />}
