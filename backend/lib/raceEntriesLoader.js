@@ -13,7 +13,9 @@ import { filterEligibleEntries } from "./riderEligibility.js";
 // range-pagineret (felt-brede opslag der kan overstige PostgREST's 1000-cap).
 // Returnerer { data: berettigede entries, error }. Henter rytter-tilstand og krydser
 // via filterEligibleEntries. Entries SKAL have mindst { rider_id, team_id }.
-export async function loadEligibleEntries({ supabase, baseQuery, paged = false }) {
+// #5645: `squad` (default senior) sendes videre til filterEligibleEntries (se
+// riderEligibility.js). raceBinding bruger ANY_SQUAD, så binding virker på tværs af trupper.
+export async function loadEligibleEntries({ supabase, baseQuery, paged = false, squad = undefined }) {
   const { data: entries, error: entriesErr } = paged
     ? await fetchAllPaged(baseQuery)
     : await baseQuery();
@@ -29,5 +31,5 @@ export async function loadEligibleEntries({ supabase, baseQuery, paged = false }
   if (ridersErr) return { data: null, error: ridersErr };
   const ridersById = new Map((riders || []).map((r) => [r.id, r]));
 
-  return { data: filterEligibleEntries({ entries: rows, ridersById }), error: null };
+  return { data: filterEligibleEntries({ entries: rows, ridersById, squad }), error: null };
 }

@@ -5,6 +5,7 @@
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { selectInChunks } from "./dbChunk.js";
+import { ANY_SQUAD, raceSquadOf } from "./riderEligibility.js";
 
 const DAY_MS = 86_400_000;
 
@@ -324,6 +325,34 @@ export function teamInRacePool({ teamDivisionId, racePoolId }) {
   return teamDivisionId === racePoolId;
 }
 
+// #5645 (Y4): et hold har ÉN pulje pr. trup (teams.league_division_id for senior,
+// u23_league_division_id / junior_league_division_id for ungdom, A2 #5525). Løbets
+// trup (races.squad) afgør hvilken af dem der sammenlignes med løbets pulje.
+export const SQUAD_POOL_COLUMN = Object.freeze({
+  senior: "league_division_id",
+  u23: "u23_league_division_id",
+  junior: "junior_league_division_id",
+});
+
+// Holdets pulje for en trup. Manglende kolonne/værdi = null = holdet er ikke i
+// nogen pulje for den trup (fejl lukket for ungdom, se teamInRaceSquadPool).
+export function teamPoolIdForSquad(team, squad) {
+  const column = SQUAD_POOL_COLUMN[squad] ?? SQUAD_POOL_COLUMN.senior;
+  return team?.[column] ?? null;
+}
+
+// Trup-bevidst pulje-match. Seniorløb = præcis teamInRacePool med holdets senior-
+// pulje (bit-identisk, også "pulje-løst løb = ingen restriktion"). Ungdomsløb kræver
+// at BÅDE løbet og holdet har en pulje for truppen, og at de er ens: et hold uden
+// U23-pulje er aldrig i et U23-felt, og et U23-løb uden pulje åbnes aldrig for alle.
+export function teamInRaceSquadPool({ team, race }) {
+  const squad = raceSquadOf(race);
+  const teamPoolId = teamPoolIdForSquad(team, squad);
+  const racePoolId = race?.league_division_id ?? null;
+  if (squad === "senior") return teamInRacePool({ teamDivisionId: teamPoolId, racePoolId });
+  return racePoolId != null && teamPoolId != null && teamPoolId === racePoolId;
+}
+
 // DB-loader: hent det aktuelle løbs tidsvindue + holdets udtagne ryttere i ANDRE
 // løb (grupperet pr. løb med deres tidsvindue), så findRiderBindingConflicts kan
 // afgøre om en udtagelse dobbeltbooker en rytter. Tynd I/O — al logik er pure ovenfor.
@@ -357,8 +386,16 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   // akademi/pensioneret/udlånt EFTER udtagelse) IKKE phantom-binder en ægte rytter og
   // får PUT /selection til at afvise med 409 selection_rider_bound. team_id tages med så
   // loaderen kan krydse entry'ens hold mod rytterens nuværende hold.
+  //
+  // #5645 (spec-risiko 7): ANY_SQUAD — en entry binder rytterens løbsdag uanset hvilken
+  // trups løb den ligger i. En rytter udtaget til et U23-løb og siden flyttet til
+  // seniortruppen (eller omvendt) må ikke kunne udtages til et andet løb samme løbsdag.
+  // Trup-leddet i ghost-tjekket ville ellers kalde hans gamle entry for en ghost og
+  // frigive dagen. Off-team og pensioneret er stadig ghosts. For et seniorløb er
+  // udfaldet uændret: kandidaterne er seniorer, og deres egne entries blev også talt før.
   const { data: entries, error: e2 } = await loadEligibleEntries({
     supabase,
+    squad: ANY_SQUAD,
     baseQuery: () => supabase
       .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", teamId).neq("race_id", race.id),
   });
