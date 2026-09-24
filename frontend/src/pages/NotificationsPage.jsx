@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router";
+import DiscordJoinLink from "../components/DiscordJoinLink.jsx"; // #2761
 import ActivityPage from "./ActivityPage.jsx";
 import MessagesPanel from "../components/messages/MessagesPanel.jsx"; // #3200
 import { fetchUnreadSummary } from "../lib/messagesApi.js"; // #3200
@@ -26,6 +27,7 @@ import {
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
   ClipboardIcon, PodiumIcon, BellIcon, SearchIcon, InboxIcon,
   ChevronRightIcon, ChevronDownIcon, InfoIcon, MessageIcon, UserIcon,
+  DiscordIcon, Link,
 } from "../components/ui";
 
 // #5130: et link uden for appen (Discord-invite) — klik åbner en ny fane i
@@ -33,6 +35,40 @@ import {
 // fuld https://-URL. Ren funktion så adfærden er testbar uden DOM.
 function isExternalNotificationLink(link) {
   return typeof link === "string" && /^https?:\/\//.test(link);
+}
+
+// #2761 (ejer-go 23/9 "Ret foerst", foer backfill-udsendelsen): hele kortet
+// var klikbart uden en synlig knap, saa det lignede en almindelig besked.
+// Kortet faar nu (1) en linje om manager-forummet til den der hellere vil
+// blive paa siden, og (2) en synlig, ikke-guld knap der aabner invitationen.
+// Den godkendte besked fra 15/9 er uroert; begge dele er egne noegler under
+// notif.discordWelcome. Klik paa knappen/forum-linket maa ikke boble op til
+// kortets onClick (det ville aabne Discord en gang til eller navigere forkert).
+function DiscordWelcomeExtras({ notification, onRead, tBackend }) {
+  const markIfUnread = (e) => {
+    e.stopPropagation();
+    if (!notification.is_read) onRead(notification.id);
+  };
+  return (
+    <>
+      <p className="text-cz-2 text-xs mt-1.5 leading-relaxed">
+        <Trans
+          t={tBackend}
+          i18nKey="notif.discordWelcome.forumLine"
+          components={{
+            forum: <Link as={RouterLink} to="/forum" onClick={markIfUnread} />,
+          }}
+        />
+      </p>
+      <DiscordJoinLink
+        variant="secondary"
+        source="notification_button"
+        label={tBackend("notif.discordWelcome.cta")}
+        onClick={markIfUnread}
+        className="mt-3"
+      />
+    </>
+  );
 }
 
 // Role key for PENDING_ROLE — mapped to i18n via pending.role.<key>
@@ -128,7 +164,9 @@ const TYPE_CONFIG = {
   // #5130: én gang pr. hold — inviterer til Discord-communityet. Eksternt
   // link (ikke en intern rute), åbnes i ny fane af den generiske
   // isExternalNotificationLink-gren i klik-handleren nedenfor.
-  discord_welcome:           { Icon: UserIcon,         color: "text-cz-discord", bg: "bg-cz-discord/10 border-cz-discord/20", link: DISCORD_INVITE_URL },
+  // #2761: Discord-maerket (stroke) i stedet for person-ikonet, og kortet faar
+  // en synlig knap + en linje om forummet via DiscordWelcomeExtras nedenfor.
+  discord_welcome:           { Icon: DiscordIcon,      color: "text-cz-discord", bg: "bg-cz-discord/10 border-cz-discord/20", link: DISCORD_INVITE_URL },
 
   // #5259: svaret paa en beta-ansoegning. Linket gaar til profilen — det er
   // DER beta-kortet staar, og der spilleren kan traede ud igen eller spoerge
@@ -752,6 +790,9 @@ export default function NotificationsPage() {
                             {renderNotificationMessage(n, tBackend)}
                           </RiderLink>
                         </p>
+                        {n.type === "discord_welcome" && (
+                          <DiscordWelcomeExtras notification={n} onRead={markRead} tBackend={tBackend} />
+                        )}
                         <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">

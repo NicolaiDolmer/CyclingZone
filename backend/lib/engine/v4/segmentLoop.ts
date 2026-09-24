@@ -677,8 +677,14 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     //   grupperne (et uheld rammer den gruppe rytteren FAKTISK er i), og
     //   FOER M4/finale-hooket, saa et styrt paa sidste segment tager rytteren
     //   ud af frontgruppen INDEN spurten gøres op — praecis som i virkeligheden.
-    //   FOER merge-trinnet, saa en uheldsramt der kun tabte faa sekunder kan
-    //   smelte tilbage i sin gruppe samme segment.
+    //   FOER merge-trinnet, saa uheldets solo-gruppe gaar gennem samme
+    //   merge-regel som alle andre splits i segmentet. Den smelter IKKE
+    //   tilbage i sin egen gruppe samme segment: det mindst mulige tidstab i
+    //   mechanics/incidents.ts (bunden af de tidstabs-intervaller
+    //   INCIDENTS_EXTRA_TUNING giver, inkl. hjaelper-faktoren) ligger over
+    //   `tuning.groups.mergeThresholdSeconds`. Den kan kun smelte sammen med
+    //   en ANDEN gruppe, der i forvejen ligger inden for merge-graensen af
+    //   dens nye tid (#5579 rettede en kommentar der paastod det modsatte).
     // Hooket er VALGFRIT (types.ts): et hook-saet uden `incidents` koerer
     // etapen helt uden uheld — det er den gamle F2-adfaerd, uaendret.
     if (hooks.incidents) {
