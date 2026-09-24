@@ -10,7 +10,8 @@
 //      og ryttere uden evne-række kommer aldrig med.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
   parseArgs,
@@ -145,8 +146,11 @@ function readOnlyProbe(state) {
 }
 
 // ── Argumenter ───────────────────────────────────────────────────────────────
+// Absolut rod på alle platforme: join("C:", "repo") er relativ på POSIX (CI).
+const TEST_ROOT = resolve(tmpdir(), "repo");
+
 test("parseArgs: read-only uden undtagelse — --apply og ukendte flag afvises", () => {
-  const root = join("C:", "repo");
+  const root = TEST_ROOT;
   const opts = { root, cwd: root };
   for (const bad of [["--apply"], ["--owner-go"], ["--dry-run"], ["--whatever=1"], ["apply"]]) {
     assert.throws(() => parseArgs(bad, opts), /ukendt/, bad.join(" "));
@@ -157,7 +161,7 @@ test("parseArgs: read-only uden undtagelse — --apply og ukendte flag afvises",
 });
 
 test("parseArgs: defaults er A6's seed og målsæson, og tabellen lander i balance-internals/", () => {
-  const root = join("C:", "repo");
+  const root = TEST_ROOT;
   const a = parseArgs([], { root, cwd: root });
   assert.equal(a.seed, DEFAULT_SEED);
   assert.equal(a.season, DEFAULT_TARGET_SEASON);
