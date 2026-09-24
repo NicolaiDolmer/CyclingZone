@@ -167,6 +167,16 @@ selv, hvis nøglen stadig står på `'v5'` efter en rollback.
 - Løngrundlaget (`rider_production_value_model`) flippes som **sin egen**
   beslutning, efter sæsonskiftet — ikke som en hale på denne kørsel.
 
+## Indfasning uge 1-4
+
+Denne kørsel er kun kørselsdagens trin (trin 0). Elitepræmien udfases derefter
+over de fire følgende ordinære søndagskørsler (100 % → 75 % → 50 % → 25 % →
+0 %) — ejer-direktiv 24/9, #5497. Rækkefølge, rollback pr. trin og forholdet
+til sæsonskiftet 27-28/9 står i
+[`docs/superpowers/specs/2026-09-24-vaerdi-indfasningsplan.md`](../superpowers/specs/2026-09-24-vaerdi-indfasningsplan.md).
+Denne runbook dækker kun selve kørselsdagen; de fire efterfølgende trin kører
+gennem den almindelige søndagskørsel, ikke gennem dette script.
+
 ## Hvad der med vilje IKKE er automatiseret
 
 - **Flip af nøglerne.** Det er ejerens ene skridt i `app_config`, ikke et
