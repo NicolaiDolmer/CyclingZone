@@ -162,7 +162,7 @@ export function detectSeniorPoolStructureViolations({ planTiers = [], seasonNumb
   for (const [tierKey, want] of Object.entries(expected)) {
     const got = byTier.get(Number(tierKey)) ?? 0;
     if (got !== want) {
-      violations.push(`D${tierKey}: ${got} puljer får en kalender, pyramiden kræver ${want} (#4592: sammenlægning + pensionering af D4 E-H skal køre FØR kalenderen)`);
+      violations.push(`D${tierKey}: ${got} puljer får en kalender, pyramiden kræver ${want} (#4592: sammenlægningen skal give hver D3-pulje managers, og D4 E-H skal være pensioneret, FØR kalenderen)`);
     }
   }
   return violations;
@@ -339,8 +339,11 @@ export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumb
 
   // Races slettes scopet på season_id OG truppen — ikke på en id-liste. Så kan en id fra en
   // anden sæson eller en anden trup ikke snige sig med, uanset hvad der ellers står i listen.
-  {
-    const { error } = await withSupabaseRetry(async () => scopeRacesToSquad(supabase.from("races").delete().eq("season_id", seasonId), squad));
+  // #5644 (CodeRabbit): og kun de id'er der er snapshottet og talt af erstatnings-gaten. Et løb
+  // der er kommet til imellem, slettes ikke uden snapshot; post-verify'en nedenfor stopper så.
+  for (let i = 0; i < raceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = raceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const { error } = await withSupabaseRetry(async () => scopeRacesToSquad(supabase.from("races").delete().eq("season_id", seasonId), squad).in("id", chunk));
     if (error) throw new Error(`races.delete(season_id=${seasonId}, squad=${squad}): ${error.message}`);
   }
   log(`  ✓ slettet ${races.length} ${squad}-løb (season_id=${seasonId})`);
@@ -483,18 +486,25 @@ export function formatPlanningWindowReport({ planTiers = [], transition, previou
 /** Post-verify EFTER apply: tæl det der faktisk står i DB, og fang etaper i fortiden. */
 export async function postVerify({ supabase, seasonId, squad = "senior" }) {
   // #5644: tæller kun truppens egne løb, så en ungdomskørsel ikke "verificeres" af seniorløbene.
-  const { count: raceCount } = await scopeRacesToSquad(supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId), squad);
-  const { data: races } = await scopeRacesToSquad(supabase.from("races").select("id, league_division_id").eq("season_id", seasonId), squad).limit(5000);
+  // #5644 (CodeRabbit): en fejlet læsning må ikke ligne "0 etaper i fortiden" — den kaster.
+  const { count: raceCount, error: cErr } = await scopeRacesToSquad(supabase.from("races").select("id", { count: "exact", head: true }).eq("season_id", seasonId), squad);
+  if (cErr) throw new Error(`post-verify races count (${squad}): ${cErr.message}`);
+  const races = await fetchAllRows(() =>
+    scopeRacesToSquad(supabase.from("races").select("id, league_division_id").eq("season_id", seasonId), squad).order("id"));
   const raceIds = (races || []).map((r) => r.id);
 
   let profileCount = 0, scheduleCount = 0, pastStages = 0;
   const nowIso = new Date().toISOString();
+  const countOrThrow = async (label, query) => {
+    const { count, error } = await query;
+    if (error) throw new Error(`post-verify ${label}: ${error.message}`);
+    return count ?? 0;
+  };
   for (let i = 0; i < raceIds.length; i += 200) {
     const chunk = raceIds.slice(i, i + 200);
-    const { count: pc } = await supabase.from("race_stage_profiles").select("race_id", { count: "exact", head: true }).in("race_id", chunk);
-    const { count: sc } = await supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk);
-    const { count: past } = await supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk).lte("scheduled_at", nowIso);
-    profileCount += pc ?? 0; scheduleCount += sc ?? 0; pastStages += past ?? 0;
+    profileCount += await countOrThrow("race_stage_profiles", supabase.from("race_stage_profiles").select("race_id", { count: "exact", head: true }).in("race_id", chunk));
+    scheduleCount += await countOrThrow("race_stage_schedule", supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk));
+    pastStages += await countOrThrow("race_stage_schedule (fortid)", supabase.from("race_stage_schedule").select("race_id", { count: "exact", head: true }).in("race_id", chunk).lte("scheduled_at", nowIso));
   }
 
   const poolCounts = new Map();
@@ -586,7 +596,13 @@ if (isMain) {
   const snapshotDir = resolve(argOf("--snapshot-dir") || join(__dirname, "../../docs/snapshots/5405"));
   // #5644 (Y5): hvilken trups kalender. Default senior (uændret). u23/junior bygger truppens
   // egen kalender fra truppens katalog; --replace-existing rører da KUN truppens løb.
-  const squad = argOf("--squad") ?? "senior";
+  // En tom --squad (sidste argument, eller efterfulgt af et andet flag) må ALDRIG falde
+  // tilbage til senior: "--replace-existing --squad" ville ellers slette seniorkalenderen.
+  const squadArg = argOf("--squad");
+  if (process.argv.includes("--squad") && (!squadArg || squadArg.startsWith("--"))) {
+    console.error("--squad kræver en værdi (senior | u23 | junior)"); process.exit(2);
+  }
+  const squad = squadArg ?? "senior";
   const isSenior = squad === "senior";
 
   if (!Number.isInteger(seasonNumber) || seasonNumber < 1) {

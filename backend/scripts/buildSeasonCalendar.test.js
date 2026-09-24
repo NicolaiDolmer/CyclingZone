@@ -327,6 +327,7 @@ test("#5644 replaceSeasonCalendarRows --squad u23: sletter KUN U23-løb (season_
     assert.deepEqual(racesDelete.filters, [
       { type: "eq", col: "season_id", val: "season-4" },
       { type: "eq", col: "squad", val: "u23" },
+      { type: "in", col: "id", vals: raceIds },
     ], "sletningen er scopet til sæson OG trup — seniorløbene står");
     const [file] = readdirSync(dir);
     assert.match(file, /season4-u23-/);
@@ -345,6 +346,7 @@ test("#5644 replaceSeasonCalendarRows senior (default): sletter kun seniorløb, 
     assert.deepEqual(racesDelete.filters, [
       { type: "eq", col: "season_id", val: "season-4" },
       { type: "or", expr: "squad.is.null,squad.eq.senior" },
+      { type: "in", col: "id", vals: raceIds },
     ]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
