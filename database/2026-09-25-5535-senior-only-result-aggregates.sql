@@ -25,7 +25,8 @@
 -- Udgangspunktet for hver funktionskrop er PRODS `pg_get_functiondef` (hentet
 -- read-only 24/9), IKKE repo-filerne: flere af dem er ændret siden deres
 -- oprindelige migration. Hver tilføjet linje er mærket `#5535`; fjernes de
--- linjer, er kroppen byte-identisk med prods (md5 af prosrc, målt 24/9).
+-- linjer, er kroppen byte-identisk med prods (md5 af prosrc, målt 24/9;
+-- låst af backend/lib/seniorResultAggregates.integration.test.js).
 -- Matview-definitionerne er prods `pg_matviews.definition` + filteret, med
 -- samme kolonner i samme rækkefølge og samme to/én indekser pr. view. De
 -- unikke indekser er bevaret, så `REFRESH ... CONCURRENTLY` stadig er muligt.
