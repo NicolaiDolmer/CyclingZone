@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-75 poster: live 49 · beta 2 · dormant 6 · building 13 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+75 poster: live 50 · beta 2 · dormant 5 · building 13 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -16,9 +16,9 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Form and fatigue in scoring (`form-and-fatigue`) | live | - | [TRAINING_RULES](TRAINING_RULES.md) | #2353 | 2026-09-06 | Reel vægt via formRaceWeightV3. |
 | Race engine v3 (`race-engine-v3`) | live | `race_engine_v2_enabled` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #1306 | 2026-09-06 | Autoritativ; flagnavn historisk. |
 | v3 scoring components (`race-engine-v3-scoring`) | live | `race_engine_v3_scoring` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #2353 | 2026-09-06 | 4 score-faktorer i raceSimulator. |
+| Async delivery of race result posts (`race-notify-outbox`) | live | `race_notify_outbox_enabled` | [3624-loebsforsinkelser](audits/2026-09-18-3624-loebsforsinkelser.md) | #3624 | 2026-09-24 | Flag on 24/9 kl. 18:45 (ejer-kør). Udbakke-tick hvert minut (race-notify-outbox-drain). |
 | Team selection, captain and breakaway (`team-selection-and-roles`) | live | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #1307 | 2026-09-06 | - |
 | Race engine v4 (`race-engine-v4`) | dormant | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #3855 | 2026-09-07 | Off i prod (#4951). |
-| Async delivery of race result posts (`race-notify-outbox`) | dormant | - | [3624-loebsforsinkelser](audits/2026-09-18-3624-loebsforsinkelser.md) | #3624 | 2026-09-18 | Off i prod; flip er ejer-only. |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #4632 | 2026-09-07 | UI live; effekt venter v4-flip. |
 
 ## race-day

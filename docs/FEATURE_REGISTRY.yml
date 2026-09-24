@@ -85,11 +85,12 @@ features:
     area: race-engine
     title_en: Async delivery of race result posts
     title_da: Asynkron udsendelse af løbsresultat-poster
-    state: dormant
+    state: live
+    flag: race_notify_outbox_enabled
     ssot: docs/audits/2026-09-18-3624-loebsforsinkelser.md
     epic: 3624
-    verified: 2026-09-18
-    note: Off i prod; flip er ejer-only.
+    verified: 2026-09-24
+    note: Flag on 24/9 kl. 18:45 (ejer-kør). Udbakke-tick hvert minut (race-notify-outbox-drain).
 
   - id: form-and-fatigue
     area: race-engine
