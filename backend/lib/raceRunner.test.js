@@ -1602,3 +1602,51 @@ test("#5675 simulateStageByIndex: fejl i refreshYouthStandings logges, men stopp
   );
   assert.equal(result.skipped, undefined, "et fejlet refresh må ikke rapporteres som skip");
 });
+
+// ── #5675 (CodeRabbit-fund): simulateRace — heldags-/endagsløbs-stien kalder ──
+// IKKE simulateStageByIndex, og har derfor sit eget refreshYouthStandings-kald
+// (se raceRunner.js lige efter applyRaceResults). Samme tre garantier som
+// stage-stien ovenfor, bevist her mod den anden funktion.
+test("#5675 simulateRace: ungdomsløb (squad u23) kalder refreshYouthStandings med løbet, efter applyRaceResults", async () => {
+  const race = { ...STAGE_RACE, id: "race-y23-whole-5675", squad: "u23" };
+  const supabase = cannedForStage(race);
+  const calls = [];
+  await simulateRace({
+    supabase, race,
+    applyRaceResults: async ({ resultRows }) => { calls.push("applyRaceResults"); return { rowsImported: resultRows.length }; },
+    recomputeRaceDays: async () => 1,
+    refreshYouthStandings: async (args) => { calls.push(args); return { status: "updated" }; },
+  });
+  assert.equal(calls[0], "applyRaceResults", "refreshYouthStandings skal ske EFTER applyRaceResults");
+  assert.equal(calls.length, 2, "refreshYouthStandings skal kaldes præcis én gang for et ungdomsløb");
+  assert.equal(calls[1].race.id, race.id, "kaldet skal bære løbet (id/season_id/squad)");
+  assert.equal(calls[1].race.squad, "u23");
+});
+
+test("#5675 simulateRace: seniorløb kalder ALDRIG refreshYouthStandings", async () => {
+  const race = { ...STAGE_RACE, id: "race-senior-whole-5675", squad: "senior" };
+  const supabase = cannedForStage(race);
+  let called = false;
+  await simulateRace({
+    supabase, race,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 1,
+    refreshYouthStandings: async () => { called = true; return { status: "updated" }; },
+  });
+  assert.equal(called, false, "refreshYouthStandings må ikke kaldes for et seniorløb");
+});
+
+test("#5675 simulateRace: fejl i refreshYouthStandings logges, men stopper ikke afviklingen", async () => {
+  const race = { ...STAGE_RACE, id: "race-y-junior-whole-5675", squad: "junior" };
+  const supabase = cannedForStage(race);
+  const report = await simulateRace({
+    supabase, race,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 1,
+    refreshYouthStandings: async () => { throw new Error("youth standings boom"); },
+  });
+  // status=completed sat selvom refresh kastede.
+  const upd = supabase.__writes.find((w) => w.table === "races" && w.op === "update");
+  assert.equal(upd.obj.status, "completed", "afviklingen skal fuldføre forbi en fejlet youth-standings-refresh");
+  assert.equal(report.stages, 3);
+});
