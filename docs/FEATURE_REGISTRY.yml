@@ -183,8 +183,8 @@ features:
     flag: race_day_development_enabled
     ssot: docs/PROGRESSION_RULES.md
     epic: 4850
-    verified: 2026-09-07
-    note: Bygget (D2); afventer #4850.
+    verified: 2026-09-24
+    note: Variant A/S1 (etapens profil som mellem-pas, +1 pr. evne pr. løbsdag, planen ikke input; PR #5640 + #5654). Flippes off → on 28/9 sammen med training_tick_per_race_day, ejer-go.
 
   # --- market --------------------------------------------------------------
   - id: auctions

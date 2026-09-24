@@ -1516,7 +1516,7 @@
     },
     "raceDayProfileMatchFaq": {
       "q": "Skal min rytters træningspas matche løbets terræn (fladt, bjerge, brosten)?",
-      "a": "Nej, ikke lige nu. Sæson 3 kører på sæson 2's løbsdags-regler (patch 7.196): et løb giver ikke sin egen evne-belønning, så der er intet for et pas at \"matche\". Træn hver rytter mod det han har brug for på sigt. En model hvor pas og etapeprofil hænger sammen er planlagt til sæson 4, men den er ikke låst endnu, så byg ikke din plan omkring en bestemt udgave af den."
+      "a": "Nej. Din rytters træningspas og hans løb er adskilte. Hvad et løb giver ham, afgøres af den etape han kører, aldrig af det pas du planlagde, så der er intet for et pas at \"matche\". Træn hver rytter mod det han har brug for på sigt, og vælg hans løb efter det terræn du vil have ham til at køre."
     },
     "raceDayAcademyFaq": {
       "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
