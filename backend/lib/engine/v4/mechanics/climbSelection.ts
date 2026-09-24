@@ -36,8 +36,40 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
+import { EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
+import type { EffortLevel } from "../types.ts";
+
+/**
+ * #5580 (M1 punkt 1, indsatstrappen model 3): indsatsens GEVINST paa
+ * stigningen. Split-scoren ganges med `(1 - relief[effort] x reserve01)`:
+ * `protect`/`all_out` holder gruppen laengere, `save`/`grupetto` giver slip
+ * tidligere, `normal` er praecis 1 (bit-uaendret).
+ *
+ * Gevinsten er GANGET MED REST-RESERVEN: en rytter der har braendt sin W' faar
+ * intet led, mens den pris han har betalt (det hoejere kraftkrav, M12) staar
+ * tilbage i energi-underskuddet. Tom reserve => han knaekker.
+ *
+ * Monotoni: for SAMME reserve og SAMME score er faktoren ikke-stigende op ad
+ * trappen (relief-tabellen er ikke-faldende, laast af test), saa P(sat) aldrig
+ * stiger naar indsatsen hoejnes. For to ryttere paa samme trin og samme
+ * reserve er faktoren ens, saa rank-guardens evne-orden er bevaret.
+ *
+ * Faktoren clampes til >= 0: en score kan aldrig blive negativ (en negativ
+ * score ville vende stoejens fortegn, §2 invariant 3).
+ *
+ * Eksporteret for property-testbarhed.
+ */
+export function effortClimbScoreFactor(
+  effort: EffortLevel | undefined,
+  reserve01: number,
+  relief: Readonly<Record<EffortLevel, number>> = EFFORT_GAIN_EXTRA_TUNING.climbScoreRelief,
+): number {
+  const r = effort ? relief[effort] : 0;
+  if (!Number.isFinite(r) || r === 0) return 1;
+  const reserve = Number.isFinite(reserve01) ? clamp(reserve01, 0, 1) : 0;
+  return Math.max(0, 1 - r * reserve);
+}
 
 /**
  * #4914 (grupetto-tempo, EJER-VALG bag GROUP_TEMPO_EFFORT_EXTRA_TUNING.model):
@@ -182,7 +214,10 @@ function computeSelections(
     const energyDeficit = energyDeficit01(riderState.wprime, riderState.wprimeMax);
     // Begge led er nu alvors-skalerede (#4604) — se climbSeverity01's docblock.
     const energyScaled = energyDeficit * climbSeverity01(gradientPct, lengthKm);
-    const baseScore = deficitWeight * deficitScaled + energyDeficitWeight * energyScaled;
+    // #5580: indsats-leddet (gevinsten), skaleret med rest-reserven — se
+    // effortClimbScoreFactor. Normal => faktor 1, dvs. bit-uaendret.
+    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit);
+    const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor;
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
