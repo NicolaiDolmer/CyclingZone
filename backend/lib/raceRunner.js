@@ -105,6 +105,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
+import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
@@ -1252,6 +1253,9 @@ export async function fillMissingTeamEntries({
       rows.push({
         race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
         race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
+        // #5246: eksplicit kilde, saa redningen ved start skilles fra assistentens
+        // late-fill i maalingen. Triggeren giver ingen default (uden kilde = unknown).
+        auto_filled_source: AUTO_FILL_SOURCES.START_RESCUE,
       });
     }
   }
@@ -1275,7 +1279,10 @@ export async function fillMissingTeamEntries({
   }
 
   if (persist && rows.length) {
-    const { error: insErr } = await supabase.from("race_entries").insert(rows);
+    // #5246: tolerant skrivning — i vinduet mellem backend-deploy og migrationen
+    // findes auto_filled_source ikke endnu; saa skrives raekkerne uden kilden i
+    // stedet for at vaelte loebsstartens autofyld (raceEntryAutoFillSource.js).
+    const { error: insErr } = await writeRaceEntriesWithSource({ supabase, rows });
     if (insErr) {
       // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
       // loadFieldBindingContext/excludeBoundRiders ovenfor alligevel skulle overse
@@ -1311,7 +1318,7 @@ export async function fillMissingTeamEntries({
         );
         rows.splice(0, rows.length, ...kept);
         if (rows.length) {
-          const { error: retryErr } = await supabase.from("race_entries").insert(rows);
+          const { error: retryErr } = await writeRaceEntriesWithSource({ supabase, rows });
           if (retryErr) throw new Error(`race_entries insert (efter drain-filter): ${retryErr.message}`);
         }
         await notifyOwnersOfFullFill(rows);

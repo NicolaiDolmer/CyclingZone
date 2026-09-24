@@ -20,6 +20,7 @@ import { loadStrategiesForTeams } from "./raceStrategy.js";
 import { applyRiderEligibilityFilter, applyInjuredFilter } from "./riderEligibility.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
+import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 
 /**
@@ -167,7 +168,7 @@ export async function runRaceEntryGenerator({
   const { data: races, error: raceErr } = await supabase
     .from("races").select("id, name, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
-  if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0, mode };
+  if (!races || !races.length) return { dryRun, races: 0, teams: 0, teams_written: 0, generated: 0, skipped: 0, inserted: 0, mode };
   const raceIds = races.map((r) => r.id);
   const raceById = new Map(races.map((r) => [r.id, r])); // #2436: retry rebygger sizeRule pr. race_class
   // Frys (#1825): et igangværende etapeløb (stages_completed>0) må ALDRIG regenereres —
@@ -296,6 +297,17 @@ export async function runRaceEntryGenerator({
   const ownerTeamIds = new Set(
     (allTeams || []).filter((t) => t.user_id).map((t) => t.id)
   );
+  // #5246: kilden paa de raekker generatoren skriver (race_entries.auto_filled_source).
+  // AI-hold er altid ai_generator. Et menneskehold naas kun i late_fill/opt_in (trin 5's
+  // filter), og kilden er den EFFEKTIVE tilstand, saa assistentens late-fill kan maales
+  // for sig. null = ukendt (burde ikke ske; maalingen taeller det som unknown).
+  const humanSource = mode === ASSISTANT_MODES.LATE_FILL
+    ? AUTO_FILL_SOURCES.LATE_FILL
+    : mode === ASSISTANT_MODES.OPT_IN ? AUTO_FILL_SOURCES.OPT_IN : null;
+  const sourceForTeam = (teamId) => (ownerTeamIds.has(teamId) ? humanSource : AUTO_FILL_SOURCES.AI_GENERATOR);
+  // #5246: hold der FAKTISK fik mindst een ny raekke skrevet i denne koersel
+  // (race_entry_generator_runs.teams_filled). `teams` nedenfor er alle behandlede hold.
+  const teamsWrittenIds = new Set();
   const teamsByPool = new Map();
   for (const t of eligibleTeams) {
     const key = t.league_division_id ?? null;
@@ -706,6 +718,7 @@ export async function runRaceEntryGenerator({
     const toDeleteSet = new Set(toDelete);
     const toInsert = diffInsert.map(({ rider_id, race_role }) => ({
       race_id: raceId, rider_id, team_id: teamId, race_role, is_auto_filled: true,
+      auto_filled_source: sourceForTeam(teamId), // #5246
     }));
 
     let unitInserted = 0;
@@ -731,9 +744,10 @@ export async function runRaceEntryGenerator({
     // i stedet for at vælte kørslen — næste tick samler den op, når det andet holds
     // stale-delete har fjernet den.
     if (toInsert.length) {
-      const { error: insErr } = await supabase
-        .from("race_entries")
-        .upsert(toInsert, { onConflict: "race_id,rider_id", ignoreDuplicates: true });
+      // #5246: tolerant hvis auto_filled_source ikke findes endnu (deploy-vinduet).
+      const { error: insErr } = await writeRaceEntriesWithSource({
+        supabase, rows: toInsert, upsertOptions: { onConflict: "race_id,rider_id", ignoreDuplicates: true },
+      });
       if (insErr) {
         // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
         // sweepets egen kronologiske binding-tildeling (findManualOverlapConflicts/
@@ -937,11 +951,13 @@ export async function runRaceEntryGenerator({
   // bruger det til at afgøre om assistantNotifyCandidates for denne enhed rent
   // faktisk blev skrevet (draining-skip og en fejlet retry er IKKE en skrivning).
   async function applyUnitWithRecovery({ race_id, team_id, desired, existing }) {
+    const countWritten = (result) => { if ((result?.inserted ?? 0) > 0) teamsWrittenIds.add(team_id); };
     try {
       const result = await applyUnitDiff({ raceId: race_id, teamId: team_id, desired, existing });
       inserted += result.inserted;
       removed += result.removed;
       roleUpdated += result.roleUpdated;
+      countWritten(result);
       return true;
     } catch (err) {
       // best-effort: fejl her aggregeres i failedUnits/errors og captures samlet
@@ -968,6 +984,7 @@ export async function runRaceEntryGenerator({
           inserted += retryResult.inserted;
           removed += retryResult.removed;
           roleUpdated += retryResult.roleUpdated;
+          countWritten(retryResult);
           return true;
         } catch (retryErr) {
           // best-effort: samme opstrøms-capture som ydre catch — retry-fejl tæller
@@ -990,6 +1007,7 @@ export async function runRaceEntryGenerator({
           inserted += retryResult.inserted;
           removed += retryResult.removed;
           roleUpdated += retryResult.roleUpdated;
+          countWritten(retryResult);
           console.warn(
             `⚠️  Entry-generator ${race_id}/${team_id}: rytter(e) slettet under kørslen — enheden kørt om uden dem`
           );
@@ -1090,7 +1108,9 @@ export async function runRaceEntryGenerator({
           race_id: unit.race_id,
           vacate: diff.toVacate,
           deletes: diff.toDelete,
-          inserts: diff.toInsert,
+          // #5246: kilden pr. ny raekke. RPC'en fra foer migrationen ignorerer noeglen,
+          // saa payloaden er sikker i deploy-vinduet (apply_race_entry_unit_batch).
+          inserts: diff.toInsert.map((i) => ({ ...i, auto_filled_source: sourceForTeam(team_id) })),
           promotions: diff.promotions,
         })),
       });
@@ -1104,6 +1124,7 @@ export async function runRaceEntryGenerator({
     }
     if (!batchErr) {
       inserted += batchResult?.inserted ?? 0;
+      if ((batchResult?.inserted ?? 0) > 0) teamsWrittenIds.add(team_id); // #5246
       removed += batchResult?.removed ?? 0;
       roleUpdated += (batchResult?.role_updated ?? 0) + batchVacateNetHelper;
       // #4759: batchen er ÉN transaktion — lykkedes den, blev ALLE dens enheder
@@ -1213,6 +1234,8 @@ export async function runRaceEntryGenerator({
     mode, // #4201: den EFFEKTIVE tilstand (fail-safe kan have sat den til proactive).
     races: usableRaces.length,
     teams: processedTeamIds.size,
+    // #5246: hold med mindst een NY raekke skrevet i denne koersel (ikke blot behandlet).
+    teams_written: teamsWrittenIds.size,
     generated,
     skipped,
     inserted,
