@@ -2251,3 +2251,104 @@ test("#5246 (a) kolonnen findes ikke endnu (PGRST204) → raekkerne skrives uden
   assert.ok(entriesFor(state, "NEAR", "mgr").length > 0, "late-fill skete alligevel");
   assert.ok(state.race_entries.every((e) => !("auto_filled_source" in e)), "skrevet uden feltet");
 });
+
+// ── #5645 (Y4): trup-bevidst generator ─────────────────────────────────────────
+// Et hold har én pulje pr. trup. Et U23-løb (races.squad = 'u23') skal fyldes med
+// holdets U23-ryttere fra holdets U23-pulje, aldrig seniorer, og et hold uden U23-
+// pulje er ikke i feltet. Juniorløb: kun sæsonalder >= 17.
+function seedSquadRiders(state, teamId, squad, count, { birthdate = null } = {}) {
+  for (let i = 0; i < count; i++) {
+    const id = `${teamId}-${squad}${i}`;
+    state.riders.push({ id, team_id: teamId, squad, is_academy: true, is_retired: false, birthdate });
+    state.rider_derived_abilities.push({ rider_id: id, ...ab(90 - i * 3) });
+    state.rider_condition.push({ rider_id: id, fatigue: 0 });
+  }
+}
+
+function youthGeneratorState() {
+  const state = emptyState();
+  state.seasons = [{ id: "season1", number: 4 }];
+  state.races = [
+    { id: "S", season_id: "season1", race_class: "Class2", league_division_id: 1, squad: "senior" },
+    { id: "U", season_id: "season1", race_class: "Class2", league_division_id: 10, squad: "u23" },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "S", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z", game_day: 5 },
+    { race_id: "U", stage_number: 1, scheduled_at: "2026-07-01T12:00:00Z", game_day: 5 },
+  ];
+  state.race_stage_profiles = [{ race_id: "S", ...flatProfile(1) }, { race_id: "U", ...flatProfile(1) }];
+  state.teams = [
+    { id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1, u23_league_division_id: 10 },
+    // t2 har ingen U23-pulje (null) → aldrig i et U23-felt.
+    { id: "t2", is_test_account: false, is_frozen: false, league_division_id: 1, u23_league_division_id: null },
+  ];
+  for (const t of ["t1", "t2"]) {
+    seedTeamRiders(state, t, 8);
+    seedSquadRiders(state, t, "u23", 7);
+  }
+  return state;
+}
+
+test("#5645 generator: U23-løb får kun U23-ryttere fra hold i løbets U23-pulje, aldrig seniorer", async () => {
+  const state = youthGeneratorState();
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false });
+
+  const riderById = new Map(state.riders.map((r) => [r.id, r]));
+  const uEntries = state.race_entries.filter((e) => e.race_id === "U");
+  assert.ok(uEntries.length > 0, "U23-løbet fik et felt");
+  for (const e of uEntries) {
+    assert.equal(e.team_id, "t1", "kun holdet med U23-pulje 10 er i feltet");
+    assert.equal(riderById.get(e.rider_id).squad, "u23", `${e.rider_id} er ikke en U23-rytter`);
+  }
+  const sEntries = state.race_entries.filter((e) => e.race_id === "S");
+  assert.ok(sEntries.length > 0, "seniorløbet fik stadig sit felt");
+  for (const e of sEntries) {
+    assert.equal(riderById.get(e.rider_id).squad ?? "senior", "senior", `${e.rider_id} (ungdom) kom i seniorløbet`);
+  }
+  assert.deepEqual([...new Set(sEntries.map((e) => e.team_id))].sort(), ["t1", "t2"]);
+});
+
+test("#5645 (ejer 24/9): juniorløb udtager 16-årige — ingen separat aldersgate ud over trup-medlemskab", async () => {
+  const state = emptyState();
+  state.seasons = [{ id: "season1", number: 4 }];
+  state.races = [{ id: "J", season_id: "season1", race_class: "Class2", league_division_id: 20, squad: "junior" }];
+  state.race_stage_schedule = [{ race_id: "J", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z", game_day: 5 }];
+  state.race_stage_profiles = [{ race_id: "J", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1, junior_league_division_id: 20 }];
+  seedTeamRiders(state, "t1", 8);
+  // De 16-årige er de STÆRKESTE (seedes først med højeste evner) — de skal derfor
+  // være dem udtagelsen vælger nu, hvor der ikke er nogen aldersgate.
+  for (let i = 0; i < 3; i++) {
+    const id = `t1-j16-${i}`;
+    state.riders.push({ id, team_id: "t1", squad: "junior", is_academy: true, is_retired: false, birthdate: "2013-05-01" });
+    state.rider_derived_abilities.push({ rider_id: id, ...ab(99) });
+    state.rider_condition.push({ rider_id: id, fatigue: 0 });
+  }
+  seedSquadRiders(state, "t1", "junior", 7, { birthdate: "2012-05-01" });
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false });
+
+  const jEntries = state.race_entries.filter((e) => e.race_id === "J");
+  assert.ok(jEntries.length > 0, "juniorløbet fik et felt");
+  assert.ok(jEntries.some((e) => e.rider_id.startsWith("t1-j16-")), "16-årig blev udtaget (ejer 24/9)");
+});
+
+test("#5645 generator (risiko 7): en rytter med en manuel seniorentry samme løbsdag udtages ikke til U23-løbet", async () => {
+  const state = youthGeneratorState();
+  // t1-u23x0 blev udtaget manuelt til seniorløbet S og derefter flyttet til U23-truppen.
+  state.race_entries = [
+    { race_id: "S", rider_id: "t1-u23x0", team_id: "t1", race_role: "helper", is_auto_filled: false },
+  ];
+  state.riders.push({ id: "t1-u23x0", team_id: "t1", squad: "u23", is_academy: true, is_retired: false });
+  state.rider_derived_abilities.push({ rider_id: "t1-u23x0", ...ab(99) });
+  state.rider_condition.push({ rider_id: "t1-u23x0", fatigue: 0 });
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false });
+
+  const uRiders = state.race_entries.filter((e) => e.race_id === "U").map((e) => e.rider_id);
+  assert.ok(uRiders.length > 0, "U23-løbet fik et felt");
+  assert.ok(!uRiders.includes("t1-u23x0"), "rytteren er bundet af seniorløbet samme løbsdag");
+});

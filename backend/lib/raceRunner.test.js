@@ -1490,3 +1490,39 @@ test("simulateRace: applyFatigue-fejl vælter ikke afviklingen (#1306)", async (
   });
   assert.ok(report.rowsImported > 0, "finalization skal fuldføre selv om applyFatigue kaster");
 });
+
+// ── #5645 (Y4): præmievagt ved kilden ────────────────────────────────────────
+// Ungdomsløb (races.squad = u23/junior) udbetaler ingen præmiepenge i v1. Point er
+// sportsdata og uændrede; kun prize_money nulstilles. Senior: bit-identisk.
+test("#5645 buildRaceResults: seniorløb (squad 'senior' eller udeladt) er bit-identisk", () => {
+  const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const senior = buildRaceResults({ race: { ...STAGE_RACE, squad: "senior" }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  assert.deepEqual(senior.resultRows, base.resultRows);
+  const paid = base.resultRows.filter((r) => r.prize_money > 0);
+  assert.ok(paid.length > 0, "fixture giver præmier i et seniorløb");
+  for (const r of paid) assert.equal(r.prize_money, r.points_earned * PRIZE_PER_POINT);
+});
+
+for (const squad of ["u23", "junior"]) {
+  test(`#5645 buildRaceResults: ${squad}-løb giver prize_money = 0 på hver række, point uændrede`, () => {
+    const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    assert.equal(youth.resultRows.length, base.resultRows.length);
+    for (const r of youth.resultRows) assert.equal(r.prize_money, 0, `${r.result_type} rank ${r.rank} bar en præmie`);
+    assert.deepEqual(
+      youth.resultRows.map((r) => r.points_earned),
+      base.resultRows.map((r) => r.points_earned),
+      "point er uændrede",
+    );
+  });
+}
+
+test("#5645 buildStageRowsAccumulated: u23-løb giver prize_money = 0 (etape-for-etape-stien)", () => {
+  const stagesSorted = [...STAGES_3].sort((a, b) => a.stage_number - b.stage_number);
+  const { resultRows } = buildStageRowsAccumulated({
+    race: { ...STAGE_RACE, squad: "u23" }, stagesSorted, stageIndex: 0, entrants: ENTRANTS, pointsLookup: POINTS,
+  });
+  assert.ok(resultRows.length > 0);
+  assert.ok(resultRows.some((r) => r.points_earned > 0), "fixture giver point");
+  for (const r of resultRows) assert.equal(r.prize_money, 0);
+});
