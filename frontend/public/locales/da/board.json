@@ -1820,6 +1820,8 @@
       "cardTitleGeneric": "Sæsonmandat",
       "goalsMeta": "{count} mål · underskrevet {date}",
       "achievedTarget": "Opnået {achieved} / mål {target}",
+      "expandAll": "Fold alle ud",
+      "collapseAll": "Fold alle sammen",
       "stretch": "Stræk",
       "discussTarget": "Diskutér mål",
       "discussTargetDisabledHint": "Diskussion af mål åbner på årsmødet.",
@@ -1880,6 +1882,7 @@
     "board": {
       "cardTitle": "Bestyrelsen",
       "minutesLink": "Referater",
+      "memberGridHint": "Tryk på et medlem for at se dennes syn på bestyrelsen.",
       "role": {
         "chair": "Formand",
         "results": "Resultater",

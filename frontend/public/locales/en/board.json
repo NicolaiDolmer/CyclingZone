@@ -1820,6 +1820,8 @@
       "cardTitleGeneric": "Season mandate",
       "goalsMeta": "{count} goals · signed {date}",
       "achievedTarget": "Achieved {achieved} / target {target}",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
       "stretch": "Stretch",
       "discussTarget": "Discuss target",
       "discussTargetDisabledHint": "Discussing targets opens at the annual meeting.",
@@ -1880,6 +1882,7 @@
     "board": {
       "cardTitle": "The board",
       "minutesLink": "Meeting minutes",
+      "memberGridHint": "Tap a member for their view of the board.",
       "role": {
         "chair": "Chair",
         "results": "Results",

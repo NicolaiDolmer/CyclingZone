@@ -105,3 +105,8 @@ test("#4557 bonustilbuddet fodres fra payloadens ene felt, begge steder", () => 
   assert.equal(stripeUses.length, 2, "resumé-striben (overblik) og det fulde kort (Mandat-fane) laeser samme felt");
   assert.match(source, /onReload=\{onReload\}/);
 });
+
+test("#5632 Mandat-fanen faar bonusOfferProgress + passiveModifier fra payloaden (afstand til tilbud + sponsoreffekt)", () => {
+  assert.match(source, /bonusOfferProgress=\{data\.bonusOfferProgress\}/);
+  assert.match(source, /passiveModifier=\{data\.passiveModifier\}/);
+});

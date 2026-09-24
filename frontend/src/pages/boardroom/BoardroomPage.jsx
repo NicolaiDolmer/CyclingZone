@@ -170,7 +170,13 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
         </TabPanel>
 
         <TabPanel value="mandate">
-          <MandateCard mandate={data.mandate} bonusOffer={data.bonusOffer} onReload={onReload} />
+          <MandateCard
+            mandate={data.mandate}
+            bonusOffer={data.bonusOffer}
+            bonusOfferProgress={data.bonusOfferProgress}
+            passiveModifier={data.passiveModifier}
+            onReload={onReload}
+          />
         </TabPanel>
 
         <TabPanel value="vision">
