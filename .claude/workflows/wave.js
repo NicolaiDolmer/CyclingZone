@@ -133,14 +133,30 @@
 //    (c) Merge under boelge uden ownership-overlap: haandhaeves i
 //        wave-policy.mjs (assert-merge-allowed + guarded-merge), ikke her.
 //    (d) Reviewer paa opus, og applySchemaEvidenceRule() nedgraderer et
-//        blokerende data-/skema-fund uden opslag i schema-snapshot.json
-//        eller en SELECT ... FROM til bemaerkning.
+//        blokerende data-/skema-fund uden opslag i schema-snapshot.json,
+//        en SELECT ... FROM eller fil:linje fra diffen (#5602) til
+//        bemaerkning.
 //    (e) Hale-tomgang: et monotont minut-ur (setTimeout, ingen Date.now())
 //        maaler hver lanes spor; tailIdleLaneMinutes() giver rapportens tal.
 //    Alle rene funktioner er SPEJLET i scripts/wave-freeze.mjs, og
 //    wave-freeze.test.mjs sammenligner funktionskroppene.
 //
-// Refs #5142, #5178, #4918, #4919, #4920, #4924, #5220, #5562, #5567.
+// 8. BILLIGT INTAKE-TJEK (#5602, ejer 24/9: boelge R brugte ca. 0,5M tokens
+//    paa fem tomme intake-agenter):
+//    (a) En ledig lane starter foerst et TJEK paa den mindste model (haiku)
+//        med en minimal prompt: kun `wave-policy.mjs intake --peek`, der
+//        markerer faerdige branches og TAELLER koeen uden at flytte noget.
+//        Kun naar koeen har spor, startes den fulde intake-agent (sonnet,
+//        optag + worktrees + briefs). Et tjek der svarer forkert, kan altsaa
+//        forsinke et spor, men aldrig tabe det.
+//    (b) Voksende pauser mellem tomme tjek: intakeBackoffMinutes() giver 10,
+//        20, 40 og derefter loftet 60 min. Et faerdigt spor nulstiller.
+//    (c) Efter INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek stopper de ledige
+//        laner sig selv (planIdleLane -> 'exit'), ogsaa mens andre laner
+//        koerer. Det logges og staar i rapportens selfStoppedLanes. Laner der
+//        stadig koerer et spor, tjekker igen, naar sporet er faerdigt.
+//
+// Refs #5142, #5178, #4918, #4919, #4920, #4924, #5220, #5562, #5567, #5602.
 
 export const meta = {
   name: 'wave',
@@ -176,6 +192,9 @@ const WAVE_FREEZE = {
   INVESTIGATE_TIMEOUT_MINUTES: 60,
   POKE_MINUTES: 15,
   INTAKE_POLL_MINUTES: 10,
+  INTAKE_POLL_MAX_MINUTES: 60,
+  INTAKE_MAX_EMPTY_CHECKS: 5,
+  INTAKE_CHECK_TIMEOUT_MINUTES: 5,
   INTAKE_TIMEOUT_MINUTES: 20,
 }
 const FIX_TIMEOUT_MS = WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES * 60 * 1000
@@ -238,6 +257,17 @@ const INTAKE_SCHEMA = {
     tracks: { type: 'array', description: 'de optagne spor UAENDRET fra intake-kommandoens "taken"', items: TRACK_CONFIG_SCHEMA },
   },
   required: ['ok', 'lanes', 'tracks'],
+}
+
+// #5602: det billige intake-tjek svarer kun med koeens laengde.
+const INTAKE_CHECK_SCHEMA = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean', description: 'false hvis kommandoen fejlede (exit-kode forskellig fra 0)' },
+    pending: { type: 'number', description: 'feltet "pending" fra kommandoens JSON, 0 hvis ok=false' },
+    problem: { type: 'string', description: 'fejlteksten hvis ok=false, ellers tom' },
+  },
+  required: ['ok', 'pending'],
 }
 
 const REVIEW_SCHEMA = {
@@ -433,14 +463,24 @@ function sortHeavyFirst(list) {
 
 // SPEJLING af planIdleLane() i scripts/wave-freeze.mjs (#5562, rullende
 // optag): 'take' | 'intake' | 'wait' | 'exit' for en lane uden spor.
+// #5602: efter INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek stopper lanen sig selv.
 function planIdleLane(state) {
   const s = state || {}
   if (s.stoppedByFreeze) return 'exit'
   if (Number(s.queued) > 0) return 'take'
   if (s.intakeEnabled === false) return 'exit'
   if (!s.intakeEmpty) return 'intake'
+  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) return 'exit'
   if (Number(s.activeLanes) > 0) return 'wait'
   return 'exit'
+}
+
+// SPEJLING af intakeBackoffMinutes() i scripts/wave-freeze.mjs (#5602):
+// pausen efter det n'te tomme intake-tjek i traek (10, 20, 40, loft 60).
+function intakeBackoffMinutes(emptyStreak) {
+  const n = Math.max(1, Math.round(Number(emptyStreak) || 1))
+  const minutes = WAVE_FREEZE.INTAKE_POLL_MINUTES * Math.pow(2, Math.min(n - 1, 10))
+  return Math.min(WAVE_FREEZE.INTAKE_POLL_MAX_MINUTES, minutes)
 }
 
 // SPEJLING af releasesOwnership() i scripts/wave-freeze.mjs (#5562). Kun en
@@ -451,18 +491,20 @@ function releasesOwnership(status) {
 
 // SPEJLING af applySchemaEvidenceRule() i scripts/wave-freeze.mjs (#5567).
 // Et blokerende data-/skema-fund uden opslag nedgraderes til bemaerkning.
+// #5602: fil:linje fra diffen taeller som bevis; kun prod-paastande rammes.
 function applySchemaEvidenceRule(review) {
   if (!review || typeof review !== 'object' || !Array.isArray(review.findings)) {
     return { review, downgraded: [] }
   }
   const schemaWords = /\bkolonne|\bcolumn|\bnot\s+null\b|\bconstraint|\bmigration|\brls\b|\bforeign\s+key|\benums?\b/i
-  const hasEvidence = (text) => /schema-snapshot\.json/i.test(text) || /\bselect\b[\s\S]*?\bfrom\b/i.test(text)
+  const fileLine = /[\w./\\-]+\.[a-z0-9]+:\d+/i
+  const hasEvidence = (text) => /schema-snapshot\.json/i.test(text) || /\bselect\b[\s\S]*?\bfrom\b/i.test(text) || fileLine.test(text)
   const downgraded = []
   const findings = review.findings.map((f) => {
     if (!f || f.severity !== 'blokerende') return f
     const isData = f.category === 'data-skema' || (!f.category && schemaWords.test(String(f.what || '')))
-    if (!isData || hasEvidence(String(f.evidence || ''))) return f
-    const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler skema-/prod-opslag (#5567)' }
+    if (!isData || hasEvidence(`${f.evidence || ''} ${f.file || ''}`)) return f
+    const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler fil:linje, skema- eller prod-opslag (#5567, #5602)' }
     downgraded.push(next)
     return next
   })
@@ -696,6 +738,7 @@ function reviewPrompt(track, attempt) {
     '   database/schema-snapshot.json (relations.<tabel>.columns) og, hvor det giver mening, en read-only SELECT ... FROM mod prod via Supabase MCP.',
     '   ALDRIG skrivende SQL (ingen INSERT/UPDATE/DELETE/DDL). Skriv opslaget i fundets evidence og saet category "data-skema".',
     '   Et blokerende data-/skema-fund uden et saadant opslag nedgraderes automatisk til bemaerkning (#5567 - 22/9 paastod en reviewer at en kolonne manglede; den er NOT NULL i prod).',
+    '   Bygger fundet paa selve diffen (fx en DROP COLUMN i en migration), saa skriv fil:linje i evidence (fx database/x.sql:12) - det taeller som bevis og nedgraderes ikke (#5602).',
     '',
     'Hvert fund har category (data-skema | scope | forbudte-filer | secrets | verifikation | andet) og evidence: hvad fundet bygger paa (fil:linje, kommando + output, opslag).',
     'Dom: BLOKERENDE kun ved noget der ikke maa merges (forkert scope, forbudte filer, secrets, manglende verifikation af en ny regel). Smagsting er BEMAERKNINGER.',
@@ -800,6 +843,24 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     '',
     'Returnér struktureret: ok, waveId, watchPid, activeFile, lanes (branch, worktree, briefPath, ready, openPr, note), problems.',
     'ready=false for ethvert spor hvor worktree eller brief mangler - saa springer boelgen sporet over i stedet for at starte en lane i blinde.',
+  ].join('\n')
+}
+
+// #5602: det billige tjek. Mindste model, ingen brief, ingen repo-laesning:
+// EET kald, der kun taeller koeen og markerer faerdige branches (--peek flytter
+// intet), og saa JSON tilbage. Praefikset 'WAVE-SETUP:' lader det passere
+// scripts/hooks/guard-agent-spawn.sh.
+function intakeCheckPrompt(waveId, finishedBranches) {
+  const finishedArg = finishedBranches.length > 0 ? ` --finished ${finishedBranches.join(',')}` : ''
+  // Forward slashes og anfoerselstegn: kommandoen virker ordret i baade bash og pwsh.
+  const main = MAIN_CHECKOUT.replace(/\\/g, '/')
+  return [
+    'WAVE-SETUP: intake-tjek (#5602)',
+    '',
+    'Koer praecis denne ene kommando i forgrunden og intet andet. Laes ingen filer, koer ingen andre kommandoer.',
+    `\`node "${main}/scripts/wave-policy.mjs" intake --wave-id ${waveId} --peek${finishedArg} --run-dir "${main}/.claude/run"\``,
+    'Exit-kode 0: den skriver JSON med feltet "pending". Returner ok=true og pending = det tal.',
+    'Anden exit-kode: returner ok=false, pending=0 og fejlteksten i problem.',
   ].join('\n')
 }
 
@@ -1270,11 +1331,18 @@ function stopMinuteClock() {
 const allTracks = tracks.slice()
 const knownBranches = new Set(tracks.map((t) => t.branch))
 const intervals = []
-const finishedSinceIntake = []
+// #5602: ALLE branches der har frigivet ejerskab i boelgen, sendt med hvert
+// tjek og hver intake (--finished er idempotent). Et tjek der paastaar at have
+// koert uden at have gjort det, kan saa ikke tabe en frigivelse.
+const finishedInWave = []
 let busyLanes = 0
 let intakeEmpty = false
 let intakeBroken = false
 let intakeRuns = 0
+// #5602: billige tjek, tomme tjek i traek, og laner der stoppede sig selv.
+let intakeChecks = 0
+let emptyStreak = 0
+const selfStoppedLanes = []
 let intakeInFlight = null
 let pollTimer = null
 let pollWaiters = []
@@ -1290,7 +1358,8 @@ function wakeIdleLanes() {
 }
 
 // EEN delt timer for alle ventende laner: naar den udloeber, maa naeste ledige
-// lane proeve intake igen.
+// lane proeve intake igen. #5602: pausen vokser med antallet af tomme tjek i
+// traek (intakeBackoffMinutes) i stedet for et fast interval.
 function waitForIntakePoll() {
   return new Promise((resolve) => {
     pollWaiters.push(resolve)
@@ -1299,13 +1368,55 @@ function waitForIntakePoll() {
         pollTimer = null
         intakeEmpty = false
         wakeIdleLanes()
-      }, WAVE_FREEZE.INTAKE_POLL_MINUTES * 60 * 1000)
+      }, intakeBackoffMinutes(emptyStreak) * 60 * 1000)
     }
   })
 }
 
+// #5602: et tomt (eller fejlet) tjek. Taelleren styrer baade pausen og
+// selv-stoppet i planIdleLane().
+function noteEmptyIntake(label) {
+  intakeEmpty = true
+  emptyStreak += 1
+  if (emptyStreak >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) {
+    log(`${label}: koeen er tom for ${emptyStreak}. gang i traek - ledige laner stopper sig selv (loft ${WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS}). Laner med et spor tjekker igen, naar sporet er faerdigt.`)
+  } else {
+    log(`${label}: koeen er tom (${emptyStreak}. gang i traek) - naeste tjek om ${intakeBackoffMinutes(emptyStreak)} min, hvis andre laner stadig koerer.`)
+  }
+}
+
+// #5602: det billige tjek (haiku, minimal prompt). Det flytter intet, saa et
+// tjek der ikke svarer eller fejler, er bare et tomt tjek; finishedInWave
+// sendes med igen naeste gang.
+async function runIntakeCheck(finished) {
+  intakeChecks += 1
+  const label = `intake-tjek ${intakeChecks}`
+  let check = null
+  try {
+    check = await withTimeout(
+      agent(intakeCheckPrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'haiku', effort: 'low', schema: INTAKE_CHECK_SCHEMA }),
+      WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES * 60 * 1000,
+      label,
+    )
+  } catch (err) {
+    check = null
+    log(`${label}: ${String((err && err.message) || err)}`)
+  }
+  const answered = Boolean(check) && check !== TIMED_OUT && check.ok === true
+  if (!answered && check && check !== TIMED_OUT && check.problem) log(`${label}: ${check.problem}`)
+  const pending = answered ? Number(check.pending) : 0
+  return { label, pending: Number.isFinite(pending) && pending > 0 ? pending : 0 }
+}
+
 async function runIntake() {
-  const finished = finishedSinceIntake.splice(0)
+  const finished = finishedInWave.slice()
+  const check = await runIntakeCheck(finished)
+  if (check.pending === 0) {
+    noteEmptyIntake(check.label)
+    return
+  }
+  // Koeen har spor: den fulde intake-agent (optag + worktrees + briefs).
+  // --finished sendes igen - det er idempotent.
   intakeRuns += 1
   const label = `intake ${intakeRuns}`
   let answer = null
@@ -1324,7 +1435,6 @@ async function runIntake() {
     // vide. De rapporteres af oprydningen (markerTracks); optaget slaas fra, saa
     // der ikke startes endnu en intake oven i en der maaske stadig koerer.
     intakeBroken = true
-    finishedSinceIntake.unshift(...finished)
     log(`${label} svarede ikke inden ${WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES} min - rullende optag er slaaet fra resten af boelgen. Spor der naaede ind i markoeren, rapporteres ved oprydningen.`)
     wakeIdleLanes()
     return
@@ -1332,9 +1442,8 @@ async function runIntake() {
   for (const p of answer.problems || []) log(`${label}: ${p}`)
   if (answer.ok !== true) {
     // intake-kommandoen fejlede, saa intet er flyttet. --finished er
-    // idempotent og sendes igen naeste gang.
-    finishedSinceIntake.unshift(...finished)
-    intakeEmpty = true
+    // idempotent og sendes igen naeste gang. #5602: taeller som et tomt tjek.
+    noteEmptyIntake(label)
     return
   }
   const taken = []
@@ -1363,11 +1472,14 @@ async function runIntake() {
   }
   const sorted = sortHeavyFirst(intake.ready)
   queue.push(...sorted)
-  intakeEmpty = sorted.length === 0
-  if (sorted.length > 0) {
-    log(`Rullende optag: ${sorted.length} spor optaget (${sorted.map((t) => '#' + t.issue).join(', ')}), tungeste foerst.`)
-    wakeIdleLanes()
+  if (sorted.length === 0) {
+    noteEmptyIntake(label)
+    return
   }
+  intakeEmpty = false
+  emptyStreak = 0
+  log(`Rullende optag: ${sorted.length} spor optaget (${sorted.map((t) => '#' + t.issue).join(', ')}), tungeste foerst.`)
+  wakeIdleLanes()
 }
 
 // EEN intake-agent ad gangen: ledige laner der kommer til mens den koerer,
@@ -1388,9 +1500,19 @@ async function laneWorker(laneIndex) {
       activeLanes: busyLanes,
       stoppedByFreeze: Boolean(stoppedByFreeze),
       intakeEmpty,
+      emptyStreak,
       intakeEnabled: rollingIntake && !intakeBroken,
     })
-    if (decision === 'exit') return
+    if (decision === 'exit') {
+      // #5602: selv-stop - tomme tjek i traek, mens andre laner stadig koerer.
+      // Rapporteres, saa en lane der stoppede tidligt, ikke ligner en fejl.
+      if (queue.length === 0 && intakeEmpty && busyLanes > 0 && !stoppedByFreeze
+        && emptyStreak >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) {
+        selfStoppedLanes.push({ lane: laneIndex, minute: clock.minute, emptyChecks: emptyStreak })
+        log(`Lane ${laneIndex + 1} stopper sig selv efter ${emptyStreak} tomme intake-tjek i traek (${busyLanes} lane(r) koerer stadig et spor).`)
+      }
+      return
+    }
     if (decision === 'wait') {
       await waitForIntakePoll()
       continue
@@ -1420,9 +1542,11 @@ async function laneWorker(laneIndex) {
     }
     results.push(row)
     // Kun en beviseligt faerdig agent frigiver sporets ejerskab (#5562).
-    if (releasesOwnership(row.status)) finishedSinceIntake.push(track.branch)
+    if (releasesOwnership(row.status)) finishedInWave.push(track.branch)
     // En lane er blevet fri: naeste ledige lane laver et friskt optag.
+    // #5602: og pausen/selv-stop-taellingen starter forfra.
     intakeEmpty = false
+    emptyStreak = 0
     // KUN 'frys' stopper boelgen. Et 'timeout' er nu et spor der ramte det
     // haarde loft med en LEVENDE branch (#5178) - stort, ikke frossent - og
     // maa ikke koste de oevrige laner deres spor, som det gjorde 11/9.
@@ -1515,7 +1639,7 @@ for (const m of markerTracks) {
 }
 
 const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeout' || r.status === 'investigate-timeout' || r.status === 'undersoegt-ufuldstaendig' || r.status === 'doed' || r.status === 'fejl')
-log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${allTracks.length} kendte, heraf ${allTracks.length - tracks.length} via rullende optag i ${intakeRuns} intake-kald).`)
+log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${allTracks.length} kendte, heraf ${allTracks.length - tracks.length} via rullende optag i ${intakeRuns} intake-kald efter ${intakeChecks} billige tjek; ${selfStoppedLanes.length} lane(r) stoppede sig selv).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
 // Fire tilstande der alle skal raabes op, og ingen flere:
@@ -1568,6 +1692,8 @@ return {
   stoppedByFreeze,
   rollingIntake,
   intakeRuns,
+  intakeChecks,
+  selfStoppedLanes,
   tailIdle,
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),

@@ -40,9 +40,10 @@
 // drift-vagt der laeser wave.js og fejler hvis de to ikke stemmer. Siden
 // #5562/#5567 sammenligner vagten ogsaa de normaliserede funktionskroppe af
 // trackWeight, sortHeavyFirst, planIdleLane, releasesOwnership,
-// applySchemaEvidenceRule og tailIdleLaneMinutes.
+// applySchemaEvidenceRule og tailIdleLaneMinutes (#5602: og
+// intakeBackoffMinutes).
 //
-// Refs #5178, #5142, #4918, #5562, #5567.
+// Refs #5178, #5142, #4918, #5562, #5567, #5602.
 
 /** Konstanter. Spejles i .claude/workflows/wave.js - hold dem synkrone. */
 export const WAVE_FREEZE = {
@@ -80,14 +81,30 @@ export const WAVE_FREEZE = {
    */
   POKE_MINUTES: 15,
   /**
-   * #5562: rullende optag. En lane uden spor, hvor intake intet gav, venter
-   * saa laenge foer den proever igen - kun mens andre laner stadig koerer et
-   * spor. Ventetiden er et setTimeout i wave.js, ikke et vaeg-ur.
+   * #5562/#5602: rullende optag. Foerste pause efter et tomt intake-tjek. Hver
+   * tom omgang i traek fordobler pausen (10 -> 20 -> 40 -> 60), se
+   * intakeBackoffMinutes(). Ventetiden er et setTimeout i wave.js, ikke et
+   * vaeg-ur.
    */
   INTAKE_POLL_MINUTES: 10,
+  /** #5602: loft paa pausen mellem to tomme intake-tjek. */
+  INTAKE_POLL_MAX_MINUTES: 60,
+  /**
+   * #5602: saa mange tomme intake-tjek i traek, og de ledige laner stopper
+   * sig selv (planIdleLane giver 'exit'). Et faerdigt spor nulstiller
+   * taellingen. 5 tjek = pauser paa 10+20+40+60 min, ca. 130 min.
+   */
+  INTAKE_MAX_EMPTY_CHECKS: 5,
+  /**
+   * #5602: loft paa det billige intake-tjek (mindste model, taeller kun
+   * koeen). Tjekket flytter intet, saa et tjek der ikke svarer, er bare et
+   * tomt tjek.
+   */
+  INTAKE_CHECK_TIMEOUT_MINUTES: 5,
   /**
    * #5562: loft paa den delte intake-agent (optag + worktrees + briefs). En
    * haengt intake maa ikke holde de ledige laner og dermed boelgen i live.
+   * #5602: den startes kun, naar det billige tjek har set spor i koeen.
    */
   INTAKE_TIMEOUT_MINUTES: 20,
 };
@@ -292,11 +309,14 @@ export function sortHeavyFirst(list) {
 /**
  * #5562 rullende optag: hvad goer en lane uden spor?
  *   'take'   - koeen har et spor
- *   'intake' - koeen er tom: koer (eller vent paa) den delte intake-agent
+ *   'intake' - koeen er tom: koer (eller vent paa) det delte intake-tjek
  *   'wait'   - intake gav intet, men andre laner koerer stadig et spor: vent
- *              INTAKE_POLL_MINUTES og proev igen
- *   'exit'   - frys, optag slaaet fra, eller intet mere at vente paa
- * Lukkede laner (timeout) taeller aldrig med i activeLanes.
+ *              intakeBackoffMinutes(emptyStreak) og proev igen (#5602)
+ *   'exit'   - frys, optag slaaet fra, intet mere at vente paa, eller
+ *              INTAKE_MAX_EMPTY_CHECKS tomme tjek i traek (#5602: lanen
+ *              stopper sig selv, ogsaa mens andre laner koerer)
+ * Lukkede laner (timeout) taeller aldrig med i activeLanes. emptyStreak er
+ * antallet af tomme intake-tjek i traek; et faerdigt spor nulstiller det.
  *
  * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
  */
@@ -306,8 +326,22 @@ export function planIdleLane(state) {
   if (Number(s.queued) > 0) return 'take'
   if (s.intakeEnabled === false) return 'exit'
   if (!s.intakeEmpty) return 'intake'
+  if (Number(s.emptyStreak) >= WAVE_FREEZE.INTAKE_MAX_EMPTY_CHECKS) return 'exit'
   if (Number(s.activeLanes) > 0) return 'wait'
   return 'exit'
+}
+
+/**
+ * #5602: pausen efter det n'te tomme intake-tjek i traek. Voksende i stedet
+ * for et fast interval: 10, 20, 40 og derefter loftet 60 min. Et ugyldigt
+ * eller manglende tal regnes som det foerste tomme tjek.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function intakeBackoffMinutes(emptyStreak) {
+  const n = Math.max(1, Math.round(Number(emptyStreak) || 1))
+  const minutes = WAVE_FREEZE.INTAKE_POLL_MINUTES * Math.pow(2, Math.min(n - 1, 10))
+  return Math.min(WAVE_FREEZE.INTAKE_POLL_MAX_MINUTES, minutes)
 }
 
 /**
@@ -331,6 +365,11 @@ export function releasesOwnership(status) {
  * bruger skema-ord. Er der derefter ingen blokerende fund tilbage, bliver
  * dommen BEMAERKNINGER (og ret-trinnet springes over). En BLOKERENDE-dom
  * uden findings-liste roeres ikke.
+ * #5602 fund 4: et fund der peger paa fil:linje (fx database/x.sql:12 i
+ * evidence eller file) er underbygget af selve diffen og roeres ikke. Reglen
+ * rammer kun paastande om prod-tilstand uden opslag. Ellers blev fx en
+ * DROP COLUMN i en migration nedgraderet, og auto-migrate koerer den efter
+ * merge.
  * @returns {{review: object, downgraded: object[]}}
  *
  * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
@@ -340,13 +379,14 @@ export function applySchemaEvidenceRule(review) {
     return { review, downgraded: [] }
   }
   const schemaWords = /\bkolonne|\bcolumn|\bnot\s+null\b|\bconstraint|\bmigration|\brls\b|\bforeign\s+key|\benums?\b/i
-  const hasEvidence = (text) => /schema-snapshot\.json/i.test(text) || /\bselect\b[\s\S]*?\bfrom\b/i.test(text)
+  const fileLine = /[\w./\\-]+\.[a-z0-9]+:\d+/i
+  const hasEvidence = (text) => /schema-snapshot\.json/i.test(text) || /\bselect\b[\s\S]*?\bfrom\b/i.test(text) || fileLine.test(text)
   const downgraded = []
   const findings = review.findings.map((f) => {
     if (!f || f.severity !== 'blokerende') return f
     const isData = f.category === 'data-skema' || (!f.category && schemaWords.test(String(f.what || '')))
-    if (!isData || hasEvidence(String(f.evidence || ''))) return f
-    const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler skema-/prod-opslag (#5567)' }
+    if (!isData || hasEvidence(`${f.evidence || ''} ${f.file || ''}`)) return f
+    const next = { ...f, severity: 'bemaerkning', note: 'nedgraderet: mangler fil:linje, skema- eller prod-opslag (#5567, #5602)' }
     downgraded.push(next)
     return next
   })
