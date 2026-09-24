@@ -654,10 +654,12 @@ helt), og at **"Gruppér efter type" fjernes på mobil** og bliver stående på 
 
 Formen er tegnet efter realisme-reglen: enheden er løbsdagen, rytteren kører ét løb **eller** træner.
 To ting er bevidst holdt adskilt her: **kalenderens tæthed** og **træningens tick-model**.
-Kalendertætheden ER ejer-låst pr. division (`backend/lib/calendarTierCaps.js`, `TIER_DENSITY` = 5/4/3/3 for
-division 1-4), så "fem løbsdage om dagen" gælder Division 1, ikke alle divisioner. **Træningens** tick pr.
-løbsdag (`training_tick_per_race_day`) er derimod OFF i prod, og hvor mange løbsdags-kolonner en spillers
-dag har, afhænger af hans division. Kolonne-modellen er derfor skrevet til at bære **1-5** løbsdage:
+Kalendertætheden ER ejer-låst pr. division (`backend/lib/calendarTierCaps.js`, `TIER_DENSITY` = 5/4/3/3
+**etaper** pr. kalenderdag for division 1-4). Tætheden er ikke løbsdags-aksen: siden #5267 (ejer-valg 20/9)
+bærer hver kalenderdato 5 løbsdage (`game_day`) i alle divisioner, og de løbsdage der ikke har en etape er
+rene træningsdage (§13.3b). **Træningens** tick pr. løbsdag (`training_tick_per_race_day`) er derimod OFF i
+prod, og antallet af løbsdags-kolonner følger kalenderens løbsdage pr. dato. Kolonne-modellen er derfor
+skrevet til at bære **1-5** løbsdage:
 flag OFF giver præcis én kolonne, "I dag" (løb eller dagens session), i nøjagtig samme tabelform, og
 fladen viser **aldrig** et hårdkodet sæson-tal. Modellen ligger i `frontend/src/lib/trainingMobileModel.ts`
 (unit-testet), visningen i `frontend/src/components/training/mobile/`. Designbeslutningen står også i
@@ -697,7 +699,7 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 
 Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet lukning ≥ kl. 20), sweep-kapacitet (én sweep/dag), skadesvarighed (løbsdage). PR #5205 (fundamentet, flag off) merget 15/9.
 
-**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage. Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). De to ting sweepen skulle kunne for at udnytte det (drives af løbsdags-aksen, og et rytter-filter på `race_entry_days` i stedet for `race_results`) er bygget i B4 (#4847, rettet 20/9), se §13.3b. Resten der står åben dér, en helt løbsløs kalenderdato der ikke giver noget tick, kan først lukkes nu hvor kalenderen bærer løbsdagene.
+**Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage på aksen (`game_day`-slots, også dem uden etape; tætheden 5/4/3/3 tæller etaper, ikke løbsdage). Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). De to ting sweepen skulle kunne for at udnytte det (drives af løbsdags-aksen, og et rytter-filter på `race_entry_days` i stedet for `race_results`) er bygget i B4 (#4847, rettet 20/9), se §13.3b. Kanterne ved sæsonens første og sidste løbsdato er lukket bag flaget (#4846, 24/9), så hver division tikker præcis 140 løbsdage; se §13.3b.
 
 ### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
 
@@ -715,11 +717,19 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 | 2 + 3 | "Optaget i dag" læses fra `race_entry_days`, som siden #4217 bærer **hele** etapeløbets spænd inkl. GT-hviledage — ikke fra dagens etaperesultater. En bundet rytter uden udviklings-tick får hvile: intet tick, ingen score-række, kun restitution | `trainingRaceDayTick.js` (`loadBoundRiderIdsForRaceDay`), `dailyTrainingEngine.js` (`boundRestToday`) |
 | 2 | Opslaget hænger **ikke** på `race_day_development_enabled`. Med kun `training_tick_per_race_day` tændt gav den gamle gate træning oven i løbet | `dailyTrainingEngine.js` |
 | 2 | `racedRiderIds` (kalenderdags-nøglet via `race_results.imported_at`) skæres med bindingen (løbsdags-nøglet), så en rytter der kørte på løbsdag N ikke også tæller som racende på N+1 samme dato | `dailyTrainingEngine.js` |
-| 4 | Sweepen tikker hele spændet fra divisionens sidste løbsdag **før** i dag til dagens højeste. Løbsdagene i spændet uden etape ER de rene træningsdage | `trainingDayCloseTrigger.js` (`gameDaySpansByDivision`) |
+| 4 | Sweepen tikker hele spændet fra divisionens sidste løbsdag **før** i dag til dagens højeste. Løbsdagene i spændet uden etape ER de rene træningsdage. Knappen "Kør dagens træning nu" bruger samme loader | `trainingDayCloseTrigger.js` (`gameDaySpansByDivision`, `loadDayCloseSpans`) |
+| 4 | **Præcis 140 tickede løbsdage pr. division (#4846).** Sæsonens første løbsdato starter på løbsdag 0; sæsonens sidste løbsdato forlænges til kalenderens eget sæsonmål − 1, alt-eller-intet under ops-loftet | `trainingDayCloseTrigger.js` (`loadPriorMaxGameDayByDivision`, `loadLastRaceDateByDivision`, `gameDaySpansByDivision`), `trainingRaceDayTick.js` (`resolveCalendarRaceDayTarget`) |
 
-**Rest (dokumenteret, ikke bygget):** en kalenderdato hvor en division slet ingen løb har, giver intet tick — spændets ende kan ikke læses uden en løbsdag med en etape. Hvor mange løbsdage aksen skal rykke frem på en helt løbsløs dato står først i kalenderen når [#5169](https://github.com/NicolaiDolmer/CyclingZone/pull/5169) lander. Indtil da er `MAX_GAME_DAY_CATCH_UP` ops-loftet der forhindrer en stillestående division i at skrive et helt efterslæb på én aften.
+**Kanterne (#4846, bygget bag flaget 24/9).** Pakkeren lægger de tomme løbsdage *foran* datoens løb, også på løbsdag 0, og positionen efter aksens sidste løb arver den sidste dato. Uden en særregel fik netop de dage aldrig et tick, og en division endte under 140.
 
-### 13.4 Status pr. 20/9 (15/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
+- **Sæsonens første løbsdato.** Opslaget "sidste løbsdag før i dag" har tre svar: et tal, *ingen* (et vellykket, tomt opslag: spændet starter på løbsdag 0) og *ved det ikke* (opslaget fejlede: fail-safe, kun dagens egne løbsdage).
+- **Sæsonens sidste løbsdato.** Har divisionen ingen etaper efter i dag, forlænges spændet til sæsonens mål − 1 (løbsdag 139 i S4). Målet læses med **kalenderens egen regel** (`resolveCalendarRaceDayTarget` = `SEASON_RACE_DAY_TARGET[sæson] ?? null`, samme som `seasonTransition.js` og `buildSeasonCalendar.js`): en sæson uden eget mål har en kortere akse og forlænges ikke. Fejler opslaget, eller kan målet ikke læses, forlænges intet.
+- **Forlængelsen er alt-eller-intet (rettet 24/9).** Kan aftenens spænd inklusive forlængelsen ikke være under ops-loftet `MAX_GAME_DAY_CATCH_UP`, kan forlængelsen ikke bevises (enten passer aksen ikke til målet, eller aftenen bærer et efterslæb fra en dato uden løb; loftet kan ikke skelne de to). Så droppes den helt: aftenen kører præcis som uden den, og de droppede dage logges og returneres som `droppedExtensionGameDays`. Forlængelsen kan dermed aldrig skubbe dagens egne løbsdage ud, og en akse der er markant kortere end målet giver ingen tick på løbsdage kalenderen ikke har pakket.
+- **Gate G2.** Én lukning pr. kalenderdato hen over en S4-pakket kalender (4 divisioner, 28 datoer, tæthed 5/4/3/3) giver præcis løbsdag 0-139 én gang i hver division, både i den rene spænd-funktion og gennem den ægte sweep. Test: `backend/lib/trainingRaceDayG2.test.js`.
+
+**Rest (dokumenteret, ikke bygget):** en kalenderdato hvor en division slet ingen løb har, giver intet tick den dag, fordi spændets ende ikke kan læses uden en etape. Dagene samles op af næste dato med løb, op til ops-loftet `MAX_GAME_DAY_CATCH_UP`. I en kalender med eksakt kvote (hver dato bærer præcis divisionens tæthed i etaper, CALENDAR_RULES §1b) opstår det ikke. Er en divisions akse markant kortere end målet, forlænges den ikke (se "alt-eller-intet" ovenfor); divisionen ender da på sin akses længde, ikke på 140. Er aksen kun lidt kortere (forlængelsen passer stadig under loftet), kan lukningen ikke skelne den fra en rigtig akse, fordi den pakkede akses længde ikke gemmes, og de sidste løbsdage efter aksens ende bliver tikket. Det lukkes i kalenderen, ikke her. Kendt risiko uden for #4846: auto-stien (`tierCalendarMaterializer.js`) bruger standardkvoten `TIER_GAME_DAY_QUOTA`, som for division 4 ikke er tæthed × datoer og på den committede katalog-fixture gav division 4 en akse langt under 140 (probe 24/9), og kalender-gaten (`seasonCalendarGate.js`) tjekker hverken at alle divisioner har lige mange løbsdage eller at aksen rammer målet. CLI-stien (`buildSeasonCalendar.js`) bruger eksakt kvote, og auto-kalenderens flag (`auto_calendar_enabled`) findes ikke i prod, så den er slukket (fail-safe, tjekket 24/9).
+
+### 13.4 Status pr. 24/9 (15/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
 
 Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket. **Én undtagelse:** off-seasonens loglinje og returværdi (#4848, se "B5" nedenfor) gælder uanset flaget, men kun når der ingen aktiv sæson er; selve træningen er uændret.
 
@@ -728,13 +738,14 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 | Nøgle, seeds, historik-snapshot, +1-loft pr. løbsdag (B2) | **bygget** (#4846, PR #5205) | `trainingRaceDayTick.js`, `dailyTrainingEngine.js` |
 | Udløser: én samlet sweep pr. kalenderdag, tidligst kl. 20 **og** først når dagens sidste finalization er færdig (B4) | **bygget** (#4847) | `trainingDayCloseTrigger.js`, cron-slug `training-day-close` |
 | Løb-ELLER-træning + etapeløbets binding + tick på rene træningsdage (ejerens realisme-regel 18/9) | **bygget** (#4847, rettet 20/9) — se §13.3b | `trainingRaceDayTick.js`, `dailyTrainingEngine.js`, `trainingDayCloseTrigger.js` |
+| Præcis 140 tickede løbsdage pr. division: kanterne ved første/sidste løbsdato + gate G2 | **bygget** (#4846, 24/9) — se §13.3b "Kanterne" | `trainingDayCloseTrigger.js`, `trainingRaceDayG2.test.js` |
 | Overlap-guard + dags-claim på sweepen (G6) | **bygget**, kode-invariant + test | `trainingDayCloseTrigger.js` |
 | Maks-ventetid på hængende finalization (kl. 23) + Sentry-alarm | **bygget** | `trainingDayCloseTrigger.js`, `cron.js` |
 | Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus, samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |
-| Deleren kalibreret til 140 løbsdage, **læst** fra `calendarRaceDayTargets.js` (#4845) | **bygget**, defensiv import med fallback indtil PR #5169 er merget | `trainingRaceDayTick.js` |
+| Deleren kalibreret til 140 løbsdage, **læst** fra `calendarRaceDayTargets.js` (#4845) | **bygget**, statisk import (#4846; PR #5169 er merget, den defensive dynamiske import er fjernet) | `trainingRaceDayTick.js` |
 | Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
 | Manager-bonussen (`bonusMult` 1,25) + `bonus_applied` **slettet** fra kode og skema (B3) | **mangler** — neutraliseret på løbsdags-stien, men lever uændret på den gamle sti, så flag off er bit-identisk. Ryddes ved cutover | `dailyTraining.js:16`, `dailyTrainingEngine.js` |
-| Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag**, PR #5465 afventer ejerens merge. Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
+| Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag** (PR #5465 merget). Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
 | Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
 | Peak-plannerens konsistens-signal tæller datoer, ikke løbsdags-rækker (B5, gate G8) | **bygget** (#4848) — se "B5" nedenfor | `racePeakPlans.js` (`summarizeLeadupTraining`) |
 | Trænings-slot-vagtens spring-gate målt pr. løbsdag (B5, gate G9) | **bygget** (#4848) — se "B5" nedenfor | `trainingSlotHealth.js`, `trainingSlotHealthWatch.js` |
