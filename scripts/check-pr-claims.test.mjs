@@ -215,6 +215,33 @@ test("cleanBody fjerner CodeRabbits auto-summary og billed-links", () => {
   assert.ok(!cleaned.includes("raw=1"));
 });
 
+test("cleanBody (#365): nestede/overlappende kommentarer fjernes helt, ikke kun i eet pass", () => {
+  // <!-- This is an auto-generated comment[\s\S]*?<!-- end of auto-generated comment[^>]*--> matcher ikke
+  // her, saa det er den generiske <!--...--> gren der testes. En enkelt
+  // regex-pass over "<!<!---->--" fjerner kun den inderste "<!---->" og
+  // efterlader "<!--" som, sammen med resten, danner en NY komplet
+  // kommentar-struktur ved naeste laesning — det maa loekken forhindre.
+  const nested = "foer <!<!---->-- efter";
+  const cleaned = cleanBody(nested);
+  assert.equal(/<!--[\s\S]*-->/.test(cleaned), false);
+  assert.ok(cleaned.includes("foer"));
+  assert.ok(cleaned.includes("efter"));
+});
+
+test("cleanBody (#365): overlappende kommentar med lukket ydre tag fjernes fuldt", () => {
+  const nested = "foer <!--<!---->--> efter";
+  const cleaned = cleanBody(nested);
+  assert.equal(/<!--[\s\S]*-->/.test(cleaned), false);
+  assert.ok(cleaned.includes("foer"));
+  assert.ok(cleaned.includes("efter"));
+});
+
+test("cleanBody: almindelig tekst med en pil ('-->') uden en aabnende kommentar bevares", () => {
+  // Regression: fixet maa ikke blive saa aggressiv at den spiser legitim
+  // "state A --> state B"-tekst i en PR-body.
+  assert.equal(cleanBody("Status: draft --> ready"), "Status: draft --> ready");
+});
+
 test("extractClaims: parametre i links til appen taeller, andre links ignoreres", () => {
   const claims = extractClaims("Se https://cz-git-x.vercel.app/riders/1?bestRole=off og https://github.com/o/r/pull/1?tab=files");
   assert.deepEqual(claims.filter((c) => c.type === "param").map((c) => c.value), ["bestRole"]);
