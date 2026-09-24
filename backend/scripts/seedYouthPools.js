@@ -43,7 +43,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { fetchAllRows } from "../lib/supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
 import {
   YOUTH_GROUP_SIZE,
   YOUTH_GROUP_TIER,
@@ -311,7 +311,7 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
 
   const ids = updates.map((u) => u.teamId);
   const before = ids.length
-    ? await fetchAllRows(() => supabase.from("teams").select(`id, ${col}`).in("id", ids).order("id"))
+    ? await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("teams").select(`id, ${col}`).in("id", chunk).order("id"))
     : [];
   const restorePath = join(internalsDir, `youth-pools-restore-${squad}-${stamp}.json`);
   writeFileSync(restorePath, JSON.stringify({ squad, column: col, teams: before }, null, 2));
@@ -331,7 +331,7 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
   }
 
   const after = ids.length
-    ? await fetchAllRows(() => supabase.from("teams").select(`id, ${col}`).in("id", ids).order("id"))
+    ? await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("teams").select(`id, ${col}`).in("id", chunk).order("id"))
     : [];
   const afterById = new Map(after.map((t) => [t.id, t[col]]));
   const wrong = updates.filter((u) => afterById.get(u.teamId) !== (u.poolIndex == null ? null : poolIdByIndex.get(u.poolIndex)));
