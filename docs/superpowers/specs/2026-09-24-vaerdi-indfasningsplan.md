@@ -134,11 +134,13 @@ logik, med én vigtig forskel beskrevet nedenfor.
     senere rulles tilbage.
   - **Rullet tilbage sent i planen ≠ rullet tilbage til forrige trin.**
     Backup-tabellen har kun ét snapshot, taget før trin 0. En rollback besluttet
-    fx efter trin 3 fører alle rørte kolonner tilbage til **før-skifte**-
-    tilstanden, ikke til trin 2's tilstand. Værdiudvikling fra almindelig
-    træning/aldring i mellemtiden fanges ikke af de seks tilbageførte
-    kolonner og skal ikke forveksles med at være rullet tilbage — den er
-    upåvirket, fordi rollback kun rører de seks navngivne felter.
+    fx efter trin 3 fører alle seks kolonner (`base_value`,
+    `current_production_value`, `primary_type`, `secondary_type`, `best_role`,
+    `best_role_rating`) tilbage til **før-skifte**-tilstanden — ikke til trin
+    2's tilstand. Det betyder at almindelig værdiudvikling i mellemtiden (fx
+    hvis `base_value` eller `best_role_rating` har flyttet sig af andre
+    årsager end selve skiftet) **overskrives** af rollbacken, ikke bevares.
+    Kun felter uden for de seks navngivne kolonner er upåvirket.
   - **Rating-omlægningen (trin 9, H4)** har sin egen kontakt og rulles
     separat tilbage (flag off), ikke som en del af værdi-rollbacken.
 - **Hvem siger go:** ejeren, ordret — samme krav som resten af kørslen. Ingen
@@ -158,13 +160,21 @@ for Lane B/#5497, ikke afgjort her:**
    `rider_valuation_model`.
 2. **Optælling af `rider_value_sunday_log`-rækker siden skiftet**: antal
    `run_date`-rækker med `run_date > <kørselsdagens dato>` og `completed_at`
-   sat. Selvhelende (ingen separat nøgle at glemme at nulstille ved en
-   fremtidig ny model), men kræver at søndagskørslen selv slår trinnet op i en
-   anden tabel end den, den skriver til.
+   sat. Kræver at søndagskørslen selv slår trinnet op i en anden tabel end
+   den, den skriver til. **Ikke selvhelende ved rollback:** rollbacken
+   (afsnit 4) sletter ikke de allerede fuldførte log-rækker efter kørselsdagen,
+   så en optælling ville stadig se de gennemførte trin og regne videre derfra,
+   selvom rytterfelterne er ført tilbage til før-skifte-tilstanden. Vælges
+   dette forslag, skal rollback-vejen udvides med et eksplicit skridt der
+   enten sletter/markerer de berørte log-rækker eller sætter en separat
+   "nulstillet ved dato"-markør — ellers tæller trin-tælleren forkert efter en
+   rollback.
 
-Begge forslag skal vurderes mod, hvordan en rollback (afsnit 4) påvirker
-tælleren — en `app_config`-nøgle skal rulles tilbage eksplicit, en optælling
-gør det automatisk, fordi den følger loggen.
+Begge forslag skal derfor vurderes mod, hvordan en rollback (afsnit 4) påvirker
+tælleren: en `app_config`-nøgle kræver at nogen eksplicit nulstiller den til 0
+ved samme lejlighed som nøgle-flippet; en log-optælling kræver den ekstra
+rollback-udvidelse beskrevet ovenfor. Ingen af de to er automatisk korrekte
+ved en rollback uden det skridt.
 
 ## 6. Udmeldingen
 
