@@ -17,8 +17,10 @@
 // (samme etaper, seeds og feltstoerrelse) paa en anden population, og
 // `--out=<fil>` skriver resultatet et andet sted hen. Uden flag er alt
 // UAENDRET (gaten = POPULATION_FILE nedenfor → v4-anker-baselinen). En
-// anden population UDEN `--out` afvises, saa en side-om-side-koersel aldrig
+// anden population der ville skrive til v4-anker-baselinen (intet `--out`,
+// eller `--out` peget paa den) afvises, saa en side-om-side-koersel aldrig
 // kan overskrive den pinnede gate — at flytte gaten er en ejerbeslutning.
+// Relative stier regnes fra repo-roden (som POPULATION_FILE); koer fra roden.
 //   node backend/scripts/buildV4AnchorBaseline.mjs --population=<fil> --out=<fil>
 
 import { execFileSync } from "node:child_process";
@@ -57,10 +59,18 @@ function argValue(argv, name) {
   return hit ? hit.slice(`--${name}=`.length) : null;
 }
 
+// Windows' filsystem er case-insensitivt: `--out=BACKEND/...` maa ikke kunne
+// snige sig uden om gate-vagten nedenfor.
+function samePath(a, b) {
+  const norm = (p) => (process.platform === "win32" ? resolve(REPO_ROOT, p).toLowerCase() : resolve(REPO_ROOT, p));
+  return norm(a) === norm(b);
+}
+
 /**
  * #5572: population + output-sti ud fra CLI-args. Uden flag: den pinnede gate
  * (POPULATION_FILE → BASELINE_OUT), praecis som foer. En anden population
- * kraever `--out`, saa gaten aldrig flyttes af en side-om-side-koersel.
+ * maa ikke skrive til BASELINE_OUT, saa gaten aldrig flyttes af en
+ * side-om-side-koersel.
  * @param {string[]} argv
  * @returns {{ population: string, out: string, isGate: boolean }}
  */
@@ -68,8 +78,8 @@ export function resolveRunTargets(argv) {
   const population = argValue(argv, "population") ?? POPULATION_FILE;
   const out = argValue(argv, "out");
   const outPath = out ?? BASELINE_OUT;
-  const isGatePopulation = resolve(REPO_ROOT, population) === resolve(REPO_ROOT, POPULATION_FILE);
-  const writesGate = resolve(REPO_ROOT, outPath) === resolve(REPO_ROOT, BASELINE_OUT);
+  const isGatePopulation = samePath(population, POPULATION_FILE);
+  const writesGate = samePath(outPath, BASELINE_OUT);
   if (!isGatePopulation && writesGate) {
     throw new Error(
       `--population=${population} kraever --out=<fil> uden for ${BASELINE_OUT}: den pinnede ankertabel maales kun paa ${POPULATION_FILE}, og at flytte gaten er en ejerbeslutning (#5572).`,

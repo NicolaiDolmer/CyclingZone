@@ -26,6 +26,13 @@ test("anden population med --out peget paa baselinen afvises ogsaa", () => {
   );
 });
 
+test("paa Windows kan en anden bogstav-case ikke snige sig uden om gate-vagten", { skip: process.platform !== "win32" }, () => {
+  assert.throws(
+    () => resolveRunTargets([`--population=${OTHER_POPULATION}`, `--out=${GATE_OUT.toUpperCase()}`]),
+    /ejerbeslutning/,
+  );
+});
+
 test("anden population + --out andetsteds: tilladt, ikke gaten", () => {
   const t = resolveRunTargets([`--population=${OTHER_POPULATION}`, "--out=/tmp/x.json"]);
   assert.equal(t.population, OTHER_POPULATION);

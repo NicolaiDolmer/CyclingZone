@@ -37,7 +37,8 @@
 // #5572: `--population=` maaler paa en anden population (side om side med den
 // pinnede; default UAENDRET = POPULATION_FILE nedenfor). `--out=` er et alias
 // for `--json=` (samme flagnavn som buildV4AnchorBaseline.mjs); `--json=`
-// vinder hvis begge er givet.
+// vinder hvis begge er givet. Koer fra repo-roden: `--population=` regnes fra
+// roden (som POPULATION_FILE), `--json=`/`--out=` fra cwd (som hidtil).
 //
 // 100% READ-ONLY: laeser kun de pinnede JSON-filer. Skriver kun til --json.
 // HARD RULE 17: tallene er motor-interne maalinger og hoerer i
