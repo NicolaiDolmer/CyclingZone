@@ -475,23 +475,48 @@ export type IncidentChaseTuning = {
 };
 
 /**
- * Maerker gruppen `groupId` som et uheldsoffer paa jagt tilbage (#5582). Ren:
- * nyt array, kun den ene gruppe er et nyt objekt. Ukendt id => samme array.
- * Eksporteret, saa M3's nedkoerselsstyrt (descent.ts) maerker sin gruppe paa
- * praecis samme maade som M10.
+ * Saetter et uheldsoffer paa jagt tilbage (#5582). Ren: nyt objekt. Et offer
+ * der allerede jager, beholder "assisted", hvis et af uheldene havde hjaelp.
+ * Eksporteret, saa M3's nedkoerselsstyrt (descent.ts) registrerer sit offer
+ * paa praecis samme maade som M10.
  */
-export function markIncidentChaseGroup(
+export function addIncidentChaser(
+  chasers: Readonly<Record<string, IncidentChaseMode>> | undefined,
+  riderId: string,
+  mode: IncidentChaseMode,
+): Record<string, IncidentChaseMode> {
+  const current = chasers?.[riderId];
+  return { ...(chasers ?? {}), [riderId]: current === "assisted" ? "assisted" : mode };
+}
+
+/**
+ * Hvem jager stadig, og hvilke grupper er jagtgrupper (#5582). Kaldes af
+ * segmentLoop.ts ved hvert segments start. Ren.
+ *
+ * - En gruppe hvor ALLE stadig-koerende ryttere er ofre paa jagt, er en
+ *   jagtgruppe. Den er "assisted", hvis et af ofrene har hjaelp.
+ * - Et offer i en gruppe med en rytter UDEN jagt er inde igen: han slettes af
+ *   registret og jager ikke mere, heller ikke hvis han senere bliver sat.
+ */
+export function resolveIncidentChasers(
   groups: readonly RaceGroup[],
-  groupId: string,
-  mode: NonNullable<RaceGroup["chase_back"]>,
-): RaceGroup[] {
-  let found = false;
-  const next = groups.map((g) => {
-    if (g.id !== groupId) return g;
-    found = true;
-    return { ...g, chase_back: mode };
-  });
-  return found ? next : [...groups];
+  riders: Readonly<Record<string, RiderState>>,
+  chasers: Readonly<Record<string, IncidentChaseMode>>,
+): { chasers: Record<string, IncidentChaseMode>; modeByGroupId: Map<string, IncidentChaseMode> } {
+  let next: Record<string, IncidentChaseMode> | null = null;
+  const modeByGroupId = new Map<string, IncidentChaseMode>();
+  for (const group of groups) {
+    const racing = group.rider_ids.filter((id) => riders[id]?.status === "racing");
+    const chasing = racing.filter((id) => chasers[id] !== undefined);
+    if (chasing.length === 0) continue;
+    if (chasing.length < racing.length) {
+      next ??= { ...chasers };
+      for (const id of chasing) delete next[id];
+      continue;
+    }
+    modeByGroupId.set(group.id, chasing.some((id) => chasers[id] === "assisted") ? "assisted" : "alone");
+  }
+  return { chasers: next ?? { ...chasers }, modeByGroupId };
 }
 
 /**
@@ -504,23 +529,24 @@ export function markIncidentChaseGroup(
  * id); en anden jagtgruppe er aldrig maal. Uden en gruppe foran (han ER
  * fronten) eller paa terraen uden bil-lae: `null`.
  *
- * Ren aritmetik, ingen rng. Resultatet er aldrig negativt og aldrig mindre end
- * det, der ville bringe ham FORBI maalgruppen.
+ * Ren aritmetik, ingen rng. Med hjaelp lukkes hullet aldrig mere end helt:
+ * resultatet bringer ham aldrig forbi maalgruppen paa grund af hjaelpen.
  */
 export function incidentChaseDtSeconds(
   chaseGroup: RaceGroup,
   groups: readonly RaceGroup[],
+  modeByGroupId: ReadonlyMap<string, IncidentChaseMode>,
   dtByGroupId: (groupId: string) => number | undefined,
   segment: Pick<Segment, "kind" | "from_km" | "to_km">,
   tuning: IncidentChaseTuning = INCIDENT_CHASE_TUNING,
 ): number | null {
-  const mode = chaseGroup.chase_back;
+  const mode = modeByGroupId.get(chaseGroup.id);
   if (!mode) return null;
   if (!tuning.pacedSegmentKinds.includes(segment.kind)) return null;
 
   let target: RaceGroup | null = null;
   for (const g of groups) {
-    if (g.id === chaseGroup.id || g.chase_back) continue;
+    if (g.id === chaseGroup.id || modeByGroupId.has(g.id)) continue;
     if (!(g.gap_seconds < chaseGroup.gap_seconds)) continue;
     if (
       !target ||

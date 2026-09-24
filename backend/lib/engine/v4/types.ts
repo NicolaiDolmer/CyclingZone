@@ -483,16 +483,13 @@ export type RaceGroup = {
   rider_ids: string[];
   gap_seconds: number; // til front (foerende gruppe / etapens spids)
   cohesion: number; // 0-1, fundament for brosten-kaos-hook (fuld M8 i F3)
-  // #5582 (ADDITIVT, valgfrit): gruppen er et uheldsoffer paa JAGT TILBAGE bag
-  // foelgebilerne. Saettes KUN af uheldets split (mechanics/incidents.ts og
-  // M3's nedkoerselsstyrt i mechanics/descent.ts). "assisted" = en
-  // holdkammerat/hjaelper var i hans gruppe, da uheldet skete, og venter paa
-  // ham. Maerket forsvinder af sig selv, naar gruppen smelter sammen med en
-  // anden (groups.mergeGroupsDetailed bygger den samlede gruppe uden det):
-  // saa er han inde igen. Laeses af segmentLoop.ts via
-  // incidents.incidentChaseDtSeconds. `undefined` = en helt almindelig gruppe.
-  chase_back?: "alone" | "assisted";
 };
+
+/**
+ * #5582: et uheldsoffer paa JAGT TILBAGE bag foelgebilerne. "assisted" = en
+ * holdkammerat/hjaelper var i hans gruppe, da uheldet skete, og venter paa ham.
+ */
+export type IncidentChaseMode = "alone" | "assisted";
 
 export type RiderState = {
   rider_id: string;
@@ -564,6 +561,14 @@ export type EngineState = {
   // spurter. Hooket kaldes pr. segment og kan ikke se hverken sine egne
   // tidligere kald eller maalstregen uden en baerer.
   stage_passages?: StagePassage[];
+  // #5582 (ADDITIVT, valgfrit): uheldsofre paa jagt tilbage bag foelgebilerne,
+  // rider_id -> mode. Saettes af uheldets split (mechanics/incidents.ts og M3's
+  // nedkoerselsstyrt i mechanics/descent.ts), kun ved et tidstab. INTERN
+  // simulations-tilstand. PR. RYTTER og ikke pr. gruppe: to ofre der smelter
+  // sammen, jager stadig, mens et offer der er smeltet ind i en gruppe uden
+  // uheld er inde igen og slettes (mechanics/incidents.ts's
+  // resolveIncidentChasers, kaldt fra segmentLoop.ts).
+  incident_chasers?: Record<string, IncidentChaseMode>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
