@@ -40,11 +40,17 @@ export function createRequireAuth({ supabase, setSentryUserFn = setSentryUser })
       return res.status(rejected.status).json(rejected.body);
     }
 
-    const { data: team } = await supabase
+    // .maybeSingle(): "ingen række endnu" er lovligt (#3722) og giver req.team = null.
+    // En ÆGTE læsefejl må ikke se ud som "intet hold", så den svarer 500.
+    const { data: team, error: teamError } = await supabase
       .from("teams")
       .select("*")
       .eq("user_id", verdict.user.id)
       .maybeSingle();
+    if (teamError) {
+      captureException(teamError, { tags: { flow: "season_comeback", stage: "auth_team" } });
+      return res.status(500).json({ error: "team_lookup_failed" });
+    }
     req.user = verdict.user;
     req.team = team;
     setSentryUserFn(verdict.user.id);
@@ -55,11 +61,17 @@ export function createRequireAuth({ supabase, setSentryUserFn = setSentryUser })
 // Admin eller users.is_beta_tester, samme læsning som api.js' isViewerBetaTester.
 export async function isViewerBetaTester(supabase, req) {
   if (!req.user?.id) return false;
-  const { data: u } = await supabase
+  const { data: u, error } = await supabase
     .from("users")
     .select("role, is_beta_tester")
     .eq("id", req.user.id)
     .maybeSingle();
+  // En fejlet læsning giver "ikke beta-tester": den sikre retning for en gate, der kun
+  // kan ÅBNE for flere (flaget "beta"). Fejlen er synlig i Sentry.
+  if (error) {
+    captureException(error, { tags: { flow: "season_comeback", stage: "beta_lookup" } });
+    return false;
+  }
   return u?.role === "admin" || u?.is_beta_tester === true;
 }
 
@@ -71,7 +83,7 @@ export async function isViewerBetaTester(supabase, req) {
  * @param {Function} [deps.isSignupEnabled]      (supabase, { isBetaTester }) => Promise<boolean>
  * @param {Function} [deps.isBetaTester]         (supabase, req) => Promise<boolean>
  * @param {Function} [deps.returnParkedTeamFn]   comebackService.returnParkedTeam
- * @param {Function} [deps.reportError]          captureException i prod
+ * @param {Function} [deps.captureExceptionFn]   captureException i prod
  */
 export function createComebackRouter({
   supabase,
@@ -80,7 +92,7 @@ export function createComebackRouter({
   isSignupEnabled = isSeasonSignupEnabled,
   isBetaTester = isViewerBetaTester,
   returnParkedTeamFn = returnParkedTeam,
-  reportError = captureException,
+  captureExceptionFn = captureException,
 } = {}) {
   if (!supabase?.from) throw new Error("createComebackRouter: a Supabase client is required");
   const router = express.Router();
@@ -132,7 +144,7 @@ export function createComebackRouter({
       if (err instanceof ComebackError) {
         return res.status(err.status).json({ error: err.code });
       }
-      reportError(err, { tags: { flow: "season_comeback", stage: "route" } });
+      captureExceptionFn(err, { tags: { flow: "season_comeback", stage: "route" } });
       return res.status(500).json({ error: "comeback_failed" });
     }
   });

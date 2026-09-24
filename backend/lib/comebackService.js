@@ -131,7 +131,9 @@ export async function payComebackSponsor({
     .from("finance_transactions")
     .select("idempotency_key")
     .eq("team_id", team.id)
-    .in("idempotency_key", seasonSponsorKeys(season.id, team.id));
+    .in("idempotency_key", seasonSponsorKeys(season.id, team.id))
+    // pagination-safe: idempotency_key er unik (uniq_finance_idempotency_key), og vi spørger om to nøgler.
+    .limit(2);
   if (priorError) throw new Error(`finance_transactions: ${priorError.message}`);
   if ((prior || []).length > 0) return { skipped: "already_paid_this_season", paid: false, amount: 0 };
 

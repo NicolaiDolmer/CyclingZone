@@ -43,7 +43,7 @@ async function fixture(t, {
         sponsor: { paid: true, amount: 150000 },
       };
     },
-    reportError: (err) => calls.reported.push(err),
+    captureExceptionFn: (err) => calls.reported.push(err),
   }));
   const server = app.listen(0);
   t.after(() => server.close());
