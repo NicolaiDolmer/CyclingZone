@@ -66,7 +66,10 @@ test("POST /training/run-today: loebsdags-stien gates paa BAADE vinduet og lukni
 // Spejler route'ns udtryk med de AEGTE helpers (samme moenster som
 // apiTrainingMeRaceDay.routes.test.js's trainingMeRaceDayGate).
 
-function fakeSupabase({ flagValue, races = [], stages = [], priorStages = [] }) {
+// #4846: default er "gaarsdagen sluttede paa loebsdag 39". Et TOMT prior-opslag
+// betyder nu saesonens foerste loebsdato (spaendet starter paa loebsdag 0), og det er
+// ikke den tilstand fixturerne her beskriver.
+function fakeSupabase({ flagValue, races = [], stages = [], priorStages = [{ race_id: "r1", game_day: 39 }] }) {
   return {
     from(table) {
       // #4847 regel 4: resolveDayCloseStatus laver TO race_stage_schedule-opslag —

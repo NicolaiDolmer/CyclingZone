@@ -24,6 +24,7 @@ import { generateOffers, FULL_CALENDAR_DAYS, guaranteedFractionForLength } from 
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { withSeniorSquadScope } from "./squads.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -102,10 +103,12 @@ export async function loadSeasonStageCounts({ supabase, seasonNumber }) {
     : FULL_CALENDAR_DAYS;
   if (!season?.id) return { byPool: {}, byTier: {}, fallbackDays };
 
-  const { data: races, error: racesError } = await supabase
+  // #5536: divisoren er holdets SENIOR-etapetal. Ungdomsløb og ungdomspuljer (samme
+  // tier 1-4) må hverken tælle med pr. pulje eller i tier-gennemsnittet.
+  const { data: races, error: racesError } = await withSeniorSquadScope((senior) => senior(supabase
     .from("races")
-    .select("league_division_id, stages")
-    .eq("season_id", season.id);
+    .select("league_division_id, stages"))
+    .eq("season_id", season.id));
   if (racesError) throw racesError;
 
   const byPool = {};
@@ -115,9 +118,9 @@ export async function loadSeasonStageCounts({ supabase, seasonNumber }) {
       (byPool[r.league_division_id] || 0) + (Number(r.stages) || 1);
   }
 
-  const { data: pools, error: poolsError } = await supabase
+  const { data: pools, error: poolsError } = await withSeniorSquadScope((senior) => senior(supabase
     .from("league_divisions")
-    .select("id, tier");
+    .select("id, tier")));
   if (poolsError) throw poolsError;
 
   const tierTotals = {};

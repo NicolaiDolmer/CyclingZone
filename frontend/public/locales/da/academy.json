@@ -1,7 +1,8 @@
 {
   "title": "Akademi",
   "subtitle": "Signér unge talenter, udvikl dem, og bestem hvornår de skal rykke op eller sælges.",
-  "slots": "Akademi: {used} / {max} pladser",
+  "slotsU23": "U23 {used}/{max}",
+  "slotsJunior": "Junior {used}/{max}",
   "balance": "Saldo: {amount} CZ$",
   "disabledTitle": "Følg akademiet på roadmap'et",
   "disabledNote": "Akademiet er ikke åbnet på din konto endnu.",
@@ -54,8 +55,10 @@
     "errorFailed": "Kunne ikke scoute denne uges kuld. Prøv igen."
   },
   "loading": "...",
-  "fullTooltip": "Akademiet er fuldt ({max}/{max}). Frigør en plads først.",
-  "fullNote": "Akademiet er fuldt. Signér først når en plads bliver ledig.",
+  "fullTooltipU23": "Dit U23-hold er fuldt ({max}/{max}). Frigør en plads først.",
+  "fullTooltipJunior": "Dit juniorhold er fuldt ({max}/{max}). Frigør en plads først.",
+  "fullNoteU23": "Han skal på dit U23-hold, og det er fuldt. Signér når en plads bliver ledig.",
+  "fullNoteJunior": "Han skal på dit juniorhold, og det er fuldt. Signér når en plads bliver ledig.",
   "contractUntil": "Til sæson {season}",
   "colNation": "Nation",
   "colRider": "Rytter",
@@ -85,6 +88,8 @@
     "currentSalaryLabel": "Nuværende løn",
     "seniorCapLabel": "Senior-trup",
     "academyCapLabel": "Akademi-pladser",
+    "u23CapLabel": "Pladser på U23-holdet",
+    "juniorCapLabel": "Pladser på juniorholdet",
     "racesClearedLabel": "Kommende løb ryddet",
     "racesOngoingLabel": "Løb rytteren udgår af"
   },
