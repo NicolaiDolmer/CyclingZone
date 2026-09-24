@@ -4,7 +4,7 @@
 // akademi-sidens trup-linje "U23 5/12 · Junior 3/10").
 //
 // Før #5568 spurgte fladerne getTeamAcademyCount (ALLE akademiryttere) og
-// sammenlignede med det flade ACADEMY.SLOTS = 8, mens RPC'erne siden #5547
+// sammenlignede med det gamle flade akademi-loft (8), mens RPC'erne siden #5547
 // tæller pr. mål-trup med SQUAD_CAPS. Resultatet var at 8 akademiryttere spærrede
 // bud og signeringer, selv om rytterens trup havde plads.
 //
