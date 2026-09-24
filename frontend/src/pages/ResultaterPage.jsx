@@ -18,6 +18,7 @@ import { capLatestRaces } from "../lib/raceLatestWindow.js";
 import { podiumFor } from "../lib/raceResultsPodium.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+import { applySeniorSquadFilter } from "../lib/seniorScope.ts";
 import {
   Card,
   Button,
@@ -188,7 +189,15 @@ export default function ResultaterPage() {
     const [seasonsRes, divisionsRes, myTeamRes] = await Promise.all([
       // #2763: sæson 0 (bogførings-sæson, 0 løb) er ikke en rigtig spillesæson.
       supabase.from("seasons").select("id, number, status").gt("number", 0).order("number", { ascending: false }),
-      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
+      // #5648 (Y2): kun senior-puljer. BEVIDST uden retired_at-filteret (til
+      // forskel fra StandingsPage/RiderRankingsPage/DashboardPage/RaceCentrePage):
+      // denne side kan vise en TIDLIGERE sæson (seasonParam), og risiko 3
+      // (spec-s4-struktur-2026-09-24.md) kræver at historiske sæsoner viser deres
+      // puljer — inkl. senere pensionerede D4-puljer — uændret. divisionsById
+      // bruges til tier-opslag for historiske hold/løb nedenfor (:272, :282), så
+      // et filtreret opslag ville fejle for gamle rækker i en pensioneret pulje.
+      applySeniorSquadFilter(supabase.from("league_divisions").select("id, tier, pool_index, label"))
+        .order("tier").order("pool_index"),
       // #1715: spillerens egen pulje — hubbens default-kontekst (#2182-princippet:
       // default er spillerens egen verden), ikke en fast forvalgt sæson-visning.
       user
@@ -259,10 +268,12 @@ export default function ResultaterPage() {
       // er pålidelig, se backend/lib/stageRaceTransferDefer.js). .or() henter
       // derfor både færdige løb OG igangværende etapeløb server-side; raceHasReportableResults
       // (samme prædikat som CompletedRacesExplorer) filtrerer forsvarsvist igen nedenfor.
-      supabase
+      // #5648 (Y2): races.squad findes (A2 #5525) — kædet .or() AND'es af
+      // PostgREST med status-or'et ovenfor (samme mønster som riderNameSearch.js).
+      applySeniorSquadFilter(supabase
         .from("races")
         .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
-        .eq("season_id", seasonRow.id)
+        .eq("season_id", seasonRow.id))
         .or("status.eq.completed,stages_completed.gt.0"),
     ]);
     if (standingsRes.error) throw standingsRes.error;

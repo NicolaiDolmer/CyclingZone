@@ -23,6 +23,7 @@ import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
 import { POOL_ALL, matchesPoolTab } from "../lib/standingsPoolFilter.js";
+import { applySeniorSquadFilter, filterSeniorSquadRows, withActiveSeniorPools } from "../lib/seniorScope.ts";
 
 // #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
 // Tier-tallet hentes fra den delte konstant-mirror (rulesNumbers), så frontend ikke
@@ -134,7 +135,11 @@ export default function StandingsPage() {
       .select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).order("division").order("name");
     // #1688: alle 15 puljer (reference-data) til pulje-sub-fanerne. Offentlig
     // læse-policy findes (league-divisions-pyramid-migrationen).
-    const poolsPromise = supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
+    // #5648 (Y2): kun senior + ikke-pensionerede puljer for den aktive sæson
+    // (delt filter/dom med backend's withSeniorSquadScope, spec-s4-struktur
+    // risiko 3). Defensiv: retired_at-migrationen (#5642) er ikke kørt endnu.
+    const poolsPromise = withActiveSeniorPools((scope) =>
+      scope(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index"));
 
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -167,12 +172,16 @@ export default function StandingsPage() {
         ? supabase.from("season_standings")
             // #1688: league_division_id med (GRANT på plads i league-divisions-pyramid-
             // migrationen) + join til league_divisions for puljens label.
-            .select("*, team:team_id(id, name, division, is_ai, league_division_id), pool:league_division_id(id, tier, pool_index, label)")
+            // #5648: squad med i puljeembeddet — season_standings har ingen egen
+            // squad-kolonne, så senior-dommen fældes i JS på det indlejrede pool.squad.
+            .select("*, team:team_id(id, name, division, is_ai, league_division_id), pool:league_division_id(id, tier, pool_index, label, squad)")
             .eq("season_id", activeSeason.id)
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("races")
-        .select("id, name, edition_year, pool_race:pool_race_id(date_text)")
+      // #5648 (Y2): races.squad findes (A2 #5525) — direkte or-filter, ingen
+      // fallback nødvendig.
+      applySeniorSquadFilter(supabase.from("races")
+        .select("id, name, edition_year, pool_race:pool_race_id(date_text)"))
         .eq("season_id", activeSeason?.id || "")
         .order("name"),
       poolsPromise,
@@ -181,8 +190,9 @@ export default function StandingsPage() {
 
     // Index actual standings by team_id. #1718: AI-rækker beholdes nu — de skal
     // vises (markeres diskret i tabellen), ikke filtreres væk.
+    // #5648: senior-scope på det indlejrede pool.squad (JS-dom, se seniorScope.ts).
     const standingsMap = {};
-    (standingsRes.data || []).forEach(s => {
+    filterSeniorSquadRows(standingsRes.data, (row) => row?.pool?.squad).forEach(s => {
       standingsMap[s.team_id] = s;
     });
 

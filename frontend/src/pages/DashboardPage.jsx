@@ -91,6 +91,7 @@ import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEve
 // se komponent-monteringen nederst i filen.
 import NpsPrompt from "../components/NpsPrompt.jsx";
 import { useNpsPrompt } from "../hooks/useNpsPrompt.js";
+import { withActiveSeniorPools } from "../lib/seniorScope.ts";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -521,7 +522,8 @@ export default function DashboardPage() {
         : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
       // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
-      supabase.from("league_divisions").select("id, tier, pool_index, label"),
+      // #5648 (Y2): kun senior + ikke-pensionerede puljer (spec-s4-struktur risiko 3).
+      withActiveSeniorPools((scope) => scope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
       // #3508: reserveret beløb i førende bud + proxy-max — delt helper med
       // FinancePage (lib/availableBalance.js), se kommentar ved state-deklarationen.
       fetchReservedBalance(supabase, teamData.id),

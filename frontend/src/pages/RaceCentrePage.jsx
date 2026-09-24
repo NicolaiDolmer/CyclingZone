@@ -38,6 +38,7 @@ import { useStageTimeline } from "../hooks/useStageTimeline.js";
 import { useRiderNames } from "../hooks/useRiderNames.js";
 import { collectRiderIds, describeEvent } from "../lib/stageTimelineFilm.js";
 import { RACE_TIMEZONE, formatCountdown } from "../lib/stageScheduleConfig.js";
+import { applySeniorSquadFilter, withActiveSeniorPools } from "../lib/seniorScope.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus.js";
 import {
   buildRaceCentreCards,
@@ -135,11 +136,15 @@ export default function RaceCentrePage() {
       if (!raceIds.length) { setCards([]); setLoading(false); return; }
 
       // 2) Løbene bag slottene + puljeetiketter.
+      // #5648 (Y2): races.squad-filter her, ellers dukker ungdomsløb op i Race
+      // Centre (dagens slots kommer fra race_stage_schedule, som ikke selv har
+      // squad — dommen fældes på den efterfølgende races-læsning i stedet).
       const [racesRes, divisionsRes, entriesRes] = await Promise.all([
-        supabase.from("races")
-          .select("id, name, stages, stages_completed, status, race_type, league_division_id")
+        applySeniorSquadFilter(supabase.from("races")
+          .select("id, name, stages, stages_completed, status, race_type, league_division_id"))
           .in("id", raceIds),
-        supabase.from("league_divisions").select("id, tier, pool_index, label"),
+        // #5648: kun senior + ikke-pensionerede puljer (spec-s4-struktur risiko 3).
+        withActiveSeniorPools((scope) => scope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
         teamData?.id
           // pagination-safe: dobbelt afgrænset — ét hold (RLS-scoped team_id) OG
           // kun dagens løb (raceIds, to cifre). Højst dagens løb × løbstruppens

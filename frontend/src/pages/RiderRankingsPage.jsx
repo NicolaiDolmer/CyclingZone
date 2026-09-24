@@ -14,6 +14,7 @@ import { useRiderRankings } from "../hooks/useRiderRankings";
 import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
 import { resolveDivisionSelectionFromParams, ALL_DIVISIONS_VALUE } from "../lib/riderRankingDivisionLink";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
+import { withActiveSeniorPools } from "../lib/seniorScope.ts";
 import {
   Input,
   Select,
@@ -142,7 +143,9 @@ export default function RiderRankingsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index")
+    // #5648 (Y2): kun senior + ikke-pensionerede puljer (spec-s4-struktur risiko 3).
+    withActiveSeniorPools((scope) =>
+      scope(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index"))
       .then(({ data }) => { if (!cancelled) setDivisions(data || []); });
     return () => { cancelled = true; };
   }, []);
