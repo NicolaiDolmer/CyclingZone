@@ -8,7 +8,9 @@ import {
   comebackSponsorKey,
   seasonSponsorKeys,
   ComebackError,
+  assignYouthGroupsForComebackTeam,
 } from "./comebackService.js";
+import { YOUTH_GROUP_TIER } from "./youthPoolAssignment.js";
 
 // createFakeSupabase kender ikke PostgREST's .or(); withSeniorSquadScope bruger den til
 // senior-scopet (#5517). Her registreres kaldet og ignoreres, så puljefiltreringen testes
@@ -296,4 +298,109 @@ test("payComebackSponsor: base 0 betaler intet", async () => {
   });
   assert.equal(result.paid, false);
   assert.equal(calls.credit.length, 0);
+});
+
+// ── #5676 (Y3 opfølgning, Refs #5646 #5661): comeback overtager en AI-plads' ────
+// eksisterende ungdomsgrupper ─────────────────────────────────────────────────
+
+function withYouthGroups(state) {
+  const u23Pool = { id: "u23-a", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 0, label: "U23 Group A" };
+  const juniorPool = { id: "junior-a", squad: "junior", tier: YOUTH_GROUP_TIER, pool_index: 0, label: "Junior Group A" };
+  state.league_divisions.push(u23Pool, juniorPool);
+  // Den AI-plads comebacket overtager har allerede begge ungdomsgrupper.
+  state.teams.push(
+    { id: "ai-youth-1", is_ai: true, u23_league_division_id: u23Pool.id, junior_league_division_id: juniorPool.id },
+  );
+  return { state, u23Pool, juniorPool };
+}
+
+test("#5676 comeback: holdet overtager AI-holdets eksisterende u23- og junior-gruppe", async () => {
+  const { state, u23Pool, juniorPool } = withYouthGroups(baseState({ rank: 30 }));
+  const supabase = fakeDb(state);
+  const { deps } = makeDeps(supabase);
+
+  const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(result.returned, true);
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.u23_league_division_id, u23Pool.id);
+  assert.equal(team.junior_league_division_id, juniorPool.id);
+});
+
+test("#5676 comeback: rører ALDRIG et hold der allerede har en ungdomsgruppe (idempotent)", async () => {
+  const { state, juniorPool } = withYouthGroups(baseState({ rank: 30 }));
+  const otherU23Pool = { id: "u23-b", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 1, label: "U23 Group B" };
+  state.league_divisions.push(otherU23Pool);
+  state.teams.find((t) => t.id === TEAM).u23_league_division_id = otherU23Pool.id;
+  const supabase = fakeDb(state);
+  const { deps } = makeDeps(supabase);
+
+  const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(result.returned, true);
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.u23_league_division_id, otherU23Pool.id, "u23-gruppen var allerede sat og røres ikke");
+  assert.equal(team.junior_league_division_id, juniorPool.id, "junior-gruppen mangler stadig og bliver sat");
+});
+
+test("#5676 comeback: en genoptagelse (allerede vendt tilbage i sæsonen) forsøger også ungdomsgruppe-placering", async () => {
+  const { state, u23Pool, juniorPool } = withYouthGroups(baseState({ rank: 30 }));
+  const supabase = fakeDb(state);
+  const { deps } = makeDeps(supabase);
+
+  await returnParkedTeam({ supabase, teamId: TEAM, deps });
+  // Andet kald rammer alreadyReturned-grenen (holdet er ikke længere parkeret).
+  const second = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(second.alreadyReturned, true);
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.u23_league_division_id, u23Pool.id);
+  assert.equal(team.junior_league_division_id, juniorPool.id);
+});
+
+test("#5676 comeback: ingen ungdomsgrupper seedet endnu → ikke-fatal, comebacket lykkes stadig", async () => {
+  const supabase = fakeDb(baseState({ rank: 30 }));
+  const { deps } = makeDeps(supabase);
+
+  const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(result.returned, true);
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.u23_league_division_id, undefined);
+  assert.equal(team.junior_league_division_id, undefined);
+});
+
+test("#5676 assignYouthGroupsForComebackTeam: fejl er ikke-fatal for selve comebacket", async () => {
+  const { state } = withYouthGroups(baseState({ rank: 30 }));
+  const supabase = fakeDb(state);
+  const { deps, calls } = makeDeps(supabase, {
+    assignYouthGroupsFn: async () => { throw new Error("youth boom"); },
+  });
+
+  const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(result.returned, true);
+  assert.ok(calls.errors.some((e) => e.message === "youth boom"));
+});
+
+test("#5676 assignYouthGroupsForComebackTeam (ren enhedstest): vælger gruppen med flest AI-hold", async () => {
+  const u23Groups = [
+    { id: "u23-x", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 0 },
+    { id: "u23-y", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 1 },
+  ];
+  const supabase = fakeDb({
+    league_divisions: u23Groups,
+    teams: [
+      { id: "comeback-team", is_ai: false },
+      { id: "ai-1", is_ai: true, u23_league_division_id: "u23-y" },
+      { id: "ai-2", is_ai: true, u23_league_division_id: "u23-y" },
+      { id: "ai-3", is_ai: true, u23_league_division_id: "u23-x" },
+    ],
+  });
+
+  const result = await assignYouthGroupsForComebackTeam({ supabase, team: { id: "comeback-team" } });
+
+  assert.equal(result.assigned.u23.leagueDivisionId, "u23-y", "gruppen med to AI-hold vinder over gruppen med ét");
+  const team = supabase.state.teams.find((t) => t.id === "comeback-team");
+  assert.equal(team.u23_league_division_id, "u23-y");
 });

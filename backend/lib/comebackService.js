@@ -37,6 +37,7 @@ import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { withSeniorSquadScope } from "./squads.js";
 import { captureException } from "./sentry.js";
+import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, pickYouthGroupForNewTeam } from "./youthPoolAssignment.js";
 
 // Fejl med en HTTP-status, så route-filen kan oversætte uden at kende detaljerne.
 export class ComebackError extends Error {
@@ -186,6 +187,79 @@ export async function payComebackSponsor({
   return { via: "active_contract", contractId: contract.id, amount, share, paid: !skipped };
 }
 
+// #5676 (Y3 opfølgning, Refs #5646 #5661): et comeback skal have ungdomsløb igen —
+// holdet overtager en AI-plads i én u23- og én junior-gruppe, samme regel
+// (pickYouthGroupForNewTeam, ren, backend/lib/youthPoolAssignment.js) som et nyt
+// hold ved onboarding (teamProfileEngine.assignYouthGroupsForNewTeam). Rører
+// ALDRIG et hold der allerede har en gruppe i trup'en (idempotent genoptagelse).
+function youthFkColumn(squad) {
+  return squad === "u23" ? "u23_league_division_id" : "junior_league_division_id";
+}
+
+async function loadYouthGroupCandidates(supabase, squad) {
+  const { data: pools, error: poolsError } = await supabase
+    .from("league_divisions")
+    .select("id, pool_index")
+    .eq("squad", squad)
+    .eq("tier", YOUTH_GROUP_TIER);
+  if (poolsError) throw new Error(`league_divisions (youth ${squad}): ${poolsError.message}`);
+  const activePools = pools || [];
+  if (!activePools.length) return { pools: [], groups: [] };
+
+  const col = youthFkColumn(squad);
+  const poolIds = activePools.map((p) => p.id);
+  const { data: occupants, error: occupantsError } = await supabase
+    .from("teams")
+    .select(`id, is_ai, ${col}`)
+    .in(col, poolIds);
+  if (occupantsError) throw new Error(`teams (youth ${squad} occupants): ${occupantsError.message}`);
+
+  const byPoolId = new Map(activePools.map((p) => [p.id, { poolIndex: p.pool_index, aiTeamIds: [], managerTeamIds: [] }]));
+  for (const t of occupants || []) {
+    const group = byPoolId.get(t[col]);
+    if (!group) continue;
+    (t.is_ai === true ? group.aiTeamIds : group.managerTeamIds).push(t.id);
+  }
+  return { pools: activePools, groups: [...byPoolId.values()] };
+}
+
+export async function assignYouthGroupsForComebackTeam({ supabase, team } = {}) {
+  if (!team?.id) return { assigned: {} };
+  const assigned = {};
+  for (const squad of YOUTH_POOL_SQUADS) {
+    const col = youthFkColumn(squad);
+    if (team[col] != null) {
+      assigned[squad] = { skipped: "already_assigned" };
+      continue;
+    }
+    const { pools, groups } = await loadYouthGroupCandidates(supabase, squad);
+    const target = pickYouthGroupForNewTeam({ groups, squad });
+    if (!target) {
+      assigned[squad] = { skipped: "no_group_available" };
+      continue;
+    }
+    const pool = pools.find((p) => p.pool_index === target.poolIndex);
+    if (!pool) {
+      assigned[squad] = { skipped: "pool_not_found" };
+      continue;
+    }
+    const { error } = await supabase.from("teams").update({ [col]: pool.id }).eq("id", team.id);
+    if (error) throw new Error(`teams.${col} update (youth ${squad}): ${error.message}`);
+    assigned[squad] = { leagueDivisionId: pool.id, poolIndex: pool.pool_index };
+  }
+  return { assigned };
+}
+
+async function assignYouthGroupsSafely({ supabase, team, assignYouthGroupsFn, captureExceptionFn }) {
+  try {
+    return await assignYouthGroupsFn({ supabase, team });
+  } catch (err) {
+    console.error(`[comeback] #5676 ungdomsgruppe-placering for hold ${team.id} fejlede (ikke-fatal):`, err?.message || err);
+    captureExceptionFn(err, { tags: { flow: "season_comeback", stage: "youth_groups" }, extra: { teamId: team.id } });
+    return { error: err?.message || String(err) };
+  }
+}
+
 // AI-fyld og kalender for mål-puljen. Begge BEVIDST ikke-fatale, samme mønster som
 // teamProfileEngine for et nyt hold: holdet ER placeret, og begge kald er idempotente,
 // så en senere kørsel retter en sprunget.
@@ -240,6 +314,7 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
     reconcileAiTeamsFn = reconcileAiTeamsForPool,
     reconcilePoolCalendarFn = reconcilePoolCalendarOnActivation,
     captureExceptionFn = captureException,
+    assignYouthGroupsFn = assignYouthGroupsForComebackTeam,
     ...sponsorDeps
   } = deps;
 
@@ -261,6 +336,7 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
   if (team.parked_at == null) {
     if (team.comeback_season_id != null && String(team.comeback_season_id) === String(season.id)) {
       const sponsor = await paySponsorSafely({ supabase, team, season, deps: sponsorDeps, captureExceptionFn });
+      await assignYouthGroupsSafely({ supabase, team, assignYouthGroupsFn, captureExceptionFn });
       return {
         returned: true,
         alreadyReturned: true,
@@ -316,6 +392,9 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
     reconcilePoolCalendarFn,
     captureExceptionFn,
   });
+  // #5676: holdet overtager en AI-plads' ungdomsgrupper igen (samme sted i flowet
+  // som AI-fyld/kalender-opfølgningen ovenfor — ikke-fatal, idempotent).
+  await assignYouthGroupsSafely({ supabase, team: placedTeam, assignYouthGroupsFn, captureExceptionFn });
 
   console.log(
     `[comeback] hold ${team.id} tilbage i division ${placement.tier} (pulje ${placement.poolId}, ${placement.reason}) ${now.toISOString()}`,
