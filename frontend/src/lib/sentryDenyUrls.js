@@ -28,29 +28,49 @@
 // Clarity registrerede 50 JS-fejl samme periode/platform paa netop de
 // lazy-loadede ruter (/training, /planning, /races/*, /riders). Se postmortem
 // .claude/learnings/2026-09-03-webkit-masked-url-denylist-blind-spot.md.
-// #5694 (CYCLINGZONE-68, triage 24/9): Google Translate-proxyen serverer siden
-// under et andet origin (fx cyclingzone-org.translate.goog) og omskriver URL'en
-// med _x_tr_sl/_x_tr_tl-parametre. Vores egen history.replaceState-kode kaster
-// SecurityError der, fordi mismatchet mellem document.location og den URL vi
-// forsøger at skrive udløser browserens same-origin-guard — proxyen er ikke
-// vores app, og fejlen kan ikke rettes i vores kode (vi kontrollerer ikke
-// proxyens origin). Matcher paa BLAME-URL'en (samme mekanisme som _next-live-
-// moensteret ovenfor): alt paa .translate.goog-domaenet er proxy-serveret kode.
 export const DENY_URLS = [
   /^chrome-extension:\/\//,
   /^moz-extension:\/\//,
   /^safari-(web-)?extension:\/\//,
   /\/_next-live\/feedback\/instrument/,
-  /\.translate\.goog\//,
 ];
 
-// #5694 (CYCLINGZONE-68): supplerer denyUrls (som kun ser blame-frame-URL'en,
-// og derfor kan misse hvis stacktracen mangler frames eller peger andetsteds).
-// beforeSend tjekker i stedet det AKTUELLE dokuments hostname direkte — hele
-// siden kører under proxyens origin, saa ENHVER fejl derfra er proxy-stoej.
+// #5694 (CYCLINGZONE-68, triage 24/9): Google Translate-proxyen serverer siden
+// under et andet origin (fx cyclingzone-org.translate.goog) og omskriver URL'en
+// med _x_tr_sl/_x_tr_tl-parametre. Vores egen history.replaceState-kode kaster
+// en SecurityError der, fordi mismatchet mellem document.location og den URL vi
+// forsøger at skrive udløser browserens same-origin-guard — proxyen er ikke
+// vores app, og fejlen kan ikke rettes i vores kode (vi kontrollerer ikke
+// proxyens origin).
+//
+// CodeRabbit-fund (24/9): et tidligere udkast lagde et BLANKT
+// "alt fra .translate.goog droppes"-mønster i DENY_URLS. Det matcher på
+// blame-frame-URL'en uden at kigge på fejltypen, og ville derfor OGSÅ have
+// slugt ægte app-crashes for enhver spiller der bruger browser-oversættelse —
+// præcis den samme fejlklasse som #4499 (webkit-masked-url) allerede lærte os
+// at undgå. Filteret er derfor IKKE i denyUrls, kun i beforeSend, hvor det kan
+// kombinere origin OG selve fejlbeskeden (se isTranslateProxyHistoryError).
 export function isProxiedOrigin(hostname) {
   if (!hostname) return false;
   return /\.translate\.goog$/i.test(hostname);
+}
+
+// PUR: er DETTE præcis den kendte translate.goog-historik-fejl? Tager BÅDE
+// fejltypen (DOMException.name, "SecurityError" — det Sentry lægger i
+// exception.values[0].type) og selve beskeden, fordi Chromiums besked for
+// denne fejl ikke nødvendigvis gentager ordet "SecurityError" i teksten:
+//   "Failed to execute 'replaceState' on 'History': A history state object
+//    with URL '...' cannot be created in a document with origin '...' ..."
+// Snævert med vilje (CodeRabbit-fund ovenfor): kræver ALTID at replaceState/
+// pushState nævnes, PLUS enten en SecurityError-type/-tekst eller Chromiums
+// specifikke "cannot be created in a document with origin"-ordlyd.
+export function isTranslateProxyHistoryError(errorType, message) {
+  if (!message || !/(replaceState|pushState)/i.test(message)) return false;
+  return (
+    /securityerror/i.test(errorType || "") ||
+    /securityerror/i.test(message) ||
+    /cannot be created in a document with origin/i.test(message)
+  );
 }
 
 // Reproducerer Sentrys denyUrls-semantik: et event droppes hvis MINDST ét
