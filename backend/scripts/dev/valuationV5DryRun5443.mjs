@@ -56,7 +56,6 @@ import {
   withMarketFit,
 } from "../../lib/riderValuationModelSelect.js";
 import { readFileSync } from "node:fs";
-import { riderOverall } from "../../lib/riderValuation.js";
 import { MAX_DEVELOP_SELL_ROI, developAndSellGate } from "../../lib/valuationV4Scorecard.js";
 import { isTypefreeModel, valueTypefree } from "../../lib/valuationTypefree/typefreeValuation.js";
 import { buildCapsTypefree, profileSignature, stepTypefree } from "../../lib/valuationTypefree/careerTypefree.js";
