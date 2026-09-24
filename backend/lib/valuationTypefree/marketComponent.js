@@ -188,11 +188,17 @@ export function makeKernelSpace(rows, abilityKeys) {
   const ageVals = rows.map((r) => r.age);
   const am = ageVals.reduce((s, x) => s + x, 0) / ageVals.length;
   const ageSd = Math.sqrt(ageVals.reduce((s, x) => s + (x - am) ** 2, 0) / ageVals.length) || 1;
+  return kernelSpaceFrom({ abilityKeys, sd, ageSd });
+}
+
+// Samme indlejring ud fra gemte spredninger (hydrering af et gemt fit).
+function kernelSpaceFrom({ abilityKeys, sd, ageSd }) {
+  const n = Math.sqrt(abilityKeys.length);
   const embed = (x) => [
-    ...abilityKeys.map((k, i) => Number(x.abilities[k]) / sd[i] / Math.sqrt(abilityKeys.length)),
-    x.age / ageSd,
+    ...abilityKeys.map((k, i) => Number(x.abilities?.[k]) / sd[i] / n),
+    Number(x.age) / ageSd,
   ];
-  return { embed };
+  return { embed, abilityKeys: [...abilityKeys], sd: [...sd], ageSd };
 }
 
 export function fitLocal(rows, { abilityKeys, bandwidth = 0.5, k0 = 3, common } = {}) {
@@ -200,6 +206,10 @@ export function fitLocal(rows, { abilityKeys, bandwidth = 0.5, k0 = 3, common } 
   // Residual mod HELE det fælles fit (inkl. γ0); predict alene udelader γ0.
   const level = common ? Number(common.gamma0) || 0 : 0;
   const pts = rows.map((r) => ({ e: space.embed(r), res: r.r - level - (common ? common.predict(r) : 0) }));
+  return localFromPoints(space, pts, { bandwidth, k0 });
+}
+
+function localFromPoints(space, pts, { bandwidth, k0 }) {
   const h2 = 2 * bandwidth * bandwidth;
   const mass = (x) => {
     const e = space.embed(x);
@@ -223,7 +233,66 @@ export function fitLocal(rows, { abilityKeys, bandwidth = 0.5, k0 = 3, common } 
       const { wSum } = mass(x);
       return wSum / (wSum + k0);
     },
+    // Serialiserbar form (serializeMarketFit). Punkterne er indlejrede evne-
+    // profiler + residualer, ingen id'er — men de er afledt af rigtige handler
+    // og hører derfor kun hjemme i privat lager (app_config / balance-internals).
+    spec: { abilityKeys: space.abilityKeys, sd: space.sd, ageSd: space.ageSd, bandwidth, k0, points: pts },
   };
+}
+
+// ── Gemt markeds-fit (#5497 v3) ──────────────────────────────────────────────
+// Den samlede model regner rytter for rytter i en REN funktion
+// (recomputeRiderValue), uden DB. Markedsleddet skal derfor kunne gemmes og
+// hydreres: vægt, loft, det fælles fits koefficienter og den lokale kernes
+// punkter. Tallene er ejer-valg og afledt af rigtige handler; de committes
+// aldrig (ejerens valg-fil + hard rule 17). De bor i app_config-nøglen
+// `rider_valuation_v6_market` (se riderValuationModelSelect.js) eller i en
+// privat fil under balance-internals/ til tørkørsler.
+export const MARKET_FIT_SCHEMA = "typefree-market-fit/1";
+
+export function serializeMarketFit({ common, local, weight, capLn, meta = {} }) {
+  const c = common && common.n >= 5
+    ? { beta: [...common.gamma], center: { ...common.center }, gamma0: common.gamma0, n: common.n }
+    : { beta: [0, 0, 0], center: { O: 0, age: 0 }, gamma0: common?.gamma0 ?? 0, n: common?.n ?? 0 };
+  return {
+    schema: MARKET_FIT_SCHEMA,
+    weight: Number(weight),
+    cap_ln: Number(capLn),
+    common: c,
+    local: local?.spec ?? null,
+    meta,
+  };
+}
+
+// Validér + genopbyg { common, local, weight, cap } fra den gemte form.
+// Ugyldigt input → null (kalderen falder tilbage til "intet marked").
+export function hydrateMarketFit(fit) {
+  if (!fit || typeof fit !== "object" || fit.schema !== MARKET_FIT_SCHEMA) return null;
+  const weight = Number(fit.weight);
+  const cap = Number(fit.cap_ln);
+  if (!(weight >= 0) || !(cap >= 0)) return null;
+  const beta = Array.isArray(fit.common?.beta) ? fit.common.beta.map(Number) : null;
+  const oBar = Number(fit.common?.center?.O);
+  const aBar = Number(fit.common?.center?.age);
+  if (!beta || beta.length !== 3 || !beta.every(Number.isFinite) || !Number.isFinite(oBar) || !Number.isFinite(aBar)) return null;
+  // Samme feature-skalering som fitCommon.
+  const common = {
+    predict: (x) => beta[0] * ((x.O - oBar) / 10) + beta[1] * ((x.age - aBar) / 5) + beta[2] * ((x.age - aBar) / 5) ** 2,
+  };
+  let local = null;
+  const l = fit.local;
+  if (l) {
+    const keys = Array.isArray(l.abilityKeys) ? l.abilityKeys : null;
+    const sd = Array.isArray(l.sd) ? l.sd.map(Number) : null;
+    const ok = keys && sd && sd.length === keys.length && sd.every((s) => s > 0) && Number(l.ageSd) > 0
+      && Number(l.bandwidth) > 0 && Number(l.k0) >= 0 && Array.isArray(l.points)
+      && l.points.every((p) => Array.isArray(p.e) && p.e.length === keys.length + 1 && Number.isFinite(Number(p.res)));
+    if (!ok) return null;
+    const space = kernelSpaceFrom({ abilityKeys: keys, sd, ageSd: Number(l.ageSd) });
+    const pts = l.points.map((p) => ({ e: p.e.map(Number), res: Number(p.res) }));
+    local = localFromPoints(space, pts, { bandwidth: Number(l.bandwidth), k0: Number(l.k0) });
+  }
+  return { common, local, weight, cap };
 }
 
 // Markedsjusteret værdi. weight = w, cap = L (ln-enheder, fx ln(1,5)).

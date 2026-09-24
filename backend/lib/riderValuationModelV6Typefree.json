@@ -1,0 +1,47 @@
+{
+  "version": 6,
+  "model_id": "v6",
+  "method": "typefree-career-npv",
+  "status": "dev-only: ikke godkendt til build (#5497). Nøglen er valgbar, men app_config peger på v4 indtil ejeren siger kør.",
+  "fitted_at": "2026-09-23T01:15:00+02:00",
+  "fit_source": "backend/scripts/dev/typefree5497Measure.mjs (S3/v3-simulering, K=30)",
+  "production": {
+    "shares": {
+      "sprinter": 0.125,
+      "tt": 0.125,
+      "climber": 0.125,
+      "puncheur": 0.125,
+      "brostensrytter": 0.125,
+      "rouleur": 0.125,
+      "baroudeur": 0.125,
+      "gc": 0.125
+    },
+    "beta": 16477255989977096,
+    "alpha": 0.9999999999999938,
+    "a": 2.9622818355929006,
+    "b": 0.18654322617566085,
+    "c": -0.000872382468197658,
+    "output_max": 84.92857142857135
+  },
+  "discount": 0.8,
+  "scale": 2.9779287,
+  "level_correction": 0.810849161784679,
+  "scale_method": "A: v4's omregning uændret (ejer-valg 22/9)",
+  "profile": {
+    "reference": "soft_max_others",
+    "headroom": "strengths_only",
+    "tau": 1,
+    "width": 8,
+    "offset": 11.9
+  },
+  "elite_premium": {
+    "overall_threshold": 45,
+    "k": 0.095009
+  },
+  "elite_premium_phase_steps": [1, 0.75, 0.5, 0.25, 0],
+  "market": {
+    "app_config": "rider_valuation_v6_market",
+    "note": "Vægt, loft og markeds-fit er ejer-valg/afledt af handler og står ALDRIG her. Loaderen lægger dem på som market_fit fra app_config; mangler nøglen, regnes uden marked (market_applied=false)."
+  },
+  "wage": "Løngrundlaget (current_production_value) regnes aldrig med denne model: rider_production_value_model accepterer ikke v6, og recomputeRiderValue falder tilbage til v4 for løn."
+}

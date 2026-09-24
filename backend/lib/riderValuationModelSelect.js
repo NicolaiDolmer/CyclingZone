@@ -52,6 +52,8 @@ import { fileURLToPath } from "node:url";
 
 import { readFlagStage } from "./featureStage.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { isTypefreeModel } from "./valuationTypefree/typefreeValuation.js";
+import { hydrateMarketFit } from "./valuationTypefree/marketComponent.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -66,23 +68,46 @@ export const DEFAULT_VALUATION_MODEL_ID = "v4";
 // nok til at et rytterkort ikke koster et ekstra DB-kald pr. visning.
 export const MODEL_ID_CACHE_TTL_MS = 60_000;
 
+// #5497 v3 (25/9): `v6` = den samlede typefri model (typefri grundværdi +
+// elitepræmie i trin + marked). DEV-ONLY indtil ejeren har sagt "godkendt til
+// build" i admin-forhåndsvisningen (#5686): nøglen er VALGBAR ad den rigtige
+// sti, men app_config peger på v4, og intet i denne fil flytter den.
 const MODEL_PATHS = Object.freeze({
   v4: join(__dirname, "./riderValuationModelV4.json"),
   v5: join(__dirname, "./riderValuationModelV5.json"),
+  v6: join(__dirname, "./riderValuationModelV6Typefree.json"),
 });
 
 export const VALUATION_MODEL_IDS = Object.freeze(Object.keys(MODEL_PATHS));
 
+// Løngrundlaget må ALDRIG følge den typefri model (ejer 20/9: "Løn skal ikke
+// følge værdi"; #5497 v3: productionModel er stadig v4). v6 regner ikke et
+// løngrundlag i v4's forstand, så en løn-nøgle på 'v6' behandles som ukendt
+// og giver v4 — samme fail-safe-retning som alt andet ukendt.
+export const PRODUCTION_VALUE_MODEL_IDS = Object.freeze(["v4", "v5"]);
+
+// app_config-nøglen der bærer v6's markeds-fit (vægt, loft, fælles + lokal
+// komponent). Tallene er ejer-valg og afledt af rigtige handler, så de står
+// kun i prod-databasen / private filer, aldrig i repoet (hard rule 17 +
+// ejerens valg-fil). Mangler nøglen, regner v6 uden marked (market_applied=false).
+export const TYPEFREE_MARKET_APP_CONFIG = "rider_valuation_v6_market";
+
 /**
  * Normalisér app_config-værdien til et kendt model-id. Alt ukendt — null,
- * tom streng, "V6", et tal, et objekt — giver defaulten. Ren funktion, så
+ * tom streng, "V7", et tal, et objekt — giver defaulten. Ren funktion, så
  * testen kan dække hele tabellen uden en DB.
  * @param {unknown} raw
- * @returns {"v4"|"v5"}
+ * @returns {"v4"|"v5"|"v6"}
  */
 export function resolveValuationModelId(raw) {
   const id = typeof raw === "string" ? raw.trim().toLowerCase() : null;
   return id && Object.hasOwn(MODEL_PATHS, id) ? id : DEFAULT_VALUATION_MODEL_ID;
+}
+
+/** Som resolveValuationModelId, men kun modeller der må bære løngrundlaget. */
+export function resolveProductionValueModelId(raw) {
+  const id = resolveValuationModelId(raw);
+  return PRODUCTION_VALUE_MODEL_IDS.includes(id) ? id : DEFAULT_VALUATION_MODEL_ID;
 }
 
 const cache = new Map();
@@ -92,7 +117,8 @@ const cache = new Map();
  * applyTypeDampening() respekterer både det globale TYPE_DAMPENING_ENABLED-flag
  * (v4's tilstand, uændret) og modellens eget `type_dampening: "off"` (#5443).
  * Filen læses én gang pr. proces — model-JSON'erne er committede artefakter.
- * @param {"v4"|"v5"} id
+ * v6 har ingen type-offsets, så dæmpningen er en no-op for den.
+ * @param {"v4"|"v5"|"v6"} id
  */
 export function loadValuationModelById(id) {
   const key = resolveValuationModelId(id);
@@ -100,6 +126,48 @@ export function loadValuationModelById(id) {
     cache.set(key, applyTypeDampening(JSON.parse(readFileSync(MODEL_PATHS[key], "utf8"))));
   }
   return cache.get(key);
+}
+
+// ── v6's markeds-fit ─────────────────────────────────────────────────────────
+function parseMarketFit(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try { return parseMarketFit(JSON.parse(raw)); } catch { return null; }
+  }
+  return typeof raw === "object" && hydrateMarketFit(raw) ? raw : null;
+}
+
+/**
+ * Læg et markeds-fit på en typefri model. Andre modeller returneres uændret.
+ * Ugyldigt fit → modellen uden marked. Ren funktion (ny objekt-identitet).
+ */
+export function withMarketFit(model, fit) {
+  if (!isTypefreeModel(model)) return model;
+  const parsed = parseMarketFit(fit);
+  return parsed ? { ...model, market_fit: parsed } : model;
+}
+
+async function attachMarket(supabase, model, { strict = false } = {}) {
+  if (!isTypefreeModel(model)) return model;
+  if (strict) {
+    if (!supabase?.from) throw new Error(`valuation-model: ingen supabase-klient til opslag af '${TYPEFREE_MARKET_APP_CONFIG}'`);
+    const { data, error } = await supabase
+      .from("app_config").select("value").eq("key", TYPEFREE_MARKET_APP_CONFIG).maybeSingle();
+    if (error) {
+      throw new Error(`valuation-model: kunne ikke laese app_config.${TYPEFREE_MARKET_APP_CONFIG} (${error.message}). Koerslen stoppes.`);
+    }
+    return withMarketFit(model, data?.value ?? null);
+  }
+  return withMarketFit(model, await readFlagStage(supabase, TYPEFREE_MARKET_APP_CONFIG));
+}
+
+/**
+ * Som loadValuationModelById, men for v6 med markeds-fittet fra app_config lagt
+ * på. Til admin-forhåndsvisningen (#5686) og tørkørsler, der skal vise den
+ * pris modellen VIL skrive, inkl. markedet. Lempelig: læsefejl → uden marked.
+ */
+export async function loadValuationModelByIdWithMarket(supabase, id) {
+  return attachMarket(supabase, loadValuationModelById(id));
 }
 
 /**
@@ -111,7 +179,7 @@ export function loadValuationModelById(id) {
  */
 export async function loadValuationModel(supabase) {
   const id = resolveValuationModelId(await readFlagStage(supabase, RIDER_VALUATION_MODEL_KEY));
-  return loadValuationModelById(id);
+  return attachMarket(supabase, loadValuationModelById(id));
 }
 
 /** Model-id'et alene, uden at indlæse filen (til logning/tørkørsel). */
@@ -131,7 +199,7 @@ export async function loadProductionValueModel(supabase) {
 
 /** Løngrundlagets model-id alene (til logning/tørkørsel). */
 export async function readProductionValueModelId(supabase) {
-  return resolveValuationModelId(await readFlagStage(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY));
+  return resolveProductionValueModelId(await readFlagStage(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY));
 }
 
 // ── STRIKS læsning til de kørsler der skriver HELE populationen ─────────────
@@ -153,7 +221,7 @@ export async function readProductionValueModelId(supabase) {
 //
 // En manglende række eller en ukendt værdi er IKKE en fejl: den giver v4 som
 // altid. Det er kun en ægte DB-/netværksfejl der stopper kørslen.
-async function readModelIdStrict(supabase, key) {
+async function readModelIdStrict(supabase, key, resolve = resolveValuationModelId) {
   if (!supabase?.from) {
     throw new Error(`valuation-model: ingen supabase-klient til opslag af '${key}'`);
   }
@@ -166,17 +234,24 @@ async function readModelIdStrict(supabase, key) {
       + "farligere end at vente til naeste forsoeg."
     );
   }
-  return resolveValuationModelId(data?.value ?? null);
+  return resolve(data?.value ?? null);
 }
 
-/** Prisens model til en kørsel der skriver hele populationen. Kaster ved læsefejl. */
+/**
+ * Prisens model til en kørsel der skriver hele populationen. Kaster ved læsefejl.
+ * v6: markeds-fittet læses også striks — kan det ikke læses, stopper kørslen
+ * hellere end at skrive hele populationen uden marked.
+ */
 export async function loadValuationModelStrict(supabase) {
-  return loadValuationModelById(await readModelIdStrict(supabase, RIDER_VALUATION_MODEL_KEY));
+  const model = loadValuationModelById(await readModelIdStrict(supabase, RIDER_VALUATION_MODEL_KEY));
+  return attachMarket(supabase, model, { strict: true });
 }
 
-/** Løngrundlagets model til samme kørsler. Kaster ved læsefejl. */
+/** Løngrundlagets model til samme kørsler. Kaster ved læsefejl. Aldrig v6. */
 export async function loadProductionValueModelStrict(supabase) {
-  return loadValuationModelById(await readModelIdStrict(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY));
+  return loadValuationModelById(
+    await readModelIdStrict(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY, resolveProductionValueModelId)
+  );
 }
 
 // ── Request-stien: kort TTL + af-duplikering af samtidige opslag ─────────────
@@ -191,7 +266,7 @@ export function resetValuationModelCache() {
   inFlight.clear();
 }
 
-async function readModelIdCached(supabase, key, { ttlMs = MODEL_ID_CACHE_TTL_MS, now = Date.now } = {}) {
+async function readModelIdCached(supabase, key, { ttlMs = MODEL_ID_CACHE_TTL_MS, now = Date.now, resolve = resolveValuationModelId } = {}) {
   const t = now();
   const hit = idCache.get(key);
   if (hit && hit.expiresAt > t) return hit.id;
@@ -203,7 +278,7 @@ async function readModelIdCached(supabase, key, { ttlMs = MODEL_ID_CACHE_TTL_MS,
       // readFlagStage sluger selv fejl og returnerer null ⇒ resolve giver v4.
       // Vi cacher derfor også et fail-safe-svar: alternativet er at hamre på en
       // DB der lige nu er nede, én gang pr. request.
-      const id = resolveValuationModelId(await readFlagStage(supabase, key));
+      const id = resolve(await readFlagStage(supabase, key));
       idCache.set(key, { id, expiresAt: now() + ttlMs });
       return id;
     })().finally(() => inFlight.delete(key));
@@ -217,10 +292,20 @@ async function readModelIdCached(supabase, key, { ttlMs = MODEL_ID_CACHE_TTL_MS,
  * @returns {Promise<object>} model-objektet (aldrig null)
  */
 export async function loadValuationModelCached(supabase, opts) {
-  return loadValuationModelById(await readModelIdCached(supabase, RIDER_VALUATION_MODEL_KEY, opts));
+  const model = loadValuationModelById(await readModelIdCached(supabase, RIDER_VALUATION_MODEL_KEY, opts));
+  if (!isTypefreeModel(model)) return model;
+  // v6: markeds-fittet caches med samme TTL som model-id'et.
+  const t = (opts?.now ?? Date.now)();
+  const hit = idCache.get(TYPEFREE_MARKET_APP_CONFIG);
+  if (hit && hit.expiresAt > t) return hit.model;
+  const withMarket = await attachMarket(supabase, model);
+  idCache.set(TYPEFREE_MARKET_APP_CONFIG, { model: withMarket, expiresAt: t + (opts?.ttlMs ?? MODEL_ID_CACHE_TTL_MS) });
+  return withMarket;
 }
 
-/** Løngrundlagets model til LÆSE-flader. Samme cache-kontrakt som ovenfor. */
+/** Løngrundlagets model til LÆSE-flader. Samme cache-kontrakt som ovenfor. Aldrig v6. */
 export async function loadProductionValueModelCached(supabase, opts) {
-  return loadValuationModelById(await readModelIdCached(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY, opts));
+  return loadValuationModelById(await readModelIdCached(supabase, RIDER_PRODUCTION_VALUE_MODEL_KEY, {
+    ...opts, resolve: resolveProductionValueModelId,
+  }));
 }

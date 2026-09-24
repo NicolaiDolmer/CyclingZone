@@ -56,7 +56,7 @@ test("kun et eksplicit 'v5' vælger den nye model", () => {
 });
 
 test("alt andet falder tilbage til v4 — også skrald", () => {
-  for (const raw of [null, undefined, "", "  ", "v4", "V4", "v6", "on", "true", true, 5, {}, [], NaN]) {
+  for (const raw of [null, undefined, "", "  ", "v4", "V4", "v7", "v6-typefree", "on", "true", true, 5, {}, [], NaN]) {
     assert.equal(
       resolveValuationModelId(raw),
       "v4",

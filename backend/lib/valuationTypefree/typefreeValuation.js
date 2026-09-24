@@ -22,8 +22,18 @@ import { ABILITY_KEYS, riderOverall } from "../riderValuation.js";
 import { hazard } from "../riderCareerNpv.js";
 import { effectiveOutput, productionFromOutput } from "./abilityProduction.js";
 import { buildCapsTypefree, profileSignature, stepTypefree } from "./careerTypefree.js";
+import { hydrateMarketFit, marketAdjustedValue } from "./marketComponent.js";
 
 export const TYPEFREE_MODEL_ID_PROPOSAL = "v6-typefree";
+// v3 (25/9): modellens nøgle i riderValuationModelSelect.js. Dispatchen i
+// recomputeRiderValue/predictBaseValue genkender modellen på `method`, så en
+// fremtidig re-fit under en ny nøgle ikke kræver en kodeændring her.
+export const TYPEFREE_MODEL_ID = "v6";
+export const TYPEFREE_METHOD = "typefree-career-npv";
+
+export function isTypefreeModel(model) {
+  return model?.method === TYPEFREE_METHOD;
+}
 
 // Ejer-valg 22/9 (valg 3 + 4): elitepræmien udfases i fire lige store trin, ét
 // trin pr. søndagskørsel, så eliten efter fire uger er prissat på præstation
@@ -131,4 +141,68 @@ export function currentProductionValueTypefree(rider, abilities, model) {
   const scale = Number.isFinite(Number(model.scale)) ? Number(model.scale) : 1;
   const v = Math.round(scale * r.trajectory[0].prod);
   return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+// ── v3 (25/9): den samlede model bag nøglen `v6` ─────────────────────────────
+// Ejer-direktiv 24/9: alt med fra start — typefri grundværdi, elitepræmien i
+// trin, markedet oven på. Én ren funktion, så søndagskørslen, tørkørslen og
+// admin-forhåndsvisningen (#5686) regner det samme tal.
+//
+//   værdi = grundværdi_t · markedsfaktor
+//   grundværdi_t   = predictBaseValueTypefree med præmiens k · f_t (phaseStep t)
+//   markedsfaktor  = exp( clamp( w · (fælles + lokal), ±L ) ), 1 uden marked
+//
+// Markedet kommer fra (i prioritet): opts.market (null = eksplicit slået fra;
+// et gemt fit eller et allerede hydreret { common, local, weight, cap }) →
+// model.market_fit (lagt på af loaderen fra app_config) → intet marked.
+// Vægt og loft står ALDRIG i den committede model-JSON (ejer-valg, privat).
+const hydratedFits = new WeakMap();
+
+function resolveMarket(model, override) {
+  if (override === null) return null;
+  const src = override !== undefined ? override : model?.market_fit;
+  if (!src || typeof src !== "object") return null;
+  if (src.common?.predict && Number.isFinite(Number(src.weight))) return src; // allerede hydreret
+  if (!hydratedFits.has(src)) hydratedFits.set(src, hydrateMarketFit(src));
+  return hydratedFits.get(src);
+}
+
+export function marketFactorTypefree(abilities, age, model, market) {
+  if (!market) return 1;
+  const x = { abilities, age: Number(age), O: effectiveOutput(abilities, model.production) };
+  const f = marketAdjustedValue(1, x, market);
+  // Manglende evne i kernen giver NaN → intet marked for DEN rytter frem for
+  // en NaN-pris. Loftet er allerede anvendt i marketAdjustedValue.
+  return Number.isFinite(f) && f > 0 ? f : 1;
+}
+
+/**
+ * Den samlede typefri værdi (v3).
+ * @param {{age:number, potentiale?:number}} rider
+ * @param {object} abilities
+ * @param {object} model  typefri model-JSON (method = TYPEFREE_METHOD)
+ * @param {{phaseStep?:number, market?:object|null}} [opts]
+ *   phaseStep: 0-4 søndagskørsler siden kørselsdagen (default 0 = fuld præmie).
+ * @returns {{ value:number|null, base:number|null, market_factor:number,
+ *             market_applied:boolean, phase_step:number, phase_factor:number }}
+ */
+export function valueTypefree(rider, abilities, model, { phaseStep = 0, market } = {}) {
+  const steps = Array.isArray(model?.elite_premium_phase_steps) && model.elite_premium_phase_steps.length
+    ? model.elite_premium_phase_steps
+    : ELITE_PREMIUM_PHASE_STEPS;
+  const step = Math.max(0, Math.min(steps.length - 1, Math.floor(Number(phaseStep)) || 0));
+  const phaseFactor = elitePremiumPhaseFactor(step, steps);
+  const phased = { ...model, elite_premium: phasedElitePremium(model?.elite_premium, step, steps) };
+  const base = predictBaseValueTypefree(rider, abilities, phased);
+  const m = resolveMarket(model, market);
+  const factor = base == null ? 1 : marketFactorTypefree(abilities, rider?.age, model, m);
+  const value = base == null ? null : Math.max(1, Math.round(base * factor));
+  return {
+    value,
+    base,
+    market_factor: factor,
+    market_applied: Boolean(m),
+    phase_step: step,
+    phase_factor: phaseFactor,
+  };
 }

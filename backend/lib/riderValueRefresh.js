@@ -17,7 +17,13 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { predictBaseValue, VALUATION_ABILITY_COLUMNS } from "./riderValuation.js";
 import { currentProductionValue } from "./riderCareerNpv.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
-import { loadValuationModelStrict, loadProductionValueModelStrict } from "./riderValuationModelSelect.js";
+import {
+  DEFAULT_VALUATION_MODEL_ID,
+  loadProductionValueModelStrict,
+  loadValuationModelById,
+  loadValuationModelStrict,
+} from "./riderValuationModelSelect.js";
+import { isTypefreeModel, valueTypefree } from "./valuationTypefree/typefreeValuation.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
 
 // Data-only preparation for #5435/#5443. Ties use the stable recipe order.
@@ -62,7 +68,16 @@ const WRITE_CONCURRENCY = 25;
 // eksisterende caller (tests, harnesses, tørkørsler) er bit-identisk.
 // Sendes den med, vælger prisen og løngrundlaget model hver for sig, og en
 // v5-pris kan gå live mens lønnen bliver stående på v4.
-export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline, productionModel } = {}) {
+//
+// #5497 v3 (25/9): er `model` den typefri model (nøgle `v6`), regnes PRISEN af
+// valueTypefree (typefri grundværdi, elitepræmie på trin `phaseStep` 0-4,
+// markeds-fittet fra model.market_fit eller opts.market). Typen læses ikke af
+// prisen; primary/secondary klassificeres stadig til visning som før.
+// LØNGRUNDLAGET følger aldrig v6: uden en eksplicit productionModel falder det
+// tilbage til v4 (ikke til prisens model som for v4/v5). Intet i stien kigger
+// på team_id — menneskeholds ryttere regnes præcis som alle andre.
+// v4/v5 er bit-identiske med før; de ekstra opts ignoreres for dem.
+export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline, productionModel, phaseStep = 0, market } = {}) {
   const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
   const typeModel = selectTypesBaseline(riderRow?.age, baseline, youthBaseline);
   // #3570 (ejer-beslutning 10/8): bærer rytteren et PERSISTERET anlæg
@@ -80,6 +95,25 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model, { type
   // rytter uden det felt), falder value-funktionerne selv tilbage til
   // withType.primary_type (den friske type ovenfor) — uændret adfærd.
   const withType = { ...riderRow, primary_type: primary.key, secondary_type: secondary.key };
+  if (isTypefreeModel(model)) {
+    const tf = valueTypefree(withType, abilities, model, { phaseStep, market });
+    const cpv = currentProductionValue(withType, abilities, productionModel || loadValuationModelById(DEFAULT_VALUATION_MODEL_ID));
+    return {
+      primary_type: primary.key,
+      secondary_type: secondary.key,
+      base_value: tf.value,
+      current_production_value: cpv == null ? null : Math.round(cpv),
+      // Kun for v6: nedbrydningen admin-forhåndsvisningen (#5686) kan vise.
+      valuation_components: {
+        model_id: model.model_id,
+        base: tf.base,
+        market_factor: tf.market_factor,
+        market_applied: tf.market_applied,
+        phase_step: tf.phase_step,
+        phase_factor: tf.phase_factor,
+      },
+    };
+  }
   const raw = predictBaseValue(withType, abilities, model);
   const cpv = currentProductionValue(withType, abilities, productionModel || model);
   return {
@@ -175,7 +209,8 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   // så hele populationen regnes med det samme par modeller.
   // Har kalderen PINNET prismodellen, følger løngrundlaget den — som før de
   // to nøgler fandtes. Kun en kørsel der selv vælger model, slår begge op.
-  const pm = productionModel || model || await loadProductionValueModelStrict(supabase);
+  // #5497 v3: en pinnet v6 trækker IKKE løngrundlaget med (løn følger ikke værdi).
+  const pm = productionModel || (isTypefreeModel(model) ? null : model) || await loadProductionValueModelStrict(supabase);
 
   // v4-alder forankres i den aktive sæson (samme ageForSeason som progression).
   // Cutover-fix 23/8: mellem "Afslut sæson" og transitionen er der INGEN aktiv

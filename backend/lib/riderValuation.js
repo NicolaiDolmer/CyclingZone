@@ -30,6 +30,7 @@ import { roleOutputRaw, DISPLAY_RECIPE_ABILITIES } from "./weights/displayRecipe
 // begge moduler eksporterer kun hoistede function declarations og kører ingen af
 // modpartens bindings ved module-eval.
 import { predictBaseValueV4 } from "./riderCareerNpv.js";
+import { isTypefreeModel, valueTypefree } from "./valuationTypefree/typefreeValuation.js";
 
 export { ABILITY_KEYS };
 
@@ -149,6 +150,11 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   // rider.age + rider.potentiale med. Et v3-model-objekt (koefficienter i roden)
   // beregner som hidtil — offline-harnesses der stadig indlæser
   // riderValuationModel.json (v3) er dermed bevidst uberørte.
+  // #5497 v3: den typefri model (v6) — fuld præmie (trin 0) og markeds-fittet
+  // hvis loaderen har lagt det på. Trin > 0 findes kun via recomputeRiderValue.
+  if (isTypefreeModel(model)) {
+    return valueTypefree(rider, abilities, model).value;
+  }
   if (Number(model?.version) >= 4 && model?.fit) {
     return predictBaseValueV4(rider, abilities, model);
   }
