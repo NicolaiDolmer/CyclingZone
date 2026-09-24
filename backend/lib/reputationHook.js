@@ -22,8 +22,8 @@
 // trup-dimension — en ungdomssejr ville give samme omdømme som en seniorsejr i
 // samme løbsklasse. Samme dom som afspilningen (reputationReplay.js), så backfill
 // og live ikke kan blive uenige. Kaldstederne i raceRunner sender i dag race-
-// objekter UDEN `squad` (adminSimulateRace/stageScheduler projicerer ikke
-// kolonnen), så krogen slår truppen op selv — ét enkelt-række-opslag, og kun når
+// objekter UDEN `squad` (adminSimulateRace, som også er stage-schedulerens vej,
+// projicerer ikke kolonnen), så krogen slår truppen op selv — ét enkelt-række-opslag, og kun når
 // flaget skriver og der er rækker at afspille, så "flag off = ingen ekstra
 // DB-adgang" holder. I dag er hvert løb 'senior', så adfærden er bit-identisk.
 
