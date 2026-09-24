@@ -16,7 +16,7 @@
 
 ## Bane 1 · S4-cutover 27-28/9 (rækkefølge ejer-godkendt 15/9; intet udskydes uden ejer-aftale)
 
-1. 🟠 **Køen (24/9-d):** ✅ merget #5670 #5661 #5650 #5651 #5672 #5610 #5666 #5671 #5663 #5679 · ✅ `race_notify_outbox_enabled` on 18:45 · "kør"-kort: `youth_squad_pages` on (ejer venter på beta-testere) · `email_loop_race_digest` dry_run · `race_finalize_resumable_enabled` · parkeret m. dato: #5461 27/9 · #5281 28/9 · #5502 28/9 (A/B) · #5444 åben til værdikørslen · GitHub-audit.
+1. 🟠 **Køen (24/9-d):** ✅ 10 PR'er merget (sidst #5666 #5671 #5663 #5679) · ✅ outbox on · ✅ digest dry_run · udestår: `youth_squad_pages` on (ejer venter på beta-testere) · `race_finalize_resumable_enabled` · parkeret: #5461 27/9 · #5281 28/9 · #5502 28/9 (A/B) · #5444 åben · navne-skrub efter 28/9.
 2. 🟠 **Træning:** ✅ 140 (#5608 #5615) · ✅ kerne + motor C2 (#5640 #5654) · #5670 hjælp · flip-prep #5663 · B3 #5281 flip-dagen · #5238 · #5456 · #4852-#4854. **Rytter-fundament:** point-flyt #5268 (ejer-gated) · #5269 · #5273.
 3. 🟠 **Kalender m. trupper:** ✅ kalender pr. trup + 4 D4-puljer (#5653) · **S4-kalender genereres om** (#5405: tørkørsel → "kør" efter #2789; gate lige mange løbsdage #5658) · generator A6 `--juniors=10 --apply` på ejer-go efter transitionen · #5327 arketype (#3512) · #4270 apply (ejer).
 4. 🟠 **Trupper (alt live 28/9):** ✅ S2 #5652 · ✅ puljer #5660 · ✅ stilling backend #5665 · ✅ #5650 præmie+udtagelse (16 år) · ✅ #5666 U23/junior-sider (beta; flag on for alle udestår) · ✅ #5671 frontend-scope · Y7-hook + comeback→ungdomsgruppe (opfølgningsissues 24/9).
