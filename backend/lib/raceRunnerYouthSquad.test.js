@@ -184,3 +184,18 @@ test("#5645 resolveRaceSquad: 42703 (kolonnen findes ikke) = senior, anden DB-fe
     /races\.squad lookup failed/,
   );
 });
+
+test("#5645 startfelt: en committet 16-årig junior-entry starter ikke (aldersgaten gælder også entries)", async () => {
+  const state = youthState();
+  addRiders(state, "t1", "junior", 1, { prefix: "j16-", birthdate: "2013-03-01" });
+  addRiders(state, "t1", "junior", 6, { prefix: "j17-", birthdate: "2012-03-01" });
+  const race = { id: "raceJ", race_type: "single", season_id: "s1", league_division_id: 20, squad: "junior" };
+  state.race_entries = [
+    { race_id: "raceJ", team_id: "t1", rider_id: "t1-j16-0", race_role: "captain" },
+    ...Array.from({ length: 6 }, (_, i) => ({ race_id: "raceJ", team_id: "t1", rider_id: `t1-j17-${i}`, race_role: "helper" })),
+  ];
+  const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false, allowAutofill: false });
+  const ids = entrants.map((e) => e.rider_id);
+  assert.ok(!ids.includes("t1-j16-0"), "16-årig junior må ikke starte");
+  for (let i = 0; i < 6; i++) assert.ok(ids.includes(`t1-j17-${i}`));
+});

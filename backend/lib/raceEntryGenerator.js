@@ -161,11 +161,12 @@ export function poolKeyFor(squad, poolId) {
   return `${squad}|${poolId ?? "none"}`;
 }
 
-// #5645: sæsonnummeret til juniorernes aldersgate. null ved fejl → filterSquadRaceAge
+// #5645: sæsonnummeret til juniorernes aldersgate. En DB-fejl kaster (samme kontrakt som
+// generatorens øvrige læsninger); en manglende sæson/nummer giver null → filterSquadRaceAge
 // afviser alle juniorer (fejl lukket: hellere et tomt juniorfelt end en 16-årig).
 async function loadSeasonNumberForGenerator({ supabase, seasonId }) {
   const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId);
-  if (error) return null;
+  if (error) throw new Error(`seasons (junior age gate): ${error.message}`);
   const n = Array.isArray(data) ? data[0]?.number : data?.number;
   return Number.isFinite(n) ? n : null;
 }

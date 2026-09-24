@@ -1419,14 +1419,12 @@ export async function resolveRaceSquad({ supabase, race }) {
 }
 
 // #5645: sæsonnummeret for juniorernes aldersgate (riderSeasonAge.ageForSeason). Kun
-// kaldt for juniorløb. null ved fejl → filterSquadRaceAge afviser alle (fejl lukket).
+// kaldt for juniorløb. En DB-fejl kaster (ellers ville den ligne "ingen løbsberettigede
+// juniorer"); en manglende sæson/nummer giver null → filterSquadRaceAge afviser alle.
 async function loadSeasonNumber({ supabase, seasonId }) {
   if (!seasonId) return null;
   const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId);
-  if (error) {
-    console.error(`season number lookup failed (junior age gate fails closed): ${error.message}`);
-    return null;
-  }
+  if (error) throw new Error(`seasons (junior age gate): ${error.message}`);
   const n = Array.isArray(data) ? data[0]?.number : data?.number;
   return Number.isFinite(n) ? n : null;
 }
@@ -1456,9 +1454,12 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   const raceSquad = raceSquadOf(race);
   if (race.league_division_id != null && existingEntries.length) {
     const teamIds = [...new Set(existingEntries.map((e) => e.team_id).filter(Boolean))];
-    const { data: teamDivs } = await supabase.from("teams")
+    const { data: teamDivs, error: teamDivErr } = await supabase.from("teams")
       .select(raceSquad === "senior" ? "id, league_division_id" : "id, league_division_id, u23_league_division_id, junior_league_division_id")
       .in("id", teamIds);
+    // #5645 (CodeRabbit): en fejlet læsning må ikke tømme feltet for hold med
+    // committede entries (tom map → alle hold "ukendt pulje"). Kast i stedet.
+    if (teamDivErr) throw new Error(`teams (race pool filter): ${teamDivErr.message}`);
     const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, teamPoolIdForSquad(t, raceSquad)]));
     existingEntries = filterEntriesToRaceDivision({ entries: existingEntries, teamDivisionById, raceDivisionId: race.league_division_id });
   }
@@ -1470,7 +1471,8 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   if (existingEntries.length) {
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: entryRiders, error: erErr } = await selectInChunks({
-      supabase, table: "riders", columns: "id, team_id, squad, is_academy, is_retired",
+      supabase, table: "riders",
+      columns: raceSquad === "junior" ? "id, team_id, squad, is_academy, is_retired, birthdate" : "id, team_id, squad, is_academy, is_retired",
       inColumn: "id", ids: entryRiderIds,
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
@@ -1478,6 +1480,13 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     // #5645: ghost-tjekket mod LØBETS trup — en U23-rytter i et U23-løb er ikke en ghost,
     // en senior i et U23-løb er.
     existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: raceSquad });
+    // #5645 (CodeRabbit): juniorernes aldersgate gælder også committede entries, ikke
+    // kun autofyldets kandidater — en 16-årig må ikke starte, uanset hvordan han kom ind.
+    if (raceSquad === "junior" && existingEntries.length) {
+      const seasonNumber = await loadSeasonNumber({ supabase, seasonId: race.season_id });
+      const ageOk = new Set(filterSquadRaceAge([...ridersById.values()], { squad: raceSquad, seasonNumber }).map((r) => r.id));
+      existingEntries = existingEntries.filter((e) => ageOk.has(e.rider_id));
+    }
   }
   // #3896: skadede committede entries må hverken starte eller simuleres — motoren
   // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),
