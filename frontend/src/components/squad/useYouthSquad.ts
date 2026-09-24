@@ -12,7 +12,7 @@ import { supabase, authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { ABILITY_SELECT, flattenAbilities } from "../../lib/abilities.js";
 import { CONDITION_SELECT, flattenCondition } from "../../lib/training.js";
-import { riderIdsForSquad, type YouthSquad } from "../../lib/youthSquadPages.ts";
+import { capForSquad, riderIdsForSquad, YOUTH_SQUAD_CAP_FALLBACK, type YouthSquad } from "../../lib/youthSquadPages.ts";
 
 const API: string | undefined = import.meta.env.VITE_API_URL;
 
@@ -42,6 +42,9 @@ export function useYouthSquad(squad: YouthSquad) {
   const [status, setStatus] = useState<YouthSquadStatus>("loading");
   const [team, setTeam] = useState<YouthSquadTeam | null>(null);
   const [riders, setRiders] = useState<YouthSquadRider[]>([]);
+  // #5631: truppens loft (SQUAD_CAPS via /api/youth-squads' `caps`-felt).
+  // Fallback-værdien indtil svaret er hentet, samme tal som en manglende cap.
+  const [cap, setCap] = useState<number>(YOUTH_SQUAD_CAP_FALLBACK[squad]);
   // Hver hentning får et nummer; et svar fra en ældre hentning (eller efter
   // unmount) kasseres, så det aldrig overskriver det der vises nu.
   const requestRef = useRef(0);
@@ -64,6 +67,7 @@ export function useYouthSquad(squad: YouthSquad) {
       if (squadsRes.status === 409) { setStatus("disabled"); return; }
       if (!squadsRes.ok) { setStatus("error"); return; }
 
+      setCap(capForSquad(squadsRes.data, squad));
       const ids = riderIdsForSquad(squadsRes.data, squad);
       let rows: YouthSquadRider[] = [];
       if (ids.length > 0) {
@@ -94,5 +98,5 @@ export function useYouthSquad(squad: YouthSquad) {
     return () => { requestRef.current += 1; };
   }, [load]);
 
-  return { status, team, riders, reload: load };
+  return { status, team, riders, cap, reload: load };
 }

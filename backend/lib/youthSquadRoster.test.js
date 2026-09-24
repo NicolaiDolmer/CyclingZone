@@ -10,6 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
+import { SQUAD_CAPS } from "./squads.js";
 import {
   YOUTH_SQUAD_PAGE_KEYS,
   YOUTH_SQUAD_ROSTER_COLUMNS,
@@ -73,7 +74,7 @@ test("#5519: ukendt alder paa en akademirytter gaettes aldrig ind i en trup", ()
   assert.deepEqual(groupYouthSquads(null, SEASON), { u23: [], junior: [] });
 });
 
-test("#5519 payload: id'er pr. trup + saesonnummer, intet loft (sim-startpunkt, P11)", () => {
+test("#5631 payload: id'er + loft pr. trup + saesonnummer (SQUAD_CAPS, live siden #5626)", () => {
   const riders = [
     { id: "u", birthdate: bornAged(20), squad: "u23", is_academy: true },
     { id: "j", birthdate: bornAged(17), squad: "junior", is_academy: true },
@@ -81,6 +82,11 @@ test("#5519 payload: id'er pr. trup + saesonnummer, intet loft (sim-startpunkt, 
   assert.deepEqual(buildYouthSquadsPayload(riders, SEASON), {
     seasonNumber: SEASON,
     squads: { u23: { riderIds: ["u"] }, junior: { riderIds: ["j"] } },
+    caps: { u23: SQUAD_CAPS.u23, junior: SQUAD_CAPS.junior },
   });
   assert.equal(buildYouthSquadsPayload([], undefined).seasonNumber, null);
+});
+
+test("#5631: caps kommer fra squads.js' SQUAD_CAPS, ingen egen konstant", () => {
+  assert.deepEqual(buildYouthSquadsPayload([], SEASON).caps, { u23: 12, junior: 10 });
 });

@@ -51,9 +51,18 @@ export const PREVIEW_YOUTH_RIDERS = [
     abilities(7, { climbing: 14, recovery: 11 })),
 ];
 
+// #5631: samme tal som backend.SQUAD_CAPS (u23: 12, junior: 10) — mock'en kan
+// ikke importere backend/lib/squads.js (andet workspace), så tallene er
+// bevidst gentaget her, ikke afledt.
+const PREVIEW_SQUAD_CAPS = { u23: 12, junior: 10 };
+
 export function previewYouthSquadsPayload() {
   const idsFor = (squad: string) => PREVIEW_YOUTH_RIDERS.filter((r) => r.squad === squad).map((r) => r.id);
-  return { seasonNumber: 1, squads: { u23: { riderIds: idsFor("u23") }, junior: { riderIds: idsFor("junior") } } };
+  return {
+    seasonNumber: 1,
+    squads: { u23: { riderIds: idsFor("u23") }, junior: { riderIds: idsFor("junior") } },
+    caps: PREVIEW_SQUAD_CAPS,
+  };
 }
 
 /**
