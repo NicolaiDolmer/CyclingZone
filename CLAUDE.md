@@ -4,7 +4,7 @@
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
-Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · spørg ved tvivl (70-95 %) · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
+Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · spørg ved tvivl (70-95 %) · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **stående merge-regler** (hard rule 35, #5508): brand-fix uden ny spillertekst, motor bag slukket v4, Dependabot/docs uden spillertekst merges uden ejer-"merge" ved grøn CI + rent diff-tjek + CodeRabbit · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
 
 ## Orkestrator-standard (ejer 11/9, #5142)
 
@@ -18,7 +18,7 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/
 
 - `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (gate >3.200 tok / >54 linjer; WARM: `MEMORY_REFERENCE.md`).
 - **Security-advisors** (Supabase MCP `get_advisors`) tjekkes ved session-start; en udokumenteret WARN må aldrig stå over 7 dage (#5153).
-- `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (`scripts/session-prefetch-issue.sh`). Ikke source of truth.
+- `.codex.local/SESSION_CONTEXT.md` — regenererbar cache, ikke source of truth.
 
 ## Start (eksplicit)
 
@@ -59,4 +59,4 @@ Ingen lokal-only handoff: state, beslutninger og næste skridt skal ligge i GitH
 
 ## Token-budget
 
-Master: [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + #605. Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json` — refresh ved connector/plugin-ændring.
+Master: [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + #605.

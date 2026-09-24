@@ -747,6 +747,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/guard-inventory-cell.test.mjs
 
+      # #5565: billedstationens rene dele (argumenter, preview-opslag uden net,
+      # filnavne, skrive-vagt, "aldrig et falsk ur"). Nul npm-afhaengigheder;
+      # browseren er mocket vaek, saa testen hoerer hjemme blandt de npm-ci-frie
+      # guards (samme laering som #5092: en test uden CI-step er usynlig).
+      - name: Test pr-shots pure parts (#5565)
+        if: ${{ !cancelled() }}
+        run: node --test scripts/lib/prShots.test.mjs
+
   ops-script-tests:
     runs-on: ubuntu-latest
     permissions:
@@ -795,6 +803,12 @@ jobs:
       # koere i CI, ellers er den usynlig ligesom monday-numbers var (#5092).
       - name: Test Railway deploy-status classifier (#5489)
         run: node --test scripts/railway-deploy-status.test.mjs
+
+      # #5508: merge-queue.ps1 printer hard rule 35's kategori (a)/(b)/(c) pr. PR
+      # via scripts/merge-queue-classify.mjs. Ren Node, gh er injiceret vaek i
+      # testen. Uden et CI-step er den usynlig (samme laering som #5092).
+      - name: Test merge-queue category classifier (#5508)
+        run: node --test scripts/merge-queue-classify.test.mjs
 
   migration-idempotency:
     runs-on: ubuntu-latest
