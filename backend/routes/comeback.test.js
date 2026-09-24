@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
 
-import { createComebackRouter, createRequireAuth } from "./comeback.js";
+import { createComebackRouter, createRequireAuth, isViewerBetaTester } from "./comeback.js";
 import { ComebackError } from "../lib/comebackService.js";
 
 const passThrough = (_req, _res, next) => next();
@@ -109,6 +109,24 @@ test("createRequireAuth: 401 uden Authorization-header", async (t) => {
   t.after(() => server.close());
   const res = await fetch(`http://127.0.0.1:${server.address().port}/x`, { method: "POST" });
   assert.equal(res.status, 401);
+});
+
+test("flaget slået fra → 404, også uden hold", async (t) => {
+  const { post } = await fixture(t, { enabled: false, team: null });
+  const res = await post({ Authorization: "Bearer valid" });
+  assert.equal(res.status, 404);
+});
+
+test("isViewerBetaTester kaster ved en læsefejl i stedet for at svare 'ikke beta'", async () => {
+  const failing = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "boom" } }) }) }) }),
+  };
+  await assert.rejects(() => isViewerBetaTester(failing, { user: { id: "user-a" } }), /beta lookup/);
+  const ok = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: "user", is_beta_tester: true }, error: null }) }) }) }),
+  };
+  assert.equal(await isViewerBetaTester(ok, { user: { id: "user-a" } }), true);
+  assert.equal(await isViewerBetaTester(ok, {}), false);
 });
 
 test("createComebackRouter kræver en Supabase-klient", () => {

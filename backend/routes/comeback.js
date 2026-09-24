@@ -66,12 +66,9 @@ export async function isViewerBetaTester(supabase, req) {
     .select("role, is_beta_tester")
     .eq("id", req.user.id)
     .maybeSingle();
-  // En fejlet læsning giver "ikke beta-tester": den sikre retning for en gate, der kun
-  // kan ÅBNE for flere (flaget "beta"). Fejlen er synlig i Sentry.
-  if (error) {
-    captureException(error, { tags: { flow: "season_comeback", stage: "beta_lookup" } });
-    return false;
-  }
+  // En fejlet læsning må ikke se ud som "ikke beta-tester": står flaget på "beta", ville
+  // en berettiget spiller ellers få 404. Fejlen kastes, og routen svarer 500 + Sentry.
+  if (error) throw new Error(`users (beta lookup): ${error.message}`);
   return u?.role === "admin" || u?.is_beta_tester === true;
 }
 
@@ -121,10 +118,11 @@ export function createComebackRouter({
 
   // Monteret på /api/season/comeback i server.js.
   router.post("/", comebackIpLimiter, requireAuth, limiter, async (req, res) => {
-    if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
+      // Flaget først: slået fra er endpointet 404 for alle, også et login uden hold.
       const enabled = await isSignupEnabled(supabase, { isBetaTester: await isBetaTester(supabase, req) });
       if (!enabled) return res.status(404).json({ error: "not_found" });
+      if (!req.team) return res.status(400).json({ error: "No team found" });
 
       const result = await returnParkedTeamFn({ supabase, teamId: req.team.id, now: new Date() });
       return res.json({
