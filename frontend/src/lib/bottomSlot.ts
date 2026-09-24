@@ -1,6 +1,7 @@
 // Én delt bund-slot (#5440 punkt 1).
 //
-// Tre flader tegner som `fixed inset-x-0 bottom-0`: cookie-banneret, release-
+// Tre flader tegner fast i bunden (`fixed inset-x-0`, lige over bundmenuen på
+// mobil, se mobileNavOffset.ts / #5561): cookie-banneret, release-
 // banneret (#5159) og NPS-baren (#940/#4997). Før dette gatede release-banneret
 // og NPS-hooket sig hver for sig på samtykke-banneret, men INGEN af dem kendte
 // hinanden: NPS-baren bor inde i DashboardPage/TeamResultsTab, release-banneret

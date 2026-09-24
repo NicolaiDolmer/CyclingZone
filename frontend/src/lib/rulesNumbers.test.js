@@ -40,6 +40,7 @@ import {
   SQUAD_PENALTY_POINTS,
 } from "../../../backend/lib/squadEnforcement.js";
 import { ACADEMY } from "../../../backend/lib/academyFlag.js";
+import { SQUAD_CAPS } from "../../../backend/lib/squads.js";
 
 test("squad numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.squadCap, MAX_SQUAD_SIZE);
@@ -114,7 +115,10 @@ test("no division bonus cell is missing from or invented in RULES_NUMBERS", () =
 });
 
 test("academy numbers match backend constants", () => {
-  assert.equal(RULES_NUMBERS.academySlots, ACADEMY.SLOTS);
+  // #5568: loftet pr. ungdomstrup, ikke det gamle flade akademi-loft.
+  assert.equal(RULES_NUMBERS.u23SquadCap, SQUAD_CAPS.u23);
+  assert.equal(RULES_NUMBERS.juniorSquadCap, SQUAD_CAPS.junior);
+  assert.equal("academySlots" in RULES_NUMBERS, false, "det flade akademi-loft må ikke vende tilbage (#5568)");
   assert.equal(RULES_NUMBERS.academyMinAge, ACADEMY.MIN_AGE);
   assert.equal(RULES_NUMBERS.academyMaxAge, ACADEMY.MAX_AGE);
   // #4479: academy signing (academyIntake.js) and promote (academyTransfer.js)

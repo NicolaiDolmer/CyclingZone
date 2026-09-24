@@ -202,7 +202,9 @@ const DEMOTE_ERROR_CODES = new Set([
  * @param {"junior"|"u23"|undefined} requestedSquad
  * @returns {"junior"|"u23"}
  */
-function demoteTargetSquad(rider, seasonNumber, requestedSquad) {
+// #5568: eksporteret, så academy-demote-quote viser loftet for PRÆCIS den trup
+// demote() selv vælger (ingen kopi af valget i routen).
+export function demoteTargetSquad(rider, seasonNumber, requestedSquad) {
   if (requestedSquad !== undefined) return requestedSquad;
   const ageSquad = squadForSeason(rider.birthdate, seasonNumber);
   return isYouthSquad(ageSquad) ? /** @type {"junior"|"u23"} */ (ageSquad) : "u23";

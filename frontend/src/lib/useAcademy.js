@@ -19,12 +19,18 @@ import { getAuthedUser } from "./getAuthedUser.js";
 // stedet for at lade transportfejlen falde i `!res.ok` og blive til "failed".
 const NETWORK_FAILURE = { ok: false, error: "network" };
 import { logEvent } from "./logEvent.js";
+import { squadCapRows } from "./squadCaps.ts";
+
+// #5568: brugte pladser + loft PR. UNGDOMSTRUP ({ u23:{used,max}, junior:{used,max} })
+// fra /api/academy/me. Default = tomme trupper med lofterne fra squadCaps.ts, så
+// fladen aldrig falder tilbage til det gamle flade akademi-loft.
+const EMPTY_SQUADS = Object.fromEntries(squadCapRows(null).map(({ squad, used, max }) => [squad, { used, max }]));
 
 const API = import.meta.env.VITE_API_URL;
 
 export function useAcademy() {
   const [enabled, setEnabled]   = useState(false);
-  const [slots, setSlots]       = useState({ used: 0, max: 8 });
+  const [squads, setSquads]     = useState(EMPTY_SQUADS);
   const [roster, setRoster]     = useState([]);
   const [intake, setIntake]     = useState([]);
   const [graduations, setGraduations] = useState([]);
@@ -86,7 +92,7 @@ export function useAcademy() {
       }
       const data = body;
       setEnabled(data.enabled ?? false);
-      setSlots(data.slots ?? { used: 0, max: 8 });
+      setSquads(data.squads ?? EMPTY_SQUADS);
       setRoster(data.roster ?? []);
       setIntake(data.intake ?? []);
       setGraduations(data.graduations ?? []);
@@ -274,5 +280,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, fetchReleaseQuote, releaseRider, pullIntake, refresh };
+  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, fetchReleaseQuote, releaseRider, pullIntake, refresh };
 }

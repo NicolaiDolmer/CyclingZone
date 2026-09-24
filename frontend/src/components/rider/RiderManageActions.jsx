@@ -28,6 +28,7 @@ import { keepsExistingContractOnPromote } from "../../lib/academyPromoteContract
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
 import { extendCapGate } from "../../lib/extendCapGate.js";
 import { useAcademy } from "../../lib/useAcademy.js";
+import { demoteCapLabels } from "../../lib/squadCaps.ts"; // #5568
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 // #5089: backend lukker rytterens aabne transfer-listing som zombie-guard ved
 // release (api.js:1834), saa den delte GET /api/transfers-kopi bliver stale.
@@ -74,7 +75,7 @@ function academyError(code, t, fallback) {
 function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onChanged, onPromoteVisibleChange }) {
   const { t } = useTranslation("rider");
   const academy = useAcademy();
-  // { direction, newSalary, currentSalary, capLabel, capAfterLabel, racesCleared } | null
+  // { direction, newSalary, currentSalary, capLabel, capAfterLabel, capSquad, racesCleared } | null
   const [academyModal, setAcademyModal] = useState(null);
   const [academyBusy, setAcademyBusy] = useState(false);
   const riderName = `${rider.firstname} ${rider.lastname}`;
@@ -116,8 +117,10 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
       const { ok, data } = await fetchRiderQuote(rider.id, "academy-demote-quote");
       if (ok) quote = data;
     } catch { /* fallback nedenfor */ }
-    const used = academy.slots?.used ?? 0;
-    const max = academy.slots?.max ?? 8;
+    // #5568: loft-rækken viser den trup rytteren rykker ned i (U23 eller
+    // junior) og DENS loft, begge fra quoten (samme trup-valg som demote()).
+    // Før talte den alle akademiryttere mod 8 og kunne vise "9 / 8".
+    const cap = demoteCapLabels(quote);
     setAcademyModal({
       direction: "demote",
       newSalary: quote?.newSalary ?? null,
@@ -127,8 +130,9 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
       // Falder quoten på gulvet (netværk), er false den sikre defaults: dialogen
       // lover ikke en arv den ikke har fået bekræftet.
       keepsContract: quote?.keepsContract ?? false,
-      capLabel: `${used} / ${max}`,
-      capAfterLabel: `${used + 1} / ${max}`,
+      capSquad: cap?.capSquad ?? null,
+      capLabel: cap?.capLabel ?? null,
+      capAfterLabel: cap?.capAfterLabel ?? null,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
     });
@@ -173,6 +177,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
         currentSalary={academyModal?.currentSalary}
         capLabel={academyModal?.capLabel}
         capAfterLabel={academyModal?.capAfterLabel}
+        capSquad={academyModal?.capSquad ?? null}
         racesCleared={academyModal?.racesCleared}
         racesOngoing={academyModal?.racesOngoing}
         keepsContract={!!academyModal?.keepsContract}

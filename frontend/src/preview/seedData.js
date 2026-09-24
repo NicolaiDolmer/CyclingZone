@@ -3,6 +3,8 @@
 // (installPreviewMock.js). Ingen @playwright/test-import her, så modulet kan
 // køre i Node (node --test) og i browseren (Vite preview-bundle).
 
+import { SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568: ungdomstruppernes loft
+
 export const TEST_USER = {
   id: "00000000-0000-4000-8000-000000000001",
   aud: "authenticated",
@@ -1540,7 +1542,8 @@ const INTAKE_CREATED = { fresh: daysAgoIso(1), mid: daysAgoIso(3), urgent: daysA
 // specs afhænger af præcis denne form (3 intakes, 2 roster-ryttere).
 export const SEED_ACADEMY = {
   enabled: true,
-  slots: { used: 2, max: 8 },
+  // #5568: loft pr. ungdomstrup (lofterne fra squadCaps.ts, aldrig et håndskrevet tal).
+  squads: { u23: { used: 1, max: SQUAD_CAPS.u23 }, junior: { used: 1, max: SQUAD_CAPS.junior } },
   // #932 S7: senior-cap-tæller til promote/demote-confirm-dialogerne.
   seniorCount: 18,
   seniorMax: 30,
@@ -1679,7 +1682,7 @@ export const SEED_ACADEMY = {
 // synlige i preview uden en live backend.
 export const SEED_ACADEMY_PNL = {
   enabled: true,
-  current: { slotsUsed: 2, slotsMax: 8, payroll: 22000 },
+  current: { slotsUsed: 2, slotsMax: SQUAD_CAPS.u23 + SQUAD_CAPS.junior, payroll: 22000 },
   cumulative: {
     driftPaid: 25000,
     signingFeesPaid: 18000,
