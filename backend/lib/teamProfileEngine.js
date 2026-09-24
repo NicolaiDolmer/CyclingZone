@@ -9,7 +9,7 @@ import { withSeniorSquadScope } from "./squads.js";
 import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { ensureMidSeasonSponsor } from "./midSeasonSponsor.js";
-import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, pickYouthGroupForNewTeam } from "./youthPoolAssignment.js";
+import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, YOUTH_GROUP_SIZE, pickYouthGroupForNewTeam } from "./youthPoolAssignment.js";
 import {
   INITIAL_BALANCE,
   MANAGER_ENTRY_DIVISION,
@@ -525,6 +525,25 @@ async function loadYouthGroupCandidates(supabase, squad) {
   return { pools: activePools, groups: [...byPoolId.values()] };
 }
 
+// #5676 (CodeRabbit-fund): pickYouthGroupForNewTeam kan vælge en FULD gruppe (size
+// >= groupSize) fordi den har en AI-plads at overtage — men vælger den ALDRIG hvis
+// den er fuld og AI-fri (se filteret i youthPoolAssignment.js). Er den valgte gruppe
+// fuld, skal ét AI-hold vige FØR det nye hold skrives ind, ellers vokser gruppen til
+// 25 uden noget der nogensinde retter det (ingen youth-pendant til
+// reconcileAiTeamsForPool). Rækkefølge bevidst evict-FØR-assign: fejler selve
+// tildelingen bagefter, står AI-holdet blot uden gruppe igen (under-fyldt, ikke
+// over-fyldt) — samme "AI-hold uden gruppe fylder op"-gren som seedYouthPools.js'
+// top-up-tilstand allerede retter af sig selv ved næste kørsel (selvhelende).
+async function evictAiIfGroupIsFull({ supabase, squad, group }) {
+  const size = group.managerTeamIds.length + group.aiTeamIds.length;
+  if (size < YOUTH_GROUP_SIZE || !group.aiTeamIds.length) return null;
+  const col = youthFkColumn(squad);
+  const outId = [...group.aiTeamIds].sort().pop();
+  const { error } = await supabase.from("teams").update({ [col]: null }).eq("id", outId);
+  if (error) throw new Error(`teams.${col} evict (youth ${squad}): ${error.message}`);
+  return outId;
+}
+
 // #5676 (Y3 opfølgning, Refs #5646 #5660): et NYT hold skal have løb i S4 —
 // placér det i ÉN u23- og ÉN junior-ungdomsgruppe med plads, samme regel
 // (flest AI-hold at overtage, ellers næste mindste ledige gruppe) som
@@ -556,9 +575,10 @@ export async function assignYouthGroupsForNewTeam({ supabase, team } = {}) {
       assigned[squad] = { skipped: "pool_not_found" };
       continue;
     }
+    const evictedAiTeamId = await evictAiIfGroupIsFull({ supabase, squad, group: target });
     const { error } = await supabase.from("teams").update({ [col]: pool.id }).eq("id", team.id);
     if (error) throw new Error(`teams.${col} update (youth ${squad}): ${error.message}`);
-    assigned[squad] = { leagueDivisionId: pool.id, poolIndex: pool.pool_index };
+    assigned[squad] = { leagueDivisionId: pool.id, poolIndex: pool.pool_index, evictedAiTeamId };
   }
   return { assigned };
 }

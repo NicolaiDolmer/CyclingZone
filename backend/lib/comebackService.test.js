@@ -383,6 +383,28 @@ test("#5676 assignYouthGroupsForComebackTeam: fejl er ikke-fatal for selve comeb
   assert.ok(calls.errors.some((e) => e.message === "youth boom"));
 });
 
+test("#5676 assignYouthGroupsForComebackTeam (CodeRabbit-fund): fuld gruppe MED en AI-plads → AI-holdet viger, gruppen forbliver 24", async () => {
+  const fullGroup = { id: "u23-full", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 0 };
+  const managers = Array.from({ length: 23 }, (_, i) => ({ id: `m${i}`, is_ai: false, u23_league_division_id: fullGroup.id }));
+  const supabase = fakeDb({
+    league_divisions: [fullGroup],
+    teams: [
+      { id: "comeback-evict", is_ai: false },
+      { id: "ai-to-evict", is_ai: true, u23_league_division_id: fullGroup.id },
+      ...managers,
+    ],
+  });
+
+  const result = await assignYouthGroupsForComebackTeam({ supabase, team: { id: "comeback-evict" } });
+
+  assert.equal(result.assigned.u23.leagueDivisionId, fullGroup.id);
+  assert.equal(result.assigned.u23.evictedAiTeamId, "ai-to-evict");
+  const evictedAi = supabase.state.teams.find((t) => t.id === "ai-to-evict");
+  assert.equal(evictedAi.u23_league_division_id, null);
+  const inGroup = supabase.state.teams.filter((t) => t.u23_league_division_id === fullGroup.id);
+  assert.equal(inGroup.length, 24, "gruppen forbliver 24, ikke 25");
+});
+
 test("#5676 assignYouthGroupsForComebackTeam (ren enhedstest): vælger gruppen med flest AI-hold", async () => {
   const u23Groups = [
     { id: "u23-x", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 0 },

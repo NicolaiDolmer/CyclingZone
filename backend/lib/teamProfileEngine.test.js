@@ -1673,6 +1673,25 @@ test("#5676 assignYouthGroupsForNewTeam: rører ALDRIG et hold der allerede har 
   assert.equal(stored.u23_league_division_id, u23Groups[1].id, "uændret");
 });
 
+test("#5676 assignYouthGroupsForNewTeam (CodeRabbit-fund): fuld gruppe MED en AI-plads → AI-holdet viger, gruppen forbliver 24", async () => {
+  const fullGroupWithAi = seedYouthGroups({ squad: "u23", count: 1 })[0];
+  const managers = Array.from({ length: 23 }, (_, i) => seedYouthOccupant({ id: `m${i}`, squad: "u23", poolId: fullGroupWithAi.id, isAi: false }));
+  const ai = seedYouthOccupant({ id: "ai-to-evict", squad: "u23", poolId: fullGroupWithAi.id, isAi: true });
+  const supabase = createSupabaseDouble({
+    leagueDivisions: [fullGroupWithAi],
+    teams: [{ id: "new-team-evict", division: MANAGER_ENTRY_DIVISION }, ...managers, ai],
+  });
+
+  const result = await assignYouthGroupsForNewTeam({ supabase, team: { id: "new-team-evict" } });
+
+  assert.equal(result.assigned.u23.leagueDivisionId, fullGroupWithAi.id);
+  assert.equal(result.assigned.u23.evictedAiTeamId, "ai-to-evict");
+  const evictedAi = supabase.state.teams.find((t) => t.id === "ai-to-evict");
+  assert.equal(evictedAi.u23_league_division_id, null, "AI-holdet er veget ud af gruppen");
+  const inGroup = supabase.state.teams.filter((t) => t.u23_league_division_id === fullGroupWithAi.id);
+  assert.equal(inGroup.length, 24, "gruppen forbliver 24 (23 managers + det nye hold), ikke 25");
+});
+
 test("#5676 assignYouthGroupsForNewTeam: fuld gruppe uden AI → næste mindste med reel plads", async () => {
   const fullGroup = seedYouthGroups({ squad: "junior", count: 1, poolIndexStart: 0 })[0];
   const roomyGroup = seedYouthGroups({ squad: "junior", count: 1, poolIndexStart: 1 })[0];
