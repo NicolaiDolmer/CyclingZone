@@ -690,6 +690,63 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.ok(adminEntry);
   assert.equal(adminEntry.meta.from_season_number, 0);
   assert.equal(adminEntry.meta.to_season_number, 1);
+  assert.equal(adminEntry.meta.teams_parked, 0);
+});
+
+// #4592 · admin_log-posten er den permanente optegnelse af skiftet. processSeasonStart
+// springer parkerede hold over i sponsor-loopet, så posten må hverken tælle dem i
+// teams_affected eller i sponsor-totalerne; de står for sig i teams_parked.
+test("#4592 · admin_log-meta tæller ikke et parkeret hold med i sponsor og logger teams_parked", async () => {
+  const seasonId = "00000000-0000-0000-0000-000000000000";
+  const activeTeam = { id: "t1", name: "Hold A", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null };
+  const parkedTeam = { id: "t2", name: "Hold P", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: "2026-05-14T06:00:00.000Z" };
+  const supabase = createMockSupabase({
+    seasons: [{ id: seasonId, number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: seasonId, status: "open", created_at: "2026-05-08" }],
+    teams: [activeTeam, parkedTeam],
+  });
+  // Kontrol: samme skifte med kun Hold A. Det parkerede hold må ikke flytte tallene.
+  const controlPlan = await buildTransitionPlan({
+    supabase: createMockSupabase({
+      seasons: [{ id: seasonId, number: 0, status: "active" }],
+      teams: [activeTeam],
+    }),
+    fromSeasonId: seasonId,
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: seasonId,
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    adminUserId: "admin-uuid",
+    deps: {
+      processSeasonStart: async () => ({
+        sponsor: [{ team: "Hold A", sponsor: controlPlan.sponsor_payout_total, recurring_loan_fees: 0, pullout_applied: false }],
+        payroll: { results: [], summary: { teams_processed: 2 } },
+        parachute: { count: 0, total: 0 },
+        parked: { count: 1 },
+      }),
+      notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
+      emitContractExpiringNotifications: async () => ({ eligible: 0, delivered: 0, deduped: 0, failed: 0 }),
+      applyGlobalRankSeasonRollover: async () => ({ ok: true }),
+      renewExpiringAiContracts: async () => ({ candidates: 0, renewed: 0, failed: 0 }),
+      releaseExpiredContractRiders: async () => ({ candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0 }),
+      releaseRetiredRiders: async () => ({ candidates: 0, released: 0, failed: 0 }),
+      detectAndNotifySquadsBelowMinimum: async () => ({ checked: 0, belowMinimum: 0, notified: 0, notifyFailed: 0, teams: [] }),
+    },
+  });
+
+  assert.equal(result.ok, true);
+  const adminEntry = supabase.__state.admin_log.find((e) => e.action_type === "season_transition");
+  assert.ok(adminEntry);
+  assert.equal(adminEntry.meta.teams_affected, 1);
+  assert.equal(adminEntry.meta.teams_parked, 1);
+  assert.equal(adminEntry.meta.sponsor_payout_total, controlPlan.sponsor_payout_total);
+  assert.equal(adminEntry.meta.sponsor_base_total, controlPlan.sponsor_base_total);
+  // Og loggen modsiger ikke sig selv: sponsor_payout.count = teams_affected.
+  const payoutPhase = result.log.find((p) => p.phase === "sponsor_payout");
+  assert.equal(payoutPhase.count, adminEntry.meta.teams_affected);
 });
 
 // #2744-B · Kontraktudløb-frigivelse: ny fase parallelt med sponsor_contracts_renewal.
