@@ -1,5 +1,98 @@
 export const PATCHES = [
   {
+    "version": "7.298",
+    "date": "2026-09-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "U23 team and Junior team pages on a par with My Team, in the beta group",
+          "body": "What changed: The U23 team and Junior team pages have the same Overview and Abilities columns as My Team, a Stats tab, a Standings tab with your own youth group, and a Youth races page. My Team can be filtered by Senior, U23 and Junior.\n\nWhat it means for you: If you are in the beta group, you read your youth squads the same way you read your first team. Tell me what you miss before the pages go out to everyone."
+        },
+        "da": {
+          "title": "U23-hold- og juniorholdsiderne på niveau med Mit Hold, i beta-gruppen",
+          "body": "Hvad er ændret: U23-holdets og juniorholdets sider har de samme Overblik- og Evner-kolonner som Mit Hold, en Statistik-fane, en Stilling-fane med din egen ungdomsgruppe og en side for ungdomsløb. Mit Hold kan filtreres på Senior, U23 og Junior.\n\nHvad det betyder for dig: Er du i beta-gruppen, læser du dine ungdomstrupper på samme måde som dit førstehold. Fortæl mig, hvad du savner, før siderne kommer ud til alle."
+        },
+        "refs": [
+          5631,
+          5666
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Boardroom beta: the right target after a negotiation, and the sponsor effect is visible",
+          "body": "What changed: A goal you renegotiated could still show the old target in the new boardroom. It now shows the latest one. The Mandate tab shows the board's effect on your sponsor income and how far you are from a bonus offer, you can expand all goals at once, and the Board tab tells you that you can tap a member.\n\nWhat it means for you: If you are in the boardroom beta, what the board shows you is what the board counts."
+        },
+        "da": {
+          "title": "Bestyrelses-beta: det rigtige mål efter en forhandling, og sponsoreffekten kan ses",
+          "body": "Hvad er ændret: Et mål, du havde genforhandlet, kunne stadig vise det gamle tal i det nye bestyrelseslokale. Det viser nu det nyeste. Mandat-fanen viser bestyrelsens effekt på din sponsorindtægt og hvor langt du er fra et bonustilbud, du kan folde alle mål ud på én gang, og Bestyrelse-fanen fortæller, at du kan trykke på et medlem.\n\nHvad det betyder for dig: Er du i bestyrelses-betaen, er det, bestyrelsen viser dig, det, bestyrelsen tæller."
+        },
+        "refs": [
+          5618,
+          5632,
+          5633,
+          5679
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rating shows the rider's best role now, in the beta group",
+          "body": "What changed: For beta testers a rider's rating is his rating in the role he is best at today, with the role named next to it, and his type badge is labelled Natural role.\n\nWhat it means for you: If you are in the beta group, the number on the card is the rider you actually have, not the type he was signed as. Tell me if a rider looks wrong."
+        },
+        "da": {
+          "title": "Ratingen viser rytterens bedste rolle nu, i beta-gruppen",
+          "body": "Hvad er ændret: For beta-testere er en rytters rating hans rating i den rolle, han er bedst i i dag, med rollen skrevet ved siden af, og hans typemærke hedder Naturlig rolle.\n\nHvad det betyder for dig: Er du i beta-gruppen, er tallet på kortet den rytter, du faktisk har, ikke den type han blev skrevet ind som. Sig til, hvis en rytter ser forkert ud."
+        },
+        "refs": [
+          5435,
+          5501
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Results reach the page before the Discord post",
+          "body": "What changed: The Discord post with a race result is sent from a queue right after the race is finished, instead of holding up the next race in line.\n\nWhat it means for you: Results show up on the page sooner, especially late in a busy hour. The Discord post can arrive up to a minute after."
+        },
+        "da": {
+          "title": "Resultatet er på siden før Discord-opslaget",
+          "body": "Hvad er ændret: Discord-opslaget med et løbsresultat sendes fra en kø lige efter, at løbet er færdigt, i stedet for at holde det næste løb i køen tilbage.\n\nHvad det betyder for dig: Resultater kommer hurtigere på siden, især sidst i en travl time. Discord-opslaget kan komme op til et minut efter."
+        },
+        "refs": [
+          3624
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help: does my training session need to match the race?",
+          "body": "What changed: The answer said the rule was not settled yet. It now says what is true: a race gives your rider what the stage gives him, never what the session you planned would have given.\n\nWhat it means for you: Train each rider toward what he needs, and pick his races for the terrain you want him to ride."
+        },
+        "da": {
+          "title": "Hjælp: skal mit træningspas matche løbet?",
+          "body": "Hvad er ændret: Svaret sagde, at reglen ikke var låst endnu. Det siger nu det, der er sandt: et løb giver din rytter det, etapen giver ham, aldrig det, det planlagte pas ville have givet.\n\nHvad det betyder for dig: Træn hver rytter mod det, han har brug for, og vælg hans løb efter det terræn, du vil have ham til at køre."
+        },
+        "refs": [
+          4850,
+          5663
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.297",
     "date": "2026-09-24",
     "label": "Beta",
