@@ -439,3 +439,44 @@ test("#4759: notifyAssistantFilledSquad (default) skriver en rigtig assistant_fi
   assert.match(rows[0].message, /Testløbet Rundt om Fjeldet/);
   assert.match(rows[0].message, /no selection in/i);
 });
+
+// ── #5246 ────────────────────────────────────────────────────────────────────────────
+
+test("#5246: redningen ved start skriver kilden start_rescue paa hver raekke", async () => {
+  const state = baseState();
+  const supabase = makeSupabase(state);
+  await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: true, notify: async () => {} });
+  const inserted = supabase.__calls.filter((c) => c.table === "race_entries").flatMap((c) => c.insert);
+  assert.ok(inserted.length > 0);
+  assert.ok(inserted.every((r) => r.auto_filled_source === "start_rescue"));
+});
+
+// Rettelse 23/9 (a): backend deployes ca. 3 min FOER auto-migrate.yml tilfoejer
+// kolonnen. Foer rettelsen fejlede hele loebsstartens autofyld i det vindue.
+test("#5246 (a): kolonnen auto_filled_source findes ikke endnu (PGRST204) → raekkerne skrives alligevel, uden kilden", async () => {
+  const state = baseState();
+  const supabase = makeSupabase(state);
+  const origFrom = supabase.from;
+  let rejected = 0;
+  supabase.from = (table) => {
+    const b = origFrom(table);
+    if (table !== "race_entries") return b;
+    const origInsert = b.insert;
+    b.insert = (rows) => {
+      if (rows.some((r) => "auto_filled_source" in r)) {
+        rejected += 1;
+        return Promise.resolve({
+          error: { code: "PGRST204", message: "Could not find the 'auto_filled_source' column of 'race_entries' in the schema cache" },
+        });
+      }
+      return origInsert(rows);
+    };
+    return b;
+  };
+  const picked = await fillMissingTeamEntries({ supabase, race, stages, existingEntries: [], persist: true, notify: async () => {} });
+  assert.equal(rejected, 1, "sanity: foerste forsoeg ramte den manglende kolonne");
+  assert.ok(picked.length > 0, "loebsstartens autofyld vaelter ikke");
+  const written = state.race_entries.filter((e) => e.race_id === "race1");
+  assert.equal(written.length, picked.length);
+  assert.ok(written.every((r) => r.is_auto_filled === true && !("auto_filled_source" in r)));
+});
