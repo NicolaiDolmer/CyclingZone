@@ -2580,7 +2580,12 @@ test("#5536 updateStandings' Node-fallback tæller kun seniorløb (samme prædik
   }));
   await updateStandings("season-1", null, { supabase: mixed });
 
-  assert.deepEqual(mixed.state.upserts, plain.state.upserts);
+  // updated_at er vægur-tid; alt andet skal være identisk.
+  const withoutClock = (upserts) => upserts.map(u => ({
+    ...u,
+    rows: u.rows.map(({ updated_at: _clock, ...row }) => row),
+  }));
+  assert.deepEqual(withoutClock(mixed.state.upserts), withoutClock(plain.state.upserts));
   const teamA = mixed.state.upserts[0].rows.find(r => r.team_id === "team-a");
   assert.equal(teamA.total_points, 20, "ungdomspoint lækker ikke ind i seniorstillingen");
 });
