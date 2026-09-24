@@ -17,7 +17,9 @@ import {
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
-import { applyRiderEligibilityFilter, applyInjuredFilter } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, applyInjuredFilter, raceSquadOf, filterSquadRaceAge } from "./riderEligibility.js";
+import { teamPoolIdForSquad } from "./raceBinding.js";
+import { DEFAULT_SQUAD } from "./squads.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
@@ -151,6 +153,23 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
  *   skipped:number, inserted:number, removed:number, role_updated:number,
  *   failed_units:number, errors:Array<string>, mode:string}>}
  */
+// #5645 (Y4): gruppe-nøgle for (trup, pulje). Senior = puljens id eller null, altså
+// PRÆCIS nøglen fra før trupperne (bit-identisk gruppering). Ungdom = "<trup>|<id>",
+// så et U23-løb aldrig deler gruppe med et senior- eller juniorløb.
+export function poolKeyFor(squad, poolId) {
+  if (squad === DEFAULT_SQUAD) return poolId ?? null;
+  return `${squad}|${poolId ?? "none"}`;
+}
+
+// #5645: sæsonnummeret til juniorernes aldersgate. null ved fejl → filterSquadRaceAge
+// afviser alle juniorer (fejl lukket: hellere et tomt juniorfelt end en 16-årig).
+async function loadSeasonNumberForGenerator({ supabase, seasonId }) {
+  const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId);
+  if (error) return null;
+  const n = Array.isArray(data) ? data[0]?.number : data?.number;
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function runRaceEntryGenerator({
   supabase, seasonId, dryRun = true,
   mode: rawMode = DEFAULT_ASSISTANT_MODE,
@@ -165,8 +184,10 @@ export async function runRaceEntryGenerator({
   const nowMs = now instanceof Date ? now.getTime() : Number(now);
   // 1. Sæsonens løb. `name` med (#4759): kun brugt til notifikationsteksten
   // "assistenten udtog dit hold til {race}" — påvirker intet i selve tildelingen.
+  // #5645 (Y4): `squad` med — løbets trup afgør hvilken pulje og hvilke ryttere der
+  // gælder (se poolKeyFor/ridersFor nedenfor). Manglende felt = senior.
   const { data: races, error: raceErr } = await supabase
-    .from("races").select("id, name, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
+    .from("races").select("id, name, race_class, league_division_id, stages_completed, squad").eq("season_id", seasonId);
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
   if (!races || !races.length) return { dryRun, races: 0, teams: 0, teams_written: 0, generated: 0, skipped: 0, inserted: 0, mode };
   const raceIds = races.map((r) => r.id);
@@ -232,13 +253,23 @@ export async function runRaceEntryGenerator({
 
   // 4. Grupper løb pr. pulje (league_division_id; null = egen standalone-gruppe).
   // Kun løb med brugbart vindue indgår — løb uden vindue kan ikke binde.
+  //
+  // #5645 (Y4): nøglen er trup-bevidst. Seniorløb bruger præcis dagens nøgle (puljens
+  // id eller null), så en ren seniorsæson grupperes bit-identisk. Et ungdomsløb får
+  // nøglen "<trup>|<pulje-id>" og møder derfor kun hold hvis pulje FOR TRUPPEN er den
+  // samme (trin 5). Ungdomstrupperne i spil afgør om trin 5/8 overhovedet laver noget
+  // ekstra — ingen ungdomsløb = ingen ekstra opslag.
   const usableRaces = races.filter((r) => windowByRace.get(r.id));
   const racesByPool = new Map();
+  const squadByPoolKey = new Map();
   for (const r of usableRaces) {
-    const key = r.league_division_id ?? null;
+    const squad = raceSquadOf(r);
+    const key = poolKeyFor(squad, r.league_division_id ?? null);
     if (!racesByPool.has(key)) racesByPool.set(key, []);
     racesByPool.get(key).push(r);
+    squadByPoolKey.set(key, squad);
   }
+  const youthSquadsInPlay = [...new Set(usableRaces.map(raceSquadOf))].filter((s) => s !== DEFAULT_SQUAD);
 
   // 5. Egnede hold: ikke test-konto, ikke frosset, INGEN ejer. Grupper pr. pulje.
   //
@@ -260,8 +291,11 @@ export async function runRaceEntryGenerator({
   // praemisser. late_fill lader dem med, og LOEBS-gaten nedenfor (trin 9) afgoer
   // resten: kun tomme trupper, kun inden for lateFillHours. opt_in lader kun de
   // hold med der selv har slaaet assistenten til. proactive = uaendret #4217.
+  // #5645: ungdomspuljernes kolonner hentes kun når der er ungdomsløb i spil.
   const { data: allTeams, error: teamErr } = await supabase
-    .from("teams").select("id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
+    .from("teams").select(youthSquadsInPlay.length
+      ? "id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, u23_league_division_id, junior_league_division_id, user_id"
+      : "id, is_ai, pending_removal_at, is_test_account, is_frozen, league_division_id, user_id")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
 
@@ -309,10 +343,21 @@ export async function runRaceEntryGenerator({
   // (race_entry_generator_runs.teams_filled). `teams` nedenfor er alle behandlede hold.
   const teamsWrittenIds = new Set();
   const teamsByPool = new Map();
-  for (const t of eligibleTeams) {
-    const key = t.league_division_id ?? null;
+  const addTeamToPool = (key, t) => {
     if (!teamsByPool.has(key)) teamsByPool.set(key, []);
     teamsByPool.get(key).push(t);
+  };
+  // #5645: hvert hold har én pulje pr. trup. Senior: uændret (null = standalone-gruppen).
+  // Ungdom: kun hvis holdet HAR en pulje for truppen — null = ikke i noget ungdomsfelt.
+  const youthTeamIdsBySquad = new Map(youthSquadsInPlay.map((s) => [s, []]));
+  for (const t of eligibleTeams) {
+    addTeamToPool(t.league_division_id ?? null, t);
+    for (const squad of youthSquadsInPlay) {
+      const poolId = teamPoolIdForSquad(t, squad);
+      if (poolId == null) continue;
+      addTeamToPool(poolKeyFor(squad, poolId), t);
+      youthTeamIdsBySquad.get(squad).push(t.id);
+    }
   }
 
   // 6. Manuelle entries: (race,team) hvor manageren selv har udtaget — generér ALDRIG der.
@@ -437,8 +482,10 @@ export async function runRaceEntryGenerator({
   // 8. Ryttere + abilities + fatigue for alle egnede hold (på tværs af puljer).
   const eligibleTeamIds = eligibleTeams.map((t) => t.id);
   const ridersByTeam = new Map();
+  // #5645: ungdomsryttere pr. "<trup>|<hold>". Seniorer bliver i ridersByTeam (uændret).
+  const youthRidersBySquadTeam = new Map();
   if (eligibleTeamIds.length) {
-    const { data: riders, error: riderErr } = await selectInChunks({
+    const { data: seniorRiders, error: riderErr } = await selectInChunks({
       supabase, table: "riders", columns: "id, team_id", inColumn: "team_id",
       // Rod B: ét delt eligibility-filter (ikke-akademi + ikke-pensioneret). Tidligere
       // manglede is_academy her → akademiryttere blev auto-valgt (#1742/#1800).
@@ -448,7 +495,25 @@ export async function runRaceEntryGenerator({
       ids: eligibleTeamIds, orderBy: ["id"], extra: (q) => applyRiderEligibilityFilter(q),
     });
     if (riderErr) throw new Error(`riders: ${riderErr.message}`);
-    const riderIds = (riders || []).map((r) => r.id);
+    // #5645: ungdomstruppernes ryttere — kun for trupper med løb i spil og kun for hold
+    // med en pulje for truppen. Juniorer først fra sæsonalder 17 (YOUTH_RULES §2.1).
+    const youthRiders = [];
+    const seasonNumber = youthSquadsInPlay.includes("junior")
+      ? await loadSeasonNumberForGenerator({ supabase, seasonId })
+      : null;
+    for (const squad of youthSquadsInPlay) {
+      const teamIds = youthTeamIdsBySquad.get(squad) || [];
+      if (!teamIds.length) continue;
+      const { data: squadRiders, error: sqErr } = await selectInChunks({
+        supabase, table: "riders", columns: squad === "junior" ? "id, team_id, birthdate" : "id, team_id",
+        inColumn: "team_id", ids: teamIds, orderBy: ["id"],
+        extra: (q) => applyRiderEligibilityFilter(q, { squad }),
+      });
+      if (sqErr) throw new Error(`riders (${squad}): ${sqErr.message}`);
+      for (const r of filterSquadRaceAge(squadRiders || [], { squad, seasonNumber })) youthRiders.push({ ...r, youthSquad: squad });
+    }
+    const riders = [...(seniorRiders || []), ...youthRiders];
+    const riderIds = riders.map((r) => r.id);
 
     const abilityByRider = new Map();
     if (riderIds.length) {
@@ -491,14 +556,20 @@ export async function runRaceEntryGenerator({
       injuredIds = new Set((injured || []).map((r) => r.rider_id));
     }
 
-    for (const r of riders || []) {
+    for (const r of riders) {
       const abRow = abilityByRider.get(r.id);
       if (!abRow) continue; // rytter uden abilities kan ikke scores → spring over (mirror raceRunner).
       if (injuredIds.has(r.id)) continue; // #2637: skadet → aldrig kandidat til auto-udtagelse.
-      if (!ridersByTeam.has(r.team_id)) ridersByTeam.set(r.team_id, []);
-      ridersByTeam.get(r.team_id).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
+      const target = r.youthSquad ? youthRidersBySquadTeam : ridersByTeam;
+      const key = r.youthSquad ? `${r.youthSquad}|${r.team_id}` : r.team_id;
+      if (!target.has(key)) target.set(key, []);
+      target.get(key).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
     }
   }
+  // #5645: kandidat-ryttere for (hold, trup). Senior = ridersByTeam, præcis som før.
+  const ridersFor = (teamId, squad) => (squad === DEFAULT_SQUAD
+    ? ridersByTeam.get(teamId)
+    : youthRidersBySquadTeam.get(`${squad}|${teamId}`)) || [];
 
   // 8b. S3: load holdstrategier for egnede hold. rosterByTeam = holdets ryttere (til
   // stale-filter). Hold uden strategi-row/regler → null → uændret generator-adfærd.
@@ -524,11 +595,33 @@ export async function runRaceEntryGenerator({
   // top-fyldte ryttere skrives som "helper".
   const topUpKeys = new Set(); // "race|team"
   let skipped = 0;
+  // #5645 (spec-risiko 7): holdets manuelle og igangværende entries i ANDRE trupper binder
+  // stadig rytterens løbsdag (1 rytter = 1 løb pr. løbsdag, på tværs af trupper). Bygges
+  // kun når der er ungdomsløb i spil; en ren seniorsæson har én pulje pr. hold og ingen
+  // ekstra låse (bit-identisk).
+  const crossSquadLocksByTeam = new Map(); // teamId → [{ squad, window, riderIds }]
+  if (youthSquadsInPlay.length) {
+    const unitKeys = new Set([...manualRidersByRaceTeam.keys(), ...startedRidersByRaceTeam.keys()]);
+    for (const key of unitKeys) {
+      const [raceId, teamId] = key.split("|");
+      const race = raceById.get(raceId);
+      const window = windowByRace.get(raceId);
+      if (!race || !window || withdrawnByRace.get(raceId)?.has(teamId)) continue;
+      const riderIds = [...new Set([...(manualRidersByRaceTeam.get(key) || []), ...(startedRidersByRaceTeam.get(key) || [])])];
+      if (!riderIds.length) continue;
+      if (!crossSquadLocksByTeam.has(teamId)) crossSquadLocksByTeam.set(teamId, []);
+      crossSquadLocksByTeam.get(teamId).push({ squad: raceSquadOf(race), window, riderIds });
+    }
+  }
   for (const [poolKey, poolRaces] of racesByPool) {
     const poolTeams = teamsByPool.get(poolKey) || [];
+    const poolSquad = squadByPoolKey.get(poolKey) ?? DEFAULT_SQUAD;
     for (const team of poolTeams) {
       const teamRaces = [];
       const lockedWindows = []; // manuelle løb: forbruger rytter-tid uden at vi genererer.
+      for (const lock of crossSquadLocksByTeam.get(team.id) || []) {
+        if (lock.squad !== poolSquad) lockedWindows.push({ window: lock.window, riderIds: lock.riderIds });
+      }
       for (const race of poolRaces) {
         const window = windowByRace.get(race.id);
         if (!window) continue; // dækket af usableRaces, men defensivt.
@@ -609,7 +702,7 @@ export async function runRaceEntryGenerator({
         });
       }
       const assignment = assignTeamAcrossRaces({
-        riders: ridersByTeam.get(team.id) || [], races: teamRaces, lockedWindows,
+        riders: ridersFor(team.id, poolSquad), races: teamRaces, lockedWindows,
         strategy: strategyByTeam.get(team.id) ?? null,
       });
       for (const [race_id, picks] of Object.entries(assignment)) {
@@ -920,7 +1013,7 @@ export async function runRaceEntryGenerator({
     lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
     const teamRaces = [{ race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule }];
     const assignment = assignTeamAcrossRaces({
-      riders: ridersByTeam.get(teamId) || [], races: teamRaces, lockedWindows,
+      riders: ridersFor(teamId, raceSquadOf(race)), races: teamRaces, lockedWindows,
       strategy: strategyByTeam.get(teamId) ?? null,
     });
     let picks = assignment[raceId] || [];

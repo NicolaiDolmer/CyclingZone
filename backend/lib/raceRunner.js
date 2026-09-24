@@ -1146,7 +1146,7 @@ export async function fillMissingTeamEntries({
     // is_academy → akademiryttere kunne sim-tids-autofyldes (#1742/#1800).
     // #5645: trup-parameteren — et U23-løb fylder KUN med holdets U23-ryttere.
     inColumn: "team_id", ids: missingTeamIds,
-    extra: isYouthRace ? (q) => applyRiderEligibilityFilter(q, { squad: raceSquad }) : (q) => applyRiderEligibilityFilter(q),
+    extra: (q) => applyRiderEligibilityFilter(q, { squad: raceSquad }),
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
   // #5645: juniorer kører først fra sæsonalder 17 (YOUTH_RULES §2.1). No-op for senior/U23.
