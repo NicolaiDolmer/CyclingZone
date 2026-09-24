@@ -304,12 +304,12 @@ features:
     area: squad
     title_en: Rating shows best role now
     title_da: Rating viser bedste rolle nu
-    state: building
+    state: beta
     flag: rider_best_role_display
     ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
     epic: 5435
-    verified: 2026-09-22
-    note: 'Merget 22/9 (#5501), app_config-raekken verificeret off i prod; flippes med vaerdiskiftet #5443/#5497 (ejer-gated).'
+    verified: 2026-09-24
+    note: 'Beta 24/9 kl. 19:05 (ejer: test med beta-testerne foerst); til alle sammen med vaerdiskiftet #5443/#5497 (ejer-gated).'
 
   - id: youth-squad-pages
     area: squad
