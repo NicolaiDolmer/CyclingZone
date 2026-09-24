@@ -9,6 +9,7 @@ import {
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { isTrainingTickPerRaceDayEnabled, TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
 // ── Mini-mock: kun det resolveTeamRaceDay/flaget faktisk kalder ───────────────
 function mockSupabase(tables, opts = {}) {
@@ -124,34 +125,42 @@ test("G1: UDEN rekalibrering ville flere ticks overtræne markant (negativ-test)
 });
 
 // ── #4847 punkt 5: deleren LAESER maalet, duplikerer det ikke ─────────────────
-test("#4847: maalet laeses fra calendarRaceDayTargets.js naar filen findes", async (t) => {
-  let mod;
-  try {
-    mod = await import("./calendarRaceDayTargets.js");
-  } catch {
-    // PR #5169 er ikke merget endnu — den defensive import falder tilbage, og
-    // fallbacken ER ejerens tal. Testen bliver skarp af sig selv naar filen lander.
-    t.diagnostic("calendarRaceDayTargets.js findes ikke endnu (PR #5169) — tester fallbacken");
-    assert.equal(await resolveRaceDaysPerSeason({ seasonNumber: 4 }), 140);
-    return;
-  }
+test("#4847: maalet laeses fra calendarRaceDayTargets.js (statisk import, #4846)", () => {
   assert.equal(
-    await resolveRaceDaysPerSeason({ seasonNumber: 4 }),
-    mod.SEASON_RACE_DAY_TARGET[4],
+    resolveRaceDaysPerSeason({ seasonNumber: 4 }),
+    SEASON_RACE_DAY_TARGET[4],
     "traeningsdeleren og kalenderpakkeren skal dele ÉN sandhed — ikke to kopier af 140",
   );
+  // Ejerens laaste tal (TRAINING_RULES.md §13.3 beslutning 2).
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4 }), 140);
 });
 
-test("#4847: en ukendt saeson arver det hoejeste kendte maal, aldrig 0", async () => {
-  const n = await resolveRaceDaysPerSeason({ seasonNumber: 99 });
+test("#4846: opslaget er SYNKRONT — ingen dynamisk import at vente paa", () => {
+  const out = resolveRaceDaysPerSeason({ seasonNumber: 4 });
+  assert.equal(typeof out, "number", "et Promise her ville betyde at den dynamiske import er tilbage");
+  assert.equal(typeof resolveRaceDayBudgetDivisor({ seasonNumber: 4 }), "number");
+});
+
+test("#4847: en ukendt saeson arver det hoejeste kendte maal, aldrig 0", () => {
+  const n = resolveRaceDaysPerSeason({ seasonNumber: 99 });
   assert.ok(Number.isFinite(n) && n > 0, `maalet skal altid vaere et positivt tal, fik ${n}`);
   assert.ok(n >= 80, "et maal under D1's naturlige antal loebsdage ville vaere uopnaaeligt");
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: null }), n, "ukendt saesonnummer = samme arv");
 });
 
-test("#4847: den asynkrone deler matcher den synkrone formel", async () => {
-  const D = await resolveRaceDayBudgetDivisor({ seasonNumber: 4 });
-  const raceDays = await resolveRaceDaysPerSeason({ seasonNumber: 4 });
+test("#4846: en tabel uden et eneste positivt maal falder tilbage paa konfigurationens tal", () => {
+  const cfg = { ...TRAINING_RACE_DAY_CONFIG, raceDaysPerSeason: 77 };
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: {} }), 77);
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: { 4: 0, 5: -3 } }), 77);
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 5, cfg, table: { 4: 120, 6: 150 } }), 150,
+    "en saeson uden eget tal arver det HOEJESTE kendte maal");
+});
+
+test("#4847: deleren matcher den synkrone formel", () => {
+  const D = resolveRaceDayBudgetDivisor({ seasonNumber: 4 });
+  const raceDays = resolveRaceDaysPerSeason({ seasonNumber: 4 });
   assert.ok(Math.abs(D - (raceDays * 28) / 31) < 1e-9, `D = ${D}`);
+  assert.ok(Math.abs(D - raceDayBudgetDivisor()) < 1e-9, "S4's deler = konfigurationens deler (140)");
 });
 
 // ── Seed-nøglen (A3) ─────────────────────────────────────────────────────────

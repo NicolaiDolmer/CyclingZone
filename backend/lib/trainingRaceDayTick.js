@@ -4,6 +4,8 @@
 // Spec: docs/superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md
 // §3.1 (tick-noeglen), §3.2 (determinisme), §7 G1/G2.
 
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
+
 // ── Rate-rekalibrering (gate G1) ─────────────────────────────────────────────
 //
 // Naar tick-enheden skifter fra kalenderdag til loebsdag, aendrer ANTALLET af ticks
@@ -21,10 +23,10 @@
 export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
   // #4847 (ejer-beslutning 15/9, TRAINING_RULES.md §13.3 beslutning 2): 140 loebsdage
   // pr. saeson i ALLE fire divisioner (= 28 loebsdatoer x D1's 5 slots). Tallet er
-  // IKKE laengere frit her: `resolveRaceDaysPerSeason()` nedenfor LAESER det fra
-  // calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET naar den fil findes, saa
-  // kalenderpakkeren og traeningsdeleren ALDRIG kan divergere. Vaerdien her er
-  // udelukkende fallback for den tilstand hvor PR #5169 endnu ikke er merget.
+  // IKKE frit her: `resolveRaceDaysPerSeason()` nedenfor LAESER det fra
+  // calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET, saa kalenderpakkeren og
+  // traeningsdeleren ALDRIG kan divergere. Vaerdien her bruges kun hvis tabellen
+  // ikke baerer et eneste positivt maal.
   raceDaysPerSeason: 140,
   // Maalt antal kalenderdags-ticks pr. sæson i dag (S3), spec §3.2.
   calendarTicksPerSeasonToday: 31,
@@ -53,31 +55,12 @@ export function raceDayBudgetDivisor(cfg = TRAINING_RACE_DAY_CONFIG) {
 // een her — er praecis den divergens der giver systematisk under- eller overtraening
 // naar ejeren senere aendrer maalet ét af stederne.
 //
-// DEFENSIV IMPORT, med vilje. `calendarRaceDayTargets.js` lander med PR #5169
-// (branch feat/4845-calendar-packs-equal-race-days) og findes IKKE paa main mens
-// dette spor bygges. Et statisk `import` ville derfor vaelte HELE backenden ved boot.
-// Derfor: cachet dynamisk import i en try/catch, med `TRAINING_RACE_DAY_CONFIG
-// .raceDaysPerSeason` som fallback. Naar #5169 er merget, er filen sandheden — uden
-// at denne kode skal roeres.
-let raceDayTargetModuleCache; // undefined = ikke forsoegt endnu, null = findes ikke
-async function loadRaceDayTargetModule() {
-  if (raceDayTargetModuleCache !== undefined) return raceDayTargetModuleCache;
-  try {
-    raceDayTargetModuleCache = await import("./calendarRaceDayTargets.js");
-  } catch {
-    // best-effort: ERR_MODULE_NOT_FOUND (#5169 ikke merget endnu) — eller enhver
-    // anden indlaesningsfejl. Begge betyder det samme her: brug fallbacken. En
-    // capture ville fyre ved HVERT boot saa laenge #5169 ikke er merget, altsaa
-    // stoej om en tilstand vi allerede kender og har et defineret svar paa.
-    raceDayTargetModuleCache = null;
-  }
-  return raceDayTargetModuleCache;
-}
-
-/** Kun til test: glem den cachede import saa naeste kald slaar op igen. */
-export function __resetRaceDayTargetCacheForTests() {
-  raceDayTargetModuleCache = undefined;
-}
+// STATISK IMPORT (#4846). Foer #5169 var merget fandtes calendarRaceDayTargets.js ikke
+// paa main, og en defensiv dynamisk import med fallback holdt backenden bootbar. Filen
+// er nu paa main, og kalenderpakkeren kan ikke koere uden den, saa den dynamiske sti
+// kunne kun skjule en fejl (en ny import-fejl ville tavst give fallback-tallet i stedet
+// for at vaelte boot). Den statiske import goer ogsaa opslaget SYNKRONT, saa
+// traenings-lukningen (trainingDayCloseTrigger.js) kan bruge det rent.
 
 /**
  * Antal loebsdage pr. saeson for EN given saeson.
@@ -87,12 +70,13 @@ export function __resetRaceDayTargetCacheForTests() {
  * tabellen i dag kun har `{ 4: 140 }`: en saeson 5 uden eget tal skal arve S4's maal
  * frem for at falde tilbage paa en konstant der kan vaere aeldre end kalenderen.
  *
- * @param {{seasonNumber?: number|null, cfg?: object}} [args]
- * @returns {Promise<number>}
+ * @param {{seasonNumber?: number|null, cfg?: object, table?: object}} [args]
+ *   `table` er kun et test-hook; default er kalenderens SEASON_RACE_DAY_TARGET.
+ * @returns {number}
  */
-export async function resolveRaceDaysPerSeason({ seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
-  const mod = await loadRaceDayTargetModule();
-  const table = mod?.SEASON_RACE_DAY_TARGET;
+export function resolveRaceDaysPerSeason({
+  seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG, table = SEASON_RACE_DAY_TARGET,
+} = {}) {
   if (table && typeof table === "object") {
     const exact = Number(table[seasonNumber]);
     if (Number.isFinite(exact) && exact > 0) return exact;
@@ -104,14 +88,14 @@ export async function resolveRaceDaysPerSeason({ seasonNumber = null, cfg = TRAI
 
 /**
  * Budget-deleren for en KONKRET saeson, med maalet laest fra kalenderen.
- * Asynkron fordi kilden er en defensiv dynamisk import (se ovenfor); kald-stedet
- * i dailyTrainingEngine.js awaiter den én gang pr. hold pr. tick.
+ * Synkron siden importen blev statisk (#4846); kald-stedet i dailyTrainingEngine.js
+ * `await`'er den stadig, hvilket er harmloest paa en almindelig vaerdi.
  *
  * @param {{seasonNumber?: number|null, cfg?: object}} [args]
- * @returns {Promise<number>}
+ * @returns {number}
  */
-export async function resolveRaceDayBudgetDivisor({ seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
-  const raceDaysPerSeason = await resolveRaceDaysPerSeason({ seasonNumber, cfg });
+export function resolveRaceDayBudgetDivisor({ seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
+  const raceDaysPerSeason = resolveRaceDaysPerSeason({ seasonNumber, cfg });
   return (raceDaysPerSeason * cfg.legacyDaysPerSeason) / cfg.calendarTicksPerSeasonToday;
 }
 
