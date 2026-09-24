@@ -36,7 +36,7 @@ import {
   FilterBar as FilterBarBase, PageHeader as PageHeaderBase, PageLoader, Section as SectionBase,
   SectionAction as SectionActionBase, SectionHeader as SectionHeaderBase, SectionStack as SectionStackBase,
   Select as SelectBase, Segmented as SegmentedBase, SkeletonLines, Tabs as TabsBase, TabList as TabListBase,
-  Tab as TabBase, TabPanel as TabPanelBase, AlertTriangleIcon, CheckIcon, ChevronRightIcon, FilterIcon, RefreshIcon,
+  Tab as TabBase, TabPanel as TabPanelBase, AlertTriangleIcon, CheckIcon, FilterIcon, RefreshIcon,
 } from "../components/ui/index.js";
 import {
   AGE_BANDS,
@@ -211,13 +211,19 @@ export default function AdminValuePreviewPage() {
   const stepParam = Number(searchParams.get("step") ?? "0");
   const step = Number.isInteger(stepParam) && stepParam >= 0 && stepParam <= 4 ? stepParam : 0;
 
-  const setParam = useCallback((key: string, value: string | null) => {
+  // ALLE nøgler der skifter sammen, skal i ÉT setSearchParams-kald: routerens
+  // funktions-opdatering får den renderede URL, ikke en ventende, så to kald i
+  // træk ville lade det andet overskrive det første.
+  const setParams = useCallback((changes: Record<string, string | null>) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (value) next.set(key, value); else next.delete(key);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value) next.set(key, value); else next.delete(key);
+      }
       return next;
     }, { replace: true });
   }, [setSearchParams]);
+  const setParam = useCallback((key: string, value: string | null) => setParams({ [key]: value }), [setParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,7 +317,7 @@ export default function AdminValuePreviewPage() {
             <Select
               size="sm"
               value={activeTo}
-              onChange={(e) => { setParam("to", e.target.value); setParam("step", null); }}
+              onChange={(e) => setParams({ to: e.target.value, step: null })}
               aria-label={t("valuePreview.modelSelect")}
             >
               {modelIds.map((id) => (
@@ -555,7 +561,6 @@ export default function AdminValuePreviewPage() {
                 action={(
                   <SectionAction onClick={() => setParam("tab", "teams")}>
                     {t("valuePreview.overview.allTeams")}
-                    <ChevronRightIcon size={13} aria-hidden="true" />
                   </SectionAction>
                 )}
               />
