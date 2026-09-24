@@ -121,6 +121,7 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
       supabase, seasonId: season.id, seasonStartDate: season.start_date, from,
       tiers: [4], dryRun: true, realDays,
       quotas: { ...TIER_GAME_DAY_QUOTA, 4: TIER_DENSITY[4] * realDays },
+      seasonTransitionAt: null, // #5592: midt-sæson-reparation, ikke en sæsonstart
       log,
     });
     return { deleted: 0, dryRun: true, plan: summary.tiers };
@@ -190,6 +191,7 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
     supabase, seasonId: season.id, seasonStartDate: season.start_date, from,
     tiers: [4], dryRun: false, realDays,
     quotas: { ...TIER_GAME_DAY_QUOTA, 4: TIER_DENSITY[4] * realDays },
+    seasonTransitionAt: null, // #5592: midt-sæson-reparation, ikke en sæsonstart
     log,
   });
   log(`\nre-materialiseret: +${summary.racesInserted} løb, ${summary.stageSchedules} etape-tider`);

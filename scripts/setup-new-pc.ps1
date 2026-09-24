@@ -10,7 +10,7 @@
 #   4. Verificerer build
 #   5. Tilfoejer target som trusted i ~/.codex/config.toml
 #   6. Installerer user-level Claude hooks (~/.claude/settings.json)
-#   7. Korer setup-discord-mcp.ps1 hvis Railway CLI er klar
+#   7. Korer setup-discord-mcp.ps1 (read-only Discord-MCP, #5484)
 #   8. Printer en checkliste over manuelle skridt (.env.local fra anden PC)
 #
 # Brug:
@@ -198,24 +198,16 @@ if (-not (Test-Path $linkScript)) {
 Write-Section "Discord MCP setup"
 
 $discordSetup = Join-Path $Target "scripts\setup-discord-mcp.ps1"
-$mcpAlreadyLinked = Test-Path (Join-Path $Target ".mcp.json")
-if ($mcpAlreadyLinked) {
-  Write-Host "  [ok] .mcp.json findes allerede. Springer Discord-setup over."
-} elseif (Test-Path $discordSetup) {
-  $railwayCmd = Get-Command railway -ErrorAction SilentlyContinue
-  if ($railwayCmd) {
-    Write-Host "  Railway CLI fundet, koerer setup-discord-mcp.ps1..."
-    Push-Location $Target
-    try {
-      & pwsh -NoProfile -File $discordSetup
-      if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [warn] Discord MCP setup fejlede. Kor manuelt senere." -ForegroundColor Yellow
-      }
-    } finally { Pop-Location }
-  } else {
-    Write-Host "  [skip] Railway CLI ikke installeret. Installer den (npm i -g @railway/cli)" -ForegroundColor Yellow
-    Write-Host "         og kor: pwsh -File $discordSetup"
-  }
+# Koeres altid (idempotent): en eksisterende .mcp.json kan pege paa den gamle
+# npx mcp-discord-opsaetning, der timeoutede ved samtidige sessioner (#5484).
+if (Test-Path $discordSetup) {
+  Push-Location $Target
+  try {
+    & pwsh -NoProfile -File $discordSetup
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "  [warn] Discord MCP setup fejlede. Kor manuelt senere." -ForegroundColor Yellow
+    }
+  } finally { Pop-Location }
 } else {
   Write-Host "  [skip] setup-discord-mcp.ps1 ikke fundet"
 }
@@ -237,7 +229,7 @@ Write-Host "            og injicerer secrets ved runtime (#327 Phase 5) - opret 
 Write-Host "         c. Frontend: infisical export --env=dev > frontend/.env"
 Write-Host "            (Vite laeser VITE_*-variabler fra en .env-fil ved dev/build-tid, saa frontend"
 Write-Host "            har fortsat brug for filen, i modsaetning til backend)"
-Write-Host "         d. pwsh -File scripts/setup-discord-mcp.ps1  # genererer .mcp.json"
+Write-Host "         d. pwsh -File scripts/setup-discord-mcp.ps1 -SyncTokenFromInfisical  # DISCORD_TOKEN til User env"
 Write-Host ""
 Write-Host "    3. Delt handoff ligger i GitHub/OneDrive, ikke lokale agent-caches"
 Write-Host "       Tjek docs\NOW.md + relevante GitHub issues foer arbejde paa en anden enhed"

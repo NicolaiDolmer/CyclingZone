@@ -1,13 +1,8 @@
 {
   "mcpServers": {
     "discord": {
-      "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "-y",
-        "mcp-discord"
-      ]
+      "command": "node",
+      "args": ["${LOCALAPPDATA}/CyclingZone/discord-mcp/mcp-readonly-server.mjs"]
     }
   }
 }

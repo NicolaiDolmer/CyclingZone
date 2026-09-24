@@ -51,7 +51,7 @@
         "peaks": "Peak-planer er uændrede",
         "wages": "Løn og rytterværdier opdateres søndag"
       },
-      "firstRaceDay": "Første løbsdag: tirsdag. Mandag er løbsfri.",
+      "firstRaceDay": "Løbene starter dagen efter sæsonskiftet, mindst 24 timer efter den gamle sæsons sidste løb.",
       "readMore": "Fuld forklaring i Hjælp"
     },
     "errorTitle": "Sæsonkalenderen kunne ikke hentes"
