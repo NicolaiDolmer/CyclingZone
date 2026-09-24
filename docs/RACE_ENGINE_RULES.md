@@ -126,13 +126,15 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M11 | Vejr-lag pr. etape, seeded | F3 ✅ wiret 6/9 — se §2f |
 | M12 | Effort pr. rytter (femtrins: `grupetto`/`save`/`normal`/`protect`/`all_out`) | F3 ✅ wiret 6/9 — trinnet ganges på kraftkravet, ikke på CP; `grupetto` er ude af udbruddet og tæller 0 W'-reserve i finalen. **#4914:** `all_out` er etapeprofil-afhængig — på flade og rullende etaper er kravet sat, så det svarer til det samme som på en stigning (ellers var `all_out` gratis for feltets forreste ryttere dér); bjerg og øvrige profiler er uændrede. Grupetto-tempo er en ejer-valgt kontakt, se §7 række 22 |
 | M13 | Holdtidskørsel — holdets tid er den k'te rytters passage | F3 ✅ wiret 6/9 — se §2h |
-| M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
+| M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) · prod 24/9 bag `race_engine_v4` ([#5571](https://github.com/NicolaiDolmer/CyclingZone/issues/5571)) — se noten under tabellen |
 | M15 | Tidsgrænsen (UCI-reglen) + OTL som udfaldsklasse | F3 ✅ wiret 6/9 — se §2d |
 | M16 | Holdspil — kaptajnen beskyttes, hjælperen betaler | F3 ✅ wiret 6/9 — se §2e |
 
 **M13 stod ikke i tabellen før 6/9.** Kataloget lukkede 20/8 med M1-M14, men M13-rækken manglede i selve tabellen — mekanikken var bygget (`mechanics/teamTimeTrial.ts`, 17 grønne tests) og uden kaldssted, fordi den krævede et hold-id på rytteren. Det kom med M16 (§2e), og forgreningen er nu på plads.
 
 **M15 og M16 er ejer-besluttede scope-udvidelser, ikke PR-tilføjelser.** Kataloget blev lukket 20/8 med M1-M14. Ejeren besluttede 4/9 at tidsgrænsen ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582)) er et krav til v4 før flip — *"ikke i v3"* — og låste reglen 6/9. Den står i §2d. **M16** (holdspillet) står i §2e og hviler på samme grundlag: kataloget har ingen holdspils-post, men ejer-beslutning 1 (5/9, §9) gør "holdspil med hold-id på rytteren" til flip-minimum, fordi kaptajn-beskyttelsen og hjælperens pris ellers forsvinder ved flippet.
+
+**M14 i prod (#5571, lag 1 i "Holdmødet", ejer 23/9).** Et AI-hold (`teams.is_ai`) får M14's ordre som standardordre i stedet for rollernes; et menneskehold får den aldrig (ingen autopilot). Ordren går gennem samme `TeamOrder`-type og samme adapter (`orders/teamOrdersAdapter.ts`), og etapens gemte række er stadig et overlay oven på den. Kaptajnens styrke vurderes mod startlisten på dagens terræn, ikke mod en fast evne-grænse (prod-skalaen ligger langt under fixtures'enes). Indsatstrappen bruges som et rigtigt hold ville: sprinterne og deres tog-ryttere kører `grupetto` på bjergetaper i etapeløb, hjælperne kører `protect` ved en kaptajn holdet jager for, og kaptajnen går `all_out` på den afgørende dag (endagsløbet, eller etapeløbets sidste etape af hans terræn). Motoren læser indsatsen på `Entrant.effort`, så broen sætter AI-holdenes indsats dér; harnessen gør det samme med `--orders=ai`. **Åbent hul:** AI-indsatsen når ikke trætheden efter etapen (model C, `applyFatigue`), som kun læser `race_stage_roles`; det hører til "én kilde til effort" i [#5580](https://github.com/NicolaiDolmer/CyclingZone/issues/5580).
 
 Tre nye stats er ejer-valgt ind (20/8) og fødes skjulte først: dagsform-stabilitet · vejr-teknik · højde-tolerance.
 

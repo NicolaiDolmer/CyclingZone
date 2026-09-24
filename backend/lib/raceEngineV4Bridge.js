@@ -311,18 +311,45 @@ export function passagesFromV4Output(output, { stageProfile = {}, isStageRace = 
  * v3's `buildTeamContext` springer enhver entrant uden team_id ELLER
  * race_role over.
  */
-function toV4Entrants(entrants, entrantAdapter) {
+function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map()) {
   return entrants.map((e) => {
     const fatigue = Number(e.fatigue);
     const condition = Number.isFinite(fatigue) ? 1 - Math.min(Math.max(fatigue, 0), 100) / 100 : 1;
     return entrantAdapter.entrantFromAbilitiesRow(e.abilities ?? {}, {
       riderId: e.rider_id,
       role: e.race_role,
-      effort: e.effort,
+      // #5571: et AI-holds indsats kommer fra dets ordre (M14), fordi motoren
+      // laeser Entrant.effort og ikke ordrens effort-felt. Kortet indeholder
+      // KUN AI-holdenes ryttere; menneskeholdenes kilde er uaendret.
+      effort: effortOverrideByRider.get(String(e.rider_id)) ?? e.effort,
       condition,
       teamId: e.team_id,
     });
   });
+}
+
+/**
+ * Løbet omkring etapen (#5571), sådan som M14 skal kende det: etapeløb eller
+ * ej, og rute-typen på hver SENERE etape (til "den afgørende dag" og til om
+ * sprinterne skal gemme benene til i morgen).
+ *
+ * `raceStages` er løbets etape-rækker (kaldstedet har dem allerede); de læses
+ * gennem v4's egen routeAdapter, så profil og finale normaliseres præcis som
+ * dagens rute. Uden rækker (null) er løbet ukendt, og M14 bruger hverken
+ * grupettoen eller alt-ud.
+ *
+ * @returns {{is_stage_race: boolean, later_stages: Array<{profile_type: string, finale_type: string|null}>}|undefined}
+ */
+export function raceContextForStage({ raceStages, stageNumber, isStageRace, routeFromStageProfileRow }) {
+  if (!Array.isArray(raceStages)) return undefined;
+  const later = raceStages
+    .filter((s) => (Number(s?.stage_number) || 1) > stageNumber)
+    .sort((a, b) => (Number(a.stage_number) || 1) - (Number(b.stage_number) || 1))
+    .map((s) => {
+      const r = routeFromStageProfileRow(s);
+      return { profile_type: r.profile_type, finale_type: r.finale_type ?? null };
+    });
+  return { is_stage_race: isStageRace === true, later_stages: later };
 }
 
 /**
@@ -336,25 +363,49 @@ function toV4Entrants(entrants, entrantAdapter) {
  *   seedString: string,
  *   stageNumber: number,
  *   teamOrderRows?: Array<object>,
+ *   isStageRace?: boolean,
+ *   raceStages?: Array<object>|null,
  * }} args
  */
-export function buildV4StageInput({ modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [] }) {
+export function buildV4StageInput({
+  modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null,
+}) {
   const route = modules.route.routeFromStageProfileRow(stageProfile);
-  const startlist = toV4Entrants(entrants, modules.entrants);
   // Ordrer (#4246): ROLLEN er standardordren, og etapens gemte række er dagens
   // overlay oven på den. Adapteren får derfor hele startlistens (hold, rytter,
   // rolle) — et løb hvor ingen har rørt taktik-kortet kører rollernes egen
   // standard (en `hunter` prøver udbruddet, et sprint-tog kører for holdets
   // spurt-kaptajn), ikke en tom neutral ordre.
+  //
+  // #5571: et AI-holds standardordre er M14's (samme TeamOrder-type, ingen
+  // sidekanal). Adapteren skal derfor også vide hvilke hold der er AI-styrede
+  // (`team_is_ai`, sat af raceRunner) og kende rytternes evner, dagens rute og
+  // løbet omkring den. Et menneskehold får aldrig M14.
   const rosterForOrders = entrants
     .filter((e) => e.team_id != null && e.rider_id != null)
-    .map((e) => ({ team_id: String(e.team_id), rider_id: String(e.rider_id), role: e.race_role ?? null }));
-  const orders = modules.orders.buildStageOrders({
+    .map((e) => ({
+      team_id: String(e.team_id),
+      rider_id: String(e.rider_id),
+      role: e.race_role ?? null,
+      is_ai: e.team_is_ai === true,
+      abilities: e.abilities ?? null,
+    }));
+  const plan = modules.orders.buildStageOrderPlan({
     rows: teamOrderRows,
     stageNumber,
     roster: rosterForOrders,
+    context: {
+      route: { profile_type: route.profile_type, finale_type: route.finale_type ?? null },
+      race: raceContextForStage({
+        raceStages,
+        stageNumber,
+        isStageRace,
+        routeFromStageProfileRow: modules.route.routeFromStageProfileRow,
+      }),
+    },
   });
-  return { route, startlist, orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
+  const startlist = toV4Entrants(entrants, modules.entrants, plan.aiEffortByRider);
+  return { route, startlist, orders: plan.orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
 }
 
 /**
@@ -403,17 +454,21 @@ export function createRaceEngineV4Adapter(modules) {
   return {
     version: ENGINE_VERSION_V4,
     /**
-     * @param {{entrants, stageProfile, seedString, stageNumber, teamOrderRows?, isStageRace?}} args
+     * @param {{entrants, stageProfile, seedString, stageNumber, teamOrderRows?, isStageRace?, raceStages?}} args
+     *   raceStages (#5571): løbets etape-rækker, så AI-holdene kender løbet
+     *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
       if (typeof seedString !== "string" || !seedString) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
-      const input = buildV4StageInput({ modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows });
+      const input = buildV4StageInput({
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages,
+      });
       const v4Output = modules.core.simulateStageV4(input);
       const teamIdByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id ?? null]));
       return {
