@@ -64,7 +64,7 @@
 | Academy | Akademi | Klubbens ungdomsafdeling. Paraplyen over intake, Junior team og U23 team. **Siden "Academy" viser intake, Graduation Day og regnskab; trupperne har egne sider** (ejer 2/9, handoff, se §2.6) |
 | Intake | Intake-kuld | Kandidater tilbudt klubben (i dag hver søndag). Ikke en trup |
 | Class of S{n} | Årgang S{n} | Mærke på alle ryttere der kom ind i samme sæson (`riders.generation_tag`). Ikke en trup |
-| Junior team | Juniorhold | Trup med aldersloft. Sæsonalder 16-18. Løbsberettiget fra 17 (UCI junior = U19) |
+| Junior team | Juniorhold | Trup med aldersloft. Sæsonalder 16-18. Løbsberettiget fra 16 (ejer 24/9; før 17, UCI junior = U19) |
 | U23 team | U23-hold | Trup med aldersloft. Sæsonalder 19-22 (koden: `isU23ForSeason`, "under 23") |
 | Senior team | Seniorhold | Truppen uden aldersloft. 30-cap som i dag |
 | Graduation Day | Graduation Day | Dagen ved sæsonskifte hvor ryttere der er vokset ud af en trup skal flyttes |
@@ -121,7 +121,7 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 | Præmiepenge | Ingen i v1 (ingen ny guldkilde uden økonomi-sim, addendum §7.5). Ejer 2/9: *"Ikke nødvendigvis præmiepenge fra start af"*. Kan komme senere efter sim |
 | Divisioner, grupper, ranglister | **Egen pyramide pr. tier** med op- og nedrykning på egne resultater (ejer 2/9, svar 5: B). Startform er seniorpyramidens 1/2/4/8; endeligt antal divisioner afgøres af felt-gaten nedenfor |
 | Felt-gate (hård) | Hvert ungdomsløb skal have et køreligt felt via AI-fyld i 100 % af simulerede løbsdage ved nuværende population (addendum Scorecard C1). Fejler den, skæres antal divisioner, aldrig antallet af løb til nul |
-| Sådan måles C1 (#5518) | `backend/scripts/measureYouthFieldGate.mjs` (read-only). Pr. pyramideform (1/2/4/8, 1/2/4, 1/2, 1) og pr. løbsdag (140): hvor mange hold kan stille op i puljens ungdomsløb. Et hold stiller op med mindst `MIN_RACE_ENTRIES` raske ryttere i truppen og højst løbsklassens feltstørrelse (læst af ungdomskataloget). Populationen er målsæsonens: menneskeholdenes ungdomsryttere i truppens alder (løbsberettiget: junior fra 17) plus AI-holdenes A6-trup fra SAMME plan-funktion som generatoren. Puljetilknytning: spejlet (spec 2026-09-15 §6.1) og som hvad-hvis "AI-trupperne fordeles efter behov". Fravær pr. løbsdag kan stress-testes. Tallene skrives kun til `balance-internals/` |
+| Sådan måles C1 (#5518) | `backend/scripts/measureYouthFieldGate.mjs` (read-only). Pr. pyramideform (1/2/4/8, 1/2/4, 1/2, 1) og pr. løbsdag (140): hvor mange hold kan stille op i puljens ungdomsløb. Et hold stiller op med mindst `MIN_RACE_ENTRIES` raske ryttere i truppen og højst løbsklassens feltstørrelse (læst af ungdomskataloget). Populationen er målsæsonens: menneskeholdenes ungdomsryttere i truppens alder (løbsberettiget: junior fra 16, ejer 24/9) plus AI-holdenes A6-trup fra SAMME plan-funktion som generatoren. Puljetilknytning: spejlet (spec 2026-09-15 §6.1) og som hvad-hvis "AI-trupperne fordeles efter behov". Fravær pr. løbsdag kan stress-testes. Tallene skrives kun til `balance-internals/` |
 | C1-resultat 23/9 (kvalitativt) | Ved spejlet puljetilknytning fejler den fulde 1/2/4/8: AI-holdene står kun i den nederste senior-tier, så de øverste ungdomspuljer har kun menneskeholdenes akademier, og mindst én pulje har ingen startende hold. Gaten holder først når pyramiden skæres, og mest robust ved de mindste former. Fordeles AI-trupperne efter behov, holder større former. For juniorer gælder at et AI-hold kun kan stille op med mindst `MIN_RACE_ENTRIES` løbsberettigede (17-18), så få AI-juniorer pr. hold giver intet AI-fyld i juniorløb. "Køreligt felt" har intet tal i denne fil; målingen viser derfor gaten ved en række gulve (startende hold), og ejeren vælger form ud fra det (§6 pkt. 3) |
 | Løbsfrekvens v1 (forslag) | U23 1-2 løb pr. uge, junior 1 pr. uge (addendum §7.3). Kalibreres i kalender-SSOT'en `CALENDAR_RULES.md` når slicen bygges |
 | Resultater | Føder rytterens profil, årgangens side (#2493) og krøniken (#2490). Ungdomsranglister vises pr. gruppe og samlet |
@@ -254,7 +254,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 | # | Modsigelse | Vinder |
 |---|---|---|
 | 1 | Addendum 16/7 §1.1/§2: potentiale 1-99 i DB vs. `PROGRESSION_RULES.md` §3: 1-6 internt (ejer 13/8) | `PROGRESSION_RULES.md` |
-| 2 | Addendum 16/7 §1.1: "Junior-hold (16-18)" vs. doktrin 8/6: "Junior = U19, normally 17-18" | Denne fil §2.1: trup 16-18, løb fra 17. Begge tilfredsstilles |
+| 2 | Addendum 16/7 §1.1: "Junior-hold (16-18)" vs. doktrin 8/6: "Junior = U19, normally 17-18" | Denne fil §2.1: trup 16-18, løb fra 16 (ejer 24/9; før 17). Begge tilfredsstilles |
 | 3 | Addendum §7.1: tidlig oprykning fra 21 som undtagelse | Denne fil §2.2: opad altid tilladt |
 | 4 | ~~`GAME_INVARIANTS.md`: "8-plads akademi-cap håndhæves på ENHVER akademi-tilføjelse"~~ | **LUKKET 15/9 (#4619):** `GAME_INVARIANTS.md` §Akademi siger nu loft pr. trup (`SQUAD_CAPS`, U23 12 / junior 10). Restgæld: RPC'ernes egen 8-cap i SQL |
 | 5 | `help.json:1151` lover en trupstruktur der ikke findes | Slice 0 |
