@@ -235,6 +235,24 @@ test("done-guard.yml koerer ratchet'en mod PR'ens base-commit og beskriver alle 
   assert.match(yml, /`name: done-guard`/, "trin a: stabilt check-navn uden '(advarsel)'");
 });
 
+test("en INSERT der kun staar i database/manual/ (auto-applies ikke) er ingen migration", () => {
+  const rows = evaluateFlags(
+    repo([{ path: "database/manual/orphan.sql", text: "INSERT INTO public.app_config (key, value) VALUES ('orphan_enabled', '\"off\"'::jsonb);" }]),
+  );
+  assert.ok(rows.find((r) => r.key === "orphan_enabled").gaps.includes("migration"));
+  assert.deepEqual(rows.find((r) => r.key === "widget_enabled").migrations, ["database/2026-09-01-widget.sql"]);
+});
+
+test("en kommentar efter kode goer ikke filen til en laeser; '//' inde i en streng er ikke en kommentar", () => {
+  const out = stripComments('const a = run(); // TODO: brug ORPHAN_FLAG_KEY\nconst u = "https://x.org/a"; use(URL_KEY);\nconst s = "a // b"; use(KEEP_KEY); // hale');
+  assert.ok(!out.includes("ORPHAN_FLAG_KEY"), "hale-kommentaren skal vaek");
+  assert.ok(out.includes("const a = run();"));
+  assert.ok(out.includes("use(URL_KEY)"), "https:// er ikke en kommentar");
+  assert.ok(out.includes("use(KEEP_KEY)"), "koden efter en streng med ' // ' maa ikke forsvinde");
+  const rows = evaluateFlags(repo([{ path: "backend/lib/todo.js", text: 'export const x = 1; // TODO: laes "orphan_enabled" her' }]));
+  assert.ok(rows.find((r) => r.key === "orphan_enabled").gaps.includes("reader"));
+});
+
 test("stripComments fjerner hele kommentarlinjer, men aeder ikke kode efter en streng med '/*'", () => {
   const src = 'const a = "image/*";\nconst m = readFileSync("./model.json");\n// kommentar med model.json\n/* blok */\nconst b = 1; // hale';
   const out = stripComments(src);

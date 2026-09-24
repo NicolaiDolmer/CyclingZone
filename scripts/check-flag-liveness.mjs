@@ -16,7 +16,8 @@
 //              der naevner noeglen/konstanten, ELLER som kalder en eksporteret
 //              funktion i noeglens hjemmemodul, der (transitivt) laeser den.
 //   migration  en database/*.sql med `INSERT INTO app_config` der naevner
-//              noeglen, saa raekken findes og kan flippes.
+//              noeglen, saa raekken findes og kan flippes. Kun filer direkte i
+//              database/ - manual/, proposals/ og seed/ auto-applies ikke.
 //   test-on    mindst een test der naevner noeglen/konstanten/laese-funktionen
 //              med en "on"-vaerdi (`"on"`, `"beta"`, `true`, `: on`) inden for
 //              3 linjer.
@@ -86,13 +87,31 @@ export function classifyPath(rawPath) {
   return "other";
 }
 
-// Kun kommentarer der STARTER en linje fjernes. En blok-kommentar-regex over
-// hele filen aeder kode, naar en streng indeholder "/*" (fx "image/*") - saa
+// Blok-kommentarer fjernes kun, naar de STARTER en linje. En blok-kommentar-regex
+// over hele filen aeder kode, naar en streng indeholder "/*" (fx "image/*") - saa
 // forsvandt en aegte laeser i api.js i baglaens-koerslen mod PR #5446.
+// `//`-kommentarer fjernes baade som hel linje og efter kode (`x(); // TODO FOO_FLAG_KEY`
+// maa ikke goere filen til en laeser), men kun naar ingen streng er aaben foran
+// `//` - saa "a // b" og "https://..." bliver staaende.
 export function stripComments(text) {
   return String(text)
     .replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, "")
-    .replace(/^[ \t]*\/\/.*$/gm, "");
+    .replace(/^[ \t]*\/\/.*$/gm, "")
+    .replace(/^(.*?\S)[ \t]+\/\/.*$/gm, (line, code) => (noOpenString(code) ? code : line));
+}
+
+function noOpenString(code) {
+  let quote = null;
+  for (let i = 0; i < code.length; i += 1) {
+    const c = code[i];
+    if (quote) {
+      if (c === "\\") i += 1;
+      else if (c === quote) quote = null;
+    } else if (c === '"' || c === "'" || c === "`") {
+      quote = c;
+    }
+  }
+  return quote === null;
 }
 
 function tokenSet(text) {
@@ -258,11 +277,16 @@ export function findReaders(key, index, { catalogPath = CATALOG_PATH } = {}) {
   };
 }
 
-/** database/*.sql der opretter app_config-raekken for noeglen. */
+// Kun SQL direkte i database/ taeller. database/manual/, proposals/ og seed/
+// koeres ikke af auto-migrate.yml, saa en INSERT der kun staar der, giver ingen
+// raekke i prod.
+const APPLIED_SQL = /^database\/[^/]+\.sql$/i;
+
+/** database/*.sql (ikke undermapper) der opretter app_config-raekken for noeglen. */
 export function findMigrations(key, index) {
   const lit = `'${key}'`;
   return index.files
-    .filter((f) => f.kind === "sql" && f.path.startsWith("database/") && f.text.includes(lit) && /insert\s+into\s+(?:public\.)?app_config\b/i.test(f.text))
+    .filter((f) => f.kind === "sql" && APPLIED_SQL.test(f.path) && f.text.includes(lit) && /insert\s+into\s+(?:public\.)?app_config\b/i.test(f.text))
     .map((f) => f.path)
     .sort();
 }
@@ -455,7 +479,12 @@ function main(argv) {
   const ref = refAt >= 0 ? argv[refAt + 1] : null;
   const index = buildIndex(ref ? loadTreeFiles(ROOT, ref) : loadRepoFiles(ROOT));
   const rows = evaluateFlags(index);
-  const baseline = readBaseline(ROOT);
+  // Med --ref doemmes commit'et mod DETS baseline, ikke arbejdstraeets.
+  const baseline = ref ? readBaselineAt(ROOT, ref) || { known: {} } : readBaseline(ROOT);
+  if (ref && args.has("--write-baseline")) {
+    console.error("--write-baseline kan ikke kombineres med --ref.");
+    return 2;
+  }
 
   if (args.has("--write-baseline")) {
     writeFileSync(join(ROOT, BASELINE_PATH), `${JSON.stringify(baselineFrom(rows, baseline), null, 2)}\n`);
