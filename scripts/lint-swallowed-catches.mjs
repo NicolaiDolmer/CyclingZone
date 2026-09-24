@@ -151,7 +151,9 @@ const BASELINE = {
   // filens baseline allerede bærer. De to migrations-grene (isBetaRequestsMissing)
   // svarer 503 FØR captureApiRouteError, med vilje: et kald i deploy-vinduet er
   // ikke fejlet, det er for tidligt, og det skal ikke fylde i Sentry.
-  "backend/routes/api.js": 190,
+  // #5686 (24/9): +1 for GET /admin/value-preview (ejerens værdi-forhåndsvisning),
+  // samme captureApiRouteError-mønster på den ydre catch, samme kendte regex-gab.
+  "backend/routes/api.js": 191,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,

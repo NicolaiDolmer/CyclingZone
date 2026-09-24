@@ -268,7 +268,11 @@ export function createValuePreviewService({
     const promise = Promise.resolve().then(() => loadDataset(supabase));
     datasetEntry = { promise, expiresAt: t + ttlMs };
     // En fejlet hentning må ikke caches i 5 min: næste kald prøver igen.
-    promise.catch(() => { if (datasetEntry?.promise === promise) datasetEntry = null; });
+    promise.catch(() => {
+      // swallow-ok: kun cache-oprydning. Fejlen når kalderen via det returnerede
+      // løfte (og ruten capturer den); her fjernes den bare fra cachen.
+      if (datasetEntry?.promise === promise) datasetEntry = null;
+    });
     return promise;
   }
 
@@ -280,7 +284,10 @@ export function createValuePreviewService({
     if (hit) return hit.promise;
     const promise = Promise.resolve().then(compute);
     sides.set(key, { promise, expiresAt: t + ttlMs });
-    promise.catch(() => { if (sides.get(key)?.promise === promise) sides.delete(key); });
+    promise.catch(() => {
+      // swallow-ok: kun cache-oprydning, samme som datasættet ovenfor.
+      if (sides.get(key)?.promise === promise) sides.delete(key);
+    });
     return promise;
   }
 
