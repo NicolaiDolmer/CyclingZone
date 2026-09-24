@@ -52,7 +52,7 @@ import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
-import { resolveRaceDaysPerSeason } from "./trainingRaceDayTick.js";
+import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
 /** Tidligste danske klokketime sweepen maa koere (ejer 15/9, beslutning 4). */
@@ -89,6 +89,10 @@ export const TEAM_CONCURRENCY = 1;
  * uge), maa én aften ikke pludselig skrive tyve loebsdage for hele bestanden.
  * Overskrides loftet, koeres de NYESTE loebsdage og resten rapporteres som
  * `skippedGameDays` — synligt, ikke tavst.
+ *
+ * Forlaengelsen paa saesonens sidste loebsdato (#4846) er IKKE et efterslaeb og kan
+ * aldrig koste aftenens egne loebsdage en plads under loftet: den er alt-eller-intet
+ * (se `gameDaySpansByDivision`).
  */
 export const MAX_GAME_DAY_CATCH_UP = 8;
 
@@ -249,7 +253,15 @@ export function groupRaceIdsByDivision(raceRows) {
  *   · SAESONENS SIDSTE LOEBSDATO. Positionen EFTER aksens sidste loeb arver den sidste
  *     dato, saa de tomme loebsdage dér har ingen senere dato der kan lukke dem. Har
  *     divisionen ingen etaper efter i dag, forlaenges spaendet derfor til aksens sidste
- *     loebsdag (`axisEndByDivision`, = maalet - 1). Ukendt ⇒ ingen forlaengelse.
+ *     loebsdag (`axisEndByDivision`, = kalenderens eget saesonmaal - 1). Ukendt ⇒ ingen
+ *     forlaengelse. Forlaengelsen er ALT-ELLER-INTET: kan hele aftenens spaend inkl.
+ *     forlaengelsen ikke vaere under ops-loftet, passer aksen ikke til maalet (kalenderen
+ *     er pakket uden det eller med et andet), og ingen af de dage findes med sikkerhed.
+ *     Saa droppes forlaengelsen helt og rapporteres i `droppedExtensionGameDays`, og
+ *     aftenen koerer praecis som uden forlaengelse. Den kan dermed aldrig skubbe dagens
+ *     egne loebsdage ud i `skippedGameDays` (diff-tjekket af PR #5608: med et arvet maal
+ *     paa en kortere akse tikkede loftet 8 loebsdage der ikke fandtes og sprang dagens
+ *     egne over).
  *   · Ingen loeb i divisionen i dag ⇒ INTET spaend. E er ukendt. I en kalender med
  *     eksakt kvote (§1b: hver dato baerer praecis `density` etaper) opstaar kanten
  *     ikke; ellers samles dagene op af naeste dato med loeb.
@@ -262,7 +274,7 @@ export function groupRaceIdsByDivision(raceRows) {
  * @param {{maxCatchUp?: number, axisEndByDivision?: Map<string, number|null>|null}} [opts]
  *   `axisEndByDivision` — aksens sidste loebsdag for de divisioner hvor i dag er den
  *   sidste loebsdato. Mangler/null ⇒ spaendet slutter paa dagens hoejeste loebsdag.
- * @returns {Map<string, {gameDays: number[], skippedGameDays: number[]}>}
+ * @returns {Map<string, {gameDays: number[], skippedGameDays: number[], droppedExtensionGameDays: number[]}>}
  */
 export function gameDaySpansByDivision(
   todaysStageRows, divisionByRace, priorMaxGameDayByDivision,
@@ -273,12 +285,6 @@ export function gameDaySpansByDivision(
   for (const [divisionId, todaysDays] of todaysByDivision) {
     if (!todaysDays.length) continue;
     const todaysLast = todaysDays[todaysDays.length - 1];
-    // `Number(null)` er 0, ikke NaN — derfor det eksplicitte null-tjek, ogsaa her.
-    const axisEndRaw = axisEndByDivision?.get(divisionId);
-    const axisEnd = axisEndRaw === null || axisEndRaw === undefined ? NaN : Number(axisEndRaw);
-    // Kun FREM: en akse-ende der ligger foer dagens egne loebsdage (kalender laengere
-    // end maalet) aendrer intet — vi afkorter aldrig dagens loebsdage.
-    const end = Number.isFinite(axisEnd) && axisEnd > todaysLast ? axisEnd : todaysLast;
     // `Number(null)` er 0, ikke NaN — en division med UKENDT tidligere loebsdag ville
     // derfor blive laest som "sidste loebsdag var 0" og traekke hele spaendet fra
     // loebsdag 1 med. null/undefined skal vaere NaN her.
@@ -292,12 +298,31 @@ export function gameDaySpansByDivision(
     const start = Number.isFinite(prior)
       ? Math.max(0, Math.min(prior + 1, todaysDays[0]))
       : todaysDays[0];
-    const full = [];
-    for (let gd = start; gd <= end; gd += 1) full.push(gd);
-    // Ops-loft: koer de NYESTE, rapportér resten frem for at skrive dem tavst.
+    // Aftenens EGET spaend: hullet foran + dagens loebsdage.
+    const core = [];
+    for (let gd = start; gd <= todaysLast; gd += 1) core.push(gd);
+
+    // Forlaengelsen (saesonens sidste loebsdato). `Number(null)` er 0, ikke NaN — derfor
+    // det eksplicitte null-tjek, ogsaa her. Kun FREM: en akse-ende der ligger foer dagens
+    // egne loebsdage (kalender laengere end maalet) giver ingen forlaengelse — vi
+    // afkorter aldrig dagens loebsdage.
+    const axisEndRaw = axisEndByDivision?.get(divisionId);
+    const axisEnd = axisEndRaw === null || axisEndRaw === undefined ? NaN : Number(axisEndRaw);
+    const extension = [];
+    if (Number.isFinite(axisEnd)) {
+      for (let gd = todaysLast + 1; gd <= axisEnd; gd += 1) extension.push(gd);
+    }
+    // ALT-ELLER-INTET (se doc-blokken): forlaengelsen maa aldrig kunne fortraenge
+    // aftenens egne loebsdage under loftet. Passer den ikke, droppes den synligt.
+    const extensionFits = core.length + extension.length <= maxCatchUp;
+    const full = extensionFits ? [...core, ...extension] : core;
+    const droppedExtensionGameDays = extensionFits ? [] : extension;
+
+    // Ops-loft paa efterslaebet: koer de NYESTE, rapportér resten frem for at skrive
+    // dem tavst.
     const skippedGameDays = full.length > maxCatchUp ? full.slice(0, full.length - maxCatchUp) : [];
     const gameDays = full.length > maxCatchUp ? full.slice(full.length - maxCatchUp) : full;
-    out.set(divisionId, { gameDays, skippedGameDays });
+    out.set(divisionId, { gameDays, skippedGameDays, droppedExtensionGameDays });
   }
   return out;
 }
@@ -305,8 +330,14 @@ export function gameDaySpansByDivision(
 /**
  * I/O: hoejeste loebsdag FOER dagens danske kalenderdoegn, pr. division.
  *
- * Een lille query pr. division (fire i prod), hver bounded af `.limit(1)` paa en
+ * Een lille query pr. division, hver bounded af `.limit(1)` paa en
  * `order by game_day desc`. `game_day` LAESES; `scheduled_at` bruges kun som filter.
+ *
+ * ANTAL: `loadDayCloseSpans` sender kun divisioner MED etaper i dag. Det er ikke fire:
+ * prod har 15 `league_division_id`'er (maalt 24/9, alle med loeb i den aktive saeson),
+ * fordi en tier kan have flere puljer og trupper. Sammen med
+ * `loadLastRaceDateByDivision` er det derfor op til 30 SEKVENTIELLE opslag pr. aften
+ * (to pr. division) — smaa og bounded, men sekventielle.
  *
  * TRE SVAR, og de maa ikke blandes sammen (#4846):
  *   · et tal ⇒ divisionens sidste loebsdag foer i dag.
@@ -401,6 +432,9 @@ export async function loadLastRaceDateByDivision({ supabase, raceIdsByDivision, 
  * loebsdag `raceDaysPerSeason - 1`. Et ukendt eller ugyldigt maal giver en TOM map —
  * ingen forlaengelse, samme fail-safe som et fejlet opslag.
  *
+ * Maalet SKAL vaere kalenderens eget (`resolveCalendarRaceDayTarget`): et arvet maal paa
+ * en saeson hvis kalender er pakket uden et, peger ud over aksens ende.
+ *
  * @param {{lastRaceDateByDivision: Map<string, boolean|null>, raceDaysPerSeason: number|null}} args
  * @returns {Map<string, number>}
  */
@@ -424,7 +458,8 @@ export function axisEndByDivisionFor({ lastRaceDateByDivision, raceDaysPerSeason
  * `raceDaysPerSeason` er en DOVEN kilde til maalet: den kaldes kun hvis mindst een
  * division er paa sin sidste loebsdato, saa knappens status-opslag ikke betaler et
  * saeson-opslag de andre 27 aftener. Kaster den eller svarer den ikke et tal,
- * forlaenges intet.
+ * forlaenges intet. Begge kaldere svarer med kalenderens EGET saesonmaal
+ * (`resolveCalendarRaceDayTarget`): en saeson uden eget tal forlaenges ikke.
  *
  * @param {object} args
  * @param {object} args.supabase
@@ -433,7 +468,7 @@ export function axisEndByDivisionFor({ lastRaceDateByDivision, raceDaysPerSeason
  * @param {Date} args.dayStart
  * @param {Date} args.dayEnd
  * @param {() => (number|null|Promise<number|null>)} args.raceDaysPerSeason
- * @returns {Promise<Map<string, {gameDays: number[], skippedGameDays: number[]}>>}
+ * @returns {Promise<Map<string, {gameDays: number[], skippedGameDays: number[], droppedExtensionGameDays: number[]}>>}
  */
 export async function loadDayCloseSpans({
   supabase, raceRows, todaysStages, dayStart, dayEnd, raceDaysPerSeason,
@@ -566,7 +601,7 @@ export async function resolveDayCloseStatus({
       supabase, raceRows, todaysStages, dayStart, dayEnd,
       raceDaysPerSeason: async () => {
         if (seasonNumber !== undefined && seasonNumber !== null) {
-          return resolveRaceDaysPerSeason({ seasonNumber });
+          return resolveCalendarRaceDayTarget({ seasonNumber });
         }
         const { data: season, error: seasonError } = await supabase
           .from("seasons")
@@ -576,8 +611,9 @@ export async function resolveDayCloseStatus({
         // `Number(null)` er 0 — en raekke uden nummer maa ikke blive "saeson 0".
         const raw = seasonError ? null : season?.number;
         const n = raw === null || raw === undefined ? NaN : Number(raw);
-        // Ukendt saesonnummer ⇒ intet maal ⇒ ingen forlaengelse (se doc-blokken).
-        return Number.isFinite(n) ? resolveRaceDaysPerSeason({ seasonNumber: n }) : null;
+        // Ukendt saesonnummer, eller en saeson uden eget maal i kalenderen ⇒ ingen
+        // forlaengelse (se doc-blokken).
+        return Number.isFinite(n) ? resolveCalendarRaceDayTarget({ seasonNumber: n }) : null;
       },
     });
     const gameDays = [...new Set(
@@ -718,11 +754,12 @@ export async function runTrainingDayCloseSweep({
     // lukker: fra divisionens sidste loebsdag foer i dag til dagens hoejeste. De
     // loebsdage i spaendet der ingen etape har, ER de rene traeningsdage.
     // #4846: ogsaa de to kanter — saesonens foerste loebsdato starter paa loebsdag 0,
-    // og den sidste forlaenges til aksens sidste loebsdag (maalet - 1), saa hver
-    // division ender paa PRAECIS maalet (140) tickede loebsdage.
+    // og den sidste forlaenges til aksens sidste loebsdag (kalenderens eget saesonmaal
+    // - 1), saa hver division ender paa PRAECIS maalet (140) tickede loebsdage. En
+    // saeson uden eget maal i kalenderen forlaenges ikke (resolveCalendarRaceDayTarget).
     const spansByDivision = await loadDayCloseSpans({
       supabase, raceRows, todaysStages, dayStart, dayEnd,
-      raceDaysPerSeason: () => resolveRaceDaysPerSeason({ seasonNumber: season.number }),
+      raceDaysPerSeason: () => resolveCalendarRaceDayTarget({ seasonNumber: season.number }),
     });
     const byDivision = new Map(
       [...spansByDivision].map(([divisionId, span]) => [divisionId, span.gameDays]),
@@ -735,6 +772,16 @@ export async function runTrainingDayCloseSweep({
       // Synligt, ikke tavst (se MAX_GAME_DAY_CATCH_UP). ASCII-only: ops-log.
       logger.warn?.(
         `  ⚠️ Traenings-lukning: ${skippedGameDays.length} division(er) havde flere end ${MAX_GAME_DAY_CATCH_UP} uafviklede loebsdage - de aeldste springes over`,
+      );
+    }
+    const droppedExtensionGameDays = [...spansByDivision]
+      .filter(([, span]) => span.droppedExtensionGameDays?.length)
+      .map(([divisionId, span]) => ({ divisionId, gameDays: span.droppedExtensionGameDays }));
+    if (droppedExtensionGameDays.length) {
+      // Synligt, ikke tavst: aksen passer ikke til saesonmaalet (se
+      // gameDaySpansByDivision). ASCII-only: ops-log.
+      logger.warn?.(
+        `  ⚠️ Traenings-lukning: ${droppedExtensionGameDays.length} division(er) paa sidste loebsdato - forlaengelsen til saesonmaalet passer ikke med aksen og er IKKE koert`,
       );
     }
 
@@ -890,6 +937,7 @@ export async function runTrainingDayCloseSweep({
       seasonId: season.id,
       gameDays: todaysGameDays,
       skippedGameDays,
+      droppedExtensionGameDays,
       divisions: byDivision.size,
       planned: plan.length,
       swept,

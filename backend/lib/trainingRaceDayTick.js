@@ -70,6 +70,10 @@ export function raceDayBudgetDivisor(cfg = TRAINING_RACE_DAY_CONFIG) {
  * tabellen i dag kun har `{ 4: 140 }`: en saeson 5 uden eget tal skal arve S4's maal
  * frem for at falde tilbage paa en konstant der kan vaere aeldre end kalenderen.
  *
+ * KUN TIL BUDGET-DELEREN. Arven er rigtig for deleren, men FORKERT for aksens laengde:
+ * kalenderen giver en saeson uden eget tal INTET maal (se `resolveCalendarRaceDayTarget`
+ * nedenfor), og aksen er da typisk kortere end det arvede tal.
+ *
  * @param {{seasonNumber?: number|null, cfg?: object, table?: object}} [args]
  *   `table` er kun et test-hook; default er kalenderens SEASON_RACE_DAY_TARGET.
  * @returns {number}
@@ -87,9 +91,36 @@ export function resolveRaceDaysPerSeason({
 }
 
 /**
+ * Loebsdags-AKSENS laengde for en saeson, laest med PRAECIS kalenderens regel (#4846).
+ *
+ * Kalenderen pakker efter `SEASON_RACE_DAY_TARGET[saesonnummer] ?? null`, baade i
+ * auto-stien (seasonTransition.js) og i CLI-stien (buildSeasonCalendar.js). En saeson
+ * UDEN eget tal faar altsaa INTET maal, og aksen er pakkerens naturlige laengde. Det er
+ * det tal traenings-lukningen skal forlaenge saesonens sidste loebsdato til — ikke
+ * `resolveRaceDaysPerSeason`'s arvede maal, som ville ticke loebsdage kalenderen aldrig
+ * har pakket (diff-tjekket af PR #5608, 24/9).
+ *
+ * @param {{seasonNumber?: number|null, table?: object}} [args]
+ *   `table` er kun et test-hook; default er kalenderens SEASON_RACE_DAY_TARGET.
+ * @returns {number|null} saesonens eget, positive maal — ellers null (ingen forlaengelse)
+ */
+export function resolveCalendarRaceDayTarget({ seasonNumber = null, table = SEASON_RACE_DAY_TARGET } = {}) {
+  // `Number(null)` er 0 — en manglende saeson maa ikke blive "saeson 0".
+  if (seasonNumber === null || seasonNumber === undefined) return null;
+  if (!table || typeof table !== "object") return null;
+  const n = Number(seasonNumber);
+  if (!Number.isSafeInteger(n)) return null;
+  const raw = table[n];
+  const target = raw === null || raw === undefined ? NaN : Number(raw);
+  return Number.isSafeInteger(target) && target > 0 ? target : null;
+}
+
+/**
  * Budget-deleren for en KONKRET saeson, med maalet laest fra kalenderen.
- * Synkron siden importen blev statisk (#4846); kald-stedet i dailyTrainingEngine.js
- * `await`'er den stadig, hvilket er harmloest paa en almindelig vaerdi.
+ * Synkron siden importen blev statisk (#4846). To kald-steder, begge kun paa flag
+ * on-stien (`training_tick_per_race_day`): dailyTrainingEngine.js og
+ * trainingSlotHealthWatch.js. Begge `await`'er den stadig, hvilket er harmloest paa en
+ * almindelig vaerdi.
  *
  * @param {{seasonNumber?: number|null, cfg?: object}} [args]
  * @returns {number}
