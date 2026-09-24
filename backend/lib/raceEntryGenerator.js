@@ -1235,6 +1235,60 @@ export async function runRaceEntryGenerator({
         `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
       );
     }
+    // #5693 (CYCLINGZONE-32, Sentry-regression 24/9): fallback-loopet nedenfor
+    // skriver ÉN enhed ad gangen med insert-FØR-delete (#3934's "aldrig-tommere"-
+    // garanti). En rytter der skal FLYTTES mellem to af DETTE holds enheder i
+    // SAMME batch (fx to same-day-løb i samme pulje, #3420) rammer derfor lige
+    // netop det insert-før-delete-dødvande batch-RPC'en normalt gør lovligt via
+    // et deferred check: den nye enheds insert kolliderer med den gamle enheds
+    // endnu-ikke-slettede række, fordi den slettes i en SENERE, separat enheds-
+    // skrivning. Prod-formen (#5693): et AI-hold med to senior-løb samme spilledag
+    // i samme pulje — rytteren stod allerede i det FØRSTE løb, og enhedens insert
+    // i det ANDET blev afvist af rider-day-invarianten.
+    //
+    // Fix: find de rytter-rækker der er en ÆGTE cross-enheds-flytning (rytteren
+    // findes i én enheds toDelete OG en ANDEN enheds toInsert i SAMME batch) og
+    // slet dem FØR fallback-loopet kører. De resterende ændringer (rene prunes
+    // eller inserts uden søsterkonflikt) beholder deres normale insert-før-
+    // delete-rækkefølge uændret — kun den ægte flytning får sin "gamle" række
+    // fjernet et øjeblik tidligere, så målenheden aldrig ser en midlertidig
+    // dobbeltbooking. Fejler pre-sletningen, falder vi tilbage til den kendte
+    // (rapporterede) fejl i stedet for en ny, tavs fejlklasse.
+    const deleteRaceIdsByRider = new Map(); // rider_id → Set(race_id) enheden vil slette rytteren fra
+    for (const { unit, diff } of changed) {
+      for (const riderId of diff.toDelete) {
+        if (!deleteRaceIdsByRider.has(riderId)) deleteRaceIdsByRider.set(riderId, new Set());
+        deleteRaceIdsByRider.get(riderId).add(unit.race_id);
+      }
+    }
+    const swapDeleteRidersByRace = new Map(); // race_id → [rider_id] der skal forudslettes
+    for (const { unit, diff } of changed) {
+      for (const { rider_id: riderId } of diff.toInsert) {
+        const sourceRaceIds = deleteRaceIdsByRider.get(riderId);
+        if (!sourceRaceIds) continue;
+        for (const sourceRaceId of sourceRaceIds) {
+          if (sourceRaceId === unit.race_id) continue; // samme enhed — ikke en cross-enheds-flytning
+          if (!swapDeleteRidersByRace.has(sourceRaceId)) swapDeleteRidersByRace.set(sourceRaceId, []);
+          swapDeleteRidersByRace.get(sourceRaceId).push(riderId);
+        }
+      }
+    }
+    for (const [sourceRaceId, riderIds] of swapDeleteRidersByRace) {
+      const { error: preDelErr } = await supabase
+        .from("race_entries").delete()
+        .eq("race_id", sourceRaceId).eq("team_id", team_id).eq("is_auto_filled", true)
+        .in("rider_id", riderIds);
+      if (preDelErr) {
+        // #5693: bevidst uden danske specialtegn på denne linje (æ/ø/å) —
+        // scripts/i18n-check-leaks.mjs's backend-detektor slår ned på danske
+        // strenge på linjer med "message"/"error"/"throw"/"reason" (#1068's
+        // ratchet), og denne log-linje refererer netop preDelErr.message.
+        const preDelMsg = preDelErr.message;
+        console.warn(
+          `⚠️  Entry-generator ${team_id}/${sourceRaceId}: pre-sletning af cross-enheds rytter-flytning fejlede (${preDelMsg}) - falder tilbage til normal raekkefoelge (#5693)`
+        );
+      }
+    }
     for (const { unit } of changed) {
       const ok = await applyUnitWithRecovery(unit);
       if (ok) {

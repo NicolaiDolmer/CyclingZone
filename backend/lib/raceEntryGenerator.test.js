@@ -1649,19 +1649,28 @@ async function crossedSeedFromDesired() {
   return { desiredA, desiredB, crossed };
 }
 
-test("#3934: uden batch-RPC er en cross-enheds swap et 23P01-dødvande (dokumenterer prod 18/8)", async () => {
-  const { crossed } = await crossedSeedFromDesired();
+// #5693 (Sentry CYCLINGZONE-32, regression 24/9): uden batch-RPC'en var dette
+// FØR et deterministisk 23P01-dødvande (se historikken i git-blame/#3934) — hver
+// enheds insert-før-delete kolliderede med søster-enhedens endnu-ikke-slettede
+// række. Fallback-loopet (raceEntryGenerator.js, trin 10b) forud-sletter nu de
+// rytter-rækker der er en ÆGTE cross-enheds-flytning, FØR den normale insert-
+// før-delete-skrivning kører pr. enhed, så swappen lykkes uden batch-RPC'en.
+test("#3934/#5693: uden batch-RPC gennemfører fallback-loopet nu samme swap uden dødvande", async () => {
+  const { desiredA, desiredB, crossed } = await crossedSeedFromDesired();
   const { state, seasonId } = seedSwapScenario();
   state.race_entries = crossed.map((r) => ({ ...r }));
-  // Default-mock: rpc() svarer "does not exist" (prod FØR migrationen) → per-enheds
-  // fallback med insert-før-delete, og day-invarianten håndhæves som DB-backstop.
+  // Default-mock: rpc() svarer "does not exist" (prod FØR #3934-migrationen, eller
+  // en batch-RPC afvist af en ANDEN, ukendt årsag end #4163's skema-drift) → per-
+  // enheds fallback, og day-invarianten håndhæves som DB-backstop.
   const supabase = makeSupabase(state, { enforceDayInvariant: true });
   const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
-  assert.equal(res.failed_units, 2, "begge enheders swap-insert afvises (deterministisk dødvande)");
-  assert.ok(
-    res.errors.some((e) => e.includes("rider-day invariant (#3420)")),
-    "fejlen er den navngivne invariant-afvisning, ikke en opak Postgres-tekst"
-  );
+  assert.equal(res.failed_units, 0, `#5693: fallback-loopet burde have redet swappen (fejl: ${res.errors.join("; ")})`);
+  assert.equal(res.errors.length, 0, "ingen Sentry-capture — no_rider_double_booking blev aldrig forsøgt");
+  const ids = (raceId) => state.race_entries.filter((e) => e.race_id === raceId).map((e) => e.rider_id).sort();
+  assert.deepEqual(ids("A"), desiredA.map((p) => p.rider_id).sort(), "A endte med den ønskede trup");
+  assert.deepEqual(ids("B"), desiredB.map((p) => p.rider_id).sort(), "B endte med den ønskede trup");
+  const aSet = new Set(ids("A"));
+  for (const rid of ids("B")) assert.ok(!aSet.has(rid), `${rid} dobbeltbooket A↔B efter fallback-swap`);
 });
 
 test("#3934: batch-RPC'en (deferred constraint) gennemfører samme swap uden fejl", async () => {
@@ -1700,12 +1709,11 @@ test("#4163: RPC afvist med 42809 → systemisk diagnose foerst i errors + flag 
     res.errors[0].includes("ikke deferrable") && res.errors[0].includes("#4163"),
     `foerste fejl skal navngive skema-driften, fik: ${res.errors[0]}`
   );
-  // Symptomet (enheds-fejlene) er der stadig — men nu EFTER diagnosen.
-  assert.equal(res.failed_units, 2, "fallback-vejen fejler stadig som i 18/8-doedvandet");
-  assert.ok(
-    res.errors.slice(1).some((e) => e.includes("rider-day invariant (#3420)")),
-    "de generiske enheds-fejl bevares som symptom"
-  );
+  // #5693: fallback-loopets pre-sletning af cross-enheds-flytninger redder nu
+  // swappen ALLIGEVEL, selv når batch-RPC'en er ude af drift — den systemiske
+  // diagnose ovenfor er stadig værdifuld (RPC'en er den robuste, atomiske vej;
+  // fallbacken dækker kun den simple swap-klasse), men enheds-symptomet er væk.
+  assert.equal(res.failed_units, 0, "#5693: fallback-loopets pre-sletning redder swappen alligevel");
 });
 
 test("#4163: en RASK batch-RPC saetter ikke flaget", async () => {
@@ -1716,6 +1724,79 @@ test("#4163: en RASK batch-RPC saetter ikke flaget", async () => {
   const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
   assert.equal(res.constraint_not_deferrable, false);
   assert.equal(res.failed_units, 0);
+});
+
+// ── #5693 (Sentry CYCLINGZONE-32, regression 24/9): to same-day-løb, samme pulje ──
+// Prod-formen: et AI-hold i D4 med 19 aktive senior-ryttere (0 skadede) på en
+// spilledag med TO senior-løb i SAMME pulje (Circuito del Porto kl. 10 UTC +
+// Grand Prix du Morbihan Mineur kl. 16 UTC, begge game_day 29). Rod-årsag:
+// batch-RPC'en (#3934) blev afvist (uanset hvorfor — #4163's skema-drift er kun
+// ÉN mulig årsag), og fallback-loopets insert-før-delete rammer så #3420's
+// rider-day-invariant for en rytter der flyttes mellem de to løb. Testen
+// reproducerer EN GENUIN cross-enheds-flytning (begge løbs ønskede trup er byttet
+// om, mirror #3934-mønsteret ovenfor) på en 19-rytters trup uden batch-RPC og
+// beviser at sweepen nu (a) aldrig dobbeltbooker og (b) fylder BEGGE løb helt op.
+test("#5693: to same-day-løb i samme pulje, 19-rytters AI-hold — sweep dobbeltbooker ikke og fylder begge løb", async () => {
+  function seedSameDayScenario() {
+    const state = emptyState();
+    const seasonId = "season1";
+    state.races = [
+      { id: "CIRCUITO", season_id: seasonId, race_class: "Class2", league_division_id: 13, squad: "senior" },
+      { id: "MORBIHAN", season_id: seasonId, race_class: "Class2", league_division_id: 13, squad: "senior" },
+    ];
+    // Begge løb er ÉN-etapes Class2 og deler PRÆCIS samme game_day (29) — den
+    // faktiske prod-form (#5693), ikke blot et overlappende spænd.
+    state.race_stage_schedule = [
+      { race_id: "CIRCUITO", stage_number: 1, scheduled_at: "2026-09-26T10:00:00Z", game_day: 29 },
+      { race_id: "MORBIHAN", stage_number: 1, scheduled_at: "2026-09-26T16:00:00Z", game_day: 29 },
+    ];
+    state.race_stage_profiles = [
+      { race_id: "CIRCUITO", ...flatProfile(1) }, { race_id: "MORBIHAN", ...flatProfile(1) },
+    ];
+    // AI-hold (ingen bruger) — mirror Senty-enhedens 19 aktive senior-ryttere, 0 skadede.
+    state.teams = [{ id: "ai1", is_ai: true, user_id: null, is_test_account: false, is_frozen: false, league_division_id: 13 }];
+    seedTeamRiders(state, "ai1", 19);
+    return { state, seasonId };
+  }
+
+  // Fang generatorens ønskede tildeling for begge løb (batch-RPC intakt), byt så
+  // de to løbs trupper om — samme "crossedSeedFromDesired"-mønster som #3934-
+  // testene ovenfor, blot med 19 ryttere og en AI-hold-facon i stedet for 8.
+  const { state: seedState, seasonId } = seedSameDayScenario();
+  await runRaceEntryGenerator({ supabase: makeSupabase(seedState), seasonId, dryRun: false });
+  const pick = (raceId) => seedState.race_entries
+    .filter((e) => e.race_id === raceId)
+    .map((e) => ({ rider_id: e.rider_id, race_role: e.race_role }));
+  const desiredCircuito = pick("CIRCUITO");
+  const desiredMorbihan = pick("MORBIHAN");
+  assert.equal(desiredCircuito.length, 6, "sanity: Circuito fyldes til selection-cap (6/6) fra 19 ledige");
+  assert.equal(desiredMorbihan.length, 6, "sanity: Morbihan fyldes til selection-cap (6/6) fra 19 ledige");
+
+  const { state, seasonId: seasonId2 } = seedSameDayScenario();
+  state.race_entries = [
+    ...desiredMorbihan.map((p) => ({
+      race_id: "CIRCUITO", rider_id: p.rider_id, team_id: "ai1", race_role: p.race_role, is_auto_filled: true,
+    })),
+    ...desiredCircuito.map((p) => ({
+      race_id: "MORBIHAN", rider_id: p.rider_id, team_id: "ai1", race_role: p.race_role, is_auto_filled: true,
+    })),
+  ];
+  // Ingen batch-RPC (default) — day-invarianten håndhæves som DB-backstop, mirror
+  // Sentry-enhedens rider-day-invariant-afvisning.
+  const supabase = makeSupabase(state, { enforceDayInvariant: true });
+  const res = await runRaceEntryGenerator({ supabase, seasonId: seasonId2, dryRun: false });
+
+  assert.equal(res.failed_units, 0, `sweep burde have redet begge løb uden dobbeltbooking (fejl: ${res.errors.join("; ")})`);
+  assert.equal(res.errors.length, 0, "ingen Sentry-capture — no_rider_double_booking blev aldrig forsøgt");
+
+  const circuitoRiders = state.race_entries.filter((e) => e.race_id === "CIRCUITO").map((e) => e.rider_id);
+  const morbihanRiders = state.race_entries.filter((e) => e.race_id === "MORBIHAN").map((e) => e.rider_id);
+  assert.equal(circuitoRiders.length, 6, "Circuito fyldt helt (6/6)");
+  assert.equal(morbihanRiders.length, 6, "Morbihan fyldt helt (6/6)");
+  const circuitoSet = new Set(circuitoRiders);
+  for (const rid of morbihanRiders) {
+    assert.ok(!circuitoSet.has(rid), `${rid} dobbeltbooket i BEGGE same-day-løb (#5693)`);
+  }
 });
 
 // ── #4201: assistant_selection_mode ──────────────────────────────────────────
