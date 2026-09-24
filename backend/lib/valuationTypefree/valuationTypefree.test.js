@@ -24,8 +24,21 @@ import {
 } from "./abilityProduction.js";
 import { buildCapsTypefree, capFactorFromSig, headroomBudget, profileSignature, stepTypefree } from "./careerTypefree.js";
 import { fitTypefreeProduction } from "./fitProduction.js";
-import { fitCommon, fitLocal, marketAdjustedValue, qualifyMarketEvidence } from "./marketComponent.js";
+import { fitCommon, fitLocal, hydrateMarketFit, marketAdjustedValue, qualifyMarketEvidence, serializeMarketFit } from "./marketComponent.js";
+import { readFileSync } from "node:fs";
+import { predictBaseValue } from "../riderValuation.js";
+import { recomputeRiderValue, selectChangedValueUpdates } from "../riderValueRefresh.js";
 import {
+  VALUATION_MODEL_IDS,
+  loadValuationModelById,
+  resolveProductionValueModelId,
+  resolveValuationModelId,
+  withMarketFit,
+} from "../riderValuationModelSelect.js";
+import {
+  TYPEFREE_MODEL_ID,
+  isTypefreeModel,
+  valueTypefree,
   ELITE_PREMIUM_PHASE_STEPS,
   elitePremiumPhaseFactor,
   phasedElitePremium,
@@ -359,6 +372,138 @@ test("lokal komponent krymper mod 0 uden evidens og er glat", () => {
   const step = Math.abs(local.predict({ abilities: { a: 53, b: 50 }, age: 25 }) - near);
   assert.ok(step < 0.05);
   assert.ok(local.evidence({ abilities: { a: 52, b: 50 }, age: 25 }) > 0.6);
+});
+
+// ── v3 (25/9): den samlede model bag nøglen v6 ──────────────────────────────
+// Kører gennem PRÆCIS den signatur admin-forhåndsvisningen (#5686) kalder:
+// recomputeRiderValue(riderRow, abilities, baseline, loadValuationModelById(key),
+//   { typeAbilities, youthBaseline, productionModel, phaseStep }).
+// Markeds-fittet i disse tests er syntetisk (ingen ejer-tal).
+const V3_ABIL = { climbing: 72, time_trial: 66, prolog: 60, flat: 64, tempo: 66, sprint: 48, acceleration: 52, punch: 58, endurance: 70, recovery: 66, durability: 62, descending: 60, cobblestone: 45, positioning: 58, aggression: 55, tactics: 57 };
+const V3_BASELINE = JSON.parse(readFileSync(new URL("../riderTypesBaseline.json", import.meta.url), "utf8"));
+const V3_YOUTH = JSON.parse(readFileSync(new URL("../riderTypesBaselineYouth.json", import.meta.url), "utf8"));
+
+function syntheticMarketFit({ weight = 0.5, capLn = Math.log(1.5), r = (i) => (i % 2 ? 0.2 : -0.1) } = {}) {
+  const rows = [];
+  for (let i = 0; i < 30; i++) {
+    const abilities = Object.fromEntries(Object.keys(V3_ABIL).map((k, j) => [k, 40 + ((i * 7 + j * 3) % 35)]));
+    rows.push({ abilities, age: 21 + (i % 12), O: 40 + (i % 25), r: r(i) });
+  }
+  const keys = Object.keys(V3_ABIL);
+  const common = fitCommon(rows, { lambda: 1 });
+  const local = fitLocal(rows, { abilityKeys: keys, bandwidth: 0.8, k0: 3, common });
+  return { fit: serializeMarketFit({ common, local, weight, capLn }), common, local };
+}
+
+test("v3: nøglen v6 er valgbar og dispatcher recomputeRiderValue til den typefri model", () => {
+  assert.ok(VALUATION_MODEL_IDS.includes(TYPEFREE_MODEL_ID));
+  assert.equal(resolveValuationModelId("v6"), "v6");
+  const v6 = loadValuationModelById("v6");
+  assert.ok(isTypefreeModel(v6));
+  assert.equal(v6.model_id, "v6");
+  assert.equal(v6.market_fit, undefined, "den committede JSON bærer ingen markeds-tal");
+  const rider = { id: "x", age: 25, potentiale: 3 };
+  const out = recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { youthBaseline: V3_YOUTH });
+  const direct = valueTypefree({ ...rider }, V3_ABIL, v6, { phaseStep: 0 });
+  assert.equal(out.base_value, direct.value);
+  assert.ok(out.base_value > 0);
+  assert.equal(out.valuation_components.model_id, "v6");
+  assert.equal(out.valuation_components.market_applied, false);
+  // predictBaseValue (api.js-stien) giver samme trin-0-tal.
+  assert.equal(predictBaseValue(rider, V3_ABIL, v6), out.base_value);
+  // v4 er urørt af dispatchen.
+  const v4 = loadValuationModelById("v4");
+  const outV4 = recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v4, { youthBaseline: V3_YOUTH });
+  assert.equal(outV4.valuation_components, undefined);
+  assert.notEqual(outV4.base_value, out.base_value);
+});
+
+test("v3: phaseStep 0-4 er monoton faldende for eliten og står stille for ikke-eliten", () => {
+  const v6 = loadValuationModelById("v6");
+  const rider = { id: "e", age: 27, potentiale: 3 };
+  const byStep = [0, 1, 2, 3, 4].map((phaseStep) =>
+    recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { youthBaseline: V3_YOUTH, phaseStep }).base_value);
+  for (let i = 1; i < byStep.length; i++) assert.ok(byStep[i] < byStep[i - 1], `trin ${i} skal være under trin ${i - 1}`);
+  // Ud over sidste trin: ny normal, ingen yderligere fald. Ugyldigt → trin 0.
+  assert.equal(recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { phaseStep: 9 }).base_value, byStep[4]);
+  assert.equal(recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { phaseStep: "x" }).base_value, byStep[0]);
+  // Under præmie-tærsklen: trinnet flytter intet.
+  const low = Object.fromEntries(Object.keys(V3_ABIL).map((k) => [k, 30]));
+  const lowSteps = [0, 4].map((phaseStep) => recomputeRiderValue(rider, low, V3_BASELINE, v6, { phaseStep }).base_value);
+  assert.equal(lowSteps[0], lowSteps[1]);
+});
+
+test("v3: løngrundlaget følger aldrig v6 (productionModel urørt)", () => {
+  const v4 = loadValuationModelById("v4");
+  const v6 = loadValuationModelById("v6");
+  const rider = { id: "w", age: 26, potentiale: 3 };
+  const wageV4 = recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v4).current_production_value;
+  const implicit = recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6);
+  const explicit = recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { productionModel: v4 });
+  assert.ok(wageV4 > 0);
+  assert.equal(implicit.current_production_value, wageV4, "uden productionModel: v4, ikke v6");
+  assert.equal(explicit.current_production_value, wageV4);
+  for (const phaseStep of [0, 2, 4]) {
+    assert.equal(recomputeRiderValue(rider, V3_ABIL, V3_BASELINE, v6, { phaseStep, market: syntheticMarketFit().fit }).current_production_value, wageV4);
+  }
+  // Løn-nøglen kan ikke pege på v6.
+  assert.equal(resolveProductionValueModelId("v6"), "v4");
+  assert.equal(resolveProductionValueModelId("v5"), "v5");
+});
+
+test("v3: en rytter på et managerhold regnes som alle andre og ændrer værdi", () => {
+  const v4 = loadValuationModelById("v4");
+  const v6 = loadValuationModelById("v6");
+  const free = { id: "f", age: 24, potentiale: 3, team_id: null };
+  const managed = { ...free, id: "m", team_id: "team-human", base_value: 1 };
+  const aiTeam = { ...free, id: "a", team_id: "team-ai" };
+  const vFree = recomputeRiderValue(free, V3_ABIL, V3_BASELINE, v6).base_value;
+  const vManaged = recomputeRiderValue(managed, V3_ABIL, V3_BASELINE, v6).base_value;
+  assert.equal(vManaged, vFree, "holdet indgår ikke i prisen");
+  assert.equal(recomputeRiderValue(aiTeam, V3_ABIL, V3_BASELINE, v6).base_value, vFree);
+  assert.notEqual(vManaged, recomputeRiderValue(managed, V3_ABIL, V3_BASELINE, v4).base_value, "managerholdets rytter flytter sig ved skiftet");
+  const updates = selectChangedValueUpdates([{ ...managed, primary_type: "gc", secondary_type: "tt" }], new Map([["m", V3_ABIL]]), V3_BASELINE, v6, new Map(), V3_YOUTH, v4);
+  assert.equal(updates.length, 1, "søndagskørslens diff skriver managerholdets rytter");
+  assert.equal(updates[0].base_value, vManaged);
+});
+
+test("v3: typebyte giver 0 afvigelser gennem recomputeRiderValue på alle fem trin", () => {
+  const v6 = loadValuationModelById("v6");
+  const { fit } = syntheticMarketFit();
+  const variants = [
+    {},
+    { valuation_type: "sprinter" },
+    { valuation_type: "gc", primary_type: "climber" },
+    { primary_type: "brostensrytter", secondary_type: "rouleur", best_role: "sprinter" },
+  ];
+  for (const phaseStep of [0, 1, 2, 3, 4]) {
+    const vals = variants.map((v) => recomputeRiderValue({ id: "t", age: 23, potentiale: 4, ...v }, V3_ABIL, V3_BASELINE, v6, { phaseStep, market: fit }).base_value);
+    assert.equal(new Set(vals).size, 1, `trin ${phaseStep}: ${vals.join(", ")}`);
+  }
+});
+
+test("v3: markeds-fittet gemmes og hydreres uden tab, og loftet holder", () => {
+  const { fit, common, local } = syntheticMarketFit({ weight: 1, capLn: Math.log(1.1), r: (i) => (i % 3 ? 1.5 : -1.5) });
+  const restored = hydrateMarketFit(JSON.parse(JSON.stringify(fit)));
+  assert.ok(restored);
+  const x = { abilities: V3_ABIL, age: 25, O: 55 };
+  assert.ok(Math.abs(restored.common.predict(x) - common.predict(x)) < 1e-12);
+  assert.ok(Math.abs(restored.local.predict(x) - local.predict(x)) < 1e-12);
+  const v6 = loadValuationModelById("v6");
+  const rider = { id: "k", age: 25, potentiale: 3 };
+  const without = valueTypefree(rider, V3_ABIL, v6, { market: null });
+  const withM = valueTypefree(rider, V3_ABIL, withMarketFit(v6, fit));
+  assert.equal(withM.market_applied, true);
+  assert.ok(withM.market_factor <= 1.1 + 1e-12 && withM.market_factor >= 1 / 1.1 - 1e-12, "loft pr. rytter");
+  assert.equal(withM.base, without.value, "markedet flytter kun oven på grundværdien");
+  // Ugyldigt fit → intet marked (ikke en NaN-pris).
+  assert.equal(hydrateMarketFit({ ...fit, weight: -1 }), null);
+  assert.equal(withMarketFit(v6, "{not json").market_fit, undefined);
+  assert.equal(withMarketFit(loadValuationModelById("v4"), fit).market_fit, undefined, "kun v6 får et marked");
+  // Mangler en evne kernen bruger, falder DEN rytter tilbage til faktor 1.
+  const partial = { ...V3_ABIL };
+  delete partial.tactics;
+  assert.equal(valueTypefree(rider, partial, withMarketFit(v6, fit)).market_factor, 1);
 });
 
 test("markedsjustering respekterer loftet og vægt 0 = ingen effekt", () => {

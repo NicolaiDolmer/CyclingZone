@@ -58,6 +58,7 @@ import {
   fitLocal,
   marketAdjustedValue,
   qualifyMarketEvidence,
+  serializeMarketFit,
 } from "../../lib/valuationTypefree/marketComponent.js";
 
 const arg = (name) => {
@@ -755,6 +756,13 @@ report.market = {
 
 writeFileSync(join(OUT, "typefree5497-report.json"), JSON.stringify(report, (k, v) => (k === "abilities" ? undefined : v), 2));
 writeFileSync(join(OUT, "typefree5497-model-proposal.json"), JSON.stringify(tfModel, null, 2));
+// v3 (25/9): markeds-fittet i den form v6-nøglen læser (app_config
+// rider_valuation_v6_market / tørkørslens --market). PRIVAT: ejer-valg + punkter
+// afledt af rigtige handler. Committes aldrig.
+writeFileSync(join(OUT, "typefree5497-market-fit.json"), JSON.stringify(serializeMarketFit({
+  common, local, weight: MARKET_WEIGHT, capLn: MARKET_CAP,
+  meta: { fitted_for: "#5497 v3", market_sha: report.inputs.market.sha, n_train: train.length, selection: { lambda: sel.lambda, bandwidth: sel.bandwidth, k0: sel.k0 } },
+})));
 const pct = (x) => (x == null ? "n/a" : `${(x * 100).toFixed(1)}%`);
 const dev = report.develop_and_sell;
 console.log(JSON.stringify({
