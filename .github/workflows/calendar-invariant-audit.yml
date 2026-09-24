@@ -206,6 +206,27 @@ jobs:
             echo "::warning::Kalender-scorecard (#4573) fandt brud mod den skrevne kalender — se calendar-scorecard-db.txt. Advisory (§10-kalibreringsefterslæb), vælter ikke jobbet."
           fi
 
+      # #4827: KNOWN_SUPPLY_DEVIATIONS (backend/lib/catalogSupplyCheck.js) er tidsbegrænsede
+      # undtagelser fra forsynings-kontrollen, hver med en hård `reviewBy`-udløbsdato.
+      # catalogSupplyCheck.test.js kan ikke selv vogte den med den ÆGTE klokke — testen
+      # kører også med uret skubbet langt frem (CZ_TEST_CLOCK_OFFSET_DAYS, #3385-mekanismen)
+      # og bruger derfor med vilje en FAST "i dag", ellers ville en klokke-skubbet CI-kørsel
+      # fælde testen for en afvigelse ingen faktisk har kigget på. Udløbstjekket med den
+      # rigtige klokke ligger i stedet her, ikke-gatende, på samme daglige rytme som resten
+      # af filen. Kræver hverken kredentialer eller et katalog (se scriptets --check-expiry).
+      - name: Catalog supply deviation expiry (#4827/#5405, advisory)
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: supplyexpiry
+        shell: bash
+        run: |
+          set -o pipefail
+          expiry_exit=0
+          node backend/scripts/dev/catalogSupplyReport.mjs --check-expiry | tee catalog-supply-expiry.txt || expiry_exit=$?
+          echo "exit=$expiry_exit" >> "$GITHUB_OUTPUT"
+          if [ "$expiry_exit" != "0" ]; then
+            echo "::warning::Catalog-supply-afvigelse udløbet (#4827/#5405) — se catalog-supply-expiry.txt. Advisory, vælter ikke jobbet."
+          fi
+
       - name: Upload report
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]')
         uses: actions/upload-artifact@v7
@@ -217,6 +238,7 @@ jobs:
             constraint-form.txt
             race-entry-days-drift.txt
             calendar-scorecard-db.txt
+            catalog-supply-expiry.txt
 
       - name: Comment on PR if findings (PR runs only)
         if: github.event_name == 'pull_request' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.entrydays.outputs.count != '0')
@@ -247,7 +269,7 @@ jobs:
         # cron-run droppede fundet tavst — det nåede kun artefakten, som ingen åbner.
         # Vagten bliver BEVIDST ikke en del af det hårde fail-step nedenfor (samme snævre
         # gate som filens docstring låser), men et fund skal være SYNLIGT i tracking-issuet.
-        if: github.event_name == 'schedule' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.invariants.outputs.oevrige_brud != '0' || steps.entrydays.outputs.count != '0')
+        if: github.event_name == 'schedule' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.invariants.outputs.oevrige_brud != '0' || steps.entrydays.outputs.count != '0' || steps.supplyexpiry.outputs.exit != '0')
         uses: actions/github-script@v9
         with:
           script: |
@@ -256,7 +278,9 @@ jobs:
             const constraints = fs.existsSync('constraint-form.txt') ? fs.readFileSync('constraint-form.txt', 'utf8').trim() : '';
             const entrydays = fs.existsSync('race-entry-days-drift.txt') ? fs.readFileSync('race-entry-days-drift.txt', 'utf8').trim() : '';
             const scorecard = fs.existsSync('calendar-scorecard-db.txt') ? fs.readFileSync('calendar-scorecard-db.txt', 'utf8').trim() : '';
+            const supplyExpiry = fs.existsSync('catalog-supply-expiry.txt') ? fs.readFileSync('catalog-supply-expiry.txt', 'utf8').trim() : '';
             const scorecardExit = '${{ steps.dbscorecard.outputs.exit }}';
+            const supplyExpiryExit = '${{ steps.supplyexpiry.outputs.exit }}';
             const kal = '${{ steps.invariants.outputs.kalender_brud }}';
             const con = '${{ steps.constraints.outputs.count }}';
             const andre = '${{ steps.invariants.outputs.oevrige_brud }}';
@@ -287,6 +311,14 @@ jobs:
                 'Terræn-gulve, endagsløb-andel, klasse-etapebånd, komposition, finale-bånd og løb-hver-kalenderdag for den skrevne kalender. Dommen står i `SAMLET:`-linjen; linjer med `~` (§6b\'s uniforme mål, §6\'s strenge ±2 pp) er RAPPORT-ONLY og tælles ikke med. Kendt kalibreringsefterslæb på komposition/finale (§10) — behandl ikke en rød linje her som et akut kalender-brud på linje med sektionerne ovenfor.',
                 '```',
                 scorecard,
+                '```',
+              ].join('\n') : '',
+              supplyExpiry ? [
+                '',
+                `### Catalog-supply-afvigelse expiry (#4827/#5405, ADVISORY — exit ${supplyExpiryExit}, blokerer ikke)`,
+                'KNOWN_SUPPLY_DEVIATIONS i backend/lib/catalogSupplyCheck.js er tidsbegrænsede undtagelser med en `reviewBy`-udløbsdato. Er en udløbet, skal ejeren genmåle mod prod-kataloget (`node backend/scripts/dev/catalogSupplyReport.mjs --prod`) og enten forlænge eller lukke afvigelsen.',
+                '```',
+                supplyExpiry,
                 '```',
               ].join('\n') : '',
               '',
