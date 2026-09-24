@@ -1,5 +1,185 @@
 export const PATCHES = [
   {
+    "version": "7.297",
+    "date": "2026-09-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Today's stages shows every winner and the right overall position",
+          "body": "What changed: Today's stages loaded all of the day's results in one call with a 1,000 row limit, so a finished stage could say that no results were published, and the overall position could be wrong. It now loads each race on its own, and a one-day race shows its winner too.\n\nWhat it means for you: When a stage is finished, you see the winner and your team's overall position straight away."
+        },
+        "da": {
+          "title": "Dagens etaper viser alle vindere og den rigtige samlede placering",
+          "body": "Hvad er ændret: Dagens etaper hentede alle dagens resultater i ét kald med et loft på 1.000 rækker, så en færdig etape kunne sige, at der ikke var resultater, og den samlede placering kunne være forkert. Nu hentes hvert løb for sig, og et endagsløb viser også sin vinder.\n\nHvad det betyder for dig: Når en etape er kørt, ser du vinderen og dit holds samlede placering med det samme."
+        },
+        "refs": [
+          5589,
+          5601,
+          5598
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Sign up for next season from the top of the dashboard",
+          "body": "What changed: If you have been away for a while, the sign-up card for next season now sits at the top of the dashboard.\n\nWhat it means for you: One tap keeps your team in the game at the season change."
+        },
+        "da": {
+          "title": "Tilmeld dig næste sæson øverst på dashboardet",
+          "body": "Hvad er ændret: Har du været væk et stykke tid, står tilmeldingskortet til næste sæson nu øverst på dashboardet.\n\nHvad det betyder for dig: Ét tryk holder dit hold med ved sæsonskiftet."
+        },
+        "refs": [
+          452,
+          5605
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Discord invitation in your inbox",
+          "body": "What changed: Your inbox has a card with a Join Discord button and a line about the forum.\n\nWhat it means for you: You find the community in one tap."
+        },
+        "da": {
+          "title": "Discord-invitation i din indbakke",
+          "body": "Hvad er ændret: Din indbakke har et kort med en Join Discord-knap og en linje om forummet.\n\nHvad det betyder for dig: Du finder fællesskabet med ét tryk."
+        },
+        "refs": [
+          2761,
+          5604
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Roadmap",
+        "en": {
+          "title": "The roadmap's Today column is true",
+          "body": "What changed: The texts under Today on the roadmap match what is live.\n\nWhat it means for you: What the roadmap says is in the game, is in the game."
+        },
+        "da": {
+          "title": "Roadmappens Today-kolonne passer",
+          "body": "Hvad er ændret: Teksterne under Today på roadmappen svarer til det, der er live.\n\nHvad det betyder for dig: Det, roadmappen siger er i spillet, er i spillet."
+        },
+        "refs": [
+          5387,
+          5558
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "At least 24 hours to pick your squad at the season change",
+          "body": "What changed: The last race day of a season ends at 15:00, and the first stage of the new season starts 24 hours after the switch.\n\nWhat it means for you: You get a full day to set your squad before the first race of the season."
+        },
+        "da": {
+          "title": "Mindst 24 timer til trupudtagelse ved sæsonskiftet",
+          "body": "Hvad er ændret: Sæsonens sidste løbsdag slutter kl. 15, og den nye sæsons første etape starter 24 timer efter skiftet.\n\nHvad det betyder for dig: Du får et helt døgn til at sætte din trup før sæsonens første løb."
+        },
+        "refs": [
+          5592,
+          5596
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Squad caps: 12 U23 riders and 10 juniors",
+          "body": "What changed: The academy cap of 8 is replaced by one cap per squad: 12 on the U23 team and 10 on the junior team. The cap applies in the bid room, when you sign a rider and when you move a rider down from the senior squad. Help and rules follow.\n\nWhat it means for you: More room for young riders, and the game tells you which squad is full before you bid."
+        },
+        "da": {
+          "title": "Truplofter: 12 U23-ryttere og 10 juniorer",
+          "body": "Hvad er ændret: Akademiloftet på 8 er erstattet af ét loft pr. trup: 12 på U23-holdet og 10 på juniorholdet. Loftet gælder i budrummet, når du signerer en rytter, og når du rykker en rytter ned fra seniortruppen. Hjælp og regler følger med.\n\nHvad det betyder for dig: Mere plads til unge ryttere, og spillet siger, hvilken trup der er fuld, før du byder."
+        },
+        "refs": [
+          5568,
+          5626,
+          5547
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bottom bars no longer cover the bottom menu",
+          "body": "What changed: The feedback bar, the cookie banner and the update banner sit above the bottom menu on your phone instead of on top of it.\n\nWhat it means for you: The bottom menu can always be tapped."
+        },
+        "da": {
+          "title": "Bundbjælkerne dækker ikke længere bundmenuen",
+          "body": "Hvad er ændret: Feedback-baren, cookie-banneret og opdaterings-banneret står over bundmenuen på din telefon i stedet for oven på den.\n\nHvad det betyder for dig: Bundmenuen kan altid trykkes."
+        },
+        "refs": [
+          5561,
+          5627
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The Vision tab reads as a list on your phone",
+          "body": "What changed: The board's milestones are a vertical list on narrow screens instead of a row of narrow columns.\n\nWhat it means for you: Every milestone title is readable on your phone."
+        },
+        "da": {
+          "title": "Vision-fanen læses som en liste på din telefon",
+          "body": "Hvad er ændret: Bestyrelsens milepæle er en lodret liste på smalle skærme i stedet for en række smalle kolonner.\n\nHvad det betyder for dig: Hver milepæls titel kan læses på din telefon."
+        },
+        "refs": [
+          5617,
+          5629
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Quick rest on your phone",
+          "body": "What changed: On Daily training on your phone, tap Select riders, tap the riders and tap Set to rest. Before, you had to open each rider one at a time.\n\nWhat it means for you: Resting a tired group takes three taps."
+        },
+        "da": {
+          "title": "Hurtig hvile på din telefon",
+          "body": "Hvad er ændret: På Daglig træning på din telefon trykker du Vælg ryttere, trykker på rytterne og trykker Sæt til hvile. Før skulle du åbne hver rytter enkeltvis.\n\nHvad det betyder for dig: At give en træt gruppe hvile tager tre tryk."
+        },
+        "refs": [
+          5620,
+          5485,
+          5638
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training progress carries over on race days",
+          "body": "What changed: When the race day cap stops a rider from gaining a full point, the rest is no longer lost. It carries over to the next training day.\n\nWhat it means for you: A rider who trains hard right before the cap does not lose that work."
+        },
+        "da": {
+          "title": "Træningsfremgang bæres videre på løbsdage",
+          "body": "Hvad er ændret: Når løbsdagsloftet stopper en rytter fra at få et helt point, går resten ikke længere tabt. Den bæres videre til næste træningsdag.\n\nHvad det betyder for dig: En rytter, der træner hårdt lige før loftet, mister ikke det arbejde."
+        },
+        "refs": [
+          4750,
+          5529
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.296",
     "date": "2026-09-23",
     "label": "Beta",
