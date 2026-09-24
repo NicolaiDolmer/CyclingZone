@@ -81,8 +81,8 @@ cd C:\dev\CyclingZone
 cd frontend; npm run build; cd ..
 cd backend; node --test; cd ..
 
-# Test Discord MCP (hvis Railway CLI er klar)
-pwsh -File scripts/setup-discord-mcp.ps1
+# Discord MCP (read-only, #5484)
+pwsh -File scripts/setup-discord-mcp.ps1 -SyncTokenFromInfisical
 
 # Åbn én Claude Code session i den nye placering. Verificér:
 # - MCP-servere er tilgængelige (Discord, Supabase, GitHub)
@@ -190,7 +190,7 @@ Installerer root-deps (lint-staged) og aktiverer git pre-commit/pre-push hooks (
 3. **Verificér projekt-link:** `Test-Path .infisical.json` skal være `True` (committet til repo, peger på workspace `681fe0be-...`).
 4. **Test runtime-injection:** `infisical run --env=dev -- node -e "console.log('SUPABASE_URL set:', !!process.env.SUPABASE_URL)"` → skal printe `true`.
 5. **Start backend lokalt:** `npm run dev:backend` (wrapper omkring `infisical run --env=dev --recursive -- node ...`). Backend behøver IKKE `backend/.env`-fil længere — env vars injiceres ved runtime.
-6. **`.mcp.json`** auto-genereres af `setup-discord-mcp.ps1` hvis Railway CLI er logget ind.
+6. **Discord-MCP:** `pwsh -File scripts/setup-discord-mcp.ps1 -SyncTokenFromInfisical` (efter `infisical login`). Se [Discord-MCP pr. PC](#discord-mcp-pr-pc-5484) nedenfor.
 7. **`.codex.local/`** mappe — opretter Codex selv ved første session.
 
 > **Nicolai:** Secrets skal være indtastet i Infisical-dashboardet (infisical.com) for at ovenstående fungerer. Phase 1 (#339) er allerede komplet — alle dev/preview/prod miljøer populated via `scripts/seed-infisical.ps1`. Se [secret-management-adr.md](decisions/secret-management-adr.md) for fuld migration-historik.
@@ -272,6 +272,26 @@ node --version   # skal printe v24.x.x
 
 > **PC2-bemærkning:** PC2 kørte Node v25 — `fnm use 24` (eller automatisk via `.node-version`) bringer den i pari med PC1 + CI uden at afinstallere noget.
 
+### Discord-MCP pr. PC (#5484)
+
+Kør én gang pr. PC (DOLMERPC er gjort 24/9; NICOLAIPC og EMMAPC mangler), og igen når `scripts/discord/mcp-readonly-server.mjs` ændres:
+
+```powershell
+pwsh -File scripts/setup-discord-mcp.ps1 -SyncTokenFromInfisical
+```
+
+Scriptet ændrer disse ting uden for repoet (alle idempotente):
+
+| Hvad | Hvor | Ændring |
+|---|---|---|
+| Server-fil | `%LOCALAPPDATA%\CyclingZone\discord-mcp\mcp-readonly-server.mjs` | Kopi af `scripts/discord/mcp-readonly-server.mjs` |
+| MCP-config | `.mcp.json` i main-checkout og alle worktrees + `%OneDrive%\CyclingZone-context\secrets\mcp.json` (kilden til worktree-hardlinks) | `node ${LOCALAPPDATA}/CyclingZone/discord-mcp/mcp-readonly-server.mjs`, ingen `env`-blok |
+| Token | User env var `DISCORD_TOKEN` | Hentes fra Infisical dev via `infisical run` (værdien printes aldrig) og tjekkes mod `GET /users/@me` |
+| Plugin | `~/.claude/settings.json` → `enabledPlugins` | `discord@claude-plugins-official` slås fra (`claude plugin disable`) |
+| MCP-godkendelse | `.claude/settings.local.json` i hver checkout | `enabledMcpjsonServers` indeholder `discord` |
+
+Bagefter: start en **ny** Claude Code-session (MCP loades kun ved start). `/mcp` skal vise `discord` som connected, og `mcp__discord__discord_read_messages` skal kunne læse en kanal.
+
 ---
 
 ## Troubleshooting
@@ -329,7 +349,7 @@ Trust-entryen i `~/.codex/config.toml` betyder Codex ikke spørger om tilladelse
 | Kode | Git | `git push` / `git pull` |
 | Docs i repo (NOW.md, AGENTS.md, etc.) | Git | Same |
 | `backend/.env`, `frontend/.env*` | Lokal, gitignored (kan være tom efter Phase 5) | **Infisical runtime-injection** → `npm run dev:backend` wrapper bruger `infisical run --env=dev --recursive -- node ...`; ingen secret-værdier på disk (#327 Phase 5) |
-| `.mcp.json` | Lokal, gitignored | Auto-genereres af `setup-discord-mcp.ps1` (token fra Railway) |
+| `.mcp.json` | Lokal, gitignored | Genereres af `setup-discord-mcp.ps1` uden secrets; `DISCORD_TOKEN` er User env var fra Infisical (#5484) |
 | `.codex/hooks.json` | **Git (tracked siden #5065)** | `git push` / `git pull`. Codex' hook-sæt er en sikkerhedsguard og skal være ens på alle PC'er — den peger på `.claude/hooks/` og `scripts/hooks/`, så der er én vedligeholdt kilde per hook |
 | `.codex/config.toml` | Lokal, gitignored | Bærer MCP-server-definitioner + env — skrives i hånden per PC (intet script genererer den; `setup-discord-mcp.ps1` rører kun `.mcp.json`). Hold den secret-fri: lad `env`-blokken være tom og lad tokenet komme fra parent-processen, som `.mcp.json` gør |
 | `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` (midlertidig hybrid — readonly AI-context) |
