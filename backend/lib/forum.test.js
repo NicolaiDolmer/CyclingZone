@@ -90,6 +90,18 @@ function seedState(overrides = {}) {
   };
 }
 
+// #4827 — CI kører testene også mod en klokke skubbet langt frem i tiden
+// (CZ_TEST_CLOCK_OFFSET_DAYS, se scripts/fake-clock-preload.mjs) for at fange
+// klokke-afhængige antagelser før de rammer prod (#3385-mekanismen). listForumPosts
+// har et FORUM_ARCHIVE_AFTER_DAYS-vindue relativt til `now` (default: den ægte
+// vægur-tid) — et listForumPosts-kald uden et eksplicit `now` ville derfor filtrere
+// ALLE nedenstående fixtures væk som "arkiverede", så snart uret rykkes forbi
+// FORUM_ARCHIVE_AFTER_DAYS. Denne konstant ligger et par uger efter fixturenes
+// seneste tidsstempel (2026-08-20) og sendes eksplicit til hvert listForumPosts-kald
+// der ellers ikke selv angiver `now` — akkurat den faste "nu"-værdi produktionskoden
+// ville have brugt, hvis testen var kørt dagen den blev skrevet.
+const LIST_NOW = new Date("2026-08-25T12:00:00Z");
+
 // ── Input-klemning ──────────────────────────────────────────────────────────
 
 test("parseForumLimit klemmer til [1, MAX] og falder tilbage til default", () => {
@@ -137,7 +149,7 @@ test("listForumPosts: pinned i egen blok på side 1, hovedliste nyeste først, f
     forum_poll_options: [{ id: "o1", post_id: "p3", idx: 0, label: "Yes" }],
   }));
 
-  const result = await listForumPosts({ supabase: fake });
+  const result = await listForumPosts({ supabase: fake, now: LIST_NOW });
   assert.equal(result.pinned.length, 1);
   assert.equal(result.pinned[0].id, "p3");
   assert.equal(result.pinned[0].has_poll, true);
@@ -167,7 +179,7 @@ test("forfatter-shape: username + holdnavn + team_id + division, aldrig email/us
     ],
   }));
 
-  const list = await listForumPosts({ supabase: fake, userId: "u1" });
+  const list = await listForumPosts({ supabase: fake, userId: "u1", now: LIST_NOW });
   assertAuthorShape(list.items[0].author);
   assert.equal(list.items[0].author.division, 1);
   assert.equal(list.items[0].author.team_name, "Team Alpha");
@@ -205,13 +217,13 @@ test("listForumPosts: kategori-filter + keyset-cursor (sammensat aktivitet+seq),
     ],
   }));
 
-  const page1 = await listForumPosts({ supabase: fake, category: "general", limit: "1" });
+  const page1 = await listForumPosts({ supabase: fake, category: "general", limit: "1", now: LIST_NOW });
   assert.deepEqual(page1.items.map((p) => p.id), ["p3"]);
   assert.equal(page1.pinned.length, 1);
   assert.ok(page1.next_cursor); // sammensat streng, ikke længere et rå seq-tal
   assert.deepEqual(parseForumActivityCursor(page1.next_cursor), { ts: Date.parse("2026-08-01T10:00:00Z"), seq: 3 });
 
-  const page2 = await listForumPosts({ supabase: fake, category: "general", limit: "1", cursor: page1.next_cursor });
+  const page2 = await listForumPosts({ supabase: fake, category: "general", limit: "1", cursor: page1.next_cursor, now: LIST_NOW });
   assert.deepEqual(page2.items.map((p) => p.id), ["p1"]);
   assert.equal(page2.pinned.length, 0);
   assert.equal(page2.next_cursor, null);
@@ -233,7 +245,7 @@ test("listForumPosts: sorterer efter seneste aktivitet, ikke oprettelse", async 
     ],
   }));
 
-  const result = await listForumPosts({ supabase: fake });
+  const result = await listForumPosts({ supabase: fake, now: LIST_NOW });
   assert.deepEqual(result.items.map((p) => p.id), ["new-no-reply", "old-fresh-reply", "old-stale-reply"]);
 });
 
@@ -250,9 +262,9 @@ test("listForumPosts: side 2 gentager eller taber aldrig rækker ved delt aktivi
     ],
   }));
 
-  const page1 = await listForumPosts({ supabase: fake, limit: "2" });
+  const page1 = await listForumPosts({ supabase: fake, limit: "2", now: LIST_NOW });
   assert.deepEqual(page1.items.map((p) => p.id), ["p3", "p2"]);
-  const page2 = await listForumPosts({ supabase: fake, limit: "2", cursor: page1.next_cursor });
+  const page2 = await listForumPosts({ supabase: fake, limit: "2", cursor: page1.next_cursor, now: LIST_NOW });
   assert.deepEqual(page2.items.map((p) => p.id), ["p1"]);
   assert.equal(page2.next_cursor, null);
 });
@@ -264,7 +276,7 @@ test("listForumPosts: slettede opslag vises aldrig", async () => {
       post({ id: "p2", seq: 2, deleted_at: "2026-08-02T10:00:00Z" }),
     ],
   }));
-  const result = await listForumPosts({ supabase: fake });
+  const result = await listForumPosts({ supabase: fake, now: LIST_NOW });
   assert.deepEqual(result.items.map((p) => p.id), ["p1"]);
 });
 
@@ -352,7 +364,7 @@ test("listForumPosts: is_unread pr. tråd — ingen læse-række, nyere aktivite
     ],
   }));
 
-  const result = await listForumPosts({ supabase: fake, userId: "u1" });
+  const result = await listForumPosts({ supabase: fake, userId: "u1", now: LIST_NOW });
   const byId = Object.fromEntries(result.items.map((p) => [p.id, p.is_unread]));
   assert.equal(byId["never-read"], true); // ingen forum_thread_reads-række
   assert.equal(byId["read-then-replied"], true); // svaret kom EFTER last_read_at
@@ -361,7 +373,7 @@ test("listForumPosts: is_unread pr. tråd — ingen læse-række, nyere aktivite
 
 test("listForumPosts: uden userId (fx tests) er intet markeret ulæst", async () => {
   const fake = createFakeSupabase(seedState({ forum_posts: [post({ id: "p1" })] }));
-  const result = await listForumPosts({ supabase: fake });
+  const result = await listForumPosts({ supabase: fake, now: LIST_NOW });
   assert.equal(result.items[0].is_unread, false);
 });
 
@@ -1271,7 +1283,7 @@ test("#5000 listForumPosts: view_count og seneste svars forfatter følger med tr
     ],
   }));
 
-  const result = await listForumPosts({ supabase: fake, userId: "u1" });
+  const result = await listForumPosts({ supabase: fake, userId: "u1", now: LIST_NOW });
   const p1 = result.items.find((i) => i.id === "p1");
   const p2 = result.items.find((i) => i.id === "p2");
 
@@ -1287,7 +1299,7 @@ test("#5000 listForumPosts: manglende view_count falder til 0 (rækker fra før 
   const withoutColumn = post({ id: "p1" });
   delete withoutColumn.view_count;
   const fake = createFakeSupabase(seedState({ forum_posts: [withoutColumn] }));
-  const result = await listForumPosts({ supabase: fake, userId: "u1" });
+  const result = await listForumPosts({ supabase: fake, userId: "u1", now: LIST_NOW });
   assert.equal(result.items[0].view_count, 0);
   assert.equal(result.items[0].last_reply_author, null);
 });
