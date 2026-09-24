@@ -79,10 +79,13 @@ export function classifyPath(rawPath) {
   return "other";
 }
 
-function stripComments(text) {
+// Kun kommentarer der STARTER en linje fjernes. En blok-kommentar-regex over
+// hele filen aeder kode, naar en streng indeholder "/*" (fx "image/*") - saa
+// forsvandt en aegte laeser i api.js i baglaens-koerslen mod PR #5446.
+export function stripComments(text) {
   return String(text)
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+    .replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
 }
 
 function tokenSet(text) {

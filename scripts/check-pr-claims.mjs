@@ -46,7 +46,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { buildIndex, classifyPath, findReaders, loadRepoFiles, loadTreeFiles, parseStageFlagKeys, CATALOG_PATH } from "./check-flag-liveness.mjs";
+import { buildIndex, classifyPath, findReaders, loadRepoFiles, loadTreeFiles, parseStageFlagKeys, stripComments, CATALOG_PATH } from "./check-flag-liveness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLAIM_DIRS = Object.freeze(["backend", "frontend", "database", "shared", "api", "scripts", ".github"]);
@@ -80,7 +80,7 @@ export function cleanBody(body) {
  * @param {Set<string>} knownKeys
  * @returns {Array<{type: string, value: string, line: string}>}
  */
-export function extractClaims(body, knownKeys = new Set()) {
+export function extractClaims(body, knownKeys = new Set(), tables = new Set(["app_config"])) {
   const text = cleanBody(body);
   const claims = [];
   const seen = new Set();
@@ -110,8 +110,11 @@ export function extractClaims(body, knownKeys = new Set()) {
     for (const m of line.matchAll(/\b(?:process\.env|import\.meta\.env)\.([A-Z][A-Z0-9_]*)/g)) add("env", m[1], rawLine);
     for (const m of line.matchAll(/\b(VITE_[A-Z0-9_]+)\b/g)) add("env", m[1], rawLine);
 
-    const spans = [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-    for (const span of spans) {
+    for (const sm of line.matchAll(/`([^`]+)`/g)) {
+      const span = sm[1];
+      // Kontakt-ordet skal staa TAET paa navnet, ikke bare et sted paa linjen
+      // (PR #5501-linjen naevnte baade en hjaelpefunktion og "kontakten").
+      const near = line.slice(Math.max(0, sm.index - 50), sm.index + sm[0].length + 50);
       for (const tok of span.split(/[\s=(),:;'"<>[\]{}]+/).filter(Boolean)) {
         const t = tok.replace(/^[.?&]+|[.?]+$/g, "");
         if (BARE_FILE_RE.test(t)) {
@@ -124,8 +127,8 @@ export function extractClaims(body, knownKeys = new Set()) {
             else if (ENV_PREFIX.test(part)) add("env", part, rawLine);
             else add("konstant", part, rawLine);
           } else if (/^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/.test(part)) {
-            if (knownKeys.has(part) || SWITCH_CONTEXT.test(rawLine)) add("kontakt", part, rawLine);
-          } else if (/^[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*$/.test(part) && SWITCH_CONTEXT.test(rawLine) && !/\(\)$/.test(tok)) {
+            if (knownKeys.has(part) || (SWITCH_CONTEXT.test(near) && !tables.has(part))) add("kontakt", part, rawLine);
+          } else if (/^[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*$/.test(part) && SWITCH_CONTEXT.test(near) && !/\(\)$/.test(tok)) {
             add("kontakt", part, rawLine);
           }
         }
@@ -178,6 +181,18 @@ export function knownKeysFrom(index, catalogPath = CATALOG_PATH) {
   return keys;
 }
 
+/** Tabelnavne (CREATE TABLE) - de er ikke kontakter, selv naer ordet "noegle". */
+export function tableNames(indexes) {
+  const out = new Set(["app_config"]);
+  for (const index of indexes) {
+    for (const f of index.files) {
+      if (f.kind !== "sql") continue;
+      for (const m of f.text.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?([a-z][a-z0-9_]*)/gi)) out.add(m[1].toLowerCase());
+    }
+  }
+  return out;
+}
+
 function kindsOf(paths) {
   const kinds = new Set(paths.map((p) => classifyPath(p)));
   return kinds;
@@ -210,9 +225,8 @@ export function lookupClaim(claim, ctx) {
 
   if (claim.type === "sti") {
     const v = claim.value.replace(/\\/g, "/");
-    const re = v.includes("/")
-      ? new RegExp(`^${v.split("*").map(escapeRe).join("[^/]*")}$`)
-      : new RegExp(`(^|/)${v.split("*").map(escapeRe).join("[^/]*")}$`);
+    // Suffiks-match: bodyer skriver ofte stien relativt til frontend/ eller backend/.
+    const re = new RegExp(`(^|/)${v.replace(/^\/+/, "").split("*").map(escapeRe).join("[^/]*")}$`);
     const inHead = [...headPaths].filter((p) => re.test(p));
     const inBase = [...basePaths].filter((p) => re.test(p));
     const touched = [...diff.keys()].filter((p) => re.test(p));
@@ -282,19 +296,22 @@ export function lookupClaim(claim, ctx) {
  * modeller, men tre filer indlaeste den gamle model selv.
  */
 export function bypassReaders(key, readerInfo, index) {
-  const homes = readerInfo.homes.length > 0 ? readerInfo.homes : readerInfo.mentions;
+  // Kun naar kontakten har et hjemmemodul (en konstant bundet til noeglen);
+  // uden det er "hjemmet" gaet, og listen bliver stoej.
+  const homes = readerInfo.homes;
+  if (homes.length === 0) return [];
   const assets = new Set();
   for (const h of homes) {
     const f = index.byPath.get(h);
     if (!f) continue;
-    const code = f.text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+    const code = stripComments(f.text);
     for (const m of code.matchAll(/["'`]([^"'`\s]*?([\w.-]+\.json))["'`]/g)) assets.add(m[2]);
   }
   if (assets.size === 0) return [];
   const out = [];
   for (const f of index.files) {
     if (f.kind !== "prod" || homes.includes(f.path)) continue;
-    const code = f.text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+    const code = stripComments(f.text);
     for (const a of assets) {
       if (new RegExp(`["'\`/]${escapeRe(a)}["'\`]`).test(code)) {
         out.push({ path: f.path, asset: a });
@@ -317,7 +334,7 @@ export function checkClaims(input) {
   const basePaths = new Set(input.basePaths || input.baseFiles.map((f) => f.path));
   const knownKeys = knownKeysFrom(head);
   for (const k of knownKeysFrom(base)) knownKeys.add(k);
-  const claims = extractClaims(input.body, knownKeys);
+  const claims = extractClaims(input.body, knownKeys, tableNames([head, base]));
   const ctx = { head, base, diff, headPaths, basePaths, isIgnored: input.isIgnored };
   const results = claims.map((c) => lookupClaim(c, ctx));
 
