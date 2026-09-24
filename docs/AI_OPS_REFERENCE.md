@@ -50,6 +50,17 @@ _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/Nicola
 
 Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, ellers fejler CI på mobile (#536, 21/5).
 
+**Billedstationen (#5565): ægte-data-billeder af en PR's Vercel-preview.** Hver UI-PR får billederne (desktop 1440 + mobil 390) FØR ejeren spørges om go; go-kortet linker til previewet og vedhæfter billederne (aldrig på GitHub: ægte spillernavne).
+
+```
+node scripts/pr-shots.mjs --pr <N> --routes /dashboard,/academy --viewports 1440,390
+```
+
+- Preview-URL'en slås op via `gh` (GitHub Deployments fra Vercel, ellers Vercel-bottens kommentar); branch-aliaset `...-git-<gren>-...vercel.app` foretrækkes, så origin er den samme for hvert push på PR'en. `--url <origin>` springer opslaget over.
+- Én fast Playwright-profil i `.claude/run/pr-shots-profile/` (gitignoreret). **Ejeren logger ind én gang pr. preview-origin:** `node scripts/pr-shots.mjs --pr <N> --login` åbner Edge (headed) på previewets `/login`; ejeren taster selv, scriptet lukker når login er gemt. Et login gælder kun den origin (Supabase-sessionen ligger pr. origin), så en ny PR = et nyt login, et nyt push på samme PR ikke.
+- Hver billedserie kører i en KOPI af profilen, som slettes bagefter; alle skrivende kald (API, Supabase REST/RPC, PostHog, Sentry) besvares lokalt med 204, og et `signOut` fra appen tælles i rapporten uden at ramme mesterprofilen. Scriptet læser, skriver eller logger aldrig tokens/cookies og skruer aldrig browser-uret (`--shot-at` afvises; læring 24/9).
+- Output: `pr-screens/live/<pr>-<route>-<viewport>.png` (gitignoreret undermappe — `pr-screens/` selv er IKKE gitignoreret). `--dry-run` viser plan og filnavne uden browser. Tests: `node --test scripts/lib/prShots.test.mjs`.
+
 **E2E-kommandoerne er uændrede efter #4647, kun hastigheden er det.** `npm run test:e2e` kører stadig alle specs i alle 3 projekter, men nu parallelt: `workers` er `"50%"` lokalt (halvdelen af kernerne, så maskinen kan bruges imens) og `"100%"` i CI. `PW_WORKERS=1 npm run test:e2e` isolerer en enkelt flaky test igen.
 
 **Sådan ser e2e ud i CI efter #4647, omlagt i #5309:**
