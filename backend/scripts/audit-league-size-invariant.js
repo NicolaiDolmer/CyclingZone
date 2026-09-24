@@ -10,6 +10,11 @@
 // ægte managere; 0 for tier 3/4 uden. ALT andet (1-23, 25+, eller AI-rest i en
 // dormant pulje) er stadig et fund.
 //
+// S4-FORMEN (#5642, ejer 24/9, pyramide 1/2/4/4): D4 går fra 8 til 4 puljer.
+// Dormant-reglen gælder ikke længere for tier 4: aktive D4-puljer (A-D) fyldes med
+// AI fra dag ét og forventes at have 24. Pensionerede puljer (league_divisions.
+// retired_at, E-H) forventes TOMME (0). Se expectedTeamCount.
+//
 // BAGGRUND: prod-audit 12/7 fandt 9 overskudshold på tværs af 4 puljer
 // (Division 1: 25, Division 3 A-D: 25×4, Division 4 B/C: 26×2) — alle enten
 // AI-hold fra pyramide-omlægningen (#2187-rod-årsagen) eller et frosset
@@ -80,6 +85,45 @@ async function fetchAllRows(buildQuery, pageSize = PAGE_SIZE) {
   return rows;
 }
 
+// Forventet antal hold i en pulje. Spejler enginens AI-politik
+// (aiTeamGenerator.targetAiCountForPool + SQL-planen plan_ai_pool_retirements):
+//   • pensioneret pulje (league_divisions.retired_at sat, #5642: D4 E-H fra S4) → 0.
+//   • tier 1/2 og tier 4 (#5642, ejer 24/9: D4 fyldes med AI fra dag ét) → 24,
+//     også uden ægte managere. Dormant-reglen gælder ikke længere for D4 A-D.
+//   • tier 3 → 24 med ægte managere, ellers 0 (dormant-undtagelsen #2851/#1688).
+export function expectedTeamCount(div, realManagers, requiredCount = REQUIRED_TEAM_COUNT) {
+  if (div.retired_at != null) return 0;
+  if (div.tier <= 2 || div.tier === 4) return requiredCount;
+  return realManagers > 0 ? requiredCount : 0;
+}
+
+// league_divisions med retired_at. I auto-migrate-vinduet (før
+// database/2026-09-25-4592-d4-retire-pools.sql er applied) svarer databasen 42703
+// på kolonnen; så findes ingen pensionerede puljer, og én læsning uden kolonnen er
+// det korrekte svar. En stale schema-cache (PGRST204) fejler lukket (samme dom som
+// aiTeamGenerator.isMissingPoolRetiredColumnError, dupliceret af samme grund som
+// fetchAllRows ovenfor).
+export function isMissingRetiredAtError(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+  if (!text.includes("retired_at")) return false;
+  if (code === "PGRST204" || text.includes("schema cache")) return false;
+  if (code === "42703") return true;
+  return /does not exist|undefined column/.test(text);
+}
+
+async function fetchDivisions(supabase) {
+  const read = (columns) => fetchAllRows(() =>
+    supabase.from("league_divisions").select(columns).order("id", { ascending: true }));
+  try {
+    return await read("id, tier, pool_index, label, retired_at");
+  } catch (error) {
+    if (!isMissingRetiredAtError(error)) throw error;
+    return read("id, tier, pool_index, label");
+  }
+}
+
 // Overskuds-score: højere = mere sandsynlig sikker trim-kandidat. Matcher
 // #2377's observerede overskuds-profil (AI-hold, frosset, eller 0-rytter).
 // Ren funktion — ingen sideeffekter, kun rangering til beslutningsstøtte.
@@ -113,9 +157,7 @@ export async function runLeagueSizeAudit({
   teamBlockingRaceIds = teamInflightRaceIds,
 }) {
   const [divisions, teams, riderRows] = await Promise.all([
-    fetchAllRows(() =>
-      supabase.from("league_divisions").select("id, tier, pool_index, label").order("id", { ascending: true })
-    ).catch((error) => {
+    fetchDivisions(supabase).catch((error) => {
       throw new Error(formatSupabaseAuditError("league_divisions select", error));
     }),
     fetchAllRows(() =>
@@ -196,12 +238,11 @@ export async function runLeagueSizeAudit({
   for (const div of sortedDivisions) {
     const groupTeams = teamsByDivision.get(div.id) || [];
     const count = groupTeams.length;
-    // Dormant-undtagelsen (#2851/#1688): tier 3/4 uden ægte managere → forventet 0.
     // Samme diskriminator som enginens isRealManager (aiTeamGenerator.js).
     const realManagers = groupTeams.filter(
       (t) => t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account,
     ).length;
-    const expected = div.tier <= 2 || realManagers > 0 ? requiredCount : 0;
+    const expected = expectedTeamCount(div, realManagers, requiredCount);
     if (count === expected) continue;
     const delta = count - expected;
     const candidates = groupTeams
@@ -241,7 +282,7 @@ function formatCandidateLine(c) {
 
 function printHuman(summary) {
   console.log(`League-size invariant audit — ${summary.generated_at}`);
-  console.log(`Krav: præcis ${summary.required_team_count} hold pr. aktiv pulje — 0 i dormant tier 3/4 uden ægte managere (#2851) — (${summary.groups_checked} puljer tjekket)`);
+  console.log(`Krav: præcis ${summary.required_team_count} hold pr. aktiv pulje — 0 i dormant tier 3 uden ægte managere (#2851) og i pensionerede puljer (#5642) — (${summary.groups_checked} puljer tjekket)`);
   console.log(`Total findings: ${summary.total_findings}\n`);
 
   for (const wait of summary.waiting ?? []) {
@@ -250,7 +291,7 @@ function printHuman(summary) {
   if (summary.total_findings === 0) {
     console.log(summary.waiting?.length
       ? "Ingen uforklarede afvigelser; de viste AI-hold afventer afslutning af eksisterende forpligtelser."
-      : "OK: alle aktive puljer har præcis 24 hold (dormant-puljer 0).\n");
+      : "OK: alle aktive puljer har præcis 24 hold (dormant og pensionerede puljer 0).\n");
     return;
   }
 

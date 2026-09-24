@@ -184,10 +184,6 @@ const KNOWN_UNSCOPED_LEAGUE_READERS = Object.freeze({
     count: 1, blocksYouthSeed: false,
     reason: "id→tier-opslag for allerede valgte løb; itererer ikke puljerne.",
   },
-  "backend/lib/teamProfileEngine.js": {
-    count: 1, blocksYouthSeed: true,
-    reason: "Et nyt holds entry-pulje vælges på tier alene — ville kunne placere holdet i en ungdomspulje.",
-  },
   "frontend/src/pages/DashboardPage.jsx": {
     count: 1, blocksYouthSeed: true,
     reason: "Læser Supabase direkte; pulje-etiketter/-træ uden squad-filter (spec §7).",
