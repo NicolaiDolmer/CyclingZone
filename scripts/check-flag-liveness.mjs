@@ -41,6 +41,7 @@
 //   node scripts/check-flag-liveness.mjs                 tabel + exit 1 ved nye huller
 //   node scripts/check-flag-liveness.mjs --json          maskinlaesbart
 //   node scripts/check-flag-liveness.mjs --write-baseline  skriv dagens huller som baseline
+//   node scripts/check-flag-liveness.mjs --ref <sha>     doem et andet commit (baglaens)
 //
 // Refs #5507.
 
@@ -334,19 +335,53 @@ export function baselineFrom(rows, previous = {}) {
   };
 }
 
-function listRepoFiles(root) {
-  const out = execFileSync("git", ["-C", root, "ls-files", "-z", "--", "backend", "frontend", "database", "shared", "api"], {
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  return out.split("\0").filter(Boolean);
+export const SCAN_DIRS = Object.freeze(["backend", "frontend", "database", "shared", "api"]);
+
+function wanted(p) {
+  return CODE_EXT.test(p) || /\.(?:sql|ya?ml|toml)$/i.test(p);
 }
 
-export function loadRepoFiles(root = ROOT) {
-  return listRepoFiles(root)
-    .filter((p) => CODE_EXT.test(p) || /\.sql$/i.test(p))
+/** Arbejdstraeet (det der er checket ud). */
+export function loadRepoFiles(root = ROOT, dirs = SCAN_DIRS) {
+  const out = execFileSync("git", ["-C", root, "ls-files", "-z", "--", ...dirs], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return out
+    .split("\0")
+    .filter(Boolean)
+    .filter(wanted)
     .filter((p) => existsSync(join(root, p)))
     .map((p) => ({ path: p, text: readFileSync(join(root, p), "utf8") }));
+}
+
+/**
+ * Et vilkaarligt commit/ref uden checkout (`git cat-file --batch`), fx main
+ * eller en PR-head. Bruges til baglaens-koersler og af check-pr-claims.mjs.
+ */
+export function loadTreeFiles(root, ref, dirs = SCAN_DIRS) {
+  const tree = execFileSync("git", ["-C", root, "ls-tree", "-r", "-z", ref, "--", ...dirs], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const entries = tree
+    .split("\0")
+    .filter(Boolean)
+    .map((line) => {
+      const tab = line.indexOf("\t");
+      const [, type, oid] = line.slice(0, tab).split(" ");
+      return { type, oid, path: line.slice(tab + 1) };
+    })
+    .filter((e) => e.type === "blob" && wanted(e.path));
+  if (entries.length === 0) return [];
+  const buf = execFileSync("git", ["-C", root, "cat-file", "--batch"], {
+    input: `${entries.map((e) => e.oid).join("\n")}\n`,
+    maxBuffer: 1024 * 1024 * 1024,
+  });
+  const files = [];
+  let pos = 0;
+  for (const e of entries) {
+    const nl = buf.indexOf(0x0a, pos);
+    const size = Number(buf.slice(pos, nl).toString("utf8").split(" ")[2]);
+    const start = nl + 1;
+    files.push({ path: e.path, text: buf.slice(start, start + size).toString("utf8") });
+    pos = start + size + 1;
+  }
+  return files;
 }
 
 function readBaseline(root) {
@@ -357,7 +392,9 @@ function readBaseline(root) {
 
 function main(argv) {
   const args = new Set(argv);
-  const index = buildIndex(loadRepoFiles(ROOT));
+  const refAt = argv.indexOf("--ref");
+  const ref = refAt >= 0 ? argv[refAt + 1] : null;
+  const index = buildIndex(ref ? loadTreeFiles(ROOT, ref) : loadRepoFiles(ROOT));
   const rows = evaluateFlags(index);
   const baseline = readBaseline(ROOT);
 
