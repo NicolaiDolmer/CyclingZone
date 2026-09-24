@@ -24,7 +24,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
-  mkdtempSync, rmSync, writeFileSync, readdirSync, readFileSync, mkdirSync, existsSync, unlinkSync,
+  mkdtempSync, rmSync, writeFileSync, readdirSync, readFileSync, mkdirSync, existsSync, unlinkSync, utimesSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -215,6 +215,18 @@ function writeFakeSlot(dir, payload) {
   return name;
 }
 
+// Saetter en slot-fils mtime ~60 s tilbage, altsaa aeldre end
+// $UnreadableGraceSec (10 s) i verify-lock.ps1. Uden dette er den nyskrevne
+// fake-fil under 10 s gammel naar wrapperen laeser den, saa den taeller som
+// levende via "ung + ulaeselig = kandidat under skrivning" - ogsaa hvis
+// Read-SlotInfo slet ikke kunne parse den. Testen ville saa bestaa selv med en
+// parser der altid kaster (diff-tjek 24/9, #5566). Aeldre gemmer den kun
+// invarianten den skal daekke: et levende slot laest korrekt via PID+startedAt.
+function ageSlotFile(dir, name) {
+  const past = new Date(Date.now() - 60_000);
+  utimesSync(join(dir, name), past, past);
+}
+
 function lockSync(dir, flags, command, extraEnv = {}) {
   return spawnSync(
     "pwsh",
@@ -260,6 +272,28 @@ test("slots frigives igen bagefter", { skip: !hasPwsh && "pwsh mangler" }, () =>
 test("ingen kommando -> exit 2, ikke stille succes", { skip: !hasPwsh && "pwsh mangler" }, () => {
   const r = spawnSync("pwsh", ["-NoProfile", "-File", SCRIPT, "-SlotDir", slotDir], { encoding: "utf8" });
   assert.equal(r.status, 2);
+});
+
+// FUND 2 (diff-tjek 24/9, #5566): Read-SlotInfo bruger System.Text.Json, som
+// ikke findes i Windows PowerShell 5.1. Uden et versionsgitter ville en 5.1-
+// vaert ramme catch-all'en i Get-LiveSlots for ETHVER slot-fil og slette
+// levende slots aeldre end $UnreadableGraceSec. Testen laeser kildekoden i
+// stedet for at koere under 5.1 (som ikke findes i CI-miljoeet).
+test("scriptet kraever PowerShell 7+, saa Windows PowerShell 5.1 aldrig kan naa Read-SlotInfo", () => {
+  const lines = readFileSync(SCRIPT, "utf8").split(/\r?\n/);
+  const requiresLine = lines.find((l) => l.trim().toLowerCase().startsWith("#requires"));
+  assert.ok(requiresLine, "scriptet mangler et #Requires-direktiv");
+  assert.match(requiresLine, /-Version\s+7/i, `#Requires skal laase til version 7+: ${requiresLine}`);
+
+  const requiresIdx = lines.indexOf(requiresLine);
+  const firstCodeIdx = lines.findIndex((l) => {
+    const t = l.trim();
+    return t !== "" && !t.startsWith("#");
+  });
+  assert.ok(
+    firstCodeIdx === -1 || requiresIdx < firstCodeIdx,
+    "#Requires skal staa foer al kode, ellers haandhaever PowerShell den ikke",
+  );
 });
 
 test("kommandoens exit-kode gives videre", { skip: !hasPwsh && "pwsh mangler" }, () => {
@@ -343,6 +377,7 @@ test("sub-sekund-drift i starttiden goer ikke et levende slot doedt (#5533-laeri
     acquiredAt: new Date().toISOString(),
     label: "levende med drift",
   });
+  ageSlotFile(dir, name);
   const r = lockSync(dir, ["-Max", "1", "-Timeout", "2"], ["node", "-e", "process.exit(0)"]);
   assert.equal(r.status, 75, `slottet er levende, saa -Max 1 skal give koe-timeout: ${r.stderr}`);
   assert.ok(existsSync(join(dir, name)), "et levende slot maa ikke ryddes");
@@ -351,6 +386,7 @@ test("sub-sekund-drift i starttiden goer ikke et levende slot doedt (#5533-laeri
 test("slot i gammelt format (kun pid/acquiredAt/label) med levende PID taeller stadig som optaget", { skip: !hasPwsh && "pwsh mangler" }, () => {
   const dir = freshDir("legacy");
   const name = writeFakeSlot(dir, { pid: process.pid, acquiredAt: new Date().toISOString(), label: "gammelt format" });
+  ageSlotFile(dir, name);
   const r = lockSync(dir, ["-Max", "1", "-Timeout", "2"], ["node", "-e", "process.exit(0)"]);
   assert.equal(r.status, 75, `et levende slot i gammelt format skal stadig optage slottet: ${r.stderr}`);
   assert.ok(existsSync(join(dir, name)), "et levende slot i gammelt format maa ikke ryddes");

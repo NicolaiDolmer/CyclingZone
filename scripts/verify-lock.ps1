@@ -41,6 +41,13 @@
 #   - en ulaeselig slot-fil der er under $UnreadableGraceSec gammel er
 #     sandsynligvis en kandidat under skrivning og taeller som levende i stedet
 #     for at blive slettet under skriveren.
+#   - scriptet kraever PowerShell 7+ (diff-tjek 24/9, #5566): Read-SlotInfo
+#     bruger System.Text.Json, som ikke findes i Windows PowerShell 5.1. Uden
+#     dette ville ETHVER kald under 5.1 ramme catch-all'en i Get-LiveSlots og
+#     behandle en levende, velformet slot-fil som ulaeselig - og slette den
+#     naar den er aeldre end $UnreadableGraceSec. Alle nuvaerende kaldere
+#     bruger allerede pwsh 7; dette er et haerdnings-gitter, ikke en
+#     adfaerdsaendring.
 #
 # Brug:
 #   pwsh -File scripts/verify-lock.ps1 -Max 2 -Timeout 1800 -- node --test scripts/foo.test.mjs
@@ -78,6 +85,7 @@
 # ("parameter name '' is ambiguous"), ogsaa med ValueFromRemainingArguments. Da
 # hele pointen er at kunne skrive `-- <vilkaarlig kommando>` parser vi $args i
 # haanden. Fanget af scripts/verify-lock.test.mjs foerste gang scriptet koerte.
+#Requires -Version 7
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
