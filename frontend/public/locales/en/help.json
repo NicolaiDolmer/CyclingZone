@@ -1504,7 +1504,7 @@
     },
     "raceDayProfileMatchFaq": {
       "q": "Does my rider's training session need to match the race's terrain (flat, mountain, cobbles)?",
-      "a": "No, not right now. Season 3 runs on season 2's race-day rules (patch 7.196): a race doesn't hand out its own ability reward, so there is nothing for a session to 'match'. Train each rider toward what he needs long-term. A design that links the session to the stage terrain is planned for season 4, but it isn't locked yet, so don't plan around a specific version of it."
+      "a": "No. Your rider's training session and his races are separate. What a race gives him is decided by the stage he rides, never by the session you planned, so there is nothing for a session to 'match'. Train each rider toward what he needs long-term, and pick his races for the terrain you want him to ride."
     },
     "raceDayAcademyFaq": {
       "q": "Is it worth racing young Academy talents, or is Academy training always better?",

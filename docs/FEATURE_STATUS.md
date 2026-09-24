@@ -31,7 +31,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Race page as tabs (v2) (`race-page-tabs-v2`) | live | - | - | #4613 | 2026-09-07 | PR #4913, 6/9; patch note 7.259. |
 | Stage replay and timeline film (`race-replay`) | live | `race_stage_timeline` | - | - | 2026-09-06 | 3 replay-komponenter i UI. |
 | Stage scheduler (`stage-scheduler`) | live | `stage_scheduler_enabled` | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-09-06 | - |
-| Race day development (`race-day-development`) | dormant | `race_day_development_enabled` | [PROGRESSION_RULES](PROGRESSION_RULES.md) | #4850 | 2026-09-07 | Bygget (D2); afventer #4850. |
+| Race day development (`race-day-development`) | dormant | `race_day_development_enabled` | [PROGRESSION_RULES](PROGRESSION_RULES.md) | #4850 | 2026-09-24 | Variant A/S1 (etapens profil som mellem-pas, +1 pr. evne pr. løbsdag, planen ikke input; PR #5640 + #5654). Flippes off → on 28/9 sammen med training_tick_per_race_day, ejer-go. |
 
 ## market
 
