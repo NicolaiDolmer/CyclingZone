@@ -15,6 +15,18 @@
 // Hver gate-række har { name, hard, ok, detail, ... }. "hard: true" gates blokerer
 // scriptets exit-kode (se allHardGatesPass); "hard: false" gates (rapport-tabeller +
 // anker-sanity) rapporteres men fejler ALDRIG kørslen.
+//
+// #5445: Gate 2 (skala-kontinuitet) måler kun MEDIAN-drift v3→v4 — en model kan
+// bestå den mens den flytter den SAMLEDE rytterværdi (pengemængden) voldsomt (målt
+// under #5443: flere kandidat-modeller flyttede Σ på menneskehold drastisk og
+// bestod alligevel 7/7 — konkrete tal er hard-rule-17-følsomme, se #5443).
+// Tilføjer to nye HÅRDE gates der bruger populationStats().total (allerede
+// beregnet, bare ikke gatet før nu):
+//   8. Sum-kontinuitet (menneskehold)     — Σ base_value på ikke-AI-hold, ±bånd
+//   9. Sum-kontinuitet (hele populationen) — samme Σ-check på ALLE valuerede ryttere
+//  10. Top-1%-elite-andel af Σ            — koncentration af værdi i toppen, ±bånd
+// Båndet (maxDriftPct) er en PARAMETER, ikke et fast tal — ejeren vælger bredden
+// (pengemængde er en økonomi-beslutning, #3360). Default er bevidst konservativt.
 
 import { ACADEMY } from "./academyFlag.js";
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
@@ -115,6 +127,83 @@ export function scaleContinuityGate(v3Values, v4Values, { maxDriftPct = 0.15 } =
     ok,
     detail: haveData
       ? `p10/median/p90 v3=${fmtCZ(v3.p10)}/${fmtCZ(v3.median)}/${fmtCZ(v3.p90)} · v4=${fmtCZ(v4.p10)}/${fmtCZ(v4.median)}/${fmtCZ(v4.p90)} · drift=${(driftPct * 100).toFixed(1)}% (grænse ±${(maxDriftPct * 100).toFixed(0)}%)`
+      : `utilstrækkelig data (v3 n=${v3.n}, v4 n=${v4.n})`,
+    stats: { v3, v4, driftPct, maxDriftPct },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Gate 8/9 — Sum-kontinuitet (HÅRD) — #5445
+// ---------------------------------------------------------------------------
+// Gate 2 måler kun MEDIAN-drift — en model kan flytte hele pengemængden (Σ)
+// voldsomt og stadig bestå den (#5443-evidens: median stort set uændret mens Σ
+// flyttede drastisk — se issuet for konkrete tal). Denne gate bruger
+// populationStats().total (samme aggregering som Gate 2, bare på summen i
+// stedet for medianen) og kaldes ÉN
+// gang pr. scope — scriptet kalder den to gange: "menneskehold" (Σ base_value
+// på ikke-AI/test/frost/bank-hold) og "hele populationen" (alle valuerede
+// ryttere, inkl. AI-hold + free agents), så et hul i den ene sum ikke kan
+// skjule sig bag den anden.
+//
+// maxDriftPct er en PARAMETER — ejeren vælger bredden (pengemængde-beslutning,
+// #3360). Default er bevidst konservativt (se DEFAULT_SUM_DRIFT_PCT): et bredt
+// bånd fanger stadig #5443-klassen af Σ-eksplosioner, mens det ikke støjer på
+// normal fit-jitter.
+export const DEFAULT_SUM_DRIFT_PCT = 0.25;
+
+export function sumContinuityGate(scopeLabel, v3Values, v4Values, { maxDriftPct = DEFAULT_SUM_DRIFT_PCT } = {}) {
+  const v3 = populationStats(v3Values);
+  const v4 = populationStats(v4Values);
+  const haveData = v3.n > 0 && v4.n > 0 && finite(v3.total) && v3.total !== 0;
+  const driftPct = haveData ? (v4.total - v3.total) / v3.total : null;
+  const ok = haveData && Math.abs(driftPct) <= maxDriftPct;
+  return {
+    name: `Sum-kontinuitet (${scopeLabel}): Σ base_value v3→v4`,
+    hard: true,
+    ok,
+    detail: haveData
+      ? `n v3=${v3.n}/v4=${v4.n} · Σv3=${fmtCZ(v3.total)} → Σv4=${fmtCZ(v4.total)} · drift=${(driftPct * 100).toFixed(1)}% (grænse ±${(maxDriftPct * 100).toFixed(0)}%)`
+      : `utilstrækkelig data (v3 n=${v3.n}, v4 n=${v4.n})`,
+    stats: { v3, v4, driftPct, maxDriftPct },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Gate 10 — Top-1%-elite-andel af Σ (HÅRD) — #5445
+// ---------------------------------------------------------------------------
+// Kontrollerer at Σ-kontinuiteten ovenfor ikke bare "gemmer" en omfordeling:
+// en model kunne i princippet holde Σ næsten uændret men presse værdien over i
+// en lille elite (eller omvendt flade toppen helt ud) — det ville ikke slå ud
+// i Gate 8/9 (samlet sum), men det ville stadig være en stor balance-ændring.
+// Måler hvor stor en andel af Σ base_value de øverste 1% (mindst 1 rytter) af
+// populationen udgør, v3 vs v4, og gater drift i DENNE andel (relativ, samme
+// bånd-parameter som Gate 8/9 medmindre andet angives eksplicit).
+export function top1PercentShareOfSum(values) {
+  const vals = (values || [])
+    .filter((v) => v != null)
+    .map(Number)
+    .filter((v) => Number.isFinite(v))
+    .sort((a, b) => b - a); // desc — top først
+  const n = vals.length;
+  if (n === 0) return { n: 0, top1Count: 0, top1Sum: 0, total: 0, share: null };
+  const top1Count = Math.max(1, Math.round(n * 0.01));
+  const top1Sum = vals.slice(0, top1Count).reduce((s, v) => s + v, 0);
+  const total = vals.reduce((s, v) => s + v, 0);
+  return { n, top1Count, top1Sum, total, share: total > 0 ? top1Sum / total : null };
+}
+
+export function eliteShareGate(v3Values, v4Values, { maxDriftPct = DEFAULT_SUM_DRIFT_PCT } = {}) {
+  const v3 = top1PercentShareOfSum(v3Values);
+  const v4 = top1PercentShareOfSum(v4Values);
+  const haveData = v3.n > 0 && v4.n > 0 && finite(v3.share) && v3.share > 0;
+  const driftPct = haveData ? (v4.share - v3.share) / v3.share : null;
+  const ok = haveData && Math.abs(driftPct) <= maxDriftPct;
+  return {
+    name: "Top-1%-elite-andel af Σ: v3→v4 (kontrol for koncentration, #5445)",
+    hard: true,
+    ok,
+    detail: haveData
+      ? `v3 top-1% (n=${v3.top1Count}/${v3.n})=${(v3.share * 100).toFixed(1)}% af Σ · v4=${(v4.share * 100).toFixed(1)}% af Σ · drift=${(driftPct * 100).toFixed(1)}% (grænse ±${(maxDriftPct * 100).toFixed(0)}%)`
       : `utilstrækkelig data (v3 n=${v3.n}, v4 n=${v4.n})`,
     stats: { v3, v4, driftPct, maxDriftPct },
   };
