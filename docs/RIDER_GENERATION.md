@@ -296,6 +296,10 @@ Rapporten spejler `deriveForRiderIds`' kæde in-memory (§6/§8b's spejlings-kra
 
 **To fund står åbne i rapporten pr. 18/9** (begge dokumenteret, ingen rettet her): en betydelig del af alle evne-værdier lander på gulvet, drevet af `domestique`-tierens niveau; og en lille andel fødes med `tactics` over vækst-loftet i D-056. Det tredje fund — at akademiets bånd er mættet ved U23-aldrene — er LUKKET af [#5376](https://github.com/NicolaiDolmer/CyclingZone/issues/5376): U23-fødslen fik sit eget bånd (§8b2), og rapportens §8b står tilbage som referencen der forklarer hvorfor. Rapportens §8c måler produktions-båndet, og en **forward-guard** (`u23ProductionBandGuard()`) siger fra i §9 hvis alderen holder op med at flytte medianen eller loftet begynder at klippe dominerende igen — også når årsagen er en ændring på akademi-siden, som U23-båndet arver fra.
 
+### 8c1. Side om side med prod (#5283 pkt. 2)
+
+`backend/scripts/generatorProdComparison5283.mjs` (read-only, ingen writes) stiller tre AI-holds U23-trupper fra A6-planen (§8b3, samme seed og modeller) op mod ti tilfældige eksisterende prod-ryttere på samme sæson-alder og primary_type; tabellen skrives kun til `balance-internals/`.
+
 ## 8d. Primær type-kilden bag kontakt ([#5327](https://github.com/NicolaiDolmer/CyclingZone/issues/5327))
 
 En ny rytters PRIMÆRE type har to mulige kilder (`primaryTypeMode` i `generateFictionalRiders`):
