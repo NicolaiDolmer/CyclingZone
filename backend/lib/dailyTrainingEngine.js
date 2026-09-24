@@ -22,7 +22,12 @@
 // nondeterminisme udover `now`-default + updated_at-timestamps.
 
 import { copenhagenDateString, copenhagenWeekdayKey, copenhagenMidnightUTC } from "./copenhagenTime.js";
-import { resolveProgram, applyDailyTick, applyRaceDevelopmentTick } from "./dailyTraining.js";
+import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
+// #4850 spor C2 (ejer 24/9): loebsdagen er et mellem-pas paa etapens profil-evner,
+// koert gennem applyDailyTick. `applyRaceDevelopmentTick` (dailyTraining.js) bliver
+// staaende til variant B (dagens intention, #4632), men motoren kalder den ikke mere.
+import { raceDayProgram, RACE_DAY_FALLBACK_PROFILE } from "./raceDayYield.js";
+import { loadRaceDayStagesByRider } from "./raceDayStageLookup.js";
 import { resolveDayIntensity } from "./training.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
@@ -313,9 +318,21 @@ export async function runTeamTrainingDay({
     // Bindingen (nedenfor) siger hvem der er OPTAGET; dette siger hvem der
     // faktisk KOERTE. Forskellen er GT-hviledagen, og den skal vaere synlig paa
     // traeningsscoren ("loeb" vs. ingen raekke) uanset udviklings-flaget.
-    (raceDayDevelopmentOn || useRaceDayKey)
-      ? loadRacedRiderIdsToday(supabase, riderIds, now, tickDate)
-      : Promise.resolve({ data: [], error: null }),
+    //
+    // #4850 C2: paa loebsdags-aksen er kilden det PRAECISE etape-opslag pr. loebsdag
+    // (race_results ⋈ race_stage_schedule paa (race_id, stage_number) hvor game_day =
+    // loebsdagen, raceDayStageLookup.js). Det kender ingen binding, saa et afsluttet
+    // loeb (bindingen slettet af race_entry_days_rebuild) svarer stadig "koerte".
+    // Profilen hentes kun naar udviklingen er taendt: uden den bruges maengden
+    // udelukkende til at skelne "koerte" fra "hviledag". Den gamle kalenderdags-sti
+    // beholder sit imported_at-opslag uroert.
+    useRaceDayKey
+      ? loadRaceDayStagesByRider({
+        supabase, teamId, seasonId, gameDay: raceDay, riderIds, withProfiles: raceDayDevelopmentOn,
+      })
+      : raceDayDevelopmentOn
+        ? loadRacedRiderIdsToday(supabase, riderIds, now, tickDate)
+        : Promise.resolve({ data: [], error: null }),
     // #4847 (ejer-regel 2+3, 18/9): hvem er BUNDET paa denne loebsdag? Kun paa
     // loebsdags-aksen — den gamle kalenderdags-sti har ingen loebsdag at binde paa
     // og er bit-identisk med i dag (ingen ekstra DB-kald naar flaget er off).
@@ -353,7 +370,25 @@ export async function runTeamTrainingDay({
   // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
   // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
   const racedRiderProfileByRider = new Map();
-  if (raceDayDevelopmentOn || useRaceDayKey) {
+  if (useRaceDayKey) {
+    // #4850 C2: etape-opslaget er en REGEL-GATE paa loebsdags-aksen (samme kontrakt
+    // som bindingen ovenfor): svaret afgoer om rytteren maa traene i dag. Et gaet
+    // ved fejl er enten traening oven i et loeb (regel 2 brudt) eller en taget dag.
+    // Derfor kastes der, og naeste sweep proever igen. ASCII-only besked.
+    if (raceDayResult.error) {
+      throw new Error(
+        `race-day stage lookup (team ${teamId}, game day ${raceDay}): ${raceDayResult.error.message ?? raceDayResult.error} - refusing to tick, retry on next sweep`,
+      );
+    }
+    // Profilen er derimod en BERIGELSE: mangler den, traener loebsdagen 'rolling'.
+    if (raceDayResult.profileError) {
+      console.warn(`  ⚠️ race-stage-profile lookup failed for team ${teamId} (game day ${raceDay}): ${raceDayResult.profileError.message ?? raceDayResult.profileError} - falling back to '${RACE_DAY_FALLBACK_PROFILE}' (fail-safe)`);
+    }
+    for (const [riderId, stage] of raceDayResult.data ?? new Map()) {
+      racedRiderIds.add(riderId);
+      racedRiderProfileByRider.set(riderId, stage.profileType ?? RACE_DAY_FALLBACK_PROFILE);
+    }
+  } else if (raceDayDevelopmentOn) {
     if (raceDayResult.error) {
       // ASCII-only besked (#i18n-leak-guard, BACKEND_CONTEXT matcher error/message-linjer med
       // æ/ø/å) — dette er intern ops-logging, ikke en spiller-synlig API-fejl.
@@ -494,9 +529,17 @@ export async function runTeamTrainingDay({
     // en rytter der koerte paa loebsdag N ogsaa taelle som "racede" paa loebsdag N+1
     // (samme dato) og faa en udviklings-dag han ikke har koert for. Bindingen er
     // loebsdags-noeglet og er derfor den praecise mængde.
-    const boundToday = useRaceDayKey && boundRiderIds.has(rider.id);
+    //
+    // #4850 C2: paa loebsdags-aksen er `racedRiderIds` nu selv loebsdags-noeglet
+    // (etape-opslaget), saa skaeringen med bindingen er ikke laengere noedvendig —
+    // og den ville vaere FORKERT: bindingen forsvinder naar loebet er afsluttet
+    // (race_entry_days_rebuild ved status `completed`, spec risiko 1), og saa fik
+    // en rytter i et afsluttet endagsloeb eller paa sidste etape almindelig
+    // traening oven i loebet. "Koerte" goer ham derfor ogsaa BUNDET: loeb ELLER
+    // traening, uanset om bindings-raekken stadig findes.
     // KOERTE han en etape i dag? (uafhaengigt af om udviklingen er taendt)
-    const rodeToday = racedRiderIds.has(rider.id) && (!useRaceDayKey || boundToday);
+    const rodeToday = racedRiderIds.has(rider.id);
+    const boundToday = useRaceDayKey && (boundRiderIds.has(rider.id) || rodeToday);
     const racedToday = !injuredToday && raceDayDevelopmentOn && rodeToday;
 
     // #4847 (ejer-regel 2+3, 18/9): BUNDET, men ikke paa en udviklings-loebsdag.
@@ -594,22 +637,21 @@ export async function runTeamTrainingDay({
         hardDailyCap,
       };
       if (racedToday) {
-        // #3459 D2: profil-typen slås op pr. rytter (racedRiderProfileByRider,
-        // fallback 'rolling' allerede sat ovenfor) — devMult følger
-        // RACE_DEV_CONFIG's default (1.15) via applyRaceDevelopmentTick.
+        // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
+        // loebsdagen er et MELLEM-PAS paa etapens profil-evner, koert gennem den
+        // samme applyDailyTick som en traeningsdag. Rytterens PLAN er ikke input
+        // (ejer-dom 24/8): programmet bygges kun af profilen (raceDayProgram), saa
+        // en hvile-plan giver stadig udvikling af at koere loeb. +1-loftet sendes
+        // ALTID paa loebs-grenen, ogsaa paa den gamle kalenderdags-sti, hvor
+        // hardDailyCap ellers er undefined. Profil-fallback 'rolling' er sat ovenfor.
         //
-        // #4632 SEAM (løbsdagens intention, Model C punkt 3):
-        // applyRaceDevelopmentTick tager nu et valgfrit `effort` der skalerer
-        // devTotal (grupetto lavest, all_out højest). Det sendes BEVIDST IKKE
-        // her endnu: D2 (race_day_development_enabled) er off i prod, så denne
-        // gren kører slet ikke, og intentionens dags-værdi ville kræve et nyt
-        // race_stage_roles/race_team_orders-opslag pr. rytter pr. dag. Wiringen
-        // hører hjemme i det slice der tænder D2 igen (S4) — den skal læse
-        // dagens effort for netop den etape og sende det med her, bag BÅDE
-        // race_day_development_enabled og race_day_intention_enabled.
-        tickResult = applyRaceDevelopmentTick({
+        // #4632 SEAM (variant B, dagens intention): effort-modifikatoren lever i
+        // applyRaceDevelopmentTick (dailyTraining.js) og laegges ovenpaa naar
+        // race_day_intention_enabled og v4 taendes. Den sendes BEVIDST IKKE her.
+        tickResult = applyDailyTick({
           ...sharedTickArgs,
-          profileType: racedRiderProfileByRider.get(rider.id) ?? "rolling",
+          program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
+          hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
         });
       } else {
         tickResult = applyDailyTick(sharedTickArgs);
