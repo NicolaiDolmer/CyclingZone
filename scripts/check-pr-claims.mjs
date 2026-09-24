@@ -129,7 +129,8 @@ export function extractClaims(body, knownKeys = new Set(), tables = new Set(["ap
             else add("konstant", part, rawLine);
           } else if (/^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/.test(part)) {
             if (knownKeys.has(part) || (SWITCH_CONTEXT.test(near) && !tables.has(part))) add("kontakt", part, rawLine);
-          } else if (/^[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*$/.test(part) && SWITCH_CONTEXT.test(near) && !/\(\)$/.test(tok)) {
+          } else if (/^[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*$/.test(part) && SWITCH_CONTEXT.test(near) && !/\(\)\s*$/.test(span)) {
+            // `navn()` er en funktion, ikke et opts-felt.
             add("kontakt", part, rawLine);
           }
         }

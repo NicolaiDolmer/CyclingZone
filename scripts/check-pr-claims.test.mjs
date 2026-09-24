@@ -80,6 +80,7 @@ test("BAGLAENS PR #5503: opts-kontakten og *_FLAG_KEY uden kaldested fanges", ()
   const report = run({ body, head, base: [CALLER_5503] });
   const opts = claim(report, "kontakt", "primaryTypeMode");
   assert.deepEqual(opts.callSites, [], "dev-scriptet og testen er ikke kaldesteder");
+  assert.ok(!report.results.some((r) => r.type === "kontakt" && r.value === "generateFictionalRiders"), "`navn()` er en funktion, ikke en kontakt");
   const key = claim(report, "kontakt", "PRIMARY_TYPE_FROM_DISTRIBUTION_FLAG_KEY");
   assert.equal(key.key, "rider_primary_type_from_distribution");
   assert.deepEqual(key.callSites, []);
