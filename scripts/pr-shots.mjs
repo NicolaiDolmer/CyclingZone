@@ -6,7 +6,8 @@
 //   node scripts/pr-shots.mjs --pr 5589 --login          # foerste gang pr. preview-origin
 //   node scripts/pr-shots.mjs --pr 5589 --dry-run        # planen, ingen browser
 //
-// Output: pr-screens/<pr>-<route>-<viewport>.png (aegte spillerdata: commit dem ikke).
+// Output: pr-screens/live/<pr>-<route>-<viewport>.png (aegte spillerdata: commit dem ikke;
+// pr-screens/live/ er gitignoreret).
 //
 // Sikkerhedskontrakt (laeringen 2026-09-24-pr-shots-fake-clock-logout.md):
 //   - Scriptet laeser, skriver eller logger ALDRIG tokens/cookies. Login-status
@@ -181,20 +182,22 @@ async function main() {
 
   let origin = opts.url;
   let source = "--url";
+  let warning;
   if (!origin) {
     if (opts.dryRun) {
       log(`[dry-run] preview slaas op med: gh pr view ${opts.pr} --repo ${opts.repo} --json headRefOid,statusCheckRollup,comments`);
       log(`[dry-run]                       gh api repos/${opts.repo}/deployments?sha=<head> (+ statuses pr. Preview-deployment)`);
       try {
-        ({ url: origin, source } = lookupPreviewUrl({ repo: opts.repo, pr: opts.pr, runGh }));
+        ({ url: origin, source, warning } = lookupPreviewUrl({ repo: opts.repo, pr: opts.pr, runGh }));
       } catch (err) {
         log(`[dry-run] opslag sprang over: ${err.message.split("\n")[0]}`);
       }
     } else {
-      ({ url: origin, source } = lookupPreviewUrl({ repo: opts.repo, pr: opts.pr, runGh }));
+      ({ url: origin, source, warning } = lookupPreviewUrl({ repo: opts.repo, pr: opts.pr, runGh }));
     }
   }
   if (origin) log(`Preview: ${origin} (kilde: ${source})`);
+  if (warning) log(`  [advarsel] ${warning}`);
 
   const shots = buildPlan(opts, origin);
   if (opts.dryRun) {

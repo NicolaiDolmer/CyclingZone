@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  DEFAULT_OUT_DIR,
   FAKE_CLOCK_FLAGS,
   PROFILE_DIR_REL,
   buildPlan,
@@ -31,7 +32,7 @@ test("parseArgs: den kanoniske kommando fra issuet", () => {
   assert.deepEqual(opts.viewports, [1440, 390]);
   assert.equal(opts.dryRun, false);
   assert.equal(opts.login, false);
-  assert.equal(opts.out, "pr-screens");
+  assert.equal(opts.out, "pr-screens/live");
   assert.equal(opts.channel, "msedge");
 });
 
@@ -81,10 +82,10 @@ test("buildPlan: deterministisk raekkefoelge (viewport yderst, route inderst), f
   const opts = parseArgs(["--pr", "7", "--routes", "/dashboard,/academy", "--viewports", "1440,390"]);
   const plan = buildPlan(opts, "https://p.vercel.app");
   assert.deepEqual(plan.map((s) => s.file), [
-    "pr-screens/7-dashboard-1440.png",
-    "pr-screens/7-academy-1440.png",
-    "pr-screens/7-dashboard-390.png",
-    "pr-screens/7-academy-390.png",
+    "pr-screens/live/7-dashboard-1440.png",
+    "pr-screens/live/7-academy-1440.png",
+    "pr-screens/live/7-dashboard-390.png",
+    "pr-screens/live/7-academy-390.png",
   ]);
   assert.equal(plan[0].url, "https://p.vercel.app/dashboard");
   const text = formatPlan(opts, "https://p.vercel.app", plan);
@@ -107,22 +108,45 @@ test("pickPreviewUrl: deployment-status foerst, branch-alias foretraekkes, kun *
   assert.deepEqual(picked, { url: "https://cycling-zone-git-feat-x-team.vercel.app", source: "deployment-status" });
 });
 
-test("pickPreviewUrl: Vercel-bottens kommentar og status-check som fallback; ingen kilde = null", () => {
+test("pickPreviewUrl: status-check kraever success, Vercel-kommentaren er sidste udvej med advarsel; ingen kilde = null", () => {
   const fromComment = pickPreviewUrl({
     comments: [
       { author: { login: "NicolaiDolmer" }, body: "https://not-a-bot.vercel.app" },
       { author: { login: "vercel[bot]" }, body: "**Preview:** [https://cycling-zone-xyz-team.vercel.app](https://cycling-zone-xyz-team.vercel.app)\n" },
     ],
   });
-  assert.deepEqual(fromComment, { url: "https://cycling-zone-xyz-team.vercel.app", source: "vercel-comment" });
+  assert.equal(fromComment.url, "https://cycling-zone-xyz-team.vercel.app");
+  assert.equal(fromComment.source, "vercel-comment");
+  assert.match(fromComment.warning, /sidste udvej/i, "kommentar-kilden skal give en advarsel til opkalderen");
 
-  const fromStatus = pickPreviewUrl({
-    statusCheckRollup: [{ context: "Vercel", targetUrl: "https://cycling-zone-q1w2-team.vercel.app/dashboard" }],
+  const fromStatusState = pickPreviewUrl({
+    statusCheckRollup: [{ context: "Vercel", state: "success", targetUrl: "https://cycling-zone-q1w2-team.vercel.app/dashboard" }],
   });
-  assert.deepEqual(fromStatus, { url: "https://cycling-zone-q1w2-team.vercel.app", source: "status-check" });
+  assert.deepEqual(fromStatusState, { url: "https://cycling-zone-q1w2-team.vercel.app", source: "status-check" });
+
+  const fromStatusConclusion = pickPreviewUrl({
+    statusCheckRollup: [{ name: "Vercel", conclusion: "success", detailsUrl: "https://cycling-zone-abcd-team.vercel.app" }],
+  });
+  assert.equal(fromStatusConclusion.url, "https://cycling-zone-abcd-team.vercel.app");
+  assert.equal(fromStatusConclusion.source, "status-check");
 
   assert.equal(pickPreviewUrl({}), null);
   assert.equal(pickPreviewUrl({ statusCheckRollup: [{ context: "Vercel", targetUrl: "https://vercel.com/x/y" }] }), null);
+});
+
+test("pickPreviewUrl: statusCheckRollup uden bekraeftet success ignoreres og falder tilbage til kommentaren", () => {
+  const pendingOnly = pickPreviewUrl({
+    statusCheckRollup: [{ context: "Vercel", state: "pending", targetUrl: "https://cycling-zone-pending-team.vercel.app" }],
+  });
+  assert.equal(pendingOnly, null, "en status-check uden bekraeftet success maa ikke give en preview-URL");
+
+  const fallsBackToComment = pickPreviewUrl({
+    statusCheckRollup: [{ context: "Vercel", state: "pending", targetUrl: "https://cycling-zone-pending-team.vercel.app" }],
+    comments: [{ author: { login: "vercel[bot]" }, body: "https://cycling-zone-comment-team.vercel.app" }],
+  });
+  assert.equal(fallsBackToComment.url, "https://cycling-zone-comment-team.vercel.app");
+  assert.equal(fallsBackToComment.source, "vercel-comment");
+  assert.ok(fallsBackToComment.warning, "sidste-udvej-kilden skal give en advarsel");
 });
 
 test("lookupPreviewUrl: gh-kaldene i raekkefoelge (pr view -> deployments -> statuses), uden net", () => {
@@ -186,6 +210,15 @@ test("profil-mappen ligger under en gitignoreret sti", () => {
   const gitignore = readFileSync(join(REPO_ROOT, ".gitignore"), "utf8").split(/\r?\n/);
   const parent = PROFILE_DIR_REL.split("/").slice(0, 2).join("/") + "/";
   assert.ok(gitignore.includes(parent), `.gitignore skal indeholde '${parent}' (profilen: ${PROFILE_DIR_REL})`);
+});
+
+test("DEFAULT_OUT_DIR ligger under en gitignoreret sti (pr-screens/ selv er IKKE gitignoreret)", () => {
+  const gitignore = readFileSync(join(REPO_ROOT, ".gitignore"), "utf8").split(/\r?\n/);
+  const ignoredDir = `${DEFAULT_OUT_DIR}/`;
+  assert.ok(
+    gitignore.includes(ignoredDir),
+    `.gitignore skal indeholde '${ignoredDir}': aegte spillerdata i DEFAULT_OUT_DIR ('${DEFAULT_OUT_DIR}') maa aldrig kunne committes ved et rutine-'git add'.`,
+  );
 });
 
 test("CLI'en laeser aldrig tokens eller cookies og skruer aldrig uret (kildetekst-vagt)", () => {

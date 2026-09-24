@@ -16,7 +16,7 @@
 
 export const DEFAULT_ROUTES = Object.freeze(["/dashboard"]);
 export const DEFAULT_VIEWPORTS = Object.freeze([1440, 390]);
-export const DEFAULT_OUT_DIR = "pr-screens";
+export const DEFAULT_OUT_DIR = "pr-screens/live";
 export const DEFAULT_CHANNEL = "msedge";
 export const DEFAULT_REPO = "NicolaiDolmer/CyclingZone";
 
@@ -170,13 +170,19 @@ function vercelUrlsIn(text) {
 }
 
 /**
- * Vaelger preview-URL'en blandt de kilder gh kan give os:
- *  - GitHub Deployments (Vercel saetter `environment_url` paa status `success`),
- *  - Vercel-bottens PR-kommentar ("Preview: https://...vercel.app"),
- *  - statusCheckRollup-konteksten "Vercel" (targetUrl er oftest inspektoren paa
- *    vercel.com, men en *.vercel.app-URL accepteres).
- * Branch-aliaset (`...-git-<branch>-...vercel.app`) foretraekkes: det er den samme
- * origin for hvert push paa PR'en, saa ejerens login holder hele PR'ens levetid.
+ * Vaelger preview-URL'en blandt de kilder gh kan give os, i prioriteret raekkefoelge:
+ *  1. GitHub Deployments (Vercel saetter `environment_url` paa status `success`),
+ *  2. statusCheckRollup-konteksten "Vercel" (targetUrl er oftest inspektoren paa
+ *     vercel.com, men en *.vercel.app-URL accepteres) — KUN naar checken selv
+ *     bekraefter success (`state`-kontekster) eller `conclusion` (check runs);
+ *     en pending/failure-status maa aldrig give en preview-URL.
+ *  3. Vercel-bottens PR-kommentar ("Preview: https://...vercel.app") som SIDSTE
+ *     udvej: en kommentar har ingen success-status at verificere imod, saa den
+ *     bruges kun naar de to foerste intet fandt, og svaret faar et `warning`-felt
+ *     opkalderen boer logge.
+ * Branch-aliaset (`...-git-<branch>-...vercel.app`) foretraekkes indenfor hver kilde:
+ * det er den samme origin for hvert push paa PR'en, saa ejerens login holder hele
+ * PR'ens levetid.
  */
 export function pickPreviewUrl({ deploymentStatuses = [], comments = [], statusCheckRollup = [] } = {}) {
   const candidates = [];
@@ -184,20 +190,34 @@ export function pickPreviewUrl({ deploymentStatuses = [], comments = [], statusC
     if (!s || s.state !== "success") continue;
     for (const url of vercelUrlsIn(s.environment_url)) candidates.push({ url, source: "deployment-status" });
   }
-  for (const c of comments) {
-    const login = String(c?.author?.login ?? c?.user?.login ?? "").toLowerCase();
-    if (!login.includes("vercel")) continue;
-    for (const url of vercelUrlsIn(c.body)) candidates.push({ url, source: "vercel-comment" });
-  }
   for (const s of statusCheckRollup) {
     const ctx = String(s?.context ?? s?.name ?? "").toLowerCase();
     if (!ctx.includes("vercel")) continue;
+    if (s?.state !== "success" && s?.conclusion !== "success") continue;
     for (const url of vercelUrlsIn(s.targetUrl ?? s.detailsUrl)) candidates.push({ url, source: "status-check" });
   }
-  if (!candidates.length) return null;
-  const alias = candidates.find((c) => /-git-/.test(c.url));
-  const chosen = alias ?? candidates[0];
-  return { url: new URL(chosen.url).origin, source: chosen.source };
+  if (candidates.length) {
+    const alias = candidates.find((c) => /-git-/.test(c.url));
+    const chosen = alias ?? candidates[0];
+    return { url: new URL(chosen.url).origin, source: chosen.source };
+  }
+
+  const commentCandidates = [];
+  for (const c of comments) {
+    const login = String(c?.author?.login ?? c?.user?.login ?? "").toLowerCase();
+    if (!login.includes("vercel")) continue;
+    for (const url of vercelUrlsIn(c.body)) commentCandidates.push({ url, source: "vercel-comment" });
+  }
+  if (!commentCandidates.length) return null;
+  const alias = commentCandidates.find((c) => /-git-/.test(c.url));
+  const chosen = alias ?? commentCandidates[0];
+  return {
+    url: new URL(chosen.url).origin,
+    source: chosen.source,
+    warning:
+      "Preview-URL fra Vercel-bottens PR-kommentar (sidste udvej): hverken deployment-status " +
+      "eller status-check bekraeftede success for denne URL.",
+  };
 }
 
 /**
@@ -280,7 +300,7 @@ export function formatPlan(opts, origin, shots) {
 export const HELP_TEXT = `Billedstationen (#5565): aegte-data-billeder af en PR's Vercel-preview.
 
   node scripts/pr-shots.mjs --pr <N> [--routes /dashboard,/academy] [--viewports 1440,390]
-                            [--login] [--dry-run] [--url <origin>] [--out pr-screens]
+                            [--login] [--dry-run] [--url <origin>] [--out pr-screens/live]
                             [--channel msedge|chrome|chromium] [--headed] [--repo owner/name]
 
   --login     aabn browseren (headed) paa previewets /login, log ind selv; scriptet
