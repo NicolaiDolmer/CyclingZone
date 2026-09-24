@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
   resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor, loadBoundRiderIdsForRaceDay,
+  resolveCalendarRaceDayTarget,
 } from "./trainingRaceDayTick.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
@@ -154,6 +155,34 @@ test("#4846: en tabel uden et eneste positivt maal falder tilbage paa konfigurat
   assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: { 4: 0, 5: -3 } }), 77);
   assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 5, cfg, table: { 4: 120, 6: 150 } }), 150,
     "en saeson uden eget tal arver det HOEJESTE kendte maal");
+});
+
+// Diff-tjekket af PR #5608 (24/9): aksens laengde maa IKKE arves. Kalenderen pakker
+// efter `SEASON_RACE_DAY_TARGET[n] ?? null`, saa en saeson uden eget tal har intet maal.
+test("#4846: aksens maal laeses med kalenderens regel — en saeson uden eget tal arver IKKE", () => {
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4 }), SEASON_RACE_DAY_TARGET[4]);
+  for (const seasonNumber of [3, 5, 99]) {
+    assert.equal(resolveCalendarRaceDayTarget({ seasonNumber }), SEASON_RACE_DAY_TARGET[seasonNumber] ?? null,
+      `saeson ${seasonNumber}: samme svar som kalenderen`);
+  }
+  // Tabellen som i dag ({ 4: 140 }), laast lokalt saa testen ikke raadner naar et nyt
+  // saesonmaal tilfoejes.
+  const today = { 4: 140 };
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 3, table: today }), null,
+    "en saeson uden eget maal: ingen forlaengelse");
+  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 3, table: today }), 140,
+    "budget-deleren arver stadig (uaendret) — netop derfor maa aksen ikke bruge den");
+});
+
+test("#4846: kalenderens maal — ukendt, ugyldigt eller ikke-positivt giver null, aldrig 0", () => {
+  const table = { 4: 140, 5: 0, 6: -3, 7: "x", 8: 12.5, 9: null, 10: "120" };
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4, table }), 140);
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: "4", table }), 140, "tal som tekst, som seasonTransition.js' Number()");
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 10, table }), 120);
+  for (const seasonNumber of [5, 6, 7, 8, 9, 11, null, undefined, Number.NaN, 4.5]) {
+    assert.equal(resolveCalendarRaceDayTarget({ seasonNumber, table }), null, `saeson ${String(seasonNumber)}`);
+  }
+  assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4, table: null }), null);
 });
 
 test("#4847: deleren matcher den synkrone formel", () => {

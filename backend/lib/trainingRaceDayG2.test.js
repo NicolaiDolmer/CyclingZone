@@ -31,7 +31,7 @@ import { resolveCalendarFrom } from "./calendarStartDate.js";
 import { TIER_DENSITY } from "./calendarTierCaps.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
-import { resolveRaceDaysPerSeason } from "./trainingRaceDayTick.js";
+import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import {
   gameDaySpansByDivision, axisEndByDivisionFor, NO_PRIOR_GAME_DAY,
   runTrainingDayCloseSweep, __resetTrainingDayCloseStateForTests,
@@ -46,7 +46,7 @@ const FIRST_RACE_DAY = "2026-08-28";
 const NOW = new Date("2026-08-25T12:00:00Z");
 const REAL_DAYS = 28;
 const SEASON_NUMBER = 4;
-const TARGET = resolveRaceDaysPerSeason({ seasonNumber: SEASON_NUMBER });
+const TARGET = resolveCalendarRaceDayTarget({ seasonNumber: SEASON_NUMBER });
 const ALL_GAME_DAYS = Array.from({ length: TARGET }, (_, g) => g);
 
 let tierPlans = null;
@@ -126,14 +126,18 @@ describe("G2-fixturen er S4-agtig og rammer de to kanter", () => {
     }
   });
 
-  it("loebsdag 0 og aksens sidste loebsdag er tomme traeningsdage (ellers tester G2 ingenting)", () => {
-    // Uden disse to kanter ville G2 ogsaa vaere groen med den gamle adfaerd.
+  it("loebsdag 0 og aksens sidste loebsdag er tomme traeningsdage i ALLE fire divisioner (ellers tester G2 ingenting)", () => {
+    // Uden disse to kanter ville G2 ogsaa vaere groen med den gamle adfaerd. `every`,
+    // ikke `some` (diff-tjekket af PR #5608): kanten skal findes i hver division, ellers
+    // beviser G2 den kun for dem der tilfaeldigvis rammer den.
     const plans = s4Plans();
+    assert.equal(plans.length, 4);
     const bearing = (plan) => new Set(divisionRows(plan).map((r) => r.game_day));
-    assert.ok(plans.some((p) => !bearing(p).has(0)),
-      "ingen division har en tom loebsdag 0 — fixturen rammer ikke kanten ved saesonstart");
-    assert.ok(plans.some((p) => !bearing(p).has(TARGET - 1)),
-      "ingen division har en tom sidste loebsdag — fixturen rammer ikke kanten ved saesonslut");
+    const names = (ps) => ps.map((p) => `D${p.tier}`).join(", ");
+    assert.ok(plans.every((p) => !bearing(p).has(0)),
+      `${names(plans.filter((p) => bearing(p).has(0)))} har et loeb paa loebsdag 0 — fixturen rammer ikke kanten ved saesonstart`);
+    assert.ok(plans.every((p) => !bearing(p).has(TARGET - 1)),
+      `${names(plans.filter((p) => bearing(p).has(TARGET - 1)))} har et loeb paa sidste loebsdag — fixturen rammer ikke kanten ved saesonslut`);
   });
 });
 
@@ -255,7 +259,9 @@ describe("G2 gennem runTrainingDayCloseSweep (een koersel pr. kalenderdato)", ()
           return { alreadyRan: false };
         },
       });
-      if (!out.ran || out.failed || out.skippedGameDays?.length) failures.push({ date, out });
+      if (!out.ran || out.failed || out.skippedGameDays?.length || out.droppedExtensionGameDays?.length) {
+        failures.push({ date, out });
+      }
     }
     result = { ticksByTeam, warnings, failures, dates };
     __resetTrainingDayCloseStateForTests();

@@ -14,7 +14,12 @@ import {
   runTrainingDayCloseSweep, resolveDayCloseStatus, isTrainingDayCloseSweepRunning,
   __resetTrainingDayCloseStateForTests,
 } from "./trainingDayCloseTrigger.js";
-import { resolveRaceDaysPerSeason } from "./trainingRaceDayTick.js";
+import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
+
+// En saeson UDEN eget maal i kalenderens tabel (i dag alle andre end S4). Udledt, saa
+// testene ikke raadner naar et nyt saesonmaal tilfoejes.
+const NO_TARGET_SEASON = [3, 2, 1, 999].find((n) => SEASON_RACE_DAY_TARGET[n] === undefined);
 
 // ── Rene funktioner ──────────────────────────────────────────────────────────
 
@@ -544,6 +549,49 @@ describe("gameDaySpansByDivision (#4847 regel 4: rene traeningsdage faar ogsaa e
       new Map([["d1", 134]]), { axisEndByDivision: new Map([["d1", 139]]) },
     );
     assert.deepEqual(out.get("d1").gameDays, [135, 136, 137, 138, 139]);
+    assert.deepEqual(out.get("d1").droppedExtensionGameDays, []);
+  });
+
+  // Diff-tjekket af PR #5608 (24/9): med en akse KORTERE end maalet blev spaendet
+  // prior+1..139, og loftet beholdt de NYESTE — loebsdage der ikke findes — og sprang
+  // dagens egne over. Probe: prior 80, i dag 81-85, akse-ende 139.
+  it("#4846 akse < maal: forlaengelsen fortraenger ALDRIG dagens egne loebsdage", () => {
+    const today = [81, 82, 83, 84, 85].map((game_day) => ({ race_id: "r1", game_day }));
+    const out = gameDaySpansByDivision(
+      today, div, new Map([["d1", 80]]), { axisEndByDivision: new Map([["d1", 139]]) },
+    ).get("d1");
+    assert.deepEqual(out.gameDays, [81, 82, 83, 84, 85], "dagens egne loebsdage koeres");
+    assert.deepEqual(out.skippedGameDays, [], "intet af dagens eget spaend springes over");
+    assert.equal(out.droppedExtensionGameDays[0], 86);
+    assert.equal(out.droppedExtensionGameDays.at(-1), 139);
+    assert.equal(out.droppedExtensionGameDays.length, 54, "forlaengelsen droppes HELT og synligt");
+  });
+
+  it("#4846 forlaengelsen er alt-eller-intet: praecis paa loftet tages den med, een over droppes den", () => {
+    const today = [132, 133, 134, 135, 136].map((game_day) => ({ race_id: "r1", game_day }));
+    const prior = new Map([["d1", 131]]);
+    const fits = gameDaySpansByDivision(today, div, prior, {
+      axisEndByDivision: new Map([["d1", 139]]), maxCatchUp: 8,
+    }).get("d1");
+    assert.deepEqual(fits.gameDays, [132, 133, 134, 135, 136, 137, 138, 139]);
+    assert.deepEqual(fits.droppedExtensionGameDays, []);
+
+    const over = gameDaySpansByDivision(today, div, prior, {
+      axisEndByDivision: new Map([["d1", 139]]), maxCatchUp: 7,
+    }).get("d1");
+    assert.deepEqual(over.gameDays, [132, 133, 134, 135, 136], "aldrig et delvist stykke af forlaengelsen");
+    assert.deepEqual(over.droppedExtensionGameDays, [137, 138, 139]);
+    assert.deepEqual(over.skippedGameDays, []);
+  });
+
+  it("#4846 et efterslaeb over loftet paa sidste loebsdato: loftet som hidtil, forlaengelsen droppes", () => {
+    const out = gameDaySpansByDivision(
+      [{ race_id: "r1", game_day: 136 }], div, new Map([["d1", 120]]),
+      { axisEndByDivision: new Map([["d1", 139]]) },
+    ).get("d1");
+    assert.equal(out.gameDays.at(-1), 136, "dagens hoejeste loebsdag er altid med");
+    assert.equal(out.gameDays.length, MAX_GAME_DAY_CATCH_UP);
+    assert.deepEqual(out.droppedExtensionGameDays, [137, 138, 139]);
   });
 
   it("#4846 uden en akse-ende (null, eller ikke i mappen) forlaenges intet", () => {
@@ -698,10 +746,66 @@ describe("runTrainingDayCloseSweep + regel 4 (rene traeningsdage i sweepen)", ()
       supabase, now: inWindow,
       runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
     });
-    const lastGameDay = resolveRaceDaysPerSeason({ seasonNumber: 4 }) - 1;
+    const lastGameDay = resolveCalendarRaceDayTarget({ seasonNumber: 4 }) - 1;
     assert.equal(lastGameDay, 139, "ejerens laaste maal: 140 loebsdage, altsaa sidste loebsdag 139");
     assert.deepEqual(ran, [135, 136, 137, 138, 139]);
     assert.deepEqual(result.gameDays, [135, 136, 137, 138, 139]);
+  });
+
+  // Diff-tjekket af PR #5608 (24/9), probe: S3-lignende D1, prior 80, i dag 81-85,
+  // sidste loebsdato. Foer rettelsen: tikket [132..139], sprunget over 81..131.
+  const probeStages = [81, 82, 83, 84, 85].map((game_day, i) => ({
+    race_id: "r1", stage_number: i + 1, game_day, scheduled_at: `2026-09-15T${String(9 + i).padStart(2, "0")}:00:00Z`,
+  }));
+
+  it("#4846 probe: en saeson UDEN eget maal i kalenderen forlaenges ikke — i dag 81-85 tikker 81-85", async () => {
+    assert.equal(SEASON_RACE_DAY_TARGET[NO_TARGET_SEASON], undefined, "fixturens praemis: saesonen har intet eget maal");
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      season: { id: "s1", number: NO_TARGET_SEASON },
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+      stages: probeStages,
+      priorStages: [{ race_id: "r1", game_day: 80 }],
+      laterStages: [],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    const warnings = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      logger: { warn: (m) => warnings.push(m), error: (m) => warnings.push(m) },
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.deepEqual(ran, [81, 82, 83, 84, 85]);
+    assert.deepEqual(result.skippedGameDays, []);
+    assert.deepEqual(result.droppedExtensionGameDays, [], "intet maal ⇒ ingen forlaengelse at droppe");
+    assert.deepEqual(warnings, []);
+  });
+
+  it("#4846 akse < eget maal: dagens egne tikkes, forlaengelsen droppes og logges", async () => {
+    const supabase = makeSupabase({
+      flags: ALL_ON,
+      season: { id: "s1", number: 4 },
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 9, finalize_state: null }],
+      stages: probeStages,
+      priorStages: [{ race_id: "r1", game_day: 80 }],
+      laterStages: [],
+      teams: [{ id: "t1", league_division_id: "d1" }],
+    });
+    const ran = [];
+    const warnings = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow,
+      logger: { warn: (m) => warnings.push(m), error: (m) => warnings.push(m) },
+      runDay: async ({ gameDay }) => { ran.push(gameDay); return { alreadyRan: false }; },
+    });
+    assert.deepEqual(ran, [81, 82, 83, 84, 85], "aldrig loebsdage der ikke findes, aldrig dagens egne sprunget over");
+    assert.deepEqual(result.skippedGameDays, []);
+    assert.equal(result.droppedExtensionGameDays.length, 1);
+    assert.equal(result.droppedExtensionGameDays[0].divisionId, "d1");
+    assert.equal(result.droppedExtensionGameDays[0].gameDays[0], 86);
+    assert.equal(warnings.length, 1, "synligt, ikke tavst");
+    assert.match(warnings[0], /forlaengelsen/);
   });
 
   it("#4846 en FEJLET sidste-dato-query forlaenger ikke (fail-safe)", async () => {
@@ -819,6 +923,16 @@ describe("resolveDayCloseStatus + #4846-kanterne (knappen = sweepen)", () => {
       seasonId: "s1", now: inWindow, divisionId: "d1", seasonNumber: 4,
     });
     assert.deepEqual(out.gameDays, [138, 139]);
+  });
+
+  it("en saeson uden eget maal i kalenderen: knappen forlaenger ikke (samme regel som sweepen)", async () => {
+    for (const seasonNumber of [undefined, NO_TARGET_SEASON]) {
+      const out = await resolveDayCloseStatus({
+        supabase: makeSupabase({ ...lastDate, season: { id: "s1", number: NO_TARGET_SEASON } }),
+        seasonId: "s1", now: inWindow, divisionId: "d1", seasonNumber,
+      });
+      assert.deepEqual(out.gameDays, [138], `seasonNumber ${String(seasonNumber)}`);
+    }
   });
 
   it("fejler saeson-opslaget, forlaenges intet — knappen lover hellere faerre dage end flere", async () => {
