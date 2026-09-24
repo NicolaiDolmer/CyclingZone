@@ -182,11 +182,13 @@ export function marketFactorTypefree(abilities, age, model, market) {
  * @param {object} abilities
  * @param {object} model  typefri model-JSON (method = TYPEFREE_METHOD)
  * @param {{phaseStep?:number, market?:object|null}} [opts]
- *   phaseStep: 0-4 søndagskørsler siden kørselsdagen (default 0 = fuld præmie).
+ *   phaseStep: 0-4 søndagskørsler siden kørselsdagen. Udeladt ⇒ modellens
+ *   `current_phase_step` (lagt på af loaderen fra app_config, #5497 trin-
+ *   tælleren), ellers 0 = fuld præmie. Et eksplicit phaseStep vinder altid.
  * @returns {{ value:number|null, base:number|null, market_factor:number,
  *             market_applied:boolean, phase_step:number, phase_factor:number }}
  */
-export function valueTypefree(rider, abilities, model, { phaseStep = 0, market } = {}) {
+export function valueTypefree(rider, abilities, model, { phaseStep = model?.current_phase_step ?? 0, market } = {}) {
   const steps = Array.isArray(model?.elite_premium_phase_steps) && model.elite_premium_phase_steps.length
     ? model.elite_premium_phase_steps
     : ELITE_PREMIUM_PHASE_STEPS;

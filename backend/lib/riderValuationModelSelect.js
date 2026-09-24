@@ -52,7 +52,7 @@ import { fileURLToPath } from "node:url";
 
 import { readFlagStage } from "./featureStage.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
-import { isTypefreeModel } from "./valuationTypefree/typefreeValuation.js";
+import { ELITE_PREMIUM_PHASE_STEPS, isTypefreeModel } from "./valuationTypefree/typefreeValuation.js";
 import { hydrateMarketFit } from "./valuationTypefree/marketComponent.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -91,6 +91,79 @@ export const PRODUCTION_VALUE_MODEL_IDS = Object.freeze(["v4", "v5"]);
 // kun i prod-databasen / private filer, aldrig i repoet (hard rule 17 +
 // ejerens valg-fil). Mangler nøglen, regner v6 uden marked (market_applied=false).
 export const TYPEFREE_MARKET_APP_CONFIG = "rider_valuation_v6_market";
+
+// ── Trin-tælleren for elitepræmiens udfasning (#5497, indfasningsplan §5) ─────
+// app_config-nøglen bærer det trin (0-4) der SIDST er skrevet til rytterne:
+//   0 = kørselsdagen (den ekstraordinære kørsel sætter den, fuld præmie)
+//   1-4 = søndag 1-4 efter kørselsdagen (75/50/25/0 % præmie)
+// Søndagskørslen regner derfor med trin = nøgle + 1 (loft 4) og skriver det
+// trin tilbage, når kørslen er fuldført og prisen er v6. Læse-fladerne
+// (rytterkort, admin-preview, sæson-transition, nye ryttere) regner med
+// nøglen som den står: det er det trin databasens værdier allerede har, så
+// spilleren aldrig ser to forskellige priser for samme rytter.
+// FAIL-SAFE: manglende række eller ugyldig værdi = 0 (fuld præmie).
+export const RIDER_VALUE_PHASE_STEP_KEY = "rider_value_phase_step";
+export const MAX_PHASE_STEP = ELITE_PREMIUM_PHASE_STEPS.length - 1;
+
+/**
+ * Normalisér app_config-værdien til et heltal 0..MAX_PHASE_STEP. Tal og
+ * heltals-strenge accepteres; alt andet (null, "abc", 1.5, objekter) giver 0.
+ * Heltal uden for intervallet klemmes (7 → 4, -1 → 0). Ren funktion.
+ * @param {unknown} raw
+ * @returns {number}
+ */
+export function resolvePhaseStep(raw) {
+  let n = null;
+  if (typeof raw === "number") n = raw;
+  else if (typeof raw === "string" && /^\s*-?\d+\s*$/.test(raw)) n = Number(raw);
+  if (!Number.isInteger(n)) return 0;
+  return Math.max(0, Math.min(MAX_PHASE_STEP, n));
+}
+
+/** Det trin den næste søndagskørsel skal regne med: sidst skrevne + 1, loft MAX_PHASE_STEP. */
+export function nextPhaseStep(lastApplied) {
+  return Math.min(MAX_PHASE_STEP, resolvePhaseStep(lastApplied) + 1);
+}
+
+/** Lempelig læsning (læse-flader): enhver fejl giver 0. */
+export async function readPhaseStep(supabase) {
+  return resolvePhaseStep(await readFlagStage(supabase, RIDER_VALUE_PHASE_STEP_KEY));
+}
+
+/**
+ * Striks læsning til søndagskørslen: en ægte DB-fejl kaster (kørslen frigiver
+ * dagens claim og prøver igen), en manglende række giver 0. Samme kontrakt som
+ * readModelIdStrict nedenfor: at regne hele populationen på et gættet trin kan
+ * hoppe elitepræmien et helt trin op eller ned.
+ */
+export async function readPhaseStepStrict(supabase) {
+  if (!supabase?.from) throw new Error(`valuation-model: ingen supabase-klient til opslag af '${RIDER_VALUE_PHASE_STEP_KEY}'`);
+  const { data, error } = await supabase
+    .from("app_config").select("value").eq("key", RIDER_VALUE_PHASE_STEP_KEY).maybeSingle();
+  if (error) {
+    throw new Error(`valuation-model: kunne ikke laese app_config.${RIDER_VALUE_PHASE_STEP_KEY} (${error.message}). Koerslen stoppes.`);
+  }
+  return resolvePhaseStep(data?.value ?? null);
+}
+
+/** Skriv trinnet (klemt til 0..MAX_PHASE_STEP). Kaster ved skrivefejl. */
+export async function writePhaseStep(supabase, step, { now = new Date() } = {}) {
+  const value = resolvePhaseStep(step);
+  const { error } = await supabase.from("app_config").upsert(
+    {
+      key: RIDER_VALUE_PHASE_STEP_KEY,
+      value,
+      description:
+        "Elitepraemiens udfasnings-trin (0-4) der sidst er skrevet til rytterne (#5497). "
+        + "0 = koerselsdagen; soendagskoerslen taeller op med 1 (loft 4) naar prisen er v6. "
+        + "Nulstilles til 0 sammen med rider_valuation_model ved rollback.",
+      updated_at: now.toISOString(),
+    },
+    { onConflict: "key" }
+  );
+  if (error) throw new Error(`kunne ikke skrive app_config.${RIDER_VALUE_PHASE_STEP_KEY}: ${error.message}`);
+  return value;
+}
 
 /**
  * Normalisér app_config-værdien til et kendt model-id. Alt ukendt — null,
@@ -152,6 +225,19 @@ export function withMarketFit(model, fit) {
   return parsed ? { ...model, market_fit: parsed } : model;
 }
 
+/**
+ * Læg det aktuelle udfasnings-trin på en typefri model (`current_phase_step`).
+ * predictBaseValue/recomputeRiderValue bruger det, når kalderen ikke selv
+ * sender et eksplicit phaseStep. Andre modeller returneres uændret. Ren funktion.
+ */
+export function withPhaseStep(model, step) {
+  if (!isTypefreeModel(model)) return model;
+  return { ...model, current_phase_step: resolvePhaseStep(step) };
+}
+
+// v6's runtime-tilstand fra app_config: markeds-fittet OG det trin databasens
+// værdier står på. Begge læses sammen, så en læse-flade aldrig regner med
+// markedet fra én kilde og trinnet fra en anden.
 async function attachMarket(supabase, model, { strict = false } = {}) {
   if (!isTypefreeModel(model)) return model;
   if (strict) {
@@ -161,9 +247,12 @@ async function attachMarket(supabase, model, { strict = false } = {}) {
     if (error) {
       throw new Error(`valuation-model: kunne ikke laese app_config.${TYPEFREE_MARKET_APP_CONFIG} (${error.message}). Koerslen stoppes.`);
     }
-    return withMarketFit(model, data?.value ?? null);
+    return withPhaseStep(withMarketFit(model, data?.value ?? null), await readPhaseStepStrict(supabase));
   }
-  return withMarketFit(model, await readFlagStage(supabase, TYPEFREE_MARKET_APP_CONFIG));
+  return withPhaseStep(
+    withMarketFit(model, await readFlagStage(supabase, TYPEFREE_MARKET_APP_CONFIG)),
+    await readPhaseStep(supabase)
+  );
 }
 
 /**

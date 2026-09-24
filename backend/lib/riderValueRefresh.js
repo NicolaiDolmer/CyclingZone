@@ -77,7 +77,10 @@ const WRITE_CONCURRENCY = 25;
 // tilbage til v4 (ikke til prisens model som for v4/v5). Intet i stien kigger
 // på team_id — menneskeholds ryttere regnes præcis som alle andre.
 // v4/v5 er bit-identiske med før; de ekstra opts ignoreres for dem.
-export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline, productionModel, phaseStep = 0, market } = {}) {
+// Trin-tælleren (#5497): udeladt phaseStep ⇒ modellens current_phase_step
+// (loaderen lægger app_config-trinnet på), ellers 0. Et eksplicit phaseStep
+// vinder altid — søndagskørslen sender nøgle + 1, den ekstraordinære kørsel 0.
+export function recomputeRiderValue(riderRow, abilities, baseline, model, { typeAbilities, youthBaseline, productionModel, phaseStep, market } = {}) {
   const typeSource = (typeAbilities && Object.keys(typeAbilities).length > 0) ? typeAbilities : abilities;
   const typeModel = selectTypesBaseline(riderRow?.age, baseline, youthBaseline);
   // #3570 (ejer-beslutning 10/8): bærer rytteren et PERSISTERET anlæg
@@ -127,12 +130,13 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model, { type
 // Ren diff: returnér KUN ryttere hvor base_value, current_production_value eller
 // type ændrede sig. capsByRider er valgfri (bagudkompatibel) — udeladt/tom Map ⇒
 // recomputeRiderValue falder tilbage til abilities for typen (se ovenfor).
-export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline, productionModel) {
+// #5497: phaseStep (valgfri) videresendes til recomputeRiderValue; kun v6 læser den.
+export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline, productionModel, phaseStep) {
   const updates = [];
   for (const r of riders) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
-    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline, productionModel });
+    const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline, productionModel, phaseStep });
     const best = bestRoleForAbilities(ab);
     const bestChanged = best.best_role !== (r.best_role ?? null)
       || best.best_role_rating !== (r.best_role_rating ?? null);
@@ -187,7 +191,12 @@ async function writeUpdates(supabase, updates) {
 // Et separat tørkørsels-regnestykke ville før eller siden divergere fra det der
 // faktisk køres, og så er tørkørslen værre end ingenting. Defaulten er false,
 // så søndagskørslen er uændret.
-export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride, dryRun = false } = {}) {
+// #5497 trin-tælleren: `phaseStep` (0-4, default 0) er elitepræmiens trin for
+// HELE kørslen. Det sendes altid eksplicit videre, så et trin der står på
+// modellen (current_phase_step fra app_config) aldrig tavst overtager en
+// skrivende kørsel: den ekstraordinære kørsel er trin 0, søndagskørslen
+// vælger selv sit trin (sundayValueSweep.js). v4/v5 ignorerer det.
+export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride, dryRun = false, phaseStep = 0 } = {}) {
   const bl = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // #3570: OPT-IN via param, samme mønster som backfillCores.js — produktionens
   // CLI/sweep-callere sender ikke youthBaseline eksplicit og får derfor den
@@ -257,13 +266,34 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const abilityByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
-  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl, pm);
-  log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret${dryRun ? " · TØRKØRSEL, intet skrevet" : ""}`);
+  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl, pm, phaseStep);
+  const productionChanged = countProductionValueChanges(updates, riders);
+  const typefree = isTypefreeModel(m);
+  const modelId = m?.model_id ?? (Number(m?.version) >= 4 ? DEFAULT_VALUATION_MODEL_ID : null);
+  log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret · model ${modelId ?? "?"}${typefree ? ` · phase step ${phaseStep}` : ""} · production_value changed: ${productionChanged}${dryRun ? " · TØRKØRSEL, intet skrevet" : ""}`);
+  const meta = { modelId, typefree, phaseStep: typefree ? phaseStep : null, productionChanged };
   if (dryRun) {
     // `updates` returneres KUN i tørkørsel — den rigtige kørsel skal ikke bære
     // hele populationen tilbage til kalderen ved hver søndag.
-    return { scanned: riders.length, changed: updates.length, written: 0, dryRun: true, updates, before: riders };
+    return { scanned: riders.length, changed: updates.length, written: 0, dryRun: true, ...meta, updates, before: riders };
   }
   const written = await writeUpdates(supabase, updates);
-  return { scanned: riders.length, changed: updates.length, written };
+  return { scanned: riders.length, changed: updates.length, written, ...meta };
+}
+
+/**
+ * Hvor mange ryttere får et nyt LØNGRUNDLAG (current_production_value) af
+ * denne kørsel? Løn følger ikke værdi, så tallet skal være 0 så længe løn-
+ * nøglen står på v4 og kun prisen skifter model. Står i søndagens log-linje,
+ * så post-verify kan læses direkte i Railway (#5497).
+ */
+export function countProductionValueChanges(updates, riders) {
+  const beforeById = new Map(riders.map((r) => [r.id, r]));
+  let n = 0;
+  for (const u of updates) {
+    if (!Object.hasOwn(u, "current_production_value")) continue;
+    const before = beforeById.get(u.id);
+    if ((u.current_production_value ?? null) !== (before?.current_production_value ?? null)) n += 1;
+  }
+  return n;
 }
