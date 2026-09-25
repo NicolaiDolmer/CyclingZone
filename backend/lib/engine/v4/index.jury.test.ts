@@ -81,11 +81,11 @@ function run(seedIndex: number): StageOutput {
   return simulateStageV4({ route: ROUTE, startlist: STARTLIST, orders: [], seed: `jury-${seedIndex}`, tuning: TUNING });
 }
 
-function juryCases(maxSeeds: number): StageOutput[] {
-  const out: StageOutput[] = [];
+function juryCases(maxSeeds: number): Array<{ seed: number; output: StageOutput }> {
+  const out: Array<{ seed: number; output: StageOutput }> = [];
   for (let s = 0; s < maxSeeds && out.length < 3; s++) {
     const output = run(s);
-    if (output.results.some((r) => r.reinstated_by === "jury")) out.push(output);
+    if (output.results.some((r) => r.reinstated_by === "jury")) out.push({ seed: s, output });
   }
   return out;
 }
@@ -93,7 +93,7 @@ function juryCases(maxSeeds: number): StageOutput[] {
 test("#5582 e2e: juryen genindsaetter kun uheldsramte (og en holdkammerat i samme maalgruppe)", () => {
   const cases = juryCases(120);
   assert.ok(cases.length > 0, "scenariet skal give juryen noget at goere, ellers tester filen ingenting");
-  for (const output of cases) {
+  for (const { output } of cases) {
     const victims = new Set(
       (output.incidents ?? []).filter((i) => i.outcome === "time_loss").map((i) => i.rider_id),
     );
@@ -148,5 +148,6 @@ test("#5582 e2e: passage_totals er etapens point MED pointstraffen for alle geni
 test("#5582 e2e: samme seed giver byte-identisk jury-udfald (ingen rng i juryen)", () => {
   const cases = juryCases(120);
   assert.ok(cases.length > 0);
-  for (let s = 0; s < 3; s++) assert.deepEqual(run(s), run(s));
+  // Kun seeds hvor juryen faktisk traadte til, sammenlignet med det fangede output.
+  for (const { seed, output } of cases) assert.deepEqual(run(seed), output);
 });
