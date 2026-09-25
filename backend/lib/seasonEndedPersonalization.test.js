@@ -425,6 +425,7 @@ function makeBoardSupabase({
         select: () => builder,
         eq: (col, value) => { filters.push((r) => r[col] === value); return builder; },
         in: (col, values) => { filters.push((r) => values.includes(r[col])); return builder; },
+        is: (col, value) => { filters.push((r) => (r[col] ?? null) === value); return builder; },
         order: (col, opts = {}) => { if (table in board) orderBy = { col, ascending: opts.ascending !== false }; return builder; },
         limit: (n) => { limitN = n; return builder; },
         range: async () => (table in board ? rowsNow() : { data: TABLES[table] || [], error: null }),
@@ -439,13 +440,13 @@ function makeBoardSupabase({
 // Hold t1's mandat i sæsonen: tre løbs-kvitteringer, én sæson-slut-kvittering
 // (mandatets mål) og to milepæls-kvitteringer skrevet efter den.
 const BOARD_EVENTS = [
-  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, created_at: "2026-08-01T10:00:00Z", satisfaction_before: 55, satisfaction_after: 58, goals_met: 1, goals_total: 4 },
-  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, created_at: "2026-08-20T10:00:00Z", satisfaction_before: 58, satisfaction_after: 61, goals_met: 2, goals_total: 4 },
-  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, created_at: "2026-09-26T20:00:00Z", satisfaction_before: 61, satisfaction_after: 66, goals_met: 3, goals_total: 4 },
-  { team_id: "t1", mandate_id: "mand-t1", milestone_id: "ms-1", created_at: "2026-09-26T20:00:01Z", satisfaction_before: 66, satisfaction_after: 70, goals_met: 1, goals_total: 1 },
-  { team_id: "t1", mandate_id: "mand-t1", milestone_id: "ms-2", created_at: "2026-09-26T20:00:02Z", satisfaction_before: 70, satisfaction_after: 68, goals_met: 0, goals_total: 1 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, reason_category: "weekend_update", created_at: "2026-08-01T10:00:00Z", satisfaction_before: 55, satisfaction_after: 58, goals_met: 1, goals_total: 4 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, reason_category: "weekend_update", created_at: "2026-08-20T10:00:00Z", satisfaction_before: 58, satisfaction_after: 61, goals_met: 2, goals_total: 4 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, reason_category: "season_end", created_at: "2026-09-26T20:00:00Z", satisfaction_before: 61, satisfaction_after: 66, goals_met: 3, goals_total: 4 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: "ms-1", reason_category: "mandate.milestone.achieved", created_at: "2026-09-26T20:00:01Z", satisfaction_before: 66, satisfaction_after: 70, goals_met: 1, goals_total: 1 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: "ms-2", reason_category: "mandate.milestone.missed", created_at: "2026-09-26T20:00:02Z", satisfaction_before: 70, satisfaction_after: 68, goals_met: 0, goals_total: 1 },
   // Forrige sæsons mandat: må aldrig blandes ind.
-  { team_id: "t1", mandate_id: "mand-t1-old", milestone_id: null, created_at: "2026-06-01T10:00:00Z", satisfaction_before: 20, satisfaction_after: 30, goals_met: 0, goals_total: 5 },
+  { team_id: "t1", mandate_id: "mand-t1-old", milestone_id: null, reason_category: "season_end", created_at: "2026-06-01T10:00:00Z", satisfaction_before: 20, satisfaction_after: 30, goals_met: 0, goals_total: 5 },
 ];
 const BOARD_MANDATES = [
   { id: "mand-t1", team_id: "t1", season_id: SEASON_ID, status: "completed" },
@@ -509,6 +510,35 @@ test("#5752 loader: before = første kvittering, after = seneste, mål = seneste
   assert.deepEqual(facts.get("t1").board, { met: 3, total: 4, before: 55, after: 68 });
 });
 
+test("#5752 loader: kun løbs-kvitteringer (ingen sæson-slut-kvittering) → ingen dom, aldrig en mellemstand som slutresultat", async () => {
+  const facts = await loadSeasonEndedPersonalization({
+    supabase: makeBoardSupabase({
+      flag: "on",
+      mandates: BOARD_MANDATES,
+      events: BOARD_EVENTS.filter((e) => e.reason_category === "weekend_update"),
+    }),
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }],
+    includeNextDivision: true,
+  });
+  assert.equal(facts.get("t1").board, null);
+});
+
+test("#5752 loader: mange milepæls-kvitteringer efter sæson-slut skjuler ikke dommen", async () => {
+  const manyMilestones = Array.from({ length: 20 }, (_, i) => ({
+    team_id: "t1", mandate_id: "mand-t1", milestone_id: `ms-x${i}`, reason_category: "mandate.milestone.achieved",
+    created_at: `2026-09-26T21:00:${String(i).padStart(2, "0")}Z`,
+    satisfaction_before: 68 + i, satisfaction_after: 69 + i, goals_met: 1, goals_total: 1,
+  }));
+  const facts = await loadSeasonEndedPersonalization({
+    supabase: makeBoardSupabase({ flag: "on", mandates: BOARD_MANDATES, events: [...BOARD_EVENTS, ...manyMilestones] }),
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }],
+    includeNextDivision: true,
+  });
+  assert.deepEqual(facts.get("t1").board, { met: 3, total: 4, before: 55, after: 88 });
+});
+
 test("#5752 loader: flag off → ingen dom, resten består", async () => {
   const facts = await loadSeasonEndedPersonalization({
     supabase: makeBoardSupabase({ flag: "off", mandates: BOARD_MANDATES, events: BOARD_EVENTS }),
@@ -530,7 +560,7 @@ test("#5752 loader: flag beta → kun beta-testere/admin får dommen", async () 
     mandates: [...BOARD_MANDATES, { id: "mand-t2", team_id: "t2", season_id: SEASON_ID, status: "completed" }],
     events: [
       ...BOARD_EVENTS,
-      { team_id: "t2", mandate_id: "mand-t2", milestone_id: null, created_at: "2026-09-26T20:00:00Z", satisfaction_before: 50, satisfaction_after: 52, goals_met: 2, goals_total: 3 },
+      { team_id: "t2", mandate_id: "mand-t2", milestone_id: null, reason_category: "season_end", created_at: "2026-09-26T20:00:00Z", satisfaction_before: 50, satisfaction_after: 52, goals_met: 2, goals_total: 3 },
     ],
   });
   const facts = await loadSeasonEndedPersonalization({

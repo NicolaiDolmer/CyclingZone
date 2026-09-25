@@ -37,13 +37,9 @@ import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
 const BOARD_MANDATE_MODEL_FLAG_KEY = "board_mandate_model_enabled";
 
 const ID_CHUNK_SIZE = 200;
-// #5752 · bestyrelsens dom slås op pr. hold (2 små, team_id-indekserede
-// opslag); så mange hold ad gangen.
+// #5752 · bestyrelsens dom slås op pr. hold (3 små, team_id-indekserede
+// limit-1-opslag); så mange hold ad gangen.
 const BOARD_VERDICT_CONCURRENCY = 10;
-// Seneste kvitteringer der kigges i for mandatets egen sæson-slut-kvittering.
-// Milepæls-kvitteringerne (goals_total = 1 pr. milepæl) skrives EFTER den ved
-// sæson-slut, og et hold har kun en håndfuld milepæle.
-const BOARD_VERDICT_TAIL = 12;
 
 export const SEASON_ENDED_MESSAGE_CODES = Object.freeze({
   full: "notif.seasonEnded.messagePersonal",
@@ -244,34 +240,42 @@ async function resolveBoardVerdictAudience({ supabase, teams }) {
  * Én holds dom fra `board_satisfaction_events` for holdets mandat i sæsonen:
  *   · before = FØRSTE kvitterings satisfaction_before
  *   · after  = SENESTE kvitterings satisfaction_after (inkl. milepæle)
- *   · met/total = seneste MANDAT-kvittering (milestone_id er null); milepæls-
- *     kvitteringer bærer goals_total = 1 pr. milepæl og er ikke mandatets mål.
+ *   · met/total = sæson-slut-kvitteringen (reason_category 'season_end',
+ *     milestone_id null). Løbs-kvitteringer er mellemstande, og milepæls-
+ *     kvitteringer bærer goals_total = 1 pr. milepæl.
  * `null` når noget mangler: hellere ingen sætning end en halv.
  */
 async function loadOneBoardVerdict({ supabase, teamId, mandateId }) {
-  const [firstRes, tailRes] = await Promise.all([
-    supabase
-      .from("board_satisfaction_events")
-      .select("satisfaction_before, created_at")
-      .eq("team_id", teamId)
-      .eq("mandate_id", mandateId)
+  const scoped = (columns) => supabase
+    .from("board_satisfaction_events")
+    .select(columns)
+    .eq("team_id", teamId)
+    .eq("mandate_id", mandateId);
+
+  const [firstRes, latestRes, receiptRes] = await Promise.all([
+    scoped("satisfaction_before, created_at")
       .order("created_at", { ascending: true })
       .limit(1),
-    supabase
-      .from("board_satisfaction_events")
-      .select("satisfaction_after, goals_met, goals_total, milestone_id, created_at")
-      .eq("team_id", teamId)
-      .eq("mandate_id", mandateId)
+    scoped("satisfaction_after, created_at")
       .order("created_at", { ascending: false })
-      .limit(BOARD_VERDICT_TAIL),
+      .limit(1),
+    // Sæson-slut-kvitteringen (applySeasonEndSync, reason_category
+    // 'season_end') er den eneste der gør mandatets mål op. Løbs-kvitteringer
+    // ('weekend_update') er mellemstande, milepæls-kvitteringer tæller 1 mål
+    // hver. Mangler den, er der ingen dom at berette.
+    scoped("goals_met, goals_total, created_at")
+      .eq("reason_category", "season_end")
+      .is("milestone_id", null)
+      .order("created_at", { ascending: false })
+      .limit(1),
   ]);
-  if (firstRes.error) throw new Error(`board_satisfaction_events lookup failed: ${firstRes.error.message}`);
-  if (tailRes.error) throw new Error(`board_satisfaction_events lookup failed: ${tailRes.error.message}`);
+  for (const res of [firstRes, latestRes, receiptRes]) {
+    if (res.error) throw new Error(`board_satisfaction_events lookup failed: ${res.error.message}`);
+  }
 
   const first = firstRes.data?.[0];
-  const tail = tailRes.data || [];
-  const latest = tail[0];
-  const receipt = tail.find((row) => !row.milestone_id);
+  const latest = latestRes.data?.[0];
+  const receipt = receiptRes.data?.[0];
   if (!first || !latest || !receipt) return null;
 
   const before = toFiniteNumber(first.satisfaction_before);
