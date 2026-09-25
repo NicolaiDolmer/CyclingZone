@@ -1430,6 +1430,10 @@
       "q": "What happens to my riders if I don't log in?",
       "a": "Your riders stay on your team. Cycling Zone does not punish you for skipping a day, so play at your own pace."
     },
+    "appUpdatesFaq": {
+      "q": "Why does the game sometimes reload itself?",
+      "a": "When I put out a new version, a tab you already had open still points at the old files, and they can disappear. The tab checks for a new version and reloads itself so you get the new one. It never does that while you have unsaved changes or a race film running. Then you get a small 'New version ready' bar at the bottom instead, and you decide when to take the update."
+    },
     "passwordReset": {
       "q": "How do I reset my password?",
       "a": "From the login page you can click 'Forgot password?', enter your email and follow the reset link in the email. The link opens a dedicated reset page where you pick a new password."
@@ -1845,6 +1849,26 @@
     "betaGroupFaq": {
       "q": "What is the beta group, and how do I join?",
       "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone."
+    },
+    "sharpFlatTrainingDaysFaq": {
+      "q": "What do 'sharp' and 'flat' training days mean, and should a run of flat days worry me?",
+      "a": "Every training day includes a small random swing on top of your rider's usual progress: some days land a bit above plan (a sharp day), some a bit below (a flat day), and most sit around normal. It's about a third of days each way, rolled fresh per rider per day and completely independent of the day before, so it isn't tracking fatigue, form or anything you're doing wrong. Two or three flat days in a row will happen to someone in a normal-sized squad purely by chance; judge a rider's development over a full training block, not a single day."
+    },
+    "teamworkLeadershipTrainingFaq": {
+      "q": "What controls how fast Teamwork and Leadership train, and do they have hidden potential?",
+      "a": "Teamwork and Leadership train through the same daily system as every other ability: the bigger the gap between where a rider is now and his ceiling for that ability, the faster it grows, slowing down as he approaches the top. Potential doesn't touch the ceiling for any ability, Teamwork and Leadership included; it only controls how fast that gap closes. The ceiling itself comes from type: most abilities get a ceiling shaped by how central that ability is to your rider's type, so a climber's climbing ceiling sits far above a sprinter's. Teamwork and Leadership don't work that way: every rider trains toward the same shared ceiling regardless of type. So no, there's no hidden extra headroom on these two for a high-potential rider; potential speeds up training on every ability, Teamwork and Leadership included, it just never raises the ceiling."
+    },
+    "riderPoolNationalityFaq": {
+      "q": "Why are some nations like South Korea, China and Japan so visible in the rider pool?",
+      "a": "New riders are drawn from a weighted pool built to spread nationalities more widely than a strict mirror of the real professional peloton would, plus a short list of nations that are always guaranteed at least one rider so the pool doesn't lean entirely on the usual big cycling countries. I can't share the exact weights here, that's an internal balance number I keep out of a public FAQ, but I'm looking at whether that guaranteed-representation list is landing the way it should or giving a handful of nations more visible presence than intended. If it needs tuning, that's a pool change, not a bug in any individual rider."
+    },
+    "retirementAgeWindowFaq": {
+      "q": "Retirement is between 36 and 40. Is 40 a rider's last season, or does he retire the moment he turns 40?",
+      "a": "40 is a season he gets to ride, not a cutoff he loses. If a rider reaches age 40, he's guaranteed to retire before the next season starts, but he plays out the season he's 40 in first; he never rides at 41. Before that, retirement is a rising chance each season from age 36 onward, so any of his seasons at 36, 37, 38 or 39 could turn out to be his last too, it just isn't guaranteed until 40."
+    },
+    "scoutCancelRefundFaq": {
+      "q": "If I cancel a scouting mission, do I get the money back? Does it matter when I cancel?",
+      "a": "No refund, at any point. The travel cost is charged the moment you start a mission, and cancelling just stops it and frees up your scout; it doesn't return any of the money you already spent, no matter how early or late you cancel. Weigh that before you commit a mission: only start one you're willing to see through, or willing to lose the cost of if your plans change."
     }
   },
   "knownIssues": {

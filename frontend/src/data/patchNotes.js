@@ -1,5 +1,99 @@
 export const PATCHES = [
   {
+    "version": "7.299",
+    "date": "2026-09-25",
+    "label": "Settings tabs",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Settings now has tabs",
+          "body": "What changed: Settings is split into five tabs: Account, Notifications, Preferences, Privacy and Beta. The tab is in the address, and old links to a section open the right tab.\n\nWhat it means for you: You find the setting you need without scrolling through everything else."
+        },
+        "da": {
+          "title": "Indstillinger har nu faner",
+          "body": "Hvad er ændret: Indstillinger er delt i fem faner: Konto, Notifikationer, Præferencer, Privatliv og Beta. Fanen står i adressen, og gamle links til et afsnit åbner den rigtige fane.\n\nHvad det betyder for dig: Du finder den indstilling du skal bruge uden at scrolle gennem alt det andet."
+        },
+        "refs": [
+          5402,
+          5725
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Echelon Drills toned down slightly",
+          "body": "What changed: Echelon Drills gave more multi-point gains than the other hard sessions. Its total focus now matches the VO2max sessions. Cobbled Sectors and Attack Repeats are unchanged.\n\nWhat it means for you: Echelon Drills is still a strong session, just no longer the obvious pick every time."
+        },
+        "da": {
+          "title": "Vifteøvelser er tonet lidt ned",
+          "body": "Hvad er ændret: Vifteøvelser gav flere flerpoint-stigninger end de andre hårde sessioner. Dens samlede fokus matcher nu VO2max-sessionerne. Brostenssektioner og Angrebsgentagelser er uændrede.\n\nHvad det betyder for dig: Vifteøvelser er stadig en stærk session, bare ikke længere det oplagte valg hver gang."
+        },
+        "refs": [
+          5456,
+          5711
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Beta features are marked",
+          "body": "What changed: If you are in the beta group, menu items for features still in beta carry a small Beta chip, and patch notes that only apply to the beta group are marked the same way.\n\nWhat it means for you: You can tell at a glance what is still in testing and what everyone has."
+        },
+        "da": {
+          "title": "Beta-funktioner er markeret",
+          "body": "Hvad er ændret: Er du i beta-gruppen, får menupunkter for funktioner der stadig er i beta en lille Beta-chip, og patch notes der kun gælder beta-gruppen er markeret på samme måde.\n\nHvad det betyder for dig: Du kan med ét blik se hvad der stadig testes, og hvad alle har."
+        },
+        "refs": [
+          5404,
+          5422,
+          5724,
+          5722
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "New roadmap items get the yellow dot",
+          "body": "What changed: The Roadmap menu item shows a yellow dot when there are items you have not seen, and each new item on the page carries its own dot until you open the page. Same mechanic as patch notes.\n\nWhat it means for you: You do not miss a new plan you can vote on."
+        },
+        "da": {
+          "title": "Nye roadmap-punkter får den gule prik",
+          "body": "Hvad er ændret: Menupunktet Roadmap viser en gul prik når der er punkter du ikke har set, og hvert nyt punkt på siden har sin egen prik indtil du åbner siden. Samme mekanik som patch notes.\n\nHvad det betyder for dig: Du overser ikke en ny plan du kan stemme om."
+        },
+        "refs": [
+          5673,
+          5731
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Six new FAQ answers",
+          "body": "What changed: Help answers what sharp and flat training days mean, what drives Teamwork and Leadership, why some nations are so visible in the rider pool, how retirement between 36 and 40 works, what you get back when you cancel a scouting mission, and how app updates reach you.\n\nWhat it means for you: The questions I got most this week now have an answer in Help."
+        },
+        "da": {
+          "title": "Seks nye FAQ-svar",
+          "body": "Hvad er ændret: Hjælp svarer på hvad skarpe og flade træningsdage betyder, hvad der styrer Holdarbejde og Lederskab, hvorfor nogle nationer fylder i rytterpuljen, hvordan pension mellem 36 og 40 virker, hvad du får tilbage når du annullerer en scouting-mission, og hvordan app-opdateringer når dig.\n\nHvad det betyder for dig: De spørgsmål jeg fik flest af i denne uge har nu et svar i Hjælp."
+        },
+        "refs": [
+          5634,
+          5723
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.298",
     "date": "2026-09-24",
     "label": "Beta",
@@ -24,6 +118,7 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "stage": "beta",
         "topic": "Board",
         "en": {
           "title": "Boardroom beta: the right target after a negotiation, and the sponsor effect is visible",
@@ -43,6 +138,7 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
+        "stage": "beta",
         "topic": "Riders",
         "en": {
           "title": "Rating shows the rider's best role now, in the beta group",

@@ -28,11 +28,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          # persist-credentials: true - jobbet pusher/opretter PR med GITHUB_TOKEN i samme job (Refs #5441).
+          persist-credentials: true
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@0a8d3c9443bbff909ab973b6a17a340b913f229f # v1
+        uses: anthropics/claude-code-action@4036a180cf690f49529f5d8c79c998855287f590 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true

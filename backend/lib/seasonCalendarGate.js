@@ -18,6 +18,44 @@ import {
 import { detectStageOrderViolations } from "./stageOrderMetrics.js";
 import { scoreSeason, TIER_TARGETS } from "./raceRouteRealismMetrics.js";
 import { resolveSeasonDraw } from "./raceRouteRealismDraw.js";
+import { detectRaceDayEqualityViolations } from "./calendarRaceDayTargets.js";
+
+/**
+ * #5658: §1d (CALENDAR_RULES.md) / TRAINING_RULES.md §13.3 beslutning 2 på en dry-run-plan.
+ * Alle divisioner skal have lige lang løbsdags-akse, og aksen skal ramme sæsonens mål.
+ *
+ * Målet læses fra planen selv (`raceDayTarget` pr. tier, sat af materializeren ud fra det
+ * kalderen bad om). Har planen intet mål, dømmes intet: en kalender der er pakket uden §1d
+ * (S3 og reparationer af den) er ikke ulovlig bagud. Samme afgrænsning som scorecardets
+ * `scorecardGateGroups`.
+ *
+ * Fail-closed når et mål ER sat: en tier med løb men uden målt akse, eller tiers med
+ * forskellige mål, er et brud. En gate der ikke kan måle, må ikke sige grønt.
+ *
+ * @param {{tiers: Array<object>}} summary
+ * @returns {{target: number|null, violations: string[]}}
+ */
+export function detectPlanRaceDayViolations(summary) {
+  const tiers = summary?.tiers ?? [];
+  const targets = [...new Set(tiers.map((t) => t.raceDayTarget).filter((v) => v != null).map(Number))];
+  if (targets.length === 0) return { target: null, violations: [] };
+
+  const violations = [];
+  if (targets.length > 1) {
+    violations.push(`divisionerne er pakket mod forskellige løbsdags-mål (${targets.join(" · ")}) — ét fælles mål kræves`);
+  }
+  const target = Math.max(...targets);
+  const axisByTier = {};
+  for (const t of tiers) {
+    const axis = Number(t.raceDayAxisLength);
+    if (Number.isFinite(axis) && axis > 0) { axisByTier[t.tier] = axis; continue; }
+    if ((t.compositionStats?.raceDays ?? 0) > 0) {
+      violations.push(`tier ${t.tier}: løbsdags-aksen er ikke målt i planen — kan ikke bevise målet ${target}`);
+    }
+  }
+  violations.push(...detectRaceDayEqualityViolations({ axisByTier, target, tiers: tiers.map((t) => t.tier) }));
+  return { target, violations };
+}
 
 /**
  * Kør alle gates på en dry-run-plan (materializeTierCalendars-summary med dryRun:true).
@@ -33,7 +71,12 @@ import { resolveSeasonDraw } from "./raceRouteRealismDraw.js";
  *   sæson-aggregatet. seasonTransition.js's forever-sti lader denne stå på default
  *   (false) — en automatisk transition skal ALDRIG selv acceptere en afvigelse, kun en
  *   menneske-kørt CLI-session med et eksplicit flag må det.
- * @returns {{blocking:string[], compositionDrift:string[], tierCompositionDrift:string[], severity:number, report:object}}
+ * @param {{raceDayEqualityBlocking?:boolean}} [opts] #5658: §1d (samme antal løbsdage i alle
+ *   divisioner, og = sæsonens mål) dømmes altid og står i `raceDayViolations`. Default (true)
+ *   står de OGSÅ i `blocking`, så auto-stien (seasonTransition.js) nægter at skrive en skæv
+ *   kalender. Kun buildSeasonCalendar.js sætter false: dér gater scorecardet samme regel som
+ *   placerings-gate (stopper --apply, dry-runnet måler videre), og den skal ikke stå to gange.
+ * @returns {{blocking:string[], compositionDrift:string[], tierCompositionDrift:string[], raceDayViolations:string[], severity:number, report:object}}
  *   blocking              brud der ALDRIG må overrides
  *   compositionDrift      K-B-afvigelser PÅ SÆSON-AGGREGATET (kan lempes med --allow-composition-drift)
  *   tierCompositionDrift  K-B-afvigelser PR. TIER (#3469) — lempes separat med
@@ -41,7 +84,7 @@ import { resolveSeasonDraw } from "./raceRouteRealismDraw.js";
  *   severity               samlet numerisk afstand til båndene (0 = alt grønt) — lader en
  *                     søgning se delvis fremgang, hvor antal-brud ser nul
  */
-export function gatePlan(summary, { allowTierCompositionDrift = false } = {}) {
+export function gatePlan(summary, { allowTierCompositionDrift = false, raceDayEqualityBlocking = true } = {}) {
   const blocking = [];
   const compositionDrift = [];
   const tierCompositionDrift = [];
@@ -87,6 +130,13 @@ export function gatePlan(summary, { allowTierCompositionDrift = false } = {}) {
     if (Array.isArray(t.seedRaces) && t.seedRaces.length) tierEntries.push({ tier: t.tier, seedRaces: t.seedRaces });
   }
 
+  // #5658: §1d på tværs af divisionerne. Før tjekkede kun CLI'ens scorecard reglen, så
+  // auto-stien kunne skrive en kalender hvor en division fik færre trænings-ticks.
+  const { violations: raceDayViolations } = detectPlanRaceDayViolations(summary);
+  if (raceDayEqualityBlocking) {
+    for (const v of raceDayViolations) blocking.push(`løbsdage pr. division (§1d/#4845) — ${v}`);
+  }
+
   // Realisme-båndene scores på det RESOLVEREDE træk — samme tal skrive-stien persisterer.
   // `severity` er den samlede NUMERISKE afstand til båndene, ikke bare antal brud. Antal
   // alene er en for grov ledetråd for en søgning: tier 3's summit-bånd lukkes først af
@@ -120,7 +170,7 @@ export function gatePlan(summary, { allowTierCompositionDrift = false } = {}) {
   const { rows, violations } = detectCompositionViolations({ stats: season, target: ACTIVE_TARGET, label: "sæson" });
   compositionDrift.push(...violations);
 
-  return { blocking, compositionDrift, tierCompositionDrift, severity, report: { season, rows } };
+  return { blocking, compositionDrift, tierCompositionDrift, raceDayViolations, severity, report: { season, rows } };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

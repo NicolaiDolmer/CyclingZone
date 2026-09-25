@@ -40,6 +40,12 @@ test("forsiden gemmer UTM, ekstern referrer og landing_path ved første besøg",
     utm_campaign: "procyclingmanager",
     utm_term: null,
     utm_content: null,
+    // #5304: click-id-felter + source_hint, samme format som frontend/src/lib/attribution.js.
+    fbclid: null,
+    gclid: null,
+    ttclid: null,
+    msclkid: null,
+    source_hint: null,
     referrer: "https://www.reddit.com/r/procyclingmanager/",
     landing_path: "/",
   });
@@ -94,6 +100,26 @@ test("paritet med SPA'ens record-format (frontend/src/lib/attribution.js)", () =
     captureFirstTouch({ ...c, origin: ORIGIN, storage: s, now: () => "t" });
     assert.deepEqual(read(s), buildFirstTouchRecord({ ...c, origin: ORIGIN, firstSeenAt: "t" }), c.referrer);
   }
+});
+
+// #5304 blocking fix: forsiden/infosiderne er de landingssider annoncer rent
+// faktisk bruger. Uden denne fangst gik fbclid/gclid tabt permanent for et
+// besøg på cyclingzone.org/?fbclid=..., fordi denne fil skriver first-touch
+// FØR SPA'ens captureFirstTouch kan nå det, og "første besøg vinder".
+test("forsiden fanger fbclid uden utm og markerer paid-candidate (#5304)", () => {
+  const s = fakeStorage();
+  captureFirstTouch({
+    search: "?fbclid=abc123xyz",
+    referrer: "",
+    path: "/",
+    origin: ORIGIN,
+    storage: s,
+    now: () => "t1",
+  });
+  const a = read(s);
+  assert.equal(a.fbclid, "abc123xyz");
+  assert.equal(a.utm_source, null);
+  assert.equal(a.source_hint, "paid-candidate");
 });
 
 test("inline-scriptet er selvstændigt og læser browser-konteksten uden argumenter", () => {

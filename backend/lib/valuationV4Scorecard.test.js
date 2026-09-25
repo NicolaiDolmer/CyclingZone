@@ -6,19 +6,23 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  DEFAULT_SUM_DRIFT_PCT,
   ELITE_CHECK_OVERALL,
   allHardGatesPass,
   anchorSanityRow,
   determinismGate,
   developAndSellGate,
   developAndSellPnl,
+  eliteShareGate,
   eliteUnbuyableGate,
   formatTrajectoryTable,
   formatTypeEconomyTable,
   populationStats,
   projectAbilitiesForward,
   scaleContinuityGate,
+  sumContinuityGate,
   symmetryReportRow,
+  top1PercentShareOfSum,
   typeEconomyRows,
 } from "./valuationV4Scorecard.js";
 
@@ -128,6 +132,100 @@ test("scaleContinuityGate: eksakt ±15% grænse er inklusiv (≤)", () => {
 
 test("scaleContinuityGate: tom population fejler i stedet for at kaste", () => {
   const gate = scaleContinuityGate([], []);
+  assert.equal(gate.ok, false);
+  assert.match(gate.detail, /utilstrækkelig data/);
+});
+
+// ---------------------------------------------------------------------------
+// sumContinuityGate — Gate 8/9 (hård, #5445)
+// ---------------------------------------------------------------------------
+
+test("sumContinuityGate: default-bånd er ±25% (DEFAULT_SUM_DRIFT_PCT)", () => {
+  assert.equal(DEFAULT_SUM_DRIFT_PCT, 0.25);
+});
+
+test("sumContinuityGate: drift inden for ±25% er ok", () => {
+  const v3 = Array(10).fill(1000);
+  const v4 = Array(10).fill(1200); // Σ +20%
+  const gate = sumContinuityGate("menneskehold", v3, v4);
+  assert.equal(gate.hard, true);
+  assert.equal(gate.ok, true);
+  assert.ok(Math.abs(gate.stats.driftPct - 0.20) < 1e-9);
+  assert.match(gate.name, /menneskehold/);
+});
+
+test("sumContinuityGate: eksakt ±25% grænse er inklusiv (≤)", () => {
+  const v3 = Array(10).fill(1000);
+  assert.equal(sumContinuityGate("x", v3, Array(10).fill(1250)).ok, true); // +25%
+  assert.equal(sumContinuityGate("x", v3, Array(10).fill(750)).ok, true); // -25%
+  assert.equal(sumContinuityGate("x", v3, Array(10).fill(1251)).ok, false); // +25.1%
+});
+
+test("sumContinuityGate: FANGER #5443-klassen af fejl — median uændret, Σ eksploderer", () => {
+  // 9 ryttere holdes fikseret, 1 rytter eksploderer i værdi: median rører sig
+  // ikke (Gate 2 ville bestå), men Σ stiger massivt (den bug #5445 dækker).
+  // Syntetisk fixture, ingen prod-tal (hard rule 17).
+  const v3 = [...Array(9).fill(100_000), 100_000]; // n=10, alle 100k, Σ=1.000.000
+  const v4 = [...Array(9).fill(100_000), 2_770_000]; // Σ=3.670.000 (Σ-drift langt over båndet)
+  const gate = sumContinuityGate("hele populationen", v3, v4);
+  assert.equal(gate.ok, false);
+  assert.ok(Math.abs(gate.stats.driftPct - 2.67) < 1e-9);
+});
+
+test("sumContinuityGate: baandet er en tunbar parameter (B ±15% fejler hvor A ±25% bestaar)", () => {
+  const v3 = Array(10).fill(1000);
+  const v4 = Array(10).fill(1200); // Σ +20%
+  assert.equal(sumContinuityGate("x", v3, v4, { maxDriftPct: 0.25 }).ok, true); // A
+  assert.equal(sumContinuityGate("x", v3, v4, { maxDriftPct: 0.15 }).ok, false); // B
+});
+
+test("sumContinuityGate: tom population fejler i stedet for at kaste", () => {
+  const gate = sumContinuityGate("x", [], []);
+  assert.equal(gate.ok, false);
+  assert.match(gate.detail, /utilstrækkelig data/);
+});
+
+// ---------------------------------------------------------------------------
+// top1PercentShareOfSum / eliteShareGate — Gate 10 (hård, #5445)
+// ---------------------------------------------------------------------------
+
+test("top1PercentShareOfSum: n=100, top-1 rytter er 10x resten → andel beregnes korrekt", () => {
+  const vals = [10_000, ...Array(99).fill(1000)]; // Σ=109.000, top1=10.000
+  const stats = top1PercentShareOfSum(vals);
+  assert.equal(stats.n, 100);
+  assert.equal(stats.top1Count, 1);
+  assert.equal(stats.total, 109_000);
+  assert.ok(Math.abs(stats.share - 10_000 / 109_000) < 1e-9);
+});
+
+test("top1PercentShareOfSum: lille population runder ALDRIG top1Count ned til 0", () => {
+  const stats = top1PercentShareOfSum([50, 30, 20]); // n=3, 1%=0.03 → mindst 1
+  assert.equal(stats.top1Count, 1);
+  assert.equal(stats.top1Sum, 50);
+});
+
+test("top1PercentShareOfSum: tomt input giver n=0 og share=null", () => {
+  assert.deepEqual(top1PercentShareOfSum([]), { n: 0, top1Count: 0, top1Sum: 0, total: 0, share: null });
+});
+
+test("eliteShareGate: uændret koncentration → ok", () => {
+  const vals = [10_000, ...Array(99).fill(1000)];
+  const scaled = vals.map((v) => v * 1.1); // alle +10%, andelen er uændret
+  const gate = eliteShareGate(vals, scaled);
+  assert.equal(gate.hard, true);
+  assert.equal(gate.ok, true);
+  assert.ok(Math.abs(gate.stats.driftPct) < 1e-9);
+});
+
+test("eliteShareGate: værdi presses ind i toppen → andelen stiger og fejler", () => {
+  const v3 = [10_000, ...Array(99).fill(1000)]; // top-1% = 10.000/109.000 ≈ 9,2%
+  const v4 = [80_000, ...Array(99).fill(1000)]; // top-1% = 80.000/179.000 ≈ 44,7% → drift ≫ 25%
+  const gate = eliteShareGate(v3, v4);
+  assert.equal(gate.ok, false);
+});
+
+test("eliteShareGate: tom population fejler i stedet for at kaste", () => {
+  const gate = eliteShareGate([], []);
   assert.equal(gate.ok, false);
   assert.match(gate.detail, /utilstrækkelig data/);
 });

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { getAttribution } from "../lib/attribution";
+import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
 import { ChevronRightIcon } from "./ui/icons";
 // #5159 (B1): onboarding er foerste indtryk — et deploy midt i den maa ikke
 // nulstille holdnavn og managernavn under spilleren.
@@ -60,10 +60,12 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
         // confirm-on-perioden 15/6-2/7 og sendte ingen attribution — derfor var
         // signup_attribution tom. Send snapshottet med her også, med metadata
         // som cross-device-fallback (samme kæde som Layout-bootstrappen).
+        // #5304: begge grene skal saniteres — click-ids må ikke sendes videre
+        // til backend uden ejer-go, se attribution.js.
         body: JSON.stringify({
           name: teamName.trim(),
           manager_name: managerName.trim(),
-          attribution: getAttribution() || session.user?.user_metadata?.attribution || null,
+          attribution: getAttributionForBackend() || sanitizeAttributionForBackend(session.user?.user_metadata?.attribution) || null,
         }),
       });
       const data = res.data || {};

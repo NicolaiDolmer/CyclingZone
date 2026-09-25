@@ -5,6 +5,9 @@ import { flattenChanges } from "./patchNotes.js";
 
 const CATS = new Set(["new", "improved", "fixed"]);
 const AUD = new Set(["player", "internal"]);
+// #5422: valgfrit felt — kun sat på ændringer der (endnu) kun er tilgængelige
+// for beta-gruppen. Udvidelsespunkt for evt. flere stadier senere.
+const STAGES = new Set(["beta"]);
 const LEAK_RE = /(\bSELECT \b|\bINSERT \b|\bGRANT \b|service_role|\.sql\b|scripts\/|\bRLS\b|\.github\/)/i;
 const RECENT_CUTOFF = "2026-05-21";
 
@@ -19,6 +22,13 @@ test("hver change har gyldig category, audience og ≥1 sprog-body", () => {
     assert.ok(CATS.has(c.category), `dårlig category ${c.category} i ${c.version}`);
     assert.ok(AUD.has(c.audience), `dårlig audience ${c.audience} i ${c.version}`);
     assert.ok((c.en && c.en.body) || (c.da && c.da.body), `intet sprog-body i ${c.version}`);
+  }
+});
+
+test("stage (hvis sat) er en gyldig værdi", () => {
+  for (const c of flattenChanges(PATCHES)) {
+    if (c.stage === undefined) continue;
+    assert.ok(STAGES.has(c.stage), `dårlig stage ${c.stage} i ${c.version}`);
   }
 });
 

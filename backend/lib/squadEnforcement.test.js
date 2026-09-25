@@ -38,6 +38,9 @@ function createMockSupabase(initialState) {
     // i executeAutoPurchase (samme #1995-mekanik som transfer/swap/auktion).
     races: [...(initialState.races || [])],
     raceEntries: [...(initialState.raceEntries || [])],
+    // #5636: getRidersInActiveStageRace's withdrawal-opslag (loadWithdrawnPairs).
+    // Default TOM = ingen afmeldinger, uændret adfærd for eksisterende fixtures.
+    raceWithdrawals: [...(initialState.raceWithdrawals || [])],
     // #4213: levende akademitilbud. Default TOM = "ingen rytter er lovet væk",
     // hvilket bevarer alle eksisterende forventninger uændret — filteret i
     // findCheapestAvailableRiders må ikke ændre adfærd når der intet tilbud er.
@@ -69,6 +72,7 @@ function createMockSupabase(initialState) {
     if (table === "seasons") return seasonsTable();
     if (table === "races") return racesTable();
     if (table === "race_entries") return raceEntriesTable();
+    if (table === "race_withdrawals") return raceWithdrawalsTable();
     if (table === "academy_intake") return academyIntakeTable();
     throw new Error(`Unexpected table: ${table}`);
   }
@@ -405,6 +409,27 @@ function createMockSupabase(initialState) {
               Object.entries(filters).every(([k, v]) => v.includes(e[k]))
             );
             resolve({ data: rows, error: null });
+          },
+        };
+        return builder;
+      },
+    };
+  }
+
+  // #5636: getRidersInActiveStageRace's withdrawal-opslag (loadWithdrawnPairs,
+  // chunked .in + .range) — samme pagineringsform som academyIntakeTable nedenfor.
+  function raceWithdrawalsTable() {
+    return {
+      select(_cols) {
+        const filters = {};
+        const builder = {
+          in(col, vals) { filters[col] = vals; return builder; },
+          order() { return builder; },
+          range(from, to) {
+            const rows = state.raceWithdrawals.filter(r =>
+              Object.entries(filters).every(([k, v]) => v.includes(r[k]))
+            );
+            return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
           },
         };
         return builder;
@@ -1413,6 +1438,56 @@ test("#2617: auto-køb af rytter i AKTIVT etapeløb parkeres (#1995) — team_id
   assert.equal(notifications.length, 1);
   assert.match(notifications[0].message, /will join the team once their ongoing stage race finishes/);
   assert.match(notifications[0].message, /Active Racer/);
+});
+
+test("#5636: auto-køb af rytter hvis AI-hold har afmeldt etapeløbet forbliver UÆNDRET (ikke parkeret)", async () => {
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t1", name: "Human", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false },
+      { id: "ai-team", name: "AI", balance: 0, division: 3, user_id: null, is_ai: true, is_bank: false },
+    ],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+      })),
+      // AI-holdet er AFMELDT løbet (#4306: entry bevares, men holdet stiller ikke op).
+      {
+        id: "ai-rider", firstname: "Withdrawn", lastname: "Racer", team_id: "ai-team",
+        ai_team_id: "ai-team", market_value: 20_000,
+      },
+    ],
+    races: [
+      { id: "race-1", race_type: "stage_race", status: "scheduled", stages_completed: 2 },
+    ],
+    raceEntries: [
+      { race_id: "race-1", rider_id: "ai-rider", team_id: "ai-team" },
+    ],
+    raceWithdrawals: [
+      { race_id: "race-1", team_id: "ai-team" },
+    ],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => { throw new Error("Should not be called — balance er tilstrækkelig"); },
+    now: new Date("2026-07-18T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "auto_purchased");
+  assert.equal(result.purchases[0].deferred, false, "afmeldt hold → INGEN parkering, selvom race_entries stadig findes");
+
+  const aiRider = supabase.state.riders.find(r => r.id === "ai-rider");
+  assert.equal(aiRider.team_id, "t1", "afmeldt holds rytter flyttes straks — tæller ikke som 'i et aktivt løb'");
+  assert.equal(aiRider.pending_team_id, null);
 });
 
 test("#2617: auto-køb af rytter der IKKE er i et aktivt etapeløb forbliver uændret (forward-guard)", async () => {

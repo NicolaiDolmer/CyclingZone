@@ -7,7 +7,7 @@
 // muteres aldrig, nyt array/objekt returneres) saa determinisme-testene kan
 // sammenligne deep-equal uden at bekymre sig om aliasing.
 
-import type { Entrant, EngineTuning, GroupKind, RaceGroup, RiderState, SegmentGroupSnapshot } from "./types.ts";
+import type { Entrant, EngineTuning, GroupKind, GroupOrigin, RaceGroup, RiderState, SegmentGroupSnapshot } from "./types.ts";
 import { deriveWprimeMax, dayformComponent, jourSansComponent } from "./physiology.ts";
 
 export const INITIAL_GROUP_ID = "peloton-0";
@@ -81,12 +81,13 @@ export function splitGroup(
   groups: RaceGroup[],
   sourceGroupId: string,
   splitRiderIds: string[],
-  newGroup: { id: string; kind: GroupKind; gapSecondsDelta: number; cohesion?: number },
+  newGroup: { id: string; kind: GroupKind; gapSecondsDelta: number; cohesion?: number; origin?: GroupOrigin },
 ): RaceGroup[] {
   if (splitRiderIds.length === 0) return groups;
   const splitSet = new Set(splitRiderIds);
   const next: RaceGroup[] = [];
   let sourceGapSeconds = 0;
+  let sourceOrigin: GroupOrigin | undefined;
   let foundSource = false;
   for (const group of groups) {
     if (group.id !== sourceGroupId) {
@@ -95,16 +96,22 @@ export function splitGroup(
     }
     foundSource = true;
     sourceGapSeconds = group.gap_seconds;
+    sourceOrigin = group.origin;
     const remaining = group.rider_ids.filter((id) => !splitSet.has(id));
     if (remaining.length > 0) next.push({ ...group, rider_ids: remaining });
   }
   if (!foundSource) return groups;
+  // #5578: en gruppe der splittes ud ARVER kildens oprindelse, medmindre
+  // mekanikken selv siger noget andet (M5-formationen, nedkoerselsangrebet).
+  // En rytter der rykker fra resten af udbruddet koerer stadig i dagens udbrud.
+  const origin = newGroup.origin ?? sourceOrigin;
   next.push({
     id: newGroup.id,
     kind: newGroup.kind,
     rider_ids: [...splitRiderIds],
     gap_seconds: sourceGapSeconds + newGroup.gapSecondsDelta,
     cohesion: newGroup.cohesion ?? 1,
+    ...(origin ? { origin } : {}),
   });
   return next;
 }
@@ -112,6 +119,19 @@ export function splitGroup(
 function mergedKind(a: RaceGroup, b: RaceGroup): GroupKind {
   if (a.kind === "peloton" || b.kind === "peloton") return "peloton";
   return a.rider_ids.length >= b.rider_ids.length ? a.kind : b.kind;
+}
+
+/**
+ * #5578: oprindelsen efter et merge. Samme oprindelse bevares. Er kun den ene
+ * part dagens udbrud, er udbruddet INDHENTET, og den sammenlagte gruppe har
+ * den anden parts oprindelse (den der hentede det). To forskellige
+ * ikke-udbruds-oprindelser (felt + nedkoerselsangreb) giver feltet.
+ */
+export function mergedOrigin(a: RaceGroup, b: RaceGroup): GroupOrigin | undefined {
+  if (a.origin === b.origin) return a.origin;
+  if (a.origin === "breakaway") return b.origin;
+  if (b.origin === "breakaway") return a.origin;
+  return undefined;
 }
 
 /**
@@ -164,18 +184,70 @@ export function mergeGroupsDetailed(
         into_group_id: prev.id,
         rider_ids: [...group.rider_ids],
       });
+      const origin = mergedOrigin(prev, group);
       merged[merged.length - 1] = {
         id: prev.id,
         kind: mergedKind(prev, group),
         rider_ids: [...prev.rider_ids, ...group.rider_ids],
         gap_seconds: prev.gap_seconds,
         cohesion: Math.min(prev.cohesion, group.cohesion),
+        ...(origin ? { origin } : {}),
       };
       continue;
     }
     merged.push({ ...group, rider_ids: [...group.rider_ids] });
   }
   return { groups: merged, merges };
+}
+
+/** Gruppe-billedet omkring finale-segmentet — det udbrudsankeret doemmer paa (#5578). */
+export type FinaleGroupTrace = {
+  /** Grupperne ved INDGANGEN til finale-segmentet (etapens sidste segment). */
+  entryGroups: RaceGroup[];
+  /** Grupperne lige foer finale-hooket (efter sidste segments egne mekanikker). */
+  preFinaleGroups: RaceGroup[];
+  /** Grupperne lige efter finale-hooket, foer segmentets afsluttende merge. */
+  postFinaleGroups: RaceGroup[];
+};
+
+const ESCAPE_KINDS: ReadonlySet<GroupKind> = new Set<GroupKind>(["breakaway", "solo"]);
+
+function escapeGroupOf(groups: RaceGroup[], riderId: string): RaceGroup | null {
+  const group = groups.find((g) => g.rider_ids.includes(riderId));
+  if (!group) return null;
+  return group.origin === "breakaway" && ESCAPE_KINDS.has(group.kind) ? group : null;
+}
+
+/**
+ * #5578: blev etapen vundet FRA UDBRUDDET? Ja, naar alle tre holder:
+ *   1. Vinderen koerte i dagens udbrud (oprindelse "breakaway", art
+ *      breakaway/solo) ved INDGANGEN til finale-segmentet — udbruddet var
+ *      dannet foer finalen. Et nedkoerselsangreb ud af feltet har oprindelsen
+ *      "descent" og taeller aldrig; et udbrud der blev hentet foer finalen har
+ *      mistet oprindelsen i merget (mergedOrigin).
+ *   2. Han var det stadig lige foer finale-hooket.
+ *   3. Finalen hentede ikke udbruddet: alle ryttere i finalens placerings-
+ *      opgoer (de grupper finalen selv bygger, dvs. id'er der ikke fandtes
+ *      foer den) kom fra udbruddet. Blev feltet taget med i opgoeret, er
+ *      udbruddet hentet, ogsaa selv om en udbryder vinder spurten bagefter.
+ * REN: ingen input muteres.
+ */
+export function isBreakawayWin(trace: FinaleGroupTrace, winnerId: string | null): boolean {
+  if (!winnerId) return false;
+  if (!escapeGroupOf(trace.entryGroups, winnerId)) return false;
+  if (!escapeGroupOf(trace.preFinaleGroups, winnerId)) return false;
+
+  const escapeRiderIds = new Set(
+    trace.preFinaleGroups.filter((g) => g.origin === "breakaway").flatMap((g) => g.rider_ids),
+  );
+  const preFinaleIds = new Set(trace.preFinaleGroups.map((g) => g.id));
+  const finaleBuilt = trace.postFinaleGroups.filter((g) => !preFinaleIds.has(g.id));
+  const winnerInFinaleBuilt = finaleBuilt.some((g) => g.rider_ids.includes(winnerId));
+  if (!winnerInFinaleBuilt) {
+    // Vinderen sad i en gruppe finalen lod staa (overlevet uden opgoer).
+    return escapeGroupOf(trace.postFinaleGroups, winnerId) !== null;
+  }
+  return finaleBuilt.every((g) => g.rider_ids.every((id) => escapeRiderIds.has(id)));
 }
 
 /**

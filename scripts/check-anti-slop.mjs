@@ -64,6 +64,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { execSync } from "node:child_process";
 import { EXEMPT_FILES, stripComments } from "./lint-ui-slop.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
@@ -185,7 +186,13 @@ function walk(dir, match, out = []) {
   return out;
 }
 
-const matchSource = (f) => /\.(jsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs)$/.test(f);
+// #5271: udvidet fra .jsx?|css til ogsaa .ts/.tsx (typescript-eslint-parseren
+// i frontend/eslint.config.js kraever en devDependency-install der er blokeret
+// i dette worktree, men denne scanner er ren regex paa raa kildetekst - ingen
+// AST/parser noedvendig, saa den kan daekke .ts/.tsx allerede nu). Ratchet-
+// baselinen (scripts/anti-slop-baseline.json) fanger eksisterende .tsx-fund
+// der ikke er rettet i denne PR.
+export const matchSource = (f) => /\.(jsx?|tsx?|css)$/.test(f) && !/\.test\.(jsx?|tsx?|mjs)$/.test(f);
 const matchLocale = (f) => /\.json$/.test(f);
 
 // Returnér { "<rel-sti>": {arrow, smallpx, shadow, gradient} } for filer med
@@ -250,6 +257,52 @@ function buildBaseline(findings) {
   };
 }
 
+// --- Hard rule 31-advarsel (#5428) -----------------------------------------
+//
+// AGENTS.md regel 31: nye frontend-filer skrives i .ts/.tsx (ogsaa tests, se
+// samme regels test-praecisering). Foer #5271 blev det haandhaevet tilfaeldigt
+// af reviewer-skoen (#5428: 4 af 11 PR'er 17/9 fik forskellig dom for praecis
+// samme afvigelse). En maskinel ESLint-vagt kraever typescript-eslint-parseren
+// i frontend/eslint.config.js, som ikke kunne installeres i dette worktree
+// (junction-node_modules, hard rule 14) - saa dette er en let, parser-fri
+// advarsel i mellemtiden: fanger nye (tilfoejede) .js/.jsx-filer under
+// frontend/src og frontend/tests mod origin/main. Advarer, blokerer ALDRIG -
+// det er ikke denne guards rolle at fejle en PR for et filvalg en anden lane
+// traf, kun at goere det synligt for revieweren i stedet for reviewer-skoen.
+function checkNewJsFilesAdvisory() {
+  const diffCmd = "git diff --name-status origin/main...HEAD";
+  const execOpts = { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] };
+  let diffOutput = "";
+  try {
+    diffOutput = execSync(diffCmd, execOpts);
+  } catch {
+    // CodeRabbit-fund (#5271): CI's static-guards-job bruger standard
+    // actions/checkout (shallow, ingen origin/main-ref lokalt), saa foerste
+    // forsoeg kan fejle rent infrastrukturelt - ikke fordi der ikke er nogen
+    // ny fil at advare om. Foer vi giver stille op, proever vi ET fetch af
+    // origin/main og gentager diff'en en gang. Fejler DET ogsaa, er det
+    // formentlig ingen git-kontekst overhovedet - advisory-only, spring
+    // stille over frem for at fejle selve guarden for det.
+    try {
+      execSync("git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main", execOpts);
+      diffOutput = execSync(diffCmd, execOpts);
+    } catch {
+      return;
+    }
+  }
+  const added = diffOutput
+    .split("\n")
+    .filter((line) => line.startsWith("A\t"))
+    .map((line) => line.slice(2).trim())
+    .filter((f) => /^frontend\/(src|tests)\/.*\.jsx?$/.test(f));
+  if (added.length === 0) return;
+  console.log(
+    `\n[advarsel] ${added.length} ny(e) .js/.jsx-fil${added.length === 1 ? "" : "er"} under frontend/src eller frontend/tests (AGENTS.md hard rule 31: nye frontend-filer, ogsaa tests, skrives i .ts/.tsx, #5428):`
+  );
+  for (const f of added) console.log(`   - ${f}`);
+  console.log("   Blokerer ikke denne guard - men omdoeb til .ts/.tsx medmindre det er en eksisterende .js-fil der blot flyttes.");
+}
+
 // --- Main --------------------------------------------------------------
 
 function main() {
@@ -265,6 +318,8 @@ function main() {
     console.log(`Baseline skrevet til scripts/anti-slop-baseline.json (${Object.keys(findings).length} filer, ${total} overtraedelser).`);
     return;
   }
+
+  checkNewJsFilesAdvisory();
 
   let baseline = { files: {} };
   if (existsSync(BASELINE_PATH)) baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));

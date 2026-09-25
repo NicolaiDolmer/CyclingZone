@@ -198,5 +198,106 @@
       "EtapelobHold": "Hold · etapeløb",
       "KlassikerHold": "Hold · endagsløb"
     }
+  },
+  "valuePreview": {
+    "title": "Værdi-forhåndsvisning",
+    "subtitle": "Rytterværdier før og efter en model. Intet gemmes her.",
+    "loading": "Regner værdierne",
+    "modelSelect": "Model der vises",
+    "modelOption": "{from} til {to}",
+    "reload": "Genindlæs",
+    "meta": "Live {from} · løn {wage} · sæson {season} · {time}",
+    "sameModel": "Samme model i begge ender, så intet ændrer sig.",
+    "noTeam": "Intet hold",
+    "academy": "Akademi",
+    "ageShort": "{n} år",
+    "count": "Viser {shown} af {total}",
+    "teamCount": "{n} hold",
+    "showMore": "Vis {n} mere",
+    "drift": "Den live model flytter selv {n} værdier næste søndag.",
+    "skipped": "{n} ryttere uden evner eller alder er udeladt.",
+    "tabs": {
+      "overview": "Overblik",
+      "riders": "Ryttere",
+      "teams": "Hold"
+    },
+    "steps": {
+      "label": "Indfasningstrin",
+      "runDay": "Kørselsdag",
+      "week": "Uge {n}"
+    },
+    "filters": {
+      "search": "Søg rytter eller hold",
+      "more": "Flere filtre",
+      "scope": {
+        "label": "Population",
+        "managers": "Managerhold",
+        "all": "Alle ryttere"
+      },
+      "division": {
+        "label": "Division",
+        "all": "Alle divisioner",
+        "one": "Division {n}"
+      },
+      "type": {
+        "label": "Ryttertype",
+        "all": "Alle typer"
+      },
+      "team": {
+        "label": "Hold",
+        "all": "Alle hold"
+      },
+      "age": {
+        "label": "Alder",
+        "all": "Alle aldre",
+        "u22": "Under 22",
+        "a22_25": "22 til 25",
+        "a26_29": "26 til 29",
+        "a30": "30 og ældre"
+      }
+    },
+    "overview": {
+      "population": "Population",
+      "hardestHit": "Hårdest ramte hold",
+      "allTeams": "Alle hold",
+      "noTeams": "Ingen hold i dette udvalg."
+    },
+    "stats": {
+      "riders": "Ryttere",
+      "before": "Værdi før",
+      "after": "Værdi efter",
+      "change": "Ændring",
+      "median": "Median-ændring",
+      "up": "Op",
+      "down": "Ned",
+      "same": "Uændret",
+      "drop25": "Ned 25 % eller mere",
+      "drop50": "Ned 50 % eller mere"
+    },
+    "wage": {
+      "ok": "Løn-kontrol: intet løngrundlag flytter sig ({model}). Lønkravene er uændrede.",
+      "moved": "Løn-kontrol: {n} løngrundlag flytter sig ({model}). Stop og undersøg før kørslen."
+    },
+    "columns": {
+      "rider": "Rytter",
+      "team": "Hold",
+      "type": "Type",
+      "riders": "Ryttere",
+      "before": "Før",
+      "after": "Efter",
+      "deltaKr": "Ændring CZ$",
+      "deltaPct": "Ændring %"
+    },
+    "empty": {
+      "title": "Ingen ryttere passer til filtrene",
+      "description": "Nulstil filtrene for at se hele populationen.",
+      "action": "Nulstil filtre"
+    },
+    "error": {
+      "title": "Kunne ikke regne forhåndsvisningen",
+      "description": "Intet er ændret. Værdierne i spillet er uberørte.",
+      "retry": "Prøv igen",
+      "stale": "Kunne ikke opdatere. Tallene herunder er fra sidste vellykkede hentning."
+    }
   }
 }

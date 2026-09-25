@@ -20,7 +20,7 @@ import {
 //    faktisk rammer via de IKKE-injicerede side-effekt-helpers (getRidersInActiveStageRace,
 //    clearFutureRaceEntriesSafe, closeTransferListingsForRiders). ─────────────────
 
-function makeMockSupabase({ activeStageRaceRiderIds = [], unreleasableRiderIds = [], erroringRiderIds = [] } = {}) {
+function makeMockSupabase({ activeStageRaceRiderIds = [], activeStageRaceEntryTeamId = null, raceWithdrawals = [], unreleasableRiderIds = [], erroringRiderIds = [] } = {}) {
   const listingUpdates = [];
   const riderUpdates = [];
 
@@ -39,10 +39,17 @@ function makeMockSupabase({ activeStageRaceRiderIds = [], unreleasableRiderIds =
       order() { return b; },
       update(patch) { b.__op = "update"; b.__patch = patch; return b; },
       delete() { b.__op = "delete"; return b; },
+      // #5636: loadWithdrawnPairs (chunked .in + .range) — race_withdrawals
+      // svarer altid tomt i disse fixtures, uanset from/to.
+      range() { return Promise.resolve(resolveQuery()); },
       then(resolve) { resolve(resolveQuery()); },
     };
 
     function resolveQuery() {
+      if (table === "race_withdrawals") {
+        // #5636: loadWithdrawnPairs (chunked .in + .range) — samme svar uanset from/to.
+        return { data: raceWithdrawals, error: null };
+      }
       if (table === "races") {
         // getRidersInActiveStageRace: races-lookup. Non-empty kun hvis vi har
         // aktive stage-race-ryttere at teste defer-stien med.
@@ -56,7 +63,9 @@ function makeMockSupabase({ activeStageRaceRiderIds = [], unreleasableRiderIds =
           return { data: [], error: null };
         }
         // getRidersInActiveStageRace's entries-lookup.
-        const rows = activeStageRaceRiderIds.map((id) => ({ rider_id: id }));
+        const rows = activeStageRaceRiderIds.map((id) => ({
+          rider_id: id, team_id: activeStageRaceEntryTeamId, race_id: "race-active-1",
+        }));
         return { data: rows, error: null };
       }
       if (table === "riders" && b.__op === "update") {
@@ -154,6 +163,31 @@ test("ryttere midt i et AKTIVT fleretape-løb udskydes (kan ikke parkeres, samme
   assert.equal(stats.released, 1);
   assert.equal(riderUpdates.length, 1, "kun den ikke-racende rytter opdateres");
   assert.equal(riderUpdates[0].riderId, "r-free");
+});
+
+test("#5636: rytter hvis hold har afmeldt løbet frigives ALLIGEVEL (afmeldt ≠ i aktivt løb)", async () => {
+  const { supabase, riderUpdates } = makeMockSupabase({
+    activeStageRaceRiderIds: ["r-withdrawn-team"],
+    activeStageRaceEntryTeamId: "t1",
+    raceWithdrawals: [{ race_id: "race-active-1", team_id: "t1" }],
+  });
+  const { notify } = makeNotifyRecorder();
+
+  const candidates = [
+    { id: "r-withdrawn-team", firstname: "Withdrawn", lastname: "Team", team_id: "t1", contract_end_season: 1,
+      team: { user_id: "u1", is_ai: false, is_frozen: false } },
+  ];
+
+  const stats = await releaseExpiredContractRiders({
+    supabase, seasonNumber: 1, notify,
+    fetchExpiredContractRiders: async () => candidates,
+  });
+
+  assert.equal(stats.candidates, 1);
+  assert.equal(stats.deferredByRacing, 0, "afmeldt hold → ikke udskudt");
+  assert.equal(stats.released, 1);
+  assert.equal(riderUpdates.length, 1);
+  assert.equal(riderUpdates[0].riderId, "r-withdrawn-team");
 });
 
 test("concurrency-guard: rytter der skiftede hold sideløbende (0 rows fra update) tælles ikke som released", async () => {
