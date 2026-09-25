@@ -142,6 +142,8 @@ function buildAdminGroup(t, isOwner = false) {
       { to: `/admin/surveys/${ACTIVE_SURVEY_SLUG}`, label: t("nav.item.survey") },
       // #3750: ejer-only (OWNER_USER_IDS via /api/admin/owner-check) — skjult for andre admins.
       ...(isOwner ? [{ to: "/admin/value-transition", label: t("nav.item.valueTransition") }] : []),
+      // #5686: værdi-forhåndsvisningen (gaten for værdikørslen), også ejer-only.
+      ...(isOwner ? [{ to: "/admin/value-preview", label: t("nav.item.valuePreview") }] : []),
     ],
   };
 }

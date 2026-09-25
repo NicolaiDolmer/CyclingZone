@@ -529,6 +529,7 @@ import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistor
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { SEASON_RACE_DAY_TARGET } from "../lib/calendarRaceDayTargets.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
+import { createValuePreviewService, parseValuePreviewQuery } from "../lib/adminValuePreview.js"; // #5686
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -13994,6 +13995,21 @@ router.get("/admin/value-transition", requireOwner, async (req, res) => {
     }
     captureApiRouteError(e, req); res.status(500).json({ error: e.message });
   }
+});
+
+// GET /api/admin/value-preview?to=<model>&step=<0-4> — #5686: EJER-forhåndsvisning
+// af hele populationens rytterværdi FØR (modellen app_config peger på nu) og
+// EFTER (`to`, et id fra VALUATION_MODEL_IDS) ved trin `step`. Samme
+// beregningssti som søndagskørslen (recomputeRiderValue); se
+// lib/adminValuePreview.js. READ-ONLY: ingen POST findes, og intet skrives.
+// Resultatet caches 5 min i hukommelsen pr. (from, to, step).
+const valuePreviewService = createValuePreviewService();
+router.get("/admin/value-preview", requireOwner, async (req, res) => {
+  const parsed = parseValuePreviewQuery(req.query);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+  try {
+    res.json(await valuePreviewService.getPreview(supabase, { to: parsed.to, step: parsed.step }));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/market/pause — hent pause-state (level + paused_at + reason)
