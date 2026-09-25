@@ -9,6 +9,8 @@ import {
   effortByRiderForStage,
   serializeStageRoleOverrides,
   loadStageRoleOverrides,
+  orderEffortByRiderForStage,
+  resolvedEffortByRiderForStage,
 } from "./raceStageRoles.js";
 
 // ── resolveStageEntrant: fallback-kæde ────────────────────────────────────────
@@ -359,4 +361,62 @@ test("loadStageRoleOverrides: DB-fejl → kaster Error", async () => {
     () => loadStageRoleOverrides({ supabase, raceId: "race-1" }),
     /race_stage_roles/
   );
+});
+
+// ── #5580 (spec motor runde 2, M1 punkt 6 + 7): én kilde til effort ──────────
+
+const ORDER_ROWS = [
+  { team_id: "t1", stage_number: 2, riders: [{ rider_id: "r1", effort: "all_out" }, { rider_id: "r2", effort: "bogus" }] },
+  { team_id: "t2", stage_number: 2, riders: [{ rider_id: "r3", effort: "save" }] },
+  { team_id: "t1", stage_number: 3, riders: [{ rider_id: "r1", effort: "grupetto" }] },
+];
+
+test("#5580 orderEffortByRiderForStage: kun denne etape, kun kendte trin; null uden ordrer", () => {
+  const stage2 = orderEffortByRiderForStage(ORDER_ROWS, 2);
+  assert.deepEqual([...stage2.entries()].sort(), [["r1", "all_out"], ["r3", "save"]]);
+  assert.equal(stage2.has("r2"), false, "en ukendt effort-vaerdi er aldrig et indsatsvalg");
+  assert.deepEqual([...orderEffortByRiderForStage(ORDER_ROWS, 3).entries()], [["r1", "grupetto"]]);
+  assert.equal(orderEffortByRiderForStage(ORDER_ROWS, 9), null);
+  assert.equal(orderEffortByRiderForStage([], 2), null);
+  assert.equal(orderEffortByRiderForStage(undefined, 2), null);
+});
+
+test("#5580 resolveStageEntrant: ordrens effort vinder over stage-raekken; stage-raekken er fallback", () => {
+  const overrides = new Map([
+    ["r1", { race_role: "captain", effort: "save" }],
+    ["r4", { race_role: "helper", effort: "protect" }],
+  ]);
+  const orders = new Map([["r1", "all_out"]]);
+  const r1 = resolveStageEntrant({ rider_id: "r1", race_role: "helper" }, overrides, orders);
+  assert.equal(r1.effort, "all_out", "ordren er sandheden");
+  assert.equal(r1.race_role, "captain", "rollen roeres ikke af ordren");
+  assert.equal(resolveStageEntrant({ rider_id: "r4" }, overrides, orders).effort, "protect", "fallback til stage-raekken");
+  assert.equal(resolveStageEntrant({ rider_id: "r9" }, overrides, orders).effort, "normal");
+});
+
+test("#5580 resolveStageEntrant(s): uden ordre-kort er resultatet bit-identisk med foer (v3-stien)", () => {
+  const overrides = new Map([["r1", { race_role: "captain", effort: "save" }]]);
+  const entrants = [{ rider_id: "r1", team_id: "t1", race_role: "helper" }, { rider_id: "r2", team_id: "t1" }];
+  assert.deepEqual(resolveStageEntrants(entrants, overrides), resolveStageEntrants(entrants, overrides, { orderEffortByRider: null }));
+  assert.deepEqual(resolveStageEntrant(entrants[0], overrides), resolveStageEntrant(entrants[0], overrides, null));
+});
+
+test("#5580 resolveStageEntrants: ordre-kortet naar igennem hold-niveau-resolutionen", () => {
+  const entrants = [{ rider_id: "r1", team_id: "t1", race_role: "captain" }];
+  const { entrants: out } = resolveStageEntrants(entrants, undefined, { orderEffortByRider: new Map([["r1", "protect"]]) });
+  assert.equal(out[0].effort, "protect");
+});
+
+test("#5580 resolvedEffortByRiderForStage: traetheden bruger samme kilde som motoren (ordre > stage-raekke)", () => {
+  const stageRoleOverrides = new Map([
+    [2, new Map([["r1", { race_role: "helper", effort: "save" }], ["r4", { race_role: "helper", effort: "protect" }]])],
+  ]);
+  const merged = resolvedEffortByRiderForStage(stageRoleOverrides, 2, orderEffortByRiderForStage(ORDER_ROWS, 2));
+  assert.equal(merged.get("r1"), "all_out");
+  assert.equal(merged.get("r3"), "save");
+  assert.equal(merged.get("r4"), "protect");
+  // Uden ordrer: praecis effortByRiderForStage (v3-stiens kilde).
+  assert.deepEqual(resolvedEffortByRiderForStage(stageRoleOverrides, 2, null), effortByRiderForStage(stageRoleOverrides, 2));
+  assert.equal(resolvedEffortByRiderForStage(undefined, 2, null), null);
+  assert.deepEqual([...resolvedEffortByRiderForStage(undefined, 3, orderEffortByRiderForStage(ORDER_ROWS, 3)).entries()], [["r1", "grupetto"]]);
 });

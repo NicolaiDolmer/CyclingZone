@@ -199,11 +199,30 @@ test("#4914: all_out paa en FLAD etape kan loefte selv feltets staerkeste rytter
   }
 });
 
-test("#4914: all_out-profiltabellen roerer IKKE bjergetaper (samme krav som den faelles multiplikator)", () => {
-  assert.equal(
-    effortDemandMultiplier("all_out", undefined, MOUNTAIN_ROUTE.profile_type),
-    effortDemandMultiplier("all_out"),
-  );
+test("#5580: all_out-tabellen roerer IKKE stigninger (samme krav som den faelles multiplikator)", () => {
+  assert.equal(effortDemandMultiplier("all_out", undefined, "climb"), effortDemandMultiplier("all_out"));
+});
+
+test("#5580 (M1 punkt 4): all_out-prisen foelger SEGMENTETS terraen, ikke etapens profil", () => {
+  // Flade segmenter paa en etape der er klassificeret som BJERG skal koste som
+  // fladt. Foer slog tabellen op paa etapens profil, saa feltets staerkeste
+  // rytter kunne koere all_out gratis (under CP) paa et fladt stykke, blot
+  // fordi etapen hed "mountain" — samme hul som #4914 lukkede paa flade etaper.
+  const flatSegmentsOnMountainStage: RouteV2 = { ...FLAT_ROUTE, profile_type: "mountain" };
+  const field = mixedField(48);
+  const front = Array.from({ length: 12 }, (_, i): Entrant => ({
+    ...field[0],
+    rider_id: i === 0 ? "boss" : `front${i}`,
+    abilities: abilitiesAt(70),
+    effort: i === 0 ? "all_out" : "normal",
+  }));
+  const startlist = [...field, ...front];
+  for (const seed of SEEDS.slice(0, 5)) {
+    const allOut = simulateStageV4(stage(startlist, flatSegmentsOnMountainStage, seed));
+    const normal = simulateStageV4(stage(withEffort(startlist, "boss", "normal"), flatSegmentsOnMountainStage, seed));
+    assert.ok(secondsOverCpOf(allOut, "boss") > 0, `${seed}: all_out paa flade segmenter skal koste, ogsaa paa en bjergetape`);
+    assert.equal(secondsOverCpOf(normal, "boss"), 0, `${seed}: kontrol — samme rytter paa normal ligger under CP`);
+  }
 });
 
 test("de fem trin er strengt ordnede: grupetto < save < normal < protect < all_out", () => {

@@ -274,7 +274,8 @@ function tickSoloRider(
   // Fysiologien regner paa en ikke-negativ troeskel, samme gulv som vejetapens CP.
   const cp = Math.max(0, capacity);
   const baseDemand = cp * tuning.terrain.baseDemand[segment.kind] * tuning.work.frontWorkFactor[segment.kind];
-  const demand = applyEffortToDemand(baseDemand, entrant.effort, undefined, route.profile_type);
+  // #5580 (M1 punkt 4): all_out-prisen foelger segmentets terraen, som paa vejetapen.
+  const demand = applyEffortToDemand(baseDemand, entrant.effort, undefined, segment.kind);
   const tick = tickPhysiologyOverSegment({
     cp,
     wprimeMax: rider.wprimeMax,
