@@ -72,6 +72,9 @@ export default function SeasonStartGuideCard({ seasonNumber, items = [], onDismi
       mandateEnabled: boardMandate.enabled,
       meetingAvailable: boardMandate.meeting?.available ?? null,
       meetingLoaded: boardMandate.loaded,
+      // #5755 reviewer-fund: available:false alene er ikke nok til at vide
+      // holdet er underskrevet — se seasonStartGuide.js::resolveBoardStartItem.
+      meetingReason: boardMandate.meeting?.reason ?? null,
     });
     return resolved ? { ...item, to: resolved.to, done: resolved.done } : item;
   });

@@ -131,9 +131,33 @@ test("resolveBoardStartItem: forslag tilgængeligt → linker til /board/meeting
   );
 });
 
-test("resolveBoardStartItem: intet forslag tilbage efter vellykket kald = underskrevet", () => {
+// #5755 (reviewer-fund) · available:false betyder IKKE i sig selv "underskrevet" —
+// backend svarer også available:false når holdet slet ikke har et mandat endnu
+// (13 menneskehold i prod uden mandat-række). Kun reason:'signed' må give Done.
+test("resolveBoardStartItem: available:false + reason 'signed' → underskrevet, Done", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true, meetingReason: "signed" }),
+    { to: "/board", done: true },
+  );
+});
+
+test("resolveBoardStartItem: available:false + reason 'no_mandate' → IKKE done, linker til /board", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true, meetingReason: "no_mandate" }),
+    { to: "/board", done: false },
+  );
+});
+
+test("resolveBoardStartItem: available:false + reason 'no_proposal' → IKKE done, linker til /board", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true, meetingReason: "no_proposal" }),
+    { to: "/board", done: false },
+  );
+});
+
+test("resolveBoardStartItem: available:false uden reason (ukendt/manglende) → IKKE done (fail-safe)", () => {
   assert.deepEqual(
     resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true }),
-    { to: "/board", done: true },
+    { to: "/board", done: false },
   );
 });

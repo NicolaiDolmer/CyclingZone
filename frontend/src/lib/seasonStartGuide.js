@@ -167,21 +167,34 @@ export function countDoneItems(items = []) {
  * så en spiller der ikke har fået mandatet endnu ALDRIG mister linjen før
  * flippet.
  *
+ * REVIEWER-FUND (#5755, rettet før merge): `available:false` betyder IKKE i
+ * sig selv "underskrevet" — backend svarer også `available:false` når holdet
+ * slet ikke har noget mandat endnu (13 menneskehold i prod uden mandat-række).
+ * At læse `!meetingAvailable` som Done gav dem et falsk flueben ved flippet.
+ * `buildBoardMeetingPayload` (backend/lib/boardMandateMeeting.js) bærer nu et
+ * `reason`-felt ('no_mandate' | 'signed' | 'no_proposal') på `available:false`
+ * — KUN `reason === 'signed'` (aktivt, underskrevet mandat) må sætte Done.
+ * Uden mandat vises punktet som ikke-udført med link til `/board` (ikke
+ * `/board/meeting` — der er intet forslag at åbne).
+ *
  * @param {object} p
  * @param {boolean} [p.mandateEnabled]         flag-stadie er "beta" eller "on" for viewer
  * @param {boolean|null} [p.meetingAvailable]  fetchBoardMeeting()?.available
  * @param {boolean} [p.meetingLoaded]          lykkedes fetchBoardMeeting() (payload != null)?
+ * @param {string|null} [p.meetingReason]      fetchBoardMeeting()?.reason ('no_mandate'|'signed'|'no_proposal') når available er false
  * @returns {{to: string, done: boolean|null}|null}
  */
 export function resolveBoardStartItem({
   mandateEnabled = false,
   meetingAvailable = null,
   meetingLoaded = false,
+  meetingReason = null,
 } = {}) {
   if (!mandateEnabled) return null;
   if (!meetingLoaded) return { to: "/board", done: null };
-  // available:false efter et vellykket kald = mandatet er underskrevet (der
-  // er intet forslag tilbage at handle på) — IKKE "flaget er off", det er
-  // allerede filtreret fra ovenfor.
-  return { to: meetingAvailable ? "/board/meeting" : "/board", done: !meetingAvailable };
+  if (meetingAvailable) return { to: "/board/meeting", done: false };
+  // available:false: Done KUN ved et bekræftet underskrevet mandat
+  // (reason === 'signed'). Alt andet — inkl. 'no_mandate', 'no_proposal' og
+  // en manglende/ukendt reason — er bevidst IKKE done, og linker til /board.
+  return { to: "/board", done: meetingReason === "signed" };
 }
