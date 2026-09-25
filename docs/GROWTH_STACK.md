@@ -342,10 +342,13 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 | **Clarity** | MCP | Replay og dead clicks. Kan ikke bære attribution (§11, faldgrube 1) |
 | **PostHog** | MCP, projekt findes (EU), 0 events endnu ✅ | Produkt-funnels, retention, attribution, når #4321 er wired |
 | **GSC** | Google service-konto planlagt, nøgle `GSC_SERVICE_ACCOUNT_JSON` i Infisical ❓ | Søgning: rank og impressions (#3797) |
-| **Ahrefs** | Kun gratis-endpoints. Betalt plan afvist ✅ ("Insufficient plan" på keywords-explorer og GSC-tools) | Domain rating, ikke andet |
+| **Ahrefs** | Kun gratis-endpoints. Betalt plan afvist ✅ ("Insufficient plan" på keywords-explorer og GSC-tools) | Domain rating, Site Audit, ikke andet |
+| **Ahrefs Web Analytics** | Ungated script, ingen samtykke-gate (ejer-beslutning 22/9, #5493) — cookie-frit, samme klasse som `TrafficBeacon.jsx` | Trafikmåling på alle sider. Nøgle i `VITE_AHREFS_ANALYTICS_KEY` (spil-frontend) / `NEXT_PUBLIC_AHREFS_ANALYTICS_KEY` (marketing), aldrig hardkodet |
 | **GA4** | Property modtager data 📄 | Adfærd, beholdes ved siden af PostHog (ejer-valg 8/9) |
 
 **Morningscore og betalt Ahrefs findes ikke.** Ældre SEO-dokumenter nævner begge; ignorér dem.
+
+**IndexNow (#5493).** Nøglefil hostes på roden (`frontend/public/<key>.txt`, genereret ved build fra `INDEXNOW_KEY` — se `frontend/scripts/generate-indexnow-key.ts`) og beviser ejerskab, men indsender ikke URL'er (CodeRabbit-fund). For at fjerne Ahrefs Site Audits "Changed pages not submitted to IndexNow" skal ejeren manuelt vælge URL'er i Page Explorer og klikke "Submit to IndexNow", eller aktivere auto-submission med en Project Boost der understøtter funktionen. Ejeren genererer nøglen i Ahrefs (Project settings → Site Audit → Crawl settings → IndexNow) og lægger den i Infisical/Vercel som `INDEXNOW_KEY`.
 
 ## 10. Åbne punkter
 
