@@ -8,22 +8,31 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import {
+  addIncidentChaseLoss,
+  addIncidentChaser,
   applyThreeKmRuleToResults,
   collectThreeKmRuleProtectedRiderIds,
   createIncidentHook,
   hasHelperNearby,
+  INCIDENT_CHASE_TUNING,
+  incidentChaseDtSeconds,
+  incidentChaseHoldsPace,
+  incidentChaseTargetGroup,
   incidentHook,
   incidentProbability,
   isFlatStageForThreeKmRule,
+  isIncidentChasePacedSegment,
   isWithinThreeKmWindow,
   makeIncidentSoloGroupId,
   maxIncidentsForField,
   resolveIncident,
+  resolveIncidentChasers,
   segmentLengthFactor,
   threeKmRuleApplies,
   type IncidentRolls,
 } from "./incidents.ts";
 import { climbSelectionHook } from "./climbSelection.ts";
+import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "../segmentLoop.ts";
 import { makeGroupId } from "../groups.ts";
 import { boundRngFor, segmentRngFor } from "../rng.ts";
 import { INCIDENTS_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
@@ -34,6 +43,7 @@ import type {
   Entrant,
   EngineState,
   FlatSegment,
+  MechanicHooks,
   ProfileType,
   RaceGroup,
   RiderState,
@@ -41,6 +51,7 @@ import type {
   Segment,
   SegmentHookContext,
   StageIncident,
+  StageInput,
   StageResult,
   TimelineEvent,
 } from "../types.ts";
@@ -958,4 +969,244 @@ test("#4993: makeIncidentSoloGroupId er injektiv i (segmentIndex, seq) — fast-
       },
     ),
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #5582 — JAGTEN TILBAGE bag foelgebilerne (ejer-beslutning 23/9)
+// Fundet: uheldets solo-gruppe havde intet lae, saa det faktiske tidstab blev
+// mange gange det lovede. Testene laaser reglen: paa terraen med bil-lae holdes
+// hullet paa det lovede, med hjaelp lukkes det, op ad bakke kan han braende ud
+// og tabe mere, men aldrig ubegraenset.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function chaseGroup(id: string, riderIds: string[], gapSeconds: number): RaceGroup {
+  return { id, kind: riderIds.length === 1 ? "solo" : "peloton", rider_ids: riderIds, gap_seconds: gapSeconds, cohesion: 1 };
+}
+
+test("#5582: addIncidentChaser registrerer offeret og beholder 'assisted' ved et nyt uheld", () => {
+  const once = addIncidentChaser(undefined, "a", "assisted");
+  assert.deepEqual(once, { a: "assisted" });
+  const twice = addIncidentChaser(once, "a", "alone");
+  assert.equal(twice.a, "assisted", "et senere uheld uden hjaelp maa ikke tage hjaelpen fra ham");
+  assert.deepEqual(addIncidentChaser(twice, "b", "alone"), { a: "assisted", b: "alone" });
+  assert.deepEqual(once, { a: "assisted" }, "ren: input muteres aldrig");
+});
+
+test("#5582: resolveIncidentChasers — en gruppe af ofre jager, et offer i en almindelig gruppe er inde igen", () => {
+  const riders: Record<string, RiderState> = {
+    a: makeRiderState("a", "solo-a"),
+    b: makeRiderState("b", "duo"),
+    c: makeRiderState("c", "duo"),
+    d: makeRiderState("d", "peloton-0"),
+    e: makeRiderState("e", "peloton-0"),
+  };
+  const groups = [
+    chaseGroup("peloton-0", ["d", "e"], 0),
+    chaseGroup("solo-a", ["a"], 30),
+    chaseGroup("duo", ["b", "c"], 45),
+  ];
+  // b og c er begge ofre (to ofre der smeltede sammen). e er smeltet ind i pelotonen.
+  const chasers = { a: "alone", b: "alone", c: "assisted", e: "alone" } as const;
+  const out = resolveIncidentChasers(groups, riders, chasers);
+  assert.equal(out.modeByGroupId.get("solo-a"), "alone");
+  assert.equal(out.modeByGroupId.get("duo"), "assisted", "en af ofrene har hjaelp => gruppen har hjaelp");
+  assert.equal(out.modeByGroupId.has("peloton-0"), false);
+  assert.deepEqual(Object.keys(out.chasers).sort(), ["a", "b", "c"], "e er inde igen og slettes af registret");
+});
+
+test("#5582: incidentChaseTargetGroup er den naermeste almindelige gruppe foran, aldrig en anden jagtgruppe", () => {
+  const groups = [
+    chaseGroup("front", ["x"], 0),
+    chaseGroup("peloton-0", ["y", "z"], 20),
+    chaseGroup("other-chase", ["w"], 35),
+    chaseGroup("victim", ["v"], 50),
+  ];
+  const modes = new Map([
+    ["victim", "alone" as const],
+    ["other-chase", "alone" as const],
+  ]);
+  assert.equal(incidentChaseTargetGroup(groups[3], groups, modes)?.id, "peloton-0");
+  assert.equal(incidentChaseTargetGroup(groups[2], groups, modes)?.id, "peloton-0");
+  const lone = [chaseGroup("victim", ["v"], 0)];
+  assert.equal(incidentChaseTargetGroup(lone[0], lone, new Map([["victim", "alone" as const]])), null, "han ER fronten");
+  assert.equal(incidentChaseTargetGroup(groups[1], groups, modes), null, "en almindelig gruppe har intet maal");
+});
+
+test("#5582: bil-lae paa flad/bakket/nedkoersel, ikke paa stigning og brosten", () => {
+  for (const kind of ["flat", "rolling", "descent"] as const) assert.equal(isIncidentChasePacedSegment(kind), true, kind);
+  for (const kind of ["climb", "cobbles"] as const) assert.equal(isIncidentChasePacedSegment(kind), false, kind);
+});
+
+test("#5582: incidentChaseHoldsPace — altid bag bilerne, op ad bakke kun med reserve tilbage", () => {
+  assert.equal(incidentChaseHoldsPace(true, [0]), true);
+  assert.equal(incidentChaseHoldsPace(false, [0.1, 0.2]), true);
+  assert.equal(incidentChaseHoldsPace(false, [0.1, 0]), false, "én udbraendt i jagtgruppen => gruppen braender ud");
+  assert.equal(incidentChaseHoldsPace(false, [Number.NaN]), false);
+});
+
+test("#5582: incidentChaseDtSeconds — holder maalgruppens tid, lukker med hjaelp, aldrig forbi maalgruppen", () => {
+  const flat = { kind: "flat" as const, from_km: 0, to_km: 40 };
+  const base = { ownDtSeconds: 900, targetDtSeconds: 800, holeSeconds: 60, segment: flat, holdsPace: true };
+  assert.equal(incidentChaseDtSeconds({ ...base, mode: "alone" }), 800, "alene bag bilerne: maalgruppens tid");
+  const closing = INCIDENT_CHASE_TUNING.assistedClosingSecondsPerKm * 40;
+  assert.equal(incidentChaseDtSeconds({ ...base, mode: "assisted" }), 800 - Math.min(closing, 60));
+  assert.equal(
+    incidentChaseDtSeconds({ ...base, mode: "assisted", holeSeconds: 1 }),
+    799,
+    "hjaelpen lukker hoejst hullet, aldrig forbi maalgruppen",
+  );
+  assert.equal(incidentChaseDtSeconds({ ...base, mode: "alone", ownDtSeconds: 700 }), 700, "staerkere alene: eget tempo");
+  const climb = { kind: "climb" as const, from_km: 0, to_km: 5 };
+  assert.equal(
+    incidentChaseDtSeconds({ ...base, segment: climb, mode: "assisted" }),
+    800,
+    "op ad bakke hjaelper ingen bil: ingen lukning",
+  );
+});
+
+test("#5582: incidentChaseDtSeconds — udbraendt taber tid, men hoejst loftet pr. km og aldrig mere end solo", () => {
+  const climb = { kind: "climb" as const, from_km: 10, to_km: 14 };
+  const cap = INCIDENT_CHASE_TUNING.crackedLossSecondsPerKm * 4;
+  const slowSolo = { mode: "alone" as const, ownDtSeconds: 2000, targetDtSeconds: 600, holeSeconds: 20, segment: climb, holdsPace: false };
+  assert.equal(incidentChaseDtSeconds(slowSolo), 600 + cap, "solo er langt langsommere: loftet bider");
+  assert.equal(incidentChaseDtSeconds({ ...slowSolo, ownDtSeconds: 610 }), 610, "solo er naesten lige saa hurtig: solo-tiden");
+  assert.ok(incidentChaseDtSeconds(slowSolo) > 600, "udbraendt taber ALTID mindst noget tid, naar solo er langsommere");
+});
+
+test("#5582: addIncidentChaseLoss bogfoerer kun positive tab og er ren", () => {
+  assert.equal(addIncidentChaseLoss(undefined, ["a"], 0), undefined);
+  assert.equal(addIncidentChaseLoss(undefined, ["a"], -3), undefined);
+  const one = addIncidentChaseLoss(undefined, ["a", "b"], 12.345);
+  assert.deepEqual(one, { a: 12.35, b: 12.35 });
+  const two = addIncidentChaseLoss(one, ["a"], 5);
+  assert.deepEqual(two, { a: 17.35, b: 12.35 });
+  assert.deepEqual(one, { a: 12.35, b: 12.35 }, "ren: input muteres aldrig");
+});
+
+test("#5582: hooket saetter kun et offer med TIDSTAB paa jagt (ikke 3 km-reglen, ikke udgaaelse)", () => {
+  const seg = flatSegment(20, 60);
+  const lossScenario = buildSingleGroupScenario([["a", 0], ["b", 0]], seg, makeRoute("flat", 200, [seg]));
+  const loss = createIncidentHook(alwaysLightCrashTuning({ maxIncidentsFieldShare: 0.01 }))(lossScenario.state, lossScenario.ctx);
+  const victim = loss.state.stage_incidents?.[0];
+  assert.equal(victim?.outcome, "time_loss");
+  assert.deepEqual(Object.keys(loss.state.incident_chasers ?? {}), [victim!.rider_id]);
+
+  const nearFinish = flatSegment(198, 200);
+  const protectedScenario = buildSingleGroupScenario([["a", 0], ["b", 0]], nearFinish, makeRoute("flat", 200, [nearFinish]));
+  const prot = createIncidentHook(alwaysLightCrashTuning())(protectedScenario.state, protectedScenario.ctx);
+  assert.ok(prot.state.stage_incidents?.every((i) => i.outcome === "protected_three_km_rule"));
+  assert.equal(prot.state.incident_chasers, undefined, "3 km-reglen: ingen jagt, han er i sin gruppe");
+
+  const abandonScenario = buildSingleGroupScenario([["a", 0], ["b", 0]], seg, makeRoute("flat", 200, [seg]));
+  const abandon = createIncidentHook(
+    alwaysCrashTuning({ mechanicalShare: 0, crashSeverityShares: { hard: 0, serious: 1 } }),
+  )(abandonScenario.state, abandonScenario.ctx);
+  assert.ok(abandon.state.stage_incidents?.every((i) => i.outcome === "abandoned"));
+  assert.equal(abandon.state.incident_chasers, undefined, "en udgaaet rytter jager ikke");
+});
+
+// ── Ende-til-ende: lovet vs faktisk tidstab ─────────────────────────────────
+
+/**
+ * Ét uheld paa hele etapen: riggen rammer den foerste rytter (rider_id-orden)
+ * paa det foerste segment med et fast, let tidstab, og etape-loftet (1) goer
+ * resten af etapen uheldsfri. Offeret er "r00".
+ */
+function oneIncidentHooks(promisedSeconds: number, stripChase = false): MechanicHooks {
+  const hook = createIncidentHook(
+    alwaysLightCrashTuning({
+      unprotectedTimeLossSecondsRange: [promisedSeconds, promisedSeconds],
+      maxIncidentsFieldShare: 0.001,
+    }),
+  );
+  const incidents: MechanicHooks["incidents"] = (state, ctx) => {
+    const result = hook(state, ctx);
+    if (!stripChase || !result.state.incident_chasers) return result;
+    const { incident_chasers: _dropped, ...rest } = result.state;
+    return { ...result, state: rest };
+  };
+  return { ...DEFAULT_MECHANIC_HOOKS, incidents };
+}
+
+function chaseStageInput(segments: Segment[], victimLevel: number, teamIds = false): StageInput {
+  const distance = segments[segments.length - 1].to_km;
+  const startlist: Entrant[] = Array.from({ length: 30 }, (_, i) => {
+    const id = `r${String(i).padStart(2, "0")}`;
+    const level = i === 0 ? victimLevel : 70;
+    const all = {} as Record<AbilityKey, number>;
+    for (const key of Object.keys(abilities()) as AbilityKey[]) all[key] = level;
+    const entrant: Entrant = { rider_id: id, abilities: all, role: "free_role", effort: "normal", condition: 1 };
+    return teamIds ? { ...entrant, team_id: i < 2 ? "team-a" : `team-${i}` } : entrant;
+  });
+  return {
+    route: { ...makeRoute("hilly", distance, segments), finale_type: null },
+    startlist,
+    orders: [],
+    seed: "chase-5582",
+    tuning: RACE_V4_TUNING,
+  };
+}
+
+function victimLossSeconds(input: StageInput, hooks: MechanicHooks): { loss: number; promised: number; state: EngineState } {
+  const { state } = runSegmentLoop(input, hooks);
+  const incident = state.stage_incidents?.find((i) => i.rider_id === "r00");
+  assert.ok(incident && incident.outcome === "time_loss", "riggen skal give r00 praecis ét tidstab");
+  const others = Object.values(state.riders).filter((r) => r.rider_id !== "r00").map((r) => r.time_seconds);
+  return { loss: state.riders.r00.time_seconds - Math.min(...others), promised: incident.time_loss_seconds!, state };
+}
+
+const FLAT_ROUTE: Segment[] = [
+  { kind: "flat", from_km: 0, to_km: 40 },
+  { kind: "rolling", from_km: 40, to_km: 90 },
+  { kind: "flat", from_km: 90, to_km: 140 },
+  { kind: "descent", from_km: 140, to_km: 150, technicality: 1 },
+  { kind: "flat", from_km: 150, to_km: 180 },
+];
+
+test("#5582 e2e: paa terraen med bil-lae lander det faktiske tidstab paa det lovede (svagt offer, staerkt felt)", () => {
+  const promised = 40;
+  const { loss, promised: logged } = victimLossSeconds(chaseStageInput(FLAT_ROUTE, 30), oneIncidentHooks(promised));
+  assert.equal(logged, promised);
+  assert.ok(Math.abs(loss - promised) <= 1, `faktisk ${loss.toFixed(1)} s mod lovet ${promised} s`);
+});
+
+test("#5582 e2e: negativ kontrol — uden jagten vokser hullet langt ud over det lovede", () => {
+  const promised = 40;
+  const { loss } = victimLossSeconds(chaseStageInput(FLAT_ROUTE, 30), oneIncidentHooks(promised, true));
+  assert.ok(loss > promised * 2, `uden jagten skal fundet genskabes (faktisk ${loss.toFixed(1)} s mod lovet ${promised} s)`);
+});
+
+test("#5582 e2e: en holdkammerat der venter, bringer ham ind igen (faktisk tab under det lovede)", () => {
+  const promised = 40;
+  const alone = victimLossSeconds(chaseStageInput(FLAT_ROUTE, 30), oneIncidentHooks(promised));
+  const helped = victimLossSeconds(chaseStageInput(FLAT_ROUTE, 30, true), oneIncidentHooks(promised));
+  assert.ok(helped.loss < alone.loss, `med hjaelp ${helped.loss.toFixed(1)} s, alene ${alone.loss.toFixed(1)} s`);
+  assert.ok(helped.loss >= 0);
+  assert.deepEqual(helped.state.incident_chasers ?? {}, {}, "han er smeltet ind og jager ikke laengere");
+});
+
+test("#5582 e2e: op ad bakke kan han braende ud og tabe tid, men aldrig mere end loftet pr. km", () => {
+  const promised = 40;
+  const climbKm = 8;
+  const route: Segment[] = [
+    { kind: "flat", from_km: 0, to_km: 40 },
+    { kind: "climb", from_km: 40, to_km: 40 + climbKm, category: "1", avg_gradient: 8, top_elevation_m: 1500 },
+    { kind: "flat", from_km: 40 + climbKm, to_km: 100 },
+  ];
+  const { loss, state } = victimLossSeconds(chaseStageInput(route, 5), oneIncidentHooks(promised));
+  const cap = INCIDENT_CHASE_TUNING.crackedLossSecondsPerKm * climbKm;
+  assert.ok(loss > promised + 1, `et svagt offer braender ud op ad bakke og taber mere (faktisk ${loss.toFixed(1)} s)`);
+  assert.ok(loss <= promised + cap + 1, `aldrig mere end loftet (faktisk ${loss.toFixed(1)} s, loft ${cap} s)`);
+  const chaseLoss = state.incident_chase_loss?.r00 ?? 0;
+  assert.ok(Math.abs(promised + chaseLoss - loss) <= 1, "jagtens ekstra tab er bogfoert til juryen");
+});
+
+test("#5582 e2e: en etape uden uheld er bit-identisk (jagt-blokken roeres aldrig)", () => {
+  const input = chaseStageInput(FLAT_ROUTE, 30);
+  const withHook = runSegmentLoop(input, { ...DEFAULT_MECHANIC_HOOKS, incidents: createIncidentHook(neverCrashTuning()) });
+  const without = runSegmentLoop(input, DEFAULT_MECHANIC_HOOKS);
+  assert.deepEqual(withHook.state.groups, without.state.groups);
+  assert.deepEqual(withHook.state.riders, without.state.riders);
+  assert.equal(withHook.state.incident_chasers, undefined);
+  assert.equal(withHook.state.incident_chase_loss, undefined);
 });
