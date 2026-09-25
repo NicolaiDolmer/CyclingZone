@@ -33,7 +33,7 @@ import {
   buildNavDotFlags, resolveNavDot,
 } from "../lib/patchNotesUnread.js";
 import {
-  isRoadmapUnread, readLastSeenRoadmap, writeLastSeenRoadmap,
+  isRoadmapUnread, readLastSeenRoadmap,
 } from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
@@ -803,14 +803,22 @@ export default function Layout() {
     return () => { active = false; };
   }, []);
 
-  // #5673: samme mark-as-læst-recipe som Patch Notes ovenfor — besøg af
-  // /roadmap nulstiller lastSeen til nyeste kendte created_at. RoadmapPage.jsx
-  // skriver samme nøgle (lib/roadmapUnread.ts) ud fra sin egen, fulde
-  // items-liste, så de to aldrig kan komme ud af sync.
+  // #5673 (reviewer-fund, rettet 25/9): Layout skriver IKKE længere
+  // lastSeenRoadmap selv — RoadmapPage.jsx er eneste skriver (dens egen
+  // items-effekt, se roadmapUnread.ts). Årsag: Layout er forælder til den
+  // lazy-loadede RoadmapPage (App.jsx: `lazy(() => import(...))`, desuden
+  // bag <I18nReadyGate>), så denne effekt kunne fyre og skrive nyeste dato
+  // FØR RoadmapPage's chunk overhovedet var hentet — dvs. før dens
+  // `lastSeenBeforeVisit`-snapshot (useState-initializer ved mount) nåede at
+  // læse den GAMLE værdi. Resultatet var, at snapshottet allerede så
+  // "opdateret" ud, så prikken på det enkelte punkt aldrig viste sig ved
+  // navigation i appen (og tilfældigt ved direkte indlæsning, alt efter om
+  // chunk+fetch eller denne effekt vandt kapløbet). Layout genberegner nu
+  // kun nav-prikkens synlige tilstand ud fra hvad der allerede står i
+  // localStorage — den skriver aldrig til nøglen.
   useEffect(() => {
     if (!roadmapLatestDate) return;
     if (location.pathname.startsWith("/roadmap")) {
-      writeLastSeenRoadmap(roadmapLatestDate);
       setRoadmapUnread(false);
     } else {
       setRoadmapUnread(isRoadmapUnread(roadmapLatestDate, readLastSeenRoadmap()));
