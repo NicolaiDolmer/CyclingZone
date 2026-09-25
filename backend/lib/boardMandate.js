@@ -472,6 +472,15 @@ export function finalizeMandateGoals({
 }
 
 /**
+ * #5751 · De felter en afsluttet legacy 1yr-forhandling overfører til et
+ * mandat-mål (ejer-aftalt 25/9). ÉN liste, delt af Boardroom-visningen og
+ * resynk-scriptet, så visning og lagrede data ikke kan divergere
+ * (CodeRabbit-fund). Øvrige felter (fx satisfaction_penalty, category)
+ * beholder mandatets værdi.
+ */
+export const LEGACY_NEGOTIATED_GOAL_FIELDS = Object.freeze(["target", "label", "satisfaction_bonus"]);
+
+/**
  * #5618 · Rodårsag: `POST /board/sign` (den gamle 1yr-forhandlingsside,
  * `board_profiles.current_goals`) skriver ALDRIG til `board_mandates.goals`
  * — kun mandatets egne stier (årsmødet, `boardMandateMeeting.js`; ekstra-
@@ -491,7 +500,7 @@ export function finalizeMandateGoals({
  * på, og årsmødet dual-writer sine mål dertil (`writeLegacyOneYearBoard`),
  * så legacy kan ikke være "bagud" for mandatet. Derfor: findes en AFSLUTTET
  * legacy-forhandling (`negotiation_status === "completed"`) med en ikke-tom
- * målliste, overtager dens target/label/satisfaction-felter for hvert
+ * målliste, overtager dens LEGACY_NEGOTIATED_GOAL_FIELDS for hvert
  * mandat-mål der matcher på IDENTITET (type + nationality_code + race_scope
  * + cumulative — se buildGoalIdentityKey; buildGoalKey inkluderer target med
  * vilje og kan derfor aldrig matche et mål mod sig selv efter en
@@ -542,17 +551,11 @@ export function reconcileMandateGoalsWithLegacyBoard({
     if (goal?.source === "bonus_offer") return goal;
     const legacyMatch = legacyByIdentity.get(buildGoalIdentityKey(goal));
     if (!legacyMatch) return goal;
-    const next = {
-      ...goal,
-      target: legacyMatch.target,
-      label: legacyMatch.label ?? goal.label,
-      satisfaction_bonus: legacyMatch.satisfaction_bonus ?? goal.satisfaction_bonus,
-      satisfaction_penalty: legacyMatch.satisfaction_penalty ?? goal.satisfaction_penalty,
-    };
-    const unchanged = next.target === goal.target
-      && next.label === goal.label
-      && next.satisfaction_bonus === goal.satisfaction_bonus
-      && next.satisfaction_penalty === goal.satisfaction_penalty;
+    const next = { ...goal };
+    for (const field of LEGACY_NEGOTIATED_GOAL_FIELDS) {
+      if (legacyMatch[field] !== undefined && legacyMatch[field] !== null) next[field] = legacyMatch[field];
+    }
+    const unchanged = LEGACY_NEGOTIATED_GOAL_FIELDS.every((field) => next[field] === goal[field]);
     return unchanged ? goal : next;
   });
 }

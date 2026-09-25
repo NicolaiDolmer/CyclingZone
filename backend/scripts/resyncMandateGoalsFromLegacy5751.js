@@ -42,11 +42,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { fileURLToPath } from "node:url";
 
-import { reconcileMandateGoalsWithLegacyBoard } from "../lib/boardMandate.js";
+import {
+  LEGACY_NEGOTIATED_GOAL_FIELDS,
+  reconcileMandateGoalsWithLegacyBoard,
+} from "../lib/boardMandate.js";
 import { parseBoardGoals } from "../lib/boardGoals.js";
 
-export const RESYNC_FIELDS = Object.freeze(["target", "label", "satisfaction_bonus"]);
 const PAGE = 1000;
+const ID_CHUNK = 200;
 
 /**
  * Parser CLI-flag. --apply uden --owner-go er en fejl (ikke en stille dry-run),
@@ -74,7 +77,8 @@ export function isProtectedMandate(mandate) {
 
 /**
  * Ren funktion: hvilke mål i ét mandat skal ændres, og hvordan ser den nye
- * goals-liste ud. Kun RESYNC_FIELDS kopieres fra reconcile-resultatet; alle
+ * goals-liste ud. Kun LEGACY_NEGOTIATED_GOAL_FIELDS (samme liste som
+ * Boardroom-visningen) kopieres fra reconcile-resultatet; alle
  * andre felter på målet bevares præcis som i mandatet.
  *
  * @returns {{ goals: object[], changes: Array<{index:number,type:string,from:object,to:object}> }}
@@ -93,7 +97,7 @@ export function planMandateGoalResync({ mandateGoals, legacyBoard }) {
     const source = reconciled[index];
     if (!source || source === goal) return goal;
     const patch = {};
-    for (const field of RESYNC_FIELDS) {
+    for (const field of LEGACY_NEGOTIATED_GOAL_FIELDS) {
       if (source[field] !== undefined && source[field] !== goal[field]) patch[field] = source[field];
     }
     if (!Object.keys(patch).length) return goal;
@@ -144,6 +148,7 @@ export async function runResyncMandateGoalsFromLegacy({
     planned: [], // { mandateId, teamId, teamName, changes, goals }
     protected: [], // { mandateId, teamId, teamName, changes }
     written: [],
+    conflicts: [], // apply: mandatet ændret siden snapshottet, IKKE skrevet
     backupTable: null,
     error: null,
   };
@@ -164,7 +169,7 @@ export async function runResyncMandateGoalsFromLegacy({
       result.protected.push(entry);
       continue;
     }
-    result.planned.push({ ...entry, goals });
+    result.planned.push({ ...entry, goals, snapshotGoalsJson: JSON.stringify(mandate.goals) });
   }
 
   if (!apply || !result.planned.length) return result;
@@ -172,14 +177,20 @@ export async function runResyncMandateGoalsFromLegacy({
   // Backup-port: tabellen skal findes og rumme hver række der skrives.
   const backupTable = backupTableName(now);
   result.backupTable = backupTable;
+  // CodeRabbit-fund: .in() over mange id'er kan trunkeres stille af
+  // PostgREST-rækkeloftet, så backup-tjekket køres i små bidder.
   const plannedIds = result.planned.map((p) => p.mandateId);
-  const { data: backedUp, error: backupError } = await supabase
-    .from(backupTable).select("id").in("id", plannedIds);
-  if (backupError) {
-    result.error = `backup_missing: ${backupError.message}`;
-    return result;
+  const backedUpIds = new Set();
+  for (let i = 0; i < plannedIds.length; i += ID_CHUNK) {
+    const chunk = plannedIds.slice(i, i + ID_CHUNK);
+    const { data: backedUp, error: backupError } = await supabase
+      .from(backupTable).select("id").in("id", chunk);
+    if (backupError) {
+      result.error = `backup_missing: ${backupError.message}`;
+      return result;
+    }
+    for (const row of backedUp || []) backedUpIds.add(row.id);
   }
-  const backedUpIds = new Set((backedUp || []).map((r) => r.id));
   const missing = plannedIds.filter((id) => !backedUpIds.has(id));
   if (missing.length) {
     result.error = `backup_incomplete: ${missing.length} mandat-rækker mangler i ${backupTable}`;
@@ -187,6 +198,18 @@ export async function runResyncMandateGoalsFromLegacy({
   }
 
   for (const plan of result.planned) {
+    // CodeRabbit-fund: mandatet kan være ændret siden snapshottet (årsmøde,
+    // bonustilbud). Genlæs og skriv KUN hvis rækken er præcis som planlagt.
+    const { data: fresh, error: freshError } = await supabase.from("board_mandates")
+      .select("id, status, goals, adjustments_used, request_used")
+      .eq("id", plan.mandateId)
+      .maybeSingle();
+    if (freshError) throw new Error(`board_mandates genlæsning (${plan.mandateId}): ${freshError.message}`);
+    if (!fresh || fresh.status !== "active" || isProtectedMandate(fresh)
+      || JSON.stringify(fresh.goals) !== plan.snapshotGoalsJson) {
+      result.conflicts.push(plan.mandateId);
+      continue;
+    }
     const { error } = await supabase.from("board_mandates")
       .update({ goals: plan.goals })
       .eq("id", plan.mandateId)

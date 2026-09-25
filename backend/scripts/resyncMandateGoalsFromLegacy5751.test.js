@@ -151,6 +151,31 @@ test("#5751 resync: apply stopper FØR skrivning når backup-tabellen mangler el
   assert.equal(incompleteState.board_mandates.find((m) => m.id === "m-a").goals[0].target, 5);
 });
 
+test("#5751 resync: et mandat der ændres mellem snapshot og skrivning springes over som konflikt (CodeRabbit-fund)", async () => {
+  const state = makeState();
+  const fake = createFakeSupabase(state);
+  let mandateCalls = 0;
+  const supabase = {
+    from(table) {
+      if (table === "board_mandates") {
+        mandateCalls += 1;
+        // Kald 1 = snapshot. Før genlæsningen (kald 2) når et årsmøde at ændre Hold A.
+        if (mandateCalls === 2) {
+          const row = state.board_mandates.find((m) => m.id === "m-a");
+          row.goals = [{ ...row.goals[0], target: 4 }, row.goals[1]];
+          row.adjustments_used = 1;
+        }
+      }
+      return fake.from(table);
+    },
+  };
+
+  const res = await runResyncMandateGoalsFromLegacy({ supabase, apply: true, now: NOW });
+  assert.deepEqual(res.conflicts, ["m-a"]);
+  assert.deepEqual(res.written, []);
+  assert.equal(state.board_mandates.find((m) => m.id === "m-a").goals[0].target, 4, "årsmødets ændring overskrives ikke");
+});
+
 test("#5751 resync: backup-tabellens navn bærer datoen", () => {
   assert.equal(backupTableName(NOW), "backup_5751_board_mandates_goals_20260925");
 });
