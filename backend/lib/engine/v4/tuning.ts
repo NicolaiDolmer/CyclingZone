@@ -679,6 +679,10 @@ const effortGainExtra = {
     protect: 0,
     all_out: 0,
   } as Record<EffortLevel, number>,
+  //     Leddet vejer fuldt fra dette klatre-underskud til gruppens bedste
+  //     (0-1-skala, climbSelection.ts climbDeficit01) og er 0 for gruppens
+  //     bedste klatrer: den staerkeste kan ikke give slip fra svagere ryttere.
+  climbPenaltyFullAtDeficit: 0.1,
   // 2. FINALEN (finale.ts computeFinaleAbilityScore): placerings-scoren faar
   //    finalePush[effort] x reserve01 - finaleCrack[effort] x (1 - reserve01).
   //    all_out presser hardest med fuld reserve og taber mest med tom; save
