@@ -124,4 +124,7 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "race_engine_v4",
   "board_mandate_model_enabled",
   "training_tick_per_race_day",
+  // #5274: HelpPage gater traeningsscore-blokken paa dette flag, saa spillere
+  // ikke laeser om Score-kolonnen foer den er taendt for dem.
+  "training_score_visible",
 ]);

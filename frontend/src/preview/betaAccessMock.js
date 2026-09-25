@@ -55,7 +55,12 @@ function readBody(init) {
 // et klik på stadie-tavlen i preview straks ændrer /help. Preview-viewer'en er
 // ejeren, som også ser admin-tavlen, og admin tæller som beta-tester
 // (isViewerBetaTester), så `beta` er synligt her ligesom `on`.
-const PLAYER_VISIBLE_FLAG_KEYS = ["race_engine_v4", "board_mandate_model_enabled", "training_tick_per_race_day"];
+const PLAYER_VISIBLE_FLAG_KEYS = [
+  "race_engine_v4",
+  "board_mandate_model_enabled",
+  "training_tick_per_race_day",
+  "training_score_visible", // #5274
+];
 
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
