@@ -38,7 +38,7 @@ import { VALUATION_ABILITY_COLUMNS } from "./riderValuation.js";
 import { recomputeRiderValue } from "./riderValueRefresh.js";
 import {
   VALUATION_MODEL_IDS,
-  loadValuationModelById,
+  loadValuationModelByIdWithMarket,
   readProductionValueModelId,
   readValuationModelId,
 } from "./riderValuationModelSelect.js";
@@ -254,7 +254,7 @@ export function createValuePreviewService({
   loadDataset = loadValuePreviewDataset,
   readLiveModelId = readValuationModelId,
   readWageModelId = readProductionValueModelId,
-  loadModel = loadValuationModelById,
+  loadModel = loadValuationModelByIdWithMarket,
   recompute = recomputeRiderValue,
   modelIds = VALUATION_MODEL_IDS,
   yieldEvery = VALUE_PREVIEW_YIELD_EVERY,
@@ -294,9 +294,11 @@ export function createValuePreviewService({
   async function getPreview(supabase, { to: requestedTo = null, step = 0 } = {}) {
     const [fromId, wageId] = await Promise.all([readLiveModelId(supabase), readWageModelId(supabase)]);
     const toId = requestedTo ?? defaultTargetModelId(fromId, modelIds);
-    const fromModel = loadModel(fromId);
-    const toModel = loadModel(toId);
-    const wageModel = loadModel(wageId);
+    const [fromModel, toModel, wageModel] = await Promise.all([
+      loadModel(supabase, fromId),
+      loadModel(supabase, toId),
+      loadModel(supabase, wageId),
+    ]);
 
     // Alle sider i ét svar regnes på SAMME datasæt (nøglen bærer datasættets
     // tidsstempel), så trin 0 og trin 4 aldrig sammenlignes på tværs af en

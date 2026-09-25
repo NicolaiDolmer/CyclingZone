@@ -18,7 +18,11 @@ import {
   sidesDiffer,
 } from "./adminValuePreview.js";
 import { recomputeRiderValue } from "./riderValueRefresh.js";
-import { VALUATION_MODEL_IDS, loadValuationModelById } from "./riderValuationModelSelect.js";
+import {
+  TYPEFREE_MARKET_APP_CONFIG,
+  VALUATION_MODEL_IDS,
+  loadValuationModelById,
+} from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ABIL = { climbing: 60, time_trial: 55, prolog: 50, flat: 58, tempo: 57, sprint: 40, acceleration: 45, punch: 48, endurance: 62, recovery: 58, durability: 55, descending: 52, cobblestone: 41, positioning: 50, aggression: 50, tactics: 50 };
@@ -179,7 +183,7 @@ function service(overrides = {}) {
     loadDataset: async () => { loads += 1; return { ...fixture(), loadedAt: `load-${loads}` }; },
     readLiveModelId: async () => "live",
     readWageModelId: async () => "wage",
-    loadModel: (id) => M[id],
+    loadModel: async (_supabase, id) => M[id],
     recompute: stubRecompute(calls),
     modelIds: ["live", "next", "stepped"],
     yieldEvery: 0,
@@ -318,4 +322,54 @@ test("ægte kæde: samme model i begge ender giver nul ændring (ingen egen form
     assert.equal(r.before, direct.base_value, "tallet er produktionens eget");
   }
   assert.equal(res.wageControl.moved, 0);
+});
+
+// ── #5686 opfølgning: forhåndsvisningen skal bruge loadValuationModelByIdWithMarket,
+// ikke den synkrone loadValuationModelById, ellers viser siden aldrig v6's marked.
+const FAKE_MARKET_FIT = {
+  schema: "typefree-market-fit/1",
+  weight: 0.5,
+  cap_ln: 0.1,
+  common: { beta: [0.1, 0, 0], center: { O: 50, age: 25 } },
+  local: null,
+};
+
+test("service (ægte loadModel): v6 med app_config-markedsnøgle får markedet med, v4 slår det aldrig op", async () => {
+  const sb = mockSupabase({ app_config: [{ key: TYPEFREE_MARKET_APP_CONFIG, value: FAKE_MARKET_FIT }] });
+  const calls = [];
+  const capture = (row, ab, baseline, model, opts = {}) => {
+    calls.push({ riderId: row.id, model, opts });
+    return { primary_type: "gc", secondary_type: "rouleur", base_value: row.base_value, current_production_value: row.base_value };
+  };
+  const svc = createValuePreviewService({ loadDataset: async () => fixture(), recompute: capture });
+
+  const res = await svc.getPreview(sb, { to: "v6", step: 0 });
+
+  assert.equal(res.from, "v4", "ingen rider_valuation_model-noegle sat -> fail-safe v4");
+  assert.equal(res.to, "v6");
+  // v4-modellens JSON har ikke sit eget model_id-felt, saa FOER/EFTER skelnes
+  // paa samme traek som resten af filen: EFTER faar et eksplicit phaseStep, FOER ikke.
+  const v6Calls = calls.filter((c) => "phaseStep" in c.opts);
+  const v4Calls = calls.filter((c) => !("phaseStep" in c.opts));
+  assert.ok(v6Calls.length > 0, "v6 (EFTER-siden) blev regnet");
+  assert.ok(v4Calls.length > 0, "v4 (FOER-siden) blev regnet");
+  for (const c of v6Calls) assert.deepEqual(c.model.market_fit, FAKE_MARKET_FIT, "v6 faar markedet fra app_config via loadValuationModelByIdWithMarket");
+  for (const c of v4Calls) assert.equal(c.model.market_fit, undefined, "v4 er ikke typefri og slaar aldrig markeds-noeglen op");
+});
+
+test("service (ægte loadModel): manglende markeds-noegle giver v6 uden marked og ingen fejl", async () => {
+  const sb = mockSupabase({ app_config: [] });
+  const calls = [];
+  const capture = (row, ab, baseline, model, opts = {}) => {
+    calls.push({ riderId: row.id, model, opts });
+    return { primary_type: "gc", secondary_type: "rouleur", base_value: row.base_value, current_production_value: row.base_value };
+  };
+  const svc = createValuePreviewService({ loadDataset: async () => fixture(), recompute: capture });
+
+  const res = await svc.getPreview(sb, { to: "v6", step: 0 });
+
+  assert.equal(res.to, "v6");
+  const v6Calls = calls.filter((c) => c.model?.model_id === "v6");
+  assert.ok(v6Calls.length > 0, "v6 blev regnet, selv uden markeds-noegle");
+  for (const c of v6Calls) assert.equal(c.model.market_fit, undefined, "manglende noegle -> uden marked, ingen kastet fejl");
 });
