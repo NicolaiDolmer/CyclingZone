@@ -5,7 +5,7 @@ import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
-import { isHelpBlockVisible, isHelpFaqVisible, isHelpSectionVisible } from "./helpFlagGates.js";
+import { isHelpBlockFlagVisible, isHelpBlockVisible, isHelpFaqVisible, isHelpSectionVisible } from "./helpFlagGates.js";
 import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
@@ -389,7 +389,10 @@ const SECTION_DEFS = [
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —
       // the bars show what the rider got, the score shows how good the session was.
-      { id: "trainingScore", kind: "text" },
+      // #5274: gated direkte via SECTION_DEFS' `flag`-egenskab (ikke
+      // HELP_BLOCK_FLAGS — ingen off-tvilling), saa blokken foerst er synlig
+      // naar training_score_visible er beta (viewer i beta-gruppen) eller on.
+      { id: "trainingScore", kind: "text", flag: "training_score_visible" },
       { id: "longTermGrowth", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly
@@ -639,49 +642,53 @@ function buildSections(t, vars, flags) {
       key: def.key,
       Icon: def.Icon,
       label: t(`${base}.label`, vars),
-      // #4847/#4948: blokke hvis indhold haenger paa et flag filtreres FOER de
-      // oversaettes. En blok uden en linje i HELP_BLOCK_FLAGS er altid synlig.
-      content: def.blocks.filter((block) => isHelpBlockVisible(def.key, block.id, flags)).map((block) => {
-        const blockBase = `${base}.${block.id}`;
-        const title = t(`${blockBase}.title`, vars);
-        if (block.kind === "steps") {
-          // i18next-icu does not interpolate returnObjects array elements, so fill
-          // the help numbers in manually (#1916).
-          return { title, steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars) };
-        }
-        if (block.kind === "rows") {
-          return { title, rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars) };
-        }
-        // #3100: a bare table can be read the wrong way round (a player read the
-        // division-bonus table's place column as a division and expected the wrong
-        // payout). "textRows" puts a how-to-read line above the table, the same
-        // sentence /rules already carries.
-        if (block.kind === "textRows") {
-          return {
-            title,
-            text: t(`${blockBase}.text`, vars),
-            rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars),
-          };
-        }
-        // #4382: same shape as "textRows" for a numbered list — a framing line
-        // above the steps, so a lifecycle list is not read as a to-do list.
-        if (block.kind === "textSteps") {
-          return {
-            title,
-            text: t(`${blockBase}.text`, vars),
-            steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars),
-          };
-        }
-        if (block.kind === "textCta") {
-          return {
-            title,
-            text: t(`${blockBase}.text`, vars),
-            cta: { label: t(`${blockBase}.ctaLabel`, vars), to: t(`${blockBase}.ctaTo`) },
-            disclaimer: t(`${blockBase}.disclaimer`, vars),
-          };
-        }
-        return { title, text: t(`${blockBase}.text`, vars) };
-      }),
+      // #4847/#4948/#5274: blokke hvis indhold haenger paa et flag filtreres
+      // FOER de oversaettes. En blok uden en linje i HELP_BLOCK_FLAGS OG uden
+      // sin egen `flag`-egenskab er altid synlig.
+      content: def.blocks
+        .filter((block) => isHelpBlockVisible(def.key, block.id, flags))
+        .filter((block) => isHelpBlockFlagVisible(block.flag, flags))
+        .map((block) => {
+          const blockBase = `${base}.${block.id}`;
+          const title = t(`${blockBase}.title`, vars);
+          if (block.kind === "steps") {
+            // i18next-icu does not interpolate returnObjects array elements, so fill
+            // the help numbers in manually (#1916).
+            return { title, steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars) };
+          }
+          if (block.kind === "rows") {
+            return { title, rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars) };
+          }
+          // #3100: a bare table can be read the wrong way round (a player read the
+          // division-bonus table's place column as a division and expected the wrong
+          // payout). "textRows" puts a how-to-read line above the table, the same
+          // sentence /rules already carries.
+          if (block.kind === "textRows") {
+            return {
+              title,
+              text: t(`${blockBase}.text`, vars),
+              rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars),
+            };
+          }
+          // #4382: same shape as "textRows" for a numbered list — a framing line
+          // above the steps, so a lifecycle list is not read as a to-do list.
+          if (block.kind === "textSteps") {
+            return {
+              title,
+              text: t(`${blockBase}.text`, vars),
+              steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars),
+            };
+          }
+          if (block.kind === "textCta") {
+            return {
+              title,
+              text: t(`${blockBase}.text`, vars),
+              cta: { label: t(`${blockBase}.ctaLabel`, vars), to: t(`${blockBase}.ctaTo`) },
+              disclaimer: t(`${blockBase}.disclaimer`, vars),
+            };
+          }
+          return { title, text: t(`${blockBase}.text`, vars) };
+        }),
     };
   });
 }
