@@ -50,7 +50,7 @@ test("sortTrainingRiders: kendt noegle delegeres til den givne accessor, med ret
     { id: 2, score: 30 },
     { id: 3, score: 20 },
   ];
-  const accessors = { score: (r) => r.score };
+  const accessors = { score: (r: { score: number }) => r.score };
   assert.deepEqual(
     sortTrainingRiders(riders, "score", "desc", accessors).map((r) => r.id),
     [2, 3, 1],
