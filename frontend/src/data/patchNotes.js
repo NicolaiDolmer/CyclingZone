@@ -24,6 +24,7 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "stage": "beta",
         "topic": "Board",
         "en": {
           "title": "Boardroom beta: the right target after a negotiation, and the sponsor effect is visible",
@@ -43,6 +44,7 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
+        "stage": "beta",
         "topic": "Riders",
         "en": {
           "title": "Rating shows the rider's best role now, in the beta group",

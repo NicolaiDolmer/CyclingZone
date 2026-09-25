@@ -23,3 +23,8 @@ test("renderer IKKE rå items direkte (ingen dobbelt-sprog)", () => {
 test("gemmer last-seen i localStorage", () => {
   assert.match(src, /cz_patchnotes_last_seen/);
 });
+
+test("viser Beta-badge pr. punkt for beta-only ændringer (#5422)", () => {
+  assert.match(src, /c\.stage === "beta"/);
+  assert.match(src, /t\("stage\.beta"\)/);
+});
