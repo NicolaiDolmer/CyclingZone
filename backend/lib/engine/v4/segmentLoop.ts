@@ -61,7 +61,7 @@ import {
 import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
-import { incidentChaseDtSeconds } from "./mechanics/incidents.ts";
+import { incidentChaseDtSeconds, resolveIncidentChasers } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -595,17 +595,28 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     state = { ...state, riders: nextRiders };
 
     // #5582: et uheldsoffer koerer tilbage bag foelgebilerne. Kun jagtgrupper
-    // (RaceGroup.chase_back, sat af uheldets split) faar en anden
-    // krydsningstid; alle andre grupper er uroerte, saa en etape uden uheld er
-    // bit-identisk. Reglen bor i mechanics/incidents.ts's
-    // incidentChaseDtSeconds. Fysiologi-tick'et herover er bevidst regnet paa
+    // (grupper hvor alle koerende er i state.incident_chasers, sat af uheldets
+    // split) faar en anden krydsningstid; alle andre grupper er uroerte, og en
+    // etape uden et uheld med tidstab springer blokken helt over (bit-identisk).
+    // Reglen bor i mechanics/incidents.ts (resolveIncidentChasers +
+    // incidentChaseDtSeconds). Fysiologi-tick'et herover er bevidst regnet paa
     // hans eget solo-tempo: jagten koster af reserven.
-    for (const group of state.groups) {
-      if (!group.chase_back) continue;
-      const tempo = tempoByGroup.get(group.id);
-      if (!tempo) continue;
-      const chaseDt = incidentChaseDtSeconds(group, state.groups, (id) => tempoByGroup.get(id)?.dtSeconds, segment);
-      if (chaseDt !== null) tempoByGroup.set(group.id, { ...tempo, dtSeconds: chaseDt });
+    if (state.incident_chasers && Object.keys(state.incident_chasers).length > 0) {
+      const chase = resolveIncidentChasers(state.groups, state.riders, state.incident_chasers);
+      state = { ...state, incident_chasers: chase.chasers };
+      for (const group of state.groups) {
+        if (!chase.modeByGroupId.has(group.id)) continue;
+        const tempo = tempoByGroup.get(group.id);
+        if (!tempo) continue;
+        const chaseDt = incidentChaseDtSeconds(
+          group,
+          state.groups,
+          chase.modeByGroupId,
+          (id) => tempoByGroup.get(id)?.dtSeconds,
+          segment,
+        );
+        if (chaseDt !== null) tempoByGroup.set(group.id, { ...tempo, dtSeconds: chaseDt });
+      }
     }
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre

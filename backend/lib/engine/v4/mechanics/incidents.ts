@@ -66,6 +66,7 @@
 import type {
   EngineState,
   Entrant,
+  IncidentChaseMode,
   IncidentKind,
   IncidentOutcome,
   IncidentSeverity,
@@ -603,6 +604,7 @@ export function createIncidentHook(
 
     let groups: RaceGroup[] = state.groups;
     let riders: Record<string, RiderState> = state.riders;
+    let chasers = state.incident_chasers;
     const newIncidents: StageIncident[] = [];
     let seq = 0;
     let changed = false;
@@ -658,7 +660,7 @@ export function createIncidentHook(
         // bag foelgebilerne. Hjaelperen er den samme, der gav hjulskift-
         // rabatten: en holdkammerat/hjaelper i hans gruppe i dette segment.
         if (resolved.outcome === "time_loss") {
-          groups = markIncidentChaseGroup(groups, soloId, helperNearby ? "assisted" : "alone");
+          chasers = addIncidentChaser(chasers, riderId, helperNearby ? "assisted" : "alone");
         }
         seq += 1;
         changed = true;
@@ -691,7 +693,8 @@ export function createIncidentHook(
     if (newIncidents.length === 0) return { state, events };
     const stageIncidents = [...logged, ...newIncidents];
     if (!changed) return { state: { ...state, riders, stage_incidents: stageIncidents }, events };
-    return { state: { ...state, groups, riders, stage_incidents: stageIncidents }, events };
+    const withChasers = chasers === state.incident_chasers ? {} : { incident_chasers: chasers };
+    return { state: { ...state, groups, riders, stage_incidents: stageIncidents, ...withChasers }, events };
   };
 }
 
