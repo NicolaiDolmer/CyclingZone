@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildFirstTouchRecord, captureFirstTouch, getAttribution } from "./attribution.js";
+import {
+  buildFirstTouchRecord,
+  captureFirstTouch,
+  getAttribution,
+  getAttributionForBackend,
+  sanitizeAttributionForBackend,
+} from "./attribution.js";
 
 function fakeStorage() {
   const m = new Map();
@@ -202,6 +208,38 @@ test("click-id recovers fra same-origin referrer naar det mangler paa den aktuel
   assert.equal(record.fbclid, "recovered123");
   assert.equal(record.referrer, null);
   assert.equal(record.source_hint, "paid-candidate");
+});
+
+// #5304 blocking fix: click-ids må ikke lægges i Supabase auth-metadata eller
+// sendes til backend uden ejer-go (needs-decision, se attribution.js).
+test("getAttributionForBackend fjerner click-ids + source_hint, beholder utm (#5304)", () => {
+  const s = fakeStorage();
+  captureFirstTouch({
+    search: "?utm_medium=paid&fbclid=abc123&gclid=xyz789&ttclid=t1&msclkid=m1",
+    referrer: "",
+    path: "/",
+    storage: s,
+    now: () => "t1",
+  });
+  const full = getAttribution(s);
+  assert.equal(full.fbclid, "abc123");
+  assert.equal(full.source_hint, "paid-candidate");
+
+  const forBackend = getAttributionForBackend(s);
+  assert.equal(forBackend.utm_medium, "paid");
+  for (const key of ["fbclid", "gclid", "ttclid", "msclkid", "source_hint"]) {
+    assert.equal(key in forBackend, false, `${key} skal ikke sendes til backend`);
+  }
+});
+
+test("getAttributionForBackend returnerer null uden data i storage (#5304)", () => {
+  assert.equal(getAttributionForBackend(fakeStorage()), null);
+});
+
+test("sanitizeAttributionForBackend renser en allerede-laest record (fx auth-metadata) (#5304)", () => {
+  const cleaned = sanitizeAttributionForBackend({ utm_source: "google", gclid: "leaked", source_hint: "paid-candidate" });
+  assert.deepEqual(cleaned, { utm_source: "google" });
+  assert.equal(sanitizeAttributionForBackend(null), null);
 });
 
 test("getAttribution returnerer null uden data og ved korrupt JSON", () => {

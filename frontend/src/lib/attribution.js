@@ -18,14 +18,18 @@ export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term",
 // is unaffected — click-ids are only meaningful in the first-touch snapshot.
 // fbclid = Meta/Facebook Ads, gclid = Google Ads, ttclid = TikTok Ads,
 // msclkid = Microsoft/Bing Ads.
-// GDPR note (issue #5304): a click-id is a platform-issued pseudonymous
-// identifier, not more identifying than a utm_source value (the same
-// reasoning the privacy policy already applies to utm_*, see header comment
-// above) — same storage, same TTL (localStorage until first signup captures
-// it, or forever if the visitor never signs up), same consent-independence
-// (captured before the cookie banner, nothing sent to the backend from this
-// file). No value beyond the id itself is stored, and it is never forwarded
-// to any third party (no CAPI/conversion-API call here or anywhere else).
+// PRIVACY (blocking review finding, #5304, 25/9): unlike utm_source — one
+// value shared by an entire campaign — a click-id is unique PER CLICK, a
+// stronger re-identifying signal. The owner's 16/9 review comment on #5304 is
+// explicit that the existing first-touch consent basis for utm_* "cannot be
+// inherited" by click-ids without its own assessment, and that comment did
+// NOT grant build-go. This file only ever writes click-ids to localStorage —
+// captureFirstTouch()/buildFirstTouchRecord() never call the network or
+// Supabase. Anything that forwards the stored record OFF this device (Supabase
+// auth signUp `options.data`, the team-bootstrap PUT body) must go through
+// getAttributionForBackend() below instead of getAttribution(), so click-ids
+// stay client-side-only until the owner makes that decision. See
+// docs/GROWTH_STACK.md §3.1.
 export const CLICK_ID_KEYS = ["fbclid", "gclid", "ttclid", "msclkid"];
 
 // URL.canParse is too new for older Safari, so parse defensively by hand.
@@ -104,4 +108,39 @@ export function getAttribution(storage = window.localStorage) {
   } catch {
     return null;
   }
+}
+
+// #5304 blocking fix (25/9): strips click-id fields (and the source_hint
+// derived from them) from an attribution record, leaving only the
+// utm_*/referrer/landing_path fields the owner already approved for
+// off-device use. Pure, so both storage-backed reads and an already-read
+// record (e.g. Supabase session.user.user_metadata.attribution) can be
+// sanitized the same way. Returns the input unchanged if it isn't an object.
+function stripClickIds(record) {
+  if (!record || typeof record !== "object") return record;
+  const sanitized = { ...record };
+  for (const key of CLICK_ID_KEYS) delete sanitized[key];
+  delete sanitized.source_hint;
+  return sanitized;
+}
+
+// #5304 blocking fix (25/9): every caller that sends the attribution record
+// off-device (Supabase auth signUp `options.data`, the team-bootstrap PUT
+// body — LoginPage.jsx, Layout.jsx, SetupWizardModal.jsx) must use THIS
+// instead of getAttribution(). getAttribution() returns the full localStorage
+// record, which now includes click-ids (#5304); sending those to
+// supabase.auth.signUp() persists them server-side in
+// auth.users.raw_user_meta_data, which the owner has not signed off on (see
+// the CLICK_ID_KEYS comment above).
+export function getAttributionForBackend(storage = window.localStorage) {
+  return stripClickIds(getAttribution(storage));
+}
+
+// #5304: same sanitizing as getAttributionForBackend(), for the cross-device
+// fallback callers already read off `session.user.user_metadata.attribution`
+// (Layout.jsx auto-bootstrap, SetupWizardModal.jsx) — that metadata may still
+// carry click-ids written before this fix, so the fallback must be sanitized
+// too, not just the localStorage read.
+export function sanitizeAttributionForBackend(record) {
+  return stripClickIds(record);
 }

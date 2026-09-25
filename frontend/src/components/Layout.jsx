@@ -34,7 +34,7 @@ import {
 } from "../lib/patchNotesUnread.js";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
-import { getAttribution } from "../lib/attribution";
+import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
@@ -603,7 +603,9 @@ export default function Layout() {
                 // #2079: confirm-linket åbnes tit på en anden enhed end signup'et
                 // (mobil-mailapp) — localStorage er tom dér. Fald tilbage til
                 // attribution-snapshottet som LoginPage gemte i auth-metadata.
-                attribution: getAttribution() || meta.attribution || null,
+                // #5304: begge grene skal saniteres — click-ids må ikke sendes
+                // videre til backend uden ejer-go, se attribution.js.
+                attribution: getAttributionForBackend() || sanitizeAttributionForBackend(meta.attribution) || null,
               }),
             }, { source: "team-bootstrap" });
             if (res.ok) {
