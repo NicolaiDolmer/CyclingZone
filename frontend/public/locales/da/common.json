@@ -113,6 +113,7 @@
     "selectionReminderUrgent": "Holdet stiller ikke op"
   },
   "leaderBadge": "Fører",
+  "betaBadge": "Beta",
   "amountInput": {
     "invalid": "Angiv et helt tal, fx 150000 eller 150.000",
     "parsedPreview": "= {amount} CZ$"

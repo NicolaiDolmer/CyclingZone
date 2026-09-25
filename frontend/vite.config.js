@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
 import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
+// #5493: statisk <script>-tag for Ahrefs Web Analytics, nøgle fra
+// VITE_AHREFS_ANALYTICS_KEY — se vite-plugins/ahrefs-analytics.ts for hvorfor.
+import { ahrefsAnalyticsPlugin } from "./vite-plugins/ahrefs-analytics.ts";
 // #5177: modulepreload-hint for det ikke-engelske sprogs lazy message-chunk.
 import { i18nLangPreloadPlugin } from "./vite-plugins/i18n-lang-preload.js";
 // #5159 (audit-fund H4): frontendens indholds-id + dist/version.json. Se
@@ -144,6 +147,9 @@ export default defineConfig({
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
+    // #5493: ungated, cookie-frit — se plugin-filen for ejer-beslutning + hvorfor
+    // et statisk tag (ikke JS-injektion som GA4).
+    ahrefsAnalyticsPlugin(),
     // #5161: skriver boot-assets (entry + modulepreloads + asset-stylesheets) som
     // JSON-datablok lige FOER /chunk-selfheal.js, saa boot-vagten har en komplet
     // liste allerede mens parseren er midt i <head>.

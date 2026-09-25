@@ -32,7 +32,14 @@
 //
 // Usage:
 //   node backend/scripts/v4EffortTwinMeasure.js [--label=A] [--seeds=s1,s2,s3,s4,s5] [--json=<fil>]
-//     [--population=<fil>] [--out=<fil>]
+//     [--population=<fil>] [--out=<fil>] [--orders=none|ai] [--roles=free,team]
+//     [--efforts=grupetto,save,normal,protect,all_out] [--profiles=flat,...] [--twins-only]
+//
+// #5580 (spec motor runde 2, M1 punkt 8): hele trappen (inkl. `protect` og
+// `normal` som reference), tvillinger som hjaelper med kaptajn paa samme hold
+// (`--roles=team`), og feltet med AI-roller/-ordrer (`--orders=ai`, samme vej
+// som headToHeadV4.js). Output: pris (tid tabt) og gevinst (pladser vundet)
+// pr. trin pr. terraen, plus hvilket trin der vinder hver celle.
 //
 // #5572: `--population=` maaler paa en anden population (side om side med den
 // pinnede; default UAENDRET = POPULATION_FILE nedenfor). `--out=` er et alias
@@ -53,6 +60,7 @@ import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import {
   EFFORT_COST_EXTRA_TUNING,
+  EFFORT_GAIN_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
   RACE_V4_TUNING,
 } from "../lib/engine/v4/tuning.ts";
@@ -62,6 +70,8 @@ import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter
 import { sampleField, median, mean } from "./lib/headToHeadStats.js";
 import { scoreDescentVsSummitRatio, scoreFieldCohesion, scoreGapRealism } from "./lib/headToHeadAnchors.js";
 import { evaluateTailGate, measureTailSpread } from "./v4TailSpread.js";
+import { buildStageTeamOrders } from "./lib/headToHeadOrders.js";
+import { buildRaceContexts } from "./headToHeadV4.js";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -78,7 +88,26 @@ export const TWIN_LEVELS = Object.freeze({ mid: 0.5, strong: 0.9, top: 0.99 });
 // `save` er med som KONTROL for grupetto: vinder en grupetto-tvilling fordi
 // normal-tvillingen braender ud, giver save (v3-kalibreret) samme beskyttelse,
 // og fundet handler om kollaps-modellen, ikke om grupetto (PR #4909 tvivlspunkt 2).
-export const TWIN_EFFORTS = Object.freeze(["all_out", "grupetto", "save"]);
+//
+// #5580 (spec motor runde 2, M1 punkt 8): hele trappen maales. `protect` er
+// nyt (holdarbejdet, "arbejd eller angrib"), og `normal` er med som REFERENCE:
+// normal mod normal skal give et delta paa praecis 0 (en sanity-kontrol af
+// selve tvillinge-metoden, ikke et valg der kan vinde).
+export const TWIN_EFFORTS = Object.freeze(["grupetto", "save", "normal", "protect", "all_out"]);
+
+/**
+ * #5580: hvordan tvillingerne stilles op.
+ *   - `free`: begge tvillinger koerer `free_role` uden hold (den oprindelige
+ *     maaling, bevaret uaendret).
+ *   - `team`: hver tvilling er HJAELPER paa sit eget hold med en kaptajn der
+ *     er en identisk klon (samme evner, `normal`). Saa ser maalingen baade
+ *     hjaelperens pris og kaptajnens gevinst (M16 holdspil + supportShare-
+ *     hullet), som `free` er blind for.
+ */
+export const TWIN_ROLE_MODES = Object.freeze(["free", "team"]);
+
+/** --orders-tilstande, samme to som headToHeadV4.js. */
+export const TWIN_ORDER_MODES = Object.freeze(["none", "ai"]);
 
 /** Grupetto-scenariet: hvilke profiler, og hvor stor en andel af feltet. */
 export const GRUPETTO_SCENARIO = Object.freeze({ profiles: ["mountain", "high_mountain"], fieldShare: 0.3 });
@@ -114,32 +143,75 @@ function fieldFor(seed, stageRow, population) {
   return { stageSeedStr, riders: sampleField(rng, population.riders, FIELD_SIZE) };
 }
 
-function baseEntrants(fieldRiders) {
+/**
+ * Feltets startliste. `orders=none`: alle `free_role` + `normal` (uaendret).
+ * `orders=ai` (#5580): roller, indsats og hold-id fra AI-ordrerne, praecis som
+ * headToHeadV4.js's `--orders=ai` (samme `buildStageTeamOrders`).
+ */
+function baseEntrants(fieldRiders, roles = null, effortByRider = null) {
+  const teamByRider = new Map(fieldRiders.map((r) => [r.id, r.team_id ?? null]));
   const rows = fieldRiders.map((r) => ({ rider_id: r.id, ...r.abilities }));
-  return entrantsFromAbilitiesRows(rows, () => ({ role: "free_role", effort: "normal", condition: 1 }));
+  if (!roles) return entrantsFromAbilitiesRows(rows, () => ({ role: "free_role", effort: "normal", condition: 1 }));
+  return entrantsFromAbilitiesRows(rows, (riderId) => ({
+    role: roles.get(riderId) ?? "free_role",
+    effort: effortByRider?.get(riderId) ?? "normal",
+    condition: 1,
+    teamId: teamByRider.get(riderId) ?? null,
+  }));
 }
 
 /**
  * Startliste med to tvillinger klonet fra rytteren ved `percentile` af feltets
- * etape-styrke. Den klonede rytter og hans naermeste nabo i styrke tages ud,
+ * etape-styrke. Den klonede rytter og hans naermeste naboer i styrke tages ud,
  * saa feltstoerrelsen er uaendret. `swap` bytter hvilket rider_id der faar
  * indsatsvalget.
+ *
+ * `roleMode = "team"` (#5580): hver tvilling er hjaelper paa sit eget hold
+ * (`twin-team-1`/`twin-team-2`) med en identisk kaptajn-klon paa `normal`.
+ * Kaptajnerne foelger tvillingernes id-bytte, saa kaptajnen for indsats-
+ * tvillingen altid returneres som `capX`.
  */
-export function twinStartlist(entrants, route, percentile, effort, swap) {
+export function twinStartlist(entrants, route, percentile, effort, swap, roleMode = "free") {
   const ranked = [...entrants].sort(
     (a, b) => stageStrength(a.abilities, route) - stageStrength(b.abilities, route) || a.rider_id.localeCompare(b.rider_id),
   );
   const idx = Math.min(ranked.length - 1, Math.max(0, Math.floor(percentile * (ranked.length - 1))));
   const chosen = ranked[idx];
-  const neighbour = ranked[idx > 0 ? idx - 1 : idx + 1];
-  const drop = new Set([chosen.rider_id, neighbour?.rider_id]);
+  const withTeam = roleMode === "team";
+  // Naboer i styrke der tages ud: 1 i free (to tvillinger ind, to ud), 3 i team
+  // (to tvillinger + to kaptajner ind, fire ud).
+  const dropCount = withTeam ? 4 : 2;
+  const order = [idx];
+  for (let step = 1; order.length < dropCount && step < ranked.length; step++) {
+    if (idx - step >= 0) order.push(idx - step);
+    if (order.length < dropCount && idx + step < ranked.length) order.push(idx + step);
+  }
+  const drop = new Set(order.map((i) => ranked[i].rider_id));
   const idX = swap ? "twin-2" : "twin-1";
   const idN = swap ? "twin-1" : "twin-2";
-  const clone = (rider_id, eff) => ({ ...chosen, rider_id, effort: eff });
+  const teamOf = (id) => (id === "twin-1" ? "twin-team-1" : "twin-team-2");
+  const capOf = (id) => (id === "twin-1" ? "twin-cap-1" : "twin-cap-2");
+  const clone = (rider_id, eff, role = "free_role", team_id = null) => ({
+    ...chosen,
+    rider_id,
+    effort: eff,
+    role,
+    team_id,
+  });
+  const twins = withTeam
+    ? [
+        clone(idX, effort, "helper", teamOf(idX)),
+        clone(idN, "normal", "helper", teamOf(idN)),
+        clone(capOf(idX), "normal", "captain", teamOf(idX)),
+        clone(capOf(idN), "normal", "captain", teamOf(idN)),
+      ]
+    : [clone(idX, effort), clone(idN, "normal")];
   return {
-    startlist: [...entrants.filter((e) => !drop.has(e.rider_id)), clone(idX, effort), clone(idN, "normal")],
+    startlist: [...entrants.filter((e) => !drop.has(e.rider_id)), ...twins],
     idX,
     idN,
+    capX: withTeam ? capOf(idX) : null,
+    capN: withTeam ? capOf(idN) : null,
   };
 }
 
@@ -156,17 +228,23 @@ function riderOutcome(output, riderId) {
 }
 
 /** Én tvillinge-maaling: to koersler med byttede id'er, deltaer midlet. */
-function measureTwinPair({ entrants, route, stageSeedStr, percentile, effort }) {
+function measureTwinPair({ entrants, route, stageSeedStr, percentile, effort, roleMode = "free", orders = [] }) {
   const deltas = [];
   for (const swap of [false, true]) {
-    const { startlist, idX, idN } = twinStartlist(entrants, route, percentile, effort, swap);
-    const output = simulateStageV4({ route, startlist, orders: [], seed: stageSeedStr, tuning: RACE_V4_TUNING });
+    const { startlist, idX, idN, capX, capN } = twinStartlist(entrants, route, percentile, effort, swap, roleMode);
+    const output = simulateStageV4({ route, startlist, orders, seed: stageSeedStr, tuning: RACE_V4_TUNING });
     const x = riderOutcome(output, idX);
     const n = riderOutcome(output, idN);
-    deltas.push({ x, n, winnerTime: Math.min(...output.results.map((r) => r.time_seconds)) });
+    const cx = capX ? riderOutcome(output, capX) : null;
+    const cn = capN ? riderOutcome(output, capN) : null;
+    deltas.push({ x, n, cx, cn, winnerTime: Math.min(...output.results.map((r) => r.time_seconds)) });
   }
   const avg = (fn) => (fn(deltas[0]) + fn(deltas[1])) / 2;
+  const hasCaptain = deltas.every((d) => d.cx && d.cn);
   return {
+    // #5580: kaptajnens plads-delta (kun roleMode "team"): + = kaptajnen for
+    // indsats-tvillingen sluttede daarligere end kaptajnen for normal-tvillingen.
+    captainRankDelta: hasCaptain ? avg((d) => d.cx.rank - d.cn.rank) : null,
     rankDelta: avg((d) => d.x.rank - d.n.rank),
     timeDelta: avg((d) => d.x.time - d.n.time),
     xSecondsOverCp: avg((d) => d.x.secondsOverCp),
@@ -184,19 +262,23 @@ function measureTwinPair({ entrants, route, stageSeedStr, percentile, effort }) 
 export function summarizeTwins(samples) {
   const groups = new Map();
   for (const s of samples) {
-    const key = `${s.effort}|${s.level}|${s.profileType}`;
+    const key = `${s.effort}|${s.level}|${s.profileType}|${s.roleMode ?? "free"}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(s);
   }
   const rows = [];
   for (const [key, list] of groups) {
-    const [effort, level, profileType] = key.split("|");
+    const [effort, level, profileType, roleMode] = key.split("|");
     const rankDeltas = list.map((s) => s.rankDelta);
+    const captainDeltas = list.map((s) => s.captainRankDelta).filter((v) => Number.isFinite(v));
     rows.push({
       effort,
       level,
       profileType,
+      roleMode,
       n: list.length,
+      medianCaptainRankDelta: captainDeltas.length ? median(captainDeltas) : null,
+      meanCaptainRankDelta: captainDeltas.length ? mean(captainDeltas) : null,
       meanRankDelta: mean(rankDeltas),
       medianRankDelta: median(rankDeltas),
       shareWorse: list.filter((s) => s.rankDelta > 0).length / list.length,
@@ -212,26 +294,75 @@ export function summarizeTwins(samples) {
       medianXGapPct: median(list.map((s) => s.xGapPct)),
     });
   }
-  return rows.sort((a, b) => `${a.effort}${a.level}${a.profileType}`.localeCompare(`${b.effort}${b.level}${b.profileType}`));
+  const sortKey = (r) => `${r.roleMode}|${r.effort}|${r.level}|${r.profileType}`;
+  return rows.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
 }
 
-export function runTwins({ population, stages, seeds }) {
+/**
+ * #5580: hvilket trin "vinder" pr. (rolle-tilstand, niveau, profil): det trin
+ * med den laveste median-plads-delta mod normal (normal selv er 0). Svaret paa
+ * spoergsmaalet "dominerer `save` stadig?" uden at laese hele tabellen.
+ * Uafgjort mod normal taeller som normal: et trin der hverken vinder eller
+ * taber pladser er ikke et bedre valg (fx enkeltstart, hvor alle deltaer er 0).
+ */
+export function bestEffortByCell(rows) {
+  const cells = new Map();
+  for (const r of rows) {
+    const key = `${r.roleMode}|${r.level}|${r.profileType}`;
+    const cur = cells.get(key);
+    const better = !cur
+      || r.medianRankDelta < cur.medianRankDelta
+      || (r.medianRankDelta === cur.medianRankDelta && r.effort === "normal");
+    if (better) cells.set(key, { effort: r.effort, medianRankDelta: r.medianRankDelta });
+  }
+  return [...cells.entries()]
+    .map(([key, v]) => {
+      const [roleMode, level, profileType] = key.split("|");
+      return { roleMode, level, profileType, best: v.effort };
+    })
+    .sort((a, b) => `${a.roleMode}|${a.level}|${a.profileType}`.localeCompare(`${b.roleMode}|${b.level}|${b.profileType}`));
+}
+
+export function runTwins({
+  population,
+  stages,
+  seeds,
+  efforts = TWIN_EFFORTS,
+  roleModes = ["free"],
+  orderMode = "none",
+  buildOrders = buildStageTeamOrders,
+}) {
+  if (!TWIN_ORDER_MODES.includes(orderMode)) {
+    throw new Error(`ukendt --orders-tilstand "${orderMode}" (gyldige: ${TWIN_ORDER_MODES.join(", ")})`);
+  }
+  const raceContexts = orderMode === "ai" ? buildRaceContexts(stages) : new Map();
   const samples = [];
   for (const seed of seeds) {
     for (const stageRow of stages) {
       const route = routeFromStageProfileRow(stageRow);
       const { stageSeedStr, riders } = fieldFor(seed, stageRow, population);
-      const entrants = baseEntrants(riders);
-      for (const [level, percentile] of Object.entries(TWIN_LEVELS)) {
-        for (const effort of TWIN_EFFORTS) {
-          samples.push({
-            seed,
-            stageNumber: stageRow.stage_number,
-            profileType: stageRow.profile_type ?? "?",
-            level,
-            effort,
-            ...measureTwinPair({ entrants, route, stageSeedStr, percentile, effort }),
-          });
+      let orders = [];
+      let entrants;
+      if (orderMode === "ai") {
+        const built = buildOrders({ riders, route, race: raceContexts.get(stageRow) });
+        orders = built.orders;
+        entrants = baseEntrants(riders, built.roles, built.effortByRider);
+      } else {
+        entrants = baseEntrants(riders);
+      }
+      for (const roleMode of roleModes) {
+        for (const [level, percentile] of Object.entries(TWIN_LEVELS)) {
+          for (const effort of efforts) {
+            samples.push({
+              seed,
+              stageNumber: stageRow.stage_number,
+              profileType: stageRow.profile_type ?? "?",
+              level,
+              effort,
+              roleMode,
+              ...measureTwinPair({ entrants, route, stageSeedStr, percentile, effort, roleMode, orders }),
+            });
+          }
         }
       }
     }
@@ -307,18 +438,26 @@ function fmt(n, d = 2) {
 export function formatReport(result) {
   const lines = [];
   lines.push(`# v4EffortTwinMeasure — ${result.label ?? "-"} (${result.generated_at})`);
-  lines.push(`Tuning: grupetto-tempo-model ${result.group_tempo_tuning.model} (faktor ${result.group_tempo_tuning.grupettoTempoFactor}), all_out-profiltabel ${JSON.stringify(result.effort_cost_tuning.demandMultiplierAllOutByProfile ?? {})}`);
-  lines.push(`Seeds: ${result.seeds.join(", ")} · felt ${result.field_size}`);
+  // #5580: all_out-tabellen er pr. SEGMENT-terraen nu; aeldre JSON'er baerer
+  // den gamle profil-noegle, saa begge laeses.
+  const allOutTable = result.effort_cost_tuning.demandMultiplierAllOutBySegmentKind
+    ?? result.effort_cost_tuning.demandMultiplierAllOutByProfile
+    ?? {};
+  lines.push(`Tuning: grupetto-tempo-model ${result.group_tempo_tuning.model} (faktor ${result.group_tempo_tuning.grupettoTempoFactor}), all_out-terraentabel ${JSON.stringify(allOutTable)}`);
+  lines.push(`Seeds: ${result.seeds.join(", ")} · felt ${result.field_size} · orders=${result.order_mode ?? "none"} · roller=${(result.role_modes ?? ["free"]).join(",")}`);
   lines.push("");
   lines.push("## Tvillinger (valg vs. normal, samme loeb; + = daarligere)");
-  lines.push("valg\tniveau\tprofil\tn\tmiddel-plads\tmedian-plads\tandel-daarligere\tandel-bedre\tmedian-tid-s\tmedian-sek-over-CP\tandel-over-CP\tmedian-work\tsejre\ttop10\tOTL(valg/normal)\tmedian-gab-%");
+  lines.push("roller\tvalg\tniveau\tprofil\tn\tmiddel-plads\tmedian-plads\tandel-daarligere\tandel-bedre\tmedian-tid-s\tmedian-sek-over-CP\tandel-over-CP\tmedian-work\tsejre\ttop10\tOTL(valg/normal)\tmedian-gab-%\tkaptajn-median-plads");
   for (const r of result.twins) {
     lines.push([
-      r.effort, r.level, r.profileType, r.n, fmt(r.meanRankDelta), fmt(r.medianRankDelta), fmt(r.shareWorse), fmt(r.shareBetter),
+      r.roleMode ?? "free", r.effort, r.level, r.profileType, r.n, fmt(r.meanRankDelta), fmt(r.medianRankDelta), fmt(r.shareWorse), fmt(r.shareBetter),
       fmt(r.medianTimeDelta, 1), fmt(r.medianXSecondsOverCp, 0), fmt(r.shareXOverCp), fmt(r.medianWorkDelta, 0),
-      r.xWins, r.xTop10, `${r.xOtl}/${r.nOtl}`, fmt(r.medianXGapPct),
+      r.xWins, r.xTop10, `${r.xOtl}/${r.nOtl}`, fmt(r.medianXGapPct), fmt(r.medianCaptainRankDelta),
     ].join("\t"));
   }
+  lines.push("");
+  lines.push("## Bedste trin pr. celle (laveste median-plads mod normal)");
+  for (const c of bestEffortByCell(result.twins)) lines.push(`${c.roleMode}\t${c.level}\t${c.profileType}\t${c.best}`);
   lines.push("");
   const g = result.grupetto_scenario;
   if (!g) return lines.join("\n");
@@ -346,17 +485,31 @@ function main() {
   const profileFilter = argValue("profiles")?.split(",").map((p) => p.trim()).filter(Boolean) ?? null;
   const stages = profileFilter ? allStages.filter((s) => profileFilter.includes(s.profile_type)) : allStages;
   const skipScenario = process.argv.includes("--twins-only");
+  // #5580: --orders=none|ai (som headToHeadV4.js), --roles=free,team og
+  // --efforts=<liste> (default hele trappen).
+  const orderMode = argValue("orders", "none");
+  const roleModes = (argValue("roles") ?? "free,team").split(",").map((s) => s.trim()).filter(Boolean);
+  for (const m of roleModes) {
+    if (!TWIN_ROLE_MODES.includes(m)) throw new Error(`ukendt --roles "${m}" (gyldige: ${TWIN_ROLE_MODES.join(", ")})`);
+  }
+  const efforts = (argValue("efforts") ?? TWIN_EFFORTS.join(",")).split(",").map((s) => s.trim()).filter(Boolean);
+  for (const e of efforts) {
+    if (!TWIN_EFFORTS.includes(e)) throw new Error(`ukendt --efforts "${e}" (gyldige: ${TWIN_EFFORTS.join(", ")})`);
+  }
   const result = {
-    schema_version: 1,
+    schema_version: 2,
     label: argValue("label"),
     generated_at: new Date().toISOString(),
     population_file: populationFile,
     stages_file: STAGES_FILE,
     seeds,
     field_size: FIELD_SIZE,
+    order_mode: orderMode,
+    role_modes: roleModes,
     effort_cost_tuning: JSON.parse(JSON.stringify(EFFORT_COST_EXTRA_TUNING)),
+    effort_gain_tuning: JSON.parse(JSON.stringify(EFFORT_GAIN_EXTRA_TUNING)),
     group_tempo_tuning: JSON.parse(JSON.stringify(GROUP_TEMPO_EFFORT_EXTRA_TUNING)),
-    twins: runTwins({ population, stages, seeds }),
+    twins: runTwins({ population, stages, seeds, efforts, roleModes, orderMode }),
     grupetto_scenario: skipScenario ? null : runGrupettoScenario({ population, stages: allStages, seeds }),
   };
   console.log(formatReport(result));

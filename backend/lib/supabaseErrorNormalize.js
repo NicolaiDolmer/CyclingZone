@@ -170,11 +170,18 @@ export function isRaceCountLockTimeoutError(error) {
   return status === 500 && !code && !message;
 }
 
+// #5426: `details`/`hint` er BEVIDST udeladt her — PostgREST lægger ofte de
+// faktiske rækkeværdier i `details` (fx en unique-constraint-fejl: "Key
+// (email)=(bruger@eksempel.dk) already exists"), og `hint` kan citere samme
+// data. `code` er et stabilt, dataløst enum-lignende felt (Postgres SQLSTATE
+// / PostgREST-kode) og er det eneste af de tre der er sikkert at lade
+// overleve på den delte Error-wrapper, som call-sites på tværs af backend/
+// sender videre til Sentry via withSupabaseRetry/toSupabaseError. Kun HVAD
+// wrapperen sætter på Error-objektet ændres — ingen retry-/klassificerings-
+// logik (isTransientSupabaseError m.fl.) er rørt.
 function copyDbFields(error, err) {
   if (error && typeof error === "object") {
     if (error.code != null) err.code = error.code;
-    if (error.details != null) err.details = error.details;
-    if (error.hint != null) err.hint = error.hint;
   }
   return err;
 }

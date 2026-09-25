@@ -114,7 +114,7 @@ test.describe("Forum — abonnement pr. kategori", () => {
     await installNetworkMocks(page);
     await login(page);
 
-    await page.goto("/profile");
+    await page.goto("/profile?tab=notifications"); // #5402: forum-kortet bor paa Notifikationer-fanen
     const card = page.getByText(daProfile.forumCategories.title, { exact: true });
     await expect(card).toBeVisible();
 

@@ -97,7 +97,7 @@ test("DM-praeferencen ruller tilbage naar PATCH'en aldrig naar frem (#3628)", as
   });
 
   await login(page);
-  await page.goto("/profile");
+  await page.goto("/profile?tab=notifications"); // #5402: DM-kontakterne bor paa Notifikationer-fanen
 
   // Mocken giver dm_enabled: true og dm_prefs.board_update: false, så netop
   // denne kontakt starter slukket og kan tændes. Toggle.jsx rendrer selve

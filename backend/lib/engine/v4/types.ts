@@ -264,6 +264,14 @@ export type StageResult = {
   // mapping (v4 -> race_incidents/rider_condition) kan tages i to skridt uden
   // at braekke paa en manglende noegle.
   injury_days?: number | null;
+  // #5582 (ADDITIVT, valgfrit — ejer 23/9, UCI 2.6.032): rytteren laa uden for
+  // tidsgraensen men blev GENINDSAT, enten af juryen efter et uheld ("jury")
+  // eller som del af en reddet grupetto ("grupetto", §2d). Status forbliver
+  // "finished". Straffen: han mister ALLE sine point i loebets point- og
+  // bjergkonkurrence. Motoren nulstiller etapens egne point
+  // (index.ts, `passage_totals`); flip-laget skal bruge markoeren til at se
+  // bort fra hans point fra tidligere etaper. Udeladt = ikke genindsat.
+  reinstated_by?: "jury" | "grupetto";
 };
 
 // ── #2944 incident-trappen (mechanics/incidents.ts) ──────────────────────────
@@ -477,6 +485,12 @@ export type RaceGroup = {
   cohesion: number; // 0-1, fundament for brosten-kaos-hook (fuld M8 i F3)
 };
 
+/**
+ * #5582: et uheldsoffer paa JAGT TILBAGE bag foelgebilerne. "assisted" = en
+ * holdkammerat/hjaelper var i hans gruppe, da uheldet skete, og venter paa ham.
+ */
+export type IncidentChaseMode = "alone" | "assisted";
+
 export type RiderState = {
   rider_id: string;
   group_id: string;
@@ -547,6 +561,19 @@ export type EngineState = {
   // spurter. Hooket kaldes pr. segment og kan ikke se hverken sine egne
   // tidligere kald eller maalstregen uden en baerer.
   stage_passages?: StagePassage[];
+  // #5582 (ADDITIVT, valgfrit): uheldsofre paa jagt tilbage bag foelgebilerne,
+  // rider_id -> mode. Saettes af uheldets split (mechanics/incidents.ts og M3's
+  // nedkoerselsstyrt i mechanics/descent.ts), kun ved et tidstab. INTERN
+  // simulations-tilstand. PR. RYTTER og ikke pr. gruppe: to ofre der smelter
+  // sammen, jager stadig, mens et offer der er smeltet ind i en gruppe uden
+  // uheld er inde igen og slettes (mechanics/incidents.ts's
+  // resolveIncidentChasers, kaldt fra segmentLoop.ts).
+  incident_chasers?: Record<string, IncidentChaseMode>;
+  // #5582 (ADDITIVT, valgfrit): den tid et uheldsoffer har tabt UD OVER det
+  // lovede, mens han jagede (braendt ud paa en stigning), rider_id -> sekunder.
+  // Laeses KUN af juryen (index.ts -> mechanics/timeLimit.ts): uheldets tid er
+  // hele jagten, ikke kun hjulskiftet. INTERN; naar aldrig en event-param.
+  incident_chase_loss?: Record<string, number>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────

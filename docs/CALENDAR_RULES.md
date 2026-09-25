@@ -88,6 +88,8 @@ Kvoten er ikke ét tal noget sted. Den er tre, og de kender ikke hinanden:
 
 **Den gyldige er den tredje**, fordi den er afledt af §2's løbsdatoer i stedet for at være hardcodet. `regenSeason3Calendar.mjs` regner den selv (`TIER_DENSITY[tier] × REAL_DAYS`). `TIER_GAME_DAY_QUOTA` er en default fra dengang sæsonen var 28 dage; den er ikke opdateret og skal ikke bruges som facit uden at blive efterregnet mod §2.
 
+> **Auto-stien bruger også density × løbsdatoer ([#5658](https://github.com/NicolaiDolmer/CyclingZone/issues/5658)).** Sender en kalder ingen kvote-tabel (seasonTransition.js's `auto_calendar_enabled`-fase og en pulje-aktivering i en frisk sæson), afleder `tierCalendarMaterializer.js` kvoten med `tierGameDayQuotasFor(realDays)`. Før faldt den tilbage på `TIER_GAME_DAY_QUOTA`, og division 4 fik en kortere løbsdags-akse end de andre. `seasonCalendarGate.gatePlan` dømmer nu også §1d (samme antal løbsdage, og = sæsonens mål) og blokerer auto-stien. CLI'en gater samme regel i scorecardet. Hverken CLI- eller auto-stien bruger `TIER_GAME_DAY_QUOTA` længere; kun de historiske reparations-scripts (#2251/#2276) spreder den stadig ind under deres egen division 4-kvote.
+
 > **Kvoten skal rammes EKSAKT (ejer-beslutning 3/9, #4270 — lukker det tidligere §11 punkt 4).** Hverken 99 eller 101 procent: kvoten ER det antal løbsdage divisionens tidsplan har. Leverer en division færre, står der tomme slots; leverer den flere, er tætheden brudt.
 >
 > Gaten er `detectQuotaViolations` i `backend/lib/calendarPlacementGates.js`. Den er et **hårdt krav uden override** og stopper `--apply`; dry-runnet kører videre, så afstanden kan måles (§5b's katalog-lofter lukkes ikke af en gate).
