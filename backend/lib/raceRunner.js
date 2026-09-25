@@ -74,6 +74,8 @@ import {
   effortsSequenceForRider,
   effortByRiderForStage,
   serializeStageRoleOverrides,
+  orderEffortByRiderForStage,
+  resolvedEffortByRiderForStage,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { seasonReferenceYear, isU25ForReferenceYear } from "./riderSeasonAge.js";
@@ -473,8 +475,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // med: ellers kunne en udgået rytter vinde en rolle-konflikt, degradere den
     // aktive holdkammerat og derefter selv blive filtreret væk — holdet ville stå
     // uden lederen (CodeRabbit-fund, #5223).
+    // #5580 (M1 punkt 6): kører v4, vinder race_team_orders' effort over
+    // stage-rækkens (én kilde). v4Engine er null ved flag-off → uændret v3.
+    const orderEffortByRider = v4Engine ? orderEffortByRiderForStage(teamOrderRows, stageNumber) : null;
     const stageResolved = v3
-      ? resolveStageEntrants(entrants, overridesForStage, { ineligibleRiderIds: abandonedSet })
+      ? resolveStageEntrants(entrants, overridesForStage, { ineligibleRiderIds: abandonedSet, orderEffortByRider })
       : null;
     if (stageResolved?.conflicts.length) {
       reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
@@ -2262,7 +2267,14 @@ export async function simulateRace({
     try {
       // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) ganger
       // dagens fatigue-load — se raceFatigue.applyRaceFatigue's jsdoc.
-      const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stage.stage_number || 1) : null;
+      // #5580 (M1 punkt 7): kørte v4, er trætheden bygget på SAMME effort som
+      // motoren (ordren vinder). v3-stien er uændret.
+      const fatigueStageNumber = stage.stage_number || 1;
+      const effortByRider = !v3
+        ? null
+        : v4Engine
+          ? resolvedEffortByRiderForStage(stageRoleOverrides, fatigueStageNumber, orderEffortByRiderForStage(teamOrderRows, fatigueStageNumber))
+          : effortByRiderForStage(stageRoleOverrides, fatigueStageNumber);
       await applyFatigue({ supabase, riderIds, profileType: stage.profile_type, effortByRider });
     } catch (err) {
       // #2389 A2: en fejlet fatigue-skrivning lader træthed drive ud af sync — capture.
@@ -2435,7 +2447,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // CYCLINGZONE-5Z kom fra. `stageResolved.entrants` er index-parallel med
   // `entrants`.
   const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
-  const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage) : null;
+  // #5580 (M1 punkt 6): se buildRaceResults' tilsvarende note (kun v4).
+  const orderEffortByRider = v4Engine ? orderEffortByRiderForStage(teamOrderRows, stageNumber) : null;
+  const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage, { orderEffortByRider }) : null;
   if (stageResolved?.conflicts.length) {
     reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
   }
@@ -3233,7 +3247,12 @@ export async function simulateStageByIndex({
       try {
         // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) — se
         // raceFatigue.applyRaceFatigue's jsdoc.
-        const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stageNumber) : null;
+        // #5580 (M1 punkt 7): se simulateRace' tilsvarende note (kun v4).
+        const effortByRider = !v3
+          ? null
+          : v4Engine
+            ? resolvedEffortByRiderForStage(stageRoleOverrides, stageNumber, orderEffortByRiderForStage(teamOrderRows, stageNumber))
+            : effortByRiderForStage(stageRoleOverrides, stageNumber);
         await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
       } catch (err) {
         // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
