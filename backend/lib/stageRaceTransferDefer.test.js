@@ -129,6 +129,18 @@ test("getRidersInActiveStageRace: withdrawal-opslag fejler → kaster", async ()
   );
 });
 
+// CodeRabbit (én-gangs-runde, #5220): ingen entries → [] uden at spørge
+// race_withdrawals — en fejl dér ville ellers kunne afvise et ubeslægtet
+// salg/auktion selvom svaret allerede var [].
+test("getRidersInActiveStageRace: ingen entries → [] uden withdrawal-opslag, selv hvis det ville fejle", async () => {
+  const supa = makeSupabase({
+    activeRaces: [{ id: "R1" }],
+    overlapEntries: [],
+    withdrawnPairsError: { message: "skal aldrig kaldes" },
+  });
+  assert.deepEqual(await getRidersInActiveStageRace(supa, ["A"]), []);
+});
+
 // ── shouldDeferTeamChange ───────────────────────────────────────────────────
 
 test("shouldDeferTeamChange: true når en involveret rytter er i et aktivt etapeløb", async () => {

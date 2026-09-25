@@ -62,6 +62,10 @@ export async function getRidersInActiveStageRace(supabase, riderIds, { excludeRa
     .in("race_id", raceIds)
     .in("rider_id", ids);
   if (eErr) throw new Error(`getRidersInActiveStageRace: entries lookup failed: ${eErr.message}`);
+  // CodeRabbit: ingen entries → svaret er allerede [], uanset withdrawals.
+  // Spring opslaget over, så et ubeslægtet salg/auktion ikke kan blive
+  // afvist af en race_withdrawals-fejl der er irrelevant for netop dette kald.
+  if (!entries?.length) return [];
 
   // #5636: fejl i withdrawal-opslaget KASTES (samme kontrakt som ovenstående) —
   // "antag ikke afmeldt" ville udskyde et salg forkert, hvilket er præcis den
