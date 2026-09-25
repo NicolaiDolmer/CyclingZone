@@ -13,8 +13,9 @@ const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   assert.match(
     src,
-    /\.select\(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, \$\{ABILITY_SELECT\}`\)/,
+    /\.select\(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, squad, \$\{ABILITY_SELECT\}`\)/,
     "querien skal hente primary_type/secondary_type så typen kan vises, + is_academy (#3300)"
+      + " + squad (#5763: U23/JR-mærket i træningstabellen, ALDRIG alder alene)"
       + " + evne-kolonnerne via det delte ABILITY_SELECT-embed (#3709 trin 1: kvitteringens 'nu'-tal)"
       + " + birthdate (#3721 Development-fanen, #3815 roster-tabellens alders-kolonne)"
       + " + contract_end_season (#3761: Status-cellens contractExpiring-badge)",
