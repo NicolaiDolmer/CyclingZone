@@ -13,7 +13,7 @@ import { Wordmark } from "../components/Brand";
 import DiscordJoinLink from "../components/DiscordJoinLink";
 import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
-import { getAttribution } from "../lib/attribution";
+import { getAttributionForBackend } from "../lib/attribution";
 import { markPendingSignup } from "../lib/logEvent";
 import { safeNextPath } from "../lib/safeNextPath.js";
 import { clearSessionExpiredFlash, peekSessionExpiredFlash } from "../lib/sessionExpiry.js";
@@ -359,7 +359,9 @@ export default function LoginPage() {
       // browser — bekræfter brugeren mailen på en anden (mobil-mailapp, andet
       // device), er snapshottet væk når bootstrappen kører. Gem det derfor også
       // i auth-metadata ved signUp, så confirm-stien kan falde tilbage til det.
-      const attribution = getAttribution();
+      // #5304: getAttributionForBackend() (IKKE getAttribution()) — click-ids må
+      // ikke ende i auth.users.raw_user_meta_data uden ejer-go, se attribution.js.
+      const attribution = getAttributionForBackend();
       // #4733: rå navigator.language (fx "nl-BE"), IKKE app-UI-sproget
       // ('language' herover) — sprogklynge-måling til #4110, læses aldrig af
       // spillet. Kun ved signup (aldrig login); handle_new_user() på
@@ -428,7 +430,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           name: teamName.trim(),
           manager_name: managerName.trim(),
-          attribution: getAttribution(),
+          attribution: getAttributionForBackend(), // #5304: se attribution.js
         }),
       });
       let bootstrapData = {};

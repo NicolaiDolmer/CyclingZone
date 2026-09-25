@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "dev:preview": "node scripts/dev-preview.mjs",
-    "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "build": "node scripts/generate-indexnow-key.ts && vite build && vite build --ssr src/entry-server.jsx --outDir dist-ssr && node scripts/prerender.mjs",
     "preview": "vite preview",
     "preview:e2e": "node scripts/e2e-static-server.mjs",
     "test": "node --test",

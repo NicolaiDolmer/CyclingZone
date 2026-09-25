@@ -3,6 +3,14 @@
     "title": "Min Profil",
     "subtitle": "Indstillinger og hold"
   },
+  "tabs": {
+    "label": "Indstillingssektioner",
+    "account": "Konto",
+    "notifications": "Notifikationer",
+    "preferences": "Præferencer",
+    "privacy": "Privatliv",
+    "beta": "Beta"
+  },
   "account": {
     "title": "Konto",
     "email": "Email",

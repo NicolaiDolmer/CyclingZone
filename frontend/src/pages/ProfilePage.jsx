@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { mapSupabaseAuthError } from "../lib/authErrors";
@@ -30,8 +30,15 @@ import {
   ClockIcon,
   DiscordIcon,
   InboxIcon,
+  PageHeader,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanel,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+// #5402: fanerne og deres sektioner (ren modul, testet i ProfilePage.test.tsx).
+import { SETTINGS_TABS, resolveSettingsTab, settingsSectionId } from "../lib/settingsTabs.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -76,6 +83,27 @@ export default function ProfilePage() {
   // #2813: abonnements-kort (opsigelsessti). Kun synligt for Pro-konti.
   const { isPro, isFounder } = useSubscription(team?.id);
   const [openingPortal, setOpeningPortal] = useState(false);
+
+  // #5402: siden er delt i faner (ejer-direktiv 18/9: "faner, saa man ikke skal
+  // scrolle saa meget"). Fanen bor i ?tab= (samme moenster som FinancePage), og
+  // et anker (#discord, #beta ...) fra et dyb-link vaelger fanen og ruller
+  // sektionen frem. Se lib/settingsTabs.ts.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { hash } = useLocation();
+  const { tab: activeTab, section: focusSection } = resolveSettingsTab(searchParams.get("tab"), hash);
+  const setTab = (tab) =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", tab);
+      return p;
+    }, { replace: true });
+
+  // Ruller den ankrede sektion frem, foerst naar kortene faktisk er rendret
+  // (under loading staar kun PageLoader, og saa findes elementet ikke endnu).
+  useEffect(() => {
+    if (loading || !focusSection) return;
+    document.getElementById(settingsSectionId(focusSection))?.scrollIntoView({ block: "start" });
+  }, [loading, focusSection]);
 
   // Mount: load profile once. loadProfile is a hoisted function declaration, so
   // calling it here is runtime-safe; disable the compiler's declaration-order
@@ -673,556 +701,577 @@ export default function ProfilePage() {
     // #2253: translate="no" — browser-oversættere muterede React's tekst-noder og
     // udløste NotFoundError-crashes (Sentry-events med url=/profile). Se PR #2272.
     <div translate="no" className="max-w-xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-cz-1">{t("header.title")}</h1>
-        <p className="text-cz-3 text-sm">{t("header.subtitle")}</p>
-      </div>
+      <PageHeader title={t("header.title")} subtitle={t("header.subtitle")} />
 
-      {/* Account info */}
-      <Card className="p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("account.title")}</h2>
-        <div className="space-y-4">
-          {/* Username */}
-          <Field label={t("account.username")} htmlFor="profile-username">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                id="profile-username"
-                type="text"
-                value={usernameInput}
-                onChange={e => setUsernameInput(e.target.value)}
-                minLength={3}
-                maxLength={20}
-                autoComplete="username"
-                className="flex-1"
-              />
-              <Button
-                onClick={saveUsername}
-                loading={savingUsername}
-                disabled={usernameInput.trim() === (user?.username || "")}
-                variant="secondary"
-                className="sm:w-auto"
-              >
-                {savingUsername ? t("account.saving") : t("account.saveUsername")}
-              </Button>
-            </div>
-            <p className="text-cz-3 text-xs mt-2">{t("account.usernameHelp")}</p>
-          </Field>
+      <Tabs value={activeTab} onChange={setTab}>
+        <TabList label={t("tabs.label")} className="mb-4">
+          {SETTINGS_TABS.map(key => (
+            <Tab key={key} value={key}>{t(`tabs.${key}`)}</Tab>
+          ))}
+        </TabList>
 
-          {/* Email */}
-          <Field label={t("account.email")} htmlFor="profile-email">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                id="profile-email"
-                type="email"
-                value={emailInput}
-                onChange={e => { setEmailInput(e.target.value); setEmailNotice(""); }}
-                autoComplete="email"
-                data-clarity-mask="True"
-                className="flex-1"
-              />
-              <Button
-                onClick={saveEmail}
-                loading={savingEmail}
-                disabled={emailInput.trim() === (user?.email || "")}
-                variant="secondary"
-                className="sm:w-auto"
-              >
-                {savingEmail ? t("account.saving") : t("account.saveEmail")}
-              </Button>
+        {/* Kvitteringen (renderMessageBanner) stod foer i Konto-kortet, og paa
+            den lange side var den i det mindste et sted. Med faner ville et valg
+            paa en anden fane ellers give en kvittering spilleren aldrig ser, saa
+            den staar oeverst i fanen naar fanen ikke selv har en. */}
+        {!(activeTab === "account" || (activeTab === "notifications" && !team)) && renderMessageBanner("mb-4")}
+
+        <TabPanel value="account">
+          {/* Account info */}
+          <Card id={settingsSectionId("account")} className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("account.title")}</h2>
+            <div className="space-y-4">
+              {/* Username */}
+              <Field label={t("account.username")} htmlFor="profile-username">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    id="profile-username"
+                    type="text"
+                    value={usernameInput}
+                    onChange={e => setUsernameInput(e.target.value)}
+                    minLength={3}
+                    maxLength={20}
+                    autoComplete="username"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={saveUsername}
+                    loading={savingUsername}
+                    disabled={usernameInput.trim() === (user?.username || "")}
+                    variant="secondary"
+                    className="sm:w-auto"
+                  >
+                    {savingUsername ? t("account.saving") : t("account.saveUsername")}
+                  </Button>
+                </div>
+                <p className="text-cz-3 text-xs mt-2">{t("account.usernameHelp")}</p>
+              </Field>
+
+              {/* Email */}
+              <Field label={t("account.email")} htmlFor="profile-email">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={emailInput}
+                    onChange={e => { setEmailInput(e.target.value); setEmailNotice(""); }}
+                    autoComplete="email"
+                    data-clarity-mask="True"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={saveEmail}
+                    loading={savingEmail}
+                    disabled={emailInput.trim() === (user?.email || "")}
+                    variant="secondary"
+                    className="sm:w-auto"
+                  >
+                    {savingEmail ? t("account.saving") : t("account.saveEmail")}
+                  </Button>
+                </div>
+                <p className="text-cz-3 text-xs mt-2">{t("account.emailHelp")}</p>
+                {emailNotice && (
+                  <div className="mt-2 flex items-start gap-2 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-3 py-2 text-xs text-cz-accent-t">
+                    <InboxIcon size={14} className="mt-0.5 shrink-0" />
+                    <span>{emailNotice}</span>
+                  </div>
+                )}
+              </Field>
+
+              {renderMessageBanner()}
+
+              {(user?.role === "admin" || betaAccess?.is_beta_tester) && (
+                <div className="flex flex-wrap gap-2">
+                  {user?.role === "admin" && (
+                    <span className="text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 px-2 py-0.5 rounded-cz-pill">{t("account.adminBadge")}</span>
+                  )}
+                  {/* #5259: maerket er den ENESTE synlige forskel paa en beta-tester
+                      uden for de funktioner der staar i stadie `beta`. */}
+                  {betaAccess?.is_beta_tester && (
+                    <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill">{t("beta.badge")}</span>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="text-cz-3 text-xs mt-2">{t("account.emailHelp")}</p>
-            {emailNotice && (
-              <div className="mt-2 flex items-start gap-2 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-3 py-2 text-xs text-cz-accent-t">
-                <InboxIcon size={14} className="mt-0.5 shrink-0" />
-                <span>{emailNotice}</span>
+          </Card>
+
+          {/* Abonnement (#2813) — kun Pro-konti; opsigelse sker i Alunta-portalen */}
+          {isPro && (
+            <Card id={settingsSectionId("subscription")} className="p-5 mb-4">
+              <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("subscription.title")}</h2>
+              <p className="text-cz-2 text-sm mb-1">
+                {isFounder ? t("subscription.statusFounder") : t("subscription.statusPro")}
+              </p>
+              <p className="text-cz-3 text-xs mb-4">{t("subscription.manageHint")}</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button type="button" onClick={openSubscriptionPortal} disabled={openingPortal} className="flex-1">
+                  {t("subscription.manage")}
+                </Button>
+                <Link
+                  to={i18n.language?.startsWith("da") ? "/handelsbetingelser" : "/terms"}
+                  className={`${buttonClass({ variant: "secondary" })} flex-1 text-center no-underline`}
+                >
+                  {t("subscription.readTerms")}
+                </Link>
               </div>
-            )}
-          </Field>
-
-          {renderMessageBanner()}
-
-          {(user?.role === "admin" || betaAccess?.is_beta_tester) && (
-            <div className="flex flex-wrap gap-2">
-              {user?.role === "admin" && (
-                <span className="text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 px-2 py-0.5 rounded-cz-pill">{t("account.adminBadge")}</span>
-              )}
-              {/* #5259: maerket er den ENESTE synlige forskel paa en beta-tester
-                  uden for de funktioner der staar i stadie `beta`. */}
-              {betaAccess?.is_beta_tester && (
-                <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill">{t("beta.badge")}</span>
-              )}
-            </div>
+            </Card>
           )}
-        </div>
-      </Card>
 
-      {/* Tema */}
-      <Card className="p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("appearance.title")}</h2>
-        <p className="text-cz-3 text-xs mb-4">{t("appearance.subtitle")}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {THEME_OPTIONS.map(value => {
-            const active = theme === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setTheme(value)}
-                aria-pressed={active}
-                className={`text-left rounded-cz border px-3 py-2.5 transition-colors
-                  ${active
-                    ? "border-cz-accent bg-cz-accent/10"
-                    : "border-cz-border bg-cz-subtle hover:border-cz-accent/40"}`}
-              >
-                <p className={`text-sm font-semibold ${active ? "text-cz-accent-t" : "text-cz-1"}`}>
-                  {t(`appearance.${value}Label`)}
-                </p>
-                <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{t(`appearance.${value}Hint`)}</p>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
+          {/* Team info */}
+          {canEditTeam && (
+            <Card id={settingsSectionId("team")} className="p-5 mb-4">
+              <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("team.title")}</h2>
+              <div className="space-y-4">
+                {!team && (
+                  <div className="bg-cz-subtle border border-cz-border rounded-cz p-4">
+                    <p className="text-cz-2 text-sm">
+                      {t("team.notInitialized")}
+                    </p>
+                  </div>
+                )}
+                <Field label={t("team.teamNameLabel")} htmlFor="profile-team-name">
+                  <Input
+                    id="profile-team-name"
+                    type="text"
+                    value={teamName}
+                    onChange={e => setTeamName(e.target.value)}
+                    minLength={3}
+                    maxLength={30}
+                  />
+                </Field>
+                <Field label={t("team.managerNameLabel")} htmlFor="profile-manager-name">
+                  <Input
+                    id="profile-manager-name"
+                    type="text"
+                    value={managerName}
+                    onChange={e => setManagerName(e.target.value)}
+                    placeholder={t("team.managerNamePlaceholder")}
+                    minLength={2}
+                    maxLength={50}
+                  />
+                </Field>
 
-      {/* Paamindelse foer udtagelsesfristen (#4983) — vises ALTID: den er ren
-          UI-tilstand og afhaenger ikke af assistentens tilstand. */}
-      <Card className="p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("selectionReminder.title")}</h2>
-        <p className="text-cz-3 text-xs mb-4">{t("selectionReminder.subtitle")}</p>
-        <div className="flex items-center justify-between gap-3">
-          <label htmlFor="profile-selection-reminder" className="text-cz-1 text-sm font-medium">
-            {t("selectionReminder.toggleLabel")}
-          </label>
-          <Toggle
-            id="profile-selection-reminder"
-            checked={selectionReminderLoaded && assistant.selection_reminder_enabled}
-            disabled={!selectionReminderLoaded || savingSelectionReminder}
-            onChange={e => toggleSelectionReminder(e.target.checked)}
-          />
-        </div>
-        {/* De to trin er RUNTIME-tal, ikke copy: gul er
-            SELECTION_REMINDER_WINDOW_HOURS og roed er
-            app_config.assistant_late_fill_hours (ASSISTANT_RULES §1b: "flyttes
-            assistant_late_fill_hours, flytter det roede trin med af sig selv").
-            Skrev vi 36/24 i strengen, ville teksten lyve foerste gang horisonten
-            justeres — D-034 har den eksplicit som et aabent punkt. Kender vi dem
-            ikke endnu (svaret er ikke hentet), staar den tal-loese variant. */}
-        <p className="text-cz-3 text-xs leading-relaxed mt-3">
-          {selectionReminderWindowHours && selectionReminderUrgentHours
-            ? t("selectionReminder.toggleHint", {
-                windowHours: selectionReminderWindowHours,
-                urgentHours: selectionReminderUrgentHours,
-              })
-            : t("selectionReminder.toggleHintGeneric")}
-        </p>
-      </Card>
+                {renderMessageBanner()}
 
-      {/* Beta-gruppen (#5259) — vises ALTID: "bed om at komme med" er selve
-          vejen ind, og den maa ikke vaere skjult for dem der ikke er med endnu.
-          Knappen dukker foerst op naar tilstanden ER hentet (betaAccess !== null),
-          saa ingen kan naa at trykke paa et valg der bygger paa et gaet. */}
-      <Card className="p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("beta.title")}</h2>
-        <p className="text-cz-3 text-xs mb-4">{t("beta.subtitle")}</p>
-        {betaAccess && (
-          <>
-            <p className="text-cz-2 text-sm leading-relaxed">
-              {t(`beta.${betaAccess.state === "member" ? "member"
-                : betaAccess.state === "pending" ? "pending"
-                : betaAccess.state === "rejected" ? "rejected" : "none"}Body`)}
-            </p>
-            {betaAccess.state === "member" && (
-              <p className="text-cz-3 text-xs leading-relaxed mt-2">{t("beta.whereToReport")}</p>
-            )}
-            <div className="mt-4">
-              {betaAccess.state === "member" && (
-                <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("withdraw")}>
-                  {t("beta.leaveButton")}
+                <Button onClick={saveTeamInfo} loading={savingTeam} fullWidth>
+                  {savingTeam ? t("team.saving") : team ? t("team.save") : t("team.create")}
                 </Button>
-              )}
-              {betaAccess.state === "pending" && (
-                <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("withdraw")}>
-                  {t("beta.cancelButton")}
-                </Button>
-              )}
-              {(betaAccess.state === "none" || betaAccess.state === "rejected") && (
-                <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("request")}>
-                  {t("beta.requestButton")}
-                </Button>
-              )}
+              </div>
+            </Card>
+          )}
+        </TabPanel>
+
+        <TabPanel value="notifications">
+          {/* Paamindelse foer udtagelsesfristen (#4983) — vises ALTID: den er ren
+              UI-tilstand og afhaenger ikke af assistentens tilstand. */}
+          <Card id={settingsSectionId("selection-reminder")} className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("selectionReminder.title")}</h2>
+            <p className="text-cz-3 text-xs mb-4">{t("selectionReminder.subtitle")}</p>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="profile-selection-reminder" className="text-cz-1 text-sm font-medium">
+                {t("selectionReminder.toggleLabel")}
+              </label>
+              <Toggle
+                id="profile-selection-reminder"
+                checked={selectionReminderLoaded && assistant.selection_reminder_enabled}
+                disabled={!selectionReminderLoaded || savingSelectionReminder}
+                onChange={e => toggleSelectionReminder(e.target.checked)}
+              />
             </div>
-          </>
-        )}
-      </Card>
+            {/* De to trin er RUNTIME-tal, ikke copy: gul er
+                SELECTION_REMINDER_WINDOW_HOURS og roed er
+                app_config.assistant_late_fill_hours (ASSISTANT_RULES §1b: "flyttes
+                assistant_late_fill_hours, flytter det roede trin med af sig selv").
+                Skrev vi 36/24 i strengen, ville teksten lyve foerste gang horisonten
+                justeres — D-034 har den eksplicit som et aabent punkt. Kender vi dem
+                ikke endnu (svaret er ikke hentet), staar den tal-loese variant. */}
+            <p className="text-cz-3 text-xs leading-relaxed mt-3">
+              {selectionReminderWindowHours && selectionReminderUrgentHours
+                ? t("selectionReminder.toggleHint", {
+                    windowHours: selectionReminderWindowHours,
+                    urgentHours: selectionReminderUrgentHours,
+                  })
+                : t("selectionReminder.toggleHintGeneric")}
+            </p>
+          </Card>
 
-      {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}
-      {assistant?.mode === "opt_in" && (
-        <Card className="p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("assistant.title")}</h2>
-          <p className="text-cz-3 text-xs mb-4">{t("assistant.subtitle")}</p>
-          <div className="flex items-center justify-between gap-3">
-            <label htmlFor="profile-assistant-autopick" className="text-cz-1 text-sm font-medium">
-              {t("assistant.toggleLabel")}
-            </label>
-            <Toggle
-              id="profile-assistant-autopick"
-              checked={assistant.autopick_enabled !== false}
-              disabled={savingAssistant}
-              onChange={e => toggleAssistantAutopick(e.target.checked)}
-            />
-          </div>
-          <p className="text-cz-3 text-xs leading-relaxed mt-3">{t("assistant.toggleHint")}</p>
-        </Card>
-      )}
+          {/* Forum-kategorier (#5013) — samlet oversigt over hvilke kategorier der
+              må sige til når der er nyt. Samme valg som til/fra-kontrollen i
+              kategori-hovedet på forumsiden; de deler
+              frontend/src/lib/forumCategoryMutes.js. */}
+          <Card id={settingsSectionId("forum-categories")} className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("forumCategories.title")}</h2>
+            <p className="text-cz-3 text-xs mb-4 leading-relaxed">{t("forumCategories.hint")}</p>
+            <div className="space-y-2">
+              {FORUM_CATEGORY_KEYS.map(key => {
+                const following = !forumCategories.some(row => row.category === key && row.muted);
+                return (
+                  <div key={key} className="flex items-center justify-between gap-3">
+                    <p className="text-cz-1 text-sm min-w-0">{t(`forum:categories.${key}`)}</p>
+                    <Toggle
+                      id={`forum-category-${key}`}
+                      // Kategori-navnet står som en søskende-<p>, ikke i labelen —
+                      // uden aria-label ville en skærmlæser høre en række unavngivne
+                      // switches (CodeRabbit, #5013).
+                      aria-label={t(`forum:categories.${key}`)}
+                      checked={following}
+                      disabled={savingForumCategory === key}
+                      onChange={e => toggleForumCategory(key, e.target.checked)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-cz-3 text-xs mt-4 pt-3 border-t border-cz-border">
+              {t("forumCategories.summary", { count: followedCategoryCount(forumCategories), total: FORUM_CATEGORY_KEYS.length })}
+            </p>
+          </Card>
 
-      {/* Privatliv */}
-      <Card className="p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("privacy.title")}</h2>
-        <p className="text-cz-3 text-xs mb-4">
-          {t("privacy.subtitle")}
-        </p>
-        <ul className="text-cz-2 text-sm space-y-1 mb-4">
-          <li className="flex items-center justify-between">
-            <span>{t("privacy.necessary")}</span>
-            <span className="text-cz-3 text-xs">{t("privacy.alwaysOn")}</span>
-          </li>
-          <li className="flex items-center justify-between">
-            <span>{t("privacy.analytics")}</span>
-            <span className={consent.analytics ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
-              {consent.analytics ? t("privacy.accepted") : t("privacy.declined")}
-            </span>
-          </li>
-          <li className="flex items-center justify-between">
-            <span>{t("privacy.marketing")}</span>
-            <span className={consent.marketing ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
-              {consent.marketing ? t("privacy.accepted") : t("privacy.declined")}
-            </span>
-          </li>
-          <li className="flex items-center justify-between">
-            <span>{t("privacy.email")}</span>
-            <span className={consent.email_marketing ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
-              {consent.email_marketing ? t("privacy.accepted") : t("privacy.declined")}
-            </span>
-          </li>
-        </ul>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button type="button" onClick={openBanner} className="flex-1">
-            {t("privacy.changeChoices")}
-          </Button>
-          <Link to="/privatlivspolitik" className={`${buttonClass({ variant: "secondary" })} flex-1 text-center no-underline`}>
-            {t("privacy.readPolicy")}
-          </Link>
-        </div>
-      </Card>
-
-      {/* Abonnement (#2813) — kun Pro-konti; opsigelse sker i Alunta-portalen */}
-      {isPro && (
-        <Card className="p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("subscription.title")}</h2>
-          <p className="text-cz-2 text-sm mb-1">
-            {isFounder ? t("subscription.statusFounder") : t("subscription.statusPro")}
-          </p>
-          <p className="text-cz-3 text-xs mb-4">{t("subscription.manageHint")}</p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button type="button" onClick={openSubscriptionPortal} disabled={openingPortal} className="flex-1">
-              {t("subscription.manage")}
-            </Button>
-            <Link
-              to={i18n.language?.startsWith("da") ? "/handelsbetingelser" : "/terms"}
-              className={`${buttonClass({ variant: "secondary" })} flex-1 text-center no-underline`}
-            >
-              {t("subscription.readTerms")}
-            </Link>
-          </div>
-        </Card>
-      )}
-
-      {/* Forum-kategorier (#5013) — samlet oversigt over hvilke kategorier der
-          må sige til når der er nyt. Samme valg som til/fra-kontrollen i
-          kategori-hovedet på forumsiden; de deler
-          frontend/src/lib/forumCategoryMutes.js. */}
-      <Card className="p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("forumCategories.title")}</h2>
-        <p className="text-cz-3 text-xs mb-4 leading-relaxed">{t("forumCategories.hint")}</p>
-        <div className="space-y-2">
-          {FORUM_CATEGORY_KEYS.map(key => {
-            const following = !forumCategories.some(row => row.category === key && row.muted);
-            return (
-              <div key={key} className="flex items-center justify-between gap-3">
-                <p className="text-cz-1 text-sm min-w-0">{t(`forum:categories.${key}`)}</p>
-                <Toggle
-                  id={`forum-category-${key}`}
-                  // Kategori-navnet står som en søskende-<p>, ikke i labelen —
-                  // uden aria-label ville en skærmlæser høre en række unavngivne
-                  // switches (CodeRabbit, #5013).
-                  aria-label={t(`forum:categories.${key}`)}
-                  checked={following}
-                  disabled={savingForumCategory === key}
-                  onChange={e => toggleForumCategory(key, e.target.checked)}
-                />
+          {/* Discord integration */}
+          <Card id={settingsSectionId("discord")} className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center">
+                <DiscordIcon size={18} className="text-cz-discord" aria-hidden="true" />
               </div>
-            );
-          })}
-        </div>
-        <p className="text-cz-3 text-xs mt-4 pt-3 border-t border-cz-border">
-          {t("forumCategories.summary", { count: followedCategoryCount(forumCategories), total: FORUM_CATEGORY_KEYS.length })}
-        </p>
-      </Card>
-
-      {/* Team info */}
-      {canEditTeam && (
-        <Card className="p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("team.title")}</h2>
-          <div className="space-y-4">
-            {!team && (
-              <div className="bg-cz-subtle border border-cz-border rounded-cz p-4">
-                <p className="text-cz-2 text-sm">
-                  {t("team.notInitialized")}
-                </p>
+              <div>
+                <h2 className="text-cz-1 font-semibold text-sm">{t("discord.title")}</h2>
+                <p className="text-cz-3 text-xs">{t("discord.subtitle")}</p>
               </div>
-            )}
-            <Field label={t("team.teamNameLabel")} htmlFor="profile-team-name">
-              <Input
-                id="profile-team-name"
-                type="text"
-                value={teamName}
-                onChange={e => setTeamName(e.target.value)}
-                minLength={3}
-                maxLength={30}
-              />
-            </Field>
-            <Field label={t("team.managerNameLabel")} htmlFor="profile-manager-name">
-              <Input
-                id="profile-manager-name"
-                type="text"
-                value={managerName}
-                onChange={e => setManagerName(e.target.value)}
-                placeholder={t("team.managerNamePlaceholder")}
-                minLength={2}
-                maxLength={50}
-              />
-            </Field>
+            </div>
 
-            {renderMessageBanner()}
-
-            <Button onClick={saveTeamInfo} loading={savingTeam} fullWidth>
-              {savingTeam ? t("team.saving") : team ? t("team.save") : t("team.create")}
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Discord integration */}
-      <Card className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center">
-            <DiscordIcon size={18} className="text-cz-discord" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-cz-1 font-semibold text-sm">{t("discord.title")}</h2>
-            <p className="text-cz-3 text-xs">{t("discord.subtitle")}</p>
-          </div>
-        </div>
-
-        {/* DM-status badge */}
-        {dmStatus && (
-          dmStatus.discord_id ? (
-            !/^\d{17,19}$/.test(dmStatus.discord_id) ? (
-              <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-start gap-2">
-                <XIcon size={14} className="mt-0.5 shrink-0" />
-                <span>
-                  {t("discord.statusUsernamePre")}<code className="font-mono">{dmStatus.discord_id}</code>{t("discord.statusUsernamePost")}
-                </span>
-              </div>
-            ) : dmStatus.bot_configured ? (
-              dmStatus.dm_enabled ? (
-                <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-success-bg text-cz-success border-cz-success/30 text-xs flex items-center gap-2">
-                  <CheckIcon size={14} className="shrink-0" />
-                  <span>{t("discord.statusConnected")}</span>
+            {/* DM-status badge */}
+            {dmStatus && (
+              dmStatus.discord_id ? (
+                !/^\d{17,19}$/.test(dmStatus.discord_id) ? (
+                  <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-start gap-2">
+                    <XIcon size={14} className="mt-0.5 shrink-0" />
+                    <span>
+                      {t("discord.statusUsernamePre")}<code className="font-mono">{dmStatus.discord_id}</code>{t("discord.statusUsernamePost")}
+                    </span>
+                  </div>
+                ) : dmStatus.bot_configured ? (
+                  dmStatus.dm_enabled ? (
+                    <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-success-bg text-cz-success border-cz-success/30 text-xs flex items-center gap-2">
+                      <CheckIcon size={14} className="shrink-0" />
+                      <span>{t("discord.statusConnected")}</span>
+                    </div>
+                  ) : (
+                    <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-center gap-2">
+                      <ClockIcon size={14} className="shrink-0" />
+                      <span>{t("discord.statusDmOff")}</span>
+                    </div>
+                  )
+                ) : (
+                  <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-center gap-2">
+                    <AlertTriangleIcon size={14} className="shrink-0" />
+                    <span>{t("discord.statusBotMissing")}</span>
+                  </div>
+                )
+              ) : dmStatus.auto_disconnected ? (
+                /* #3130: vi afkoblede selv en død kobling (spilleren havde forladt
+                   vores Discord-server, så botten kunne ikke længere skrive til ham).
+                   Uden denne besked ligner det bare "du har aldrig tilsluttet". */
+                <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-start gap-2">
+                  <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" />
+                  <span>{t("discord.statusAutoDisconnected")}</span>
                 </div>
               ) : (
-                <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-center gap-2">
-                  <ClockIcon size={14} className="shrink-0" />
-                  <span>{t("discord.statusDmOff")}</span>
+                <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-center gap-2">
+                  <XIcon size={14} className="shrink-0" />
+                  <span>{t("discord.statusIdMissing")}</span>
                 </div>
               )
-            ) : (
-              <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-center gap-2">
-                <AlertTriangleIcon size={14} className="shrink-0" />
-                <span>{t("discord.statusBotMissing")}</span>
-              </div>
-            )
-          ) : dmStatus.auto_disconnected ? (
-            /* #3130: vi afkoblede selv en død kobling (spilleren havde forladt
-               vores Discord-server, så botten kunne ikke længere skrive til ham).
-               Uden denne besked ligner det bare "du har aldrig tilsluttet". */
-            <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-start gap-2">
-              <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" />
-              <span>{t("discord.statusAutoDisconnected")}</span>
-            </div>
-          ) : (
-            <div className="mb-4 px-4 py-2.5 rounded-cz border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-center gap-2">
-              <XIcon size={14} className="shrink-0" />
-              <span>{t("discord.statusIdMissing")}</span>
-            </div>
-          )
-        )}
+            )}
 
-        <div className="bg-cz-subtle border border-cz-border rounded-cz p-4 mb-4">
-          <p className="text-cz-2 text-xs leading-relaxed">
-            {t("discord.intro")}
-          </p>
-        </div>
+            <div className="bg-cz-subtle border border-cz-border rounded-cz p-4 mb-4">
+              <p className="text-cz-2 text-xs leading-relaxed">
+                {t("discord.intro")}
+              </p>
+            </div>
 
-        {/* #5012: offentligt Discord-brugernavn — vises på managerprofilen når
-            udfyldt. Adskilt fra Discord-ID'et nedenfor, der kun bruges internt
-            til bot-DM-levering (#2161) og aldrig er offentligt synligt. */}
-        <Field
-          label={t("discord.handleLabel")}
-          htmlFor="profile-discord-handle"
-          className="mb-4"
-        >
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              id="profile-discord-handle"
-              type="text"
-              value={discordHandle}
-              onChange={e => setDiscordHandle(e.target.value)}
-              placeholder={t("discord.handlePlaceholder")}
-              minLength={2}
-              maxLength={32}
-              autoComplete="off"
-              data-clarity-mask="True"
-              className="flex-1 font-mono focus:border-cz-discord"
-            />
-            <Button
-              onClick={saveDiscordHandle}
-              loading={savingDiscordHandle}
-              disabled={discordHandle.trim() === (user?.discord_handle || "")}
-              variant="secondary"
-              className="sm:w-auto"
+            {/* #5012: offentligt Discord-brugernavn — vises på managerprofilen når
+                udfyldt. Adskilt fra Discord-ID'et nedenfor, der kun bruges internt
+                til bot-DM-levering (#2161) og aldrig er offentligt synligt. */}
+            <Field
+              label={t("discord.handleLabel")}
+              htmlFor="profile-discord-handle"
+              className="mb-4"
             >
-              {savingDiscordHandle ? t("discord.saving") : t("discord.handleSave")}
-            </Button>
-          </div>
-          <p className="text-cz-3 text-xs mt-2">{t("discord.handleHelp")}</p>
-        </Field>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  id="profile-discord-handle"
+                  type="text"
+                  value={discordHandle}
+                  onChange={e => setDiscordHandle(e.target.value)}
+                  placeholder={t("discord.handlePlaceholder")}
+                  minLength={2}
+                  maxLength={32}
+                  autoComplete="off"
+                  data-clarity-mask="True"
+                  className="flex-1 font-mono focus:border-cz-discord"
+                />
+                <Button
+                  onClick={saveDiscordHandle}
+                  loading={savingDiscordHandle}
+                  disabled={discordHandle.trim() === (user?.discord_handle || "")}
+                  variant="secondary"
+                  className="sm:w-auto"
+                >
+                  {savingDiscordHandle ? t("discord.saving") : t("discord.handleSave")}
+                </Button>
+              </div>
+              <p className="text-cz-3 text-xs mt-2">{t("discord.handleHelp")}</p>
+            </Field>
 
-        <div className="border-t border-cz-border pt-4 mb-4" />
+            <div className="border-t border-cz-border pt-4 mb-4" />
 
-        <Field
-          label={t("discord.idLabel")}
-          htmlFor="profile-discord-id"
-          className="mb-4"
-        >
-          <Input
-            id="profile-discord-id"
-            type="text"
-            value={discordId}
-            onChange={e => setDiscordId(e.target.value)}
-            placeholder={t("discord.idPlaceholder")}
-            data-clarity-mask="True"
-            className="font-mono focus:border-cz-discord"
-          />
-          <p className="text-cz-3 text-xs mt-2">
-            {t("discord.idHelp")}
-            <span className="block mt-1 text-cz-2">
-              {t("discord.idHelpStrong")}
-            </span>
-          </p>
-        </Field>
-
-        {!team && renderMessageBanner("mb-3")}
-
-        <button
-          type="button"
-          onClick={saveDiscordId}
-          disabled={savingDiscord}
-          aria-busy={savingDiscord || undefined}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-cz border border-transparent px-4 py-2.5 text-sm font-semibold
-            bg-cz-discord text-cz-on-accent transition-colors duration-150 ease-out
-            hover:bg-cz-discord-hover active:translate-y-px
-            disabled:opacity-40 disabled:pointer-events-none"
-        >
-          {savingDiscord && (
-            <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-cz-pill border-2 border-current border-t-transparent" />
-          )}
-          {savingDiscord ? t("discord.saving") : t("discord.save")}
-        </button>
-
-        {/* DM-toggle + test-knap (kun når ID er sat) */}
-        {dmStatus?.discord_id && (
-          <div className="mt-4 bg-cz-subtle border border-cz-border rounded-cz p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-cz-1 text-sm font-medium">{t("discord.toggleLabel")}</span>
-              <Toggle
-                id="profile-dm-enabled"
-                checked={dmStatus.dm_enabled}
-                disabled={savingDmEnabled}
-                onChange={e => toggleDmEnabled(e.target.checked)}
+            <Field
+              label={t("discord.idLabel")}
+              htmlFor="profile-discord-id"
+              className="mb-4"
+            >
+              <Input
+                id="profile-discord-id"
+                type="text"
+                value={discordId}
+                onChange={e => setDiscordId(e.target.value)}
+                placeholder={t("discord.idPlaceholder")}
+                data-clarity-mask="True"
+                className="font-mono focus:border-cz-discord"
               />
-            </div>
-            <p className="text-cz-3 text-xs leading-relaxed">
-              {t("discord.toggleHint")}
-            </p>
+              <p className="text-cz-3 text-xs mt-2">
+                {t("discord.idHelp")}
+                <span className="block mt-1 text-cz-2">
+                  {t("discord.idHelpStrong")}
+                </span>
+              </p>
+            </Field>
 
-            {/* Per-type DM prefs. Greyed + disabled when the master DM is off. */}
-            <div className="pt-1 space-y-3 border-t border-cz-border">
-              <p className="text-cz-3 text-xs font-medium pt-3">{t("discord.prefs.heading")}</p>
-              {!dmStatus.dm_enabled && (
-                <p className="text-cz-4 text-xs">{t("discord.prefs.masterOffHint")}</p>
-              )}
-              <div className={dmStatus.dm_enabled ? "space-y-3" : "space-y-3 opacity-50"}>
-                {DM_PREF_GROUPS.map(({ group, keys }) => (
-                  <div key={group}>
-                    <p className="text-cz-3 text-2xs font-semibold mb-1.5">{t(`discord.prefs.group.${group}`)}</p>
-                    <div className="space-y-2">
-                      {keys.map(key => (
-                        <div key={key} className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-cz-1 text-sm">{t(`discord.prefs.${key}.label`)}</p>
-                            <p className="text-cz-3 text-xs leading-snug">{t(`discord.prefs.${key}.desc`)}</p>
-                          </div>
-                          <Toggle
-                            id={`dm-pref-${key}`}
-                            checked={dmStatus.dm_prefs?.[key] !== false}
-                            disabled={!dmStatus.dm_enabled}
-                            onChange={e => toggleDmPref(key, e.target.checked)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {!team && renderMessageBanner("mb-3")}
 
-            <Button
-              onClick={sendTestDm}
-              disabled={testingDm || !dmStatus.bot_configured}
-              loading={testingDm}
-              variant="secondary"
-              size="sm"
-              fullWidth
+            <button
+              type="button"
+              onClick={saveDiscordId}
+              disabled={savingDiscord}
+              aria-busy={savingDiscord || undefined}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-cz border border-transparent px-4 py-2.5 text-sm font-semibold
+                bg-cz-discord text-cz-on-accent transition-colors duration-150 ease-out
+                hover:bg-cz-discord-hover active:translate-y-px
+                disabled:opacity-40 disabled:pointer-events-none"
             >
-              {testingDm ? t("discord.testSending") : dmStatus.bot_configured ? t("discord.testSend") : t("discord.testBotMissing")}
-            </Button>
-          </div>
-        )}
+              {savingDiscord && (
+                <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-cz-pill border-2 border-current border-t-transparent" />
+              )}
+              {savingDiscord ? t("discord.saving") : t("discord.save")}
+            </button>
 
-        {!dmStatus?.discord_id && (
-          <div className="mt-4 bg-cz-subtle border border-cz-border rounded-cz p-3">
-            <p className="text-cz-3 text-xs font-medium mb-2">{t("discord.eventsTitle")}</p>
-            <ul className="space-y-1">
-              {discordEvents.map(item => (
-                <li key={item} className="flex items-center gap-2 text-cz-3 text-xs">
-                  <CheckIcon size={13} className="text-cz-success shrink-0" /> {item}
-                </li>
-              ))}
+            {/* DM-toggle + test-knap (kun når ID er sat) */}
+            {dmStatus?.discord_id && (
+              <div className="mt-4 bg-cz-subtle border border-cz-border rounded-cz p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-cz-1 text-sm font-medium">{t("discord.toggleLabel")}</span>
+                  <Toggle
+                    id="profile-dm-enabled"
+                    checked={dmStatus.dm_enabled}
+                    disabled={savingDmEnabled}
+                    onChange={e => toggleDmEnabled(e.target.checked)}
+                  />
+                </div>
+                <p className="text-cz-3 text-xs leading-relaxed">
+                  {t("discord.toggleHint")}
+                </p>
+
+                {/* Per-type DM prefs. Greyed + disabled when the master DM is off. */}
+                <div className="pt-1 space-y-3 border-t border-cz-border">
+                  <p className="text-cz-3 text-xs font-medium pt-3">{t("discord.prefs.heading")}</p>
+                  {!dmStatus.dm_enabled && (
+                    <p className="text-cz-4 text-xs">{t("discord.prefs.masterOffHint")}</p>
+                  )}
+                  <div className={dmStatus.dm_enabled ? "space-y-3" : "space-y-3 opacity-50"}>
+                    {DM_PREF_GROUPS.map(({ group, keys }) => (
+                      <div key={group}>
+                        <p className="text-cz-3 text-2xs font-semibold mb-1.5">{t(`discord.prefs.group.${group}`)}</p>
+                        <div className="space-y-2">
+                          {keys.map(key => (
+                            <div key={key} className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-cz-1 text-sm">{t(`discord.prefs.${key}.label`)}</p>
+                                <p className="text-cz-3 text-xs leading-snug">{t(`discord.prefs.${key}.desc`)}</p>
+                              </div>
+                              <Toggle
+                                id={`dm-pref-${key}`}
+                                checked={dmStatus.dm_prefs?.[key] !== false}
+                                disabled={!dmStatus.dm_enabled}
+                                onChange={e => toggleDmPref(key, e.target.checked)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={sendTestDm}
+                  disabled={testingDm || !dmStatus.bot_configured}
+                  loading={testingDm}
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                >
+                  {testingDm ? t("discord.testSending") : dmStatus.bot_configured ? t("discord.testSend") : t("discord.testBotMissing")}
+                </Button>
+              </div>
+            )}
+
+            {!dmStatus?.discord_id && (
+              <div className="mt-4 bg-cz-subtle border border-cz-border rounded-cz p-3">
+                <p className="text-cz-3 text-xs font-medium mb-2">{t("discord.eventsTitle")}</p>
+                <ul className="space-y-1">
+                  {discordEvents.map(item => (
+                    <li key={item} className="flex items-center gap-2 text-cz-3 text-xs">
+                      <CheckIcon size={13} className="text-cz-success shrink-0" /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Card>
+        </TabPanel>
+
+        <TabPanel value="preferences">
+          {/* Tema */}
+          <Card id={settingsSectionId("appearance")} className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("appearance.title")}</h2>
+            <p className="text-cz-3 text-xs mb-4">{t("appearance.subtitle")}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {THEME_OPTIONS.map(value => {
+                const active = theme === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setTheme(value)}
+                    aria-pressed={active}
+                    className={`text-left rounded-cz border px-3 py-2.5 transition-colors
+                      ${active
+                        ? "border-cz-accent bg-cz-accent/10"
+                        : "border-cz-border bg-cz-subtle hover:border-cz-accent/40"}`}
+                  >
+                    <p className={`text-sm font-semibold ${active ? "text-cz-accent-t" : "text-cz-1"}`}>
+                      {t(`appearance.${value}Label`)}
+                    </p>
+                    <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{t(`appearance.${value}Hint`)}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}
+          {assistant?.mode === "opt_in" && (
+            <Card id={settingsSectionId("assistant")} className="p-5 mb-4">
+              <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("assistant.title")}</h2>
+              <p className="text-cz-3 text-xs mb-4">{t("assistant.subtitle")}</p>
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="profile-assistant-autopick" className="text-cz-1 text-sm font-medium">
+                  {t("assistant.toggleLabel")}
+                </label>
+                <Toggle
+                  id="profile-assistant-autopick"
+                  checked={assistant.autopick_enabled !== false}
+                  disabled={savingAssistant}
+                  onChange={e => toggleAssistantAutopick(e.target.checked)}
+                />
+              </div>
+              <p className="text-cz-3 text-xs leading-relaxed mt-3">{t("assistant.toggleHint")}</p>
+            </Card>
+          )}
+        </TabPanel>
+
+        <TabPanel value="privacy">
+          {/* Privatliv */}
+          <Card id={settingsSectionId("privacy")} className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("privacy.title")}</h2>
+            <p className="text-cz-3 text-xs mb-4">
+              {t("privacy.subtitle")}
+            </p>
+            <ul className="text-cz-2 text-sm space-y-1 mb-4">
+              <li className="flex items-center justify-between">
+                <span>{t("privacy.necessary")}</span>
+                <span className="text-cz-3 text-xs">{t("privacy.alwaysOn")}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span>{t("privacy.analytics")}</span>
+                <span className={consent.analytics ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
+                  {consent.analytics ? t("privacy.accepted") : t("privacy.declined")}
+                </span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span>{t("privacy.marketing")}</span>
+                <span className={consent.marketing ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
+                  {consent.marketing ? t("privacy.accepted") : t("privacy.declined")}
+                </span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span>{t("privacy.email")}</span>
+                <span className={consent.email_marketing ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
+                  {consent.email_marketing ? t("privacy.accepted") : t("privacy.declined")}
+                </span>
+              </li>
             </ul>
-          </div>
-        )}
-      </Card>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button type="button" onClick={openBanner} className="flex-1">
+                {t("privacy.changeChoices")}
+              </Button>
+              <Link to="/privatlivspolitik" className={`${buttonClass({ variant: "secondary" })} flex-1 text-center no-underline`}>
+                {t("privacy.readPolicy")}
+              </Link>
+            </div>
+          </Card>
+        </TabPanel>
+
+        <TabPanel value="beta">
+          {/* Beta-gruppen (#5259) — vises ALTID: "bed om at komme med" er selve
+              vejen ind, og den maa ikke vaere skjult for dem der ikke er med endnu.
+              Knappen dukker foerst op naar tilstanden ER hentet (betaAccess !== null),
+              saa ingen kan naa at trykke paa et valg der bygger paa et gaet. */}
+          <Card id={settingsSectionId("beta")} className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("beta.title")}</h2>
+            <p className="text-cz-3 text-xs mb-4">{t("beta.subtitle")}</p>
+            {betaAccess && (
+              <>
+                <p className="text-cz-2 text-sm leading-relaxed">
+                  {t(`beta.${betaAccess.state === "member" ? "member"
+                    : betaAccess.state === "pending" ? "pending"
+                    : betaAccess.state === "rejected" ? "rejected" : "none"}Body`)}
+                </p>
+                {betaAccess.state === "member" && (
+                  <p className="text-cz-3 text-xs leading-relaxed mt-2">{t("beta.whereToReport")}</p>
+                )}
+                <div className="mt-4">
+                  {betaAccess.state === "member" && (
+                    <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("withdraw")}>
+                      {t("beta.leaveButton")}
+                    </Button>
+                  )}
+                  {betaAccess.state === "pending" && (
+                    <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("withdraw")}>
+                      {t("beta.cancelButton")}
+                    </Button>
+                  )}
+                  {(betaAccess.state === "none" || betaAccess.state === "rejected") && (
+                    <Button variant="secondary" loading={savingBeta} onClick={() => submitBetaAction("request")}>
+                      {t("beta.requestButton")}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </Card>
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }

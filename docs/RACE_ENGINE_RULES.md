@@ -232,6 +232,15 @@ To ting er absolutte:
 
 **Nedkørsels-styrt går gennem trappen ([#4934](https://github.com/NicolaiDolmer/CyclingZone/issues/4934)).** Der findes præcis **én** uheldsmodel. M3's nedkørsels-styrt (`mechanics/descent.ts`) leverer kun *hvem og hvor*; alvorstrin, tidstab, skadedage og 3 km-reglen afgøres af M10's egen `resolveCrashIncident` (`mechanics/incidents.ts`), og uheldet tæller med i det **samme loft pr. etape**. Et nedkørsels-uheld er altid et **styrt** — der er ingen mekanisk defekt at trække lod om på en nedkørsel. **Angriberen der styrter mister sin gevinst:** han splittes ud af angrebsgruppen med præcis det delta angrebet gav ham, så han lander tilbage på kildegruppens tid, og derefter lægges trappens tidstab oveni (alvorligt styrt = udgår, som i M10). Monotonien (§3 invariant 3) er uberørt: uheldet er ikke en evne-sammenligning, risikoen er ikke-stigende i descending-evnen, og trappens konsekvens er ikke evne-skaleret — ved **samme lodtrækning** får en bedre nedkører aldrig et værre udfald. Målt i `backend/scripts/v4DescentIncidents.js` (tidstab pr. sværhedsgrad, 3 seeds x 180 ryttere, 229 nedkørsels-uheld): let 14,5 s i snit (70 %), hårdt 153,6 s + 2,6 skadedage (28 %), alvorligt 1,7 % (udgår, 6 skadedage).
 
+**Jagten tilbage bag følgebilerne ([#5582](https://github.com/NicolaiDolmer/CyclingZone/issues/5582), ejer 23/9).** Et uheld med tidstab (styrt eller defekt, også et nedkørsels-styrt) sætter rytteren i sin egen gruppe med det lovede tidstab, det tal spilleren og `race_incidents` ser. Før #5582 havde den gruppe intet læ og kørte i hans eget solo-tempo resten af etapen, så det faktiske tab blev typisk mange gange det lovede. Nu kører han tilbage som i virkeligheden:
+
+- **Bag bilerne** (flad, bakket, nedkørsel) holder han tempoet i den nærmeste gruppe foran. Hullet bliver på det lovede, og han betaler for det som en rytter på hjul i den gruppe.
+- **Venter en holdkammerat eller hjælper** i hans gruppe da uheldet skete, lukker de hullet gradvist. Når han er inde, er han en del af gruppen igen.
+- **Op ad bakke og på brosten** hjælper bilerne ikke. Har han reserven til at følge gruppen foran, holder han hullet. Brænder han ud (samme grænse som klatre-selektionen bruger inde i en gruppe), taber han tid, men højst et loft pr. km.
+- **Uheld i finalen** koster stadig spurten, og samme gruppe = samme tid (invariant 2) holder: offeret er sin egen gruppe, indtil han er inde igen.
+
+Reglen bor i `mechanics/incidents.ts` (jagt-blokken) og kobles i `segmentLoop.ts`. En etape uden uheld er bit-identisk. Konstanterne er startgæt og kalibreres i harnesset; målingen før/efter ligger privat under `balance-internals/`.
+
 **Nedkørsels-styrt har et gulv (#4905, ejer 6/9).** Descent attack-risikoen (`mechanics/descent.ts`, koblet til M3's angreb) dæmpes af descending-evnen MULTIPLIKATIVT med et gulv (`DESCENT_EXTRA_TUNING.incidentRiskFloorFraction`, `tuning.ts`) i stedet for den gamle subtraktive form, der kunne ramme PRÆCIS 0 for enhver descending-evne ≥ ~67 — netop de ryttere der altid angriber på en nedkørsel. Uden gulvet var nedkørselsstyrt statistisk usynlige, også i regn, selvom M11 forstærker basis-risikoen der. Målt i `backend/scripts/v4DescentIncidents.js`.
 
 ### v3 — den binære model (gælder indtil flip)
@@ -263,8 +272,8 @@ Ejeren besluttede 4/9 at UCI's tidsgrænser bliver et krav til v4 før flip — 
 
 | | |
 |---|---|
-| Viser tallet | Spilleren ser **"uden for tidsgrænsen"** og **"grupettoen på N ryttere reddes"**. Aldrig en procent, aldrig en sekundgrænse. Fog-gaten ([#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791)) gælder ubetinget |
-| Skelner spiller fra AI | AI-hold rammes af præcis samme regel. Mekanikken har ingen holdakse overhovedet, så undtagelsen er strukturelt umulig, ikke bare udeladt |
+| Viser tallet | Spilleren ser **"uden for tidsgrænsen"**, **"grupettoen på N ryttere reddes"** og **"genindsat af juryen"**. Aldrig en procent, aldrig en sekundgrænse, aldrig uheldets tid. Fog-gaten ([#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791)) gælder ubetinget |
+| Skelner spiller fra AI | AI-hold rammes af præcis samme regel. Holdet bruges kun ét sted: juryen ser, hvem der kørte med et uheldsramt offer. Et spillerhold og et AI-hold behandles ens |
 | Bruger terningen | Ingen rng. Tidsgrænsen er en **regel**, ikke en lodtrækning |
 | Flytter placeringer | Rank, tid, gruppe og rækkefølge er urørte. Kun `status` ændres. Invariant 3 og 6 er derfor uberørte per konstruktion |
 
@@ -285,6 +294,10 @@ Ejeren besluttede 4/9 at UCI's tidsgrænser bliver et krav til v4 før flip — 
 Ukendt eller manglende `profile_type` falder tilbage på 10 % — motoren kaster aldrig på en type den ikke kender.
 
 **Grupettoen.** En samlet ankomst på mindst **20 % af feltet** (UCI's egen tommelfingerregel), dog altid mindst **8 ryttere**, reddes samlet. "Samlet" måles som en kæde af ankomster hvor der er under **2 minutter** til naboen. Det tal er ikke gruppe-sammensmeltningens tærskel, og det er målt, ikke gættet: finalen lægger hvert placerings-tier mindst merge-tærsklen + margin fra naboen, netop så tierne ikke folder sammen igen — et merge-tærskel-vindue kunne derfor per konstruktion aldrig kæde to tiers til én grupetto, og en grupetto der ankom i to klumper ville blive massakreret. En forward-guard i `timeLimit.test.ts` fælder enhver fremtidig ændring der sætter vinduet tilbage under tier-skridtet.
+
+**Juryen ([#5582](https://github.com/NicolaiDolmer/CyclingZone/issues/5582), ejer 23/9, Tourens reglement).** En rytter uden for grænsen efter et styrt eller en defekt med tidstab dømmes på sin tid minus uheldets tid: det lovede tidstab plus det han tabte ud over det under jagten tilbage (Tour 2014 etape 10: juryen trak tiden i ambulancen fra). Kun ryttere der kæmpede videre: indsatsvalget `grupetto` eller `save` udelukker. En holdkammerat i samme målgruppe som et genindsat offer genindsættes med ham. Juryen kører **efter** grupetto-kædningen på de faktiske sluttider, så ingen rytter uden uheld kan blive OTL fordi et offer blev trukket ud af en kæde; et offer inde i en reddet grupetto er grupettoens. **Ingen genindsættelse uden et uheld.** Grupetto-redningen er uændret. Tidslinjen får eventet `jury_reinstated` (hvem og hvor mange, aldrig et tal).
+
+**Pointstraffen for alle genindsatte ([#4914](https://github.com/NicolaiDolmer/CyclingZone/issues/4914) valg 4b, ejer 23/9, UCI 2.6.032).** Både juryens genindsatte og en reddet grupetto mister deres point i løbets point- og bjergkonkurrence. Motoren mærker dem (`StageResult.reinstated_by`: `jury` eller `grupetto`, status forbliver `finished`) og nulstiller etapens egne point i `passage_totals`. Bonussekunder er GC-tid, ikke point, og røres ikke. Point fra **tidligere** etaper kan motoren ikke se; det er flip-lagets og klassementets opgave at se bort fra dem via markøren (se FLIP-KONTRAKT i `mechanics/timeLimit.ts`).
 
 **OTL er en tredje udfaldsklasse**, ikke en variant af de to andre: rytteren *kom* i mål (modsat `abandoned`), men uden for grænsen. `StageResultStatus` er derfor `finished | abandoned | otl` (`types.ts`).
 

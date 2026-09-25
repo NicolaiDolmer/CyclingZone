@@ -62,6 +62,14 @@ import {
 import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
+import {
+  addIncidentChaseLoss,
+  incidentChaseDtSeconds,
+  incidentChaseHoldsPace,
+  incidentChaseTargetGroup,
+  isIncidentChasePacedSegment,
+  resolveIncidentChasers,
+} from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -599,7 +607,69 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
       nextRiders = { ...nextRiders, ...patch };
     }
+    const ridersBeforeTick = state.riders; // #5582: jagtens om-tick starter herfra
     state = { ...state, riders: nextRiders };
+
+    // #5582: et uheldsoffer koerer tilbage bag foelgebilerne. Kun jagtgrupper
+    // (grupper hvor alle koerende er i state.incident_chasers, sat af uheldets
+    // split) roeres; alle andre grupper er uroerte, og en etape uden et uheld
+    // med tidstab springer blokken helt over (bit-identisk). Reglen bor i
+    // mechanics/incidents.ts's jagt-blok. Her sker kun de to ting der kraever
+    // segment-loopets egne tempo-/tick-funktioner:
+    //   1. Er maalgruppen hurtigere end ham alene, tikkes han om paa
+    //      maalgruppens tempo (paa hjul bag bilerne, front-arbejde op ad
+    //      bakke) fra sin reserve ved segmentets start.
+    //   2. Holder han tempoet (incidentChaseHoldsPace), faar gruppen
+    //      maalgruppens krydsningstid. Braender han ud paa en stigning, staar
+    //      hans eget solo-tick ved magt, og han taber tid (loftet i
+    //      incidentChaseDtSeconds).
+    //   3. Tiden han taber ud over maalgruppen bogfoeres til juryen
+    //      (state.incident_chase_loss).
+    if (state.incident_chasers && Object.keys(state.incident_chasers).length > 0) {
+      const chase = resolveIncidentChasers(state.groups, ridersBeforeTick, state.incident_chasers);
+      state = { ...state, incident_chasers: chase.chasers };
+      for (const group of state.groups) {
+        const mode = chase.modeByGroupId.get(group.id);
+        const own = tempoByGroup.get(group.id);
+        const target = incidentChaseTargetGroup(group, state.groups, chase.modeByGroupId);
+        const targetTempo = target ? tempoByGroup.get(target.id) : undefined;
+        if (!mode || !own || !target || !targetTempo) continue;
+        const targetFaster = targetTempo.dtSeconds < own.dtSeconds;
+        if (!targetFaster && mode === "alone") continue;
+        let holdsPace = true;
+        if (targetFaster) {
+          // Paa hjul i maalgruppen: dens krav, rytterens egen CP, lae-faktoren.
+          const chaseTempo: GroupTempo = { ...targetTempo, cpByRider: own.cpByRider, frontRiderIds: new Set<string>() };
+          const patch = tickGroupRiders(
+            group,
+            ridersBeforeTick,
+            entrantsById,
+            segment,
+            chaseTempo,
+            tuning,
+          );
+          const wprimeAfter = group.rider_ids.filter((id) => patch[id]).map((id) => patch[id].wprime);
+          holdsPace = incidentChaseHoldsPace(isIncidentChasePacedSegment(segment.kind), wprimeAfter);
+          // Braendt ud: hans eget solo-tick (herover) staar ved magt.
+          if (holdsPace) state = { ...state, riders: { ...state.riders, ...patch } };
+        }
+        const dtSeconds = incidentChaseDtSeconds({
+          mode,
+          ownDtSeconds: own.dtSeconds,
+          targetDtSeconds: targetTempo.dtSeconds,
+          holeSeconds: group.gap_seconds - target.gap_seconds,
+          segment,
+          holdsPace,
+        });
+        tempoByGroup.set(group.id, { ...own, dtSeconds });
+        const chaseLoss = addIncidentChaseLoss(
+          state.incident_chase_loss,
+          group.rider_ids.filter((id) => chase.chasers[id] !== undefined),
+          dtSeconds - targetTempo.dtSeconds,
+        );
+        if (chaseLoss !== state.incident_chase_loss) state = { ...state, incident_chase_loss: { ...chaseLoss } };
+      }
+    }
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.

@@ -95,7 +95,7 @@ for (const vp of VIEWPORTS) {
   await page.screenshot({ path: resolve(OUT, `nav-badge-after-${vp.name}.png`), fullPage: false });
 
   // (b) Indstillingerne: alle seks kategorier, "General" står som fravalgt.
-  await page.goto("/profile");
+  await page.goto("/profile?tab=notifications"); // #5402
   await page.locator("#forum-category-general").waitFor();
   await page.locator("#forum-category-general").scrollIntoViewIfNeeded();
   await page.screenshot({ path: resolve(OUT, `settings-list-${vp.name}.png`), fullPage: false });
