@@ -506,6 +506,27 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 - **Fortryd:** INGEN, fordi kørslen ikke tager backup. **RØD.** Se afhjælpning 4.
 - **Kan tændes i dag?** Kører af sig selv. Det, der mangler, er ejerens valg og backuppen.
 
+### Trin 11b (ejer-kørt): Sluk akademi-drift for S3-skiftet (#5741)
+
+- **For spilleren:** Ingen ungdomsdrift (akademi-drift) opkræves ved DENNE sæsonskiftekørsel — ejer-beslutning 25/9. Rammer kun selve cutover-lønkørslen (12a); resten af akademiet (intake, træning m.m.) er uændret.
+- **Forudsætning:** Køres FØR trin 12a, fordi akademi-drift debiteres inde i "Afslut sæson"-lønkørslen (`backend/lib/economyEngine.js` `processTeamSeasonPayroll`, trin 4). Er nøglen ikke sat til `off` inden 12a er kørt, opkræves drift som normalt, og kan ikke fortrydes bagud (se "Fortryd" nedenfor).
+- **Go:** ejer.
+- **Kommando:**
+  ```sql
+  update public.app_config set value = '"off"'::jsonb where key = 'academy_drift_enabled';
+  ```
+- **Kontrol bagefter (efter 12a's lønkørsel):**
+  ```sql
+  select count(*) from finance_transactions where type = 'academy_drift' and season_id = '00000000-0000-0000-0000-000000000004';
+  ```
+  Forventet: 0.
+- **Fortryd:** sæt nøglen tilbage til `on`:
+  ```sql
+  update public.app_config set value = '"on"'::jsonb where key = 'academy_drift_enabled';
+  ```
+  Drift for DENNE sæsonskiftekørsel er allerede ikke opkrævet og opkræves IKKE bagud — flaget styrer kun kørslen på det tidspunkt lønnen faktisk kører, ikke en efterfølgende genberegning.
+- **Kan tændes i dag?** Ja, nøglen kan sættes til `off` når som helst før 12a. Migrationen (`database/2026-09-25-5741-academy-drift-enabled.sql`) sætter kun default `on` — uændret adfærd ved merge.
+
 ### Trin 12 (H14): Selve cutover-kørslen
 
 - **For spilleren:**
