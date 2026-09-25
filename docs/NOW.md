@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); samme bølge + samme fil → simulér merge + tsc FØR kø (25/9); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Ingen aktiv session (session e lukket 25/9 kl. 23:15; rapport `private-handoffs/2026-09-25-session-e-rapport.md`).
+> **🤖 Working agent:** Session f (25/9 23:50): #5281 grøn via bølge + U23/junior-billeder. Rapport e: `private-handoffs/2026-09-25-session-e-rapport.md`.
