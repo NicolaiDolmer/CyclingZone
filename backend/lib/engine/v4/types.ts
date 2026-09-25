@@ -477,12 +477,26 @@ export type RngForFn = (mechanic: string, riderId?: string) => RngFn;
 
 export type RiderStatus = "racing" | "finished" | "abandoned";
 
+// #5578 (ADDITIVT, valgfrit): hvor en gruppe KOMMER FRA, uafhaengigt af dens
+// art. `kind` alene kan ikke skelne dagens udbrud fra et nedkoerselsangreb:
+// descent.ts giver et angreb med flere ryttere ud af en peloton arten
+// "breakaway" (newGroupKind), og et merge kan give en indhentet udbrudsgruppe
+// artens "peloton" mens den beholder udbruddets id. Udbrudsankeret
+// (headToHeadAnchors.scoreBreakawayRates) laeser derfor oprindelsen:
+//   "breakaway" = dagens udbrud (M5-formationen) og alt der splittes ud af det
+//   "descent"   = et nedkoerselsangreb ud af en ikke-udbrudsgruppe
+//   udeladt     = feltet (startgruppen og alt afledt af den)
+// Feltet er INTERN simulations-tilstand: snapshots og resultater baerer det
+// ikke, saa StageOutput (og de frosne golden fixtures) er uaendret.
+export type GroupOrigin = "breakaway" | "descent";
+
 export type RaceGroup = {
   id: string;
   kind: GroupKind;
   rider_ids: string[];
   gap_seconds: number; // til front (foerende gruppe / etapens spids)
   cohesion: number; // 0-1, fundament for brosten-kaos-hook (fuld M8 i F3)
+  origin?: GroupOrigin; // #5578, se GroupOrigin
 };
 
 /**

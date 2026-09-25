@@ -419,7 +419,11 @@ export const descentHook: DescentHook = (
     const newGroupId = makeGroupId(kind, ctx.segmentIndex * 1000 + seq);
     seq += 1;
 
-    groups = splitGroup(groups, group.id, attackerIds, { id: newGroupId, kind, gapSecondsDelta: -gainSeconds });
+    // #5578: et nedkoerselsangreb ud af feltet er ikke et udbrud, selv naar
+    // arten bliver "breakaway" (newGroupKind). Angriber en udbryder sine
+    // udbrudsfaeller, koerer han stadig i dagens udbrud og arver oprindelsen.
+    const origin = group.origin === "breakaway" ? undefined : "descent";
+    groups = splitGroup(groups, group.id, attackerIds, { id: newGroupId, kind, gapSecondsDelta: -gainSeconds, origin });
     changed = true;
 
     events.push({

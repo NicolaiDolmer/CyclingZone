@@ -277,6 +277,8 @@ function attemptFormation(
     id: newGroupId,
     kind: "breakaway",
     gapSecondsDelta: -INITIAL_GAP_SECONDS,
+    // #5578: dagens udbrud. Udbrudsankeret taeller kun sejre herfra.
+    origin: "breakaway",
   });
 
   events.push({
