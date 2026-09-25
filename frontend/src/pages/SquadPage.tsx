@@ -120,9 +120,18 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             </TabList>
           </Tabs>
 
-          {tab === "squad" && (riders.length === 0
-            ? <YouthSquadEmptyState squad={squad} />
-            : <YouthSquadTable riders={riders} scouting={scouting} seasonYear={seasonYear} label={tabLabel.squad} />)}
+          {tab === "squad" && (
+            <>
+              {/* #5519/#5519-beta: spørgsmål 23/9 ("only academy riders appear
+                  on U23/Junior") — seniorryttere bliver IKKE flyttet automatisk
+                  ved aldersovergang, kun manager-initieret Move squad gør det.
+                  Samme stil som development.hint. Vises altid, også tom trup. */}
+              <p className="mb-3 text-[13px] text-cz-2">{t("page.seniorsStayHint")}</p>
+              {riders.length === 0
+                ? <YouthSquadEmptyState squad={squad} />
+                : <YouthSquadTable riders={riders} scouting={scouting} seasonYear={seasonYear} label={tabLabel.squad} />}
+            </>
+          )}
           {tab === "development" && (riders.length === 0
             ? <YouthSquadEmptyState squad={squad} />
             : (

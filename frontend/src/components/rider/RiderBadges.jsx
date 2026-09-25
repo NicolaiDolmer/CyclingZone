@@ -45,6 +45,11 @@ const BADGE_DEFS = {
   // #1929-redesign: akademi-badge — markerer off-cap-akademiryttere i badge-kolonnen
   // (afløser den inline "Academy"-tag), overalt hvor badge-kolonnen bruges.
   academy: { tone: "accent" },
+  // #5763: trup-badge (riders.squad, ALDRIG alder alene) — samme "info"-tone
+  // som det aldersbaserede u23-badge ovenfor, men en helt anden kilde (se
+  // lib/squadBadge.ts). Bruges i træningstabellen, hvor ACAD-badget forsvandt
+  // med den nye oversigt.
+  junior: { tone: "info" },
   // #2943: pensions-risiko — rytteren er i eller lige før pensions-vinduet
   // (retirementRiskBadgeKey, riderAge.js). Advarsel til KØBEREN før bud, ikke
   // en blokering (jf. #2918/#2947, som guarder selve finaliseringen).

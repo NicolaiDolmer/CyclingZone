@@ -50,6 +50,8 @@ export type MobileRider = {
   lastname?: string | null;
   primary_type?: string | null;
   secondary_type?: string | null;
+  // #5763: riders.squad — U23/JR-mærke i navnecellen (squadBadgeKey).
+  squad?: string | null;
 };
 
 export default function TrainingMobileToday({
@@ -179,7 +181,9 @@ export default function TrainingMobileToday({
               : null,
           };
         }
-        return { id: rider.id, name: riderShortName(rider), sub, injury };
+        // #5763: riders.squad (ALDRIG alder) => U23/JR-mærke i navnecellen,
+        // samme kilde som desktop-tabellen (squadBadgeKey i TrainingMobileRoster).
+        return { id: rider.id, name: riderShortName(rider), sub, injury, squad: rider.squad ?? null };
       }),
     [riders, conditionFor, tTypes, t],
   );
