@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ACADEMY_DRIFT_ENABLED_FLAG_KEY, isAcademyDriftEnabled } from "./academyDriftFlag.js";
+import { ACADEMY_DRIFT_ENABLED_FLAG_KEY, isAcademyDriftEnabled } from "./academyDriftFlag.ts";
 
 function flagClient(value) {
   return { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: value === undefined ? null : { value }, error: null }) }) }) }) };

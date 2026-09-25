@@ -1,7 +1,7 @@
 -- database/2026-09-25-5741-academy-drift-enabled.sql
 -- #5741: kill-switch for AKADEMI-DRIFT specifikt ved S3→S4-skiftet 27/9
 -- (ejer-beslutning 25/9 kl. 13:30: ingen ungdomsdrift ved dette ene skifte).
--- Læses af backend/lib/academyDriftFlag.js og gater trin 4 i
+-- Læses af backend/lib/academyDriftFlag.ts og gater trin 4 i
 -- backend/lib/economyEngine.js (processTeamSeasonPayroll).
 --
 -- DEFAULT = 'on': UÆNDRET adfærd — akademi-drift opkræves som i dag. Denne
@@ -10,7 +10,7 @@
 -- før 12a "Afslut sæson") — aldrig fra et script.
 --
 -- Fail-safe hvis nøglen mangler/læsningen fejler: 'on' (drift opkræves som i
--- dag) — MODSAT de fleste stage-flag i denne mappe. Se academyDriftFlag.js.
+-- dag) — MODSAT de fleste stage-flag i denne mappe. Se academyDriftFlag.ts.
 --
 -- Slå fra før cutover: UPDATE public.app_config SET value='"off"'::jsonb WHERE key='academy_drift_enabled';
 -- Slå til igen (rollback): UPDATE public.app_config SET value='"on"'::jsonb  WHERE key='academy_drift_enabled';

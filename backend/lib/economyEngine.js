@@ -81,7 +81,7 @@ import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.j
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
-import { isAcademyDriftEnabled } from "./academyDriftFlag.js";
+import { isAcademyDriftEnabled } from "./academyDriftFlag.ts";
 import { FACILITIES_ENABLED } from "./facilityConstants.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
@@ -682,8 +682,8 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
     ?? evaluateFlagStage(await readFlagStage(supabaseClient, "facilities_enabled"));
   // #5741 · academy_drift_enabled læses ÉN gang for hele kørslen (samme
   // mønster som facilitiesEnabled ovenfor), fail-safe TRUE (uændret adfærd)
-  // — se academyDriftFlag.js.
-  const academyDriftEnabled = deps.academyDriftEnabled
+  // — se academyDriftFlag.ts.
+  const academyDriftEnabled = /** @type {{ academyDriftEnabled?: boolean }} */ (deps).academyDriftEnabled
     ?? await isAcademyDriftEnabled(supabaseClient, { engineWrite: true });
   const results = [];
   for (const teamWithRoster of teamsWithRoster) {
@@ -1193,7 +1193,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   //    opkræves INGEN drift og der skrives INGEN academy_drift-ledgerpost, uanset
   //    academyCount. Med flaget ON (default, og deps.academyDriftEnabled ikke
   //    threadet) er koden bit-identisk med før #5741.
-  const academyDriftEnabled = deps.academyDriftEnabled ?? true;
+  const academyDriftEnabled = /** @type {{ academyDriftEnabled?: boolean }} */ (deps).academyDriftEnabled ?? true;
   const { count: academyCount, error: academyCountError } = await supabaseClient
     .from("riders")
     .select("id", { count: "exact", head: true })

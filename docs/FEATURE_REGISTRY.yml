@@ -580,16 +580,6 @@ features:
     ssot: docs/ECONOMY_RULES.md
     verified: 2026-09-06
 
-  - id: academy-drift-kill-switch
-    area: economy
-    title_en: Academy drift kill-switch
-    title_da: Ungdomsdrift ved sæsonskifte
-    state: live
-    flag: academy_drift_enabled
-    ssot: docs/SEASON_CUTOVER_RUNBOOK.md
-    epic: 5741
-    verified: 2026-09-25
-    note: Fail-safe ON (modsat resten af kataloget). Ejer sætter off manuelt før S3→S4-cutover 27/9.
 
   # --- club ----------------------------------------------------------------
   - id: facilities

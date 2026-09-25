@@ -69,7 +69,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "auto_prize_enabled", area: "economy", label: "Auto-præmier" },
   // #5741: kill-switch for akademi-drift specifikt ved S3→S4-skiftet 27/9.
   // Fail-safe MODSAT resten af tavlen: manglende/fejlet læsning = true
-  // (drift opkræves som i dag), se academyDriftFlag.js.
+  // (drift opkræves som i dag), se academyDriftFlag.ts.
   { key: "academy_drift_enabled", area: "economy", label: "Ungdomsdrift ved sæsonskifte" },
   { key: "season_end_pool_reseed", area: "season", label: "Sæsonslut — genfyld rytterpulje" },
   { key: "season_end_skip_division_movement", area: "season", label: "Sæsonslut — spring op/nedrykning over" },
