@@ -499,6 +499,9 @@ const SECTION_DEFS = [
 const FAQ_KEYS = [
   "balanceVisibility",
   "ridersOffline",
+  // #5439: naeste noegle i FAQ-sektionen efter ridersOffline (ejerens eget
+  // udkast-placeringskrav i issuet).
+  "appUpdatesFaq",
   "passwordReset",
   "riderTransferTiming",
   "cancelParkedTransfer",
@@ -630,6 +633,15 @@ const FAQ_KEYS = [
   "forumReportFaq",
   "forumUnreadFaq", // #4118/#3451
   "betaGroupFaq", // #5259
+  // #5634-batch: seks ubesvarede mekanik-spoergsmaal fra forum/Discord,
+  // verificeret direkte i motor-koden (se PR-beskrivelsen for fil:linje).
+  // #5538 (national kerne) var allerede daekket af sections.board.nationalCoreRule
+  // og faar derfor ikke en duplikeret FAQ-entry her.
+  "sharpFlatTrainingDaysFaq",
+  "teamworkLeadershipTrainingFaq",
+  "riderPoolNationalityFaq",
+  "retirementAgeWindowFaq",
+  "scoutCancelRefundFaq",
 ];
 
 function buildSections(t, vars, flags) {
