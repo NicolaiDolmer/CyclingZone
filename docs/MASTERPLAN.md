@@ -6,7 +6,8 @@
 
 ## 🎯 Ejer-rangering 25/9 (planlægningssession c; kandidatliste + "det har vi aftalt": `private-handoffs/2026-09-25-planlaegning-c-rapport.md`)
 
-**1 · U23/junior færdige (ejer: plads 1, i dag)** 🟠 bølge: #5741 ingen ungdomsdrift ved skiftet (nøgle `academy_drift_enabled`, runbook-trin) · #5742 + #5743-rest flyt-knap "Move to U23/Junior" + My Team-linjen · beta-svar #5519 · derefter `youth_squad_pages` → alle + patch note (ejer-kør). Juniorer på U23 er tilladt (YOUTH_RULES §2, ejer 2/9): intet nyt valg.
+**1 · U23/junior færdige (ejer: plads 1)** 🔵 alt merget: #5741 drift-kontakt · #5744 flyt-knap · #5750 én flyt-dialog for alle trupper (7.301) · beta-svar #5519 klar · rest = `youth_squad_pages` → alle lørdag (ejer ser siderne, ejer-kør).
+**1b · Mandatet til alle (ejer-valg A 25/9, session e)** 🔵 flip lørdag ved skiftet som "årsmødet åbner sæsonen": #5751 rettet + resynket (0 forskel) · byggesten #5752 #5753 #5754 #5755 merget/i kø · plan + rækkefølge i #4859 · tillid mættet → #5757 (S4-spor).
 **2-9 · afventer ejer-rangering ("vi vælger den næste senere", 25/9):** Bestyrelsen live (#5633 fem beta-fund → #4859 flip; A/B før/efter) · Sæsonskiftet 27/9 (#5506 tændingsplan, S4-tørkørsel m. #5707-gaten, kørsler på dagen) · Værdierne (søndag 27/9 m. backup, #5461 rebase, A-omskrivning efter skiftet, admin-oprydning #5031) · Upkeep-rework #4385 (A: S4 / B: S5; anbefalet B) · Vækst måling (aktivitet pr. handling, mail-tracking: `email_events` tom, #5305) · Vækst roadmap-svar + beta (#5388, #5387-rest faner, beta-audit, beta-post) · Rest fra bølgerne (#5577 · #5692 A/B · #5677/#5433 · #5637 · #5271-rest · #5705 · røde #5695/#5696 · #5281 28/9) · ejer-punkter (#5305 #4453 #5484 #5493).
 
 ## 🔴 Brand (rettes før alt andet; intet merges uden ejer-go)

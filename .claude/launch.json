@@ -283,6 +283,36 @@
       }
     },
     {
+      "name": "dashboard-5755-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/feat-5755-season-start-guide-mandate/frontend"
+      ],
+      "port": 5255,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
+      "name": "boardroom-5754-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/feat-5754-mandate-tab-shows-proposed/frontend"
+      ],
+      "port": 5254,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
       "name": "notif-dashboard-5384-mock",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
