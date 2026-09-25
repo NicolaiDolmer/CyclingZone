@@ -862,7 +862,7 @@ export async function advanceMandateAtSeasonEnd(supabase, {
 
 export const MANDATE_OPENED_TITLE_CODE = "notif.boardMandateOpened.title";
 export const MANDATE_OPENED_MESSAGE_CODES = Object.freeze({
-  withChairman: "notif.boardMandateOpened.message",
+  withChairman: "notif.boardMandateOpened.messageWithChairman",
   noChairman: "notif.boardMandateOpened.messageNoChairman",
 });
 

@@ -317,7 +317,8 @@
     },
     "boardMandateOpened": {
       "title": "Bestyrelsen har indkaldt til årsmøde",
-      "message": "{chairman} har foreslået dit mandat for sæson {season}. Du har {days} dage, før bestyrelsen selv skriver under.",
+      "message": "Din bestyrelse har foreslået næste sæsons mandat. Tag den tid du har brug for. Du får en påmindelse, før bestyrelsen underskriver selv.",
+      "messageWithChairman": "{chairman} har foreslået dit mandat for sæson {season}. Du har {days} dage, før bestyrelsen selv skriver under.",
       "messageNoChairman": "Din bestyrelse har foreslået dit mandat for sæson {season}. Du har {days} dage, før bestyrelsen selv skriver under."
     },
     "boardMandateT3Reminder": {

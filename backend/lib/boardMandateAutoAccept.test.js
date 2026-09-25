@@ -164,7 +164,7 @@ test("processMandateAutoAcceptCron: dag 0 uden notits fra sæsonskiftet → cron
   assert.equal(notified[0].type, "board_update");
   assert.equal(notified[0].relatedId, "m1");
   assert.equal(notified[0].metadata.titleCode, "notif.boardMandateOpened.title");
-  assert.equal(notified[0].metadata.messageCode, "notif.boardMandateOpened.message");
+  assert.equal(notified[0].metadata.messageCode, "notif.boardMandateOpened.messageWithChairman");
   assert.equal(notified[0].metadata.messageParams.season, 4);
   assert.equal(notified[0].metadata.messageParams.days, 5, "korte vindue, dag 0 → 5 dage");
   assert.ok(notified[0].metadata.messageParams.chairman, "formandens navn er med");

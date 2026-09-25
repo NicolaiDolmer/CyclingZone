@@ -1107,7 +1107,7 @@ test("#5752 advanceMandateAtSeasonEnd: nyt proposed mandat → åbnings-notits s
   assert.equal(call.type, "board_update", "board_update → Discord-spejlet i makeBoardDmNotifier");
   assert.equal(call.relatedId, proposed.id, "relatedId = mandatets id, så cronens fallback kan se notitsen");
   assert.equal(call.metadata.titleCode, "notif.boardMandateOpened.title");
-  assert.equal(call.metadata.messageCode, "notif.boardMandateOpened.message");
+  assert.equal(call.metadata.messageCode, "notif.boardMandateOpened.messageWithChairman");
   assert.equal(call.metadata.messageParams.season, 5);
   assert.equal(call.metadata.messageParams.days, 5, "korte vindue (ingen last_seen) = 5 dage");
   assert.equal(call.title, "The board has called the annual meeting");

@@ -496,8 +496,14 @@ test("#5752 locale-skabeloner: alle fire Board-varianter findes i EN og DA med d
       }
     }
   }
-  assert.ok(en.notif.boardMandateOpened.messageNoChairman);
-  assert.ok(da.notif.boardMandateOpened.messageNoChairman);
+  for (const [lng, bundle] of [["en", en], ["da", da]]) {
+    const opened = bundle.notif.boardMandateOpened;
+    assert.ok(opened.messageWithChairman, `${lng} mangler messageWithChairman`);
+    assert.ok(opened.messageNoChairman, `${lng} mangler messageNoChairman`);
+    // Legacy-noeglen bruges af prod-notitser UDEN messageParams: den maa aldrig
+    // faa placeholders, ellers viser de gamle raekker raa "{chairman}".
+    assert.ok(opened.message && !opened.message.includes("{"), `${lng} boardMandateOpened.message maa ikke have params`);
+  }
 });
 
 test("#5752 loader: before = første kvittering, after = seneste, mål = seneste mandat-kvittering (ikke milepæl)", async () => {

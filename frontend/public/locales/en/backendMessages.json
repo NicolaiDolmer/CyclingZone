@@ -317,7 +317,8 @@
     },
     "boardMandateOpened": {
       "title": "The board has called the annual meeting",
-      "message": "{chairman} has proposed your season {season} mandate. You have {days} days before the board signs on its own.",
+      "message": "Your board has proposed next season's mandate. Take the time you need. You'll get a reminder before the board signs on its own.",
+      "messageWithChairman": "{chairman} has proposed your season {season} mandate. You have {days} days before the board signs on its own.",
       "messageNoChairman": "Your board has proposed your season {season} mandate. You have {days} days before the board signs on its own."
     },
     "boardMandateT3Reminder": {
