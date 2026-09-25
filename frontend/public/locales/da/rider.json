@@ -835,19 +835,15 @@
       "success": "Rytter fyret.",
       "errorPrefix": "Kunne ikke fyre:"
     },
-    "promote": {
-      "button": "Ryk op i senior-truppen",
-      "success": "Rytter rykket op i din senior-trup.",
-      "errorPrefix": "Kunne ikke rykke op:"
-    },
-    "demote": {
-      "button": "Flyt til {squad}",
-      "success": "Rytter flyttet til dit {squad}-hold.",
-      "errorPrefix": "Kunne ikke flytte rytter:",
-      "fullTooltip": "Dit {squad}-hold er fuldt. Frigør en plads der først."
+    "move": {
+      "button": "Flyt trup",
+      "success": {
+        "senior": "Rytter flyttet til din senior-trup.",
+        "u23": "Rytter flyttet til dit U23-hold.",
+        "junior": "Rytter flyttet til dit juniorhold."
+      }
     }
   },
-  "squadNames": { "u23": "U23", "junior": "junior" },
   "swapOffer": {
     "buttonOpen": "⇄ Foreslå byttehandel",
     "selectRider": "Vælg rytter du tilbyder",

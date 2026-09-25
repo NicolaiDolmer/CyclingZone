@@ -1,40 +1,37 @@
 // #2007 (EPIC #2000, Slice 3): egen-rytter-handlinger på selve rytter-profilen.
 //
 // Samler de handlinger der hidtil KUN levede i holdsidens RiderActionModal:
-//   • Senior-rytter:  forlæng kontrakt (#1720) · flyt til akademi/demote (#932,
-//     kun U23) · fyr/release (#1719, destruktiv).
-//   • Akademi-rytter: forlæng kontrakt (#2179, samme panel som senior — ingen
-//     op-/nedrykning krævet) · promovér til senior-truppen (#932).
+//   • forlæng kontrakt (#1720; #2179 også for ungdomsryttere)
+//   • flyt trup (#5748 "Move squad": senior / U23 / junior i én dialog)
+//   • fyr/release (#1719 senior, #4009 ungdom; destruktiv, sidst).
 //
 // Auktion + transferliste + bud på andres ryttere bor allerede inline på
 // RiderStatsPage og dubleres IKKE her. Komponenten mountes kun for egne,
 // ikke-pending, ikke-pensionerede ryttere (forælderen gater).
 //
-// Akademi-delen ligger i en egen sub-komponent (RiderAcademyActions) der KUN
-// mountes når en akademi-handling faktisk kan være relevant (akademi-rytter eller
-// U23-senior) — så useAcademy (/api/academy/me) ikke hentes på enhver senior-profil.
+// Trup-delen ligger i en egen sub-komponent (RiderMoveSquadAction) der KUN
+// mountes når en flytning faktisk er mulig (ungdomsrytter eller senior i
+// ungdomsalder), så useAcademy (/api/academy/me) ikke hentes på enhver
+// senior-profil.
 //
 // Æstetik (design-SSOT docs/design/rider-page): editorial cz-tokens, ingen slop
 // (ingen glow/gradient/emoji), forlæng/fyr som inline udvidelses-paneler (samme
-// mønster som TransferListButton), akademi op/ned via den konsekvens-bevidste
-// AcademyTransferConfirmModal. Player-facing copy: EN først, DA under.
+// mønster som TransferListButton), trup-skift via den konsekvens-bevidste
+// MoveSquadDialog. Player-facing copy: EN først, DA under.
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../lib/intl.js";
 import { resolveApiError } from "../../lib/apiError.js";
-import { isU23, getRiderAge } from "../../lib/riderAge.js";
-import { demoteNaturalTargetSquad, demoteSquadOptions } from "../../lib/squadTarget.ts"; // #5742
-import { projectSeniorSalary } from "../../lib/marketValues.js";
-import { keepsExistingContractOnPromote } from "../../lib/academyPromoteContract.js";
+import { getRiderAge } from "../../lib/riderAge.js";
+import { currentSquadOf, hasMoveTarget } from "../../lib/squadTarget.ts"; // #5748
 import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContractActions.js";
 import { extendCapGate } from "../../lib/extendCapGate.js";
 import { useAcademy } from "../../lib/useAcademy.js";
-import { demoteCapLabels } from "../../lib/squadCaps.ts"; // #5568
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 // #5089: backend lukker rytterens aabne transfer-listing som zombie-guard ved
 // release (api.js:1834), saa den delte GET /api/transfers-kopi bliver stale.
 import { sharedRequestCache, SHARED_KEYS } from "../../lib/sharedRequestCache.js";
-import { AcademyTransferConfirmModal } from "../AcademyTransferConfirmModal.jsx";
+import MoveSquadDialog from "../MoveSquadDialog.tsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 
 // Trigger-knapper (ejer-feedback 3/7): appens delte buttonStyles, kompakt
@@ -58,203 +55,41 @@ function BusyDot() {
   );
 }
 
-// Akademi returnerer rå fejl-koder i `error` (ikke { errorCode }) — pak dem så
-// resolveApiError kan oversætte via errors:api.<code>.
-function academyError(code, t, fallback) {
-  return resolveApiError({ errorCode: code }, t, fallback);
-}
-
-// Akademi op/ned. Egen sub-komponent så useAcademy (/api/academy/me) kun hentes
-// når relevant. Kalder onResult(ok, msg) for den delte feedback-boks i forælderen.
+// #5748 (ejer-go A 25/9): "Move squad", ÉN knap for alle trup-skift. Før stod
+// der to knapper med målet låst i navnet ("Move to Junior" for en senior i
+// junior-alder, "Promote to senior squad" for en ungdomsrytter), og en
+// juniorrytter kunne slet ikke komme på U23-holdet. Nu vælges målet inde i
+// dialogen (MoveSquadDialog, samme komponent som My Team åbner), med alle tre
+// trupper, pladser og grunden når en række er spærret.
 //
-// #2849 KS2: forælderen skal vide om promote-knappen rent faktisk bliver vist
-// (afhænger af academy.enabled, som kun denne sub-komponent kender), for at
-// kunne demotere Forlæng-knappen til secondary — ellers står to gold-primærer
-// side om side (kontrakt-brud, PAGE_TEMPLATES.md "one gold primary per view").
-// onPromoteVisibleChange er valgfri (den senior-demote-mount nedenfor sender
-// den ikke — der er intet promote-tilfælde at koordinere med der).
-function RiderAcademyActions({ rider, isAcademyRider, canDemote, seasonAge = null, onResult, onChanged, onPromoteVisibleChange }) {
+// Egen sub-komponent så useAcademy (/api/academy/me) kun hentes når en flytning
+// overhovedet er mulig (ungdomsrytter, eller senior i ungdomsalder). Knappen er
+// secondary: rytterprofilens eneste guld-primær er Forlæng (én gold pr. view).
+// Kalder onResult(ok, msg) for den delte feedback-boks i forælderen.
+function RiderMoveSquadAction({ rider, seasonYear, onResult, onChanged }) {
   const { t } = useTranslation("rider");
   const academy = useAcademy();
-  // { direction, squad, newSalary, currentSalary, capLabel, capAfterLabel, capSquad, racesCleared } | null
-  const [academyModal, setAcademyModal] = useState(null);
-  const [academyBusy, setAcademyBusy] = useState(false);
-  const riderName = `${rider.firstname} ${rider.lastname}`;
+  const [open, setOpen] = useState(false);
 
-  // #5742: den trup rytteren rykker ned i, ud fra sæsonalderen alene (samme
-  // regel som backend academyTransfer.js' demoteTargetSquad uden et eksplicit
-  // ønsket-trup-argument). 'u23' er samme forsvars-fallback som backend bruger
-  // ved en uklar alder — canDemote (isU23) er allerede sand her, så dette er
-  // reelt aldrig null, men et fallback forhindrer en tom knap-tekst.
-  const demoteTargetSquad = demoteNaturalTargetSquad(seasonAge) ?? "u23";
-  // #5742: fuld liste (natural + evt. "opad"-alternativ U23) bruges KUN til at
-  // afgøre om trigger-knappen skal spærres (triggerSquadFull nedenfor) — den
-  // afgørelse er uafhængig af om alternativet reelt kan VÆLGES i dialogen.
-  const demoteOptions = demoteSquadOptions(seasonAge);
-  // #5742 (reviewer-fund, blokerende): dialogens vælger må IKKE tilbyde U23
-  // til en junior-alder rytter — /api/academy/demote sender ikke det valgte
-  // mål med (se confirmAcademy ovenfor), så et U23-valg her ville flytte
-  // rytteren til junior alligevel og success-teksten ville lyve om resultatet.
-  // Kun den naturlige trup vises, indtil en route understøtter targetSquad
-  // (backend-ændring, ejer-gated af briefen for denne feature).
-  const demoteModalOptions = demoteOptions.filter(o => o.isDefault);
-
-  useEffect(() => {
-    onPromoteVisibleChange?.(isAcademyRider && academy.enabled);
-    return () => onPromoteVisibleChange?.(false);
-  }, [isAcademyRider, academy.enabled, onPromoteVisibleChange]);
-
-  function openPromote() {
-    // #3620: en rytter der allerede har en kontrakt beholder den ved oprykning
-    // — så lønnen bliver hverken erstattet eller genberegnet, og modalen skal
-    // hverken love det ene eller vise et projiceret tal der aldrig skrives.
-    const keepsContract = keepsExistingContractOnPromote(rider);
-    setAcademyModal({
-      direction: "promote",
-      newSalary: keepsContract ? rider.salary : projectSeniorSalary(rider),
-      keepsContract,
-      currentSalary: null,
-      capLabel: `${academy.seniorCount} / ${academy.seniorMax}`,
-      capAfterLabel: `${academy.seniorCount + 1} / ${academy.seniorMax}`,
-      racesCleared: null,
-    });
-  }
-
-  async function openDemote() {
-    // #3784/#3805: newSalary + racesCleared + racesOngoing kommer ALLE fra
-    // backendens academy-demote-quote-route, som kalder LIGE PRÆCIS de samme
-    // funktioner (demoteSalary + countFutureRaceEntries/countOngoingRaceEntries)
-    // som selve demote() bruger til at udføre flyttet. Ingen frontend-JS-kopi
-    // af løn-formlen tilbage her — det tidligere projectYouthSalary-kald
-    // brugte rider-objektet fra RiderStatsPage's SELECT, som ALDRIG hentede
-    // current_production_value, så formlen faldt tilbage til base 1000 og viste
-    // en løn der intet havde med rytterens faktiske produktion at gøre (#3784:
-    // dialog lovede 324, rytteren endte på 5.191). Fallback ved netværksfejl:
-    // vis dialogen med newSalary=null (modalen viser "..." fremfor et forkert tal).
-    let quote = null;
-    try {
-      const { ok, data } = await fetchRiderQuote(rider.id, "academy-demote-quote");
-      if (ok) quote = data;
-    } catch { /* fallback nedenfor */ }
-    // #5568: loft-rækken viser den trup rytteren rykker ned i (U23 eller
-    // junior) og DENS loft, begge fra quoten (samme trup-valg som demote()).
-    // Før talte den alle akademiryttere mod 8 og kunne vise "9 / 8".
-    const cap = demoteCapLabels(quote);
-    setAcademyModal({
-      direction: "demote",
-      // #5742: hvilken trup dialogen p.t. peger på — quotens egen (default)
-      // valg til at starte med; skifter manageren i vælgeren, opdaterer
-      // handleSquadChange den her, så capFull-tjekket nedenfor følger med.
-      squad: cap?.capSquad ?? demoteTargetSquad,
-      newSalary: quote?.newSalary ?? null,
-      currentSalary: quote?.currentSalary ?? rider.salary ?? null,
-      // #4582: backend afgør om kontrakten arves (hasCompleteContract på en frisk
-      // server-SELECT) — frontend gætter IKKE ved at sammenligne de to løn-tal.
-      // Falder quoten på gulvet (netværk), er false den sikre defaults: dialogen
-      // lover ikke en arv den ikke har fået bekræftet.
-      keepsContract: quote?.keepsContract ?? false,
-      capSquad: cap?.capSquad ?? null,
-      capLabel: cap?.capLabel ?? null,
-      capAfterLabel: cap?.capAfterLabel ?? null,
-      racesCleared: quote?.racesCleared ?? 0,
-      racesOngoing: quote?.racesOngoing ?? 0,
-    });
-  }
-
-  // #5742: manageren skiftede mål-trup i modalens vælger (kun muligt for en
-  // junior-alder rytter, opad til U23). Gemmes så capFull-tjekket og selve
-  // POST'en (confirmAcademy) bruger det VALGTE mål, ikke kun quotens default.
-  function handleSquadChange(squad) {
-    setAcademyModal(prev => (prev ? { ...prev, squad } : prev));
-  }
-
-  // #5742: er den p.t. VALGTE mål-trup fuld? academy.squads er allerede
-  // hentet (useAcademy → /api/academy/me) og dækker BEGGE ungdomstrupper —
-  // så tjekket holder selv for det alternative (opad) valg, som quoten (kun
-  // beregnet for dens egen default-trup) ikke kan bekræfte tal for.
-  const selectedDemoteSquad = academyModal?.squad ?? null;
-  const selectedSquadCount = selectedDemoteSquad ? academy.squads?.[selectedDemoteSquad] : null;
-  const demoteCapFull = selectedSquadCount?.used != null && selectedSquadCount?.max != null
-    && selectedSquadCount.used >= selectedSquadCount.max;
-
-  async function confirmAcademy(squad) {
-    if (!academyModal) return;
-    setAcademyBusy(true);
-    const isPromote = academyModal.direction === "promote";
-    // #5742 (reviewer-fund, blokerende): /api/academy/demote læser INTET
-    // valgt mål-trup fra req.body — den flytter altid til den trup sæsonalderen
-    // selv udleder (demoteTargetSquad() uden requestedSquad, se
-    // backend/lib/academyTransfer.js). demoteRider() (useAcademy.js) tager
-    // derfor heller ikke et 2. argument. Briefen for denne feature forbyder
-    // backend-ændringer, så en U23-vælger her ville love et mål dialogen
-    // aldrig kunne levere. Dialogen viser derfor (se squadOptions nedenfor)
-    // KUN den naturlige trup, indtil en route understøtter targetSquad —
-    // `squad` er dermed altid den samme trup demoteRider() rent faktisk
-    // rammer, og success-teksten lyver ikke om resultatet.
-    const res = isPromote ? await academy.promoteRider(rider.id) : await academy.demoteRider(rider.id, squad);
-    setAcademyBusy(false);
-    setAcademyModal(null);
-    if (res.ok) {
-      const squadLabel = squad ? t(`squadNames.${squad}`) : "";
-      onResult(true, isPromote ? t("manage.promote.success") : t("manage.demote.success", { squad: squadLabel }));
-      onChanged?.();
-    } else {
-      const prefix = t(isPromote ? "manage.promote.errorPrefix" : "manage.demote.errorPrefix");
-      onResult(false, `${prefix} ${academyError(res.error, t, t("blocked.errorFallback"))}`);
-    }
-  }
-
-  // Akademiet slået fra (flag) → ingen op/ned-handlinger at vise.
+  // Akademiet slået fra (flag) → ingen trup-handling at vise.
   if (!academy.enabled) return null;
 
-  // #5742: mål-truppen kan allerede være fuld FØR spilleren overhovedet
-  // klikker — trigger-knappen spærres da + viser grunden, i stedet for et
-  // dødt klik der først fejler i backend-svaret (samme mønster som
-  // AcademyPage's intake-kort, isFull/fullTooltip). En junior-alder rytter
-  // har OGSÅ U23 som muligt mål (opad tilladt) — spær derfor kun knappen når
-  // ALLE hans valg er fulde, ellers spærrer et fyldt junior-hold ham fra at
-  // vælge det ledige U23-hold i dialogen (CodeRabbit-fund).
-  function isSquadFullFor(squad) {
-    const count = academy.squads?.[squad];
-    return count?.used != null && count?.max != null && count.used >= count.max;
+  function handleMoved(squad) {
+    setOpen(false);
+    onResult(true, t(`manage.move.success.${squad}`));
+    onChanged?.();
   }
-  const triggerSquadFull = !isAcademyRider && canDemote
-    && demoteOptions.length > 0 && demoteOptions.every(o => isSquadFullFor(o.squad));
 
   return (
     <>
-      {isAcademyRider && (
-        <button type="button" onClick={openPromote} className={buttonClass({ variant: "primary" })}>
-          {t("manage.promote.button")}
-        </button>
+      <button type="button" onClick={() => setOpen(true)} data-testid="move-squad-button"
+        className={buttonClass({ variant: "secondary" })}>
+        {t("manage.move.button")}
+      </button>
+      {open && (
+        <MoveSquadDialog rider={rider} seasonYear={seasonYear}
+          onClose={() => setOpen(false)} onMoved={handleMoved} />
       )}
-      {!isAcademyRider && canDemote && (
-        <button type="button" onClick={openDemote} disabled={triggerSquadFull}
-          title={triggerSquadFull ? t("manage.demote.fullTooltip", { squad: t(`squadNames.${demoteTargetSquad}`) }) : undefined}
-          className={buttonClass({ variant: "secondary" })}>
-          {t("manage.demote.button", { squad: t(`squadNames.${demoteTargetSquad}`) })}
-        </button>
-      )}
-      <AcademyTransferConfirmModal
-        show={Boolean(academyModal)}
-        direction={academyModal?.direction}
-        riderName={riderName}
-        newSalary={academyModal?.newSalary}
-        currentSalary={academyModal?.currentSalary}
-        capLabel={academyModal?.capLabel}
-        capAfterLabel={academyModal?.capAfterLabel}
-        capSquad={academyModal?.capSquad ?? null}
-        squadOptions={academyModal?.direction === "demote" ? demoteModalOptions : []}
-        onSquadChange={handleSquadChange}
-        capFull={demoteCapFull}
-        capFullMax={selectedSquadCount?.max ?? null}
-        racesCleared={academyModal?.racesCleared}
-        racesOngoing={academyModal?.racesOngoing}
-        keepsContract={!!academyModal?.keepsContract}
-        busy={academyBusy}
-        onCancel={() => { if (!academyBusy) setAcademyModal(null); }}
-        onConfirm={confirmAcademy}
-      />
     </>
   );
 }
@@ -263,13 +98,12 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   const { t } = useTranslation("rider");
 
   const isAcademyRider = Boolean(rider.is_academy);
-  // #3071: sæson-alder (fra useActiveSeasonYear via kaldersiden RiderStatsPage),
-  // ikke wall-clock — ellers kunne en 23-årig i S2 stadig demotes som U23.
-  const canDemote = !isAcademyRider && isU23(rider.birthdate, seasonYear);
-  // #5742: sæsonalderen (tal, ikke kun U23-boolean'en ovenfor) — RiderAcademyActions
-  // bruger den til at navngive mål-truppen (U23 vs. junior) og vise begge valg
-  // for en junior-alder rytter (opad tilladt).
-  const demoteSeasonAge = getRiderAge(rider.birthdate, seasonYear);
+  // #5748: "Move squad" vises når rytteren har mindst ét lovligt mål
+  // (squadTarget.hasMoveTarget): enhver ungdomsrytter (opad er altid tilladt) og
+  // en senior i ungdomsalder. #3071: sæson-alder (fra useActiveSeasonYear via
+  // kaldersiden RiderStatsPage), ikke wall-clock.
+  const seasonAge = getRiderAge(rider.birthdate, seasonYear);
+  const canMoveSquad = hasMoveTarget(currentSquadOf(rider, seasonAge), seasonAge);
 
   // Inline udvidelses-paneler (forlæng/fyr).
   const [extendOpen, setExtendOpen] = useState(false);
@@ -319,11 +153,10 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     capSeason: extendCapSeason,
   });
 
-  // #2849 KS2: akademi-rytterens promote-knap er den sjældnere/vigtigere
-  // handling — når den er synlig demoteres Forlæng-triggeren til secondary, så
-  // der aldrig står to gold-primærer i rækken samtidig (én gold pr. view).
-  const [promoteVisible, setPromoteVisible] = useState(false);
-  const extendVariant = promoteVisible ? "secondary" : "primary";
+  // #2849 KS2 / #5748: Forlæng er rækkens eneste gold-primær. "Move squad" er
+  // secondary for både senior- og ungdomsryttere, så der aldrig står to
+  // gold-primærer side om side (én gold pr. view).
+  const extendVariant = "primary";
 
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseQuote, setReleaseQuote] = useState(null);
@@ -679,41 +512,17 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         </div>
       )}
 
-      {isAcademyRider ? (
-        /* Akademi-rytter: forlæng (#2179, samme sted/stil som senior) · promovér
-           (egen flow) · evt. markeds-handlinger fra parent · fyr (#4009,
-           destruktiv sidst — samme rækkefølge/placering som senior-fyr). */
-        <>
-          {extendPanel}
-          <RiderAcademyActions
-            rider={rider}
-            isAcademyRider
-            onResult={flashResult}
-            onChanged={onChanged}
-            onPromoteVisibleChange={setPromoteVisible}
-          />
-          {marketActions}
-          {releasePanel}
-        </>
-      ) : (
-        /* Senior-rytter, prototypens rækkefølge: forlæng (guld) · flyt til akademi
-           (kun U23) · markeds-handlinger (salg/auktion, injiceret) · fyr (destruktiv sidst). */
-        <>
-          {extendPanel}
-
-          {/* Flyt til akademi (kun U23 + akademi aktivt) — mountes kun ved canDemote. */}
-          {canDemote && (
-            <RiderAcademyActions rider={rider} isAcademyRider={false} canDemote seasonAge={demoteSeasonAge}
-              onResult={flashResult} onChanged={onChanged} />
-          )}
-
-          {/* Markeds-handlinger (sæt til salg · start auktion) — injiceret af
-              parent så den destruktive Frigiv står SIDST i rækken. */}
-          {marketActions}
-
-          {releasePanel}
-        </>
+      {/* Samme rækkefølge for senior- og ungdomsryttere: forlæng (guld) · flyt
+          trup (#5748, kun med et lovligt mål + akademi aktivt) · markeds-
+          handlinger (salg/auktion, injiceret af parent) · fyr (destruktiv
+          sidst; ruten vælges af isAcademyRider, #4009). */}
+      {extendPanel}
+      {canMoveSquad && (
+        <RiderMoveSquadAction rider={rider} seasonYear={seasonYear}
+          onResult={flashResult} onChanged={onChanged} />
       )}
+      {marketActions}
+      {releasePanel}
     </div>
   );
 }

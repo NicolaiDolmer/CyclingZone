@@ -53,10 +53,11 @@ test("en rytter uden felterne behandles som kontraktløs", () => {
 
 // Kilde-parity: reglen må ikke få en fjerde kopi. Begge flader der åbner
 // promote-modalen skal kalde helperen — ikke gentage betingelsen.
+// #5748: rytterprofilens og My Teams oprykning sker nu i den delte MoveSquadDialog.
 test("begge promote-flader bruger den delte betingelse", () => {
   const academyPage = read("../pages/AcademyPage.jsx");
-  const riderActions = read("../components/rider/RiderManageActions.jsx");
-  for (const [name, src] of [["AcademyPage", academyPage], ["RiderManageActions", riderActions]]) {
+  const moveDialog = read("../components/MoveSquadDialog.tsx");
+  for (const [name, src] of [["AcademyPage", academyPage], ["MoveSquadDialog", moveDialog]]) {
     assert.match(src, /keepsExistingContractOnPromote/, `${name} skal bruge den delte betingelse`);
     assert.match(src, /keepsContract/, `${name} skal give modalen flaget`);
   }
