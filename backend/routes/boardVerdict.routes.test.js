@@ -48,8 +48,8 @@ function baseTables(overrides = {}) {
       season_number: 3, goals: [{}, {}, {}, {}], signed_at: "2026-08-01T10:00:00Z",
     }],
     board_satisfaction_events: [
-      { mandate_id: MANDATE_ID, created_at: "2026-08-02T10:00:00Z", satisfaction_before: 50, satisfaction_after: 52, goals_met: 1, goals_total: 4 },
-      { mandate_id: MANDATE_ID, created_at: "2026-09-20T10:00:00Z", satisfaction_before: 60, satisfaction_after: 64, goals_met: 3, goals_total: 4 },
+      { team_id: TEAM_ID, mandate_id: MANDATE_ID, created_at: "2026-08-02T10:00:00Z", satisfaction_before: 50, satisfaction_after: 52, goals_met: 1, goals_total: 4 },
+      { team_id: TEAM_ID, mandate_id: MANDATE_ID, created_at: "2026-09-20T10:00:00Z", satisfaction_before: 60, satisfaction_after: 64, goals_met: 3, goals_total: 4 },
     ],
     team_board_members: [
       { team_id: TEAM_ID, archetype_key: "sponsoraten", is_chairman: false, assigned_at: "2026-08-01T00:00:00Z" },

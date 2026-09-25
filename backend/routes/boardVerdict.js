@@ -85,10 +85,13 @@ export async function buildBoardVerdict({
   if (!mandate) return { enabled: false };
 
   // To afgrænsede opslag i stedet for hele feedet: første og seneste kvittering.
+  // team_id står med for indeksets skyld (idx_board_satisfaction_events_team_id);
+  // mandate_id har intet eget indeks, så filteret rammer kun holdets egne rækker.
   const [firstEvent, lastEvent, members, team] = await Promise.all([
     must(
       supabase.from("board_satisfaction_events")
         .select("satisfaction_before")
+        .eq("team_id", teamId)
         .eq("mandate_id", mandate.id)
         .order("created_at", { ascending: true })
         .limit(1)
@@ -98,6 +101,7 @@ export async function buildBoardVerdict({
     must(
       supabase.from("board_satisfaction_events")
         .select("satisfaction_after, goals_met, goals_total")
+        .eq("team_id", teamId)
         .eq("mandate_id", mandate.id)
         .order("created_at", { ascending: false })
         .limit(1)
