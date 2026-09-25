@@ -32,6 +32,9 @@ import {
   loadPatchNotesMeta, isPatchNotesUnread, readLastSeenPatchNotes, writeLastSeenPatchNotes,
   buildNavDotFlags, resolveNavDot,
 } from "../lib/patchNotesUnread.js";
+import {
+  isRoadmapUnread, readLastSeenRoadmap, writeLastSeenRoadmap,
+} from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
@@ -104,7 +107,11 @@ function buildBottomItems(t, team) {
     { to: "/pro",         label: t("nav.item.pro") },
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
-    { to: "/roadmap",     label: t("nav.item.roadmap") },
+    // #5673: guld-prik når nyeste roadmap_items.created_at er nyere end
+    // spillerens localStorage-lastSeen — se lib/roadmapUnread.ts + Layout()'s
+    // egne useEffects nedenfor. Samme prik-recipe (og storage-strategi) som
+    // Patch Notes lige nedenfor.
+    { to: "/roadmap",     label: t("nav.item.roadmap"), dot: true, dotLabel: t("a11y.unreadRoadmap") },
     // #3811: guld-prik når nyeste patch note-dato er nyere end spillerens
     // localStorage-lastSeen — se lib/patchNotesUnread.js + Layout()'s egne
     // useEffects nedenfor. dotFlags løses op i NavItem, samme recipe som badge.
@@ -265,6 +272,28 @@ async function fetchForumUnread(headers) {
     const res = await apiFetch(`${API}/api/forum/unread-status`, { headers }, { source: "forum-unread" });
     if (!res.ok) return null; // dækker også limited/unauthorized
     return typeof res.data?.has_unread === "boolean" ? res.data.has_unread : null;
+  } catch {
+    return null;
+  }
+}
+
+// #5673: nav-prikkens kilde for Roadmap — ét let kald (kun created_at,
+// nyeste først, limit 1), uafhængig af session ligesom patch-notes-metaen
+// ovenfor. Ikke et nyt endpoint: roadmap_items har allerede en offentlig
+// SELECT-policy for approved=true rows (samme query RoadmapPage selv kører
+// for hele listen). Fejl (netværk) lader prikkens sidst kendte tilstand stå
+// i stedet for at fejle synligt — samme ikke-kritisk-UI-filosofi som forum-
+// og patch-notes-prikkerne.
+async function fetchLatestRoadmapDate() {
+  try {
+    const { data, error } = await supabase
+      .from("roadmap_items")
+      .select("created_at")
+      .eq("approved", true)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error || !data?.length) return null;
+    return data[0].created_at ?? null;
   } catch {
     return null;
   }
@@ -468,6 +497,11 @@ export default function Layout() {
   // boolean NavItem viser prikken ud fra. Se effekten nederst i komponenten.
   const [patchNotesLatestDate, setPatchNotesLatestDate] = useState(null);
   const [patchNotesUnread, setPatchNotesUnread]         = useState(false);
+  // #5673: samme prik-recipe, men nyeste dato kommer fra roadmap_items
+  // (Supabase, offentligt læsbar — se fetchLatestRoadmapDate nedenfor) i
+  // stedet for den statiske patch-notes-meta.json.
+  const [roadmapLatestDate, setRoadmapLatestDate]       = useState(null);
+  const [roadmapUnread, setRoadmapUnread]               = useState(false);
   // #4118/#3451: gul prik ved "Forum" i navigationen — samme prik-recipe som
   // Patch Notes, men serverdrevet (forumUnread kommer fra
   // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
@@ -758,6 +792,31 @@ export default function Layout() {
     }
   }, [patchNotesLatestDate, location.pathname]);
 
+  // #5673: henter kun `created_at` for det nyeste roadmap-punkt (ikke hele
+  // listen — den fulde items-hentning bor i RoadmapPage.jsx), uafhængig af
+  // session ligesom patch-notes-metaen ovenfor.
+  useEffect(() => {
+    let active = true;
+    fetchLatestRoadmapDate().then((date) => {
+      if (active && date) setRoadmapLatestDate(date);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // #5673: samme mark-as-læst-recipe som Patch Notes ovenfor — besøg af
+  // /roadmap nulstiller lastSeen til nyeste kendte created_at. RoadmapPage.jsx
+  // skriver samme nøgle (lib/roadmapUnread.ts) ud fra sin egen, fulde
+  // items-liste, så de to aldrig kan komme ud af sync.
+  useEffect(() => {
+    if (!roadmapLatestDate) return;
+    if (location.pathname.startsWith("/roadmap")) {
+      writeLastSeenRoadmap(roadmapLatestDate);
+      setRoadmapUnread(false);
+    } else {
+      setRoadmapUnread(isRoadmapUnread(roadmapLatestDate, readLastSeenRoadmap()));
+    }
+  }, [roadmapLatestDate, location.pathname]);
+
   useEffect(() => {
     if (!session) return;
     heartbeatRef.current = setInterval(async () => {
@@ -811,6 +870,9 @@ export default function Layout() {
   const dotFlags = {
     ...buildNavDotFlags({ patchNotesUnread }),
     "/forum": forumUnread,
+    // #5673: samme prik-recipe som Patch Notes/Forum — se roadmapUnread-
+    // effekterne + fetchLatestRoadmapDate ovenfor.
+    "/roadmap": roadmapUnread,
     // #4983: prikken ved Planlægning tændes af serverens påmindelse. "none"
     // (ingen manglende trup, eller spilleren har slået den fra) = ingen prik.
     "/planning": selectionReminder.tone !== "none",
