@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,15 +14,27 @@ import { fileURLToPath } from "node:url";
 // BLOKERINGS-logik (hvad der stopper en commit/edit) er ikke rørt.
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const execPath = spawnSync("git", ["--exec-path"], { encoding: "utf8" }).stdout.trim();
-const gitRoot = resolve(execPath, "../../..");
-const bash = join(gitRoot, "bin", process.platform === "win32" ? "bash.exe" : "bash");
+// CodeRabbit (denne PR): `git --exec-path` peger paa Gits EGNE git-core-
+// programmer, ikke paa bash — kun Git for Windows' medbragte layout har en
+// forudsigelig `bin/bash.exe` relativt til den sti. Paa Unix bruges derfor
+// bare `bash` fra PATH; git-exec-path-udledningen er kun noedvendig paa
+// Windows, hvor Git Bash ellers ikke noedvendigvis ligger paa PATH.
+const bash = (() => {
+  if (process.platform !== "win32") return "bash";
+  const execPath = spawnSync("git", ["--exec-path"], { encoding: "utf8" }).stdout.trim();
+  const gitRoot = resolve(execPath, "../../..");
+  return join(gitRoot, "bin", "bash.exe");
+})();
 
 // Kører secret_sanitize_detail() fra resolve-python.sh på en midlertidig
 // "scanner stderr"-fixtur og returnerer resultatet. Stien til fixturen gives
 // som RELATIV sti fra repo-roden (cwd), så absolutte Windows-stier med
 // backslash aldrig skal ind i en bash -c-streng.
 function sanitize(content) {
+  // CodeRabbit (denne PR): .codex.local er gitignored og derfor IKKE
+  // garanteret at findes i et frisk checkout — mkdtempSync opretter ikke
+  // manglende foraeldre-mapper.
+  mkdirSync(join(root, ".codex.local"), { recursive: true });
   const dir = mkdtempSync(join(root, ".codex.local/secret-sanitize-"));
   try {
     writeFileSync(join(dir, "stderr.txt"), content, "utf8");
