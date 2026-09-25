@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { climbSelectionHook, climbSeverity01, effortClimbScoreFactor } from "./climbSelection.ts";
+import { climbSelectionHook, climbSeverity01, effortClimbScoreFactor, effortClimbScorePenalty } from "./climbSelection.ts";
 import { EFFORT_GAIN_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import type {
@@ -394,6 +394,41 @@ test("#5580 effortClimbScoreFactor: ikke-stigende op ad trappen og aldrig negati
     }),
     { numRuns: 200, seed: 5580 },
   );
+});
+
+test("#5580 effortClimbScorePenalty: kun de lave trin, aldrig negativ, ikke-stigende op ad trappen", () => {
+  const penalty = EFFORT_GAIN_EXTRA_TUNING.climbScorePenalty;
+  assert.equal(penalty.normal, 0);
+  assert.equal(penalty.protect, 0);
+  assert.equal(penalty.all_out, 0);
+  assert.ok(penalty.save > 0 && penalty.grupetto >= penalty.save, "save og grupetto skal give slip tidligere");
+  fc.assert(
+    fc.property(
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      (severity, deficit) => {
+        const values = LADDER.map((e) => effortClimbScorePenalty(e, severity, deficit));
+        for (let i = 1; i < values.length; i++) {
+          assert.ok(values[i]! <= values[i - 1]!, `${LADDER[i]} straffes mere end ${LADDER[i - 1]}`);
+        }
+        for (const v of values) assert.ok(v >= 0);
+        assert.equal(effortClimbScorePenalty("normal", severity, deficit), 0);
+      },
+    ),
+    { numRuns: 200, seed: 5580 },
+  );
+});
+
+test("#5580 effortClimbScorePenalty: 0 uden stigning og 0 for gruppens bedste klatrer, ikke-faldende i underskuddet", () => {
+  assert.equal(effortClimbScorePenalty("save", 0, 0.5), 0, "ingen stigning, ingen udvaelgelse");
+  assert.equal(effortClimbScorePenalty("save", 1, 0), 0, "den staerkeste i gruppen kan ikke give slip fra svagere");
+  let prev = -1;
+  for (const deficit of [0, 0.02, 0.05, 0.1, 0.3, 1]) {
+    const v = effortClimbScorePenalty("grupetto", 0.8, deficit);
+    assert.ok(v >= prev, `ikke-faldende i underskuddet (${deficit})`);
+    prev = v;
+  }
+  assert.equal(effortClimbScorePenalty(undefined, 1, 1), 0);
 });
 
 /**

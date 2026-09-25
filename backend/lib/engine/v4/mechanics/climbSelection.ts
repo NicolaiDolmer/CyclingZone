@@ -77,6 +77,13 @@ export function effortClimbScoreFactor(
  * (0-1). Faktoren ovenfor kan ikke flytte en save-rytter, fordi hans score er
  * lille (han har sparet sin W'); et led der laegges til goer.
  *
+ * Leddet vejer kun fuldt for en rytter der ER under gruppens bedste klatrer
+ * (`deficit01` >= `fullAtDeficit`), og er 0 for gruppens bedste: den staerkeste
+ * i gruppen kan ikke "give slip" fra svagere ryttere, for en udskilt gruppe
+ * koerer i sit eget tempo, og en staerk rytter alene ville koere fra dem (fanget
+ * af grupetto-tvilling-testen i segmentLoop.effortCost.test.ts). Leddet er
+ * ikke-faldende i underskuddet, saa evne-monotonien inden for samme trin holder.
+ *
  * Kontrakt: aldrig negativt (en straf er aldrig en bonus), 0 for `normal` og
  * op, ikke-stigende op ad trappen (laast af test), og 0 uden stigning (ingen
  * stigning, ingen udvaelgelse, #4604).
@@ -86,12 +93,16 @@ export function effortClimbScoreFactor(
 export function effortClimbScorePenalty(
   effort: EffortLevel | undefined,
   severity01: number,
+  deficit01: number,
   penalty: Readonly<Record<EffortLevel, number>> = EFFORT_GAIN_EXTRA_TUNING.climbScorePenalty,
+  fullAtDeficit: number = EFFORT_GAIN_EXTRA_TUNING.climbPenaltyFullAtDeficit,
 ): number {
   const p = effort ? penalty[effort] : 0;
   if (!Number.isFinite(p) || p <= 0) return 0;
   const severity = Number.isFinite(severity01) ? clamp(severity01, 0, 1) : 0;
-  return p * severity;
+  const deficit = Number.isFinite(deficit01) ? clamp(deficit01, 0, 1) : 0;
+  const gate = fullAtDeficit > 0 ? clamp(deficit / fullAtDeficit, 0, 1) : 1;
+  return p * severity * gate;
 }
 
 /**
@@ -242,7 +253,7 @@ function computeSelections(
     // effortClimbScoreFactor — plus de lave trins straf-led (se
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
     const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit);
-    const effortPenalty = effortClimbScorePenalty(entrant.effort, severity);
+    const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
