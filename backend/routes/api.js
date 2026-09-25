@@ -3087,7 +3087,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
 //
 // TO STIER, afgjort af `training_tick_per_race_day`:
 //
-//   flag OFF (i dag) — den gamle kalenderdags-sti (#1305): ét tick på tick_date,
+//   `training_tick_per_race_day` OFF, med `daily_training_enabled` ON — den gamle
+//     kalenderdags-sti (#1305): ét tick på tick_date,
 //     hverken season_id, game_day eller squad skrives.
 //
 //   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Kør dagens
@@ -3101,7 +3102,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
 // stier her trænes derfor nu ens; `bonus_applied` i training_day_runs er en legacy/
 // audit-kolonne (jf. dailyTrainingEngine.js) uden længere effekt på væksten.
 //
-// Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
+// Idempotent: samme dag → 409 already_trained_today.
+// `daily_training_enabled` OFF → 409 daily_training_disabled.
 // NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
 // statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
 // returnerer "invalid_focus", hvilket blokerer knappen helt.
