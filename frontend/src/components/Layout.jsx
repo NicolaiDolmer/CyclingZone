@@ -42,6 +42,8 @@ import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 import RiderRatingModeGate from "./rider/RiderRatingModeGate.jsx"; // #5435
 import { youthSquadNavItems, YOUTH_SQUAD_PATHS } from "../lib/youthSquadPages.ts"; // #5519
 import { useYouthSquadPages, useYouthSquadPagesSync } from "../lib/useYouthSquadPages.ts"; // #5519
+import { loadFeatureFlagStages, isBetaStage } from "../lib/featureStage.ts"; // #5404
+import BetaBadge from "./ui/BetaBadge.tsx"; // #5404
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -141,7 +143,7 @@ function buildAdminGroup(t, isOwner = false) {
 // brugte holdets id) flyttede til bund-menuen. Grupperne her afhænger nu kun af
 // flag-tilstand, så useEffect'ens opslag og render-kaldet ikke længere kan give
 // forskellige menuer for samme bruger.
-function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, youthSquadPagesEnabled = false) {
+function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, youthSquadPagesEnabled = false, boardMandateBeta = false) {
   return [
     {
       // #3104 etape A: sorteret efter faktisk brug (Clarity, sessions/30 dage,
@@ -170,7 +172,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/training",       label: t("nav.item.training") },      // 2.732
         { to: "/finance",        label: t("nav.item.finance") },       // 2.258
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []), // 2.054
-        { to: "/board",          label: t("nav.item.board") },         // 959
+        // #5404: Beta-badge naar bestyrelsens mandat-model (board_mandate_model_enabled)
+        // er i stadiet beta for viewer — samme flag-evaluering HelpPage bruger
+        // (fetchPlayerFeatureFlags), afledt til off|beta|on via lib/featureStage.ts.
+        { to: "/board",          label: t("nav.item.board"), beta: boardMandateBeta }, // 959
         // #4265 (ejer-direktiv 25/8): bestyrelsen og sponsorerne er adskilt i
         // UI'et. Sponsor-forhandlingen laa paa Board-fladen; den har nu sin egen
         // side ved siden af Board — kontrakten for adskillelsen er BOARD_RULES.md §5.
@@ -270,7 +275,7 @@ async function fetchForumUnread(headers) {
   }
 }
 
-function NavItem({ to, label, badge, dot, dotLabel, dotLabelUrgent, onClick, location, badgeCounts, dotFlags, dotTones, exact, excludeQuery, excludePaths, title }) {
+function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClick, location, badgeCounts, dotFlags, dotTones, exact, excludeQuery, excludePaths, title }) {
   const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   // #3521: badge-tallet er nu item-specifikt (Indbakke ≠ Transfers) — se
   // navBadges.js. resolveNavBadgeCount returnerer 0 for items uden badge: true.
@@ -305,6 +310,9 @@ function NavItem({ to, label, badge, dot, dotLabel, dotLabelUrgent, onClick, loc
           className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-150
             ${isActive ? "bg-cz-accent" : "bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2"}`} />
         <span className="truncate">{label}</span>
+        {/* #5404: "Beta" naar siden bag punktet ligger bag et flag i stadiet
+            beta for denne viewer — se lib/featureStage.ts. */}
+        {beta && <BetaBadge stage="beta" className="flex-shrink-0" />}
       </span>
       {showBadge && (
         <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0 tabular-nums">
@@ -499,6 +507,10 @@ export default function Layout() {
   // delte display-flags-hentning (samme kald som rating-kontakten).
   useYouthSquadPagesSync();
   const youthSquadPagesEnabled = useYouthSquadPages();
+  // #5404: off|beta|on pr. spiller-synlig kontakt (lib/featureStage.ts) —
+  // KUN til Beta-badgen, ikke til at gate synlighed (den mekanik er uændret).
+  const [flagStages, setFlagStages] = useState({});
+  const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const heartbeatRef = useRef(null);
@@ -533,7 +545,7 @@ export default function Layout() {
   }
 
   useEffect(() => {
-    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled);
+    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta);
     if (isAdmin) groups.push(buildAdminGroup(t, isOwner));
     // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
     // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
@@ -541,7 +553,16 @@ export default function Layout() {
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled]);
+  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta]);
+
+  // #5404: éen hentning pr. session (loadFeatureFlagStages deler løftet med
+  // andre samtidige kaldere, se lib/featureStage.ts) — kun til Beta-badgen.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    loadFeatureFlagStages().then((stages) => { if (!cancelled) setFlagStages(stages); });
+    return () => { cancelled = true; };
+  }, [session]);
 
   // #3034: ejer-check afhænger af `isAdmin`, som nu kommer asynkront fra den
   // delte UserProfileProvider i stedet for at blive afgjort synkront inde i
@@ -800,7 +821,7 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled);
+  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta);
   const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t, isOwner)] : baseGroups;
   const bottomItems = buildBottomItems(t, team);
 
