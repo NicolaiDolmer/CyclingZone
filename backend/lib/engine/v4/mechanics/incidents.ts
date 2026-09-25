@@ -443,24 +443,33 @@ export function makeIncidentSoloGroupId(segmentIndex: number, seq: number): stri
 // uheldsofre hjem, som oftest efter en punktering.
 //
 // I virkeligheden koerer offeret tilbage BAG FOELGEBILERNE: bilerne giver lae,
-// og han holder tempoet i gruppen foran ham. Modellen:
+// og han holder tempoet i gruppen foran ham (maalgruppen: den naermeste
+// almindelige gruppe foran, `incidentChaseTargetGroup`). Modellen:
 //   - Paa terraen hvor bilerne kan hjaelpe (`pacedSegmentKinds`) koerer
-//     jagtgruppen MINDST lige saa hurtigt som naermeste almindelige gruppe
-//     foran. Hullet holdes derfor paa uheldets tidstab: det lovede tal.
+//     jagtgruppen MINDST lige saa hurtigt som maalgruppen. Hullet holdes
+//     derfor paa uheldets tidstab: det lovede tal. Han betaler for det som en
+//     rytter paa hjul i maalgruppen (samme krav, lae-faktoren), dvs. praecis
+//     hvad det ville have kostet ham uden uheldet.
 //   - Venter en holdkammerat/hjaelper (maerket "assisted"), lukker de hullet
-//     med `assistedClosingSecondsPerKm`, men aldrig forbi gruppen foran.
+//     med `assistedClosingSecondsPerKm`, men aldrig forbi maalgruppen.
 //     Kommer han inden for merge-graensen, smelter han ind (segmentLoop's
 //     merge-trin) og er inde igen.
-//   - Paa stigning og brosten er loebet i gang, og bilerne kan ikke holde ham
-//     oppe: han koerer sit eget tempo og kan stadig tabe tid (eller vinde,
-//     hvis han er staerkere end gruppen foran).
-//   - Reserven: rytteren tikkes fortsat som en solo-rytter i vinden
-//     (segmentLoop's `tickGroupRiders`, front-arbejde, ikke laeplads). Jagten
-//     koster altsaa af hans W', ogsaa naar bilerne holder tempoet.
+//   - Paa stigning og brosten er loebet i gang, og bilerne kan ikke hjaelpe.
+//     Holder hans reserve til maalgruppens tempo (W' > 0 efter et tick paa
+//     hjul i maalgruppen, samme absolutte graense som M2's `wprimeForced`
+//     inde i en gruppe), holder han hullet. Braender han ud, taber han tid:
+//     op til `crackedLossSecondsPerKm` pr. km, aldrig mere end hans eget
+//     solo-tempo ville koste. Loftet findes, fordi et solo-tempo i motoren er
+//     langt langsommere end en sat rytter i en gruppe faar (M2 saetter en
+//     afhaengt rytter et begraenset hul bagud); uden loftet ville en punktering
+//     foer en stigning stadig koste mange gange det lovede.
+//   - Er han hurtigere alene end maalgruppen, koerer han sit eget tempo og
+//     henter selv ind (ingen overstyring, intet ekstra tick).
 //
 // Invariant 2 (samme gruppe = samme tid) er uroert: offeret er sin egen
 // gruppe, indtil merge-trinnet samler ham op. Invariant 3 er uroert:
-// overstyringen er en funktion af gruppernes tider, ikke af evner.
+// overstyringen er en funktion af gruppernes tider, og reserve-reglen er den
+// samme for alle evner.
 //
 // Konstanterne er STARTGAET (samme forbehold som tuning.ts) og kalibreres i
 // harnesset. De bor her og ikke i tuning.ts, fordi de kun laeses af denne fil
@@ -468,11 +477,13 @@ export function makeIncidentSoloGroupId(segmentIndex: number, seq: number): stri
 export const INCIDENT_CHASE_TUNING = Object.freeze({
   pacedSegmentKinds: Object.freeze(["flat", "rolling", "descent"]) as readonly SegmentKind[],
   assistedClosingSecondsPerKm: 0.5,
+  crackedLossSecondsPerKm: 15,
 });
 
 export type IncidentChaseTuning = {
   pacedSegmentKinds: readonly SegmentKind[];
   assistedClosingSecondsPerKm: number;
+  crackedLossSecondsPerKm: number;
 };
 
 /**
@@ -520,31 +531,26 @@ export function resolveIncidentChasers(
   return { chasers: next ?? { ...chasers }, modeByGroupId };
 }
 
+/** #5582: kan foelgebilerne holde et uheldsoffer oppe paa denne terraen? */
+export function isIncidentChasePacedSegment(
+  kind: SegmentKind,
+  tuning: Pick<IncidentChaseTuning, "pacedSegmentKinds"> = INCIDENT_CHASE_TUNING,
+): boolean {
+  return tuning.pacedSegmentKinds.includes(kind);
+}
+
 /**
- * Segment-tiden for en jagtgruppe (#5582), eller `null` naar gruppen koerer
- * sit eget tempo (ingen overstyring).
- *
- * `dtByGroupId` er segmentets krydsningstid pr. gruppe som segment-loopet
- * allerede har regnet den (eget tempo, eget lae). Maalet er den NAERMESTE
- * almindelige gruppe foran (stoerste gap under jagtgruppens eget, tie-break paa
- * id); en anden jagtgruppe er aldrig maal. Uden en gruppe foran (han ER
- * fronten) eller paa terraen uden bil-lae: `null`.
- *
- * Ren aritmetik, ingen rng. Med hjaelp lukkes hullet aldrig mere end helt:
- * resultatet bringer ham aldrig forbi maalgruppen paa grund af hjaelpen.
+ * Maalgruppen for en jagtgruppe (#5582): den NAERMESTE almindelige gruppe
+ * foran (stoerste gap under jagtgruppens eget, tie-break paa id). En anden
+ * jagtgruppe er aldrig maal. `null` naar der ingen gruppe er foran (han ER
+ * fronten) eller gruppen ikke er en jagtgruppe. Ren.
  */
-export function incidentChaseDtSeconds(
+export function incidentChaseTargetGroup(
   chaseGroup: RaceGroup,
   groups: readonly RaceGroup[],
   modeByGroupId: ReadonlyMap<string, IncidentChaseMode>,
-  dtByGroupId: (groupId: string) => number | undefined,
-  segment: Pick<Segment, "kind" | "from_km" | "to_km">,
-  tuning: IncidentChaseTuning = INCIDENT_CHASE_TUNING,
-): number | null {
-  const mode = modeByGroupId.get(chaseGroup.id);
-  if (!mode) return null;
-  if (!tuning.pacedSegmentKinds.includes(segment.kind)) return null;
-
+): RaceGroup | null {
+  if (!modeByGroupId.has(chaseGroup.id)) return null;
   let target: RaceGroup | null = null;
   for (const g of groups) {
     if (g.id === chaseGroup.id || modeByGroupId.has(g.id)) continue;
@@ -557,18 +563,58 @@ export function incidentChaseDtSeconds(
       target = g;
     }
   }
-  if (!target) return null;
+  return target;
+}
 
-  const ownDt = dtByGroupId(chaseGroup.id);
-  const targetDt = dtByGroupId(target.id);
-  if (!Number.isFinite(ownDt) || !Number.isFinite(targetDt)) return null;
+/**
+ * Holder jagtgruppen maalgruppens tempo i dette segment (#5582)? Paa terraen
+ * med bil-lae altid. Paa stigning/brosten kun hvis ingen af ofrene er braendt
+ * ud (W' > 0 efter et tick paa maalgruppens tempo, paa hjul), samme absolutte
+ * graense som M2's `wprimeForced`. Ren.
+ */
+export function incidentChaseHoldsPace(paced: boolean, wprimeAfterTick: readonly number[]): boolean {
+  if (paced) return true;
+  return wprimeAfterTick.every((w) => Number.isFinite(w) && w > 0);
+}
 
-  let dt = Math.min(ownDt as number, targetDt as number);
-  if (mode === "assisted") {
-    const lengthKm = Math.max(0, (Number(segment.to_km) || 0) - (Number(segment.from_km) || 0));
+/**
+ * Segment-tiden for en jagtgruppe (#5582). Ren aritmetik, ingen rng.
+ *
+ * - Holder han tempoet (`holdsPace`): maalgruppens tid, aldrig langsommere
+ *   end den (er han hurtigere alene, gaelder hans egen). Med hjaelp
+ *   ("assisted") og bil-lae lukkes hullet desuden med
+ *   `assistedClosingSecondsPerKm`, men aldrig mere end helt: han kommer aldrig
+ *   forbi maalgruppen paa grund af hjaelpen. Paa stigning hjaelper ingen bil,
+ *   saa dér er der ingen lukning.
+ * - Braendt ud (`holdsPace` falsk): maalgruppens tid plus hoejst
+ *   `crackedLossSecondsPerKm` pr. km, og aldrig langsommere end hans eget
+ *   solo-tempo.
+ */
+export function incidentChaseDtSeconds(
+  args: {
+    mode: IncidentChaseMode;
+    ownDtSeconds: number;
+    targetDtSeconds: number;
+    /** Hullet til maalgruppen ved segmentets start (sekunder, >= 0). */
+    holeSeconds: number;
+    segment: Pick<Segment, "kind" | "from_km" | "to_km">;
+    holdsPace: boolean;
+  },
+  tuning: IncidentChaseTuning = INCIDENT_CHASE_TUNING,
+): number {
+  const own = Number(args.ownDtSeconds);
+  const target = Number(args.targetDtSeconds);
+  if (!Number.isFinite(own) || !Number.isFinite(target)) return Math.max(0, Number.isFinite(own) ? own : 0);
+  const lengthKm = Math.max(0, (Number(args.segment.to_km) || 0) - (Number(args.segment.from_km) || 0));
+  if (!args.holdsPace) {
+    const crackedLoss = Math.max(0, tuning.crackedLossSecondsPerKm) * lengthKm;
+    return Math.max(0, Math.min(own, target + crackedLoss));
+  }
+  let dt = Math.min(own, target);
+  if (args.mode === "assisted" && isIncidentChasePacedSegment(args.segment.kind, tuning)) {
     const closing = Math.max(0, tuning.assistedClosingSecondsPerKm) * lengthKm;
-    const hole = Math.max(0, chaseGroup.gap_seconds - target.gap_seconds);
-    dt = Math.min(dt, (targetDt as number) - Math.min(closing, hole));
+    const hole = Math.max(0, Number(args.holeSeconds) || 0);
+    dt = Math.min(dt, target - Math.min(closing, hole));
   }
   return Math.max(0, dt);
 }

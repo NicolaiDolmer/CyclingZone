@@ -61,7 +61,13 @@ import {
 import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
-import { incidentChaseDtSeconds, resolveIncidentChasers } from "./mechanics/incidents.ts";
+import {
+  incidentChaseDtSeconds,
+  incidentChaseHoldsPace,
+  incidentChaseTargetGroup,
+  isIncidentChasePacedSegment,
+  resolveIncidentChasers,
+} from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -592,30 +598,59 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, route.profile_type);
       nextRiders = { ...nextRiders, ...patch };
     }
+    const ridersBeforeTick = state.riders; // #5582: jagtens om-tick starter herfra
     state = { ...state, riders: nextRiders };
 
     // #5582: et uheldsoffer koerer tilbage bag foelgebilerne. Kun jagtgrupper
     // (grupper hvor alle koerende er i state.incident_chasers, sat af uheldets
-    // split) faar en anden krydsningstid; alle andre grupper er uroerte, og en
-    // etape uden et uheld med tidstab springer blokken helt over (bit-identisk).
-    // Reglen bor i mechanics/incidents.ts (resolveIncidentChasers +
-    // incidentChaseDtSeconds). Fysiologi-tick'et herover er bevidst regnet paa
-    // hans eget solo-tempo: jagten koster af reserven.
+    // split) roeres; alle andre grupper er uroerte, og en etape uden et uheld
+    // med tidstab springer blokken helt over (bit-identisk). Reglen bor i
+    // mechanics/incidents.ts's jagt-blok. Her sker kun de to ting der kraever
+    // segment-loopets egne tempo-/tick-funktioner:
+    //   1. Er maalgruppen hurtigere end ham alene, tikkes han om paa
+    //      maalgruppens tempo (paa hjul bag bilerne, front-arbejde op ad
+    //      bakke) fra sin reserve ved segmentets start.
+    //   2. Holder han tempoet (incidentChaseHoldsPace), faar gruppen
+    //      maalgruppens krydsningstid. Braender han ud paa en stigning, staar
+    //      hans eget solo-tick og solo-tempo ved magt: han taber tid.
     if (state.incident_chasers && Object.keys(state.incident_chasers).length > 0) {
-      const chase = resolveIncidentChasers(state.groups, state.riders, state.incident_chasers);
+      const chase = resolveIncidentChasers(state.groups, ridersBeforeTick, state.incident_chasers);
       state = { ...state, incident_chasers: chase.chasers };
       for (const group of state.groups) {
-        if (!chase.modeByGroupId.has(group.id)) continue;
-        const tempo = tempoByGroup.get(group.id);
-        if (!tempo) continue;
-        const chaseDt = incidentChaseDtSeconds(
-          group,
-          state.groups,
-          chase.modeByGroupId,
-          (id) => tempoByGroup.get(id)?.dtSeconds,
+        const mode = chase.modeByGroupId.get(group.id);
+        const own = tempoByGroup.get(group.id);
+        const target = incidentChaseTargetGroup(group, state.groups, chase.modeByGroupId);
+        const targetTempo = target ? tempoByGroup.get(target.id) : undefined;
+        if (!mode || !own || !target || !targetTempo) continue;
+        const targetFaster = targetTempo.dtSeconds < own.dtSeconds;
+        if (!targetFaster && mode === "alone") continue;
+        let holdsPace = true;
+        if (targetFaster) {
+          // Paa hjul i maalgruppen: dens krav, rytterens egen CP, lae-faktoren.
+          const chaseTempo: GroupTempo = { ...targetTempo, cpByRider: own.cpByRider, frontRiderIds: new Set<string>() };
+          const patch = tickGroupRiders(
+            group,
+            ridersBeforeTick,
+            entrantsById,
+            segment,
+            chaseTempo,
+            tuning,
+            route.profile_type,
+          );
+          const wprimeAfter = group.rider_ids.filter((id) => patch[id]).map((id) => patch[id].wprime);
+          holdsPace = incidentChaseHoldsPace(isIncidentChasePacedSegment(segment.kind), wprimeAfter);
+          // Braendt ud: hans eget solo-tick (herover) staar ved magt.
+          if (holdsPace) state = { ...state, riders: { ...state.riders, ...patch } };
+        }
+        const dtSeconds = incidentChaseDtSeconds({
+          mode,
+          ownDtSeconds: own.dtSeconds,
+          targetDtSeconds: targetTempo.dtSeconds,
+          holeSeconds: group.gap_seconds - target.gap_seconds,
           segment,
-        );
-        if (chaseDt !== null) tempoByGroup.set(group.id, { ...tempo, dtSeconds: chaseDt });
+          holdsPace,
+        });
+        tempoByGroup.set(group.id, { ...own, dtSeconds });
       }
     }
 
