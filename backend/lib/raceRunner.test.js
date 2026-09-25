@@ -6,6 +6,7 @@ import {
   buildStageRowsAccumulated,
   loadEntrantsForRace,
   simulateRace,
+  simulateStageByIndex,
   deriveIsU25FromBirthdate,
   restDaysBeforeEachStage,
 } from "./raceRunner.js";
@@ -456,6 +457,9 @@ function makeSupabase(canned = {}) {
       is() { return b; },
       order() { return b; },
       gte() { return b; },
+      // #5675: loadStartFieldRiderIds' .order().limit(1) — samme "returnér b, lad
+      // b's egen then() afgøre svaret"-mønster som select/eq/order ovenfor.
+      limit() { return b; },
       // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
       // (.order("id").range()) — mocken slicer den cannede tabel som en enkelt side.
       range(from, to) { return Promise.resolve({ data: (canned[table] || []).slice(from, to + 1), error: null }); },
@@ -1525,4 +1529,124 @@ test("#5645 buildStageRowsAccumulated: u23-løb giver prize_money = 0 (etape-for
   assert.ok(resultRows.length > 0);
   assert.ok(resultRows.some((r) => r.points_earned > 0), "fixture giver point");
   for (const r of resultRows) assert.equal(r.prize_money, 0);
+});
+
+// ── #5675 (Y7-opfølgning): raceRunner kalder refreshYouthStandings efter et ────
+// ungdomsløbs etape, samme sted som seniorstillingen (updateStandings) opdateres.
+// riderEligibility.isEligibleRider kræver rider.squad === race.squad for et
+// ungdomsløb (#5645/#5647) — canned riders skal derfor bære truppen, ellers
+// filtreres hele feltet væk og simulateStageByIndex kaster "No start list".
+function cannedForStage(race, extra = {}) {
+  const field = cannedField();
+  const squad = race.squad && race.squad !== "senior" ? race.squad : undefined;
+  return makeSupabase({
+    race_stage_profiles: STAGES_3,
+    ...field,
+    riders: squad ? field.riders.map((r) => ({ ...r, squad })) : field.riders,
+    race_points: [],
+    races: [{ id: race.id, ...race }],
+    seasons: [{ id: race.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
+    ...extra,
+  });
+}
+const STAGE_DEPS = {
+  recomputeRaceDays: async () => 12,
+  processBoardWeekend: async () => ({}),
+  applyFatigue: async () => ({ updated: 0 }),
+  updateStandings: async () => {},
+  // Bypasser den generiske rpc()-mock (der ikke kender apply_stage_result's
+  // jsonb-svarform og derfor ville tabe låsen) — samme mønster som
+  // raceRunnerStage.test.js's captureStageResult().
+  applyStageResult: async (_client, { resultRows }) => ({ lockWon: true, rowsImported: resultRows.length }),
+};
+
+test("#5675 simulateStageByIndex: ungdomsløb (squad u23) kalder refreshYouthStandings med løbet, samme sted som seniorstillingen", async () => {
+  const race = { ...STAGE_RACE, id: "race-y23-1", squad: "u23" };
+  const supabase = cannedForStage(race);
+  const calls = [];
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 0, // første (og for et 3-etapers løb ikke-final) etape
+    ...STAGE_DEPS,
+    refreshYouthStandings: async (args) => { calls.push(args); return { status: "updated" }; },
+  });
+  assert.equal(calls.length, 1, "refreshYouthStandings skal kaldes præcis én gang for et ungdomsløb");
+  assert.equal(calls[0].race.id, race.id, "kaldet skal bære løbet (id/season_id/squad)");
+  assert.equal(calls[0].race.squad, "u23");
+  assert.equal(calls[0].race.season_id, race.season_id);
+});
+
+test("#5675 simulateStageByIndex: seniorløb kalder ALDRIG refreshYouthStandings", async () => {
+  const race = { ...STAGE_RACE, id: "race-senior-5675", squad: "senior" };
+  const supabase = cannedForStage(race);
+  let called = false;
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 0,
+    ...STAGE_DEPS,
+    refreshYouthStandings: async () => { called = true; return { status: "updated" }; },
+  });
+  assert.equal(called, false, "refreshYouthStandings må ikke kaldes for et seniorløb");
+});
+
+test("#5675 simulateStageByIndex: fejl i refreshYouthStandings logges, men stopper ikke finaliseringen", async () => {
+  const race = { ...STAGE_RACE, id: "race-y-junior-5675", squad: "junior" };
+  const supabase = cannedForStage(race);
+  const result = await simulateStageByIndex({
+    supabase, race, stageIndex: 0,
+    ...STAGE_DEPS,
+    refreshYouthStandings: async () => { throw new Error("youth standings boom"); },
+  });
+  // Finaliseringen fuldførte (run-snapshot persisteret) selvom refresh kastede.
+  assert.ok(
+    supabase.__writes.some((w) => w.table === "race_simulation_runs" && w.op === "insert"),
+    "finaliseringen skal fortsætte forbi en fejlet youth-standings-refresh",
+  );
+  assert.equal(result.skipped, undefined, "et fejlet refresh må ikke rapporteres som skip");
+});
+
+// ── #5675 (CodeRabbit-fund): simulateRace — heldags-/endagsløbs-stien kalder ──
+// IKKE simulateStageByIndex, og har derfor sit eget refreshYouthStandings-kald
+// (se raceRunner.js lige efter applyRaceResults). Samme tre garantier som
+// stage-stien ovenfor, bevist her mod den anden funktion.
+test("#5675 simulateRace: ungdomsløb (squad u23) kalder refreshYouthStandings med løbet, efter applyRaceResults", async () => {
+  const race = { ...STAGE_RACE, id: "race-y23-whole-5675", squad: "u23" };
+  const supabase = cannedForStage(race);
+  const calls = [];
+  await simulateRace({
+    supabase, race,
+    applyRaceResults: async ({ resultRows }) => { calls.push("applyRaceResults"); return { rowsImported: resultRows.length }; },
+    recomputeRaceDays: async () => 1,
+    refreshYouthStandings: async (args) => { calls.push(args); return { status: "updated" }; },
+  });
+  assert.equal(calls[0], "applyRaceResults", "refreshYouthStandings skal ske EFTER applyRaceResults");
+  assert.equal(calls.length, 2, "refreshYouthStandings skal kaldes præcis én gang for et ungdomsløb");
+  assert.equal(calls[1].race.id, race.id, "kaldet skal bære løbet (id/season_id/squad)");
+  assert.equal(calls[1].race.squad, "u23");
+});
+
+test("#5675 simulateRace: seniorløb kalder ALDRIG refreshYouthStandings", async () => {
+  const race = { ...STAGE_RACE, id: "race-senior-whole-5675", squad: "senior" };
+  const supabase = cannedForStage(race);
+  let called = false;
+  await simulateRace({
+    supabase, race,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 1,
+    refreshYouthStandings: async () => { called = true; return { status: "updated" }; },
+  });
+  assert.equal(called, false, "refreshYouthStandings må ikke kaldes for et seniorløb");
+});
+
+test("#5675 simulateRace: fejl i refreshYouthStandings logges, men stopper ikke afviklingen", async () => {
+  const race = { ...STAGE_RACE, id: "race-y-junior-whole-5675", squad: "junior" };
+  const supabase = cannedForStage(race);
+  const report = await simulateRace({
+    supabase, race,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 1,
+    refreshYouthStandings: async () => { throw new Error("youth standings boom"); },
+  });
+  // status=completed sat selvom refresh kastede.
+  const upd = supabase.__writes.find((w) => w.table === "races" && w.op === "update");
+  assert.equal(upd.obj.status, "completed", "afviklingen skal fuldføre forbi en fejlet youth-standings-refresh");
+  assert.equal(report.stages, 3);
 });

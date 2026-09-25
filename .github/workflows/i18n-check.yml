@@ -56,6 +56,8 @@ jobs:
     # `key-coverage` under Settings > Branches (kan ikke sættes fra repoet).
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -82,6 +84,8 @@ jobs:
     # stedet for at lade den vokse pr. sprog.
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -104,6 +108,8 @@ jobs:
     # USER-VISIBLE regression, ikke en advisory.
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -124,6 +130,8 @@ jobs:
     # til i18n (#689, postmortem 2026-05-26).
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -144,6 +152,8 @@ jobs:
     # required — en ny uoversat player-facing side blokerer nu PR'en.
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -164,6 +174,8 @@ jobs:
     # undtagelser er dokumenteret separat i EXEMPT_FILES.
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -186,6 +198,8 @@ jobs:
     # rider.json — begge generator-kilder, ikke kun locale-filerne selv.
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -213,6 +227,8 @@ jobs:
     # .code forwardes direkte) og fejler hvis en kode mangler oversættelse.
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -240,6 +256,8 @@ jobs:
     #   node scripts/i18n-check-leaks.mjs --update-baseline
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -261,6 +279,8 @@ jobs:
     # §Punktuation).
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -285,6 +305,8 @@ jobs:
     # dage (.claude/learnings/2026-09-07-founder-supporter-forbudt-term-live-i-4-dage.md).
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7

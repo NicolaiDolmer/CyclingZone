@@ -111,6 +111,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # persist-credentials: true - jobbet pusher/opretter PR med GITHUB_TOKEN i samme job (Refs #5441).
+          persist-credentials: true
 
       - name: Download rapport-artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8

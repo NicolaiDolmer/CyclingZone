@@ -9,10 +9,20 @@
 // ikke (første besøg vinder).
 //
 // Samtykke: samme data og samme grundlag som attribution.js (legitim interesse,
-// uden for analytics-gaten, intet persisteres før signup). Ingen nye felter.
+// uden for analytics-gaten, intet persisteres før signup).
+//
+// #5304 blocking fix (25/9): forsiden (/) og informationssiderne er PRÆCIS de
+// sider betalte annoncer lander på, og fordi denne fil skriver first-touch-
+// rækken FØRST (før SPA'ens captureFirstTouch kan nå det) og "første besøg
+// vinder", var click-id-fangsten i frontend/src/lib/attribution.js reelt
+// uvirksom for et besøg på cyclingzone.org/?fbclid=... — click-id'et gik tabt
+// permanent, fordi SPA'en aldrig fik lov at overskrive. Denne fil fanger nu de
+// samme fbclid/gclid/ttclid/msclkid-nøgler, i samme format, så pariteten med
+// frontend/src/lib/attribution.js (attribution.test.ts:83) holder.
 
 export const ATTRIBUTION_STORAGE_KEY = "cz_attribution_v1"; // gitleaks:allow — localStorage-nøglenavn, ikke en secret
 export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
+export const CLICK_ID_KEYS = ["fbclid", "gclid", "ttclid", "msclkid"] as const;
 
 type StorageLike = { getItem(key: string): string | null; setItem(key: string, value: string): void };
 
@@ -43,6 +53,10 @@ export function captureFirstTouch(ctx?: Partial<FirstTouchContext>): void {
     const storageKey = "cz_attribution_v1"; // gitleaks:allow — localStorage-nøglenavn
     if (storage.getItem(storageKey)) return;
     const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
+    // #5304: samme click-id-nøgler som frontend/src/lib/attribution.js. Duplikeret
+    // (ikke importeret fra den modul-level CLICK_ID_KEYS-konstant ovenfor) fordi
+    // funktionen SELVSTÆNDIG MED VILJE — se kommentaren nedenfor.
+    const clickIdKeys = ["fbclid", "gclid", "ttclid", "msclkid"];
     const search = c.search !== undefined ? c.search : window.location.search;
     const referrer = c.referrer !== undefined ? c.referrer : document.referrer;
     const path = c.path !== undefined ? c.path : window.location.pathname;
@@ -61,7 +75,10 @@ export function captureFirstTouch(ctx?: Partial<FirstTouchContext>): void {
       }
       if (refUrl && refUrl.origin === origin) {
         externalReferrer = "";
-        if (!keys.some((k) => params.get(k))) utmParams = refUrl.searchParams;
+        // #5304: fald tilbage til referrerens query hvis ENTEN utm ELLER
+        // click-id mangler på den aktuelle URL — samme genfindings-regel som
+        // frontend/src/lib/attribution.js.
+        if (!keys.concat(clickIdKeys).some((k) => params.get(k))) utmParams = refUrl.searchParams;
       }
     }
     const record: Record<string, string | null> = { first_seen_at: firstSeenAt };
@@ -69,6 +86,13 @@ export function captureFirstTouch(ctx?: Partial<FirstTouchContext>): void {
       const v = utmParams.get(k);
       record[k] = v ? v.slice(0, 200) : null;
     }
+    for (const k of clickIdKeys) {
+      const v = utmParams.get(k);
+      record[k] = v ? v.slice(0, 200) : null;
+    }
+    // #5304: samme paid-candidate-markering som frontend/src/lib/attribution.js
+    // — et click-id uden utm_source er en KANDIDAT, ikke bevis for betalt trafik.
+    record.source_hint = !record.utm_source && clickIdKeys.some((k) => record[k]) ? "paid-candidate" : null;
     record.referrer = externalReferrer ? externalReferrer.slice(0, 500) : null;
     record.landing_path = path ? String(path).slice(0, 200) : null;
     storage.setItem(storageKey, JSON.stringify(record));
