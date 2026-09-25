@@ -57,8 +57,10 @@ import { dirname, join } from "node:path";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import {
+  RIDER_VALUE_PHASE_STEP_KEY,
   readProductionValueModelId,
   readValuationModelId,
+  writePhaseStep,
 } from "../lib/riderValuationModelSelect.js";
 import { copenhagenDateString, copenhagenWeekdayKey } from "../lib/copenhagenTime.js";
 import { RIDER_VALUE_SUNDAY_LOG_TABLE } from "../lib/sundayValueSweep.js";
@@ -265,7 +267,16 @@ async function writeRiderPatches(supabase, updates, log) {
 
 // ── Kørslerne ───────────────────────────────────────────────────────────────
 
-export async function runExtraordinaryValueEvent(supabase, { apply, confirm, ownerAck, now = new Date(), log = console.log } = {}) {
+// #5497 trin-tælleren: kørselsdagen ER trin 0 (fuld elitepræmie), både i
+// tørkørslen og i den rigtige kørsel. Sendes eksplicit, så et trin der står i
+// app_config fra en tidligere kørsel aldrig tavst overtager.
+export const EXTRAORDINARY_PHASE_STEP = 0;
+
+export async function runExtraordinaryValueEvent(supabase, {
+  apply, confirm, ownerAck, now = new Date(), log = console.log,
+  refreshFn = refreshChangedRiderValues,
+  resetPhaseStepFn = writePhaseStep,
+} = {}) {
   const modelId = await readValuationModelId(supabase);
   const wageModelId = await readProductionValueModelId(supabase);
   const runDate = copenhagenDateString(now);
@@ -288,7 +299,8 @@ export async function runExtraordinaryValueEvent(supabase, { apply, confirm, own
       log("  Skal du se hvad v5 VILLE goere foer du flipper noeglen, saa brug backend/scripts/dev/valuationV5DryRun5443.mjs.");
       return { ran: false, blockers: [`model=${modelId}`] };
     }
-    const res = await refreshChangedRiderValues(supabase, { log, dryRun: true });
+    // Tørkørslen rører IKKE trin-tælleren (app_config.rider_value_phase_step).
+    const res = await refreshFn(supabase, { log, dryRun: true, phaseStep: EXTRAORDINARY_PHASE_STEP });
     const beforeById = new Map(res.before.map((r) => [r.id, r]));
     const { up, down, cpvMoved } = summariseUpdates(res.updates, beforeById);
     log("");
@@ -317,8 +329,16 @@ export async function runExtraordinaryValueEvent(supabase, { apply, confirm, own
     );
   }
 
+  // #5497: trin-tælleren nulstilles til 0 lige FØR første rytterværdi skrives,
+  // så den næste søndagskørsel regner trin 1 (75 %), præcis som
+  // indfasningsplanen. Efter backuppen og dags-claimet med vilje: afvises
+  // kørslen der (backup findes allerede, dagen er taget), står nøglen urørt
+  // og beskriver stadig de værdier rytterne faktisk har.
+  await resetPhaseStepFn(supabase, EXTRAORDINARY_PHASE_STEP);
+  log(`trin-taeller: app_config.${RIDER_VALUE_PHASE_STEP_KEY} = ${EXTRAORDINARY_PHASE_STEP}`);
+
   // SAMME funktion som søndagen. Ingen ny formel, ingen ny model-valg-logik.
-  const res = await refreshChangedRiderValues(supabase, { log });
+  const res = await refreshFn(supabase, { log, phaseStep: EXTRAORDINARY_PHASE_STEP });
   await completeDay(supabase, runDate, res);
 
   // Post-verify: læs igen og tæl hvor mange der reelt afviger fra backuppen.

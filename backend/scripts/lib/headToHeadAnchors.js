@@ -66,6 +66,25 @@ export const ANCHOR_BANDS = {
     min: 60, max: 480,
     source: "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
   },
+  // #5578: udbrudssejre pr. terraen. KANDIDAT — IKKE et ejer-godkendt maal.
+  // Tallene er #1021's v3-kalibreringsbaand (BREAKAWAY_TARGETS i
+  // scripts/simulateSeasonDryRun.js, kopieret her fordi det script koerer ved
+  // import). #5578 og spec'en (docs/drafts/spec-motor-runde-2-2026-09-25.md
+  // spor M3) siger at det endelige baand saettes ud fra virkelige udbrudsrater
+  // pr. terraen og godkendes af ejeren; dette er startpunktet, ikke dommen.
+  // Kun vejetaper: tidskoersler har intet udbrud.
+  breakawayRatePerTerrainCandidate: {
+    byTerrain: {
+      flat: { min: 0.01, max: 0.10 },
+      rolling: { min: 0.04, max: 0.15 },
+      hilly: { min: 0.15, max: 0.45 },
+      mountain: { min: 0.15, max: 0.50 },
+      high_mountain: { min: 0.00, max: 0.15 },
+      cobbles: { min: 0.02, max: 0.15 },
+    },
+    source: "KANDIDAT (#1021's v3-baand, simulateSeasonDryRun.js) — ikke ejer-godkendt; "
+      + "realisme-baand fra virkelige tal afventer ejeren (#5578)",
+  },
   // #5576: enkeltstartens TIDER, ikke kun dens rang. ITT-korrelationen ovenfor
   // er spearman paa placeringen og var groen, mens naesten hele feltet delte
   // én tid — de to ankre herunder maaler det rangen ikke kan se.
@@ -538,34 +557,125 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Udbruds-rater pr. terraen (KUN v3 maalbart — M5/jagt-interesse er F3-scope
-//    for v4, jf. types.ts's TeamOrder-kommentar + mor-spec §4 M5)
+// 6. Udbruds-rater pr. terraen (#5578)
+//
+// En udbrudssejr er en VEJETAPE vundet af en rytter fra dagens udbrud:
+//   v3: vinderens breakaway-komponent (raceSimulator) er > 0.
+//   v4: motorens egen dom (simulateStageV4WithTrace -> trace.breakaway_win,
+//       groups.isBreakawayWin): vinderen koerte i en gruppe med
+//       udbrudsoprindelse (art breakaway/solo) der var dannet foer
+//       finale-segmentet og aldrig blev hentet. Nedkoerselsangreb ud af feltet
+//       har egen oprindelse og taeller ikke.
+// Tidskoersler (itt/itt_hilly/ttt) er udeladt: der findes intet udbrud.
+// Dommen er pr. terraen mod KANDIDAT-baandet (ANCHOR_BANDS-kommentaren): PASS
+// kun naar ALLE maalte terraener med et baand ligger inden for det.
 // ---------------------------------------------------------------------------
 
-export function scoreBreakawayRates(rows) {
-  const perTerrain = new Map();
-  for (const r of rows) {
-    const ranked = r.raw.v3Output.ranked;
-    const winner = ranked.find((x) => x.rank === 1);
-    if (!winner) continue;
-    const terrain = r.raw.route.profile_type;
-    const isBreakawayWin = (winner.components?.breakaway || 0) > 0;
-    if (!perTerrain.has(terrain)) perTerrain.set(terrain, { races: 0, breakawayWins: 0 });
-    const bucket = perTerrain.get(terrain);
-    bucket.races++;
-    if (isBreakawayWin) bucket.breakawayWins++;
-  }
-  const overallRaces = rows.length;
-  const overallWins = [...perTerrain.values()].reduce((a, b) => a + b.breakawayWins, 0);
-  const rate = overallRaces > 0 ? overallWins / overallRaces : null;
+const BREAKAWAY_NA_NOTE = "ingen vejetaper i input";
+const BREAKAWAY_V4_NO_TRACE = "rows uden v4Trace (koer headToHeadV4.js, der kalder simulateStageV4WithTrace)";
 
+/** Taellinger pr. terraen -> anker-celle med pr.-terraen-dom. Eksporteret til aggregeringen og testene. */
+export function breakawayCellFromCounts(countsByTerrain, naNote = BREAKAWAY_NA_NOTE) {
+  const bands = ANCHOR_BANDS.breakawayRatePerTerrainCandidate.byTerrain;
+  let races = 0;
+  let wins = 0;
+  let judged = 0;
+  let failed = 0;
+  const perTerrain = {};
+  for (const terrain of Object.keys(countsByTerrain).sort()) {
+    const { races: n, breakawayWins: w } = countsByTerrain[terrain];
+    if (!(n > 0)) continue;
+    races += n;
+    wins += w;
+    const rate = w / n;
+    const band = bands[terrain] ?? null;
+    const verdict = band ? judge(rate, band, n).verdict : "N/A";
+    if (band) {
+      judged += 1;
+      if (verdict === "FAIL") failed += 1;
+    }
+    perTerrain[terrain] = { races: n, breakawayWins: w, rate, band, verdict };
+  }
+  const counts = Object.fromEntries(Object.entries(perTerrain).map(([k, v]) => [k, { races: v.races, breakawayWins: v.breakawayWins }]));
+  if (races === 0) {
+    return { value: null, sampleCount: 0, verdict: "N/A", naReason: naNote, display: fmtPct, perTerrain, counts };
+  }
+  if (judged === 0) {
+    return {
+      value: null, sampleCount: races, verdict: "N/A", naReason: "ingen maalte etapetyper har et kandidatbaand",
+      display: fmtPct, perTerrain, counts,
+    };
+  }
+  return {
+    value: wins / races,
+    sampleCount: races,
+    verdict: failed === 0 ? "PASS" : "FAIL",
+    naReason: null,
+    display: fmtPct,
+    perTerrain,
+    counts,
+  };
+}
+
+function countBreakawayWins(rows, isWin) {
+  const counts = {};
+  for (const r of rows) {
+    const terrain = r.raw.route.profile_type;
+    if (isTimeTrial(terrain)) continue;
+    const win = isWin(r);
+    if (win === null || win === undefined) continue;
+    counts[terrain] ??= { races: 0, breakawayWins: 0 };
+    counts[terrain].races += 1;
+    if (win) counts[terrain].breakawayWins += 1;
+  }
+  return counts;
+}
+
+function v3BreakawayWin(row) {
+  const winner = row.raw.v3Output.ranked.find((x) => x.rank === 1);
+  if (!winner) return null;
+  return (winner.components?.breakaway || 0) > 0;
+}
+
+function v4BreakawayWin(row) {
+  const win = row.raw.v4Trace?.breakaway_win;
+  return typeof win === "boolean" ? win : null;
+}
+
+export function scoreBreakawayRates(rows) {
+  const band = ANCHOR_BANDS.breakawayRatePerTerrainCandidate;
+  const hasTrace = rows.some((r) => r.raw.v4Trace !== undefined);
   return {
     id: "breakaway_rate_per_terrain",
-    label: "Udbruds-rater pr. terraen (descent-dominans 54% skal ned)",
-    bandLabel: "race:gate-baand (ingen fast tal her — se gate-konfig)",
-    source: "race:gate + #3426 (mor-spec §5)",
-    v3: { ...judge(rate, {}, overallRaces), display: fmtPct, perTerrain: Object.fromEntries([...perTerrain.entries()].map(([k, v]) => [k, v.races > 0 ? v.breakawayWins / v.races : null])) },
-    v4: { value: null, sampleCount: 0, verdict: "N/A", naReason: "M5 (udbruds-/jagt-interesse-mekanik) er F3-scope — v4 F2 klassificerer endnu ikke udbrudssejre", display: fmtPct },
+    label: "Udbruds-rater pr. terraen, vejetaper (vaerdi = samlet rate; dom pr. terraen)",
+    bandLabel: "KANDIDAT-baand pr. terraen (#1021), ikke ejer-godkendt",
+    source: band.source,
+    v3: breakawayCellFromCounts(countBreakawayWins(rows, v3BreakawayWin)),
+    v4: breakawayCellFromCounts(countBreakawayWins(rows, v4BreakawayWin), hasTrace ? BREAKAWAY_NA_NOTE : BREAKAWAY_V4_NO_TRACE),
+  };
+}
+
+/**
+ * Seed-aggregering for udbrudsankeret: taellingerne POOLES pr. terraen over
+ * seeds (flere etaper bag hver terraen-rate) og doemmes én gang, samme regel
+ * som de oevrige ankres "doem middelvaerdien, ikke antal PASS". Spaendet er de
+ * enkelte seeds' samlede rater.
+ */
+function aggregateBreakawayCells(cells) {
+  const pooled = {};
+  for (const cell of cells) {
+    for (const [terrain, c] of Object.entries(cell.counts ?? {})) {
+      pooled[terrain] ??= { races: 0, breakawayWins: 0 };
+      pooled[terrain].races += c.races;
+      pooled[terrain].breakawayWins += c.breakawayWins;
+    }
+  }
+  const naNote = cells.find((c) => c.naReason)?.naReason ?? BREAKAWAY_NA_NOTE;
+  const aggregated = breakawayCellFromCounts(pooled, naNote);
+  const values = cells.map((c) => c.value).filter((v) => Number.isFinite(v));
+  return {
+    ...aggregated,
+    spread: values.length > 0 ? { min: Math.min(...values), max: Math.max(...values), seeds: values.length } : null,
   };
 }
 
@@ -696,6 +806,39 @@ export function scoreBonusSecondsBounded(rows = []) {
 //    et helt etapeloeb, ikke tilgaengeligt paa etape-for-etape-niveau her).
 // ---------------------------------------------------------------------------
 
+const GT_MARGIN_NA_NOTE = "kraever akkumuleret GC over et helt etapeloeb med fast felt — maales af "
+  + "scripts/v4GcMargin.mjs (#5578), ikke i denne etape-for-etape-harness (felt sampled pr. etape)";
+
+function gtMarginCell(margins) {
+  const values = (margins ?? []).filter((v) => Number.isFinite(v));
+  const cell = {
+    ...judge(mean(values), ANCHOR_BANDS.gtWinnerMarginSeconds, values.length, "ingen gennemfoerte grand tours i input"),
+    display: (v) => fmt(v, 0),
+  };
+  if (values.length > 0) cell.spread = { min: Math.min(...values), max: Math.max(...values), seeds: values.length };
+  return cell;
+}
+
+/**
+ * #5578 / #2415: GT-vindermarginen doemt mod 1-8 min. Input er én
+ * slutklassement-margin (sekunder, nr. 2 minus nr. 1) pr. (grand tour, seed),
+ * som scripts/v4GcMargin.mjs akkumulerer. Vaerdien er middelmarginen, spaendet
+ * er den mindste og stoerste enkelt-margin; dommen faeldes paa middelvaerdien
+ * (samme regel som de oevrige ankre).
+ * @param {{v3Margins?: number[], v4Margins?: number[]}} margins
+ */
+export function scoreGtWinnerMargin({ v3Margins = [], v4Margins = [] } = {}) {
+  const gtBand = ANCHOR_BANDS.gtWinnerMarginSeconds;
+  return {
+    id: "gt_winner_margin",
+    label: "GT-vindermargin (#2415)",
+    bandLabel: `${gtBand.min}-${gtBand.max}s (1-8 min)`,
+    source: gtBand.source,
+    v3: gtMarginCell(v3Margins),
+    v4: gtMarginCell(v4Margins),
+  };
+}
+
 export function scoreGapRealism(rows) {
   // Ejer-beslutning 2/9-2026 (#4604, PR #4610): bjerg-ankeret maales KUN paa
   // TOPANKOMSTER. #2415-baandet beskriver "bjergetape top-10 inden for ~3-4
@@ -737,8 +880,8 @@ export function scoreGapRealism(rows) {
       label: "GT-vindermargin (#2415)",
       bandLabel: `${gtBand.min}-${gtBand.max}s (1-8 min)`,
       source: gtBand.source,
-      v3: { value: null, sampleCount: 0, verdict: "N/A", naReason: "kraever akkumuleret GC over et helt etapeloeb — ikke maalbart etape-for-etape i denne harness-version", display: (v) => fmt(v, 0) },
-      v4: { value: null, sampleCount: 0, verdict: "N/A", naReason: "kraever akkumuleret GC over et helt etapeloeb — ikke maalbart etape-for-etape i denne harness-version", display: (v) => fmt(v, 0) },
+      v3: { value: null, sampleCount: 0, verdict: "N/A", naReason: GT_MARGIN_NA_NOTE, display: (v) => fmt(v, 0) },
+      v4: { value: null, sampleCount: 0, verdict: "N/A", naReason: GT_MARGIN_NA_NOTE, display: (v) => fmt(v, 0) },
     },
   ];
 }
@@ -887,9 +1030,11 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
 // headToHeadAnchors.test.js's forward-guard kan verificere at ETHVERT
 // anker-id fra buildScorecard() findes her (fejler hvis et nyt anker
 // tilfoejes uden en tilsvarende indgang).
-// `{}` er et GYLDIGT baand (ingen min/max — anker uden fast taerskel, jf.
-// scoreBreakawayRates' egen `judge(rate, {}, ...)`), ikke det samme som et
-// manglende id: aggregateEngine() bruger stadig judge() og maaler middelvaerdien.
+// `{}` ville vaere et GYLDIGT baand (ingen min/max — anker uden fast taerskel),
+// ikke det samme som et manglende id: aggregateEngine() bruger stadig judge()
+// og maaler middelvaerdien. Udbrudsankeret doemmes pr. terraen og aggregeres
+// derfor af sin egen funktion (PER_ANCHOR_AGGREGATORS, #5578); indgangen her
+// er kun forward-guardens og peger paa kandidatbaandet.
 export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
   descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
@@ -898,7 +1043,7 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
   favorite_win_rate: ANCHOR_BANDS.favoriteWinRate,
   same_team_top10_share_4plus: ANCHOR_BANDS.sameTeamTop10Share4Plus,
-  breakaway_rate_per_terrain: {},
+  breakaway_rate_per_terrain: ANCHOR_BANDS.breakawayRatePerTerrainCandidate,
   itt_correlation: ANCHOR_BANDS.ittCorrelationMinAbs,
   sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
   bonus_seconds_bounded: { max: 10 },
@@ -906,6 +1051,10 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
   itt_top10_spread_per_40km: ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds,
   itt_largest_same_time_share: ANCHOR_BANDS.ittLargestSameTimeShare,
+};
+
+const PER_ANCHOR_AGGREGATORS = {
+  breakaway_rate_per_terrain: aggregateBreakawayCells,
 };
 
 export function aggregateScorecards(scorecards) {
@@ -934,11 +1083,27 @@ export function aggregateScorecards(scorecards) {
     const band = bandById[anchor.id] ?? null;
     const v3Cells = scorecards.map((card) => card[index].v3);
     const v4Cells = scorecards.map((card) => card[index].v4);
-    const aggregated = { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
+    const own = PER_ANCHOR_AGGREGATORS[anchor.id];
+    const aggregated = own
+      ? { ...anchor, v3: own(v3Cells), v4: own(v4Cells) }
+      : { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
     if (anchor.favoriteDefinitions) {
       aggregated.favoriteDefinitions = mergeFavoriteDefinitions(scorecards.map((card) => card[index].favoriteDefinitions));
     }
     return aggregated;
+  });
+}
+
+/** #5578: pr.-terraen-linjer for ankre der doemmes pr. etapetype (udbrudsankeret). */
+function formatPerTerrain(anchor) {
+  const v3 = anchor.v3?.perTerrain ?? {};
+  const v4 = anchor.v4?.perTerrain ?? {};
+  const terrains = [...new Set([...Object.keys(v3), ...Object.keys(v4)])].sort();
+  const cell = (t) => (t ? `${fmtPct(t.rate)} (n=${t.races}) [${t.verdict}]` : "n/a");
+  return terrains.map((terrain) => {
+    const band = (v3[terrain] ?? v4[terrain])?.band;
+    const bandText = band ? `${fmtPct(band.min)}-${fmtPct(band.max)}` : "intet baand";
+    return `    ${terrain} (${bandText}): v3 ${cell(v3[terrain])} · v4 ${cell(v4[terrain])}`;
   });
 }
 
@@ -967,6 +1132,7 @@ export function formatScorecard(scorecard) {
     lines.push(`  Baand: ${anchor.bandLabel}  (kilde: ${anchor.source})`);
     lines.push(`  v3: ${formatCell(anchor.v3)}`);
     lines.push(`  v4: ${formatCell(anchor.v4)}`);
+    lines.push(...formatPerTerrain(anchor));
     lines.push(...formatFavoriteDefinitions(anchor.favoriteDefinitions));
   }
   const totals = { PASS: 0, FAIL: 0, "N/A": 0 };

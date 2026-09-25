@@ -245,6 +245,21 @@ test("#4851 kolonne-overskriften forklarer sig selv og linker til Hjaelp", async
     "Overskriften findes kun i desktop-rosteret.",
   );
   await mockTraining(page, { withScore: true });
+  // #5274: Hjaelp-siden (destinationen for linket herunder) gater
+  // dailytraining.trainingScore-blokken bag training_score_visible
+  // (SECTION_DEFS' `flag`-egenskab, helpFlagGates.js). installNetworkMocks'
+  // generiske /api/**-fallback svarer {} paa GET /api/feature-flags, saa
+  // uden denne override er flaget slukket og blokken korrekt skjult —
+  // testen her klikker sig netop til den blok, saa den skal se flaget TAENDT,
+  // som en viewer i beta-gruppen ville. Registreret EFTER installNetworkMocks'
+  // route, saa den vinder (senest registrerede route vinder i Playwright).
+  await page.route("**/api/feature-flags**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    return json(route, { flags: { training_score_visible: true } });
+  });
   await login(page);
   await page.goto("/training");
 

@@ -109,10 +109,12 @@
     "selectSeason": "Vælg sæson",
     "unreadPatchNotes": "Nye patch notes",
     "unreadForum": "Ny forum-aktivitet",
+    "unreadRoadmap": "Nye roadmap-punkter",
     "selectionReminder": "Trup mangler før fristen",
     "selectionReminderUrgent": "Holdet stiller ikke op"
   },
   "leaderBadge": "Fører",
+  "betaBadge": "Beta",
   "amountInput": {
     "invalid": "Angiv et helt tal, fx 150000 eller 150.000",
     "parsedPreview": "= {amount} CZ$"

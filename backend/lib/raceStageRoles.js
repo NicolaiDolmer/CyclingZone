@@ -46,14 +46,23 @@ export async function loadStageRoleOverrides({ supabase, raceId }) {
  * (race_entries-basisrollen, allerede på entranten) → ingen rolle.
  * effort: stage-override.effort → 'normal' (ingen per-rytter-basis findes).
  *
+ * #5580 (spec motor runde 2, M1 punkt 6, "én kilde til effort"): er et
+ * `orderEffortByRider`-kort givet (race_team_orders' effort for DENNE etape),
+ * vinder ordren, og stage-rækkens effort er kun fallback når ordren mangler.
+ * race_team_orders er "eneste sandhed for etapens overlay" (ejer 21/8,
+ * raceTeamOrdersApi.js). Uden kortet (default) er resultatet bit-identisk med
+ * før. raceRunner giver kun kortet når løbsmotor v4 kører (flaget
+ * race_engine_v4), så v3-stien er uændret.
+ *
  * @param {{rider_id: string, race_role?: string}} entrant  ORIGINAL entrant (base race_role fra race_entries) — ikke en allerede-mutéret sim-entrant
  * @param {Map<string, {race_role:string, effort:string}>} [overridesForStage]  KUN denne etapes overrides
+ * @param {Map<string, string>|null} [orderEffortByRider]  #5580: ordrens effort pr. rytter for DENNE etape (orderEffortByRiderForStage)
  * @returns {{race_role?: string, effort: 'grupetto'|'save'|'normal'|'protect'|'all_out'}} nyt objekt (#4632: fem trin) (spread af entrant + resolveret role/effort)
  */
-export function resolveStageEntrant(entrant, overridesForStage) {
+export function resolveStageEntrant(entrant, overridesForStage, orderEffortByRider = null) {
   const override = overridesForStage?.get(entrant.rider_id);
   const race_role = override?.race_role || entrant.race_role || null;
-  const effort = override?.effort || "normal";
+  const effort = orderEffortByRider?.get(String(entrant.rider_id)) || override?.effort || "normal";
   const resolved = { ...entrant, effort };
   if (race_role) resolved.race_role = race_role;
   else delete resolved.race_role;
@@ -112,7 +121,8 @@ export const DEMOTED_STAGE_ROLE = "helper";
  *
  * @param {Array<{rider_id: string, team_id?: string, race_role?: string}>} entrants ORIGINALE entrants (basisrolle fra race_entries)
  * @param {Map<string, {race_role:string, effort:string}>} [overridesForStage] KUN denne etapes overrides
- * @param {{ineligibleRiderIds?: Set<string>}} [opts] ryttere der ikke kører DENNE
+ * @param {{ineligibleRiderIds?: Set<string>, orderEffortByRider?: Map<string,string>|null}} [opts]
+ *   `ineligibleRiderIds`: ryttere der ikke kører DENNE
  *   etape (udgået/skadet, `race_incidents.outcome='abandon'`). De deltager ikke i
  *   konflikt-afgørelsen: en udgået rytter må hverken vinde en eksklusiv rolle
  *   (kald-stedet filtrerer ham væk bagefter, og holdet ville da stå HELT uden
@@ -121,10 +131,11 @@ export const DEMOTED_STAGE_ROLE = "helper";
  *   (simulateStageByIndex) filtrerer allerede abandons FØR den kalder motoren og
  *   behøver den ikke; hele-løbs-stien (buildRaceResults) filtrerer først EFTER
  *   resolution og sender derfor sin egen abandonedSet med.
+ *   `orderEffortByRider` (#5580): se resolveStageEntrant — ordrens effort vinder.
  * @returns {{entrants: Array<object>, conflicts: Array<{teamId: string, role: string, source: "stage_override"|"base_role", keptRiderId: string, droppedRiderIds: string[]}>}}
  */
-export function resolveStageEntrants(entrants = [], overridesForStage, { ineligibleRiderIds } = {}) {
-  const resolved = entrants.map((e) => resolveStageEntrant(e, overridesForStage));
+export function resolveStageEntrants(entrants = [], overridesForStage, { ineligibleRiderIds, orderEffortByRider = null } = {}) {
+  const resolved = entrants.map((e) => resolveStageEntrant(e, overridesForStage, orderEffortByRider));
   const conflicts = [];
 
   // Indehavere pr. (hold, eksklusiv rolle) — som INDEKS i `resolved`, så vi kan
@@ -201,6 +212,56 @@ export function effortByRiderForStage(stageRoleOverrides, stageNumber) {
   if (!overridesForStage?.size) return null;
   const out = new Map();
   for (const [riderId, o] of overridesForStage) out.set(riderId, o.effort || "normal");
+  return out;
+}
+
+// #5580: de fem trin (#4632). Kun kendte værdier fra en ordre-række tæller;
+// alt andet ignoreres, så stage-rækken (eller 'normal') er fallback — en værdi
+// motoren ikke kender må aldrig blive til et indsatsvalg.
+const EFFORT_LEVELS = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
+
+/**
+ * #5580 (spec motor runde 2, M1 punkt 6): ordrens effort pr. rytter for ÉN
+ * etape, fra race_team_orders-rækkerne (`loadTeamOrderRows`, samme rækker
+ * løbsmotor v4 får). Ren, ingen DB. null når etapen ingen ordre-effort har, så
+ * kald-stedet falder tilbage til stage-rækkerne præcis som før.
+ *
+ * @param {Array<{stage_number:number, riders?: Array<{rider_id:string, effort?:string}>}>} [teamOrderRows]
+ * @param {number} stageNumber
+ * @returns {Map<string,string>|null}
+ */
+export function orderEffortByRiderForStage(teamOrderRows, stageNumber) {
+  if (!Array.isArray(teamOrderRows) || teamOrderRows.length === 0) return null;
+  const out = new Map();
+  for (const row of teamOrderRows) {
+    if (Number(row?.stage_number) !== Number(stageNumber)) continue;
+    for (const rider of Array.isArray(row.riders) ? row.riders : []) {
+      if (rider?.rider_id == null || !EFFORT_LEVELS.has(rider.effort)) continue;
+      out.set(String(rider.rider_id), rider.effort);
+    }
+  }
+  return out.size ? out : null;
+}
+
+/**
+ * #5580 (spec motor runde 2, M1 punkt 7, fund b 24/9): effort pr. rytter til
+ * trætheden EFTER etapen, fra SAMME kilde som motoren kørte på: ordren vinder,
+ * stage-rækken er fallback. null når ingen af de to har noget for etapen
+ * (kald-stedet giver da multiplikator 1.0, som før).
+ *
+ * raceRunner bruger den kun når løbsmotor v4 kører; v3-stien bruger stadig
+ * effortByRiderForStage (uændret for spillerne indtil ejeren vælger andet).
+ *
+ * @param {Map<number, Map<string, {race_role:string, effort:string}>>|undefined} stageRoleOverrides
+ * @param {number} stageNumber
+ * @param {Map<string,string>|null} orderEffortByRider  orderEffortByRiderForStage(...)
+ * @returns {Map<string,string>|null}
+ */
+export function resolvedEffortByRiderForStage(stageRoleOverrides, stageNumber, orderEffortByRider) {
+  const fromStageRoles = effortByRiderForStage(stageRoleOverrides, stageNumber);
+  if (!orderEffortByRider?.size) return fromStageRoles;
+  const out = new Map(fromStageRoles ?? []);
+  for (const [riderId, effort] of orderEffortByRider) out.set(riderId, effort);
   return out;
 }
 

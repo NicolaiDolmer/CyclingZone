@@ -46,6 +46,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Run actionlint via reviewdog
         uses: reviewdog/action-actionlint@d290e336d5a743810aef4404f757dc862276d2ae # v1
@@ -67,6 +69,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7

@@ -220,16 +220,31 @@ export function planYouthGroups({ teams, globalRanks, aiTeams, squad, groupSize 
 }
 
 /**
- * Gruppen en NY manager (eller et comeback) skal i: den med flest AI-hold
- * (så holdet overtager en AI-plads), tie → laveste pool_index. null hvis trup
- * ingen grupper har. Grupper kan give aiTeamIds (array) eller aiCount (tal).
+ * Gruppen en NY manager (eller et comeback, #5676) skal i: den med flest
+ * AI-hold (så holdet overtager en AI-plads — totalstørrelsen ændres ikke, ét
+ * AI-hold viger), tie → mindst optaget (flest ledige pladser), tie → laveste
+ * pool_index. En gruppe der er fyldt (size >= groupSize) UDEN et AI-hold at
+ * overtage har ingen ledig plads og udelades helt — holdet går i stedet til
+ * den næste (mindste) gruppe med reel plads (#5676 "fuld gruppe → næste
+ * mindste"). null hvis trup ingen brugbare grupper har.
+ * Grupper kan give aiTeamIds/managerTeamIds (arrays), size (tal) eller
+ * aiCount (tal) — samme fleksible facade som før.
  */
-export function pickYouthGroupForNewTeam({ groups, squad } = {}) {
+export function pickYouthGroupForNewTeam({ groups, squad, groupSize = YOUTH_GROUP_SIZE } = {}) {
   assertYouthSquad(squad);
   const aiCount = (g) => (Array.isArray(g.aiTeamIds) ? g.aiTeamIds.length : Number(g.aiCount) || 0);
-  const candidates = (groups || []).filter((g) => g && (g.squad == null || g.squad === squad));
+  const groupSizeOf = (g) => (Number.isInteger(g.size)
+    ? g.size
+    : (Array.isArray(g.managerTeamIds) ? g.managerTeamIds.length : 0) + aiCount(g));
+  const candidates = (groups || [])
+    .filter((g) => g && (g.squad == null || g.squad === squad))
+    .filter((g) => aiCount(g) > 0 || groupSizeOf(g) < groupSize);
   if (!candidates.length) return null;
-  return [...candidates].sort((a, b) => (aiCount(b) - aiCount(a)) || (a.poolIndex - b.poolIndex))[0];
+  return [...candidates].sort((a, b) => (
+    aiCount(b) - aiCount(a)
+  ) || (
+    groupSizeOf(a) - groupSizeOf(b)
+  ) || (a.poolIndex - b.poolIndex))[0];
 }
 
 /**

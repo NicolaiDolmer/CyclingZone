@@ -50,16 +50,19 @@ _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/Nicola
 
 Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, ellers fejler CI på mobile (#536, 21/5).
 
-**Billedstationen (#5565): ægte-data-billeder af en PR's Vercel-preview.** Hver UI-PR får billederne (desktop 1440 + mobil 390) FØR ejeren spørges om go; go-kortet linker til previewet og vedhæfter billederne (aldrig på GitHub: ægte spillernavne).
+**Billedstationen (#5565): ægte-data-billeder af enhver PR fra én fast lokal origin med ét login.** Hver UI-PR får billederne (desktop 1440 + mobil 390, før/efter) FØR ejeren spørges om go; go-kortet vedhæfter `before-after.png` og linker til Vercel-previewet (billederne aldrig på GitHub: ægte spillernavne).
 
 ```
-node scripts/pr-shots.mjs --pr <N> --routes /dashboard,/academy --viewports 1440,390
+node scripts/pr-shots.mjs login                                   # ejeren, én gang (taster selv)
+node scripts/pr-shots.mjs shoot main C:\Dev\CyclingZone /dashboard /team            # "før", én gang pr. dag
+node scripts/pr-shots.mjs shoot <label> <worktree> /dashboard /team --pr=<N>       # "efter" pr. PR
+node scripts/pr-shots.mjs compose <label>                         # ét samlet før/efter-billede
 ```
 
-- Preview-URL'en slås op via `gh` (GitHub Deployments fra Vercel, ellers Vercel-bottens kommentar); branch-aliaset `...-git-<gren>-...vercel.app` foretrækkes, så origin er den samme for hvert push på PR'en. `--url <origin>` springer opslaget over.
-- Én fast Playwright-profil i `.claude/run/pr-shots-profile/` (gitignoreret). **Ejeren logger ind én gang pr. preview-origin:** `node scripts/pr-shots.mjs --pr <N> --login` åbner Edge (headed) på previewets `/login`; ejeren taster selv, scriptet lukker når login er gemt. Et login gælder kun den origin (Supabase-sessionen ligger pr. origin), så en ny PR = et nyt login, et nyt push på samme PR ikke.
-- Hver billedserie kører i en KOPI af profilen, som slettes bagefter; alle skrivende kald (API, Supabase REST/RPC, PostHog, Sentry) besvares lokalt med 204, og et `signOut` fra appen tælles i rapporten uden at ramme mesterprofilen. Scriptet læser, skriver eller logger aldrig tokens/cookies og skruer aldrig browser-uret (`--shot-at` afvises; læring 24/9).
-- Output: `pr-screens/live/<pr>-<route>-<viewport>.png` (gitignoreret undermappe — `pr-screens/` selv er IKKE gitignoreret). `--dry-run` viser plan og filnavne uden browser. Tests: `node --test scripts/lib/prShots.test.mjs`.
+- **Én origin, ét login:** hver PR's frontend bygges i sin egen worktree (`npm run build` med cwd = `<worktree>/frontend`) og serveres af scriptet selv på `http://localhost:5173` (i backendens CORS-liste) mod prod-API'et. Supabase-sessionen ligger pr. origin, så login i profilen `%LOCALAPPDATA%\cz-pr-shots-profile` gælder alle PR'er og alle worktrees. Porten er kontrakten: er 5173 optaget (på 127.0.0.1 eller ::1), stopper scriptet i stedet for at bruge en anden port, og en nonce bekræfter at browseren rammer netop denne kørsels server.
+- **Sikkerhedskontrakt (læring 24/9):** hver serie kører i en KOPI af profilen, som slettes bagefter (kopier efterladt af en dræbt kørsel ryddes ved næste shoot). Alle skrivende kald (API, Supabase REST/RPC, PostHog, Sentry) besvares lokalt med 204, undtagen Supabase' token-refresh; et `signOut` tælles i rapporten uden at ramme mesterprofilen; service workers blokeres. Login-proben (`/dashboard` lander ikke på `/login`, intet 401 fra API'et) kører før serien. Scriptet læser aldrig tokens, cookies eller storage og skruer aldrig browser-uret (`--shot-at` afvises); en anden tilstand fremkaldes med `--mock=<sti>=<json-fil>` (kun GET, markeres "MOCK" i rapport og billede). Build-miljøet renses for `VITE_*`/`SENTRY_*`, så worktreets egne `.env`-filer afgør API'et, og intet PR-build uploader til Sentry.
+- **Valg:** `--widths=1440,390`, `--click=<tekst>` eller `--click=css:<selector>` (rapporten skriver hvad hvert klik ramte), `--wait-for=<selector>`, `--no-build`, `--headed`, `--dry-run` (plan uden build/browser). Kør fra PowerShell (Git Bash omskriver `/ruter`; scriptet reparerer det med en advarsel).
+- **Output:** `%OneDrive%\CyclingZone-context\private-handoffs\pr-shots\<label>\<route>-<bredde>.png` + `report.json` (build-sha, API-host, blokerede skrivninger, klik-log, mocks) og `before-after.png`. Uden OneDrive-context: `pr-screens/live/` (gitignoreret; `pr-screens/` selv er IKKE). I en bølge wrappes `shoot` i `scripts/verify-lock.ps1` (build + browser er tungt). Tests: `node --test scripts/lib/prShots.test.mjs`.
 
 **E2E-kommandoerne er uændrede efter #4647, kun hastigheden er det.** `npm run test:e2e` kører stadig alle specs i alle 3 projekter, men nu parallelt: `workers` er `"50%"` lokalt (halvdelen af kernerne, så maskinen kan bruges imens) og `"100%"` i CI. `PW_WORKERS=1 npm run test:e2e` isolerer en enkelt flaky test igen.
 

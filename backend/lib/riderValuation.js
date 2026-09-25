@@ -30,6 +30,7 @@ import { roleOutputRaw, DISPLAY_RECIPE_ABILITIES } from "./weights/displayRecipe
 // begge moduler eksporterer kun hoistede function declarations og kører ingen af
 // modpartens bindings ved module-eval.
 import { predictBaseValueV4 } from "./riderCareerNpv.js";
+import { isTypefreeModel, valueTypefree } from "./valuationTypefree/typefreeValuation.js";
 
 export { ABILITY_KEYS };
 
@@ -142,13 +143,21 @@ export function valuationTypeFor(rider, model) {
 // Returnerer null hvis abilities mangler helt (kan ikke værdisættes meningsfuldt).
 // Fjerde argument (opts) accepteres for bagudkompatibilitet, men ignoreres
 // (modellen bruger hverken alder eller asOf).
-export function predictBaseValue(rider, abilities, model /*, opts */) {
+export function predictBaseValue(rider, abilities, model, opts) {
   // #2594 CUTOVER-DISPATCH: et v4-model-objekt (version 4, koefficienter under
   // model.fit) sendes til karriere-NPV-motoren bag SAMME interface — call-sites
   // er uændrede, de skal blot (a) indlæse riderValuationModelV4.json og (b) give
   // rider.age + rider.potentiale med. Et v3-model-objekt (koefficienter i roden)
   // beregner som hidtil — offline-harnesses der stadig indlæser
   // riderValuationModel.json (v3) er dermed bevidst uberørte.
+  // #5497 v3: den typefri model (v6) med markeds-fittet hvis loaderen har lagt
+  // det på. Trin-tælleren: opts.phaseStep hvis sendt, ellers det trin loaderen
+  // har lagt på modellen fra app_config (current_phase_step = det trin
+  // databasens værdier står på), ellers 0. Så rytterkortet, sæson-transitionen
+  // og nye ryttere regner samme pris som søndagskørslen senest skrev.
+  if (isTypefreeModel(model)) {
+    return valueTypefree(rider, abilities, model, { phaseStep: opts?.phaseStep }).value;
+  }
   if (Number(model?.version) >= 4 && model?.fit) {
     return predictBaseValueV4(rider, abilities, model);
   }

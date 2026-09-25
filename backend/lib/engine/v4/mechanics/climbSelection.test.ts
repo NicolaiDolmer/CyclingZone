@@ -5,11 +5,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { climbSelectionHook, climbSeverity01 } from "./climbSelection.ts";
-import { RACE_V4_TUNING } from "../tuning.ts";
+import { climbSelectionHook, climbSeverity01, effortClimbScoreFactor, effortClimbScorePenalty } from "./climbSelection.ts";
+import { EFFORT_GAIN_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import type {
   AbilityKey,
+  EffortLevel,
   ClimbSegment,
   EngineState,
   Entrant,
@@ -355,4 +356,120 @@ test("#4604 wprimeMax=0 goer en rytter maksimalt saarbar, ikke immun", () => {
 
   assert.ok(split.has("zero"), "rytteren uden anaerob kapacitet skal selekteres bagud");
   assert.ok(!split.has("n3"), "gruppens staerkeste klatrer med fuld reserve skal blive i front");
+});
+
+// ── #5580 (M1 punkt 1): indsatsens gevinst paa stigningen ──────────────────
+
+const LADDER: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+
+test("#5580 effortClimbScoreFactor: normal og manglende effort er praecis 1 (bit-uaendret)", () => {
+  for (const reserve of [0, 0.25, 0.5, 1]) {
+    assert.equal(effortClimbScoreFactor("normal", reserve), 1);
+    assert.equal(effortClimbScoreFactor(undefined, reserve), 1);
+  }
+});
+
+test("#5580 effortClimbScoreFactor: tom reserve giver intet led paa noget trin (han knaekker, gevinsten er betalt med reserven)", () => {
+  for (const effort of LADDER) assert.equal(effortClimbScoreFactor(effort, 0), 1, effort);
+});
+
+test("#5580 relief-tabellen: normal er 0, og trappen er ikke-faldende (grupetto <= save <= normal <= protect <= all_out)", () => {
+  const relief = EFFORT_GAIN_EXTRA_TUNING.climbScoreRelief;
+  assert.equal(relief.normal, 0);
+  for (let i = 1; i < LADDER.length; i++) {
+    assert.ok(relief[LADDER[i]!] >= relief[LADDER[i - 1]!], `${LADDER[i]} < ${LADDER[i - 1]}`);
+  }
+  assert.ok(relief.all_out > relief.normal && relief.protect > relief.normal, "de to hoeje trin skal koebe noget");
+  assert.ok(relief.save < relief.normal, "save skal give slip tidligere");
+});
+
+test("#5580 effortClimbScoreFactor: ikke-stigende op ad trappen og aldrig negativ, for enhver reserve (fast-check, 200 runs)", () => {
+  fc.assert(
+    fc.property(fc.double({ min: 0, max: 1, noNaN: true }), (reserve) => {
+      const factors = LADDER.map((e) => effortClimbScoreFactor(e, reserve));
+      for (let i = 1; i < factors.length; i++) {
+        assert.ok(factors[i]! <= factors[i - 1]!, `${LADDER[i]} har stoerre faktor end ${LADDER[i - 1]} ved reserve ${reserve}`);
+      }
+      for (const f of factors) assert.ok(f >= 0);
+    }),
+    { numRuns: 200, seed: 5580 },
+  );
+});
+
+test("#5580 effortClimbScorePenalty: kun de lave trin, aldrig negativ, ikke-stigende op ad trappen", () => {
+  const penalty = EFFORT_GAIN_EXTRA_TUNING.climbScorePenalty;
+  assert.equal(penalty.normal, 0);
+  assert.equal(penalty.protect, 0);
+  assert.equal(penalty.all_out, 0);
+  assert.ok(penalty.save > 0 && penalty.grupetto >= penalty.save, "save og grupetto skal give slip tidligere");
+  fc.assert(
+    fc.property(
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      (severity, deficit) => {
+        const values = LADDER.map((e) => effortClimbScorePenalty(e, severity, deficit));
+        for (let i = 1; i < values.length; i++) {
+          assert.ok(values[i]! <= values[i - 1]!, `${LADDER[i]} straffes mere end ${LADDER[i - 1]}`);
+        }
+        for (const v of values) assert.ok(v >= 0);
+        assert.equal(effortClimbScorePenalty("normal", severity, deficit), 0);
+      },
+    ),
+    { numRuns: 200, seed: 5580 },
+  );
+});
+
+test("#5580 effortClimbScorePenalty: 0 uden stigning og 0 for gruppens bedste klatrer, ikke-faldende i underskuddet", () => {
+  assert.equal(effortClimbScorePenalty("save", 0, 0.5), 0, "ingen stigning, ingen udvaelgelse");
+  assert.equal(effortClimbScorePenalty("save", 1, 0), 0, "den staerkeste i gruppen kan ikke give slip fra svagere");
+  let prev = -1;
+  for (const deficit of [0, 0.02, 0.05, 0.1, 0.3, 1]) {
+    const v = effortClimbScorePenalty("grupetto", 0.8, deficit);
+    assert.ok(v >= prev, `ikke-faldende i underskuddet (${deficit})`);
+    prev = v;
+  }
+  assert.equal(effortClimbScorePenalty(undefined, 1, 1), 0);
+});
+
+/**
+ * Felt til trappe-testen: to staerke klatrere (gruppens reference) + én
+ * "kantrytter" med lavere klatre-evne og en halvt braendt reserve. Kun
+ * kantrytterens indsats varieres; hans rider_id er den samme i alle varianter,
+ * saa stoej-rullet er identisk og forskellen er indsatsen alene.
+ */
+function edgeRiderSplit(effort: EffortLevel, seed: string, wprimeFraction = 0.6): boolean {
+  const entrants = [
+    entrant("lead-a", { climbing: 80 }),
+    entrant("lead-b", { climbing: 80 }),
+    { ...entrant("edge", { climbing: 40 }), effort },
+  ];
+  const state = makeState(entrants, { edge: { wprimeMax: 0.4, wprime: 0.4 * wprimeFraction } });
+  const segment = climbSegment({ avg_gradient: 5, from_km: 0, to_km: 4 });
+  const out = climbSelectionHook(state, makeCtx(entrants, segment, seed));
+  return splitRiderIdsFrom(out.state).has("edge");
+}
+
+test("#5580 MONOTONI pr. trin (100 seeds): P(sat) er ikke-stigende op ad trappen ved samme evne og samme reserve", () => {
+  const seeds = Array.from({ length: 100 }, (_, i) => `ladder-${i}`);
+  const splitCount = new Map<EffortLevel, number>(LADDER.map((e) => [e, 0]));
+  for (const seed of seeds) {
+    const splits = LADDER.map((e) => edgeRiderSplit(e, seed));
+    // Pr. seed: er rytteren sat paa et hoejere trin, er han ogsaa sat paa alle lavere.
+    for (let i = 1; i < splits.length; i++) {
+      assert.ok(!(splits[i] && !splits[i - 1]), `${seed}: sat paa ${LADDER[i]} men ikke paa ${LADDER[i - 1]}`);
+    }
+    LADDER.forEach((e, i) => splitCount.set(e, splitCount.get(e)! + (splits[i] ? 1 : 0)));
+  }
+  assert.ok(
+    splitCount.get("all_out")! < splitCount.get("normal")!,
+    "all_out skal koebe position: kantrytteren skal sidde fast oftere end paa normal",
+  );
+  assert.ok(splitCount.get("save")! > splitCount.get("normal")!, "save skal give slip oftere end normal");
+});
+
+test("#5580 knaek: med tom reserve koeber all_out intet (W'=0 er stadig fysiologisk absolut)", () => {
+  for (const seed of ["crack-1", "crack-2", "crack-3"]) {
+    assert.equal(edgeRiderSplit("all_out", seed, 0), true, `${seed}: all_out med tom reserve skal knaekke`);
+    assert.equal(edgeRiderSplit("normal", seed, 0), true, `${seed}: kontrol`);
+  }
 });

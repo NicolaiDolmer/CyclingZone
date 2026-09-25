@@ -151,8 +151,9 @@ test("v4 shadow-preview læser potentiale server-side men emitter det aldrig (#2
   const block = apiSource.slice(idx, idx + 4500);
   // Potentiale læses i en smal whitelistet select og bruges KUN til NPV-inputtet.
   assert.match(block, /\.select\("id, potentiale, birthdate, team_id"\)/, "v4-preview skal læse potentiale i den smalle whitelistede select");
-  assert.match(block, /predictBaseValueV4\(/, "v4-preview skal beregne v4-værdien via predictBaseValueV4");
-  // Den ENESTE brug af potentiale-værdien er som input til predictBaseValueV4 —
+  // #5497: predictBaseValue (model-bevidst; for v4/v5 samme predictBaseValueV4).
+  assert.match(block, /predictBaseValue\(\{ \.\.\.r, potentiale: potentialeByRider\.get\(r\.id\)/, "v4-preview skal beregne værdien via predictBaseValue med potentiale som input");
+  // Den ENESTE brug af potentiale-værdien er som input til predictBaseValue —
   // det klient-vendte rows.push-objekt (id/name/type/overall/age/v3_value/v4_value/
   // delta/pct) må aldrig bære rå potentiale.
   const pushIdx = block.indexOf("rows.push({");

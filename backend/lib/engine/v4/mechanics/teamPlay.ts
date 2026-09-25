@@ -180,6 +180,28 @@ export function supportShare(
 }
 
 /**
+ * #5580 (M1 punkt 5): antal arbejdende holdkammerater der FAKTISK stoetter
+ * lederen. En hjaelper paa `all_out` koerer for sig selv (work-cost-aksen giver
+ * ham pris 0, ejer 6/9), saa han taeller ikke med i `supportShare`. Alle andre
+ * trin taeller som foer: `protect` er selve holdarbejdet, og `save`/`grupetto`
+ * arbejder stadig, bare billigere (deres pris er halveret, og bevarelses-
+ * garantien begraenser bonussen til det holdet faktisk betalte).
+ *
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function countSupportingWorkers(
+  workerIds: readonly string[],
+  entrants: Readonly<Record<string, Entrant>>,
+): number {
+  let n = 0;
+  for (const id of workerIds) {
+    if (entrants[id]?.effort === "all_out") continue;
+    n += 1;
+  }
+  return n;
+}
+
+/**
  * Den BESKYTTEDE rytters rolle paa denne etapetype (v3's `teamComponent`
  * 1:1): paa flade etaper er det sprint-kaptajnen, ellers kaptajnen — og
  * hver af dem falder tilbage paa den anden hvis holdet ikke har den.
@@ -313,7 +335,10 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
       //    i virkeligheden, hvor et hold der har mistet sin kaptajn har
       //    braendt dagen).
       if (!team.leaderId || !state.riders[team.leaderId]) continue;
-      const share = supportShare(team.workerIds.length, tuning);
+      // #5580 (M1 punkt 5): en hjaelper paa `all_out` arbejder for sig selv
+      // (prisen er 0 ovenfor) og taeller derfor heller ikke som stoette. Foer
+      // gav han kaptajnen laeskaerm gratis via antallet i supportShare.
+      const share = supportShare(countSupportingWorkers(team.workerIds, ctx.entrants), tuning);
       if (share <= 0) continue;
 
       // Garanti 1 (bevarelse): bonussen kan aldrig overstige det holdet

@@ -97,3 +97,43 @@ test("RoadmapPage lazy-loader admin-create-formen via lazyWithRetry (#5177 spor 
     "AdminCreateForm skal splittes via lazyWithRetry (ikke bart React.lazy — #5014 chunk-retry-guard), og ikke bundles ind i alles roadmap-chunk",
   );
 });
+
+// #5673: gul ulæst-prik ved nye roadmap-punkter — samme storage-strategi
+// (localStorage, lib/roadmapUnread.ts) som Patch Notes, ikke en server-side
+// last-read-tabel som forum.
+test("RoadmapPage bruger roadmapUnread.ts til prikken på det enkelte punkt (#5673)", () => {
+  assert.match(
+    source,
+    /from "\.\.\/lib\/roadmapUnread\.ts"/,
+    "skal importere fra lib/roadmapUnread.ts, ikke genopfinde sammenligningen lokalt",
+  );
+  assert.match(
+    source,
+    /isRoadmapItemNew\(item\.created_at, lastSeenBeforeVisit\)/,
+    "hvert punkt skal vise sin egen \"ny\"-prik ud fra isRoadmapItemNew",
+  );
+});
+
+test("RoadmapPage fanger lastSeen ÉN gang ved mount, FØR den overskrives (#5673)", () => {
+  assert.match(
+    source,
+    /useState\(\(\) => readLastSeenRoadmap\(\)\)/,
+    "lastSeenBeforeVisit skal initialiseres fra readLastSeenRoadmap() i en useState-lazy-initializer, ikke genlæses ved hvert render",
+  );
+});
+
+test("RoadmapPage nulstiller lastSeen ved besøg — skriver nyeste created_at blandt de hentede punkter (#5673)", () => {
+  assert.match(
+    source,
+    /writeLastSeenRoadmap\(latestRoadmapCreatedAt\(all\)\)/,
+    "besøg af /roadmap skal skrive nyeste created_at som ny lastSeen, ellers forsvinder nav-prikken (Layout.jsx) aldrig",
+  );
+});
+
+test("RoadmapPage's item-query henter created_at (via ROADMAP_ITEM_COLUMNS, #5673)", () => {
+  assert.match(
+    source,
+    /\.select\(ROADMAP_ITEM_COLUMNS\)/,
+    "items-querien skal bruge den delte kolonneliste (nu inkl. created_at)",
+  );
+});

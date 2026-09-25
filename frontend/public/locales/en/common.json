@@ -109,10 +109,12 @@
     "selectSeason": "Select season",
     "unreadPatchNotes": "New patch notes",
     "unreadForum": "New forum activity",
+    "unreadRoadmap": "New roadmap items",
     "selectionReminder": "Squad selection missing before the deadline",
     "selectionReminderUrgent": "Your team will not start"
   },
   "leaderBadge": "Leader",
+  "betaBadge": "Beta",
   "amountInput": {
     "invalid": "Enter a whole number, e.g. 150000 or 150.000",
     "parsedPreview": "= {amount} CZ$"

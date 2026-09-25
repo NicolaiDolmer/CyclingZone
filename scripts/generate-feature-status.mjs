@@ -66,6 +66,25 @@ const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note"
 const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// Samme loft som "FEATURE_STATUS.md" i scripts/check-agent-token-hygiene.ps1 (#4921).
+// Holdes i sync i haanden - de to scripts er hhv. Node og pwsh og deler ikke fil.
+// Aendrer du et tal her, aendr det samme sted der (og omvendt). #5430.
+export const TOKEN_BUDGET_WARN = 2600;
+export const TOKEN_BUDGET_FAIL = 3000;
+
+/**
+ * Samme approksimation som Get-ApproxTokens i check-agent-token-hygiene.ps1:
+ * CRLF normaliseres til LF foer optaelling (core.autocrlf maa ikke paavirke
+ * doemmelsen), og tokens ~= tegn / 4 rundet op.
+ *
+ * @param {string} markdown
+ * @returns {number}
+ */
+export function approxTokens(markdown) {
+  const normalized = markdown.replace(/\r\n/g, "\n");
+  return Math.ceil(normalized.length / 4);
+}
+
 /**
  * Minimal parser for registrets flade skema.
  *
@@ -189,6 +208,21 @@ function epicCell(epic) {
 }
 
 /**
+ * Kompakt liniefremstilling for en `live`-post: navn + id + dato, ingen
+ * kolonner. Bevidst mindre detaljeret end tabelraekken - `live` er den
+ * tilstand med flest poster (50/75 maalt 24/9), saa den er den eneste hvor
+ * en fuld 7-kolonne-raekke pr. post reelt vaelter token-loftet naar
+ * registret vokser (#5430). Flag/SSOT/epic/note for en live-feature staar
+ * stadig i FEATURE_REGISTRY.yml - intet tabt, kun ikke gengivet her.
+ *
+ * @param {Record<string, string>} e
+ * @returns {string}
+ */
+function liveEntry(e) {
+  return `${e.title_en} (\`${e.id}\`) ${e.verified}`;
+}
+
+/**
  * @param {Array<Record<string, string>>} entries
  * @returns {string} markdown
  */
@@ -218,24 +252,47 @@ export function render(entries) {
   out.push(`${sorted.length} poster: ${summary}. Tilstand afledes af kode og prod-flag, aldrig af prosa.`);
   out.push("");
   out.push("Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.");
+  out.push("Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).");
   out.push("");
 
   let currentArea = null;
+  let liveBuffer = [];
+  let nonLiveRows = [];
+
+  const flushArea = () => {
+    if (currentArea === null) return;
+    if (liveBuffer.length > 0) {
+      out.push(`**live:** ${liveBuffer.join(" · ")}`);
+      out.push("");
+    }
+    if (nonLiveRows.length > 0) {
+      out.push("| Feature | State | Flag | SSOT | Epic | Verified | Note |");
+      out.push("| --- | --- | --- | --- | --- | --- | --- |");
+      out.push(...nonLiveRows);
+      out.push("");
+    }
+  };
+
   for (let i = 0; i < sorted.length; i += 1) {
     const e = sorted[i];
     if (e.area !== currentArea) {
+      flushArea();
       currentArea = e.area;
+      liveBuffer = [];
+      nonLiveRows = [];
       out.push(`## ${currentArea}`);
       out.push("");
-      out.push("| Feature | State | Flag | SSOT | Epic | Verified | Note |");
-      out.push("| --- | --- | --- | --- | --- | --- | --- |");
+    }
+    if (e.state === "live") {
+      liveBuffer.push(liveEntry(e));
+      continue;
     }
     const flag = e.flag ? `\`${e.flag}\`` : "-";
-    out.push(
+    nonLiveRows.push(
       `| ${e.title_en} (\`${e.id}\`) | ${e.state} | ${flag} | ${ssotCell(e.ssot)} | ${epicCell(e.epic)} | ${e.verified} | ${cell(e.note)} |`,
     );
-    if (sorted[i + 1]?.area !== e.area) out.push("");
   }
+  flushArea();
 
   return `${out.join("\n").trimEnd()}\n`;
 }
@@ -248,7 +305,16 @@ export function generate() {
     const message = ["FEATURE_REGISTRY.yml er ugyldig:", ...errors.map((e) => `  - ${e}`)].join("\n");
     throw new Error(message);
   }
-  return render(entries);
+  const markdown = render(entries);
+  const tokens = approxTokens(markdown);
+  if (tokens > TOKEN_BUDGET_FAIL) {
+    throw new Error(
+      `docs/FEATURE_STATUS.md ville blive ${tokens} approx tokens - over loftet paa ${TOKEN_BUDGET_FAIL} ` +
+        `(scripts/check-agent-token-hygiene.ps1). Fix: kort noter i FEATURE_REGISTRY.yml, eller flyt afsluttede ` +
+        `poster til retired/arkiv, foer du regenererer.`,
+    );
+  }
+  return markdown;
 }
 
 function main() {
@@ -261,9 +327,15 @@ function main() {
     process.exit(1);
   }
 
+  const tokens = approxTokens(markdown);
+  const budgetNote =
+    tokens > TOKEN_BUDGET_WARN
+      ? ` (WARN: ${tokens}/${TOKEN_BUDGET_FAIL} approx tokens - naermer sig loftet)`
+      : ` (${tokens}/${TOKEN_BUDGET_FAIL} approx tokens)`;
+
   if (!check) {
     writeFileSync(OUTPUT_PATH, markdown, "utf8");
-    console.log(`Skrev ${OUTPUT_PATH.replace(ROOT, "").replace(/^[\\/]/, "")}`);
+    console.log(`Skrev ${OUTPUT_PATH.replace(ROOT, "").replace(/^[\\/]/, "")}${budgetNote}`);
     return;
   }
 

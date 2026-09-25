@@ -920,6 +920,7 @@
       "lineupReady": "Opstillingen er klar, {selected} af {max} ryttere valgt.",
       "lineupIncomplete": "Opstillingen mangler, {selected} af {max} ryttere valgt.",
       "lineupUnknown": "Opstillings-status er ikke tilgængelig for dette løb.",
+      "withdrawn": "Afmeldt fra dette løb.",
       "noResults": "Der er endnu ikke offentliggjort resultater for denne etape."
     },
     "action": {
