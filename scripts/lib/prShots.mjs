@@ -126,7 +126,8 @@ export function parseClick(value) {
  */
 export function parseMock(value, warnings = []) {
   const v = String(value ?? "");
-  const eq = v.indexOf("=");
+  // Sidste "=": en mock-sti maa gerne have en query (`/api/x?day=today=fil.json`).
+  const eq = v.lastIndexOf("=");
   if (eq <= 0 || eq === v.length - 1) throw new Error(`--mock skal have formen <sti>=<json-fil> eller <sti>=status:<kode>: '${v}'`);
   const path = toRoute(v.slice(0, eq).trim(), warnings);
   const target = v.slice(eq + 1).trim();
