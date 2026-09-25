@@ -87,7 +87,17 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, seasonAge = nul
   // ved en uklar alder — canDemote (isU23) er allerede sand her, så dette er
   // reelt aldrig null, men et fallback forhindrer en tom knap-tekst.
   const demoteTargetSquad = demoteNaturalTargetSquad(seasonAge) ?? "u23";
+  // #5742: fuld liste (natural + evt. "opad"-alternativ U23) bruges KUN til at
+  // afgøre om trigger-knappen skal spærres (triggerSquadFull nedenfor) — den
+  // afgørelse er uafhængig af om alternativet reelt kan VÆLGES i dialogen.
   const demoteOptions = demoteSquadOptions(seasonAge);
+  // #5742 (reviewer-fund, blokerende): dialogens vælger må IKKE tilbyde U23
+  // til en junior-alder rytter — /api/academy/demote sender ikke det valgte
+  // mål med (se confirmAcademy ovenfor), så et U23-valg her ville flytte
+  // rytteren til junior alligevel og success-teksten ville lyve om resultatet.
+  // Kun den naturlige trup vises, indtil en route understøtter targetSquad
+  // (backend-ændring, ejer-gated af briefen for denne feature).
+  const demoteModalOptions = demoteOptions.filter(o => o.isDefault);
 
   useEffect(() => {
     onPromoteVisibleChange?.(isAcademyRider && academy.enabled);
@@ -171,11 +181,16 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, seasonAge = nul
     if (!academyModal) return;
     setAcademyBusy(true);
     const isPromote = academyModal.direction === "promote";
-    // #5742: sender det VALGTE mål-trup med (forward-compatible — dagens
-    // /api/academy/demote-route læser den endnu ikke, se academyTransfer.js'
-    // demote()/demoteTargetSquad(requestedSquad), som allerede understøtter
-    // det). demoteRider() (useAcademy.js) tager endnu ikke et 2. argument, så
-    // parametret rejser IKKE med herfra i dag — se slutrapporten.
+    // #5742 (reviewer-fund, blokerende): /api/academy/demote læser INTET
+    // valgt mål-trup fra req.body — den flytter altid til den trup sæsonalderen
+    // selv udleder (demoteTargetSquad() uden requestedSquad, se
+    // backend/lib/academyTransfer.js). demoteRider() (useAcademy.js) tager
+    // derfor heller ikke et 2. argument. Briefen for denne feature forbyder
+    // backend-ændringer, så en U23-vælger her ville love et mål dialogen
+    // aldrig kunne levere. Dialogen viser derfor (se squadOptions nedenfor)
+    // KUN den naturlige trup, indtil en route understøtter targetSquad —
+    // `squad` er dermed altid den samme trup demoteRider() rent faktisk
+    // rammer, og success-teksten lyver ikke om resultatet.
     const res = isPromote ? await academy.promoteRider(rider.id) : await academy.demoteRider(rider.id, squad);
     setAcademyBusy(false);
     setAcademyModal(null);
@@ -229,7 +244,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, seasonAge = nul
         capLabel={academyModal?.capLabel}
         capAfterLabel={academyModal?.capAfterLabel}
         capSquad={academyModal?.capSquad ?? null}
-        squadOptions={academyModal?.direction === "demote" ? demoteOptions : []}
+        squadOptions={academyModal?.direction === "demote" ? demoteModalOptions : []}
         onSquadChange={handleSquadChange}
         capFull={demoteCapFull}
         capFullMax={selectedSquadCount?.max ?? null}

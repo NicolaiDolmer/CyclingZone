@@ -71,15 +71,32 @@ export function AcademyTransferConfirmModal({
   // array hver render — stod det arrayet i dependency-listen, ville selve
   // klikket der skifter trup udløse en re-render der straks nulstillede
   // valget tilbage til default (CodeRabbit-fund).
+  // #5742 (reviewer-fund): effekten skal KUN trigge på `show`s flanke, men
+  // exhaustive-deps kræver squadOptions/capSquad i deps hvis de læses direkte
+  // i effekten. En ref opdateret UNDER render er nu selv en lint-fejl
+  // (react-hooks/refs — React Compiler-æraens regel, "Cannot access refs
+  // during render"), så "latest ref"-mønstret må skrive ref'en i en EGEN
+  // deps-løs effekt (kører efter hvert commit, altid efter render — det er
+  // her ref-skrivning er tilladt), IKKE inline i render-kroppen. Den effekt
+  // er erklæret FØR show-flanke-effekten, så refs altid er friske når den
+  // læser dem. Ingen af delene rører selve show-tjekket, så et trup-skift
+  // (ny squadOptions-reference) udløser stadig ikke en reset (samme fix som
+  // CodeRabbit-fundet ovenfor).
+  const squadOptionsRef = useRef(squadOptions);
+  const capSquadRef = useRef(capSquad);
+  useEffect(() => {
+    squadOptionsRef.current = squadOptions;
+    capSquadRef.current = capSquad;
+  });
+
   const [selectedSquad, setSelectedSquad] = useState(capSquad);
   const wasShown = useRef(false);
   useEffect(() => {
     if (show && !wasShown.current) {
-      const fallback = squadOptions.find(o => o.isDefault)?.squad ?? capSquad;
+      const fallback = squadOptionsRef.current.find(o => o.isDefault)?.squad ?? capSquadRef.current;
       setSelectedSquad(fallback ?? null);
     }
     wasShown.current = show;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- se kommentaren ovenfor: kun `show`s flanke skal trigge
   }, [show]);
 
   if (!show) return null;
