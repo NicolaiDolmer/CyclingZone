@@ -45,6 +45,7 @@ import { findNextSeason } from "./seasonLookup.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -785,6 +786,15 @@ export async function proposeNextMandate(supabase, {
  * 5/9 mod prod: sæson 4 findes ikke, så sæsonskiftet 27/9 ville have ramt 237
  * hold. Guarden gør skiftet til en ren no-op i stedet: det aktive mandat står
  * urørt, og næste kørsel (efter sæson 4 er oprettet, #4270) samler op.
+ *
+ * #5752 · ÅRSMØDET INDKALDES I SAMME MINUT. Når et NYT `proposed`-mandat er
+ * skrevet, sendes åbnings-notifikationen ("The board has called the annual
+ * meeting") straks via `notifyUser` (default: samme Discord-spejlede board-
+ * notifier som cronen bruger). Før kom den fra auto-accept-cronen op til et
+ * døgn senere, og bestyrelsen var tavs i selve skifte-øjeblikket. Cronens
+ * `sendOpeningNotice` er stadig fallback og springer over når notitsen findes.
+ * Fail-safe: en fejl i notifikationen vælter ALDRIG sæsonskiftet, mandatet er
+ * skrevet og returneres uanset (`opening_notice.sent === false`).
  */
 export async function advanceMandateAtSeasonEnd(supabase, {
   teamId,
@@ -797,6 +807,8 @@ export async function advanceMandateAtSeasonEnd(supabase, {
   lastSeenSource = null,
   now = new Date(),
   isBetaTester = false,
+  notifyUser = null,
+  captureExceptionFn = captureException,
 } = {}) {
   ensureSupabase(supabase);
   if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
@@ -833,7 +845,193 @@ export async function advanceMandateAtSeasonEnd(supabase, {
     isBetaTester,
   });
 
-  return { completed_active: Boolean(activeMandate), proposal };
+  const openingNotice = await sendOpeningNoticeSafely(supabase, {
+    teamId,
+    proposal,
+    now,
+    notifyUser,
+    captureExceptionFn,
+  });
+
+  return { completed_active: Boolean(activeMandate), proposal, opening_notice: openingNotice };
+}
+
+// ---------------------------------------------------------------------------
+// 6b. #5752 · Årsmødets åbnings-notits (delt af sæsonskiftet og cron-fallbacken)
+// ---------------------------------------------------------------------------
+
+export const MANDATE_OPENED_TITLE_CODE = "notif.boardMandateOpened.title";
+export const MANDATE_OPENED_MESSAGE_CODES = Object.freeze({
+  withChairman: "notif.boardMandateOpened.message",
+  noChairman: "notif.boardMandateOpened.messageNoChairman",
+});
+
+/**
+ * Dage til bestyrelsen selv skriver under, rundet OP (4,2 dage er "5 dage"
+ * for spilleren, ellers ville beskeden love mindre tid end han har). Aldrig
+ * under 1. `null` når deadlinen ikke kan læses.
+ */
+export function daysUntilAutoAccept(autoAcceptDeadline, now = new Date()) {
+  if (!autoAcceptDeadline) return null;
+  const deadlineMs = new Date(autoAcceptDeadline).getTime();
+  if (!Number.isFinite(deadlineMs)) return null;
+  return Math.max(1, Math.ceil((deadlineMs - now.getTime()) / DAY_MS));
+}
+
+/**
+ * Formandens fulde navn, med SAMME navnelogik som Boardroom (`boardRoom.js`):
+ * hele bestyrelsen navngives i ét `generateBoardMemberNames`-kald (navnene er
+ * unikke pr. hold, så formandens navn afhænger af de andre), formanden er
+ * `is_chairman`, ellers første medlem. `null` når holdet ingen bestyrelse har.
+ */
+export function resolveChairmanName({ teamId, members = [], dnaKey = null } = {}) {
+  const list = (members || []).filter((m) => m?.archetype_key);
+  if (!teamId || list.length === 0) return null;
+  const chairmanKey = list.find((m) => m.is_chairman)?.archetype_key ?? list[0].archetype_key;
+  const named = generateBoardMemberNames({ teamId, members: list, dnaKey });
+  return named.find((m) => m.archetype_key === chairmanKey)?.full_name ?? null;
+}
+
+/**
+ * Ren payload-bygger. EN-teksten er fallback + dedup-nøgle; frontend rendrer
+ * `metadata.titleCode/messageCode` i modtagerens sprog (#666). Returnerer
+ * `null` når sæson eller dage mangler — hellere ingen notits end en halv.
+ */
+export function buildMandateOpeningNotice({ chairmanName = null, seasonNumber, days } = {}) {
+  const season = Number(seasonNumber);
+  const dayCount = Number(days);
+  if (!Number.isFinite(season) || season <= 0 || !Number.isFinite(dayCount) || dayCount <= 0) return null;
+
+  const hasChairman = typeof chairmanName === "string" && chairmanName.trim().length > 0;
+  const tail = `You have ${dayCount} days before the board signs on its own.`;
+  const message = hasChairman
+    ? `${chairmanName} has proposed your season ${season} mandate. ${tail}`
+    : `Your board has proposed your season ${season} mandate. ${tail}`;
+
+  const messageParams = { season, days: dayCount };
+  if (hasChairman) messageParams.chairman = chairmanName;
+
+  return {
+    title: "The board has called the annual meeting",
+    message,
+    metadata: {
+      titleCode: MANDATE_OPENED_TITLE_CODE,
+      messageCode: hasChairman ? MANDATE_OPENED_MESSAGE_CODES.withChairman : MANDATE_OPENED_MESSAGE_CODES.noChairman,
+      messageParams,
+    },
+  };
+}
+
+/**
+ * Send åbnings-notitsen for ét mandat. Henter selv det den mangler (manager,
+ * klub-DNA, bestyrelse) og kalder `notifyUser` med type `board_update` og
+ * `relatedId = mandateId`, så cronens fallback kan se at den er sendt.
+ * KASTER ved I/O-fejl; kalderen ejer fejl-disciplinen.
+ *
+ * @returns {Promise<object>} notifyUser-resultatet, eller `{ delivered: false, reason }`.
+ */
+export async function notifyMandateOpened(supabase, {
+  teamId,
+  mandateId,
+  seasonNumber,
+  days,
+  userId = undefined,
+  dnaKey = undefined,
+  notifyUser,
+  now = new Date(),
+} = {}) {
+  ensureSupabase(supabase);
+  if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
+  if (!teamId || !mandateId) return { delivered: false, reason: "missing_ids" };
+
+  let recipient = userId;
+  let clubDna = dnaKey;
+  if (recipient === undefined || clubDna === undefined) {
+    const { data: teamRow, error: teamError } = await supabase
+      .from("teams")
+      .select("id, user_id, team_dna_key")
+      .eq("id", teamId)
+      .maybeSingle();
+    if (teamError) throw new Error(`teams lookup failed: ${teamError.message}`);
+    if (recipient === undefined) recipient = teamRow?.user_id ?? null;
+    if (clubDna === undefined) clubDna = teamRow?.team_dna_key ?? null;
+  }
+  // AI-hold og hold uden manager får ingen notits (samme regel som cronen).
+  if (!recipient) return { delivered: false, reason: "no_manager" };
+
+  // Samme select som Boardroom, så navnelisten (og dermed formandens navn) er ens.
+  const { data: members, error: membersError } = await supabase
+    .from("team_board_members")
+    .select("archetype_key, selection_kind, alignment_score, is_chairman")
+    .eq("team_id", teamId);
+  if (membersError) throw new Error(`team_board_members lookup failed: ${membersError.message}`);
+
+  const chairmanName = resolveChairmanName({ teamId, members: members ?? [], dnaKey: clubDna });
+  const payload = buildMandateOpeningNotice({ chairmanName, seasonNumber, days });
+  if (!payload) return { delivered: false, reason: "incomplete_notice" };
+
+  return notifyUser({
+    userId: recipient,
+    type: "board_update",
+    ...payload,
+    relatedId: mandateId,
+    now,
+  });
+}
+
+/**
+ * Default-notifier for sæsonskiftet: SAMME Discord-spejlede board-notifier som
+ * cronen (`makeBoardDmNotifier`), så en in-app-notits og en Discord-DM følges
+ * ad og DM'en kun sendes når in-app-rækken er ny. Lazy import: discordNotifier
+ * opretter en Supabase-klient ved import, det skal ikke ske i hver test der
+ * importerer motoren. `cronRun: false` fordi sæsonskiftet er admin-request-
+ * scopet, ikke en cron-kørsel (#2571-rate-guarden tæller kun cron-strømme).
+ */
+async function buildDefaultBoardNotifier(supabase) {
+  const [{ notifyUser }, { notifyBoardUpdateDM }, { makeBoardDmNotifier }] = await Promise.all([
+    import("./notificationService.js"),
+    import("./discordNotifier.js"),
+    import("./boardDmMirror.js"),
+  ]);
+  return makeBoardDmNotifier({
+    notifyUser,
+    notifyBoardUpdateDM: (args) => notifyBoardUpdateDM({ ...args, cronRun: false }),
+    supabase,
+  });
+}
+
+/**
+ * Sæsonskiftets indpakning: kun for et NYSKREVET mandat (et `skipped`-resultat,
+ * fx `already_exists` ved retry, sender intet — cronen/den første kørsel har
+ * allerede dækket det). Kaster ALDRIG: notitsen er pynt oven på et mandat der
+ * allerede er skrevet, samme try/catch-disciplin som economyEngine.js omkring
+ * hele årsmøde-hooket.
+ */
+async function sendOpeningNoticeSafely(supabase, { teamId, proposal, now, notifyUser, captureExceptionFn }) {
+  if (!proposal?.mandate_id) return { sent: false, reason: "no_new_mandate" };
+  try {
+    // Default-notifieren bygges først når der faktisk er en modtager (AI-hold
+    // og hold uden manager når aldrig så langt).
+    const notify = notifyUser ?? (async (args) => (await buildDefaultBoardNotifier(supabase))(args));
+    const result = await notifyMandateOpened(supabase, {
+      teamId,
+      mandateId: proposal.mandate_id,
+      seasonNumber: proposal.season_number,
+      days: daysUntilAutoAccept(proposal.auto_accept_deadline, now),
+      notifyUser: notify,
+      now,
+    });
+    return { sent: Boolean(result?.delivered), reason: result?.reason ?? (result?.deduped ? "deduped" : null) };
+  } catch (error) {
+    console.warn(`⚠️  [mandate] opening notice failed for team ${teamId} (mandate is written, the cron picks it up): ${error.message}`);
+    try {
+      captureExceptionFn?.(error, {
+        tags: { flow: "season-transition", stage: "mandate-opening-notice" },
+        extra: { teamId, mandateId: proposal.mandate_id },
+      });
+    } catch { /* best-effort: en fejlende alarm må aldrig vælte sæsonskiftet */ }
+    return { sent: false, reason: "error" };
+  }
 }
 
 /**
