@@ -73,7 +73,7 @@ import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mecha
 // (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for M13/
 // holdtidskoerslen, der er wiret 6/9 som forgreningen i simulateStageV4
 // nedenfor. Ordre-adapteren kaldes af broen.)
-const LIVE_MECHANIC_HOOKS: MechanicHooks = {
+export const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
   finale: finaleHook,
