@@ -62,6 +62,9 @@ const BADGE_DEFS = {
   contractExpiring: { tone: "warning" },
 };
 
+/**
+ * @param {{badges?: Array<string|false|null|undefined>, className?: string}} props
+ */
 export default function RiderBadges({ badges = [], className = "" }) {
   const { t } = useTranslation("rider");
   const list = badges.filter((key) => BADGE_DEFS[key]);
