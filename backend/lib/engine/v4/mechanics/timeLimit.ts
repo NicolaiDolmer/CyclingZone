@@ -509,3 +509,15 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
 //    event-typer og persisteres som alle andre. Renderer-laget maa ALDRIG vise
 //    procenten eller sekundgraensen — kun "uden for tidsgraensen" og
 //    "grupettoen paa N ryttere reddes" (ejer-beslutning punkt 4).
+//    #5582: `jury_reinstated` er samme slags aabne event ("genindsat af
+//    juryen", aldrig uheldets tid). Renderer-teksten er IKKE lavet endnu.
+//
+// 7. POINTSTRAFFEN (#5582, UCI 2.6.032): `StageResult.reinstated_by` ("jury"
+//    eller "grupetto") er markoeren for en genindsat rytter. Han er
+//    `finished` og faar en almindelig etaperaekke. Motoren har allerede
+//    nulstillet ETAPENS point i `passage_totals`. Flip-laget skal:
+//      - gemme markoeren additivt pr. loeb (ingen destruktiv migration), og
+//      - lade point- og bjergklassementet se bort fra ALLE rytterens point i
+//        loebet, ogsaa fra tidligere etaper (backend-klassementet og
+//        frontendens raceClassificationTotals.js).
+//    Ingen af delene er en del af motor-PR'en.
