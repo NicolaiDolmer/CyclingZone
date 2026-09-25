@@ -1432,7 +1432,7 @@
     },
     "appUpdatesFaq": {
       "q": "Why does the game sometimes reload itself?",
-      "a": "When I put out a new version, a tab you already had open still points at the old files, and they can disappear. The tab checks for a new version and reloads itself so you get the new one. It never does that while you have unsaved changes, an open dialog or a race film running. Then you get a small 'New version ready' bar at the bottom instead, and you decide when to take the update."
+      "a": "When I put out a new version, a tab you already had open still points at the old files, and they can disappear. The tab checks for a new version and reloads itself so you get the new one. It never does that while you have unsaved changes or a race film running. Then you get a small 'New version ready' bar at the bottom instead, and you decide when to take the update."
     },
     "passwordReset": {
       "q": "How do I reset my password?",

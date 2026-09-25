@@ -1432,7 +1432,7 @@
     },
     "appUpdatesFaq": {
       "q": "Hvorfor genindlæser spillet sig selv nogle gange?",
-      "a": "Når jeg lægger en ny version ud, peger en fane du allerede havde åben stadig på de gamle filer, og de kan forsvinde. Fanen tjekker efter en ny version og genindlæser sig selv, så du får den nye. Det sker aldrig mens du har ugemte ændringer, en åben dialog eller en løbsfilm i gang. Så får du i stedet en lille 'Ny version klar'-bjælke i bunden, og du bestemmer selv hvornår du tager opdateringen."
+      "a": "Når jeg lægger en ny version ud, peger en fane du allerede havde åben stadig på de gamle filer, og de kan forsvinde. Fanen tjekker efter en ny version og genindlæser sig selv, så du får den nye. Det sker aldrig mens du har ugemte ændringer eller en løbsfilm i gang. Så får du i stedet en lille 'Ny version klar'-bjælke i bunden, og du bestemmer selv hvornår du tager opdateringen."
     },
     "passwordReset": {
       "q": "Hvordan nulstiller jeg min adgangskode?",
