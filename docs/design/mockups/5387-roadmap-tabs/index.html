@@ -56,10 +56,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .ph h1{font-family:"Inter Tight";font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0}
 .ph .sub{font-size:13px;color:var(--text-2);margin-top:4px;max-width:52ch}
 .filter-cluster{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
-.check-row{display:flex;align-items:center;gap:8px;font-size:13px}
-.check{width:16px;height:16px;border:1.5px solid var(--text-3);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-elevated);flex:none}
-.check.on{background:var(--text-1);border-color:var(--text-1);color:var(--bg-card)}
-.check.on svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.check-row{display:flex;align-items:center;gap:8px;font-size:13px;position:relative;cursor:pointer}
+.check-box{width:16px;height:16px;border:1.5px solid var(--text-3);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-elevated);flex:none}
+.check-box.on{background:var(--text-1);border-color:var(--text-1);color:var(--bg-card)}
+.check-box.on svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+/* Aegte checkbox-input laegges usynligt oven paa den tegnede boks, saa Tab/Space
+   og klik paa selve tekst-labelen virker (keyboard + a11y, CodeRabbit-fund). */
+.sr-check{position:absolute;left:0;top:0;width:16px;height:16px;margin:0;opacity:0;cursor:pointer}
+.sr-check:focus-visible ~ .check-box{outline:2px solid var(--accent-t);outline-offset:2px}
 .vote-count{font-family:"Inter Tight";font-size:11.5px;color:var(--text-3)}
 .vote-count b{color:var(--text-1);font-weight:700}
 
@@ -212,7 +216,11 @@ const ITEMS = [
   { e: "club", h: "not-decided", t: "Negotiate your board's goals upward, for a bigger reward.", v: null },
 ];
 const TOTAL = ITEMS.length;
-const VOTED = ITEMS.filter((it) => it.v).length;
+// En raekke med kun ét af de to akser sat (fx [5, null]) taeller IKKE som
+// stemt endnu — ellers forsvinder punktet fra "kun ustemte" foer den anden
+// akse er sat (CodeRabbit-fund).
+const isFullyVoted = (it) => !!it.v && it.v[0] !== null && it.v[1] !== null;
+const VOTED = ITEMS.filter(isFullyVoted).length;
 
 function scaleHtml(shellId, idx, axis, value) {
   let b = "";
@@ -238,12 +246,12 @@ function itemHtml(it, idx, mode, shellId) {
 function tabsHtml(mode, activeKey, unvotedOnly) {
   if (mode === "horizon") {
     return `<div class="tabs">${HORIZONS.map((h) => {
-      const n = ITEMS.filter((it) => it.h === h && (!unvotedOnly || !it.v)).length;
+      const n = ITEMS.filter((it) => it.h === h && (!unvotedOnly || !isFullyVoted(it))).length;
       return `<button class="tab${h === activeKey ? " on" : ""}" type="button" data-tab="${h}">${HORIZON_LABEL[h]}<span class="cnt">${n}</span></button>`;
     }).join("")}</div>`;
   }
   return `<div class="tabs">${Object.keys(ENGINES).map((e) => {
-    const n = ITEMS.filter((it) => it.e === e && (!unvotedOnly || !it.v)).length;
+    const n = ITEMS.filter((it) => it.e === e && (!unvotedOnly || !isFullyVoted(it))).length;
     return `<button class="tab${e === activeKey ? " on" : ""}" type="button" data-tab="${e}">${ico(ENGINES[e].icon)}${ENGINES[e].label}<span class="cnt">${n}</span></button>`;
   }).join("")}</div>`;
 }
@@ -256,15 +264,16 @@ function renderBody(shellId) {
   const st = STATE[shellId];
   const bodyEl = document.getElementById(shellId + "-body");
   if (!bodyEl) return;
-  const voted = ITEMS.filter((it) => it.v).length;
+  const voted = ITEMS.filter(isFullyVoted).length;
   const visibleItems = ITEMS
     .map((it, i) => ({ it, i }))
     .filter(({ it }) => (st.mode === "horizon" ? it.h === st.active : it.e === st.active))
-    .filter(({ it }) => !st.unvoted || !it.v);
+    .filter(({ it }) => !st.unvoted || !isFullyVoted(it));
+  const checkboxId = shellId + "-unvoted";
   bodyEl.innerHTML = `<div class="ph">
       <div><h1>Roadmap</h1><div class="sub">Rate the plans below. Your votes help decide what gets built next.</div></div>
       <div class="filter-cluster">
-        <label class="check-row"><span class="check${st.unvoted ? " on" : ""}" data-unvoted-toggle="${shellId}">${st.unvoted ? ico("check") : ""}</span>Show only what I have not voted on</label>
+        <label class="check-row" for="${checkboxId}"><input type="checkbox" id="${checkboxId}" class="sr-check" data-unvoted-toggle="${shellId}"${st.unvoted ? " checked" : ""}><span class="check-box${st.unvoted ? " on" : ""}" aria-hidden="true">${st.unvoted ? ico("check") : ""}</span>Show only what I have not voted on</label>
         <span class="vote-count">You have voted on <b>${voted}</b> of <b>${TOTAL}</b></span>
       </div>
     </div>
@@ -321,13 +330,6 @@ document.body.addEventListener("click", (ev) => {
     renderBody(shellId);
     return;
   }
-  const toggle = ev.target.closest("[data-unvoted-toggle]");
-  if (toggle) {
-    const shellId = toggle.dataset.unvotedToggle;
-    STATE[shellId].unvoted = !STATE[shellId].unvoted;
-    renderBody(shellId);
-    return;
-  }
   const voteBtn = ev.target.closest("[data-axis]");
   if (voteBtn) {
     const idx = Number(voteBtn.dataset.idx);
@@ -340,6 +342,16 @@ document.body.addEventListener("click", (ev) => {
     Object.keys(STATE).forEach(renderBody);
     return;
   }
+});
+
+// Aegte checkbox: lyt paa "change", ikke "click", saa Space/Enter og
+// klik-paa-label-tekst begge virker (delegeret, da knappen genskabes ved hver render).
+document.body.addEventListener("change", (ev) => {
+  const toggle = ev.target.closest("[data-unvoted-toggle]");
+  if (!toggle) return;
+  const shellId = toggle.dataset.unvotedToggle;
+  STATE[shellId].unvoted = toggle.checked;
+  renderBody(shellId);
 });
 </script>
 </body>
