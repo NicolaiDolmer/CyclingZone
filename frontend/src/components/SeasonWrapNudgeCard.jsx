@@ -85,14 +85,21 @@ export default function SeasonWrapNudgeCard({
 
   useEffect(() => {
     let cancelled = false;
+    // CodeRabbit-fund (#5755, ÉN CLI-runde): uden dette nulstillet FØRST
+    // ville en seasonId-ændring på samme kort-instans (ingen remount) kunne
+    // vise FORRIGE sæsons tal, videre eller endeløst, mens/hvis den nye
+    // sæsons kald ikke giver en linje.
+    setBoardConfidencePercent(null);
     fetchBoardVerdict(seasonId).then((verdict) => {
       if (cancelled) return;
       if (verdict?.enabled && Number.isFinite(verdict.confidenceAfter)) {
         setBoardConfidencePercent(verdict.confidenceAfter);
       } else if (verdict == null) {
         // Ikke en fejltilstand for KORTET (guld-CTA'en skal forblive
-        // uændret) — kun en debug-log, aldrig console.error (#5755).
-        console.debug("[SeasonWrapNudgeCard] board-verdict utilgængelig (#5755)");
+        // uændret) — kun en debug-log, aldrig console.error (#5755). Engelsk
+        // logtekst: i18n-check-lib-strings.mjs flagger dansk i ikke-
+        // kommentar-kode i frontend/src/components.
+        console.debug("[SeasonWrapNudgeCard] board verdict unavailable (#5755)");
       }
     });
     return () => { cancelled = true; };

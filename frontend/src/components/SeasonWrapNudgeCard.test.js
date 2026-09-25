@@ -60,6 +60,21 @@ test("#5755 boardConfidencePercent defaulter til null (ingen linje før data er 
   );
 });
 
+test("#5755 CodeRabbit-fund: linjen nulstilles FØR en ny fetch, ikke kun ved success", () => {
+  // Regression: uden dette kunne en seasonId-ændring på samme kort-instans
+  // vise FORRIGE sæsons tal videre, hvis den nye sæsons kald ikke gav en linje.
+  const effectStart = source.indexOf("useEffect(() => {");
+  const resetIdx = source.indexOf("setBoardConfidencePercent(null);");
+  // .indexOf("fetchBoardVerdict(seasonId)") ville først ramme selve
+  // funktions-DEFINITIONEN ("async function fetchBoardVerdict(seasonId) {"),
+  // som står FØR komponenten — søg derfor KALDET specifikt (".then(").
+  const fetchCallIdx = source.indexOf("fetchBoardVerdict(seasonId).then(");
+  assert.notEqual(resetIdx, -1);
+  assert.notEqual(fetchCallIdx, -1);
+  assert.ok(effectStart < resetIdx, "nulstillingen skal ske INDE i useEffect");
+  assert.ok(resetIdx < fetchCallIdx, "nulstillingen skal ske FØR det nye kald, ikke kun i success-grenen");
+});
+
 test("#5755 linjen renderes betinget og ligger EFTER rank-linjen, FØR stats-linjen", () => {
   const rankIdx = source.indexOf("seasonWrap.rankLine");
   const confidenceGuardIdx = source.indexOf("boardConfidencePercent != null");
