@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap in tabs - Variant A / Variant B (#5387)</title>
+<!-- #5387 mockup (statisk, kun voting-UI). EN foerst, ingen DA-tekst i selve mockuppen.
+     Ejer-go 26/9 kl. 00:25: "Mockup i nat". INGEN aendring af RoadmapPage.jsx, ingen SQL, intet i prod.
+     Punkter og baand er hentet ordret fra docs/drafts/5387-roadmap-indhold.md §2 og
+     database/proposals/5387-roadmap-items.sql. ANTAGELSE (ingen ejer-bekraeftelse endnu):
+     baand->label-mapping efter S4-skiftet 27-28/9 er IKKE besluttet i kildematerialet, kun at
+     "Before season 4" bliver "This season". Denne mockup bruger: Now = baand 100,
+     This season (=S4) = baand 200+250, Next season = baand 150+300, Later = baand 900-punkter
+     der er (N)yt/(O)mskrevet i roadbooken, Not decided = baand 900-punkter der er (B)eholdt
+     uaendret/ikke i roadbooken. Den endelige mapping er ejerens, ikke denne mockups. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --on-accent:#1a1f38; --accent-10:rgba(232,197,71,.10);
+  --sidebar:#1a1f38; --sidebar-2:rgba(255,255,255,.55); --sidebar-3:rgba(255,255,255,.25); --sidebar-border:rgba(255,255,255,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg-body);color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
+.data{font-family:"Inter Tight","DM Sans",sans-serif;font-variant-numeric:tabular-nums}
+.micro{font-family:"Inter Tight",sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);font-weight:600}
+.micro10{font-family:"Inter Tight",sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);font-weight:600}
+.ico{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ── Review-bar (kun ved normal aabning, ikke del af variant-screenshots) ── */
+.review-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:var(--sidebar);color:#fff;font-size:12px}
+.review-bar b{font-weight:600}
+.review-bar a{color:#d8d3c4;text-decoration:none;margin-left:14px;padding:4px 9px;border:1px solid rgba(255,255,255,.18);border-radius:5px}
+.review-bar a:hover{border-color:rgba(255,255,255,.55)}
+.intro-note{max-width:900px;margin:16px auto 0;padding:0 20px;font-size:12.5px;color:var(--text-2);line-height:1.55}
+.section-label{max-width:900px;margin:28px auto 0;padding:0 20px;font-family:"Inter Tight";font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── App-skal (T1, max-w-4xl) ── */
+.shell{display:flex;min-height:520px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.sidebar{width:208px;background:var(--sidebar);color:#fff;flex:none;padding-top:22px}
+.logo{font-family:"Bebas Neue";color:var(--accent);font-size:20px;letter-spacing:.02em;text-align:center}
+.logo-rule{width:120px;height:1px;background:var(--accent);margin:4px auto 20px}
+.sb-label{font-family:"Inter Tight";font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-3);font-weight:600;padding:0 16px 6px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 12px;margin:0 8px;font-size:13px;color:rgba(255,255,255,.75);border-radius:5px}
+.sb-item::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3)}
+.sb-item.on{background:rgba(255,255,255,.06);color:var(--accent)}
+.sb-item.on::before{background:var(--accent)}
+.main{flex:1;min-width:0;background:var(--bg-body)}
+.page{max-width:896px;margin:0 auto;padding:28px 32px 48px}
+
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px;flex-wrap:wrap}
+.ph h1{font-family:"Inter Tight";font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0}
+.ph .sub{font-size:13px;color:var(--text-2);margin-top:4px;max-width:52ch}
+.filter-cluster{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.check-row{display:flex;align-items:center;gap:8px;font-size:13px}
+.check{width:16px;height:16px;border:1.5px solid var(--text-3);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-elevated);flex:none}
+.check.on{background:var(--text-1);border-color:var(--text-1);color:var(--bg-card)}
+.check.on svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.vote-count{font-family:"Inter Tight";font-size:11.5px;color:var(--text-3)}
+.vote-count b{color:var(--text-1);font-weight:700}
+
+.intro{margin:14px 0 16px;font-size:13px;color:var(--text-2);line-height:1.5}
+
+/* ── Faner ── */
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--border);overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--text-3);padding:9px 1px 10px;margin-bottom:-1px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:"Inter Tight";font-size:11px;color:var(--text-3)}
+.tab .ico{width:14px;height:14px;color:var(--text-3)}
+.tab.on .ico{color:var(--accent-t)}
+
+/* ── Punkt-liste ── */
+.item-list{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+.item{display:flex;flex-direction:column;gap:8px}
+.item-top{display:flex;align-items:flex-start;gap:8px}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--accent);flex:none;margin-top:7px}
+.item-title{font-size:13.5px;color:var(--text-1);line-height:1.5;flex:1}
+.stamp{display:inline-flex;align-items:center;gap:4px;flex:none;font-family:"Inter Tight";font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);border:1px solid var(--border);border-radius:999px;padding:2px 8px;white-space:nowrap;margin-top:1px}
+.stamp .ico{width:11px;height:11px}
+.axes{margin-left:12px;display:flex;flex-direction:column;gap:5px;max-width:360px}
+.axis{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.axis .lbl{font-size:11.5px;color:var(--text-3);flex:none;width:76px}
+.scale{display:flex;gap:4px}
+.sbtn{width:24px;height:24px;border-radius:5px;font-family:"Inter Tight";font-size:11px;font-weight:600;border:1px solid var(--border);color:var(--text-2);background:transparent}
+.sbtn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.voted-flag{font-size:10.5px;color:var(--text-3)}
+
+/* ── Faner pr. motor: motor-label-blok over listen ── */
+.engine-head{display:flex;align-items:center;gap:8px;margin:2px 0 2px;color:var(--text-2);font-size:12px}
+.engine-head .ico{width:15px;height:15px;color:var(--accent-t)}
+
+/* ── Desktop/mobil-skift ── */
+.desktop-shell{display:block}
+.mobile-shell{display:none}
+@media (max-width:680px){
+  .desktop-shell{display:none}
+  .mobile-shell{display:block}
+}
+.m-shell{min-height:520px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg-body)}
+.m-top{height:52px;background:var(--sidebar);display:flex;align-items:center;justify-content:center}
+.m-top .logo{font-size:16px}
+.m-page{padding:18px 16px 64px}
+.m-page .ph{flex-direction:column;align-items:stretch;gap:10px}
+.m-page .filter-cluster{align-items:flex-start}
+.m-page .page-title-row{display:flex;align-items:baseline;justify-content:space-between}
+.m-nav{height:56px;background:var(--sidebar);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;color:rgba(255,255,255,.55);font-size:10px;text-align:center}
+.m-nav div{display:flex;flex-direction:column;align-items:center;gap:3px}
+.m-nav div.on{color:var(--accent)}
+.m-nav .ico{width:16px;height:16px}
+
+.variant-frame{max-width:960px;margin:10px auto 0;padding:0 20px 40px}
+</style>
+</head>
+<body>
+<div class="review-bar">
+  <span><b>#5387</b> — /roadmap in tabs, two variants (mockup only, no prod change)</span>
+  <span><a href="#variant-a">Variant A — tabs by horizon</a><a href="#variant-b">Variant B — tabs by engine</a></span>
+</div>
+<p class="intro-note">Both variants show the same 42 example items (real titles from the roadmap proposal), grouped two different ways. Every desktop frame below is captured at 1440px, every phone frame at 390px. Vote buttons (1-6) and the "not voted" checkbox are live in the browser — try them.</p>
+
+<div id="variant-a" class="variant-frame">
+  <div class="section-label">Variant A — tabs by horizon, engine as a per-item chip</div>
+</div>
+
+<div id="variant-b" class="variant-frame">
+  <div class="section-label">Variant B — tabs by engine, horizon as a per-item stamp</div>
+</div>
+
+<script>
+// ── Ikoner (stroke, 24-grid — samme path-data som components/ui/icons) ──
+const I = {
+  flag: '<path d="M5 21V4"/><path d="M5 5h13l-2.5 4 2.5 4H5z"/><path d="M5 9h11M11.5 5v8"/>',
+  stopwatch: '<circle cx="12" cy="14" r="7"/><path d="M12 14V10"/><path d="M10 3h4M12 3v2"/><path d="M18.5 8l1.5-1.5"/>',
+  team: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17 14.2a5.5 5.5 0 0 1 3.5 4.8"/>',
+  exchange: '<path d="M4 9h13M14 6l3 3-3 3"/><path d="M20 15H7M10 12l-3 3 3 3"/>',
+  crown: '<path d="M3 7l4 4 5-7 5 7 4-4-2 12H5z"/><path d="M5 20h14"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  home: '<path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/>',
+  inbox: '<path d="M4 13h4l1.5 3h5L16 13h4"/><path d="M5 5h14l1 8v6H4v-6z"/>',
+  bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+};
+const ico = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+
+const ENGINES = {
+  races: { label: "Races", icon: "flag" },
+  training: { label: "Training", icon: "stopwatch" },
+  youth: { label: "Youth", icon: "team" },
+  market: { label: "Market", icon: "exchange" },
+  club: { label: "Club", icon: "crown" },
+};
+const HORIZONS = ["now", "this-season", "next-season", "later", "not-decided"];
+const HORIZON_LABEL = {
+  "now": "Now", "this-season": "This season", "next-season": "Next season",
+  "later": "Later", "not-decided": "Not decided",
+};
+
+// ── De 42 punkter (ordret fra docs/drafts/5387-roadmap-indhold.md §2 og
+//    database/proposals/5387-roadmap-items.sql). idea/importance = null naar ikke stemt endnu. ──
+const ITEMS = [
+  // Now (baand 100)
+  { e: "races", h: "now", t: "The season 4 calendar: the same number of race days in every division, plus separate U23 and junior calendars.", v: [5, 6] },
+  { e: "races", h: "now", t: "Mental abilities: Teamwork and Leadership for every rider, and tactics and aggression that no longer come with age.", v: null },
+  { e: "races", h: "now", t: "Secondary rider types explained: see what a rider's second type means and where it helps him.", v: [4, 4] },
+  { e: "training", h: "now", t: "The training score for everyone: see how good each training day was, and steer your riders' development season over season.", v: null },
+  { e: "training", h: "now", t: "A race sharpener: a short session the day before a race, so your riders start sharp.", v: [6, 5] },
+  { e: "training", h: "now", t: "The game on your phone: daily training, transfers, auctions and the season matrix built for a small screen, then the rest of the game.", v: null },
+  { e: "market", h: "now", t: "Rider values that make sense: values follow your rider's abilities and what the market really pays, and I explain how they are set.", v: [5, 5] },
+  // This season / S4 (baand 200+250)
+  { e: "races", h: "this-season", t: "Race engine v4: every stage is raced as it unfolds. It switches on when it races better than the current engine.", v: [6, 6] },
+  { e: "training", h: "this-season", t: "Training per race day: one rebuilt training page where you plan each rider around his races.", v: null },
+  { e: "training", h: "this-season", t: "Racing trains your riders again: on any day a rider either trains or races, and both count.", v: [4, 5] },
+  { e: "training", h: "this-season", t: "Training runs itself every evening: the bonus button goes away, and you can still run a day early if you want.", v: null },
+  { e: "training", h: "this-season", t: "Injuries counted in race days: you see exactly how many race days an injured rider will miss.", v: null },
+  { e: "youth", h: "this-season", t: "U23 and junior squads: two real squads under your first team, with a path from the academy to the top.", v: [5, 6] },
+  { e: "youth", h: "this-season", t: "Youth racing: U23 and junior races with their own calendars and leagues.", v: null },
+  { e: "club", h: "this-season", t: "A new board: one mandate you agree on together, and a real board meeting.", v: [3, 4] },
+  { e: "club", h: "this-season", t: "A clear sign-up for every new season, and inactive clubs parked at the switch, so you race against managers who play.", v: null },
+  { e: "club", h: "this-season", t: "Upkeep reworked: travel and staff costs paid per race day, instead of one big bill at season start.", v: null },
+  // Next season (baand 150+300)
+  { e: "market", h: "next-season", t: "More fair play tools: a transfer market you can trust.", v: [4, 5] },
+  { e: "club", h: "next-season", t: "More facilities: more of your club to build than training and scouting.", v: null },
+  { e: "club", h: "next-season", t: "A faster game: pages that open quickly, also on your phone.", v: null },
+  { e: "training", h: "next-season", t: "Ready-made training programs, and later a way to share your own.", v: [3, 3] },
+  { e: "youth", h: "next-season", t: "Your own young stars: choose the country your young riders come from, and steer which rider types your academy produces.", v: null },
+  { e: "youth", h: "next-season", t: "Youth seasons that count: promotion, relegation, rankings and prize money for U23 and junior.", v: null },
+  { e: "club", h: "next-season", t: "A new dashboard and inbox: what needs you today comes first, and messages you can scan in seconds.", v: [5, 4] },
+  { e: "club", h: "next-season", t: "Road captains, mentors and teamwork: riders who lift the team around them.", v: null },
+  // Later (baand 900, N/O — nyt/omskrevet i roadbooken)
+  { e: "races", h: "later", t: "National championships and national teams: ride for your country, win the jersey, and coach a national team.", v: null },
+  { e: "youth", h: "later", t: "Better scouting: more ways to find and judge the next big talent.", v: [4, 3] },
+  { e: "club", h: "later", t: "Your club's look: logo, team colours and rider faces.", v: null },
+  { e: "club", h: "later", t: "Sponsors reworked: sign more than one sponsor at a time.", v: null },
+  { e: "club", h: "later", t: "Earn renown: wins, records and history that build your club's reputation in the world.", v: null },
+  { e: "club", h: "later", t: "A smarter assistant: more help with the daily jobs, whenever you want it.", v: [2, 3] },
+  // Not decided (baand 900, B/B* — beholdt, ikke i roadbooken)
+  { e: "races", h: "not-decided", t: "A smarter season planner: overlapping races, fatigue and qualification rules you can plan a whole season around.", v: null },
+  { e: "races", h: "not-decided", t: "The racing math explained in plain words, without revealing exact numbers.", v: null },
+  { e: "races", h: "not-decided", t: "Realistic race routes modeled on real racing.", v: null },
+  { e: "training", h: "not-decided", t: "Coaches as a real resource: balance training load and risk burnout if you push too hard.", v: null },
+  { e: "market", h: "not-decided", t: "Deeper negotiation between managers.", v: null },
+  { e: "market", h: "not-decided", t: "A market that tells stories: rumors, rivalries and big moves the whole world talks about.", v: null },
+  { e: "club", h: "not-decided", t: "A club museum: champions, legendary riders and the races people still talk about.", v: null },
+  { e: "club", h: "not-decided", t: "Friends and following: follow managers and riders across the world.", v: null },
+  { e: "club", h: "not-decided", t: "Invite a friend and build your rivalry together.", v: null },
+  { e: "club", h: "not-decided", t: "A living world feed of results, transfers and rivalries.", v: null },
+  { e: "club", h: "not-decided", t: "Negotiate your board's goals upward, for a bigger reward.", v: null },
+];
+const TOTAL = ITEMS.length;
+const VOTED = ITEMS.filter((it) => it.v).length;
+
+function scaleHtml(shellId, idx, axis, value) {
+  let b = "";
+  for (let n = 1; n <= 6; n++) b += `<button class="sbtn${value === n ? " on" : ""}" type="button" data-shell="${shellId}" data-idx="${idx}" data-axis="${axis}" data-n="${n}">${n}</button>`;
+  return b;
+}
+
+function itemHtml(it, idx, mode, shellId) {
+  const stampOrChip = mode === "horizon"
+    ? `<span class="stamp">${ico(ENGINES[it.e].icon)}${ENGINES[it.e].label}</span>`
+    : `<span class="stamp">${HORIZON_LABEL[it.h]}</span>`;
+  const idea = it.v ? it.v[0] : null;
+  const imp = it.v ? it.v[1] : null;
+  return `<div class="item" data-voted="${it.v ? "1" : "0"}">
+    <div class="item-top"><span class="dot"></span><span class="item-title">${it.t}</span>${stampOrChip}</div>
+    <div class="axes">
+      <div class="axis"><span class="lbl">Idea</span><span class="scale">${scaleHtml(shellId, idx, "idea", idea)}</span></div>
+      <div class="axis"><span class="lbl">Importance</span><span class="scale">${scaleHtml(shellId, idx, "importance", imp)}</span></div>
+    </div>
+  </div>`;
+}
+
+function tabsHtml(mode, activeKey, unvotedOnly) {
+  if (mode === "horizon") {
+    return `<div class="tabs">${HORIZONS.map((h) => {
+      const n = ITEMS.filter((it) => it.h === h && (!unvotedOnly || !it.v)).length;
+      return `<button class="tab${h === activeKey ? " on" : ""}" type="button" data-tab="${h}">${HORIZON_LABEL[h]}<span class="cnt">${n}</span></button>`;
+    }).join("")}</div>`;
+  }
+  return `<div class="tabs">${Object.keys(ENGINES).map((e) => {
+    const n = ITEMS.filter((it) => it.e === e && (!unvotedOnly || !it.v)).length;
+    return `<button class="tab${e === activeKey ? " on" : ""}" type="button" data-tab="${e}">${ico(ENGINES[e].icon)}${ENGINES[e].label}<span class="cnt">${n}</span></button>`;
+  }).join("")}</div>`;
+}
+
+// STATE holder ét objekt pr. skal (4 i alt: A-desktop, A-mobile, B-desktop, B-mobile) —
+// de deler samme ITEMS-datasaet (stemmer er globale paa tvaers af variant, som i den rigtige app).
+const STATE = {};
+
+function renderBody(shellId) {
+  const st = STATE[shellId];
+  const bodyEl = document.getElementById(shellId + "-body");
+  if (!bodyEl) return;
+  const voted = ITEMS.filter((it) => it.v).length;
+  const visibleItems = ITEMS
+    .map((it, i) => ({ it, i }))
+    .filter(({ it }) => (st.mode === "horizon" ? it.h === st.active : it.e === st.active))
+    .filter(({ it }) => !st.unvoted || !it.v);
+  bodyEl.innerHTML = `<div class="ph">
+      <div><h1>Roadmap</h1><div class="sub">Rate the plans below. Your votes help decide what gets built next.</div></div>
+      <div class="filter-cluster">
+        <label class="check-row"><span class="check${st.unvoted ? " on" : ""}" data-unvoted-toggle="${shellId}">${st.unvoted ? ico("check") : ""}</span>Show only what I have not voted on</label>
+        <span class="vote-count">You have voted on <b>${voted}</b> of <b>${TOTAL}</b></span>
+      </div>
+    </div>
+    ${tabsHtml(st.mode, st.active, st.unvoted)}
+    <div class="item-list">${visibleItems.length
+      ? visibleItems.map(({ it, i }) => itemHtml(it, i, st.mode, shellId)).join("")
+      : `<div class="micro" style="padding:10px 0">Nothing left unvoted in this tab.</div>`}</div>`;
+}
+
+function shellWrap(mode, shellId, device) {
+  const activeKey = mode === "horizon" ? "now" : "races";
+  STATE[shellId] = { mode, active: activeKey, unvoted: false };
+  return `<div id="${shellId}-body" data-shell="${shellId}"></div>`;
+}
+
+function desktopShell(mode, variantId) {
+  const shellId = variantId + "-desktop";
+  const items = ["Dashboard", "Inbox", "My Team", "Roadmap", "Board", "Sponsors"];
+  return `<div class="desktop-shell"><div class="shell">
+    <aside class="sidebar">
+      <div class="logo">CYCLING ZONE</div><div class="logo-rule"></div>
+      <div class="sb-label">Clubhouse</div>
+      ${items.map((i) => `<div class="sb-item${i === "Roadmap" ? " on" : ""}">${i}</div>`).join("")}
+    </aside>
+    <main class="main"><div class="page">${shellWrap(mode, shellId)}</div></main>
+  </div></div>`;
+}
+
+function mobileShell(mode, variantId) {
+  const shellId = variantId + "-mobile";
+  const nav = [["home", "Dashboard"], ["inbox", "Inbox"], ["bag", "Market"], ["team", "Riders"], ["star", "Roadmap"]];
+  return `<div class="mobile-shell"><div class="m-shell">
+    <div class="m-top"><span class="logo">CYCLING ZONE</span></div>
+    <div class="m-page">${shellWrap(mode, shellId)}</div>
+    <div class="m-nav">${nav.map(([i, l]) => `<div class="${l === "Roadmap" ? "on" : ""}">${ico(i)}<span>${l}</span></div>`).join("")}</div>
+  </div></div>`;
+}
+
+function render() {
+  document.getElementById("variant-a").innerHTML =
+    `<div class="section-label">Variant A — tabs by horizon, engine as a per-item chip</div>${desktopShell("horizon", "a")}${mobileShell("horizon", "a")}`;
+  document.getElementById("variant-b").innerHTML =
+    `<div class="section-label">Variant B — tabs by engine, horizon as a per-item stamp</div>${desktopShell("engine", "b")}${mobileShell("engine", "b")}`;
+  Object.keys(STATE).forEach(renderBody);
+}
+render();
+
+// ── Interaktion: fane-skift + vote-knapper + "kun ustemte" (client-only, ingen backend) ──
+document.body.addEventListener("click", (ev) => {
+  const tabBtn = ev.target.closest("[data-tab]");
+  if (tabBtn) {
+    const shellId = tabBtn.closest("[data-shell]").dataset.shell;
+    STATE[shellId].active = tabBtn.dataset.tab;
+    renderBody(shellId);
+    return;
+  }
+  const toggle = ev.target.closest("[data-unvoted-toggle]");
+  if (toggle) {
+    const shellId = toggle.dataset.unvotedToggle;
+    STATE[shellId].unvoted = !STATE[shellId].unvoted;
+    renderBody(shellId);
+    return;
+  }
+  const voteBtn = ev.target.closest("[data-axis]");
+  if (voteBtn) {
+    const idx = Number(voteBtn.dataset.idx);
+    const axis = voteBtn.dataset.axis;
+    const n = Number(voteBtn.dataset.n);
+    const it = ITEMS[idx];
+    const cur = it.v || [null, null];
+    it.v = axis === "idea" ? [n, cur[1]] : [cur[0], n];
+    // Stemmer er globale paa tvaers af begge varianter/skaller (samme datasaet) — genrender alle 4.
+    Object.keys(STATE).forEach(renderBody);
+    return;
+  }
+});
+</script>
+</body>
+</html>
