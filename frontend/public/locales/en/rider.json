@@ -835,19 +835,15 @@
       "success": "Rider released.",
       "errorPrefix": "Couldn't release:"
     },
-    "promote": {
-      "button": "Promote to senior squad",
-      "success": "Rider promoted to your senior squad.",
-      "errorPrefix": "Couldn't promote:"
-    },
-    "demote": {
-      "button": "Move to {squad}",
-      "success": "Rider moved to your {squad} squad.",
-      "errorPrefix": "Couldn't move rider:",
-      "fullTooltip": "Your {squad} team is full. Free a place there first."
+    "move": {
+      "button": "Move squad",
+      "success": {
+        "senior": "Rider moved to your senior squad.",
+        "u23": "Rider moved to your U23 team.",
+        "junior": "Rider moved to your junior team."
+      }
     }
   },
-  "squadNames": { "u23": "U23", "junior": "Junior" },
   "swapOffer": {
     "buttonOpen": "⇄ Propose swap",
     "selectRider": "Select rider to offer",

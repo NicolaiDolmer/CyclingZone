@@ -219,26 +219,51 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  // Flyt en U23-senior-rytter ned i akademiet (#932 S7). Returnerer { ok, error?, result? }.
-  const demoteRider = useCallback(async (riderId) => {
+  // #5748: flyt en rytter til en VALGT trup ('senior' | 'u23' | 'junior') via
+  // POST /api/riders/:id/squad (moveRider i backend). Én handling for alle
+  // retninger: op til senior, ned fra senior og junior <-> U23. Afløser den
+  // gamle demoteRider, der kun kunne den trup sæsonalderen valgte.
+  // Returnerer { ok, error?, result? }.
+  const moveRider = useCallback(async (riderId, squad) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     try {
-      const res = await apiFetch(`${API}/api/academy/demote`, {
-        method: "POST", headers, body: JSON.stringify({ riderId }),
+      const res = await apiFetch(`${API}/api/riders/${riderId}/squad`, {
+        method: "POST", headers, body: JSON.stringify({ squad }),
       });
       if (res.networkError) return NETWORK_FAILURE;
       const data = res.data || {};
       if (!res.ok) {
-        return { ok: false, error: data.error || "failed" };
+        return { ok: false, error: data.errorCode || data.error || "failed" };
       }
-      logEvent("academy_demote", { riderId });
+      // Samme to event-navne som før (KNOWN_EVENTS/liveness-audit kender dem):
+      // op til senior = academy_promote, alt andet = academy_demote med målet.
+      logEvent(data.action === "promoted" ? "academy_promote" : "academy_demote", { riderId, squad, action: data.action ?? null });
       await refresh();
       return { ok: true, result: data };
     } catch {
       return { ok: false, error: "network" };
     }
   }, [refresh]);
+
+  // #5748: flyt-dialogens friske udgangspunkt for rytteren. Rytterprofilen
+  // SELECT'er hverken riders.squad eller current_production_value (#3784), så
+  // dialogen henter selv den nuværende trup og løn-grundlaget i stedet for at
+  // stole på objektet fra den side der åbnede den. null ved fejl: dialogen
+  // falder da tilbage til det kalderen gav den.
+  const fetchMoveState = useCallback(async (riderId) => {
+    try {
+      const { data, error: loadErr } = await supabase
+        .from("riders")
+        .select("id, team_id, squad, is_academy, birthdate, salary, contract_length, contract_end_season, current_production_value, base_value, prize_earnings_bonus")
+        .eq("id", riderId)
+        .maybeSingle();
+      if (loadErr || !data) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // #4009: preview af buyout-gebyret for en akademi-fyring (samme fee-formel som
   // senior-release, GET-side af /api/riders/:id/academy-release). Returnerer
@@ -280,5 +305,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, demoteRider, fetchReleaseQuote, releaseRider, pullIntake, refresh };
+  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, moveRider, fetchMoveState, fetchReleaseQuote, releaseRider, pullIntake, refresh };
 }

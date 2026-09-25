@@ -73,12 +73,8 @@
     "promoteTitle": "Promote to senior squad",
     "promoteQuestion": "Promote this academy rider to your senior squad:",
     "promoteConfirm": "Promote",
-    "promoteNote": "They take a senior place and a senior contract. Their academy salary is replaced by the senior wage shown above.",
+    "promoteNote": "They take a senior place and a senior contract. Their youth wage is replaced by the senior wage shown above.",
     "promoteNoteKeepsContract": "They take a senior place. Their current contract and wage carry over unchanged.",
-    "demoteTitle": "Move to {squad}",
-    "demoteQuestion": "Move this rider down to {squad}:",
-    "demoteConfirm": "Move to {squad}",
-    "demoteSquadPickerLabel": "Squad",
     "demoteNote": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in.",
     "demoteNoteOngoing": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in. Youth squad riders aren't race-eligible, so they will also drop out of the race currently underway shown above.",
     "demoteNoteKeepsContract": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in. Their contract follows them down unchanged: same wage, same length.",
@@ -90,10 +86,41 @@
     "seniorCapLabel": "Senior squad",
     "u23CapLabel": "U23 team places",
     "juniorCapLabel": "Junior team places",
-    "capFullNote": "The {squad} squad is full ({max} riders). Free a place there first.",
     "racesClearedLabel": "Upcoming races cleared",
-    "racesOngoingLabel": "Races they'll drop out of",
-    "squadName": { "u23": "U23", "junior": "Junior" }
+    "racesOngoingLabel": "Races they'll drop out of"
+  },
+  "moveSquad": {
+    "title": "Move {name}",
+    "fallbackRider": "this rider",
+    "nowOn": "Now on the <strong>{squad}</strong>.",
+    "nowOnWithAge": "Now on the <strong>{squad}</strong> · season age {age}.",
+    "pick": "Pick the new squad:",
+    "pickerLabel": "New squad",
+    "rowName": { "senior": "Senior squad", "u23": "U23 team", "junior": "Junior team" },
+    "shortName": { "senior": "Senior", "u23": "U23", "junior": "Junior" },
+    "hint": {
+      "current": "Current squad",
+      "tooOld": "Too old for {squad} (max {max})",
+      "full": "{squad} is full ({max}). Free a place there first.",
+      "seniorPlace": "Takes a senior place",
+      "natural": "Natural squad at age {age}",
+      "naturalNoAge": "Natural squad for this age",
+      "upward": "Allowed: upward move"
+    },
+    "confirm": { "senior": "Move to senior squad", "u23": "Move to U23", "junior": "Move to Junior" },
+    "confirmNone": "Move",
+    "moveNote": "Only the squad changes. Wage and contract stay exactly as they are.",
+    "errors": {
+      "same_squad": "The rider is already in that squad.",
+      "too_old_for_squad": "The rider is too old for the {short} squad.",
+      "squad_full": "{squad} is full ({max}). Free a place there first.",
+      "rider_on_market": "The rider is in an active auction. End it before moving the rider.",
+      "rider_listed": "The rider is on the transfer list. Remove the listing before moving the rider.",
+      "rider_in_stage_race": "The rider is in the middle of a stage race. Try again when it's over.",
+      "academy_disabled": "Moving riders between squads isn't available right now.",
+      "network": "Couldn't reach the server. Try again.",
+      "failed": "Couldn't move the rider. Try again."
+    }
   },
   "error": {
     "academyFull": "Academy is full. Cannot sign another rider.",
