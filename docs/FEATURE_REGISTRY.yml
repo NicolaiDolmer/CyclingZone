@@ -580,6 +580,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     verified: 2026-09-06
 
+
   # --- club ----------------------------------------------------------------
   - id: facilities
     area: club
