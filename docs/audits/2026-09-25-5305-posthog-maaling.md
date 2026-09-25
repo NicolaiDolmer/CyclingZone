@@ -4,9 +4,9 @@
 
 ## Dom
 
-**Virker: rewriten. Knækket her: `VITE_POSTHOG_KEY` er ikke sat i Vercel Production → `POSTHOG_ENABLED` er permanent `false` (`frontend/src/lib/posthogClient.js:53`).**
+**Virker: rewriten (capture-stierne). Knækket her: `VITE_POSTHOG_KEY` er ikke sat i den nuværende Vercel Production-konfiguration → `POSTHOG_ENABLED` er `false` lige nu (`frontend/src/lib/posthogClient.js:53`).**
 
-De "0 events nogensinde" i `docs/ANALYTICS_STACK.md` skyldes **ikke** en knækket `/ingest`-rewrite og **ikke** en fejl i consent-flowet. SDK'et bliver aldrig startet, fordi den påkrævede nøgle mangler i miljøet det kører i. Alt nedenfor er verificeret runtime/config, ikke antaget.
+"0 events nogensinde" i `docs/ANALYTICS_STACK.md` er **ikke** forklaret af en knækket `/ingest`-rewrite og **ikke** af en fejl i consent-flowet — det er verificeret. Den mest sandsynlige forklaring, ud fra dagens config, er at SDK'et aldrig starter fordi den påkrævede nøgle mangler. **Ikke verificeret:** at nøglen har manglet uafbrudt siden PostHog blev slået til 27/8 (kun dagens env-snapshot er tjekket, ikke historik). Alt nedenfor er verificeret runtime/config for det der er markeret som verificeret; grænserne er markeret eksplicit.
 
 ## 1. Rammer `/ingest`-rewriten PostHog?
 
@@ -16,9 +16,9 @@ Ja — verificeret med tre curl-kald mod prod-origin (`cyclingzone.org`), test-e
 |---|---|---|---|
 | `POST /ingest/batch/` | 200 | `{"status":"Ok"}` | Hovedstien `posthog-js-lite` bruger (`${host}/batch/`, jf. kommentar i `posthogClient.js:145`) |
 | `POST /ingest/e/` | 200 | `{"status":"Ok"}` | Legacy enkelt-event-sti, samme resultat |
-| `GET /ingest/array/<token>` | 404 | tom | Forventet — array-stien forventer `array/<token>/config.js`, ikke bar token. Testet kun for at bekræfte at ruten matcher, ikke for capture-flowet (feature flags er slået fra, `preloadFeatureFlags: false`) |
+| `GET /ingest/array/<token>` | 404 | tom | Sandsynlig forkert sti (`array/<token>/config.js` forventes, ikke bar token) — men **ikke bekræftet som upstream-svar**. 404'et mangler `X-Envoy-Upstream-Service-Time`, så det kan lige så vel være Vercel selv der svarer uden at nå PostHog. Denne linje beviser IKKE at array-ruten matcher; kun `/ingest/batch/` og `/ingest/e/` er verificeret nedenfor. Uden betydning for capture-flowet (feature flags er slået fra, `preloadFeatureFlags: false`), så ikke fulgt op |
 
-**Bevis for at det er en ægte PostHog-respons, ikke et Vercel-genereret 200:** response-headers fra `/ingest/batch/` indeholder `X-Envoy-Upstream-Service-Time` og identisk `Vary`/`Access-Control-Allow-Credentials`-værdier som et direkte kald mod `eu.i.posthog.com/batch/` til sammenligning. Den header sættes af PostHog's egen envoy-backend, ikke af Vercels edge — Vercel ville ikke fabrikere den. Rewriten leverer altså faktisk igennem til PostHog EU, ikke bare til `/app.html`-fallback'et.
+**Bevis for at det er en ægte PostHog-respons, ikke et Vercel-genereret 200 (gælder kun `/ingest/batch/` og `/ingest/e/`):** response-headers fra disse to kald indeholder `X-Envoy-Upstream-Service-Time` og identisk `Vary`/`Access-Control-Allow-Credentials`-værdier som et direkte kald mod `eu.i.posthog.com/batch/` til sammenligning. Den header sættes af PostHog's egen envoy-backend, ikke af Vercels edge — Vercel ville ikke fabrikere den. Rewriten leverer altså faktisk igennem til PostHog EU for capture-stierne, ikke bare til `/app.html`-fallback'et.
 
 Konklusion: proxyen fra issuets "fejltilstand ingen opdager" (rewrite knækker lydløst, eget domæne svarer 200 OK alligevel) er **ikke** til stede i dag. Ruten virker.
 
@@ -29,7 +29,7 @@ Ja, dobbelt-gatet — og den ene gate slår permanent til:
 - **Consent-gate** (`frontend/src/lib/posthogIntegration.jsx:33-49`): `startPosthog()` kaldes kun i en effekt der tjekker `hasConsent("analytics")`. Uden samtykke: intet kald, ingen SDK.
 - **Env-gate** (`frontend/src/lib/posthogClient.js:53`): `POSTHOG_ENABLED = Boolean(import.meta.env?.PROD) && Boolean(PROJECT_KEY)`, hvor `PROJECT_KEY = import.meta.env?.VITE_POSTHOG_KEY`. `posthogIntegration.jsx:34` returnerer tidligt hvis `!POSTHOG_ENABLED` — **før** consent-tjekket overhovedet betyder noget.
 
-Da `VITE_POSTHOG_KEY` mangler i Production (se §3), er `POSTHOG_ENABLED` altid `false` i prod, uanset hvor mange brugere der har sagt ja til `analytics`-kategorien. De 170 brugere der har givet samtykke (jf. `docs/ANALYTICS_STACK.md` §2a) har derfor aldrig kunnet generere et PostHog-event — ikke fordi de sagde nej, men fordi SDK'et aldrig fik lov at starte.
+Da `VITE_POSTHOG_KEY` mangler i den **nuværende** Production-konfiguration (se §3), er `POSTHOG_ENABLED` `false` lige nu, uanset hvor mange brugere der har sagt ja til `analytics`-kategorien. **Ikke verificeret her:** om nøglen har manglet gennem HELE perioden hvor de 170 brugere (jf. `docs/ANALYTICS_STACK.md` §2a) gav samtykke — kun dagens env-liste er tjekket, ikke variabel-historik eller deploy-log. Det stemmer med "0 events nogensinde", men denne måling beviser kun status i dag, ikke uafbrudt fravær siden 27/8.
 
 ## 3. Findes projektet/nøglen i miljøet? (navne, aldrig værdier)
 
@@ -62,6 +62,8 @@ Derfor: kun rapport + forslag, ingen kode- eller config-ændring i denne PR.
 
 ## Hvad denne måling IKKE dækker
 
+- Om `VITE_POSTHOG_KEY` har manglet uafbrudt siden PostHog blev slået til (27/8) — kun dagens env-snapshot er tjekket, ikke variabel- eller deploy-historik (CodeRabbit-fund, rettet i teksten).
+- Om `/ingest/array/*`-ruten rent faktisk når PostHog — 404-testen brugte formentlig en forkert sti-form, og svaret manglede den envoy-header der ellers beviser upstream-kontakt, så dette punkt er nedgraderet fra "bekræftet" til "sandsynligt, ikke verificeret" (CodeRabbit-fund, rettet i teksten).
 - Om PostHog EU-projektet "Cycling Zone" faktisk eksisterer i PostHog's organisation (kun env-navne blev tjekket, ikke PostHog selv).
 - Preview/Development-miljøernes env-vars (kun Production blev listet).
 - Hvorvidt en rigtig browser med samtykke rent faktisk sender et event i dag — nødvendigvis nej, jf. §2, men ikke afprøvet manuelt i en browser.
