@@ -688,8 +688,8 @@ const effortGainExtra = {
   //    Kontrakt: wprimeReserveWeight + finalePush + finaleCrack >= 0 for alle
   //    trin, saa scoren forbliver monotont ikke-faldende i reserven.
   finalePush: {
-    grupetto: -0.04, // som save (trappen maa ikke vende); virker ikke i praksis, grupettoens reserve taeller som 0 i finalen
-    save: -0.04,
+    grupetto: -0.1, // som save (trappen maa ikke vende); virker ikke i praksis, grupettoens reserve taeller som 0 i finalen
+    save: -0.1,
     normal: 0,
     protect: 0.02,
     all_out: 0.05,

@@ -302,13 +302,18 @@ export function summarizeTwins(samples) {
  * #5580: hvilket trin "vinder" pr. (rolle-tilstand, niveau, profil): det trin
  * med den laveste median-plads-delta mod normal (normal selv er 0). Svaret paa
  * spoergsmaalet "dominerer `save` stadig?" uden at laese hele tabellen.
+ * Uafgjort mod normal taeller som normal: et trin der hverken vinder eller
+ * taber pladser er ikke et bedre valg (fx enkeltstart, hvor alle deltaer er 0).
  */
 export function bestEffortByCell(rows) {
   const cells = new Map();
   for (const r of rows) {
     const key = `${r.roleMode}|${r.level}|${r.profileType}`;
     const cur = cells.get(key);
-    if (!cur || r.medianRankDelta < cur.medianRankDelta) cells.set(key, { effort: r.effort, medianRankDelta: r.medianRankDelta });
+    const better = !cur
+      || r.medianRankDelta < cur.medianRankDelta
+      || (r.medianRankDelta === cur.medianRankDelta && r.effort === "normal");
+    if (better) cells.set(key, { effort: r.effort, medianRankDelta: r.medianRankDelta });
   }
   return [...cells.entries()]
     .map(([key, v]) => {
