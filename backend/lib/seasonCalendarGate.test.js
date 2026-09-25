@@ -224,10 +224,14 @@ test("FK-katalogen har race_notify_outbox med, selvom snapshotten er ældre end 
 //
 // Fixturerne er syntetiske summary-linjer i materializerens form. De bærer kun det gaten
 // læser for §1d; `compositionStats.raceDays > 0` holder tier-løkkens "tom kalender"-brud ude.
+// Resten af compositionStats er tom, så kompositions-reglerne kan køre uden at kaste; de brud
+// de giver, filtreres fra via præfikset "løbsdage pr. division".
 
 const S4_TARGET = SEASON_RACE_DAY_TARGET[4];
 const line = (tier, raceDayAxisLength, raceDayTarget = S4_TARGET) => ({
-  tier, raceDayAxisLength, raceDayTarget, compositionStats: { raceDays: 1 }, calendarViolations: [],
+  tier, raceDayAxisLength, raceDayTarget,
+  compositionStats: { raceDays: 1, counts: {}, pct: {}, unknown: {} },
+  calendarViolations: [],
 });
 const raceDayBlocking = (blocking) => blocking.filter((b) => b.startsWith("løbsdage pr. division"));
 
