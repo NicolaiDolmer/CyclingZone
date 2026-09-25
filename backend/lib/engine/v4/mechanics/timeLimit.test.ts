@@ -12,20 +12,32 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import {
+  applyReinstatementPointPenalty,
   applyTimeLimit,
   groupByArrival,
   grupettoThresholdFor,
+  incidentTimeLossByRider,
+  reinstatedRiderIdsOf,
   timeLimitFactorFor,
   timeLimitSecondsFor,
   TIME_LIMIT_TUNING,
   OTL_STATUS,
   OUTSIDE_TIME_LIMIT_EVENT,
   GRUPETTO_SAVED_EVENT,
+  JURY_REINSTATED_EVENT,
 } from "./timeLimit.ts";
 import { validateTimelineEvents } from "../timeline.ts";
 import { simulateStageV4 } from "../index.ts";
 import { FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
-import type { AbilityKey, Entrant, ProfileType, RouteV2, StageResult } from "../types.ts";
+import type {
+  AbilityKey,
+  Entrant,
+  ProfileType,
+  RiderPassageTotals,
+  RouteV2,
+  StageIncident,
+  StageResult,
+} from "../types.ts";
 
 const ABILITY_KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
@@ -491,4 +503,242 @@ test("M15 e2e: default-tuning lader golden-fixture-lignende etaper vaere fuldsta
   assert.ok(output.results.every((r) => r.status === "finished"));
   assert.equal(output.timeline.events.some((e) => e.type === OUTSIDE_TIME_LIMIT_EVENT), false);
   assert.equal(output.timeline.events.some((e) => e.type === GRUPETTO_SAVED_EVENT), false);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #5582 — JURYEN (Tourens reglement) + POINTSTRAFFEN (UCI 2.6.032, ejer 23/9)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Felt paa 100: 90 ryttere paa vindertiden og 10 enkeltryttere spredt langt
+ * uden for graensen (ingen af dem kaeder til en grupetto). r090 ligger lige
+ * uden for graensen, resten langt ude.
+ */
+function juryField(): { results: StageResult[]; limit: number } {
+  const winner = 10000;
+  const limit = timeLimitSecondsFor(winner, "mountain");
+  const times = [
+    ...Array.from({ length: 90 }, () => winner),
+    ...Array.from({ length: 10 }, (_, i) => limit + 30 + i * 400),
+  ];
+  return { results: resultsFromTimes(times), limit };
+}
+
+const loss = (rider_id: string, seconds: number, outcome: StageIncident["outcome"] = "time_loss") => ({
+  rider_id,
+  outcome,
+  time_loss_seconds: outcome === "time_loss" ? seconds : null,
+});
+
+test("#5582 jury: et uheldsoffer der er inde paa tid MINUS uheldets tab, genindsaettes (status finished, reinstated_by jury)", () => {
+  const { results } = juryField();
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [loss("r090", 60)] },
+  });
+  const r090 = outcome.results.find((r) => r.rider_id === "r090")!;
+  assert.equal(r090.status, "finished");
+  assert.equal(r090.reinstated_by, "jury");
+  assert.deepEqual(outcome.juryReinstatedRiderIds, ["r090"]);
+  assert.equal(outcome.otlRiderIds.includes("r090"), false);
+  const event = outcome.events.find((e) => e.type === JURY_REINSTATED_EVENT);
+  assert.ok(event, "juryen emitterer sit eget event");
+  assert.deepEqual(event!.params, { rider_ids: ["r090"], rider_count: 1 }, "hvem og hvor mange, aldrig et tal ud over antal");
+});
+
+test("#5582 jury: ingen genindsaettelse uden et uheld, og ikke naar tabet ikke raekker", () => {
+  const { results } = juryField();
+  const noJury = applyTimeLimit({ results, profileType: "mountain", distanceKm: 180, jury: { incidents: [] } });
+  assert.deepEqual(noJury.juryReinstatedRiderIds, []);
+  assert.ok(noJury.otlRiderIds.includes("r090"));
+
+  const tooSmall = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [loss("r090", 10)] },
+  });
+  assert.deepEqual(tooSmall.juryReinstatedRiderIds, [], "sluttid minus tabet er stadig uden for graensen");
+  assert.ok(tooSmall.otlRiderIds.includes("r090"));
+});
+
+test("#5582 jury: kun styrt/defekt MED tidstab taeller — 3 km-reglen og udgaaelse genindsaetter ingen", () => {
+  const { results } = juryField();
+  for (const outcomeKind of ["protected_three_km_rule", "abandoned"] as const) {
+    const outcome = applyTimeLimit({
+      results,
+      profileType: "mountain",
+      distanceKm: 180,
+      jury: { incidents: [loss("r090", 60, outcomeKind)] },
+    });
+    assert.deepEqual(outcome.juryReinstatedRiderIds, [], outcomeKind);
+  }
+});
+
+test("#5582 jury: kun ryttere der kaempede videre — indsatsvalget grupetto/save udelukker", () => {
+  const { results } = juryField();
+  for (const effort of ["grupetto", "save"] as const) {
+    const outcome = applyTimeLimit({
+      results,
+      profileType: "mountain",
+      distanceKm: 180,
+      jury: { incidents: [loss("r090", 60)], effortByRider: { r090: effort } },
+    });
+    assert.deepEqual(outcome.juryReinstatedRiderIds, [], effort);
+  }
+  for (const effort of ["normal", "protect", "all_out"] as const) {
+    const outcome = applyTimeLimit({
+      results,
+      profileType: "mountain",
+      distanceKm: 180,
+      jury: { incidents: [loss("r090", 60)], effortByRider: { r090: effort } },
+    });
+    assert.deepEqual(outcome.juryReinstatedRiderIds, ["r090"], effort);
+  }
+});
+
+test("#5582 jury: jagtens ekstra tab regnes med til uheldets tid", () => {
+  const { results } = juryField();
+  const incidentOnly = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [loss("r090", 10)] },
+  });
+  assert.deepEqual(incidentOnly.juryReinstatedRiderIds, []);
+  const withChase = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [loss("r090", 10)], chaseLossByRider: { r090: 50 } },
+  });
+  assert.deepEqual(withChase.juryReinstatedRiderIds, ["r090"]);
+  const chaseWithoutIncident = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [], chaseLossByRider: { r090: 500 } },
+  });
+  assert.deepEqual(chaseWithoutIncident.juryReinstatedRiderIds, [], "jagt-tab uden et uheld giver ingen genindsaettelse");
+});
+
+test("#5582 jury: en holdkammerat i SAMME maalgruppe genindsaettes med offeret, ingen andre", () => {
+  const winner = 10000;
+  const limit = timeLimitSecondsFor(winner, "mountain");
+  const base = resultsFromTimes([...Array.from({ length: 90 }, () => winner), limit + 30, limit + 30, limit + 30, limit + 30]);
+  // r090-r093 kommer samlet i maal (samme gruppe); r090 er offeret.
+  const results = base.map((r) => (r.rank > 90 ? { ...r, group_id: "late" } : r));
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    cohesionWindowSeconds: 1,
+    jury: {
+      incidents: [loss("r090", 60)],
+      teamByRider: { r090: "team-a", r091: "team-a", r092: "team-b", r093: " " },
+    },
+  });
+  assert.deepEqual(outcome.juryReinstatedRiderIds, ["r090", "r091"], "hjaelperen fra samme hold, ikke de andre");
+  assert.deepEqual(outcome.otlRiderIds, ["r092", "r093"]);
+});
+
+test("#5582 jury: koerer EFTER grupetto-kaedningen — et offer inde i en reddet grupetto er grupettoens, ingen uden uheld bliver OTL", () => {
+  const fieldSize = 100;
+  const winner = 10000;
+  const limit = timeLimitSecondsFor(winner, "mountain");
+  // En grupetto paa 25 kaedet med 20 s mellemrum; offeret (r075) er et led midt i kaeden.
+  const times = [
+    ...Array.from({ length: fieldSize - 25 }, () => winner),
+    ...Array.from({ length: 25 }, (_, i) => limit + 100 + i * 20),
+  ];
+  const results = resultsFromTimes(times);
+  const withoutJury = applyTimeLimit({ results, profileType: "mountain", distanceKm: 180, cohesionWindowSeconds: 30 });
+  const withJury = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    cohesionWindowSeconds: 30,
+    jury: { incidents: [loss("r087", 5000)] },
+  });
+  assert.equal(withoutJury.otlRiderIds.length, 0, "forudsaetning: grupettoen reddes samlet");
+  assert.deepEqual(withJury.otlRiderIds, [], "ingen rytter uden uheld bliver OTL af juryen");
+  assert.deepEqual(withJury.juryReinstatedRiderIds, [], "offeret er reddet af grupettoen, ikke af juryen");
+  assert.equal(withJury.results.find((r) => r.rider_id === "r087")!.reinstated_by, "grupetto");
+});
+
+test("#5582 jury: udeladt jury = M15 som foer (samme OTL og redning)", () => {
+  const { results } = juryField();
+  const before = applyTimeLimit({ results, profileType: "mountain", distanceKm: 180 });
+  const emptyJury = applyTimeLimit({ results, profileType: "mountain", distanceKm: 180, jury: { incidents: [] } });
+  assert.deepEqual(before.otlRiderIds, emptyJury.otlRiderIds);
+  assert.deepEqual(before.results, emptyJury.results);
+});
+
+test("#5582 jury: eventet passerer tidslinje-validatoren og laekker ingen graense", () => {
+  const { results } = juryField();
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [loss("r090", 60)] },
+  });
+  const violations = validateTimelineEvents(outcome.events, {
+    distanceKm: 180,
+    knownRiderIds: new Set(results.map((r) => r.rider_id)),
+  });
+  assert.deepEqual(violations, []);
+  const event = outcome.events.find((e) => e.type === JURY_REINSTATED_EVENT)!;
+  assert.ok(!JSON.stringify(event.params).includes(String(outcome.limitSeconds)));
+});
+
+// ── Pointstraffen (UCI 2.6.032) ──────────────────────────────────────────────
+
+test("#5582 pointstraf: en reddet grupetto maerkes reinstated_by grupetto og mister sine point; en rytter uden redning beholder dem", () => {
+  const fieldSize = 100;
+  const winner = 10000;
+  const times = [
+    ...Array.from({ length: fieldSize - 30 }, () => winner),
+    ...Array.from({ length: 30 }, () => winner * 1.5),
+  ];
+  const outcome = applyTimeLimit({ results: resultsFromTimes(times), profileType: "mountain", distanceKm: 200 });
+  const reinstated = reinstatedRiderIdsOf(outcome);
+  assert.equal(reinstated.size, 30);
+  assert.ok(outcome.results.filter((r) => r.rank > 70).every((r) => r.reinstated_by === "grupetto"));
+  assert.ok(outcome.results.filter((r) => r.rank <= 70).every((r) => r.reinstated_by === undefined));
+
+  const totals: RiderPassageTotals[] = [
+    { rider_id: "r000", sprint_points: 20, kom_points: 5, bonus_seconds: 10 },
+    { rider_id: "r080", sprint_points: 8, kom_points: 12, bonus_seconds: 3 },
+  ];
+  const penalized = applyReinstatementPointPenalty(totals, reinstated);
+  assert.deepEqual(penalized[0], totals[0], "ingen redning: pointene bliver staaende");
+  assert.deepEqual(penalized[1], { rider_id: "r080", sprint_points: 0, kom_points: 0, bonus_seconds: 3 }, "point nulstilles, bonussekunder (GC-tid) roeres ikke");
+  assert.equal(totals[1].sprint_points, 8, "ren: input muteres aldrig");
+});
+
+test("#5582 pointstraf: juryens genindsatte mister ogsaa deres point", () => {
+  const { results } = juryField();
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    jury: { incidents: [loss("r090", 60)] },
+  });
+  const penalized = applyReinstatementPointPenalty(
+    [{ rider_id: "r090", sprint_points: 3, kom_points: 7, bonus_seconds: 0 }],
+    reinstatedRiderIdsOf(outcome),
+  );
+  assert.deepEqual(penalized, [{ rider_id: "r090", sprint_points: 0, kom_points: 0, bonus_seconds: 0 }]);
+});
+
+test("#5582 juryen: incidentTimeLossByRider summerer kun tidstab, pr. rytter", () => {
+  const byRider = incidentTimeLossByRider([
+    loss("a", 10),
+    loss("a", 5.5),
+    loss("b", 30, "protected_three_km_rule"),
+    loss("c", 0),
+  ]);
+  assert.deepEqual([...byRider.entries()], [["a", 15.5]]);
 });

@@ -16,6 +16,7 @@ import {
   scoreTypeIntegrity,
   scoreBonusSecondsBounded,
   scoreGapRealism,
+  scoreGtWinnerMargin,
   scoreIttTimeRealism,
   largestSameTimeShare,
   buildScorecard,
@@ -471,16 +472,104 @@ test("#5583 formatScorecard: viser de tre definitioner side om side, pr. etapety
 
 // ── scoreBreakawayRates ───────────────────────────────────────────────────
 
-test("scoreBreakawayRates: v3 maaler breakaway-vinderandel, v4 er altid N/A (M5 F3-scope)", () => {
+function breakawayRow(profile_type, { v3Win, v4Win }) {
   const row = makeRow({
-    profile_type: "mountain", finale_type: "breakaway",
-    v3Entries: [{ rider_id: "a", rank: 1, stageGap: 0, breakaway: 5 }],
+    profile_type, finale_type: "breakaway",
+    v3Entries: [{ rider_id: "a", rank: 1, stageGap: 0, breakaway: v3Win ? 5 : 0 }],
     v4Entries: [{ rider_id: "a", rank: 1, time_seconds: 100 }],
   });
-  const result = scoreBreakawayRates([row]);
-  assert.equal(result.v3.value, 1);
+  if (v4Win !== undefined) row.raw.v4Trace = { breakaway_win: v4Win };
+  return row;
+}
+
+test("#5578 scoreBreakawayRates: v4 maales paa motorens egen udbrudsdom (v4Trace), v3 paa breakaway-komponenten", () => {
+  const rows = [
+    breakawayRow("mountain", { v3Win: true, v4Win: true }),
+    breakawayRow("mountain", { v3Win: false, v4Win: false }),
+    breakawayRow("mountain", { v3Win: false, v4Win: false }),
+    breakawayRow("mountain", { v3Win: true, v4Win: false }),
+  ];
+  const result = scoreBreakawayRates(rows);
+  assert.equal(result.v3.value, 0.5);
+  assert.equal(result.v4.value, 0.25);
+  assert.equal(result.v4.perTerrain.mountain.races, 4);
+  assert.equal(result.v4.perTerrain.mountain.breakawayWins, 1);
+});
+
+test("#5578 scoreBreakawayRates: dommen er pr. terraen mod kandidatbaandet — ét terraen udenfor = FAIL", () => {
+  const mountainBand = ANCHOR_BANDS.breakawayRatePerTerrainCandidate.byTerrain.mountain;
+  const flatBand = ANCHOR_BANDS.breakawayRatePerTerrainCandidate.byTerrain.flat;
+  // Bjerg: 1 af 3 (inden for bjergbaandet). Fladt: 1 af 1 (langt over fladbaandet).
+  const rows = [
+    breakawayRow("mountain", { v3Win: true, v4Win: true }),
+    breakawayRow("mountain", { v3Win: false, v4Win: false }),
+    breakawayRow("mountain", { v3Win: false, v4Win: false }),
+    breakawayRow("flat", { v3Win: false, v4Win: true }),
+  ];
+  const result = scoreBreakawayRates(rows);
+  assert.ok(1 / 3 >= mountainBand.min && 1 / 3 <= mountainBand.max, "testens praemis: 1/3 er inden for bjergbaandet");
+  assert.ok(1 > flatBand.max, "testens praemis: 100 % er over fladbaandet");
+  assert.equal(result.v4.perTerrain.mountain.verdict, "PASS");
+  assert.equal(result.v4.perTerrain.flat.verdict, "FAIL");
+  assert.equal(result.v4.verdict, "FAIL");
+  assert.equal(result.v3.perTerrain.flat.verdict, "FAIL", "0 % er under fladbaandets gulv");
+});
+
+test("#5578 scoreBreakawayRates: tidskoersler taeller ikke (intet udbrud), og v4 uden spor er N/A, aldrig et gaettet 0", () => {
+  const itt = breakawayRow("itt", { v3Win: false, v4Win: null });
+  const onlyItt = scoreBreakawayRates([itt]);
+  assert.equal(onlyItt.v3.verdict, "N/A");
+  assert.equal(onlyItt.v4.verdict, "N/A");
+
+  const noTrace = scoreBreakawayRates([breakawayRow("mountain", { v3Win: true })]);
+  assert.equal(noTrace.v4.verdict, "N/A");
+  assert.match(noTrace.v4.naReason, /v4Trace/);
+  assert.equal(noTrace.v3.value, 1);
+});
+
+test("#5578 scoreBreakawayRates: kun etapetyper uden kandidatbaand -> N/A (maalt, men ingen dom at faelde)", () => {
+  const result = scoreBreakawayRates([breakawayRow("classic", { v3Win: true, v4Win: true })]);
   assert.equal(result.v4.verdict, "N/A");
-  assert.match(result.v4.naReason, /F3-scope/);
+  assert.equal(result.v4.perTerrain.classic.verdict, "N/A");
+});
+
+test("#5578 aggregateScorecards: udbrudsankeret pooler taellingerne pr. terraen over seeds og doemmer én gang", () => {
+  const seedA = [scoreBreakawayRates([breakawayRow("mountain", { v3Win: true, v4Win: true })])];
+  const seedB = [scoreBreakawayRates([
+    breakawayRow("mountain", { v3Win: false, v4Win: false }),
+    breakawayRow("mountain", { v3Win: false, v4Win: false }),
+  ])];
+  const [aggregated] = aggregateScorecards([seedA, seedB]);
+  // Poolet: 1 af 3 bjergetaper (seed A alene: 100 % FAIL, seed B alene: 0 % PASS).
+  assert.equal(aggregated.v4.perTerrain.mountain.races, 3);
+  assert.equal(aggregated.v4.perTerrain.mountain.breakawayWins, 1);
+  assert.ok(Math.abs(aggregated.v4.value - 1 / 3) < 1e-9);
+  assert.equal(aggregated.v4.verdict, "PASS");
+  assert.deepEqual(aggregated.v4.spread, { min: 0, max: 1, seeds: 2 });
+});
+
+test("#5578 formatScorecard: udbrudsankeret viser en linje pr. terraen med baand og dom", () => {
+  const card = [scoreBreakawayRates([breakawayRow("hilly", { v3Win: true, v4Win: false })])];
+  const text = formatScorecard(card);
+  assert.match(text, /hilly \(15\.0%-45\.0%\): v3 100\.0% \(n=1\) \[FAIL\] · v4 0\.0% \(n=1\) \[FAIL\]/);
+});
+
+// ── scoreGtWinnerMargin (#5578 / #2415) ────────────────────────────────
+
+test("#5578 scoreGtWinnerMargin: middelmarginen doemmes mod 1-8 min, spaendet er min/max", () => {
+  const anchor = scoreGtWinnerMargin({ v3Margins: [30, 50], v4Margins: [120, 240, 600] });
+  assert.equal(anchor.id, "gt_winner_margin");
+  assert.equal(anchor.v3.verdict, "FAIL", "40 s i snit er under 1 min");
+  assert.equal(anchor.v4.value, 320);
+  assert.equal(anchor.v4.verdict, "PASS");
+  assert.deepEqual(anchor.v4.spread, { min: 120, max: 600, seeds: 3 });
+});
+
+test("#5578 scoreGtWinnerMargin: ingen gennemfoerte grand tours -> N/A; scoreGapRealism peger paa GC-harnessen", () => {
+  const anchor = scoreGtWinnerMargin({});
+  assert.equal(anchor.v4.verdict, "N/A");
+  const gap = scoreGapRealism([]).find((a) => a.id === "gt_winner_margin");
+  assert.match(gap.v4.naReason, /v4GcMargin\.mjs/);
 });
 
 // ── scoreTypeIntegrity ─────────────────────────────────────────────────

@@ -9,7 +9,8 @@
   },
   "labels": {
     "today": "Hvor det er i dag",
-    "next": "Hvor det er på vej hen"
+    "next": "Hvor det er på vej hen",
+    "new": "Ny"
   },
   "voting": {
     "intro": "Bedøm planerne herunder. Dine stemmer er med til at afgøre, hvad der bliver bygget som det næste. Hvad der kommer efter sæson 4, beslutter jeg sammen med dig i Roadmap-trådene på forummet.",

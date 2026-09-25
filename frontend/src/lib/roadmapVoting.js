@@ -10,7 +10,9 @@ export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 // RoadmapAdminCreateForm (admin-insert) — #5177 spor 2 splittede AdminCreateForm
 // ud i egen lazy-loaded chunk (LCP: mindre JS for de ~99% der ikke er admin),
 // men begge steder skal stadig SELECT'e/INSERT'e de samme kolonner.
-export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, shipped_at";
+// #5673: created_at tilføjet — kilden til roadmap-siden og -menupunktets nye
+// ulæst-prik (lib/roadmapUnread.ts: roadmap_items.created_at > sidst set).
+export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, created_at, shipped_at";
 
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 6;

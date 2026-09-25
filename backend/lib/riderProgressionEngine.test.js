@@ -10,6 +10,10 @@ import {
   willRetireAtSeasonStart,
 } from "./riderProgressionEngine.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { predictBaseValue } from "./riderValuation.js";
+import { currentProductionValue } from "./riderCareerNpv.js";
+import { loadValuationModelById, withPhaseStep } from "./riderValuationModelSelect.js";
 
 // ── Minimal in-memory Supabase-mock (kun det engine'n bruger) ──────────────────
 function createMockSupabase(state) {
@@ -33,6 +37,9 @@ function createMockSupabase(state) {
       single() {
         const row = state[table].filter(matches)[0] ?? null;
         return Promise.resolve({ data: row, error: null });
+      },
+      maybeSingle() {
+        return Promise.resolve({ data: state[table].filter(matches)[0] ?? null, error: null });
       },
       upsert(rows, opts = {}) {
         const conflict = (opts.onConflict || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -91,6 +98,31 @@ function seedState({ riders, abilities }) {
 }
 
 const MODEL = { a: 6.14, b: 0.126, offset: {} };
+
+test("#5497: sæson-transitionen med v6 regner prisen på modellens trin og løngrundlaget på v4", async () => {
+  // Pinnet v6 med app_config-trinnet lagt på (som loadValuationModelStrict gør).
+  // Tidligere trak en pinnet model løngrundlaget med sig; for v6 må det aldrig
+  // ske (løn følger ikke værdi), og prisen skal stå på samme trin som søndagen
+  // senest skrev, ikke trin 0.
+  const v6 = withPhaseStep(loadValuationModelById("v6"), 2);
+  const v4 = loadValuationModelById("v4");
+  const high = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 72]));
+  const state = seedState({
+    riders: [{ id: "r-v6", primary_type: "gc", secondary_type: "tt", valuation_type: "gc", potentiale: 3, birthdate: "1999-01-01", base_value: 1, current_production_value: 1, is_u25: false, is_retired: false, team_id: null, firstname: "A", lastname: "Elite" }],
+    abilities: [{ rider_id: "r-v6", ...high, ability_caps: null }],
+  });
+  state.app_config = []; // ingen løn-nøgle ⇒ v4 (fail-safe)
+  const supabase = createMockSupabase(state);
+  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: v6, notify: false, dailyTrainingEnabled: false });
+
+  const abRow = state.rider_derived_abilities[0];
+  const next = Object.fromEntries(VISIBLE_ABILITIES.filter((k) => abRow[k] != null).map((k) => [k, Number(abRow[k])]));
+  const valueRider = { primary_type: "gc", secondary_type: "tt", valuation_type: "gc", potentiale: 3, age: ageForSeason("1999-01-01", 2) };
+  const rider = state.riders[0];
+  assert.equal(rider.base_value, predictBaseValue(valueRider, next, v6, { phaseStep: 2 }), "pris på trin 2");
+  assert.notEqual(rider.base_value, predictBaseValue(valueRider, next, v6, { phaseStep: 0 }), "ikke trin 0");
+  assert.equal(rider.current_production_value, currentProductionValue(valueRider, next, v4), "løngrundlag på v4, ikke v6");
+});
 
 test("ageForSeason er sæson-drevet (sæson 1 = launch-året)", () => {
   assert.equal(ageForSeason("2005-03-01", 1), LAUNCH_REFERENCE_YEAR - 2005); // 21

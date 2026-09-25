@@ -72,7 +72,7 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { BREAKAWAY_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -155,14 +155,46 @@ const JOIN_PROBABILITY_BOUNDS: readonly [number, number] = [0.02, 0.5];
 
 type JoinCandidate = { riderId: string; score: number; wantsToJoin: boolean };
 
-/** Kandidat-score (stoej-fri): vaegtet aggression/endurance/tempo + bounded try_break-boost. */
-export function computeJoinScore(abilities: Record<AbilityKey, number>, tryBreak: boolean): number {
+/**
+ * Kandidat-score (stoej-fri): vaegtet aggression/endurance/tempo + bounded
+ * try_break-boost + (#5580) indsats-plus for en leder paa `protect`.
+ */
+export function computeJoinScore(
+  abilities: Record<AbilityKey, number>,
+  tryBreak: boolean,
+  effortBoost = 0,
+): number {
   const base =
     JOIN_SCORE_WEIGHTS.aggression * normAbility(abilities.aggression) +
     JOIN_SCORE_WEIGHTS.endurance * normAbility(abilities.endurance) +
     JOIN_SCORE_WEIGHTS.tempo * normAbility(abilities.tempo);
-  return clamp(base + (tryBreak ? TRY_BREAK_SCORE_BOOST : 0), 0, 1);
+  const boost = Number.isFinite(effortBoost) ? Math.max(0, effortBoost) : 0;
+  return clamp(base + (tryBreak ? TRY_BREAK_SCORE_BOOST : 0) + boost, 0, 1);
 }
+
+/** Roller der er holdets leder (modtager arbejdet) og dermed kan "angribe" paa protect. */
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+
+/**
+ * #5580 (M1 punkt 3, ejer 23/9 valg 1c: `protect` = "arbejd eller angrib"):
+ * en kaptajn/sprint-kaptajn paa `protect` foelger angreb, dvs. et lille plus i
+ * join-scoren. For hjaelpere, jaegere og fri rolle er plusset ALTID 0: for dem
+ * betyder `protect` at arbejde for holdet. Mindre end try_break-boostet (laast
+ * af test), saa en eksplicit ordre vejer tungere end indsatstrinnet.
+ *
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function effortJoinBoost(
+  role: string | undefined,
+  effort: string | undefined,
+  boost: number = EFFORT_GAIN_EXTRA_TUNING.leaderProtectJoinBoost,
+): number {
+  if (effort !== "protect" || !role || !LEADER_ROLES.has(role)) return 0;
+  return Number.isFinite(boost) ? Math.max(0, boost) : 0;
+}
+
+/** try_break-boostet, eksporteret saa testen kan laase at indsats-plusset er mindre. */
+export const TRY_BREAK_JOIN_SCORE_BOOST = TRY_BREAK_SCORE_BOOST;
 
 /** Score -> sandsynlighed, bounded [0.02, 0.5] — aldrig 0 (fuldstaendig umulig) eller 1 (garanteret). */
 export function joinProbability(score: number): number {
@@ -229,7 +261,7 @@ function attemptFormation(
     // (hver rytters rul er seedet paa hans eget rider_id, ikke paa et index).
     if (entrant.effort === "grupetto") continue;
     const tryBreak = tryBreakRiderIds.has(riderId);
-    const score = computeJoinScore(entrant.abilities, tryBreak);
+    const score = computeJoinScore(entrant.abilities, tryBreak, effortJoinBoost(entrant.role, entrant.effort));
     const p = joinProbability(score);
     const roll = ctx.rngFor("breakaway_join", riderId)();
     candidates.push({ riderId, score, wantsToJoin: roll < p });
@@ -245,6 +277,8 @@ function attemptFormation(
     id: newGroupId,
     kind: "breakaway",
     gapSecondsDelta: -INITIAL_GAP_SECONDS,
+    // #5578: dagens udbrud. Udbrudsankeret taeller kun sejre herfra.
+    origin: "breakaway",
   });
 
   events.push({

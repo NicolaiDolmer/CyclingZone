@@ -15,6 +15,7 @@ import {
   TEAM_PLAY_TUNING,
   baseCostFraction,
   buildGroupTeamContexts,
+  countSupportingWorkers,
   helperCostMultiplier,
   protectedRoleOrder,
   supportShare,
@@ -475,4 +476,36 @@ test("PROFIL: en hel etapes holdarbejde koster praecis baseCostFraction x effort
       );
     }
   }
+});
+
+// ── #5580 (M1 punkt 5): en all_out-hjaelper arbejder for sig selv ──────────────
+
+test("#5580 countSupportingWorkers: all_out taeller ikke som stoette, alle andre trin goer", () => {
+  const entrants: Record<string, Entrant> = {};
+  for (const effort of ALL_EFFORTS) entrants[effort] = entrantOf({ id: effort, role: "helper", team: "T1", effort });
+  assert.equal(countSupportingWorkers(ALL_EFFORTS, entrants), ALL_EFFORTS.length - 1);
+  assert.equal(countSupportingWorkers(["all_out"], entrants), 0);
+  assert.equal(countSupportingWorkers([], entrants), 0);
+});
+
+test("#5580 hullet i supportShare: en all_out-hjaelper giver kaptajnen INGEN laeskaerm", () => {
+  const withAllOutHelper = scenario([
+    { id: "cap", role: "captain", team: "T1" },
+    { id: "h1", role: "helper", team: "T1" },
+    { id: "h2", role: "helper", team: "T1", effort: "all_out" },
+  ]);
+  const withoutHim = scenario([
+    { id: "cap", role: "captain", team: "T1" },
+    { id: "h1", role: "helper", team: "T1" },
+  ]);
+  const withNormalHelper = scenario([
+    { id: "cap", role: "captain", team: "T1" },
+    { id: "h1", role: "helper", team: "T1" },
+    { id: "h2", role: "helper", team: "T1" },
+  ]);
+  const capAllOut = factorOf(teamPlayHook(withAllOutHelper.state, withAllOutHelper.ctx).state, "cap");
+  const capAlone = factorOf(teamPlayHook(withoutHim.state, withoutHim.ctx).state, "cap");
+  const capNormal = factorOf(teamPlayHook(withNormalHelper.state, withNormalHelper.ctx).state, "cap");
+  assert.equal(capAllOut, capAlone, "en all_out-hjaelper maa ikke flytte kaptajnens bonus");
+  assert.ok(capNormal > capAllOut, "kaptajnens bonus falder naar hjaelperen saettes paa all_out");
 });

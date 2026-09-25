@@ -76,7 +76,7 @@ test("indstillinger: offentligt Discord-brugernavn kan gemmes, ryddes og valider
   await stabilizePage(page);
   await installNetworkMocks(page);
   await login(page);
-  await page.goto("/profile");
+  await page.goto("/profile?tab=notifications"); // #5402: Discord-kortet bor paa Notifikationer-fanen
   await expect(page.getByRole("heading", { name: daProfile.header.title })).toBeVisible();
 
   const input = page.locator("#profile-discord-handle");

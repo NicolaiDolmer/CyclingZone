@@ -1,0 +1,18 @@
+# 2026-09-25 · "Import-test" af et read-only dev-script kørte mod prod og overskrev 20/9-rapporten
+
+**Hvad skete:** Det untrackede `backend/scripts/dev/valuationTypeUnfreezeDryRun5416.mjs` i hoved-checkoutet (ESLint `no-dupe-keys`, forurenede preflight-kørsler der ramte hoved-checkoutet i stedet for et worktree, jf. #5430) skulle flyttes til den gitignorede rapportmappe `balance-internals/2026-09-20-5416-valuation-type-dryrun/`, fordi rapport-templaten navngiver ryttere med præcise værdiudsving (hard rule 17). Efter flytning og sti-rettelse ville jeg bekræfte at import-stierne stadig løste, og kørte `env -u SUPABASE_URL -u SUPABASE_SERVICE_KEY node <script>` med forventning om exit 1 ved scriptets egen env-vagt. Scriptet har `import "dotenv/config"`, og cwd var worktreets `backend/`, hvor `.env` indeholder prod-nøglerne. Scriptet kørte hele vejen igennem mod prod (100 % read-only mod databasen, kun `select`) og skrev sin rapport til `OUT_DIR`, som netop er mappen med 20/9-rapporten. `RAPPORT.md` og `dryrun.json` fra 20/9 blev overskrevet med en kørsel fra 25/9 kl. 07:23.
+
+**Genskabt:** `RAPPORT.md` fra 20/9 lå byte-identisk (31.508 bytes) som gemt tool-result i den session der lavede analysen (`~/.claude/projects/C--Dev-CyclingZone/<session>/tool-results/*.txt`) og er lagt tilbage med oprindelig mtime. `dryrun.json` fra 20/9 (4,4 MB rå data) findes ikke andre steder og er tabt. 25/9-outputtet er omdøbt til `RAPPORT-2026-09-25-rerun-ved-flytning.md` / `dryrun-2026-09-25-rerun-ved-flytning.json`, så det ikke kan forveksles med beslutningsgrundlaget fra 20/9. `kort-foer-efter.html/.png` (12:27) var urørte. En `LAES-MIG.md` i mappen beskriver filerne.
+
+**Rod-årsag:** To forkerte antagelser. (1) `env -u` fjerner kun shellens variabler; `dotenv/config` fylder dem på igen fra `.env` i cwd, så "uden env" var ikke uden env. (2) "Read-only mod databasen" blev læst som "bivirkningsfri". Scriptet skriver lokale filer, og dens outputmappe var den eneste kopi af rapporten.
+
+**Læring:**
+1. **Kør aldrig et dev-script for at "teste imports".** `node --check` tjekker kun syntaks. Et script med top-level `main()` kan ikke importeres uden at køre; verificér stierne ved at læse `import`-linjerne og `ls` målfilerne, eller lad ESLint gøre det (`npx eslint --stdin --stdin-filename scripts/dev/x.mjs < fil` fra `backend/` virker også for filer uden for mappen).
+2. **Fra `backend/` er enhver `node <script>` en prod-kørsel**, fordi `.env` der har prod-nøgler. Scriptets egen env-vagt er ikke en sikring; header-kravet om `infisical run` er dokumentation, ikke en gate.
+3. **Før noget skriver i en rapportmappe: kopiér eller omdøb det eksisterende output først.** Samme princip som ejerens "backup > restriktion": en verificeret kopi gør handlingen sikker.
+4. **Gemte tool-results i `~/.claude/projects/<projekt>/<session>/tool-results/` er en recovery-kilde** for store outputs en session har læst. Transcriptet (`.jsonl`) rummer dem ikke inline.
+5. **Filer med `dotenv/config` + relative outputstier hører ikke til i `backend/scripts/dev/` som løse untrackede filer.** De forurener alle preflight-kørsler i hoved-checkoutet (#5430) og er ét uheld fra at overskrive noget.
+
+**Bi-observation (uforklaret):** Sessionens app-worktree under `.claude/worktrees/` blev fjernet udefra kl. ca. 07:53, mens preflight kørte i det (ESLint meldte ENOENT på trackede filer, `.git`-filen forsvandt, `git worktree list` kendte det ikke længere). Git-kommandoer fra den tomme mappe rammer derefter hoved-checkoutet på `main`. Tjek `git rev-parse --show-toplevel` før commit, hvis et worktree har opført sig mærkeligt.
+
+Refs #5416 #5430

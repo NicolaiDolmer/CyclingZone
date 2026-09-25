@@ -87,9 +87,11 @@ import { TIER_DENSITY } from "./calendarTierCaps.js";
 export const SUPPLY_TIERS = Object.freeze([1, 2, 3, 4]);
 
 // Kvoten er density × løbsdatoer (CALENDAR_RULES.md §1b — `TIER_GAME_DAY_QUOTA` er en
-// forældet default fra dengang sæsonen var 28 dage og må IKKE bruges som facit). Den
+// forældet konstant og må IKKE bruges som facit). Den
 // udregnes her af de samme to kilder reglen peger på, så kontrollen aldrig kan komme til at
-// måle mod en anden kvote end den kalenderen faktisk bygges mod.
+// måle mod en anden kvote end den kalenderen faktisk bygges mod. #5658: materializerens
+// auto-sti bruger samme afledning (`tierGameDayQuotasFor`); tierCalendarMaterializer.test.js
+// fælder hvis de to nogensinde bliver uenige.
 export function quotasForRaceDays(raceDays, density = TIER_DENSITY) {
   const days = Math.max(0, Math.floor(Number(raceDays) || 0));
   return Object.freeze(Object.fromEntries(SUPPLY_TIERS.map((t) => [t, (density[t] ?? 0) * days])));

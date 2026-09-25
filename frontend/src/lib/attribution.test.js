@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildFirstTouchRecord, captureFirstTouch, getAttribution } from "./attribution.js";
+import {
+  buildFirstTouchRecord,
+  captureFirstTouch,
+  getAttribution,
+  getAttributionForBackend,
+  sanitizeAttributionForBackend,
+} from "./attribution.js";
 
 function fakeStorage() {
   const m = new Map();
@@ -122,10 +128,118 @@ test("buildFirstTouchRecord holder feltrækkefølge og beskærer lange værdier"
     firstSeenAt: "t1",
   });
   assert.deepEqual(Object.keys(record), [
-    "first_seen_at", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "referrer", "landing_path",
+    "first_seen_at", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "fbclid", "gclid", "ttclid", "msclkid", "source_hint", "referrer", "landing_path",
   ]);
   assert.equal(record.utm_source.length, 200);
   assert.equal(record.referrer.length, 500);
+});
+
+// #5304: click-ids (fbclid/gclid/ttclid/msclkid) fanges i samme first-touch-
+// lagring som utm_*, med samme afkortning og samme "første besøg vinder"-regel.
+test("fbclid uden utm fanges og kilden markeres som paid-candidate (#5304)", () => {
+  const s = fakeStorage();
+  captureFirstTouch({
+    search: "?fbclid=abc123xyz",
+    referrer: "",
+    path: "/",
+    storage: s,
+    now: () => "t1",
+  });
+  const a = getAttribution(s);
+  assert.equal(a.fbclid, "abc123xyz");
+  assert.equal(a.gclid, null);
+  assert.equal(a.utm_source, null);
+  assert.equal(a.source_hint, "paid-candidate");
+});
+
+test("utm + gclid fanges begge, kilden markeres IKKE som paid-candidate naar utm_source findes (#5304)", () => {
+  const s = fakeStorage();
+  captureFirstTouch({
+    search: "?utm_source=google&utm_medium=cpc&gclid=xyz789",
+    referrer: "",
+    path: "/",
+    storage: s,
+    now: () => "t1",
+  });
+  const a = getAttribution(s);
+  assert.equal(a.utm_source, "google");
+  assert.equal(a.gclid, "xyz789");
+  assert.equal(a.source_hint, null);
+});
+
+test("ingen click-id: felterne er null og eksisterende utm-adfaerd er uaendret (#5304)", () => {
+  const s = fakeStorage();
+  captureFirstTouch({
+    search: "?utm_source=reddit&utm_medium=social",
+    referrer: "",
+    path: "/",
+    storage: s,
+    now: () => "t1",
+  });
+  const a = getAttribution(s);
+  assert.equal(a.utm_source, "reddit");
+  assert.equal(a.fbclid, null);
+  assert.equal(a.gclid, null);
+  assert.equal(a.ttclid, null);
+  assert.equal(a.msclkid, null);
+  assert.equal(a.source_hint, null);
+});
+
+test("click-id alene beskaeres til 200 tegn ligesom utm-vaerdier (#5304)", () => {
+  const record = buildFirstTouchRecord({
+    search: `?gclid=${"g".repeat(300)}`,
+    referrer: "",
+    path: "/",
+    origin: ORIGIN,
+    firstSeenAt: "t1",
+  });
+  assert.equal(record.gclid.length, 200);
+});
+
+test("click-id recovers fra same-origin referrer naar det mangler paa den aktuelle URL (#5304)", () => {
+  const record = buildFirstTouchRecord({
+    search: "?mode=signup",
+    referrer: "https://cyclingzone.org/?fbclid=recovered123",
+    path: "/login",
+    origin: ORIGIN,
+    firstSeenAt: "t1",
+  });
+  assert.equal(record.fbclid, "recovered123");
+  assert.equal(record.referrer, null);
+  assert.equal(record.source_hint, "paid-candidate");
+});
+
+// #5304 blocking fix: click-ids må ikke lægges i Supabase auth-metadata eller
+// sendes til backend uden ejer-go (needs-decision, se attribution.js).
+test("getAttributionForBackend fjerner click-ids + source_hint, beholder utm (#5304)", () => {
+  const s = fakeStorage();
+  captureFirstTouch({
+    search: "?utm_medium=paid&fbclid=abc123&gclid=xyz789&ttclid=t1&msclkid=m1",
+    referrer: "",
+    path: "/",
+    storage: s,
+    now: () => "t1",
+  });
+  const full = getAttribution(s);
+  assert.equal(full.fbclid, "abc123");
+  assert.equal(full.source_hint, "paid-candidate");
+
+  const forBackend = getAttributionForBackend(s);
+  assert.equal(forBackend.utm_medium, "paid");
+  for (const key of ["fbclid", "gclid", "ttclid", "msclkid", "source_hint"]) {
+    assert.equal(key in forBackend, false, `${key} skal ikke sendes til backend`);
+  }
+});
+
+test("getAttributionForBackend returnerer null uden data i storage (#5304)", () => {
+  assert.equal(getAttributionForBackend(fakeStorage()), null);
+});
+
+test("sanitizeAttributionForBackend renser en allerede-laest record (fx auth-metadata) (#5304)", () => {
+  const cleaned = sanitizeAttributionForBackend({ utm_source: "google", gclid: "leaked", source_hint: "paid-candidate" });
+  assert.deepEqual(cleaned, { utm_source: "google" });
+  assert.equal(sanitizeAttributionForBackend(null), null);
 });
 
 test("getAttribution returnerer null uden data og ved korrupt JSON", () => {

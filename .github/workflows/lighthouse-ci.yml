@@ -67,6 +67,8 @@ jobs:
       - name: Check out repository
         if: env.IS_DEPENDABOT_PR != 'true'
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         if: env.IS_DEPENDABOT_PR != 'true'

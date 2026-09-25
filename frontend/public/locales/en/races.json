@@ -920,6 +920,7 @@
       "lineupReady": "Line-up ready, {selected} of {max} riders picked.",
       "lineupIncomplete": "Line-up incomplete, {selected} of {max} riders picked.",
       "lineupUnknown": "Line-up status is not available for this race.",
+      "withdrawn": "Withdrawn from this race.",
       "noResults": "No results have been published for this stage yet."
     },
     "action": {

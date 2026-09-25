@@ -6,7 +6,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { runSundayValueSweep, SUNDAY_VALUE_FROM_HOUR, RIDER_VALUE_SUNDAY_LOG_TABLE } from "./sundayValueSweep.js";
+import { runSundayValueSweep, sundaySweepSummaryLine, SUNDAY_VALUE_FROM_HOUR, RIDER_VALUE_SUNDAY_LOG_TABLE } from "./sundayValueSweep.js";
 
 const SUNDAY_0700 = new Date("2026-06-21T05:00:00Z"); // søndag 07:00 CEST
 const SUNDAY_0800 = new Date("2026-06-21T06:00:00Z"); // søndag 08:00 CEST, næste tick
@@ -16,10 +16,12 @@ const SATURDAY_0700 = new Date("2026-06-20T05:00:00Z"); // lørdag 07:00 CEST
 const supabase = { from: () => ({}) };
 
 function harness(overrides = {}) {
-  const calls = { refresh: 0, market: 0, claim: 0, release: 0, complete: [] };
+  const calls = { refresh: 0, market: 0, claim: 0, release: 0, complete: [], refreshOpts: [], phaseWrites: [] };
   const base = {
     supabase,
-    refreshValues: async () => { calls.refresh++; return { scanned: 10, changed: 3, written: 3 }; },
+    refreshValues: async (_sb, opts) => { calls.refresh++; calls.refreshOpts.push(opts); return { scanned: 10, changed: 3, written: 3 }; },
+    readPhaseStep: async () => 0,
+    advancePhaseStep: async (_sb, step) => { calls.phaseWrites.push(step); },
     runMarketValueSweep: async () => { calls.market++; return { ran: false, skipped: "flag_off" }; },
     claimRunDate: async () => { calls.claim++; return { claimed: true, tableMissing: false }; },
     releaseRunDate: async () => { calls.release++; },
@@ -311,5 +313,87 @@ describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
     });
     const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
     assert.equal(r.ran, true, "claim'et står, dagen må ikke fremstå som ikke-kørt");
+  });
+});
+
+// #5497 · trin-tælleren for elitepræmiens udfasning (indfasningsplan §5).
+// Nøglen er det trin der SIDST er skrevet; søndagen regner med næste trin.
+describe("runSundayValueSweep, trin-tælleren (#5497)", () => {
+  const v6Refresh = (calls) => async (_sb, opts) => {
+    calls.refresh++;
+    calls.refreshOpts.push(opts);
+    return { scanned: 10, changed: 3, written: 3, modelId: "v6", typefree: true, phaseStep: opts.phaseStep, productionChanged: 0 };
+  };
+
+  it("søndag 1 efter kørselsdagen (nøgle 0) regner trin 1 og gemmer 1", async () => {
+    const { calls, args } = harness();
+    args.refreshValues = v6Refresh(calls);
+    const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(calls.refreshOpts[0].phaseStep, 1);
+    assert.deepEqual(calls.phaseWrites, [1]);
+    assert.deepEqual(r.phase, { step: 1, advanced: true });
+  });
+
+  it("loft 4: nøgle 3 → 4, nøgle 4 bliver stående på 4", async () => {
+    for (const [stored, expected] of [[3, 4], [4, 4]]) {
+      const { calls, args } = harness({ readPhaseStep: async () => stored });
+      args.refreshValues = v6Refresh(calls);
+      await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+      assert.equal(calls.refreshOpts[0].phaseStep, expected, `nøgle ${stored}`);
+      assert.deepEqual(calls.phaseWrites, [expected], `nøgle ${stored}`);
+    }
+  });
+
+  it("v4/v5: nøglen røres IKKE", async () => {
+    for (const modelId of ["v4", "v5"]) {
+      const { calls, args } = harness({
+        refreshValues: async () => ({ scanned: 10, changed: 3, written: 3, modelId, typefree: false, phaseStep: null, productionChanged: 0 }),
+      });
+      const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+      assert.equal(r.ran, true);
+      assert.deepEqual(calls.phaseWrites, [], modelId);
+      assert.deepEqual(r.phase, { step: null, advanced: false });
+    }
+  });
+
+  it("kun ved FULDFØRT kørsel: en fejlende refresh tæller ikke op", async () => {
+    const { calls, args } = harness({ refreshValues: async () => { throw new Error("v6 nede"); } });
+    const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(r.skipped, "value_refresh_failed");
+    assert.deepEqual(calls.phaseWrites, []);
+  });
+
+  it("en ulæselig nøgle stopper kørslen og frigiver dagen (intet gættet trin)", async () => {
+    const { calls, args } = harness({ readPhaseStep: async () => { throw new Error("app_config nede"); } });
+    const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(r.skipped, "value_refresh_failed");
+    assert.equal(r.claimReleased, true);
+    assert.equal(calls.refresh, 0, "refresh'en må ikke køre på et gættet trin");
+    assert.deepEqual(calls.phaseWrites, []);
+  });
+
+  it("en fejlende op-tælling vælter ikke kørslen og rapporteres", async () => {
+    const captured = [];
+    const { calls, args } = harness({
+      advancePhaseStep: async () => { throw new Error("upsert nede"); },
+      captureExceptionFn: (err, ctx) => captured.push(ctx?.tags?.stage),
+    });
+    args.refreshValues = v6Refresh(calls);
+    const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(r.ran, true);
+    assert.deepEqual(r.phase, { step: 1, advanced: false });
+    assert.deepEqual(captured, ["phase-step"]);
+  });
+
+  it("log-linjen viser trin og løngrundlag til post-verify i Railway", async () => {
+    const lines = [];
+    const { calls, args } = harness({ log: (l) => lines.push(l) });
+    args.refreshValues = v6Refresh(calls);
+    await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.ok(lines.includes("sunday-value-sweep: model v6 · phase step 1 · production_value changed: 0"), lines.join("\n"));
+    assert.equal(
+      sundaySweepSummaryLine({ valueRefresh: { modelId: "v4", productionChanged: 2 }, phase: { step: null } }),
+      "sunday-value-sweep: model v4 · phase step - · production_value changed: 2"
+    );
   });
 });

@@ -89,8 +89,19 @@ features:
     flag: race_notify_outbox_enabled
     ssot: docs/audits/2026-09-18-3624-loebsforsinkelser.md
     epic: 3624
-    verified: 2026-09-24
-    note: Flag on 24/9 kl. 18:45 (ejer-kør). Udbakke-tick hvert minut (race-notify-outbox-drain).
+    verified: 2026-09-25
+    note: Flag on 24/9 kl. 18:45 (ejer-kør). Bevist i drift 25/9 kl. 12:01-12:08 (12 sent, 0 fejlede). Udbakke-tick hvert minut (race-notify-outbox-drain).
+
+  - id: race-finalize-resumable
+    area: race-engine
+    title_en: Resumable race finalisation (step markers)
+    title_da: Genoptagelig løbsafslutning (trin-markører)
+    state: live
+    flag: race_finalize_resumable_enabled
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 4147
+    verified: 2026-09-25
+    note: Flag on 25/9 kl. 12:23 (ejer-kør) efter udbakken var bevist. Post-verify efter 15-løbene: finalize_state NULL på alle løb.
 
   - id: form-and-fatigue
     area: race-engine

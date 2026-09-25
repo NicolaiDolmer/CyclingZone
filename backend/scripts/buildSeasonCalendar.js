@@ -776,7 +776,11 @@ if (isMain) {
       process.exit(process.exitCode ?? 0);
     }
 
-    const { blocking, compositionDrift, tierCompositionDrift, report } = gatePlan(plan, { allowTierCompositionDrift: allowTierDrift });
+    // #5658: §1d (samme antal løbsdage) gates her af scorecardet som placerings-gate, så
+    // dry-runnet kan måle videre. gatePlan skal derfor ikke også lægge den i `blocking`.
+    const { blocking, compositionDrift, tierCompositionDrift, report } = gatePlan(plan, {
+      allowTierCompositionDrift: allowTierDrift, raceDayEqualityBlocking: false,
+    });
     // #5644 / #4592 A3: fra S4 skal præcis pyramidens aktive puljer have en kalender (1/2/4/4).
     const poolStructure = detectSeniorPoolStructureViolations({ planTiers: plan.planTiers ?? [], seasonNumber });
     console.log(`\n── #4592 puljer med kalender (fra S${SENIOR_CALENDAR_POOLS_FIRST_SEASON}: ${Object.values(SENIOR_CALENDAR_POOLS_FROM_S4).join("/")}) ──`);

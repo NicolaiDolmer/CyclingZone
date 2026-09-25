@@ -165,6 +165,35 @@ test("pickYouthGroupForNewTeam: flest AI-hold, tie → laveste pool_index", () =
   assert.equal(pickYouthGroupForNewTeam({ groups: [], squad: "u23" }), null);
 });
 
+test("pickYouthGroupForNewTeam (#5676): fuld gruppe uden AI udelades → næste mindste med reel plads", () => {
+  const groups = [
+    // Fuld (24) og ingen AI at overtage → ingen ledig plads, udelades helt.
+    { squad: "u23", poolIndex: 0, size: 24, aiTeamIds: [], managerTeamIds: Array.from({ length: 24 }, (_, i) => `m${i}`) },
+    // To grupper med plads (ingen AI): den mindste (flest ledige pladser) vinder.
+    { squad: "u23", poolIndex: 1, size: 20, aiTeamIds: [] },
+    { squad: "u23", poolIndex: 2, size: 12, aiTeamIds: [] },
+  ];
+  const target = pickYouthGroupForNewTeam({ groups, squad: "u23" });
+  assert.equal(target.poolIndex, 2, "fuld pulje 0 udelades; pulje 2 har flest ledige pladser");
+});
+
+test("pickYouthGroupForNewTeam (#5676): fuld gruppe MED en AI-plads vælges stadig (holdet overtager AI'en)", () => {
+  const groups = [
+    { squad: "junior", poolIndex: 0, size: 24, aiTeamIds: ["a1"], managerTeamIds: Array.from({ length: 23 }, (_, i) => `m${i}`) },
+    { squad: "junior", poolIndex: 1, size: 24, aiTeamIds: [], managerTeamIds: Array.from({ length: 24 }, (_, i) => `m${i}`) },
+  ];
+  const target = pickYouthGroupForNewTeam({ groups, squad: "junior" });
+  assert.equal(target.poolIndex, 0, "pulje 1 er fuld uden AI og udelades; pulje 0 har en AI-plads at overtage");
+});
+
+test("pickYouthGroupForNewTeam (#5676): alle grupper fulde uden AI → null (ingen plads)", () => {
+  const groups = [
+    { squad: "u23", poolIndex: 0, size: 24, aiTeamIds: [] },
+    { squad: "u23", poolIndex: 1, size: 24, aiTeamIds: [] },
+  ];
+  assert.equal(pickYouthGroupForNewTeam({ groups, squad: "u23" }), null);
+});
+
 test("planYouthTopUp: genkørsel uden ændringer er en no-op (idempotent)", () => {
   const input = realisticInput();
   const plan = planYouthGroups({ ...input, squad: "u23" });

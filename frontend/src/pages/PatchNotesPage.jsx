@@ -259,6 +259,11 @@ export default function PatchNotesPage() {
                                     }`}
                                   >
                                     <span className="text-cz-1 text-[13.5px] font-medium leading-snug">
+                                      {c.stage === "beta" && (
+                                        <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning border border-cz-warning/30 px-1.5 py-0.5 rounded-cz-pill me-1.5 align-middle">
+                                          {t("stage.beta")}
+                                        </span>
+                                      )}
                                       {v.title || v.body}
                                       {v.isFallback && (
                                         <span className="text-cz-3 text-xs ms-1">

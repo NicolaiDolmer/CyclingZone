@@ -177,6 +177,26 @@ til sæsonskiftet 27-28/9 står i
 Denne runbook dækker kun selve kørselsdagen; de fire efterfølgende trin kører
 gennem den almindelige søndagskørsel, ikke gennem dette script.
 
+### Trin-tælleren (`app_config.rider_value_phase_step`, #5497)
+
+- Nøglen er det trin (0-4) der **sidst er skrevet** til rytterne. Manglende
+  eller ugyldig værdi = 0 (fuld præmie).
+- `--apply` sætter den til **0 efter backup og dags-claim**, lige før første
+  rytterværdi skrives. En tørkørsel, en blokeret kørsel og en kørsel der
+  afvises ved backup eller claim rører den ikke.
+- Hver fuldført søndagskørsel med prisen på `v6` regner med nøgle + 1 (loft 4)
+  og skriver trinnet tilbage. Under `v4`/`v5` røres nøglen ikke.
+- Post-verify i Railway: søndagens linje `💰 Søndags-værdier` viser
+  `model v6 · phase step N · production_value changed: 0`. Løngrundlaget skal
+  stå på 0, så længe løn-nøglen er `v4`.
+- **Rollback:** nulstil nøglen i samme statement-sæt som model-nøglen, ellers
+  arver et senere skifte et gammelt trin:
+
+```sql
+update public.app_config set value = '0'::jsonb
+ where key = 'rider_value_phase_step';
+```
+
 ## Hvad der med vilje IKKE er automatiseret
 
 - **Flip af nøglerne.** Det er ejerens ene skridt i `app_config`, ikke et

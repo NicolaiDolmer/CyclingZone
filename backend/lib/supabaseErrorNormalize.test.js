@@ -258,6 +258,26 @@ test("toSupabaseError giver et Error med normaliseret besked", () => {
   assert.equal(err.message, "Supabase unavailable (522 Connection timed out)");
 });
 
+// #5426: den delte fejl-wrapper (copyDbFields, brugt af både toSupabaseError
+// og withSupabaseRetry's endelige kast) satte tidligere `details`/`hint` DIREKTE
+// på Error-objektet fra det rå PostgREST-svar. Uskadeligt så længe Sentrys
+// ExtraErrorData-integration ikke er slået til — men slås den til, sendes
+// felterne alligevel. `code` er det eneste af de tre der er dataløst nok til
+// at være sikkert; `details`/`hint` kan bære rækkeværdier (fx en e-mail i en
+// unique-constraint-fejl).
+test("toSupabaseError bevarer code men stripper details/hint fra Error-objektet (#5426)", () => {
+  const err = toSupabaseError({
+    message: 'permission denied for table "riders"',
+    code: "42501",
+    details: "Key (email)=(bruger@eksempel.dk) already exists",
+    hint: "Some hint with row data",
+  });
+  assert.ok(err instanceof Error);
+  assert.equal(err.code, "42501");
+  assert.equal(err.details, undefined, "details maa ikke overleve på Error-objektet");
+  assert.equal(err.hint, undefined, "hint maa ikke overleve på Error-objektet");
+});
+
 // ── withSupabaseRetry ────────────────────────────────────────────────────────
 
 test("retry'er transient fejl og lykkes på 3. forsøg", async () => {
@@ -307,6 +327,32 @@ test("ikke-transient plain Supabase-objekt bobler op som rigtigt Error med code"
       assert.ok(err instanceof Error);
       assert.match(err.message, /permission denied/);
       assert.equal(err.code, "42501");
+      return true;
+    }
+  );
+});
+
+// #5426: samme strip gælder den ØJEBLIKKELIGE (ikke-transiente) kaste-sti
+// (asError), ikke kun den endelige toSupabaseError-sti efter udtømte retries.
+test("ikke-transient plain Supabase-objekt med details/hint bobler op UDEN dem (#5426)", async () => {
+  await assert.rejects(
+    () =>
+      withSupabaseRetry(
+        async () => {
+          throw {
+            message: 'permission denied for table "riders"',
+            code: "42501",
+            details: "Key (email)=(bruger@eksempel.dk) already exists",
+            hint: "Some hint with row data",
+          };
+        },
+        { retries: 2, sleepFn: async () => {} }
+      ),
+    (err) => {
+      assert.ok(err instanceof Error);
+      assert.equal(err.code, "42501");
+      assert.equal(err.details, undefined);
+      assert.equal(err.hint, undefined);
       return true;
     }
   );

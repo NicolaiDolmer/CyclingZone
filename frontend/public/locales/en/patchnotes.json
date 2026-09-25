@@ -19,6 +19,9 @@
     "fixed": "Fixed"
   },
   "newBadge": "New",
+  "stage": {
+    "beta": "Beta"
+  },
   "fallbackLang": {
     "da": "Danish",
     "en": "English"

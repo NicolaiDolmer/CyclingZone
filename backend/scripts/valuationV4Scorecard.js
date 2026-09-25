@@ -11,6 +11,10 @@
 //   3. Udvikl-og-sælg P&L (hård)   4. Symmetri (rapport, career-trajectories)
 //   5. Elite ukøbelig (hård)         6. Anker-sanity (blød — rapporteres, blokerer aldrig)
 //   7. Determinisme (hård, sim_run_id sat)
+//   8/9. Sum-kontinuitet (hård, #5445) — Σ base_value menneskehold + hele
+//        populationen, hver for sig, ±bånd (parameter, DEFAULT_SUM_DRIFT_PCT)
+//   10.  Top-1%-elite-andel af Σ (hård, #5445) — kontrol for omfordeling internt
+//        i populationen, samme bånd-parameter
 //
 // Ren gate-matematik: ../lib/valuationV4Scorecard.js (node --test, ingen DB-afhængighed).
 //
@@ -42,11 +46,13 @@ import {
   anchorSanityRow,
   determinismGate,
   developAndSellGate,
+  eliteShareGate,
   formatTrajectoryTable,
   formatTypeEconomyTable,
   projectAbilitiesForward,
   eliteUnbuyableGate,
   scaleContinuityGate,
+  sumContinuityGate,
   symmetryReportRow,
   typeEconomyRows,
 } from "../lib/valuationV4Scorecard.js";
@@ -108,6 +114,12 @@ async function loadRealPopulation() {
   const teamIds = new Set(
     allTeams.filter((t) => !t.is_test_account && !t.is_frozen && !t.is_bank).map((t) => t.id)
   );
+  // #5445 (sum-kontinuitet-gaten): "menneskehold" = samme eksklusion som teamIds,
+  // MINUS AI-hold. Bruges KUN til at scope Σ base_value — påvirker ikke de øvrige
+  // gates' population (de bruger fortsat teamIds/free-agent-reglen uændret).
+  const humanTeamIds = new Set(
+    allTeams.filter((t) => !t.is_test_account && !t.is_frozen && !t.is_bank && !t.is_ai).map((t) => t.id)
+  );
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
   // #2428 (14/7): INKLUDÉR free agents (team_id NULL) — de enormt gode ryttere er
   // usignerede, og elite-ukøbelig-gaten skal netop verificere DEM. Ekskludér kun
@@ -115,7 +127,12 @@ async function loadRealPopulation() {
   const riders = allRiders.filter(
     (r) => r.is_academy === false && r.is_retired === false && (r.team_id == null || teamIds.has(r.team_id))
   );
-  return riders.map((r) => ({ ...r, age: riderAge(r.birthdate), abilities: abilityByRider.get(r.id) || null }));
+  return riders.map((r) => ({
+    ...r,
+    age: riderAge(r.birthdate),
+    abilities: abilityByRider.get(r.id) || null,
+    isHumanTeam: r.team_id != null && humanTeamIds.has(r.team_id),
+  }));
 }
 
 async function main() {
@@ -140,6 +157,23 @@ async function main() {
 
   // --- Gate 2: skala-kontinuitet ---
   const gScale = scaleContinuityGate(v3Values, v4Values);
+
+  // --- Gate 8/9: sum-kontinuitet (#5445) — Σ base_value må ikke løbe løbsk selvom
+  // medianen (Gate 2) står stille. Scopet "menneskehold" er den økonomi der rent
+  // faktisk cirkulerer mellem spillere (AI-hold handler ikke); "hele populationen"
+  // er samme check bredere, så et scope ikke kan skjule sig bag det andet.
+  const humanRows = rows.filter((r) => r.isHumanTeam);
+  const gSumHuman = sumContinuityGate(
+    "menneskehold",
+    humanRows.map((r) => r.v3Value),
+    humanRows.map((r) => r.v4Value)
+  );
+  const gSumAll = sumContinuityGate("hele populationen", v3Values, v4Values);
+
+  // --- Gate 10: top-1%-elite-andel af Σ (#5445) — kontrol for at sum-kontinuiteten
+  // ovenfor ikke skjuler en omfordeling internt i populationen (hele populationen,
+  // samme scope som elite-ukøbelig-gaten nedenfor).
+  const gEliteShare = eliteShareGate(v3Values, v4Values);
 
   // --- Gate 5: elite ukøbelig ---
   const gEliteUnbuyable = eliteUnbuyableGate(rows, {
@@ -233,6 +267,9 @@ async function main() {
     gEliteUnbuyable,
     gAnchor,
     gDeterminism,
+    gSumHuman,
+    gSumAll,
+    gEliteShare,
   ];
 
   // --- Markdown ---

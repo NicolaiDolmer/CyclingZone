@@ -66,13 +66,20 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   stageRaceRestDayFaq: RACE_DAY_TICK_ON,
 });
 
-/** Alle flag-navne Hjaelp-siden gater paa (til krydstjek mod backendens allowlist). */
-export function helpGateFlagKeys() {
+/**
+ * Alle flag-navne Hjaelp-siden gater paa (til krydstjek mod backendens
+ * allowlist). `extraKeys` er de enkeltstaaende BLOK-niveau-flag der staar
+ * direkte i SECTION_DEFS (HelpPage.jsx) via `flag: "<key>"` (#5274) — de bor
+ * IKKE i en af tabellerne ovenfor, saa krydstjekket (HelpPage.flagGates.test.js)
+ * laeser dem ud af SECTION_DEFS-kilden og sender dem med her.
+ */
+export function helpGateFlagKeys(extraKeys = []) {
   const keys = new Set(Object.values(HELP_SECTION_FLAGS));
   for (const blocks of Object.values(HELP_BLOCK_FLAGS)) {
     for (const gate of Object.values(blocks)) keys.add(gate.flag);
   }
   for (const gate of Object.values(HELP_FAQ_FLAGS)) keys.add(gate.flag);
+  for (const key of extraKeys) keys.add(key);
   return [...keys].sort();
 }
 
@@ -102,6 +109,23 @@ export function isHelpBlockVisible(sectionKey, blockId, flags) {
   const blocks = Object.hasOwn(HELP_BLOCK_FLAGS, sectionKey) ? HELP_BLOCK_FLAGS[sectionKey] : null;
   if (!blocks || !Object.hasOwn(blocks, blockId)) return true;
   return gateMatches(blocks[blockId], flags);
+}
+
+/**
+ * BLOK-niveau, generisk enkelt-flag (#5274). Til forskel fra HELP_BLOCK_FLAGS
+ * ovenfor (parrede off/on-tvillinger, der begge maa erklaeres i en tabel) er
+ * dette for en blok der IKKE har en modsat tvilling: den peger direkte paa et
+ * PLAYER_VISIBLE_FLAG_KEYS-flag med `flag: "<key>"` i selve SECTION_DEFS
+ * (HelpPage.jsx) og vises kun naar det flag er evalueret true for viewer'en —
+ * samme kontakt/beta-gruppe-evaluering som fladen selv (featureStage off/beta/on,
+ * GET /api/feature-flags). Mens svaret hentes (null) eller ved et fejlsvar er
+ * blokken skjult, samme fail-safe som resten af mekanismen.
+ * @param {string|undefined} flagKey  SECTION_DEFS-blokkens `flag`-egenskab
+ * @param {Record<string, boolean>|null} flags
+ */
+export function isHelpBlockFlagVisible(flagKey, flags) {
+  if (!flagKey) return true;
+  return flagState(flags, flagKey) === true;
 }
 
 /**
