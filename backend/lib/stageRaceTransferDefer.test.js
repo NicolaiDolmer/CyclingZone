@@ -48,6 +48,11 @@ function makeSupabase(cfg = {}) {
       if (has(st, "in")) return { data: cfg.overlapEntries ?? [], error: null }; // overlap step 2
       return { data: [], error: null }; // clearFutureRaceEntries select
     }
+    // #5636: race_withdrawals — loadWithdrawnPairs (chunked .in + .range).
+    if (table === "race_withdrawals") {
+      if (cfg.withdrawnPairsError) return { data: null, error: cfg.withdrawnPairsError };
+      return { data: cfg.withdrawnPairs ?? [], error: null };
+    }
     if (table === "riders") {
       if (has(st, "update")) {
         const payload = argOf(st, "update")[0];
@@ -94,6 +99,34 @@ test("getRidersInActiveStageRace: returnerer deduped ryttere i aktive stage race
 test("getRidersInActiveStageRace: excludeRaceId filtrerer det løb fra → [] når det var eneste aktive", async () => {
   const supa = makeSupabase({ activeRaces: [{ id: "R1" }], overlapEntries: [{ rider_id: "A" }] });
   assert.deepEqual(await getRidersInActiveStageRace(supa, ["A"], { excludeRaceId: "R1" }), []);
+});
+
+// #5636: rytter på afmeldt hold i aktivt etapeløb → IKKE i mængden (entries
+// bevares ved afmelding, #4306, men holdet stiller ikke op); holdkammerat på et
+// ikke-afmeldt hold i samme løb → stadig i mængden.
+test("getRidersInActiveStageRace: rytter på afmeldt hold filtreres fra, holdkammerat på ikke-afmeldt hold bevares", async () => {
+  const supa = makeSupabase({
+    activeRaces: [{ id: "R1" }],
+    overlapEntries: [
+      { rider_id: "A", team_id: "T-withdrawn", race_id: "R1" },
+      { rider_id: "B", team_id: "T-active", race_id: "R1" },
+    ],
+    withdrawnPairs: [{ race_id: "R1", team_id: "T-withdrawn" }],
+  });
+  const result = await getRidersInActiveStageRace(supa, ["A", "B"]);
+  assert.deepEqual([...result].sort(), ["B"]);
+});
+
+test("getRidersInActiveStageRace: withdrawal-opslag fejler → kaster", async () => {
+  const supa = makeSupabase({
+    activeRaces: [{ id: "R1" }],
+    overlapEntries: [{ rider_id: "A", team_id: "T1", race_id: "R1" }],
+    withdrawnPairsError: { message: "permission denied for table race_withdrawals" },
+  });
+  await assert.rejects(
+    () => getRidersInActiveStageRace(supa, ["A"]),
+    /race_withdrawals/,
+  );
 });
 
 // ── shouldDeferTeamChange ───────────────────────────────────────────────────
