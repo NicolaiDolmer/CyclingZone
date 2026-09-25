@@ -639,7 +639,6 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
             segment,
             chaseTempo,
             tuning,
-            route.profile_type,
           );
           const wprimeAfter = group.rider_ids.filter((id) => patch[id]).map((id) => patch[id].wprime);
           holdsPace = incidentChaseHoldsPace(isIncidentChasePacedSegment(segment.kind), wprimeAfter);
