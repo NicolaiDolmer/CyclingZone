@@ -508,24 +508,24 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 ### Trin 11b (ejer-kørt): Sluk akademi-drift for S3-skiftet (#5741)
 
-- **For spilleren:** Ingen ungdomsdrift (akademi-drift) opkræves ved DENNE sæsonskiftekørsel — ejer-beslutning 25/9. Rammer kun selve cutover-lønkørslen (12a); resten af akademiet (intake, træning m.m.) er uændret.
-- **Forudsætning:** Køres FØR trin 12a, fordi akademi-drift debiteres inde i "Afslut sæson"-lønkørslen (`backend/lib/economyEngine.js` `processTeamSeasonPayroll`, trin 4). Er nøglen ikke sat til `off` inden 12a er kørt, opkræves drift som normalt, og kan ikke fortrydes bagud (se "Fortryd" nedenfor).
+- **For spilleren:** Ingen ungdomsdrift (akademi-drift) opkræves ved DENNE sæsonskiftekørsel — ejer-beslutning 25/9. Rammer kun selve cutover-lønkørslen (12c); resten af akademiet (intake, træning m.m.) er uændret.
+- **Forudsætning:** Køres FØR trin 12c "Udfør sæsonskifte", fordi akademi-drift debiteres inde i `processTeamSeasonPayroll` (trin 4), som kaldes fra `processSeasonStart` for den NYE sæson — dvs. inde i `seasonTransition.js` fase 6, udløst af 12c (`POST /api/admin/season-transition`), IKKE af "Afslut sæson" (12a, `POST /api/admin/seasons/:id/end`). Er nøglen ikke sat til `off` inden 12c er kørt, opkræves drift som normalt, og kan ikke fortrydes bagud (se "Fortryd" nedenfor). **Sæt IKKE nøglen tilbage til `on` mellem 12a og 12c** — S4-rækken findes ikke engang endnu på det tidspunkt, og en kontrol dér ville vise 0 uanset nøglens værdi og bevise intet.
 - **Go:** ejer.
-- **Kommando:**
+- **Kommando (før 12c):**
   ```sql
   update public.app_config set value = '"off"'::jsonb where key = 'academy_drift_enabled';
   ```
-- **Kontrol bagefter (efter 12a's lønkørsel):**
+- **Kontrol bagefter (efter 12c's kørsel):**
   ```sql
   select count(*) from finance_transactions where type = 'academy_drift' and season_id = '00000000-0000-0000-0000-000000000004';
   ```
   Forventet: 0.
-- **Fortryd:** sæt nøglen tilbage til `on`:
+- **Fortryd:** sæt nøglen tilbage til `on` — men KUN efter 12c er kørt, aldrig mellem 12a og 12c:
   ```sql
   update public.app_config set value = '"on"'::jsonb where key = 'academy_drift_enabled';
   ```
   Drift for DENNE sæsonskiftekørsel er allerede ikke opkrævet og opkræves IKKE bagud — flaget styrer kun kørslen på det tidspunkt lønnen faktisk kører, ikke en efterfølgende genberegning.
-- **Kan tændes i dag?** Ja, nøglen kan sættes til `off` når som helst før 12a. Migrationen (`database/2026-09-25-5741-academy-drift-enabled.sql`) sætter kun default `on` — uændret adfærd ved merge.
+- **Kan tændes i dag?** Ja, nøglen kan sættes til `off` når som helst før 12c. Migrationen (`database/2026-09-25-5741-academy-drift-enabled.sql`) sætter kun default `on` — uændret adfærd ved merge.
 
 ### Trin 12 (H14): Selve cutover-kørslen
 
