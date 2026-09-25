@@ -270,27 +270,86 @@ jobs:
   marketing-changes:
     runs-on: ubuntu-latest
     permissions:
+      # contents: read - #5424: push/merge_group-grenen kalder GitHubs
+      # compare-API (repos/.../compare/BASE...HEAD), som kraever contents-
+      # scopet. Job-level `permissions:` erstatter workflow-niveauets (ikke
+      # additivt), saa den skal staa eksplicit her selvom filen ovenfor
+      # allerede har `contents: read` globalt.
+      contents: read
       pull-requests: read
     outputs:
       marketing: ${{ steps.filter.outputs.marketing }}
     steps:
+      # #5424: dette trin koerte foer KUN ved `if: github.event_name ==
+      # 'pull_request'`. Ved push til main og i merge queue blev trinnet selv
+      # sprunget over, saa `outputs.marketing` var TOM (ikke "false"), og
+      # `marketing-lint-build` blev sprunget stille over efter hvert merge -
+      # uden nogensinde at have maalt om marketing/ rent faktisk var aendret.
+      # Samme fejlklasse som #4463 ("en vagt der gaar groen uden at maale
+      # noget"). Alle tre event-typer haandteres nu eksplicit, en ukendt
+      # event-type koerer jobbet i stedet for at gaette "ingen aendringer",
+      # og hvert udfald skrives til $GITHUB_STEP_SUMMARY saa tilstanden er
+      # synlig - ikke kun et output ingen kigger paa.
+      #
+      # Checkout tilfoejet i samme aendring: den rene marketing/-afgoerelse er
+      # flyttet til scripts/ci/detect-marketing-changes.mjs (enhedstestet),
+      # og dette trin skal derfor kunne finde filen i arbejdstraeet. Kun
+      # denne ene fil laeses - ingen Git-kald - saa persist-credentials: false.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
       - name: Detect marketing changes
         id: filter
-        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          MQ_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MQ_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
-          FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
-          # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
-          # svaret til falsk "ingen marketing-ændringer" (samme fælde som
-          # playwright-smoke.yml's changes-job).
-          if printf '%s\n' "$FILES" | grep -E '^marketing/' > /dev/null; then
-            echo "marketing=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "marketing=false" >> "$GITHUB_OUTPUT"
-          fi
+
+          # Den rene marketing/-afgoerelse laeses fra scripts/ci/detect-marketing-changes.mjs
+          # (enhedstestet, node --test scripts/ci/detect-marketing-changes.test.mjs)
+          # saa YAML'en her kun staar for at hente den rigtige filliste pr. event-type.
+          record() {
+            echo "marketing=$1" >> "$GITHUB_OUTPUT"
+            echo "marketing-changes (\`$EVENT_NAME\`): $2 -> \`marketing=$1\`" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          case "$EVENT_NAME" in
+            pull_request)
+              FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
+              RESULT=$(printf '%s\n' "$FILES" | node scripts/ci/detect-marketing-changes.mjs)
+              record "$RESULT" "diff mod PR #$PR_NUMBER"
+              ;;
+            push)
+              if [[ -z "$PUSH_BEFORE" || "$PUSH_BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+                # Ny branch/foerste push uden en foer-SHA at sammenligne med
+                # (fx branch nyoprettet) - koer for sikkerheds skyld i stedet
+                # for at gaette "ingen aendringer".
+                record "true" "push uden before-SHA, koerer for sikkerheds skyld"
+              else
+                FILES=$(gh api "repos/${{ github.repository }}/compare/$PUSH_BEFORE...$PUSH_AFTER" --jq '.files[]?.filename // empty')
+                RESULT=$(printf '%s\n' "$FILES" | node scripts/ci/detect-marketing-changes.mjs)
+                record "$RESULT" "diff $PUSH_BEFORE..$PUSH_AFTER"
+              fi
+              ;;
+            merge_group)
+              FILES=$(gh api "repos/${{ github.repository }}/compare/$MQ_BASE_SHA...$MQ_HEAD_SHA" --jq '.files[]?.filename // empty')
+              RESULT=$(printf '%s\n' "$FILES" | node scripts/ci/detect-marketing-changes.mjs)
+              record "$RESULT" "diff $MQ_BASE_SHA..$MQ_HEAD_SHA"
+              ;;
+            *)
+              # Ukendt/fremtidig event-type paa dette workflow - koer jobbet
+              # frem for at gaette. Synligt i summary hvis det nogensinde sker.
+              record "true" "ukendt event-type '$EVENT_NAME', koerer for sikkerheds skyld"
+              ;;
+          esac
 
   marketing-lint-build:
     needs: marketing-changes
