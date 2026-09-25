@@ -112,6 +112,9 @@ import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivi
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
+// #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
+// stillingen, se hook-stedet i simulateStageByIndex nedenfor.
+import { refreshYouthStandings as refreshYouthStandingsShared, isYouthSquad } from "./youthStandings.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
@@ -2048,6 +2051,10 @@ export async function simulateRace({
   applyRaceResults = applyRaceResultsShared,
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
+  // #5675 (CodeRabbit-fund, Y7-opfølgning): injectable som i simulateStageByIndex
+  // — default læser den ægte refreshYouthStandings (youthStandings.js). Kaldt
+  // lige efter applyRaceResults nedenfor, samme best-effort-garanti.
+  refreshYouthStandings = refreshYouthStandingsShared,
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
@@ -2156,6 +2163,22 @@ export async function simulateRace({
     ensureSeasonStandings,
     updateStandings,
   });
+
+  // #5675 (CodeRabbit-fund, Y7-opfølgning): ungdomsstillingen genberegnes samme
+  // sted som seniorstillingen ovenfor — denne heldags-/endagsløbs-sti
+  // (simulateRace) kalder IKKE simulateStageByIndex, så uden dette kald ville
+  // et endagsungdomsløb aldrig genberegne youth_season_standings. Kun for
+  // ungdomsløb (squad u23/junior) — no-op for seniorløb. Egen try/catch: en
+  // fejl må aldrig vælte afviklingen, og retter sig selv ved næste løb/recompute
+  // (samme best-effort-garanti som refreshRankingMatviewsSafe nedenfor).
+  if (isYouthSquad(race.squad)) {
+    try {
+      await refreshYouthStandings({ supabase, race, captureExceptionFn: captureException });
+    } catch (err) {
+      console.error(`  ⚠️  youth standings refresh failed after race ${race.id} — finalization continues, standings will self-heal on next recompute: ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "youth-standings-refresh" }, raceId: race.id });
+    }
+  }
 
   // #3193: refresh rangliste-matviews (rider_rankings_mv, team_standings_ext_mv,
   // team_race_points_mv, global_rank_mv) LIGE EFTER season_standings er opdateret
@@ -2698,6 +2721,11 @@ export async function simulateStageByIndex({
   // kører EFTER RPC'en committer (standings = idempotent re-derivation, ej desync-følsom).
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
+  // #5675: injectable som de øvrige samarbejdspartnere ovenfor — default læser
+  // den ægte refreshYouthStandings (youthStandings.js). Kaldt lige efter
+  // seniorstillingen, samme best-effort-garanti (fejl logges, stopper aldrig
+  // finaliseringen).
+  refreshYouthStandings = refreshYouthStandingsShared,
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
@@ -3155,6 +3183,20 @@ export async function simulateStageByIndex({
       // berigelsen nedenfor); forskellen er alene at et fejlet trin forbliver umarkeret
       // og derfor genoptages, i stedet for at løbet står med stale standings.
       if (standingsOk) await markFinalizeStep("standings");
+    }
+    // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som
+    // seniorstillingen ovenfor. Kun for ungdomsløb (squad u23/junior) — no-op
+    // for seniorløb, undgår et unødigt kald pr. seniorafvikling. Egen try/catch
+    // (uafhængig af standings-trinnets resume-markering ovenfor): en fejl må
+    // aldrig vælte finaliseringen, og retter sig selv ved næste etape/recompute
+    // (samme best-effort-garanti som refreshRankingMatviewsSafe).
+    if (isYouthSquad(race.squad)) {
+      try {
+        await refreshYouthStandings({ supabase, race, captureExceptionFn: captureException });
+      } catch (err) {
+        console.error(`  ⚠️  youth standings refresh failed after stage ${stageNumber} (race ${race.id}) — finalization continues, standings will self-heal on next recompute: ${err.message}`);
+        captureException(err, { tags: { flow: "race-run", stage: "youth-standings-refresh" }, raceId: race.id, stageNumber });
+      }
     }
     __markPhase("standings");
 
