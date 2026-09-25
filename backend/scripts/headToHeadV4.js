@@ -90,7 +90,7 @@ const DEFAULT_EFFORT = "normal";
 
 export const ORDER_MODES = Object.freeze(["none", "ai"]);
 
-function v3EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
+export function v3EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
   return riders.map((r) => ({
     rider_id: r.id,
     team_id: r.team_id,
@@ -106,7 +106,7 @@ function v3EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
 // altid har gjort i v3's (`v3EntrantsFromPopulation` ovenfor). Uden det er
 // holdspils-mekanikken en no-op i harnesset, og holddominans-ankeret
 // (same_team_top10_share_4plus) ville maale en verden hvor ingen har et hold.
-function v4EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
+export function v4EntrantsFromPopulation(riders, roles = null, effortByRider = null) {
   const teamByRider = new Map(riders.map((r) => [r.id, r.team_id ?? null]));
   const rows = riders.map((r) => ({ rider_id: r.id, ...r.abilities }));
   return entrantsFromAbilitiesRows(rows, (riderId) => ({
