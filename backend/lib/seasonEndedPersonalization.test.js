@@ -395,3 +395,196 @@ test("emit: divisions-flytning sprunget over (#2851) → ingen næste-division-s
   assert.doesNotMatch(calls[0].message, /You start Season/);
   assert.equal(calls[0].metadata.messageCode, SEASON_ENDED_MESSAGE_CODES.noNextDivision);
 });
+
+// ─── 4. #5752 · Bestyrelsens dom i sæsonbeskeden ─────────────────────────────
+
+// Filtrerende mock: eq/in/order/limit virker, så loaderen kan slå holdets
+// FØRSTE og SENESTE kvittering op. Basis-tabellerne (TABLES) svarer via range.
+function makeBoardSupabase({
+  flag = "on", users = [], mandates = [], events = [], failOn = null,
+} = {}) {
+  const board = { app_config: [{ key: "board_mandate_model_enabled", value: flag }], users, board_mandates: mandates, board_satisfaction_events: events };
+  return {
+    from(table) {
+      const filters = [];
+      let orderBy = null;
+      let limitN = null;
+      const rowsNow = () => {
+        if (failOn === table) return { data: null, error: { message: `boom: ${table}` } };
+        let rows = (board[table] ?? TABLES[table] ?? []).filter((row) => filters.every((f) => f(row)));
+        if (orderBy) {
+          rows = [...rows].sort((a, b) => {
+            const cmp = String(a[orderBy.col]).localeCompare(String(b[orderBy.col]));
+            return orderBy.ascending ? cmp : -cmp;
+          });
+        }
+        if (limitN != null) rows = rows.slice(0, limitN);
+        return { data: rows, error: null };
+      };
+      const builder = {
+        select: () => builder,
+        eq: (col, value) => { filters.push((r) => r[col] === value); return builder; },
+        in: (col, values) => { filters.push((r) => values.includes(r[col])); return builder; },
+        order: (col, opts = {}) => { if (table in board) orderBy = { col, ascending: opts.ascending !== false }; return builder; },
+        limit: (n) => { limitN = n; return builder; },
+        range: async () => (table in board ? rowsNow() : { data: TABLES[table] || [], error: null }),
+        maybeSingle: async () => { const res = rowsNow(); return { data: res.data?.[0] ?? null, error: res.error }; },
+        then: (resolve, reject) => Promise.resolve(rowsNow()).then(resolve, reject),
+      };
+      return builder;
+    },
+  };
+}
+
+// Hold t1's mandat i sæsonen: tre løbs-kvitteringer, én sæson-slut-kvittering
+// (mandatets mål) og to milepæls-kvitteringer skrevet efter den.
+const BOARD_EVENTS = [
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, created_at: "2026-08-01T10:00:00Z", satisfaction_before: 55, satisfaction_after: 58, goals_met: 1, goals_total: 4 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, created_at: "2026-08-20T10:00:00Z", satisfaction_before: 58, satisfaction_after: 61, goals_met: 2, goals_total: 4 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: null, created_at: "2026-09-26T20:00:00Z", satisfaction_before: 61, satisfaction_after: 66, goals_met: 3, goals_total: 4 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: "ms-1", created_at: "2026-09-26T20:00:01Z", satisfaction_before: 66, satisfaction_after: 70, goals_met: 1, goals_total: 1 },
+  { team_id: "t1", mandate_id: "mand-t1", milestone_id: "ms-2", created_at: "2026-09-26T20:00:02Z", satisfaction_before: 70, satisfaction_after: 68, goals_met: 0, goals_total: 1 },
+  // Forrige sæsons mandat: må aldrig blandes ind.
+  { team_id: "t1", mandate_id: "mand-t1-old", milestone_id: null, created_at: "2026-06-01T10:00:00Z", satisfaction_before: 20, satisfaction_after: 30, goals_met: 0, goals_total: 5 },
+];
+const BOARD_MANDATES = [
+  { id: "mand-t1", team_id: "t1", season_id: SEASON_ID, status: "completed" },
+  { id: "mand-t1-old", team_id: "t1", season_id: "season-0", status: "completed" },
+];
+
+test("#5752 bygger: bestyrelsens dom → ekstra sætning + Board-variant af messageCode", () => {
+  const result = buildPersonalSeasonEndedMessage({
+    facts: { ...FULL_FACTS, board: { met: 3, total: 4, before: 55, after: 68 } },
+    nextSeasonNumber: 2,
+  });
+  assert.equal(result.messageCode, `${SEASON_ENDED_MESSAGE_CODES.full}Board`);
+  assert.match(result.message, / Your board met after the final stage: 3 of 4 targets met, confidence 55 -> 68\.$/);
+  assert.equal(result.messageParams.boardMet, 3);
+  assert.equal(result.messageParams.boardTotal, 4);
+  assert.equal(result.messageParams.boardBefore, 55);
+  assert.equal(result.messageParams.boardAfter, 68);
+});
+
+test("#5752 bygger: ingen dom → uændret besked, ingen Board-variant", () => {
+  const result = buildPersonalSeasonEndedMessage({ facts: { ...FULL_FACTS, board: null }, nextSeasonNumber: 2 });
+  assert.equal(result.messageCode, SEASON_ENDED_MESSAGE_CODES.full);
+  assert.doesNotMatch(result.message, /Your board/);
+  assert.equal("boardMet" in result.messageParams, false);
+});
+
+test("#5752 bygger: halv dom (manglende tal) → sætningen udelades helt", () => {
+  const result = buildPersonalSeasonEndedMessage({
+    facts: { ...FULL_FACTS, board: { met: 3, total: 0, before: 55, after: null } },
+    nextSeasonNumber: 2,
+  });
+  assert.doesNotMatch(result.message, /Your board/);
+  assert.equal(result.messageCode, SEASON_ENDED_MESSAGE_CODES.full);
+});
+
+test("#5752 locale-skabeloner: alle fire Board-varianter findes i EN og DA med dommens fire tal", () => {
+  const localeDir = join(__dirname, "../../frontend/public/locales");
+  const en = JSON.parse(readFileSync(join(localeDir, "en/backendMessages.json"), "utf8"));
+  const da = JSON.parse(readFileSync(join(localeDir, "da/backendMessages.json"), "utf8"));
+  for (const code of Object.values(SEASON_ENDED_MESSAGE_CODES)) {
+    const key = `${code.split(".").pop()}Board`;
+    for (const [lng, bundle] of [["en", en], ["da", da]]) {
+      const value = bundle.notif.seasonEnded[key];
+      assert.ok(value, `${lng} mangler ${key}`);
+      for (const param of ["{boardMet}", "{boardTotal}", "{boardBefore}", "{boardAfter}"]) {
+        assert.ok(value.includes(param), `${lng} ${key} mangler ${param}`);
+      }
+    }
+  }
+  assert.ok(en.notif.boardMandateOpened.messageNoChairman);
+  assert.ok(da.notif.boardMandateOpened.messageNoChairman);
+});
+
+test("#5752 loader: before = første kvittering, after = seneste, mål = seneste mandat-kvittering (ikke milepæl)", async () => {
+  const facts = await loadSeasonEndedPersonalization({
+    supabase: makeBoardSupabase({ flag: "on", mandates: BOARD_MANDATES, events: BOARD_EVENTS }),
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }],
+    includeNextDivision: true,
+  });
+  assert.deepEqual(facts.get("t1").board, { met: 3, total: 4, before: 55, after: 68 });
+});
+
+test("#5752 loader: flag off → ingen dom, resten består", async () => {
+  const facts = await loadSeasonEndedPersonalization({
+    supabase: makeBoardSupabase({ flag: "off", mandates: BOARD_MANDATES, events: BOARD_EVENTS }),
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }],
+    includeNextDivision: true,
+  });
+  assert.equal(facts.get("t1").board, null);
+  assert.equal(facts.get("t1").rank, 4, "resten af personaliseringen består");
+});
+
+test("#5752 loader: flag beta → kun beta-testere/admin får dommen", async () => {
+  const supabase = makeBoardSupabase({
+    flag: "beta",
+    users: [
+      { id: "u1", role: "manager", is_beta_tester: true },
+      { id: "u2", role: "manager", is_beta_tester: false },
+    ],
+    mandates: [...BOARD_MANDATES, { id: "mand-t2", team_id: "t2", season_id: SEASON_ID, status: "completed" }],
+    events: [
+      ...BOARD_EVENTS,
+      { team_id: "t2", mandate_id: "mand-t2", milestone_id: null, created_at: "2026-09-26T20:00:00Z", satisfaction_before: 50, satisfaction_after: 52, goals_met: 2, goals_total: 3 },
+    ],
+  });
+  const facts = await loadSeasonEndedPersonalization({
+    supabase,
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }, { id: "t2", user_id: "u2", division: 3 }],
+    includeNextDivision: true,
+  });
+  assert.ok(facts.get("t1").board, "beta-tester ser dommen");
+  assert.equal(facts.get("t2").board, null, "almindelig spiller i beta ser den ikke");
+});
+
+test("#5752 loader: holdet havde intet mandat i sæsonen / kun et proposed → ingen dom", async () => {
+  const facts = await loadSeasonEndedPersonalization({
+    supabase: makeBoardSupabase({
+      flag: "on",
+      mandates: [{ id: "mand-t1", team_id: "t1", season_id: SEASON_ID, status: "proposed" }],
+      events: BOARD_EVENTS,
+    }),
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }],
+    includeNextDivision: true,
+  });
+  assert.equal(facts.get("t1").board, null);
+});
+
+test("#5752 loader: FAIL-SAFE — fejl i kvitterings-opslaget koster kun dommen", async () => {
+  const facts = await loadSeasonEndedPersonalization({
+    supabase: makeBoardSupabase({ flag: "on", mandates: BOARD_MANDATES, events: BOARD_EVENTS, failOn: "board_satisfaction_events" }),
+    seasonId: SEASON_ID,
+    teams: [{ id: "t1", user_id: "u1", division: 2 }],
+    includeNextDivision: true,
+  });
+  assert.equal(facts.get("t1").board, null);
+  assert.equal(facts.get("t1").riderName, "Mathias Vacek", "resten af personaliseringen består");
+});
+
+test("#5752 emit: sæsonbeskeden med og uden mandat-kvitteringer", async () => {
+  const calls = [];
+  await emitSeasonEndedNotifications({
+    supabase: makeBoardSupabase({ flag: "on", mandates: BOARD_MANDATES, events: BOARD_EVENTS }),
+    endedSeason: { id: SEASON_ID, number: 1 },
+    humanTeams: [
+      { id: "t1", user_id: "u1", division: 2 },
+      { id: "t2", user_id: "u2", division: 3 }, // intet mandat
+    ],
+    notify: async (args) => { calls.push(args); return { delivered: true }; },
+    isDivisionMovementSkipped: async () => false,
+  });
+
+  const [withBoard, withoutBoard] = calls;
+  assert.match(withBoard.message, /Your board met after the final stage: 3 of 4 targets met, confidence 55 -> 68\./);
+  assert.equal(withBoard.metadata.messageCode, `${SEASON_ENDED_MESSAGE_CODES.full}Board`);
+  assert.equal(withBoard.metadata.messageParams.boardAfter, 68);
+  assert.doesNotMatch(withoutBoard.message, /Your board/);
+  assert.equal(withoutBoard.metadata.messageCode, SEASON_ENDED_MESSAGE_CODES.noRider);
+});

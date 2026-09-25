@@ -232,7 +232,11 @@
       "messagePersonal": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. You start Season {nextSeason} in Division {nextDivision}.",
       "messagePersonalNoNextDivision": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points.",
       "messagePersonalNoRider": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. You start Season {nextSeason} in Division {nextDivision}.",
-      "messagePersonalMinimal": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money."
+      "messagePersonalMinimal": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money.",
+      "messagePersonalBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. You start Season {nextSeason} in Division {nextDivision}. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoNextDivisionBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoRiderBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. You start Season {nextSeason} in Division {nextDivision}. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}.",
+      "messagePersonalMinimalBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}."
     },
     "raceResult": {
       "title": "Race result is in",

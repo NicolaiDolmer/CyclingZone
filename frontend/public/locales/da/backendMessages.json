@@ -232,7 +232,11 @@
       "messagePersonal": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bedste rytter var {rider} med {riderPoints} point. Du starter sæson {nextSeason} i Division {nextDivision}.",
       "messagePersonalNoNextDivision": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bedste rytter var {rider} med {riderPoints} point.",
       "messagePersonalNoRider": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Du starter sæson {nextSeason} i Division {nextDivision}.",
-      "messagePersonalMinimal": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge."
+      "messagePersonalMinimal": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge.",
+      "messagePersonalBoard": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bedste rytter var {rider} med {riderPoints} point. Du starter sæson {nextSeason} i Division {nextDivision}. Din bestyrelse mødtes efter sidste etape: {boardMet} af {boardTotal} mål nået, tillid {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoNextDivisionBoard": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bedste rytter var {rider} med {riderPoints} point. Din bestyrelse mødtes efter sidste etape: {boardMet} af {boardTotal} mål nået, tillid {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoRiderBoard": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Du starter sæson {nextSeason} i Division {nextDivision}. Din bestyrelse mødtes efter sidste etape: {boardMet} af {boardTotal} mål nået, tillid {boardBefore} -> {boardAfter}.",
+      "messagePersonalMinimalBoard": "Du sluttede på plads {rank} ud af {poolSize} i Division {division} med {points} point og CZ$ {prize} i præmiepenge. Din bestyrelse mødtes efter sidste etape: {boardMet} af {boardTotal} mål nået, tillid {boardBefore} -> {boardAfter}."
     },
     "raceResult": {
       "title": "Resultat er klar",
