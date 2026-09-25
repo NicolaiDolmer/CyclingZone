@@ -673,7 +673,7 @@ const effortGainExtra = {
   //     bjerg- og kuperede etaper. Leddet er ikke-stigende op ad trappen og 0
   //     fra normal og op (laast af test), saa normal er bit-uaendret.
   climbScorePenalty: {
-    grupetto: 0.3,
+    grupetto: 0.6,
     save: 0.3,
     normal: 0,
     protect: 0,
