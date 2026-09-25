@@ -420,7 +420,6 @@ function tickGroupRiders(
   segment: Segment,
   tempo: GroupTempo,
   tuning: EngineTuning,
-  profileType: StageInput["route"]["profile_type"] | null = null,
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
   // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
@@ -470,10 +469,11 @@ function tickGroupRiders(
     // af hans evner, saa to ryttere paa SAMME trin beholder deres indbyrdes
     // orden praecis som foer wiringen. Determinismen er uberoert — intet rng.
     //
-    // #4914: etapeprofilen foelger med, fordi all_out-trinnet er
-    // profil-afhaengigt (mechanics/effortCost.ts's hoved). De fire andre trin
-    // er profil-uafhaengige, saa profilen flytter kun all_out-ryttere.
-    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, undefined, profileType);
+    // #4914 -> #5580 (M1 punkt 4): SEGMENTETS terraen foelger med, fordi
+    // all_out-trinnet er terraen-afhaengigt (mechanics/effortCost.ts's hoved):
+    // prisen foelger terraenet under hjulene, ikke etapens profil. De fire
+    // andre trin er terraen-uafhaengige, saa det flytter kun all_out-ryttere.
+    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, undefined, segment.kind);
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
@@ -588,7 +588,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         referenceCp[segment.kind],
       );
       tempoByGroup.set(group.id, tempo);
-      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, route.profile_type);
+      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
       nextRiders = { ...nextRiders, ...patch };
     }
     state = { ...state, riders: nextRiders };

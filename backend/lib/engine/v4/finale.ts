@@ -18,6 +18,7 @@
 
 import type {
   AbilityKey,
+  EffortLevel,
   Entrant,
   EngineState,
   FinaleHook,
@@ -29,7 +30,7 @@ import type {
   SegmentHookResult,
   TimelineEvent,
 } from "./types.ts";
-import { FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
+import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -156,13 +157,46 @@ export function computeFinaleAbilityScore(
   wprimeReserveFraction: number,
   demandVector: Partial<Record<AbilityKey, number>>,
   wprimeReserveWeight: number,
+  effort: EffortLevel | undefined = undefined,
 ): number {
   let sum = 0;
   for (const key of Object.keys(demandVector) as AbilityKey[]) {
     const weight = demandVector[key] ?? 0;
     sum += weight * normAbility(abilities[key]);
   }
-  return sum + wprimeReserveWeight * clamp(wprimeReserveFraction, 0, 1);
+  const reserve = clamp(wprimeReserveFraction, 0, 1);
+  return sum + wprimeReserveWeight * reserve + effortFinaleTerm(effort, reserve);
+}
+
+/**
+ * #5580 (M1 punkt 2, indsatstrappen model 3): indsatsens led i placerings-
+ * opgoeret inden for gruppen, vaegtet af rest-reserven:
+ * `push[effort] x reserve - crack[effort] x (1 - reserve)`.
+ *
+ * `all_out` presser haardest med fuld reserve og taber mest med tom ("er
+ * reserven tom, knaekker han og taber mere", ejer 23/9). `save` faar en del af
+ * sin sparede reserve modregnet: han koerer inden for sig selv og presser ikke
+ * i finalen. `normal` (og manglende effort) er praecis 0, saa ITT-kaldet og
+ * alle fixtures er bit-uaendrede.
+ *
+ * Monotoni i reserven: d/d(reserve) af hele scoren er
+ * `wprimeReserveWeight + push + crack`, som tuning-kontrakten holder >= 0
+ * (laast af finale.test.ts). Leddet roerer ingen evne, saa monotonien i
+ * enhver enkelt evne er uaendret.
+ *
+ * Eksporteret for property-testbarhed.
+ */
+export function effortFinaleTerm(
+  effort: EffortLevel | undefined,
+  reserve01: number,
+  tuning: Pick<typeof EFFORT_GAIN_EXTRA_TUNING, "finalePush" | "finaleCrack"> = EFFORT_GAIN_EXTRA_TUNING,
+): number {
+  if (!effort) return 0;
+  const push = tuning.finalePush[effort];
+  const crack = tuning.finaleCrack[effort];
+  if (!Number.isFinite(push) || !Number.isFinite(crack)) return 0;
+  const reserve = Number.isFinite(reserve01) ? clamp(reserve01, 0, 1) : 0;
+  return push * reserve - crack * (1 - reserve);
 }
 
 function wprimeReserveFraction(rider: RiderState | undefined): number {
@@ -359,7 +393,8 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // Sammen med climbSelection.ts's tilsvarende led er det de eneste to
     // steder i motoren hvor en W'-reserve bliver til et resultat.
     const reserve = entrant.effort === "grupetto" ? 0 : wprimeReserveFraction(state.riders[riderId]);
-    return computeFinaleAbilityScore(entrant.abilities, reserve, demandVector, extra.wprimeReserveWeight);
+    // #5580: indsatsens led (gevinst med reserve, knaek uden) — se effortFinaleTerm.
+    return computeFinaleAbilityScore(entrant.abilities, reserve, demandVector, extra.wprimeReserveWeight, entrant.effort);
   };
 
   const baseScored: ScoredRider[] = contenderIds
