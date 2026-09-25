@@ -195,10 +195,16 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, seasonAge = nul
   // #5742: mål-truppen kan allerede være fuld FØR spilleren overhovedet
   // klikker — trigger-knappen spærres da + viser grunden, i stedet for et
   // dødt klik der først fejler i backend-svaret (samme mønster som
-  // AcademyPage's intake-kort, isFull/fullTooltip).
+  // AcademyPage's intake-kort, isFull/fullTooltip). En junior-alder rytter
+  // har OGSÅ U23 som muligt mål (opad tilladt) — spær derfor kun knappen når
+  // ALLE hans valg er fulde, ellers spærrer et fyldt junior-hold ham fra at
+  // vælge det ledige U23-hold i dialogen (CodeRabbit-fund).
+  function isSquadFullFor(squad) {
+    const count = academy.squads?.[squad];
+    return count?.used != null && count?.max != null && count.used >= count.max;
+  }
   const triggerSquadFull = !isAcademyRider && canDemote
-    && academy.squads?.[demoteTargetSquad]?.used != null
-    && academy.squads[demoteTargetSquad].used >= academy.squads[demoteTargetSquad].max;
+    && demoteOptions.length > 0 && demoteOptions.every(o => isSquadFullFor(o.squad));
 
   return (
     <>

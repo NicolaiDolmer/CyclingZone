@@ -16,7 +16,7 @@
 // forudvalgt.
 // Spejler AcademySignConfirmModal: overlay + cz-card-panel + useModalA11y +
 // editorial dl-tabel. INGEN slop (ingen glow/gradient/emoji-ikon).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { useModalA11y } from "../hooks/useModalA11y.js";
@@ -64,14 +64,23 @@ export function AcademyTransferConfirmModal({
 
   // #5742: vælgeren er kun relevant for demote med et reelt valg (junior-alder
   // rytter, opad tilladt til U23). Selektionen nulstilles til quotens egen
-  // default hver gang dialogen åbnes/skifter rytter, så et gammelt valg fra
-  // forrige rytter aldrig overlever ind i en ny åbning.
+  // default kun når dialogen ÅBNER (show går false → true), så et gammelt
+  // valg fra forrige rytter aldrig overlever ind i en ny åbning. Kaldersiden
+  // (fx RiderManageActions' onSquadChange → setAcademyModal) opdaterer sit
+  // eget academyModal-object ved hvert skift, som laver et NYT squadOptions-
+  // array hver render — stod det arrayet i dependency-listen, ville selve
+  // klikket der skifter trup udløse en re-render der straks nulstillede
+  // valget tilbage til default (CodeRabbit-fund).
   const [selectedSquad, setSelectedSquad] = useState(capSquad);
+  const wasShown = useRef(false);
   useEffect(() => {
-    if (!show) return;
-    const fallback = squadOptions.find(o => o.isDefault)?.squad ?? capSquad;
-    setSelectedSquad(fallback ?? null);
-  }, [show, capSquad, squadOptions]);
+    if (show && !wasShown.current) {
+      const fallback = squadOptions.find(o => o.isDefault)?.squad ?? capSquad;
+      setSelectedSquad(fallback ?? null);
+    }
+    wasShown.current = show;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se kommentaren ovenfor: kun `show`s flanke skal trigge
+  }, [show]);
 
   if (!show) return null;
 
@@ -271,7 +280,11 @@ export function AcademyTransferConfirmModal({
               disabled:opacity-60 disabled:cursor-not-allowed
               ${isPromote ? "bg-cz-accent hover:brightness-110" : "bg-cz-warning hover:brightness-110"}`}
           >
-            {busy || salaryLoading ? t("common:actions.loadingShort") : t(`academy:${confirmKey}`)}
+            {busy || salaryLoading
+              ? t("common:actions.loadingShort")
+              : isPromote
+                ? t(`academy:${confirmKey}`)
+                : t(`academy:${confirmKey}`, { squad: squadLabel })}
           </button>
         </div>
         <style>{`
