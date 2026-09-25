@@ -4,7 +4,7 @@ import { Section, SectionHeader, Button, ZonePill, XIcon } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/seasonRecapCopy.js";
-import { authHeaders } from "../lib/supabase";
+import { authHeaders } from "../lib/supabase.ts";
 import { apiFetch } from "../lib/apiFetch.ts";
 
 // #5755 — GET /api/board/verdict/{seasonId}: bygget i en parallel bølge-lane

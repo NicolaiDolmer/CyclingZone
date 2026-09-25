@@ -6,7 +6,7 @@ import {
   TeamIcon, BikeIcon, BriefcaseIcon, StarIcon,
   CheckIcon, ChevronRightIcon, XIcon,
 } from "./ui";
-import { countDoneItems, resolveBoardStartItem } from "../lib/seasonStartGuide";
+import { countDoneItems, resolveBoardStartItem } from "../lib/seasonStartGuide.js";
 // #5755 — mandat-launch D: bestyrelses-punktet skal linke til /board/meeting
 // og vise "Sign your mandate" naar board_mandate_model_enabled er aktivt for
 // viewer. Kortet henter selv (best-effort, samme fail-safe konvention som
@@ -50,8 +50,14 @@ export default function SeasonStartGuideCard({ seasonNumber, items = [], onDismi
       if (cancelled) return;
       const stage = stages.board_mandate_model_enabled;
       if (stage !== "beta" && stage !== "on") return; // off/ukendt → legacy uændret
+      setBoardMandate((s) => ({ ...s, enabled: true }));
       fetchBoardMeeting().then((meeting) => {
-        if (!cancelled) setBoardMandate({ enabled: true, loaded: true, meeting });
+        // CodeRabbit-fund (#5755, ÉN CLI-runde): fetchBoardMeeting() returnerer
+        // `null` ved manglende session/netværksfejl. Sætter vi `loaded: true`
+        // her alligevel, læser resolveBoardStartItem det som "underskrevet"
+        // (meetingAvailable: null → done: true) — et FALSK grønt flueben.
+        // `loaded` skal derfor kun blive true ved et ægte payload.
+        if (!cancelled && meeting != null) setBoardMandate({ enabled: true, loaded: true, meeting });
       });
     });
     return () => { cancelled = true; };
