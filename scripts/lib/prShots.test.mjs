@@ -158,8 +158,10 @@ test("slugify, routeSlug og shotFileName", () => {
 });
 
 test("masterProfileDir ligger uden for repoet (eet login for alle worktrees)", () => {
-  const dir = masterProfileDir({ env: { LOCALAPPDATA: "C:\\Users\\x\\AppData\\Local" }, homedir: "C:\\Users\\x" });
-  assert.match(dir, /cz-pr-shots-profile$/);
+  // Absolut sti paa baade Windows og Linux (CI): en "C:\\..."-sti er relativ paa Linux.
+  const localAppData = resolve(REPO_ROOT, "..", "AppData-Local");
+  const dir = masterProfileDir({ env: { LOCALAPPDATA: localAppData }, homedir: "/home/x" });
+  assert.equal(dir, join(localAppData, "cz-pr-shots-profile"));
   assert.equal(isInside(REPO_ROOT, dir), false);
   const fallback = masterProfileDir({ env: {}, homedir: "/home/x" });
   assert.match(fallback, /AppData.Local.cz-pr-shots-profile$/);
