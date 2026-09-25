@@ -26,6 +26,7 @@ import { errorMiddleware, shouldReportToSentry } from "./lib/errorMiddleware.js"
 import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
 import { createComebackRouter } from "./routes/comeback.js"; // #5643
+import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 
 const app = express();
@@ -75,6 +76,13 @@ app.use(normalizeRequestBody);
 // #5643: POST /api/season/comeback (parkeret hold tilbage efter Global Rank). Egen
 // route-fil, monteret FØR apiRoutes, fordi routes/api.js er låst af en anden bølge.
 app.use("/api/season/comeback", createComebackRouter({
+  supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+  }),
+}));
+// #5753: GET /api/board/verdict/:seasonId (bestyrelsens dom i saesonrecappen). Samme
+// begrundelse som comeback-routeren ovenfor: egen fil, monteret FOER apiRoutes.
+app.use("/api/board/verdict", createBoardVerdictRouter({
   supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
   }),

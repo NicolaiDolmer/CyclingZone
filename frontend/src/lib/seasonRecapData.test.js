@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeSeasonMovement, resolveNextDivision, resolveSeasonMovement, pickRecapHighlights } from "./seasonRecapData.js";
+import { computeSeasonMovement, resolveNextDivision, resolveSeasonMovement, pickRecapHighlights, isBoardVerdictShowable } from "./seasonRecapData.js";
 
 // ─── computeSeasonMovement ──────────────────────────────────────────────────
 
@@ -206,4 +206,77 @@ test("pickRecapHighlights: partial documentaryFacts (no rival, e.g. alone in div
     },
   });
   assert.deepEqual(highlights.map((h) => h.kind), ["turningPoint", "biggestResult"]);
+});
+
+// ─── #5753 · bestyrelsens dom (boardVerdict) ────────────────────────────────
+
+const VERDICT = {
+  enabled: true,
+  seasonNumber: 3,
+  goalsMet: 3,
+  goalsTotal: 4,
+  confidenceBefore: 50,
+  confidenceAfter: 64,
+  chairman: { name: "Chair Person", initials: "CP", archetypeKey: "sponsoraten", quoteKey: "archetypes.sponsoraten.reactions.receipt_positive.0", quoteFallbackDa: "Tekst" },
+  mandateStatus: "completed",
+  meetingAvailable: true,
+};
+
+test("pickRecapHighlights: boardVerdict står FØRST og bærer dommens felter", () => {
+  const highlights = pickRecapHighlights({
+    myTeamId: "t1",
+    myStageKing: { riderId: "r1", name: "Y", wins: 3 },
+    boardVerdict: VERDICT,
+  });
+  assert.deepEqual(highlights.map((h) => h.kind), ["boardVerdict", "stageKing"]);
+  assert.deepEqual(highlights[0], {
+    kind: "boardVerdict",
+    goalsMet: 3,
+    goalsTotal: 4,
+    confidenceBefore: 50,
+    confidenceAfter: 64,
+    chairman: VERDICT.chairman,
+    meetingAvailable: true,
+  });
+});
+
+test("pickRecapHighlights: boardVerdict tager en af de 3 pladser (loftet er uændret)", () => {
+  const highlights = pickRecapHighlights({
+    myTeamId: "t1",
+    divisionStandings: [{ team_id: "t1" }],
+    prizeByTeam: { t1: 300000 },
+    myBiggestSale: { amount: 100000, description: "Solgt X" },
+    myStageKing: { riderId: "r1", name: "Y", wins: 3 },
+    boardVerdict: VERDICT,
+  });
+  assert.deepEqual(highlights.map((h) => h.kind), ["boardVerdict", "prizeLeader", "biggestSale"]);
+});
+
+test("pickRecapHighlights: boardVerdict + dokumentar-fallback fylder op til 3", () => {
+  const highlights = pickRecapHighlights({
+    myTeamId: "t1",
+    boardVerdict: VERDICT,
+    documentaryFacts: {
+      bestRaceDay: { race_id: "r1", race_name: "Tour de Test", total_points: 240, riders_scoring: 3 },
+      biggestResult: { rider_name: "Rider One", race_name: "Grand Prix" },
+      rival: { team_name: "Rival FC", total_points: 900, gap: 15 },
+      myStanding: { total_points: 885 },
+    },
+  });
+  assert.deepEqual(highlights.map((h) => h.kind), ["boardVerdict", "turningPoint", "biggestResult"]);
+});
+
+test("pickRecapHighlights: ingen boardVerdict når flaget er slået fra eller dommen mangler kvitteringer", () => {
+  assert.deepEqual(pickRecapHighlights({ myTeamId: "t1", boardVerdict: { enabled: false } }), []);
+  assert.deepEqual(pickRecapHighlights({ myTeamId: "t1", boardVerdict: { ...VERDICT, goalsMet: null } }), []);
+  assert.deepEqual(pickRecapHighlights({ myTeamId: "t1", boardVerdict: null }), []);
+});
+
+test("isBoardVerdictShowable: kræver enabled, tal for mål og mindst ét mål", () => {
+  assert.equal(isBoardVerdictShowable(VERDICT), true);
+  assert.equal(isBoardVerdictShowable({ ...VERDICT, goalsMet: 0 }), true, "0 af 4 er en ægte dom");
+  assert.equal(isBoardVerdictShowable({ ...VERDICT, goalsTotal: 0 }), false);
+  assert.equal(isBoardVerdictShowable({ ...VERDICT, enabled: false }), false);
+  assert.equal(isBoardVerdictShowable({ ...VERDICT, goalsMet: null }), false);
+  assert.equal(isBoardVerdictShowable(undefined), false);
 });
