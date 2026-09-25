@@ -98,6 +98,18 @@ De tre midterste er de oprindelige S3-værdier med **uændret navn og semantik**
 
 **Rækkefølge før flippet** (oplæg §7): data-model + API bag flaget (off) → UI → dry-run-scorecard mod realistisk feltstørrelse → ejer-go → flip. Beslutningsgrundlag: `docs/superpowers/specs/2026-09-03-race-day-intention-decision.md`.
 
+**Model 3 i v4: pris og gevinst ([#5580](https://github.com/NicolaiDolmer/CyclingZone/issues/5580), ejer 23/9 valg 1 + 1c + 2).** Prisen er M12's kraftkrav (ovenfor). Gevinsten er en additiv tuning-blok (`EFFORT_GAIN_EXTRA_TUNING` i `engine/v4/tuning.ts`), og den er **betalt med reserven**: hvert gevinst-led ganges med rytterens rest-W', så en rytter der har brændt reserven kun har prisen tilbage og knækker.
+
+| Sted | Hvad indsatsen gør |
+|---|---|
+| Stigningen (`mechanics/climbSelection.ts`) | `protect`/`all_out` holder gruppen længere; `save`/`grupetto` giver slip tidligere (et ekstra straf-led der kun rammer en rytter under gruppens bedste klatrer, så den stærkeste aldrig "sættes" fra svagere) |
+| Finalen (`finale.ts` `computeFinaleAbilityScore`) | højere indsats presser hårdere med reserve og taber flere pladser uden; `save` presser ikke |
+| Holdspil (`mechanics/teamPlay.ts`) | en hjælper på `all_out` tæller ikke længere som støtte for kaptajnen (han kører for sig selv) |
+| Udbrud (`mechanics/breakaway.ts`) | en kaptajn/sprint-kaptajn på `protect` følger angreb (lille plus); for hjælpere betyder `protect` at arbejde |
+| Prisen (`mechanics/effortCost.ts`) | `all_out`-prisen følger **segmentets** terræn, ikke etapens profil |
+
+Alle led er 0 på `normal`, så et felt hvor alle kører `normal` er bit-uændret. Trappens orden (ikke-faldende op ad trappen) er låst af tests. **Én kilde:** når v4 kører, vinder `race_team_orders`' effort over `race_stage_roles` i både motoren og trætheden efter etapen (`raceStageRoles.js`); v3-stien er uændret. Målingen er `backend/scripts/v4EffortTwinMeasure.js` (hele trappen, hjælper + kaptajn, `--orders=ai`); tal ligger i `balance-internals/`, aldrig her.
+
 ---
 
 ## 2. Mekanik-kataloget (ejer-godkendt 20/8)
