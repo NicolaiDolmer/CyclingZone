@@ -119,6 +119,8 @@ Aflæsning      → GET /api/admin/attribution, Attribution-fanen i AdminGrowthP
 
 Feltet er bevidst uafhængigt af analytics-samtykket: first-touch sker før cookie-banneret er besvaret, og intet persisteres før brugeren opretter en konto. Hjemmel: legitim interesse (vurdering, ikke juridisk efterprøvet); om privatlivspolitikken nævner det, er ikke tjekket ❓
 
+**Click-ids (#5304, 25/9).** `fbclid`/`gclid`/`ttclid`/`msclkid` fanges nu i samme first-touch-snapshot som `utm_*` — samme lagring, samme afkortning, samme samtykke-uafhængighed (et click-id er ikke mere personhenførbart end en utm-parameter). Mangler kun `utm_source`, og et click-id findes, markeres `source_hint: "paid-candidate"` — bevidst IKKE "paid" (ejer-gennemgang 16/9: et click-id alene beviser ikke betalt trafik). Kun client-side (localStorage): `signup_attribution`-tabellen og `buildAttributionRow()` (`backend/lib/signupAttribution.js`) er IKKE udvidet med kolonner for click-id/source_hint endnu — det kræver et skema-valg (ny kolonne vs. jsonb) som ejeren har mærket `needs-decision` på #5304. Ingen CAPI/conversion-API, ingen tredjepart.
+
 **Dækning:** ✅ 123 af 137 signups de seneste 60 dage er attribueret, altså 90 % (målt 8/9). De 10 % uden række er typisk brugere der aldrig fik oprettet et hold, eller hvor localStorage var blokeret.
 
 ### 3.2 Hvad referrer aldrig fanger

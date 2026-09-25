@@ -10,6 +10,24 @@ const STORAGE_KEY = "cz_attribution_v1"; // gitleaks:allow — localStorage-nøg
 // is shared — the beacon stays storage-less and never calls captureFirstTouch.
 export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
 
+// #5304: ad-platform click-ids. Paid traffic often arrives WITHOUT utm_* (the
+// platform appends its own click-id automatically; utm_* only appears if a
+// tracking template was set up by hand), so without these a paid visit lands
+// as "(direct)" — same bucket as Discord/word-of-mouth. Kept as a separate
+// constant (not merged into UTM_KEYS) so trafficBeacon.js's per-pageview beacon
+// is unaffected — click-ids are only meaningful in the first-touch snapshot.
+// fbclid = Meta/Facebook Ads, gclid = Google Ads, ttclid = TikTok Ads,
+// msclkid = Microsoft/Bing Ads.
+// GDPR note (issue #5304): a click-id is a platform-issued pseudonymous
+// identifier, not more identifying than a utm_source value (the same
+// reasoning the privacy policy already applies to utm_*, see header comment
+// above) — same storage, same TTL (localStorage until first signup captures
+// it, or forever if the visitor never signs up), same consent-independence
+// (captured before the cookie banner, nothing sent to the backend from this
+// file). No value beyond the id itself is stored, and it is never forwarded
+// to any third party (no CAPI/conversion-API call here or anywhere else).
+export const CLICK_ID_KEYS = ["fbclid", "gclid", "ttclid", "msclkid"];
+
 // URL.canParse is too new for older Safari, so parse defensively by hand.
 function parseUrl(raw) {
   try {
@@ -34,7 +52,10 @@ export function buildFirstTouchRecord({ search, referrer, path, origin, firstSee
     const refUrl = parseUrl(externalReferrer);
     if (refUrl && refUrl.origin === origin) {
       externalReferrer = "";
-      if (!UTM_KEYS.some((k) => params.get(k))) utmParams = refUrl.searchParams;
+      // #5304: fall back to the referrer's query for EITHER signal (utm or
+      // click-id) missing from the current URL, same recovery as #5310.
+      const carriesSignal = [...UTM_KEYS, ...CLICK_ID_KEYS].some((k) => params.get(k));
+      if (!carriesSignal) utmParams = refUrl.searchParams;
     }
   }
   const record = { first_seen_at: firstSeenAt };
@@ -42,6 +63,16 @@ export function buildFirstTouchRecord({ search, referrer, path, origin, firstSee
     const v = utmParams.get(k);
     record[k] = v ? v.slice(0, 200) : null;
   }
+  for (const k of CLICK_ID_KEYS) {
+    const v = utmParams.get(k);
+    record[k] = v ? v.slice(0, 200) : null;
+  }
+  // #5304: a click-id with no utm_source is a CANDIDATE paid signal, not proof
+  // (owner review 16/9: "fbclid alone doesn't prove paid" — a click-id can
+  // survive a forwarded/shared link same as a utm parameter can). Marked
+  // distinctly from a confirmed utm_source-driven channel so downstream
+  // reporting never silently counts it as "paid".
+  record.source_hint = !record.utm_source && CLICK_ID_KEYS.some((k) => record[k]) ? "paid-candidate" : null;
   record.referrer = externalReferrer ? externalReferrer.slice(0, 500) : null;
   record.landing_path = path ? String(path).slice(0, 200) : null;
   return record;
