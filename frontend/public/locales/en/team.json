@@ -3,9 +3,9 @@
     "fallbackTitle": "My Team",
     "managerLabel": "Manager: {name}",
     "ridersCount": "{count}/{cap} senior riders",
-    "academyCount": "+{count} academy (off-cap)",
+    "youthSquadCounts": "+{u23} U23 · +{junior} juniors",
     "seniorCapTooltip": "Squad cap is {cap} senior riders. Academy riders don't count toward it.",
-    "academyCapTooltip": "Academy riders develop separately and never count toward the {cap}-rider senior cap.",
+    "youthSquadCountsTooltip": "U23 and junior riders have their own squad caps (12 and 10) and do not count toward the senior cap.",
     "incomingCount": "+{count} incoming",
     "outgoingCount": "-{count} outgoing",
     "salaryPerSeason": "Salary/season: {value} CZ$",
@@ -17,6 +17,7 @@
     "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "ownAuctionsBanner": "{count, plural, one {# of your riders is up for auction} other {# of your riders are up for auction}} · view auctions"
   },
+  "squadNames": { "u23": "U23", "junior": "Junior" },
   "tabs": {
     "ariaLabel": "Team sections",
     "squad": "Squad ({count})",
@@ -97,7 +98,7 @@
       "transfer": "Transfer list",
       "release": "Release",
       "extend": "Extend contract",
-      "demote": "To academy"
+      "demote": "To {squad}"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
@@ -140,11 +141,12 @@
       "capCounterLabel": "Extensions used"
     },
     "demote": {
-      "description": "Move this U23 rider down into your academy. Available only for riders aged 22 or under.",
+      "description": "Move this rider down into {squad}.",
       "currentSalaryLabel": "Current salary",
       "youthSalaryLabel": "Youth salary",
       "hint": "They stop counting toward your senior squad and are pulled from any upcoming races. You confirm the full effect next.",
-      "confirmButton": "Move to academy"
+      "confirmButton": "Move to {squad}",
+      "fullTooltip": "Your {squad} team is full. Free a place there first."
     },
     "loadingShort": "...",
     "errorPrefix": ""
