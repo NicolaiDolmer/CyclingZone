@@ -125,6 +125,9 @@ test("#5754 hele meeting-payloaden gemmes (ikke kun available) og sendes til Man
 });
 
 test("#5754 DEV-preview kan seede proposedMeeting UDEN netvaerkskald (samme moenster som dnaPreview)", () => {
-  assert.match(source, /if \(meetingPreview\) return;.*DEV-preview/);
   assert.match(source, /useState\(Boolean\(meetingPreview\?\.available\)\)/);
+});
+
+test("#5754 (CodeRabbit-runde) DEV-preview SYNKRONISERER tilstanden ved et variant-skift, ingen tidlig return uden at saette state", () => {
+  assert.match(source, /if \(meetingPreview\) \{\s*setProposedMeeting\(meetingPreview\);\s*setMeetingAvailable\(Boolean\(meetingPreview\.available\)\);\s*return;\s*\}/);
 });

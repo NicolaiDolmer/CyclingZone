@@ -84,7 +84,16 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null, meeti
   const [meetingAvailable, setMeetingAvailable] = useState(Boolean(meetingPreview?.available));
   const [proposedMeeting, setProposedMeeting] = useState(meetingPreview);
   useEffect(() => {
-    if (meetingPreview) return; // DEV-preview: fixture uden netvaerkskald.
+    // #5754 (CodeRabbit-runde) · DEV-preview: seed direkte fra fixturen i
+    // stedet for et netvaerkskald. Skrevet som en SYNC (ikke kun en tidlig
+    // return) saa BoardroomPreviewPage's `?variant=`-skift ogsaa opdaterer
+    // tilstanden uden en fuld remount — en tidlig `return` uden at saette
+    // state ville have efterladt den forrige variants proposedMeeting staaende.
+    if (meetingPreview) {
+      setProposedMeeting(meetingPreview);
+      setMeetingAvailable(Boolean(meetingPreview.available));
+      return;
+    }
     let cancelled = false;
     fetchBoardMeeting().then((res) => {
       if (cancelled) return;
