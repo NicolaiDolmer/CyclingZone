@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRankingsClient } from "./rankingsClient.ts";
+import { createRankingsClient, isNetworkOrAbortStatus } from "./rankingsClient.ts";
 
 test("signed-out requests fail without network access", async () => {
   let calls = 0;
@@ -119,6 +119,17 @@ test("does not report a transport failure (fetch throws)", async () => {
   });
   await client.getRiderRankings("season");
   assert.equal(calls.length, 0);
+});
+
+// #5694 (CYCLINGZONE-69): shared predicate — status 0 is transport-layer
+// shorthand for "no HTTP response reached us" (network/abort/offline), never
+// a real server status.
+test("isNetworkOrAbortStatus: true only for 0, false for real HTTP statuses", () => {
+  assert.equal(isNetworkOrAbortStatus(0), true);
+  assert.equal(isNetworkOrAbortStatus(200), false);
+  assert.equal(isNetworkOrAbortStatus(401), false);
+  assert.equal(isNetworkOrAbortStatus(404), false);
+  assert.equal(isNetworkOrAbortStatus(500), false);
 });
 
 test("missing reportError dependency does not crash", async () => {

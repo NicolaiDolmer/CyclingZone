@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DENY_URLS, isDeniedUrl, isKnownExtensionNoise } from "./sentryDenyUrls.js";
+import { DENY_URLS, isDeniedUrl, isKnownExtensionNoise, isProxiedOrigin, isTranslateProxyHistoryError } from "./sentryDenyUrls.js";
 
 // #2018: Vercel Live Feedback / Toolbar injicerer /_next-live/feedback/instrument.js
 // og kaster tredjeparts-fejl (CYCLINGZONE-18/19/1A/1B/1C). Disse SKAL filtreres,
@@ -78,6 +78,67 @@ test("normale app-fejl filtreres IKKE (filteret er ikke for bredt)", () => {
   for (const url of appUrls) {
     assert.equal(isDeniedUrl(url), false, `app-URL burde IKKE filtreres: ${url}`);
   }
+});
+
+// #5694 (CYCLINGZONE-68): Google Translate-proxy — SecurityError fra
+// history.replaceState paa origin cyclingzone-org.translate.goog.
+
+test("isProxiedOrigin: .translate.goog-hostnames genkendes", () => {
+  assert.equal(isProxiedOrigin("cyclingzone-org.translate.goog"), true);
+  assert.equal(isProxiedOrigin("cycling-zone-vercel-app.translate.goog"), true);
+  assert.equal(isProxiedOrigin("CYCLINGZONE-ORG.TRANSLATE.GOOG"), true, "case-insensitivt");
+});
+
+test("isProxiedOrigin: egne/normale hostnames rammes IKKE", () => {
+  assert.equal(isProxiedOrigin("cyclingzone.org"), false);
+  assert.equal(isProxiedOrigin("cycling-zone.vercel.app"), false);
+  assert.equal(isProxiedOrigin("localhost"), false);
+  // Delstreng-forsøg maa ikke matche — kun hostnamet der reelt SLUTTER på .translate.goog.
+  assert.equal(isProxiedOrigin("translate.goog.evil.example"), false);
+});
+
+test("isProxiedOrigin: tom/undefined/null haandteres uden at kaste", () => {
+  assert.equal(isProxiedOrigin(""), false);
+  assert.equal(isProxiedOrigin(undefined), false);
+  assert.equal(isProxiedOrigin(null), false);
+});
+
+test("CodeRabbit-fund (24/9): DENY_URLS blokerer IKKE hele .translate.goog-origin'et - kun beforeSend gør, snævert", () => {
+  // Regression: et tidligere udkast havde et blankt .translate.goog-mønster
+  // her, som ville have droppet AL app-telemetri for oversatte spillere,
+  // ikke kun den kendte historik-fejl. Se isTranslateProxyHistoryError.
+  const hasBlanketTranslateGoogPattern = DENY_URLS.some((re) =>
+    re.test("https://cyclingzone-org.translate.goog/assets/RaceHubPage-d4e5f6.js")
+  );
+  assert.equal(hasBlanketTranslateGoogPattern, false);
+});
+
+test("isTranslateProxyHistoryError: genkender Chromiums faktiske ordlyd via besked ALENE (type ukendt/tom)", () => {
+  // Den reelle Chrome/Sentry-besked gentager typisk IKKE ordet "SecurityError"
+  // i selve teksten - kun exception.type gør (se sentry.jsx). Denne test
+  // dækker det tilfælde, hvor kun beskeden er tilgængelig.
+  assert.equal(
+    isTranslateProxyHistoryError(
+      "",
+      "Failed to execute 'replaceState' on 'History': A history state object with URL 'https://cyclingzone-org.translate.goog/dashboard' cannot be created in a document with origin 'https://cyclingzone.org' and URL 'https://cyclingzone.org/dashboard'."
+    ),
+    true
+  );
+});
+
+test("isTranslateProxyHistoryError: genkendes via exception-typen 'SecurityError' + replaceState/pushState i beskeden", () => {
+  assert.equal(isTranslateProxyHistoryError("SecurityError", "Failed to execute 'pushState' on 'History': some message"), true);
+  assert.equal(isTranslateProxyHistoryError("SecurityError", "Failed to execute 'replaceState' on 'History'"), true);
+});
+
+test("isTranslateProxyHistoryError: rammer IKKE ægte app-fejl (heller ikke tilfældige SecurityErrors eller history-nævn hver for sig)", () => {
+  assert.equal(isTranslateProxyHistoryError("TypeError", "Cannot read properties of undefined (reading 'map')"), false);
+  // Ægte SecurityError, men IKKE en history-API-fejl - må ikke matche.
+  assert.equal(isTranslateProxyHistoryError("SecurityError", "blocked a frame with origin from accessing a cross-origin frame"), false);
+  // replaceState nævnt, men INGEN SecurityError-signal noget sted - almindelig kode-fejl.
+  assert.equal(isTranslateProxyHistoryError("QuotaExceededError", "Failed to execute 'replaceState' on 'History': quota exceeded"), false);
+  assert.equal(isTranslateProxyHistoryError("SecurityError", ""), false);
+  assert.equal(isTranslateProxyHistoryError(undefined, undefined), false);
 });
 
 test("isDeniedUrl haandterer tom/undefined URL uden at kaste", () => {
