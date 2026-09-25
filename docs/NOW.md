@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (25/9 kl. 00:05, session a lukket):** **Natbølge 25/9 kører** (30 spor A→B→C, plan OneDrive `private-handoffs/wave-2026-09-25-nat.json`, ejer-go 24/9 kl. 23:20). Dagsession 25/9-b: læs `2026-09-26-morgenrapport.md` (nat) + `2026-09-25-morgenrapport-b.md` → (1) go-kort for nattens UI/tekst-spor · (2) værdierne: #5502 modellen (A/B om to røde grænser) → #5690 admin-siden (WithMarket-linje + billeder) → "kør" `rider_valuation_v6_market` → ryttertype-visning? · (3) "kør": digest on, `race_finalize_resumable_enabled` efter udbakke-verify ~12:10, `youth_squad_pages` · (4) mockups #5683/#5685 · (5) sæsonskiftet 27/9 (runbook).
+> **🎯 Next action (25/9 kl. 07:45, natsession lukket):** **KØ 1 i OneDrive `private-handoffs/2026-09-26-morgenrapport.md` (læs FØRST).** Natbølgen: 28/30 spor, 26 PR'er (#5707-#5732), merget #5702 #5709 #5728. Go-kort ét ad gangen med billeder: #5456 Vifteøvelser A/B (#5711) · #5402 Indstillinger-faner (#5725) · #5422/#5404/#5634/#5673/#5636 (#5722/#5724/#5723/#5731/#5732) · **#5707 kalender-gaten SKAL merges før S4-apply 27/9** · øvrige backend-PR'er = ejer-go per merge-køens regelmotor. Derefter rapport b: #5502 (A/B) → #5690 → `rider_valuation_v6_market` "kør" → digest "kør" → udbakke-verify ~12:10 → #5683/#5685 → sæsonskiftet 27/9. Ikke kørt: #5677/#5433 (ejer ved tastaturet). #5637 afventer skærmbillede.
 >
 > **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort · live · Discord-kort · live · /roadmap · live · S4-kalender 24 t · merget · U23/junior-sider · beta (#5666 #5688 merget, patch note 7.298), flag til alle afventer beta-svar · Mandatet · beta, #5679 merget, flip 28/9 · D4→D3 + 4 puljer · merget (#5669 #5651), køres 27/9 · comeback · merget (#5661) · ungdomsløb · alt merget (#5650 #5666 #5671) · træning fra løb · merget (#5640 #5654 #5670 #5663), flip 28/9 · 140 løbsdage · merget · ryttertype-visning · beta 24/9 (#5435).
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); tjek `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); stablede PR'er retargetes til main FØR base merges (#5655→#5670); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Claude Code DOLMERPC 25/9-nat (orkestrator, fra 00:05). Natbølgen A→B→C kører via wave.js; kun kategori 1-3 merges. Morgenrapport: `2026-09-26-morgenrapport.md`.
+> **🤖 Working agent:** Ingen aktiv session (natsession 25/9-nat lukket 07:45; morgenrapport `2026-09-26-morgenrapport.md`).
