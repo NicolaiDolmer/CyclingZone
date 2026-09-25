@@ -103,6 +103,17 @@ features:
     verified: 2026-09-25
     note: Flag on 25/9 kl. 12:23 (ejer-kør) efter udbakken var bevist. Post-verify efter 15-løbene: finalize_state NULL på alle løb.
 
+  - id: academy-drift-kill-switch
+    area: economy
+    title_en: Youth squad upkeep switch at season change
+    title_da: Ungdomsdrift ved sæsonskifte (kontakt)
+    state: live
+    flag: academy_drift_enabled
+    ssot: docs/SEASON_CUTOVER_RUNBOOK.md
+    epic: 5741
+    verified: 2026-09-25
+    note: Nøglen 'on' i prod 25/9 kl. 16:20 (auto-migrate efter PR #5745) = uændret drift. Ejeren sætter 'off' 27/9 før 12c (runbook 11b); kontrol efter 12c = 0 academy_drift-poster for S4.
+
   - id: form-and-fatigue
     area: race-engine
     title_en: Form and fatigue in scoring
