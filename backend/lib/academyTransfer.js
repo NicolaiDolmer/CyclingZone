@@ -530,14 +530,14 @@ export function moveSquadErrorStatus(code) {
 }
 
 /**
- * Kør en trup-flytning fra et HTTP-kald og returnér svaret. Kaster aldrig:
- * en uventet fejl kommer tilbage som `unexpected`, så routen kan sende den til
- * Sentry.
+ * Kør en trup-flytning fra et HTTP-kald og returnér svaret. Forventede
+ * afvisninger (moveSquadErrorStatus) bliver til 4xx; en uventet fejl kastes
+ * videre, så routen sender den til Sentry og svarer 500.
  *
  * @param {any} supabase
  * @param {{teamId:string, riderId:string, body:any, seasonNumber:number,
  *   move?:typeof moveRider, moveDeps?:Record<string, any>}} args
- * @returns {Promise<{status:number, body:Record<string, any>, unexpected?:Error}>}
+ * @returns {Promise<{status:number, body:Record<string, any>}>}
  */
 export async function handleMoveSquadRequest(supabase, {
   teamId, riderId, body, seasonNumber, move = moveRider, moveDeps = {},
@@ -552,8 +552,8 @@ export async function handleMoveSquadRequest(supabase, {
   } catch (err) {
     const code = /** @type {any} */ (err)?.message ?? "";
     const status = moveSquadErrorStatus(code);
-    if (status !== null) return { status, body: { error: code, errorCode: code } };
-    return { status: 500, body: { error: code }, unexpected: /** @type {Error} */ (err) };
+    if (status === null) throw err;
+    return { status, body: { error: code, errorCode: code } };
   }
 }
 

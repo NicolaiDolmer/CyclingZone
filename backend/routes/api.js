@@ -18788,7 +18788,6 @@ router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, re
       body: req.body,
       seasonNumber,
     });
-    if (out.unexpected) captureException(out.unexpected);
     res.status(out.status).json(out.body);
   } catch (err) {
     captureException(err);

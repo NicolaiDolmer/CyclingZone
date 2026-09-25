@@ -109,6 +109,7 @@
     "cannot_afford": "Du har ikke råd",
     "deal_locked_both_confirmed": "Handlen er accepteret af begge parter og kan ikke annulleres af manager",
     "invalid_action": "Ugyldig handling",
+    "invalid_squad": "Vælg senior-truppen, U23-holdet eller juniorholdet",
     "offered_rider_not_owned": "Din tilbudte rytter tilhører ikke dit hold",
     "offered_rider_retired": "Din tilbudte rytter er pensioneret og kan ikke handles",
     "target_rider_not_found": "Målrytter ikke fundet eller har intet hold",

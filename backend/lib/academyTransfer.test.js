@@ -982,19 +982,20 @@ test("#5748 route: statuskoder for moveRiders fejlkontrakt", async () => {
     const out = await handleMoveSquadRequest({}, { teamId: "t1", riderId: "x", body: { squad: "u23" }, seasonNumber: 2, move });
     assert.equal(out.status, status, code);
     assert.deepEqual(out.body, { error: code, errorCode: code });
-    assert.equal(out.unexpected, undefined, `${code} er en forventet tilstand, ikke Sentry-larm`);
   }
   assert.equal(moveSquadErrorStatus("invalid_squad"), 400);
+  assert.equal(moveSquadErrorStatus("move rpc: connection reset"), null);
 });
 
-test("#5748 route: en uventet fejl giver 500 og sendes videre til Sentry (unexpected)", async () => {
+test("#5748 route: en uventet fejl kastes videre (routen svarer 500 + Sentry)", async () => {
   const boom = new Error("move rpc: connection reset");
-  const out = await handleMoveSquadRequest({}, {
-    teamId: "t1", riderId: "x", body: { squad: "u23" }, seasonNumber: 2,
-    move: async () => { throw boom; },
-  });
-  assert.equal(out.status, 500);
-  assert.equal(out.unexpected, boom);
+  await assert.rejects(
+    () => handleMoveSquadRequest({}, {
+      teamId: "t1", riderId: "x", body: { squad: "u23" }, seasonNumber: 2,
+      move: async () => { throw boom; },
+    }),
+    (err) => err === boom,
+  );
 });
 
 // #4582 — academy-demote-quote sender `keepsContract: hasCompleteContract(rider)`
