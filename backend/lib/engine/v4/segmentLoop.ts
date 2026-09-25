@@ -52,6 +52,7 @@ import {
   wprimeDepletionCpMultiplier,
 } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroupsDetailed } from "./groups.ts";
+import type { FinaleGroupTrace } from "./groups.ts";
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
@@ -511,6 +512,10 @@ export type SegmentLoopResult = {
   state: EngineState;
   timeline: TimelineEvent[];
   groupSnapshots: SegmentGroupSnapshot[];
+  // #5578 (ADDITIVT): gruppe-billedet omkring finalen, til udbrudsankeret
+  // (groups.isBreakawayWin). Intern: indgaar ikke i StageOutput. null naar
+  // ruten ikke har segmenter.
+  finaleTrace: FinaleGroupTrace | null;
 };
 
 /**
@@ -563,10 +568,13 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // wind_exposure, ingen multiplikator, ingen straf — spilleren ser "regn",
   // ikke hvad regn koster.
   let weatherAnnounced = false;
+  let finaleTrace: FinaleGroupTrace | null = null;
+  let lastSegmentEntryGroups: RaceGroup[] = [];
 
   const segments = route.segments;
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
+    if (segmentIndex === segments.length - 1) lastSegmentEntryGroups = state.groups;
 
     if (!weatherAnnounced && weatherCpPenalty(route.weather, segment.kind, WEATHER_EXTRA_TUNING) > 0) {
       pushEvent(timeline, segment.from_km, "weather", { kind: route.weather.kind });
@@ -713,9 +721,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // (gap_seconds === 0) kraever rebaseline FOER kaldet — ellers falder
       // angriberne ud af opgoerelsen (fundet af golden fixture 4, 21/8).
       state = { ...state, groups: rebaselineGroups(state.groups) };
+      const preFinaleGroups = state.groups;
       const result = hooks.finale(state, ctx);
       state = result.state;
       timeline.push(...result.events);
+      finaleTrace = { entryGroups: lastSegmentEntryGroups, preFinaleGroups, postFinaleGroups: state.groups };
     }
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
@@ -765,5 +775,5 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // Tid-tildeling: rent gruppe-princip (mor-spec SS3.2).
   state = { ...state, riders: applyGroupTimes(state.groups, state.riders, frontElapsedSeconds) };
 
-  return { state, timeline, groupSnapshots };
+  return { state, timeline, groupSnapshots, finaleTrace };
 }
