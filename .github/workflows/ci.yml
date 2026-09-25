@@ -321,6 +321,26 @@ jobs:
             echo "marketing-changes (\`$EVENT_NAME\`): $2 -> \`marketing=$1\`" >> "$GITHUB_STEP_SUMMARY"
           }
 
+          # CodeRabbit-fund (denne PR, #5424): GitHubs compare-API returnerer
+          # maks 300 aendrede filer. Et push/merge_group med flere filer end
+          # det (fx en stor rebase eller en fyldt merge queue-batch) kunne
+          # have marketing/-filer UDENFOR de 300 foerste, og en simpel
+          # "ikke fundet i listen" ville da laese som "ingen aendringer" -
+          # en falsk negativ. Rammer diffen graensen, koeres jobbet i stedet
+          # for at stole paa en muligvis afkortet liste.
+          detect_via_compare() {
+            local base="$1" head="$2" desc="$3"
+            local files file_count result
+            files=$(gh api "repos/${{ github.repository }}/compare/$base...$head" --jq '.files[]?.filename // empty')
+            file_count=$(printf '%s\n' "$files" | grep -c . || true)
+            if [[ "$file_count" -ge 300 ]]; then
+              record "true" "$desc gav $file_count filer (GitHubs compare-graense) - muligvis afkortet, koerer for sikkerheds skyld"
+              return
+            fi
+            result=$(printf '%s\n' "$files" | node scripts/ci/detect-marketing-changes.mjs)
+            record "$result" "$desc ($file_count filer)"
+          }
+
           case "$EVENT_NAME" in
             pull_request)
               FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
@@ -334,15 +354,11 @@ jobs:
                 # for at gaette "ingen aendringer".
                 record "true" "push uden before-SHA, koerer for sikkerheds skyld"
               else
-                FILES=$(gh api "repos/${{ github.repository }}/compare/$PUSH_BEFORE...$PUSH_AFTER" --jq '.files[]?.filename // empty')
-                RESULT=$(printf '%s\n' "$FILES" | node scripts/ci/detect-marketing-changes.mjs)
-                record "$RESULT" "diff $PUSH_BEFORE..$PUSH_AFTER"
+                detect_via_compare "$PUSH_BEFORE" "$PUSH_AFTER" "diff $PUSH_BEFORE..$PUSH_AFTER"
               fi
               ;;
             merge_group)
-              FILES=$(gh api "repos/${{ github.repository }}/compare/$MQ_BASE_SHA...$MQ_HEAD_SHA" --jq '.files[]?.filename // empty')
-              RESULT=$(printf '%s\n' "$FILES" | node scripts/ci/detect-marketing-changes.mjs)
-              record "$RESULT" "diff $MQ_BASE_SHA..$MQ_HEAD_SHA"
+              detect_via_compare "$MQ_BASE_SHA" "$MQ_HEAD_SHA" "diff $MQ_BASE_SHA..$MQ_HEAD_SHA"
               ;;
             *)
               # Ukendt/fremtidig event-type paa dette workflow - koer jobbet

@@ -75,5 +75,11 @@ async function main() {
 
 const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
-  main().then((code) => process.exit(code));
+  // CodeRabbit-fund (denne PR, #5424): `process.exit(code)` kan afbryde en
+  // endnu-ikke-flushet stdout-write naar stdout er piped/capture (som her -
+  // workflowet laeser scriptets stdout via $()). `process.exitCode` lader
+  // Node afslutte naturligt, EFTER skrivningen er flushet.
+  main().then((code) => {
+    process.exitCode = code;
+  });
 }
