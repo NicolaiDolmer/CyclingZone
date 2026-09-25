@@ -13,7 +13,15 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { AREAS, STATES, parseRegistry, render, validate } from "./generate-feature-status.mjs";
+import {
+  AREAS,
+  STATES,
+  TOKEN_BUDGET_FAIL,
+  approxTokens,
+  parseRegistry,
+  render,
+  validate,
+} from "./generate-feature-status.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const SCRIPT = join(ROOT, "scripts", "generate-feature-status.mjs");
@@ -173,8 +181,33 @@ test("render sorterer area -> state -> id og markerer filen som genereret", () =
   assert.match(markdown, /GENERERET FIL/);
   // race-engine kommer foer market i AREAS, uanset raekkefoelgen i registret.
   assert.ok(markdown.indexOf("## race-engine") < markdown.indexOf("## market"));
-  assert.match(markdown, /\| Alpha \(`alpha-feature`\) \| live \| `alpha_enabled` \|/);
+  // live-poster (#5430): kompakt linje, ingen 7-kolonne tabelraekke.
+  assert.match(markdown, /\*\*live:\*\* Alpha \(`alpha-feature`\) 2026-09-06/);
+  assert.doesNotMatch(markdown, /\| Alpha \(`alpha-feature`\) \|/);
+  // ikke-live-poster (building) faar stadig en fuld tabelraekke.
   assert.match(markdown, /\| Beta \(`beta-feature`\) \| building \| - \|/);
+});
+
+test("live-poster faar kompakt liste, ikke-live faar fuld tabel i samme area (#5430)", () => {
+  const entries = parseRegistry(`features:
+  - id: live-x
+    area: ops
+    title_en: Live X
+    title_da: Live X
+    state: live
+    verified: 2026-09-07
+  - id: building-x
+    area: ops
+    title_en: Building X
+    title_da: Building X
+    state: building
+    verified: 2026-09-07
+`);
+  const markdown = render(entries);
+  assert.match(markdown, /\*\*live:\*\* Live X \(`live-x`\) 2026-09-07/);
+  assert.match(markdown, /\| Building X \(`building-x`\) \| building \| - \|/);
+  // "live:"-linjen staar foer tabellen for samme area.
+  assert.ok(markdown.indexOf("**live:**") < markdown.indexOf("| Building X"));
 });
 
 test("render er stabil (samme input giver samme output)", () => {
@@ -217,6 +250,32 @@ test("--check exit 1 naar status-filen er ude af sync", () => {
 
   writeFileSync(join(dir, "docs", "FEATURE_STATUS.md"), "# haandredigeret\n", "utf8");
   assert.throws(() => run(["--check"]), (err) => err.status === 1);
+});
+
+test("docs/FEATURE_STATUS.md er inden for token-loftet (#5430, jf. check-agent-token-hygiene.ps1)", () => {
+  const entries = parseRegistry(readFileSync(join(ROOT, "docs", "FEATURE_REGISTRY.yml"), "utf8"));
+  const tokens = approxTokens(render(entries));
+  assert.ok(tokens <= TOKEN_BUDGET_FAIL, `FEATURE_STATUS.md er ${tokens} approx tokens, loftet er ${TOKEN_BUDGET_FAIL}`);
+});
+
+test("en ny live-raekke i registret koster kun en kompakt linje, ikke en fuld tabelraekke (forward-guard, #5430)", () => {
+  const entries = parseRegistry(readFileSync(join(ROOT, "docs", "FEATURE_REGISTRY.yml"), "utf8"));
+  const before = approxTokens(render(entries));
+  const extra = {
+    id: "guard-test-new-live-feature",
+    area: "ops",
+    title_en: "Guard test new live feature",
+    title_da: "Guard test new live feature",
+    state: "live",
+    verified: "2026-09-25",
+  };
+  const after = approxTokens(render([...entries, extra]));
+  const delta = after - before;
+  // En fuld 7-kolonne tabelraekke koster typisk 40-60+ tokens (id + 6 kolonner
+  // inkl. cellemarkoerer); en kompakt live-linje-tilfoejelse (" · navn (`id`) dato")
+  // koster ca. 15-25. 30 er en solid margin der stadig ville fange en
+  // regression tilbage til fulde raekker for live.
+  assert.ok(delta <= 30, `en enkelt ny live-raekke kostede ${delta} approx tokens, forventet <= 30 (kompakt format)`);
 });
 
 test("--check exit 1 paa et ugyldigt register", () => {
