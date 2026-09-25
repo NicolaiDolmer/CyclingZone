@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (25/9 kl. 07:55, natsession lukket):** **Merge-session med ejeren: prompt `private-handoffs/session-prompt-2026-09-25-b.md` (læs FØRST).** (0) **#5697 merges før Morbihan 26/9** (Sentry CYCLINGZONE-32, dobbeltbooking; post-verify udtagelse + luk #5693). (1) ÉN bulk-go for 16 backend-/tooling-PR'er → `merge-queue.ps1` i ét baggrundskald (ikke-backend først; **#5707 før S4-apply 27/9**, #5726 efter #5708). (2) Imens: UI-go-kort med billeder taget på forhånd: #5725 · #5724 · #5722 · #5723 · #5731 · #5732 + #5711 (A/B). (3) Patch note 7.299 for det merget spillervendte, FEATURE_STATUS regenereres efter #5714, udbakke-verify ~12:10. Rapport: `2026-09-26-morgenrapport.md`. Ikke i sessionen: nye byggespor (#5577/#5677/#5433/#5271-rest/#5637), sæsonskiftet 27/9.
+> **🎯 Next action (25/9 kl. 13:00, dagsession b lukket):** (1) **~15:10 post-verify finalize-flaget** (`race_finalize_resumable_enabled` on 12:23, ejer-kør): `select count(*) from races where finalize_state is not null` = 0 + Sentry rolig; rød → sluk (gen-tænd = ejer-go). (2) **Værdierne** (rapport b KØ 2): #5502 A/B om de to røde grænser → merge → #5690 `WithMarket` + billeder → `rider_valuation_v6_market` kør → digest kør → #5683/#5685. (3) **Sæsonskiftet 27/9** per SEASON_CUTOVER_RUNBOOK (#5707 inde; S4-tørkørsel mod prod FØRST). (4) #5577 (efter #5708) · #5692 A/B · #5677/#5433 i dagsession · #5637 afventer skærmbillede · #5271-rest · #5705 major-spor · ny gha-all Dependabot. Rapport: `private-handoffs/2026-09-25-dagsession-b-rapport.md` (31 PR'er merget, patch note 7.299, rød main 1× rettet af #5738).
 >
 > **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort · live · Discord-kort · live · /roadmap · live · S4-kalender 24 t · merget · U23/junior-sider · beta (#5666 #5688 merget, patch note 7.298), flag til alle afventer beta-svar · Mandatet · beta, #5679 merget, flip 28/9 · D4→D3 + 4 puljer · merget (#5669 #5651), køres 27/9 · comeback · merget (#5661) · ungdomsløb · alt merget (#5650 #5666 #5671) · træning fra løb · merget (#5640 #5654 #5670 #5663), flip 28/9 · 140 løbsdage · merget · ryttertype-visning · beta 24/9 (#5435).
 
@@ -12,7 +12,7 @@
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (lige EFTER S4-sporene) · #5618/#5617 bestyrelses-beta · #5635 Discord-sweep. **CodeRabbit:** loft nået, lokal CR på risk:high. **📊 Triage:** `scripts/sentry-issues.mjs --period=7d` via infisical. **S3:** slutter 27/9.
+> **🔴 Åbne fund:** #5162 chunk (lige EFTER S4-sporene) · #5618/#5617 bestyrelses-beta. **CodeRabbit:** loft nået, lokal CR på risk:high. **📊 Triage:** `scripts/sentry-issues.mjs --period=7d` via infisical. **S3:** slutter 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); tjek `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); stablede PR'er retargetes til main FØR base merges (#5655→#5670); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Dagsession 25/9-b (Claude Code, DOLMERPC, merge-session med ejeren, startet 25/9 kl. 08:00). Kø: `session-prompt-2026-09-25-b.md`.
+> **🤖 Working agent:** Ingen aktiv session (dagsession 25/9-b lukket 25/9 kl. 13:00; rapport `2026-09-25-dagsession-b-rapport.md`).

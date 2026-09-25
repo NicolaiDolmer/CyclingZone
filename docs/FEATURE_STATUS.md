@@ -5,14 +5,14 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-75 poster: live 50 · beta 3 · dormant 5 · building 12 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+76 poster: live 51 · beta 3 · dormant 5 · building 12 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
 
 ## race-engine
 
-**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-09-06 · v3 scoring components (`race-engine-v3-scoring`) 2026-09-06 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-24 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-06
+**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-09-06 · v3 scoring components (`race-engine-v3-scoring`) 2026-09-06 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-06
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
