@@ -66,12 +66,42 @@ test("persist-credentials: true i en ikke-allowlistet fil flages", () => {
   assert.equal(found[0].rule, "unallowed-persist-credentials-true");
 });
 
-test("persist-credentials: true i claude.yml (allowlistet) passerer", () => {
+test("persist-credentials: true i claude.yml's 'claude'-job (allowlistet) passerer", () => {
   const found = withWorkflows(
-    { "claude.yml": "jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          persist-credentials: true\n" },
+    { "claude.yml": "jobs:\n  claude:\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          persist-credentials: true\n" },
     checkWorkflowCheckouts
   );
   assert.deepEqual(found, []);
+});
+
+test("REGRESSION (CodeRabbit #5441): allowlisten er scoped til fil:job, ikke hele filen", () => {
+  // Et NYT, ikke-pushende job i claude.yml maa ikke automatisk arve true, bare fordi
+  // filen indeholder ET job der er allowlistet.
+  const found = withWorkflows(
+    {
+      "claude.yml":
+        "jobs:\n" +
+        "  claude:\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          persist-credentials: true\n" +
+        "  lint:\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          persist-credentials: true\n",
+    },
+    checkWorkflowCheckouts
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].rule, "unallowed-persist-credentials-true");
+  assert.equal(found[0].line, 9);
+});
+
+test("REGRESSION (CodeRabbit #5441): 'true' efterfulgt af en kommentar kan ikke snige sig forbi et stramt === true-tjek", () => {
+  // Foer rettelsen sammenlignede guarden med === \"true\" praecist. En vaerdi som
+  // 'true # begrundelse' er hverken null eller eksakt \"true\", saa den ville stille
+  // og roligt passere UDEN at staa paa allowlisten. Nu er reglen \"alt der ikke er
+  // eksakt false skal vaere allowlistet\", saa den samme streng flages.
+  const found = withWorkflows(
+    { "sneaky.yml": "jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          persist-credentials: true # midlertidig test\n" },
+    checkWorkflowCheckouts
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].rule, "unallowed-persist-credentials-true");
 });
 
 test("flere checkout-steps i samme fil evalueres uafhaengigt", () => {
@@ -98,11 +128,12 @@ test("REGRESSION: dash + uses paa samme linje ('- uses: ...') parses korrekt", (
   assert.deepEqual(found, []);
 });
 
-test("findCheckoutSteps rapporterer korrekt linjenummer", () => {
+test("findCheckoutSteps rapporterer korrekt linjenummer og job-navn", () => {
   const text = "jobs:\n  x:\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v7\n";
   const steps = findCheckoutSteps(text);
   assert.equal(steps.length, 1);
   assert.equal(steps[0].line, 5);
+  assert.equal(steps[0].job, "x");
   assert.equal(steps[0].persistCredentials, null);
 });
 

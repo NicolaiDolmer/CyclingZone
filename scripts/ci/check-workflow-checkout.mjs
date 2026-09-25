@@ -12,12 +12,16 @@
 // Reglen denne guard håndhæver:
 //   1. Ethvert `actions/checkout`-step skal have et eksplicit `persist-credentials`
 //      (`true` eller `false`) i sin `with:`-blok. Intet default-flag tilladt.
-//   2. `persist-credentials: true` er kun tilladt i en workflow-fil på ALLOWLIST'en
-//      nedenfor — de få jobs der selv pusher/committer/opretter PR'er i samme job og
-//      derfor har brug for at git-legitimationen lever videre. Alt andet skal være
-//      `false`. En ny fil der sætter `true` uden at stå på listen fejler CI, så et
-//      fremtidigt "det er nemmere at lade den stå på default" ikke kan snige sig ind
-//      ubemærket.
+//   2. `persist-credentials` sat til andet end PRÆCIS `false` er kun tilladt for det
+//      specifikke `fil:job`-par på ALLOWLIST'en nedenfor — de få jobs der selv
+//      pusher/committer/opretter PR'er i samme job og derfor har brug for at
+//      git-legitimationen lever videre. Alt andet skal være `false`. Tjekket er
+//      "alt der ikke er eksakt false skal være allowlistet", ikke "alt der er eksakt
+//      true skal afvises" — en fremtidig `true # begrundelse`, et citeret `'true'`
+//      eller et udtryk der evaluerer til true ville ellers snige sig forbi et
+//      strengt `=== "true"`-tjek (CodeRabbit-fund #5441, rettet efter CLI-runden).
+//      Allowlisten er scoped til `fil:job`, ikke hele filen — en fil på listen
+//      betyder IKKE at ethvert nyt job i den fil automatisk må beholde true.
 //
 // Brug:
 //   node scripts/ci/check-workflow-checkout.mjs          # exit 1 ved fund
@@ -28,27 +32,45 @@ import { join } from "node:path";
 
 const WORKFLOW_DIR = ".github/workflows";
 
-// Filer hvor mindst ét job selv pusher/committer/opretter en PR i samme job og derfor har
-// brug for at GITHUB_TOKEN'et fra checkout lever videre i .git/config:
-//   - claude.yml: `permissions: contents: write`, Claude Code-agenten pusher branches og
-//     kører `gh pr create` som en del af sin egen instruks.
-//   - weekly-steering-report.yml: `publish`-jobbet kører `git commit` + `git push
-//     origin HEAD:main` for at lande den ugentlige styringsrapport.
+// `fil:job`-par hvor DETTE specifikke job selv pusher/committer/opretter en PR i
+// samme job og derfor har brug for at GITHUB_TOKEN'et fra checkout lever videre i
+// .git/config. Andre jobs i samme fil er IKKE automatisk dækket.
+//   - claude.yml (job "claude"): `permissions: contents: write`, Claude Code-agenten
+//     pusher branches og kører `gh pr create` som en del af sin egen instruks.
+//   - weekly-steering-report.yml (job "publish"): kører `git commit` + `git push
+//     origin HEAD:main` for at lande den ugentlige styringsrapport. Jobbet "report" i
+//     samme fil pusher IKKE og skal derfor fortsat være false.
 // Nye tilføjelser til denne liste kræver en tilsvarende begrundelse i selve workflowen
 // (kommentar ved siden af `persist-credentials: true`).
-const ALLOW_TRUE = new Set(["claude.yml", "weekly-steering-report.yml"]);
+const ALLOW_TRUE = new Set(["claude.yml:claude", "weekly-steering-report.yml:publish"]);
 
 /**
- * Find alle `actions/checkout`-steps i teksten. For hvert step: indryknings-niveauet af
- * `-`-markøren, om der findes en `with:`-blok, og om den indeholder `persist-credentials`
- * og dens værdi (streng, "true"/"false", eller null hvis fraværende).
+ * Find alle `actions/checkout`-steps i teksten. For hvert step: hvilket job det står i
+ * (nulstillet job-navn hvis det ikke kan bestemmes), om der findes en `with:`-blok, og om
+ * den indeholder `persist-credentials` og dens rå værdi (streng, eller null hvis
+ * fraværende — værdien er IKKE normaliseret, så en efterfølgende kommentar eller citering
+ * bliver en del af strengen med vilje, jf. reglen ovenfor).
  */
 export function findCheckoutSteps(text) {
   const lines = text.split(/\r?\n/);
   const steps = [];
+  let inJobsBlock = false;
+  let currentJob = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const stripped = line.trim();
+    const indent = line.length - line.replace(/^ +/, "").length;
+
+    if (stripped !== "") {
+      if (indent === 0) {
+        inJobsBlock = /^jobs:\s*$/.test(stripped);
+        if (!inJobsBlock) currentJob = null;
+      } else if (inJobsBlock && indent === 2 && /^[A-Za-z0-9_.-]+:\s*$/.test(stripped)) {
+        currentJob = stripped.slice(0, -1);
+      }
+    }
+
     if (!/uses:\s*actions\/checkout@/.test(line)) continue;
 
     // Find dash-indrykningen ved at scanne baglæns til nærmeste "- " linje.
@@ -96,7 +118,7 @@ export function findCheckoutSteps(text) {
       break;
     }
 
-    steps.push({ line: i + 1, hasWith, persistCredentials });
+    steps.push({ line: i + 1, job: currentJob, hasWith, persistCredentials });
   }
   return steps;
 }
@@ -119,13 +141,19 @@ export function checkWorkflowCheckouts(dir = WORKFLOW_DIR) {
         });
         continue;
       }
-      if (step.persistCredentials === "true" && !ALLOW_TRUE.has(file)) {
-        findings.push({
-          file,
-          line: step.line,
-          rule: "unallowed-persist-credentials-true",
-          why: `persist-credentials: true er kun tilladt for filer på allowlisten i scriptet (${[...ALLOW_TRUE].join(", ")}). ${file} pusher ikke i samme job, så sæt den til false — eller tilføj filen til ALLOW_TRUE med en begrundelse, hvis den reelt skal pushe.`,
-        });
+      // Alt der ikke er eksakt "false" skal være allowlistet for netop dette job —
+      // ikke kun "true": en kommenteret/citeret/udtryks-værdi tæller også med, så den
+      // ikke kan snige sig forbi et snævert strengt "=== true"-tjek.
+      if (step.persistCredentials !== "false") {
+        const key = `${file}:${step.job ?? ""}`;
+        if (!ALLOW_TRUE.has(key)) {
+          findings.push({
+            file,
+            line: step.line,
+            rule: "unallowed-persist-credentials-true",
+            why: `persist-credentials er sat til "${step.persistCredentials}" i jobbet "${step.job ?? "?"}", men "${key}" står ikke på ALLOW_TRUE i scriptet (${[...ALLOW_TRUE].join(", ")}). Sæt den til false — eller tilføj "${key}" til ALLOW_TRUE med en begrundelse, hvis jobbet reelt skal pushe.`,
+          });
+        }
       }
     }
   }
