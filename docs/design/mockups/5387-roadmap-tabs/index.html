@@ -6,13 +6,13 @@
 <title>Roadmap in tabs - Variant A / Variant B (#5387)</title>
 <!-- #5387 mockup (statisk, kun voting-UI). EN foerst, ingen DA-tekst i selve mockuppen.
      Ejer-go 26/9 kl. 00:25: "Mockup i nat". INGEN aendring af RoadmapPage.jsx, ingen SQL, intet i prod.
-     Punkter og baand er hentet ordret fra docs/drafts/5387-roadmap-indhold.md §2 og
-     database/proposals/5387-roadmap-items.sql. ANTAGELSE (ingen ejer-bekraeftelse endnu):
-     baand->label-mapping efter S4-skiftet 27-28/9 er IKKE besluttet i kildematerialet, kun at
-     "Before season 4" bliver "This season". Denne mockup bruger: Now = baand 100,
-     This season (=S4) = baand 200+250, Next season = baand 150+300, Later = baand 900-punkter
-     der er (N)yt/(O)mskrevet i roadbooken, Not decided = baand 900-punkter der er (B)eholdt
-     uaendret/ikke i roadbooken. Den endelige mapping er ejerens, ikke denne mockups. -->
+     RETTELSE 26/9 (reviewer-fund paa #5765): v1-udkastets punkter (23/9, docs/drafts/5387-roadmap-indhold.md
+     §2 / database/proposals/5387-roadmap-items.sql) matchede ikke prod laengere - prod fik "Roadmap v2"
+     24/9 med andre titler. Denne version bruger de 42 LIVE punkter fra en read-only prod-opslag 26/9 kl.
+     01:25 (roadmap_items, status=active AND approved=true) - titler, engine og sort_order ordret som i prod.
+     Prod har INGEN horisont-kolonne (sort_order er kun 10-120 pr. motor); horisonten herunder er en
+     FORESLAAET mapping, ikke en prod-sandhed - se JSON-kommentaren i <script> for baand->punkt-begrundelsen
+     og linjen under sidetitlen i selve siden. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -66,6 +66,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .sr-check:focus-visible ~ .check-box{outline:2px solid var(--accent-t);outline-offset:2px}
 .vote-count{font-family:"Inter Tight";font-size:11.5px;color:var(--text-3)}
 .vote-count b{color:var(--text-1);font-weight:700}
+.horizon-caveat{font-size:10.5px;color:var(--text-3);margin:2px 0 4px}
 
 .intro{margin:14px 0 16px;font-size:13px;color:var(--text-2);line-height:1.5}
 
@@ -125,7 +126,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
   <span><b>#5387</b> — /roadmap in tabs, two variants (mockup only, no prod change)</span>
   <span><a href="#variant-a">Variant A — tabs by horizon</a><a href="#variant-b">Variant B — tabs by engine</a></span>
 </div>
-<p class="intro-note">Both variants show the same 42 example items (real titles from the roadmap proposal), grouped two different ways. Every desktop frame below is captured at 1440px, every phone frame at 390px. Vote buttons (1-6) and the "not voted" checkbox are live in the browser — try them.</p>
+<p class="intro-note">Both variants show the same 42 live items (real titles read from prod on 26/9), grouped two different ways. Prod has no horizon column yet — the horizon shown here is a proposal, see the note under each page title. Every desktop frame below is captured at 1440px, every phone frame at 390px. Vote buttons (1-6) and the "not voted" checkbox are live in the browser — try them.</p>
 
 <div id="variant-a" class="variant-frame">
   <div class="section-label">Variant A — tabs by horizon, engine as a per-item chip</div>
@@ -164,56 +165,108 @@ const HORIZON_LABEL = {
   "later": "Later", "not-decided": "Not decided",
 };
 
-// ── De 42 punkter (ordret fra docs/drafts/5387-roadmap-indhold.md §2 og
-//    database/proposals/5387-roadmap-items.sql). idea/importance = null naar ikke stemt endnu. ──
+// ── De 42 LIVE punkter (read-only prod-opslag 26/9 kl. 01:25, roadmap_items status=active
+//    AND approved=true - titler, engine og so (sort_order) ordret som i prod). Prod har INGEN
+//    horisont-kolonne; h herunder er en FORESLAAET mapping (se JSON-kommentaren lige under for
+//    begrundelsen pr. punkt), ikke en prod-sandhed. idea/importance = null naar ikke stemt endnu
+//    (stemmetal er demo-data til mockuppen, ikke rigtige roadmap_votes). ──
+
+/* #5387 HORIZON MAPPING PROPOSAL (foreslaaet 26/9, til senere "ALTER TABLE roadmap_items ADD
+   COLUMN horizon" + UPDATE-forslag). Rene JSON-data, parseable som den staar. Match mod
+   docs/drafts/5387-roadmap-indhold.md §2 (23/9-udkastets baand): hvor prod-titlen tydeligt
+   genkendes som samme punkt/emne i et baand, er den baands horisont brugt (100=now,
+   150/300=next-season, 200/250=this-season, 900 N/O=later, 900 B/B*=not-decided). Hvor ingen
+   rimelig genkendelse findes (nyt punkt siden 23/9, eller for tvetydigt), er valget "not-decided".
+   Den endelige mapping - og dermed behovet for en rigtig horizon-kolonne - er ejerens, ikke denne
+   mockups.
+[
+  { "engine": "club", "sort_order": 10, "title_en": "Your club's look: logo, team colours and rider faces.", "horizon": "later", "basis": "band 900 (N) - exact match, docs/drafts §2 Not decided yet / club, ref #5113" },
+  { "engine": "club", "sort_order": 20, "title_en": "Sponsors reworked: a main sponsor plus smaller side sponsors with their own goals.", "horizon": "later", "basis": "band 900 (N) - recognizable as 'Sponsors reworked', wording refined in prod since 23/9" },
+  { "engine": "club", "sort_order": 30, "title_en": "More facilities: more of your club to build than training and scouting.", "horizon": "next-season", "basis": "band 150 - exact match, docs/drafts §2 This season maybe" },
+  { "engine": "club", "sort_order": 50, "title_en": "Upkeep reworked: travel and staff costs paid per race day, instead of one big bill at season start.", "horizon": "this-season", "basis": "band 250 - exact match, docs/drafts §2 Before season 4 maybe" },
+  { "engine": "club", "sort_order": 60, "title_en": "Negotiate your board's goals upward, for a bigger reward.", "horizon": "not-decided", "basis": "band 900 (B) - exact match, docs/drafts §2 Not decided yet / club" },
+  { "engine": "club", "sort_order": 60, "title_en": "Road captains and mentors: you pick the veteran who helps a young rider grow.", "horizon": "next-season", "basis": "band 320 - recognizable as 'Road captains, mentors and teamwork', docs/drafts §2 During season 4" },
+  { "engine": "club", "sort_order": 70, "title_en": "A new dashboard and inbox: what needs you today comes first, and a message takes seconds to read.", "horizon": "next-season", "basis": "band 310 - near-exact match, docs/drafts §2 During season 4" },
+  { "engine": "club", "sort_order": 80, "title_en": "A smarter assistant: one message instead of five, and you act straight from the inbox.", "horizon": "later", "basis": "band 900 (N) - recognizable as 'A smarter assistant', docs/drafts §2 Not decided yet / club 950" },
+  { "engine": "club", "sort_order": 90, "title_en": "Statistics and history: look back at your league and your division, season after season.", "horizon": "not-decided", "basis": "no confident match - draft groups 'statistik og historik' across two separate items (Earn renown band 930, club museum band 940); defaulted" },
+  { "engine": "club", "sort_order": 100, "title_en": "A club museum: your winners, your legends and the races your club is remembered for.", "horizon": "not-decided", "basis": "band 940 (B) - exact match, docs/drafts §2 Not decided yet / club museum" },
+  { "engine": "club", "sort_order": 110, "title_en": "Friends and following: follow a manager or a rider, invite a friend, and see a world feed of results and trades.", "horizon": "not-decided", "basis": "bands 960/970/980 (all B) - merges 3 separate draft items (Friends and following, Invite a friend, A living world feed), all Not decided yet" },
+  { "engine": "club", "sort_order": 120, "title_en": "Rider milestones: goals for one rider you can chase, even when it is not the smart move for the team.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "market", "sort_order": 10, "title_en": "Deeper negotiation between managers: counter-offers, riders plus cash, and a deadline.", "horizon": "not-decided", "basis": "band 910 (B*) - exact match, docs/drafts §2 Not decided yet / market" },
+  { "engine": "market", "sort_order": 20, "title_en": "Rumours on the transfer market: hear who is looking, and who else wants the rider you want.", "horizon": "not-decided", "basis": "band 920 (B*) - recognizable as 'A market that tells stories', docs/drafts §2 Not decided yet / market" },
+  { "engine": "market", "sort_order": 30, "title_en": "A transfer market you can trust: limits on deals between friends, and every trade in an open log.", "horizon": "next-season", "basis": "band 150 - recognizable as 'More fair play tools: a transfer market you can trust', docs/drafts §2 This season maybe" },
+  { "engine": "market", "sort_order": 40, "title_en": "More than one wishlist, so you can sort the riders you follow.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "market", "sort_order": 50, "title_en": "See an injury on another team's rider, and how long he is out.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 10, "title_en": "Secondary rider type explained: see what a rider's second type means and where it helps him.", "horizon": "now", "basis": "band 100/130 - exact match, docs/drafts §2 This season" },
+  { "engine": "races", "sort_order": 20, "title_en": "Ride for the mountain or points jersey from day one: set the jersey as a rider's goal, and his race plan follows it.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 30, "title_en": "Pick where in a stage race a rider peaks, with a main goal and a backup goal.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 40, "title_en": "The team meeting: your sports director's plan for each stage, written in cycling terms. No sliders.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 50, "title_en": "National championships: one day a season your riders race for their country's jersey.", "horizon": "later", "basis": "band 910 (O) - draft merges NC/Worlds/Europeans in one item, now split in prod into two; Not decided yet / races" },
+  { "engine": "races", "sort_order": 60, "title_en": "Worlds and Europeans with national teams, and you can be picked as national coach.", "horizon": "later", "basis": "band 910 (O) - same draft item as above, split half in prod" },
+  { "engine": "races", "sort_order": 70, "title_en": "A season planner that warns you: fatigue two weeks ahead, and which races a rider can still qualify for.", "horizon": "not-decided", "basis": "band 920 (B) - recognizable as 'A smarter season planner', docs/drafts §2 Not decided yet / races" },
+  { "engine": "races", "sort_order": 80, "title_en": "Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.", "horizon": "not-decided", "basis": "band 930 (B) - recognizable as 'The racing math explained in plain words', docs/drafts §2 Not decided yet / races" },
+  { "engine": "races", "sort_order": 90, "title_en": "Routes that look like real racing: cobbles, a real summit finish, a long valley before the last climb. You can see it on the stage profile.", "horizon": "not-decided", "basis": "band 940 (B*) - recognizable as 'Realistic race routes modeled on real racing', docs/drafts §2 Not decided yet / races" },
+  { "engine": "races", "sort_order": 100, "title_en": "Your calendar colour-coded by your own status: entered, withdrawn, squad set.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 110, "title_en": "Watch a stage as a 3D replay with your own riders and colours.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "training", "sort_order": 10, "title_en": "A race sharpener: a short session the day before a race that gives form, not abilities.", "horizon": "now", "basis": "band 100/120 - near-exact match, docs/drafts §2 This season" },
+  { "engine": "training", "sort_order": 20, "title_en": "Plan a whole week per rider in one go: a session for every race day, for one rider or the whole squad.", "horizon": "this-season", "basis": "band 210 - recognizable as 'Training per race day', docs/drafts §2 Before season 4" },
+  { "engine": "training", "sort_order": 30, "title_en": "Form training for riders who are done developing, so a 32-year-old still has something to train for.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "training", "sort_order": 40, "title_en": "A training camp: pay to focus one ability hard for a while, and lose race days while you do it.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "training", "sort_order": 40, "title_en": "Staff you can feel: more roles and attributes, and a coach or doctor who changes how your season goes.", "horizon": "not-decided", "basis": "band 910 (B) - recognizable as 'Coaches as a real resource', docs/drafts §2 Not decided yet / training" },
+  { "engine": "training", "sort_order": 50, "title_en": "See how many percent a session moved an ability, not just the progress bar.", "horizon": "now", "basis": "band 110 (O) - recognizable as 'The training score for everyone', docs/drafts §2 This season" },
+  { "engine": "training", "sort_order": 60, "title_en": "Auto-rest: set your own fatigue limit, and a tired rider rests by himself and goes back to his plan the next day.", "horizon": "not-decided", "basis": "no confident match - not the same mechanic as draft's 'Training runs itself every evening' (band 230); defaulted" },
+  { "engine": "training", "sort_order": 70, "title_en": "Ready-made training programs, and later a place to share your own.", "horizon": "next-season", "basis": "band 310 - exact match, docs/drafts §2 During season 4" },
+  { "engine": "training", "sort_order": 80, "title_en": "Your own labels on riders, so you can find them on the training page.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "youth", "sort_order": 10, "title_en": "Youth seasons that count: promotion, relegation and rankings for U23 and junior from season 5.", "horizon": "next-season", "basis": "band 320 - recognizable as 'Youth seasons that count', docs/drafts §2 During season 4" },
+  { "engine": "youth", "sort_order": 20, "title_en": "Prize money in youth races: a smaller pot than the senior races, big enough that a youth win pays, never big enough to carry a club.", "horizon": "next-season", "basis": "band 320 - split out of the same draft item as above (prize money clause)" },
+  { "engine": "youth", "sort_order": 30, "title_en": "Your own young stars: choose a country you want more young riders from, and steer which rider types your academy produces.", "horizon": "next-season", "basis": "band 310 - exact match, docs/drafts §2 During season 4" },
+  { "engine": "youth", "sort_order": 40, "title_en": "Scouts that differ: a better scout finds more, sees more of a rider, and charges less per report.", "horizon": "later", "basis": "band 900 (N) - recognizable as 'Better scouting', docs/drafts §2 Not decided yet / youth 910" },
+  { "engine": "youth", "sort_order": 50, "title_en": "Rival riders' abilities shown as a range, not an exact number, until you have scouted them.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" }
+]
+*/
 const ITEMS = [
-  // Now (baand 100)
-  { e: "races", h: "now", t: "The season 4 calendar: the same number of race days in every division, plus separate U23 and junior calendars.", v: [5, 6] },
-  { e: "races", h: "now", t: "Mental abilities: Teamwork and Leadership for every rider, and tactics and aggression that no longer come with age.", v: null },
-  { e: "races", h: "now", t: "Secondary rider types explained: see what a rider's second type means and where it helps him.", v: [4, 4] },
-  { e: "training", h: "now", t: "The training score for everyone: see how good each training day was, and steer your riders' development season over season.", v: null },
-  { e: "training", h: "now", t: "A race sharpener: a short session the day before a race, so your riders start sharp.", v: [6, 5] },
-  { e: "training", h: "now", t: "The game on your phone: daily training, transfers, auctions and the season matrix built for a small screen, then the rest of the game.", v: null },
-  { e: "market", h: "now", t: "Rider values that make sense: values follow your rider's abilities and what the market really pays, and I explain how they are set.", v: [5, 5] },
-  // This season / S4 (baand 200+250)
-  { e: "races", h: "this-season", t: "Race engine v4: every stage is raced as it unfolds. It switches on when it races better than the current engine.", v: [6, 6] },
-  { e: "training", h: "this-season", t: "Training per race day: one rebuilt training page where you plan each rider around his races.", v: null },
-  { e: "training", h: "this-season", t: "Racing trains your riders again: on any day a rider either trains or races, and both count.", v: [4, 5] },
-  { e: "training", h: "this-season", t: "Training runs itself every evening: the bonus button goes away, and you can still run a day early if you want.", v: null },
-  { e: "training", h: "this-season", t: "Injuries counted in race days: you see exactly how many race days an injured rider will miss.", v: null },
-  { e: "youth", h: "this-season", t: "U23 and junior squads: two real squads under your first team, with a path from the academy to the top.", v: [5, 6] },
-  { e: "youth", h: "this-season", t: "Youth racing: U23 and junior races with their own calendars and leagues.", v: null },
-  { e: "club", h: "this-season", t: "A new board: one mandate you agree on together, and a real board meeting.", v: [3, 4] },
-  { e: "club", h: "this-season", t: "A clear sign-up for every new season, and inactive clubs parked at the switch, so you race against managers who play.", v: null },
-  { e: "club", h: "this-season", t: "Upkeep reworked: travel and staff costs paid per race day, instead of one big bill at season start.", v: null },
-  // Next season (baand 150+300)
-  { e: "market", h: "next-season", t: "More fair play tools: a transfer market you can trust.", v: [4, 5] },
-  { e: "club", h: "next-season", t: "More facilities: more of your club to build than training and scouting.", v: null },
-  { e: "club", h: "next-season", t: "A faster game: pages that open quickly, also on your phone.", v: null },
-  { e: "training", h: "next-season", t: "Ready-made training programs, and later a way to share your own.", v: [3, 3] },
-  { e: "youth", h: "next-season", t: "Your own young stars: choose the country your young riders come from, and steer which rider types your academy produces.", v: null },
-  { e: "youth", h: "next-season", t: "Youth seasons that count: promotion, relegation, rankings and prize money for U23 and junior.", v: null },
-  { e: "club", h: "next-season", t: "A new dashboard and inbox: what needs you today comes first, and messages you can scan in seconds.", v: [5, 4] },
-  { e: "club", h: "next-season", t: "Road captains, mentors and teamwork: riders who lift the team around them.", v: null },
-  // Later (baand 900, N/O — nyt/omskrevet i roadbooken)
-  { e: "races", h: "later", t: "National championships and national teams: ride for your country, win the jersey, and coach a national team.", v: null },
-  { e: "youth", h: "later", t: "Better scouting: more ways to find and judge the next big talent.", v: [4, 3] },
-  { e: "club", h: "later", t: "Your club's look: logo, team colours and rider faces.", v: null },
-  { e: "club", h: "later", t: "Sponsors reworked: sign more than one sponsor at a time.", v: null },
-  { e: "club", h: "later", t: "Earn renown: wins, records and history that build your club's reputation in the world.", v: null },
-  { e: "club", h: "later", t: "A smarter assistant: more help with the daily jobs, whenever you want it.", v: [2, 3] },
-  // Not decided (baand 900, B/B* — beholdt, ikke i roadbooken)
-  { e: "races", h: "not-decided", t: "A smarter season planner: overlapping races, fatigue and qualification rules you can plan a whole season around.", v: null },
-  { e: "races", h: "not-decided", t: "The racing math explained in plain words, without revealing exact numbers.", v: null },
-  { e: "races", h: "not-decided", t: "Realistic race routes modeled on real racing.", v: null },
-  { e: "training", h: "not-decided", t: "Coaches as a real resource: balance training load and risk burnout if you push too hard.", v: null },
-  { e: "market", h: "not-decided", t: "Deeper negotiation between managers.", v: null },
-  { e: "market", h: "not-decided", t: "A market that tells stories: rumors, rivalries and big moves the whole world talks about.", v: null },
-  { e: "club", h: "not-decided", t: "A club museum: champions, legendary riders and the races people still talk about.", v: null },
-  { e: "club", h: "not-decided", t: "Friends and following: follow managers and riders across the world.", v: null },
-  { e: "club", h: "not-decided", t: "Invite a friend and build your rivalry together.", v: null },
-  { e: "club", h: "not-decided", t: "A living world feed of results, transfers and rivalries.", v: null },
-  { e: "club", h: "not-decided", t: "Negotiate your board's goals upward, for a bigger reward.", v: null },
+  { e: "club", so: 10, h: "later", t: "Your club's look: logo, team colours and rider faces.", v: [4, 3] },
+  { e: "club", so: 20, h: "later", t: "Sponsors reworked: a main sponsor plus smaller side sponsors with their own goals.", v: null },
+  { e: "club", so: 30, h: "next-season", t: "More facilities: more of your club to build than training and scouting.", v: null },
+  { e: "club", so: 50, h: "this-season", t: "Upkeep reworked: travel and staff costs paid per race day, instead of one big bill at season start.", v: [3, 4] },
+  { e: "club", so: 60, h: "not-decided", t: "Negotiate your board's goals upward, for a bigger reward.", v: null },
+  { e: "club", so: 60, h: "next-season", t: "Road captains and mentors: you pick the veteran who helps a young rider grow.", v: null },
+  { e: "club", so: 70, h: "next-season", t: "A new dashboard and inbox: what needs you today comes first, and a message takes seconds to read.", v: null },
+  { e: "club", so: 80, h: "later", t: "A smarter assistant: one message instead of five, and you act straight from the inbox.", v: null },
+  { e: "club", so: 90, h: "not-decided", t: "Statistics and history: look back at your league and your division, season after season.", v: null },
+  { e: "club", so: 100, h: "not-decided", t: "A club museum: your winners, your legends and the races your club is remembered for.", v: null },
+  { e: "club", so: 110, h: "not-decided", t: "Friends and following: follow a manager or a rider, invite a friend, and see a world feed of results and trades.", v: [2, 3] },
+  { e: "club", so: 120, h: "not-decided", t: "Rider milestones: goals for one rider you can chase, even when it is not the smart move for the team.", v: null },
+  { e: "market", so: 10, h: "not-decided", t: "Deeper negotiation between managers: counter-offers, riders plus cash, and a deadline.", v: null },
+  { e: "market", so: 20, h: "not-decided", t: "Rumours on the transfer market: hear who is looking, and who else wants the rider you want.", v: null },
+  { e: "market", so: 30, h: "next-season", t: "A transfer market you can trust: limits on deals between friends, and every trade in an open log.", v: [5, 4] },
+  { e: "market", so: 40, h: "not-decided", t: "More than one wishlist, so you can sort the riders you follow.", v: null },
+  { e: "market", so: 50, h: "not-decided", t: "See an injury on another team's rider, and how long he is out.", v: [4, 3] },
+  { e: "races", so: 10, h: "now", t: "Secondary rider type explained: see what a rider's second type means and where it helps him.", v: [4, 4] },
+  { e: "races", so: 20, h: "not-decided", t: "Ride for the mountain or points jersey from day one: set the jersey as a rider's goal, and his race plan follows it.", v: null },
+  { e: "races", so: 30, h: "not-decided", t: "Pick where in a stage race a rider peaks, with a main goal and a backup goal.", v: null },
+  { e: "races", so: 40, h: "not-decided", t: "The team meeting: your sports director's plan for each stage, written in cycling terms. No sliders.", v: null },
+  { e: "races", so: 50, h: "later", t: "National championships: one day a season your riders race for their country's jersey.", v: [5, 5] },
+  { e: "races", so: 60, h: "later", t: "Worlds and Europeans with national teams, and you can be picked as national coach.", v: null },
+  { e: "races", so: 70, h: "not-decided", t: "A season planner that warns you: fatigue two weeks ahead, and which races a rider can still qualify for.", v: null },
+  { e: "races", so: 80, h: "not-decided", t: "Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.", v: null },
+  { e: "races", so: 90, h: "not-decided", t: "Routes that look like real racing: cobbles, a real summit finish, a long valley before the last climb. You can see it on the stage profile.", v: [3, 3] },
+  { e: "races", so: 100, h: "not-decided", t: "Your calendar colour-coded by your own status: entered, withdrawn, squad set.", v: null },
+  { e: "races", so: 110, h: "not-decided", t: "Watch a stage as a 3D replay with your own riders and colours.", v: null },
+  { e: "training", so: 10, h: "now", t: "A race sharpener: a short session the day before a race that gives form, not abilities.", v: [6, 5] },
+  { e: "training", so: 20, h: "this-season", t: "Plan a whole week per rider in one go: a session for every race day, for one rider or the whole squad.", v: null },
+  { e: "training", so: 30, h: "not-decided", t: "Form training for riders who are done developing, so a 32-year-old still has something to train for.", v: null },
+  { e: "training", so: 40, h: "not-decided", t: "A training camp: pay to focus one ability hard for a while, and lose race days while you do it.", v: null },
+  { e: "training", so: 40, h: "not-decided", t: "Staff you can feel: more roles and attributes, and a coach or doctor who changes how your season goes.", v: null },
+  { e: "training", so: 50, h: "now", t: "See how many percent a session moved an ability, not just the progress bar.", v: [5, 5] },
+  { e: "training", so: 60, h: "not-decided", t: "Auto-rest: set your own fatigue limit, and a tired rider rests by himself and goes back to his plan the next day.", v: null },
+  { e: "training", so: 70, h: "next-season", t: "Ready-made training programs, and later a place to share your own.", v: [3, 3] },
+  { e: "training", so: 80, h: "not-decided", t: "Your own labels on riders, so you can find them on the training page.", v: null },
+  { e: "youth", so: 10, h: "next-season", t: "Youth seasons that count: promotion, relegation and rankings for U23 and junior from season 5.", v: [5, 6] },
+  { e: "youth", so: 20, h: "next-season", t: "Prize money in youth races: a smaller pot than the senior races, big enough that a youth win pays, never big enough to carry a club.", v: null },
+  { e: "youth", so: 30, h: "next-season", t: "Your own young stars: choose a country you want more young riders from, and steer which rider types your academy produces.", v: null },
+  { e: "youth", so: 40, h: "later", t: "Scouts that differ: a better scout finds more, sees more of a rider, and charges less per report.", v: [4, 3] },
+  { e: "youth", so: 50, h: "not-decided", t: "Rival riders' abilities shown as a range, not an exact number, until you have scouted them.", v: null },
 ];
 const TOTAL = ITEMS.length;
 // En raekke med kun ét af de to akser sat (fx [5, null]) taeller IKKE som
@@ -271,7 +324,7 @@ function renderBody(shellId) {
     .filter(({ it }) => !st.unvoted || !isFullyVoted(it));
   const checkboxId = shellId + "-unvoted";
   bodyEl.innerHTML = `<div class="ph">
-      <div><h1>Roadmap</h1><div class="sub">Rate the plans below. Your votes help decide what gets built next.</div></div>
+      <div><h1>Roadmap</h1><div class="horizon-caveat">Mockup: horizon per item is a proposal, prod needs a horizon column</div><div class="sub">Rate the plans below. Your votes help decide what gets built next.</div></div>
       <div class="filter-cluster">
         <label class="check-row" for="${checkboxId}"><input type="checkbox" id="${checkboxId}" class="sr-check" data-unvoted-toggle="${shellId}"${st.unvoted ? " checked" : ""}><span class="check-box${st.unvoted ? " on" : ""}" aria-hidden="true">${st.unvoted ? ico("check") : ""}</span>Show only what I have not voted on</label>
         <span class="vote-count">You have voted on <b>${voted}</b> of <b>${TOTAL}</b></span>
