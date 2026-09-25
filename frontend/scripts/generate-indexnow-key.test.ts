@@ -7,6 +7,8 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { writeFileSync } from "node:fs";
+
 import { main, resolveIndexNowKeyPath } from "./generate-indexnow-key.ts";
 
 test("ingen INDEXNOW_KEY → no-op, public/ forbliver tom", () => {
@@ -48,6 +50,42 @@ test("ugyldigt format kaster i stedet for at skrive en ubrugelig fil", () => {
   try {
     assert.throws(() => main({ INDEXNOW_KEY: "https://example.com/not-a-key" }, dir));
     assert.deepEqual(readdirSync(dir), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("en gammel nøglefil fra en tidligere key-rotation ryddes (CodeRabbit-fund)", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "indexnow-"));
+  const staleKey = "old12345KEY-stale"; // gitleaks:allow - test-fixture, ikke en secret (#5493)
+  const freshKey = "new12345KEY-fresh"; // gitleaks:allow - test-fixture, ikke en secret (#5493)
+  try {
+    writeFileSync(resolveIndexNowKeyPath(dir, staleKey), staleKey, "utf-8");
+    main({ INDEXNOW_KEY: freshKey }, dir);
+    assert.deepEqual(readdirSync(dir), [`${freshKey}.txt`]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("en gammel nøglefil ryddes ogsaa naar INDEXNOW_KEY er unset (no-op-grenen)", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "indexnow-"));
+  const staleKey = "old12345KEY-stale"; // gitleaks:allow - test-fixture, ikke en secret (#5493)
+  try {
+    writeFileSync(resolveIndexNowKeyPath(dir, staleKey), staleKey, "utf-8");
+    main({}, dir);
+    assert.deepEqual(readdirSync(dir), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("robots.txt roeres aldrig af oprydningen", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "indexnow-"));
+  try {
+    writeFileSync(path.join(dir, "robots.txt"), "User-agent: *\n", "utf-8");
+    main({}, dir);
+    assert.deepEqual(readdirSync(dir), ["robots.txt"]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

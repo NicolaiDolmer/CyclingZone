@@ -15,7 +15,13 @@
 //
 // frontend/.gitignore ignorerer `public/*.txt` (undtagen robots.txt) netop
 // fordi denne fil er build-genereret og aldrig må havne i git.
-import { writeFileSync } from "node:fs";
+//
+// CodeRabbit-fund: uden oprydning overlever en FORRIGE nøgles .txt-fil et
+// build med en ny (eller ingen) INDEXNOW_KEY, og bliver kopieret med ind i
+// dist/ — en død/forkert nøglefil forbliver hostet. Vi rydder derfor ALLE
+// tidligere genererede kandidater (samme mønster som .gitignore: alt
+// public/*.txt undtagen robots.txt) FØR vi evt. skriver en ny.
+import { readdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -31,7 +37,23 @@ export function resolveIndexNowKeyPath(publicDir: string, key: string): string {
   return path.join(publicDir, `${key}.txt`);
 }
 
+// Alt public/*.txt undtagen robots.txt regnes som en tidligere genereret
+// IndexNow-nøglefil (samme undtagelse som frontend/.gitignore).
+function removeStaleKeyFiles(publicDir: string): void {
+  let entries: string[];
+  try {
+    entries = readdirSync(publicDir);
+  } catch {
+    return; // public/ findes ikke endnu (fx et isoleret test-scenarie) — intet at rydde.
+  }
+  for (const name of entries) {
+    if (!name.endsWith(".txt") || name === "robots.txt") continue;
+    rmSync(path.join(publicDir, name), { force: true });
+  }
+}
+
 export function main(env: NodeJS.ProcessEnv = process.env, publicDir: string = DEFAULT_PUBLIC_DIR): void {
+  removeStaleKeyFiles(publicDir);
   const key = (env.INDEXNOW_KEY || "").trim();
   if (!key) {
     console.log("generate-indexnow-key: INDEXNOW_KEY er ikke sat — springer over (#5493).");

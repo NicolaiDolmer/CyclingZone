@@ -348,7 +348,7 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 
 **Morningscore og betalt Ahrefs findes ikke.** Ældre SEO-dokumenter nævner begge; ignorér dem.
 
-**IndexNow (#5493).** Nøglefil hostes på roden (`frontend/public/<key>.txt`, genereret ved build fra `INDEXNOW_KEY` — se `frontend/scripts/generate-indexnow-key.ts`). Løser Ahrefs Site Audits "Changed pages not submitted to IndexNow". Ejeren genererer nøglen i Ahrefs (Project settings → Site Audit → Crawl settings → IndexNow) og lægger den i Infisical/Vercel som `INDEXNOW_KEY`.
+**IndexNow (#5493).** Nøglefil hostes på roden (`frontend/public/<key>.txt`, genereret ved build fra `INDEXNOW_KEY` — se `frontend/scripts/generate-indexnow-key.ts`) og beviser ejerskab, men indsender ikke URL'er (CodeRabbit-fund). For at fjerne Ahrefs Site Audits "Changed pages not submitted to IndexNow" skal ejeren manuelt vælge URL'er i Page Explorer og klikke "Submit to IndexNow", eller aktivere auto-submission med en Project Boost der understøtter funktionen. Ejeren genererer nøglen i Ahrefs (Project settings → Site Audit → Crawl settings → IndexNow) og lægger den i Infisical/Vercel som `INDEXNOW_KEY`.
 
 ## 10. Åbne punkter
 

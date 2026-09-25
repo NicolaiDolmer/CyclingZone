@@ -25,7 +25,10 @@ export function ahrefsAnalyticsPlugin(): Plugin {
   return {
     name: "cz-ahrefs-analytics",
     transformIndexHtml() {
-      const key = process.env.VITE_AHREFS_ANALYTICS_KEY;
+      // CodeRabbit-fund: trim, ellers sender et env med leading/trailing
+      // whitespace et ANDET data-key end det Ahrefs-dashboardet viser, og
+      // trafikmålingen slår fejl uden en synlig fejlmeddelelse.
+      const key = (process.env.VITE_AHREFS_ANALYTICS_KEY || "").trim();
       if (!key) return [];
       return [
         {

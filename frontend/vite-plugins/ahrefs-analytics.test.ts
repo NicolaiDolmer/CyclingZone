@@ -45,3 +45,15 @@ test("VITE_AHREFS_ANALYTICS_KEY sat → injicerer async script med data-key i he
     else process.env.VITE_AHREFS_ANALYTICS_KEY = prev;
   }
 });
+
+test("VITE_AHREFS_ANALYTICS_KEY med whitespace → trimmes før injektion (CodeRabbit-fund)", () => {
+  const prev = process.env.VITE_AHREFS_ANALYTICS_KEY;
+  process.env.VITE_AHREFS_ANALYTICS_KEY = "  test-key-123  ";
+  try {
+    const result = callTransform() as Array<{ attrs: Record<string, unknown> }>;
+    assert.equal(result[0].attrs["data-key"], "test-key-123");
+  } finally {
+    if (prev === undefined) delete process.env.VITE_AHREFS_ANALYTICS_KEY;
+    else process.env.VITE_AHREFS_ANALYTICS_KEY = prev;
+  }
+});
