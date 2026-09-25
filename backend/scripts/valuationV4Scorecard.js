@@ -262,14 +262,14 @@ async function main() {
   const gates = [
     { name: "Type-økonomi-tabel", hard: false, ok: typeRows.length > 0, detail: `${typeRows.length} type(r) med sim-data` },
     gScale,
-    gSumHuman,
-    gSumAll,
-    gEliteShare,
     gPnl,
     gSymmetry,
     gEliteUnbuyable,
     gAnchor,
     gDeterminism,
+    gSumHuman,
+    gSumAll,
+    gEliteShare,
   ];
 
   // --- Markdown ---
