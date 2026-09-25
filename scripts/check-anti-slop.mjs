@@ -270,15 +270,25 @@ function buildBaseline(findings) {
 // det er ikke denne guards rolle at fejle en PR for et filvalg en anden lane
 // traf, kun at goere det synligt for revieweren i stedet for reviewer-skoen.
 function checkNewJsFilesAdvisory() {
+  const diffCmd = "git diff --name-status origin/main...HEAD";
+  const execOpts = { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] };
   let diffOutput = "";
   try {
-    diffOutput = execSync("git diff --name-status origin/main...HEAD", {
-      cwd: ROOT,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
+    diffOutput = execSync(diffCmd, execOpts);
   } catch {
-    return; // ingen git-kontekst eller origin/main findes ikke lokalt - spring stille over
+    // CodeRabbit-fund (#5271): CI's static-guards-job bruger standard
+    // actions/checkout (shallow, ingen origin/main-ref lokalt), saa foerste
+    // forsoeg kan fejle rent infrastrukturelt - ikke fordi der ikke er nogen
+    // ny fil at advare om. Foer vi giver stille op, proever vi ET fetch af
+    // origin/main og gentager diff'en en gang. Fejler DET ogsaa, er det
+    // formentlig ingen git-kontekst overhovedet - advisory-only, spring
+    // stille over frem for at fejle selve guarden for det.
+    try {
+      execSync("git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main", execOpts);
+      diffOutput = execSync(diffCmd, execOpts);
+    } catch {
+      return;
+    }
   }
   const added = diffOutput
     .split("\n")
