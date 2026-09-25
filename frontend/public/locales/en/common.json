@@ -112,6 +112,7 @@
     "selectionReminderUrgent": "Your team will not start"
   },
   "leaderBadge": "Leader",
+  "betaBadge": "Beta",
   "amountInput": {
     "invalid": "Enter a whole number, e.g. 150000 or 150.000",
     "parsedPreview": "= {amount} CZ$"
