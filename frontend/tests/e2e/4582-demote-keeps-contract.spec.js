@@ -82,11 +82,13 @@ async function mockDemoteQuote(page, quote) {
 
 async function openDemoteDialog(page) {
   await page.goto(`/riders/${U23_RIDER.id}`);
-  const demoteBtn = page.getByRole("button", { name: /Flyt til U23/i }).first();
+  // #5748: én "Flyt trup"-knap; U23 er forvalgt for en 20-årig senior.
+  const demoteBtn = page.getByRole("button", { name: /Flyt trup/i }).first();
   await expect(demoteBtn).toBeVisible({ timeout: 20000 });
   await demoteBtn.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("radio", { checked: true })).toHaveValue("u23");
   return dialog;
 }
 

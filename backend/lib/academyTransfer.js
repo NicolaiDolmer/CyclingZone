@@ -22,6 +22,8 @@
 //     altid kun med ledig plads, uden aktiv auktion og ikke midt i et etapeløb.
 //     Til/fra senior går gennem promote()/demote() ovenfor (kontrakt- og løn-
 //     reglerne bor dér); junior ↔ U23 går gennem move_academy_rider_squad-RPC'en.
+//     #5748: POST /api/riders/:id/squad (handleMoveSquadRequest nederst) er
+//     flyt-dialogens eneste indgang til den.
 //
 // Spec: docs/superpowers/specs/2026-06-25-race-hub-program-design.md §5 S7 + D5.
 //
@@ -493,6 +495,65 @@ export async function moveRider(supabase, {
     return await moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetSquad, direction, now });
   } catch (err) {
     throw normalizeMoveError(err);
+  }
+}
+
+// ── HTTP-kontrakten for POST /api/riders/:id/squad (#5748) ──────────────────
+//
+// Én flyt-dialog for alle trupper (ejer-go A 25/9): manageren vælger selv mål-
+// truppen (senior / U23 / junior), og routen sender valget direkte til
+// moveRider(). Før kunne /academy/demote kun den "naturlige" trup (sæsonalderen
+// valgte), så en 17-årig senior aldrig kunne sættes på U23-holdet, selvom opad
+// altid er tilladt (YOUTH_RULES §2). Aldersreglerne bor stadig i moveRider()
+// og RPC'erne; denne funktion oversætter kun til HTTP.
+//
+// Udtrukket fra api.js, så route-testene kan køre den ægte moveRider() mod den
+// samme mock-supabase som resten af filens tests (ingen Express-opsætning).
+
+/** Forventede bruger-tilstande → 409 (ikke Sentry-larm). */
+const MOVE_SQUAD_CONFLICT_CODES = new Set([
+  "same_squad", "too_old_for_squad", "squad_full", "rider_on_market", "rider_listed",
+  "rider_in_stage_race", "not_academy", "already_academy",
+]);
+
+/**
+ * HTTP-status for en moveRider-fejlkode. null = uventet fejl (500 + Sentry).
+ * @param {string} code
+ * @returns {number|null}
+ */
+export function moveSquadErrorStatus(code) {
+  if (code === "invalid_squad") return 400;
+  if (code === "not_owned") return 403;
+  if (code === "rider_not_found") return 404;
+  if (MOVE_SQUAD_CONFLICT_CODES.has(code)) return 409;
+  return null;
+}
+
+/**
+ * Kør en trup-flytning fra et HTTP-kald og returnér svaret. Forventede
+ * afvisninger (moveSquadErrorStatus) bliver til 4xx; en uventet fejl kastes
+ * videre, så routen sender den til Sentry og svarer 500.
+ *
+ * @param {any} supabase
+ * @param {{teamId:string, riderId:string, body:any, seasonNumber:number,
+ *   move?:typeof moveRider, moveDeps?:Record<string, any>}} args
+ * @returns {Promise<{status:number, body:Record<string, any>}>}
+ */
+export async function handleMoveSquadRequest(supabase, {
+  teamId, riderId, body, seasonNumber, move = moveRider, moveDeps = {},
+} = /** @type {any} */ ({})) {
+  const squad = body?.squad;
+  if (!isSquad(squad)) {
+    return { status: 400, body: { error: "invalid_squad", errorCode: "invalid_squad" } };
+  }
+  try {
+    const result = await move(supabase, { ...moveDeps, teamId, riderId, targetSquad: squad, seasonNumber });
+    return { status: 200, body: result };
+  } catch (err) {
+    const code = /** @type {any} */ (err)?.message ?? "";
+    const status = moveSquadErrorStatus(code);
+    if (status === null) throw err;
+    return { status, body: { error: code, errorCode: code } };
   }
 }
 

@@ -1834,6 +1834,12 @@
         "title": "No mandate signed yet",
         "description": "The board has not signed this season's mandate. Check back after the annual meeting."
       },
+      "proposed": {
+        "cardTitle": "Proposed mandate · S{season}",
+        "meta": "Waiting for your signature",
+        "pill": "Proposed",
+        "summaryLine": "Proposed mandate · waiting for your signature"
+      },
       "goalLabels": {
         "keepResultAboveZero": "Keep season result above zero",
         "academyDebuts": "Give {count} academy riders a debut"

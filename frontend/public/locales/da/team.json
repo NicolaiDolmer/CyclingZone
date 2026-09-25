@@ -17,7 +17,6 @@
     "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
     "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
   },
-  "squadNames": { "u23": "U23", "junior": "junior" },
   "tabs": {
     "ariaLabel": "Holdets afsnit",
     "squad": "Trup ({count})",
@@ -98,7 +97,7 @@
       "transfer": "Transferliste",
       "release": "Fyr",
       "extend": "Forlæng",
-      "demote": "Til {squad}"
+      "move": "Flyt trup"
     },
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
@@ -140,13 +139,9 @@
       "capped": "Kontrakt på maksimal længde (til og med sæson {season}).",
       "capCounterLabel": "Forlængelser brugt"
     },
-    "demote": {
-      "description": "Flyt denne rytter ned i {squad}.",
-      "currentSalaryLabel": "Nuværende løn",
-      "youthSalaryLabel": "Ungdomsløn",
-      "hint": "Rytteren tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb. Du bekræfter hele effekten i næste trin.",
-      "confirmButton": "Flyt til {squad}",
-      "fullTooltip": "Dit {squad}-hold er fuldt. Frigør en plads der først."
+    "move": {
+      "description": "Flyt rytteren til senior-truppen, U23-holdet eller juniorholdet. Du vælger truppen og ser hele effekten i næste trin.",
+      "openButton": "Vælg trup"
     },
     "loadingShort": "...",
     "errorPrefix": ""

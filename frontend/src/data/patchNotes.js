@@ -1,5 +1,46 @@
 export const PATCHES = [
   {
+    "version": "7.301",
+    "date": "2026-09-25",
+    "label": "Squads and boardroom",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Move squad: one dialog, all three squads",
+          "body": "What changed: The move button on the rider page and on My Team is now Move squad. The dialog lists Senior, U23 and Junior with places used and free, marks the rider's current squad, and greys out a squad he is too old for or that is full, with the reason. A junior can now be placed on the U23 team, and a U23 rider can go down to junior if his age allows.\n\nWhat it means for you: You decide where every rider in the right age sits, in one place, before you confirm."
+        },
+        "da": {
+          "title": "Flyt trup: én dialog, alle tre trupper",
+          "body": "Hvad er ændret: Flyt-knappen på rytterprofilen og på Mit hold hedder nu Flyt trup. Dialogen viser Senior, U23 og Junior med brugte og ledige pladser, markerer rytterens nuværende trup, og gør en trup grå hvis han er for gammel til den eller den er fuld, med grunden. En junior kan nu sættes på U23-holdet, og en U23-rytter kan rykkes ned til junior hvis alderen tillader det.\n\nHvad det betyder for dig: Du bestemmer selv hvor hver rytter i den rette alder står, ét sted, før du bekræfter."
+        },
+        "refs": [
+          5748,
+          5750
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The boardroom shows the targets you negotiated",
+          "body": "What changed: The boardroom (beta) read a copy of your targets that was not refreshed after you renegotiated on the board page, so it could show an older target and call you behind. It now reads the targets you actually agreed on, and the copies for the affected teams have been re-synced.\n\nWhat it means for you: The board page and the boardroom say the same thing."
+        },
+        "da": {
+          "title": "Bestyrelseslokalet viser de mål du har forhandlet",
+          "body": "Hvad er ændret: Bestyrelseslokalet (beta) læste en kopi af dine mål, som ikke blev opdateret efter en forhandling på bestyrelsessiden, så det kunne vise et ældre mål og kalde dig bagud. Det læser nu de mål du faktisk har aftalt, og kopierne for de berørte hold er synkroniseret igen.\n\nHvad det betyder for dig: Bestyrelsessiden og bestyrelseslokalet siger det samme."
+        },
+        "refs": [
+          5751,
+          5756
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.300",
     "date": "2026-09-25",
     "label": "Youth squads",

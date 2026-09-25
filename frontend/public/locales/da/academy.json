@@ -73,12 +73,8 @@
     "promoteTitle": "Ryk op i senior-truppen",
     "promoteQuestion": "Ryk denne akademi-rytter op i din senior-trup:",
     "promoteConfirm": "Ryk op",
-    "promoteNote": "Rytteren optager en senior-plads og får en senior-kontrakt. Akademi-lønnen erstattes af senior-lønnen vist ovenfor.",
+    "promoteNote": "Rytteren optager en senior-plads og får en senior-kontrakt. Ungdomslønnen erstattes af senior-lønnen vist ovenfor.",
     "promoteNoteKeepsContract": "Rytteren optager en senior-plads. Den nuværende kontrakt og løn fortsætter uændret.",
-    "demoteTitle": "Flyt til {squad}",
-    "demoteQuestion": "Flyt denne rytter ned til {squad}:",
-    "demoteConfirm": "Flyt til {squad}",
-    "demoteSquadPickerLabel": "Trup",
     "demoteNote": "Rytteren frigør en senior-plads og tæller ikke længere mod din senior-trup. Rytteren fjernes fra alle kommende løb, vedkommende var udtaget til.",
     "demoteNoteOngoing": "Rytteren frigør en senior-plads og tæller ikke længere mod din senior-trup. Rytteren fjernes fra alle kommende løb, vedkommende var udtaget til. Ungdomsryttere er ikke løbsberettigede, så rytteren udgår også af det løb der er i gang, vist ovenfor.",
     "demoteNoteKeepsContract": "Rytteren frigør en senior-plads og tæller ikke længere mod din senior-trup. Rytteren fjernes fra alle kommende løb, vedkommende var udtaget til. Kontrakten følger med ned uændret: samme løn, samme længde.",
@@ -90,10 +86,41 @@
     "seniorCapLabel": "Senior-trup",
     "u23CapLabel": "Pladser på U23-holdet",
     "juniorCapLabel": "Pladser på juniorholdet",
-    "capFullNote": "{squad}-truppen er fuld ({max} ryttere). Frigør en plads der først.",
     "racesClearedLabel": "Kommende løb ryddet",
-    "racesOngoingLabel": "Løb rytteren udgår af",
-    "squadName": { "u23": "U23", "junior": "junior" }
+    "racesOngoingLabel": "Løb rytteren udgår af"
+  },
+  "moveSquad": {
+    "title": "Flyt {name}",
+    "fallbackRider": "denne rytter",
+    "nowOn": "Nuværende trup: <strong>{squad}</strong>.",
+    "nowOnWithAge": "Nuværende trup: <strong>{squad}</strong> · sæsonalder {age}.",
+    "pick": "Vælg den nye trup:",
+    "pickerLabel": "Ny trup",
+    "rowName": { "senior": "Senior-truppen", "u23": "U23-holdet", "junior": "Juniorholdet" },
+    "shortName": { "senior": "senior", "u23": "U23", "junior": "junior" },
+    "hint": {
+      "current": "Nuværende trup",
+      "tooOld": "For gammel til {squad} (maks {max})",
+      "full": "{squad} er fyldt op ({max}). Frigør en plads der først.",
+      "seniorPlace": "Tager en senior-plads",
+      "natural": "Naturlig trup i alder {age}",
+      "naturalNoAge": "Naturlig trup for alderen",
+      "upward": "Tilladt: flyt opad"
+    },
+    "confirm": { "senior": "Flyt til senior-truppen", "u23": "Flyt til U23", "junior": "Flyt til junior" },
+    "confirmNone": "Flyt",
+    "moveNote": "Kun truppen skifter. Løn og kontrakt forbliver præcis som nu.",
+    "errors": {
+      "same_squad": "Rytteren er allerede i den trup.",
+      "too_old_for_squad": "Rytteren er for gammel til {short}-truppen.",
+      "squad_full": "{squad} er fyldt op ({max}). Frigør en plads der først.",
+      "rider_on_market": "Rytteren er i en aktiv auktion. Afslut den, før du flytter rytteren.",
+      "rider_listed": "Rytteren er på transferlisten. Fjern opslaget, før du flytter rytteren.",
+      "rider_in_stage_race": "Rytteren er midt i et etapeløb. Prøv igen, når det er slut.",
+      "academy_disabled": "Det er ikke muligt at flytte ryttere mellem trupper lige nu.",
+      "network": "Kunne ikke nå serveren. Prøv igen.",
+      "failed": "Kunne ikke flytte rytteren. Prøv igen."
+    }
   },
   "error": {
     "academyFull": "Akademiet er fuldt. Kan ikke signere endnu en rytter.",

@@ -42,7 +42,8 @@ function formatCZ(amount) {
  * @param {number} [p.points]
  * @param {number} [p.stageWins]
  * @param {number} [p.prizeWon]
- * @param {Array<{id?:string, icon?:Function, label:string, value:string}>} [p.highlights]
+ * @param {Array<{id?:string, icon?:Function, label?:string, value?:string, node?:import("react").ReactNode}>} [p.highlights]
+ *   `node` (#5753): en færdig række (fx bestyrelsens dom) i stedet for label/value.
  * @param {string} [p.shareUrl]      overstyrer window.location.href (tests/preview)
  * @param {() => Promise<void>} [p.onDownloadCard]  bygger + downloader delekortet
  *   (PNG). Selve data-indsamlingen (facts, meta-linje) hører hjemme hos kaldestedet
@@ -148,7 +149,11 @@ export default function SeasonRecapHero({
 
       {highlights.length > 0 && (
         <ol className="mt-1">
-          {highlights.map((h, i) => (
+          {highlights.map((h, i) => h.node ? (
+            // #5753 · en rigere række (bestyrelsens dom: citat + knap) leveres
+            // som færdig node af siden; heroen giver den samme hairline-ramme.
+            <li key={h.id ?? i} className="border-t border-cz-border py-2.5">{h.node}</li>
+          ) : (
             <li key={h.id ?? i} className="flex items-center gap-2.5 border-t border-cz-border py-2">
               {h.icon && <h.icon size={14} className="flex-shrink-0 text-cz-2" aria-hidden="true" />}
               <span className="min-w-0 flex-1 truncate text-[13px] text-cz-2">{h.label}</span>

@@ -750,15 +750,17 @@ export async function buildBoardRoomPayload({
   // loadGoalContext tilbage til goalContext={} nedenfor.
   let oneYearBoard = null;
   if (mandateRow) {
-    // #5618 · current_goals + negotiated_at tilføjet: reconcileMandateGoalsWithLegacyBoard
-    // (boardMandate.js) skal kunne se om en legacy-forhandling er NYERE end
-    // mandatets egen sidste skrivning, og i så fald hvilke mål den forhandlede.
+    // #5618 · current_goals tilføjet: reconcileMandateGoalsWithLegacyBoard
+    // (boardMandate.js) skal kende de mål den gamle side forhandlede.
+    // #5751 · negotiation_status tilføjet: reglen afgøres af om legacy-
+    // forhandlingen er AFSLUTTET, ikke af negotiated_at (null på næsten alle
+    // prod-rækker). negotiated_at hentes stadig som bagudkompatibelt fallback.
     // #5632 (reviewer-fund) · budget_modifier tilføjet: computePassiveModifierInfo
     // nedenfor skal bruge det PERSISTEREDE tal sponsorEngine/economyEngine
     // faktisk anvender (economyEngine.js:1784, sponsorEngine.js:199), ikke kun
     // et fallback udregnet af confidence.value — se kommentaren ved kaldet.
     const BOARD_PROFILE_SELECT = "id, plan_type, seasons_completed, plan_start_season_number, "
-      + "plan_start_sponsor_income, current_goals, negotiated_at, budget_modifier";
+      + "plan_start_sponsor_income, current_goals, negotiation_status, negotiated_at, budget_modifier";
     try {
       const fromBoardId = mandateRow.source?.from_board_id ?? null;
       if (fromBoardId) {
@@ -847,19 +849,15 @@ export async function buildBoardRoomPayload({
       extra: { assignedMembers },
     });
 
-    // #5618 · Er den legacy 1yr-forhandling (board_profiles.current_goals)
-    // nyere end mandatets egen sidste skrivning, overtager den negotiated
-    // target/label pr. mål — se modul-headeren i reconcileMandateGoalsWithLegacyBoard.
+    // #5618/#5751 · En AFSLUTTET legacy 1yr-forhandling (board_profiles.current_goals)
+    // overtager target/label pr. mål uanset tidsstempel — den gamle side er
+    // stadig forhandlingsfladen i S3. Se modul-headeren i
+    // reconcileMandateGoalsWithLegacyBoard.
     const goalsSource = reconcileMandateGoalsWithLegacyBoard({
       mandateGoals: Array.isArray(mandateRow.goals) ? mandateRow.goals : [],
       legacyGoals: parseBoardGoals(oneYearBoard?.current_goals),
+      legacyNegotiationStatus: oneYearBoard?.negotiation_status ?? null,
       legacyNegotiatedAt: oneYearBoard?.negotiated_at ?? null,
-      // #5618 (CodeRabbit-fund) · Uden updated_at faldt sammenligningen tilbage
-      // til Unix-epoken (0), så selv en LEGACY-forhandling ældre end mandatets
-      // egen signering ville "vinde". signed_at findes altid på et signeret
-      // mandat og er det næst-bedste tidsstempel for "hvornår blev disse mål
-      // sidst sat" når selve skrivetidspunktet (updated_at) mangler.
-      mandateUpdatedAt: mandateRow.updated_at ?? mandateRow.signed_at ?? null,
     });
     const goals = goalsSource.map((goal) => {
       const goalKey = buildGoalKey(goal);

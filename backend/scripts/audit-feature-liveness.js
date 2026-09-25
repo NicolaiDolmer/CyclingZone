@@ -405,6 +405,14 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // endpoint fra NotificationsPage.jsx. Intentional orphaned indtil da,
   // ikke drift; fjern denne entry når knappen lander.
   "POST /races/:raceId/selection/auto",
+  // #5748 Move squad-dialog: TeamPage og RiderManageActions kalder nu
+  // POST /riders/:id/squad (valgfri maaltrup) i stedet for den gamle
+  // demote-route. Routen bevares bevidst for AELDRE KLIENTER — faner/PWA'er der
+  // stadig koerer et bundle fra foer #5748-deployet. Intentional orphaned i en
+  // overgang, ikke drift.
+  // Udloeb: 2026-10-09 (to uger efter #5748-merge, alle klienter har genindlaest).
+  // Fjern da BAADE denne entry og routen i backend/routes/api.js.
+  "POST /academy/demote",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).

@@ -17,7 +17,6 @@
     "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "ownAuctionsBanner": "{count, plural, one {# of your riders is up for auction} other {# of your riders are up for auction}} · view auctions"
   },
-  "squadNames": { "u23": "U23", "junior": "Junior" },
   "tabs": {
     "ariaLabel": "Team sections",
     "squad": "Squad ({count})",
@@ -98,7 +97,7 @@
       "transfer": "Transfer list",
       "release": "Release",
       "extend": "Extend contract",
-      "demote": "To {squad}"
+      "move": "Move squad"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
@@ -140,13 +139,9 @@
       "capped": "Contract at maximum length (through season {season}).",
       "capCounterLabel": "Extensions used"
     },
-    "demote": {
-      "description": "Move this rider down into {squad}.",
-      "currentSalaryLabel": "Current salary",
-      "youthSalaryLabel": "Youth salary",
-      "hint": "They stop counting toward your senior squad and are pulled from any upcoming races. You confirm the full effect next.",
-      "confirmButton": "Move to {squad}",
-      "fullTooltip": "Your {squad} team is full. Free a place there first."
+    "move": {
+      "description": "Move this rider to the senior squad, U23 team or junior team. You pick the squad and see the full effect next.",
+      "openButton": "Choose squad"
     },
     "loadingShort": "...",
     "errorPrefix": ""

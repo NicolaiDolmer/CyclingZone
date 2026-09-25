@@ -52,7 +52,7 @@ const MUTATIONS = [
   { name: "resolveGraduate", start: "const resolveGraduate = useCallback(async (riderId, action," },
   { name: "promoteRider", start: "const promoteRider = useCallback(async (riderId) => {" },
   { name: "pullIntake", start: "const pullIntake = useCallback(async () => {" },
-  { name: "demoteRider", start: "const demoteRider = useCallback(async (riderId) => {" },
+  { name: "moveRider", start: "const moveRider = useCallback(async (riderId, squad) => {" },
   { name: "releaseRider", start: "const releaseRider = useCallback(async (riderId) => {" },
 ];
 
