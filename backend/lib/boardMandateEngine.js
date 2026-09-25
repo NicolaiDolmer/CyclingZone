@@ -1008,7 +1008,9 @@ async function buildDefaultBoardNotifier(supabase) {
  * hele årsmøde-hooket.
  */
 async function sendOpeningNoticeSafely(supabase, { teamId, proposal, now, notifyUser, captureExceptionFn }) {
-  if (!proposal?.mandate_id) return { sent: false, reason: "no_new_mandate" };
+  // NB: `{ skipped: "already_exists" }` bærer OGSÅ `mandate_id` (det
+  // eksisterende), så `skipped` skal tjekkes eksplicit.
+  if (!proposal?.mandate_id || proposal.skipped) return { sent: false, reason: "no_new_mandate" };
   try {
     // Default-notifieren bygges først når der faktisk er en modtager (AI-hold
     // og hold uden manager når aldrig så langt).

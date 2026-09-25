@@ -8,8 +8,10 @@ import {
   applySeasonEndSync,
   applyWeekendSync,
   buildGoalStatesFromEvaluation,
+  buildMandateOpeningNotice,
   completeActiveMandate,
   computeRelationUpdateFromEvaluation,
+  daysUntilAutoAccept,
   ensureMandateForTeamFormation,
   ensureRelationForTeam,
   evaluateDueMilestones,
@@ -18,10 +20,12 @@ import {
   persistConfidenceChange,
   proposeMandateForNewTeam,
   proposeNextMandate,
+  resolveChairmanName,
   unlockExtraordinaryRequest,
   unlockExtraordinaryRequestForTeam,
 } from "./boardMandateEngine.js";
 import { buildGoalKey } from "./boardGoals.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 
 // ── Fake-supabase, samme mønster som boardWeekendFinalization.test.js ─────────
 function makeSupabase({ flagValue = "off", relation = null, captures = {} } = {}) {
@@ -1062,4 +1066,149 @@ test("#4837 ensureMandateForTeamFormation: ingen aktiv sæson → tydeligt skip,
 
   assert.deepEqual(result, { skipped: "no_active_season" });
   assert.equal(supabase._state.relations.length, 0, "ingen relation uden en sæson at binde mandatet til");
+});
+
+// =============================================================================
+// #5752 · Årsmødet indkaldes i samme minut som sæsonskiftet
+// =============================================================================
+
+const noticeBoardMembers = [
+  { archetype_key: "sponsoraten", is_chairman: false },
+  { archetype_key: "resultatjaegeren", is_chairman: true },
+  { archetype_key: "talentspejderen", is_chairman: false },
+];
+
+function makeSeasonSwitchSupabase(overrides = {}) {
+  return makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s4", number: 4 }, { id: "s5", number: 5 }],
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 70 }],
+    mandates: [{ id: "m-active", team_id: "t1", season_id: "s4", status: "active", focus: "balanced" }],
+    teams: [{ id: "t1", user_id: "u1", team_dna_key: null }],
+    boardMembers: noticeBoardMembers,
+    ...overrides,
+  });
+}
+
+test("#5752 advanceMandateAtSeasonEnd: nyt proposed mandat → åbnings-notits sendes ÉN gang, i samme kald", async () => {
+  const supabase = makeSeasonSwitchSupabase();
+  const now = new Date("2026-09-27T10:00:00Z");
+  const calls = [];
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, now,
+    notifyUser: async (args) => { calls.push(args); return { delivered: true }; },
+  });
+
+  const proposed = supabase._state.mandates.find((m) => m.season_id === "s5");
+  assert.equal(proposed.status, "proposed");
+  assert.equal(calls.length, 1, "præcis én notits");
+  const [call] = calls;
+  assert.equal(call.userId, "u1");
+  assert.equal(call.type, "board_update", "board_update → Discord-spejlet i makeBoardDmNotifier");
+  assert.equal(call.relatedId, proposed.id, "relatedId = mandatets id, så cronens fallback kan se notitsen");
+  assert.equal(call.metadata.titleCode, "notif.boardMandateOpened.title");
+  assert.equal(call.metadata.messageCode, "notif.boardMandateOpened.message");
+  assert.equal(call.metadata.messageParams.season, 5);
+  assert.equal(call.metadata.messageParams.days, 5, "korte vindue (ingen last_seen) = 5 dage");
+  assert.equal(call.title, "The board has called the annual meeting");
+
+  const expectedChairman = resolveChairmanName({ teamId: "t1", members: noticeBoardMembers, dnaKey: null });
+  assert.ok(expectedChairman, "formanden har et navn");
+  assert.equal(call.metadata.messageParams.chairman, expectedChairman);
+  assert.equal(
+    call.message,
+    `${expectedChairman} has proposed your season 5 mandate. You have 5 days before the board signs on its own.`,
+  );
+  assert.deepEqual(result.opening_notice, { sent: true, reason: null });
+});
+
+test("#5752 advanceMandateAtSeasonEnd: notifikationen kaster → mandatet er skrevet og returneres alligevel", async () => {
+  const supabase = makeSeasonSwitchSupabase();
+  const captured = [];
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+    notifyUser: async () => { throw new Error("notifications insert failed"); },
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+  });
+
+  assert.equal(result.completed_active, true);
+  assert.ok(result.proposal.mandate_id, "mandatet er returneret");
+  assert.equal(supabase._state.mandates.find((m) => m.season_id === "s5").status, "proposed");
+  assert.deepEqual(result.opening_notice, { sent: false, reason: "error" });
+  assert.equal(captured.length, 1, "fejlen er synlig i Sentry");
+  assert.equal(captured[0].ctx.tags.stage, "mandate-opening-notice");
+});
+
+test("#5752 advanceMandateAtSeasonEnd: selv en kastende Sentry-alarm vælter ikke sæsonskiftet", async () => {
+  const supabase = makeSeasonSwitchSupabase();
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+    notifyUser: async () => { throw new Error("boom"); },
+    captureExceptionFn: () => { throw new Error("sentry down"); },
+  });
+  assert.ok(result.proposal.mandate_id);
+  assert.equal(result.opening_notice.sent, false);
+});
+
+test("#5752 advanceMandateAtSeasonEnd: hold uden manager (AI) → ingen notits", async () => {
+  const supabase = makeSeasonSwitchSupabase({ teams: [{ id: "t1", user_id: null, team_dna_key: null }] });
+  const calls = [];
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+    notifyUser: async (args) => { calls.push(args); return { delivered: true }; },
+  });
+  assert.equal(calls.length, 0);
+  assert.deepEqual(result.opening_notice, { sent: false, reason: "no_manager" });
+});
+
+test("#5752 advanceMandateAtSeasonEnd: retry med mandatet allerede skrevet → ingen ny notits", async () => {
+  const supabase = makeSeasonSwitchSupabase({
+    mandates: [
+      { id: "m-active", team_id: "t1", season_id: "s4", status: "completed", focus: "balanced" },
+      { id: "m-next", team_id: "t1", season_id: "s5", status: "proposed" },
+    ],
+  });
+  const calls = [];
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+    notifyUser: async (args) => { calls.push(args); return { delivered: true }; },
+  });
+  assert.equal(result.proposal.skipped, "already_exists");
+  assert.equal(calls.length, 0);
+  assert.deepEqual(result.opening_notice, { sent: false, reason: "no_new_mandate" });
+});
+
+test("#5752 advanceMandateAtSeasonEnd: næste sæson mangler → intet mandat, ingen notits", async () => {
+  const supabase = makeSeasonSwitchSupabase({ seasons: [{ id: "s4", number: 4 }] });
+  const calls = [];
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+    notifyUser: async (args) => { calls.push(args); return { delivered: true }; },
+  });
+  assert.equal(result.skipped, "target_season_not_found");
+  assert.equal(calls.length, 0);
+});
+
+test("#5752 buildMandateOpeningNotice: uden formand → egen messageCode, aldrig en tom navne-plads", () => {
+  const notice = buildMandateOpeningNotice({ chairmanName: null, seasonNumber: 5, days: 10 });
+  assert.equal(notice.metadata.messageCode, "notif.boardMandateOpened.messageNoChairman");
+  assert.equal(notice.message, "Your board has proposed your season 5 mandate. You have 10 days before the board signs on its own.");
+  assert.equal("chairman" in notice.metadata.messageParams, false);
+  assert.equal(buildMandateOpeningNotice({ chairmanName: "X", seasonNumber: null, days: 5 }), null, "ingen sæson → ingen halv notits");
+  assert.equal(buildMandateOpeningNotice({ chairmanName: "X", seasonNumber: 5, days: null }), null);
+});
+
+test("#5752 daysUntilAutoAccept: rundes op, aldrig under 1", () => {
+  const now = new Date("2026-09-27T10:00:00Z");
+  assert.equal(daysUntilAutoAccept("2026-10-02T10:00:00Z", now), 5);
+  assert.equal(daysUntilAutoAccept("2026-10-01T22:00:00Z", now), 5, "4,5 dage vises som 5");
+  assert.equal(daysUntilAutoAccept("2026-09-27T09:00:00Z", now), 1);
+  assert.equal(daysUntilAutoAccept(null, now), null);
+});
+
+test("#5752 resolveChairmanName: samme navn som Boardroom (hele bestyrelsen navngives i ét kald)", () => {
+  const named = generateBoardMemberNames({ teamId: "t1", members: noticeBoardMembers, dnaKey: null });
+  const boardroomChairman = named.find((m) => m.archetype_key === "resultatjaegeren").full_name;
+  assert.equal(resolveChairmanName({ teamId: "t1", members: noticeBoardMembers, dnaKey: null }), boardroomChairman);
+  assert.equal(resolveChairmanName({ teamId: "t1", members: [] }), null);
 });
