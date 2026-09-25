@@ -37,7 +37,7 @@ import { fileURLToPath } from "node:url";
 import { simulateStage, stableSeed } from "../lib/raceSimulator.js";
 import { computePassages } from "../lib/racePassages.js";
 import { raceContextForStage, rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
-import { simulateStageV4 } from "../lib/engine/v4/index.ts";
+import { simulateStageV4, simulateStageV4WithTrace } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdapter.ts";
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
@@ -498,7 +498,9 @@ export function runHeadToHead({
     const v4Entrants = v4EntrantsFromPopulation(fieldRiders, roles, effortByRider);
 
     const v3Output = simulateStage({ entrants: v3Entrants, stageProfile: stageRow, seed: v3Seed, v3: true });
-    const v4Output = simulateStageV4({
+    // #5578: sporet (trace) giver udbrudsankeret motorens egen udbrudsdom;
+    // v4Output er byte-identisk med simulateStageV4.
+    const { output: v4Output, trace: v4Trace } = simulateStageV4WithTrace({
       route,
       startlist: v4Entrants,
       orders,
@@ -528,6 +530,7 @@ export function runHeadToHead({
       raw: {
         v3Output,
         v4Output,
+        v4Trace,
         route,
         tuning: RACE_V4_TUNING,
         stageRow,
