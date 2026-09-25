@@ -1,14 +1,22 @@
-// Konsekvens-bevidst bekræftelse for akademi op/ned (#932 S7). Én dialog dækker
-// begge retninger via direction='promote'|'demote':
-//   • promote (op): akademi → senior. Viser cap-effekt (senior-trup nu → efter)
-//     + ny senior-løn. Accent = guld (cz-accent).
-//   • demote (ned): senior → akademi. Viser lønnen efter flytningen
-//     + akademi-cap-effekt + antal fremtidige løb der ryddes. Accent = amber
-//     (cz-warning). #4582: har rytteren en komplet kontrakt, ARVES den (løn +
-//     term) uændret ned i akademiet — dialogen siger det med rene ord og
-//     dropper delta-rækken i stedet for at vise "ungdomsløn" over to ens tal.
+// Konsekvens-bevidst bekræftelse for trup op/ned (#932 S7, #5742). Én dialog
+// dækker begge retninger via direction='promote'|'demote':
+//   • promote (op): ungdomstrup → senior. Viser cap-effekt (senior-trup nu →
+//     efter) + ny senior-løn. Accent = guld (cz-accent).
+//   • demote (ned): senior → U23/junior. Viser lønnen efter flytningen
+//     + mål-truppens cap-effekt + antal fremtidige løb der ryddes. Accent =
+//     amber (cz-warning). #4582: har rytteren en komplet kontrakt, ARVES den
+//     (løn + term) uændret ned i ungdomstruppen — dialogen siger det med rene
+//     ord og dropper delta-rækken i stedet for at vise "ungdomsløn" over to
+//     ens tal.
+// #5742 (Discord 24/9): dialogen hed "Move to academy" uanset mål-trup, selvom
+// akademiet er erstattet af U23-/juniortrupper (#5626). Titel/spørgsmål/
+// bekræft-knap navngiver nu den FAKTISKE mål-trup (capSquad, evt. valgt via
+// squadOptions). Er rytteren junior-alder, må han også vælge U23 (opad altid
+// tilladt, YOUTH_RULES.md §2, LÅST 2/9) — squadOptions viser da begge, junior
+// forudvalgt.
 // Spejler AcademySignConfirmModal: overlay + cz-card-panel + useModalA11y +
 // editorial dl-tabel. INGEN slop (ingen glow/gradient/emoji-ikon).
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { useModalA11y } from "../hooks/useModalA11y.js";
@@ -21,10 +29,22 @@ export function AcademyTransferConfirmModal({
   currentSalary = null, // vises som delta (demote)
   capLabel = null,      // "12 / 30" → "13 / 30" (promote: senior-cap; demote: mål-truppens loft, fx 5 / 12)
   capAfterLabel = null,
-  // #5568: demote — den ungdomstrup rytteren rykker ned i ("u23" | "junior").
-  // Styrer etiketten, så "5 / 12" står ud for "U23 team places" og ikke for
-  // hele akademiet. null = generisk akademi-etiket.
+  // #5568: demote — den ungdomstrup rytteren rykker ned i ("u23" | "junior"),
+  // som den kom tilbage fra backendens quote. capLabel/capAfterLabel hører til
+  // NETOP denne trup — vælger manageren et andet mål via squadOptions (se
+  // nedenfor), skjules cap-rækken (#5742: vi har ingen frisk optælling for
+  // det utviste valg, og en forkert "5 / 12" er værre end ingen række).
   capSquad = null,
+  // #5742: begge mulige mål-trupper for en junior-alder rytter (opad tilladt),
+  // [{squad,isDefault}], fra squadTarget.ts's demoteSquadOptions(). Under 2
+  // elementer (U23-alder, eller promote) → ingen vælger vises, capSquad står alene.
+  squadOptions = [],
+  onSquadChange, // (squad) => void — kaldes når manageren skifter mål-trup i vælgeren.
+  // #5742: er DEN VALGTE mål-trup fuld (fra en fersk optælling kalderen selv
+  // kender, fx useAcademy()'s squads)? Blokerer bekræft + viser grunden i
+  // stedet for et dødt klik der først fejler i backend-svaret.
+  capFull = false,
+  capFullMax = null,
   racesCleared = null,  // demote: antal KOMMENDE løb der ryddes (entries slettes; kan være 0/null)
   racesOngoing = null,  // #3805: demote: antal IGANGVÆRENDE løb rytteren falder ud af (entry
                          // bevares, men rytteren er ikke længere løbsberettiget — kan være 0/null)
@@ -41,15 +61,67 @@ export function AcademyTransferConfirmModal({
 }) {
   const { t } = useTranslation(["academy", "common"]);
   const dialogRef = useModalA11y(busy ? null : onCancel, show);
+
+  // #5742: vælgeren er kun relevant for demote med et reelt valg (junior-alder
+  // rytter, opad tilladt til U23). Selektionen nulstilles til quotens egen
+  // default kun når dialogen ÅBNER (show går false → true), så et gammelt
+  // valg fra forrige rytter aldrig overlever ind i en ny åbning. Kaldersiden
+  // (fx RiderManageActions' onSquadChange → setAcademyModal) opdaterer sit
+  // eget academyModal-object ved hvert skift, som laver et NYT squadOptions-
+  // array hver render — stod det arrayet i dependency-listen, ville selve
+  // klikket der skifter trup udløse en re-render der straks nulstillede
+  // valget tilbage til default (CodeRabbit-fund).
+  // #5742 (reviewer-fund): effekten skal KUN trigge på `show`s flanke, men
+  // exhaustive-deps kræver squadOptions/capSquad i deps hvis de læses direkte
+  // i effekten. En ref opdateret UNDER render er nu selv en lint-fejl
+  // (react-hooks/refs — React Compiler-æraens regel, "Cannot access refs
+  // during render"), så "latest ref"-mønstret må skrive ref'en i en EGEN
+  // deps-løs effekt (kører efter hvert commit, altid efter render — det er
+  // her ref-skrivning er tilladt), IKKE inline i render-kroppen. Den effekt
+  // er erklæret FØR show-flanke-effekten, så refs altid er friske når den
+  // læser dem. Ingen af delene rører selve show-tjekket, så et trup-skift
+  // (ny squadOptions-reference) udløser stadig ikke en reset (samme fix som
+  // CodeRabbit-fundet ovenfor).
+  const squadOptionsRef = useRef(squadOptions);
+  const capSquadRef = useRef(capSquad);
+  useEffect(() => {
+    squadOptionsRef.current = squadOptions;
+    capSquadRef.current = capSquad;
+  });
+
+  const [selectedSquad, setSelectedSquad] = useState(capSquad);
+  const wasShown = useRef(false);
+  useEffect(() => {
+    if (show && !wasShown.current) {
+      const fallback = squadOptionsRef.current.find(o => o.isDefault)?.squad ?? capSquadRef.current;
+      setSelectedSquad(fallback ?? null);
+    }
+    wasShown.current = show;
+  }, [show]);
+
   if (!show) return null;
 
   const isPromote = direction === "promote";
+  const effectiveSquad = isPromote ? null : (selectedSquad ?? capSquad);
+  const squadLabel = effectiveSquad ? t(`academy:transferModal.squadName.${effectiveSquad}`) : "";
+  function selectSquad(squad) {
+    setSelectedSquad(squad);
+    onSquadChange?.(squad);
+  }
   // Statiske klasser (Tailwind kan ikke se interpolerede klassenavne). Promote =
   // guld (cz-accent), demote = amber (cz-warning).
   const accentText = isPromote ? "text-cz-accent-t" : "text-cz-warning";
   const titleKey = isPromote ? "transferModal.promoteTitle" : "transferModal.demoteTitle";
   const questionKey = isPromote ? "transferModal.promoteQuestion" : "transferModal.demoteQuestion";
   const confirmKey = isPromote ? "transferModal.promoteConfirm" : "transferModal.demoteConfirm";
+  // #5742: cap-rækken hører til DEN trup quoten faktisk hentede tal for
+  // (capSquad) — vælger manageren det andet muligt mål (selectedSquad !==
+  // capSquad), er tallene ikke friske for det, så rækken skjules i stedet for
+  // at vise en forkert optælling.
+  const showCapRow = !isPromote ? selectedSquad === capSquad : true;
+  // #5742: mål-truppen er fuld — bekræft-knappen spærres OG forklaringen står
+  // under den, samme mønster som AcademyPage's intake-kort (isFull/fullTooltip).
+  const blockedByFullSquad = !isPromote && capFull && selectedSquad === capSquad;
 
   // #3784: newSalary er null mens quoten (backend academy-demote-quote) stadig
   // hentes — vis "..." i stedet for et forkert 0/NaN-tal, og lås bekræft-knappen
@@ -82,12 +154,34 @@ export function AcademyTransferConfirmModal({
         aria-labelledby="academy-transfer-title"
       >
         <h2 id="academy-transfer-title" className={`font-bold text-lg mb-2 ${accentText}`}>
-          {t(`academy:${titleKey}`)}
+          {isPromote ? t(`academy:${titleKey}`) : t(`academy:${titleKey}`, { squad: squadLabel })}
         </h2>
         <p className="text-cz-2 text-sm mb-4">
-          {t(`academy:${questionKey}`)}{" "}
+          {isPromote ? t(`academy:${questionKey}`) : t(`academy:${questionKey}`, { squad: squadLabel })}{" "}
           {riderName ? <span className="font-bold text-cz-1">{riderName}</span> : null}?
         </p>
+
+        {/* #5742: junior-alder rytter må vælge op til U23 (opad tilladt,
+            YOUTH_RULES.md §2) — kun vist når der reelt er et valg. */}
+        {!isPromote && squadOptions.length > 1 && (
+          <div className="flex rounded-lg border border-cz-border overflow-hidden mb-4" role="radiogroup"
+            aria-label={t("academy:transferModal.demoteSquadPickerLabel")}>
+            {squadOptions.map(({ squad }) => (
+              <button
+                key={squad}
+                type="button"
+                role="radio"
+                aria-checked={selectedSquad === squad}
+                disabled={busy}
+                onClick={() => selectSquad(squad)}
+                className={`flex-1 px-3 py-2 text-sm font-bold transition-colors disabled:opacity-50
+                  ${selectedSquad === squad ? "bg-cz-warning text-cz-on-accent" : "bg-cz-subtle text-cz-2 hover:text-cz-1"}`}
+              >
+                {t(`academy:transferModal.squadName.${squad}`)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <dl className="text-sm border border-cz-border rounded-lg divide-y divide-cz-border mb-5 text-left">
           {/* Ny løn (begge retninger). Demote viser delta fra nuværende. */}
@@ -109,17 +203,17 @@ export function AcademyTransferConfirmModal({
               <dd className="font-mono text-cz-2">{formatNumber(curSalaryNum)} CZ$</dd>
             </div>
           )}
-          {/* Cap-effekt (nu → efter). */}
-          {capLabel != null && capAfterLabel != null && (
+          {/* Cap-effekt (nu → efter). #5742: kun for den trup quoten faktisk
+              hentede tal for (showCapRow) — et andet valgt mål viser ingen
+              række i stedet for en stale optælling. */}
+          {showCapRow && capLabel != null && capAfterLabel != null && (
             <div className="flex items-center justify-between px-3 py-2">
               <dt className="text-cz-3">
                 {isPromote
                   ? t("academy:transferModal.seniorCapLabel")
                   : capSquad === "u23"
                     ? t("academy:transferModal.u23CapLabel")
-                    : capSquad === "junior"
-                      ? t("academy:transferModal.juniorCapLabel")
-                      : t("academy:transferModal.academyCapLabel")}
+                    : t("academy:transferModal.juniorCapLabel")}
               </dt>
               <dd className="font-mono text-cz-2">
                 {capLabel} <span className="text-cz-3" aria-hidden="true">&rarr;</span>{" "}
@@ -176,6 +270,15 @@ export function AcademyTransferConfirmModal({
               : t("academy:transferModal.promoteNote")}
         </p>
 
+        {/* #5742: mål-truppen er fuld — grunden vises i klar tekst i stedet for
+            at lade bekræft-knappen stå som et dødt klik der først fejler i
+            backend-svaret (samme princip som AcademyPage's intake-kort). */}
+        {blockedByFullSquad && (
+          <p className="text-cz-warning text-xs mb-4">
+            {t("academy:transferModal.capFullNote", { squad: squadLabel, max: capFullMax })}
+          </p>
+        )}
+
         <div className="flex gap-2">
           <button
             type="button"
@@ -188,13 +291,17 @@ export function AcademyTransferConfirmModal({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            disabled={busy || salaryLoading}
+            onClick={() => onConfirm(effectiveSquad)}
+            disabled={busy || salaryLoading || blockedByFullSquad}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-cz-on-accent transition-all
               disabled:opacity-60 disabled:cursor-not-allowed
               ${isPromote ? "bg-cz-accent hover:brightness-110" : "bg-cz-warning hover:brightness-110"}`}
           >
-            {busy || salaryLoading ? t("common:actions.loadingShort") : t(`academy:${confirmKey}`)}
+            {busy || salaryLoading
+              ? t("common:actions.loadingShort")
+              : isPromote
+                ? t(`academy:${confirmKey}`)
+                : t(`academy:${confirmKey}`, { squad: squadLabel })}
           </button>
         </div>
         <style>{`

@@ -36,6 +36,7 @@ import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import { demoteCapLabels } from "../lib/squadCaps.ts"; // #5568
+import { demoteNaturalTargetSquad, demoteSquadOptions } from "../lib/squadTarget.ts"; // #5742
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
@@ -47,9 +48,13 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive, seasonYear }) {
   const { t } = useTranslation("team");
-  // #932 S7: demote (senior → akademi) er kun muligt for U23-seniorer (alder ≤ 22,
-  // ikke allerede akademi). Samme grænse som backend D5-gaten. #3071: sæson-alder.
+  // #932 S7: demote (senior → ungdomstrup) er kun muligt for senior-ryttere i
+  // ungdomsalder (≤ 22, ikke allerede akademi). Samme grænse som backend
+  // D5-gaten. #3071: sæson-alder.
   const canDemote = !rider.is_academy && isU23(rider.birthdate, seasonYear);
+  // #5742: den trup rytteren rykker ned i, til knap-/fane-teksten ("To U23" /
+  // "To Junior") — samme fallback-til-u23 som backend ved en uklar alder.
+  const demoteTargetSquad = demoteNaturalTargetSquad(getRiderAge(rider.birthdate, seasonYear)) ?? "u23";
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
   const [transferPrice, setTransferPrice] = useState(riderValue);
@@ -249,7 +254,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
     transfer: t("actionModal.tabs.transfer"),
     release: t("actionModal.tabs.release"),
     extend: t("actionModal.tabs.extend"),
-    demote: t("actionModal.tabs.demote"),
+    demote: t("actionModal.tabs.demote", { squad: t(`squadNames.${demoteTargetSquad}`) }),
   };
   const tabKeys = ["auction", "transfer", "extend", "release", ...(canDemote ? ["demote"] : [])];
 
@@ -482,7 +487,9 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
               holdsiden; her forklarer vi handlingen og overdrager til forælderen. */}
           {activeTab === "demote" && canDemote && (
             <div>
-              <p className="text-cz-2 text-xs mb-3">{t("actionModal.demote.description")}</p>
+              <p className="text-cz-2 text-xs mb-3">
+                {t("actionModal.demote.description", { squad: t(`squadNames.${demoteTargetSquad}`) })}
+              </p>
               <div className="space-y-1.5 mb-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-cz-3 text-xs">{t("actionModal.demote.currentSalaryLabel")}</span>
@@ -501,7 +508,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
               <Button onClick={() => { onClose(); onDemote(rider); }}
                 disabled={loading}
                 className="w-full !bg-cz-warning !text-cz-on-accent hover:brightness-110">
-                {t("actionModal.demote.confirmButton")}
+                {t("actionModal.demote.confirmButton", { squad: t(`squadNames.${demoteTargetSquad}`) })}
               </Button>
             </div>
           )}
@@ -1079,8 +1086,17 @@ export function TeamPage() {
       const quoteRes = await fetchRiderQuote(rider.id, "academy-demote-quote");
       if (quoteRes.ok) quote = quoteRes.data;
     } catch { /* fallback nedenfor; vis dialogen uanset */ }
+    const cap = demoteCapLabels(quote);
+    // #5742: den trup rytteren rykker ned i ud fra sæsonalderen — quotens egen
+    // (cap.capSquad) hvis den svarede, ellers samme fallback som knap-/fane-
+    // teksten allerede bruger. squadOptions viser BEGGE valg for en
+    // junior-alder rytter (opad tilladt, YOUTH_RULES.md §2).
+    const seasonAge = getRiderAge(rider.birthdate, seasonYear);
+    const naturalSquad = demoteNaturalTargetSquad(seasonAge) ?? "u23";
     setDemoteConfirm({
       rider,
+      squad: cap?.capSquad ?? naturalSquad,
+      squadOptions: demoteSquadOptions(seasonAge),
       newSalary: quote?.newSalary ?? null,
       currentSalary: quote?.currentSalary ?? rider.salary ?? null,
       // #4582: samme kilde som rytterprofilens openDemote — backendens
@@ -1088,11 +1104,27 @@ export function TeamPage() {
       keepsContract: quote?.keepsContract ?? false,
       racesCleared: quote?.racesCleared ?? 0,
       racesOngoing: quote?.racesOngoing ?? 0,
-      cap: demoteCapLabels(quote),
+      cap,
+      // #5742: RAA tal (demoteCapLabels formaterer dem kun til visning) — bruges
+      // til capFull-tjekket nedenfor.
+      squadUsed: quote?.squadUsed ?? null,
+      squadMax: quote?.squadMax ?? null,
     });
   }
 
-  async function confirmDemote() {
+  // #5742: manageren skiftede mål-trup i modalens vælger.
+  function handleDemoteSquadChange(squad) {
+    setDemoteConfirm(prev => (prev ? { ...prev, squad } : prev));
+  }
+
+  // #5742: er den p.t. VALGTE mål-trup fuld? Kun kendt når valget matcher
+  // quotens egen (default) trup — quoten har intet tal for det ALTERNATIVE
+  // (opad) valg, se AcademyTransferConfirmModal.jsx's showCapRow.
+  const demoteCapFull = demoteConfirm?.squad != null && demoteConfirm.squad === demoteConfirm?.cap?.capSquad
+    && demoteConfirm?.squadUsed != null && demoteConfirm?.squadMax != null
+    && demoteConfirm.squadUsed >= demoteConfirm.squadMax;
+
+  async function confirmDemote(squad) {
     if (!demoteConfirm) return;
     const rider = demoteConfirm.rider;
     setDemoteBusy(true);
@@ -1102,7 +1134,10 @@ export function TeamPage() {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/academy/demote`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ riderId: rider.id }),
+        // #5742: sender det VALGTE mål-trup med (forward-compatible — dagens
+        // route læser den endnu ikke, se academyTransfer.js' demote()/
+        // demoteTargetSquad(requestedSquad), som allerede understøtter det).
+        body: JSON.stringify({ riderId: rider.id, squad }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -1200,14 +1235,16 @@ export function TeamPage() {
     // sæsonskiftet (retirementRelease.js) og kan hverken køre løb eller sælges.
     // Uden filteret ville de stå i listen og tælle med i trup-/løn-/værditotalerne
     // i vinduet mellem pensionering og frigivelse.
+    // #5742: squad med i begge SELECT'er nedenfor — DEL B's U23/junior-optælling
+    // tæller direkte på kolonnen (samme SSOT som U23-/juniorsiderne, #5688).
     const [ridersRes, pendingRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
         .eq("is_retired", false)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .eq("is_retired", false)
         .order("market_value", { ascending: false }),
@@ -1235,11 +1272,15 @@ export function TeamPage() {
   const totalValue  = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
   const incomingCount = riders.filter(r => r._isIncoming).length;
   const outgoingCount = riders.filter(r => r._isOutgoing).length;
-  // #1886: kun senior-ryttere tæller mod squad-cap'en (30). Akademiryttere vises
+  // #1886: kun senior-ryttere tæller mod squad-cap'en (30). Ungdomsryttere vises
   // i listen men er uden for cap'en — gør det eksplicit så en trup på fx 29+3
   // ikke ligner et cap-brud på 30.
   const seniorCount  = currentRiders.filter(r => !r.is_academy).length;
-  const academyCount = currentRiders.filter(r =>  r.is_academy).length;
+  // #5742 (Discord 24/9, DEL B — #5743-rest): "+N academy (off-cap)" splittet i
+  // U23/junior, talt direkte på riders.squad (samme SSOT som U23-/junior-
+  // siderne, #5688 — den kolonne ejer sandheden, ikke en kopi her).
+  const u23Count    = currentRiders.filter(r => r.squad === "u23").length;
+  const juniorCount = currentRiders.filter(r => r.squad === "junior").length;
   const squadCap     = getSquadLimits(team?.division).max;
 
   if (loading) return (
@@ -1295,7 +1336,11 @@ export function TeamPage() {
         <Link to="/finance" className="text-cz-accent-t font-mono font-bold hover:underline" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</Link>
         <Link to="/standings" className="text-cz-3 hover:text-cz-2 transition-colors" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</Link>
         <span className={`text-cz-3${seniorCount > squadCap ? " text-cz-danger" : ""}`} title={t("page.seniorCapTooltip", { cap: squadCap })}>{t("page.ridersCount", { count: seniorCount, cap: squadCap })}</span>
-        {academyCount > 0 && <span className="text-cz-3 text-xs" title={t("page.academyCapTooltip", { cap: squadCap })}>{t("page.academyCount", { count: academyCount })}</span>}
+        {(u23Count > 0 || juniorCount > 0) && (
+          <span className="text-cz-3 text-xs" title={t("page.youthSquadCountsTooltip")}>
+            {t("page.youthSquadCounts", { u23: u23Count, junior: juniorCount })}
+          </span>
+        )}
         {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
         {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
         <Link to="/finance" className="text-cz-3 hover:text-cz-2 transition-colors" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</Link>
@@ -1368,6 +1413,10 @@ export function TeamPage() {
         capLabel={demoteConfirm?.cap?.capLabel ?? null}
         capAfterLabel={demoteConfirm?.cap?.capAfterLabel ?? null}
         capSquad={demoteConfirm?.cap?.capSquad ?? null}
+        squadOptions={demoteConfirm?.squadOptions ?? []}
+        onSquadChange={handleDemoteSquadChange}
+        capFull={demoteCapFull}
+        capFullMax={demoteConfirm?.squadMax ?? null}
         racesCleared={demoteConfirm?.racesCleared ?? 0}
         racesOngoing={demoteConfirm?.racesOngoing ?? 0}
         keepsContract={!!demoteConfirm?.keepsContract}

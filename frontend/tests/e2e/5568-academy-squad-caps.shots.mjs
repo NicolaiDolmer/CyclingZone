@@ -138,7 +138,7 @@ for (const vp of VIEWPORTS) {
   {
     const { context, page } = await newPage(vp, { u23: 8, junior: 3 });
     await page.goto(`/riders/${RIDERS[0].id}`);
-    await page.getByRole("button", { name: "Move to academy" }).click();
+    await page.getByRole("button", { name: "Move to U23" }).click();
     await page.getByRole("dialog").getByText("U23 team places").waitFor();
     await page.waitForTimeout(200);
     await page.screenshot({ path: resolve(OUT, `5568-demote-dialog-${vp.name}.png`) });

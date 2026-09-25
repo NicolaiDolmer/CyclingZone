@@ -841,11 +841,13 @@
       "errorPrefix": "Kunne ikke rykke op:"
     },
     "demote": {
-      "button": "Flyt til akademi",
-      "success": "Rytter flyttet til dit akademi.",
-      "errorPrefix": "Kunne ikke flytte rytter:"
+      "button": "Flyt til {squad}",
+      "success": "Rytter flyttet til dit {squad}-hold.",
+      "errorPrefix": "Kunne ikke flytte rytter:",
+      "fullTooltip": "Dit {squad}-hold er fuldt. Frigør en plads der først."
     }
   },
+  "squadNames": { "u23": "U23", "junior": "junior" },
   "swapOffer": {
     "buttonOpen": "⇄ Foreslå byttehandel",
     "selectRider": "Vælg rytter du tilbyder",

@@ -3,9 +3,9 @@
     "fallbackTitle": "Mit Hold",
     "managerLabel": "Manager: {name}",
     "ridersCount": "{count}/{cap} senior-ryttere",
-    "academyCount": "+{count} akademi (uden for cap)",
+    "youthSquadCounts": "+{u23} U23 · +{junior} juniorer",
     "seniorCapTooltip": "Trup-cap er {cap} senior-ryttere. Akademiryttere tæller ikke med.",
-    "academyCapTooltip": "Akademiryttere udvikles separat og tæller aldrig mod senior-cap'en på {cap}.",
+    "youthSquadCountsTooltip": "U23- og juniorryttere har deres egne trup-lofter (12 og 10) og tæller ikke med i senior-cap'en.",
     "incomingCount": "+{count} indgående",
     "outgoingCount": "-{count} udgående",
     "salaryPerSeason": "Løn/sæson: {value} CZ$",
@@ -17,6 +17,7 @@
     "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
     "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
   },
+  "squadNames": { "u23": "U23", "junior": "junior" },
   "tabs": {
     "ariaLabel": "Holdets afsnit",
     "squad": "Trup ({count})",
@@ -97,7 +98,7 @@
       "transfer": "Transferliste",
       "release": "Fyr",
       "extend": "Forlæng",
-      "demote": "Til akademi"
+      "demote": "Til {squad}"
     },
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
@@ -140,11 +141,12 @@
       "capCounterLabel": "Forlængelser brugt"
     },
     "demote": {
-      "description": "Flyt denne U23-rytter ned i dit akademi. Kun muligt for ryttere på 22 år eller derunder.",
+      "description": "Flyt denne rytter ned i {squad}.",
       "currentSalaryLabel": "Nuværende løn",
       "youthSalaryLabel": "Ungdomsløn",
       "hint": "Rytteren tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb. Du bekræfter hele effekten i næste trin.",
-      "confirmButton": "Flyt til akademi"
+      "confirmButton": "Flyt til {squad}",
+      "fullTooltip": "Dit {squad}-hold er fuldt. Frigør en plads der først."
     },
     "loadingShort": "...",
     "errorPrefix": ""
