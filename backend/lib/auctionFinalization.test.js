@@ -97,6 +97,8 @@ function createFinalizeAuctionSupabase({
   offerWithdrawals = [],
   swapWithdrawals = [],
   activeStageRaceRiderIds = [], // #1995: ryttere i et aktivt fleretape-løb → defer
+  activeStageRaceEntryTeamId = null, // #5636: team_id på den syntetiske race_entries-række (til withdrawal-test)
+  raceWithdrawals = [], // #5636: (race_id, team_id)-par der er afmeldt — dæmper IKKE defer for disse
   auctionBids = [], // #3401: realiserede bud (team_id, amount) — bruges KUN til losing-bidder-reveal, ALDRIG auction_proxy_bids
   riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
   academyGraduationRow = null, // #2793: pending academy_graduation-row for sælgeren (resolvePendingGraduationOnSale), default ingen
@@ -455,7 +457,11 @@ function createFinalizeAuctionSupabase({
       if (table === "races" || table === "race_entries") {
         const rows = table === "races"
           ? (activeStageRaceRiderIds.length ? [{ id: "active-stage-race" }] : [])
-          : activeStageRaceRiderIds.map((riderId) => ({ rider_id: riderId }));
+          : activeStageRaceRiderIds.map((riderId) => ({
+              rider_id: riderId,
+              team_id: activeStageRaceEntryTeamId,
+              race_id: "active-stage-race",
+            }));
         const chain = {
           _rows: rows,
           select: () => chain,
@@ -470,6 +476,18 @@ function createFinalizeAuctionSupabase({
           },
           then: (resolve, reject) =>
             Promise.resolve({ data: chain._rows, error: null }).then(resolve, reject),
+        };
+        return chain;
+      }
+
+      // #5636: getRidersInActiveStageRace's withdrawal-opslag (loadWithdrawnPairs,
+      // chunked .in + .range). Default TOM = ingen afmeldinger, uændret adfærd.
+      if (table === "race_withdrawals") {
+        const chain = {
+          select: () => chain,
+          in: () => chain,
+          order: () => chain,
+          range: () => Promise.resolve({ data: raceWithdrawals, error: null }),
         };
         return chain;
       }
@@ -3806,6 +3824,59 @@ test("finalizeAuctionById parkerer holdskiftet når rytteren er i et aktivt etap
   // Vinder-beskeden forklarer at rytteren ankommer efter løbet.
   const won = notifications.find((n) => n.type === "auction_won" && n.teamId === "buyer-team");
   assert.match(won.message, /ongoing stage race/);
+});
+
+test("#5636: finalizeAuctionById parkerer IKKE holdskiftet når sælgers hold har afmeldt løbet", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-withdrawn",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-withdrawn-team",
+          firstname: "Sold",
+          lastname: "Anyway",
+          team_id: "seller-team",
+          salary: 42_000,
+          contract_length: 3,
+          contract_end_season: 4,
+          base_value: 1_000_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500000, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+      // Entry bevares (#4306), men sælgers hold har trukket sig fra netop DET løb.
+      activeStageRaceRiderIds: ["rider-withdrawn-team"],
+      activeStageRaceEntryTeamId: "seller-team",
+      raceWithdrawals: [{ race_id: "active-stage-race", team_id: "seller-team" }],
+    }),
+    auctionId: "auction-withdrawn",
+    notifyTeamOwner: async (teamId, type, title, message) => { notifications.push({ teamId, type, title, message }); },
+    now: new Date("2026-07-03T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  // Ingen parkering — team_id/acquired_at skrives straks, ikke pending_team_id.
+  assert.equal(riderUpdates.length, 1);
+  assert.equal(riderUpdates[0].pending_team_id, null, "ingen parkering — pending_team_id ryddes/forbliver null");
+  assert.equal(riderUpdates[0].team_id, "buyer-team");
 });
 
 // ── #4619: den GARANTEREDE bank-handel skriver også begge trup-felter

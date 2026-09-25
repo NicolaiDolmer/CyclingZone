@@ -21,7 +21,7 @@ import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.js";
 //                   med et åbent/nyligt override-vindue fra. Default-sæsonen
 //                   holder de eksisterende fixtures uændrede: ingen af dem har
 //                   birthdate, så ageForSeason giver null og ingen bliver flagget.
-function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], auctionsError = null, teams = [], teamBoardMembers = [], activeSeason = { number: 3 }, graduations = [] } = {}) {
+function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], raceWithdrawals = [], auctionsError = null, teams = [], teamBoardMembers = [], activeSeason = { number: 3 }, graduations = [] } = {}) {
   return {
     from(table) {
       if (table === "seasons") {
@@ -151,7 +151,11 @@ function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEnt
           in(col, vals) { inFilters.push([col, vals]); return b; },
           then(resolve, reject) {
             const out = raceEntries.filter((e) => inFilters.every(([c, v]) => v.includes(e[c])));
-            return Promise.resolve({ data: out.map((e) => ({ rider_id: e.rider_id })), error: null }).then(resolve, reject);
+            // #5636: team_id + race_id skal med (withdrawal-filtreringen nøgler på dem).
+            return Promise.resolve({
+              data: out.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id, race_id: e.race_id })),
+              error: null,
+            }).then(resolve, reject);
           },
         };
         return b;
@@ -171,6 +175,21 @@ function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEnt
             out = out.filter((r) => notNullCols.every((c) => r[c] != null));
             out = out.slice(from, to + 1);
             return Promise.resolve({ data: out, error: null });
+          },
+        };
+        return b;
+      }
+      if (table === "race_withdrawals") {
+        // #5636: getRidersInActiveStageRace's withdrawal-opslag (loadWithdrawnPairs,
+        // chunked .in + .range). Default TOM = ingen afmeldinger, uændret adfærd.
+        const inFilters = [];
+        const b = {
+          select() { return b; },
+          in(col, vals) { inFilters.push([col, vals]); return b; },
+          order() { return b; },
+          range(from, to) {
+            const out = raceWithdrawals.filter((w) => inFilters.every(([c, v]) => v.includes(w[c])));
+            return Promise.resolve({ data: out.slice(from, to + 1), error: null });
           },
         };
         return b;
@@ -620,6 +639,32 @@ test("CYCLINGZONE-48 ÆGTE diskriminator (ingen DI-stub) mod races/race_entries 
   assert.equal(result.findings.stalePendingTransfer, 1);
   assert.match(calls[0].ctx.extra.sample[0], /^rider=r-no-race /,
     "kun rytteren uden aktivt etapeløb er et brud — afsluttet løb og endagsløb dæmper ikke");
+});
+
+test("#5636 ÆGTE diskriminator — rytter på et AFMELDT holds entry tæller IKKE som 'i aktivt løb', alarmen dæmpes ikke", async () => {
+  // Samme opsætning som CYCLINGZONE-48-testen ovenfor, men r-in-race's hold har
+  // trukket sig fra race-active. Entry bevares (#4306), men holdet stiller ikke
+  // op → getRidersInActiveStageRace skal IKKE dæmpe alarmen for denne rytter.
+  const riders = [
+    { id: "r-in-race", team_id: "t1", pending_team_id: "t2", updated_at: "2026-06-01T00:00:00Z" },
+  ];
+  const races = [
+    { id: "race-active", race_type: "stage_race", status: "scheduled", stages_completed: 3 },
+  ];
+  const raceEntries = [
+    { race_id: "race-active", rider_id: "r-in-race", team_id: "t1" },
+  ];
+  const raceWithdrawals = [
+    { race_id: "race-active", team_id: "t1" },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders, races, raceEntries, raceWithdrawals }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: new Date("2026-08-04T12:00:00Z"),
+  });
+  assert.equal(result.findings.stalePendingTransfer, 1, "afmeldt hold dæmper ikke — parkeringen er stadig et brud");
+  assert.match(calls[0].ctx.extra.sample[0], /^rider=r-in-race /);
 });
 
 test("#3330 flere stale pending-parkeringer → ÉN capture med alle i sample, ikke én pr. rytter", async () => {
