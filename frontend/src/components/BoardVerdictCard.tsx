@@ -53,8 +53,8 @@ export default function BoardVerdictCard({
     <div data-testid="board-verdict">
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
         <BriefcaseIcon size={14} className="flex-shrink-0 text-cz-2" aria-hidden="true" />
-        <span className="min-w-0 flex-1 text-[13px] text-cz-2">{t("recap.boardVerdict.label")}</span>
-        <span className="font-data inline-flex flex-wrap items-center gap-x-1 text-[13px] font-semibold tabular-nums text-cz-1">
+        <span className="flex-1 whitespace-nowrap text-[13px] text-cz-2">{t("recap.boardVerdict.label")}</span>
+        <span className="font-data ms-auto inline-flex flex-wrap items-center justify-end gap-x-1 text-[13px] font-semibold tabular-nums text-cz-1">
           <span>{value}</span>
           {hasConfidence && (
             // Pilen er et stroke-ikon, ikke en unicode-glyf (lint-ui-slop, PAGE_TEMPLATES).
