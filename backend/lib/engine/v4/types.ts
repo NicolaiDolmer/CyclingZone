@@ -569,6 +569,11 @@ export type EngineState = {
   // uheld er inde igen og slettes (mechanics/incidents.ts's
   // resolveIncidentChasers, kaldt fra segmentLoop.ts).
   incident_chasers?: Record<string, IncidentChaseMode>;
+  // #5582 (ADDITIVT, valgfrit): den tid et uheldsoffer har tabt UD OVER det
+  // lovede, mens han jagede (braendt ud paa en stigning), rider_id -> sekunder.
+  // Laeses KUN af juryen (index.ts -> mechanics/timeLimit.ts): uheldets tid er
+  // hele jagten, ikke kun hjulskiftet. INTERN; naar aldrig en event-param.
+  incident_chase_loss?: Record<string, number>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────

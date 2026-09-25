@@ -326,5 +326,10 @@ function juryInputFor(input: StageInput, state: SegmentLoopResult["state"]): Tim
     effortByRider[entrant.rider_id] = entrant.effort;
     teamByRider[entrant.rider_id] = entrant.team_id;
   }
-  return { incidents: state.stage_incidents ?? [], effortByRider, teamByRider };
+  return {
+    incidents: state.stage_incidents ?? [],
+    effortByRider,
+    teamByRider,
+    chaseLossByRider: state.incident_chase_loss,
+  };
 }

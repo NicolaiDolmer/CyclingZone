@@ -531,6 +531,22 @@ export function resolveIncidentChasers(
   return { chasers: next ?? { ...chasers }, modeByGroupId };
 }
 
+/**
+ * #5582: bogfoer jagtens ekstra tidstab (segment-tid ud over maalgruppens) paa
+ * hvert offer i jagtgruppen. Ren: nyt objekt, eller samme reference naar der
+ * intet er at bogfoere. Juryen laeser summen (mechanics/timeLimit.ts).
+ */
+export function addIncidentChaseLoss(
+  losses: Readonly<Record<string, number>> | undefined,
+  riderIds: readonly string[],
+  seconds: number,
+): Readonly<Record<string, number>> | undefined {
+  if (!(Number.isFinite(seconds) && seconds > 0) || riderIds.length === 0) return losses;
+  const next: Record<string, number> = { ...(losses ?? {}) };
+  for (const id of riderIds) next[id] = Math.round(((next[id] ?? 0) + seconds) * 100) / 100;
+  return next;
+}
+
 /** #5582: kan foelgebilerne holde et uheldsoffer oppe paa denne terraen? */
 export function isIncidentChasePacedSegment(
   kind: SegmentKind,

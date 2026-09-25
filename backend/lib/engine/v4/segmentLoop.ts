@@ -62,6 +62,7 @@ import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
 import {
+  addIncidentChaseLoss,
   incidentChaseDtSeconds,
   incidentChaseHoldsPace,
   incidentChaseTargetGroup,
@@ -612,7 +613,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     //      bakke) fra sin reserve ved segmentets start.
     //   2. Holder han tempoet (incidentChaseHoldsPace), faar gruppen
     //      maalgruppens krydsningstid. Braender han ud paa en stigning, staar
-    //      hans eget solo-tick og solo-tempo ved magt: han taber tid.
+    //      hans eget solo-tick ved magt, og han taber tid (loftet i
+    //      incidentChaseDtSeconds).
+    //   3. Tiden han taber ud over maalgruppen bogfoeres til juryen
+    //      (state.incident_chase_loss).
     if (state.incident_chasers && Object.keys(state.incident_chasers).length > 0) {
       const chase = resolveIncidentChasers(state.groups, ridersBeforeTick, state.incident_chasers);
       state = { ...state, incident_chasers: chase.chasers };
@@ -651,6 +655,12 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
           holdsPace,
         });
         tempoByGroup.set(group.id, { ...own, dtSeconds });
+        const chaseLoss = addIncidentChaseLoss(
+          state.incident_chase_loss,
+          group.rider_ids.filter((id) => chase.chasers[id] !== undefined),
+          dtSeconds - targetTempo.dtSeconds,
+        );
+        if (chaseLoss !== state.incident_chase_loss) state = { ...state, incident_chase_loss: { ...chaseLoss } };
       }
     }
 

@@ -207,6 +207,12 @@ export type TimeLimitJuryInput = {
   effortByRider?: Readonly<Record<string, EffortLevel | undefined>>;
   /** Hold-id pr. rytter. Kun til hjaelper-reglen; tom/manglende = intet hold. */
   teamByRider?: Readonly<Record<string, string | null | undefined>>;
+  /**
+   * Tid tabt UD OVER det lovede under jagten tilbage (EngineState.
+   * incident_chase_loss). Laegges til uheldets tid, men kun for en rytter der
+   * ogsaa har et uheld med tidstab.
+   */
+  chaseLossByRider?: Readonly<Record<string, number>>;
 };
 
 /**
@@ -240,7 +246,8 @@ function juryTeamOf(jury: TimeLimitJuryInput, riderId: string): string | null {
  * resultatlistens egen raekkefoelge.
  *
  * 1. Offeret: har et uheld med tidstab, kaempede videre (ikke grupetto/save),
- *    og sluttid minus uhelds-tidstabet ligger inden for graensen.
+ *    og sluttid minus uhelds-tidstabet (plus det han tabte ud over det lovede
+ *    under jagten, `chaseLossByRider`) ligger inden for graensen.
  * 2. Hjaelperen: en OTL-doemt holdkammerat i SAMME maalgruppe som et
  *    genindsat offer.
  */
@@ -258,10 +265,12 @@ export function juryReinstatements(args: {
   const victims = new Set<string>();
   for (const r of results) {
     if (!otlRiderIds.has(r.rider_id)) continue;
-    const loss = lossByRider.get(r.rider_id);
-    if (!loss) continue;
+    const incidentLoss = lossByRider.get(r.rider_id);
+    if (!incidentLoss) continue;
     const effort = jury.effortByRider?.[r.rider_id];
     if (effort && JURY_INELIGIBLE_EFFORTS.has(effort)) continue;
+    const chaseLoss = Number(jury.chaseLossByRider?.[r.rider_id]);
+    const loss = incidentLoss + (Number.isFinite(chaseLoss) && chaseLoss > 0 ? chaseLoss : 0);
     if (round2(r.time_seconds - loss) <= limitSeconds) victims.add(r.rider_id);
   }
   if (victims.size === 0) return [];
