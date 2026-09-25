@@ -278,6 +278,18 @@ export function defaultOutRoot({ env = {}, homedir, repoRoot, exists }) {
   return { dir: join(repoRoot, ...FALLBACK_OUT_REL.split("/")), private: false };
 }
 
+/** Prefix for koerslernes profil-kopier i tmp. */
+export const PROFILE_COPY_PREFIX = "cz-pr-shots-";
+const STALE_COPY_MS = 60 * 60 * 1000;
+
+/**
+ * En profil-kopi fra en koersel der blev draebt haardt (ingen oprydning) er
+ * stadig logget ind. Kopier aeldre end en time slettes ved naeste shoot.
+ */
+export function isStaleProfileCopy(name, mtimeMs, nowMs) {
+  return String(name).startsWith(PROFILE_COPY_PREFIX) && nowMs - mtimeMs > STALE_COPY_MS;
+}
+
 export function isInside(parent, child) {
   const rel = relative(resolve(parent), resolve(child));
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));

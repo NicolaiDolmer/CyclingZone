@@ -20,6 +20,7 @@ import {
   isInside,
   isLoginPath,
   isSignOutRequest,
+  isStaleProfileCopy,
   isWriteRequest,
   lookupPreviewUrl,
   masterProfileDir,
@@ -163,6 +164,13 @@ test("masterProfileDir ligger uden for repoet (eet login for alle worktrees)", (
   const fallback = masterProfileDir({ env: {}, homedir: "/home/x" });
   assert.match(fallback, /AppData.Local.cz-pr-shots-profile$/);
   assert.throws(() => masterProfileDir({ env: {}, homedir: "" }), /LOCALAPPDATA/);
+});
+
+test("isStaleProfileCopy: kun egne kopier, kun aeldre end en time", () => {
+  const now = Date.parse("2026-09-25T12:00:00Z");
+  assert.equal(isStaleProfileCopy("cz-pr-shots-abc123", now - 2 * 3600_000, now), true);
+  assert.equal(isStaleProfileCopy("cz-pr-shots-abc123", now - 10 * 60_000, now), false, "en koersel i gang roeres ikke");
+  assert.equal(isStaleProfileCopy("playwright-xyz", now - 48 * 3600_000, now), false, "fremmede tmp-mapper roeres aldrig");
 });
 
 test("defaultOutRoot: OneDrive-context naar den findes, ellers gitignoreret pr-screens/live", () => {

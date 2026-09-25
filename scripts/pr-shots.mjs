@@ -38,7 +38,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
-  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync,
+  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
@@ -54,6 +54,7 @@ import {
   BUILD_COMMAND,
   HELP_TEXT,
   ID_PATH,
+  PROFILE_COPY_PREFIX,
   REPORT_FILE,
   composeHtml,
   contentTypeFor,
@@ -64,6 +65,7 @@ import {
   isInside,
   isLoginPath,
   isSignOutRequest,
+  isStaleProfileCopy,
   isWriteRequest,
   lookupPreviewUrl,
   masterProfileDir,
@@ -218,9 +220,26 @@ async function launch(playwright, profile, { channel, headless }) {
   });
 }
 
+/** Rydder profil-kopier fra koersler der blev draebt uden oprydning (de er stadig logget ind). */
+function sweepStaleProfileCopies() {
+  const now = Date.now();
+  for (const name of readdirSync(tmpdir())) {
+    const dir = join(tmpdir(), name);
+    try {
+      if (statSync(dir).isDirectory() && isStaleProfileCopy(name, statSync(dir).mtimeMs, now)) {
+        rmSync(dir, { recursive: true, force: true });
+        log(`  [oprydning] gammel profil-kopi slettet: ${dir}`);
+      }
+    } catch (err) {
+      log(`  [oprydning] kunne ikke slette ${dir}: ${err.message}`);
+    }
+  }
+}
+
 /** Kopi af mesterprofilen til denne koersel. */
 function copyProfileForRun(master) {
-  const tmp = mkdtempSync(join(tmpdir(), "cz-pr-shots-"));
+  sweepStaleProfileCopies();
+  const tmp = mkdtempSync(join(tmpdir(), PROFILE_COPY_PREFIX));
   cpSync(master, tmp, { recursive: true, filter: (src) => !PROFILE_COPY_SKIP.has(basename(src)) });
   return tmp;
 }
