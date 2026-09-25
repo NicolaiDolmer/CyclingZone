@@ -275,7 +275,7 @@ import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
-import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad } from "../lib/academyTransfer.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
@@ -1875,10 +1875,19 @@ router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => 
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
+  // #5748: flyt-dialogen viser konsekvensen for det mål manageren har VALGT
+  // (?squad=junior|u23), ikke kun for den naturlige trup. Uden parameteren
+  // svarer routen som før. Et ugyldigt mål afvises, så dialogen aldrig viser tal
+  // for en trup moveRider() ikke kender.
+  const requestedSquad = req.query.squad;
+  if (requestedSquad !== undefined && requestedSquad !== "junior" && requestedSquad !== "u23") {
+    return res.status(400).json({ error: "invalid_squad", errorCode: "invalid_squad" });
+  }
+
   // #5568: dialogen viste "9 af 8", fordi den talte ALLE akademiryttere mod det
   // gamle flade loft. Nu viser den den trup rytteren faktisk rykker ned i, valgt
   // af demoteTargetSquad (samme funktion som demote() selv), og den trups loft.
-  const targetSquad = demoteTargetSquad(rider, await getActiveSeasonNumber());
+  const targetSquad = demoteTargetSquad(rider, await getActiveSeasonNumber(), requestedSquad);
   const [racesCleared, racesOngoing, squadRoom] = await Promise.all([
     countFutureRaceEntries(supabase, rider.id),
     countOngoingRaceEntries(supabase, rider.id),
@@ -18756,6 +18765,34 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
     }
     captureException(err);
     res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/riders/:id/squad — flyt en rytter til en valgt trup (#5748, ejer-go A
+// 25/9). Body: { squad: 'junior'|'u23'|'senior' }. Én indgang for alle retninger:
+// op til senior, ned fra senior og junior ↔ U23, via moveRider() (#5432), der
+// ejer alders-, loft-, auktions- og etapeløbs-reglerne. /academy/promote og
+// /academy/demote bliver stående for ældre klienter. Fejlkoder: se
+// handleMoveSquadRequest i academyTransfer.js.
+router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled", errorCode: "academy_disabled" });
+
+    const seasonNumber = await getActiveSeasonNumber();
+    const out = await handleMoveSquadRequest(supabase, {
+      teamId: req.team.id,
+      riderId: req.params.id,
+      body: req.body,
+      seasonNumber,
+    });
+    if (out.unexpected) captureException(out.unexpected);
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err?.message ?? "" });
   }
 });
 

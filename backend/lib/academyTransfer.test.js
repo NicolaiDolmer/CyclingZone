@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
-import { promote, demote, moveRider, demoteSalary, resolveDemoteSalary, hasCompleteContract } from "./academyTransfer.js";
+import { promote, demote, moveRider, demoteSalary, resolveDemoteSalary, hasCompleteContract, handleMoveSquadRequest, moveSquadErrorStatus } from "./academyTransfer.js";
 import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
 import { ACADEMY } from "./academyFlag.js";
 import { SQUAD_CAPS, SQUAD_MAX_AGE } from "./squads.js";
@@ -891,6 +891,110 @@ test("moveRider: fuld seniortrup (promote squad_cap_violation) → squad_full", 
     () => moveRider(supabase, { teamId: "t1", riderId: "u1", targetSquad: "senior", seasonNumber: 2, getMarketState, notify: spyNotify(), ridersInActiveStageRace: noStageRace }),
     /squad_full/,
   );
+});
+
+// ─── #5748: POST /api/riders/:id/squad (handleMoveSquadRequest) ─────────────
+// Route-kontrakten køres mod den ÆGTE moveRider() og samme mock-supabase som
+// ovenfor, så testene beviser hele kæden body → moveRider → RPC-argumenter.
+
+const moveDeps = { ridersInActiveStageRace: noStageRace, notify: spyNotify() };
+
+test("#5748 route: 17-årig senior → u23 lander i u23 (opad fra hans naturlige junior-trup)", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: { ...JUNIOR_AGE_SENIOR, squad: "senior" },
+    rpcResults: { demote_rider_to_academy: { ok: true, new_salary: 3350, rows_deleted: 0, squad: "u23" } },
+  });
+  const out = await handleMoveSquadRequest(supabase, {
+    teamId: "t1", riderId: "r7", body: { squad: "u23" }, seasonNumber: 2, moveDeps,
+  });
+  assert.equal(out.status, 200);
+  assert.equal(out.body.to, "u23");
+  assert.equal(out.body.from, "senior");
+  assert.equal(rec.rpcCalls[0].fn, "demote_rider_to_academy");
+  assert.equal(rec.rpcCalls[0].args.p_squad, "u23", "det VALGTE mål, ikke sæsonalderens junior");
+  assert.equal(rec.rpcCalls[0].args.p_squad_cap, SQUAD_CAPS.u23);
+  assert.equal(rec.rpcCalls[0].args.p_squad_max_age, SQUAD_MAX_AGE.u23);
+});
+
+test("#5748 route: 19-årig → junior = 409 too_old_for_squad (ingen skrivning)", async () => {
+  const nineteen = { ...SENIOR_U23, id: "r9", squad: "senior", birthdate: "2008-06-15" }; // 19 i sæson 2
+  const { supabase, rec } = makeSupabase({ rider: nineteen });
+  const out = await handleMoveSquadRequest(supabase, {
+    teamId: "t1", riderId: "r9", body: { squad: "junior" }, seasonNumber: 2, moveDeps,
+  });
+  assert.deepEqual(out, { status: 409, body: { error: "too_old_for_squad", errorCode: "too_old_for_squad" } });
+  assert.equal(rec.rpcCalls.length, 0);
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("#5748 route: 24-årig senior kan kun være senior — begge ungdomstrupper = 409 too_old_for_squad", async () => {
+  const veteran = { ...SENIOR_U23, id: "r24", squad: "senior", birthdate: "2003-06-15" }; // 24 i sæson 2
+  for (const squad of ["u23", "junior"]) {
+    const { supabase, rec } = makeSupabase({ rider: veteran });
+    const out = await handleMoveSquadRequest(supabase, {
+      teamId: "t1", riderId: "r24", body: { squad }, seasonNumber: 2, moveDeps,
+    });
+    assert.equal(out.status, 409, squad);
+    assert.equal(out.body.errorCode, "too_old_for_squad", squad);
+    assert.equal(rec.rpcCalls.length, 0, squad);
+  }
+});
+
+test("#5748 route: samme trup = 409 same_squad", async () => {
+  const { supabase } = makeSupabase({ rider: JUNIOR_ACADEMY });
+  const out = await handleMoveSquadRequest(supabase, {
+    teamId: "t1", riderId: "j1", body: { squad: "junior" }, seasonNumber: 2, moveDeps,
+  });
+  assert.deepEqual(out, { status: 409, body: { error: "same_squad", errorCode: "same_squad" } });
+});
+
+test("#5748 route: ugyldig eller manglende squad = 400 invalid_squad før noget opslag", async () => {
+  for (const body of [{ squad: "u25" }, { squad: "" }, {}, null, { squad: ["u23"] }]) {
+    const { supabase, rec } = makeSupabase({ rider: JUNIOR_ACADEMY });
+    const out = await handleMoveSquadRequest(supabase, {
+      teamId: "t1", riderId: "j1", body, seasonNumber: 2, moveDeps,
+    });
+    assert.deepEqual(out, { status: 400, body: { error: "invalid_squad", errorCode: "invalid_squad" } }, JSON.stringify(body));
+    assert.equal(rec.riderSelects.length, 0);
+  }
+});
+
+test("#5748 route: junior → senior går gennem promote() og svarer 200", async () => {
+  const { supabase, rec } = makeSupabase({ rider: JUNIOR_ACADEMY, gradRow: null });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const out = await handleMoveSquadRequest(supabase, {
+    teamId: "t1", riderId: "j1", body: { squad: "senior" }, seasonNumber: 2,
+    moveDeps: { ...moveDeps, getMarketState },
+  });
+  assert.equal(out.status, 200);
+  assert.equal(out.body.action, "promoted");
+  assert.equal(rec.riderUpdates[0].squad, "senior");
+});
+
+test("#5748 route: statuskoder for moveRiders fejlkontrakt", async () => {
+  const cases = [
+    ["not_owned", 403], ["rider_not_found", 404],
+    ["squad_full", 409], ["rider_on_market", 409], ["rider_listed", 409],
+    ["rider_in_stage_race", 409], ["not_academy", 409], ["already_academy", 409],
+  ];
+  for (const [code, status] of cases) {
+    const move = async () => { throw new Error(code); };
+    const out = await handleMoveSquadRequest({}, { teamId: "t1", riderId: "x", body: { squad: "u23" }, seasonNumber: 2, move });
+    assert.equal(out.status, status, code);
+    assert.deepEqual(out.body, { error: code, errorCode: code });
+    assert.equal(out.unexpected, undefined, `${code} er en forventet tilstand, ikke Sentry-larm`);
+  }
+  assert.equal(moveSquadErrorStatus("invalid_squad"), 400);
+});
+
+test("#5748 route: en uventet fejl giver 500 og sendes videre til Sentry (unexpected)", async () => {
+  const boom = new Error("move rpc: connection reset");
+  const out = await handleMoveSquadRequest({}, {
+    teamId: "t1", riderId: "x", body: { squad: "u23" }, seasonNumber: 2,
+    move: async () => { throw boom; },
+  });
+  assert.equal(out.status, 500);
+  assert.equal(out.unexpected, boom);
 });
 
 // #4582 — academy-demote-quote sender `keepsContract: hasCompleteContract(rider)`
