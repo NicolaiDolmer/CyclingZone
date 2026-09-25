@@ -32,7 +32,9 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
-import { BOARD_MANDATE_MODEL_FLAG_KEY } from "./boardMandateFlag.js";
+// Samme noegle som boardMandateFlag.js; skrevet som literal her, saa
+// stageFlagCatalog.test.js kan oploese den (#5259).
+const BOARD_MANDATE_MODEL_FLAG_KEY = "board_mandate_model_enabled";
 
 const ID_CHUNK_SIZE = 200;
 // #5752 · bestyrelsens dom slås op pr. hold (2 små, team_id-indekserede
