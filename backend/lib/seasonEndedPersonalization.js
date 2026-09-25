@@ -21,6 +21,9 @@
 //   · team_standings_ext_mv    — prize_earned pr. hold pr. sæson (#2175-matview)
 //   · rider_rankings_mv        — points pr. rytter pr. sæson (#2175-matview)
 //   · riders                   — navn + team_id (nuværende ejer)
+//   · board_mandates + board_satisfaction_events (#5752) — bestyrelsens dom
+//     for holdets mandat i sæsonen, kun når board_mandate_model_enabled er
+//     'on' (eller 'beta' og manageren er beta-tester/admin)
 // Matviewsene refreshes efter hver løbs-finalisering (raceRunner) og af cron,
 // og "Afslut sæson" er spærret indtil ALLE løb er afviklet (#2805) — så de er
 // friske på afsendelsestidspunktet. Alternativet (rå aggregering over
@@ -28,8 +31,15 @@
 // notifikations-sti.
 
 import { fetchAllRows } from "./supabasePagination.js";
+import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
+// Samme noegle som boardMandateFlag.js; skrevet som literal her, saa
+// stageFlagCatalog.test.js kan oploese den (#5259).
+const BOARD_MANDATE_MODEL_FLAG_KEY = "board_mandate_model_enabled";
 
 const ID_CHUNK_SIZE = 200;
+// #5752 · bestyrelsens dom slås op pr. hold (3 små, team_id-indekserede
+// limit-1-opslag); så mange hold ad gangen.
+const BOARD_VERDICT_CONCURRENCY = 10;
 
 export const SEASON_ENDED_MESSAGE_CODES = Object.freeze({
   full: "notif.seasonEnded.messagePersonal",
@@ -37,6 +47,9 @@ export const SEASON_ENDED_MESSAGE_CODES = Object.freeze({
   noRider: "notif.seasonEnded.messagePersonalNoRider",
   minimal: "notif.seasonEnded.messagePersonalMinimal",
 });
+
+// #5752 · Samme fire varianter + bestyrelsens dom som sidste sætning.
+export const SEASON_ENDED_BOARD_SUFFIX = "Board";
 
 function chunk(list, size) {
   const out = [];
@@ -168,7 +181,22 @@ export async function loadSeasonEndedPersonalization({
         riderName: best?.name ?? null,
         riderPoints: best?.points ?? null,
         nextDivision: includeNextDivision ? toFiniteNumber(team.division) : null,
+        board: null,
       });
+    }
+
+    // 5) #5752 · Bestyrelsens dom. Egen fail-safe: en fejl her koster kun
+    //    bestyrelses-sætningen, ikke resten af den personlige besked.
+    if (facts.size > 0) {
+      const verdicts = await loadBoardVerdicts({
+        supabase,
+        seasonId,
+        teams: teams.filter((t) => facts.has(t.id)),
+      });
+      for (const [teamId, verdict] of verdicts) {
+        const entry = facts.get(teamId);
+        if (entry) entry.board = verdict;
+      }
     }
   } catch (err) {
     // best-effort: personalisering er pynt — en fejl her må aldrig forhindre at
@@ -178,6 +206,137 @@ export async function loadSeasonEndedPersonalization({
     return new Map();
   }
   return facts;
+}
+
+/**
+ * #5752 · Hvilke hold må se bestyrelsens dom? Samme LÆSE-gate som Boardroom
+ * (`isBoardMandateModelEnabled` med `isBetaTester`): 'on' → alle, 'beta' →
+ * kun admin/beta-testere, 'off'/ulæseligt → ingen. Beskeden må ikke omtale
+ * en flade spilleren ikke kan åbne.
+ */
+async function resolveBoardVerdictAudience({ supabase, teams }) {
+  const stage = await readFlagStage(supabase, BOARD_MANDATE_MODEL_FLAG_KEY);
+  if (evaluateFlagStage(stage)) return new Set(teams.map((t) => t.id));
+  if (stage !== "beta") return new Set();
+
+  const userIds = [...new Set(teams.map((t) => t.user_id).filter(Boolean))];
+  const betaUserIds = new Set();
+  for (const ids of chunk(userIds, ID_CHUNK_SIZE)) {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, role, is_beta_tester")
+      .in("id", ids);
+    if (error) throw new Error(`users lookup failed: ${error.message}`);
+    for (const user of data || []) {
+      if (evaluateFlagStage(stage, { isBetaTester: user.role === "admin" || user.is_beta_tester === true })) {
+        betaUserIds.add(user.id);
+      }
+    }
+  }
+  return new Set(teams.filter((t) => betaUserIds.has(t.user_id)).map((t) => t.id));
+}
+
+/**
+ * Én holds dom fra `board_satisfaction_events` for holdets mandat i sæsonen:
+ *   · before = FØRSTE kvitterings satisfaction_before
+ *   · after  = SENESTE kvitterings satisfaction_after (inkl. milepæle)
+ *   · met/total = sæson-slut-kvitteringen (reason_category 'season_end',
+ *     milestone_id null). Løbs-kvitteringer er mellemstande, og milepæls-
+ *     kvitteringer bærer goals_total = 1 pr. milepæl.
+ * `null` når noget mangler: hellere ingen sætning end en halv.
+ */
+async function loadOneBoardVerdict({ supabase, teamId, mandateId }) {
+  const scoped = (columns) => supabase
+    .from("board_satisfaction_events")
+    .select(columns)
+    .eq("team_id", teamId)
+    .eq("mandate_id", mandateId);
+
+  const [firstRes, latestRes, receiptRes] = await Promise.all([
+    scoped("satisfaction_before, created_at")
+      .order("created_at", { ascending: true })
+      .limit(1),
+    scoped("satisfaction_after, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1),
+    // Sæson-slut-kvitteringen (applySeasonEndSync, reason_category
+    // 'season_end') er den eneste der gør mandatets mål op. Løbs-kvitteringer
+    // ('weekend_update') er mellemstande, milepæls-kvitteringer tæller 1 mål
+    // hver. Mangler den, er der ingen dom at berette.
+    scoped("goals_met, goals_total, created_at")
+      .eq("reason_category", "season_end")
+      .is("milestone_id", null)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
+  for (const res of [firstRes, latestRes, receiptRes]) {
+    if (res.error) throw new Error(`board_satisfaction_events lookup failed: ${res.error.message}`);
+  }
+
+  const first = firstRes.data?.[0];
+  const latest = latestRes.data?.[0];
+  const receipt = receiptRes.data?.[0];
+  if (!first || !latest || !receipt) return null;
+
+  const before = toFiniteNumber(first.satisfaction_before);
+  const after = toFiniteNumber(latest.satisfaction_after);
+  const met = toFiniteNumber(receipt.goals_met);
+  const total = toFiniteNumber(receipt.goals_total);
+  if (![before, after, met, total].every((v) => v !== null)) return null;
+  if (total <= 0 || met < 0 || met > total) return null;
+
+  return { met, total, before: Math.round(before), after: Math.round(after) };
+}
+
+/**
+ * #5752 · Bestyrelsens dom pr. hold for den afsluttede sæson. Kaster ALDRIG:
+ * returnerer et (evt. tomt) map, så en fejl kun koster bestyrelses-sætningen.
+ *
+ * @returns {Promise<Map<string, {met:number,total:number,before:number,after:number}>>}
+ */
+export async function loadBoardVerdicts({ supabase, seasonId, teams = [] } = {}) {
+  const verdicts = new Map();
+  try {
+    if (!seasonId || !teams?.length) return verdicts;
+    const audience = await resolveBoardVerdictAudience({ supabase, teams });
+    const teamIds = teams.map((t) => t.id).filter((id) => audience.has(id));
+    if (teamIds.length === 0) return verdicts;
+
+    const mandateByTeam = new Map();
+    for (const ids of chunk(teamIds, ID_CHUNK_SIZE)) {
+      const { data, error } = await supabase
+        .from("board_mandates")
+        .select("id, team_id, status")
+        .eq("season_id", seasonId)
+        .in("team_id", ids);
+      if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
+      // Et mandat der aldrig blev underskrevet ('proposed') har ingen dom.
+      for (const row of data || []) {
+        if (row.status !== "proposed") mandateByTeam.set(row.team_id, row.id);
+      }
+    }
+
+    const jobs = [...mandateByTeam.entries()];
+    for (const batch of chunk(jobs, BOARD_VERDICT_CONCURRENCY)) {
+      const results = await Promise.all(batch.map(async ([teamId, mandateId]) => {
+        try {
+          return [teamId, await loadOneBoardVerdict({ supabase, teamId, mandateId })];
+        } catch (err) {
+          // best-effort pr. hold: dette hold mister sætningen, de andre ikke.
+          console.error(`season_ended board verdict failed (team ${teamId}):`, err?.message || err);
+          return [teamId, null];
+        }
+      }));
+      for (const [teamId, verdict] of results) {
+        if (verdict) verdicts.set(teamId, verdict);
+      }
+    }
+  } catch (err) {
+    // best-effort: bestyrelses-sætningen er pynt oven på pynten.
+    console.error("season_ended board verdicts could not be loaded (sentence omitted):", err?.message || err);
+    return new Map();
+  }
+  return verdicts;
 }
 
 function formatNumber(value) {
@@ -220,7 +379,7 @@ export function formatEnglishOrdinal(value) {
 export function buildPersonalSeasonEndedMessage({ facts, nextSeasonNumber } = {}) {
   if (!facts) return null;
 
-  const { rank, poolSize, division, points, prize, riderName, riderPoints, nextDivision } = facts;
+  const { rank, poolSize, division, points, prize, riderName, riderPoints, nextDivision, board } = facts;
 
   // Påkrævet minimum: placering, puljestørrelse, division, point og præmiesum.
   // Mangler ét af dem, er beskeden ikke sand nok til at sende.
@@ -239,11 +398,21 @@ export function buildPersonalSeasonEndedMessage({ facts, nextSeasonNumber } = {}
     ? ` You start Season ${formatNumber(nextSeasonNumber)} in Division ${nextDivision}.`
     : "";
 
+  // #5752 · Bestyrelsens dom: kun når alle fire tal er der (loaderen giver
+  // null ellers, og flag-gaten er allerede håndhævet dér).
+  const hasBoard = Boolean(board)
+    && [board.met, board.total, board.before, board.after].every((v) => Number.isFinite(v))
+    && board.total > 0;
+  const boardSentence = hasBoard
+    ? ` Your board met after the final stage: ${formatNumber(board.met)} of ${formatNumber(board.total)} targets met, confidence ${formatNumber(board.before)} -> ${formatNumber(board.after)}.`
+    : "";
+
   let messageCode;
   if (hasRider && hasNextDivision) messageCode = SEASON_ENDED_MESSAGE_CODES.full;
   else if (hasRider) messageCode = SEASON_ENDED_MESSAGE_CODES.noNextDivision;
   else if (hasNextDivision) messageCode = SEASON_ENDED_MESSAGE_CODES.noRider;
   else messageCode = SEASON_ENDED_MESSAGE_CODES.minimal;
+  if (hasBoard) messageCode = `${messageCode}${SEASON_ENDED_BOARD_SUFFIX}`;
 
   // rank = rå tal (dansk: "plads 4"), rankOrdinal = engelsk ordenstal ("4th").
   // Begge sendes altid, så hver locale-skabelon kan vælge sin egen form.
@@ -256,9 +425,15 @@ export function buildPersonalSeasonEndedMessage({ facts, nextSeasonNumber } = {}
     messageParams.nextSeason = nextSeasonNumber;
     messageParams.nextDivision = nextDivision;
   }
+  if (hasBoard) {
+    messageParams.boardMet = board.met;
+    messageParams.boardTotal = board.total;
+    messageParams.boardBefore = board.before;
+    messageParams.boardAfter = board.after;
+  }
 
   return {
-    message: `${base}${riderSentence}${nextSentence}`,
+    message: `${base}${riderSentence}${nextSentence}${boardSentence}`,
     messageCode,
     messageParams,
   };

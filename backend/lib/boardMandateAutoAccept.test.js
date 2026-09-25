@@ -6,8 +6,10 @@ import { processMandateAutoAcceptCron } from "./boardMandateAutoAccept.js";
 // ── Fake-supabase: board_mandates(status=proposed) + teams + users, plus alt
 // signMandate (boardMandateMeeting.js) selv rører når den kaldes med Keep på
 // alt — samme tabel-sæt som boardMandateMeeting.test.js's mock. ────────────
-function makeCronSupabase({ flagValue = "on", mandates = [], teams = [], users = [] } = {}) {
-  const state = { mandates: [...mandates], events: [], boardProfiles: [] };
+function makeCronSupabase({
+  flagValue = "on", mandates = [], teams = [], users = [], notifications = [], boardMembers = [],
+} = {}) {
+  const state = { mandates: [...mandates], events: [], boardProfiles: [], notificationQueries: [] };
 
   function selectChain(rows) {
     const filters = {};
@@ -59,7 +61,27 @@ function makeCronSupabase({ flagValue = "on", mandates = [], teams = [], users =
       // Tabeller signMandate/buildBoardRoomPayload rører ved fuld underskrift —
       // holdt minimale/tomme, testene her fokuserer på cron-beslutningen.
       if (table === "board_relations") return { select: () => selectChain([{ team_id: mandates[0]?.team_id, confidence: 55, category_scores: {} }]) };
-      if (table === "team_board_members") return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
+      if (table === "team_board_members") return { select: () => ({ eq: async () => ({ data: boardMembers, error: null }) }) };
+      // #5752 · cronens fallback slår åbnings-notitsen op før den sender.
+      if (table === "notifications") {
+        return {
+          select: () => {
+            const filters = {};
+            const chain = {
+              eq(col, value) { filters[col] = value; return chain; },
+              limit: () => chain,
+              then: (resolve) => {
+                state.notificationQueries.push({ ...filters });
+                const rows = notifications.filter((n) => Object.entries(filters).every(([k, v]) => (
+                  k === "metadata->>titleCode" ? n.metadata?.titleCode === v : n[k] === v
+                )));
+                resolve({ data: rows.map((n) => ({ id: n.id })), error: null });
+              },
+            };
+            return chain;
+          },
+        };
+      }
       if (table === "board_vision_milestones") {
         const chain = { eq: () => chain, order: () => chain, limit: () => chain, maybeSingle: async () => ({ data: null, error: null }), then: (resolve) => resolve({ data: [], error: null }) };
         return { select: () => chain };
@@ -125,19 +147,75 @@ test("processMandateAutoAcceptCron: ingen proposed mandater → no-op", async ()
   assert.equal(result.mandates_checked, 0);
 });
 
-test("processMandateAutoAcceptCron: dag 0 → neutralt åbnings-varsel, INGEN nedtælling", async () => {
+test("processMandateAutoAcceptCron: dag 0 uden notits fra sæsonskiftet → cronen sender åbnings-notitsen (fallback)", async () => {
   const now = new Date("2026-09-03T12:00:00Z");
   const supabase = makeCronSupabase({
     flagValue: "on",
-    mandates: [{ id: "m1", team_id: "t1", status: "proposed", proposed_at: now.toISOString(), auto_accept_deadline: null }],
-    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    mandates: [{ id: "m1", team_id: "t1", season_number: 4, status: "proposed", proposed_at: now.toISOString(), auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
     users: [{ id: "u1", last_seen: null }],
+    boardMembers: [{ archetype_key: "sponsoraten", is_chairman: true }],
   });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
   assert.equal(result.reminders_sent, 1);
   assert.equal(result.auto_accepted, 0);
+  assert.equal(notified.length, 1);
+  assert.equal(notified[0].type, "board_update");
+  assert.equal(notified[0].relatedId, "m1");
   assert.equal(notified[0].metadata.titleCode, "notif.boardMandateOpened.title");
+  assert.equal(notified[0].metadata.messageCode, "notif.boardMandateOpened.messageWithChairman");
+  assert.equal(notified[0].metadata.messageParams.season, 4);
+  assert.equal(notified[0].metadata.messageParams.days, 5, "korte vindue, dag 0 → 5 dage");
+  assert.ok(notified[0].metadata.messageParams.chairman, "formandens navn er med");
+  assert.deepEqual(supabase._state.notificationQueries[0], {
+    user_id: "u1",
+    type: "board_update",
+    related_id: "m1",
+    "metadata->>titleCode": "notif.boardMandateOpened.title",
+  });
+});
+
+test("#5752 processMandateAutoAcceptCron: sæsonskiftet har allerede sendt notitsen → cronen sender IKKE igen", async () => {
+  const proposedAt = new Date("2026-09-27T10:00:00Z");
+  const now = new Date(proposedAt.getTime() + 30 * 60 * 1000); // næste cron-tick, 30 min efter skiftet
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    mandates: [{ id: "m1", team_id: "t1", season_number: 5, status: "proposed", proposed_at: proposedAt.toISOString(), auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
+    users: [{ id: "u1", last_seen: null }],
+    boardMembers: [{ archetype_key: "sponsoraten", is_chairman: true }],
+    // Den notits advanceMandateAtSeasonEnd skrev i skifte-minuttet — anden
+    // tekst ("5 days") end cronen ville skrive nu, så 24t-tekst-dedup'en i
+    // notifyUser ville IKKE have fanget den.
+    notifications: [{
+      id: "n1", user_id: "u1", type: "board_update", related_id: "m1",
+      metadata: { titleCode: "notif.boardMandateOpened.title" },
+    }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(notified.length, 0, "ingen dobbelt-notits");
+  assert.equal(result.reminders_sent, 0);
+  assert.equal(result.errors, 0);
+});
+
+test("#5752 processMandateAutoAcceptCron: en anden managers notits på samme mandat-id tæller ikke", async () => {
+  const now = new Date("2026-09-03T12:00:00Z");
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    mandates: [{ id: "m1", team_id: "t1", season_number: 4, status: "proposed", proposed_at: now.toISOString(), auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
+    users: [{ id: "u1", last_seen: null }],
+    notifications: [{
+      id: "n1", user_id: "u-other", type: "board_update", related_id: "m1",
+      metadata: { titleCode: "notif.boardMandateOpened.title" },
+    }],
+  });
+  const notified = [];
+  await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(notified.length, 1);
+  assert.equal(notified[0].metadata.messageCode, "notif.boardMandateOpened.messageNoChairman", "ingen bestyrelse → navneløs variant");
 });
 
 test("processMandateAutoAcceptCron: dag 5 (forladt konto, korte tærskler) → bestyrelsen underskriver Keep-på-alt", async () => {
