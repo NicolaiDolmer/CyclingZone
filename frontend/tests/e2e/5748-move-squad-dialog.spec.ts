@@ -14,13 +14,19 @@ import { wantsObject } from "../../src/preview/mockHandlers.js";
 // Specs kører på DA-locale (stabilizePage sætter cz_lang=da). Sæson 1 = 2026,
 // så fødselsåret afgør sæsonalderen direkte (2009 -> 17, 2007 -> 19, 2010 -> 16).
 
-const OWN_RIDER = RIDERS.find((r: { id: string }) => r.id === "rider-1");
+type RiderRow = Record<string, unknown> & { id: string; team_id?: string };
 
-function riderWith(overrides: Record<string, unknown>) {
+const OWN_RIDER: RiderRow = (() => {
+  const found = RIDERS.find((r: { id: string }) => r.id === "rider-1");
+  if (!found) throw new Error("fixtures.RIDERS mangler rider-1");
+  return found;
+})();
+
+function riderWith(overrides: Record<string, unknown>): RiderRow {
   return { ...OWN_RIDER, ...overrides };
 }
 
-async function mockOwnRider(page: Page, rider: Record<string, unknown>) {
+async function mockOwnRider(page: Page, rider: RiderRow) {
   await page.route("**/rest/v1/riders**", (route: Route) => {
     const request = route.request();
     if (request.method() !== "GET") return json(route, {});
@@ -28,14 +34,14 @@ async function mockOwnRider(page: Page, rider: Record<string, unknown>) {
     const accept = request.headers().accept || "";
     const asSingle = (rows: unknown[]) => (wantsObject(accept) ? (rows[0] || {}) : rows);
     if (url.includes("pending_team_id=eq.")) return json(route, asSingle([]));
-    const pool = RIDERS.map((r: { id: string }) => (r.id === rider.id ? rider : r));
+    const pool: RiderRow[] = RIDERS.map((r: RiderRow) => (r.id === rider.id ? rider : r));
     const idEq = url.match(/[?&]id=eq\.([^&]+)/);
     if (idEq) {
       const id = decodeURIComponent(idEq[1]);
-      return json(route, asSingle(pool.filter((r: { id: string }) => r.id === id)));
+      return json(route, asSingle(pool.filter((r) => r.id === id)));
     }
     if (url.includes(`team_id=eq.${TEST_TEAM.id}`)) {
-      return json(route, asSingle(pool.filter((r: { team_id?: string }) => r.team_id === TEST_TEAM.id)));
+      return json(route, asSingle(pool.filter((r) => r.team_id === TEST_TEAM.id)));
     }
     return json(route, asSingle(pool));
   });
