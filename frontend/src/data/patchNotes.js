@@ -1,5 +1,64 @@
 export const PATCHES = [
   {
+    "version": "7.300",
+    "date": "2026-09-25",
+    "label": "Youth squads",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "No youth squad upkeep at this season change",
+          "body": "What changed: At the switch to season 4, your U23 and junior riders cost nothing in squad upkeep. Upkeep per youth squad place returns from season 4 onward, at a rate I will announce before it applies.\n\nWhat it means for you: Fill your U23 and junior squads now without a bill at the switch."
+        },
+        "da": {
+          "title": "Ingen ungdomsdrift ved dette sæsonskifte",
+          "body": "Hvad er ændret: Ved skiftet til sæson 4 koster dine U23- og juniorryttere intet i drift. Drift pr. besat ungdomsplads vender tilbage fra sæson 4, til en sats jeg melder ud før den gælder.\n\nHvad det betyder for dig: Fyld dine U23- og juniortrupper nu uden en regning ved skiftet."
+        },
+        "refs": [
+          5741,
+          5745
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Move to U23 or Move to Junior",
+          "body": "What changed: The move button on the rider page and on My Team says Move to U23 or Move to Junior, based on the rider's age, instead of Move to academy. The dialog shows the squad's places, for example 1/10 to 2/10, and if the squad is full the button tells you why. My Team counts U23 and junior riders separately.\n\nWhat it means for you: You see where the rider goes before you confirm. Moving a junior up to the U23 team comes next."
+        },
+        "da": {
+          "title": "Flyt til U23 eller Flyt til junior",
+          "body": "Hvad er ændret: Flyt-knappen på rytterprofilen og på Mit hold siger Flyt til U23 eller Flyt til junior efter rytterens alder, i stedet for Flyt til akademi. Dialogen viser truppens pladser, fx 1/10 til 2/10, og er truppen fuld, fortæller knappen hvorfor. Mit hold tæller U23- og juniorryttere hver for sig.\n\nHvad det betyder for dig: Du ser hvor rytteren havner, før du bekræfter. At flytte en junior op på U23-holdet kommer som det næste."
+        },
+        "refs": [
+          5742,
+          5743,
+          5744
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training report in the same order as Daily training",
+          "body": "What changed: The riders in each day's report are listed in the same order as on Daily training, by last name, instead of a random order.\n\nWhat it means for you: You find a rider in the report where you expect him."
+        },
+        "da": {
+          "title": "Træningsrapporten i samme rækkefølge som Daglig træning",
+          "body": "Hvad er ændret: Rytterne i hver dags rapport står i samme rækkefølge som på Daglig træning, efter efternavn, i stedet for en tilfældig rækkefølge.\n\nHvad det betyder for dig: Du finder en rytter i rapporten der hvor du forventer ham."
+        },
+        "refs": [
+          5682,
+          5696
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.299",
     "date": "2026-09-25",
     "label": "Settings tabs",
