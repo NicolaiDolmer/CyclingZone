@@ -101,6 +101,35 @@ async function loadProposedMandate(supabase, teamId) {
   return data ?? null;
 }
 
+/**
+ * #5755 (reviewer-fund, forud for launch D lørdag 27/9) · Da `{ available: false }`
+ * fra `buildBoardMeetingPayload` IKKE skelner mellem "intet mandat nogensinde"
+ * (13 menneskehold i prod uden mandat-række, aldrig kørt igennem
+ * `proposeNextMandate`) og "mandatet er underskrevet" (status 'active', ikke
+ * længere 'proposed'), læste season-start-guiden (frontend/src/lib/
+ * seasonStartGuide.js::resolveBoardStartItem) `available:false` som et falsk
+ * "udført"-flueben for hold der aldrig har set et mandat-forslag.
+ *
+ * Ét ekstra opslag (kun ved `available:false`, altså ikke på den varme sti):
+ * seneste mandat-række for holdet, UANSET status, for at afgøre ÅRSAGEN.
+ *   • ingen række overhovedet          → "no_mandate"  (aldrig proponeret)
+ *   • seneste status = 'active'        → "signed"      (underskrevet, intet at handle på)
+ *   • seneste status = alt andet       → "no_proposal" (fx 'completed' — mellem
+ *     sæsoner, næste forslag ikke genereret endnu)
+ */
+async function loadLatestMandateStatus(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("board_mandates")
+    .select("status")
+    .eq("team_id", teamId)
+    .order("proposed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
+  if (!data) return "no_mandate";
+  return data.status === "active" ? "signed" : "no_proposal";
+}
+
 async function loadOpenVisionSlot(supabase, teamId) {
   const { data, error } = await supabase
     .from("board_vision_milestones")
@@ -204,15 +233,21 @@ function buildGoalReactions({ mandateId, goal, options, ownerArchetypeKey, teamI
 }
 
 /**
- * `GET /board/meeting` (spec §4.8). Returnerer `{ available: false }` (uden
- * yderligere læsning) når holdet ikke har et mandat i status `proposed`.
+ * `GET /board/meeting` (spec §4.8). Returnerer `{ available: false, reason }`
+ * når holdet ikke har et mandat i status `proposed` — `reason` (#5755) er
+ * "no_mandate" | "signed" | "no_proposal", se `loadLatestMandateStatus`.
+ * KONTRAKT for kaldere (frontend/src/lib/seasonStartGuide.js::
+ * resolveBoardStartItem): kun `reason === "signed"` må læses som "udført".
  */
 export async function buildBoardMeetingPayload({ supabase, teamId } = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
 
   const mandate = await loadProposedMandate(supabase, teamId);
-  if (!mandate) return { available: false };
+  if (!mandate) {
+    const reason = await loadLatestMandateStatus(supabase, teamId);
+    return { available: false, reason };
+  }
 
   const { team, riders, standing, assignedMembers, relation } = await loadMeetingContext(supabase, teamId);
   const dnaKey = team?.team_dna_key ?? null;

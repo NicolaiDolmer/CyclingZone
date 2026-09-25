@@ -41,6 +41,10 @@
         "desc": "Training plans belong to one season, so last season's plan no longer applies."
       },
       "board": {
+        "title": "Sign your mandate",
+        "desc": "The annual meeting is open. Answer each target and sign, or the board signs for you when the deadline runs out."
+      },
+      "boardLegacy": {
         "title": "Negotiate with the board",
         "desc": "Your new plan is waiting. Until you agree it, the season's targets are not settled."
       },
@@ -59,6 +63,7 @@
       "maintained": "Held Division {division}"
     },
     "rankLine": "You finished #{rank} of {size} in Division {division}",
+    "boardConfidence": "Board confidence {percent}%",
     "statsLine": "{points} points · {wins, plural, one {# win} other {# wins}}",
     "cta": "View your season recap",
     "goal": {
