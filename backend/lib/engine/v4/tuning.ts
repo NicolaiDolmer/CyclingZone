@@ -657,11 +657,27 @@ const effortGainExtra = {
   //    save's vaerdi (trappen maa ikke vende); i modellen "effort_weighted"
   //    falder grupetto desuden tilbage uanset scoren (grupettoDropBackForced).
   climbScoreRelief: {
-    grupetto: -0.15,
-    save: -0.15,
+    grupetto: -0.6,
+    save: -0.6,
     normal: 0,
-    protect: 0.2,
-    all_out: 0.35,
+    protect: 0.3,
+    all_out: 0.6,
+  } as Record<EffortLevel, number>,
+  // 1b. "En lavere indsats giver slip tidligere" (ejer 23/9): et ADDITIVT led
+  //     paa split-scoren, climbScorePenalty[effort] x stigningens alvor (0-1).
+  //     Hvorfor additivt og ikke kun faktoren ovenfor: en save-rytter har
+  //     naesten intet energi-underskud (han braender mindre), saa hans score er
+  //     lille, og en faktor paa en lille score flytter ham ikke. Maalt med
+  //     tvillingerne: uden dette led blev en save-/grupetto-rytter i feltets
+  //     midte siddende laengere end normal-tvillingen og kom foran ham paa
+  //     bjerg- og kuperede etaper. Leddet er ikke-stigende op ad trappen og 0
+  //     fra normal og op (laast af test), saa normal er bit-uaendret.
+  climbScorePenalty: {
+    grupetto: 0.3,
+    save: 0.3,
+    normal: 0,
+    protect: 0,
+    all_out: 0,
   } as Record<EffortLevel, number>,
   // 2. FINALEN (finale.ts computeFinaleAbilityScore): placerings-scoren faar
   //    finalePush[effort] x reserve01 - finaleCrack[effort] x (1 - reserve01).
@@ -682,8 +698,8 @@ const effortGainExtra = {
     grupetto: 0,
     save: 0,
     normal: 0,
-    protect: 0.03,
-    all_out: 0.1,
+    protect: 0.02,
+    all_out: 0.05,
   } as Record<EffortLevel, number>,
   // 3. "Arbejd eller angrib" (ejer 23/9 valg 1c): en kaptajn/sprint-kaptajn
   //    paa `protect` foelger angreb, dvs. et lille plus i udbruds-join-scoren
