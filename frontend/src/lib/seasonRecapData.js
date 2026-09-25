@@ -77,6 +77,22 @@ export function resolveSeasonMovement({
 }
 
 /**
+ * #5753 · Er verdict-svaret en ægte dom? Kræver enabled + mindst én kvittering
+ * (goalsMet != null) + mindst ét mål. Et mandat uden kvitteringer giver ingen
+ * highlight i stedet for et opdigtet "0 af N".
+ * @param {object|null|undefined} v
+ * @returns {boolean}
+ */
+export function isBoardVerdictShowable(v) {
+  return Boolean(
+    v?.enabled === true
+    && Number.isFinite(v.goalsMet)
+    && Number.isFinite(v.goalsTotal)
+    && v.goalsTotal > 0
+  );
+}
+
+/**
  * Sæson-recap-highlights for ÉT hold — bygget UDELUKKENDE af data SeasonEndPage
  * allerede henter til andre formål (sæson-vinderne, standings, transaktioner,
  * og nu også #3402's dokumentar-facts), ingen nye tunge kald. Maks 3 punkter.
@@ -106,9 +122,14 @@ export function resolveSeasonMovement({
  *   rival/myStanding) — kan ankomme SENERE end de øvrige args (egen async fetch,
  *   samme isolations-mønster som SeasonEndPage's loadDocumentary), derfor et
  *   selvstændigt, valgfrit argument i stedet for forudsat til stede.
- * @returns {Array<{kind:"prizeLeader"|"biggestSale"|"stageKing"|"turningPoint"|"biggestResult"|"rival",
+ * @param {object|null} [p.boardVerdict]  #5753 · GET /api/board/verdict/:seasonId-svaret
+ *   (egen best-effort fetch i SeasonEndPage). Står FØRST når det bærer en ægte dom
+ *   (se isBoardVerdictShowable); ellers ignoreres det.
+ * @returns {Array<{kind:"boardVerdict"|"prizeLeader"|"biggestSale"|"stageKing"|"turningPoint"|"biggestResult"|"rival",
  *   amount?:number, wins?:number, name?:string, points?:number, race?:string, rider?:string,
- *   team?:string, gap?:number, ahead?:boolean}>}
+ *   team?:string, gap?:number, ahead?:boolean, goalsMet?:number, goalsTotal?:number,
+ *   confidenceBefore?:number|null, confidenceAfter?:number|null, chairman?:object|null,
+ *   meetingAvailable?:boolean}>}
  */
 export function pickRecapHighlights({
   myTeamId,
@@ -117,8 +138,24 @@ export function pickRecapHighlights({
   myBiggestSale = null,
   myStageKing = null,
   documentaryFacts = null,
+  boardVerdict = null,
 } = {}) {
   const highlights = [];
+
+  // #5753 (Mandat-launch B) · bestyrelsens dom står først: den er sæsonens
+  // "karakter", resten er bedrifter. Den tager én af de 3 pladser (loftet er
+  // uændret), så siden ikke bliver længere.
+  if (isBoardVerdictShowable(boardVerdict)) {
+    highlights.push({
+      kind: "boardVerdict",
+      goalsMet: boardVerdict.goalsMet,
+      goalsTotal: boardVerdict.goalsTotal,
+      confidenceBefore: boardVerdict.confidenceBefore ?? null,
+      confidenceAfter: boardVerdict.confidenceAfter ?? null,
+      chairman: boardVerdict.chairman ?? null,
+      meetingAvailable: boardVerdict.meetingAvailable === true,
+    });
+  }
 
   // Division-scoped (ikke sæson-bred) — de fleste hold vil ALDRIG lede hele
   // sæsonen i præmie, men et hold der leder sin EGEN division er stadig en

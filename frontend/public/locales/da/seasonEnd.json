@@ -87,6 +87,15 @@
       "relegated": "Rykket ned",
       "maintained": "Holdt division {division}"
     },
+    "boardVerdict": {
+      "label": "Bestyrelsens dom",
+      "value": "{met} af {total} mål nået",
+      "confidence": "tillid",
+      "confidenceTo": "til",
+      "attribution": "{name} · Formand · sæsonens dom",
+      "ctaMeeting": "Gå til årsmødet",
+      "ctaBoardroom": "Åbn bestyrelseslokalet"
+    },
     "highlight": {
       "prizeLeader": "Præmie-fører i division {division}",
       "biggestSale": "Sæsonens største salg",

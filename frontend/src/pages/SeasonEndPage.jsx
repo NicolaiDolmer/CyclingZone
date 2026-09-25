@@ -1,7 +1,8 @@
-import { useState, useEffect, Fragment, useMemo } from "react";
+import { useState, useEffect, Fragment, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getSeasonHonours } from "../lib/rankingsApi.ts";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts";
 import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber, formatDate } from "../lib/intl";
@@ -18,6 +19,7 @@ import { resolveSeasonMovement, pickRecapHighlights } from "../lib/seasonRecapDa
 import { isMissingTableError, buildDocumentaryCardStats } from "../lib/seasonDocumentaryData.js";
 import { exportSeasonDocumentaryPng, downloadBlob } from "../lib/seasonDocumentaryExport.js";
 import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
+import BoardVerdictCard from "../components/BoardVerdictCard.tsx";
 import SeasonDocumentary from "../components/SeasonDocumentary.jsx";
 import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
@@ -65,6 +67,23 @@ function formatCZ(amount) {
 // hold der ser en blanding af "rigtige" og fallback-highlights ikke tror det
 // samme bedrift er nævnt to gange.
 function mapRecapHighlight(h, t, myDivision) {
+  // #5753 · bestyrelsens dom er en rigere række (citat + knap) end de andre, så
+  // den sendes som færdig node; heroen renderer den i samme liste.
+  if (h.kind === "boardVerdict") {
+    return {
+      id: "boardVerdict",
+      node: (
+        <BoardVerdictCard
+          goalsMet={h.goalsMet}
+          goalsTotal={h.goalsTotal}
+          confidenceBefore={h.confidenceBefore}
+          confidenceAfter={h.confidenceAfter}
+          chairman={h.chairman}
+          meetingAvailable={h.meetingAvailable}
+        />
+      ),
+    };
+  }
   if (h.kind === "prizeLeader") {
     return { id: "prizeLeader", icon: CoinIcon, label: t("recap.highlight.prizeLeader", { division: myDivision }), value: formatCZ(h.amount) };
   }
@@ -154,6 +173,11 @@ export default function SeasonEndPage() {
   // turning-point-værdi til løbsnavnet i stedet for datoen (buildDocumentaryCardStats),
   // den må ALDRIG kunne vælte resten af siden.
   const [turningPointDate, setTurningPointDate] = useState(null);
+  // #5753 · bestyrelsens dom (GET /api/board/verdict/:seasonId). Ren visnings-
+  // bonus: null = ingen highlight. Ingen fejl-tilstand, for en manglende dom må
+  // aldrig kunne vælte recappen (samme isolation som loadDocumentary).
+  const [boardVerdict, setBoardVerdict] = useState(null);
+  const boardVerdictSeasonRef = useRef(null);
   const [myTeamId, setMyTeamId] = useState(null);
   // #2752/#2361 — nutids-division + navn på MIT hold. division bruges KUN som
   // fallback-kilde til "hvilken division fik jeg næste sæson" (resolveNextDivision),
@@ -258,12 +282,33 @@ export default function SeasonEndPage() {
     }
   };
 
+  // #5753 · egen, best-effort fetch: flag slået fra, intet mandat, 4xx/5xx,
+  // 429-backoff eller netværksfejl giver alle bare "ingen dom" (null). Svaret
+  // gemmes kun hvis brugeren stadig står på samme sæson (et sent svar fra en
+  // tidligere valgt sæson kasseres).
+  const loadBoardVerdict = async (season) => {
+    boardVerdictSeasonRef.current = season.id;
+    setBoardVerdict(null);
+    if (season.status !== "completed") return;
+    try {
+      const headers = await authHeaders({ json: false });
+      if (!headers) return;
+      const res = await apiFetch(`/api/board/verdict/${season.id}`, { headers }, { source: "season-end-board-verdict" });
+      if (!res.ok || !res.data?.enabled) return;
+      if (boardVerdictSeasonRef.current !== season.id) return;
+      setBoardVerdict({ ...res.data, seasonId: season.id });
+    } catch (e) {
+      console.error("SeasonEndPage: failed to load board verdict", e);
+    }
+  };
+
   const loadSeason = async (season) => {
     setSelectedSeason(season);
     setError(null);
     setTeamRecap(null);
     loadHonours(season);
     loadDocumentary(season);
+    loadBoardVerdict(season);
     try {
       const [standingsRes, racesRes, racePointsRes] = await Promise.all([
         supabase.from("season_standings")
@@ -505,8 +550,9 @@ export default function SeasonEndPage() {
     return pickRecapHighlights({
       ...teamRecap.highlightInputs,
       documentaryFacts: documentary.data?.facts || null,
+      boardVerdict,
     });
-  }, [teamRecap, documentary.data]);
+  }, [teamRecap, documentary.data, boardVerdict]);
 
   // #season-recap-polish (18/8) — "Turning point"-rækkens rigtige kalenderdato
   // (race_stage_schedule.scheduled_at for facts.bestRaceDay.race_id, IKKE den
