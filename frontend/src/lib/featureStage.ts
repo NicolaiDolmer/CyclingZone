@@ -43,46 +43,45 @@ export function deriveFlagStage(mine: boolean | null | undefined, anonymous: boo
   return "off";
 }
 
-async function fetchFlags(headers: Record<string, string>): Promise<Record<string, boolean>> {
+// CodeRabbit-fund (#5404, ÉN CLI-runde): et fejlet kald maa ALDRIG laese som
+// "flaget er falsk" — det ville lade en anonym-fejl (netvaerk/429/5xx) tolkes
+// som "kun jeg ser den", altsaa "beta", selv naar flaget faktisk staar paa
+// "on" for alle. `null` = kaldet lykkedes ikke og siger INTET om flaget.
+async function fetchFlags(headers: Record<string, string>): Promise<Record<string, boolean> | null> {
   try {
     const res = await apiFetch("/api/feature-flags", { headers });
-    const flags = res.ok ? (res.data as { flags?: unknown } | null)?.flags : null;
-    return flags && typeof flags === "object" ? (flags as Record<string, boolean>) : {};
+    if (!res.ok) return null;
+    const flags = (res.data as { flags?: unknown } | null)?.flags;
+    return flags && typeof flags === "object" ? (flags as Record<string, boolean>) : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
-// Kun SAMTIDIGE kaldere deler løftet (samme mønster som lib/displayFlags.ts):
-// når svaret er landet, glemmes det, så et nyt login i samme fane eller et
-// flag ejeren lige har flippet hentes forfra ved næste Layout-mount.
-let inflight: Promise<Record<string, FlagStage>> | null = null;
-
 /**
  * off|beta|on pr. spiller-synlig kontakt (PLAYER_VISIBLE_FLAG_KEYS,
- * backend/lib/stageFlagCatalog.js) for DENNE viewer. Fejler et af de to kald,
- * er resultatet {} (alt "off") — aldrig en kastet fejl, samme fail-safe som
- * resten af flag-laget.
+ * backend/lib/stageFlagCatalog.js) for DENNE viewer. Fejler ét af de
+ * nødvendige kald (anonymt, eller mit eget når jeg er logget ind), er
+ * resultatet {} — INGEN stadier kendes, badgen viser sig ikke, i stedet for
+ * at gætte "beta" på et delvist svar (CodeRabbit-fund, #5404).
+ *
+ * Ingen deling af igangværende løfter på tværs af kaldere: et løfte der blev
+ * startet for viewer A og landet efter viewer B er logget ind i samme faneblad
+ * (log ud/log ind uden remount) må ALDRIG kunne levere A's stadier til B
+ * (CodeRabbit-fund, #5404) — hvert kald henter derfor sit eget, friske svar.
  */
-export function loadFeatureFlagStages(): Promise<Record<string, FlagStage>> {
-  if (inflight) return inflight;
-  const pending = (async () => {
-    const { authHeaders } = await import("./supabase.ts");
-    const headers = (await authHeaders({ json: false })) ?? null;
-    const [anonymous, mine] = await Promise.all([
-      fetchFlags({}),
-      headers ? fetchFlags(headers) : Promise.resolve<Record<string, boolean>>({}),
-    ]);
-    const keys = new Set([...Object.keys(anonymous), ...Object.keys(mine)]);
-    const stages: Record<string, FlagStage> = {};
-    for (const key of keys) {
-      stages[key] = deriveFlagStage(headers ? mine[key] : anonymous[key], anonymous[key]);
-    }
-    return stages;
-  })().catch(() => ({}) as Record<string, FlagStage>);
-  inflight = pending;
-  void pending.finally(() => {
-    if (inflight === pending) inflight = null;
-  });
-  return pending;
+export async function loadFeatureFlagStages(): Promise<Record<string, FlagStage>> {
+  const { authHeaders } = await import("./supabase.ts");
+  const headers = (await authHeaders({ json: false })) ?? null;
+  const [anonymous, mine] = await Promise.all([
+    fetchFlags({}),
+    headers ? fetchFlags(headers) : Promise.resolve<Record<string, boolean> | null>({}),
+  ]);
+  if (anonymous === null || mine === null) return {};
+  const keys = new Set([...Object.keys(anonymous), ...Object.keys(mine)]);
+  const stages: Record<string, FlagStage> = {};
+  for (const key of keys) {
+    stages[key] = deriveFlagStage(headers ? mine[key] : anonymous[key], anonymous[key]);
+  }
+  return stages;
 }
