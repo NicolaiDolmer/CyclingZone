@@ -150,3 +150,51 @@ export function buildSeasonStartItems({
 export function countDoneItems(items = []) {
   return items.filter((i) => i.done === true).length;
 }
+
+/**
+ * Bestyrelses-punktets EFFEKTIVE `to`/`done` naar mandat-modellen
+ * (board_mandate_model_enabled) er aktiv for viewer — ejer-go 25/9 19:45,
+ * mandatet on for alle fra lørdag 27/9 (#5755).
+ *
+ * SeasonStartGuideCard.jsx henter selv flag-stadiet (lib/featureStage.ts'
+ * loadFeatureFlagStages — "beta" ELLER "on" tæller som aktivt for viewer) og
+ * GET /board/meeting (annualMeeting/meetingApi.js' fetchBoardMeeting). Denne
+ * funktion er den rene beslutningslogik derefter, testbar uden netværk/React.
+ *
+ * `null` retur = flaget er OFF for viewer → kortet skal beholde
+ * `buildSeasonStartItems`s legacy board-punkt (boardPlanMissing-baseret)
+ * fuldstændig uændret, med legacy-copy'en (items.boardLegacy i dashboard.json),
+ * så en spiller der ikke har fået mandatet endnu ALDRIG mister linjen før
+ * flippet.
+ *
+ * REVIEWER-FUND (#5755, rettet før merge): `available:false` betyder IKKE i
+ * sig selv "underskrevet" — backend svarer også `available:false` når holdet
+ * slet ikke har noget mandat endnu (13 menneskehold i prod uden mandat-række).
+ * At læse `!meetingAvailable` som Done gav dem et falsk flueben ved flippet.
+ * `buildBoardMeetingPayload` (backend/lib/boardMandateMeeting.js) bærer nu et
+ * `reason`-felt ('no_mandate' | 'signed' | 'no_proposal') på `available:false`
+ * — KUN `reason === 'signed'` (aktivt, underskrevet mandat) må sætte Done.
+ * Uden mandat vises punktet som ikke-udført med link til `/board` (ikke
+ * `/board/meeting` — der er intet forslag at åbne).
+ *
+ * @param {object} p
+ * @param {boolean} [p.mandateEnabled]         flag-stadie er "beta" eller "on" for viewer
+ * @param {boolean|null} [p.meetingAvailable]  fetchBoardMeeting()?.available
+ * @param {boolean} [p.meetingLoaded]          lykkedes fetchBoardMeeting() (payload != null)?
+ * @param {string|null} [p.meetingReason]      fetchBoardMeeting()?.reason ('no_mandate'|'signed'|'no_proposal') når available er false
+ * @returns {{to: string, done: boolean|null}|null}
+ */
+export function resolveBoardStartItem({
+  mandateEnabled = false,
+  meetingAvailable = null,
+  meetingLoaded = false,
+  meetingReason = null,
+} = {}) {
+  if (!mandateEnabled) return null;
+  if (!meetingLoaded) return { to: "/board", done: null };
+  if (meetingAvailable) return { to: "/board/meeting", done: false };
+  // available:false: Done KUN ved et bekræftet underskrevet mandat
+  // (reason === 'signed'). Alt andet — inkl. 'no_mandate', 'no_proposal' og
+  // en manglende/ukendt reason — er bevidst IKKE done, og linker til /board.
+  return { to: "/board", done: meetingReason === "signed" };
+}

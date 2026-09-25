@@ -10,15 +10,17 @@ import fc from "fast-check";
 import {
   bunchCatchWindowSeconds,
   computeFinaleAbilityScore,
+  effortFinaleTerm,
   finaleHook,
   isBunchCatchRoute,
   isBunchSizedChaseGroup,
 } from "./finale.ts";
 import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
-import { FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
+import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type {
   AbilityKey,
+  EffortLevel,
   Entrant,
   EngineState,
   FinaleType,
@@ -574,4 +576,91 @@ test("computeFinaleAbilityScore: monotont ikke-faldende i W'-reserve", () => {
     }),
     { numRuns: 200 },
   );
+});
+
+// ── #5580 (M1 punkt 2): indsatsens led i placerings-opgoeret ──────────────────
+
+const EFFORT_LADDER: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+
+test("#5580 effortFinaleTerm: normal og manglende effort er praecis 0 (fixtures og ITT bit-uaendrede)", () => {
+  for (const reserve of [0, 0.3, 1]) {
+    assert.equal(effortFinaleTerm("normal", reserve), 0);
+    assert.equal(effortFinaleTerm(undefined, reserve), 0);
+  }
+  const ab = abilities({ punch: 70 });
+  assert.equal(
+    computeFinaleAbilityScore(ab, 0.4, PUNCH_DEMAND, 0.15, "normal"),
+    computeFinaleAbilityScore(ab, 0.4, PUNCH_DEMAND, 0.15),
+  );
+});
+
+test("#5580 tabellerne: push er ikke-faldende op ad trappen, knaek er 0 paa de lave trin, og scoren forbliver monoton i reserven", () => {
+  const { finalePush, finaleCrack } = EFFORT_GAIN_EXTRA_TUNING;
+  for (let i = 1; i < EFFORT_LADDER.length; i++) {
+    const hi = EFFORT_LADDER[i]!;
+    const lo = EFFORT_LADDER[i - 1]!;
+    assert.ok(finalePush[hi] >= finalePush[lo], `push: ${hi} < ${lo}`);
+    assert.ok(finaleCrack[hi] >= finaleCrack[lo], `knaek: ${hi} < ${lo}`);
+  }
+  assert.equal(finalePush.normal, 0);
+  assert.equal(finaleCrack.normal, 0);
+  for (const effort of EFFORT_LADDER) {
+    assert.ok(finaleCrack[effort] >= 0, `${effort}: knaek-leddet maa aldrig vaere en bonus`);
+    assert.ok(
+      FINALE_EXTRA_TUNING.wprimeReserveWeight + finalePush[effort] + finaleCrack[effort] >= 0,
+      `${effort}: scoren skal vaere monotont ikke-faldende i reserven`,
+    );
+  }
+});
+
+test("#5580 computeFinaleAbilityScore: monotont ikke-faldende i reserven paa ALLE fem trin (fast-check, 200 runs)", () => {
+  fc.assert(
+    fc.property(
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.constantFrom(...EFFORT_LADDER),
+      (r1, r2, effort) => {
+        const [lower, higher] = r1 <= r2 ? [r1, r2] : [r2, r1];
+        const ab = abilities();
+        const low = computeFinaleAbilityScore(ab, lower, PUNCH_DEMAND, FINALE_EXTRA_TUNING.wprimeReserveWeight, effort);
+        const high = computeFinaleAbilityScore(ab, higher, PUNCH_DEMAND, FINALE_EXTRA_TUNING.wprimeReserveWeight, effort);
+        assert.ok(high >= low - 1e-9);
+      },
+    ),
+    { numRuns: 200, seed: 5580 },
+  );
+});
+
+test("#5580 pris og gevinst: med fuld reserve koeber all_out placering, med tom reserve knaekker han og taber mest", () => {
+  const full = EFFORT_LADDER.map((e) => effortFinaleTerm(e, 1));
+  for (let i = 1; i < full.length; i++) assert.ok(full[i]! >= full[i - 1]!, `fuld reserve: ${EFFORT_LADDER[i]} under ${EFFORT_LADDER[i - 1]}`);
+  assert.ok(effortFinaleTerm("all_out", 1) > 0 && effortFinaleTerm("protect", 1) > 0);
+  assert.ok(effortFinaleTerm("save", 1) < 0, "save presser ikke i finalen");
+  assert.ok(effortFinaleTerm("all_out", 0) < effortFinaleTerm("protect", 0), "tom reserve: all_out taber mest");
+  assert.ok(effortFinaleTerm("protect", 0) < effortFinaleTerm("normal", 0));
+});
+
+function twinsInFrontGroup(effortA: EffortLevel, reserveA: number, reserveB: number) {
+  const entrants: Record<string, Entrant> = {};
+  const riders: Record<string, RiderState> = {};
+  const ids = ["twinA", "twinB", "f1", "f2", "f3"];
+  for (const id of ids) {
+    entrants[id] = makeEntrant(id, abilities({ punch: id.startsWith("twin") ? 60 : 40 }));
+    riders[id] = makeRiderState(id, "peloton-0", { wprime: 0.6, wprimeMax: 1 });
+  }
+  entrants.twinA = { ...entrants.twinA!, effort: effortA };
+  riders.twinA = makeRiderState("twinA", "peloton-0", { wprime: reserveA, wprimeMax: 1 });
+  riders.twinB = makeRiderState("twinB", "peloton-0", { wprime: reserveB, wprimeMax: 1 });
+  const groups: RaceGroup[] = [{ id: "peloton-0", kind: "peloton", rider_ids: ids, gap_seconds: 0, cohesion: 1 }];
+  const result = finaleHook(buildState(groups, riders), makeCtx({ entrants, finaleType: "punch" }));
+  return [...result.state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds).flatMap((g) => g.rider_ids);
+}
+
+test("#5580 finaleHook: all_out med reserve slaar sin normal-tvilling med SAMME reserve; tom reserve paa all_out taber til en tom normal-tvilling", () => {
+  const withReserve = twinsInFrontGroup("all_out", 0.8, 0.8);
+  assert.ok(withReserve.indexOf("twinA") < withReserve.indexOf("twinB"), "all_out med reserve skal koebe pladsen");
+  const empty = twinsInFrontGroup("all_out", 0, 0);
+  assert.ok(empty.indexOf("twinA") > empty.indexOf("twinB"), "all_out med tom reserve skal knaekke og tabe pladsen");
+  const save = twinsInFrontGroup("save", 0.8, 0.8);
+  assert.ok(save.indexOf("twinA") > save.indexOf("twinB"), "save presser ikke i finalen");
 });

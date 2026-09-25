@@ -59,11 +59,54 @@ test("#4557 mandate: bonus-maerkatet er sit eget signal, ikke genbrug af Stretch
   assert.match(source, /t\("boardroom\.mandate\.bonus"\)/);
 });
 
+// #5754 · [board] Mandat-launch C (ejer-go 25/9 kl. 19:45) — intet aktivt
+// mandat + et forslag fra GET /board/meeting skal vise "Proposed mandate",
+// ikke det tomme rum. Aktivt mandat uaendret; ingen ny guld-knap i kortet
+// (BoardroomPage.jsx's ENESTE guld-knap sidder i headeren).
+test("#5754 proposed: vises FOER den kanoniske EmptyState, kun naar mandate mangler OG proposedMeeting.available er sandt", () => {
+  const proposedIdx = source.indexOf("if (!mandate && proposedMandate)");
+  const emptyIdx = source.indexOf("if (!mandate) {");
+  assert.ok(proposedIdx > -1, "det foreslaaede mandat mangler sin egen gren");
+  assert.ok(proposedIdx < emptyIdx, "det foreslaaede mandat skal tjekkes FOER den generiske EmptyState-fallback");
+  assert.match(source, /const proposedMandate = proposedMeeting\?\.available \? proposedMeeting\.mandate : null;/);
+});
+
+test("#5754 proposed: overskrift + meta bruger de nye proposed.*-noegler, ikke det underskrevne mandats cardTitle/goalsMeta", () => {
+  const block = source.slice(source.indexOf("if (!mandate && proposedMandate)"), source.indexOf("if (!mandate) {"));
+  assert.match(block, /t\("boardroom\.mandate\.proposed\.cardTitle", \{ season: proposedMandate\.seasonNumber \}\)/);
+  assert.match(block, /t\("boardroom\.mandate\.proposed\.meta"\)/);
+});
+
+test("#5754 proposed: maal-listen er skrivebeskyttet (ProposedGoalRow, ingen onClick/onToggle/receipt-chevron)", () => {
+  const block = source.slice(source.indexOf("function ProposedGoalRow"), source.indexOf("export default function MandateCard"));
+  assert.doesNotMatch(block, /onClick|onToggle|receipt|Chevron/i, "en foreslaaet raekke maa ikke tilbyde interaktion mandatet ikke har endnu");
+  assert.match(block, /resolveGoalTitle\(t, titleSource\)/, "titlen skal genbruge den delte type-styrede resolver, ikke opfinde en ny");
+  assert.match(block, /labelKey: goal\.labelKey \?\? goal\.label_key \?\? null/, "meeting-payloadens raa snake_case label_key skal broes til resolverens camelCase-felt");
+});
+
+test("#5754 proposed: neutral pil, IKKE StatusPill/STATUS_TONE (den fil ejes af en anden lane)", () => {
+  const block = source.slice(source.indexOf("function ProposedPill"), source.indexOf("function ProposedGoalRow"));
+  assert.match(block, /t\("boardroom\.mandate\.proposed\.pill"\)/);
+  assert.doesNotMatch(block, /StatusPill|STATUS_TONE/);
+});
+
+test("#5754 proposed: EEN secondary-knap til aarsmoedet, ALDRIG variant=\"primary\" (siden har allerede sin guld-knap i headeren)", () => {
+  const block = source.slice(source.indexOf("if (!mandate && proposedMandate)"), source.indexOf("if (!mandate) {"));
+  assert.match(block, /<Button variant="secondary" size="sm" onClick=\{\(\) => navigate\("\/board\/meeting"\)\}>/);
+  assert.doesNotMatch(block, /variant="primary"/, "kortet maa IKKE tilfoeje en ny guld-knap ved siden af headerens");
+  assert.match(block, /t\("boardroom\.header\.enterMeetingCta"\)/, "genbruger headerens eksisterende CTA-tekst, opfinder ikke ny copy");
+});
+
+test("#5754 proposed: aktivt mandat er UAENDRET (proposedMandate-grenen paavirker ikke goals.map paa det underskrevne kort)", () => {
+  assert.match(source, /const goals = mandate\.goals \|\| \[\];/);
+  assert.match(source, /goals\.map\(\(goal\) => \(\s*<GoalRow/);
+});
+
 test("#4557 mandate: bonustilbuddet i fuld laengde bor i Mandat-fanen, koblet til samme payload-felt", () => {
   assert.match(source, /import \{ BonusOfferBlock, BonusAcceptedLine \} from "\.\/BonusOffer\.jsx"/);
   assert.match(source, /<BonusOfferBlock offer=\{bonusOffer\}/);
   assert.match(source, /<BonusAcceptedLine offer=\{bonusOffer\}/);
-  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, onReload \}\)/);
+  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, proposedMeeting = null, onReload \}\)/);
 });
 
 test("#4557 mandate: 'Discuss target' er eksplicit disabled (no-op, årsmødet er S-M2c)", () => {

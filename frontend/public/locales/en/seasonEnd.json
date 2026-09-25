@@ -87,6 +87,15 @@
       "relegated": "Relegated",
       "maintained": "Held Division {division}"
     },
+    "boardVerdict": {
+      "label": "The board's verdict",
+      "value": "{met} of {total} targets met",
+      "confidence": "confidence",
+      "confidenceTo": "to",
+      "attribution": "{name} · Chair · season verdict",
+      "ctaMeeting": "Go to the annual meeting",
+      "ctaBoardroom": "Open the boardroom"
+    },
     "highlight": {
       "prizeLeader": "Prize leader of Division {division}",
       "biggestSale": "Biggest sale of the season",

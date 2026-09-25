@@ -119,6 +119,10 @@ Aflæsning      → GET /api/admin/attribution, Attribution-fanen i AdminGrowthP
 
 Feltet er bevidst uafhængigt af analytics-samtykket: first-touch sker før cookie-banneret er besvaret, og intet persisteres før brugeren opretter en konto. Hjemmel: legitim interesse (vurdering, ikke juridisk efterprøvet); om privatlivspolitikken nævner det, er ikke tjekket ❓
 
+**Click-ids (#5304, 25/9).** `fbclid`/`gclid`/`ttclid`/`msclkid` fanges nu i samme first-touch-snapshot som `utm_*`, både i `frontend/src/lib/attribution.js` og i `marketing/lib/attribution.ts` (forsiden/infosiderne — den landingsside annoncer rent faktisk bruger; uden dette gik click-id'et tabt permanent, fordi marketing-sitet skriver first-touch FØR SPA'en, og "første besøg vinder"). Mangler kun `utm_source`, og et click-id findes, markeres `source_hint: "paid-candidate"` — bevidst IKKE "paid" (ejer-gennemgang 16/9: et click-id alene beviser ikke betalt trafik).
+
+**Privatlivsvurdering: uafklaret (`needs-decision`, #5304).** Ejerens 16/9-kommentar er eksplicit: "click-id er ikke uden videre samme privatlivsklasse som en kampagne-UTM. Ingen samtykke-/hjemmelskonklusion kan arves" — og build-go blev ikke givet ved den kommentar. Et click-id er unikt pr. klik, mens en `utm_source` er fælles for en hel kampagne; den tidligere formulering her ("ikke mere personhenførbart end en utm-parameter") var en selvstændig konklusion koden traf uden ejer-godkendelse og er fjernet. Indtil beslutningen falder: click-id-felterne (og `source_hint`) forlader ALDRIG denne enhed — `getAttributionForBackend()`/`sanitizeAttributionForBackend()` (`frontend/src/lib/attribution.js`) filtrerer dem fra ethvert payload der sendes videre (Supabase auth `signUp`-metadata, `PUT /api/teams/my`), så de hverken lander i `auth.users.raw_user_meta_data` eller når backend. `signup_attribution`-tabellen og `buildAttributionRow()` (`backend/lib/signupAttribution.js`) er heller ikke udvidet med kolonner for click-id/source_hint — det kræver samme skema-valg (ny kolonne vs. jsonb) OG privatlivsvurderingen ovenfor. Ingen CAPI/conversion-API, ingen tredjepart.
+
 **Dækning:** ✅ 123 af 137 signups de seneste 60 dage er attribueret, altså 90 % (målt 8/9). De 10 % uden række er typisk brugere der aldrig fik oprettet et hold, eller hvor localStorage var blokeret.
 
 ### 3.2 Hvad referrer aldrig fanger
@@ -342,10 +346,13 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 | **Clarity** | MCP | Replay og dead clicks. Kan ikke bære attribution (§11, faldgrube 1) |
 | **PostHog** | MCP, projekt findes (EU), 0 events endnu ✅ | Produkt-funnels, retention, attribution, når #4321 er wired |
 | **GSC** | Google service-konto planlagt, nøgle `GSC_SERVICE_ACCOUNT_JSON` i Infisical ❓ | Søgning: rank og impressions (#3797) |
-| **Ahrefs** | Kun gratis-endpoints. Betalt plan afvist ✅ ("Insufficient plan" på keywords-explorer og GSC-tools) | Domain rating, ikke andet |
+| **Ahrefs** | Kun gratis-endpoints. Betalt plan afvist ✅ ("Insufficient plan" på keywords-explorer og GSC-tools) | Domain rating, Site Audit, ikke andet |
+| **Ahrefs Web Analytics** | Ungated script, ingen samtykke-gate (ejer-beslutning 22/9, #5493) — cookie-frit, samme klasse som `TrafficBeacon.jsx` | Trafikmåling på alle sider. Nøgle i `VITE_AHREFS_ANALYTICS_KEY` (spil-frontend) / `NEXT_PUBLIC_AHREFS_ANALYTICS_KEY` (marketing), aldrig hardkodet |
 | **GA4** | Property modtager data 📄 | Adfærd, beholdes ved siden af PostHog (ejer-valg 8/9) |
 
 **Morningscore og betalt Ahrefs findes ikke.** Ældre SEO-dokumenter nævner begge; ignorér dem.
+
+**IndexNow (#5493).** Nøglefil hostes på roden (`frontend/public/<key>.txt`, genereret ved build fra `INDEXNOW_KEY` — se `frontend/scripts/generate-indexnow-key.ts`) og beviser ejerskab, men indsender ikke URL'er (CodeRabbit-fund). For at fjerne Ahrefs Site Audits "Changed pages not submitted to IndexNow" skal ejeren manuelt vælge URL'er i Page Explorer og klikke "Submit to IndexNow", eller aktivere auto-submission med en Project Boost der understøtter funktionen. Ejeren genererer nøglen i Ahrefs (Project settings → Site Audit → Crawl settings → IndexNow) og lægger den i Infisical/Vercel som `INDEXNOW_KEY`.
 
 ## 10. Åbne punkter
 

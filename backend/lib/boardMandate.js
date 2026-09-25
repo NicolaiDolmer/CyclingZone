@@ -472,76 +472,90 @@ export function finalizeMandateGoals({
 }
 
 /**
+ * #5751 · De felter en afsluttet legacy 1yr-forhandling overfører til et
+ * mandat-mål (ejer-aftalt 25/9). ÉN liste, delt af Boardroom-visningen og
+ * resynk-scriptet, så visning og lagrede data ikke kan divergere
+ * (CodeRabbit-fund). Øvrige felter (fx satisfaction_penalty, category)
+ * beholder mandatets værdi.
+ */
+export const LEGACY_NEGOTIATED_GOAL_FIELDS = Object.freeze(["target", "label", "satisfaction_bonus"]);
+
+/**
  * #5618 · Rodårsag: `POST /board/sign` (den gamle 1yr-forhandlingsside,
  * `board_profiles.current_goals`) skriver ALDRIG til `board_mandates.goals`
  * — kun mandatets egne stier (årsmødet, `boardMandateMeeting.js`; ekstra-
  * ordinær anmodning) og engangs-migreringsscriptet
  * (`mandateShadowRebuild3514.mjs`) gør det. Et hold der forhandler på den
- * gamle side og SAMME dag flippes til beta ser derfor et mandat-mål hvis
- * target er ældre end den forhandling spilleren netop fik accepteret —
- * spillerrapport #5618: forhandlet 7. plads (top_n_finish target=7), men
- * Boardroom viste stadig target=5 fra mandatets sidste skrivning.
+ * gamle side ser derfor i Boardroom et mandat-mål hvis target er ældre end
+ * den forhandling spilleren fik accepteret — spillerrapport #5618:
+ * forhandlet 7. plads (top_n_finish target=7), men Boardroom viste stadig
+ * target=5 fra mandatets sidste skrivning.
  *
- * Ren funktion (intet Supabase-kald) — kaldes fra boardRoom.js's aggregator,
- * som allerede slår det 1yr-board mandatet stammer fra op (#4579). Er den
- * legacy 1yr-forhandling NYERE end mandatets egen sidste skrivning, overtager
- * dens target/label/satisfaction-felter for hvert mandat-mål der matcher på
- * IDENTITET (type + nationality_code + race_scope + cumulative — se
- * buildGoalIdentityKey; buildGoalKey inkluderer target med vilje og kan
- * derfor per definition aldrig matche et mål mod sig selv efter en
+ * #5751 · Reglen er UDEN tidsstempel. #5618's første udgave krævede at
+ * `board_profiles.negotiated_at` var nyere end mandatets `updated_at`, men
+ * kolonnen er null på næsten alle 1yr-rækker i prod (forhandlet før
+ * `POST /board/request` begyndte at stemple den, eller auto-accepteret, som
+ * med vilje sætter null, #5103) — så rettelsen ramte ingen. I S3 er den
+ * gamle 1yr-række stadig forhandlingsfladen OG det sæsonafslutningen regner
+ * på, og årsmødet dual-writer sine mål dertil (`writeLegacyOneYearBoard`),
+ * så legacy kan ikke være "bagud" for mandatet. Derfor: findes en AFSLUTTET
+ * legacy-forhandling (`negotiation_status === "completed"`) med en ikke-tom
+ * målliste, overtager dens LEGACY_NEGOTIATED_GOAL_FIELDS for hvert
+ * mandat-mål der matcher på IDENTITET (type + nationality_code + race_scope
+ * + cumulative — se buildGoalIdentityKey; buildGoalKey inkluderer target med
+ * vilje og kan derfor aldrig matche et mål mod sig selv efter en
  * target-ændring).
  *
- * Mål mandatet har, som ikke findes i legacy-listen (fx et bonustilbuds
- * ekstra-mål, `source: "bonus_offer"`, tilføjet direkte i `board_mandates`
- * af #4856-stien) bevares UÆNDREDE — reconciliation kan kun opdatere mål der
- * findes i BEGGE lister, aldrig fjerne eller tilføje et mål.
+ * Bagudkompatibelt: `legacyNegotiationStatus` udeladt (null/undefined) →
+ * et sat `legacyNegotiatedAt` tæller som afsluttet forhandling (et stempel
+ * sættes kun ved accept). `mandateUpdatedAt` accepteres stadig af ældre
+ * kaldere, men påvirker ikke længere noget.
  *
- * #5618 (CodeRabbit-fund) · Et bonusmål er ALDRIG en kandidat til at blive
- * overskrevet: `buildGoalIdentityKey` inkluderer bevidst hverken target
- * eller source, så et bonusmål (fx `monument_podium`) med samme identitet
- * som et NATIVT legacy-mål af samme type ellers ville matche det forkerte
- * legacy-mål og få sit target overskrevet — selvom bonusmålet aldrig har
- * eksisteret i `board_profiles.current_goals` (det blev tilføjet direkte i
- * `board_mandates` af #4856-stien). Mål med `source === "bonus_offer"`
- * springes derfor over UBETINGET, uanset om de matcher et legacy-mål.
+ * Mål mandatet har, som ikke findes i legacy-listen, bevares UÆNDREDE, og
+ * mål der kun findes i legacy tilføjes IKKE — reconciliation kan kun
+ * opdatere mål der findes i BEGGE lister.
  *
- * Dette retter kun VISNINGEN (best-effort, ved hver GET /board/room) — den
- * underliggende `board_mandates.goals`-række i databasen forbliver ureguleret
- * indtil en ejer-gated data-reparation (samme mønster som
- * `mandateShadowRebuild3514.mjs`) kører den igen for berørte hold.
+ * #5618 (CodeRabbit-fund) · Et bonusmål (`source === "bonus_offer"`, lagt
+ * direkte i `board_mandates` af #4856-stien) er ALDRIG en kandidat til at
+ * blive overskrevet, og (#5751) et bonusmål i LEGACY-listen (bevaret dér af
+ * preserveExternalGoals, #4865) er aldrig en KILDE: `buildGoalIdentityKey`
+ * inkluderer bevidst hverken target eller source, så et bonusmål af samme
+ * type som et nativt mål ellers ville kollidere på identitet.
+ *
+ * Dette retter kun VISNINGEN (ren funktion, intet Supabase-kald, ved hver
+ * GET /board/room) — den lagrede `board_mandates.goals` resynkes separat af
+ * det ejer-gatede `scripts/resyncMandateGoalsFromLegacy5751.js`, som bruger
+ * netop denne funktion som sin eneste match-regel.
  */
 export function reconcileMandateGoalsWithLegacyBoard({
   mandateGoals = [],
   legacyGoals = null,
+  legacyNegotiationStatus = null,
   legacyNegotiatedAt = null,
-  mandateUpdatedAt = null,
 } = {}) {
   const goals = Array.isArray(mandateGoals) ? mandateGoals : [];
-  if (!Array.isArray(legacyGoals) || !legacyGoals.length || !legacyNegotiatedAt) {
-    return goals;
-  }
+  if (!Array.isArray(legacyGoals) || !legacyGoals.length) return goals;
 
-  const legacyMs = new Date(legacyNegotiatedAt).getTime();
-  const mandateMs = mandateUpdatedAt ? new Date(mandateUpdatedAt).getTime() : 0;
-  if (!Number.isFinite(legacyMs) || legacyMs <= mandateMs) {
-    return goals;
-  }
+  const negotiationCompleted = legacyNegotiationStatus == null
+    ? Boolean(legacyNegotiatedAt)
+    : legacyNegotiationStatus === "completed";
+  if (!negotiationCompleted) return goals;
 
   const legacyByIdentity = new Map();
   for (const legacyGoal of legacyGoals) {
+    if (!legacyGoal || legacyGoal.source === "bonus_offer") continue;
     legacyByIdentity.set(buildGoalIdentityKey(legacyGoal), legacyGoal);
   }
 
   return goals.map((goal) => {
     if (goal?.source === "bonus_offer") return goal;
     const legacyMatch = legacyByIdentity.get(buildGoalIdentityKey(goal));
-    if (!legacyMatch || legacyMatch.target === goal.target) return goal;
-    return {
-      ...goal,
-      target: legacyMatch.target,
-      label: legacyMatch.label ?? goal.label,
-      satisfaction_bonus: legacyMatch.satisfaction_bonus ?? goal.satisfaction_bonus,
-      satisfaction_penalty: legacyMatch.satisfaction_penalty ?? goal.satisfaction_penalty,
-    };
+    if (!legacyMatch) return goal;
+    const next = { ...goal };
+    for (const field of LEGACY_NEGOTIATED_GOAL_FIELDS) {
+      if (legacyMatch[field] !== undefined && legacyMatch[field] !== null) next[field] = legacyMatch[field];
+    }
+    const unchanged = LEGACY_NEGOTIATED_GOAL_FIELDS.every((field) => next[field] === goal[field]);
+    return unchanged ? goal : next;
   });
 }

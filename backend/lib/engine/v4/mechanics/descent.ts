@@ -67,7 +67,13 @@ import type {
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
-import { hasHelperNearby, maxIncidentsForField, resolveCrashIncident, threeKmRuleApplies } from "./incidents.ts";
+import {
+  addIncidentChaser,
+  hasHelperNearby,
+  maxIncidentsForField,
+  resolveCrashIncident,
+  threeKmRuleApplies,
+} from "./incidents.ts";
 import { weatherAdjustedRiskBase } from "./weather.ts";
 
 function round2(n: number): number {
@@ -361,6 +367,7 @@ export const descentHook: DescentHook = (
     ctx.segmentIndex === ctx.route.segments.length - 1,
   );
   let riders: Record<string, RiderState> = state.riders;
+  let chasers = state.incident_chasers;
   let seq = 0;
 
   // Etapens uheldsloft (#4934) deles med M10 — det er ÉN model, altsaa ét loft.
@@ -412,7 +419,11 @@ export const descentHook: DescentHook = (
     const newGroupId = makeGroupId(kind, ctx.segmentIndex * 1000 + seq);
     seq += 1;
 
-    groups = splitGroup(groups, group.id, attackerIds, { id: newGroupId, kind, gapSecondsDelta: -gainSeconds });
+    // #5578: et nedkoerselsangreb ud af feltet er ikke et udbrud, selv naar
+    // arten bliver "breakaway" (newGroupKind). Angriber en udbryder sine
+    // udbrudsfaeller, koerer han stadig i dagens udbrud og arver oprindelsen.
+    const origin = group.origin === "breakaway" ? undefined : "descent";
+    groups = splitGroup(groups, group.id, attackerIds, { id: newGroupId, kind, gapSecondsDelta: -gainSeconds, origin });
     changed = true;
 
     events.push({
@@ -515,11 +526,17 @@ export const descentHook: DescentHook = (
         const laterGapDelta = resolved.outcome === "abandoned"
           ? INCIDENTS_EXTRA_TUNING.abandonedGapSeconds
           : (resolved.timeLossSeconds ?? 0);
+        const soloId = makeGroupId("solo", ctx.segmentIndex * 1000 + seq);
         groups = splitGroup(groups, newGroupId, [attacker.riderId], {
-          id: makeGroupId("solo", ctx.segmentIndex * 1000 + seq),
+          id: soloId,
           kind: "solo",
           gapSecondsDelta: gainSeconds + laterGapDelta,
         });
+        // #5582: samme jagt tilbage bag foelgebilerne som M10's uheldsofre
+        // (mechanics/incidents.ts). Kun ved et tidstab, aldrig ved udgaaelse.
+        if (resolved.outcome === "time_loss") {
+          chasers = addIncidentChaser(chasers, attacker.riderId, helperNearby ? "assisted" : "alone");
+        }
         seq += 1;
         changed = true;
       }
@@ -556,8 +573,10 @@ export const descentHook: DescentHook = (
   }
 
   if (newIncidents.length > 0) {
+    // #5582: registret roeres kun, naar et nedkoersels-styrt kostede tid.
+    const withChasers = chasers === state.incident_chasers ? {} : { incident_chasers: chasers };
     return {
-      state: { ...state, groups, riders, stage_incidents: [...loggedIncidents, ...newIncidents] },
+      state: { ...state, groups, riders, stage_incidents: [...loggedIncidents, ...newIncidents], ...withChasers },
       events,
     };
   }

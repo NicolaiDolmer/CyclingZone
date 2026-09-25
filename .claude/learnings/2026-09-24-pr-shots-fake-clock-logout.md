@@ -13,4 +13,6 @@
 
 **Bygget ind i `scripts/pr-shots.mjs` (#5565, cloud 24/9-d):** profil-kopi pr. kørsel (mesterprofilen åbnes kun af `--login`), `signOut` besvares 204 og tælles, login-probe (`/dashboard` → `/login`?) før serien, og `--shot-at`/`--clock` afvises med henvisning hertil. Scriptet læser aldrig storage; proben er kun en URL-sammenligning.
 
+**Fast lokal origin (#5565, boelge 25/9):** `login`/`shoot`/`compose` paa `http://localhost:5173` med mesterprofilen i `%LOCALAPPDATA%\cz-pr-shots-profile` (eet login for alle PR'er). Samme kontrakt, plus: proben stopper ogsaa ved et 401 fra API'et, service workers blokeres, profil-kopier fra draebte koersler ryddes ved naeste `shoot`, og andre tidspunkter fremkaldes kun med `--mock` (GET).
+
 Refs #5565 #5589

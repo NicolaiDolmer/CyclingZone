@@ -109,6 +109,7 @@
     "cannot_afford": "You can't afford this",
     "deal_locked_both_confirmed": "The deal has been accepted by both parties and can't be cancelled by a manager",
     "invalid_action": "Invalid action",
+    "invalid_squad": "Pick the senior squad, U23 team or junior team",
     "offered_rider_not_owned": "Your offered rider doesn't belong to your team",
     "offered_rider_retired": "Your offered rider has retired and can't be traded",
     "target_rider_not_found": "Target rider not found or has no team",

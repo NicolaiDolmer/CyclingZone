@@ -71,12 +71,25 @@ function escapeRe(s) {
 /**
  * Fjern det der ikke er PR-forfatterens paastande: CodeRabbits auto-summary,
  * HTML-kommentarer og billed-links.
+ *
+ * #365 (code-scanning js/incomplete-multi-character-sanitization): en ENKELT
+ * regex-pass over `<!--...-->` er ufuldstaendig sanitization — nestede/
+ * overlappende kommentarer som `<!<!---->--` overlever (fjerner man den
+ * inderste `<!---->`, staar `<!--` tilbage og danner sammen med resten en NY,
+ * uskadt kommentar-struktur). Fix: koer fjernelsen i en loekke til strengen er
+ * stabil (fixed point), saa ingen ny kommentar-struktur kan opstaa af et
+ * tidligere pass' rester.
  */
 export function cleanBody(body) {
-  return String(body || "")
-    .replace(/<!-- This is an auto-generated comment[\s\S]*?<!-- end of auto-generated comment[^>]*-->/g, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+  let text = String(body || "");
+  let prev;
+  do {
+    prev = text;
+    text = text
+      .replace(/<!-- This is an auto-generated comment[\s\S]*?<!-- end of auto-generated comment[^>]*-->/g, "")
+      .replace(/<!--[\s\S]*?-->/g, "");
+  } while (text !== prev);
+  return text.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
 }
 
 /**

@@ -13,7 +13,7 @@ import {
 import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
-import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
+import { DENY_URLS, isKnownExtensionNoise, isProxiedOrigin, isTranslateProxyHistoryError } from "./sentryDenyUrls.js";
 // #5312: fire browser-ordlyd for "kaldet naaede aldrig frem" — ét sted, i en
 // ren .js-fil uden sidevirkninger (samme begrundelse som DENY_URLS ovenfor).
 import { isBackendUnreachableMessage } from "./backendReachability.js";
@@ -70,6 +70,21 @@ export function initSentry() {
     denyUrls: DENY_URLS,
     beforeSend(event) {
       const value = event.exception?.values?.[0]?.value || event.message || "";
+      const errorType = event.exception?.values?.[0]?.type || "";
+      // #5694 (CYCLINGZONE-68): siden kører under Google Translate-proxyens
+      // eget origin (fx cyclingzone-org.translate.goog) når en spiller bruger
+      // browser-oversættelse, og proxyen omskriver document-URL'en uden at
+      // document.origin følger med — det udløser en SecurityError fra
+      // history.replaceState/pushState, som ikke er vores app der fejler.
+      //
+      // CodeRabbit-fund (24/9): et tidligere udkast droppede ALLE events fra
+      // .translate.goog uanset fejltype — det ville også have skjult ægte
+      // app-crashes for de spillere. Tjekket er derfor snævret ind til
+      // PRÆCIS den identificerede fejl (origin OG fejltype/besked), ikke hele
+      // origin'et.
+      if (typeof window !== "undefined" && isProxiedOrigin(window.location?.hostname) && isTranslateProxyHistoryError(errorType, value)) {
+        return null;
+      }
       if (/ResizeObserver loop completed/i.test(value)) {
         return null;
       }

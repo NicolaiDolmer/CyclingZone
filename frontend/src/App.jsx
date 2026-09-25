@@ -61,6 +61,7 @@ const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
 const AdminGrowthPage = lazy(() => import("./pages/AdminGrowthPage"));
 const AdminFairplayPage = lazy(() => import("./pages/AdminFairplayPage")); // #3138
 const AdminValueTransitionPage = lazy(() => import("./pages/AdminValueTransitionPage")); // #3750/#4000
+const AdminValuePreviewPage = lazy(() => import("./pages/AdminValuePreviewPage.js")); // #5686
 const AdminSurveyResultsPage = lazy(() => import("./pages/AdminSurveyResultsPage")); // #4943
 const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
@@ -432,6 +433,7 @@ export default function App() {
             <Route path="admin/growth" element={<AdminGrowthPage />} />
             <Route path="admin/fairplay" element={<AdminFairplayPage />} /> {/* #3138 */}
             <Route path="admin/value-transition" element={<AdminValueTransitionPage />} /> {/* #3750/#4000 */}
+            <Route path="admin/value-preview" element={<I18nReadyGate ns="admin"><AdminValuePreviewPage /></I18nReadyGate>} /> {/* #5686 */}
             {/* #4943: generisk paa slug, saa det naeste skema laeses af samme flade.
                 Namespace-gaten er noedvendig: `admin` hentes lazy, og uden den
                 render fladen raa noegler i det oejeblik den mountes (#3697). */}

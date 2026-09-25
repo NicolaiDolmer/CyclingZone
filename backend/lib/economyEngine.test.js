@@ -3303,6 +3303,88 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
   assert.equal(driftRows.length, 0, "Hold uden akademi-ryttere: ingen academy_drift-transaktion");
 });
 
+// #5741 · academyDriftEnabled=false (app_config 'academy_drift_enabled'='off')
+// skal springe akademi-drift helt over, selv med akademi-ryttere på holdet —
+// og resten af payroll-kørslen (her: 0 andre poster i denne minimale mock)
+// skal være uændret. Modstykket til testen ovenfor bekræfter samtidig at
+// deps.academyDriftEnabled UDELADT (default-fallback true) forbliver
+// bit-identisk med adfærden før #5741.
+test("processTeamSeasonPayroll charges 0 and writes no ledger row when academyDriftEnabled=false, even with academy riders", async () => {
+  const ACADEMY_COUNT = 4;
+  const seasonId = "season-drift-off";
+  const teamId = "team-academy-off";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: ACADEMY_COUNT, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "Academy Off FC",
+    balance: 999_999,
+    riders: [],
+  };
+
+  const result = await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    academyDriftEnabled: false,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+  });
+
+  const driftRows = financeRows.filter(r => r.type === "academy_drift");
+  assert.equal(driftRows.length, 0, "academyDriftEnabled=false: ingen academy_drift-transaktion, uanset academyCount");
+  // #535-kontrakten: funktionen returnerer stadig normalt, ingen throw/skip af resten af kørslen.
+  assert.equal(result.team_id, teamId);
+});
+
 // ─── processSeasonStart — FINAL sponsor-payout-clamp (#1441) ─────────────────
 
 /**

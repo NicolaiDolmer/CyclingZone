@@ -22,6 +22,7 @@
 import { resolveThresholds, DAY_MS } from "./boardNegotiationThresholds.js";
 import { signMandate } from "./boardMandateMeeting.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { MANDATE_OPENED_TITLE_CODE, notifyMandateOpened } from "./boardMandateEngine.js";
 
 /**
  * Cron-entry: tjek alle `proposed` mandater og send reminders / auto-sign
@@ -54,7 +55,7 @@ export async function processMandateAutoAcceptCron({
 
   const { data: proposedMandates, error } = await supabase
     .from("board_mandates")
-    .select("id, team_id, proposed_at, auto_accept_deadline")
+    .select("id, team_id, season_number, proposed_at, auto_accept_deadline")
     .eq("status", "proposed");
   if (error) throw error;
   if (!proposedMandates?.length) return summary;
@@ -62,7 +63,7 @@ export async function processMandateAutoAcceptCron({
   const teamIds = [...new Set(proposedMandates.map((m) => m.team_id).filter(Boolean))];
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name")
+    .select("id, user_id, name, team_dna_key")
     .in("id", teamIds);
   if (teamsError) throw teamsError;
   const teamById = new Map((teams || []).map((t) => [t.id, t]));
@@ -170,26 +171,53 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
     return result;
   }
 
-  // #3579-mønsteret: neutralt åbnings-varsel KUN i mandatets første døgn.
+  // #3579-mønsteret: åbnings-varsel KUN i mandatets første døgn.
   if (daysSinceOpen >= thresholds.NOTICE && daysSinceOpen < 1) {
-    result.reminder_sent = await sendOpeningNotice({ team, mandate, notifyUser, now });
+    result.reminder_sent = await sendOpeningNotice({
+      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds,
+    });
   }
 
   return result;
 }
 
-async function sendOpeningNotice({ team, mandate, notifyUser, now }) {
+/**
+ * #5752 · FALLBACK. Sæsonskiftet (`boardMandateEngine.js::
+ * advanceMandateAtSeasonEnd`) sender normalt åbnings-notitsen i samme minut
+ * som mandatet skrives. Cronen sender den kun når den mangler (fx en
+ * notifikations-fejl ved skiftet, eller et nyt hold hvis mandat foreslås ved
+ * holddannelsen). notifyUser's 24t-dedup dækker IKKE dette: teksten bærer
+ * "{days} dage tilbage", så cronens tekst er en anden end skiftets. Derfor
+ * slås notitsen op direkte (manager + board_update + related_id = mandatet +
+ * titleCode) i stedet for at stole på tekst-lighed.
+ */
+async function hasOpeningNotice({ supabase, userId, mandateId }) {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("type", "board_update")
+    .eq("related_id", mandateId)
+    .eq("metadata->>titleCode", MANDATE_OPENED_TITLE_CODE)
+    .limit(1);
+  if (error) throw new Error(`notifications lookup failed: ${error.message}`);
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function sendOpeningNotice({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds }) {
   if (!team.user_id) return false;
-  const result = await notifyUser({
+  if (await hasOpeningNotice({ supabase, userId: team.user_id, mandateId: mandate.id })) return false;
+
+  // Samme regel som reminderne: dage tilbage af vinduet, rundet op, min. 1.
+  const days = Math.max(1, Math.ceil(thresholds.AUTO_ACCEPT - daysSinceOpen));
+  const result = await notifyMandateOpened(supabase, {
+    teamId: team.id,
+    mandateId: mandate.id,
+    seasonNumber: mandate.season_number,
+    days,
     userId: team.user_id,
-    type: "board_update",
-    title: "Your board is ready for the annual meeting",
-    message: "Your board has proposed next season's mandate. Take the time you need. You'll get a reminder before the board signs on its own.",
-    relatedId: mandate.id,
-    metadata: {
-      titleCode: "notif.boardMandateOpened.title",
-      messageCode: "notif.boardMandateOpened.message",
-    },
+    dnaKey: team.team_dna_key ?? null,
+    notifyUser,
     now,
   });
   return Boolean(result?.delivered);

@@ -238,6 +238,10 @@ export default function RaceCentrePage() {
               selected: body.selection?.rider_ids?.length ?? 0,
               max: body.size.max,
               complete: !isSquadSelectionMissing(body),
+              // #5636: GET .../selection sender allerede withdrawn (#5301-gaten,
+              // backend/routes/api.js) — læs den så kortet kan vise "Withdrawn"
+              // i stedet for "Line-up ready" for et hold der har meldt fra.
+              withdrawn: body.withdrawn === true,
             }];
           } catch { return null; }
         }));

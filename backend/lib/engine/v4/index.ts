@@ -16,6 +16,7 @@ import type {
   TimelineEvent,
 } from "./types.ts";
 import { runSegmentLoop, type SegmentLoopResult } from "./segmentLoop.ts";
+import { isBreakawayWin } from "./groups.ts";
 import { climbSelectionHook } from "./mechanics/climbSelection.ts";
 import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
@@ -37,7 +38,12 @@ import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
 // simulateStageV4 nedenfor for hvorfor den koeres netop dér.
-import { applyTimeLimit } from "./mechanics/timeLimit.ts";
+import {
+  applyReinstatementPointPenalty,
+  applyTimeLimit,
+  reinstatedRiderIdsOf,
+  type TimeLimitJuryInput,
+} from "./mechanics/timeLimit.ts";
 // M13 (#3463/#2412, ejer-beslutning 6/9): holdtidskoerslen. Den er IKKE et hook
 // i segment-loopet men en hel ALTERNATIV etape-model (ét hold = én gruppe der
 // koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
@@ -72,7 +78,7 @@ import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mecha
 // (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for M13/
 // holdtidskoerslen, der er wiret 6/9 som forgreningen i simulateStageV4
 // nedenfor. Ordre-adapteren kaldes af broen.)
-const LIVE_MECHANIC_HOOKS: MechanicHooks = {
+export const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
   finale: finaleHook,
@@ -180,6 +186,21 @@ function buildFinishEvent(results: StageResult[], distanceKm: number): TimelineE
  * -> tidslinje + resultater + belastninger + gruppe-snapshots.
  */
 export function simulateStageV4(input: StageInput): StageOutput {
+  return simulateStageV4WithTrace(input).output;
+}
+
+/**
+ * #5578 (ADDITIVT): maaledata ved siden af den frosne StageOutput, til
+ * harnessens ankre. Intet heri skrives nogen steder hen; `output` er
+ * byte-identisk med simulateStageV4(input).
+ *   breakaway_win: vandt dagens udbrud etapen (groups.isBreakawayWin)?
+ *                  null paa tidskoersler, hvor der ikke findes et udbrud.
+ */
+export type StageTraceV4 = { breakaway_win: boolean | null };
+
+const TIME_TRIAL_TRACE: StageTraceV4 = { breakaway_win: null };
+
+export function simulateStageV4WithTrace(input: StageInput): { output: StageOutput; trace: StageTraceV4 } {
   // ── M13: holdtidskoerslen (#3463/#2412, ejer-beslutning 6/9) ─────────────
   // En TTT er ikke en vejetape med et ekstra hook paa: hele gruppe-modellen er
   // en anden (ét hold = én gruppe der koerer sammen fra egen start, og holdets
@@ -205,7 +226,9 @@ export function simulateStageV4(input: StageInput): StageOutput {
   // intet), og maalpassagen koeres paa den endelige placeringsraekkefoelge.
   if (input.route.profile_type === "ttt") {
     const rosters = teamRostersFromStartlist(input.startlist);
-    if (rosters) return simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning);
+    if (rosters) {
+      return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning), trace: TIME_TRIAL_TRACE };
+    }
   }
 
   // ── Enkeltstarten (#5576) ────────────────────────────────────────────────
@@ -218,10 +241,13 @@ export function simulateStageV4(input: StageInput): StageOutput {
   // Ingen fallback som TTT's: en enkeltstart kraever intet hold-id, saa den
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
-    return simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning);
+    return {
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning),
+      trace: TIME_TRIAL_TRACE,
+    };
   }
 
-  const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);
+  const { state, timeline, groupSnapshots, finaleTrace } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);
 
   // Hooks emitterer midt-segment-events (fx descent attack ved km 1,27) efter
   // loopets egne graense-events — stable-sort paa km genopretter #2410 §2.3's
@@ -258,6 +284,11 @@ export function simulateStageV4(input: StageInput): StageOutput {
     // mergeThresholdSeconds + margin fra hinanden, saa det vindue kunne aldrig
     // kaede to tiers til én grupetto. Modulet bruger sin egen ANKOMST-graense
     // (TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds, se maalingen dér).
+    //
+    // #5582 (ejer 23/9): juryen. Et uheldsoffer doemmes paa sin tid minus
+    // uheldets tidstab, og en holdkammerat der koerte med ham doemmes ens.
+    // Reglen bor i mechanics/timeLimit.ts's juryReinstatements.
+    jury: juryInputFor(input, state),
   });
   const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km);
@@ -295,13 +326,33 @@ export function simulateStageV4(input: StageInput): StageOutput {
   // maalstregen), samme konvention som v3's tidslinje.
   const timelineWithPassages = sortTimeline([...sortedTimeline, ...passagesToTimelineEvents(passages)]);
 
-  return {
+  const output: StageOutput = {
     timeline: { timeline_version: 2, events: [...timelineWithPassages, finishEvent, ...timeLimit.events] },
     results,
     loads,
     groupSnapshots,
     incidents: buildIncidents(state),
     passages,
-    passage_totals: passageTotals(passages),
+    // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
+    // reddet grupetto) mister sine point i point- og bjergkonkurrencen.
+    passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
+  };
+  const winnerId = results[0]?.rider_id ?? null;
+  return { output, trace: { breakaway_win: finaleTrace ? isBreakawayWin(finaleTrace, winnerId) : false } };
+}
+
+/** #5582: juryens input — etapens uheld, indsatsvalg og hold pr. rytter. */
+function juryInputFor(input: StageInput, state: SegmentLoopResult["state"]): TimeLimitJuryInput {
+  const effortByRider: Record<string, StageInput["startlist"][number]["effort"]> = {};
+  const teamByRider: Record<string, string | null | undefined> = {};
+  for (const entrant of input.startlist) {
+    effortByRider[entrant.rider_id] = entrant.effort;
+    teamByRider[entrant.rider_id] = entrant.team_id;
+  }
+  return {
+    incidents: state.stage_incidents ?? [],
+    effortByRider,
+    teamByRider,
+    chaseLossByRider: state.incident_chase_loss,
   };
 }

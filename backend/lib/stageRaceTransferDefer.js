@@ -19,6 +19,7 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 
 const NOOP = () => {};
 
@@ -28,6 +29,11 @@ const NOOP = () => {};
  * To-trins (samme robuste mønster som raceActiveGuard.detectInFlightRacesWithoutEntries):
  * find aktive stage races → find entries for dem blandt de givne ryttere. Undgår
  * PostgREST embedded-filter-usikkerhed.
+ *
+ * #5636: entries BEVARES ved afmelding (#4306, så holdet kan gen-deltage), så
+ * "har en entry" ≠ "stiller op i løbet". Et afmeldt holds ryttere skal IKKE
+ * tælles som "i et aktivt løb" — ellers udskydes et salg fejlagtigt, og
+ * auktion/akademi/cron (alle kalder denne helper) arver samme fejl.
  *
  * @param {object} supabase
  * @param {string[]} riderIds
@@ -52,12 +58,22 @@ export async function getRidersInActiveStageRace(supabase, riderIds, { excludeRa
 
   const { data: entries, error: eErr } = await supabase
     .from("race_entries")
-    .select("rider_id")
+    .select("rider_id, team_id, race_id")
     .in("race_id", raceIds)
     .in("rider_id", ids);
   if (eErr) throw new Error(`getRidersInActiveStageRace: entries lookup failed: ${eErr.message}`);
+  // CodeRabbit: ingen entries → svaret er allerede [], uanset withdrawals.
+  // Spring opslaget over, så et ubeslægtet salg/auktion ikke kan blive
+  // afvist af en race_withdrawals-fejl der er irrelevant for netop dette kald.
+  if (!entries?.length) return [];
 
-  return [...new Set((entries || []).map((e) => e.rider_id))];
+  // #5636: fejl i withdrawal-opslaget KASTES (samme kontrakt som ovenstående) —
+  // "antag ikke afmeldt" ville udskyde et salg forkert, hvilket er præcis den
+  // fejl vi retter her.
+  const withdrawn = await loadWithdrawnPairs({ supabase, raceIds });
+  const stillIn = (entries || []).filter((e) => !withdrawn.has(withdrawalKey(e.race_id, e.team_id)));
+
+  return [...new Set(stillIn.map((e) => e.rider_id))];
 }
 
 /**

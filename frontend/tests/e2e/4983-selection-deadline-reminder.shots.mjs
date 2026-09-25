@@ -158,7 +158,7 @@ for (const state of STATES) {
     //    horisonten er runtime-konfiguration. Ét billede er nok: kortet er ens i
     //    begge tilstande, så kun gul-desktop-gennemløbet tager det.
     if (state.name === "warning" && vp.name === "desktop") {
-      await page.goto("/profile");
+      await page.goto("/profile?tab=notifications"); // #5402
       const reminderToggle = page.getByText("Påmind mig før udtagelsesfristen").first();
       await reminderToggle.waitFor();
       await page.waitForTimeout(300);

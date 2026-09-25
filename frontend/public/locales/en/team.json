@@ -3,9 +3,9 @@
     "fallbackTitle": "My Team",
     "managerLabel": "Manager: {name}",
     "ridersCount": "{count}/{cap} senior riders",
-    "academyCount": "+{count} academy (off-cap)",
+    "youthSquadCounts": "+{u23} U23 · +{junior} juniors",
     "seniorCapTooltip": "Squad cap is {cap} senior riders. Academy riders don't count toward it.",
-    "academyCapTooltip": "Academy riders develop separately and never count toward the {cap}-rider senior cap.",
+    "youthSquadCountsTooltip": "U23 and junior riders have their own squad caps (12 and 10) and do not count toward the senior cap.",
     "incomingCount": "+{count} incoming",
     "outgoingCount": "-{count} outgoing",
     "salaryPerSeason": "Salary/season: {value} CZ$",
@@ -97,7 +97,7 @@
       "transfer": "Transfer list",
       "release": "Release",
       "extend": "Extend contract",
-      "demote": "To academy"
+      "move": "Move squad"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
@@ -139,12 +139,9 @@
       "capped": "Contract at maximum length (through season {season}).",
       "capCounterLabel": "Extensions used"
     },
-    "demote": {
-      "description": "Move this U23 rider down into your academy. Available only for riders aged 22 or under.",
-      "currentSalaryLabel": "Current salary",
-      "youthSalaryLabel": "Youth salary",
-      "hint": "They stop counting toward your senior squad and are pulled from any upcoming races. You confirm the full effect next.",
-      "confirmButton": "Move to academy"
+    "move": {
+      "description": "Move this rider to the senior squad, U23 team or junior team. You pick the squad and see the full effect next.",
+      "openButton": "Choose squad"
     },
     "loadingShort": "...",
     "errorPrefix": ""

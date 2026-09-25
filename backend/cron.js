@@ -1176,7 +1176,9 @@ async function runSundayValueSweepCron() {
       const v = r.valueRefresh;
       console.log(
         `💰 Søndags-værdier (${r.runDate}): ${v?.scanned ?? 0} scannet · ${v?.changed ?? 0} ændret` +
-        (r.marketValueSweep?.ran ? ` · markedsblend ${r.marketValueSweep.written ?? 0} skrevet` : " · markedsblend slukket")
+        (r.marketValueSweep?.ran ? ` · markedsblend ${r.marketValueSweep.written ?? 0} skrevet` : " · markedsblend slukket") +
+        // #5497: post-verify af trin-tælleren og løngrundlaget, direkte i Railway.
+        ` · model ${v?.modelId ?? "?"} · phase step ${r.phase?.step ?? "-"} · production_value changed: ${v?.productionChanged ?? "?"}`
       );
     }
   } catch (err) {

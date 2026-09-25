@@ -8,6 +8,7 @@ import {
   seasonStartDismissKey,
   buildSeasonStartItems,
   countDoneItems,
+  resolveBoardStartItem,
 } from "./seasonStartGuide.js";
 
 const season2 = { id: "s2", number: 2, status: "active", start_date: "2026-07-27" };
@@ -107,4 +108,56 @@ test("countDoneItems: kun bekræftet udførte tæller med", () => {
   assert.equal(countDoneItems([{ done: true }, { done: false }, { done: null }, { done: true }]), 2);
   assert.equal(countDoneItems([]), 0);
   assert.equal(countDoneItems(), 0);
+});
+
+// #5755 — mandat-launch D: bestyrelses-punktet skifter til "Sign your mandate".
+test("resolveBoardStartItem: flag off → null, legacy boardPlanMissing-punktet bevares uændret", () => {
+  assert.equal(resolveBoardStartItem({ mandateEnabled: false }), null);
+  assert.equal(resolveBoardStartItem(), null);
+});
+
+test("resolveBoardStartItem: flag on, meeting ikke hentet endnu → /board, done ukendt (null)", () => {
+  assert.deepEqual(resolveBoardStartItem({ mandateEnabled: true }), { to: "/board", done: null });
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingLoaded: false, meetingAvailable: true }),
+    { to: "/board", done: null },
+  );
+});
+
+test("resolveBoardStartItem: forslag tilgængeligt → linker til /board/meeting, ikke udført", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: true, meetingLoaded: true }),
+    { to: "/board/meeting", done: false },
+  );
+});
+
+// #5755 (reviewer-fund) · available:false betyder IKKE i sig selv "underskrevet" —
+// backend svarer også available:false når holdet slet ikke har et mandat endnu
+// (13 menneskehold i prod uden mandat-række). Kun reason:'signed' må give Done.
+test("resolveBoardStartItem: available:false + reason 'signed' → underskrevet, Done", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true, meetingReason: "signed" }),
+    { to: "/board", done: true },
+  );
+});
+
+test("resolveBoardStartItem: available:false + reason 'no_mandate' → IKKE done, linker til /board", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true, meetingReason: "no_mandate" }),
+    { to: "/board", done: false },
+  );
+});
+
+test("resolveBoardStartItem: available:false + reason 'no_proposal' → IKKE done, linker til /board", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true, meetingReason: "no_proposal" }),
+    { to: "/board", done: false },
+  );
+});
+
+test("resolveBoardStartItem: available:false uden reason (ukendt/manglende) → IKKE done (fail-safe)", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true }),
+    { to: "/board", done: false },
+  );
 });

@@ -15,6 +15,7 @@ import {
   scanSource,
   scanRepo,
   compareAgainstBaseline,
+  matchSource,
 } from "./check-anti-slop.mjs";
 
 test("countArrow flags unicode arrows and chevron-quote substitutes", () => {
@@ -118,6 +119,23 @@ test("compareAgainstBaseline reports stale baseline when violations shrink", () 
   const { newViolations, stale } = compareAgainstBaseline(findings, baseline);
   assert.equal(newViolations.length, 0);
   assert.ok(stale.length >= 1);
+});
+
+test("matchSource daekker .ts/.tsx (#5271), ikke kun .jsx?/css", () => {
+  assert.equal(matchSource("Foo.tsx"), true);
+  assert.equal(matchSource("bar.ts"), true);
+  assert.equal(matchSource("Foo.jsx"), true);
+  assert.equal(matchSource("bar.js"), true);
+  assert.equal(matchSource("styles.css"), true);
+  assert.equal(matchSource("data.json"), false);
+});
+
+test("matchSource udelukker .test.ts/.test.tsx ligesom .test.js/.test.jsx", () => {
+  assert.equal(matchSource("Foo.test.tsx"), false);
+  assert.equal(matchSource("bar.test.ts"), false);
+  assert.equal(matchSource("Foo.test.jsx"), false);
+  assert.equal(matchSource("bar.test.js"), false);
+  assert.equal(matchSource("setup.test.mjs"), false);
 });
 
 test("nul NYE anti-slop-fund paa nuvaerende traae mod committet baseline", () => {

@@ -1,9 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { upsertOwnTeamProfile, ensureSeasonIdentityBasis, ensureBoardGoalsCalibrated, choosePoolForNewTeam } from "./teamProfileEngine.js";
+import {
+  upsertOwnTeamProfile,
+  ensureSeasonIdentityBasis,
+  ensureBoardGoalsCalibrated,
+  choosePoolForNewTeam,
+  assignYouthGroupsForNewTeam,
+} from "./teamProfileEngine.js";
 import { generateBoardGoals } from "./boardGoals.js";
 import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { YOUTH_GROUP_TIER } from "./youthPoolAssignment.js";
 
 // #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
 // de ikke rammer den ægte riders/derive-kæde (den dækkes i starterSquadAllocator.test.js).
@@ -23,6 +30,9 @@ const noopReconcileAiTeams = async () => ({ created: 0, removed: 0, skipped: "te
 // #2149: hold kalender-reconcile'n ude af de eksisterende tests (no-op). Den ægte
 // default er også et no-op mod doubles uden aktiv sæson, men stubben gør det eksplicit.
 const noopReconcileCalendar = async () => ({ skipped: "test-noop" });
+// #5676: hold ungdomsgruppe-koblingen ude af de eksisterende tests (no-op). Tests
+// der vil verificere koblingen sender deres egen stub eller den ægte funktion.
+const noopAssignYouthGroups = async () => ({ assigned: {} });
 function upsert(args) {
   return upsertOwnTeamProfile({
     allocateStarterSquad: noopAllocate,
@@ -30,6 +40,7 @@ function upsert(args) {
     academyEnabled: academyDisabled,
     reconcileAiTeams: noopReconcileAiTeams,
     reconcilePoolCalendar: noopReconcileCalendar,
+    assignYouthGroups: noopAssignYouthGroups,
     ...args,
   });
 }
@@ -1605,4 +1616,120 @@ test("#4183: hold markeret til fjernelse frigiver sin plads (modsat frosne)", as
     result.team.league_division_id, pendingPool.id,
     "pladsen efter et hold der er markeret til fjernelse skal kunne genbesaettes",
   );
+});
+
+// ── #5676 (Y3 opfølgning): nye hold i ungdomsgrupper ────────────────────────
+
+function seedYouthGroups({ squad, count, poolIndexStart = 0 }) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `${squad}-youth-${poolIndexStart + index}`,
+    squad,
+    tier: YOUTH_GROUP_TIER,
+    pool_index: poolIndexStart + index,
+    label: `${squad} youth ${poolIndexStart + index}`,
+  }));
+}
+
+function seedYouthOccupant({ id, squad, poolId, isAi = true }) {
+  const col = squad === "u23" ? "u23_league_division_id" : "junior_league_division_id";
+  return { id, is_ai: isAi, division: MANAGER_ENTRY_DIVISION, [col]: poolId };
+}
+
+test("#5676 assignYouthGroupsForNewTeam: nyt hold placeres i ÉN u23- og ÉN junior-gruppe", async () => {
+  const u23Groups = seedYouthGroups({ squad: "u23", count: 1 });
+  const juniorGroups = seedYouthGroups({ squad: "junior", count: 1 });
+  const supabase = createSupabaseDouble({
+    leagueDivisions: [...u23Groups, ...juniorGroups],
+    teams: [
+      { id: "new-team-1", division: MANAGER_ENTRY_DIVISION },
+      seedYouthOccupant({ id: "ai-u23-1", squad: "u23", poolId: u23Groups[0].id }),
+    ],
+  });
+
+  const result = await assignYouthGroupsForNewTeam({ supabase, team: { id: "new-team-1" } });
+
+  assert.equal(result.assigned.u23.leagueDivisionId, u23Groups[0].id);
+  assert.equal(result.assigned.junior.leagueDivisionId, juniorGroups[0].id);
+  const stored = supabase.state.teams.find((t) => t.id === "new-team-1");
+  assert.equal(stored.u23_league_division_id, u23Groups[0].id);
+  assert.equal(stored.junior_league_division_id, juniorGroups[0].id);
+});
+
+test("#5676 assignYouthGroupsForNewTeam: rører ALDRIG et hold der allerede har en gruppe (idempotent)", async () => {
+  const u23Groups = seedYouthGroups({ squad: "u23", count: 2 });
+  const supabase = createSupabaseDouble({
+    leagueDivisions: u23Groups,
+    teams: [{ id: "already-placed", division: MANAGER_ENTRY_DIVISION, u23_league_division_id: u23Groups[1].id }],
+  });
+
+  const result = await assignYouthGroupsForNewTeam({
+    supabase,
+    team: { id: "already-placed", u23_league_division_id: u23Groups[1].id },
+  });
+
+  assert.equal(result.assigned.u23.skipped, "already_assigned");
+  assert.equal(supabase.state.updates.filter((u) => u.table === "teams").length, 0, "ingen skrivning for en allerede placeret trup");
+  const stored = supabase.state.teams.find((t) => t.id === "already-placed");
+  assert.equal(stored.u23_league_division_id, u23Groups[1].id, "uændret");
+});
+
+test("#5676 assignYouthGroupsForNewTeam (CodeRabbit-fund): fuld gruppe MED en AI-plads → AI-holdet viger, gruppen forbliver 24", async () => {
+  const fullGroupWithAi = seedYouthGroups({ squad: "u23", count: 1 })[0];
+  const managers = Array.from({ length: 23 }, (_, i) => seedYouthOccupant({ id: `m${i}`, squad: "u23", poolId: fullGroupWithAi.id, isAi: false }));
+  const ai = seedYouthOccupant({ id: "ai-to-evict", squad: "u23", poolId: fullGroupWithAi.id, isAi: true });
+  const supabase = createSupabaseDouble({
+    leagueDivisions: [fullGroupWithAi],
+    teams: [{ id: "new-team-evict", division: MANAGER_ENTRY_DIVISION }, ...managers, ai],
+  });
+
+  const result = await assignYouthGroupsForNewTeam({ supabase, team: { id: "new-team-evict" } });
+
+  assert.equal(result.assigned.u23.leagueDivisionId, fullGroupWithAi.id);
+  assert.equal(result.assigned.u23.evictedAiTeamId, "ai-to-evict");
+  const evictedAi = supabase.state.teams.find((t) => t.id === "ai-to-evict");
+  assert.equal(evictedAi.u23_league_division_id, null, "AI-holdet er veget ud af gruppen");
+  const inGroup = supabase.state.teams.filter((t) => t.u23_league_division_id === fullGroupWithAi.id);
+  assert.equal(inGroup.length, 24, "gruppen forbliver 24 (23 managers + det nye hold), ikke 25");
+});
+
+test("#5676 assignYouthGroupsForNewTeam: fuld gruppe uden AI → næste mindste med reel plads", async () => {
+  const fullGroup = seedYouthGroups({ squad: "junior", count: 1, poolIndexStart: 0 })[0];
+  const roomyGroup = seedYouthGroups({ squad: "junior", count: 1, poolIndexStart: 1 })[0];
+  const fullManagers = Array.from({ length: 24 }, (_, i) => seedYouthOccupant({ id: `m${i}`, squad: "junior", poolId: fullGroup.id, isAi: false }));
+  const supabase = createSupabaseDouble({
+    leagueDivisions: [fullGroup, roomyGroup],
+    teams: [{ id: "new-team-2", division: MANAGER_ENTRY_DIVISION }, ...fullManagers],
+  });
+
+  const result = await assignYouthGroupsForNewTeam({ supabase, team: { id: "new-team-2" } });
+
+  assert.equal(result.assigned.junior.leagueDivisionId, roomyGroup.id, "fuld gruppe (ingen AI at overtage) udelades");
+});
+
+test("#5676 assignYouthGroupsForNewTeam: ingen grupper seedet endnu → springes stille over, kaster ikke", async () => {
+  const supabase = createSupabaseDouble({ teams: [{ id: "new-team-3", division: MANAGER_ENTRY_DIVISION }] });
+
+  const result = await assignYouthGroupsForNewTeam({ supabase, team: { id: "new-team-3" } });
+
+  assert.equal(result.assigned.u23.skipped, "no_group_available");
+  assert.equal(result.assigned.junior.skipped, "no_group_available");
+});
+
+test("#5676 upsertOwnTeamProfile: kobler ungdomsgruppe-placeringen ind for et NYT hold", async () => {
+  const u23Groups = seedYouthGroups({ squad: "u23", count: 1 });
+  const juniorGroups = seedYouthGroups({ squad: "junior", count: 1 });
+  const supabase = createSupabaseDouble({ leagueDivisions: [...u23Groups, ...juniorGroups] });
+
+  const result = await upsert({
+    supabase,
+    userId: "user-youth-wiring",
+    name: "Youth Wiring Team",
+    managerName: "Manager",
+    assignYouthGroups: assignYouthGroupsForNewTeam,
+  });
+
+  assert.equal(result.created, true);
+  const stored = supabase.state.teams.find((t) => t.id === result.team.id);
+  assert.equal(stored.u23_league_division_id, u23Groups[0].id);
+  assert.equal(stored.junior_league_division_id, juniorGroups[0].id);
 });

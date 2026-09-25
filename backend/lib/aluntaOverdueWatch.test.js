@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   parseTimestamp,
@@ -8,9 +8,20 @@ import {
   formatFindings,
   fetchAllAluntaInvoices,
   runAluntaOverdueWatch,
+  computeOverdueWatchFingerprint,
+  dateKeyFor,
+  shouldCaptureOverdueFinding,
+  resetOverdueWatchDedupeState,
 } from "./aluntaOverdueWatch.js";
 
 const NOW = new Date("2026-08-31T13:00:00.000Z");
+
+// #5694 (CYCLINGZONE-62): dedup-tilstanden er et proces-levetid modul-singleton
+// (bevidst — se aluntaOverdueWatch.js). Nulstil den før HVER test i denne fil,
+// så tests forbliver isolerede fra hinanden, ligesom før dedup-laget fandtes.
+beforeEach(() => {
+  resetOverdueWatchDedupeState();
+});
 
 // ── parseTimestamp ────────────────────────────────────────────────────────────
 
@@ -299,6 +310,10 @@ test("#5017: capture-beskeden er FAST uanset hvor mange dage fakturaen har være
     client: clientFor("2026-08-08"), supabase: null, now: NOW,
     captureExceptionFn: (e) => capturedDay22.push(e), logger: { warn: () => {} },
   });
+  // #5694: uden dette reset ville andet kald deduplikere mod det første —
+  // samme faktura-uuid, samme dag — og capturedDay1 ville stå tom. Denne test
+  // handler om beskedens FORM, ikke om dedup (den har sine egne tests nedenfor).
+  resetOverdueWatchDedupeState();
   const capturedDay1 = [];
   await runAluntaOverdueWatch({
     client: clientFor("2026-08-29"), supabase: null, now: NOW,
@@ -321,6 +336,80 @@ test("#5017: fast fingerprint + dagstal i extra.worstDaysOverdue (samme mønster
   assert.equal(captured.length, 1);
   assert.deepEqual(captured[0].fingerprint, ["billing-watch-overdue"]);
   assert.equal(captured[0].extra.worstDaysOverdue, 22); // samme due_date som REGRESSION #4514-testen ovenfor
+});
+
+// ── #5694 CYCLINGZONE-62: dedup af Sentry-capture ────────────────────────────
+// 97 events på 6 dage, samme fund gentaget hver time. Ops-alerten
+// (logger.warn/Discord) skal blive ved med at fyre hver kørsel; kun selve
+// Sentry-capturen skal deduplikeres.
+
+function overdueClient(dueDate, { uuid = "a", number = 2, outstanding = 6125 } = {}) {
+  return { listInvoices: async () => ({ data: [{ uuid, number, outstanding, due_date: dueDate }], meta: { last_page: 1 } }) };
+}
+
+test("#5694: samme fund to gange samme dag -> ÉN capture (ops-alerten logger dog begge gange)", async () => {
+  const captured = [];
+  const logged = [];
+  const opts = {
+    client: overdueClient("2026-08-08"), supabase: null, now: NOW,
+    captureExceptionFn: (e) => captured.push(e), logger: { warn: (l) => logged.push(l) },
+  };
+  await runAluntaOverdueWatch(opts);
+  await runAluntaOverdueWatch(opts);
+  assert.equal(captured.length, 1, "andet kald med IDENTISK fund samme dag skal ikke capture igen");
+  assert.equal(logged.length, 2, "ops-alerten (logger.warn) skal fyre HVER kørsel, uanset dedup");
+});
+
+test("#5694: nyt fund (anden faktura) samme dag -> ny capture", async () => {
+  const captured = [];
+  await runAluntaOverdueWatch({
+    client: overdueClient("2026-08-08", { uuid: "a" }), supabase: null, now: NOW,
+    captureExceptionFn: (e) => captured.push(e), logger: { warn: () => {} },
+  });
+  await runAluntaOverdueWatch({
+    client: overdueClient("2026-08-08", { uuid: "b" }), supabase: null, now: NOW,
+    captureExceptionFn: (e) => captured.push(e), logger: { warn: () => {} },
+  });
+  assert.equal(captured.length, 2, "et ANDET fund (ny faktura-uuid) skal capture selvom samme dag");
+});
+
+test("#5694: samme fund, ny dag -> ny capture (højst én gang pr. dag, ikke for evigt tavs)", async () => {
+  const captured = [];
+  const dayOne = new Date("2026-08-31T13:00:00.000Z");
+  const dayTwo = new Date("2026-09-01T09:00:00.000Z");
+  await runAluntaOverdueWatch({
+    client: overdueClient("2026-08-08"), supabase: null, now: dayOne,
+    captureExceptionFn: (e) => captured.push(e), logger: { warn: () => {} },
+  });
+  await runAluntaOverdueWatch({
+    client: overdueClient("2026-08-08"), supabase: null, now: dayTwo,
+    captureExceptionFn: (e) => captured.push(e), logger: { warn: () => {} },
+  });
+  assert.equal(captured.length, 2, "samme uændrede fund skal alarmere igen dagen efter");
+});
+
+test("#5694: computeOverdueWatchFingerprint er stabilt uanset rækkefølge", () => {
+  const a = computeOverdueWatchFingerprint({
+    overdue: [{ uuid: "x" }, { uuid: "y" }],
+    stale: [{ teamId: "t1", state: "expired" }],
+  });
+  const b = computeOverdueWatchFingerprint({
+    overdue: [{ uuid: "y" }, { uuid: "x" }],
+    stale: [{ teamId: "t1", state: "expired" }],
+  });
+  assert.equal(a, b);
+});
+
+test("#5694: shouldCaptureOverdueFinding — ren pur beslutningsfunktion", () => {
+  const state = { fingerprint: "fp1", dateKey: "2026-08-31" };
+  assert.equal(shouldCaptureOverdueFinding(state, "fp1", "2026-08-31"), false, "uændret fund, samme dag -> ingen capture");
+  assert.equal(shouldCaptureOverdueFinding(state, "fp2", "2026-08-31"), true, "nyt fund -> capture");
+  assert.equal(shouldCaptureOverdueFinding(state, "fp1", "2026-09-01"), true, "ny dag -> capture");
+});
+
+test("#5694: dateKeyFor giver UTC YYYY-MM-DD", () => {
+  assert.equal(dateKeyFor(new Date("2026-08-31T23:59:59.999Z")), "2026-08-31");
+  assert.equal(dateKeyFor(new Date("2026-09-01T00:00:00.000Z")), "2026-09-01");
 });
 
 test("NEGATIV PROEVE: vagten kan faktisk gaa roed - en groen vagt uden faejlesti er ingen vagt", async () => {

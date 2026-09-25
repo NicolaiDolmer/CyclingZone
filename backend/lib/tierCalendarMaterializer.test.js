@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST, isMissingRetiredAtColumnError, loadCalendarPools } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST, isMissingRetiredAtColumnError, loadCalendarPools, tierGameDayQuotasFor, DEFAULT_CALENDAR_REAL_DAYS } from "./tierCalendarMaterializer.js";
+import { quotasForRaceDays as supplyQuotasForRaceDays } from "./catalogSupplyCheck.js";
+import { detectPlanRaceDayViolations, gatePlan } from "./seasonCalendarGate.js";
+import { resolveCalendarFrom } from "./calendarStartDate.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY, SQUAD_CALENDAR } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
@@ -520,7 +524,9 @@ test("#2251 plan: tier 4 vælger ALDRIG Grand Tours, selv når kataloget har led
   // med ikke-GT-løb. Katalog: 2 GT'er + rigeligt småløb.
   const tier4EligibleRows = [];
   [5, 4, 4, 4, 3].forEach((st, i) => tier4EligibleRows.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
-  for (let i = 0; i < 60; i++) tier4EligibleRows.push({ id: `c2-od-${i}`, name: `C2 Classic ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
+  // #5658: 90 endagsløb, fordi tier 4's standardkvote nu er density × løbsdatoer
+  // (tierGameDayQuotasFor) og ikke den gamle, lavere konstant. Kataloget skal kunne fylde den.
+  for (let i = 0; i < 90; i++) tier4EligibleRows.push({ id: `c2-od-${i}`, name: `C2 Classic ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
   const catalog = [
     { id: "gt-a", name: "GT A", race_class: "TourFrance", race_type: "stage_race", stages: 21 },
     { id: "gt-b", name: "GT B", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 },
@@ -582,9 +588,11 @@ test("#2251 reconcile: kvote-override MERGES oven på defaults, så tier 1-3's s
   await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
   assert.equal(calls.length, 1);
   const q = calls[0].quotas;
-  assert.equal(q[1], TIER_GAME_DAY_QUOTA[1], "tier 1 skal beholde sin default-kvote i dedup-genberegningen");
-  assert.equal(q[2], TIER_GAME_DAY_QUOTA[2]);
-  assert.equal(q[3], TIER_GAME_DAY_QUOTA[3]);
+  // #5658: defaulten er density × et fuldt standard-vindue, ikke TIER_GAME_DAY_QUOTA.
+  const fuld = tierGameDayQuotasFor(DEFAULT_CALENDAR_REAL_DAYS);
+  assert.equal(q[1], fuld[1], "tier 1 skal beholde sin default-kvote i dedup-genberegningen");
+  assert.equal(q[2], fuld[2]);
+  assert.equal(q[3], fuld[3]);
   assert.equal(q[4], TIER_DENSITY[4] * 11, "den aktiverede tiers kvote = density × rest-dage");
 });
 
@@ -995,6 +1003,10 @@ test("#3469 nedre tier (ingen senere tier reserverer arketypen) kan stadig frit 
   const pools2 = [{ id: 40, tier: 4, realManagerCount: 8 }];
   const { tierPlans } = buildTierMaterializationPlan({
     pools: pools2, catalog: crossTierScarceCatalog(), from: FROM,
+    // #5658: kvoten er låst eksplicit. Testen handler om reservationen, ikke kvoten, og
+    // fixturens etapelængder (5 og 3) giver kun plads til begge brostensløb når resten af
+    // kvoten går op i femmere. Standardkvoten er nu density × løbsdatoer.
+    quotas: { 4: 56 },
     archetypeReservations: { 4: { cobbled_tour: 1 } },
     oneDayShareTargets: {}, classStageLengthBand: null, priorityArchetypes: null,
     classWhitelist: { 4: null },
@@ -1570,4 +1582,91 @@ test("#5644 retired_at: 42703 på retired_at → læs uden filteret (ingen pulje
   assert.deepEqual(data, rows);
   assert.equal(calls.length, 2, "ét forsøg med filteret, ét uden");
   assert.ok(calls[1].filters.includes("or:squad.is.null,squad.eq.senior"), "senior-scopet bevares i fallback'et");
+});
+
+// ── #5658 · auto-stiens kvote = density × løbsdatoer, og gaten dømmer §1d ─────────────
+//
+// Fund 3 fra #5608: auto-stien (seasonTransition.js's auto_calendar_enabled-fase og en
+// pulje-aktivering i en frisk sæson) sender ingen kvote-tabel og faldt tilbage på
+// TIER_GAME_DAY_QUOTA, hvis division 4 ikke følger tætheden. Division 4 fik så en kortere
+// løbsdags-akse end de andre og nåede ikke sæsonens mål (TRAINING_RULES.md §13.3).
+
+test("#5658 tierGameDayQuotasFor: density × løbsdatoer, samme afledning som forsynings-kontrollen", () => {
+  for (const days of [1, 10, DEFAULT_CALENDAR_REAL_DAYS, 31]) {
+    const q = tierGameDayQuotasFor(days);
+    for (const [tier, d] of Object.entries(TIER_DENSITY)) assert.equal(q[Number(tier)], d * days, `tier ${tier}, ${days} dage`);
+    assert.deepEqual({ ...q }, { ...supplyQuotasForRaceDays(days) }, `CLI-/forsynings-kvoten og auto-kvoten er uenige ved ${days} dage`);
+  }
+  // En eksplicit tæthed (fx #2276's rest-af-sæson-override) følges.
+  assert.equal(tierGameDayQuotasFor(10, { 4: 3 })[4], 30);
+  // Uden brugbart antal dage er kvoten 0, aldrig NaN.
+  assert.equal(tierGameDayQuotasFor(undefined)[1], 0);
+});
+
+test("#5658 den gamle konstant følger IKKE tætheden for division 4 (præmissen for fixet)", () => {
+  // Brækker testen fordi konstanten er rettet, er præmissen væk. Så kan den slettes.
+  assert.notEqual(TIER_GAME_DAY_QUOTA[4], tierGameDayQuotasFor(DEFAULT_CALENDAR_REAL_DAYS)[4]);
+});
+
+test("#5658 plan uden kvote-tabel: hver tiers kvote = density × realDays (også division 4)", () => {
+  const realDays = 10;
+  const { tierPlans } = buildTierMaterializationPlan({ pools: cascadePools, catalog: fullCascadeCatalog(), from: FROM, realDays });
+  assert.deepEqual(tierPlans.map((t) => t.tier), [1, 2, 3, 4]);
+  for (const t of tierPlans) assert.equal(t.quota, TIER_DENSITY[t.tier] * realDays, `tier ${t.tier}`);
+});
+
+test("#5658 plan MED kvote-tabel: tabellen bruges uændret (CLI-stien og #2276-overrides)", () => {
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools: cascadePools, catalog: fullCascadeCatalog(), from: FROM, realDays: 10, quotas: { 1: 7, 2: 6, 3: 5, 4: 4 },
+  });
+  assert.deepEqual(tierPlans.map((t) => t.quota), [7, 6, 5, 4]);
+});
+
+test("#5658 dry-run-summary bærer løbsdags-aksen og målet pr. tier, så gatePlan kan dømme §1d", async () => {
+  const divisions = [{ id: 101, tier: 1 }, { id: 401, tier: 4 }];
+  const teams = divisions.map((d) => mgrTeam(`m-${d.id}`, d.id));
+  const sb = makeSupabase({ league_divisions: divisions, teams, race_pool: fullCascadeCatalog() });
+  const summary = await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", from: FROM, dryRun: true, realDays: 10, raceDayTarget: 50, seasonTransitionAt: null, ...LEGACY_MIX,
+  });
+  assert.equal(summary.tiers.length, 2);
+  for (const line of summary.tiers) {
+    const plan = summary.planTiers.find((p) => p.tier === line.tier);
+    assert.equal(line.raceDayTarget, 50, `tier ${line.tier}: målet skal stå på summary-linjen`);
+    assert.ok(line.raceDayAxisLength > 0, `tier ${line.tier}: aksen skal være målt`);
+    assert.equal(line.raceDayAxisLength, plan.raceDayAxisLength, `tier ${line.tier}: summary og plan skal måle samme akse`);
+  }
+});
+
+// Den committede prod-katalog-fixture, samme som raceCalendarLanePackerRaceDayTarget.test.js
+// bruger. Et syntetisk katalog ville ikke vise hullet: det er katalogets etapelængder der
+// afgør om en division kan nå målet.
+function s4PlanOnCommittedCatalog({ quotas } = {}) {
+  const { pools, catalog } = JSON.parse(readFileSync(new URL("./__fixtures__/racePoolCatalog.prod.json", import.meta.url), "utf8"));
+  const from = resolveCalendarFrom({ firstRaceDate: "2026-08-28", now: new Date("2026-08-25T12:00:00Z") });
+  return buildTierMaterializationPlan({
+    pools, catalog, from, baseSeed: 1, realDays: DEFAULT_CALENDAR_REAL_DAYS,
+    raceDayTarget: SEASON_RACE_DAY_TARGET[4], ...(quotas ? { quotas } : {}),
+  }).tierPlans;
+}
+
+test("#5658 auto-stien på det committede katalog: alle fire divisioner rammer sæson 4's mål, og §1d-gaten er grøn", () => {
+  const tierPlans = s4PlanOnCommittedCatalog();
+  assert.deepEqual(tierPlans.map((t) => t.tier), [1, 2, 3, 4]);
+  for (const t of tierPlans) {
+    assert.equal(t.quota, TIER_DENSITY[t.tier] * DEFAULT_CALENDAR_REAL_DAYS, `tier ${t.tier}: kvoten skal være density × løbsdatoer`);
+    assert.equal(t.raceDayAxisLength, SEASON_RACE_DAY_TARGET[4], `tier ${t.tier}: aksen skal ramme sæsonens mål`);
+  }
+  assert.deepEqual(detectPlanRaceDayViolations({ tiers: tierPlans }).violations, []);
+  const { blocking } = gatePlan({ tiers: tierPlans });
+  assert.deepEqual(blocking.filter((b) => b.startsWith("løbsdage pr. division")), [], "gatePlan må ikke dømme §1d rødt");
+});
+
+test("#5658 regressionsvagt: med den gamle konstant får division 4 en kortere akse, og gatePlan blokerer", () => {
+  const tierPlans = s4PlanOnCommittedCatalog({ quotas: TIER_GAME_DAY_QUOTA });
+  const d4 = tierPlans.find((t) => t.tier === 4);
+  assert.ok(d4.raceDayAxisLength < SEASON_RACE_DAY_TARGET[4], "præmissen: den gamle kvote giver division 4 en kortere akse");
+  const { blocking, raceDayViolations } = gatePlan({ tiers: tierPlans });
+  assert.ok(raceDayViolations.some((v) => v.startsWith("tier 4:")), `division 4's afstand til målet skal stå som brud: ${raceDayViolations.join(" · ")}`);
+  assert.ok(blocking.some((b) => b.startsWith("løbsdage pr. division")), "auto-stien skal nægte at skrive kalenderen");
 });

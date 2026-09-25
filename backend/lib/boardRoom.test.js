@@ -613,52 +613,86 @@ test("#5618 nyere legacy-forhandling (board_profiles.current_goals) overtager ma
   assert.equal(goal.status, "achieved");
 });
 
-test("#5618 legacy-forhandling ÆLDRE end mandatet rører intet (mandatet er allerede det friske mandat-native flow)", async () => {
+// #5751 · #5618's første udgave krævede negotiated_at NYERE end mandatet. I
+// prod er negotiated_at null på næsten alle 1yr-rækker, så spillerens hold
+// (forhandlet til top-7, negotiated_at null, mandatet skrevet 11/9 med top-5)
+// så stadig "top 5 / bagud" i Boardroom. RØD på main (target 5), GRØN efter.
+test("#5751 afsluttet legacy-forhandling UDEN negotiated_at overtager mandatets stale target", async () => {
   const tables = tablesWithSingleGoal(
-    { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
+    { type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" },
     {
       board_mandates: [{
-        id: "mand-5618b", team_id: TEAM_ID, season_number: 3, status: "active",
-        signed_at: "2026-08-01T00:00:00Z", updated_at: "2026-09-10T00:00:00Z",
-        goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+        id: "mand-5751a", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: "2026-08-01T00:00:00Z", updated_at: "2026-09-11T10:26:00Z",
+        goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
       }],
       season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
       board_profiles: [{
-        id: "board-1yr-5618b", team_id: TEAM_ID, plan_type: "1yr",
-        negotiated_at: "2026-08-15T00:00:00Z",
-        current_goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+        id: "board-1yr-5751a", team_id: TEAM_ID, plan_type: "1yr",
+        negotiation_status: "completed", negotiated_at: null,
+        current_goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
       }],
     },
   );
   const supabase = makeSupabase(tables);
   const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
-  assert.equal(payload.mandate.goals[0].target, 7, "mandatet er nyere end den gamle forhandling og skal ikke overskrives");
+  const goal = payload.mandate.goals[0];
+  assert.equal(goal.target, 7);
+  assert.equal(goal.targetDisplay, "7");
+  assert.equal(goal.label, "Slut i top 7");
+  assert.equal(goal.status, "achieved", "7. plads mod forhandlet top-7 er opnået, ikke bagud");
 });
 
-test("#5618 mandat UDEN updated_at falder tilbage til signed_at (CodeRabbit-fund: uden fallback ville epoken 0 lade selv en ÆLDRE forhandling vinde)", async () => {
+// #5751 · Tilpasset fra #5618-testen "legacy ÆLDRE end mandatet rører intet":
+// den regel er netop fejlen. Årsmødet dual-writer til legacy-rækken, så en
+// afsluttet legacy-forhandling er altid den gældende, også når dens
+// tidsstempel er ældre end mandatets updated_at.
+test("#5751 afsluttet legacy-forhandling vinder også når den er ÆLDRE end mandatets updated_at", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" },
+    {
+      board_mandates: [{
+        id: "mand-5618b", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: "2026-08-01T00:00:00Z", updated_at: "2026-09-10T00:00:00Z",
+        goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+      }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
+      board_profiles: [{
+        id: "board-1yr-5618b", team_id: TEAM_ID, plan_type: "1yr",
+        negotiation_status: "completed", negotiated_at: "2026-08-15T00:00:00Z",
+        current_goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+      }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
+  assert.equal(payload.mandate.goals[0].target, 7);
+});
+
+// #5751 · Tilpasset fra #5618-testen "mandat UDEN updated_at falder tilbage til
+// signed_at": tidsstempler indgår ikke længere, så beskyttelsen mod en
+// forkert legacy-overtagelse er nu negotiation_status. En forhandling der
+// stadig er i gang (pending) må ikke flytte mandatets mål.
+test("#5751 legacy-forhandling i gang (pending) rører ikke mandatets mål", async () => {
   const tables = tablesWithSingleGoal(
     { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
     {
-      // #5618: INGEN updated_at på mandatet — kun signed_at.
       board_mandates: [{
         id: "mand-5618c", team_id: TEAM_ID, season_number: 3, status: "active",
         signed_at: "2026-09-15T00:00:00Z",
         goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
       }],
       season_standings: [{ team_id: TEAM_ID, rank_in_division: 7, updated_at: "2026-09-20T00:00:00Z" }],
-      // Legacy-forhandlingen er ÆLDRE end mandatets signed_at (15/9) — uden
-      // signed_at-fallback ville mandateMs blive 0 (epoken), og denne ÆLDRE
-      // forhandling ville fejlagtigt "vinde" og overskrive mandatets target.
       board_profiles: [{
         id: "board-1yr-5618c", team_id: TEAM_ID, plan_type: "1yr",
-        negotiated_at: "2026-09-01T00:00:00Z",
+        negotiation_status: "pending", negotiated_at: "2026-09-24T00:00:00Z",
         current_goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
       }],
     },
   );
   const supabase = makeSupabase(tables);
   const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
-  assert.equal(payload.mandate.goals[0].target, 7, "signed_at-fallback skal beskytte mandatet mod en ÆLDRE legacy-forhandling");
+  assert.equal(payload.mandate.goals[0].target, 7, "et igangværende forhandlingsudkast er ikke aftalt endnu");
 });
 
 test("#4579 sponsor_growth: BEHIND når vækst < target (sponsorGrowth*Income stubbet)", async () => {

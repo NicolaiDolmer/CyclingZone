@@ -6,8 +6,9 @@
 //   evaluateCalendarReplacementGate     — må sæsonens eksisterende løb erstattes rent?
 //
 // gatePlan (samme fil) testes i scripts/buildSeasonCalendar.test.js, hvor fixturerne bor.
+// Undtagelse: §1d-reglen i gatePlan (#5658) testes nederst i denne fil.
 //
-// Refs #5405.
+// Refs #5405 #5658.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -20,7 +21,10 @@ import {
   CALENDAR_WRITABLE_SEASON_STATUS,
   CALENDAR_LOCKED_SEASON_STATUSES,
   dependencyKey,
+  gatePlan,
+  detectPlanRaceDayViolations,
 } from "./seasonCalendarGate.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
 // ── evaluateSeasonCalendarWriteGate ─────────────────────────────────────────
 
@@ -210,4 +214,74 @@ test("FK-katalogen har race_notify_outbox med, selvom snapshotten er ældre end 
   const row = RACE_DEPENDENCY_TABLES.find((d) => d.table === "race_notify_outbox");
   assert.ok(row, "race_notify_outbox mangler i RACE_DEPENDENCY_TABLES");
   assert.equal(row.group, "gameplay");
+});
+
+// ── #5658 · gatePlan dømmer §1d: samme antal løbsdage i alle divisioner ─────────────
+//
+// Ejerens låste regel (TRAINING_RULES.md §13.3 beslutning 2, CALENDAR_RULES.md §1d): alle
+// divisioner har lige mange løbsdage, og i sæson 4 er tallet sæsonens mål. Før #5658
+// dømte kun CLI'ens scorecard reglen; auto-stien (seasonTransition.js) gik uden om den.
+//
+// Fixturerne er syntetiske summary-linjer i materializerens form. De bærer kun det gaten
+// læser for §1d; `compositionStats.raceDays > 0` holder tier-løkkens "tom kalender"-brud ude.
+// Resten af compositionStats er tom, så kompositions-reglerne kan køre uden at kaste; de brud
+// de giver, filtreres fra via præfikset "løbsdage pr. division".
+
+const S4_TARGET = SEASON_RACE_DAY_TARGET[4];
+const line = (tier, raceDayAxisLength, raceDayTarget = S4_TARGET) => ({
+  tier, raceDayAxisLength, raceDayTarget,
+  compositionStats: { raceDays: 1, counts: {}, pct: {}, unknown: {} },
+  calendarViolations: [],
+});
+const raceDayBlocking = (blocking) => blocking.filter((b) => b.startsWith("løbsdage pr. division"));
+
+test("#5658 fixture: division 4 har en kortere akse end de andre → gaten er RØD", () => {
+  const summary = { tiers: [line(1, S4_TARGET), line(2, S4_TARGET), line(3, S4_TARGET), line(4, S4_TARGET - 42)] };
+  const { blocking, raceDayViolations } = gatePlan(summary);
+  assert.ok(raceDayViolations.some((v) => v.includes("IKKE ens")), `ulighed skal stå som brud: ${raceDayViolations.join(" · ")}`);
+  assert.ok(raceDayViolations.some((v) => v.startsWith("tier 4:")), "division 4's afstand til målet skal stå som brud");
+  assert.ok(!raceDayViolations.some((v) => /^tier [123]:/.test(v)), "divisionerne der rammer målet må ikke dømmes");
+  assert.equal(raceDayBlocking(blocking).length, raceDayViolations.length, "alle §1d-brud skal blokere på auto-stien");
+});
+
+test("#5658 fixture: alle fire divisioner på sæsonens mål → §1d er grøn", () => {
+  const summary = { tiers: [1, 2, 3, 4].map((t) => line(t, S4_TARGET)) };
+  const { blocking, raceDayViolations } = gatePlan(summary);
+  assert.deepEqual(raceDayViolations, []);
+  assert.deepEqual(raceDayBlocking(blocking), []);
+});
+
+test("#5658 fixture: lige lange akser der IKKE rammer målet er også rødt", () => {
+  const summary = { tiers: [1, 2, 3, 4].map((t) => line(t, S4_TARGET - 1)) };
+  const { raceDayViolations } = gatePlan(summary);
+  assert.equal(raceDayViolations.length, 4, "hver division er én løbsdag fra målet");
+  assert.ok(raceDayViolations.every((v) => /^tier \d: /.test(v)));
+});
+
+test("#5658 uden mål dømmes §1d ikke (S3-kalendere er ikke ulovlige bagud; samme afgrænsning som scorecardet)", () => {
+  const summary = { tiers: [line(1, 60, null), line(4, 40, null)] };
+  const { blocking, raceDayViolations } = gatePlan(summary);
+  assert.deepEqual(raceDayViolations, []);
+  assert.deepEqual(raceDayBlocking(blocking), []);
+});
+
+test("#5658 fail-closed: en tier med løb men uden målt akse kan ikke bevise målet", () => {
+  const summary = { tiers: [line(1, S4_TARGET), line(4, null)] };
+  const { violations } = detectPlanRaceDayViolations(summary);
+  assert.ok(violations.some((v) => v.startsWith("tier 4:") && v.includes("ikke målt")), violations.join(" · "));
+});
+
+test("#5658 fail-closed: divisioner pakket mod forskellige mål er et brud", () => {
+  const summary = { tiers: [line(1, S4_TARGET), line(4, S4_TARGET - 5, S4_TARGET - 5)] };
+  const { violations } = detectPlanRaceDayViolations(summary);
+  assert.ok(violations.some((v) => v.includes("forskellige")), violations.join(" · "));
+});
+
+test("#5658 raceDayEqualityBlocking:false (CLI'en) — bruddene rapporteres, men lægges ikke i blocking", () => {
+  // buildSeasonCalendar.js gater samme regel via scorecardets placerings-gate, så dry-runnet
+  // kan måle videre og bruddet ikke står to gange.
+  const summary = { tiers: [line(1, S4_TARGET), line(4, S4_TARGET - 42)] };
+  const { blocking, raceDayViolations } = gatePlan(summary, { raceDayEqualityBlocking: false });
+  assert.ok(raceDayViolations.length > 0);
+  assert.deepEqual(raceDayBlocking(blocking), []);
 });

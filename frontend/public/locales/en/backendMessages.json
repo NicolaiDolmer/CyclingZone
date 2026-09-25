@@ -232,7 +232,11 @@
       "messagePersonal": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. You start Season {nextSeason} in Division {nextDivision}.",
       "messagePersonalNoNextDivision": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points.",
       "messagePersonalNoRider": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. You start Season {nextSeason} in Division {nextDivision}.",
-      "messagePersonalMinimal": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money."
+      "messagePersonalMinimal": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money.",
+      "messagePersonalBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. You start Season {nextSeason} in Division {nextDivision}. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoNextDivisionBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your best rider was {rider} with {riderPoints} points. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoRiderBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. You start Season {nextSeason} in Division {nextDivision}. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}.",
+      "messagePersonalMinimalBoard": "You finished {rankOrdinal} of {poolSize} in Division {division} with {points} points and CZ$ {prize} in prize money. Your board met after the final stage: {boardMet} of {boardTotal} targets met, confidence {boardBefore} -> {boardAfter}."
     },
     "raceResult": {
       "title": "Race result is in",
@@ -312,8 +316,10 @@
       "message": "You didn't negotiate your {planLabel} in time. The board picked focus \"{focus}\" and default goals. You can still request changes once the plan is running."
     },
     "boardMandateOpened": {
-      "title": "Your board is ready for the annual meeting",
-      "message": "Your board has proposed next season's mandate. Take the time you need. You'll get a reminder before the board signs on its own."
+      "title": "The board has called the annual meeting",
+      "message": "Your board has proposed next season's mandate. Take the time you need. You'll get a reminder before the board signs on its own.",
+      "messageWithChairman": "{chairman} has proposed your season {season} mandate. You have {days} days before the board signs on its own.",
+      "messageNoChairman": "Your board has proposed your season {season} mandate. You have {days} days before the board signs on its own."
     },
     "boardMandateT3Reminder": {
       "title": "The board is waiting for your annual mandate",

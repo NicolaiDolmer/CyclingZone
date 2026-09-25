@@ -74,6 +74,8 @@ import {
   effortsSequenceForRider,
   effortByRiderForStage,
   serializeStageRoleOverrides,
+  orderEffortByRiderForStage,
+  resolvedEffortByRiderForStage,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { seasonReferenceYear, isU25ForReferenceYear } from "./riderSeasonAge.js";
@@ -112,6 +114,9 @@ import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivi
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
+// #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
+// stillingen, se hook-stedet i simulateStageByIndex nedenfor.
+import { refreshYouthStandings as refreshYouthStandingsShared, isYouthSquad } from "./youthStandings.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
@@ -473,8 +478,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // med: ellers kunne en udgået rytter vinde en rolle-konflikt, degradere den
     // aktive holdkammerat og derefter selv blive filtreret væk — holdet ville stå
     // uden lederen (CodeRabbit-fund, #5223).
+    // #5580 (M1 punkt 6): kører v4, vinder race_team_orders' effort over
+    // stage-rækkens (én kilde). v4Engine er null ved flag-off → uændret v3.
+    const orderEffortByRider = v4Engine ? orderEffortByRiderForStage(teamOrderRows, stageNumber) : null;
     const stageResolved = v3
-      ? resolveStageEntrants(entrants, overridesForStage, { ineligibleRiderIds: abandonedSet })
+      ? resolveStageEntrants(entrants, overridesForStage, { ineligibleRiderIds: abandonedSet, orderEffortByRider })
       : null;
     if (stageResolved?.conflicts.length) {
       reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
@@ -2048,6 +2056,10 @@ export async function simulateRace({
   applyRaceResults = applyRaceResultsShared,
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
+  // #5675 (CodeRabbit-fund, Y7-opfølgning): injectable som i simulateStageByIndex
+  // — default læser den ægte refreshYouthStandings (youthStandings.js). Kaldt
+  // lige efter applyRaceResults nedenfor, samme best-effort-garanti.
+  refreshYouthStandings = refreshYouthStandingsShared,
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
@@ -2157,6 +2169,22 @@ export async function simulateRace({
     updateStandings,
   });
 
+  // #5675 (CodeRabbit-fund, Y7-opfølgning): ungdomsstillingen genberegnes samme
+  // sted som seniorstillingen ovenfor — denne heldags-/endagsløbs-sti
+  // (simulateRace) kalder IKKE simulateStageByIndex, så uden dette kald ville
+  // et endagsungdomsløb aldrig genberegne youth_season_standings. Kun for
+  // ungdomsløb (squad u23/junior) — no-op for seniorløb. Egen try/catch: en
+  // fejl må aldrig vælte afviklingen, og retter sig selv ved næste løb/recompute
+  // (samme best-effort-garanti som refreshRankingMatviewsSafe nedenfor).
+  if (isYouthSquad(race.squad)) {
+    try {
+      await refreshYouthStandings({ supabase, race, captureExceptionFn: captureException });
+    } catch (err) {
+      console.error(`  ⚠️  youth standings refresh failed after race ${race.id} — finalization continues, standings will self-heal on next recompute: ${err.message}`);
+      captureException(err, { tags: { flow: "race-run", stage: "youth-standings-refresh" }, raceId: race.id });
+    }
+  }
+
   // #3193: refresh rangliste-matviews (rider_rankings_mv, team_standings_ext_mv,
   // team_race_points_mv, global_rank_mv) LIGE EFTER season_standings er opdateret
   // — IKKE efter processBoardWeekend/notifyDiscord/notifyInApp nedenfor. Diagnose
@@ -2262,7 +2290,14 @@ export async function simulateRace({
     try {
       // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) ganger
       // dagens fatigue-load — se raceFatigue.applyRaceFatigue's jsdoc.
-      const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stage.stage_number || 1) : null;
+      // #5580 (M1 punkt 7): kørte v4, er trætheden bygget på SAMME effort som
+      // motoren (ordren vinder). v3-stien er uændret.
+      const fatigueStageNumber = stage.stage_number || 1;
+      const effortByRider = !v3
+        ? null
+        : v4Engine
+          ? resolvedEffortByRiderForStage(stageRoleOverrides, fatigueStageNumber, orderEffortByRiderForStage(teamOrderRows, fatigueStageNumber))
+          : effortByRiderForStage(stageRoleOverrides, fatigueStageNumber);
       await applyFatigue({ supabase, riderIds, profileType: stage.profile_type, effortByRider });
     } catch (err) {
       // #2389 A2: en fejlet fatigue-skrivning lader træthed drive ud af sync — capture.
@@ -2435,7 +2470,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // CYCLINGZONE-5Z kom fra. `stageResolved.entrants` er index-parallel med
   // `entrants`.
   const overridesForStage = v3 ? stageRoleOverrides?.get(stageNumber) : undefined;
-  const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage) : null;
+  // #5580 (M1 punkt 6): se buildRaceResults' tilsvarende note (kun v4).
+  const orderEffortByRider = v4Engine ? orderEffortByRiderForStage(teamOrderRows, stageNumber) : null;
+  const stageResolved = v3 ? resolveStageEntrants(entrants, overridesForStage, { orderEffortByRider }) : null;
   if (stageResolved?.conflicts.length) {
     reportStageRoleConflicts({ raceId: race.id, stageNumber, conflicts: stageResolved.conflicts });
   }
@@ -2698,6 +2735,11 @@ export async function simulateStageByIndex({
   // kører EFTER RPC'en committer (standings = idempotent re-derivation, ej desync-følsom).
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
+  // #5675: injectable som de øvrige samarbejdspartnere ovenfor — default læser
+  // den ægte refreshYouthStandings (youthStandings.js). Kaldt lige efter
+  // seniorstillingen, samme best-effort-garanti (fejl logges, stopper aldrig
+  // finaliseringen).
+  refreshYouthStandings = refreshYouthStandingsShared,
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
@@ -3156,6 +3198,20 @@ export async function simulateStageByIndex({
       // og derfor genoptages, i stedet for at løbet står med stale standings.
       if (standingsOk) await markFinalizeStep("standings");
     }
+    // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som
+    // seniorstillingen ovenfor. Kun for ungdomsløb (squad u23/junior) — no-op
+    // for seniorløb, undgår et unødigt kald pr. seniorafvikling. Egen try/catch
+    // (uafhængig af standings-trinnets resume-markering ovenfor): en fejl må
+    // aldrig vælte finaliseringen, og retter sig selv ved næste etape/recompute
+    // (samme best-effort-garanti som refreshRankingMatviewsSafe).
+    if (isYouthSquad(race.squad)) {
+      try {
+        await refreshYouthStandings({ supabase, race, captureExceptionFn: captureException });
+      } catch (err) {
+        console.error(`  ⚠️  youth standings refresh failed after stage ${stageNumber} (race ${race.id}) — finalization continues, standings will self-heal on next recompute: ${err.message}`);
+        captureException(err, { tags: { flow: "race-run", stage: "youth-standings-refresh" }, raceId: race.id, stageNumber });
+      }
+    }
     __markPhase("standings");
 
     // #3193: samme flytning som fuld-løb-stien ovenfor — refresh rangliste-
@@ -3233,7 +3289,12 @@ export async function simulateStageByIndex({
       try {
         // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) — se
         // raceFatigue.applyRaceFatigue's jsdoc.
-        const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stageNumber) : null;
+        // #5580 (M1 punkt 7): se simulateRace' tilsvarende note (kun v4).
+        const effortByRider = !v3
+          ? null
+          : v4Engine
+            ? resolvedEffortByRiderForStage(stageRoleOverrides, stageNumber, orderEffortByRiderForStage(teamOrderRows, stageNumber))
+            : effortByRiderForStage(stageRoleOverrides, stageNumber);
         await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
       } catch (err) {
         // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.

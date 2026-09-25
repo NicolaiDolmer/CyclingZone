@@ -72,8 +72,27 @@ function GoalSummary({ goal, t }) {
   );
 }
 
-export default function MandateSummaryCard({ mandate, bonusOffer = null, onOpenMandate, onReload }) {
+export default function MandateSummaryCard({ mandate, bonusOffer = null, proposedMeeting = null, onOpenMandate, onReload }) {
   const { t } = useTranslation("board");
+
+  // #5754 · Samme forslag som Mandat-fanens fulde kort (GET /board/meeting,
+  // gemt af BoardroomPage som `proposedMeeting`) — resumeet paa overblikket
+  // skal ikke laengere sige "No mandate signed yet" naar bestyrelsen reelt
+  // HAR et forslag klar, kun ikke underskrevet endnu. Lille aendring med
+  // vilje: samme SectionHeader+action-anatomi som det underskrevne resumé
+  // herunder, kun ét linje-skift i kroppen — det fulde forslag (maalene, "Enter
+  // annual meeting") staar i Mandat-fanen, ét klik herfra.
+  if (!mandate && proposedMeeting?.available) {
+    return (
+      <Section>
+        <SectionHeader
+          title={t("boardroom.mandate.cardTitleGeneric")}
+          action={<SectionAction onClick={onOpenMandate}>{t("boardroom.overview.openMandate")}</SectionAction>}
+        />
+        <p className="text-[13px] font-medium text-cz-1">{t("boardroom.mandate.proposed.summaryLine")}</p>
+      </Section>
+    );
+  }
 
   if (!mandate) {
     return (

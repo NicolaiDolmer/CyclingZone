@@ -835,15 +835,13 @@
       "success": "Rytter fyret.",
       "errorPrefix": "Kunne ikke fyre:"
     },
-    "promote": {
-      "button": "Ryk op i senior-truppen",
-      "success": "Rytter rykket op i din senior-trup.",
-      "errorPrefix": "Kunne ikke rykke op:"
-    },
-    "demote": {
-      "button": "Flyt til akademi",
-      "success": "Rytter flyttet til dit akademi.",
-      "errorPrefix": "Kunne ikke flytte rytter:"
+    "move": {
+      "button": "Flyt trup",
+      "success": {
+        "senior": "Rytter flyttet til din senior-trup.",
+        "u23": "Rytter flyttet til dit U23-hold.",
+        "junior": "Rytter flyttet til dit juniorhold."
+      }
     }
   },
   "swapOffer": {

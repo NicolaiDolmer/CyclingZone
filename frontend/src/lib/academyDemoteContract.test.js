@@ -36,22 +36,35 @@ test("quote-routen sender backendens eget praedikat med", () => {
   assert.match(api, /keepsContract:\s*hasCompleteContract\(rider\)/, "academy-demote-quote skal sende keepsContract fra hasCompleteContract");
 });
 
-test("begge demote-flader giver modalen flaget fra quoten", () => {
-  const teamPage = read("../pages/TeamPage.jsx");
-  const riderActions = read("../components/rider/RiderManageActions.jsx");
-  for (const [name, src] of [["TeamPage", teamPage], ["RiderManageActions", riderActions]]) {
-    assert.match(src, /keepsContract:\s*quote\?\.keepsContract/, `${name} skal laese flaget fra quoten, ikke regne selv`);
-  }
+// #5748: begge flader (rytterprofil + My Team) monterer nu SAMME MoveSquadDialog,
+// som er det eneste sted der henter quoten og giver modalen flaget.
+test("flyt-dialogen giver modalen flaget fra quoten, og begge flader bruger den", () => {
+  const dialog = read("../components/MoveSquadDialog.tsx");
+  assert.match(dialog, /keepsContract:\s*quote\?\.keepsContract/, "MoveSquadDialog skal laese flaget fra quoten, ikke regne selv");
+  // Quoten hentes for det VALGTE maal (?squad=), ikke kun den naturlige trup.
+  assert.match(dialog, /academy-demote-quote\?squad=\$\{target\}/, "quoten skal hentes for det valgte maal");
   // Frontend maa ALDRIG udlede arven ved at sammenligne de to loen-tal: to ens
   // tal kan lige saa godt vaere et sammenfald (en kontraktloes rytter kan lande
   // paa sin gamle loen) som en arvet kontrakt.
-  for (const [name, src] of [["TeamPage", teamPage], ["RiderManageActions", riderActions]]) {
+  const teamPage = read("../pages/TeamPage.jsx");
+  const riderActions = read("../components/rider/RiderManageActions.jsx");
+  for (const [name, src] of [["MoveSquadDialog", dialog], ["TeamPage", teamPage], ["RiderManageActions", riderActions]]) {
     assert.doesNotMatch(
       src,
       /newSalary\s*===?\s*(quote\?\.)?currentSalary|currentSalary\s*===?\s*(quote\?\.)?newSalary/,
       `${name} maa ikke udlede kontrakt-arv af at de to loen-tal er ens`,
     );
   }
+  for (const [name, src] of [["TeamPage", teamPage], ["RiderManageActions", riderActions]]) {
+    assert.match(src, /<MoveSquadDialog\b/, `${name} skal aabne den delte MoveSquadDialog (ingen kopi af reglen)`);
+    assert.doesNotMatch(src, /academy-demote-quote/, `${name} maa ikke hente quoten selv`);
+  }
+});
+
+test("den nye route og quote-parameteren findes i api.js", () => {
+  const api = read("../../../backend/routes/api.js");
+  assert.match(api, /router\.post\("\/riders\/:id\/squad"/, "POST /api/riders/:id/squad skal findes");
+  assert.match(api, /demoteTargetSquad\(rider, await getActiveSeasonNumber\(\), requestedSquad\)/, "quoten skal bruge det valgte maal");
 });
 
 test("modalen vaelger demote-note og loen-etiket ud fra flaget", () => {

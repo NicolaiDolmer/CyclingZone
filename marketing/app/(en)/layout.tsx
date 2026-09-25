@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../globals.css";
 import { FIRST_TOUCH_SCRIPT } from "@/lib/attribution";
+import { AhrefsAnalytics } from "@/components/ahrefs-analytics";
 
 // EN-root-layout (route-group). DA har sit eget root-layout i app/(da)/ så
 // <html lang> er korrekt i den server-leverede HTML for begge sprog.
@@ -59,6 +60,8 @@ export default function EnRootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body>
+        {/* #5493: ungated, cookie-frit — se komponenten for ejer-beslutning. */}
+        <AhrefsAnalytics />
         {/* #5310: first-touch attribution FØR noget link kan klikkes. Samme nøgle
             og format som SPA'ens attribution.js; skriver kun hvis nøglen mangler. */}
         <script dangerouslySetInnerHTML={{ __html: FIRST_TOUCH_SCRIPT }} />

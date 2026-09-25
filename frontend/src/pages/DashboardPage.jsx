@@ -1518,6 +1518,7 @@ export default function DashboardPage() {
       {showSeasonWrapNudge && (
         <SeasonWrapNudgeCard
           seasonNumber={completedSeasonRecap.seasonNumber}
+          seasonId={completedSeasonRecap.seasonId}
           nextSeasonNumber={seasonInfo?.number}
           division={completedSeasonRecap.division}
           divisionSize={completedSeasonRecap.divisionSize}
@@ -1567,7 +1568,7 @@ export default function DashboardPage() {
               Card.jsx's borderClass-fælde (to bg-*-klasser på samme property,
               vinderen afgøres af CSS-bundle-rækkefølge, ikke JSX). */}
           <Link
-            to="/profile"
+            to="/profile?tab=notifications#discord"
             className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-cz border border-transparent text-xs font-semibold bg-cz-discord text-white transition-colors duration-150 ease-out hover:bg-cz-discord-hover flex-shrink-0">
             {t("dashboard:discordNudge.cta")}
           </Link>

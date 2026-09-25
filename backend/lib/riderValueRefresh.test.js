@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bestRoleForAbilities, recomputeRiderValue, selectChangedValueUpdates } from "./riderValueRefresh.js";
 import { predictBaseValue } from "./riderValuation.js";
+import { loadValuationModelById } from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
@@ -177,4 +178,27 @@ test("#4872 kontrol: en rytter frosset til 'climber' der udvikler climbing FÅR 
   const rider = { ...riderRow, primary_type: frozen.primary_type, secondary_type: frozen.secondary_type, base_value: frozen.base_value, current_production_value: frozen.current_production_value };
   const updates = selectChangedValueUpdates([rider], new Map([["moving-1", after]]), baseline, modelV4, new Map(), youthBaselineV4);
   assert.equal(updates.length, 1, "climbing er positivt vægtet for 'climber' — værdien følger med");
+});
+
+// #5497 v3: dispatchen til den typefri nøgle må ikke røre v4/v5.
+test("#5497: v4/v5 er bit-identiske med før — phaseStep/market ignoreres, ingen nedbrydning", () => {
+  const rider = { id: "d1", age: 26, potentiale: 3 };
+  for (const id of ["v4", "v5"]) {
+    const m = loadValuationModelById(id);
+    const plain = recomputeRiderValue(rider, ABIL, baseline, m, { youthBaseline: youthBaselineV4 });
+    const withOpts = recomputeRiderValue(rider, ABIL, baseline, m, { youthBaseline: youthBaselineV4, phaseStep: 4, market: { weight: 1 } });
+    assert.deepEqual(withOpts, plain, id);
+    assert.equal(plain.valuation_components, undefined);
+    assert.deepEqual(Object.keys(plain).sort(), ["base_value", "current_production_value", "primary_type", "secondary_type"]);
+  }
+});
+
+test("#5497: v6 dispatches via nøglen og bærer løngrundlaget fra v4", () => {
+  const rider = { id: "d2", age: 26, potentiale: 3 };
+  const v6 = loadValuationModelById("v6");
+  const v4 = loadValuationModelById("v4");
+  const out = recomputeRiderValue(rider, ABIL, baseline, v6, { youthBaseline: youthBaselineV4, productionModel: v4, phaseStep: 2 });
+  assert.equal(out.valuation_components.model_id, "v6");
+  assert.equal(out.valuation_components.phase_step, 2);
+  assert.equal(out.current_production_value, recomputeRiderValue(rider, ABIL, baseline, v4, { youthBaseline: youthBaselineV4 }).current_production_value);
 });

@@ -41,6 +41,10 @@
         "desc": "Træningsplaner hører til én sæson, så sidste sæsons plan gælder ikke længere."
       },
       "board": {
+        "title": "Skriv under på dit mandat",
+        "desc": "Årsmødet er åbent. Svar på hvert mål og skriv under, ellers skriver bestyrelsen selv under når fristen løber ud."
+      },
+      "boardLegacy": {
         "title": "Forhandl med bestyrelsen",
         "desc": "Din nye plan venter. Indtil du har godkendt den, er sæsonens mål ikke fastlagt."
       },
@@ -59,6 +63,7 @@
       "maintained": "Holdt division {division}"
     },
     "rankLine": "Du blev nr. {rank} af {size} i division {division}",
+    "boardConfidence": "Bestyrelsens tillid {percent} %",
     "statsLine": "{points} point · {wins, plural, one {# sejr} other {# sejre}}",
     "cta": "Se din sæson-opsummering",
     "goal": {

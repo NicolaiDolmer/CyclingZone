@@ -25,6 +25,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Verify SUPABASE_DB_URL is configured
         env:

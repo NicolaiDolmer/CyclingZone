@@ -52,6 +52,7 @@ import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js";
 import { captureException } from "./sentry.js";
 import { SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
+import { nextPhaseStep, readPhaseStepStrict, writePhaseStep } from "./riderValuationModelSelect.js";
 
 // Genudstilles her, men bor i economyConstants.js: den fil har ingen imports,
 // så frontendens paritetstest kan importere tallet i CI (se kommentaren der).
@@ -141,6 +142,8 @@ export async function runSundayValueSweep({
   claimRunDate = defaultClaimRunDate,
   releaseRunDate = defaultReleaseRunDate,
   completeRun = defaultCompleteRun,
+  readPhaseStep = readPhaseStepStrict,
+  advancePhaseStep = writePhaseStep,
   log = noop,
   captureExceptionFn = captureException,
 } = {}) {
@@ -170,9 +173,18 @@ export async function runSundayValueSweep({
   if (!claimed) return { ran: false, skipped: "already_ran_today" };
 
   // ── 1. v4-refresh: base_value/CPV/typer følger de udviklede evner ──
+  // #5497 TRIN-TÆLLEREN: app_config.rider_value_phase_step er det trin der
+  // SIDST er skrevet (0 = kørselsdagen). Søndagen regner med næste trin
+  // (loft 4) og skriver det tilbage, når kørslen er fuldført og prisen er v6.
+  // Læses STRIKST inde i try'en: en DB-fejl frigiver dagen som enhver anden
+  // refresh-fejl, i stedet for at regne hele populationen på et gættet trin.
+  // Under v4/v5 regnes trinnet ud, men modellerne læser det ikke, og nøglen
+  // røres ikke (se trin 3 nedenfor).
   let valueRefresh = null;
+  let phaseStep = null;
   try {
-    valueRefresh = await refreshValues(supabase, { log });
+    phaseStep = nextPhaseStep(await readPhaseStep(supabase));
+    valueRefresh = await refreshValues(supabase, { log, phaseStep });
   } catch (err) {
     // FEJLET REFRESH ⇒ FRIGIV DAGEN OG PRØV IGEN. Vi gør bevidst IKKE noget
     // andet her: markedsblendet springes over, fordi næste forsøgs v4-refresh
@@ -223,5 +235,36 @@ export async function runSundayValueSweep({
     captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "complete-run" } });
   }
 
-  return { ran: true, runDate, valueRefresh, marketValueSweep };
+  // ── 3. Trin-tælleren tælles op (#5497), samme afslutnings-sti som completed_at ──
+  // KUN når prisen er v6 (refresh'en melder typefree) og refresh'en er
+  // fuldført — vi er kun nået hertil, hvis den ikke kastede. Der skrives det
+  // trin kørslen FAKTISK regnede med, ikke "læs + 1" igen, så en gentaget
+  // afslutning aldrig kan tælle to gange. Fejler skrivningen, står nøglen på
+  // forrige trin, og næste søndag regner det samme trin igen: præmien bliver
+  // et trin længere, aldrig et trin for tidligt væk.
+  let phase = { step: valueRefresh?.typefree ? phaseStep : null, advanced: false };
+  if (valueRefresh?.typefree === true) {
+    try {
+      await advancePhaseStep(supabase, phaseStep);
+      phase = { step: phaseStep, advanced: true };
+    } catch (err) {
+      log(`sunday-value-sweep kunne ikke taelle trin-taelleren op: ${err.message}`);
+      captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "phase-step" } });
+    }
+  }
+  log(sundaySweepSummaryLine({ valueRefresh, phase }));
+
+  return { ran: true, runDate, valueRefresh, marketValueSweep, phase };
+}
+
+/**
+ * Den linje Railway-loggen skal vise for søndagens værdi-del, så post-verify
+ * kan læses uden DB-adgang: model, trin (kun v6) og antal løngrundlag der
+ * flyttede sig (skal være 0 så længe løn-nøglen står på v4). Ren funktion.
+ */
+export function sundaySweepSummaryLine({ valueRefresh, phase } = {}) {
+  const model = valueRefresh?.modelId ?? "?";
+  const step = phase?.step == null ? "-" : `${phase.step}${phase.advanced ? "" : " (ikke gemt)"}`;
+  const cpv = valueRefresh?.productionChanged ?? "?";
+  return `sunday-value-sweep: model ${model} · phase step ${step} · production_value changed: ${cpv}`;
 }

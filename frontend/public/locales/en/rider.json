@@ -835,15 +835,13 @@
       "success": "Rider released.",
       "errorPrefix": "Couldn't release:"
     },
-    "promote": {
-      "button": "Promote to senior squad",
-      "success": "Rider promoted to your senior squad.",
-      "errorPrefix": "Couldn't promote:"
-    },
-    "demote": {
-      "button": "Move to academy",
-      "success": "Rider moved to your academy.",
-      "errorPrefix": "Couldn't move rider:"
+    "move": {
+      "button": "Move squad",
+      "success": {
+        "senior": "Rider moved to your senior squad.",
+        "u23": "Rider moved to your U23 team.",
+        "junior": "Rider moved to your junior team."
+      }
     }
   },
   "swapOffer": {

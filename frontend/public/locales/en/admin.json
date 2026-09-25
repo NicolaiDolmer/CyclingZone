@@ -198,5 +198,106 @@
       "EtapelobHold": "Team · stage race",
       "KlassikerHold": "Team · one-day"
     }
+  },
+  "valuePreview": {
+    "title": "Value preview",
+    "subtitle": "Rider values before and after a model. Nothing is saved here.",
+    "loading": "Calculating values",
+    "modelSelect": "Model to preview",
+    "modelOption": "{from} to {to}",
+    "reload": "Reload",
+    "meta": "Live {from} · wage {wage} · season {season} · {time}",
+    "sameModel": "Same model at both ends, so nothing changes.",
+    "noTeam": "No team",
+    "academy": "Academy",
+    "ageShort": "Age {n}",
+    "count": "Showing {shown} of {total}",
+    "teamCount": "{n} teams",
+    "showMore": "Show {n} more",
+    "drift": "The live model alone moves {n} values next Sunday.",
+    "skipped": "{n} riders without abilities or age are left out.",
+    "tabs": {
+      "overview": "Overview",
+      "riders": "Riders",
+      "teams": "Teams"
+    },
+    "steps": {
+      "label": "Phase-in step",
+      "runDay": "Run day",
+      "week": "Week {n}"
+    },
+    "filters": {
+      "search": "Search rider or team",
+      "more": "More filters",
+      "scope": {
+        "label": "Population",
+        "managers": "Manager teams",
+        "all": "All riders"
+      },
+      "division": {
+        "label": "Division",
+        "all": "All divisions",
+        "one": "Division {n}"
+      },
+      "type": {
+        "label": "Rider type",
+        "all": "All types"
+      },
+      "team": {
+        "label": "Team",
+        "all": "All teams"
+      },
+      "age": {
+        "label": "Age",
+        "all": "All ages",
+        "u22": "Under 22",
+        "a22_25": "22 to 25",
+        "a26_29": "26 to 29",
+        "a30": "30 and older"
+      }
+    },
+    "overview": {
+      "population": "Population",
+      "hardestHit": "Teams hit hardest",
+      "allTeams": "All teams",
+      "noTeams": "No teams in this selection."
+    },
+    "stats": {
+      "riders": "Riders",
+      "before": "Value before",
+      "after": "Value after",
+      "change": "Change",
+      "median": "Median change",
+      "up": "Up",
+      "down": "Down",
+      "same": "Unchanged",
+      "drop25": "Down 25 % or more",
+      "drop50": "Down 50 % or more"
+    },
+    "wage": {
+      "ok": "Wage check: no wage basis moves ({model}). Wage demands stay the same.",
+      "moved": "Wage check: {n} wage bases move ({model}). Stop and check before the run."
+    },
+    "columns": {
+      "rider": "Rider",
+      "team": "Team",
+      "type": "Type",
+      "riders": "Riders",
+      "before": "Before",
+      "after": "After",
+      "deltaKr": "Change CZ$",
+      "deltaPct": "Change %"
+    },
+    "empty": {
+      "title": "No riders match the filters",
+      "description": "Clear the filters to see the whole population.",
+      "action": "Clear filters"
+    },
+    "error": {
+      "title": "Could not calculate the preview",
+      "description": "Nothing was changed. The values in the game are untouched.",
+      "retry": "Try again",
+      "stale": "Could not refresh. The numbers below are from the last successful load."
+    }
   }
 }
