@@ -1235,10 +1235,10 @@ export function TeamPage() {
     // sæsonskiftet (retirementRelease.js) og kan hverken køre løb eller sælges.
     // Uden filteret ville de stå i listen og tælle med i trup-/løn-/værditotalerne
     // i vinduet mellem pensionering og frigivelse.
+    // #5742: squad med i begge SELECT'er nedenfor — DEL B's U23/junior-optælling
+    // tæller direkte på kolonnen (samme SSOT som U23-/juniorsiderne, #5688).
     const [ridersRes, pendingRes] = await Promise.all([
       supabase.from("riders")
-        // #5742: squad med i SELECT'en — DEL B's U23/junior-optælling nedenfor
-        // tæller direkte på kolonnen (samme SSOT som U23-/juniorsiderne, #5688).
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
         .eq("is_retired", false)

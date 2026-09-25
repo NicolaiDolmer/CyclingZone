@@ -841,10 +841,10 @@
       "errorPrefix": "Kunne ikke rykke op:"
     },
     "demote": {
-      "button": "Flyt til {{squad}}",
-      "success": "Rytter flyttet til dit {{squad}}-hold.",
+      "button": "Flyt til {squad}",
+      "success": "Rytter flyttet til dit {squad}-hold.",
       "errorPrefix": "Kunne ikke flytte rytter:",
-      "fullTooltip": "Dit {{squad}}-hold er fuldt. Frigør en plads der først."
+      "fullTooltip": "Dit {squad}-hold er fuldt. Frigør en plads der først."
     }
   },
   "squadNames": { "u23": "U23", "junior": "junior" },
