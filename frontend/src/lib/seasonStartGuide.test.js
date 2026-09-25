@@ -8,6 +8,7 @@ import {
   seasonStartDismissKey,
   buildSeasonStartItems,
   countDoneItems,
+  resolveBoardStartItem,
 } from "./seasonStartGuide.js";
 
 const season2 = { id: "s2", number: 2, status: "active", start_date: "2026-07-27" };
@@ -107,4 +108,32 @@ test("countDoneItems: kun bekræftet udførte tæller med", () => {
   assert.equal(countDoneItems([{ done: true }, { done: false }, { done: null }, { done: true }]), 2);
   assert.equal(countDoneItems([]), 0);
   assert.equal(countDoneItems(), 0);
+});
+
+// #5755 — mandat-launch D: bestyrelses-punktet skifter til "Sign your mandate".
+test("resolveBoardStartItem: flag off → null, legacy boardPlanMissing-punktet bevares uændret", () => {
+  assert.equal(resolveBoardStartItem({ mandateEnabled: false }), null);
+  assert.equal(resolveBoardStartItem(), null);
+});
+
+test("resolveBoardStartItem: flag on, meeting ikke hentet endnu → /board, done ukendt (null)", () => {
+  assert.deepEqual(resolveBoardStartItem({ mandateEnabled: true }), { to: "/board", done: null });
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingLoaded: false, meetingAvailable: true }),
+    { to: "/board", done: null },
+  );
+});
+
+test("resolveBoardStartItem: forslag tilgængeligt → linker til /board/meeting, ikke udført", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: true, meetingLoaded: true }),
+    { to: "/board/meeting", done: false },
+  );
+});
+
+test("resolveBoardStartItem: intet forslag tilbage efter vellykket kald = underskrevet", () => {
+  assert.deepEqual(
+    resolveBoardStartItem({ mandateEnabled: true, meetingAvailable: false, meetingLoaded: true }),
+    { to: "/board", done: true },
+  );
 });

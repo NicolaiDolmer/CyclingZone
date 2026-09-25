@@ -1518,6 +1518,7 @@ export default function DashboardPage() {
       {showSeasonWrapNudge && (
         <SeasonWrapNudgeCard
           seasonNumber={completedSeasonRecap.seasonNumber}
+          seasonId={completedSeasonRecap.seasonId}
           nextSeasonNumber={seasonInfo?.number}
           division={completedSeasonRecap.division}
           divisionSize={completedSeasonRecap.divisionSize}

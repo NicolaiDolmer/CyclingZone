@@ -150,3 +150,38 @@ export function buildSeasonStartItems({
 export function countDoneItems(items = []) {
   return items.filter((i) => i.done === true).length;
 }
+
+/**
+ * Bestyrelses-punktets EFFEKTIVE `to`/`done` naar mandat-modellen
+ * (board_mandate_model_enabled) er aktiv for viewer — ejer-go 25/9 19:45,
+ * mandatet on for alle fra lørdag 27/9 (#5755).
+ *
+ * SeasonStartGuideCard.jsx henter selv flag-stadiet (lib/featureStage.ts'
+ * loadFeatureFlagStages — "beta" ELLER "on" tæller som aktivt for viewer) og
+ * GET /board/meeting (annualMeeting/meetingApi.js' fetchBoardMeeting). Denne
+ * funktion er den rene beslutningslogik derefter, testbar uden netværk/React.
+ *
+ * `null` retur = flaget er OFF for viewer → kortet skal beholde
+ * `buildSeasonStartItems`s legacy board-punkt (boardPlanMissing-baseret)
+ * fuldstændig uændret, med legacy-copy'en (items.boardLegacy i dashboard.json),
+ * så en spiller der ikke har fået mandatet endnu ALDRIG mister linjen før
+ * flippet.
+ *
+ * @param {object} p
+ * @param {boolean} [p.mandateEnabled]         flag-stadie er "beta" eller "on" for viewer
+ * @param {boolean|null} [p.meetingAvailable]  fetchBoardMeeting()?.available
+ * @param {boolean} [p.meetingLoaded]          lykkedes fetchBoardMeeting() (payload != null)?
+ * @returns {{to: string, done: boolean|null}|null}
+ */
+export function resolveBoardStartItem({
+  mandateEnabled = false,
+  meetingAvailable = null,
+  meetingLoaded = false,
+} = {}) {
+  if (!mandateEnabled) return null;
+  if (!meetingLoaded) return { to: "/board", done: null };
+  // available:false efter et vellykket kald = mandatet er underskrevet (der
+  // er intet forslag tilbage at handle på) — IKKE "flaget er off", det er
+  // allerede filtreret fra ovenfor.
+  return { to: meetingAvailable ? "/board/meeting" : "/board", done: !meetingAvailable };
+}
