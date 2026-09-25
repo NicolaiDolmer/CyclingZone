@@ -82,7 +82,7 @@ async function mockDemoteQuote(page, quote) {
 
 async function openDemoteDialog(page) {
   await page.goto(`/riders/${U23_RIDER.id}`);
-  const demoteBtn = page.getByRole("button", { name: /Flyt til akademi/i }).first();
+  const demoteBtn = page.getByRole("button", { name: /Flyt til U23/i }).first();
   await expect(demoteBtn).toBeVisible({ timeout: 20000 });
   await demoteBtn.click();
   const dialog = page.getByRole("dialog");
