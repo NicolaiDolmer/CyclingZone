@@ -19,7 +19,7 @@ test("#4557 BoardroomPage renderer alle kanoniske kort fordelt paa fanerne", () 
 
 test("#4557 BoardroomPage tager den allerede-hentede payload som prop (ingen egen fetch)", () => {
   assert.doesNotMatch(source, /fetch\(/, "BoardroomPage må ikke selv fetche — data kommer fra BoardroomRoute");
-  assert.match(source, /export default function BoardroomPage\(\{ data, onReload, dnaPreview = null \}\)/);
+  assert.match(source, /export default function BoardroomPage\(\{ data, onReload, dnaPreview = null, meetingPreview = null \}\)/);
 });
 
 test("#4557 (S-M2c) gold 'Enter annual meeting'-knappen vises KUN naar GET /board/meeting svarer available:true", () => {
@@ -109,4 +109,22 @@ test("#4557 bonustilbuddet fodres fra payloadens ene felt, begge steder", () => 
 test("#5632 Mandat-fanen faar bonusOfferProgress + passiveModifier fra payloaden (afstand til tilbud + sponsoreffekt)", () => {
   assert.match(source, /bonusOfferProgress=\{data\.bonusOfferProgress\}/);
   assert.match(source, /passiveModifier=\{data\.passiveModifier\}/);
+});
+
+// #5754 · [board] Mandat-launch C — GET /board/meeting's fulde payload gemmes
+// (ikke kun `available`) og gaar til BAADE Mandat-fanens fulde kort og
+// Overblikkets resumé, saa Mandat-fanen ikke laengere er et tomt rum mellem
+// saesonskiftet og underskriften.
+test("#5754 hele meeting-payloaden gemmes (ikke kun available) og sendes til MandateCard + MandateSummaryCard", () => {
+  assert.match(source, /const \[proposedMeeting, setProposedMeeting\] = useState\(meetingPreview\);/);
+  assert.match(source, /setProposedMeeting\(res\);/);
+  assert.doesNotMatch(source, /setProposedMeeting\(\{\s*available/, "hele res skal gemmes, ikke et haandplukket delsaet af felterne");
+  assert.match(source, /proposedMeeting=\{proposedMeeting\}/g);
+  const stripeUses = source.match(/proposedMeeting=\{proposedMeeting\}/g) || [];
+  assert.equal(stripeUses.length, 2, "baade MandateCard (Mandat-fanen) og MandateSummaryCard (Overblik) skal faa forslaget");
+});
+
+test("#5754 DEV-preview kan seede proposedMeeting UDEN netvaerkskald (samme moenster som dnaPreview)", () => {
+  assert.match(source, /if \(meetingPreview\) return;.*DEV-preview/);
+  assert.match(source, /useState\(Boolean\(meetingPreview\?\.available\)\)/);
 });

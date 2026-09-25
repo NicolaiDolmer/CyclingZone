@@ -41,11 +41,12 @@ import { resolveApiError } from "../../lib/apiError";
 
 const TABS = ["overview", "mandate", "vision", "board"];
 
-// `dnaPreview` er DEV-PREVIEW-ONLY (BoardroomPreviewPage.jsx, /ui/boardroom):
-// den seeder DNA-tilstanden med en fixture, saa ejeren kan se mockup-varianten
-// "hold uden DNA" uden en session. I produktion er den altid undefined, og
-// tilstanden kommer udelukkende fra GET /board/dna-suggestions.
-export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
+// `dnaPreview`/`meetingPreview` er DEV-PREVIEW-ONLY (BoardroomPreviewPage.jsx,
+// /ui/boardroom): de seeder tilstanden med en fixture, saa ejeren kan se en
+// mockup-variant uden en session ("hold uden DNA", "foreslaaet mandat, ikke
+// underskrevet endnu"). I produktion er begge altid undefined, og
+// tilstanden kommer udelukkende fra de rigtige GET-kald.
+export default function BoardroomPage({ data, onReload, dnaPreview = null, meetingPreview = null }) {
   const { t } = useTranslation("board");
   const navigate = useNavigate();
   const chair = (data.board?.members || []).find((m) => m.role === "chair") || null;
@@ -74,14 +75,24 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
   // GET /board/meeting afgoer det, samme kill-switch-sikre moenster som
   // BoardroomRoute's egen flag-tjek. Det er sidens ENESTE guld-knap; alt andet
   // paa siden (accept af bonustilbud, valg af DNA) er secondary/quiet.
-  const [meetingAvailable, setMeetingAvailable] = useState(false);
+  //
+  // #5754 · Samme kald gemte tidligere KUN `available` — Mandat-fanen var et
+  // tomt rum mellem saesonskiftet og underskriften, selvom bestyrelsen
+  // allerede havde et forslag klar. Nu gemmes hele payloaden (mandate.goals,
+  // deadlineAt, seasonNumber) som `proposedMeeting`, sendt videre til
+  // MandateCard/MandateSummaryCard som prop — ingen ekstra fetch, samme kald.
+  const [meetingAvailable, setMeetingAvailable] = useState(Boolean(meetingPreview?.available));
+  const [proposedMeeting, setProposedMeeting] = useState(meetingPreview);
   useEffect(() => {
+    if (meetingPreview) return; // DEV-preview: fixture uden netvaerkskald.
     let cancelled = false;
     fetchBoardMeeting().then((res) => {
-      if (!cancelled && res?.available) setMeetingAvailable(true);
+      if (cancelled) return;
+      setProposedMeeting(res);
+      if (res?.available) setMeetingAvailable(true);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [meetingPreview]);
 
   // ---- klub-DNA (BOARD_RULES §8) ----
   // Payloaden siger OM holdet har et DNA (`team.dnaKey`); forslagene og
@@ -157,6 +168,7 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
             <MandateSummaryCard
               mandate={data.mandate}
               bonusOffer={data.bonusOffer}
+              proposedMeeting={proposedMeeting}
               onOpenMandate={() => setTab("mandate")}
               onReload={onReload}
             />
@@ -175,6 +187,7 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null }) {
             bonusOffer={data.bonusOffer}
             bonusOfferProgress={data.bonusOfferProgress}
             passiveModifier={data.passiveModifier}
+            proposedMeeting={proposedMeeting}
             onReload={onReload}
           />
         </TabPanel>
