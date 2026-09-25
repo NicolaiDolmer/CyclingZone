@@ -160,7 +160,8 @@ export default function MoveSquadDialog({ rider, seasonYear, onClose, onMoved }:
       max: row?.max ?? "-",
     };
     if (code && KNOWN_MOVE_ERRORS.has(code)) return t(`academy:moveSquad.errors.${code}`, params);
-    return resolveApiError({ errorCode: code }, t, t("academy:moveSquad.errors.failed"));
+    const translate = t as unknown as (key: string, params?: object) => string;
+    return resolveApiError({ errorCode: code }, translate, t("academy:moveSquad.errors.failed"));
   }, [rows, t]);
 
   async function confirm(squad: Squad | null) {

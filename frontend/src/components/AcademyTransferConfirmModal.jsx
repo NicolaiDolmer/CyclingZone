@@ -33,6 +33,9 @@ function placesText(used, max) {
   return `${fmt(used)} / ${fmt(max)}`;
 }
 
+// Props-typen er bevidst løs: filen er .jsx, og uden en JSDoc-type udleder tsc
+// `null`-defaults som typen `null`, hvilket spærrer MoveSquadDialog.tsx.
+/** @param {Record<string, any>} props */
 export function AcademyTransferConfirmModal({
   show,
   direction,            // 'promote' | 'demote' | 'move'
