@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); tjek `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); stablede PR'er retargetes til main FØR base merges (#5655→#5670); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Ingen aktiv session (natsession 25/9-nat lukket 07:45; morgenrapport `2026-09-26-morgenrapport.md`).
+> **🤖 Working agent:** Dagsession 25/9-b (Claude Code, DOLMERPC, merge-session med ejeren, startet 25/9 kl. 08:00). Kø: `session-prompt-2026-09-25-b.md`.
