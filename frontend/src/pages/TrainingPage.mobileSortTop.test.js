@@ -22,9 +22,13 @@ test("#5805 mobil-sorteringen sendes i sortSlot som header-udgaven, ikke i assis
 });
 
 test("#5805 TrainingMobileToday lægger sortSlot i tabellens header, ikke som egen række", () => {
-  assert.match(today, /riderHeader=\{sortSlot\}/);
-  // Ingen fritstående {sortSlot} over tabellen: det kostede to ryttere på
-  // første skærm (CI på PR #5810: 6 i stedet for 8).
+  assert.match(today, /riderHeader=\{sortInHeader \? sortSlot : null\}/);
+  // Header-pladsen er reglen med én løbsdags-kolonne (prod i dag). Kun med
+  // flere kolonner, hvor navnekolonnen er for smal, står den som egen række;
+  // en ubetinget række over tabellen kostede to ryttere på første skærm
+  // (CI på PR #5810: 6 i stedet for 8).
+  assert.match(today, /const sortInHeader = columns\.length === 1;/);
+  assert.match(today, /\{!sortInHeader && sortSlot\}/);
   assert.doesNotMatch(today, /^\s*\{sortSlot\}\s*$/m);
 });
 
