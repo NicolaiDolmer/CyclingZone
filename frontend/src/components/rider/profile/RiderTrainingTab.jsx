@@ -232,9 +232,18 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
 // samme rækkefølge.
 function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   const { t: tTraining } = useTranslation("training");
-  const { planFor, capped } = training;
+  const { planFor, capped, todayRun } = training;
   const focus = planFor(rider.id)?.focus ?? null;
   const focusAbilities = focus ? new Set(TRAINING_FOCUS_ABILITIES[focus] ?? []) : null;
+
+  // #5539-fix (reviewer-fund): kolonnen bruger SAMME todayRun-linje som
+  // /training-rosterets focusAbilityReceipt-kald (TrainingPage.jsx) — ingen nyt
+  // fetch, ingen ny serverdata. Uden dette var progressBefore/gainsToday altid
+  // undefined her, så abilityYesterdayPct ALTID returnerede null (beforeFrac =
+  // NaN), og den nye kolonne viste "—" på alle 15 evner uanset ægte fremgang.
+  const todayRow = todayRun?.report?.riders?.find((r) => r?.rider_id === rider.id) ?? null;
+  const progressBefore = todayRow?.progress_before ?? null;
+  const gainsToday = todayRow?.gains ?? null;
 
   const seasonStart = trainingHistory?.seasonStart ?? null;
   // #4293: sæsonen kan være aktiv OG endnu ikke begyndt (interregnum mellem to
@@ -257,6 +266,8 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       progress,
       capped: capped?.[rider.id],
       seasonGains,
+      progressBefore,
+      gainsToday,
     }).map((row) => [row.ability, row]),
   );
 
