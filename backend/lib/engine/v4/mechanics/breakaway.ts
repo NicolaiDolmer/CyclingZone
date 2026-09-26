@@ -701,7 +701,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // med det samme. Segmentets km deles i lad-gaa-km (hullet vokser mod
     // loftet) og jagt-km (jagt-modellen nedenfor lukker).
     let letGoKm = 0;
-    let chaseKm = segmentLengthKm;
+    // Dagens udbrud findes foerst fra dannelses-km: paa formations-segmentet
+    // jages kun resten af segmentet (CodeRabbit-fund), ogsaa uden lad-gaa-fase.
+    let chaseKm = breakaway.origin === "breakaway"
+      ? Math.max(0, ctx.segment.to_km - Math.max(ctx.segment.from_km, formationKm))
+      : segmentLengthKm;
     let maxGapSeconds = 0;
     if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length)) {
       maxGapSeconds = letGoMaxGapSeconds({
