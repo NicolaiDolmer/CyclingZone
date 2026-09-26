@@ -7,7 +7,6 @@ import {
   chargeRaceDayTravelStaffToDate,
   clearSettledTravelStaffRaces,
   computeTravelStaffCharges,
-  raceIdFromTravelStaffKey,
   startersByStage,
   travelStaffIdempotencyKey,
   upkeepPerRaceDayRate,
@@ -61,11 +60,8 @@ test("sats × reference-løbsdage ≈ den gamle sæsonsum (samme sum spredt ud, 
   }
 });
 
-test("idempotency-nøglen er pr. løb + etape + hold og kan læses tilbage", () => {
-  const key = travelStaffIdempotencyKey("r1", 3, "h1");
-  assert.equal(key, "travel_staff:r1:3:h1");
-  assert.equal(raceIdFromTravelStaffKey(key), "r1");
-  assert.equal(raceIdFromTravelStaffKey("sponsor_race_day:r1:h1"), null);
+test("idempotency-nøglen er pr. løb + etape + hold", () => {
+  assert.equal(travelStaffIdempotencyKey("r1", 3, "h1"), "travel_staff:r1:3:h1");
 });
 
 test("endagsløb: 'gc'-rækker med stage_number 1 tæller som start", () => {
@@ -193,6 +189,18 @@ test("chargeRaceDayTravelStaffToDate: hold der har betalt fladt upkeep i sæsone
   assert.equal(res.charged, 2); // h2 i r-one + h3 etape 1 i r-stage
 });
 
+test("chargeRaceDayTravelStaffToDate: et delvist afregnet løb (fejl midt i) bliver færdigt ved næste tick", async () => {
+  clearSettledTravelStaffRaces();
+  const db = makeFakeDb({ flag: "on", failOnCall: 2 });
+  await assert.rejects(() => chargeRaceDayTravelStaffToDate("season-4", db.client), (err) => err?.message === "transient");
+  assert.equal(db.rpcCalls.length, 1, "første træk nåede at blive bogført");
+  // Ny proces: løbet har nu én nøgle, men må IKKE regnes som afregnet.
+  clearSettledTravelStaffRaces();
+  const res = await chargeRaceDayTravelStaffToDate("season-4", db.client);
+  assert.equal(db.rpcCalls.length, 5, "resten af holdene trækkes, ingen dobbelt-træk");
+  assert.equal(res.charged, 4);
+});
+
 test("chargeRaceDayTravelStaffToDate: DB-dublet (23505) tælles ikke som nyt træk", async () => {
   clearSettledTravelStaffRaces();
   const db = makeFakeDb({ flag: "on", duplicateAll: true });
@@ -215,7 +223,8 @@ function makeFlagClient(value) {
   };
 }
 
-function makeFakeDb({ flag, flatUpkeepTeams = [], duplicateAll = false }) {
+function makeFakeDb({ flag, flatUpkeepTeams = [], duplicateAll = false, failOnCall = 0 }) {
+  let callCount = 0;
   const races = [
     { id: "r-one", name: "One Day", stages: 1, status: "completed", squad: "senior", season_id: "season-4" },
     { id: "r-stage", name: "Stage Race", stages: 2, status: "completed", squad: "senior", season_id: "season-4" },
@@ -277,6 +286,8 @@ function makeFakeDb({ flag, flatUpkeepTeams = [], duplicateAll = false }) {
     from: (table) => query(table),
     async rpc(name, params) {
       assert.equal(name, "increment_balance_with_audit");
+      callCount += 1;
+      if (failOnCall && callCount === failOnCall) return { data: null, error: { code: "08006", message: "transient" } };
       if (duplicateAll) return { data: null, error: { code: "23505", message: "dup" } };
       if (finance.some((f) => f.idempotency_key === params.p_finance_payload.idempotency_key)) {
         return { data: null, error: { code: "23505", message: "dup" } };

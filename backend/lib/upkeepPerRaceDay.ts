@@ -162,13 +162,6 @@ export function computeTravelStaffCharges({
   return charges;
 }
 
-/** Løb-id'et fra en travel_staff-nøgle (null hvis nøglen ikke har formen). */
-export function raceIdFromTravelStaffKey(key: string): string | null {
-  const parts = String(key || "").split(":");
-  if (parts.length !== 4 || parts[0] !== TRAVEL_STAFF_FINANCE_TYPE) return null;
-  return parts[1] || null;
-}
-
 // Løb der er fuldt afregnet i DENNE proces. En completet løbs afregning ændrer
 // sig ikke, så vi henter ikke race_results for det igen ved hvert tick.
 const settledRaces = new Set<string>();
@@ -208,10 +201,11 @@ export async function chargeRaceDayTravelStaffToDate(
   const allRaces = (racesRes.data || []).filter((r) => !settledRaces.has(`${seasonId}:${r.id}`));
   if (!allRaces.length) return { charged: 0, total: 0, races_settled: 0 };
 
-  // Allerede-bogførte nøgler. Et løb med mindst én nøgle er afregnet i en
-  // tidligere proces: afregningen skriver alle løbets linjer i ét tick, så vi
-  // springer det over i stedet for at hente alle dets race_results igen efter
-  // hver deploy (samme koldstarts-problem #4010 løste for sponsor-sweepen).
+  // Allerede-bogførte nøgler. Et løb med nøgler springes BEVIDST ikke over på
+  // løbsniveau: fejler ét træk midt i et løb (fx et forbigående RPC-hikke), er
+  // de tidligere træk allerede bogført, og en "har nøgler = afregnet"-genvej
+  // ville efterlade resten af holdene utrukket for altid. Nøgle-filteret gør en
+  // genkørsel sikker; prisen er én race_results-læsning pr. løb pr. proces.
   const keyRows: Array<{ idempotency_key: string | null }> = await fetchAllRows(() => supabase
     .from("finance_transactions")
     .select("idempotency_key")
@@ -219,19 +213,10 @@ export async function chargeRaceDayTravelStaffToDate(
     .eq("type", TRAVEL_STAFF_FINANCE_TYPE)
     .order("idempotency_key", { ascending: true }));
   const paidKeys = new Set<string>();
-  const racesWithKeys = new Set<string>();
   for (const row of keyRows) {
-    if (!row?.idempotency_key) continue;
-    paidKeys.add(row.idempotency_key);
-    const raceId = raceIdFromTravelStaffKey(row.idempotency_key);
-    if (raceId) racesWithKeys.add(raceId);
+    if (row?.idempotency_key) paidKeys.add(row.idempotency_key);
   }
-  const races: RaceLike[] = [];
-  for (const race of allRaces) {
-    if (racesWithKeys.has(race.id)) settledRaces.add(`${seasonId}:${race.id}`);
-    else races.push(race);
-  }
-  if (!races.length) return { charged: 0, total: 0, races_settled: 0 };
+  const races: RaceLike[] = allRaces;
 
   // Hold der kan betale: samme filter som sæsonskiftets payroll
   // (economyEngine.loadHumanSeasonEndTeams).
