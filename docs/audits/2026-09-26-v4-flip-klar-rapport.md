@@ -85,6 +85,75 @@ Den første kommando erstatter kun blokken under [Målingerne](#målingerne) og 
 Afsnit 1-5 herunder er genereret; de omtales som "måling 1-5" i resten af rapporten.
 
 <!-- v4-flip-readiness:start -->
+
+> **Genereret af `backend/scripts/v4FlipReadiness.mjs`, ikke haandskrevet.** Tallene bag dommene (middel, spaend, rater) staar i den private fil (hard rule 17), ikke her. Ret ikke i blokken; koer scriptet igen.
+>
+> Koert 2026-09-26T16:41:34.705Z paa motor-sha `979f56b32` · population `backend/scripts/baselines/population-snapshot-2026-09-07.json` · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (141 etaper) · felt 180 · orders=none.
+
+### 1. Ankre, v3 mod v4 (5 seeds: s1, s2, s3, s4, s5)
+
+Dommen er paa seed-middel (RULES §7 raekke 8). "Seeds" = antal enkelt-seeds der bestaar for sig; baandene staar i RULES §7b.
+
+| Anker | v3 | v3 seeds | v4 | v4 seeds |
+|---|---|---|---|---|
+| Felt-sammenhaeng, flade etaper | **FAIL** | 0/5 | PASS | 5/5 |
+| Nedkoersels-gaps vs. summit-gaps (ratio) | **FAIL** | 1/5 | PASS | 4/5 |
+| Descent attack-gevinst (10-20s-loft, aldrig omvendt fortegn i gruppen) | ikke maalt | - | PASS | 5/5 |
+| Punch-korrelation (punch-evne vs. placering paa punch-etaper) | PASS | 5/5 | PASS | 5/5 |
+| Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad) | PASS | 5/5 | PASS | 4/5 |
+| Felt-favoritters win-rate | PASS | 3/5 | **FAIL** | 0/5 |
+| Samme-hold-top-10 (andel massestarts-etaper med 4+ fra ét hold) | PASS | 5/5 | PASS | 5/5 |
+| Udbruds-rater pr. terraen, vejetaper (vaerdi = samlet rate; dom pr. terraen) | **FAIL** | 0/5 | **FAIL** | 0/5 |
+| Sprinter-vinderrate paa flat (top-20%-sprint-evne vinder) | **FAIL** | 2/5 | PASS | 5/5 |
+| ITT-korrelation (time_trial-evne vs. placering, synlig) | PASS | 5/5 | PASS | 5/5 |
+| Bonussekunder GC-effekt bounded (maks ~10s/etape) | **FAIL** | 0/5 | PASS | 5/5 |
+| Bjergetape top-10-spredning, topankomster (#2415) | **FAIL** | 0/5 | PASS | 4/5 |
+| GT-vindermargin (#2415) | ikke maalt | - | ikke maalt | - |
+| ITT top-10-spredning pr. 40 km (#2415) | PASS | 4/5 | PASS | 5/5 |
+| ITT: stoerste andel af feltet paa samme tid, vaerste etape (invariant 7) | PASS | 5/5 | PASS | 5/5 |
+
+**v4 samlet:** 12 PASS · 2 FAIL · 1 ikke maalt. Flip-gatens krav "alle ankre groenne": **IKKE OPFYLDT**.
+
+### 2. Hale-gaten (ejer-laast, 3 seeds: s1, s2, s3)
+
+| Etapetype | Dom |
+|---|---|
+| flat | PASS |
+| high_mountain | PASS |
+| mountain | PASS |
+
+**Samlet hale-gate:** PASS. Ikke-laaste etapetyper rapporteres kun i den private fil.
+
+### 3. Uheld og tidsgraense (v4, 5 seeds x 141 etaper)
+
+- **Uheldsrate samlet mod ejer-maalet** (RULES §2c / §9 raekke 4): PASS.
+- **OTL forekommer:** ja (etapetyper: hilly, itt_hilly, mountain, rolling).
+- **Grupetto-redning udloeses:** ja (etapetyper: hilly, mountain, rolling).
+- **Et mekanisk uheld (og intet andet) koster loebet via tidsgraensen:** nej. RULES §9 raekke 4: et mekanisk uheld maa aldrig koste udgaaelse. "Koster" = uden uheldets tid havde han klaret graensen eller var reddet med grupettoen (juryens regnemaade, #5582).
+- **Et haardt styrt koster loebet via tidsgraensen:** nej. Trappen lover at han kommer i maal og koerer videre.
+- **OTL efter et uheld, men uheldet var ikke aarsagen** (over graensen ogsaa uden uheldets tid): ja (etapetyper: hilly, mountain, rolling).
+- Rater pr. etapetype (uheld, alvorlige styrt, udgaaede, OTL og dens aarsager, redninger) staar i den private fil.
+
+### 4. Ydelse (gate: under 60 s pr. etape)
+
+| Felt | Etaper | Middel | p95 | Maks (etapetype) | Dom |
+|---|---|---|---|---|---|
+| 180 | 141 | 15 ms | 39 ms | 96 ms (classic) | PASS |
+| 192 | 141 | 16 ms | 34 ms | 111 ms (mountain) | PASS |
+
+Maalt paa DOLMERPC (v24.16.0), rute-adapter + motor + oversaettelse til v3's ranked-form, uden DB. Railway-containerens CPU er ikke maalt her.
+
+### 5. Flip-infrastruktur og kill-switch (eksisterende tests, koert nu)
+
+| Testfil | Resultat | Heraf kill-switch-tests |
+|---|---|---|
+| `backend/lib/raceRunnerEngineV4.test.js` | groen (14/14) | 4/4 groenne |
+| `backend/lib/raceEngineV4Bridge.test.js` | groen (24/24) | 2/2 groenne |
+| `backend/lib/raceRunnerEngineV4Parity.test.js` | groen (15/15) | - |
+| `backend/lib/raceEngineV4Bridge.teamTimeTrial.test.js` | groen (9/9) | - |
+
+**Kill-switch samlet:** groen (6/6). Testene er lokale enhedstests med stub-DB, ikke en prod-oevelse.
+
 <!-- v4-flip-readiness:end -->
 
 ## RULES §9 flip-krav 1-6 som tjekliste
