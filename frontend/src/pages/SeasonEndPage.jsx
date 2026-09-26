@@ -15,14 +15,14 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
-import { resolveSeasonMovement, pickRecapHighlights } from "../lib/seasonRecapData.js";
+import { resolveSeasonMovement, pickRecapHighlights, pickMyClassicKing } from "../lib/seasonRecapData.js";
 import { isMissingTableError, buildDocumentaryCardStats } from "../lib/seasonDocumentaryData.js";
 import { exportSeasonDocumentaryPng, downloadBlob } from "../lib/seasonDocumentaryExport.js";
 import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
 import BoardVerdictCard from "../components/BoardVerdictCard.tsx";
 import SeasonDocumentary from "../components/SeasonDocumentary.jsx";
 import {
-  CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
+  CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, CrownIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
   Button, Select, ZonePill, FlameIcon, PodiumIcon, LightningIcon,
   ArrowUpIcon, ArrowDownIcon,
@@ -97,6 +97,15 @@ function mapRecapHighlight(h, t, myDivision) {
       value: t("recap.highlight.stageKingValue", { count: h.wins }),
     };
   }
+  // #5390 · samme rytter-highlight-mønster som stageKing lige ovenfor, bare for
+  // klassikersejre (endagsløb) — "rytter-highlights hvor etapesejre allerede vises".
+  if (h.kind === "classicKing") {
+    return {
+      id: "classicKing", icon: CrownIcon,
+      label: t("recap.highlight.classicKing", { name: h.name }),
+      value: t("recap.highlight.classicKingValue", { count: h.wins }),
+    };
+  }
   if (h.kind === "turningPoint") {
     return {
       id: "turningPoint", icon: FlameIcon,
@@ -149,7 +158,7 @@ export default function SeasonEndPage() {
   const [races, setRaces] = useState([]);
   const [racePoints, setRacePoints] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
-  const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null });
+  const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null, classicKing: null });
   // #2863 Blokken har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
   // additiv: get_season_honours() applies efter merge, og ~150 managere lander
   // på denne side samtidig ved cutover. En manglende eller fejlende RPC må
@@ -357,6 +366,11 @@ export default function SeasonEndPage() {
       // { race_id: { team_id: prize } } — allerede i opslags-form fra serveren.
       const prizeByRace = recap?.team_race_prize || {};
       const stageKings = recap?.stage_kings || [];
+      // #5390 · samme "top 5 sorteret faldende"-kontrakt som stage_kings, bare
+      // for klassikersejre (endagsløb). team_classic_wins er { team_id: antal },
+      // kun menneskehold — samme opslags-form som RPC'en allerede leverer prize i.
+      const classicKings = recap?.classic_kings || [];
+      const teamClassicWins = recap?.team_classic_wins || {};
 
       if (racesRes.data?.length) {
         const prog = {};
@@ -431,7 +445,21 @@ export default function SeasonEndPage() {
           }
         : null;
 
-      setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing });
+      // 5. Klassiker-konge (#5390): samme mønster som stage-king lige ovenfor —
+      //    RPC'en returnerer allerede top 5 sorteret faldende, så [0] er vinderen.
+      const classicTop = classicKings[0];
+      const classicKing = classicTop
+        ? {
+            rider: {
+              id: classicTop.rider_id,
+              firstname: classicTop.firstname,
+              lastname: classicTop.lastname,
+            },
+            count: classicTop.wins,
+          }
+        : null;
+
+      setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing, classicKing });
 
       // #2752/#2361 — per-hold recap: kun for MIT hold, kun for en completed
       // sæson (der er intet "facit" for en sæson der stadig kører). To små,
@@ -472,17 +500,27 @@ export default function SeasonEndPage() {
         // wins (RPC'ens ORDER BY), så første match herunder er mit holds bedste
         // — selv når det ikke er sæsonens overordnede nr. 1. "Nuværende hold"-
         // semantik, samme som #2891-RPC'en selv bruger for team_race_prize.
+        // #5390: samme opslag genbruges til myClassicKing (klassiker-konge på
+        // mit hold) — ÉT kombineret riders-opslag for begge top-5-lister i
+        // stedet for to, da de alligevel skal bruge samme teamByRiderId-form.
         let myStageKing = null;
-        if (stageKings.length) {
-          // pagination-safe: stage_kings har LIMIT 5 i get_season_recap, så
-          // .in() slår højst 5 id'er op — provably bounded, langt under
-          // PostgREST's 1000-loft (#3331).
+        let myClassicKing = null;
+        if (stageKings.length || classicKings.length) {
+          // stage_kings + classic_kings har hver LIMIT 5 i get_season_recap,
+          // så .in() nedenfor slår højst 10 id'er op.
+          const riderIds = [...new Set([
+            ...stageKings.map(k => k.rider_id),
+            ...classicKings.map(k => k.rider_id),
+          ])];
+          // pagination-safe: højst 10 id'er (se ovenfor) — provably bounded,
+          // langt under PostgREST's 1000-loft (#3331).
           const { data: kingRiders } = await supabase
             .from("riders").select("id, team_id")
-            .in("id", stageKings.map(k => k.rider_id));
+            .in("id", riderIds);
           const teamByRiderId = Object.fromEntries((kingRiders || []).map(r => [r.id, r.team_id]));
           const mine = stageKings.find(k => teamByRiderId[k.rider_id] === myTeamId);
           if (mine) myStageKing = { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
+          myClassicKing = pickMyClassicKing(classicKings, teamByRiderId, myTeamId);
         }
 
         // #season-recap-polish (18/8) — de rene INPUTS til pickRecapHighlights
@@ -497,12 +535,16 @@ export default function SeasonEndPage() {
           divisionSize: standings.filter(s => s.division === myStandingsRow.division).length,
           movement,
           prizeWon: prizeByTeam[myTeamId] || 0,
+          // #5390 · mit holds klassikersejre denne sæson — recap-heroens 5.
+          // statistik-tile (kun vist når > 0, se SeasonRecapHero/buildRecapStatKeys).
+          classicWins: Number(teamClassicWins[myTeamId]) || 0,
           highlightInputs: {
             myTeamId,
             divisionStandings: standings.filter(s => s.division === myStandingsRow.division),
             prizeByTeam,
             myBiggestSale,
             myStageKing,
+            myClassicKing,
           },
         });
       }
@@ -703,6 +745,7 @@ export default function SeasonEndPage() {
               points={teamRecap.standingsRow.total_points}
               stageWins={teamRecap.standingsRow.stage_wins}
               prizeWon={teamRecap.prizeWon}
+              classicWins={teamRecap.classicWins}
               highlights={teamRecapHighlights.map(h => mapRecapHighlight(h, t, teamRecap.standingsRow.division))}
               onDownloadCard={handleDownloadShareCard}
             />
@@ -791,6 +834,20 @@ export default function SeasonEndPage() {
               hasData={!!winners.stageKing?.rider?.id}
               onClick={() => winners.stageKing?.rider?.id && navigate(`/riders/${winners.stageKing.rider.id}`)}
             />
+            {/* #5390 · "rytter-highlight hvor etapesejre allerede vises" — samme
+                kort-mønster som Stage king lige ovenfor, bare for klassiker-
+                sejre (endagsløb). TASTE P11: kortet vises slet ikke uden en
+                vinder, i stedet for at vise "—"/"0" for noget der ikke findes. */}
+            {winners.classicKing?.rider && (
+              <WinnerCard
+                icon={CrownIcon}
+                title={t("winners.classicKing.title")}
+                primary={`${winners.classicKing.rider.firstname} ${winners.classicKing.rider.lastname}`}
+                secondary={t("winners.classicKing.secondary", { count: winners.classicKing.count })}
+                hasData
+                onClick={() => navigate(`/riders/${winners.classicKing.rider.id}`)}
+              />
+            )}
           </div>
 
           {/* Kalender */}

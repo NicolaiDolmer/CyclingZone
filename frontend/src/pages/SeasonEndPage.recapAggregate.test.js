@@ -92,6 +92,28 @@ test("#2891 siden kalder aggregerings-RPC'en", () => {
   );
 });
 
+// ── #5390 · klassikersejre læses fra samme RPC-svar ────────────────────────
+
+test("#5390 siden læser classic_kings og team_classic_wins fra recap-svaret", () => {
+  assert.match(
+    code,
+    /recap\?\.classic_kings/,
+    "sæsonens klassiker-konger skal komme fra get_season_recap's classic_kings, ikke en ny/separat fetch",
+  );
+  assert.match(
+    code,
+    /recap\?\.team_classic_wins/,
+    "holdets klassikersejre skal komme fra get_season_recap's team_classic_wins, ikke en ny/separat fetch",
+  );
+});
+
+test("#5390 klassikersejre henter ALDRIG race_results-rækker til klienten (samme #2891-guard som resten af filen)", () => {
+  // Selvstændig test (ikke bare en gentagelse af #2891-guarden ovenfor): beviser
+  // at #5390-tilføjelsen ikke sniger en ny race_results-select ind, hvis nogen
+  // refaktorerer klassiker-logikken til at læse rå rækker i stedet for RPC'en.
+  assert.doesNotMatch(code, /from\(\s*["'`]race_results["'`]\s*\)/);
+});
+
 test("#2891 RPC-fejl kastes, den sluges ikke til en tom recap", () => {
   // #1851-klassen: et tavst `|| []` ville rendere en tom sæson som om der
   // aldrig havde været resultater — værre end en fejlside, fordi den ser rigtig ud.
