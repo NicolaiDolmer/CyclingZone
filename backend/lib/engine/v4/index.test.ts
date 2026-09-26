@@ -10,6 +10,7 @@ import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
 import { makeGroupId, splitGroup } from "./groups.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import { validateTimelineEvents } from "./timeline.ts";
+import { isWinType } from "./winType.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -161,6 +162,24 @@ test("determinisme: simulateStageV4(x) er deep-equal ved gentagne kald (fast-che
       const a = simulateStageV4(input);
       const b = simulateStageV4(input);
       assert.deepEqual(a, b);
+    }),
+    { numRuns: 200 },
+  );
+});
+
+// ── #5577: sejrstypen er motorens egen dom, aldrig pladsholderen ──────────────
+
+test("#5577 sejrstype: finish-eventet baerer en kendt noegle, lig finalens afgoerelse, og sprint_decided kun ved spurt (fast-check, 200 runs)", () => {
+  fc.assert(
+    fc.property(stageInputArb, (input) => {
+      const events = simulateStageV4(input).timeline.events;
+      const finish = events.find((e) => e.type === "finish")!;
+      const winType = finish.params.win_type;
+      assert.ok(isWinType(winType), `ukendt win_type "${String(winType)}"`);
+      const decisions = events.filter((e) => e.type !== "finish" && e.params.win_type !== undefined);
+      for (const d of decisions) assert.equal(d.params.win_type, winType, "finalen og finish-eventet er uenige");
+      const sprints = events.filter((e) => e.type === "sprint_decided").length;
+      assert.equal(sprints, winType === "sprint_win" ? 1 : 0);
     }),
     { numRuns: 200 },
   );
