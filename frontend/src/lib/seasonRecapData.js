@@ -119,23 +119,26 @@ export function buildRecapStatKeys({ rank = null, points = 0, stageWins = 0, pri
 }
 
 /**
- * #5390 · Mit holds bedste klassiker-vinder blandt sæsonens top-5 klassiker-
- * vindere (classic_kings fra get_season_recap-RPC'en) — nøjagtig samme
- * "find FØRSTE match på mit team_id"-mønster som stageKings-opslaget i
- * SeasonEndPage.jsx (loadSeason): listen er allerede sorteret faldende efter
- * wins, så første match er automatisk mit holds bedste, selv når det ikke er
- * sæsonens overordnede nr. 1.
+ * #5390 · Mit holds klassiker-konge — ren opslags-derivation af
+ * get_season_recap's team_classic_king ({team_id: {rider_id,firstname,
+ * lastname,wins}}).
  *
- * @param {Array<{rider_id:string, firstname:string, lastname:string, wins:number}>} [classicKings]
- * @param {Record<string,string>} [teamByRiderId]  rider_id -> team_id (opslag bygget
- *   af kalderen ud fra en riders-forespørgsel, samme som myStageKing bruger)
+ * IKKE (længere) et client-side match mod rytterens NUVÆRENDE team_id (se
+ * CodeRabbit-fund 26/9, rettet i database/2026-09-26-5390-…sql): serveren
+ * attribuerer allerede rytteren til holdet på RESULTATTIDSPUNKTET, samme
+ * hold-tilskrivning som team_classic_wins — ellers kunne et hold vise "Team
+ * classic king: X" for en rytter der reelt vandt sejrene på et ANDET hold
+ * (og som siden blev solgt hertil), mens team_classic_wins samtidig
+ * (korrekt) viste 0 for netop det hold.
+ *
+ * @param {Record<string, {rider_id:string, firstname:string, lastname:string, wins:number}>} [teamClassicKing]
  * @param {string|null} [myTeamId]
  * @returns {{riderId:string, name:string, wins:number}|null}
  */
-export function pickMyClassicKing(classicKings = [], teamByRiderId = {}, myTeamId = null) {
-  if (!classicKings?.length || !myTeamId) return null;
-  const mine = classicKings.find(k => teamByRiderId[k.rider_id] === myTeamId);
-  if (!mine) return null;
+export function pickMyClassicKing(teamClassicKing = {}, myTeamId = null) {
+  if (!myTeamId) return null;
+  const mine = teamClassicKing?.[myTeamId];
+  if (!mine?.wins) return null;
   return { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
 }
 

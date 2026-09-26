@@ -7,7 +7,7 @@
 -- som team_race_prize/stage_kings allerede bruger, af samme grund — et
 -- ungdomsløbs endagssejr skal ikke tælle med i et menneskeholds sæson-recap.
 --
--- HVAD DENNE MIGRATION TILFØJER (to nye nøgler i den returnerede jsonb):
+-- HVAD DENNE MIGRATION TILFØJER (tre nye nøgler i den returnerede jsonb):
 --   1. classic_kings — TOP 5 ryttere efter antal klassikersejre denne sæson,
 --      nøjagtig samme facon som stage_kings (rider_id/firstname/lastname/wins,
 --      sorteret faldende på wins, alfabetisk på efternavn ved lighed). Bruges
@@ -16,6 +16,13 @@
 --   2. team_classic_wins — { team_id: antal } for menneskehold, samme facon
 --      og samme is_ai=false-filter som team_race_prize allerede bruger til at
 --      finde MIT holds tal til recap-heroens statistik-række.
+--   3. team_classic_king — { team_id: {rider_id,firstname,lastname,wins} } for
+--      menneskehold: HVILKEN rytter der stod for holdets klassikersejre denne
+--      sæson. Beregnes SERVER-SIDE med samme hold-tilskrivning som
+--      team_classic_wins (se punkt "SAMME TILSKRIVNING" nedenfor) — klienten
+--      matcher IKKE selv en rytter til et hold via riders.team_id (se
+--      CodeRabbit-fund, 26/9: det ville vise "3 sejre" på et hold rytteren er
+--      solgt TIL, mens team_classic_wins (retmæssigt) viser 0 for det hold).
 --
 -- HVAD ER EN "KLASSIKERSEJR"? Et endagsløb (race_type <> 'stage_race', i
 -- praksis 'single') vundet af rytteren med rank 1. Motoren skriver ALDRIG en
@@ -36,17 +43,19 @@
 --   · team_classic_wins filtrerer PÅ is_ai=false — samme begrundelse som
 --     team_race_prize: kun menneskehold har brug for tallet på deres egen
 --     recap-række.
---   · team_classic_wins bruger COALESCE(rr.team_id, ri.team_id) — PRÆCIS samme
---     hold-tilskrivning som recompute_season_standings bruger til stage_wins/
---     gc_wins (#5535, linje ~451): resultattidspunktets hold, med fallback til
---     rytterens nuværende hold for de (få, historiske) rækker uden eget
---     team_id. Dette AFVIGER bevidst fra team_race_prize, som joiner alene via
---     riders.team_id (og derfor flytter prisen til rytterens nuværende hold
---     ved et sæson-midt-salg) — men team_classic_wins sidder ved siden af
---     season_standings.stage_wins i UI'en (samme recap-række), så de to tal
---     skal tilskrives hold på nøjagtig samme måde, ellers ville et hold kunne
---     se "3 etapesejre" og "0 klassikersejre" for en sejr det reelt vandt, bare
---     fordi rytteren blev solgt bagefter.
+--   · SAMME TILSKRIVNING: team_classic_wins OG team_classic_king bruger begge
+--     COALESCE(rr.team_id, ri.team_id) — PRÆCIS samme hold-tilskrivning som
+--     recompute_season_standings bruger til stage_wins/gc_wins (#5535, linje
+--     ~451): resultattidspunktets hold, med fallback til rytterens nuværende
+--     hold for de (få, historiske) rækker uden eget team_id. Dette AFVIGER
+--     bevidst fra team_race_prize, som joiner alene via riders.team_id (og
+--     derfor flytter prisen til rytterens nuværende hold ved et sæson-midt-
+--     salg) — men de to klassiker-nøgler sidder ved siden af
+--     season_standings.stage_wins i UI'en (samme recap-række/highlight), så de
+--     SKAL tilskrives hold på nøjagtig samme måde. De to nøgler er DERFOR
+--     også indbyrdes konsistente: team_classic_king peger ALDRIG på et hold
+--     hvis team_classic_wins er 0/mangler for det hold (begge er afledt af
+--     samme classic_wins-CTE, samme team_id-udtryk).
 --
 -- VISES KUN NÅR TALLET ER > 0 (TASTE P11, docs/design/TASTE.md): klienten
 -- (SeasonEndPage.jsx/SeasonRecapHero.jsx) skjuler både rytterkortet og
@@ -121,12 +130,33 @@ AS $function$
     ORDER BY wins DESC, lastname ASC
     LIMIT 5
   ),
-  team_classic_wins AS (
-    SELECT cw.team_id, COUNT(*)::int AS wins
+  team_rider_classic_wins AS (
+    -- Pr. (hold, rytter): hvor mange klassikersejre stod DEN rytter for på
+    -- DET hold. Grundlaget for både team_classic_wins (sum pr. hold) og
+    -- team_classic_king (holdets EGEN bedste rytter) herunder.
+    SELECT cw.team_id, cw.rider_id, cw.firstname, cw.lastname, COUNT(*)::int AS wins
     FROM classic_wins cw
-    JOIN teams t ON t.id = cw.team_id
+    GROUP BY cw.team_id, cw.rider_id, cw.firstname, cw.lastname
+  ),
+  team_classic_wins AS (
+    SELECT trcw.team_id, SUM(trcw.wins)::int AS wins
+    FROM team_rider_classic_wins trcw
+    JOIN teams t ON t.id = trcw.team_id
     WHERE t.is_ai = false
-    GROUP BY cw.team_id
+    GROUP BY trcw.team_id
+  ),
+  team_classic_king AS (
+    -- #5390 (CodeRabbit-fund 26/9): holdets EGEN bedste klassiker-vinder,
+    -- attribueret PRÆCIS som team_classic_wins ovenfor (rr.team_id, ikke
+    -- rytterens nuværende team_id) — DISTINCT ON garanterer nøjagtig ét hold
+    -- pr. team_id, med samme wins-DESC/lastname-ASC-tiebreak som stage_kings/
+    -- classic_kings.
+    SELECT DISTINCT ON (trcw.team_id)
+           trcw.team_id, trcw.rider_id, trcw.firstname, trcw.lastname, trcw.wins
+    FROM team_rider_classic_wins trcw
+    JOIN teams t ON t.id = trcw.team_id
+    WHERE t.is_ai = false
+    ORDER BY trcw.team_id, trcw.wins DESC, trcw.lastname ASC
   )
   SELECT jsonb_build_object(
     'team_race_prize', COALESCE((
@@ -141,16 +171,23 @@ AS $function$
       SELECT jsonb_agg(jsonb_build_object(
         'rider_id', rider_id, 'firstname', firstname,
         'lastname', lastname, 'wins', wins
-      )) FROM stage_kings
+      ) ORDER BY wins DESC, lastname ASC) FROM stage_kings
     ), '[]'::jsonb),
     'classic_kings', COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
         'rider_id', rider_id, 'firstname', firstname,
         'lastname', lastname, 'wins', wins
-      )) FROM classic_kings
+      ) ORDER BY wins DESC, lastname ASC) FROM classic_kings
     ), '[]'::jsonb),
     'team_classic_wins', COALESCE((
       SELECT jsonb_object_agg(team_id::text, wins) FROM team_classic_wins
+    ), '{}'::jsonb),
+    'team_classic_king', COALESCE((
+      SELECT jsonb_object_agg(team_id::text, jsonb_build_object(
+        'rider_id', rider_id, 'firstname', firstname,
+        'lastname', lastname, 'wins', wins
+      ))
+      FROM team_classic_king
     ), '{}'::jsonb)
   );
 $function$;
@@ -158,18 +195,21 @@ $function$;
 COMMENT ON FUNCTION public.get_season_recap(uuid) IS
   '#2891/#5535/#5390 · Server-side aggregering til sæson-recappen. Returnerer '
   'team_race_prize ({race_id:{team_id:prize}}, kun menneskehold), stage_kings '
-  '(top 5 etapesejre), classic_kings (top 5 klassikersejre — endagsløb, rank 1) '
-  'og team_classic_wins ({team_id:antal}, kun menneskehold). Alle fire filtrerer '
-  'på r.squad = ''senior''.';
+  '(top 5 etapesejre), classic_kings (top 5 klassikersejre — endagsløb, rank 1), '
+  'team_classic_wins ({team_id:antal}, kun menneskehold) og team_classic_king '
+  '({team_id:{rider_id,firstname,lastname,wins}}, kun menneskehold — samme '
+  'hold-tilskrivning som team_classic_wins). Alle filtrerer på '
+  'r.squad = ''senior''.';
 
 -- =============================================================================
 -- Post-verify (kør manuelt efter apply)
 -- =============================================================================
 --
--- 1) Funktionen returnerer nu fire nøgler:
+-- 1) Funktionen returnerer nu fem nøgler:
 --    SELECT jsonb_object_keys(public.get_season_recap(
 --      (SELECT id FROM seasons WHERE number = 1)));
---    → forventet: team_race_prize, stage_kings, classic_kings, team_classic_wins
+--    → forventet: team_race_prize, stage_kings, classic_kings, team_classic_wins,
+--      team_classic_king
 --
 -- 2) Paritet: summen af team_classic_wins skal matche et rå optælling af
 --    endagsløbs-rank-1-rækker for menneskehold, samme sæson:
@@ -190,3 +230,11 @@ COMMENT ON FUNCTION public.get_season_recap(uuid) IS
 --    SELECT * FROM jsonb_to_recordset(
 --      (SELECT public.get_season_recap((SELECT id FROM seasons WHERE number=1))->'classic_kings')
 --    ) AS x(rider_id uuid, firstname text, lastname text, wins int);
+--
+-- 4) team_classic_king peger ALDRIG på et hold der mangler i team_classic_wins
+--    (samme nøgle-mængde, se "SAMME TILSKRIVNING" i toppen af filen):
+--    WITH j AS (SELECT public.get_season_recap(
+--                 (SELECT id FROM seasons WHERE number=1)) AS v)
+--    SELECT (SELECT array_agg(k) FROM j, jsonb_object_keys(j.v->'team_classic_king') k
+--            WHERE NOT (j.v->'team_classic_wins') ? k) AS keys_uden_wins_match;
+--    → forventet: {} (tom liste — ingen nøgler kun i team_classic_king).

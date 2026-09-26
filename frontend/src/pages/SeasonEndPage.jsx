@@ -367,10 +367,14 @@ export default function SeasonEndPage() {
       const prizeByRace = recap?.team_race_prize || {};
       const stageKings = recap?.stage_kings || [];
       // #5390 · samme "top 5 sorteret faldende"-kontrakt som stage_kings, bare
-      // for klassikersejre (endagsløb). team_classic_wins er { team_id: antal },
-      // kun menneskehold — samme opslags-form som RPC'en allerede leverer prize i.
+      // for klassikersejre (endagsløb). team_classic_wins/team_classic_king er
+      // { team_id: ... }, kun menneskehold, begge attribueret PÅ RESULTAT-
+      // TIDSPUNKTETS hold af RPC'en selv — IKKE klient-side matchet mod
+      // riders' nuværende team_id (ville kunne vise en sejr på et hold
+      // rytteren blot er solgt TIL, se seasonRecapData.js/pickMyClassicKing).
       const classicKings = recap?.classic_kings || [];
       const teamClassicWins = recap?.team_classic_wins || {};
+      const teamClassicKing = recap?.team_classic_king || {};
 
       if (racesRes.data?.length) {
         const prog = {};
@@ -500,28 +504,23 @@ export default function SeasonEndPage() {
         // wins (RPC'ens ORDER BY), så første match herunder er mit holds bedste
         // — selv når det ikke er sæsonens overordnede nr. 1. "Nuværende hold"-
         // semantik, samme som #2891-RPC'en selv bruger for team_race_prize.
-        // #5390: samme opslag genbruges til myClassicKing (klassiker-konge på
-        // mit hold) — ÉT kombineret riders-opslag for begge top-5-lister i
-        // stedet for to, da de alligevel skal bruge samme teamByRiderId-form.
         let myStageKing = null;
-        let myClassicKing = null;
-        if (stageKings.length || classicKings.length) {
-          // stage_kings + classic_kings har hver LIMIT 5 i get_season_recap,
-          // så .in() nedenfor slår højst 10 id'er op.
-          const riderIds = [...new Set([
-            ...stageKings.map(k => k.rider_id),
-            ...classicKings.map(k => k.rider_id),
-          ])];
-          // pagination-safe: højst 10 id'er (se ovenfor) — provably bounded,
-          // langt under PostgREST's 1000-loft (#3331).
+        if (stageKings.length) {
+          // pagination-safe: stage_kings har LIMIT 5 i get_season_recap, så
+          // .in() slår højst 5 id'er op — provably bounded, langt under
+          // PostgREST's 1000-loft (#3331).
           const { data: kingRiders } = await supabase
             .from("riders").select("id, team_id")
-            .in("id", riderIds);
+            .in("id", stageKings.map(k => k.rider_id));
           const teamByRiderId = Object.fromEntries((kingRiders || []).map(r => [r.id, r.team_id]));
           const mine = stageKings.find(k => teamByRiderId[k.rider_id] === myTeamId);
           if (mine) myStageKing = { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
-          myClassicKing = pickMyClassicKing(classicKings, teamByRiderId, myTeamId);
         }
+        // Klassikerkonge PÅ MIT HOLD (#5390): IKKE et client-side match mod
+        // riders' nuværende team_id (se pickMyClassicKing) — RPC'en leverer
+        // allerede team_classic_king pr. hold, attribueret på resultat-
+        // tidspunktets hold, så intet ekstra opslag er nødvendigt her.
+        const myClassicKing = pickMyClassicKing(teamClassicKing, myTeamId);
 
         // #season-recap-polish (18/8) — de rene INPUTS til pickRecapHighlights
         // gemmes i stedet for det FÆRDIGE resultat: dokumentar-facts (den

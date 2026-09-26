@@ -307,36 +307,34 @@ test("pickRecapHighlights: ingen boardVerdict når flaget er slået fra eller do
 });
 
 // ─── #5390 · pickMyClassicKing ──────────────────────────────────────────────
+// #5390 (CodeRabbit-fund 26/9): pickMyClassicKing slår IKKE længere op via
+// rytterens NUVÆRENDE team_id (det gav forkert hold-tilskrivning ved et
+// sæson-midt-salg) — den er nu et rent opslag i RPC'ens allerede korrekt
+// hold-attribuerede team_classic_king-map.
 
-const CLASSIC_KINGS = [
-  { rider_id: "r1", firstname: "Anna", lastname: "Alfa", wins: 3 },
-  { rider_id: "r2", firstname: "Britt", lastname: "Bravo", wins: 2 },
-  { rider_id: "r3", firstname: "Cara", lastname: "Charlie", wins: 1 },
-];
+const TEAM_CLASSIC_KING = {
+  tMine: { rider_id: "r2", firstname: "Britt", lastname: "Bravo", wins: 2 },
+  tOther: { rider_id: "r1", firstname: "Anna", lastname: "Alfa", wins: 3 },
+};
 
-test("pickMyClassicKing: finder mit holds bedste klassiker-vinder blandt top-5", () => {
-  const teamByRiderId = { r1: "tX", r2: "tMine", r3: "tY" };
-  assert.deepEqual(pickMyClassicKing(CLASSIC_KINGS, teamByRiderId, "tMine"), {
+test("pickMyClassicKing: finder mit holds klassiker-konge i team_classic_king", () => {
+  assert.deepEqual(pickMyClassicKing(TEAM_CLASSIC_KING, "tMine"), {
     riderId: "r2", name: "Britt Bravo", wins: 2,
   });
 });
 
-test("pickMyClassicKing: tager FØRSTE match (listen er allerede sorteret faldende) selv når mit hold ikke er nr. 1", () => {
-  const teamByRiderId = { r1: "tOther", r2: "tOther", r3: "tMine" };
-  assert.deepEqual(pickMyClassicKing(CLASSIC_KINGS, teamByRiderId, "tMine"), {
-    riderId: "r3", name: "Cara Charlie", wins: 1,
-  });
+test("pickMyClassicKing: mit hold har ingen nøgle i team_classic_king -> null", () => {
+  assert.equal(pickMyClassicKing(TEAM_CLASSIC_KING, "tUkendt"), null);
 });
 
-test("pickMyClassicKing: ingen match -> null", () => {
-  const teamByRiderId = { r1: "tX", r2: "tY", r3: "tZ" };
-  assert.equal(pickMyClassicKing(CLASSIC_KINGS, teamByRiderId, "tMine"), null);
+test("pickMyClassicKing: 0 sejre (bør ikke forekomme, RPC'en udelader 0-hold) tælles alligevel som 'ingen' for en sikkerheds skyld", () => {
+  assert.equal(pickMyClassicKing({ tMine: { rider_id: "r9", firstname: "X", lastname: "Y", wins: 0 } }, "tMine"), null);
 });
 
-test("pickMyClassicKing: tom liste, manglende myTeamId eller manglende opslag -> null uden at crashe", () => {
-  assert.equal(pickMyClassicKing([], {}, "tMine"), null);
-  assert.equal(pickMyClassicKing(CLASSIC_KINGS, {}, null), null);
-  assert.equal(pickMyClassicKing(undefined, undefined, "tMine"), null);
+test("pickMyClassicKing: manglende myTeamId eller manglende map -> null uden at crashe", () => {
+  assert.equal(pickMyClassicKing(TEAM_CLASSIC_KING, null), null);
+  assert.equal(pickMyClassicKing({}, "tMine"), null);
+  assert.equal(pickMyClassicKing(undefined, "tMine"), null);
 });
 
 // ─── #5390 · pickRecapHighlights + classicKing ──────────────────────────────

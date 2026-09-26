@@ -105,6 +105,12 @@ test("#5390 siden læser classic_kings og team_classic_wins fra recap-svaret", (
     /recap\?\.team_classic_wins/,
     "holdets klassikersejre skal komme fra get_season_recap's team_classic_wins, ikke en ny/separat fetch",
   );
+  assert.match(
+    code,
+    /recap\?\.team_classic_king/,
+    "holdets klassiker-konge skal komme fra get_season_recap's team_classic_king (hold-attribueret server-side), " +
+      "ikke et client-side match mod riders' nuværende team_id (CodeRabbit-fund 26/9)",
+  );
 });
 
 test("#5390 klassikersejre henter ALDRIG race_results-rækker til klienten (samme #2891-guard som resten af filen)", () => {
