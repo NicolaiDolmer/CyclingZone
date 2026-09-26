@@ -25,7 +25,8 @@
     "weekplan": "Ugeplan",
     "development": "Udvikling",
     "history": "Historik",
-    "report": "Rapport"
+    "report": "Rapport",
+    "program": "Program"
   },
   "primary": {
     "setDays": "Sæt dag for {n, plural, one {# rytter} other {# ryttere}}"
@@ -439,5 +440,33 @@
     "selectDone": "Færdig",
     "restSelected": "Sæt til hvile",
     "pickHint": "Tryk på de ryttere, du vil ændre."
+  },
+  "programs": {
+    "title": "Træningsprogrammer",
+    "intro": "Vælg et program og læg det på en rytter eller hele truppen. Det kopieres ind i planen, så du kan rette enhver dag bagefter.",
+    "putOn": "Læg på",
+    "squad": "Hele truppen · {n, plural, one {# rytter} other {# ryttere}}",
+    "squadShort": "hele truppen",
+    "apply": "Brug program",
+    "applying": "Lægger på…",
+    "replacesSquad": "Erstatter ugeplanen for {n, plural, one {# rytter} other {# ryttere}}.",
+    "applied": "{name} er nu lagt på {target}.",
+    "error": "Kunne ikke gemme. Prøv igen.",
+    "planTitle": "Plan",
+    "basedOn": "Baseret på {name}",
+    "changed": "{n} ændret",
+    "ownProgram": "Programplan",
+    "noProgram": "Intet program endnu",
+    "noProgramHint": "Rytteren har ikke et program endnu. Vælg et ovenfor og læg det på ham.",
+    "cellOverridden": "Ændret for denne løbsdag",
+    "raceNote": "På en løbsdag hvor rytteren kører løb, springes sessionen over.",
+    "audience_all": "Alle",
+    "audience_allYouth": "Alle, ungdom",
+    "audience_experienced": "Erfarne ryttere",
+    "audience_youth": "Ungdom",
+    "audience_manyRaceDays": "Mange løbsdage",
+    "audience_youngStars": "Unge stjerner, få løb",
+    "audience_veterans": "Ryttere 30+",
+    "audience_youthSquads": "Junior, U23, akademi"
   }
 }

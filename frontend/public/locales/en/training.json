@@ -25,7 +25,8 @@
     "weekplan": "Week plan",
     "development": "Development",
     "history": "History",
-    "report": "Report"
+    "report": "Report",
+    "program": "Program"
   },
   "primary": {
     "setDays": "Set days for {n, plural, one {# rider} other {# riders}}"
@@ -439,5 +440,33 @@
     "selectDone": "Done",
     "restSelected": "Set to rest",
     "pickHint": "Tap the riders you want to change."
+  },
+  "programs": {
+    "title": "Training programs",
+    "intro": "Pick a program and put it on a rider or the whole squad. It is copied into the plan, so you can change any day afterwards.",
+    "putOn": "Put on",
+    "squad": "Whole squad · {n, plural, one {# rider} other {# riders}}",
+    "squadShort": "the whole squad",
+    "apply": "Apply program",
+    "applying": "Applying…",
+    "replacesSquad": "Replaces the week plan of {n, plural, one {# rider} other {# riders}}.",
+    "applied": "{name} is now on {target}.",
+    "error": "Could not save. Try again.",
+    "planTitle": "Plan",
+    "basedOn": "Based on {name}",
+    "changed": "{n} changed",
+    "ownProgram": "Program plan",
+    "noProgram": "No program yet",
+    "noProgramHint": "This rider has no program yet. Pick one above and put it on him.",
+    "cellOverridden": "Changed for this race day",
+    "raceNote": "On a race day where the rider races, the session is skipped.",
+    "audience_all": "Everyone",
+    "audience_allYouth": "Everyone, youth",
+    "audience_experienced": "Experienced riders",
+    "audience_youth": "Youth",
+    "audience_manyRaceDays": "Many race days",
+    "audience_youngStars": "Young stars, few races",
+    "audience_veterans": "Riders 30+",
+    "audience_youthSquads": "Junior, U23, academy"
   }
 }
