@@ -185,7 +185,18 @@ export function selectTrainingMoment(latestRun, progressByRider, pastRuns) {
   }
 
   const cooldown = recentSignature((pastRuns ?? []).slice(0, 2));
-  const fresh = candidates.filter((c) => !cooldown.riderIds.has(c.riderId) && !cooldown.types.has(c.type));
+  // BREAKTHROUGH is exempt from the story-TYPE cooldown (rider cooldown still
+  // applies): the task only asked to avoid featuring the same RIDER two days
+  // running, never the same story type. Without this, a whole point for rider
+  // B today gets silently dropped just because a DIFFERENT rider's
+  // breakthrough was yesterday's (or the day before's) top pick — breaking
+  // priority 1 ("a whole point landed today" must win) and letting
+  // NEAR_BREAKTHROUGH ("Mr. Near", priority 4) win by default instead (#5318).
+  const fresh = candidates.filter((c) => {
+    if (cooldown.riderIds.has(c.riderId)) return false;
+    if (c.type === MOMENT_TYPES.BREAKTHROUGH) return true;
+    return !cooldown.types.has(c.type);
+  });
   const pick = fresh[0] ?? candidates[0];
 
   return { ...pick, variant: variantIndex([tickDate, pick.riderId ?? "", pick.type]) };

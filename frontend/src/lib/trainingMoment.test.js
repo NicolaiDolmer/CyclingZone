@@ -82,6 +82,22 @@ test("selectTrainingMoment: cooldown springer samme rytter over når et alternat
   assert.equal(moment.type, MOMENT_TYPES.PEAK_FORM);
 });
 
+test("selectTrainingMoment: gennembrud for en ANDEN rytter slaar stadig igennem, selv om gennembrud var gaarsdagens historie", () => {
+  const rows = [
+    row({ rider_id: "r2", name: "Dubois", gains: { climbing: 1 }, gains_detail: { climbing: { from: 71, to: 72 } } }),
+    row({ rider_id: "r3", name: "Petit", focus: "vo2max" }),
+  ];
+  const progress = { r3: { climbing: 0.2, punch: 0.5, tempo: 0.93 } }; // naermer-sig-gennembrud, skal IKKE vinde
+  // Gaarsdagens topvalg var et gennembrud, men for en ANDEN rytter (r1).
+  const yesterday = { tick_date: "2026-07-14", report: { riders: [row({ rider_id: "r1", gains: { climbing: 1 }, gains_detail: { climbing: { from: 70, to: 71 } } })] } };
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, progress, [yesterday]);
+  // Type-cooldown maa ALDRIG undertrykke et gennembrud pga. en ANDEN rytters gennembrud
+  // i gaars — kun rytter-cooldown gaelder for gennembrud (opgaven bad kun om at undgaa
+  // samme rytter to dage i traek, ikke samme historie-type).
+  assert.equal(moment.type, MOMENT_TYPES.BREAKTHROUGH);
+  assert.equal(moment.riderId, "r2");
+});
+
 test("selectTrainingMoment: cooldown giver alligevel ALTID en historie, selv hvis alt er cooled down", () => {
   const rows = [row({ rider_id: "r1", name: "Jansen", gains: { climbing: 1 }, gains_detail: { climbing: { from: 71, to: 72 } } })];
   const yesterday = { tick_date: "2026-07-14", report: { riders: [row({ rider_id: "r1", gains: { climbing: 1 }, gains_detail: { climbing: { from: 70, to: 71 } } })] } };
