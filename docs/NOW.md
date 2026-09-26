@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (25/9 kl. 23:30, session e lukket):** **1) Lørdag 27/9 (egen session, #5506 + rækkefølge i #4859):** S4-række (12b) → `proposeNextMandateDryRun.js` vist ejeren → "kør" → **`board_mandate_model_enabled` beta→on** → post-verify → ejerens Discord-opslag + patch note (`docs/drafts/*-mandate-flip.md` + byggesten A-D). Samme dag: `academy_drift_enabled` = off FØR 12c (#5741) · `youth_squad_pages` → alle (ejeren ser siderne først; beta-svar #5519 klar). **2) Ejeren rangerer område 2-9** → MASTERPLAN. **3) Spillersvar** jaxx + egomadsen (udkast i sessionsrapport e, ejeren poster).
+> **🎯 Next action (26/9 kl. 07:00, session f nat):** **1) Morgenblok:** 24 PR'er venter på dit "merge" (tabel: `private-handoffs/2026-09-26-session-f-rapport.md`): #5766 (U23/JR + hint) → flip `youth_squad_pages` · #5772 → #5786 (deler help.json) · resten. Valg: #5765 (B) · #5780 (A) · #5764 · mandat-svar. **2) Lørdag 27/9 (#5506 + #4859):** S4-række (12b) → `proposeNextMandateDryRun.js` → "kør" → `board_mandate_model_enabled` beta→on → post-verify → Discord-opslag (`docs/drafts/*-mandate-flip.md`, sæsonpause PR #5767). `academy_drift_enabled` off FØR 12c (#5741). **3) Mandag:** #5281 (grøn) + træningsflips.
 >
 > **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort · live · Discord-kort · live · /roadmap · live (faner = #5387-rest) · S4-kalender · skrives 27/9 aften (12b) · U23/junior-sider · beta, flyt-dialog #5750 merget (7.301), flag lørdag når ejeren har set siderne · Mandatet · **flip lørdag** (ejer-valg A 25/9): #5751 rettet + resynket, byggesten #5752-#5755 merget; tillid mættet = #5757 (S4) · D4→D3 + 4 puljer · køres 27/9 · comeback · merget · ungdomsløb · merget · træning fra løb · flip 28/9 (#5281 samme dag) · 140 løbsdage · låst · ryttertype-visning · beta.
 
@@ -12,7 +12,7 @@
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (lige EFTER S4) · #5633 bestyrelses-beta (5 fund, blokerer #4859) · #5692 matview 34 timeouts/døgn. **CodeRabbit:** loft nået, lokal CR på risk:high. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret, 125 INFO. **S3:** slutter 27/9.
+> **🔴 Åbne fund:** #5162 chunk (lige EFTER S4) · #5633 bestyrelses-beta (5 fund, blokerer #4859) · #5692 matview 34 timeouts/døgn. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret, 125 INFO. **S3:** slutter 27/9.
 
 ## Standing context (forever-relaunch)
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9 + 17/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · UI-PR = skærmbillede samme tur · **spillervendt rettelse = problem + løsning i klart sprog FØR byg** · forklar hver PR i klart sprog i kortet (24/9).
 - **Mekanik:** byg KUN via wave.js; merge én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`); `mergeStateStatus` FØR vent på CI (DIRTY = merge main ind); samme bølge + samme fil → simulér merge + tsc FØR kø (25/9); commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx.
 
-> **🤖 Working agent:** Session f (25/9 23:50): #5281 grøn via bølge + U23/junior-billeder. Rapport e: `private-handoffs/2026-09-25-session-e-rapport.md`.
+> **🤖 Working agent:** Ingen aktiv session (session f lukket 26/9 kl. 07:00; rapport `private-handoffs/2026-09-26-session-f-rapport.md`).
