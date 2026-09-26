@@ -28,7 +28,10 @@ import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 // staaende til variant B (dagens intention, #4632), men motoren kalder den ikke mere.
 import { raceDayProgram, RACE_DAY_FALLBACK_PROFILE } from "./raceDayYield.js";
 import { loadRaceDayStagesByRider } from "./raceDayStageLookup.js";
-import { resolveDayIntensity } from "./training.js";
+// #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
+// kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
+import { resolveDayProgram, programSlotForGameDay, weekDaysHaveSessions } from "./trainingPrograms.js";
+import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -435,6 +438,14 @@ export async function runTeamTrainingDay({
     weekPlanRows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]),
   );
   const weekday = copenhagenWeekdayKey(tickDate);
+  // #4629: programcellerne laeses KUN naar holdet har programdata OG flaget er
+  // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
+  // intet ekstra opslag, og stien er bit-identisk med foer.
+  const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
+    ? await isTrainingProgramsEnabledForTeam(supabase, teamId)
+    : false;
+  // Loebsdagens plads paa datoen (0-4). Kalenderdags-ticket = slot 0 ("I dag").
+  const programSlot = useRaceDayKey ? programSlotForGameDay(raceDay) : 0;
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
@@ -472,13 +483,21 @@ export async function runTeamTrainingDay({
     // sæson-intensiteten (resolveDayIntensity). #2438 — ejerens præcedens: en
     // individuel rytter-indstilling overtrumfer den ugentlige rutine.
     const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
-    program.intensity = resolveDayIntensity({
+    // #4629: med programsOn kan en programcelle ogsaa saette SESSIONEN (fokus);
+    // uden er det praecis den gamle `program.intensity = resolveDayIntensity(...)`.
+    // Loeb er loeb (ejer-valg 2): en rytter der koerer/er bundet i dag rammer
+    // racedToday/boundRestToday nedenfor, og programmets session springes over.
+    const dayProgram = resolveDayProgram({
       weekday,
+      slotIndex: programSlot,
       riderOverrideDays: riderOverrideByRider.get(rider.id) ?? null,
       teamWeekDays,
-      planIntensity: program.intensity,
+      program,
       hasExplicitPlan,
+      programsOn,
     });
+    if (dayProgram.source === "program") program.focus = dayProgram.focus;
+    program.intensity = dayProgram.intensity;
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};
