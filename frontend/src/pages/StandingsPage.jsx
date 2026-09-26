@@ -88,11 +88,22 @@ export default function StandingsPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [divTab, setDivTab] = useState(1);
+  // #5315 — ?division=<tier>&pool=<id> (fra Dashboardets "Full standings"-link,
+  // se lib/standingsLink.ts) forvælger division+pulje-fane ved deep-link, så
+  // siden lander direkte på managerens egen pulje i stedet for hele tieren.
+  // Number(): divTab sammenlignes med `===` mod Supabase-tal (team.division/
+  // pool.tier) længere nede — en streng ville altid fejle den sammenligning
+  // (samme fælde som #2879 løste for poolTab/matchesPoolTab nedenfor).
+  const [divTab, setDivTab] = useState(() => {
+    const fromQuery = Number(searchParams.get("division"));
+    return Number.isFinite(fromQuery) && fromQuery > 0 ? fromQuery : 1;
+  });
   // #1688 pulje-sub-faner: valgt pulje inden for tieren (league_division_id) eller
   // POOL_ALL = hele tieren samlet. league_divisions hentes ved load.
   const [pools, setPools] = useState([]);
-  const [poolTab, setPoolTab] = useState(POOL_ALL);
+  // matchesPoolTab (#2879) normaliserer selv string- vs. integer-id, så
+  // poolTab kan forblive en rå streng fra query-parameteren uden konvertering.
+  const [poolTab, setPoolTab] = useState(() => searchParams.get("pool") || POOL_ALL);
   const [myTeamId, setMyTeamId] = useState(null);
   const [season, setSeason] = useState(null);
   const [racePoints, setRacePoints] = useState({});
@@ -152,7 +163,13 @@ export default function StandingsPage() {
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
     setMyTeamId(mine?.id);
-    if (mine?.division) setDivTab(mine.division);
+    // #5315 — et ?division=-deep-link (se useState-initialiseringen ovenfor)
+    // vinder over "mine"-auto-select: uden vagten ville dette load-kald (kørt
+    // igen ved hver realtime-refetch) nulstille divTab til holdets EGEN
+    // division ved hvert kald — normalt identisk med query-parameteren (den
+    // ER managerens egen division), men vagten holder deep-linket stabilt
+    // hvis det nogensinde peger på en anden division end den indloggede ejer.
+    if (mine?.division && !searchParams.get("division")) setDivTab(mine.division);
     setSeason(activeSeason);
 
     // #2444 · begge matview-reads afhænger kun af activeSeason.id (kendt nu) —
