@@ -118,9 +118,23 @@ prod har historiske AI-udbetalinger, så tidligere tekst om ingen udbetaling var
 > tilstandsmaskine, de fem arketyper, divisions-tillægget (ejer-besluttet 29/8) og de seks op-/nedryknings-tilfælde
 > står dér, ikke her. Dette afsnit dækker kun konstanterne.
 >
-> **Upkeep er under omlægning:** ejer-direktiv 29/8 ([#4385](https://github.com/NicolaiDolmer/CyclingZone/issues/4385))
-> siger at den flade sæsonstart-opkrævning skal blive en løbende rejse-, bus- og personaleudgift pr. løbsdag.
-> Designes nu, shippes efter 27/9. `UPKEEP_BY_DIVISION` er dermed eksplicit midlertidig.
+**Upkeep pr. seniorløbsdag (#4385, ejer-beslutning 26/9, fire låste valg).** Bag app_config-flaget
+`upkeep_per_race_day` (default `off`; `beta` læses som `off`; fail-safe `off`). Flippes af ejeren FØR
+sæsonskiftets "Udfør sæsonskifte", ellers har holdene allerede betalt det flade beløb for sæsonen.
+
+| Regel | Med flaget `on` |
+|---|---|
+| Sats | `UPKEEP_PER_RACE_DAY_BY_DIVISION` i `economyConstants.js`. Samme sæsonsum som `UPKEEP_BY_DIVISION`, spredt over divisionens reference-antal løbsdage (`UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION`). Ingen skjult prisstigning. D4 er gratis. |
+| Hvilke løb | Kun seniorløb (`races.squad` null eller `senior`). U23-/juniorløb er gratis. Parkerede hold kører ingen løb og betaler intet. |
+| Hvilke dage | En løbsdag = én etape. Den koster kun når holdet har mindst én rytter til start: en `stage`-række i `race_results` for etapen (etapeløb) eller en `gc`-række (endagsløb, som ikke har `stage`-rækker). |
+| Hvornår | Ved løbets afregning i auto-prize-sweepen, samme tick som præmien og sponsorens løbsdags-indtægt (`upkeepPerRaceDay.chargeRaceDayTravelStaffToDate`). Intet nyt dagligt job. |
+| Bogføring | Én `finance_transactions`-linje pr. hold pr. løbsdag, type `travel_staff`, reason `race_day_travel_staff`, label "Travel & staff" / "Rejse og personale". Idempotent på `travel_staff:<race>:<etape>:<hold>`. |
+| Sæsonstart | `processTeamSeasonPayroll` trækker INTET fladt upkeep og skriver ingen `upkeep`-post. |
+| Dobbelt-træk-vagt | Et hold der allerede har en `upkeep`-post i sæsonen (flip midt i sæsonen), trækkes ikke pr. løbsdag. |
+| Prognose | `projected_upkeep` = sats × løbsdage (reference-antallet, da næste sæsons kalender ikke findes endnu); `projected_upkeep_at_season_start` = 0, og sæsonskifte-kvitteringen viser derfor ingen upkeep-linje. |
+
+Med flaget `off` er alt som før: fladt `UPKEEP_BY_DIVISION` ved sæsonstart. `UPKEEP_BY_DIVISION` bliver
+som sæsonsum-reference (compressPyramid, scorecards, flag-off-stien).
 
 Disse konstanter bor i `backend/lib/economyConstants.js` og er dokumenteret i `docs/GAME_INVARIANTS.md` — **denne fil duplikerer dem ikke**. To afvigelser fundet ved verifikation 25/8, begge nyere end GAME_INVARIANTS' tekst:
 
