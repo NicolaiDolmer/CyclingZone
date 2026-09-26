@@ -195,6 +195,10 @@ export async function runSeasonSignupReminder({
       else if (result?.status === "failed") failed += 1;
       else skipped += 1;
     } catch (err) {
+      // best-effort: one recipient's failure must not stop the rest of a
+      // one-off, hand-run send. It is not swallowed silently: it is logged and
+      // counted as failed in the final report the operator reads, and
+      // sendLoopEmail itself already reports provider failures to Sentry.
       failed += 1;
       log(`  fejl for bruger ${candidate.userId}: ${err?.message || err}`);
     }
