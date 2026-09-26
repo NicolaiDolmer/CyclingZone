@@ -623,7 +623,7 @@
         ],
         "receipt_positive": [
           "Det er den slags tal, jeg kan tage med til sponsorerne.",
-          "Pengene kommer ind, og udgifterne er under kontrol. Så sover jeg godt i nat.",
+          "Pengene kommer ind, og udgifterne er under kontrol. Sådan kan jeg lide det.",
           "Bedre end min prognose. Det siger jeg ikke tit.",
           "Godt. Sponsorerne lægger mærke til den slags, før vi gør."
         ],
@@ -1003,10 +1003,10 @@
           "Halvvejs, og jeg vil have flere sejre i anden halvdel end vi har nu."
         ],
         "milestone_achieved": [
-          "Klaret, fordi vi vandt, da det gjaldt.",
+          "Klaret. Det er den standard, jeg forventer.",
           "Endelig en milepæl, der passer til det, klubben burde levere.",
           "Find så den næste, og gør den sværere.",
-          "Sejre på tavlen. Sådan skal det altid se ud."
+          "Målet ramt. Sådan skal det altid se ud."
         ],
         "milestone_missed": [
           "Misset. På det her niveau er det ikke acceptabelt.",
@@ -1350,7 +1350,7 @@
         "milestone_achieved": [
           "Den her kan hele landet tage æren for.",
           "Den slags milepæl gør hjemmepublikummet stolte af at bære farverne.",
-          "Vores egne leverede, da det gjaldt. Det bliver husket.",
+          "Vores egne farver, vores egen milepæl. Det bliver husket.",
           "Den her tilhører også hjemmepublikummet."
         ],
         "milestone_missed": [
@@ -1464,7 +1464,7 @@
         ],
         "milestone_achieved": [
           "Klaret på de veje, der betyder noget for klubben.",
-          "Brosten under hjulene og milepælen i hus. Sådan gør man.",
+          "Milepælen er i hus. Sådan gør en klassikerklub det.",
           "Den her vil klassikernes historiebøger faktisk nævne.",
           "Et resultat, der er et monument værdigt. Det er derfor, klubben findes."
         ],

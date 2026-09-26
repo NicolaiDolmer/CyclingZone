@@ -56,11 +56,21 @@ test("#5633 EN-replikkerne bruger talesprog: ingen ukontraherede former", () => 
 });
 
 test("#5633 replikkerne opfinder ikke en dag, maaned eller periode der kan vaere forkert", () => {
-  const EN_INVENTED = /\b(today|tonight is|this week|this month|this April|in April|spring|quarters? in|month running|in a row)\b/i;
-  const DA_INVENTED = /\b(i dag|denne uge|denne måned|i april|foråret|forårs|kvartaler|måned i træk)\b/i;
+  const EN_INVENTED = /\b(today|tonight|yesterday|this week|this month|this April|in April|spring|quarters? in|month running|in a row)\b/i;
+  const DA_INVENTED = /(\bi dag\b|\bi nat\b|\bi aften\b|\bi går\b|\bdenne uge\b|\bdenne måned\b|\bi april\b|\bforåret\b|\bforårs|\bkvartaler\b|\bmåned i træk\b)/i;
   const offenders = [
     ...liveLines(en).filter(({ line }) => EN_INVENTED.test(line)),
     ...liveLines(da).filter(({ line }) => DA_INVENTED.test(line)),
+  ];
+  assert.deepEqual(offenders, []);
+});
+
+test("#5633 milestone_achieved paastaar ikke en sejr (bucket'en gaelder alle maaltyper, ogsaa oekonomi og ungdom)", () => {
+  const WIN_CLAIM = /\b(we won|won when|wins on the board)\b/i;
+  const DA_WIN_CLAIM = /(\bvi vandt\b|\bsejre på tavlen\b)/i;
+  const offenders = [
+    ...ARCHETYPES.flatMap((a) => en.archetypes[a].reactions.milestone_achieved.filter((l) => WIN_CLAIM.test(l))),
+    ...ARCHETYPES.flatMap((a) => da.archetypes[a].reactions.milestone_achieved.filter((l) => DA_WIN_CLAIM.test(l))),
   ];
   assert.deepEqual(offenders, []);
 });

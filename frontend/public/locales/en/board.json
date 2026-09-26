@@ -623,7 +623,7 @@
         ],
         "receipt_positive": [
           "That's the kind of number I can take to the sponsors.",
-          "Money coming in, costs under control. I'll sleep well tonight.",
+          "Money coming in, costs under control. That's how I like it.",
           "Better than my forecast. I don't say that often.",
           "Good. The sponsors notice this sort of thing before we do."
         ],
@@ -1003,10 +1003,10 @@
           "Halfway through, and I want more wins than we have in the second half."
         ],
         "milestone_achieved": [
-          "Done, because we won when it mattered.",
+          "Done. That's the standard I expect.",
           "Finally a milestone that matches what this club should be doing.",
           "Now find the next one, and make it harder.",
-          "Wins on the board. That's how it should always look."
+          "Target hit. That's how it should always look."
         ],
         "milestone_missed": [
           "Missed. At this level, that's not acceptable.",
@@ -1350,7 +1350,7 @@
         "milestone_achieved": [
           "The whole country can claim this one.",
           "This is the kind of milestone that makes the home fans proud to wear the colors.",
-          "Our own riders delivered when it counted. People will remember that.",
+          "Our own colors, our own milestone. People will remember that.",
           "This one belongs to the home crowd too."
         ],
         "milestone_missed": [
@@ -1464,7 +1464,7 @@
         ],
         "milestone_achieved": [
           "Done on the roads that matter to this club.",
-          "Cobbles under the wheels, milestone in the bag. That's how it's done.",
+          "Milestone in the bag. That's how a classics club does it.",
           "The classics history books will actually mention this one.",
           "A result worthy of a Monument. That's why this club exists."
         ],
