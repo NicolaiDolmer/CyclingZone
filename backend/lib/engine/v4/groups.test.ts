@@ -289,6 +289,14 @@ test("#5515 settleBreakawaySurvivedEvents: en gruppe hvor alle er udgaaet, faar 
   const settled = settleBreakawaySurvivedEvents([survivedEvent("breakaway-1", ["e2"])], { breakawayWin: true, trace: t, results });
   assert.deepEqual(settled, []);
 
+  // Én udgaaet og én hentet: kun den hentede staar i breakaway_caught.
+  const mixed = settleBreakawaySurvivedEvents([survivedEvent("breakaway-0", ["e2", "e1"])], {
+    breakawayWin: false,
+    trace: t,
+    results: [...finished(["p1", "e1"]), { rider_id: "e2", rank: 3, time_seconds: 0, group_id: "g", status: "abandoned" }],
+  });
+  assert.deepEqual(mixed[0].params.rider_ids, ["e1"]);
+
   const none: TimelineEvent[] = [{ km: 10, type: "breakaway_formed", params: {} }];
   assert.equal(settleBreakawaySurvivedEvents(none, { breakawayWin: false, trace: null, results: [] }), none);
 });

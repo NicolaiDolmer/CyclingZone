@@ -279,7 +279,8 @@ export function isBreakawayWin(trace: FinaleGroupTrace, winnerId: string | null)
  *      udbruddet. Det skiller et andet stykke af udbruddet fra, som feltet
  *      kom forbi, paa en dag hvor udbruddet vandt.
  * Ellers skrives det om til `breakaway_caught` paa samme km (maalstregen) med
- * samme gruppe og ryttere, som finalen hentede dem. Ingen ny event-type og
+ * samme gruppe og de af dens ryttere der kom i maal (en udgaaet udbryder blev
+ * ikke hentet ved stregen). Ingen ny event-type og
  * ingen ny noegle: filmen har allerede copy til begge. Er hele gruppen udgaaet
  * efter eventet, udelades udfaldet (uheldets event fortaeller historien).
  *
@@ -312,14 +313,16 @@ export function settleBreakawaySurvivedEvents(
     // Er ingen af gruppens ryttere i maal (alle udgaaet efter eventet), har
     // udbruddet hverken holdt eller er blevet hentet: uheldets eget event
     // fortaeller historien, saa udfaldet udelades.
-    const ranks = riderIds.flatMap((id) => (rankOf.has(id) ? [rankOf.get(id)!] : []));
-    if (ranks.length === 0) return [];
-    if (args.breakawayWin && Math.min(...ranks) < bestOutsideEscape) return [event];
+    // Kun ryttere der kom i maal: en udgaaet udbryder blev ikke "hentet ved stregen".
+    const finisherIds = riderIds.filter((id) => rankOf.has(id));
+    if (finisherIds.length === 0) return [];
+    const bestInGroup = Math.min(...finisherIds.map((id) => rankOf.get(id)!));
+    if (args.breakawayWin && bestInGroup < bestOutsideEscape) return [event];
     const groupId = event.params.group_id;
     return [{
       km: event.km,
       type: "breakaway_caught",
-      params: typeof groupId === "string" ? { group_id: groupId, rider_ids: riderIds } : { rider_ids: riderIds },
+      params: typeof groupId === "string" ? { group_id: groupId, rider_ids: finisherIds } : { rider_ids: finisherIds },
     }];
   });
 }
