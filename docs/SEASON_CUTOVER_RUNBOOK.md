@@ -416,17 +416,20 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 - **For spilleren:** Alle rytterværdier bliver regnet om på én gang, både op og ned. Lønkrav flytter sig ikke.
 - **Forudsætning:**
-  - **Modelvalget:** #5497 er ikke "godkendt til build", og #5502 er åben. Scriptet er låst til `v5` (`riderValueExtraordinaryRun5443.js:70`). Vælges den typefri model, skal der en ny model og en script-ændring til.
+  - **Modelvalget:** `v6`, den typefri model med marked (ejer-lås 24/9, #5497/#5502). Scriptet er låst til `v6` (`REQUIRED_MODEL_ID` i `riderValueExtraordinaryRun5443.js`, #5443) og nægter `--apply` uden et gyldigt markeds-fit i `app_config.rider_valuation_v6_market`.
   - **Spillerbeskeder:** udmeldingen og besked aftenen før skal være postet. Ingen evidens for, at de er ude.
   - **Ikke søndag:** scriptet nægter at køre om søndagen (:122). Kør fredag 25/9 eller lørdag 26/9.
   - **I prod 23/9:** `backup_5443_value_event_20260920` findes med 0 rækker, og begge nøgler står `v4`.
 - **Go:** ejer, ordret "kør" efter tørkørslen (runbook trin 6).
-- **Kommando** (`docs/runbooks/5443-ekstraordinaer-vaerdikoersel.md` trin 4-7). Nøgle og kørsel er ét trin: scriptet nægter uden nøglen, og nøglen alene lader søndagskørslen regne med v5.
-  ```sql
-  update public.app_config set value = '"v5"'::jsonb where key = 'rider_valuation_model';
-  ```
+- **Kommando** (`docs/runbooks/5443-ekstraordinaer-vaerdikoersel.md` trin 4-7). Tørkørslen virker før nøglen flippes (den pinner `v6`). Nøgle og apply er derefter ét trin: scriptet nægter uden nøglen, og nøglen alene lader søndagskørslen regne med v6 på trin 1 uden et trin 0.
   ```powershell
   pwsh -File scripts/run-value-event-5443.ps1
+  ```
+  Efter ejerens "kør":
+  ```sql
+  update public.app_config set value = '"v6"'::jsonb where key = 'rider_valuation_model';
+  ```
+  ```powershell
   pwsh -File scripts/run-value-event-5443.ps1 -Apply
   ```
 - **Kontrol bagefter:**
@@ -447,8 +450,9 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   ```
   ```sql
   update public.app_config set value = '"v4"'::jsonb where key = 'rider_valuation_model';
+  update public.app_config set value = '0'::jsonb where key = 'rider_value_phase_step';
   ```
-  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS` :77). Runbooken siger fejlagtigt 4.
+  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS`).
   - Sæt samtidig trin 9's kontakt til off, og revertér #5461, hvis trin 10 er kørt.
 - **Kan tændes i dag?** Nej. Modelvalg, spillerbesked og "kør" mangler.
 
@@ -488,7 +492,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 - **For spilleren:** Den normale ugentlige værdiopdatering, sidste gang i S3.
 - **Forudsætning:**
   - #5443 trin 3: rækkefølgen mellem søndagskørslen og cutover skal stå i drejebogen. Den kører før cutover, som ligger om aftenen.
-  - Er trin 8 kørt, regner den med v5.
+  - Er trin 8 kørt, regner den med v6 på trin 1 (75 % elitepræmie) og tæller trin-tælleren op til 1.
   - Markedsblendet er off (`market_value_sweep_enabled`).
 - **Go:** ejer vælger mellem (A) lad den køre med backup og (B) spring den over.
 - **Kommando:**
@@ -736,7 +740,7 @@ Alle afhjælpninger er prod-skrivninger. De kræver ejer-go og køres **før** t
 
 ### Uafklaret: kræver ejer-beslutning
 
-1. **Værdimodel:** v5 (typet; runbook og script er klar) eller typefri (#5497/#5502). Typefri kræver en ny model, en script-ændring (`REQUIRED_MODEL_ID = "v5"`) og ny #5461-tekst.
+1. **Værdimodel:** afgjort: typefri `v6` med marked (ejer-lås 24/9). Script og runbook er skiftet til `v6` (#5443); #5461-teksten skal stadig omskrives.
 2. **Parkering ved S4:** skal ske? Kræver `season_signup_enabled` on før "Afslut sæson" (trin 5). Denne kontakt står ikke i #5506. Parkerede hold kan ikke af-parkeres med kode.
 3. **S4-kalenderens tre finale-afvigelser:** ret dem eller acceptér med `--allow-finale-drift`.
 4. **Søndagskørslen 27/9:** lad den køre med backup, eller spring over med et claim på forhånd (#5443 trin 3).
