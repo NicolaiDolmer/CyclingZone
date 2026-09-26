@@ -99,10 +99,15 @@ FROM suspect_maiden_events;
 --       AND COALESCE(r2.scheduled_for, r2.created_at) < mrt.maiden_occurred_at
 --   );
 --
--- NB: denne sletning fjerner KUN det forkerte 'maiden_win'-event selv (og
--- dermed evt. en tilhørende forkert celebration-notifikation-historik i UI).
--- Den rører IKKE race_results, standings eller point — ingen økonomisk
--- konsekvens. En rytter hvis 'maiden_win' slettes her vil ved NÆSTE finale-
--- ring af et løb ikke automatisk få et nyt (korrekt) event, fordi hans REELLE
--- første sejr allerede er registreret som "prior" af den rettede detektion —
--- det er hverken et problem eller noget der kræver en efterfølgende re-kørsel.
+-- NB (CodeRabbit-rettet, #5733): denne sletning fjerner KUN det forkerte
+-- 'maiden_win'-event selv. En allerede LEVERET celebration-notifikation kan
+-- forblive synlig i `notifications`, fordi detectCareerFirsts gemmer
+-- `related_id = race.id` (IKKE career-event-id'et) — denne sletning
+-- identificerer/rører derfor ikke den notifikation. Kræves den også fjernet,
+-- er det et SEPARAT, selvstændigt gennemgået oprydningstrin (ikke del af
+-- dette forslag). Denne sletning rører IKKE race_results, standings eller
+-- point — ingen økonomisk konsekvens. En rytter hvis 'maiden_win' slettes her
+-- vil ved NÆSTE finalisering af et løb ikke automatisk få et nyt (korrekt)
+-- event, fordi hans REELLE første sejr allerede er registreret som "prior"
+-- af den rettede detektion — det er hverken et problem eller noget der
+-- kræver en efterfølgende re-kørsel.
