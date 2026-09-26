@@ -342,8 +342,13 @@ export function computeFinanceForecast({
   // løbsdag × antal løbsdage (samme sæsonsum spredt ud, ejer-valg 1). Intet af
   // det trækkes ved sæsonstart: projected_upkeep_at_season_start er 0, og
   // sæsonskifte-kvitteringen (seasonSwitchPreview) læser netop det felt.
-  const upkeepRatePerRaceDay = UPKEEP_PER_RACE_DAY_BY_DIVISION[team?.division] || 0;
-  const referenceRaceDays = UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION[team?.division] || 0;
+  const upkeepDivision = Number(/** @type {{ division?: unknown }} */ (team)?.division);
+  /** @type {Record<number, number>} */
+  const perRaceDayTable = UPKEEP_PER_RACE_DAY_BY_DIVISION;
+  /** @type {Record<number, number>} */
+  const referenceDaysTable = UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION;
+  const upkeepRatePerRaceDay = perRaceDayTable[upkeepDivision] || 0;
+  const referenceRaceDays = referenceDaysTable[upkeepDivision] || 0;
   const raceDaysInput = upkeepRaceDays === null || upkeepRaceDays === undefined ? NaN : Number(upkeepRaceDays);
   const resolvedUpkeepRaceDays = Number.isFinite(raceDaysInput) && raceDaysInput >= 0
     ? Math.round(raceDaysInput)

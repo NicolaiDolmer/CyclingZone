@@ -78,3 +78,28 @@ test("runAutoPrizeSweep: kaster hvis seasons-query fejler", async () => {
     /seasons: boom/
   );
 });
+
+test("runAutoPrizeSweep (#4385): kalder travelStaffFn i samme afregning, efter præmie og sponsor", async () => {
+  const supabase = {
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "s4" }, error: null }) }) }),
+    }),
+  };
+  const order = [];
+  let travelCalled = null;
+  const r = await runAutoPrizeSweep({
+    supabase,
+    isEnabled: async () => true,
+    payFn: async () => { order.push("prize"); return { races_paid: 1, total_paid: 100 }; },
+    sponsorFn: async () => { order.push("sponsor"); return { credited: 1 }; },
+    travelStaffFn: async (seasonId, sb, opts) => {
+      order.push("travel");
+      travelCalled = { seasonId, opts };
+      return { charged: 3, total: 4713 };
+    },
+  });
+  assert.deepEqual(order, ["prize", "sponsor", "travel"]);
+  assert.equal(travelCalled.seasonId, "s4");
+  assert.equal(travelCalled.opts.actorType, FINANCE_ACTOR_TYPE.SYSTEM);
+  assert.equal(r.travel_staff_charged, 3);
+});
