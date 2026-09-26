@@ -5,6 +5,7 @@
 //   §1b  Kvote-opfyldelse: EKSAKT 100 % pr. division (#4270, lukker §11 punkt 4)
 //   §4   Monument maa ikke ligge inde i et Grand Tours loebsdags-spaend (#4203)
 //   §1   Mindste-overlap pr. division: en loebsdag skal have noget at vaelge imellem (#3329)
+//   §3   (tilfoejet 26/9, #5802) Grand Tours starter i rigtig raekkefoelge: Giro -> Tour -> Vuelta
 //
 // REN FUNKTION: ingen DB, ingen fs, ingen vaegur-tid (hard rule 16). Alle taerskler kommer
 // fra deres SSOT-moduler (calendarTierCaps.js, grandTourRestDays.js) - denne fil definerer

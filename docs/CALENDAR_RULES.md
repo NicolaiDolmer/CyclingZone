@@ -401,6 +401,7 @@ scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
 | Etaperækkefølge (§7) | `gatePlan` | **ingen** |
 | Realisme-bånd (#3347/#3469) | `gatePlan` | **ingen** |
 | Løb hver kalenderdag (§2) | scorecardet | **ingen** - ejer-regel |
+| GT-rækkefølge Giro → Tour → Vuelta (§3, #5802) | scorecardet (stopper `--apply`) | **ingen** - ejer-regel |
 | Kvote-hul > 3 løbsdage | `gatePlan` | **ingen** |
 | K-B-komposition, sæson (§6) | `gatePlan` | `--allow-composition-drift` |
 | K-B-komposition, pr. division (§6) | `gatePlan` | `--allow-tier-composition-drift` |
@@ -552,6 +553,9 @@ S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningss
 | Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
 | GT'er kun i | tier 1 | — | [#2251](https://github.com/NicolaiDolmer/CyclingZone/issues/2251) | `tierCalendarMaterializer.js` |
 | To GT'er må ikke dele kalenderdag | real-day-separation | ≥ 1 dags mellemrum | 6/8 | [#3472](https://github.com/NicolaiDolmer/CyclingZone/issues/3472) |
+| GT'ernes startrækkefølge | R14 + `detectGrandTourOrderViolations` | **Giro → Tour → Vuelta** (virkelig startdato fra `date_text`) | **ejer 26/9** ([#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)) | `raceCalendarLanePacker.js`, `calendarPlacementGates.js` |
+
+**GT-rækkefølgen (ejer 26/9, [#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)).** Grand Tours starter i den rækkefølge de har i virkeligheden: Giro → Tour → Vuelta. S4-tørkørslen 26/9 lagde dem som Tour → Giro → Vuelta, fordi pakkerens søgning altid prøvede den længste GT først (Touren har 18 etaper, de to andre 17), og ingen gate målte rækkefølgen. Rækkefølgen kommer fra katalogets `date_text` (som `seasonFraction`), ikke fra navne. Den håndhæves to steder: som binding i søgningen (R14 i `solveContiguousStarts`: GT-klasserne skal startes i virkelig rækkefølge) og som **hård placerings-gate uden override** i scorecardet (`detectGrandTourOrderViolations`, stopper `--apply`). Tørkørslen udskriver GT'ernes navne og startdatoer pr. division. Overlap mellem en GT og et andet etapeløb er **tilladt** (ejer 26/9) og berøres ikke af reglen. Mangler en GT sin virkelige dato, kan reglen ikke dømme den og springer den over.
 
 Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no days with 5 gt stages"* + *"6 sounds like a decent max"*.
 
