@@ -21,11 +21,11 @@
     "comingSoon": "Kommer snart",
     "junior": {
       "title": "Juniorhold",
-      "description": "16-18 år. Egne løb og stillinger."
+      "description": "Ryttere på 18 år og yngre. Egne løb og stillinger."
     },
     "u23": {
       "title": "U23-hold",
-      "description": "19-22 år. Egne løb, divisioner og oprykning."
+      "description": "Ryttere på 22 år og yngre. Egne løb, divisioner og oprykning."
     }
   },
   "seriousBadge": "Seriøs kandidat",
