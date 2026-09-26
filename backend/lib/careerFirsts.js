@@ -90,14 +90,25 @@ export function pickCareerFirstCandidates({ resultRows = [] } = {}) {
 
 // ── I/O-helpers ──────────────────────────────────────────────────────────────
 
-// #5733 (spillerverificeret 24/9): den TIDLIGERE udgave hentede op til 30
-// RÆKKER (ingen ORDER BY) og filtrerede i JS — for en rytter med en lang
-// karriere (mange sejre på tværs af sæsoner, eller en dominant afvikling der
-// selv fylder mange af DENNE races egne rækker, fx en grand tour-sweep) kunne
-// en ægte TIDLIGERE sejr i et ANDET løb (fx et monument) simpelthen falde
-// uden for det ubestemte 30-rækkers vindue — riderHasPriorResult svarede
-// falsk "ingen prior", og maiden_win blev fejlagtigt udløst igen. Fixet
-// erstatter den bounded rækkehentning med to UBEGRÆNSEDE COUNT-forespørgsler
+// #5733 — HÆRDNING, IKKE en bekræftet rodårsag for den konkrete spillerrapport
+// (reviewer-fund 26/9, ret venligst se PR-bodyen for detaljer): den TIDLIGERE
+// udgave hentede op til 30 RÆKKER (ingen ORDER BY) og filtrerede i JS. I
+// TEORIEN kunne det lade en ægte TIDLIGERE sejr i et ANDET løb (fx et
+// monument) falde uden for det ubestemte 30-rækkers vindue for en rytter med
+// mange af DENNE races egne rækker (fx en grand tour-sweep) — men issuets eget
+// første skridt (slå rytterens rækker op i race_results/rider_career_events,
+// #5733) blev udført 26/9 EFTER at denne PR allerede påstod dette som
+// bekræftet rodårsag: for spillerens hold (cybersimon/"Team Hansen Pro
+// Cycling") er der KUN to maiden_win-events nogensinde (Daniel López 16/8,
+// Raúl Vargas 13/8), og INGEN af dem har en tidligere kvalificerende sejr i
+// et andet løb — begge er kronologisk korrekte "første sejr". Det samme
+// tjek kørt mod HELE prod (se database/proposals/5733-maiden-victory-cleanup.sql
+// trin 1) giver 0 mistænkelige maiden_win-events. Den påståede rodårsag er
+// altså IKKE verificeret at have udløst noget i prod, og den specifikke sag
+// bag #5733 er stadig uafklaret. Koden herunder er alligevel en reel
+// hærdning — en bounded, uordnet rækkehentning i et korrekthedstjek er en
+// fælde uanset om den er bevist at have udløst DENNE bug — så fixet bevares:
+// bounded rækkehentning erstattet med to UBEGRÆNSEDE COUNT-forespørgsler
 // (count:"exact", head:true — pagination-safe per definition, se
 // scripts/lint-pagination-guard.mjs: en HEAD-forespørgsel returnerer aldrig
 // rækker, kun et Content-Range-tal, og kan derfor ikke ramme PostgREST's

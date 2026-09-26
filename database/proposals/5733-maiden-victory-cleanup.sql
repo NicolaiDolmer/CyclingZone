@@ -2,13 +2,18 @@
 -- rytter der allerede havde en tidligere professionel sejr (fx et monument)
 -- i en ANDEN, kronologisk tidligere afvikling.
 --
--- BAGGRUND: roden var en bounded, uordnet 30-rækkers hentning i
+-- BAGGRUND: en TEORETISK bounded, uordnet 30-rækkers hentning i
 -- backend/lib/careerFirsts.js's riderHasPriorResult (rettet i samme PR som
--- denne fil, Refs #5733). En rytter med mange af SIN EGEN afviklings
--- kvalificerende rækker (fx en sweep af mange etaper i samme grand tour)
--- kunne fylde det uordnede vindue og skubbe en ægte tidligere sejr i et
--- ANDET løb uden for det — 'maiden_win' blev så indsat igen for en rytter
--- der reelt allerede havde vundet før.
+-- denne fil, Refs #5733) kunne i teorien lade en ægte tidligere sejr i et
+-- ANDET løb falde uden for et uordnet 30-rækkers vindue for en rytter med
+-- mange af SIN EGEN afviklings kvalificerende rækker (fx en sweep af mange
+-- etaper i samme grand tour) — men dette er IKKE bekræftet som rodårsagen
+-- for #5733's konkrete spillerrapport (reviewer-fund 26/9): trin 1 herunder,
+-- kørt mod HELE prod 26/9, gav 0 mistænkelige maiden_win-events, og
+-- spillerens eget hold (cybersimon) har kun to maiden_win-events nogensinde,
+-- ingen af dem mistænkelige. Denne fil er derfor et FOREBYGGENDE
+-- sikkerhedsnet for den teoretiske fejlklasse, ikke en bekræftet oprydning —
+-- kør trin 1 igen før evt. brug af trin 3, forvent 0.
 --
 -- IDEMPOTENT + KUN-FORSLAG (ejer-politik, #2642-rammerne): denne fil
 -- auto-applies IKKE. Ejeren kører selv, trin for trin, efter at have set
