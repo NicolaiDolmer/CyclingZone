@@ -212,6 +212,7 @@ function raceFootprint(race, spineMinStages) {
 //   R9  et monument ligger ALDRIG inde i et Grand Tours loebsdags-spaend (#4203)
 //   R10 mindst MIN_GAP kalenderdage mellem to nabo-monumenter (§4)
 //   R11 mindst MIN_SPREAD kalenderdage fra foerste til sidste monument (§4)
+//   R14 Grand Tours starter i deres rigtige kalenderraekkefoelge, Giro -> Tour -> Vuelta (#5802)
 //
 // R12 ER FJERNET IGEN (#5267, ejer-kort 19/9). Den bandt loebsdags-aksens LAENGDE inde i
 // selve soegningen, og det var roden til at PR #5169's maalte kalender faldt: saa snart et
@@ -299,6 +300,28 @@ function solveContiguousStarts({
     sidsteIKlasse.set(klasseAf[k], k);
   }
 
+  // R14 (#5802, ejer 26/9): Grand Tours STARTER i deres rigtige kalenderraekkefoelge
+  // (Giro -> Tour -> Vuelta). Foer R14 afgjorde sorteringen ovenfor (fodaftryk faldende)
+  // hvilken GT soegningen proevede foerst, saa den eneste GT med 18 etaper (Touren) altid
+  // fik det foerste GT-slot og Giroen (17) det andet - MAALT paa den gyldne S4-kalender:
+  // Tour -> Giro -> Vuelta. Identiteterne kan ikke byttes bagefter, for GT'er med forskelligt
+  // etapeantal har forskelligt fodaftryk, og et bytte ville braekke R4's eksakte dags-kvote.
+  //
+  // Reglen er derfor en BINDING: raekkefoelgen af GT-KLASSER (fodaftryk) som soegningen
+  // starter dem i skal vaere den raekkefoelge GT'erne har i virkeligheden (seasonFraction,
+  // fra race_pool.date_text). Inden for samme klasse (Giro og Vuelta har begge 17 etaper)
+  // er de ombyttelige i soegningen, og identitets-paasaetningen i layoutContiguous giver dem
+  // slots i fase-raekkefoelge - saa klasse-raekkefoelgen er nok til at holde hele reglen.
+  // R6 sikrer at hoejst een GT starter ad gangen, saa GT-starterne er strengt sekventielle.
+  //
+  // Mangler EEN GT sin seasonFraction, er den rigtige raekkefoelge ukendt og R14 er slaaet
+  // fra - bit-identisk med foer #5802 (samme fallback-princip som #3469's orderByPhase).
+  // Overlap mellem en GT og et andet etapeloeb roeres IKKE (ejer 26/9: det er tilladt).
+  const gtIdx = items.map((it, k) => (it.gt ? k : -1)).filter((k) => k >= 0);
+  const gtKlasseRaekkefoelge = gtIdx.length >= 2 && gtIdx.every((k) => hasFraction(items[k].race))
+    ? [...gtIdx].sort((a, b) => byPhaseThenBigThenId(items[a].race, items[b].race)).map((k) => klasseAf[k])
+    : null;
+
   const brugt = new Array(items.length).fill(false);
   const startAf = new Array(items.length).fill(-1);
   const bandSizes = [];
@@ -338,6 +361,10 @@ function solveContiguousStarts({
     if (lo > hi) return false;
 
     const gtAktiv = aktive.some((a) => items[a.i].gt);
+    // R14: den klasse den NAESTE GT skal have. `brugt` indeholder her kun placerede loeb.
+    const naesteGtKlasse = gtKlasseRaekkefoelge
+      ? gtKlasseRaekkefoelge[gtIdx.reduce((n, k) => n + (brugt[k] ? 1 : 0), 0)]
+      : null;
 
     // TAETTEST FOERST. Soegningen tager den foerste loesning den finder, saa retningen her
     // afgoer kalenderens karakter: nedad fylder hver loebsdag til cap'en og holder
@@ -362,6 +389,7 @@ function solveContiguousStarts({
             if (gtAktiv || acc.some((x) => items[x].gt)) continue;                  // R6
             if (sidsteGtSlut != null && dato < sidsteGtSlut + 2) continue;          // R6
             if (mr && acc.some((x) => items[x].mon)) continue;                      // R9
+            if (naesteGtKlasse != null && klasseAf[k] !== naesteGtKlasse) continue; // R14
           }
           if (mr && items[k].mon) {
             // R9: `gtAktiv` er praecis "en GT's loebsdags-spaend daekker denne loebsdag" -
