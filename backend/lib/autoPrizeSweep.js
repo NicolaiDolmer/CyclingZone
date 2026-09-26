@@ -9,6 +9,7 @@
 import { isAutoPrizeEnabled } from "./autoPrizeFlag.js";
 import { paySeasonPrizesToDate } from "./prizePayoutEngine.js";
 import { payRaceDaySponsorsToDate } from "./sponsorRaceDayIncome.js";
+import { chargeRaceDayTravelStaffToDate } from "./upkeepPerRaceDay.ts";
 import { FINANCE_ACTOR_TYPE } from "./economyConstants.js";
 
 export async function runAutoPrizeSweep({
@@ -16,6 +17,7 @@ export async function runAutoPrizeSweep({
   isEnabled = isAutoPrizeEnabled,
   payFn = paySeasonPrizesToDate,
   sponsorFn = payRaceDaySponsorsToDate,
+  travelStaffFn = chargeRaceDayTravelStaffToDate,
 } = {}) {
   if (!(await isEnabled(supabase))) return { paid: 0, skipped: "flag_off" };
 
@@ -30,9 +32,16 @@ export async function runAutoPrizeSweep({
   // (idempotent per (race, team) — gentagne ticks er harmløse).
   const sponsor = await sponsorFn(season.id, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
 
+  // #4385: rejse og personale pr. seniorløbsdag trækkes i samme afregning som
+  // præmien og sponsorens løbsdags-indtægt (ejer-valg 4). Gated bag
+  // upkeep_per_race_day inde i funktionen (fail-safe OFF → intet trækkes).
+  // Idempotent pr. (løb, etape, hold).
+  const travelStaff = await travelStaffFn(season.id, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
+
   return {
     paid: result.races_paid ?? 0,
     total: result.total_paid ?? 0,
     sponsor_credited: sponsor?.credited ?? 0,
+    travel_staff_charged: travelStaff?.charged ?? 0,
   };
 }

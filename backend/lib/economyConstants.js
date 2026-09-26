@@ -55,6 +55,29 @@ export const PARACHUTE_FACTOR = 0.5;
 // kurve-kalibrering mod målt S3-data: #3720 (S4-satserne sættes dér).
 export const UPKEEP_BY_DIVISION = { 1: 220000, 2: 70000, 3: 20000, 4: 0 };
 
+// #4385 (ejer-beslutning 26/9, fire låste valg): upkeep som løbende rejse-/
+// personaleudgift pr. SENIOR-løbsdag i stedet for ét træk ved sæsonstart.
+// Gated bag app_config-flaget `upkeep_per_race_day` (upkeepPerRaceDayFlag.ts).
+//
+// Valg 1 (A): samme sæsonsum, spredt ud — satsen er UPKEEP_BY_DIVISION delt med
+// divisionens reference-antal seniorløbsdage (UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION),
+// afrundet. Ingen skjult prisstigning.
+// Valg 2: kun seniorholdets løbsdage koster; U23/junior er gratis, parkerede hold
+// kører ingen løb og betaler derfor intet.
+// Valg 3: en løbsdag koster kun når holdet har mindst én rytter til start.
+// Valg 4: én finance-linje pr. løbsdag ved afregning af løbet (autoPrizeSweep),
+// type 'travel_staff'.
+//
+// Når flaget er ON springer processTeamSeasonPayroll det flade UPKEEP_BY_DIVISION-
+// træk over. UPKEEP_BY_DIVISION bevares som sæson-referencesum (compressPyramid,
+// scorecards og flag-OFF-stien læser den).
+export const UPKEEP_PER_RACE_DAY_BY_DIVISION = { 1: 1571, 2: 625, 3: 238, 4: 0 };
+
+// #4385: reference-antal seniorløbsdage pr. division i en fuld sæson — nævneren
+// ejeren brugte da satsen blev låst. Bruges KUN af prognosen (financeForecast)
+// til at vise sæsonsummen for en sæson hvis kalender endnu ikke findes.
+export const UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION = { 1: 140, 2: 112, 3: 84, 4: 84 };
+
 // #1441 Fase 1's flade FINAL_SPONSOR_PAYOUT_CEILING (720k/900k) er FJERNET 2026-08-29.
 // Den blev afløst af det kontrakt-bevidste loft i #1663 (ceiling = guaranteed_base ×
 // MAX_BOARD_MODIFIER) og havde derefter intet kaldested i backend — men den levede videre
@@ -397,6 +420,9 @@ export const FINANCE_REASON = Object.freeze({
   // Race-baserede payouts
   RACE_PRIZE_PAYOUT: "race_prize_payout",
   SPONSOR_RACE_DAY: "sponsor_race_day",
+  // #4385 · rejse og personale pr. seniorløbsdag (erstatter sæsonstart-upkeep
+  // når flaget upkeep_per_race_day er on).
+  RACE_DAY_TRAVEL_STAFF: "race_day_travel_staff",
   // #2948 Sponsorvalg 2.0: bonusklausuler (signing ved aktivering, sejr/podie
   // pr. completet løb, sæsonmål ved sæsonafslutning)
   SPONSOR_SIGNING_BONUS: "sponsor_signing_bonus",
