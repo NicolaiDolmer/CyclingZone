@@ -197,7 +197,7 @@ export default function TrainingProgramsPanel({
         </ul>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-cz-border px-4 py-3 sm:px-5">
-          <label className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+          <label className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
             <span className="font-data text-2xs font-semibold uppercase tracking-[.04em] text-cz-3">{t("programs.putOn")}</span>
             <select
               value={target}
@@ -217,7 +217,7 @@ export default function TrainingProgramsPanel({
             size="sm"
             onClick={handleApply}
             disabled={!selected || busy || riders.length === 0}
-            className="min-h-11 sm:min-h-0"
+            className="min-h-11 w-full sm:min-h-0 sm:w-auto"
             data-testid="training-program-apply"
           >
             {busy ? t("programs.applying") : t("programs.apply")}
@@ -283,9 +283,13 @@ export default function TrainingProgramsPanel({
             <div
               className="grid overflow-hidden rounded-cz border border-cz-border"
               style={{
-                gridTemplateColumns: `minmax(40px, 96px) minmax(0, ${multi ? "150px" : "1fr"})${
-                  multi ? ` repeat(${columns.length}, minmax(34px, 1fr))` : ""
-                }`,
+                // Telefonen (375 px): dag 34 px + hele dagen 48 px + 5 x ca. 47 px,
+                // ingen sidelaens scroll. Desktop faar en rigtig select-bredde.
+                // Brøkdele (ikke faste max-bredder), saa loebsdags-cellerne aldrig
+                // bliver klemt af en kolonne der vokser foerst.
+                gridTemplateColumns: multi
+                  ? `minmax(34px, 0.8fr) minmax(48px, 1.4fr) repeat(${columns.length}, minmax(0, 1fr))`
+                  : "minmax(34px, 96px) minmax(0, 1fr)",
               }}
               data-testid="training-program-grid"
             >
@@ -310,20 +314,45 @@ export default function TrainingProgramsPanel({
                 return (
                   <div key={weekday} className="contents" data-testid="training-program-row">
                     <span className={`flex items-center gap-1.5 border-t border-cz-border px-2 py-1.5 text-[13px] font-semibold text-cz-1 ${rowBg}`}>
-                      <span className="truncate">{t(`weekday_${weekday}`)}</span>
+                      {/* Telefonen: to bogstaver (Ma, Ti, ...), saa kolonnen holder 34 px. */}
+                      <span className="sm:hidden">{t(`weekday_${weekday}`).slice(0, 2)}</span>
+                      <span className="hidden truncate sm:inline">{t(`weekday_${weekday}`)}</span>
                       {isToday && (
                         <span className="hidden rounded-[3px] bg-cz-1 px-1 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-card sm:inline">
                           {t("weekPlan.today")}
                         </span>
                       )}
                     </span>
-                    <span className={`border-s border-t border-cz-border px-1 py-1 ${rowBg}`}>
-                      {sessionSelect(
-                        daySession,
-                        (session) => handleCell(weekday, null, session),
-                        `${t("weekPlan.colWholeDay")} · ${t(`weekday_${weekday}`)}`,
-                      )}
-                    </span>
+                    {multi ? (
+                      <>
+                        {/* Telefonen: kort etiket, native vaelger ovenpaa (samme tryk-maal
+                            som loebsdags-cellerne). sm+: en synlig select. */}
+                        <span className={`relative flex min-h-11 items-center justify-center border-s border-t border-cz-border px-0.5 font-data text-3xs font-semibold text-cz-1 sm:hidden ${rowBg}`}>
+                          <span className="truncate">{shortLabel(daySession)}</span>
+                          {sessionSelect(
+                            daySession,
+                            (session) => handleCell(weekday, null, session),
+                            `${t("weekPlan.colWholeDay")} · ${t(`weekday_${weekday}`)}`,
+                            true,
+                          )}
+                        </span>
+                        <span className={`hidden border-s border-t border-cz-border px-1 py-1 sm:block ${rowBg}`}>
+                          {sessionSelect(
+                            daySession,
+                            (session) => handleCell(weekday, null, session),
+                            `${t("weekPlan.colWholeDay")} · ${t(`weekday_${weekday}`)}`,
+                          )}
+                        </span>
+                      </>
+                    ) : (
+                      <span className={`border-s border-t border-cz-border px-1 py-1 ${rowBg}`}>
+                        {sessionSelect(
+                          daySession,
+                          (session) => handleCell(weekday, null, session),
+                          `${t("weekPlan.colWholeDay")} · ${t(`weekday_${weekday}`)}`,
+                        )}
+                      </span>
+                    )}
                     {multi && columns.map((column) => {
                       const slot = slotForColumnIndex(column.index);
                       if (slot >= PROGRAM_SLOTS) return null;
@@ -333,7 +362,7 @@ export default function TrainingProgramsPanel({
                         <span
                           key={column.key}
                           title={overridden ? t("programs.cellOverridden") : undefined}
-                          className={`relative flex min-h-11 items-center justify-center border-s border-t border-cz-border px-0.5 font-data text-2xs sm:min-h-0 sm:py-1.5 ${
+                          className={`relative flex min-h-11 items-center justify-center border-s border-t border-cz-border px-0.5 font-data text-3xs sm:min-h-0 sm:py-1.5 sm:text-2xs ${
                             overridden
                               ? "font-semibold text-cz-1 underline decoration-dotted decoration-cz-1 underline-offset-2"
                               : session === "rest" ? "text-cz-3" : "text-cz-2"

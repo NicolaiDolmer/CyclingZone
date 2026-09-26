@@ -54,17 +54,17 @@ export function previewTrainingProgramsEnabled() {
   }
 }
 
-// Loebsdags-kolonnerne paa preview: ?raceDays=5 viser gitteret med 5 loebsdage
-// (som naar training_tick_per_race_day er on). Default = dagens ene kolonne.
-export function previewDayCloseOverride() {
+// Loebsdags-kolonnerne paa preview: SEED_TRAINING baerer allerede dayClose
+// (training_tick_per_race_day on, 5 loebsdage i gitteret). ?raceDays=1 fjerner
+// den, saa gitteret kan ses som i prod i dag (flag off: kun "Hele dagen").
+export function previewSingleRaceDay() {
   try {
     const param = new URLSearchParams(window.location.search).get("raceDays");
-    if (param === "5") localStorage.setItem("cz_mock_race_days", "5");
     if (param === "1") localStorage.setItem("cz_mock_race_days", "1");
-    if (localStorage.getItem("cz_mock_race_days") !== "5") return null;
-    return { open: false, reason: "before_window", gameDays: [10, 11, 12, 13, 14], opensAtHour: 20 };
+    if (param === "5") localStorage.setItem("cz_mock_race_days", "5");
+    return localStorage.getItem("cz_mock_race_days") === "1";
   } catch {
-    return null;
+    return false;
   }
 }
 
