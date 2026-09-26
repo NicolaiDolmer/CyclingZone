@@ -359,6 +359,42 @@ test("#5802 R15: bindingen er det der flytter GT'en - uden den starter Giroen p�
   assert.ok(Math.min(...gtStartDates(med).map((g) => g.dato)) >= 2);
 });
 
+// Lille katalog: een GT paa 15 etaper (+2 hviledage) skal bruge mindst 4 datoer (hoejst 4
+// GT-etaper pr. dato), saa i en 6-dages saeson kan den tidligst-start 3 ikke holdes.
+const lilleGtKatalog = () => ({
+  stageRaces: [{ id: "gt-a", stages: 15, race_class: "GiroVuelta" }],
+  oneDayRaces: Array.from({ length: 15 }, (_, i) => ({ id: `od-${String(i).padStart(2, "0")}`, race_class: "OtherWorldTourA" })),
+  density: 5, days: 6, overlapCap: 3,
+});
+
+test("#5802 R15: kan reglen holdes, holdes den (gtStartRuleHeld, eet forsøg)", () => {
+  const r = packLaneCalendar({ ...lilleGtKatalog(), gtEarliestStartDate: 2 });
+  assert.equal(r.gtStartRuleHeld, true);
+  assert.ok(Math.min(...gtStartDates(r).map((g) => g.dato)) >= 2);
+  assert.deepEqual(r.solveAttempts.map((f) => f.gtStartRule), [true]);
+});
+
+test("#5802 R15: kan reglen IKKE holdes, falder stigen hoejlydt tilbage uden den - kvoten holder", () => {
+  // Sidste trin i stigen: pakningen uden R15, med gtStartRuleHeld=false og forsoeget synligt i
+  // solveAttempts. Gaten detectGrandTourEarlyStartViolations stopper derefter --apply.
+  const cfg = { ...lilleGtKatalog(), gtEarliestStartDate: 3 };
+  const r = packLaneCalendar(cfg);
+  assert.equal(r.gtStartRuleHeld, false);
+  assert.deepEqual(r.solveAttempts.map((f) => [f.gtStartRule, f.ok]), [[true, false], [false, true]]);
+  assert.deepEqual(r.unplaced, []);
+  assert.deepEqual(r.leftoverSingles, []);
+  for (let d = 0; d < cfg.days; d++) assert.equal(r.load[d], cfg.density, `dag ${d}`);
+});
+
+test("#5802 R15: uden GT'er er reglen ikke et trin i stigen (uændret for D2-D4)", () => {
+  const r = packLaneCalendar({
+    stageRaces: [], density: 1, days: 3, overlapCap: 2,
+    oneDayRaces: [{ id: "a" }, { id: "b" }, { id: "c" }],
+  });
+  assert.deepEqual(r.solveAttempts.map((f) => f.gtStartRule), [false]);
+  assert.equal(r.gtStartRuleHeld, false);
+});
+
 test("#3546 C: determinisme: samme input giver identisk daysWithoutDecision to gange", () => {
   const cfg = withFraction(div1(), (r) => fractionOfId(r.id));
   const a = packLaneCalendar(cfg);

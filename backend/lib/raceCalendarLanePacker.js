@@ -715,25 +715,37 @@ function layoutContiguous({
   // (padAxisWithTrainingDays) og kan derfor aldrig koste en placeringsregel. Hvert forsoeg
   // staar i `solveAttempts`, saa en tabt monument-regel er synlig i dry-runnet i stedet for
   // at forsvinde i en fallback.
+  //
+  // R15 (#5802) er SIDSTE trin i stigen, efter samme princip som monument-reglerne: den
+  // holdes i alle forsoeg med et skridt-loft, og kun hvis INGEN af dem finder en pakning,
+  // koeres det gamle, uafgraensede forsoeg uden den. Udfaldet er da ikke stille:
+  // `detectGrandTourEarlyStartViolations` er en haard gate uden override og stopper --apply,
+  // og `solveAttempts` viser `gtStartRule: false`. MAALT 26/9: prods katalog loeses i
+  // foerste forsoeg MED begge regler; tierCalendarMaterializer-testens syntetiske D1 (tre
+  // 21-etapers GT'er) finder ingen pakning med R15 inden for loftet og faar - som foer
+  // #5802 - kalenderen fra det sidste forsoeg.
+  const r15Aktiv = gtEarliestStartDate > 0 && gts.length > 0;
   const forsoeg = [];
   let loest = null;
   let monumentRulesHeld = false;
+  let gtStartRuleHeld = false;
   const stige = [];
-  if (monumentRules) stige.push({ rules: true, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
-  stige.push({ rules: false, maxSteps: undefined });
+  if (monumentRules) stige.push({ rules: true, gtStart: r15Aktiv, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
+  if (r15Aktiv) stige.push({ rules: false, gtStart: true, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
+  stige.push({ rules: false, gtStart: false, maxSteps: undefined });
   for (const trin of stige) {
     const stats = {};
     loest = solveContiguousStarts({
       races: alle, D, days, cap, spineMinStages,
       monumentRules: trin.rules ? monumentRules : null,
-      stats, gtEarliestStartDate,
+      stats, gtEarliestStartDate: trin.gtStart ? gtEarliestStartDate : 0,
       ...(trin.maxSteps != null ? { maxSteps: trin.maxSteps } : {}),
     });
     forsoeg.push({
-      rules: trin.rules, ok: Boolean(loest),
+      rules: trin.rules, gtStartRule: trin.gtStart, ok: Boolean(loest),
       steps: stats.steps ?? loest?.steps ?? null, exhausted: Boolean(stats.exhausted),
     });
-    if (loest) { monumentRulesHeld = trin.rules; break; }
+    if (loest) { monumentRulesHeld = trin.rules; gtStartRuleHeld = trin.gtStart; break; }
   }
   if (!loest) return layoutContiguousRelaxed({ races: alle, D, days, cap, spineMinStages });
   const naturalRaceDays = loest.G;
@@ -859,7 +871,8 @@ function layoutContiguous({
     .filter((g) => etapeSpaend.some(([a, b]) => g > a && g < b)).length;
 
   return {
-    placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, solveAttempts: forsoeg,
+    placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, gtStartRuleHeld,
+    solveAttempts: forsoeg,
     raceDayTargetRequested: maal, raceDayTargetHeld, trainingGameDays, restDayGameDays,
     dateOfTrainingGameDay,
     naturalRaceDays,
@@ -934,6 +947,7 @@ export const MAX_GT_SPAN_DAYS = 6;
 //
 // Holdes som en BINDING i soegningen (R15 i solveContiguousStarts) og doemmes bagefter af
 // detectGrandTourEarlyStartViolations (calendarPlacementGates.js), der stopper --apply.
+// Kan et katalog ikke holde reglen, er den sidste trin i layoutContiguous' stige (se dér).
 export const GRAND_TOUR_EARLIEST_START_DATE_INDEX = 2;
 
 // Skridt-loft for det MONUMENT-BUNDNE soegeforsoeg (#4203). Det almindelige forsoeg beholder
@@ -950,7 +964,14 @@ export const GRAND_TOUR_EARLIEST_START_DATE_INDEX = 2;
 // (dry-run 3/9), altsaa med en faktor 18 i luft. Rammer et fremtidigt katalog loftet, staar
 // det i `solveAttempts` i dry-runnet, og gaten detectMonumentsInsideGrandTours stopper
 // --apply - loftet kan da haeves med en maaling i haanden i stedet for paa fornemmelse.
-export const MONUMENT_SOLVE_MAX_STEPS = 2000000;
+//
+// HAEVET TIL 3 MIO. 26/9 (#5802), med maalingen i haanden. Paa prod-kataloget (offline
+// S3-planen, racePoolCatalog.prod.json) loeser D1 MED monument-reglerne nu paa 645.242
+// skridt med R14 og 1.523.270 med R14 + R15 - luften til 2 mio. var faldet til en faktor 1,3.
+// 3 mio. giver en faktor 2 igen. Loftet gaelder ogsaa R15-forsoeget uden monument-regler
+// (se stigen i layoutContiguous), saa et katalog der ikke kan holde R15 koster hoejst to
+// gange loftet foer det sidste forsoeg.
+export const MONUMENT_SOLVE_MAX_STEPS = 3000000;
 
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -1172,6 +1193,9 @@ export function packLaneCalendar({
     // false betyder enten "ingen monumenter i denne division" eller "der fandtes ingen
     // lovlig pakning med reglerne, saa den kalender du ser her er anden-forsoeget".
     monumentRulesHeld: Boolean(res.monumentRulesHeld),
+    // #5802: true naar pakningen blev fundet MED R15 (ingen GT paa saesonens foerste dage).
+    // false betyder "ingen GT'er", "reglen slaaet fra" eller "sidste forsoeg uden R15".
+    gtStartRuleHeld: Boolean(res.gtStartRuleHeld),
     // Skridt-forbrug pr. soegeforsoeg. Rent diagnostik: soegningen er den dyreste del af
     // pakningen, og et forsoeg der loeber toer ser ud som "ingen lovlig pakning".
     solveAttempts: res.solveAttempts ?? [],
