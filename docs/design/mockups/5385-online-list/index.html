@@ -37,7 +37,7 @@
   .stage{display:flex;gap:28px;align-items:flex-start;padding:16px 20px 8px;overflow-x:auto;}
   .frame-col{flex:0 0 auto;}
   .frame-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;font-family:'Inter Tight',sans-serif;}
-  .frame{border:1px solid var(--border);border-radius:5px;background:var(--bg-body);overflow:hidden;position:relative;}
+  .frame{border:1px solid var(--border);border-radius:5px;background:var(--bg-body);overflow:hidden;position:relative;scroll-margin-top:56px;}
   .desktop .frame{width:1440px;height:900px;}
   .mobile .frame{width:390px;height:844px;}
 
@@ -77,8 +77,14 @@
   .ol-hdr{display:flex;align-items:baseline;justify-content:space-between;padding:12px 16px 8px;}
   .ol-hdr h3{font-size:14px;font-weight:600;margin:0;}
   .ol-hdr .cnt{font-size:11px;color:var(--text-3);font-family:'Inter Tight',sans-serif;}
-  .ol-list{overflow-y:auto;}
-  .ol-row{display:flex;align-items:center;gap:10px;padding:6px 16px;}
+  /* Online now is capped at 20 but still needs its own scroll so the card/popover
+     never has to grow past the fold to fit them (TASTE fold discipline) - "and N
+     more" always stays visible right below, outside the scroll box. Recently
+     online is capped at 10 and always renders in full, no scroll needed. */
+  .ol-list-capped{max-height:168px;overflow-y:auto;}
+  .ol-list-capped::-webkit-scrollbar{width:6px;}
+  .ol-list-capped::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px;}
+  .ol-row{display:flex;align-items:center;gap:10px;padding:5px 16px;}
   .avatar{width:26px;height:26px;border-radius:5px;background:var(--bg-subtle);color:var(--text-2);font-size:10.5px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;font-family:'Inter Tight',sans-serif;}
   .avatar .pip{position:absolute;right:-2px;bottom:-2px;width:8px;height:8px;border-radius:999px;background:#3ecf6a;border:2px solid var(--bg-elevated);}
   .ol-body{min-width:0;flex:1;}
@@ -92,8 +98,7 @@
   .privacy-note .txt{font-size:11.5px;color:var(--text-2);}
 
   /* ---------- Variant A: popover ---------- */
-  .popover{position:absolute;left:216px;top:96px;width:296px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:5px;box-shadow:var(--shadow-overlay);z-index:10;}
-  .popover .ol-list{max-height:300px;}
+  .popover{position:absolute;left:216px;top:88px;width:296px;max-height:788px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border);border-radius:5px;box-shadow:var(--shadow-overlay);z-index:10;}
 
   /* ---------- Variant A: mobile top bar + bottom sheet ---------- */
   .m-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--sidebar);color:#fff;font-family:'Inter Tight',sans-serif;}
@@ -104,9 +109,8 @@
   .m-topbar .online-chip .txt{font-size:10.5px;color:var(--sidebar-1);}
   .m-body{padding:16px;}
   .scrim{position:absolute;inset:0;background:rgba(14,15,21,.45);z-index:5;}
-  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:10;background:var(--bg-elevated);border-radius:14px 14px 0 0;box-shadow:var(--shadow-overlay);max-height:74%;display:flex;flex-direction:column;}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:10;background:var(--bg-elevated);border-radius:14px 14px 0 0;box-shadow:var(--shadow-overlay);max-height:800px;overflow-y:auto;display:flex;flex-direction:column;}
   .sheet .handle{width:36px;height:4px;border-radius:999px;background:var(--border);margin:9px auto 2px;flex-shrink:0;}
-  .sheet .ol-list{overflow-y:auto;}
 
   /* ---------- Variant B: own page (T1) ---------- */
   .t1-page{max-width:640px;}
@@ -115,6 +119,10 @@
   .t1-card .ol-row{padding:8px 20px;}
   .t1-card .ol-more{padding:8px 20px 12px;}
   .t1-card .privacy-note{padding:12px 20px;}
+  /* Own-page variant on mobile is a normal scrolling page, not a fixed-viewport
+     component - the frame is made tall enough to show the whole page in one
+     screenshot instead of only the first scroll of it. */
+  .frame.m-page{height:1000px;}
   .m-page .main{padding:16px;}
   .m-page .t1-card .ol-hdr{padding:14px 16px 8px;}
   .m-page .t1-card .ol-row{padding:7px 16px;}
@@ -198,13 +206,13 @@
           <div class="popover ol-panel">
             <div class="ol-section">
               <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
-              <div class="ol-list" id="online-now-list"></div>
+              <div class="ol-list-capped" id="online-now-list"></div>
               <div class="ol-more">and 3 more</div>
             </div>
             <div class="ol-sep"></div>
             <div class="ol-section">
               <div class="ol-hdr"><h3>Recently online</h3></div>
-              <div class="ol-list" id="recently-online-list"></div>
+              <div id="recently-online-list"></div>
             </div>
             <div class="privacy-note"><span class="forslag-tag">FORSLAG</span><span class="txt">You can hide yourself under Settings</span></div>
           </div>
@@ -234,13 +242,13 @@
           <div class="handle"></div>
           <div class="ol-section">
             <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
-            <div class="ol-list" id="online-now-list-m"></div>
+            <div class="ol-list-capped" id="online-now-list-m"></div>
             <div class="ol-more">and 3 more</div>
           </div>
           <div class="ol-sep"></div>
           <div class="ol-section">
             <div class="ol-hdr"><h3>Recently online</h3></div>
-            <div class="ol-list" id="recently-online-list-m"></div>
+            <div id="recently-online-list-m"></div>
           </div>
           <div class="privacy-note"><span class="forslag-tag">FORSLAG</span><span class="txt">You can hide yourself under Settings</span></div>
         </div>
@@ -282,7 +290,7 @@
               <p class="sub">23 online now</p>
               <div class="t1-card ol-panel">
                 <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
-                <div id="online-now-list-b"></div>
+                <div class="ol-list-capped" id="online-now-list-b"></div>
                 <div class="ol-more">and 3 more</div>
               </div>
               <div class="t1-card ol-panel">
@@ -308,7 +316,7 @@
           <p style="font-size:12.5px;color:var(--text-2);margin:0 0 14px;">23 online now</p>
           <div class="t1-card ol-panel">
             <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
-            <div id="online-now-list-bm"></div>
+            <div class="ol-list-capped" id="online-now-list-bm"></div>
             <div class="ol-more">and 3 more</div>
           </div>
           <div class="t1-card ol-panel">
