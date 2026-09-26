@@ -465,6 +465,14 @@ async function mockWideTraining(page) {
 }
 
 async function setLanguage(page, lang) {
+  // #5747: uden dette venter vi paa window.__i18n foerend appen har mountet.
+  // Sker det, springer evaluate'en herunder changeLanguage() over (`if
+  // (window.__i18n)` er false), og pollet nedenfor venter saa paa "en" der
+  // aldrig kommer — __i18n initialiserer med "da" (stabilizePage's laas) og
+  // bliver aldrig aendret. Deraf flakket: kun "en" rammes, fordi "da" er
+  // default-sproget og et tabt kald derfor stadig (tilfaeldigt) passerer.
+  // Samme moenster som core-smoke.spec.js's forceEnglish().
+  await expect.poll(() => page.evaluate(() => window.__i18n?.isInitialized === true)).toBe(true);
   await page.evaluate(async (next) => {
     window.localStorage.setItem("cz_lang", next);
     if (window.__i18n) await window.__i18n.changeLanguage(next);
