@@ -40,6 +40,7 @@ export async function isTeamOwnerBetaTester(supabase, teamId) {
     if (userError || !user) return false;
     return user.role === "admin" || user.is_beta_tester === true;
   } catch {
+    // best-effort: fail-safe til dagens adfaerd (ingen programceller), som readFlagStage.
     return false;
   }
 }

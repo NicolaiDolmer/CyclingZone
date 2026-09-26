@@ -56,7 +56,7 @@ async function insertRows(supabase, rows) {
 }
 
 export function createTrainingProgramsRouter({
-  supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, reportError = () => {},
+  supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, captureExceptionFn = () => {},
 }) {
   const router = express.Router();
 
@@ -67,6 +67,7 @@ export function createTrainingProgramsRouter({
 
   async function ownRiderIds(teamId) {
     const { data, error } = await supabase
+      // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
       .from("riders").select("id").eq("team_id", teamId).eq("is_retired", false);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => r.id);
@@ -89,7 +90,7 @@ export function createTrainingProgramsRouter({
       }
       res.json({ enabled: true, slots: PROGRAM_SLOTS, catalog: trainingProgramCatalog(), assigned });
     } catch (err) {
-      reportError(err);
+      captureExceptionFn(err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -135,7 +136,7 @@ export function createTrainingProgramsRouter({
       if (insError) throw new Error(insError.message);
       res.json({ ok: true, applied: targets.length, programKey: program.key });
     } catch (err) {
-      reportError(err);
+      captureExceptionFn(err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -166,7 +167,7 @@ export function createTrainingProgramsRouter({
       if (error) throw new Error(error.message);
       res.json({ ok: true, riderId, days });
     } catch (err) {
-      reportError(err);
+      captureExceptionFn(err);
       res.status(500).json({ error: err.message });
     }
   });

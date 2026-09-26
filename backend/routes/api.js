@@ -934,7 +934,7 @@ router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, i
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
 router.use("/training/programs", createTrainingProgramsRouter({
-  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, reportError: captureException,
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, captureExceptionFn: captureException,
 }));
 
 async function requireAdmin(req, res, next) {
