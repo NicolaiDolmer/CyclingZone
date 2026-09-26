@@ -229,7 +229,12 @@ export default function TrainingMobileRoster({
                 className={isSelected ? "bg-cz-subtle" : isPicked ? "bg-cz-accent/5" : ""}
                 data-picked={pickMode ? String(isPicked) : undefined}
               >
-                <td className="border-b border-e border-cz-border align-middle last:border-b-0">
+                {/* `p-0` (#5805): uden den gav browserens standard-cellepolstring
+                    (1 px top + bund) raekken 47 px i stedet for knappens 44 + kant.
+                    Over 8 raekker betaler de 2 px for den hoejere header med
+                    sorteringen, saa mindst 8 ryttere stadig staar paa foerste
+                    skaerm (#5485). */}
+                <td className="border-b border-e border-cz-border p-0 align-middle last:border-b-0">
                   <button
                     type="button"
                     onClick={() => activate(rider.id)}

@@ -397,7 +397,7 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
           disabled={!sort}
           aria-label={dirAria}
           title={dirAria}
-          className="-me-2 flex h-11 w-11 flex-none items-center justify-center rounded-cz text-cz-2 transition-colors hover:text-cz-1 disabled:opacity-40"
+          className="flex h-11 w-11 flex-none items-center justify-center rounded-cz text-cz-2 transition-colors hover:text-cz-1 disabled:opacity-40"
         >
           {sortDir === "desc"
             ? <ArrowDownIcon size={14} aria-hidden="true" />
