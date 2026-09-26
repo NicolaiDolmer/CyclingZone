@@ -7,24 +7,24 @@
 77 features i FEATURE_REGISTRY.yml: live 52 · beta 3 · dormant 5 · building 12 · spec 1 · idea 2 · retired 2.
 
 ## 1) Lige nu (merge-koe)
-Aabne PR'er, ikke draft. Tilstand er GitHubs `mergeStateStatus` - "roed" daekker baade fejlet CI og manglende godkendelse/review, ikke kun CI (se slutrapport).
+Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #5705 chore(deps): Bump intl-messageformat from 11.2.14 to 12.1.0 in /frontend (0d) — roed
-- #5281 [traening] B3-rest: fjern manager-klik-bonussen (bonusMult) + spor (#4847) (0d) — roed
-- #5766 feat(training,squad): U23/JR-mærke i træningstabellen + seniorer-bliver-hint (#5763, #551… (0d) — roed
-- #5765 docs: mockup /roadmap i faner (variant A/B) + vis-kun-ustemte (0d) — roed
-- #5767 docs(drafts): samlet spilleropslag om saesonskiftet S3->S4 (EN + DA) (0d) — roed
-- #5768 feat(engine-v4): win type from the finale, not a placeholder (#5577) (0d) — roed
-- #5769 feat(training): show training score in the training report (0d) — roed
-- #5770 fix(career): count ALL prior wins across seasons, not a bounded 30-row window (#5733) (0d) — roed
-- #5771 feat(training): rider name in training card links to profile (#5735) (0d) — roed
-- #5772 feat(sponsors): forklar at sponsorbeloeb foelger klubbens omdoemme (0d) — roed
-- #5774 test(boardroom): automatiske layout-guard-tests (390 + 1440) - fund 6 #5633 (0d) — roed
-- #5777 fix(compare): don't highlight either rider when compared stats tie (#5316) (0d) — roed
-- #5778 docs(runbook): gendan sed-korrupte Regel 5/8 + VERCEL_GIT_PREVIOUS_SHA i NIGHT_WAVE_RUNBO… (0d) — roed
-- #5775 fix(dashboard): Full standings link lands on own group, not whole division (0d) — roed
+- #5281 [traening] B3-rest: fjern manager-klik-bonussen (bonusMult) + spor (#4847) (0d) — groen
+- #5766 feat(training,squad): U23/JR-mærke i træningstabellen + seniorer-bliver-hint (#5763, #551… (0d) — groen
+- #5765 docs: mockup /roadmap i faner (variant A/B) + vis-kun-ustemte (0d) — groen
+- #5767 docs(drafts): samlet spilleropslag om saesonskiftet S3->S4 (EN + DA) (0d) — groen
+- #5768 feat(engine-v4): win type from the finale, not a placeholder (#5577) (0d) — groen
+- #5769 feat(training): show training score in the training report (0d) — groen
+- #5770 fix(career): count ALL prior wins across seasons, not a bounded 30-row window (#5733) (0d) — groen
+- #5771 feat(training): rider name in training card links to profile (#5735) (0d) — groen
+- #5772 feat(sponsors): forklar at sponsorbeloeb foelger klubbens omdoemme (0d) — groen
+- #5774 test(boardroom): automatiske layout-guard-tests (390 + 1440) - fund 6 #5633 (0d) — groen
+- #5777 fix(compare): don't highlight either rider when compared stats tie (#5316) (0d) — groen
+- #5778 docs(runbook): gendan sed-korrupte Regel 5/8 + VERCEL_GIT_PREVIOUS_SHA i NIGHT_WAVE_RUNBO… (0d) — groen
+- #5775 fix(dashboard): Full standings link lands on own group, not whole division (0d) — groen
 - #5773 fix(e2e): wait for i18n init before language switch in 4851-training-score (#5747) (0d) — roed
-- …og 3 mere
+- …og 4 mere
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -48,36 +48,22 @@ Aabne PR'er, ikke draft. Tilstand er GitHubs `mergeStateStatus` - "roed" daekker
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #5444 feat(economy): V4 re-fit mod ny ryttertype-inddeling, kandidat-model + scorecard (Refs #3… (1d) — DIRTY
-- #5770 fix(career): count ALL prior wins across seasons, not a bounded 30-row window (#5733) (0d) — roed
+- #5784 chore(ops): generate docs/STATUS_BOARD.md from FEATURE_REGISTRY + GitHub (#5674) (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
 - #5444 feat(economy): V4 re-fit mod ny ryttertype-inddeling, kandidat-model + scorecard (Refs #3… (1d) — DIRTY
 - #5461 docs(economy): vaerdiskifte patch note + help.json (MERGES FOERST PAA KOERSELS-DAGEN) (1d) — DIRTY
-- #5776 fix(notifications): stage_result-link lander paa etapens resultat (#5317) (0d) — roed
-- #5779 feat(engine-v4): grupetto-tempo holder sig inden for tidsgraensen (Refs #5581) (0d) — roed
-- #5783 feat(season-end): vis klassikersejre i sæson-recappen (0d) — roed
+- #5776 fix(notifications): stage_result-link lander paa etapens resultat (#5317) (0d) — groen
+- #5783 feat(season-end): vis klassikersejre i sæson-recappen (0d) — groen
+- #5784 chore(ops): generate docs/STATUS_BOARD.md from FEATURE_REGISTRY + GitHub (#5674) (0d) — groen
+- #5785 fix(ops): guarded-merge file ownership + state-lock fallback (#5677) (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
 - #5705 chore(deps): Bump intl-messageformat from 11.2.14 to 12.1.0 in /frontend (0d) — roed
-- #5281 [traening] B3-rest: fjern manager-klik-bonussen (bonusMult) + spor (#4847) (0d) — roed
-- #5766 feat(training,squad): U23/JR-mærke i træningstabellen + seniorer-bliver-hint (#5763, #551… (0d) — roed
-- #5765 docs: mockup /roadmap i faner (variant A/B) + vis-kun-ustemte (0d) — roed
-- #5767 docs(drafts): samlet spilleropslag om saesonskiftet S3->S4 (EN + DA) (0d) — roed
-- #5768 feat(engine-v4): win type from the finale, not a placeholder (#5577) (0d) — roed
-- #5769 feat(training): show training score in the training report (0d) — roed
-- #5770 fix(career): count ALL prior wins across seasons, not a bounded 30-row window (#5733) (0d) — roed
-- #5771 feat(training): rider name in training card links to profile (#5735) (0d) — roed
-- #5772 feat(sponsors): forklar at sponsorbeloeb foelger klubbens omdoemme (0d) — roed
-- #5774 test(boardroom): automatiske layout-guard-tests (390 + 1440) - fund 6 #5633 (0d) — roed
-- #5777 fix(compare): don't highlight either rider when compared stats tie (#5316) (0d) — roed
-- #5778 docs(runbook): gendan sed-korrupte Regel 5/8 + VERCEL_GIT_PREVIOUS_SHA i NIGHT_WAVE_RUNBO… (0d) — roed
-- #5775 fix(dashboard): Full standings link lands on own group, not whole division (0d) — roed
 - #5773 fix(e2e): wait for i18n init before language switch in 4851-training-score (#5747) (0d) — roed
-- …og 3 mere
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -97,7 +83,7 @@ Aabne PR'er, ikke draft. Tilstand er GitHubs `mergeStateStatus` - "roed" daekker
 - #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (102d)
 - #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (100d)
 - #1461 security(email): DMARC enforcement — p=none → quarantine → reject (99d)
-- …og 581 mere
+- …og 578 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.

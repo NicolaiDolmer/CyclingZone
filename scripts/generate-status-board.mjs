@@ -61,7 +61,7 @@ export function getOpenPrs() {
         "--state",
         "open",
         "--json",
-        "number,title,isDraft,labels,mergeStateStatus,headRefName,updatedAt,body",
+        "number,title,isDraft,labels,mergeStateStatus,statusCheckRollup,headRefName,updatedAt,body",
         "--limit",
         "500",
       ],
@@ -141,28 +141,42 @@ export function extractIssueRefs(pr) {
 }
 
 /**
- * Klassificerer en PR's `mergeStateStatus` til de tre tilstande brief'et
- * beder om. GitHubs felt daekker baade CI-status og branch-protection
- * (manglende review, "behind" osv.) - "roed" her betyder derfor "IKKE
- * bekraeftet mergeable", ikke udelukkende "CI fejlet". Se slutrapporten.
+ * Klassificerer en PR til de tre tilstande brief'et beder om ("groen/roed
+ * CI"). `mergeStateStatus` bruges KUN til at fange en aegte merge-konflikt
+ * (DIRTY) - feltet er ELLERS ubrugeligt til groen/roed her, fordi dette repo
+ * kraever review + merger med --admin (#4919): BLOCKED er derfor
+ * NORMALTILSTANDEN for en ikke-draft PR uanset CI (jf.
+ * docs/audits/night-wave-2026-08-06.md #5 og scripts/weekly-steering-report.mjs's
+ * classifyPr()), saa "mergeStateStatus === CLEAN" alene gjorde ALLE reelle
+ * PR'er roede her - ogsaa dem med 0 fejlede checks. Groen/roed afgoeres i
+ * stedet af `statusCheckRollup` (samme felt som `gh pr checks`).
  *
- * @param {string|undefined} status
+ * @param {{mergeStateStatus?: string, statusCheckRollup?: Array<{conclusion?: string, state?: string}>}} pr
  * @returns {"green"|"dirty"|"red"}
  */
-export function classifyMergeState(status) {
-  if (status === "CLEAN") return "green";
-  if (status === "DIRTY") return "dirty";
-  return "red";
+export function classifyMergeState(pr) {
+  if (String(pr?.mergeStateStatus ?? "").toUpperCase() === "DIRTY") return "dirty";
+  const checks = Array.isArray(pr?.statusCheckRollup) ? pr.statusCheckRollup : [];
+  const failing = checks.some((c) => {
+    const conclusion = String(c?.conclusion ?? "").toUpperCase();
+    const state = String(c?.state ?? "").toUpperCase();
+    return conclusion === "FAILURE" || conclusion === "ERROR" || state === "FAILURE" || state === "ERROR";
+  });
+  return failing ? "red" : "green";
 }
 
 const stateLabel = { green: "groen", dirty: "DIRTY", red: "roed" };
 
 /**
+ * Matcher literal "ejer-go" (label eller body) med ordgraense i begge ender,
+ * saa fx "ejer-godkendelse"/"ejer-godkendt" ikke taeller med (bidt: gav
+ * falske positiver i sektion 2's "venter paa ejer-go"-liste).
+ *
  * @param {{labels?: Array<{name?: string}|string>, body?: string}} pr
  * @returns {boolean}
  */
 export function hasOwnerGoSignal(pr) {
-  const needle = /ejer-go/i;
+  const needle = /\bejer-go\b/i;
   const names = (pr?.labels ?? []).map((l) => (typeof l === "string" ? l : l?.name ?? ""));
   if (names.some((n) => needle.test(n))) return true;
   return needle.test(pr?.body ?? "");
@@ -207,7 +221,7 @@ function bulletOrNone(rows) {
 function prRow(pr, now) {
   const age = ageDays(pr.updatedAt, now);
   const ageText = age === null ? "?" : `${age}d`;
-  const state = stateLabel[classifyMergeState(pr.mergeStateStatus)];
+  const state = stateLabel[classifyMergeState(pr)];
   return `- #${pr.number} ${truncateTitle(pr.title)} (${ageText}) — ${state}`;
 }
 
@@ -254,7 +268,7 @@ export function buildSections({ registryEntries, prs, issuesByLabel, now }) {
     .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
     .map((p) => prRow(p, now));
   const redRows = nonDraftPrs
-    .filter((p) => classifyMergeState(p.mergeStateStatus) === "red")
+    .filter((p) => classifyMergeState(p) === "red")
     .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
     .map((p) => prRow(p, now));
 
@@ -317,7 +331,7 @@ export function render(sections, cap) {
   out.push("");
 
   out.push("## 1) Lige nu (merge-koe)");
-  out.push("Aabne PR'er, ikke draft. Tilstand er GitHubs `mergeStateStatus` - \"roed\" daekker baade fejlet CI og manglende godkendelse/review, ikke kun CI (se slutrapport).");
+  out.push("Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - \"roed\" er en fejlet check. \"DIRTY\" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).");
   out.push("");
   out.push(...capList(bulletOrNone(sections.queueRows), cap));
   out.push("");

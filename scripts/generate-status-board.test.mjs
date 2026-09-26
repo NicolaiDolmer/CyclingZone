@@ -55,12 +55,24 @@ test("extractIssueRefs er robust mod manglende felter", () => {
   assert.deepEqual([...extractIssueRefs({ title: null, body: undefined, headRefName: "main" })], []);
 });
 
-test("classifyMergeState mapper GitHubs mergeStateStatus til groen/dirty/roed", () => {
-  assert.equal(classifyMergeState("CLEAN"), "green");
-  assert.equal(classifyMergeState("DIRTY"), "dirty");
-  for (const status of ["BLOCKED", "BEHIND", "UNSTABLE", "UNKNOWN", "HAS_HOOKS", undefined]) {
-    assert.equal(classifyMergeState(status), "red");
-  }
+test("classifyMergeState: DIRTY (merge-konflikt) slaar altid igennem, uanset CI", () => {
+  assert.equal(classifyMergeState({ mergeStateStatus: "DIRTY", statusCheckRollup: [{ conclusion: "SUCCESS" }] }), "dirty");
+  assert.equal(classifyMergeState({ mergeStateStatus: "dirty" }), "dirty"); // case-insensitiv
+});
+
+test("classifyMergeState: BLOCKED med 0 fejlede checks er groen, IKKE roed (#5281 m.fl.)", () => {
+  assert.equal(
+    classifyMergeState({ mergeStateStatus: "BLOCKED", statusCheckRollup: [{ conclusion: "SUCCESS" }, { conclusion: "NEUTRAL" }] }),
+    "green",
+  );
+  assert.equal(classifyMergeState({ mergeStateStatus: "CLEAN", statusCheckRollup: [] }), "green");
+});
+
+test("classifyMergeState: en fejlet/error check (conclusion ELLER state) er roed, ogsaa naar mergeStateStatus ikke er DIRTY", () => {
+  assert.equal(classifyMergeState({ mergeStateStatus: "BLOCKED", statusCheckRollup: [{ conclusion: "FAILURE" }] }), "red");
+  assert.equal(classifyMergeState({ mergeStateStatus: "CLEAN", statusCheckRollup: [{ conclusion: "ERROR" }] }), "red");
+  assert.equal(classifyMergeState({ mergeStateStatus: "CLEAN", statusCheckRollup: [{ state: "FAILURE" }] }), "red");
+  assert.equal(classifyMergeState({ mergeStateStatus: "UNKNOWN", statusCheckRollup: undefined }), "green");
 });
 
 test("hasOwnerGoSignal finder 'ejer-go' i label ELLER body, case-insensitivt", () => {
@@ -68,6 +80,12 @@ test("hasOwnerGoSignal finder 'ejer-go' i label ELLER body, case-insensitivt", (
   assert.equal(hasOwnerGoSignal({ labels: [], body: "Kraever EJER-GO foer merge." }), true);
   assert.equal(hasOwnerGoSignal({ labels: [{ name: "docs-only" }], body: "Ingen spillertekst." }), false);
   assert.equal(hasOwnerGoSignal({}), false);
+});
+
+test("hasOwnerGoSignal matcher IKKE substrings som 'ejer-godkendelse'/'ejer-godkendt'", () => {
+  assert.equal(hasOwnerGoSignal({ labels: [], body: "Efter ejer-godkendelse kan vi merge." }), false);
+  assert.equal(hasOwnerGoSignal({ labels: [{ name: "ejer-godkendt" }], body: "" }), false);
+  assert.equal(hasOwnerGoSignal({ labels: [], body: "Venter paa ejer-go foer merge." }), true);
 });
 
 test("priorityRank sorterer high < med < low < ingen", () => {
@@ -131,7 +149,7 @@ test("buildSections: draft og roed ikke-draft havner i sektion 3, groen ikke", (
     registryEntries: [],
     prs: [
       pr({ number: 1, isDraft: true }),
-      pr({ number: 2, isDraft: false, mergeStateStatus: "UNSTABLE" }),
+      pr({ number: 2, isDraft: false, statusCheckRollup: [{ conclusion: "FAILURE" }] }),
       pr({ number: 3, isDraft: false, mergeStateStatus: "CLEAN" }),
     ],
     issuesByLabel: { "claude:todo": [], "claude:done": [], "needs-decision": [], "needs-design": [] },
