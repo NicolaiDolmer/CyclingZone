@@ -125,7 +125,8 @@ export function formatGoalValue(value, type) {
 
 // #5633 (N4, beta-sweep 26/9) · Visionens meta-linje var "S3 to S6": et raat,
 // absolut saesonnummer uden forklaring, som spillere laeste som en fejl. Nu
-// "4-season plan · Season 3 to 6". Planen starter ved den tidligste milepael,
+// "4-season plan" i meta-linjen og "Season 3" ved hver milepael (kort nok til
+// 390 px). Planen starter ved den tidligste milepael,
 // hvis den ligger foer startSeason (backend saetter startSeason = mandatets
 // saeson, saa en milepael fra en tidligere saeson ellers faldt uden for spaendet).
 export function visionSpan(vision) {

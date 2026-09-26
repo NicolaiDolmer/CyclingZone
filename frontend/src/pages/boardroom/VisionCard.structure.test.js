@@ -19,9 +19,9 @@ test("#4570-afstemning: kort-titlen bruger vision.titleKey (backend-leveret narr
   assert.match(source, /: t\("boardroom\.vision\.cardTitle"\);/, "uden titleKey falder titlen til den generiske 'Club vision'");
 });
 
-test("#4557/#5633 vision: meta-linjen bruger sæson-numre fra visionSpan (plan-længde + første/sidste sæson), ikke fiktive kalenderår", () => {
-  assert.match(source, /const \{ start, end, seasons \} = visionSpan\(vision\);/);
-  assert.match(source, /t\("boardroom\.vision\.meta", \{ seasons, start, end \}\)/);
+test("#4557/#5633 vision: meta-linjen viser planens længde i sæsoner (visionSpan), ikke fiktive kalenderår", () => {
+  assert.match(source, /const \{ seasons \} = visionSpan\(vision\);/);
+  assert.match(source, /t\("boardroom\.vision\.meta", \{ seasons \}\)/);
 });
 
 test("#4557 vision: milepæl-status styrer prikken (current/achieved/missed/upcoming), aldrig en hardcoded farve", () => {

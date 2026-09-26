@@ -147,9 +147,11 @@ before(async () => {
 test("#5633 N4 vision-meta renderer plan-laengde + saesoner paa begge sprog", () => {
   const enT = i18n.getFixedT("en", "board");
   const daT = i18n.getFixedT("da", "board");
-  assert.equal(enT("boardroom.vision.meta", { seasons: 4, start: 3, end: 6 }), "4-season plan · Season 3 to 6");
-  assert.equal(enT("boardroom.vision.meta", { seasons: 1, start: 3, end: 3 }), "1-season plan · Season 3 to 3");
-  assert.equal(daT("boardroom.vision.meta", { seasons: 4, start: 3, end: 6 }), "Plan over 4 sæsoner · sæson 3 til 6");
+  assert.equal(enT("boardroom.vision.meta", { seasons: 4 }), "4-season plan");
+  assert.equal(enT("boardroom.vision.meta", { seasons: 1 }), "1-season plan");
+  assert.equal(daT("boardroom.vision.meta", { seasons: 4 }), "Plan over 4 sæsoner");
+  assert.equal(daT("boardroom.vision.meta", { seasons: 1 }), "Plan over 1 sæson");
+  assert.equal(enT("boardroom.vision.currentSeasonLabel", { season: 3 }), "Season 3 · You are here");
   assert.equal(daT("boardroom.vision.seasonLabel", { season: 4 }), "Sæson 4");
   assert.equal(enT("boardroom.meeting.mandate.reactionAttribution", { name: "Jørgen Brandt", choice: "stretch" }), "Jørgen Brandt, who owns this goal");
 });

@@ -1870,7 +1870,7 @@
     },
     "vision": {
       "cardTitle": "Klubvision",
-      "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}} · sæson {start} til {end}",
+      "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}}",
       "seasonLabel": "Sæson {season}",
       "currentSeasonLabel": "Sæson {season} · Du er her",
       "explainer": "Milepæle bedømmes i deres målsæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",

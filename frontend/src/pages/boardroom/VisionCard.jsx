@@ -34,7 +34,7 @@ export default function VisionCard({ vision }) {
   }
 
   const milestones = vision.milestones || [];
-  const { start, end, seasons } = visionSpan(vision);
+  const { seasons } = visionSpan(vision);
   // #4570-afstemning: backend sender `vision.titleKey` = "vision.title.<dnaKey>"
   // (narrativt klub-navn, "The Nordic project"-stil). Falder til den generiske
   // "Club vision" hvis nøglen mangler eller intet oversat indhold findes endnu.
@@ -46,7 +46,7 @@ export default function VisionCard({ vision }) {
     <Section>
       <SectionHeader
         title={title}
-        meta={start != null && end != null ? t("boardroom.vision.meta", { seasons, start, end }) : null}
+        meta={seasons != null ? t("boardroom.vision.meta", { seasons }) : null}
       />
       {/* #5617 · Paa mobil er milepaelene en lodret liste (prik + linje til
           venstre, tekst i fuld bredde). Det vandrette gitter med én kolonne pr.

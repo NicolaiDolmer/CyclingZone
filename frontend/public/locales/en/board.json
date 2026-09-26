@@ -1870,7 +1870,7 @@
     },
     "vision": {
       "cardTitle": "Club vision",
-      "meta": "{seasons, plural, one {1-season plan} other {#-season plan}} · Season {start} to {end}",
+      "meta": "{seasons, plural, one {1-season plan} other {#-season plan}}",
       "seasonLabel": "Season {season}",
       "currentSeasonLabel": "Season {season} · You are here",
       "explainer": "Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.",
