@@ -17,6 +17,7 @@
     "salary": "Sæsonlønninger · {count} ryttere",
     "wageDaily": "Dagsløn · {count} ryttere",
     "upkeep": "Drift og vedligehold · Division {division}",
+    "travelStaff": "Rejse og personale · {race}, etape {stage}",
     "parachute": "Nedrykningsfaldskærm · Division {oldDivision} -> {newDivision}",
     "academyDrift": "Akademi-drift · {count} pladser × {drift_per_slot} pts",
     "facilityUpkeep": "Facilitets-vedligehold · {tracks} spor",

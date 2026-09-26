@@ -292,6 +292,7 @@ import {
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
 import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
+import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
 import { buildSeasonSwitchPreview } from "../lib/seasonSwitchPreview.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
@@ -10721,6 +10722,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       activeStaffSalaries,
       academyRiderCount,
       facilitiesEnabled,
+      // #4385: upkeep pr. seniorløbsdag når flaget er on (fail-safe off).
+      upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
       // #3899: kvartilbånd-stikprøven for præmie-intervallet.
       divisionPrizeSamples,
     });
@@ -10878,6 +10881,8 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       activeStaffSalaries,
       academyRiderCount,
       facilitiesEnabled,
+      // #4385: med flaget on trækkes intet fladt upkeep ved skiftet.
+      upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
     });
 
     const preview = buildSeasonSwitchPreview({
@@ -14451,7 +14456,10 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
         .order("id", { ascending: true })),
     ]);
 
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });
+    // #4385: samme flag som processSeasonStart — med upkeep_per_race_day on
+    // trækkes intet fladt upkeep ved skiftet.
+    const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
+    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }

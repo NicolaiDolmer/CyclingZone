@@ -569,6 +569,8 @@ const FAQ_KEYS = [
   "crashesFaq",
   "newPlayerEconomyFaq",
   "seasonChangeMoneyFaq",
+  // #4385: upkeep pr. seniorløbsdag (rejse og personale) fra sæson 4.
+  "upkeepPerRaceDayFaq",
   "salaryShortfall",
   "debtCeiling",
   "prizeMoneyFaq",
