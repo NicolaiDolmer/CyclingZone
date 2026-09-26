@@ -179,8 +179,9 @@ function runRace({ race, raceObj, stagesSorted, entrants, v3On, timelineOn, stag
 }
 
 async function readFlags(supabase) {
-  const { data } = await supabase.from("app_config").select("key, value")
+  const { data, error } = await supabase.from("app_config").select("key, value")
     .in("key", ["race_engine_v3_scoring", "race_stage_timeline", "race_engine_v4"]);
+  if (error) throw new Error(`app_config (flag): ${error.message}`);
   return Object.fromEntries((data ?? []).map((r) => [r.key, r.value]));
 }
 

@@ -37,8 +37,9 @@ async function s4PlanArgs({ supabase, firstRaceDay, seasonNumber }) {
   const from = resolveCalendarFrom({ firstRaceDate: firstRaceDay });
   const window = resolveSeasonWindow({ firstRaceDay, raceDays: SEASON_RACE_DAYS_DEFAULT[seasonNumber] ?? null });
   const realDays = window.raceDays;
-  const { data: plannedAtRow } = await supabase
+  const { data: plannedAtRow, error: plannedAtErr } = await supabase
     .from("app_config").select("value").eq("key", SEASON_TRANSITION_PLANNED_AT_KEY).maybeSingle();
+  if (plannedAtErr) throw new Error(`app_config (${SEASON_TRANSITION_PLANNED_AT_KEY}): ${plannedAtErr.message}`);
   const previous = await fetchPreviousSeasonLastStages({ supabase, seasonNumber });
   const transition = resolveEarliestSeasonTransition({
     previousSeasonLastStageAt: previous.latestAt,
@@ -147,12 +148,14 @@ async function loadProdRaces({ supabase, seasonId, tiers, youth }) {
   });
   const out = [];
   for (const r of kept) {
-    const [{ data: profs }, { data: sched }] = await Promise.all([
+    const [{ data: profs, error: pErr }, { data: sched, error: sErr }] = await Promise.all([
       // pagination-safe: ét loebs etaper (maks en Grand Tours ~21 raekker)
       supabase.from("race_stage_profiles").select("*").eq("race_id", r.id),
       // pagination-safe: ét loebs etaper (maks en Grand Tours ~21 raekker)
       supabase.from("race_stage_schedule").select("stage_number, scheduled_at, game_day").eq("race_id", r.id),
     ]);
+    if (pErr) throw new Error(`race_stage_profiles (${r.id}): ${pErr.message}`);
+    if (sErr) throw new Error(`race_stage_schedule (${r.id}): ${sErr.message}`);
     const schedBy = new Map((sched ?? []).map((s) => [s.stage_number, s]));
     out.push({
       key: r.id, id: r.id, tier: divById.get(r.league_division_id).tier, squad: r.squad ?? "senior",
