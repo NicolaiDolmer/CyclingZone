@@ -275,6 +275,14 @@ export default function StandingsPage() {
       });
       setRacePoints(prog);
     }
+    // #5315: searchParams læses KUN for det oprindelige ?division=-deep-link-
+    // tjek ovenfor ("mine.division && !searchParams.get"); den tomme deps-liste
+    // er bevidst (se #4068-kommentaren ovenfor: ingen reaktive værdier, kun
+    // stabile setters), så loadAllInner forbliver den SAMME funktion på tværs
+    // af renders — closuren låser dermed searchParams til værdien ved FØRSTE
+    // render, hvilket er netop hensigten for et deep-link der kun skal virke
+    // ved sideload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // #2175/#4068: loadAll pakket i try/catch/finally → en fejlet query viser
