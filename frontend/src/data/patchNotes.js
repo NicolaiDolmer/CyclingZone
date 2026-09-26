@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.303",
+    "date": "2026-09-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider values",
+        "en": {
+          "title": "Rider values now follow the rider",
+          "body": "A rider's value is now calculated the same way for every rider, based on ability, age and expected career, not on which type he is. All riders were corrected at once, up and down. The riders at the very top had an extra premium in their price on top of what their racing earns. That premium steps down over the next Sundays until their price is performance alone. Wage demands did not change with this update, and signed contracts are never touched. From here, values update on Sundays only again."
+        },
+        "da": {
+          "title": "Rytterværdier følger nu rytteren",
+          "body": "En rytters værdi regnes nu ens for alle ryttere, ud fra evner, alder og forventet karriere, ikke ud fra hvilken type han er. Alle ryttere blev rettet på én gang, op og ned. Rytterne helt i toppen havde en ekstra præmie i prisen oven i det, deres resultater tjener. Den præmie glider ned over de næste søndage, indtil prisen er præstation alene. Lønkrav ændrede sig ikke med denne opdatering, og underskrevne kontrakter røres aldrig. Herfra opdateres værdier igen kun om søndagen."
+        },
+        "refs": [
+          5443,
+          5497
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rating shows the rider's best role now, for everyone",
+          "body": "A rider's rating is his rating in the role he is best at today, with the role named next to it. His type badge is labelled Natural role. Beta testers have had this since 24/9."
+        },
+        "da": {
+          "title": "Ratingen viser rytterens bedste rolle nu, for alle",
+          "body": "En rytters rating er hans rating i den rolle, han er bedst i i dag, med rollen skrevet ved siden af. Hans typemærke hedder Naturlig rolle. Beta-testerne har haft det siden 24/9."
+        },
+        "refs": [
+          5435
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.302",
     "date": "2026-09-26",
     "label": "Training, races and season recap",
