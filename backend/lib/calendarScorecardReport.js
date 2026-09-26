@@ -54,6 +54,7 @@ import { detectEmptyCalendarDays } from "./calendarDailyCoverage.js";
 import {
   detectMonumentsInsideGrandTours, computeGameDayOverlap,
   detectMinOverlapViolations, detectQuotaViolations,
+  detectGrandTourOrderViolations, listGrandTourStarts,
 } from "./calendarPlacementGates.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 import {
@@ -141,6 +142,13 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
   const monumentGtViol = detectMonumentsInsideGrandTours({ tier: plan.tier, raceRows, stageRows });
   const minOverlapViol = detectMinOverlapViolations({ tier: plan.tier, overlap: gameDayOverlap });
   const quotaViol = detectQuotaViolations({ tier: plan.tier, quota: plan.quota, totalGameDays: plan.totalGameDays });
+  // §3/#5802: GT-raekkefoelgen (Giro -> Tour -> Vuelta). Den virkelige raekkefoelge kommer fra
+  // planens chronologyRaces (seasonFraction fra race_pool.date_text). DB-tilstanden har den
+  // ikke, saa dér er gaten tom (formatScorecard siger at den ikke maales i DB-tilstand).
+  const realOrderByPoolRace = new Map((plan.chronologyRaces ?? [])
+    .filter((r) => typeof r.seasonFraction === "number").map((r) => [r.id, r.seasonFraction]));
+  const grandTourStarts = listGrandTourStarts({ raceRows, stageRows, realOrderByPoolRace });
+  const gtOrderViol = detectGrandTourOrderViolations({ tier: plan.tier, raceRows, stageRows, realOrderByPoolRace });
 
   return {
     tier: plan.tier,
@@ -178,6 +186,7 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     gameDayOverlap, overlapMin: overlapMinForTier,
     multiRaceShareMin: TIER_MULTI_RACE_DAY_MIN_SHARE[plan.tier] ?? null,
     monumentGtViol, minOverlapViol, quotaViol,
+    grandTourStarts, gtOrderViol,
   };
 }
 
@@ -263,7 +272,8 @@ export function scoreCalendarPlan({
   // monument-i-GT kan foerst blive groen naar pakkeren er aendret (#4203's eget spor).
   rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
-      + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0)
+      + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0)
+      + (t.gtOrderViol?.length ?? 0), 0)
     // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
     + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0)
     // §1e/#5267: samme afgraensning som §1d — den taeller kun naar saesonen har et maal.
@@ -312,6 +322,7 @@ export function alleBrud(rapport) {
     for (const v of t.monumentGtViol ?? []) ud.push(v);
     for (const v of t.minOverlapViol ?? []) ud.push(v);
     for (const v of t.terrainBandViol ?? []) ud.push(v);
+    for (const v of t.gtOrderViol ?? []) ud.push(v);
   }
   for (const v of rapport.sæsonFinaleViol ?? []) ud.push(`sæson: ${v}`.replace(/^sæson: sæson: /, "sæson: "));
   return ud;
@@ -329,6 +340,9 @@ export function scorecardGateGroups(rapport) {
     for (const v of t.terrainBandViol ?? []) applyBlocking.push(`rolling-bånd (§5) — ${v}`);
     for (const v of t.monumentGtViol ?? []) applyBlocking.push(`monument i GT-spænd (§4/#4203) — ${v}`);
     for (const v of t.minOverlapViol ?? []) applyBlocking.push(`mindste-overlap (§1/#3329) — ${v}`);
+    // #5802: GT-raekkefoelgen er et haardt krav uden override (ejer 26/9), samme klasse som
+    // monument-i-GT: kalenderen skrives een gang pr. saeson og kan ikke rettes bagefter.
+    for (const v of t.gtOrderViol ?? []) applyBlocking.push(`GT-rækkefølge (§3/#5802) — ${v}`);
     for (const v of t.finaleViol) finaleDrift.push(`finale-bånd (§7b) — ${v}`);
     for (const v of t.uniformViol) uniformDrift.push(`uniformt mål (§6b) — ${v}`);
   }
@@ -478,7 +492,7 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
     // prod-niveau (verify-invariants.js / calendarOverlapInvariant.js, §9c), og
     // monument-i-GT + mindste-overlap regnes ud af PLANENS to-akse-form.
     if (fraDb) {
-      out.push(`  --  Samtidige løb pr. løbsdag (§1) + mindste-overlap (§1/#3329) + monument uden for GT-spænd (§4/#4203) + plan-invarianter (§3): IKKE målt her — de har eget prod-niveau i verify-invariants.js / calendarOverlapInvariant.js (§9c)`);
+      out.push(`  --  Samtidige løb pr. løbsdag (§1) + mindste-overlap (§1/#3329) + monument uden for GT-spænd (§4/#4203) + GT-rækkefølge (§3/#5802) + plan-invarianter (§3): IKKE målt her — de har eget prod-niveau i verify-invariants.js / calendarOverlapInvariant.js (§9c)`);
     } else {
       const gd = t.gameDayOverlap ?? {};
       const hist = Object.keys(gd.histogram ?? {}).sort((a, b) => Number(a) - Number(b))
@@ -488,6 +502,13 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
       for (const v of t.minOverlapViol ?? []) out.push(`     ! ${v}`);
       out.push(`  ${ok((t.monumentGtViol?.length ?? 0) === 0)} Monument uden for GT-spænd (§4/#4203, løbsdags-aksen): ${t.monumentGtViol?.length ?? 0} brud`);
       for (const v of t.monumentGtViol ?? []) out.push(`     ! ${v}`);
+      // #5802: GT-raekkefoelgen med navne og foerste kalenderdato, saa ejeren kan se den.
+      if (t.grandTourStarts?.length) {
+        const gtLinje = t.grandTourStarts
+          .map((g) => `${g.name} ${g.firstDate ?? `løbsdag ${g.firstGameDay}`}`).join(" → ");
+        out.push(`  ${ok((t.gtOrderViol?.length ?? 0) === 0)} GT-rækkefølge (§3/#5802, Giro → Tour → Vuelta): ${gtLinje}`);
+      }
+      for (const v of t.gtOrderViol ?? []) out.push(`     ! ${v}`);
       out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);
       for (const v of t.planViolations.slice(0, 5)) out.push(`     ${v}`);
     }

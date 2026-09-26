@@ -256,6 +256,24 @@ const WRITE_GATE_TEXT = Object.freeze({
 });
 
 /** Menneske-læsbar forklaring på en skrive-gate-afgørelse (#5405). */
+/**
+ * #5802: GT'ernes startraekkefoelge pr. division som linjer til toerkoerslen - navn +
+ * foerste kalenderdato, i den raekkefoelge de STARTER. Laeser scorecardets
+ * `grandTourStarts`/`gtOrderViol` (calendarPlacementGates.js), saa linjen og gaten aldrig
+ * kan vise hver sin raekkefoelge. Divisioner uden GT'er springes over.
+ */
+export function formatGrandTourOrder(rapport) {
+  const tiers = (rapport?.tiers ?? []).filter((t) => t.grandTourStarts?.length);
+  if (!tiers.length) return [];
+  const out = [`\n── #5802 Grand Tours, startrækkefølge (skal være Giro → Tour → Vuelta) ──`];
+  for (const t of tiers) {
+    const linje = t.grandTourStarts
+      .map((g) => `${g.name} (${g.firstDate ?? `løbsdag ${g.firstGameDay}`})`).join(" → ");
+    out.push(`  D${t.tier}: ${linje}  ${(t.gtOrderViol?.length ?? 0) === 0 ? "✅" : "❌"}`);
+  }
+  return out;
+}
+
 export function describeSeasonCalendarWriteGate(gate, seasonNumber) {
   const fn = WRITE_GATE_TEXT[gate?.code];
   // Ukendt kode = en fremtidig gren nogen glemte at beskrive. Sig dét i stedet for at
@@ -915,6 +933,10 @@ if (isMain) {
     for (const line of formatScorecard(rapport, {
       heading: `SÆSON ${seasonNumber} — KALENDER-SCORECARD (planlagt, docs/CALENDAR_RULES.md §1-§7)`,
     })) console.log(line);
+
+    // #5802: GT'ernes startraekkefoelge med navne og datoer, saa ejeren kan se den direkte
+    // i toerkoerslen. Dommen er scorecardets GT-raekkefoelge-gate (applyBlocking nedenfor).
+    for (const line of formatGrandTourOrder(rapport)) console.log(line);
 
     const scorecardGates = scorecardGateGroups(rapport);
     blocking.push(...scorecardGates.blocking);
