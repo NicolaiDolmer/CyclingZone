@@ -179,13 +179,12 @@
       },
       {
         "km": 105,
-        "type": "breakaway_survived",
+        "type": "breakaway_caught",
         "params": {
           "group_id": "breakaway-0",
           "rider_ids": [
             "r02"
-          ],
-          "gap_seconds": 459.24
+          ]
         }
       },
       {

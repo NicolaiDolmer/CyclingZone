@@ -16,7 +16,7 @@ import type {
   TimelineEvent,
 } from "./types.ts";
 import { runSegmentLoop, type SegmentLoopResult } from "./segmentLoop.ts";
-import { isBreakawayWin } from "./groups.ts";
+import { isBreakawayWin, settleBreakawaySurvivedEvents } from "./groups.ts";
 import { climbSelectionHook } from "./mechanics/climbSelection.ts";
 import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
@@ -296,6 +296,19 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
   });
   const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);
+  const winnerId = results[0]?.rider_id ?? null;
+  const breakawayWin = finaleTrace ? isBreakawayWin(finaleTrace, winnerId) : false;
+
+  // #5515: `breakaway_survived` er udsendt FOER finalen og betyder kun at
+  // udbruddet stadig var sin egen gruppe. Nu hvor finalen og placeringerne er
+  // afgjort, skrives et udbrud der blev hentet om til `breakaway_caught`, saa
+  // loebsfilmen aldrig siger "udbruddet holdt" paa en etape udbruddet ikke vandt.
+  // Samme dom som trace.breakaway_win, som etape-fortaellingen bruger.
+  const settledTimeline = settleBreakawaySurvivedEvents(sortedTimeline, {
+    breakawayWin,
+    trace: finaleTrace,
+    results,
+  });
 
   // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
   // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.
@@ -328,7 +341,7 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
   // Passage-eventsene ligger paa deres eget km og sorteres ind blandt motorens
   // oevrige events; maalpassagen udsender intet eget event (finish-eventet ER
   // maalstregen), samme konvention som v3's tidslinje.
-  const timelineWithPassages = sortTimeline([...sortedTimeline, ...passagesToTimelineEvents(passages)]);
+  const timelineWithPassages = sortTimeline([...settledTimeline, ...passagesToTimelineEvents(passages)]);
 
   const output: StageOutput = {
     timeline: { timeline_version: 2, events: [...timelineWithPassages, finishEvent, ...timeLimit.events] },
@@ -341,8 +354,7 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
     // reddet grupetto) mister sine point i point- og bjergkonkurrencen.
     passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
   };
-  const winnerId = results[0]?.rider_id ?? null;
-  return { output, trace: { breakaway_win: finaleTrace ? isBreakawayWin(finaleTrace, winnerId) : false } };
+  return { output, trace: { breakaway_win: breakawayWin } };
 }
 
 /** #5582: juryens input — etapens uheld, indsatsvalg og hold pr. rytter. */
