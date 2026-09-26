@@ -452,9 +452,9 @@ test("#5644 runSquadCalendar --apply --replace-existing: sletter kun truppens l�
 // #5802: toerkoerslen udskriver GT'ernes startraekkefoelge med navne og datoer.
 test("#5802: formatGrandTourOrder viser GT'erne i start-rækkefølge med dato og gate-dom pr. division", () => {
   const starts = [
-    { name: "Giro", firstDate: "2026-09-28", firstGameDay: 0 },
-    { name: "Tour", firstDate: "2026-10-07", firstGameDay: 45 },
-    { name: "Vuelta", firstDate: "2026-10-20", firstGameDay: 110 },
+    { name: "Giro", firstDate: "2026-09-28", firstGameDay: 0, realOrder: 0.35 },
+    { name: "Tour", firstDate: "2026-10-07", firstGameDay: 45, realOrder: 0.55 },
+    { name: "Vuelta", firstDate: "2026-10-20", firstGameDay: 110, realOrder: 0.75 },
   ];
   const ok = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: [] }, { tier: 2, grandTourStarts: [] }] });
   assert.equal(ok.length, 2, "overskrift + D1; D2 uden GT'er springes over");
@@ -463,4 +463,10 @@ test("#5802: formatGrandTourOrder viser GT'erne i start-rækkefølge med dato og
   const fejl = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: ["tier 1: forkert"] }] });
   assert.match(fejl[1], /❌$/);
   assert.deepEqual(formatGrandTourOrder({ tiers: [] }), [], "ingen GT'er = ingen blok");
+
+  // En GT uden virkelig dato kan gaten ikke doemme — da er linjen aldrig ✅ (#2854).
+  const uden = starts.map((g) => (g.name === "Vuelta" ? { ...g, realOrder: null } : g));
+  const uvurderet = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: uden, gtOrderViol: [] }] });
+  assert.match(uvurderet[1], /⚠ kan ikke vurderes uden virkelig dato: Vuelta$/);
+  assert.doesNotMatch(uvurderet[1], /✅/);
 });

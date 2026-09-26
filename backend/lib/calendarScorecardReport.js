@@ -506,7 +506,12 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
       if (t.grandTourStarts?.length) {
         const gtLinje = t.grandTourStarts
           .map((g) => `${g.name} ${g.firstDate ?? `løbsdag ${g.firstGameDay}`}`).join(" → ");
-        out.push(`  ${ok((t.gtOrderViol?.length ?? 0) === 0)} GT-rækkefølge (§3/#5802, Giro → Tour → Vuelta): ${gtLinje}`);
+        // En GT uden virkelig dato kan gaten ikke doemme (#2854: fravaer af evidens maa aldrig
+        // ligne groent), saa linjen siger det i stedet for at vise OK.
+        const uvurderede = t.grandTourStarts.filter((g) => g.realOrder == null).map((g) => g.name);
+        const dom = (t.gtOrderViol?.length ?? 0) > 0 ? ok(false) : (uvurderede.length ? "--" : ok(true));
+        out.push(`  ${dom} GT-rækkefølge (§3/#5802, Giro → Tour → Vuelta): ${gtLinje}` +
+          `${uvurderede.length ? ` · kan ikke vurderes uden virkelig dato: ${uvurderede.join(", ")}` : ""}`);
       }
       for (const v of t.gtOrderViol ?? []) out.push(`     ! ${v}`);
       out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);

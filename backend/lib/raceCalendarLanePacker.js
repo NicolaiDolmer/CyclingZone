@@ -316,6 +316,12 @@ function solveContiguousStarts({
   //
   // Mangler EEN GT sin seasonFraction, er den rigtige raekkefoelge ukendt og R14 er slaaet
   // fra - bit-identisk med foer #5802 (samme fallback-princip som #3469's orderByPhase).
+  // Bevidst ALT-ELLER-INTET: en udateret GT kan dele klasse med en dateret (Giro og Vuelta
+  // har begge 17 etaper), og identitets-paasaetningen i layoutContiguous falder da tilbage
+  // til id-orden for hele klassen, saa en delvis binding ville ikke kunne love noget. Den
+  // delvise situation er FAIL-CLOSED: gaten detectGrandTourOrderViolations doemmer stadig
+  // de daterede GT'er og stopper --apply, i stedet for at en gaettet raekkefoelge slipper
+  // igennem. Prods katalog har date_text paa alle tre GT'er (maalt 26/9).
   // Overlap mellem en GT og et andet etapeloeb roeres IKKE (ejer 26/9: det er tilladt).
   const gtIdx = items.map((it, k) => (it.gt ? k : -1)).filter((k) => k >= 0);
   const gtKlasseRaekkefoelge = gtIdx.length >= 2 && gtIdx.every((k) => hasFraction(items[k].race))

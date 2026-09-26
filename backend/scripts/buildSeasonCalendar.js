@@ -269,7 +269,11 @@ export function formatGrandTourOrder(rapport) {
   for (const t of tiers) {
     const linje = t.grandTourStarts
       .map((g) => `${g.name} (${g.firstDate ?? `løbsdag ${g.firstGameDay}`})`).join(" → ");
-    out.push(`  D${t.tier}: ${linje}  ${(t.gtOrderViol?.length ?? 0) === 0 ? "✅" : "❌"}`);
+    // En GT uden virkelig dato kan ikke doemmes - da vises ⚠, aldrig ✅ (#2854).
+    const uvurderede = t.grandTourStarts.filter((g) => g.realOrder == null).map((g) => g.name);
+    const dom = (t.gtOrderViol?.length ?? 0) > 0 ? "❌"
+      : uvurderede.length ? `⚠ kan ikke vurderes uden virkelig dato: ${uvurderede.join(", ")}` : "✅";
+    out.push(`  D${t.tier}: ${linje}  ${dom}`);
   }
   return out;
 }
