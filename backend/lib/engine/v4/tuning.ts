@@ -427,11 +427,24 @@ export const DESCENT_EXTRA_TUNING = deepFreeze(descentExtra);
 // (som allerede er alvors-skaleret, #4604), saa en reelt svag klatrer stadig
 // kan blive sat af.
 const climbSelectionExtra = {
-  wprimeForcedMinSeverity: 0.15, // mindste stigningsalvor (climbSeverity01) hvor en tom reserve TVINGER rytteren af. Under: kun selektions-scoren
+  wprimeForcedMinSeverity: Number(process.env.T5813_SEV ?? 0.15), // TMP mindste stigningsalvor (climbSeverity01) hvor en tom reserve TVINGER rytteren af. Under: kun selektions-scoren
 } as const;
 
 /** M2 additiv selektions-tuning (deep-frosset). Se climbSelectionExtra-kommentaren ovenfor. */
 export const CLIMB_SELECTION_EXTRA_TUNING = deepFreeze(climbSelectionExtra);
+
+// ── M1 (groups.mergeTailGroupsDetailed, #5813) — ADDITIV grupetto-samling ────
+// SS2's frosne GroupsTuning har kun den almindelige merge-taerskel. Se
+// groups.mergeTailGroupsDetailed for reglen og segmentLoop for hvornaar den
+// koerer (kun paa aabent terraen og aldrig paa finale-segmentet).
+const tailGrupettoExtra = {
+  windowSeconds: Number(process.env.T5813_WIN ?? 90), // TMP
+  minRidersAheadFraction: Number(process.env.T5813_AHEAD ?? 0.25), // TMP
+  minRidersAheadFloor: 10, // absolut gulv, saa et lille felt aldrig samler de forreste placeringer
+} as const;
+
+/** M1 additiv grupetto-samling (deep-frosset). Se tailGrupettoExtra-kommentaren ovenfor. */
+export const TAIL_GRUPETTO_EXTRA_TUNING = deepFreeze(tailGrupettoExtra);
 
 // ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
 // SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
@@ -849,6 +862,30 @@ const breakawayExtra = {
   threatReferenceRatio: 1.9,
   threatGapSensitivity: 1.0, // hvor meget (forhold / reference - 1) krymper loftet
   maxGapFactorBounds: [0.4, 1.3] as readonly [number, number], // clamp paa trussel-faktoren — ét farligt udbrud faar stadig noget, et harmloest faar ikke uendeligt
+
+  // ── Jagt-gulvet paa massefinaler (#5813 del 2) ─────────────────────────────
+  // Paa en dag der skal ende i en massespurt, jager sprinterholdene ALTID sent,
+  // uanset hvem der sidder i udbruddet. Netto-fordelen ovenfor er en balance af
+  // evner, og paa nogle felter krydser den aldrig nul: saa laa hullet paa
+  // lad-gaa-loftet hele dagen, og udbruddet vandt for ofte (S4-testpakken).
+  // Gulvet er et STRUKTURELT led (etape-fremdrift og finaletype, ingen evne-
+  // akse, #4707): i de sidste `chaseFloorFinalKm` km overtager
+  // sprinterholdene jagten og koerer hullet jaevnt ned mod et maal ved
+  // stregen (mechanics/breakaway.ts chaseFloorClosingSeconds) — normalt et
+  // forspring finalens antals-vindue altid henter. Den lille chance for at
+  // udbruddet holder er eksplicit og maalbar: med `chaseFloorLateChance`
+  // (én lodtraekning pr. etape) kommer de for sent og koerer kun ned til
+  // `chaseFloorLateTargetGapSeconds`; saa holder et udbrud der reelt har et
+  // forspring. Foer var udfaldet et knivsæg paa om netto-fordelen krydsede nul.
+  // Kun paa flad/rullende profil — samme afgraensning som finalens antals-
+  // vindue (finale.ts BUNCH_CATCH_PROFILE_TYPES): paa kuperet/brosten er
+  // selektionen aegte.
+  chaseFloorFinaleTypes: ["bunch_sprint", "reduced_sprint"] as readonly import("./types.ts").FinaleType[],
+  chaseFloorProfileTypes: ["flat", "rolling"] as readonly import("./types.ts").ProfileType[],
+  chaseFloorFinalKm: Number(process.env.T5813_FKM ?? 35), // TMP
+  chaseFloorTargetGapSeconds: Number(process.env.T5813_FTGT ?? 60), // TMP
+  chaseFloorLateChance: Number(process.env.T5813_FLATE ?? 0.1), // TMP
+  chaseFloorLateTargetGapSeconds: Number(process.env.T5813_FLTGT ?? 150), // TMP
 };
 
 /** M5 additiv udbruds-tuning (deep-frosset). Se breakawayExtra-kommentaren ovenfor. */

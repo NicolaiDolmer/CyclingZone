@@ -51,12 +51,20 @@ import {
   tickPhysiologyOverSegment,
   wprimeDepletionCpMultiplier,
 } from "./physiology.ts";
-import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroupsDetailed } from "./groups.ts";
-import type { FinaleGroupTrace } from "./groups.ts";
+import {
+  applyGroupTimes,
+  buildGroupSnapshot,
+  initGroups,
+  initRiderStates,
+  mergeGroupsDetailed,
+  mergeTailGroupsDetailed,
+} from "./groups.ts";
+import type { FinaleGroupTrace, GroupMerge } from "./groups.ts";
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
   STRENGTH_SPEED_EXTRA_TUNING,
+  TAIL_GRUPETTO_EXTRA_TUNING,
   WEATHER_EXTRA_TUNING,
 } from "./tuning.ts";
 import type { GroupTempoModel } from "./tuning.ts";
@@ -679,6 +687,35 @@ export function neutralizeBreakawayTempoDrift(
   return out ?? tempoByGroup;
 }
 
+/**
+ * #5813: terraen hvor afhaengte halegrupper finder sammen til én grupetto.
+ * Paa en stigning koerer hver rytter sit eget tempo; paa nedkoerslen og i dalen
+ * samles halen. Brosten er med vilje udeladt: sektorerne splitter, de samler ikke.
+ */
+const TAIL_GRUPETTO_KINDS: ReadonlySet<SegmentKind> = new Set(["flat", "rolling", "descent"]);
+
+/**
+ * #5813: segmentLoop's kobling til groups.mergeTailGroupsDetailed. Koerer kun
+ * paa aabent terraen og ALDRIG paa finale-segmentet: dér har finalen bygget
+ * sine placeringsgrupper, og de maa ikke foldes sammen efter opgoeret.
+ * "Afhaengt" = mindst en andel af det koerende felt ligger foran gruppen
+ * (TAIL_GRUPETTO_EXTRA_TUNING), saa loebet om placeringerne foran er uroert.
+ *
+ * Eksporteret for testbarhed af netop koblingen, samme praecedens som
+ * `groupDraftSpeedGain`.
+ */
+export function tailGrupettoMerge(
+  groups: RaceGroup[],
+  kind: SegmentKind,
+  isLastSegment: boolean,
+  extra: { windowSeconds: number; minRidersAheadFraction: number; minRidersAheadFloor: number } = TAIL_GRUPETTO_EXTRA_TUNING,
+): { groups: RaceGroup[]; merges: GroupMerge[] } {
+  if (isLastSegment || !TAIL_GRUPETTO_KINDS.has(kind)) return { groups, merges: [] };
+  const fieldCount = groups.reduce((s, g) => s + g.rider_ids.length, 0);
+  const minRidersAhead = Math.max(extra.minRidersAheadFloor, Math.ceil(fieldCount * extra.minRidersAheadFraction));
+  return mergeTailGroupsDetailed(groups, extra.windowSeconds, minRidersAhead);
+}
+
 /** Rebaseliner grupper saa den mindste gap_seconds altid er praecis 0 (fronten). */
 function rebaselineGroups(groups: RaceGroup[]): RaceGroup[] {
   if (groups.length === 0) return groups;
@@ -999,10 +1036,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
     // 4b. Sammensmelt grupper der er kommet inden for merge-taerskel.
-    const { groups: mergedGroups, merges } = mergeGroupsDetailed(
-      state.groups,
-      tuning.groups.mergeThresholdSeconds,
-    );
+    const baseMerge = mergeGroupsDetailed(state.groups, tuning.groups.mergeThresholdSeconds);
+    // #5813: afhaengte halegrupper samles i én grupetto (se tailGrupettoMerge).
+    const tailMerge = tailGrupettoMerge(baseMerge.groups, segment.kind, isLastSegment);
+    const mergedGroups = tailMerge.groups;
+    const merges = [...baseMerge.merges, ...tailMerge.merges];
     state = { ...state, groups: mergedGroups, km: segment.to_km };
     frontElapsedSeconds += dtFront;
 
