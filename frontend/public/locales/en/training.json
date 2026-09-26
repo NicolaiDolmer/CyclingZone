@@ -252,6 +252,10 @@
   "momentBreakthrough_1": "{riderName} finds another gear in {ability}, up to {to} now.",
   "momentBreakthrough_2": "A real step forward for {riderName} today, {ability} climbs to {to}.",
   "momentBreakthrough_3": "{riderName}'s {ability} work pays off: {from} → {to}.",
+  "momentInjury_0": "{riderName} picked up a training injury, expected out for about {daysPhrase}.",
+  "momentInjury_1": "Tough one for {riderName}: a training injury means about {daysPhrase} on the sidelines.",
+  "momentInjury_2": "{riderName} got hurt in a training session, looking at about {daysPhrase} out.",
+  "momentInjury_3": "A setback for {riderName}: a training injury means about {daysPhrase} out.",
   "momentNearBreakthrough_0": "{riderName} is closing in on a breakthrough in {ability}, {pct}% of the way there.",
   "momentNearBreakthrough_1": "One more good session and {riderName} bumps {ability} up a level, already {pct}% there.",
   "momentNearBreakthrough_2": "{riderName}'s {ability} is on the edge of the next step, {pct}% through the block.",
@@ -272,6 +276,11 @@
   "momentRest_1": "Full rest for the squad today, tomorrow's training starts from fresher legs.",
   "momentRest_2": "Quiet at the training base today: everyone's on a rest day.",
   "momentRest_3": "The whole roster took it easy today, recovery over output.",
+  "injuryDaysOne": "{days} training day",
+  "injuryDaysOther": "{days} training days",
+  "injuryAlertLabel": "Training injury today",
+  "injuryAlertEntry": "{riderName} (about {daysPhrase})",
+  "injuryAlertLine": "Hurt in training today: {list}.",
   "tour": {
     "focus": {
       "title": "Pick what each rider trains",
