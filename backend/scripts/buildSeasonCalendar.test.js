@@ -12,6 +12,7 @@ import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
   scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar, loadCutoverPoolRetirement,
+  formatGrandTourOrder,
 } from "./buildSeasonCalendar.js";
 import { resolveTargetStructure } from "../lib/calendarTargetStructure.js";
 import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
@@ -447,3 +448,19 @@ test("#5644 runSquadCalendar --apply --replace-existing: sletter kun truppens l�
     rmSync(dir, { recursive: true, force: true });
   }
 }));
+
+// #5802: toerkoerslen udskriver GT'ernes startraekkefoelge med navne og datoer.
+test("#5802: formatGrandTourOrder viser GT'erne i start-rækkefølge med dato og gate-dom pr. division", () => {
+  const starts = [
+    { name: "Giro", firstDate: "2026-09-28", firstGameDay: 0 },
+    { name: "Tour", firstDate: "2026-10-07", firstGameDay: 45 },
+    { name: "Vuelta", firstDate: "2026-10-20", firstGameDay: 110 },
+  ];
+  const ok = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: [] }, { tier: 2, grandTourStarts: [] }] });
+  assert.equal(ok.length, 2, "overskrift + D1; D2 uden GT'er springes over");
+  assert.match(ok[1], /D1: Giro \(2026-09-28\) → Tour \(2026-10-07\) → Vuelta \(2026-10-20\)\s+✅$/);
+
+  const fejl = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: ["tier 1: forkert"] }] });
+  assert.match(fejl[1], /❌$/);
+  assert.deepEqual(formatGrandTourOrder({ tiers: [] }), [], "ingen GT'er = ingen blok");
+});

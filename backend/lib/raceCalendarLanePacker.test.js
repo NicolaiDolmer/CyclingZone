@@ -282,6 +282,56 @@ test("#3546 C: en etapeløbs interne kronologi ER FORTSAT real_day-monoton EFTER
   }
 });
 
+// ── #5802: R14 - Grand Tours starter i rigtig kalenderraekkefoelge ─────────────────
+// Prod-lignende D1: to GT'er med 17 etaper (Giro, Vuelta) og een med 18 (Touren). Foer R14
+// fik den laengste GT altid det foerste GT-slot, saa raekkefoelgen blev Tour -> Giro ->
+// Vuelta (maalt paa den gyldne S4-kalender 26/9).
+function d1MedTreGts({ medFraction = true } = {}) {
+  const f = (x) => (medFraction ? { seasonFraction: x } : {});
+  const stageRaces = [
+    { id: "gt-giro", stages: 17, race_class: "GiroVuelta", ...f(0.35) },
+    { id: "gt-tour", stages: 18, race_class: "TourFrance", ...f(0.55) },
+    { id: "gt-vuelta", stages: 17, race_class: "GiroVuelta", ...f(0.75) },
+    { id: "wt-1", stages: 8, race_class: "OtherWorldTourA", ...f(0.2) },
+    { id: "wt-2", stages: 7, race_class: "OtherWorldTourA", ...f(0.45) },
+    { id: "wt-3", stages: 6, race_class: "OtherWorldTourA", ...f(0.6) },
+    { id: "wt-4", stages: 5, race_class: "OtherWorldTourA", ...f(0.85) },
+  ]; // 78 etaper
+  const oneDayRaces = [
+    ...Array.from({ length: 5 }, (_, i) => ({ id: `mon-${i}`, race_class: "Monuments", ...f(0.1 + i * 0.2) })),
+    ...Array.from({ length: 57 }, (_, i) => ({ id: `od-${String(i).padStart(2, "0")}`, race_class: "OtherWorldTourA", ...f(i / 57) })),
+  ]; // 62 -> 140
+  return { stageRaces, oneDayRaces, density: 5, days: 28, overlapCap: 3 };
+}
+const gtStartOrder = (r) => r.placements
+  .filter((p) => p.id.startsWith("gt-"))
+  .map((p) => ({ id: p.id, start: Math.min(...p.stagesPlaced.map((s) => s.game_day)) }))
+  .sort((a, b) => a.start - b.start)
+  .map((x) => x.id);
+
+test("#5802 R14: Grand Tours starter i rigtig rækkefølge Giro → Tour → Vuelta, også når Touren er længst", () => {
+  const cfg = d1MedTreGts();
+  const r = packLaneCalendar(cfg);
+  assert.deepEqual(gtStartOrder(r), ["gt-giro", "gt-tour", "gt-vuelta"]);
+  // Reglen maa ikke koste de oevrige invarianter: praecis density pr. dato, alt placeret.
+  assert.deepEqual(r.unplaced, []);
+  assert.deepEqual(r.leftoverSingles, []);
+  for (let d = 0; d < cfg.days; d++) assert.equal(r.load[d], cfg.density, `dag ${d}`);
+});
+
+test("#5802 R14: omvendt input-rækkefølge giver samme GT-rækkefølge (deterministisk)", () => {
+  const cfg = d1MedTreGts();
+  const omvendt = { ...cfg, stageRaces: [...cfg.stageRaces].reverse(), oneDayRaces: [...cfg.oneDayRaces].reverse() };
+  assert.deepEqual(gtStartOrder(packLaneCalendar(omvendt)), ["gt-giro", "gt-tour", "gt-vuelta"]);
+});
+
+test("#5802 R14: uden seasonFraction er reglen slået fra — uændret adfærd fra før #5802", () => {
+  // Uden virkelige datoer kender pakkeren ikke den rigtige raekkefoelge. Den gamle adfaerd
+  // (laengste GT foerst) er dokumenteret her, saa en aendring af fallbacken bliver synlig.
+  const r = packLaneCalendar(d1MedTreGts({ medFraction: false }));
+  assert.equal(gtStartOrder(r)[0], "gt-tour");
+});
+
 test("#3546 C: determinisme: samme input giver identisk daysWithoutDecision to gange", () => {
   const cfg = withFraction(div1(), (r) => fractionOfId(r.id));
   const a = packLaneCalendar(cfg);

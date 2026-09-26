@@ -13,7 +13,9 @@ import assert from "node:assert/strict";
 import {
   gameDaySpansByRace, detectMonumentsInsideGrandTours, computeGameDayOverlap,
   detectMinOverlapViolations, detectQuotaViolations,
+  detectGrandTourOrderViolations, listGrandTourStarts,
 } from "./calendarPlacementGates.js";
+import { scorecardGateGroups } from "./calendarScorecardReport.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE, TIER_DENSITY, TIER_OVERLAP_CAP } from "./calendarTierCaps.js";
 import {
   detectTerrainBandViolations, detectCoverageViolations, computeTierCoverageStats,
@@ -218,4 +220,71 @@ test("#3328/§4: Class1 og Class2 har båndet 3-6 (ejer 3/9), under WorldTours 6
   });
   assert.equal(to.classBandViolations.length, 1, "et 2-etapers Class2-etapeløb falder ud af båndet");
   assert.match(to.classBandViolations[0], /\[3-6\]/);
+});
+
+// ── §3/#5802: GT-raekkefoelgen (Giro -> Tour -> Vuelta) ─────────────────────────────
+// Tre GT'er + et almindeligt etapeloeb. `starts` er GT'ens foerste loebsdag; den virkelige
+// raekkefoelge kommer fra seasonFraction (race_pool.date_text), aldrig fra navnet.
+function gtKalender(starts) {
+  const gts = [
+    { pool_race_id: "giro", name: "Giro", stages: 17, real: 0.35 },
+    { pool_race_id: "tour", name: "Tour", stages: 18, real: 0.55 },
+    { pool_race_id: "vuelta", name: "Vuelta", stages: 17, real: 0.75 },
+  ];
+  const raceRows = [
+    ...gts.map(({ pool_race_id, name, stages }) => ({ pool_race_id, name, stages, race_type: "stage_race" })),
+    { pool_race_id: "wt", name: "Etapeløb", stages: 6, race_type: "stage_race" },
+  ];
+  const stageRows = [];
+  for (const gt of gts) {
+    for (let k = 0; k < gt.stages; k++) {
+      const gd = starts[gt.pool_race_id] + k;
+      stageRows.push({ pool_race_id: gt.pool_race_id, game_day: gd, scheduled_at: `2026-10-${String(1 + Math.floor(gd / 5)).padStart(2, "0")}T18:00:00Z` });
+    }
+  }
+  // Etapeloebet OVERLAPPER Giroen - det er tilladt (ejer 26/9) og maa ikke give et brud.
+  for (let k = 0; k < 6; k++) stageRows.push({ pool_race_id: "wt", game_day: starts.giro + k, scheduled_at: "2026-10-01T15:00:00Z" });
+  const realOrderByPoolRace = new Map(gts.map((g) => [g.pool_race_id, g.real]));
+  return { tier: 1, raceRows, stageRows, realOrderByPoolRace };
+}
+
+test("#5802: rigtig rækkefølge Giro → Tour → Vuelta giver ingen brud, også med overlap til et etapeløb", () => {
+  assert.deepEqual(detectGrandTourOrderViolations(gtKalender({ giro: 0, tour: 25, vuelta: 50 })), []);
+});
+
+test("#5802: Tour → Giro → Vuelta (fejlen fra S4-tørkørslen 26/9) er ét brud med begge rækkefølger", () => {
+  const v = detectGrandTourOrderViolations(gtKalender({ tour: 0, giro: 25, vuelta: 50 }));
+  assert.equal(v.length, 1);
+  assert.match(v[0], /^tier 1: /);
+  assert.match(v[0], /Tour → Giro → Vuelta/);
+  assert.match(v[0], /rigtige kalenderrækkefølge er Giro → Tour → Vuelta/);
+});
+
+test("#5802: Vuelta før Tour er også et brud (ikke kun den første GT måles)", () => {
+  assert.equal(detectGrandTourOrderViolations(gtKalender({ giro: 0, vuelta: 25, tour: 50 })).length, 1);
+});
+
+test("#5802: en GT uden kendt virkelig dato kan ikke dømmes og springes over", () => {
+  const k = gtKalender({ tour: 0, giro: 25, vuelta: 50 });
+  k.realOrderByPoolRace.delete("tour");
+  assert.deepEqual(detectGrandTourOrderViolations(k), [], "Giro før Vuelta holder; Touren kan ikke placeres");
+  // Uden nogen virkelige datoer (fx DB-tilstanden) er der intet at måle.
+  assert.deepEqual(detectGrandTourOrderViolations({ ...k, realOrderByPoolRace: new Map() }), []);
+});
+
+test("#5802: listGrandTourStarts giver GT'erne i start-rækkefølge med første kalenderdato, uden almindelige etapeløb", () => {
+  const starts = listGrandTourStarts(gtKalender({ giro: 0, tour: 25, vuelta: 50 }));
+  assert.deepEqual(starts.map((g) => g.name), ["Giro", "Tour", "Vuelta"]);
+  assert.deepEqual(starts.map((g) => g.firstDate), ["2026-10-01", "2026-10-06", "2026-10-11"]);
+});
+
+test("#5802: GT-rækkefølgen er en BLOKERENDE placerings-gate (stopper --apply, ingen override)", () => {
+  const g = scorecardGateGroups({
+    dækning: { ok: true, violations: [] }, sæsonFinaleViol: [],
+    tiers: [{ tier: 1, finaleViol: [], uniformViol: [], gtOrderViol: ["tier 1: Grand Tours starter i rækkefølgen Tour → Giro → Vuelta"] }],
+  });
+  assert.equal(g.applyBlocking.length, 1);
+  assert.match(g.applyBlocking[0], /^GT-rækkefølge \(§3\/#5802\)/);
+  assert.deepEqual(g.finaleDrift, []);
+  assert.deepEqual(g.uniformDrift, []);
 });
