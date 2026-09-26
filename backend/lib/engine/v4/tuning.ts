@@ -974,7 +974,7 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // (5 seeds): backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
 export type GroupTempoModel = "cp_only" | "effort_weighted";
 const groupTempoEffortExtra = {
-  model: "cp_only" as GroupTempoModel, // EJER-VALG (#4914 punkt 3): "cp_only" = b (default, uaendret), "effort_weighted" = a
+  model: "effort_weighted" as GroupTempoModel, // EJER-VALG (#4914 punkt 3, valgt 23/9 = a; default-flip i #5581): "effort_weighted" = a (default), "cp_only" = b
   grupettoTempoFactor: 0.8, // kun model "effort_weighted": andel af CP'en en grupetto-rytter bidrager med til gruppens tempo (< 1, aldrig 0). STARTGAET, maalt i A/B'en
 };
 
