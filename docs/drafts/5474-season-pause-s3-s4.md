@@ -14,6 +14,8 @@ ingen em-dash, ingen tal ud over dem spilleren kan bruge).
 - Klokkeslæt: kun "kl. 15" og "24 timer" er låst (patch note 7.297). Selve skiftet har intet
   klokkeslæt, så teksten siger "when the switch runs" / "når skiftet kører".
 - Bestyrelsen gentages ikke her. Linjen peger på mandat-opslaget (`docs/drafts/discord-mandate-flip.md`).
+  Erstat `[link til mandat-opslaget]` i begge blokke med Discord-linket til det postede mandat-opslag
+  (højreklik på beskeden, Kopiér beskedlink). Uden det får spillerne intet link.
 - Hver påstand står med sin kilde i tabellen **Kilder** nederst (K1, K2 ...), i samme rækkefølge
   som i opslaget. Markørerne står ikke i selve teksten, så blokkene kan kopieres som de er.
 
