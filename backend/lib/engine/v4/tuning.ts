@@ -981,6 +981,22 @@ const groupTempoEffortExtra = {
 /** #4914 grupetto-tempo-kontakt (deep-frosset). Se groupTempoEffortExtra-kommentaren ovenfor. */
 export const GROUP_TEMPO_EFFORT_EXTRA_TUNING = deepFreeze(groupTempoEffortExtra);
 
+// ── #5581 grupettoen regner paa tidsgraensen (mechanics/grupettoPace.ts) ─────
+// Ejer 23/9 (#4914 valg 1b, "foelg realismen"): en gruppe af udelukkende
+// grupetto-ryttere koerer saa langsomt som muligt, men aldrig langsommere end
+// tidsgraensen (M15, TIME_LIMIT_EXTRA_TUNING nedenfor) tillader, saa laenge
+// rytterne har reserven til det. Virker kun i model "effort_weighted" (det er
+// kun dér en gruppe koerer grupetto-tempo). Reglen og hvorfor den er
+// deterministisk staar i mechanics/grupettoPace.ts's hoved. Maalt med
+// backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
+const grupettoPaceExtra = {
+  limitShare: 0.85, // andel af tidsgraensens margin grupettoen sigter efter: lidt inden for, ikke paa stregen (forudsigelsen af vindertiden er et skoen). STARTGAET, maalt i tvillingerne
+  reserveForFullFloor: 0.25, // W'-reserve (andel) hvor gulvet gaelder fuldt; en rytter med mindre reserve kan ikke holde kravet og kan stadig ryge ud. STARTGAET, maalt i tvillingerne
+};
+
+/** #5581 tidsgraense-gulv for grupetto-tempoet (deep-frosset). Se grupettoPaceExtra-kommentaren ovenfor. */
+export const GRUPETTO_PACE_EXTRA_TUNING = deepFreeze(grupettoPaceExtra);
+
 // ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
 // Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning
 // (types.ts) har ingen "timeLimit"-noegle, saa mechanics/timeLimit.ts importerer
