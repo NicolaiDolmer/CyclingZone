@@ -23,11 +23,13 @@ import { TRAINING_FOCUS_ABILITIES, injuryTimeLeft } from "../../../lib/training.
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
+  latestReceiptRun, reportRowsByRider, receiptGainDay,
   SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_UNKNOWN,
   SEASON_RECEIPT_NOTE_KEY,
 } from "../../../lib/trainingReport.js";
 import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
+import { copenhagenDayKey } from "../../../lib/raceCentre.js";
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
 import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
@@ -236,14 +238,19 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   const focus = planFor(rider.id)?.focus ?? null;
   const focusAbilities = focus ? new Set(TRAINING_FOCUS_ABILITIES[focus] ?? []) : null;
 
-  // #5539-fix (reviewer-fund): kolonnen bruger SAMME todayRun-linje som
+  // #5539-fix (reviewer-fund): kolonnen bruger SAMME kørsels-linje som
   // /training-rosterets focusAbilityReceipt-kald (TrainingPage.jsx) — ingen nyt
   // fetch, ingen ny serverdata. Uden dette var progressBefore/gainsToday altid
   // undefined her, så abilityYesterdayPct ALTID returnerede null (beforeFrac =
   // NaN), og den nye kolonne viste "—" på alle 15 evner uanset ægte fremgang.
-  const todayRow = todayRun?.report?.riders?.find((r) => r?.rider_id === rider.id) ?? null;
-  const progressBefore = todayRow?.progress_before ?? null;
-  const gainsToday = todayRow?.gains ?? null;
+  // #5539-fix (ejer 26/9): SENESTE kørsel, ikke kun dagens — ellers "—" fra
+  // midnat til dagens tick kl. 20. Samme fallback som /training (latestReceiptRun).
+  const receiptRun = latestReceiptRun(todayRun, trainingHistory?.runs);
+  const runRow = reportRowsByRider(receiptRun)[rider.id] ?? null;
+  const progressBefore = runRow?.progress_before ?? null;
+  const gainsToday = runRow?.gains ?? null;
+  const [nowMs] = useState(() => Date.now());
+  const gainDay = receiptGainDay(receiptRun?.tick_date, copenhagenDayKey(nowMs));
 
   const seasonStart = trainingHistory?.seasonStart ?? null;
   // #4293: sæsonen kan være aktiv OG endnu ikke begyndt (interregnum mellem to
@@ -268,6 +275,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       seasonGains,
       progressBefore,
       gainsToday,
+      gainDay,
     }).map((row) => [row.ability, row]),
   );
 

@@ -27,17 +27,30 @@
 // trainingReport.js) — ingen nye serverdata. 0 %/ingen data vises som en
 // stille streg, aldrig som "0 %" (skal ikke læses som en fejl).
 
+//
+// #5539-fix (ejer 26/9): tallet kommer fra den SENESTE kørsel (også før dagens
+// tick kl. 20), og rækken bærer hvilken dag (row.gainDay). Teksten siger derfor
+// "today"/"yesterday" eller datoen, når den seneste kørsel er ældre.
+
 import { useTranslation } from "react-i18next";
-import { abilityYesterdayGainPct } from "../../lib/trainingReport.js";
+import { abilityYesterdayGainPct, receiptGainKeys, RECEIPT_GAIN_DAY_OLDER } from "../../lib/trainingReport.js";
+import { formatDate } from "../../lib/intl.js";
 
 // Bredder er faste, så de fire kolonner flugter linje for linje (tabular-nums på
 // al numerik, jf. docs/design/PAGE_TEMPLATES.md).
 export default function AbilityReceiptRow({ row, inFocus = false }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
-  const { ability, value, gained, pct, locked, yesterdayPct } = row;
+  const { ability, value, gained, pct, locked, yesterdayPct, gainDay } = row;
   const label = tRider(`racePreview.derived.${ability}`);
   const yesterdayGainPct = abilityYesterdayGainPct(yesterdayPct);
+  const { gainKey, contributionKey } = receiptGainKeys(gainDay);
+  const gainVars = {
+    pct: yesterdayGainPct,
+    date: gainDay?.kind === RECEIPT_GAIN_DAY_OLDER
+      ? formatDate(gainDay.date, null, { day: "numeric", month: "numeric" })
+      : "",
+  };
 
   return (
     <div className="flex items-center gap-2 py-[3px]">
@@ -94,7 +107,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
       ) : (
         <span
           className="flex-none w-[72px] flex items-center gap-1.5"
-          title={yesterdayGainPct != null ? t("receipt.yesterdayContribution", { pct: yesterdayGainPct }) : undefined}
+          title={yesterdayGainPct != null ? t(contributionKey, gainVars) : undefined}
         >
           <span className="relative h-1 flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
             <span
@@ -124,7 +137,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           kant ikke hopper ræk-for-ræk. Ingen data/reel 0 % = stille streg,
           aldrig teksten "0 %" (den skal ikke læses som en fejl). */}
       <span className="flex-none w-[92px] text-right font-mono tabular-nums text-3xs text-cz-3">
-        {yesterdayGainPct != null ? t("receipt.yesterdayGain", { pct: yesterdayGainPct }) : "—"}
+        {yesterdayGainPct != null ? t(gainKey, gainVars) : "—"}
       </span>
     </div>
   );
