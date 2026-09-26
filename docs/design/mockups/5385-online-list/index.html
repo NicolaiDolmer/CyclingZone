@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Online list mockup - popover vs. own page (#5385)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1; --border:#e5e0d5;
+    --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+    --accent-t:#a07800; --on-accent:#1a1f38;
+    --success:#15772f; --success-bg:rgba(21,119,47,.08);
+    --warning:#9a5b00; --warning-bg:rgba(154,91,0,.08);
+    --sidebar:#1a1f38; --sidebar-hover:rgba(255,255,255,.06); --sidebar-border:rgba(255,255,255,.07);
+    --sidebar-1:#ffffff; --sidebar-2:rgba(255,255,255,.55); --sidebar-3:rgba(255,255,255,.25);
+    --shadow-overlay: 0 12px 28px -10px rgba(14,15,21,.18);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-body);color:var(--text-1);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
+  h1,h2,h3,.data-font{font-family:'Inter Tight',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  .review-bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:var(--sidebar);color:#fff;font-size:12px;font-family:'Inter Tight',sans-serif;}
+  .review-bar b{font-weight:600}
+  .review-bar a{color:#d8d3c4;text-decoration:none;margin-left:14px;padding:4px 9px;border:1px solid rgba(255,255,255,.18);border-radius:5px;}
+  .review-bar a:hover{border-color:rgba(255,255,255,.55);}
+
+  .intro{max-width:1040px;margin:18px auto 0;padding:0 20px;font-size:12.5px;color:var(--text-2);line-height:1.6;}
+  .intro b{color:var(--text-1);}
+  .intro code{background:var(--bg-subtle);border-radius:4px;padding:1px 5px;font-size:11.5px;}
+
+  .variant-hdr{max-width:1040px;margin:36px auto 0;padding:0 20px;}
+  .variant-hdr h2{font-size:18px;font-weight:700;margin:0 0 4px;}
+  .variant-hdr p{font-size:12.5px;color:var(--text-2);margin:0;}
+
+  .stage{display:flex;gap:28px;align-items:flex-start;padding:16px 20px 8px;overflow-x:auto;}
+  .frame-col{flex:0 0 auto;}
+  .frame-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;font-family:'Inter Tight',sans-serif;}
+  .frame{border:1px solid var(--border);border-radius:5px;background:var(--bg-body);overflow:hidden;position:relative;scroll-margin-top:56px;}
+  .desktop .frame{width:1440px;height:900px;}
+  .mobile .frame{width:390px;height:844px;}
+
+  /* ---------- App shell chrome (shared) ---------- */
+  .app-shell{display:flex;height:100%;}
+  .sidebar{width:208px;flex-shrink:0;background:var(--sidebar);color:var(--sidebar-1);display:flex;flex-direction:column;font-family:'Inter Tight',sans-serif;}
+  .sb-team{padding:16px;border-bottom:1px solid var(--sidebar-border);}
+  .sb-team .nm{font-size:13.5px;font-weight:600;}
+  .sb-team .sub{font-size:11px;color:var(--sidebar-2);margin-top:2px;}
+  .sb-balance{padding:12px 16px;border-bottom:1px solid var(--sidebar-border);}
+  .sb-balance .lbl{font-size:10px;color:var(--sidebar-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;}
+  .sb-balance .val{font-size:14px;font-weight:700;color:#e6c547;}
+
+  .online-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 16px;border-bottom:1px solid var(--sidebar-border);cursor:default;}
+  .online-row.is-open{background:var(--sidebar-hover);}
+  .online-row .left{display:flex;align-items:center;gap:7px;}
+  .dot-on{width:6px;height:6px;border-radius:999px;background:#3ecf6a;flex-shrink:0;}
+  .online-row .txt{font-size:10px;color:var(--sidebar-3);}
+  .online-row .chev{width:12px;height:12px;color:var(--sidebar-3);}
+
+  .sb-nav{padding:10px 0;flex:1;}
+  .sb-nav .grp{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--sidebar-3);padding:10px 16px 6px;}
+  .sb-nav .item{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12.5px;color:var(--sidebar-2);}
+  .sb-nav .item svg{width:15px;height:15px;flex-shrink:0;opacity:.7;}
+  .sb-nav .item.active{color:var(--sidebar-1);background:var(--sidebar-hover);}
+
+  .main{flex:1;min-width:0;overflow:hidden;padding:28px 32px;}
+  .main h1{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0 0 4px;}
+  .main .sub{font-size:13px;color:var(--text-2);margin:0 0 20px;}
+  .skel-card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:20px;margin-bottom:14px;}
+  .skel-line{height:12px;background:var(--bg-subtle);border-radius:4px;margin-bottom:10px;}
+  .skel-line:last-child{margin-bottom:0;}
+
+  /* ---------- Popover / list content (shared by popover + page) ---------- */
+  .ol-panel{display:flex;flex-direction:column;}
+  .ol-section{}
+  .ol-hdr{display:flex;align-items:baseline;justify-content:space-between;padding:12px 16px 8px;}
+  .ol-hdr h3{font-size:14px;font-weight:600;margin:0;}
+  .ol-hdr .cnt{font-size:11px;color:var(--text-3);font-family:'Inter Tight',sans-serif;}
+  /* Online now is capped at 20 but still needs its own scroll so the card/popover
+     never has to grow past the fold to fit them (TASTE fold discipline) - "and N
+     more" always stays visible right below, outside the scroll box. Recently
+     online is capped at 10 and always renders in full, no scroll needed. */
+  .ol-list-capped{max-height:168px;overflow-y:auto;}
+  .ol-list-capped::-webkit-scrollbar{width:6px;}
+  .ol-list-capped::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px;}
+  .ol-row{display:flex;align-items:center;gap:10px;padding:5px 16px;}
+  .avatar{width:26px;height:26px;border-radius:5px;background:var(--bg-subtle);color:var(--text-2);font-size:10.5px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;font-family:'Inter Tight',sans-serif;}
+  .avatar .pip{position:absolute;right:-2px;bottom:-2px;width:8px;height:8px;border-radius:999px;background:#3ecf6a;border:2px solid var(--bg-elevated);}
+  .ol-body{min-width:0;flex:1;}
+  .ol-name{font-size:13px;font-weight:500;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ol-team{font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ol-time{font-size:11px;color:var(--text-3);flex-shrink:0;font-family:'Inter Tight',sans-serif;}
+  .ol-more{padding:6px 16px 10px;font-size:12px;color:var(--text-2);}
+  .ol-sep{border-top:1px solid var(--border);}
+  .privacy-note{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);}
+  .forslag-tag{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--warning);background:var(--warning-bg);border-radius:4px;padding:2px 5px;flex-shrink:0;font-family:'Inter Tight',sans-serif;}
+  .privacy-note .txt{font-size:11.5px;color:var(--text-2);}
+
+  /* ---------- Variant A: popover ---------- */
+  .popover{position:absolute;left:216px;top:88px;width:296px;max-height:788px;overflow-y:auto;background:var(--bg-elevated);border:1px solid var(--border);border-radius:5px;box-shadow:var(--shadow-overlay);z-index:10;}
+
+  /* ---------- Variant A: mobile top bar + bottom sheet ---------- */
+  .m-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--sidebar);color:#fff;font-family:'Inter Tight',sans-serif;}
+  .m-topbar .brand{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;}
+  .m-topbar .burger{width:16px;height:12px;display:flex;flex-direction:column;justify-content:space-between;}
+  .m-topbar .burger span{display:block;height:2px;background:#fff;border-radius:1px;}
+  .m-topbar .online-chip{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:var(--sidebar-hover);border:1px solid var(--sidebar-border);}
+  .m-topbar .online-chip .txt{font-size:10.5px;color:var(--sidebar-1);}
+  .m-body{padding:16px;}
+  .scrim{position:absolute;inset:0;background:rgba(14,15,21,.45);z-index:5;}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:10;background:var(--bg-elevated);border-radius:14px 14px 0 0;box-shadow:var(--shadow-overlay);max-height:800px;overflow-y:auto;display:flex;flex-direction:column;}
+  .sheet .handle{width:36px;height:4px;border-radius:999px;background:var(--border);margin:9px auto 2px;flex-shrink:0;}
+
+  /* ---------- Variant B: own page (T1) ---------- */
+  .t1-page{max-width:640px;}
+  .t1-card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;margin-bottom:14px;}
+  .t1-card .ol-hdr{padding:16px 20px 10px;}
+  .t1-card .ol-row{padding:8px 20px;}
+  .t1-card .ol-more{padding:8px 20px 12px;}
+  .t1-card .privacy-note{padding:12px 20px;}
+  /* Own-page variant on mobile is a normal scrolling page, not a fixed-viewport
+     component - the frame is made tall enough to show the whole page in one
+     screenshot instead of only the first scroll of it. */
+  .frame.m-page{height:1000px;}
+  .m-page .main{padding:16px;}
+  .m-page .t1-card .ol-hdr{padding:14px 16px 8px;}
+  .m-page .t1-card .ol-row{padding:7px 16px;}
+  .m-page .t1-card .ol-more{padding:7px 16px 10px;}
+  .m-page .t1-card .privacy-note{padding:10px 16px;}
+
+  .lang{max-width:1040px;margin:32px auto 40px;padding:16px 20px;font-size:12.5px;color:var(--text-2);}
+  .lang h3{font-size:13px;color:var(--text-1);margin:0 0 8px;font-family:'Inter Tight',sans-serif;}
+  .lang table{border-collapse:collapse;width:100%;font-size:12px;}
+  .lang td{padding:5px 8px;border-top:1px solid var(--border);vertical-align:top;}
+  .lang td.en{color:var(--text-1);width:45%;}
+  .lang td.da{color:var(--text-2);}
+</style>
+</head>
+<body>
+  <div class="review-bar">
+    <div><b>Online list mockup #5385</b> - clicking the sidebar's online counter</div>
+    <div>
+      <a href="#variant-a">A - Popover + bottom sheet</a>
+      <a href="#variant-b">B - Own page</a>
+    </div>
+  </div>
+
+  <p class="intro">
+    Mockup only, no product code. Ejer-oenske 18/9 (#5385): clicking the "N online now" line should show who is online
+    now and who was recently online, capped so the list never runs unbounded. Overlaps <code>#4751</code>'s
+    "clickable list of online managers -&gt; page with all online managers" line item from the forum/social package;
+    this mockup covers that one item so the owner can go on direction before either #5385 or the matching part of
+    #4751 is built. <b>All manager and team names below are invented</b> for the mockup, never real players.
+    <br><br>
+    <b>Privacy line:</b> the brief asks to check whether a "show me as online" setting already exists. It does not -
+    <code>ProfilePage.jsx</code>'s Settings -&gt; Privacy tab only has cookie-consent choices (necessary/analytics/marketing/email),
+    no online-visibility toggle. The line is shown below marked <span class="forslag-tag">FORSLAG</span> - a proposal,
+    not a shipped setting.
+  </p>
+
+  <div class="variant-hdr" id="variant-a">
+    <h2>Variant A - Popover from the sidebar</h2>
+    <p>Desktop: a popover anchored to the existing "online now" row. Mobile: the same row surfaces as a compact chip in
+      the top bar (quicker to reach than opening the burger drawer first); tapping it opens a bottom sheet with the same content.</p>
+  </div>
+  <div class="stage">
+    <div class="frame-col desktop">
+      <div class="frame-label">Desktop - 1440 px</div>
+      <div class="frame">
+        <div class="app-shell">
+          <div class="sidebar">
+            <div class="sb-team"><div class="nm">Nordlys Racing</div><div class="sub">Division 2 . Group C</div></div>
+            <div class="sb-balance"><div class="lbl">Balance</div><div class="val tabular">2.480.000 CZ$</div></div>
+            <div class="online-row is-open">
+              <div class="left"><span class="dot-on"></span><span class="txt">23 online now</span></div>
+              <span class="chev" data-icon="chevronRight"></span>
+            </div>
+            <div class="sb-nav">
+              <div class="grp">Team</div>
+              <div class="item"><span data-icon="riders"></span>Riders</div>
+              <div class="item"><span data-icon="tactics"></span>Tactics</div>
+              <div class="grp">League</div>
+              <div class="item active"><span data-icon="standings"></span>Standings</div>
+              <div class="item"><span data-icon="calendar"></span>Race calendar</div>
+              <div class="grp">Market</div>
+              <div class="item"><span data-icon="exchange"></span>Transfers</div>
+              <div class="item"><span data-icon="hammer"></span>Auctions</div>
+            </div>
+          </div>
+          <div class="main">
+            <h1>Standings</h1>
+            <p class="sub">Division 2 . Group C . Round 14 of 24</p>
+            <div class="skel-card">
+              <div class="skel-line" style="width:88%"></div>
+              <div class="skel-line" style="width:64%"></div>
+              <div class="skel-line" style="width:76%"></div>
+              <div class="skel-line" style="width:52%"></div>
+            </div>
+            <div class="skel-card">
+              <div class="skel-line" style="width:70%"></div>
+              <div class="skel-line" style="width:58%"></div>
+            </div>
+          </div>
+
+          <div class="popover ol-panel">
+            <div class="ol-section">
+              <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
+              <div class="ol-list-capped" id="online-now-list"></div>
+              <div class="ol-more">and 3 more</div>
+            </div>
+            <div class="ol-sep"></div>
+            <div class="ol-section">
+              <div class="ol-hdr"><h3>Recently online</h3></div>
+              <div id="recently-online-list"></div>
+            </div>
+            <div class="privacy-note"><span class="forslag-tag">FORSLAG</span><span class="txt">You can hide yourself under Settings</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame-col mobile">
+      <div class="frame-label">Mobile - 390 px</div>
+      <div class="frame">
+        <div class="m-topbar">
+          <div class="brand"><span class="burger"><span></span><span></span><span></span></span>Cycling Zone</div>
+          <div class="online-chip"><span class="dot-on"></span><span class="txt">23 online</span></div>
+        </div>
+        <div class="m-body">
+          <h1 style="font-size:18px;font-weight:700;margin:0 0 4px;font-family:'Inter Tight',sans-serif;">Standings</h1>
+          <p style="font-size:12.5px;color:var(--text-2);margin:0 0 16px;">Division 2 . Group C . Round 14 of 24</p>
+          <div class="skel-card">
+            <div class="skel-line" style="width:82%"></div>
+            <div class="skel-line" style="width:60%"></div>
+            <div class="skel-line" style="width:70%"></div>
+          </div>
+        </div>
+
+        <div class="scrim"></div>
+        <div class="sheet ol-panel">
+          <div class="handle"></div>
+          <div class="ol-section">
+            <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
+            <div class="ol-list-capped" id="online-now-list-m"></div>
+            <div class="ol-more">and 3 more</div>
+          </div>
+          <div class="ol-sep"></div>
+          <div class="ol-section">
+            <div class="ol-hdr"><h3>Recently online</h3></div>
+            <div id="recently-online-list-m"></div>
+          </div>
+          <div class="privacy-note"><span class="forslag-tag">FORSLAG</span><span class="txt">You can hide yourself under Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant-hdr" id="variant-b">
+    <h2>Variant B - Own page, /community/online</h2>
+    <p>Same two lists as a standalone T1 page (max-w-4xl). The sidebar row still links here instead of opening a popover.</p>
+  </div>
+  <div class="stage">
+    <div class="frame-col desktop">
+      <div class="frame-label">Desktop - 1440 px</div>
+      <div class="frame">
+        <div class="app-shell">
+          <div class="sidebar">
+            <div class="sb-team"><div class="nm">Nordlys Racing</div><div class="sub">Division 2 . Group C</div></div>
+            <div class="sb-balance"><div class="lbl">Balance</div><div class="val tabular">2.480.000 CZ$</div></div>
+            <div class="online-row">
+              <div class="left"><span class="dot-on"></span><span class="txt">23 online now</span></div>
+              <span class="chev" data-icon="chevronRight"></span>
+            </div>
+            <div class="sb-nav">
+              <div class="grp">Team</div>
+              <div class="item"><span data-icon="riders"></span>Riders</div>
+              <div class="item"><span data-icon="tactics"></span>Tactics</div>
+              <div class="grp">League</div>
+              <div class="item"><span data-icon="standings"></span>Standings</div>
+              <div class="item"><span data-icon="calendar"></span>Race calendar</div>
+              <div class="grp">Market</div>
+              <div class="item"><span data-icon="exchange"></span>Transfers</div>
+              <div class="item"><span data-icon="hammer"></span>Auctions</div>
+            </div>
+          </div>
+          <div class="main">
+            <div class="t1-page">
+              <h1>Online managers</h1>
+              <p class="sub">23 online now</p>
+              <div class="t1-card ol-panel">
+                <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
+                <div class="ol-list-capped" id="online-now-list-b"></div>
+                <div class="ol-more">and 3 more</div>
+              </div>
+              <div class="t1-card ol-panel">
+                <div class="ol-hdr"><h3>Recently online</h3></div>
+                <div id="recently-online-list-b"></div>
+                <div class="privacy-note"><span class="forslag-tag">FORSLAG</span><span class="txt">You can hide yourself under Settings</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame-col mobile">
+      <div class="frame-label">Mobile - 390 px</div>
+      <div class="frame m-page">
+        <div class="m-topbar">
+          <div class="brand"><span class="burger"><span></span><span></span><span></span></span>Cycling Zone</div>
+          <div class="online-chip"><span class="dot-on"></span><span class="txt">23 online</span></div>
+        </div>
+        <div class="main">
+          <h1 style="font-size:18px;font-weight:700;margin:0 0 2px;font-family:'Inter Tight',sans-serif;">Online managers</h1>
+          <p style="font-size:12.5px;color:var(--text-2);margin:0 0 14px;">23 online now</p>
+          <div class="t1-card ol-panel">
+            <div class="ol-hdr"><h3>Online now</h3><span class="cnt">23</span></div>
+            <div class="ol-list-capped" id="online-now-list-bm"></div>
+            <div class="ol-more">and 3 more</div>
+          </div>
+          <div class="t1-card ol-panel">
+            <div class="ol-hdr"><h3>Recently online</h3></div>
+            <div id="recently-online-list-bm"></div>
+            <div class="privacy-note"><span class="forslag-tag">FORSLAG</span><span class="txt">You can hide yourself under Settings</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lang">
+    <h3>Copy reference (EN first, DA second - invented sample data uses EN only above)</h3>
+    <table>
+      <tr><td class="en">{count} online now</td><td class="da">{count} online nu</td></tr>
+      <tr><td class="en">Online now</td><td class="da">Online nu</td></tr>
+      <tr><td class="en">Recently online</td><td class="da">Senest online</td></tr>
+      <tr><td class="en">and {n} more</td><td class="da">og {n} mere</td></tr>
+      <tr><td class="en">You can hide yourself under Settings [FORSLAG - no such setting exists yet]</td><td class="da">Du kan skjule dig selv under Indstillinger [FORSLAG - findes ikke endnu]</td></tr>
+      <tr><td class="en">Online managers (page title, variant B)</td><td class="da">Online managere</td></tr>
+    </table>
+  </div>
+
+<script>
+const ONLINE_NOW = [
+  ["Mette Holm","Nordlys Racing"],["Jonas Bay","Viking Wattage"],["Freja Lindqvist","Fjordline CT"],
+  ["Oskar Vinter","Ornereden RT"],["Laerke Skov","Team Blaeksprutten"],["Magnus Dahl","Ravnsborg RT"],
+  ["Ida Falk","Solskin Velo"],["Viktor Strand","Pedalkongerne"],["Nora Berg","Team Havgus"],
+  ["Emil Krogh","Bakketrold CC"],["Sofie Lund","Spurtkanonen"],["Anders Nyholm","Klitvind Racing"],
+  ["Clara Moller","Hojderyggen CT"],["Peter Kjaer","Nordkystens Cykling"],["Julie Reventlow","Team Egeskov"],
+  ["Thomas Vang","Firklover RT"],["Camilla Ryg","Stormfulde Sving"],["Mikkel Storm","Bjergtind Velo"],
+  ["Signe Aabo","Team Solhverv"],["Kasper Elm","Vestkystekspressen"],
+];
+const RECENTLY_ONLINE = [
+  ["Nikolaj Bruun","Team Frostrose","4m ago"],["Katrine Holst","Bakkefyrsterne","11m ago"],
+  ["Simon Agerskov","Hvide Klippe CT","19m ago"],["Maja Lindberg","Team Kysten","27m ago"],
+  ["Frederik Roos","Solstrimmen RT","38m ago"],["Cecilie Warn","Nordvinden Velo","52m ago"],
+  ["Andreas Fogh","Team Egekrone","1h ago"],["Stine Bloch","Klippeborgen CC","2h ago"],
+  ["Jacob Riis","Vintersolhverv RT","3h ago"],["Pernille Ask","Team Damptromlen","5h ago"],
+];
+function initials(name){ return name.split(" ").map(p=>p[0]).join("").slice(0,2).toUpperCase(); }
+function onlineRowHtml([name,team]){
+  return `<div class="ol-row"><div class="avatar">${initials(name)}<span class="pip"></span></div>`+
+         `<div class="ol-body"><div class="ol-name">${name}</div><div class="ol-team">${team}</div></div></div>`;
+}
+function recentRowHtml([name,team,time]){
+  return `<div class="ol-row"><div class="avatar">${initials(name)}</div>`+
+         `<div class="ol-body"><div class="ol-name">${name}</div><div class="ol-team">${team}</div></div>`+
+         `<div class="ol-time tabular">${time}</div></div>`;
+}
+[["online-now-list",onlineRowHtml,ONLINE_NOW],
+ ["online-now-list-m",onlineRowHtml,ONLINE_NOW],
+ ["online-now-list-b",onlineRowHtml,ONLINE_NOW],
+ ["online-now-list-bm",onlineRowHtml,ONLINE_NOW],
+ ["recently-online-list",recentRowHtml,RECENTLY_ONLINE],
+ ["recently-online-list-m",recentRowHtml,RECENTLY_ONLINE],
+ ["recently-online-list-b",recentRowHtml,RECENTLY_ONLINE],
+ ["recently-online-list-bm",recentRowHtml,RECENTLY_ONLINE]].forEach(([id,fn,data])=>{
+  const el = document.getElementById(id);
+  if(el) el.innerHTML = data.map(fn).join("");
+});
+
+const ICONS = {
+  chevronRight: '<path d="M9 6l6 6-6 6"/>',
+  riders: '<circle cx="9" cy="7" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="18" cy="8" r="2.4"/><path d="M15 20a5 5 0 0 1 8.5-3.5"/>',
+  tactics: '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M9 9v11"/>',
+  standings: '<path d="M4 20V10M12 20V4M20 20v-7"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  exchange: '<path d="M4 9h13M14 6l3 3-3 3"/><path d="M20 15H7M10 12l-3 3 3 3"/>',
+  hammer: '<path d="M15 4l5 5-3 3-5-5z"/><path d="M13 8L4 17v3h3l9-9"/>',
+};
+document.querySelectorAll('[data-icon]').forEach(el=>{
+  const key = el.getAttribute('data-icon');
+  const inner = ICONS[key] || '';
+  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="100%" height="100%">${inner}</svg>`;
+});
+</script>
+</body>
+</html>
