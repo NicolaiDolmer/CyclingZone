@@ -251,6 +251,10 @@
   "momentBreakthrough_1": "{riderName} finder endnu et gear i {ability}, oppe på {to} nu.",
   "momentBreakthrough_2": "Et rigtigt fremskridt for {riderName} i dag, {ability} stiger til {to}.",
   "momentBreakthrough_3": "{riderName}s arbejde med {ability} betaler sig: {from} → {to}.",
+  "momentInjury_0": "{riderName} pådrog sig en træningsskade i dag, forventet ude i omkring {daysPhrase}.",
+  "momentInjury_1": "Hårdt for {riderName}: en træningsskade i dag betyder omkring {daysPhrase} på sidelinjen.",
+  "momentInjury_2": "{riderName} kom til skade i dagens session, ser ud til omkring {daysPhrase} ude.",
+  "momentInjury_3": "Et tilbageslag for {riderName}: dagens træningsskade betyder omkring {daysPhrase} ude.",
   "momentNearBreakthrough_0": "{riderName} nærmer sig et gennembrud i {ability}, {pct}% af vejen.",
   "momentNearBreakthrough_1": "Én god session mere, og {riderName} rykker {ability} op et niveau, allerede {pct}% der.",
   "momentNearBreakthrough_2": "{riderName}s {ability} er tæt på næste spring, {pct}% gennem blokken.",
@@ -271,6 +275,10 @@
   "momentRest_1": "Fuld hvile for truppen i dag, i morgen starter træningen med friskere ben.",
   "momentRest_2": "Stille på træningscentret i dag: alle har fridag.",
   "momentRest_3": "Hele truppen tog den med ro i dag, restitution frem for output.",
+  "injuryDaysOne": "{days} træningsdag",
+  "injuryDaysOther": "{days} træningsdage",
+  "injuryAlertLabel": "Træningsskade i dag",
+  "injuryAlertLine": "{riderName} kom til skade i træning i dag, forventet ude i omkring {daysPhrase}.",
   "tour": {
     "focus": {
       "title": "Vælg hvad hver rytter træner",
