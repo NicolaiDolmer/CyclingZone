@@ -56,7 +56,7 @@ export function intensityForSession(session) {
 }
 
 // Hvem programmet er tænkt til. Rytter-typer bruger RIDER_TYPE_KEYS
-// (PROGRESSION_RULES §2); `audience` er en kort i18n-noegle for de programmer
+// (riderTypes.js; brosten hedder `brostensrytter`); `audience` er en kort i18n-noegle for de programmer
 // der ikke er bundet til en type.
 const P = (key, nameEn, nameDa, taglineEn, taglineDa, targetTypes, audience, week) => Object.freeze({
   key,
@@ -84,7 +84,7 @@ export const TRAINING_PROGRAMS = Object.freeze([
   P("cobbles_rider", "Cobbles rider", "Brostensrytter",
     "Three technique days, two long rides and one hard day on the cobbles.",
     "Tre teknikdage, to lange ture og én hård dag på brostenene.",
-    ["brosten"], null,
+    ["brostensrytter"], null,
     ["technique", "endurance", "technique", "endurance", "technique", "cobbled_sectors", "rest"]),
   P("gc_rider", "GC rider", "GC-rytter",
     "Intervals, threshold and climbing for riders who have to last three weeks.",
@@ -109,7 +109,7 @@ export const TRAINING_PROGRAMS = Object.freeze([
   P("classics", "Classics rider", "Klassikerrytter",
     "Cobbles, crosswinds and punch for the one-day races in spring.",
     "Brosten, sidevind og punch til forårets endagsløb.",
-    ["brosten", "puncheur"], null,
+    ["brostensrytter", "puncheur"], null,
     ["cobbled_sectors", "endurance", "echelon_drills", "recovery", "vo2max_punch", "tempo", "rest"]),
   P("time_trial", "Time triallist", "TT-specialist",
     "Threshold and aero position for the race against the clock.",

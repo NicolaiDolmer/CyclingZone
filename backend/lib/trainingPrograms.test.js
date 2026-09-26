@@ -10,6 +10,7 @@ import {
 } from "./trainingPrograms.js";
 import { WEEKDAY_KEYS, resolveDayIntensity, isValidWeekPlanDays } from "./training.js";
 import { ALL_SESSIONS } from "./trainingDayTypes.js";
+import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 
 test("kataloget: 22 ejer-godkendte programmer, unikke noegler, kun eksisterende sessioner", () => {
   assert.equal(TRAINING_PROGRAMS.length, 22);
@@ -21,6 +22,11 @@ test("kataloget: 22 ejer-godkendte programmer, unikke noegler, kun eksisterende 
     }
     assert.ok(program.nameEn && program.nameDa && program.taglineEn && program.taglineDa, `${program.key}: EN+DA`);
     assert.ok(!/[—–]/.test(program.taglineEn + program.taglineDa), `${program.key}: ingen tankestreg (TONE_OF_VOICE)`);
+  }
+  for (const program of TRAINING_PROGRAMS) {
+    for (const type of program.targetTypes) {
+      assert.ok(RIDER_TYPE_KEYS.includes(type), `${program.key}: ${type} er en rigtig rytter-type`);
+    }
   }
   // Ingen ny session opfundet: kataloget er en delmaengde af de eksisterende.
   assert.deepEqual(PROGRAM_SESSIONS.filter((s) => !["rest", "recovery"].includes(s)), [...ALL_SESSIONS]);

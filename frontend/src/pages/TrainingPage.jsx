@@ -62,7 +62,7 @@ import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
-import { programSessionToday, PROGRAM_SLOTS } from "../lib/trainingPrograms.ts";
+import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
   TIRED_FATIGUE_FROM, buildOverview, idsForFilter, isTired, primaryActionFor, canRunToday,
@@ -2531,7 +2531,8 @@ export default function TrainingPage() {
           : (riderWeekPlans[key] != null ? t("individualWeekPlanRemove") : null)}
         onReset={() => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key))}
         message={isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null}
-        ownPlans={ridersWithOwnWeekPlan.map((r) => ({
+        // #4629: ryttere på et program vises i Program-gitteret, ikke her som intensiteter.
+        ownPlans={ridersWithOwnWeekPlan.filter((r) => !(programsOn && isProgramPlan(riderWeekPlans[r.id], WEEKDAY_KEYS))).map((r) => ({
           id: r.id,
           name: `${r.firstname} ${r.lastname}`,
           summary: WEEKDAY_KEYS.map(
