@@ -27,6 +27,7 @@ import {
   seasonUuid, quotasForRaceDays, fetchPreviousSeasonLastStages, loadCutoverPoolRetirement,
 } from "../../buildSeasonCalendar.js";
 import { syntheticRaceId } from "./packCore.js";
+import { fetchAllRows } from "../../../lib/supabasePagination.js";
 
 export const S4_SEASON_NUMBER = 4;
 export const S4_FIRST_RACE_DAY = "2026-09-28";
@@ -127,9 +128,8 @@ async function loadProdRaces({ supabase, seasonId, tiers, youth }) {
   const { data: divisions, error: dErr } = await supabase.from("league_divisions").select("id, tier, squad");
   if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
   const divById = new Map((divisions ?? []).map((d) => [d.id, d]));
-  const { data: races, error } = await supabase
-    .from("races").select("id, name, race_class, race_type, stages, league_division_id, squad").eq("season_id", seasonId);
-  if (error) throw new Error(`races: ${error.message}`);
+  const races = await fetchAllRows(() => supabase
+    .from("races").select("id, name, race_class, race_type, stages, league_division_id, squad").eq("season_id", seasonId).order("id"));
   // Én repraesentativ pulje pr. (trup, tier): alle puljer i en tier deler kalender (#2276).
   const firstPool = new Map();
   for (const r of races ?? []) {
@@ -148,7 +148,9 @@ async function loadProdRaces({ supabase, seasonId, tiers, youth }) {
   const out = [];
   for (const r of kept) {
     const [{ data: profs }, { data: sched }] = await Promise.all([
+      // pagination-safe: ét loebs etaper (maks en Grand Tours ~21 raekker)
       supabase.from("race_stage_profiles").select("*").eq("race_id", r.id),
+      // pagination-safe: ét loebs etaper (maks en Grand Tours ~21 raekker)
       supabase.from("race_stage_schedule").select("stage_number, scheduled_at, game_day").eq("race_id", r.id),
     ]);
     const schedBy = new Map((sched ?? []).map((s) => [s.stage_number, s]));

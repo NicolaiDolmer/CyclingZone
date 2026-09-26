@@ -11,6 +11,7 @@
 import { applyRiderEligibilityFilter } from "../../../lib/riderEligibility.js";
 import { ABILITY_KEYS } from "../../../lib/raceSimulator.js";
 import { autopickTeamSelection } from "../../../lib/raceAutopick.js";
+import { fetchAllRows } from "../../../lib/supabasePagination.js";
 
 const CHUNK = 200;
 
@@ -28,11 +29,10 @@ async function selectIn({ supabase, table, columns, column, ids }) {
  * @returns {Promise<Array<object>>} entrants i loadEntrantsForRace-form
  */
 export async function loadYouthEntrants({ supabase, squad = "u23", stages, maxPerTeam = 6, minPerTeam = 3, maxRiders = 180 }) {
-  const { data: riders, error } = await applyRiderEligibilityFilter(
+  const riders = await fetchAllRows(() => applyRiderEligibilityFilter(
     supabase.from("riders").select("id, team_id, firstname, lastname").not("team_id", "is", null),
     { squad },
-  ).order("id");
-  if (error) throw new Error(`riders (${squad}): ${error.message}`);
+  ).order("id"));
   const ids = (riders ?? []).map((r) => r.id);
   if (!ids.length) return [];
   const abilities = await selectIn({ supabase, table: "rider_derived_abilities", columns: ["rider_id", ...ABILITY_KEYS].join(", "), column: "rider_id", ids });
