@@ -465,13 +465,15 @@ async function mockWideTraining(page) {
 }
 
 async function setLanguage(page, lang) {
-  // #5747: uden dette venter vi paa window.__i18n foerend appen har mountet.
-  // Sker det, springer evaluate'en herunder changeLanguage() over (`if
-  // (window.__i18n)` er false), og pollet nedenfor venter saa paa "en" der
-  // aldrig kommer — __i18n initialiserer med "da" (stabilizePage's laas) og
-  // bliver aldrig aendret. Deraf flakket: kun "en" rammes, fordi "da" er
-  // default-sproget og et tabt kald derfor stadig (tilfaeldigt) passerer.
-  // Samme moenster som core-smoke.spec.js's forceEnglish().
+  // #5747: src/i18n/index.js's egen filhoved (#5177) advarer eksplicit —
+  // "Kald ALDRIG changeLanguage foer 'initialized' er udsendt". Lige efter
+  // goto() kan i18next stadig vaere midt i SIN EGEN interne changeLanguage
+  // (til det detekterede sprog), og de to kald deler `isLanguageChangingTo`.
+  // Rammer vi ind i det vindue, kan vores "en"-kald tabe racen og blive
+  // nulstillet tilbage til dansk — reproduceret lokalt: 2/5 koersler af
+  // "360 px · en" viste stadig dansk indhold trods et fuldfoert
+  // changeLanguage("en"). Derfor: vent paa isInitialized FOER vi aendrer
+  // sproget, samme moenster som core-smoke.spec.js's forceEnglish().
   await expect.poll(() => page.evaluate(() => window.__i18n?.isInitialized === true)).toBe(true);
   await page.evaluate(async (next) => {
     window.localStorage.setItem("cz_lang", next);
