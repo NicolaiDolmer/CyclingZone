@@ -213,6 +213,8 @@ function raceFootprint(race, spineMinStages) {
 //   R10 mindst MIN_GAP kalenderdage mellem to nabo-monumenter (§4)
 //   R11 mindst MIN_SPREAD kalenderdage fra foerste til sidste monument (§4)
 //   R14 Grand Tours starter i deres rigtige kalenderraekkefoelge, Giro -> Tour -> Vuelta (#5802)
+//   R15 ingen Grand Tour starter foer dato `gtEarliestStartDate` - aldrig paa saesonens
+//       foerste dag (#5802, se GRAND_TOUR_EARLIEST_START_DATE_INDEX)
 //
 // R12 ER FJERNET IGEN (#5267, ejer-kort 19/9). Den bandt loebsdags-aksens LAENGDE inde i
 // selve soegningen, og det var roden til at PR #5169's maalte kalender faldt: saa snart et
@@ -255,7 +257,7 @@ function raceFootprint(race, spineMinStages) {
 // (D1 paa 709 skridt / 3 ms). R8 er den stramme: den afskar 609 forsoeg i D1.
 function solveContiguousStarts({
   races, D, days, cap, spineMinStages, monumentRules = null, maxSteps = 20000000,
-  stats = null,
+  stats = null, gtEarliestStartDate = 0,
 }) {
   const items = races
     .map((race, i) => ({
@@ -396,6 +398,7 @@ function solveContiguousStarts({
             if (sidsteGtSlut != null && dato < sidsteGtSlut + 2) continue;          // R6
             if (mr && acc.some((x) => items[x].mon)) continue;                      // R9
             if (naesteGtKlasse != null && klasseAf[k] !== naesteGtKlasse) continue; // R14
+            if (dato < gtEarliestStartDate) continue;                               // R15
           }
           if (mr && items[k].mon) {
             // R9: `gtAktiv` er praecis "en GT's loebsdags-spaend daekker denne loebsdag" -
@@ -675,6 +678,7 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG = 0,
+  gtEarliestStartDate = 0,
 }) {
   if (D < 1 || days < 1 || cap < 1) return null;
 
@@ -722,7 +726,7 @@ function layoutContiguous({
     loest = solveContiguousStarts({
       races: alle, D, days, cap, spineMinStages,
       monumentRules: trin.rules ? monumentRules : null,
-      stats,
+      stats, gtEarliestStartDate,
       ...(trin.maxSteps != null ? { maxSteps: trin.maxSteps } : {}),
     });
     forsoeg.push({
@@ -915,6 +919,23 @@ export const MAX_GT_STAGES_PER_DAY = 4;
 // GT'erne mod hinanden indtil to af dem delte en kalenderdag.
 export const MAX_GT_SPAN_DAYS = 6;
 
+// R15 (#5802, ejer 26/9 kl. 22:40): en Grand Tour maa ALDRIG starte paa saesonens foerste
+// kalenderdato. S3 aabnede med en GT paa dag 1, og det gav spiller-klager (sweep 20/8).
+// Tallet er et 0-BASERET DATO-INDEKS paa divisionens kalenderakse (0 = saesonens foerste
+// dag), saa 2 betyder "tidligst paa dag 3" - to dages luft, som ejeren foreslog.
+//
+// MAALT 26/9 paa prod-kataloget (racePoolCatalog.prod.json via calendarGoldenDiff): vaerdierne
+// 1, 2, 3 og 4 giver den SAMME kalender - Giroen starter paa dag 5, fordi det er dér
+// soegningen foerst finder en lovlig pakning - og ingen haard invariant brydes. Den read-only
+// S4-toerkoersel (--target-structure s4) med 2 giver ogsaa Giroen paa dag 5 og alle gates
+// groenne. Reglen koster altsaa ingen ekstra forskydning ud over at flytte
+// GT'en vaek fra dag 1. 2 er valgt som ejerens foreslaaede luft; den er ikke strammere end
+// hvad kataloget allerede giver, saa den ikke skubber paa kvote (§1b) eller monument-reglerne.
+//
+// Holdes som en BINDING i soegningen (R15 i solveContiguousStarts) og doemmes bagefter af
+// detectGrandTourEarlyStartViolations (calendarPlacementGates.js), der stopper --apply.
+export const GRAND_TOUR_EARLIEST_START_DATE_INDEX = 2;
+
 // Skridt-loft for det MONUMENT-BUNDNE soegeforsoeg (#4203). Det almindelige forsoeg beholder
 // solveContiguousStarts' eget loft paa 20 mio.
 //
@@ -1083,6 +1104,9 @@ export function packLaneCalendar({
   // Garantien: loebenes indbyrdes placering, datoer og etaper pr. dato er uae­ndrede -
   // padding tilfoejer KUN tomme loebsdage.
   raceDayTarget = 0,
+  // R15 (#5802, ejer 26/9): tidligste kalenderdato (0-baseret) en Grand Tour maa STARTE paa.
+  // Se GRAND_TOUR_EARLIEST_START_DATE_INDEX for begrundelse og maaling.
+  gtEarliestStartDate = GRAND_TOUR_EARLIEST_START_DATE_INDEX,
 } = {}) {
   const D = Math.max(1, density);
   const cap = Math.max(1, overlapCap);
@@ -1125,6 +1149,7 @@ export function packLaneCalendar({
     ? { placements: [], timelineLength: 0 }
     : layoutContiguous({
       stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG: maal,
+      gtEarliestStartDate,
     });
   if (!res) {
     throw new Error(

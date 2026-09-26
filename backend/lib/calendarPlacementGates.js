@@ -6,10 +6,12 @@
 //   §4   Monument maa ikke ligge inde i et Grand Tours loebsdags-spaend (#4203)
 //   §1   Mindste-overlap pr. division: en loebsdag skal have noget at vaelge imellem (#3329)
 //   §3   (tilfoejet 26/9, #5802) Grand Tours starter i rigtig raekkefoelge: Giro -> Tour -> Vuelta
+//   §3   (tilfoejet 26/9, #5802) ingen Grand Tour starter paa saesonens foerste dag
 //
 // REN FUNKTION: ingen DB, ingen fs, ingen vaegur-tid (hard rule 16). Alle taerskler kommer
-// fra deres SSOT-moduler (calendarTierCaps.js, grandTourRestDays.js) - denne fil definerer
-// INGEN egne tal.
+// fra deres SSOT-moduler (calendarTierCaps.js, grandTourRestDays.js, og for GT-startens
+// tidligste dato raceCalendarLanePacker.js ved siden af de andre GT-lofter) - denne fil
+// definerer INGEN egne tal.
 //
 // HVORFOR EN EGEN FIL OG IKKE I PAKKEREN: de tre regler maales paa den samme to-akse-form
 // (raceRows + stageRows med baade `scheduled_at` og `game_day`) som scorecardet i forvejen
@@ -24,6 +26,7 @@
 
 import { TIER_OVERLAP_CAP, TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
 
 /** Loebsdags-spaend pr. loeb: pool_race_id -> {first, last, stages}. */
 export function gameDaySpansByRace(stageRows = []) {
@@ -130,6 +133,50 @@ export function detectGrandTourOrderViolations({
   return [
     `tier ${tier}: Grand Tours starter i rækkefølgen ${planlagt}, men den rigtige kalenderrækkefølge er ${rigtig} (#5802)`,
   ];
+}
+
+/** Hele kalenderdage fra `fra` til `til` ("YYYY-MM-DD"), eller null hvis en af dem mangler. */
+function calendarDaysBetween(fra, til) {
+  const parse = (s) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s ?? ""));
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  };
+  const a = parse(fra), b = parse(til);
+  return a == null || b == null ? null : Math.round((b - a) / 86400000);
+}
+
+/**
+ * §3/#5802 (ejer 26/9 kl. 22:40): en Grand Tour maa ALDRIG starte paa saesonens foerste
+ * kalenderdato - og tidligst paa dato-indeks GRAND_TOUR_EARLIEST_START_DATE_INDEX (0 = dag 1).
+ *
+ * Hvorfor reglen findes: S3 aabnede med en GT paa dag 1, og spillerne klagede (sweep 20/8).
+ * S4-toerkoerslen 26/9 gjorde det samme igen (Giroen paa foerste dag), fordi ingen regel
+ * forbød det. Pakkeren holder nu reglen som binding (R15); denne gate er dommen, der stopper
+ * --apply hvis en fremtidig aendring braekker den igen.
+ *
+ * Maalt i KALENDERDAGE (ikke loebsdage): klagen handler om hvornaar i rigtig tid saesonen
+ * aabner med en GT. GT'ens foerste dato kommer fra `listGrandTourStarts` (tidligste
+ * `scheduled_at` blandt dens etaper). En GT uden dato kan ikke doemmes og springes over;
+ * mangler saesonens foerste dag, er der intet at maale op imod.
+ *
+ * @param {{tier:number, grandTourStarts:Array, seasonFirstDay:string|null,
+ *   earliestStartDateIndex?:number}} args
+ * @returns {string[]} violation-strings
+ */
+export function detectGrandTourEarlyStartViolations({
+  tier, grandTourStarts = [], seasonFirstDay = null,
+  earliestStartDateIndex = GRAND_TOUR_EARLIEST_START_DATE_INDEX,
+} = {}) {
+  if (!seasonFirstDay) return [];
+  const brud = [];
+  for (const gt of grandTourStarts) {
+    const idx = calendarDaysBetween(seasonFirstDay, gt.firstDate);
+    if (idx == null || idx >= earliestStartDateIndex) continue;
+    brud.push(
+      `tier ${tier}: ${gt.name} starter ${gt.firstDate} (dag ${idx + 1} i sæsonen) — en Grand Tour må tidligst starte på dag ${earliestStartDateIndex + 1} (#5802)`,
+    );
+  }
+  return brud;
 }
 
 /**

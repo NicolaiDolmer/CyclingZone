@@ -54,8 +54,9 @@ import { detectEmptyCalendarDays } from "./calendarDailyCoverage.js";
 import {
   detectMonumentsInsideGrandTours, computeGameDayOverlap,
   detectMinOverlapViolations, detectQuotaViolations,
-  detectGrandTourOrderViolations, listGrandTourStarts,
+  detectGrandTourOrderViolations, listGrandTourStarts, detectGrandTourEarlyStartViolations,
 } from "./calendarPlacementGates.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 import {
   detectRaceDayEqualityViolations, detectTrainingDayStreakViolations,
@@ -81,7 +82,9 @@ export function addCalendarDays(dateStr, n) {
  *   insert aldrig maaler hvert sit parcours, jf. #3347/#4104)
  * @param {Map}    args.archetypeByPoolRace   pool_race_id → terrain_archetype
  */
-export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace = new Map() } = {}) {
+export function scoreTierPlan({
+  plan, profilesByPoolRaceId, archetypeByPoolRace = new Map(), seasonFirstDay = null,
+} = {}) {
   const pool = (plan.pools ?? [])[0] ?? { raceRows: [], stageRows: [] };
   const raceRows = pool.raceRows ?? [];
   const stageRows = pool.stageRows ?? [];
@@ -149,6 +152,14 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     .filter((r) => typeof r.seasonFraction === "number").map((r) => [r.id, r.seasonFraction]));
   const grandTourStarts = listGrandTourStarts({ raceRows, stageRows, realOrderByPoolRace });
   const gtOrderViol = detectGrandTourOrderViolations({ tier: plan.tier, raceRows, stageRows, realOrderByPoolRace });
+  // §3/#5802 (ejer 26/9 kl. 22:40): ingen GT paa saesonens foerste dag. Uden en foerste dag
+  // fra kalderen maales der mod divisionens tidligste etape-dato (D1 har loeb hver dag, §2).
+  const foersteDag = seasonFirstDay ?? (stageRows
+    .map((st) => (st.scheduled_at == null ? null : String(st.scheduled_at).slice(0, 10)))
+    .filter(Boolean).sort()[0] ?? null);
+  const gtEarlyStartViol = detectGrandTourEarlyStartViolations({
+    tier: plan.tier, grandTourStarts, seasonFirstDay: foersteDag,
+  });
 
   return {
     tier: plan.tier,
@@ -186,7 +197,7 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     gameDayOverlap, overlapMin: overlapMinForTier,
     multiRaceShareMin: TIER_MULTI_RACE_DAY_MIN_SHARE[plan.tier] ?? null,
     monumentGtViol, minOverlapViol, quotaViol,
-    grandTourStarts, gtOrderViol,
+    grandTourStarts, gtOrderViol, gtEarlyStartViol,
   };
 }
 
@@ -229,6 +240,7 @@ export function scoreCalendarPlan({
       plan,
       profilesByPoolRaceId: profilesByTier.get(plan.tier) ?? new Map(),
       archetypeByPoolRace,
+      seasonFirstDay: firstRaceDay ?? null,
     }));
   }
 
@@ -273,7 +285,7 @@ export function scoreCalendarPlan({
   rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
       + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0)
-      + (t.gtOrderViol?.length ?? 0), 0)
+      + (t.gtOrderViol?.length ?? 0) + (t.gtEarlyStartViol?.length ?? 0), 0)
     // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
     + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0)
     // §1e/#5267: samme afgraensning som §1d — den taeller kun naar saesonen har et maal.
@@ -323,6 +335,7 @@ export function alleBrud(rapport) {
     for (const v of t.minOverlapViol ?? []) ud.push(v);
     for (const v of t.terrainBandViol ?? []) ud.push(v);
     for (const v of t.gtOrderViol ?? []) ud.push(v);
+    for (const v of t.gtEarlyStartViol ?? []) ud.push(v);
   }
   for (const v of rapport.sæsonFinaleViol ?? []) ud.push(`sæson: ${v}`.replace(/^sæson: sæson: /, "sæson: "));
   return ud;
@@ -343,6 +356,8 @@ export function scorecardGateGroups(rapport) {
     // #5802: GT-raekkefoelgen er et haardt krav uden override (ejer 26/9), samme klasse som
     // monument-i-GT: kalenderen skrives een gang pr. saeson og kan ikke rettes bagefter.
     for (const v of t.gtOrderViol ?? []) applyBlocking.push(`GT-rækkefølge (§3/#5802) — ${v}`);
+    // #5802 (ejer 26/9 kl. 22:40): ingen GT paa saesonens foerste dag - samme klasse, ingen override.
+    for (const v of t.gtEarlyStartViol ?? []) applyBlocking.push(`GT-start for tidligt (§3/#5802) — ${v}`);
     for (const v of t.finaleViol) finaleDrift.push(`finale-bånd (§7b) — ${v}`);
     for (const v of t.uniformViol) uniformDrift.push(`uniformt mål (§6b) — ${v}`);
   }
@@ -514,6 +529,10 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
           `${uvurderede.length ? ` · kan ikke vurderes uden virkelig dato: ${uvurderede.join(", ")}` : ""}`);
       }
       for (const v of t.gtOrderViol ?? []) out.push(`     ! ${v}`);
+      if (t.grandTourStarts?.length) {
+        out.push(`  ${ok((t.gtEarlyStartViol?.length ?? 0) === 0)} Ingen GT-start på sæsonens første dag (§3/#5802, tidligst dag ${GRAND_TOUR_EARLIEST_START_DATE_INDEX + 1}): ${t.gtEarlyStartViol?.length ?? 0} brud`);
+        for (const v of t.gtEarlyStartViol ?? []) out.push(`     ! ${v}`);
+      }
       out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);
       for (const v of t.planViolations.slice(0, 5)) out.push(`     ${v}`);
     }
