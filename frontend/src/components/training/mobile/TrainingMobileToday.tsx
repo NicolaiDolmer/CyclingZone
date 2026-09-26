@@ -270,6 +270,7 @@ export default function TrainingMobileToday({
         detail={selected && (
         <TrainingMobileRiderCard
           id={detailId}
+          riderId={selected.id}
           name={`${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim()}
           meta={[
             [
