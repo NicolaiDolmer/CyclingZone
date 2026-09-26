@@ -100,11 +100,13 @@
       },
       {
         "km": 58,
-        "type": "sprint_decided",
+        "type": "finale_attack",
         "params": {
-          "winner_rider_id": "r01",
+          "kind": "stage_decided",
+          "rider_id": "r01",
           "group_id": "finale-winner-0",
-          "finale_type": "punch"
+          "finale_type": "punch",
+          "win_type": "solo_win"
         }
       },
       {
@@ -171,7 +173,7 @@
               "gap": 17.11
             }
           ],
-          "win_type": "group_finish"
+          "win_type": "solo_win"
         }
       }
     ]

@@ -32,6 +32,7 @@ import type {
 } from "./types.ts";
 import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
+import { classifyRoadWinType } from "./winType.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -523,17 +524,61 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     });
   }
 
+  // ── Sejrstypen (#5577, spec M2) ──────────────────────────────────────────
+  // Finalen ved hvordan etapen blev afgjort: hvor mange der kaempede om sejren,
+  // hvor stort feltet var, og om puljen kun var et udbrud. Klassifikationen bor
+  // i winType.ts; her afgoeres den ÉN gang og baeres af finalens eget
+  // afgoerelses-event, som index.ts's buildFinishEvent laeser (én kilde, saa
+  // finish-eventets win_type og finalens event aldrig kan vaere uenige).
+  //
+  // `sprint_decided` udsendes KUN ved en massespurt. Foer kom det for enhver
+  // vinder, og filmen skrev "det bliver taet mellem X og forfoelgerne" efter en
+  // solosejr. Ellers et `finale_attack` (kind "stage_decided"): med `rider_id`
+  // naar vinderen koerte fra de andre (solo, eller en selektiv finale), saa
+  // filmen viser "X angriber i finalen"; ved en reduceret spurt paa en
+  // massefinale-rute hedder feltet `winner_rider_id`, saa filmen tier og
+  // maallinjen ("vinder en taet finish") fortaeller det.
   const winnerGroup = placementGroups[0] ?? survivingGroups[0] ?? null;
   if (winnerGroup) {
-    events.push({
-      km: finishKm,
-      type: "sprint_decided",
-      params: {
-        winner_rider_id: winnerGroup.rider_ids[0],
-        group_id: winnerGroup.id,
-        finale_type: route.finale_type,
-      },
+    const winnerId = winnerGroup.rider_ids[0];
+    const massFinish = isMassFinishRoute(route);
+    const decidedInPool = placementGroups.length > 0;
+    const frontPoolSize = frontPool.reduce((n, g) => n + g.rider_ids.length, 0);
+    const winType = classifyRoadWinType({
+      poolSize: decidedInPool ? contenderIds.length : winnerGroup.rider_ids.length,
+      fieldSize,
+      massFinish,
+      escapeOnlyPool:
+        !decidedInPool ||
+        (contenderIds.length === frontPoolSize && frontPool.every((g) => g.kind === "breakaway" || g.kind === "solo")),
+      bunchMinFieldFraction: extra.bunchCatchMinFieldFraction,
+      bunchMinRiders: extra.bunchCatchMinRiders,
     });
+    if (winType === "sprint_win") {
+      events.push({
+        km: finishKm,
+        type: "sprint_decided",
+        params: {
+          winner_rider_id: winnerId,
+          group_id: winnerGroup.id,
+          finale_type: route.finale_type,
+          win_type: winType,
+        },
+      });
+    } else {
+      const riderGotClear = winType === "solo_win" || !massFinish;
+      events.push({
+        km: finishKm,
+        type: "finale_attack",
+        params: {
+          kind: "stage_decided",
+          ...(riderGotClear ? { rider_id: winnerId } : { winner_rider_id: winnerId }),
+          group_id: winnerGroup.id,
+          finale_type: route.finale_type,
+          win_type: winType,
+        },
+      });
+    }
   }
 
   const newGroups: RaceGroup[] = [...placementGroups, ...survivingGroups];
