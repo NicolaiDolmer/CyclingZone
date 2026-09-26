@@ -3371,7 +3371,8 @@ export default function TrainingPage() {
         )}
 
         {/* Træningsrapport-historik (#1533) — seneste 30 dage. */}
-        <TrainingHistory history={history} />
+        {/* #5734: samme trainingScore-kort som Today (null = training_score_visible off) — TrainingHistory slaar selv dags-dato op i .spark. */}
+        <TrainingHistory history={history} trainingScore={trainingScore} />
       </div>
       </TabPanel>
       </Tabs>
