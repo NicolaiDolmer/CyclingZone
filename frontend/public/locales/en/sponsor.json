@@ -119,6 +119,7 @@
     "divisionPicker": "Preview rate for a division",
     "divisionPill": "Division {division} · {count} stages",
     "deadline": "The amount locks the moment you sign, priced from the division and the results you have that day, and it stays locked for the whole contract. The deal itself starts with season {season}. If you don't choose, the club signs the 1-season safe deal for you at the price these offers opened at.",
+    "amountFollowsClub": "The amount follows your own club: your reputation, your division and where you stand in your group. Two clubs can pick the same sponsor and get different offers.",
     "empty": "No offers are available right now. A new deal can be negotiated once the current contract is up for renewal.",
     "choose": "Choose",
     "pending": "Selected",
