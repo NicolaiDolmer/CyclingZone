@@ -131,6 +131,47 @@ test("#3855 rankedFromV4Output: gap til vinderen, 1..N uden huller, team_id vedh
   assert.deepEqual(Object.keys(ranked[0]).sort(), ["components", "rank", "rider_id", "stageGap", "team_id"]);
 });
 
+test("#5577 rankedFromV4Output: vinderens række bærer finish-eventets sejrstype og motorens udbrudsdom", () => {
+  const output = {
+    results: [
+      { rider_id: "a", rank: 1, time_seconds: 100, group_id: "g1", status: "finished" },
+      { rider_id: "b", rank: 2, time_seconds: 103, group_id: "g2", status: "finished" },
+    ],
+    timeline: { events: [{ km: 150, type: "finish", params: { top: [{ rider_id: "a", rank: 1, gap: 0 }], win_type: "solo_win" } }] },
+  };
+  const ranked = rankedFromV4Output(output, { breakawayWin: true });
+  assert.equal(ranked[0].win_type, "solo_win");
+  assert.equal(ranked[0].breakaway_win, true);
+  assert.deepEqual(Object.keys(ranked[1]).sort(), ["components", "rank", "rider_id", "stageGap", "team_id"], "kun vinderens række");
+  assert.equal("win_type" in ranked[0].components, false, "ingen score-komponent opdigtes");
+});
+
+test("#5577 rankedFromV4Output: ingen sejrstype når finish-eventets vinder ikke er rækkens vinder", () => {
+  // Vinderen er udgået (M10) og filtreret fra: finish-eventet taler om en anden rytter.
+  const ranked = rankedFromV4Output({
+    results: [
+      { rider_id: "a", rank: 1, time_seconds: 100, group_id: "g1", status: "abandoned" },
+      { rider_id: "b", rank: 2, time_seconds: 103, group_id: "g1", status: "finished" },
+    ],
+    timeline: { events: [{ km: 150, type: "finish", params: { top: [{ rider_id: "a", rank: 1, gap: 0 }], win_type: "close_win" } }] },
+  });
+  assert.equal(ranked[0].rider_id, "b");
+  assert.equal("win_type" in ranked[0], false);
+  assert.equal("breakaway_win" in ranked[0], false, "ukendt udbrudsdom (null) stemples ikke");
+});
+
+test("#5577 adapteren (ægte motor): vinderens sejrstype er en kendt nøgle, aldrig pladsholderen", async () => {
+  __resetRaceEngineV4Cache();
+  const engine = await loadRaceEngineV4();
+  const result = engine.simulateStage({
+    entrants: makeEntrants(40), stageProfile: stageProfile(), seedString: "race-v4-test:5577", stageNumber: 1, teamOrderRows: [],
+  });
+  const finish = result.v4Output.timeline.events.find((e) => e.type === "finish");
+  assert.ok(["sprint_win", "close_win", "solo_win"].includes(finish.params.win_type), `fik ${finish.params.win_type}`);
+  assert.equal(result.ranked[0].win_type, finish.params.win_type);
+  assert.equal(typeof result.ranked[0].breakaway_win, "boolean", "en vejetape har altid en udbrudsdom");
+});
+
 test("#3855 rankedFromV4Output: abandoned udelades og efterlader ingen huller i rangeringen", () => {
   const ranked = rankedFromV4Output({
     results: [
