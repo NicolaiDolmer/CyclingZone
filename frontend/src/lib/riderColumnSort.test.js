@@ -1,6 +1,26 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { compareRidersByFilter, applyRiderColumnSort } from "./riderColumnSort.js";
+import { compareRidersByFilter, applyRiderColumnSort, riderNameSortKey } from "./riderColumnSort.js";
+
+// ── riderNameSortKey (#5805) ────────────────────────────────────────────────
+// Delt navne-nøgle for My Team og U23/junior-truppen: efternavn, så fornavn.
+test("riderNameSortKey: efternavn før fornavn, små bogstaver", () => {
+  assert.equal(riderNameSortKey({ firstname: "Anna", lastname: "Zeller" }), "zeller anna");
+});
+
+test("riderNameSortKey: manglende navnedele giver ingen 'undefined' og ingen kant-mellemrum", () => {
+  assert.equal(riderNameSortKey({ lastname: "Berg" }), "berg");
+  assert.equal(riderNameSortKey({ firstname: "Carl" }), "carl");
+  assert.equal(riderNameSortKey(null), "");
+});
+
+test("compareRidersByFilter: navne-sortering følger efternavnet, ikke fornavnet", () => {
+  const a = { firstname: "Anna", lastname: "Zeller" };
+  const b = { firstname: "Zoe", lastname: "Berg" };
+  const filters = { sort: "firstname", sort_dir: "asc" };
+  assert.ok(compareRidersByFilter(b, a, filters) < 0);
+  assert.ok(compareRidersByFilter(a, b, filters) > 0);
+});
 
 // ── compareRidersByFilter: _scoutMid (#3787) ────────────────────────────────
 // Klient-side potentiale-sortering (Mit Hold, Ønskeliste, Auktioner) driver
