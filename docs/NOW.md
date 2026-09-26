@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** byg KUN via wave.js; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
 
-> **🤖 Working agent:** Ingen aktiv session (workflow-session 26/9 lukket 23:15; natsession starter på prompten).
+> **🤖 Working agent:** NAT-SESSION 26/9 → 27/9 (startet 23:20). Bølge wf_f9363de3-390: #5812 (v4 segmenter+udbrud), #5814 (tilmeldings-påmindelse, ny mailtype), #4385/PR #5800, #4629/PR #5801, #5805/PR #5810. Kø: #5813 (v4 tidsgrænse) efter #5812. Morgenrapport: `private-handoffs/2026-09-27-morgenrapport.md`.
