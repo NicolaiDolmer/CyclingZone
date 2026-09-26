@@ -194,7 +194,7 @@ for (const width of WIDTHS) {
 
       // (b) instruktionslinjen over gitteret er synlig — #5633 punkt 1
       // ("skjult medlemsfunktion"), ikke kun en hover-only title-tooltip.
-      await expect(card.getByText("Tryk på et medlem for at se dennes syn på bestyrelsen.")).toBeVisible();
+      await expect(card.getByText("Tryk på et medlem for at se, hvad de mener, og hvilke mål de ejer.")).toBeVisible();
 
       // (a) alle fem tiles har SAMME navne-højde, uanset 1-ords vs. 4-ords
       // navn ("trange navne" — foer #5633 pressede et langt navn naboerne).
