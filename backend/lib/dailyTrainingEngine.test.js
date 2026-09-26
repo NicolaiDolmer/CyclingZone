@@ -12,6 +12,8 @@ import { raceDaySeedKey } from "./trainingRaceDayTick.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { incidentInjuryUpsertRows } from './raceRunner.js';
 import { resolveIncidentInjuryEndDate } from './injuryRaceDays.js';
+import { programWeekDaysFor, setProgramCell, stripProgramFromWeekDays } from "./trainingPrograms.js";
+import { TRAINING_PROGRAMS_FLAG_KEY } from "./trainingProgramsFlag.js";
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
 // Understøtter: select/eq/in/update/insert/upsert/delete — de operationer engine'n bruger.
@@ -2169,4 +2171,134 @@ test("#4850 C2 (tick pr. loebsdag off): bit-identisk — etape-opslaget koerer a
   assert.equal(rr.bound_race_day, false);
   assert.equal(rr.intensity, "hard", "rytteren traener praecis som i dag");
   assert.ok(rr.gains.climbing >= 1);
+});
+
+// ── #4629: traeningsprogrammer pr. loebsdag (beta 26/9) ───────────────────────
+// NOW er en fredag (Europe/Copenhagen). "Sprinter"-programmets fredag = sprint.
+const OWNER_ID = "user-owner";
+
+function seedProgramFlag(state, { value = "on", ownerBeta = false } = {}) {
+  state.app_config = [...(state.app_config ?? []), { key: TRAINING_PROGRAMS_FLAG_KEY, value }];
+  // Motoren slaar holdets ejer op i beta-stadiet. Bevar en evt. division fra
+  // seedRaceDayTick.
+  const existing = (state.teams ?? []).find((t) => t.id === TEAM_ID) ?? { id: TEAM_ID };
+  state.teams = [{ ...existing, user_id: OWNER_ID }];
+  state.users = [{ id: OWNER_ID, role: "manager", is_beta_tester: ownerBeta }];
+}
+
+function seedRiderProgram(state, { riderId = "r1", programKey = "sprinter", days = null } = {}) {
+  state.training_week_plans = [
+    ...(state.training_week_plans ?? []),
+    { id: `wp-${riderId}`, team_id: TEAM_ID, rider_id: riderId, days: days ?? programWeekDaysFor(programKey) },
+  ];
+}
+
+const HARD_PLAN = { rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" };
+
+test("#4629 flag OFF = bit-identisk: en programraekke laeses som den gamle ugerytme (intensitet), fokus uroert", async () => {
+  // A: programraekken (session + afledt intensitet), flaget findes ikke (fail-safe off).
+  const withProgram = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(withProgram);
+  // B: SAMME raekke uden programfelterne — praecis det den gamle sti ser.
+  const legacyOnly = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(legacyOnly, { days: stripProgramFromWeekDays(programWeekDaysFor("sprinter")) });
+
+  const a = (await runDay(withProgram)).report.riders[0];
+  const b = (await runDay(legacyOnly)).report.riders[0];
+  assert.equal(a.focus, "vo2max", "flag off: programmets session saetter IKKE fokus");
+  assert.equal(a.focus, b.focus);
+  assert.equal(a.intensity, b.intensity);
+  assert.deepEqual(a.gains, b.gains, "samme udbytte som den gamle sti, bit for bit");
+  assert.equal((withProgram.users ?? []).length, 0, "intet ejer-opslag naar flaget er off");
+});
+
+test("#4629 flag off-stadie ('off') = samme som intet flag, ogsaa med programdata", async () => {
+  const state = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(state);
+  seedProgramFlag(state, { value: "off", ownerBeta: true });
+  const rr = (await runDay(state)).report.riders[0];
+  assert.equal(rr.focus, "vo2max");
+});
+
+test("#4629 flag ON: rytterens programcelle saetter sessionen (fokus + intensitet) — lag 1 vinder over egen plan", async () => {
+  const state = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(state);
+  seedProgramFlag(state, { value: "on" });
+  const rr = (await runDay(state)).report.riders[0];
+  assert.equal(rr.focus, "sprint", "fredag i Sprinter = sprint");
+  assert.equal(rr.intensity, "hard");
+});
+
+test("#4629 flag BETA: kun hold hvis ejer er beta-tester laeser programceller", async () => {
+  const notBeta = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(notBeta);
+  seedProgramFlag(notBeta, { value: "beta", ownerBeta: false });
+  assert.equal((await runDay(notBeta)).report.riders[0].focus, "vo2max", "ikke-beta: dagens adfaerd");
+
+  const beta = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(beta);
+  seedProgramFlag(beta, { value: "beta", ownerBeta: true });
+  assert.equal((await runDay(beta)).report.riders[0].focus, "sprint", "beta-ejer: programmet koerer");
+});
+
+test("#4629 hvile/restitution i programmet: hvile bevarer fokus, restitution bruger restitutions-noeglen", async () => {
+  const rest = seedState({ plans: [HARD_PLAN] });
+  const restDays = setProgramCell(programWeekDaysFor("sprinter"), { weekday: "fri", session: "rest" });
+  seedRiderProgram(rest, { days: restDays });
+  seedProgramFlag(rest);
+  const r1 = (await runDay(rest)).report.riders[0];
+  assert.equal(r1.intensity, "rest");
+  assert.equal(r1.focus, "vo2max", "hvile bevarer rytterens fokus (REST_FOCUS_FALLBACK-reglen)");
+  assert.deepEqual(r1.gains, {});
+
+  const rec = seedState({ plans: [HARD_PLAN] });
+  seedRiderProgram(rec, { days: setProgramCell(programWeekDaysFor("sprinter"), { weekday: "fri", session: "recovery" }) });
+  seedProgramFlag(rec);
+  const r2 = (await runDay(rec)).report.riders[0];
+  assert.equal(r2.intensity, "recovery");
+  assert.equal(r2.focus, "restitution");
+});
+
+test("#4629 override vinder: en enkelt loebsdags-celle slaar ugedagens session (loebsdag 12 = slot 2)", async () => {
+  const state = seedState({ plans: [HARD_PLAN] });
+  seedRaceDayTick(state, { gameDay: 12 });
+  const days = setProgramCell(programWeekDaysFor("sprinter"), { weekday: "fri", slotIndex: 2, session: "technique" });
+  seedRiderProgram(state, { days });
+  seedProgramFlag(state);
+  const rr = (await runDay(state, { gameDay: 12 })).report.riders[0];
+  assert.equal(rr.focus, "technique", "cellens override vinder over ugedagens sprint");
+  assert.equal(rr.intensity, "easy");
+
+  // En ANDEN loebsdag samme dato (slot 3) foelger ugedagen.
+  const other = seedState({ plans: [HARD_PLAN] });
+  seedRaceDayTick(other, { gameDay: 13 });
+  seedRiderProgram(other, { days });
+  seedProgramFlag(other);
+  const rr2 = (await runDay(other, { gameDay: 13 })).report.riders[0];
+  assert.equal(rr2.focus, "sprint", "slot 3 har ingen override: ugedagens session");
+});
+
+test("#4629 override vinder: rytterens egen programraekke slaar holdets programraekke", async () => {
+  const state = seedState({ riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })], abilities: [makeAbilityRow("r1"), makeAbilityRow("r2")] });
+  state.training_week_plans = [
+    { id: "wp-team", team_id: TEAM_ID, rider_id: null, days: programWeekDaysFor("time_trial") },
+  ];
+  seedRiderProgram(state, { riderId: "r1", programKey: "sprinter" });
+  seedProgramFlag(state);
+  const riders = (await runDay(state)).report.riders;
+  assert.equal(riders.find((r) => r.rider_id === "r1").focus, "sprint", "r1: egen raekke (lag 1)");
+  // TT-specialist fredag = endurance; r2 har ingen egen plan → holdets raekke (lag 3).
+  assert.equal(riders.find((r) => r.rider_id === "r2").focus, "endurance");
+});
+
+test("#4629 loeb er loeb: en bundet rytter paa loebsdagen springer programmets session over (hvile)", async () => {
+  const state = seedState({ plans: [HARD_PLAN] });
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedBinding(state, { gameDay: 12 });
+  seedRiderProgram(state);
+  seedProgramFlag(state);
+  const rr = (await runDay(state, { gameDay: 12 })).report.riders[0];
+  assert.equal(rr.bound_race_day, true);
+  assert.equal(rr.intensity, "rest", "loeb (eller bundet) = ingen programsession");
+  assert.deepEqual(rr.gains, {});
 });

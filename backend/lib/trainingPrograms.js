@@ -209,6 +209,25 @@ export function weekDaysHaveSessions(days) {
   return WEEKDAY_KEYS.some((weekday) => isProgramSession(days[weekday]?.session));
 }
 
+// Den gamle intensitets-editor (#1895) skriver en REN ugerytme. Har `days`
+// programceller med, fjernes `session`/`slots`, saa en raekke aldrig baerer en
+// session der modsiger sin intensitet. Uden programdata returneres SAMME
+// objekt, saa den gamle skrivesti er uaendret.
+export function stripProgramFromWeekDays(days) {
+  if (!days || typeof days !== "object") return days;
+  const hasProgram = Object.values(days).some(
+    (entry) => entry && typeof entry === "object" && ("session" in entry || "slots" in entry),
+  );
+  if (!hasProgram) return days;
+  const out = {};
+  for (const [weekday, entry] of Object.entries(days)) {
+    if (!entry || typeof entry !== "object") { out[weekday] = entry; continue; }
+    const { session: _s, slots: _sl, ...rest } = entry;
+    out[weekday] = rest;
+  }
+  return out;
+}
+
 // Validering af en program-plan: alle 7 ugedage, hver med en gyldig session,
 // den AFLEDTE intensitet, og valgfrie slots (null eller gyldig session).
 export function isValidProgramWeekDays(days) {
