@@ -40,8 +40,9 @@ import * as v4Timeline from "../../../lib/engine/v4/timeline.ts";
 import { seasonUuid } from "../../buildSeasonCalendar.js";
 
 import { loadS4Races, S4_FIRST_RACE_DAY } from "./s4PlanSource.mjs";
+import { loadYouthEntrants } from "./youthField.mjs";
 import {
-  selectRacesForCoverage, coverageReport, terrainFamily, parseGap, compactSnapshots, displayEvents,
+  selectRacesForCoverage, coverageReport, terrainFamily, parseGap, compactSnapshots, displayEvents, syntheticRaceId,
 } from "./packCore.js";
 import { buildPack } from "./buildPack.js";
 import { renderPackHtml } from "./renderPackHtml.js";
@@ -102,6 +103,80 @@ function v3RowsForStage(resultRows, { isStageRace, stageNumber }) {
     }));
 }
 
+/**
+ * Koer ét loeb med begge motorer og gem uge-1-etaperne som raa poster.
+ * Samme felt, samme etaper, samme seed (raceSeedInput(race.id, etape)).
+ */
+function runRace({ race, raceObj, stagesSorted, entrants, v3On, timelineOn, stageRecords, raceMeta }) {
+  const tRace = performance.now();
+  const isStageRace = race.race_type === "stage_race";
+  const v3 = buildRaceResults({ race: raceObj, stages: stagesSorted, entrants, pointsLookup: {}, v3: v3On, timeline: timelineOn });
+  const rec = recordingV4Engine();
+  buildRaceResults({
+    race: raceObj, stages: stagesSorted, entrants, pointsLookup: {}, v3: v3On, timeline: timelineOn,
+    v4Engine: rec.engine, teamOrderRows: [],
+  });
+  const riderTeam = Object.fromEntries(entrants.map((e) => [e.rider_id, e.team_id]));
+  const riders = Object.fromEntries(entrants.map((e) => [e.rider_id, { name: e.rider_name, team: e.team_id }]));
+  const teams = Object.fromEntries(entrants.filter((e) => e.team_id != null).map((e) => [e.team_id, { name: e.team_name, ai: e.team_is_ai === true }]));
+  raceMeta.push({
+    key: race.id, name: race.name, tier: race.tier, squad: race.squad, race_class: race.race_class,
+    race_type: race.race_type, stageCount: stagesSorted.length, week1Stages: race.week1Stages,
+    field: entrants.length, teamCount: Object.keys(teams).length, riders, teams,
+    syntheticYouth: race.syntheticYouth === true,
+    ms: Math.round(performance.now() - tRace),
+  });
+  for (const stage of stagesSorted) {
+    if (!race.week1Stages.includes(stage.stage_number)) continue;
+    const got = rec.recorded.get(stage.stage_number);
+    if (!got) continue;
+    const starters = new Set(got.v4Output.results.map((r) => r.rider_id));
+    const favorites = entrants
+      .filter((e) => starters.has(e.rider_id))
+      .map((e) => ({ rider_id: e.rider_id, score: stageSuitabilityScores(e.abilities, [stage])[0] ?? 0 }))
+      .sort((a, b) => b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id)))
+      .slice(0, 3)
+      .map((f) => ({ rider_id: f.rider_id }));
+    const v3Timeline = v3.timelines.find((t) => t.stage_number === stage.stage_number);
+    const rawEvents = got.v4Output.timeline?.events ?? [];
+    stageRecords.push({
+      raceKey: race.id,
+      stage_number: stage.stage_number,
+      scheduled_at: stage.scheduled_at,
+      profile_type: stage.profile_type,
+      finale_type: stage.finale_type,
+      distance_km: stage.distance_km,
+      elevation_gain_m: stage.elevation_gain_m,
+      segmentCount: Array.isArray(stage.segments) ? stage.segments.length : null,
+      family: terrainFamily(stage.profile_type),
+      isStageRace,
+      favorites,
+      riderTeam,
+      v4: {
+        results: got.v4Output.results.map((r) => ({
+          rider_id: r.rider_id, rank: r.rank, time_seconds: r.time_seconds, group_id: r.group_id,
+          status: r.status, reinstated_by: r.reinstated_by ?? null,
+        })),
+        events: displayEvents(rawEvents),
+        gapTrack: rawEvents
+          .filter((e) => e.type === "gap_update" && e.params?.group_id != null)
+          .map((e) => [Math.round(e.km * 10) / 10, String(e.params.group_id), Math.round(Number(e.params.gap_seconds) || 0)]),
+        groupSnapshots: got.v4Output.groupSnapshots,
+        snapshots: compactSnapshots(got.v4Output.groupSnapshots ?? []),
+        incidents: (got.v4Output.incidents ?? []).map((i) => ({ rider_id: i.rider_id, km: i.km, kind: i.kind, severity: i.severity ?? null, outcome: i.outcome ?? null })),
+        trace: got.trace,
+        timelineValid: got.timelineValid,
+      },
+      v3: {
+        rows: v3RowsForStage(v3.resultRows, { isStageRace, stageNumber: stage.stage_number }),
+        events: (v3Timeline?.events ?? []).map((e) => ({ km: e.km ?? null, type: e.type, params: e.params ?? {} })),
+        incidents: v3.incidents.filter((i) => i.stage_number === stage.stage_number).map((i) => ({ rider_id: i.rider_id, kind: i.kind, outcome: i.outcome ?? null })),
+      },
+    });
+  }
+  console.log(`[5804] ${race.squad} D${race.tier} ${race.name}: ${entrants.length} ryttere, ${stagesSorted.length} etaper (uge 1: ${race.week1Stages.join(",")}) — ${Math.round(performance.now() - tRace)} ms`);
+}
+
 async function readFlags(supabase) {
   const { data } = await supabase.from("app_config").select("key, value")
     .in("key", ["race_engine_v3_scoring", "race_stage_timeline", "race_engine_v4"]);
@@ -137,79 +212,43 @@ async function main() {
 
   const stageRecords = [];
   const raceMeta = [];
+  const runOpts = { v3On, timelineOn, stageRecords, raceMeta };
   for (const race of picked) {
     const stagesSorted = [...race.stages].sort((a, b) => a.stage_number - b.stage_number);
     const raceObj = {
       id: race.id, season_id: seasonUuid(4), league_division_id: race.poolId, name: race.name,
       race_class: race.race_class, race_type: race.race_type, stages: stagesSorted.length, squad: race.squad,
     };
-    const tRace = performance.now();
     const entrants = await loadEntrantsForRace({ supabase, race: raceObj, stages: stagesSorted, persist: false });
     if (!entrants.length) {
       notes.push(`${race.name} (${race.squad} D${race.tier}): intet startfelt kunne udtages — sprunget over.`);
       continue;
     }
-    const isStageRace = race.race_type === "stage_race";
-    const v3 = buildRaceResults({ race: raceObj, stages: stagesSorted, entrants, pointsLookup: {}, v3: v3On, timeline: timelineOn });
-    const rec = recordingV4Engine();
-    const v4 = buildRaceResults({
-      race: raceObj, stages: stagesSorted, entrants, pointsLookup: {}, v3: v3On, timeline: timelineOn,
-      v4Engine: rec.engine, teamOrderRows: [],
-    });
-    const riderTeam = Object.fromEntries(entrants.map((e) => [e.rider_id, e.team_id]));
-    const riders = Object.fromEntries(entrants.map((e) => [e.rider_id, { name: e.rider_name, team: e.team_id }]));
-    const teams = Object.fromEntries(entrants.filter((e) => e.team_id != null).map((e) => [e.team_id, { name: e.team_name, ai: e.team_is_ai === true }]));
-    raceMeta.push({
-      key: race.id, name: race.name, tier: race.tier, squad: race.squad, race_class: race.race_class,
-      race_type: race.race_type, stageCount: stagesSorted.length, week1Stages: race.week1Stages,
-      field: entrants.length, teamCount: Object.keys(teams).length, riders, teams,
-      ms: Math.round(performance.now() - tRace),
-    });
-    for (const stage of stagesSorted) {
-      if (!race.week1Stages.includes(stage.stage_number)) continue;
-      const got = rec.recorded.get(stage.stage_number);
-      if (!got) continue;
-      const starters = new Set(got.v4Output.results.map((r) => r.rider_id));
-      const favorites = entrants
-        .filter((e) => starters.has(e.rider_id))
-        .map((e) => ({ rider_id: e.rider_id, score: stageSuitabilityScores(e.abilities, [stage])[0] ?? 0 }))
-        .sort((a, b) => b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id)))
-        .slice(0, 3)
-        .map((f) => ({ rider_id: f.rider_id }));
-      const v3Timeline = v3.timelines.find((t) => t.stage_number === stage.stage_number);
-      stageRecords.push({
-        raceKey: race.id,
-        stage_number: stage.stage_number,
-        scheduled_at: stage.scheduled_at,
-        profile_type: stage.profile_type,
-        finale_type: stage.finale_type,
-        distance_km: stage.distance_km,
-        elevation_gain_m: stage.elevation_gain_m,
-        family: terrainFamily(stage.profile_type),
-        isStageRace,
-        favorites,
-        riderTeam,
-        v4: {
-          results: got.v4Output.results.map((r) => ({
-            rider_id: r.rider_id, rank: r.rank, time_seconds: r.time_seconds, group_id: r.group_id,
-            status: r.status, reinstated_by: r.reinstated_by ?? null,
-          })),
-          events: displayEvents(got.v4Output.timeline?.events ?? []),
-          groupSnapshots: got.v4Output.groupSnapshots,
-          snapshots: compactSnapshots(got.v4Output.groupSnapshots ?? []),
-          incidents: (got.v4Output.incidents ?? []).map((i) => ({ rider_id: i.rider_id, km: i.km, kind: i.kind, severity: i.severity ?? null, outcome: i.outcome ?? null })),
-          trace: got.trace,
-          timelineValid: got.timelineValid,
-        },
-        v3: {
-          rows: v3RowsForStage(v3.resultRows, { isStageRace, stageNumber: stage.stage_number }),
-          events: (v3Timeline?.events ?? []).map((e) => ({ km: e.km ?? null, type: e.type, params: e.params ?? {} })),
-          incidents: v3.incidents.filter((i) => i.stage_number === stage.stage_number).map((i) => ({ rider_id: i.rider_id, kind: i.kind, outcome: i.outcome ?? null })),
-        },
-        v4ResultRowsCount: v4.resultRows.filter((r) => r.stage_number === stage.stage_number).length,
-      });
+    runRace({ race, raceObj, stagesSorted, entrants, ...runOpts });
+  }
+
+  // Ungdom (#5804 "hvis muligt"): findes der ingen ungdomskalender, koeres ét U23-felt
+  // af de rigtige U23-ryttere paa en S4-etape fra planen (tydeligt maerket syntetisk).
+  if (youth && !picked.some((p) => p.squad !== "senior")) {
+    const host = picked.find((p) => p.squad === "senior" && p.race_type !== "stage_race"
+      && p.stages.some((s) => terrainFamily(s.profile_type) === "kuperet"))
+      ?? picked.find((p) => p.squad === "senior" && p.race_type !== "stage_race");
+    if (host) {
+      const stagesSorted = [...host.stages].sort((a, b) => a.stage_number - b.stage_number);
+      const entrants = await loadYouthEntrants({ supabase, squad: "u23", stages: stagesSorted });
+      if (entrants.length) {
+        const id = syntheticRaceId(`u23-synthetic:${host.id}`);
+        const race = {
+          ...host, id, key: id, squad: "u23", tier: 1, poolId: null, name: `${host.name} (U23-felt)`, race_class: "Class2",
+          syntheticYouth: true,
+        };
+        const raceObj = { id, season_id: seasonUuid(4), league_division_id: null, name: race.name, race_class: "Class2", race_type: host.race_type, stages: stagesSorted.length, squad: "u23" };
+        runRace({ race, raceObj, stagesSorted, entrants, ...runOpts });
+        notes.push(`Ungdom: der findes ingen U23-/juniorpuljer i prod endnu, så ingen ungdomskalender. I stedet er ét U23-felt (de rigtige U23-ryttere, ${entrants.length} fra hold med mindst 3) kørt på etapen fra ${host.name}.`);
+      } else {
+        notes.push("Ungdom: ingen U23-ryttere kunne udtages; ingen ungdomsetape.");
+      }
     }
-    console.log(`[5804] ${race.squad} D${race.tier} ${race.name}: ${entrants.length} ryttere, ${stagesSorted.length} etaper (uge 1: ${race.week1Stages.join(",")}) — ${Math.round(performance.now() - tRace)} ms`);
   }
 
   const pack = buildPack({

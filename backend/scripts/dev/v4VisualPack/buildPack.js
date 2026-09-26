@@ -56,9 +56,9 @@ export function buildDanishSummary({ summary, analyses, coverage = [] }) {
   else watch.push(favLine);
 
   const bw = s.breakaway;
-  const bwLine = `Udbrud: dannet på ${bw.formed} af ${bw.roadStages} linjeløbsetaper, vandt ${bw.won} (${pct(bw.winShare)}).`;
+  const bwLine = `Udbrud: dannet undervejs på ${bw.formed} af ${bw.roadStages} linjeløbsetaper; udbrudssejr efter motorens egen dom ${bw.won} (${pct(bw.winShare)}); vinderen havde siddet i et udbrud undervejs ${bw.winnerEverInBreakaway} gange.`;
   if (bw.formed === 0 && bw.roadStages > 0) wrong.push(`${bwLine} Intet udbrud på nogen etape ligner ikke cykelsport.`);
-  else if (bw.won === 0 && bw.roadStages >= 8) watch.push(`${bwLine} Ingen udbrudssejre i en hel uge er i den lave ende.`);
+  else if (bw.won === 0 && bw.roadStages >= 8) wrong.push(`${bwLine} Ingen udbrudssejre på en hel uges linjeløb ligner ikke cykelsport.`);
   else works.push(bwLine);
 
   works.push(`Sejrstyper v4: ${winTypeText(s.winTypesV4)}. v3: ${winTypeText(s.winTypesV3)}.`);
@@ -72,7 +72,11 @@ export function buildDanishSummary({ summary, analyses, coverage = [] }) {
   const otlNonMountain = analyses.filter((a) => a.anomalies.some((x) => x.code === "otl_non_mountain")).length;
   if (s.otl === 0) watch.push("Ingen ryttere uden for tidsgrænsen i hele ugen, heller ikke på bjergetaperne. Tidsgrænsen blev ikke prøvet af.");
   else works.push(`Tidsgrænse: ${s.otl} ryttere uden for på ${s.stagesWithOtl} etape(r); grupettoen reddede ${s.rescued}.`);
-  if (otlNonMountain > 0) wrong.push(`${otlNonMountain} etape(r) uden bjerge havde ryttere uden for tidsgrænsen.`);
+  if (otlNonMountain > 0) {
+    const list = analyses.filter((a) => a.anomalies.some((x) => x.code === "otl_non_mountain"));
+    const n = list.reduce((sum, a) => sum + a.v4.otl, 0);
+    wrong.push(`${otlNonMountain} etape(r) uden bjerge (${[...new Set(list.map((a) => FAMILY_LABEL[a.family] ?? a.family))].join(", ")}) sendte i alt ${n} ryttere uden for tidsgrænsen. På de samme etaper kom v3's sidste mand højst ${Math.round(Math.max(...list.map((a) => a.v3.lastGap)) / 60)} min efter vinderen, v4's op til ${Math.round(Math.max(...list.map((a) => a.v4.lastGap)) / 60)} min.`);
+  }
 
   for (const [family, f] of Object.entries(s.byFamily)) {
     if ((family === "bjerg" || family === "hoejfjeld") && f.meanFinishGroupsV4 <= 1.5) {
@@ -82,6 +86,24 @@ export function buildDanishSummary({ summary, analyses, coverage = [] }) {
       watch.push(`Flad: flere solosejre (${f.winTypesV4.solo_win ?? 0}) end massespurter (${f.winTypesV4.sprint_win ?? 0}) i v4.`);
     }
   }
+
+  const withCode = (code) => analyses.filter((a) => a.anomalies.some((x) => x.code === code));
+  const atFinish = withCode("breakaway_at_finish");
+  if (atFinish.length) {
+    const fams = [...new Set(atFinish.map((a) => FAMILY_LABEL[a.family] ?? a.family))].join(", ");
+    wrong.push(`${atFinish.length} etape(r) (${fams}) hvor udbruddet først 'går' på mållinjen: intet skete undervejs, og spillerens film viser 'Udbrud går' i mål.`);
+  }
+  const single = withCode("single_segment");
+  if (single.length) {
+    const fams = [...new Set(single.map((a) => FAMILY_LABEL[a.family] ?? a.family))].join(", ");
+    wrong.push(`${single.length} linjeløbsetape(r) (${fams}) er ét langt segment i motoren, så der er intet forløb at vise før målet.`);
+  }
+  const late = withCode("breakaway_late");
+  if (late.length) watch.push(`${late.length} etape(r) hvor udbruddet først dannes i finalen.`);
+  const traceMismatch = withCode("trace_breakaway_mismatch").length + withCode("trace_says_no_breakaway_win").length;
+  if (traceMismatch) wrong.push(`${traceMismatch} etape(r) hvor motorens udbrudsdom og resultatet ikke stemmer overens.`);
+  const beaten = withCode("survived_then_beaten").length;
+  if (beaten) watch.push(`${beaten} etape(r) hvor tidslinjen viser 'Udbrud holder' på sidste segment, men udbruddet blev hentet eller slået i finalen. Korrekt efter motorens regel, men spilleren kan læse det som en udbrudssejr.`);
 
   const divergent = analyses.filter((a) => a.anomalies.some((x) => x.code === "favorite_diverges")).length;
   if (divergent > 0) watch.push(`${divergent} etape(r) hvor favoritten var på podiet i v3 men uden for top 10 i v4.`);

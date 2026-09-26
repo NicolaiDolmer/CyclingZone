@@ -108,7 +108,7 @@ export function stageInWindow(stage, { from, to }) {
  *   youthMaxRaces?: number, groups?: Array<{squad: string, tier: number|null}>}} args
  * @returns {Array<object>} de valgte loeb med `week1Stages` (etape-numre i ugen) og `simulateThrough`
  */
-export function selectRacesForCoverage({ races, window, maxRacesPerGroup = 6, youthMaxRaces = 2, groups = null }) {
+export function selectRacesForCoverage({ races, window, maxRacesPerGroup = 10, youthMaxRaces = 2, groups = null }) {
   const byGroup = new Map();
   for (const race of races) {
     const week1 = (race.stages ?? []).filter((s) => stageInWindow(s, window));
@@ -134,8 +134,12 @@ export function selectRacesForCoverage({ races, window, maxRacesPerGroup = 6, yo
     while (picked.filter((p) => p.groupKey === groupKey).length < limit && pool.length) {
       let best = null;
       for (const c of pool) {
-        const gain = [...c.families].filter((f) => !covered.has(f)).length;
-        const score = gain / Math.max(1, c.simulateThrough);
+        const fresh = [...c.families].filter((f) => !covered.has(f));
+        const gain = fresh.length;
+        // Ejerens seks familier vejer tungest; de oevrige (bakket, grus) tages med
+        // naar de kommer gratis eller billigt.
+        const weighted = fresh.reduce((sum, f) => sum + (REQUIRED_FAMILIES.includes(f) ? 10 : 1), 0);
+        const score = weighted / Math.max(1, c.simulateThrough);
         if (
           !best || score > best.score
           || (score === best.score && c.simulateThrough < best.c.simulateThrough)
@@ -181,6 +185,12 @@ export function coverageReport({ races, picked, window }) {
 // ---------------------------------------------------------------------------
 
 /** "+M:SS" -> sekunder (samme form som raceClassifications.formatGap). */
+/** sekunder -> "12:34" (min:sek), til anomali-teksterne. */
+export function fmtGapPlain(seconds) {
+  const t = Math.max(0, Math.round(Number(seconds) || 0));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+}
+
 export function parseGap(text) {
   const m = /^\+?(\d+):(\d{2})$/u.exec(String(text ?? "").trim());
   return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
@@ -212,15 +222,18 @@ function riderIdsOfEvent(ev) {
 }
 
 /**
- * Udbruddets medlemmer: det foerste gruppe-snapshot med en gruppe af art
- * "breakaway" (tidslinjens breakaway_formed viser kun de tre foerste id'er).
+ * Alle ryttere der paa noget tidspunkt sad i en gruppe af art "breakaway"
+ * (tidslinjens breakaway_formed viser kun de tre foerste id'er, og en etape kan
+ * have flere udbrud, fx et nyt efter at det foerste blev hentet).
  */
 export function breakawayMembers(groupSnapshots = []) {
+  const out = new Set();
   for (const snap of groupSnapshots) {
-    const g = (snap.groups ?? []).find((x) => x.kind === "breakaway");
-    if (g) return new Set((g.rider_ids ?? []).map(String));
+    for (const g of snap.groups ?? []) {
+      if (g.kind === "breakaway") for (const id of g.rider_ids ?? []) out.add(String(id));
+    }
   }
-  return new Set();
+  return out;
 }
 
 /** Komprimér gruppe-snapshots til tegning: [km, [[art, antal, gab, id]]]. */
@@ -304,12 +317,19 @@ export function analyzeStage(rec) {
   const has = (type) => events.some((e) => e.type === type);
   const v4Winner = v4Rows[0]?.rider_id ?? null;
   const winnerInBreakaway = v4Winner != null && bwMembers.has(v4Winner);
+  // breakaway_survived = gruppen findes stadig paa SIDSTE segment; finalen afgoer
+  // derefter om den baeres i maal (mechanics/breakaway.ts). Ikke en sejrs-paastand.
+  const survivedEvents = events.filter((e) => e.type === "breakaway_survived");
+  const survivedIds = new Set(survivedEvents.flatMap((e) => (e.params?.rider_ids ?? []).map(String)));
+  const caughtGroups = new Set(events.filter((e) => e.type === "breakaway_caught").map((e) => e.params?.group_id).filter(Boolean));
+  const survivedGroups = new Set(survivedEvents.map((e) => e.params?.group_id).filter(Boolean));
   const breakaway = {
     formed: has("breakaway_formed"),
     caught: has("breakaway_caught"),
     survived: has("breakaway_survived"),
     size: bwMembers.size,
     winnerFromBreakaway: winnerInBreakaway,
+    winnerFromSurvivor: v4Winner != null && survivedIds.has(v4Winner),
     engineSaysBreakawayWin: rec.v4?.trace?.breakaway_win ?? null,
   };
 
@@ -344,20 +364,40 @@ export function analyzeStage(rec) {
   if (rec.v4?.timelineValid === false) {
     flag("hoej", "timeline_invalid", "Motorens egen validator afviste tidslinjen; broen ville ikke gemme filmen.");
   }
-  if (breakaway.survived && !winnerInBreakaway && !TIME_TRIAL_FAMILIES.has(family)) {
-    flag("hoej", "survived_but_not_won", "Tidslinjen siger 'udbrud holdt', men vinderen var ikke i udbruddet.");
+  const distance = Number(rec.distance_km) || 0;
+  const formedAt = events.find((e) => e.type === "breakaway_formed")?.km ?? null;
+  breakaway.formedAtKm = formedAt;
+  breakaway.formedDuringRace = breakaway.formed && !(formedAt != null && distance > 0 && formedAt >= distance - 0.5);
+  const isRoad = !TIME_TRIAL_FAMILIES.has(family);
+  if (isRoad && formedAt != null && distance > 0 && formedAt >= distance - 0.5) {
+    flag("hoej", "breakaway_at_finish", `Udbruddet 'går' først på mållinjen (km ${formedAt} af ${distance}): der var intet udbrud undervejs.`);
+  } else if (isRoad && formedAt != null && distance > 0 && formedAt > distance * 0.85) {
+    flag("middel", "breakaway_late", `Udbruddet dannes først i finalen (km ${formedAt} af ${distance}).`);
   }
-  if (breakaway.caught && breakaway.survived) {
-    flag("middel", "caught_and_survived", "Udbruddet står både som hentet og som holdt i samme etape.");
+  const snapshotCount = (rec.v4?.groupSnapshots ?? rec.v4?.snapshots ?? []).length;
+  if (isRoad && snapshotCount <= 1) {
+    flag("middel", "single_segment", "Ruten er ét langt segment i motoren: filmen har intet forløb undervejs, kun målet.");
+  }
+  if (breakaway.survived && !breakaway.winnerFromSurvivor && !TIME_TRIAL_FAMILIES.has(family)) {
+    flag("lav", "survived_then_beaten", "Udbruddet nåede sidste segment (tidslinjen: 'Udbrud holder'), men blev hentet eller slået i finalen.");
+  }
+  if ([...caughtGroups].some((g) => survivedGroups.has(g))) {
+    flag("hoej", "caught_and_survived", "Samme udbrud står både som hentet og som holdt.");
   }
   if (breakaway.engineSaysBreakawayWin === true && !winnerInBreakaway) {
-    flag("hoej", "trace_breakaway_mismatch", "Motorens dom siger udbrudssejr, men vinderen var ikke i udbruddets første snapshot.");
+    flag("hoej", "trace_breakaway_mismatch", "Motorens dom siger udbrudssejr, men vinderen sad aldrig i et udbrud.");
+  }
+  if (breakaway.engineSaysBreakawayWin === false && breakaway.winnerFromSurvivor && v4WinType === "solo_win") {
+    flag("middel", "trace_says_no_breakaway_win", "Vinderen kom solo fra et udbrud der holdt til sidste segment, men motorens dom siger ikke udbrudssejr.");
   }
   if (breakaway.caught && winnerInBreakaway && breakaway.engineSaysBreakawayWin === false && v4WinType === "solo_win") {
     flag("lav", "caught_then_solo", "Udbruddet blev hentet, og en udbrydder vandt alligevel solo (kontra-angreb eller forsinket hentning).");
   }
   if (otl > 0 && !MOUNTAIN_FAMILIES.has(family)) {
-    flag("middel", "otl_non_mountain", `${otl} rytter(e) uden for tidsgrænsen på en ${FAMILY_LABEL[family] ?? family}-etape.`);
+    // Flad/bakket: uden stigninger af betydning boer ingen komme uden for; kuperet,
+    // brosten og grus kan splitte feltet nok til at det sker.
+    const easy = family === "flad" || family === "bakket";
+    flag(easy ? "hoej" : "middel", "otl_non_mountain", `${otl} rytter(e) uden for tidsgrænsen på en ${FAMILY_LABEL[family] ?? family}-etape (sidste mand ${fmtGapPlain(v4Rows.filter((r) => r.status !== "abandoned").reduce((m, r) => Math.max(m, r.gap), 0))} efter; ${rescued} reddet af grupettoen; v3's sidste mand ${fmtGapPlain(v3Rows.reduce((m, r) => Math.max(m, r.gap), 0))}).`);
   }
   if (otl > 0 && MOUNTAIN_FAMILIES.has(family)) {
     flag("lav", "otl_mountain", `${otl} rytter(e) uden for tidsgrænsen (bjergetape; ${rescued} reddet af grupettoen).`);
@@ -390,7 +430,8 @@ export function analyzeStage(rec) {
       rescued,
       incidents: incidents.length,
       top10Spread: v4Rows[Math.min(9, v4Rows.length - 1)]?.gap ?? 0,
-      lastGap: v4Finishers.length ? v4Rows.find((r) => r.rider_id === v4Finishers[v4Finishers.length - 1].rider_id)?.gap ?? 0 : 0,
+      // Sidste mand der kom i maal, OTL medregnet (de kom i maal, bare for sent).
+      lastGap: v4Rows.filter((r) => r.status !== "abandoned").reduce((m, r) => Math.max(m, r.gap), 0),
     },
     v3: {
       top10: v3Rows.slice(0, 10),
@@ -431,8 +472,10 @@ export function summarizeAnalyses(analyses) {
   const favTop10V4 = withFav.filter((a) => a.favorite.v4Rank != null && a.favorite.v4Rank <= 10).length;
   const favTop10V3 = withFav.filter((a) => a.favorite.v3Rank != null && a.favorite.v3Rank <= 10).length;
   const roads = analyses.filter((a) => !TIME_TRIAL_FAMILIES.has(a.family));
-  const bwFormed = roads.filter((a) => a.breakaway.formed).length;
-  const bwWon = roads.filter((a) => a.breakaway.winnerFromBreakaway).length;
+  const bwFormed = roads.filter((a) => a.breakaway.formedDuringRace ?? a.breakaway.formed).length;
+  // Motorens EGEN dom (trace.breakaway_win), samme kilde som fortaellingen bruger.
+  const bwWon = roads.filter((a) => a.breakaway.engineSaysBreakawayWin === true).length;
+  const bwRiderWon = roads.filter((a) => a.breakaway.winnerFromBreakaway).length;
   const sevCount = (sev) => analyses.reduce((s, a) => s + a.anomalies.filter((x) => x.severity === sev).length, 0);
   const winTypes = (engine) => {
     const c = {};
@@ -451,7 +494,7 @@ export function summarizeAnalyses(analyses) {
       top10V4: favTop10V4, top10V3: favTop10V3,
       winShareV4: share(favWinV4, withFav.length), winShareV3: share(favWinV3, withFav.length),
     },
-    breakaway: { roadStages: roads.length, formed: bwFormed, won: bwWon, winShare: share(bwWon, roads.length) },
+    breakaway: { roadStages: roads.length, formed: bwFormed, won: bwWon, winnerEverInBreakaway: bwRiderWon, winShare: share(bwWon, roads.length) },
     otl: analyses.reduce((s, a) => s + a.v4.otl, 0),
     stagesWithOtl: analyses.filter((a) => a.v4.otl > 0).length,
     rescued: analyses.reduce((s, a) => s + a.v4.rescued, 0),

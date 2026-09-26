@@ -28,7 +28,8 @@ const SQUAD_LABEL = { senior: "", u23: "U23 ", junior: "Junior " };
 
 function divisionLabel(race) {
   if (!race) return "?";
-  if (race.squad && race.squad !== "senior") return `${SQUAD_LABEL[race.squad] ?? race.squad} D${race.tier}`;
+  if (race.syntheticYouth) return `${(SQUAD_LABEL[race.squad] ?? race.squad).trim()} (syntetisk)`;
+  if (race.squad && race.squad !== "senior") return `${SQUAD_LABEL[race.squad] ?? race.squad}D${race.tier}`;
   return `D${race.tier}`;
 }
 
@@ -69,7 +70,13 @@ function teamName(race, id) {
  * (stoerrelse = antal ryttere), linjer mellem samme gruppe-id. Events som maerker
  * langs toppen.
  */
-export function renderFilmSvg({ snapshots = [], events = [], distanceKm = null }) {
+export function groupKindFromId(id) {
+  const m = /^(breakaway|peloton|chase|gruppetto|solo)/u.exec(String(id ?? ""));
+  if (m) return m[1];
+  return String(id ?? "").startsWith("finale-bunch") ? "peloton" : "chase";
+}
+
+export function renderFilmSvg({ snapshots = [], events = [], gapTrack = [], distanceKm = null }) {
   const W = 960;
   const H = 260;
   const L = 52;
@@ -77,7 +84,7 @@ export function renderFilmSvg({ snapshots = [], events = [], distanceKm = null }
   const T = 34;
   const B = 26;
   const maxKm = Math.max(Number(distanceKm) || 0, ...snapshots.map((s) => s[0]), ...events.map((e) => e.km), 1);
-  const maxGap = Math.max(30, ...snapshots.flatMap((s) => s[1].map((g) => g[2])));
+  const maxGap = Math.max(30, ...snapshots.flatMap((s) => s[1].map((g) => g[2])), ...gapTrack.map((g) => g[2]));
   const x = (km) => L + ((W - L - R) * km) / maxKm;
   const y = (gap) => T + (H - T - B) * Math.sqrt(Math.max(0, gap) / maxGap);
   const parts = [];
@@ -100,7 +107,14 @@ export function renderFilmSvg({ snapshots = [], events = [], distanceKm = null }
       pathById.get(id).pts.push([x(km), y(gap)]);
     }
   }
+  // Tidslinjens gab-maalinger (gap_update) mellem segmentgraenserne.
+  for (const [km, id, gap] of gapTrack) {
+    if (!pathById.has(id)) pathById.set(id, { kind: groupKindFromId(id), pts: [] });
+    pathById.get(id).pts.push([x(km), y(gap)]);
+    parts.push(`<circle cx="${x(km).toFixed(1)}" cy="${y(gap).toFixed(1)}" r="1.6" fill="${GROUP_COLOR[groupKindFromId(id)] ?? "var(--muted)"}"><title>km ${km}: ${esc(GROUP_LABEL[groupKindFromId(id)] ?? id)} ${fmtGap(gap)}</title></circle>`);
+  }
   for (const { kind, pts } of pathById.values()) {
+    pts.sort((a, b) => a[0] - b[0]);
     if (pts.length < 2) continue;
     const d = pts.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)} ${py.toFixed(1)}`).join(" ");
     parts.push(`<path d="${d}" fill="none" stroke="${GROUP_COLOR[kind] ?? "var(--muted)"}" stroke-width="1.2" opacity="0.55"/>`);
@@ -213,7 +227,7 @@ function stageSection(race, stage, idx) {
     <div><span class="k">Sidste mand</span><span class="v">v4 ${fmtGap(a.v4.lastGap)} · v3 ${fmtGap(a.v3.lastGap)}</span></div>
   </div>
   ${chips ? `<ul class="chips">${chips}</ul>` : `<p class="ok">Ingen anomalier på denne etape.</p>`}
-  <figure>${renderFilmSvg({ snapshots: stage.v4.snapshots ?? [], events: stage.v4.events ?? [], distanceKm: stage.distance_km })}
+  <figure>${renderFilmSvg({ snapshots: stage.v4.snapshots ?? [], events: stage.v4.events ?? [], gapTrack: stage.v4.gapTrack ?? [], distanceKm: stage.distance_km })}
     <figcaption>v4's film: hver prik er en gruppe ved en segmentgrænse (størrelse = antal ryttere), lodret = tidsgab bag teten. Mærker: U udbrud går · H hentet · U! holder · S felt splittes · A angreb · ! uheld · F favorit knækker · TG tidsgrænse · G grupetto reddet.</figcaption>
   </figure>
   ${top10Table(race, stage)}
@@ -291,6 +305,7 @@ h3{font-size:18px;margin:2px 0}
 table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{font-weight:600;color:var(--muted);font-size:12px}
 .wrap{overflow-x:auto}.miss{color:var(--c-bad)}
+a{color:inherit;text-decoration-color:var(--gold);text-underline-offset:3px}
 .stage{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:16px;margin:18px 0}
 .kicker{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.meta{color:var(--muted);font-size:13px}
 .fam{font-weight:600;color:var(--fg)}
