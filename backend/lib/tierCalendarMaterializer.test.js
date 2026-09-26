@@ -506,6 +506,39 @@ test("#5644 materialize: læser kun aktive puljer (retired_at IS NULL) — E-H f
   assert.ok(sb.state.races.every((r) => r.squad === "senior"), "seniorløb skrives med squad = 'senior'");
 });
 
+// #5795: S4-kalenderen skrives FØR pensioneringen. E-H står aktive i databasen, men planen
+// behandler dem som pensioneret (cutoverRetiredPoolIds). Resultatet skal være PRÆCIS den
+// kalender der ville være skrevet efter pensioneringen, og retired_at må ikke røres.
+test("#5795 materialize: cutoverRetiredPoolIds giver E-H 0 løb, identisk med en rigtig pensionering", async () => {
+  const d4 = (retiredEH) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+    id: 40 + i, tier: 4, pool_index: i, label: `Division 4 — ${i}`, retired_at: retiredEH && i >= 4 ? "2026-09-27T20:00:00Z" : null,
+  }));
+  const catalog = [];
+  [5, 4, 4, 4, 3].forEach((st, i) => catalog.push({ id: `c1-sr-${i}`, name: `C1 ${i}`, race_class: "Class1", race_type: "stage_race", stages: st }));
+  for (let i = 0; i < 30; i++) catalog.push({ id: `c2-od-${i}`, name: `C2 Classic ${i}`, race_class: "Class2", race_type: "single", stages: 1 });
+  const args = { seasonId: "s4", from: FROM, dryRun: false, quotas: { 4: 20 }, seasonTransitionAt: null, ...LEGACY_MIX };
+
+  const projected = makeSupabase({ league_divisions: d4(false), teams: [], race_pool: catalog });
+  await materializeTierCalendars({ supabase: projected, ...args, cutoverRetiredPoolIds: [44, 45, 46, 47] });
+  const real = makeSupabase({ league_divisions: d4(true), teams: [], race_pool: catalog });
+  await materializeTierCalendars({ supabase: real, ...args });
+
+  const pools = (sb) => [...new Set(sb.state.races.map((r) => r.league_division_id))].sort((a, b) => a - b);
+  assert.deepEqual(pools(projected), [40, 41, 42, 43], "kun D4 A-D har løb");
+  const shape = (sb) => sb.state.races
+    .map((r) => `${r.league_division_id}|${r.pool_race_id}|${r.name}|${r.game_day_start ?? r.game_day ?? ""}`).sort();
+  assert.deepEqual(shape(projected), shape(real), "samme kalender som efter en rigtig pensionering");
+  assert.ok(projected.state.league_divisions.every((d) => d.retired_at === null), "retired_at røres ikke");
+});
+
+test("#5795 materialize: cutoverRetiredPoolIds på en trups kalender kastes", async () => {
+  const sb = makeSupabase({ league_divisions: [], teams: [], race_pool: [] });
+  await assert.rejects(
+    () => materializeTierCalendars({ supabase: sb, seasonId: "s4", from: FROM, squad: "u23", cutoverRetiredPoolIds: [1] }),
+    /senior-only/,
+  );
+});
+
 test("#5644 reconcile: en pensioneret pulje og en trups gruppe aktiveres aldrig af seniorens reconcile", async () => {
   const state = tier4ActivationState();
   state.league_divisions.push({ id: 90, tier: 1, pool_index: 0, label: "U23 — A", squad: "u23" });
