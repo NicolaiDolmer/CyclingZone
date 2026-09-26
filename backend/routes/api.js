@@ -275,7 +275,7 @@ import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
-import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad } from "../lib/academyTransfer.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
@@ -350,10 +350,6 @@ import {
   riderSpecialty,
   ABILITY_KEYS,
 } from "../lib/riderValuation.js";
-// #2428 værdimodel v4 slice 1 (shadow) — separat fra v3 ovenfor. predictBaseValueV4
-// bygges parallelt i riderCareerNpv.js (Kontrakt 3); route degraderer til 503 hvis
-// modellen endnu ikke er fittet — se getValuationModel().
-import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 // #5443: model-kontakten. Læse-fladerne herunder skal vise den model
 // produktionen faktisk regner med, ikke en JSON de selv har indlæst ved boot.
 import { loadValuationModelCached } from "../lib/riderValuationModelSelect.js";
@@ -533,6 +529,7 @@ import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistor
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { SEASON_RACE_DAY_TARGET } from "../lib/calendarRaceDayTargets.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
+import { createValuePreviewService, parseValuePreviewQuery } from "../lib/adminValuePreview.js"; // #5686
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -1878,10 +1875,19 @@ router.get("/riders/:id/academy-demote-quote", requireAuth, async (req, res) => 
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
 
+  // #5748: flyt-dialogen viser konsekvensen for det mål manageren har VALGT
+  // (?squad=junior|u23), ikke kun for den naturlige trup. Uden parameteren
+  // svarer routen som før. Et ugyldigt mål afvises, så dialogen aldrig viser tal
+  // for en trup moveRider() ikke kender.
+  const requestedSquad = req.query.squad;
+  if (requestedSquad !== undefined && requestedSquad !== "junior" && requestedSquad !== "u23") {
+    return res.status(400).json({ error: "invalid_squad", errorCode: "invalid_squad" });
+  }
+
   // #5568: dialogen viste "9 af 8", fordi den talte ALLE akademiryttere mod det
   // gamle flade loft. Nu viser den den trup rytteren faktisk rykker ned i, valgt
   // af demoteTargetSquad (samme funktion som demote() selv), og den trups loft.
-  const targetSquad = demoteTargetSquad(rider, await getActiveSeasonNumber());
+  const targetSquad = demoteTargetSquad(rider, await getActiveSeasonNumber(), requestedSquad);
   const [racesCleared, racesOngoing, squadRoom] = await Promise.all([
     countFutureRaceEntries(supabase, rider.id),
     countOngoingRaceEntries(supabase, rider.id),
@@ -11207,7 +11213,10 @@ router.get("/admin/rider-valuation-preview-v4", requireAdmin, async (req, res) =
       let v4Value = null;
       if (age != null) {
         try {
-          v4Value = predictBaseValueV4({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, valuationModel);
+          // #5497: predictBaseValue, ikke predictBaseValueV4 — for v4/v5 er det
+          // samme kald (dispatch på version 4 + fit), for v6 den typefri pris på
+          // det trin app_config står på, præcis som rytterkortet og databasen.
+          v4Value = predictBaseValue({ ...r, potentiale: potentialeByRider.get(r.id), age }, ab, valuationModel);
         } catch (err) {
           // Én dårlig rytterrække (fx manglende potentiale) må ikke vælte hele
           // shadow-preview'et — degradér til null for den ene rytter og log.
@@ -13995,6 +14004,21 @@ router.get("/admin/value-transition", requireOwner, async (req, res) => {
     }
     captureApiRouteError(e, req); res.status(500).json({ error: e.message });
   }
+});
+
+// GET /api/admin/value-preview?to=<model>&step=<0-4> — #5686: EJER-forhåndsvisning
+// af hele populationens rytterværdi FØR (modellen app_config peger på nu) og
+// EFTER (`to`, et id fra VALUATION_MODEL_IDS) ved trin `step`. Samme
+// beregningssti som søndagskørslen (recomputeRiderValue); se
+// lib/adminValuePreview.js. READ-ONLY: ingen POST findes, og intet skrives.
+// Resultatet caches 5 min i hukommelsen pr. (from, to, step).
+const valuePreviewService = createValuePreviewService();
+router.get("/admin/value-preview", requireOwner, async (req, res) => {
+  const parsed = parseValuePreviewQuery(req.query);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+  try {
+    res.json(await valuePreviewService.getPreview(supabase, { to: parsed.to, step: parsed.step }));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/market/pause — hent pause-state (level + paused_at + reason)
@@ -18741,6 +18765,33 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
     }
     captureException(err);
     res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/riders/:id/squad — flyt en rytter til en valgt trup (#5748, ejer-go A
+// 25/9). Body: { squad: 'junior'|'u23'|'senior' }. Én indgang for alle retninger:
+// op til senior, ned fra senior og junior ↔ U23, via moveRider() (#5432), der
+// ejer alders-, loft-, auktions- og etapeløbs-reglerne. /academy/promote og
+// /academy/demote bliver stående for ældre klienter. Fejlkoder: se
+// handleMoveSquadRequest i academyTransfer.js.
+router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled", errorCode: "academy_disabled" });
+
+    const seasonNumber = await getActiveSeasonNumber();
+    const out = await handleMoveSquadRequest(supabase, {
+      teamId: req.team.id,
+      riderId: req.params.id,
+      body: req.body,
+      seasonNumber,
+    });
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err?.message ?? "" });
   }
 });
 

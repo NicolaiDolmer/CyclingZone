@@ -11,6 +11,7 @@ import {
   HELP_BLOCK_FLAGS,
   HELP_SECTION_FLAGS,
   helpGateFlagKeys,
+  isHelpBlockFlagVisible,
   isHelpBlockVisible,
   isHelpSectionVisible,
 } from "./helpFlagGates.js";
@@ -20,7 +21,24 @@ import { betaAccessMockRoute } from "../preview/betaAccessMock.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "HelpPage.jsx"), "utf8");
 
-const ALL_OFF = { race_engine_v4: false, board_mandate_model_enabled: false, training_tick_per_race_day: false };
+const ALL_OFF = {
+  race_engine_v4: false,
+  board_mandate_model_enabled: false,
+  training_tick_per_race_day: false,
+  training_score_visible: false,
+};
+
+// #5274: enkeltstaaende BLOK-niveau-flag staar direkte i SECTION_DEFS
+// (`flag: "<key>"`), ikke i en af tabellerne i helpFlagGates.js. Samme
+// kilde-regex-moenster som testen nederst i filen.
+function sectionDefsBlockFlags() {
+  const match = source.match(/const SECTION_DEFS = \[([\s\S]*?)\n\];/);
+  assert.ok(match, "HelpPage.jsx mangler 'const SECTION_DEFS = [...]'");
+  return [...match[1].matchAll(/id: "(\w+)",\s*kind: "\w+",\s*flag: "([^"]+)"/g)].map((m) => ({
+    id: m[1],
+    flag: m[2],
+  }));
+}
 
 test("raceDay vises naar race_engine_v4 er on, skjult ellers", () => {
   assert.equal(isHelpSectionVisible("raceDay", { ...ALL_OFF, race_engine_v4: true }), true);
@@ -75,8 +93,32 @@ test("blokke uden gate er altid synlige", () => {
   assert.equal(isHelpBlockVisible("dailytraining", "constructor", {}), true);
 });
 
+// #5274: den generiske enkelt-flag-mekanisme (ingen off-tvilling, SECTION_DEFS'
+// egen `flag`-egenskab), testet direkte paa den rene funktion.
+test("isHelpBlockFlagVisible: vist naar flaget er true, skjult ellers — og altid vist uden flag", () => {
+  assert.equal(isHelpBlockFlagVisible("training_score_visible", { ...ALL_OFF, training_score_visible: true }), true);
+  assert.equal(isHelpBlockFlagVisible("training_score_visible", ALL_OFF), false);
+  // Manglende noegle, fejlsvar ({}) og mens svaret hentes (null) er skjult.
+  assert.equal(isHelpBlockFlagVisible("training_score_visible", {}), false);
+  assert.equal(isHelpBlockFlagVisible("training_score_visible", null), false);
+  // Et raat stadie der sniger sig igennem er ikke "on".
+  assert.equal(isHelpBlockFlagVisible("training_score_visible", { training_score_visible: "on" }), false);
+  assert.equal(isHelpBlockFlagVisible("training_score_visible", { training_score_visible: "beta" }), false);
+  // Ingen flag-egenskab (undefined) = altid synlig, ligesom HELP_BLOCK_FLAGS.
+  assert.equal(isHelpBlockFlagVisible(undefined, null), true);
+  assert.equal(isHelpBlockFlagVisible(undefined, ALL_OFF), true);
+});
+
+test("dailytraining.trainingScore er registreret i SECTION_DEFS med flag: training_score_visible", () => {
+  const blockFlags = sectionDefsBlockFlags();
+  const entry = blockFlags.find((b) => b.id === "trainingScore");
+  assert.ok(entry, "trainingScore mangler en `flag`-egenskab i SECTION_DEFS — #5274 er ikke koblet paa");
+  assert.equal(entry.flag, "training_score_visible");
+});
+
 test("hvert flag Hjaelp-siden gater paa staar i backendens allowlist", () => {
-  const missing = helpGateFlagKeys().filter((key) => !PLAYER_VISIBLE_FLAG_KEYS.includes(key));
+  const extraKeys = sectionDefsBlockFlags().map((b) => b.flag);
+  const missing = helpGateFlagKeys(extraKeys).filter((key) => !PLAYER_VISIBLE_FLAG_KEYS.includes(key));
   assert.deepEqual(
     missing,
     [],
@@ -114,6 +156,13 @@ test("hver gated sektion og blok findes i SECTION_DEFS i HelpPage.jsx", () => {
       assert.ok(defs.get(key).includes(id), `HELP_BLOCK_FLAGS.${key}.${id} peger paa en blok der ikke findes`);
     }
   }
+  // #5274: samme kontrakt for de enkeltstaaende `flag`-blokke — regexet ovenfor
+  // fanger kun id'et, saa dette er blot en dobbelt-sikring mod at
+  // sectionDefsBlockFlags()' egen regex er ude af trit.
+  for (const { id } of sectionDefsBlockFlags()) {
+    const allBlockIds = [...defs.values()].flat();
+    assert.ok(allBlockIds.includes(id), `SECTION_DEFS' \`flag\`-egenskab peger paa en blok der ikke findes: ${id}`);
+  }
 });
 
 test("HelpPage bruger ÉN mekanisme: ingen hardkodede gates eller saerkald tilbage", () => {
@@ -123,4 +172,5 @@ test("HelpPage bruger ÉN mekanisme: ingen hardkodede gates eller saerkald tilba
   assert.match(source, /fetchPlayerFeatureFlags\(\)/, "HelpPage henter ikke flag-svaret");
   assert.match(source, /isHelpSectionVisible\(/, "sektionerne filtreres ikke gennem helpFlagGates");
   assert.match(source, /isHelpBlockVisible\(/, "blokkene filtreres ikke gennem helpFlagGates");
+  assert.match(source, /isHelpBlockFlagVisible\(/, "#5274: blok-flaget filtreres ikke gennem helpFlagGates");
 });

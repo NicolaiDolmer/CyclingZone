@@ -162,6 +162,53 @@ export async function fetchAllAluntaInvoices(client, { perPage = 100, maxPages =
   return all;
 }
 
+// #5694 (CYCLINGZONE-62, triage 24/9): 97 Sentry-events på 6 dage — samme
+// fund ("ubetalte fakturaer og/eller entitlement-afvigelser fundet") gentaget
+// hver time, fordi capturen ikke skelnede "stadig samme sag" fra "nyt fund".
+//
+// Dedup-tilstanden er IN-MEMORY og PROCES-LEVETID (ingen ny tabel, jf.
+// beslutning i issuet) — den overlever bevidst IKKE et redeploy/restart: en
+// frisk proces skal kunne alarmere fra bunden i stedet for at en stale
+// fingerprint fra FØR redeploy blokerer en ægte ny alarm.
+//
+// Kun selve Sentry-capturen deduplikeres. Ops-alerten (logger.warn — fanges
+// af Railway-logvagten #4453 og Discord derfra) er UÆNDRET: den linje logges
+// hver kørsel, uanset dedup, så det operative signal ikke bliver svagere.
+function createOverdueWatchDedupeState() {
+  return { fingerprint: null, dateKey: null };
+}
+
+let overdueWatchDedupeState = createOverdueWatchDedupeState();
+
+// Test-only: nulstiller dedup-tilstanden mellem tests. cron.js (produktion)
+// kalder denne ALDRIG — tilstanden skal netop overleve på tværs af kørsler.
+export function resetOverdueWatchDedupeState() {
+  overdueWatchDedupeState = createOverdueWatchDedupeState();
+}
+
+// PUR: et sorteret, stabilt fingerprint for det aktuelle fund. To kørsler med
+// samme faktura-/team-id'er giver samme fingerprint, uanset hvilken rækkefølge
+// Alunta/Supabase returnerer rækkerne i, og uanset at daysOverdue/state-detaljer
+// ændrer sig dag for dag for den SAMME sag.
+export function computeOverdueWatchFingerprint({ overdue = [], stale = [] } = {}) {
+  const invoiceIds = overdue.map((o) => String(o.uuid ?? o.number ?? "unknown")).sort();
+  const entitlementIds = stale.map((s) => `${s.teamId ?? "unknown"}:${s.state}`).sort();
+  return JSON.stringify({ invoices: invoiceIds, entitlements: entitlementIds });
+}
+
+// PUR: dato-nøgle (YYYY-MM-DD, UTC) — vagten kører på en Railway-cron, ingen
+// browser-lokal tidszone at forholde sig til.
+export function dateKeyFor(now) {
+  return now.toISOString().slice(0, 10);
+}
+
+// PUR: skal DETTE fund captures til Sentry? Ja hvis fingerprintet ændrede sig
+// siden sidste capture, ELLER hvis det er en ny dag siden sidst — så et
+// UÆNDRET fund højst alarmerer én gang pr. dag i stedet for hver time.
+export function shouldCaptureOverdueFinding(state, fingerprint, dateKey) {
+  return state.fingerprint !== fingerprint || state.dateKey !== dateKey;
+}
+
 export async function runAluntaOverdueWatch({
   client,
   supabase,
@@ -194,20 +241,28 @@ export async function runAluntaOverdueWatch({
   for (const line of lines) logger.warn(line);
 
   if (lines.length > 0) {
-    const worst = overdue[0]?.daysOverdue ?? null;
-    // #5017 (triage 12/9): dagstallet (og antallet) stod tidligere INDE i selve
-    // fejlbeskeden — Sentry grupperer på besked uden en fast fingerprint, så
-    // beskeden ændrede sig hver dag den samme ubetalte faktura stod åben, og
-    // ÉN fortsat sag blev til flere issues (CYCLINGZONE-54 + -5R, "værste 33
-    // dage" vs. "værste 31 dage" for samme faktura). Beskeden er nu FAST;
-    // dagstal/antal ligger udelukkende i `extra` (samme mønster som
-    // ownershipInvariantWatch.js's `fingerprint: ["stuck-academy-graduate"]`).
-    const err = new Error("billing-watch: ubetalte fakturaer og/eller entitlement-afvigelser fundet");
-    captureExceptionFn(err, {
-      tags: { flow: "billing", stage: "overdue-watch" },
-      fingerprint: ["billing-watch-overdue"],
-      extra: { overdueCount: overdue.length, staleCount: stale.length, worstDaysOverdue: worst },
-    });
+    // #5694 (CYCLINGZONE-62): capture kun når fundet ÆNDRER sig eller det er en
+    // ny dag — se dedup-blokken ovenfor. Ops-alerten ovenfor (logger.warn) er
+    // allerede logget uanset dette og forbliver uændret.
+    const fingerprint = computeOverdueWatchFingerprint({ overdue, stale });
+    const dateKey = dateKeyFor(now);
+    if (shouldCaptureOverdueFinding(overdueWatchDedupeState, fingerprint, dateKey)) {
+      overdueWatchDedupeState = { fingerprint, dateKey };
+      const worst = overdue[0]?.daysOverdue ?? null;
+      // #5017 (triage 12/9): dagstallet (og antallet) stod tidligere INDE i selve
+      // fejlbeskeden — Sentry grupperer på besked uden en fast fingerprint, så
+      // beskeden ændrede sig hver dag den samme ubetalte faktura stod åben, og
+      // ÉN fortsat sag blev til flere issues (CYCLINGZONE-54 + -5R, "værste 33
+      // dage" vs. "værste 31 dage" for samme faktura). Beskeden er nu FAST;
+      // dagstal/antal ligger udelukkende i `extra` (samme mønster som
+      // ownershipInvariantWatch.js's `fingerprint: ["stuck-academy-graduate"]`).
+      const err = new Error("billing-watch: ubetalte fakturaer og/eller entitlement-afvigelser fundet");
+      captureExceptionFn(err, {
+        tags: { flow: "billing", stage: "overdue-watch" },
+        fingerprint: ["billing-watch-overdue"],
+        extra: { overdueCount: overdue.length, staleCount: stale.length, worstDaysOverdue: worst },
+      });
+    }
   }
 
   return { invoicesChecked: invoices.length, overdue, stale, alerted: lines.length > 0 };

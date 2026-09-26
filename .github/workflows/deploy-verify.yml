@@ -52,6 +52,19 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
+      # #5424: flyttet hertil (var før "Wait for Vercel + Railway
+      # deployments", se den bevarede begrundelse ved den næste brug af
+      # `Checkout` nedenfor) fordi "Resolve target sha and PR number" nu selv
+      # kalder scripts/ci/deploy-verify-pr-lookup.mjs og derfor skal have et
+      # arbejdstræ FØR sit eget første trin, ikke bagefter. persist-
+      # credentials: false — ingen trin i dette job laver authenticated
+      # Git-kald; de der taler med GitHub-API'et bruger deres eget GH_TOKEN
+      # via env.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
       - name: Resolve target sha and PR number
         id: pr
         env:
@@ -62,10 +75,15 @@ jobs:
           INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
           # workflow-output-guard (#4463): steppet skriver til GITHUB_OUTPUT og
-          # piper til `jq` nedenfor — uden pipefail ville et fejlende `gh api`
-          # kunne skjules bag jq's egen exit-kode. `resolve_pr_number()` undgår
-          # allerede det via $()+if, men pipefail slås til for hele steppet så
-          # den statiske vagt (og enhver FREMTIDIG pipe her) er dækket.
+          # piper til `jq`/scripts/ci/deploy-verify-pr-lookup.mjs nedenfor —
+          # uden pipefail ville et fejlende `gh api` kunne skjules bag den
+          # højre sides exit-kode. `resolve_pr_number()` undgår allerede det
+          # via $()+if, og GitHub Actions' default bash kører allerede med
+          # `-eo pipefail`, så denne linje er reelt dokumentation/vagt-
+          # tilfredsstillelse (satser den statiske lint,
+          # scripts/lint-workflow-output-masking.mjs, ikke en adfærdsændring)
+          # — men den er eksplicit her så enhver FREMTIDIG pipe i steppet er
+          # dækket uanset hvilken shell-invokation der ender med at køre den. (#5424)
           set -o pipefail
 
           # #5286: `gh api ... --jq` lader jq læse et TOMT svar direkte, og et
@@ -85,6 +103,18 @@ jobs:
           # `[]`) tæller som "bekræftet ingen PR"; blev alle 3 forsøg ved med
           # at FEJLE (rc != 0) kan vi ikke afgøre det, og trinnet vælter
           # bevidst med en tydelig fejl i stedet for at gætte "ingen PR".
+          # #5424: `echo "$out" | jq -r '.[0].number // empty'` antog at et
+          # ikke-tomt svar med rc=0 altid var et array. Et gyldigt 200-svar
+          # der er JSON, men IKKE et array (fx en rate-limit-/abuse-besked som
+          # `{"message": "..."}`), fik `.[0]` til at kaste jq's egen "Cannot
+          # index object with number"-fejl — trinnet væltede med jq's rå
+          # fejltekst i stedet for den tilsigtede ::error::-besked og uden at
+          # bruge de resterende retry-forsøg. Selve array/ikke-array-tjekket
+          # (og JSON.parse/tomt-body-haandteringen) er flyttet til
+          # scripts/ci/deploy-verify-pr-lookup.mjs (enhedstestet, node --test
+          # scripts/ci/deploy-verify-pr-lookup.test.mjs) — et ikke-array-svar
+          # behandles nu som transient og forsøges igen, ligesom et tomt body
+          # eller en fejlende `gh api` allerede gjorde.
           resolve_pr_number() {
             local sha="$1"
             local attempt out rc
@@ -94,14 +124,23 @@ jobs:
               else
                 rc=$?
               fi
-              if [[ "$rc" -eq 0 && -n "$out" ]]; then
-                echo "$out" | jq -r '.[0].number // empty'
-                return 0
+              if [[ "$rc" -eq 0 ]]; then
+                local number lookup_err
+                lookup_err=$(mktemp)
+                if number=$(printf '%s' "$out" | node scripts/ci/deploy-verify-pr-lookup.mjs 2>"$lookup_err"); then
+                  rm -f "$lookup_err"
+                  echo "$number"
+                  return 0
+                fi
+                echo "::warning::gh api commits/$sha/pulls gav et svar der ikke kunne bruges (forsøg $attempt/3): $(cat "$lookup_err")" >&2
+                rm -f "$lookup_err"
+                [[ "$attempt" -lt 3 ]] && sleep 2
+                continue
               fi
-              echo "::warning::gh api commits/$sha/pulls fejlede eller gav tomt svar (forsøg $attempt/3, exit=$rc)" >&2
+              echo "::warning::gh api commits/$sha/pulls fejlede (forsøg $attempt/3, exit=$rc)" >&2
               [[ "$attempt" -lt 3 ]] && sleep 2
             done
-            echo "::error::gh api commits/$sha/pulls blev ved med at fejle/give tomt svar efter 3 forsøg (sidste exit=$rc) — kan ikke afgøre PR-tilknytning" >&2
+            echo "::error::gh api commits/$sha/pulls blev ved med at fejle/give et ubrugbart svar efter 3 forsøg (sidste exit=$rc) — kan ikke afgøre PR-tilknytning" >&2
             return 1
           }
 
@@ -148,27 +187,6 @@ jobs:
           echo "Changed files touch: frontend=$NEED_VERCEL backend=$NEED_RAILWAY"
           echo "need_vercel=$NEED_VERCEL" >> "$GITHUB_OUTPUT"
           echo "need_railway=$NEED_RAILWAY" >> "$GITHUB_OUTPUT"
-
-      # Flyttet hertil fra lige før "Verify CDN cache-headers" (#5489): jobbet
-      # kørte ellers UDEN arbejdstræ indtil da (alle trin før var rene curl-/
-      # gh-kald mod deployede URL'er — se den gamle kommentar, bevaret ved det
-      # oprindelige kaldested). scripts/railway-deploy-status.mjs skal kunne
-      # køres af "Wait for Vercel + Railway deployments" lige nedenfor, så
-      # checkout skal ske FØR den, ikke bagefter. Alle senere trin der også
-      # bruger arbejdstræet (cache-header-guarden m.fl.) er upåvirkede af at
-      # checkout nu sker tidligere — ingen af dem er tidsafhængige.
-      # Pinnet til fuld commit-SHA (samme som claude.yml/ci.yml m.fl. bruger,
-      # CodeRabbit-fund #5489) — en tag som @v7 kan flytte sig og aendre hvad
-      # der koerer i et trin der laeser secrets.RAILWAY_TOKEN.
-      # persist-credentials: false — ingen af de trin der bruger dette
-      # arbejdstraee (Railway-status-scriptet, cache-header-guarden,
-      # asset-miss-proben) laver authenticated Git-kald; de trin der rent
-      # faktisk kalder GitHub-API'et bruger deres eget GH_TOKEN via env,
-      # ikke det persisterede checkout-credential.
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
 
       - name: Wait for Vercel + Railway deployments
         id: deployments
@@ -289,7 +307,8 @@ jobs:
 
       # Checkout skete tidligere frem til #5489 (kun her, "kun til cache-header-
       # guarden") — flyttet op til før "Wait for Vercel + Railway deployments",
-      # fordi det trin nu også skal kunne køre scripts/railway-deploy-status.mjs.
+      # fordi det trin nu også skal kunne køre scripts/railway-deploy-status.mjs,
+      # og siden #5424 helt op til jobbets første trin (se `Checkout` derover).
       # Uden ARBEJDSTRÆET fejlede trinnet nedenfor med MODULE_NOT_FOUND på hvert
       # eneste push siden 7/8 — dvs. cache-guarden fra #3484 har aldrig kørt,
       # samtidig med at en permanent rød Deploy verify gjorde at ægte fejl

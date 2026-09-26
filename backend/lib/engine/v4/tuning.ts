@@ -604,15 +604,117 @@ const effortCostExtra = {
   demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: 1.0, // =1: baseline, ingen modulation
   demandMultiplierSave: 0.7, // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
-  demandMultiplierAllOut: ALL_OUT_DEMAND_MULTIPLIER, // >protect: alt ud. Faelles vaerdi for alle profiler uden egen raekke nedenfor
-  demandMultiplierAllOutByProfile: {
-    flat: allOutMultiplierMatchingClimb("flat"), // #4914: flad etape — samme andel af gruppens tempo som den faelles vaerdi giver op ad en stigning
-    rolling: allOutMultiplierMatchingClimb("rolling"), // #4914: rullende etape — samme regel paa rullende terraen
-  } as Readonly<Partial<Record<ProfileType, number>>>,
+  demandMultiplierAllOut: ALL_OUT_DEMAND_MULTIPLIER, // >protect: alt ud. Faelles vaerdi for alle segment-terraener uden egen raekke nedenfor
+  // #5580 (spec motor runde 2, M1 punkt 4): all_out-prisen foelger TERRAENET
+  // UNDER HJULENE, ikke etapens profil. Foer slog tabellen op paa etapens
+  // `profile_type`, saa en stigning paa en "flad" etape kostede som fladt, og
+  // en flad dal paa en bjergetape kostede som en stigning. #4914's flat/
+  // rolling-vaerdier er overfoert 1:1 som startvaerdier for flat/rolling-
+  // SEGMENTER; alle andre segment-terraener (climb, descent, cobbles) bruger
+  // den faelles vaerdi, saa bjerg-armen er uroert.
+  demandMultiplierAllOutBySegmentKind: {
+    flat: allOutMultiplierMatchingClimb("flat"), // #4914: fladt segment — samme andel af gruppens tempo som den faelles vaerdi giver op ad en stigning
+    rolling: allOutMultiplierMatchingClimb("rolling"), // #4914: rullende segment — samme regel paa rullende terraen
+  } as Readonly<Partial<Record<SegmentKind, number>>>,
 };
 
 /** M12 additiv effort-cost-tuning (deep-frosset). Se effortCostExtra-kommentaren ovenfor. */
 export const EFFORT_COST_EXTRA_TUNING = deepFreeze(effortCostExtra);
+
+// ── M1 / #5580 (indsatstrappen model 3) — ADDITIV effort-GEVINST-tuning ───────
+// Ejer 23/9 (#4914 valg 1, model 3): "En hoejere indsats koeber position:
+// rytteren holder front- eller stigningsgruppen laengere og presser haardere i
+// finalen, betalt med reserven. Er reserven tom, knaekker han og taber mere.
+// En lavere indsats giver slip tidligere [...] Alle fem trin skal vaere
+// rigtige valg."
+//
+// effortCostExtra ovenfor er PRISEN (kraftkravet, W'-taering). Denne blok er
+// GEVINSTEN, og den er bygget saa den aldrig kan betale sig selv:
+//
+//  - Hvert gevinst-led er GANGET MED REST-RESERVEN (W'/W'max, 0-1). En rytter
+//    der har braendt reserven faar intet led, og den hoejere pris han har
+//    betalt (hoejere energi-underskud i climbSelection, lavere reserve i
+//    finalen) staar tilbage alene: han knaekker.
+//  - `normal` er 0 i alle tabeller, saa en startliste hvor alle koerer normal
+//    er bit-uaendret (golden fixtures, harness-default orders=none).
+//  - Trappens ORDEN er laast af tests: stigningslettelsen og finale-skubbet er
+//    ikke-faldende op ad trappen (grupetto <= save <= normal <= protect <=
+//    all_out), og knaek-leddet er det samme den anden vej.
+//
+// Hvorfor multiplikativt i stigningen: selektions-scoren er allerede alvors-
+// og underskuds-skaleret (climbSelection.ts). En lettelse der ganges paa
+// scoren flytter kun ryttere der ER i farezonen, aldrig en rytter der alligevel
+// sidder godt, og den bevarer rank-guardens monotoni inden for samme trin
+// (samme faktor for to ryttere paa samme trin og samme reserve).
+//
+// STARTGAET, maalt med backend/scripts/v4EffortTwinMeasure.js (tvillinger,
+// 5 seeds, pinnet population + proxy-etaper). Tal og fordelinger ligger i
+// balance-internals/ (hard rule 17), ikke her og ikke i PR-body.
+const effortGainExtra = {
+  // 1. STIGNINGEN (mechanics/climbSelection.ts computeSelections): split-
+  //    scoren ganges med (1 - climbScoreRelief[effort] x reserve01). Positiv =
+  //    holder gruppen laengere, negativ = giver slip tidligere. grupetto deler
+  //    save's vaerdi (trappen maa ikke vende); i modellen "effort_weighted"
+  //    falder grupetto desuden tilbage uanset scoren (grupettoDropBackForced).
+  climbScoreRelief: {
+    grupetto: -0.6,
+    save: -0.6,
+    normal: 0,
+    protect: 0.3,
+    all_out: 0.6,
+  } as Record<EffortLevel, number>,
+  // 1b. "En lavere indsats giver slip tidligere" (ejer 23/9): et ADDITIVT led
+  //     paa split-scoren, climbScorePenalty[effort] x stigningens alvor (0-1).
+  //     Hvorfor additivt og ikke kun faktoren ovenfor: en save-rytter har
+  //     naesten intet energi-underskud (han braender mindre), saa hans score er
+  //     lille, og en faktor paa en lille score flytter ham ikke. Maalt med
+  //     tvillingerne: uden dette led blev en save-/grupetto-rytter i feltets
+  //     midte siddende laengere end normal-tvillingen og kom foran ham paa
+  //     bjerg- og kuperede etaper. Leddet er ikke-stigende op ad trappen og 0
+  //     fra normal og op (laast af test), saa normal er bit-uaendret.
+  climbScorePenalty: {
+    grupetto: 0.6,
+    save: 0.3,
+    normal: 0,
+    protect: 0,
+    all_out: 0,
+  } as Record<EffortLevel, number>,
+  //     Leddet vejer fuldt fra dette klatre-underskud til gruppens bedste
+  //     (0-1-skala, climbSelection.ts climbDeficit01) og er 0 for gruppens
+  //     bedste klatrer: den staerkeste kan ikke give slip fra svagere ryttere.
+  climbPenaltyFullAtDeficit: 0.1,
+  // 2. FINALEN (finale.ts computeFinaleAbilityScore): placerings-scoren faar
+  //    finalePush[effort] x reserve01 - finaleCrack[effort] x (1 - reserve01).
+  //    all_out presser hardest med fuld reserve og taber mest med tom; save
+  //    koerer inden for sig selv og faar en del af sin sparede reserve
+  //    modregnet (han presser ikke i finalen). grupetto deler save's tal: hans reserve
+  //    taeller allerede som 0 i finalen (finale.ts scoreOf).
+  //    Kontrakt: wprimeReserveWeight + finalePush + finaleCrack >= 0 for alle
+  //    trin, saa scoren forbliver monotont ikke-faldende i reserven.
+  finalePush: {
+    grupetto: -0.1, // som save (trappen maa ikke vende); virker ikke i praksis, grupettoens reserve taeller som 0 i finalen
+    save: -0.1,
+    normal: 0,
+    protect: 0.02,
+    all_out: 0.05,
+  } as Record<EffortLevel, number>,
+  finaleCrack: {
+    grupetto: 0,
+    save: 0,
+    normal: 0,
+    protect: 0.02,
+    all_out: 0.05,
+  } as Record<EffortLevel, number>,
+  // 3. "Arbejd eller angrib" (ejer 23/9 valg 1c): en kaptajn/sprint-kaptajn
+  //    paa `protect` foelger angreb, dvs. et lille plus i udbruds-join-scoren
+  //    (mechanics/breakaway.ts computeJoinScore). Aldrig for hjaelpere/jaegere:
+  //    for dem betyder `protect` at arbejde. Mindre end try_break-boostet, saa
+  //    en eksplicit ordre altid vejer tungere end indsatstrinnet.
+  leaderProtectJoinBoost: 0.04,
+};
+
+/** M1 (#5580) additiv effort-gevinst-tuning (deep-frosset). Se effortGainExtra-kommentaren ovenfor. */
+export const EFFORT_GAIN_EXTRA_TUNING = deepFreeze(effortGainExtra);
 
 // ── M7 (mechanics/distanceFatigue.ts, #4030) — ADDITIV distance-slid-tuning ──
 // Samme moenster som finaleExtra/effortCostExtra ovenfor. Kontrakt (mor-spec
@@ -842,11 +944,10 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // egen gruppe koerte FRA feltet i stedet for at falde tilbage til den sidste
 // gruppe paa vejen.
 //
-// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3); en
-// worker aendrer ikke defaulten:
-//   "cp_only"         (b, DEFAULT): som hidtil — tempoet foelger CP alene.
-//                                   Bit-identisk med main foer denne kontakt.
-//   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
+// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3; ejeren
+// valgte a 23/9, default flippet i #5581); en worker aendrer ikke defaulten:
+//   "cp_only"         (b): tempoet foelger CP alene (reglen foer #4914).
+//   "effort_weighted" (a, DEFAULT): "grupettoen er den sidste gruppe paa vejen", to
 //                                   led der kun virker sammen:
 //                                   1. TEMPO (segmentLoop.groupEffortTempo): en
 //                                   grupetto-rytter saetter aldrig farten i en
@@ -872,12 +973,29 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // (5 seeds): backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
 export type GroupTempoModel = "cp_only" | "effort_weighted";
 const groupTempoEffortExtra = {
-  model: "cp_only" as GroupTempoModel, // EJER-VALG (#4914 punkt 3): "cp_only" = b (default, uaendret), "effort_weighted" = a
+  model: "effort_weighted" as GroupTempoModel, // EJER-VALG (#4914 punkt 3, valgt 23/9 = a; default-flip i #5581): "effort_weighted" = a (default), "cp_only" = b
   grupettoTempoFactor: 0.8, // kun model "effort_weighted": andel af CP'en en grupetto-rytter bidrager med til gruppens tempo (< 1, aldrig 0). STARTGAET, maalt i A/B'en
 };
 
 /** #4914 grupetto-tempo-kontakt (deep-frosset). Se groupTempoEffortExtra-kommentaren ovenfor. */
 export const GROUP_TEMPO_EFFORT_EXTRA_TUNING = deepFreeze(groupTempoEffortExtra);
+
+// ── #5581 grupettoen regner paa tidsgraensen (mechanics/grupettoPace.ts) ─────
+// Ejer 23/9 (#4914 valg 1b, "foelg realismen"): grupettoen koerer saa langsomt
+// som muligt, men aldrig langsommere end tidsgraensen (M15,
+// TIME_LIMIT_EXTRA_TUNING nedenfor) tillader, saa laenge rytterne har reserven
+// til det — baade en ren grupetto-gruppe og grupetto-ryttere i en blandet
+// gruppe der er for langsom (de gaar selv frem). Virker kun i model
+// "effort_weighted" (det er kun dér grupetto har sit eget tempo). Reglen og hvorfor den er
+// deterministisk staar i mechanics/grupettoPace.ts's hoved. Maalt med
+// backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
+const grupettoPaceExtra = {
+  limitShare: 0.85, // andel af tidsgraensens margin grupettoen sigter efter: lidt inden for, ikke paa stregen (forudsigelsen af vindertiden er et skoen). STARTGAET, maalt i tvillingerne
+  reserveForFullFloor: 0.25, // W'-reserve (andel) hvor gulvet gaelder fuldt; en rytter med mindre reserve kan ikke holde kravet og kan stadig ryge ud. STARTGAET, maalt i tvillingerne
+};
+
+/** #5581 tidsgraense-gulv for grupetto-tempoet (deep-frosset). Se grupettoPaceExtra-kommentaren ovenfor. */
+export const GRUPETTO_PACE_EXTRA_TUNING = deepFreeze(grupettoPaceExtra);
 
 // ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
 // Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning

@@ -27,6 +27,9 @@ import {
   votesByItemId,
 } from "../lib/roadmapVoting.js";
 import {
+  isRoadmapItemNew, latestRoadmapCreatedAt, readLastSeenRoadmap, writeLastSeenRoadmap,
+} from "../lib/roadmapUnread.ts"; // #5673: gul prik ved nye punkter
+import {
   PageHeader,
   Section,
   SectionHeader,
@@ -58,6 +61,18 @@ const ENGINES = [
 // motor-ikonerne har aldrig været vist. Glyf-fallbacken var samtidig et brud på
 // anti-slop-reglen (stroke-ikoner, aldrig unicode-chrome).
 const ENGINE_ICON = Object.fromEntries(ENGINES.map((e) => [e.key, e.Icon]));
+
+// #5673: prikken på det enkelte punkt — samme visuelle recipe som nav-
+// prikken i Layout.jsx (NavItem: w-2 h-2 rounded-full bg-cz-accent), her lidt
+// mindre da den sidder ved siden af brødtekst i stedet for et menupunkt.
+function NewDot({ label }) {
+  return (
+    <span className="flex-shrink-0 inline-flex items-center" title={label}>
+      <span aria-hidden="true" className="block w-1.5 h-1.5 rounded-full bg-cz-accent" />
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
 
 function VoteAxis({ label, value, disabled, onSelect }) {
   return (
@@ -121,6 +136,13 @@ export default function RoadmapPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [items, setItems] = useState(null); // null = ikke hentet endnu → statisk fallback
   const [shipped, setShipped] = useState([]); // historik (status='shipped'), nyeste først
+  // #5673: lastSeen SOM DEN VAR ved ankomst til siden — fanget ÉN gang ved
+  // mount, FØR items-effekten nedenfor overskriver nøglen med nyeste dato.
+  // Bruges til at afgøre hvilke punkter der viser "ny"-prikken netop DETTE
+  // besøg; uden det snapshot ville prikkerne forsvinde med det samme (samme
+  // render) i stedet for at blive stående til næste besøg, sådan patch notes
+  // og forum også opfører sig.
+  const [lastSeenBeforeVisit] = useState(() => readLastSeenRoadmap());
   const [drafts, setDrafts] = useState({}); // item_id → { idea, importance }
   const [saveState, setSaveState] = useState({}); // item_id → "saving" | "saved" | "error"
   const [statusState, setStatusState] = useState({}); // item_id → "saving" | "error" (admin-toggle)
@@ -152,6 +174,11 @@ export default function RoadmapPage() {
           .filter((it) => it.status === "shipped")
           .sort((a, b) => new Date(b.shipped_at ?? 0) - new Date(a.shipped_at ?? 0))
       );
+      // #5673: besøg af siden nulstiller — skriv nyeste created_at blandt de
+      // hentede punkter som ny lastSeen, SÅ dotFlags i Layout.jsx (roadmapUnread
+      // useEffect) genberegner nav-prikken væk på næste render/route-skift.
+      // lastSeenBeforeVisit (state ovenfor) blev allerede fanget FØR dette kald.
+      writeLastSeenRoadmap(latestRoadmapCreatedAt(all));
       const uid = auth?.user?.id ?? null;
       setUserId(uid);
       setIsAdmin(adminRaw === true);
@@ -301,6 +328,9 @@ export default function RoadmapPage() {
                           <span className="text-cz-2 text-sm leading-relaxed">
                             {itemTitle(item, i18n.language)}
                           </span>
+                          {isRoadmapItemNew(item.created_at, lastSeenBeforeVisit) && (
+                            <NewDot label={t("labels.new")} />
+                          )}
                         </div>
                         <div className="mt-2 ms-3 flex flex-col gap-1.5">
                           <VoteAxis
@@ -367,6 +397,9 @@ export default function RoadmapPage() {
                   <span className="text-cz-2 text-sm leading-relaxed flex-1">
                     {itemTitle(item, i18n.language)}
                   </span>
+                  {isRoadmapItemNew(item.created_at, lastSeenBeforeVisit) && (
+                    <NewDot label={t("labels.new")} />
+                  )}
                   {isAdmin && (
                     <button
                       type="button"

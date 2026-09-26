@@ -10,15 +10,17 @@ import fc from "fast-check";
 import {
   bunchCatchWindowSeconds,
   computeFinaleAbilityScore,
+  effortFinaleTerm,
   finaleHook,
   isBunchCatchRoute,
   isBunchSizedChaseGroup,
 } from "./finale.ts";
 import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
-import { FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
+import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type {
   AbilityKey,
+  EffortLevel,
   Entrant,
   EngineState,
   FinaleType,
@@ -132,9 +134,13 @@ test("finaleHook: solo-forspring med W'-reserve overlever svag/traet jagtgruppe 
   assert.ok(chaseGroup, "chasegruppen skal stadig eksistere som selvstaendig gruppe (ikke indhentet)");
   assert.ok(chaseGroup!.gap_seconds >= RACE_V4_TUNING.groups.mergeThresholdSeconds, "chasegruppens gap skal vaere over merge-taerskel (reelt tabt tid)");
 
-  const sprintDecided = result.events.find((e) => e.type === "sprint_decided");
-  assert.ok(sprintDecided, "sprint_decided skal emitteres");
-  assert.equal(sprintDecided!.params.winner_rider_id, "solo1");
+  // #5577: en solosejr er ingen spurt — filmen skrev "taet mellem X og
+  // forfoelgerne" her. Afgoerelsen baeres nu af et finale_attack med rytteren.
+  assert.equal(result.events.find((e) => e.type === "sprint_decided"), undefined, "ingen sprint_decided ved en solosejr");
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.type, "finale_attack");
+  assert.equal(decided.params.rider_id, "solo1");
+  assert.equal(decided.params.win_type, "solo_win");
 
   const attackEvent = result.events.find((e) => e.type === "finale_attack");
   assert.ok(attackEvent, "finale_attack skal emitteres naar et forspring baeres helt i maal");
@@ -420,6 +426,10 @@ test("finaleHook (#4914): feltet henter et lille udbrud inden for antals-vinduet
   const bunch = result.state.groups[0];
   assert.equal(bunch.gap_seconds, 0);
   assert.equal(bunch.rider_ids.length, breakIds.length + pelotonIds.length, "ingen rytter maa falde ud af opgoerelsen");
+  // #5577: hele feltet i maal sammen paa en massefinale ER en massespurt.
+  const sprintDecided = result.events.find((e) => e.type === "sprint_decided")!;
+  assert.equal(sprintDecided.params.win_type, "sprint_win");
+  assert.equal(result.events.filter((e) => typeof e.params.win_type === "string").length, 1, "finalen afgoer etapen praecis én gang");
 });
 
 test("finaleHook (#4914): samme felt paa en SELEKTIV finale beholder udbruddets forspring", () => {
@@ -437,6 +447,35 @@ test("finaleHook (#4914): samme felt paa en SELEKTIV finale beholder udbruddets 
   assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "peloton'en maa IKKE smelte ind paa en selektiv finale");
   const chase = result.state.groups.find((g) => g.rider_ids.includes("p0"))!;
   assert.ok(chase.gap_seconds > RACE_V4_TUNING.groups.mergeThresholdSeconds, "peloton'en taber reel tid");
+  // #5577: udbruddet holder paa en selektiv finale = taet finish. De tre
+  // udbrydere er ens og deler vindertier, saa ingen navngives som angriber.
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.ok(breakIds.includes(String(decided.params.winner_rider_id)));
+});
+
+test("finaleHook (#5577): to ryttere med lige score deler vindertier paa en selektiv finale — ingen navngives som angriber", () => {
+  const twin = abilities({ tempo: 80, endurance: 80, durability: 80, sprint: 80, acceleration: 80, climbing: 80, punch: 80 });
+  const entrants: Record<string, Entrant> = { t1: makeEntrant("t1", twin), t2: makeEntrant("t2", twin) };
+  const riders: Record<string, RiderState> = {
+    t1: makeRiderState("t1", "front-0", { wprime: 1, wprimeMax: 1 }),
+    t2: makeRiderState("t2", "front-0", { wprime: 1, wprimeMax: 1 }),
+  };
+  const groups: RaceGroup[] = [{ id: "front-0", kind: "peloton", rider_ids: ["t1", "t2"], gap_seconds: 0, cohesion: 1 }];
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "punch",
+    profileType: "hilly",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  const winnerGroup = result.state.groups.find((g) => g.rider_ids.includes("t1"))!;
+  assert.deepEqual([...winnerGroup.rider_ids].sort(), ["t1", "t2"], "lige score => samme tier");
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.equal(decided.params.rider_id, undefined, "ingen koerte fra den anden");
+  assert.ok(["t1", "t2"].includes(String(decided.params.winner_rider_id)));
 });
 
 test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (styrke straffes ikke)", () => {
@@ -452,8 +491,13 @@ test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (s
 
   const winnerGroup = result.state.groups.find((g) => g.rider_ids.some((id) => breakIds.includes(id)))!;
   assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "udbruddet skal vinde naar hullet er stoerre end vinduet");
-  const sprintDecided = result.events.find((e) => e.type === "sprint_decided")!;
-  assert.ok(breakIds.includes(String(sprintDecided.params.winner_rider_id)));
+  // #5577: et 3-mands udbrud der holder hjem er ingen massespurt, selv paa en
+  // massefinale-rute: taet finish, og filmen navngiver ingen "angriber".
+  assert.equal(result.events.find((e) => e.type === "sprint_decided"), undefined);
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.equal(decided.params.rider_id, undefined);
+  assert.ok(breakIds.includes(String(decided.params.winner_rider_id)));
 });
 
 test("isBunchSizedChaseGroup: andel af feltet med absolut gulv — navnet paa gruppen er irrelevant", () => {
@@ -574,4 +618,91 @@ test("computeFinaleAbilityScore: monotont ikke-faldende i W'-reserve", () => {
     }),
     { numRuns: 200 },
   );
+});
+
+// ── #5580 (M1 punkt 2): indsatsens led i placerings-opgoeret ──────────────────
+
+const EFFORT_LADDER: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+
+test("#5580 effortFinaleTerm: normal og manglende effort er praecis 0 (fixtures og ITT bit-uaendrede)", () => {
+  for (const reserve of [0, 0.3, 1]) {
+    assert.equal(effortFinaleTerm("normal", reserve), 0);
+    assert.equal(effortFinaleTerm(undefined, reserve), 0);
+  }
+  const ab = abilities({ punch: 70 });
+  assert.equal(
+    computeFinaleAbilityScore(ab, 0.4, PUNCH_DEMAND, 0.15, "normal"),
+    computeFinaleAbilityScore(ab, 0.4, PUNCH_DEMAND, 0.15),
+  );
+});
+
+test("#5580 tabellerne: push er ikke-faldende op ad trappen, knaek er 0 paa de lave trin, og scoren forbliver monoton i reserven", () => {
+  const { finalePush, finaleCrack } = EFFORT_GAIN_EXTRA_TUNING;
+  for (let i = 1; i < EFFORT_LADDER.length; i++) {
+    const hi = EFFORT_LADDER[i]!;
+    const lo = EFFORT_LADDER[i - 1]!;
+    assert.ok(finalePush[hi] >= finalePush[lo], `push: ${hi} < ${lo}`);
+    assert.ok(finaleCrack[hi] >= finaleCrack[lo], `knaek: ${hi} < ${lo}`);
+  }
+  assert.equal(finalePush.normal, 0);
+  assert.equal(finaleCrack.normal, 0);
+  for (const effort of EFFORT_LADDER) {
+    assert.ok(finaleCrack[effort] >= 0, `${effort}: knaek-leddet maa aldrig vaere en bonus`);
+    assert.ok(
+      FINALE_EXTRA_TUNING.wprimeReserveWeight + finalePush[effort] + finaleCrack[effort] >= 0,
+      `${effort}: scoren skal vaere monotont ikke-faldende i reserven`,
+    );
+  }
+});
+
+test("#5580 computeFinaleAbilityScore: monotont ikke-faldende i reserven paa ALLE fem trin (fast-check, 200 runs)", () => {
+  fc.assert(
+    fc.property(
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.constantFrom(...EFFORT_LADDER),
+      (r1, r2, effort) => {
+        const [lower, higher] = r1 <= r2 ? [r1, r2] : [r2, r1];
+        const ab = abilities();
+        const low = computeFinaleAbilityScore(ab, lower, PUNCH_DEMAND, FINALE_EXTRA_TUNING.wprimeReserveWeight, effort);
+        const high = computeFinaleAbilityScore(ab, higher, PUNCH_DEMAND, FINALE_EXTRA_TUNING.wprimeReserveWeight, effort);
+        assert.ok(high >= low - 1e-9);
+      },
+    ),
+    { numRuns: 200, seed: 5580 },
+  );
+});
+
+test("#5580 pris og gevinst: med fuld reserve koeber all_out placering, med tom reserve knaekker han og taber mest", () => {
+  const full = EFFORT_LADDER.map((e) => effortFinaleTerm(e, 1));
+  for (let i = 1; i < full.length; i++) assert.ok(full[i]! >= full[i - 1]!, `fuld reserve: ${EFFORT_LADDER[i]} under ${EFFORT_LADDER[i - 1]}`);
+  assert.ok(effortFinaleTerm("all_out", 1) > 0 && effortFinaleTerm("protect", 1) > 0);
+  assert.ok(effortFinaleTerm("save", 1) < 0, "save presser ikke i finalen");
+  assert.ok(effortFinaleTerm("all_out", 0) < effortFinaleTerm("protect", 0), "tom reserve: all_out taber mest");
+  assert.ok(effortFinaleTerm("protect", 0) < effortFinaleTerm("normal", 0));
+});
+
+function twinsInFrontGroup(effortA: EffortLevel, reserveA: number, reserveB: number) {
+  const entrants: Record<string, Entrant> = {};
+  const riders: Record<string, RiderState> = {};
+  const ids = ["twinA", "twinB", "f1", "f2", "f3"];
+  for (const id of ids) {
+    entrants[id] = makeEntrant(id, abilities({ punch: id.startsWith("twin") ? 60 : 40 }));
+    riders[id] = makeRiderState(id, "peloton-0", { wprime: 0.6, wprimeMax: 1 });
+  }
+  entrants.twinA = { ...entrants.twinA!, effort: effortA };
+  riders.twinA = makeRiderState("twinA", "peloton-0", { wprime: reserveA, wprimeMax: 1 });
+  riders.twinB = makeRiderState("twinB", "peloton-0", { wprime: reserveB, wprimeMax: 1 });
+  const groups: RaceGroup[] = [{ id: "peloton-0", kind: "peloton", rider_ids: ids, gap_seconds: 0, cohesion: 1 }];
+  const result = finaleHook(buildState(groups, riders), makeCtx({ entrants, finaleType: "punch" }));
+  return [...result.state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds).flatMap((g) => g.rider_ids);
+}
+
+test("#5580 finaleHook: all_out med reserve slaar sin normal-tvilling med SAMME reserve; tom reserve paa all_out taber til en tom normal-tvilling", () => {
+  const withReserve = twinsInFrontGroup("all_out", 0.8, 0.8);
+  assert.ok(withReserve.indexOf("twinA") < withReserve.indexOf("twinB"), "all_out med reserve skal koebe pladsen");
+  const empty = twinsInFrontGroup("all_out", 0, 0);
+  assert.ok(empty.indexOf("twinA") > empty.indexOf("twinB"), "all_out med tom reserve skal knaekke og tabe pladsen");
+  const save = twinsInFrontGroup("save", 0.8, 0.8);
+  assert.ok(save.indexOf("twinA") > save.indexOf("twinB"), "save presser ikke i finalen");
 });

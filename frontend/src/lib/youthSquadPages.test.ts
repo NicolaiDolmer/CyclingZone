@@ -12,6 +12,8 @@ import {
   youthSquadPath,
   youthSquadNavItems,
   riderIdsForSquad,
+  capForSquad,
+  YOUTH_SQUAD_CAP_FALLBACK,
   isYouthSquadPagesOn,
   setYouthSquadPages,
   subscribeYouthSquadPages,
@@ -51,6 +53,19 @@ test("#5519: rytter-id'er læses defensivt ud af /api/youth-squads", () => {
   assert.deepEqual(riderIdsForSquad(payload, "junior"), ["c"]);
   assert.deepEqual(riderIdsForSquad(null, "u23"), []);
   assert.deepEqual(riderIdsForSquad({ squads: { u23: { riderIds: "nope" } } }, "u23"), []);
+});
+
+test("#5631: truppens loft læses af caps-feltet fra /api/youth-squads", () => {
+  const payload = { squads: {}, caps: { u23: 12, junior: 10 } };
+  assert.equal(capForSquad(payload, "u23"), 12);
+  assert.equal(capForSquad(payload, "junior"), 10);
+});
+
+test("#5631: en ældre backend uden caps-feltet falder tilbage til SQUAD_CAPS 12/10", () => {
+  assert.deepEqual(YOUTH_SQUAD_CAP_FALLBACK, { u23: 12, junior: 10 });
+  assert.equal(capForSquad(null, "u23"), 12);
+  assert.equal(capForSquad({ squads: {} }, "junior"), 10);
+  assert.equal(capForSquad({ caps: { u23: "twelve" } }, "u23"), 12, "et ikke-tal cap skal falde tilbage");
 });
 
 test("#5519: kontakten er OFF som default og giver besked når den flipper", () => {

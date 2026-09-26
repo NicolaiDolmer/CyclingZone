@@ -728,9 +728,14 @@ export default function TrainingPage() {
         // #3761: + contract_end_season — Status-cellens contractExpiring-badge
         // (samme kolonne TeamPage allerede henter). Read-only felt på riders,
         // ingen migration og ingen ny query.
+        // #5763: + squad — U23/JR-mærket i træningstabellen (desktop+mobil)
+        // afgøres af riders.squad, ALDRIG alder alene (spiller 25/9: ACAD-
+        // mærket forsvandt med den nye oversigt). Read-only felt, ingen
+        // migration og ingen ny query — samme kolonne SquadPage/TeamPage
+        // allerede henter server-side via effectiveSquad.
         const { data } = await supabase
           .from("riders")
-          .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
+          .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders((data || []).map(flattenAbilities));
@@ -2400,6 +2405,7 @@ export default function TrainingPage() {
         tired: isTired(cond.fatigue),
         seasonPoints: seasonPointsFor(rider.id),
         noDay: !planFor(rider.id)?.focus && !racingTodayFor(rider.id),
+        squad: rider.squad ?? null,
         score: cell
           ? {
               state: cell.state,
@@ -3365,7 +3371,8 @@ export default function TrainingPage() {
         )}
 
         {/* Træningsrapport-historik (#1533) — seneste 30 dage. */}
-        <TrainingHistory history={history} />
+        {/* #5734: samme trainingScore-kort som Today (null = training_score_visible off) — TrainingHistory slaar selv dags-dato op i .spark. */}
+        <TrainingHistory history={history} trainingScore={trainingScore} />
       </div>
       </TabPanel>
       </Tabs>

@@ -13,7 +13,7 @@
 // Frontend'en maa ALDRIG selv regne truppen ud af en alder: det ville vaere
 // kopi nr. to af aldersgraenserne (samme lektie som #3071/#3081).
 
-import { effectiveSquad } from "./squads.js";
+import { effectiveSquad, SQUAD_CAPS } from "./squads.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 
 /** De to ungdomstrupper der har en egen side, i menu-raekkefoelge. */
@@ -43,11 +43,13 @@ export function groupYouthSquads(riders, seasonNumber) {
 }
 
 /**
- * Svaret fra GET /api/youth-squads: rytter-id'er pr. ungdomstrup.
+ * Svaret fra GET /api/youth-squads: rytter-id'er + loft pr. ungdomstrup.
  *
- * Bevidst UDEN loft: SQUAD_CAPS (squads.js) er et sim-startpunkt, og i dag
- * begraenses akademiet stadig af sine faelles pladser. Et "x/12" paa siden
- * ville love plads der ikke findes endnu (TASTE P11).
+ * #5631: loftet var bevidst udeladt (SQUAD_CAPS var "kun et sim-startpunkt,
+ * P11"), men SQUAD_CAPS er live siden #5626 (u23: 12, junior: 10) og
+ * begrænser akademiet reelt. Begrundelsen var forældet — se
+ * docs/YOUTH_RULES.md. `caps` kommer direkte fra squads.js' SQUAD_CAPS,
+ * ingen ny konstant.
  *
  * @param {Array<object>} riders
  * @param {number|null|undefined} seasonNumber
@@ -55,6 +57,10 @@ export function groupYouthSquads(riders, seasonNumber) {
 export function buildYouthSquadsPayload(riders, seasonNumber) {
   const grouped = groupYouthSquads(riders, seasonNumber);
   const squads = {};
-  for (const key of YOUTH_SQUAD_PAGE_KEYS) squads[key] = { riderIds: grouped[key] };
-  return { seasonNumber: Number.isFinite(seasonNumber) ? seasonNumber : null, squads };
+  const caps = {};
+  for (const key of YOUTH_SQUAD_PAGE_KEYS) {
+    squads[key] = { riderIds: grouped[key] };
+    caps[key] = SQUAD_CAPS[key];
+  }
+  return { seasonNumber: Number.isFinite(seasonNumber) ? seasonNumber : null, squads, caps };
 }

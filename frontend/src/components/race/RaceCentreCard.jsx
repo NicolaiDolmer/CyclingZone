@@ -143,11 +143,17 @@ export default function RaceCentreCard({
             {card.isOwn && (
               <div className="mt-3 flex items-baseline gap-2 text-[13px] text-cz-2">
                 <FlagIcon size={13} aria-hidden="true" className="translate-y-0.5 text-cz-3" />
+                {/* #5636: afmeldt hold stiller ikke op (#4306) — vis "Withdrawn"
+                    i stedet for "Line-up ready"/"incomplete". Kræver et svar fra
+                    selection-endepunktet (samme guard som før), så gæster uden
+                    svar stadig ser lineupUnknown. */}
                 {selection
-                  ? t(
-                    selection.complete ? "raceCentre.card.lineupReady" : "raceCentre.card.lineupIncomplete",
-                    { selected: selection.selected, max: selection.max },
-                  )
+                  ? selection.withdrawn
+                    ? t("raceCentre.card.withdrawn")
+                    : t(
+                      selection.complete ? "raceCentre.card.lineupReady" : "raceCentre.card.lineupIncomplete",
+                      { selected: selection.selected, max: selection.max },
+                    )
                   : t("raceCentre.card.lineupUnknown")}
               </div>
             )}

@@ -89,8 +89,30 @@ features:
     flag: race_notify_outbox_enabled
     ssot: docs/audits/2026-09-18-3624-loebsforsinkelser.md
     epic: 3624
-    verified: 2026-09-24
-    note: Flag on 24/9 kl. 18:45 (ejer-kør). Udbakke-tick hvert minut (race-notify-outbox-drain).
+    verified: 2026-09-25
+    note: Flag on 24/9 kl. 18:45 (ejer-kør). Bevist i drift 25/9 kl. 12:01-12:08 (12 sent, 0 fejlede). Udbakke-tick hvert minut (race-notify-outbox-drain).
+
+  - id: race-finalize-resumable
+    area: race-engine
+    title_en: Resumable race finalisation (step markers)
+    title_da: Genoptagelig løbsafslutning (trin-markører)
+    state: live
+    flag: race_finalize_resumable_enabled
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 4147
+    verified: 2026-09-25
+    note: Flag on 25/9 kl. 12:23 (ejer-kør) efter udbakken var bevist. Post-verify efter 15-løbene: finalize_state NULL på alle løb.
+
+  - id: academy-drift-kill-switch
+    area: economy
+    title_en: Youth squad upkeep switch at season change
+    title_da: Ungdomsdrift ved sæsonskifte (kontakt)
+    state: live
+    flag: academy_drift_enabled
+    ssot: docs/SEASON_CUTOVER_RUNBOOK.md
+    epic: 5741
+    verified: 2026-09-25
+    note: Nøglen 'on' i prod 25/9 kl. 16:20 (auto-migrate efter PR #5745) = uændret drift. Ejeren sætter 'off' 27/9 før 12c (runbook 11b); kontrol efter 12c = 0 academy_drift-poster for S4.
 
   - id: form-and-fatigue
     area: race-engine
@@ -304,12 +326,12 @@ features:
     area: squad
     title_en: Rating shows best role now
     title_da: Rating viser bedste rolle nu
-    state: building
+    state: beta
     flag: rider_best_role_display
     ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
     epic: 5435
-    verified: 2026-09-22
-    note: 'Merget 22/9 (#5501), app_config-raekken verificeret off i prod; flippes med vaerdiskiftet #5443/#5497 (ejer-gated).'
+    verified: 2026-09-24
+    note: 'Beta 24/9 kl. 19:05 (ejer: test med beta-testerne foerst); til alle sammen med vaerdiskiftet #5443/#5497 (ejer-gated).'
 
   - id: youth-squad-pages
     area: squad
@@ -568,6 +590,7 @@ features:
     flag: rider_values_bulk_write_enabled
     ssot: docs/ECONOMY_RULES.md
     verified: 2026-09-06
+
 
   # --- club ----------------------------------------------------------------
   - id: facilities

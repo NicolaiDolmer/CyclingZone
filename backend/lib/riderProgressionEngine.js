@@ -39,6 +39,7 @@ import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { detectGraduates } from "./academyGraduation.js";
 import { loadValuationModelStrict, loadProductionValueModelStrict } from "./riderValuationModelSelect.js";
+import { isTypefreeModel } from "./valuationTypefree/typefreeValuation.js";
 
 // Sæson 1 = launch-året (2026). Alder er SÆSON-drevet (ikke real-world-tid), så
 // ryttere ældes troværdigt over sæsoner. ageForSeason(birthdate, N) = år N − fødselsår.
@@ -213,8 +214,15 @@ export async function developRidersForSeason({
   // følger løngrundlaget den model — præcis som før de to nøgler fandtes. Et
   // halvt app_config-opslag i en pinned kørsel ville gøre resultatet
   // afhængigt af prod-tilstand, hvilket er det modsatte af at pinne.
+  //
+  // #5497: en pinnet TYPEFRI model (v6) trækker IKKE løngrundlaget med (løn
+  // følger ikke værdi) — samme regel som riderValueRefresh.js. Løngrundlaget
+  // slås så op med sin egen nøgle, som aldrig kan give v6.
+  // Prisen: loadValuationModelStrict lægger v6's markeds-fit og det aktuelle
+  // trin (current_phase_step fra app_config) på modellen, så predictBaseValue
+  // nedenfor skriver samme trin som søndagskørslen senest skrev, ikke trin 0.
   const productionModel = productionModelArg
-    || modelArg
+    || (isTypefreeModel(modelArg) ? null : modelArg)
     || await loadProductionValueModelStrict(supabase);
 
   // ── Idempotens: hvilke ryttere er allerede udviklet for denne sæson? ──────────

@@ -12,7 +12,9 @@
       "u23": "U23 team, ages 19 to 22",
       "junior": "Junior team, ages 16 to 18"
     },
-    "squadValue": "Squad value: {value} CZ$"
+    "squadValue": "Squad value: {value} CZ$",
+    "rosterCount": "{count}/{cap} riders in the squad",
+    "seniorsStayHint": "Riders on your senior squad stay seniors until you move them. Open a rider and use Move squad."
   },
   "tabs": {
     "ariaLabel": "Squad sections",

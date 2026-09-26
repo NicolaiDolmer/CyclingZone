@@ -1,2 +1,7 @@
 .vercel
 dist-ssr
+
+# #5493: IndexNow-noeglefilen genereres ved build (scripts/generate-indexnow-key.ts)
+# fra INDEXNOW_KEY og maa ALDRIG committes - filnavnet ER noeglen.
+public/*.txt
+!public/robots.txt

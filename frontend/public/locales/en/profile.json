@@ -3,6 +3,14 @@
     "title": "My Profile",
     "subtitle": "Settings and team"
   },
+  "tabs": {
+    "label": "Settings sections",
+    "account": "Account",
+    "notifications": "Notifications",
+    "preferences": "Preferences",
+    "privacy": "Privacy",
+    "beta": "Beta"
+  },
   "account": {
     "title": "Account",
     "email": "Email",

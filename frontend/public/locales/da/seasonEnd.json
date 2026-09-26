@@ -45,7 +45,8 @@
     "prize": { "title": "Præmie-leader", "secondary": "+{amount} tjent", "empty": "Ingen præmier endnu" },
     "transfer": { "title": "Største transfer", "fallback": "Transfer", "empty": "Ingen transfers" },
     "active": { "title": "Mest aktive", "secondary": "{count} transfers", "empty": "Ingen handler" },
-    "stageKing": { "title": "Stage-king", "secondary": "{count, plural, one {# etapesejr} other {# etapesejre}}", "empty": "Ingen etaper kørt" }
+    "stageKing": { "title": "Stage-king", "secondary": "{count, plural, one {# etapesejr} other {# etapesejre}}", "empty": "Ingen etaper kørt" },
+    "classicKing": { "title": "Klassikersejre", "secondary": "{count, plural, one {# klassikersejr} other {# klassikersejre}}" }
   },
   "calendar": {
     "heading": "Kalender · {count} løb",
@@ -79,7 +80,8 @@
       "rank": "Slutplacering",
       "points": "Point",
       "stageWins": "Etapesejre",
-      "prize": "Præmie vundet"
+      "prize": "Præmie vundet",
+      "classicWins": "Klassikersejre"
     },
     "rankLine": "#{rank} af {size} i division {division}",
     "movement": {
@@ -87,11 +89,22 @@
       "relegated": "Rykket ned",
       "maintained": "Holdt division {division}"
     },
+    "boardVerdict": {
+      "label": "Bestyrelsens dom",
+      "value": "{met} af {total} mål nået",
+      "confidence": "tillid",
+      "confidenceTo": "til",
+      "attribution": "{name} · Formand · sæsonens dom",
+      "ctaMeeting": "Gå til årsmødet",
+      "ctaBoardroom": "Åbn bestyrelseslokalet"
+    },
     "highlight": {
       "prizeLeader": "Præmie-fører i division {division}",
       "biggestSale": "Sæsonens største salg",
       "stageKing": "Holdets etapekonge: {name}",
       "stageKingValue": "{count, plural, one {# sejr} other {# sejre}}",
+      "classicKing": "Holdets klassikerkonge: {name}",
+      "classicKingValue": "{count, plural, one {# sejr} other {# sejre}}",
       "turningPoint": "Sæsonens bedste dag",
       "turningPointValue": "{race} · {points} point",
       "biggestResult": "Bedste individuelle resultat",

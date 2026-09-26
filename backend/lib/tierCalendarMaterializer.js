@@ -3,15 +3,16 @@
 // sammen til en MATERIALISERINGS-PLAN pr. division (tier) og fan-out den IDENTISKE kalender til
 // hver LIVE pulje ("Division 3 kører samme løb, parallelt i sine 4 puljer").
 //
-// Form (ejer-låst): hver division fylder en PRÆCIS game-day-kvote (140/112/84/56) med DE STØRSTE
-// løb (prestige), pakket så HVER IRL-dag rammer præcis density (5/4/3/2) stage-events: Grand Tours
+// Form (ejer-låst): hver division fylder en PRÆCIS game-day-kvote (density × løbsdatoer,
+// CALENDAR_RULES.md §1b; #5658) med DE STØRSTE
+// løb (prestige), pakket så HVER IRL-dag rammer præcis density (TIER_DENSITY) stage-events: Grand Tours
 // komprimeret som spredt rygrad MED overlap, klassikere fylder op. Hver etape kører i sin banes
 // faste tids-slot (div 3 = 12/15/18). Monumenter binding-fri (game_day i højt bånd).
 //
 // buildTierMaterializationPlan er REN (ingen DB) → testbar. materializeTierCalendars = I/O-wrapper.
 
 import { poolHasCalendar } from "./divisionCalendarGenerator.js";
-import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
+import { selectTierRaceSet, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, toStageProfileRow } from "./raceStageProfileGenerator.js";
@@ -100,6 +101,31 @@ const INSERT_BATCH = 500;
 // (import + re-export, ikke ren re-export: konstanterne bruges ogsaa lokalt herunder.)
 import { TIER_DENSITY, TIER_OVERLAP_CAP } from "./calendarTierCaps.js";
 export { TIER_DENSITY, TIER_OVERLAP_CAP };
+
+// Standard-vinduet (antal løbsdatoer) når en kalder ikke sender sit eget `realDays`.
+export const DEFAULT_CALENDAR_REAL_DAYS = 28;
+
+/**
+ * #5658: kvoten pr. tier når kalderen IKKE sender sin egen `quotas`.
+ *
+ * density × løbsdatoer (CALENDAR_RULES.md §1b). Det er samme afledning som CLI-stien
+ * (`buildSeasonCalendar.js`'s `quotasForRaceDays`) og forsynings-kontrollen
+ * (`catalogSupplyCheck.js`'s `quotasForRaceDays`) bruger. FØR #5658 faldt auto-stien
+ * (seasonTransition.js's `auto_calendar_enabled`-fase og en pulje-aktivering i en frisk
+ * sæson) tilbage på den hardcodede `TIER_GAME_DAY_QUOTA`, hvis division 4 stadig stod på
+ * den gamle tæthed. Division 4 fik derfor færre etaper end tætheden kræver, en kortere
+ * løbsdags-akse, og nåede ikke sæsonens fælles mål (§1d, TRAINING_RULES.md §13.3).
+ *
+ * @param {number} realDays antal løbsdatoer i vinduet
+ * @param {Record<number, number>} [density]
+ * @returns {Readonly<Record<number, number>>}
+ */
+export function tierGameDayQuotasFor(realDays, density = TIER_DENSITY) {
+  const days = Math.max(0, Math.floor(Number(realDays) || 0));
+  return Object.freeze(Object.fromEntries(
+    Object.entries(density).map(([tier, d]) => [Number(tier), (Number(d) || 0) * days]),
+  ));
+}
 
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
@@ -407,8 +433,10 @@ export function buildTierMaterializationPlan({
   pools = [],
   catalog = [],
   from = new Date(),
-  realDays = 28,
-  quotas = TIER_GAME_DAY_QUOTA,
+  realDays = DEFAULT_CALENDAR_REAL_DAYS,
+  // #5658: null = density × realDays (tierGameDayQuotasFor). En eksplicit tabel bruges
+  // uændret, også hvis den kun har ét tier (manglende tiers får kvote 0, som før).
+  quotas = null,
   density = TIER_DENSITY,
   overlapCaps = TIER_OVERLAP_CAP,
   slots = TIER_STAGE_SLOTS,
@@ -517,13 +545,15 @@ export function buildTierMaterializationPlan({
   // allerede kører i en anden tier den samme sæson (#2276).
   const usedRaceIds = new Set();
   const usedRaceNamesRunning = new Set(usedRaceNames);
+  // #5658: auto-stien sender ingen kvote-tabel. Den afledes da af tætheden og vinduet.
+  const effectiveQuotas = quotas ?? tierGameDayQuotasFor(realDays, density);
   const tierPlans = [];
   for (const [tier, tierPools] of [...liveByTier.entries()].sort((a, b) => a[0] - b[0])) {
     let availableCatalog = usedRaceIds.size ? catalog.filter((c) => !usedRaceIds.has(c.id)) : catalog;
     if (usedRaceNamesRunning.size) {
       availableCatalog = availableCatalog.filter((c) => !usedRaceNamesRunning.has(c.name));
     }
-    const quota = quotas[tier] ?? 0;
+    const quota = effectiveQuotas[tier] ?? 0;
     const dens = density[tier] ?? 1;
     const cap = overlapCaps[tier] ?? 2;
     const usedRaceNamesBeforeTier = new Set(usedRaceNamesRunning);
@@ -750,12 +780,14 @@ export function buildTierMaterializationPlan({
 export async function materializeTierCalendars({
   supabase, seasonId, seasonStartDate = null, from = new Date(),
   baseSeed = 1, tiers = null, forceTiers = [], dryRun = true, log = () => {},
-  // realDays + quotas definerer VINDUET (from..from+realDays) og kvoten pr. tier
-  // (design-default: 140/112/84/56 = TIER_DENSITY × 28 dage). #2276 rest-af-sæson-reparation
+  // realDays + quotas definerer VINDUET (from..from+realDays) og kvoten pr. tier.
+  // #5658: quotas = null (default) betyder density × realDays (tierGameDayQuotasFor), samme
+  // afledning som CLI-stien. Før stod defaulten på TIER_GAME_DAY_QUOTA, hvis division 4 ikke
+  // fulgte tætheden. #2276 rest-af-sæson-reparation
   // (ejer-beslutning 10/7) overstyrer BEGGE eksplicit for ét tier (fx tier 4: tæthed 3,
   // forkortet vindue) — se repair2276Div4Cascade.js. density overstyrer KUN når eksplicit
   // angivet; default TIER_DENSITY bruges ellers uændret (design-tæthederne må ikke røres).
-  realDays = 28, quotas = TIER_GAME_DAY_QUOTA, density = TIER_DENSITY,
+  realDays = DEFAULT_CALENDAR_REAL_DAYS, quotas = null, density = TIER_DENSITY,
   // #4845 (ejer 6/9): faelles antal loebsdage i alle fire divisioner. null = uae­ndret
   // adfaerd. buildSeasonCalendar sender saesonens maal (SEASON_RACE_DAY_TARGET) eller
   // --race-day-target; se calendarRaceDayTargets.js og docs/CALENDAR_RULES.md §1d.
@@ -993,6 +1025,10 @@ export async function materializeTierCalendars({
       weeklyRaceStarts: tierPlan.weeklyRaceStarts ?? null,
       racingDates: tierPlan.racingDates ?? null,
       coverageMeasurements: tierPlan.coverageMeasurements ?? [],
+      // #5658: løbsdags-aksen og sæsonens mål, så seasonCalendarGate.gatePlan kan dømme
+      // §1d (samme antal løbsdage i alle divisioner) på samme summary som resten af gaten.
+      raceDayAxisLength: tierPlan.raceDayAxisLength ?? null,
+      raceDayTarget: tierPlan.raceDayTarget ?? null,
       pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
@@ -1248,7 +1284,12 @@ export async function reconcilePoolCalendarOnActivation({
       // selection blev tom → cross-tier dedup så INGEN optagne løb → tier 4 valgte frit
       // fra hele kataloget (prestige-først = Grand Tours). Merge oven på defaults, så
       // de højere tiers' (ikke-appliede) selections stadig optager deres løb i dedup'en.
-      horizon.quotas = { ...TIER_GAME_DAY_QUOTA, [division.tier]: (TIER_DENSITY[division.tier] ?? 1) * realDays };
+      // #5658: de højere tiers' kvoter afledes af tætheden (et fuldt standard-vindue), ikke af
+      // den hardcodede TIER_GAME_DAY_QUOTA.
+      horizon.quotas = {
+        ...tierGameDayQuotasFor(DEFAULT_CALENDAR_REAL_DAYS),
+        [division.tier]: (TIER_DENSITY[division.tier] ?? 1) * realDays,
+      };
     }
   }
 

@@ -106,7 +106,7 @@ async function shoot({ browser, width, height, quote, file }) {
   await stabilizeEnglish(page);
   await login(page);
   await page.goto(`/riders/${U23_RIDER.id}`);
-  const demoteBtn = page.getByRole("button", { name: /Move to academy/i }).first();
+  const demoteBtn = page.getByRole("button", { name: /Move to U23/i }).first();
   await demoteBtn.waitFor({ timeout: 20000 });
   await demoteBtn.click();
   await page.getByRole("dialog").waitFor();

@@ -1,8 +1,34 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, Button, ZonePill, XIcon } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/seasonRecapCopy.js";
+import { authHeaders } from "../lib/supabase.ts";
+import { apiFetch } from "../lib/apiFetch.ts";
+
+// #5755 — GET /api/board/verdict/{seasonId}: bygget i en parallel bølge-lane
+// (mandat-launch-familien, #5741). Kontrakt: { enabled, confidenceAfter } for
+// den AFSLUTTEDE sæson kortet viser, eller 404/fejl hvis der ikke findes en
+// verdict (endnu). Best-effort, ALDRIG blokerende for kortet — samme
+// "progressiv, aldrig blokerende"-mønster som fetchBoardRoom
+// (pages/annualMeeting/meetingApi.js), via den centrale apiFetch-indpakning
+// (Retry-After-respekt på 429, #5089/#5242) i stedet for et bart fetch().
+async function fetchBoardVerdict(seasonId) {
+  if (!seasonId) return null;
+  try {
+    const headers = await authHeaders({ json: false });
+    if (!headers) return null;
+    const res = await apiFetch(`/api/board/verdict/${seasonId}`, { headers }, { source: "board-verdict" });
+    // !ok dækker 404 (endnu ingen verdict/endpoint ikke live), 429 (limited)
+    // og en netværksfejl (networkError) — alle skal give "ingen linje", ikke
+    // en fejlkasse (#5755 er best-effort, ikke en fejltilstand for kortet).
+    if (!res.ok) return null;
+    return res.data ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // #2752 — the ACTIVE season-transition nudge for the dashboard: today a
 // manager "falls into" the next season with no closure moment for the one
@@ -17,10 +43,13 @@ import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/season
 // competing — this card's CTA leads to SeasonRecapHero (the yearbook), the
 // checklist's items lead to squad/training/board/academy.
 //
-// PRESENTATIONAL ONLY (props-in, no fetch) — DashboardPage.jsx computes
-// `movement` via the SAME resolveSeasonMovement() helper SeasonEndPage.jsx
-// uses for the recap hero (seasonRecapData.js, season-recap-polish 18/8) —
-// one movement calculation shared by both surfaces, not two that could drift.
+// LARGELY PRESENTATIONAL (props-in) — DashboardPage.jsx computes `movement`
+// via the SAME resolveSeasonMovement() helper SeasonEndPage.jsx uses for the
+// recap hero (seasonRecapData.js, season-recap-polish 18/8) — one movement
+// calculation shared by both surfaces, not two that could drift. Exception:
+// #5755's board-confidence line is a self-contained best-effort fetch (see
+// fetchBoardVerdict above) so the card doesn't need a new prop-wiring change
+// in DashboardPage.jsx for a line that may render nothing.
 //
 // DESIGN: canonical Section/SectionHeader recipe, dismiss-X mirrors
 // SeasonStartGuideCard's own dismiss affordance — dismissal is per-season,
@@ -36,6 +65,7 @@ import { movementTone, movementLabelKey, nextSeasonGoalKey } from "../lib/season
 // won that chain.
 export default function SeasonWrapNudgeCard({
   seasonNumber,
+  seasonId,
   nextSeasonNumber,
   division,
   divisionSize,
@@ -48,6 +78,32 @@ export default function SeasonWrapNudgeCard({
   onDismiss,
 }) {
   const { t } = useTranslation("dashboard");
+
+  // #5755 — "Board confidence {n} %"-linjen. `null` = ingen linje (default,
+  // dækker "ikke hentet endnu" OG "ingen data"; se fetchBoardVerdict).
+  const [boardConfidencePercent, setBoardConfidencePercent] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // CodeRabbit-fund (#5755, ÉN CLI-runde): uden dette nulstillet FØRST
+    // ville en seasonId-ændring på samme kort-instans (ingen remount) kunne
+    // vise FORRIGE sæsons tal, videre eller endeløst, mens/hvis den nye
+    // sæsons kald ikke giver en linje.
+    setBoardConfidencePercent(null);
+    fetchBoardVerdict(seasonId).then((verdict) => {
+      if (cancelled) return;
+      if (verdict?.enabled && Number.isFinite(verdict.confidenceAfter)) {
+        setBoardConfidencePercent(verdict.confidenceAfter);
+      } else if (verdict == null) {
+        // Ikke en fejltilstand for KORTET (guld-CTA'en skal forblive
+        // uændret) — kun en debug-log, aldrig console.error (#5755). Engelsk
+        // logtekst: i18n-check-lib-strings.mjs flagger dansk i ikke-
+        // kommentar-kode i frontend/src/components.
+        console.debug("[SeasonWrapNudgeCard] board verdict unavailable (#5755)");
+      }
+    });
+    return () => { cancelled = true; };
+  }, [seasonId]);
 
   const movementLabel = t(`seasonWrap.movement.${movementLabelKey(movement)}`, { division });
   const goalSuffix = nextSeasonGoalKey({
@@ -83,6 +139,12 @@ export default function SeasonWrapNudgeCard({
           </span>
         )}
       </div>
+
+      {boardConfidencePercent != null && (
+        <p className="mb-2 text-[13px] text-cz-2" data-testid="season-wrap-board-confidence">
+          {t("seasonWrap.boardConfidence", { percent: boardConfidencePercent })}
+        </p>
+      )}
 
       <p className="mb-4 font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">
         {t("seasonWrap.statsLine", { points: formatNumber(points), wins })}

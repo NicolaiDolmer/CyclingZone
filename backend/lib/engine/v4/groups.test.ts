@@ -8,10 +8,14 @@ import {
   INITIAL_GROUP_ID,
   initGroups,
   initRiderStates,
+  isBreakawayWin,
   makeGroupId,
+  mergedOrigin,
   mergeGroups,
+  mergeGroupsDetailed,
   splitGroup,
 } from "./groups.ts";
+import type { FinaleGroupTrace } from "./groups.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import type { AbilityKey, Entrant, RaceGroup } from "./types.ts";
 
@@ -148,4 +152,89 @@ test("buildGroupSnapshot: km rundes til 2 decimaler, grupper mappes 1:1", () => 
   assert.equal(snap.groups.length, 1);
   assert.equal(snap.groups[0].group_id, "peloton-0");
   assert.equal(snap.groups[0].gap_seconds, 3.456);
+});
+
+// ── #5578: gruppe-oprindelse (origin) ────────────────────────────────────────
+
+function group(id: string, kind: RaceGroup["kind"], riderIds: string[], gap: number, origin?: RaceGroup["origin"]): RaceGroup {
+  return { id, kind, rider_ids: riderIds, gap_seconds: gap, cohesion: 1, ...(origin ? { origin } : {}) };
+}
+
+test("#5578 splitGroup: en split fra feltet uden origin faar INGEN origin-noegle (snapshot/fixtures uaendret)", () => {
+  const next = splitGroup(initGroups(makeEntrants(4)), INITIAL_GROUP_ID, ["r1"], { id: "chase-1", kind: "chase", gapSecondsDelta: 10 });
+  const split = next.find((g) => g.id === "chase-1");
+  assert.ok(split);
+  assert.equal("origin" in split, false);
+});
+
+test("#5578 splitGroup: eksplicit origin saettes, ellers arves kildens origin", () => {
+  const formed = splitGroup(initGroups(makeEntrants(5)), INITIAL_GROUP_ID, ["r1", "r2"], {
+    id: "breakaway-0", kind: "breakaway", gapSecondsDelta: -30, origin: "breakaway",
+  });
+  assert.equal(formed.find((g) => g.id === "breakaway-0")?.origin, "breakaway");
+  const soloFromEscape = splitGroup(formed, "breakaway-0", ["r1"], { id: "solo-1", kind: "solo", gapSecondsDelta: -10 });
+  assert.equal(soloFromEscape.find((g) => g.id === "solo-1")?.origin, "breakaway");
+  assert.equal(soloFromEscape.find((g) => g.id === "breakaway-0")?.origin, "breakaway");
+});
+
+test("#5578 mergedOrigin: udbrud + felt = indhentet (felt), udbrud + udbrud = udbrud, felt + nedkoersel = felt", () => {
+  const escape = group("b", "breakaway", ["a"], 0, "breakaway");
+  const peloton = group("p", "peloton", ["b"], 5);
+  const descent = group("d", "breakaway", ["c"], 0, "descent");
+  assert.equal(mergedOrigin(escape, peloton), undefined);
+  assert.equal(mergedOrigin(peloton, escape), undefined);
+  assert.equal(mergedOrigin(escape, group("b2", "solo", ["x"], 1, "breakaway")), "breakaway");
+  assert.equal(mergedOrigin(escape, descent), "descent");
+  assert.equal(mergedOrigin(peloton, descent), undefined);
+  assert.equal(mergedOrigin(descent, group("d2", "solo", ["y"], 1, "descent")), "descent");
+});
+
+test("#5578 mergeGroupsDetailed: et udbrud feltet henter mister oprindelsen, selv om id'et er udbruddets", () => {
+  const { groups } = mergeGroupsDetailed([group("breakaway-0", "breakaway", ["a"], 0, "breakaway"), group("peloton-0", "peloton", ["b", "c"], 1)], 5);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].id, "breakaway-0");
+  assert.equal(groups[0].kind, "peloton");
+  assert.equal("origin" in groups[0], false);
+});
+
+function trace(partial: Partial<FinaleGroupTrace>): FinaleGroupTrace {
+  const escape = group("breakaway-0", "breakaway", ["e1", "e2"], 0, "breakaway");
+  const peloton = group("peloton-0", "peloton", ["p1", "p2"], 60);
+  return {
+    entryGroups: [escape, peloton],
+    preFinaleGroups: [escape, peloton],
+    postFinaleGroups: [group("finale-winner-0", "solo", ["e1"], 0), group("finale-tier-1", "solo", ["e2"], 4), peloton],
+    ...partial,
+  };
+}
+
+test("#5578 isBreakawayWin: udbruddet holder hjem og goer finalen op alene = udbrudssejr", () => {
+  assert.equal(isBreakawayWin(trace({}), "e1"), true);
+});
+
+test("#5578 isBreakawayWin: finalen hentede udbruddet (feltet i placerings-opgoeret) = ikke udbrudssejr, ogsaa naar en udbryder vinder", () => {
+  const postFinaleGroups = [group("finale-winner-0", "solo", ["e1"], 0), group("finale-tier-1", "peloton", ["p1", "e2", "p2"], 4)];
+  assert.equal(isBreakawayWin(trace({ postFinaleGroups }), "e1"), false);
+});
+
+test("#5578 isBreakawayWin: et nedkoerselsangreb ud af feltet taeller aldrig", () => {
+  const descent = group("breakaway-2000", "breakaway", ["d1", "d2"], 0, "descent");
+  const peloton = group("peloton-0", "peloton", ["p1"], 30);
+  const t: FinaleGroupTrace = {
+    entryGroups: [descent, peloton],
+    preFinaleGroups: [descent, peloton],
+    postFinaleGroups: [group("finale-winner-0", "solo", ["d1"], 0), group("finale-tier-1", "solo", ["d2"], 3), peloton],
+  };
+  assert.equal(isBreakawayWin(t, "d1"), false);
+});
+
+test("#5578 isBreakawayWin: udbrud dannet FOERST paa finale-segmentet taeller ikke (ikke i udbruddet ved indgangen)", () => {
+  const entryGroups = [group("peloton-0", "peloton", ["e1", "e2", "p1", "p2"], 0)];
+  assert.equal(isBreakawayWin(trace({ entryGroups }), "e1"), false);
+});
+
+test("#5578 isBreakawayWin: feltets rytter vinder = ikke udbrudssejr; ingen vinder = ikke udbrudssejr", () => {
+  const postFinaleGroups = [group("finale-winner-0", "solo", ["p1"], 0), group("finale-tier-1", "peloton", ["p2", "e1", "e2"], 4)];
+  assert.equal(isBreakawayWin(trace({ postFinaleGroups }), "p1"), false);
+  assert.equal(isBreakawayWin(trace({}), null), false);
 });

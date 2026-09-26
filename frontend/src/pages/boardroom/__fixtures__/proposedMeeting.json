@@ -1,0 +1,60 @@
+{
+  "available": true,
+  "mandate": {
+    "id": "mandate-preview-proposed",
+    "seasonNumber": 4,
+    "focus": "balanced",
+    "deadlineAt": "2026-10-05T12:00:00Z",
+    "adjustments": { "allowed": 2, "used": 0 },
+    "trustTier": "steady",
+    "goals": [
+      {
+        "goalKey": "stage_wins|3|||0",
+        "type": "stage_wins",
+        "target": 3,
+        "label": "Mindst 3 etapesejre i sæsonen",
+        "label_key": null,
+        "cumulative": false,
+        "race_scope": null,
+        "nationality_code": null,
+        "owner": {
+          "archetypeKey": "resultatjaegeren",
+          "name": "Jørgen Brandt",
+          "initials": "JB"
+        }
+      },
+      {
+        "goalKey": "null|0|||0",
+        "type": null,
+        "target": 0,
+        "label": "Hold sæsonresultatet over nul",
+        "label_key": "boardroom.mandate.goalLabels.keepResultAboveZero",
+        "cumulative": false,
+        "race_scope": null,
+        "nationality_code": null,
+        "owner": {
+          "archetypeKey": "sponsoraten",
+          "name": "Søren Lindqvist",
+          "initials": "SL"
+        }
+      },
+      {
+        "goalKey": "null|2|||0",
+        "type": null,
+        "target": 2,
+        "label": "Giv 2 akademiryttere en debut",
+        "label_key": "boardroom.mandate.goalLabels.academyDebuts",
+        "cumulative": false,
+        "race_scope": null,
+        "nationality_code": null,
+        "owner": {
+          "archetypeKey": "ungdomsidealisten",
+          "name": "Astrid Holm",
+          "initials": "AH"
+        }
+      }
+    ]
+  },
+  "request": { "options": [] },
+  "visionSlot": null
+}

@@ -9,7 +9,8 @@
   },
   "labels": {
     "today": "Where it is today",
-    "next": "Where it's heading"
+    "next": "Where it's heading",
+    "new": "New"
   },
   "voting": {
     "intro": "Rate the plans below. Your votes help decide what gets built next. What comes after season 4, I decide with you in the Roadmap threads on the forum.",

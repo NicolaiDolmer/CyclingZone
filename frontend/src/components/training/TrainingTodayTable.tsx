@@ -25,6 +25,8 @@ import { Link } from "react-router";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
 import type { RosterCell } from "./mobile/TrainingMobileRoster.tsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "./TrainingScoreSparkline.tsx";
+import RiderBadges from "../rider/RiderBadges.jsx";
+import { squadBadgeKey } from "../../lib/squadBadge.ts";
 // Den ENE kanoniske sorterbare header (samme pil, aria-sort og klik-maal som
 // resten af spillet), ikke en lokal kopi.
 import SortableTh from "../ui/SortableTh.jsx";
@@ -40,6 +42,9 @@ export type TodayRow = {
   seasonPoints: number | null;
   noDay: boolean;
   score?: { state: "score" | "latest" | "race" | "none"; value?: number | null; spark?: TrainingScorePoint[] | null } | null;
+  // #5763: riders.squad (backend/lib/squads.js), ALDRIG alder — afgør et lille
+  // U23/JR-mærke bag navnet. Senior/ukendt = intet mærke (squadBadgeKey).
+  squad?: string | null;
 };
 
 export type TodayGroup = { key: string; label: string; count: string; rows: TodayRow[] };
@@ -164,6 +169,7 @@ export default function TrainingTodayTable({
             >
               <span className="flex items-center gap-1.5 text-[13.5px] font-medium text-cz-1">
                 {row.name}
+                <RiderBadges badges={[squadBadgeKey(row.squad)]} />
                 <ChevronDownIcon
                   size={12}
                   aria-hidden="true"

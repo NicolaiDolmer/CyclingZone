@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
+import { useNavigate } from "react-router";
+import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon, Button } from "../../components/ui";
 import { appendDate, formatGoalValue, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
@@ -150,8 +151,47 @@ function BonusOfferProgressLine({ progress, t }) {
   return null;
 }
 
-export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, onReload }) {
+// #5754 · Neutral pil til det FORESLAAEDE mandats maal-liste — samme anatomi
+// som StatusPill (rounded-cz-pill, px-2.5 py-[3px], text-2xs font-semibold),
+// bevidst IKKE en ny status i StatusPill.jsx (den fil ejes af en anden lane).
+// Gaar aldrig gennem STATUS_TONE's success/warning/danger-palet: et foreslaaet
+// maal er hverken paa/foran/bagud endnu — det er slet ikke underskrevet.
+function ProposedPill({ t }) {
+  return (
+    <span className="inline-block flex-shrink-0 rounded-cz-pill bg-cz-subtle px-2.5 py-[3px] text-2xs font-semibold text-cz-3">
+      {t("boardroom.mandate.proposed.pill")}
+    </span>
+  );
+}
+
+// #5754 · Skrivebeskyttet raekke for et FORESLAAET maal (GET /board/meeting,
+// endnu ikke underskrevet). Genbruger resolveGoalTitle (samme titel-resolver
+// som det underskrevne kort), men /board/meeting sender maalet i backendens
+// RAA snake_case-form (label_key, race_scope, nationality_code — se
+// meetingFormat.js's samme note) i stedet for boardRoom.js's camelCase. Uden
+// dette map-lag ville resolveGoalTitle miste label_key (den laeser kun
+// goal.labelKey) og et navngivet maal uden `type` (fx "Giv N akademiryttere en
+// debut") ville falde tilbage til en raa DB-label i stedet for den oversatte
+// titel. Ingen achieved/target-linje og intet kvitterings-chevron: mandatet er
+// ikke i gang endnu, saa der er intet talt endnu at vise.
+function ProposedGoalRow({ goal, t }) {
+  const titleSource = { ...goal, labelKey: goal.labelKey ?? goal.label_key ?? null };
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-cz-border py-[13px]">
+      <div className="flex min-w-0 items-center gap-3">
+        <MonogramAvatar sizeClass="h-7 w-7" initials={goal.owner?.initials} initialsClass="text-2xs" />
+        <p className="min-w-0 text-[13.5px] font-medium leading-snug text-cz-1 [text-wrap:balance]">
+          {resolveGoalTitle(t, titleSource)}
+        </p>
+      </div>
+      <ProposedPill t={t} />
+    </div>
+  );
+}
+
+export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, proposedMeeting = null, onReload }) {
   const { t } = useTranslation("board");
+  const navigate = useNavigate();
   // #5633 · Var et enkelt `expandedId` (kun ÉT maal ad gangen). Spillerønske:
   // fold flere ud, eller alle/ingen ad gangen — se Set-baseret expandedIds +
   // "Expand all"/"Collapse all" nedenfor.
@@ -167,6 +207,35 @@ export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProg
       return next;
     });
   };
+
+  // #5754 · [board] Mandat-launch C (ejer-go 25/9 kl. 19:45, valg A, billede
+  // pin 9): intet aktivt mandat mellem saesonskiftet og aarsmoedets
+  // underskrift skal ikke laengere vise et tomt rum, naar bestyrelsen allerede
+  // HAR et forslag klar (GET /board/meeting, gemt af BoardroomPage). Findes
+  // intet forslag heller (proposedMeeting.available er false/mangler),
+  // uaendret fallback til den kanoniske EmptyState.
+  const proposedMandate = proposedMeeting?.available ? proposedMeeting.mandate : null;
+  if (!mandate && proposedMandate) {
+    const proposedGoals = proposedMandate.goals || [];
+    return (
+      <Section>
+        <SectionHeader
+          title={t("boardroom.mandate.proposed.cardTitle", { season: proposedMandate.seasonNumber })}
+          meta={t("boardroom.mandate.proposed.meta")}
+        />
+        <div>
+          {proposedGoals.map((goal) => (
+            <ProposedGoalRow key={goal.goalKey ?? goal.id} goal={goal} t={t} />
+          ))}
+        </div>
+        <div className="mt-3.5 border-t border-cz-border pt-3.5">
+          <Button variant="secondary" size="sm" onClick={() => navigate("/board/meeting")}>
+            {t("boardroom.header.enterMeetingCta")}
+          </Button>
+        </div>
+      </Section>
+    );
+  }
 
   if (!mandate) {
     return (

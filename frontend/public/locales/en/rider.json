@@ -14,6 +14,7 @@
     "academy": "Academy rider (off the senior squad cap)",
     "retireRisk": "High retirement risk: riders typically retire between ages 36 and 40",
     "contractExpiring": "Contract expires at the next season change: this rider becomes a free agent unless the contract is extended first",
+    "junior": "Junior rider (on your junior squad)",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -28,7 +29,8 @@
       "academy": "ACAD",
       "retireRisk": "35+",
       "contractExpiring": "EXP",
-      "listed": "LIST"
+      "listed": "LIST",
+      "junior": "JR"
     }
   },
   "page": {
@@ -835,15 +837,13 @@
       "success": "Rider released.",
       "errorPrefix": "Couldn't release:"
     },
-    "promote": {
-      "button": "Promote to senior squad",
-      "success": "Rider promoted to your senior squad.",
-      "errorPrefix": "Couldn't promote:"
-    },
-    "demote": {
-      "button": "Move to academy",
-      "success": "Rider moved to your academy.",
-      "errorPrefix": "Couldn't move rider:"
+    "move": {
+      "button": "Move squad",
+      "success": {
+        "senior": "Rider moved to your senior squad.",
+        "u23": "Rider moved to your U23 team.",
+        "junior": "Rider moved to your junior team."
+      }
     }
   },
   "swapOffer": {

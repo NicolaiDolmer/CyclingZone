@@ -50,10 +50,27 @@ import { VALUATION_ABILITY_COLUMNS } from "../../lib/riderValuation.js";
 import { recomputeRiderValue } from "../../lib/riderValueRefresh.js";
 import {
   loadValuationModelById,
+  loadValuationModelByIdWithMarket,
   readProductionValueModelId,
   readValuationModelId,
+  withMarketFit,
 } from "../../lib/riderValuationModelSelect.js";
 import { readFileSync } from "node:fs";
+import { MAX_DEVELOP_SELL_ROI, developAndSellGate } from "../../lib/valuationV4Scorecard.js";
+import { isTypefreeModel, valueTypefree } from "../../lib/valuationTypefree/typefreeValuation.js";
+import { buildCapsTypefree, profileSignature, stepTypefree } from "../../lib/valuationTypefree/careerTypefree.js";
+
+// ── #5497 v3: den typefri nøgle (v6) ─────────────────────────────────────────
+//   --to=v6            den samlede typefri model
+//   --step=N           elitepræmie-trin 0-4 (søndagskørsler siden kørselsdagen)
+//                      for hovedfilerne (default 0 = kørselsdagen)
+//   --market=<fil>     PRIVAT markeds-fit (typefree5497-market-fit.json fra
+//                      målescriptet). Udeladt ⇒ app_config-nøglen
+//                      rider_valuation_v6_market (findes den ikke: intet marked,
+//                      og opsummeringen siger det).
+// For v6 skrives desuden trin.md: population, managerhold, typebyte,
+// +1-evnepoint-glathed og udvikl-og-sælg på alle fem trin. Alt kvalitativt
+// nok til PR-body står i sektionen "Til PR-body" (andele, ingen navne/beløb).
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LIB = join(__dirname, "../../lib");
@@ -86,6 +103,161 @@ function median(xs) {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+// ── #5497 v3: trin-rapport for den typefri model ────────────────────────────
+const hashUnit = (s) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 1_000_000) / 1_000_000;
+};
+const SWAP_TYPES = ["sprinter", "tt", "climber", "puncheur", "brostensrytter", "rouleur", "baroudeur", "gc"];
+const SMOOTH_KEYS = ["climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance",
+  "recovery", "durability", "descending", "cobblestone", "aggression", "positioning", "tactics"];
+const share = (n, d) => (d > 0 ? `${fmt((n / d) * 100)} %` : "n/a");
+
+function typefreeStepReport({ perRider, humanTeamIds, baseline, youthBaseline, to, wageAfter, liveWageId, wageId }) {
+  const STEPS = [0, 1, 2, 3, 4];
+  const rec = (p, phaseStep, r = p.src.r, ab = p.src.ab) => recomputeRiderValue(r, ab, baseline, to, {
+    typeAbilities: p.src.caps, youthBaseline, productionModel: wageAfter, phaseStep,
+  });
+  const byStep = new Map(); // rider id -> [out trin 0..4]
+  for (const p of perRider) byStep.set(p.id, STEPS.map((i) => rec(p, i)));
+  const isHuman = (p) => humanTeamIds.has(p.team_id);
+  const human = perRider.filter(isHuman);
+
+  const L = [
+    `# #5497 v3 — typefri model (${to.model_id}) på alle fem præmie-trin`,
+    "",
+    `Read-only mod prod, ${new Date().toISOString()}. Gennem recomputeRiderValue. Marked: ${to.market_fit ? "ja" : "NEJ (intet fit)"}.`,
+    "",
+    "## Population pr. trin (før = prod i dag)",
+    "",
+    "| trin | gruppe | Σ ændring | median | op | ned | uændret | mister >= 25 % | mister >= 50 % |",
+    "|---|---|--:|--:|--:|--:|--:|--:|--:|",
+  ];
+  const pubLines = [];
+  for (const i of STEPS) {
+    for (const [label, rows] of [["alle", perRider], ["menneskehold", human]]) {
+      const after = rows.map((p) => byStep.get(p.id)[i].base_value);
+      const before = rows.map((p) => p.before);
+      const deltas = rows.map((p, j) => pct(before[j], after[j])).filter((x) => x != null);
+      const up = rows.filter((p, j) => after[j] > before[j]).length;
+      const dn = rows.filter((p, j) => after[j] < before[j]).length;
+      const same = rows.length - up - dn;
+      const sb = before.reduce((a, x) => a + x, 0);
+      const sa = after.reduce((a, x) => a + x, 0);
+      L.push(`| ${i} | ${label} | ${fmt(pct(sb, sa))} % | ${fmt(median(deltas))} % | ${share(up, rows.length)} | ${share(dn, rows.length)} | ${share(same, rows.length)} | ${share(deltas.filter((d) => d <= -25).length, rows.length)} | ${share(deltas.filter((d) => d <= -50).length, rows.length)} |`);
+      if (label === "menneskehold") pubLines.push(`- Trin ${i}, ryttere på menneskehold: ${share(up, rows.length)} op, ${share(dn, rows.length)} ned, ${share(same, rows.length)} uændret.`);
+    }
+  }
+
+  // Managerhold: ændrer rytterne sig overhovedet?
+  const humanChanged = human.filter((p) => byStep.get(p.id)[0].base_value !== p.before).length;
+  // Løn: flytter løngrundlaget sig på NOGET trin?
+  const wageMoved = perRider.filter((p) => byStep.get(p.id).some((o) => o.current_production_value !== p.cpv_before)).length;
+  // Markedet: hvor mange fik en faktor ≠ 1, og ramte loftet?
+  const mf = perRider.map((p) => byStep.get(p.id)[0].valuation_components?.market_factor ?? 1);
+  const capF = to.market_fit ? Math.exp(Number(to.market_fit.cap_ln)) : null;
+  const atCap = capF ? mf.filter((f) => Math.abs(f - capF) < 1e-9 || Math.abs(f - 1 / capF) < 1e-9).length : 0;
+
+  // Typebyte: samme evner, anden type/frossen type/anlæg ⇒ samme pris på alle trin.
+  let swapN = 0, swapDiff = 0;
+  for (const p of perRider) {
+    if (hashUnit(`swap:${p.id}`) >= 0.2) continue;
+    const other = SWAP_TYPES.find((t) => t !== p.src.r.primary_type && t !== p.src.r.valuation_type) ?? "gc";
+    const r2 = { ...p.src.r, primary_type: other, valuation_type: other, archetype_draw: { primary: other, secondary: null, isHybrid: false } };
+    for (const i of STEPS) {
+      swapN++;
+      if (rec(p, i, r2).base_value !== byStep.get(p.id)[i].base_value) swapDiff++;
+    }
+  }
+
+  // +1 evnepoint: hvor ofte sænker ét ekstra point prisen (trin 0 og ny normal)?
+  const smooth = {};
+  for (const i of [0, 4]) {
+    let n = 0, neg = 0, negBase = 0, over1 = 0;
+    for (const p of perRider) {
+      if (hashUnit(`sm:${p.id}`) >= 0.03) continue;
+      const o0 = byStep.get(p.id)[i];
+      for (const k of SMOOTH_KEYS) {
+        const v = Number(p.src.ab[k]);
+        if (!Number.isFinite(v) || v >= 99) continue;
+        const o1 = rec(p, i, p.src.r, { ...p.src.ab, [k]: v + 1 });
+        n++;
+        if (o1.base_value < o0.base_value) neg++;
+        if (o1.base_value < o0.base_value * 0.99) over1++;
+        if (o1.valuation_components.base < o0.valuation_components.base) negBase++;
+      }
+    }
+    smooth[i] = { n, neg, negBase, over1 };
+  }
+
+  // Udvikl-og-sælg (samme grænse som valuationV4Scorecard, 4 sæsoner):
+  // prospects = alder <= 21 og potentiale >= 5. Løngrundlag = det der faktisk
+  // gælder efter skiftet (v4). Fremskrivning = den typefri prognose.
+  const prospects = perRider.filter((p) => p.age <= 21 && Number(p.src.r.potentiale) >= 5);
+  const projectTf = (p) => {
+    const sig = profileSignature(p.src.ab, to.profile);
+    const capsTf = buildCapsTypefree(p.src.ab, sig, p.src.r.potentiale, { headroom: to.profile?.headroom });
+    let ab = { ...p.src.ab };
+    for (let s = 0; s < 4; s++) ab = stepTypefree(ab, capsTf, sig, { potentiale: p.src.r.potentiale, age: p.age + s });
+    return ab;
+  };
+  const horizonByStep = new Map();
+  for (const p of prospects) {
+    const abH = projectTf(p);
+    horizonByStep.set(p.id, STEPS.map((i) => valueTypefree({ age: p.age + 4, potentiale: p.src.r.potentiale }, abH, to, { phaseStep: i }).value));
+  }
+  const dev = STEPS.map((i) => {
+    const gs = prospects.map((p) => ({
+      p,
+      start: byStep.get(p.id)[i].base_value,
+      g: developAndSellGate({
+        bvStart: byStep.get(p.id)[i].base_value,
+        cpvStart: byStep.get(p.id)[i].current_production_value,
+        bvAtHorizon: horizonByStep.get(p.id)[i],
+        seasons: 4,
+      }),
+    }));
+    const best = gs.reduce((b, y) => (y.start > (b?.start ?? -Infinity) ? y : b), null);
+    return {
+      i,
+      n: gs.length,
+      best,
+      overCap: gs.filter((y) => y.g.roi > MAX_DEVELOP_SELL_ROI).length,
+      netNeg: gs.filter((y) => !(y.g.pnl > 0)).length,
+      medianRoi: median(gs.map((y) => y.g.roi).filter(Number.isFinite)),
+    };
+  });
+
+  L.push(
+    "",
+    "## Kontroller",
+    "",
+    `- Løngrundlag (${liveWageId} -> ${wageId}) flyttet på noget trin: **${wageMoved}** ryttere`,
+    `- Menneskeholds ryttere hvis pris ændrer sig på kørselsdagen: **${humanChanged} / ${human.length}**`,
+    `- Typebyte (20 % stikprøve × 5 trin): **${swapDiff} afvigelser** af ${swapN}`,
+    ...[0, 4].map((i) => `- +1 evnepoint, trin ${i} (3 % stikprøve, ${smooth[i].n} tilfælde): prisen falder i ${share(smooth[i].neg, smooth[i].n)} (over 1 %: ${share(smooth[i].over1, smooth[i].n)}); grundværdien alene falder i ${share(smooth[i].negBase, smooth[i].n)}`),
+    `- Marked: faktor ≠ 1 for ${share(mf.filter((f) => f !== 1).length, mf.length)}; ved loftet: ${share(atCap, mf.length)}`,
+    "",
+    "## Udvikl-og-sælg pr. trin (4 sæsoner, prospects alder <= 21 og potentiale >= 5)",
+    "",
+    "| trin | prospects | dyreste: ROI | dyreste: ikke-dominant | dyreste: net-positiv | over ROI-loft | net-negative | median ROI |",
+    "|---|--:|--:|--:|--:|--:|--:|--:|",
+    ...dev.map((d) => `| ${d.i} | ${d.n} | ${Number.isFinite(d.best?.g?.roi) ? `${fmt(d.best.g.roi * 100)} %` : "-"} | ${Number.isFinite(d.best?.g?.roi) ? (d.best.g.roi <= MAX_DEVELOP_SELL_ROI ? "ja" : "NEJ") : "-"} | ${d.best ? (d.best.g.pnl > 0 ? "ja" : "NEJ") : "-"} | ${d.overCap} | ${d.netNeg} | ${fmt((d.medianRoi ?? NaN) * 100)} % |`),
+    "",
+    "## Til PR-body (kvalitativt, ingen navne/beløb)",
+    "",
+    `- Løngrundlag flyttet: ${wageMoved === 0 ? "0 (bekræftet på alle fem trin)" : `${wageMoved} (STOP)`}.`,
+    `- Menneskeholds ryttere ændrer sig: ${share(humanChanged, human.length)} af dem får ny pris på kørselsdagen.`,
+    `- Typebyte: ${swapDiff} afvigelser.`,
+    `- +1 evnepoint sænker prisen i ${share(smooth[0].neg, smooth[0].n)} af tilfældene på kørselsdagen og ${share(smooth[4].neg, smooth[4].n)} i den nye normal.`,
+    `- Udvikl-og-sælg "ikke dominant" for den dyreste prospect: ${dev.every((d) => Number.isFinite(d.best?.g?.roi) && d.best.g.roi <= MAX_DEVELOP_SELL_ROI) ? "grøn på alle fem trin" : "RØD på mindst ét trin"}; net-positiv: ${dev.map((d) => (d.best && d.best.g.pnl > 0 ? "grøn" : "rød")).join(" / ")}.`,
+    ...pubLines,
+    "",
+  );
+  return L;
+}
+
 async function main() {
   const liveId = await readValuationModelId(sb);
   const liveWageId = await readProductionValueModelId(sb);
@@ -95,7 +267,17 @@ async function main() {
   // længe ejeren ikke har flippet den separate nøgle (ejer-beslutning 2).
   const wageId = arg("wage", liveWageId);
   const from = loadValuationModelById(fromId);
-  const to = loadValuationModelById(toId);
+  const marketFile = arg("market");
+  let to = loadValuationModelById(toId);
+  if (isTypefreeModel(to)) {
+    to = marketFile
+      ? withMarketFit(to, JSON.parse(readFileSync(resolve(marketFile), "utf8")))
+      : await loadValuationModelByIdWithMarket(sb, toId);
+    if (marketFile && !to.market_fit) throw new Error(`--market=${marketFile} er ikke et gyldigt markeds-fit`);
+    console.log(`typefri model: marked ${to.market_fit ? `fra ${marketFile ? "--market" : "app_config"}` : "MANGLER (regnes uden marked)"}`);
+  }
+  const phaseStep = Math.max(0, Math.min(4, Number(arg("step", "0")) || 0));
+  if (isTypefreeModel(to)) console.log(`elitepræmie-trin: ${phaseStep}`);
   // FØR-billedet skal være prod som den er LIGE NU: pris fra `fromId`,
   // løngrundlag fra den nøgle der faktisk gælder i dag.
   const wageBefore = loadValuationModelById(liveWageId);
@@ -144,7 +326,7 @@ async function main() {
       typeAbilities: caps, youthBaseline, productionModel: wageBefore,
     });
     const b = recomputeRiderValue(r, ab, baseline, to, {
-      typeAbilities: caps, youthBaseline, productionModel: wageAfter,
+      typeAbilities: caps, youthBaseline, productionModel: wageAfter, phaseStep,
     });
     if (a.base_value == null || b.base_value == null) continue;
     perRider.push({
@@ -158,6 +340,7 @@ async function main() {
       cpv_before: a.current_production_value,
       cpv_after: b.current_production_value,
       delta_pct: pct(a.base_value, b.base_value),
+      src: { r, ab, caps },
     });
   }
 
@@ -171,7 +354,9 @@ async function main() {
   }
 
   const outDir = resolve(arg("out", join(REPO, "balance-internals",
-    `${new Date().toISOString().slice(0, 10)}-5443-v5-dryrun`)));
+    isTypefreeModel(to)
+      ? `${new Date().toISOString().slice(0, 10)}-5497-${toId}-dryrun-trin${phaseStep}`
+      : `${new Date().toISOString().slice(0, 10)}-5443-v5-dryrun`)));
   mkdirSync(outDir, { recursive: true });
 
   writeFileSync(join(outDir, "ryttere.csv"), csv([
@@ -258,6 +443,13 @@ async function main() {
     "",
   ];
   writeFileSync(join(outDir, "opsummering.md"), lines.join("\n"));
+
+  if (isTypefreeModel(to)) {
+    writeFileSync(join(outDir, "trin.md"), typefreeStepReport({
+      perRider, humanTeamIds, baseline, youthBaseline, from, to, wageBefore, wageAfter, liveWageId, wageId,
+    }).join("\n"));
+    console.log("  trin.md (alle fem præmie-trin, typebyte, glathed, udvikl-og-sælg)");
+  }
 
   console.log(`skrevet: ${outDir}`);
   console.log(`  ryttere.csv (${perRider.length}) · hold.csv (${teamRows.length}) · opsummering.md`);

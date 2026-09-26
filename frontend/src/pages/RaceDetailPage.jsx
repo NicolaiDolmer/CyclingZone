@@ -1078,6 +1078,15 @@ export default function RaceDetailPage() {
               selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
               selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
               selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
+              /* #5419: Hold-fanens EGEN etape-stribe (FØR løbet, holdudtagelsen) —
+                 genbruger Etaper-fanens StageStripe (samme `changeStage`/?stage=,
+                 samme udseende) i stedet for at tvinge et hop via Etaper-fanen
+                 for at se rute-match/FitBar for en anden etape. Kun navigation:
+                 stages/onSelect ændrer INTET af hvad der gemmes. */
+              stageStripeStages={stageProfiles}
+              stageStripeActiveStage={scheduledStage}
+              onSelectStage={changeStage}
+              stageStripeTimes={stripeTimes}
             />
           )}
 

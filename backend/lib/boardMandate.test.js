@@ -390,95 +390,123 @@ test("finalizeMandateGoals: ukendt goalKey i adjustments påvirker intet (Keep-d
   assert.equal(goals[0].target, 4);
 });
 
-// ── #5618 · reconcileMandateGoalsWithLegacyBoard ────────────────────────────
-// Rodårsag: en legacy 1yr-forhandling (POST /board/sign,
+// ── #5618 / #5751 · reconcileMandateGoalsWithLegacyBoard ────────────────────
+// Rodårsag (#5618): en legacy 1yr-forhandling (POST /board/sign,
 // board_profiles.current_goals) skriver aldrig til board_mandates.goals.
 // Spillerrapport: forhandlet top_n_finish target=7, mandatet viste stadig
-// target=5 efter beta-skift, fordi mandat-rækken ikke var blevet skrevet
-// siden FØR forhandlingen.
+// target=5 efter beta-skift.
+//
+// #5751: #5618's første rettelse krævede at legacy-forhandlingen var NYERE end
+// mandatet (negotiated_at > mandatets updated_at). I prod er negotiated_at
+// null på næsten alle 1yr-rækker (forhandlet før tidsstemplet blev sat, eller
+// auto-accepteret), så rettelsen ramte ingen. Ny regel: en AFSLUTTET legacy
+// 1yr-forhandling (negotiation_status 'completed') vinder UANSET tidsstempel,
+// fordi den gamle side stadig er forhandlingsfladen og det sæsonafslutningen
+// regner på (årsmødet dual-writer til legacy, så de to kan ikke drive fra
+// hinanden den anden vej).
 
-test("#5618 reconcileMandateGoalsWithLegacyBoard: nyere legacy-forhandling overtager target (7/7 i stedet for 7/5)", () => {
+test("#5751 reconcile: negotiated_at null + afvigende target -> legacy-target vinder", () => {
   const mandateGoals = [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }];
-  const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }];
+  const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results", satisfaction_bonus: 12 }];
 
   const reconciled = reconcileMandateGoalsWithLegacyBoard({
     mandateGoals,
     legacyGoals,
-    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
-    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+    legacyNegotiationStatus: "completed",
+    legacyNegotiatedAt: null,
   });
 
   assert.equal(reconciled[0].target, 7);
   assert.equal(reconciled[0].label, "Slut i top 7");
+  assert.equal(reconciled[0].satisfaction_bonus, 12);
+  assert.equal(reconciled[0].category, "results", "felter legacy ikke ejer bevares fra mandatet");
   // Mandatets EGET goal-objekt må ikke muteres (rene funktioner, delt reference-hygiejne).
   assert.equal(mandateGoals[0].target, 5);
 });
 
-test("#5618 reconcileMandateGoalsWithLegacyBoard: ÆLDRE legacy-forhandling rører intet (mandatet er allerede friskt)", () => {
-  const mandateGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }];
-  const legacyGoals = [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }];
-
-  const reconciled = reconcileMandateGoalsWithLegacyBoard({
-    mandateGoals,
-    legacyGoals,
-    legacyNegotiatedAt: "2026-08-01T00:00:00Z",
-    mandateUpdatedAt: "2026-09-01T00:00:00Z",
-  });
-
-  assert.equal(reconciled[0].target, 7);
-  assert.equal(reconciled, mandateGoals);
-});
-
-test("#5618 reconcileMandateGoalsWithLegacyBoard: intet legacy-board (ny mandat-only team) er en no-op", () => {
-  const mandateGoals = [{ type: "top_n_finish", target: 7 }];
-  const reconciled = reconcileMandateGoalsWithLegacyBoard({
-    mandateGoals,
-    legacyGoals: [],
-    legacyNegotiatedAt: null,
-    mandateUpdatedAt: null,
-  });
-  assert.equal(reconciled, mandateGoals);
-});
-
-test("#5618 reconcileMandateGoalsWithLegacyBoard: mål uden legacy-modstykke (fx bonustilbuds ekstra-mål, #4856) bevares uændret", () => {
-  const mandateGoals = [
-    { type: "top_n_finish", target: 5, label: "Slut i top 5" },
-    { type: "monument_podium", target: 1, source: "bonus_offer" },
-  ];
+test("#5751 reconcile: auto-accepteret legacy (completed, negotiated_at null, legacy ÆLDRE end mandatet) -> legacy vinder", () => {
+  // Auto-accept (boardAutoAccept.js + årsmødets auto_accept-sti) sætter
+  // negotiated_at = null med vilje (#5103). Mandatets updated_at må ikke
+  // længere kunne "slå" en afsluttet legacy-forhandling.
+  const mandateGoals = [{ type: "top_n_finish", target: 5, label: "Slut i top 5" }];
   const legacyGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7" }];
 
   const reconciled = reconcileMandateGoalsWithLegacyBoard({
     mandateGoals,
     legacyGoals,
-    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
-    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+    legacyNegotiationStatus: "completed",
+    legacyNegotiatedAt: null,
+    // Bagudkompatibelt: parameteren accepteres stadig, men påvirker intet.
+    mandateUpdatedAt: "2026-09-11T10:26:00Z",
   });
 
+  assert.equal(reconciled[0].target, 7);
+});
+
+test("#5751 reconcile: legacy-række mangler / tom liste / status pending -> mandatet uændret", () => {
+  const mandateGoals = [{ type: "top_n_finish", target: 5 }];
+  const legacyGoals = [{ type: "top_n_finish", target: 7 }];
+
+  for (const [name, args] of [
+    ["ingen legacy-række", { legacyGoals: null, legacyNegotiationStatus: null }],
+    ["tom liste", { legacyGoals: [], legacyNegotiationStatus: "completed" }],
+    ["forhandling i gang (pending)", { legacyGoals, legacyNegotiationStatus: "pending" }],
+    ["pending selv med tidsstempel", { legacyGoals, legacyNegotiationStatus: "pending", legacyNegotiatedAt: "2026-09-24T09:00:00Z" }],
+    ["ingen status og intet tidsstempel", { legacyGoals, legacyNegotiationStatus: null, legacyNegotiatedAt: null }],
+  ]) {
+    const reconciled = reconcileMandateGoalsWithLegacyBoard({ mandateGoals, ...args });
+    assert.equal(reconciled, mandateGoals, name);
+  }
+});
+
+test("#5751 reconcile: bagudkompatibel - uden status tæller et negotiated_at-stempel som afsluttet forhandling", () => {
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals: [{ type: "top_n_finish", target: 5 }],
+    legacyGoals: [{ type: "top_n_finish", target: 7 }],
+    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
+  });
+  assert.equal(reconciled[0].target, 7);
+});
+
+test("#5751 reconcile: identisk mål (samme target/label/bonus) returnerer samme objekt-reference", () => {
+  const goal = { type: "top_n_finish", target: 7, label: "Slut i top 7", satisfaction_bonus: 12 };
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals: [goal],
+    legacyGoals: [{ ...goal }],
+    legacyNegotiationStatus: "completed",
+  });
+  assert.equal(reconciled[0], goal);
+});
+
+test("#5618/#5751 reconcile: mål kun i mandatet (fx bonustilbud, #4856) bevares; mål kun i legacy tilføjes IKKE", () => {
+  const mandateGoals = [
+    { type: "top_n_finish", target: 5, label: "Slut i top 5" },
+    { type: "monument_podium", target: 1, source: "bonus_offer" },
+  ];
+  const legacyGoals = [
+    { type: "top_n_finish", target: 7, label: "Slut i top 7" },
+    { type: "stage_wins", target: 3, label: "Vind 3 etaper" },
+  ];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiationStatus: "completed",
+  });
+
+  assert.equal(reconciled.length, 2, "legacy-only mål (stage_wins) må ikke tilføjes");
   assert.equal(reconciled[0].target, 7);
   assert.equal(reconciled[1].target, 1);
   assert.equal(reconciled[1].source, "bonus_offer");
 });
 
-test("#5618 reconcileMandateGoalsWithLegacyBoard: legacy-forhandling PRÆCIS samme tidsstempel som mandatet rører intet", () => {
-  const mandateGoals = [{ type: "top_n_finish", target: 5 }];
-  const legacyGoals = [{ type: "top_n_finish", target: 7 }];
-  const reconciled = reconcileMandateGoalsWithLegacyBoard({
-    mandateGoals,
-    legacyGoals,
-    legacyNegotiatedAt: "2026-09-01T00:00:00Z",
-    mandateUpdatedAt: "2026-09-01T00:00:00Z",
-  });
-  assert.equal(reconciled[0].target, 5);
-});
-
-test("#5618 reconcileMandateGoalsWithLegacyBoard: bonustilbuds-mål (source: bonus_offer) overskrives ALDRIG, selv ved identitets-kollision (CodeRabbit-fund)", () => {
+test("#5618 reconcile: bonustilbuds-mål (source: bonus_offer) overskrives ALDRIG, selv ved identitets-kollision (CodeRabbit-fund)", () => {
   // Mandatets NATIVE top_n_finish-mål (target=5) OG et bonustilbuds ekstra-mål
   // af SAMME type (target=1, source: bonus_offer, tilføjet direkte i
   // board_mandates af #4856-stien) deler identitet (type+nationality+
   // race_scope+cumulative — buildGoalIdentityKey inkluderer bevidst hverken
   // target eller source). Uden bonus_offer-undtagelsen ville BEGGE matche
-  // samme legacy-mål og få target overskrevet — men bonusmålet har ALDRIG
-  // eksisteret i board_profiles.current_goals.
+  // samme legacy-mål og få target overskrevet.
   const mandateGoals = [
     { type: "top_n_finish", target: 5, label: "Slut i top 5" },
     { type: "top_n_finish", target: 1, label: "Bonus: slut i top 1", source: "bonus_offer" },
@@ -488,11 +516,30 @@ test("#5618 reconcileMandateGoalsWithLegacyBoard: bonustilbuds-mål (source: bon
   const reconciled = reconcileMandateGoalsWithLegacyBoard({
     mandateGoals,
     legacyGoals,
-    legacyNegotiatedAt: "2026-09-24T09:00:00Z",
-    mandateUpdatedAt: "2026-09-01T00:00:00Z",
+    legacyNegotiationStatus: "completed",
   });
 
   assert.equal(reconciled[0].target, 7, "det native mål overtager stadig legacy-targetet");
   assert.equal(reconciled[1].target, 1, "bonusmålet må ALDRIG overskrives");
   assert.equal(reconciled[1].source, "bonus_offer");
+});
+
+test("#5751 reconcile: et bonusmål i LEGACY-listen kan aldrig blive kilde for et nativt mandat-mål", () => {
+  // preserveExternalGoals (#4865) bevarer bonusmål i board_profiles.current_goals.
+  // Står et bonusmål af samme identitet EFTER det native mål i legacy-listen,
+  // måtte det ikke overskrive opslaget, så det native mandat-mål fik bonus-targetet.
+  const mandateGoals = [{ type: "top_n_finish", target: 5, label: "Slut i top 5" }];
+  const legacyGoals = [
+    { type: "top_n_finish", target: 7, label: "Slut i top 7" },
+    { type: "top_n_finish", target: 1, label: "Bonus: slut i top 1", source: "bonus_offer" },
+  ];
+
+  const reconciled = reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals,
+    legacyGoals,
+    legacyNegotiationStatus: "completed",
+  });
+
+  assert.equal(reconciled[0].target, 7);
+  assert.equal(reconciled[0].label, "Slut i top 7");
 });

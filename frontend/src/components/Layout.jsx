@@ -32,9 +32,12 @@ import {
   loadPatchNotesMeta, isPatchNotesUnread, readLastSeenPatchNotes, writeLastSeenPatchNotes,
   buildNavDotFlags, resolveNavDot,
 } from "../lib/patchNotesUnread.js";
+import {
+  isRoadmapUnread, readLastSeenRoadmap,
+} from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
-import { getAttribution } from "../lib/attribution";
+import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
@@ -42,6 +45,8 @@ import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 import RiderRatingModeGate from "./rider/RiderRatingModeGate.jsx"; // #5435
 import { youthSquadNavItems, YOUTH_SQUAD_PATHS } from "../lib/youthSquadPages.ts"; // #5519
 import { useYouthSquadPages, useYouthSquadPagesSync } from "../lib/useYouthSquadPages.ts"; // #5519
+import { loadFeatureFlagStages, isBetaStage } from "../lib/featureStage.ts"; // #5404
+import BetaBadge from "./ui/BetaBadge.tsx"; // #5404
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -104,7 +109,11 @@ function buildBottomItems(t, team) {
     { to: "/pro",         label: t("nav.item.pro") },
     { to: "/help",        label: t("nav.item.help") },
     { to: "/rules",       label: t("nav.item.rules") },
-    { to: "/roadmap",     label: t("nav.item.roadmap") },
+    // #5673: guld-prik når nyeste roadmap_items.created_at er nyere end
+    // spillerens localStorage-lastSeen — se lib/roadmapUnread.ts + Layout()'s
+    // egne useEffects nedenfor. Samme prik-recipe (og storage-strategi) som
+    // Patch Notes lige nedenfor.
+    { to: "/roadmap",     label: t("nav.item.roadmap"), dot: true, dotLabel: t("a11y.unreadRoadmap") },
     // #3811: guld-prik når nyeste patch note-dato er nyere end spillerens
     // localStorage-lastSeen — se lib/patchNotesUnread.js + Layout()'s egne
     // useEffects nedenfor. dotFlags løses op i NavItem, samme recipe som badge.
@@ -133,6 +142,8 @@ function buildAdminGroup(t, isOwner = false) {
       { to: `/admin/surveys/${ACTIVE_SURVEY_SLUG}`, label: t("nav.item.survey") },
       // #3750: ejer-only (OWNER_USER_IDS via /api/admin/owner-check) — skjult for andre admins.
       ...(isOwner ? [{ to: "/admin/value-transition", label: t("nav.item.valueTransition") }] : []),
+      // #5686: værdi-forhåndsvisningen (gaten for værdikørslen), også ejer-only.
+      ...(isOwner ? [{ to: "/admin/value-preview", label: t("nav.item.valuePreview") }] : []),
     ],
   };
 }
@@ -141,7 +152,7 @@ function buildAdminGroup(t, isOwner = false) {
 // brugte holdets id) flyttede til bund-menuen. Grupperne her afhænger nu kun af
 // flag-tilstand, så useEffect'ens opslag og render-kaldet ikke længere kan give
 // forskellige menuer for samme bruger.
-function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, youthSquadPagesEnabled = false) {
+function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, scoutSystemEnabled = false, youthSquadPagesEnabled = false, boardMandateBeta = false) {
   return [
     {
       // #3104 etape A: sorteret efter faktisk brug (Clarity, sessions/30 dage,
@@ -170,7 +181,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/training",       label: t("nav.item.training") },      // 2.732
         { to: "/finance",        label: t("nav.item.finance") },       // 2.258
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []), // 2.054
-        { to: "/board",          label: t("nav.item.board") },         // 959
+        // #5404: Beta-badge naar bestyrelsens mandat-model (board_mandate_model_enabled)
+        // er i stadiet beta for viewer — samme flag-evaluering HelpPage bruger
+        // (fetchPlayerFeatureFlags), afledt til off|beta|on via lib/featureStage.ts.
+        { to: "/board",          label: t("nav.item.board"), beta: boardMandateBeta }, // 959
         // #4265 (ejer-direktiv 25/8): bestyrelsen og sponsorerne er adskilt i
         // UI'et. Sponsor-forhandlingen laa paa Board-fladen; den har nu sin egen
         // side ved siden af Board — kontrakten for adskillelsen er BOARD_RULES.md §5.
@@ -270,7 +284,29 @@ async function fetchForumUnread(headers) {
   }
 }
 
-function NavItem({ to, label, badge, dot, dotLabel, dotLabelUrgent, onClick, location, badgeCounts, dotFlags, dotTones, exact, excludeQuery, excludePaths, title }) {
+// #5673: nav-prikkens kilde for Roadmap — ét let kald (kun created_at,
+// nyeste først, limit 1), uafhængig af session ligesom patch-notes-metaen
+// ovenfor. Ikke et nyt endpoint: roadmap_items har allerede en offentlig
+// SELECT-policy for approved=true rows (samme query RoadmapPage selv kører
+// for hele listen). Fejl (netværk) lader prikkens sidst kendte tilstand stå
+// i stedet for at fejle synligt — samme ikke-kritisk-UI-filosofi som forum-
+// og patch-notes-prikkerne.
+async function fetchLatestRoadmapDate() {
+  try {
+    const { data, error } = await supabase
+      .from("roadmap_items")
+      .select("created_at")
+      .eq("approved", true)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error || !data?.length) return null;
+    return data[0].created_at ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClick, location, badgeCounts, dotFlags, dotTones, exact, excludeQuery, excludePaths, title }) {
   const isActive = pathMatchesNavItem(location, { to, exact, excludeQuery, excludePaths });
   // #3521: badge-tallet er nu item-specifikt (Indbakke ≠ Transfers) — se
   // navBadges.js. resolveNavBadgeCount returnerer 0 for items uden badge: true.
@@ -305,6 +341,9 @@ function NavItem({ to, label, badge, dot, dotLabel, dotLabelUrgent, onClick, loc
           className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-150
             ${isActive ? "bg-cz-accent" : "bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2"}`} />
         <span className="truncate">{label}</span>
+        {/* #5404: "Beta" naar siden bag punktet ligger bag et flag i stadiet
+            beta for denne viewer — se lib/featureStage.ts. */}
+        {beta && <BetaBadge stage="beta" className="flex-shrink-0" />}
       </span>
       {showBadge && (
         <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0 tabular-nums">
@@ -468,6 +507,11 @@ export default function Layout() {
   // boolean NavItem viser prikken ud fra. Se effekten nederst i komponenten.
   const [patchNotesLatestDate, setPatchNotesLatestDate] = useState(null);
   const [patchNotesUnread, setPatchNotesUnread]         = useState(false);
+  // #5673: samme prik-recipe, men nyeste dato kommer fra roadmap_items
+  // (Supabase, offentligt læsbar — se fetchLatestRoadmapDate nedenfor) i
+  // stedet for den statiske patch-notes-meta.json.
+  const [roadmapLatestDate, setRoadmapLatestDate]       = useState(null);
+  const [roadmapUnread, setRoadmapUnread]               = useState(false);
   // #4118/#3451: gul prik ved "Forum" i navigationen — samme prik-recipe som
   // Patch Notes, men serverdrevet (forumUnread kommer fra
   // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
@@ -499,6 +543,10 @@ export default function Layout() {
   // delte display-flags-hentning (samme kald som rating-kontakten).
   useYouthSquadPagesSync();
   const youthSquadPagesEnabled = useYouthSquadPages();
+  // #5404: off|beta|on pr. spiller-synlig kontakt (lib/featureStage.ts) —
+  // KUN til Beta-badgen, ikke til at gate synlighed (den mekanik er uændret).
+  const [flagStages, setFlagStages] = useState({});
+  const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
   const heartbeatRef = useRef(null);
@@ -533,7 +581,7 @@ export default function Layout() {
   }
 
   useEffect(() => {
-    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled);
+    const groups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta);
     if (isAdmin) groups.push(buildAdminGroup(t, isOwner));
     // #3104: /managers/-fallbacken der åbnede Klubhus er udgået sammen med
     // flytningen — Min Managerprofil bor nu i bund-menuen, som ikke er en
@@ -541,7 +589,16 @@ export default function Layout() {
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled]);
+  }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta]);
+
+  // #5404: éen hentning pr. session (loadFeatureFlagStages deler løftet med
+  // andre samtidige kaldere, se lib/featureStage.ts) — kun til Beta-badgen.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    loadFeatureFlagStages().then((stages) => { if (!cancelled) setFlagStages(stages); });
+    return () => { cancelled = true; };
+  }, [session]);
 
   // #3034: ejer-check afhænger af `isAdmin`, som nu kommer asynkront fra den
   // delte UserProfileProvider i stedet for at blive afgjort synkront inde i
@@ -603,7 +660,9 @@ export default function Layout() {
                 // #2079: confirm-linket åbnes tit på en anden enhed end signup'et
                 // (mobil-mailapp) — localStorage er tom dér. Fald tilbage til
                 // attribution-snapshottet som LoginPage gemte i auth-metadata.
-                attribution: getAttribution() || meta.attribution || null,
+                // #5304: begge grene skal saniteres — click-ids må ikke sendes
+                // videre til backend uden ejer-go, se attribution.js.
+                attribution: getAttributionForBackend() || sanitizeAttributionForBackend(meta.attribution) || null,
               }),
             }, { source: "team-bootstrap" });
             if (res.ok) {
@@ -758,6 +817,39 @@ export default function Layout() {
     }
   }, [patchNotesLatestDate, location.pathname]);
 
+  // #5673: henter kun `created_at` for det nyeste roadmap-punkt (ikke hele
+  // listen — den fulde items-hentning bor i RoadmapPage.jsx), uafhængig af
+  // session ligesom patch-notes-metaen ovenfor.
+  useEffect(() => {
+    let active = true;
+    fetchLatestRoadmapDate().then((date) => {
+      if (active && date) setRoadmapLatestDate(date);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // #5673 (reviewer-fund, rettet 25/9): Layout skriver IKKE længere
+  // lastSeenRoadmap selv — RoadmapPage.jsx er eneste skriver (dens egen
+  // items-effekt, se roadmapUnread.ts). Årsag: Layout er forælder til den
+  // lazy-loadede RoadmapPage (App.jsx: `lazy(() => import(...))`, desuden
+  // bag <I18nReadyGate>), så denne effekt kunne fyre og skrive nyeste dato
+  // FØR RoadmapPage's chunk overhovedet var hentet — dvs. før dens
+  // `lastSeenBeforeVisit`-snapshot (useState-initializer ved mount) nåede at
+  // læse den GAMLE værdi. Resultatet var, at snapshottet allerede så
+  // "opdateret" ud, så prikken på det enkelte punkt aldrig viste sig ved
+  // navigation i appen (og tilfældigt ved direkte indlæsning, alt efter om
+  // chunk+fetch eller denne effekt vandt kapløbet). Layout genberegner nu
+  // kun nav-prikkens synlige tilstand ud fra hvad der allerede står i
+  // localStorage — den skriver aldrig til nøglen.
+  useEffect(() => {
+    if (!roadmapLatestDate) return;
+    if (location.pathname.startsWith("/roadmap")) {
+      setRoadmapUnread(false);
+    } else {
+      setRoadmapUnread(isRoadmapUnread(roadmapLatestDate, readLastSeenRoadmap()));
+    }
+  }, [roadmapLatestDate, location.pathname]);
+
   useEffect(() => {
     if (!session) return;
     heartbeatRef.current = setInterval(async () => {
@@ -800,7 +892,7 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled);
+  const baseGroups = buildNavGroups(t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta);
   const navGroups = isAdmin ? [...baseGroups, buildAdminGroup(t, isOwner)] : baseGroups;
   const bottomItems = buildBottomItems(t, team);
 
@@ -811,6 +903,9 @@ export default function Layout() {
   const dotFlags = {
     ...buildNavDotFlags({ patchNotesUnread }),
     "/forum": forumUnread,
+    // #5673: samme prik-recipe som Patch Notes/Forum — se roadmapUnread-
+    // effekterne + fetchLatestRoadmapDate ovenfor.
+    "/roadmap": roadmapUnread,
     // #4983: prikken ved Planlægning tændes af serverens påmindelse. "none"
     // (ingen manglende trup, eller spilleren har slået den fra) = ingen prik.
     "/planning": selectionReminder.tone !== "none",

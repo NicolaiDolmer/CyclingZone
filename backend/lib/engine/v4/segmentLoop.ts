@@ -52,6 +52,7 @@ import {
   wprimeDepletionCpMultiplier,
 } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroupsDetailed } from "./groups.ts";
+import type { FinaleGroupTrace } from "./groups.ts";
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
@@ -61,6 +62,16 @@ import {
 import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
+import { grupettoAllowedDtSeconds, grupettoPaceFloorFactor } from "./mechanics/grupettoPace.ts";
+import { timeLimitFactorFor } from "./mechanics/timeLimit.ts";
+import {
+  addIncidentChaseLoss,
+  incidentChaseDtSeconds,
+  incidentChaseHoldsPace,
+  incidentChaseTargetGroup,
+  isIncidentChasePacedSegment,
+  resolveIncidentChasers,
+} from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -95,7 +106,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
 
-type GroupTempo = {
+export type GroupTempo = {
   collectiveCp: number;
   frontRiderIds: Set<string>;
   cpByRider: Map<string, number>;
@@ -400,17 +411,135 @@ function computeGroupTempo(
     (riderId) => entrantsById[riderId]?.effort,
     tuning.work.frontFraction,
   );
-  const speedKmh = computeSegmentSpeedKmh(
-    collectiveCp,
-    segment.kind,
-    tuning,
-    cpByRider.size,
-    referenceCp,
-    effortTempoFactor,
-  );
-  const distanceSegmentKm = Math.max(0, segment.to_km - segment.from_km);
-  const dtSeconds = speedKmh > 0 ? (distanceSegmentKm / speedKmh) * 3600 : 0;
+  const dtSeconds = groupDtSeconds(collectiveCp, segment, tuning, cpByRider.size, referenceCp, effortTempoFactor);
   return { collectiveCp, frontRiderIds, cpByRider, dtSeconds, effortTempoFactor };
+}
+
+/**
+ * Gruppens krydsningstid paa segmentet ved et givet indsats-led (#5581: ogsaa
+ * tidsgraense-gulvets tidsfunktion). Eksporteret for testbarhed, samme
+ * praecedens som `groupDraftSpeedGain`.
+ */
+export function groupDtSeconds(
+  collectiveCp: number,
+  segment: Segment,
+  tuning: EngineTuning,
+  riderCount: number,
+  referenceCp: number,
+  effortTempoFactor: number,
+): number {
+  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning, riderCount, referenceCp, effortTempoFactor);
+  const distanceSegmentKm = Math.max(0, segment.to_km - segment.from_km);
+  return speedKmh > 0 ? (distanceSegmentKm / speedKmh) * 3600 : 0;
+}
+
+/**
+ * Etapens NOMINELLE tid, kumuleret pr. segment: hvert segments laengde ved
+ * terraenets basishastighed. #5581: grupettoens forudsigelse af vindertiden
+ * (mechanics/grupettoPace.ts punkt 1) maaler frontens tempo mod den, saa
+ * etapens profil (stigningerne til sidst) er med i forudsigelsen.
+ */
+function nominalCumulativeSeconds(segments: readonly Segment[], tuning: EngineTuning): number[] {
+  const out: number[] = [];
+  let acc = 0;
+  for (const seg of segments) {
+    const speed = tuning.terrain.baseSpeedKmh[seg.kind];
+    const km = Math.max(0, seg.to_km - seg.from_km);
+    acc += speed > 0 ? (km / speed) * 3600 : 0;
+    out.push(acc);
+  }
+  return out;
+}
+
+function meanReserveFraction(riderIds: Iterable<string>, riders: Record<string, RiderState>): number {
+  let total = 0;
+  let n = 0;
+  for (const id of riderIds) {
+    const r = riders[id];
+    if (!r) continue;
+    total += r.wprimeMax > 0 ? clamp(r.wprime / r.wprimeMax, 0, 1) : 0;
+    n += 1;
+  }
+  return n > 0 ? total / n : 0;
+}
+
+export type GrupettoPaceFloorInput = {
+  groups: readonly RaceGroup[];
+  tempoByGroup: ReadonlyMap<string, GroupTempo>;
+  riders: Record<string, RiderState>;
+  effortByRider: (riderId: string) => Entrant["effort"] | undefined;
+  segment: Segment;
+  tuning: EngineTuning;
+  referenceCp: number;
+  frontElapsedSeconds: number;
+  nominalElapsedSeconds: number;
+  nominalTotalSeconds: number;
+  limitFactor: number;
+};
+
+/**
+ * #5581 (ejer 23/9, #4914 valg 1b): tidsgraense-gulvet paa grupetto-tempoet.
+ * Reglen bor i mechanics/grupettoPace.ts; her er kun koblingen til grupperne.
+ *
+ * Hvilke grupper: enhver gruppe der ikke er fronten og rummer mindst én
+ * grupetto-rytter, i model "effort_weighted" (i "cp_only" er grupetto-leddet
+ * 1, og der er intet grupetto-tempo at haeve).
+ *   - En REN grupetto-gruppe koerer grupetto-tempo (groupEffortTempo); gulvet
+ *     haever dens indsats-led, naar den ligger til at ryge ud.
+ *   - En BLANDET gruppe koerer de koerendes tempo. Er det for langsomt til
+ *     graensen (fx en grupetto-rytter der sidder paa hjul af en svag, sluppet
+ *     rytter), gaar grupetto-rytterne selv frem og koerer grupetto-tempo med
+ *     gulvet — de koerende sidder saa paa DERES hjul. Gruppen bliver aldrig
+ *     langsommere end foer.
+ * Alle andre grupper returneres uroerte, saa en etape uden grupetto er
+ * bit-identisk. Det haevede indsats-led ganges ogsaa paa gruppens krav
+ * (tickGroupRiders), saa et hurtigere grupetto-tempo koster af reserven.
+ *
+ * Eksporteret for testbarhed af netop koblingen (segmentLoop.grupettoPace.test.ts).
+ */
+export function applyGrupettoPaceFloor(input: GrupettoPaceFloorInput): Map<string, GroupTempo> {
+  const out = new Map(input.tempoByGroup);
+  const baseFactor = riderTempoEffortFactor("grupetto");
+  if (!(baseFactor < 1) || input.groups.length === 0) return out;  const front = input.groups.reduce((min, g) => (g.gap_seconds < min.gap_seconds ? g : min), input.groups[0]);
+  const frontTempo = input.tempoByGroup.get(front.id);
+  if (!frontTempo) return out;
+  for (const group of input.groups) {
+    if (group.id === front.id) continue;
+    const tempo = input.tempoByGroup.get(group.id);
+    if (!tempo) continue;
+    // Grupetto-rytterne der ville saette tempoet: de `frontFraction`
+    // staerkeste af dem (CP faldende, rider_id som tie-break — samme regel
+    // som groupEffortTempo, saa en ren gruppe faar praecis sin egen front).
+    const grupettoRiders = [...tempo.cpByRider.entries()]
+      .filter(([id]) => input.effortByRider(id) === "grupetto")
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    if (grupettoRiders.length === 0) continue;
+    const allowedDtSeconds = grupettoAllowedDtSeconds({
+      dtFrontSeconds: frontTempo.dtSeconds,
+      frontElapsedSeconds: input.frontElapsedSeconds,
+      nominalElapsedSeconds: input.nominalElapsedSeconds,
+      nominalTotalSeconds: input.nominalTotalSeconds,
+      gapSeconds: group.gap_seconds - front.gap_seconds,
+      limitFactor: input.limitFactor,
+    });
+    if (allowedDtSeconds === null || !(tempo.dtSeconds > allowedDtSeconds)) continue;
+    const pullCount = Math.max(1, Math.ceil(grupettoRiders.length * input.tuning.work.frontFraction));
+    const pullers = grupettoRiders.slice(0, pullCount);
+    const pullersCp = pullers.reduce((s, [, cp]) => s + cp, 0) / pullers.length;
+    const dtAt = (factor: number) =>
+      groupDtSeconds(pullersCp, input.segment, input.tuning, tempo.cpByRider.size, input.referenceCp, factor);
+    const pullerIds = new Set(pullers.map(([id]) => id));
+    const factor = grupettoPaceFloorFactor({
+      baseFactor,
+      dtAt,
+      allowedDtSeconds,
+      reserveFraction: meanReserveFraction(pullerIds, input.riders),
+    });
+    const dtSeconds = dtAt(factor);
+    if (!(dtSeconds < tempo.dtSeconds)) continue;
+    out.set(group.id, { ...tempo, collectiveCp: pullersCp, frontRiderIds: pullerIds, effortTempoFactor: factor, dtSeconds });
+  }
+  return out;
 }
 
 function tickGroupRiders(
@@ -420,7 +549,6 @@ function tickGroupRiders(
   segment: Segment,
   tempo: GroupTempo,
   tuning: EngineTuning,
-  profileType: StageInput["route"]["profile_type"] | null = null,
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
   // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
@@ -470,10 +598,11 @@ function tickGroupRiders(
     // af hans evner, saa to ryttere paa SAMME trin beholder deres indbyrdes
     // orden praecis som foer wiringen. Determinismen er uberoert — intet rng.
     //
-    // #4914: etapeprofilen foelger med, fordi all_out-trinnet er
-    // profil-afhaengigt (mechanics/effortCost.ts's hoved). De fire andre trin
-    // er profil-uafhaengige, saa profilen flytter kun all_out-ryttere.
-    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, undefined, profileType);
+    // #4914 -> #5580 (M1 punkt 4): SEGMENTETS terraen foelger med, fordi
+    // all_out-trinnet er terraen-afhaengigt (mechanics/effortCost.ts's hoved):
+    // prisen foelger terraenet under hjulene, ikke etapens profil. De fire
+    // andre trin er terraen-uafhaengige, saa det flytter kun all_out-ryttere.
+    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, undefined, segment.kind);
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
@@ -511,6 +640,10 @@ export type SegmentLoopResult = {
   state: EngineState;
   timeline: TimelineEvent[];
   groupSnapshots: SegmentGroupSnapshot[];
+  // #5578 (ADDITIVT): gruppe-billedet omkring finalen, til udbrudsankeret
+  // (groups.isBreakawayWin). Intern: indgaar ikke i StageOutput. null naar
+  // ruten ikke har segmenter.
+  finaleTrace: FinaleGroupTrace | null;
 };
 
 /**
@@ -563,10 +696,16 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // wind_exposure, ingen multiplikator, ingen straf — spilleren ser "regn",
   // ikke hvad regn koster.
   let weatherAnnounced = false;
+  let finaleTrace: FinaleGroupTrace | null = null;
+  let lastSegmentEntryGroups: RaceGroup[] = [];
 
   const segments = route.segments;
+  // #5581: grupettoens tidsgraense-regnestykke (applyGrupettoPaceFloor).
+  const nominalCumSeconds = nominalCumulativeSeconds(segments, tuning);
+  const limitFactor = timeLimitFactorFor(route.profile_type);
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
+    if (segmentIndex === segments.length - 1) lastSegmentEntryGroups = state.groups;
 
     if (!weatherAnnounced && weatherCpPenalty(route.weather, segment.kind, WEATHER_EXTRA_TUNING) > 0) {
       pushEvent(timeline, segment.from_km, "weather", { kind: route.weather.kind });
@@ -575,8 +714,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
 
     // 1+2: krav-tempo + fysiologi-tick, pr. gruppe (baseret paa gruppe-strukturen
     // ved segmentets indgang).
-    const tempoByGroup = new Map<string, GroupTempo>();
-    let nextRiders: Record<string, RiderState> = { ...state.riders };
+    let tempoByGroup = new Map<string, GroupTempo>();
     for (const group of state.groups) {
       const tempo = computeGroupTempo(
         group,
@@ -588,10 +726,94 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         referenceCp[segment.kind],
       );
       tempoByGroup.set(group.id, tempo);
-      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, route.profile_type);
+    }
+    // #5581: grupettoen regner paa tidsgraensen (applyGrupettoPaceFloor). Skal
+    // ske FOER tick'et, saa et haevet grupetto-tempo ogsaa koster af reserven.
+    // Tempo-beregningen laeser kun state.riders fra segmentets indgang, saa
+    // opdelingen i to loekker er bit-identisk med den gamle ene loekke.
+    tempoByGroup = applyGrupettoPaceFloor({
+      groups: state.groups,
+      tempoByGroup,
+      riders: state.riders,
+      effortByRider: (riderId) => entrantsById[riderId]?.effort,
+      segment,
+      tuning,
+      referenceCp: referenceCp[segment.kind],
+      frontElapsedSeconds,
+      nominalElapsedSeconds: nominalCumSeconds[segmentIndex],
+      nominalTotalSeconds: nominalCumSeconds[nominalCumSeconds.length - 1] ?? 0,
+      limitFactor,
+    });
+    let nextRiders: Record<string, RiderState> = { ...state.riders };
+    for (const group of state.groups) {
+      const tempo = tempoByGroup.get(group.id);
+      if (!tempo) continue;
+      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
       nextRiders = { ...nextRiders, ...patch };
     }
+    const ridersBeforeTick = state.riders; // #5582: jagtens om-tick starter herfra
     state = { ...state, riders: nextRiders };
+
+    // #5582: et uheldsoffer koerer tilbage bag foelgebilerne. Kun jagtgrupper
+    // (grupper hvor alle koerende er i state.incident_chasers, sat af uheldets
+    // split) roeres; alle andre grupper er uroerte, og en etape uden et uheld
+    // med tidstab springer blokken helt over (bit-identisk). Reglen bor i
+    // mechanics/incidents.ts's jagt-blok. Her sker kun de to ting der kraever
+    // segment-loopets egne tempo-/tick-funktioner:
+    //   1. Er maalgruppen hurtigere end ham alene, tikkes han om paa
+    //      maalgruppens tempo (paa hjul bag bilerne, front-arbejde op ad
+    //      bakke) fra sin reserve ved segmentets start.
+    //   2. Holder han tempoet (incidentChaseHoldsPace), faar gruppen
+    //      maalgruppens krydsningstid. Braender han ud paa en stigning, staar
+    //      hans eget solo-tick ved magt, og han taber tid (loftet i
+    //      incidentChaseDtSeconds).
+    //   3. Tiden han taber ud over maalgruppen bogfoeres til juryen
+    //      (state.incident_chase_loss).
+    if (state.incident_chasers && Object.keys(state.incident_chasers).length > 0) {
+      const chase = resolveIncidentChasers(state.groups, ridersBeforeTick, state.incident_chasers);
+      state = { ...state, incident_chasers: chase.chasers };
+      for (const group of state.groups) {
+        const mode = chase.modeByGroupId.get(group.id);
+        const own = tempoByGroup.get(group.id);
+        const target = incidentChaseTargetGroup(group, state.groups, chase.modeByGroupId);
+        const targetTempo = target ? tempoByGroup.get(target.id) : undefined;
+        if (!mode || !own || !target || !targetTempo) continue;
+        const targetFaster = targetTempo.dtSeconds < own.dtSeconds;
+        if (!targetFaster && mode === "alone") continue;
+        let holdsPace = true;
+        if (targetFaster) {
+          // Paa hjul i maalgruppen: dens krav, rytterens egen CP, lae-faktoren.
+          const chaseTempo: GroupTempo = { ...targetTempo, cpByRider: own.cpByRider, frontRiderIds: new Set<string>() };
+          const patch = tickGroupRiders(
+            group,
+            ridersBeforeTick,
+            entrantsById,
+            segment,
+            chaseTempo,
+            tuning,
+          );
+          const wprimeAfter = group.rider_ids.filter((id) => patch[id]).map((id) => patch[id].wprime);
+          holdsPace = incidentChaseHoldsPace(isIncidentChasePacedSegment(segment.kind), wprimeAfter);
+          // Braendt ud: hans eget solo-tick (herover) staar ved magt.
+          if (holdsPace) state = { ...state, riders: { ...state.riders, ...patch } };
+        }
+        const dtSeconds = incidentChaseDtSeconds({
+          mode,
+          ownDtSeconds: own.dtSeconds,
+          targetDtSeconds: targetTempo.dtSeconds,
+          holeSeconds: group.gap_seconds - target.gap_seconds,
+          segment,
+          holdsPace,
+        });
+        tempoByGroup.set(group.id, { ...own, dtSeconds });
+        const chaseLoss = addIncidentChaseLoss(
+          state.incident_chase_loss,
+          group.rider_ids.filter((id) => chase.chasers[id] !== undefined),
+          dtSeconds - targetTempo.dtSeconds,
+        );
+        if (chaseLoss !== state.incident_chase_loss) state = { ...state, incident_chase_loss: { ...chaseLoss } };
+      }
+    }
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -713,9 +935,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // (gap_seconds === 0) kraever rebaseline FOER kaldet — ellers falder
       // angriberne ud af opgoerelsen (fundet af golden fixture 4, 21/8).
       state = { ...state, groups: rebaselineGroups(state.groups) };
+      const preFinaleGroups = state.groups;
       const result = hooks.finale(state, ctx);
       state = result.state;
       timeline.push(...result.events);
+      finaleTrace = { entryGroups: lastSegmentEntryGroups, preFinaleGroups, postFinaleGroups: state.groups };
     }
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
@@ -765,5 +989,5 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // Tid-tildeling: rent gruppe-princip (mor-spec SS3.2).
   state = { ...state, riders: applyGroupTimes(state.groups, state.riders, frontElapsedSeconds) };
 
-  return { state, timeline, groupSnapshots };
+  return { state, timeline, groupSnapshots, finaleTrace };
 }

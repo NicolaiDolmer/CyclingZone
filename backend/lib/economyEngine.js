@@ -81,6 +81,7 @@ import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.j
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
+import { isAcademyDriftEnabled } from "./academyDriftFlag.ts";
 import { FACILITIES_ENABLED } from "./facilityConstants.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
@@ -679,6 +680,11 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
   // Compile-konstanten FACILITIES_ENABLED er kun fallback for direkte kald/tests.
   const facilitiesEnabled = deps.facilitiesEnabled
     ?? evaluateFlagStage(await readFlagStage(supabaseClient, "facilities_enabled"));
+  // #5741 · academy_drift_enabled læses ÉN gang for hele kørslen (samme
+  // mønster som facilitiesEnabled ovenfor), fail-safe TRUE (uændret adfærd)
+  // — se academyDriftFlag.ts.
+  const academyDriftEnabled = /** @type {{ academyDriftEnabled?: boolean }} */ (deps).academyDriftEnabled
+    ?? await isAcademyDriftEnabled(supabaseClient, { engineWrite: true });
   const results = [];
   for (const teamWithRoster of teamsWithRoster) {
     const payroll = await processTeamSeasonPayroll(teamWithRoster, seasonId, {
@@ -688,6 +694,7 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       // #4153 · ryttere motoren pensionerer i samme skifte (processSeasonStart).
       retiringRiderIds: /** @type {{ retiringRiderIds?: unknown }} */ (deps).retiringRiderIds,
       facilitiesEnabled,
+      academyDriftEnabled,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
       // #2976 · observabilitets-seam for notifyManagerSafe. Uden den kan en
@@ -1181,15 +1188,24 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   // 4. Akademi-drift — pr. akademi-plads (is_academy=true) debiteres ACADEMY.DRIFT_PER_SEASON.
   //    Gated på count > 0: hold uden akademi springer over (isAcademyEnabled-flag irrelevant —
   //    ingen akademi-ryttere = ingen drift, uanset flag). Idempotent pr. sæson+hold.
+  //    #5741 · academyDriftEnabled (app_config 'academy_drift_enabled', fail-safe
+  //    TRUE) er ejerens kill-switch for netop S3→S4-skiftet 27/9. Med flaget OFF
+  //    opkræves INGEN drift og der skrives INGEN academy_drift-ledgerpost, uanset
+  //    academyCount. Med flaget ON (default, og deps.academyDriftEnabled ikke
+  //    threadet) er koden bit-identisk med før #5741.
+  const academyDriftEnabled = /** @type {{ academyDriftEnabled?: boolean }} */ (deps).academyDriftEnabled ?? true;
   const { count: academyCount, error: academyCountError } = await supabaseClient
     .from("riders")
     .select("id", { count: "exact", head: true })
     .eq("team_id", team.id)
     .eq("is_academy", true);
   throwIfSupabaseError(academyCountError, `Could not count academy riders for ${team.name}`);
-  const academyDriftCharged = (academyCount || 0) > 0
+  const academyDriftCharged = (academyDriftEnabled && (academyCount || 0) > 0)
     ? (academyCount || 0) * ACADEMY.DRIFT_PER_SEASON
     : 0;
+  if (!academyDriftEnabled && (academyCount || 0) > 0) {
+    console.log(`  🎓 ${team.name}: akademi-drift sprunget over, academy_drift_enabled=off, ${academyCount} pladser`);
+  }
   if (academyDriftCharged > 0) {
     await debitTeam(
       team.id,

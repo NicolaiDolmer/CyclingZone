@@ -1834,6 +1834,12 @@
         "title": "Intet mandat underskrevet endnu",
         "description": "Bestyrelsen har endnu ikke underskrevet denne sæsons mandat. Kig igen efter årsmødet."
       },
+      "proposed": {
+        "cardTitle": "Foreslået mandat · S{season}",
+        "meta": "Afventer din underskrift",
+        "pill": "Foreslået",
+        "summaryLine": "Foreslået mandat · afventer din underskrift"
+      },
       "goalLabels": {
         "keepResultAboveZero": "Hold sæsonresultatet over nul",
         "academyDebuts": "Giv {count} akademiryttere en debut"

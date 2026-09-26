@@ -77,6 +77,72 @@ export function resolveSeasonMovement({
 }
 
 /**
+ * #5753 · Er verdict-svaret en ægte dom? Kræver enabled + mindst én kvittering
+ * (goalsMet != null) + mindst ét mål. Et mandat uden kvitteringer giver ingen
+ * highlight i stedet for et opdigtet "0 af N".
+ * @param {object|null|undefined} v
+ * @returns {boolean}
+ */
+export function isBoardVerdictShowable(v) {
+  return Boolean(
+    v?.enabled === true
+    && Number.isFinite(v.goalsMet)
+    && Number.isFinite(v.goalsTotal)
+    && v.goalsTotal > 0
+  );
+}
+
+/**
+ * #5390 · Ren derivation: hvilke stat-nøgler viser SeasonRecapHero's statistik-
+ * række ("holdets recap-række"), og med hvilken rå værdi. Ingen i18n/format
+ * her — samme adskillelse som resten af filen (komponenten ejer label/tekst,
+ * her ejes kun DATAEN). Rækkefølgen er den bindende UI-orden.
+ *
+ * @param {object} p
+ * @param {number|null} [p.rank]
+ * @param {number} [p.points]
+ * @param {number} [p.stageWins]
+ * @param {number} [p.prizeWon]
+ * @param {number} [p.classicWins]  #5390 · vises KUN som en 5. tile når > 0
+ *   (TASTE P11, docs/design/TASTE.md: intet tal for noget der ikke findes).
+ * @returns {Array<{key:"rank"|"points"|"stageWins"|"prize"|"classicWins", value:*}>}
+ */
+export function buildRecapStatKeys({ rank = null, points = 0, stageWins = 0, prizeWon = 0, classicWins = 0 } = {}) {
+  const keys = [
+    { key: "rank", value: rank },
+    { key: "points", value: points },
+    { key: "stageWins", value: stageWins },
+    { key: "prize", value: prizeWon },
+  ];
+  if (classicWins > 0) keys.push({ key: "classicWins", value: classicWins });
+  return keys;
+}
+
+/**
+ * #5390 · Mit holds klassiker-konge — ren opslags-derivation af
+ * get_season_recap's team_classic_king ({team_id: {rider_id,firstname,
+ * lastname,wins}}).
+ *
+ * IKKE (længere) et client-side match mod rytterens NUVÆRENDE team_id (se
+ * CodeRabbit-fund 26/9, rettet i database/2026-09-26-5390-…sql): serveren
+ * attribuerer allerede rytteren til holdet på RESULTATTIDSPUNKTET, samme
+ * hold-tilskrivning som team_classic_wins — ellers kunne et hold vise "Team
+ * classic king: X" for en rytter der reelt vandt sejrene på et ANDET hold
+ * (og som siden blev solgt hertil), mens team_classic_wins samtidig
+ * (korrekt) viste 0 for netop det hold.
+ *
+ * @param {Record<string, {rider_id:string, firstname:string, lastname:string, wins:number}>} [teamClassicKing]
+ * @param {string|null} [myTeamId]
+ * @returns {{riderId:string, name:string, wins:number}|null}
+ */
+export function pickMyClassicKing(teamClassicKing = {}, myTeamId = null) {
+  if (!myTeamId) return null;
+  const mine = teamClassicKing?.[myTeamId];
+  if (!mine?.wins) return null;
+  return { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
+}
+
+/**
  * Sæson-recap-highlights for ÉT hold — bygget UDELUKKENDE af data SeasonEndPage
  * allerede henter til andre formål (sæson-vinderne, standings, transaktioner,
  * og nu også #3402's dokumentar-facts), ingen nye tunge kald. Maks 3 punkter.
@@ -101,14 +167,23 @@ export function resolveSeasonMovement({
  * @param {{amount:number, description?:string}|null} [p.myBiggestSale]  min STØRSTE transfer_in
  * @param {{riderId:string, name:string, wins:number}|null} [p.myStageKing]  min bedste
  *   etapevinder blandt sæsonens top-5 (findes ved at joine stage_kings mod riders.team_id)
+ * @param {{riderId:string, name:string, wins:number}|null} [p.myClassicKing]  #5390 ·
+ *   min bedste klassiker-vinder blandt sæsonens top-5 (se pickMyClassicKing ovenfor).
+ *   Står lige efter stageKing — samme "rytter-highlight hvor etapesejre allerede
+ *   vises"-plads, bare for klassikersejre.
  * @param {object|null} [p.documentaryFacts]  get_season_documentary_facts()-outputtet
  *   (samme nøgler som #3402's season_documentaries.facts: bestRaceDay/biggestResult/
  *   rival/myStanding) — kan ankomme SENERE end de øvrige args (egen async fetch,
  *   samme isolations-mønster som SeasonEndPage's loadDocumentary), derfor et
  *   selvstændigt, valgfrit argument i stedet for forudsat til stede.
- * @returns {Array<{kind:"prizeLeader"|"biggestSale"|"stageKing"|"turningPoint"|"biggestResult"|"rival",
+ * @param {object|null} [p.boardVerdict]  #5753 · GET /api/board/verdict/:seasonId-svaret
+ *   (egen best-effort fetch i SeasonEndPage). Står FØRST når det bærer en ægte dom
+ *   (se isBoardVerdictShowable); ellers ignoreres det.
+ * @returns {Array<{kind:"boardVerdict"|"prizeLeader"|"biggestSale"|"stageKing"|"classicKing"|"turningPoint"|"biggestResult"|"rival",
  *   amount?:number, wins?:number, name?:string, points?:number, race?:string, rider?:string,
- *   team?:string, gap?:number, ahead?:boolean}>}
+ *   team?:string, gap?:number, ahead?:boolean, goalsMet?:number, goalsTotal?:number,
+ *   confidenceBefore?:number|null, confidenceAfter?:number|null, chairman?:object|null,
+ *   meetingAvailable?:boolean}>}
  */
 export function pickRecapHighlights({
   myTeamId,
@@ -116,9 +191,26 @@ export function pickRecapHighlights({
   prizeByTeam = {},
   myBiggestSale = null,
   myStageKing = null,
+  myClassicKing = null,
   documentaryFacts = null,
+  boardVerdict = null,
 } = {}) {
   const highlights = [];
+
+  // #5753 (Mandat-launch B) · bestyrelsens dom står først: den er sæsonens
+  // "karakter", resten er bedrifter. Den tager én af de 3 pladser (loftet er
+  // uændret), så siden ikke bliver længere.
+  if (isBoardVerdictShowable(boardVerdict)) {
+    highlights.push({
+      kind: "boardVerdict",
+      goalsMet: boardVerdict.goalsMet,
+      goalsTotal: boardVerdict.goalsTotal,
+      confidenceBefore: boardVerdict.confidenceBefore ?? null,
+      confidenceAfter: boardVerdict.confidenceAfter ?? null,
+      chairman: boardVerdict.chairman ?? null,
+      meetingAvailable: boardVerdict.meetingAvailable === true,
+    });
+  }
 
   // Division-scoped (ikke sæson-bred) — de fleste hold vil ALDRIG lede hele
   // sæsonen i præmie, men et hold der leder sin EGEN division er stadig en
@@ -137,6 +229,11 @@ export function pickRecapHighlights({
 
   if (myStageKing?.wins > 0) {
     highlights.push({ kind: "stageKing", wins: myStageKing.wins, name: myStageKing.name });
+  }
+
+  // #5390 · samme plads-logik som stageKing lige ovenfor, bare for klassikersejre.
+  if (myClassicKing?.wins > 0) {
+    highlights.push({ kind: "classicKing", wins: myClassicKing.wins, name: myClassicKing.name });
   }
 
   if (highlights.length < 3 && documentaryFacts) {

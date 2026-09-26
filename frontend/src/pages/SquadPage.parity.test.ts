@@ -40,3 +40,17 @@ test("My Team og Stats-fanen deler ét gruppe-filter (Senior / U23 / Junior)", (
 test("Youth races har en rute bag I18nReadyGate", () => {
   assert.match(app, /<Route path="youth-races" element=\{<I18nReadyGate ns="squad"><YouthRacesPage \/><\/I18nReadyGate>\} \/>/);
 });
+
+// #5631: beta-tester 24/9 rapporterede at siden ikke viser truppens loft, selvom
+// SQUAD_CAPS (backend/lib/squads.js) har været live siden #5626. Meta-linjen
+// skal altid vise "n/loft", også ved en tom trup — ikke kun når riders.length>0.
+test("#5631 meta-linjen viser truppens loft, også ved en tom trup", () => {
+  assert.match(squadPage, /t\("page\.rosterCount", \{ count: riders\.length, cap \}\)/);
+  // Meta-div'en stod tidligere helt bag `{riders.length > 0 && (` — det mønster
+  // må ikke stå lige før meta-div'en længere (kun løn/trupværdi må være bag den).
+  assert.doesNotMatch(
+    squadPage,
+    /\{riders\.length > 0 && \(\s*<div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm text-cz-3 tabular-nums">/,
+    "hele meta-linjen må ikke skjules ved en tom trup — 0/loft skal stadig vises",
+  );
+});

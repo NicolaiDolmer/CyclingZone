@@ -1,7 +1,8 @@
-import { useState, useEffect, Fragment, useMemo } from "react";
+import { useState, useEffect, Fragment, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getSeasonHonours } from "../lib/rankingsApi.ts";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase";
+import { apiFetch } from "../lib/apiFetch.ts";
 import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber, formatDate } from "../lib/intl";
@@ -14,13 +15,14 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { divColor } from "../lib/divisionColors.js";
 import { normalizeHonours, isMissingFunctionError } from "../lib/seasonHonours";
 import { pickDefaultSeason } from "../lib/seasonEndDefault.js";
-import { resolveSeasonMovement, pickRecapHighlights } from "../lib/seasonRecapData.js";
+import { resolveSeasonMovement, pickRecapHighlights, pickMyClassicKing } from "../lib/seasonRecapData.js";
 import { isMissingTableError, buildDocumentaryCardStats } from "../lib/seasonDocumentaryData.js";
 import { exportSeasonDocumentaryPng, downloadBlob } from "../lib/seasonDocumentaryExport.js";
 import SeasonRecapHero from "../components/SeasonRecapHero.jsx";
+import BoardVerdictCard from "../components/BoardVerdictCard.tsx";
 import SeasonDocumentary from "../components/SeasonDocumentary.jsx";
 import {
-  CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
+  CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, CrownIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
   Button, Select, ZonePill, FlameIcon, PodiumIcon, LightningIcon,
   ArrowUpIcon, ArrowDownIcon,
@@ -65,6 +67,23 @@ function formatCZ(amount) {
 // hold der ser en blanding af "rigtige" og fallback-highlights ikke tror det
 // samme bedrift er nævnt to gange.
 function mapRecapHighlight(h, t, myDivision) {
+  // #5753 · bestyrelsens dom er en rigere række (citat + knap) end de andre, så
+  // den sendes som færdig node; heroen renderer den i samme liste.
+  if (h.kind === "boardVerdict") {
+    return {
+      id: "boardVerdict",
+      node: (
+        <BoardVerdictCard
+          goalsMet={h.goalsMet}
+          goalsTotal={h.goalsTotal}
+          confidenceBefore={h.confidenceBefore}
+          confidenceAfter={h.confidenceAfter}
+          chairman={h.chairman}
+          meetingAvailable={h.meetingAvailable}
+        />
+      ),
+    };
+  }
   if (h.kind === "prizeLeader") {
     return { id: "prizeLeader", icon: CoinIcon, label: t("recap.highlight.prizeLeader", { division: myDivision }), value: formatCZ(h.amount) };
   }
@@ -76,6 +95,15 @@ function mapRecapHighlight(h, t, myDivision) {
       id: "stageKing", icon: TrophyIcon,
       label: t("recap.highlight.stageKing", { name: h.name }),
       value: t("recap.highlight.stageKingValue", { count: h.wins }),
+    };
+  }
+  // #5390 · samme rytter-highlight-mønster som stageKing lige ovenfor, bare for
+  // klassikersejre (endagsløb) — "rytter-highlights hvor etapesejre allerede vises".
+  if (h.kind === "classicKing") {
+    return {
+      id: "classicKing", icon: CrownIcon,
+      label: t("recap.highlight.classicKing", { name: h.name }),
+      value: t("recap.highlight.classicKingValue", { count: h.wins }),
     };
   }
   if (h.kind === "turningPoint") {
@@ -130,7 +158,7 @@ export default function SeasonEndPage() {
   const [races, setRaces] = useState([]);
   const [racePoints, setRacePoints] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
-  const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null });
+  const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null, classicKing: null });
   // #2863 Blokken har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
   // additiv: get_season_honours() applies efter merge, og ~150 managere lander
   // på denne side samtidig ved cutover. En manglende eller fejlende RPC må
@@ -154,6 +182,11 @@ export default function SeasonEndPage() {
   // turning-point-værdi til løbsnavnet i stedet for datoen (buildDocumentaryCardStats),
   // den må ALDRIG kunne vælte resten af siden.
   const [turningPointDate, setTurningPointDate] = useState(null);
+  // #5753 · bestyrelsens dom (GET /api/board/verdict/:seasonId). Ren visnings-
+  // bonus: null = ingen highlight. Ingen fejl-tilstand, for en manglende dom må
+  // aldrig kunne vælte recappen (samme isolation som loadDocumentary).
+  const [boardVerdict, setBoardVerdict] = useState(null);
+  const boardVerdictSeasonRef = useRef(null);
   const [myTeamId, setMyTeamId] = useState(null);
   // #2752/#2361 — nutids-division + navn på MIT hold. division bruges KUN som
   // fallback-kilde til "hvilken division fik jeg næste sæson" (resolveNextDivision),
@@ -258,12 +291,33 @@ export default function SeasonEndPage() {
     }
   };
 
+  // #5753 · egen, best-effort fetch: flag slået fra, intet mandat, 4xx/5xx,
+  // 429-backoff eller netværksfejl giver alle bare "ingen dom" (null). Svaret
+  // gemmes kun hvis brugeren stadig står på samme sæson (et sent svar fra en
+  // tidligere valgt sæson kasseres).
+  const loadBoardVerdict = async (season) => {
+    boardVerdictSeasonRef.current = season.id;
+    setBoardVerdict(null);
+    if (season.status !== "completed") return;
+    try {
+      const headers = await authHeaders({ json: false });
+      if (!headers) return;
+      const res = await apiFetch(`/api/board/verdict/${season.id}`, { headers }, { source: "season-end-board-verdict" });
+      if (!res.ok || !res.data?.enabled) return;
+      if (boardVerdictSeasonRef.current !== season.id) return;
+      setBoardVerdict({ ...res.data, seasonId: season.id });
+    } catch (e) {
+      console.error("SeasonEndPage: failed to load board verdict", e);
+    }
+  };
+
   const loadSeason = async (season) => {
     setSelectedSeason(season);
     setError(null);
     setTeamRecap(null);
     loadHonours(season);
     loadDocumentary(season);
+    loadBoardVerdict(season);
     try {
       const [standingsRes, racesRes, racePointsRes] = await Promise.all([
         supabase.from("season_standings")
@@ -312,6 +366,15 @@ export default function SeasonEndPage() {
       // { race_id: { team_id: prize } } — allerede i opslags-form fra serveren.
       const prizeByRace = recap?.team_race_prize || {};
       const stageKings = recap?.stage_kings || [];
+      // #5390 · samme "top 5 sorteret faldende"-kontrakt som stage_kings, bare
+      // for klassikersejre (endagsløb). team_classic_wins/team_classic_king er
+      // { team_id: ... }, kun menneskehold, begge attribueret PÅ RESULTAT-
+      // TIDSPUNKTETS hold af RPC'en selv — IKKE klient-side matchet mod
+      // riders' nuværende team_id (ville kunne vise en sejr på et hold
+      // rytteren blot er solgt TIL, se seasonRecapData.js/pickMyClassicKing).
+      const classicKings = recap?.classic_kings || [];
+      const teamClassicWins = recap?.team_classic_wins || {};
+      const teamClassicKing = recap?.team_classic_king || {};
 
       if (racesRes.data?.length) {
         const prog = {};
@@ -386,7 +449,21 @@ export default function SeasonEndPage() {
           }
         : null;
 
-      setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing });
+      // 5. Klassiker-konge (#5390): samme mønster som stage-king lige ovenfor —
+      //    RPC'en returnerer allerede top 5 sorteret faldende, så [0] er vinderen.
+      const classicTop = classicKings[0];
+      const classicKing = classicTop
+        ? {
+            rider: {
+              id: classicTop.rider_id,
+              firstname: classicTop.firstname,
+              lastname: classicTop.lastname,
+            },
+            count: classicTop.wins,
+          }
+        : null;
+
+      setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing, classicKing });
 
       // #2752/#2361 — per-hold recap: kun for MIT hold, kun for en completed
       // sæson (der er intet "facit" for en sæson der stadig kører). To små,
@@ -439,6 +516,11 @@ export default function SeasonEndPage() {
           const mine = stageKings.find(k => teamByRiderId[k.rider_id] === myTeamId);
           if (mine) myStageKing = { riderId: mine.rider_id, name: `${mine.firstname} ${mine.lastname}`, wins: mine.wins };
         }
+        // Klassikerkonge PÅ MIT HOLD (#5390): IKKE et client-side match mod
+        // riders' nuværende team_id (se pickMyClassicKing) — RPC'en leverer
+        // allerede team_classic_king pr. hold, attribueret på resultat-
+        // tidspunktets hold, så intet ekstra opslag er nødvendigt her.
+        const myClassicKing = pickMyClassicKing(teamClassicKing, myTeamId);
 
         // #season-recap-polish (18/8) — de rene INPUTS til pickRecapHighlights
         // gemmes i stedet for det FÆRDIGE resultat: dokumentar-facts (den
@@ -452,12 +534,16 @@ export default function SeasonEndPage() {
           divisionSize: standings.filter(s => s.division === myStandingsRow.division).length,
           movement,
           prizeWon: prizeByTeam[myTeamId] || 0,
+          // #5390 · mit holds klassikersejre denne sæson — recap-heroens 5.
+          // statistik-tile (kun vist når > 0, se SeasonRecapHero/buildRecapStatKeys).
+          classicWins: Number(teamClassicWins[myTeamId]) || 0,
           highlightInputs: {
             myTeamId,
             divisionStandings: standings.filter(s => s.division === myStandingsRow.division),
             prizeByTeam,
             myBiggestSale,
             myStageKing,
+            myClassicKing,
           },
         });
       }
@@ -505,8 +591,9 @@ export default function SeasonEndPage() {
     return pickRecapHighlights({
       ...teamRecap.highlightInputs,
       documentaryFacts: documentary.data?.facts || null,
+      boardVerdict,
     });
-  }, [teamRecap, documentary.data]);
+  }, [teamRecap, documentary.data, boardVerdict]);
 
   // #season-recap-polish (18/8) — "Turning point"-rækkens rigtige kalenderdato
   // (race_stage_schedule.scheduled_at for facts.bestRaceDay.race_id, IKKE den
@@ -657,6 +744,7 @@ export default function SeasonEndPage() {
               points={teamRecap.standingsRow.total_points}
               stageWins={teamRecap.standingsRow.stage_wins}
               prizeWon={teamRecap.prizeWon}
+              classicWins={teamRecap.classicWins}
               highlights={teamRecapHighlights.map(h => mapRecapHighlight(h, t, teamRecap.standingsRow.division))}
               onDownloadCard={handleDownloadShareCard}
             />
@@ -745,6 +833,20 @@ export default function SeasonEndPage() {
               hasData={!!winners.stageKing?.rider?.id}
               onClick={() => winners.stageKing?.rider?.id && navigate(`/riders/${winners.stageKing.rider.id}`)}
             />
+            {/* #5390 · "rytter-highlight hvor etapesejre allerede vises" — samme
+                kort-mønster som Stage king lige ovenfor, bare for klassiker-
+                sejre (endagsløb). TASTE P11: kortet vises slet ikke uden en
+                vinder, i stedet for at vise "—"/"0" for noget der ikke findes. */}
+            {winners.classicKing?.rider && (
+              <WinnerCard
+                icon={CrownIcon}
+                title={t("winners.classicKing.title")}
+                primary={`${winners.classicKing.rider.firstname} ${winners.classicKing.rider.lastname}`}
+                secondary={t("winners.classicKing.secondary", { count: winners.classicKing.count })}
+                hasData
+                onClick={() => navigate(`/riders/${winners.classicKing.rider.id}`)}
+              />
+            )}
           </div>
 
           {/* Kalender */}

@@ -9,6 +9,7 @@ import { withSeniorSquadScope } from "./squads.js";
 import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { ensureMidSeasonSponsor } from "./midSeasonSponsor.js";
+import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, YOUTH_GROUP_SIZE, pickYouthGroupForNewTeam } from "./youthPoolAssignment.js";
 import {
   INITIAL_BALANCE,
   MANAGER_ENTRY_DIVISION,
@@ -489,6 +490,99 @@ export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
   return calibratedAny;
 }
 
+// #5676 (Y3 opfølgning, del af #4620) · Ungdomsgruppe-FK'en pr. trup.
+function youthFkColumn(squad) {
+  return squad === "u23" ? "u23_league_division_id" : "junior_league_division_id";
+}
+
+// Nuværende grupper for én ungdomstrup, i den facade pickYouthGroupForNewTeam
+// forventer (poolIndex + aiTeamIds/managerTeamIds). Kun de hold der allerede
+// har en FK ind i netop denne trups grupper tælles med.
+async function loadYouthGroupCandidates(supabase, squad) {
+  const { data: pools, error: poolsError } = await supabase
+    .from("league_divisions")
+    .select("id, pool_index")
+    .eq("squad", squad)
+    .eq("tier", YOUTH_GROUP_TIER);
+  if (poolsError) throw new Error(`league_divisions (youth ${squad}): ${poolsError.message}`);
+  const activePools = pools || [];
+  if (!activePools.length) return { pools: [], groups: [] };
+
+  const col = youthFkColumn(squad);
+  const poolIds = activePools.map((p) => p.id);
+  const { data: occupants, error: occupantsError } = await supabase
+    .from("teams")
+    .select(`id, is_ai, ${col}`)
+    .in(col, poolIds);
+  if (occupantsError) throw new Error(`teams (youth ${squad} occupants): ${occupantsError.message}`);
+
+  const byPoolId = new Map(activePools.map((p) => [p.id, { poolIndex: p.pool_index, aiTeamIds: [], managerTeamIds: [] }]));
+  for (const t of occupants || []) {
+    const group = byPoolId.get(t[col]);
+    if (!group) continue;
+    (t.is_ai === true ? group.aiTeamIds : group.managerTeamIds).push(t.id);
+  }
+  return { pools: activePools, groups: [...byPoolId.values()] };
+}
+
+// #5676 (CodeRabbit-fund): pickYouthGroupForNewTeam kan vælge en FULD gruppe (size
+// >= groupSize) fordi den har en AI-plads at overtage — men vælger den ALDRIG hvis
+// den er fuld og AI-fri (se filteret i youthPoolAssignment.js). Er den valgte gruppe
+// fuld, skal ét AI-hold vige FØR det nye hold skrives ind, ellers vokser gruppen til
+// 25 uden noget der nogensinde retter det (ingen youth-pendant til
+// reconcileAiTeamsForPool). Rækkefølge bevidst evict-FØR-assign: fejler selve
+// tildelingen bagefter, står AI-holdet blot uden gruppe igen (under-fyldt, ikke
+// over-fyldt) — samme "AI-hold uden gruppe fylder op"-gren som seedYouthPools.js'
+// top-up-tilstand allerede retter af sig selv ved næste kørsel (selvhelende).
+async function evictAiIfGroupIsFull({ supabase, squad, group }) {
+  const size = group.managerTeamIds.length + group.aiTeamIds.length;
+  if (size < YOUTH_GROUP_SIZE || !group.aiTeamIds.length) return null;
+  const col = youthFkColumn(squad);
+  const outId = [...group.aiTeamIds].sort().pop();
+  const { error } = await supabase.from("teams").update({ [col]: null }).eq("id", outId);
+  if (error) throw new Error(`teams.${col} evict (youth ${squad}): ${error.message}`);
+  return outId;
+}
+
+// #5676 (Y3 opfølgning, Refs #5646 #5660): et NYT hold skal have løb i S4 —
+// placér det i ÉN u23- og ÉN junior-ungdomsgruppe med plads, samme regel
+// (flest AI-hold at overtage, ellers næste mindste ledige gruppe) som
+// seedYouthPools.js' top-up-tilstand bruger (pickYouthGroupForNewTeam, ren,
+// backend/lib/youthPoolAssignment.js). Rører ALDRIG et hold der allerede har
+// en gruppe i trup'en (idempotent — samme guard som planYouthTopUp).
+//
+// Ingen gruppe med plads i trup'en (fx grupperne er ikke seedet endnu, #5646
+// er et separat spor) → springes stille over pr. trup; et hold uden
+// ungdomsgruppe er en genoprettelig blindgyde (backfill kan rette det senere),
+// ikke en blokeret hold-oprettelse.
+export async function assignYouthGroupsForNewTeam({ supabase, team } = {}) {
+  if (!team?.id) return { assigned: {} };
+  const assigned = {};
+  for (const squad of YOUTH_POOL_SQUADS) {
+    const col = youthFkColumn(squad);
+    if (team[col] != null) {
+      assigned[squad] = { skipped: "already_assigned" };
+      continue;
+    }
+    const { pools, groups } = await loadYouthGroupCandidates(supabase, squad);
+    const target = pickYouthGroupForNewTeam({ groups, squad });
+    if (!target) {
+      assigned[squad] = { skipped: "no_group_available" };
+      continue;
+    }
+    const pool = pools.find((p) => p.pool_index === target.poolIndex);
+    if (!pool) {
+      assigned[squad] = { skipped: "pool_not_found" };
+      continue;
+    }
+    const evictedAiTeamId = await evictAiIfGroupIsFull({ supabase, squad, group: target });
+    const { error } = await supabase.from("teams").update({ [col]: pool.id }).eq("id", team.id);
+    if (error) throw new Error(`teams.${col} update (youth ${squad}): ${error.message}`);
+    assigned[squad] = { leagueDivisionId: pool.id, poolIndex: pool.pool_index, evictedAiTeamId };
+  }
+  return { assigned };
+}
+
 export async function upsertOwnTeamProfile({
   supabase,
   userId,
@@ -512,6 +606,9 @@ export async function upsertOwnTeamProfile({
   // uden løb indtil næste manuelle/seasonTransition-kørsel. DI så testen kan verificere
   // koblingen uden at mocke hele materialiserings-kæden.
   reconcilePoolCalendar = reconcilePoolCalendarOnActivation,
+  // #5676: DI så testen kan verificere ungdomsgruppe-koblingen uden at mocke
+  // hele league_divisions/teams-læse-kæden.
+  assignYouthGroups = assignYouthGroupsForNewTeam,
 } = {}) {
   if (!supabase?.from) {
     throw createHttpError(500, "Supabase client is required");
@@ -737,6 +834,23 @@ export async function upsertOwnTeamProfile({
           { tags: { component: "team-create-calendar-reconcile" }, extra: { teamId: team.id, poolId: team.league_division_id } },
         );
       }
+    }
+
+    // #5676 (Y3 opfølgning): et nyt hold skal have ungdomsløb i S4 — placér det i
+    // én u23- og én junior-ungdomsgruppe med plads. BEVIDST IKKE-FATAL, samme
+    // afvejning som akademi/sponsor/AI-trim ovenfor: en manglende ungdomsgruppe er
+    // en genoprettelig blindgyde, ikke en blokeret signup.
+    try {
+      await assignYouthGroups({ supabase, team });
+    } catch (youthGroupError) {
+      console.error(
+        `[teamProfileEngine] #5676 ungdomsgruppe-placering FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        youthGroupError?.message || youthGroupError,
+      );
+      sentryCapture(
+        youthGroupError instanceof Error ? youthGroupError : new Error(String(youthGroupError)),
+        { tags: { component: "team-create-youth-groups" }, extra: { teamId: team.id } },
+      );
     }
   }
 

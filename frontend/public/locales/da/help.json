@@ -838,7 +838,7 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Den bygger på de samme evner som ratingen på hans kort, vægtet efter den ryttertype han er i dag, så når ratingen flytter sig, følger værdien med. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 06, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering. Værdien kan allerede begynde at falde i slutningen af 20'erne, før nogen evne vender: den priser hele den resterende karriere, ikke kun det nuværende niveau. En rytter der stadig er på sit skarpeste kan godt se sin værdi falde, alene fordi der er færre sæsoner tilbage at sælge ham i."
+        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder og udvikling. Den bygger på de samme evner som ratingen på hans kort og regnes ens for alle ryttere, uanset type, så når hans evner flytter sig, følger værdien med. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 06, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering. Værdien kan allerede begynde at falde i slutningen af 20'erne, før nogen evne vender: den priser hele den resterende karriere, ikke kun det nuværende niveau. En rytter der stadig er på sit skarpeste kan godt se sin værdi falde, alene fordi der er færre sæsoner tilbage at sælge ham i."
       },
       "salary": {
         "title": "Løn",
@@ -1224,8 +1224,8 @@
         ]
       },
       "promoteDemote": {
-        "title": "Ryk op og flyt ryttere ned",
-        "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads. En rytter, der allerede har en kontrakt, beholder den præcis som den er; kun en rytter uden kontrakt får en standard-kontrakt på vej op. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. At flytte en rytter mellem akademiet og senior-truppen ændrer aldrig, hvor mange sæsoner der er tilbage på kontrakten, i nogen af retningerne. Begge handlinger viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt, fyre en rytter eller flytte ryttere mellem din senior-trup og dit akademi direkte fra rytterens egen profil-side. Kontraktforlængelse virker nu også direkte på akademiryttere, til samme genforhandlede løn som en senior-rytter; du behøver ikke rykke dem op først."
+        "title": "Flyt ryttere mellem trupper",
+        "text": "Brug Flyt trup på rytterens side eller på Mit hold for at sætte ham på din senior-, U23- eller juniortrup. Dialogen viser alle tre trupper med brugte og ledige pladser, markerer hans nuværende trup, og gør en trup grå hvis han er for gammel til den eller den er fuld, med grunden. Opad er altid tilladt, så en junior kan stå på U23-holdet. Nedad virker kun inden for truppens aldersgrænse: junior til og med sæsonalder 18, U23 til og med 22. Hver ungdomstrup har et loft: {u23SquadCap} på U23-holdet og {juniorSquadCap} på juniorholdet. En rytter, der allerede har en kontrakt, beholder den præcis som den er, i begge retninger; kun en rytter uden kontrakt får en standard-kontrakt på vej op i senior-truppen. Flyttes en rytter ned, tages han ud af alle kommende løb, han var udtaget til. Dialogen viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt eller fyre en rytter direkte fra rytterens egen side, og forlængelse virker også direkte på ungdomsryttere."
       }
     },
     "facilities": {
@@ -1430,6 +1430,10 @@
       "q": "Hvad sker der med mine ryttere hvis jeg ikke logger ind?",
       "a": "Dine ryttere forbliver på dit hold. Cycling Zone straffer dig ikke for at springe en dag over, så spil i dit eget tempo."
     },
+    "appUpdatesFaq": {
+      "q": "Hvorfor genindlæser spillet sig selv nogle gange?",
+      "a": "Når jeg lægger en ny version ud, peger en fane du allerede havde åben stadig på de gamle filer, og de kan forsvinde. Fanen tjekker efter en ny version og genindlæser sig selv, så du får den nye. Det sker aldrig mens du har ugemte ændringer eller en løbsfilm i gang. Så får du i stedet en lille 'Ny version klar'-bjælke i bunden, og du bestemmer selv hvornår du tager opdateringen."
+    },
     "passwordReset": {
       "q": "Hvordan nulstiller jeg min adgangskode?",
       "a": "Fra login-siden kan du klikke 'Glemt password?', indtaste din email og følge reset-linket i mailen. Linket åbner en dedikeret reset-side, hvor du vælger en ny adgangskode."
@@ -1597,6 +1601,10 @@
     "sponsorBoardModifierScope": {
       "q": "Påvirker bestyrelsens tilfredshed mine etape-penge?",
       "a": "Nej. Bestyrelsens modifier gælder kun den garanterede del af aftalen, engangsbeløbet der udbetales ved sæsonstart, og den kan rykke det med op til plus/minus 20 procent. Etape-indkomst og alle bonusklausuler (underskriftsbonus, etapesejr, podieplads, sæsonmål) udbetales fuldt ud til deres pålydende værdi oveni, i takt med at du tjener dem. En sponsor-pullout virker på samme måde: den reducerer den garanterede udbetaling ved sæsonstart, ikke det du tjener undervejs."
+    },
+    "sponsorAmountVariesByClub": {
+      "q": "Hvorfor fik et andet hold et andet tilbud fra samme sponsortype?",
+      "a": "Fordi beløbet er prissat til din egen klub, ikke fast pr. sponsortype. Hver af de fem sponsortyper tilbyder sin egen andel af hvad din klub er værd som aftale lige nu, og den værdi kommer fra din klubs omdømme: din division plus hvor du ligger i din pulje. To klubber kan begge vælge fx løbsaftalen og skrive under til forskellige beløb, fordi deres omdømme er forskelligt. Byg en stærkere standing, og den samme sponsortype er mere værd næste gang du forhandler."
     },
     "seasonFinanceReport": {
       "q": "Hvad viser sæson-finansrapporten, og hvor finder jeg den?",
@@ -1845,6 +1853,26 @@
     "betaGroupFaq": {
       "q": "Hvad er beta-gruppen, og hvordan kommer jeg med?",
       "a": "Jeg åbner de fleste nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar inden alle får dem. En beta-tester ser de funktioner tidligt, og nogle af dem bliver lavet om eller går i stykker undervejs. Bed om at komme med under Profil, Beta-gruppen: jeg svarer i hånden, og du får en besked i indbakken uanset hvad. Sig hvad der føles forkert på Discord eller gennem feedback-formularen. Du kan forlade gruppen igen samme sted, og du beholder alt det der allerede er live for alle."
+    },
+    "sharpFlatTrainingDaysFaq": {
+      "q": "Hvad betyder 'skarpe' og 'flade' træningsdage, og skal jeg bekymre mig hvis jeg får flere flade dage i træk?",
+      "a": "Hver træningsdag har et lille tilfældigt udsving oven i rytterens normale udvikling: nogle dage lander lidt over planen (en skarp dag), nogle lidt under (en flad dag), og de fleste ligger omkring normalt. Det er cirka en tredjedel af dagene hver vej, rullet forfra for hver rytter hver dag og helt uafhængigt af dagen før, så det følger hverken træthed, form eller noget du gør forkert. To eller tre flade dage i træk vil ske for nogen i en normal-stor trup af ren tilfældighed. Bedøm en rytters udvikling over et helt træningsforløb, ikke én enkelt dag."
+    },
+    "teamworkLeadershipTrainingFaq": {
+      "q": "Hvad styrer, hvor hurtigt Holdarbejde og Lederskab bliver trænet, og har de skjult potentiale?",
+      "a": "Holdarbejde og Lederskab trænes gennem det samme daglige system som alle andre evner: jo større afstanden er mellem, hvor rytteren står nu, og hans loft for evnen, jo hurtigere vokser den, og det bremser op jo tættere han kommer på toppen. Potentiale rører ikke loftet for nogen evne, heller ikke Holdarbejde og Lederskab; det styrer kun, hvor hurtigt det gab lukkes. Selve loftet kommer fra typen: de fleste evner har et loft formet af, hvor central evnen er for rytterens type, så en klatrers klatre-loft ligger langt over en sprinters. Holdarbejde og Lederskab virker ikke sådan: alle ryttere træner mod det samme fælles loft, uanset type. Så nej, der er ikke skjult ekstra plads på de to for en rytter med højt potentiale; potentiale gør træningen hurtigere på hver evne, også Holdarbejde og Lederskab, det løfter bare aldrig loftet."
+    },
+    "riderPoolNationalityFaq": {
+      "q": "Hvorfor er nogle nationer som Sydkorea, Kina og Japan så synlige i rytterpuljen?",
+      "a": "Nye ryttere trækkes fra en vægtet pulje bygget til at sprede nationaliteter bredere end en streng kopi af den rigtige professionelle peloton ville gøre, plus en kort liste af nationer der altid er garanteret mindst én rytter, så puljen ikke lener sig helt op ad de sædvanlige store cykelnationer. Jeg kan ikke dele de præcise vægte her, det er den slags interne balance-tal jeg holder ude af en offentlig FAQ, men jeg kigger på om den garanterede repræsentation lander som den skal, eller giver et par nationer mere synlig tilstedeværelse end tilsigtet. Skal den justeres, er det en puljeændring, ikke en fejl i en enkelt rytter."
+    },
+    "retirementAgeWindowFaq": {
+      "q": "Pensionering er mellem 36 og 40. Er 40 en rytters sidste sæson, eller pensioneres han i det øjeblik han fylder 40?",
+      "a": "40 er en sæson han får lov at køre, ikke en grænse han mister. Når en rytter når 40 år, er han garanteret at gå på pension før næste sæson starter, men han spiller sæsonen han er 40 i færdig først; han kører aldrig som 41-årig. Før det er pensionering en stigende chance hver sæson fra 36 år og op, så hver af hans sæsoner som 36-, 37-, 38- eller 39-årig kan også vise sig at blive hans sidste. Det er bare ikke garanteret før ved 40."
+    },
+    "scoutCancelRefundFaq": {
+      "q": "Hvis jeg annullerer en scout-mission, får jeg pengene tilbage? Betyder det noget, hvornår jeg annullerer?",
+      "a": "Ingen refusion, uanset hvornår. Rejseomkostningen trækkes i det øjeblik du starter en mission, og en annullering stopper den bare og frigør din spejder; den giver ikke nogen af de penge du allerede har brugt tilbage, uanset hvor tidligt eller sent du annullerer. Vej det ind før du sætter en mission i gang: start kun én du er villig til at se igennem, eller villig til at tabe omkostningen på hvis dine planer ændrer sig."
     }
   },
   "knownIssues": {

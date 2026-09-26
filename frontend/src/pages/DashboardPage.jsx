@@ -17,6 +17,10 @@ import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashbo
 // konteksten er spillerens egen verden").
 import { mergeStandings } from "../lib/standingsMerge";
 import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
+// #5315 — "Full standings"-linket skal lande på managerens EGEN pulje/gruppe,
+// ikke hele divisionen. Ren helper (unit-testet), genbruger hasPoolSubtabs/
+// ownPoolRow fra computeMyDivisionStandings nedenfor.
+import { buildStandingsLink } from "../lib/standingsLink.ts";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { getEffectiveOfferAmount } from "../lib/offerAmount.js";
@@ -1130,6 +1134,10 @@ export default function DashboardPage() {
   // managere"-tal (kun menneskehold), vist som lille tillægslinje på egen række.
   const { hasPoolSubtabs, ownPoolRow, divStandingsAll, divStandingsTop, divStandings, myManagerRank } =
     computeMyDivisionStandings(standings, team, pools);
+  // #5315 — "Full standings" skal lande på managerens egen pulje/gruppe (samme
+  // kilde som modulet selv viser), ikke hele divisionen. Fallder tilbage til
+  // almindeligt /standings (dagens adfærd) når puljen endnu er ukendt.
+  const standingsLink = buildStandingsLink(hasPoolSubtabs, ownPoolRow);
 
   // vk-movement-signals — divisionsplacering + holdpoint siden sidste
   // afsluttede løbsdag i egen pulje. null/0 → ingen badge (ingen "0"-støj,
@@ -1518,6 +1526,7 @@ export default function DashboardPage() {
       {showSeasonWrapNudge && (
         <SeasonWrapNudgeCard
           seasonNumber={completedSeasonRecap.seasonNumber}
+          seasonId={completedSeasonRecap.seasonId}
           nextSeasonNumber={seasonInfo?.number}
           division={completedSeasonRecap.division}
           divisionSize={completedSeasonRecap.divisionSize}
@@ -1567,7 +1576,7 @@ export default function DashboardPage() {
               Card.jsx's borderClass-fælde (to bg-*-klasser på samme property,
               vinderen afgøres af CSS-bundle-rækkefølge, ikke JSX). */}
           <Link
-            to="/profile"
+            to="/profile?tab=notifications#discord"
             className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-cz border border-transparent text-xs font-semibold bg-cz-discord text-white transition-colors duration-150 ease-out hover:bg-cz-discord-hover flex-shrink-0">
             {t("dashboard:discordNudge.cta")}
           </Link>
@@ -1802,14 +1811,14 @@ export default function DashboardPage() {
             title={hasPoolSubtabs && ownPoolRow
               ? t("dashboard:cards.standings.titlePool", { label: ownPoolRow.label })
               : t("dashboard:cards.standings.title", { division: team?.division })}
-            action={<SectionAction as={Link} to="/standings">{t("dashboard:cards.standings.linkAll")}</SectionAction>}
+            action={<SectionAction as={Link} to={standingsLink}>{t("dashboard:cards.standings.linkAll")}</SectionAction>}
           />
           {divStandings.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.standings.empty")}
               description={t("dashboard:cards.standings.emptyHint")}
               action={
-                <Link to="/standings" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to={standingsLink} className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.standings.emptyCta")}
                 </Link>
               }
@@ -1832,7 +1841,7 @@ export default function DashboardPage() {
                         kanten - fladetoningen ville ellers ligge oven paa
                         leder-guldet. Samme opdeling som .cz-me / .cz-me-bar i
                         tabellerne, saa dashboardet ser ud som /standings. */}
-                    <Link to="/standings"
+                    <Link to={standingsLink}
                       className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
                       {/* vk-movement-signals — divisionsplacerings-bevægelse siden

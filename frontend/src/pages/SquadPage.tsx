@@ -60,7 +60,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
   const { t: tTeam } = useTranslation("team");
   const scouting = useScouting();
   const seasonYear = useActiveSeasonYear();
-  const { status, team, riders, reload } = useYouthSquad(squad);
+  const { status, team, riders, cap, reload } = useYouthSquad(squad);
   const [tab, setTab] = useState<SquadTabKey>("squad");
 
   if (status === "loading") return <PageLoader />;
@@ -99,15 +99,18 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
         />
       ) : (
         <>
-          {/* Meta-linjen som på My Team (TeamPage.jsx). Kun tal der findes:
-              ingen loft-tal (squads.js' SQUAD_CAPS er et sim-startpunkt, P11),
-              og antallet står allerede i Squad-fanen (intet tal to gange). */}
-          {riders.length > 0 && (
-            <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm text-cz-3 tabular-nums">
-              <span>{tTeam("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
-              <span>{t("page.squadValue", { value: formatNumber(totalValue) })}</span>
-            </div>
-          )}
+          {/* Meta-linjen som på My Team (TeamPage.jsx). #5631: truppens loft
+              (SQUAD_CAPS, live siden #5626) vises altid, også ved en tom trup
+              (0/12) — løn og trupværdi kun når der er ryttere at summere. */}
+          <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm text-cz-3 tabular-nums">
+            <span>{t("page.rosterCount", { count: riders.length, cap })}</span>
+            {riders.length > 0 && (
+              <>
+                <span>{tTeam("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
+                <span>{t("page.squadValue", { value: formatNumber(totalValue) })}</span>
+              </>
+            )}
+          </div>
 
           <Tabs value={tab} onChange={(next) => setTab(next as SquadTabKey)} className="mb-5">
             <TabList label={t("tabs.ariaLabel")}>
@@ -117,9 +120,18 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             </TabList>
           </Tabs>
 
-          {tab === "squad" && (riders.length === 0
-            ? <YouthSquadEmptyState squad={squad} />
-            : <YouthSquadTable riders={riders} scouting={scouting} seasonYear={seasonYear} label={tabLabel.squad} />)}
+          {tab === "squad" && (
+            <>
+              {/* #5519/#5519-beta: spørgsmål 23/9 ("only academy riders appear
+                  on U23/Junior") — seniorryttere bliver IKKE flyttet automatisk
+                  ved aldersovergang, kun manager-initieret Move squad gør det.
+                  Samme stil som development.hint. Vises altid, også tom trup. */}
+              <p className="mb-3 text-[13px] text-cz-2">{t("page.seniorsStayHint")}</p>
+              {riders.length === 0
+                ? <YouthSquadEmptyState squad={squad} />
+                : <YouthSquadTable riders={riders} scouting={scouting} seasonYear={seasonYear} label={tabLabel.squad} />}
+            </>
+          )}
           {tab === "development" && (riders.length === 0
             ? <YouthSquadEmptyState squad={squad} />
             : (

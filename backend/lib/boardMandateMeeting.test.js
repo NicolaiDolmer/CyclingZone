@@ -185,10 +185,30 @@ const sampleGoal = { type: "top_n_finish", target: 4, satisfaction_bonus: 10, sa
 
 // ── buildBoardMeetingPayload ─────────────────────────────────────────────────
 
-test("buildBoardMeetingPayload: intet proposed mandat → { available: false }", async () => {
+test("buildBoardMeetingPayload: intet mandat overhovedet → { available: false, reason: 'no_mandate' }", async () => {
   const supabase = makeMeetingSupabase({ mandates: [] });
   const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
-  assert.deepEqual(payload, { available: false });
+  assert.deepEqual(payload, { available: false, reason: "no_mandate" });
+});
+
+// #5755 (reviewer-fund) · available:false dækkede tidligere BÅDE "aldrig
+// proponeret" og "underskrevet" — season-start-guiden læste det som et falsk
+// Done-flueben for de 13 menneskehold i prod uden mandat-række. reason skal
+// skelne dem.
+test("buildBoardMeetingPayload: seneste mandat er 'active' → reason 'signed'", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{ id: "m1", team_id: "t1", season_number: 4, status: "active", proposed_at: "2026-07-01T00:00:00Z" }],
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.deepEqual(payload, { available: false, reason: "signed" });
+});
+
+test("buildBoardMeetingPayload: seneste mandat er 'completed' (mellem sæsoner) → reason 'no_proposal'", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{ id: "m1", team_id: "t1", season_number: 3, status: "completed", proposed_at: "2026-06-01T00:00:00Z" }],
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.deepEqual(payload, { available: false, reason: "no_proposal" });
 });
 
 test("buildBoardMeetingPayload: proposed mandat → goals bærer Easier/Keep/Stretch-options", async () => {
