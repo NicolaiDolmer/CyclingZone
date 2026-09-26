@@ -102,10 +102,15 @@ import {
   type IncidentsTuning,
 } from "./incidents.ts";
 import {
+  applyReinstatementPointPenalty,
+  JURY_REINSTATED_EVENT,
+  juryReinstatements,
   OTL_STATUS,
   OUTSIDE_TIME_LIMIT_EVENT,
+  reinstatedRiderIdsOf,
   TIME_LIMIT_TUNING,
   timeLimitSecondsFor,
+  type TimeLimitJuryInput,
   type TimeLimitTuning,
 } from "./timeLimit.ts";
 import {
@@ -252,6 +257,14 @@ export type TimeTrialMode = {
    * (genererede TTT-ruter har ingen, se filhovedet).
    */
   intermediatePassages: boolean;
+  /**
+   * #5515: juryen (#5582) doemmer PER RYTTER paa sluttid minus uheldets
+   * tidstab. Enkeltstart: ja — enheden er én rytter, og hans tid er hans egen,
+   * saa et mekanisk uheld aldrig kan koste loebet (RULES §9 raekke 4).
+   * Holdtidskoersel: nej — holdets tid er den k'te rytters passage, og én
+   * rytters uheld flytter den ikke; hold-graensen er uaendret siden #4915.
+   */
+  individualJury: boolean;
   /** Ét segment for én enhed. Muterer enhedens lokale rytter-tilstand; returnerer ny-droppede rider_ids. */
   tickUnitSegment: (unit: TimeTrialUnit, segment: Segment, segmentIndex: number, tuning: EngineTuning) => string[];
 };
@@ -567,6 +580,8 @@ export type TeamTimeLimitOutcome = {
   winnerTimeSeconds: number;
   /** group_id ("ttt-<team_id>") for de hold der endte uden for graensen. */
   otlTeamGroupIds: string[];
+  /** #5515: ryttere juryen genindsatte (kun naar `jury` er givet, dvs. enkeltstarten). */
+  juryReinstatedRiderIds: string[];
 };
 
 /**
@@ -583,12 +598,18 @@ export type TeamTimeLimitOutcome = {
  * Rank, tid og raekkefoelge er uroerte — kun `status` aendres. Eventets form er
  * M15's egen (`rider_ids` + `rider_count`), saa renderer-laget kan laese den
  * uaendret, og tallet naar aldrig spilleren (#1791).
+ *
+ * `jury` (#5515) er KUN for enkeltstarten, hvor enheden er én rytter: juryen
+ * (#5582, `juryReinstatements`) doemmer ham paa sluttid minus uheldets
+ * tidstab, og en genindsat rytter beholder status "finished" med
+ * `reinstated_by: "jury"`. Udeladt = hold-graensen bit-uaendret.
  */
 export function applyTeamTimeLimit(args: {
   results: readonly StageResult[];
   profileType: ProfileType | null | undefined;
   distanceKm: number;
   tuning?: TimeLimitTuning;
+  jury?: TimeLimitJuryInput;
 }): TeamTimeLimitOutcome {
   const tuning = args.tuning ?? TIME_LIMIT_TUNING;
   const finishers = args.results.filter((r) => r.status === "finished");
@@ -598,27 +619,55 @@ export function applyTeamTimeLimit(args: {
     limitSeconds: 0,
     winnerTimeSeconds: 0,
     otlTeamGroupIds: [],
+    juryReinstatedRiderIds: [],
   };
   if (finishers.length === 0) return unchanged;
 
   const winnerTimeSeconds = finishers.reduce((min, r) => Math.min(min, r.time_seconds), finishers[0].time_seconds);
   const limitSeconds = timeLimitSecondsFor(winnerTimeSeconds, args.profileType, tuning);
 
-  const otlGroups = new Set(finishers.filter((r) => r.time_seconds > limitSeconds).map((r) => r.group_id));
-  if (otlGroups.size === 0) return { ...unchanged, limitSeconds, winnerTimeSeconds };
+  const overLimitGroups = new Set(finishers.filter((r) => r.time_seconds > limitSeconds).map((r) => r.group_id));
+  if (overLimitGroups.size === 0) return { ...unchanged, limitSeconds, winnerTimeSeconds };
 
-  const results = args.results.map((r) =>
-    r.status === "finished" && otlGroups.has(r.group_id) ? { ...r, status: OTL_STATUS } : { ...r },
+  const overLimitRiderIds = new Set(finishers.filter((r) => overLimitGroups.has(r.group_id)).map((r) => r.rider_id));
+  const juryIds = new Set(
+    args.jury ? juryReinstatements({ results: args.results, otlRiderIds: overLimitRiderIds, limitSeconds, jury: args.jury }) : [],
   );
+
+  const results = args.results.map((r) => {
+    if (juryIds.has(r.rider_id)) return { ...r, reinstated_by: "jury" as const };
+    if (overLimitRiderIds.has(r.rider_id)) return { ...r, status: OTL_STATUS };
+    return { ...r };
+  });
   const otlRiderIds = results.filter((r) => r.status === OTL_STATUS).map((r) => r.rider_id);
-  const events: TimelineEvent[] = [
-    {
-      km: round2(args.distanceKm),
+  const juryReinstatedRiderIds = results.filter((r) => juryIds.has(r.rider_id)).map((r) => r.rider_id);
+  const otlGroups = new Set(results.filter((r) => r.status === OTL_STATUS).map((r) => r.group_id));
+
+  const finishKm = round2(args.distanceKm);
+  const events: TimelineEvent[] = [];
+  if (juryReinstatedRiderIds.length > 0) {
+    // Samme event og form som vejetapens jury (timeLimit.ts): antal, aldrig et tal.
+    events.push({
+      km: finishKm,
+      type: JURY_REINSTATED_EVENT,
+      params: { rider_ids: juryReinstatedRiderIds, rider_count: juryReinstatedRiderIds.length },
+    });
+  }
+  if (otlRiderIds.length > 0) {
+    events.push({
+      km: finishKm,
       type: OUTSIDE_TIME_LIMIT_EVENT,
       params: { rider_ids: otlRiderIds, rider_count: otlRiderIds.length },
-    },
-  ];
-  return { results, events, limitSeconds, winnerTimeSeconds, otlTeamGroupIds: [...otlGroups].sort() };
+    });
+  }
+  return {
+    results,
+    events,
+    limitSeconds,
+    winnerTimeSeconds,
+    otlTeamGroupIds: [...otlGroups].sort(),
+    juryReinstatedRiderIds,
+  };
 }
 
 // ── Top-niveau: hele TTT-etapen, alle hold ─────────────────────────────────────
@@ -671,9 +720,23 @@ const TEAM_TIME_TRIAL_MODE: TimeTrialMode = {
   unitEvents: true,
   gapUpdates: true,
   intermediatePassages: false,
+  individualJury: false,
   tickUnitSegment: (unit, segment, segmentIndex, tuning) =>
     tickTeamSegment(segment, segmentIndex, unit.roster, unit.entrantsById, unit.riders, tuning),
 };
+
+/**
+ * #5515: juryens input i en enkeltstart — etapens uheld og rytterens
+ * indsatsvalg. Intet hold (en enkeltstart har ingen holdkammerat paa vejen) og
+ * ingen jagt-tab (ingen gruppe at jage tilbage til).
+ */
+function timeTrialJuryInput(teams: readonly TeamRoster[], incidents: readonly StageIncident[]): TimeLimitJuryInput {
+  const effortByRider: Record<string, Entrant["effort"]> = {};
+  for (const team of teams) {
+    for (const entrant of team.riders) effortByRider[entrant.rider_id] = entrant.effort;
+  }
+  return { incidents, effortByRider };
+}
 
 /**
  * Tidskoersels-kernen (#5576): M13's etape-model med enhedens eget tik som
@@ -872,12 +935,14 @@ export function runTimeTrialStage(
   ].map((r, index) => ({ ...r, rank: index + 1 }));
   loads.sort((a, b) => a.rider_id.localeCompare(b.rider_id));
 
-  // M15 som hold-graense (#4915).
+  // M15 som hold-graense (#4915). Enkeltstarten faar juryen per rytter (#5515);
+  // holdtidskoerslen er uaendret (se TimeTrialMode.individualJury).
   const timeLimit = applyTeamTimeLimit({
     results: rankedResults,
     profileType: route.profile_type,
     distanceKm: route.distance_km,
     tuning: options.timeLimitTuning,
+    jury: mode.individualJury ? timeTrialJuryInput(teams, stageIncidents) : undefined,
   });
   const results = timeLimit.results;
   const otlGroups = new Set(timeLimit.otlTeamGroupIds);
@@ -915,7 +980,9 @@ export function runTimeTrialStage(
     groupSnapshots,
     incidents: [...stageIncidents].sort((a, b) => a.km - b.km || a.rider_id.localeCompare(b.rider_id)),
     passages,
-    passage_totals: passageTotals(passages),
+    // UCI 2.6.032 (#5582): en genindsat rytter mister etapens point. En
+    // holdtidskoersel genindsaetter aldrig nogen, saa den er bit-uaendret.
+    passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
     teams: teamResults,
   };
 }
