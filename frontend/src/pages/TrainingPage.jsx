@@ -30,7 +30,8 @@ import {
   TRAINING_SESSIONS_BY_LEVEL,
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
+import { copenhagenDayKey } from "../lib/raceCentre.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
@@ -885,6 +886,17 @@ export default function TrainingPage() {
     ? history.runs.filter((r) => r.tick_date !== todayRun.tick_date)
     : history.runs.slice(1);
 
+  // #5539-fix (ejer 26/9): kvitteringens "+N %"-kolonne + gold-segment bygger
+  // på den SENESTE kørsel (latestReceiptRun = samme fallback som latestRun
+  // ovenfor), ikke kun dagens. Ellers stod kolonnen "—" fra midnat til dagens
+  // tick kl. 20. receiptGainDay fortæller rækken hvilken dag tallet er fra.
+  const receiptRun = latestReceiptRun(todayRun, history.runs);
+  const receiptRowByRider = useMemo(() => reportRowsByRider(receiptRun), [receiptRun]);
+  const receiptDay = useMemo(
+    () => receiptGainDay(receiptRun?.tick_date, copenhagenDayKey(today.getTime())),
+    [receiptRun, today],
+  );
+
   // #3709 trin 1: sæsonens hele point pr. rytter, summeret fra den AKTIVE sæsons
   // trænings-kørsler (useTrainingHistory skærer selv forrige sæsons hale fra).
   // Uden en kendt sæsonstart bliver map'et tomt, rækkerne får seasonGains = null
@@ -1113,9 +1125,11 @@ export default function TrainingPage() {
       capped: capped[rider.id],
       seasonGains: seasonGainsByRider[rider.id] ?? null,
       // #3924 trin 2: gårsdagens bidrag som mørkere segment på baren — begge
-      // fra samme todayRun-linje, null når rytteren ikke indgik i dagens kørsel.
-      progressBefore: todayRowByRider[rider.id]?.progress_before ?? null,
-      gainsToday: todayRowByRider[rider.id]?.gains ?? null,
+      // fra samme kørsels-linje, null når rytteren ikke indgik i kørslen.
+      // #5539-fix: seneste kørsel (dagens, ellers nyeste historiske).
+      progressBefore: receiptRowByRider[rider.id]?.progress_before ?? null,
+      gainsToday: receiptRowByRider[rider.id]?.gains ?? null,
+      gainDay: receiptDay,
     });
 
     // #3459 V3 / #4375: løbsdags-badge - feltet findes KUN når
@@ -1969,8 +1983,9 @@ export default function TrainingPage() {
       progress: progress[riderId],
       capped: capped[riderId],
       seasonGains: seasonGainsByRider[riderId] ?? null,
-      progressBefore: todayRowByRider[riderId]?.progress_before ?? null,
-      gainsToday: todayRowByRider[riderId]?.gains ?? null,
+      progressBefore: receiptRowByRider[riderId]?.progress_before ?? null,
+      gainsToday: receiptRowByRider[riderId]?.gains ?? null,
+      gainDay: receiptDay,
     });
   }
   function seasonPointsFor(riderId) {

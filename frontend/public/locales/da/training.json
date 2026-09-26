@@ -216,7 +216,12 @@
     "pending": "Sæsonens tal vises, når den aktive sæson er hentet.",
     "notStarted": "Sæsonen starter {date}. Sæsonens tal begynder der, og træning inden da tæller stadig med mod næste point.",
     "noDaysYet": "Ingen træningsdage i denne sæson endnu. Sæsonens tal begynder efter første træningsdag, og hvert point rytterne allerede har fået bliver stående i linjerne.",
-    "yesterdayContribution": "{pct}% af denne bar kom fra gårsdagens pas."
+    "yesterdayContribution": "{pct}% af denne bar kom fra gårsdagens pas.",
+    "yesterdayGain": "i går +{pct} %",
+    "todayGain": "i dag +{pct} %",
+    "datedGain": "{date} +{pct} %",
+    "todayContribution": "{pct}% af denne bar kom fra dagens pas.",
+    "datedContribution": "{pct}% af denne bar kom fra passet {date}."
   },
   "gainedToday": "+{count} i dag",
   "yesterdayTrainedLine": "{n} trænede mod deres fokus",

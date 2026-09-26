@@ -19,16 +19,38 @@
 // (cz-accent-t, tema-bevidst dyb guld) der viser gårsdagens bidrag til den viste pct — row.yesterdayPct,
 // også afledt (og unit-testet) i trainingReport.js. Løser #3988: 67% af hårde
 // pas viste +0 i dag i gained-kolonnen og blev læst som bugs.
+//
+// #5539 (forum 22/9, 2 spillere): spillerne vil se hvor mange procent af ET
+// POINT sessionen flyttede evnen, ikke kun aflæse gold-segmentet visuelt eller
+// føre regnskab i hånden. Lille tabular-nums-tekst ved siden af baren,
+// afledt af DET SAMME yesterdayPct (abilityYesterdayGainPct i
+// trainingReport.js) — ingen nye serverdata. 0 %/ingen data vises som en
+// stille streg, aldrig som "0 %" (skal ikke læses som en fejl).
+
+//
+// #5539-fix (ejer 26/9): tallet kommer fra den SENESTE kørsel (også før dagens
+// tick kl. 20), og rækken bærer hvilken dag (row.gainDay). Teksten siger derfor
+// "today"/"yesterday" eller datoen, når den seneste kørsel er ældre.
 
 import { useTranslation } from "react-i18next";
+import { abilityYesterdayGainPct, receiptGainKeys, RECEIPT_GAIN_DAY_OLDER } from "../../lib/trainingReport.js";
+import { formatDate } from "../../lib/intl.js";
 
 // Bredder er faste, så de fire kolonner flugter linje for linje (tabular-nums på
 // al numerik, jf. docs/design/PAGE_TEMPLATES.md).
 export default function AbilityReceiptRow({ row, inFocus = false }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
-  const { ability, value, gained, pct, locked, yesterdayPct } = row;
+  const { ability, value, gained, pct, locked, yesterdayPct, gainDay } = row;
   const label = tRider(`racePreview.derived.${ability}`);
+  const yesterdayGainPct = abilityYesterdayGainPct(yesterdayPct);
+  const { gainKey, contributionKey } = receiptGainKeys(gainDay);
+  const gainVars = {
+    pct: yesterdayGainPct,
+    date: gainDay?.kind === RECEIPT_GAIN_DAY_OLDER
+      ? formatDate(gainDay.date, null, { day: "numeric", month: "numeric" })
+      : "",
+  };
 
   return (
     <div className="flex items-center gap-2 py-[3px]">
@@ -85,7 +107,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
       ) : (
         <span
           className="flex-none w-[72px] flex items-center gap-1.5"
-          title={yesterdayPct > 0 ? t("receipt.yesterdayContribution", { pct: yesterdayPct }) : undefined}
+          title={yesterdayGainPct != null ? t(contributionKey, gainVars) : undefined}
         >
           <span className="relative h-1 flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
             <span
@@ -96,10 +118,10 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
                 oven på fylden — #3988-fundet var at et +0-pas er usynligt i baren.
                 Positioneret som HALEN af fylden (segmentet ER den seneste tilvækst),
                 aldrig bredere end selve fylden (yesterdayPct <= pct, se trainingReport.js). */}
-            {yesterdayPct > 0 && (
+            {yesterdayGainPct != null && (
               <span
                 className="absolute top-0 h-full rounded-full bg-cz-accent-t transition-[width] duration-500"
-                style={{ left: `${Math.max(0, pct - yesterdayPct)}%`, width: `${Math.min(yesterdayPct, pct)}%` }}
+                style={{ left: `${Math.max(0, pct - yesterdayGainPct)}%`, width: `${Math.min(yesterdayGainPct, pct)}%` }}
               />
             )}
           </span>
@@ -108,6 +130,15 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           </span>
         </span>
       )}
+
+      {/* #5539: hvor mange procent af ET POINT sessionen flyttede evnen — samme
+          rå tal som gold-segmentet ovenfor (yesterdayGainPct), altid til stede
+          som fast bredde (også for låst/ingen-data-rækker) så listens højre
+          kant ikke hopper ræk-for-ræk. Ingen data/reel 0 % = stille streg,
+          aldrig teksten "0 %" (den skal ikke læses som en fejl). */}
+      <span className="flex-none w-[92px] text-right font-mono tabular-nums text-3xs text-cz-3">
+        {yesterdayGainPct != null ? t(gainKey, gainVars) : "—"}
+      </span>
     </div>
   );
 }
@@ -123,6 +154,10 @@ export function AbilityReceiptHeader() {
       <span className="flex-none w-[24px] text-right">{t("receipt.colNow")}</span>
       <span className="flex-none w-[28px] text-right">{t("receipt.colSeason")}</span>
       <span className="flex-none w-[72px] text-right">{t("receipt.colProgress")}</span>
+      {/* #5539: uden label, samme spacer-princip som dot-kolonnen ovenfor — den
+          nye kolonne er en supplerende annotation (tit en stille streg), ikke
+          endnu en formel datakolonne. */}
+      <span className="flex-none w-[92px]" aria-hidden="true" />
     </div>
   );
 }

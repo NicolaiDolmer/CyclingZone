@@ -216,7 +216,12 @@
     "pending": "Season totals appear once the active season is loaded.",
     "notStarted": "The season starts {date}. Season totals begin then, and training before that still counts toward the next point.",
     "noDaysYet": "No training days in this season yet. Season totals start after the first day of training, and every point already earned stays in the bars.",
-    "yesterdayContribution": "{pct}% of this bar came from yesterday's session."
+    "yesterdayContribution": "{pct}% of this bar came from yesterday's session.",
+    "yesterdayGain": "yesterday +{pct}%",
+    "todayGain": "today +{pct}%",
+    "datedGain": "{date} +{pct}%",
+    "todayContribution": "{pct}% of this bar came from today's session.",
+    "datedContribution": "{pct}% of this bar came from the session on {date}."
   },
   "gainedToday": "+{count} today",
   "yesterdayTrainedLine": "{n} trained toward their focus",
