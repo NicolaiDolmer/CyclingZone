@@ -14,11 +14,14 @@ import {
   BACKUP_TABLE,
   DEFAULT_WAGE_MODEL_ID,
   EXTRAORDINARY_PHASE_STEP,
+  FREEZE_PRODUCTION_VALUE,
   OWNER_ACK_ENV,
   REQUIRED_MODEL_ID,
   ROLLBACK_CONFIRM_PHRASE,
   applyBlockers,
+  loadRequiredModelWithMarket,
   rollbackBlockers,
+  rollbackExtraordinaryValueEvent,
   rollbackUpdates,
   runExtraordinaryValueEvent,
   summariseUpdates,
@@ -31,6 +34,7 @@ const OK = {
   modelId: REQUIRED_MODEL_ID,
   wageModelId: DEFAULT_WAGE_MODEL_ID,
   weekday: "wed",
+  marketReady: true,
 };
 
 test("role-only changes neither move money nor escape rollback", () => {
@@ -58,6 +62,8 @@ test("alle laase skal vaere aabne foer der skrives", () => {
     ["naesten rigtig bekraeftelse", { ...OK, confirm: `${APPLY_CONFIRM_PHRASE} ` }],
     ["ingen ejer-ack", { ...OK, ownerAck: false }],
     ["prismodellen staar paa v4", { ...OK, modelId: "v4" }],
+    ["prismodellen staar paa v5 (den gamle plan)", { ...OK, modelId: "v5" }],
+    ["intet markeds-fit", { ...OK, marketReady: false }],
     ["loenmodellen er flippet med", { ...OK, wageModelId: "v5" }],
     ["det er soendag", { ...OK, weekday: "sun" }],
   ]) {
@@ -77,9 +83,10 @@ test("soendag er blokeret - den dag ejer den ordinaere koersel", () => {
 
 test("mangler ALT, naevnes alt - ejeren skal ikke gaette sig frem i fem forsoeg", () => {
   const blockers = applyBlockers({
-    apply: true, confirm: null, ownerAck: false, modelId: "v4", wageModelId: "v5", weekday: "sun",
+    apply: true, confirm: null, ownerAck: false, modelId: "v4", wageModelId: "v5", weekday: "sun", marketReady: false,
   });
-  assert.equal(blockers.length, 5);
+  assert.equal(blockers.length, 6);
+  assert.ok(blockers.some((b) => b.includes("rider_valuation_v6_market")));
   assert.ok(blockers.some((b) => b.includes(APPLY_CONFIRM_PHRASE)));
   assert.ok(blockers.some((b) => b.includes(OWNER_ACK_ENV)));
   assert.ok(blockers.some((b) => b.includes("rider_valuation_model")));
@@ -152,9 +159,18 @@ test("opsummeringen taeller op, ned og loengrundlag hver for sig", () => {
 // ── #5497 trin-tælleren ─────────────────────────────────────────────────────
 // Minimal app_config-mock: model-nøglerne læses, alt andet registreres, så
 // testen kan bevise at ingen rytter-/backup-tabel røres før trin-nulstillingen.
-function configOnlySupabase({ modelId = REQUIRED_MODEL_ID, wageModelId = DEFAULT_WAGE_MODEL_ID } = {}) {
+// Syntetisk markeds-fit (ingen ejer-tal): kun formen.
+const FAKE_MARKET_FIT = {
+  schema: "typefree-market-fit/1",
+  weight: 0.5,
+  cap_ln: 0.1,
+  common: { beta: [0.1, 0, 0], center: { O: 50, age: 25 } },
+  local: null,
+};
+
+function configOnlySupabase({ modelId = REQUIRED_MODEL_ID, wageModelId = DEFAULT_WAGE_MODEL_ID, market = FAKE_MARKET_FIT } = {}) {
   const tables = [];
-  const values = { rider_valuation_model: modelId, rider_production_value_model: wageModelId };
+  const values = { rider_valuation_model: modelId, rider_production_value_model: wageModelId, rider_valuation_v6_market: market };
   return {
     tables,
     from(table) {
@@ -202,7 +218,7 @@ function applySupabase({ backupRows = [], claimTaken = false } = {}) {
   const ops = [];
   const backup = backupRows.map((r) => ({ ...r }));
   const riders = [{ id: "fixture-a", base_value: 10, current_production_value: 2, primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null }];
-  const values = { rider_valuation_model: REQUIRED_MODEL_ID, rider_production_value_model: DEFAULT_WAGE_MODEL_ID };
+  const values = { rider_valuation_model: REQUIRED_MODEL_ID, rider_production_value_model: DEFAULT_WAGE_MODEL_ID, rider_valuation_v6_market: FAKE_MARKET_FIT };
   const pageOf = (rows) => ({ order() { return this; }, range: async () => ({ data: rows.map((r) => ({ ...r })), error: null }) });
   return {
     ops,
@@ -210,7 +226,12 @@ function applySupabase({ backupRows = [], claimTaken = false } = {}) {
       if (table === "app_config") {
         return { select: () => ({ eq: (_c, key) => ({ maybeSingle: async () => ({ data: { value: values[key] ?? null }, error: null }) }) }) };
       }
-      if (table === "riders") return { select: () => { ops.push("riders:read"); return pageOf(riders); } };
+      if (table === "riders") {
+        return {
+          select: () => { ops.push("riders:read"); return pageOf(riders); },
+          update: () => ({ eq: async () => { ops.push("riders:write"); return { error: null }; } }),
+        };
+      }
       if (table === BACKUP_TABLE) {
         return {
           select: () => pageOf(backup),
@@ -233,7 +254,11 @@ function applySupabase({ backupRows = [], claimTaken = false } = {}) {
 
 const applyArgs = (sb, resets) => ({
   apply: true, confirm: APPLY_CONFIRM_PHRASE, ownerAck: true, now: WEDNESDAY, log: () => {},
-  refreshFn: async (_sb, opts) => { sb.ops.push(`refresh:${opts.phaseStep}`); return { scanned: 1, changed: 0, written: 0 }; },
+  refreshFn: async (_sb, opts) => {
+    sb.ops.push(`refresh:${opts.phaseStep}`);
+    sb.refreshOpts = opts;
+    return { scanned: 1, changed: 0, written: 0 };
+  },
   resetPhaseStepFn: async (_sb, step) => { sb.ops.push("reset"); resets.push(step); },
 });
 
@@ -259,4 +284,91 @@ test("#5497: en afvist --apply (backup findes / dagen er taget) roerer IKKE trin
     assert.deepEqual(resets, [], navn);
     assert.ok(!sb.ops.some((o) => o.startsWith("refresh")), navn);
   }
+});
+
+// ── #5443 v6 (ejer-lås 24/9: typefri model med marked) ──────────────────────
+
+test("#5443 v6: koerslen kraever den typefri noegle, ikke v5", () => {
+  assert.equal(REQUIRED_MODEL_ID, "v6");
+  assert.equal(FREEZE_PRODUCTION_VALUE, true);
+});
+
+test("#5443 v6: modellen laeses med markeds-fittet fra app_config; mangler det, er --apply laast", async () => {
+  const med = await loadRequiredModelWithMarket(configOnlySupabase());
+  assert.equal(med.marketReady, true);
+  assert.equal(med.model.model_id, "v6");
+  assert.deepEqual(med.model.market_fit, FAKE_MARKET_FIT);
+
+  const uden = await loadRequiredModelWithMarket(configOnlySupabase({ market: null }));
+  assert.equal(uden.marketReady, false);
+  assert.equal(uden.model.market_fit, undefined);
+
+  const skrald = await loadRequiredModelWithMarket(configOnlySupabase({ market: { schema: "noget-andet" } }));
+  assert.equal(skrald.marketReady, false);
+
+  const res = await runExtraordinaryValueEvent(configOnlySupabase({ market: null }), {
+    apply: true, confirm: APPLY_CONFIRM_PHRASE, ownerAck: true, now: WEDNESDAY, log: () => {},
+    refreshFn: async () => { throw new Error("maa ikke koere"); },
+    resetPhaseStepFn: async () => { throw new Error("maa ikke koere"); },
+  });
+  assert.equal(res.ran, false);
+  assert.ok(res.blockers.some((b) => b.includes("rider_valuation_v6_market")));
+});
+
+test("#5443 v6: en laesefejl paa markeds-noeglen stopper koerslen i stedet for at regne uden marked", async () => {
+  const failing = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "timeout" } }) }) }) }),
+  };
+  await assert.rejects(() => loadRequiredModelWithMarket(failing), /rider_valuation_v6_market/);
+});
+
+test("#5443 v6: toerkoersel FOER flippet pinner v6 + marked og fryser loengrundlaget", async () => {
+  const refreshOpts = [];
+  const res = await runExtraordinaryValueEvent(configOnlySupabase({ modelId: "v4" }), {
+    apply: false, now: WEDNESDAY, log: () => {},
+    refreshFn: async (_sb, opts) => { refreshOpts.push(opts); return { scanned: 0, changed: 0, updates: [], before: [] }; },
+    resetPhaseStepFn: async () => { throw new Error("toerkoersel maa ikke skrive trin"); },
+  });
+  assert.equal(res.dryRun, true);
+  assert.equal(res.pinned, true);
+  assert.equal(res.marketReady, true);
+  assert.equal(refreshOpts[0].model.model_id, "v6");
+  assert.deepEqual(refreshOpts[0].model.market_fit, FAKE_MARKET_FIT);
+  assert.equal(refreshOpts[0].productionModel, undefined, "loengrundlaget slaas op af refresh'en selv (v4-noeglen)");
+  assert.equal(refreshOpts[0].phaseStep, 0);
+  assert.equal(refreshOpts[0].freezeProductionValue, true);
+  assert.equal(refreshOpts[0].dryRun, true);
+});
+
+test("#5443 v6: toerkoersel EFTER flippet pinner ikke - samme sti som --apply", async () => {
+  const refreshOpts = [];
+  const res = await runExtraordinaryValueEvent(configOnlySupabase(), {
+    apply: false, now: WEDNESDAY, log: () => {},
+    refreshFn: async (_sb, opts) => { refreshOpts.push(opts); return { scanned: 0, changed: 0, updates: [], before: [] }; },
+  });
+  assert.equal(res.pinned, false);
+  assert.equal(refreshOpts[0].model, undefined);
+  assert.equal(refreshOpts[0].freezeProductionValue, true);
+});
+
+test("#5443 v6: --apply regner trin 0 og lader loengrundlaget uroert", async () => {
+  const sb = applySupabase();
+  const res = await runExtraordinaryValueEvent(sb, applyArgs(sb, []));
+  assert.equal(res.ran, true);
+  assert.equal(sb.refreshOpts.phaseStep, 0);
+  assert.equal(sb.refreshOpts.freezeProductionValue, true);
+  assert.equal(sb.refreshOpts.dryRun, undefined, "den rigtige koersel skriver");
+});
+
+test("#5443 v6: rollback advarer om v6-noeglen og trin-taelleren", async () => {
+  const backupRow = { rider_id: "fixture-a", base_value: 99, current_production_value: 2, primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null };
+  const sb = applySupabase({ backupRows: [backupRow] });
+  const lines = [];
+  const res = await rollbackExtraordinaryValueEvent(sb, { confirm: ROLLBACK_CONFIRM_PHRASE, ownerAck: true, log: (l) => lines.push(l) });
+  assert.equal(res.written, 1);
+  assert.equal(res.modelId, "v6");
+  const text = lines.join("\n");
+  assert.match(text, /staar stadig paa 'v6'/);
+  assert.match(text, /rider_valuation_model/);
+  assert.match(text, /rider_value_phase_step/);
 });

@@ -175,7 +175,7 @@ export function rollbackBlockers({ confirm, ownerAck }) {
 }
 
 /**
- * Hvilke ryttere skal skrives tilbage? Kun dem hvor mindst én af de fire
+ * Hvilke ryttere skal skrives tilbage? Kun dem hvor mindst én af de seks
  * kolonner afviger fra backuppen — samme "skriv kun det der ændrer sig"-regel
  * som selve kørslen, så en gentagen rollback er et no-op.
  * @param {Array<object>} backupRows
@@ -323,6 +323,13 @@ async function writeRiderPatches(supabase, updates, log) {
 // app_config fra en tidligere kørsel aldrig tavst overtager.
 export const EXTRAORDINARY_PHASE_STEP = 0;
 
+// Ejer-beslutning 2 (20/9) + indfasningsplanen afsnit 1 punkt 5: løn følger
+// ikke værdi. Kørslen lader current_production_value URØRT (hverken diffet
+// eller skrevet), så runbookens post-verify ("løngrundlag flyttet = 0 mod
+// backuppen") holder, også når ugens træning har flyttet evnerne siden sidste
+// søndag. Den almindelige v4-opdatering af løngrundlaget tager søndagen som altid.
+export const FREEZE_PRODUCTION_VALUE = true;
+
 export async function runExtraordinaryValueEvent(supabase, {
   apply, confirm, ownerAck, now = new Date(), log = console.log,
   refreshFn = refreshChangedRiderValues,
@@ -359,7 +366,7 @@ export async function runExtraordinaryValueEvent(supabase, {
     }
     // Tørkørslen rører IKKE trin-tælleren (app_config.rider_value_phase_step).
     const res = await refreshFn(supabase, {
-      log, dryRun: true, phaseStep: EXTRAORDINARY_PHASE_STEP,
+      log, dryRun: true, phaseStep: EXTRAORDINARY_PHASE_STEP, freezeProductionValue: FREEZE_PRODUCTION_VALUE,
       ...(pinned ? { model: requiredModel } : {}),
     });
     const beforeById = new Map(res.before.map((r) => [r.id, r]));
@@ -368,7 +375,7 @@ export async function runExtraordinaryValueEvent(supabase, {
     log("TOERKOERSEL - intet er skrevet.");
     log(`  scannet: ${res.scanned} · ville aendre: ${res.changed}`);
     log(`  op: ${up} · ned: ${down}`);
-    log(`  loengrundlag der flytter sig: ${cpvMoved}${wageModelId === "v4" ? " (forventet 0 saa laenge loen-noeglen staar paa v4)" : ""}`);
+    log(`  loengrundlag der flytter sig: ${cpvMoved} (skal vaere 0: koerslen roerer ikke loengrundlaget)`);
     log("");
     log("Tal pr. rytter/hold (privat, balance-internals/): backend/scripts/dev/valuationV5DryRun5443.mjs --to=v6 --step=0");
     log("  eller admin-forhaandsvisningen /admin/value-preview.");
@@ -410,7 +417,7 @@ export async function runExtraordinaryValueEvent(supabase, {
   log(`trin-taeller: app_config.${RIDER_VALUE_PHASE_STEP_KEY} = ${EXTRAORDINARY_PHASE_STEP}`);
 
   // SAMME funktion som søndagen. Ingen ny formel, ingen ny model-valg-logik.
-  const res = await refreshFn(supabase, { log, phaseStep: EXTRAORDINARY_PHASE_STEP });
+  const res = await refreshFn(supabase, { log, phaseStep: EXTRAORDINARY_PHASE_STEP, freezeProductionValue: FREEZE_PRODUCTION_VALUE });
   await completeDay(supabase, runDate, res);
 
   // Post-verify: læs igen og tæl hvor mange der reelt afviger fra backuppen.

@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bestRoleForAbilities, recomputeRiderValue, selectChangedValueUpdates } from "./riderValueRefresh.js";
+import { bestRoleForAbilities, recomputeRiderValue, refreshChangedRiderValues, selectChangedValueUpdates } from "./riderValueRefresh.js";
 import { predictBaseValue } from "./riderValuation.js";
-import { loadValuationModelById } from "./riderValuationModelSelect.js";
+import { loadValuationModelById, withMarketFit } from "./riderValuationModelSelect.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
@@ -201,4 +202,128 @@ test("#5497: v6 dispatches via nøglen og bærer løngrundlaget fra v4", () => {
   assert.equal(out.valuation_components.model_id, "v6");
   assert.equal(out.valuation_components.phase_step, 2);
   assert.equal(out.current_production_value, recomputeRiderValue(rider, ABIL, baseline, v4, { youthBaseline: youthBaselineV4 }).current_production_value);
+});
+
+// ── #5443 v6-kørslen gennem HELE refreshChangedRiderValues ──────────────────
+// Mock af præcis de tabeller funktionen læser. Prisnøglen står på v6, løn-
+// nøglen på v4, og markeds-fittet er syntetisk (kun formen, ingen ejer-tal).
+const FAKE_MARKET_FIT = {
+  schema: "typefree-market-fit/1",
+  weight: 0.5,
+  cap_ln: 0.1,
+  common: { beta: [0.1, 0, 0], center: { O: 50, age: 25 } },
+  local: null,
+};
+const SEASON = 3;
+
+function refreshSupabase(riderRow) {
+  const config = {
+    rider_valuation_model: "v6",
+    rider_production_value_model: "v4",
+    rider_valuation_v6_market: FAKE_MARKET_FIT,
+    rider_value_phase_step: 3, // et gammelt trin i app_config må ikke overtage kørslens eksplicitte trin 0
+  };
+  const writes = [];
+  const page = (rows) => ({
+    eq() { return this; },
+    order() { return this; },
+    range: async (from) => ({ data: from === 0 ? rows.map((r) => ({ ...r })) : [], error: null }),
+  });
+  return {
+    writes,
+    from(table) {
+      if (table === "app_config") {
+        return { select: () => ({ eq: (_c, key) => ({ maybeSingle: async () => ({ data: key in config ? { value: config[key] } : null, error: null }) }) }) };
+      }
+      if (table === "seasons") {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { number: SEASON }, error: null }) }) }) };
+      }
+      if (table === "riders") {
+        return {
+          select: () => page([riderRow]),
+          update: (patch) => ({ eq: async (_c, id) => { writes.push({ id, ...patch }); return { error: null }; } }),
+        };
+      }
+      if (table === "rider_derived_abilities") {
+        return { select: () => page([{ rider_id: riderRow.id, ability_caps: ABIL, ...ABIL }]) };
+      }
+      throw new Error(`uventet tabel ${table}`);
+    },
+  };
+}
+
+function staleRider(overrides = {}) {
+  return {
+    id: "fixture-v6", primary_type: "stale_primary", secondary_type: "stale_secondary", valuation_type: null,
+    base_value: 1, current_production_value: null, birthdate: "2000-06-01", potentiale: 3, archetype_draw: null,
+    best_role: null, best_role_rating: null, ...overrides,
+  };
+}
+
+// Det refreshChangedRiderValues SKAL regne: v6 + markedet fra app_config på
+// trin 0, løngrundlaget fra v4 (samme baselines og alder som funktionen selv).
+function expectedFor(rider) {
+  const r = { ...rider, age: ageForSeason(rider.birthdate, SEASON) };
+  const v6 = withMarketFit(loadValuationModelById("v6"), FAKE_MARKET_FIT);
+  return recomputeRiderValue(r, ABIL, baseline, v6, {
+    typeAbilities: ABIL, youthBaseline: youthBaselineV4, productionModel: loadValuationModelById("v4"), phaseStep: 0,
+  });
+}
+
+test("#5443 v6: pris (m. marked, trin 0), typer og bedste rolle skrives i SAMME patch", async () => {
+  const expected = expectedFor(staleRider());
+  // Løngrundlaget står allerede på sin v4-værdi: kørslen må ikke flytte det.
+  const rider = staleRider({ current_production_value: expected.current_production_value });
+  const sb = refreshSupabase(rider);
+  const res = await refreshChangedRiderValues(sb, { phaseStep: 0 });
+
+  assert.equal(res.modelId, "v6");
+  assert.equal(res.typefree, true);
+  assert.equal(res.phaseStep, 0);
+  assert.equal(res.productionChanged, 0, "loengrundlaget flytter sig ikke paa v4-loennoeglen");
+  assert.equal(sb.writes.length, 1);
+  const w = sb.writes[0];
+  assert.equal(w.id, rider.id);
+  // (a) v6 MED markeds-fittet fra app_config, trin 0 (ikke app_config-trinnet 3).
+  assert.equal(w.base_value, expected.base_value);
+  const noMarket = recomputeRiderValue({ ...rider, age: ageForSeason(rider.birthdate, SEASON) }, ABIL, baseline,
+    loadValuationModelById("v6"), { typeAbilities: ABIL, youthBaseline: youthBaselineV4, phaseStep: 0 });
+  assert.notEqual(w.base_value, noMarket.base_value, "fixturen skal kunne skelne med/uden marked");
+  // (b) typerne og bedste rolle i SAMME opdatering som prisen.
+  assert.equal(w.primary_type, expected.primary_type);
+  assert.equal(w.secondary_type, expected.secondary_type);
+  assert.notEqual(w.primary_type, "stale_primary");
+  const best = bestRoleForAbilities(ABIL);
+  assert.equal(w.best_role, best.best_role);
+  assert.equal(w.best_role_rating, best.best_role_rating);
+  assert.ok(w.best_role, "bedste rolle skal vaere udfyldt");
+  // (c) løngrundlaget skrives med sin uændrede v4-værdi, aldrig en v6-værdi.
+  assert.equal(w.current_production_value, rider.current_production_value);
+});
+
+test("#5443 v6: freezeProductionValue lader current_production_value URØRT, også ved v4-drift", async () => {
+  const expected = expectedFor(staleRider());
+  const drifted = expected.current_production_value + 1; // fx ugens træning siden sidste søndag
+
+  // Uden frys: den almindelige v4-opdatering flytter løngrundlaget (søndagens adfærd).
+  const normal = refreshSupabase(staleRider({ current_production_value: drifted }));
+  const resNormal = await refreshChangedRiderValues(normal, { phaseStep: 0 });
+  assert.equal(resNormal.productionChanged, 1);
+  assert.equal(normal.writes[0].current_production_value, expected.current_production_value);
+
+  // Med frys (den ekstraordinære kørsel): kolonnen er ikke i patchen overhovedet.
+  const frozen = refreshSupabase(staleRider({ current_production_value: drifted }));
+  const resFrozen = await refreshChangedRiderValues(frozen, { phaseStep: 0, freezeProductionValue: true });
+  assert.equal(resFrozen.productionChanged, 0);
+  assert.equal(frozen.writes.length, 1);
+  assert.equal(Object.hasOwn(frozen.writes[0], "current_production_value"), false);
+  assert.equal(frozen.writes[0].base_value, expected.base_value);
+  assert.equal(frozen.writes[0].primary_type, expected.primary_type);
+  assert.equal(frozen.writes[0].best_role, bestRoleForAbilities(ABIL).best_role);
+
+  // Tørkørslen regner det samme og skriver intet.
+  const dry = refreshSupabase(staleRider({ current_production_value: drifted }));
+  const resDry = await refreshChangedRiderValues(dry, { phaseStep: 0, freezeProductionValue: true, dryRun: true });
+  assert.equal(dry.writes.length, 0);
+  assert.deepEqual(resDry.updates, [frozen.writes[0]]);
 });
