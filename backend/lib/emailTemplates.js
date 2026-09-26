@@ -579,6 +579,24 @@ const WINBACK_NEWS = {
   ],
 };
 
+// The win-back opening sentence (#2760, locked 22/9), shared with the #5814
+// season-signup reminder, which opens with exactly the same line. Two
+// renderings: `escaped: true` for the HTML body (escaped team name + pool
+// label), `escaped: false` for the plaintext part (raw values), the same
+// split buildDay1Email/buildRaceDigestEmail use above. The rank/pool clause
+// is dropped entirely (not left blank) when the manager has no active-season
+// standing, per the draft's placeholder note.
+function winbackOpeningLine({ lang, name, plainName, hasRank, rankInDivision, poolLabel, escaped }) {
+  const teamWord = escaped ? name : plainName;
+  const base =
+    lang === "da"
+      ? `${teamWord} er stadig dit, præcis som du forlod det. Holdet kørte videre mens du var væk`
+      : `${teamWord} is still yours, exactly as you left it. It kept racing while you were away`;
+  if (!hasRank) return `${base}.`;
+  const pool = escaped ? escapeHtml(poolLabel) : poolLabel;
+  return lang === "da" ? `${base} og ligger lige nu som nr. ${rankInDivision} i ${pool}.` : `${base} and currently sits ${englishOrdinal(rankInDivision)} in ${pool}.`;
+}
+
 /**
  * One-off #2760 win-back email, sent at most once ever per manager by
  * scripts/winback-send.mjs to a manager absent WINBACK_DORMANCY_DAYS+
@@ -611,24 +629,8 @@ export function buildWinbackEmail({ teamName, daysSinceLastSeen: _daysSinceLastS
 
   const subject = lang === "da" ? "Vi har savnet dig. Sæson 4 starter 28. september." : "We missed you. Season 4 starts 28 September.";
 
-  // Two renderings of the same opening sentence: `openingLine` for the HTML
-  // body (escaped team name + pool label), `openingLinePlain` for the
-  // plaintext part (raw values) -- same split buildDay1Email/
-  // buildRaceDigestEmail use above. The rank/pool clause is dropped
-  // entirely (not left blank) when the manager has no active-season
-  // standing, per the draft's placeholder note.
-  function buildOpeningLine({ escaped }) {
-    const teamWord = escaped ? name : plainName;
-    const base =
-      lang === "da"
-        ? `${teamWord} er stadig dit, præcis som du forlod det. Holdet kørte videre mens du var væk`
-        : `${teamWord} is still yours, exactly as you left it. It kept racing while you were away`;
-    if (!hasRank) return `${base}.`;
-    const pool = escaped ? escapeHtml(poolLabel) : poolLabel;
-    return lang === "da" ? `${base} og ligger lige nu som nr. ${rankInDivision} i ${pool}.` : `${base} and currently sits ${englishOrdinal(rankInDivision)} in ${pool}.`;
-  }
-  const openingLine = buildOpeningLine({ escaped: true });
-  const openingLinePlain = buildOpeningLine({ escaped: false });
+  const openingLine = winbackOpeningLine({ lang, name, plainName, hasRank, rankInDivision, poolLabel, escaped: true });
+  const openingLinePlain = winbackOpeningLine({ lang, name, plainName, hasRank, rankInDivision, poolLabel, escaped: false });
 
   const introLine = lang === "da" ? "Der er sket meget siden sidst, og mere lander med sæson 4:" : "A lot has happened since you were last here, and more lands with season 4:";
 
@@ -648,6 +650,112 @@ export function buildWinbackEmail({ teamName, daysSinceLastSeen: _daysSinceLastS
     <p style="margin:0 0 16px;">${introLine}</p>
     ${newsListHtml}
     <p style="margin:0 0 16px;">${closingLine}</p>
+    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, ctaLabel)}</p>
+  `.trim();
+
+  const bodyText = [
+    copy.greeting,
+    openingLinePlain,
+    introLine,
+    newsListText,
+    closingLine,
+    `${ctaLabel}: ${dashboardUrl}`,
+  ].join("\n\n");
+
+  return {
+    subject,
+    html: wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
+  };
+}
+
+// ─── season_signup_reminder (#5814) ─────────────────────────────────────────
+// One-off reminder, sent by scripts/season-signup-reminder-send.mjs on the
+// last day of season 3 to managers whose team the season switch would park
+// (backend/lib/seasonSignupReminder.js). Copy lives in
+// docs/drafts/2026-09-27-season-signup-reminder-mail.md, owner's jeg/du
+// voice, no em-dash. It shares the win-back layout, eyebrow and opening line,
+// but NOT the win-back bullets verbatim: the 22/9 text is locked and partly
+// out of date (U23/junior squads are open now, the new race engine is not on
+// yet), so this mail carries its own list. Bullets 1, 2 and 5 are still the
+// win-back entries by reference, so the two mails can never drift on them.
+
+const SEASON_SIGNUP_REMINDER_CTA = {
+  en: "Keep my spot",
+  da: "Behold min plads",
+};
+
+const SEASON_SIGNUP_REMINDER_NEWS = {
+  en: [
+    WINBACK_NEWS.en[0],
+    WINBACK_NEWS.en[1],
+    [
+      "Your U23 and junior squads are open.",
+      "Your talents get their own U23 and junior teams with their own races in season 4, and on Graduation Day you decide who moves up, who is sold and who is released.",
+    ],
+    ["Rider values have been recalculated.", "Value now follows the rating you see on the card, so training you can see becomes value you can see."],
+    WINBACK_NEWS.en[4],
+    [
+      "A new race engine is on its way.",
+      "Races are run in segments, so breaks, climbs and finales play out where they should. I switch it on when it is ready.",
+    ],
+  ],
+  da: [
+    WINBACK_NEWS.da[0],
+    WINBACK_NEWS.da[1],
+    [
+      "Dine U23- og juniorhold er åbne.",
+      "Dine talenter får egne U23- og juniorhold med egne løb i sæson 4, og på Graduation Day bestemmer du, hvem der rykker op, sælges eller frigives.",
+    ],
+    ["Rytterværdierne er regnet om.", "Værdien følger nu den rating du ser på kortet, så træning du kan se bliver værdi du kan se."],
+    WINBACK_NEWS.da[4],
+    [
+      "En ny løbsmotor er på vej.",
+      "Løbene køres i segmenter, så udbrud, stigninger og finaler afgøres der hvor de skal. Jeg tænder den, når den er klar.",
+    ],
+  ],
+};
+
+/**
+ * #5814 season-signup reminder: one tap on "Sign up for next season" before
+ * the season switch keeps the team in its division. Same inputs as
+ * buildWinbackEmail minus daysSinceLastSeen (the copy never renders it).
+ * @param {{teamName: string, rankInDivision: number|null, poolLabel: string|null, unsubscribeUrl: string, language?: string}} args
+ */
+export function buildSeasonSignupReminderEmail({ teamName, rankInDivision, poolLabel, unsubscribeUrl, language }) {
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
+  const name = escapeHtml(teamName) || copy.fallbackTeamName;
+  const plainName = teamName || copy.fallbackTeamName;
+  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "signup_reminder");
+  const eyebrow = lang === "da" ? "SÆSON 4" : "SEASON 4";
+  const hasRank = rankInDivision != null && poolLabel;
+  const ctaLabel = SEASON_SIGNUP_REMINDER_CTA[lang];
+  const news = SEASON_SIGNUP_REMINDER_NEWS[lang];
+
+  const subject = lang === "da" ? "Sæson 4 starter mandag. Ét tryk holder din plads." : "Season 4 starts Monday. One tap keeps your spot.";
+
+  const openingLine = winbackOpeningLine({ lang, name, plainName, hasRank, rankInDivision, poolLabel, escaped: true });
+  const openingLinePlain = winbackOpeningLine({ lang, name, plainName, hasRank, rankInDivision, poolLabel, escaped: false });
+
+  const introLine = lang === "da" ? "Der er sket meget siden sidst, og mere lander med sæson 4:" : "A lot has happened since you were last here, and more lands with season 4:";
+
+  const newsListHtml = `<ul style="margin:0 0 24px;padding-left:20px;">${news
+    .map(([lead, rest]) => `<li style="margin-bottom:10px;"><strong>${escapeHtml(lead)}</strong> ${escapeHtml(rest)}</li>`)
+    .join("")}</ul>`;
+  const newsListText = news.map(([lead, rest]) => `${lead} ${rest}`).join("\n\n");
+
+  const closingLine =
+    lang === "da"
+      ? "Sæson 3 slutter søndag aften, og sæson 4 starter 28. september. Hold, der har været væk i 30 dage, parkeres uden for divisionerne ved skiftet. Ét tryk holder din plads: log ind og tryk Tilmeld dig næste sæson på dit dashboard før kl. 19 søndag 27. september. Når du det ikke, slettes intet, og ét tryk henter dig tilbage senere."
+      : "Season 3 ends Sunday evening, and season 4 starts 28 September. Teams that have been away for 30 days are parked outside the divisions at the switch. One tap keeps your spot: log in and press Sign up for next season on your dashboard before 19:00 Danish time on Sunday 27 September. If you miss it, nothing is deleted, and one tap brings you back later.";
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px;">${copy.greeting}</p>
+    <p style="margin:0 0 16px;">${openingLine}</p>
+    <p style="margin:0 0 16px;">${introLine}</p>
+    ${newsListHtml}
+    <p style="margin:0 0 16px;">${escapeHtml(closingLine)}</p>
     <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, ctaLabel)}</p>
   `.trim();
 

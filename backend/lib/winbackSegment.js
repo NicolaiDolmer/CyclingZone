@@ -36,7 +36,7 @@ const DAY_MS = 86_400_000;
 // script never writes a dry_run row itself (see scripts/winback-send.mjs
 // header: --dry-run is a pure read-only report, no email_log writes at all),
 // but the constant stays correct in case a future run ever does.
-const ALREADY_CONTACTED_STATUSES = new Set(["sent", "delivered", "bounced", "complained", "failed"]);
+export const ALREADY_CONTACTED_STATUSES = new Set(["sent", "delivered", "bounced", "complained", "failed"]);
 
 function isHumanTeam(team) {
   return (
@@ -48,7 +48,7 @@ function isHumanTeam(team) {
   );
 }
 
-function hasWinbackConsent(user) {
+export function hasWinbackConsent(user) {
   return user?.consent_preferences?.email_marketing === true;
 }
 
