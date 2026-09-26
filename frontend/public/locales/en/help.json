@@ -1228,6 +1228,33 @@
         "text": "Use Move squad on a rider's page or on My Team to place him on your senior, U23 or junior squad. The dialog lists all three squads with places used and free, marks his current squad, and greys out a squad he is too old for or that is full, with the reason. Upward is always allowed, so a junior can sit on the U23 team. Downward only works within the squad's age limit: junior up to season age 18, U23 up to 22. Each youth squad has a cap: {u23SquadCap} on the U23 team and {juniorSquadCap} on the junior team. A rider who already has a contract keeps it exactly as it is, in either direction; only a rider without one is given a standard contract on the way up to the senior squad. Moving a rider down pulls him from any upcoming races he was entered in. The dialog shows the full effect before you confirm. You can also extend a contract or release a rider straight from the rider's own page, and extending works directly on youth riders too."
       }
     },
+    "youthSquads": {
+      "label": "U23 team & Junior team",
+      "whatAreTheseSquads": {
+        "title": "What are U23 team and Junior team?",
+        "text": "U23 team holds riders aged 19-22 (season age), Junior team holds riders aged 16-18. Both have their own page under Clubhouse, next to My Team, with the same tabs as your senior squad: Squad, Calendar, Results, Standings and Development. Each has its own cap: up to {u23SquadCap} riders on U23 team, up to {juniorSquadCap} on Junior team."
+      },
+      "staysUntilYouMoveHim": {
+        "title": "Does a rider get moved back down automatically?",
+        "text": "No. A rider stays on whichever squad you last placed him on until you move him again. Put a young rider on your Senior team and he stays there, treated exactly like the rest of your senior squad; the game never moves him back down on its own. Move a rider yourself, any time, from his profile with the Move squad button."
+      },
+      "upwardAlwaysAllowed": {
+        "title": "Can I move a rider up early?",
+        "text": "Yes, moving up is always allowed if there is a free place: a 17-year-old can stand on U23 team, a 20-year-old on Senior team, whenever you choose. Moving down only works within the squad's own age limit, a 19-year-old cannot go back to Junior team, and a 23-year-old cannot go back to U23 team."
+      },
+      "graduationDayAt23": {
+        "title": "What happens when a rider ages out of his squad?",
+        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it, otherwise sells him, otherwise releases him as a free agent."
+      },
+      "youthRacesFromS4": {
+        "title": "Do U23 team and Junior team actually race?",
+        "text": "Yes, from season 4. Each tier races on its own calendar with its own standings, on the same race engine as Senior. There is no prize money for youth races to start with."
+      },
+      "noUpkeepAtSeasonChange": {
+        "title": "What did my youth squads cost at this season's changeover?",
+        "text": "Nothing. Your U23 and junior riders paid no upkeep at the season 3 to season 4 change. What they will cost to run from season 4 onward has not been decided yet."
+      }
+    },
     "facilities": {
       "label": "Club facilities",
       "whatFacilities": {

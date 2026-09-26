@@ -1228,6 +1228,33 @@
         "text": "Brug Flyt trup på rytterens side eller på Mit hold for at sætte ham på din senior-, U23- eller juniortrup. Dialogen viser alle tre trupper med brugte og ledige pladser, markerer hans nuværende trup, og gør en trup grå hvis han er for gammel til den eller den er fuld, med grunden. Opad er altid tilladt, så en junior kan stå på U23-holdet. Nedad virker kun inden for truppens aldersgrænse: junior til og med sæsonalder 18, U23 til og med 22. Hver ungdomstrup har et loft: {u23SquadCap} på U23-holdet og {juniorSquadCap} på juniorholdet. En rytter, der allerede har en kontrakt, beholder den præcis som den er, i begge retninger; kun en rytter uden kontrakt får en standard-kontrakt på vej op i senior-truppen. Flyttes en rytter ned, tages han ud af alle kommende løb, han var udtaget til. Dialogen viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt eller fyre en rytter direkte fra rytterens egen side, og forlængelse virker også direkte på ungdomsryttere."
       }
     },
+    "youthSquads": {
+      "label": "U23-hold & Juniorhold",
+      "whatAreTheseSquads": {
+        "title": "Hvad er U23-holdet og Juniorholdet?",
+        "text": "U23-holdet har ryttere i sæsonalder 19-22, Juniorholdet har ryttere i sæsonalder 16-18. Begge har deres egen side under Klubhus, ved siden af Mit hold, med samme faner som dit seniorhold: Trup, Kalender, Resultater, Stilling og Udvikling. Hver har sit eget loft: op til {u23SquadCap} ryttere på U23-holdet, op til {juniorSquadCap} på Juniorholdet."
+      },
+      "staysUntilYouMoveHim": {
+        "title": "Bliver en rytter flyttet ned igen automatisk?",
+        "text": "Nej. En rytter bliver stående på den trup, du sidst satte ham på, indtil du flytter ham igen. Sætter du en ung rytter på dit seniorhold, bliver han der, behandlet præcis som resten af din seniortrup; spillet flytter ham aldrig selv ned igen. Flyt selv en rytter, når som helst, fra hans profil med knappen Flyt trup."
+      },
+      "upwardAlwaysAllowed": {
+        "title": "Kan jeg flytte en rytter op før tiden?",
+        "text": "Ja, opad er altid tilladt hvis der er en ledig plads: en 17-årig kan stå på U23-holdet, en 20-årig på seniorholdet, når du vil. Nedad virker kun inden for truppens egen aldersgrænse: en 19-årig kan ikke flyttes tilbage til Juniorholdet, og en 23-årig kan ikke flyttes tilbage til U23-holdet."
+      },
+      "graduationDayAt23": {
+        "title": "Hvad sker der, når en rytter vokser ud af sin trup?",
+        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd, ellers sælges han, ellers slippes han som free agent."
+      },
+      "youthRacesFromS4": {
+        "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
+        "text": "Ja, fra sæson 4. Hver trup kører på sin egen kalender med sin egen stilling, på samme løbsmotor som senior. Der er ingen præmiepenge i ungdomsløb til at starte med."
+      },
+      "noUpkeepAtSeasonChange": {
+        "title": "Hvad kostede mine ungdomstrupper ved dette sæsonskifte?",
+        "text": "Ingenting. Dine U23- og juniorryttere kostede ingen drift ved skiftet fra sæson 3 til sæson 4. Hvad de kommer til at koste i drift fra sæson 4 og frem, er endnu ikke besluttet."
+      }
+    },
     "facilities": {
       "label": "Klub-faciliteter",
       "whatFacilities": {

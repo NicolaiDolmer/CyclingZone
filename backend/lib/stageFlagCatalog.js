@@ -131,4 +131,7 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // #5274: HelpPage gater traeningsscore-blokken paa dette flag, saa spillere
   // ikke laeser om Score-kolonnen foer den er taendt for dem.
   "training_score_visible",
+  // #5519: HelpPage gater den nye youthSquads-sektion paa dette flag, saa
+  // U23/junior-hjaelpeteksterne foerst vises naar siderne faktisk er live.
+  "youth_squad_pages",
 ]);

@@ -431,6 +431,24 @@ const SECTION_DEFS = [
       { id: "promoteDemote", kind: "text" },
     ],
   },
+  // #5519 · U23 team og Junior team faar egne sider (Clubhouse-navigationen,
+  // ved siden af My Team), bag youth_squad_pages (HELP_SECTION_FLAGS i
+  // ./helpFlagGates.js). Sektionen supplerer academy-sektionen ovenfor, den
+  // erstatter den ikke: intake, Graduation Day og trup-flyt er stadig beskrevet
+  // der og aendrer sig ikke. Denne sektion forklarer kun det nye: at trupperne
+  // har faaet egne sider, og at ungdomsloeb koerer fra S4.
+  {
+    key: "youthSquads",
+    Icon: TeamIcon,
+    blocks: [
+      { id: "whatAreTheseSquads", kind: "text" },
+      { id: "staysUntilYouMoveHim", kind: "text" },
+      { id: "upwardAlwaysAllowed", kind: "text" },
+      { id: "graduationDayAt23", kind: "text" },
+      { id: "youthRacesFromS4", kind: "text" },
+      { id: "noUpkeepAtSeasonChange", kind: "text" },
+    ],
+  },
   {
     key: "facilities",
     Icon: SettingsIcon,

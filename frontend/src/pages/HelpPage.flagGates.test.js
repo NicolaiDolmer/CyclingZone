@@ -26,6 +26,7 @@ const ALL_OFF = {
   board_mandate_model_enabled: false,
   training_tick_per_race_day: false,
   training_score_visible: false,
+  youth_squad_pages: false,
 };
 
 // #5274: enkeltstaaende BLOK-niveau-flag staar direkte i SECTION_DEFS
@@ -57,6 +58,14 @@ test("mandate foelger board_mandate_model_enabled (samme mekanisme som raceDay)"
   assert.equal(isHelpSectionVisible("mandate", null), false);
   // Flagene er uafhaengige: v4 on taender ikke mandatet.
   assert.equal(isHelpSectionVisible("mandate", { ...ALL_OFF, race_engine_v4: true }), false);
+});
+
+test("youthSquads foelger youth_squad_pages (samme mekanisme som raceDay/mandate)", () => {
+  assert.equal(isHelpSectionVisible("youthSquads", { ...ALL_OFF, youth_squad_pages: true }), true);
+  assert.equal(isHelpSectionVisible("youthSquads", ALL_OFF), false);
+  assert.equal(isHelpSectionVisible("youthSquads", null), false);
+  // Flagene er uafhaengige: v4 on taender ikke youthSquads.
+  assert.equal(isHelpSectionVisible("youthSquads", { ...ALL_OFF, race_engine_v4: true }), false);
 });
 
 test("sektioner uden gate er altid synlige, ogsaa mens svaret hentes", () => {
