@@ -677,7 +677,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 8 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down, split evenly between the two pools below it. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards, they are never promoted or relegated themselves. Division 4 opens gradually as its pools fill with real managers, so a Division 3 pool's relegation starts once its Division 4 pools open. If you are relegated from Division 1 or Division 2, you get a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once to soften the landing. One-off exception: between season 1 and 2 the pyramid was compacted, with the top 48 manager teams filling Division 2 and the next 96 filling Division 3, ranked on overall season 1 points across all pools. Normal promotion and relegation resumed from season 2, so the season 2 to season 3 change follows the rule above: each pool's own top 2 and bottom 4 from the standings you see right now, not a fresh global-rank reseed."
+        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 4 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down to the pool or pools below it, split evenly when there is more than one. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards, they are never promoted or relegated themselves. Division 4 is filled with AI teams and has races from day one, the same as every other division. If you are relegated from Division 1 or Division 2, you get a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once to soften the landing. One-off exception: between season 1 and 2 the pyramid was compacted, with the top 48 manager teams filling Division 2 and the next 96 filling Division 3, ranked on overall season 1 points across all pools. Normal promotion and relegation resumed from season 2, so the season 2 to season 3 change follows the rule above: each pool's own top 2 and bottom 4 from the standings you see right now, not a fresh global-rank reseed."
       },
       "whenSeasonEnds": {
         "title": "When can a season be ended?",
@@ -804,7 +804,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down, split between the two pools below. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season. Teams relegated from Division 1 or 2 get a one-season relegation parachute (half the lost sponsor income) to soften the transition."
+        "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down to the pool or pools below, split evenly when there is more than one. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season. Teams relegated from Division 1 or 2 get a one-season relegation parachute (half the lost sponsor income) to soften the transition."
       }
     },
     "globalRank": {
@@ -1196,7 +1196,7 @@
       },
       "academySize": {
         "title": "Academy size (per team)",
-        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and never race in Senior races; from season 4 they race in their own youth races instead."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1208,7 +1208,7 @@
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season. The season 3 to season 4 changeover was an exception: no upkeep was charged for youth squads at that switch."
       },
       "graduation": {
         "title": "Graduation Day",
@@ -1226,6 +1226,33 @@
       "promoteDemote": {
         "title": "Moving riders between squads",
         "text": "Use Move squad on a rider's page or on My Team to place him on your senior, U23 or junior squad. The dialog lists all three squads with places used and free, marks his current squad, and greys out a squad he is too old for or that is full, with the reason. Upward is always allowed, so a junior can sit on the U23 team. Downward only works within the squad's age limit: junior up to season age 18, U23 up to 22. Each youth squad has a cap: {u23SquadCap} on the U23 team and {juniorSquadCap} on the junior team. A rider who already has a contract keeps it exactly as it is, in either direction; only a rider without one is given a standard contract on the way up to the senior squad. Moving a rider down pulls him from any upcoming races he was entered in. The dialog shows the full effect before you confirm. You can also extend a contract or release a rider straight from the rider's own page, and extending works directly on youth riders too."
+      }
+    },
+    "youthSquads": {
+      "label": "U23 team & Junior team",
+      "whatAreTheseSquads": {
+        "title": "What are U23 team and Junior team?",
+        "text": "U23 team holds riders aged 19-22 (season age), Junior team holds riders aged 16-18. Both have their own page under Clubhouse, next to My Team, with the same tabs as your senior squad: Squad, Calendar, Results, Standings and Development. Each has its own cap: up to {u23SquadCap} riders on U23 team, up to {juniorSquadCap} on Junior team."
+      },
+      "staysUntilYouMoveHim": {
+        "title": "Does a rider get moved back down automatically?",
+        "text": "No. A rider stays on whichever squad you last placed him on until you move him again. Put a young rider on your Senior team and he stays there, treated exactly like the rest of your senior squad; the game never moves him back down on its own. Move a rider yourself, any time, from his profile with the Move squad button."
+      },
+      "upwardAlwaysAllowed": {
+        "title": "Can I move a rider up early?",
+        "text": "Yes, moving up is always allowed if there is a free place: a 17-year-old can stand on U23 team, a 20-year-old on Senior team, whenever you choose. Moving down only works within the squad's own age limit, a 19-year-old cannot go back to Junior team, and a 23-year-old cannot go back to U23 team."
+      },
+      "graduationDayAt23": {
+        "title": "What happens when a rider ages out of his squad?",
+        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it, otherwise sells him, otherwise releases him as a free agent."
+      },
+      "youthRacesFromS4": {
+        "title": "Do U23 team and Junior team actually race?",
+        "text": "Yes, from season 4. Each tier races on its own calendar with its own standings, on the same race engine as Senior. There is no prize money for youth races to start with."
+      },
+      "noUpkeepAtSeasonChange": {
+        "title": "What did my youth squads cost at this season's changeover?",
+        "text": "Nothing. Your U23 and junior riders paid no upkeep at the season 3 to season 4 change. What they will cost to run from season 4 onward has not been decided yet."
       }
     },
     "facilities": {

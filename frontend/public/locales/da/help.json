@@ -677,7 +677,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Divisionerne danner en pyramide af puljer: 1 pulje i Division 1, 2 i Division 2, 4 i Division 3 og 8 i Division 4. Ved sæsonafslutning rykker hver pulje sine top 2 hold op til puljen ovenover og relegerer sine bund 4 hold ned, delt ligeligt mellem de to puljer nedenunder. Division 1 rykker ikke op (den er toppen), og bunddivisionen rykker ikke ned. Det afgøres automatisk ud fra din puljes slutstilling, hver sæson. Kun rigtige managere flytter mellem puljer; AI-hold er fyld der fyldes op bagefter og bliver aldrig selv op- eller nedrykket. Division 4 åbner gradvist efterhånden som puljerne fyldes med rigtige managere, så en Division 3-puljes nedrykning starter når dens Division 4-puljer åbner. Bliver du nedrykket fra Division 1 eller Division 2, får du en nedrykningsfaldskærm ved starten af din næste sæson: halvdelen af den sponsorindtægt du mister ved at rykke en division ned, udbetalt én gang for at dæmpe overgangen. Engangsundtagelse: mellem sæson 1 og 2 blev pyramiden komprimeret, hvor de 48 bedste managerhold fyldte Division 2 og de næste 96 fyldte Division 3, rangeret på samlede sæson 1-point på tværs af alle puljer. Normal op- og nedrykning genoptoges fra sæson 2, så skiftet fra sæson 2 til sæson 3 følger reglen ovenfor: hver puljes egne top 2 og bund 4 ud fra den stilling du ser lige nu, ikke en ny global rangliste-fordeling."
+        "text": "Divisionerne danner en pyramide af puljer: 1 pulje i Division 1, 2 i Division 2, 4 i Division 3 og 4 i Division 4. Ved sæsonafslutning rykker hver pulje sine top 2 hold op til puljen ovenover og relegerer sine bund 4 hold ned til puljen eller puljerne nedenunder, delt ligeligt når der er mere end én. Division 1 rykker ikke op (den er toppen), og bunddivisionen rykker ikke ned. Det afgøres automatisk ud fra din puljes slutstilling, hver sæson. Kun rigtige managere flytter mellem puljer; AI-hold er fyld der fyldes op bagefter og bliver aldrig selv op- eller nedrykket. Division 4 er fyldt med AI-hold og har løb fra dag ét, ligesom alle andre divisioner. Bliver du nedrykket fra Division 1 eller Division 2, får du en nedrykningsfaldskærm ved starten af din næste sæson: halvdelen af den sponsorindtægt du mister ved at rykke en division ned, udbetalt én gang for at dæmpe overgangen. Engangsundtagelse: mellem sæson 1 og 2 blev pyramiden komprimeret, hvor de 48 bedste managerhold fyldte Division 2 og de næste 96 fyldte Division 3, rangeret på samlede sæson 1-point på tværs af alle puljer. Normal op- og nedrykning genoptoges fra sæson 2, så skiftet fra sæson 2 til sæson 3 følger reglen ovenfor: hver puljes egne top 2 og bund 4 ud fra den stilling du ser lige nu, ikke en ny global rangliste-fordeling."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -804,7 +804,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Hver pulje rykker sine top 2 op til puljen ovenover og relegerer sine bund 4 ned, delt mellem de to puljer nedenunder. Division 1 rykker ikke op, og bunddivisionen rykker ikke ned. Afgøres automatisk ud fra din puljes slutstilling, hver sæson. Hold der nedrykkes fra Division 1 eller 2 får en nedrykningsfaldskærm i én sæson (halvdelen af den tabte sponsorindtægt) for at dæmpe overgangen."
+        "text": "Hver pulje rykker sine top 2 op til puljen ovenover og relegerer sine bund 4 ned til puljen eller puljerne nedenunder, delt ligeligt når der er mere end én. Division 1 rykker ikke op, og bunddivisionen rykker ikke ned. Afgøres automatisk ud fra din puljes slutstilling, hver sæson. Hold der nedrykkes fra Division 1 eller 2 får en nedrykningsfaldskærm i én sæson (halvdelen af den tabte sponsorindtægt) for at dæmpe overgangen."
       }
     },
     "globalRank": {
@@ -1196,7 +1196,7 @@
       },
       "academySize": {
         "title": "Akademistørrelse (pr. hold)",
-        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og kører aldrig seniorløb; fra sæson 4 kører de i deres egne ungdomsløb i stedet."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
@@ -1208,7 +1208,7 @@
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
-        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi ({u23SquadCap} U23- og {juniorSquadCap} juniorryttere) har en mærkbar løbende omkostning hver sæson."
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi ({u23SquadCap} U23- og {juniorSquadCap} juniorryttere) har en mærkbar løbende omkostning hver sæson. Skiftet fra sæson 3 til sæson 4 var en undtagelse: der blev ikke opkrævet drift for ungdomstrupperne ved det skifte."
       },
       "graduation": {
         "title": "Graduation Day",
@@ -1226,6 +1226,33 @@
       "promoteDemote": {
         "title": "Flyt ryttere mellem trupper",
         "text": "Brug Flyt trup på rytterens side eller på Mit hold for at sætte ham på din senior-, U23- eller juniortrup. Dialogen viser alle tre trupper med brugte og ledige pladser, markerer hans nuværende trup, og gør en trup grå hvis han er for gammel til den eller den er fuld, med grunden. Opad er altid tilladt, så en junior kan stå på U23-holdet. Nedad virker kun inden for truppens aldersgrænse: junior til og med sæsonalder 18, U23 til og med 22. Hver ungdomstrup har et loft: {u23SquadCap} på U23-holdet og {juniorSquadCap} på juniorholdet. En rytter, der allerede har en kontrakt, beholder den præcis som den er, i begge retninger; kun en rytter uden kontrakt får en standard-kontrakt på vej op i senior-truppen. Flyttes en rytter ned, tages han ud af alle kommende løb, han var udtaget til. Dialogen viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt eller fyre en rytter direkte fra rytterens egen side, og forlængelse virker også direkte på ungdomsryttere."
+      }
+    },
+    "youthSquads": {
+      "label": "U23-hold & Juniorhold",
+      "whatAreTheseSquads": {
+        "title": "Hvad er U23-holdet og Juniorholdet?",
+        "text": "U23-holdet har ryttere i sæsonalder 19-22, Juniorholdet har ryttere i sæsonalder 16-18. Begge har deres egen side under Klubhus, ved siden af Mit hold, med samme faner som dit seniorhold: Trup, Kalender, Resultater, Stilling og Udvikling. Hver har sit eget loft: op til {u23SquadCap} ryttere på U23-holdet, op til {juniorSquadCap} på Juniorholdet."
+      },
+      "staysUntilYouMoveHim": {
+        "title": "Bliver en rytter flyttet ned igen automatisk?",
+        "text": "Nej. En rytter bliver stående på den trup, du sidst satte ham på, indtil du flytter ham igen. Sætter du en ung rytter på dit seniorhold, bliver han der, behandlet præcis som resten af din seniortrup; spillet flytter ham aldrig selv ned igen. Flyt selv en rytter, når som helst, fra hans profil med knappen Flyt trup."
+      },
+      "upwardAlwaysAllowed": {
+        "title": "Kan jeg flytte en rytter op før tiden?",
+        "text": "Ja, opad er altid tilladt hvis der er en ledig plads: en 17-årig kan stå på U23-holdet, en 20-årig på seniorholdet, når du vil. Nedad virker kun inden for truppens egen aldersgrænse: en 19-årig kan ikke flyttes tilbage til Juniorholdet, og en 23-årig kan ikke flyttes tilbage til U23-holdet."
+      },
+      "graduationDayAt23": {
+        "title": "Hvad sker der, når en rytter vokser ud af sin trup?",
+        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd, ellers sælges han, ellers slippes han som free agent."
+      },
+      "youthRacesFromS4": {
+        "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
+        "text": "Ja, fra sæson 4. Hver trup kører på sin egen kalender med sin egen stilling, på samme løbsmotor som senior. Der er ingen præmiepenge i ungdomsløb til at starte med."
+      },
+      "noUpkeepAtSeasonChange": {
+        "title": "Hvad kostede mine ungdomstrupper ved dette sæsonskifte?",
+        "text": "Ingenting. Dine U23- og juniorryttere kostede ingen drift ved skiftet fra sæson 3 til sæson 4. Hvad de kommer til at koste i drift fra sæson 4 og frem, er endnu ikke besluttet."
       }
     },
     "facilities": {

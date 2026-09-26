@@ -19,10 +19,15 @@
  *    den model spilleren moeder indtil flaget er on.
  *  - raceDay (#4910): loebsmotor v4 + loebsdagens intention. Teksten ligger
  *    klar i help.json en+da og vises foerst ved v4-flippet.
+ *  - youthSquads (#5519): U23 team og Junior team faar egne sider (bag
+ *    youth_squad_pages). Supplerer academy-sektionen, som stadig beskriver
+ *    intake, Graduation Day og trup-flyt uaendret; denne sektion forklarer
+ *    kun det NYE (egne sider, egne loeb fra S4).
  */
 export const HELP_SECTION_FLAGS = Object.freeze({
   mandate: "board_mandate_model_enabled",
   raceDay: "race_engine_v4",
+  youthSquads: "youth_squad_pages",
 });
 
 const RACE_DAY_TICK_OFF = Object.freeze({ flag: "training_tick_per_race_day", when: false });
