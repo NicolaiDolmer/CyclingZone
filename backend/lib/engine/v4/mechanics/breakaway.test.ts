@@ -466,6 +466,19 @@ test("formation paa segment 0 med stort felt danner en bounded udbruds-gruppe + 
   assert.deepEqual([...breakawayGroup!.rider_ids].sort(), [...riderIds].sort());
 });
 
+test("#5812 udbruddet dannes tidligt (km <= ca. 30), ogsaa naar foerste segment er langt", () => {
+  // Foer: dannelsen blev skrevet paa segmentets to_km, saa en flad etape med ét
+  // segment fik "udbrud gaar" paa maalstregen.
+  for (const route of [routeWithSegments(1), routeWithSegments(2), routeWithSegments(9)]) {
+    const { state, ctx } = buildFieldScenario(25, 0, route);
+    const result = breakawayHook(state, ctx);
+    const formed = eventsOfType(result.events, "breakaway_formed");
+    assert.equal(formed.length, 1, "der skal dannes et udbrud");
+    assert.ok(formed[0].km <= 30, `udbruddet dannes km ${formed[0].km} (foerste segment slutter km ${route.segments[0].to_km})`);
+    assert.ok(formed[0].km > route.segments[0].from_km, "dannelsen ligger inde i foerste segment");
+  }
+});
+
 test("try_break-flag garanterer ALDRIG medlemskab (kan udeblive selv med flaget saat)", () => {
   const route = routeWithSegments(6);
   const orders: BreakawayTeamOrder[] = [
