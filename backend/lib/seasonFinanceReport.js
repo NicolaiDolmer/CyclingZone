@@ -50,6 +50,8 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.ADMIN_FORCE_PRIZE]: "Admin prize award",
   [FINANCE_REASON.ADMIN_BETA_RESET]: "Beta reset",
   [FINANCE_REASON.SEASON_START_UPKEEP]: "Upkeep & maintenance",
+  // #4385 · upkeep pr. seniorløbsdag (flag upkeep_per_race_day).
+  [FINANCE_REASON.RACE_DAY_TRAVEL_STAFF]: "Travel & staff",
   // #1980 · nedrykningsfaldskærm — engangs-sponsor-kompensation ved sæson-start.
   [FINANCE_REASON.SEASON_START_PARACHUTE]: "Relegation parachute",
   // #4376: egen label, ikke slået sammen med "Sponsor" — hele pointen med tillægget er

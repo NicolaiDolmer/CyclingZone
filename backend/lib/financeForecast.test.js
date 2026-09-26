@@ -7,7 +7,11 @@ import {
   NEW_WAGE_SYSTEM_SEASON,
 } from "./financeForecast.js";
 import { computeFrozenSalary } from "./contractSeed.js";
-import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
+import {
+  SALARY_RATE_PRODUCTION,
+  UPKEEP_PER_RACE_DAY_BY_DIVISION,
+  UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION,
+} from "./economyConstants.js";
 
 // 4 manager-arketyper fra spec'en (07g · verification path).
 const ARCHETYPES = {
@@ -273,6 +277,46 @@ test("computeFinanceForecast (#3236): upkeep er division-skaleret og trækkes fr
   assert.equal(d3.projected_upkeep, -20_000);
   assert.equal(d1.projected_net, 240_000 - 220_000);
   assert.equal(d3.projected_net, 240_000 - 20_000);
+});
+
+test("computeFinanceForecast (#4385): upkeep_per_race_day on = sats × løbsdage, intet ved sæsonstart", () => {
+  const base = { team: { division: 1, sponsor_income: 240_000 }, riders: [], debtCeiling: 900_000, currentSeasonNumber: 3 };
+  const off = computeFinanceForecast(base);
+  const on = computeFinanceForecast({ ...base, upkeepPerRaceDay: true });
+  const rate = UPKEEP_PER_RACE_DAY_BY_DIVISION[1];
+  const days = UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION[1];
+
+  assert.equal(off.inputs.upkeep_model, "season_start");
+  assert.equal(off.projected_upkeep_at_season_start, off.projected_upkeep, "off: hele upkeep ved sæsonstart");
+  assert.equal(on.inputs.upkeep_model, "per_race_day");
+  assert.equal(on.projected_upkeep, -(rate * days));
+  assert.equal(on.projected_upkeep_at_season_start, 0, "on: intet trækkes ved sæsonstart");
+  assert.equal(on.inputs.upkeep_per_race_day, rate);
+  assert.equal(on.inputs.upkeep_race_days, days);
+  // Samme sæsonsum spredt ud (afrunding af satsen giver en lille afvigelse)
+  assert.ok(Math.abs(on.projected_upkeep - off.projected_upkeep) <= days / 2);
+  assert.equal(on.projected_net - off.projected_net, on.projected_upkeep - off.projected_upkeep);
+
+  // Eksplicit antal resterende løbsdage vinder over reference-antallet.
+  const partial = computeFinanceForecast({ ...base, upkeepPerRaceDay: true, upkeepRaceDays: 10 });
+  assert.equal(partial.projected_upkeep, -(rate * 10));
+  // D4 er gratis uanset model.
+  const d4 = computeFinanceForecast({ ...base, team: { division: 4, sponsor_income: 0 }, upkeepPerRaceDay: true });
+  assert.equal(d4.projected_upkeep, 0);
+});
+
+test("computeMultiSeasonForecast (#4385): upkeep-modellen følger med over hele horisonten", () => {
+  const multi = computeMultiSeasonForecast({
+    team: { division: 2, balance: 0, sponsor_income: 240_000 },
+    riders: [],
+    currentSeasonNumber: 3,
+    seasonsAhead: 2,
+    upkeepPerRaceDay: true,
+  });
+  for (const f of multi.forecasts) {
+    assert.equal(f.inputs.upkeep_model, "per_race_day");
+    assert.equal(f.projected_upkeep_at_season_start, 0);
+  }
 });
 
 test("computeFinanceForecast (#3236): upkeep udskydes i sæson 1 (før første løb, #1678)", () => {

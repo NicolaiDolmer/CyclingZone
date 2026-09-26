@@ -98,6 +98,37 @@ const S3_MAPPED_FIXTURE = Object.freeze({
   staff_salary: -19500,
 });
 
+test("#4385 buildSettlementSteps — upkeep step hidden when nothing is charged at season start (upkeep_per_race_day on)", () => {
+  const steps = buildSettlementSteps({
+    startingBalance: 100000,
+    s3Mapped: { ...S3_MAPPED_FIXTURE, upkeep_at_season_start: 0 },
+  });
+  assert.equal(steps.some((s) => s.key === "upkeep"), false);
+  const legacy = buildSettlementSteps({ startingBalance: 100000, s3Mapped: S3_MAPPED_FIXTURE });
+  assert.equal(legacy.find((s) => s.key === "upkeep").amount, -140000, "field missing: whole upkeep as before");
+});
+
+test("#4385 aggregateS2RealizedSources — per-race-day travel & staff counts as upkeep", () => {
+  const result = aggregateS2RealizedSources([
+    tx("race_day_travel_staff", -1571),
+    tx("race_day_travel_staff", -1571),
+  ]);
+  assert.equal(result.upkeep, -3142);
+});
+
+test("#4385 buildSeasonSwitchPreview — maps projected_upkeep_at_season_start", () => {
+  const preview = buildSeasonSwitchPreview({
+    transactions: [],
+    riders: [],
+    startingBalance: 0,
+    s3: { projected_upkeep: -219940, projected_upkeep_at_season_start: 0, inputs: { upkeep_model: "per_race_day" } },
+  });
+  assert.equal(preview.s3.upkeep, -219940);
+  assert.equal(preview.s3.upkeep_at_season_start, 0);
+  assert.equal(preview.s3.upkeep_model, "per_race_day");
+  assert.equal(preview.settlement.steps.some((s) => s.key === "upkeep"), false);
+});
+
 test("buildSettlementSteps — follows the REAL processTeamSeasonPayroll cash order: sponsor -> loan interest -> salary -> academy -> upkeep -> facility -> staff", () => {
   const steps = buildSettlementSteps({ startingBalance: 100000, s3Mapped: S3_MAPPED_FIXTURE });
   assert.deepEqual(

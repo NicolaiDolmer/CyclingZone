@@ -26,7 +26,12 @@ import {
   computeSponsorForSeason,
 } from "./sponsorEngine.js";
 import { resolveDivisionAdjustment } from "./divisionAdjustment.js";
-import { UPKEEP_BY_DIVISION, UPKEEP_BEFORE_FIRST_RACE_ENABLED } from "./economyConstants.js";
+import {
+  UPKEEP_BY_DIVISION,
+  UPKEEP_BEFORE_FIRST_RACE_ENABLED,
+  UPKEEP_PER_RACE_DAY_BY_DIVISION,
+  UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION,
+} from "./economyConstants.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
 import { ACADEMY } from "./academyFlag.js";
 // #3989 (ejer-beslutning 20/8): fra sæson 3 genberegnes ALLE lønninger ved
@@ -151,6 +156,9 @@ export const FINANCE_FORECAST_TYPE_COVERAGE = Object.freeze({
   prize: { modeled: true, field: "projected_prize" },
   salary: { modeled: true, field: "projected_salary" },
   upkeep: { modeled: true, field: "projected_upkeep" },
+  // #4385: upkeep pr. seniorløbsdag (flag upkeep_per_race_day). Samme sæsonsum,
+  // modelleret som sats × løbsdage i projected_upkeep.
+  travel_staff: { modeled: true, field: "projected_upkeep" },
   facility_upkeep: { modeled: true, field: "projected_facility_upkeep" },
   staff_salary: { modeled: true, field: "projected_staff_salary" },
   academy_drift: { modeled: true, field: "projected_academy_drift" },
@@ -208,6 +216,14 @@ export function computeFinanceForecast({
   activeStaffSalaries = [],
   academyRiderCount = 0,
   facilitiesEnabled = true,
+  // #4385: upkeep_per_race_day (app_config). ON = upkeep trækkes pr. senior-
+  // løbsdag i løbet af sæsonen i stedet for fladt ved sæsonstart. Caller læser
+  // flaget (fail-safe false = den gamle model). upkeepRaceDays = antal senior-
+  // løbsdage satsen ganges med; null = divisionens reference-antal
+  // (UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION), fordi næste sæsons kalender
+  // typisk ikke findes endnu.
+  upkeepPerRaceDay = false,
+  upkeepRaceDays = null,
   // #3899: MÅLT per-hold-præmie blandt peers i samme division (indeværende/
   // seneste afsluttede sæson) — grundlaget for præmie-intervallets kvartilbånd.
   // Tom default ⇒ ±20%-fallback (computePrizeInterval), så hold uden nok peers
@@ -322,7 +338,25 @@ export function computeFinanceForecast({
   // forecastet skal ramme samme 0 som den faktiske sæson-1-opkrævning.
   const upkeepDeferred = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
   const upkeepForDivision = UPKEEP_BY_DIVISION[team?.division] || 0;
-  const projectedUpkeep = upkeepDeferred ? 0 : (-upkeepForDivision || 0);
+  // #4385: med upkeep_per_race_day on er sæsonens upkeep satsen pr. senior-
+  // løbsdag × antal løbsdage (samme sæsonsum spredt ud, ejer-valg 1). Intet af
+  // det trækkes ved sæsonstart: projected_upkeep_at_season_start er 0, og
+  // sæsonskifte-kvitteringen (seasonSwitchPreview) læser netop det felt.
+  const upkeepDivision = Number(/** @type {{ division?: unknown }} */ (team)?.division);
+  /** @type {Record<number, number>} */
+  const perRaceDayTable = UPKEEP_PER_RACE_DAY_BY_DIVISION;
+  /** @type {Record<number, number>} */
+  const referenceDaysTable = UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION;
+  const upkeepRatePerRaceDay = perRaceDayTable[upkeepDivision] || 0;
+  const referenceRaceDays = referenceDaysTable[upkeepDivision] || 0;
+  const raceDaysInput = upkeepRaceDays === null || upkeepRaceDays === undefined ? NaN : Number(upkeepRaceDays);
+  const resolvedUpkeepRaceDays = Number.isFinite(raceDaysInput) && raceDaysInput >= 0
+    ? Math.round(raceDaysInput)
+    : referenceRaceDays;
+  const projectedUpkeep = upkeepPerRaceDay
+    ? (-(upkeepRatePerRaceDay * resolvedUpkeepRaceDays) || 0)
+    : (upkeepDeferred ? 0 : (-upkeepForDivision || 0));
+  const projectedUpkeepAtSeasonStart = upkeepPerRaceDay ? 0 : projectedUpkeep;
 
   // #3236 · Facilitets-upkeep + staff-sæsonløn — samme runtime-gate
   // (facilitiesEnabled, app_config "facilities_enabled") som
@@ -427,6 +461,9 @@ export function computeFinanceForecast({
     projected_loan_interest: projectedLoanInterest,
     // #3236: de 4 tidligere fraværende udgiftsstrømme (audit #3198, fund #1).
     projected_upkeep: projectedUpkeep,
+    // #4385: den del af upkeep der trækkes ved selve sæsonskiftet (0 når
+    // upkeep_per_race_day er on; så trækkes det pr. seniorløbsdag i stedet).
+    projected_upkeep_at_season_start: projectedUpkeepAtSeasonStart,
     projected_facility_upkeep: projectedFacilityUpkeep,
     projected_staff_salary: projectedStaffSalary,
     // #3986: UI-aggregatet af facilitets-upkeep + stabsløn. Divisions-upkeep
@@ -467,6 +504,10 @@ export function computeFinanceForecast({
       // #3236: transparens om de nye udgiftsstrømmes inputs.
       upkeep_deferred: upkeepDeferred,
       division_upkeep: upkeepForDivision,
+      // #4385: hvilken upkeep-model prognosen regner med, og dens inputs.
+      upkeep_model: upkeepPerRaceDay ? "per_race_day" : "season_start",
+      upkeep_per_race_day: upkeepRatePerRaceDay,
+      upkeep_race_days: upkeepPerRaceDay ? resolvedUpkeepRaceDays : null,
       facilities_enabled: facilitiesEnabled,
       facility_track_count: (facilityTracks || []).length,
       facility_upkeep_total: facilityUpkeepTotal,
@@ -628,6 +669,8 @@ export function computeMultiSeasonForecast({
   activeStaffSalaries = [],
   academyRiderCount = 0,
   facilitiesEnabled = true,
+  // #4385: samme upkeep-model over hele horisonten.
+  upkeepPerRaceDay = false,
   // #3899: status-quo over hele horisonten, ligesom roster/facilities —
   // samme division-stikprøve genbruges for hver fremskrevet sæson.
   divisionPrizeSamples = [],
@@ -671,6 +714,7 @@ export function computeMultiSeasonForecast({
       activeStaffSalaries,
       academyRiderCount,
       facilitiesEnabled,
+      upkeepPerRaceDay,
       divisionPrizeSamples,
     });
 

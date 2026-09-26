@@ -32,7 +32,7 @@ export const REASON_CODE_GROUPS = Object.freeze({
   // #3198-fund-8: facility_purchase/scout_travel tilføjet — se LEGACY_TYPE_GROUPS.other
   // nedenfor for rækker skrevet FØR reason_code blev sat på disse to writes.
   other: [
-    "season_start_upkeep", "season_start_academy_drift", "season_start_facility_upkeep",
+    "season_start_upkeep", "race_day_travel_staff", "season_start_academy_drift", "season_start_facility_upkeep",
     "season_end_negative_interest", "starting_budget", "admin_balance_adjustment", "admin_beta_reset",
     "facility_purchase", "scout_travel",
   ],

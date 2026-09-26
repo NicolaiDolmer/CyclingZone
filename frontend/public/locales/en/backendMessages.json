@@ -17,6 +17,7 @@
     "salary": "Season salaries · {count} riders",
     "wageDaily": "Daily wage · {count} riders",
     "upkeep": "Upkeep (operating costs) · Division {division}",
+    "travelStaff": "Travel & staff · {race}, stage {stage}",
     "parachute": "Relegation parachute · Division {oldDivision} -> {newDivision}",
     "academyDrift": "Academy upkeep · {count} slots × {drift_per_slot} pts",
     "facilityUpkeep": "Facility upkeep · {tracks} tracks",

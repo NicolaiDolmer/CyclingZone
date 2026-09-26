@@ -82,6 +82,7 @@ import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { isAcademyDriftEnabled } from "./academyDriftFlag.ts";
+import { isUpkeepPerRaceDayEnabled } from "./upkeepPerRaceDayFlag.ts";
 import { FACILITIES_ENABLED } from "./facilityConstants.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
@@ -685,6 +686,10 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
   // — se academyDriftFlag.ts.
   const academyDriftEnabled = /** @type {{ academyDriftEnabled?: boolean }} */ (deps).academyDriftEnabled
     ?? await isAcademyDriftEnabled(supabaseClient, { engineWrite: true });
+  // #4385 · upkeep_per_race_day læses ÉN gang for hele kørslen, fail-safe OFF
+  // (flad sæsonstart-upkeep som før) — se upkeepPerRaceDayFlag.ts.
+  const upkeepPerRaceDay = /** @type {{ upkeepPerRaceDay?: boolean }} */ (deps).upkeepPerRaceDay
+    ?? await isUpkeepPerRaceDayEnabled(supabaseClient);
   const results = [];
   for (const teamWithRoster of teamsWithRoster) {
     const payroll = await processTeamSeasonPayroll(teamWithRoster, seasonId, {
@@ -695,6 +700,7 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       retiringRiderIds: /** @type {{ retiringRiderIds?: unknown }} */ (deps).retiringRiderIds,
       facilitiesEnabled,
       academyDriftEnabled,
+      upkeepPerRaceDay,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
       // #2976 · observabilitets-seam for notifyManagerSafe. Uden den kan en
@@ -1239,10 +1245,19 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   //    tier 4 (UPKEEP_BY_DIVISION[4]=0), så sæson-1-upkeep er allerede 0 — flaget
   //    sikrer det også holder hvis et hold ikke ligger i bund-tier. Når flaget sættes
   //    true gen-aktiveres upkeep-ved-sæson-1-start som før.
+  // #4385 · upkeepPerRaceDay (app_config 'upkeep_per_race_day', fail-safe OFF).
+  //    Med flaget ON trækkes upkeep i stedet pr. seniorløbsdag ved løbs-
+  //    afregningen (upkeepPerRaceDay.ts via autoPrizeSweep), så sæsonstart
+  //    trækker INTET fladt beløb og skriver ingen 'upkeep'-post. Med flaget OFF
+  //    (default, og deps.upkeepPerRaceDay ikke threadet) er koden bit-identisk
+  //    med før #4385.
+  const upkeepPerRaceDay = /** @type {{ upkeepPerRaceDay?: boolean }} */ (deps).upkeepPerRaceDay === true;
   const deferUpkeep = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
-  const upkeepCharged = deferUpkeep ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
+  const upkeepCharged = (deferUpkeep || upkeepPerRaceDay) ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
   if (deferUpkeep) {
     console.log(`  ⏭️  ${team.name}: upkeep udskudt i sæson 1 (før første løb)`);
+  } else if (upkeepPerRaceDay) {
+    console.log(`  ⏭️  ${team.name}: intet sæsonstart-upkeep, upkeep_per_race_day=on (trækkes pr. seniorløbsdag)`);
   }
   if (upkeepCharged > 0) {
     await debitTeam(
@@ -1783,7 +1798,7 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
 // balance_after, needs_emergency_loan) bevares for kontrakt-stabilitet,
 // men balance_after og needs_emergency_loan reflekterer nu den samlede
 // transition og inkluderer sponsor-income.
-export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [] } = {}) {
+export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [], upkeepPerRaceDay = false } = {}) {
   return teams.map((team) => {
     const standing = standings.find(s => s.team_id === team.id);
     const riders = team.riders || [];
@@ -1847,7 +1862,9 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
     const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
     const nextSeasonSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
-    const upkeep = UPKEEP_BY_DIVISION[team.division] || 0;
+    // #4385: med upkeep_per_race_day on trækkes intet fladt upkeep ved skiftet
+    // (det trækkes pr. seniorløbsdag i løbet af sæsonen), så previewet viser 0.
+    const upkeep = upkeepPerRaceDay ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
     // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn → −upkeep.
     const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary - upkeep;
 
