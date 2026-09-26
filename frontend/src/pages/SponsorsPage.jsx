@@ -688,10 +688,13 @@ export default function SponsorsPage() {
                   ) : (
                     <>
                       {upcomingSeason != null && (
-                        <p className="mb-4 text-[13px] text-cz-2">
+                        <p className="mb-1.5 text-[13px] text-cz-2">
                           {t("offers.deadline", { season: upcomingSeason })}
                         </p>
                       )}
+                      <p className="mb-4 text-[13px] text-cz-2">
+                        {t("offers.amountFollowsClub")}
+                      </p>
 
                       <Table
                         aria-label={t("page.next.title")}
