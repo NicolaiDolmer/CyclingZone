@@ -123,6 +123,8 @@ describe("buildSweepPlan", () => {
       alreadyRanLegacyTeamIds: new Set(),
     });
     assert.deepEqual(plan.map((p) => p.gameDay), [10, 12]);
+    // #4629: programslottet er pladsen paa HELE datoens liste, ogsaa naar 11 er koert.
+    assert.ok(plan.every((p) => p.dateGameDays.join() === "10,11,12"));
   });
 
   it("AI-hold UDEN league_division_id faar ÉT tick paa den gamle kalenderdags-noegle", () => {
@@ -367,15 +369,19 @@ describe("runTrainingDayCloseSweep", () => {
       teams: [{ id: "t1", league_division_id: "d1" }, { id: "t2", league_division_id: "d1" }],
     });
     const seen = [];
+    const slotLists = [];
     const result = await runTrainingDayCloseSweep({
       supabase, now: inWindow,
-      runDay: async ({ teamId, gameDay, squad, executedBy }) => {
+      runDay: async ({ teamId, gameDay, squad, executedBy, dateGameDays }) => {
         seen.push(`${teamId}:${gameDay}:${squad}:${executedBy}`);
+        slotLists.push(dateGameDays.join());
         return { alreadyRan: false };
       },
     });
     assert.equal(result.ran, true);
     assert.equal(result.swept, 6, "2 hold x 3 loebsdage");
+    // #4629: motoren faar datoens hele liste, saa programslottet = plads paa den.
+    assert.ok(slotLists.every((l) => l === "40,41,42"), slotLists.join(" | "));
     assert.deepEqual(seen, [
       "t1:40:senior:assistant", "t1:41:senior:assistant", "t1:42:senior:assistant",
       "t2:40:senior:assistant", "t2:41:senior:assistant", "t2:42:senior:assistant",

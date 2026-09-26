@@ -524,7 +524,10 @@ export async function loadDayCloseSpans({
  * @param {Set<string>} args.alreadyRanRaceDayKeys  — `${teamId}#${squad}#${gameDay}`
  * @param {Set<string>} args.alreadyRanLegacyTeamIds
  * @param {string} [args.squad]
- * @returns {Array<{teamId: string, gameDay: number|null, squad: string}>}
+ * `dateGameDays` (#4629) er divisionens HELE liste for datoen, ogsaa de allerede
+ * koerte: programslottet er loebsdagens plads paa den liste, ikke paa restplanen.
+ *
+ * @returns {Array<{teamId: string, gameDay: number|null, squad: string, dateGameDays?: number[]}>}
  */
 export function buildSweepPlan({
   teams, gameDaysByDivisionMap, alreadyRanRaceDayKeys, alreadyRanLegacyTeamIds, squad = DEFAULT_SQUAD,
@@ -538,9 +541,10 @@ export function buildSweepPlan({
       }
       continue;
     }
-    for (const gameDay of gameDaysByDivisionMap.get(divisionId) ?? []) {
+    const dateGameDays = gameDaysByDivisionMap.get(divisionId) ?? [];
+    for (const gameDay of dateGameDays) {
       if (alreadyRanRaceDayKeys.has(`${team.id}#${squad}#${gameDay}`)) continue;
-      plan.push({ teamId: team.id, gameDay, squad });
+      plan.push({ teamId: team.id, gameDay, squad, dateGameDays });
     }
   }
   return plan;
@@ -905,6 +909,7 @@ export async function runTrainingDayCloseSweep({
             now,
             gameDay: item.gameDay,
             squad: item.squad,
+            dateGameDays: item.dateGameDays ?? null,
           });
           if (result?.alreadyRan) alreadyRan += 1;
           else swept += 1;

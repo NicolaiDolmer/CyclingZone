@@ -12,6 +12,8 @@
 import express from "express";
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
+import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
+import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
@@ -929,6 +931,12 @@ router.use("/rankings", createRankingsRouter({
   }),
 }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
+// #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
+// "programs" aldrig matches som et rytter-id.
+router.use("/training/programs", createTrainingProgramsRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException,
+}));
 
 async function requireAdmin(req, res, next) {
   await requireAuth(req, res, async () => {
@@ -3147,6 +3155,7 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
           seasonNumber: activeSeasonNumber,
           executedBy: "manager",
           gameDay,
+          dateGameDays: gameDays, // #4629: programslot = plads paa denne liste
         });
         lastTickDate = r.tickDate;
         if (!r.alreadyRan) {
@@ -3307,8 +3316,9 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
 // run-today/bulk ovenfor, #1479).
 router.put("/training/week-plan", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const { days } = req.body ?? {};
-  if (!isValidWeekPlanDays(days)) return res.status(400).json({ error: "invalid_days" });
+  if (!isValidWeekPlanDays(req.body?.days)) return res.status(400).json({ error: "invalid_days" });
+  // #4629: holdets rytme er en REN intensitets-rytme; programceller fjernes.
+  const days = stripProgramFromWeekDays(req.body.days);
   try {
     // Manuel select-then-write i stedet for .upsert(onConflict): PostgREST kan ikke
     // udtrykke WHERE-predikatet på vores PARTIAL unique index (team_id) WHERE
@@ -3370,8 +3380,11 @@ router.delete("/training/week-plan", requireAuth, marketWriteLimiter, async (req
 router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
-  const { days } = req.body ?? {};
-  if (!isValidWeekPlanDays(days)) return res.status(400).json({ error: "invalid_days" });
+  if (!isValidWeekPlanDays(req.body?.days)) return res.status(400).json({ error: "invalid_days" });
+  // #4629: den gamle intensitets-editor skriver en REN ugerytme. Sender en klient
+  // programceller med (session/slots), fjernes de, saa en raekke aldrig baerer en
+  // session der modsiger sin intensitet. Uden programdata er `days` uaendret.
+  const days = stripProgramFromWeekDays(req.body.days);
   try {
     // Ejerskabs-check — samme mønster som POST /training/:riderId nedenfor:
     // individuel ugeplan er KUN for egne ryttere.
@@ -3394,10 +3407,20 @@ router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, asyn
 
     const now = new Date().toISOString();
     if (existing) {
-      const { error: updErr } = await supabase
+      // #4629: en haandredigeret ugerytme er ikke laengere "baseret paa" et
+      // program — proveniensen nulstilles. 42703 (kolonnen findes ikke endnu i
+      // deploy-vinduet foer auto-migrate.yml): skriv uden den.
+      // schema-columns-ok: program_key tilfoejes af database/2026-09-26-4629-training-programs.sql, applied post-merge.
+      let { error: updErr } = await supabase
         .from("training_week_plans")
-        .update({ days, updated_at: now })
+        .update({ days, updated_at: now, program_key: null })
         .eq("id", existing.id);
+      if (updErr?.code === "42703") {
+        ({ error: updErr } = await supabase
+          .from("training_week_plans")
+          .update({ days, updated_at: now })
+          .eq("id", existing.id));
+      }
       if (updErr) throw new Error(updErr.message);
     } else {
       const { error: insErr } = await supabase
