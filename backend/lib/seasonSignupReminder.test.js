@@ -245,20 +245,22 @@ test("execute refuses to send unless the app_config gate is exactly true", async
   }
 });
 
-test("execute sends with the per-season dedupe key and skips anyone who signed up, withdrew consent or muted mail meanwhile", async () => {
+test("execute sends with the per-season dedupe key and skips anyone who signed up, logged in, got parked/frozen, withdrew consent or muted mail meanwhile", async () => {
+  const ids = [1, 2, 3, 4, 5, 6, 7];
+  const freshTeam = (i, overrides = {}) => team({ id: `team-${i}`, user_id: `user-${i}`, ...overrides });
+  const freshUser = (i, overrides = {}) => user({ id: `user-${i}`, email: `${i}@example.com`, ...overrides });
   const fresh = {
-    "user-1": { consent_preferences: { email_marketing: true }, email_prefs: {}, next_season_signup_at: null },
-    "user-2": { consent_preferences: { email_marketing: true }, email_prefs: {}, next_season_signup_at: daysAgo(0) },
-    "user-3": { consent_preferences: { email_marketing: false }, email_prefs: {}, next_season_signup_at: null },
-    "user-4": { consent_preferences: { email_marketing: true }, email_prefs: { winback: false }, next_season_signup_at: null },
+    "user-1": { team: freshTeam(1), user: freshUser(1) },
+    "user-2": { team: freshTeam(2, { next_season_signup_at: daysAgo(0) }), user: freshUser(2) },
+    "user-3": { team: freshTeam(3), user: freshUser(3, { consent_preferences: { email_marketing: false } }) },
+    "user-4": { team: freshTeam(4), user: freshUser(4, { email_prefs: { winback: false } }) },
+    "user-5": { team: freshTeam(5), user: freshUser(5, { last_seen: daysAgo(0) }) },
+    "user-6": { team: freshTeam(6, { is_frozen: true }), user: freshUser(6) },
+    "user-7": { team: null, user: freshUser(7) },
   };
-  const ids = [1, 2, 3, 4];
   const sent = [];
   const result = await runSeasonSignupReminder({
-    loadInputs: async () => inputs({
-      teams: ids.map((i) => team({ id: `team-${i}`, user_id: `user-${i}` })),
-      users: ids.map((i) => user({ id: `user-${i}`, email: `${i}@example.com` })),
-    }),
+    loadInputs: async () => inputs({ teams: ids.map((i) => freshTeam(i)), users: ids.map((i) => freshUser(i)) }),
     execute: true,
     readSendEnabled: async () => true,
     readFreshState: async (userId) => fresh[userId],
@@ -268,7 +270,7 @@ test("execute sends with the per-season dedupe key and skips anyone who signed u
   });
   assert.deepEqual(sent, [["user-1", "season_signup_reminder:season-3:user-1"]]);
   assert.equal(result.sent, 1);
-  assert.equal(result.skipped, 3);
+  assert.equal(result.skipped, 6);
   assert.equal(result.failed, 0);
 });
 
@@ -282,7 +284,7 @@ test("execute counts provider failures and thrown errors as failed, dedupe skips
     }),
     execute: true,
     readSendEnabled: async () => true,
-    readFreshState: async () => ({ consent_preferences: { email_marketing: true }, email_prefs: {} }),
+    readFreshState: async (userId, teamId) => ({ team: team({ id: teamId, user_id: userId }), user: user({ id: userId }) }),
     sendEmail: async (candidate) => {
       if (candidate.userId === "user-3") throw new Error("boom");
       return outcomes[candidate.userId];

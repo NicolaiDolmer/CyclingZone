@@ -32,7 +32,7 @@
 import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../backend/lib/supabasePagination.js";
-import { loadParkingInputs } from "../backend/lib/managerParking.js";
+import { loadParkingInputs, PARKING_TEAM_COLUMNS } from "../backend/lib/managerParking.js";
 import {
   runSeasonSignupReminder,
   SEASON_SIGNUP_REMINDER_APP_CONFIG_KEY,
@@ -113,12 +113,12 @@ async function readSendEnabled() {
 
 async function readFreshState(userId, teamId) {
   const [{ data: user, error: userErr }, { data: team, error: teamErr }] = await Promise.all([
-    supabase.from("users").select("consent_preferences, email_prefs").eq("id", userId).maybeSingle(),
-    supabase.from("teams").select("next_season_signup_at").eq("id", teamId).maybeSingle(),
+    supabase.from("users").select("id, last_seen, consent_preferences, email_prefs").eq("id", userId).maybeSingle(),
+    supabase.from("teams").select(PARKING_TEAM_COLUMNS).eq("id", teamId).maybeSingle(),
   ]);
   if (userErr) throw new Error(`consent re-check failed: ${userErr.message}`);
-  if (teamErr) throw new Error(`signup re-check failed: ${teamErr.message}`);
-  return { ...user, next_season_signup_at: team?.next_season_signup_at ?? null };
+  if (teamErr) throw new Error(`parking re-check failed: ${teamErr.message}`);
+  return { user: user ?? null, team: team ?? null };
 }
 
 async function sendEmail(candidate, dedupeKey) {

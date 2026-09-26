@@ -141,11 +141,13 @@ export function distributionByTemplateLanguage(candidates) {
  * @param {() => Promise<object>} deps.loadInputs   resolves {teams, users, subscriptions, standings, divisions, emailLogRows, seasonId}
  * @param {boolean} deps.execute
  * @param {() => Promise<boolean>} [deps.readSendEnabled]  app_config gate (execute only)
- * @param {(userId: string, teamId: string) => Promise<{consent_preferences?, email_prefs?, next_season_signup_at?}|null>} [deps.readFreshState]
+ * @param {(userId: string, teamId: string) => Promise<{user: object|null, team: object|null}>} [deps.readFreshState]
+ *        current user row (id, last_seen, consent_preferences, email_prefs) and team row (PARKING_TEAM_COLUMNS)
  * @param {(candidate: object, dedupeKey: string) => Promise<{status?: string, skipped?: string}>} [deps.sendEmail]
  * @param {(ms: number) => Promise<void>} [deps.sleep]
  * @param {number} [deps.rateLimitMs]
  * @param {Date} [deps.now]
+ * @param {number} [deps.days]
  * @param {(line: string) => void} [deps.log]
  */
 export async function runSeasonSignupReminder({
@@ -157,10 +159,12 @@ export async function runSeasonSignupReminder({
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   rateLimitMs = 600,
   now = new Date(),
+  days = 30,
   log = () => {},
 }) {
   const inputs = await loadInputs();
-  const candidates = selectSeasonSignupReminderCandidates({ ...inputs, now });
+  const candidates = selectSeasonSignupReminderCandidates({ ...inputs, now, days });
+  const activeSubscriptionTeamIds = selectActiveSubscriptionTeamIds(inputs.subscriptions || [], now);
   const byLanguage = distributionByTemplateLanguage(candidates);
 
   if (!execute) {
@@ -177,16 +181,17 @@ export async function runSeasonSignupReminder({
   for (const candidate of candidates) {
     try {
       // The candidate list is a snapshot from before this (rate-limited) loop.
-      // Re-read what can change meanwhile: consent (the opt-in gate), prefs
-      // (sendLoopEmail only knows the "all" switch for this type), and the
-      // sign-up itself -- a manager who pressed the button a minute ago must
-      // not get a mail telling her to press it.
+      // Re-read what can change meanwhile and re-run the SAME parking
+      // predicate on the fresh rows: a manager who signed up, logged in (no
+      // longer dormant) or got parked/frozen a minute ago must not get a mail
+      // telling her the team is about to be parked. Consent (the opt-in gate)
+      // and prefs (sendLoopEmail only knows the "all" switch for this type)
+      // are re-checked too. Subscriptions keep the snapshot.
       const fresh = await readFreshState(candidate.userId, candidate.teamId);
-      if (
-        !hasWinbackConsent(fresh) ||
-        !seasonSignupReminderPrefsAllow(fresh?.email_prefs) ||
-        fresh?.next_season_signup_at != null
-      ) {
+      const stillParkable = fresh?.team && fresh?.user
+        ? selectTeamsToPark({ teams: [fresh.team], users: [fresh.user], now, days, activeSubscriptionTeamIds }).length === 1
+        : false;
+      if (!stillParkable || !hasWinbackConsent(fresh.user) || !seasonSignupReminderPrefsAllow(fresh.user.email_prefs)) {
         skipped += 1;
         continue;
       }
