@@ -792,7 +792,11 @@ const breakawayExtra = {
   // (segmentLoop nulstiller tempo-driften mellem dem, se
   // `neutralizeBreakawayTempoDrift`), saa intet bogfoeres to gange.
   letGoSecondsPerKm: 12, // hvor hurtigt hullet vokser mens feltet lader det gaa
-  maxGapSecondsDefault: 240, // loft paa lad-gaa-hullet naar profilen er ukendt
+  // Profiler uden egen noegle (tidskoersler der koerer vejetape-vejen, fx en
+  // TTT uden hold-id) faar det flade loft — samme "ukendt = flad"-fallback som
+  // routeAdapter's resolveProfileType, saa profil-navnet alene aldrig flytter
+  // en tid (index.teamTimeTrial.test.ts).
+  maxGapSecondsDefault: 190,
   maxGapSecondsByProfile: {
     flat: 190,
     rolling: 80,

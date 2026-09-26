@@ -315,6 +315,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // foran den netop havde hentet udbruddet. Kun paa massefinale-ruter (samme
   // gate som antals-vinduet), saa selektive finaler er uroerte.
   let caughtBunchShiftSeconds = 0;
+  const caughtGroups: RaceGroup[] = [];
 
   for (const group of chaseCandidates) {
     const carriedGapSeconds = Math.max(0, group.gap_seconds - caughtBunchShiftSeconds);
@@ -373,6 +374,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     );
 
     if (caught) {
+      caughtGroups.push(group);
       contenderIds = [...contenderIds, ...group.rider_ids];
       defenderIds = [...defenderIds, ...group.rider_ids];
       if (bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
@@ -552,6 +554,24 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         rider_ids: [...unscoredContenderIds],
         gap_seconds: 0,
         cohesion: 1,
+      });
+    }
+  }
+
+  // #5812 (invariant #4971): frontens grupper og de grupper finalen HENTER,
+  // gaar op i placerings-grupperne. Det er et reelt gruppeskift og skal staa i
+  // tidslinjen, ellers kan et split paa samme (sidste) segment paastaa en
+  // gruppe rytteren aldrig ender i. Foer skete det naesten aldrig (udbrud og
+  // splits blev hentet foer finalen); med lad-gaa-fasen sker det oftere.
+  for (const caughtGroup of [...frontPool, ...caughtGroups]) {
+    const members = new Set(caughtGroup.rider_ids);
+    for (const placement of placementGroups) {
+      const riderIds = placement.rider_ids.filter((id) => members.has(id));
+      if (riderIds.length === 0 || placement.id === caughtGroup.id) continue;
+      events.push({
+        km: finishKm,
+        type: "group_merged",
+        params: { group_id: caughtGroup.id, into_group_id: placement.id, rider_ids: riderIds },
       });
     }
   }
