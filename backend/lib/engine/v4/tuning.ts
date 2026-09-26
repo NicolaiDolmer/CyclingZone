@@ -765,13 +765,13 @@ const breakawayExtra = {
   // (overskuds-grenen i strengthSpeedExtra) ikke flyttes af omlaegningen. Foer/
   // efter-maaling: PR'en for #4707 (tal i balance-internals/, hard rule 17).
   abilityReferenceLevel: 0.13,
-  closingSecondsPerKmPerUnit: 25, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
+  closingSecondsPerKmPerUnit: 40, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
   stanceEffectWeight: 0.3, // T3 breakaway_stance-signalets vaegt paa netto-fordelen (bounded, se stanceMultiplierBounds)
   stanceMultiplierBounds: [0.7, 1.3] as readonly [number, number], // clamp paa stance-multiplikatoren — forhindrer at EN holdordre kan vaelte jagtens fortegn (mor-spec §5)
   finaleTypeChaseWeightDefault: 0.4, // sprinterholds-interesse-vaegt naar finale_type er ukendt/null
   finaleTypeChaseWeight: {
-    bunch_sprint: 1.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
-    reduced_sprint: 0.65, // reduceret spurt: stadig hoej interesse
+    bunch_sprint: 4.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
+    reduced_sprint: 2.6, // reduceret spurt: stadig hoej interesse
     punch: 0.3, // punch-finale: lav sprinter-interesse (sprinterhold jagter sjaeldent punch-finaler haardt)
     breakaway: 0.1, // breakaway-favoriseret finale: minimal sprinter-interesse (feltet forventer selv et udbrud)
     descent: 0.15, // nedkoersels-finale: lav sprinter-interesse
@@ -794,16 +794,28 @@ const breakawayExtra = {
   letGoSecondsPerKm: 12, // hvor hurtigt hullet vokser mens feltet lader det gaa
   maxGapSecondsDefault: 240, // loft paa lad-gaa-hullet naar profilen er ukendt
   maxGapSecondsByProfile: {
-    flat: 240,
-    rolling: 240,
+    flat: 190,
+    rolling: 80,
     hilly: 360,
     mountain: 420,
-    high_mountain: 360,
-    cobbles: 240,
+    high_mountain: 150,
+    cobbles: 45,
     gravel: 300,
     classic: 300,
   } as Partial<Record<import("./types.ts").ProfileType, number>>, // pr. profil: hvor meget feltet typisk giver et udbrud
-  threatGapSensitivity: 1.0, // hvor meget udbruddets relative GC-trussel (forhold til feltet, minus 1) krymper loftet
+  // Finalen flytter loftet: foran en nedkoerselsfinale kontrollerer
+  // favoritternes hold hullet taettere (dagen afgoeres over sidste top, og
+  // udbruddet skal ikke have et forspring de ikke kan hente ned ad bakke).
+  // Finaler uden noegle faar faktor 1.
+  maxGapFinaleFactor: {
+    descent: 0.5,
+  } as Partial<Record<import("./types.ts").FinaleType, number>>,
+  // Et udbrud er per konstruktion udvalgt paa aggression/endurance/tempo, saa
+  // dets GC-trussel ligger typisk et godt stykke OVER feltets snit. Referencen
+  // er det typiske forhold: et udbrud paa referencen faar terraenets grundloft,
+  // et farligere mindre, et mindre farligt mere.
+  threatReferenceRatio: 1.9,
+  threatGapSensitivity: 1.0, // hvor meget (forhold / reference - 1) krymper loftet
   maxGapFactorBounds: [0.4, 1.3] as readonly [number, number], // clamp paa trussel-faktoren — ét farligt udbrud faar stadig noget, et harmloest faar ikke uendeligt
 };
 

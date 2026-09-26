@@ -586,14 +586,18 @@ export function letGoMaxGapSeconds(input: {
   fieldRiderIds: string[];
   entrants: Readonly<Record<string, Entrant>>;
   profileType: ProfileType;
+  finaleType?: FinaleType | null;
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
-  const base = extra.maxGapSecondsByProfile[input.profileType] ?? extra.maxGapSecondsDefault;
+  const profileBase = extra.maxGapSecondsByProfile[input.profileType] ?? extra.maxGapSecondsDefault;
+  const finaleFactor = input.finaleType ? (extra.maxGapFinaleFactor[input.finaleType] ?? 1) : 1;
+  const base = profileBase * Math.max(0, finaleFactor);
   const fieldThreat = collectiveAbility(input.fieldRiderIds, input.entrants, GC_THREAT_KEYS);
   const breakawayThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS);
   const ratio = fieldThreat > 0 ? breakawayThreat / fieldThreat : 1;
   const [lo, hi] = extra.maxGapFactorBounds;
-  const factor = clamp(1 - extra.threatGapSensitivity * (ratio - 1), lo, hi);
+  const reference = extra.threatReferenceRatio > 0 ? extra.threatReferenceRatio : 1;
+  const factor = clamp(1 - extra.threatGapSensitivity * (ratio / reference - 1), lo, hi);
   return Math.max(0, base * factor);
 }
 
@@ -696,6 +700,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         fieldRiderIds,
         entrants: ctx.entrants,
         profileType: ctx.route.profile_type,
+        finaleType: ctx.route.finale_type,
       });
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,

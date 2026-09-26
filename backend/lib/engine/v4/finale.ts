@@ -307,8 +307,17 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let bestSurvivingGap = Infinity;
   let bestSurvivingGroupForEvent: RaceGroup | null = null;
 
+  // #5812: naar FELTET henter et udbrud i finalen paa en massefinale (antals-
+  // vinduet nedenfor), kommer den samlede gruppe i maal paa frontens tid, og
+  // det forspring feltet selv havde paa grupperne bag sig, flytter med. Uden
+  // det blev en gruppe der hang 20 s efter feltet maalt mod et udbrud der laa
+  // minutter foran, og blev staaende som en separat gruppe, selvom feltet
+  // foran den netop havde hentet udbruddet. Kun paa massefinale-ruter (samme
+  // gate som antals-vinduet), saa selektive finaler er uroerte.
+  let caughtBunchShiftSeconds = 0;
+
   for (const group of chaseCandidates) {
-    const carriedGapSeconds = Math.max(0, group.gap_seconds);
+    const carriedGapSeconds = Math.max(0, group.gap_seconds - caughtBunchShiftSeconds);
     const leadDefend = collectiveAbility(defenderIds, entrants, FLIGHT_KEYS);
     const leadReserve = collectiveWprimeReserve(defenderIds, state.riders, entrants);
     const chasePower = collectiveAbility(group.rider_ids, entrants, CHASE_KEYS);
@@ -333,13 +342,14 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // mindre forsvarer uden at have antals-fordelen (code-review-fund,
     // CodeRabbit). Gaten er stoerrelse, ikke `kind` — se funktionens egen
     // kommentar for hvorfor navnet ikke duer.
-    const catchThreshold = bunchCatch
+    const bunchSized = bunchCatch
       && isBunchSizedChaseGroup(
         group.rider_ids.length,
         fieldSize,
         extra.bunchCatchMinFieldFraction,
         extra.bunchCatchMinRiders,
-      )
+      );
+    const catchThreshold = bunchSized
       ? Math.max(
           mergeThreshold,
           bunchCatchWindowSeconds(
@@ -351,10 +361,21 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         )
       : mergeThreshold;
     const caught = newGap < catchThreshold;
+    // Forskydningen gaelder kun naar feltet henter et UDBRUD (en front der ikke
+    // selv er felt-stor). Har feltet allerede samlet fronten, er fronten feltet,
+    // og en gruppe bagved maales mod den som altid — ellers ville hver hentet
+    // klump kreditere den naeste med sin egen lukning.
+    const frontIsEscape = !isBunchSizedChaseGroup(
+      defenderIds.length,
+      fieldSize,
+      extra.bunchCatchMinFieldFraction,
+      extra.bunchCatchMinRiders,
+    );
 
     if (caught) {
       contenderIds = [...contenderIds, ...group.rider_ids];
       defenderIds = [...defenderIds, ...group.rider_ids];
+      if (bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
     } else {
       const survivor: RaceGroup = { ...group, gap_seconds: newGap, rider_ids: [...group.rider_ids] };
       survivingGroups.push(survivor);
