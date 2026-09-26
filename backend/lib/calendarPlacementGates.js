@@ -5,10 +5,13 @@
 //   §1b  Kvote-opfyldelse: EKSAKT 100 % pr. division (#4270, lukker §11 punkt 4)
 //   §4   Monument maa ikke ligge inde i et Grand Tours loebsdags-spaend (#4203)
 //   §1   Mindste-overlap pr. division: en loebsdag skal have noget at vaelge imellem (#3329)
+//   §3   (tilfoejet 26/9, #5802) Grand Tours starter i rigtig raekkefoelge: Giro -> Tour -> Vuelta
+//   §3   (tilfoejet 26/9, #5802) ingen Grand Tour starter paa saesonens foerste dag
 //
 // REN FUNKTION: ingen DB, ingen fs, ingen vaegur-tid (hard rule 16). Alle taerskler kommer
-// fra deres SSOT-moduler (calendarTierCaps.js, grandTourRestDays.js) - denne fil definerer
-// INGEN egne tal.
+// fra deres SSOT-moduler (calendarTierCaps.js, grandTourRestDays.js, og for GT-startens
+// tidligste dato raceCalendarLanePacker.js ved siden af de andre GT-lofter) - denne fil
+// definerer INGEN egne tal.
 //
 // HVORFOR EN EGEN FIL OG IKKE I PAKKEREN: de tre regler maales paa den samme to-akse-form
 // (raceRows + stageRows med baade `scheduled_at` og `game_day`) som scorecardet i forvejen
@@ -23,6 +26,7 @@
 
 import { TIER_OVERLAP_CAP, TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
 
 /** Loebsdags-spaend pr. loeb: pool_race_id -> {first, last, stages}. */
 export function gameDaySpansByRace(stageRows = []) {
@@ -89,6 +93,133 @@ export function detectMonumentsInsideGrandTours({
     }
   }
   return violations;
+}
+
+/**
+ * §3/#5802: Grand Tours skal STARTE i deres rigtige kalenderraekkefoelge (Giro -> Tour ->
+ * Vuelta), ejer 26/9.
+ *
+ * Hvorfor reglen findes: S4-toerkoerslen 26/9 lagde GT'erne som Tour -> Giro -> Vuelta,
+ * fordi pakkeren valgte den laengste GT foerst. Ingen gate maalte raekkefoelgen, saa den
+ * ville vaere blevet skrevet. Pakkeren holder nu reglen som binding (R14); denne gate er
+ * dommen, der stopper --apply hvis en fremtidig aendring braekker den igen.
+ *
+ * "Rigtig raekkefoelge" er GT'ernes VIRKELIGE startdato fra kataloget (race_pool.date_text,
+ * baaret som `seasonFraction` i planens `chronologyRaces`) - ingen haardkodede navne, saa
+ * reglen virker for ethvert katalog. En GT uden kendt virkelig dato kan ikke doemmes og
+ * springes over; er der faerre end to doembare GT'er, er der intet at maale.
+ *
+ * Maalt paa `game_day` (loebsdags-aksen), samme akse som monument-gaten ovenfor. Overlap
+ * mellem en GT og et andet etapeloeb er TILLADT (ejer 26/9) og maales ikke her.
+ *
+ * @param {{tier:number, raceRows:Array, stageRows:Array,
+ *   realOrderByPoolRace:Map<string,number>, minGrandTourStages?:number}} args
+ *   realOrderByPoolRace: pool_race_id -> virkelig raekkefoelge-noegle (seasonFraction)
+ * @returns {string[]} violation-strings
+ */
+export function detectGrandTourOrderViolations({
+  tier, raceRows = [], stageRows = [], realOrderByPoolRace = new Map(),
+  minGrandTourStages = GRAND_TOUR_MIN_STAGES,
+} = {}) {
+  const order = listGrandTourStarts({ raceRows, stageRows, realOrderByPoolRace, minGrandTourStages })
+    .filter((gt) => gt.realOrder != null);
+  if (order.length < 2) return [];
+
+  // Kun en STRENG ombytning er et brud: to GT'er med samme virkelige noegle (samme dato) har
+  // ingen rigtig indbyrdes raekkefoelge, saa gaten tager ikke stilling til dem. Ellers ville
+  // en tie-breaker her (id) kunne doemme en placering som pakkerens R14 (anden tie-breaker)
+  // lovligt valgte - fanget af CodeRabbit 26/9.
+  if (order.every((gt, i) => i === 0 || order[i - 1].realOrder <= gt.realOrder)) return [];
+  const planlagt = order.map((gt) => gt.name).join(" → ");
+  const rigtig = [...order]
+    .sort((a, b) => a.realOrder - b.realOrder || String(a.id).localeCompare(String(b.id)))
+    .map((gt) => gt.name).join(" → ");
+  return [
+    `tier ${tier}: Grand Tours starter i rækkefølgen ${planlagt}, men den rigtige kalenderrækkefølge er ${rigtig} (#5802)`,
+  ];
+}
+
+/** Hele kalenderdage fra `fra` til `til` ("YYYY-MM-DD"), eller null hvis en af dem mangler. */
+function calendarDaysBetween(fra, til) {
+  const parse = (s) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s ?? ""));
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  };
+  const a = parse(fra), b = parse(til);
+  return a == null || b == null ? null : Math.round((b - a) / 86400000);
+}
+
+/**
+ * §3/#5802 (ejer 26/9 kl. 22:40): en Grand Tour maa ALDRIG starte paa saesonens foerste
+ * kalenderdato - og tidligst paa dato-indeks GRAND_TOUR_EARLIEST_START_DATE_INDEX (0 = dag 1).
+ *
+ * Hvorfor reglen findes: S3 aabnede med en GT paa dag 1, og spillerne klagede (sweep 20/8).
+ * S4-toerkoerslen 26/9 gjorde det samme igen (Giroen paa foerste dag), fordi ingen regel
+ * forbød det. Pakkeren holder nu reglen som binding (R15); denne gate er dommen, der stopper
+ * --apply hvis en fremtidig aendring braekker den igen.
+ *
+ * Maalt i KALENDERDAGE (ikke loebsdage): klagen handler om hvornaar i rigtig tid saesonen
+ * aabner med en GT. GT'ens foerste dato kommer fra `listGrandTourStarts` (tidligste
+ * `scheduled_at` blandt dens etaper). En GT uden dato kan ikke doemmes og springes over;
+ * mangler saesonens foerste dag, er der intet at maale op imod.
+ *
+ * @param {{tier:number, grandTourStarts:Array, seasonFirstDay:string|null,
+ *   earliestStartDateIndex?:number}} args
+ * @returns {string[]} violation-strings
+ */
+export function detectGrandTourEarlyStartViolations({
+  tier, grandTourStarts = [], seasonFirstDay = null,
+  earliestStartDateIndex = GRAND_TOUR_EARLIEST_START_DATE_INDEX,
+} = {}) {
+  if (!seasonFirstDay) return [];
+  const brud = [];
+  for (const gt of grandTourStarts) {
+    const idx = calendarDaysBetween(seasonFirstDay, gt.firstDate);
+    if (idx == null || idx >= earliestStartDateIndex) continue;
+    brud.push(
+      `tier ${tier}: ${gt.name} starter ${gt.firstDate} (dag ${idx + 1} i sæsonen) — en Grand Tour må tidligst starte på dag ${earliestStartDateIndex + 1} (#5802)`,
+    );
+  }
+  return brud;
+}
+
+/**
+ * GT'erne i en division i START-raekkefoelge (loebsdags-aksen), med foerste kalenderdato og
+ * virkelig raekkefoelge-noegle. Bruges af gaten ovenfor og af dry-runnets GT-linje, saa
+ * ejeren ser raekkefoelgen med navne og datoer.
+ *
+ * @returns {Array<{id:string, name:string, firstGameDay:number, firstDate:string|null,
+ *   realOrder:number|null}>}
+ */
+export function listGrandTourStarts({
+  raceRows = [], stageRows = [], realOrderByPoolRace = new Map(),
+  minGrandTourStages = GRAND_TOUR_MIN_STAGES,
+} = {}) {
+  const spans = gameDaySpansByRace(stageRows);
+  const firstDate = new Map();
+  for (const s of stageRows) {
+    const id = s.pool_race_id ?? s.race_id;
+    const d = s.scheduled_at == null ? null : String(s.scheduled_at).slice(0, 10);
+    if (id == null || d == null) continue;
+    if (!firstDate.has(id) || d < firstDate.get(id)) firstDate.set(id, d);
+  }
+  return raceRows
+    .filter((r) => {
+      const span = spans.get(r.pool_race_id);
+      const stages = Number(r.stages) || span?.stages || 1;
+      return r.race_type === "stage_race" && stages >= minGrandTourStages && span;
+    })
+    .map((r) => {
+      const ro = realOrderByPoolRace.get(r.pool_race_id);
+      return {
+        id: r.pool_race_id,
+        name: r.name ?? r.pool_race_id,
+        firstGameDay: spans.get(r.pool_race_id).first,
+        firstDate: firstDate.get(r.pool_race_id) ?? null,
+        realOrder: typeof ro === "number" && Number.isFinite(ro) ? ro : null,
+      };
+    })
+    .sort((a, b) => a.firstGameDay - b.firstGameDay || String(a.id).localeCompare(String(b.id)));
 }
 
 /**
