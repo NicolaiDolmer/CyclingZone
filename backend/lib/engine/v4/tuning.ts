@@ -944,11 +944,10 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // egen gruppe koerte FRA feltet i stedet for at falde tilbage til den sidste
 // gruppe paa vejen.
 //
-// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3); en
-// worker aendrer ikke defaulten:
-//   "cp_only"         (b, DEFAULT): som hidtil — tempoet foelger CP alene.
-//                                   Bit-identisk med main foer denne kontakt.
-//   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
+// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3; ejeren
+// valgte a 23/9, default flippet i #5581); en worker aendrer ikke defaulten:
+//   "cp_only"         (b): tempoet foelger CP alene (reglen foer #4914).
+//   "effort_weighted" (a, DEFAULT): "grupettoen er den sidste gruppe paa vejen", to
 //                                   led der kun virker sammen:
 //                                   1. TEMPO (segmentLoop.groupEffortTempo): en
 //                                   grupetto-rytter saetter aldrig farten i en
@@ -982,11 +981,12 @@ const groupTempoEffortExtra = {
 export const GROUP_TEMPO_EFFORT_EXTRA_TUNING = deepFreeze(groupTempoEffortExtra);
 
 // ── #5581 grupettoen regner paa tidsgraensen (mechanics/grupettoPace.ts) ─────
-// Ejer 23/9 (#4914 valg 1b, "foelg realismen"): en gruppe af udelukkende
-// grupetto-ryttere koerer saa langsomt som muligt, men aldrig langsommere end
-// tidsgraensen (M15, TIME_LIMIT_EXTRA_TUNING nedenfor) tillader, saa laenge
-// rytterne har reserven til det. Virker kun i model "effort_weighted" (det er
-// kun dér en gruppe koerer grupetto-tempo). Reglen og hvorfor den er
+// Ejer 23/9 (#4914 valg 1b, "foelg realismen"): grupettoen koerer saa langsomt
+// som muligt, men aldrig langsommere end tidsgraensen (M15,
+// TIME_LIMIT_EXTRA_TUNING nedenfor) tillader, saa laenge rytterne har reserven
+// til det — baade en ren grupetto-gruppe og grupetto-ryttere i en blandet
+// gruppe der er for langsom (de gaar selv frem). Virker kun i model
+// "effort_weighted" (det er kun dér grupetto har sit eget tempo). Reglen og hvorfor den er
 // deterministisk staar i mechanics/grupettoPace.ts's hoved. Maalt med
 // backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
 const grupettoPaceExtra = {

@@ -496,8 +496,7 @@ export type GrupettoPaceFloorInput = {
 export function applyGrupettoPaceFloor(input: GrupettoPaceFloorInput): Map<string, GroupTempo> {
   const out = new Map(input.tempoByGroup);
   const baseFactor = riderTempoEffortFactor("grupetto");
-  if (!(baseFactor < 1) || input.groups.length === 0) return out;
-  const front = input.groups.reduce((min, g) => (g.gap_seconds < min.gap_seconds ? g : min), input.groups[0]);
+  if (!(baseFactor < 1) || input.groups.length === 0) return out;  const front = input.groups.reduce((min, g) => (g.gap_seconds < min.gap_seconds ? g : min), input.groups[0]);
   const frontTempo = input.tempoByGroup.get(front.id);
   if (!frontTempo) return out;
   for (const group of input.groups) {

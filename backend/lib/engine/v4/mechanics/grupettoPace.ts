@@ -36,6 +36,11 @@
 //      reserve kan han ikke, og han ryger stadig ud. Et knaek eller et
 //      uheld kan derfor stadig sende ham hjem, praecis som i virkeligheden.
 //
+// Koblingen (hvilke grupper, og hvem der saa koerer forrest) bor i
+// segmentLoop.applyGrupettoPaceFloor: en ren grupetto-gruppe, eller grupetto-
+// rytterne i en blandet gruppe der er for langsom til graensen. finale.ts
+// holder den anden halvdel af kontrakten: grupettoen jager ikke op i finalen.
+//
 // Invariant 3 (styrke straffes aldrig) er uberoert: gulvet er en funktion af
 // gruppens position og reserve, aldrig af evnerne, og det goer aldrig en
 // gruppe langsommere. Fog-gate (§2d): intet her naar en tidslinje eller en
