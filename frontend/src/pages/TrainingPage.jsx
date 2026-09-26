@@ -62,7 +62,7 @@ import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
-import { programSessionToday } from "../lib/trainingPrograms.ts";
+import { programSessionToday, PROGRAM_SLOTS } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
   TIRED_FATIGUE_FROM, buildOverview, idsForFilter, isTired, primaryActionFor, canRunToday,
@@ -3107,7 +3107,10 @@ export default function TrainingPage() {
             <TrainingProgramsPanel
               weekdays={WEEKDAY_KEYS}
               todayWeekday={todayWeekday}
-              columns={raceDayColumns}
+              // #4629: programmet har ÉN kolonne ("Hele dagen") med
+              // training_tick_per_race_day off; on (dayClose findes) bærer hver
+              // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
+              columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
               riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
                 id: r.id,
                 name: `${r.firstname} ${r.lastname}`,
