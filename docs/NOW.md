@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (26/9 kl. 17:45, merge-session lukket):** **Næste session = WORKFLOW-session på Opus 5.5** (ejer-direktiv), prompt: `private-handoffs/2026-09-26-next-session-prompt.md`. I dag: værdikørsel + `rider_best_role_display` (runbook 5443, ejer "kør") · S4-kalender TØRKØRSEL til feedback (apply = 12b i morgen) · Mandatet forberedes (trin 6, flip i morgen efter 12b) · parkering verificeret + ejer-valg · Metro-L3 udelukkelse (separat, præcedens) · sæsonpause-opslag. Laner: upkeep-rework #4385 bag flag INDEN skiftet (største risiko) · program pr. løbsdag #4629 · v4 readiness "færdig" · #5794 + youth-flip samme omgang · #5782 · beta-rettelser fra spillerne · beta-oversigt. **27/9 kl. 15:** skiftet (#5506, 12a-12c). **Mandag:** #5281 + træningsflippene · #5786. Natbølge-rapport: `private-handoffs/2026-09-26-session-merge-rapport.md`; patch note 7.302 = PR #5793.
+> **🎯 Next action (26/9 kl. 17:45, merge-session lukket):** **Næste session = WORKFLOW-session på Opus 5.5** (ejer-direktiv), prompt: `private-handoffs/2026-09-26-next-session-prompt.md`. I dag: værdikørsel + `rider_best_role_display` (runbook 5443, ejer "kør") · S4-kalender TØRKØRSEL til feedback (apply = 12b i morgen) · Mandatet forberedes (trin 6, flip i morgen efter 12b) · parkering verificeret + ejer-valg · Metro-L3 udelukkelse (separat, præcedens) · sæsonpause-opslag. Laner: upkeep-rework #4385 bag flag INDEN skiftet (største risiko) · program pr. løbsdag #4629 · v4 readiness "færdig" · #5794 + youth-flip samme omgang · #5782 · beta-rettelser fra spillerne · beta-oversigt. **27/9 kl. 15:** skiftet (#5506, 12a-12c). **Mandag:** #5281 + træningsflippene · #5786.
 >
 > **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort, Discord-kort, comeback, ungdomsløb · live/merget · /roadmap-faner · #5387 A/B mangler · S4-kalender · 27/9 aften (12b) · U23/junior-sider · flip m. #5794 næste session · Mandatet · efter skiftet · D4→D3 + 4 puljer · 27/9 · træning fra løb · 28/9 (program pr. løbsdag #4629 IKKE bygget) · ryttertype-visning · søndag m. værdikørslen · upkeep-rework #4385 · ikke bygget.
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** byg KUN via wave.js; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
 
-> **🤖 Working agent:** Ingen aktiv session (merge-session lukket 26/9 kl. 17:30).
+> **🤖 Working agent:** WORKFLOW-session 26/9 fra 17:50 (bølge: #5795 #5515 #5794 #5782).
