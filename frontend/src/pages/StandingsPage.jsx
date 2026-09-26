@@ -98,6 +98,12 @@ export default function StandingsPage() {
     const fromQuery = Number(searchParams.get("division"));
     return Number.isFinite(fromQuery) && fromQuery > 0 ? fromQuery : 1;
   });
+  // #5315 — samme ?division=-værdi, men bag en ref: loadAllInner nedenfor er
+  // bevidst memoized med tomme deps (#4068, kun stabile setters), og en ref
+  // læses sikkert derfra uden at ESLints exhaustive-deps skal have searchParams
+  // (en reaktiv værdi) med i den deps-liste. Initialiseres én gang ved mount,
+  // hvilket er præcis det et sideload-deep-link skal reagere på.
+  const initialDivisionParam = useRef(searchParams.get("division"));
   // #1688 pulje-sub-faner: valgt pulje inden for tieren (league_division_id) eller
   // POOL_ALL = hele tieren samlet. league_divisions hentes ved load.
   const [pools, setPools] = useState([]);
@@ -163,13 +169,13 @@ export default function StandingsPage() {
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
     setMyTeamId(mine?.id);
-    // #5315 — et ?division=-deep-link (se useState-initialiseringen ovenfor)
+    // #5315 — et ?division=-deep-link (se initialDivisionParam-refen ovenfor)
     // vinder over "mine"-auto-select: uden vagten ville dette load-kald (kørt
     // igen ved hver realtime-refetch) nulstille divTab til holdets EGEN
     // division ved hvert kald — normalt identisk med query-parameteren (den
     // ER managerens egen division), men vagten holder deep-linket stabilt
     // hvis det nogensinde peger på en anden division end den indloggede ejer.
-    if (mine?.division && !searchParams.get("division")) setDivTab(mine.division);
+    if (mine?.division && !initialDivisionParam.current) setDivTab(mine.division);
     setSeason(activeSeason);
 
     // #2444 · begge matview-reads afhænger kun af activeSeason.id (kendt nu) —
@@ -275,14 +281,6 @@ export default function StandingsPage() {
       });
       setRacePoints(prog);
     }
-    // #5315: searchParams læses KUN for det oprindelige ?division=-deep-link-
-    // tjek ovenfor ("mine.division && !searchParams.get"); den tomme deps-liste
-    // er bevidst (se #4068-kommentaren ovenfor: ingen reaktive værdier, kun
-    // stabile setters), så loadAllInner forbliver den SAMME funktion på tværs
-    // af renders — closuren låser dermed searchParams til værdien ved FØRSTE
-    // render, hvilket er netop hensigten for et deep-link der kun skal virke
-    // ved sideload.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // #2175/#4068: loadAll pakket i try/catch/finally → en fejlet query viser
