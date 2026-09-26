@@ -9,8 +9,8 @@
       "junior": "Junior team"
     },
     "subtitle": {
-      "u23": "U23 team, ages 19 to 22",
-      "junior": "Junior team, ages 16 to 18"
+      "u23": "U23 team, riders aged 22 or younger",
+      "junior": "Junior team, riders aged 18 or younger"
     },
     "squadValue": "Squad value: {value} CZ$",
     "rosterCount": "{count}/{cap} riders in the squad",
@@ -26,8 +26,8 @@
     "squad": {
       "title": "Sign a talent in your academy",
       "description": {
-        "u23": "Academy riders aged 19 to 22 are on your U23 team.",
-        "junior": "Academy riders aged 16 to 18 are on your junior team."
+        "u23": "Academy riders aged 22 or younger can ride for your U23 team. You can move a junior up here too.",
+        "junior": "Academy riders aged 18 or younger can ride for your junior team."
       },
       "action": "Go to academy"
     },
