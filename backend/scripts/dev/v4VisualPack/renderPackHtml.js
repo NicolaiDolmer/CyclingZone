@@ -317,6 +317,7 @@ h3{font-size:18px;margin:2px 0}
 table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{font-weight:600;color:var(--muted);font-size:12px}
 .wrap{overflow-x:auto}.miss{color:var(--c-bad)}
+.pass{color:var(--c-ok);font-weight:600}.fail{color:var(--c-bad);font-weight:600}
 a{color:inherit;text-decoration-color:var(--gold);text-underline-offset:3px}
 .stage{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:16px;margin:18px 0}
 .kicker{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.meta{color:var(--muted);font-size:13px}
@@ -350,6 +351,48 @@ var ok=(!d.value||e.dataset.div===d.value)&&(!f.value||e.dataset.fam===f.value)&
 d.onchange=f.onchange=a.onchange=run;})();
 `;
 
+/** node --test's afsluttende "ℹ tests N"-linjer -> tal. */
+export function parseTestSummary(text) {
+  const get = (k) => {
+    const m = new RegExp(`^ℹ ${k} (\\d+(?:\\.\\d+)?)`, "mu").exec(String(text ?? ""));
+    return m ? Number(m[1]) : null;
+  };
+  const tests = get("tests");
+  if (tests == null) return null;
+  return { tests, pass: get("pass"), fail: get("fail"), skipped: get("skipped"), durationMs: get("duration_ms") };
+}
+
+const pctText = (v) => (v == null || !Number.isFinite(v) ? "n/a" : `${(v * 100).toFixed(1)} %`);
+
+function verdictCell(v) {
+  if (v === "PASS") return `<span class="pass">PASS</span>`;
+  if (v === "FAIL") return `<span class="fail">FAIL</span>`;
+  return `<span class="tn">ikke målt</span>`;
+}
+
+/** Flip-klar-rapportens tal (v4FlipReadiness.mjs --json) + v4-testsuitens resultat. */
+export function renderVerificationSection({ readiness = null, suite = null } = {}) {
+  if (!readiness && !suite) return "";
+  const out = [`<h2>Testsuite og flip-klar-rapport</h2>`];
+  if (suite) {
+    out.push(`<p>Hele v4-testsuiten (motorens egne tests, broen, flip-infrastrukturen, kill-switch og harness-scripts): <b>${suite.pass}/${suite.tests} grønne</b>${suite.fail ? `, <span class="fail">${suite.fail} røde</span>` : ""}${suite.skipped ? `, ${suite.skipped} sprunget over` : ""}.</p>`);
+  }
+  if (readiness) {
+    const a = readiness.anchors;
+    out.push(`<p>Flip-klar-rapporten (v4FlipReadiness.mjs, ${esc(readiness.meta?.stage_count)} faste måle-etaper × ${a.seedCount} seeds, felt ${esc(readiness.meta?.field_size)}, uden holdordrer): <b>${a.v4Pass.length} PASS · ${a.v4Fail.length} FAIL · ${a.v4NotMeasured.length} ikke målt</b>. Flip-gatens krav "alle ankre grønne" er ${a.v4AllGreen && a.v4NotMeasured.length === 0 ? "opfyldt" : "<b>ikke opfyldt</b>"}.</p>`);
+    const rows = a.rows.map((r) => `<tr><td>${esc(r.label)}<span class="tn">bånd ${esc(r.bandLabel)}</span></td>` +
+      `<td>${verdictCell(r.v3.verdict)}</td><td class="num">${r.v3.value == null ? "" : esc(Number(r.v3.value).toFixed(3))}</td>` +
+      `<td>${verdictCell(r.v4.verdict)}</td><td class="num">${r.v4.value == null ? "" : esc(Number(r.v4.value).toFixed(3))}</td>` +
+      `<td class="num">${r.v4.seedsMeasured ? `${r.v4.seedsPass}/${r.v4.seedsMeasured}` : "-"}</td></tr>`);
+    out.push(`<div class="wrap"><table><thead><tr><th>Anker</th><th>v3</th><th class="num">v3 værdi</th><th>v4</th><th class="num">v4 værdi</th><th class="num">v4 seeds</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`);
+    const t = readiness.rates?.total;
+    if (t) {
+      out.push(`<p class="notes">Uheld (v4, alle måle-etaper): ${pctText(t.incidentRate)} af rytterne pr. etape (${esc(readiness.rates.incidentVerdict)} mod ejer-målet 1-2 %). OTL: ${pctText(t.otlRate)}. Hale-gate: ${readiness.tailGate?.allPass ? "PASS" : "FAIL"}. Ydelse: ${(readiness.perf ?? []).map((p) => `felt ${p.fieldSize} maks ${Math.round(p.summary.maxMs)} ms`).join(" · ")} (gate 60 s).</p>`);
+    }
+  }
+  return out.join("\n");
+}
+
 /** @param {ReturnType<import('./buildPack.js').buildPack>} pack */
 export function renderPackHtml(pack) {
   const { meta, summary, text } = pack;
@@ -373,6 +416,7 @@ ${tiles(summary)}
   <div class="col wrong"><h4>Ser forkert ud</h4>${list(text.wrong)}</div>
   <div class="col watch"><h4>Hold øje med</h4>${list(text.watch)}</div>
 </div>
+${renderVerificationSection({ readiness: meta.readiness, suite: meta.suite })}
 <h2>Hvad er kørt</h2>
 <p class="notes">Uge ${esc(meta.window?.from)} til ${esc(meta.window?.to)}. Én repræsentativ pulje pr. division (alle puljer i en division kører samme kalender). Startfelterne er de rigtige hold og ryttere fra prod i dag, udtaget af assistentens autopick (ingen har udtaget til S4 endnu), uden holdordrer (AI-holdene får deres egen taktik i v4). Flag i prod: v3 ${esc(meta.flags?.race_engine_v3_scoring)}, tidslinje ${esc(meta.flags?.race_stage_timeline)}, v4 ${esc(meta.flags?.race_engine_v4)} (kun læst).</p>
 <div class="wrap">${coverageTable(pack)}</div>
@@ -393,6 +437,7 @@ ${pack.stages.map((s, i) => stageSection(raceOf(s.raceKey), s, i)).join("\n")}
 <li>Et etapeløb køres fra etape 1, så træthed, udgåede og klassement er med; kun etaperne i første uge vises.</li>
 <li>Favoritten er den rytter i feltet der passer bedst til etapens krav (samme egnethedsmål som assistentens autopick), ikke et bud fra en af motorerne.</li>
 <li>Ikke med: holdordrer fra managerne (ingen er sat for S4), formtoppe (peak-planer), bindinger mellem samtidige løb (samme rytter kan stå i to løb samme dag her) og op-/nedrykning ved sæsonskiftet (hold står i deres S3-pulje).</li>
+<li>Flip-klar-rapportens favorit-anker har sin egen favorit-definition og måles på faste måle-etaper uden roller og holdordrer; favorit-tallene øverst på denne side er den bedst egnede rytter på de rigtige S4-felter. De to kan ikke sammenlignes direkte.</li>
 <li>Én uge er en lille stikprøve: rater (udbrud, uheld, tidsgrænse) svinger meget fra uge til uge. Gaterne i flip-klar-rapporten er målt på langt flere etaper.</li>
 </ul>
 </main><script>${JS}</script></body></html>`;

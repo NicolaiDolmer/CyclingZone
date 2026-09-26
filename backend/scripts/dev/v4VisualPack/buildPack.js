@@ -20,7 +20,7 @@ function winTypeText(counts) {
  * Resuméets to lister. Hver linje er en konstatering med tal, ikke en dom over
  * balancen: ejeren skal kunne se hvad motoren goer, og hvor den ser forkert ud.
  */
-export function buildDanishSummary({ summary, analyses, coverage = [] }) {
+export function buildDanishSummary({ summary, analyses, coverage = [], readiness = null, suite = null }) {
   const works = [];
   const wrong = [];
   const watch = [];
@@ -30,7 +30,8 @@ export function buildDanishSummary({ summary, analyses, coverage = [] }) {
     return { works, wrong, watch };
   }
 
-  const missing = coverage.flatMap((c) => c.missingRequired.map((f) => `${c.key} ${FAMILY_LABEL[f] ?? f}`));
+  const groupLabel = (key) => (key.startsWith("senior:") ? `D${key.slice("senior:".length)}` : key.split(":")[0].toUpperCase());
+  const missing = coverage.flatMap((c) => c.missingRequired.map((f) => `${groupLabel(c.key)} ${FAMILY_LABEL[f] ?? f}`));
   if (missing.length === 0) {
     works.push(`Alle seks terræntyper (${REQUIRED_FAMILIES.map((f) => FAMILY_LABEL[f]).join(", ")}) er kørt i hver division på S4's første uge.`);
   } else {
@@ -110,6 +111,16 @@ export function buildDanishSummary({ summary, analyses, coverage = [] }) {
   const dom = analyses.filter((a) => a.anomalies.some((x) => x.code === "team_dominance_v4")).length;
   if (dom > 0) watch.push(`${dom} etape(r) hvor ét hold har fire eller flere i v4's top 10.`);
 
+  if (readiness?.anchors) {
+    const ra = readiness.anchors;
+    const failed = ra.rows.filter((r) => r.v4.verdict === "FAIL").map((r) => r.label);
+    if (failed.length) wrong.push(`Flip-klar-rapporten (faste måle-etaper, 5 seeds): ${ra.v4Pass.length} ankre PASS, ${failed.length} FAIL: ${failed.join("; ")}.`);
+    else works.push(`Flip-klar-rapporten: alle ${ra.v4Pass.length} målte ankre PASS.`);
+  }
+  if (suite) {
+    if (suite.fail) wrong.push(`v4-testsuiten: ${suite.fail} af ${suite.tests} tests røde.`);
+    else works.push(`Hele v4-testsuiten er grøn: ${suite.pass}/${suite.tests}.`);
+  }
   return { works, wrong, watch };
 }
 
@@ -128,6 +139,6 @@ export function buildPack({ meta, races, stages }) {
   out.sort((a, b) => String(a.scheduled_at ?? "").localeCompare(String(b.scheduled_at ?? "")) || a.stage_number - b.stage_number);
   const analyses = out.map((s) => s.analysis);
   const summary = summarizeAnalyses(analyses);
-  const text = buildDanishSummary({ summary, analyses, coverage: meta.coverage ?? [] });
+  const text = buildDanishSummary({ summary, analyses, coverage: meta.coverage ?? [], readiness: meta.readiness ?? null, suite: meta.suite ?? null });
   return { meta, races, stages: out, summary, text };
 }

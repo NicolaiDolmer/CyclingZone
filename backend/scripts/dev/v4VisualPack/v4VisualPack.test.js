@@ -9,7 +9,9 @@ import {
   summarizeAnalyses, terrainFamily, parseGap, breakawayMembers, displayEvents,
 } from "./packCore.js";
 import { buildPack } from "./buildPack.js";
-import { renderPackHtml, renderFilmSvg, esc, fmtGap, groupKindFromId } from "./renderPackHtml.js";
+import {
+  renderPackHtml, renderFilmSvg, esc, fmtGap, groupKindFromId, parseTestSummary, renderVerificationSection,
+} from "./renderPackHtml.js";
 
 const WINDOW = { from: "2026-09-28", to: "2026-10-04" };
 
@@ -245,6 +247,33 @@ test("buildPack + renderPackHtml: selvstaendig side, ingen eksterne scripts, HTM
   assert.ok(html.includes("Rytter &lt;A&gt;"));
   assert.ok(!html.includes("<Loeb & co>"));
   assert.equal((html.match(/<section class="stage"/gu) ?? []).length, 1);
+});
+
+test("parseTestSummary laeser node --test's opsummering; renderVerificationSection viser FAIL", () => {
+  const suite = parseTestSummary("noget\nℹ tests 12\nℹ pass 11\nℹ fail 1\nℹ skipped 0\nℹ duration_ms 812.5\n");
+  assert.deepEqual(suite, { tests: 12, pass: 11, fail: 1, skipped: 0, durationMs: 812.5 });
+  assert.equal(parseTestSummary("ingen opsummering"), null);
+  const readiness = {
+    meta: { stage_count: 3, field_size: 10 },
+    anchors: {
+      seedCount: 2, v4Pass: ["a"], v4Fail: ["b"], v4NotMeasured: [], v4AllGreen: false,
+      rows: [
+        { id: "a", label: "Anker A", bandLabel: "x", v3: { verdict: "PASS", value: 0.5 }, v4: { verdict: "PASS", value: 0.5, seedsPass: 2, seedsMeasured: 2 } },
+        { id: "b", label: "Anker B", bandLabel: "y", v3: { verdict: "FAIL", value: 0.1 }, v4: { verdict: "FAIL", value: 0.9, seedsPass: 0, seedsMeasured: 2 } },
+      ],
+    },
+  };
+  const html = renderVerificationSection({ readiness, suite });
+  assert.ok(html.includes("11/12 grønne"));
+  assert.ok(html.includes("<b>ikke opfyldt</b>"));
+  assert.equal(renderVerificationSection({}), "");
+  const pack = buildPack({
+    meta: { generated_at: "2026-09-26T19:00:00.000Z", window: WINDOW, coverage: [], readiness, suite },
+    races: [{ key: "race-x", name: "X", tier: 1, squad: "senior", stageCount: 1, riders: {}, teams: {} }],
+    stages: [{ ...rec({ results: CLEAN_RESULTS, v3rows: V3_ROWS, snapshots: MIDRACE_SNAPSHOTS }), scheduled_at: "2026-09-28T17:30:00.000Z" }],
+  });
+  assert.ok(pack.text.wrong.some((t) => t.includes("Anker B")));
+  assert.ok(pack.text.wrong.some((t) => t.includes("1 af 12 tests røde")));
 });
 
 test("esc escaper alle fem HTML-tegn", () => {

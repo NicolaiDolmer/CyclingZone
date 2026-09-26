@@ -22,8 +22,9 @@
 // Usage (fra backend/):
 //   infisical run --env=prod --silent -- node scripts/dev/v4VisualPack/collectS4VisualPack.mjs \
 //     [--out=<html>] [--raw=<json>] [--from=2026-09-28] [--to=2026-10-04] [--tiers=1,4] [--no-youth]
+//     [--readiness=<v4FlipReadiness --json-fil>] [--suite=<node --test-output>]
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { performance } from "node:perf_hooks";
 import { createClient } from "@supabase/supabase-js";
@@ -45,7 +46,7 @@ import {
   selectRacesForCoverage, coverageReport, terrainFamily, parseGap, compactSnapshots, displayEvents, syntheticRaceId,
 } from "./packCore.js";
 import { buildPack } from "./buildPack.js";
-import { renderPackHtml } from "./renderPackHtml.js";
+import { renderPackHtml, parseTestSummary } from "./renderPackHtml.js";
 
 const DEFAULT_OUT = "C:/Users/Nicolai/OneDrive/CyclingZone-context/private-handoffs/v4-visual-2026-09-26/index.html";
 
@@ -191,6 +192,8 @@ async function main() {
   }
   const outPath = argValue("out", DEFAULT_OUT);
   const rawPath = argValue("raw", null);
+  const readinessPath = argValue("readiness", null);
+  const suitePath = argValue("suite", null);
   const window = { from: argValue("from", S4_FIRST_RACE_DAY), to: argValue("to", "2026-10-04") };
   const tiers = argValue("tiers", "1,4").split(",").map(Number).filter(Number.isFinite);
   const youth = !process.argv.includes("--no-youth");
@@ -256,6 +259,10 @@ async function main() {
       generated_at: new Date().toISOString(),
       source, window, flags, notes, coverage,
       runtime_s: Math.round((performance.now() - t0) / 100) / 10,
+      // Valgfrit: flip-klar-rapportens JSON (v4FlipReadiness.mjs --json=...) og v4-
+      // testsuitens output (node --test ... > fil), saa siden samler alt ét sted.
+      readiness: readinessPath ? JSON.parse(readFileSync(readinessPath, "utf8")) : null,
+      suite: suitePath ? parseTestSummary(readFileSync(suitePath, "utf8")) : null,
     },
     races: raceMeta,
     stages: stageRecords,
