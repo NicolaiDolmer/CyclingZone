@@ -56,8 +56,13 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
         {lastMovement?.textKey ? (
           <p className="min-w-0">
             <span className="font-medium text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
+            {/* #5633 · Linjen er en replik fra et bestyrelsesmedlem, ikke en
+                beskrivelse af bevaegelsen. Uden anfoerselstegn og navn laeste den
+                som en robot-fortaeller ("Seneste bevaegelse: Vi holder kursen."). */}
             {appendDate(
-              t(lastMovement.textKey, lastMovement.textParams || {}),
+              lastMovement.memberName
+                ? `“${t(lastMovement.textKey, lastMovement.textParams || {})}” ${lastMovement.memberName}`
+                : t(lastMovement.textKey, lastMovement.textParams || {}),
               lastMovement.occurredAt ? formatWeekdayShortDate(lastMovement.occurredAt) : "",
             )}
           </p>

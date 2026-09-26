@@ -8,7 +8,7 @@
 
 ## Flip-kort
 
-**Kort svar: flip-gaten er ikke opfyldt.** To ankre er røde, og begge kræver et valg fra dig, ikke mere kode. Tre mindre ting kan rettes nu uden dig; én af dem er en forkert linje i løbsfilmen, som spillerne vil se efter flip. Resten er grønt eller kan først måles, når S4 kører.
+**Kort svar: flip-gaten er ikke opfyldt.** To ankre er røde, og begge kræver et valg fra dig, ikke mere kode. Af de tre mindre ting er to rettet i PR [#5807](https://github.com/NicolaiDolmer/CyclingZone/pull/5807), også den forkerte linje i løbsfilmen. Den tredje (tallene i RULES §7b) venter på et lille go, fordi den ellers lægger nye målte tal i et offentligt dokument. Resten er grønt eller kan først måles, når S4 kører.
 
 ### 🟢 Grønt
 
@@ -22,19 +22,17 @@
 - **Ydelse:** den langsomste etape tager under et kvart sekund ved 180 og 192 ryttere. Gaten er 60 sekunder.
 - **Kill-switch og flip-infrastruktur:** alle eksisterende tests er grønne.
 - **Hjælp-sektionen om løbsdag** følger nu flaget (#4948, lukket via PR #5563).
+- **Løbsfilmen siger kun "udbruddet holdt", når udbruddet vandt** (PR [#5807](https://github.com/NicolaiDolmer/CyclingZone/pull/5807)). Motoren gør udbruddets udfald op efter finalen med samme dom som løbsfortællingen; et hentet udbrud står nu som hentet ved stregen. Se [fund i løbsfilmene](#fund-i-løbsfilmene).
+- **RULES §2d og §2h er ajour** (PR [#5807](https://github.com/NicolaiDolmer/CyclingZone/pull/5807)): §2d har juryen i enkeltstarten og offeret i grupettoen, og §2h har TTT-valgene fra 23/9 som afgjort.
 
 ### 🔴 Rødt, kræver dit valg (ikke kode)
 
 1. **Favoritterne vinder for tit** (RULES §7 række 10). Rød på alle 5 seeds, som 23/9. Rettes aldrig ved at straffe styrke (ejer 4/8). #5583 har målt en ikke-cirkulær favorit-definition og en ny population med taktik og positionering (#5572); **begge gate-skift venter på dit go**. Rigtige S4-felter med AI-taktik vil også flytte tallet.
 2. **Udbrud pr. terræn er rød mod et bånd, der ikke er dit.** Båndene er v3's kandidatbånd (#1021), ikke ejer-godkendt (#5578). Mønstret i v4: på fladt og brosten vinder udbruddet aldrig i målingen, på kuperede etaper og bjergetaper for sjældent, og på rullende etaper og højbjerg for tit. v3 er også rød mod de samme bånd. **Dit valg:** sæt båndene ud fra virkelige udbrudsrater (research med kilder), derefter kalibreres udbrudsmekanikken med tal foran dig (RULES §4, "simulér før ship").
 
-### 🔴 Rødt, kan rettes nu (uden for denne PR)
+### 🟡 Venter på et lille go (ikke kode)
 
-Ingen af dem kræver S4-data eller et ejer-valg. De ligger uden for denne PR's filer.
-
-- **Løbsfilmen kan skrive "udbruddet holdt", når det blev hentet i finalen.** Spillervendt efter flip. Se [fund i løbsfilmene](#fund-i-løbsfilmene-ikke-rettet-her).
-- **Ankertabellen i RULES §7b** skal regenereres mod main-motoren (én kommando). Den er fra 23/9.
-- **RULES §2d og §2h** skal have juryens nye tilfælde fra denne PR, og §2h skal rydde TTT-valg, der blev afgjort 23/9.
+- **Tallene i ankertabellen i RULES §7b er fra 23/9.** At regenerere dem er én kommando, men den skriver nye målte værdier (middel og spænd) ind i et offentligt dokument, og siden 26/9 står de tal kun i den private fil (hard rule 17). Tabellen har nu en note, der peger på dommene i måling 1 herunder. **Dit valg:** A) tabellen renderes som dom uden tal, som i denne rapport (et lille skift i `renderV4AnchorTable.mjs`), eller B) tallene må stå offentligt som før 26/9. Anbefaling: A. Det ændrer ingen dom.
 
 ### 🟡 Kan først måles efter S4's første løbsdage
 
@@ -65,7 +63,7 @@ Før rettelserne viste genkørslen "ja" til både "mekanisk uheld ender som OTL"
 | #4915 | Uheld, tidsgrænse, point og anker på TTT | ✅ Merget (PR #5524) |
 | #4915 | TTT i S4-kalenderen | ✅ Besluttet 23/9: nej, TTT flyttes til S5 (#3463) |
 | #4915 | Juryen gælder også TTT (ejer 23/9) | 🟡 Ikke bygget. Inert i S4, fordi kalenderen ikke har TTT. Hører til S5-arbejdet |
-| #4915 | Ejer-valgene noteret i RULES §2g/§2h | 🟡 §2h står stadig med "stadig ejer-valg" om punkter, der blev afgjort 23/9 |
+| #4915 | Ejer-valgene noteret i RULES §2g/§2h | ✅ §2h har valgene fra 23/9 som afgjort, og TTT-juryen står som S5-arbejde (PR #5807) |
 | #4948 | Hjælp-sektionen om løbsdag følger flaget | ✅ Lukket 24/9 via PR #5563 |
 
 ## Genkørsel
@@ -179,13 +177,13 @@ Status: ✅ opfyldt og verificeret · 🟡 bygget, men med åbent punkt · ❌ i
 1. **Felt-favoritternes vinderrate** (flip-kortet, rødt 1).
 2. **Udbrud pr. terræn mod kandidatbånd** (flip-kortet, rødt 2).
 3. **Seed-følsomme ankre:** nedkørsels-/summit-ratio, brostensløftet og bjerg-top-10 består på middel, men kun på 4 af 5 seeds hver. Uændret fra 23/9.
-4. **Ankertabellen i RULES §7b er ældre end main-motoren.** Den er genereret 23/9 og mangler de nye ankre (enkeltstart, udbrud pr. terræn for v4). Den skal regenereres (`buildV4AnchorBaseline.mjs && renderV4AnchorTable.mjs --write`). Et skift til den nye population (#5572) venter på dit go.
-5. **RULES §2d og §2h er bagud:** §2d nævner ikke juryen i enkeltstarten og grupetto-tilfældet fra denne PR, og §2h lister stadig TTT-valg, der blev afgjort 23/9.
+4. **Tallene i ankertabellen i RULES §7b er ældre end main-motoren.** Den er genereret 23/9 og mangler de nye ankre (enkeltstart, udbrud pr. terræn for v4). Den har nu en note, der peger på måling 1. Regenereringen venter på dit valg om tal i offentlige docs (flip-kortet, 🟡). Et skift til den nye population (#5572) venter også på dit go.
+5. ~~**RULES §2d og §2h er bagud.**~~ Rettet i PR #5807: §2d har juryen i enkeltstarten og grupetto-tilfældet, og §2h har TTT-valgene fra 23/9 som afgjort.
 6. **GT-vindermarginen er ikke en del af flip-harnessens tabel.** Den måles af `v4GcMargin.mjs` og består. At samle den i harnessen er en lille opgave.
 7. **Ikke dækket af denne måling:** AI-ordrer og taktik (`orders=none`), dag-til-dag-slid i etapeløb, grus og holdtidskørsel (0 i de pinnede etaper) og Railway-containerens CPU.
 
-## Fund i løbsfilmene (ikke rettet her)
+## Fund i løbsfilmene
 
-- **Løbsfilmen kan skrive at udbruddet holdt, når det blev hentet i finalen.** I motoren betyder `breakaway_survived` kun at udbruddet stadig er sin egen gruppe på sidste segment; finalen afgør bagefter om det holder (`mechanics/breakaway.ts`). Bjerg-filmen (golden fixture) viser det: eventet kommer, og udbryderen bliver nummer fem. Løbsfortællingen er korrekt, fordi den bruger motorens egen udbrudsdom (#5577). Men `stageTimelineFilm.js` oversætter det rå event til linjen "The breakaway holds off the bunch all the way to the line." Efter flip vil spilleren kunne se den linje på en etape, udbruddet ikke vandt. Bør rettes før flip (motoren eller filmen skal bruge udbrudsdommen).
+- ✅ **Rettet i PR [#5807](https://github.com/NicolaiDolmer/CyclingZone/pull/5807) (bag flaget): løbsfilmen kunne skrive at udbruddet holdt, når det blev hentet i finalen.** I motoren betød `breakaway_survived` kun at udbruddet stadig var sin egen gruppe på sidste segment; finalen afgør bagefter om det holder (`mechanics/breakaway.ts`). Bjerg-filmen (golden fixture) viste det: eventet kom, og udbryderen blev nummer fem. `stageTimelineFilm.js` oversatte det rå event til linjen "The breakaway holds off the bunch all the way to the line." **Nu** gør motoren udfaldet op efter finalen (`settleBreakawaySurvivedEvents` i `groups.ts`) med den udbrudsdom, løbsfortællingen også bruger (#5577): eventet bliver kun stående, når udbruddet vandt, ellers skrives det om til `breakaway_caught` ved stregen. Filmen og fortællingen kan derfor ikke længere være uenige; en fixture-test låser det på alle fem golden fixtures. Ingen ny copy og ingen placering ændret. Ankrene læser ikke eventet, så målingerne ovenfor er uændrede.
 
 Refs #5515 · #4914 · #4915 · #4948 · #5582 · #5578 · #5583 · #5572
