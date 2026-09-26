@@ -147,6 +147,7 @@ function DayCard({ run, t, tRider, trainingScore }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        data-testid="training-history-day-toggle"
         className="w-full flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-left hover:bg-cz-subtle transition-colors"
       >
         <div className="flex items-center gap-3 flex-wrap">
