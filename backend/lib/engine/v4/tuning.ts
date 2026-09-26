@@ -411,6 +411,28 @@ const descentExtra = {
 /** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
 export const DESCENT_EXTRA_TUNING = deepFreeze(descentExtra);
 
+// ── M2 (mechanics/climbSelection.ts, #5813) — ADDITIV selektions-tuning ──────
+// SS2's frosne SelectionTuning (types.ts) har kun de fire score-haandtag. Samme
+// "bevidst separat eksport"-moenster som descentExtra ovenfor.
+//
+// HVORFOR (#5813, S4-testpakken 27/9): en rytter med tom reserve blev sat af
+// paa ENHVER stigning, ogsaa en kort 4. kategori paa et par procent. Paa en
+// rullende etape uden bjerge sad en stor del af feltet saaledes af ved foerste
+// lille bakke midtvejs og koerte resten af dagen i smaa, langsomme grupper -
+// og landede langt uden for tidsgraensen. En tom reserve betyder at rytteren
+// ikke kan foelge et haardt tempo LAENGE; op ad en kort bakke haenger han paa
+// og henter de faa sekunder paa den anden side. Tvangs-splittet kraever
+// derfor en stigning af en vis alvor (samme skala som climbSeverity01: 1 = en
+// HC-agtig referenceklatring). Under taersklen afgoer selektions-scoren alene
+// (som allerede er alvors-skaleret, #4604), saa en reelt svag klatrer stadig
+// kan blive sat af.
+const climbSelectionExtra = {
+  wprimeForcedMinSeverity: 0.15, // mindste stigningsalvor (climbSeverity01) hvor en tom reserve TVINGER rytteren af. Under: kun selektions-scoren
+} as const;
+
+/** M2 additiv selektions-tuning (deep-frosset). Se climbSelectionExtra-kommentaren ovenfor. */
+export const CLIMB_SELECTION_EXTRA_TUNING = deepFreeze(climbSelectionExtra);
+
 // ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
 // SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
 // (arkitekten har ikke tilfoejet den) — samme "bevidst separat eksport"-moenster
