@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap in tabs - Variant A / Variant B (#5387)</title>
+<!-- #5387 mockup (statisk, kun voting-UI). EN foerst, ingen DA-tekst i selve mockuppen.
+     Ejer-go 26/9 kl. 00:25: "Mockup i nat". INGEN aendring af RoadmapPage.jsx, ingen SQL, intet i prod.
+     RETTELSE 26/9 (reviewer-fund paa #5765): v1-udkastets punkter (23/9, docs/drafts/5387-roadmap-indhold.md
+     §2 / database/proposals/5387-roadmap-items.sql) matchede ikke prod laengere - prod fik "Roadmap v2"
+     24/9 med andre titler. Denne version bruger de 42 LIVE punkter fra en read-only prod-opslag 26/9 kl.
+     01:25 (roadmap_items, status=active AND approved=true) - titler, engine og sort_order ordret som i prod.
+     Prod har INGEN horisont-kolonne (sort_order er kun 10-120 pr. motor); horisonten herunder er en
+     FORESLAAET mapping, ikke en prod-sandhed - se JSON-kommentaren i <script> for baand->punkt-begrundelsen
+     og linjen under sidetitlen i selve siden. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --on-accent:#1a1f38; --accent-10:rgba(232,197,71,.10);
+  --sidebar:#1a1f38; --sidebar-2:rgba(255,255,255,.55); --sidebar-3:rgba(255,255,255,.25); --sidebar-border:rgba(255,255,255,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg-body);color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
+.data{font-family:"Inter Tight","DM Sans",sans-serif;font-variant-numeric:tabular-nums}
+.micro{font-family:"Inter Tight",sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);font-weight:600}
+.micro10{font-family:"Inter Tight",sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);font-weight:600}
+.ico{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ── Review-bar (kun ved normal aabning, ikke del af variant-screenshots) ── */
+.review-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:var(--sidebar);color:#fff;font-size:12px}
+.review-bar b{font-weight:600}
+.review-bar a{color:#d8d3c4;text-decoration:none;margin-left:14px;padding:4px 9px;border:1px solid rgba(255,255,255,.18);border-radius:5px}
+.review-bar a:hover{border-color:rgba(255,255,255,.55)}
+.intro-note{max-width:900px;margin:16px auto 0;padding:0 20px;font-size:12.5px;color:var(--text-2);line-height:1.55}
+.section-label{max-width:900px;margin:28px auto 0;padding:0 20px;font-family:"Inter Tight";font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+
+/* ── App-skal (T1, max-w-4xl) ── */
+.shell{display:flex;min-height:520px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.sidebar{width:208px;background:var(--sidebar);color:#fff;flex:none;padding-top:22px}
+.logo{font-family:"Bebas Neue";color:var(--accent);font-size:20px;letter-spacing:.02em;text-align:center}
+.logo-rule{width:120px;height:1px;background:var(--accent);margin:4px auto 20px}
+.sb-label{font-family:"Inter Tight";font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--sidebar-3);font-weight:600;padding:0 16px 6px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 12px;margin:0 8px;font-size:13px;color:rgba(255,255,255,.75);border-radius:5px}
+.sb-item::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3)}
+.sb-item.on{background:rgba(255,255,255,.06);color:var(--accent)}
+.sb-item.on::before{background:var(--accent)}
+.main{flex:1;min-width:0;background:var(--bg-body)}
+.page{max-width:896px;margin:0 auto;padding:28px 32px 48px}
+
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px;flex-wrap:wrap}
+.ph h1{font-family:"Inter Tight";font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0}
+.ph .sub{font-size:13px;color:var(--text-2);margin-top:4px;max-width:52ch}
+.filter-cluster{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.check-row{display:flex;align-items:center;gap:8px;font-size:13px;position:relative;cursor:pointer}
+.check-box{width:16px;height:16px;border:1.5px solid var(--text-3);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-elevated);flex:none}
+.check-box.on{background:var(--text-1);border-color:var(--text-1);color:var(--bg-card)}
+.check-box.on svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+/* Aegte checkbox-input laegges usynligt oven paa den tegnede boks, saa Tab/Space
+   og klik paa selve tekst-labelen virker (keyboard + a11y, CodeRabbit-fund). */
+.sr-check{position:absolute;left:0;top:0;width:16px;height:16px;margin:0;opacity:0;cursor:pointer}
+.sr-check:focus-visible ~ .check-box{outline:2px solid var(--accent-t);outline-offset:2px}
+.vote-count{font-family:"Inter Tight";font-size:11.5px;color:var(--text-3)}
+.vote-count b{color:var(--text-1);font-weight:700}
+.horizon-caveat{font-size:10.5px;color:var(--text-3);margin:2px 0 4px}
+
+.intro{margin:14px 0 16px;font-size:13px;color:var(--text-2);line-height:1.5}
+
+/* ── Faner ── */
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--border);overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--text-3);padding:9px 1px 10px;margin-bottom:-1px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:"Inter Tight";font-size:11px;color:var(--text-3)}
+.tab .ico{width:14px;height:14px;color:var(--text-3)}
+.tab.on .ico{color:var(--accent-t)}
+
+/* ── Punkt-liste ── */
+.item-list{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+.item{display:flex;flex-direction:column;gap:8px}
+.item-top{display:flex;align-items:flex-start;gap:8px}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--accent);flex:none;margin-top:7px}
+.item-title{font-size:13.5px;color:var(--text-1);line-height:1.5;flex:1}
+.stamp{display:inline-flex;align-items:center;gap:4px;flex:none;font-family:"Inter Tight";font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);border:1px solid var(--border);border-radius:999px;padding:2px 8px;white-space:nowrap;margin-top:1px}
+.stamp .ico{width:11px;height:11px}
+.axes{margin-left:12px;display:flex;flex-direction:column;gap:5px;max-width:360px}
+.axis{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.axis .lbl{font-size:11.5px;color:var(--text-3);flex:none;width:76px}
+.scale{display:flex;gap:4px}
+.sbtn{width:24px;height:24px;border-radius:5px;font-family:"Inter Tight";font-size:11px;font-weight:600;border:1px solid var(--border);color:var(--text-2);background:transparent}
+.sbtn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.voted-flag{font-size:10.5px;color:var(--text-3)}
+
+/* ── Faner pr. motor: motor-label-blok over listen ── */
+.engine-head{display:flex;align-items:center;gap:8px;margin:2px 0 2px;color:var(--text-2);font-size:12px}
+.engine-head .ico{width:15px;height:15px;color:var(--accent-t)}
+
+/* ── Desktop/mobil-skift ── */
+.desktop-shell{display:block}
+.mobile-shell{display:none}
+@media (max-width:680px){
+  .desktop-shell{display:none}
+  .mobile-shell{display:block}
+}
+.m-shell{min-height:520px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg-body)}
+.m-top{height:52px;background:var(--sidebar);display:flex;align-items:center;justify-content:center}
+.m-top .logo{font-size:16px}
+.m-page{padding:18px 16px 64px}
+.m-page .ph{flex-direction:column;align-items:stretch;gap:10px}
+.m-page .filter-cluster{align-items:flex-start}
+.m-page .page-title-row{display:flex;align-items:baseline;justify-content:space-between}
+.m-nav{height:56px;background:var(--sidebar);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;color:rgba(255,255,255,.55);font-size:10px;text-align:center}
+.m-nav div{display:flex;flex-direction:column;align-items:center;gap:3px}
+.m-nav div.on{color:var(--accent)}
+.m-nav .ico{width:16px;height:16px}
+
+.variant-frame{max-width:960px;margin:10px auto 0;padding:0 20px 40px}
+</style>
+</head>
+<body>
+<div class="review-bar">
+  <span><b>#5387</b> — /roadmap in tabs, two variants (mockup only, no prod change)</span>
+  <span><a href="#variant-a">Variant A — tabs by horizon</a><a href="#variant-b">Variant B — tabs by engine</a></span>
+</div>
+<p class="intro-note">Both variants show the same 42 live items (real titles read from prod on 26/9), grouped two different ways. Prod has no horizon column yet — the horizon shown here is a proposal, see the note under each page title. Every desktop frame below is captured at 1440px, every phone frame at 390px. Vote buttons (1-6) and the "not voted" checkbox are live in the browser — try them.</p>
+
+<div id="variant-a" class="variant-frame">
+  <div class="section-label">Variant A — tabs by horizon, engine as a per-item chip</div>
+</div>
+
+<div id="variant-b" class="variant-frame">
+  <div class="section-label">Variant B — tabs by engine, horizon as a per-item stamp</div>
+</div>
+
+<script>
+// ── Ikoner (stroke, 24-grid — samme path-data som components/ui/icons) ──
+const I = {
+  flag: '<path d="M5 21V4"/><path d="M5 5h13l-2.5 4 2.5 4H5z"/><path d="M5 9h11M11.5 5v8"/>',
+  stopwatch: '<circle cx="12" cy="14" r="7"/><path d="M12 14V10"/><path d="M10 3h4M12 3v2"/><path d="M18.5 8l1.5-1.5"/>',
+  team: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17 14.2a5.5 5.5 0 0 1 3.5 4.8"/>',
+  exchange: '<path d="M4 9h13M14 6l3 3-3 3"/><path d="M20 15H7M10 12l-3 3 3 3"/>',
+  crown: '<path d="M3 7l4 4 5-7 5 7 4-4-2 12H5z"/><path d="M5 20h14"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  home: '<path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/>',
+  inbox: '<path d="M4 13h4l1.5 3h5L16 13h4"/><path d="M5 5h14l1 8v6H4v-6z"/>',
+  bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+};
+const ico = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+
+const ENGINES = {
+  races: { label: "Races", icon: "flag" },
+  training: { label: "Training", icon: "stopwatch" },
+  youth: { label: "Youth", icon: "team" },
+  market: { label: "Market", icon: "exchange" },
+  club: { label: "Club", icon: "crown" },
+};
+const HORIZONS = ["now", "this-season", "next-season", "later", "not-decided"];
+const HORIZON_LABEL = {
+  "now": "Now", "this-season": "This season", "next-season": "Next season",
+  "later": "Later", "not-decided": "Not decided",
+};
+
+// ── De 42 LIVE punkter (read-only prod-opslag 26/9 kl. 01:25, roadmap_items status=active
+//    AND approved=true - titler, engine og so (sort_order) ordret som i prod). Prod har INGEN
+//    horisont-kolonne; h herunder er en FORESLAAET mapping (se JSON-kommentaren lige under for
+//    begrundelsen pr. punkt), ikke en prod-sandhed. idea/importance = null naar ikke stemt endnu
+//    (stemmetal er demo-data til mockuppen, ikke rigtige roadmap_votes). ──
+
+/* #5387 HORIZON MAPPING PROPOSAL (foreslaaet 26/9, til senere "ALTER TABLE roadmap_items ADD
+   COLUMN horizon" + UPDATE-forslag). Rene JSON-data, parseable som den staar. Match mod
+   docs/drafts/5387-roadmap-indhold.md §2 (23/9-udkastets baand): hvor prod-titlen tydeligt
+   genkendes som samme punkt/emne i et baand, er den baands horisont brugt (100=now,
+   150/300=next-season, 200/250=this-season, 900 N/O=later, 900 B/B*=not-decided). Hvor ingen
+   rimelig genkendelse findes (nyt punkt siden 23/9, eller for tvetydigt), er valget "not-decided".
+   Den endelige mapping - og dermed behovet for en rigtig horizon-kolonne - er ejerens, ikke denne
+   mockups.
+[
+  { "engine": "club", "sort_order": 10, "title_en": "Your club's look: logo, team colours and rider faces.", "horizon": "later", "basis": "band 900 (N) - exact match, docs/drafts §2 Not decided yet / club, ref #5113" },
+  { "engine": "club", "sort_order": 20, "title_en": "Sponsors reworked: a main sponsor plus smaller side sponsors with their own goals.", "horizon": "later", "basis": "band 900 (N) - recognizable as 'Sponsors reworked', wording refined in prod since 23/9" },
+  { "engine": "club", "sort_order": 30, "title_en": "More facilities: more of your club to build than training and scouting.", "horizon": "next-season", "basis": "band 150 - exact match, docs/drafts §2 This season maybe" },
+  { "engine": "club", "sort_order": 50, "title_en": "Upkeep reworked: travel and staff costs paid per race day, instead of one big bill at season start.", "horizon": "this-season", "basis": "band 250 - exact match, docs/drafts §2 Before season 4 maybe" },
+  { "engine": "club", "sort_order": 60, "title_en": "Negotiate your board's goals upward, for a bigger reward.", "horizon": "not-decided", "basis": "band 900 (B) - exact match, docs/drafts §2 Not decided yet / club" },
+  { "engine": "club", "sort_order": 60, "title_en": "Road captains and mentors: you pick the veteran who helps a young rider grow.", "horizon": "next-season", "basis": "band 320 - recognizable as 'Road captains, mentors and teamwork', docs/drafts §2 During season 4" },
+  { "engine": "club", "sort_order": 70, "title_en": "A new dashboard and inbox: what needs you today comes first, and a message takes seconds to read.", "horizon": "next-season", "basis": "band 310 - near-exact match, docs/drafts §2 During season 4" },
+  { "engine": "club", "sort_order": 80, "title_en": "A smarter assistant: one message instead of five, and you act straight from the inbox.", "horizon": "later", "basis": "band 900 (N) - recognizable as 'A smarter assistant', docs/drafts §2 Not decided yet / club 950" },
+  { "engine": "club", "sort_order": 90, "title_en": "Statistics and history: look back at your league and your division, season after season.", "horizon": "not-decided", "basis": "no confident match - draft groups 'statistik og historik' across two separate items (Earn renown band 930, club museum band 940); defaulted" },
+  { "engine": "club", "sort_order": 100, "title_en": "A club museum: your winners, your legends and the races your club is remembered for.", "horizon": "not-decided", "basis": "band 940 (B) - exact match, docs/drafts §2 Not decided yet / club museum" },
+  { "engine": "club", "sort_order": 110, "title_en": "Friends and following: follow a manager or a rider, invite a friend, and see a world feed of results and trades.", "horizon": "not-decided", "basis": "bands 960/970/980 (all B) - merges 3 separate draft items (Friends and following, Invite a friend, A living world feed), all Not decided yet" },
+  { "engine": "club", "sort_order": 120, "title_en": "Rider milestones: goals for one rider you can chase, even when it is not the smart move for the team.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "market", "sort_order": 10, "title_en": "Deeper negotiation between managers: counter-offers, riders plus cash, and a deadline.", "horizon": "not-decided", "basis": "band 910 (B*) - exact match, docs/drafts §2 Not decided yet / market" },
+  { "engine": "market", "sort_order": 20, "title_en": "Rumours on the transfer market: hear who is looking, and who else wants the rider you want.", "horizon": "not-decided", "basis": "band 920 (B*) - recognizable as 'A market that tells stories', docs/drafts §2 Not decided yet / market" },
+  { "engine": "market", "sort_order": 30, "title_en": "A transfer market you can trust: limits on deals between friends, and every trade in an open log.", "horizon": "next-season", "basis": "band 150 - recognizable as 'More fair play tools: a transfer market you can trust', docs/drafts §2 This season maybe" },
+  { "engine": "market", "sort_order": 40, "title_en": "More than one wishlist, so you can sort the riders you follow.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "market", "sort_order": 50, "title_en": "See an injury on another team's rider, and how long he is out.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 10, "title_en": "Secondary rider type explained: see what a rider's second type means and where it helps him.", "horizon": "now", "basis": "band 100/130 - exact match, docs/drafts §2 This season" },
+  { "engine": "races", "sort_order": 20, "title_en": "Ride for the mountain or points jersey from day one: set the jersey as a rider's goal, and his race plan follows it.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 30, "title_en": "Pick where in a stage race a rider peaks, with a main goal and a backup goal.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 40, "title_en": "The team meeting: your sports director's plan for each stage, written in cycling terms. No sliders.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 50, "title_en": "National championships: one day a season your riders race for their country's jersey.", "horizon": "later", "basis": "band 910 (O) - draft merges NC/Worlds/Europeans in one item, now split in prod into two; Not decided yet / races" },
+  { "engine": "races", "sort_order": 60, "title_en": "Worlds and Europeans with national teams, and you can be picked as national coach.", "horizon": "later", "basis": "band 910 (O) - same draft item as above, split half in prod" },
+  { "engine": "races", "sort_order": 70, "title_en": "A season planner that warns you: fatigue two weeks ahead, and which races a rider can still qualify for.", "horizon": "not-decided", "basis": "band 920 (B) - recognizable as 'A smarter season planner', docs/drafts §2 Not decided yet / races" },
+  { "engine": "races", "sort_order": 80, "title_en": "Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.", "horizon": "not-decided", "basis": "band 930 (B) - recognizable as 'The racing math explained in plain words', docs/drafts §2 Not decided yet / races" },
+  { "engine": "races", "sort_order": 90, "title_en": "Routes that look like real racing: cobbles, a real summit finish, a long valley before the last climb. You can see it on the stage profile.", "horizon": "not-decided", "basis": "band 940 (B*) - recognizable as 'Realistic race routes modeled on real racing', docs/drafts §2 Not decided yet / races" },
+  { "engine": "races", "sort_order": 100, "title_en": "Your calendar colour-coded by your own status: entered, withdrawn, squad set.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "races", "sort_order": 110, "title_en": "Watch a stage as a 3D replay with your own riders and colours.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "training", "sort_order": 10, "title_en": "A race sharpener: a short session the day before a race that gives form, not abilities.", "horizon": "now", "basis": "band 100/120 - near-exact match, docs/drafts §2 This season" },
+  { "engine": "training", "sort_order": 20, "title_en": "Plan a whole week per rider in one go: a session for every race day, for one rider or the whole squad.", "horizon": "this-season", "basis": "band 210 - recognizable as 'Training per race day', docs/drafts §2 Before season 4" },
+  { "engine": "training", "sort_order": 30, "title_en": "Form training for riders who are done developing, so a 32-year-old still has something to train for.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "training", "sort_order": 40, "title_en": "A training camp: pay to focus one ability hard for a while, and lose race days while you do it.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "training", "sort_order": 40, "title_en": "Staff you can feel: more roles and attributes, and a coach or doctor who changes how your season goes.", "horizon": "not-decided", "basis": "band 910 (B) - recognizable as 'Coaches as a real resource', docs/drafts §2 Not decided yet / training" },
+  { "engine": "training", "sort_order": 50, "title_en": "See how many percent a session moved an ability, not just the progress bar.", "horizon": "now", "basis": "band 110 (O) - recognizable as 'The training score for everyone', docs/drafts §2 This season" },
+  { "engine": "training", "sort_order": 60, "title_en": "Auto-rest: set your own fatigue limit, and a tired rider rests by himself and goes back to his plan the next day.", "horizon": "not-decided", "basis": "no confident match - not the same mechanic as draft's 'Training runs itself every evening' (band 230); defaulted" },
+  { "engine": "training", "sort_order": 70, "title_en": "Ready-made training programs, and later a place to share your own.", "horizon": "next-season", "basis": "band 310 - exact match, docs/drafts §2 During season 4" },
+  { "engine": "training", "sort_order": 80, "title_en": "Your own labels on riders, so you can find them on the training page.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" },
+  { "engine": "youth", "sort_order": 10, "title_en": "Youth seasons that count: promotion, relegation and rankings for U23 and junior from season 5.", "horizon": "next-season", "basis": "band 320 - recognizable as 'Youth seasons that count', docs/drafts §2 During season 4" },
+  { "engine": "youth", "sort_order": 20, "title_en": "Prize money in youth races: a smaller pot than the senior races, big enough that a youth win pays, never big enough to carry a club.", "horizon": "next-season", "basis": "band 320 - split out of the same draft item as above (prize money clause)" },
+  { "engine": "youth", "sort_order": 30, "title_en": "Your own young stars: choose a country you want more young riders from, and steer which rider types your academy produces.", "horizon": "next-season", "basis": "band 310 - exact match, docs/drafts §2 During season 4" },
+  { "engine": "youth", "sort_order": 40, "title_en": "Scouts that differ: a better scout finds more, sees more of a rider, and charges less per report.", "horizon": "later", "basis": "band 900 (N) - recognizable as 'Better scouting', docs/drafts §2 Not decided yet / youth 910" },
+  { "engine": "youth", "sort_order": 50, "title_en": "Rival riders' abilities shown as a range, not an exact number, until you have scouted them.", "horizon": "not-decided", "basis": "no match in docs/drafts/5387-roadmap-indhold.md - new item since 23/9, defaulted" }
+]
+*/
+const ITEMS = [
+  { e: "club", so: 10, h: "later", t: "Your club's look: logo, team colours and rider faces.", v: [4, 3] },
+  { e: "club", so: 20, h: "later", t: "Sponsors reworked: a main sponsor plus smaller side sponsors with their own goals.", v: null },
+  { e: "club", so: 30, h: "next-season", t: "More facilities: more of your club to build than training and scouting.", v: null },
+  { e: "club", so: 50, h: "this-season", t: "Upkeep reworked: travel and staff costs paid per race day, instead of one big bill at season start.", v: [3, 4] },
+  { e: "club", so: 60, h: "not-decided", t: "Negotiate your board's goals upward, for a bigger reward.", v: null },
+  { e: "club", so: 60, h: "next-season", t: "Road captains and mentors: you pick the veteran who helps a young rider grow.", v: null },
+  { e: "club", so: 70, h: "next-season", t: "A new dashboard and inbox: what needs you today comes first, and a message takes seconds to read.", v: null },
+  { e: "club", so: 80, h: "later", t: "A smarter assistant: one message instead of five, and you act straight from the inbox.", v: null },
+  { e: "club", so: 90, h: "not-decided", t: "Statistics and history: look back at your league and your division, season after season.", v: null },
+  { e: "club", so: 100, h: "not-decided", t: "A club museum: your winners, your legends and the races your club is remembered for.", v: null },
+  { e: "club", so: 110, h: "not-decided", t: "Friends and following: follow a manager or a rider, invite a friend, and see a world feed of results and trades.", v: [2, 3] },
+  { e: "club", so: 120, h: "not-decided", t: "Rider milestones: goals for one rider you can chase, even when it is not the smart move for the team.", v: null },
+  { e: "market", so: 10, h: "not-decided", t: "Deeper negotiation between managers: counter-offers, riders plus cash, and a deadline.", v: null },
+  { e: "market", so: 20, h: "not-decided", t: "Rumours on the transfer market: hear who is looking, and who else wants the rider you want.", v: null },
+  { e: "market", so: 30, h: "next-season", t: "A transfer market you can trust: limits on deals between friends, and every trade in an open log.", v: [5, 4] },
+  { e: "market", so: 40, h: "not-decided", t: "More than one wishlist, so you can sort the riders you follow.", v: null },
+  { e: "market", so: 50, h: "not-decided", t: "See an injury on another team's rider, and how long he is out.", v: [4, 3] },
+  { e: "races", so: 10, h: "now", t: "Secondary rider type explained: see what a rider's second type means and where it helps him.", v: [4, 4] },
+  { e: "races", so: 20, h: "not-decided", t: "Ride for the mountain or points jersey from day one: set the jersey as a rider's goal, and his race plan follows it.", v: null },
+  { e: "races", so: 30, h: "not-decided", t: "Pick where in a stage race a rider peaks, with a main goal and a backup goal.", v: null },
+  { e: "races", so: 40, h: "not-decided", t: "The team meeting: your sports director's plan for each stage, written in cycling terms. No sliders.", v: null },
+  { e: "races", so: 50, h: "later", t: "National championships: one day a season your riders race for their country's jersey.", v: [5, 5] },
+  { e: "races", so: 60, h: "later", t: "Worlds and Europeans with national teams, and you can be picked as national coach.", v: null },
+  { e: "races", so: 70, h: "not-decided", t: "A season planner that warns you: fatigue two weeks ahead, and which races a rider can still qualify for.", v: null },
+  { e: "races", so: 80, h: "not-decided", t: "Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.", v: null },
+  { e: "races", so: 90, h: "not-decided", t: "Routes that look like real racing: cobbles, a real summit finish, a long valley before the last climb. You can see it on the stage profile.", v: [3, 3] },
+  { e: "races", so: 100, h: "not-decided", t: "Your calendar colour-coded by your own status: entered, withdrawn, squad set.", v: null },
+  { e: "races", so: 110, h: "not-decided", t: "Watch a stage as a 3D replay with your own riders and colours.", v: null },
+  { e: "training", so: 10, h: "now", t: "A race sharpener: a short session the day before a race that gives form, not abilities.", v: [6, 5] },
+  { e: "training", so: 20, h: "this-season", t: "Plan a whole week per rider in one go: a session for every race day, for one rider or the whole squad.", v: null },
+  { e: "training", so: 30, h: "not-decided", t: "Form training for riders who are done developing, so a 32-year-old still has something to train for.", v: null },
+  { e: "training", so: 40, h: "not-decided", t: "A training camp: pay to focus one ability hard for a while, and lose race days while you do it.", v: null },
+  { e: "training", so: 40, h: "not-decided", t: "Staff you can feel: more roles and attributes, and a coach or doctor who changes how your season goes.", v: null },
+  { e: "training", so: 50, h: "now", t: "See how many percent a session moved an ability, not just the progress bar.", v: [5, 5] },
+  { e: "training", so: 60, h: "not-decided", t: "Auto-rest: set your own fatigue limit, and a tired rider rests by himself and goes back to his plan the next day.", v: null },
+  { e: "training", so: 70, h: "next-season", t: "Ready-made training programs, and later a place to share your own.", v: [3, 3] },
+  { e: "training", so: 80, h: "not-decided", t: "Your own labels on riders, so you can find them on the training page.", v: null },
+  { e: "youth", so: 10, h: "next-season", t: "Youth seasons that count: promotion, relegation and rankings for U23 and junior from season 5.", v: [5, 6] },
+  { e: "youth", so: 20, h: "next-season", t: "Prize money in youth races: a smaller pot than the senior races, big enough that a youth win pays, never big enough to carry a club.", v: null },
+  { e: "youth", so: 30, h: "next-season", t: "Your own young stars: choose a country you want more young riders from, and steer which rider types your academy produces.", v: null },
+  { e: "youth", so: 40, h: "later", t: "Scouts that differ: a better scout finds more, sees more of a rider, and charges less per report.", v: [4, 3] },
+  { e: "youth", so: 50, h: "not-decided", t: "Rival riders' abilities shown as a range, not an exact number, until you have scouted them.", v: null },
+];
+const TOTAL = ITEMS.length;
+// En raekke med kun ét af de to akser sat (fx [5, null]) taeller IKKE som
+// stemt endnu — ellers forsvinder punktet fra "kun ustemte" foer den anden
+// akse er sat (CodeRabbit-fund).
+const isFullyVoted = (it) => !!it.v && it.v[0] !== null && it.v[1] !== null;
+const VOTED = ITEMS.filter(isFullyVoted).length;
+
+function scaleHtml(shellId, idx, axis, value) {
+  let b = "";
+  for (let n = 1; n <= 6; n++) b += `<button class="sbtn${value === n ? " on" : ""}" type="button" data-shell="${shellId}" data-idx="${idx}" data-axis="${axis}" data-n="${n}">${n}</button>`;
+  return b;
+}
+
+function itemHtml(it, idx, mode, shellId) {
+  const stampOrChip = mode === "horizon"
+    ? `<span class="stamp">${ico(ENGINES[it.e].icon)}${ENGINES[it.e].label}</span>`
+    : `<span class="stamp">${HORIZON_LABEL[it.h]}</span>`;
+  const idea = it.v ? it.v[0] : null;
+  const imp = it.v ? it.v[1] : null;
+  return `<div class="item" data-voted="${it.v ? "1" : "0"}">
+    <div class="item-top"><span class="dot"></span><span class="item-title">${it.t}</span>${stampOrChip}</div>
+    <div class="axes">
+      <div class="axis"><span class="lbl">Idea</span><span class="scale">${scaleHtml(shellId, idx, "idea", idea)}</span></div>
+      <div class="axis"><span class="lbl">Importance</span><span class="scale">${scaleHtml(shellId, idx, "importance", imp)}</span></div>
+    </div>
+  </div>`;
+}
+
+function tabsHtml(mode, activeKey, unvotedOnly) {
+  if (mode === "horizon") {
+    return `<div class="tabs">${HORIZONS.map((h) => {
+      const n = ITEMS.filter((it) => it.h === h && (!unvotedOnly || !isFullyVoted(it))).length;
+      return `<button class="tab${h === activeKey ? " on" : ""}" type="button" data-tab="${h}">${HORIZON_LABEL[h]}<span class="cnt">${n}</span></button>`;
+    }).join("")}</div>`;
+  }
+  return `<div class="tabs">${Object.keys(ENGINES).map((e) => {
+    const n = ITEMS.filter((it) => it.e === e && (!unvotedOnly || !isFullyVoted(it))).length;
+    return `<button class="tab${e === activeKey ? " on" : ""}" type="button" data-tab="${e}">${ico(ENGINES[e].icon)}${ENGINES[e].label}<span class="cnt">${n}</span></button>`;
+  }).join("")}</div>`;
+}
+
+// STATE holder ét objekt pr. skal (4 i alt: A-desktop, A-mobile, B-desktop, B-mobile) —
+// de deler samme ITEMS-datasaet (stemmer er globale paa tvaers af variant, som i den rigtige app).
+const STATE = {};
+
+function renderBody(shellId) {
+  const st = STATE[shellId];
+  const bodyEl = document.getElementById(shellId + "-body");
+  if (!bodyEl) return;
+  const voted = ITEMS.filter(isFullyVoted).length;
+  const visibleItems = ITEMS
+    .map((it, i) => ({ it, i }))
+    .filter(({ it }) => (st.mode === "horizon" ? it.h === st.active : it.e === st.active))
+    .filter(({ it }) => !st.unvoted || !isFullyVoted(it));
+  const checkboxId = shellId + "-unvoted";
+  bodyEl.innerHTML = `<div class="ph">
+      <div><h1>Roadmap</h1><div class="horizon-caveat">Mockup: horizon per item is a proposal, prod needs a horizon column</div><div class="sub">Rate the plans below. Your votes help decide what gets built next.</div></div>
+      <div class="filter-cluster">
+        <label class="check-row" for="${checkboxId}"><input type="checkbox" id="${checkboxId}" class="sr-check" data-unvoted-toggle="${shellId}"${st.unvoted ? " checked" : ""}><span class="check-box${st.unvoted ? " on" : ""}" aria-hidden="true">${st.unvoted ? ico("check") : ""}</span>Show only what I have not voted on</label>
+        <span class="vote-count">You have voted on <b>${voted}</b> of <b>${TOTAL}</b></span>
+      </div>
+    </div>
+    ${tabsHtml(st.mode, st.active, st.unvoted)}
+    <div class="item-list">${visibleItems.length
+      ? visibleItems.map(({ it, i }) => itemHtml(it, i, st.mode, shellId)).join("")
+      : `<div class="micro" style="padding:10px 0">Nothing left unvoted in this tab.</div>`}</div>`;
+}
+
+function shellWrap(mode, shellId, device) {
+  const activeKey = mode === "horizon" ? "now" : "races";
+  STATE[shellId] = { mode, active: activeKey, unvoted: false };
+  return `<div id="${shellId}-body" data-shell="${shellId}"></div>`;
+}
+
+function desktopShell(mode, variantId) {
+  const shellId = variantId + "-desktop";
+  const items = ["Dashboard", "Inbox", "My Team", "Roadmap", "Board", "Sponsors"];
+  return `<div class="desktop-shell"><div class="shell">
+    <aside class="sidebar">
+      <div class="logo">CYCLING ZONE</div><div class="logo-rule"></div>
+      <div class="sb-label">Clubhouse</div>
+      ${items.map((i) => `<div class="sb-item${i === "Roadmap" ? " on" : ""}">${i}</div>`).join("")}
+    </aside>
+    <main class="main"><div class="page">${shellWrap(mode, shellId)}</div></main>
+  </div></div>`;
+}
+
+function mobileShell(mode, variantId) {
+  const shellId = variantId + "-mobile";
+  const nav = [["home", "Dashboard"], ["inbox", "Inbox"], ["bag", "Market"], ["team", "Riders"], ["star", "Roadmap"]];
+  return `<div class="mobile-shell"><div class="m-shell">
+    <div class="m-top"><span class="logo">CYCLING ZONE</span></div>
+    <div class="m-page">${shellWrap(mode, shellId)}</div>
+    <div class="m-nav">${nav.map(([i, l]) => `<div class="${l === "Roadmap" ? "on" : ""}">${ico(i)}<span>${l}</span></div>`).join("")}</div>
+  </div></div>`;
+}
+
+function render() {
+  document.getElementById("variant-a").innerHTML =
+    `<div class="section-label">Variant A — tabs by horizon, engine as a per-item chip</div>${desktopShell("horizon", "a")}${mobileShell("horizon", "a")}`;
+  document.getElementById("variant-b").innerHTML =
+    `<div class="section-label">Variant B — tabs by engine, horizon as a per-item stamp</div>${desktopShell("engine", "b")}${mobileShell("engine", "b")}`;
+  Object.keys(STATE).forEach(renderBody);
+}
+render();
+
+// ── Interaktion: fane-skift + vote-knapper + "kun ustemte" (client-only, ingen backend) ──
+document.body.addEventListener("click", (ev) => {
+  const tabBtn = ev.target.closest("[data-tab]");
+  if (tabBtn) {
+    const shellId = tabBtn.closest("[data-shell]").dataset.shell;
+    STATE[shellId].active = tabBtn.dataset.tab;
+    renderBody(shellId);
+    return;
+  }
+  const voteBtn = ev.target.closest("[data-axis]");
+  if (voteBtn) {
+    const idx = Number(voteBtn.dataset.idx);
+    const axis = voteBtn.dataset.axis;
+    const n = Number(voteBtn.dataset.n);
+    const it = ITEMS[idx];
+    const cur = it.v || [null, null];
+    it.v = axis === "idea" ? [n, cur[1]] : [cur[0], n];
+    // Stemmer er globale paa tvaers af begge varianter/skaller (samme datasaet) — genrender alle 4.
+    Object.keys(STATE).forEach(renderBody);
+    return;
+  }
+});
+
+// Aegte checkbox: lyt paa "change", ikke "click", saa Space/Enter og
+// klik-paa-label-tekst begge virker (delegeret, da knappen genskabes ved hver render).
+document.body.addEventListener("change", (ev) => {
+  const toggle = ev.target.closest("[data-unvoted-toggle]");
+  if (!toggle) return;
+  const shellId = toggle.dataset.unvotedToggle;
+  STATE[shellId].unvoted = toggle.checked;
+  renderBody(shellId);
+});
+</script>
+</body>
+</html>
