@@ -142,7 +142,8 @@ export default function TrainingMobileToday({
   changeLabel?: string;
   // #5620/#5485: markerings-tilstanden til hurtig hvile, sendt uaendret videre
   // til TrainingMobileRoster. `bulkSlot` er vaerktoejslinjen (TrainingMobileBulkBar)
-  // og staar lige over tabellen, under sorteringen.
+  // og staar lige over tabellen. Sorteringen (`sortSlot`) staar i tabellens
+  // kolonne-header (#5805).
   picked?: ReadonlySet<string> | null;
   onTogglePick?: (riderId: string) => void;
   bulkSlot?: React.ReactNode;
@@ -256,11 +257,13 @@ export default function TrainingMobileToday({
 
       {yesterdaySlot}
 
-      {sortSlot}
-
       {bulkSlot}
 
+      {/* #5805 (ejer 26/9): sorteringen står i tabellens kolonne-header
+          (rytter-kolonnen), øverst ved tabellen men uden en ekstra række over
+          den, så mindst 8 ryttere står på første skærm (#5485). */}
       <TrainingMobileRoster
+        riderHeader={sortSlot}
         picked={picked}
         onTogglePick={onTogglePick}
         riders={rosterRiders}

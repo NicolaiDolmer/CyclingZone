@@ -343,7 +343,12 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
 // navnets underlinje og i rytterens kort. `inline` viser SAMME kontrol i
 // tabellens værktøjslinje, så desktop kan sortere på alle nøgler uden at få
 // kolonnerne tilbage.
-function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inline = false }) {
+//
+// #5805 (ejer 26/9): `header` er telefon-tabellens udgave. Den står i tabellens
+// egen kolonne-header (rytter-kolonnen), så sorteringen er øverst ved tabellen
+// uden at tilføje en række over den: headeren vokser kun til tryk-målets 44 px,
+// og mindst 8 ryttere står stadig på første skærm (#5485, 390 × 844).
+function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inline = false, header = false }) {
   const options = [
     { key: "name", label: t("colRider") },
     { key: "primary_type", label: t("colType") },
@@ -362,6 +367,45 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
     { key: "status", label: t("colStatus") },
   ];
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
+
+  if (header) {
+    // Samme typografi som tabellens øvrige kolonne-headers (font-data 3xs
+    // uppercase); den valgte nøgle står i tekstfarven, så den læses som
+    // headerens værdi. Både vælgeren og retnings-knappen er 44 px høje (#1602).
+    return (
+      <div className="flex min-w-0 items-center gap-1" data-testid="training-mobile-sort">
+        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5">
+          <span className="flex-none font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
+            {t("mobileSort.label")}
+          </span>
+          <span className="relative flex min-w-0 items-center">
+            <select
+              value={sort ?? ""}
+              onChange={(e) => onSort(e.target.value)}
+              className="min-h-11 min-w-0 max-w-full appearance-none truncate rounded-cz bg-transparent pe-4 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-cz-3"
+            >
+              {options.map(({ key, label }) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <ChevronDownIcon size={12} className="pointer-events-none absolute end-0 text-cz-3" aria-hidden="true" />
+          </span>
+        </label>
+        <button
+          type="button"
+          onClick={() => sort && onSort(sort)}
+          disabled={!sort}
+          aria-label={dirAria}
+          title={dirAria}
+          className="-me-2 flex h-11 w-11 flex-none items-center justify-center rounded-cz text-cz-2 transition-colors hover:text-cz-1 disabled:opacity-40"
+        >
+          {sortDir === "desc"
+            ? <ArrowDownIcon size={14} aria-hidden="true" />
+            : <ArrowUpIcon size={14} aria-hidden="true" />}
+        </button>
+      </div>
+    );
+  }
 
   if (inline) {
     return (
@@ -2175,12 +2219,15 @@ export default function TrainingPage() {
             onOpenDay={(riderId) => setFocusPanelRiderId(riderId)}
             dayBusyFor={(riderId) => savingId === riderId || bulkApplying}
             yesterdaySlot={null}
-            // #5805 (ejer 26/9): sorteringen står over tabellen, hvor spilleren
-            // leder efter den, ikke under den (#5485 havde den nederst). Den
-            // er én række høj, så tabellen rykker kun den ene række ned.
+            // #5805 (ejer 26/9): sorteringen står øverst ved tabellen, hvor
+            // spilleren leder efter den, ikke under den (#5485 havde den
+            // nederst). Den bor i tabellens egen kolonne-header (rytter-
+            // kolonnen), så den ikke tilføjer en række over tabellen og mindst
+            // 8 ryttere stadig står på første skærm (#5485, 390 × 844).
             // Assistenten står stadig i rækken under overblikket (assistantRow).
             sortSlot={
               <RosterMobileSortControl
+                header
                 sort={rosterSort.sort}
                 sortDir={rosterSort.sortDir}
                 onSort={rosterSort.handleSort}
