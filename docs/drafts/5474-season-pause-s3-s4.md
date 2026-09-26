@@ -8,8 +8,9 @@ ingen em-dash, ingen tal ud over dem spilleren kan bruge).
 
 - Hvert `[EJER TJEKKER: ...]` er noget jeg ikke kunne verificere i repoet. Ret sætningen eller slet
   den, og fjern markøren.
+- Længde uden `[EJER TJEKKER]`-linjerne: EN 445 ord, DA 417 ord (loft 450).
 - Begge blokke er over Discords grænse på 2.000 tegn uden Nitro. Del dem ved `**Training**` /
-  `**Træning**` og post resten som besked nummer to.
+  `**Træning**` og post resten som besked nummer to (første del er ca. 1.750-1.800 tegn).
 - Klokkeslæt: kun "kl. 15" og "24 timer" er låst (patch note 7.297). Selve skiftet har intet
   klokkeslæt, så teksten siger "when the switch runs" / "når skiftet kører".
 - Bestyrelsen gentages ikke her. Linjen peger på mandat-opslaget (`docs/drafts/discord-mandate-flip.md`).
@@ -23,40 +24,38 @@ Refs #5474 #5506
 ## EN (#the-roadbook)
 
 ```
-**Season 3 to season 4: everything that changes, in one place**
-
-Season 3 is almost done, and a lot happens at the switch. Here it is in one post, so you don't have to piece it together from patch notes.
+**Season 3 to season 4: everything in one place**
 
 **When**
-The last race day of season 3 ends Sunday 27 September at 15:00. After that I run the switch. Season 4 starts 28 September, and its first stage starts 24 hours after the switch at the earliest, so you get a full day to set your squad.
+Season 3's last race day ends Sunday 27 September at 15:00. Then I run the switch. Season 4 starts 28 September, and its first stage starts at least 24 hours after the switch, so you get a full day to set your squad.
 
 **Promotion, relegation and the new pyramid**
-Promotion and relegation run as normal on your season 3 standings. Then every manager left in Division 4 moves up to Division 3, spread over the four pools by points. Division 4 goes from 8 pools to 4, filled with AI teams and racing from day one. From season 4 the pyramid is 1, 2, 4 and 4 pools, with 140 race days in every division.
+Promotion and relegation run as normal. Then every manager left in Division 4 moves up to Division 3, spread over its four pools by points. Division 4 shrinks from 8 pools to 4, filled with AI teams and racing from day one. The pyramid becomes 1, 2, 4 and 4 pools, and every division has 140 race days.
 
 **Money at the switch**
-Riders whose contract runs out become free agents, so extend anyone you want to keep before the switch. Your sponsor's guaranteed base is paid at season start. A rider who retires at the switch no longer costs you next season's salary. Your U23 and junior riders cost nothing in upkeep at this switch.
+Riders whose contract runs out become free agents, so extend the ones you want to keep. Your sponsor's guaranteed base is paid at season start. A rider who retires at the switch no longer costs you next season's salary. Your U23 and junior riders cost nothing in upkeep this time.
 [EJER TJEKKER: værdikørslen søndag. Kører den, så én linje + link til værdi-opslaget, ellers slet]
 
 **Youth squads**
-Your U23 team holds up to 12 riders and your junior team up to 10. In season 4 both ride their own races in their own groups: U23 one or two a week, juniors one, and juniors can race from 16. There is no prize money in youth races yet.
+Your U23 team holds 12 riders and your junior team 10. In season 4 both ride their own races in their own groups: U23 one or two a week, juniors one, from age 16. No prize money in youth races yet.
 [EJER TJEKKER: U23- og juniorsiderne åbnet for alle? Ellers "they open to everyone soon"]
 
 **Retirement and Graduation Day**
-Retirement is decided on the age a rider had in season 3. From 36 the chance rises every season, and a rider who reaches 40 always stops after that season. On Graduation Day a junior who turns 19 moves to U23, and a U23 rider who turns 23 moves to your senior team. You choose move up, sell or release. Do nothing, and the club moves him up if there is room, otherwise sells him.
+Retirement goes by a rider's age in season 3. The chance rises each season from 36, and at 40 he always stops once that season is done. On Graduation Day juniors turning 19 move to U23, and U23 riders turning 23 move to your senior team. You choose Move up, Sell or Release. Do nothing, and the club moves him up if there is room, otherwise sells him.
 
 **Training**
-From 28 September your riders train per race day. On a race day a rider races or trains, never both, and training runs in the evening after the day's last race. The Train today button stays, but the 25% bonus for pressing it goes.
+From 28 September your riders train per race day. A rider races or trains, never both, and training runs in the evening after the day's last race. The Train today button stays, but its +25% boost goes.
 
 **Your board**
-The board calls you to the annual meeting when the switch runs. I wrote a separate post about it: [link til mandat-opslaget]
+The board calls you to the annual meeting when the switch runs. It has its own post: [link til mandat-opslaget]
 [EJER TJEKKER: kun hvis Mandatet er flippet lørdag]
 
 **If you have been away**
-A team with no login for 30 days that has not signed up is parked outside the divisions at the switch. Nothing on the team is deleted. One tap on the dashboard brings you back, placed by your Global Rank, and you race again the same season.
+A team with no login for 30 days that has not signed up is parked outside the divisions at the switch. Nothing on the team is deleted. One tap on the dashboard brings you back, placed by your Global Rank, racing again the same season.
 [EJER TJEKKER: løn løber videre, ingen sponsorindtægt, mens holdet er parkeret?]
 
 **What I didn't get done**
-The new race engine is not part of the switch. Season 3 finishes on the current one, and I will post here before I turn the new one on. Youth divisions with promotion and relegation come in season 5; season 4 runs in groups.
+The new race engine is not part of the switch. Season 3 finishes on the current one, and I will post before I turn the new one on. Youth divisions with promotion and relegation come in season 5.
 [EJER TJEKKER: program pr. løbsdag (7 × 5) ikke bygget endnu? Så én linje her]
 
 Ask below if anything is unclear.
@@ -65,32 +64,30 @@ Ask below if anything is unclear.
 ## DA (#dansk-snak)
 
 ```
-**Sæson 3 til sæson 4: alt der ændrer sig, samlet ét sted**
-
-Sæson 3 er næsten slut, og der sker meget ved skiftet. Her er det hele i ét opslag, så du ikke selv skal stykke det sammen fra patch notes.
+**Sæson 3 til sæson 4: det hele samlet ét sted**
 
 **Hvornår**
-Sæson 3's sidste løbsdag slutter søndag 27. september kl. 15. Derefter kører jeg skiftet. Sæson 4 starter 28. september, og første etape starter tidligst 24 timer efter skiftet, så du får et helt døgn til at sætte din trup.
+Sæson 3's sidste løbsdag slutter søndag 27. september kl. 15. Så kører jeg skiftet. Sæson 4 starter 28. september, og første etape starter tidligst 24 timer efter skiftet, så du får et helt døgn til at sætte din trup.
 
 **Op- og nedrykning og den nye pyramide**
-Op- og nedrykning kører som normalt på din stilling i sæson 3. Derefter rykker alle managers, der er tilbage i division 4, op i division 3, fordelt på de fire puljer efter point. Division 4 går fra 8 puljer til 4, fyldt med AI-hold og med løb fra første dag. Fra sæson 4 er pyramiden 1, 2, 4 og 4 puljer, med 140 løbsdage i alle divisioner.
+Op- og nedrykning kører som normalt. Derefter rykker alle managers, der er tilbage i division 4, op i division 3, fordelt på dens fire puljer efter point. Division 4 går fra 8 puljer til 4, fyldt med AI-hold og med løb fra første dag. Pyramiden bliver 1, 2, 4 og 4 puljer, og alle divisioner har 140 løbsdage.
 
 **Økonomi ved skiftet**
-Ryttere, hvis kontrakt udløber, bliver free agents, så forlæng dem du vil beholde før skiftet. Din sponsors garanterede basis udbetales ved sæsonstart. En rytter, der går på pension ved skiftet, koster dig ikke længere næste sæsons løn. Dine U23- og juniorryttere koster intet i drift ved dette skifte.
+Ryttere, hvis kontrakt udløber, bliver free agents, så forlæng dem du vil beholde. Din sponsors garanterede basis udbetales ved sæsonstart. En rytter, der går på pension ved skiftet, koster dig ikke længere næste sæsons løn. Dine U23- og juniorryttere koster intet i drift denne gang.
 [EJER TJEKKER: værdikørslen søndag. Kører den, så én linje + link til værdi-opslaget, ellers slet]
 
 **Ungdomshold**
-Dit U23-hold har plads til 12 ryttere og dit juniorhold til 10. I sæson 4 kører begge deres egne løb i egne grupper: U23 et eller to om ugen, juniorer ét, og juniorer må køre fra 16. Der er ingen præmiepenge i ungdomsløb endnu.
+Dit U23-hold har plads til 12 ryttere og dit juniorhold til 10. I sæson 4 kører begge deres egne løb i egne grupper: U23 et eller to om ugen, juniorer ét, fra de er 16. Ingen præmiepenge i ungdomsløb endnu.
 [EJER TJEKKER: U23- og juniorsiderne åbnet for alle? Ellers "de åbner for alle snart"]
 
 **Pension og Graduation Day**
-Pension afgøres på den alder, rytteren havde i sæson 3. Fra 36 stiger chancen hver sæson, og en rytter der når 40, stopper altid efter den sæson. På Graduation Day rykker en junior, der fylder 19, op på U23, og en U23-rytter, der fylder 23, op på seniorholdet. Du vælger ryk op, sælg eller frigiv. Gør du intet, rykker klubben ham op hvis der er plads, ellers sælges han.
+Pension afgøres på rytterens alder i sæson 3. Fra 36 stiger chancen hver sæson, og som 40-årig stopper han altid, når den sæson er kørt. På Graduation Day rykker juniorer, der fylder 19, op på U23, og U23-ryttere, der fylder 23, op på seniorholdet. Du vælger Ryk op, Sælg eller Fyr. Gør du intet, rykker klubben ham op hvis der er plads, ellers sælges han.
 
 **Træning**
-Fra 28. september træner dine ryttere pr. løbsdag. På en løbsdag kører en rytter enten løb eller træner, aldrig begge dele, og træningen kører om aftenen efter dagens sidste løb. Knappen Træn i dag bliver, men bonussen på 25 % for at trykke på den forsvinder.
+Fra 28. september træner dine ryttere pr. løbsdag. En rytter kører enten løb eller træner, aldrig begge dele, og træningen kører om aftenen efter dagens sidste løb. Knappen Træn i dag bliver, men dens +25%-boost forsvinder.
 
 **Din bestyrelse**
-Bestyrelsen kalder dig til årsmøde, når skiftet kører. Jeg har skrevet et opslag for sig om det: [link til mandat-opslaget]
+Bestyrelsen kalder dig til årsmøde, når skiftet kører. Det har sit eget opslag: [link til mandat-opslaget]
 [EJER TJEKKER: kun hvis Mandatet er flippet lørdag]
 
 **Hvis du har været væk**
@@ -98,7 +95,7 @@ Et hold uden login i 30 dage, som ikke har tilmeldt sig, parkeres uden for divis
 [EJER TJEKKER: løn løber videre, ingen sponsorindtægt, mens holdet er parkeret?]
 
 **Det nåede jeg ikke**
-Den nye løbsmotor er ikke en del af skiftet. Sæson 3 køres færdig på den nuværende, og jeg skriver her, før jeg tænder den nye. Ungdomsdivisioner med op- og nedrykning kommer i sæson 5; sæson 4 kører i grupper.
+Den nye løbsmotor er ikke en del af skiftet. Sæson 3 køres færdig på den nuværende, og jeg skriver, før jeg tænder den nye. Ungdomsdivisioner med op- og nedrykning kommer i sæson 5.
 [EJER TJEKKER: program pr. løbsdag (7 × 5) ikke bygget endnu? Så én linje her]
 
 Spørg herunder, hvis noget er uklart.
@@ -134,9 +131,9 @@ Spørg herunder, hvis noget er uklart.
 | K20 | U23-/juniorsiderne for alle (usikker) | `docs/NOW.md` Next action ("`youth_squad_pages` → alle (ejeren ser siderne først)"); `patchNotes.js` 7.298 (beta). **[EJER TJEKKER]** |
 | K21 | Pension afgøres på alderen i den afsluttede sæson (S3) | `docs/NOW.md` Standing context ("Pension: afsluttet sæsons alder", `riderSeasonAge.js`) |
 | K22 | Stigende chance fra 36, stopper altid efter sæsonen som 40-årig | `help.json` (FAQ "Retirement is between 36 and 40") |
-| K23 | Graduation Day: junior 19 → U23, U23 23 → senior; ryk op, sælg, frigiv; default ryk op ellers sælg | `help.json` (Graduation Day-tekst); `docs/NOW.md` ("Graduation Day ved 23 (live 15/9)") |
+| K23 | Graduation Day: junior 19 → U23, U23 23 → senior; Ryk op, Sælg, Fyr; default ryk op ellers sælg | `help.json` (Graduation Day-tekst); `docs/NOW.md` ("Graduation Day ved 23 (live 15/9)"); knap-navnene fra `locales/en/academy.json` og `locales/da/academy.json` (Move up / Sell / Release, Ryk op / Sælg / Fyr) |
 | K24 | Træning pr. løbsdag fra 28/9; løb eller træning, aldrig begge; kører efter dagens sidste løb | `docs/NOW.md` Standing context "Træning" + løfte-tavle ("træning fra løb · flip 28/9"); runbook trin 14 |
-| K25 | Knappen bliver, 25 %-bonussen forsvinder | `docs/NOW.md` ("knap uden bonus", "#5281 ... merges på flip-dagen"); runbook trin 15; `docs/TRAINING_RULES.md` beslutning 2 |
+| K25 | Knappen bliver, +25%-boostet forsvinder | `docs/NOW.md` ("knap uden bonus", "#5281 ... merges på flip-dagen"); runbook trin 15; `docs/TRAINING_RULES.md` beslutning 2 |
 | K26 | Årsmødet ved skiftet, henvisning til mandat-opslaget | `docs/drafts/discord-mandate-flip.md` ("At the season changeover the board calls you in"); `docs/NOW.md` Next action (flip lørdag). **[EJER TJEKKER]** at flippet er sket |
 | K27 | 30 dage uden login + ikke tilmeldt → parkeret uden for divisionerne ved skiftet | runbook "S3 → S4" pkt. 4 og trin 5 (`season_signup_enabled`, parkering ved "Afslut sæson"); #4592 |
 | K28 | Intet på holdet slettes | `docs/audits/2026-09-19-saesonskifte-overblik.md` område 9 ("Holdet er urørt") |
