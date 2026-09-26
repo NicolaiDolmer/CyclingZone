@@ -1196,7 +1196,7 @@
       },
       "academySize": {
         "title": "Akademistørrelse (pr. hold)",
-        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+        "text": "Dit Akademi har to hold med hvert sit loft: op til {u23SquadCap} ryttere på dit U23-hold og op til {juniorSquadCap} på dit juniorhold. En rytter tager en plads på det hold, hans alder placerer ham på. Pladserne er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og kører aldrig seniorløb; fra sæson 4 kører de i deres egne ungdomsløb i stedet."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
@@ -1208,7 +1208,7 @@
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
-        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi ({u23SquadCap} U23- og {juniorSquadCap} juniorryttere) har en mærkbar løbende omkostning hver sæson."
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi ({u23SquadCap} U23- og {juniorSquadCap} juniorryttere) har en mærkbar løbende omkostning hver sæson. Skiftet fra sæson 3 til sæson 4 var en undtagelse: der blev ikke opkrævet drift for ungdomstrupperne ved det skifte."
       },
       "graduation": {
         "title": "Graduation Day",

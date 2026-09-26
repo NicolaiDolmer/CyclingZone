@@ -1196,7 +1196,7 @@
       },
       "academySize": {
         "title": "Academy size (per team)",
-        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and never race in Senior races; from season 4 they race in their own youth races instead."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1208,7 +1208,7 @@
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season. The season 3 to season 4 changeover was an exception: no upkeep was charged for youth squads at that switch."
       },
       "graduation": {
         "title": "Graduation Day",
