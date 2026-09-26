@@ -602,6 +602,15 @@ export function letGoMaxGapSeconds(input: {
 }
 
 /**
+ * #5812 (a): er jagtgruppen et FELT der kan lade et udbrud gaa? Delt af M5
+ * (lad-gaa-fasen) og segmentLoop (nulstillet tempo-drift), saa de to halvdele
+ * af mekanikken altid er slaaet til og fra sammen.
+ */
+export function isLetGoChaseGroup(chaseRiderCount: number): boolean {
+  return Number.isFinite(chaseRiderCount) && chaseRiderCount >= BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders;
+}
+
+/**
  * #5812 (a): hvor mange af segmentets km der hoerer til "lad gaa"-fasen, og
  * hvor mange til jagten. Fasen er STATELESS afledt af distancen: udbruddet
  * dannes altid paa rutens foerste segment (`formationKmFor`), og fasen varer
@@ -694,7 +703,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     let letGoKm = 0;
     let chaseKm = segmentLengthKm;
     let maxGapSeconds = 0;
-    if (breakaway.origin === "breakaway") {
+    if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length)) {
       maxGapSeconds = letGoMaxGapSeconds({
         breakawayRiderIds: breakaway.rider_ids,
         fieldRiderIds,

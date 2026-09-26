@@ -792,6 +792,12 @@ const breakawayExtra = {
   // (segmentLoop nulstiller tempo-driften mellem dem, se
   // `neutralizeBreakawayTempoDrift`), saa intet bogfoeres to gange.
   letGoSecondsPerKm: 12, // hvor hurtigt hullet vokser mens feltet lader det gaa
+  // "Lad gaa" er et FELT-valg: et stort felt der kontrollerer et lille udbrud.
+  // En jagtgruppe paa faerre ryttere end dette er ikke et felt (en mikro-
+  // startliste, eller et felt der allerede er sprunget i stykker), og der
+  // koerer M5 som foer: ingen lad-gaa-fase og ingen nulstillet tempo-drift.
+  // Prod-felter (150-192) ligger altid over.
+  letGoMinChaseRiders: 40,
   // Profiler uden egen noegle (tidskoersler der koerer vejetape-vejen, fx en
   // TTT uden hold-id) faar det flade loft — samme "ukendt = flad"-fallback som
   // routeAdapter's resolveProfileType, saa profil-navnet alene aldrig flytter

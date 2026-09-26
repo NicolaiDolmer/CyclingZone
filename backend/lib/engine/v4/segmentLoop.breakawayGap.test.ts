@@ -17,10 +17,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
+import { DEFAULT_MECHANIC_HOOKS, neutralizeBreakawayTempoDrift, runSegmentLoop, type GroupTempo } from "./segmentLoop.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
-import type { AbilityKey, Entrant, RouteV2, StageInput } from "./types.ts";
+import type { AbilityKey, Entrant, RaceGroup, RouteV2, StageInput } from "./types.ts";
 
 const ABILITY_KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
@@ -103,6 +103,29 @@ test("#5812 et udbrud paa en flad 180 km-etape bygger et forspring paa flere min
     if (caught) assert.ok(caught.km >= 80, `seed ${seed}: udbruddet hentet allerede km ${caught.km}`);
   }
   assert.ok(formedRaces >= 3, "et felt paa 180 skal danne et udbrud paa de fleste seeds");
+});
+
+test("#5812 neutralizeBreakawayTempoDrift: kun dagens udbrud, kun paa aabent terraen, kun mod et felt", () => {
+  const tempo = (dtSeconds: number): GroupTempo => ({
+    collectiveCp: 1, frontRiderIds: new Set(), cpByRider: new Map(), dtSeconds, effortTempoFactor: 1,
+  });
+  const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
+  const groups: RaceGroup[] = [
+    { id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: ids("b", 6), gap_seconds: 0, cohesion: 1 },
+    { id: "attack-0", kind: "breakaway", origin: "descent", rider_ids: ids("a", 2), gap_seconds: 10, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: ids("p", 150), gap_seconds: 120, cohesion: 1 },
+  ];
+  const input = new Map([["breakaway-0", tempo(1000)], ["attack-0", tempo(990)], ["peloton-0", tempo(980)]]);
+
+  const flat = neutralizeBreakawayTempoDrift(groups, input, "flat");
+  assert.equal(flat.get("breakaway-0")!.dtSeconds, 980, "dagens udbrud koerer gap-maessigt i feltets tempo");
+  assert.equal(flat.get("attack-0")!.dtSeconds, 990, "et nedkoerselsangreb beholder sin egen drift");
+  assert.equal(flat.get("peloton-0")!.dtSeconds, 980);
+  assert.equal(input.get("breakaway-0")!.dtSeconds, 1000, "input muteres ikke");
+
+  assert.strictEqual(neutralizeBreakawayTempoDrift(groups, input, "climb"), input, "paa en stigning afgoer evnen");
+  const smallField = groups.map((g) => (g.id === "peloton-0" ? { ...g, rider_ids: ids("p", 12) } : g));
+  assert.strictEqual(neutralizeBreakawayTempoDrift(smallField, input, "flat"), input, "en lille jagtgruppe er ikke et felt");
 });
 
 test("#5812 forspringet vokser foerst og falder bagefter (lad gaa, saa jagt) — aldrig negativt", () => {

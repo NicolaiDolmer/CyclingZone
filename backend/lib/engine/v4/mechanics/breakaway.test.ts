@@ -12,7 +12,11 @@ import {
   computeJoinScore,
   computeNetChaseAdvantage,
   effortJoinBoost,
+  formationKmFor,
+  isLetGoChaseGroup,
   joinProbability,
+  letGoMaxGapSeconds,
+  letGoSplitKm,
   selectBreakawayRiders,
   teamChasePlan,
   type BreakawayHookContext,
@@ -22,7 +26,7 @@ import {
   TRY_BREAK_JOIN_SCORE_BOOST,
 } from "./breakaway.ts";
 import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
-import { RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_EXTRA_TUNING, RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import type { AbilityKey, EffortLevel, Entrant, EngineState, RaceGroup, RiderRole, RiderState, RouteV2, TimelineEvent } from "../types.ts";
 
 // ── Fixtures (samme moenster som descent.test.ts) ─────────────────────────────
@@ -906,4 +910,84 @@ test("#5580 computeJoinScore: plusset loefter scoren bounded og aldrig over 1", 
   assert.ok(withBoost > base);
   assert.equal(computeJoinScore(ab, false, 0), base, "uden plus: uaendret score");
   assert.ok(computeJoinScore(abilities({ aggression: 99, endurance: 99, tempo: 99 }), true, 0.5) <= 1);
+});
+
+// ── #5812 (a): "lad gaa"-fasen ────────────────────────────────────────────────
+
+function threatScenario(level: number, breakawayThreat: number) {
+  const entrants: Record<string, Entrant> = {};
+  const field: string[] = [];
+  const escape: string[] = [];
+  for (let i = 0; i < 40; i++) {
+    const id = `f${i}`;
+    field.push(id);
+    entrants[id] = makeEntrant(id, { climbing: level, tempo: level, time_trial: level });
+  }
+  for (let i = 0; i < 6; i++) {
+    const id = `b${i}`;
+    escape.push(id);
+    const v = Math.min(99, level * breakawayThreat);
+    entrants[id] = makeEntrant(id, { climbing: v, tempo: v, time_trial: v });
+  }
+  return { entrants, field: [...field, ...escape], escape };
+}
+
+test("#5812 letGoMaxGapSeconds: et farligere udbrud faar aldrig mere forspring (monotont, bounded)", () => {
+  let previous = Infinity;
+  for (const threat of [1, 1.4, 1.8, 2.2, 2.6, 3]) {
+    const s = threatScenario(20, threat);
+    const gap = letGoMaxGapSeconds({ breakawayRiderIds: s.escape, fieldRiderIds: s.field, entrants: s.entrants, profileType: "flat" });
+    assert.ok(gap <= previous + 1e-9, `trussel ${threat}: ${gap} > ${previous}`);
+    const base = BREAKAWAY_EXTRA_TUNING.maxGapSecondsByProfile.flat ?? BREAKAWAY_EXTRA_TUNING.maxGapSecondsDefault;
+    const [lo, hi] = BREAKAWAY_EXTRA_TUNING.maxGapFactorBounds;
+    assert.ok(gap >= base * lo - 1e-9 && gap <= base * hi + 1e-9, `trussel ${threat}: ${gap} uden for loftets baand`);
+    previous = gap;
+  }
+});
+
+test("#5812 letGoMaxGapSeconds er skala-invariant (#4707) og foelger finalen", () => {
+  const at10 = threatScenario(10, 2);
+  const at40 = threatScenario(40, 2);
+  const gap = (s: ReturnType<typeof threatScenario>, finaleType: RouteV2["finale_type"] = null) =>
+    letGoMaxGapSeconds({ breakawayRiderIds: s.escape, fieldRiderIds: s.field, entrants: s.entrants, profileType: "mountain", finaleType });
+  assertClose(gap(at40), gap(at10), "samme relative udbrud paa to evne-niveauer");
+  assert.ok(gap(at10, "descent") < gap(at10, "long_climb"), "foran en nedkoerselsfinale giver feltet mindre");
+});
+
+test("#5812 letGoSplitKm: fasen starter ved dannelsen, slutter naar loftet er naaet, og km'ene gaar op", () => {
+  const formationKm = formationKmFor({ from_km: 0, to_km: 20 });
+  assert.ok(formationKm > 0 && formationKm <= 20);
+  const maxGapSeconds = 180;
+  let letGoTotal = 0;
+  for (let from = 0; from < 180; from += 20) {
+    const { letGoKm, chaseKm } = letGoSplitKm({ formationKm, maxGapSeconds, fromKm: from, toKm: from + 20 });
+    assert.ok(letGoKm >= 0 && chaseKm >= 0);
+    assertClose(letGoKm + chaseKm, 20 - Math.max(0, Math.min(20, formationKm - from)), `segment ${from}: km'ene skal gaa op`);
+    if (letGoTotal > 0 && letGoKm === 0) assert.ok(chaseKm > 0, "efter fasen jages der");
+    letGoTotal += letGoKm;
+  }
+  // Hovedstart + vaekst over fasen rammer praecis loftet.
+  assert.ok(Math.abs(letGoTotal * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm + 25 - maxGapSeconds) < 1e-6);
+});
+
+test("#5812 isLetGoChaseGroup: kun et felt lader et udbrud gaa", () => {
+  assert.equal(isLetGoChaseGroup(BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders), true);
+  assert.equal(isLetGoChaseGroup(BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders - 1), false);
+  assert.equal(isLetGoChaseGroup(Number.NaN), false);
+});
+
+test("#5812 en holdordre kan stadig aldrig SKABE et forspring: lad-gaa-fasen er ens for alle stances", () => {
+  // Stancen virker kun gennem jagten. I lad-gaa-fasen (foerste segmenter)
+  // giver chase, neutral og let_go derfor samme hul.
+  const route = routeWithSegments(9);
+  const gaps = (["chase", "neutral", "let_go"] as BreakawayStance[]).map((stance) => {
+    const orders: BreakawayTeamOrder[] = ["t0", "t1", "t2", "t3"].map((t) => ({ team_id: t, breakaway_stance: stance, riders: [] }));
+    const { state, ctx } = buildFieldScenario(60, 0, route, "5812-stance", orders, undefined, 4);
+    const formed = breakawayHook(state, ctx);
+    const peloton = formed.state.groups.find((g) => g.kind !== "breakaway")!;
+    const escape = formed.state.groups.find((g) => g.kind === "breakaway")!;
+    return peloton.gap_seconds - escape.gap_seconds;
+  });
+  assertClose(gaps[1], gaps[0], "chase vs neutral i lad-gaa-fasen");
+  assertClose(gaps[2], gaps[0], "let_go vs neutral i lad-gaa-fasen");
 });
