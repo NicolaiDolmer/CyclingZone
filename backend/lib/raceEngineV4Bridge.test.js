@@ -154,10 +154,19 @@ test("#5577 rankedFromV4Output: ingen sejrstype når finish-eventets vinder ikke
       { rider_id: "b", rank: 2, time_seconds: 103, group_id: "g1", status: "finished" },
     ],
     timeline: { events: [{ km: 150, type: "finish", params: { top: [{ rider_id: "a", rank: 1, gap: 0 }], win_type: "close_win" } }] },
-  });
+  }, { breakawayWin: true });
   assert.equal(ranked[0].rider_id, "b");
   assert.equal("win_type" in ranked[0], false);
-  assert.equal("breakaway_win" in ranked[0], false, "ukendt udbrudsdom (null) stemples ikke");
+  assert.equal("breakaway_win" in ranked[0], false, "motorens udbrudsdom gælder a, ikke b");
+});
+
+test("#5577 rankedFromV4Output: ukendt udbrudsdom (null, fx tidskørsel) stemples ikke", () => {
+  const ranked = rankedFromV4Output({
+    results: [{ rider_id: "a", rank: 1, time_seconds: 100, group_id: "g1", status: "finished" }],
+    timeline: { events: [{ km: 30, type: "finish", params: { top: [{ rider_id: "a", rank: 1, gap: 0 }], win_type: "itt_win" } }] },
+  }, { breakawayWin: null });
+  assert.equal(ranked[0].win_type, "itt_win");
+  assert.equal("breakaway_win" in ranked[0], false);
 });
 
 test("#5577 adapteren (ægte motor): vinderens sejrstype er en kendt nøgle, aldrig pladsholderen", async () => {

@@ -447,11 +447,35 @@ test("finaleHook (#4914): samme felt paa en SELEKTIV finale beholder udbruddets 
   assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "peloton'en maa IKKE smelte ind paa en selektiv finale");
   const chase = result.state.groups.find((g) => g.rider_ids.includes("p0"))!;
   assert.ok(chase.gap_seconds > RACE_V4_TUNING.groups.mergeThresholdSeconds, "peloton'en taber reel tid");
-  // #5577: paa en selektiv finale koerer vinderen fra de andre udbrydere —
-  // taet finish, og filmen maa navngive ham som den der angreb.
+  // #5577: udbruddet holder paa en selektiv finale = taet finish. De tre
+  // udbrydere er ens og deler vindertier, saa ingen navngives som angriber.
   const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
   assert.equal(decided.params.win_type, "close_win");
-  assert.ok(breakIds.includes(String(decided.params.rider_id)));
+  assert.ok(breakIds.includes(String(decided.params.winner_rider_id)));
+});
+
+test("finaleHook (#5577): to ryttere med lige score deler vindertier paa en selektiv finale — ingen navngives som angriber", () => {
+  const twin = abilities({ tempo: 80, endurance: 80, durability: 80, sprint: 80, acceleration: 80, climbing: 80, punch: 80 });
+  const entrants: Record<string, Entrant> = { t1: makeEntrant("t1", twin), t2: makeEntrant("t2", twin) };
+  const riders: Record<string, RiderState> = {
+    t1: makeRiderState("t1", "front-0", { wprime: 1, wprimeMax: 1 }),
+    t2: makeRiderState("t2", "front-0", { wprime: 1, wprimeMax: 1 }),
+  };
+  const groups: RaceGroup[] = [{ id: "front-0", kind: "peloton", rider_ids: ["t1", "t2"], gap_seconds: 0, cohesion: 1 }];
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "punch",
+    profileType: "hilly",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  const winnerGroup = result.state.groups.find((g) => g.rider_ids.includes("t1"))!;
+  assert.deepEqual([...winnerGroup.rider_ids].sort(), ["t1", "t2"], "lige score => samme tier");
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.equal(decided.params.rider_id, undefined, "ingen koerte fra den anden");
+  assert.ok(["t1", "t2"].includes(String(decided.params.winner_rider_id)));
 });
 
 test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (styrke straffes ikke)", () => {

@@ -566,7 +566,10 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         },
       });
     } else {
-      const riderGotClear = winType === "solo_win" || !massFinish;
+      // Kun naar vinderen kom ALENE over stregen: paa en selektiv finale deler
+      // ryttere med lige score tier (samme gruppe), og saa har ingen koert fra
+      // de andre (CodeRabbit-fund).
+      const riderGotClear = winnerGroup.rider_ids.length === 1 && (winType === "solo_win" || !massFinish);
       events.push({
         km: finishKm,
         type: "finale_attack",

@@ -136,11 +136,13 @@ export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawa
     stageGap: clampGap(r.time_seconds - winnerTime),
     components: { breakaway: inBreakaway.has(r.rider_id) ? 1 : 0 },
   }));
+  // Begge domme gælder motorens vinder (finish-eventets top[0] = results[0]).
+  // Er han filtreret fra (udgået/OTL), taler de om en anden rytter end rækkens
+  // vinder og stemples ikke (CodeRabbit-fund).
   const winnerRow = ranked[0];
   const finish = winnerFinishEvent(output?.timeline?.events);
-  if (finish && finish.top?.[0]?.rider_id === winnerRow.rider_id && typeof finish.win_type === "string") {
-    winnerRow.win_type = finish.win_type;
-  }
+  if (!finish || finish.top?.[0]?.rider_id !== winnerRow.rider_id) return ranked;
+  if (typeof finish.win_type === "string") winnerRow.win_type = finish.win_type;
   if (typeof breakawayWin === "boolean") winnerRow.breakaway_win = breakawayWin;
   return ranked;
 }
