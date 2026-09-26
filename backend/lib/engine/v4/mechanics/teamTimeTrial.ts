@@ -261,8 +261,10 @@ export type TimeTrialMode = {
    * #5515: juryen (#5582) doemmer PER RYTTER paa sluttid minus uheldets
    * tidstab. Enkeltstart: ja — enheden er én rytter, og hans tid er hans egen,
    * saa et mekanisk uheld aldrig kan koste loebet (RULES §9 raekke 4).
-   * Holdtidskoersel: nej — holdets tid er den k'te rytters passage, og én
-   * rytters uheld flytter den ikke; hold-graensen er uaendret siden #4915.
+   * Holdtidskoersel: nej — holdets tid er den k'te rytters passage, saa en
+   * per-rytter-jury er forkert her. Ejeren besluttede 23/9 (#4915) at juryen
+   * ogsaa gaelder TTT ("holdets tid minus holdets uheldstab"); den hold-jury er
+   * IKKE bygget, fordi S4-kalenderen ikke har TTT (TTT flyttes til S5, #3463).
    */
   individualJury: boolean;
   /** Ét segment for én enhed. Muterer enhedens lokale rytter-tilstand; returnerer ny-droppede rider_ids. */
