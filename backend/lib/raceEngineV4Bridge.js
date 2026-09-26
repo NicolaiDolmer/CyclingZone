@@ -104,18 +104,29 @@ const V4_OUT_OF_RACE_STATUSES = Object.freeze(new Set(["abandoned", "otl"]));
 /**
  * v4's StageOutput → v3's `ranked`-form (den eneste form raceRunner kender).
  *
- * @param {{results: Array<{rider_id, rank, time_seconds, status}>, groupSnapshots?: Array}} output
- * @param {{teamIdByRider?: Map<string, string|null>}} [ctx]
- * @returns {Array<{rider_id, team_id, rank, stageGap, components}>}
+ * #5577 (spec M2): vinderens række bærer desuden motorens EGEN dom over
+ * etapen, så fortællingen (raceNarrative.extractStageMoments) ikke skal gætte
+ * ud fra gap-sekunder som under v3:
+ *   - `win_type`: finish-eventets sejrstype (finalens afgørelse). Kun når
+ *     finish-eventets vinder ER rækkens vinder.
+ *   - `breakaway_win`: vandt dagens udbrud etapen (motorens trace, #5578)?
+ *     Kun når kaldstedet kender svaret (boolean); tidskørsler har intet udbrud.
+ * Felterne ligger UDEN FOR `components` (ingen score-komponent opdigtes) og
+ * kun på vinderens række. Nedstrøms bygger rækker med eksplicitte kolonner, så
+ * de når aldrig en tabel.
+ *
+ * @param {{results: Array<{rider_id, rank, time_seconds, status}>, groupSnapshots?: Array, timeline?: {events?: Array}}} output
+ * @param {{teamIdByRider?: Map<string, string|null>, breakawayWin?: boolean|null}} [ctx]
+ * @returns {Array<{rider_id, team_id, rank, stageGap, components, win_type?, breakaway_win?}>}
  */
-export function rankedFromV4Output(output, { teamIdByRider = new Map() } = {}) {
+export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawayWin = null } = {}) {
   const results = (output?.results ?? []).filter((r) => !V4_OUT_OF_RACE_STATUSES.has(r.status));
   if (!results.length) return [];
   const inBreakaway = breakawayRiderIdsFromSnapshots(output?.groupSnapshots);
   // v4 rangerer allerede (tid, finish_order, rider_id); vinderens tid er
   // referencen for etape-gappet, præcis som v3's gapFor er gap-til-vinder.
   const winnerTime = results[0].time_seconds;
-  return results.map((r, index) => ({
+  const ranked = results.map((r, index) => ({
     rider_id: r.rider_id,
     team_id: teamIdByRider.get(r.rider_id) ?? null,
     // Re-indekseret: v4's egen rank tælles over HELE feltet inkl. de udgåede
@@ -125,6 +136,24 @@ export function rankedFromV4Output(output, { teamIdByRider = new Map() } = {}) {
     stageGap: clampGap(r.time_seconds - winnerTime),
     components: { breakaway: inBreakaway.has(r.rider_id) ? 1 : 0 },
   }));
+  // Begge domme gælder motorens vinder (finish-eventets top[0] = results[0]).
+  // Er han filtreret fra (udgået/OTL), taler de om en anden rytter end rækkens
+  // vinder og stemples ikke (CodeRabbit-fund).
+  const winnerRow = ranked[0];
+  const finish = winnerFinishEvent(output?.timeline?.events);
+  if (!finish || finish.top?.[0]?.rider_id !== winnerRow.rider_id) return ranked;
+  if (typeof finish.win_type === "string") winnerRow.win_type = finish.win_type;
+  if (typeof breakawayWin === "boolean") winnerRow.breakaway_win = breakawayWin;
+  return ranked;
+}
+
+/** Det (sidste) finish-events params, eller null. */
+function winnerFinishEvent(events) {
+  if (!Array.isArray(events)) return null;
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (events[i]?.type === "finish") return events[i].params ?? null;
+  }
+  return null;
 }
 
 // ── v4-uheld → race_incidents (#4879) ────────────────────────────────────────
@@ -469,10 +498,15 @@ export function createRaceEngineV4Adapter(modules) {
       const input = buildV4StageInput({
         modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages,
       });
-      const v4Output = modules.core.simulateStageV4(input);
+      // #5577: med trace, når kernen har den (#5578), så fortællingen får
+      // motorens egen dom over udbruddet. `output` er byte-identisk med
+      // simulateStageV4(input) — tracen er rene måledata ved siden af.
+      const { output: v4Output, trace } = typeof modules.core.simulateStageV4WithTrace === "function"
+        ? modules.core.simulateStageV4WithTrace(input)
+        : { output: modules.core.simulateStageV4(input), trace: null };
       const teamIdByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id ?? null]));
       return {
-        ranked: rankedFromV4Output(v4Output, { teamIdByRider }),
+        ranked: rankedFromV4Output(v4Output, { teamIdByRider, breakawayWin: trace?.breakaway_win ?? null }),
         // #4879: M10 (#2944) + M15 (#2582) er koblet ind i motoren, så broen
         // oversætter nu deres udfald til v3's race_incidents-form.
         incidents: incidentRowsFromV4Output(v4Output),

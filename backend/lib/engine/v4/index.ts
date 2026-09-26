@@ -35,6 +35,7 @@ import {
   sortPassages,
 } from "./mechanics/bonusSeconds.ts";
 import { finaleHook } from "./finale.ts";
+import { winTypeFromFinaleEvents } from "./winType.ts";
 import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
 // simulateStageV4 nedenfor for hvorfor den koeres netop dér.
@@ -165,20 +166,23 @@ function buildLoads(state: SegmentLoopResult["state"]): RiderLoad[] {
     .sort((a, b) => a.rider_id.localeCompare(b.rider_id));
 }
 
-// F2-placeholder: M4 (finale.ts, Fase B) klassificerer det rigtige `win_type`
-// (bunch_sprint/reduced_sprint/solo/...) via finale_type + placerings-opgoer.
-// Uden en reel finale-mekanik (no-op hook i Fase A) er "group_finish" den
-// eneste ærlige beskrivelse: vinderen er blot foerste rytter i sin gruppe.
-const PLACEHOLDER_WIN_TYPE = "group_finish";
-
-function buildFinishEvent(results: StageResult[], distanceKm: number): TimelineEvent {
+// #5577 (spec M2): sejrstypen er finalens EGEN afgoerelse (finale.ts
+// klassificerer via winType.ts og baerer den paa sit afgoerelses-event), ikke
+// laengere pladsholderen "group_finish" der stod paa hver massestart
+// (RACE_ENGINE_RULES §7 raekke 18). Finish-eventet laeser den fra tidslinjen,
+// saa de to aldrig kan vaere uenige.
+//
+// Fallback naar finalen ikke afgjorde noget (kun et tomt felt kan det): én
+// rytter i maal er en solosejr, flere er en taet finish. Ingen gap-taerskel.
+function buildFinishEvent(results: StageResult[], distanceKm: number, timeline: readonly TimelineEvent[]): TimelineEvent {
   const winnerTime = results[0]?.time_seconds ?? 0;
   const top = results.slice(0, Math.min(10, results.length)).map((r) => ({
     rider_id: r.rider_id,
     rank: r.rank,
     gap: round2(r.time_seconds - winnerTime),
   }));
-  return { km: round2(distanceKm), type: "finish", params: { top, win_type: PLACEHOLDER_WIN_TYPE } };
+  const winType = winTypeFromFinaleEvents(timeline) ?? (results.length > 1 ? "close_win" : "solo_win");
+  return { km: round2(distanceKm), type: "finish", params: { top, win_type: winType } };
 }
 
 /**
@@ -291,7 +295,7 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
     jury: juryInputFor(input, state),
   });
   const results = timeLimit.results;
-  const finishEvent = buildFinishEvent(results, input.route.distance_km);
+  const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);
 
   // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
   // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.

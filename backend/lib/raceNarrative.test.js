@@ -78,6 +78,64 @@ test("breakaway_caught: udbrud blev indhentet, vinder kom ikke fra det", () => {
   assert.ok(!findMoment(moments, "breakaway_survived"));
 });
 
+// ── #5577: v4's egen sejrstype vinder over gap-tærsklerne ───────────────────
+
+function winKeysOf(moments) {
+  return moments.map((m) => m.moment_key).filter((k) => /_win$/.test(k));
+}
+
+test("#5577 v4: motorens solo_win bruges selv om gappet (1 s) ville give sprint_win", () => {
+  const ranked = [
+    { rider_id: "r1", team_id: "T1", rank: 1, stageGap: 0, components: { breakaway: 0 }, win_type: "solo_win" },
+    { rider_id: "r2", team_id: "T2", rank: 2, stageGap: 1, components: { breakaway: 0 } },
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "hilly", ranked });
+  assert.deepEqual(winKeysOf(moments), ["solo_win"], "præcis ét vindermoment, og det er motorens");
+  assert.equal(findMoment(moments, "solo_win").params.gapSeconds, 1, "gappet bæres stadig med (offentligt i resultatlisten)");
+});
+
+test("#5577 v4: motorens sprint_win bruges selv om gappet (15 s) ville give solo_win", () => {
+  const ranked = [
+    { rider_id: "r1", team_id: null, rank: 1, stageGap: 0, components: { breakaway: 0 }, win_type: "sprint_win" },
+    { rider_id: "r2", team_id: null, rank: 2, stageGap: 15, components: { breakaway: 0 } },
+  ];
+  assert.deepEqual(winKeysOf(extractStageMoments({ stageNumber: 1, ranked })), ["sprint_win"]);
+});
+
+test("#5577 v4: en ukendt sejrstype (fx den gamle pladsholder) falder tilbage til gap-vejen", () => {
+  const ranked = [
+    { rider_id: "r1", team_id: null, rank: 1, stageGap: 0, components: { breakaway: 0 }, win_type: "group_finish" },
+    { rider_id: "r2", team_id: null, rank: 2, stageGap: 5, components: { breakaway: 0 } },
+  ];
+  assert.deepEqual(winKeysOf(extractStageMoments({ stageNumber: 1, ranked })), ["close_win"]);
+});
+
+test("#5577 v4: motoren siger udbruddet IKKE vandt → intet breakaway_survived, selv om vinderen sad i et udbrud undervejs", () => {
+  // Nedkørselsangriberen: snapshot-kind 'breakaway', men hentet før finalen.
+  const ranked = [
+    { rider_id: "r1", team_id: null, rank: 1, stageGap: 0, components: { breakaway: 1 }, win_type: "close_win", breakaway_win: false },
+    { rider_id: "r2", team_id: null, rank: 2, stageGap: 3, components: { breakaway: 0 } },
+  ];
+  const breakawayStatus = new Map([["r1", { in_breakaway: true, breakaway_caught: false }]]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, breakawayStatus });
+  assert.equal(findMoment(moments, "breakaway_survived"), undefined);
+});
+
+test("#5577 v4: motoren siger udbruddet vandt → breakaway_survived ved siden af sejrstypen", () => {
+  const ranked = [
+    { rider_id: "r1", team_id: null, rank: 1, stageGap: 0, components: { breakaway: 1 }, win_type: "close_win", breakaway_win: true },
+    { rider_id: "r2", team_id: null, rank: 2, stageGap: 0, components: { breakaway: 1 } },
+    { rider_id: "r3", team_id: null, rank: 3, stageGap: 40, components: { breakaway: 0 } },
+  ];
+  const breakawayStatus = new Map([
+    ["r1", { in_breakaway: true, breakaway_caught: false }],
+    ["r2", { in_breakaway: true, breakaway_caught: false }],
+  ]);
+  const moments = extractStageMoments({ stageNumber: 1, ranked, breakawayStatus });
+  assert.deepEqual(winKeysOf(moments), ["close_win"]);
+  assert.equal(findMoment(moments, "breakaway_survived").params.count, 2);
+});
+
 test("team_day: samme hold med >=2 i etapens top 10", () => {
   const ranked = [
     riderRow({ id: "r1", team: "t1", rank: 1, components: { terrain: 0.9 } }),
