@@ -452,7 +452,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   update public.app_config set value = '"v4"'::jsonb where key = 'rider_valuation_model';
   update public.app_config set value = '0'::jsonb where key = 'rider_value_phase_step';
   ```
-  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS`).
+  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS`). Rollbacken lægger 5 tilbage: løngrundlaget skrives aldrig af kørslen og rulles derfor ikke tilbage (`ROLLBACK_COLUMNS`).
   - Sæt samtidig trin 9's kontakt til off, og revertér #5461, hvis trin 10 er kørt.
 - **Kan tændes i dag?** Nej. Modelvalg, spillerbesked og "kør" mangler.
 

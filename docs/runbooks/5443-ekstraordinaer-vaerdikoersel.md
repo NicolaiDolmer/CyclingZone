@@ -175,8 +175,11 @@ auktions-startprisloftet (1× `market_value`) følger den nye værdi.
 pwsh -File scripts/run-value-event-5443.ps1 -Rollback
 ```
 
-Lægger de seks kolonner tilbage fra backup-tabellen, kun for de ryttere der
-faktisk afviger. En gentagen rollback er et no-op.
+Lægger pris, typer og bedste rolle tilbage fra backup-tabellen, kun for de
+ryttere der faktisk afviger. En gentagen rollback er et no-op. Løngrundlaget
+(`current_production_value`) rulles **ikke** tilbage: kørslen skrev det
+aldrig, så en senere forskel er søndagens almindelige v4-opdatering. Backuppen
+bærer kolonnen alligevel, så post-verify i trin 8 kan bevise at den stod stille.
 
 **Sæt nøglen og trin-tælleren tilbage med det samme** — ellers skriver den
 førstkommende søndagskørsel de nye værdier igen:

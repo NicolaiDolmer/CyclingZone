@@ -105,6 +105,15 @@ export const BACKED_UP_COLUMNS = Object.freeze([
   "best_role", "best_role_rating",
 ]);
 
+// Det rollbacken lægger tilbage: alt i backuppen UNDTAGEN løngrundlaget.
+// v6-kørslen skriver ikke current_production_value (FREEZE_PRODUCTION_VALUE),
+// så enhver senere forskel på den kolonne er søndagens lovlige v4-opdatering,
+// ikke værdiskiftet — at "rulle den tilbage" ville flytte fremtidige lønkrav.
+// Backuppen bærer stadig kolonnen, så post-verify kan bevise at den stod stille.
+export const ROLLBACK_COLUMNS = Object.freeze(
+  BACKED_UP_COLUMNS.filter((c) => c !== "current_production_value")
+);
+
 const WRITE_CONCURRENCY = 25;
 const UPSERT_BATCH = 500;
 
@@ -175,9 +184,10 @@ export function rollbackBlockers({ confirm, ownerAck }) {
 }
 
 /**
- * Hvilke ryttere skal skrives tilbage? Kun dem hvor mindst én af de seks
- * kolonner afviger fra backuppen — samme "skriv kun det der ændrer sig"-regel
- * som selve kørslen, så en gentagen rollback er et no-op.
+ * Hvilke ryttere skal skrives tilbage? Kun dem hvor mindst én af de fem
+ * ROLLBACK_COLUMNS afviger fra backuppen — samme "skriv kun det der ændrer
+ * sig"-regel som selve kørslen, så en gentagen rollback er et no-op.
+ * Løngrundlaget røres ikke (se ROLLBACK_COLUMNS).
  * @param {Array<object>} backupRows
  * @param {Map<string, object>} currentById
  */
@@ -186,10 +196,10 @@ export function rollbackUpdates(backupRows, currentById) {
   for (const b of backupRows) {
     const cur = currentById.get(b.rider_id);
     if (!cur) continue; // rytteren findes ikke mere - der er intet at rulle tilbage
-    if (BACKED_UP_COLUMNS.every((c) => (cur[c] ?? null) === (b[c] ?? null))) continue;
+    if (ROLLBACK_COLUMNS.every((c) => (cur[c] ?? null) === (b[c] ?? null))) continue;
     out.push({
       id: b.rider_id,
-      ...Object.fromEntries(BACKED_UP_COLUMNS.map((c) => [c, b[c] ?? null])),
+      ...Object.fromEntries(ROLLBACK_COLUMNS.map((c) => [c, b[c] ?? null])),
     });
   }
   return out;
@@ -354,9 +364,9 @@ export async function runExtraordinaryValueEvent(supabase, {
 
   // Tørkørsel: PRÆCIS samme beregning, ingen skrivning.
   if (!apply) {
-    // Staar noeglen endnu ikke paa v6, pinnes v6 (+ marked) eksplicit. Loen-
-    // grundlaget slaas stadig op af refreshChangedRiderValues selv (en pinnet
-    // v6 traekker det ikke med), saa regnestykket er identisk med --apply.
+    // v6 (+ marked) pinnes altid eksplicit, praecis som i --apply - ogsaa naar
+    // noeglen endnu ikke er flippet. Loengrundlaget slaas stadig op af
+    // refreshChangedRiderValues selv (en pinnet v6 traekker det ikke med).
     const pinned = modelId !== REQUIRED_MODEL_ID;
     if (pinned) {
       log(`noeglen staar paa '${modelId}' - toerkoerslen regner '${REQUIRED_MODEL_ID}' pinnet, samme beregning som --apply efter flippet.`);
@@ -366,8 +376,7 @@ export async function runExtraordinaryValueEvent(supabase, {
     }
     // Tørkørslen rører IKKE trin-tælleren (app_config.rider_value_phase_step).
     const res = await refreshFn(supabase, {
-      log, dryRun: true, phaseStep: EXTRAORDINARY_PHASE_STEP, freezeProductionValue: FREEZE_PRODUCTION_VALUE,
-      ...(pinned ? { model: requiredModel } : {}),
+      log, dryRun: true, model: requiredModel, phaseStep: EXTRAORDINARY_PHASE_STEP, freezeProductionValue: FREEZE_PRODUCTION_VALUE,
     });
     const beforeById = new Map(res.before.map((r) => [r.id, r]));
     const { up, down, cpvMoved } = summariseUpdates(res.updates, beforeById);
@@ -417,7 +426,13 @@ export async function runExtraordinaryValueEvent(supabase, {
   log(`trin-taeller: app_config.${RIDER_VALUE_PHASE_STEP_KEY} = ${EXTRAORDINARY_PHASE_STEP}`);
 
   // SAMME funktion som søndagen. Ingen ny formel, ingen ny model-valg-logik.
-  const res = await refreshFn(supabase, { log, phaseStep: EXTRAORDINARY_PHASE_STEP, freezeProductionValue: FREEZE_PRODUCTION_VALUE });
+  // Modellen er den der lige har passeret markeds-låsen (pinnet), ikke et nyt
+  // opslag: ændres markeds-nøglen mellem lås og kørsel, må kørslen aldrig
+  // tavst regne uden det marked låsen godkendte. Løngrundlaget slås stadig op
+  // af refresh'en selv (en pinnet v6 trækker det ikke med) og fryses.
+  const res = await refreshFn(supabase, {
+    log, model: requiredModel, phaseStep: EXTRAORDINARY_PHASE_STEP, freezeProductionValue: FREEZE_PRODUCTION_VALUE,
+  });
   await completeDay(supabase, runDate, res);
 
   // Post-verify: læs igen og tæl hvor mange der reelt afviger fra backuppen.
@@ -453,14 +468,19 @@ export async function rollbackExtraordinaryValueEvent(supabase, { confirm, owner
   log("");
   log(`FAERDIG · ${written} ryttere rullet tilbage`);
   const modelId = await readValuationModelId(supabase);
+  log("");
   if (modelId !== DEFAULT_VALUATION_MODEL_ID) {
-    log("");
     log(`ADVARSEL: app_config.rider_valuation_model staar stadig paa '${modelId}'.`);
     log(`  Den foerstkommende soendagskoersel vil skrive ${modelId}-vaerdierne igen.`);
-    log("  Saet noeglen og trin-taelleren tilbage (samme statement-saet):");
+    log("  Saet noeglen tilbage:");
     log("    UPDATE public.app_config SET value = '\"v4\"'::jsonb WHERE key = 'rider_valuation_model';");
-    log(`    UPDATE public.app_config SET value = '0'::jsonb WHERE key = '${RIDER_VALUE_PHASE_STEP_KEY}';`);
   }
+  // Trin-taelleren nulstilles uanset hvad model-noeglen staar paa: er noeglen
+  // allerede sat tilbage til v4, kan en soendag stadig have talt trinnet op,
+  // og et senere v6-skifte ville saa arve et gammelt trin.
+  log("Nulstil trin-taelleren, saa et senere skifte ikke arver et gammelt trin:");
+  log(`    UPDATE public.app_config SET value = '0'::jsonb WHERE key = '${RIDER_VALUE_PHASE_STEP_KEY}';`);
+  log("Loengrundlaget (current_production_value) er ikke rullet tilbage: koerslen skrev det aldrig.");
   return { ran: true, written, modelId };
 }
 

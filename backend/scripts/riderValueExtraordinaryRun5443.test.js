@@ -17,6 +17,7 @@ import {
   FREEZE_PRODUCTION_VALUE,
   OWNER_ACK_ENV,
   REQUIRED_MODEL_ID,
+  ROLLBACK_COLUMNS,
   ROLLBACK_CONFIRM_PHRASE,
   applyBlockers,
   loadRequiredModelWithMarket,
@@ -125,7 +126,7 @@ test("rollback skriver kun det der faktisk afviger", () => {
   const updates = rollbackUpdates(backup, current);
   assert.deepEqual(updates.map((u) => u.id), ["b"]);
   assert.deepEqual(updates[0], {
-    id: "b", base_value: 200, current_production_value: 20, primary_type: "climber", secondary_type: "gc",
+    id: "b", base_value: 200, primary_type: "climber", secondary_type: "gc",
     best_role: null, best_role_rating: null,
   });
 });
@@ -214,11 +215,11 @@ test("#5497: en blokeret --apply roerer heller ikke trin-taelleren", async () =>
 
 // In-memory mock af de tabeller --apply rører: model-nøglerne, rytter-
 // snapshottet, backup-tabellen og dags-claimet. `ops` er rækkefølgen.
-function applySupabase({ backupRows = [], claimTaken = false } = {}) {
+function applySupabase({ backupRows = [], claimTaken = false, modelId = REQUIRED_MODEL_ID } = {}) {
   const ops = [];
   const backup = backupRows.map((r) => ({ ...r }));
   const riders = [{ id: "fixture-a", base_value: 10, current_production_value: 2, primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null }];
-  const values = { rider_valuation_model: REQUIRED_MODEL_ID, rider_production_value_model: DEFAULT_WAGE_MODEL_ID, rider_valuation_v6_market: FAKE_MARKET_FIT };
+  const values = { rider_valuation_model: modelId, rider_production_value_model: DEFAULT_WAGE_MODEL_ID, rider_valuation_v6_market: FAKE_MARKET_FIT };
   const pageOf = (rows) => ({ order() { return this; }, range: async () => ({ data: rows.map((r) => ({ ...r })), error: null }) });
   return {
     ops,
@@ -347,17 +348,43 @@ test("#5443 v6: toerkoersel EFTER flippet pinner ikke - samme sti som --apply", 
     refreshFn: async (_sb, opts) => { refreshOpts.push(opts); return { scanned: 0, changed: 0, updates: [], before: [] }; },
   });
   assert.equal(res.pinned, false);
-  assert.equal(refreshOpts[0].model, undefined);
+  assert.equal(refreshOpts[0].model.model_id, "v6");
+  assert.deepEqual(refreshOpts[0].model.market_fit, FAKE_MARKET_FIT);
   assert.equal(refreshOpts[0].freezeProductionValue, true);
 });
 
-test("#5443 v6: --apply regner trin 0 og lader loengrundlaget uroert", async () => {
+test("#5443 v6: --apply regner trin 0 med DEN model der passerede markeds-laasen, loengrundlaget uroert", async () => {
   const sb = applySupabase();
   const res = await runExtraordinaryValueEvent(sb, applyArgs(sb, []));
   assert.equal(res.ran, true);
   assert.equal(sb.refreshOpts.phaseStep, 0);
+  assert.equal(sb.refreshOpts.model.model_id, "v6");
+  assert.deepEqual(sb.refreshOpts.model.market_fit, FAKE_MARKET_FIT);
+  assert.equal(sb.refreshOpts.productionModel, undefined);
   assert.equal(sb.refreshOpts.freezeProductionValue, true);
   assert.equal(sb.refreshOpts.dryRun, undefined, "den rigtige koersel skriver");
+});
+
+test("#5443 v6: rollback roerer ikke loengrundlaget - en senere v4-aendring er soendagens, ikke skiftets", () => {
+  assert.equal(ROLLBACK_COLUMNS.includes("current_production_value"), false);
+  assert.ok(BACKED_UP_COLUMNS.includes("current_production_value"), "backuppen baerer den stadig til post-verify");
+  const backup = [{ rider_id: "a", base_value: 100, current_production_value: 10, primary_type: "gc", secondary_type: null, best_role: "gc", best_role_rating: 50 }];
+  const onlyWageMoved = new Map([["a", { id: "a", ...backup[0], current_production_value: 12 }]]);
+  assert.deepEqual(rollbackUpdates(backup, onlyWageMoved), []);
+  const priceMoved = new Map([["a", { id: "a", ...backup[0], base_value: 80, current_production_value: 12 }]]);
+  const [u] = rollbackUpdates(backup, priceMoved);
+  assert.equal(u.base_value, 100);
+  assert.equal(Object.hasOwn(u, "current_production_value"), false);
+});
+
+test("#5443 v6: rollback minder om trin-taelleren, ogsaa naar model-noeglen allerede er sat tilbage", async () => {
+  const backupRow = { rider_id: "fixture-a", base_value: 99, current_production_value: 2, primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null };
+  const sb = applySupabase({ backupRows: [backupRow], modelId: "v4" });
+  const lines = [];
+  await rollbackExtraordinaryValueEvent(sb, { confirm: ROLLBACK_CONFIRM_PHRASE, ownerAck: true, log: (l) => lines.push(l) });
+  const text = lines.join("\n");
+  assert.doesNotMatch(text, /staar stadig paa/);
+  assert.match(text, /rider_value_phase_step/);
 });
 
 test("#5443 v6: rollback advarer om v6-noeglen og trin-taelleren", async () => {
