@@ -16,12 +16,13 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { simulateStageV4 } from "./index.ts";
 import { validateGroupMembership } from "./timeline.ts";
+import { isWinType } from "./winType.ts";
 import type { StageInput, StageOutput } from "./types.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -116,3 +117,45 @@ for (const name of ["flat-massespurt", "bjerg-selektion", "punch-finale-forsprin
     }
   });
 }
+
+// ── Sejrstypen (#5577, spec M2) ─────────────────────────────────────────────
+// Foer stod "group_finish" paa hver massestart, og finalen udsendte
+// `sprint_decided` for enhver vinder. Forventningen pr. scenarie er det
+// scenariet beskriver: samlet felt paa fladt = massespurt, klatrer der slipper
+// én medrytter = taet finish, forspring baaret alene hjem = solo, nedkoersels-
+// finale afgjort i en gruppe = taet finish, enkeltstart = sin egen noegle.
+const EXPECTED_WIN_TYPE: Record<string, string> = {
+  "flat-massespurt": "sprint_win",
+  "bjerg-selektion": "close_win",
+  "punch-finale-forspring": "solo_win",
+  nedkoerselsfinale: "close_win",
+  "itt-solo": "itt_win",
+};
+
+function finishOf(output: StageOutput) {
+  const finish = output.timeline.events.find((e) => e.type === "finish");
+  assert.ok(finish, "tidslinjen skal have et finish-event");
+  return finish!;
+}
+
+for (const [name, winType] of Object.entries(EXPECTED_WIN_TYPE)) {
+  test(`golden fixture: ${name} — sejrstypen er ${winType}, en kendt noegle, og filmen siger kun spurt ved en spurt (#5577)`, () => {
+    const { input, expected } = loadFixture(name);
+    for (const [label, output] of [["frosset expected.json", expected], ["frisk koersel", simulateStageV4(input)]] as const) {
+      const finishWinType = finishOf(output).params.win_type;
+      assert.ok(isWinType(finishWinType), `${label}: win_type "${String(finishWinType)}" er ikke en kendt noegle`);
+      assert.equal(finishWinType, winType, label);
+
+      const sprintEvents = output.timeline.events.filter((e) => e.type === "sprint_decided");
+      assert.equal(sprintEvents.length, winType === "sprint_win" ? 1 : 0, `${label}: sprint_decided kun ved en massespurt`);
+
+      // Finalens afgoerelse og finish-eventet maa aldrig vaere uenige.
+      const decisions = output.timeline.events.filter((e) => e.type !== "finish" && e.params.win_type !== undefined);
+      for (const decision of decisions) assert.equal(decision.params.win_type, finishWinType, label);
+    }
+  });
+}
+
+test("golden fixtures: hvert scenarie har en forventet sejrstype (ingen fixture uden dom, #5577)", () => {
+  assert.deepEqual(Object.keys(EXPECTED_WIN_TYPE).sort(), readdirSync(fixturesDir).sort());
+});
