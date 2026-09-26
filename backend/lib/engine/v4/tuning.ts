@@ -765,19 +765,68 @@ const breakawayExtra = {
   // (overskuds-grenen i strengthSpeedExtra) ikke flyttes af omlaegningen. Foer/
   // efter-maaling: PR'en for #4707 (tal i balance-internals/, hard rule 17).
   abilityReferenceLevel: 0.13,
-  closingSecondsPerKmPerUnit: 25, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
+  closingSecondsPerKmPerUnit: 40, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
   stanceEffectWeight: 0.3, // T3 breakaway_stance-signalets vaegt paa netto-fordelen (bounded, se stanceMultiplierBounds)
   stanceMultiplierBounds: [0.7, 1.3] as readonly [number, number], // clamp paa stance-multiplikatoren — forhindrer at EN holdordre kan vaelte jagtens fortegn (mor-spec §5)
   finaleTypeChaseWeightDefault: 0.4, // sprinterholds-interesse-vaegt naar finale_type er ukendt/null
   finaleTypeChaseWeight: {
-    bunch_sprint: 1.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
-    reduced_sprint: 0.65, // reduceret spurt: stadig hoej interesse
+    bunch_sprint: 4.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
+    reduced_sprint: 2.6, // reduceret spurt: stadig hoej interesse
     punch: 0.3, // punch-finale: lav sprinter-interesse (sprinterhold jagter sjaeldent punch-finaler haardt)
     breakaway: 0.1, // breakaway-favoriseret finale: minimal sprinter-interesse (feltet forventer selv et udbrud)
     descent: 0.15, // nedkoersels-finale: lav sprinter-interesse
     long_climb: 0.1, // lang klatring: minimal sprinter-interesse
     solo_tt: 0.05, // enkeltstart: irrelevant (ingen felt-dynamik) men holdt lav i stedet for 0 for robusthed
   } as Partial<Record<import("./types.ts").FinaleType, number>>, // pr. finale-type sprinterhold-interesse-vaegt (#2416's "terraen + rest-km-proxy")
+
+  // ── "Lad gaa"-fasen (#5812 a) ────────────────────────────────────────────
+  // Foer kunne et udbrud aldrig bygge et forspring: det startede med sin
+  // hovedstart, tempo-modellen gav feltet mere lae end udbruddet, og M5 kunne
+  // kun lukke huller. Nu goer feltet som i virkeligheden: det lader udbruddet
+  // gaa, hullet vokser med `letGoSecondsPerKm` op til et loft, og FOERST
+  // derefter begynder jagten (closingSecondsPerKmPerUnit ovenfor). Loftet
+  // afhaenger af terraenet (profil) og af hvor farligt udbruddet er: jo mere
+  // GC-trussel udbruddet rummer RELATIVT til feltet, jo mindre lader feltet
+  // det faa (forhold, saa leddet er skala-invariant, #4707).
+  // M5 ejer hullet mellem udbrud og jagtgruppe alene paa aabent terraen
+  // (segmentLoop nulstiller tempo-driften mellem dem, se
+  // `neutralizeBreakawayTempoDrift`), saa intet bogfoeres to gange.
+  letGoSecondsPerKm: 12, // hvor hurtigt hullet vokser mens feltet lader det gaa
+  // "Lad gaa" er et FELT-valg: et stort felt der kontrollerer et lille udbrud.
+  // En jagtgruppe paa faerre ryttere end dette er ikke et felt (en mikro-
+  // startliste, eller et felt der allerede er sprunget i stykker), og der
+  // koerer M5 som foer: ingen lad-gaa-fase og ingen nulstillet tempo-drift.
+  // Prod-felter (150-192) ligger altid over.
+  letGoMinChaseRiders: 40,
+  // Profiler uden egen noegle (tidskoersler der koerer vejetape-vejen, fx en
+  // TTT uden hold-id) faar det flade loft — samme "ukendt = flad"-fallback som
+  // routeAdapter's resolveProfileType, saa profil-navnet alene aldrig flytter
+  // en tid (index.teamTimeTrial.test.ts).
+  maxGapSecondsDefault: 190,
+  maxGapSecondsByProfile: {
+    flat: 190,
+    rolling: 80,
+    hilly: 360,
+    mountain: 420,
+    high_mountain: 150,
+    cobbles: 45,
+    gravel: 300,
+    classic: 300,
+  } as Partial<Record<import("./types.ts").ProfileType, number>>, // pr. profil: hvor meget feltet typisk giver et udbrud
+  // Finalen flytter loftet: foran en nedkoerselsfinale kontrollerer
+  // favoritternes hold hullet taettere (dagen afgoeres over sidste top, og
+  // udbruddet skal ikke have et forspring de ikke kan hente ned ad bakke).
+  // Finaler uden noegle faar faktor 1.
+  maxGapFinaleFactor: {
+    descent: 0.5,
+  } as Partial<Record<import("./types.ts").FinaleType, number>>,
+  // Et udbrud er per konstruktion udvalgt paa aggression/endurance/tempo, saa
+  // dets GC-trussel ligger typisk et godt stykke OVER feltets snit. Referencen
+  // er det typiske forhold: et udbrud paa referencen faar terraenets grundloft,
+  // et farligere mindre, et mindre farligt mere.
+  threatReferenceRatio: 1.9,
+  threatGapSensitivity: 1.0, // hvor meget (forhold / reference - 1) krymper loftet
+  maxGapFactorBounds: [0.4, 1.3] as readonly [number, number], // clamp paa trussel-faktoren — ét farligt udbrud faar stadig noget, et harmloest faar ikke uendeligt
 };
 
 /** M5 additiv udbruds-tuning (deep-frosset). Se breakawayExtra-kommentaren ovenfor. */

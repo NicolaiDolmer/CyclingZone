@@ -12,7 +12,7 @@
         }
       },
       {
-        "km": 45,
+        "km": 12,
         "type": "breakaway_formed",
         "params": {
           "group_id": "breakaway-0",
@@ -84,7 +84,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "peloton-0",
-          "gap_seconds": 39.01
+          "gap_seconds": 14.46
         }
       },
       {
@@ -92,7 +92,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "gruppetto-1001",
-          "gap_seconds": 171.26
+          "gap_seconds": 146.71
         }
       },
       {
@@ -134,7 +134,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "breakaway-0",
-          "gap_seconds": 23.91
+          "gap_seconds": 79.65
         }
       },
       {
@@ -198,6 +198,28 @@
       },
       {
         "km": 105,
+        "type": "group_merged",
+        "params": {
+          "group_id": "peloton-0",
+          "into_group_id": "finale-winner-0",
+          "rider_ids": [
+            "r01"
+          ]
+        }
+      },
+      {
+        "km": 105,
+        "type": "group_merged",
+        "params": {
+          "group_id": "peloton-0",
+          "into_group_id": "finale-tier-1",
+          "rider_ids": [
+            "r03"
+          ]
+        }
+      },
+      {
+        "km": 105,
         "type": "finale_attack",
         "params": {
           "kind": "placement_gap",
@@ -237,7 +259,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "breakaway-0",
-          "gap_seconds": 142.95
+          "gap_seconds": 260.67
         }
       },
       {
@@ -284,7 +306,7 @@
             {
               "rider_id": "r02",
               "rank": 5,
-              "gap": 142.96
+              "gap": 260.67
             },
             {
               "rider_id": "r09",
@@ -353,7 +375,7 @@
     {
       "rider_id": "r02",
       "rank": 5,
-      "time_seconds": 13554.84,
+      "time_seconds": 13672.55,
       "group_id": "breakaway-0",
       "status": "finished",
       "injury_days": null
@@ -586,7 +608,7 @@
             "r04",
             "r05"
           ],
-          "gap_seconds": 39.01347235555596
+          "gap_seconds": 14.463099864695778
         },
         {
           "group_id": "gruppetto-1001",
@@ -603,7 +625,7 @@
             "r14",
             "r15"
           ],
-          "gap_seconds": 171.26038505706413
+          "gap_seconds": 146.71001256620394
         }
       ]
     },
@@ -627,7 +649,7 @@
           "rider_ids": [
             "r02"
           ],
-          "gap_seconds": 23.912075314432848
+          "gap_seconds": 79.65132050309256
         },
         {
           "group_id": "gruppetto-1001",
@@ -682,7 +704,7 @@
           "rider_ids": [
             "r02"
           ],
-          "gap_seconds": 142.9510069383009
+          "gap_seconds": 260.66552071701375
         },
         {
           "group_id": "gruppetto-1001",

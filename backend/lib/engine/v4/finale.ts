@@ -307,8 +307,18 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let bestSurvivingGap = Infinity;
   let bestSurvivingGroupForEvent: RaceGroup | null = null;
 
+  // #5812: naar FELTET henter et udbrud i finalen paa en massefinale (antals-
+  // vinduet nedenfor), kommer den samlede gruppe i maal paa frontens tid, og
+  // det forspring feltet selv havde paa grupperne bag sig, flytter med. Uden
+  // det blev en gruppe der hang 20 s efter feltet maalt mod et udbrud der laa
+  // minutter foran, og blev staaende som en separat gruppe, selvom feltet
+  // foran den netop havde hentet udbruddet. Kun paa massefinale-ruter (samme
+  // gate som antals-vinduet), saa selektive finaler er uroerte.
+  let caughtBunchShiftSeconds = 0;
+  const caughtGroups: RaceGroup[] = [];
+
   for (const group of chaseCandidates) {
-    const carriedGapSeconds = Math.max(0, group.gap_seconds);
+    const carriedGapSeconds = Math.max(0, group.gap_seconds - caughtBunchShiftSeconds);
     const leadDefend = collectiveAbility(defenderIds, entrants, FLIGHT_KEYS);
     const leadReserve = collectiveWprimeReserve(defenderIds, state.riders, entrants);
     const chasePower = collectiveAbility(group.rider_ids, entrants, CHASE_KEYS);
@@ -333,13 +343,14 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // mindre forsvarer uden at have antals-fordelen (code-review-fund,
     // CodeRabbit). Gaten er stoerrelse, ikke `kind` — se funktionens egen
     // kommentar for hvorfor navnet ikke duer.
-    const catchThreshold = bunchCatch
+    const bunchSized = bunchCatch
       && isBunchSizedChaseGroup(
         group.rider_ids.length,
         fieldSize,
         extra.bunchCatchMinFieldFraction,
         extra.bunchCatchMinRiders,
-      )
+      );
+    const catchThreshold = bunchSized
       ? Math.max(
           mergeThreshold,
           bunchCatchWindowSeconds(
@@ -351,10 +362,22 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         )
       : mergeThreshold;
     const caught = newGap < catchThreshold;
+    // Forskydningen gaelder kun naar feltet henter et UDBRUD (en front der ikke
+    // selv er felt-stor). Har feltet allerede samlet fronten, er fronten feltet,
+    // og en gruppe bagved maales mod den som altid — ellers ville hver hentet
+    // klump kreditere den naeste med sin egen lukning.
+    const frontIsEscape = !isBunchSizedChaseGroup(
+      defenderIds.length,
+      fieldSize,
+      extra.bunchCatchMinFieldFraction,
+      extra.bunchCatchMinRiders,
+    );
 
     if (caught) {
+      caughtGroups.push(group);
       contenderIds = [...contenderIds, ...group.rider_ids];
       defenderIds = [...defenderIds, ...group.rider_ids];
+      if (bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
     } else {
       const survivor: RaceGroup = { ...group, gap_seconds: newGap, rider_ids: [...group.rider_ids] };
       survivingGroups.push(survivor);
@@ -531,6 +554,24 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         rider_ids: [...unscoredContenderIds],
         gap_seconds: 0,
         cohesion: 1,
+      });
+    }
+  }
+
+  // #5812 (invariant #4971): frontens grupper og de grupper finalen HENTER,
+  // gaar op i placerings-grupperne. Det er et reelt gruppeskift og skal staa i
+  // tidslinjen, ellers kan et split paa samme (sidste) segment paastaa en
+  // gruppe rytteren aldrig ender i. Foer skete det naesten aldrig (udbrud og
+  // splits blev hentet foer finalen); med lad-gaa-fasen sker det oftere.
+  for (const caughtGroup of [...frontPool, ...caughtGroups]) {
+    const members = new Set(caughtGroup.rider_ids);
+    for (const placement of placementGroups) {
+      const riderIds = placement.rider_ids.filter((id) => members.has(id));
+      if (riderIds.length === 0 || placement.id === caughtGroup.id) continue;
+      events.push({
+        km: finishKm,
+        type: "group_merged",
+        params: { group_id: caughtGroup.id, into_group_id: placement.id, rider_ids: riderIds },
       });
     }
   }
