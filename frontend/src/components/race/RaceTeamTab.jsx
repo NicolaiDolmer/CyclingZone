@@ -186,6 +186,7 @@ export default function RaceTeamTab({
   if (phase === "before") {
     return (
       <div id="race-selection-anchor" className="flex flex-col gap-[14px]">
+        <RaceStageProfileRow profile={stageProfile} stageLabel={stageProfileLabel} hasClassifications={hasClassifications} />
         {/* #5419: samme StageStripe som Etaper-fanen, EN linje over udtagelsen —
             lader manageren bladre etaper her og se rute-match/FitBar pr. etape
             uden at hoppe via Etaper-fanen. Ren navigation (delt ?stage=); ændrer
@@ -199,7 +200,6 @@ export default function RaceTeamTab({
             times={stageStripeTimes}
           />
         )}
-        <RaceStageProfileRow profile={stageProfile} stageLabel={stageProfileLabel} hasClassifications={hasClassifications} />
         <RaceSelectionPanel
           raceId={raceId}
           selectedStageIndex={selectedStageIndex}
