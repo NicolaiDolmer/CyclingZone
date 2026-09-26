@@ -16,11 +16,14 @@ test("#4557 board: chairmanQuote null → hele citat-boksen udelades (aldrig en 
 });
 
 test("#4557 board: contextKey er selv betinget (citat-nøgler kan mangle pr. arketype)", () => {
-  assert.match(source, /board\.chairmanQuote\.contextKey \? ` · \$\{t\(board\.chairmanQuote\.contextKey\)\}` : ""/);
+  assert.match(source, /board\.chairmanQuote\.contextKey \? t\(board\.chairmanQuote\.contextKey\) : null/);
+  // #5633 · navn og kontekst samles med filter(Boolean), saa et manglende navn
+  // ikke efterlader " · kontekst" med et hul foran skilletegnet.
+  assert.match(source, /\]\.filter\(Boolean\)\.join\(" · "\)/);
 });
 
 test("#4557 board: minute-feed rækker attribueres altid til memberName, aldrig anonymt", () => {
-  assert.match(source, /\{minute\.memberName\}/);
+  assert.match(source, /\[minute\.memberName, formatWeekdayOnly\(minute\.occurredAt\)\]\.filter\(Boolean\)/);
   assert.match(source, /t\(minute\.textKey, minute\.textParams \|\| \{\}\)/);
 });
 

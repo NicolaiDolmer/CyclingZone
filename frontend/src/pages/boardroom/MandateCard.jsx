@@ -28,8 +28,10 @@ function GoalReceipt({ receipt, t }) {
     lines.push(
       <span key="lastMovement">
         <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
+        {/* #5633 · Replikken er maalejerens egne ord (samme person som
+            "Vaegtet af" nedenfor), saa den staar i anfoerselstegn. */}
         {appendDate(
-          t(receipt.lastMovementKey, receipt.lastMovementParams || {}),
+          `“${t(receipt.lastMovementKey, receipt.lastMovementParams || {})}”`,
           formatWeekdayShortDate(receipt.lastMovementAt),
         )}
       </span>,
