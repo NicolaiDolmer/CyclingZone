@@ -415,8 +415,12 @@ function computeGroupTempo(
   return { collectiveCp, frontRiderIds, cpByRider, dtSeconds, effortTempoFactor };
 }
 
-/** Gruppens krydsningstid paa segmentet ved et givet indsats-led (#5581: ogsaa tidsgraense-gulvets tidsfunktion). */
-function groupDtSeconds(
+/**
+ * Gruppens krydsningstid paa segmentet ved et givet indsats-led (#5581: ogsaa
+ * tidsgraense-gulvets tidsfunktion). Eksporteret for testbarhed, samme
+ * praecedens som `groupDraftSpeedGain`.
+ */
+export function groupDtSeconds(
   collectiveCp: number,
   segment: Segment,
   tuning: EngineTuning,
