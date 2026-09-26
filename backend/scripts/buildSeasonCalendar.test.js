@@ -457,8 +457,16 @@ test("#5802: formatGrandTourOrder viser GT'erne i start-rækkefølge med dato og
     { name: "Vuelta", firstDate: "2026-10-20", firstGameDay: 110, realOrder: 0.75 },
   ];
   const ok = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: [] }, { tier: 2, grandTourStarts: [] }] });
-  assert.equal(ok.length, 2, "overskrift + D1; D2 uden GT'er springes over");
+  assert.equal(ok.length, 3, "overskrift + D1-rækkefølge + D1-første-dag; D2 uden GT'er springes over");
   assert.match(ok[1], /D1: Giro \(2026-09-28\) → Tour \(2026-10-07\) → Vuelta \(2026-10-20\)\s+✅$/);
+  assert.match(ok[2], /D1: ingen GT-start på sæsonens første dag \(tidligst dag 3\)\s+✅$/);
+
+  // Ejer 26/9 kl. 22:40: en GT paa saesonens foerste dag vises som ❌ med gatens tekst.
+  const tidlig = formatGrandTourOrder({
+    tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: [], gtEarlyStartViol: ["tier 1: Giro starter for tidligt"] }],
+  });
+  assert.match(tidlig[2], /❌$/);
+  assert.match(tidlig[3], /! tier 1: Giro starter for tidligt/);
 
   const fejl = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: ["tier 1: forkert"] }] });
   assert.match(fejl[1], /❌$/);

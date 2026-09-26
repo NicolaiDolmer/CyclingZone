@@ -13,9 +13,10 @@ import assert from "node:assert/strict";
 import {
   gameDaySpansByRace, detectMonumentsInsideGrandTours, computeGameDayOverlap,
   detectMinOverlapViolations, detectQuotaViolations,
-  detectGrandTourOrderViolations, listGrandTourStarts,
+  detectGrandTourOrderViolations, listGrandTourStarts, detectGrandTourEarlyStartViolations,
 } from "./calendarPlacementGates.js";
-import { scorecardGateGroups } from "./calendarScorecardReport.js";
+import { scorecardGateGroups, scoreCalendarPlan, alleBrud } from "./calendarScorecardReport.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE, TIER_DENSITY, TIER_OVERLAP_CAP } from "./calendarTierCaps.js";
 import {
   detectTerrainBandViolations, detectCoverageViolations, computeTierCoverageStats,
@@ -287,4 +288,60 @@ test("#5802: GT-rækkefølgen er en BLOKERENDE placerings-gate (stopper --apply,
   assert.match(g.applyBlocking[0], /^GT-rækkefølge \(§3\/#5802\)/);
   assert.deepEqual(g.finaleDrift, []);
   assert.deepEqual(g.uniformDrift, []);
+});
+
+// ── §3/#5802: ingen Grand Tour paa saesonens foerste dag (ejer 26/9 kl. 22:40) ──────────
+// gtKalender lægger 5 løbsdage pr. kalenderdato fra 2026-10-01, så løbsdag 0 = dag 1,
+// løbsdag 5 = dag 2 og løbsdag 10 = dag 3.
+const FOERSTE_DAG = "2026-10-01";
+
+test("#5802: reglens tal er 'tidligst dag 3' (dato-indeks 2), aldrig dag 1", () => {
+  assert.equal(GRAND_TOUR_EARLIEST_START_DATE_INDEX, 2);
+});
+
+test("#5802: en GT på sæsonens første dag er et brud med navn, dato og dag-nummer", () => {
+  const starts = listGrandTourStarts(gtKalender({ giro: 0, tour: 25, vuelta: 50 }));
+  const v = detectGrandTourEarlyStartViolations({ tier: 1, grandTourStarts: starts, seasonFirstDay: FOERSTE_DAG });
+  assert.equal(v.length, 1, "kun Giroen starter for tidligt");
+  assert.match(v[0], /^tier 1: Giro starter 2026-10-01 \(dag 1 i sæsonen\)/);
+  assert.match(v[0], /tidligst starte på dag 3/);
+});
+
+test("#5802: dag 2 er også for tidligt; dag 3 er tilladt", () => {
+  const paaDag2 = listGrandTourStarts(gtKalender({ giro: 5, tour: 25, vuelta: 50 }));
+  assert.equal(paaDag2[0].firstDate, "2026-10-02");
+  assert.equal(detectGrandTourEarlyStartViolations({ tier: 1, grandTourStarts: paaDag2, seasonFirstDay: FOERSTE_DAG }).length, 1);
+
+  const paaDag3 = listGrandTourStarts(gtKalender({ giro: 10, tour: 30, vuelta: 55 }));
+  assert.equal(paaDag3[0].firstDate, "2026-10-03");
+  assert.deepEqual(detectGrandTourEarlyStartViolations({ tier: 1, grandTourStarts: paaDag3, seasonFirstDay: FOERSTE_DAG }), []);
+});
+
+test("#5802: uden sæsonens første dag eller GT-dato er der intet at måle (ingen falske brud)", () => {
+  const starts = listGrandTourStarts(gtKalender({ giro: 0, tour: 25, vuelta: 50 }));
+  assert.deepEqual(detectGrandTourEarlyStartViolations({ tier: 1, grandTourStarts: starts, seasonFirstDay: null }), []);
+  const udenDato = starts.map((g) => ({ ...g, firstDate: null }));
+  assert.deepEqual(detectGrandTourEarlyStartViolations({ tier: 1, grandTourStarts: udenDato, seasonFirstDay: FOERSTE_DAG }), []);
+});
+
+test("#5802: GT på første dag er en BLOKERENDE placerings-gate (stopper --apply, ingen override)", () => {
+  const g = scorecardGateGroups({
+    dækning: { ok: true, violations: [] }, sæsonFinaleViol: [],
+    tiers: [{ tier: 1, finaleViol: [], uniformViol: [], gtEarlyStartViol: ["tier 1: Giro starter 2026-10-01 (dag 1 i sæsonen)"] }],
+  });
+  assert.equal(g.applyBlocking.length, 1);
+  assert.match(g.applyBlocking[0], /^GT-start for tidligt \(§3\/#5802\)/);
+});
+
+test("#5802: scorecardet måler reglen mod sæsonens første dag og tæller den som placeringsbrud", () => {
+  const k = gtKalender({ giro: 0, tour: 25, vuelta: 50 });
+  const plan = { tier: 1, pools: [{ raceRows: k.raceRows, stageRows: k.stageRows }], calendarViolations: [] };
+  const r = scoreCalendarPlan({ tierPlans: [plan], firstRaceDay: FOERSTE_DAG, realDays: 28 });
+  assert.equal(r.tiers[0].gtEarlyStartViol.length, 1);
+  assert.ok(r.placeringsbrud >= 1, "bruddet tæller i placeringsbrud");
+  assert.ok(alleBrud(r).some((v) => /Giro starter 2026-10-01/.test(v)), "og i alleBrud (CI-fixture-gaten)");
+
+  // Samme kalender, men sæsonen starter to dage tidligere: Giroen ligger nu på dag 3.
+  const senere = scoreCalendarPlan({ tierPlans: [plan], firstRaceDay: "2026-09-29", realDays: 28 });
+  assert.deepEqual(senere.tiers[0].gtEarlyStartViol, []);
 });

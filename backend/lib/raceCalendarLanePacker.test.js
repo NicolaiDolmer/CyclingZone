@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { packLaneCalendar, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, balanceStageRaceFractionAcrossGtWindows, reshapeCobblesFractionToTwoWindows, GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
 
 // Div 1: 3 Grand Tours (21) + mindre etapeløb + 5 monumenter + klassikere = 140 events (5×28).
 function div1() {
@@ -330,6 +330,33 @@ test("#5802 R14: uden seasonFraction er reglen slået fra — uændret adfærd f
   // (laengste GT foerst) er dokumenteret her, saa en aendring af fallbacken bliver synlig.
   const r = packLaneCalendar(d1MedTreGts({ medFraction: false }));
   assert.equal(gtStartOrder(r)[0], "gt-tour");
+});
+
+// ── #5802: R15 - ingen Grand Tour paa saesonens foerste dag (ejer 26/9 kl. 22:40) ─────
+const gtStartDates = (r) => r.placements
+  .filter((p) => p.id.startsWith("gt-"))
+  .map((p) => ({ id: p.id, dato: Math.min(...p.stagesPlaced.map((s) => s.real_day)) }));
+
+test("#5802 R15: ingen Grand Tour starter før dag 3, og rækkefølgen Giro → Tour → Vuelta holder", () => {
+  const cfg = d1MedTreGts();
+  const r = packLaneCalendar(cfg);
+  for (const { id, dato } of gtStartDates(r)) {
+    assert.ok(dato >= GRAND_TOUR_EARLIEST_START_DATE_INDEX, `${id} starter på dato-indeks ${dato}`);
+  }
+  assert.deepEqual(gtStartOrder(r), ["gt-giro", "gt-tour", "gt-vuelta"]);
+  // Reglen maa ikke koste kvoten (§1b): praecis density pr. dato, alt placeret.
+  assert.deepEqual(r.unplaced, []);
+  assert.deepEqual(r.leftoverSingles, []);
+  for (let d = 0; d < cfg.days; d++) assert.equal(r.load[d], cfg.density, `dag ${d}`);
+});
+
+test("#5802 R15: bindingen er det der flytter GT'en - uden den starter Giroen på dag 1", () => {
+  // Regressions-bevis: samme katalog med reglen slaaet fra (0) lægger den foerste GT paa
+  // saesonens foerste dato, praecis som S4-toerkoerslen 26/9.
+  const uden = packLaneCalendar({ ...d1MedTreGts(), gtEarliestStartDate: 0 });
+  assert.equal(Math.min(...gtStartDates(uden).map((g) => g.dato)), 0);
+  const med = packLaneCalendar({ ...d1MedTreGts(), gtEarliestStartDate: 2 });
+  assert.ok(Math.min(...gtStartDates(med).map((g) => g.dato)) >= 2);
 });
 
 test("#3546 C: determinisme: samme input giver identisk daysWithoutDecision to gange", () => {
