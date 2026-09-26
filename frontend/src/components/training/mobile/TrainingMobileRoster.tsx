@@ -39,6 +39,8 @@
 import { Fragment, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { expandScrollAdjustment, type MobileScoreCell, type RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
+import { squadBadgeKey } from "../../../lib/squadBadge.ts";
+import RiderBadges from "../../rider/RiderBadges.jsx";
 
 export type RosterCell = {
   label: string;
@@ -54,6 +56,9 @@ export type RosterRider = {
   // ses i RAEKKEN, ikke kun i kortet eet tryk vaek. Faerdig tekst (samme
   // skade-noegler som desktop-raekken) + evt. ca.-datoen som title.
   injury?: { label: string; title?: string | null } | null;
+  // #5763: riders.squad (backend/lib/squads.js), ALDRIG alder — afgør et lille
+  // U23/JR-mærke bag navnet, samme mønster som desktop-tabellen (squadBadgeKey).
+  squad?: string | null;
 };
 
 // Tal-kolonnernes faste bredder (#4851, ejer-review 20/9). De er MAALT paa det
@@ -253,11 +258,14 @@ export default function TrainingMobileRoster({
                       </span>
                     )}
                     <span className="flex min-w-0 flex-1 flex-col justify-center">
-                    <span
-                      title={rider.name}
-                      className="w-full truncate text-[13px] font-medium leading-tight text-cz-1"
-                    >
-                      {rider.name}
+                    <span className="flex w-full items-center gap-1">
+                      <span
+                        title={rider.name}
+                        className="min-w-0 truncate text-[13px] font-medium leading-tight text-cz-1"
+                      >
+                        {rider.name}
+                      </span>
+                      <RiderBadges badges={[squadBadgeKey(rider.squad)]} className="flex-none" />
                     </span>
                     {/* `break-words` er selve rettelsen (#4851): uden den brydes
                         "PUNCHEUR/BAROUDEUR" slet ikke — der er hverken mellemrum

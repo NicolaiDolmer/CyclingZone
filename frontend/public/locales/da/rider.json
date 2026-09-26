@@ -14,6 +14,7 @@
     "academy": "Akademirytter (uden for senior-cap'en)",
     "retireRisk": "Høj pensionsrisiko: ryttere stopper typisk mellem 36 og 40 år",
     "contractExpiring": "Kontrakten udløber ved næste sæsonskifte: rytteren bliver fri agent, medmindre kontrakten forlænges først",
+    "junior": "Juniorrytter (på din juniortrup)",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -28,7 +29,8 @@
       "academy": "AKAD",
       "retireRisk": "35+",
       "contractExpiring": "UDLØB",
-      "listed": "LISTE"
+      "listed": "LISTE",
+      "junior": "JR"
     }
   },
   "page": {
