@@ -7,7 +7,17 @@
 // muteres aldrig, nyt array/objekt returneres) saa determinisme-testene kan
 // sammenligne deep-equal uden at bekymre sig om aliasing.
 
-import type { Entrant, EngineTuning, GroupKind, GroupOrigin, RaceGroup, RiderState, SegmentGroupSnapshot } from "./types.ts";
+import type {
+  Entrant,
+  EngineTuning,
+  GroupKind,
+  GroupOrigin,
+  RaceGroup,
+  RiderState,
+  SegmentGroupSnapshot,
+  StageResult,
+  TimelineEvent,
+} from "./types.ts";
 import { deriveWprimeMax, dayformComponent, jourSansComponent } from "./physiology.ts";
 
 export const INITIAL_GROUP_ID = "peloton-0";
@@ -248,6 +258,70 @@ export function isBreakawayWin(trace: FinaleGroupTrace, winnerId: string | null)
     return escapeGroupOf(trace.postFinaleGroups, winnerId) !== null;
   }
   return finaleBuilt.every((g) => g.rider_ids.every((id) => escapeRiderIds.has(id)));
+}
+
+/**
+ * #5515: goer udbruddets udfald op i tidslinjen, efter finalen.
+ *
+ * mechanics/breakaway.ts udsender `breakaway_survived` paa etapens SIDSTE
+ * segment, foer finale-hooket. Dér betyder eventet kun "udbruddet er stadig
+ * sin egen gruppe"; finalen afgoer bagefter om det holder. Loebsfilmen
+ * (frontend stageTimelineFilm.js) oversaetter eventet til "udbruddet holder
+ * feltet fra livet helt til stregen" og viste derfor den linje ogsaa paa en
+ * etape, hvor udbruddet blev hentet (golden fixture bjerg-selektion: udbryderen
+ * bliver nr. 5).
+ *
+ * Dommen er motorens egen udbrudsdom (`isBreakawayWin`, #5578), den samme som
+ * etape-fortaellingen bruger (#5577), saa filmen og fortaellingen aldrig kan
+ * vaere uenige. Et `breakaway_survived` bliver staaende, naar begge holder:
+ *   1. Etapen blev vundet fra udbruddet (`breakawayWin`).
+ *   2. Gruppens bedst placerede rytter kom i maal foran enhver rytter uden for
+ *      udbruddet. Det skiller et andet stykke af udbruddet fra, som feltet
+ *      kom forbi, paa en dag hvor udbruddet vandt.
+ * Ellers skrives det om til `breakaway_caught` paa samme km (maalstregen) med
+ * samme gruppe og ryttere, som finalen hentede dem. Ingen ny event-type og
+ * ingen ny noegle: filmen har allerede copy til begge. Er hele gruppen udgaaet
+ * efter eventet, udelades udfaldet (uheldets event fortaeller historien).
+ *
+ * REN: input muteres ikke. Uden `breakaway_survived` returneres samme array.
+ */
+export function settleBreakawaySurvivedEvents(
+  events: TimelineEvent[],
+  args: { breakawayWin: boolean; trace: FinaleGroupTrace | null; results: readonly StageResult[] },
+): TimelineEvent[] {
+  if (!events.some((e) => e.type === "breakaway_survived")) return events;
+
+  const escapeRiderIds = new Set(
+    (args.trace?.preFinaleGroups ?? [])
+      .filter((g) => g.origin === "breakaway" && ESCAPE_KINDS.has(g.kind))
+      .flatMap((g) => g.rider_ids),
+  );
+  const rankOf = new Map<string, number>();
+  let bestOutsideEscape = Infinity;
+  for (const result of args.results) {
+    if (result.status === "abandoned") continue;
+    rankOf.set(result.rider_id, result.rank);
+    if (!escapeRiderIds.has(result.rider_id)) bestOutsideEscape = Math.min(bestOutsideEscape, result.rank);
+  }
+
+  return events.flatMap((event): TimelineEvent[] => {
+    if (event.type !== "breakaway_survived") return [event];
+    const riderIds = Array.isArray(event.params.rider_ids)
+      ? event.params.rider_ids.filter((id): id is string => typeof id === "string")
+      : [];
+    // Er ingen af gruppens ryttere i maal (alle udgaaet efter eventet), har
+    // udbruddet hverken holdt eller er blevet hentet: uheldets eget event
+    // fortaeller historien, saa udfaldet udelades.
+    const ranks = riderIds.flatMap((id) => (rankOf.has(id) ? [rankOf.get(id)!] : []));
+    if (ranks.length === 0) return [];
+    if (args.breakawayWin && Math.min(...ranks) < bestOutsideEscape) return [event];
+    const groupId = event.params.group_id;
+    return [{
+      km: event.km,
+      type: "breakaway_caught",
+      params: typeof groupId === "string" ? { group_id: groupId, rider_ids: riderIds } : { rider_ids: riderIds },
+    }];
+  });
 }
 
 /**
