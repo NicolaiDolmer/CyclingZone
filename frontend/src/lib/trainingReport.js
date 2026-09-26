@@ -218,6 +218,23 @@ export function abilityYesterdayPct({ pct, locked, rawFrac, beforeFrac, gainedTo
   return Math.min(pct, Math.max(1, Math.round(delta * 100)));
 }
 
+// #5539: rendering-klar tekst-værdi for "hvor mange procent af ET POINT flyttede
+// gårsdagens (eller dagens, ved et landet helt point) session denne evne" —
+// det spillerne selv efterspurgte i forum-tråden ("% of daily training", 22/9),
+// i stedet for kun at skulle aflæse gold-segmentet visuelt eller føre regnskab
+// i hånden. SAMME rå tal som allerede driver segmentet (abilityYesterdayPct
+// ovenfor) — ingen nye serverdata, intet loft-tal (#1162: ability_caps forlader
+// aldrig serveren).
+//
+// Returnerer et helt tal > 0 (pct-point af et point), eller null når der intet
+// er at vise (låst evne, ingen data for evnen endnu, eller reel 0 % fremgang).
+// Komponenten oversætter selv null til en STILLE STREG ("—"), aldrig til teksten
+// "0 %" — en ægte 0 skal læses som "intet at vise i dag", ikke som en fejl.
+export function abilityYesterdayGainPct(yesterdayPct) {
+  const n = Number(yesterdayPct);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains, progressBefore, gainsToday } = {}) {
   const keys = Array.isArray(abilityKeys) ? abilityKeys : [];
   const lockedSet = new Set(Array.isArray(capped) ? capped : []);

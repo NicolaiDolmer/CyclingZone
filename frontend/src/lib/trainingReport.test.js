@@ -4,6 +4,7 @@ import {
   focusProgress, isBreakthrough, daySummary, breakthroughJumps, riderHistoryFromRuns,
   todayGainTotal,
   seasonAbilityGains, abilityReceipt, focusAbilityReceipt, abilityYesterdayPct,
+  abilityYesterdayGainPct,
   yesterdaySummary, riderDayStories,
   seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_NOTE_KEY,
   SEASON_RECEIPT_UNKNOWN, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_RUNNING,
@@ -348,6 +349,31 @@ test("abilityYesterdayPct: ingen fremgang siden i går → 0 (intet segment at t
 
 test("abilityYesterdayPct: segmentet kan aldrig overstige selve baren", () => {
   assert.equal(abilityYesterdayPct({ pct: 1, locked: false, rawFrac: 0.01, beforeFrac: 0 }), 1);
+});
+
+// ── #5539: "hvor mange procent af ET POINT flyttede sessionen evnen" ───────
+// Ren rendering-afledning oven på det EKSISTERENDE yesterdayPct — ingen nye
+// serverdata, intet loft-tal. En reel 0 % og "ingen data" skal begge give
+// null (komponenten viser en stille streg), aldrig teksten "0 %".
+
+test("abilityYesterdayGainPct: positivt tal går igennem uændret", () => {
+  assert.equal(abilityYesterdayGainPct(12), 12);
+  assert.equal(abilityYesterdayGainPct(1), 1);
+});
+
+test("abilityYesterdayGainPct: reel 0 % giver null, ikke '0 %' (ikke en fejl)", () => {
+  assert.equal(abilityYesterdayGainPct(0), null);
+});
+
+test("abilityYesterdayGainPct: ingen data (låst evne/ukendt pct) giver null", () => {
+  assert.equal(abilityYesterdayGainPct(null), null);
+  assert.equal(abilityYesterdayGainPct(undefined), null);
+});
+
+test("abilityYesterdayGainPct: negativt eller korrupt input giver null, ikke NaN/negativt", () => {
+  assert.equal(abilityYesterdayGainPct(-5), null);
+  assert.equal(abilityYesterdayGainPct("bogus"), null);
+  assert.equal(abilityYesterdayGainPct(NaN), null);
 });
 
 test("abilityReceipt: yesterdayPct sendes med når progressBefore/gainsToday leveres", () => {
