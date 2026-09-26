@@ -20,7 +20,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { simulateStageV4 } from "./index.ts";
+import { simulateStageV4, simulateStageV4WithTrace } from "./index.ts";
 import { validateGroupMembership } from "./timeline.ts";
 import { isWinType } from "./winType.ts";
 import type { StageInput, StageOutput } from "./types.ts";
@@ -155,6 +155,36 @@ for (const [name, winType] of Object.entries(EXPECTED_WIN_TYPE)) {
     }
   });
 }
+
+// ── Udbruddets udfald i tidslinjen (#5515) ──────────────────────────────────
+// `breakaway_survived` blev udsendt paa sidste segment, FOER finalen, og
+// betoed kun "udbruddet er stadig sin egen gruppe". Loebsfilmen oversaetter
+// eventet til "udbruddet holder feltet fra livet helt til stregen", saa en
+// hentet udbryder (bjerg-selektion: r02 bliver nr. 5) stod i filmen som om
+// udbruddet holdt. Eventet skal foelge motorens egen udbrudsdom (#5578), den
+// samme som etape-fortaellingen bruger (#5577).
+for (const name of Object.keys(EXPECTED_WIN_TYPE)) {
+  test(`golden fixture: ${name} — "udbruddet holdt" staar kun i tidslinjen naar motoren doemmer udbrudssejr (#5515)`, () => {
+    const { input, expected } = loadFixture(name);
+    const { output, trace } = simulateStageV4WithTrace(input);
+    for (const [label, out] of [["frosset expected.json", expected], ["frisk koersel", output]] as const) {
+      const survived = out.timeline.events.filter((e) => e.type === "breakaway_survived");
+      if (trace.breakaway_win !== true) assert.equal(survived.length, 0, `${label}: udbruddet vandt ikke, saa det holdt ikke`);
+    }
+  });
+}
+
+test("golden fixture: bjerg-selektion — udbryderen der blev hentet, staar som hentet ved stregen (#5515)", () => {
+  const { input } = loadFixture("bjerg-selektion");
+  const { output, trace } = simulateStageV4WithTrace(input);
+  assert.equal(trace.breakaway_win, false);
+  const caught = output.timeline.events.filter((e) => e.type === "breakaway_caught");
+  assert.equal(caught.length, 1);
+  assert.deepEqual(caught[0].params.rider_ids, ["r02"]);
+  assert.equal(caught[0].km, input.route.distance_km);
+  const r02 = output.results.find((r) => r.rider_id === "r02");
+  assert.ok(r02 && r02.rank > 1, "udbryderen vinder ikke etapen");
+});
 
 test("golden fixtures: hvert scenarie har en forventet sejrstype (ingen fixture uden dom, #5577)", () => {
   assert.deepEqual(Object.keys(EXPECTED_WIN_TYPE).sort(), readdirSync(fixturesDir).sort());
