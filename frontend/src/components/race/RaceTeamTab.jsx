@@ -38,6 +38,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import RaceSelectionPanel from "./RaceSelectionPanel.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
+import StageStripe from "./StageStripe.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import { Section, SectionHeader, Button, SkeletonLines, LockIcon } from "../ui/index.js";
 import { WRAP, SCROLLER } from "../ui/dataTableStyles.js";
@@ -155,6 +156,14 @@ export default function RaceTeamTab({
   selectedStageBucket = null,
   selectedStageProfileType = null,
   selectedStageFinaleType = null,
+  // #5419: FØR-tilstandens egen etape-stribe (genbrug af Etaper-fanens
+  // StageStripe) — stages/onSelect/times videresendes uændret fra siden,
+  // så et klik her deler ?stage= med Etaper-fanen i stedet for at holde sin
+  // egen etape-forståelse.
+  stageStripeStages = [],
+  stageStripeActiveStage = null,
+  onSelectStage = null,
+  stageStripeTimes = null,
 }) {
   const { t } = useTranslation("races");
   // FØR løbet bruges svaret ikke: fanen ER holdudtagelsen, og RaceSelectionPanel
@@ -178,6 +187,19 @@ export default function RaceTeamTab({
     return (
       <div id="race-selection-anchor" className="flex flex-col gap-[14px]">
         <RaceStageProfileRow profile={stageProfile} stageLabel={stageProfileLabel} hasClassifications={hasClassifications} />
+        {/* #5419: samme StageStripe som Etaper-fanen, EN linje over udtagelsen —
+            lader manageren bladre etaper her og se rute-match/FitBar pr. etape
+            uden at hoppe via Etaper-fanen. Ren navigation (delt ?stage=); ændrer
+            intet af hvad udtagelsen gemmer. StageStripe no-op'er selv på
+            endagsløb (stages.length < 2). */}
+        {onSelectStage && (
+          <StageStripe
+            stages={stageStripeStages}
+            activeStage={stageStripeActiveStage}
+            onSelect={onSelectStage}
+            times={stageStripeTimes}
+          />
+        )}
         <RaceSelectionPanel
           raceId={raceId}
           selectedStageIndex={selectedStageIndex}
