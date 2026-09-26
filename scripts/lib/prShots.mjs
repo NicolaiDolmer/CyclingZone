@@ -13,7 +13,8 @@
 // Sikkerhedskontrakt (bindende, .claude/learnings/2026-09-24-pr-shots-fake-clock-logout.md):
 //   1. Aldrig et falsk ur: et --shot-at/--clock-flag afvises med en fejl der
 //      peger paa laeringen (rejectFakeClockFlag). Andre tidspunkter fremkaldes
-//      med GET-mocks af datasvar (--mock), aldrig med uret.
+//      med mocks af datasvar (--mock for GET, --mock-rpc for laesende Supabase-
+//      RPC'er, som supabase-js altid sender som POST), aldrig med uret.
 //   2. Skrive-vagten: alle ikke-laesende kald besvares lokalt (isWriteRequest),
 //      undtagen Supabase' token-endpoint (login + refresh), og et signOut logges
 //      saerskilt (isSignOutRequest), fordi supabase-js rydder den lokale session
@@ -51,7 +52,8 @@ export const FAKE_CLOCK_FLAGS = Object.freeze(["--shot-at", "--clock", "--fake-c
 export const FAKE_CLOCK_MESSAGE =
   "Et falsk browser-ur er forbudt i billedstationen: det loggede profilen ud 24/9 " +
   "(se .claude/learnings/2026-09-24-pr-shots-fake-clock-logout.md). " +
-  "Tag billederne naar tilstanden findes i prod, eller mock GET-svarene med --mock=<sti>=<json-fil>.";
+  "Tag billederne naar tilstanden findes i prod, eller mock datasvarene med --mock=<sti>=<json-fil> " +
+  "(GET) eller --mock-rpc=<funktion>=<json-fil> (laesende Supabase-RPC).";
 
 export const COMMANDS = Object.freeze(["login", "shoot", "compose"]);
 
@@ -59,13 +61,13 @@ const COMMON_FLAGS = ["--channel", "--dry-run", "--help"];
 const FLAGS_BY_COMMAND = {
   login: new Set([...COMMON_FLAGS, "--no-build"]),
   shoot: new Set([
-    ...COMMON_FLAGS, "--widths", "--viewports", "--click", "--mock", "--wait-for",
+    ...COMMON_FLAGS, "--widths", "--viewports", "--click", "--mock", "--mock-rpc", "--wait-for",
     "--no-build", "--headed", "--out", "--pr", "--repo",
   ]),
   compose: new Set([...COMMON_FLAGS, "--before", "--out"]),
 };
 const BOOLEAN_FLAGS = new Set(["--dry-run", "--help", "--no-build", "--headed"]);
-const REPEATABLE_FLAGS = new Set(["--click", "--mock", "--wait-for"]);
+const REPEATABLE_FLAGS = new Set(["--click", "--mock", "--mock-rpc", "--wait-for"]);
 
 // ── Argument-parsing ───────────────────────────────────────────────────────
 
@@ -120,33 +122,70 @@ export function parseClick(value) {
   return { kind: "text", value: v };
 }
 
-/**
- * `--mock=/api/races/today=fil.json` eller `--mock=/api/me=status:401`.
- * Kun GET mockes; en mock er et tilstandsbillede af et datasvar, aldrig et ur.
- */
-export function parseMock(value, warnings = []) {
+/** Splitter `<noegle>=<fil>` / `<noegle>=status:<kode>` ved SIDSTE "=" (en sti maa have en query). */
+function splitMockTarget(flag, value, form) {
   const v = String(value ?? "");
-  // Sidste "=": en mock-sti maa gerne have en query (`/api/x?day=today=fil.json`).
   const eq = v.lastIndexOf("=");
-  if (eq <= 0 || eq === v.length - 1) throw new Error(`--mock skal have formen <sti>=<json-fil> eller <sti>=status:<kode>: '${v}'`);
-  const path = toRoute(v.slice(0, eq).trim(), warnings);
+  if (eq <= 0 || eq === v.length - 1) throw new Error(`${flag} skal have formen ${form}: '${v}'`);
+  const key = v.slice(0, eq).trim();
   const target = v.slice(eq + 1).trim();
-  if (!path.startsWith("/")) throw new Error(`--mock-stien '${path}' skal starte med '/'.`);
   const status = /^status:(\d{3})$/.exec(target);
   if (status) {
     const code = Number(status[1]);
-    if (code < 200 || code > 599) throw new Error(`--mock-status ${code} er ikke en HTTP-status.`);
-    return { path, status: code, file: null };
+    if (code < 200 || code > 599) throw new Error(`${flag}-status ${code} er ikke en HTTP-status.`);
+    return { key, status: code, file: null };
   }
-  return { path, status: 200, file: target };
+  return { key, status: 200, file: target };
 }
 
-/** Hvilken mock (hvis nogen) svarer paa dette kald. Kun GET, stien skal matche praecist. */
+/**
+ * `--mock=/api/races/today=fil.json` eller `--mock=/api/me=status:401`.
+ * Kun GET mockes; en mock er et tilstandsbillede af et datasvar, aldrig et ur.
+ * Laesende Supabase-RPC'er er POST og mockes med --mock-rpc (parseMockRpc).
+ */
+export function parseMock(value, warnings = []) {
+  const { key, status, file } = splitMockTarget("--mock", value, "<sti>=<json-fil> eller <sti>=status:<kode>");
+  const path = toRoute(key, warnings);
+  if (!path.startsWith("/")) throw new Error(`--mock-stien '${path}' skal starte med '/'.`);
+  return { path, rpc: null, status, file };
+}
+
+/** Sti-praefikset PostgREST bruger til funktionskald (supabase-js `.rpc(fn)`). */
+export const RPC_PATH_PREFIX = "/rest/v1/rpc/";
+/** Verber en RPC-mock svarer paa: supabase-js sender POST (ogsaa for STABLE funktioner), `{ get: true }` sender GET. */
+const RPC_MOCK_METHODS = new Set(["GET", "POST"]);
+const RPC_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * `--mock-rpc=get_season_recap=fil.json` eller `--mock-rpc=get_season_recap=status:404`.
+ * supabase-js' `.rpc()` sender ALTID POST, ogsaa for laesende (STABLE) funktioner
+ * som get_season_recap, saa en almindelig --mock (kun GET) rammer aldrig, og
+ * skrive-vagten besvarer kaldet med et tomt 204: siden viser sin "ingen data"-
+ * tilstand, og "har data"-renderingen kan ikke fotograferes. En RPC-mock svarer
+ * paa `POST|GET /rest/v1/rpc/<funktion>` FOER vagten (CLI'en registrerer mocks
+ * sidst, og Playwright koerer sidst registrerede route foerst). Kaldet naar
+ * aldrig prod: mocken svarer lokalt, uanset hvad funktionen ville have gjort.
+ */
+export function parseMockRpc(value) {
+  const { key, status, file } = splitMockTarget("--mock-rpc", value, "<funktion>=<json-fil> eller <funktion>=status:<kode>");
+  if (!RPC_NAME_RE.test(key)) {
+    throw new Error(`--mock-rpc tager et funktionsnavn (fx get_season_recap), ikke en sti: '${key}'.`);
+  }
+  return { path: `${RPC_PATH_PREFIX}${key}`, rpc: key, status, file };
+}
+
+/**
+ * Hvilken mock (hvis nogen) svarer paa dette kald. Stien skal matche praecist
+ * (query kun naar mocken selv har en). Sti-mocks svarer kun paa GET; RPC-mocks
+ * (`rpc` sat) ogsaa paa POST, fordi supabase-js kalder funktioner med POST.
+ */
 export function mockFor(mocks, method, url) {
-  if (String(method).toUpperCase() !== "GET") return null;
+  const verb = String(method).toUpperCase();
   let u;
   try { u = new URL(String(url)); } catch { return null; }
   for (const m of mocks) {
+    const allowed = m.rpc ? RPC_MOCK_METHODS.has(verb) : verb === "GET";
+    if (!allowed) continue;
     const withQuery = m.path.includes("?");
     const candidate = withQuery ? `${u.pathname}${u.search}` : u.pathname;
     if (candidate === m.path) return m;
@@ -247,7 +286,10 @@ export function parseArgs(argv) {
     routes: parseRoutes(routeArgs, warnings),
     widths: flags["--widths"] || flags["--viewports"] ? parseWidths(flags["--widths"] ?? flags["--viewports"]) : [...DEFAULT_WIDTHS],
     clicks: (flags["--click"] ?? []).map(parseClick),
-    mocks: (flags["--mock"] ?? []).map((m) => parseMock(m, warnings)),
+    mocks: [
+      ...(flags["--mock"] ?? []).map((m) => parseMock(m, warnings)),
+      ...(flags["--mock-rpc"] ?? []).map(parseMockRpc),
+    ],
     waitFor: (flags["--wait-for"] ?? []).map((w) => String(w).trim()).filter(Boolean),
     build: !flags["--no-build"],
     headed: Boolean(flags["--headed"]),
@@ -339,6 +381,16 @@ export function planShoot(opts, { outRoot }) {
   };
 }
 
+/** `MOCK GET /api/me` eller `MOCK RPC get_season_recap (POST /rest/v1/rpc/get_season_recap)`. */
+export function describeMock(m) {
+  return m.rpc ? `MOCK RPC ${m.rpc} (POST ${m.path})` : `MOCK GET ${m.path}`;
+}
+
+/** Kort form til rapport-note og compose-billedet: `/api/me` eller `rpc:get_season_recap`. */
+export function mockLabel(m) {
+  return m.rpc ? `rpc:${m.rpc}` : m.path;
+}
+
 export function formatPlan(opts, plan, { profileDir, outPrivate }) {
   const lines = [
     `shoot ${plan.label}  origin: ${plan.origin} (fast, port ${plan.port})`,
@@ -349,7 +401,7 @@ export function formatPlan(opts, plan, { profileDir, outPrivate }) {
   ];
   for (const c of opts.clicks) lines.push(`klik: ${c.kind === "css" ? `css:${c.value}` : `tekst '${c.value}'`}`);
   for (const w of opts.waitFor) lines.push(`vent paa: ${w}`);
-  for (const m of opts.mocks) lines.push(`MOCK GET ${m.path} -> ${m.file ?? `status ${m.status}`}`);
+  for (const m of opts.mocks) lines.push(`${describeMock(m)} -> ${m.file ?? `status ${m.status}`}`);
   for (const s of plan.shots) lines.push(`  ${s.file}  <-  ${s.url} @ ${s.width}`);
   return lines.join("\n");
 }
@@ -424,6 +476,8 @@ function pathnameOf(url) {
  * undtagelse er Supabase' token-endpoint: `POST /auth/v1/token` er baade login
  * (grant_type=password, kun i `login`) og refresh af den gemte session. Blokeres
  * den, doer sessionen efter en time, og "eet login" holder ikke.
+ * En `--mock-rpc` er IKKE en undtagelse her: POST /rest/v1/rpc/<fn> er stadig
+ * en skrivning for vagten; mocken svarer bare foer vagten ser kaldet (mockFor).
  */
 export function isWriteRequest(method, url) {
   if (READ_METHODS.has(String(method).toUpperCase())) return false;
@@ -635,11 +689,17 @@ mod prod-API'et, med EET login for alle PR'er.
   node scripts/pr-shots.mjs shoot <label> <worktree> <routes...> [--widths=1440,390]
                             [--click=<tekst>|--click=css:<selector>]... [--wait-for=<selector>]...
                             [--mock=<sti>=<json-fil>|--mock=<sti>=status:<kode>]...
+                            [--mock-rpc=<funktion>=<json-fil>|--mock-rpc=<funktion>=status:<kode>]...
                             [--pr=<N>] [--no-build] [--headed] [--out=<mappe>] [--dry-run]
       Bygger worktreets frontend (cwd = <worktree>/frontend), serverer den paa
       ${FIXED_ORIGIN} og fotograferer hver route i hver bredde i en KOPI af profilen.
       Output: <OneDrive>\\${ONEDRIVE_OUT_REL.replace(/\//g, "\\")}\\<label>\\<route>-<bredde>.png + ${REPORT_FILE}.
       --pr skriver PR'ens Vercel-preview-link i rapporten (til go-kortet).
+      --mock svarer paa GET <sti> med filen (et tilstandsbillede, aldrig et ur).
+      --mock-rpc svarer paa supabase-js' .rpc(<funktion>), som ALTID er POST
+      (ogsaa for laesende funktioner som get_season_recap) og ellers ville blive
+      blokeret af skrive-vagten som et tomt 204 ("ingen data"-tilstand). Kaldet
+      naar aldrig prod. Begge markeres MOCK i rapport, log og foer/efter-billede.
 
   node scripts/pr-shots.mjs compose <label> [--before=main]
       Eet samlet foer/efter-billede (<label>\\${COMPOSE_FILE}). "Foer" tages med

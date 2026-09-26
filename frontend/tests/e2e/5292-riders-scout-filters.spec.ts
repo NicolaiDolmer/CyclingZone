@@ -9,10 +9,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("filters, sort and page survive a rider visit and browser back", async ({ page }) => {
-  await page.goto("/riders?q=Ada&nationality_code=dk&min_age=18&sort=firstname&sort_dir=asc&page=2");
+  // Deliberately NOT in the page's own key order: the sync effect rewrites the
+  // query (replaceState) right after the first paint, and history keeps that
+  // rewritten entry. The input shows "Ada" from the first paint, so on a slow
+  // WebKit lane page.url() could still be this raw URL here (CI, 26/9). Wait
+  // for the rewrite and read the href from the document itself.
+  const rawUrl = "/riders?q=Ada&nationality_code=dk&min_age=18&sort=firstname&sort_dir=asc&page=2";
+  await page.goto(rawUrl);
   const search = page.getByTestId("filter-name");
   await expect(search).toHaveValue("Ada");
-  const filteredUrl = page.url();
+  await expect(page).not.toHaveURL(new URL(rawUrl, page.url()).href);
+  const filteredUrl = await page.evaluate(() => location.href);
   await page.getByRole("link", { name: "Ada Pedersen", exact: true }).click();
   await expect(page).toHaveURL(/\/riders\/rider-1/);
   await page.goBack();
