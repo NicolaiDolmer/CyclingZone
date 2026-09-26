@@ -30,7 +30,7 @@ import { raceDayProgram, RACE_DAY_FALLBACK_PROFILE } from "./raceDayYield.js";
 import { loadRaceDayStagesByRider } from "./raceDayStageLookup.js";
 // #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
-import { resolveDayProgram, programSlotForGameDay, weekDaysHaveSessions } from "./trainingPrograms.js";
+import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
@@ -159,6 +159,9 @@ async function loadRaceStageProfiles(supabase, raceIds) {
 export async function runTeamTrainingDay({
   supabase, teamId, seasonId, seasonNumber, executedBy, now = new Date(), gameDay = null,
   squad = TRAINING_DAY_RUN_DEFAULT_SQUAD,
+  // #4629: holdets loebsdage paa datoen (sweepens spaend / knappens gameDays).
+  // Kun til programslottet; null ⇒ slot 0.
+  dateGameDays = null,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -444,8 +447,9 @@ export async function runTeamTrainingDay({
   const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
     ? await isTrainingProgramsEnabledForTeam(supabase, teamId)
     : false;
-  // Loebsdagens plads paa datoen (0-4). Kalenderdags-ticket = slot 0 ("I dag").
-  const programSlot = useRaceDayKey ? programSlotForGameDay(raceDay) : 0;
+  // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
+  // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").
+  const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0

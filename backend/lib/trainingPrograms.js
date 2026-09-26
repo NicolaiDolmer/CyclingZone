@@ -292,14 +292,24 @@ export function sessionForDayEntry(entry, slotIndex = 0) {
   return isProgramSession(entry.session) ? entry.session : null;
 }
 
-// Hvilket slot en loebsdag er paa sin kalenderdato. Hver dato baerer
-// PROGRAM_SLOTS loebsdage i traek (CALENDAR_RULES §1e-b), saa positionen er
-// loebsdagen modulo 5. Uden loebsdag (kalenderdags-ticket, flaget off) er det
-// slot 0 — dagens ene kolonne, "I dag".
-export function programSlotForGameDay(gameDay) {
+// Hvilket slot en loebsdag er paa sin kalenderdato: dens PLADS blandt holdets
+// loebsdage paa datoen, 0-baseret. `dateGameDays` er praecis den liste fladen
+// viser som gitterets kolonner (dayClose.gameDays, teamGameDaysFromDayClose) og
+// som sweepen/knappen koerer (samme spaend fra loadDayCloseSpans), saa
+// "Loebsdag 1" i gitteret og slot 0 i motoren er den samme loebsdag. Aksen
+// ligger IKKE paa modulo-5-graenser i prod, derfor aldrig `gameDay % 5`.
+// Flere loebsdage end slots (efterslaeb, saesonens sidste dato) lofter ved
+// sidste slot, samme loft som gitterets slotForColumnIndex. Uden loebsdag, uden
+// liste, eller en loebsdag der ikke staar paa listen ⇒ slot 0 (dagens ene
+// kolonne, "I dag").
+export function programSlotForRaceDay(gameDay, dateGameDays) {
   const n = Number(gameDay);
-  if (gameDay == null || !Number.isFinite(n)) return 0;
-  return ((Math.floor(n) % PROGRAM_SLOTS) + PROGRAM_SLOTS) % PROGRAM_SLOTS;
+  if (gameDay == null || !Number.isFinite(n) || !Array.isArray(dateGameDays)) return 0;
+  const onDate = [...new Set(dateGameDays.filter((d) => d != null).map(Number).filter(Number.isFinite))]
+    .sort((a, b) => a - b);
+  const idx = onDate.indexOf(n);
+  if (idx < 0) return 0;
+  return Math.min(idx, PROGRAM_SLOTS - 1);
 }
 
 // Session → (focus, intensity), via SAMME skrivesti som dagsvalget
@@ -325,7 +335,7 @@ export function programForSession(session, previousFocus = null) {
 // med den gamle linje `program.intensity = resolveDayIntensity(...)`.
 //
 //   program   : { focus, intensity } fra resolveProgram (muteres IKKE)
-//   slotIndex : programSlotForGameDay(loebsdag)
+//   slotIndex : programSlotForRaceDay(loebsdag, datoens loebsdage)
 // Returnerer { focus, intensity, source } hvor source er "program" naar en
 // programcelle vandt, ellers "legacy".
 export function resolveDayProgram({

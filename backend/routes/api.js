@@ -934,7 +934,8 @@ router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, i
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
 router.use("/training/programs", createTrainingProgramsRouter({
-  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, captureExceptionFn: captureException,
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException,
 }));
 
 async function requireAdmin(req, res, next) {
@@ -3154,6 +3155,7 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
           seasonNumber: activeSeasonNumber,
           executedBy: "manager",
           gameDay,
+          dateGameDays: gameDays, // #4629: programslot = plads paa denne liste
         });
         lastTickDate = r.tickDate;
         if (!r.alreadyRan) {

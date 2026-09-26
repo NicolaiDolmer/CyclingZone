@@ -2259,23 +2259,37 @@ test("#4629 hvile/restitution i programmet: hvile bevarer fokus, restitution bru
   assert.equal(r2.focus, "restitution");
 });
 
-test("#4629 override vinder: en enkelt loebsdags-celle slaar ugedagens session (loebsdag 12 = slot 2)", async () => {
+test("#4629 override vinder: gitterets celle rammer SAMME loebsdag i motoren (plads paa datoen, ikke modulo 5)", async () => {
+  // Datoen baerer loebsdag 8-12 (prod-aksen ligger ikke paa modulo-5-graenser).
+  // Manageren retter "Loebsdag 3" i gitteret = kolonne 3 = slot 2 = loebsdag 10.
+  // Modulo 5 ville have lagt loebsdag 10 paa slot 0 og loebsdag 12 paa slot 2.
+  const dateGameDays = [8, 9, 10, 11, 12];
+  const days = setProgramCell(programWeekDaysFor("sprinter"), { weekday: "fri", slotIndex: 2, session: "technique" });
+  const tick = async (gameDay) => {
+    const state = seedState({ plans: [HARD_PLAN] });
+    seedRaceDayTick(state, { gameDay });
+    seedRiderProgram(state, { days });
+    seedProgramFlag(state);
+    return (await runDay(state, { gameDay, dateGameDays })).report.riders[0];
+  };
+
+  const rr = await tick(10);
+  assert.equal(rr.focus, "technique", "loebsdag 10 = tredje loebsdag paa datoen = cellens override");
+  assert.equal(rr.intensity, "easy");
+
+  for (const gameDay of [8, 9, 11, 12]) {
+    assert.equal((await tick(gameDay)).focus, "sprint", `loebsdag ${gameDay} har ingen override: ugedagens session`);
+  }
+});
+
+test("#4629 uden datoens loebsdage (kalenderdags-fallback) er slottet 0", async () => {
+  const days = setProgramCell(programWeekDaysFor("sprinter"), { weekday: "fri", slotIndex: 0, session: "technique" });
   const state = seedState({ plans: [HARD_PLAN] });
   seedRaceDayTick(state, { gameDay: 12 });
-  const days = setProgramCell(programWeekDaysFor("sprinter"), { weekday: "fri", slotIndex: 2, session: "technique" });
   seedRiderProgram(state, { days });
   seedProgramFlag(state);
   const rr = (await runDay(state, { gameDay: 12 })).report.riders[0];
-  assert.equal(rr.focus, "technique", "cellens override vinder over ugedagens sprint");
-  assert.equal(rr.intensity, "easy");
-
-  // En ANDEN loebsdag samme dato (slot 3) foelger ugedagen.
-  const other = seedState({ plans: [HARD_PLAN] });
-  seedRaceDayTick(other, { gameDay: 13 });
-  seedRiderProgram(other, { days });
-  seedProgramFlag(other);
-  const rr2 = (await runDay(other, { gameDay: 13 })).report.riders[0];
-  assert.equal(rr2.focus, "sprint", "slot 3 har ingen override: ugedagens session");
+  assert.equal(rr.focus, "technique", "ingen liste: slot 0 (\"I dag\"), aldrig 12 % 5");
 });
 
 test("#4629 override vinder: rytterens egen programraekke slaar holdets programraekke", async () => {

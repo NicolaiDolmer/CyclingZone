@@ -56,7 +56,7 @@ async function insertRows(supabase, rows) {
 }
 
 export function createTrainingProgramsRouter({
-  supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, captureExceptionFn = () => {},
+  supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
 }) {
   const router = express.Router();
 
@@ -76,7 +76,7 @@ export function createTrainingProgramsRouter({
   // GET /api/training/programs — kataloget + hvilke ryttere der staar paa hvilket
   // program (proveniens). Selve cellerne leveres af /api/training/me
   // (riderWeekPlans), saa der kun er een kilde til planen.
-  router.get("/", requireAuth, async (req, res) => {
+  router.get("/", requireAuth, readLimiter, async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
       if (!(await programsOn(req))) return res.json({ enabled: false });

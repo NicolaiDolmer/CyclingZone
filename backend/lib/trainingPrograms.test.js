@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {
   TRAINING_PROGRAMS, TRAINING_PROGRAM_KEYS, PROGRAM_SLOTS, PROGRAM_SESSIONS,
   programWeekDaysFor, isValidProgramWeekDays, setProgramCell, sessionForDayEntry,
-  programSlotForGameDay, resolveDayProgram, stripProgramFromWeekDays, weekDaysHaveSessions,
+  programSlotForRaceDay, resolveDayProgram, stripProgramFromWeekDays, weekDaysHaveSessions,
   intensityForSession, trainingProgramCatalog,
 } from "./trainingPrograms.js";
 import { WEEKDAY_KEYS, resolveDayIntensity, isValidWeekPlanDays } from "./training.js";
@@ -83,12 +83,42 @@ test("setProgramCell: hele ugedagen skifter session + intensitet; et slot overst
   assert.equal(setProgramCell(days, { weekday: "xyz", session: "sprint" }), null);
 });
 
-test("programSlotForGameDay: 5 loebsdage pr. dato; uden loebsdag = slot 0", () => {
-  assert.equal(programSlotForGameDay(0), 0);
-  assert.equal(programSlotForGameDay(12), 2);
-  assert.equal(programSlotForGameDay(139), 4);
-  assert.equal(programSlotForGameDay(null), 0);
-  assert.equal(programSlotForGameDay(undefined), 0);
+test("programSlotForRaceDay: pladsen blandt datoens loebsdage, ikke modulo 5", () => {
+  // Prod-aksen ligger ikke paa modulo-5-graenser: datoen 8-12 giver slot 0-4.
+  const date = [8, 9, 10, 11, 12];
+  assert.deepEqual(date.map((gd) => programSlotForRaceDay(gd, date)), [0, 1, 2, 3, 4]);
+  // Og 1-5 giver ogsaa 0-4 (modulo 5 ville give 1,2,3,4,0).
+  const first = [1, 2, 3, 4, 5];
+  assert.deepEqual(first.map((gd) => programSlotForRaceDay(gd, first)), [0, 1, 2, 3, 4]);
+  // Listen sorteres og dedupliceres; raekkefoelgen fra kalderen er ligegyldig.
+  assert.equal(programSlotForRaceDay(10, [12, 10, 11, 10]), 0);
+  assert.equal(programSlotForRaceDay(12, [12, 10, 11]), 2);
+});
+
+test("programSlotForRaceDay: kobling til gitteret - kolonne k (1-baseret) er slot k-1", () => {
+  // Gitteret (frontend slotForColumnIndex) laegger kolonne k paa slot k-1 og
+  // kolonne k = den k'te loebsdag paa dayClose.gameDays. Motoren skal ramme SAMME
+  // slot for den loebsdag, ellers rammer en rettet celle en anden loebsdag.
+  const slotForColumnIndex = (k) => Math.min(PROGRAM_SLOTS - 1, k - 1);
+  for (const dayCloseGameDays of [[8, 9, 10, 11, 12], [1, 2, 3, 4, 5], [23, 24, 25], [140]]) {
+    dayCloseGameDays.forEach((gd, i) => {
+      assert.equal(programSlotForRaceDay(gd, dayCloseGameDays), slotForColumnIndex(i + 1), `loebsdag ${gd} i ${dayCloseGameDays}`);
+    });
+  }
+});
+
+test("programSlotForRaceDay: flere loebsdage end slots lofter ved sidste slot", () => {
+  const span = [5, 6, 7, 8, 9, 10, 11, 12];
+  assert.deepEqual(span.map((gd) => programSlotForRaceDay(gd, span)), [0, 1, 2, 3, 4, 4, 4, 4]);
+});
+
+test("programSlotForRaceDay: uden loebsdag, uden liste eller ukendt loebsdag = slot 0", () => {
+  assert.equal(programSlotForRaceDay(null, [1, 2, 3]), 0);
+  assert.equal(programSlotForRaceDay(undefined, [1, 2, 3]), 0);
+  assert.equal(programSlotForRaceDay(12, null), 0);
+  assert.equal(programSlotForRaceDay(12, undefined), 0);
+  assert.equal(programSlotForRaceDay(12, [1, 2, 3]), 0);
+  assert.equal(programSlotForRaceDay(2, [null, 1, 2]), 1, "null-poster (division-loest hold) ignoreres");
 });
 
 const PROGRAM = { focus: "vo2max", intensity: "hard" };
