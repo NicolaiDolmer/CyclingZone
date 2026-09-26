@@ -125,11 +125,15 @@ export function detectGrandTourOrderViolations({
     .filter((gt) => gt.realOrder != null);
   if (order.length < 2) return [];
 
+  // Kun en STRENG ombytning er et brud: to GT'er med samme virkelige noegle (samme dato) har
+  // ingen rigtig indbyrdes raekkefoelge, saa gaten tager ikke stilling til dem. Ellers ville
+  // en tie-breaker her (id) kunne doemme en placering som pakkerens R14 (anden tie-breaker)
+  // lovligt valgte - fanget af CodeRabbit 26/9.
+  if (order.every((gt, i) => i === 0 || order[i - 1].realOrder <= gt.realOrder)) return [];
   const planlagt = order.map((gt) => gt.name).join(" → ");
   const rigtig = [...order]
     .sort((a, b) => a.realOrder - b.realOrder || String(a.id).localeCompare(String(b.id)))
     .map((gt) => gt.name).join(" → ");
-  if (planlagt === rigtig) return [];
   return [
     `tier ${tier}: Grand Tours starter i rækkefølgen ${planlagt}, men den rigtige kalenderrækkefølge er ${rigtig} (#5802)`,
   ];

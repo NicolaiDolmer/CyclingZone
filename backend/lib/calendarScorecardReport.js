@@ -529,12 +529,15 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
           `${uvurderede.length ? ` · kan ikke vurderes uden virkelig dato: ${uvurderede.join(", ")}` : ""}`);
       }
       for (const v of t.gtOrderViol ?? []) out.push(`     ! ${v}`);
-      if (t.grandTourStarts?.length) {
-        out.push(`  ${ok((t.gtEarlyStartViol?.length ?? 0) === 0)} Ingen GT-start på sæsonens første dag (§3/#5802, tidligst dag ${GRAND_TOUR_EARLIEST_START_DATE_INDEX + 1}): ${t.gtEarlyStartViol?.length ?? 0} brud`);
-        for (const v of t.gtEarlyStartViol ?? []) out.push(`     ! ${v}`);
-      }
       out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);
       for (const v of t.planViolations.slice(0, 5)) out.push(`     ${v}`);
+    }
+    // #5802 (ejer 26/9 kl. 22:40): ingen GT paa saesonens foerste dag. Maales i BEGGE
+    // tilstande - reglen kraever kun etapernes datoer, som ogsaa en skreven kalender har - og
+    // bruddet taeller i placeringsbrud, saa det maa aldrig vaere usynligt (CodeRabbit 26/9).
+    if (t.grandTourStarts?.length) {
+      out.push(`  ${ok((t.gtEarlyStartViol?.length ?? 0) === 0)} Ingen GT-start på sæsonens første dag (§3/#5802, tidligst dag ${GRAND_TOUR_EARLIEST_START_DATE_INDEX + 1}): ${t.gtEarlyStartViol?.length ?? 0} brud`);
+      for (const v of t.gtEarlyStartViol ?? []) out.push(`     ! ${v}`);
     }
     // "!" = brud der taeller i `regelbrud` (og dermed i exit-koden). §6b's uniforme maal
     // og §6's strenge tolerance staar med "~" ovenfor: de RAPPORTERES her og gates i

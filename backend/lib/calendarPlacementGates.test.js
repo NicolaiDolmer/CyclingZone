@@ -15,7 +15,7 @@ import {
   detectMinOverlapViolations, detectQuotaViolations,
   detectGrandTourOrderViolations, listGrandTourStarts, detectGrandTourEarlyStartViolations,
 } from "./calendarPlacementGates.js";
-import { scorecardGateGroups, scoreCalendarPlan, alleBrud } from "./calendarScorecardReport.js";
+import { scorecardGateGroups, scoreCalendarPlan, alleBrud, formatScorecard } from "./calendarScorecardReport.js";
 import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE, TIER_DENSITY, TIER_OVERLAP_CAP } from "./calendarTierCaps.js";
 import {
@@ -265,6 +265,16 @@ test("#5802: Vuelta før Tour er også et brud (ikke kun den første GT måles)"
   assert.equal(detectGrandTourOrderViolations(gtKalender({ giro: 0, vuelta: 25, tour: 50 })).length, 1);
 });
 
+test("#5802: to GT'er med samme virkelige dato har ingen rigtig indbyrdes rækkefølge (ingen brud uanset rækkefølge)", () => {
+  // Pakkerens R14 bryder uafgjort paa sin egen maade; gaten maa ikke doemme det valg.
+  for (const starts of [{ giro: 0, vuelta: 25, tour: 50 }, { vuelta: 0, giro: 25, tour: 50 }]) {
+    const k = gtKalender(starts);
+    k.realOrderByPoolRace.set("vuelta", 0.35); // samme noegle som Giroen
+    k.realOrderByPoolRace.set("tour", 0.9);
+    assert.deepEqual(detectGrandTourOrderViolations(k), [], JSON.stringify(starts));
+  }
+});
+
 test("#5802: en GT uden kendt virkelig dato kan ikke dømmes og springes over", () => {
   const k = gtKalender({ tour: 0, giro: 25, vuelta: 50 });
   k.realOrderByPoolRace.delete("tour");
@@ -340,6 +350,14 @@ test("#5802: scorecardet måler reglen mod sæsonens første dag og tæller den 
   assert.equal(r.tiers[0].gtEarlyStartViol.length, 1);
   assert.ok(r.placeringsbrud >= 1, "bruddet tæller i placeringsbrud");
   assert.ok(alleBrud(r).some((v) => /Giro starter 2026-10-01/.test(v)), "og i alleBrud (CI-fixture-gaten)");
+
+  // Bruddet er synligt i scorecardet i BEGGE tilstande - ogsaa DB-tilstanden, hvor andre
+  // placeringsregler staar som "IKKE målt her" (CodeRabbit 26/9).
+  for (const tilstand of ["plan", "db"]) {
+    const tekst = formatScorecard(scoreCalendarPlan({ tierPlans: [plan], firstRaceDay: FOERSTE_DAG, realDays: 28, tilstand })).join("\n");
+    assert.match(tekst, /FEJL Ingen GT-start på sæsonens første dag/, tilstand);
+    assert.match(tekst, /! tier 1: Giro starter 2026-10-01/, tilstand);
+  }
 
   // Samme kalender, men sæsonen starter to dage tidligere: Giroen ligger nu på dag 3.
   const senere = scoreCalendarPlan({ tierPlans: [plan], firstRaceDay: "2026-09-29", realDays: 28 });
