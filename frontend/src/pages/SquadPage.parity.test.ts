@@ -30,6 +30,14 @@ test("Squad-fanen har My Teams to kolonne-tilstande med de delte evne-kolonner",
   for (const key of ["popularity", "badges"]) assert.match(squadTable, new RegExp(`key: "${key}"`));
 });
 
+// #5805: beta-forum 24/9 — U23/junior sorterede navne efter fornavn, My Team
+// efter efternavn. Siden skal genbruge My Teams navne-nøgle, ikke en kopi.
+test("#5805 Squad-fanen sorterer navne med My Teams nøgle (efternavn + fornavn)", () => {
+  assert.match(squadTable, /import \{ riderNameSortKey \} from "\.\.\/\.\.\/lib\/riderColumnSort\.js"/);
+  assert.match(squadTable, /name: \(r\) => riderNameSortKey\(r\)/);
+  assert.doesNotMatch(squadTable, /`\$\{r\.firstname \?\? ""\} \$\{r\.lastname \?\? ""\}`/);
+});
+
 test("My Team og Stats-fanen deler ét gruppe-filter (Senior / U23 / Junior)", () => {
   assert.match(teamPage, /const squadFilter = useSquadGroupFilter\(\);/);
   assert.match(teamPage, /squadGroupFilterToolbar\(squadFilter, viewRiders\)/);

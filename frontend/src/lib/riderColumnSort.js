@@ -11,14 +11,20 @@ import { getRiderMarketValue, getRiderSalary } from "./marketValues.js";
 import { compareNationality } from "./countryUtils.js";
 import { riderOverallRating } from "./riderRating.js";
 
+// #5805: navne-sorteringens nøgle — efternavn, så fornavn. Delt med U23/junior-
+// truppen (YouthSquadTable.tsx), så de tre trup-sider sorterer navne ens.
+export function riderNameSortKey(rider) {
+  return `${rider?.lastname ?? ""} ${rider?.firstname ?? ""}`.trim().toLowerCase();
+}
+
 // #2403: delt rytter-sort-komparator for KLIENT-sortering (auktioner, transfer-
 // markedets riderFilters-instans, eget hold, watchlist — alle driver via
 // useClientRiderFilters i useRiderFilters.js). Server-sortering (fetchRidersPage/
 // RidersPage) har sin egen sti — se mergeSalarySortedIds nedenfor.
 export function compareRidersByFilter(a, b, filters) {
   if (filters.sort === "firstname") {
-    const aName = `${a.lastname} ${a.firstname}`.toLowerCase();
-    const bName = `${b.lastname} ${b.firstname}`.toLowerCase();
+    const aName = riderNameSortKey(a);
+    const bName = riderNameSortKey(b);
     // #1950: pin to 'en' so the client-side name sort matches the server
     // path (applyRiderColumnSort → Postgres .order('lastname'), literal
     // 'aa'). Bare localeCompare() resolves to da-DK in a Danish browser and

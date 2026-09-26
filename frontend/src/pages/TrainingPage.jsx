@@ -2175,12 +2175,11 @@ export default function TrainingPage() {
             onOpenDay={(riderId) => setFocusPanelRiderId(riderId)}
             dayBusyFor={(riderId) => savingId === riderId || bulkApplying}
             yesterdaySlot={null}
-            sortSlot={null}
-            assistantSlot={
-              // #5485: sorteringen står her under tabellen, så mindst 8 ryttere
-              // står på første skærm; overblikket over tabellen er den hurtige
-              // vej til "hvem er træt". Assistenten er rykket OP (ejer-go
-              // 23/9): rækken lige under overblikket, se assistantRow.
+            // #5805 (ejer 26/9): sorteringen står over tabellen, hvor spilleren
+            // leder efter den, ikke under den (#5485 havde den nederst). Den
+            // er én række høj, så tabellen rykker kun den ene række ned.
+            // Assistenten står stadig i rækken under overblikket (assistantRow).
+            sortSlot={
               <RosterMobileSortControl
                 sort={rosterSort.sort}
                 sortDir={rosterSort.sortDir}
@@ -2189,6 +2188,7 @@ export default function TrainingPage() {
                 t={t}
               />
             }
+            assistantSlot={null}
           />
         )}
         <div className="pt-1">
