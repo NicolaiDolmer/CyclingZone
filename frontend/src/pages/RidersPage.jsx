@@ -393,6 +393,26 @@ export default function RidersPage() {
     return () => { clearTimeout(timer); supabase.removeChannel(channel); };
   }, []);
 
+  // #5292 (mobile-webkit, 26/9): a history traversal is the one navigation
+  // whose URL is the truth the moment it happens, so restore from the browser
+  // event itself, not from the router's rendered location. BrowserRouter
+  // commits location updates inside startTransition, and React may never
+  // render the entries in between (our own REPLACE, then back): the render-
+  // phase comparison above then sees the same search string as before while
+  // the filters already moved on, and the input keeps the newer text. Only
+  // while the traversal stays on this route; leaving is the router's job.
+  useEffect(() => {
+    const routePath = window.location.pathname;
+    function restoreFromHistory() {
+      if (window.location.pathname !== routePath) return;
+      const next = searchParamsToFilters(new URLSearchParams(window.location.search), FILTER_DEFAULTS);
+      const nextSearch = filtersToSearchParams(next, FILTER_DEFAULTS).toString();
+      setFilters(prev => (filtersToSearchParams(prev, FILTER_DEFAULTS).toString() === nextSearch ? prev : next));
+    }
+    window.addEventListener("popstate", restoreFromHistory);
+    return () => window.removeEventListener("popstate", restoreFromHistory);
+  }, []);
+
   // #8 — sync filters → URL + sessionStorage så de persisterer på tværs af
   // navigation (klik på rytter → tilbage).
   useEffect(() => {
