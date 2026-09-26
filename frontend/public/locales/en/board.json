@@ -622,34 +622,34 @@
           "This puts next season's sponsor negotiation at risk."
         ],
         "receipt_positive": [
-          "The budget holds, and the sponsors are calling to renew.",
-          "We hit the target without touching the reserve.",
-          "Three quarters in the black in a row. That is not luck, that is discipline.",
-          "The books look better than my forecast. That is rare."
+          "That's the kind of number I can take to the sponsors.",
+          "Money coming in, costs under control. I'll sleep well tonight.",
+          "Better than my forecast. I don't say that often.",
+          "Good. The sponsors notice this sort of thing before we do."
         ],
         "receipt_negative": [
-          "We are dipping into the reserve again. That number needs to turn.",
-          "Sponsor income is under budget for the third month running.",
-          "I cannot defend this number at the next meeting.",
-          "The debt is growing faster than the revenue. That is not sustainable."
+          "I don't like where this number is heading.",
+          "We're spending money we haven't earned yet.",
+          "I can't sell this to the sponsors. Not like this.",
+          "The debt is growing faster than the income. That has to turn."
         ],
         "meeting_easier": [
-          "A lower target means a lower ceiling for the sponsors. I will take it, but I am noting it.",
-          "This is the cautious road. Fine by me.",
-          "Eased, but still a number I can stand behind to the sponsors.",
-          "I prefer a target we hit over one we chase."
+          "Lower target, lower ceiling for the sponsors. I'll accept it, but I'm writing it down.",
+          "The careful option. Fine by me.",
+          "Still a number I can defend in front of the sponsors.",
+          "I'd rather hit a small target than chase a big one."
         ],
         "meeting_keep": [
-          "Same number, same expectation. I respect that.",
-          "No change to the budget, no change in how I am watching.",
-          "We hold the course. That is often the right call.",
-          "Kept, as it should be while the numbers still add up."
+          "Same number, same expectations. Good.",
+          "The budget was built around this target. Let's keep it.",
+          "No changes. That's usually the right call.",
+          "As long as the numbers add up, I'm happy."
         ],
         "meeting_stretch": [
-          "A higher target needs better books behind it. Show me that.",
-          "I am tightening my watch exactly as much as the target is tightened.",
-          "Ambitious. The sponsors will ask how we are funding it.",
-          "A stretch target I accept, but I am keeping the books on every month."
+          "A higher target needs a healthier budget behind it. Show me that.",
+          "If the target goes up, I'll be watching the books even closer.",
+          "Ambitious. The sponsors will ask how we pay for it.",
+          "I'll sign it. But I'm watching the accounts all the way."
         ],
         "midseason_status": [
           "We are halfway. The numbers on the table today are ones I can stand behind.",
@@ -658,16 +658,16 @@
           "I have seen worse halfway books than this."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and the books confirm it. That is rare, both at once.",
-          "We celebrate this, and then the board finds the next target for the empty slot.",
-          "Reached ahead of schedule. The sponsors notice that kind of thing.",
-          "A closed chapter with a clean set of books. Good work."
+          "We got there, and the books still look good. That's rare.",
+          "The sponsors will want to hear about this one.",
+          "Well done. A result and a clean balance sheet at the same time.",
+          "Let's enjoy this. Then we find the next target."
         ],
         "milestone_missed": [
-          "The milestone slips, and it costs trust, not just the number.",
-          "We have to look these numbers in the eye without dressing them up.",
-          "Not catastrophic, but the board expected more by now.",
-          "I am writing it down. We will take it up again at the next annual meeting."
+          "We missed it. That costs trust, not just a number.",
+          "No point dressing this up. We fell short.",
+          "Not a disaster, but I expected more by now.",
+          "I'm writing it down. We'll take it up at the next annual meeting."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. The numbers cannot wait for the next annual meeting.",
@@ -737,34 +737,34 @@
           "Where has the pride gone?"
         ],
         "receipt_positive": [
-          "The club still looks like itself. That is worth more than any single result.",
-          "We are writing another page the old guard would recognize.",
-          "This is the club I signed up to protect, alive and well.",
-          "History does not repeat itself here, it continues."
+          "The club still looks like itself. That matters more than any one result.",
+          "The old members would recognize this team. Good.",
+          "This is the club I've spent half my life looking after.",
+          "We're adding to the history here, not just the results."
         ],
         "receipt_negative": [
-          "We are drifting from what this club has always stood for.",
+          "We're drifting away from what this club has always stood for.",
           "The badge deserves better than this.",
-          "I do not recognize us in this.",
-          "The old members would not stand for this, and neither should we."
+          "I don't recognize us at the moment.",
+          "The old members wouldn't have put up with this. Neither will I."
         ],
         "meeting_easier": [
-          "A lighter target does not erase our history. I can live with that.",
-          "The club has survived quieter seasons than this before.",
-          "Eased, but the crest on the jersey stays the same.",
-          "Fine, as long as we do not ease off what we stand for."
+          "A lighter target doesn't erase our history. I can live with it.",
+          "This club has survived quieter seasons.",
+          "Fine. The crest on the jersey stays the same.",
+          "All right, as long as we don't go easy on what we stand for."
         ],
         "meeting_keep": [
-          "Kept as is. Continuity is half of what this club is.",
-          "No change, and the old members would approve of that steadiness.",
-          "We hold the line the way the club always has.",
-          "Same target. This club does not chase every new trend."
+          "Continuity is half of what this club is.",
+          "Unchanged. The old members would nod at that.",
+          "We hold the line, like this club always has.",
+          "We don't chase every new fashion here. Good."
         ],
         "meeting_stretch": [
-          "A bigger ambition, as long as it still looks like us when we get there.",
-          "Stretch it, but do not stretch away from who we are.",
-          "I accept a harder target for a club with this much history behind it.",
-          "Ambitious, and the archives will remember which era did this."
+          "More ambition, fine. As long as it still looks like us when we get there.",
+          "Aim higher, but don't lose who we are on the way.",
+          "A club with this much history can carry a bigger target.",
+          "Ambitious. People will remember which generation did this."
         ],
         "midseason_status": [
           "Halfway through, and the club still looks like the one on the old photographs.",
@@ -773,16 +773,16 @@
           "Halfway, and I still recognize the team we sent out in spring."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and it belongs in the club's own record books.",
-          "Another chapter written the way the founders would have wanted.",
-          "This is the kind of moment the old members talk about for years.",
-          "Reached, and the history of this club just grew a little longer."
+          "That one goes in the club's record books.",
+          "Another chapter, written the way the founders would have wanted.",
+          "The old members will be talking about this for years.",
+          "The club's history just got a little longer."
         ],
         "milestone_missed": [
-          "The milestone slips, and it hurts more here than a number should.",
-          "This club has faced worse and stayed itself. It will again.",
-          "We owe the old members better than a missed milestone.",
-          "Not the ending this chapter deserved. We write the next one properly."
+          "We missed it, and that hurts more here than a number should.",
+          "This club has been through worse and stayed itself. It will again.",
+          "We owe the old members better than this.",
+          "Not the ending this chapter deserved. Let's write the next one properly."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. Some things cannot wait for the calendar.",
@@ -852,34 +852,34 @@
           "Better rotation would have solved this."
         ],
         "receipt_positive": [
-          "I flagged that rider two seasons ago. The numbers are finally catching up to the eye test.",
-          "Another name from my list is starting to deliver.",
-          "This is exactly the kind of potential I scout for, showing up on schedule.",
-          "Found early, developed patiently, and now it shows."
+          "The young ones I flagged are starting to deliver. Nice to be right.",
+          "Another name from my list is coming through.",
+          "Found early, developed patiently. Now you can see it.",
+          "This is exactly the potential I scout for."
         ],
         "receipt_negative": [
-          "A talent I flagged is stalling, and that is on the development plan, not the rider.",
-          "The potential is real. The pathway to use it is not.",
-          "I do not scout riders to watch them sit still.",
-          "Somewhere a scout at another club is writing down the name we are wasting."
+          "The talent's there. The plan to develop it isn't.",
+          "I don't scout riders to watch them stand still.",
+          "Somewhere, another club's scout is writing down the names we're wasting.",
+          "That's not the riders failing. That's the development plan."
         ],
         "meeting_easier": [
-          "A lower bar buys the pipeline more time to mature, I will take that trade.",
-          "Eased, and that means fewer forced calls on riders who are not ready yet.",
+          "A lower bar gives the young ones more time. I'll take that.",
+          "Fewer riders pushed before they're ready. Good.",
           "Fine by me. Potential needs patience more than pressure.",
-          "I would rather protect the long game than chase this season's number."
+          "I'd rather protect the long game than chase this season's number."
         ],
         "meeting_keep": [
-          "Same target. My scouting list does not change on a whim either.",
-          "Kept as is, and the projections I have made still hold.",
-          "No change needed, the pipeline is on the timeline I mapped out.",
-          "Fine, the numbers I am tracking do not need a new target to move."
+          "My list doesn't change on a whim, and neither should this.",
+          "My projections still hold. Leave it.",
+          "The young ones are on the timeline I mapped out. No need to touch it.",
+          "The numbers I'm tracking will move without a new target."
         ],
         "meeting_stretch": [
-          "A higher bar is fine if it does not force a half-ready name onto the start list.",
-          "Stretch it, but do not stretch a nineteen-year-old past what the data says he can take.",
-          "I accept it, as long as the pipeline gets the time it needs behind it.",
-          "Ambitious, and I will hold the club to protecting development while chasing it."
+          "A higher bar is fine, if it doesn't force a half-ready rider onto the start list.",
+          "Push the target, not a nineteen-year-old past what he can handle.",
+          "I'll accept it, as long as the young ones still get the time they need.",
+          "Ambitious. I'll make sure development isn't what pays for it."
         ],
         "midseason_status": [
           "Halfway through, and I want to know which names on my list actually got minutes.",
@@ -888,16 +888,16 @@
           "Halfway, and three names I flagged in preseason are trending exactly as projected."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and a name from my old shortlist made it happen.",
-          "This proves the scouting model works, not just the roster.",
-          "Reached, and it started as a hunch on a spreadsheet three years ago.",
-          "This is the payoff for betting on potential before the results existed."
+          "We got there. I'd like to think my shortlist had something to do with it.",
+          "That proves the scouting works, not just the squad.",
+          "It started as a hunch in a spreadsheet. Look at it now.",
+          "This is what betting on potential early looks like when it pays off."
         ],
         "milestone_missed": [
-          "The milestone slips, and I am checking whether the pipeline was ever given a real chance.",
-          "Not catastrophic, but a few names on my list needed more minutes than they got.",
-          "We owe the development pathway a harder look before the next attempt.",
-          "I am noting which prospects were held back. That data does not disappear."
+          "We missed it. I'm asking myself if the young ones ever got a real chance.",
+          "A few names on my list needed more races than they got.",
+          "Before the next attempt, we take a hard look at how we develop riders.",
+          "I'm noting who was held back. That doesn't just disappear."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting, and I want the pipeline's needs on the table.",
@@ -967,34 +967,34 @@
           "The next plan sharpens the demands considerably."
         ],
         "receipt_positive": [
-          "A win is a win. Keep them coming.",
-          "We are climbing the standings, and that is the only chart I read.",
-          "Podiums. Finally something worth talking about.",
-          "This is what winning looks like. More of it."
+          "A win's a win. Keep them coming.",
+          "We're climbing. That's the only chart I read.",
+          "Now we're getting somewhere.",
+          "That's what winning looks like. More."
         ],
         "receipt_negative": [
-          "No wins is no wins. Excuses do not count on a scoreboard.",
-          "We are slipping down the table, and I do not accept slow.",
-          "Second place is the first loser, and we have collected too many of those.",
-          "This losing streak needs to end this week, not next."
+          "No wins is no wins. Excuses don't show up in the standings.",
+          "We're sliding, and I don't do slow.",
+          "Second place is still losing. We've had too much of it.",
+          "This has to turn now. Not next month."
         ],
         "meeting_easier": [
-          "A lower target still needs to end in wins, or it is not a target.",
-          "Fine, but easy still means a win at the finish line, not a good try.",
-          "Eased, and I expect it back up the moment we start winning.",
-          "I accept it grudgingly. This club does not aim low for long."
+          "Lower target. It still has to end in wins.",
+          "Easier doesn't mean a good try. It means a win at the line.",
+          "Fine. It goes back up the moment we start winning.",
+          "I'll accept it, but I don't like it. We don't aim low for long."
         ],
         "meeting_keep": [
-          "Same target. Winning does not need a discount.",
-          "Kept, because the standard should not move for anyone.",
-          "No change. We were hired to win, not to renegotiate.",
-          "Fine, the number stays. Now go win it."
+          "Winning doesn't come at a discount.",
+          "The standard doesn't move for anyone.",
+          "We're here to win, not to renegotiate.",
+          "The number stays. Now go and win it."
         ],
         "meeting_stretch": [
-          "A harder target. Finally somebody in this room wants to win.",
-          "Stretch it. I would have asked for more anyway.",
-          "Good. Ambition is the only thing I ever agree to without a fight.",
-          "Set it higher. This club should be uncomfortable chasing anything less."
+          "Higher. Finally someone in this room wants to win.",
+          "I'd have asked for more anyway.",
+          "Good. Ambition's the one thing I never argue about.",
+          "Set it high. Anything less should feel uncomfortable."
         ],
         "midseason_status": [
           "Halfway, and I am counting wins, not effort.",
@@ -1003,16 +1003,16 @@
           "Halfway through, and I want more wins than we have in the second half."
         ],
         "milestone_achieved": [
-          "The milestone is reached, because we won when it mattered.",
+          "Done, because we won when it mattered.",
           "Finally a milestone that matches what this club should be doing.",
-          "Reached. Now find the next one, higher.",
-          "This is what the board should always look like: wins on the board."
+          "Now find the next one, and make it harder.",
+          "Wins on the board. That's how it should always look."
         ],
         "milestone_missed": [
-          "The milestone slips, and that is unacceptable at this level.",
-          "We had the roster to hit this. We did not hit it. Explain that.",
-          "Missing this costs more than the milestone itself. It costs credibility.",
-          "Next attempt gets a sharper target and zero patience for excuses."
+          "Missed. At this level, that's not acceptable.",
+          "We had the squad to do this. We didn't. Explain that to me.",
+          "That costs more than a milestone. It costs credibility.",
+          "Next time: a sharper target and zero patience for excuses."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. Losing streaks like this do not wait for the calendar.",
@@ -1082,34 +1082,34 @@
           "The board expects an open evaluation."
         ],
         "receipt_positive": [
-          "The risk and the reward finally line up. That is all I ever ask for.",
-          "Nothing spectacular, but nothing exposed either. I will take that.",
-          "This is the kind of balanced week that actually builds something.",
-          "We are winning on more fronts than we are losing on. Good enough is good."
+          "Risk and reward finally line up. That's all I ask.",
+          "Nothing spectacular, nothing exposed. I'll take it.",
+          "We're winning on more fronts than we're losing on. Good enough is good.",
+          "Steady. That's how you actually build something."
         ],
         "receipt_negative": [
-          "The scale has tipped, and I do not like which way.",
-          "We are losing a little on every front. That adds up faster than one big loss.",
-          "This is not a crisis yet, but it stops being fine if it repeats.",
-          "The trade-off we accepted is not paying off the way it should."
+          "The scales have tipped, and not our way.",
+          "We're losing a little everywhere. That adds up faster than one big loss.",
+          "Not a crisis yet. But if it happens again, it stops being fine.",
+          "The trade-off we made isn't paying off."
         ],
         "meeting_easier": [
-          "A lower target is a fair trade for a season that needs room to breathe.",
-          "Eased, and that is a reasonable adjustment, not a retreat.",
-          "I can live with lower, as long as it is a decision and not a drift.",
-          "Fine. Sometimes the balanced choice is the smaller number."
+          "A lower target for a season that needs room to breathe. Fair trade.",
+          "That's an adjustment, not a retreat.",
+          "I can live with lower, as long as we chose it and didn't just drift there.",
+          "Sometimes the sensible choice is the smaller number."
         ],
         "meeting_keep": [
-          "Same target. It was balanced when we set it, and nothing has changed that.",
-          "Kept as is. I do not move a number just because someone is impatient.",
-          "No change needed, the trade-off still holds up under scrutiny.",
-          "Fine as it stands. A steady target is worth more than a reactive one."
+          "It was sensible when we set it, and nothing's changed.",
+          "I don't move a number just because someone's impatient.",
+          "The trade-off still holds. Keep it.",
+          "A steady target beats a nervous one."
         ],
         "meeting_stretch": [
-          "A higher target, as long as we are honest about what we are risking for it.",
-          "Stretch it, but I want the downside written down before we sign.",
-          "I accept it if the upside genuinely outweighs what could go wrong.",
-          "Ambitious is fine. Reckless is not, and I will keep an eye on the line."
+          "Higher, fine. As long as we're honest about what we're risking.",
+          "Go on, but I want the downside written down before we sign.",
+          "I'll accept it if the upside really outweighs what could go wrong.",
+          "Ambitious is fine. Reckless isn't. I'll be watching the line."
         ],
         "midseason_status": [
           "Halfway through, and the picture is neither as good nor as bad as it feels.",
@@ -1118,16 +1118,16 @@
           "Halfway, and the balance still holds, barely, which is exactly why we watch it."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and the trade-offs along the way were worth it.",
-          "Reached without breaking anything else to get there. That is the real win.",
-          "This is what a balanced plan looks like when it pays off.",
-          "Good outcome, and I would make the same trade-offs again."
+          "We got there, and the trade-offs along the way were worth it.",
+          "Done without breaking anything else. That's the real win.",
+          "This is what a sensible plan looks like when it pays off.",
+          "Good result. I'd make the same calls again."
         ],
         "milestone_missed": [
-          "The milestone slips. Not the end of the plan, but worth a hard look at why.",
-          "We miscalculated the trade-off somewhere. Let us find where.",
-          "Disappointing, but not a reason to abandon the balanced approach.",
-          "I am noting it. The next plan adjusts the weighting, not the philosophy."
+          "We missed it. Not the end of the plan, but we need to understand why.",
+          "We got the balance wrong somewhere. Let's find out where.",
+          "Disappointing, but no reason to throw out the whole approach.",
+          "Noted. Next time we change the weighting, not the philosophy."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. The balance has tipped enough to warrant it.",
@@ -1197,34 +1197,34 @@
           "If this continues, the academy will not call."
         ],
         "receipt_positive": [
-          "A debutant took his first win today. That is the whole point of this.",
-          "The young riders get room, and they are using it.",
-          "Another U25 rider took a step today. That is how a generation is built.",
-          "This team is developing talent, not just spending it."
+          "The young riders are getting room, and they're using it.",
+          "Another young rider took a step forward. That's how you build a generation.",
+          "This team develops talent. It doesn't just use it up.",
+          "This is the whole point. I'm proud of them."
         ],
         "receipt_negative": [
-          "The young riders are on the bench again. That is hard to watch.",
+          "The young riders are on the bench again. That's hard to watch.",
           "We promise development and deliver standing still.",
-          "Another debutant without race days in his legs this month.",
-          "The talent is there. The chance is not."
+          "The talent is there. The chances aren't.",
+          "Young riders need races, not a spot in the team photo."
         ],
         "meeting_easier": [
-          "An eased target means more patience with the young riders. I will gladly take that.",
-          "Fewer points to chase, more room to let a debutant learn.",
-          "Eased is fine, as long as the development is not eased along with it.",
-          "I accept this, if it means more races for the U25 squad."
+          "An easier target means more patience with the young ones. Happy with that.",
+          "Fewer points to chase, more room for a young rider to learn.",
+          "Fine, as long as development doesn't get eased too.",
+          "Yes, if it means more races for the young ones."
         ],
         "meeting_keep": [
-          "Same target, same promise to the young riders that they are seen.",
-          "Kept as is. The young riders deserve consistency, not shifting ground.",
-          "No change, and that is fine. Development takes the time it takes.",
-          "We hold the course for the sake of the youth."
+          "Same promise to the young riders: they'll be seen.",
+          "Young riders need something steady to grow into.",
+          "Development takes the time it takes. This is fine.",
+          "Good for the young ones. Let's leave it."
         ],
         "meeting_stretch": [
-          "A tighter target must not come at the expense of the debutants.",
-          "I accept the stretch target, but I am watching who gets to race.",
-          "Ambitious is fine, as long as the young riders still get their chance.",
-          "Set the target higher. Just do not forget who has to reach it."
+          "A tougher target can't come at the young riders' expense.",
+          "I'll accept it, but I'm watching who gets to race.",
+          "Ambitious is fine, as long as the young ones still get their chance.",
+          "Aim higher. Just don't forget who has to get us there."
         ],
         "midseason_status": [
           "We are halfway, and I want to know how many debutants have raced since last time.",
@@ -1233,16 +1233,16 @@
           "Halfway through, and the young riders still have my full attention."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and a debutant helped make it happen. That is how it should look.",
-          "Reached, and the board is already finding the next target for the young riders to grow toward.",
-          "This proves the development path works.",
-          "A future that was promised is now a future that was delivered."
+          "We got there. I hope the young ones know they're part of this.",
+          "Lovely. Now let's see what the young ones can grow into next.",
+          "This shows the development path works.",
+          "A future we promised, and now one we've delivered."
         ],
         "milestone_missed": [
-          "The milestone slips, and I ask myself if the young riders got enough time.",
-          "Not the end of the world, but the development needs to speed up.",
+          "We missed it, and I'm asking myself if the young ones got enough time.",
+          "Not the end of the world, but development has to speed up.",
           "We owe the young riders a better plan from here.",
-          "I am noting it. The next annual meeting needs to give them a real chance again."
+          "Next annual meeting, they get a real chance again. I'll make sure of it."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. I want the young riders' conditions on the agenda.",
@@ -1312,34 +1312,34 @@
           "We are losing ground we cannot win back easily."
         ],
         "receipt_positive": [
-          "Our own riders carried the flag today, and the fans heard their own language in the bunch.",
-          "This is a home-grown result, and that matters more than the points.",
-          "The national core delivered, exactly as a club like ours should.",
-          "Our flag was at the front today. That is worth more than the margin."
+          "Our own riders at the front. The fans hear their own language in the bunch.",
+          "A home-grown result. That matters more to me than the points.",
+          "The national core delivered, as it should at a club like ours.",
+          "Our flag at the front. That's worth more than the margin."
         ],
         "receipt_negative": [
-          "Fewer home riders on the results sheet, and fewer fans see themselves in this team.",
-          "We are becoming a club of imported names, and the home crowd notices.",
-          "The national core is thinning, and that is a slower disaster than any loss.",
-          "Our own flag is drifting toward the back of the peloton."
+          "Fewer home riders on the results sheet. Fewer fans see themselves in this team.",
+          "We're turning into a club of imported names, and the home crowd notices.",
+          "The national core is thinning. That's a slower disaster than any defeat.",
+          "Our own flag is drifting to the back of the bunch."
         ],
         "meeting_easier": [
-          "A lower target for the national core, as long as the core itself does not shrink.",
-          "Eased, but I want the home riders still on the start list, not just the number.",
-          "Fine, so long as it is patience with our own, not a quiet retreat from them.",
-          "I accept it, if it buys the home talent more time to grow into the role."
+          "A lower target for the national core, as long as the core itself doesn't shrink.",
+          "I want our own riders on the start list, not just in the numbers.",
+          "Fine, if it's patience with our own and not a quiet step away from them.",
+          "I'll accept it if it gives our home talent more time to grow."
         ],
         "meeting_keep": [
-          "Same target. Our national identity does not get renegotiated on a whim.",
-          "Kept as is, and the home fans deserve that consistency.",
-          "No change. The flag on the jersey stays exactly as important as before.",
-          "Fine as it stands. This club's core was never up for discount."
+          "Who we are isn't up for negotiation.",
+          "The home fans deserve that consistency.",
+          "The flag on the jersey matters as much as ever.",
+          "Our core was never for sale."
         ],
         "meeting_stretch": [
-          "A higher target for the national core, and I will hold everyone to it.",
-          "Stretch it. It is about time this club leaned harder into who we are.",
-          "I accept it, as long as it means more home names, not just a bigger number.",
-          "Ambitious, and the home fans will finally see themselves more often."
+          "A higher target for the national core, and I'll hold everyone to it.",
+          "It's about time this club leaned into who we are.",
+          "Yes, as long as it means more home riders, not just a bigger number.",
+          "Ambitious. The home fans will finally see more of their own."
         ],
         "midseason_status": [
           "Halfway through, and I want to know how many home riders actually raced.",
@@ -1348,16 +1348,16 @@
           "Halfway, and the national core is holding, which is the number that matters to me."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and a home rider was at the front when it happened.",
-          "Reached, and the whole country gets to claim this one.",
+          "The whole country can claim this one.",
           "This is the kind of milestone that makes the home fans proud to wear the colors.",
-          "Our own flag delivered when it counted. That will be remembered."
+          "Our own riders delivered when it counted. People will remember that.",
+          "This one belongs to the home crowd too."
         ],
         "milestone_missed": [
-          "The milestone slips, and I ask whether the home riders were given the chance to carry it.",
-          "Not catastrophic, but the national core deserved better positioning here.",
-          "We owe the home fans a clearer path to this milestone next time.",
-          "I am noting it. The flag comes back to the front at the next annual meeting."
+          "We missed it. Did our own riders ever get the chance to carry it?",
+          "The national core deserved a bigger role here.",
+          "We owe the home fans a clearer path to this next time.",
+          "At the next annual meeting, the flag goes back to the front."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting, and I want the national core's standing on the agenda.",
@@ -1427,34 +1427,34 @@
           "No one takes the club seriously on the Roubaix ramp after this."
         ],
         "receipt_positive": [
-          "That was a proper cobbled performance. The spring campaign is alive.",
-          "We rode like a classics team today, and it showed on the stones.",
-          "A result like that belongs on the Roubaix velodrome, not just the results sheet.",
-          "This is what a monument-shaped season looks like in April."
+          "That's a proper classics result. That's what this club is for.",
+          "We raced like a classics team, and it showed.",
+          "A result like that belongs on the Roubaix velodrome, not just a results sheet.",
+          "Now it feels like a club that belongs on the cobbles."
         ],
         "receipt_negative": [
-          "No cobbles, no spring form, no story worth telling this April.",
-          "We looked lost the moment the road turned to stones.",
-          "A classics team that avoids the cobbles is not a classics team.",
-          "The Monuments will not remember a season like this one."
+          "No cobbles, no form, no story worth telling.",
+          "We look lost the moment the road turns to stones.",
+          "A classics team that avoids the cobbles isn't a classics team.",
+          "The Monuments won't remember a season like this."
         ],
         "meeting_easier": [
-          "A lighter spring target, as long as we still show up for the stones that matter.",
-          "Eased, but the Monuments do not care about our excuses either way.",
+          "A lighter target, as long as we still turn up for the races that matter.",
+          "The Monuments won't care about our excuses either way.",
           "Fine, if it means we build properly toward Roubaix instead of forcing it.",
-          "I accept it, as long as classics identity is not what got lowered."
+          "I'll accept it, as long as it's not our classics identity we just lowered."
         ],
         "meeting_keep": [
-          "Same target. The cobbles do not get easier because we ask nicely.",
-          "Kept as is. Spring does not renegotiate its calendar for anyone.",
-          "No change. A classics club holds its ambition through the mud.",
-          "Fine as it stands. The Monuments deserve a fixed target, not a moving one."
+          "The cobbles don't get easier because we ask nicely.",
+          "The classics don't move their dates for anyone.",
+          "A classics club keeps its ambition through the mud.",
+          "The Monuments deserve a fixed target, not a moving one."
         ],
         "meeting_stretch": [
-          "A harder spring target. Finally something worthy of the cobbles.",
-          "Stretch it. This club should be uncomfortable aiming at anything less than a Monument.",
-          "I accept it, gladly. The classics deserve real ambition, not a modest one.",
-          "Ambitious, and the spring campaign just got the pressure it needed."
+          "A harder target. Finally something worthy of the cobbles.",
+          "We shouldn't settle for anything less than a Monument.",
+          "Gladly. The classics deserve real ambition.",
+          "Ambitious. Good, now the pressure's on."
         ],
         "midseason_status": [
           "Halfway through, and I am still judging this season on what happened in April.",
@@ -1463,16 +1463,16 @@
           "Halfway, and the Monuments already told us most of what we need to know."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and it happened on the roads that matter to this club.",
-          "Reached, with cobbles under the wheels. That is how it should be done.",
-          "This is the kind of milestone the classics history books will actually mention.",
-          "A monument-worthy result. That is what this club exists for."
+          "We got there on the roads that matter to this club.",
+          "Cobbles under the wheels, milestone in the bag. That's how it's done.",
+          "The classics history books will actually mention this one.",
+          "A result worthy of a Monument. That's why this club exists."
         ],
         "milestone_missed": [
-          "The milestone slips, and a spring without a real result stings more than any other season.",
-          "Not catastrophic, but the cobbled campaign owed us more than this.",
-          "We owe the classics identity a sharper spring next year.",
-          "I am noting it. The next attempt starts building for April immediately."
+          "We missed it, and a year without a real classics result stings more than any other.",
+          "The classics owed us more than this.",
+          "We need a sharper classics campaign next year.",
+          "The build-up for the next one starts now."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. Spring does not wait for the usual calendar.",
@@ -1542,34 +1542,34 @@
           "We lack a plan for where the star is going to come from."
         ],
         "receipt_positive": [
-          "That climb was Tour form. We are building something real for July.",
-          "The GC picture looks better every week. This is how a stage-race project is built.",
-          "A performance like that belongs in the mountains of a Grand Tour, not a one-day race.",
-          "We are riding like a team with a three-week ambition, finally."
+          "That's Grand Tour form. We're building something real.",
+          "The GC picture keeps getting better. This is how a stage-race team is built.",
+          "We finally ride like a team with a three-week ambition.",
+          "I can see it now. The Tour is getting closer."
         ],
         "receipt_negative": [
-          "No GC presence, no mountain legs, no Tour project worth the name.",
-          "We fell apart the moment the road went uphill for more than a stage.",
-          "A team without a real GC threat is not building toward anything I care about.",
-          "The Tour is further away this week than it was last month."
+          "No GC presence, no climbing legs, no Tour project worth the name.",
+          "We fall apart as soon as the road goes uphill for more than a day.",
+          "A team without a real GC threat isn't building toward anything I care about.",
+          "The Tour feels further away than it did a month ago."
         ],
         "meeting_easier": [
-          "A lighter GC target, as long as we still ride the three weeks like they matter.",
-          "Eased, but I want the mountain legs built regardless of the number.",
-          "Fine, if it buys the climbers time before we ask them for a Grand Tour.",
-          "I accept it, as long as the Tour is still the horizon we are riding toward."
+          "A lighter GC target, as long as we still ride three weeks like they matter.",
+          "I want the climbing legs built regardless.",
+          "Fine, if it gives the climbers time before we ask them for a Grand Tour.",
+          "I'll accept it, as long as the Tour is still where we're heading."
         ],
         "meeting_keep": [
-          "Same target. The mountains do not care whether we feel like it this week.",
-          "Kept as is. A three-week project does not renegotiate its own timeline.",
-          "No change. The Tour is not moved back because we asked for a discount.",
-          "Fine as it stands. GC ambition should not be the first thing we cut."
+          "The mountains don't care how we feel about it.",
+          "A three-week project doesn't rewrite its own timeline.",
+          "The Tour doesn't wait because we asked for a discount.",
+          "GC ambition is the last thing we should cut."
         ],
         "meeting_stretch": [
-          "A higher GC target. Finally something with a Tour-sized ambition.",
-          "Stretch it. This club should always be aiming at three weeks, not one day.",
-          "I accept it gladly. The mountains deserve real ambition behind them.",
-          "Ambitious, and that is the only setting this project should run in."
+          "A higher GC target. Finally a Tour-sized ambition.",
+          "This club should always be aiming at three weeks, not one day.",
+          "Gladly. The mountains deserve real ambition.",
+          "Ambitious. That's the only gear this project should run in."
         ],
         "midseason_status": [
           "Halfway through, and I am judging this season on where the GC project stands, not the sprints.",
@@ -1578,16 +1578,16 @@
           "Halfway, and the mountain legs are coming, which is the only number I track."
         ],
         "milestone_achieved": [
-          "The milestone is reached, and it happened with real GC weight behind it.",
-          "Reached, on the kind of climb that decides a Grand Tour.",
-          "This is the kind of result that says the Tour project is real, not a dream.",
-          "A three-week-worthy result. That is what this club is built to chase."
+          "We got there, with real GC weight behind it.",
+          "One more step on the road to a Grand Tour.",
+          "This tells me the Tour project is real, not a dream.",
+          "A result worthy of three weeks. That's what this club is built for."
         ],
         "milestone_missed": [
-          "The milestone slips, and a Grand Tour project without it loses a whole season of momentum.",
-          "Not catastrophic, but the mountains owed us more than this.",
-          "We owe the GC project a sharper build toward next year's three weeks.",
-          "I am noting it. The road to the Tour starts being rebuilt today."
+          "We missed it, and a Grand Tour project loses a whole season of momentum.",
+          "The climbers had more in them than this showed.",
+          "We need a sharper build toward the next Grand Tour.",
+          "The road to the Tour gets rebuilt from today."
         ],
         "extraordinary_meeting": [
           "The board is calling an extraordinary meeting. A Tour project does not wait for the usual calendar.",
@@ -1870,9 +1870,9 @@
     },
     "vision": {
       "cardTitle": "Club vision",
-      "meta": "S{start} to S{end}",
-      "seasonLabel": "S{season}",
-      "currentSeasonLabel": "S{season} · You are here",
+      "meta": "{seasons, plural, one {1-season plan} other {#-season plan}} · Season {start} to {end}",
+      "seasonLabel": "Season {season}",
+      "currentSeasonLabel": "Season {season} · You are here",
       "explainer": "Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.",
       "empty": {
         "title": "No vision set yet",
@@ -1888,7 +1888,7 @@
     "board": {
       "cardTitle": "The board",
       "minutesLink": "Meeting minutes",
-      "memberGridHint": "Tap a member for their view of the board.",
+      "memberGridHint": "Tap a member to see what they think and which goals they own.",
       "role": {
         "chair": "Chair",
         "results": "Results",
@@ -1907,14 +1907,13 @@
     },
     "member": {
       "viewHint": "View member",
-      "portraitLabel": "Portrait",
       "ownsGoalsCount": "{count, plural, one {owns 1 goal} other {owns # goals}}",
       "sinceSeason": "on the board since S{season}",
       "personalityHeading": "Personality",
       "ownsGoalsHeading": "Owns these goals",
-      "ownWordsHeading": "In his own words",
+      "ownWordsHeading": "In their own words",
       "confidenceMove": "{sign}{delta} confidence · {date}",
-      "footerNote": "Portraits arrive in a later round. The voice is the identity.",
+      "footerNote": "No photos yet. For now, you'll know them by what they say.",
       "close": "Close"
     },
     "minutesFixture": {
@@ -1956,7 +1955,7 @@
         "choiceDisabledEasier": "This goal can't be eased further.",
         "choiceDisabledStretch": "This goal can't be stretched further.",
         "choiceDisabledBudget": "You've used all your adjustments for this meeting.",
-        "reactionAttribution": "{name} backs the {choice}"
+        "reactionAttribution": "{name}, who owns this goal"
       },
       "visionSlot": {
         "title": "The board proposes a new milestone",
@@ -1996,7 +1995,7 @@
       "openBoard": "Open board",
       "visionLabel": "Club vision",
       "boardLabel": "The board",
-      "nextMilestone": "Next milestone: {milestone}, target S{season}.",
+      "nextMilestone": "Next milestone: {milestone}, in season {season}.",
       "boardNoQuote": "The board has not said anything since the last meeting.",
       "goalValue": "{achieved} / {target}"
     },
@@ -2026,7 +2025,7 @@
       "min_u25_riders": "U25 riders on your team right now.",
       "min_national_riders": "riders from the goal's country on your team right now.",
       "min_riders": "riders on your team right now.",
-      "no_outstanding_debt": "your balance minus active loans, set against one season's wage bill.",
+      "no_outstanding_debt": "your balance minus active loans. The goal is met if that's zero or more at season end.",
       "sponsor_growth": "the rise in your sponsor's season payout since the plan's first season, in percent.",
       "monument_podium": "top-3 finishes in Monuments, or in classics when the goal names them. A bonus target counts from acceptance.",
       "signature_rider": "high-renown riders on your team. A bonus target counts from acceptance.",

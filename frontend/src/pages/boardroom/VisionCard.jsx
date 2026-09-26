@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, FlagIcon } from "../../components/ui";
-import { resolveGoalTitle } from "./boardroomFormat.js";
+import { resolveGoalTitle, visionSpan } from "./boardroomFormat.js";
 
 // Milepael-prik pr. status (Main.dc.html §3): "current" = gold fyld + navy
 // kant (2px, sidebar-navy — samme token som app-shellets altid-moerke
@@ -34,6 +34,7 @@ export default function VisionCard({ vision }) {
   }
 
   const milestones = vision.milestones || [];
+  const { start, end, seasons } = visionSpan(vision);
   // #4570-afstemning: backend sender `vision.titleKey` = "vision.title.<dnaKey>"
   // (narrativt klub-navn, "The Nordic project"-stil). Falder til den generiske
   // "Club vision" hvis nøglen mangler eller intet oversat indhold findes endnu.
@@ -45,7 +46,7 @@ export default function VisionCard({ vision }) {
     <Section>
       <SectionHeader
         title={title}
-        meta={t("boardroom.vision.meta", { start: vision.startSeason, end: vision.endSeason })}
+        meta={start != null && end != null ? t("boardroom.vision.meta", { seasons, start, end }) : null}
       />
       {/* #5617 · Paa mobil er milepaelene en lodret liste (prik + linje til
           venstre, tekst i fuld bredde). Det vandrette gitter med én kolonne pr.
