@@ -742,3 +742,65 @@ test("#5582 juryen: incidentTimeLossByRider summerer kun tidstab, pr. rytter", (
   ]);
   assert.deepEqual([...byRider.entries()], [["a", 15.5]]);
 });
+
+/**
+ * #5515: en grupetto paa 25 kaedet med 20 s mellemrum (vindue 30 s) og to
+ * ryttere et stykke bag den, uden for vinduet: r100 (uheldsofret) og r101
+ * (samme tid, intet uheld).
+ */
+function grupettoWithStraggler(): { results: StageResult[]; lastGrupetto: number } {
+  const winner = 10000;
+  const limit = timeLimitSecondsFor(winner, "mountain");
+  const grupetto = Array.from({ length: 25 }, (_, i) => limit + 100 + i * 20);
+  const lastGrupetto = grupetto[grupetto.length - 1];
+  const times = [...Array.from({ length: 75 }, () => winner), ...grupetto, lastGrupetto + 200, lastGrupetto + 200];
+  return { results: resultsFromTimes(times), lastGrupetto };
+}
+
+test("#5515 jury: et offer hvis tid minus uheldet lander i den reddede grupetto, genindsaettes (RULES §9 raekke 4)", () => {
+  const { results } = grupettoWithStraggler();
+  const withoutJury = applyTimeLimit({ results, profileType: "mountain", distanceKm: 180, cohesionWindowSeconds: 30 });
+  assert.equal(withoutJury.results.find((r) => r.rider_id === "r100")!.status, "otl", "forudsaetning: punkteringen skilte ham fra grupettoen");
+  assert.equal(withoutJury.rescuedRiderIds.length, 25, "forudsaetning: grupettoen reddes");
+
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    cohesionWindowSeconds: 30,
+    jury: { incidents: [loss("r100", 190)] },
+  });
+  const victim = outcome.results.find((r) => r.rider_id === "r100")!;
+  assert.equal(victim.status, "finished");
+  assert.equal(victim.reinstated_by, "jury");
+  assert.deepEqual(outcome.juryReinstatedRiderIds, ["r100"]);
+  // Ingen genindsaettelse uden et uheld: rytteren ved siden af ham er stadig ude.
+  assert.deepEqual(outcome.otlRiderIds, ["r101"]);
+  assert.equal(outcome.rescuedRiderIds.length, 25, "grupetto-redningen er uaendret");
+});
+
+test("#5515 jury: lander tiden minus uheldet stadig uden for grupettoens vindue, er han ude", () => {
+  const { results } = grupettoWithStraggler();
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    cohesionWindowSeconds: 30,
+    // 200 s bag grupettoen, 100 s tabt i uheldet: 100 s bag, langt uden for vinduet.
+    jury: { incidents: [loss("r100", 100)] },
+  });
+  assert.equal(outcome.results.find((r) => r.rider_id === "r100")!.status, "otl");
+  assert.deepEqual(outcome.juryReinstatedRiderIds, []);
+});
+
+test("#5515 jury: grupetto/save-valget udelukker ogsaa genindsaettelse via grupettoen", () => {
+  const { results } = grupettoWithStraggler();
+  const outcome = applyTimeLimit({
+    results,
+    profileType: "mountain",
+    distanceKm: 180,
+    cohesionWindowSeconds: 30,
+    jury: { incidents: [loss("r100", 190)], effortByRider: { r100: "grupetto" } },
+  });
+  assert.equal(outcome.results.find((r) => r.rider_id === "r100")!.status, "otl");
+});

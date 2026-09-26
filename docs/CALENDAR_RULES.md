@@ -207,7 +207,9 @@ Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder ryt
 | D4 (aktiv) | **altid**, også uden ægte managers | nyt 24/9 — spejler AI-fyldet (#5642) |
 | pensioneret (`league_divisions.retired_at` sat) | **aldrig**, heller ikke via `forceTiers` | nyt 24/9 — D4 E-H |
 
-Alle puljer i en division kører stadig den samme kalender (#2276), så D4's løbstal halveres (fire puljer i stedet for otte), mens løbene pr. pulje og de 140 løbsdage er uændrede. `buildSeasonCalendar.js` stopper en seniorkørsel fra S4 hvis antallet af puljer med kalender ikke er præcis 1/2/4/4 (`SENIOR_CALENDAR_POOLS_FROM_S4`), fordi det betyder at kalenderen køres før sammenlægningen og pensioneringen (se `SEASON_CUTOVER_RUNBOOK.md` trin 12b).
+Alle puljer i en division kører stadig den samme kalender (#2276), så D4's løbstal halveres (fire puljer i stedet for otte), mens løbene pr. pulje og de 140 løbsdage er uændrede. `buildSeasonCalendar.js` stopper en seniorkørsel fra S4 hvis antallet af puljer med kalender ikke er præcis 1/2/4/4 (`SENIOR_CALENDAR_POOLS_FROM_S4`), fordi det betyder at kalenderen køres før sammenlægningen og pensioneringen.
+
+**Kalenderen skrives før sæsonen er slut ([#5795](https://github.com/NicolaiDolmer/CyclingZone/issues/5795), ejer 26/9).** `--target-structure s4` planlægger mod S4's målstruktur: de D4-puljer som `retireD4PoolsS4.js` pensionerer ved "Afslut sæson" (de fire med højest `pool_index`, samme regel som scriptet, `lib/calendarTargetStructure.js`), behandles i planen som pensionerede (`cutoverRetiredPoolIds` i materializeren) og får ingen løb. Databasen røres ikke. Planen er den samme som efter en rigtig pensionering (test i `tierCalendarMaterializer.test.js`), og efter `--apply` fejler post-verify'en hvis en af de puljer har fået løb. Flaget gælder kun senioren og kun fra S4. Se `SEASON_CUTOVER_RUNBOOK.md` trin 1.
 
 **Truppernes kalender (U23 og junior, [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492) Y5).** Ejer 15/9 (spec 2026-09-15 §10.5) og [`YOUTH_RULES.md`](YOUTH_RULES.md) §2.3: U23 kører 1-2 løb om ugen, junior 1, på 140 løbsdage hvor de fleste er rene træningsdage. Bygges med `buildSeasonCalendar.js --squad u23|junior` EFTER seniorkalenderen:
 
@@ -319,7 +321,9 @@ node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 #    og aldrig som grundlag for et ejer-kort.
 
 # 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
-node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
+#    S4 skrives FØR "Afslut sæson" med --target-structure s4 (#5795, §1f); flaget
+#    skal også med i trin 1 og 4, så længe D4 E-H ikke er pensioneret.
+node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --target-structure s4 --apply
 
 # 4) REGENERERING af en sæson der allerede HAR en kalender (§2c, ejer 19/9).
 #    Uden --replace-existing stopper trin 3 og printer hvad der ville blive slettet.

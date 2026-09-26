@@ -337,11 +337,12 @@ features:
     area: squad
     title_en: U23 team and Junior team pages
     title_da: U23-hold- og juniorhold-sider
-    state: building
+    state: live
+    flag: youth_squad_pages
     ssot: docs/design/youth-tiers/HANDOFF.md
     epic: 2492
-    verified: 2026-09-23
-    note: 'Flag-noegle youth_squad_pages (#5519, default off); flyttes til flag-feltet naar app_config-raekken er applied efter merge. Ejer flipper efter visuelt go.'
+    verified: 2026-09-26
+    note: 'Live for alle 26/9 kl. 19:05 (ejer "koer", sammen med tekstrettelsen #5794/PR #5798). Hjaelpetekster #5786 efter skiftet.'
 
   - id: rider-primary-type-from-distribution
     area: squad

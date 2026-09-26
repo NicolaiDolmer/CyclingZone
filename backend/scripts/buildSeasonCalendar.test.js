@@ -11,8 +11,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
-  scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar,
+  scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar, loadCutoverPoolRetirement,
 } from "./buildSeasonCalendar.js";
+import { resolveTargetStructure } from "../lib/calendarTargetStructure.js";
 import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
 import {
   evaluateSeasonCalendarWriteGate, RACE_DEPENDENCY_TABLES, dependencyKey,
@@ -370,6 +371,28 @@ test("#5644 detectSeniorPoolStructureViolations: S4 med 8 D4-puljer (E-H ikke pe
   const missingD3 = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 3, 4: 4 }), seasonNumber: 4 });
   assert.match(missingD3[0], /D3: 3 puljer/);
   assert.deepEqual(detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 8 }), seasonNumber: 3 }), [], "før S4 gælder vagten ikke");
+});
+
+// ── #5795 · S4-kalenderen før pensioneringen (--target-structure s4) ──────────────
+
+const d4Pool = (i, retired = null) => ({ id: 8 + i, tier: 4, pool_index: i, label: `Division 4 — ${"ABCDEFGH"[i]}`, squad: "senior", retired_at: retired });
+
+test("#5795 loadCutoverPoolRetirement: læser puljerne read-only og udpeger D4 E-H; intet skrives", async () => {
+  const league_divisions = [
+    { id: 1, tier: 1, pool_index: 0, label: "Division 1", squad: "senior", retired_at: null },
+    ...[7, 6, 5, 4, 3, 2, 1, 0].map((i) => d4Pool(i)),
+  ];
+  const supabase = fakeSupabase({ rowsByTable: { league_divisions } });
+  const cutover = await loadCutoverPoolRetirement({ supabase, structure: resolveTargetStructure("s4") });
+  assert.deepEqual(cutover.retire.map((p) => p.label), ["Division 4 — E", "Division 4 — F", "Division 4 — G", "Division 4 — H"]);
+  assert.deepEqual(supabase.writes, [], "målstrukturen skriver aldrig (retired_at røres ikke)");
+});
+
+test("#5795 strukturvagten: planen med målstrukturen (D4 = 4) er ren; uden flaget blokerer den som før", () => {
+  const withTarget = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 4 }), seasonNumber: 4 });
+  assert.deepEqual(withTarget, []);
+  const withoutTarget = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 8 }), seasonNumber: 4 });
+  assert.match(withoutTarget[0], /--target-structure s4/, "bruddet peger på den nye vej");
 });
 
 // ── #5644 (Y5) · runSquadCalendar ─────────────────────────────────────────────────

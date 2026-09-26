@@ -175,9 +175,12 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
    KUN sat manuelt, én gang, på selve S2→S3-cutover-aftenen 23/8 (og ryddet igen samme
    aften) — ingen kode satte den, så guarden kørte i praksis på det uskrevne
    start_date-gæt hele vejen indtil da (se #4129). `buildSeasonCalendar.js --apply`
-   sætter nu nøglen selv (sæsonstart minus 1 dag kl. 18:00 dansk tid, samme værdi som
-   fallbacken) idempotent, som en del af trin 1 ovenfor — intet manuelt SQL-trin
-   behøves længere for det NORMALE forløb. Verificér alligevel FØR selve cutoveren
+   sætter nu nøglen selv, idempotent, som en del af trin 1 ovenfor. **Siden #5592 er
+   værdien det skifte kalenderen planlægges mod** (tørkørslens linje "sæsonskifte der
+   planlægges mod"): det tidligst mulige skifte efter S3's seneste etape, eller en
+   senere værdi der allerede står i nøglen. Tørkørslen 26/9 gav **27/9 19:30 dansk tid
+   (17:30 UTC)**, ikke den gamle fallback kl. 18:00. Intet manuelt SQL-trin behøves for
+   det NORMALE forløb. Verificér alligevel FØR selve cutoveren
    (Supabase MCP `execute_sql` eller `psql`, read-only):
 
    ```sql
@@ -185,13 +188,15 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
    select number, status, start_date from seasons where status = 'upcoming';
    ```
 
-   Forvent `value` = S4's `start_date` minus 1 dag kl. 18:00 dansk tid (fx S4 starter
-   28/9 → `"2026-09-27T16:00:00+00:00"` UTC = 18:00 CEST). Afviger den (eller mangler
-   nøglen), sæt den eksplicit før cutoveren:
+   Forvent `value` = det tidspunkt tørkørslen planlagde mod (26/9: 27/9 19:30 dansk tid).
+   Sæt den **aldrig** tilbage til 18:00: så ville auktionsvagten bruge et tidligere skifte
+   end det kalenderens første løbsdag er planlagt efter. Mangler nøglen efter `--apply`,
+   eller skal skiftet ske SENERE, sættes den til det senere tidspunkt (en senere værdi
+   bevares af scriptet; sæt den FØR `--apply`, så første løbsdag planlægges mod den):
 
    ```sql
    insert into app_config (key, value)
-   values ('season_transition_planned_at', '"2026-09-27T18:00:00+02:00"'::jsonb)
+   values ('season_transition_planned_at', '"2026-09-27T19:30:00+02:00"'::jsonb)
    on conflict (key) do update set value = excluded.value, updated_at = now();
    ```
 
@@ -226,7 +231,7 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
 | Trin | Hvad | Go | Fortryd findes? | Kan tændes i dag? |
 |---|---|---|---|---|
 | **Fase A: før cutover (nu til lørdag 26/9)** | | | | |
-| 1 (H1) | S4-kalenderen skrives. **Flyttet (#4592, ejer 24/9):** køres i trin 12 EFTER "Afslut sæson" + sammenlægning + pensionering og FØR "Udfør sæsonskifte" | ejer | Delvis: kun genopbygning, mens S4 er `upcoming` | Nej |
+| 1 (H1) | S4-kalenderen skrives **lørdag 26/9** med `--target-structure s4` (#5795): D4 E-H planlægges som pensioneret, før S3 slutter. Trin 12b er kun en kontrol | ejer | Delvis: kun genopbygning, mens S4 er `upcoming` | Ja teknisk (senior), mangler go. Ungdom: nej, grupperne er ikke seedet |
 | 2 (H8) | Træningsscore for alle | ejer | Ja (kontakt) | Ja, mangler udmelding |
 | 3 (H12) | Notify-kø for løbsbeskeder | ejer (ejer-only) | Ja (kontakt) | Ja |
 | 4 (H9) | Ny mobil-træningsside for alle | ejer | Ja (kontakt) | Ja, mangler Android-test |
@@ -252,30 +257,30 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 ### Trin 1 (H1): S4-kalenderen skrives
 
-> **Rækkefølge ændret 24/9 (#4592 + #2492, #5644):** kalenderen skrives IKKE længere før cutover. Den køres som trin 12b, efter "Afslut sæson" (trin 12a), sammenlægningen D4 → D3 (#5641) og pensioneringen af D4 E-H (#5642), og før "Udfør sæsonskifte" (trin 12c). Kører den før, får de pensionerede puljer E-H løb (spec-s4-struktur risiko 1). `buildSeasonCalendar.js` nægter selv: fra S4 skal præcis 1/2/4/4 puljer få en kalender (`SENIOR_CALENDAR_POOLS_FROM_S4`, blokerende gate "pulje-struktur"). Seniorkalenderen kommer først, derefter U23 og junior (`--squad`). Resten af dette trin beskriver kommandoerne; de køres på trin 12b's plads.
+> **Rækkefølge ændret igen 26/9 (#5795, ejer: "vi har altid lavet kalenderen før sæsonen var slut"):** seniorkalenderen skrives **lørdag 26/9, før S3's sidste løbsdag**, med `--target-structure s4`. Flaget planlægger mod S4's målstruktur: de D4-puljer som `retireD4PoolsS4.js` (#5642) pensionerer ved "Afslut sæson" (E-H, udpeget på `pool_index` med samme regel som scriptet), behandles i planen som pensionerede og får ingen løb. Databasen røres ikke af flaget: `retired_at`, S3's løb, stillinger og puljer er urørte. Uden flaget stopper gaten "pulje-struktur" stadig en kørsel med 8 D4-puljer (`SENIOR_CALENDAR_POOLS_FROM_S4` = 1/2/4/4). Trin 12b er nu en **kontrol**, ikke en skrivning. (24/9-rækkefølgen, hvor kalenderen først blev skrevet i 12b, er erstattet.)
 
-- **For spilleren:** S4's løb, datoer og puljekalendere bliver synlige og låses op for udtagelse.
+- **For spilleren:** S4's løb, datoer og puljekalendere bliver synlige. Udtagelse til S4-løb åbner først når S4 er `active` (`seasonAllowsSelectionWrites`, #5405); en S4-kalender i dag kan altså ikke få udtagelser før skiftet.
 - **Forudsætning:**
-  - "Afslut sæson" er kørt (S3 `completed`), sammenlægningen (#5641) og pensioneringen af D4 E-H (#5642, `league_divisions.retired_at`) er kørt og verificeret. Tørkørslen viser "#4592 puljer med kalender ... D1 1 · D2 2 · D3 4 · D4 4 ✅".
-  - Ungdomskalenderne kræver at truppernes grupper er seedet (`league_divisions.squad` = `u23`/`junior`, ca. 9 grupper à 24 i tier 1, ejer 24/9) og at seniorkalenderen er skrevet. Uden grupper eller seniorløb stopper `--squad`-kørslen selv.
-  - #5469 er merget 22/9. Der er dog tre finale-afvigelser tilbage (kommentar på #5405 22/9: kuperet slutter udbrud, brosten slutter fladt, brosten slutter udbrud).
-  - #5405 og #4270 er åbne.
+  - Tørkørslen med flaget viser "#5795 målstruktur s4 ... pensioneres ved skiftet ... Division 4 — E · F · G · H" og "#4592 puljer med kalender ... D1 1 · D2 2 · D3 4 · D4 4 ✅". D3 er 4, fordi alle fire D3-puljer allerede har managers (målt 26/9), og sammenlægningen (#5641) fordeler på alle fire.
+  - Ungdomskalenderne kræver at truppernes grupper er seedet (`seedYouthPools.js --apply --owner-go`, #5646) og at seniorkalenderen er skrevet. **Målt 26/9: 0 grupper med `squad` = `u23`/`junior` i prod**, så `--squad`-kørslerne stopper selv i dag. De afhænger ikke af D4-pensioneringen og kan køres så snart grupperne er seedet.
+  - Tørkørslen 26/9 har 0 finale-afvigelser (§7b); de tre fra #5405's kommentar 22/9 er lukket. `--allow-finale-drift` er derfor ikke nødvendig.
   - Den gyldne diff og en frisk tørkørsel skal køres umiddelbart før.
-  - S4-rækken findes ikke. `--apply` opretter den som `upcoming`.
+  - S4-rækken findes ikke. `--apply` opretter den som `upcoming` og sætter `season_transition_planned_at` til det skifte kalenderen planlægges mod (tørkørslens linje "sæsonskifte der planlægges mod", 26/9: 27/9 19:30 dansk tid). Skal "Udfør sæsonskifte" ske senere, sættes nøglen til det tidspunkt FØR `--apply`, så første løbsdag planlægges mod det.
+  - `auto_calendar_enabled` er ikke sat i prod (= off, målt 26/9), så transitionen bygger ikke kalenderen igen.
 - **Go:** ejer, "kør" på tallene fra den friske tørkørsel (`CALENDAR_RULES.md` §2c/§2d).
-- **Kommando** (`buildSeasonCalendar.js`: `--race-days` :311, `--apply` :313, `--replace-existing` :325):
+- **Kommando** (`buildSeasonCalendar.js`):
   ```powershell
   cd C:\Dev\CyclingZone\backend
   node scripts/dev/calendarGoldenDiff.mjs
-  infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
-  infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
+  infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --target-structure s4
+  infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --target-structure s4 --apply
   # #5644: truppernes egne kalendere, EFTER seniorens (tørkørsel først, så --apply pr. trup)
   infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --squad u23
   infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --squad u23 --apply
   infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --squad junior
   infisical run --env=prod --silent -- node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --squad junior --apply
   ```
-  Accepterer ejeren de tre finale-afvigelser, tilføjes `--allow-finale-drift` bevidst (:321). `--uniform-tilt` bruges ikke (§2d). Truppernes kørsler har ikke K-B-/scorecard-gatene (de er kalibreret mod senioren); de gates af kalender-invarianterne, planlægningsvinduet og truppens tæthed (U23 1-2 løb pr. uge, junior 1, `CALENDAR_RULES.md` §1f).
+  `--target-structure` gælder kun seniorkalenderen; med `--squad` afvises den. `--uniform-tilt` bruges ikke (§2d). Truppernes kørsler har ikke K-B-/scorecard-gatene (de er kalibreret mod senioren); de gates af kalender-invarianterne, planlægningsvinduet og truppens tæthed (U23 1-2 løb pr. uge, junior 1, `CALENDAR_RULES.md` §1f).
 - **Kontrol bagefter:**
   ```sql
   select s.number, s.status, s.start_date,
@@ -289,14 +294,19 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   where r.season_id = '00000000-0000-0000-0000-000000000004' group by 1, 2 order by 1, 2;
   select count(*) as loeb_i_pensionerede_puljer from races r join league_divisions d on d.id = r.league_division_id
   where r.season_id = '00000000-0000-0000-0000-000000000004' and d.retired_at is not null;
+  -- #5795: før pensioneringen står E-H som aktive. Samme kontrol på pool_index (E-H = 4-7):
+  select count(*) as loeb_i_d4_e_til_h from races r join league_divisions d on d.id = r.league_division_id
+  where r.season_id = '00000000-0000-0000-0000-000000000004' and coalesce(r.squad, 'senior') = 'senior'
+    and d.tier = 4 and d.pool_index >= 4;
   ```
-  Forventet: `upcoming`, `2026-09-28`, `loeb` > 0 og `loeb_i_fortiden` = 0. `value` = `"2026-09-27T16:00:00+00:00"`. Senior: puljer 1/2/4/4, `loeb_i_pensionerede_puljer` = 0. Tallene pr. division står i tørkørslen (offline-skøn i PR'en til #5644: D4 halveres, de øvrige divisioner er uændrede).
+  Forventet: `upcoming`, `2026-09-28`, `loeb` > 0 og `loeb_i_fortiden` = 0. `value` = det skifte tørkørslen planlagde mod (26/9: 27/9 19:30 dansk tid, dvs. 17:30 UTC, #5592). Senior: puljer 1/2/4/4, `loeb_i_pensionerede_puljer` = 0 og `loeb_i_d4_e_til_h` = 0. Scriptets egen post-verify printer også "løb i puljer der pensioneres ved skiftet: 0 ✅" og stopper rødt ellers. Tallene pr. division står i tørkørslen (målt 26/9: D1-D3 uændrede, D4 halveres fra 8 til 4 puljer).
 - **Fortryd:**
-  - Mens S4 er `upcoming`: kør samme kommando med `--apply --replace-existing`. Det sletter efter et JSON-snapshot til `docs/snapshots/5405/` og bygger forfra, og det kræver sit eget go (§2d).
+  - Mens S4 er `upcoming`: kør samme kommando med `--apply --replace-existing` (også `--target-structure s4`, ellers stopper pulje-gaten før pensioneringen). Det sletter efter et JSON-snapshot til `docs/snapshots/5405/` og bygger forfra, og det kræver sit eget go (§2d).
   - **Pr. trup (#5644):** `--replace-existing` sletter kun den kørte trups løb. Senior (uden `--squad`) rører ikke U23-/juniorløbene, og `--squad u23` rører ikke senior- eller juniorløbene. Før #5644 slettede den hele sæsonen.
   - Der findes ingen vej, der sletter uden at bygge igen.
   - Fra S4 er `active`: INGEN (låst, §2c).
-- **Kan tændes i dag?** Nej. De tre finale-afvigelser skal rettes eller accepteres, og der mangler ejer-go.
+- **Hvad kalenderen i dag IKKE påvirker (#5795, verificeret i koden 26/9):** S3's løb og stillinger (materializeren skriver kun `races`/`race_stage_profiles`/`race_stage_schedule` for `season_id` = S4). Stage-scheduleren, AI-udtagelsen og pulje-reconcile læser kun den `active` sæson. "Afslut sæson" (`POST /api/admin/seasons/:id/end`) læser kun S3's løb. Sammenlægningen flytter hold ind i D3-puljer, der allerede har S4-løb; løb hænger på puljen, ikke på holdet, og der findes ingen S4-udtagelser før S4 er `active`. Pensioneringen af E-H sletter ingen løb, og E-H har ingen S4-løb. Til gengæld: fra `--apply` er S4-rækken der, så årsmødet ved "Afslut sæson" finder næste sæson (#4557), og auktionsvagten (#4004) stopper nye auktioner der ville slutte efter det planlagte skifte.
+- **Kan tændes i dag?** Ja for senioren (tørkørslen 26/9 er grøn med flaget), mangler ejer-go. Ungdom: nej, grupperne er ikke seedet.
 
 ### Trin 2 (H8): Træningsscore for alle
 
@@ -416,17 +426,20 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 - **For spilleren:** Alle rytterværdier bliver regnet om på én gang, både op og ned. Lønkrav flytter sig ikke.
 - **Forudsætning:**
-  - **Modelvalget:** #5497 er ikke "godkendt til build", og #5502 er åben. Scriptet er låst til `v5` (`riderValueExtraordinaryRun5443.js:70`). Vælges den typefri model, skal der en ny model og en script-ændring til.
+  - **Modelvalget:** `v6`, den typefri model med marked (ejer-lås 24/9, #5497/#5502). Scriptet er låst til `v6` (`REQUIRED_MODEL_ID` i `riderValueExtraordinaryRun5443.js`, #5443) og nægter `--apply` uden et gyldigt markeds-fit i `app_config.rider_valuation_v6_market`.
   - **Spillerbeskeder:** udmeldingen og besked aftenen før skal være postet. Ingen evidens for, at de er ude.
   - **Ikke søndag:** scriptet nægter at køre om søndagen (:122). Kør fredag 25/9 eller lørdag 26/9.
   - **I prod 23/9:** `backup_5443_value_event_20260920` findes med 0 rækker, og begge nøgler står `v4`.
 - **Go:** ejer, ordret "kør" efter tørkørslen (runbook trin 6).
-- **Kommando** (`docs/runbooks/5443-ekstraordinaer-vaerdikoersel.md` trin 4-7). Nøgle og kørsel er ét trin: scriptet nægter uden nøglen, og nøglen alene lader søndagskørslen regne med v5.
-  ```sql
-  update public.app_config set value = '"v5"'::jsonb where key = 'rider_valuation_model';
-  ```
+- **Kommando** (`docs/runbooks/5443-ekstraordinaer-vaerdikoersel.md` trin 4-7). Tørkørslen virker før nøglen flippes (den pinner `v6`). Nøgle og apply er derefter ét trin: scriptet nægter uden nøglen, og nøglen alene lader søndagskørslen regne med v6 på trin 1 uden et trin 0.
   ```powershell
   pwsh -File scripts/run-value-event-5443.ps1
+  ```
+  Efter ejerens "kør":
+  ```sql
+  update public.app_config set value = '"v6"'::jsonb where key = 'rider_valuation_model';
+  ```
+  ```powershell
   pwsh -File scripts/run-value-event-5443.ps1 -Apply
   ```
 - **Kontrol bagefter:**
@@ -447,8 +460,9 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   ```
   ```sql
   update public.app_config set value = '"v4"'::jsonb where key = 'rider_valuation_model';
+  update public.app_config set value = '0'::jsonb where key = 'rider_value_phase_step';
   ```
-  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS` :77). Runbooken siger fejlagtigt 4.
+  - Backuppen dækker 6 kolonner inklusive `best_role`/`best_role_rating` (`BACKED_UP_COLUMNS`). Rollbacken lægger 5 tilbage: løngrundlaget skrives aldrig af kørslen og rulles derfor ikke tilbage (`ROLLBACK_COLUMNS`).
   - Sæt samtidig trin 9's kontakt til off, og revertér #5461, hvis trin 10 er kørt.
 - **Kan tændes i dag?** Nej. Modelvalg, spillerbesked og "kør" mangler.
 
@@ -488,7 +502,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 - **For spilleren:** Den normale ugentlige værdiopdatering, sidste gang i S3.
 - **Forudsætning:**
   - #5443 trin 3: rækkefølgen mellem søndagskørslen og cutover skal stå i drejebogen. Den kører før cutover, som ligger om aftenen.
-  - Er trin 8 kørt, regner den med v5.
+  - Er trin 8 kørt, regner den med v6 på trin 1 (75 % elitepræmie) og tæller trin-tælleren op til 1.
   - Markedsblendet er off (`market_value_sweep_enabled`).
 - **Go:** ejer vælger mellem (A) lad den køre med backup og (B) spring den over.
 - **Kommando:**
@@ -534,7 +548,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   - S4 bliver aktiv: kontrakter, sponsorer, løn, pension og nulstilling af form.
   - Inaktive hold parkeres, hvis trin 5 er on.
 - **Forudsætning:**
-  - Alle S3-løb er afviklet. S4-kalenderen (trin 1) skrives INDE i dette trin, som 12b (#4592, ejer 24/9), ikke før.
+  - Alle S3-løb er afviklet. S4-kalenderen (trin 1) er skrevet lørdag 26/9 med `--target-structure s4` (#5795); 12b er kun en kontrol.
   - Preflight uden `[NO-GO]` (`scripts/preflight-season-cutover.ps1:29`). Den dækker ikke kontakterne i denne plan.
   - PITR er verificeret frisk i Supabase-dashboardet (`SEASON_TRANSITION_CHECKLIST.md` skridt 0 pkt. 1).
   - Trin 5 er afgjort.
@@ -547,7 +561,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   Derefter, i denne rækkefølge (#4592 + #2492, ejer 24/9):
   1. **12a** "Afslut sæson" på `/admin/season` = `POST /api/admin/seasons/00000000-0000-0000-0000-000000000003/end` (`api.js:11524`). `season_end_skip_division_movement` skal være off (normal op/nedrykning).
   2. **12a+** Sammenlægningen D4 → D3 (#5641) og pensioneringen af D4 E-H (#5642), hver med tørkørsel og eget go, og AI-fyldet af alle puljer. Ungdomsgrupperne seedes her, hvis de ikke allerede er det.
-  3. **12b** S4-kalenderen: trin 1's kommandoer, senior først, derefter `--squad u23` og `--squad junior`. S4 er stadig `upcoming`, så §2c tillader det.
+  3. **12b (kontrol, #5795)** S4-kalenderen er skrevet i trin 1. Efter pensioneringen køres trin 1's SQL-kontrol igen: senior 1/2/4/4 puljer, `loeb_i_pensionerede_puljer` = 0, og ingen D3-pulje uden managers efter sammenlægningen (`select d.id, count(t.id) from league_divisions d left join teams t on t.league_division_id = d.id and not t.is_ai and not t.is_bank where d.tier = 3 group by d.id;`). Kun hvis kontrollen er rød: tørkørsel og `--apply --replace-existing` (eget go, S4 er stadig `upcoming`). Mangler ungdomskalenderne, køres `--squad u23` og `--squad junior` her, når grupperne er seedet.
   4. Preview = `GET /api/admin/season-transition/preview` (`api.js:13996`).
   5. **12c** "Udfør sæsonskifte" = `POST /api/admin/season-transition` (`api.js:14013`). `auto_calendar_enabled` må ikke være sat, så transitionen ikke genererer kalenderen igen.
 
@@ -560,7 +574,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   ```
   Forventet: S3 `completed` og S4 `active`, 1 kørsel og 1 form-nulstilling. Er trin 5 on, skal antallet af hold med `parked_at >= '2026-09-27'` desuden svare til tørkørslen.
 - **Fortryd:** INGEN. Kun en Supabase PITR-gendannelse, som også sletter alt, spillerne har gjort siden. **RØD.** Se afhjælpning 5.
-- **Kan tændes i dag?** Nej. S3 slutter 27/9, og sammenlægning, pensionering og kalender (12a+ og 12b) køres først på selve dagen.
+- **Kan tændes i dag?** Nej. S3 slutter 27/9, og sammenlægning og pensionering (12a+) køres først på selve dagen. Kalenderen er trin 1 (lørdag); 12b er kontrollen.
 
 ### Trin 13 (H11): Løbsmotor v4
 
@@ -736,7 +750,7 @@ Alle afhjælpninger er prod-skrivninger. De kræver ejer-go og køres **før** t
 
 ### Uafklaret: kræver ejer-beslutning
 
-1. **Værdimodel:** v5 (typet; runbook og script er klar) eller typefri (#5497/#5502). Typefri kræver en ny model, en script-ændring (`REQUIRED_MODEL_ID = "v5"`) og ny #5461-tekst.
+1. **Værdimodel:** afgjort: typefri `v6` med marked (ejer-lås 24/9). Script og runbook er skiftet til `v6` (#5443); #5461-teksten skal stadig omskrives.
 2. **Parkering ved S4:** skal ske? Kræver `season_signup_enabled` on før "Afslut sæson" (trin 5). Denne kontakt står ikke i #5506. Parkerede hold kan ikke af-parkeres med kode.
 3. **S4-kalenderens tre finale-afvigelser:** ret dem eller acceptér med `--allow-finale-drift`.
 4. **Søndagskørslen 27/9:** lad den køre med backup, eller spring over med et claim på forhånd (#5443 trin 3).

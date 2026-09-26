@@ -9,8 +9,8 @@
       "junior": "Juniorhold"
     },
     "subtitle": {
-      "u23": "U23-hold, 19 til 22 år",
-      "junior": "Juniorhold, 16 til 18 år"
+      "u23": "U23-hold, ryttere på 22 år og yngre",
+      "junior": "Juniorhold, ryttere på 18 år og yngre"
     },
     "squadValue": "Trupværdi: {value} CZ$",
     "rosterCount": "{count}/{cap} ryttere i truppen",
@@ -26,8 +26,8 @@
     "squad": {
       "title": "Signér et talent i dit akademi",
       "description": {
-        "u23": "Akademiryttere på 19 til 22 år er på dit U23-hold.",
-        "junior": "Akademiryttere på 16 til 18 år er på dit juniorhold."
+        "u23": "Akademiryttere på 22 år og yngre kan køre for dit U23-hold. Du kan også rykke en junior op hertil.",
+        "junior": "Akademiryttere på 18 år og yngre kan køre for dit juniorhold."
       },
       "action": "Gå til akademiet"
     },
