@@ -38,14 +38,17 @@ const apiSourceLF = apiSource.replace(/\r\n/g, "\n");
 // flag-opslag, en query og et betinget responsfelt ind i route'n), 9200 → 10400 af
 // #3643 (mobil-flaget training_mobile_table lagde endnu et flag-opslag +
 // responsfelt ind i samme handler), 10400 → 13000 af #4847 (dayClose-blokken,
-// knappens aabne-tilstand) og 13000 → 14000 af #5462 (skadens loebsdags-felt i
-// condition-projektionen + condition-mappen). Faldt res.json uden for vinduet, holdt guarderne
+// knappens aabne-tilstand), 13000 → 14000 af #5462 (skadens loebsdags-felt i
+// condition-projektionen + condition-mappen) og 14000 → 15000 af #5281 (merge af
+// 78 commits fra main ind i #4847 B3-branchen voksede handleren til 14069 tegn —
+// ingen ny feature i DENNE PR, bare akkumuleret drift fra main siden branchen blev
+// skaaret). Faldt res.json uden for vinduet, holdt guarderne
 // herunder op med at maale noget UDEN at blive roede. Samme fejlklasse hver gang:
 // racingToday-spreadet faldt uden for vinduet og guarden matchede ikke laengere.
 // Testen "routeBlock-vinduet daekker hele /training/me-handleren" nedenfor er
 // forward-guarden: den maaler den FAKTISKE afstand til naeste router.*-kald, saa
 // vinduet ikke kan blive for lille igen uden at noget bliver roedt.
-function routeBlock(marker, len = 14000) {
+function routeBlock(marker, len = 15000) {
   const start = apiSourceLF.indexOf(marker);
   assert.ok(start !== -1, `${marker} skal findes i api.js`);
   return apiSourceLF.slice(start, start + len);

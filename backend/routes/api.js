@@ -3087,17 +3087,23 @@ router.get("/training/me", requireAuth, async (req, res) => {
 //
 // TO STIER, afgjort af `training_tick_per_race_day`:
 //
-//   flag OFF (i dag) — uaendret #1305-adfaerd: dagens ét-kliks-traening med manager-
-//     bonus. Bit-identisk med foer #4847.
+//   `training_tick_per_race_day` OFF, med `daily_training_enabled` ON — den gamle
+//     kalenderdags-sti (#1305): ét tick på tick_date,
+//     hverken season_id, game_day eller squad skrives.
 //
-//   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Koer dagens
-//     traening nu": INGEN BONUS (motoren saetter bonus=false paa loebsdags-stien), og
-//     knappen AABNER foerst naar dagens sidste loeb er lukket — PRAECIS samme
-//     betingelse som cron-sweepen (kl. 20 dansk tid + ingen aaben finalization).
-//     Den koerer holdets EGNE loebsdage for i dag, i stigende raekkefoelge, og er
+//   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Kør dagens
+//     træning nu": knappen ÅBNER først når dagens sidste løb er lukket — PRÆCIS
+//     samme betingelse som cron-sweepen (kl. 20 dansk tid + ingen åben finalization).
+//     Den kører holdets EGNE løbsdage for i dag, i stigende rækkefølge, og er
 //     idempotent via mutexen: anden gang giver 409 already_trained_today.
 //
-// Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
+// BONUS (#4847 B3, ejer-go 6/9): manager-klik gav TIDLIGERE +25 % (cfg.bonusMult) —
+// fjernet FRA SELVE MOTOREN (dailyTraining.js), ikke kun fra løbsdags-stien. Begge
+// stier her trænes derfor nu ens; `bonus_applied` i training_day_runs er en legacy/
+// audit-kolonne (jf. dailyTrainingEngine.js) uden længere effekt på væksten.
+//
+// Idempotent: samme dag → 409 already_trained_today.
+// `daily_training_enabled` OFF → 409 daily_training_disabled.
 // NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
 // statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
 // returnerer "invalid_focus", hvilket blokerer knappen helt.
