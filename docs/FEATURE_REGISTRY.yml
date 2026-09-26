@@ -101,7 +101,7 @@ features:
     ssot: docs/GAME_INVARIANTS.md
     epic: 4147
     verified: 2026-09-25
-    note: Flag on 25/9 kl. 12:23 (ejer-kør) efter udbakken var bevist. Post-verify efter 15-løbene: finalize_state NULL på alle løb.
+    note: "Flag on 25/9 kl. 12:23 (ejer-kør) efter udbakken var bevist. Post-verify efter 15-løbene: finalize_state NULL på alle løb."
 
   - id: academy-drift-kill-switch
     area: economy
