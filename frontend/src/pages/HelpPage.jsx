@@ -578,6 +578,7 @@ const FAQ_KEYS = [
   "sponsorMidSeasonOnboarding",
   "sponsorRaceDayUnit",
   "sponsorBoardModifierScope",
+  "sponsorAmountVariesByClub",
   "seasonFinanceReport",
   "forecastCalculation",
   "seasonSwitchSettlement",

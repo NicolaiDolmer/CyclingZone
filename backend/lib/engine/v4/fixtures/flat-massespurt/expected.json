@@ -73,7 +73,8 @@
         "params": {
           "winner_rider_id": "r01",
           "group_id": "finale-bunch-0",
-          "finale_type": "bunch_sprint"
+          "finale_type": "bunch_sprint",
+          "win_type": "sprint_win"
         }
       },
       {
@@ -132,7 +133,7 @@
               "gap": 0
             }
           ],
-          "win_type": "group_finish"
+          "win_type": "sprint_win"
         }
       }
     ]

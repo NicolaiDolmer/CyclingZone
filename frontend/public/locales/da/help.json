@@ -1602,6 +1602,10 @@
       "q": "Påvirker bestyrelsens tilfredshed mine etape-penge?",
       "a": "Nej. Bestyrelsens modifier gælder kun den garanterede del af aftalen, engangsbeløbet der udbetales ved sæsonstart, og den kan rykke det med op til plus/minus 20 procent. Etape-indkomst og alle bonusklausuler (underskriftsbonus, etapesejr, podieplads, sæsonmål) udbetales fuldt ud til deres pålydende værdi oveni, i takt med at du tjener dem. En sponsor-pullout virker på samme måde: den reducerer den garanterede udbetaling ved sæsonstart, ikke det du tjener undervejs."
     },
+    "sponsorAmountVariesByClub": {
+      "q": "Hvorfor fik et andet hold et andet tilbud fra samme sponsortype?",
+      "a": "Fordi beløbet er prissat til din egen klub, ikke fast pr. sponsortype. Hver af de fem sponsortyper tilbyder sin egen andel af hvad din klub er værd som aftale lige nu, og den værdi kommer fra din klubs omdømme: din division plus hvor du ligger i din pulje. To klubber kan begge vælge fx løbsaftalen og skrive under til forskellige beløb, fordi deres omdømme er forskelligt. Byg en stærkere standing, og den samme sponsortype er mere værd næste gang du forhandler."
+    },
     "seasonFinanceReport": {
       "q": "Hvad viser sæson-finansrapporten, og hvor finder jeg den?",
       "a": "Sæson-finansrapporten er en dedikeret side per sæson som viser dit cashflow i den valgte sæson: hero-kortet øverst summer total indtægt + udgift + nettoresultat, to donut-diagrammer fordeler indtægter og udgifter på kategori (sponsor, præmiepenge, auktion-køb, løn osv.), top-3-listerne fremhæver dine største transaktioner i hver retning, og loan-portfolio-tabellen viser aktive lån med restgæld + næste sæsons forventede rente. Rapporten er privat: du ser kun din egen, og admins ser ét hold ad gangen via team-dropdown. Du finder rapporten under Historik-fanen på Finanser-siden, hvor en sæsonvælger lader dig skifte mellem dine sæsoner; sæson-snapshot-siden (/seasons) linker også direkte til den. Sponsor-modifier-kurven og direkte sammenligning med forrige sæson er først tilgængelig fra sæson 2, når der er mindst én lukket sæson at sammenligne mod."

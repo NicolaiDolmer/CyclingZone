@@ -944,11 +944,10 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // egen gruppe koerte FRA feltet i stedet for at falde tilbage til den sidste
 // gruppe paa vejen.
 //
-// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3); en
-// worker aendrer ikke defaulten:
-//   "cp_only"         (b, DEFAULT): som hidtil — tempoet foelger CP alene.
-//                                   Bit-identisk med main foer denne kontakt.
-//   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
+// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3; ejeren
+// valgte a 23/9, default flippet i #5581); en worker aendrer ikke defaulten:
+//   "cp_only"         (b): tempoet foelger CP alene (reglen foer #4914).
+//   "effort_weighted" (a, DEFAULT): "grupettoen er den sidste gruppe paa vejen", to
 //                                   led der kun virker sammen:
 //                                   1. TEMPO (segmentLoop.groupEffortTempo): en
 //                                   grupetto-rytter saetter aldrig farten i en
@@ -974,12 +973,29 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // (5 seeds): backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
 export type GroupTempoModel = "cp_only" | "effort_weighted";
 const groupTempoEffortExtra = {
-  model: "cp_only" as GroupTempoModel, // EJER-VALG (#4914 punkt 3): "cp_only" = b (default, uaendret), "effort_weighted" = a
+  model: "effort_weighted" as GroupTempoModel, // EJER-VALG (#4914 punkt 3, valgt 23/9 = a; default-flip i #5581): "effort_weighted" = a (default), "cp_only" = b
   grupettoTempoFactor: 0.8, // kun model "effort_weighted": andel af CP'en en grupetto-rytter bidrager med til gruppens tempo (< 1, aldrig 0). STARTGAET, maalt i A/B'en
 };
 
 /** #4914 grupetto-tempo-kontakt (deep-frosset). Se groupTempoEffortExtra-kommentaren ovenfor. */
 export const GROUP_TEMPO_EFFORT_EXTRA_TUNING = deepFreeze(groupTempoEffortExtra);
+
+// ── #5581 grupettoen regner paa tidsgraensen (mechanics/grupettoPace.ts) ─────
+// Ejer 23/9 (#4914 valg 1b, "foelg realismen"): grupettoen koerer saa langsomt
+// som muligt, men aldrig langsommere end tidsgraensen (M15,
+// TIME_LIMIT_EXTRA_TUNING nedenfor) tillader, saa laenge rytterne har reserven
+// til det — baade en ren grupetto-gruppe og grupetto-ryttere i en blandet
+// gruppe der er for langsom (de gaar selv frem). Virker kun i model
+// "effort_weighted" (det er kun dér grupetto har sit eget tempo). Reglen og hvorfor den er
+// deterministisk staar i mechanics/grupettoPace.ts's hoved. Maalt med
+// backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
+const grupettoPaceExtra = {
+  limitShare: 0.85, // andel af tidsgraensens margin grupettoen sigter efter: lidt inden for, ikke paa stregen (forudsigelsen af vindertiden er et skoen). STARTGAET, maalt i tvillingerne
+  reserveForFullFloor: 0.25, // W'-reserve (andel) hvor gulvet gaelder fuldt; en rytter med mindre reserve kan ikke holde kravet og kan stadig ryge ud. STARTGAET, maalt i tvillingerne
+};
+
+/** #5581 tidsgraense-gulv for grupetto-tempoet (deep-frosset). Se grupettoPaceExtra-kommentaren ovenfor. */
+export const GRUPETTO_PACE_EXTRA_TUNING = deepFreeze(grupettoPaceExtra);
 
 // ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
 // Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning

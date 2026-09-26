@@ -84,8 +84,22 @@ export function resolveNotificationLink(notification, fallbackLink) {
   // #1952: resultat-notifikation deep-linker direkte til løbets resultatside.
   // #3243: stage_result bar SAMME metadata.raceId (#2523) men manglede denne
   // regel og faldt til den generiske /resultater.
+  // #5317: stage_result bærer OGSÅ metadata.stageNumber (sat af
+  // emitStageResultNotifications, backend/lib/notificationService.js), men den
+  // blev aldrig lagt i linket — et etapeløbs etape-notifikation landede derfor
+  // altid på løbssidens standard-fane (samlet stilling for et løb i gang, jf.
+  // RaceDetailPage.jsx's defaultRaceTab), i stedet for netop DEN etapes eget
+  // resultat. ?stage=N alene (uden ?tab=) er allerede et gyldigt dybt link til
+  // resultat-fanen — samme regel #4581/#1500 bruger for holdresultater/kalenderen
+  // — så ingen ny fane-logik er nødvendig, kun at give stage_result sin egen
+  // metadata videre. Ældre beskeder uden metadata.stageNumber (sendt før denne
+  // rettelse) falder uændret tilbage til det brede løbslink.
   if ((n.type === "race_result" || n.type === "stage_result") && (meta.raceId || n.related_id)) {
-    return `/races/${meta.raceId || n.related_id}`;
+    const raceId = meta.raceId || n.related_id;
+    if (n.type === "stage_result" && meta.stageNumber != null) {
+      return `/races/${raceId}?stage=${meta.stageNumber}`;
+    }
+    return `/races/${raceId}`;
   }
 
   // #2180/#3310: selection_warning bærer raceId (samme mønster som

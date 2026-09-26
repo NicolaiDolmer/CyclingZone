@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import {
   Section, SectionHeader, Button, ZonePill,
   BookOpenIcon, PodiumIcon, TrophyIcon, CoinIcon, ClipboardIcon, DownloadIcon,
-  ArrowUpIcon, ArrowDownIcon,
+  ArrowUpIcon, ArrowDownIcon, CrownIcon,
 } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { movementTone, movementLabelKey } from "../lib/seasonRecapCopy.js";
+import { buildRecapStatKeys } from "../lib/seasonRecapData.js";
 
 // #2752 — the "yearbook" recap hero: a per-team, shareable summary of a
 // JUST-COMPLETED season. Sits at the TOP of SeasonEndPage (/seasons/:id) for
@@ -25,7 +26,7 @@ import { movementTone, movementLabelKey } from "../lib/seasonRecapCopy.js";
 // SeasonDocumentary.jsx's own (now-removed) download button, same card, same
 // filename pattern, just triggered from here so the page keeps exactly one
 // gold CTA. "Copy recap link" moved to a secondary button next to it.
-const STAT_ICONS = { rank: PodiumIcon, stageWins: TrophyIcon, prize: CoinIcon };
+const STAT_ICONS = { rank: PodiumIcon, stageWins: TrophyIcon, prize: CoinIcon, classicWins: CrownIcon };
 
 function formatCZ(amount) {
   return `${formatNumber(amount || 0)} CZ$`;
@@ -42,6 +43,9 @@ function formatCZ(amount) {
  * @param {number} [p.points]
  * @param {number} [p.stageWins]
  * @param {number} [p.prizeWon]
+ * @param {number} [p.classicWins]  #5390 · sæsonens klassikersejre (endagsløb) for
+ *   MIT hold. Vises kun som en 5. statistik-tile når > 0 (se buildRecapStatKeys) —
+ *   TASTE P11: intet tal for noget holdet ikke har.
  * @param {Array<{id?:string, icon?:Function, label?:string, value?:string, node?:import("react").ReactNode}>} [p.highlights]
  *   `node` (#5753): en færdig række (fx bestyrelsens dom) i stedet for label/value.
  * @param {string} [p.shareUrl]      overstyrer window.location.href (tests/preview)
@@ -60,6 +64,7 @@ export default function SeasonRecapHero({
   points = 0,
   stageWins = 0,
   prizeWon = 0,
+  classicWins = 0,
   highlights = [],
   shareUrl,
   onDownloadCard,
@@ -97,12 +102,19 @@ export default function SeasonRecapHero({
     }
   };
 
-  const stats = [
-    { key: "rank", label: t("recap.stat.rank"), value: rank ? `#${rank}` : "—" },
-    { key: "points", label: t("recap.stat.points"), value: formatNumber(points) },
-    { key: "stageWins", label: t("recap.stat.stageWins"), value: formatNumber(stageWins) },
-    { key: "prize", label: t("recap.stat.prize"), value: formatCZ(prizeWon) },
-  ];
+  // #5390 · nøgler + rå værdier kommer fra den rene, testede buildRecapStatKeys;
+  // her tilføjes kun i18n-label og formattering (samme adskillelse som resten
+  // af filen holder mellem data og tekst).
+  const STAT_FORMAT = {
+    rank: (v) => (v ? `#${v}` : "—"),
+    points: (v) => formatNumber(v),
+    stageWins: (v) => formatNumber(v),
+    prize: (v) => formatCZ(v),
+    classicWins: (v) => formatNumber(v),
+  };
+  const stats = buildRecapStatKeys({ rank, points, stageWins, prizeWon, classicWins }).map(({ key, value }) => ({
+    key, label: t(`recap.stat.${key}`), value: STAT_FORMAT[key](value),
+  }));
 
   return (
     <Section borderClass="border-cz-border border-t-2 border-t-cz-accent">

@@ -11,6 +11,7 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { statColor, statStyle } from "../lib/statColor";
 import { ABILITY_STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
+import { getBestId } from "../lib/compareStats";
 import {
   Button,
   Card,
@@ -178,11 +179,10 @@ export default function RiderComparePage() {
     setFullRiders(prev => prev.filter(r => r.id !== id));
   }
 
+  // #5316: uafgjort (alle sammenlignede har samme værdi) skal ikke fremhæve
+  // den første rytter — delt tie-break-logik i lib/compareStats.js.
   function getBestForStat(statKey) {
-    if (fullRiders.length < 2) return null;
-    return fullRiders.reduce((best, r) =>
-      (r[statKey] || 0) > (best[statKey] || 0) ? r : best
-    ).id;
+    return getBestId(fullRiders, statKey);
   }
 
   // #2849 bølge 6 (audit-fund): side-gate med reserveret højde (PageLoader minHeight

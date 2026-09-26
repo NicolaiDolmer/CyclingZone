@@ -134,9 +134,13 @@ test("finaleHook: solo-forspring med W'-reserve overlever svag/traet jagtgruppe 
   assert.ok(chaseGroup, "chasegruppen skal stadig eksistere som selvstaendig gruppe (ikke indhentet)");
   assert.ok(chaseGroup!.gap_seconds >= RACE_V4_TUNING.groups.mergeThresholdSeconds, "chasegruppens gap skal vaere over merge-taerskel (reelt tabt tid)");
 
-  const sprintDecided = result.events.find((e) => e.type === "sprint_decided");
-  assert.ok(sprintDecided, "sprint_decided skal emitteres");
-  assert.equal(sprintDecided!.params.winner_rider_id, "solo1");
+  // #5577: en solosejr er ingen spurt — filmen skrev "taet mellem X og
+  // forfoelgerne" her. Afgoerelsen baeres nu af et finale_attack med rytteren.
+  assert.equal(result.events.find((e) => e.type === "sprint_decided"), undefined, "ingen sprint_decided ved en solosejr");
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.type, "finale_attack");
+  assert.equal(decided.params.rider_id, "solo1");
+  assert.equal(decided.params.win_type, "solo_win");
 
   const attackEvent = result.events.find((e) => e.type === "finale_attack");
   assert.ok(attackEvent, "finale_attack skal emitteres naar et forspring baeres helt i maal");
@@ -422,6 +426,10 @@ test("finaleHook (#4914): feltet henter et lille udbrud inden for antals-vinduet
   const bunch = result.state.groups[0];
   assert.equal(bunch.gap_seconds, 0);
   assert.equal(bunch.rider_ids.length, breakIds.length + pelotonIds.length, "ingen rytter maa falde ud af opgoerelsen");
+  // #5577: hele feltet i maal sammen paa en massefinale ER en massespurt.
+  const sprintDecided = result.events.find((e) => e.type === "sprint_decided")!;
+  assert.equal(sprintDecided.params.win_type, "sprint_win");
+  assert.equal(result.events.filter((e) => typeof e.params.win_type === "string").length, 1, "finalen afgoer etapen praecis én gang");
 });
 
 test("finaleHook (#4914): samme felt paa en SELEKTIV finale beholder udbruddets forspring", () => {
@@ -439,6 +447,35 @@ test("finaleHook (#4914): samme felt paa en SELEKTIV finale beholder udbruddets 
   assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "peloton'en maa IKKE smelte ind paa en selektiv finale");
   const chase = result.state.groups.find((g) => g.rider_ids.includes("p0"))!;
   assert.ok(chase.gap_seconds > RACE_V4_TUNING.groups.mergeThresholdSeconds, "peloton'en taber reel tid");
+  // #5577: udbruddet holder paa en selektiv finale = taet finish. De tre
+  // udbrydere er ens og deler vindertier, saa ingen navngives som angriber.
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.ok(breakIds.includes(String(decided.params.winner_rider_id)));
+});
+
+test("finaleHook (#5577): to ryttere med lige score deler vindertier paa en selektiv finale — ingen navngives som angriber", () => {
+  const twin = abilities({ tempo: 80, endurance: 80, durability: 80, sprint: 80, acceleration: 80, climbing: 80, punch: 80 });
+  const entrants: Record<string, Entrant> = { t1: makeEntrant("t1", twin), t2: makeEntrant("t2", twin) };
+  const riders: Record<string, RiderState> = {
+    t1: makeRiderState("t1", "front-0", { wprime: 1, wprimeMax: 1 }),
+    t2: makeRiderState("t2", "front-0", { wprime: 1, wprimeMax: 1 }),
+  };
+  const groups: RaceGroup[] = [{ id: "front-0", kind: "peloton", rider_ids: ["t1", "t2"], gap_seconds: 0, cohesion: 1 }];
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "punch",
+    profileType: "hilly",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  const winnerGroup = result.state.groups.find((g) => g.rider_ids.includes("t1"))!;
+  assert.deepEqual([...winnerGroup.rider_ids].sort(), ["t1", "t2"], "lige score => samme tier");
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.equal(decided.params.rider_id, undefined, "ingen koerte fra den anden");
+  assert.ok(["t1", "t2"].includes(String(decided.params.winner_rider_id)));
 });
 
 test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (styrke straffes ikke)", () => {
@@ -454,8 +491,13 @@ test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (s
 
   const winnerGroup = result.state.groups.find((g) => g.rider_ids.some((id) => breakIds.includes(id)))!;
   assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "udbruddet skal vinde naar hullet er stoerre end vinduet");
-  const sprintDecided = result.events.find((e) => e.type === "sprint_decided")!;
-  assert.ok(breakIds.includes(String(sprintDecided.params.winner_rider_id)));
+  // #5577: et 3-mands udbrud der holder hjem er ingen massespurt, selv paa en
+  // massefinale-rute: taet finish, og filmen navngiver ingen "angriber".
+  assert.equal(result.events.find((e) => e.type === "sprint_decided"), undefined);
+  const decided = result.events.find((e) => e.params.kind === "stage_decided")!;
+  assert.equal(decided.params.win_type, "close_win");
+  assert.equal(decided.params.rider_id, undefined);
+  assert.ok(breakIds.includes(String(decided.params.winner_rider_id)));
 });
 
 test("isBunchSizedChaseGroup: andel af feltet med absolut gulv — navnet paa gruppen er irrelevant", () => {

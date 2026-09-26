@@ -66,6 +66,44 @@ test("#1952/#3243 race_result og stage_result deep-linker til /races/:raceId", (
   assert.equal(
     resolveNotificationLink({ type: "stage_result", related_id: "race-2" }, "/resultater"),
     "/races/race-2",
+    "aeldre stage_result-besked uden metadata.stageNumber falder tilbage til det brede loebslink",
+  );
+});
+
+// #5317: en etapeloebs etape-notifikation skal lande paa NETOP den etapes
+// resultat (?stage=N), ikke loebets standard-fane (samlet stilling under et
+// loeb i gang). metadata.stageNumber saettes af emitStageResultNotifications
+// (backend/lib/notificationService.js).
+test("#5317 stage_result med metadata.stageNumber deep-linker til /races/:raceId?stage=N", () => {
+  assert.equal(
+    resolveNotificationLink(
+      { type: "stage_result", metadata: { raceId: "race-5", stageNumber: 3 } },
+      "/resultater",
+    ),
+    "/races/race-5?stage=3",
+  );
+});
+
+test("#5317 stage_result med metadata.stageNumber=0 (etape-index) taeller stadig som sat", () => {
+  assert.equal(
+    resolveNotificationLink(
+      { type: "stage_result", metadata: { raceId: "race-6", stageNumber: 0 } },
+      "/resultater",
+    ),
+    "/races/race-6?stage=0",
+  );
+});
+
+// #5317: endagsloeb (race_result) har ingen etaper — stageNumber er ikke en
+// del af den type, saa linket forbliver det brede loebslink (== resultatet
+// for et endagsloeb, jf. RaceDetailPage.jsx's defaultRaceTab).
+test("#5317 race_result ignorerer et evt. stageNumber i metadata (kun stage_result faar ?stage=)", () => {
+  assert.equal(
+    resolveNotificationLink(
+      { type: "race_result", metadata: { raceId: "race-7", stageNumber: 4 } },
+      "/resultater",
+    ),
+    "/races/race-7",
   );
 });
 

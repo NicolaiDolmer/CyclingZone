@@ -26,6 +26,7 @@
 import { useTranslation } from "react-i18next";
 import AbilityReceiptRow from "../AbilityReceiptRow.jsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "../TrainingScoreSparkline.tsx";
+import RiderLink from "../../RiderLink.jsx";
 import type { CountsForRow, MobileScoreCell } from "../../../lib/trainingMobileModel.ts";
 
 export type ReceiptRow = {
@@ -39,6 +40,7 @@ export type ReceiptRow = {
 
 export default function TrainingMobileRiderCard({
   id,
+  riderId = null,
   name,
   meta,
   form,
@@ -59,6 +61,10 @@ export default function TrainingMobileRiderCard({
   footer = null,
 }: {
   id: string;
+  // #5735: rytterens id, kun til at bygge profil-linket i sidehovedet. `null`
+  // (kaldere der endnu ikke er wiret) falder tilbage til almindelig tekst —
+  // RiderLink gør præcis det samme uden id.
+  riderId?: string | null;
   name: string;
   meta: string;
   form: number | null;
@@ -98,7 +104,12 @@ export default function TrainingMobileRiderCard({
     <section id={id} aria-label={name} className="bg-cz-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-semibold text-cz-1">{name}</h3>
+          {/* #5735: navnet er et rigtigt link til profilen (ctrl/midterklik åbner
+              ny fane) — RiderLink falder tilbage til almindelig tekst uden
+              riderId, så kaldere der endnu ikke sender den, ser ingen ændring. */}
+          <h3 className="truncate text-[15px] font-semibold text-cz-1">
+            <RiderLink id={riderId} className="hover:underline">{name}</RiderLink>
+          </h3>
           <p className="mt-px font-data text-3xs font-medium uppercase tracking-[.07em] text-cz-3">{meta}</p>
         </div>
         <div className="flex flex-none gap-3 text-end">
