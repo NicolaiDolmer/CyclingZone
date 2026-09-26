@@ -81,7 +81,7 @@ export function renderFilmSvg({ snapshots = [], events = [], gapTrack = [], dist
   const H = 260;
   const L = 52;
   const R = 12;
-  const T = 34;
+  const T = 40;
   const B = 26;
   const maxKm = Math.max(Number(distanceKm) || 0, ...snapshots.map((s) => s[0]), ...events.map((e) => e.km), 1);
   const maxGap = Math.max(30, ...snapshots.flatMap((s) => s[1].map((g) => g[2])), ...gapTrack.map((g) => g[2]));
@@ -132,15 +132,19 @@ export function renderFilmSvg({ snapshots = [], events = [], gapTrack = [], dist
     }
   });
   // Event-maerker
-  let lastX = -Infinity;
-  let row = 0;
+  // Maerker i op til tre raekker; et maerke tager den foerste raekke hvor det
+  // ikke rammer det forrige. Er alle fulde, springes det over i tegningen (det
+  // staar stadig i tidslinje-tabellen under filmen).
+  const rowEnd = [-Infinity, -Infinity, -Infinity];
   for (const ev of events) {
     const mark = EVENT_MARK[ev.type];
     if (!mark || ev.type === "gap_update" || ev.type === "stage_start") continue;
     const ex = x(ev.km);
-    row = ex - lastX < 22 ? (row + 1) % 2 : 0;
-    lastX = ex;
-    const ty = 12 + row * 11;
+    const w = 6 + mark.length * 6;
+    const row = rowEnd.findIndex((end) => ex - w / 2 > end + 2);
+    if (row < 0) continue;
+    rowEnd[row] = ex + w / 2;
+    const ty = 10 + row * 10;
     const tone = EVENT_TONE[ev.type] ?? "var(--muted)";
     parts.push(`<line x1="${ex.toFixed(1)}" x2="${ex.toFixed(1)}" y1="${ty + 2}" y2="${H - B}" stroke="${tone}" stroke-width="0.6" opacity="0.35"/>`);
     parts.push(
@@ -202,7 +206,15 @@ function stageSection(race, stage, idx) {
     .join("");
   const favName = a.favorite ? esc(riderName(race, a.favorite.rider_id)) : "n/a";
   const bw = a.breakaway;
-  const bwText = !bw.formed ? "intet udbrud" : `${bw.size} i udbruddet, ${bw.survived ? "holdt" : bw.caught ? "hentet" : "uafklaret"}${bw.winnerFromBreakaway ? ", vandt" : ""}`;
+  const bwText = !bw.formed
+    ? "intet udbrud"
+    : bw.formedDuringRace === false
+      ? "kun på mållinjen (intet udbrud undervejs)"
+      : [
+        `${bw.size} har siddet i udbrud`,
+        bw.survived ? "et udbrud nåede sidste segment" : bw.caught ? "hentet" : "opløst undervejs",
+        bw.engineSaysBreakawayWin ? "udbrudssejr (motorens dom)" : bw.winnerFromBreakaway ? "vinderen havde siddet i udbruddet" : "",
+      ].filter(Boolean).join(", ");
   const evRows = stage.v4.events
     .filter((e) => e.type !== "gap_update")
     .map((e) => `<tr><td class="num">${e.km}</td><td>${esc(eventLabel(e.type))}</td><td>${eventText(race, e)}</td></tr>`)
@@ -228,7 +240,7 @@ function stageSection(race, stage, idx) {
   </div>
   ${chips ? `<ul class="chips">${chips}</ul>` : `<p class="ok">Ingen anomalier på denne etape.</p>`}
   <figure>${renderFilmSvg({ snapshots: stage.v4.snapshots ?? [], events: stage.v4.events ?? [], gapTrack: stage.v4.gapTrack ?? [], distanceKm: stage.distance_km })}
-    <figcaption>v4's film: hver prik er en gruppe ved en segmentgrænse (størrelse = antal ryttere), lodret = tidsgab bag teten. Mærker: U udbrud går · H hentet · U! holder · S felt splittes · A angreb · ! uheld · F favorit knækker · TG tidsgrænse · G grupetto reddet.</figcaption>
+    <figcaption>v4's film: hver prik er en gruppe ved en segmentgrænse (størrelse = antal ryttere), lodret = tidsgab bag teten. Mærker: U udbrud går · H hentet · U! udbrud når sidste segment · S felt splittes · M grupper samles · A angreb · Sp spurt afgjort · ! uheld · F favorit knækker · KOM bjergpassage · IS indlagt spurt · TG tidsgrænse · G grupetto reddet · GC ny førende.</figcaption>
   </figure>
   ${top10Table(race, stage)}
   <details><summary>v4's tidslinje (${stage.v4.events.filter((e) => e.type !== "gap_update").length} hændelser)</summary><table class="ev"><tbody>${evRows}</tbody></table></details>
