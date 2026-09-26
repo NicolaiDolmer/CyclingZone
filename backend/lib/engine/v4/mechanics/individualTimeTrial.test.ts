@@ -316,6 +316,81 @@ test("M15: tidsgraensen er individuel og maales mod vindertiden", () => {
   assert.ok(out.timeline.events.some((e) => e.type === "outside_time_limit"));
 });
 
+test("#5515 M15-juryen: en punktering i enkeltstarten koster aldrig loebet (RULES §9 raekke 4)", () => {
+  // Offeret er svagere end vinderen, men inden for graensen UDEN uheldet. Graensen
+  // saettes lige over hans tid uden uheld, saa punkteringens tidstab alene
+  // skubber ham ud — praecis tilfaeldet juryen (#5582) skal dømme paa tid minus
+  // uheldets tab. Foer #5515 havde enkeltstarten ingen jury, og han var ude.
+  const list = [rider("victim", 50, { positioning: 0, time_trial: 55 }), ...field(10).map((e) => ({ ...e, abilities: { ...e.abilities, positioning: 99 } }))];
+  const oneMechanical: IncidentsTuning = {
+    ...INCIDENTS_EXTRA_TUNING,
+    baseRiskPerSegment: { flat: 1, rolling: 1, climb: 1, descent: 1, cobbles: 1 },
+    positioningDampening: 0.02,
+    referenceSegmentKm: 0.01,
+    maxIncidentsFieldShare: 1e-6,
+    mechanicalShare: 1,
+  };
+  const base = simulateIndividualTimeTrialStage(route(), list, "jury-5515", RACE_V4_TUNING, { incidentsTuning: NO_INCIDENTS });
+  const winnerBase = base.results[0].time_seconds;
+  const victimBase = base.results.find((r) => r.rider_id === "victim")!.time_seconds;
+  assert.notEqual(base.results[0].rider_id, "victim", "forudsaetning: offeret vinder ikke");
+  const factor = victimBase / winnerBase - 1 + 1e-4;
+  const tight: TimeLimitTuning = {
+    ...TIME_LIMIT_TUNING,
+    factorByProfileType: { ...TIME_LIMIT_TUNING.factorByProfileType, itt: factor },
+  };
+
+  const hit = simulateIndividualTimeTrialStage(route(), list, "jury-5515", RACE_V4_TUNING, { incidentsTuning: oneMechanical, timeLimitTuning: tight });
+  assert.equal(hit.incidents?.length, 1);
+  assert.equal(hit.incidents?.[0].kind, "mechanical");
+  assert.equal(hit.incidents?.[0].rider_id, "victim");
+  const victim = hit.results.find((r) => r.rider_id === "victim")!;
+  assert.ok(victim.time_seconds > winnerBase * (1 + factor), "forudsaetning: med uheldet ligger han over graensen");
+
+  assert.equal(victim.status, "finished", "et mekanisk uheld maa aldrig sende ham ud af loebet");
+  assert.equal(victim.reinstated_by, "jury");
+  const juryEvent = hit.timeline.events.find((e) => e.type === "jury_reinstated");
+  assert.ok(juryEvent, "tidslinjen fortaeller at juryen genindsatte ham");
+  assert.deepEqual(juryEvent.params.rider_ids, ["victim"]);
+  assert.ok(!(hit.timeline.events.find((e) => e.type === "outside_time_limit")?.params.rider_ids as string[] | undefined)?.includes("victim"));
+  // UCI 2.6.032 (#5582): den genindsatte mister etapens point.
+  const totals = (hit.passage_totals ?? []).find((t) => t.rider_id === "victim");
+  if (totals) {
+    assert.equal(totals.sprint_points, 0);
+    assert.equal(totals.kom_points, 0);
+  }
+  // Rank og tid er uroerte af juryen.
+  const noJury = simulateIndividualTimeTrialStage(route(), list, "jury-5515", RACE_V4_TUNING, { incidentsTuning: oneMechanical });
+  assert.deepEqual(hit.results.map((r) => [r.rider_id, r.rank, r.time_seconds]), noJury.results.map((r) => [r.rider_id, r.rank, r.time_seconds]));
+});
+
+test("#5515 M15-juryen: en rytter der er over graensen OGSAA uden uheldet, genindsaettes ikke", () => {
+  const list = [rider("victim", 50, { positioning: 0, time_trial: 20 }), ...field(10).map((e) => ({ ...e, abilities: { ...e.abilities, positioning: 99 } }))];
+  const oneMechanical: IncidentsTuning = {
+    ...INCIDENTS_EXTRA_TUNING,
+    baseRiskPerSegment: { flat: 1, rolling: 1, climb: 1, descent: 1, cobbles: 1 },
+    positioningDampening: 0.02,
+    referenceSegmentKm: 0.01,
+    maxIncidentsFieldShare: 1e-6,
+    mechanicalShare: 1,
+  };
+  const base = simulateIndividualTimeTrialStage(route(), list, "jury-5515-slow", RACE_V4_TUNING, { incidentsTuning: NO_INCIDENTS });
+  const winnerBase = base.results[0].time_seconds;
+  const victimBase = base.results.find((r) => r.rider_id === "victim")!.time_seconds;
+  // Graensen ligger UNDER hans tid uden uheld: han er ude uanset punkteringen.
+  const factor = Math.max(0, victimBase / winnerBase - 1 - 1e-3);
+  const tight: TimeLimitTuning = {
+    ...TIME_LIMIT_TUNING,
+    factorByProfileType: { ...TIME_LIMIT_TUNING.factorByProfileType, itt: factor },
+  };
+  assert.ok(victimBase > winnerBase * (1 + factor), "forudsaetning: over graensen ogsaa uden uheldet");
+  const hit = simulateIndividualTimeTrialStage(route(), list, "jury-5515-slow", RACE_V4_TUNING, { incidentsTuning: oneMechanical, timeLimitTuning: tight });
+  assert.equal(hit.incidents?.[0].rider_id, "victim");
+  const victim = hit.results.find((r) => r.rider_id === "victim")!;
+  assert.equal(victim.status, "otl", "juryen trækker kun uheldets tid fra; han var for langsom uden det");
+  assert.equal(victim.reinstated_by, undefined);
+});
+
 test("M9: maalpassagen giver point i placeringsraekkefoelge, men aldrig bonussekunder", () => {
   const out = simulateStageV4(input());
   const finish = out.passages?.find((p) => p.kind === "finish");

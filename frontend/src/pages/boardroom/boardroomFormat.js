@@ -122,3 +122,22 @@ export function formatGoalValue(value, type) {
   if (type === "sponsor_growth") return formatNumber(num / 100, { style: "percent", maximumFractionDigits: 1 });
   return formatNumber(num);
 }
+
+// #5633 (N4, beta-sweep 26/9) · Visionens meta-linje var "S3 to S6": et raat,
+// absolut saesonnummer uden forklaring, som spillere laeste som en fejl. Nu
+// "4-season plan" i meta-linjen og "Season 3" ved hver milepael (kort nok til
+// 390 px). Planen starter ved den tidligste milepael,
+// hvis den ligger foer startSeason (backend saetter startSeason = mandatets
+// saeson, saa en milepael fra en tidligere saeson ellers faldt uden for spaendet).
+export function visionSpan(vision) {
+  const milestoneSeasons = (vision?.milestones || [])
+    .map((m) => (m?.seasonNumber == null ? NaN : Number(m.seasonNumber)))
+    .filter(Number.isFinite);
+  const pick = (value) => (value == null ? [] : [Number(value)].filter(Number.isFinite));
+  const starts = [...pick(vision?.startSeason), ...milestoneSeasons];
+  const ends = [...pick(vision?.endSeason), ...milestoneSeasons];
+  if (!starts.length || !ends.length) return { start: null, end: null, seasons: null };
+  const start = Math.min(...starts);
+  const end = Math.max(...ends);
+  return { start, end, seasons: end - start + 1 };
+}

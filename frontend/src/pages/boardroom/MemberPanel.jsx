@@ -31,13 +31,10 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
     <div className="mt-3 rounded-cz border border-cz-border bg-cz-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-4">
-          {/* #5472 · text-3xs (10 px) er skalaens gulv (PAGE_TEMPLATES: intet
-              under 10 px); de 8 px var et off-scale trin. */}
-          <MonogramAvatar sizeClass="h-[72px] w-[72px]" initials={member.initials} initialsClass="text-[28px]" navy column>
-            <span className="mt-1 text-3xs uppercase tracking-[.1em] text-cz-sidebar-2">
-              {t("boardroom.member.portraitLabel")}
-            </span>
-          </MonogramAvatar>
+          {/* #5633 · "PORTRÆT"-etiketten inde i monogrammet er fjernet: den
+              laeste som en pladsholder der var glemt (beta-feedback 19/9,
+              visningsfejl). Fodnoten nederst siger stadig, at billeder kommer. */}
+          <MonogramAvatar sizeClass="h-[72px] w-[72px]" initials={member.initials} initialsClass="text-[28px]" navy />
           <div className="min-w-0">
             <p className="font-display text-[30px] leading-[0.92] tracking-[.01em] text-cz-1">
               {member.name.toUpperCase()}
@@ -96,12 +93,17 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
               <p className="text-[13px] leading-relaxed text-cz-1">
                 &ldquo;{t(m.textKey, m.textParams || {})}&rdquo;
               </p>
+              {/* #5633 · `delta` er null naar haendelsen ikke flyttede tilliden
+                  (samme regel som MinuteRow i BoardCard, #5472). Foer stod der
+                  "TILLID · SØN. 20. SEP." med et manglende tal. */}
               <p className="mt-1 font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
-                {t("boardroom.member.confidenceMove", {
-                  sign: m.delta > 0 ? "+" : "",
-                  delta: m.delta,
-                  date: formatWeekdayShortDate(m.occurredAt),
-                })}
+                {m.delta != null
+                  ? t("boardroom.member.confidenceMove", {
+                    sign: m.delta > 0 ? "+" : "",
+                    delta: m.delta,
+                    date: formatWeekdayShortDate(m.occurredAt),
+                  })
+                  : formatWeekdayShortDate(m.occurredAt)}
               </p>
             </div>
           ))}

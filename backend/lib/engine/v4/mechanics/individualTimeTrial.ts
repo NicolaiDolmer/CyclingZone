@@ -311,6 +311,9 @@ function individualTimeTrialMode(
     // Kuperede enkeltstarter har kategoriserede stigninger; bjergpointene gaar
     // til den hurtigste op til toppen (kernens timeTrialIntermediatePassages).
     intermediatePassages: true,
+    // #5515: juryen doemmer rytteren paa sin tid minus uheldets tidstab, saa
+    // en punktering i enkeltstarten aldrig kan koste loebet (RULES §9 raekke 4).
+    individualJury: true,
     tickUnitSegment: (unit: TimeTrialUnit, segment: Segment, _segmentIndex: number, tuning: EngineTuning): string[] => {
       for (const entrant of unit.roster.riders) {
         const rider = unit.riders[entrant.rider_id];

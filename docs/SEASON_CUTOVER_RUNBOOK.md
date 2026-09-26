@@ -231,11 +231,11 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
 | Trin | Hvad | Go | Fortryd findes? | Kan tændes i dag? |
 |---|---|---|---|---|
 | **Fase A: før cutover (nu til lørdag 26/9)** | | | | |
-| 1 (H1) | S4-kalenderen skrives **lørdag 26/9** med `--target-structure s4` (#5795): D4 E-H planlægges som pensioneret, før S3 slutter. Trin 12b er kun en kontrol | ejer | Delvis: kun genopbygning, mens S4 er `upcoming` | Ja teknisk (senior), mangler go. Ungdom: nej, grupperne er ikke seedet |
+| 1 (H1) | S4-kalenderen skrives **før skiftet (senest søndag 27/9, ejer-"kør")** med `--target-structure s4` (#5795): D4 E-H planlægges som pensioneret, før S3 slutter. Trin 12b er kun en kontrol | ejer | Delvis: kun genopbygning, mens S4 er `upcoming` | Ja teknisk (senior), mangler go. Ungdom: nej, grupperne er ikke seedet |
 | 2 (H8) | Træningsscore for alle | ejer | Ja (kontakt) | Ja, mangler udmelding |
 | 3 (H12) | Notify-kø for løbsbeskeder | ejer (ejer-only) | Ja (kontakt) | Ja |
 | 4 (H9) | Ny mobil-træningsside for alle | ejer | Ja (kontakt) | Ja, mangler Android-test |
-| 5 (ekstra) | `season_signup_enabled` (tilmelding + parkering) | ejer | Delvis: parkerede hold kan ikke af-parkeres | Ja teknisk |
+| 5 (ekstra) | `season_signup_enabled` (tilmelding + parkering) | ejer | Ja: spilleren henter selv holdet tilbage (comeback, #5643) | **Kørt: on 26/9** |
 | 6 (H10a) | Bestyrelses-backfill (#4857) | ejer | **INGEN (RØD)** | Ja teknisk, mangler go |
 | 7 (H13) | Trup-backfill (#4619/#5396) | ejer | **Delvis (RØD)**: snapshot findes, rollback uafprøvet | Ja teknisk, mangler go |
 | 8 (H2) | Værdikørslen (#5443) | ejer | Ja (`-Rollback` + nøgle tilbage) | Nej |
@@ -257,7 +257,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 ### Trin 1 (H1): S4-kalenderen skrives
 
-> **Rækkefølge ændret igen 26/9 (#5795, ejer: "vi har altid lavet kalenderen før sæsonen var slut"):** seniorkalenderen skrives **lørdag 26/9, før S3's sidste løbsdag**, med `--target-structure s4`. Flaget planlægger mod S4's målstruktur: de D4-puljer som `retireD4PoolsS4.js` (#5642) pensionerer ved "Afslut sæson" (E-H, udpeget på `pool_index` med samme regel som scriptet), behandles i planen som pensionerede og får ingen løb. Databasen røres ikke af flaget: `retired_at`, S3's løb, stillinger og puljer er urørte. Uden flaget stopper gaten "pulje-struktur" stadig en kørsel med 8 D4-puljer (`SENIOR_CALENDAR_POOLS_FROM_S4` = 1/2/4/4). Trin 12b er nu en **kontrol**, ikke en skrivning. (24/9-rækkefølgen, hvor kalenderen først blev skrevet i 12b, er erstattet.)
+> **Rækkefølge ændret igen 26/9 (#5795, ejer: "vi har altid lavet kalenderen før sæsonen var slut"):** seniorkalenderen skrives **før skiftet, senest søndag 27/9 før "Afslut sæson"** (planen var lørdag 26/9; go er flyttet til søndag, fordi GT-rettelsen #5802/PR #5803 skal med), med `--target-structure s4`. Flaget planlægger mod S4's målstruktur: de D4-puljer som `retireD4PoolsS4.js` (#5642) pensionerer ved "Afslut sæson" (E-H, udpeget på `pool_index` med samme regel som scriptet), behandles i planen som pensionerede og får ingen løb. Databasen røres ikke af flaget: `retired_at`, S3's løb, stillinger og puljer er urørte. Uden flaget stopper gaten "pulje-struktur" stadig en kørsel med 8 D4-puljer (`SENIOR_CALENDAR_POOLS_FROM_S4` = 1/2/4/4). Trin 12b er nu en **kontrol**, ikke en skrivning. (24/9-rækkefølgen, hvor kalenderen først blev skrevet i 12b, er erstattet.)
 
 - **For spilleren:** S4's løb, datoer og puljekalendere bliver synlige. Udtagelse til S4-løb åbner først når S4 er `active` (`seasonAllowsSelectionWrites`, #5405); en S4-kalender i dag kan altså ikke få udtagelser før skiftet.
 - **Forudsætning:**
@@ -365,8 +365,8 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 - **Kontrol bagefter:** `GET /api/season/signup-status` som inaktiv konto. Forventet: `"enabled": true, "eligible": true`.
 - **Fortryd:**
   - Flag-tavlen -> `off` før "Afslut sæson": så parkeres ingen.
-  - Efter parkering: INGEN af-parkerings-kode. Kun `parkTeam` findes (`backend/lib/managerParking.js:78`). Se afhjælpningen i trin 12.
-- **Kan tændes i dag?** Ja teknisk. Mangler ejer-beslutningen.
+  - Efter parkering: spilleren henter selv holdet tilbage med ét tryk på dashboardet (comeback, #5643 lukket 25/9: `backend/routes/comeback.js`, placering efter Global Rank i `backend/lib/comebackPlacement.js`, pro rata sponsor i `comebackService.js`). Ved næste "Afslut sæson" genindplaceres tilmeldte parkerede hold desuden af `unparkSignedUpTeams` (`managerParking.js:331`).
+- **Status 26/9:** on (ejer: parkering ved S4 = ja). Tørkørslen (`parkingDryRun.js`) køres af ejeren før "Afslut sæson"; klassifikatoren blokerer Claudes prod-scripts.
 
 ### Trin 6 (H10a): Bestyrelses-backfill (#4857)
 
@@ -548,7 +548,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   - S4 bliver aktiv: kontrakter, sponsorer, løn, pension og nulstilling af form.
   - Inaktive hold parkeres, hvis trin 5 er on.
 - **Forudsætning:**
-  - Alle S3-løb er afviklet. S4-kalenderen (trin 1) er skrevet lørdag 26/9 med `--target-structure s4` (#5795); 12b er kun en kontrol.
+  - Alle S3-løb er afviklet. S4-kalenderen (trin 1) er skrevet før skiftet med `--target-structure s4` (#5795); 12b er kun en kontrol.
   - Preflight uden `[NO-GO]` (`scripts/preflight-season-cutover.ps1:29`). Den dækker ikke kontakterne i denne plan.
   - PITR er verificeret frisk i Supabase-dashboardet (`SEASON_TRANSITION_CHECKLIST.md` skridt 0 pkt. 1).
   - Trin 5 er afgjort.
@@ -751,7 +751,7 @@ Alle afhjælpninger er prod-skrivninger. De kræver ejer-go og køres **før** t
 ### Uafklaret: kræver ejer-beslutning
 
 1. **Værdimodel:** afgjort: typefri `v6` med marked (ejer-lås 24/9). Script og runbook er skiftet til `v6` (#5443); #5461-teksten skal stadig omskrives.
-2. **Parkering ved S4:** skal ske? Kræver `season_signup_enabled` on før "Afslut sæson" (trin 5). Denne kontakt står ikke i #5506. Parkerede hold kan ikke af-parkeres med kode.
+2. **Parkering ved S4:** skal ske? Kræver `season_signup_enabled` on før "Afslut sæson" (trin 5). Denne kontakt står ikke i #5506. **Afgjort 26/9: ja.** Afparkering findes (comeback, #5643).
 3. **S4-kalenderens tre finale-afvigelser:** ret dem eller acceptér med `--allow-finale-drift`.
 4. **Søndagskørslen 27/9:** lad den køre med backup, eller spring over med et claim på forhånd (#5443 trin 3).
 5. **v4-timing:** før første S4-etape (foreslået, så intet etapeløb skifter motor) eller senere. Samme dag som trin 14 giver to store ændringer på S4's første dag.
