@@ -162,7 +162,7 @@ export default function TrainingProgramsPanel({
                 >
                   <span
                     aria-hidden="true"
-                    className={`mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full border ${
+                    className={`mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-cz-pill border ${
                       isSelected ? "border-cz-1 bg-cz-1 text-cz-card" : "border-cz-border"
                     }`}
                   >
@@ -180,7 +180,7 @@ export default function TrainingProgramsPanel({
                         return (
                           <span
                             key={weekday}
-                            className={`rounded-[3px] border border-cz-border px-1 font-data text-3xs ${
+                            className={`rounded-cz border border-cz-border px-1 font-data text-3xs ${
                               session === "rest" ? "text-cz-3" : "text-cz-2"
                             }`}
                           >
@@ -318,7 +318,7 @@ export default function TrainingProgramsPanel({
                       <span className="sm:hidden">{t(`weekday_${weekday}`).slice(0, 2)}</span>
                       <span className="hidden truncate sm:inline">{t(`weekday_${weekday}`)}</span>
                       {isToday && (
-                        <span className="hidden rounded-[3px] bg-cz-1 px-1 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-card sm:inline">
+                        <span className="hidden rounded-cz bg-cz-1 px-1 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-card sm:inline">
                           {t("weekPlan.today")}
                         </span>
                       )}
