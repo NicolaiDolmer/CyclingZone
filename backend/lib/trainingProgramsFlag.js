@@ -8,8 +8,8 @@
 // Ugeplan-fanen praecis som i dag.
 //
 // TO LAESERE, samme stadie:
-//   · API'et (GET /api/training/me og skrivestierne) evaluerer VIEWERENS
-//     beta-status server-side og sender en bar boolean (`programs`).
+//   · API'et (GET /api/training/programs og skrivestierne) evaluerer VIEWERENS
+//     beta-status server-side og sender en bar boolean (`enabled`).
 //   · Motoren har ingen viewer. Den spoerger holdets EJER (teams.user_id ->
 //     users). `engineWrite` bruges bevidst IKKE: i `beta` maa motoren kun laese
 //     programceller for beta-hold, ellers ville en rytter hos en ikke-beta-
@@ -18,7 +18,8 @@
 // Motoren slaar kun op naar holdet faktisk HAR programdata (en raekke med
 // `session`), saa hold uden programmer har praecis samme DB-kald som foer.
 //
-// Fail-safe: manglende/ukendt vaerdi eller fejl → false, dvs. dagens adfaerd.
+// API-stien er fail-safe (fejl → false, dagens flade). Motor-stien KASTER ved
+// et fejlet opslag, se isTrainingProgramsEnabledForTeam.
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
@@ -28,28 +29,29 @@ export async function isTrainingProgramsEnabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, TRAINING_PROGRAMS_FLAG_KEY), opts);
 }
 
-// Er holdets ejer beta-tester eller admin? Fejl → false (fail-safe).
-export async function isTeamOwnerBetaTester(supabase, teamId) {
-  if (!supabase?.from || !teamId) return false;
-  try {
-    const { data: team, error: teamError } = await supabase
-      .from("teams").select("user_id").eq("id", teamId).maybeSingle();
-    if (teamError || !team?.user_id) return false;
-    const { data: user, error: userError } = await supabase
-      .from("users").select("role, is_beta_tester").eq("id", team.user_id).maybeSingle();
-    if (userError || !user) return false;
-    return user.role === "admin" || user.is_beta_tester === true;
-  } catch {
-    // best-effort: fail-safe til dagens adfaerd (ingen programceller), som readFlagStage.
-    return false;
-  }
-}
-
 // Motorens svar for ET hold: on → true; beta → kun hvis holdets ejer er
-// beta-tester; off/ukendt/fejl → false.
+// beta-tester; off/ukendt/manglende raekke → false.
+//
+// KASTER ved et FEJLET opslag (CodeRabbit-fund, #4629): kun hold MED programdata
+// naar hertil, og for dem er et gaet enten programmet eller den gamle plan, altsaa
+// muligvis en anden session end spilleren har sat. Motoren sletter saa sin
+// reservation, og naeste sweep proever igen (samme kontrakt som
+// loebsdags-bindingen). ASCII-only beskeder (#i18n-leak-guard): intern ops-fejl.
 export async function isTrainingProgramsEnabledForTeam(supabase, teamId) {
-  const stage = await readFlagStage(supabase, TRAINING_PROGRAMS_FLAG_KEY);
+  const { data: flagRow, error: flagError } = await supabase
+    .from("app_config").select("value").eq("key", TRAINING_PROGRAMS_FLAG_KEY).maybeSingle();
+  if (flagError) throw new Error(`training_programs flag load: ${flagError.message ?? flagError}`);
+  const stage = flagRow?.value ?? null;
   if (stage === true || stage === "on") return true;
   if (stage !== "beta") return false;
-  return isTeamOwnerBetaTester(supabase, teamId);
+
+  const { data: team, error: teamError } = await supabase
+    .from("teams").select("user_id").eq("id", teamId).maybeSingle();
+  if (teamError) throw new Error(`training_programs owner load (team ${teamId}): ${teamError.message ?? teamError}`);
+  if (!team?.user_id) return false;
+
+  const { data: user, error: userError } = await supabase
+    .from("users").select("role, is_beta_tester").eq("id", team.user_id).maybeSingle();
+  if (userError) throw new Error(`training_programs owner beta load (team ${teamId}): ${userError.message ?? userError}`);
+  return user?.role === "admin" || user?.is_beta_tester === true;
 }

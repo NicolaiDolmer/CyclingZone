@@ -128,13 +128,25 @@ export function createTrainingProgramsRouter({
         if (existingId) updates.push({ id: existingId, patch: { days, program_key: program.key, updated_at: now } });
         else inserts.push({ team_id: teamId, rider_id: riderId, days, program_key: program.key, updated_at: now });
       }
+      // Ikke atomisk (PostgREST kan ikke upserte paa det partielle unikke index,
+      // se PUT /training/week-plan/:riderId i api.js). Hver skrivning er
+      // idempotent, saa et nyt klik goer arbejdet faerdigt; svaret siger derfor
+      // praecis hvor mange ryttere der fik programmet (CodeRabbit-fund).
+      let applied = 0;
+      let firstError = null;
       for (const { id, patch } of updates) {
         const { error } = await updateRow(supabase, id, patch);
-        if (error) throw new Error(error.message);
+        if (error) { firstError ??= error; continue; }
+        applied += 1;
       }
       const { error: insError } = await insertRows(supabase, inserts);
-      if (insError) throw new Error(insError.message);
-      res.json({ ok: true, applied: targets.length, programKey: program.key });
+      if (insError) firstError ??= insError;
+      else applied += inserts.length;
+      if (firstError) {
+        captureExceptionFn(new Error(`training programs apply partial (${applied}/${targets.length}): ${firstError.message}`));
+        return res.status(500).json({ error: "partial_apply", applied, total: targets.length });
+      }
+      res.json({ ok: true, applied, programKey: program.key });
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });

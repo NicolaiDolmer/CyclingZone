@@ -11,6 +11,7 @@ import {
 import { WEEKDAY_KEYS, resolveDayIntensity, isValidWeekPlanDays } from "./training.js";
 import { ALL_SESSIONS } from "./trainingDayTypes.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
+import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
 
 test("kataloget: 22 ejer-godkendte programmer, unikke noegler, kun eksisterende sessioner", () => {
   assert.equal(TRAINING_PROGRAMS.length, 22);
@@ -150,4 +151,37 @@ test("katalog-API'et leverer begge sprog og kopier (ikke referencer til det fros
   assert.equal(catalog[0].name.en, "Sprinter");
   catalog[0].days.mon = "rest";
   assert.equal(TRAINING_PROGRAMS[0].days.mon, "sprint");
+});
+
+// Motor-stien: et FEJLET opslag kaster (motoren retry'er), et manglende svar er off.
+function fakeDb(tables, failTable = null) {
+  return {
+    from(table) {
+      const filters = [];
+      const q = {
+        select() { return q; },
+        eq(c, v) { filters.push([c, v]); return q; },
+        async maybeSingle() {
+          if (table === failTable) return { data: null, error: { message: "boom" } };
+          const row = (tables[table] ?? []).find((r) => filters.every(([c, v]) => r[c] === v));
+          return { data: row ?? null, error: null };
+        },
+      };
+      return q;
+    },
+  };
+}
+
+test("isTrainingProgramsEnabledForTeam: on/beta-ejer/ikke-beta/manglende flag, og KAST ved fejlet opslag", async () => {
+  const base = { teams: [{ id: "t1", user_id: "u1" }], users: [{ id: "u1", role: "manager", is_beta_tester: true }] };
+  assert.equal(await isTrainingProgramsEnabledForTeam(fakeDb({ ...base, app_config: [{ key: "training_programs", value: "on" }] }), "t1"), true);
+  assert.equal(await isTrainingProgramsEnabledForTeam(fakeDb({ ...base, app_config: [{ key: "training_programs", value: "beta" }] }), "t1"), true);
+  const notBeta = { ...base, users: [{ id: "u1", role: "manager", is_beta_tester: false }], app_config: [{ key: "training_programs", value: "beta" }] };
+  assert.equal(await isTrainingProgramsEnabledForTeam(fakeDb(notBeta), "t1"), false);
+  assert.equal(await isTrainingProgramsEnabledForTeam(fakeDb(base), "t1"), false, "ingen flag-raekke = off");
+  await assert.rejects(isTrainingProgramsEnabledForTeam(fakeDb(base, "app_config"), "t1"), /flag load/);
+  await assert.rejects(
+    isTrainingProgramsEnabledForTeam(fakeDb({ ...base, app_config: [{ key: "training_programs", value: "beta" }] }, "users"), "t1"),
+    /owner beta load/,
+  );
 });
