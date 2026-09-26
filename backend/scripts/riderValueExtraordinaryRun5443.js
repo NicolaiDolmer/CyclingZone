@@ -12,28 +12,47 @@
 // faktisk ændrer sig"). Alt andet ville betyde at det ejeren godkendte i
 // tørkørslen og det der lander i databasen var to forskellige regnestykker.
 //
-// ── FEM LÅSE FØR DER SKRIVES NOGET ──────────────────────────────────────────
+// ── MODELLEN: v6, den typefri model med marked (#5497/#5502, ejer 24/9) ─────
+// Kørslen var oprindelig bygget til v5 (typet). Ejeren har siden låst det
+// samlede skifte: typefri grundværdi + markedet fra første aktivering +
+// elitepræmien på trin 0 (docs/superpowers/specs/2026-09-24-vaerdi-
+// indfasningsplan.md). Kørslen kræver derfor nøglen på 'v6' OG et gyldigt
+// markeds-fit i app_config.rider_valuation_v6_market.
+//
+// ── SEKS LÅSE FØR DER SKRIVES NOGET ─────────────────────────────────────────
 //   1. Tørkørsel er DEFAULT. Uden --apply skrives intet, nogensinde.
 //   2. --apply kræver BÅDE --confirm "<sætningen nedenfor>" OG
 //      VALUE_EVENT_5443_OWNER_ACK=true i miljøet. To ting man ikke rammer ved
 //      et uheld, og ingen af dem ligger i scriptet.
-//   3. app_config.rider_valuation_model SKAL stå på 'v5'. Står den på v4, er
+//   3. app_config.rider_valuation_model SKAL stå på 'v6'. Står den på v4, er
 //      kørslen enten for tidlig eller et forsøg på at regne den gamle model
 //      igennem uden for søndagen — begge dele nægtes.
-//   4. Backup af de fire kolonner kørslen kan skrive tages FØR første
+//   4. app_config.rider_valuation_v6_market SKAL bære et gyldigt markeds-fit
+//      (ejer-lås: markedet tæller med fra første aktivering). Uden det ville
+//      kørslen skrive v6 uden marked, og det er ikke det ejeren godkendte.
+//   5. Backup af de seks kolonner kørslen kan skrive tages FØR første
 //      skrivning, og verificeres (antal rækker) før der gås videre.
-//   5. Dagen claimes i rider_value_sunday_log FØR mutationen — samme mutex som
+//   6. Dagen claimes i rider_value_sunday_log FØR mutationen — samme mutex som
 //      søndagen bruger. Er dagen allerede claimet, køres der ikke. Det er det
 //      der gør "én gang" til en garanti og ikke en hensigt.
+//   (Plus: løn-nøglen skal stå på v4, og det må ikke være søndag.)
+//
+// ── TØRKØRSEL FØR NØGLE-FLIPPET ─────────────────────────────────────────────
+//   Står nøglen endnu ikke på v6, regner tørkørslen v6 PINNET (samme model-
+//   fil, markeds-fittet læst striks fra app_config, trin 0, løngrundlaget fra
+//   rider_production_value_model) gennem præcis samme refreshChangedRiderValues.
+//   Ejeren kan altså se tallene FØR nøglen flippes, og flip + --apply kan ske
+//   i samme omgang. Det lukker vinduet hvor nøglen står på v6 uden at kørslen
+//   er sket (søndagskørslen ville så regne trin 1 uden et trin 0 før sig).
 //
 // ── ROLLBACK ────────────────────────────────────────────────────────────────
-//   --rollback lægger de fire kolonner tilbage fra backup-tabellen. Den kræver
+//   --rollback lægger de seks kolonner tilbage fra backup-tabellen. Den kræver
 //   sin egen bekræftelses-sætning. VIGTIGT: sæt app_config-nøglen tilbage til
-//   'v4' FØR eller umiddelbart efter rollbacken — ellers skriver den
-//   førstkommende søndagskørsel v5-værdierne igen.
+//   'v4' (og trin-tælleren til 0) FØR eller umiddelbart efter rollbacken —
+//   ellers skriver den førstkommende søndagskørsel v6-værdierne igen.
 //
 // ── SÅDAN KØRES DEN (ejeren, fra repo-roden) ────────────────────────────────
-//   Tørkørsel (read-only):
+//   Tørkørsel (read-only, virker også før nøglen er flippet):
 //     infisical run --env=prod --silent -- node backend/scripts/riderValueExtraordinaryRun5443.js
 //   Rigtig kørsel:
 //     $env:VALUE_EVENT_5443_OWNER_ACK="true"
@@ -57,9 +76,13 @@ import { dirname, join } from "node:path";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import {
+  DEFAULT_VALUATION_MODEL_ID,
   RIDER_VALUE_PHASE_STEP_KEY,
+  TYPEFREE_MARKET_APP_CONFIG,
+  loadValuationModelById,
   readProductionValueModelId,
   readValuationModelId,
+  withMarketFit,
   writePhaseStep,
 } from "../lib/riderValuationModelSelect.js";
 import { copenhagenDateString, copenhagenWeekdayKey } from "../lib/copenhagenTime.js";
@@ -69,7 +92,8 @@ export const BACKUP_TABLE = "backup_5443_value_event_20260920";
 export const APPLY_CONFIRM_PHRASE = "KOER VAERDISKIFTET 5443";
 export const ROLLBACK_CONFIRM_PHRASE = "RUL VAERDISKIFTET 5443 TILBAGE";
 export const OWNER_ACK_ENV = "VALUE_EVENT_5443_OWNER_ACK";
-export const REQUIRED_MODEL_ID = "v5";
+// #5443/#5497: den typefri model med marked (ejer-lås 24/9), ikke v5.
+export const REQUIRED_MODEL_ID = "v6";
 // Ejer-beslutning 2 (20/9 aften): loengrundlaget bliver paa v4 under netop
 // denne begivenhed. Staar noeglen anderledes, er forudsaetningen brudt.
 export const DEFAULT_WAGE_MODEL_ID = "v4";
@@ -91,9 +115,9 @@ const UPSERT_BATCH = 500;
  * grunde; tom liste = klar. Ren funktion, så låsene kan testes uden en DB —
  * det er dem hele sikkerheden hviler på.
  * @param {{apply:boolean, confirm:string|null, ownerAck:boolean, modelId:string,
- *          wageModelId:string, weekday:string}} state
+ *          wageModelId:string, weekday:string, marketReady:boolean}} state
  */
-export function applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, weekday }) {
+export function applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, weekday, marketReady }) {
   const blockers = [];
   if (!apply) return blockers; // tørkørsel har ingen låse
   if (confirm !== APPLY_CONFIRM_PHRASE) {
@@ -106,6 +130,15 @@ export function applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, 
     blockers.push(
       `app_config.rider_valuation_model staar paa '${modelId}', ikke '${REQUIRED_MODEL_ID}'`
       + " - flip noeglen foerst, ellers ville koerslen skrive den gamle models tal uden for soendagen"
+    );
+  }
+  // Ejer-laas 24/9 (indfasningsplanen afsnit 1 punkt 2): markedet taeller med
+  // fra FOERSTE aktivering. Uden et gyldigt fit regner v6 uden marked, og det
+  // er en anden model end den ejeren saa i toerkoerslen.
+  if (marketReady !== true) {
+    blockers.push(
+      `app_config.${TYPEFREE_MARKET_APP_CONFIG} mangler eller er ugyldig`
+      + " - ejer-laasen er at markedet taeller med fra foerste aktivering; skriv markeds-fittet foerst"
     );
   }
   // Ejer-beslutning 2: loennen venter. Staar loen-noeglen paa noget andet end
@@ -230,6 +263,24 @@ async function writeBackup(supabase, riders, log) {
   return written.length;
 }
 
+/**
+ * Den model kørslen skal regne med: v6-filen med markeds-fittet fra app_config.
+ * STRIKS som søndagens loader (loadValuationModelStrict): en læsefejl kaster,
+ * for en tørkørsel der tavst regner uden marked ville vise ejeren andre tal
+ * end dem --apply bagefter skriver. Et manglende/ugyldigt fit er ikke en
+ * læsefejl: modellen kommer tilbage uden `market_fit`, og låsen afviser --apply.
+ * @returns {Promise<{model: object, marketReady: boolean}>}
+ */
+export async function loadRequiredModelWithMarket(supabase) {
+  const { data, error } = await supabase
+    .from("app_config").select("value").eq("key", TYPEFREE_MARKET_APP_CONFIG).maybeSingle();
+  if (error) {
+    throw new Error(`kunne ikke laese app_config.${TYPEFREE_MARKET_APP_CONFIG} (${error.message}). Intet er koert.`);
+  }
+  const model = withMarketFit(loadValuationModelById(REQUIRED_MODEL_ID), data?.value ?? null);
+  return { model, marketReady: Boolean(model.market_fit) };
+}
+
 /** Dagens claim, samme mutex som søndagen. Vundet claim = vi ejer dagen. */
 async function claimDay(supabase, runDate) {
   const { error } = await supabase.from(RIDER_VALUE_SUNDAY_LOG_TABLE).insert({ run_date: runDate });
@@ -276,17 +327,19 @@ export async function runExtraordinaryValueEvent(supabase, {
   apply, confirm, ownerAck, now = new Date(), log = console.log,
   refreshFn = refreshChangedRiderValues,
   resetPhaseStepFn = writePhaseStep,
+  loadModelFn = loadRequiredModelWithMarket,
 } = {}) {
   const modelId = await readValuationModelId(supabase);
   const wageModelId = await readProductionValueModelId(supabase);
+  const { model: requiredModel, marketReady } = await loadModelFn(supabase);
   const runDate = copenhagenDateString(now);
   const weekday = copenhagenWeekdayKey(runDate);
-  log(`model: pris=${modelId} · loengrundlag=${wageModelId} · dato ${runDate} (${weekday}, dansk tid)`);
+  log(`model: pris=${modelId} · loengrundlag=${wageModelId} · marked=${marketReady ? "ja" : "NEJ"} · dato ${runDate} (${weekday}, dansk tid)`);
 
   // ALLE laase tjekkes FOER foerste laesning af populationen og laenge foer
   // backuppen skrives. Backuppen er engangs: en afvisning der kommer EFTER den
   // ville efterlade en fyldt backup-tabel og blokere naeste forsoeg.
-  const blockers = applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, weekday });
+  const blockers = applyBlockers({ apply, confirm, ownerAck, modelId, wageModelId, weekday, marketReady });
   if (blockers.length > 0) {
     for (const b of blockers) log(`BLOKERET: ${b}`);
     return { ran: false, blockers };
@@ -294,13 +347,21 @@ export async function runExtraordinaryValueEvent(supabase, {
 
   // Tørkørsel: PRÆCIS samme beregning, ingen skrivning.
   if (!apply) {
-    if (modelId !== REQUIRED_MODEL_ID) {
-      log(`BLOKERET: toerkoerslen her maaler den kommende koersel, og den kraever at noeglen allerede staar paa '${REQUIRED_MODEL_ID}'.`);
-      log("  Skal du se hvad v5 VILLE goere foer du flipper noeglen, saa brug backend/scripts/dev/valuationV5DryRun5443.mjs.");
-      return { ran: false, blockers: [`model=${modelId}`] };
+    // Staar noeglen endnu ikke paa v6, pinnes v6 (+ marked) eksplicit. Loen-
+    // grundlaget slaas stadig op af refreshChangedRiderValues selv (en pinnet
+    // v6 traekker det ikke med), saa regnestykket er identisk med --apply.
+    const pinned = modelId !== REQUIRED_MODEL_ID;
+    if (pinned) {
+      log(`noeglen staar paa '${modelId}' - toerkoerslen regner '${REQUIRED_MODEL_ID}' pinnet, samme beregning som --apply efter flippet.`);
+    }
+    if (!marketReady) {
+      log(`ADVARSEL: app_config.${TYPEFREE_MARKET_APP_CONFIG} mangler/er ugyldig - tallene nedenfor er UDEN marked, og --apply vil blive afvist.`);
     }
     // Tørkørslen rører IKKE trin-tælleren (app_config.rider_value_phase_step).
-    const res = await refreshFn(supabase, { log, dryRun: true, phaseStep: EXTRAORDINARY_PHASE_STEP });
+    const res = await refreshFn(supabase, {
+      log, dryRun: true, phaseStep: EXTRAORDINARY_PHASE_STEP,
+      ...(pinned ? { model: requiredModel } : {}),
+    });
     const beforeById = new Map(res.before.map((r) => [r.id, r]));
     const { up, down, cpvMoved } = summariseUpdates(res.updates, beforeById);
     log("");
@@ -309,8 +370,19 @@ export async function runExtraordinaryValueEvent(supabase, {
     log(`  op: ${up} · ned: ${down}`);
     log(`  loengrundlag der flytter sig: ${cpvMoved}${wageModelId === "v4" ? " (forventet 0 saa laenge loen-noeglen staar paa v4)" : ""}`);
     log("");
-    log(`Naar ejeren siger "koer": tilfoej --apply --confirm "${APPLY_CONFIRM_PHRASE}" og saet ${OWNER_ACK_ENV}=true.`);
-    return { ran: false, dryRun: true, scanned: res.scanned, changed: res.changed, up, down, cpvMoved };
+    log("Tal pr. rytter/hold (privat, balance-internals/): backend/scripts/dev/valuationV5DryRun5443.mjs --to=v6 --step=0");
+    log("  eller admin-forhaandsvisningen /admin/value-preview.");
+    if (pinned) {
+      log(`Naar ejeren siger "koer": flip noeglen til '${REQUIRED_MODEL_ID}' og koer --apply i SAMME omgang:`);
+      log(`  UPDATE public.app_config SET value = '"${REQUIRED_MODEL_ID}"'::jsonb WHERE key = 'rider_valuation_model';`);
+    } else {
+      log("Naar ejeren siger \"koer\":");
+    }
+    log(`  tilfoej --apply --confirm "${APPLY_CONFIRM_PHRASE}" og saet ${OWNER_ACK_ENV}=true.`);
+    return {
+      ran: false, dryRun: true, pinned, marketReady,
+      scanned: res.scanned, changed: res.changed, up, down, cpvMoved,
+    };
   }
 
   // ── RIGTIG KØRSEL ─────────────────────────────────────────────────────────
@@ -374,14 +446,15 @@ export async function rollbackExtraordinaryValueEvent(supabase, { confirm, owner
   log("");
   log(`FAERDIG · ${written} ryttere rullet tilbage`);
   const modelId = await readValuationModelId(supabase);
-  if (modelId === REQUIRED_MODEL_ID) {
+  if (modelId !== DEFAULT_VALUATION_MODEL_ID) {
     log("");
-    log("ADVARSEL: app_config.rider_valuation_model staar stadig paa 'v5'.");
-    log("  Den foerstkommende soendagskoersel vil skrive v5-vaerdierne igen.");
-    log("  Saet noeglen tilbage:");
+    log(`ADVARSEL: app_config.rider_valuation_model staar stadig paa '${modelId}'.`);
+    log(`  Den foerstkommende soendagskoersel vil skrive ${modelId}-vaerdierne igen.`);
+    log("  Saet noeglen og trin-taelleren tilbage (samme statement-saet):");
     log("    UPDATE public.app_config SET value = '\"v4\"'::jsonb WHERE key = 'rider_valuation_model';");
+    log(`    UPDATE public.app_config SET value = '0'::jsonb WHERE key = '${RIDER_VALUE_PHASE_STEP_KEY}';`);
   }
-  return { ran: true, written };
+  return { ran: true, written, modelId };
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
