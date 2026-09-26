@@ -220,17 +220,30 @@ function collectiveAbility(riderIds: string[], entrants: Readonly<Record<string,
   return n > 0 ? total / n : 0;
 }
 
-function collectiveWprimeReserve(riderIds: string[], riders: Record<string, RiderState>): number {
+// #5581: en grupetto-rytters W'-reserve taeller som 0 i HELE finalen, ogsaa i
+// jagt-opgoeret — samme regel som placerings-opgoerets scoreOf nedenfor. Uden
+// det kunne en frisk grupetto-rytter (han har sparet hele dagen) "jage" sig op
+// i kontendent-puljen og i top 10, hvilket grupetto per ejer-trappen aldrig er.
+function collectiveWprimeReserve(
+  riderIds: string[],
+  riders: Record<string, RiderState>,
+  entrants: Readonly<Record<string, Entrant>>,
+): number {
   if (riderIds.length === 0) return 0;
   let total = 0;
   let n = 0;
   for (const riderId of riderIds) {
     const rider = riders[riderId];
     if (!rider) continue;
-    total += wprimeReserveFraction(rider);
+    total += entrants[riderId]?.effort === "grupetto" ? 0 : wprimeReserveFraction(rider);
     n++;
   }
   return n > 0 ? total / n : 0;
+}
+
+/** #5581: grupetto-ryttere spurter ikke — de placeres efter alle andre kontendenter. */
+function grupettoLast(riderId: string, entrants: Readonly<Record<string, Entrant>>): number {
+  return entrants[riderId]?.effort === "grupetto" ? 1 : 0;
 }
 
 type ScoredRider = { riderId: string; score: number };
@@ -297,15 +310,18 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   for (const group of chaseCandidates) {
     const carriedGapSeconds = Math.max(0, group.gap_seconds);
     const leadDefend = collectiveAbility(defenderIds, entrants, FLIGHT_KEYS);
-    const leadReserve = collectiveWprimeReserve(defenderIds, state.riders);
+    const leadReserve = collectiveWprimeReserve(defenderIds, state.riders, entrants);
     const chasePower = collectiveAbility(group.rider_ids, entrants, CHASE_KEYS);
-    const chaseReserve = collectiveWprimeReserve(group.rider_ids, state.riders);
+    const chaseReserve = collectiveWprimeReserve(group.rider_ids, state.riders, entrants);
 
     const netClosingPower = Math.max(
       0,
       chasePower - leadDefend + extra.chaseWprimeWeight * (chaseReserve - leadReserve),
     );
-    const closingSeconds = netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
+    // #5581: en gruppe af udelukkende grupetto-ryttere jager ikke (ude af
+    // finalen, ejer-trappen 23/9). En blandet gruppe jager paa de koerendes ben.
+    const onlyGrupetto = group.rider_ids.every((id) => entrants[id]?.effort === "grupetto");
+    const closingSeconds = onlyGrupetto ? 0 : netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
@@ -417,7 +433,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     entrants,
     state.riders,
     LEADOUT_EXTRA_TUNING,
-  ).sort((a, b) => b.score - a.score || a.riderId.localeCompare(b.riderId));
+  ).sort(
+    (a, b) =>
+      grupettoLast(a.riderId, entrants) - grupettoLast(b.riderId, entrants) ||
+      b.score - a.score ||
+      a.riderId.localeCompare(b.riderId),
+  );
 
   // Kontendere uden entrant-raekke (data-drift opstroems) faar ingen score og
   // ville ellers falde helt ud af opgoerelsen — og dermed ud af feltet. De
