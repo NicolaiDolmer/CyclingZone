@@ -109,7 +109,63 @@ function segmentsFromOwnFeatures(
   return segments.length > 0 ? segments : null;
 }
 
+/**
+ * #5812 (c): et fladt/rullende segment laengere end dette deles i stykker.
+ * Rutegeneratoren (routeSegments.js) skriver en flad etape uden stigninger som
+ * ÉT segment fra km 0 til maal. For motoren betyder det at alt der sker "pr.
+ * segment" sker én gang for hele etapen: udbruddet dannes paa maalstregen, M5's
+ * jagt koerer aldrig, og finalen lukker over hele distancen.
+ */
+export const MAX_OPEN_ROAD_SEGMENT_KM = 25;
+/** Stykkernes maal-laengde naar et segment deles (antal = ceil(laengde / dette)). */
+export const OPEN_ROAD_PIECE_KM = 20;
+
+const SPLITTABLE_KINDS: ReadonlySet<Segment["kind"]> = new Set(["flat", "rolling"]);
+
+function roundKm(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * #5812 (c): deler lange flade/rullende segmenter i lige lange stykker paa
+ * hoejst `OPEN_ROAD_PIECE_KM`. Stigninger, nedkoersler og brosten roeres ikke:
+ * de er selve terraenet mekanikkerne dommer paa, og deres graenser kommer fra
+ * rutens egne features.
+ *
+ * Paa LAESESIDEN (ikke i routeSegments.js-generatoren) med vilje: en allerede
+ * skrevet kalender faar opdelingen uden at raekkerne skrives om, og generator-
+ * outputtet (og dermed rute-golden-filerne) er uaendret.
+ *
+ * Deterministisk uden rng: samme segmentliste giver samme opdeling, byte for
+ * byte. Stykkerne er sammenhaengende, og sidste stykke slutter praecis paa det
+ * oprindelige segments `to_km` (ingen afrundings-drift mod maal). Inputtet
+ * muteres ikke.
+ */
+export function splitLongOpenRoadSegments(segments: readonly Segment[]): Segment[] {
+  const out: Segment[] = [];
+  for (const segment of segments) {
+    const length = segment.to_km - segment.from_km;
+    if (!SPLITTABLE_KINDS.has(segment.kind) || !(length > MAX_OPEN_ROAD_SEGMENT_KM)) {
+      out.push(segment);
+      continue;
+    }
+    const pieces = Math.ceil(length / OPEN_ROAD_PIECE_KM);
+    const step = length / pieces;
+    let from = segment.from_km;
+    for (let i = 0; i < pieces; i++) {
+      const to = i === pieces - 1 ? segment.to_km : roundKm(segment.from_km + step * (i + 1));
+      out.push({ ...segment, from_km: from, to_km: to } as Segment);
+      from = to;
+    }
+  }
+  return out;
+}
+
 function resolveSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null): Segment[] {
+  return splitLongOpenRoadSegments(resolveRawSegments(row, profileType, finaleType));
+}
+
+function resolveRawSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null): Segment[] {
   if (Array.isArray(row.segments) && row.segments.length > 0) return row.segments;
   const fromOwnFeatures = segmentsFromOwnFeatures(row, profileType, finaleType);
   if (fromOwnFeatures) return fromOwnFeatures;

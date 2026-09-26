@@ -628,6 +628,56 @@ function tickGroupRiders(
   return next;
 }
 
+/**
+ * #5812 (a): terraen hvor M5 alene ejer hullet mellem dagens udbrud og
+ * jagtgruppen. Paa aabent terraen er forskellen mellem en lille gruppe og et
+ * stort felt LAE (GROUP_DRAFT_EXTRA_TUNING) — og hvor meget feltet lader et
+ * udbrud faa, er et valg feltet traeffer, ikke fysik. Det valg modellerer M5
+ * ("lad gaa", saa jagt). Paa stigninger og brosten er det evnen der skiller,
+ * saa dér beholder tempo-modellen sin drift.
+ */
+const BREAKAWAY_NEUTRAL_KINDS: ReadonlySet<SegmentKind> = new Set(["flat", "rolling", "descent"]);
+
+/**
+ * #5812 (a): nulstiller tempo-driften mellem dagens udbrud (M5's egen
+ * oprindelse, `origin: "breakaway"`) og jagtgruppen FOER hooksene, saa M5's
+ * lad-gaa/jagt-model er den eneste der flytter hullet imellem dem. Uden det
+ * bogfoeres hullet to gange: tempo-modellen giver feltet mere lae end
+ * udbruddet (det spiste hovedstarten paa faa segmenter), og M5 lukker oveni.
+ *
+ * Udbruddet koerer da gap-maessigt i jagtgruppens tempo: dets krydsningstid
+ * saettes lig jagtgruppens. Fysiologi-tick'et er allerede koert paa gruppens
+ * EGET tempo (udbruddet betaler stadig for at koere i vinden). Jagtgruppen er
+ * M5's (`findChaseGroup` i breakaway.ts): stoerste gruppe der ikke er et
+ * udbrud. Andre grupper (nedkoerselsangreb, splits, grupetto) er uroerte.
+ *
+ * Eksporteret for testbarhed af netop koblingen, samme praecedens som
+ * `groupDraftSpeedGain`. Returnerer samme Map naar intet aendres.
+ */
+export function neutralizeBreakawayTempoDrift(
+  groups: readonly RaceGroup[],
+  tempoByGroup: Map<string, GroupTempo>,
+  kind: SegmentKind,
+): Map<string, GroupTempo> {
+  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind)) return tempoByGroup;
+  const escapes = groups.filter((g) => g.kind === "breakaway" && g.origin === "breakaway");
+  if (escapes.length === 0) return tempoByGroup;
+  const chase = [...groups]
+    .filter((g) => g.kind !== "breakaway")
+    .sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
+  const chaseTempo = chase ? tempoByGroup.get(chase.id) : undefined;
+  if (!chase || !chaseTempo) return tempoByGroup;
+  let out: Map<string, GroupTempo> | null = null;
+  for (const escape of escapes) {
+    if (!(escape.gap_seconds <= chase.gap_seconds)) continue;
+    const own = tempoByGroup.get(escape.id);
+    if (!own || own.dtSeconds === chaseTempo.dtSeconds) continue;
+    out ??= new Map(tempoByGroup);
+    out.set(escape.id, { ...own, dtSeconds: chaseTempo.dtSeconds });
+  }
+  return out ?? tempoByGroup;
+}
+
 /** Rebaseliner grupper saa den mindste gap_seconds altid er praecis 0 (fronten). */
 function rebaselineGroups(groups: RaceGroup[]): RaceGroup[] {
   if (groups.length === 0) return groups;
@@ -814,6 +864,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         if (chaseLoss !== state.incident_chase_loss) state = { ...state, incident_chase_loss: { ...chaseLoss } };
       }
     }
+
+    // #5812 (a): M5 ejer hullet mellem dagens udbrud og jagtgruppen paa aabent
+    // terraen. Se neutralizeBreakawayTempoDrift.
+    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.

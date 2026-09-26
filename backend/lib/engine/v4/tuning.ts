@@ -778,6 +778,33 @@ const breakawayExtra = {
     long_climb: 0.1, // lang klatring: minimal sprinter-interesse
     solo_tt: 0.05, // enkeltstart: irrelevant (ingen felt-dynamik) men holdt lav i stedet for 0 for robusthed
   } as Partial<Record<import("./types.ts").FinaleType, number>>, // pr. finale-type sprinterhold-interesse-vaegt (#2416's "terraen + rest-km-proxy")
+
+  // ── "Lad gaa"-fasen (#5812 a) ────────────────────────────────────────────
+  // Foer kunne et udbrud aldrig bygge et forspring: det startede med sin
+  // hovedstart, tempo-modellen gav feltet mere lae end udbruddet, og M5 kunne
+  // kun lukke huller. Nu goer feltet som i virkeligheden: det lader udbruddet
+  // gaa, hullet vokser med `letGoSecondsPerKm` op til et loft, og FOERST
+  // derefter begynder jagten (closingSecondsPerKmPerUnit ovenfor). Loftet
+  // afhaenger af terraenet (profil) og af hvor farligt udbruddet er: jo mere
+  // GC-trussel udbruddet rummer RELATIVT til feltet, jo mindre lader feltet
+  // det faa (forhold, saa leddet er skala-invariant, #4707).
+  // M5 ejer hullet mellem udbrud og jagtgruppe alene paa aabent terraen
+  // (segmentLoop nulstiller tempo-driften mellem dem, se
+  // `neutralizeBreakawayTempoDrift`), saa intet bogfoeres to gange.
+  letGoSecondsPerKm: 12, // hvor hurtigt hullet vokser mens feltet lader det gaa
+  maxGapSecondsDefault: 240, // loft paa lad-gaa-hullet naar profilen er ukendt
+  maxGapSecondsByProfile: {
+    flat: 240,
+    rolling: 240,
+    hilly: 360,
+    mountain: 420,
+    high_mountain: 360,
+    cobbles: 240,
+    gravel: 300,
+    classic: 300,
+  } as Partial<Record<import("./types.ts").ProfileType, number>>, // pr. profil: hvor meget feltet typisk giver et udbrud
+  threatGapSensitivity: 1.0, // hvor meget udbruddets relative GC-trussel (forhold til feltet, minus 1) krymper loftet
+  maxGapFactorBounds: [0.4, 1.3] as readonly [number, number], // clamp paa trussel-faktoren — ét farligt udbrud faar stadig noget, et harmloest faar ikke uendeligt
 };
 
 /** M5 additiv udbruds-tuning (deep-frosset). Se breakawayExtra-kommentaren ovenfor. */
