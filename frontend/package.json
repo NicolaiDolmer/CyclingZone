@@ -32,7 +32,7 @@
     "i18next-browser-languagedetector": "^8.2.1",
     "i18next-http-backend": "^4.0.2",
     "i18next-icu": "^2.4.4",
-    "intl-messageformat": "^11.2.14",
+    "intl-messageformat": "^12.1.0",
     "posthog-js-lite": "^4.12.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
