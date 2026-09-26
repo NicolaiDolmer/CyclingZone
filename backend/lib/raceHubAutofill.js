@@ -24,6 +24,7 @@ import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.j
 import { findCrossUnitMoves } from "./raceEntryGenerator.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { isRaceLineupFrozen } from "./raceActiveGuard.js";
+import { captureException } from "./sentry.js";
 
 const PAGE = 1000;
 
@@ -185,8 +186,10 @@ async function restoreReleased({ supabase, teamId, released, touched, written })
     const { error: restoreErr } = await writeRaceEntriesWithSource({
       supabase, rows, upsertOptions: { onConflict: "race_id,rider_id", ignoreDuplicates: true },
     });
-    if (restoreErr) console.error(`race_entries restore (#5789, ${rows.length} rows): ${restoreErr.message}`);
+    if (restoreErr) throw new Error(`race_entries restore (#5789, ${rows.length} rows): ${restoreErr.message}`);
   } catch (thrown) {
-    console.error(`race_entries restore (#5789, ${rows.length} rows): ${thrown?.message || thrown}`);
+    // Dobbelt uheld: rytteren er nu reelt ude af kilde-loebet. Rapportér, men lad den
+    // oprindelige fejl (som kalderen kaster videre) vaere den spilleren faar.
+    captureException(thrown instanceof Error ? thrown : new Error(String(thrown)));
   }
 }

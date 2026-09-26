@@ -155,6 +155,15 @@ test("#5789: fejler mål-løbets insert, genskabes den sluppede rytter i sit ur�
   assert.deepEqual(supabase.state.entries.filter((r) => r.race_id === "S2").map((r) => r.rider_id).sort(), ["c", "x"]);
 });
 
+test("#5789: fejler OGSÅ genskabelsen, er det stadig den oprindelige fejl kalderen får", async () => {
+  const { dayByRace, entries, target, picksByRace } = sameDayMove();
+  const supabase = makeFakeSupabase({ entries, dayByRace, failInsert: () => true });
+  await assert.rejects(
+    writeRegeneratedLineups({ supabase, teamId: "T", target, picksByRace, existingEntries: entries }),
+    /race_entries insert \(S1\): injected failure/,
+  );
+});
+
 test("#5789: en ÆGTE konflikt med et ikke-regenereret løb giver stadig den navngivne selection_rider_bound", async () => {
   const dayByRace = { S1: [25], OTHER: [25] };
   const entries = [e("OTHER", "x", "captain", false)];
