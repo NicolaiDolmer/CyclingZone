@@ -45,12 +45,15 @@ export function seasonSignupReminderDedupeKey(seasonId, userId) {
   return `${SEASON_SIGNUP_REMINDER_EMAIL_KIND}:${seasonId}:${userId}`;
 }
 
-/** True when email_prefs allows this reminder: not muted for this type, for win-back, or entirely. */
+/**
+ * True when email_prefs allows this reminder: not muted entirely ("all"), not
+ * muted for win-back, and not muted for this type. The type key is read
+ * directly because emailPrefs.isEmailTypeEnabled ignores keys outside
+ * EMAIL_PREF_TYPES (this one-off is deliberately not a settable pref type);
+ * an explicit false must still win.
+ */
 export function seasonSignupReminderPrefsAllow(emailPrefs) {
-  return (
-    isEmailTypeEnabled(emailPrefs, SEASON_SIGNUP_REMINDER_EMAIL_KIND) &&
-    isEmailTypeEnabled(emailPrefs, WINBACK_EMAIL_KIND)
-  );
+  return isEmailTypeEnabled(emailPrefs, WINBACK_EMAIL_KIND) && emailPrefs?.[SEASON_SIGNUP_REMINDER_EMAIL_KIND] !== false;
 }
 
 /**
