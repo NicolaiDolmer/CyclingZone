@@ -172,7 +172,10 @@ export function computeFinaleAbilityScore(
   const formBound = Number.isFinite(dayformScoreClamp) ? Math.max(0, dayformScoreClamp) : 0;
   const form = Number.isFinite(dayform) ? clamp(dayform, -formBound, formBound) : 0;
   const formWeight = Number.isFinite(dayformScoreWeight) ? Math.max(0, dayformScoreWeight) : 0;
-  return sum + wprimeReserveWeight * reserve + formWeight * form + effortFinaleTerm(effort, reserve);
+  // Samme forskydning for alle koerende ryttere bevarer deres indbyrdes
+  // dagsform-forskelle. Grupetto faar hverken forskydningen eller dagsformen.
+  const formTerm = effort === "grupetto" ? 0 : formWeight * (form + formBound);
+  return sum + wprimeReserveWeight * reserve + formTerm + effortFinaleTerm(effort, reserve);
 }
 
 /**
@@ -446,7 +449,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       demandVector,
       extra.wprimeReserveWeight,
       entrant.effort,
-      state.riders[riderId]?.dayform ?? 0,
+      entrant.effort === "grupetto" ? 0 : state.riders[riderId]?.dayform ?? 0,
       extra.dayformScoreWeight,
       extra.dayformScoreClamp,
     );
@@ -458,6 +461,34 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       return score === null ? null : { riderId, score };
     })
     .filter((s): s is ScoredRider => s !== null);
+
+  // Dagsform er individuel, men maa ikke vende condition-ordenen mellem
+  // ellers identiske ryttere. Bevar udsvingene inden for hvert condition-trin,
+  // og loeft kun den hoejere conditions score hvis den ellers ville falde bagud.
+  const sameProfile = new Map<string, ScoredRider[]>();
+  for (const rider of baseScored) {
+    const entrant = entrants[rider.riderId];
+    const profile = JSON.stringify([
+      Object.keys(entrant.abilities).sort().map((key) => [key, entrant.abilities[key as AbilityKey]]),
+      entrant.role,
+      entrant.effort,
+      entrant.team_id ?? null,
+      state.riders[rider.riderId]?.team_cp_factor ?? null,
+    ]);
+    const peers = sameProfile.get(profile) ?? [];
+    peers.push(rider);
+    sameProfile.set(profile, peers);
+  }
+  for (const peers of sameProfile.values()) {
+    if (peers.length < 2) continue;
+    const conditionLevels = [...new Set(peers.map((r) => entrants[r.riderId].condition))].sort((a, b) => a - b);
+    let lowerScore = -Infinity;
+    for (const condition of conditionLevels) {
+      const level = peers.filter((r) => entrants[r.riderId].condition === condition);
+      for (const rider of level) rider.score = Math.max(rider.score, lowerScore);
+      lowerScore = Math.max(lowerScore, ...level.map((r) => r.score));
+    }
+  }
 
   // M6 (#4615): sprint-toget loefter kaptajnens placerings-score BOUNDED, FOER
   // sorteringen — en leadout skal kunne flytte en placering, aldrig

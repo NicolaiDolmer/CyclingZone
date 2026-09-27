@@ -404,7 +404,7 @@
     }
   ],
   "orders": [],
-  "seed": "fixture-flat-massespurt-v1",
+  "seed": "fixture-flat-massespurt-v1-revision-0",
   "tuning": {
     "physiology": {
       "cpWeights": {

@@ -874,6 +874,15 @@ test("computeFinaleAbilityScore: dagsform-bidraget clampes foer vaegtning", () =
   assert.ok(low < neutral);
 });
 
+test("computeFinaleAbilityScore: grupetto faar intet dagsformbidrag", () => {
+  const ab = abilities();
+  const low = computeFinaleAbilityScore(ab, 0, PUNCH_DEMAND, 0.15, "grupetto", -0.1, 5, 0.1);
+  const high = computeFinaleAbilityScore(ab, 0, PUNCH_DEMAND, 0.15, "grupetto", 0.1, 5, 0.1);
+  const neutral = computeFinaleAbilityScore(ab, 0, PUNCH_DEMAND, 0.15, "grupetto", 0, 5, 0.1);
+  assert.equal(low, neutral);
+  assert.equal(high, neutral);
+});
+
 // ── #5580 (M1 punkt 2): indsatsens led i placerings-opgoeret ──────────────────
 
 const EFFORT_LADDER: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
