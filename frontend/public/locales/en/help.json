@@ -1752,7 +1752,7 @@
     },
     "season0To1Special": {
       "q": "What happens at the transition from season 0 to season 1?",
-      "a": "Season 0 is the opening phase with no races, points or salaries. When season 1 starts you already hold your founding budget, so the system does not pay a season-1 sponsor on top (that would be double income at the start), and running costs (upkeep) are held back until the season is actually underway. From season 2 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) upkeep is deducted, 5) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
+      "a": "Season 0 is the opening phase with no races, points or salaries. When season 1 starts you already hold your founding budget, so the system does not pay a season-1 sponsor on top (that would be double income at the start), and running costs (upkeep) are held back until the season is actually underway. From season 2 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) upkeep is deducted (unless it is paid per race day as Travel & staff), 5) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
@@ -1788,7 +1788,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "How much money do I start with, and when should I take a loan?",
-      "a": "You start with a {startingBalance} CZ$ budget in Division 3. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries, upkeep and loan interest are deducted automatically at the start of each season. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 3: 600,000 CZ$) that caps how much you can borrow at once."
+      "a": "You start with a {startingBalance} CZ$ budget in Division 3. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries and loan interest are deducted automatically at the start of each season, and so is upkeep unless it is paid per race day as Travel & staff. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 3: 600,000 CZ$) that caps how much you can borrow at once."
     },
     "academyIntakeScoutingFaq": {
       "q": "How often do I get new Academy prospects, and does scouting reset?",

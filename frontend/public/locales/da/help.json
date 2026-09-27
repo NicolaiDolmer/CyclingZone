@@ -1752,7 +1752,7 @@
     },
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
-      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når sæson 1 starter, har du allerede din startkapital, så systemet udbetaler ikke en sæson-1-sponsor oveni (det ville være dobbelt-indkomst ved opstart), og driftsomkostninger (upkeep) holdes tilbage indtil sæsonen reelt er i gang. Fra sæson 2 og frem kører den normale cyklus ved sæsonstart: 1) sponsor udbetales, 2) lånerenter trækkes, 3) lønninger trækkes, 4) upkeep trækkes, 5) nødlån oprettes hvis stadig shortfall. Sæsonslut håndterer kun divisionsbonus, op/nedrykning og bestyrelsesplaner."
+      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når sæson 1 starter, har du allerede din startkapital, så systemet udbetaler ikke en sæson-1-sponsor oveni (det ville være dobbelt-indkomst ved opstart), og driftsomkostninger (upkeep) holdes tilbage indtil sæsonen reelt er i gang. Fra sæson 2 og frem kører den normale cyklus ved sæsonstart: 1) sponsor udbetales, 2) lånerenter trækkes, 3) lønninger trækkes, 4) upkeep trækkes (medmindre den betales pr. løbsdag som Rejse og personale), 5) nødlån oprettes hvis stadig shortfall. Sæsonslut håndterer kun divisionsbonus, op/nedrykning og bestyrelsesplaner."
     },
     "season1RaceCalendarFaq": {
       "q": "Hvilke løb køres i sæson 1?",
@@ -1788,7 +1788,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "Hvor mange penge starter jeg med, og hvornår skal jeg tage et lån?",
-      "a": "Du starter med et budget på {startingBalance} CZ$ i Division 3. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger, drift og lånerenter trækkes automatisk ved hver sæsons start. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 3: 600.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."
+      "a": "Du starter med et budget på {startingBalance} CZ$ i Division 3. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger og lånerenter trækkes automatisk ved hver sæsons start, og det gør drift også, medmindre den betales pr. løbsdag som Rejse og personale. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 3: 600.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."
     },
     "academyIntakeScoutingFaq": {
       "q": "Hvor ofte får jeg nye akademi-emner, og resetter scouting?",
