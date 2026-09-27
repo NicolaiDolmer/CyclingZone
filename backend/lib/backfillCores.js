@@ -27,6 +27,7 @@ import { ageForSeason } from "./riderProgressionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 import { loadValuationModel, loadProductionValueModel } from "./riderValuationModelSelect.js";
+import { isTypefreeModel } from "./valuationTypefree/typefreeValuation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -281,11 +282,16 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // afgøres på modellen alene, uden at udlede den af outputtet. Udledningen bagfra var
   // netop det der gjorde ÉN uvurderbar rytter til den samme hårde fejl som en brudt
   // model (se guard-kommentaren nederst i denne funktion).
-  const valModelUsable = Number(valModel?.version) >= 4 && valModel?.fit
-    ? Number.isFinite(Number(valModel.fit.a)) && Number.isFinite(Number(valModel.fit.b))
-    : Number.isFinite(Number(valModel?.a)) && Number.isFinite(Number(valModel?.b));
+  // #5497: den typefri model (v6) har hverken fit.a/b eller a/b i roden — dens
+  // bærende koefficient er `scale`. Uden denne gren kastede guarden på HVER derive
+  // efter flippet til v6 (26/9), så nye ryttere og heal-sweepen stod stille.
+  const valModelUsable = isTypefreeModel(valModel)
+    ? typeof valModel.scale === "number" && Number.isFinite(valModel.scale) // null/"" må ikke blive 0
+    : Number(valModel?.version) >= 4 && valModel?.fit
+      ? Number.isFinite(Number(valModel.fit.a)) && Number.isFinite(Number(valModel.fit.b))
+      : Number.isFinite(Number(valModel?.a)) && Number.isFinite(Number(valModel?.b));
   if (!valModelUsable) {
-    throw new Error("deriveForRiderIds: valuation model unusable (a/b are not finite numbers) - aborting BEFORE any write, no rider could be valued");
+    throw new Error("deriveForRiderIds: valuation model unusable (a/b or scale are not finite numbers) - aborting BEFORE any write, no rider could be valued");
   }
   // #3570: seasonNumber flyttet HERTIL (var tidligere kun hentet ved trin 5) — trin 4
   // (ENDELIG type) skal nu også kende alderen for at vælge baseline.
