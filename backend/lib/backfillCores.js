@@ -286,7 +286,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // bærende koefficient er `scale`. Uden denne gren kastede guarden på HVER derive
   // efter flippet til v6 (26/9), så nye ryttere og heal-sweepen stod stille.
   const valModelUsable = isTypefreeModel(valModel)
-    ? Number.isFinite(Number(valModel.scale))
+    ? typeof valModel.scale === "number" && Number.isFinite(valModel.scale) // null/"" må ikke blive 0
     : Number(valModel?.version) >= 4 && valModel?.fit
       ? Number.isFinite(Number(valModel.fit.a)) && Number.isFinite(Number(valModel.fit.b))
       : Number.isFinite(Number(valModel?.a)) && Number.isFinite(Number(valModel?.b));

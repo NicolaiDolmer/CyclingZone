@@ -429,15 +429,19 @@ test("CYCLINGZONE-51 (27/9): den typefri v6-model er brugbar — guarden kaster 
 });
 
 test("deriveForRiderIds KASTER på en v6-model uden endelig scale", async () => {
-  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
-  await assert.rejects(
-    () => deriveForRiderIds(supabase, ["r1"], {
-      dryRun: false,
-      valuationModel: { ...loadValuationModelById("v6"), scale: NaN },
-    }),
-    /valuation model unusable/,
-  );
-  assert.equal(supabase.writes.upserts.length, 0);
+  // null og "" ville blive 0 via Number() og værdisætte alle til gulvet (CodeRabbit #5821).
+  for (const scale of [NaN, null, "", undefined]) {
+    const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+    await assert.rejects(
+      () => deriveForRiderIds(supabase, ["r1"], {
+        dryRun: false,
+        valuationModel: { ...loadValuationModelById("v6"), scale },
+      }),
+      /valuation model unusable/,
+      `scale=${String(scale)} skal afvises`,
+    );
+    assert.equal(supabase.writes.upserts.length, 0);
+  }
 });
 
 // computeYouthCapsForRider er fjernet (ejer 15/7): loftet er ikke længere alders-gatet,
