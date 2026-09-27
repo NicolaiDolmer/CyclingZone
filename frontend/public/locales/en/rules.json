@@ -42,7 +42,7 @@
         },
         "upkeep": {
           "title": "Upkeep",
-          "text": "Each season your team pays a fixed operating cost (upkeep) at season start, scaled by division so higher divisions pay more. The exact figures are a balance lever the developer tunes between seasons; you always see the amount booked in your Finance log as 'upkeep'."
+          "text": "Each season your team pays an operating cost (upkeep), scaled by division so higher divisions pay more. It is charged either once at season start or as Travel & staff for each senior race day your team starts; the season total is the same. I tune the exact figures between seasons, and you always see each charge in your Finance log."
         },
         "salary": {
           "title": "Rider salary",

@@ -78,7 +78,8 @@ export const S2_SOURCE_REASON_CODES = Object.freeze({
     FINANCE_REASON.SPONSOR_SIGNING_BONUS,
   ],
   prize: [FINANCE_REASON.RACE_PRIZE_PAYOUT, FINANCE_REASON.SEASON_END_DIVISION_BONUS],
-  upkeep: [FINANCE_REASON.SEASON_START_UPKEEP],
+  // #4385: upkeep pr. seniorløbsdag er samme udgift i ny form.
+  upkeep: [FINANCE_REASON.SEASON_START_UPKEEP, FINANCE_REASON.RACE_DAY_TRAVEL_STAFF],
   facility_upkeep: [FINANCE_REASON.SEASON_START_FACILITY_UPKEEP],
   staff_salary: [FINANCE_REASON.SEASON_START_STAFF_SALARY],
   academy_drift: [FINANCE_REASON.SEASON_START_ACADEMY_DRIFT],
@@ -227,7 +228,11 @@ export function buildSettlementSteps({ startingBalance, s3Mapped }) {
   // 5. Upkeep — pass B trin 5. (Sæson-1-udskydelsen, UPKEEP_BEFORE_FIRST_
   //    RACE_ENABLED, gælder kun sæson 1 og er derfor irrelevant for enhver
   //    S2→S3-lignende overgang — men skjules alligevel ved 0 for robusthed.)
-  const upkeep = Number(s3Mapped?.upkeep) || 0;
+  //    #4385: kun den del der trækkes VED skiftet. Med upkeep_per_race_day on
+  //    er den 0 (upkeep trækkes pr. seniorløbsdag i løbet af sæsonen), og
+  //    trinnet skjules. Mangler feltet (ældre kald), bruges hele upkeep som før.
+  const upkeepAtStart = s3Mapped?.upkeep_at_season_start ?? s3Mapped?.upkeep;
+  const upkeep = Number(upkeepAtStart) || 0;
   if (upkeep !== 0) applyStep("upkeep", upkeep);
 
   // 6a. Facilitets-upkeep — pass B trin 6 (chargeFacilityCosts). Egen linje
@@ -262,6 +267,9 @@ export function buildSeasonSwitchPreview({ transactions, riders, startingBalance
     salary: s3?.projected_salary ?? 0,
     loan_interest: s3?.projected_loan_interest ?? 0,
     upkeep: s3?.projected_upkeep ?? 0,
+    // #4385: upkeep der trækkes ved selve skiftet (0 med upkeep_per_race_day on).
+    upkeep_at_season_start: s3?.projected_upkeep_at_season_start ?? s3?.projected_upkeep ?? 0,
+    upkeep_model: s3?.inputs?.upkeep_model ?? "season_start",
     facility_upkeep: s3?.projected_facility_upkeep ?? 0,
     staff_salary: s3?.projected_staff_salary ?? 0,
     academy_drift: s3?.projected_academy_drift ?? 0,
