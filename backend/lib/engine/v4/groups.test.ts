@@ -13,6 +13,7 @@ import {
   mergedOrigin,
   mergeGroups,
   mergeGroupsDetailed,
+  mergeTailGroupsDetailed,
   settleBreakawaySurvivedEvents,
   splitGroup,
 } from "./groups.ts";
@@ -299,4 +300,56 @@ test("#5515 settleBreakawaySurvivedEvents: en gruppe hvor alle er udgaaet, faar 
 
   const none: TimelineEvent[] = [{ km: 10, type: "breakaway_formed", params: {} }];
   assert.equal(settleBreakawaySurvivedEvents(none, { breakawayWin: false, trace: null, results: [] }), none);
+});
+
+// ── #5813: afhaengte halegrupper samles i én grupetto ─────────────────────────
+
+function tailGroup(id: string, count: number, gap: number, origin?: RaceGroup["origin"]): RaceGroup {
+  return {
+    id,
+    kind: "chase",
+    rider_ids: Array.from({ length: count }, (_, i) => `${id}-${i}`),
+    gap_seconds: gap,
+    cohesion: 1,
+    ...(origin ? { origin } : {}),
+  };
+}
+
+test("#5813 mergeTailGroupsDetailed: afhaengte grupper inden for vinduet samles; den forreste beholder id og gap", () => {
+  const groups = [tailGroup("front", 50, 0), tailGroup("a", 20, 400), tailGroup("b", 20, 460), tailGroup("c", 10, 530)];
+  const { groups: out, merges } = mergeTailGroupsDetailed(groups, 90, 40);
+  assert.equal(out.length, 3);
+  assert.equal(out[0].id, "front", "fronten roeres ikke");
+  assert.equal(out[1].id, "a");
+  assert.equal(out[1].gap_seconds, 400, "grupettoen faar den forreste afhaengte gruppes tid");
+  assert.equal(out[1].rider_ids.length, 40, "b smelter ind; c ligger 130 s efter a's tid og bliver udenfor");
+  assert.deepEqual(merges.map((m) => [m.absorbed_group_id, m.into_group_id]), [["b", "a"]]);
+  // c er udenfor vinduet maalt fra grupettoens gap (samme kaede-regel som mergeGroupsDetailed).
+  const withC = mergeTailGroupsDetailed(groups, 140, 40);
+  assert.deepEqual(withC.merges.map((m) => m.absorbed_group_id), ["b", "c"]);
+});
+
+test("#5813 mergeTailGroupsDetailed: en afhaengt gruppe traekkes aldrig op i en gruppe der koerer om placeringerne", () => {
+  // front 8 (udbrud), felt 120, og en klump 30 s bag feltet: feltet har kun 8
+  // foran sig og er ikke afhaengt, saa klumpen bliver hvor den er.
+  const groups = [tailGroup("front", 8, 0), tailGroup("felt", 120, 200), tailGroup("klump", 30, 230)];
+  const { groups: out, merges } = mergeTailGroupsDetailed(groups, 90, 40);
+  assert.equal(merges.length, 0);
+  assert.equal(out.length, 3);
+});
+
+test("#5813 mergeTailGroupsDetailed: uafhaengig af input-raekkefoelgen, input muteres ikke, vindue 0 er slukket", () => {
+  const groups = [tailGroup("front", 50, 0), tailGroup("a", 20, 400), tailGroup("b", 20, 460)];
+  const frozen = JSON.stringify(groups);
+  const forward = mergeTailGroupsDetailed(groups, 90, 40);
+  const reversed = mergeTailGroupsDetailed([...groups].reverse(), 90, 40);
+  assert.deepEqual(reversed, forward);
+  assert.equal(JSON.stringify(groups), frozen, "input maa ikke muteres");
+  assert.equal(mergeTailGroupsDetailed(groups, 0, 40).merges.length, 0);
+});
+
+test("#5813 mergeTailGroupsDetailed: et hentet udbrud mister oprindelsen, som i den almindelige merge", () => {
+  const groups = [tailGroup("front", 50, 0), tailGroup("a", 20, 400), tailGroup("escapee", 2, 420, "breakaway")];
+  const { groups: out } = mergeTailGroupsDetailed(groups, 90, 40);
+  assert.equal(out[1].origin, undefined);
 });
