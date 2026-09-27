@@ -351,6 +351,20 @@ function solveContiguousStarts({
   const endagPaaDato = new Array(days).fill(false);
   const etapePaaDato = new Array(days).fill(false);
   const etapeBaaretIndPaaDato = new Array(days).fill(false);
+  // R17 (#5830, ejer 27/9 "1 endagsloeb om ugen er for lidt", niveau "mellem"): hver
+  // kalenderuge (7 datoer fra saesonens foerste dato) skal have mindst
+  // floor(jaevn andel x RACE_TYPE_WEEKLY_MIN_SHARE) endagsloeb. Soegningen placerer
+  // endagsloeb saa tidligt som muligt, saa de sidste uger lander PAA minimummet.
+  const antalEndag = erEndag.reduce((n, e) => n + (e ? 1 : 0), 0);
+  const antalUger = Math.ceil(days / 7);
+  const r17 = r16 != null && r16Endag && days >= 7
+    ? Math.floor((antalEndag / antalUger) * RACE_TYPE_WEEKLY_MIN_SHARE)
+    : 0;
+  // ...og hoejst floor(jaevn andel x RACE_TYPE_WEEKLY_MAX_SHARE), ellers flytter soegningen
+  // bare de midterste ugers endagsloeb til de sidste og beholder klumpen i uge 1
+  // (MAALT 27/9 uden loft: D2 12/3/3/3).
+  const r17Max = r17 > 0 ? Math.floor((antalEndag / antalUger) * RACE_TYPE_WEEKLY_MAX_SHARE) : Infinity;
+  const endagAntalPaaDato = new Array(days).fill(0);
   const hulForLangt = (paaDato, dato) => {
     if (dato < r16) return false;
     for (let d = dato - r16; d <= dato; d++) if (paaDato[d]) return false;
@@ -465,7 +479,8 @@ function solveContiguousStarts({
         // R16: naar datoen er faerdig, er dens indhold kendt - og hullet der ender her maales.
         if (datoFaerdig && r16 != null) {
           const startetIDag = (k) => brugt[k] && datoAf[k] === dato;
-          endagPaaDato[dato] = items.some((_, k) => erEndag[k] && startetIDag(k));
+          endagAntalPaaDato[dato] = items.reduce((n, _, k) => n + (erEndag[k] && startetIDag(k) ? 1 : 0), 0);
+          endagPaaDato[dato] = endagAntalPaaDato[dato] > 0;
           etapePaaDato[dato] = etapeBaaretIndPaaDato[dato] || items.some((_, k) => erEtape[k] && startetIDag(k));
           // Fremadrettet: der skal vaere endagsloeb nok TILBAGE til at lukke hvert hul i resten
           // af saesonen. Uden snittet bruger soegningen dem tidligt (taettest foerst) og opdager
@@ -476,6 +491,19 @@ function solveContiguousStarts({
             for (let d = dato; d >= 0 && !endagPaaDato[d]; d--) hul += 1;
             const tilbage = erEndag.reduce((n, e, k) => n + (e && !brugt[k] ? 1 : 0), 0);
             endagMangler = tilbage < Math.floor((hul + (days - 1 - dato)) / (r16 + 1));
+            if (!endagMangler && r17 > 0) {
+              // R17: ugens egne endagsloeb indtil nu; ved ugens sidste dato doemmes ugen,
+              // og ellers skal der vaere nok tilbage til resten af denne uge + alle senere.
+              const uge = Math.floor(dato / 7);
+              const ugeStart = uge * 7;
+              const ugeSlut = Math.min(days - 1, ugeStart + 6);
+              let iUgen = 0;
+              for (let d = ugeStart; d <= dato; d++) iUgen += endagAntalPaaDato[d];
+              if (dato === ugeSlut && iUgen < r17) endagMangler = true;
+              if (iUgen > r17Max) endagMangler = true;
+              const senereUger = antalUger - 1 - uge;
+              if (tilbage < Math.max(0, r17 - iUgen) + senereUger * r17) endagMangler = true;
+            }
           }
           if (endagMangler
               || (r16Endag && hulForLangt(endagPaaDato, dato))
@@ -784,10 +812,13 @@ function layoutContiguous({
   // R16 (#5830): hele stigen proeves FOERST med R16 (med skridt-loft), derefter den gamle
   // stige uden. En division der allerede holder R16 faar samme kalender som foer, fordi R16
   // kun beskaerer delloesninger der bryder den. Taber vi R16, viser `typeGapRule: false` det.
-  const fuldStige = [
-    ...stige.map((t) => ({ ...t, typeGap: true, maxSteps: t.maxSteps ?? MONUMENT_SOLVE_MAX_STEPS })),
-    ...stige.map((t) => ({ ...t, typeGap: false })),
-  ];
+  // Hvert trin proeves med R16/R17 og derefter uden, FOER naeste trin: monument- og GT-
+  // reglerne gaar forud for loebstype-fordelingen (MAALT 27/9: med R16/R17 forrest i hele
+  // stigen mistede D1 monument-reglen, og tre monumenter landede inde i Giroen).
+  const fuldStige = stige.flatMap((t) => [
+    { ...t, typeGap: true, maxSteps: t.maxSteps ?? MONUMENT_SOLVE_MAX_STEPS },
+    { ...t, typeGap: false },
+  ]);
   let typeGapRuleHeld = false;
   for (const trin of fuldStige) {
     const stats = {};
@@ -1038,6 +1069,12 @@ export const MONUMENT_SOLVE_MAX_STEPS = 3000000;
 // uden en etapeloebs-etape) i en division. 5 = D1's stoerste hul i S4 (maalt 27/9), saa D1
 // og D3/D4 er uaendrede; D2 havde 16.
 export const RACE_TYPE_MAX_GAP_DATES = 5;
+
+// R17 (#5830, ejer 27/9, niveau "mellem"): hver uge mindst 2/3 af divisionens jaevne
+// andel af endagsloeb. S4: D1 19, D2 21, D3 18, D4 22 endagsloeb -> minimum 3 pr. uge.
+export const RACE_TYPE_WEEKLY_MIN_SHARE = 2 / 3;
+// Loft pr. uge: 1,6 x jaevn andel. S4: D1 7, D2 8, D3 7, D4 8 - kun D2 (12 i uge 1) rammes.
+export const RACE_TYPE_WEEKLY_MAX_SHARE = 1.6;
 
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
