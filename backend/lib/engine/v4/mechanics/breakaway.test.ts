@@ -9,6 +9,9 @@ import {
   applyChaseCost,
   breakawayHook,
   chaseAbilityScale,
+  chaseFloorClosingSeconds,
+  chaseFloorKm,
+  chaseFloorTargetGapSeconds,
   computeJoinScore,
   computeNetChaseAdvantage,
   effortJoinBoost,
@@ -990,4 +993,81 @@ test("#5812 en holdordre kan stadig aldrig SKABE et forspring: lad-gaa-fasen er 
   });
   assertClose(gaps[1], gaps[0], "chase vs neutral i lad-gaa-fasen");
   assertClose(gaps[2], gaps[0], "let_go vs neutral i lad-gaa-fasen");
+});
+
+// ── #5813 del 2: jagt-gulvet paa aabent terraen ───────────────────────────────
+
+test("#5813 chaseFloorKm: kun jagt-km i etapens sidste km, kun paa flad/rullende profil", () => {
+  const finalKm = BREAKAWAY_EXTRA_TUNING.chaseFloorFinalKm;
+  const base = { profileType: "flat" as const, distanceKm: 180, toKm: 180, chaseKm: 30 };
+  assert.equal(chaseFloorKm(base), Math.min(30, finalKm), "sidste segment: hele jagten (op til vinduet)");
+  assert.equal(chaseFloorKm({ ...base, toKm: 120 }), 0, "foer vinduet: intet gulv");
+  assert.equal(chaseFloorKm({ ...base, toKm: 180 - finalKm + 5 }), 5, "segmentet der krydser vinduets start");
+  assert.equal(chaseFloorKm({ ...base, profileType: "rolling" }), Math.min(30, finalKm));
+  for (const profileType of ["hilly", "mountain", "high_mountain", "cobbles"] as const) {
+    assert.equal(chaseFloorKm({ ...base, profileType }), 0, `${profileType}: selektionen er aegte, intet gulv`);
+  }
+  assert.equal(chaseFloorKm({ ...base, chaseKm: 0 }), 0, "ren lad-gaa-fase: intet gulv");
+});
+
+test("#5813 chaseFloorClosingSeconds: hullet ved maal er hoejst maalet, aldrig under, aldrig negativt", () => {
+  // Sidste segment (floorKm = kmToFinish): hullet koeres praecis ned til maalet.
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 300, floorKm: 20, kmToFinish: 20, targetGapSeconds: 60 }), 240);
+  // Et segment midt i vinduet lukker sin andel af resten.
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 300, floorKm: 10, kmToFinish: 40, targetGapSeconds: 60 }), 60);
+  // Et hul under maalet roeres ikke; uden gulv-km lukkes intet.
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 40, floorKm: 20, kmToFinish: 20, targetGapSeconds: 60 }), 0);
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 300, floorKm: 0, kmToFinish: 20, targetGapSeconds: 60 }), 0);
+  // Monoton: et stoerre hul lukkes aldrig mindre.
+  let previous = -Infinity;
+  for (let gap = 0; gap <= 600; gap += 20) {
+    const closed = chaseFloorClosingSeconds({ separationSeconds: gap, floorKm: 15, kmToFinish: 35, targetGapSeconds: 60 });
+    assert.ok(closed >= previous && closed >= 0 && gap - closed >= Math.min(gap, 60) - 1e-9);
+    previous = closed;
+  }
+});
+
+test("#5813 chaseFloorTargetGapSeconds: massefinale koeres ned til antals-vinduet, andre finaler helt ind; for sent giver et hul", () => {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  const sprint = { finale_type: "bunch_sprint" as const, profile_type: "flat" as const };
+  const breakawayFinale = { finale_type: "breakaway" as const, profile_type: "rolling" as const };
+  assert.equal(chaseFloorTargetGapSeconds(sprint, 0.99), extra.chaseFloorTargetGapSeconds);
+  assert.equal(chaseFloorTargetGapSeconds(breakawayFinale, 0.99), 0);
+  assert.equal(chaseFloorTargetGapSeconds(sprint, 0), extra.chaseFloorLateTargetGapSeconds);
+  assert.equal(chaseFloorTargetGapSeconds(breakawayFinale, 0), extra.chaseFloorLateTargetGapSeconds);
+  const sprintLate = extra.chaseFloorLateChanceByFinale.bunch_sprint!;
+  assert.equal(chaseFloorTargetGapSeconds(sprint, sprintLate - 1e-9), extra.chaseFloorLateTargetGapSeconds);
+  assert.equal(chaseFloorTargetGapSeconds(sprint, sprintLate), extra.chaseFloorTargetGapSeconds);
+  assert.ok(
+    extra.chaseFloorLateChanceDefault > sprintLate,
+    "paa en massefinale kommer sprinterholdene sjaeldnere for sent end feltet paa en udbrudsfinale",
+  );
+});
+
+test("#5813 hook: paa sidste segment af en massefinale koeres et stort hul ned; kun paa de sene dage holder et hul, og de er faa", () => {
+  const route = routeWithSegments(6); // flad bunch_sprint 180 km, sidste segment 150-180
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  let late = 0;
+  const seeds = 400;
+  for (let s = 0; s < seeds; s++) {
+    const { state, ctx } = chaseStateAtLevel(40, route, 5);
+    const seeded = makeHookCtx({ segment: ctx.segment, segmentIndex: 5, route, entrants: ctx.entrants, tuning: RACE_V4_TUNING, seed: `5813-floor-${s}` });
+    const result = breakawayHook(state, seeded);
+    const peloton = result.state.groups.find((g) => g.id === "peloton-0")!;
+    const escape = result.state.groups.find((g) => g.id === "breakaway-0")!;
+    const separation = peloton.gap_seconds - escape.gap_seconds;
+    assert.ok(separation <= extra.chaseFloorLateTargetGapSeconds + 1e-9, `seed ${s}: hullet ved maal (${separation}) er over gulvets loft`);
+    if (separation > extra.chaseFloorTargetGapSeconds + 1e-9) late += 1;
+  }
+  const rate = late / seeds;
+  const expected = extra.chaseFloorLateChanceByFinale.bunch_sprint!;
+  assert.ok(Math.abs(rate - expected) < 0.06, `andelen sene dage (${rate}) skal matche chancen (${expected})`);
+});
+
+test("#5813 hook: dagens 'for sent'-lodtraekning er etape-stabil (samme paa alle segmenter)", () => {
+  const route = routeWithSegments(6);
+  const roll = (segmentIndex: number) =>
+    makeHookCtx({ segment: route.segments[segmentIndex], segmentIndex, route, entrants: {}, tuning: RACE_V4_TUNING, seed: "5813-stable" })
+      .rngForStage("breakaway_chase_floor")();
+  assert.equal(roll(4), roll(5));
 });

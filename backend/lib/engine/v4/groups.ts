@@ -210,6 +210,72 @@ export function mergeGroupsDetailed(
   return { groups: merged, merges };
 }
 
+/**
+ * #5813: afhaengte halegrupper samles i én grupetto.
+ *
+ * Paa en dag uden bjerge blev feltets hale til en raekke smaa grupper, der
+ * hver koerte i deres eget (svage) tempo og drev laengere og laengere fra
+ * hinanden. I virkeligheden finder de sammen: en grupetto dannes paa
+ * nedkoerslen og i dalen, og den koerer samlet mod maal.
+ *
+ * Reglen er en bredere udgave af den almindelige merge (`mergeGroupsDetailed`),
+ * men KUN for halen:
+ *   - En gruppe er "afhaengt", naar mindst `minRidersAhead` ryttere ligger foran
+ *     den. Loebet om sejren og de forreste placeringer roeres derfor aldrig:
+ *     en gruppe med faerre ryttere foran sig smelter kun sammen efter den
+ *     almindelige merge-taerskel.
+ *   - To afhaengte grupper inden for `windowSeconds` af hinanden smelter
+ *     sammen (samme konvention som den almindelige merge: den forreste gruppe
+ *     beholder id og gap, "samme gruppe = samme tid"). En afhaengt gruppe
+ *     traekkes ALDRIG op i en gruppe der ikke selv er afhaengt: en klump der
+ *     er sat af, kommer ikke gratis tilbage i feltet (maalt: det aendrede
+ *     udbrudsdynamikken, fordi feltet saa blev M5's jagtgruppe).
+ *   - Kaeder foldes som i `mergeGroupsDetailed`: vinduet maales fra den
+ *     sammenlagte gruppes gap.
+ * Ingen rng; sorteringen (gap_seconds, id) goer resultatet uafhaengigt af
+ * input-raekkefoelgen. Monotoni: ingen rytter kommer foran en rytter, der laa
+ * foran ham; de to grupper faar samme tid.
+ *
+ * REN: input muteres aldrig. Returnerer merges i samme form som
+ * `mergeGroupsDetailed`, saa segmentLoop kan emittere `group_merged` (#4971).
+ */
+export function mergeTailGroupsDetailed(
+  groups: RaceGroup[],
+  windowSeconds: number,
+  minRidersAhead: number,
+): { groups: RaceGroup[]; merges: GroupMerge[] } {
+  if (groups.length <= 1 || !(windowSeconds > 0)) {
+    return { groups: groups.map((g) => ({ ...g, rider_ids: [...g.rider_ids] })), merges: [] };
+  }
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const merged: RaceGroup[] = [];
+  const merges: GroupMerge[] = [];
+  let ridersAhead = 0;
+  let prevRidersAhead = 0; // ryttere foran den (sammenlagte) gruppe `prev`
+  for (const group of sorted) {
+    const prev = merged[merged.length - 1];
+    // Gruppen foran skal SELV vaere afhaengt (saa er denne det ogsaa): halen
+    // samles, men den traekkes aldrig op i en gruppe der koerer om placeringerne.
+    if (prev && prevRidersAhead >= minRidersAhead && group.gap_seconds - prev.gap_seconds < windowSeconds) {
+      merges.push({ absorbed_group_id: group.id, into_group_id: prev.id, rider_ids: [...group.rider_ids] });
+      const origin = mergedOrigin(prev, group);
+      merged[merged.length - 1] = {
+        id: prev.id,
+        kind: mergedKind(prev, group),
+        rider_ids: [...prev.rider_ids, ...group.rider_ids],
+        gap_seconds: prev.gap_seconds,
+        cohesion: Math.min(prev.cohesion, group.cohesion),
+        ...(origin ? { origin } : {}),
+      };
+    } else {
+      merged.push({ ...group, rider_ids: [...group.rider_ids] });
+      prevRidersAhead = ridersAhead;
+    }
+    ridersAhead += group.rider_ids.length;
+  }
+  return { groups: merged, merges };
+}
+
 /** Gruppe-billedet omkring finale-segmentet — det udbrudsankeret doemmer paa (#5578). */
 export type FinaleGroupTrace = {
   /** Grupperne ved INDGANGEN til finale-segmentet (etapens sidste segment). */

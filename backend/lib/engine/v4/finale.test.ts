@@ -732,6 +732,121 @@ test("finaleHook (#5812): en SELEKTIV finale forskyder aldrig — samme indhentn
   for (const id of mass.trailingIds) assert.ok(bunch.rider_ids.includes(id));
 });
 
+// ── #5812 kontrakt (review-opfoelgning #5813): forskydningens stoerrelse ────
+// De tre tests ovenfor viser AT en haleklump hentes. Disse laaser HVOR MEGET
+// der flyttes: praecis feltets eget forspring, ikke udbruddets.
+
+test("finaleHook (#5812 kontrakt): en gruppe 20 s efter feltet ender 20 s efter feltets sluttid — ikke maalt mod udbruddet", () => {
+  const pelotonGap = 60;
+  const base = buildBreakVsPelotonState(pelotonGap);
+  addWeakTrailingGroup(base, "chase-0", 5, pelotonGap + 20);
+
+  const result = finaleHook(buildState(base.groups, base.riders), makeCtx({ entrants: base.entrants, ...FLAT_MASS_FINISH }));
+
+  const bunch = result.state.groups.find((g) => g.id === "finale-bunch-0")!;
+  assert.equal(bunch.gap_seconds, 0, "feltet har hentet udbruddet og kommer i maal paa vindertiden");
+  for (const id of [...base.breakIds, ...base.pelotonIds]) assert.ok(bunch.rider_ids.includes(id));
+  const trailing = result.state.groups.find((g) => g.id === "chase-0");
+  assert.ok(trailing, "20 s er over merge-taersklen: gruppen er stadig sin egen");
+  assert.equal(trailing!.gap_seconds, 20, "20 s efter feltet, ikke 80 s efter udbruddets forspring");
+  const survived = result.events.find((e) => e.type === "finale_attack" && e.params.kind === "gap_survived");
+  assert.equal(survived?.params.gap_seconds, 20);
+});
+
+test("finaleHook (#5812 kontrakt): haleklumpens slut-gap er dens afstand til feltet, uanset feltets forspring paa udbruddet", () => {
+  // Feltets forspring (pelotonGap) varieres inden for antals-vinduet; haleklumpens
+  // afstand TIL FELTET (behind) er det eneste der maa bestemme dens slut-gap.
+  for (const pelotonGap of [30, 60, 100]) {
+    for (const behind of [5, 20, 45]) {
+      const base = buildBreakVsPelotonState(pelotonGap);
+      addWeakTrailingGroup(base, "chase-0", 5, pelotonGap + behind);
+      const result = finaleHook(buildState(base.groups, base.riders), makeCtx({ entrants: base.entrants, ...FLAT_MASS_FINISH }));
+      const trailing = result.state.groups.find((g) => g.id === "chase-0");
+      assert.equal(trailing?.gap_seconds, behind, `felt ${pelotonGap} s efter udbruddet, gruppe ${behind} s efter feltet`);
+    }
+  }
+});
+
+test("finaleHook (#5812 kontrakt): holder udbruddet, flyttes intet — gruppen bag feltet beholder sit fulde gap", () => {
+  // Hullet er stoerre end antals-vinduet: feltet henter IKKE udbruddet, saa der
+  // er intet felt-forspring at flytte.
+  const pelotonGap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds * 2;
+  const base = buildBreakVsPelotonState(pelotonGap);
+  addWeakTrailingGroup(base, "chase-0", 5, pelotonGap + 20);
+
+  const result = finaleHook(buildState(base.groups, base.riders), makeCtx({ entrants: base.entrants, ...FLAT_MASS_FINISH }));
+
+  const winner = result.state.groups.find((g) => g.rider_ids.includes("b1"))!;
+  assert.ok(winner.rider_ids.every((id) => base.breakIds.includes(id)), "udbruddet vinder alene");
+  assert.equal(result.state.groups.find((g) => g.id === "peloton-0")?.gap_seconds, pelotonGap);
+  assert.equal(result.state.groups.find((g) => g.id === "chase-0")?.gap_seconds, pelotonGap + 20, "ingen forskydning");
+  assert.equal(
+    result.events.some((e) => e.type === "group_merged" && (e.params.group_id === "peloton-0" || e.params.group_id === "chase-0")),
+    false,
+    "grupper der ikke hentes udsender intet gruppeskift",
+  );
+});
+
+test("finaleHook (#5812 kontrakt): massefinale paa KUPERET (reduced_sprint) forskyder ikke — antals-gaten er flad/rullende", () => {
+  // isMassFinishRoute er sand (reduced_sprint), men isBunchCatchRoute er falsk
+  // paa hilly. Et staerkt felt henter et svagt udbrud via jagt-formlen alene,
+  // og haleklumpen maales stadig mod fronten: 51 s, ikke 1 s.
+  const breakIds = ["b1", "b2", "b3"];
+  const pelotonIds = Array.from({ length: 30 }, (_, i) => `p${i}`);
+  const entrants: Record<string, Entrant> = {};
+  const riders: Record<string, RiderState> = {};
+  for (const id of breakIds) {
+    entrants[id] = makeEntrant(id, abilities({ tempo: 1, endurance: 1, durability: 1 }));
+    riders[id] = makeRiderState(id, "breakaway-0", { wprime: 0.1, wprimeMax: 1 });
+  }
+  for (const id of pelotonIds) {
+    entrants[id] = makeEntrant(id, abilities({ tempo: 99, endurance: 99, aggression: 99 }));
+    riders[id] = makeRiderState(id, "peloton-0", { wprime: 1, wprimeMax: 1 });
+  }
+  const base = {
+    entrants,
+    riders,
+    groups: [
+      { id: "breakaway-0", kind: "breakaway", rider_ids: breakIds, gap_seconds: 0, cohesion: 1 },
+      { id: "peloton-0", kind: "peloton", rider_ids: pelotonIds, gap_seconds: 50, cohesion: 1 },
+    ] as RaceGroup[],
+  };
+  addWeakTrailingGroup(base, "chase-0", 5, 51);
+
+  const result = finaleHook(buildState(base.groups, base.riders), makeCtx({
+    entrants: base.entrants,
+    finaleType: "reduced_sprint",
+    profileType: "hilly",
+  }));
+
+  const bunch = result.state.groups.find((g) => g.id === "finale-bunch-0")!;
+  for (const id of [...breakIds, ...pelotonIds]) assert.ok(bunch.rider_ids.includes(id), "feltet henter udbruddet paa egne ben");
+  assert.equal(result.state.groups.find((g) => g.id === "chase-0")?.gap_seconds, 51, "ingen forskydning uden for flad/rullende");
+});
+
+test("finaleHook (#5812 kontrakt, invariant #4971): hver samlet gruppe udsender group_merged ind i placeringsgruppen", () => {
+  const pelotonGap = 60;
+  const base = buildBreakVsPelotonState(pelotonGap);
+  const trailingIds = addWeakTrailingGroup(base, "chase-0", 5, pelotonGap + 1);
+
+  const result = finaleHook(buildState(base.groups, base.riders), makeCtx({ entrants: base.entrants, ...FLAT_MASS_FINISH }));
+
+  const merges = result.events.filter((e) => e.type === "group_merged");
+  const expected: Record<string, string[]> = {
+    "breakaway-0": base.breakIds,
+    "peloton-0": base.pelotonIds,
+    "chase-0": trailingIds,
+  };
+  for (const [groupId, ids] of Object.entries(expected)) {
+    const ev = merges.find((e) => e.params.group_id === groupId);
+    assert.ok(ev, `${groupId} skal udsende group_merged`);
+    assert.equal(ev!.params.into_group_id, "finale-bunch-0");
+    assert.deepEqual([...(ev!.params.rider_ids as string[])].sort(), [...ids].sort(), `${groupId}: alle ryttere flytter`);
+    assert.equal(ev!.km, 150, "paa maalstregen");
+  }
+  assert.equal(merges.length, 3, "praecis én per samlet gruppe (én placeringsgruppe paa en massefinale)");
+});
+
 test("computeFinaleAbilityScore: monotont ikke-faldende i W'-reserve", () => {
   fc.assert(
     fc.property(fc.double({ min: 0, max: 1, noNaN: true }), fc.double({ min: 0, max: 1, noNaN: true }), (r1, r2) => {

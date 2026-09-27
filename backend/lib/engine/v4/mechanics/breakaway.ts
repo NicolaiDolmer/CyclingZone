@@ -73,6 +73,7 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
+import { isBunchCatchRoute } from "../finale.ts";
 import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 
@@ -602,6 +603,77 @@ export function letGoMaxGapSeconds(input: {
 }
 
 /**
+ * #5813 (del 2): jagt-gulvet. Hvor mange af segmentets JAGT-km ligger i
+ * etapens sidste `chaseFloorFinalKm` km paa aabent terraen (flad/rullende
+ * profil), hvor feltet altid overtager jagten sent? Jagt-km er segmentets
+ * sidste `chaseKm` (lad-gaa-fasen ligger foerst, se letGoSplitKm). 0 paa
+ * alle andre profiler og foer vinduet.
+ *
+ * Strukturelt led (etape-fremdrift og profil), ingen evne-akse og ingen rng.
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function chaseFloorKm(input: {
+  profileType: ProfileType;
+  distanceKm: number;
+  toKm: number;
+  chaseKm: number;
+}): number {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  if (!extra.chaseFloorProfileTypes.includes(input.profileType)) return 0;
+  if (!(extra.chaseFloorFinalKm > 0) || !(input.chaseKm > 0)) return 0;
+  const windowStart = input.distanceKm - extra.chaseFloorFinalKm;
+  const chaseStart = input.toKm - input.chaseKm;
+  return clamp(input.toKm - Math.max(chaseStart, windowStart), 0, input.chaseKm);
+}
+
+/**
+ * #5813 (del 2): hvilket forspring feltet koerer udbruddet ned til ved maal
+ * paa DENNE etape. Paa en massefinale `chaseFloorTargetGapSeconds` (et hul
+ * finalens antals-vindue altid henter); paa andre finaler 0 (feltet koerer
+ * det helt ind, der er intet antals-vindue). Med sandsynligheden for
+ * finaletypen (`chaseFloorLateChanceByFinale`, ellers
+ * `chaseFloorLateChanceDefault`) regner feltet forkert og kommer for sent:
+ * `chaseFloorLateTargetGapSeconds`, og et udbrud med et reelt forspring kan
+ * holde. `lateRoll` er etapens ene lodtraekning (uniform 0-1).
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function chaseFloorTargetGapSeconds(
+  route: { finale_type: FinaleType | null; profile_type: ProfileType },
+  lateRoll: number,
+): number {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  const lateChance = (route.finale_type ? extra.chaseFloorLateChanceByFinale[route.finale_type] : undefined)
+    ?? extra.chaseFloorLateChanceDefault;
+  if (lateRoll < lateChance) return extra.chaseFloorLateTargetGapSeconds;
+  // Paa en massefinale henter finalens antals-vindue et kort forspring
+  // (finale.ts isBunchCatchRoute); ellers koerer feltet hullet helt i.
+  return isBunchCatchRoute(route) ? extra.chaseFloorTargetGapSeconds : 0;
+}
+
+/**
+ * #5813 (del 2): sekunder jagt-gulvet lukker paa segmentets gulv-km. Inden for
+ * vinduet koerer sprinterholdene hullet ned mod dagens maal (`targetGapSeconds`)
+ * ved maalstregen, jaevnt over de km der er tilbage: paa hvert segment lukkes
+ * segmentets andel af resten (`floorKm / kmToFinish`), saa hullet ved maal
+ * hoejst er maalet, uanset hvor stort det var da vinduet begyndte. Aldrig
+ * negativ, og et hul under maalet roeres ikke. Uafhaengigt af holdordrer (en
+ * ordre kan hverken fjerne gulvet eller skabe et forspring).
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function chaseFloorClosingSeconds(input: {
+  separationSeconds: number;
+  floorKm: number;
+  kmToFinish: number;
+  targetGapSeconds: number;
+}): number {
+  if (!(input.floorKm > 0)) return 0;
+  const excess = Math.max(0, input.separationSeconds - Math.max(0, input.targetGapSeconds));
+  if (excess === 0) return 0;
+  const share = input.kmToFinish > 0 ? clamp(input.floorKm / input.kmToFinish, 0, 1) : 1;
+  return excess * share;
+}
+
+/**
  * #5812 (a): er jagtgruppen et FELT der kan lade et udbrud gaa? Delt af M5
  * (lad-gaa-fasen) og segmentLoop (nulstillet tempo-drift), saa de to halvdele
  * af mekanikken altid er slaaet til og fra sammen.
@@ -737,10 +809,18 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // et. En holdordre (stancen) virker kun gennem jagten, saa den kan aldrig
     // SKABE et forspring (mor-spec §5: spillerens valg kan aldrig vaelte et
     // loeb). Hullet vokser KUN i lad-gaa-fasen ovenfor, som ingen ordre roerer.
+    // #5813 (del 2): paa aabent terraen overtager feltet jagten i etapens
+    // sidste km (jagt-gulvet). De km jages ikke af netto-fordelen.
+    const floorKm = chaseFloorKm({
+      profileType: ctx.route.profile_type,
+      distanceKm: ctx.route.distance_km,
+      toKm: ctx.segment.to_km,
+      chaseKm,
+    });
     // #5812: jagten virker kun paa segmentets jagt-km.
-    const closingSeconds = Math.max(
+    const netClosingSeconds = Math.max(
       0,
-      netAdvantage * chaseKm * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
+      netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
     const letGoGrowth = letGoKm * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm;
 
@@ -762,7 +842,21 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // Lad gaa: hullet vokser mod loftet, men et hul der allerede er over
     // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
     const grown = separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
-    const newSeparation = Math.max(0, grown - closingSeconds);
+    const beforeFloor = Math.max(0, grown - netClosingSeconds);
+    // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
+    // den segment-noeglede stream): "kommer sprinterholdene for sent i dag" er
+    // en beslutning om etapen, og den maa ikke skifte med segmentinddelingen.
+    // Streamen genskabes pr. kald, saa lodtraekningen er den samme paa hvert
+    // segment i vinduet.
+    const floorClosingSeconds = floorKm > 0
+      ? chaseFloorClosingSeconds({
+          separationSeconds: beforeFloor,
+          floorKm,
+          kmToFinish: ctx.route.distance_km - (ctx.segment.to_km - floorKm),
+          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")()),
+        })
+      : 0;
+    const newSeparation = Math.max(0, beforeFloor - floorClosingSeconds);
     const newBreakawayGap = currentChase.gap_seconds - newSeparation;
     groups = groups.map((g) => (g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g));
     changed = true;
