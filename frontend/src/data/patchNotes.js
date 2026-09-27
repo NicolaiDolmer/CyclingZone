@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Season",
         "en": {
           "title": "The season 4 calendar is out",
-          "body": "Season 4 runs from 28 September to 25 October, with 140 race days in every division. Open Race Hub, then Season, and pick season 4 to see your group's races. If your team moves division at the switch, you see your new group's calendar after the switch."
+          "body": "Season 4 runs from 28 September to 25 October, with 140 season days in every division: race days and training days. Open Race Hub, then Season, and pick season 4 to see your group's races. If your team moves division at the switch, you see your new group's calendar after the switch."
         },
         "da": {
           "title": "Kalenderen for sæson 4 er klar",
-          "body": "Sæson 4 kører fra 28. september til 25. oktober, med 140 løbsdage i alle divisioner. Åbn Race Hub, så Sæson, og vælg sæson 4 for at se din gruppes løb. Skifter dit hold division ved skiftet, ser du din nye gruppes kalender efter skiftet."
+          "body": "Sæson 4 kører fra 28. september til 25. oktober, med 140 sæsondage i alle divisioner: løbsdage og træningsdage. Åbn Race Hub, så Sæson, og vælg sæson 4 for at se din gruppes løb. Skifter dit hold division ved skiftet, ser du din nye gruppes kalender efter skiftet."
         },
         "refs": [
           5795,
