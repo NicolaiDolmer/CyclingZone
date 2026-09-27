@@ -157,7 +157,9 @@ export default function StandingsPage() {
       // #1718: AI-hold MED — divisioner der (næsten) kun er AI fremstod tomme da
       // is_ai-filteret holdt dem ude. is_ai joines ind så de kan markeres diskret.
       // Test- og frosne konti holdes stadig ude (de er ikke ægte konkurrenter).
-      .select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).order("division").order("name");
+      // S4 (27/9): parkerede hold har ingen pulje men beholder `division`, så de
+      // talte med i divisionens tabel (D1 27 i stedet for 24). Kun hold MED pulje vises.
+      .select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).not("league_division_id", "is", null).order("division").order("name");
     // #1688: alle 15 puljer (reference-data) til pulje-sub-fanerne. Offentlig
     // læse-policy findes (league-divisions-pyramid-migrationen).
     // #5648 (Y2): kun senior + ikke-pensionerede puljer for den aktive sæson
