@@ -122,6 +122,7 @@ import {
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
 import { withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "../lib/raceCalendarLanePacker.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
 import { ensureSeasonTransitionPlannedAt, SEASON_TRANSITION_PLANNED_AT_KEY } from "../lib/seasonTransitionBoundary.js";
 import {
@@ -254,6 +255,32 @@ const WRITE_GATE_TEXT = Object.freeze({
   status_unknown: (n, s) => `sæson ${n} har status ${s == null ? "(tom/ikke en tekst)" : `'${s}'`} — hverken '${CALENDAR_WRITABLE_SEASON_STATUS}' eller en kendt låst status. Gaten nægter fail-closed frem for at gætte.`,
   season_missing: (n) => `sæson ${n} findes ikke i seasons — gaten kan ikke bekræfte at kalenderen må skrives (fail-closed). Ved --apply oprettes rækken med status '${CALENDAR_WRITABLE_SEASON_STATUS}' FØRST, og gaten køres igen mod den oprettede række.`,
 });
+
+/**
+ * #5802: GT'ernes startraekkefoelge pr. division som linjer til toerkoerslen - navn +
+ * foerste kalenderdato, i den raekkefoelge de STARTER. Laeser scorecardets
+ * `grandTourStarts`/`gtOrderViol`/`gtEarlyStartViol` (calendarPlacementGates.js), saa
+ * linjerne og gaterne aldrig kan vise hver sit. Divisioner uden GT'er springes over.
+ */
+export function formatGrandTourOrder(rapport) {
+  const tiers = (rapport?.tiers ?? []).filter((t) => t.grandTourStarts?.length);
+  if (!tiers.length) return [];
+  const out = [`\n── #5802 Grand Tours, startrækkefølge (skal være Giro → Tour → Vuelta) ──`];
+  for (const t of tiers) {
+    const linje = t.grandTourStarts
+      .map((g) => `${g.name} (${g.firstDate ?? `løbsdag ${g.firstGameDay}`})`).join(" → ");
+    // En GT uden virkelig dato kan ikke doemmes - da vises ⚠, aldrig ✅ (#2854).
+    const uvurderede = t.grandTourStarts.filter((g) => g.realOrder == null).map((g) => g.name);
+    const dom = (t.gtOrderViol?.length ?? 0) > 0 ? "❌"
+      : uvurderede.length ? `⚠ kan ikke vurderes uden virkelig dato: ${uvurderede.join(", ")}` : "✅";
+    out.push(`  D${t.tier}: ${linje}  ${dom}`);
+    // Ejer 26/9 kl. 22:40: ingen GT paa saesonens foerste dag (gaten detectGrandTourEarlyStartViolations).
+    const tidlige = t.gtEarlyStartViol ?? [];
+    out.push(`  D${t.tier}: ingen GT-start på sæsonens første dag (tidligst dag ${GRAND_TOUR_EARLIEST_START_DATE_INDEX + 1})  ${tidlige.length ? "❌" : "✅"}`);
+    for (const v of tidlige) out.push(`     ! ${v}`);
+  }
+  return out;
+}
 
 /** Menneske-læsbar forklaring på en skrive-gate-afgørelse (#5405). */
 export function describeSeasonCalendarWriteGate(gate, seasonNumber) {
@@ -915,6 +942,10 @@ if (isMain) {
     for (const line of formatScorecard(rapport, {
       heading: `SÆSON ${seasonNumber} — KALENDER-SCORECARD (planlagt, docs/CALENDAR_RULES.md §1-§7)`,
     })) console.log(line);
+
+    // #5802: GT'ernes startraekkefoelge med navne og datoer, saa ejeren kan se den direkte
+    // i toerkoerslen. Dommen er scorecardets GT-raekkefoelge-gate (applyBlocking nedenfor).
+    for (const line of formatGrandTourOrder(rapport)) console.log(line);
 
     const scorecardGates = scorecardGateGroups(rapport);
     blocking.push(...scorecardGates.blocking);
