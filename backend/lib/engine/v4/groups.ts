@@ -224,9 +224,12 @@ export function mergeGroupsDetailed(
  *     den. Loebet om sejren og de forreste placeringer roeres derfor aldrig:
  *     en gruppe med faerre ryttere foran sig smelter kun sammen efter den
  *     almindelige merge-taerskel.
- *   - En afhaengt gruppe inden for `windowSeconds` af gruppen foran smelter
- *     ind i den (samme konvention som den almindelige merge: den forreste
- *     gruppe beholder id og gap, "samme gruppe = samme tid").
+ *   - To afhaengte grupper inden for `windowSeconds` af hinanden smelter
+ *     sammen (samme konvention som den almindelige merge: den forreste gruppe
+ *     beholder id og gap, "samme gruppe = samme tid"). En afhaengt gruppe
+ *     traekkes ALDRIG op i en gruppe der ikke selv er afhaengt: en klump der
+ *     er sat af, kommer ikke gratis tilbage i feltet (maalt: det aendrede
+ *     udbrudsdynamikken, fordi feltet saa blev M5's jagtgruppe).
  *   - Kaeder foldes som i `mergeGroupsDetailed`: vinduet maales fra den
  *     sammenlagte gruppes gap.
  * Ingen rng; sorteringen (gap_seconds, id) goer resultatet uafhaengigt af
@@ -248,12 +251,12 @@ export function mergeTailGroupsDetailed(
   const merged: RaceGroup[] = [];
   const merges: GroupMerge[] = [];
   let ridersAhead = 0;
-  let prevRidersAhead = -1; // ryttere foran den (sammenlagte) gruppe `prev`
-  const bothTail = process.env.T5813_BOTH === "1"; // TMP
+  let prevRidersAhead = 0; // ryttere foran den (sammenlagte) gruppe `prev`
   for (const group of sorted) {
     const prev = merged[merged.length - 1];
-    const prevIsTail = !bothTail || prevRidersAhead >= minRidersAhead;
-    if (prev && prevIsTail && ridersAhead >= minRidersAhead && group.gap_seconds - prev.gap_seconds < windowSeconds) {
+    // Gruppen foran skal SELV vaere afhaengt (saa er denne det ogsaa): halen
+    // samles, men den traekkes aldrig op i en gruppe der koerer om placeringerne.
+    if (prev && prevRidersAhead >= minRidersAhead && group.gap_seconds - prev.gap_seconds < windowSeconds) {
       merges.push({ absorbed_group_id: group.id, into_group_id: prev.id, rider_ids: [...group.rider_ids] });
       const origin = mergedOrigin(prev, group);
       merged[merged.length - 1] = {

@@ -73,6 +73,7 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
+import { isBunchCatchRoute } from "../finale.ts";
 import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 
@@ -602,24 +603,22 @@ export function letGoMaxGapSeconds(input: {
 }
 
 /**
- * #5813 (del 2): jagt-gulvet paa massefinaler. Hvor mange af segmentets
- * JAGT-km ligger i etapens sidste `chaseFloorFinalKm` km, paa en rute hvor
- * sprinterholdene altid jager sent (massefinale paa flad/rullende profil)?
- * Jagt-km er segmentets sidste `chaseKm` (lad-gaa-fasen ligger foerst, se
- * letGoSplitKm). 0 paa alle andre ruter og foer vinduet.
+ * #5813 (del 2): jagt-gulvet. Hvor mange af segmentets JAGT-km ligger i
+ * etapens sidste `chaseFloorFinalKm` km paa aabent terraen (flad/rullende
+ * profil), hvor feltet altid overtager jagten sent? Jagt-km er segmentets
+ * sidste `chaseKm` (lad-gaa-fasen ligger foerst, se letGoSplitKm). 0 paa
+ * alle andre profiler og foer vinduet.
  *
- * Strukturelt led (etape-fremdrift og finaletype), ingen evne-akse og ingen
- * rng. Eksporteret for direkte kontrakt-tests.
+ * Strukturelt led (etape-fremdrift og profil), ingen evne-akse og ingen rng.
+ * Eksporteret for direkte kontrakt-tests.
  */
 export function chaseFloorKm(input: {
-  finaleType: FinaleType | null;
   profileType: ProfileType;
   distanceKm: number;
   toKm: number;
   chaseKm: number;
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
-  if (!input.finaleType || !extra.chaseFloorFinaleTypes.includes(input.finaleType)) return 0;
   if (!extra.chaseFloorProfileTypes.includes(input.profileType)) return 0;
   if (!(extra.chaseFloorFinalKm > 0) || !(input.chaseKm > 0)) return 0;
   const windowStart = input.distanceKm - extra.chaseFloorFinalKm;
@@ -628,16 +627,27 @@ export function chaseFloorKm(input: {
 }
 
 /**
- * #5813 (del 2): hvilket forspring sprinterholdene koerer udbruddet ned til
- * ved maal paa DENNE etape. Normalt `chaseFloorTargetGapSeconds` (et hul
- * finalen altid henter). Med sandsynligheden `chaseFloorLateChance` regner de
- * forkert og kommer for sent: `chaseFloorLateTargetGapSeconds`, og et udbrud
- * med et reelt forspring kan holde. `lateRoll` er etapens ene lodtraekning
- * (uniform 0-1). Eksporteret for direkte kontrakt-tests.
+ * #5813 (del 2): hvilket forspring feltet koerer udbruddet ned til ved maal
+ * paa DENNE etape. Paa en massefinale `chaseFloorTargetGapSeconds` (et hul
+ * finalens antals-vindue altid henter); paa andre finaler 0 (feltet koerer
+ * det helt ind, der er intet antals-vindue). Med sandsynligheden for
+ * finaletypen (`chaseFloorLateChanceByFinale`, ellers
+ * `chaseFloorLateChanceDefault`) regner feltet forkert og kommer for sent:
+ * `chaseFloorLateTargetGapSeconds`, og et udbrud med et reelt forspring kan
+ * holde. `lateRoll` er etapens ene lodtraekning (uniform 0-1).
+ * Eksporteret for direkte kontrakt-tests.
  */
-export function chaseFloorTargetGapSeconds(lateRoll: number): number {
+export function chaseFloorTargetGapSeconds(
+  route: { finale_type: FinaleType | null; profile_type: ProfileType },
+  lateRoll: number,
+): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
-  return lateRoll < extra.chaseFloorLateChance ? extra.chaseFloorLateTargetGapSeconds : extra.chaseFloorTargetGapSeconds;
+  const lateChance = (route.finale_type ? extra.chaseFloorLateChanceByFinale[route.finale_type] : undefined)
+    ?? extra.chaseFloorLateChanceDefault;
+  if (lateRoll < lateChance) return extra.chaseFloorLateTargetGapSeconds;
+  // Paa en massefinale henter finalens antals-vindue et kort forspring
+  // (finale.ts isBunchCatchRoute); ellers koerer feltet hullet helt i.
+  return isBunchCatchRoute(route) ? extra.chaseFloorTargetGapSeconds : 0;
 }
 
 /**
@@ -799,10 +809,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // et. En holdordre (stancen) virker kun gennem jagten, saa den kan aldrig
     // SKABE et forspring (mor-spec §5: spillerens valg kan aldrig vaelte et
     // loeb). Hullet vokser KUN i lad-gaa-fasen ovenfor, som ingen ordre roerer.
-    // #5813 (del 2): paa en massefinale overtager sprinterholdene jagten i
-    // etapens sidste km (jagt-gulvet). De km jages ikke af netto-fordelen.
+    // #5813 (del 2): paa aabent terraen overtager feltet jagten i etapens
+    // sidste km (jagt-gulvet). De km jages ikke af netto-fordelen.
     const floorKm = chaseFloorKm({
-      finaleType: ctx.route.finale_type,
       profileType: ctx.route.profile_type,
       distanceKm: ctx.route.distance_km,
       toKm: ctx.segment.to_km,
@@ -844,7 +853,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           separationSeconds: beforeFloor,
           floorKm,
           kmToFinish: ctx.route.distance_km - (ctx.segment.to_km - floorKm),
-          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.rngForStage("breakaway_chase_floor")()),
+          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")()),
         })
       : 0;
     const newSeparation = Math.max(0, beforeFloor - floorClosingSeconds);
