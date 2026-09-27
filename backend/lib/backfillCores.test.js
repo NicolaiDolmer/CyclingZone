@@ -11,6 +11,7 @@ import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { buildCapsForRider } from "./riderProgression.js";
+import { loadValuationModelById } from "./riderValuationModelSelect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -413,6 +414,30 @@ test("deriveForRiderIds (apply) KASTER ikke når alle id'er fik fuld derive", as
   const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
   const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
   assert.equal(res.valued, 1, "sund derive fuldfører uden at kaste");
+});
+
+test("CYCLINGZONE-51 (27/9): den typefri v6-model er brugbar — guarden kaster ikke, rytteren værdisættes", async () => {
+  // Prod flippede rider_valuation_model til v6 26/9. v6 har ingen fit.a/b og ingen
+  // a/b i roden, så guarden kastede på hver derive (heal-sweep + nye ryttere).
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  const res = await deriveForRiderIds(supabase, ["r1"], {
+    dryRun: false,
+    valuationModel: loadValuationModelById("v6"),
+  });
+  assert.equal(res.valued, 1, "v6 skal kunne værdisætte en almindelig rytter");
+  assert.deepEqual(res.unvaluable, []);
+});
+
+test("deriveForRiderIds KASTER på en v6-model uden endelig scale", async () => {
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  await assert.rejects(
+    () => deriveForRiderIds(supabase, ["r1"], {
+      dryRun: false,
+      valuationModel: { ...loadValuationModelById("v6"), scale: NaN },
+    }),
+    /valuation model unusable/,
+  );
+  assert.equal(supabase.writes.upserts.length, 0);
 });
 
 // computeYouthCapsForRider er fjernet (ejer 15/7): loftet er ikke længere alders-gatet,
