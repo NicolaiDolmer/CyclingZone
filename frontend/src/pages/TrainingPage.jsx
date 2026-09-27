@@ -60,6 +60,9 @@ import TrainingOverview from "../components/training/TrainingOverview.tsx";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
+import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
+import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
+import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
   TIRED_FATIGUE_FROM, buildOverview, idsForFilter, isTired, primaryActionFor, canRunToday,
@@ -508,6 +511,12 @@ export default function TrainingPage() {
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
   } = training;
+  // #4629 (beta 26/9): træningsprogrammer pr. løbsdag. `programs.enabled` kommer
+  // fra serveren (stadie-flaget training_programs mod viewerens beta-status);
+  // false = Ugeplan-fanen præcis som i dag. Efter en tildeling/celle-rettelse
+  // genindlæses useTraining, så planen har ÉN kilde (riderWeekPlans).
+  const programs = useTrainingPrograms({ onChanged: training.refresh });
+  const programsOn = programs.enabled;
   const scoreVisible = trainingScore != null;
   // #5485 (ejer-valg A 23/9): er dagens pas kørt? Før det har ingen rytter et
   // tal for i dag, og Score viser det SENESTE tal dæmpet (mobileScoreCell).
@@ -1745,6 +1754,12 @@ export default function TrainingPage() {
 
   const sessionFor = (riderId, column) => {
     if (racingFor(riderId, column)) return null;
+    // #4629: står rytteren på et program (beta), viser en ikke-afregnet celle
+    // programmets celle for i dag i netop den løbsdag — samme regel som motoren.
+    if (programsOn && column.state !== "done") {
+      const fromProgram = programSessionToday(riderWeekPlans[riderId], WEEKDAY_KEYS, todayWeekday, column.index);
+      if (fromProgram) return fromProgram;
+    }
     // En AFREGNET løbsdag viser hvad rytteren FAKTISK kørte (rapport-rækken),
     // ikke hvad planen står på nu: planen kan ændres efter dagens kørsel og
     // gælder så fra i morgen (tickModelDone).
@@ -2223,7 +2238,8 @@ export default function TrainingPage() {
       <span data-tour={tourAnchor("primary")} className={isMobile ? "flex flex-1" : "inline-flex"}>
         <Button
           type="button"
-          variant={assistantPanelOpen ? "secondary" : "primary"}
+          // #4629: på Program-fanen er "Brug program" viewets ene guld-knap.
+          variant={assistantPanelOpen || (programsOn && activeTab === "weekplan") ? "secondary" : "primary"}
           size={isMobile ? "md" : "sm"}
           onClick={handlePrimary}
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
@@ -2515,7 +2531,8 @@ export default function TrainingPage() {
           : (riderWeekPlans[key] != null ? t("individualWeekPlanRemove") : null)}
         onReset={() => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key))}
         message={isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null}
-        ownPlans={ridersWithOwnWeekPlan.map((r) => ({
+        // #4629: ryttere på et program vises i Program-gitteret, ikke her som intensiteter.
+        ownPlans={ridersWithOwnWeekPlan.filter((r) => !(programsOn && isProgramPlan(riderWeekPlans[r.id], WEEKDAY_KEYS))).map((r) => ({
           id: r.id,
           name: `${r.firstname} ${r.lastname}`,
           summary: WEEKDAY_KEYS.map(
@@ -2736,7 +2753,7 @@ export default function TrainingPage() {
               <span className="ms-1 font-data text-2xs tabular-nums text-cz-3">{overview.needsDay.length}</span>
             )}
           </Tab>
-          <Tab value="weekplan">{t("tabs.weekplan")}</Tab>
+          <Tab value="weekplan">{programsOn ? t("tabs.program") : t("tabs.weekplan")}</Tab>
           <Tab value="development">{t("tabs.development")}</Tab>
           <Tab value="report">{t("tabs.report")}</Tab>
         </TabList>
@@ -3084,7 +3101,32 @@ export default function TrainingPage() {
           egen plan i ét gitter, valgt med "Plan for". Ingen nye API-kald:
           weekPlan/riderWeekPlans kommer fra useTraining som før. */}
       <TabPanel value="weekplan">
-        {renderWeekPlanTab()}
+        {/* #4629 (beta 26/9): Program-fanen — katalog, tildeling og 7 x N-
+            gitteret øverst. Holdets gamle intensitets-rytme står uændret under. */}
+        {programsOn ? (
+          <div className="space-y-3.5">
+            <TrainingProgramsPanel
+              weekdays={WEEKDAY_KEYS}
+              todayWeekday={todayWeekday}
+              // #4629: programmet har ÉN kolonne ("Hele dagen") med
+              // training_tick_per_race_day off; on (dayClose findes) bærer hver
+              // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
+              columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
+              riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
+                id: r.id,
+                name: `${r.firstname} ${r.lastname}`,
+                type: r.primary_type ?? null,
+              }))}
+              riderWeekPlans={riderWeekPlans}
+              catalog={programs.catalog}
+              assigned={programs.assigned}
+              busy={programs.busy}
+              onApply={programs.applyProgram}
+              onSetCell={programs.setCell}
+            />
+            {renderWeekPlanTab()}
+          </div>
+        ) : renderWeekPlanTab()}
       </TabPanel>
 
       {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,
