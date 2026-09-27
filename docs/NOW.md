@@ -4,15 +4,15 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (27/9 kl. 03:00):** **SØNDAG = SÆSONSKIFTE.** Start med `private-handoffs/2026-09-27-morgenrapport.md` (10 beslutninger i rækkefølge, billeder i `pr-shots/`). Venter ejer-"merge": #5809 dobbeltbooking · #5815 tilmeldings-mail (→ tørkørsel → "send" før kl. 19) · #5803 GT → kalender "kør" · #5800 upkeep (flip før 12c) · #5801 programmer (beta) · #5810 sortering. v4: alle 3 fejl rettet og merget bag off (#5816/#5817; testpakke 27/9: 0 anomalier); ankre 10a/10b + flip = ejer søndag aften efter 12c. Skiftet ca. 19:30 (S3 sidste etape 19:00 D1 / 18:00 D2-D4). Mandat-flip før "Afslut sæson". Løn-model: ugen efter skiftet.
+> **🎯 Next action (27/9 kl. 11):** **I AFTEN = SÆSONSKIFTE.** Merget i dag: #5809 #5815 #5821 #5803 #5800 #5801 #5810 #5782 + patch 7.305 (#5822/#5823). Live: S4-kalender (382 løb, apply 27/9), `upkeep_per_race_day` on (09:24), `board_mandate_model_enabled` on (10:26), påmindelsesmail sendt (105). **Aftenen (ejer, Claude ved siden af):** kl. 19 S3 slut → 12a Afslut sæson (timer den ud: læs `admin_log`/`season_end_claims`, genkør ALDRIG) → 12a+ sammenlægning + pensionering + `seedYouthPools.js --apply --owner-go` + `buildSeasonCalendar --squad u23/junior` → 12b kontrol-SQL → 12c → **tæl `race_entries` for S4** (0 → `generateSeasonEntries.js`) → træning pr. sæsondag (`training_tick_per_race_day` + `race_day_development_enabled`, ejer-go) → v4-beslutning 10a/10b/10c. **Ingen push til main 17:30-21:30** (#4150). #5281 (+25 %-bonus) merges IKKE før ejer siger til. Point-flyt #5268 venter på rating-neutral V3 (Codex). Codex: `private-handoffs/2026-09-27-codex-prompt.md`. **Season day** = de 140 dage; race day = dag med løb.
 >
-> **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort, Discord-kort, comeback, ungdomsløb · live/merget · /roadmap-faner · #5387 A/B mangler · S4-kalender · 27/9 aften (12b) · U23/junior-sider · flip m. #5794 næste session · Mandatet · efter skiftet · D4→D3 + 4 puljer · 27/9 · træning fra løb · 28/9 (program pr. løbsdag #4629 = PR #5801, beta) · ryttertype-visning · søndag m. værdikørslen · upkeep-rework #4385 · PR #5800 klar.
+> **Løfter før S4 der mangler (roadbook 15/9, målt 27/9):** ungdomsløb (i aften) · træning fra løb (flip) · v4 (ejer) · race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme synligt #4956. Codex tager de byggebare.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = åbent ejer-valg uden for #5506 (runbook l. 740). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret. **S3:** sidste etape 27/9 kl. 19 (D1) / 18 (D2-D4); skiftet ca. 19:30.
+> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = JA (ejer 26/9). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret. **S3:** sidste etape 27/9 kl. 19 (D1) / 18 (D2-D4); skiftet ca. 19:30.
 
 ## Standing context (forever-relaunch)
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** byg KUN via wave.js; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
 
-> **🤖 Working agent:** Ingen aktiv session (natsession 26/9-27/9 lukket ca. 03:00; bølge wf_f9363de3-390, artefakt `docs/audits/night-wave-2026-09-27.md`).
+> **🤖 Working agent:** Ingen aktiv session (merge-session 27/9 lukket ca. kl. 11).
