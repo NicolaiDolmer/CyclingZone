@@ -4,15 +4,15 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (26/9 kl. 23:15):** **NAT-SESSION**, prompt `private-handoffs/2026-09-27-nat-session-prompt.md`. I dag: værdikørslen KØRT (v6, løn 0, søndag 27/9 claimet, trin 1 = 4/10) · rating = bedste rolle on · U23/junior-sider on · Metro-L3 frosset+spærret · trin 6 kørt · parkering ved S4 = ja · patch 7.303 merget, 7.304 = #5811. Venter ejer-"merge": #5800 upkeep (flip før 12c) · #5801 programmer (beta) · #5803 GT (+ ingen GT dag 1) → S4-kalender "kør" → mandat-flip før "Afslut sæson". v4: 3 fejl rettes i nat, flip-beslutning søndag aften. Skiftet tidligst ca. 19:30 (S3 sidste etape 19:00). Løn-model: ugen efter skiftet.
+> **🎯 Next action (27/9 kl. 03:00):** **SØNDAG = SÆSONSKIFTE.** Start med `private-handoffs/2026-09-27-morgenrapport.md` (10 beslutninger i rækkefølge, billeder i `pr-shots/`). Venter ejer-"merge": #5809 dobbeltbooking · #5815 tilmeldings-mail (→ tørkørsel → "send" før kl. 19) · #5803 GT → kalender "kør" · #5800 upkeep (flip før 12c) · #5801 programmer (beta) · #5810 sortering. v4: alle 3 fejl rettet og merget bag off (#5816/#5817; testpakke 27/9: 0 anomalier); ankre 10a/10b + flip = ejer søndag aften efter 12c. Skiftet ca. 19:30 (S3 sidste etape 19:00 D1 / 18:00 D2-D4). Mandat-flip før "Afslut sæson". Løn-model: ugen efter skiftet.
 >
-> **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort, Discord-kort, comeback, ungdomsløb · live/merget · /roadmap-faner · #5387 A/B mangler · S4-kalender · 27/9 aften (12b) · U23/junior-sider · flip m. #5794 næste session · Mandatet · efter skiftet · D4→D3 + 4 puljer · 27/9 · træning fra løb · 28/9 (program pr. løbsdag #4629 IKKE bygget) · ryttertype-visning · søndag m. værdikørslen · upkeep-rework #4385 · ikke bygget.
+> **Løfte-tavle 28/9 (løfte · nu):** tilmeldingskort, Discord-kort, comeback, ungdomsløb · live/merget · /roadmap-faner · #5387 A/B mangler · S4-kalender · 27/9 aften (12b) · U23/junior-sider · flip m. #5794 næste session · Mandatet · efter skiftet · D4→D3 + 4 puljer · 27/9 · træning fra løb · 28/9 (program pr. løbsdag #4629 = PR #5801, beta) · ryttertype-visning · søndag m. værdikørslen · upkeep-rework #4385 · PR #5800 klar.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = åbent ejer-valg uden for #5506 (runbook l. 740). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret. **S3:** slutter 27/9 kl. 15.
+> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = åbent ejer-valg uden for #5506 (runbook l. 740). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret. **S3:** sidste etape 27/9 kl. 19 (D1) / 18 (D2-D4); skiftet ca. 19:30.
 
 ## Standing context (forever-relaunch)
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** byg KUN via wave.js; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
 
-> **🤖 Working agent:** NAT-SESSION 26/9 → 27/9 (startet 23:20). Bølge wf_f9363de3-390: #5812 (v4 segmenter+udbrud), #5814 (tilmeldings-påmindelse, ny mailtype), #4385/PR #5800, #4629/PR #5801, #5805/PR #5810. Kø: #5813 (v4 tidsgrænse) efter #5812. Morgenrapport: `private-handoffs/2026-09-27-morgenrapport.md`.
+> **🤖 Working agent:** Ingen aktiv session (natsession 26/9-27/9 lukket ca. 03:00; bølge wf_f9363de3-390, artefakt `docs/audits/night-wave-2026-09-27.md`).
