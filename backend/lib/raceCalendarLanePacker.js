@@ -257,7 +257,7 @@ function raceFootprint(race, spineMinStages) {
 // (D1 paa 709 skridt / 3 ms). R8 er den stramme: den afskar 609 forsoeg i D1.
 function solveContiguousStarts({
   races, D, days, cap, spineMinStages, monumentRules = null, maxSteps = 20000000,
-  stats = null, gtEarliestStartDate = 0,
+  stats = null, gtEarliestStartDate = 0, typeGapMaxDates = null,
 }) {
   const items = races
     .map((race, i) => ({
@@ -335,6 +335,28 @@ function solveContiguousStarts({
   const bandSizes = [];
   let steps = 0;
 
+  // R16 (#5830, ejer 27/9): ingen division maa have mere end `typeGapMaxDates` kalenderdatoer
+  // i traek uden et endagsloeb, eller uden en etapeloebs-etape. Foer R16 tog soegningen den
+  // foerste lovlige pakning, og MAALT 27/9 paa S4 fik D2's to puljer alle 21 endagsloeb i
+  // foerste halvdel og 16 datoer i traek med kun etapeloeb. Reglen er et FREMADRETTET snit
+  // som R10/R11: den fjerner kun delloesninger der allerede bryder den, saa en division hvis
+  // hidtidige kalender overholder den faar PRAECIS samme kalender (samme soegeraekkefoelge,
+  // foerste loesning er stadig foerst). En kategori divisionen slet ikke har, bindes ikke.
+  const erEndag = items.map((it) => it.fp.length === 1 && !it.gt);
+  const erEtape = items.map((it) => it.fp.length > 1);
+  const r16 = Number.isSafeInteger(typeGapMaxDates) && typeGapMaxDates > 0 ? typeGapMaxDates : null;
+  const r16Endag = r16 != null && erEndag.some(Boolean);
+  const r16Etape = r16 != null && erEtape.some(Boolean);
+  const datoAf = new Array(items.length).fill(-1);
+  const endagPaaDato = new Array(days).fill(false);
+  const etapePaaDato = new Array(days).fill(false);
+  const etapeBaaretIndPaaDato = new Array(days).fill(false);
+  const hulForLangt = (paaDato, dato) => {
+    if (dato < r16) return false;
+    for (let d = dato - r16; d <= dato; d++) if (paaDato[d]) return false;
+    return true;
+  };
+
   const dfs = (g, iBaand, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut,
     monFoerste, monSidste, monRest) => {
     if (++steps > maxSteps) return false;
@@ -360,6 +382,10 @@ function solveContiguousStarts({
     if (restStages !== (days - dato) * D - brugtIDato) return false;
 
     const carriedStages = aktive.filter((a) => items[a.i].fp[a.off] === 1).length;
+    // R16: en etape baaret ind fra forrige dato ligger paa denne dato.
+    if (r16Etape && iBaand === 0) {
+      etapeBaaretIndPaaDato[dato] = aktive.some((a) => erEtape[a.i] && items[a.i].fp[a.off] === 1);
+    }
     const carriedGt = aktive.filter((a) => items[a.i].gt && items[a.i].fp[a.off] === 1).length;
     if (gtIDato + carriedGt > MAX_GT_STAGES_PER_DAY) return false;
 
@@ -416,7 +442,7 @@ function solveContiguousStarts({
       vaelg(0, nye, []);
 
       for (const kombi of kandidater) {
-        for (const k of kombi) { brugt[k] = true; startAf[k] = g; }
+        for (const k of kombi) { brugt[k] = true; startAf[k] = g; datoAf[k] = dato; }
         const nuAktive = [...aktive, ...kombi.map((k) => ({ i: k, off: 0 }))];
         const gtStarterNu = kombi.some((k) => items[k].gt);
         const nyGtStart = gtStarterNu ? dato : gtStartDato;
@@ -433,8 +459,30 @@ function solveContiguousStarts({
         const gtSlutter = gtVarAktiv && !efter.some((a) => items[a.i].gt);
         const spanNu = nyGtStart == null ? 0 : dato - nyGtStart + 1;
         if (nyGtStart != null && spanNu > MAX_GT_SPAN_DAYS) {                        // R8
-          for (const k of kombi) { brugt[k] = false; startAf[k] = -1; }
+          for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
           continue;
+        }
+        // R16: naar datoen er faerdig, er dens indhold kendt - og hullet der ender her maales.
+        if (datoFaerdig && r16 != null) {
+          const startetIDag = (k) => brugt[k] && datoAf[k] === dato;
+          endagPaaDato[dato] = items.some((_, k) => erEndag[k] && startetIDag(k));
+          etapePaaDato[dato] = etapeBaaretIndPaaDato[dato] || items.some((_, k) => erEtape[k] && startetIDag(k));
+          // Fremadrettet: der skal vaere endagsloeb nok TILBAGE til at lukke hvert hul i resten
+          // af saesonen. Uden snittet bruger soegningen dem tidligt (taettest foerst) og opdager
+          // foerst hullet til sidst - MAALT 27/9: D2 loeb toer for skridt og faldt tilbage.
+          let endagMangler = false;
+          if (r16Endag) {
+            let hul = 0;
+            for (let d = dato; d >= 0 && !endagPaaDato[d]; d--) hul += 1;
+            const tilbage = erEndag.reduce((n, e, k) => n + (e && !brugt[k] ? 1 : 0), 0);
+            endagMangler = tilbage < Math.floor((hul + (days - 1 - dato)) / (r16 + 1));
+          }
+          if (endagMangler
+              || (r16Endag && hulForLangt(endagPaaDato, dato))
+              || (r16Etape && hulForLangt(etapePaaDato, dato))) {                        // R16
+            for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
+            continue;
+          }
         }
         const naesteGtStart = gtSlutter ? null : nyGtStart;
         const naesteGtSlut = gtSlutter ? dato : sidsteGtSlut;
@@ -456,7 +504,7 @@ function solveContiguousStarts({
             nyMonFoerste, nyMonSidste, nyMonRest);
         }
         if (ok) return true;
-        for (const k of kombi) { brugt[k] = false; startAf[k] = -1; }
+        for (const k of kombi) { brugt[k] = false; startAf[k] = -1; datoAf[k] = -1; }
       }
     }
     return false;
@@ -733,19 +781,31 @@ function layoutContiguous({
   if (monumentRules) stige.push({ rules: true, gtStart: r15Aktiv, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
   if (r15Aktiv) stige.push({ rules: false, gtStart: true, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
   stige.push({ rules: false, gtStart: false, maxSteps: undefined });
-  for (const trin of stige) {
+  // R16 (#5830): hele stigen proeves FOERST med R16 (med skridt-loft), derefter den gamle
+  // stige uden. En division der allerede holder R16 faar samme kalender som foer, fordi R16
+  // kun beskaerer delloesninger der bryder den. Taber vi R16, viser `typeGapRule: false` det.
+  const fuldStige = [
+    ...stige.map((t) => ({ ...t, typeGap: true, maxSteps: t.maxSteps ?? MONUMENT_SOLVE_MAX_STEPS })),
+    ...stige.map((t) => ({ ...t, typeGap: false })),
+  ];
+  let typeGapRuleHeld = false;
+  for (const trin of fuldStige) {
     const stats = {};
     loest = solveContiguousStarts({
       races: alle, D, days, cap, spineMinStages,
       monumentRules: trin.rules ? monumentRules : null,
       stats, gtEarliestStartDate: trin.gtStart ? gtEarliestStartDate : 0,
+      typeGapMaxDates: trin.typeGap ? RACE_TYPE_MAX_GAP_DATES : null,
       ...(trin.maxSteps != null ? { maxSteps: trin.maxSteps } : {}),
     });
     forsoeg.push({
-      rules: trin.rules, gtStartRule: trin.gtStart, ok: Boolean(loest),
+      rules: trin.rules, gtStartRule: trin.gtStart, typeGapRule: trin.typeGap, ok: Boolean(loest),
       steps: stats.steps ?? loest?.steps ?? null, exhausted: Boolean(stats.exhausted),
     });
-    if (loest) { monumentRulesHeld = trin.rules; gtStartRuleHeld = trin.gtStart; break; }
+    if (loest) {
+      monumentRulesHeld = trin.rules; gtStartRuleHeld = trin.gtStart; typeGapRuleHeld = trin.typeGap;
+      break;
+    }
   }
   if (!loest) return layoutContiguousRelaxed({ races: alle, D, days, cap, spineMinStages });
   const naturalRaceDays = loest.G;
@@ -872,6 +932,7 @@ function layoutContiguous({
 
   return {
     placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, gtStartRuleHeld,
+    typeGapRuleHeld,
     solveAttempts: forsoeg,
     raceDayTargetRequested: maal, raceDayTargetHeld, trainingGameDays, restDayGameDays,
     dateOfTrainingGameDay,
@@ -972,6 +1033,11 @@ export const GRAND_TOUR_EARLIEST_START_DATE_INDEX = 2;
 // (se stigen i layoutContiguous), saa et katalog der ikke kan holde R15 koster hoejst to
 // gange loftet foer det sidste forsoeg.
 export const MONUMENT_SOLVE_MAX_STEPS = 3000000;
+
+// R16 (#5830, ejer 27/9): hoejst saa mange kalenderdatoer i traek uden et endagsloeb (og
+// uden en etapeloebs-etape) i en division. 5 = D1's stoerste hul i S4 (maalt 27/9), saa D1
+// og D3/D4 er uaendrede; D2 havde 16.
+export const RACE_TYPE_MAX_GAP_DATES = 5;
 
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -1196,6 +1262,8 @@ export function packLaneCalendar({
     // #5802: true naar pakningen blev fundet MED R15 (ingen GT paa saesonens foerste dage).
     // false betyder "ingen GT'er", "reglen slaaet fra" eller "sidste forsoeg uden R15".
     gtStartRuleHeld: Boolean(res.gtStartRuleHeld),
+    // #5830: true naar pakningen holder R16 (intet langt hul uden endags- eller etapeloeb).
+    typeGapRuleHeld: Boolean(res.typeGapRuleHeld),
     // Skridt-forbrug pr. soegeforsoeg. Rent diagnostik: soegningen er den dyreste del af
     // pakningen, og et forsoeg der loeber toer ser ud som "ingen lovlig pakning".
     solveAttempts: res.solveAttempts ?? [],

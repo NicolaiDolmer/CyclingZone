@@ -56,7 +56,7 @@ import {
   detectMinOverlapViolations, detectQuotaViolations,
   detectGrandTourOrderViolations, listGrandTourStarts, detectGrandTourEarlyStartViolations,
 } from "./calendarPlacementGates.js";
-import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX, RACE_TYPE_MAX_GAP_DATES } from "./raceCalendarLanePacker.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 import {
   detectRaceDayEqualityViolations, detectTrainingDayStreakViolations,
@@ -160,6 +160,11 @@ export function scoreTierPlan({
   const gtEarlyStartViol = detectGrandTourEarlyStartViolations({
     tier: plan.tier, grandTourStarts, seasonFirstDay: foersteDag,
   });
+  const typeGap = computeRaceTypeGaps({ raceRows, stageRows });
+  const typeGapViol = [
+    ...(typeGap.endag > RACE_TYPE_MAX_GAP_DATES ? [`D${plan.tier}: ${typeGap.endag} datoer i træk uden endagsløb (loft ${RACE_TYPE_MAX_GAP_DATES}, #5830)`] : []),
+    ...(typeGap.etape > RACE_TYPE_MAX_GAP_DATES ? [`D${plan.tier}: ${typeGap.etape} datoer i træk uden etapeløb (loft ${RACE_TYPE_MAX_GAP_DATES}, #5830)`] : []),
+  ];
 
   return {
     tier: plan.tier,
@@ -198,7 +203,36 @@ export function scoreTierPlan({
     multiRaceShareMin: TIER_MULTI_RACE_DAY_MIN_SHARE[plan.tier] ?? null,
     monumentGtViol, minOverlapViol, quotaViol,
     grandTourStarts, gtOrderViol, gtEarlyStartViol,
+    typeGap, typeGapViol,
   };
+}
+
+// #5830: laengste raekke kalenderdatoer i traek (inden for divisionens foerste..sidste dato)
+// uden et endagsloeb hhv. uden en etapeloebs-etape. Samme maal som pakkerens R16.
+export function computeRaceTypeGaps({ raceRows = [], stageRows = [] } = {}) {
+  const typeAf = new Map(raceRows.map((r) => [r.pool_race_id, r.race_type]));
+  const endagDatoer = new Set();
+  const etapeDatoer = new Set();
+  const alle = [];
+  for (const s of stageRows) {
+    if (s.scheduled_at == null) continue;
+    const d = String(s.scheduled_at).slice(0, 10);
+    alle.push(d);
+    (typeAf.get(s.pool_race_id) === "single" ? endagDatoer : etapeDatoer).add(d);
+  }
+  if (!alle.length) return { endag: 0, etape: 0 };
+  alle.sort();
+  const foerste = new Date(`${alle[0]}T00:00:00Z`);
+  const sidste = new Date(`${alle[alle.length - 1]}T00:00:00Z`);
+  let endag = 0, etape = 0, iEndag = 0, iEtape = 0;
+  for (let t = foerste; t <= sidste; t = new Date(t.getTime() + 86400000)) {
+    const d = t.toISOString().slice(0, 10);
+    iEndag = endagDatoer.has(d) ? 0 : iEndag + 1;
+    iEtape = etapeDatoer.has(d) ? 0 : iEtape + 1;
+    endag = Math.max(endag, iEndag);
+    etape = Math.max(etape, iEtape);
+  }
+  return { endag, etape };
 }
 
 /**
@@ -285,7 +319,8 @@ export function scoreCalendarPlan({
   rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
       + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0)
-      + (t.gtOrderViol?.length ?? 0) + (t.gtEarlyStartViol?.length ?? 0), 0)
+      + (t.gtOrderViol?.length ?? 0) + (t.gtEarlyStartViol?.length ?? 0)
+      + (t.typeGapViol?.length ?? 0), 0)
     // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
     + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0)
     // §1e/#5267: samme afgraensning som §1d — den taeller kun naar saesonen har et maal.
@@ -439,6 +474,9 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
     const share = t.coverage?.oneDayShare ?? 0;
     const målShare = TIER_ONE_DAY_SHARE_TARGET[t.tier], minShare = TIER_ONE_DAY_SHARE_MIN[t.tier];
     out.push(`  ${ok(share >= minShare)} Endagsløb (§4): ${t.coverage?.oneDayRaces ?? "?"} af ${t.løb} = ${pct(share)} (mål ${pct(målShare)}, min ${pct(minShare)})`);
+    if (t.typeGap) {
+      out.push(`  ${ok((t.typeGapViol?.length ?? 0) === 0)} Løbstype-huller (#5830): længste hul uden endagsløb ${t.typeGap.endag} · uden etapeløb ${t.typeGap.etape} datoer (loft ${RACE_TYPE_MAX_GAP_DATES})`);
+    }
 
     // §5: gulve for alle seks familier + #4270's loft paa `rolling`. classic taeller nu
     // med i hilly (#4270), saa ingen etape falder uden for taellingen laengere.
