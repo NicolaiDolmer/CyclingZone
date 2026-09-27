@@ -1,5 +1,142 @@
 export const PATCHES = [
   {
+    "version": "7.305",
+    "date": "2026-09-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "The season 4 calendar is out",
+          "body": "Season 4 runs from 28 September to 25 October, with 140 race days in every division. Open Race Hub, then Season, and pick season 4 to see your group's races. If your team moves division at the switch, you see your new group's calendar after the switch."
+        },
+        "da": {
+          "title": "Kalenderen for sæson 4 er klar",
+          "body": "Sæson 4 kører fra 28. september til 25. oktober, med 140 løbsdage i alle divisioner. Åbn Race Hub, så Sæson, og vælg sæson 4 for at se din gruppes løb. Skifter dit hold division ved skiftet, ser du din nye gruppes kalender efter skiftet."
+        },
+        "refs": [
+          5795,
+          5506
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Grand Tours in the right order",
+          "body": "Season 4 runs the Giro, then the Tour, then the Vuelta, and no Grand Tour starts in the first days of the season. The Giro starts on day 5."
+        },
+        "da": {
+          "title": "Grand Tours i den rigtige rækkefølge",
+          "body": "Sæson 4 kører Giro, så Tour og så Vuelta, og ingen Grand Tour starter i sæsonens første dage. Giroen starter på dag 5."
+        },
+        "refs": [
+          5802
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Upkeep is paid per race day",
+          "body": "From season 4, club upkeep is charged as Travel & staff for each senior race day you have a rider at the start, instead of one charge at the switch. Start every race and the total is the same as before; a race day with no rider of yours at the start costs nothing. U23 and junior races are free."
+        },
+        "da": {
+          "title": "Driften betales pr. løbsdag",
+          "body": "Fra sæson 4 trækkes holdets drift som Rejse og personale for hver seniorløbsdag, hvor du har en rytter til start, i stedet for ét træk ved skiftet. Stiller du til start i alle løb, er beløbet det samme som før; en løbsdag uden din rytter til start koster intet. U23- og juniorløb er gratis."
+        },
+        "refs": [
+          4385
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Auto-fill no longer double-books a rider",
+          "body": "Auto-fill again in the Race Hub now moves a rider between two races on the same race day without an error, and U23 and junior races lock him on their race day too. If Auto-fill again failed for you, try it again."
+        },
+        "da": {
+          "title": "Auto-udfyld dobbeltbooker ikke længere en rytter",
+          "body": "Auto-udfyld igen i Race Hub flytter nu en rytter mellem to løb på samme løbsdag uden fejl, og U23- og juniorløb låser ham også på deres løbsdag. Fejlede Auto-udfyld igen for dig, så prøv igen."
+        },
+        "refs": [
+          5789
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Prospects show their potential as numbers again",
+          "body": "Saturday night's intake came without values, types and abilities, so potential showed as stars and the profile said the abilities were not yet available. Every prospect has its data now."
+        },
+        "da": {
+          "title": "Emner viser potentiale som tal igen",
+          "body": "Lørdag nats indtag kom uden værdier, typer og evner, så potentialet stod som stjerner, og profilen skrev, at evnerne ikke var tilgængelige endnu. Alle emner har deres data nu."
+        },
+        "refs": [
+          5818
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "See how far today's session moved each ability",
+          "body": "The Training tab on a rider's profile shows a number next to each ability, for example \"today +41%\": how far the session moved that ability towards its next point. Before the evening training has run, it shows the last session."
+        },
+        "da": {
+          "title": "Se hvor langt dagens session flyttede hver evne",
+          "body": "Træningsfanen på rytterprofilen viser et tal ved hver evne, fx \"i dag +41%\": hvor langt sessionen flyttede evnen mod næste point. Før aftenens træning er kørt, vises seneste session."
+        },
+        "refs": [
+          5539
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "stage": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Training programs, in the beta group",
+          "body": "Give a rider one of 22 ready-made training programs with a day plan for each race day. The program is copied into his plan, so you can still change single days."
+        },
+        "da": {
+          "title": "Træningsprogrammer, i beta-gruppen",
+          "body": "Giv en rytter et af 22 færdige træningsprogrammer med en dagsplan for hver løbsdag. Programmet kopieres ind i hans plan, så du stadig kan ændre enkelte dage."
+        },
+        "refs": [
+          4629
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "U23 and junior lists sort by surname",
+          "body": "The Rider column sorts the same way as My Team. On the phone, Sort by sits in the training table's own header, so you no longer scroll past the whole list to find it."
+        },
+        "da": {
+          "title": "U23 og junior sorterer efter efternavn",
+          "body": "Kolonnen Rytter sorterer som My Team. På telefonen står Sortér efter i træningstabellens egen header, så du ikke skal scrolle forbi hele listen for at finde den."
+        },
+        "refs": [
+          5805
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.304",
     "date": "2026-09-26",
     "label": "Beta",

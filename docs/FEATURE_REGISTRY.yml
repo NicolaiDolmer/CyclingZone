@@ -326,12 +326,12 @@ features:
     area: squad
     title_en: Rating shows best role now
     title_da: Rating viser bedste rolle nu
-    state: beta
+    state: live
     flag: rider_best_role_display
     ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
     epic: 5435
-    verified: 2026-09-24
-    note: 'Beta 24/9 kl. 19:05 (ejer: test med beta-testerne foerst); til alle sammen med vaerdiskiftet #5443/#5497 (ejer-gated).'
+    verified: 2026-09-27
+    note: 'Beta 24/9 kl. 19:05; on for alle 26/9 kl. 22:27 sammen med vaerdiskiftet #5443 (ejer "koer").'
 
   - id: youth-squad-pages
     area: squad
@@ -433,6 +433,17 @@ features:
     flag: season_fatigue_reset_enabled
     ssot: docs/TRAINING_RULES.md
     verified: 2026-09-06
+
+  - id: training-programs
+    area: training
+    title_en: Training programs per race day
+    title_da: Træningsprogrammer pr. løbsdag
+    state: beta
+    flag: training_programs
+    ssot: docs/TRAINING_RULES.md
+    epic: 4629
+    verified: 2026-09-27
+    note: 'PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil.'
 
   # --- academy -------------------------------------------------------------
   - id: academy
@@ -591,6 +602,17 @@ features:
     flag: rider_values_bulk_write_enabled
     ssot: docs/ECONOMY_RULES.md
     verified: 2026-09-06
+
+  - id: upkeep-per-race-day
+    area: economy
+    title_en: Upkeep paid per senior race day (Travel & staff)
+    title_da: Upkeep betalt pr. seniorløbsdag (Rejse og personale)
+    state: live
+    flag: upkeep_per_race_day
+    ssot: docs/ECONOMY_RULES.md
+    epic: 4385
+    verified: 2026-09-27
+    note: 'PR #5800; on 27/9 09:24 (ejer "koer"). S3-effekt 0: hold med fladt S3-upkeep ekskluderes, D4-sats 0. Intet fladt traek ved 12c.'
 
 
   # --- club ----------------------------------------------------------------
