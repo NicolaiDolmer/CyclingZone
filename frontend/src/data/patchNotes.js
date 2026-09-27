@@ -43,11 +43,11 @@ export const PATCHES = [
         "topic": "Economy",
         "en": {
           "title": "Upkeep is paid per race day",
-          "body": "From season 4, club upkeep is charged as Travel & staff for each senior race day you have a rider at the start, instead of one charge at the switch. U23 and junior races are free."
+          "body": "From season 4, club upkeep is charged as Travel & staff for each senior race day you have a rider at the start, instead of one charge at the switch. Start every race and the total is the same as before; a race day with no rider of yours at the start costs nothing. U23 and junior races are free."
         },
         "da": {
           "title": "Driften betales pr. løbsdag",
-          "body": "Fra sæson 4 trækkes holdets drift som Rejse og personale for hver seniorløbsdag, hvor du har en rytter til start, i stedet for ét træk ved skiftet. U23- og juniorløb er gratis."
+          "body": "Fra sæson 4 trækkes holdets drift som Rejse og personale for hver seniorløbsdag, hvor du har en rytter til start, i stedet for ét træk ved skiftet. Stiller du til start i alle løb, er beløbet det samme som før; en løbsdag uden din rytter til start koster intet. U23- og juniorløb er gratis."
         },
         "refs": [
           4385

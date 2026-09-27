@@ -38,8 +38,7 @@ Promotion and relegation run as normal. Then every manager left in Division 4 mo
 
 **Money and values**
 Riders whose contract runs out become free agents, so extend the ones you want to keep. Your sponsor's guaranteed base is paid at season start. A rider who retires at the switch no longer costs you next season's salary. Your U23 and junior riders cost nothing in upkeep this time. Rider values were recalculated on Saturday, so there is no value update this Sunday.
-[EJER VÆLGER, upkeep on: Upkeep no longer comes out in one go at the switch. From season 4 it is paid as Travel & staff for each senior race day your team starts. Same total over the season, just spread out.]
-[EJER VÆLGER, upkeep off: slet linjen]
+Upkeep no longer comes out in one go at the switch. From season 4 it is paid as Travel & staff for each senior race day your team starts. Start every race and the total is the same as before; a race day with no rider of yours at the start costs nothing.
 
 **Youth squads**
 Your U23 and junior pages are open. The U23 team holds 12 riders and the junior team 10. In season 4 both ride their own races in their own groups: U23 one or two a week, juniors one, from age 16. No prize money in youth races yet.
@@ -49,8 +48,7 @@ Retirement goes by a rider's age in season 3. The chance rises each season from 
 
 **Training**
 From 28 September your riders train per race day. A rider races or trains, never both, and training runs in the evening after the day's last race. The Train today button stays, but its +25% boost goes.
-[EJER VÆLGER, programmer merget: Training programs per race day are in beta: pick a program and it runs on the days your rider trains.]
-[EJER VÆLGER, ikke merget: slet linjen]
+Training programs per race day are in beta: pick a program and it runs on the days your rider trains.
 
 **Your board**
 [EJER VÆLGER, Mandatet on: The board calls you to the annual meeting when the switch runs. It has its own post: [link til mandat-opslaget]]
@@ -81,8 +79,7 @@ Op- og nedrykning kører som normalt. Derefter rykker alle managers, der er tilb
 
 **Økonomi og værdier**
 Ryttere, hvis kontrakt udløber, bliver free agents, så forlæng dem du vil beholde. Din sponsors garanterede basis udbetales ved sæsonstart. En rytter, der går på pension ved skiftet, koster dig ikke længere næste sæsons løn. Dine U23- og juniorryttere koster intet i drift denne gang. Rytterværdierne blev regnet om lørdag, så der er ingen værdiopdatering denne søndag.
-[EJER VÆLGER, upkeep on: Driften trækkes ikke længere på én gang ved skiftet. Fra sæson 4 betales den som Rejse og personale for hver seniorløbsdag dit hold stiller til start på. Samme beløb over sæsonen, bare spredt ud.]
-[EJER VÆLGER, upkeep off: slet linjen]
+Driften trækkes ikke længere på én gang ved skiftet. Fra sæson 4 betales den som Rejse og personale for hver seniorløbsdag dit hold stiller til start på. Stiller du til start i alle løb, er beløbet det samme som før; en løbsdag uden din rytter til start koster intet.
 
 **Ungdomshold**
 Dine U23- og junior-sider er åbne. U23-holdet har plads til 12 ryttere og juniorholdet til 10. I sæson 4 kører begge deres egne løb i egne grupper: U23 et eller to om ugen, juniorer ét, fra de er 16. Ingen præmiepenge i ungdomsløb endnu.
@@ -92,8 +89,7 @@ Pension afgøres på rytterens alder i sæson 3. Fra 36 stiger chancen hver sæs
 
 **Træning**
 Fra 28. september træner dine ryttere pr. løbsdag. En rytter kører enten løb eller træner, aldrig begge dele, og træningen kører om aftenen efter dagens sidste løb. Knappen Træn i dag bliver, men dens +25%-boost forsvinder.
-[EJER VÆLGER, programmer merget: Træningsprogrammer pr. løbsdag er i beta: vælg et program, og det kører på de dage din rytter træner.]
-[EJER VÆLGER, ikke merget: slet linjen]
+Træningsprogrammer pr. løbsdag er i beta: vælg et program, og det kører på de dage din rytter træner.
 
 **Din bestyrelse**
 [EJER VÆLGER, Mandatet on: Bestyrelsen kalder dig til årsmøde, når skiftet kører. Det har sit eget opslag: [link til mandat-opslaget]]
