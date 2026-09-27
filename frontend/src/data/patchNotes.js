@@ -85,6 +85,22 @@ export const PATCHES = [
         "refs": [
           5830
         ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Standings show only teams that race in the division",
+          "body": "After the switch, parked teams still showed in their old division's standings with 0 points, so division 1 looked like it had 27 teams. Standings now show only teams in a group: 24 per group."
+        },
+        "da": {
+          "title": "Stillingen viser kun hold der kører i divisionen",
+          "body": "Efter skiftet stod parkerede hold stadig i deres gamle divisions stilling med 0 point, så division 1 så ud til at have 27 hold. Stillingen viser nu kun hold i en gruppe: 24 pr. gruppe."
+        },
+        "refs": [
+          4592
+        ]
       }
     ]
   },
