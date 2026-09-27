@@ -512,6 +512,7 @@ import {
   getCacheStats,
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
+import { loadTeamSeasonEntries, raceIdsMissingWindow, withEntryRaceWindows, writeRegeneratedLineups } from "../lib/raceHubAutofill.js";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import {
   buildSelectionDeadlineReminder,
@@ -6287,11 +6288,11 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: wRows } = await supabase.from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
     const withdrawn = new Set((wRows || []).map((w) => w.race_id));
 
-    // Holdets entries på tværs af alle løb: bruges til (a) manuel-detektion i mode=missing,
-    // (b) låsning af committede ryttere i løb der ikke regenereres.
-    const { data: allEntries } = await supabase.from("race_entries")
-      .select("race_id, rider_id, is_auto_filled").eq("team_id", req.team.id);
-    const manualRaceIds = new Set((allEntries || []).filter((e) => e.is_auto_filled === false).map((e) => e.race_id));
+    // Holdets entries i sæsonens løb (ALLE trupper, pagineret): bruges til (a) manuel-
+    // detektion i mode=missing, (b) låsning af committede ryttere i løb der ikke
+    // regenereres, (c) at slippe ryttere der flyttes mellem dagens løb (#5789).
+    const allEntries = await loadTeamSeasonEntries({ supabase, teamId: req.team.id, seasonId: season.id });
+    const manualRaceIds = new Set(allEntries.filter((e) => e.is_auto_filled === false).map((e) => e.race_id));
 
     // Regenererings-target: dagens kolonner minus afmeldte, minus igangværende (frys),
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
@@ -6350,8 +6351,18 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // Lås ALLE committede ryttere i løb der IKKE regenereres (binding-vinduer): andre
     // dages overlap (1b-fix), igangværende, og — i mode=missing — de manuelt-skippede.
     // Rod A (#1823): afmeldte løb låser IKKE (rytterne er frie) → med i excludeRaceIds.
+    // #5789: bindingWindowByRace dækker kun seniorløbene (#5517). En entry i et U23-/
+    // juniorløb samme løbsdag skal OGSÅ låse rytteren — hent vinduer for holdets øvrige
+    // løb i sæsonen (allEntries er sæson-scopet, så game_day-rummet blandes aldrig, #3070).
+    const extraRaceIds = raceIdsMissingWindow({ entries: allEntries, windowByRace: bindingWindowByRace });
+    const lockWindowByRace = extraRaceIds.length
+      ? withEntryRaceWindows({
+          windowByRace: bindingWindowByRace,
+          scheduleRows: await fetchAllScheduleRowsWithGameDay(supabase, extraRaceIds),
+        })
+      : bindingWindowByRace;
     const lockedWindows = lockedWindowsFromEntries({
-      entries: allEntries || [], windowByRace: bindingWindowByRace,
+      entries: allEntries, windowByRace: lockWindowByRace,
       excludeRaceIds: new Set([...target.map((r) => r.id), ...withdrawn]),
     });
 
@@ -6364,39 +6375,11 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
-    let regenerated = 0;
-    for (const race of target) {
-      const picks = picksByRace[race.id] || [];
-      const captainId = picks.find((p) => p.race_role === "captain")?.rider_id ?? picks[0]?.rider_id ?? null;
-      if (!picks.length || !captainId) continue;
-      const rows = picks.map((p) => ({
-        race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
-        // #5246: Race Hubs udfyld er managerens egen handling, ikke assistentens late-fill.
-        auto_filled_source: AUTO_FILL_SOURCES.MANAGER_AUTO,
-      }));
-      // Forward-guard (#2074): target er allerede filtreret til stages_completed===0, men
-      // gør invarianten lokal til delete'en så et igangværende felt aldrig nulstilles.
-      if (isRaceLineupFrozen(race)) continue;
-      // Surfacér delete/insert-fejl i stedet for tavst at efterlade et løb med 0 entries
-      // (ægte atomicitet kræver en RPC; her gør vi i det mindste fejlen synlig + retry-bar).
-      const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
-      if (delErr) throw new Error(`race_entries delete (${race.id}): ${delErr.message}`);
-      // #5246: tolerant hvis auto_filled_source-kolonnen ikke findes endnu (deploy-vinduet).
-      const { error: insErr } = await writeRaceEntriesWithSource({ supabase, rows });
-      if (insErr) {
-        // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
-        // bindingWindowByRace/lockedWindows ovenfor alligevel skulle overse en
-        // konflikt — tag samme navngivne fejlkode som PUT /selection i stedet for
-        // at lade en rå exclusion_violation nå kalderen som en opak 500 (#3098).
-        if (isRiderDayInvariantViolation(insErr)) {
-          const err = new Error(`race_entries insert (${race.id}): DB-invariant (#3420) afviste insert — ${insErr.message}`);
-          err.code = "selection_rider_bound";
-          throw err;
-        }
-        throw new Error(`race_entries insert (${race.id}): ${insErr.message}`);
-      }
-      regenerated++;
-    }
+    // #5789: skrivningen (frys-guard #2074, slip af ryttere der flyttes mellem dagens
+    // løb, delete-så-insert pr. løb, navngiven #3420-fejl) bor i raceHubAutofill.js.
+    const { regenerated } = await writeRegeneratedLineups({
+      supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
+    });
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
     captureException(err);

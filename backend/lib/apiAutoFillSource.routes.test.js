@@ -26,24 +26,32 @@ function routeBody(marker) {
   return apiSource.slice(start, next === -1 ? undefined : next);
 }
 
+// #5789: regenerate-skrivningen er flyttet til lib/raceHubAutofill.js
+// (writeRegeneratedLineups); kilde-kravene scannes dér i stedet for i route-kroppen.
+const hubAutofillSource = readFileSync(resolve(__dirname, "raceHubAutofill.js"), "utf8");
 const ROUTES = [
-  'router.post("/races/:raceId/selection/auto"',
-  'router.post("/races/distribution/regenerate"',
+  { marker: 'router.post("/races/:raceId/selection/auto"', writer: (body) => body },
+  { marker: 'router.post("/races/distribution/regenerate"', writer: () => hubAutofillSource },
 ];
 
-for (const marker of ROUTES) {
+for (const { marker, writer } of ROUTES) {
   test(`${marker}: raekkerne faar kilden manager_auto (ikke late_fill som standard)`, () => {
-    const body = routeBody(marker);
+    const body = writer(routeBody(marker));
     assert.match(body, /auto_filled_source:\s*AUTO_FILL_SOURCES\.MANAGER_AUTO/);
     assert.doesNotMatch(body, /auto_filled_source:\s*["']late_fill["']/);
   });
 
   test(`${marker}: race_entries skrives via writeRaceEntriesWithSource (deploy-vinduet), ikke en raa insert`, () => {
-    const body = routeBody(marker);
+    const body = writer(routeBody(marker));
     assert.match(body, /writeRaceEntriesWithSource\(\{\s*supabase,\s*rows\s*\}\)/);
     assert.doesNotMatch(body, /from\("race_entries"\)\.insert\(/);
+    assert.doesNotMatch(routeBody(marker), /from\("race_entries"\)\.insert\(/);
   });
 }
+
+test("regenerate-routen skriver via writeRegeneratedLineups (#5789)", () => {
+  assert.match(routeBody('router.post("/races/distribution/regenerate"'), /await writeRegeneratedLineups\(\{/);
+});
 
 test("api.js importerer kilderne og helperen fra raceEntryAutoFillSource.js", () => {
   assert.match(
