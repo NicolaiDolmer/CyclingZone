@@ -883,6 +883,43 @@ test("computeFinaleAbilityScore: grupetto faar intet dagsformbidrag", () => {
   assert.equal(high, neutral);
 });
 
+test("finaleHook: condition-beskyttelsen maa ikke vende en reel reservefordel", () => {
+  const ab = abilities();
+  const entrants: Record<string, Entrant> = {
+    "a-high": { ...makeEntrant("a-high", ab), condition: 1 },
+    "z-low": { ...makeEntrant("z-low", ab), condition: 0.25 },
+  };
+  const riders = {
+    "a-high": makeRiderState("a-high", "front", { wprime: 0, dayform: 0 }),
+    "z-low": makeRiderState("z-low", "front", { wprime: 1, dayform: 0 }),
+  };
+  const state = buildState([{ id: "front", kind: "peloton", rider_ids: ["a-high", "z-low"], gap_seconds: 0, cohesion: 1 }], riders);
+  const result = finaleHook(state, makeCtx({ entrants, finaleType: "punch" }));
+  assert.ok(result.state.finish_order!.indexOf("z-low") < result.state.finish_order!.indexOf("a-high"));
+});
+
+test("finaleHook: en overlevende gruppe bevarer condition-ordenen trods forskellig dagsform", () => {
+  const leadAb = abilities({ tempo: 99, endurance: 99, durability: 99 });
+  const chaseAb = abilities({ tempo: 1, endurance: 1, durability: 1 });
+  const entrants: Record<string, Entrant> = {
+    lead: makeEntrant("lead", leadAb),
+    "a-low": { ...makeEntrant("a-low", chaseAb), condition: 0.25 },
+    "z-high": { ...makeEntrant("z-high", chaseAb), condition: 1 },
+  };
+  const riders = {
+    lead: makeRiderState("lead", "lead", { wprime: 1 }),
+    "a-low": makeRiderState("a-low", "chase", { wprime: 0.6, dayform: 0.1 }),
+    "z-high": makeRiderState("z-high", "chase", { wprime: 0.8, dayform: -0.1 }),
+  };
+  const state = buildState([
+    { id: "lead", kind: "solo", rider_ids: ["lead"], gap_seconds: 0, cohesion: 1 },
+    { id: "chase", kind: "peloton", rider_ids: ["a-low", "z-high"], gap_seconds: 30, cohesion: 1 },
+  ], riders);
+  const result = finaleHook(state, makeCtx({ entrants, finaleType: "punch" }));
+  assert.ok(result.state.groups.some((group) => group.id === "chase"), "jagtgruppen skal overleve som egen gruppe");
+  assert.ok(result.state.finish_order!.indexOf("z-high") < result.state.finish_order!.indexOf("a-low"));
+});
+
 // ── #5580 (M1 punkt 2): indsatsens led i placerings-opgoeret ──────────────────
 
 const EFFORT_LADDER: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];

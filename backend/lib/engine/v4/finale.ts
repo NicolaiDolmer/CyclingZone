@@ -426,7 +426,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const demandVector =
     (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR;
 
-  const scoreOf = (riderId: string): number | null => {
+  const scoreOf = (riderId: string, dayformWeight = extra.dayformScoreWeight): number | null => {
     const entrant = entrants[riderId];
     if (!entrant) return null;
     // M12-wiring (#4632, ejer-beslutning 6/9): en rytter i grupettoen spurter
@@ -450,45 +450,72 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       extra.wprimeReserveWeight,
       entrant.effort,
       entrant.effort === "grupetto" ? 0 : state.riders[riderId]?.dayform ?? 0,
-      extra.dayformScoreWeight,
+      dayformWeight,
       extra.dayformScoreClamp,
     );
   };
 
-  const baseScored: ScoredRider[] = contenderIds
-    .map((riderId): ScoredRider | null => {
-      const score = scoreOf(riderId);
-      return score === null ? null : { riderId, score };
-    })
-    .filter((s): s is ScoredRider => s !== null);
-
-  // Dagsform er individuel, men maa ikke vende condition-ordenen mellem
-  // ellers identiske ryttere. Bevar udsvingene inden for hvert condition-trin,
-  // og loeft kun den hoejere conditions score hvis den ellers ville falde bagud.
-  const sameProfile = new Map<string, ScoredRider[]>();
-  for (const rider of baseScored) {
-    const entrant = entrants[rider.riderId];
-    const profile = JSON.stringify([
-      Object.keys(entrant.abilities).sort().map((key) => [key, entrant.abilities[key as AbilityKey]]),
-      entrant.role,
-      entrant.effort,
-      entrant.team_id ?? null,
-      state.riders[rider.riderId]?.team_cp_factor ?? null,
-    ]);
-    const peers = sameProfile.get(profile) ?? [];
-    peers.push(rider);
-    sameProfile.set(profile, peers);
-  }
-  for (const peers of sameProfile.values()) {
-    if (peers.length < 2) continue;
-    const conditionLevels = [...new Set(peers.map((r) => entrants[r.riderId].condition))].sort((a, b) => a - b);
-    let lowerScore = -Infinity;
-    for (const condition of conditionLevels) {
-      const level = peers.filter((r) => entrants[r.riderId].condition === condition);
-      for (const rider of level) rider.score = Math.max(rider.score, lowerScore);
-      lowerScore = Math.max(lowerScore, ...level.map((r) => r.score));
+  // Dagsform er individuel, men det NYE direkte led maa ikke vende den gamle
+  // score-orden mellem ellers identiske profiler. Basisscoren med samme W'-
+  // reserve og indsats, men uden det direkte dagsformled, bestemmer ordenen.
+  // Dermed kan en reel reservefordel stadig slaa en hoejere condition, mens
+  // dagsformleddet ikke alene kan goere det omvendte. Frontens kontendere og
+  // hver overlevende gruppe er selvstaendige maalpuljer; en rytter i den ene
+  // maa aldrig loefte scoren hos en rytter i den anden.
+  const allIds = [...new Set([...contenderIds, ...survivingGroups.flatMap((group) => group.rider_ids)])];
+  const baselineScores = new Map(allIds.map((id) => [id, scoreOf(id, 0) ?? -Infinity]));
+  const adjustWithinPool = (riderIds: string[]): ScoredRider[] => {
+    const pool = riderIds
+      .map((riderId): ScoredRider | null => {
+        const score = scoreOf(riderId);
+        return score === null ? null : { riderId, score };
+      })
+      .filter((s): s is ScoredRider => s !== null);
+    const sameProfile = new Map<string, ScoredRider[]>();
+    for (const rider of pool) {
+      const entrant = entrants[rider.riderId];
+      const profile = JSON.stringify([
+        Object.keys(entrant.abilities).sort().map((key) => [key, entrant.abilities[key as AbilityKey]]),
+        entrant.role,
+        entrant.effort,
+        entrant.team_id ?? null,
+        state.riders[rider.riderId]?.team_cp_factor ?? null,
+      ]);
+      const peers = sameProfile.get(profile) ?? [];
+      peers.push(rider);
+      sameProfile.set(profile, peers);
     }
-  }
+    for (const peers of sameProfile.values()) {
+      if (peers.length < 2) continue;
+      const ordered = [...peers].sort((a, b) =>
+        (baselineScores.get(a.riderId) ?? -Infinity) - (baselineScores.get(b.riderId) ?? -Infinity) ||
+        entrants[a.riderId].condition - entrants[b.riderId].condition,
+      );
+      let lowerScore = -Infinity;
+      for (let i = 0; i < ordered.length;) {
+        const baseline = baselineScores.get(ordered[i].riderId);
+        const condition = entrants[ordered[i].riderId].condition;
+        const level: ScoredRider[] = [];
+        while (i < ordered.length && baselineScores.get(ordered[i].riderId) === baseline && entrants[ordered[i].riderId].condition === condition) {
+          level.push(ordered[i++]);
+        }
+        for (const rider of level) rider.score = Math.max(rider.score, lowerScore);
+        lowerScore = Math.max(lowerScore, ...level.map((r) => r.score));
+      }
+    }
+    return pool;
+  };
+  const baseScored = adjustWithinPool(contenderIds);
+  const adjustedScores = new Map([
+    ...baseScored,
+    ...survivingGroups.flatMap((group) => adjustWithinPool(group.rider_ids)),
+  ].map((r) => [r.riderId, r.score]));
+  // Én lexikografisk orden for alle lige scores. En betinget comparator for
+  // kun samme profil ville vaere ikke-transitiv med en tredje profil imellem.
+  const baselineTieBreak = (a: string, b: string): number =>
+    (baselineScores.get(b) ?? -Infinity) - (baselineScores.get(a) ?? -Infinity) ||
+    (entrants[b]?.condition ?? 0) - (entrants[a]?.condition ?? 0) ||
+    a.localeCompare(b);
 
   // M6 (#4615): sprint-toget loefter kaptajnens placerings-score BOUNDED, FOER
   // sorteringen — en leadout skal kunne flytte en placering, aldrig
@@ -506,7 +533,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     (a, b) =>
       grupettoLast(a.riderId, entrants) - grupettoLast(b.riderId, entrants) ||
       b.score - a.score ||
-      a.riderId.localeCompare(b.riderId),
+      baselineTieBreak(a.riderId, b.riderId),
   );
 
   // Kontendere uden entrant-raekke (data-drift opstroems) faar ingen score og
@@ -706,7 +733,10 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const finishOrder: string[] = [
     ...placementGroups.flatMap((g) => g.rider_ids),
     ...orderedSurvivors.flatMap((g) =>
-      [...g.rider_ids].sort((a, b) => (scoreOf(b) ?? -Infinity) - (scoreOf(a) ?? -Infinity) || a.localeCompare(b)),
+      [...g.rider_ids].sort((a, b) =>
+        (adjustedScores.get(b) ?? -Infinity) - (adjustedScores.get(a) ?? -Infinity) ||
+        baselineTieBreak(a, b),
+      ),
     ),
   ];
 
