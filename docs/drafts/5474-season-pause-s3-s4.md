@@ -9,8 +9,8 @@
 **Antagelser, ejeren bekræfter før posting:**
 
 - (a) ✅ Bestyrelsen (Mandatet) er flippet til on 27/9 10:26 (#4859; tørkørsel grøn: 245 hold).
-- (b) Træning pr. sæsondag starter mandag (`training_tick_per_race_day`), og Train today beholder sin
-  bonus (#5281 merges ikke, ejer 27/9: "de 25 % skal stadig være aktive").
+- (b) Træning pr. sæsondag tændes i aften efter skiftet eller mandag (`training_tick_per_race_day`,
+  ejer 27/9). Opslaget nævner ikke Train today (ejer: skriv ikke om det, der bare bliver).
 - (c) Point-flytningen (#5268) koeres ikke i aften og faar ingen dato (ejer 27/9: rating-neutral foerst, ægte baroudeurer beholder aggression).
 
 To beskeder (Discords grænse er 2.000 tegn). Refs #5474 #5506
@@ -42,7 +42,7 @@ Upkeep itself changes. Instead of paying the whole season on day one, you pay Tr
 Your U23 team holds 12 riders and your junior team 10. In season 4 both ride their own races in their own groups: U23 once or twice a week, juniors once. No prize money in youth races yet. On Graduation Day juniors turning 19 move to U23, and U23 riders turning 23 move to your senior team. You choose: move up, sell or release. Do nothing, and the club moves him up if there is room, otherwise he is sold.
 
 **Training**
-From Monday every season day is a race day or a training day for each rider, never both, and training runs in the evening after the day's last race. Train today works as before.
+From Monday every season day is a race day or a training day for each rider, never both, and training runs in the evening after the day's last race.
 
 **Your board**
 The board goes live for everyone. It calls you to the annual meeting when the switch runs, and you sign your mandate for season 4 there.
@@ -74,7 +74,7 @@ Dolmer
 | Free agents, sponsorbase, pensioneret uden løn, ingen ungdomsdrift | `help.json` FAQ; #4153/PR #5553; patch note 7.300; #5741 |
 | Rejse og personale pr. seniorløbsdag, samme sum ved fuld deltagelse | PR #5800, `upkeep_per_race_day` on 27/9 09:24; `UPKEEP_BY_DIVISION` / 140 |
 | Ungdom: 12/10, egne løb, ingen præmiepenge, Graduation Day | patch note 7.297; `YOUTH_RULES.md` §2.3; `raceResultsEngine.js` (ingen præmie i ungdomsløb); `help.json` |
-| Træning pr. sæsondag fra mandag, Train today uændret | Antagelse (b) |
+| Træning pr. sæsondag fra mandag | Antagelse (b) |
 | Bestyrelsen live, årsmøde ved skiftet | `board_mandate_model_enabled` = on 27/9 10:26; #5752 |
 | Parkering: intet slettes, løn betales, ingen sponsor, comeback efter Global Rank | `managerParking.js`; `economyEngine.js` l. 314-323; #5643 |
 | Ny motor ikke tændt | `race_engine_v4` = off |
