@@ -1040,7 +1040,14 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // #5813: afhaengte halegrupper samles i én grupetto (se tailGrupettoMerge).
     const tailMerge = tailGrupettoMerge(baseMerge.groups, segment.kind, isLastSegment);
     const mergedGroups = tailMerge.groups;
-    const merges = [...baseMerge.merges, ...tailMerge.merges];
+    // #4971: en kaede peger altid paa det id gruppen FAKTISK baerer i
+    // snapshottet. Blev en gruppe, som den almindelige merge lige har samlet,
+    // selv opslugt af grupettoen, peger dens merges videre til grupettoen.
+    const tailInto = new Map(tailMerge.merges.map((m) => [m.absorbed_group_id, m.into_group_id]));
+    const merges = [
+      ...baseMerge.merges.map((m) => (tailInto.has(m.into_group_id) ? { ...m, into_group_id: tailInto.get(m.into_group_id)! } : m)),
+      ...tailMerge.merges,
+    ];
     state = { ...state, groups: mergedGroups, km: segment.to_km };
     frontElapsedSeconds += dtFront;
 
