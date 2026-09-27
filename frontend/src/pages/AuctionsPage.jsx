@@ -62,6 +62,8 @@ import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderA
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
+import { useRiderReputation } from "../lib/useRiderReputation.ts";
+import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
 import {
   AmountInput, Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
   PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
@@ -73,6 +75,26 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
+
+function ReputationValue({ rider, enabled, t, inline = false }) {
+  const value = riderReputationValue(rider, enabled);
+  const bandKey = riderReputationBandKey(rider, enabled);
+  if (inline) {
+    if (value == null) return null;
+    return (
+      <span className="text-cz-3 text-xs font-mono" title={t(enabled ? "table.reputationTitle" : "table.popularityTitle")}>
+        {t(enabled ? "card.reputation" : "card.popularity")} {Math.round(value)}
+        {enabled && bandKey ? ` · ${t(bandKey)}` : ""}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span>{value == null ? "—" : Math.round(value)}</span>
+      {enabled && bandKey && <span className="text-cz-3 text-3xs uppercase">{t(bandKey)}</span>}
+    </span>
+  );
+}
 
 // Live bud-feed: hvor længe et bud bliver liggende i feed/ticker-bufferen.
 // Tidligere 30s — udvidet til 15 min (#1510406001751363584) så manageren kan se
@@ -196,7 +218,7 @@ function AuctionLeaderLine({ auction, t, className = "" }) {
   );
 }
 
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, reputationOn, onHide = null }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -358,7 +380,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
       {/* Popularitet — #3956: samme rå riders.popularity-kolonne + plain-tal-
           visning som RidersPage (#3622-mønsteret). */}
       <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs">
-        {Number.isFinite(r?.popularity) ? r.popularity : "—"}
+        <ReputationValue rider={r} enabled={reputationOn} t={t} />
       </td>
 
       {/* Højeste bud — #3099: fører-holdnavnet er tilbage som synlig sub-linje
@@ -560,7 +582,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, reputationOn, onHide = null }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const bestRoleOn = useBestRoleDisplay(); // #5435
   const r = auction.rider;
@@ -668,11 +690,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               {/* #3956: popularitet var slet ikke synlig på mobil (kunne kun findes
                   på markedet) — inline badge her, samme mønster som alderen lige
                   ovenfor, i stedet for endnu et grid-tile. */}
-              {Number.isFinite(r?.popularity) && (
-                <span className="text-cz-3 text-xs font-mono" title={t("auctions:table.popularityTitle")}>
-                  {t("auctions:card.popularity")} {r.popularity}
-                </span>
-              )}
+              <ReputationValue rider={r} enabled={reputationOn} t={t} inline />
             </div>
           </div>
         </div>
@@ -914,6 +932,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AuctionsPage() {
   const { t } = useTranslation(["auctions", "common"]);
+  const reputationOn = useRiderReputation();
   const auctionsTourSteps = useMemo(() => getAuctionsTourSteps(t), [t]);
   // #1162: hoisted hertil (fra AuctionsContent) så rider-listen kan dekoreres med
   // estimat-midtpunkter (_scoutMid) til klient-side potentiale-sortering.
@@ -1169,7 +1188,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, salary, current_production_value, primary_type, secondary_type, contract_length, contract_end_season, popularity, ${ABILITY_SELECT}),
+            prize_earnings_bonus, salary, current_production_value, primary_type, secondary_type, contract_length, contract_end_season, popularity, reputation, ${ABILITY_SELECT}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -1880,6 +1899,7 @@ export default function AuctionsPage() {
           // "Modbud"-labels for auktioner der er lukket (ingen ekstra fetch —
           // genbruger cachen der allerede bygges til fører-navnet, #196/#910).
           teamNamesById={Object.fromEntries(teamNameCacheRef.current)}
+          reputationOn={reputationOn}
         />
       )}
     </div>
@@ -1913,7 +1933,7 @@ function applyAuctionSort(list, auctionSort) {
 // SortableTh-komponenten, så den ikke dupliceres her.
 const TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06em]";
 
-function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
+function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort, reputationOn }) {
   const { t } = useTranslation("auctions");
   const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
@@ -1954,10 +1974,10 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
             tallet (samme rå riders.popularity som RidersPage/#3622). Generisk
             sort-gren i riderColumnSort.js (a[filters.sort]) dækker allerede
             plain numeriske felter, så ingen ny sort-case nødvendig. */}
-        <SortTh sortKey="popularity" sort={activeSort("popularity") ? "popularity" : riderFiltersSort}
-          sortDir={activeSortDir("popularity")} onSort={handleSort}
-          title={t("table.popularityTitle")}
-          className={`px-2 py-3 text-right ${TH_BASE}`}>{t("table.popularity")}</SortTh>
+        <SortTh sortKey={reputationOn ? "reputation" : "popularity"} sort={activeSort(reputationOn ? "reputation" : "popularity") ? (reputationOn ? "reputation" : "popularity") : riderFiltersSort}
+          sortDir={activeSortDir(reputationOn ? "reputation" : "popularity")} onSort={handleSort}
+          title={t(reputationOn ? "table.reputationTitle" : "table.popularityTitle")}
+          className={`px-2 py-3 text-right ${TH_BASE}`}>{t(reputationOn ? "table.reputation" : "table.popularity")}</SortTh>
         <SortTh sortKey="current_price"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
           className={`px-3 py-3 text-right whitespace-nowrap ${TH_BASE}`}>
@@ -2007,7 +2027,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
 // ingen ny sort-logik — og samme Select+retningsknap-mønster som RidersPage's
 // MobileSortControl (#9). Sluttidspunkt (calculated_end) er første mulighed
 // efter navn, jf. issue-rapportens konkrete ønske ("sort for time").
-function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
+function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, riderFiltersSort, auctionSort, reputationOn }) {
   const { t } = useTranslation("auctions");
   const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
@@ -2021,7 +2041,7 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
     { key: "birthdate", label: t("table.age") },
     { key: "salary", label: t("table.salary") },
     { key: "value", label: t("table.value") },
-    { key: "popularity", label: t("table.popularity") },
+    { key: reputationOn ? "reputation" : "popularity", label: t(reputationOn ? "table.reputation" : "table.popularity") },
     { key: "_ovr", label: t("table.ovr") },
     { key: "_scoutMid", label: t("table.potential") },
     ...visibleStatsArr.map((key) => ({ key, label: STAT_LABEL_BY_KEY[key] })),
@@ -2083,6 +2103,7 @@ function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
         handleSort={sharedProps.handleSort}
         riderFiltersSort={sharedProps.riderFiltersSort}
         auctionSort={sharedProps.auctionSort}
+        reputationOn={sharedProps.reputationOn}
       />
       <div className="md:hidden flex flex-col gap-3">
         {sorted.map((a, i) => (
@@ -2106,6 +2127,7 @@ function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
             visibleStats={sharedProps.visibleStats}
             scouting={sharedProps.scouting}
             seasonYear={sharedProps.seasonYear}
+            reputationOn={sharedProps.reputationOn}
             onHide={onHide}
           />
         ))}
@@ -2120,6 +2142,7 @@ function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
               handleSort={sharedProps.handleSort}
               riderFiltersSort={sharedProps.riderFiltersSort}
               auctionSort={sharedProps.auctionSort}
+              reputationOn={sharedProps.reputationOn}
             />
             <tbody>
               {sorted.map((a, i) => (
@@ -2143,6 +2166,7 @@ function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
                   visibleStats={sharedProps.visibleStats}
                   scouting={sharedProps.scouting}
                   seasonYear={sharedProps.seasonYear}
+                  reputationOn={sharedProps.reputationOn}
                   onHide={onHide}
                 />
               ))}

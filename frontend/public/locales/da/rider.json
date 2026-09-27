@@ -193,6 +193,7 @@
       "potentialScouted": "Scoutet prognose",
       "valueEyebrow": "Markedsværdi",
       "popularityEyebrow": "Popularitet",
+      "reputationEyebrow": "Omdømme",
       "salary": "Løn",
       "contract": "Kontrakt",
       "contractSeason": "Sæson {season}",
@@ -203,6 +204,34 @@
       "ratingTrendSteady": "Stabil denne sæson",
       "ratingTrendDeclining": "Faldende denne sæson",
       "ratingTrendTitle": "Rating {value} siden {date}"
+    },
+    "reputation": {
+      "whyTitle": "Hvorfor omdømmet flyttede sig",
+      "noEvents": "Ingen omdømme-events endnu.",
+      "unknownRace": "Et løb",
+      "band": {
+        "unknown": "Ukendt",
+        "known": "Kendt",
+        "profile": "Profil",
+        "star": "Stjerne",
+        "legend": "Legende"
+      },
+      "events": {
+        "one_day_win": "Endagssejr",
+        "one_day_podium": "Endagspodie",
+        "one_day_top10": "Endags top 10",
+        "gc_win": "Samlet sejr",
+        "gc_podium": "Samlet podie",
+        "gc_top10": "Samlet top 10",
+        "stage_win": "Etapesejr",
+        "stage_podium": "Etapepodie",
+        "stage_top10": "Etape top 10",
+        "jersey_points_win": "Pointtrøje",
+        "jersey_mountain_win": "Bjergtrøje",
+        "jersey_young_win": "Ungdomstrøje",
+        "leader_day": "Førertrøje",
+        "fallback": "Omdømme-event"
+      }
     },
     "levelCorrectionReceipt": {
       "developmentLine": "Udvikling: ingen ændring fra træning denne uge.",

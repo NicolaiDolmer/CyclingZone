@@ -111,6 +111,8 @@
     "potential": "Potential",
     "popularity": "Popularity",
     "popularityTitle": "Fan popularity (0-100). Used by the board's 5-year plan star-rider goal.",
+    "reputation": "Reputation",
+    "reputationTitle": "Earned race reputation. This is the number the board reads for profile riders.",
     "seller": "Seller",
     "bid": "Bid",
     "ovr": "OVR",
@@ -125,9 +127,19 @@
     "seller": "Seller",
     "potential": "Potential",
     "popularity": "Pop.",
+    "reputation": "Rep.",
     "ageYears": "{age} yrs",
     "estValue": "Est. value",
     "ovrTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role."
+  },
+  "reputation": {
+    "band": {
+      "unknown": "Unknown",
+      "known": "Known",
+      "profile": "Profile",
+      "star": "Star",
+      "legend": "Legend"
+    }
   },
   "leader": {
     "line": "Leading: {name}",

@@ -15,6 +15,7 @@ import { apiFetch } from "./apiFetch.ts";
 export interface DisplayFlags {
   rider_best_role_display?: boolean;
   youth_squad_pages?: boolean;
+  rider_reputation_enabled?: boolean;
 }
 
 const API: string | undefined = import.meta.env.VITE_API_URL;

@@ -38,6 +38,8 @@ import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
 import { cycleSortState } from "../lib/riderSort";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
+import { useRiderReputation } from "../lib/useRiderReputation.ts";
+import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
 import {
   ExchangeIcon,
   ArrowUpIcon,
@@ -65,6 +67,17 @@ const API = import.meta.env.VITE_API_URL;
 // #8 — filtre persisteres i URL (primær) + sessionStorage (fallback) så de
 // overlever navigation til rytter-detalje og tilbage.
 const FILTER_DEFAULTS = { ...DEFAULT_FILTERS, page: 1 };
+
+function ReputationValue({ rider, enabled, t }) {
+  const value = riderReputationValue(rider, enabled);
+  const bandKey = riderReputationBandKey(rider, enabled);
+  return (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span className="text-cz-2 font-mono text-xs">{value == null ? "—" : Math.round(value)}</span>
+      {enabled && bandKey && <span className="text-cz-3 text-3xs uppercase">{t(bandKey)}</span>}
+    </span>
+  );
+}
 
 // Onboarding v2 Slice 1b — tour-trin på /riders (aktiveres fra Dashboard "Vis mig hvordan").
 // Bygges fra t() ved render-tid, så sproget følger den aktive locale (Refs #487).
@@ -192,6 +205,7 @@ export default function RidersPage() {
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
+  const reputationOn = useRiderReputation();
   const typeColumnLabel = useTypeColumnLabel(t("table.type")); // #5435
   const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
@@ -345,7 +359,7 @@ export default function RidersPage() {
     // (boardIdentity.calculateRiderStarScore) læser. Klient-grant findes allerede
     // (2026-06-10-riders-potentiale-column-privilege.sql grantede alt undtagen
     // potentiale), så ingen ny migration er nødvendig.
-    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, popularity, team:team_id(id, name), pending_team:pending_team_id(id, name)";
+    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, popularity, reputation, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
       const [{ rows, count }, { data: auctionData }] = await Promise.all([
         fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect, seasonYear }),
@@ -633,16 +647,12 @@ export default function RidersPage() {
     // riders.popularity-kolonne, samme mønster som value/salary (applyRiderColumnSort).
     {
       key: "popularity",
-      header: <span title={t("table.popularityTitle")}>{t("table.popularity")}</span>,
-      mobileLabel: t("table.popularity"),
-      sortKey: "popularity",
+      header: <span title={t(reputationOn ? "table.reputationTitle" : "table.popularityTitle")}>{t(reputationOn ? "table.reputationLabel" : "table.popularity")}</span>,
+      mobileLabel: t(reputationOn ? "table.reputationLabel" : "table.popularity"),
+      sortKey: reputationOn ? "reputation" : "popularity",
       numeric: true,
       compact: true,
-      render: (r) => (
-        <span className="text-cz-2 font-mono text-xs">
-          {Number.isFinite(r.popularity) ? r.popularity : "—"}
-        </span>
-      ),
+      render: (r) => <ReputationValue rider={r} enabled={reputationOn} t={t} />,
     },
     ...visibleStatCols.map(({ key, label }) => ({
       key,

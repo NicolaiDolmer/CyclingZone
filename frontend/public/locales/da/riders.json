@@ -21,6 +21,17 @@
     "salary": "Løn",
     "popularity": "Popularitet",
     "popularityTitle": "Fan-popularitet (0-100). Bruges af bestyrelsens 5-års-plan-mål om stjerneryttere.",
+    "reputationLabel": "Omdømme",
+    "reputationTitle": "Optjent løbsomdømme. Det er tallet bestyrelsen læser for profilryttere.",
+    "reputation": {
+      "band": {
+        "unknown": "Ukendt",
+        "known": "Kendt",
+        "profile": "Profil",
+        "star": "Stjerne",
+        "legend": "Legende"
+      }
+    },
     "compareTooltip": "Vælg til sammenligning",
     "teamFree": "Fri",
     "pendingTransfer": "Holdskifte på vej: skifter til {team}, når hans igangværende etapeløb er kørt færdigt"

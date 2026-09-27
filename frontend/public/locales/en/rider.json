@@ -193,6 +193,7 @@
       "potentialScouted": "Scouted projection",
       "valueEyebrow": "Market value",
       "popularityEyebrow": "Popularity",
+      "reputationEyebrow": "Reputation",
       "salary": "Salary",
       "contract": "Contract",
       "contractSeason": "Season {season}",
@@ -203,6 +204,34 @@
       "ratingTrendSteady": "Steady this season",
       "ratingTrendDeclining": "Declining this season",
       "ratingTrendTitle": "Rating {value} since {date}"
+    },
+    "reputation": {
+      "whyTitle": "Why his reputation moved",
+      "noEvents": "No reputation events yet.",
+      "unknownRace": "A race",
+      "band": {
+        "unknown": "Unknown",
+        "known": "Known",
+        "profile": "Profile",
+        "star": "Star",
+        "legend": "Legend"
+      },
+      "events": {
+        "one_day_win": "One-day win",
+        "one_day_podium": "One-day podium",
+        "one_day_top10": "One-day top 10",
+        "gc_win": "GC win",
+        "gc_podium": "GC podium",
+        "gc_top10": "GC top 10",
+        "stage_win": "Stage win",
+        "stage_podium": "Stage podium",
+        "stage_top10": "Stage top 10",
+        "jersey_points_win": "Points jersey",
+        "jersey_mountain_win": "Mountain jersey",
+        "jersey_young_win": "Young rider jersey",
+        "leader_day": "Leader's jersey",
+        "fallback": "Reputation event"
+      }
     },
     "levelCorrectionReceipt": {
       "developmentLine": "Development: no change from training this week.",

@@ -61,6 +61,7 @@ import RiderHistoryTab from "../components/rider/profile/RiderHistoryTab.jsx";
 import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
 import RiderPalmaresTab from "../components/rider/profile/RiderPalmaresTab.jsx";
 import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
+import { useRiderReputation } from "../lib/useRiderReputation.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -861,6 +862,7 @@ export default function RiderStatsPage() {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
+  const reputationOn = useRiderReputation();
 
   const scouting = useScouting();
   // #3071: sæson-referenceår (samme mønster som resten af appens sæson-hentning)
@@ -886,6 +888,7 @@ export default function RiderStatsPage() {
   const [announcedRetirement, setAnnouncedRetirement] = useState(false);
   const [visits, setVisits]                 = useState(null);
   const [seasonRows, setSeasonRows]         = useState([]);
+  const [reputationEvents, setReputationEvents] = useState([]);
   // Fejl-flag for resultat-hentningen (#1338-princippet): en query-fejl må ikke
   // ligne "ingen resultater" eller stille trunkerede totaler.
   const [seasonRowsFailed, setSeasonRowsFailed] = useState(false);
@@ -1372,7 +1375,14 @@ export default function RiderStatsPage() {
     const fetchId = id;
     riderFetchIdRef.current = fetchId;
     const safe = async (q) => { try { return await q; } catch { return { data: null }; } };
-    const [riderRes, seasonRowsAll, physRes, abilRes, progressRes] = await Promise.all([
+    const reputationEventsQuery = reputationOn
+      ? safe(supabase.from("rider_reputation_events")
+        .select("event_kind, race_class, form_points, floor_credit, occurred_at, race:race_id(name)")
+        .eq("rider_id", id)
+        .order("occurred_at", { ascending: false })
+        .limit(5))
+      : Promise.resolve({ data: [] });
+    const [riderRes, seasonRowsAll, physRes, abilRes, progressRes, reputationEventsRes] = await Promise.all([
       // #1162: eksplicit kolonneliste — `select=*` på riders afvises efter
       // column-privilege-migrationen (potentiale er server-skjult; klienter får
       // kun det maskerede estimat via POST /api/scouting/estimates).
@@ -1385,7 +1395,7 @@ export default function RiderStatsPage() {
       // potentiale), så ingen ny migration er nødvendig.
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
         market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
-        nationality_code, primary_type, secondary_type, team_id, acquired_at, popularity,
+        nationality_code, primary_type, secondary_type, team_id, acquired_at, popularity, reputation,
         team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
       // ALLE rækker (pagineret) til Resultater-fanen — både PCS-tabellen og
@@ -1404,6 +1414,7 @@ export default function RiderStatsPage() {
       // er kørt) aldrig brækker hoved-evne-kaldet. Progress vises for ALLE ryttere.
       safe(supabase.from("rider_derived_abilities")
         .select("ability_progress").eq("rider_id", id).maybeSingle()),
+      reputationEventsQuery,
     ]);
     if (riderFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
     setRider(riderRes.data
@@ -1418,6 +1429,7 @@ export default function RiderStatsPage() {
       : riderRes.data);
     setSeasonRows(seasonRowsAll.rows);
     setSeasonRowsFailed(seasonRowsAll.failed);
+    setReputationEvents(reputationOn ? (reputationEventsRes.data || []) : []);
 
     await Promise.all([loadActiveAuctionFull(riderRes.data), loadTransferListing()]);
     if (riderFetchIdRef.current !== fetchId) return;
@@ -1430,7 +1442,7 @@ export default function RiderStatsPage() {
       const h = await authHeaders();
       if (h) apiFetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
-  }, [id, loadActiveAuctionFull, loadTransferListing]);
+  }, [id, loadActiveAuctionFull, loadTransferListing, reputationOn]);
 
   const loadDdStatus = useCallback(async () => {
     try {
@@ -1988,6 +2000,7 @@ export default function RiderStatsPage() {
             onWatchlist={onWatchlist}
             onToggleWatchlist={toggleWatchlist}
             onCompare={() => navigate(`/compare?ids=${rider.id}`)}
+            reputationEvents={reputationEvents}
             actions={
               /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
                  action row) — udvidede formularer folder ud i fuld bredde under

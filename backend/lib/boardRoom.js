@@ -134,6 +134,7 @@ import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } fr
 // (/board/status, routes/api.js) — genbrugt uændret, ikke kopieret. Se
 // derivePassiveModifierForRoom/deriveBonusOfferProgressForRoom nedenfor.
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "./boardTransparency.js";
+import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
 import { captureException } from "./sentry.js";
 
 const MINUTES_LIMIT = 10;
@@ -512,6 +513,7 @@ export async function buildBoardRoomPayload({
     loansRes,
     eventsRes,
     bonusOfferRes,
+    reputationStage,
   ] = await Promise.all([
     supabase.from("board_relations").select("*").eq("team_id", teamId).maybeSingle(),
     supabase.from("team_board_members")
@@ -562,6 +564,7 @@ export async function buildBoardRoomPayload({
       .in("status", ["active", "accepted"])
       .order("created_at", { ascending: false })
       .limit(BONUS_OFFER_FETCH_LIMIT),
+    readReputationStage(supabase),
   ]);
 
   for (const [label, res] of [
@@ -601,6 +604,7 @@ export async function buildBoardRoomPayload({
   const dnaKey = teamRes.data?.team_dna_key ?? null;
   const currentSeasonNumber = seasonRes?.data?.number ?? null;
   const currentSeasonId = seasonRes?.data?.id ?? null;
+  const reputationEnabled = isReputationReadEnabled(reputationStage);
   const events = eventsRes.data ?? [];
   const sinceSeason = deriveFoundingSeasonNumber({
     teamCreatedAt: teamRes.data?.created_at ?? null,
@@ -846,7 +850,7 @@ export async function buildBoardRoomPayload({
       wageBillPerSeason: sumRiderSalaries(riders),
       currentSponsorIncome: teamRes.data?.sponsor_income ?? null,
       goalContext,
-      extra: { assignedMembers },
+      extra: { assignedMembers, reputationEnabled },
     });
 
     // #5618/#5751 · En AFSLUTTET legacy 1yr-forhandling (board_profiles.current_goals)

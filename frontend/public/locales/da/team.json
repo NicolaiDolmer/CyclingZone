@@ -75,10 +75,21 @@
       "age": "Alder",
       "popularity": "Popularitet",
       "popularityTitle": "Fan-popularitet (0-100). Bruges af bestyrelsens 5-års-plan-mål om stjerneryttere.",
+      "reputationLabel": "Omdømme",
+      "reputationTitle": "Optjent løbsomdømme. Det er tallet bestyrelsen læser for profilryttere.",
       "type": "Type",
       "contract": "Kontrakt",
       "contractUntil": "Til sæson {season}",
       "action": "Handling"
+    },
+    "reputation": {
+      "band": {
+        "unknown": "Ukendt",
+        "known": "Kendt",
+        "profile": "Profil",
+        "star": "Stjerne",
+        "legend": "Legende"
+      }
     },
     "mode": {
       "ariaLabel": "Tabellens kolonner",

@@ -15,6 +15,7 @@
 // kontakten, så én sideload stadig kun giver ét kald mod /api/display-flags.
 import { Fragment, useEffect } from "react";
 import { loadDisplayFlags } from "../../lib/displayFlags.ts";
+import { setRiderReputation } from "../../lib/riderReputation.ts";
 import { setBestRoleDisplay } from "../../lib/riderRatingMode.js";
 import { useBestRoleDisplay } from "../../lib/useBestRoleDisplay.js";
 
@@ -28,6 +29,7 @@ export default function RiderRatingModeGate({ children }) {
       // stedet for at blinke tilbage til den gamle visning.
       if (cancelled || !flags) return;
       setBestRoleDisplay(flags.rider_best_role_display === true);
+      setRiderReputation(flags.rider_reputation_enabled === true);
     });
     return () => { cancelled = true; };
   }, []);

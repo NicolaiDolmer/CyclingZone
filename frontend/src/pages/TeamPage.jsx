@@ -38,9 +38,22 @@ import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractAc
 import { currentSquadOf, hasMoveTarget } from "../lib/squadTarget.ts"; // #5748
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
+import { useRiderReputation } from "../lib/useRiderReputation.ts";
+import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+
+function ReputationValue({ rider, enabled, t }) {
+  const value = riderReputationValue(rider, enabled);
+  const bandKey = riderReputationBandKey(rider, enabled);
+  return (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span className="text-cz-2 font-mono text-xs">{value == null ? "—" : Math.round(value)}</span>
+      {enabled && bandKey && <span className="text-cz-3 text-3xs uppercase">{t(`squad.${bandKey}`)}</span>}
+    </span>
+  );
+}
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
@@ -574,7 +587,7 @@ function OwnTransferListingBadge({ listing }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, squadFilter }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, squadFilter, reputationOn }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -788,16 +801,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     // halvdelen af issuet: uden det kan tallet slet ikke findes på mobil.
     {
       key: "popularity",
-      header: <span title={t("squad.headers.popularityTitle")}>{t("squad.headers.popularity")}</span>,
-      mobileLabel: t("squad.headers.popularity"),
-      sortKey: "popularity",
+      header: <span title={t(reputationOn ? "squad.headers.reputationTitle" : "squad.headers.popularityTitle")}>{t(reputationOn ? "squad.headers.reputationLabel" : "squad.headers.popularity")}</span>,
+      mobileLabel: t(reputationOn ? "squad.headers.reputationLabel" : "squad.headers.popularity"),
+      sortKey: reputationOn ? "reputation" : "popularity",
       numeric: true,
       compact: true,
-      render: (r) => (
-        <span className="text-cz-2 font-mono text-xs">
-          {Number.isFinite(r.popularity) ? r.popularity : "—"}
-        </span>
-      ),
+      render: (r) => <ReputationValue rider={r} enabled={reputationOn} t={t} />,
     },
     // #1482: Status — alder + ind-/udgående som skanbare badges.
     // #1531: skade-badge når rytteren er skadet (injured_until i fremtiden).
@@ -987,6 +996,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
 export function TeamPage() {
   const { t } = useTranslation("team");
   const scouting = useScouting();
+  const reputationOn = useRiderReputation();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   // #3097: kontrakt-udløb sammenlignes mod sæson-NUMMERET (contract_end_season
@@ -1138,12 +1148,12 @@ export function TeamPage() {
     // tæller direkte på kolonnen (samme SSOT som U23-/juniorsiderne, #5688).
     const [ridersRes, pendingRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, reputation, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
         .eq("is_retired", false)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, squad, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, reputation, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .eq("is_retired", false)
         .order("market_value", { ascending: false }),
@@ -1276,7 +1286,7 @@ export function TeamPage() {
 
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
-          squadFilter={squadFilter} />
+          squadFilter={squadFilter} reputationOn={reputationOn} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />
