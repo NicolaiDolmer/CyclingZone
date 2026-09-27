@@ -142,7 +142,8 @@ export default function TrainingMobileToday({
   changeLabel?: string;
   // #5620/#5485: markerings-tilstanden til hurtig hvile, sendt uaendret videre
   // til TrainingMobileRoster. `bulkSlot` er vaerktoejslinjen (TrainingMobileBulkBar)
-  // og staar lige over tabellen, under sorteringen.
+  // og staar lige over tabellen. Sorteringen (`sortSlot`) staar i tabellens
+  // kolonne-header (#5805).
   picked?: ReadonlySet<string> | null;
   onTogglePick?: (riderId: string) => void;
   bulkSlot?: React.ReactNode;
@@ -247,6 +248,9 @@ export default function TrainingMobileToday({
       ? (riderId: string) => mobileScoreCell(scoreFor(riderId), { settled: scoreSettled })
       : null;
   const selectedScore = selected && scoreFor ? scoreFor(selected.id) : null;
+  // #5805: sorteringen i headeren kun naar navnekolonnen har bredden (een
+  // loebsdags-kolonne, som i prod i dag). Se kommentaren ved tabellen.
+  const sortInHeader = columns.length === 1;
 
   return (
     <div className="space-y-3" data-testid="training-mobile-today">
@@ -256,11 +260,19 @@ export default function TrainingMobileToday({
 
       {yesterdaySlot}
 
-      {sortSlot}
+      {/* #5805 (ejer 26/9): sorteringen står i tabellens kolonne-header
+          (rytter-kolonnen), øverst ved tabellen men uden en ekstra række over
+          den, så mindst 8 ryttere står på første skærm (#5485). Det kræver
+          navnekolonnens bredde: med flere løbsdags-kolonner (op til 5, når
+          training_tick_per_race_day tændes) er der ikke plads til vælger +
+          44 px retnings-knap, og så står sorteringen som egen række over
+          tabellen i stedet for at blive klippet af tabellens ramme. */}
+      {!sortInHeader && sortSlot}
 
       {bulkSlot}
 
       <TrainingMobileRoster
+        riderHeader={sortInHeader ? sortSlot : null}
         picked={picked}
         onTogglePick={onTogglePick}
         riders={rosterRiders}

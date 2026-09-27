@@ -27,6 +27,7 @@ import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import ScoutablePotentiale from "../rider/ScoutablePotentiale.jsx";
 import { useTypeColumnLabel } from "../../lib/useBestRoleDisplay.js";
 import { useTableSort } from "../../lib/useTableSort.js";
+import { riderNameSortKey } from "../../lib/riderColumnSort.js";
 import { riderOverallRating } from "../../lib/riderRating.js";
 import { statPlateStyle } from "../../lib/statColor.js";
 import { getRiderMarketValue } from "../../lib/marketValues.js";
@@ -55,7 +56,7 @@ interface Row extends YouthSquadRider {
 const ABILITY_KEYS = (ABILITY_STATS as Array<{ key: string }>).map((s) => s.key);
 const ACCESSORS: Record<string, (r: Row) => unknown> = {
   nationality_code: (r) => r.nationality_code,
-  name: (r) => `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
+  name: (r) => riderNameSortKey(r), // #5805: efternavn + fornavn som My Team
   _ovr: (r) => r._ovr,
   primary_type: (r) => r.primary_type,
   age: (r) => r._age,

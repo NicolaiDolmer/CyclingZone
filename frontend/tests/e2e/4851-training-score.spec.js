@@ -501,6 +501,10 @@ async function measureRoster(page) {
     for (const cell of roster.querySelectorAll("th, td")) {
       const cellRect = cell.getBoundingClientRect();
       for (const el of [cell, ...cell.querySelectorAll("*")]) {
+        // #5805: sorteringens <select> staar i rytter-kolonnens header. Dens
+        // <option>-elementer tegnes af systemets vaelger, ikke i cellen, og
+        // Chromium giver dem en tom rect i (0, 0). Selve <select>'en maales.
+        if (el.tagName === "OPTION") continue;
         // (a) teksten er bredere end sin egen kasse. Det er leddet der fanger
         //     et ubrydeligt ord: rect'en flytter sig ikke, men scrollWidth gør.
         if (el.scrollWidth > el.clientWidth + 1) {

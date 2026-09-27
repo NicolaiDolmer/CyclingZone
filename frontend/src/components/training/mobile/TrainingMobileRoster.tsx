@@ -89,6 +89,7 @@ export default function TrainingMobileRoster({
   showHeader = true,
   picked = null,
   onTogglePick,
+  riderHeader = null,
 }: {
   riders: RosterRider[];
   columns: RaceDayColumn[];
@@ -116,6 +117,10 @@ export default function TrainingMobileRoster({
   // vaerktoejslinje. `null` = alt som foer.
   picked?: ReadonlySet<string> | null;
   onTogglePick?: (riderId: string) => void;
+  // #5805 (ejer 26/9): sorteringen i rytter-kolonnens header i stedet for
+  // "Rider". Den er oeverst ved tabellen uden at tilfoeje en raekke over den
+  // (mindst 8 ryttere paa foerste skaerm, #5485). `null` = "Rider" som foer.
+  riderHeader?: React.ReactNode;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
@@ -186,8 +191,12 @@ export default function TrainingMobileRoster({
         </colgroup>
         <thead>
           <tr>
-            <th className="border-b border-e border-cz-border px-2.5 py-1.5 text-start font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
-              {t("colRider")}
+            <th
+              className={`border-b border-e border-cz-border px-2.5 text-start font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3 ${
+                riderHeader ? "py-0 font-normal normal-case tracking-normal" : "py-1.5"
+              }`}
+            >
+              {riderHeader ?? t("colRider")}
             </th>
             {columns.map((column) => (
               <th
@@ -220,7 +229,12 @@ export default function TrainingMobileRoster({
                 className={isSelected ? "bg-cz-subtle" : isPicked ? "bg-cz-accent/5" : ""}
                 data-picked={pickMode ? String(isPicked) : undefined}
               >
-                <td className="border-b border-e border-cz-border align-middle last:border-b-0">
+                {/* `p-0` (#5805): uden den gav browserens standard-cellepolstring
+                    (1 px top + bund) raekken 47 px i stedet for knappens 44 + kant.
+                    Over 8 raekker betaler de 2 px for den hoejere header med
+                    sorteringen, saa mindst 8 ryttere stadig staar paa foerste
+                    skaerm (#5485). */}
+                <td className="border-b border-e border-cz-border p-0 align-middle last:border-b-0">
                   <button
                     type="button"
                     onClick={() => activate(rider.id)}
