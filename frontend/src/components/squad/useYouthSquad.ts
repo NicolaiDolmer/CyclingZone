@@ -33,6 +33,8 @@ export interface YouthSquadRider {
   salary: number | null;
   contract_end_season: number | null;
   market_value: number | null;
+  popularity: number | null;
+  reputation: number | null;
   [key: string]: unknown;
 }
 
