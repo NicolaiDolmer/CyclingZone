@@ -171,6 +171,7 @@ const finaleExtra = {
   placementGapJitterMaxSeconds: 0.3, // uniform jitter [0, max) paa tier-gap'et — paavirker KUN stoerrelsen, aldrig raekkefolgen (rank-guard-moenstret, designdoc §4)
   placementFullResolutionCount: 20, // kun de N bedst placerede kontendere faar individuelle tiers; resten bunches i én samlet haleklump-gruppe
   dayformScoreWeight: 5.0, // dagsformen er allerede dagens performance-signal; finalen laeser den for at undgaa at evne-favoritten bliver naesten deterministisk
+  dayformScoreClamp: 0.1, // haardt loft paa finale-scorebidragets dagsform-input; Gaussian-halen maa aldrig blive ubundet placeringsstoej
 
   // ── Massefinale: feltets antals-fordel i jagten (#4914) ────────────────────
   // MAALT 7/9 mod den pinnede 7/9-population (§7b): 24 af 32 flade etaper

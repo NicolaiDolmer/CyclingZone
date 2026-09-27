@@ -860,6 +860,20 @@ test("computeFinaleAbilityScore: monotont ikke-faldende i W'-reserve", () => {
   );
 });
 
+test("computeFinaleAbilityScore: dagsform-bidraget clampes foer vaegtning", () => {
+  const ab = abilities();
+  const neutral = computeFinaleAbilityScore(ab, 0.5, PUNCH_DEMAND, 0.15, "normal", 0, 5, 0.1);
+  const high = computeFinaleAbilityScore(ab, 0.5, PUNCH_DEMAND, 0.15, "normal", 99, 5, 0.1);
+  const atHighClamp = computeFinaleAbilityScore(ab, 0.5, PUNCH_DEMAND, 0.15, "normal", 0.1, 5, 0.1);
+  const low = computeFinaleAbilityScore(ab, 0.5, PUNCH_DEMAND, 0.15, "normal", -99, 5, 0.1);
+  const atLowClamp = computeFinaleAbilityScore(ab, 0.5, PUNCH_DEMAND, 0.15, "normal", -0.1, 5, 0.1);
+
+  assert.equal(high, atHighClamp);
+  assert.equal(low, atLowClamp);
+  assert.ok(high > neutral);
+  assert.ok(low < neutral);
+});
+
 // ── #5580 (M1 punkt 2): indsatsens led i placerings-opgoeret ──────────────────
 
 const EFFORT_LADDER: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];

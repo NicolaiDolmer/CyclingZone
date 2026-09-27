@@ -161,6 +161,7 @@ export function computeFinaleAbilityScore(
   effort: EffortLevel | undefined = undefined,
   dayform = 0,
   dayformScoreWeight = 0,
+  dayformScoreClamp = 0.1,
 ): number {
   let sum = 0;
   for (const key of Object.keys(demandVector) as AbilityKey[]) {
@@ -168,7 +169,8 @@ export function computeFinaleAbilityScore(
     sum += weight * normAbility(abilities[key]);
   }
   const reserve = clamp(wprimeReserveFraction, 0, 1);
-  const form = Number.isFinite(dayform) ? dayform : 0;
+  const formBound = Number.isFinite(dayformScoreClamp) ? Math.max(0, dayformScoreClamp) : 0;
+  const form = Number.isFinite(dayform) ? clamp(dayform, -formBound, formBound) : 0;
   const formWeight = Number.isFinite(dayformScoreWeight) ? Math.max(0, dayformScoreWeight) : 0;
   return sum + wprimeReserveWeight * reserve + formWeight * form + effortFinaleTerm(effort, reserve);
 }
@@ -446,6 +448,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       entrant.effort,
       state.riders[riderId]?.dayform ?? 0,
       extra.dayformScoreWeight,
+      extra.dayformScoreClamp,
     );
   };
 
