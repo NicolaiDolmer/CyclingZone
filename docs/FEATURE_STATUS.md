@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-77 poster: live 53 · beta 3 · dormant 5 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+79 poster: live 55 · beta 3 · dormant 5 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -41,11 +41,10 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## squad
 
-**live:** Contracts, renewal and expiry (`contracts`) 2026-09-06 · Rider comparison and watchlist (`rider-compare-and-watchlist`) 2026-09-06 · Squad management (`squad-management`) 2026-09-06 · U23 team and Junior team pages (`youth-squad-pages`) 2026-09-26
+**live:** Contracts, renewal and expiry (`contracts`) 2026-09-06 · Rider comparison and watchlist (`rider-compare-and-watchlist`) 2026-09-06 · Rating shows best role now (`rider-rating-best-role-display`) 2026-09-27 · Squad management (`squad-management`) 2026-09-06 · U23 team and Junior team pages (`youth-squad-pages`) 2026-09-26
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Rating shows best role now (`rider-rating-best-role-display`) | beta | `rider_best_role_display` | [ryttertype-visning-og-punch-loft-design](superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md) | #5435 | 2026-09-24 | Beta 24/9 kl. 19:05 (ejer: test med beta-testerne foerst); til alle sammen med vaerdiskiftet #5443/#5497 (ejer-gated). |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only (#5268), resten senere. |
 | New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated. |
 
@@ -55,6 +54,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| Training programs per race day (`training-programs`) | beta | `training_programs` | [TRAINING_RULES](TRAINING_RULES.md) | #4629 | 2026-09-27 | PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil. |
 | Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4846 | 2026-09-15 | A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
@@ -79,7 +79,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## economy
 
-**live:** Youth squad upkeep switch at season change (`academy-drift-kill-switch`) 2026-09-25 · Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06
+**live:** Youth squad upkeep switch at season change (`academy-drift-kill-switch`) 2026-09-25 · Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
 
 ## club
 
