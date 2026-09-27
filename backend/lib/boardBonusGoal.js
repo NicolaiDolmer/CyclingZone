@@ -33,6 +33,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { countTeamStarRiders } from "./boardIdentity.js";
 import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 
 function ensureSupabase(supabase) {
   if (!supabase) throw new Error("supabase client is required");
@@ -78,6 +79,7 @@ export async function computeBonusGoalBaseline({
   teamId,
   boardId,
   extraGoal,
+  reputationEnabled = false,
   loadGoalContext = loadGoalContextForBoard,
 } = {}) {
   ensureSupabase(supabase);
@@ -88,7 +90,7 @@ export async function computeBonusGoalBaseline({
       .select(BOARD_IDENTITY_RIDER_SELECT)
       .eq("team_id", teamId);
     if (error) throw new Error(`riders (bonus-offer baseline): ${error.message}`);
-    return countTeamStarRiders(currentRiders || []);
+    return countTeamStarRiders(currentRiders || [], { reputationEnabled });
   }
 
   if (extraGoal?.type === "monument_podium") {
@@ -221,12 +223,14 @@ export async function applyAcceptedBonusGoal({
   // Ét opslag: samme række bærer BÅDE skrivemålet for den gamle sti og det
   // board_id monument_podium-baselinen måles imod (uændret fra api.js).
   const oneYrBoard = await loadCompletedOneYearBoard({ supabase, teamId });
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
 
   const baseline = await computeBonusGoalBaseline({
     supabase,
     teamId,
     boardId: oneYrBoard?.id ?? null,
     extraGoal,
+    reputationEnabled,
     loadGoalContext,
   });
 

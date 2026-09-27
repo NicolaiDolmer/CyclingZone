@@ -608,10 +608,11 @@ export function buildBoardProposal({
   identityBasis = null,
   dnaKey = null,
   tradeoffPayload = null,
+  reputationEnabled = false,
 } = {}) {
-  const baseGoals = generateBoardGoals({ focus, planType, team, riders, standing });
+  const baseGoals = generateBoardGoals({ focus, planType, team, riders, standing, reputationEnabled });
   const personality = deriveBoardPersonality({ focus, planType });
-  const identityProfile = deriveTeamIdentityProfile({ team, riders, standing });
+  const identityProfile = deriveTeamIdentityProfile({ team, riders, standing, reputationEnabled });
 
   // S-02f · Klub-DNA-tradition-mål injiceres som 6. (bonus) mål for 5yr-forslag.
   // Bevarer focus-baserede mål uændret — DNA-mål er bonus, ikke erstatning.

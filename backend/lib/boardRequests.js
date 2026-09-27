@@ -220,6 +220,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       team,
       riders: riderPool,
       standing,
+      reputationEnabled: context.reputationEnabled === true,
     });
     const youthIdentityGoal = youthTemplateGoals.find((goal) => goal.type === "min_u25_riders");
     const youthResultsGoal = youthTemplateGoals.find((goal) => goal.category === "results");
@@ -282,6 +283,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       team,
       riders: riderPool,
       standing,
+      reputationEnabled: context.reputationEnabled === true,
     });
     const resultsRankingGoal = resultsTemplateGoals.find((goal) => goal.type === "top_n_finish");
     const resultsGoal = resultsTemplateGoals.find((goal) => goal.category === "results");
@@ -583,6 +585,7 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
       team: context.team,
       riders: context.team?.riders || context.riders || [],
       standing: context.standing,
+      reputationEnabled: context.reputationEnabled === true,
     });
   const strongNationalCore = hasStrongNationalCore(identityProfile);
   const strongStarProfile = hasStrongStarProfile(identityProfile);

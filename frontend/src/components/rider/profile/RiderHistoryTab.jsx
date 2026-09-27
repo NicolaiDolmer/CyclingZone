@@ -129,7 +129,7 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
 
   const th = "font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-cz-3";
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
+    <div data-testid="rider-transfer-history" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className={`${GRID} py-2 border-b border-cz-border`}>
         <span className={th}>{t("profile.history.table.date")}</span>
         <span className={th}>{t("profile.history.table.type")}</span>

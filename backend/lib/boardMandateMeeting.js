@@ -32,6 +32,7 @@
  */
 
 import { buildGoalKey, generateBoardGoals, getPlanDuration, preserveExternalGoals } from "./boardGoals.js";
+import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import {
   buildMandateGoalOptions,
   buildMilestoneKey,
@@ -150,10 +151,10 @@ async function loadOpenVisionSlot(supabase, teamId) {
  * ledige (nuværende sæson + plan-varigheden). SAMME funktion kaldes af både
  * GET (visning) og sign (accept-skrivning) — se modul-headerens fortolkning 2.
  */
-export function buildVisionSlotProposal({ openSlot, focus, team, riders, standing, currentSeasonNumber } = {}) {
+export function buildVisionSlotProposal({ openSlot, focus, team, riders, standing, currentSeasonNumber, reputationEnabled = false } = {}) {
   if (!openSlot) return null;
   const origin = openSlot.origin === "5yr" ? "5yr" : "3yr";
-  const candidateGoal = generateBoardGoals({ focus, planType: origin, team, riders, standing })[0] || null;
+  const candidateGoal = generateBoardGoals({ focus, planType: origin, team, riders, standing, reputationEnabled })[0] || null;
   if (!candidateGoal) return null;
 
   const targetSeasonNumber = Number(openSlot.target_season_number) > Number(currentSeasonNumber)
@@ -250,6 +251,7 @@ export async function buildBoardMeetingPayload({ supabase, teamId } = {}) {
   }
 
   const { team, riders, standing, assignedMembers, relation } = await loadMeetingContext(supabase, teamId);
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
   const dnaKey = team?.team_dna_key ?? null;
   const fallbackChairmanKey = assignedMembers.find((m) => m.is_chairman)?.archetype_key
     ?? assignedMembers[0]?.archetype_key
@@ -290,12 +292,12 @@ export async function buildBoardMeetingPayload({ supabase, teamId } = {}) {
   };
   const requestOptions = mandate.request_used
     ? []
-    : buildBoardRequestOptions({ board: requestBoardShaped, context: { requestUsedThisSeason: false, team, standing } });
+    : buildBoardRequestOptions({ board: requestBoardShaped, context: { requestUsedThisSeason: false, team, standing, reputationEnabled } });
 
   const openSlot = await loadOpenVisionSlot(supabase, teamId);
   const visionSlot = openSlot
     ? buildVisionSlotProposal({
-      openSlot, focus: mandate.focus, team, riders, standing, currentSeasonNumber: mandate.season_number,
+      openSlot, focus: mandate.focus, team, riders, standing, currentSeasonNumber: mandate.season_number, reputationEnabled,
     })
     : null;
 
@@ -329,7 +331,8 @@ export async function regenerateMandateFocus(supabase, { teamId, focus, isBetaTe
   if (!mandate) return { available: false };
 
   const { team, riders, standing, assignedMembers } = await loadMeetingContext(supabase, teamId);
-  const goals = generateBoardGoals({ focus, planType: "1yr", team, riders, standing, assignedMembers });
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
+  const goals = generateBoardGoals({ focus, planType: "1yr", team, riders, standing, assignedMembers, reputationEnabled });
 
   const { error } = await supabase
     .from("board_mandates")
@@ -452,13 +455,14 @@ export async function signMandate(supabase, {
   }
 
   const { team, riders, standing, assignedMembers, relation } = await loadMeetingContext(supabase, teamId);
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
 
   // #4557 §9 spørgsmål 4 (frit fokus-skift): et sign med et andet fokus end
   // det foreslåede regenererer mandatets mål server-side, så en manager der
   // ikke kaldte /board/meeting/focus først stadig får et korrekt mandat.
   const finalFocus = focus || mandate.focus;
   const baseGoals = finalFocus !== mandate.focus
-    ? generateBoardGoals({ focus: finalFocus, planType: "1yr", team, riders, standing, assignedMembers })
+    ? generateBoardGoals({ focus: finalFocus, planType: "1yr", team, riders, standing, assignedMembers, reputationEnabled })
     : (Array.isArray(mandate.goals) ? mandate.goals : []);
 
   const generosity = mandate.source?.negotiation_power?.counteroffer_generosity ?? 1.0;
@@ -497,7 +501,7 @@ export async function signMandate(supabase, {
       requestType: request.type,
       team,
       standing,
-      context: { team, standing, requestUsedThisSeason: false },
+      context: { team, standing, requestUsedThisSeason: false, reputationEnabled },
     });
     if (requestOutcome?.updated_board?.current_goals) {
       goalsAfterRequest = requestOutcome.updated_board.current_goals;
@@ -512,7 +516,7 @@ export async function signMandate(supabase, {
     const openSlot = await loadOpenVisionSlot(supabase, teamId);
     if (openSlot) {
       const proposal = buildVisionSlotProposal({
-        openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number,
+        openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number, reputationEnabled,
       });
       if (proposal && visionSlot.accept) {
         const { error: insertError } = await supabase.from("board_vision_milestones").insert({

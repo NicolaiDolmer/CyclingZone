@@ -101,7 +101,7 @@ test.describe("#3708 — transferhistorik-oprydning (no-sale + AI-hold fallback)
 
     // Garanteret AI-salg: buyer-fallback er "AI team", ikke "Unknown"/"Ukendt".
     await expect(main.getByText(/AI team|AI-hold/).first()).toBeVisible();
-    await expect(main.getByText(/^Unknown$|^Ukendt$/)).toHaveCount(0);
+    await expect(main.locator('[data-testid="rider-transfer-history"]').getByText(/^Unknown$|^Ukendt$/)).toHaveCount(0);
 
     // Den almindelige handel (rigtig køber/sælger) er der stadig.
     await expect(main.getByText(TEST_TEAM.name).first()).toBeVisible();

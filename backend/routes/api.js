@@ -17475,6 +17475,7 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
     const proposal = buildBoardProposal({
       focus,
       planType: plan_type,
+      reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
       team: context.team,
       riders: context.riders,
       standing: context.standing,
@@ -17544,6 +17545,7 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
     const proposal = buildBoardProposal({
       focus,
       planType: plan_type,
+      reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
       team,
       riders,
       standing,

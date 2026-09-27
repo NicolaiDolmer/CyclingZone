@@ -246,6 +246,12 @@ grunden til at bonustilbuddets timing føles tilfældig for spillerne.
 Lag 2-3 håndhæves i transfer- og auktions-routes via `assertSigningAllowed`. Lag 5 hookes ind i
 `processSeasonStart`s modifier-stak og udløber automatisk ved sæsonskifte.
 
+**Rytteromdømme (#4956):** Ved `rider_reputation_enabled=on` bruger mål-generering,
+årsmødets fokus- og visionsforslag, anmodninger, bonustilbuddets baseline,
+mål-evaluering og tvangslistning samme optjente ryttertal. `off` og `shadow`
+beholder popularitetsbaseret adfærd. Flaget ændrer ingen eksisterende mål før
+de næste gang genereres eller evalueres; det skifter ikke produktionsflaget.
+
 ---
 
 ## 5. Adskillelsen — kontrakten mellem de to systemer

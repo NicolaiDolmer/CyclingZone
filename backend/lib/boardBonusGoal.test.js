@@ -9,6 +9,7 @@ import {
   hasBonusGoalForOffer,
 } from "./boardBonusGoal.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
+import { countTeamStarRiders } from "./boardIdentity.js";
 
 // #4856 · Regressionsdækning for kontraktsprækken: accept af et bonustilbud
 // skrev ekstra-målet KUN til `board_profiles.current_goals`, mens Boardroom
@@ -117,6 +118,7 @@ function baseTables(overrides = {}) {
     ],
     season_standings: [],
     riders: [],
+    app_config: [],
     loans: [],
     board_satisfaction_events: [],
     board_consequences: [],
@@ -313,6 +315,28 @@ test("#3574 signature_rider faar baseline = stjerne-antal paa accept-tidspunktet
   const profileBonus = JSON.parse(tables.board_profiles[0].current_goals).find((g) => g.source === "bonus_offer");
   assert.equal(mandateBonus.baseline, result.goal.baseline);
   assert.equal(profileBonus.baseline, result.goal.baseline);
+});
+
+test("#4956 bonus baseline and later star count use the same off/shadow/on measure", async () => {
+  const riders = [
+    { id: "seed-star", team_id: TEAM_ID, popularity: 100, uci_points: 400, reputation: 10 },
+    { id: "earned-star", team_id: TEAM_ID, popularity: 0, uci_points: 0, reputation: 85 },
+    { id: "earned-star-2", team_id: TEAM_ID, popularity: 0, uci_points: 0, reputation: 90 },
+  ];
+  for (const [stage, expected] of [["off", 1], ["shadow", 1], ["on", 2]]) {
+    const tables = baseTables({
+      riders,
+      app_config: [{ key: "rider_reputation_enabled", value: stage }],
+    });
+    const result = await applyAcceptedBonusGoal({
+      supabase: makeSupabase(tables), teamId: TEAM_ID, offerId: OFFER_ID,
+      extraGoal: { type: "signature_rider", target: 1 }, isMandateModelEnabled: flagOn,
+    });
+    assert.equal(result.goal.baseline, expected, stage);
+    assert.equal(countTeamStarRiders(riders, { reputationEnabled: stage === "on" }), expected, stage);
+    assert.equal(tables.board_mandates[0].goals.at(-1).baseline, expected, stage);
+    assert.equal(JSON.parse(tables.board_profiles[0].current_goals).at(-1).baseline, expected, stage);
+  }
 });
 
 test("#3574 monument_podium faar baseline fra goal-konteksten, maalt mod 1yr-boardet", async () => {

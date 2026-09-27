@@ -56,6 +56,28 @@ async function shots(page: Page, name: string) {
 }
 
 test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
+  for (const stage of ["off", "shadow", "on"] as const) {
+    test(`#4956 youth squad shows the ${stage === "on" ? "earned" : "legacy"} rider measure at ${stage}`, async ({ page }) => {
+      await setup(page);
+      await page.route("**/api/display-flags", (route) => {
+        if (preflight(route)) return;
+        return json(route, { rider_best_role_display: false, youth_squad_pages: true, rider_reputation_enabled: stage === "on" });
+      });
+      await page.route("**/rest/v1/riders*", (route) => {
+        if (preflight(route)) return;
+        const rows = previewYouthRiderRows(route.request().url());
+        return rows ? json(route, rows.map((r) => ({ ...r, reputation: 83 }))) : route.fallback();
+      });
+      await login(page);
+      await page.goto("/squads/u23");
+      const table = page.locator("main table").first();
+      await expect(table.getByRole("columnheader", { name: stage === "on" ? /Reputation|Omdømme/ : /Popularity|Popularitet/ })).toBeVisible();
+      const row = table.getByRole("row").filter({ has: page.getByRole("link", { name: "Emil Vestergaard" }) });
+      await expect(row).toContainText(stage === "on" ? "83" : "12");
+      if (stage === "on") await expect(row).toContainText(/Star|Stjerne/);
+    });
+  }
+
   test("U23 team: Evner, Stats og Standings med egen gruppe", async ({ page }, testInfo) => {
     const takeShots = testInfo.project.name === "desktop-chromium";
     await setup(page);

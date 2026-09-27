@@ -48,6 +48,7 @@ import { computeDnaSuggestions } from "./boardClubDna.js";
 import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
 import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
+import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 // #4557 · Tærskel-konstanterne + resolveThresholds flyttet til
@@ -551,6 +552,7 @@ async function autoAcceptPendingPlan({
   const proposal = buildBoardProposal({
     focus,
     planType,
+    reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
     team,
     riders: ridersRes.data || [],
     standing: standingRes.data || null,

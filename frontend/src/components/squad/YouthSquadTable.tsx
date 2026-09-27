@@ -35,6 +35,8 @@ import { getRiderAge } from "../../lib/riderAge.js";
 import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { scoutSortValue } from "../../lib/scouting.js";
 import { formatNumber } from "../../lib/intl.js";
+import { useRiderReputation } from "../../lib/useRiderReputation.ts";
+import { riderReputationBandKey, riderReputationSortValue, riderReputationValue } from "../../lib/riderReputationView.ts";
 import { isRiderInjured } from "../../lib/training.js";
 import { ABILITY_STATS } from "../../lib/abilities.js";
 import { DataTable, RiderBadges, RiderLink, Segmented, WithBestRole, type DataTableColumn } from "./squadUi.ts";
@@ -64,10 +66,11 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   _value: (r) => r._value,
   salary: (r) => r.salary,
   popularity: (r) => (Number.isFinite(r.popularity) ? r.popularity : null),
+  reputation: (r) => riderReputationSortValue(r, true),
   contract_end_season: (r) => r.contract_end_season,
   ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, (r: Row) => Number(r[k]) || 0])),
 };
-const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_value", "salary", "popularity", "contract_end_season", ...ABILITY_KEYS]);
+const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_value", "salary", "popularity", "reputation", "contract_end_season", ...ABILITY_KEYS]);
 const SORT_OPTS = { descFirstKeys: DESC_FIRST };
 const MOBILE_DEFAULTS = ["rating", "value", "salary"];
 
@@ -80,6 +83,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   label: string;
 }) {
   const { t } = useTranslation("team");
+  const reputationOn = useRiderReputation();
   const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
   const navigate = useNavigate();
   const [tableMode, setTableMode] = useState<TableMode>("overview");
@@ -175,20 +179,21 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       compact: true,
       render: (r) => <span className="text-cz-2">{formatNumber(r.salary ?? 0)}</span>,
     },
-    // #5631: My Teams popularitet og status (#3956 / #1482), samme plads i
+    // #5631: My Teams synlighedstal og status (#3956 / #1482), samme plads i
     // rækkefølgen. Status viser kun skade: alders-badgen ville stå på hver
     // eneste række af en ungdomstrup, og akademi-/transfer-badgesne hører til
     // My Team.
     {
       key: "popularity",
-      header: <span title={t("squad.headers.popularityTitle")}>{t("squad.headers.popularity")}</span>,
-      mobileLabel: t("squad.headers.popularity"),
-      sortKey: "popularity",
+      header: <span title={t(reputationOn ? "squad.headers.reputationTitle" : "squad.headers.popularityTitle")}>{t(reputationOn ? "squad.headers.reputationLabel" : "squad.headers.popularity")}</span>,
+      mobileLabel: t(reputationOn ? "squad.headers.reputationLabel" : "squad.headers.popularity"),
+      sortKey: reputationOn ? "reputation" : "popularity",
       numeric: true,
       compact: true,
       render: (r) => (
         <span className="text-cz-2 font-mono text-xs">
-          {Number.isFinite(r.popularity) ? String(r.popularity) : "—"}
+          {riderReputationValue(r, reputationOn) == null ? "—" : Math.round(riderReputationValue(r, reputationOn) as number)}
+          {reputationOn && riderReputationBandKey(r, true) && <span className="block text-cz-3 text-3xs uppercase">{t(`squad.${riderReputationBandKey(r, true)}`)}</span>}
         </span>
       ),
     },
