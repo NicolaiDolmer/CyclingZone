@@ -127,6 +127,15 @@ test("#5268: V1 har præcis én sats pr. evne, V2 én pr. aldersbånd", () => {
   assert.equal(Object.keys(v2.rates.tactics).length, 6);
 });
 
+test("#5268: V3 bruger per-rytter-referencen direkte", () => {
+  const plan = referencePlan(makeRows(120));
+  const applied = applyVariant(plan, "v3");
+  for (let i = 0; i < plan.length; i++) {
+    assert.equal(applied[i].next.tactics, plan[i].reference.tactics);
+    assert.equal(applied[i].next.aggression, plan[i].reference.aggression);
+  }
+});
+
 // ── 3. Idempotens ───────────────────────────────────────────────────────────
 test("#5268: anvendt to gange på samme plan giver samme resultat", () => {
   const plan = referencePlan(makeRows());
@@ -195,6 +204,7 @@ test("#5268: --apply kan ikke ske ved et uheld", () => {
   assert.deepEqual(parseArgs(["--dry-run"]), { apply: false, variant: null, sample: 5 });
   assert.throws(() => parseArgs(["--apply"]), /--owner-go/);
   assert.throws(() => parseArgs(["--apply", "--owner-go"]), /--variant/);
+  assert.throws(() => parseArgs(["--apply", "--owner-go", "--variant=v3"]), /dry-run-only/);
   assert.throws(() => parseArgs(["--kaboom"]), /Ukendt argument/);
   assert.deepEqual(parseArgs(["--apply", "--owner-go", "--variant=v1"]),
     { apply: true, variant: "v1", sample: 5 });

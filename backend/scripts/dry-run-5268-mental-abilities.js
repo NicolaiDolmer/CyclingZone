@@ -76,7 +76,7 @@ import { DISPLAY_RECIPE_KEYS, ratingForRole } from "../lib/weights/displayRecipe
 import { birthYearFrom } from "../lib/riderSeasonAge.js";
 
 export const BACKUP_TABLE = "rider_derived_abilities_5268_backup";
-export const VARIANTS = Object.freeze(["v1", "v2"]);
+export const VARIANTS = Object.freeze(["v1", "v2", "v3"]);
 export const MOVED_ABILITIES = Object.freeze(["tactics", "aggression"]);
 export const NEW_ABILITIES = Object.freeze(["teamwork", "leadership"]);
 
@@ -200,6 +200,45 @@ export function calibrateRates(plan, variant) {
 
 // ── Trin 3: anvend varianten + flyt de tabte point ──────────────────────────
 export function applyVariant(plan, variant) {
+  if (variant === "v3") {
+    return plan.map((entry) => {
+      const next = {};
+      let lost = 0;
+      for (const ability of MOVED_ABILITIES) {
+        next[ability] = entry.reference[ability];
+        lost += Math.max(0, entry.current[ability] - next[ability]);
+      }
+
+      const baseTw = entry.newBirth.teamwork;
+      const baseLd = entry.newBirth.leadership;
+      const denom = baseTw + baseLd;
+      const shareLd = clamp(denom > 0 ? baseLd / denom : 0.5, SHARE_CLAMP.min, SHARE_CLAMP.max);
+      const leadershipGain = round(shareLd * lost);
+      const teamworkGain = lost - leadershipGain;
+      let teamwork = clamp(baseTw + teamworkGain, 1, 99);
+      let leadership = clamp(baseLd + leadershipGain, 1, 99);
+      let placed = (teamwork - baseTw) + (leadership - baseLd);
+      if (placed < lost) {
+        const spill = lost - placed;
+        if (teamwork < 99) teamwork = clamp(teamwork + spill, 1, 99);
+        else if (leadership < 99) leadership = clamp(leadership + spill, 1, 99);
+        placed = (teamwork - baseTw) + (leadership - baseLd);
+      }
+
+      const massBefore = entry.current.tactics + entry.current.aggression;
+      const massAfter = next.tactics + next.aggression + teamwork + leadership;
+      return {
+        ...entry,
+        variant,
+        next: { ...next, teamwork, leadership },
+        lost,
+        massBefore,
+        massAfter,
+        massLoss: Math.max(0, lost - placed),
+        massOk: massAfter >= massBefore,
+      };
+    });
+  }
   const { groupKey, rates } = calibrateRates(plan, variant);
   return plan.map((entry) => {
     const next = {};
@@ -394,7 +433,7 @@ export function parseArgs(args) {
     if (arg === "--dry-run") continue;
     else if (arg === "--apply") apply = true;
     else if (arg === "--owner-go") ownerGo = true;
-    else if (/^--variant=(v1|v2)$/.test(arg)) variant = arg.slice(10);
+    else if (/^--variant=(v1|v2|v3)$/.test(arg)) variant = arg.slice(10);
     else if (/^--sample=\d+$/.test(arg)) sample = Number(arg.slice(9));
     else throw new Error(`Ukendt argument: ${arg}`);
   }
@@ -403,6 +442,9 @@ export function parseArgs(args) {
   }
   if (apply && !variant) {
     throw new Error("--apply kræver --variant=v1 eller --variant=v2. Vælg den ejeren godkendte.");
+  }
+  if (apply && variant === "v3") {
+    throw new Error("--variant=v3 er dry-run-only. V3 kræver nyt ejer-go før en apply-sti må bygges.");
   }
   return { apply, variant, sample };
 }
