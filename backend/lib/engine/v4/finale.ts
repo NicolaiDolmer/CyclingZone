@@ -159,6 +159,8 @@ export function computeFinaleAbilityScore(
   demandVector: Partial<Record<AbilityKey, number>>,
   wprimeReserveWeight: number,
   effort: EffortLevel | undefined = undefined,
+  dayform = 0,
+  dayformScoreWeight = 0,
 ): number {
   let sum = 0;
   for (const key of Object.keys(demandVector) as AbilityKey[]) {
@@ -166,7 +168,9 @@ export function computeFinaleAbilityScore(
     sum += weight * normAbility(abilities[key]);
   }
   const reserve = clamp(wprimeReserveFraction, 0, 1);
-  return sum + wprimeReserveWeight * reserve + effortFinaleTerm(effort, reserve);
+  const form = Number.isFinite(dayform) ? dayform : 0;
+  const formWeight = Number.isFinite(dayformScoreWeight) ? Math.max(0, dayformScoreWeight) : 0;
+  return sum + wprimeReserveWeight * reserve + formWeight * form + effortFinaleTerm(effort, reserve);
 }
 
 /**
@@ -434,7 +438,15 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // steder i motoren hvor en W'-reserve bliver til et resultat.
     const reserve = entrant.effort === "grupetto" ? 0 : wprimeReserveFraction(state.riders[riderId]);
     // #5580: indsatsens led (gevinst med reserve, knaek uden) — se effortFinaleTerm.
-    return computeFinaleAbilityScore(entrant.abilities, reserve, demandVector, extra.wprimeReserveWeight, entrant.effort);
+    return computeFinaleAbilityScore(
+      entrant.abilities,
+      reserve,
+      demandVector,
+      extra.wprimeReserveWeight,
+      entrant.effort,
+      state.riders[riderId]?.dayform ?? 0,
+      extra.dayformScoreWeight,
+    );
   };
 
   const baseScored: ScoredRider[] = contenderIds
