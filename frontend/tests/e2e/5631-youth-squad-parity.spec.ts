@@ -70,9 +70,14 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
       });
       await login(page);
       await page.goto("/squads/u23");
-      const table = page.locator("main table").first();
+      // D-047 gemmer denne valgfrie kolonne i mobilens tre-kolonne-visning.
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        await page.getByRole("button", { name: /^(Full table|Fuld tabel)$/ }).click();
+      }
+      // Fuld tabel bruger en separat navneblok og datablok paa mobil.
+      const table = page.locator("main table").last();
       await expect(table.getByRole("columnheader", { name: stage === "on" ? /Reputation|Omdømme/ : /Popularity|Popularitet/ })).toBeVisible();
-      const row = table.getByRole("row").filter({ has: page.getByRole("link", { name: "Emil Vestergaard" }) });
+      const row = table.getByRole("row", { name: /Emil Vestergaard/ });
       await expect(row).toContainText(stage === "on" ? "83" : "12");
       if (stage === "on") await expect(row).toContainText(/Star|Stjerne/);
     });

@@ -102,7 +102,7 @@
           [
             "4",
             "Tilfredshed <15%",
-            "Tvunget salg: din rytter med lavest værdi auto-listes. Højt profilerede ryttere og ryttere med meget høj værdi er beskyttede."
+            "Tvunget salg: din rytter med lavest værdi sættes automatisk til salg. Højt profilerede ryttere og ryttere med meget høj værdi er beskyttede."
           ],
           [
             "5",
@@ -1648,7 +1648,7 @@
     },
     "boardProfileRiders": {
       "q": "Hvem er mit holds profilryttere?",
-      "a": "Bestyrelsessiden navngiver dem nu. Under stjerneprofil-flisen viser bestyrelsens læsning af holdet hver rytter den tæller som en stjerne, med samme omdømme-tal som rytterfladerne viser når omdømme er slået til. Listen er din nuværende trup, så den ændrer sig når du køber eller sælger ryttere. Hvis ingen rytter rammer barren endnu, siger kortet det i stedet for at liste navne."
+      "a": "Bestyrelsessiden navngiver dem nu. Under stjerneprofilen viser bestyrelsen de ryttere på dit nuværende hold, som den regner for stjerner. Når omdømme er aktivt, ser du samme omdømmetal som på rytterkortet. Listen ændrer sig, når du køber eller sælger ryttere. Hvis ingen rytter har høj nok profil endnu, siger kortet det i stedet for at liste navne."
     },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",
@@ -1676,7 +1676,7 @@
     },
     "starSigningGoal": {
       "q": "Hvad betyder det nye 'stjerne-rytter'-mål i star_signing-planer?",
-      "a": "Star_signing-fokus får nu et ekstra mål: mindst én højt profileret rytter. Bestyrelsen forventer at en plan om at jagte resultater også viser sig i en rytter med reelt omdømme, uanset om du køber en eksisterende stjerne på markedet eller udvikler en intern. Tjekkes ved evaluerings-tidspunkt, så det er din nuværende trup der tæller."
+      "a": "En plan om at hente stjerneryttere får et ekstra mål: mindst én højt profileret rytter. Bestyrelsen forventer, at en plan om at jagte resultater også kan ses på holdet, uanset om du køber en stjerne eller udvikler en selv. Målet tjekkes ved evalueringen, så det er din nuværende trup, der tæller."
     },
     "u25StatGain": {
       "q": "Hvad er 'U25-stat-gevinst' i ungdomsplaner?",
@@ -1688,11 +1688,11 @@
     },
     "boardUnsatisfiedConsequences": {
       "q": "Hvad sker der når bestyrelsen er meget utilfreds, kan jeg blive fyret?",
-      "a": "Du kan ikke blive fyret. I stedet reagerer bestyrelsen gradvist gennem 6 lag jo lavere tilfredsheden bliver: først lønloft, så signing-restriktion, så tvungen listing, så sponsor-pres. Tvungen listing vælger din laveste ubeskyttede rytter og lister ham til markedsværdi. Højt profilerede ryttere og ryttere med meget høj værdi er beskyttede. Alle aktive konsekvenser vises i panelet 'Aktive konsekvenser' på Bestyrelse-siden, og de hårde lag sender også 'Skal handles'-notifs. Tilfredshed der stiger igen expirerer de lettere restriktioner."
+      "a": "Du kan ikke blive fyret. Når tilfredsheden falder, reagerer bestyrelsen gradvist: først med et lønloft, derefter begrænsninger på køb, tvunget salg og pres på sponsoraftalen. Ved tvunget salg sættes din billigste ubeskyttede rytter til salg til markedsværdi. Højt profilerede ryttere og ryttere med meget høj værdi er beskyttede. Du kan se de aktive konsekvenser på Bestyrelse-siden, og de alvorlige ændringer giver dig en besked. Stiger tilfredsheden igen, ophæves de lettere begrænsninger."
     },
     "bonusOffer": {
       "q": "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
-      "a": "Når tilfredsheden er stærk og dine plan-mål stort set er nået, kan bestyrelsen tilbyde et engangs-budgetboost mod ét ekstra-mål. Hvis dit fokus er star_signing, beder målet om en ny højt profileret rytter; ellers beder det om et monument-podie. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks, og ekstra-målet evalueres ved sæsonens slutning. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt."
+      "a": "Når bestyrelsen er tilfreds, og de fleste af dine mål er nået, kan den tilbyde dig et engangsbeløb mod et ekstra mål. Handler din plan om at hente en stjernerytter, skal du hente en ny højt profileret rytter. Ellers skal du nå podiet i et monument. Du kan acceptere eller afslå. Accepterer du, får du beløbet med det samme, og det ekstra mål vurderes ved sæsonens slutning. Bestyrelsen tilbyder kun én bonus pr. sæson. Afslår du, kan muligheden først komme igen næste sæson."
     },
     "boardSatisfactionArrow": {
       "q": "Hvad betyder pilen/prognosen under mit tilfredsheds-tal?",
