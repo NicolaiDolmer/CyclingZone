@@ -1,6 +1,6 @@
 # Discord: sæsonskiftet S3 → S4 samlet i ét opslag (#5474)
 
-**Status: AFVENTER EJER.** Ikke sendt. Ejeren poster selv søndag 27/9 før skiftet, kun EN, i #the-roadbook
+**Status: SENDT af ejeren 27/9 formiddag.** Ejeren poster selv søndag 27/9 før skiftet, kun EN, i #the-roadbook
 (ejer 27/9: roadbook-opslag er kun på engelsk). Stemme: `docs/TONE_OF_VOICE.md`.
 
 **Skrevet om 27/9 formiddag** (ejer: forrige version var for klippe-klistret). Ordet for de 140 dage er
@@ -32,7 +32,7 @@ Promotion and relegation run as normal, 2 up and 4 down. After that, every manag
 
 **Your money**
 Riders whose contract runs out become free agents tonight, so extend the ones you want to keep. Your sponsor's base is paid at season start. Retiring riders no longer cost you next season's wage, and your U23 and junior riders cost nothing in upkeep this time.
-Upkeep itself changes. Instead of paying the whole season on day one, you pay Travel & staff for each senior race day you have a rider at the start. Race every day and it is the same total. Skip a race and you keep the money.
+Upkeep itself changes. Instead of paying the whole season on day one, you pay Travel & staff for each senior race day you have a rider at the start. Start every race and it is the same total. Skip a race and you keep the money.
 ```
 
 ## Besked 2
@@ -45,7 +45,7 @@ Your U23 team holds 12 riders and your junior team 10. In season 4 both ride the
 From Monday every season day is a race day or a training day for each rider, never both, and training runs in the evening after the day's last race.
 
 **Your board**
-The board goes live for everyone. It calls you to the annual meeting when the switch runs, and you sign your mandate for season 4 there.
+The board is live for everyone now. It calls you to the annual meeting when the switch runs, and you sign your mandate for season 4 there.
 
 **Been away?**
 Teams with no login for 30 days that have not signed up are parked at the switch. Nothing is deleted. Wages are still paid, but there is no sponsor money. One tap on your dashboard brings you back, placed by your Global Rank.
