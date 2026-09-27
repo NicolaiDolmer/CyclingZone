@@ -6,12 +6,12 @@
 **Skrevet om 27/9 formiddag** (ejer: forrige version var for klippe-klistret). Ordet for de 140 dage er
 **season day** (ejer-valg 27/9); **race day** bruges kun om dage med løb.
 
-**Tre antagelser, ejeren bekræfter før posting:**
+**Antagelser, ejeren bekræfter før posting:**
 
-- (a) Bestyrelsen (Mandatet) flippes til on før "Afslut sæson" (#4859; tørkørsel grøn 27/9: 245 hold).
+- (a) ✅ Bestyrelsen (Mandatet) er flippet til on 27/9 10:26 (#4859; tørkørsel grøn: 245 hold).
 - (b) Træning pr. sæsondag starter mandag (`training_tick_per_race_day`), og Train today beholder sin
   bonus (#5281 merges ikke, ejer 27/9: "de 25 % skal stadig være aktive").
-- (c) Point-flytningen til Holdarbejde/Lederskab (#5268) kommer i S4's første uge, ikke i aften.
+- (c) Point-flytningen (#5268) koeres ikke i aften og faar ingen dato (ejer 27/9: rating-neutral foerst, ægte baroudeurer beholder aggression).
 
 To beskeder (Discords grænse er 2.000 tegn). Refs #5474 #5506
 
@@ -54,7 +54,7 @@ Teams with no login for 30 days that have not signed up are parked at the switch
 Not switched on yet. I decide after the switch, and you hear from me before it runs a single race.
 
 **Not done yet**
-Tactics and aggression points moving into Teamwork and Leadership come in the first week of season 4, and you hear from me before it runs. Promotion and relegation for the youth groups, and team time trials, come in season 5.
+Tactics and aggression points moving into Teamwork and Leadership. I want it done so that no rating you see goes down and a real baroudeur keeps his aggression, and you hear from me before it runs. Promotion and relegation for the youth groups, and team time trials, come in season 5.
 
 Questions? Drop them below, and I will answer tonight ✌️
 Dolmer
@@ -75,7 +75,7 @@ Dolmer
 | Rejse og personale pr. seniorløbsdag, samme sum ved fuld deltagelse | PR #5800, `upkeep_per_race_day` on 27/9 09:24; `UPKEEP_BY_DIVISION` / 140 |
 | Ungdom: 12/10, egne løb, ingen præmiepenge, Graduation Day | patch note 7.297; `YOUTH_RULES.md` §2.3; `raceResultsEngine.js` (ingen præmie i ungdomsløb); `help.json` |
 | Træning pr. sæsondag fra mandag, Train today uændret | Antagelse (b) |
-| Bestyrelsen live, årsmøde ved skiftet | Antagelse (a); #5752 |
+| Bestyrelsen live, årsmøde ved skiftet | `board_mandate_model_enabled` = on 27/9 10:26; #5752 |
 | Parkering: intet slettes, løn betales, ingen sponsor, comeback efter Global Rank | `managerParking.js`; `economyEngine.js` l. 314-323; #5643 |
 | Ny motor ikke tændt | `race_engine_v4` = off |
-| Point-flyt i S4's første uge; ungdoms-op/nedrykning og TTT i S5 | Antagelse (c); spec ungdomsløb Y3; ejerens roadbook-svar 26/9 (TTT → S5) |
+| Point-flyt uden dato, rating-neutral; ungdoms-op/nedrykning og TTT i S5 | Ejer 27/9 (#5268); spec ungdomsløb Y3; ejerens roadbook-svar 26/9 (TTT → S5) |
