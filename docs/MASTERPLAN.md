@@ -4,15 +4,18 @@
 
 **Reglen:** 🔴 brand foran alt (10/9) · **gør det lovede færdigt** (21/9) · Bane 2 forretning viger aldrig · Bane 3 færdiggør (>70 %) før nyt · intet nyt før det byggede er merget og besluttet (24/9). Rytme: [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md). Artifact: https://claude.ai/artifact/UoZexVskbfA5xmvTnML4Bn
 
-## 🎯 I dag 27/9 (sæsonskifte ca. 19:30; ingen push til main 17:30-21:30)
+## 🎯 Før løbsdag 1 (man. 28/9 19:30) · S4 aktiv siden 27/9 22:46
 
-1. 🔴 **#5830 D2-kalender uden endagsløb efter 10/10** (Discord 27/9): SQL-tjek alle divisioner → ret → gate → ejer-"kør" FØR mandag 19:30.
-2. 🔵 **Kørsler (ejer-"kør" pr. trin):** Afslut sæson (timer ud, genkør aldrig) → D4→D3 #5669 → pensionering → ungdomspuljer #5660 + U23/junior-kalender #5283 → 12b/12c → tæl `race_entries` → træning fra løb (flags) → #5281 kun på ejer-ord.
-3. 🔵 **v4:** visuel testpakke #5804 → #5515 → tænd/vent = ejer-only, udmeldes før (roadbook).
+1. 🔵 **Træningsflip + #5281 samme dag** (mandag formiddag, ejer-go) · lovet i roadbook 15/9.
+2. 🔵 **Merge kode der allerede er kørt i prod fra branch:** `fix/5830-calendar-type-gap` (R16/R17) · `feat/4620-youth-groups-12-12-mix` · patch 7.306 PR #5836 · lovet 27/9.
+3. 🔵 **#5828 omdømme synligt** (ejer-visual) · **#5820 Boardroom-mål** (lovet 26/9).
+4. ⚪ Codex-audit af sæsonskiftet (prompt i OneDrive `private-handoffs/2026-09-28-codex-prompt-saesonskifte-audit.md`).
+
+**Uge 1 (i ro og orden):** #5826 v4-kalibrering · v4 tænd/vent (ejer-only) · #5834 planlægningskalender · #5835 AI-genbrug (S5) · genkør D4-pensionering for 2 AI-hold med transferbud. #5827/#5829 merges ikke.
 
 ## Gør det lovede færdigt (roadbook 15/9 + 27/9; foran alt andet end brand)
 
-**Ejerens hånd:** ungdomsløb i aften · træning-flip · v4-beslutning · point-flyt go (#5268, PR #5827).
+**Ejerens hånd:** træning-flip (mandag) · v4-beslutning · point-flyt go (#5268, PR #5827). ✅ ungdomsløb live i S4 (27/9).
 **Byggebart (Codex/Claude, i rækkefølge):** #5268 dry-run V3 (PR #5827) · #4956 omdømme synligt (PR #5828) · #5124 sæsonmatrix mobil (PR #5829, ejer vælger retning) · #5238 race sharpener · #3813 sekundær type · #5820 Boardroom-mål hvornår (lovet 26/9) · #5831 besked til hold (lovet "denne uge") · #5675/#5676 ungdomsstilling-hooks.
 
 ## 🔴 Brand
