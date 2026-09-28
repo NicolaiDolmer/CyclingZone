@@ -275,7 +275,7 @@ import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
-import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
+import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
 import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
@@ -18219,11 +18219,15 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     if (rosterErr) throw new Error(rosterErr.message);
 
     // Tilbudte intake-kandidater for dette hold (display-safe felter, INGEN potentiale i join).
-    const { data: intakeRows, error: intakeErr } = await supabase
+    // #5844: `source` skelner bestyrelsens gave-kuld (fee 0, 14 dages frist, eget
+    // mærke). Før migrationen er kørt findes kolonnen ikke → læs uden den.
+    const readIntake = (withSource) => supabase
       .from("academy_intake")
-      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type, current_production_value)")
+      .select(`id, rider_id, is_serious, status, created_at${withSource ? ", source" : ""}, riders(id, firstname, lastname, birthdate, nationality_code, base_value, market_value, prize_earnings_bonus, team_id, primary_type, secondary_type, current_production_value)`)
       .eq("team_id", teamId)
       .eq("status", "offered");
+    let { data: intakeRows, error: intakeErr } = await readIntake(true);
+    if (intakeErr && isMissingIntakeSourceSchema(intakeErr)) ({ data: intakeRows, error: intakeErr } = await readIntake(false));
     if (intakeErr) throw new Error(intakeErr.message);
 
     // #5568: brugte pladser + loft PR. UNGDOMSTRUP ("U23 5/12 · Junior 3/10").
@@ -18330,7 +18334,8 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       //     lovet de 7 dage siden #2627, men fladen har aldrig vist nedtællingen.
       //     Sweepet har en dagskvote, så et tilbud kan overleve en dag eller to
       //     ekstra ved kø — datoen er "tidligst", ikke en garanti (copy afspejler det).
-      const signingFee = Math.round(calculateRiderMarketValue(rider) * ACADEMY.SIGNING_FEE_RATE);
+      const source = row.source ?? "intake";
+      const signingFee = signingFeeForSource(source, Math.round(calculateRiderMarketValue(rider) * ACADEMY.SIGNING_FEE_RATE));
       // #3550 punkt 4: løn-forhåndsvisning på kortet, SAMME delte funktion som
       // signAcademyCandidate bruger ved selve signeringen (uændret - rører ikke
       // lønformlen). Vises FØR klikket, ligesom signingFee allerede gør.
@@ -18344,7 +18349,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         current_production_value: rider.current_production_value,
       });
       const expiresAt = row.created_at
-        ? new Date(new Date(row.created_at).getTime() + INTAKE_OFFER_EXPIRY_DAYS * 86_400_000).toISOString()
+        ? new Date(new Date(row.created_at).getTime() + intakeOfferExpiryDaysFor(source) * 86_400_000).toISOString()
         : null;
       return {
         intakeId: row.id,
@@ -18357,6 +18362,8 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         is_serious: row.is_serious,
         status: row.status,
         created_at: row.created_at,
+        // #5844: 'board_gift' = "A thank-you from the board"-kuldet.
+        source,
         expiresAt,
         signingFee,
         wagePreview,

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-79 poster: live 55 · beta 3 · dormant 5 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+79 poster: live 57 · beta 2 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -21,11 +21,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## race-day
 
-**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
-
-| Feature | State | Flag | SSOT | Epic | Verified | Note |
-| --- | --- | --- | --- | --- | --- | --- |
-| Race day development (`race-day-development`) | dormant | `race_day_development_enabled` | [PROGRESSION_RULES](PROGRESSION_RULES.md) | #4850 | 2026-09-24 | Variant A/S1 (etapens profil som mellem-pas, +1 pr. evne pr. løbsdag, planen ikke input; PR #5640 + #5654). Flippes off → on 28/9 sammen med training_tick_per_race_day, ejer-go. |
+**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
 
 ## market
 
@@ -50,12 +46,11 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## training
 
-**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-09-06 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training score 1-99 (`training-score`) 2026-09-24
+**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-09-06 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Training programs per race day (`training-programs`) | beta | `training_programs` | [TRAINING_RULES](TRAINING_RULES.md) | #4629 | 2026-09-27 | PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil. |
-| Training tick per race day (`training-tick-per-race-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4846 | 2026-09-15 | A2 merget 15/9, flag off (§13.3). B4-udløser (samlet sweep ved dagens lukning) bygget bag samme flag; mangler ejer-flip. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
@@ -79,7 +74,11 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## economy
 
-**live:** Youth squad upkeep switch at season change (`academy-drift-kill-switch`) 2026-09-25 · Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
+**live:** Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Youth squad upkeep switch at season change (`academy-drift-kill-switch`) | dormant | `academy_drift_enabled` | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #5741 | 2026-09-28 | Off målt read-only i prod 28/9 efter S3→S4-cutover; fremtidig sats og nyt flip afventer ejerbeslutning. |
 
 ## club
 
@@ -87,9 +86,10 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## board
 
+**live:** Board mandate model (`board-mandate-model`) 2026-09-28
+
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Board mandate model (`board-mandate-model`) | beta | `board_mandate_model_enabled` | [BOARD_RULES](BOARD_RULES.md) | #3514 | 2026-09-06 | Mandat, vision, tillid, bonus, DNA. |
 | Firing and season review (`board-firing-and-review`) | idea | - | [BOARD_RULES](BOARD_RULES.md) | - | 2026-09-06 | Findes ikke i kode. |
 
 ## social
