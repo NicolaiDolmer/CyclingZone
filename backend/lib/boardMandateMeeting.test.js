@@ -113,6 +113,7 @@ function makeMeetingSupabase({
           order: () => chain,
           limit: () => chain,
           maybeSingle: async () => ({ data: state.milestones.find((m) => m.slot_open) ?? null, error: null }),
+          range: () => chain,
           then: (resolve) => resolve({ data: state.milestones, error: null }),
         };
         // #5840 · Spejler prod-indekset uq_board_vision_milestones_team_key
@@ -126,12 +127,16 @@ function makeMeetingSupabase({
         };
         const update = (payload) => {
           const filters = {};
+          const apply = () => {
+            const matched = state.milestones.filter((m) => matchAll(m, filters));
+            matched.forEach((m) => Object.assign(m, payload));
+            return matched;
+          };
           const upd = {
             eq(col, value) { filters[col] = value; return upd; },
-            then: (resolve) => {
-              state.milestones.filter((m) => matchAll(m, filters)).forEach((m) => Object.assign(m, payload));
-              resolve({ error: null });
-            },
+            // #5840 · betinget slot-claim: .update().eq().eq().select("id")
+            select: () => ({ then: (resolve) => resolve({ data: apply().map((m) => ({ id: m.id })), error: null }) }),
+            then: (resolve) => { apply(); resolve({ error: null }); },
           };
           return upd;
         };
@@ -630,7 +635,7 @@ test("#5840 signMandate: genforsøg efter tidligere fejlet accept (prod-tilstand
   assert.equal(supabase._state.milestones.length, 3, "intet skrevet igen");
 });
 
-test("#5840 signMandate: samtidigt identisk sign (23505 på insert) vælter ikke underskriften", async () => {
+test("#5840 signMandate: samtidigt identisk sign (23505 på insert) → 409, slot genåbnet, intet skrevet", async () => {
   const base = makeCollisionSupabase();
   // Simulér kapløbet: nøgle-opslaget ser kun slottet, men et parallelt kald
   // har allerede indsat erstatningen, så insert rammer det unikke indeks.
@@ -652,10 +657,79 @@ test("#5840 signMandate: samtidigt identisk sign (23505 på insert) vælter ikke
       };
     },
   };
+  await assert.rejects(
+    signMandate(supabase, { teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true } }),
+    (err) => err instanceof MandateSignConflictError && err.errorCode === "board_mandate_sign_conflict",
+  );
+  assert.equal(base._state.mandates[0].status, "proposed", "taberen skriver ikke mandatet");
+  assert.equal(base._state.milestones.find((m) => m.id === "vm-slot").slot_open, true, "slottet er genåbnet");
+  assert.equal(base._state.events.length, 0, "ingen kvitteringer fra taberen");
+});
+
+test("#5840 signMandate: slottet er allerede lukket af et samtidigt sign → 409 før insert", async () => {
+  const base = makeCollisionSupabase();
+  const supabase = {
+    _state: base._state,
+    from(table) {
+      const real = base.from(table);
+      if (table !== "board_vision_milestones") return real;
+      return {
+        ...real,
+        update: (payload) => {
+          // Vinderen lukker slottet lige før taberens betingede claim.
+          base._state.milestones.find((m) => m.id === "vm-slot").slot_open = false;
+          return real.update(payload);
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    signMandate(supabase, { teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true } }),
+    (err) => err instanceof MandateSignConflictError,
+  );
+  assert.equal(base._state.milestones.length, 1, "taberen indsætter ingen erstatning");
+  assert.equal(base._state.mandates[0].status, "proposed");
+});
+
+test("#5840 signMandate: insert-fejl genåbner slottet, så et genforsøg lykkes uden dublet", async () => {
+  const base = makeCollisionSupabase();
+  let failNext = true;
+  const supabase = {
+    _state: base._state,
+    from(table) {
+      const real = base.from(table);
+      if (table !== "board_vision_milestones") return real;
+      return {
+        ...real,
+        insert: async (payload) => {
+          if (failNext) { failNext = false; return { error: { code: "08006", message: "connection failure" } }; }
+          return real.insert(payload);
+        },
+      };
+    },
+  };
+  await assert.rejects(
+    signMandate(supabase, { teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true } }),
+    /board_vision_milestones insert failed/,
+  );
+  assert.equal(base._state.milestones.find((m) => m.id === "vm-slot").slot_open, true);
+  assert.equal(base._state.mandates[0].status, "proposed");
+
   const payload = await signMandate(supabase, {
     teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true },
   });
-  assert.ok(payload);
+  assert.equal(payload.vision_slot_outcome.accepted, true);
+  assert.equal(base._state.milestones.filter((m) => m.status === "pending").length, 1, "præcis én erstatning");
   assert.equal(base._state.mandates[0].status, "active");
-  assert.equal(base._state.milestones.find((m) => m.id === "vm-slot").slot_open, false);
+});
+
+test("#5840 signMandate: afslag af kolliderende slot → slot lukket, intet indsat, underskrift lykkes", async () => {
+  const supabase = makeCollisionSupabase();
+  const payload = await signMandate(supabase, {
+    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: false },
+  });
+  assert.equal(payload.vision_slot_outcome.accepted, false);
+  assert.equal(supabase._state.milestones.length, 1);
+  assert.equal(supabase._state.milestones[0].slot_open, false);
+  assert.equal(supabase._state.mandates[0].status, "active");
 });

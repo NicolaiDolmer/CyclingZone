@@ -49,6 +49,7 @@ import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export class MandateSignConflictError extends Error {
   constructor(message, { errorCode = "board_mandate_sign_conflict" } = {}) {
@@ -149,12 +150,17 @@ async function loadOpenVisionSlot(supabase, teamId) {
  * tværs af status, så erstatningsforslaget skal kende HELE historikken.
  */
 async function loadTeamMilestones(supabase, teamId) {
-  const { data, error } = await supabase
-    .from("board_vision_milestones")
-    .select("id, milestone_key, goal, status")
-    .eq("team_id", teamId);
-  if (error) throw new Error(`board_vision_milestones lookup failed: ${error.message}`);
-  return Array.isArray(data) ? data : [];
+  // Paginér (PostgREST-cap 1000): en afkortet historik kunne gen-vælge en
+  // skjult nøgle.
+  try {
+    return await fetchAllRows(() => supabase
+      .from("board_vision_milestones")
+      .select("id, milestone_key, goal, status")
+      .eq("team_id", teamId)
+      .order("id", { ascending: true }));
+  } catch (error) {
+    throw new Error(`board_vision_milestones lookup failed: ${error.message}`, { cause: error });
+  }
 }
 
 function milestoneGoalSignature(goal) {
@@ -555,6 +561,23 @@ export async function signMandate(supabase, {
         openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number,
         existingMilestones: await loadTeamMilestones(supabase, teamId),
       });
+      // #5840 (CodeRabbit) · Luk slottet BETINGET først: kun det kald der
+      // flipper slot_open true→false må skrive erstatningen. Et samtidigt sign
+      // får 0 rækker og en 409 (genforsøg rammer idempotens-stien, når
+      // vinderen har sat mandatet active). Fejler insert bagefter, genåbnes
+      // slottet, så et genforsøg starter fra en ren tilstand — ingen
+      // halv-skrevet erstatning ved siden af et åbent slot.
+      const { data: claimed, error: claimError } = await supabase
+        .from("board_vision_milestones")
+        .update({ slot_open: false, updated_at: new Date().toISOString() })
+        .eq("id", openSlot.id)
+        .eq("slot_open", true)
+        .select("id");
+      if (claimError) throw new Error(`board_vision_milestones close-slot failed: ${claimError.message}`);
+      if (!claimed?.length) {
+        throw new MandateSignConflictError("Vision slot already answered.", { errorCode: "board_mandate_sign_conflict" });
+      }
+
       if (proposal && visionSlot.accept) {
         const { error: insertError } = await supabase.from("board_vision_milestones").insert({
           team_id: teamId,
@@ -566,20 +589,23 @@ export async function signMandate(supabase, {
           is_headline: true,
           status: "pending",
         });
-        // #5840 · 23505 her kan kun være et samtidigt identisk sign (nøglen var
-        // ubrugt ved opslaget) — milepælen findes allerede, så accept er opfyldt.
-        if (insertError && insertError.code !== "23505") {
+        if (insertError) {
+          const { error: reopenError } = await supabase
+            .from("board_vision_milestones")
+            .update({ slot_open: true, updated_at: new Date().toISOString() })
+            .eq("id", openSlot.id);
+          if (reopenError) {
+            console.error(`  ⚠️  board_vision_milestones reopen-slot failed for ${openSlot.id}: ${reopenError.message}`);
+          }
+          if (insertError.code === "23505") {
+            throw new MandateSignConflictError("Vision milestone already exists.", { errorCode: "board_mandate_sign_conflict" });
+          }
           throw new Error(`board_vision_milestones insert failed: ${insertError.message}`);
         }
         visionSlotOutcome = { accepted: true, milestone_key: proposal.milestone_key };
       } else {
         visionSlotOutcome = { accepted: false };
       }
-      const { error: closeError } = await supabase
-        .from("board_vision_milestones")
-        .update({ slot_open: false, updated_at: new Date().toISOString() })
-        .eq("id", openSlot.id);
-      if (closeError) throw new Error(`board_vision_milestones close-slot failed: ${closeError.message}`);
     }
   }
 
