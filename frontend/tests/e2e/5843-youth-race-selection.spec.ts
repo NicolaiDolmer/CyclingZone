@@ -20,14 +20,14 @@ const CASES = [
   {
     squad: "u23" as const,
     pool: U23_POOL,
-    race: { id: "00000000-0000-4000-8000-000000005843", name: "E2E U23 Classic", race_type: "single", race_class: "U23", stages: 1 },
-    doneRace: { id: "00000000-0000-4000-8000-000000058431", name: "E2E U23 Opener", race_type: "single", race_class: "U23", stages: 1 },
+    race: { id: "00000000-0000-4000-8000-000000005843", name: "E2E U23 Classic", race_type: "single", race_class: "Class1", stages: 1 },
+    doneRace: { id: "00000000-0000-4000-8000-000000058431", name: "E2E U23 Opener", race_type: "single", race_class: "Class1", stages: 1 },
   },
   {
     squad: "junior" as const,
     pool: JUNIOR_POOL,
-    race: { id: "00000000-0000-4000-8000-000000005844", name: "E2E Junior Tour", race_type: "stage_race", race_class: "Junior", stages: 3 },
-    doneRace: { id: "00000000-0000-4000-8000-000000058441", name: "E2E Junior Prologue", race_type: "single", race_class: "Junior", stages: 1 },
+    race: { id: "00000000-0000-4000-8000-000000005844", name: "E2E Junior Tour", race_type: "stage_race", race_class: "Class1", stages: 3 },
+    doneRace: { id: "00000000-0000-4000-8000-000000058441", name: "E2E Junior Prologue", race_type: "single", race_class: "Class1", stages: 1 },
   },
 ];
 

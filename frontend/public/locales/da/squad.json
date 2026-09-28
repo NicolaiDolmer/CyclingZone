@@ -96,7 +96,6 @@
     "calendarHint": "Udtag dine ryttere til hvert løb. Du kan ændre truppen, indtil første etape starter, også når den er udtaget automatisk.",
     "headers": {
       "race": "Løb",
-      "status": "Status",
       "team": "Dit hold",
       "action": "Handling"
     },

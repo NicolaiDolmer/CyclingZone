@@ -96,7 +96,6 @@
     "calendarHint": "Pick your riders for each race. You can change the squad until the first stage starts, also when it was auto-picked.",
     "headers": {
       "race": "Race",
-      "status": "Status",
       "team": "Your team",
       "action": "Action"
     },

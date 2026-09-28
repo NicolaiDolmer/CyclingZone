@@ -74,14 +74,9 @@ export default function YouthRacesTab({ squad, tab }: { squad: YouthSquad; tab: 
             {r.startsAt ? formatDateTime(r.startsAt) : "–"}
             {r.stages > 1 ? ` · ${t("youthRaces.stages", { count: r.stages })}` : ""}
           </span>
+          <span className="text-xs text-cz-2">{statusText(r)}</span>
         </span>
       ),
-    },
-    {
-      key: "status",
-      header: t("youthRaces.headers.status"),
-      compact: true,
-      render: (r) => <span className="text-cz-2 whitespace-nowrap">{statusText(r)}</span>,
     },
     {
       key: "team",
