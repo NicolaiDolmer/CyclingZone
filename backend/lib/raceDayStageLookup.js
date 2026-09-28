@@ -105,18 +105,28 @@ export async function loadRaceDayStagesByRider({
   if (!riderIds?.length) return empty();
 
   try {
-    // 1) Holdets division. Uden division findes der ingen loebsdags-akse for holdet
-    //    (spec §3.2), og saa kan ingen af dets ryttere have koert paa "loebsdag N".
+    // 1) Holdets divisioner. Uden seniordivision findes der ingen loebsdags-akse for
+    //    holdet (spec §3.2), og saa kan ingen af dets ryttere have koert paa "loebsdag N".
+    //    Ungdomsloebene (u23/junior) ligger i hver sin gruppe-division uden hold paa
+    //    `league_division_id`; holdet peger paa dem via u23_/junior_league_division_id.
+    //    Uden dem blev en rytter, der koerte et ungdomsloeb, set som "bundet, men koerte
+    //    ikke" og fik hvile i stedet for loebsudvikling. Akserne er ens: alle trupper har
+    //    5 loebsdage pr. dato med samme nummerering (squadCalendarPacker.raceDayAxis).
     const { data: team, error: teamError } = await supabase
-      .from("teams").select("league_division_id").eq("id", teamId).maybeSingle();
+      .from("teams")
+      .select("league_division_id, u23_league_division_id, junior_league_division_id")
+      .eq("id", teamId).maybeSingle();
     if (teamError) return { data: null, error: teamError, profileError: null };
     const divisionId = team?.league_division_id ?? null;
     if (!divisionId) return empty();
+    const divisionIds = [...new Set(
+      [divisionId, team?.u23_league_division_id, team?.junior_league_division_id].filter((d) => d != null),
+    )];
 
-    // 2) Saesonens loeb i den division. pagination-safe: én pulje i én saeson
-    //    (32-37 i S4-dry-runnet), langt under PostgREST's 1000-raekkers-loft.
+    // 2) Saesonens loeb i de divisioner. pagination-safe: senior 32-37 + ungdom 4-8 pr.
+    //    gruppe i S4, langt under PostgREST's 1000-raekkers-loft.
     const { data: races, error: racesError } = await supabase
-      .from("races").select("id").eq("season_id", seasonId).eq("league_division_id", divisionId);
+      .from("races").select("id").eq("season_id", seasonId).in("league_division_id", divisionIds);
     if (racesError) return { data: null, error: racesError, profileError: null };
     const raceIds = (races ?? []).map((r) => r.id).filter(Boolean);
     if (!raceIds.length) return empty();
