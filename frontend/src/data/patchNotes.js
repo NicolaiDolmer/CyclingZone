@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.312",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "See each rider's reputation",
+          "body": "A rider's profile now shows their reputation, a level from Unknown to Legend, and the results that moved it. The rider database, your team pages including U23 and Junior, auctions and the market show the same number, and the board uses it to decide who counts as a star."
+        },
+        "da": {
+          "title": "Se hver rytters omdømme",
+          "body": "En rytters profil viser nu omdømmet, et niveau fra Ukendt til Legende, og de resultater der har flyttet det. Rytterdatabasen, dine holdsider inkl. U23 og Junior, auktioner og markedet viser samme tal, og bestyrelsen bruger det til at afgøre, hvem der er stjerne."
+        },
+        "refs": [
+          4956
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.307",
     "date": "2026-09-28",
     "label": "Beta",
