@@ -2471,3 +2471,44 @@ test("#5645 generator (risiko 7): en rytter med en manuel seniorentry samme løb
   assert.ok(uRiders.length > 0, "U23-løbet fik et felt");
   assert.ok(!uRiders.includes("t1-u23x0"), "rytteren er bundet af seniorløbet samme løbsdag");
 });
+
+// #5843 (ejer-regel 28/9): et løb bruger KUN ryttere fra løbets trup. Late-fill
+// (assistenten fylder et menneskeholds tomme trup kort før start) må aldrig lægge
+// en seniorrytter i et U23-løb, heller ikke når holdet ingen U23-ryttere har.
+test("#5843 late_fill: managerhold uden U23-ryttere får ingen U23-entries, og seniorer havner aldrig i U23-løbet", async () => {
+  const state = youthGeneratorState();
+  state.teams = state.teams.map((t) => ({ ...t, user_id: `user-${t.id}` }));
+  // t1 har KUN seniorer (U23-truppen tømt), t2 har begge trupper men ingen U23-pulje.
+  state.riders = state.riders.filter((r) => !(r.team_id === "t1" && r.squad === "u23"));
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({
+    supabase, seasonId: "season1", dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-01T06:00:00Z"),
+  });
+
+  const riderById = new Map(state.riders.map((r) => [r.id, r]));
+  const uEntries = state.race_entries.filter((e) => e.race_id === "U");
+  assert.equal(uEntries.length, 0, "ingen U23-ryttere i puljen → U23-løbet får ingen late-fill");
+  for (const e of state.race_entries) {
+    const race = state.races.find((r) => r.id === e.race_id);
+    assert.equal(riderById.get(e.rider_id).squad ?? "senior", race.squad, `${e.rider_id} står i et ${race.squad}-løb`);
+  }
+});
+
+test("#5843 late_fill: managerhold med U23-trup får kun U23-ryttere i U23-løbet", async () => {
+  const state = youthGeneratorState();
+  state.teams = state.teams.map((t) => ({ ...t, user_id: `user-${t.id}` }));
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({
+    supabase, seasonId: "season1", dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-01T06:00:00Z"),
+  });
+  const riderById = new Map(state.riders.map((r) => [r.id, r]));
+  const uEntries = state.race_entries.filter((e) => e.race_id === "U");
+  assert.ok(uEntries.length > 0, "late-fill udtog U23-truppen");
+  for (const e of state.race_entries) {
+    const race = state.races.find((r) => r.id === e.race_id);
+    assert.equal(riderById.get(e.rider_id).squad ?? "senior", race.squad, `${e.rider_id} står i et ${race.squad}-løb`);
+  }
+});
