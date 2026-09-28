@@ -1873,7 +1873,11 @@
       "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}}",
       "seasonLabel": "Sæson {season}",
       "currentSeasonLabel": "Sæson {season} · Du er her",
-      "explainer": "Milepæle bedømmes i deres målsæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
+      "explainer": "Hver milepæl skal nås senest ved udgangen af sin målsæson. Når du den før, tæller den ved udgangen af den sæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
+      "countsAt": "Tælles ved udgangen af sæson {season} · kan nås før tid",
+      "countsAtCurrent": "Tælles ved udgangen af sæson {season}",
+      "milestoneAchieved": "Nået",
+      "milestoneMissed": "Ikke nået",
       "empty": {
         "title": "Ingen vision sat endnu",
         "description": "Klubbens vision er endnu ikke fastlagt."

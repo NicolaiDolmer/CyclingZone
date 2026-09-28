@@ -1873,7 +1873,11 @@
       "meta": "{seasons, plural, one {1-season plan} other {#-season plan}}",
       "seasonLabel": "Season {season}",
       "currentSeasonLabel": "Season {season} · You are here",
-      "explainer": "Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.",
+      "explainer": "Each milestone is due by the end of its target season. Reach it sooner and it counts at the end of that season. A missed milestone costs confidence once, then the vision moves on.",
+      "countsAt": "Counts at the end of season {season} · can be met early",
+      "countsAtCurrent": "Counts at the end of season {season}",
+      "milestoneAchieved": "Achieved",
+      "milestoneMissed": "Missed",
       "empty": {
         "title": "No vision set yet",
         "description": "The club vision has not been established yet."

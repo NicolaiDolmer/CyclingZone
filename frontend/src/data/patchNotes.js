@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.311",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Vision milestones show when they count",
+          "body": "Each milestone in your club vision now says when it counts, for example \"Counts at the end of season 5\". Milestones are checked at season end, not along the way, and you can meet one early. Help, under The Mandate, explains how."
+        },
+        "da": {
+          "title": "Visionens milepæle viser, hvornår de tæller",
+          "body": "Hver milepæl i din klubvision viser nu, hvornår den tælles, fx \"Tælles ved udgangen af sæson 5\". Milepæle gøres op ved sæsonafslutning, ikke undervejs, og du kan nå en før tid. Hjælp, under Mandatet, forklarer hvordan."
+        },
+        "refs": [
+          5820
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.310",
     "date": "2026-09-28",
     "label": "Beta",
