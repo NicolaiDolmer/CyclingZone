@@ -204,6 +204,7 @@ export async function runLeagueSizeAudit({
   };
   const waiting = [];
   const waitingIds = new Set();
+  const raceBoundWaitingIds = new Set();
   let stalledIds;
   for (const team of teams) {
     if (!team.is_ai || team.is_bank || team.is_frozen || team.is_test_account ||
@@ -217,9 +218,13 @@ export async function runLeagueSizeAudit({
     if (['inflight_entries','pending_transfer','live_transfer_offers','live_swap_offers','live_auctions'].includes(reason)) {
       waiting.push({team_id:team.id,pool_id:team.league_division_id,reason,pending_since:team.pending_removal_at});
       waitingIds.add(team.id);
+      if (reason === 'inflight_entries') raceBoundWaitingIds.add(team.id);
     }
   }
-  const realTeams = teams.filter((t) => !t.is_bank && !waitingIds.has(t.id));
+  // #4753: a retired AI with stale youth pointers has no riders and cannot
+  // occupy an active youth group. A race-bound pending AI still does occupy
+  // youth groups until its final stage, though senior already reserves its exit.
+  const realTeams = teams.filter((t) => !t.is_bank && t.retired_at == null);
 
   // Teams uden league_division_id (endnu ikke pulje-allokeret — typisk
   // dev/test-hold, jf. #1608 "NULL = endnu ikke pulje-allokeret") hører ikke
@@ -232,7 +237,9 @@ export async function runLeagueSizeAudit({
   // (falsk rød 27/9). Et hold tælles derfor i hver gruppe det står i.
   const teamsByDivision = new Map();
   for (const team of realTeams) {
-    for (const divId of [team.league_division_id, team.u23_league_division_id, team.junior_league_division_id]) {
+    const memberships = [team.league_division_id, team.u23_league_division_id, team.junior_league_division_id];
+    for (const [index, divId] of memberships.entries()) {
+      if (waitingIds.has(team.id) && (index === 0 || !raceBoundWaitingIds.has(team.id))) continue;
       if (divId == null) continue;
       if (!teamsByDivision.has(divId)) teamsByDivision.set(divId, []);
       teamsByDivision.get(divId).push(team);

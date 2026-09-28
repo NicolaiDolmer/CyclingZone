@@ -1,14 +1,19 @@
 
     CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
-    CREATE TABLE league_divisions(id bigint PRIMARY KEY, tier int, pool_index int, label text);
+    CREATE TABLE league_divisions(id bigint PRIMARY KEY, tier int, pool_index int, label text,
+      retired_at timestamptz);
     CREATE TABLE teams(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text, user_id uuid,
       is_ai boolean DEFAULT false, is_bank boolean DEFAULT false, is_frozen boolean DEFAULT false,
-      is_test_account boolean DEFAULT false, league_division_id bigint REFERENCES league_divisions,
+      is_test_account boolean DEFAULT false, parked_at timestamptz,
+      league_division_id bigint REFERENCES league_divisions,
+      u23_league_division_id bigint REFERENCES league_divisions,
+      junior_league_division_id bigint REFERENCES league_divisions,
       retired_at timestamptz, pending_removal_at timestamptz,
       pending_removal_blocked_reason text, pending_removal_blocked_since timestamptz);
     CREATE TABLE riders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), team_id uuid REFERENCES teams,
-      firstname text, lastname text, pending_team_id uuid REFERENCES teams, is_retired boolean DEFAULT false);
-    CREATE TABLE races(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), status text DEFAULT 'scheduled',
+      firstname text, lastname text, pending_team_id uuid REFERENCES teams, is_retired boolean DEFAULT false,
+      squad text DEFAULT 'senior', is_academy boolean DEFAULT false);
+    CREATE TABLE races(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), squad text DEFAULT 'senior', status text DEFAULT 'scheduled',
       stages_completed int DEFAULT 0, prize_paid_at timestamptz);
     CREATE TABLE race_entries(race_id uuid REFERENCES races, rider_id uuid REFERENCES riders,
       team_id uuid REFERENCES teams, PRIMARY KEY(race_id,rider_id));
