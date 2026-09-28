@@ -71,7 +71,7 @@ import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
 import { grupettoAllowedDtSeconds, grupettoPaceFloorFactor } from "./mechanics/grupettoPace.ts";
-import { timeLimitFactorFor } from "./mechanics/timeLimit.ts";
+import { timeLimitFactorFor, timeLimitTuningFor } from "./mechanics/timeLimit.ts";
 import {
   addIncidentChaseLoss,
   incidentChaseDtSeconds,
@@ -790,7 +790,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const segments = route.segments;
   // #5581: grupettoens tidsgraense-regnestykke (applyGrupettoPaceFloor).
   const nominalCumSeconds = nominalCumulativeSeconds(segments, tuning);
-  const limitFactor = timeLimitFactorFor(route.profile_type);
+  const limitFactor = timeLimitFactorFor(route.profile_type, timeLimitTuningFor(input.squad));
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
     if (segmentIndex === segments.length - 1) lastSegmentEntryGroups = state.groups;

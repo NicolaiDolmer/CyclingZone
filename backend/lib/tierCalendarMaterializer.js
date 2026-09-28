@@ -448,6 +448,7 @@ export function buildTierMaterializationPlan({
   // manglende loebsdage lae­gges som rene traeningsdage paa de positioner hvor intet loeb
   // er i gang. Maalet flytter derfor ikke laengere et eneste loeb.
   raceDayTarget = null,
+  raceTypeSpreadEnabled = true,
   classWhitelist = TIER_CLASS_WHITELIST,
   // #3327/#3328 (2026-08-04): data-drevne dækningsmål — se tierCalendarGuarantees.js.
   // Sendes videre til selectTierRaceSet, som selv falder tilbage til FØR-#3327-adfærd
@@ -644,6 +645,7 @@ export function buildTierMaterializationPlan({
     // loebsdage kommer nu fra pakkeren selv (`naturalRaceDays`).
     const packed = packLaneCalendar({
       ...packArgs, raceDayTarget: raceDayTarget != null ? Number(raceDayTarget) : 0,
+      raceTypeSpreadEnabled,
     });
     const naturalRaceDays = packed.naturalRaceDays ?? packed.timelineLength ?? 0;
     const raceDayDeficit = raceDayTarget != null ? Math.max(0, Number(raceDayTarget) - naturalRaceDays) : 0;

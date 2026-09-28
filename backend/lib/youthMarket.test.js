@@ -145,6 +145,21 @@ test("listRejectedAsYouthAuction: #4004 — opretter normalt når sluttid ligger
   assert.equal(auction.id, "youth-auction-1");
 });
 
+// #5846: efter skiftet står app_config.season_transition_planned_at stadig på
+// skiftets tidspunkt. En grænse i fortiden må ikke spærre nye auktioner.
+test("listRejectedAsYouthAuction: #5846 — opretter normalt efter skiftet (planned_at i fortiden)", async () => {
+  const supabase = makeYouthMarketSupabase({
+    appConfigRow: { value: "2026-09-27T17:30:00.000Z" },
+  });
+  const auction = await listRejectedAsYouthAuction(supabase, {
+    riderId: "rider-Y",
+    now: new Date("2026-09-28T08:06:00Z"),
+    auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(supabase._auctionInserts.length, 1);
+  assert.equal(auction.id, "youth-auction-1");
+});
+
 // #3550 punkt 6 (ejer-beslutning 19/8): REJECTED_CANDIDATE_AUCTION_DURATION_HOURS
 // (24) er nu DEFAULT — ikke kun academyIntakeExpirySweep's eksplicitte 24h, men
 // også rejectAcademyCandidate-stien (manager-initieret afvisning), der FØR faldt
