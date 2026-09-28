@@ -80,7 +80,6 @@ export const FILL_TAIL_TAG = "fill_tail";
 // ── Typer ────────────────────────────────────────────────────────────────────
 // Supabase-klienten er utypet i kernen (samme som resten af akademi-modulerne);
 // den holdes som `any` ved grænsen, mens modulets egne data er typede.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = any;
 export type NationProfileMode = "all" | "exclude-fill-tail";
 export type NationWeight = { value: string; weight: number };
@@ -250,7 +249,6 @@ export async function fetchTeamRiderProfiles(supabase: Db, teamIds: string[], { 
   const CHUNK = 100;
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows: any[] = await fetchAllRows(() =>
       supabase
         .from("riders")
@@ -436,9 +434,7 @@ export async function runBoardThankYouGift(supabase: Db, {
   nationProfileMode?: string;
   onlyTeamIds?: string[] | null;
   deriveRiders?: (sb: Db, ids: string[], opts: { dryRun: boolean }) => Promise<unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notify?: (args: any) => Promise<unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   seedCohortFn?: (sb: Db, args: any) => Promise<string[]>;
   log?: (msg: string) => void;
 } = {}): Promise<GiftRun> {
