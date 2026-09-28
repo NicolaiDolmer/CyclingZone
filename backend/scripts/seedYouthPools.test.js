@@ -41,6 +41,12 @@ test("parseArgs: dry-run default, begge trupper, --apply kræver --owner-go", ()
   assert.throws(() => parseArgs(["--group-size=3"]));
 });
 
+test("parseArgs rejects malformed allocation flags instead of changing the plan", () => {
+  assert.throws(() => parseArgs(["--managers-per-group"]), /managers-per-group/);
+  assert.throws(() => parseArgs(["--mix-junior=true"]), /mix-junior/);
+  assert.throws(() => parseArgs(["--mix-junior=false"]), /mix-junior/);
+});
+
 test("fkColumn peger på A2-kolonnerne", () => {
   assert.equal(fkColumn("u23"), "u23_league_division_id");
   assert.equal(fkColumn("junior"), "junior_league_division_id");

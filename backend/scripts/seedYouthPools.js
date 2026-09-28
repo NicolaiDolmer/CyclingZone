@@ -106,11 +106,18 @@ export function parseArgs(argv) {
   // #4620 (ejer 27/9): --managers-per-group=12 → ca. 12 managers + 12 AI pr. gruppe;
   // --mix-junior → juniorgrupperne blandes anderledes end U23 (andre modstandere).
   const mpgRaw = get("managers-per-group");
+  if (mpgRaw === true || mpgRaw === "") {
+    throw new Error("--managers-per-group kræver et tal efter =");
+  }
   const managersPerGroup = mpgRaw === undefined ? null : Number(mpgRaw);
   if (managersPerGroup != null && (!Number.isInteger(managersPerGroup) || managersPerGroup < 1 || managersPerGroup > groupSize)) {
     throw new Error(`--managers-per-group skal være et helt tal mellem 1 og ${groupSize} (fik ${JSON.stringify(mpgRaw)})`);
   }
-  const mixJunior = get("mix-junior") === true;
+  const mixRaw = get("mix-junior");
+  if (mixRaw !== undefined && mixRaw !== true) {
+    throw new Error("--mix-junior tager ingen værdi");
+  }
+  const mixJunior = mixRaw === true;
   return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior };
 }
 

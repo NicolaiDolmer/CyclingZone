@@ -263,3 +263,17 @@ test("#4620 mixJunior: junior har samme balance (ét hold pr. styrkebånd), men 
   const junPlain = planYouthGroups({ teams, aiTeams, globalRanks, squad: "junior", managersPerGroup: 12 });
   for (const t of teams) assert.equal(poolOf(junPlain, t.id), poolOf(u23, t.id));
 });
+
+
+test("#4620 two groups: junior changes opponents while keeping one manager per rank band", () => {
+  const { teams, aiTeams, globalRanks } = realisticInput({ managers: 13, ai: 40 });
+  const u23 = planYouthGroups({ teams, aiTeams, globalRanks, squad: "u23", managersPerGroup: 12, mixJunior: true });
+  const junior = planYouthGroups({ teams, aiTeams, globalRanks, squad: "junior", managersPerGroup: 12, mixJunior: true });
+  assert.equal(u23.groups.length, 2);
+  assert.equal(junior.groups.length, 2);
+  for (let band = 0; band < 6; band++) {
+    const pair = teams.slice(band * 2, band * 2 + 2);
+    assert.equal(new Set(pair.map((team) => poolOf(junior, team.id))).size, 2, `band ${band}`);
+  }
+  assert.ok(teams.some((team) => poolOf(junior, team.id) !== poolOf(u23, team.id)));
+});

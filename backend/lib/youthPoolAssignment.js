@@ -191,7 +191,10 @@ export function shiftedBandAssign(orderedItems, pools) {
   return orderedItems.map((item, i) => {
     const band = Math.floor(i / P);
     const col = i % P;
-    return { item, pool: pools[(col + band * shift) % P] };
+    // With two groups, band * shift repeats the U23 snake exactly.
+    // Rotate every second band pair so junior opponents actually differ.
+    const offset = P === 2 ? Math.floor(band / 2) : band * shift;
+    return { item, pool: pools[(col + offset) % P] };
   });
 }
 
