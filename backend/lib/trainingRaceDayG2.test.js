@@ -195,7 +195,8 @@ function memorySupabase(tables) {
       };
       const q = {
         select() { return q; },
-        eq(col, val) { filters.push((r) => r[col] === val); return q; },
+        // Punktum-sti = PostgREST-filter paa en indlejret join (races!inner(...)).
+        eq(col, val) { filters.push((r) => col.split(".").reduce((o, k) => o?.[k], r) === val); return q; },
         in(col, vals) { const s = new Set(vals); filters.push((r) => s.has(r[col])); return q; },
         gte(col, val) { filters.push((r) => Date.parse(r[col]) >= Date.parse(val)); return q; },
         lt(col, val) { filters.push((r) => Date.parse(r[col]) < Date.parse(val)); return q; },
@@ -235,6 +236,8 @@ describe("G2 gennem runTrainingDayCloseSweep (een koersel pr. kalenderdato)", ()
       }])).values()],
       race_stage_schedule: stages.map(({ race_id, stage_number, game_day, scheduled_at }) => ({
         race_id, stage_number, game_day, scheduled_at,
+        // Indlejret races!inner-join, som PostgREST leverer den.
+        races: { season_id: "season-4", league_division_id: race_id.split(":")[0] },
       })),
       teams: plans.map((p) => ({
         id: `team-D${p.tier}`, league_division_id: `D${p.tier}`,

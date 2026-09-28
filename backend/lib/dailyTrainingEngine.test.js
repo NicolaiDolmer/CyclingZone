@@ -1632,6 +1632,47 @@ test("#4847 regel 2: en rytter der KOERTE loeb faar INGEN traening — ogsaa naa
   assert.equal(scores[0].game_day, 12);
 });
 
+// ── #5267 A (ejer-valg 28/9): frie loebsdage paa en etape-dato er traening ─────
+// Et etapeloeb binder stadig fra foerste til sidste etape. Men paa en DATO hvor
+// rytteren koerer en etape, er datoens andre loebsdage traening. Kun hele datoer
+// uden etape inde i spaendet er hvile.
+function seedStageRaceDate() {
+  const s = seedState({
+    conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  seedFlagOn(s, "on");
+  seedRaceDayTick(s, { gameDay: 12 }); // race-1: etape 1 paa loebsdag 12, etape 2 paa 17
+  for (const gd of [12, 13, 14, 15, 16, 17]) seedBinding(s, { gameDay: gd });
+  s.race_results = [{ rider_id: "r1", result_type: "stage", race_id: "race-1", stage_number: 1, imported_at: IMPORTED_AT_TODAY }];
+  return s;
+}
+
+test("#5267 A: fri loebsdag paa en dato hvor han koerte en etape = traening", async () => {
+  const state = seedStageRaceDate();
+  const result = await runDay(state, { gameDay: 13, dateGameDays: [10, 11, 12, 13, 14] });
+  const rr = result.report.riders[0];
+  assert.equal(rr.bound_race_day, true, "han er stadig bundet til loebet");
+  assert.equal(rr.race_day, false, "han koerte ikke paa loebsdag 13");
+  assert.equal(rr.intensity, "hard", "datoens frie loebsdag bruger hans eget program");
+  assert.equal((state.rider_training_scores ?? []).length, 1, "en rigtig traeningsdag giver en score-raekke");
+});
+
+test("#5267 A: hel dato uden etape inde i etapeloebet = hvile", async () => {
+  const state = seedStageRaceDate();
+  const result = await runDay(state, { gameDay: 15, dateGameDays: [15, 16] });
+  const rr = result.report.riders[0];
+  assert.equal(rr.bound_race_day, true);
+  assert.equal(rr.intensity, "rest", "ingen etape paa datoen: hviledag i loebet");
+  assert.deepEqual(rr.gains, {});
+});
+
+test("#5267 A: uden datoens loebsdage (dateGameDays null) er bindingen hvile som foer", async () => {
+  const state = seedStageRaceDate();
+  const result = await runDay(state, { gameDay: 13 });
+  assert.equal(result.report.riders[0].intensity, "rest");
+});
+
 test("#4847 regel 2: en FRI rytter paa samme loebsdag traener helt normalt", async () => {
   // Negativ-kontrol: rettelsen maa ikke slukke for traeningen bredt. Samme
   // opsaetning som ovenfor, men uden en race_entry_days-raekke.

@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (28/9 kl. 16):** **Løbsdag 1 kl. 19:30 på race engine v4 (tændt 13:27) + første aftentræning pr. løbsdag (flag tændt i formiddag).** Kør efterkontrollen **#5879** kl. 19:40 og efter 20:30 (v4-versioner, resultatkæde, aftentræning, juniorer, stabilitet, bestyrelsesunderskrift). Rollback v4 = `race_engine_v4` → off (ejer-go). **Codex i gang:** løfte-opfølgning (#5828 omdømme-gulv, #5847 auktionsvindue-fix, #5867 trup-advarsel + beslutningskort for #5849/#5853/#5268/#5238/#3813/#5124/#5864) og GitHub-audit. **Torsdag 1/10:** DB-udfald 14:15 (#5878), roadmap (#5845).
+> **🎯 Next action (29/9):** 1) **#5908** tjek samlet board-skrivning ved første afsluttede løb (Railway `board=` ~1 kald, var 880). 2) **#5897** + **#5912** reparation af 217 bestyrelser + 1.759 tabte træningsdage (dry-run → ejer-go). 3) Resten af **#5893** (hændelsesplan) bygges af Codex; handoff-køen i **#5888** (#5885 help/patch, #5734, #5886, #5887). **28/9-hændelse:** ungdomsløb sprunget over → 2 DB-udfald (19:53, 20:12) fra board-storm → træning først 21:38. Rettet: #5890 #5891 #5892 #5896 #5909 #5880. Scheduler kørte pauset 20:30-21:12 (ejer-go).
 >
 > **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956.
 
@@ -26,4 +26,4 @@
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** byg KUN via wave.js; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
 
-> **🤖 Working agent:** Ingen aktiv session (primær session 28/9 lukket ca. kl. 16; efterkontrol #5879 kl. 19:40).
+> **🤖 Working agent:** Ingen aktiv session (hændelses-session 28/9 lukket ca. 22:15; opfølgning #5893).
