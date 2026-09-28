@@ -1875,6 +1875,7 @@
       "currentSeasonLabel": "Season {season} · You are here",
       "explainer": "Each milestone is due by the end of its target season. Reach it sooner and it counts at the end of that season. A missed milestone costs confidence once, then the vision moves on.",
       "countsAt": "Counts at the end of season {season} · can be met early",
+      "countsAtCurrent": "Counts at the end of season {season}",
       "milestoneAchieved": "Achieved",
       "milestoneMissed": "Missed",
       "empty": {

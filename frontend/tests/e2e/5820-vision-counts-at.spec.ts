@@ -3,7 +3,8 @@
 // Spiller-feedback 26/9: et langsigtet mål ("3 overall wins") lignede et
 // inaktivt mål midt i sæsonen, fordi kortet ikke sagde at milepæle gøres op
 // ved sæsonafslutning. Nu står "Counts at the end of season N · can be met
-// early" under hver åben milepæl, "Achieved"/"Missed" under afgjorte.
+// early" under hver kommende milepæl, "Counts at the end of season N" under
+// indeværende sæsons, og "Achieved"/"Missed" under afgjorte.
 //
 // Guarden holder på linjen (tekst + sæsontal), på at den står i fuld bredde på
 // mobil, og at siden ikke får vandret scroll. Samme mock som #5617.
@@ -72,8 +73,9 @@ for (const [name, width, height] of [["mobil", 390, 844], ["desktop", 1440, 900]
     const lines = list.getByTestId("vision-milestone-counts");
     await expect(lines).toHaveCount(4);
     await expect(lines.nth(0)).toHaveText(/^(Achieved|Nået)$/);
-    await expect(lines.nth(1)).toHaveText(/^(Counts at the end of season 4 · can be met early|Tælles ved udgangen af sæson 4 · kan nås før tid)$/);
-    await expect(lines.nth(2)).toContainText(/season 5|sæson 5/);
+    // Indeværende sæson er selve målsæsonen: ingen "før tid"-hale.
+    await expect(lines.nth(1)).toHaveText(/^(Counts at the end of season 4|Tælles ved udgangen af sæson 4)$/);
+    await expect(lines.nth(2)).toHaveText(/^(Counts at the end of season 5 · can be met early|Tælles ved udgangen af sæson 5 · kan nås før tid)$/);
     await expect(lines.nth(3)).toContainText(/season 6|sæson 6/);
     // Forklaringen under milepælene siger ikke længere "bedømmes i målsæsonen"
     // uden undtagelsen for tidlig opfyldelse.

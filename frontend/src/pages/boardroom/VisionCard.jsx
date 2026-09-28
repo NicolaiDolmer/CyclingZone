@@ -84,13 +84,17 @@ export default function VisionCard({ vision }) {
                     langsigtet mål ikke ligner et inaktivt mål midt i sæsonen.
                     Motoren afgør milepæle ved sæsonafslutning: i målsæsonen,
                     eller tidligere hvis målet allerede er nået (BOARD_RULES
-                    §0.1 / A7). Forklaringen står i Hjælp (mandate.visionMilestones). */}
+                    §0.1 / A7). Indeværende (eller forfalden) milepæl er i sin
+                    målsæson, så "kan nås før tid" udelades dér. Forklaringen
+                    står i Hjælp (mandate.visionMilestones). */}
                 <p data-testid="vision-milestone-counts" className="mt-[2px] text-xs text-cz-3">
                   {m.status === "achieved"
                     ? t("boardroom.vision.milestoneAchieved")
                     : m.status === "missed"
                       ? t("boardroom.vision.milestoneMissed")
-                      : t("boardroom.vision.countsAt", { season: m.seasonNumber })}
+                      : m.status === "current"
+                        ? t("boardroom.vision.countsAtCurrent", { season: m.seasonNumber })
+                        : t("boardroom.vision.countsAt", { season: m.seasonNumber })}
                 </p>
               </div>
             </li>

@@ -1875,6 +1875,7 @@
       "currentSeasonLabel": "Sæson {season} · Du er her",
       "explainer": "Hver milepæl skal nås senest ved udgangen af sin målsæson. Når du den før, tæller den ved udgangen af den sæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
       "countsAt": "Tælles ved udgangen af sæson {season} · kan nås før tid",
+      "countsAtCurrent": "Tælles ved udgangen af sæson {season}",
       "milestoneAchieved": "Nået",
       "milestoneMissed": "Ikke nået",
       "empty": {
