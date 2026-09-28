@@ -75,6 +75,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { sumRiderSalaries } from "./boardUtils.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { isYouthSquad } from "./squads.js";
 
 function toFiniteOr(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -213,6 +214,15 @@ export async function processBoardWeekendFinalization({
   // (fx Sheets-sync af gamle sæsoner) må ikke flytte satisfaction.
   if (season.status !== "active") {
     summary.skipped_reason = "season_not_active";
+    return summary;
+  }
+  // Bestyrelsen hænger på SENIOR-divisionen (U23-spec 2026-09-15 §bestyrelse:
+  // U23 kører som egen, parallel pass). Et U23-/juniorløb må derfor aldrig flytte
+  // en bestyrelse — og skal ikke trigge en fuld genberegning af alle boards.
+  // S4 løbsdag 1 (28/9): 20 ungdomsløb i træk gav 20 fulde board-kørsler, ~3.500
+  // enkelt-skrivninger på få minutter og et 3-minutters DB-udfald.
+  if (isYouthSquad(race?.squad)) {
+    summary.skipped_reason = "youth_race";
     return summary;
   }
 

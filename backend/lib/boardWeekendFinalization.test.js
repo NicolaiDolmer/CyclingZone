@@ -1014,3 +1014,45 @@ test("#2932: fejl i pagineret riders-load kaster med samme besked-format som fø
     "fejlbeskeden skal bevare det oprindelige 'Could not load riders for weekend board update: ...'-format"
   );
 });
+
+test("S4 28/9: et U23-/juniorløb flytter ALDRIG en bestyrelse (skip før al I/O)", async () => {
+  for (const squad of ["u23", "junior"]) {
+    const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+    const state = {
+      teams: [{ id: "t1", user_id: "u1", name: "Hold", balance: 5000, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+      board_profiles: [{ id: "b1", team_id: "t1", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, budget_modifier: 1.0, current_goals: [] }],
+      season_standings: [{ team_id: "t1", season_id: "s2", division: 1, rank_in_division: 1, stage_wins: 0, gc_wins: 0, team: { is_ai: false } }],
+      riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+    };
+    let reads = 0;
+    const base = makeFakeSupabase(state);
+    const supabase = { ...base, from: (t) => { reads++; return base.from(t); } };
+    const summary = await processBoardWeekendFinalization({
+      supabase, season, previousRaceDaysCompleted: 8,
+      race: { id: "r-youth", name: "Ungdomsløb", league_division_id: 16, squad },
+      deps: { isBoardTestModeActive: async () => false, notifyTeamOwner: async () => ({}) },
+    });
+    assert.equal(summary.skipped_reason, "youth_race", squad);
+    assert.equal(summary.boards_updated, 0);
+    assert.equal(reads, 0, "ingen DB-kald for et ungdomsløb");
+    assert.equal(state.board_profiles[0].satisfaction, 50);
+    assert.equal(state.board_satisfaction_events.length, 0);
+  }
+});
+
+test("seniorløb (squad senior) opdaterer stadig bestyrelsen (kontrol)", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Hold", balance: 5000, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 50, budget_modifier: 1.0, current_goals: [] }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 1, rank_in_division: 1, stage_wins: 0, gc_wins: 0, team: { is_ai: false } }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const summary = await processBoardWeekendFinalization({
+    supabase: makeFakeSupabase(state), season, previousRaceDaysCompleted: 8,
+    race: { id: "r-sen", name: "Seniorløb", squad: "senior" },
+    deps: { isBoardTestModeActive: async () => false, notifyTeamOwner: async () => ({}) },
+  });
+  assert.equal(summary.skipped_reason, null);
+  assert.equal(summary.baseline_boards_updated, 1);
+});
