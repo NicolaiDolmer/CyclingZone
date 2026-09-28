@@ -43,11 +43,11 @@ export const PATCHES = [
         "topic": "Season",
         "en": {
           "title": "Inactive teams are parked",
-          "body": "Teams with no login for 30 days that did not sign up for season 4 left their group at the switch. The team, riders and money are kept. If it is yours, come back with one tap on the dashboard."
+          "body": "Teams with no login for 30 days that did not sign up for season 4 left their group at the switch. Your club stays available for a one-tap return. Contracts can still expire and salaries are still paid while parked; the club receives no new season sponsor payment until it returns."
         },
         "da": {
           "title": "Inaktive hold er parkeret",
-          "body": "Hold uden login i 30 dage, som ikke meldte sig til sæson 4, forlod deres gruppe ved skiftet. Holdet, rytterne og pengene er bevaret. Er det dit, kommer du tilbage med ét tryk på dashboardet."
+          "body": "Hold uden login i 30 dage, som ikke meldte sig til sæson 4, forlod deres gruppe ved skiftet. Du kan hente klubben tilbage med ét tryk. Kontrakter kan stadig udløbe, og løn betales fortsat under parkering; klubben får først sponsorbetaling for den nye sæson, når den vender tilbage."
         },
         "refs": [
           4592
