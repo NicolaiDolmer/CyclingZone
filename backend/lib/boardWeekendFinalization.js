@@ -200,7 +200,7 @@ export async function processBoardWeekendFinalization({
     consequences_applied: 0,
     events_written: 0,
     errors: 0,
-    skipped_reason: null,
+    skipped_reason: /** @type {string|null} */ (null),
     // #3514 fase 1-rest: kun >0 når kill-switchen er 'on' — 0 er den korrekte
     // værdi for hele populationen indtil flip.
     mandate_relations_synced: 0,
