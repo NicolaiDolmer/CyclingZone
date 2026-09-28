@@ -188,6 +188,10 @@ export type StageInput = {
   orders: TeamOrder[];
   seed: string; // etape-seed (commit-reveal-moenstret, jf. raceSimulator.stableSeed)
   tuning: EngineTuning;
+  // Ungdomsloeb (ADDITIVT og VALGFRIT, ejer 28/9): loebets trup. Laeses KUN af
+  // M15's tidsgraense (mechanics/timeLimit.ts timeLimitTuningFor). Udeladt,
+  // null eller "senior" = seniorreglen, bit-identisk med foer.
+  squad?: "senior" | "u23" | "junior" | null;
 };
 
 // #2410-taksonomien er AABEN for tilfoejelser (forward-kompatibel: ukendte typer
