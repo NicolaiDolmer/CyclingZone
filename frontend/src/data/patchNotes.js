@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.310",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A new race engine from race day 1",
+          "body": "Races are now ridden kilometre by kilometre: breakaways go clear and get caught, climbs split the field, and the finale goes to whoever has the legs left. Each stage's route and weather play a part. Riders who finish far behind the winner can miss the time limit and leave a stage race. Open a stage result to watch the race film. This is brand new, so tell me on Discord if something looks off."
+        },
+        "da": {
+          "title": "Ny løbsmotor fra løbsdag 1",
+          "body": "Løbene køres nu kilometer for kilometer: udbrud går væk og bliver hentet, stigninger splitter feltet, og finalen går til den, der har kræfter tilbage. Hver etapes rute og vejr spiller ind. Ryttere, der kommer langt efter vinderen, kan ende uden for tidsgrænsen og udgå af et etapeløb. Åbn et etaperesultat for at se løbsfilmen. Det er helt nyt, så skriv til mig på Discord, hvis noget ser forkert ud."
+        },
+        "refs": [
+          5826,
+          5515
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Milder time limit in U23 and junior races",
+          "body": "Young riders get more time before they miss the time limit, and a small group that finishes together stays in the race."
+        },
+        "da": {
+          "title": "Mildere tidsgrænse i U23- og juniorløb",
+          "body": "Unge ryttere får mere tid, før de ender uden for tidsgrænsen, og en lille gruppe, der kommer i mål sammen, bliver i løbet."
+        },
+        "refs": [
+          5875
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.309",
     "date": "2026-09-28",
     "label": "Beta",

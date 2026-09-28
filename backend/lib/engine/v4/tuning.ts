@@ -1175,6 +1175,15 @@ const timeLimitExtra = {
   // taerskel 24): 2 s => begge ud, 120 s => samlet og reddet. Vinduet er en
   // ANKOMST-graense ("kom de ind sammen?"), ikke en loebsdynamik-graense.
   grupettoCohesionWindowSeconds: 120, // sammenhaengsvindue paa sluttid: hvor langt der maa vaere mellem to naboer i en samlet ankomst. STARTGAET, kalibreres
+  // Ungdomsloeb (ejer 28/9, loebsdag 1): juniorernes evner ligger typisk paa 1-5,
+  // saa smaa evneforskelle bliver til store tidstab, og felterne er ca. 80 ryttere.
+  // Skyggetesten af juniorernes 175 km bakkede etape gav 6 OTL: to klumper a 3
+  // ryttere, 38-50 min efter vinderen. Seniorreglen redder kun en samlet ankomst
+  // paa mindst 8. Ungdomsreglen er mildere paa begge akser.
+  youth: {
+    factorMultiplier: 2, // graense-faktoren pr. etapetype ganges med denne (kuperet 10 % -> 20 %). STARTGAET, kalibreres
+    grupettoMinRiders: 3, // en samlet ankomst paa mindst 3 reddes, uanset feltstoerrelse. STARTGAET, kalibreres
+  },
 };
 
 /** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
