@@ -179,3 +179,48 @@ test("ugyldige argumenter: manglende loebsdag (ogsaa null, som Number() goer til
   const noClient = await loadRaceDayStagesByRider({ supabase: null, teamId: TEAM, seasonId: SEASON, gameDay: 12, riderIds: RIDERS });
   assert.equal(noClient.data, null);
 });
+
+test("ungdomsloeb: en rytter der koerte et U23- eller juniorloeb findes via holdets ungdomsgrupper", async () => {
+  // Ungdomsloebene ligger i egne gruppe-divisioner, som ingen hold har som
+  // league_division_id. Foer rettelsen blev de aldrig fundet, og rytteren fik hvile
+  // i stedet for loebsudvikling (bundet, men "koerte ikke").
+  const state = seedState();
+  state.teams = [{ id: TEAM, league_division_id: DIVISION, u23_league_division_id: "u23-g1", junior_league_division_id: "jun-g1" }];
+  state.races.push(
+    { id: "u23-1", season_id: SEASON, league_division_id: "u23-g1" },
+    { id: "jun-1", season_id: SEASON, league_division_id: "jun-g1" },
+    { id: "jun-other", season_id: SEASON, league_division_id: "jun-g2" },
+  );
+  state.race_stage_schedule.push(
+    { race_id: "u23-1", stage_number: 1, game_day: 12 },
+    { race_id: "jun-1", stage_number: 2, game_day: 12 },
+    { race_id: "jun-other", stage_number: 1, game_day: 12 },
+  );
+  state.race_results.push(
+    { rider_id: "U", race_id: "u23-1", stage_number: 1, result_type: "stage" },
+    { rider_id: "J", race_id: "jun-1", stage_number: 2, result_type: "stage" },
+    { rider_id: "Z", race_id: "jun-other", stage_number: 1, result_type: "stage" },
+  );
+  state.race_stage_profiles.push(
+    { race_id: "u23-1", stage_number: 1, profile_type: "hilly" },
+    { race_id: "jun-1", stage_number: 2, profile_type: "cobbles" },
+  );
+  const out = await loadRaceDayStagesByRider({
+    supabase: createMock(state), teamId: TEAM, seasonId: SEASON, gameDay: 12, riderIds: ["A", "U", "J", "Z"],
+  });
+  assert.equal(out.error, null);
+  assert.equal(out.data.get("A").profileType, "mountain", "senioren findes stadig");
+  assert.equal(out.data.get("U").profileType, "hilly", "U23-rytteren faar sin etapes profil");
+  assert.equal(out.data.get("J").profileType, "cobbles", "juniorrytteren faar sin etapes profil");
+  assert.equal(out.data.has("Z"), false, "en anden ungdomsgruppes loeb taeller ikke for holdet");
+});
+
+test("ungdomsgrupper mangler: kun seniordivisionen bruges, ingen fejl", async () => {
+  const state = seedState();
+  state.teams = [{ id: TEAM, league_division_id: DIVISION, u23_league_division_id: null, junior_league_division_id: null }];
+  const out = await loadRaceDayStagesByRider({
+    supabase: createMock(state), teamId: TEAM, seasonId: SEASON, gameDay: 12, riderIds: RIDERS,
+  });
+  assert.equal(out.error, null);
+  assert.deepEqual([...out.data.keys()].sort(), ["A", "B"]);
+});

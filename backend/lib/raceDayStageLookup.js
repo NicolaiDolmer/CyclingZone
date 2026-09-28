@@ -71,6 +71,35 @@ export function buildRaceDayStageByRider({ scheduleRows = [], resultRows = [], p
   return out;
 }
 
+// Sæsonens løb i holdets divisioner (senior + U23- og juniorgruppe). Delt af begge
+// opslag nedenfor. Returnerer { raceIds, error }; tom liste = ingen akse/ingen løb.
+async function loadTeamSeasonRaceIds({ supabase, teamId, seasonId }) {
+  // 1) Holdets divisioner. Uden seniordivision findes der ingen loebsdags-akse for
+  //    holdet (spec §3.2), og saa kan ingen af dets ryttere have koert paa "loebsdag N".
+  //    Ungdomsloebene (u23/junior) ligger i hver sin gruppe-division uden hold paa
+  //    `league_division_id`; holdet peger paa dem via u23_/junior_league_division_id.
+  //    Uden dem blev en rytter, der koerte et ungdomsloeb, set som "bundet, men koerte
+  //    ikke" og fik hvile i stedet for loebsudvikling. Akserne er ens: alle trupper har
+  //    5 loebsdage pr. dato med samme nummerering (squadCalendarPacker.raceDayAxis).
+  const { data: team, error: teamError } = await supabase
+    .from("teams")
+    .select("league_division_id, u23_league_division_id, junior_league_division_id")
+    .eq("id", teamId).maybeSingle();
+  if (teamError) return { raceIds: null, error: teamError };
+  const divisionId = team?.league_division_id ?? null;
+  if (!divisionId) return { raceIds: [], error: null };
+  const divisionIds = [...new Set(
+    [divisionId, team?.u23_league_division_id, team?.junior_league_division_id].filter((d) => d != null),
+  )];
+
+  // 2) Saesonens loeb i de divisioner. pagination-safe: senior 32-37 + ungdom 4-8 pr.
+  //    gruppe i S4, langt under PostgREST's 1000-raekkers-loft.
+  const { data: races, error: racesError } = await supabase
+    .from("races").select("id").eq("season_id", seasonId).in("league_division_id", divisionIds);
+  if (racesError) return { raceIds: null, error: racesError };
+  return { raceIds: (races ?? []).map((r) => r.id).filter(Boolean), error: null };
+}
+
 /**
  * Slaa op hvilken etape hver af holdets ryttere koerte paa loebsdagen.
  *
@@ -105,20 +134,8 @@ export async function loadRaceDayStagesByRider({
   if (!riderIds?.length) return empty();
 
   try {
-    // 1) Holdets division. Uden division findes der ingen loebsdags-akse for holdet
-    //    (spec §3.2), og saa kan ingen af dets ryttere have koert paa "loebsdag N".
-    const { data: team, error: teamError } = await supabase
-      .from("teams").select("league_division_id").eq("id", teamId).maybeSingle();
-    if (teamError) return { data: null, error: teamError, profileError: null };
-    const divisionId = team?.league_division_id ?? null;
-    if (!divisionId) return empty();
-
-    // 2) Saesonens loeb i den division. pagination-safe: én pulje i én saeson
-    //    (32-37 i S4-dry-runnet), langt under PostgREST's 1000-raekkers-loft.
-    const { data: races, error: racesError } = await supabase
-      .from("races").select("id").eq("season_id", seasonId).eq("league_division_id", divisionId);
-    if (racesError) return { data: null, error: racesError, profileError: null };
-    const raceIds = (races ?? []).map((r) => r.id).filter(Boolean);
+    const { raceIds, error: raceIdsError } = await loadTeamSeasonRaceIds({ supabase, teamId, seasonId });
+    if (raceIdsError) return { data: null, error: raceIdsError, profileError: null };
     if (!raceIds.length) return empty();
 
     // 3) Etaperne paa loebsdagen. LAESER den lagrede game_day, udleder den aldrig af
@@ -171,5 +188,61 @@ export async function loadRaceDayStagesByRider({
     // (data: null = "ved det ikke"), og dailyTrainingEngine.js kaster paa den.
     // Én form ({ data, error }) saa kald-stedet har ét sted at traeffe sin beslutning.
     return { data: null, error: err, profileError: null };
+  }
+}
+
+/**
+ * #5267 A (ejer-valg 28/9): hvilke af holdets ryttere koerte en etape paa EN AF
+ * datoens loebsdage? En rytter der er bundet til et etapeloeb, men har en etape
+ * paa datoen, traener paa datoens frie loebsdage. Kun hele datoer uden etape inde
+ * i loebets spaend er hvile.
+ *
+ * Kaldes efter datoens sidste finalization (aftenkoerslen), saa resultaterne findes
+ * for alle datoens loebsdage. Samme fejl-kontrakt som loadRaceDayStagesByRider:
+ * `error` sat ⇒ svaret er ukendt, kald-stedet kaster.
+ *
+ * @returns {Promise<{ data: Set<string>|null, error: unknown }>}
+ */
+export async function loadRiderIdsWithStageOnGameDays({ supabase, teamId, seasonId, gameDays, riderIds }) {
+  if (!supabase?.from) return { data: null, error: new Error("supabase client required") };
+  if (!teamId) return { data: null, error: new Error("teamId required") };
+  if (!seasonId) return { data: null, error: new Error("seasonId required") };
+  const days = [...new Set((gameDays ?? []).map(Number).filter(Number.isFinite))];
+  if (!days.length || !riderIds?.length) return { data: new Set(), error: null };
+  try {
+    const { raceIds, error: raceIdsError } = await loadTeamSeasonRaceIds({ supabase, teamId, seasonId });
+    if (raceIdsError) return { data: null, error: raceIdsError };
+    if (!raceIds.length) return { data: new Set(), error: null };
+
+    // pagination-safe: hoejst 5 loebsdage × faa etaper pr. loebsdag i divisionerne.
+    const { data: scheduleRows, error: scheduleError } = await supabase
+      .from("race_stage_schedule")
+      .select("race_id, stage_number, game_day")
+      .in("race_id", raceIds)
+      .in("game_day", days);
+    if (scheduleError) return { data: null, error: scheduleError };
+    const stages = scheduleRows ?? [];
+    if (!stages.length) return { data: new Set(), error: null };
+    const stageKey = (raceId, stageNumber) => `${raceId}:${Number(stageNumber)}`;
+    const stageKeys = new Set(stages.map((row) => stageKey(row.race_id, row.stage_number)));
+
+    // pagination-safe: holdets egne ryttere (< 30) × datoens etaper.
+    const { data: resultRows, error: resultsError } = await supabase
+      .from("race_results")
+      .select("rider_id, race_id, stage_number")
+      .eq("result_type", "stage")
+      .in("race_id", [...new Set(stages.map((row) => row.race_id))])
+      .in("rider_id", riderIds);
+    if (resultsError) return { data: null, error: resultsError };
+
+    const out = new Set();
+    for (const row of resultRows ?? []) {
+      if (stageKeys.has(stageKey(row.race_id, row.stage_number))) out.add(row.rider_id);
+    }
+    return { data: out, error: null };
+  } catch (err) {
+    // best-effort HER, men ikke hos kalderen: fejlen RETURNERES (data: null =
+    // "ved det ikke"), og dailyTrainingEngine.js kaster paa den.
+    return { data: null, error: err };
   }
 }

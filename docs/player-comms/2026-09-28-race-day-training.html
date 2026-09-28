@@ -1,0 +1,287 @@
+<title>Race Day or Training Day</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Inter+Tight:wght@600;700&display=swap">
+<style>
+:root{
+  --bg:#f4f2ec; --card:#fcfbf7; --subtle:#ece9e1; --line:#e5e0d5;
+  --t1:#0e0f15; --t2:#66637a; --t3:#8a88a2;
+  --gold:#e8c547; --gold-t:#a07800;
+  --race:#2f6f8f; --train:#0e0f15; --off:#b9b5c9; --warn:#b4532a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e0f15; --card:#161824; --subtle:#1f2233; --line:#2a2d3a;
+    --t1:#ededf2; --t2:#9da0b3; --t3:#888ba0;
+    --gold:#e8c547; --gold-t:#ffd966;
+    --race:#6fb3d6; --train:#ededf2; --off:#4a4d60; --warn:#e38a63;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e0f15; --card:#161824; --subtle:#1f2233; --line:#2a2d3a;
+  --t1:#ededf2; --t2:#9da0b3; --t3:#888ba0;
+  --gold:#e8c547; --gold-t:#ffd966;
+  --race:#6fb3d6; --train:#ededf2; --off:#4a4d60; --warn:#e38a63;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font:15px/1.6 "DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-inline:16px;padding-block:32px 64px}
+.wrap{max-width:56rem;margin:0 auto;display:grid;gap:28px}
+h1{font:400 clamp(44px,8vw,72px)/0.95 "Bebas Neue",Impact,"Arial Narrow",sans-serif;letter-spacing:.01em;margin:0;text-wrap:balance}
+h2{font:700 20px/1.3 "Inter Tight",system-ui,sans-serif;margin:0 0 4px;text-wrap:balance}
+h3{font:600 15px/1.3 "Inter Tight",system-ui,sans-serif;margin:0}
+p{margin:0;max-width:65ch;color:var(--t2)}
+.lede{font-size:17px;color:var(--t1)}
+.eyebrow{font:600 11px/1 "Inter Tight",sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-t)}
+.hero{display:grid;gap:14px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+.hero .keyline{height:2px;width:56px;background:var(--gold)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:22px;display:grid;gap:16px}
+.num{font-variant-numeric:tabular-nums}
+/* bars */
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:minmax(120px,190px) 1fr;align-items:center;gap:12px}
+.bar .lbl{font-size:14px}
+.bar .lbl small{display:block;color:var(--t3);font-size:12px;line-height:1.3}
+.track{height:14px;background:var(--subtle);border-radius:3px;overflow:hidden}
+.fill{height:100%;border-radius:3px}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+.f-train{background:var(--train)} .f-race{background:var(--race)} .f-off{background:var(--off)} .f-gold{background:var(--gold)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--t2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+/* profile grid */
+.profiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0;border-top:1px solid var(--line)}
+.prof{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}
+.prof svg{width:78px;height:26px;display:block}
+.prof svg path{fill:none;stroke:var(--t1);stroke-width:1.6;stroke-linejoin:round}
+.prof svg path.area{fill:var(--subtle);stroke:none}
+.prof b{display:block;font:600 13px/1.2 "Inter Tight",sans-serif}
+.prof span{font-size:12.5px;color:var(--t2);line-height:1.35}
+/* compare */
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.pane{display:grid;gap:10px;padding:16px;border:1px solid var(--line);border-radius:5px}
+.pane .tag{font-size:12px;color:var(--t3)}
+.verdict{font-size:13.5px;padding-top:8px;border-top:1px solid var(--line)}
+.good{color:var(--race);font-weight:600} .bad{color:var(--warn);font-weight:600}
+/* table */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 12px/1.3 "Inter Tight",sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+td:first-child{color:var(--t2)}
+.steps{display:grid;gap:0;margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.steps li{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.steps li b{font:600 13px/1.4 "Inter Tight",sans-serif}
+.note{font-size:12.5px;color:var(--t3)}
+.slots{display:grid;gap:14px}
+.day{display:grid;gap:6px}
+.day .dl{font-size:13px;color:var(--t2)}
+.row5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.slot{border:1px solid var(--line);border-radius:5px;padding:8px 6px;text-align:center;font:600 12px/1.25 "Inter Tight",sans-serif;background:var(--card)}
+.slot small{display:block;font:400 11px/1.3 "DM Sans",sans-serif;color:var(--t3)}
+.slot.tr{background:var(--subtle)}
+.slot.rc{background:var(--race);color:#fff;border-color:var(--race)}
+.slot.rc small{color:rgba(255,255,255,.8)}
+.slot.rs{background:transparent;border-style:dashed}
+.sum{font-variant-numeric:tabular-nums;font-size:13px;color:var(--t2)}
+.sum b{color:var(--t1)}
+.faq{margin:0;display:grid;border-top:1px solid var(--line)}
+.faq dt{font:600 14.5px/1.4 "Inter Tight",sans-serif;padding-top:12px}
+.faq dd{margin:4px 0 0;padding-bottom:12px;border-bottom:1px solid var(--line);color:var(--t2);font-size:14px;max-width:65ch}
+@media (max-width:520px){
+  .bar{grid-template-columns:1fr}
+  .bar .track{grid-column:1 / -1;grid-row:2}
+  .steps li{grid-template-columns:1fr}
+  .card{padding:16px}
+}
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="keyline"></div>
+    <div class="eyebrow">Training · Season 4</div>
+    <h1>Race day or training day?</h1>
+    <p class="lede">From season 4, every race day gives each rider a race or a training session. Never both. The only exception is a rest day in the middle of a stage race. This page shows what each one is worth, so you can make the call rider by rider.</p>
+  </header>
+
+
+  <section class="card">
+    <div>
+      <h2>1 · One real day = five race days</h2>
+      <p>A season has 140 race days, and each real date carries 5 of them. Every rider gets one tick per race day: a race or a training session. So racing only uses the slots where your rider actually rides. The rest of that date is training, as you planned it.</p>
+    </div>
+    <div class="slots">
+      <div class="day"><div class="dl">Training only</div>
+        <div class="row5"><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div></div>
+        <div class="sum">Full day of training</div></div>
+      <div class="day"><div class="dl">One-day classic</div>
+        <div class="row5"><div class="slot rc">Race<small>medium</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div></div>
+        <div class="sum"><b>Almost the same development</b>, plus the result</div></div>
+      <div class="day"><div class="dl">Stage race, one stage that date</div>
+        <div class="row5"><div class="slot rc">Stage<small>medium</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div><div class="slot tr">Hard<small>training</small></div></div>
+        <div class="sum">Same as a classic: the stage is racing, the rest of the date is training. Only a full date without a stage in the middle of a stage race is a rest day.</div></div>
+    </div>
+    <p class="note">That holds when the race trains the abilities you would train anyway. Picking the right race is what makes that true (section 5). The exact slot order in a stage race varies with the calendar.</p>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>2 · The stage decides <em>what</em> a race trains</h2>
+      <p>A rider who races counts as having done a normal (medium) session. The abilities it trains come from the stage profile, not from your training plan.</p>
+    </div>
+    <div class="profiles" id="profiles"></div>
+    <p class="note">Every other ability still gets a small trickle, exactly like on a training day.</p>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>3 · How much a day is worth</h2>
+      <p>How much each trained ability grows. Abilities are counted separately: a hilly stage trains climbing, punch and tempo each at the medium rate. It is not one session split three ways.</p>
+    </div>
+    <div class="bars" id="rates"></div>
+    <div class="legend"><span><i class="f-train"></i>Training session</span><span><i class="f-race"></i>Race day</span><span><i class="f-off"></i>Nothing / trickle</span></div>
+    <p class="note">Specialised sessions push their main ability harder, but skip the others. VO2max Climb trains more climbing and no punch.</p>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>4 · Your rider still decides <em>how fast</em></h2>
+      <p>The stage picks the abilities. The speed comes from the rider, on race days and training days alike. A signature ability grows far faster than a weakness.</p>
+    </div>
+    <div class="bars" id="roles"></div>
+    <p class="note">Age and potential scale it too. Young riders develop much faster than riders in their late twenties, and juniors get an extra youth boost. All of that applies the same way whether he races or trains.</p>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>5 · Match the race to the rider</h2>
+      <p>Same race day, two riders. Longer bar = more growth. Roles are an example.</p>
+    </div>
+    <div class="two">
+      <div class="pane">
+        <h3>Climber on a mountain stage</h3>
+        <div class="tag">trains climbing · endurance · durability</div>
+        <div class="bars" id="climber"></div>
+        <div class="verdict"><span class="good">Good match.</span> His profile is the stage. Close to a proper training day, plus the result.</div>
+      </div>
+      <div class="pane">
+        <h3>Sprinter on a mountain stage</h3>
+        <div class="tag">trains climbing · endurance · durability</div>
+        <div class="bars" id="sprinter"></div>
+        <div class="verdict"><span class="bad">Poor match.</span> His sprint only gets the trickle, and climbing is one of his weak abilities, so it grows slowly.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>6 · The honest trade-off</h2>
+      <p>Per race day, training can beat racing a little. Per real day, racing one classic costs very little development, if the race suits the rider. Racing pays in everything else.</p>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th></th><th>Training day</th><th>Race day</th></tr></thead>
+        <tbody>
+          <tr><td>Which abilities</td><td>You choose</td><td>The stage profile chooses</td></tr>
+          <tr><td>Rate</td><td>Easy, normal or hard</td><td>Medium</td></tr>
+          <tr><td>Prize money &amp; points</td><td>No</td><td>Yes</td></tr>
+          <tr><td>Sponsor money</td><td>No</td><td>Paid per stage started</td></tr>
+          <tr><td>Travel &amp; staff cost</td><td>No</td><td>Yes, per senior race day</td></tr>
+          <tr><td>Injury risk</td><td>Only hard days with fatigue 70+</td><td>Crashes</td></tr>
+          <tr><td>Stage race rest day</td><td>No</td><td>Counts as rest: recovery, no growth</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>7 · When it happens</h2>
+    </div>
+    <ul class="steps">
+      <li><b>From 20:00</b><span>Every evening, all 5 race days of that date are settled after the day's last race, never before 20:00 Danish time. The "train now" button does the same thing. There is no bonus for clicking it any more, so every team trains on equal terms.</span></li>
+      <li><b>140 per season</b><span>5 race days per date, one tick each. Several stages on the same date are separate race days, and each one counts.</span></li>
+      <li><b>Max +1</b><span>A rider can gain at most one point per ability per race day. Any extra progress carries over to the next race day.</span></li>
+      <li><b>Beta</b><span>Training programs let you plan each race-day slot of the week. Races always override the plan for riders who race that day.</span></li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <div>
+      <h2>8 · Quick answers</h2>
+      <p>The questions I got most on day one.</p>
+    </div>
+    <dl class="faq">
+      <dt>Can my rider train on a day he races?</dt>
+      <dd>Yes. On the race days of that date where he doesn't ride, he trains what you picked. Only the race days he rides count as racing.</dd>
+      <dt>Should I switch his training to match today's stage?</dt>
+      <dd>No. The race already trains the stage's abilities. Use the free race days for what the race doesn't give him. A climber in a flat race can still train climbing on the other race days.</dd>
+      <dt>He rides 2-3 stages of different types on one date. What gets trained?</dt>
+      <dd>Each stage trains its own profile. One flat stage + one hilly stage = one flat session + one hilly session.</dd>
+      <dt>What happens during a stage race?</dt>
+      <dd>From the first stage to the last, he belongs to the race and can't ride anything else. On a date where he rides a stage, the other race days that date are training. A full date without a stage in the middle of the race is a rest day, like a real Grand Tour rest day.</dd>
+      <dt>If I change his training now, when does it count?</dt>
+      <dd>Tonight. Nothing happens until the evening run after the last race. Whatever plan is set at that moment is what he trains.</dd>
+      <dt>His form is very low. What do I do?</dt>
+      <dd>Form only builds while fatigue is moderate. After a stage race he is tired, and hard training keeps him tired, so form keeps sliding. Give him easy or recovery days until fatigue is back in the middle, then form climbs fast.</dd>
+      <dt>Does the level of the race matter?</dt>
+      <dd>Not right now. A stage trains the same abilities in a small race as in a big one. Only the stage profile counts.</dd>
+      <dt>Do bigger teams get more out of this?</dt>
+      <dd>No. Every division has the same 5 race days per date, the manual-click bonus is gone, and AI teams use the same rules. A team that races less gets more race days to train exactly what it wants.</dd>
+    </dl>
+  </section>
+
+</div>
+
+<script>
+const PROFILES=[
+ ["Flat","flat · sprint · acceleration","M0 20 L78 20"],
+ ["Rolling","punch · tempo · endurance","M0 20 C10 14 18 14 26 19 S42 12 52 17 S68 13 78 18"],
+ ["Hilly","climbing · punch · tempo","M0 21 L14 12 L24 19 L38 8 L50 18 L64 10 L78 17"],
+ ["Classic","punch · durability · positioning","M0 20 L10 15 L16 20 L28 11 L34 19 L48 12 L54 20 L66 13 L78 19"],
+ ["Cobbles","cobblestone · durability · flat","M0 19 L78 19 M8 22 L8 16 M24 22 L24 16 M44 22 L44 16 M62 22 L62 16"],
+ ["Gravel","cobblestone · durability · endurance","M0 19 C14 16 22 21 34 18 S56 15 78 18"],
+ ["Mountain","climbing · endurance · durability","M0 22 L20 18 L40 6 L52 16 L78 4"],
+ ["High mountain","climbing · endurance · recovery · durability","M0 23 L14 12 L26 20 L44 3 L56 17 L78 2"],
+ ["Time trial","time trial · tempo","M0 18 L78 18 M0 13 L0 23 M78 13 L78 23"],
+ ["Hilly TT","time trial · climbing · tempo","M0 20 L22 17 L44 9 L58 14 L78 11 M0 15 L0 25"],
+ ["Team TT","time trial · tactics · positioning","M0 16 L78 16 M0 20 L78 20"],
+];
+document.getElementById("profiles").innerHTML=PROFILES.map(([n,a,d])=>
+ `<div class="prof"><svg viewBox="0 0 78 26" aria-hidden="true"><path d="${d}"/></svg><div><b>${n}</b><span>${a}</span></div></div>`).join("");
+
+function bars(el,rows,max,pct){
+ document.getElementById(el).innerHTML=rows.map(([l,s,v,c])=>
+  `<div class="bar"><div class="lbl">${l}${s?`<small>${s}</small>`:""}</div><div class="track"><div class="fill ${c}" style="width:${Math.max(0,v/max*100)}%"></div></div></div>`).join("");
+}
+bars("rates",[
+ ["Rest","or stage race rest day",0,"f-off"],
+ ["Off-focus","every ability not trained",0.35,"f-off"],
+ ["Easy session","technique, aero, endurance…",1.15,"f-train"],
+ ["Race day","stage-profile abilities",1.35,"f-race"],
+ ["Normal session","tempo",1.35,"f-train"],
+ ["Hard session","VO2max, threshold, sprint…",1.60,"f-train"],
+],1.6);
+bars("roles",[
+ ["Signature","",0.45,"f-gold"],
+ ["Secondary","",0.36,"f-train"],
+ ["Craft","",0.22,"f-train"],
+ ["Other","",0.15,"f-off"],
+ ["Weakness","",0.05,"f-off"],
+],0.45);
+// relative growth = day rate × role rate, normalised to the climber's best
+bars("climber",[
+ ["Climbing","signature",1.35*0.45,"f-race"],
+ ["Endurance","secondary",1.35*0.36,"f-race"],
+ ["Durability","other",1.35*0.15,"f-race"],
+ ["Sprint","weakness · trickle",0.35*0.05,"f-off"],
+],0.6075,true);
+bars("sprinter",[
+ ["Sprint","signature · trickle",0.35*0.45,"f-off"],
+ ["Acceleration","secondary · trickle",0.35*0.36,"f-off"],
+ ["Climbing","weakness",1.35*0.05,"f-race"],
+ ["Endurance","other",1.35*0.15,"f-race"],
+],0.6075,true);
+</script>

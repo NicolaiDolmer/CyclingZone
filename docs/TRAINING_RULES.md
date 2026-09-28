@@ -739,6 +739,7 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 1. **En løbsdag er én dato i cykelåret.** Den sker kun én gang.
 2. **På en løbsdag kører rytteren ét løb ELLER træner. Aldrig begge.** Misser han et samtidigt løb, kan han ikke træne "i det slot i stedet".
 3. **Et etapeløb binder rytteren fra første til sidste etape** — også på hviledagene imellem. Hviledag i et etapeløb = hvile, ikke træning.
+   **Præciseret af ejeren 28/9 (valg A):** på en dato hvor rytteren kører en etape, er datoens øvrige løbsdage træning efter hans program. Kun hele datoer uden etape inde i løbets forløb er hvile (`loadRiderIdsWithStageOnGameDays`, `dailyTrainingEngine.js`).
 4. **Alle divisioner får lige mange løbsdage**; løbsdage uden løb er rene træningsdage.
 
 **Hvordan reglen er håndhævet i motoren (#4847, rettet 20/9 efter ejerens read-only gennemgang af PR #5264):**

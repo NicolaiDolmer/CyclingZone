@@ -27,7 +27,7 @@ import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 // koert gennem applyDailyTick. `applyRaceDevelopmentTick` (dailyTraining.js) bliver
 // staaende til variant B (dagens intention, #4632), men motoren kalder den ikke mere.
 import { raceDayProgram, RACE_DAY_FALLBACK_PROFILE } from "./raceDayYield.js";
-import { loadRaceDayStagesByRider } from "./raceDayStageLookup.js";
+import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./raceDayStageLookup.js";
 // #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
@@ -367,6 +367,7 @@ export async function runTeamTrainingDay({
   // Tom mængde paa den gamle sti — ingen loebsdag, ingen binding.
   const boundRiderIds = boundRidersResult.data ?? new Set();
 
+
   // #3459 D1 fail-safe: query-fejl → tom mængde (INGEN løbsdag antaget), log warning.
   // Kaster ALDRIG — en fejlet best-effort-berigelse må ikke vælte hele holdets
   // trænings-dag (samme filosofi som Plan B's facilitets-load, #1441).
@@ -449,6 +450,27 @@ export async function runTeamTrainingDay({
     : false;
   // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
   // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").
+  // #5267 A (ejer-valg 28/9): hvem koerte en etape paa EN AF datoens loebsdage?
+  // En bundet rytter med en etape paa datoen traener paa datoens frie loebsdage;
+  // kun hele datoer uden etape i loebets spaend er hvile. Uden datoens liste
+  // (dateGameDays null) forbliver bindingen hvile, som foer. Opslaget koeres kun
+  // naar mindst én rytter er bundet uden at have koert paa loebsdagen, saa
+  // aftensweepens kapacitet (G6) ikke betaler for hold uden etapeloeb.
+  let stageOnDateRiderIds = new Set();
+  const boundNotRidden = [...boundRiderIds].filter((id) => !racedRiderIds.has(id));
+  if (useRaceDayKey && boundNotRidden.length && Array.isArray(dateGameDays) && dateGameDays.length) {
+    const stageOnDateResult = await loadRiderIdsWithStageOnGameDays({
+      supabase, teamId, seasonId, gameDays: dateGameDays, riderIds: boundNotRidden,
+    });
+    // Samme regel-gate som bindingen, saa samme kontrakt: ukendt svar kaster.
+    if (stageOnDateResult.error) {
+      throw new Error(
+        `race-day stage-on-date lookup (team ${teamId}, game day ${raceDay}): ${stageOnDateResult.error.message ?? stageOnDateResult.error} - refusing to tick, retry on next sweep`,
+      );
+    }
+    stageOnDateRiderIds = stageOnDateResult.data ?? new Set();
+  }
+
   const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
@@ -574,7 +596,11 @@ export async function runTeamTrainingDay({
     //     regel 2 brudt, og den bug ejeren fandt 18/9 i denne PR.
     // Resultatet er det samme som en skadet rytters: intet tick, ingen score-raekke,
     // ingen historik — kun condition/restitution. "Loeb ELLER traening, aldrig begge."
-    const boundRestToday = !injuredToday && !racedToday && boundToday;
+    // #5267 A (ejer-valg 28/9): bundet, men koerte ikke PAA DENNE loebsdag, og har en
+    // etape paa en anden af datoens loebsdage ⇒ datoens frie loebsdag er traening.
+    // Koerte han paa denne loebsdag (rodeToday), gaelder reglen ovenfor uaendret.
+    const freeSlotOnStageDate = !rodeToday && stageOnDateRiderIds.has(rider.id);
+    const boundRestToday = !injuredToday && !racedToday && boundToday && !freeSlotOnStageDate;
 
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
     const preFatigue = Number(cond.fatigue ?? 0);
