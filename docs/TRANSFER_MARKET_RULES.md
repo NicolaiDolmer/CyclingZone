@@ -150,6 +150,14 @@ klokkeslæt der ikke er sandt bryder doktrinen om at spilleren kan stole på det
 `seasonTransitionBoundary.js` - **ikke** `transfer_windows.closes_at`, som blev målt til at
 være død data 21/8 og derfor aldrig ville have fyret.
 
+**Finalisering i skiftevinduet (#5847):** en allerede startet auktion kan alligevel
+blive finaliseret efter den gamle sæson er afsluttet og før den nye er aktiv.
+`auctionFinalization.js` beregner da en *ny* erhvervelseskontrakt fra den tidligste
+kommende sæson, eller fra senest afsluttede sæson + 1 hvis ingen kommende række
+findes. Findes ingen gyldig sæson, fejler finaliseringen i stedet for at bruge
+sæson 1. Finanspostens `season_id` er fortsat kun den faktisk aktive sæson og
+kan være NULL i vinduet. En eksisterende kontrakt arves fortsat uændret.
+
 ### 2.3 12-timers-gulvet - hvor det gælder og hvor det ikke gælder
 
 `FREE_AGENT_MIN_DURATION_HOURS = 12` (`auctionEngine.js:119`, ejer-beslutning 21/8, #4004,
