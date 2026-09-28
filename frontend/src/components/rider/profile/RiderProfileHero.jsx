@@ -207,7 +207,8 @@ export default function RiderProfileHero({
     ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
     : t("header.noContract");
   const reputationValue = riderReputationValue(rider, reputationOn);
-  const reputationBand = riderReputationBand(reputationValue);
+  // Niveauet (Ukendt..Legende) hører kun til omdømmet: off/shadow viser popularitet uden label.
+  const reputationBand = reputationOn ? riderReputationBand(reputationValue) : null;
   const reputationSub = reputationBand ? (
     <p className="font-data text-2xs text-cz-3 tabular-nums mt-1">
       {t(`profile.reputation.band.${reputationBand}`)}
