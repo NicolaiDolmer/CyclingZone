@@ -34,6 +34,7 @@
 // parameter og udløser derfor aldrig kreditering.
 import { isIntakeOfferExpiryEnabled } from "./academyIntakeExpiryFlag.js";
 import { listRejectedAsYouthAuction } from "./youthMarket.js";
+import { applySeniorSquadFilter } from "./squads.js";
 import {
   BOARD_GIFT_EXPIRY_DAYS,
   BOARD_GIFT_SOURCE,
@@ -80,16 +81,13 @@ export const INTAKE_EXPIRY_BACKLOG_THRESHOLD = 100;
 // steady-satsen, så en læser ikke tror kvoten stadig er 30.
 export const INTAKE_EXPIRY_MAX_PER_DAY = INTAKE_EXPIRY_STEADY_PER_DAY;
 
-// ── #5844: bestyrelsens gave-kuld har 14 dages frist ─────────────────────────
-// Gave-rækker (academy_intake.source = 'board_gift') er først modne når de er
-// ældre end BOARD_GIFT_EXPIRY_DAYS. Filteret sættes i SELVE forespørgslen, så
-// ~1.100 gave-tilbud mellem dag 7 og 14 hverken tæller som efterslæb eller æder
-// udvælgelsens limit fra de normale tilbud. Tidsstemplet citeres (":" og "." er
-// reserverede tegn i PostgREST's or-syntaks).
-/** @param {string} giftCutoffIso */
-export function giftGraceFilter(giftCutoffIso) {
-  return `source.neq.${BOARD_GIFT_SOURCE},created_at.lt."${giftCutoffIso}"`;
-}
+// ── #5844: bestyrelsens gave-kuld (ejer-valg 28/9: udløb B) ──────────────────
+// Gave-rækker (academy_intake.source = 'board_gift') følger IKKE den normale
+// udløbs-sti: de har 14 dages frist, og ikke-valgte gave-tilbud forsvinder
+// STILLE (rytteren slettes, ingen ungdomsauktion, ingen kompensation). Den
+// normale sti udelukker dem derfor helt i SELVE forespørgslen (så ~1.100
+// gave-tilbud hverken tæller som efterslæb eller æder udvælgelsens limit), og
+// runBoardGiftExpiryPurge nedenfor tager dem efter dag 14.
 
 /** @param {Date} now */
 export function giftCutoffIsoFor(now) {
@@ -100,13 +98,112 @@ export function giftCutoffIsoFor(now) {
 // ikke; så køres forespørgslen uden gave-filteret — ingen gave-rækker kan
 // eksistere endnu, så adfærden er præcis den gamle.
 /**
- * @param {(grace: boolean) => any} build
+ * @param {(excludeGift: boolean) => any} build
  * @returns {Promise<any>}
  */
-async function withGiftGrace(build) {
+async function withoutGiftRows(build) {
   const res = await build(true);
   if (res?.error && isMissingSchemaError(res.error)) return build(false);
   return res;
+}
+
+// Maks. gave-rækker pr. kørsel. Sweep'en kører flere gange i døgnet, så et kuld
+// på ~1.100 afvikles på få kørsler uden én stor sletning.
+export const BOARD_GIFT_PURGE_PER_RUN = 300;
+
+/**
+ * Ikke-valgte gave-tilbud ældre end 14 dage: rytteren slettes (han forlader
+ * spillet, academy_intake-rækken følger med via ON DELETE CASCADE). Samme
+ * guards som auctionFinalization's "usolgt = væk" (#2456): slet KUN en rytter
+ * der stadig er holdløs, uden parkeret skifte, uden for akademiet og uden
+ * race_results. Forældede rækker med EJEDE ryttere afstemmes i stedet (#1756).
+ *
+ * @param {{ supabase: any, now?: Date, limit?: number }} args
+ * @returns {Promise<{ giftExpired: number, giftReconciled: number, giftKept: number }>}
+ */
+export async function runBoardGiftExpiryPurge({ supabase, now = new Date(), limit = BOARD_GIFT_PURGE_PER_RUN }) {
+  const empty = { giftExpired: 0, giftReconciled: 0, giftKept: 0 };
+  const { data: rows, error } = await supabase
+    .from("academy_intake")
+    .select("id, rider_id, team_id, source")
+    .eq("status", "offered")
+    .eq("source", BOARD_GIFT_SOURCE)
+    .lt("created_at", giftCutoffIsoFor(now))
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error) {
+    if (isMissingSchemaError(error)) return empty;
+    throw new Error(`board-gift expiry select: ${error.message}`);
+  }
+  if (!rows?.length) return empty;
+
+  const riderIds = [...new Set(rows.map((/** @type {{rider_id:string}} */ r) => r.rider_id))];
+  const { data: riderRows, error: riderErr } = await supabase
+    .from("riders")
+    .select("id, team_id, pending_team_id, is_academy")
+    .in("id", riderIds); // pagination-safe: højst BOARD_GIFT_PURGE_PER_RUN (300) unikke id'er, én række pr. id
+  if (riderErr) throw new Error(`board-gift expiry rider lookup: ${riderErr.message}`);
+  const riderById = new Map((riderRows ?? []).map((/** @type {{id:string}} */ r) => [r.id, r]));
+
+  // Kun eksistens: én række pr. rytter er nok, så svaret holdes under PostgREST-loftet.
+  const { data: raced, error: raceErr } = await supabase
+    .from("race_results")
+    .select("rider_id")
+    .in("rider_id", riderIds)
+    .limit(1000); // pagination-safe: kun eksistens-tjek; usignede gave-ryttere har ingen resultater
+  if (raceErr) throw new Error(`board-gift expiry race_results lookup: ${raceErr.message}`);
+  const hasResults = new Set((raced ?? []).map((/** @type {{rider_id:string}} */ r) => r.rider_id));
+
+  /** @type {string[]} */
+  const toDelete = [];
+  let giftReconciled = 0;
+  let giftKept = 0;
+  for (const row of rows) {
+    const rider = riderById.get(row.rider_id);
+    if (!rider) continue; // allerede væk — rækken er fulgt med (CASCADE)
+    const free = rider.team_id === null && rider.pending_team_id === null && rider.is_academy !== true;
+    if (free && !hasResults.has(row.rider_id)) {
+      toDelete.push(row.rider_id);
+      continue;
+    }
+    if (free) {
+      // Holdløs men med resultater (burde ikke ske for et usignet tilbud):
+      // bevar rytteren, luk blot tilbuddet stille.
+      const { error: updErr } = await supabase
+        .from("academy_intake")
+        .update({ status: "expired", resolved_at: now.toISOString() })
+        .eq("id", row.id)
+        .eq("status", "offered");
+      if (updErr) throw new Error(`board-gift expiry close: ${updErr.message}`);
+      giftKept += 1;
+      continue;
+    }
+    const targetStatus = rider.team_id === row.team_id ? "signed" : "rejected";
+    const { error: recErr } = await supabase
+      .from("academy_intake")
+      .update({ status: targetStatus, resolved_at: now.toISOString() })
+      .eq("id", row.id)
+      .eq("status", "offered");
+    if (recErr) throw new Error(`board-gift expiry reconcile: ${recErr.message}`);
+    giftReconciled += 1;
+  }
+
+  let giftExpired = 0;
+  if (toDelete.length > 0) {
+    // Trup-leddet er delt (squads.applySeniorSquadFilter), samme SIKKERHEDS-gate
+    // som auctionFinalization's "usolgt = væk"-sletning (#4619).
+    const { data: deleted, error: delErr } = await applySeniorSquadFilter(
+      supabase
+        .from("riders")
+        .delete()
+        .in("id", toDelete)
+        .is("team_id", null)
+        .is("pending_team_id", null)
+    ).select("id");
+    if (delErr) throw new Error(`board-gift expiry delete: ${delErr.message}`);
+    giftExpired = deleted?.length ?? 0;
+  }
+  return { giftExpired, giftReconciled, giftKept };
 }
 
 /**
@@ -115,17 +212,14 @@ async function withGiftGrace(build) {
  *
  * @param {any} supabase
  * @param {string} cutoffIso
- * @param {string|null} [giftCutoffIso]  (5844) gave-rækker er først modne efter 14 dage
  */
-export async function resolveDailyQuota(supabase, cutoffIso, giftCutoffIso = null) {
-  const { count, error } = await withGiftGrace((grace) => {
+export async function resolveDailyQuota(supabase, cutoffIso) {
+  const { count, error } = await withoutGiftRows((excludeGift) => {
     const q = supabase
       .from("academy_intake")
       .select("id", { count: "exact", head: true })
       .eq("status", "offered");
-    return grace && giftCutoffIso
-      ? q.or(giftGraceFilter(giftCutoffIso)).lt("created_at", cutoffIso)
-      : q.lt("created_at", cutoffIso);
+    return (excludeGift ? q.neq("source", BOARD_GIFT_SOURCE) : q).lt("created_at", cutoffIso);
   });
   if (error) throw new Error(`academy_intake backlog count: ${error.message}`);
   const overdue = count ?? 0;
@@ -142,9 +236,22 @@ export async function runIntakeOfferExpirySweep({
   now = new Date(),
   isEnabled = isIntakeOfferExpiryEnabled,
   listYouthAuctionFn = listRejectedAsYouthAuction,
+  giftPurgeFn = runBoardGiftExpiryPurge,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!(await isEnabled(supabase))) return { ran: false, reason: "flag_off" };
+  // #5844: gave-kuldet først (egen sti, ingen auktion, ingen dagskvote).
+  const gift = await giftPurgeFn({ supabase, now });
+  const normal = await runNormalIntakeExpiry({ supabase, now, listYouthAuctionFn });
+  return gift.giftExpired || gift.giftReconciled || gift.giftKept ? { ...normal, ...gift } : normal;
+}
+
+/**
+ * Den normale udløbs-sti (7 dage → 24h-ungdomsauktion). Gave-rækker er udelukket.
+ *
+ * @param {{ supabase: any, now: Date, listYouthAuctionFn: Function }} args
+ */
+async function runNormalIntakeExpiry({ supabase, now, listYouthAuctionFn }) {
 
   const cutoffIso = new Date(now.getTime() - INTAKE_OFFER_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const resolvedAtIso = now.toISOString();
@@ -159,8 +266,7 @@ export async function runIntakeOfferExpirySweep({
     .gt("resolved_at", dayAgoIso);
   if (cntError) throw new Error(`academy_intake expiry day-count: ${cntError.message}`);
   // Dagens kvote afhænger af om der er et efterslæb (se konstanterne ovenfor).
-  const giftCutoffIso = giftCutoffIsoFor(now);
-  const { quota, overdue } = await resolveDailyQuota(supabase, cutoffIso, giftCutoffIso);
+  const { quota, overdue } = await resolveDailyQuota(supabase, cutoffIso);
   const budget = quota - (expiredToday ?? 0);
   if (budget <= 0) {
     return { ran: true, expired: 0, auctioned: 0, reconciled: 0, reason: "daily_budget_spent", cutoff: cutoffIso, quota, overdue };
@@ -168,13 +274,13 @@ export async function runIntakeOfferExpirySweep({
 
   // Ældste først. Hent budget + buffer, så afstemte (ejede) rækker ikke æder
   // hele udvælgelsen uden at der er team-løse kandidater tilbage.
-  const { data: candidates, error: selError } = await withGiftGrace((grace) => {
+  const { data: candidates, error: selError } = await withoutGiftRows((excludeGift) => {
     const q = supabase
       .from("academy_intake")
       .select("id, rider_id, team_id")
-      .eq("status", "offered")
-      .lt("created_at", cutoffIso);
-    return (grace ? q.or(giftGraceFilter(giftCutoffIso)) : q)
+      .eq("status", "offered");
+    return (excludeGift ? q.neq("source", BOARD_GIFT_SOURCE) : q)
+      .lt("created_at", cutoffIso)
       .order("created_at", { ascending: true })
       .limit(budget * 2);
   });

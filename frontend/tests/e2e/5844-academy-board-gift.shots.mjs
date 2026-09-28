@@ -65,6 +65,13 @@ const GIFT_INTAKE = GIFT.map(([firstname, lastname, birthdate, nat, p, s, lo, hi
     primary_type: p, secondary_type: s,
   },
   potentialEstimate: { lo, hi, exact: false, scoutLevel: 3 },
+  // #5844 (ejer 28/9): potentiale som tal. Prod leverer båndet fra de afledte evner.
+  potentialBand: {
+    role: p,
+    now: 12 + i,
+    prog: { lo: Math.round(18 + lo * 8), hi: Math.round(22 + hi * 9) },
+    ceil: { lo: Math.round(18 + lo * 8), hi: Math.round(22 + hi * 9) },
+  },
 }));
 
 const serve = sirv(DIST, { single: "app.html", etag: true, dev: true });

@@ -326,3 +326,40 @@ test("dry-run skriver intet (ingen claim, ingen seed)", async () => {
   assert.equal(state.claims.size, 0);
   assert.equal(run.batch, BOARD_GIFT_BATCH);
 });
+
+// ── Ejer-rettelser 28/9: B-profil + realistisk nationsfordeling ─────────────
+import { REAL_CYCLING_NATION_WEIGHTS } from "./cyclingNationWeights.js";
+import { DEFAULT_NATION_PROFILE_MODE } from "./academyBoardGift.ts";
+import { clusterForNationality } from "./fictionalRiderNames.js";
+
+const GUARANTEED = ["CN", "CO", "DZ", "ER", "JP", "KR"];
+
+test("realistisk tabel: store cykelnationer dominerer, garanti-nationerne er små", () => {
+  const total = REAL_CYCLING_NATION_WEIGHTS.reduce((s, w) => s + w.weight, 0);
+  const share = (codes) => REAL_CYCLING_NATION_WEIGHTS.filter((w) => codes.includes(w.value)).reduce((s, w) => s + w.weight, 0) / total;
+  assert.ok(share(["BE", "FR", "IT", "ES", "NL"]) > 0.5);
+  assert.ok(share(GUARANTEED.filter((c) => c !== "CO")) < 0.02);
+  // Alle koder har en navne-klynge (ellers generiske navne).
+  for (const w of REAL_CYCLING_NATION_WEIGHTS) assert.notEqual(clusterForNationality(w.value), "generic", w.value);
+});
+
+test("default nationsprofil er B (uden fill_tail)", () => {
+  assert.equal(DEFAULT_NATION_PROFILE_MODE, "exclude-fill-tail");
+  const run = planBoardGift({
+    ...snapshotData([{ id: "a" }]),
+    profiles: new Map([["a", { nations: Array(10).fill("CN"), nationsExclFillTail: Array(10).fill("DK"), junior: 0, u23: 0 }]]),
+  });
+  assert.equal(run.nationProfileMode, "exclude-fill-tail");
+  assert.deepEqual(run.teams[0].nationProfile.map((n) => n.code), ["DK"]);
+});
+
+test("hold uden profil får den REALISTISKE fordeling, ikke generatorens garanti-nationer", () => {
+  const teams = Array.from({ length: 60 }, (_, i) => ({ id: `np-${i}` }));
+  const run = planBoardGift(snapshotData(teams));
+  const offers = run.teams.flatMap((t) => t.offers);
+  assert.ok(run.teams.every((t) => t.nationProfile === null));
+  const guaranteed = offers.filter((o) => GUARANTEED.filter((c) => c !== "CO").includes(o.nationality)).length;
+  assert.ok(guaranteed / offers.length < 0.05, `garanti-nationer ${guaranteed}/${offers.length}`);
+  const big = offers.filter((o) => ["BE", "FR", "IT", "ES", "NL"].includes(o.nationality)).length;
+  assert.ok(big / offers.length > 0.4, `store nationer ${big}/${offers.length}`);
+});

@@ -27,7 +27,8 @@ import {
   seedAcademyCohortForTeam,
 } from "./academyIntake.js";
 import { generateAcademyCandidates, POTENTIALE_TIERS } from "./academyGenerator.js";
-import { makeRng, DEFAULT_NATIONALITY_WEIGHTS } from "./fictionalRiderGenerator.js";
+import { makeRng } from "./fictionalRiderGenerator.js";
+import { REAL_CYCLING_NATION_WEIGHTS } from "./cyclingNationWeights.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { notifyTeamOwner } from "./notificationService.js";
@@ -62,7 +63,7 @@ export const BOARD_GIFT_TOP_TALENT_MIN = 3;
 
 // Nationsprofil: de TOP_NATIONS største nationer på holdets nuværende ryttere
 // får TEAM_SHARE af vægten (fordelt efter deres andel); resten fordeles efter
-// den normale default-fordeling. Under MIN_PROFILE_RIDERS ryttere med nation →
+// den realistiske cykelnations-fordeling (REAL_CYCLING_NATION_WEIGHTS). Under MIN_PROFILE_RIDERS ryttere med nation →
 // fallback til normal fordeling.
 export const NATION_PROFILE_TOP_NATIONS = 3;
 export const NATION_PROFILE_TEAM_SHARE = 0.7;
@@ -72,10 +73,14 @@ export const NATION_PROFILE_MIN_RIDERS = 5;
 // og har overvejende generatorens GARANTI-nationer (CN/CO/DZ/ER/JP/KR; målt 28/9:
 // 87 % af 392 fill_tail-ryttere på modtager-holdene). En profil af dem afspejler
 // generatoren, ikke managerens valg. Profil-tilstanden er et ejer-valg:
-//   "all"               — alle nuværende ryttere (det godkendte design, default)
-//   "exclude-fill-tail" — uden fill_tail-rytterne
+//   "all"               — alle nuværende ryttere
+//   "exclude-fill-tail" — uden fill_tail-rytterne (ejer-valgt 28/9, default)
 export const NATION_PROFILE_MODES = Object.freeze(["all", "exclude-fill-tail"]);
 export const FILL_TAIL_TAG = "fill_tail";
+// Ejer-valg 28/9 (PR #5874): B = uden fill_tail. Profilens top-3 blandes med den
+// REALISTISKE cykelnations-fordeling (cyclingNationWeights.js), og hold uden nok
+// profil får den realistiske fordeling alene.
+export const DEFAULT_NATION_PROFILE_MODE = "exclude-fill-tail";
 
 // ── Typer ────────────────────────────────────────────────────────────────────
 // Supabase-klienten er utypet i kernen (samme som resten af akademi-modulerne);
@@ -175,7 +180,7 @@ export function buildTeamNationalityWeights(nationalityCodes: (string | null | u
   topN = NATION_PROFILE_TOP_NATIONS,
   teamShare = NATION_PROFILE_TEAM_SHARE,
   minRiders = NATION_PROFILE_MIN_RIDERS,
-  defaults = DEFAULT_NATIONALITY_WEIGHTS as NationWeight[],
+  defaults = REAL_CYCLING_NATION_WEIGHTS as NationWeight[],
 }: { topN?: number; teamShare?: number; minRiders?: number; defaults?: NationWeight[] } = {}): { weights: NationWeight[]; topNations: TopNation[] } | null {
   const counts = new Map<string, number>();
   let total = 0;
@@ -325,7 +330,7 @@ function assertNationProfileMode(mode: string): asserts mode is NationProfileMod
   if (!(NATION_PROFILE_MODES as readonly string[]).includes(mode)) throw new Error(`unknown nationProfileMode: ${mode}`);
 }
 
-function newTeamEntry(team: TeamRow, profile: TeamProfile, claimed: Set<string>, nationProfileMode: NationProfileMode = "all"): { entry: TeamEntry; nationalityWeights: NationWeight[] | null } {
+function newTeamEntry(team: TeamRow, profile: TeamProfile, claimed: Set<string>, nationProfileMode: NationProfileMode = DEFAULT_NATION_PROFILE_MODE): { entry: TeamEntry; nationalityWeights: NationWeight[] | null } {
   const nat = buildTeamNationalityWeights(
     nationProfileMode === "exclude-fill-tail" ? (profile.nationsExclFillTail ?? []) : profile.nations,
   );
@@ -342,7 +347,9 @@ function newTeamEntry(team: TeamRow, profile: TeamProfile, claimed: Set<string>,
       offers: [],
       status: null,
     },
-    nationalityWeights: nat ? nat.weights : null,
+    // Uden profil: den realistiske cykelnations-fordeling, ALDRIG generatorens
+    // default (som vægter garanti-nationerne CN/CO/DZ/ER/JP/KR op).
+    nationalityWeights: nat ? nat.weights : [...REAL_CYCLING_NATION_WEIGHTS],
   };
 }
 
@@ -370,7 +377,7 @@ export function planBoardGift(data: {
   batch = BOARD_GIFT_BATCH,
   seed = BOARD_GIFT_SEED,
   topTalentMin = BOARD_GIFT_TOP_TALENT_MIN,
-  nationProfileMode = "all",
+  nationProfileMode = DEFAULT_NATION_PROFILE_MODE,
 }: { batch?: string; seed?: number; topTalentMin?: number; nationProfileMode?: string } = {}): GiftRun {
   assertNationProfileMode(nationProfileMode);
   const teams: TeamEntry[] = [];
@@ -420,7 +427,7 @@ export async function runBoardThankYouGift(supabase: Db, {
   batch = BOARD_GIFT_BATCH,
   seed = BOARD_GIFT_SEED,
   topTalentMin = BOARD_GIFT_TOP_TALENT_MIN,
-  nationProfileMode = "all",
+  nationProfileMode = DEFAULT_NATION_PROFILE_MODE,
   onlyTeamIds = null,
   deriveRiders = deriveForRiderIds,
   notify = notifyTeamOwner,

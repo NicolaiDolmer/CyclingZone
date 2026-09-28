@@ -11,7 +11,7 @@
 //
 // Øvrige flag:
 //   --top-min <tier>       talent-garantiens potentiale-gulv (default 3 = øverste ~9 %)
-//   --nation-profile <m>   all (default, godkendt design) | exclude-fill-tail (uden startholdets auto-fyld)
+//   --nation-profile <m>   exclude-fill-tail (default, ejer-valgt 28/9) | all
 //   --team <uuid>          begræns til ét hold (gentageligt) — til en prøvekørsel
 //   --report-dir <dir>     default docs/snapshots/5844 (gitignored: PRIVAT, committes aldrig)
 //   --json                 print rå JSON i stedet for tekst
@@ -46,7 +46,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPORT_DIR = join(__dirname, "..", "..", "docs", "snapshots", "5844");
 
 export function parseArgs(argv) {
-  const args = { apply: false, ownerGo: false, json: false, snapshot: null, topMin: BOARD_GIFT_TOP_TALENT_MIN, nationProfile: "all", teams: [], reportDir: DEFAULT_REPORT_DIR };
+  const args = { apply: false, ownerGo: false, json: false, snapshot: null, topMin: BOARD_GIFT_TOP_TALENT_MIN, nationProfile: "exclude-fill-tail", teams: [], reportDir: DEFAULT_REPORT_DIR };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") args.apply = true;
@@ -72,7 +72,7 @@ export function applyRefusals(args) {
 }
 
 /** Dry-run fra et read-only prod-udtræk (ingen DB-klient). */
-export function planFromSnapshot(snapshot, { topTalentMin = BOARD_GIFT_TOP_TALENT_MIN, nationProfileMode = "all", onlyTeamIds = [] } = {}) {
+export function planFromSnapshot(snapshot, { topTalentMin = BOARD_GIFT_TOP_TALENT_MIN, nationProfileMode = "exclude-fill-tail", onlyTeamIds = [] } = {}) {
   const season = snapshot.season;
   let recipients = (snapshot.teams ?? []).filter(isBoardGiftRecipient);
   if (onlyTeamIds.length > 0) recipients = recipients.filter((t) => onlyTeamIds.includes(t.id));

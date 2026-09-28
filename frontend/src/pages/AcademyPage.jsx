@@ -25,7 +25,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
-import PotentialeStars from "../components/PotentialeStars.jsx";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
 import { useScouting } from "../lib/useScouting.js";
 import RiderLink from "../components/RiderLink.jsx";
@@ -526,8 +525,10 @@ export default function AcademyPage() {
 
         {/* #2454/#3746: potentiale i RATING-point, samme enhed som resten
             af spillet. `prog` er prognose-båndets navn; `ceil` er en
-            alias (samme tal) for ældre klient-cache. Stjernerne bliver
-            stående som fallback for payloads uden bånd. */}
+            alias (samme tal) for ældre klient-cache.
+            #5844 (ejer 28/9): ALDRIG stjerner i akademiet. Mangler båndet
+            (kandidatens afledte evner er ikke klar, jf. #5818), står der en
+            ærlig tekst i stedet for et stjerne-fallback. */}
         {(item.potentialBand || potential) && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-cz-3">{t("potential")}</span>
@@ -537,7 +538,7 @@ export default function AcademyPage() {
                 –{(item.potentialBand.prog ?? item.potentialBand.ceil).hi}
               </span>
             ) : (
-              <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} />
+              <span className="text-xs text-cz-3" data-testid="intake-potential-pending">{t("potentialPending")}</span>
             )}
           </div>
         )}

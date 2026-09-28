@@ -206,3 +206,9 @@ test("Youth squads-kortet har ingen guld-primary-knap (kun quiet action, PAGE_TE
     "Youth squads-kortet må ikke have en guld-primær knap — kun SectionAction (P3, ét guld-primært element pr. view)",
   );
 });
+
+// #5844 (ejer 28/9): potentiale vises som TAL i akademiet, aldrig som stjerner.
+test("akademi-siden viser aldrig stjerner på intake-kort (#5844)", () => {
+  assert.doesNotMatch(pageSource, /PotentialeStars/, "AcademyPage må ikke importere/rendere PotentialeStars");
+  assert.match(pageSource, /potentialPending/, "manglende bånd skal vise en tekst, ikke et stjerne-fallback");
+});

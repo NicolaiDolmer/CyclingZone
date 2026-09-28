@@ -30,6 +30,7 @@
   },
   "seriousBadge": "Seriøs kandidat",
   "potential": "Potentiale",
+  "potentialPending": "Ikke vurderet endnu",
   "ageLabel": "{age} år",
   "signBtn": "Signér",
   "rejectBtn": "Afvis",
@@ -233,7 +234,7 @@
   "boardGift": {
     "heading": "Tak fra bestyrelsen",
     "meta": "{count} åbne",
-    "context": "Bestyrelsen har lagt disse talenter i dit akademi som tak. Det er gratis at signe dem, normal ungdomsløn gælder, og trupgrænserne tæller stadig. Tilbuddene gælder i 14 dage.",
+    "context": "Bestyrelsen har lagt disse talenter i dit akademi som tak. Det er gratis at signe dem, normal ungdomsløn gælder, og trupgrænserne tæller stadig. Tilbuddene gælder i 14 dage, og dem, du ikke vælger, forsvinder stille.",
     "free": "Gratis"
   }
 }

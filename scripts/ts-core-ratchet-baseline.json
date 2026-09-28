@@ -56,7 +56,7 @@
         "lib/academy*"
       ],
       "jsFileCount": 15,
-      "tsErrorCount": 265,
+      "tsErrorCount": 264,
       "files": {
         "lib/academyBoardGift.ts": 0,
         "lib/academyDriftFlag.ts": 0,
@@ -67,7 +67,7 @@
         "lib/academyHealSweep.js": 4,
         "lib/academyIntake.js": 60,
         "lib/academyIntakeExpiryFlag.js": 1,
-        "lib/academyIntakeExpirySweep.js": 6,
+        "lib/academyIntakeExpirySweep.js": 5,
         "lib/academyIntakePull.js": 10,
         "lib/academyIntakePullFlag.js": 1,
         "lib/academyIntakeReconcile.js": 9,
@@ -127,6 +127,6 @@
   },
   "totals": {
     "jsFileCount": 35,
-    "tsErrorCount": 1047
+    "tsErrorCount": 1046
   }
 }

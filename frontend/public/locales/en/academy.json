@@ -30,6 +30,7 @@
   },
   "seriousBadge": "Serious prospect",
   "potential": "Potential",
+  "potentialPending": "Not assessed yet",
   "ageLabel": "{age} y/o",
   "signBtn": "Sign",
   "rejectBtn": "Reject",
@@ -233,7 +234,7 @@
   "boardGift": {
     "heading": "A thank-you from the board",
     "meta": "{count} open",
-    "context": "The board has put these prospects in your academy as a thank-you. Signing is free, normal youth wages apply, and squad limits still count. The offers run for 14 days.",
+    "context": "The board has put these prospects in your academy as a thank-you. Signing is free, normal youth wages apply, and squad limits still count. The offers run for 14 days, and the ones you do not pick leave quietly.",
     "free": "Free"
   }
 }
