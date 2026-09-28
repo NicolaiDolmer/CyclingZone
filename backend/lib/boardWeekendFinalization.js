@@ -75,6 +75,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { sumRiderSalaries } from "./boardUtils.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { isYouthSquad } from "./squads.js";
 
 function toFiniteOr(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -199,7 +200,7 @@ export async function processBoardWeekendFinalization({
     consequences_applied: 0,
     events_written: 0,
     errors: 0,
-    skipped_reason: null,
+    skipped_reason: /** @type {string|null} */ (null),
     // #3514 fase 1-rest: kun >0 når kill-switchen er 'on' — 0 er den korrekte
     // værdi for hele populationen indtil flip.
     mandate_relations_synced: 0,
@@ -213,6 +214,15 @@ export async function processBoardWeekendFinalization({
   // (fx Sheets-sync af gamle sæsoner) må ikke flytte satisfaction.
   if (season.status !== "active") {
     summary.skipped_reason = "season_not_active";
+    return summary;
+  }
+  // Bestyrelsen hænger på SENIOR-divisionen (U23-spec 2026-09-15 §bestyrelse:
+  // U23 kører som egen, parallel pass). Et U23-/juniorløb må derfor aldrig flytte
+  // en bestyrelse — og skal ikke trigge en fuld genberegning af alle boards.
+  // S4 løbsdag 1 (28/9): 20 ungdomsløb i træk gav 20 fulde board-kørsler, ~3.500
+  // enkelt-skrivninger på få minutter og et 3-minutters DB-udfald.
+  if (isYouthSquad(race?.squad)) {
+    summary.skipped_reason = "youth_race";
     return summary;
   }
 
@@ -414,6 +424,52 @@ export async function processBoardWeekendFinalization({
   summary.checkpoint = checkpoint;
   const boardTestMode = await isTestModeActiveFn(supabase);
 
+  // #5893 · Samlet skrivning. Uden for mid-season-checkpointet bufferes
+  // board_profiles-opdateringer + satisfaction-events og skrives i ÉN RPC
+  // (apply_board_weekend_writes) efter hold-løkken — fra ~2 kald pr. board til
+  // 1 kald i alt. Beregningen er uændret; kun I/O'en samles. Mid-season kører
+  // de hårde konsekvens-lag, som læser/skriver board-rækker undervejs, så den
+  // kørsel beholder de direkte skrivninger (bit-for-bit som før).
+  const bufferWrites = checkpoint !== CHECKPOINT_KINDS.MID_SEASON && deps.bulkWrites !== false;
+  /** @type {Array<{id: string, team: any, patch: Record<string, any>, baseline: boolean}>} */
+  const pendingProfiles = [];
+  /** @type {Array<{team: any, row: Record<string, any>, baseline: boolean}>} */
+  const pendingEvents = [];
+
+  /**
+   * @param {{ board: any, team: any, patch: Record<string, any>, baseline: boolean }} args
+   */
+  const writeProfile = async ({ board, team, patch, baseline }) => {
+    if (bufferWrites) {
+      pendingProfiles.push({ id: board.id, team, patch, baseline });
+      return;
+    }
+    const { error } = await supabase.from("board_profiles").update(patch).eq("id", board.id);
+    if (error) throw new Error(error.message);
+    summary.boards_updated += 1;
+    if (baseline) summary.baseline_boards_updated = (summary.baseline_boards_updated || 0) + 1;
+  };
+
+  /**
+   * @param {{ team: any, row: Record<string, any>, baseline: boolean }} args
+   */
+  const writeEvent = async ({ team, row, baseline }) => {
+    if (bufferWrites) {
+      pendingEvents.push({ team, row, baseline });
+      return;
+    }
+    const { error } = await supabase
+      .from("board_satisfaction_events")
+      .upsert(row, { onConflict: "board_id,race_id" });
+    if (error) {
+      // Bevidst console-only (ingen Sentry): se #1451-kommentaren ved kaldet.
+      summary.errors += 1;
+      console.error(`  ⚠️  ${baseline ? "baseline " : ""}board satisfaction event failed for ${team.name}:`, error.message);
+    } else {
+      summary.events_written += 1;
+    }
+  };
+
   const teamGoalContextSources = /** @type {Map<string, any>} */ (new Map());
 
   /** @param {any} team */
@@ -463,24 +519,21 @@ export async function processBoardWeekendFinalization({
           });
           if (!baselineUpdate) continue;
 
-          const { error: baselineUpdateError } = await supabase
-            .from("board_profiles")
-            .update({
+          await writeProfile({
+            board,
+            team,
+            baseline: true,
+            patch: {
               satisfaction: baselineUpdate.newSatisfaction,
               updated_at: now.toISOString(),
-            })
-            .eq("id", board.id);
-          if (baselineUpdateError) throw new Error(baselineUpdateError.message);
-          summary.boards_updated += 1;
-          summary.baseline_boards_updated = (summary.baseline_boards_updated || 0) + 1;
+            },
+          });
 
           // #1451-mønster genbrugt til baseline: goals_met/goals_total er NOT
           // NULL i skemaet → 0/0 (baseline har ingen mål), reason_category null.
           // #3144 · kun skriv event når løbet faktisk er i holdets pulje.
           if (race?.id && raceMatchesTeamPool(race, standing)) {
-            const { error: baselineEventError } = await supabase
-              .from("board_satisfaction_events")
-              .upsert({
+            await writeEvent({ team, baseline: true, row: {
                 board_id: board.id,
                 team_id: team.id,
                 season_id: season.id,
@@ -493,13 +546,7 @@ export async function processBoardWeekendFinalization({
                 goals_met: 0,
                 goals_total: 0,
                 reason_category: null,
-              }, { onConflict: "board_id,race_id" });
-            if (baselineEventError) {
-              summary.errors += 1;
-              console.error(`  ⚠️  baseline board satisfaction event failed for ${team.name}:`, baselineEventError.message);
-            } else {
-              summary.events_written += 1;
-            }
+              } });
           }
 
           continue;
@@ -563,18 +610,18 @@ export async function processBoardWeekendFinalization({
         });
         if (!update) continue;
 
-        const { error: updateError } = await supabase
-          .from("board_profiles")
-          .update({
+        await writeProfile({
+          board,
+          team,
+          baseline: false,
+          patch: {
             satisfaction: update.newSatisfaction,
             budget_modifier: update.newModifier,
             season_start_satisfaction: anchor,
             season_start_anchor_season_id: season.id,
             updated_at: now.toISOString(),
-          })
-          .eq("id", board.id);
-        if (updateError) throw new Error(updateError.message);
-        summary.boards_updated += 1;
+          },
+        });
 
         // #3514 fase 1-rest: skyggemodellens weekend-sync for 1yr-boardet.
         // Genbruger den EVALUERING flag-off-stien allerede regnede ovenfor
@@ -618,9 +665,7 @@ export async function processBoardWeekendFinalization({
         // ellers ser en manager bestyrelsen "reagere" på et løb fra en
         // anden division/pulje holdet aldrig deltog i.
         if (race?.id && raceMatchesTeamPool(race, standing)) {
-          const { error: eventError } = await supabase
-            .from("board_satisfaction_events")
-            .upsert({
+          await writeEvent({ team, baseline: false, row: {
               board_id: board.id,
               team_id: team.id,
               season_id: season.id,
@@ -636,16 +681,7 @@ export async function processBoardWeekendFinalization({
                 evaluation: update.evaluation,
                 satisfactionDelta: update.appliedDelta,
               }),
-            }, { onConflict: "board_id,race_id" });
-          if (eventError) {
-            // Bevidst console-only (ingen captureExceptionFn til Sentry): før
-            // migrationen er anvendt i prod fejler upsert'en for HVERT board ved
-            // HVER finalisering — det ville spamme Sentry. Loggen er nok til at se det.
-            summary.errors += 1;
-            console.error(`  ⚠️  board satisfaction event failed for ${team.name}:`, eventError.message);
-          } else {
-            summary.events_written += 1;
-          }
+            } });
         }
 
         // Hårde konsekvens-lag KUN ved mid-season-checkpoint (beslutning 3).
@@ -714,5 +750,86 @@ export async function processBoardWeekendFinalization({
     await Promise.all(teams.slice(i, i + batchSize).map((/** @type {any} */ team) => processTeam(team)));
   }
 
+  if (bufferWrites && (pendingProfiles.length || pendingEvents.length)) {
+    await flushBufferedBoardWrites({ supabase, summary, pendingProfiles, pendingEvents, captureExceptionFn });
+  }
+
   return summary;
+}
+
+/**
+ * #5893 · Skriv de bufferede board-skrivninger i ÉN RPC. Fejler RPC'en (fx i
+ * vinduet mellem backend-deploy og migrationen, eller en transient DB-fejl),
+ * falder vi tilbage til de gamle række-for-række-skrivninger, så en
+ * finalisering aldrig mister en bestyrelses-opdatering.
+ *
+ * @param {{
+ *   supabase: any,
+ *   summary: any,
+ *   pendingProfiles: Array<{id: string, team: any, patch: Record<string, any>, baseline: boolean}>,
+ *   pendingEvents: Array<{team: any, row: Record<string, any>, baseline: boolean}>,
+ *   captureExceptionFn?: ((err: unknown, ctx?: any) => void) | null,
+ * }} args
+ */
+export async function flushBufferedBoardWrites({ supabase, summary, pendingProfiles, pendingEvents, captureExceptionFn = null }) {
+  const { data, error } = await supabase.rpc("apply_board_weekend_writes", {
+    p_profiles: pendingProfiles.map((p) => ({ id: p.id, ...p.patch })),
+    p_events: pendingEvents.map((e) => e.row),
+  });
+  if (!error) {
+    // Tæl det databasen faktisk ramte (et board slettet undervejs = 0 rækker).
+    const profilesWritten = Number.isFinite(Number(data?.profiles)) ? Number(data.profiles) : pendingProfiles.length;
+    const eventsWritten = Number.isFinite(Number(data?.events)) ? Number(data.events) : pendingEvents.length;
+    summary.boards_updated += profilesWritten;
+    summary.baseline_boards_updated = (summary.baseline_boards_updated || 0)
+      + pendingProfiles.filter((p) => p.baseline).length;
+    summary.events_written += eventsWritten;
+    if (data?.events_error) {
+      // Visnings-only (#1451): satisfaction ER skrevet; kun event-loggen fejlede.
+      // Console-only som den gamle sti (ingen Sentry-spam før migrationer).
+      summary.errors += 1;
+      console.error("  ⚠️  board satisfaction events failed (satisfaction was written):", data.events_error);
+    }
+    return;
+  }
+
+  // Fallback KUN når funktionen ikke findes endnu (vinduet mellem backend-
+  // deploy og auto-migrate). Ved alle andre fejl — timeout, overbelastning,
+  // netværk — ville række-for-række-skrivninger sende ~2 kald pr. board mod en
+  // database der allerede er presset: præcis mønstret bag udfaldene 28/9.
+  // Transaktionen er atomar, så intet er halvt skrevet; kørslen tæller fejlen,
+  // og næste afsluttede løb flytter bestyrelserne igen.
+  const missingFn = error.code === "PGRST202" || error.code === "42883";
+  if (!missingFn) {
+    summary.errors += pendingProfiles.length;
+    console.error(`  ⚠️  apply_board_weekend_writes failed (${pendingProfiles.length} boards not updated this run):`, error.message);
+    if (captureExceptionFn) {
+      captureExceptionFn(new Error(`apply_board_weekend_writes: ${error.message}`), {
+        tags: { hook: "board-weekend", stage: "bulk-write" },
+        extra: { boards: pendingProfiles.length, events: pendingEvents.length, code: error.code ?? null },
+      });
+    }
+    return;
+  }
+  for (const p of pendingProfiles) {
+    const { error: updErr } = await supabase.from("board_profiles").update(p.patch).eq("id", p.id);
+    if (updErr) {
+      summary.errors += 1;
+      console.error(`  ⚠️  weekend board update failed for ${p.team?.name}:`, updErr.message);
+      continue;
+    }
+    summary.boards_updated += 1;
+    if (p.baseline) summary.baseline_boards_updated = (summary.baseline_boards_updated || 0) + 1;
+  }
+  for (const e of pendingEvents) {
+    const { error: evErr } = await supabase
+      .from("board_satisfaction_events")
+      .upsert(e.row, { onConflict: "board_id,race_id" });
+    if (evErr) {
+      summary.errors += 1;
+      console.error(`  ⚠️  board satisfaction event failed for ${e.team?.name}:`, evErr.message);
+    } else {
+      summary.events_written += 1;
+    }
+  }
 }
