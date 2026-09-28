@@ -4,11 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (27/9 kl. 23):** **S4 ER AKTIV** (skifte 22:36-22:46, alt verificeret). Løbsdag 1 = man. 28/9 19:30: 25 senior + 10 U23 + 10 junior løb; AI-hold udtaget af den timelige generator (41.716 AI-entries, 22:54), managers udtager selv (nød-udtagelse efter aftalt regel). **Mandag formiddag:** (1) træningsflip `training_tick_per_race_day` + `race_day_development_enabled` + merge #5281 SAMME dag (ejer-go) · (2) PR'er for kode der allerede er KØRT i prod fra branch: `fix/5830-calendar-type-gap` (R16+R17, D2 endagsløb 12/7/1/1→8/7/3/3) og `feat/4620-youth-groups-12-12-mix` (`--managers-per-group=12 --mix-junior`) · (3) patch note for skiftet (S4, D3+D4 samlet, ungdomsløb, parkering) · (4) #5828 omdømme + #5820 Boardroom-mål før løbsdag 1 · (5) genkør `retireD4PoolsS4.js --apply --owner-go` når 2 AI-hold med transferbud i D4 E/G er frie. Uge 1: #5826 v4-kalibrering, v4 tænd/vent, #5834, #5835 (AI-genbrug S5). Frosset hold The Wheelbarrels parkeret manuelt (ejer 27/9). **Season day** = de 140 dage; race day = dag med løb.
+> **🎯 Next action (28/9 kl. 16):** **Løbsdag 1 kl. 19:30 på race engine v4 (tændt 13:27) + første aftentræning pr. løbsdag (flag tændt i formiddag).** Kør efterkontrollen **#5879** kl. 19:40 og efter 20:30 (v4-versioner, resultatkæde, aftentræning, juniorer, stabilitet, bestyrelsesunderskrift). Rollback v4 = `race_engine_v4` → off (ejer-go). **Codex i gang:** løfte-opfølgning (#5828 omdømme-gulv, #5847 auktionsvindue-fix, #5867 trup-advarsel + beslutningskort for #5849/#5853/#5268/#5238/#3813/#5124/#5864) og GitHub-audit. **Torsdag 1/10:** DB-udfald 14:15 (#5878), roadmap (#5845).
 >
-> **✅ #5843 (28/9 kl. 12:04):** U23/junior-løb kan nu ses (U23/Junior team → Calendar) og udtages (løbssiden, Hold-fanen); trup-regel: løb bruger kun egen trups ryttere, trup-flyt rydder gamle entries. PR #5869 merget (`7bea260`). **Åbent:** ejer-test af gem i prod · ejer-gated oprydning af 22 forkert-trup-race_entries (SQL i PR #5869) · Discord-besked til managers.
->
-> **Løfter før S4 der mangler (målt 27/9 aften):** træning fra løb (flip mandag) · v4 (ejer) · race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme synligt #4956. ✅ ungdomsløb live i S4.
+> **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -28,4 +26,4 @@
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** byg KUN via wave.js; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
 
-> **🤖 Working agent:** Ingen aktiv session (sæsonskifte-session 27/9 lukket ca. kl. 23).
+> **🤖 Working agent:** Ingen aktiv session (primær session 28/9 lukket ca. kl. 16; efterkontrol #5879 kl. 19:40).
