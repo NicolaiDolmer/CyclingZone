@@ -144,28 +144,67 @@ async function loadOpenVisionSlot(supabase, teamId) {
 }
 
 /**
+ * #5840 · Alle holdets milepæls-rækker (uanset status/slot). Unikt indeks
+ * `uq_board_vision_milestones_team_key (team_id, milestone_key)` gælder på
+ * tværs af status, så erstatningsforslaget skal kende HELE historikken.
+ */
+async function loadTeamMilestones(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("board_vision_milestones")
+    .select("id, milestone_key, goal, status")
+    .eq("team_id", teamId);
+  if (error) throw new Error(`board_vision_milestones lookup failed: ${error.message}`);
+  return Array.isArray(data) ? data : [];
+}
+
+function milestoneGoalSignature(goal) {
+  return `${goal?.type ?? "unknown"}:${goal?.target ?? "na"}`;
+}
+
+/**
  * Deterministisk erstatnings-forslag for et tomt vision-slot (A7, §4.4):
  * ÉT mål fra `generateBoardGoals` for slottets `origin`-plantype, mål-sæson =
  * slottets oprindelige sæson hvis den stadig ligger i fremtiden, ellers næste
  * ledige (nuværende sæson + plan-varigheden). SAMME funktion kaldes af både
  * GET (visning) og sign (accept-skrivning) — se modul-headerens fortolkning 2.
  */
-export function buildVisionSlotProposal({ openSlot, focus, team, riders, standing, currentSeasonNumber } = {}) {
+export function buildVisionSlotProposal({
+  openSlot, focus, team, riders, standing, currentSeasonNumber, existingMilestones = [],
+} = {}) {
   if (!openSlot) return null;
   const origin = openSlot.origin === "5yr" ? "5yr" : "3yr";
-  const candidateGoal = generateBoardGoals({ focus, planType: origin, team, riders, standing })[0] || null;
-  if (!candidateGoal) return null;
+  const candidates = generateBoardGoals({ focus, planType: origin, team, riders, standing });
+  if (!candidates.length) return null;
 
   const targetSeasonNumber = Number(openSlot.target_season_number) > Number(currentSeasonNumber)
     ? Number(openSlot.target_season_number)
     : Number(currentSeasonNumber) + getPlanDuration(origin);
 
+  // #5840 · Tidlig opfyldelse er tilsigtet (BOARD_RULES §0.1 / A7), så slottets
+  // mål-sæson ligger ofte stadig i fremtiden, og samme plantype + samme input
+  // gav præcis den milepæl slottet erstatter — samme nøgle → unikt indeks →
+  // hele underskriften fejlede. Vælg derfor (a) første kandidat hvis mål
+  // (type+target) holdet ikke allerede har som milepæl, ellers (b) første
+  // kandidat med et ubrugt nøgle-indeks. Stadig deterministisk: GET og sign
+  // ser samme rækker og giver samme forslag.
+  const rows = [openSlot, ...(Array.isArray(existingMilestones) ? existingMilestones : [])];
+  const usedKeys = new Set(rows.map((m) => m?.milestone_key).filter(Boolean));
+  const usedGoals = new Set(rows.filter((m) => m?.goal).map((m) => milestoneGoalSignature(m.goal)));
+
+  const goal = candidates.find((g) => !usedGoals.has(milestoneGoalSignature(g))) || candidates[0];
+  let index = 0;
+  let milestoneKey = buildMilestoneKey({ origin, goal, targetSeasonNumber, index });
+  while (usedKeys.has(milestoneKey)) {
+    index += 1;
+    milestoneKey = buildMilestoneKey({ origin, goal, targetSeasonNumber, index });
+  }
+
   return {
     replaces_milestone_id: openSlot.id,
     origin,
-    goal: candidateGoal,
+    goal,
     target_season_number: targetSeasonNumber,
-    milestone_key: buildMilestoneKey({ origin, goal: candidateGoal, targetSeasonNumber, index: 0 }),
+    milestone_key: milestoneKey,
   };
 }
 
@@ -296,6 +335,7 @@ export async function buildBoardMeetingPayload({ supabase, teamId } = {}) {
   const visionSlot = openSlot
     ? buildVisionSlotProposal({
       openSlot, focus: mandate.focus, team, riders, standing, currentSeasonNumber: mandate.season_number,
+      existingMilestones: await loadTeamMilestones(supabase, teamId),
     })
     : null;
 
@@ -513,6 +553,7 @@ export async function signMandate(supabase, {
     if (openSlot) {
       const proposal = buildVisionSlotProposal({
         openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number,
+        existingMilestones: await loadTeamMilestones(supabase, teamId),
       });
       if (proposal && visionSlot.accept) {
         const { error: insertError } = await supabase.from("board_vision_milestones").insert({
@@ -525,7 +566,11 @@ export async function signMandate(supabase, {
           is_headline: true,
           status: "pending",
         });
-        if (insertError) throw new Error(`board_vision_milestones insert failed: ${insertError.message}`);
+        // #5840 · 23505 her kan kun være et samtidigt identisk sign (nøglen var
+        // ubrugt ved opslaget) — milepælen findes allerede, så accept er opfyldt.
+        if (insertError && insertError.code !== "23505") {
+          throw new Error(`board_vision_milestones insert failed: ${insertError.message}`);
+        }
         visionSlotOutcome = { accepted: true, milestone_key: proposal.milestone_key };
       } else {
         visionSlotOutcome = { accepted: false };
