@@ -32,7 +32,7 @@ function world({ managers = 40, ai = 20 } = {}) {
 }
 
 test("parseArgs: dry-run default, begge trupper, --apply kræver --owner-go", () => {
-  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24 });
+  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false });
   assert.deepEqual(parseArgs(["--squad=junior"]).squads, ["junior"]);
   assert.deepEqual(parseArgs(["--squad=all"]).squads, ["u23", "junior"]);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);

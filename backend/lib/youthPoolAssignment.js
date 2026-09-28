@@ -175,7 +175,30 @@ function summarizeGroups(groups) {
  * @param {Map|Object} [p.countback]  valgfri #3036-countback til tiebreak (se pyramidCompression).
  * @returns {{ squad, groupSize, groups, managers, aiOverflow, excluded, summary }}
  */
-export function planYouthGroups({ teams, globalRanks, aiTeams, squad, groupSize = YOUTH_GROUP_SIZE, countback } = {}) {
+/**
+ * #4620 (ejer 27/9): juniorgrupperne blandes ANDERLEDES end U23, så holdene
+ * mødes med andre modstandere i de to trupper. Samme balance som snake: hver
+ * gruppe får præcis ét hold fra hvert styrkebånd (bånd = P hold i rangorden),
+ * men båndets rækkefølge forskydes med `shift` pr. bånd (latinsk kvadrat).
+ * shift vælges indbyrdes primisk med P, så forskydningen går gennem alle grupper.
+ */
+export function shiftedBandAssign(orderedItems, pools) {
+  const P = pools.length;
+  if (!P) throw new Error("shiftedBandAssign: at least one group is required");
+  const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+  let shift = Math.max(1, Math.round(P / 3));
+  while (P > 1 && gcd(shift, P) !== 1) shift += 1;
+  return orderedItems.map((item, i) => {
+    const band = Math.floor(i / P);
+    const col = i % P;
+    return { item, pool: pools[(col + band * shift) % P] };
+  });
+}
+
+export function planYouthGroups({
+  teams, globalRanks, aiTeams, squad, groupSize = YOUTH_GROUP_SIZE, countback,
+  managersPerGroup = null, mixJunior = false,
+} = {}) {
   assertYouthSquad(squad);
   const managers = (teams || []).filter(isEligibleManagerTeam);
   const ai = (aiTeams || []).filter(isEligibleAiTeam);
@@ -184,12 +207,19 @@ export function planYouthGroups({ teams, globalRanks, aiTeams, squad, groupSize 
     ai: (aiTeams || []).filter((t) => t && !isEligibleAiTeam(t)).map((t) => t.id),
   };
 
-  const count = youthGroupCount(managers.length + ai.length, groupSize);
+  // #4620 (ejer 27/9): med managersPerGroup styres antallet af grupper af
+  // managerne (fx 12 → ca. 12 managers + 12 AI pr. gruppe); AI-hold der ikke er
+  // plads til, får ingen gruppe (aiOverflow). Uden parameteren: så få grupper
+  // som muligt med alle hold (uændret adfærd).
+  const count = Number.isInteger(managersPerGroup) && managersPerGroup > 0
+    ? Math.max(1, Math.ceil(managers.length / managersPerGroup))
+    : youthGroupCount(managers.length + ai.length, groupSize);
   const groups = Array.from({ length: count }, (_, i) => emptyGroup(squad, i));
 
   const teamById = new Map(managers.map((t) => [t.id, t]));
   const ranked = rankManagersForYouth({ teams: managers, globalRanks, countback });
-  const snaked = snakeAssign(ranked, groups);
+  const assign = mixJunior && squad === "junior" ? shiftedBandAssign : snakeAssign;
+  const snaked = assign(ranked, groups);
   const managerPlan = [];
   for (const { item, pool } of snaked) {
     addToGroup(pool, teamById.get(item.teamId), "manager");
