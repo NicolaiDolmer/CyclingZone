@@ -103,7 +103,22 @@ export function parseArgs(argv) {
   if (!Number.isInteger(groupSize) || groupSize < MIN_RACE_ENTRIES) {
     throw new Error(`--group-size skal være et helt tal ≥ ${MIN_RACE_ENTRIES} (fik ${JSON.stringify(sizeRaw)})`);
   }
-  return { squads, apply, ownerGo, groupSize };
+  // #4620 (ejer 27/9): --managers-per-group=12 → ca. 12 managers + 12 AI pr. gruppe;
+  // --mix-junior → juniorgrupperne blandes anderledes end U23 (andre modstandere).
+  const mpgRaw = get("managers-per-group");
+  if (mpgRaw === true || mpgRaw === "") {
+    throw new Error("--managers-per-group kræver et tal efter =");
+  }
+  const managersPerGroup = mpgRaw === undefined ? null : Number(mpgRaw);
+  if (managersPerGroup != null && (!Number.isInteger(managersPerGroup) || managersPerGroup < 1 || managersPerGroup > groupSize)) {
+    throw new Error(`--managers-per-group skal være et helt tal mellem 1 og ${groupSize} (fik ${JSON.stringify(mpgRaw)})`);
+  }
+  const mixRaw = get("mix-junior");
+  if (mixRaw !== undefined && mixRaw !== true) {
+    throw new Error("--mix-junior tager ingen værdi");
+  }
+  const mixJunior = mixRaw === true;
+  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior };
 }
 
 // ── Rene hjælpere (testes i seedYouthPools.test.js) ─────────────────────────
@@ -135,7 +150,9 @@ export function currentGroups({ pools, teams, squad }) {
  * Plan for én trup: vælger fresh/top-up, og omsætter planen til konkrete
  * skrivninger (grupper der skal oprettes + FK-opdateringer pr. hold).
  */
-export function buildSquadPlan({ squad, pools, teams, globalRanks, riders, groupSize = YOUTH_GROUP_SIZE }) {
+export function buildSquadPlan({
+  squad, pools, teams, globalRanks, riders, groupSize = YOUTH_GROUP_SIZE, managersPerGroup = null, mixJunior = false,
+}) {
   const col = fkColumn(squad);
   const counts = youthRidersByTeam(riders, squad);
   const withCount = (t) => ({ ...t, youthRiders: counts.get(t.id) || 0 });
@@ -148,7 +165,7 @@ export function buildSquadPlan({ squad, pools, teams, globalRanks, riders, group
   const mode = assignedCount === 0 ? "fresh" : "top-up";
 
   const plan = mode === "fresh"
-    ? planYouthGroups({ teams: managers, aiTeams, globalRanks, squad, groupSize })
+    ? planYouthGroups({ teams: managers, aiTeams, globalRanks, squad, groupSize, managersPerGroup, mixJunior })
     : planYouthTopUp({ groups: existing, teams: managers, aiTeams, globalRanks, squad, groupSize });
 
   const existingIndexes = new Set((pools || []).filter((p) => p.squad === squad).map((p) => p.pool_index));
@@ -347,7 +364,7 @@ export async function main(argv = process.argv.slice(2)) {
 
   console.log(`UNGDOMSGRUPPER (#5646) ${args.apply ? "APPLY (skriver til prod)" : "DRY-RUN (read-only)"} · trupper: ${args.squads.join(", ")}`);
   const state = await loadState(supabase);
-  const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, groupSize: args.groupSize, ...state }));
+  const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, ...state }));
 
   // Prognose: samme plan efter parkerings-sweepen ved sæsonskiftet (read-only;
   // udvælgelsen er managerParking.js' egne rene funktioner, ingen kopi).
@@ -360,7 +377,7 @@ export async function main(argv = process.argv.slice(2)) {
   const forecast = {
     parked: toPark.length,
     unparked: toUnpark.length,
-    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, groupSize: args.groupSize, ...state, teams: forecastTeams }))),
+    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, ...state, teams: forecastTeams }))),
   };
 
   const generatedAt = new Date().toISOString();
