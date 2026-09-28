@@ -23,6 +23,111 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.306",
+    "date": "2026-09-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season 4 has started",
+          "body": "Sponsors paid out, wages were drawn, and every rider starts the season fully rested. Form moved a little towards the middle, so last season's form only partly carries over. The first race day is Monday 28 September at 19:30."
+        },
+        "da": {
+          "title": "Sæson 4 er gået i gang",
+          "body": "Sponsorerne har betalt, lønnen er trukket, og alle ryttere starter sæsonen helt udhvilede. Formen er rykket lidt mod midten, så sidste sæsons form kun delvist følger med. Første løbsdag er mandag 28. september kl. 19:30."
+        },
+        "refs": [
+          5506
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Division 3 and 4 merged",
+          "body": "Every active manager from division 4 moved up to division 3, and the four division 3 groups were redrawn on last season's points. Division 4 now has four groups instead of eight."
+        },
+        "da": {
+          "title": "Division 3 og 4 er lagt sammen",
+          "body": "Alle aktive managere fra division 4 er rykket op i division 3, og de fire grupper i division 3 er trukket om efter sidste sæsons point. Division 4 har nu fire grupper i stedet for otte."
+        },
+        "refs": [
+          5641,
+          5642
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Inactive teams are parked",
+          "body": "Teams with no login for 30 days that did not sign up for season 4 left their group at the switch. Your club stays available for a one-tap return. Contracts can still expire and salaries are still paid while parked; the club receives no new season sponsor payment until it returns."
+        },
+        "da": {
+          "title": "Inaktive hold er parkeret",
+          "body": "Hold uden login i 30 dage, som ikke meldte sig til sæson 4, forlod deres gruppe ved skiftet. Du kan hente klubben tilbage med ét tryk. Kontrakter kan stadig udløbe, og løn betales fortsat under parkering; klubben får først sponsorbetaling for den nye sæson, når den vender tilbage."
+        },
+        "refs": [
+          4592
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Youth teams",
+        "en": {
+          "title": "U23 and junior races start Monday",
+          "body": "Your U23 and junior teams each race in their own group of 24 teams, about half managers and half AI. The junior groups are drawn differently from U23, so you meet other opponents. U23 races twice a week, juniors once a week, and a squad needs at least 6 riders to start."
+        },
+        "da": {
+          "title": "U23- og juniorløb starter mandag",
+          "body": "Dit U23- og juniorhold kører hver i sin egen gruppe med 24 hold, cirka halvt managere og halvt AI. Juniorgrupperne er trukket anderledes end U23, så du møder andre modstandere. U23 kører to gange om ugen, juniorerne én gang, og en trup skal have mindst 6 ryttere for at stille til start."
+        },
+        "refs": [
+          4620,
+          4621
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "One-day races spread over division 2's whole season",
+          "body": "Division 2's season 4 calendar had almost no one-day races in the second half. It was rebuilt before the season started, and every week now has at least three."
+        },
+        "da": {
+          "title": "Endagsløb over hele sæsonen i division 2",
+          "body": "Kalenderen for division 2 i sæson 4 havde næsten ingen endagsløb i anden halvdel. Den er bygget om, før sæsonen startede, og hver uge har nu mindst tre."
+        },
+        "refs": [
+          5830
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Standings show only teams that race in the division",
+          "body": "After the switch, parked teams still showed in their old division's standings with 0 points, so division 1 looked like it had 27 teams. Standings now show only teams in a group: 24 per group."
+        },
+        "da": {
+          "title": "Stillingen viser kun hold der kører i divisionen",
+          "body": "Efter skiftet stod parkerede hold stadig i deres gamle divisions stilling med 0 point, så division 1 så ud til at have 27 hold. Stillingen viser nu kun hold i en gruppe: 24 pr. gruppe."
+        },
+        "refs": [
+          4592
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.305",
     "date": "2026-09-27",
     "label": "Beta",
