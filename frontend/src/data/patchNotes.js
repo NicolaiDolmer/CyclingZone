@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.315",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Plan race days on your phone without sideways scrolling",
+          "body": "The season selection matrix now shows your riders beside three race days at a time on phones. Choose a race, then use Earlier or Later to move through its days. Your edits still go into the same plan, with one Save plan action. The full matrix on desktop stays as it was."
+        },
+        "da": {
+          "title": "Planlæg løbsdage på mobilen uden at scrolle sidelæns",
+          "body": "Sæsonens udtagelsesmatrix viser nu dine ryttere ved siden af tre løbsdage ad gangen på mobilen. Vælg et løb, og brug Før eller Senere til at bladre gennem dagene. Dine ændringer ligger stadig i den samme plan, som gemmes med én Gem plan-handling. Den fulde matrix på desktop er som før."
+        },
+        "refs": [5124]
+      }
+    ]
+  },
+  {
     "version": "7.305",
     "date": "2026-09-27",
     "label": "Beta",
