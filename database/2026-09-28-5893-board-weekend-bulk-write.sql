@@ -13,7 +13,9 @@
 --     season_start_anchor_season_id?, updated_at}] — nøgler der mangler i en
 --     række lader kolonnen urørt (baseline-boards sætter kun satisfaction +
 --     updated_at, præcis som i dag).
---   · p_events: rækker til board_satisfaction_events. ON CONFLICT
+--   · p_events: rækker til board_satisfaction_events (egen undertransaktion:
+--     en event-fejl ruller ALDRIG satisfaction tilbage, den returneres som
+--     events_error — samme garanti som JS-stien, #1451). ON CONFLICT
 --     (board_id, race_id) DO UPDATE = samme semantik som PostgREST-upsert'en med
 --     onConflict "board_id,race_id" (created_at bevares ved konflikt).
 -- Samme spilregler, samme tal: beregningen bliver i JS; kun I/O'en samles.
@@ -36,6 +38,7 @@ AS $$
 DECLARE
   v_profiles integer := 0;
   v_events integer := 0;
+  v_events_error text := NULL;
 BEGIN
   WITH src AS (
     SELECT
@@ -60,39 +63,47 @@ BEGIN
   WHERE bp.id = src.id;
   GET DIAGNOSTICS v_profiles = ROW_COUNT;
 
-  INSERT INTO public.board_satisfaction_events (
-    board_id, team_id, season_id, race_id, race_name, race_days_completed,
-    satisfaction_before, satisfaction_after, satisfaction_delta,
-    goals_met, goals_total, reason_category
-  )
-  SELECT
-    (e->>'board_id')::uuid,
-    (e->>'team_id')::uuid,
-    (e->>'season_id')::uuid,
-    (e->>'race_id')::uuid,
-    e->>'race_name',
-    (e->>'race_days_completed')::integer,
-    (e->>'satisfaction_before')::integer,
-    (e->>'satisfaction_after')::integer,
-    (e->>'satisfaction_delta')::integer,
-    coalesce((e->>'goals_met')::integer, 0),
-    coalesce((e->>'goals_total')::integer, 0),
-    e->>'reason_category'
-  FROM jsonb_array_elements(coalesce(p_events, '[]'::jsonb)) AS e
-  ON CONFLICT (board_id, race_id) DO UPDATE SET
-    team_id = EXCLUDED.team_id,
-    season_id = EXCLUDED.season_id,
-    race_name = EXCLUDED.race_name,
-    race_days_completed = EXCLUDED.race_days_completed,
-    satisfaction_before = EXCLUDED.satisfaction_before,
-    satisfaction_after = EXCLUDED.satisfaction_after,
-    satisfaction_delta = EXCLUDED.satisfaction_delta,
-    goals_met = EXCLUDED.goals_met,
-    goals_total = EXCLUDED.goals_total,
-    reason_category = EXCLUDED.reason_category;
-  GET DIAGNOSTICS v_events = ROW_COUNT;
+  -- Events er visnings-only (#1451): en event-fejl må ALDRIG rulle
+  -- bestyrelsernes satisfaction tilbage. Egen undertransaktion (savepoint);
+  -- fejlen returneres til kalderen i stedet for at vælte hele kaldet.
+  BEGIN
+    INSERT INTO public.board_satisfaction_events (
+      board_id, team_id, season_id, race_id, race_name, race_days_completed,
+      satisfaction_before, satisfaction_after, satisfaction_delta,
+      goals_met, goals_total, reason_category
+    )
+    SELECT
+      (e->>'board_id')::uuid,
+      (e->>'team_id')::uuid,
+      (e->>'season_id')::uuid,
+      (e->>'race_id')::uuid,
+      e->>'race_name',
+      (e->>'race_days_completed')::integer,
+      (e->>'satisfaction_before')::integer,
+      (e->>'satisfaction_after')::integer,
+      (e->>'satisfaction_delta')::integer,
+      coalesce((e->>'goals_met')::integer, 0),
+      coalesce((e->>'goals_total')::integer, 0),
+      e->>'reason_category'
+    FROM jsonb_array_elements(coalesce(p_events, '[]'::jsonb)) AS e
+    ON CONFLICT (board_id, race_id) DO UPDATE SET
+      team_id = EXCLUDED.team_id,
+      season_id = EXCLUDED.season_id,
+      race_name = EXCLUDED.race_name,
+      race_days_completed = EXCLUDED.race_days_completed,
+      satisfaction_before = EXCLUDED.satisfaction_before,
+      satisfaction_after = EXCLUDED.satisfaction_after,
+      satisfaction_delta = EXCLUDED.satisfaction_delta,
+      goals_met = EXCLUDED.goals_met,
+      goals_total = EXCLUDED.goals_total,
+      reason_category = EXCLUDED.reason_category;
+    GET DIAGNOSTICS v_events = ROW_COUNT;
+  EXCEPTION WHEN OTHERS THEN
+    v_events := 0;
+    v_events_error := SQLERRM;
+  END;
 
-  RETURN jsonb_build_object('profiles', v_profiles, 'events', v_events);
+  RETURN jsonb_build_object('profiles', v_profiles, 'events', v_events, 'events_error', v_events_error);
 END;
 $$;
 

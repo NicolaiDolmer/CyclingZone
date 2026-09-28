@@ -47,7 +47,6 @@ function makeFakeSupabase(state, opts = {}) {
       return { data: null, error: { code: "PGRST202", message: "function not found" } };
     }
     const eventError = errors.board_satisfaction_events?.upsert;
-    if (eventError) return { data: null, error: { code: "XX000", message: eventError } };
     state.board_profiles ??= [];
     state.board_satisfaction_events ??= [];
     let profiles = 0;
@@ -57,6 +56,8 @@ function makeFakeSupabase(state, opts = {}) {
       Object.assign(row, patch);
       profiles += 1;
     }
+    // Undertransaktion: en event-fejl ruller IKKE satisfaction tilbage.
+    if (eventError) return { data: { profiles, events: 0, events_error: eventError }, error: null };
     for (const ev of args.p_events || []) {
       const existing = state.board_satisfaction_events.find(
         (r) => r.board_id === ev.board_id && r.race_id === ev.race_id,
@@ -64,7 +65,7 @@ function makeFakeSupabase(state, opts = {}) {
       if (existing) Object.assign(existing, ev);
       else state.board_satisfaction_events.push({ ...ev });
     }
-    return { data: { profiles, events: (args.p_events || []).length }, error: null };
+    return { data: { profiles, events: (args.p_events || []).length, events_error: null }, error: null };
   };
   return supabase;
 }
@@ -1150,6 +1151,27 @@ test("#5893: migrationen findes og matcher JS-kontrakten (navn, konflikt-nøgle,
   const sql = readFileSync(resolve(import.meta.dirname, "../../database/2026-09-28-5893-board-weekend-bulk-write.sql"), "utf8");
   assert.match(sql, /FUNCTION public\.apply_board_weekend_writes\(\s*p_profiles jsonb,\s*p_events jsonb/);
   assert.match(sql, /ON CONFLICT \(board_id, race_id\) DO UPDATE/);
+  assert.match(sql, /EXCEPTION WHEN OTHERS THEN[\s\S]*v_events_error := SQLERRM/, "event-fejl isoleret fra satisfaction");
   assert.match(sql, /REVOKE EXECUTE ON FUNCTION public\.apply_board_weekend_writes\(jsonb, jsonb\) FROM anon/);
   assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.apply_board_weekend_writes\(jsonb, jsonb\) TO service_role/);
+});
+
+test("#5893: RPC-fejl under pres (timeout) → INGEN række-for-række-storm, fejlen tælles + captures", async () => {
+  const state = makeState();
+  const supabase = makeFakeSupabase(state);
+  supabase.rpc = async () => ({ data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } });
+  const counts = countWrites(supabase);
+  const captured = [];
+  const summary = await processBoardWeekendFinalization({
+    supabase, season: { ...SEASON }, previousRaceDaysCompleted: 6,
+    race: { id: "race-1", name: "Testløb", squad: "senior" },
+    captureExceptionFn: (err) => captured.push(err),
+    deps: baseDeps({ computeWeekendUpdate: stubComputeUpdate({ newSatisfaction: 45 }) }),
+  });
+  assert.equal(counts.profilePatch, 0, "ingen enkelt-PATCH mod en presset database");
+  assert.equal(counts.eventUpsert, 0);
+  assert.equal(summary.boards_updated, 0);
+  assert.equal(summary.errors, 1);
+  assert.equal(captured.length, 1);
+  assert.equal(state.board_profiles[0].satisfaction, 50, "atomar: intet halvt skrevet");
 });

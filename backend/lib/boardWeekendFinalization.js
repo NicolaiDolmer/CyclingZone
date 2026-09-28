@@ -772,24 +772,44 @@ export async function processBoardWeekendFinalization({
  * }} args
  */
 export async function flushBufferedBoardWrites({ supabase, summary, pendingProfiles, pendingEvents, captureExceptionFn = null }) {
-  const { error } = await supabase.rpc("apply_board_weekend_writes", {
+  const { data, error } = await supabase.rpc("apply_board_weekend_writes", {
     p_profiles: pendingProfiles.map((p) => ({ id: p.id, ...p.patch })),
     p_events: pendingEvents.map((e) => e.row),
   });
   if (!error) {
-    summary.boards_updated += pendingProfiles.length;
+    // Tæl det databasen faktisk ramte (et board slettet undervejs = 0 rækker).
+    const profilesWritten = Number.isFinite(Number(data?.profiles)) ? Number(data.profiles) : pendingProfiles.length;
+    const eventsWritten = Number.isFinite(Number(data?.events)) ? Number(data.events) : pendingEvents.length;
+    summary.boards_updated += profilesWritten;
     summary.baseline_boards_updated = (summary.baseline_boards_updated || 0)
       + pendingProfiles.filter((p) => p.baseline).length;
-    summary.events_written += pendingEvents.length;
+    summary.events_written += eventsWritten;
+    if (data?.events_error) {
+      // Visnings-only (#1451): satisfaction ER skrevet; kun event-loggen fejlede.
+      // Console-only som den gamle sti (ingen Sentry-spam før migrationer).
+      summary.errors += 1;
+      console.error("  ⚠️  board satisfaction events failed (satisfaction was written):", data.events_error);
+    }
     return;
   }
 
+  // Fallback KUN når funktionen ikke findes endnu (vinduet mellem backend-
+  // deploy og auto-migrate). Ved alle andre fejl — timeout, overbelastning,
+  // netværk — ville række-for-række-skrivninger sende ~2 kald pr. board mod en
+  // database der allerede er presset: præcis mønstret bag udfaldene 28/9.
+  // Transaktionen er atomar, så intet er halvt skrevet; kørslen tæller fejlen,
+  // og næste afsluttede løb flytter bestyrelserne igen.
   const missingFn = error.code === "PGRST202" || error.code === "42883";
   if (!missingFn) {
-    console.error("  ⚠️  apply_board_weekend_writes failed, falling back to per-row writes:", error.message);
+    summary.errors += pendingProfiles.length;
+    console.error(`  ⚠️  apply_board_weekend_writes failed (${pendingProfiles.length} boards not updated this run):`, error.message);
     if (captureExceptionFn) {
-      captureExceptionFn(new Error(`apply_board_weekend_writes: ${error.message}`), { tags: { hook: "board-weekend", stage: "bulk-write" } });
+      captureExceptionFn(new Error(`apply_board_weekend_writes: ${error.message}`), {
+        tags: { hook: "board-weekend", stage: "bulk-write" },
+        extra: { boards: pendingProfiles.length, events: pendingEvents.length, code: error.code ?? null },
+      });
     }
+    return;
   }
   for (const p of pendingProfiles) {
     const { error: updErr } = await supabase.from("board_profiles").update(p.patch).eq("id", p.id);
