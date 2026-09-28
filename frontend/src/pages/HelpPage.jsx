@@ -112,6 +112,7 @@ const SECTION_DEFS = [
       { id: "annualMeeting", kind: "textSteps" },
       { id: "bonusOffers", kind: "text" },
       { id: "clubDnaAndBoard", kind: "text" },
+      { id: "visionMilestones", kind: "text" }, // #5820
     ],
   },
   {

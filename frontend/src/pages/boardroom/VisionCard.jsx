@@ -80,6 +80,18 @@ export default function VisionCard({ vision }) {
                 <p data-testid="vision-milestone-title" className="mt-[3px] break-words text-[13px] font-medium text-cz-1">
                   {resolveGoalTitle(t, m) || t(m.labelKey, m.labelParams || {})}
                 </p>
+                {/* #5820 · Én kort linje om HVORNÅR milepælen tælles, så et
+                    langsigtet mål ikke ligner et inaktivt mål midt i sæsonen.
+                    Motoren afgør milepæle ved sæsonafslutning: i målsæsonen,
+                    eller tidligere hvis målet allerede er nået (BOARD_RULES
+                    §0.1 / A7). Forklaringen står i Hjælp (mandate.visionMilestones). */}
+                <p data-testid="vision-milestone-counts" className="mt-[2px] text-xs text-cz-3">
+                  {m.status === "achieved"
+                    ? t("boardroom.vision.milestoneAchieved")
+                    : m.status === "missed"
+                      ? t("boardroom.vision.milestoneMissed")
+                      : t("boardroom.vision.countsAt", { season: m.seasonNumber })}
+                </p>
               </div>
             </li>
           ))}

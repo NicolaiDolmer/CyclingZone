@@ -168,6 +168,10 @@
       "clubDnaAndBoard": {
         "title": "Club DNA and your five board members",
         "text": "Club DNA is the first choice you make, from five archetypes, and it shapes the whole Mandate. It decides who sits on your board: three of the five named members match your DNA and your team's identity, two are wildcards that bring contrast, and the closest match is chair. It leans the targets you are offered towards what that DNA cares about, and it names your club vision. Each member owns one area and reads your season in their own voice, which is why the same result can move one member and leave another cold. You can change your DNA until your first season ends, which seats a new board; after that it is locked. The Board tab shows all five, their mood towards you and the minutes in their own words."
+      },
+      "visionMilestones": {
+        "title": "When vision milestones count",
+        "text": "Each milestone in your club vision has a target season, and the milestone itself says when it counts, for example \"Counts at the end of season 5\". The board checks milestones at each season end, not along the way, so a long-term goal can look untouched for most of a season without being behind. You can meet a milestone early: if you have already reached it at the end of an earlier season, it counts right there, the board marks it achieved and proposes a new milestone at the next annual meeting. A milestone you have not reached by the end of its target season is missed. That costs confidence once, and the rest of the vision carries on unchanged."
       }
     },
     "auctions": {
