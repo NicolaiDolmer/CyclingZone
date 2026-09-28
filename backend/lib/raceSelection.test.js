@@ -957,3 +957,31 @@ test("#5645 (ejer 24/9): getSelectionContext: juniorløb viser alle juniorer, og
   const ctx = await getSelectionContext({ supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1" });
   assert.deepEqual(ctx.riders.map((r) => r.id).sort(), ["j16", "j17"]);
 });
+
+// #5843 (ejer-regel 28/9, bindende): senior-, U23- og juniorløb bruger KUN ryttere
+// fra løbets egen trup. prepareSelectionChange bærer GET/PUT/bulk (api.js), så
+// matrixen dækker alle gem-veje.
+test("#5843 prepareSelectionChange: 3×3-matrix — kun løbets egen trup kan udtages", async () => {
+  const team = { league_division_id: "d1", u23_league_division_id: "u23-pool", junior_league_division_id: "j-pool" };
+  const races = {
+    senior: { id: "raceS", league_division_id: "d1" },
+    u23: { id: "raceU", league_division_id: "u23-pool", squad: "u23" },
+    junior: { id: "raceJ", league_division_id: "j-pool", squad: "junior" },
+  };
+  const riderOf = { senior: "s1", u23: "u1", junior: "j17" };
+  for (const [raceSquad, r] of Object.entries(races)) {
+    const race = { ...r, status: "scheduled", stages_completed: 0, race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+    for (const [riderSquad, riderId] of Object.entries(riderOf)) {
+      const res = await prepareSelectionChange({
+        supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1", team,
+        body: { rider_ids: [riderId], captain_id: riderId },
+      });
+      if (raceSquad === riderSquad) {
+        assert.equal(res.ok, true, `${riderSquad}-rytter i ${raceSquad}-løb skal kunne gemmes`);
+      } else {
+        assert.equal(res.ok, false, `${riderSquad}-rytter må ikke i et ${raceSquad}-løb`);
+        assert.equal(res.error, "selection_rider_not_on_team");
+      }
+    }
+  }
+});

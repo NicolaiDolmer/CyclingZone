@@ -92,6 +92,40 @@
       "junior": "Junior standings, one group at a time"
     },
     "squadLabel": "Squad",
-    "tabsLabel": "Youth races sections"
+    "tabsLabel": "Youth races sections",
+    "calendarHint": "Pick your riders for each race. You can change the squad until the first stage starts, also when it was auto-picked.",
+    "headers": {
+      "race": "Race",
+      "team": "Your team",
+      "action": "Action"
+    },
+    "status": {
+      "open": "Selection open",
+      "live": "Racing",
+      "completed": "Finished"
+    },
+    "team": {
+      "none": "Not picked",
+      "auto": "{count, plural, one {1 rider, auto-picked} other {# riders, auto-picked}}",
+      "manual": "{count, plural, one {1 rider picked} other {# riders picked}}",
+      "rode": "{count, plural, one {1 rider} other {# riders}}"
+    },
+    "action": {
+      "pick": "Pick riders",
+      "edit": "Edit squad",
+      "view": "View race",
+      "results": "Results"
+    },
+    "error": {
+      "title": "Couldn't load youth races",
+      "description": "Try again in a moment."
+    },
+    "stages": "{count, plural, one {1 stage} other {# stages}}",
+    "count": "{count, plural, one {1 race} other {# races}}",
+    "noPool": {
+      "title": "No youth group for your team yet",
+      "u23": "Your team is not in a U23 group this season, so there are no U23 races to pick for.",
+      "junior": "Your team is not in a junior group this season, so there are no junior races to pick for."
+    }
   }
 }
