@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-79 poster: live 57 · beta 3 · dormant 4 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+79 poster: live 57 · beta 2 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -74,7 +74,11 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## economy
 
-**live:** Youth squad upkeep switch at season change (`academy-drift-kill-switch`) 2026-09-25 · Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
+**live:** Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Youth squad upkeep switch at season change (`academy-drift-kill-switch`) | dormant | `academy_drift_enabled` | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #5741 | 2026-09-28 | Off målt read-only i prod 28/9 efter S3→S4-cutover; fremtidig sats og nyt flip afventer ejerbeslutning. |
 
 ## club
 
@@ -82,9 +86,10 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## board
 
+**live:** Board mandate model (`board-mandate-model`) 2026-09-28
+
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Board mandate model (`board-mandate-model`) | beta | `board_mandate_model_enabled` | [BOARD_RULES](BOARD_RULES.md) | #3514 | 2026-09-06 | Mandat, vision, tillid, bonus, DNA. |
 | Firing and season review (`board-firing-and-review`) | idea | - | [BOARD_RULES](BOARD_RULES.md) | - | 2026-09-06 | Findes ikke i kode. |
 
 ## social

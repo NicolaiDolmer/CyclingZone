@@ -107,12 +107,12 @@ features:
     area: economy
     title_en: Youth squad upkeep switch at season change
     title_da: Ungdomsdrift ved sæsonskifte (kontakt)
-    state: live
+    state: dormant
     flag: academy_drift_enabled
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 5741
-    verified: 2026-09-25
-    note: Nøglen 'on' i prod 25/9 kl. 16:20 (auto-migrate efter PR #5745) = uændret drift. Ejeren sætter 'off' 27/9 før 12c (runbook 11b); kontrol efter 12c = 0 academy_drift-poster for S4.
+    verified: 2026-09-28
+    note: Off målt read-only i prod 28/9 efter S3→S4-cutover; fremtidig sats og nyt flip afventer ejerbeslutning.
 
   - id: form-and-fatigue
     area: race-engine
@@ -638,12 +638,12 @@ features:
     area: board
     title_en: Board mandate model
     title_da: Bestyrelsens mandatmodel
-    state: beta
+    state: live
     flag: board_mandate_model_enabled
     ssot: docs/BOARD_RULES.md
     epic: 3514
-    verified: 2026-09-06
-    note: Mandat, vision, tillid, bonus, DNA.
+    verified: 2026-09-28
+    note: On målt read-only i prod 28/9; mandat, vision, tillid, bonus og DNA.
 
   - id: board-firing-and-review
     area: board
