@@ -522,6 +522,9 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 ### Trin 11b (ejer-kørt): Sluk akademi-drift for S3-skiftet (#5741)
 
+**Status 28/9 (read-only prodmåling):** `academy_drift_enabled = 'off'`.
+Et nyt flip og fremtidig sats kræver ejerbeslutning; denne status ændrer ikke selve S4-cutoveret.
+
 - **For spilleren:** Ingen ungdomsdrift (akademi-drift) opkræves ved DENNE sæsonskiftekørsel — ejer-beslutning 25/9. Rammer kun selve cutover-lønkørslen (12c); resten af akademiet (intake, træning m.m.) er uændret.
 - **Forudsætning:** Køres FØR trin 12c "Udfør sæsonskifte", fordi akademi-drift debiteres inde i `processTeamSeasonPayroll` (trin 4), som kaldes fra `processSeasonStart` for den NYE sæson — dvs. inde i `seasonTransition.js` fase 6, udløst af 12c (`POST /api/admin/season-transition`), IKKE af "Afslut sæson" (12a, `POST /api/admin/seasons/:id/end`). Er nøglen ikke sat til `off` inden 12c er kørt, opkræves drift som normalt, og kan ikke fortrydes bagud (se "Fortryd" nedenfor). **Sæt IKKE nøglen tilbage til `on` mellem 12a og 12c** — S4-rækken findes ikke engang endnu på det tidspunkt, og en kontrol dér ville vise 0 uanset nøglens værdi og bevise intet.
 - **Go:** ejer.

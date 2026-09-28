@@ -192,6 +192,10 @@
       "title": "The board is waiting for your {planLabel}",
       "message": "You have {daysLeft} days left to negotiate your {planLabel}. If you don't act, the board will decide."
     },
+    "academyBoardGift": {
+      "title": "A thank-you from the board",
+      "message": "Thank you for racing with me. I've put 10 youth prospects in your academy: 5 at U23 age and 5 at junior age. Signing them is free, and normal youth wages apply. Pick the ones you want within 14 days. The rest leave quietly."
+    },
     "academySigned": {
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
