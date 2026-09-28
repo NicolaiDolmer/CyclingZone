@@ -83,6 +83,8 @@ export type TimeLimitTuning = {
   grupettoFieldFraction: number;
   grupettoMinRiders: number;
   grupettoCohesionWindowSeconds: number;
+  /** Ungdomsloebenes afvigelser, se timeLimitTuningFor. Valgfri i en haandbygget tuning. */
+  youth?: { factorMultiplier: number; grupettoMinRiders: number };
 };
 
 export { TIME_LIMIT_EXTRA_TUNING as TIME_LIMIT_TUNING };
@@ -104,6 +106,32 @@ const JURY_INELIGIBLE_EFFORTS: ReadonlySet<EffortLevel> = new Set<EffortLevel>([
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/**
+ * Tidsgraense-tuningen for loebets trup (ejer 28/9). Senior, null eller
+ * udeladt giver `tuning` uaendret (samme objekt), saa seniorloeb er
+ * bit-identiske. U23 og junior faar faktoren ganget med
+ * `youth.factorMultiplier`, og grupetto-redningen gaelder allerede fra
+ * `youth.grupettoMinRiders` ryttere i samlet ankomst, uanset feltstoerrelse.
+ */
+export function timeLimitTuningFor(
+  squad: string | null | undefined,
+  tuning: TimeLimitTuning = TIME_LIMIT_EXTRA_TUNING,
+): TimeLimitTuning {
+  if (squad !== "u23" && squad !== "junior") return tuning;
+  const youth = tuning.youth;
+  if (!youth) return tuning;
+  const factorByProfileType = Object.fromEntries(
+    Object.entries(tuning.factorByProfileType).map(([k, v]) => [k, v * youth.factorMultiplier]),
+  ) as Record<ProfileType, number>;
+  return {
+    ...tuning,
+    factorByProfileType,
+    fallbackFactor: tuning.fallbackFactor * youth.factorMultiplier,
+    grupettoFieldFraction: 0,
+    grupettoMinRiders: youth.grupettoMinRiders,
+  };
 }
 
 /**

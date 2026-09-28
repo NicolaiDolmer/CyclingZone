@@ -1619,6 +1619,8 @@ export const SEED_ACADEMY = {
   intake: [
     {
       intakeId: "intake-1",
+      // #5844: potentiale som tal (rating-bånd), ikke stjerner.
+      potentialBand: { role: "puncheur", now: 20, prog: { lo: 34, hi: 52 }, ceil: { lo: 34, hi: 52 } },
       riderId: "prospect-1",
       is_serious: true,
       status: "offered",
@@ -1642,6 +1644,8 @@ export const SEED_ACADEMY = {
     },
     {
       intakeId: "intake-2",
+      // #5844: potentiale som tal (rating-bånd), ikke stjerner.
+      potentialBand: { role: "tt", now: 14, prog: { lo: 28, hi: 41 }, ceil: { lo: 28, hi: 41 } },
       riderId: "prospect-2",
       is_serious: false,
       status: "offered",
@@ -1665,6 +1669,8 @@ export const SEED_ACADEMY = {
     },
     {
       intakeId: "intake-3",
+      // #5844: potentiale som tal (rating-bånd), ikke stjerner.
+      potentialBand: { role: "baroudeur", now: 17, prog: { lo: 31, hi: 38 }, ceil: { lo: 31, hi: 38 } },
       riderId: "prospect-3",
       is_serious: false,
       status: "offered",

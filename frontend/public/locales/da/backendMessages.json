@@ -192,6 +192,10 @@
       "title": "Bestyrelsen venter på din {planLabel}",
       "message": "Du har {daysLeft} dage tilbage til at forhandle din {planLabel}. Hvis du ikke gør noget, vælger bestyrelsen selv."
     },
+    "academyBoardGift": {
+      "title": "Tak fra bestyrelsen",
+      "message": "Tak fordi du kører med. Jeg har lagt 10 ungdomstalenter i dit akademi: 5 i U23-alderen og 5 i junioralderen. Det er gratis at signe dem, og normal ungdomsløn gælder. Vælg dem, du vil have, inden for 14 dage. Resten forsvinder stille."
+    },
     "academySigned": {
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."

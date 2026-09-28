@@ -459,8 +459,10 @@ const overview = (page) => page.getByTestId("training-overview");
 const DAY_CLOSE_CASES = [
   { name: "venter på dagens sidste løb", dayClose: DAY_CLOSE_WAITING, label: null, status: "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. 20." },
   { name: "klar", dayClose: DAY_CLOSE_READY, label: "Kør dagens træning nu", status: "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv." },
-  // Flaget off: serveren sender slet ikke feltet, og knappen er den gamle.
-  { name: "flaget off", dayClose: undefined, label: "Træn i dag (+25% konsistens-bonus)", status: "Ikke trænet endnu i dag" },
+  // Flaget off: serveren sender slet ikke feltet. #4847 B3 (ejer-go 6/9):
+  // manager-klik-bonussen er fjernet, knappen er nu bare den rene "Træn i dag"
+  // (frontend/public/locales/da/training.json: trainToday).
+  { name: "flaget off", dayClose: undefined, label: "Træn i dag", status: "Ikke trænet endnu i dag" },
 ];
 
 for (const c of DAY_CLOSE_CASES) {

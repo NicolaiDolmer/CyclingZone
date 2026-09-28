@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-09-25",
+  "generatedAt": "2026-09-28",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -56,20 +56,22 @@
         "lib/academy*"
       ],
       "jsFileCount": 15,
-      "tsErrorCount": 270,
+      "tsErrorCount": 264,
       "files": {
+        "lib/academyBoardGift.ts": 0,
         "lib/academyDriftFlag.ts": 0,
         "lib/academyFlag.js": 4,
-        "lib/academyGenerator.js": 30,
+        "lib/academyGenerator.js": 28,
         "lib/academyGraduation.js": 100,
         "lib/academyGraduationSweep.js": 6,
         "lib/academyHealSweep.js": 4,
-        "lib/academyIntake.js": 61,
+        "lib/academyIntake.js": 60,
         "lib/academyIntakeExpiryFlag.js": 1,
-        "lib/academyIntakeExpirySweep.js": 8,
+        "lib/academyIntakeExpirySweep.js": 5,
         "lib/academyIntakePull.js": 10,
         "lib/academyIntakePullFlag.js": 1,
         "lib/academyIntakeReconcile.js": 9,
+        "lib/academyIntakeSource.ts": 0,
         "lib/academyOfferProtection.js": 4,
         "lib/academyPnl.js": 17,
         "lib/academySigningDefer.js": 6,
@@ -99,9 +101,9 @@
         "lib/raceFinalize*"
       ],
       "jsFileCount": 5,
-      "tsErrorCount": 127,
+      "tsErrorCount": 123,
       "files": {
-        "lib/boardWeekendFinalization.js": 62,
+        "lib/boardWeekendFinalization.js": 58,
         "lib/finalizeInstrumentation.js": 12,
         "lib/raceFinalizeResumableFlag.js": 1,
         "lib/raceFinalizeState.js": 24,
@@ -125,6 +127,6 @@
   },
   "totals": {
     "jsFileCount": 35,
-    "tsErrorCount": 1052
+    "tsErrorCount": 1042
   }
 }

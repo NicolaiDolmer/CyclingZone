@@ -32,13 +32,19 @@ function world({ managers = 40, ai = 20 } = {}) {
 }
 
 test("parseArgs: dry-run default, begge trupper, --apply kræver --owner-go", () => {
-  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24 });
+  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false });
   assert.deepEqual(parseArgs(["--squad=junior"]).squads, ["junior"]);
   assert.deepEqual(parseArgs(["--squad=all"]).squads, ["u23", "junior"]);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
   assert.equal(parseArgs(["--apply", "--owner-go"]).apply, true);
   assert.throws(() => parseArgs(["--squad=senior"]));
   assert.throws(() => parseArgs(["--group-size=3"]));
+});
+
+test("parseArgs rejects malformed allocation flags instead of changing the plan", () => {
+  assert.throws(() => parseArgs(["--managers-per-group"]), /managers-per-group/);
+  assert.throws(() => parseArgs(["--mix-junior=true"]), /mix-junior/);
+  assert.throws(() => parseArgs(["--mix-junior=false"]), /mix-junior/);
 });
 
 test("fkColumn peger på A2-kolonnerne", () => {

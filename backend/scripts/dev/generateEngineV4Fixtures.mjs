@@ -111,7 +111,9 @@ function buildFlatMassespurt() {
     route,
     startlist: riders,
     orders: [],
-    seed: "fixture-flat-massespurt-v1",
+    // Dagsform i finalen kraever et seed hvor scenariets kaerneutfald stadig
+    // viser den tilsigtede sprintersejr; overraskelser maales i ankerharnessen.
+    seed: "fixture-flat-massespurt-v1-revision-0",
     tuning: cloneTuning(),
   };
 }
@@ -189,7 +191,8 @@ function buildBjergSelektion() {
     route,
     startlist: riders,
     orders: [],
-    seed: "fixture-bjerg-selektion-v1",
+    // Samme princip: golden-scenariet skal fortsat vise klatrerens sejr.
+    seed: "fixture-bjerg-selektion-v1-revision-44",
     tuning: cloneTuning(),
   };
 }

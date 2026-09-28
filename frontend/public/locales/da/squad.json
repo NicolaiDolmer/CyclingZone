@@ -92,6 +92,40 @@
       "junior": "Juniorstillingen, én gruppe ad gangen"
     },
     "squadLabel": "Trup",
-    "tabsLabel": "Ungdomsløbenes afsnit"
+    "tabsLabel": "Ungdomsløbenes afsnit",
+    "calendarHint": "Udtag dine ryttere til hvert løb. Du kan ændre truppen, indtil første etape starter, også når den er udtaget automatisk.",
+    "headers": {
+      "race": "Løb",
+      "team": "Dit hold",
+      "action": "Handling"
+    },
+    "status": {
+      "open": "Udtagelse åben",
+      "live": "Køres nu",
+      "completed": "Afsluttet"
+    },
+    "team": {
+      "none": "Ikke udtaget",
+      "auto": "{count, plural, one {1 rytter, auto-udtaget} other {# ryttere, auto-udtaget}}",
+      "manual": "{count, plural, one {1 rytter udtaget} other {# ryttere udtaget}}",
+      "rode": "{count, plural, one {1 rytter} other {# ryttere}}"
+    },
+    "action": {
+      "pick": "Udtag ryttere",
+      "edit": "Ret trup",
+      "view": "Se løb",
+      "results": "Resultater"
+    },
+    "error": {
+      "title": "Ungdomsløbene kunne ikke hentes",
+      "description": "Prøv igen om lidt."
+    },
+    "stages": "{count, plural, one {1 etape} other {# etaper}}",
+    "count": "{count, plural, one {1 løb} other {# løb}}",
+    "noPool": {
+      "title": "Dit hold har ingen ungdomsgruppe endnu",
+      "u23": "Dit hold er ikke i en U23-gruppe denne sæson, så der er ingen U23-løb at udtage til.",
+      "junior": "Dit hold er ikke i en juniorgruppe denne sæson, så der er ingen juniorløb at udtage til."
+    }
   }
 }

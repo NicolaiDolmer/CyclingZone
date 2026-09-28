@@ -208,6 +208,18 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
 > **Uændret og stadig bindende:** §2c's "én regenerering pr. sæsonkalender". Er S4's
 > kalender skrevet, er formen låst for S4 - en fejl bagefter står til S5.
 
+### Faktisk S3 → S4-forløb 27/9 og læring til næste skifte
+
+Dette er efterkontrol af den udførte rækkefølge. Ovenstående observationer fra 3/9 er historiske forberedelser; brug ikke deres "findes ikke endnu"-status som aktuel prod-tilstand.
+
+1. Skriv og verificér næste seniorkalender, mens den kommende sæson endnu kan ændres (§2c). Efter sidste kalenderændring flyttes eventuelle manager-entries kun mod holdets endelige pulje; fjern gamle tilmeldinger, hvis holdet oprykkes. Sammenlign ugefordelingen af løbstyper i alle divisioner, ikke kun det rapporterede D2-tilfælde (#5830).
+2. Kør **Afslut sæson** først. Frys derefter kilde-sæsonen for D4 → D3-sammenlægning: brug `mergeD4IntoD3S4.js --season=<afsluttet sæsons uuid>` i dry-run og kontrollér at rangeringens kilde er den afsluttede sæson. En dry-run uden eksplicit sæson valgte denne aften den højeste, kommende sæson og gav nul point til alle. Stol ikke på default, før #5857 er merget. Kør sammenlægningen med eget ejer-go og snapshot.
+3. Håndtér frosne hold eksplicit før D4 E-H-pensioneringen. Ét frosset hold blev parkeret manuelt efter ejerbeslutning for at frigøre puljen. Pensioneringsscriptet kan efterlade AI-hold med aktive markedsforpligtelser; behold dem markeret til nedlæggelse og genkør først efter at forpligtelserne er afsluttet. Ingen S4-løb må ligge i pensionerede puljer.
+4. Seed ungdomsgrupper efter den endelige seniorplacering, og byg U23-/juniorkalender mod de seedede grupper. Generér AI-ungdomstrupper og verificér startklare felter i alle grupper, før entries bygges. `academy_drift_enabled` var off ved netop dette cutover.
+5. Kontrollér transfervinduets markører før transition-preview. S3-rækken måtte normaliseres manuelt (`closed_at`, `final_whistle_sent_at`, `squad_enforcement_started_at` og `squad_enforcement_completed_at`), fordi readiness stadig kræver felter fra den afskaffede deadline-cyklus (#5855). Gør dette til et eksplicit, idempotent flow før næste skifte; behandl ikke en manglende markør som bevis for at løb faktisk mangler.
+6. **Udfør sæsonskifte** først efter preview. Denne aften blev auktion-gaten overstyret med ejer-go, efter særskilt måling af pensionsrisiko for de aktive auktioner. Log begrundelse og mål både auktioner og berørte ryttere før en fremtidig override. Bekræft én transition, form-reset, sponsor/payroll og puljer efter kørslen.
+7. Lad den timelige entry-generator fylde **AI-hold**. Dens første kørsel efter cutover var ikke en managerudtagelse. Managers kan selv vælge; den særskilte late-fill-regel og den sene redning ved første etape gælder efter deres egne tids- og trupkrav (`ASSISTANT_RULES.md`). Mål derfor managerhold under startgulvet før første etape (#5839), frem for at læse tomme tidlige entries som en generatorfejl.
+
 ## S4-tændingsplan (issue #5506)
 
 > **Rækkefølgen er et forslag; ejeren bestemmer.** Planen tænder intet. Hvert trin har ét go-punkt (ejeren), én kontrol og én fortryd-vej. Højst én kontakt pr. trin, og kontrollen skal være grøn, før næste trin startes. Tilstanden er målt read-only mod prod og GitHub 23/9.
@@ -522,6 +534,9 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
 
 ### Trin 11b (ejer-kørt): Sluk akademi-drift for S3-skiftet (#5741)
 
+**Status 28/9 (read-only prodmåling):** `academy_drift_enabled = 'off'`.
+Et nyt flip og fremtidig sats kræver ejerbeslutning; denne status ændrer ikke selve S4-cutoveret.
+
 - **For spilleren:** Ingen ungdomsdrift (akademi-drift) opkræves ved DENNE sæsonskiftekørsel — ejer-beslutning 25/9. Rammer kun selve cutover-lønkørslen (12c); resten af akademiet (intake, træning m.m.) er uændret.
 - **Forudsætning:** Køres FØR trin 12c "Udfør sæsonskifte", fordi akademi-drift debiteres inde i `processTeamSeasonPayroll` (trin 4), som kaldes fra `processSeasonStart` for den NYE sæson — dvs. inde i `seasonTransition.js` fase 6, udløst af 12c (`POST /api/admin/season-transition`), IKKE af "Afslut sæson" (12a, `POST /api/admin/seasons/:id/end`). Er nøglen ikke sat til `off` inden 12c er kørt, opkræves drift som normalt, og kan ikke fortrydes bagud (se "Fortryd" nedenfor). **Sæt IKKE nøglen tilbage til `on` mellem 12a og 12c** — S4-rækken findes ikke engang endnu på det tidspunkt, og en kontrol dér ville vise 0 uanset nøglens værdi og bevise intet.
 - **Go:** ejer.
@@ -560,7 +575,7 @@ H-numrene er handlingernes numre i #5506. Handling 10 er delt i 10a (backfill) o
   ```
   Derefter, i denne rækkefølge (#4592 + #2492, ejer 24/9):
   1. **12a** "Afslut sæson" på `/admin/season` = `POST /api/admin/seasons/00000000-0000-0000-0000-000000000003/end` (`api.js:11524`). `season_end_skip_division_movement` skal være off (normal op/nedrykning).
-  2. **12a+** Sammenlægningen D4 → D3 (#5641) og pensioneringen af D4 E-H (#5642), hver med tørkørsel og eget go, og AI-fyldet af alle puljer. Ungdomsgrupperne seedes her, hvis de ikke allerede er det.
+  2. **12a+** Sammenlægningen D4 → D3 (#5641) og pensioneringen af D4 E-H (#5642), hver med tørkørsel og eget go, og AI-fyldet af alle puljer. Ungdomsgrupperne seedes her, hvis de ikke allerede er det. `mergeD4IntoD3S4.js` vælger den senest afsluttede sæson ved dry-run uden `--season`; brug stadig eksplicit `--season=<uuid>` i cutover-loggen, så rangeringens kilde kan efterprøves. `--apply` læser kilden fra det frosne snapshot.
   3. **12b (kontrol, #5795)** S4-kalenderen er skrevet i trin 1. Efter pensioneringen køres trin 1's SQL-kontrol igen: senior 1/2/4/4 puljer, `loeb_i_pensionerede_puljer` = 0, og ingen D3-pulje uden managers efter sammenlægningen (`select d.id, count(t.id) from league_divisions d left join teams t on t.league_division_id = d.id and not t.is_ai and not t.is_bank where d.tier = 3 group by d.id;`). Kun hvis kontrollen er rød: tørkørsel og `--apply --replace-existing` (eget go, S4 er stadig `upcoming`). Mangler ungdomskalenderne, køres `--squad u23` og `--squad junior` her, når grupperne er seedet.
   4. Preview = `GET /api/admin/season-transition/preview` (`api.js:13996`).
   5. **12c** "Udfør sæsonskifte" = `POST /api/admin/season-transition` (`api.js:14013`). `auto_calendar_enabled` må ikke være sat, så transitionen ikke genererer kalenderen igen.

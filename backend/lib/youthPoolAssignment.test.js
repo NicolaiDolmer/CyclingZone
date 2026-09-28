@@ -226,3 +226,54 @@ test("planYouthTopUp: AI-hold efter A6 fylder op, og parkerede hold rapporteres 
   assert.deepEqual(top.moves.map((m) => m.teamId).sort(), ["a011", "a012"]);
   assert.deepEqual(top.stale, ["m005"]);
 });
+
+// ── #4620 (ejer 27/9): ca. 12 managers + 12 AI pr. gruppe, og junior blandet anderledes ──
+
+test("#4620 managersPerGroup=12: 112 managers → 10 grupper à 11-12 managers, AI fylder op til 24, resten uden gruppe", () => {
+  const { teams, aiTeams, globalRanks } = realisticInput({ managers: 112, ai: 150 });
+  const plan = planYouthGroups({ teams, aiTeams, globalRanks, squad: "u23", managersPerGroup: 12 });
+  assert.equal(plan.groups.length, 10);
+  for (const g of plan.groups) {
+    assert.ok(g.managerTeamIds.length >= 11 && g.managerTeamIds.length <= 12, `gruppe ${g.poolIndex}: ${g.managerTeamIds.length} managers`);
+    assert.equal(g.size, 24);
+  }
+  assert.equal(plan.aiOverflow.length, 150 - (240 - 112));
+});
+
+test("#4620 mixJunior: junior har samme balance (ét hold pr. styrkebånd), men andre gruppefæller end U23", () => {
+  const { teams, aiTeams, globalRanks } = realisticInput({ managers: 112, ai: 150 });
+  const u23 = planYouthGroups({ teams, aiTeams, globalRanks, squad: "u23", managersPerGroup: 12, mixJunior: true });
+  const jun = planYouthGroups({ teams, aiTeams, globalRanks, squad: "junior", managersPerGroup: 12, mixJunior: true });
+  // Balance: hver juniorgruppe har ét hold fra hvert fulde bånd (10 hold i rangorden).
+  for (let band = 0; band < 11; band++) {
+    const ids = teams.slice(band * 10, band * 10 + 10).map((t) => t.id);
+    assert.equal(new Set(ids.map((id) => poolOf(jun, id))).size, 10, `bånd ${band}`);
+  }
+  // Andre modstandere: for hvert par der deler U23-gruppe, deler kun et mindretal også juniorgruppe.
+  let delt = 0, beggeSteder = 0;
+  for (const g of u23.groups) {
+    const ids = g.managerTeamIds;
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+      delt += 1;
+      if (poolOf(jun, ids[i]) === poolOf(jun, ids[j])) beggeSteder += 1;
+    }
+  }
+  assert.ok(beggeSteder / delt < 0.25, `${beggeSteder}/${delt} par møder hinanden i begge trupper`);
+  // Uden flaget er junior = U23 (uændret adfærd).
+  const junPlain = planYouthGroups({ teams, aiTeams, globalRanks, squad: "junior", managersPerGroup: 12 });
+  for (const t of teams) assert.equal(poolOf(junPlain, t.id), poolOf(u23, t.id));
+});
+
+
+test("#4620 two groups: junior changes opponents while keeping one manager per rank band", () => {
+  const { teams, aiTeams, globalRanks } = realisticInput({ managers: 13, ai: 40 });
+  const u23 = planYouthGroups({ teams, aiTeams, globalRanks, squad: "u23", managersPerGroup: 12, mixJunior: true });
+  const junior = planYouthGroups({ teams, aiTeams, globalRanks, squad: "junior", managersPerGroup: 12, mixJunior: true });
+  assert.equal(u23.groups.length, 2);
+  assert.equal(junior.groups.length, 2);
+  for (let band = 0; band < 6; band++) {
+    const pair = teams.slice(band * 2, band * 2 + 2);
+    assert.equal(new Set(pair.map((team) => poolOf(junior, team.id))).size, 2, `band ${band}`);
+  }
+  assert.ok(teams.some((team) => poolOf(junior, team.id) !== poolOf(u23, team.id)));
+});

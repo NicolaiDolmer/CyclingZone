@@ -163,7 +163,7 @@ export async function runLeagueSizeAudit({
     fetchAllRows(() =>
       supabase
         .from("teams")
-        .select("id, name, user_id, retired_at, is_ai, is_frozen, is_bank, is_test_account, created_at, league_division_id, pending_removal_at")
+        .select("id, name, user_id, retired_at, is_ai, is_frozen, is_bank, is_test_account, created_at, league_division_id, u23_league_division_id, junior_league_division_id, pending_removal_at")
         .order("id", { ascending: true })
     ).catch((error) => {
       throw new Error(formatSupabaseAuditError("teams select", error));
@@ -226,11 +226,17 @@ export async function runLeagueSizeAudit({
   // til nogen "gruppe" og er derfor uden for #2377's 24-hold-invariant (den
   // gælder puljer, ikke ikke-allokerede hold). Et separat spor kan tage
   // "team uden pulje" op som sit eget kvalitetstjek hvis det bliver relevant.
+  // #4620/#5646 (S4): ungdomsgrupperne (U23/junior) er egne league_divisions-
+  // rækker, men holdene peger på dem via u23_/junior_league_division_id, ikke
+  // league_division_id. Uden dette talte auditten 0 hold i alle 20 grupper
+  // (falsk rød 27/9). Et hold tælles derfor i hver gruppe det står i.
   const teamsByDivision = new Map();
   for (const team of realTeams) {
-    if (team.league_division_id == null) continue;
-    if (!teamsByDivision.has(team.league_division_id)) teamsByDivision.set(team.league_division_id, []);
-    teamsByDivision.get(team.league_division_id).push(team);
+    for (const divId of [team.league_division_id, team.u23_league_division_id, team.junior_league_division_id]) {
+      if (divId == null) continue;
+      if (!teamsByDivision.has(divId)) teamsByDivision.set(divId, []);
+      teamsByDivision.get(divId).push(team);
+    }
   }
 
   const sortedDivisions = [...divisions].sort((a, b) => a.tier - b.tier || a.pool_index - b.pool_index);

@@ -67,11 +67,12 @@ test("#4215: --json bærer samme dom som tabellen", () => {
   assert.equal(rapport.regelbrud, KENDTE_BALANCEBRUD);
   assert.equal(rapport.dækning.ok, true);
   assert.equal(rapport.tiers.length, 4, "alle fire divisioner skal måles");
-  // #4203: placeringsbrud er nu NUL - det er hele leverancen. Feltet skal stadig FINDES
-  // (en gate der ikke rapporterer et tal er ikke maalt, §9b), men et krav om at det er
-  // positivt ville have laast fixturen fast paa et brud vi netop har lukket.
+  // #4203's øvrige placeringsbrud er stadig lukket. Den frosne S3-fixture kan
+  // have R17-ugeafvigelser; de skal tælles, ikke skjules eller gøre den gamle
+  // fixture til et retroaktivt apply-krav.
   assert.equal(typeof rapport.placeringsbrud, "number", "placerings-gatene skal være målt, ikke tavse");
-  assert.equal(rapport.placeringsbrud, 0, "S4-planen må ikke have placeringsbrud efter #4203");
+  const typeWeekViolations = rapport.tiers.reduce((n, tier) => n + (tier.typeWeekViol?.length ?? 0), 0);
+  assert.equal(rapport.placeringsbrud, typeWeekViolations, "kun R17 må afvige i den frosne fixture");
 });
 
 // Gaten skal kunne SIGE FRA. En gate der aldrig fejler beviser ingenting — og det var

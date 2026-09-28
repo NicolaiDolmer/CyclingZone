@@ -168,6 +168,10 @@
       "clubDnaAndBoard": {
         "title": "Club DNA and your five board members",
         "text": "Club DNA is the first choice you make, from five archetypes, and it shapes the whole Mandate. It decides who sits on your board: three of the five named members match your DNA and your team's identity, two are wildcards that bring contrast, and the closest match is chair. It leans the targets you are offered towards what that DNA cares about, and it names your club vision. Each member owns one area and reads your season in their own voice, which is why the same result can move one member and leave another cold. You can change your DNA until your first season ends, which seats a new board; after that it is locked. The Board tab shows all five, their mood towards you and the minutes in their own words."
+      },
+      "visionMilestones": {
+        "title": "When vision milestones count",
+        "text": "Each milestone in your club vision has a target season, and the milestone itself says when it counts, for example \"Counts at the end of season 5\". The board checks milestones at each season end, not along the way, so a long-term goal can look untouched for most of a season without being behind. You can meet a milestone early: if you have already reached it at the end of an earlier season, it counts right there, the board marks it achieved and proposes a new milestone at the next annual meeting. A milestone you have not reached by the end of its target season is missed. That costs confidence once, and the rest of the vision carries on unchanged."
       }
     },
     "auctions": {
@@ -677,7 +681,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 8 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down, split evenly between the two pools below it. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards, they are never promoted or relegated themselves. Division 4 opens gradually as its pools fill with real managers, so a Division 3 pool's relegation starts once its Division 4 pools open. If you are relegated from Division 1 or Division 2, you get a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once to soften the landing. One-off exception: between season 1 and 2 the pyramid was compacted, with the top 48 manager teams filling Division 2 and the next 96 filling Division 3, ranked on overall season 1 points across all pools. Normal promotion and relegation resumed from season 2, so the season 2 to season 3 change follows the rule above: each pool's own top 2 and bottom 4 from the standings you see right now, not a fresh global-rank reseed."
+        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 4 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down to the pool or pools below it, split evenly when there is more than one. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards, they are never promoted or relegated themselves. Division 4 is filled with AI teams and has races from day one, the same as every other division. If you are relegated from Division 1 or Division 2, you get a one-season relegation parachute at the start of your next season: half the sponsor income you lose by dropping a division, paid out once to soften the landing. One-off exception: between season 1 and 2 the pyramid was compacted, with the top 48 manager teams filling Division 2 and the next 96 filling Division 3, ranked on overall season 1 points across all pools. Normal promotion and relegation resumed from season 2, so the season 2 to season 3 change follows the rule above: each pool's own top 2 and bottom 4 from the standings you see right now, not a fresh global-rank reseed."
       },
       "whenSeasonEnds": {
         "title": "When can a season be ended?",
@@ -804,7 +808,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down, split between the two pools below. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season. Teams relegated from Division 1 or 2 get a one-season relegation parachute (half the lost sponsor income) to soften the transition."
+        "text": "Each pool promotes its top 2 up to the pool above and relegates its bottom 4 down to the pool or pools below, split evenly when there is more than one. Division 1 does not promote and the bottom division does not relegate. Decided automatically from your pool's standings, every season. Teams relegated from Division 1 or 2 get a one-season relegation parachute (half the lost sponsor income) to soften the transition."
       }
     },
     "globalRank": {
@@ -1048,8 +1052,8 @@
         "text": "That is now unusual. Every ability still has a lifetime ceiling set by type and potential, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type and potential would build on their own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress. The number next to an ability is always its current value, never the ceiling itself, which is never shown as a number anywhere in the game, and progress naturally slows the closer a rider gets, so a value that holds still for a few days doesn't necessarily mean it's finished."
       },
       "trainToday": {
-        "title": "Train today and the +25% boost",
-        "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
+        "title": "Run today's training now",
+        "text": "Training runs once per race day, after the day's last race and from 20:00. You can run it when it opens, or let your assistant run the same session automatically. Clicking gives no extra gains."
       },
       "runDayNow": {
         "title": "Run today's training now",
@@ -1073,7 +1077,7 @@
       },
       "formFatigue": {
         "title": "Form and Fatigue",
-        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day, after 22:00 Danish time (or right away if you click 'Train today' yourself), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Once per race day, after the day's last race and from 20:00 Danish time (or when you run the session yourself once it opens), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
       "formFatiguePerRaceDay": {
         "title": "Form and Fatigue",
@@ -1105,7 +1109,7 @@
       },
       "weeklyRhythm": {
         "title": "Weekly rhythm",
-        "text": "The 'Weekly rhythm' panel on the Training page lets you set a target intensity for each day of the week (Monday to Sunday) for your whole team at once. It steers intensity only, never focus. Important: the rhythm is a DEFAULT for riders who have no own intensity set on their focus. If a rider has their own focus and intensity chosen (on their roster row, or as a season program), that rider's own setting always wins for that rider, on every day, even while a team rhythm is active; the rhythm never silently overrides a rider you've set to Rest or Easy. It only fills in a target intensity for riders you haven't customized yourself. Each rider's row shows today's actual intensity plus where it comes from ('team weekly rhythm' or 'this rider's own setting'), so nothing is hidden. The 'Train today' consistency bonus (+25%) still only applies when you click it yourself; the rhythm does not grant it automatically."
+        "text": "The 'Weekly rhythm' panel on the Training page lets you set a target intensity for each day of the week (Monday to Sunday) for your whole team at once. It steers intensity only, never focus. Important: the rhythm is a DEFAULT for riders who have no own intensity set on their focus. If a rider has their own focus and intensity chosen (on their roster row, or as a season program), that rider's own setting always wins for that rider, on every day, even while a team rhythm is active; the rhythm never silently overrides a rider you've set to Rest or Easy. It only fills in a target intensity for riders you haven't customized yourself. Each rider's row shows today's actual intensity plus where it comes from ('team weekly rhythm' or 'this rider's own setting'), so nothing is hidden. The rhythm never runs training itself: it only sets a default intensity for the day's session, whether you run it yourself or your assistant runs it after the day's last race, from 20:00."
       },
       "individualWeeklyPlan": {
         "title": "Individual weekly plan per rider",
@@ -1196,7 +1200,7 @@
       },
       "academySize": {
         "title": "Academy size (per team)",
-        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "text": "Your Academy has two teams, each with its own cap: up to {u23SquadCap} riders on your U23 team and up to {juniorSquadCap} on your junior team. A rider takes a place on the team his age puts him in. These places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and never race in Senior races; from season 4 they race in their own youth races instead."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
@@ -1208,7 +1212,7 @@
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy ({u23SquadCap} U23 and {juniorSquadCap} junior riders) carries a noticeable running cost each season. The season 3 to season 4 changeover was an exception: no upkeep was charged for youth squads at that switch."
       },
       "graduation": {
         "title": "Graduation Day",
@@ -1226,6 +1230,33 @@
       "promoteDemote": {
         "title": "Moving riders between squads",
         "text": "Use Move squad on a rider's page or on My Team to place him on your senior, U23 or junior squad. The dialog lists all three squads with places used and free, marks his current squad, and greys out a squad he is too old for or that is full, with the reason. Upward is always allowed, so a junior can sit on the U23 team. Downward only works within the squad's age limit: junior up to season age 18, U23 up to 22. Each youth squad has a cap: {u23SquadCap} on the U23 team and {juniorSquadCap} on the junior team. A rider who already has a contract keeps it exactly as it is, in either direction; only a rider without one is given a standard contract on the way up to the senior squad. Moving a rider down pulls him from any upcoming races he was entered in. The dialog shows the full effect before you confirm. You can also extend a contract or release a rider straight from the rider's own page, and extending works directly on youth riders too."
+      }
+    },
+    "youthSquads": {
+      "label": "U23 team & Junior team",
+      "whatAreTheseSquads": {
+        "title": "What are U23 team and Junior team?",
+        "text": "U23 team holds riders aged 19-22 (season age), Junior team holds riders aged 16-18. Both have their own page under Clubhouse, next to My Team, with the same tabs as your senior squad: Squad, Calendar, Results, Standings and Development. Each has its own cap: up to {u23SquadCap} riders on U23 team, up to {juniorSquadCap} on Junior team."
+      },
+      "staysUntilYouMoveHim": {
+        "title": "Does a rider get moved back down automatically?",
+        "text": "No. A rider stays on whichever squad you last placed him on until you move him again. Put a young rider on your Senior team and he stays there, treated exactly like the rest of your senior squad; the game never moves him back down on its own. Move a rider yourself, any time, from his profile with the Move squad button."
+      },
+      "upwardAlwaysAllowed": {
+        "title": "Can I move a rider up early?",
+        "text": "Yes, moving up is always allowed if there is a free place: a 17-year-old can stand on U23 team, a 20-year-old on Senior team, whenever you choose. Moving down only works within the squad's own age limit, a 19-year-old cannot go back to Junior team, and a 23-year-old cannot go back to U23 team."
+      },
+      "graduationDayAt23": {
+        "title": "What happens when a rider ages out of his squad?",
+        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it, otherwise sells him, otherwise releases him as a free agent."
+      },
+      "youthRacesFromS4": {
+        "title": "Do U23 team and Junior team actually race?",
+        "text": "Yes, from season 4. Each tier races on its own calendar with its own standings, on the same race engine as Senior. There is no prize money for youth races to start with."
+      },
+      "noUpkeepAtSeasonChange": {
+        "title": "What did my youth squads cost at this season's changeover?",
+        "text": "Nothing. Your U23 and junior riders paid no upkeep at the season 3 to season 4 change. What they will cost to run from season 4 onward has not been decided yet."
       }
     },
     "facilities": {
@@ -1796,7 +1827,7 @@
     },
     "academyIntakeExpiryFaq": {
       "q": "Do Academy intake offers expire?",
-      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window. If the auction ends in a sale, you receive the full winning bid as compensation for the missed decision. If nobody bids, the rider stays in the game as a free agent and can be picked up again later. This is different from actively rejecting a prospect yourself: that sends him to a Youth auction at the normal 1-hour duration instead, and an unsold rider there leaves the game for good, so the auction length itself tells you whether a prospect was rejected or simply missed. Either way, winning a Youth auction is a real second route to a high-potential young rider beyond your own weekly intake, since every prospect on one was generated by the same Academy system as your own cohort."
+      "a": "Yes. An open intake offer expires automatically after 7 days if you neither sign nor reject it. One exception: the offers marked A thank-you from the board are a one-off gift from the board. They run for 14 days and cost nothing to sign, and the ones you do not pick leave the game quietly, without a youth auction. This keeps prospects from sitting hidden forever on an offer nobody acts on. If your offer expires, the prospect is put up for other clubs in a youth auction that runs a full 24 hours (regular auctions run much shorter), so it is worth deciding within the window. If the auction ends in a sale, you receive the full winning bid as compensation for the missed decision. If nobody bids, the rider stays in the game as a free agent and can be picked up again later. This is different from actively rejecting a prospect yourself: that sends him to a Youth auction at the normal 1-hour duration instead, and an unsold rider there leaves the game for good, so the auction length itself tells you whether a prospect was rejected or simply missed. Either way, winning a Youth auction is a real second route to a high-potential young rider beyond your own weekly intake, since every prospect on one was generated by the same Academy system as your own cohort."
     },
     "academySigningMidRaceFaq": {
       "q": "What happens if I sign an Academy candidate who is already racing for my senior squad?",

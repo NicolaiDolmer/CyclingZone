@@ -144,6 +144,14 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 
 **M13 stod ikke i tabellen før 6/9.** Kataloget lukkede 20/8 med M1-M14, men M13-rækken manglede i selve tabellen — mekanikken var bygget (`mechanics/teamTimeTrial.ts`, 17 grønne tests) og uden kaldssted, fordi den krævede et hold-id på rytteren. Det kom med M16 (§2e), og forgreningen er nu på plads.
 
+**M4 kalibrering 27/9 (#5804):** finaleopgøret læser nu den dagsform, motoren
+allerede har trukket for rytteren, som et bounded placeringssignal. Formålet er
+at undgå at den evnebaserede favorit bliver næsten deterministisk, især på
+S4-felter, uden at ændre rute-, flag- eller output-kontrakten. Grupetto får
+intet dagsformbidrag i finalen. For ryttere med ellers samme profil må
+dagsformens nye direkte led ikke vende den tidligere score-orden, som allerede
+medregner restreserven. Det gælder også grupper, der holder hjem foran feltet.
+
 **M15 og M16 er ejer-besluttede scope-udvidelser, ikke PR-tilføjelser.** Kataloget blev lukket 20/8 med M1-M14. Ejeren besluttede 4/9 at tidsgrænsen ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582)) er et krav til v4 før flip — *"ikke i v3"* — og låste reglen 6/9. Den står i §2d. **M16** (holdspillet) står i §2e og hviler på samme grundlag: kataloget har ingen holdspils-post, men ejer-beslutning 1 (5/9, §9) gør "holdspil med hold-id på rytteren" til flip-minimum, fordi kaptajn-beskyttelsen og hjælperens pris ellers forsvinder ved flippet.
 
 **M14 i prod (#5571, lag 1 i "Holdmødet", ejer 23/9).** Et AI-hold (`teams.is_ai`) får M14's ordre som standardordre i stedet for rollernes; et menneskehold får den aldrig (ingen autopilot). Ordren går gennem samme `TeamOrder`-type og samme adapter (`orders/teamOrdersAdapter.ts`), og etapens gemte række er stadig et overlay oven på den. Kaptajnens styrke vurderes mod startlisten på dagens terræn, ikke mod en fast evne-grænse (prod-skalaen ligger langt under fixtures'enes). Indsatstrappen bruges som et rigtigt hold ville: sprinterne og deres tog-ryttere kører `grupetto` på bjergetaper i etapeløb, hjælperne kører `protect` ved en kaptajn holdet jager for, og kaptajnen går `all_out` på den afgørende dag (endagsløbet, eller etapeløbets sidste etape af hans terræn). Motoren læser indsatsen på `Entrant.effort`, så broen sætter AI-holdenes indsats dér; harnessen gør det samme med `--orders=ai`. **Åbent hul:** AI-indsatsen når ikke trætheden efter etapen (model C, `applyFatigue`), som kun læser `race_stage_roles`; det hører til "én kilde til effort" i [#5580](https://github.com/NicolaiDolmer/CyclingZone/issues/5580).

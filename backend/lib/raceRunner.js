@@ -111,7 +111,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
@@ -515,7 +515,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // StageOutput til den samme `ranked`-form v3 returnerer, så ALT herunder
     // (pushIndiv, computePassages, akkumulering, klassementer) er uændret.
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
-      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted })
+      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race) })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -790,12 +790,18 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
   return { data: out, error: null };
 }
 
+// Sub-2 (#2770): rutefelter tilføjet — computePassages (racePassages.js) læser
+// dem til passage-lag/bonussekunder. v3-motoren (raceSimulator.js) læser dem ALDRIG.
+// #5826: segments + weather er v4's gemte rute og vejr (routeAdapter.ts). Uden dem
+// genopbygger v4 ruten fra climbs/sectors og trækker vejret fra en fælles fallback-
+// nøgle, så alle etaper med samme profil og etapenummer får identisk vejr.
+export const STAGE_PROFILE_COLUMNS =
+  "stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors, segments, weather";
+
 async function loadStageProfiles(supabase, raceId) {
   const { data, error } = await supabase
     .from("race_stage_profiles")
-    // Sub-2 (#2770): rutefelter tilføjet — computePassages (racePassages.js) læser
-    // dem til passage-lag/bonussekunder. Motoren (raceSimulator.js) læser dem ALDRIG.
-    .select("stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors")
+    .select(STAGE_PROFILE_COLUMNS)
     .eq("race_id", raceId)
     .order("stage_number", { ascending: true });
   if (error) throw new Error(`race_stage_profiles: ${error.message}`);
@@ -906,6 +912,11 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   // rytter væk fra det aktuelle løbs felt under runtime auto-fill (excludeBoundRiders).
   const { data: entries, error: e1 } = await loadEligibleEntries({
     supabase, paged: true,
+    // ANY_SQUAD (som raceBinding.loadTeamBindingContext, #5645): en entry binder
+    // rytterens løbsdag uanset trup. Med default (senior) forsvandt juniorernes
+    // entries i juniorløbet, så U23-autofyldet valgte dem igen og DB-invarianten
+    // (#3420) afviste hele startlisten (S4 løbsdag 1, 28/9, CYCLINGZONE-71).
+    squad: ANY_SQUAD,
     // #3126: .order() på PK (race_id, rider_id) — .range() uden en deterministisk
     // totalordning kan hoppe rækker mellem sider (samme fejlklasse som #3113).
     baseQuery: () =>
@@ -2324,7 +2335,7 @@ export async function simulateRace({
         // #3144 · league_division_id med, så weekend-financen kun skriver et
         // race-mærket board_satisfaction_events-row for hold i løbets EGEN
         // pulje (ellers "reagerer" andre divisioners boards på dette løb).
-        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null },
+        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null, squad: race.squad ?? "senior" },
       });
     } catch (error) {
       // #2389 A2: fanger fejl FØR processBoardWeekends interne captures (fx
@@ -2505,7 +2516,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const seed = stableSeed(seedInput);
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
-    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted })
+    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race) })
     : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
@@ -3388,7 +3399,7 @@ export async function simulateStageByIndex({
         // #3144 · league_division_id med, så weekend-financen kun skriver et
         // race-mærket board_satisfaction_events-row for hold i løbets EGEN
         // pulje (ellers "reagerer" andre divisioners boards på dette løb).
-        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null },
+        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null, squad: race.squad ?? "senior" },
       });
     } catch (error) {
       // #2389 A2: mirror fuld-sim-grenen — capture.

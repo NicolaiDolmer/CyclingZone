@@ -21,6 +21,277 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.311",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Vision milestones show when they count",
+          "body": "Each milestone in your club vision now says when it counts, for example \"Counts at the end of season 5\". Milestones are checked at season end, not along the way, and you can meet one early. Help, under The Mandate, explains how."
+        },
+        "da": {
+          "title": "Visionens milepæle viser, hvornår de tæller",
+          "body": "Hver milepæl i din klubvision viser nu, hvornår den tælles, fx \"Tælles ved udgangen af sæson 5\". Milepæle gøres op ved sæsonafslutning, ikke undervejs, og du kan nå en før tid. Hjælp, under Mandatet, forklarer hvordan."
+        },
+        "refs": [
+          5820
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.310",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A new race engine from race day 1",
+          "body": "Races are now ridden kilometre by kilometre: breakaways go clear and get caught, climbs split the field, and the finale goes to whoever has the legs left. Each stage's route and weather play a part. Riders who finish far behind the winner can miss the time limit and leave a stage race. Open a stage result to watch the race film. This is brand new, so tell me on Discord if something looks off."
+        },
+        "da": {
+          "title": "Ny løbsmotor fra løbsdag 1",
+          "body": "Løbene køres nu kilometer for kilometer: udbrud går væk og bliver hentet, stigninger splitter feltet, og finalen går til den, der har kræfter tilbage. Hver etapes rute og vejr spiller ind. Ryttere, der kommer langt efter vinderen, kan ende uden for tidsgrænsen og udgå af et etapeløb. Åbn et etaperesultat for at se løbsfilmen. Det er helt nyt, så skriv til mig på Discord, hvis noget ser forkert ud."
+        },
+        "refs": [
+          5826,
+          5515
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Milder time limit in U23 and junior races",
+          "body": "Young riders get more time before they miss the time limit, and a small group that finishes together stays in the race."
+        },
+        "da": {
+          "title": "Mildere tidsgrænse i U23- og juniorløb",
+          "body": "Unge ryttere får mere tid, før de ender uden for tidsgrænsen, og en lille gruppe, der kommer i mål sammen, bliver i løbet."
+        },
+        "refs": [
+          5875
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.309",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "A thank-you from the board",
+          "body": "Every active team gets 10 youth prospects in the academy: 5 at U23 age and 5 at junior age. Signing them is free and normal youth wages apply. Squad limits still count (U23 12, junior 10), so pick the ones you want. The offers run for 14 days. Prospects you do not pick leave quietly, without a youth auction, and the gift does not replace your weekly academy intake."
+        },
+        "da": {
+          "title": "Tak fra bestyrelsen",
+          "body": "Alle aktive hold får 10 ungdomstalenter i akademiet: 5 i U23-alderen og 5 i junioralderen. Det er gratis at signe dem, og normal ungdomsløn gælder. Trupgrænserne tæller stadig (U23 12, junior 10), så vælg dem, du vil have. Tilbuddene gælder i 14 dage. De talenter, du ikke vælger, forsvinder stille uden ungdomsauktion, og gaven erstatter ikke dit ugentlige akademi-optag."
+        },
+        "refs": [
+          5844
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.308",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training follows race days",
+          "body": "Training now runs once per race day, after the day's last race (from 20:00). Riders who race develop from the race itself. The +25% bonus for training manually is gone, so all teams train equally."
+        },
+        "da": {
+          "title": "Træning følger løbsdage",
+          "body": "Træning kører nu én gang pr. løbsdag, efter dagens sidste løb (fra kl. 20). Ryttere, der kører løb, udvikler sig gennem selve løbet. Bonussen på +25 % ved manuel træning er væk, så alle hold træner ens."
+        },
+        "refs": [
+          4847,
+          5267,
+          5281
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "New auctions can start again after the season switch",
+          "body": "New auctions can be started again after the season switch. Bidding on active auctions continued to work throughout."
+        },
+        "da": {
+          "title": "Nye auktioner kan startes igen efter sæsonskiftet",
+          "body": "Nye auktioner kan startes igen efter sæsonskiftet. Bud på aktive auktioner virkede hele tiden."
+        },
+        "refs": [
+          5846
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board meeting signing works again",
+          "body": "Signing the board meeting no longer fails when you accept a new vision goal. If it failed for you, sign again."
+        },
+        "da": {
+          "title": "Underskrift af årsmødet virker igen",
+          "body": "Underskrift af årsmødet fejler ikke længere, når du accepterer et nyt visionsmål. Hvis det fejlede for dig, kan du underskrive igen."
+        },
+        "refs": [
+          5840
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.307",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Pick your own U23 and junior riders",
+          "body": "Open U23 team or Junior team, then Calendar, to see your youth races. Pick a race to choose your riders. An auto-picked squad can be changed until the first stage starts. Each race only uses riders from its own squad: move a rider to another squad and their picks for the old squad's upcoming races are removed. Results shows the races you have ridden."
+        },
+        "da": {
+          "title": "Udtag selv dine U23- og juniorryttere",
+          "body": "Åbn U23-hold eller Juniorhold og derefter Kalender for at se dine ungdomsløb. Vælg et løb for at udtage dine ryttere. En auto-udtaget trup kan ændres, indtil første etape starter. Hvert løb bruger kun ryttere fra sin egen trup: flytter du en rytter til en anden trup, fjernes han fra den gamle trups kommende løb. Resultater viser de løb, du har kørt."
+        },
+        "refs": [
+          5843
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.306",
+    "date": "2026-09-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season 4 has started",
+          "body": "Sponsors paid out, wages were drawn, and every rider starts the season fully rested. Form moved a little towards the middle, so last season's form only partly carries over. The first race day is Monday 28 September at 19:30."
+        },
+        "da": {
+          "title": "Sæson 4 er gået i gang",
+          "body": "Sponsorerne har betalt, lønnen er trukket, og alle ryttere starter sæsonen helt udhvilede. Formen er rykket lidt mod midten, så sidste sæsons form kun delvist følger med. Første løbsdag er mandag 28. september kl. 19:30."
+        },
+        "refs": [
+          5506
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Division 3 and 4 merged",
+          "body": "Every active manager from division 4 moved up to division 3, and the four division 3 groups were redrawn on last season's points. Division 4 now has four groups instead of eight."
+        },
+        "da": {
+          "title": "Division 3 og 4 er lagt sammen",
+          "body": "Alle aktive managere fra division 4 er rykket op i division 3, og de fire grupper i division 3 er trukket om efter sidste sæsons point. Division 4 har nu fire grupper i stedet for otte."
+        },
+        "refs": [
+          5641,
+          5642
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Inactive teams are parked",
+          "body": "Teams with no login for 30 days that did not sign up for season 4 left their group at the switch. Your club stays available for a one-tap return. Contracts can still expire and salaries are still paid while parked; the club receives no new season sponsor payment until it returns."
+        },
+        "da": {
+          "title": "Inaktive hold er parkeret",
+          "body": "Hold uden login i 30 dage, som ikke meldte sig til sæson 4, forlod deres gruppe ved skiftet. Du kan hente klubben tilbage med ét tryk. Kontrakter kan stadig udløbe, og løn betales fortsat under parkering; klubben får først sponsorbetaling for den nye sæson, når den vender tilbage."
+        },
+        "refs": [
+          4592
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Youth teams",
+        "en": {
+          "title": "U23 and junior races start Monday",
+          "body": "Your U23 and junior teams each race in their own group of 24 teams, about half managers and half AI. The junior groups are drawn differently from U23, so you meet other opponents. U23 races twice a week, juniors once a week, and a squad needs at least 6 riders to start."
+        },
+        "da": {
+          "title": "U23- og juniorløb starter mandag",
+          "body": "Dit U23- og juniorhold kører hver i sin egen gruppe med 24 hold, cirka halvt managere og halvt AI. Juniorgrupperne er trukket anderledes end U23, så du møder andre modstandere. U23 kører to gange om ugen, juniorerne én gang, og en trup skal have mindst 6 ryttere for at stille til start."
+        },
+        "refs": [
+          4620,
+          4621
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "One-day races spread over division 2's whole season",
+          "body": "Division 2's season 4 calendar had almost no one-day races in the second half. It was rebuilt before the season started, and every week now has at least three."
+        },
+        "da": {
+          "title": "Endagsløb over hele sæsonen i division 2",
+          "body": "Kalenderen for division 2 i sæson 4 havde næsten ingen endagsløb i anden halvdel. Den er bygget om, før sæsonen startede, og hver uge har nu mindst tre."
+        },
+        "refs": [
+          5830
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Standings show only teams that race in the division",
+          "body": "After the switch, parked teams still showed in their old division's standings with 0 points, so division 1 looked like it had 27 teams. Standings now show only teams in a group: 24 per group."
+        },
+        "da": {
+          "title": "Stillingen viser kun hold der kører i divisionen",
+          "body": "Efter skiftet stod parkerede hold stadig i deres gamle divisions stilling med 0 point, så division 1 så ud til at have 27 hold. Stillingen viser nu kun hold i en gruppe: 24 pr. gruppe."
+        },
+        "refs": [
+          4592
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.305",
     "date": "2026-09-27",
     "label": "Beta",

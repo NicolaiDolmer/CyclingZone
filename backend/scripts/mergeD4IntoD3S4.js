@@ -42,6 +42,7 @@ import { buildCountbackByTeam } from "../lib/pyramidCompression.js";
 import { reconcileAiTeamsForPool } from "../lib/aiTeamGenerator.js";
 import { notifyTeamOwner } from "../lib/notificationService.js";
 import { repoRoot } from "./lib/repoRoot.mjs";
+import { loadLatestCompletedSeason } from "./lib/mergeD4SourceSeason.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -99,9 +100,8 @@ if (SEASON_ARG) {
   if (error || !data) { console.error(`❌ Kunne ikke læse snapshottets kilde-sæson ${snap.source_season?.id}: ${error?.message || "ikke fundet"}`); process.exit(1); }
   season = data;
 } else {
-  const { data, error } = await supabase.from("seasons").select("id, number, status")
-    .order("number", { ascending: false }).limit(1).maybeSingle();
-  if (error || !data) { console.error(`❌ Ingen sæson fundet (${error?.message || "0 rækker"}) — angiv --season=<uuid> eksplicit.`); process.exit(1); }
+  const { data, error } = await loadLatestCompletedSeason(supabase);
+  if (error || !data) { console.error(`❌ Ingen afsluttet sæson fundet (${error?.message || "0 rækker"}) — angiv --season=<uuid> eksplicit.`); process.exit(1); }
   season = data;
 }
 console.log(`Kilde-sæson: #${season.number} (status='${season.status}', id=${season.id})`);

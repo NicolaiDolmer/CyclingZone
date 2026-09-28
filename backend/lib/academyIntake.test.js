@@ -559,6 +559,8 @@ function makeSignRejectSupabase({
   riderTeamId = null, // #4213: rytterens nuværende ejer (null = fri)
   rpcCode = null, // #4213: tving RPC'en til at returnere { ok:false, code }
   deferred = false, // #4423: tving RPC'en til at returnere { ok:true, deferred:true, ... }
+  intakeSource, // #5844: undefined = rækken har ingen source (før migrationen)
+  sourceColumnMissing = false, // #5844: select af `source` giver 42703
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -569,8 +571,9 @@ function makeSignRejectSupabase({
     from(table) {
       if (table === "academy_intake") {
         let whereEqs = {};
+        let selectedCols = "";
         const api = {
-          select() { return api; },
+          select(cols) { selectedCols = String(cols ?? ""); return api; },
           eq(col, val) { whereEqs[col] = val; return api; },
           update(data) {
             intakeUpdates.push(data);
@@ -581,9 +584,16 @@ function makeSignRejectSupabase({
             return upApi;
           },
           maybeSingle() {
+            if (sourceColumnMissing && /\bsource\b/.test(selectedCols)) {
+              return Promise.resolve({ data: null, error: { code: "42703", message: "column academy_intake.source does not exist" } });
+            }
             if (!intakeExists) return Promise.resolve({ data: null, error: null });
             return Promise.resolve({
-              data: { id: "intake-row-1", status: intakeStatus },
+              data: {
+                id: "intake-row-1",
+                status: intakeStatus,
+                ...(intakeSource !== undefined && /\bsource\b/.test(selectedCols) ? { source: intakeSource } : {}),
+              },
               error: null,
             });
           },
@@ -1085,4 +1095,64 @@ test("#3611-invariant: HVER kandidat fødes inden for akademi-alderen i sæson-a
       );
     }
   }
+});
+
+
+// ─── #5844: bestyrelsens gave-kuld signes gratis ─────────────────────────────
+test("signAcademyCandidate (#5844): board_gift-tilbud → fee 0, ingen debitering, normal løn", async () => {
+  const supabase = makeSignRejectSupabase({ intakeSource: "board_gift", riderBaseValue: 200_000, currentProductionValue: 40_000 });
+  const r = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 4 });
+  assert.equal(r.fee, 0);
+  assert.equal(supabase._rpcCalls[0]._args.p_price, 0, "RPC'en får pris 0 → ingen finance-transaktion");
+  assert.equal(supabase._intakeUpdates.at(-1).signing_fee, 0);
+  assert.equal(r.salary, computeFrozenSalary({ current_production_value: 40_000 }), "lønnen er uændret");
+});
+
+test("signAcademyCandidate (#5844): normalt tilbud (source 'intake') betaler stadig fee", async () => {
+  const supabase = makeSignRejectSupabase({ intakeSource: "intake", riderBaseValue: 200_000 });
+  const r = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 4 });
+  assert.equal(r.fee, Math.round(200_000 * ACADEMY.SIGNING_FEE_RATE));
+  assert.ok(r.fee > 0);
+});
+
+test("signAcademyCandidate (#5844): før migrationen (source-kolonnen mangler) → normal fee, ingen fejl", async () => {
+  const supabase = makeSignRejectSupabase({ sourceColumnMissing: true, riderBaseValue: 200_000 });
+  const r = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 4 });
+  assert.equal(r.fee, Math.round(200_000 * ACADEMY.SIGNING_FEE_RATE));
+});
+
+test("signAcademyCandidate (#5844): trupgrænsen håndhæves stadig ved signing af gave-tilbud", async () => {
+  const supabase = makeSignRejectSupabase({ intakeSource: "board_gift", rpcCode: "academy_full" });
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 4 }),
+    /academy_full/,
+  );
+  assert.equal(supabase._intakeUpdates.length, 0, "tilbuddet står urørt, så manageren kan frigøre en plads");
+});
+
+test("seedAcademyCohortForTeam (#5844): source sendes kun når den er sat", async () => {
+  const inserts = [];
+  const mk = () => ({
+    from(table) {
+      return {
+        insert(rows) {
+          inserts.push({ table, rows });
+          if (table === "riders") {
+            return { select: () => Promise.resolve({ data: rows.map((_, i) => ({ id: `r${inserts.length}-${i}` })), error: null }) };
+          }
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+  });
+  const season = { id: "s4", number: 4 };
+  await seedAcademyCohortForTeam(mk(), { teamId: "t", season, referenceYear: 2029, existingNames: new Set(), rng: makeRng(1), countOverride: 2 });
+  const plain = inserts.find((x) => x.table === "academy_intake").rows;
+  assert.ok(plain.every((r) => !("source" in r)), "eksisterende stier skriver præcis samme payload som før");
+  inserts.length = 0;
+  await seedAcademyCohortForTeam(mk(), { teamId: "t", season, referenceYear: 2029, existingNames: new Set(), rng: makeRng(1), countOverride: 2, source: "board_gift", generatorOptions: { ageBand: { min: 19, max: 21 } } });
+  const gift = inserts.find((x) => x.table === "academy_intake").rows;
+  assert.ok(gift.every((r) => r.source === "board_gift" && r.status === "offered"));
+  const riders = inserts.find((x) => x.table === "riders").rows;
+  assert.ok(riders.every((r) => { const a = ageForSeason(r.birthdate, 4); return a >= 19 && a <= 21; }));
 });

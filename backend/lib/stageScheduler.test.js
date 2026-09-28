@@ -358,6 +358,31 @@ test("P0 2/7: due løb i pulje uden hold springes over (ingen 'No start list'-fo
   assert.equal(r.errors, 0, "tom pulje er et skip, ikke en fejl");
 });
 
+test("S4 28/9: U23-/juniorløb i en ungdomspulje er IKKE en tom pulje", async () => {
+  const races = [
+    { id: "rSen", season_id: "s1", name: "Seniorløb", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 1 },
+    { id: "rU23", season_id: "s1", name: "U23-løb", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 16 },
+    { id: "rJun", season_id: "s1", name: "Juniorløb", stages: 4, stages_completed: 0, status: "scheduled", league_division_id: 26 },
+    { id: "rTom", season_id: "s1", name: "Tom ungdomspulje", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 99 },
+  ];
+  const schedule = races.map((r) => ({ race_id: r.id, stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }));
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: [],
+    races,
+    race_stage_schedule: () => schedule,
+    teams: [{ league_division_id: 1, u23_league_division_id: 16, junior_league_division_id: 26 }],
+  });
+  const started = [];
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async ({ raceId }) => { started.push(raceId); },
+  });
+  assert.deepEqual(started, ["rSen", "rU23", "rJun"], "ungdomsløb afvikles; kun den reelt tomme pulje springes over");
+  assert.equal(r.errors, 0);
+});
+
 test("P0 2/7: finalization-pending løb (alle etaper kørt, ikke completed) genoptages uden stage-budget", async () => {
   const races = [
     { id: "rStuck", season_id: "s1", name: "Fastlåst", stages: 5, stages_completed: 5, status: "scheduled", league_division_id: 1 },

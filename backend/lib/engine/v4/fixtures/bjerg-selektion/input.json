@@ -401,7 +401,7 @@
     }
   ],
   "orders": [],
-  "seed": "fixture-bjerg-selektion-v1",
+  "seed": "fixture-bjerg-selektion-v1-revision-44",
   "tuning": {
     "physiology": {
       "cpWeights": {
