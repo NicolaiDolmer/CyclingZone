@@ -43,6 +43,7 @@ import {
   applyReinstatementPointPenalty,
   applyTimeLimit,
   reinstatedRiderIdsOf,
+  timeLimitTuningFor,
   type TimeLimitJuryInput,
 } from "./mechanics/timeLimit.ts";
 // M13 (#3463/#2412, ejer-beslutning 6/9): holdtidskoerslen. Den er IKKE et hook
@@ -293,6 +294,8 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
     // uheldets tidstab, og en holdkammerat der koerte med ham doemmes ens.
     // Reglen bor i mechanics/timeLimit.ts's juryReinstatements.
     jury: juryInputFor(input, state),
+    // Ejer 28/9: ungdomsloeb har en mildere graense (timeLimitTuningFor).
+    tuning: timeLimitTuningFor(input.squad),
   });
   const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);

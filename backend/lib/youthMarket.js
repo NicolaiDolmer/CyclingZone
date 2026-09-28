@@ -143,7 +143,7 @@ export async function listRejectedAsYouthAuction(supabase, {
   // scope-afgrænset fra api.js's POST /auctions-guard). Ingen afvisnings-fejl:
   // kaldere tolererer allerede en falsy auction (se JSDoc). Rytteren afvises
   // ikke permanent — en efterfølgende kørsel efter grænsen opretter naturligt.
-  const seasonTransitionBoundary = await fetchSeasonTransitionBoundary(supabase);
+  const seasonTransitionBoundary = await fetchSeasonTransitionBoundary(supabase, { now });
   if (getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary)) {
     console.log(`listRejectedAsYouthAuction: skipped rider ${riderId} — calculated end ${calculatedEnd.toISOString()} crosses season transition boundary ${seasonTransitionBoundary.toISOString()}`);
     return null;

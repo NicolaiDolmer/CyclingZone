@@ -16,8 +16,69 @@ export const PATCHES = [
           "title": "Se hver rytters omdømme",
           "body": "En rytters profil viser nu omdømmet, et niveau fra Ukendt til Legende, og de resultater der har flyttet det. Rytterdatabasen, dine holdsider inkl. U23 og Junior, auktioner og markedet viser samme tal, og bestyrelsen bruger det til at afgøre, hvem der er stjerne."
         },
+        "refs": [4956]
+      }
+    ]
+  },
+  {
+    "version": "7.311",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Vision milestones show when they count",
+          "body": "Each milestone in your club vision now says when it counts, for example \"Counts at the end of season 5\". Milestones are checked at season end, not along the way, and you can meet one early. Help, under The Mandate, explains how."
+        },
+        "da": {
+          "title": "Visionens milepæle viser, hvornår de tæller",
+          "body": "Hver milepæl i din klubvision viser nu, hvornår den tælles, fx \"Tælles ved udgangen af sæson 5\". Milepæle gøres op ved sæsonafslutning, ikke undervejs, og du kan nå en før tid. Hjælp, under Mandatet, forklarer hvordan."
+        },
         "refs": [
-          4956
+          5820
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.310",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A new race engine from race day 1",
+          "body": "Races are now ridden kilometre by kilometre: breakaways go clear and get caught, climbs split the field, and the finale goes to whoever has the legs left. Each stage's route and weather play a part. Riders who finish far behind the winner can miss the time limit and leave a stage race. Open a stage result to watch the race film. This is brand new, so tell me on Discord if something looks off."
+        },
+        "da": {
+          "title": "Ny løbsmotor fra løbsdag 1",
+          "body": "Løbene køres nu kilometer for kilometer: udbrud går væk og bliver hentet, stigninger splitter feltet, og finalen går til den, der har kræfter tilbage. Hver etapes rute og vejr spiller ind. Ryttere, der kommer langt efter vinderen, kan ende uden for tidsgrænsen og udgå af et etapeløb. Åbn et etaperesultat for at se løbsfilmen. Det er helt nyt, så skriv til mig på Discord, hvis noget ser forkert ud."
+        },
+        "refs": [
+          5826,
+          5515
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Milder time limit in U23 and junior races",
+          "body": "Young riders get more time before they miss the time limit, and a small group that finishes together stays in the race."
+        },
+        "da": {
+          "title": "Mildere tidsgrænse i U23- og juniorløb",
+          "body": "Unge ryttere får mere tid, før de ender uden for tidsgrænsen, og en lille gruppe, der kommer i mål sammen, bliver i løbet."
+        },
+        "refs": [
+          5875
         ]
       }
     ]
@@ -41,6 +102,63 @@ export const PATCHES = [
         },
         "refs": [
           5844
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.308",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training follows race days",
+          "body": "Training now runs once per race day, after the day's last race (from 20:00). Riders who race develop from the race itself. The +25% bonus for training manually is gone, so all teams train equally."
+        },
+        "da": {
+          "title": "Træning følger løbsdage",
+          "body": "Træning kører nu én gang pr. løbsdag, efter dagens sidste løb (fra kl. 20). Ryttere, der kører løb, udvikler sig gennem selve løbet. Bonussen på +25 % ved manuel træning er væk, så alle hold træner ens."
+        },
+        "refs": [
+          4847,
+          5267,
+          5281
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "New auctions can start again after the season switch",
+          "body": "New auctions can be started again after the season switch. Bidding on active auctions continued to work throughout."
+        },
+        "da": {
+          "title": "Nye auktioner kan startes igen efter sæsonskiftet",
+          "body": "Nye auktioner kan startes igen efter sæsonskiftet. Bud på aktive auktioner virkede hele tiden."
+        },
+        "refs": [
+          5846
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board meeting signing works again",
+          "body": "Signing the board meeting no longer fails when you accept a new vision goal. If it failed for you, sign again."
+        },
+        "da": {
+          "title": "Underskrift af årsmødet virker igen",
+          "body": "Underskrift af årsmødet fejler ikke længere, når du accepterer et nyt visionsmål. Hvis det fejlede for dig, kan du underskrive igen."
+        },
+        "refs": [
+          5840
         ]
       }
     ]
