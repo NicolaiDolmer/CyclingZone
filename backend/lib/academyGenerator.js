@@ -24,6 +24,11 @@ import {
   drawYouthBirthAbilities, makeBirthRng, makeYouthBirthMarker,
 } from "./riderBirthPriors.js";
 
+/**
+ * @param {number} n
+ * @param {number} lo
+ * @param {number} hi
+ */
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -36,6 +41,32 @@ export const POTENTIALE_TIERS = Object.freeze([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5
 export const POTENTIALE_DECAY = 0.55;
 const POTENTIALE_WEIGHTS = POTENTIALE_TIERS.map((_, k) => POTENTIALE_DECAY ** k);
 const POTENTIALE_WEIGHT_SUM = POTENTIALE_WEIGHTS.reduce((a, b) => a + b, 0);
+
+// #5844: samme geometriske fordeling, men BETINGET på potentiale ≥ minTier
+// (bestyrelsens kuld garanterer ét talent i toppen af fordelingen). Vægtene
+// inden for toppen er de samme relative vægte som drawPotentiale bruger.
+/**
+ * @param {() => number} rng
+ * @param {number} minTier
+ * @returns {number}
+ */
+export function drawPotentialeAtLeast(rng, minTier) {
+  const tiers = [];
+  let sum = 0;
+  for (let k = 0; k < POTENTIALE_TIERS.length; k++) {
+    if (POTENTIALE_TIERS[k] >= minTier) {
+      tiers.push(k);
+      sum += POTENTIALE_WEIGHTS[k];
+    }
+  }
+  if (tiers.length === 0) return POTENTIALE_TIERS[POTENTIALE_TIERS.length - 1];
+  let roll = rng() * sum;
+  for (const k of tiers) {
+    roll -= POTENTIALE_WEIGHTS[k];
+    if (roll <= 0) return POTENTIALE_TIERS[k];
+  }
+  return POTENTIALE_TIERS[tiers[tiers.length - 1]];
+}
 
 export function drawPotentiale(rng) {
   let roll = rng() * POTENTIALE_WEIGHT_SUM;
@@ -75,6 +106,13 @@ function pickYouthArchetype(rng) {
  * @param {"own-priors"|"pcm"} [opts.mode]  #5269: fødsels-tilstand. Default
  *   "own-priors" — kandidaten fødes direkte i evne-rummet fra ungdomsbåndet i
  *   riderBirthPriors.js og får INGEN stat_*. "pcm" er den gamle sti (uændret).
+ * @param {{min:number,max:number}|null} [opts.ageBand]  (5844) fast aldersbånd
+ *   (sæsonalder, inklusiv) i stedet for den gaussiske 16-21-alder. null = uændret.
+ * @param {{value:string,weight:number}[]|null} [opts.nationalityWeights]  (5844)
+ *   erstatter nations-vægtene helt (holdets egen nationsprofil). null = uændret.
+ * @param {number|null} [opts.topTalentIndex]  (5844) kandidaten på dette indeks
+ *   trækker potentiale betinget på ≥ topTalentMin. null = ingen garanti.
+ * @param {number} [opts.topTalentMin]
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
 export function generateAcademyCandidates({
@@ -85,6 +123,10 @@ export function generateAcademyCandidates({
   countOverride = null,
   genCfg = YOUTH_GEN_CONFIG,
   mode = DEFAULT_BIRTH_MODE,
+  ageBand = null,
+  nationalityWeights = null,
+  topTalentIndex = null,
+  topTalentMin = 3,
 }) {
   if (mode !== BIRTH_MODE_OWN_PRIORS && mode !== BIRTH_MODE_PCM) {
     throw new Error(`generateAcademyCandidates: unknown mode ${mode}`);
@@ -108,6 +150,10 @@ export function generateAcademyCandidates({
       natWeights = [...natWeights, { value: dom, weight: 30 }];
     }
   }
+  // #5844: eksplicitte vægte vinder over identityBasis-bias'en.
+  if (Array.isArray(nationalityWeights) && nationalityWeights.length > 0) {
+    natWeights = nationalityWeights;
+  }
 
   // ── Byg hvert kandidat-objekt ────────────────────────────────────────────────
   const candidates = [];
@@ -121,13 +167,17 @@ export function generateAcademyCandidates({
     const { firstname, lastname } = makeUniqueName(rng, cluster, existingNames);
 
     // Alder + fødselsdato
-    const age = Math.round(
-      clamp(gaussian(rng, 18, 1.6), ACADEMY.MIN_AGE, ACADEMY.MAX_AGE)
-    );
+    // #5844: ageBand giver et uniformt træk i båndet (U23- eller junior-alder).
+    // Uden ageBand er rng-rækkefølgen uændret for de eksisterende kaldere.
+    const age = ageBand
+      ? ageBand.min + Math.floor(rng() * (ageBand.max - ageBand.min + 1))
+      : Math.round(clamp(gaussian(rng, 18, 1.6), ACADEMY.MIN_AGE, ACADEMY.MAX_AGE));
     const birthdate = `${referenceYear - age}-06-15`;
 
     // Potentiale: geometrisk træk (0.5-trin, 1.0-6.0). 'Seriøs' = pot ≥ 4.5 (afledt).
-    const potentiale = drawPotentiale(rng);
+    const potentiale = i === topTalentIndex
+      ? drawPotentialeAtLeast(rng, topTalentMin)
+      : drawPotentiale(rng);
     const is_serious = potentiale >= 4.5;
 
     // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk

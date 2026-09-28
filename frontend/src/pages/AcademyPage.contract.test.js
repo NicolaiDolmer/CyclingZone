@@ -50,13 +50,13 @@ test("akademi-rosterets backend-select bærer felterne kolonnerne renderer (#279
 
 test("intake-payloaden bærer pris og udløbsfrist (#2796)", () => {
   // Signér er et irreversibelt køb: prisen SKAL være kendt før klikket, og
-  // tilbuddet udløber efter INTAKE_OFFER_EXPIRY_DAYS.
+  // tilbuddet udløber efter intakeOfferExpiryDaysFor(source) (#5844).
   assert.match(academyMeBlock, /signingFee/, "/academy/me sender ikke signingFee");
   assert.match(academyMeBlock, /expiresAt/, "/academy/me sender ikke expiresAt");
   assert.match(
     academyMeBlock,
-    /INTAKE_OFFER_EXPIRY_DAYS/,
-    "udløbsdatoen skal udledes af INTAKE_OFFER_EXPIRY_DAYS (SSOT i academyIntakeExpirySweep.js), ikke af et hardkodet 7-tal",
+    /intakeOfferExpiryDaysFor\(/,
+    "udløbsdatoen skal udledes af intakeOfferExpiryDaysFor (SSOT i academyIntakeSource.js: 7 dage, bestyrelsens gave 14, #5844), ikke af et hardkodet tal",
   );
   assert.match(
     academyMeBlock,
@@ -205,4 +205,10 @@ test("Youth squads-kortet har ingen guld-primary-knap (kun quiet action, PAGE_TE
     /variant="primary"/,
     "Youth squads-kortet må ikke have en guld-primær knap — kun SectionAction (P3, ét guld-primært element pr. view)",
   );
+});
+
+// #5844 (ejer 28/9): potentiale vises som TAL i akademiet, aldrig som stjerner.
+test("akademi-siden viser aldrig stjerner på intake-kort (#5844)", () => {
+  assert.doesNotMatch(pageSource, /PotentialeStars/, "AcademyPage må ikke importere/rendere PotentialeStars");
+  assert.match(pageSource, /potentialPending/, "manglende bånd skal vise en tekst, ikke et stjerne-fallback");
 });

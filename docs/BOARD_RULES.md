@@ -46,6 +46,9 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 
 ### 0.2 Hvad er faktisk leveret og aktiveret?
 
+**Aktuel flagstatus 28/9 (read-only prodmåling):** `board_mandate_model_enabled = 'on'` i S4.
+De ældre beta-tal nedenfor beskriver tilstanden på deres måledato og er historiske.
+
 - **Kode/merge-bevis:** PR #4841 (skrivning i beta), #4842 (nye hold + sæsonskifte),
   #4843 (Sponsors-side), #4844 (Boardroom med bonus/DNA) er alle MERGED på GitHub.
   Boardroom og årsmødets ruter samt komponenter findes på ovenstående kode-HEAD.
