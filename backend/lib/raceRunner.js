@@ -111,7 +111,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
@@ -912,6 +912,11 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   // rytter væk fra det aktuelle løbs felt under runtime auto-fill (excludeBoundRiders).
   const { data: entries, error: e1 } = await loadEligibleEntries({
     supabase, paged: true,
+    // ANY_SQUAD (som raceBinding.loadTeamBindingContext, #5645): en entry binder
+    // rytterens løbsdag uanset trup. Med default (senior) forsvandt juniorernes
+    // entries i juniorløbet, så U23-autofyldet valgte dem igen og DB-invarianten
+    // (#3420) afviste hele startlisten (S4 løbsdag 1, 28/9, CYCLINGZONE-71).
+    squad: ANY_SQUAD,
     // #3126: .order() på PK (race_id, rider_id) — .range() uden en deterministisk
     // totalordning kan hoppe rækker mellem sider (samme fejlklasse som #3113).
     baseQuery: () =>
