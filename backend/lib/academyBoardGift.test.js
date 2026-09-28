@@ -19,8 +19,8 @@ import {
   runBoardThankYouGift,
   summarizeBoardGiftRun,
   teamGiftRng,
-} from "./academyBoardGift.js";
-import { signingFeeForSource } from "./academyIntakeSource.js";
+} from "./academyBoardGift.ts";
+import { signingFeeForSource } from "./academyIntakeSource.ts";
 import { drawPotentialeAtLeast, generateAcademyCandidates, POTENTIALE_TIERS } from "./academyGenerator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { ageForReferenceYear } from "./riderSeasonAge.js";

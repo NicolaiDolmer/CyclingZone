@@ -15,7 +15,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
-import { isMissingSchemaError, signingFeeForSource } from "./academyIntakeSource.js";
+import { isMissingSchemaError, signingFeeForSource } from "./academyIntakeSource.ts";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
@@ -148,11 +148,11 @@ export async function fetchExistingFoldedRiderNames(supabase) {
  * så batch og signup-stien ikke kan drifte fra hinanden.
  *
  * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (søndags-drip)
- * @param {object|null} [opts.generatorOptions]      #5844: ekstra generator-parametre
- *   (ageBand, nationalityWeights, topTalentIndex, topTalentMin). null = uændret.
- * @param {string|null} [opts.source]                #5844: academy_intake.source.
- *   null = kolonnen sendes IKKE (DB-default 'intake'), så de eksisterende stier
- *   skriver præcis samme payload som før migrationen.
+ *   (5844) generatorOptions: ekstra generator-parametre (ageBand,
+ *   nationalityWeights, topTalentIndex, topTalentMin); null = uændret.
+ *   (5844) source: academy_intake.source; null = kolonnen sendes IKKE
+ *   (DB-default 'intake'), så de eksisterende stier skriver præcis samme payload
+ *   som før migrationen.
  * @returns {Promise<string[]>} de nyindsatte akademi-rytteres id'er
  */
 export async function seedAcademyCohortForTeam(supabase, {
@@ -428,7 +428,13 @@ export async function runAcademyIntakeForTeam(supabase, teamId, {
 // #5844: intake-rækken inkl. `source`. Før migrationen er kørt (deploy-vinduet
 // før auto-migrate.yml) findes kolonnen ikke; så læses rækken uden den, og den
 // behandles som et normalt tilbud (ingen gave-rækker kan eksistere endnu).
+/**
+ * @param {any} supabase
+ * @param {{ teamId: string, riderId: string }} ids
+ * @returns {Promise<{ id: string, status: string, source?: string } | null>}
+ */
 async function fetchIntakeRowForSigning(supabase, { teamId, riderId }) {
+  /** @param {string} cols */
   const read = (cols) => supabase
     .from("academy_intake")
     .select(cols)

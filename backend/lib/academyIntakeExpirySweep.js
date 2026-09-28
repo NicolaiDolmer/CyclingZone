@@ -39,9 +39,9 @@ import {
   BOARD_GIFT_SOURCE,
   NORMAL_INTAKE_EXPIRY_DAYS,
   isMissingSchemaError,
-} from "./academyIntakeSource.js";
+} from "./academyIntakeSource.ts";
 
-// #5844: SSOT flyttet til academyIntakeSource.js (normal 7 dage; gave-kuldet 14).
+// #5844: SSOT flyttet til academyIntakeSource.ts (normal 7 dage; gave-kuldet 14).
 export const INTAKE_OFFER_EXPIRY_DAYS = NORMAL_INTAKE_EXPIRY_DAYS;
 export const INTAKE_EXPIRY_AUCTION_DURATION_HOURS = 24;
 
@@ -86,10 +86,12 @@ export const INTAKE_EXPIRY_MAX_PER_DAY = INTAKE_EXPIRY_STEADY_PER_DAY;
 // ~1.100 gave-tilbud mellem dag 7 og 14 hverken tæller som efterslæb eller æder
 // udvælgelsens limit fra de normale tilbud. Tidsstemplet citeres (":" og "." er
 // reserverede tegn i PostgREST's or-syntaks).
+/** @param {string} giftCutoffIso */
 export function giftGraceFilter(giftCutoffIso) {
   return `source.neq.${BOARD_GIFT_SOURCE},created_at.lt."${giftCutoffIso}"`;
 }
 
+/** @param {Date} now */
 export function giftCutoffIsoFor(now) {
   return new Date(now.getTime() - BOARD_GIFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
@@ -97,6 +99,10 @@ export function giftCutoffIsoFor(now) {
 // Før migrationen er kørt (deploy-vinduet før auto-migrate.yml) findes kolonnen
 // ikke; så køres forespørgslen uden gave-filteret — ingen gave-rækker kan
 // eksistere endnu, så adfærden er præcis den gamle.
+/**
+ * @param {(grace: boolean) => any} build
+ * @returns {Promise<any>}
+ */
 async function withGiftGrace(build) {
   const res = await build(true);
   if (res?.error && isMissingSchemaError(res.error)) return build(false);
@@ -106,6 +112,10 @@ async function withGiftGrace(build) {
 /**
  * Dagens kvote: CATCHUP hvis der er et efterslæb af overmodne tilbud, ellers STEADY.
  * Tæller kun tilbud der FAKTISK er over grænsen — ikke hele køen.
+ *
+ * @param {any} supabase
+ * @param {string} cutoffIso
+ * @param {string|null} [giftCutoffIso]  (5844) gave-rækker er først modne efter 14 dage
  */
 export async function resolveDailyQuota(supabase, cutoffIso, giftCutoffIso = null) {
   const { count, error } = await withGiftGrace((grace) => {

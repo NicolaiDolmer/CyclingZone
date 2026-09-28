@@ -275,7 +275,7 @@ import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
-import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.js";
+import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
 import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";

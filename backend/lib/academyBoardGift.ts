@@ -1,4 +1,4 @@
-// backend/lib/academyBoardGift.js
+// backend/lib/academyBoardGift.ts
 // #5844 — "A thank-you from the board" / "Tak fra bestyrelsen" (ejer-design 28/9).
 //
 // Ét ENGANGS-kuld på 10 akademi-TILBUD til hvert aktivt menneskehold: 5 i U23-
@@ -33,7 +33,7 @@ import { deriveForRiderIds } from "./backfillCores.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { ageForReferenceYear } from "./riderSeasonAge.js";
 import { effectiveSquad, SQUAD_CAPS } from "./squads.js";
-import { BOARD_GIFT_SOURCE, isMissingSchemaError } from "./academyIntakeSource.js";
+import { BOARD_GIFT_SOURCE, isMissingSchemaError } from "./academyIntakeSource.ts";
 
 export {
   BOARD_GIFT_SOURCE,
@@ -42,7 +42,7 @@ export {
   isBoardGiftSource,
   intakeOfferExpiryDaysFor,
   isMissingSchemaError,
-} from "./academyIntakeSource.js";
+} from "./academyIntakeSource.ts";
 export const BOARD_GIFT_BATCH = "board_thanks_5844";
 export const BOARD_GIFT_SEED = 5844;
 
@@ -77,11 +77,67 @@ export const NATION_PROFILE_MIN_RIDERS = 5;
 export const NATION_PROFILE_MODES = Object.freeze(["all", "exclude-fill-tail"]);
 export const FILL_TAIL_TAG = "fill_tail";
 
+// ── Typer ────────────────────────────────────────────────────────────────────
+// Supabase-klienten er utypet i kernen (samme som resten af akademi-modulerne);
+// den holdes som `any` ved grænsen, mens modulets egne data er typede.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Db = any;
+export type NationProfileMode = "all" | "exclude-fill-tail";
+export type NationWeight = { value: string; weight: number };
+export type TopNation = { code: string; count: number };
+export type TeamRow = {
+  id: string;
+  is_ai?: boolean;
+  is_bank?: boolean;
+  is_frozen?: boolean;
+  is_test_account?: boolean;
+  retired_at?: string | null;
+  parked_at?: string | null;
+  league_division_id?: number | null;
+};
+export type TeamProfile = { nations: (string | null)[]; nationsExclFillTail?: (string | null)[]; junior: number; u23: number };
+export type OfferSummary = { squad?: string; nationality?: string; potentiale?: number; is_serious?: boolean; riderId?: string };
+export type TeamStatus = "planned" | "applied" | "skipped_already_claimed" | "failed_released" | "failed_partial";
+export type TeamEntry = {
+  teamId: string;
+  alreadyClaimed: boolean;
+  nationProfile: TopNation[] | null;
+  squadCounts: { u23: number; junior: number };
+  freeSlots: { u23: number; junior: number };
+  offers: OfferSummary[];
+  status: TeamStatus | null;
+  error?: string;
+};
+export type GiftPart = {
+  squad: string;
+  countOverride: number;
+  generatorOptions: {
+    ageBand: { min: number; max: number };
+    nationalityWeights: NationWeight[] | null;
+    topTalentIndex: number | null;
+    topTalentMin: number;
+  };
+};
+export type GiftRun = {
+  dryRun: boolean;
+  batch: string;
+  seed: number;
+  topTalentMin: number;
+  nationProfileMode: NationProfileMode;
+  seasonNumber: number;
+  referenceYear: number;
+  recipients: number;
+  teams: TeamEntry[];
+  schemaMissing?: boolean;
+};
+type Season = { id: string; number: number; start_date?: string };
+type Rng = () => number;
+
 /**
  * Modtager-prædikatet (ejer 28/9): menneskehold i en S4-pulje, ikke parkeret,
  * ikke frosset, ikke retired, ikke testkonto. Ingen aktivitetsfilter.
  */
-export function isBoardGiftRecipient(team) {
+export function isBoardGiftRecipient(team: TeamRow | null | undefined): boolean {
   if (!team) return false;
   return team.is_ai === false
     && team.is_bank === false
@@ -92,8 +148,8 @@ export function isBoardGiftRecipient(team) {
     && team.league_division_id != null;
 }
 
-export async function fetchBoardGiftRecipients(supabase) {
-  const rows = await fetchAllRows(() =>
+export async function fetchBoardGiftRecipients(supabase: Db): Promise<TeamRow[]> {
+  const rows: TeamRow[] = await fetchAllRows(() =>
     supabase
       .from("teams")
       .select("id, user_id, is_ai, is_bank, is_frozen, is_test_account, retired_at, parked_at, league_division_id")
@@ -116,13 +172,13 @@ export async function fetchBoardGiftRecipients(supabase) {
  * @param {(string|null)[]} nationalityCodes
  * @returns {{weights: {value:string,weight:number}[], topNations: {code:string,count:number}[]} | null}
  */
-export function buildTeamNationalityWeights(nationalityCodes, {
+export function buildTeamNationalityWeights(nationalityCodes: (string | null | undefined)[] | null | undefined, {
   topN = NATION_PROFILE_TOP_NATIONS,
   teamShare = NATION_PROFILE_TEAM_SHARE,
   minRiders = NATION_PROFILE_MIN_RIDERS,
-  defaults = DEFAULT_NATIONALITY_WEIGHTS,
-} = {}) {
-  const counts = new Map();
+  defaults = DEFAULT_NATIONALITY_WEIGHTS as NationWeight[],
+}: { topN?: number; teamShare?: number; minRiders?: number; defaults?: NationWeight[] } = {}): { weights: NationWeight[]; topNations: TopNation[] } | null {
+  const counts = new Map<string, number>();
   let total = 0;
   for (const code of nationalityCodes ?? []) {
     if (!code) continue;
@@ -130,14 +186,14 @@ export function buildTeamNationalityWeights(nationalityCodes, {
     total++;
   }
   if (total < minRiders) return null;
-  const topNations = [...counts.entries()]
+  const topNations: TopNation[] = [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, topN)
     .map(([code, count]) => ({ code, count }));
   const topSum = topNations.reduce((s, n) => s + n.count, 0);
   const defaultSum = defaults.reduce((s, d) => s + d.weight, 0);
   // Skala 1000, så vægtene er læsbare i rapporten; weightedPick normaliserer selv.
-  const byCode = new Map();
+  const byCode = new Map<string, number>();
   for (const d of defaults) {
     byCode.set(d.value, (1 - teamShare) * 1000 * (d.weight / defaultSum));
   }
@@ -152,10 +208,14 @@ export function buildTeamNationalityWeights(nationalityCodes, {
  * Plan for ét holds kuld: generator-options pr. delkuld. Talent-garantien
  * placeres på ét tilfældigt (seedet) indeks i ét af de to delkuld.
  */
-export function planTeamGift({ rng, nationalityWeights = null, topTalentMin = BOARD_GIFT_TOP_TALENT_MIN }) {
+export function planTeamGift({ rng, nationalityWeights = null, topTalentMin = BOARD_GIFT_TOP_TALENT_MIN }: {
+  rng: Rng;
+  nationalityWeights?: NationWeight[] | null;
+  topTalentMin?: number;
+}): GiftPart[] {
   const slot = Math.floor(rng() * BOARD_GIFT_TOTAL);
   let offset = 0;
-  return BOARD_GIFT_COHORTS.map((cohort) => {
+  return BOARD_GIFT_COHORTS.map((cohort): GiftPart => {
     const inThis = slot >= offset && slot < offset + cohort.count;
     const opts = {
       squad: cohort.squad,
@@ -173,7 +233,7 @@ export function planTeamGift({ rng, nationalityWeights = null, topTalentMin = BO
 }
 
 /** Per-hold PRNG: reproducerbart kuld pr. (seed, hold, batch). */
-export function teamGiftRng(seed, teamId, batch = BOARD_GIFT_BATCH) {
+export function teamGiftRng(seed: number, teamId: string, batch: string = BOARD_GIFT_BATCH): Rng {
   return makeRng((((seed >>> 0) ^ hashStringToSeed(`${teamId}:${batch}`)) >>> 0));
 }
 
@@ -181,14 +241,17 @@ export function teamGiftRng(seed, teamId, batch = BOARD_GIFT_BATCH) {
  * Nuværende ryttere pr. modtager-hold: nationer (profil) + ungdomstrup-tællinger
  * (til rapportens "ledige pladser"). Én paged læsning.
  */
-export async function fetchTeamRiderProfiles(supabase, teamIds, { referenceYear }) {
+export async function fetchTeamRiderProfiles(supabase: Db, teamIds: string[], { referenceYear }: { referenceYear: number }): Promise<Map<string, TeamProfile>> {
   const wanted = new Set(teamIds);
-  const profiles = new Map(teamIds.map((id) => [id, { nations: [], nationsExclFillTail: [], junior: 0, u23: 0 }]));
+  const profiles = new Map<string, TeamProfile & { nationsExclFillTail: (string | null)[] }>(
+    teamIds.map((id) => [id, { nations: [], nationsExclFillTail: [], junior: 0, u23: 0 }]),
+  );
   const ids = [...wanted];
   const CHUNK = 100;
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const rows = await fetchAllRows(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = await fetchAllRows(() =>
       supabase
         .from("riders")
         .select("id, team_id, nationality_code, birthdate, squad, is_academy, is_retired, generation_tag")
@@ -208,19 +271,19 @@ export async function fetchTeamRiderProfiles(supabase, teamIds, { referenceYear 
   return profiles;
 }
 
-async function fetchExistingClaims(supabase, batch) {
+async function fetchExistingClaims(supabase: Db, batch: string): Promise<{ claimed: Set<string>; schemaMissing: boolean }> {
   const { data, error } = await supabase
     .from("academy_gift_claims")
     .select("team_id")
     .eq("batch", batch);
   if (error) {
-    if (isMissingSchemaError(error)) return { claimed: new Set(), schemaMissing: true };
+    if (isMissingSchemaError(error)) return { claimed: new Set<string>(), schemaMissing: true };
     throw new Error(`board-gift claims lookup: ${error.message}`);
   }
-  return { claimed: new Set((data ?? []).map((r) => r.team_id)), schemaMissing: false };
+  return { claimed: new Set<string>((data ?? []).map((r: { team_id: string }) => r.team_id)), schemaMissing: false };
 }
 
-async function claimTeam(supabase, teamId, batch) {
+async function claimTeam(supabase: Db, teamId: string, batch: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("academy_gift_claims")
     .upsert({ team_id: teamId, batch }, { onConflict: "team_id,batch", ignoreDuplicates: true })
@@ -229,7 +292,7 @@ async function claimTeam(supabase, teamId, batch) {
   return Boolean(data?.length);
 }
 
-async function countGiftRows(supabase, teamId) {
+async function countGiftRows(supabase: Db, teamId: string): Promise<number> {
   const { count, error } = await supabase
     .from("academy_intake")
     .select("id", { count: "exact", head: true })
@@ -250,20 +313,21 @@ export const BOARD_GIFT_NOTIFICATION = Object.freeze({
   }),
 });
 
-function summarizeCandidate(c, squad) {
+function summarizeCandidate(c: { is_serious: boolean; rider: object }, squad: string): OfferSummary {
+  const rider = c.rider as { nationality_code?: string; potentiale?: number };
   return {
     squad,
-    nationality: c.rider.nationality_code,
-    potentiale: c.rider.potentiale,
+    nationality: rider.nationality_code,
+    potentiale: rider.potentiale,
     is_serious: c.is_serious,
   };
 }
 
-function assertNationProfileMode(mode) {
-  if (!NATION_PROFILE_MODES.includes(mode)) throw new Error(`ukendt nationProfileMode: ${mode}`);
+function assertNationProfileMode(mode: string): asserts mode is NationProfileMode {
+  if (!(NATION_PROFILE_MODES as readonly string[]).includes(mode)) throw new Error(`unknown nationProfileMode: ${mode}`);
 }
 
-function newTeamEntry(team, profile, claimed, nationProfileMode = "all") {
+function newTeamEntry(team: TeamRow, profile: TeamProfile, claimed: Set<string>, nationProfileMode: NationProfileMode = "all"): { entry: TeamEntry; nationalityWeights: NationWeight[] | null } {
   const nat = buildTeamNationalityWeights(
     nationProfileMode === "exclude-fill-tail" ? (profile.nationsExclFillTail ?? []) : profile.nations,
   );
@@ -297,14 +361,21 @@ function newTeamEntry(team, profile, claimed, nationProfileMode = "all") {
  * @param {Set<string>} data.claimed
  * @param {Set<string>} data.existingNames   (muteres)
  */
-export function planBoardGift(data, {
+export function planBoardGift(data: {
+  season: { number: number };
+  referenceYear: number;
+  recipients: TeamRow[];
+  profiles: Map<string, TeamProfile>;
+  claimed: Set<string>;
+  existingNames: Set<string>;
+}, {
   batch = BOARD_GIFT_BATCH,
   seed = BOARD_GIFT_SEED,
   topTalentMin = BOARD_GIFT_TOP_TALENT_MIN,
   nationProfileMode = "all",
-} = {}) {
+}: { batch?: string; seed?: number; topTalentMin?: number; nationProfileMode?: string } = {}): GiftRun {
   assertNationProfileMode(nationProfileMode);
-  const teams = [];
+  const teams: TeamEntry[] = [];
   for (const team of data.recipients) {
     const profile = data.profiles.get(team.id) ?? { nations: [], junior: 0, u23: 0 };
     const { entry, nationalityWeights } = newTeamEntry(team, profile, data.claimed, nationProfileMode);
@@ -346,7 +417,7 @@ export function planBoardGift(data, {
  *
  * @returns {Promise<object>} rapport-data (ingen holdnavne)
  */
-export async function runBoardThankYouGift(supabase, {
+export async function runBoardThankYouGift(supabase: Db, {
   dryRun = true,
   batch = BOARD_GIFT_BATCH,
   seed = BOARD_GIFT_SEED,
@@ -357,13 +428,26 @@ export async function runBoardThankYouGift(supabase, {
   notify = notifyTeamOwner,
   seedCohortFn = seedAcademyCohortForTeam,
   log = () => {},
-} = {}) {
+}: {
+  dryRun?: boolean;
+  batch?: string;
+  seed?: number;
+  topTalentMin?: number;
+  nationProfileMode?: string;
+  onlyTeamIds?: string[] | null;
+  deriveRiders?: (sb: Db, ids: string[], opts: { dryRun: boolean }) => Promise<unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  notify?: (args: any) => Promise<unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seedCohortFn?: (sb: Db, args: any) => Promise<string[]>;
+  log?: (msg: string) => void;
+} = {}): Promise<GiftRun> {
   if (!supabase?.from) throw new Error("Supabase client required");
-  if (!POTENTIALE_TIERS.includes(topTalentMin)) throw new Error(`topTalentMin ${topTalentMin} er ikke et potentiale-trin`);
+  if (!POTENTIALE_TIERS.includes(topTalentMin)) throw new Error(`topTalentMin ${topTalentMin} is not a potential tier`);
   assertNationProfileMode(nationProfileMode);
 
-  const season = await fetchActiveSeason(supabase);
-  if (!season) throw new Error("board-gift: ingen aktiv sæson");
+  const season: Season | null = await fetchActiveSeason(supabase);
+  if (!season) throw new Error("board-gift: no active season");
   const referenceYear = referenceYearForSeason(season);
 
   let recipients = await fetchBoardGiftRecipients(supabase);
@@ -373,7 +457,7 @@ export async function runBoardThankYouGift(supabase, {
   }
   const { claimed, schemaMissing } = await fetchExistingClaims(supabase, batch);
   if (!dryRun && schemaMissing) {
-    throw new Error("board-gift: migrationen 2026-09-28-5844-academy-board-gift.sql er ikke kørt");
+    throw new Error("board-gift: migration 2026-09-28-5844-academy-board-gift.sql has not been applied");
   }
 
   const profiles = await fetchTeamRiderProfiles(supabase, recipients.map((t) => t.id), { referenceYear });
@@ -386,7 +470,7 @@ export async function runBoardThankYouGift(supabase, {
     };
   }
 
-  const teams = [];
+  const teams: TeamEntry[] = [];
   for (const team of recipients) {
     const profile = profiles.get(team.id) ?? { nations: [], junior: 0, u23: 0 };
     const { entry, nationalityWeights } = newTeamEntry(team, profile, claimed, nationProfileMode);
@@ -404,7 +488,7 @@ export async function runBoardThankYouGift(supabase, {
       entry.status = "skipped_already_claimed";
       continue;
     }
-    const newIds = [];
+    const newIds: string[] = [];
     try {
       for (const part of plan) {
         const ids = await seedCohortFn(supabase, {
@@ -429,12 +513,13 @@ export async function runBoardThankYouGift(supabase, {
         const { error: releaseErr } = await supabase
           .from("academy_gift_claims").delete().eq("team_id", team.id).eq("batch", batch);
         entry.status = releaseErr ? "failed_partial" : "failed_released";
-        if (releaseErr) log(`board-gift ${team.id}: claim kunne ikke frigives: ${releaseErr.message}`);
+        if (releaseErr) log(`board-gift ${team.id}: could not release claim: ${releaseErr.message}`);
       } else {
         entry.status = "failed_partial";
       }
-      entry.error = err.message;
-      log(`board-gift ${team.id}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      entry.error = message;
+      log(`board-gift ${team.id}: ${message}`);
       continue;
     }
     if (newIds.length > 0) await deriveRiders(supabase, newIds, { dryRun: false });
@@ -448,7 +533,7 @@ export async function runBoardThankYouGift(supabase, {
       metadata: { ...BOARD_GIFT_NOTIFICATION.metadata },
     });
     entry.status = "applied";
-    log(`board-gift ${team.id}: ${newIds.length} tilbud`);
+    log(`board-gift ${team.id}: ${newIds.length} offers`);
   }
 
   return {
@@ -468,11 +553,11 @@ export async function runBoardThankYouGift(supabase, {
 /**
  * Aggregér en kørsel til rapport-tal (ingen holdnavne, ingen id'er).
  */
-export function summarizeBoardGiftRun(run) {
+export function summarizeBoardGiftRun(run: GiftRun) {
   const planned = run.teams.filter((t) => t.status === "planned" || t.status === "applied");
   const offers = planned.flatMap((t) => t.offers);
-  const nations = new Map();
-  const potentials = new Map();
+  const nations = new Map<string, number>();
+  const potentials = new Map<number, number>();
   let serious = 0;
   for (const o of offers) {
     if (o.nationality) nations.set(o.nationality, (nations.get(o.nationality) ?? 0) + 1);
@@ -483,7 +568,7 @@ export function summarizeBoardGiftRun(run) {
   const nationMatchShare = planned.length === 0 ? 0 : planned.reduce((s, t) => {
     if (!t.nationProfile) return s;
     const top = new Set(t.nationProfile.map((n) => n.code));
-    return s + t.offers.filter((o) => top.has(o.nationality)).length / Math.max(1, t.offers.length);
+    return s + t.offers.filter((o) => o.nationality != null && top.has(o.nationality)).length / Math.max(1, t.offers.length);
   }, 0) / Math.max(1, planned.filter((t) => t.nationProfile).length);
   return {
     recipients: run.recipients,

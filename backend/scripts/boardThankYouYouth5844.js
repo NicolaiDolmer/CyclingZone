@@ -39,7 +39,7 @@ import {
   planBoardGift,
   runBoardThankYouGift,
   summarizeBoardGiftRun,
-} from "../lib/academyBoardGift.js";
+} from "../lib/academyBoardGift.ts";
 import { referenceYearForSeason } from "../lib/academyIntake.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

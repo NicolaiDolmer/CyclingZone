@@ -24,6 +24,11 @@ import {
   drawYouthBirthAbilities, makeBirthRng, makeYouthBirthMarker,
 } from "./riderBirthPriors.js";
 
+/**
+ * @param {number} n
+ * @param {number} lo
+ * @param {number} hi
+ */
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -40,6 +45,11 @@ const POTENTIALE_WEIGHT_SUM = POTENTIALE_WEIGHTS.reduce((a, b) => a + b, 0);
 // #5844: samme geometriske fordeling, men BETINGET på potentiale ≥ minTier
 // (bestyrelsens kuld garanterer ét talent i toppen af fordelingen). Vægtene
 // inden for toppen er de samme relative vægte som drawPotentiale bruger.
+/**
+ * @param {() => number} rng
+ * @param {number} minTier
+ * @returns {number}
+ */
 export function drawPotentialeAtLeast(rng, minTier) {
   const tiers = [];
   let sum = 0;
@@ -96,11 +106,11 @@ function pickYouthArchetype(rng) {
  * @param {"own-priors"|"pcm"} [opts.mode]  #5269: fødsels-tilstand. Default
  *   "own-priors" — kandidaten fødes direkte i evne-rummet fra ungdomsbåndet i
  *   riderBirthPriors.js og får INGEN stat_*. "pcm" er den gamle sti (uændret).
- * @param {{min:number,max:number}|null} [opts.ageBand]  #5844: fast aldersbånd
+ * @param {{min:number,max:number}|null} [opts.ageBand]  (5844) fast aldersbånd
  *   (sæsonalder, inklusiv) i stedet for den gaussiske 16-21-alder. null = uændret.
- * @param {{value:string,weight:number}[]|null} [opts.nationalityWeights]  #5844:
+ * @param {{value:string,weight:number}[]|null} [opts.nationalityWeights]  (5844)
  *   erstatter nations-vægtene helt (holdets egen nationsprofil). null = uændret.
- * @param {number|null} [opts.topTalentIndex]  #5844: kandidaten på dette indeks
+ * @param {number|null} [opts.topTalentIndex]  (5844) kandidaten på dette indeks
  *   trækker potentiale betinget på ≥ topTalentMin. null = ingen garanti.
  * @param {number} [opts.topTalentMin]
  * @returns {{ is_serious: boolean, rider: object }[]}
