@@ -16,7 +16,7 @@ CREATE TABLE public.riders (
   id uuid PRIMARY KEY, team_id uuid, squad text, is_academy boolean, is_retired boolean
 );
 CREATE TABLE public.races (id uuid PRIMARY KEY, squad text, status text);
-CREATE TABLE public.race_entries (id uuid PRIMARY KEY, team_id uuid, race_id uuid);
+CREATE TABLE public.race_entries (id uuid PRIMARY KEY, team_id uuid, rider_id uuid, race_id uuid);
 INSERT INTO public.league_divisions(id) VALUES (10),(21),(22),(23),(33),(34),(35);
 
 -- Existing retired ghost in A/A and one active race-bound AI in F/H.
@@ -60,7 +60,7 @@ $$;
 
 -- A claimed or unfinished race blocks retirement and rolls the UPDATE back.
 INSERT INTO public.races VALUES ('00000000-0000-0000-0000-000000000900','junior','scheduled');
-INSERT INTO public.race_entries VALUES ('00000000-0000-0000-0000-000000000901',
+INSERT INTO public.race_entries(id,team_id,race_id) VALUES ('00000000-0000-0000-0000-000000000901',
   '00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000900');
 DO $$
 BEGIN
