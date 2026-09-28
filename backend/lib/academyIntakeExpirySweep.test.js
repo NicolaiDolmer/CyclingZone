@@ -79,6 +79,17 @@ test("runIntakeOfferExpirySweep: kaster hvis supabase-klient mangler", async () 
 //   (eq→lt→order→limit), (c) reconcile-UPDATE pr. stale række (eq id + eq status),
 //   (d) expiry-UPDATE (in→eq→select).
 //   riders: select id,team_id,pending_team_id .in(id, ids) — ejerskabs-sandheden.
+// #5844: gave-filteret er `source.neq.board_gift,created_at.lt."<iso>"`.
+function parseGiftCutoff(expr) {
+  const m = /^source\.neq\.board_gift,created_at\.lt\."([^"]+)"$/.exec(expr);
+  assert.ok(m, `uventet or-udtryk: ${expr}`);
+  return m[1];
+}
+function giftMature(row, giftCutoff) {
+  if (row.source !== "board_gift" || giftCutoff == null) return true;
+  return row.created_at < giftCutoff;
+}
+
 function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture, overdueOverride = null }) {
   const riderById = new Map(riders.map((r) => [r.id, r]));
   return {
@@ -109,8 +120,10 @@ function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture, ov
             //   2. efterslæb (#3576-kvoten) — status='offered' + created_at < cutoff
             // Grenen vælges af hvilken status der filtreres på.
             let status = null;
+            let giftCutoff = null;
             const chain = {
               eq(c, v) { assert.equal(c, "status"); status = v; return chain; },
+              or(expr) { giftCutoff = parseGiftCutoff(expr); return chain; },
               gt(c, _v) {
                 assert.equal(c, "resolved_at");
                 assert.equal(status, "expired");
@@ -119,7 +132,8 @@ function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture, ov
               lt(c, cutoffIso) {
                 assert.equal(c, "created_at");
                 assert.equal(status, "offered");
-                const n = intakeRows.filter((r) => r.status === "offered" && r.created_at < cutoffIso).length;
+                const n = intakeRows.filter((r) => r.status === "offered" && r.created_at < cutoffIso
+                  && giftMature(r, giftCutoff)).length;
                 return Promise.resolve({ count: overdueOverride ?? n, error: null });
               },
             };
@@ -129,11 +143,13 @@ function buildMockSupabase({ intakeRows, riders, expiredLast24h = 0, capture, ov
           const chain = {
             eq(c, v) { assert.equal(c, "status"); assert.equal(v, "offered"); return chain; },
             lt(c, cutoffIso) { assert.equal(c, "created_at"); capture.cutoffIso = cutoffIso; return chain; },
+            or(expr) { capture.giftCutoff = parseGiftCutoff(expr); return chain; },
             order(c, o) { assert.equal(c, "created_at"); assert.equal(o.ascending, true); return chain; },
             limit(n) {
               capture.selectLimit = n;
               const matched = intakeRows
-                .filter((r) => r.status === "offered" && r.created_at < capture.cutoffIso)
+                .filter((r) => r.status === "offered" && r.created_at < capture.cutoffIso
+                  && giftMature(r, capture.giftCutoff))
                 .sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
                 .slice(0, n)
                 .map((r) => ({ id: r.id, rider_id: r.rider_id, team_id: r.team_id }));
@@ -370,4 +386,101 @@ test("ingen matchende rækker → alt 0, ingen auktions-kald", async () => {
     listYouthAuctionFn: async () => { throw new Error("må ikke kaldes"); },
   });
   assert.deepEqual(r, { ran: true, expired: 0, auctioned: 0, reconciled: 0, cutoff: capture.cutoffIso });
+});
+
+// ── #5844: bestyrelsens gave-kuld har 14 dages frist ─────────────────────────
+test("#5844: gave-tilbud på 10 dage udløber IKKE; normalt tilbud på 10 dage gør", async () => {
+  const tenDaysAgo = new Date(NOW.getTime() - 10 * 86_400_000).toISOString();
+  const intakeRows = [
+    { id: "i-gift", rider_id: "r-gift", team_id: "t", status: "offered", created_at: tenDaysAgo, source: "board_gift" },
+    { id: "i-norm", rider_id: "r-norm", team_id: "t", status: "offered", created_at: tenDaysAgo, source: "intake" },
+  ];
+  const riders = intakeRows.map((r) => ({ id: r.rider_id, team_id: null, pending_team_id: null }));
+  const capture = {};
+  const auctioned = [];
+  const r = await runIntakeOfferExpirySweep({
+    supabase: buildMockSupabase({ intakeRows, riders, capture }),
+    now: NOW,
+    isEnabled: async () => true,
+    listYouthAuctionFn: async (_sb, { riderId }) => { auctioned.push(riderId); return { id: "a" }; },
+  });
+  assert.equal(r.expired, 1);
+  assert.deepEqual(auctioned, ["r-norm"]);
+  assert.equal(intakeRows[0].status, "offered", "gave-tilbuddet står til dag 14");
+  assert.equal(capture.giftCutoff, new Date(NOW.getTime() - 14 * 86_400_000).toISOString());
+});
+
+test("#5844: gave-tilbud ældre end 14 dage udløber som et normalt tilbud", async () => {
+  const fifteenDaysAgo = new Date(NOW.getTime() - 15 * 86_400_000).toISOString();
+  const intakeRows = [
+    { id: "i-gift", rider_id: "r-gift", team_id: "t", status: "offered", created_at: fifteenDaysAgo, source: "board_gift" },
+  ];
+  const riders = [{ id: "r-gift", team_id: null, pending_team_id: null }];
+  const calls = [];
+  const r = await runIntakeOfferExpirySweep({
+    supabase: buildMockSupabase({ intakeRows, riders, capture: {} }),
+    now: NOW,
+    isEnabled: async () => true,
+    listYouthAuctionFn: async (_sb, args) => { calls.push(args); return { id: "a" }; },
+  });
+  assert.equal(r.expired, 1);
+  assert.equal(intakeRows[0].status, "expired");
+});
+
+test("#5844: umodne gave-tilbud tæller ikke som efterslæb i kvoten", async () => {
+  const tenDaysAgo = new Date(NOW.getTime() - 10 * 86_400_000).toISOString();
+  const intakeRows = Array.from({ length: INTAKE_EXPIRY_BACKLOG_THRESHOLD + 50 }, (_, i) => ({
+    id: `g${i}`, rider_id: `rg${i}`, team_id: "t", status: "offered", created_at: tenDaysAgo, source: "board_gift",
+  }));
+  const supabase = buildMockSupabase({ intakeRows, riders: [], capture: {} });
+  const { quota, overdue } = await resolveDailyQuota(
+    supabase,
+    new Date(NOW.getTime() - 7 * 86_400_000).toISOString(),
+    new Date(NOW.getTime() - 14 * 86_400_000).toISOString(),
+  );
+  assert.equal(overdue, 0);
+  assert.equal(quota, INTAKE_EXPIRY_STEADY_PER_DAY);
+});
+
+test("#5844: før migrationen (kolonnen mangler) falder sweep'en tilbage til den gamle forespørgsel", async () => {
+  const intakeRows = [
+    { id: "i-old", rider_id: "r-old", team_id: "t", status: "offered", created_at: OLD },
+  ];
+  const riders = [{ id: "r-old", team_id: null, pending_team_id: null }];
+  const base = buildMockSupabase({ intakeRows, riders, capture: {} });
+  // Wrap: et or()-kald giver 42703 (kolonnen findes ikke), præcis som PostgREST.
+  const supabase = {
+    from(table) {
+      const inner = base.from(table);
+      if (table !== "academy_intake") return inner;
+      return {
+        ...inner,
+        select(cols, opts) {
+          const chain = inner.select(cols, opts);
+          const wrap = (c) => new Proxy(c, {
+            get(target, prop) {
+              if (prop === "or") {
+                const failing = {
+                  lt: () => Promise.resolve({ count: null, data: null, error: { code: "42703", message: "column academy_intake.source does not exist" } }),
+                  order: () => failing,
+                  limit: () => Promise.resolve({ data: null, error: { code: "42703", message: "column academy_intake.source does not exist" } }),
+                };
+                return () => failing;
+              }
+              const v = target[prop];
+              return typeof v === "function" ? (...a) => { const r = v.apply(target, a); return r && typeof r === "object" && !r.then ? wrap(r) : r; } : v;
+            },
+          });
+          return wrap(chain);
+        },
+      };
+    },
+  };
+  const r = await runIntakeOfferExpirySweep({
+    supabase,
+    now: NOW,
+    isEnabled: async () => true,
+    listYouthAuctionFn: async () => ({ id: "a" }),
+  });
+  assert.equal(r.expired, 1);
 });

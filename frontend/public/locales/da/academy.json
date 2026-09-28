@@ -229,5 +229,11 @@
       "rider_not_found": "Rytteren er ikke længere i dit akademi.",
       "failed": "Det gik ikke igennem. Prøv igen."
     }
+  },
+  "boardGift": {
+    "heading": "Tak fra bestyrelsen",
+    "meta": "{count} åbne",
+    "context": "Bestyrelsen har lagt disse talenter i dit akademi som tak. Det er gratis at signe dem, normal ungdomsløn gælder, og trupgrænserne tæller stadig. Tilbuddene gælder i 14 dage.",
+    "free": "Gratis"
   }
 }

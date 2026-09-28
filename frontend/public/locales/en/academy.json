@@ -229,5 +229,11 @@
       "rider_not_found": "This rider is no longer in your academy.",
       "failed": "That did not go through. Try again."
     }
+  },
+  "boardGift": {
+    "heading": "A thank-you from the board",
+    "meta": "{count} open",
+    "context": "The board has put these prospects in your academy as a thank-you. Signing is free, normal youth wages apply, and squad limits still count. The offers run for 14 days.",
+    "free": "Free"
   }
 }

@@ -34,8 +34,15 @@
 // parameter og udløser derfor aldrig kreditering.
 import { isIntakeOfferExpiryEnabled } from "./academyIntakeExpiryFlag.js";
 import { listRejectedAsYouthAuction } from "./youthMarket.js";
+import {
+  BOARD_GIFT_EXPIRY_DAYS,
+  BOARD_GIFT_SOURCE,
+  NORMAL_INTAKE_EXPIRY_DAYS,
+  isMissingSchemaError,
+} from "./academyIntakeSource.js";
 
-export const INTAKE_OFFER_EXPIRY_DAYS = 7;
+// #5844: SSOT flyttet til academyIntakeSource.js (normal 7 dage; gave-kuldet 14).
+export const INTAKE_OFFER_EXPIRY_DAYS = NORMAL_INTAKE_EXPIRY_DAYS;
 export const INTAKE_EXPIRY_AUCTION_DURATION_HOURS = 24;
 
 // ── Dagskvote (ejer-godkendt 10/8) ───────────────────────────────────────────
@@ -73,16 +80,43 @@ export const INTAKE_EXPIRY_BACKLOG_THRESHOLD = 100;
 // steady-satsen, så en læser ikke tror kvoten stadig er 30.
 export const INTAKE_EXPIRY_MAX_PER_DAY = INTAKE_EXPIRY_STEADY_PER_DAY;
 
+// ── #5844: bestyrelsens gave-kuld har 14 dages frist ─────────────────────────
+// Gave-rækker (academy_intake.source = 'board_gift') er først modne når de er
+// ældre end BOARD_GIFT_EXPIRY_DAYS. Filteret sættes i SELVE forespørgslen, så
+// ~1.100 gave-tilbud mellem dag 7 og 14 hverken tæller som efterslæb eller æder
+// udvælgelsens limit fra de normale tilbud. Tidsstemplet citeres (":" og "." er
+// reserverede tegn i PostgREST's or-syntaks).
+export function giftGraceFilter(giftCutoffIso) {
+  return `source.neq.${BOARD_GIFT_SOURCE},created_at.lt."${giftCutoffIso}"`;
+}
+
+export function giftCutoffIsoFor(now) {
+  return new Date(now.getTime() - BOARD_GIFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+// Før migrationen er kørt (deploy-vinduet før auto-migrate.yml) findes kolonnen
+// ikke; så køres forespørgslen uden gave-filteret — ingen gave-rækker kan
+// eksistere endnu, så adfærden er præcis den gamle.
+async function withGiftGrace(build) {
+  const res = await build(true);
+  if (res?.error && isMissingSchemaError(res.error)) return build(false);
+  return res;
+}
+
 /**
  * Dagens kvote: CATCHUP hvis der er et efterslæb af overmodne tilbud, ellers STEADY.
  * Tæller kun tilbud der FAKTISK er over grænsen — ikke hele køen.
  */
-export async function resolveDailyQuota(supabase, cutoffIso) {
-  const { count, error } = await supabase
-    .from("academy_intake")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "offered")
-    .lt("created_at", cutoffIso);
+export async function resolveDailyQuota(supabase, cutoffIso, giftCutoffIso = null) {
+  const { count, error } = await withGiftGrace((grace) => {
+    const q = supabase
+      .from("academy_intake")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "offered");
+    return grace && giftCutoffIso
+      ? q.or(giftGraceFilter(giftCutoffIso)).lt("created_at", cutoffIso)
+      : q.lt("created_at", cutoffIso);
+  });
   if (error) throw new Error(`academy_intake backlog count: ${error.message}`);
   const overdue = count ?? 0;
   return {
@@ -115,7 +149,8 @@ export async function runIntakeOfferExpirySweep({
     .gt("resolved_at", dayAgoIso);
   if (cntError) throw new Error(`academy_intake expiry day-count: ${cntError.message}`);
   // Dagens kvote afhænger af om der er et efterslæb (se konstanterne ovenfor).
-  const { quota, overdue } = await resolveDailyQuota(supabase, cutoffIso);
+  const giftCutoffIso = giftCutoffIsoFor(now);
+  const { quota, overdue } = await resolveDailyQuota(supabase, cutoffIso, giftCutoffIso);
   const budget = quota - (expiredToday ?? 0);
   if (budget <= 0) {
     return { ran: true, expired: 0, auctioned: 0, reconciled: 0, reason: "daily_budget_spent", cutoff: cutoffIso, quota, overdue };
@@ -123,13 +158,16 @@ export async function runIntakeOfferExpirySweep({
 
   // Ældste først. Hent budget + buffer, så afstemte (ejede) rækker ikke æder
   // hele udvælgelsen uden at der er team-løse kandidater tilbage.
-  const { data: candidates, error: selError } = await supabase
-    .from("academy_intake")
-    .select("id, rider_id, team_id")
-    .eq("status", "offered")
-    .lt("created_at", cutoffIso)
-    .order("created_at", { ascending: true })
-    .limit(budget * 2);
+  const { data: candidates, error: selError } = await withGiftGrace((grace) => {
+    const q = supabase
+      .from("academy_intake")
+      .select("id, rider_id, team_id")
+      .eq("status", "offered")
+      .lt("created_at", cutoffIso);
+    return (grace ? q.or(giftGraceFilter(giftCutoffIso)) : q)
+      .order("created_at", { ascending: true })
+      .limit(budget * 2);
+  });
   if (selError) throw new Error(`academy_intake expiry select: ${selError.message}`);
   if (!candidates?.length) return { ran: true, expired: 0, auctioned: 0, reconciled: 0, cutoff: cutoffIso };
 

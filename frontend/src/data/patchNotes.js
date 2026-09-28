@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.308",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "A thank-you from the board",
+          "body": "Every active team gets 10 youth prospects in the academy: 5 at U23 age and 5 at junior age. Signing them is free and normal youth wages apply. Squad limits still count (U23 12, junior 10), so pick the ones you want. The offers run for 14 days, and they do not replace your weekly academy intake."
+        },
+        "da": {
+          "title": "Tak fra bestyrelsen",
+          "body": "Alle aktive hold får 10 ungdomstalenter i akademiet: 5 i U23-alderen og 5 i junioralderen. Det er gratis at signe dem, og normal ungdomsløn gælder. Trupgrænserne tæller stadig (U23 12, junior 10), så vælg dem, du vil have. Tilbuddene gælder i 14 dage og erstatter ikke dit ugentlige akademi-optag."
+        },
+        "refs": [
+          5844
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.307",
     "date": "2026-09-28",
     "label": "Beta",

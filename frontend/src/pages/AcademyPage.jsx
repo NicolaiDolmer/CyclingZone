@@ -50,6 +50,10 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
+import { GiftIcon } from "../components/ui/icons/index.jsx";
+
+// #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
+const BOARD_GIFT_SOURCE = "board_gift";
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -100,6 +104,11 @@ export default function AcademyPage() {
     fetchReleaseQuote, releaseRider,
     pullIntake,
   } = useAcademy();
+  // #5844: bestyrelsens gave-kuld ("A thank-you from the board") vises i sin
+  // egen sektion og tæller IKKE med i ugens optag: pull-knappen afgøres kun af
+  // de normale tilbud, så gaven aldrig skjuler ugens hentning.
+  const giftIntake = useMemo(() => (intake ?? []).filter((i) => i.source === BOARD_GIFT_SOURCE), [intake]);
+  const regularIntake = useMemo(() => (intake ?? []).filter((i) => i.source !== BOARD_GIFT_SOURCE), [intake]);
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
@@ -448,6 +457,149 @@ export default function AcademyPage() {
     );
   }
 
+  // #5844: ét intake-kort. Delt af det normale optag og bestyrelsens gave-kuld,
+  // så de to aldrig driver fra hinanden (samme sign/afvis, samme trup-spærring).
+  const renderIntakeCard = (item) => {
+    const rider = item.rider;
+    const isBoardGift = item.source === BOARD_GIFT_SOURCE;
+    const age = getRiderAge(rider.birthdate, seasonYear);
+    const busy = actionState[rider.id] != null;
+    const err = actionErrors[rider.id];
+    const potential = item.potentialEstimate;
+    // #2796: tilbuddet udløber efter 7 dage (academyIntakeExpirySweep) —
+    // hjælpeteksten har lovet det siden #2627, men kortet viste det aldrig.
+    const expiryDays = daysUntil(item.expiresAt);
+    const expirySoon = expiryDays != null && expiryDays <= 2;
+    // Signeringsprisen er backend-beregnet (samme udtryk som debiteringen),
+    // så kortet ikke spejler en økonomi-regel der kan drive fra hinanden.
+    const fee = item.signingFee;
+    const tooExpensive = fee != null && balance != null && fee > balance;
+    // #5568: spær kun mod loftet i den trup han lander i. targetSquad
+    // kommer fra backend (samme valg som signeringen); mangler det,
+    // afgør sæsonalderen det med samme regel.
+    const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
+    const isFull = isSquadFull(targetSquad, squadCounts);
+    const fullTooltip = targetSquad === "junior"
+      ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
+      : t("fullTooltipU23", { max: SQUAD_CAPS.u23 });
+
+    return (
+      <Card key={item.intakeId} className="p-4 flex flex-col gap-3">
+        {/* Navn + nationalitet. #3142: INGEN RiderLink her — en 'offered'
+            intake-kandidat er bevidst skjult for den almindelige rytter-DB
+            via RLS (database/2026-06-22-hide-intake-riders-from-db.sql,
+            #1743), så /riders/:id ville altid give "rider not found" for
+            netop denne rytter, uanset hvilket hold der klikker. Navnet er
+            derfor almindelig tekst indtil kandidaten er signeret/afvist —
+            roster- og gradueringssektionerne linker fortsat (de ryttere er
+            ikke længere 'offered' og er derfor synlige). */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-sm leading-snug truncate text-cz-1">
+              {rider.firstname} {rider.lastname}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {rider.nationality_code && <NationCell code={rider.nationality_code} />}
+              {age != null && (
+                <span className="text-xs text-cz-3">{t("ageLabel", { age })}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {item.is_serious && (
+              <span className="text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill bg-cz-accent/15 text-cz-accent-t">
+                {t("seriousBadge")}
+              </span>
+            )}
+            {expiryDays != null && (
+              <span
+                title={t("expiryTooltip")}
+                className={`text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill ${expirySoon ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-subtle text-cz-2 border border-cz-border"}`}
+              >
+                {expiryDays <= 0 ? t("expiryToday") : t("expiryDays", { days: expiryDays })}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} className="self-start" />
+
+        {/* #2454/#3746: potentiale i RATING-point, samme enhed som resten
+            af spillet. `prog` er prognose-båndets navn; `ceil` er en
+            alias (samme tal) for ældre klient-cache. Stjernerne bliver
+            stående som fallback for payloads uden bånd. */}
+        {(item.potentialBand || potential) && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-cz-3">{t("potential")}</span>
+            {item.potentialBand ? (
+              <span className="font-mono tabular-nums text-[13px] text-cz-1">
+                {(item.potentialBand.prog ?? item.potentialBand.ceil).lo}
+                –{(item.potentialBand.prog ?? item.potentialBand.ceil).hi}
+              </span>
+            ) : (
+              <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} />
+            )}
+          </div>
+        )}
+
+        {/* #2796: Signér var et irreversibelt køb uden synlig pris.
+            #3550: pull-mode viser markedsværdien som PROVISORISK (symbolsk
+            startværdi, ejer-beslutning 19/8 punkt 2) + en lønforhåndsvisning
+            (1 sæsons intro-kontrakt), og forklarer at den rigtige værdi
+            sættes ved førstkommende søndags-opdatering (punkt 5). */}
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-t border-cz-border pt-2">
+          <dt className="text-cz-3">{intakePull.enabled ? t("intakePull.provisionalValue") : t("colValue")}</dt>
+          <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(getRiderMarketValue(rider))} CZ$</dd>
+          <dt className="text-cz-3">{t("signingFee")}</dt>
+          {/* #5844: bestyrelsens gave signes gratis (backend sender signingFee 0). */}
+          <dd className={`text-right font-data tabular-nums font-semibold ${tooExpensive ? "text-cz-danger" : "text-cz-1"}`}>
+            {isBoardGift && fee === 0 ? t("boardGift.free") : `${formatMoney(fee)} CZ$`}
+          </dd>
+          {intakePull.enabled && (
+            <>
+              <dt className="text-cz-3">{t("intakePull.wageOneSeason")}</dt>
+              <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(item.wagePreview)} CZ$</dd>
+            </>
+          )}
+        </dl>
+        {intakePull.enabled && (
+          <p className="text-3xs text-cz-3">{t("intakePull.valuationNote")}</p>
+        )}
+
+        {/* Fejlbesked */}
+        {err && <p className="text-xs text-cz-danger">{err}</p>}
+
+        {/* Handlingsknapper */}
+        {/* #4628: samme guld-rationering som gradueringskortene —
+            tre "Signer"-kort gav tre guld-knapper (audit 2026-09). */}
+        <div className="flex gap-2 mt-auto pt-1">
+          <Button size="sm" variant="secondary" className="flex-1"
+            onClick={() => handleSign(rider.id)}
+            disabled={busy || isFull || tooExpensive}
+            loading={actionState[rider.id] === "signing"}
+            title={isFull ? fullTooltip : tooExpensive ? t("error.insufficientBalance") : undefined}>
+            {t("signBtn")}
+          </Button>
+          <Button size="sm" variant="ghost" className="flex-1"
+            onClick={() => handleReject(rider.id)}
+            disabled={busy} loading={actionState[rider.id] === "rejecting"}>
+            {t("rejectBtn")}
+          </Button>
+        </div>
+
+        {/* Blokerings-forklaring under knapperne */}
+        {isFull && !err && (
+          <p className="text-3xs text-cz-3 text-center">
+            {targetSquad === "junior" ? t("fullNoteJunior") : t("fullNoteU23")}
+          </p>
+        )}
+        {!isFull && tooExpensive && !err && (
+          <p className="text-3xs text-cz-danger text-center">{t("error.insufficientBalance")}</p>
+        )}
+      </Card>
+    );
+  };
+
   // #3454: T1 (max-w-4xl) → T2 (max-w-[1600px]) — akademiets roster bruger
   // allerede den kanoniske DataTable (#3045, T2-recipen), men sad klemt i en
   // T1-container med spildt whitespace i siderne (ejer-direktiv 6/8, samme
@@ -522,6 +674,27 @@ export default function AcademyPage() {
         </section>
       )}
 
+      {/* #5844: "A thank-you from the board" — bestyrelsens engangs-kuld (10
+          tilbud: 5 U23-alder + 5 junior-alder). Samme kort og samme sign/afvis
+          som det normale optag; eneste forskel er gratis signing og 14 dages
+          frist. Ingen guld-knap her (TASTE §3: ét guld pr. view — pull-knappen
+          nedenfor kan være sidens eneste). */}
+      {giftIntake.length > 0 && (
+        <section data-testid="academy-board-gift">
+          <SectionHeader
+            title={t("boardGift.heading")}
+            meta={t("boardGift.meta", { count: giftIntake.length })}
+          />
+          <p className="mb-4 flex items-start gap-2 text-xs text-cz-2">
+            <GiftIcon size={14} className="mt-px shrink-0 text-cz-3" aria-hidden="true" />
+            <span>{t("boardGift.context")}</span>
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {giftIntake.map(renderIntakeCard)}
+          </div>
+        </section>
+      )}
+
       {/* INTAKE-sektion */}
       <section>
         <SectionHeader title={t("intakeHeading")} />
@@ -531,7 +704,7 @@ export default function AcademyPage() {
             visning (auto-drip-tomtilstand nedenfor). enabled=true bytter tomme-
             tilstanden ud med en hent-knap (tilstand a) medmindre ugens kuld
             allerede er hentet OG opbrugt (tilstand b var kandidat-kortene). */}
-        {intake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? (
+        {regularIntake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? (
           <Card className="p-5 flex flex-col items-start gap-3">
             <h3 className="text-sm font-semibold text-cz-1">{t("intakePull.title")}</h3>
             <p className="text-xs text-cz-2 max-w-md">{t("intakePull.description")}</p>
@@ -541,7 +714,7 @@ export default function AcademyPage() {
               {t("intakePull.pullBtn")}
             </Button>
           </Card>
-        ) : intake.length === 0 && intakePull.enabled ? (
+        ) : regularIntake.length === 0 && intakePull.enabled ? (
           <EmptyState
             title={t("emptyIntakeTitle")}
             description={t("intakePull.emptyAfterPull")}
@@ -551,7 +724,7 @@ export default function AcademyPage() {
               </Link>
             }
           />
-        ) : intake.length === 0 ? (
+        ) : regularIntake.length === 0 ? (
           <EmptyState
             title={t("emptyIntakeTitle")}
             description={t("emptyIntake")}
@@ -563,144 +736,7 @@ export default function AcademyPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {intake.map((item) => {
-              const rider = item.rider;
-              const age = getRiderAge(rider.birthdate, seasonYear);
-              const busy = actionState[rider.id] != null;
-              const err = actionErrors[rider.id];
-              const potential = item.potentialEstimate;
-              // #2796: tilbuddet udløber efter 7 dage (academyIntakeExpirySweep) —
-              // hjælpeteksten har lovet det siden #2627, men kortet viste det aldrig.
-              const expiryDays = daysUntil(item.expiresAt);
-              const expirySoon = expiryDays != null && expiryDays <= 2;
-              // Signeringsprisen er backend-beregnet (samme udtryk som debiteringen),
-              // så kortet ikke spejler en økonomi-regel der kan drive fra hinanden.
-              const fee = item.signingFee;
-              const tooExpensive = fee != null && balance != null && fee > balance;
-              // #5568: spær kun mod loftet i den trup han lander i. targetSquad
-              // kommer fra backend (samme valg som signeringen); mangler det,
-              // afgør sæsonalderen det med samme regel.
-              const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
-              const isFull = isSquadFull(targetSquad, squadCounts);
-              const fullTooltip = targetSquad === "junior"
-                ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
-                : t("fullTooltipU23", { max: SQUAD_CAPS.u23 });
-
-              return (
-                <Card key={item.intakeId} className="p-4 flex flex-col gap-3">
-                  {/* Navn + nationalitet. #3142: INGEN RiderLink her — en 'offered'
-                      intake-kandidat er bevidst skjult for den almindelige rytter-DB
-                      via RLS (database/2026-06-22-hide-intake-riders-from-db.sql,
-                      #1743), så /riders/:id ville altid give "rider not found" for
-                      netop denne rytter, uanset hvilket hold der klikker. Navnet er
-                      derfor almindelig tekst indtil kandidaten er signeret/afvist —
-                      roster- og gradueringssektionerne linker fortsat (de ryttere er
-                      ikke længere 'offered' og er derfor synlige). */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm leading-snug truncate text-cz-1">
-                        {rider.firstname} {rider.lastname}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        {rider.nationality_code && <NationCell code={rider.nationality_code} />}
-                        {age != null && (
-                          <span className="text-xs text-cz-3">{t("ageLabel", { age })}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      {item.is_serious && (
-                        <span className="text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill bg-cz-accent/15 text-cz-accent-t">
-                          {t("seriousBadge")}
-                        </span>
-                      )}
-                      {expiryDays != null && (
-                        <span
-                          title={t("expiryTooltip")}
-                          className={`text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill ${expirySoon ? "bg-cz-danger-bg text-cz-danger" : "bg-cz-subtle text-cz-2 border border-cz-border"}`}
-                        >
-                          {expiryDays <= 0 ? t("expiryToday") : t("expiryDays", { days: expiryDays })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} className="self-start" />
-
-                  {/* #2454/#3746: potentiale i RATING-point, samme enhed som resten
-                      af spillet. `prog` er prognose-båndets navn; `ceil` er en
-                      alias (samme tal) for ældre klient-cache. Stjernerne bliver
-                      stående som fallback for payloads uden bånd. */}
-                  {(item.potentialBand || potential) && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-cz-3">{t("potential")}</span>
-                      {item.potentialBand ? (
-                        <span className="font-mono tabular-nums text-[13px] text-cz-1">
-                          {(item.potentialBand.prog ?? item.potentialBand.ceil).lo}
-                          –{(item.potentialBand.prog ?? item.potentialBand.ceil).hi}
-                        </span>
-                      ) : (
-                        <PotentialeStars range={{ lo: potential.lo, hi: potential.hi }} />
-                      )}
-                    </div>
-                  )}
-
-                  {/* #2796: Signér var et irreversibelt køb uden synlig pris.
-                      #3550: pull-mode viser markedsværdien som PROVISORISK (symbolsk
-                      startværdi, ejer-beslutning 19/8 punkt 2) + en lønforhåndsvisning
-                      (1 sæsons intro-kontrakt), og forklarer at den rigtige værdi
-                      sættes ved førstkommende søndags-opdatering (punkt 5). */}
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-t border-cz-border pt-2">
-                    <dt className="text-cz-3">{intakePull.enabled ? t("intakePull.provisionalValue") : t("colValue")}</dt>
-                    <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(getRiderMarketValue(rider))} CZ$</dd>
-                    <dt className="text-cz-3">{t("signingFee")}</dt>
-                    <dd className={`text-right font-data tabular-nums font-semibold ${tooExpensive ? "text-cz-danger" : "text-cz-1"}`}>
-                      {formatMoney(fee)} CZ$
-                    </dd>
-                    {intakePull.enabled && (
-                      <>
-                        <dt className="text-cz-3">{t("intakePull.wageOneSeason")}</dt>
-                        <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(item.wagePreview)} CZ$</dd>
-                      </>
-                    )}
-                  </dl>
-                  {intakePull.enabled && (
-                    <p className="text-3xs text-cz-3">{t("intakePull.valuationNote")}</p>
-                  )}
-
-                  {/* Fejlbesked */}
-                  {err && <p className="text-xs text-cz-danger">{err}</p>}
-
-                  {/* Handlingsknapper */}
-                  {/* #4628: samme guld-rationering som gradueringskortene —
-                      tre "Signer"-kort gav tre guld-knapper (audit 2026-09). */}
-                  <div className="flex gap-2 mt-auto pt-1">
-                    <Button size="sm" variant="secondary" className="flex-1"
-                      onClick={() => handleSign(rider.id)}
-                      disabled={busy || isFull || tooExpensive}
-                      loading={actionState[rider.id] === "signing"}
-                      title={isFull ? fullTooltip : tooExpensive ? t("error.insufficientBalance") : undefined}>
-                      {t("signBtn")}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="flex-1"
-                      onClick={() => handleReject(rider.id)}
-                      disabled={busy} loading={actionState[rider.id] === "rejecting"}>
-                      {t("rejectBtn")}
-                    </Button>
-                  </div>
-
-                  {/* Blokerings-forklaring under knapperne */}
-                  {isFull && !err && (
-                    <p className="text-3xs text-cz-3 text-center">
-                      {targetSquad === "junior" ? t("fullNoteJunior") : t("fullNoteU23")}
-                    </p>
-                  )}
-                  {!isFull && tooExpensive && !err && (
-                    <p className="text-3xs text-cz-danger text-center">{t("error.insufficientBalance")}</p>
-                  )}
-                </Card>
-              );
-            })}
+            {regularIntake.map(renderIntakeCard)}
           </div>
         )}
       </section>
