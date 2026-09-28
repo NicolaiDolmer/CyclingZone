@@ -23,6 +23,63 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.308",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training follows race days",
+          "body": "Training now runs once per race day, after the day's last race (from 20:00). Riders who race develop from the race itself. The +25% bonus for training manually is gone, so all teams train equally."
+        },
+        "da": {
+          "title": "Træning følger løbsdage",
+          "body": "Træning kører nu én gang pr. løbsdag, efter dagens sidste løb (fra kl. 20). Ryttere, der kører løb, udvikler sig gennem selve løbet. Bonussen på +25 % ved manuel træning er væk, så alle hold træner ens."
+        },
+        "refs": [
+          4847,
+          5267,
+          5281
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "New auctions can start again after the season switch",
+          "body": "New auctions can be started again after the season switch. Bidding on active auctions continued to work throughout."
+        },
+        "da": {
+          "title": "Nye auktioner kan startes igen efter sæsonskiftet",
+          "body": "Nye auktioner kan startes igen efter sæsonskiftet. Bud på aktive auktioner virkede hele tiden."
+        },
+        "refs": [
+          5846
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board meeting signing works again",
+          "body": "Signing the board meeting no longer fails when you accept a new vision goal. If it failed for you, sign again."
+        },
+        "da": {
+          "title": "Underskrift af årsmødet virker igen",
+          "body": "Underskrift af årsmødet fejler ikke længere, når du accepterer et nyt visionsmål. Hvis det fejlede for dig, kan du underskrive igen."
+        },
+        "refs": [
+          5840
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.307",
     "date": "2026-09-28",
     "label": "Beta",
