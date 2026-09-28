@@ -250,10 +250,10 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
-import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "../lib/riderEligibility.js";
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
@@ -3097,17 +3097,23 @@ router.get("/training/me", requireAuth, async (req, res) => {
 //
 // TO STIER, afgjort af `training_tick_per_race_day`:
 //
-//   flag OFF (i dag) — uaendret #1305-adfaerd: dagens ét-kliks-traening med manager-
-//     bonus. Bit-identisk med foer #4847.
+//   `training_tick_per_race_day` OFF, med `daily_training_enabled` ON — den gamle
+//     kalenderdags-sti (#1305): ét tick på tick_date,
+//     hverken season_id, game_day eller squad skrives.
 //
-//   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Koer dagens
-//     traening nu": INGEN BONUS (motoren saetter bonus=false paa loebsdags-stien), og
-//     knappen AABNER foerst naar dagens sidste loeb er lukket — PRAECIS samme
-//     betingelse som cron-sweepen (kl. 20 dansk tid + ingen aaben finalization).
-//     Den koerer holdets EGNE loebsdage for i dag, i stigende raekkefoelge, og er
+//   flag ON (#4847, ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3) — "Kør dagens
+//     træning nu": knappen ÅBNER først når dagens sidste løb er lukket — PRÆCIS
+//     samme betingelse som cron-sweepen (kl. 20 dansk tid + ingen åben finalization).
+//     Den kører holdets EGNE løbsdage for i dag, i stigende rækkefølge, og er
 //     idempotent via mutexen: anden gang giver 409 already_trained_today.
 //
-// Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
+// BONUS (#4847 B3, ejer-go 6/9): manager-klik gav TIDLIGERE +25 % (cfg.bonusMult) —
+// fjernet FRA SELVE MOTOREN (dailyTraining.js), ikke kun fra løbsdags-stien. Begge
+// stier her trænes derfor nu ens; `bonus_applied` i training_day_runs er en legacy/
+// audit-kolonne (jf. dailyTrainingEngine.js) uden længere effekt på væksten.
+//
+// Idempotent: samme dag → 409 already_trained_today.
+// `daily_training_enabled` OFF → 409 daily_training_disabled.
 // NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
 // statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
 // returnerer "invalid_focus", hvilket blokerer knappen helt.
@@ -4592,7 +4598,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       // frosset trup client-side (fjernelse er stadig altid tilladt, se PUT /selection).
       // #4701: scheduled_for skal med — getSelectionContext vurderer skadesstatus mod
       // LØBETS startdato, ikke "nu" (raceSelectionReferenceDateStr, riderEligibility.js).
-      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id, scheduled_for")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id, scheduled_for, squad")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -4602,7 +4608,10 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     // #1954: pulje-eligibility op-front (samme gate som PUT, lib/raceBinding.teamInRacePool)
     // så UI kan vise et read-only "ikke dit løb"-panel i stedet for at lade en hel
     // opstilling bygges og fejle ved gem med selection_wrong_pool.
-    const eligible = teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id });
+    // #5843: trup-bevidst — et U23-/juniorløb matches mod holdets U23-/juniorpulje
+    // (race.squad skal derfor med i select'en ovenfor; uden den var alle ungdomsløb
+    // "ikke dit løb", og auto-udtagelsen kunne ikke ændres). Seniorløb: uændret.
+    const eligible = teamInRaceSquadPool({ team: req.team, race });
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
 
     // #5301: har holdet trukket sig? PUT /selection har allerede gaten (409
@@ -5508,7 +5517,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
       // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
       // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5539,7 +5548,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
     // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
     const prepared = await prepareSelectionChange({
-      supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, body: req.body,
+      supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: req.body,
     });
     if (!prepared.ok) {
       return res.status(prepared.status).json(
@@ -5693,7 +5702,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
       // vurderer skadesstatus mod LØBETS startdato, ikke "nu" (samme regel som
       // single-endpointet ovenfor, så matrixens "Gem plan" ikke afviger).
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad")
       .in("id", raceIds);
     if (racesErr) return res.status(500).json({ error: racesErr.message });
     const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
@@ -5728,7 +5737,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     for (const change of changes) {
       const race = raceById.get(change.raceId);
       const result = await prepareSelectionChange({
-        supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, body: change,
+        supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: change,
       });
       if (!result.ok) {
         return res.status(result.status).json({
@@ -5861,7 +5870,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       .from("races")
       // #4701: scheduled_for skal med — skadesstatus for kandidat-poolen nedenfor
       // vurderes mod LØBETS startdato, ikke "nu".
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5869,7 +5878,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): et igangværende etapeløb må ikke få sit startfelt genskrevet.
     if (isRaceLineupFrozen(race)) return res.status(409).json({ error: "selection_race_started" });
-    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
+    // #5843: trup-bevidst pulje-match (ungdomsløb mod holdets U23-/juniorpulje).
+    if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
 
@@ -5892,7 +5902,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     // #2579/#2637: delt eligibility-filter + skade-udelukkelse — samme regler som
     // raceRunner.fillMissingTeamEntries og regenerate-endpointet (Spec 6.5, #1306).
     const [{ data: teamRiders, error: ridersErr }, { data: stageProfiles, error: profErr }] = await Promise.all([
-      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id)),
+      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race) }),
       supabase.from("race_stage_profiles")
         .select("stage_number, profile_type, finale_type, demand_vector")
         .eq("race_id", race.id).order("stage_number", { ascending: true }),
@@ -6207,13 +6217,13 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
     const { data: race, error } = await supabase
-      .from("races").select("id, status, stages_completed, league_division_id").eq("id", req.params.raceId).maybeSingle();
+      .from("races").select("id, status, stages_completed, league_division_id, squad").eq("id", req.params.raceId).maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): afmelding midt i et igangværende etapeløb ville ændre startfeltet.
     if ((race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
-    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
+    if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
     const { error: upErr } = await supabase

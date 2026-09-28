@@ -5,10 +5,10 @@
 // sidens eneste guld-knap (Set tactics, HANDOFF pkt. 7) kommer først med
 // ungdomsløbene.
 //
-// Calendar, Results og Standings er tomme indtil ungdomsløb findes (races har
-// endnu ingen trup-dimension, spec 2026-09-15 §3.2). De viser derfor ingen tal,
-// ingen tomme tabeller og intet løfte om en dato (TASTE P11), kun hvor man kan
-// følge med: roadmappen.
+// Calendar og Results viser ungdomsløbene siden #5843 (YouthRacesTab); tom
+// tilstand kun når holdet ingen ungdomspulje eller løb har. Standings er tom
+// indtil første løb er kørt. Ingen tal, ingen tomme tabeller og intet løfte om
+// en dato (TASTE P11), kun hvor man kan følge med: roadmappen.
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { BikeIcon, CalendarIcon, FlagIcon, PodiumIcon } from "../ui/index.js";
@@ -38,14 +38,16 @@ const RACE_ICON: Record<YouthRaceTab, typeof CalendarIcon> = {
   standings: PodiumIcon,
 };
 
-export function YouthRacesEmptyState({ squad, tab }: { squad: YouthSquad; tab: YouthRaceTab }) {
+// #5843: noPool = holdet har ingen pulje for truppen. Samme flade og ikon, men
+// en tekst der siger hvorfor, så en tom fane kan skelnes fra "ingen løb endnu".
+export function YouthRacesEmptyState({ squad, tab, noPool = false }: { squad: YouthSquad; tab: YouthRaceTab; noPool?: boolean }) {
   const { t } = useTranslation("squad");
   const Icon = RACE_ICON[tab];
   return (
     <EmptyState
       icon={<Icon size={26} aria-hidden="true" />}
-      title={t("empty.races.title")}
-      description={t(`empty.races.${tab}.${squad}`)}
+      title={noPool ? t("youthRaces.noPool.title") : t("empty.races.title")}
+      description={noPool ? t(`youthRaces.noPool.${squad}`) : t(`empty.races.${tab}.${squad}`)}
       action={<Link to="/roadmap" className={SECONDARY_SM}>{t("empty.races.action")}</Link>}
     />
   );
