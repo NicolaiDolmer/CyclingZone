@@ -1,16 +1,6 @@
-// #5124 — D-047-audit af sæsonmatricen på mobil (testet ved 393px, godt under
-// baade #5124's egen "<768px"-tekst og D-047/DataTable.jsx's 640px-grænse).
-//
-// FUND (dokumenteret her + som kode-kommentar i SeasonMatrix.jsx, jf. #5124's
-// krav om skriftlig begrundelse for undtagelsen): matricen er en rytter ×
-// løbsdag-grid, ikke en entitetsliste — D-047's "tre faste kolonner" giver
-// ikke mening for kalenderdage der skal læses i rækkefølge. Sticky
-// navnekolonne + KONTAINERET vandret scroll (aldrig page-level) er den
-// korrekte mobil-løsning her, og den har allerede eksisteret siden #1146
-// (ejer-godkendt design 27/8, FØR #5124) — se
-// frontend/tests/e2e/1146-season-matrix.spec.js's "mobil 375px"-test for den
-// oprindelige dækning. Denne spec genverificerer kontrakten under #5124's eget
-// nummer + beviser hovedhandlingen (åbne et løb fra en dag-kolonne) på 393px.
+// #5124 — ejerens A-go 28/9: én valgt race, tre ordnede løbsdage, eksplicit
+// Før/Senere og ingen vandret scroll i matrix eller side på telefonen. Desktop
+// beholder den fulde tabel; begge layouts bruger samme dag-header-handling.
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
@@ -53,25 +43,26 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("mobil 393px: matricen scroller aldrig SIDEN vandret (kun sin egen kontainer), og hovedhandlingen (åbne et løb) virker", async ({ page }, testInfo) => {
+test("mobil 393px: tre løbsdage uden vandret scroll og dag-headeren åbner board", async ({ page }, testInfo) => {
   await login(page);
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/planning?view=season");
   await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
-  await expect(page.getByText("Ada Pedersen")).toBeVisible();
+  const mobile = page.getByTestId("season-matrix-mobile");
+  await expect(mobile.getByText("Ada Pedersen")).toBeVisible();
+  await mobile.getByLabel("Løb").selectOption("r2");
+  await expect(mobile.getByText("Dage 1-3 af 4")).toBeVisible();
 
   const noPageScroll = () => page.evaluate(
     () => document.scrollingElement.scrollWidth <= document.scrollingElement.clientWidth + 1
   );
   await expect.poll(noPageScroll).toBe(true);
+  await expect.poll(() => mobile.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-season-matrix-mobile-393-${testInfo.project.name}.png`), fullPage: false });
 
-  // Hovedhandlingen: åbne et løb fra dag-kolonnens header-knap (onOpenDay,
-  // navigerer normalt videre til dagsvisningen). Her bekræftes blot at
-  // knappen er synlig, har et ægte tap-mål (samme ≥24px-krav som #1146's
-  // desktop-parallel), og at klikket ikke bryder no-scroll-garantien.
-  const dayHeaderButton = page.locator("thead tr:nth-child(3) button").first();
+  // Den delte onOpenDay-handling skal fortsat have et rigtigt tap-mål.
+  const dayHeaderButton = mobile.locator("thead button").first();
   await expect(dayHeaderButton).toBeVisible();
   const box = await dayHeaderButton.boundingBox();
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
@@ -84,6 +75,6 @@ test("desktop 1280px: uændret", async ({ page }, testInfo) => {
   await login(page);
   await page.goto("/planning?view=season");
   await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
-  await expect(page.getByText("Ada Pedersen")).toBeVisible();
+  await expect(page.getByTestId("season-matrix-desktop").getByText("Ada Pedersen")).toBeVisible();
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-season-matrix-desktop-1280-${testInfo.project.name}.png`), fullPage: false });
 });
