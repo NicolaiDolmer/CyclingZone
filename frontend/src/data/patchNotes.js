@@ -9,12 +9,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions work again after the season switch",
-          "body": "Auctions can be started and bid on again after the season switch."
+          "title": "New auctions can start again after the season switch",
+          "body": "New auctions can be started again after the season switch. Bidding on active auctions continued to work throughout."
         },
         "da": {
-          "title": "Auktioner virker igen efter sæsonskiftet",
-          "body": "Auktioner kan startes og bydes på igen efter sæsonskiftet."
+          "title": "Nye auktioner kan startes igen efter sæsonskiftet",
+          "body": "Nye auktioner kan startes igen efter sæsonskiftet. Bud på aktive auktioner virkede hele tiden."
         },
         "refs": [
           5846
