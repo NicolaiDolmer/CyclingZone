@@ -1,6 +1,6 @@
 {
   "title": "Daily training",
-  "trainToday": "Train today (+25% consistency bonus)",
+  "trainToday": "Train today",
   "runDayNow": "Run today's training now",
   "dayClose": {
     "waiting": "Today's training runs on its own once the last race is done, from {hour}:00.",
@@ -110,7 +110,7 @@
   "injuredApprox": "Back approx. {date}",
   "noRiders": "No riders on your squad yet.",
   "report": "Today's training report",
-  "bonusApplied": "Consistency bonus applied: +25% gains",
+  "bonusApplied": "Trained by you",
   "gains": "+{n} {ability}",
   "gainJump": "{from} → {to} {ability}",
   "noGains": "No gains today",
@@ -294,11 +294,11 @@
     },
     "runToday": {
       "title": "Train once a day",
-      "body": "Press this and the squad trains with a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus. Hard intensity gains more but leaves riders tired for their next race."
+      "body": "Press this and the squad trains right away. Skip it and your assistant runs the same session automatically when the day closes. The outcome is the same either way. Hard intensity gains more but leaves riders tired for their next race."
     },
     "runNow": {
       "title": "Run today's training",
-      "body": "Run now trains the whole squad today, including riders without a day: they train what your assistant picks for their type. Press it once a day for a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus."
+      "body": "Run now trains the whole squad today, including riders without a day: they train what your assistant picks for their type. Pressing it gives no bonus. Skip it and your assistant runs the same session automatically."
     },
     "runTodayDayClose": {
       "title": "Run today's training",

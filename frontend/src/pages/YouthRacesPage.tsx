@@ -10,7 +10,8 @@
 //     ellers gruppe A), valgt i tabellens toolbar. Ingen samlet placering på
 //     tværs af grupper: placeringen er serverens rank_in_pool, og klienten
 //     regner aldrig en placering ud selv.
-//   • Calendar og Results er tomme tilstande indtil ungdomskalenderen findes.
+//   • Calendar og Results viser holdets ungdomsløb (YouthRacesTab, #5843);
+//     rækken åbner løbssiden, hvor udtagelsen sker som for senior.
 //
 // Bag kontakten youth_squad_pages (v1 genbruger trup-sidernes kontakt, spec Y7
 // S8): slukket svarer stillings-endpointet 409, og siden sender videre til
@@ -26,6 +27,7 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import { ErrorState, PageHeader, Select, Tab, TabList, Tabs } from "../components/squad/squadUi.ts";
 import { YouthRacesEmptyState } from "../components/squad/SquadEmptyStates.tsx";
 import YouthStandingsTable from "../components/squad/YouthStandingsTable.tsx";
+import YouthRacesTab from "../components/squad/YouthRacesTab.tsx";
 import { useOwnTeamId, useYouthStandings } from "../components/squad/useYouthStandings.ts";
 import { youthRacesHref, youthRacesPoolFromSearch, youthRacesSquadFromSearch } from "../components/squad/youthRoutes.ts";
 import { groupLetter, hasYouthResults, poolForTeam, type YouthStandingsPool } from "../lib/youthRankingsClient.ts";
@@ -95,7 +97,7 @@ function YouthRacesView({ squad, initialPool }: { squad: YouthSquad; initialPool
           onRetry={() => { void reload(); }}
         />
       )}
-      {(tab === "calendar" || tab === "results") && <YouthRacesEmptyState squad={squad} tab={tab} />}
+      {(tab === "calendar" || tab === "results") && <YouthRacesTab squad={squad} tab={tab} />}
     </div>
   );
 }

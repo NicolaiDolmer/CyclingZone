@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.307",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Pick your own U23 and junior riders",
+          "body": "Open U23 team or Junior team, then Calendar, to see your youth races. Pick a race to choose your riders. An auto-picked squad can be changed until the first stage starts. Each race only uses riders from its own squad: move a rider to another squad and their picks for the old squad's upcoming races are removed. Results shows the races you have ridden."
+        },
+        "da": {
+          "title": "Udtag selv dine U23- og juniorryttere",
+          "body": "Åbn U23-hold eller Juniorhold og derefter Kalender for at se dine ungdomsløb. Vælg et løb for at udtage dine ryttere. En auto-udtaget trup kan ændres, indtil første etape starter. Hvert løb bruger kun ryttere fra sin egen trup: flytter du en rytter til en anden trup, fjernes han fra den gamle trups kommende løb. Resultater viser de løb, du har kørt."
+        },
+        "refs": [
+          5843
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.305",
     "date": "2026-09-27",
     "label": "Beta",

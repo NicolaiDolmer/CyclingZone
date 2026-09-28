@@ -46,6 +46,7 @@ import { findPendingGraduation } from "./academyGraduation.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { ACTIVE_AUCTION_STATUSES } from "./auctionRules.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
+import { clearOffSquadEntries } from "./squadEntryCleanup.js";
 import {
   SQUAD_MAX_AGE, DEFAULT_SQUAD, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
   isSquad, isYouthSquad, squadForSeason, squadCapRpcArgs, effectiveSquad,
@@ -443,16 +444,17 @@ async function moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetS
  * @param {any} supabase
  * @param {{teamId:string, riderId:string, targetSquad:string, seasonNumber:number,
  *   now?:Date, getMarketState?:typeof getTeamMarketState, notify?:typeof notifyTeamOwner,
- *   ridersInActiveStageRace?:Function}} args
+ *   ridersInActiveStageRace?:Function, clearEntriesOutsideSquad?:typeof clearOffSquadEntries}} args
  * @throws 'invalid_squad' | 'rider_not_found' | 'not_owned' | 'same_squad'
  *   | 'too_old_for_squad' | 'rider_on_market' | 'rider_listed'
  *   | 'rider_in_stage_race' | 'squad_full' | 'not_academy' | 'already_academy'
- * @returns {Promise<{riderId:string, action:'promoted'|'demoted'|'moved', from:string, to:string}>}
+ * @returns {Promise<{riderId:string, action:'promoted'|'demoted'|'moved', from:string, to:string, offSquadEntriesCleared?:number}>}
  */
 export async function moveRider(supabase, {
   teamId, riderId, targetSquad, seasonNumber, now = new Date(),
   getMarketState = getTeamMarketState, notify = notifyTeamOwner,
   ridersInActiveStageRace = getRidersInActiveStageRace,
+  clearEntriesOutsideSquad = clearOffSquadEntries,
   // Standard-{} er kun et værn mod et manglende argument; felterne er påkrævede.
 } = /** @type {any} */ ({})) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -481,21 +483,38 @@ export async function moveRider(supabase, {
   const racing = await ridersInActiveStageRace(supabase, [riderId]);
   if (racing.includes(riderId)) throw new Error("rider_in_stage_race");
 
+  let result;
   try {
     if (targetSquad === DEFAULT_SQUAD) {
       const res = await promote(supabase, { teamId, riderId, seasonNumber, now, getMarketState, notify });
-      return { ...res, from: fromSquad, to: targetSquad };
-    }
-    if (fromSquad === DEFAULT_SQUAD) {
+      result = { ...res, from: fromSquad, to: targetSquad };
+    } else if (fromSquad === DEFAULT_SQUAD) {
       // isSquad() ovenfor + targetSquad !== senior: kun junior/u23 når hertil.
       const youthSquad = /** @type {"junior"|"u23"} */ (targetSquad);
       const res = await demote(supabase, { teamId, riderId, seasonNumber, targetSquad: youthSquad, notify });
-      return { ...res, from: fromSquad, to: targetSquad };
+      result = { ...res, from: fromSquad, to: targetSquad };
+    } else {
+      result = await moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetSquad, direction, now });
     }
-    return await moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetSquad, direction, now });
   } catch (err) {
     throw normalizeMoveError(err);
   }
+
+  // #5843 (ejer-regel 28/9): løb bruger kun truppens egne ryttere. promote() og
+  // junior↔U23-RPC'en rydder ikke rytterens kommende løb i den GAMLE trup, så
+  // en auto-udtagelse derfra blev hængende. Flytningen er allerede gennemført;
+  // en fejl her må ikke gøre den til en 500 — motoren filtrerer alligevel
+  // forkert-trup-entries fra ved start (filterEligibleEntries).
+  try {
+    const { cleared } = await clearEntriesOutsideSquad(supabase, { riderId, squad: targetSquad });
+    if (cleared) result = { ...result, offSquadEntriesCleared: cleared };
+  } catch (cleanupErr) {
+    // best-effort: flytningen er gennemført og må ikke blive en 500; motoren
+    // sorterer forkert-trup-entries fra ved start (filterEligibleEntries).
+    const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
+    console.error(`moveRider ${riderId}: off-squad entry cleanup failed — ${msg}`);
+  }
+  return result;
 }
 
 // ── HTTP-kontrakten for POST /api/riders/:id/squad (#5748) ──────────────────

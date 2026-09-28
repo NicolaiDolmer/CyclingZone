@@ -50,6 +50,7 @@ import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export class MandateSignConflictError extends Error {
   constructor(message, { errorCode = "board_mandate_sign_conflict" } = {}) {
@@ -145,28 +146,72 @@ async function loadOpenVisionSlot(supabase, teamId) {
 }
 
 /**
+ * #5840 · Alle holdets milepæls-rækker (uanset status/slot). Unikt indeks
+ * `uq_board_vision_milestones_team_key (team_id, milestone_key)` gælder på
+ * tværs af status, så erstatningsforslaget skal kende HELE historikken.
+ */
+async function loadTeamMilestones(supabase, teamId) {
+  // Paginér (PostgREST-cap 1000): en afkortet historik kunne gen-vælge en
+  // skjult nøgle.
+  try {
+    return await fetchAllRows(() => supabase
+      .from("board_vision_milestones")
+      .select("id, milestone_key, goal, status")
+      .eq("team_id", teamId)
+      .order("id", { ascending: true }));
+  } catch (error) {
+    throw new Error(`board_vision_milestones lookup failed: ${error.message}`, { cause: error });
+  }
+}
+
+function milestoneGoalSignature(goal) {
+  return `${goal?.type ?? "unknown"}:${goal?.target ?? "na"}`;
+}
+
+/**
  * Deterministisk erstatnings-forslag for et tomt vision-slot (A7, §4.4):
  * ÉT mål fra `generateBoardGoals` for slottets `origin`-plantype, mål-sæson =
  * slottets oprindelige sæson hvis den stadig ligger i fremtiden, ellers næste
  * ledige (nuværende sæson + plan-varigheden). SAMME funktion kaldes af både
  * GET (visning) og sign (accept-skrivning) — se modul-headerens fortolkning 2.
  */
-export function buildVisionSlotProposal({ openSlot, focus, team, riders, standing, currentSeasonNumber, reputationEnabled = false } = {}) {
+export function buildVisionSlotProposal({
+  openSlot, focus, team, riders, standing, currentSeasonNumber, existingMilestones = [], reputationEnabled = false,
+} = {}) {
   if (!openSlot) return null;
   const origin = openSlot.origin === "5yr" ? "5yr" : "3yr";
-  const candidateGoal = generateBoardGoals({ focus, planType: origin, team, riders, standing, reputationEnabled })[0] || null;
-  if (!candidateGoal) return null;
+  const candidates = generateBoardGoals({ focus, planType: origin, team, riders, standing, reputationEnabled });
+  if (!candidates.length) return null;
 
   const targetSeasonNumber = Number(openSlot.target_season_number) > Number(currentSeasonNumber)
     ? Number(openSlot.target_season_number)
     : Number(currentSeasonNumber) + getPlanDuration(origin);
 
+  // #5840 · Tidlig opfyldelse er tilsigtet (BOARD_RULES §0.1 / A7), så slottets
+  // mål-sæson ligger ofte stadig i fremtiden, og samme plantype + samme input
+  // gav præcis den milepæl slottet erstatter — samme nøgle → unikt indeks →
+  // hele underskriften fejlede. Vælg derfor (a) første kandidat hvis mål
+  // (type+target) holdet ikke allerede har som milepæl, ellers (b) første
+  // kandidat med et ubrugt nøgle-indeks. Stadig deterministisk: GET og sign
+  // ser samme rækker og giver samme forslag.
+  const rows = [openSlot, ...(Array.isArray(existingMilestones) ? existingMilestones : [])];
+  const usedKeys = new Set(rows.map((m) => m?.milestone_key).filter(Boolean));
+  const usedGoals = new Set(rows.filter((m) => m?.goal).map((m) => milestoneGoalSignature(m.goal)));
+
+  const goal = candidates.find((g) => !usedGoals.has(milestoneGoalSignature(g))) || candidates[0];
+  let index = 0;
+  let milestoneKey = buildMilestoneKey({ origin, goal, targetSeasonNumber, index });
+  while (usedKeys.has(milestoneKey)) {
+    index += 1;
+    milestoneKey = buildMilestoneKey({ origin, goal, targetSeasonNumber, index });
+  }
+
   return {
     replaces_milestone_id: openSlot.id,
     origin,
-    goal: candidateGoal,
+    goal,
     target_season_number: targetSeasonNumber,
-    milestone_key: buildMilestoneKey({ origin, goal: candidateGoal, targetSeasonNumber, index: 0 }),
+    milestone_key: milestoneKey,
   };
 }
 
@@ -298,6 +343,7 @@ export async function buildBoardMeetingPayload({ supabase, teamId } = {}) {
   const visionSlot = openSlot
     ? buildVisionSlotProposal({
       openSlot, focus: mandate.focus, team, riders, standing, currentSeasonNumber: mandate.season_number, reputationEnabled,
+      existingMilestones: await loadTeamMilestones(supabase, teamId),
     })
     : null;
 
@@ -517,7 +563,25 @@ export async function signMandate(supabase, {
     if (openSlot) {
       const proposal = buildVisionSlotProposal({
         openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number, reputationEnabled,
+        existingMilestones: await loadTeamMilestones(supabase, teamId),
       });
+      // #5840 (CodeRabbit) · Luk slottet BETINGET først: kun det kald der
+      // flipper slot_open true→false må skrive erstatningen. Et samtidigt sign
+      // får 0 rækker og en 409 (genforsøg rammer idempotens-stien, når
+      // vinderen har sat mandatet active). Fejler insert bagefter, genåbnes
+      // slottet, så et genforsøg starter fra en ren tilstand — ingen
+      // halv-skrevet erstatning ved siden af et åbent slot.
+      const { data: claimed, error: claimError } = await supabase
+        .from("board_vision_milestones")
+        .update({ slot_open: false, updated_at: new Date().toISOString() })
+        .eq("id", openSlot.id)
+        .eq("slot_open", true)
+        .select("id");
+      if (claimError) throw new Error(`board_vision_milestones close-slot failed: ${claimError.message}`);
+      if (!claimed?.length) {
+        throw new MandateSignConflictError("Vision slot already answered.", { errorCode: "board_mandate_sign_conflict" });
+      }
+
       if (proposal && visionSlot.accept) {
         const { error: insertError } = await supabase.from("board_vision_milestones").insert({
           team_id: teamId,
@@ -529,21 +593,28 @@ export async function signMandate(supabase, {
           is_headline: true,
           status: "pending",
         });
-        if (insertError) throw new Error(`board_vision_milestones insert failed: ${insertError.message}`);
+        if (insertError) {
+          const { error: reopenError } = await supabase
+            .from("board_vision_milestones")
+            .update({ slot_open: true, updated_at: new Date().toISOString() })
+            .eq("id", openSlot.id);
+          if (reopenError) {
+            console.error(`  ⚠️  board_vision_milestones reopen-slot failed for ${openSlot.id}: ${reopenError.message}`);
+          }
+          if (insertError.code === "23505") {
+            throw new MandateSignConflictError("Vision milestone already exists.", { errorCode: "board_mandate_sign_conflict" });
+          }
+          throw new Error(`board_vision_milestones insert failed: ${insertError.message}`);
+        }
         visionSlotOutcome = { accepted: true, milestone_key: proposal.milestone_key };
       } else {
         visionSlotOutcome = { accepted: false };
       }
-      const { error: closeError } = await supabase
-        .from("board_vision_milestones")
-        .update({ slot_open: false, updated_at: new Date().toISOString() })
-        .eq("id", openSlot.id);
-      if (closeError) throw new Error(`board_vision_milestones close-slot failed: ${closeError.message}`);
     }
   }
 
   const nowIso = now.toISOString();
-  const { error: updateError } = await supabase
+  const { data: signedRows, error: updateError } = await supabase
     .from("board_mandates")
     .update({
       status: "active",
@@ -555,8 +626,15 @@ export async function signMandate(supabase, {
       updated_at: nowIso,
     })
     .eq("id", mandateId)
-    .eq("status", "proposed");
+    .eq("status", "proposed")
+    .select("id");
   if (updateError) throw new Error(`board_mandates sign-update failed: ${updateError.message}`);
+  // #5840 (CodeRabbit) · 0 rækker = et samtidigt sign vandt den betingede
+  // opdatering. Stop FØR kvitteringer og legacy dual-write, så sideeffekterne
+  // kun skrives én gang; svar som idempotens-stien ovenfor.
+  if (!signedRows?.length) {
+    return buildBoardRoomPayload({ supabase, teamId });
+  }
 
   // Kvitteringer (spec §4.5 + addendum "stemme-kontrakten"): formandens
   // meeting_keep-linje som beat for selve underskriften, + evt.

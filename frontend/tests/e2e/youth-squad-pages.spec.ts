@@ -144,7 +144,8 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     for (const name of [/Calendar|Kalender/, /Results|Resultater/]) {
       await tabs.getByRole("tab", { name }).click();
       const main = page.locator("main");
-      await expect(main.getByText(/See when youth races start|Se hvornår ungdomsløbene starter/)).toBeVisible();
+      // #5843: mock-holdet har ingen ungdomspulje → "ingen gruppe"-teksten, samme flade.
+      await expect(main.getByText(/No youth group for your team yet|Dit hold har ingen ungdomsgruppe endnu/)).toBeVisible();
       await expect(main.getByRole("link", { name: "Roadmap" })).toHaveAttribute("href", "/roadmap");
       await expect(main.locator("table")).toHaveCount(0);
     }
