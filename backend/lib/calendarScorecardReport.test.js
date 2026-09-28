@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { addCalendarDays, scorecardGateGroups, scoreCalendarPlan, formatScorecard } from "./calendarScorecardReport.js";
+import { addCalendarDays, alleBrud, scorecardGateGroups, scoreCalendarPlan, formatScorecard } from "./calendarScorecardReport.js";
 import { quotasForRaceDays } from "../scripts/buildSeasonCalendar.js";
 import { TIER_DENSITY } from "./tierCalendarMaterializer.js";
 
@@ -56,6 +56,19 @@ test("#4270: sæson-aggregatets finale-brud tælles med i finale-driften", () =>
 test("#4270: en ren plan giver fire tomme grupper - gaten larmer ikke uden fund", () => {
   const g = scorecardGateGroups(rapportMed());
   assert.deepEqual(g, { blocking: [], applyBlocking: [], finaleDrift: [], uniformDrift: [] });
+});
+
+test("#5830: loebstype-huller og ugespredning stopper calendar apply", () => {
+  const rapport = {
+    dækning: { violations: [] },
+    tiers: [{ tier: 2, finaleViol: [], uniformViol: [], typeGapViol: ["langt hul"], typeWeekViol: ["skaev uge"] }],
+  };
+  const g = scorecardGateGroups(rapport);
+  assert.equal(g.applyBlocking.length, 2);
+  assert.match(g.applyBlocking[0], /loebstype|løbstype/i);
+  assert.match(g.applyBlocking[1], /uge/i);
+  // Den historiske S3-fixture doemmes ikke retroaktivt mod nye S4-regler.
+  assert.deepEqual(alleBrud(rapport), []);
 });
 
 test("#4270: kvoten er density × løbsdatoer (§1b), ikke den hardkodede 140/112/84/56", () => {

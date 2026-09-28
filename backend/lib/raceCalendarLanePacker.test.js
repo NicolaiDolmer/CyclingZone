@@ -380,7 +380,11 @@ test("#5802 R15: kan reglen IKKE holdes, falder stigen hoejlydt tilbage uden den
   const cfg = { ...lilleGtKatalog(), gtEarliestStartDate: 3 };
   const r = packLaneCalendar(cfg);
   assert.equal(r.gtStartRuleHeld, false);
-  assert.deepEqual(r.solveAttempts.map((f) => [f.gtStartRule, f.ok]), [[true, false], [false, true]]);
+  // #5830: hvert trin proeves med R16/R17 (typeGapRule) og derefter uden, foer naeste trin.
+  assert.deepEqual(
+    r.solveAttempts.map((f) => [f.gtStartRule, f.typeGapRule, f.ok]),
+    [[true, true, false], [true, false, false], [false, true, true]],
+  );
   assert.deepEqual(r.unplaced, []);
   assert.deepEqual(r.leftoverSingles, []);
   for (let d = 0; d < cfg.days; d++) assert.equal(r.load[d], cfg.density, `dag ${d}`);

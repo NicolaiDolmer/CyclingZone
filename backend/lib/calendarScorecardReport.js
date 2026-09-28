@@ -56,7 +56,10 @@ import {
   detectMinOverlapViolations, detectQuotaViolations,
   detectGrandTourOrderViolations, listGrandTourStarts, detectGrandTourEarlyStartViolations,
 } from "./calendarPlacementGates.js";
-import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "./raceCalendarLanePacker.js";
+import {
+  GRAND_TOUR_EARLIEST_START_DATE_INDEX, RACE_TYPE_MAX_GAP_DATES, RACE_TYPE_WEEKLY_MIN_SHARE,
+  RACE_TYPE_WEEKLY_MAX_SHARE,
+} from "./raceCalendarLanePacker.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 import {
   detectRaceDayEqualityViolations, detectTrainingDayStreakViolations,
@@ -160,6 +163,20 @@ export function scoreTierPlan({
   const gtEarlyStartViol = detectGrandTourEarlyStartViolations({
     tier: plan.tier, grandTourStarts, seasonFirstDay: foersteDag,
   });
+  const typeGap = computeRaceTypeGaps({ raceRows, stageRows });
+  const typeGapViol = [
+    ...(typeGap.endag > RACE_TYPE_MAX_GAP_DATES ? [`D${plan.tier}: ${typeGap.endag} datoer i træk uden endagsløb (loft ${RACE_TYPE_MAX_GAP_DATES}, #5830)`] : []),
+    ...(typeGap.etape > RACE_TYPE_MAX_GAP_DATES ? [`D${plan.tier}: ${typeGap.etape} datoer i træk uden etapeløb (loft ${RACE_TYPE_MAX_GAP_DATES}, #5830)`] : []),
+  ];
+  // R17's uge-tal RAPPORTERES, men stopper ikke --apply: pakkeren lader monument- og GT-
+  // reglerne gaa forud, og D1 (tre GT'er + fem monumenter) kan ikke altid holde ugens
+  // minimum. Hul-reglen ovenfor (R16) er den haarde gate.
+  const typeWeekViol = [
+    ...typeGap.endagPrUge.flatMap((n, u) => (n < typeGap.ugeMinimum
+      ? [`D${plan.tier}: uge ${u + 1} har ${n} endagsløb (minimum ${typeGap.ugeMinimum}, #5830)`] : [])),
+    ...typeGap.endagPrUge.flatMap((n, u) => (typeGap.ugeMaksimum != null && n > typeGap.ugeMaksimum
+      ? [`D${plan.tier}: uge ${u + 1} har ${n} endagsløb (maksimum ${typeGap.ugeMaksimum}, #5830)`] : [])),
+  ];
 
   return {
     tier: plan.tier,
@@ -198,7 +215,56 @@ export function scoreTierPlan({
     multiRaceShareMin: TIER_MULTI_RACE_DAY_MIN_SHARE[plan.tier] ?? null,
     monumentGtViol, minOverlapViol, quotaViol,
     grandTourStarts, gtOrderViol, gtEarlyStartViol,
+    typeGap, typeGapViol, typeWeekViol,
   };
+}
+
+// #5830: laengste raekke kalenderdatoer i traek (inden for divisionens foerste..sidste dato)
+// uden et endagsloeb hhv. uden en etapeloebs-etape. Samme maal som pakkerens R16.
+export function computeRaceTypeGaps({ raceRows = [], stageRows = [] } = {}) {
+  const typeAf = new Map(raceRows.map((r) => [r.pool_race_id, r.race_type]));
+  const endagDatoer = new Set();
+  const etapeDatoer = new Set();
+  const alle = [];
+  for (const s of stageRows) {
+    if (s.scheduled_at == null) continue;
+    const d = String(s.scheduled_at).slice(0, 10);
+    alle.push(d);
+    (typeAf.get(s.pool_race_id) === "single" ? endagDatoer : etapeDatoer).add(d);
+  }
+  if (!alle.length) return { endag: 0, etape: 0, endagPrUge: [], ugeMinimum: 0 };
+  alle.sort();
+  const foerste = new Date(`${alle[0]}T00:00:00Z`);
+  const sidste = new Date(`${alle[alle.length - 1]}T00:00:00Z`);
+  let endag = 0, etape = 0, iEndag = 0, iEtape = 0;
+  for (let t = foerste; t <= sidste; t = new Date(t.getTime() + 86400000)) {
+    const d = t.toISOString().slice(0, 10);
+    iEndag = endagDatoer.has(d) ? 0 : iEndag + 1;
+    iEtape = etapeDatoer.has(d) ? 0 : iEtape + 1;
+    endag = Math.max(endag, iEndag);
+    etape = Math.max(etape, iEtape);
+  }
+  // R17: endagsloeb pr. uge (7 datoer fra divisionens foerste dato) og ugens minimum.
+  const endagPrUge = [];
+  let antalEndag = 0;
+  for (const r of raceRows) {
+    if (r.race_type !== "single") continue;
+    const foersteEtape = stageRows.find((s) => s.pool_race_id === r.pool_race_id && s.scheduled_at != null);
+    if (!foersteEtape) continue;
+    const dag = Math.round((new Date(`${String(foersteEtape.scheduled_at).slice(0, 10)}T00:00:00Z`) - foerste) / 86400000);
+    const uge = Math.floor(dag / 7);
+    endagPrUge[uge] = (endagPrUge[uge] ?? 0) + 1;
+    antalEndag += 1;
+  }
+  const antalUger = Math.floor(Math.round((sidste - foerste) / 86400000) / 7) + 1;
+  for (let u = 0; u < antalUger; u++) endagPrUge[u] = endagPrUge[u] ?? 0;
+  const ugeMinimum = antalUger >= 1 && antalEndag > 0
+    ? Math.floor((antalEndag / antalUger) * RACE_TYPE_WEEKLY_MIN_SHARE)
+    : 0;
+  const ugeMaksimum = ugeMinimum > 0
+    ? Math.floor((antalEndag / antalUger) * RACE_TYPE_WEEKLY_MAX_SHARE)
+    : null;
+  return { endag, etape, endagPrUge, ugeMinimum, ugeMaksimum };
 }
 
 /**
@@ -285,7 +351,8 @@ export function scoreCalendarPlan({
   rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
       + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0)
-      + (t.gtOrderViol?.length ?? 0) + (t.gtEarlyStartViol?.length ?? 0), 0)
+      + (t.gtOrderViol?.length ?? 0) + (t.gtEarlyStartViol?.length ?? 0)
+      + (t.typeGapViol?.length ?? 0) + (t.typeWeekViol?.length ?? 0), 0)
     // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
     + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0)
     // §1e/#5267: samme afgraensning som §1d — den taeller kun naar saesonen har et maal.
@@ -358,6 +425,8 @@ export function scorecardGateGroups(rapport) {
     for (const v of t.gtOrderViol ?? []) applyBlocking.push(`GT-rækkefølge (§3/#5802) — ${v}`);
     // #5802 (ejer 26/9 kl. 22:40): ingen GT paa saesonens foerste dag - samme klasse, ingen override.
     for (const v of t.gtEarlyStartViol ?? []) applyBlocking.push(`GT-start for tidligt (§3/#5802) — ${v}`);
+    for (const v of t.typeGapViol ?? []) applyBlocking.push(`løbstype-hul (§1a/#5830) — ${v}`);
+    for (const v of t.typeWeekViol ?? []) applyBlocking.push(`løbstype-uge (§1a/#5830) — ${v}`);
     for (const v of t.finaleViol) finaleDrift.push(`finale-bånd (§7b) — ${v}`);
     for (const v of t.uniformViol) uniformDrift.push(`uniformt mål (§6b) — ${v}`);
   }
@@ -439,6 +508,9 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
     const share = t.coverage?.oneDayShare ?? 0;
     const målShare = TIER_ONE_DAY_SHARE_TARGET[t.tier], minShare = TIER_ONE_DAY_SHARE_MIN[t.tier];
     out.push(`  ${ok(share >= minShare)} Endagsløb (§4): ${t.coverage?.oneDayRaces ?? "?"} af ${t.løb} = ${pct(share)} (mål ${pct(målShare)}, min ${pct(minShare)})`);
+    if (t.typeGap) {
+      out.push(`  ${ok((t.typeGapViol?.length ?? 0) === 0)}${(t.typeWeekViol?.length ?? 0) ? " (uge-rapport: " + t.typeWeekViol.length + " afvigelse)" : ""} Løbstype-huller (#5830): længste hul uden endagsløb ${t.typeGap.endag} · uden etapeløb ${t.typeGap.etape} datoer (loft ${RACE_TYPE_MAX_GAP_DATES}) · endagsløb pr. uge ${(t.typeGap.endagPrUge ?? []).join(" / ")} (min ${t.typeGap.ugeMinimum ?? 0}, maks ${t.typeGap.ugeMaksimum ?? "-"})`);
+    }
 
     // §5: gulve for alle seks familier + #4270's loft paa `rolling`. classic taeller nu
     // med i hilly (#4270), saa ingen etape falder uden for taellingen laengere.

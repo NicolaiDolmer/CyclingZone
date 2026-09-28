@@ -199,6 +199,7 @@ function offlinePlanForCatalog(catalog, pools) {
   const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * OFFLINE_REAL_DAYS]));
   const { tierPlans } = buildTierMaterializationPlan({
     pools, catalog, from, realDays: OFFLINE_REAL_DAYS, quotas, baseSeed: 1,
+    raceTypeSpreadEnabled: false, // samme historiske S3-regler som den gyldne offline-plan
   });
   return tierPlans;
 }

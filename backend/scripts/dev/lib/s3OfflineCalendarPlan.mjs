@@ -61,6 +61,7 @@ export function buildS3OfflineCalendarPlan({ baseSeed = 1 } = {}) {
   const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * OFFLINE_REAL_DAYS]));
   const { tierPlans } = buildTierMaterializationPlan({
     pools, catalog, from, realDays: OFFLINE_REAL_DAYS, quotas, baseSeed,
+    raceTypeSpreadEnabled: false,
   });
   return { tierPlans, firstDay, lastDay, realDays: OFFLINE_REAL_DAYS, quotas, kollisioner };
 }
