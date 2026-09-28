@@ -962,3 +962,16 @@ describe("resolveDayCloseStatus + #4846-kanterne (knappen = sweepen)", () => {
     assert.deepEqual(out.gameDays, [0, 1, 2]);
   });
 });
+
+// S4 28/9 (CYCLINGZONE-79): ~500 løb i sæsonen gav en ~19 KB URL via
+// .in("race_id", <alle sæsonens løb>) og "fetch failed". Ingen hel-sæsons id-liste
+// må sendes i en URL igen.
+describe("dagens etaper hentes uden hel-sæsons id-liste i URL'en", () => {
+  it("kildekoden sender aldrig alle sæsonens race-id'er i et .in()", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const src = readFileSync(resolve(import.meta.dirname, "trainingDayCloseTrigger.js"), "utf8");
+    assert.equal(/\.in\(\s*"race_id",\s*\[\.\.\.raceById\.keys\(\)\]\s*\)/.test(src), false);
+    assert.match(src, /races!inner\(season_id/);
+  });
+});

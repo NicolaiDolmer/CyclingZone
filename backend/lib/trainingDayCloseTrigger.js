@@ -55,6 +55,16 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
+/**
+ * Fjern den indlejrede `races`-join fra etape-rækkerne, så resten af filen ser
+ * præcis de samme felter som før (race_id, stage_number, game_day, scheduled_at).
+ * @param {Array<Record<string, any>>|null|undefined} rows
+ * @returns {Array<{race_id: string, stage_number: number, game_day: number, scheduled_at: string}>}
+ */
+function stripJoin(rows) {
+  return (rows ?? []).map(({ races: _join, ...rest }) => /** @type {any} */ (rest));
+}
+
 /** Tidligste danske klokketime sweepen maa koere (ejer 15/9, beslutning 4). */
 export const SWEEP_FROM_HOUR = 20;
 
@@ -594,15 +604,21 @@ export async function resolveDayCloseStatus({
     // pagination-safe: afgraenset til ÉT dansk kalenderdoegn, og naar `divisionId`
     // er sat endda til ÉN division. D1 koerer 5 slots/dag, saa raekkerne er i
     // titals-, ikke tusindtals-omraadet (PostgREST's loft er 1000).
-    const { data: stageRows, error: stageError } = await supabase
-      .from("race_stage_schedule")
-      .select("race_id, stage_number, game_day, scheduled_at")
-      .in("race_id", [...raceById.keys()])
+    // S4 28/9: sæsonen filtreres I databasen (races!inner-join) i stedet for at
+    // sende alle sæsonens race-id'er i URL'en. Med ungdomsløbene har S4 ~500 løb
+    // (~19 KB URL), og requesten døde som "fetch failed" før den nåede PostgREST.
+    // pagination-safe: ét dansk kalenderdøgn (titals rækker), se ovenfor.
+    let stagesQuery = supabase
+      .from("race_stage_schedule") // pagination-safe: season + one Danish calendar day, well below 1000 stages.
+      .select("race_id, stage_number, game_day, scheduled_at, races!inner(season_id, league_division_id)")
+      .eq("races.season_id", seasonId)
       .gte("scheduled_at", dayStart.toISOString())
       .lt("scheduled_at", dayEnd.toISOString());
+    if (divisionId) stagesQuery = stagesQuery.eq("races.league_division_id", divisionId);
+    const { data: stageRows, error: stageError } = await stagesQuery;
     if (stageError) return { ...empty, reason: "stages_error" };
 
-    const todaysStages = stageRows ?? [];
+    const todaysStages = stripJoin(stageRows).filter((row) => raceById.has(row.race_id));
     const pending = pendingStagesFor(todaysStages, raceById);
     // #4847 (ejer-regel 4): knappen skal vise SAMME loebsdage som sweepen vil koere,
     // inklusive de rene traeningsdage i hullet — ellers ville fladen love faerre dage
@@ -752,14 +768,16 @@ export async function runTrainingDayCloseSweep({
     // pagination-safe: afgraenset til ÉT dansk kalenderdoegn paa tvaers af fire
     // divisioner — D1 koerer 5 slots/dag, saa raekkerne er i titals-, ikke
     // tusindtals-omraadet (PostgREST's loft er 1000).
+    // S4 28/9: sæson-filter i databasen, ikke ~500 id'er i URL'en (se
+    // resolveDayCloseStatus). CYCLINGZONE-79: "race_stage_schedule: fetch failed".
     const { data: stageRows, error: stageError } = await supabase
-      .from("race_stage_schedule")
-      .select("race_id, stage_number, game_day, scheduled_at")
-      .in("race_id", [...raceById.keys()])
+      .from("race_stage_schedule") // pagination-safe: season + one Danish calendar day, well below 1000 stages.
+      .select("race_id, stage_number, game_day, scheduled_at, races!inner(season_id)")
+      .eq("races.season_id", season.id)
       .gte("scheduled_at", dayStart.toISOString())
       .lt("scheduled_at", dayEnd.toISOString());
     if (stageError) throw new Error(`race_stage_schedule: ${stageError.message}`);
-    const todaysStages = stageRows ?? [];
+    const todaysStages = stripJoin(stageRows).filter((row) => raceById.has(row.race_id));
 
     // ── #4847, ejer-regel 4 (18/9): rene traeningsdage tickes ogsaa ───────────
     // Ikke kun de loebsdage der HAR en etape i dag, men hele det spaend aftenen

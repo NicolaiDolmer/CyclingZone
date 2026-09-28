@@ -188,7 +188,7 @@ Da målet var en søgebinding, var der også et loft for hvor mange tomme løbsd
 | Regel | Ordlyd før 20/9 | Ordlyd i dag |
 |---|---|---|
 | Ejer-reglen 25/8, løbsdage i træk | *"Hvis et løb har fire etaper, skal løbsdagene ligge i træk … Løbsdag 4-5-6-7."* | Et løbs etaper ligger i træk blandt de løbsdage der **bærer et løb**. En tom løbsdag bryder ikke rækken — der kommer ingen anden løbsdag med løb imellem. |
-| Tom løbsdag og løbsforløb | En tom løbsdag må kun ligge dér hvor **intet løb er i gang**. | En tom løbsdag må ligge **inde i** et etapeløbs forløb. Den er ikke en hviledag i løbet; det er en dag hvor **de ryttere der kører løbet er bundet og hviler, mens alle andre træner**. |
+| Tom løbsdag og løbsforløb | En tom løbsdag må kun ligge dér hvor **intet løb er i gang**. | En tom løbsdag må ligge **inde i** et etapeløbs forløb. Den er ikke en hviledag i løbet. **Alle andre ryttere træner.** Ryttere der kører løbet er bundet; de **træner**, hvis de har en etape på samme dato, og **hviler** kun på hele datoer uden etape (ejer-præcisering 28/9, valg A, #5267). |
 
 Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder rytteren på HELE forløbet fra første til sidste etape (#4173 → #4217 → ejer-beslutning 3/9 i #4209), så en indsat tom løbsdag inde i forløbet får sin bindingsrække automatisk.
 
