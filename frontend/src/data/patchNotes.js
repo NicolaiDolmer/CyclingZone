@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.306",
+    "date": "2026-09-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions work again after the season switch",
+          "body": "Auctions can be started and bid on again after the season switch."
+        },
+        "da": {
+          "title": "Auktioner virker igen efter sæsonskiftet",
+          "body": "Auktioner kan startes og bydes på igen efter sæsonskiftet."
+        },
+        "refs": [
+          5846
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.305",
     "date": "2026-09-27",
     "label": "Beta",

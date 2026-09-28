@@ -823,7 +823,7 @@ export async function createGraduateAuction(supabase, { teamId, rider, now = new
   // FREE_AGENT_MIN_DURATION_HOURS (auctionEngine.js).
   const calculatedEnd = calculateAuctionEnd(now, cfg, { minHours: FREE_AGENT_MIN_DURATION_HOURS });
 
-  const seasonTransitionBoundary = await fetchSeasonTransitionBoundary(supabase);
+  const seasonTransitionBoundary = await fetchSeasonTransitionBoundary(supabase, { now });
   if (getAuctionSeasonBoundaryIssue(calculatedEnd, seasonTransitionBoundary)) {
     console.log(`createGraduateAuction: skipped rider ${rider.id} — calculated end ${calculatedEnd.toISOString()} crosses season transition boundary ${seasonTransitionBoundary.toISOString()}`);
     return false;
