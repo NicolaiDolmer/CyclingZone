@@ -6,10 +6,11 @@ export interface RiderReputationLike {
 }
 
 export function riderReputationValue(rider: RiderReputationLike | null | undefined, enabled: boolean): number | null {
-  const raw = enabled ? rider?.reputation : rider?.popularity;
-  if (raw == null) return null;
-  const value = Number(raw);
-  return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
+  const values = (enabled ? [rider?.popularity, rider?.reputation] : [rider?.popularity])
+    .filter((raw): raw is number => raw != null && Number.isFinite(Number(raw)))
+    .map(Number);
+  if (!values.length) return null;
+  return Math.max(0, Math.min(100, Math.max(...values)));
 }
 
 export function riderReputationBand(value: number | null | undefined): RiderReputationBand | null {

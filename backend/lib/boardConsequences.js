@@ -359,7 +359,7 @@ export function selectForcedListingRider(riders, { reputationEnabled = false } =
   const candidates = riders.filter((r) => {
     if (!r || !r.id) return false;
     const profileScore = reputationEnabled
-      ? Number(r.reputation || 0)
+      ? Math.max(Number(r.popularity || 0), Number(r.reputation || 0))
       : Number(r.popularity || 0);
     const profileThreshold = reputationEnabled
       ? STAR_BAND_THRESHOLD

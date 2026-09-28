@@ -361,6 +361,7 @@ export function generateBoardGoals({
     .filter((goal) => isMultiYear || goal.type !== "sponsor_growth");
   const enrichedGoals = selectedGoals.map((goal) => addGoalMetadata({
     ...goal,
+    ...(reputationEnabled && goal.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
     satisfaction_penalty: Math.round(goal.satisfaction_penalty * penaltyModifier),
   }));
   return assignedMembers ? stampGoalsOwners(enrichedGoals, { assignedMembers }) : enrichedGoals;
@@ -625,7 +626,10 @@ export function buildBoardProposal({
     g.type === traditionGoal.type
     && (g.nationality_code || null) === (traditionGoal.nationality_code || null)
   )
-    ? [...baseGoals, addGoalMetadata(traditionGoal)]
+    ? [...baseGoals, addGoalMetadata({
+      ...traditionGoal,
+      ...(reputationEnabled && traditionGoal.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
+    })]
     : baseGoals;
 
   // S-02f · DNA-vægtning multiplicerer satisfaction_bonus + _penalty på mål
@@ -1089,7 +1093,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       // #1889) — score = popularity*0.70 + uciScore*0.30 >= 68. Før #3141
       // brugte dette mål rå popularity>=75 alene, så en rytter kunne tælle
       // som "stjerne" på kortet uden at tælle mod 5-års-planens mål.
-      const reputationEnabled = context.reputationEnabled === true;
+      const reputationEnabled = context.reputationEnabled === true && enrichedGoal.star_score_basis === "reputation";
       const threshold = getStarRiderScoreThreshold({ reputationEnabled });
       const starRiderCount = (team?.riders || [])
         .filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
@@ -1404,7 +1408,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
     }
     case "signature_rider": {
       // #3141 · Samme star-score-SSOT som evaluateGoal ovenfor + board-kortet.
-      const reputationEnabled = context.reputationEnabled === true;
+      const reputationEnabled = context.reputationEnabled === true && enrichedGoal.star_score_basis === "reputation";
       const threshold = getStarRiderScoreThreshold({ reputationEnabled });
       const starRiderCount = riders.filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
       // #3574 · Samme netto-siden-accept-visning som monument_podium ovenfor.

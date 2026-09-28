@@ -42,12 +42,12 @@ test("buildConstants: liste-override erstatter HELE arrayet (NO_FLOOR_CREDIT_CLA
 test("buildConstants: originale frosne exports og modulets defaults er uændrede efter overrides", () => {
   buildConstants({ "W_CLASS.ProSeries": 0.99, SOFT_CAP: 999 });
   assert.equal(W_CLASS.ProSeries, 0.25);
-  assert.equal(SOFT_CAP, 74);
+  assert.equal(SOFT_CAP, 80);
   assert.equal(Object.isFrozen(W_CLASS), true);
   // defaultConstantsBundle() giver stadig en frisk kopi uafhængig af tidligere kald.
   const fresh = defaultConstantsBundle();
   assert.equal(fresh.W_CLASS.ProSeries, 0.25);
-  assert.equal(fresh.SOFT_CAP, 74);
+  assert.equal(fresh.SOFT_CAP, 80);
 });
 
 test("buildConstants: uden overrides er bundlen identisk med default-bundlen (spread-/læsbarhed uændret)", () => {

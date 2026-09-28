@@ -1679,7 +1679,7 @@
     },
     "boardProfileRiders": {
       "q": "Who are my team's profile riders?",
-      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with the same reputation number shown on rider surfaces when reputation is enabled. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the bar yet, the card says so instead of listing names."
+      "a": "The Board page names them under the star profile tile. When reputation is enabled, it shows the same number as the rider pages, with a transition floor at each rider's old popularity. The list changes as you sign or sell riders. A star-rider goal you already agreed keeps its original measure until that mandate ends; new goals use the displayed reputation number."
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",

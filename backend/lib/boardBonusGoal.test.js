@@ -323,7 +323,7 @@ test("#4956 bonus baseline and later star count use the same off/shadow/on measu
     { id: "earned-star", team_id: TEAM_ID, popularity: 0, uci_points: 0, reputation: 85 },
     { id: "earned-star-2", team_id: TEAM_ID, popularity: 0, uci_points: 0, reputation: 90 },
   ];
-  for (const [stage, expected] of [["off", 1], ["shadow", 1], ["on", 2]]) {
+  for (const [stage, expected] of [["off", 1], ["shadow", 1], ["on", 3]]) {
     const tables = baseTables({
       riders,
       app_config: [{ key: "rider_reputation_enabled", value: stage }],
@@ -336,6 +336,8 @@ test("#4956 bonus baseline and later star count use the same off/shadow/on measu
     assert.equal(countTeamStarRiders(riders, { reputationEnabled: stage === "on" }), expected, stage);
     assert.equal(tables.board_mandates[0].goals.at(-1).baseline, expected, stage);
     assert.equal(JSON.parse(tables.board_profiles[0].current_goals).at(-1).baseline, expected, stage);
+    assert.equal(result.goal.star_score_basis, stage === "on" ? "reputation" : undefined, stage);
+    assert.equal(tables.board_mandates[0].goals.at(-1).star_score_basis, result.goal.star_score_basis, stage);
   }
 });
 

@@ -1679,7 +1679,7 @@
     },
     "boardProfileRiders": {
       "q": "Hvem er mit holds profilryttere?",
-      "a": "Bestyrelsessiden navngiver dem nu. Under stjerneprofilen viser bestyrelsen de ryttere på dit nuværende hold, som den regner for stjerner. Når omdømme er aktivt, ser du samme omdømmetal som på rytterkortet. Listen ændrer sig, når du køber eller sælger ryttere. Hvis ingen rytter har høj nok profil endnu, siger kortet det i stedet for at liste navne."
+      "a": "Bestyrelsessiden navngiver dem under stjerneprofilen. Når omdømme er aktivt, viser den samme tal som ryttersiderne, med et overgangsgulv ved hver rytters gamle popularitet. Listen ændrer sig, når du køber eller sælger ryttere. Et mål om stjerneryttere, som du allerede har aftalt, beholder sin oprindelige måling, til mandatet slutter; nye mål bruger det viste omdømme."
     },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",

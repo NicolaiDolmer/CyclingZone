@@ -409,10 +409,10 @@ export function getStarRiderScoreThreshold({ reputationEnabled = false } = {}) {
 }
 
 export function calculateRiderStarScore(rider = {}, { reputationEnabled = false } = {}) {
-  if (reputationEnabled) {
-    return roundNumber(clamp(Number(rider.reputation || 0), 0, 100));
-  }
   const popularityScore = clamp(Number(rider.popularity || 0), 0, 100);
+  if (reputationEnabled) {
+    return roundNumber(Math.max(popularityScore, clamp(Number(rider.reputation || 0), 0, 100)));
+  }
   const uciScore = clamp(Math.round(Number(rider.uci_points || 0) / 4.5), 0, 100);
   return roundNumber((popularityScore * 0.70) + (uciScore * 0.30));
 }

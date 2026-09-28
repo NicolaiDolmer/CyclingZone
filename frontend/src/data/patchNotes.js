@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "See each rider's reputation",
-          "body": "A rider's profile now shows their reputation, a level from Unknown to Legend, and the results that moved it. The rider database, your team pages including U23 and Junior, auctions and the market show the same number, and the board uses it to decide who counts as a star."
+          "body": "A rider's profile now shows their reputation, a level from Unknown to Legend, and the results that moved it. The rider database, your team pages including U23 and Junior, auctions and the market show the same number. At launch it cannot be lower than the rider's old popularity. The board uses it for new star-rider goals; goals you already agreed keep their original measure."
         },
         "da": {
           "title": "Se hver rytters omdømme",
-          "body": "En rytters profil viser nu omdømmet, et niveau fra Ukendt til Legende, og de resultater der har flyttet det. Rytterdatabasen, dine holdsider inkl. U23 og Junior, auktioner og markedet viser samme tal, og bestyrelsen bruger det til at afgøre, hvem der er stjerne."
+          "body": "En rytters profil viser nu omdømmet, et niveau fra Ukendt til Legende, og de resultater der har flyttet det. Rytterdatabasen, dine holdsider inkl. U23 og Junior, auktioner og markedet viser samme tal. Ved lanceringen kan det ikke være lavere end rytterens gamle popularitet. Bestyrelsen bruger det til nye stjernemål; mål, du allerede har aftalt, beholder deres oprindelige måling."
         },
         "refs": [4956]
       }

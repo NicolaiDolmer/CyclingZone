@@ -82,6 +82,39 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
     });
   }
 
+  test("#5828 reputation launch floor keeps a formerly popular rider's visible number", async ({ page }, testInfo) => {
+    const takeShots = testInfo.project.name === "desktop-chromium" || testInfo.project.name === "mobile-chromium";
+    await setup(page);
+    await page.route("**/api/display-flags", (route) => {
+      if (preflight(route)) return;
+      return json(route, { rider_best_role_display: false, youth_squad_pages: true, rider_reputation_enabled: false });
+    });
+    await page.route("**/rest/v1/riders*", (route) => {
+      if (preflight(route)) return;
+      const rows = previewYouthRiderRows(route.request().url());
+      return rows ? json(route, rows.map((r) => r.firstname === "Emil"
+        ? { ...r, popularity: 82, reputation: 60 }
+        : r)) : route.fallback();
+    });
+    await login(page);
+    await page.goto("/squads/u23");
+    await revealMobileTableColumn(page, /^(Popularity|Popularitet)$/);
+    const beforeRow = page.locator("main table").first().getByRole("row", { name: /Emil Vestergaard/ });
+    await expect(beforeRow).toContainText("82");
+    if (takeShots) await page.screenshot({ path: evidenceShotPath(`pr-screens/5828/floor-before-${testInfo.project.name}.png`), fullPage: true });
+
+    await page.route("**/api/display-flags", (route) => {
+      if (preflight(route)) return;
+      return json(route, { rider_best_role_display: false, youth_squad_pages: true, rider_reputation_enabled: true });
+    });
+    await page.reload();
+    await revealMobileTableColumn(page, /^(Reputation|Omdømme)$/);
+    const row = page.locator("main table").first().getByRole("row", { name: /Emil Vestergaard/ });
+    await expect(row).toContainText("82");
+    await expect(row).toContainText(/Star|Stjerne/);
+    if (takeShots) await page.screenshot({ path: evidenceShotPath(`pr-screens/5828/floor-after-${testInfo.project.name}.png`), fullPage: true });
+  });
+
   test("U23 team: Evner, Stats og Standings med egen gruppe", async ({ page }, testInfo) => {
     const takeShots = testInfo.project.name === "desktop-chromium";
     await setup(page);

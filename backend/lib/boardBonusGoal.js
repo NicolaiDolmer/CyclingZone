@@ -43,9 +43,10 @@ function ensureSupabase(supabase) {
  * Bygger selve mål-objektet. Samme form i BEGGE tabeller — mandatet og
  * profilen skal ikke drifte fra hinanden på feltnavne.
  */
-export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null }) {
+export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null, reputationEnabled = false }) {
   return {
     type: extraGoal?.type,
+    ...(reputationEnabled && extraGoal?.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
     target: extraGoal?.target,
     cumulative: false,
     source: "bonus_offer",
@@ -234,7 +235,7 @@ export async function applyAcceptedBonusGoal({
     loadGoalContext,
   });
 
-  const goal = buildBonusExtraGoal({ extraGoal, baseline, offerId });
+  const goal = buildBonusExtraGoal({ extraGoal, baseline, offerId, reputationEnabled });
 
   const profile = await appendBonusGoalToBoardProfile({ supabase, teamId, goal, offerId, board: oneYrBoard });
 
