@@ -30,7 +30,10 @@ export async function loadEmptyPoolFilter({ supabase }) {
   try {
     teamPools = await fetchAllRows(() => supabase
       .from("teams")
-      .select("id, league_division_id")
+      // Ungdomspuljer (U23/junior, S4) bor i egne kolonner — et hold tæller
+      // i ALLE de puljer det sidder i, ellers ser hver ungdomspulje "tom" ud og
+      // hele ungdomskalenderen springes tavst over (løbsdag 1 i S4, 28/9).
+      .select("id, league_division_id, u23_league_division_id, junior_league_division_id")
       .order("id", { ascending: true }));
   } catch (e) {
     throw new Error(`teams (empty-pool-filter): ${e.message || e}`, { cause: e });
@@ -38,8 +41,10 @@ export async function loadEmptyPoolFilter({ supabase }) {
 
   const teamsPerPool = new Map();
   for (const t of teamPools || []) {
-    if (t.league_division_id == null) continue;
-    teamsPerPool.set(t.league_division_id, (teamsPerPool.get(t.league_division_id) || 0) + 1);
+    for (const pool of [t.league_division_id, t.u23_league_division_id, t.junior_league_division_id]) {
+      if (pool == null) continue;
+      teamsPerPool.set(pool, (teamsPerPool.get(pool) || 0) + 1);
+    }
   }
   const poolFilterActive = (teamPools || []).length > 0;
   const inEmptyPool = (race) => (

@@ -111,3 +111,22 @@ test("fillMissingTeamEntries: samme entries UDEN afmelding binder stadig (kontro
   assert.deepEqual(ids, RIDER_IDS.filter((id) => id !== "r1" && id !== "r2").sort(),
     "r1+r2 er bundet af race-o's spænd (game_day 3..7 dækker 5)");
 });
+
+// S4 løbsdag 1 (28/9, CYCLINGZONE-71): bindingen skal se entries på tværs af trupper.
+// U23-ryttere der står på et juniorløbs startliste samme løbsdag var usynlige for
+// U23-autofyldet (default senior-filter i loadEligibleEntries), så de blev valgt igen,
+// og DB-invarianten no_rider_double_booking_day afviste hele startlisten.
+test("fillMissingTeamEntries: U23-løb ser bindinger fra et juniorløb samme dag (ANY_SQUAD)", async () => {
+  const base = canned({ withdrawn: false });
+  const supabase = makeFilterAwareSupabase({
+    ...base,
+    teams: [{ id: "T1", is_test_account: false, is_frozen: false, league_division_id: 1, u23_league_division_id: 9 }],
+    riders: base.riders.map((r) => ({ ...r, squad: "u23", is_academy: true, pending_team_id: null })),
+  });
+  const rows = await fillMissingTeamEntries({
+    supabase, race: { ...RACE_X, squad: "u23" }, stages: STAGES_1, existingEntries: [], persist: false,
+  });
+  const ids = rows.map((r) => r.rider_id).sort();
+  assert.ok(ids.length >= 6, "holdet stiller stadig op");
+  assert.ok(!ids.includes("r1") && !ids.includes("r2"), "r1+r2 er bundet i race-o og må ikke autofyldes");
+});
