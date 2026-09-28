@@ -241,6 +241,8 @@ export async function loadRiderIdsWithStageOnGameDays({ supabase, teamId, season
     }
     return { data: out, error: null };
   } catch (err) {
+    // best-effort HER, men ikke hos kalderen: fejlen RETURNERES (data: null =
+    // "ved det ikke"), og dailyTrainingEngine.js kaster paa den.
     return { data: null, error: err };
   }
 }
