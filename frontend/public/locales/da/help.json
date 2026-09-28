@@ -1851,7 +1851,11 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "Hvad sker der med udløbende kontrakter og ældre ryttere ved sæsonskiftet?",
-      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, med både kontraktudløb og pensionsrisiko regnet med. Din holdside viser en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller med i den risiko, og et blokeret salg navngiver de konkrete ryttere, så du kan se præcis hvorfor."
+      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under markedets sikkerhedsbuffer på 8 ryttere, med både kontraktudløb og pensionsrisiko regnet med. Seks seniorryttere kræves for at stille til start. Din holdside viser en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller med i den risiko, og et blokeret salg navngiver de konkrete ryttere, så du kan se præcis hvorfor."
+    },
+    "seniorStartReminderFaq": {
+      "q": "Hvorfor siger dashboardet, at jeg mangler seniorryttere til start?",
+      "a": "Din aktive seniortrup har færre end de seks ryttere, der kræves for at starte et løb. Akademiryttere tæller ikke med. Advarslen bliver på dashboardet, indtil du har nok seniorryttere, og indbakken minder dig om manglen før en berørt løbsdag, hvis den stadig findes. Følg linket til ryttermarkedet for at finde en rytter."
     },
     "staffReleaseFaq": {
       "q": "Hvordan opsiger jeg staff, og hvad koster det?",

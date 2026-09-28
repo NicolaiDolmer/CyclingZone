@@ -30,6 +30,7 @@
 | Modul | Regel | Kilde |
 |---|---|---|
 | Trup- og kontrakt-advarsler | **Allerøverst**, over dagens etaper | Ejer 25/8 — de eneste moduler der koster point hvis de overses |
+| Seniortrup under startgulvet | Vedvarende advarselsstrip sammen med trupadvarslerne; kun aktive managerhold med færre end `MIN_RACE_ENTRIES` reelle seniorryttere. Link til markedet, ingen dismiss. Forsvinder når den indlæste trup når gulvet. | [#5867](https://github.com/NicolaiDolmer/CyclingZone/issues/5867), ejerens design-go 28/9 |
 | `SeasonSignupCard` (Tilmeld næste sæson) | Lige under trup-/kontrakt-advarslerne, over dagens etaper — samme konto-risiko-klasse | [#452](https://github.com/NicolaiDolmer/CyclingZone/issues/452), ejer-go 23/9 |
 | `TodayStagesStrip` | Øverst i indholdsflowet, kun advarsler må stå over | [#3915](https://github.com/NicolaiDolmer/CyclingZone/issues/3915), justeret af ejer 25/8 |
 | `MyLatestResultCard` | Første-løbs-øjeblikket ejer toppen indtil resultatet er set | [#3310](https://github.com/NicolaiDolmer/CyclingZone/issues/3310) |

@@ -268,6 +268,11 @@
       "title": "Squad below race minimum",
       "message": "Your squad has {count} race-eligible rider(s), below the {min}-rider minimum needed to field a race day. Sign free agents or bid in an auction before your next race."
     },
+    "seniorStartReminder": {
+      "title": "Your senior squad needs riders",
+      "message24h": "Race day {gameDay} starts within 24 hours. You have {count, plural, one {1 senior rider} other {# senior riders}} and need {missing, plural, one {1 more} other {# more}} to field a team. Find a rider in the market.",
+      "message3h": "Race day {gameDay} starts within 3 hours. You still need {missing, plural, one {1 senior rider} other {# senior riders}} to field a team. Find a rider in the market."
+    },
     "selectionWarning": {
       "title": "Squad selection needed",
       "message": "{race} starts within 36 hours and you haven't picked your squad yet. Select your riders, or let the assistant auto-select for you."

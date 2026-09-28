@@ -130,6 +130,7 @@ export const ALL_CRON_MONITORS = [
   ["deadline-day", CRON_MONITOR_5MIN],
   ["squad-enforcement", CRON_MONITOR_5MIN],
   ["selection-warning", CRON_MONITOR_5MIN],
+  ["senior-start-reminder", CRON_MONITOR_5MIN],
   ["debt-warnings", CRON_MONITOR_24H],
   ["board-auto-accept", CRON_MONITOR_30MIN],
   ["board-mandate-auto-accept", CRON_MONITOR_30MIN],

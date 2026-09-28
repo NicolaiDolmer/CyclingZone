@@ -7,7 +7,7 @@ import {
   detectAndNotifySquadsBelowMinimum,
 } from "./squadBelowMinimumCheck.js";
 
-// #3043 · Sæsonskifte-detektion: hold under MIN_RIDERS_FOR_RACE (8) EFTER
+// #3043/#5867 · Sæsonskifte-detektion: hold under faktisk startgulv EFTER
 // contract_expiry_release + retirement_release.
 //
 // fetchHumanTeams/fetchActiveRiderCounts injiceres i de fleste tests (samme
@@ -40,7 +40,7 @@ test("detectAndNotifySquadsBelowMinimum: ingen hold under minimum → ingen noti
   assert.equal(notified.length, 0);
 });
 
-test("detectAndNotifySquadsBelowMinimum: hold under 8 bliver detekteret + varslet", async () => {
+test("detectAndNotifySquadsBelowMinimum: hold under 6 bliver detekteret + varslet", async () => {
   const notified = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
     supabase: makeNoopSupabase(),
@@ -50,7 +50,7 @@ test("detectAndNotifySquadsBelowMinimum: hold under 8 bliver detekteret + varsle
       { id: "t2", name: "Beta CC", user_id: "u2" },
       { id: "t3", name: "Gamma CC", user_id: "u3" },
     ],
-    // t2: 5 (under 8). t3: intet i map → 0 (holdet har ingen egnede ryttere tilbage overhovedet).
+    // t2: 5 (under 6). t3: intet i map → 0 (holdet har ingen egnede ryttere tilbage overhovedet).
     fetchActiveRiderCounts: async () => new Map([["t1", 12], ["t2", 5]]),
   });
 
@@ -72,14 +72,14 @@ test("detectAndNotifySquadsBelowMinimum: hold under 8 bliver detekteret + varsle
   assert.equal(byUser.get("u3").message.includes("0 race-eligible riders"), true);
 });
 
-test("detectAndNotifySquadsBelowMinimum: nøjagtigt på grænsen (8) tæller IKKE som under minimum", async () => {
+test("detectAndNotifySquadsBelowMinimum: nøjagtigt på grænsen (6) tæller IKKE som under minimum", async () => {
   const stats = await detectAndNotifySquadsBelowMinimum({
     supabase: makeNoopSupabase(),
     notify: async () => ({ delivered: true }),
     fetchHumanTeams: async () => [{ id: "t1", name: "Alpha CC", user_id: "u1" }],
-    fetchActiveRiderCounts: async () => new Map([["t1", 8]]),
+    fetchActiveRiderCounts: async () => new Map([["t1", 6]]),
   });
-  assert.equal(stats.belowMinimum, 0, "8 = MIN_RIDERS_FOR_RACE → OK, ingen violation ved selve grænsen");
+  assert.equal(stats.belowMinimum, 0, "6 = MIN_RACE_ENTRIES → OK, ingen violation ved selve grænsen");
 });
 
 test("detectAndNotifySquadsBelowMinimum: injicerbar minRiders (test-override)", async () => {
@@ -142,10 +142,16 @@ test("buildSquadBelowMinimumNotification: entals-/flertals-korrekt besked + meta
   assert.match(single.message, /1 race-eligible rider,/);
   assert.equal(single.metadata.titleCode, "notif.squadBelowMinimum.title");
   assert.equal(single.metadata.messageCode, "notif.squadBelowMinimum.message");
-  assert.deepEqual(single.metadata.messageParams, { count: 1, min: 8 });
+  assert.deepEqual(single.metadata.messageParams, { count: 1, min: 6 });
 
   const plural = buildSquadBelowMinimumNotification({ activeRiders: 3, minRiders: 8 });
   assert.match(plural.message, /3 race-eligible riders,/);
+});
+
+test("#5867 season-change warning names the actual six-rider start floor", () => {
+  const payload = buildSquadBelowMinimumNotification({ activeRiders: 5 });
+  assert.equal(payload.metadata.messageParams.min, 6);
+  assert.match(payload.message, /6-rider minimum/);
 });
 
 // ─── Låser den ÆGTE query-form (default-fetchere) mod en optagende mock ────────
@@ -187,7 +193,7 @@ test("default-fetchere: applyHumanTeamFilter + is_academy=false/is_retired=false
   });
 
   assert.equal(stats.checked, 1);
-  assert.equal(stats.belowMinimum, 1, "2 ryttere < MIN_RIDERS_FOR_RACE (8) → t1 er under minimum");
+  assert.equal(stats.belowMinimum, 1, "2 ryttere < MIN_RACE_ENTRIES (6) → t1 er under minimum");
   assert.equal(stats.teams.length, 1);
   assert.equal(stats.teams[0].activeRiders, 2, "2 ryttere fundet for t1 (is_academy=false, is_retired=false)");
 

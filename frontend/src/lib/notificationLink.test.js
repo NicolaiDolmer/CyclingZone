@@ -48,6 +48,11 @@ test("#1486 en vilkårlig notifikation med metadata.riderId deep-linker til rytt
   assert.equal(link, "/riders/rider-3");
 });
 
+test("#5867 new senior shortfall reminders open the market and historical notices keep My Team", () => {
+  assert.equal(resolveNotificationLink({ type: "squad_below_minimum", metadata: { action: "market" } }, "/team"), "/auctions");
+  assert.equal(resolveNotificationLink({ type: "squad_below_minimum", metadata: {} }, "/team"), "/team");
+});
+
 // #921: legacy "Transferrygte" bruger related_id (ingen metadata.riderId).
 test("#921 transfer_interest uden metadata bruger related_id som riderId", () => {
   const link = resolveNotificationLink(

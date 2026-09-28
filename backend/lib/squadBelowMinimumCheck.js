@@ -3,11 +3,13 @@
 // automatiske afgangs-faser (kontraktudløb + pension).
 //
 // BAGGRUND: #2748/#2834 spærrer allerede for at en manager SELV (salg/frigivelse/
-// auktion) kan presse truppen under MIN_RIDERS_FOR_RACE=8 — squadRiskGuard.js/
+// auktion) kan presse truppen under markedets buffer — squadRiskGuard.js/
 // marketUtils.getSquadRiskViolation regner kontraktudløb + pensionsrisiko SAMLET
 // og blokerer handlen. Ejerens egen worst-case-måling (23/7, #2748-tråden) viste at
 // selv i det absolut værste tilfælde (alle kontraktudløb + alle 36+ pensionerer
-// samtidig) falder intet hold under 8 i dagens bestand.
+// samtidig) faldt intet hold under den daværende buffer i bestanden.
+// #5867: selve startadvarslen bruger nu raceRunner/raceAutopicks deltagelsesgulv,
+// så en manager med en lovlig sekser ikke får besked om at han ikke kan starte.
 //
 // HULLET denne fil lukker: den spærre gater kun FRIVILLIGE handlinger. Den rører
 // ALDRIG selve de automatiske faser (contractExpiryRelease.js/retirementRelease.js)
@@ -32,7 +34,7 @@
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
-import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
+import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
 import { applySeniorSquadFilter } from "./squads.js";
@@ -44,7 +46,7 @@ export const SQUAD_BELOW_MINIMUM_TYPE = "squad_below_minimum";
  * EN-first fallback (#1068); locale-aware rendering via metadata-koderne
  * (notif.squadBelowMinimum.*, #666-mønster).
  */
-export function buildSquadBelowMinimumNotification({ activeRiders, minRiders = MIN_RIDERS_FOR_RACE }) {
+export function buildSquadBelowMinimumNotification({ activeRiders, minRiders = MIN_RACE_ENTRIES }) {
   return {
     type: SQUAD_BELOW_MINIMUM_TYPE,
     title: "Squad below race minimum",
@@ -73,7 +75,7 @@ async function defaultFetchHumanTeams({ supabase }) {
 // kun pr. request — et 100-holds-chunk kan sagtens rumme >1000 rytter-rækker
 // (30/hold-cap), og uden .range() pr. side ville PostgREST tavst afskære ved
 // 1000 (#2375-mønsteret, se raceEntryGenerator.js-headeren).
-async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
+export async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
   if (!teamIds.length) return new Map();
   const rows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
     applySeniorSquadFilter(
@@ -93,7 +95,7 @@ async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
 }
 
 /**
- * #3043 · Detektér + varsl menneske-hold under MIN_RIDERS_FOR_RACE.
+ * #3043/#5867 · Detektér + varsl menneske-hold under deltagelsesgulvet.
  *
  * Kaldes fra seasonTransition.js som en ny, isoleret fase EFTER både
  * contract_expiry_release og retirement_release (parallelt med de øvrige
@@ -107,7 +109,7 @@ async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
  *
  * @param {object} args
  * @param {object} args.supabase
- * @param {number} [args.minRiders] — injicerbar (test), default MIN_RIDERS_FOR_RACE
+ * @param {number} [args.minRiders] — injicerbar (test), default MIN_RACE_ENTRIES
  * @param {Function} [args.notify] — injicerbar (test)
  * @param {Function} [args.fetchHumanTeams] — injicerbar (test)
  * @param {Function} [args.fetchActiveRiderCounts] — injicerbar (test)
@@ -115,7 +117,7 @@ async function defaultFetchActiveRiderCounts({ supabase, teamIds }) {
  */
 export async function detectAndNotifySquadsBelowMinimum({
   supabase,
-  minRiders = MIN_RIDERS_FOR_RACE,
+  minRiders = MIN_RACE_ENTRIES,
   notify = defaultNotifyUser,
   fetchHumanTeams = defaultFetchHumanTeams,
   fetchActiveRiderCounts = defaultFetchActiveRiderCounts,

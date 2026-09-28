@@ -33,7 +33,8 @@
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
 import { teamInRacePool } from "./raceBinding.js";
-import { selectionSizeForRace } from "./raceAutopick.js";
+import { selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { defaultFetchActiveRiderCounts } from "./squadBelowMinimumCheck.js";
 import { notifyTeamOwner as defaultNotifyTeamOwner } from "./notificationService.js";
 import { captureException } from "./sentry.js";
 
@@ -209,6 +210,8 @@ export async function runSelectionWarningSweep({
   fetchHumanTeams = defaultFetchHumanTeams,
   fetchEntryCountsByRace = defaultFetchEntryCountsByRace,
   fetchWithdrawnTeamIdsByRace = defaultFetchWithdrawnTeamIdsByRace,
+  suppressLowRoster = false,
+  fetchSeniorCounts = defaultFetchActiveRiderCounts,
 }) {
   const stats = { racesChecked: 0, racesDue: 0, teamsChecked: 0, warned: 0, deduped: 0, failed: 0 };
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -228,10 +231,17 @@ export async function runSelectionWarningSweep({
     fetchEntryCountsByRace({ supabase, raceIds: dueRaceIds }),
     fetchWithdrawnTeamIdsByRace({ supabase, raceIds: dueRaceIds }),
   ]);
+  // #5867: the selection message offers assistant help with entries, which
+  // cannot create riders for a club below the participation floor. The new
+  // roster reminder owns that case; retain old behavior for direct callers.
+  const seniorCounts = suppressLowRoster
+    ? await fetchSeniorCounts({ supabase, teamIds: humanTeams.map((t) => t.id) })
+    : null;
 
   for (const race of dueRaces) {
     const eligibleTeams = humanTeams.filter((t) =>
       teamInRacePool({ teamDivisionId: t.league_division_id, racePoolId: race.league_division_id ?? null })
+      && (!seniorCounts || (seniorCounts.get(t.id) || 0) >= MIN_RACE_ENTRIES)
     );
     stats.teamsChecked += eligibleTeams.length;
     const missing = teamsMissingSelection({
