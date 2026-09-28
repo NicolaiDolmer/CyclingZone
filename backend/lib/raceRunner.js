@@ -111,7 +111,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
@@ -912,6 +912,11 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   // rytter væk fra det aktuelle løbs felt under runtime auto-fill (excludeBoundRiders).
   const { data: entries, error: e1 } = await loadEligibleEntries({
     supabase, paged: true,
+    // ANY_SQUAD (som raceBinding.loadTeamBindingContext, #5645): en entry binder
+    // rytterens løbsdag uanset trup. Med default (senior) forsvandt juniorernes
+    // entries i juniorløbet, så U23-autofyldet valgte dem igen og DB-invarianten
+    // (#3420) afviste hele startlisten (S4 løbsdag 1, 28/9, CYCLINGZONE-71).
+    squad: ANY_SQUAD,
     // #3126: .order() på PK (race_id, rider_id) — .range() uden en deterministisk
     // totalordning kan hoppe rækker mellem sider (samme fejlklasse som #3113).
     baseQuery: () =>
@@ -2330,7 +2335,7 @@ export async function simulateRace({
         // #3144 · league_division_id med, så weekend-financen kun skriver et
         // race-mærket board_satisfaction_events-row for hold i løbets EGEN
         // pulje (ellers "reagerer" andre divisioners boards på dette løb).
-        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null },
+        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null, squad: race.squad ?? "senior" },
       });
     } catch (error) {
       // #2389 A2: fanger fejl FØR processBoardWeekends interne captures (fx
@@ -3394,7 +3399,7 @@ export async function simulateStageByIndex({
         // #3144 · league_division_id med, så weekend-financen kun skriver et
         // race-mærket board_satisfaction_events-row for hold i løbets EGEN
         // pulje (ellers "reagerer" andre divisioners boards på dette løb).
-        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null },
+        race: { id: race.id, name: race.name, league_division_id: race.league_division_id ?? null, squad: race.squad ?? "senior" },
       });
     } catch (error) {
       // #2389 A2: mirror fuld-sim-grenen — capture.

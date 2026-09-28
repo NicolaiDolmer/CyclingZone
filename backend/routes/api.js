@@ -254,7 +254,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
-import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, ANY_SQUAD } from "../lib/riderEligibility.js";
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
@@ -5274,6 +5274,8 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // allerede beregnede in-game-dag-binding-vinduer (bindingWindowByRace).
     const { data: teamEntries, error: teamEntriesErr } = await loadEligibleEntries({
       supabase,
+      // ANY_SQUAD: en U23-/juniorentry binder også rytterens løbsdag (#5645).
+      squad: ANY_SQUAD,
       baseQuery: () => supabase
         .from("race_entries").select("race_id, rider_id, team_id, is_auto_filled").eq("team_id", req.team.id),
     });
