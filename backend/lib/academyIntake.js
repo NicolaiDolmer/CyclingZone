@@ -15,6 +15,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
+import { isMissingSchemaError, signingFeeForSource } from "./academyIntakeSource.ts";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
@@ -147,6 +148,11 @@ export async function fetchExistingFoldedRiderNames(supabase) {
  * så batch og signup-stien ikke kan drifte fra hinanden.
  *
  * @param {number|null} [opts.countOverride]         #2064 S0: overstyr antal (søndags-drip)
+ *   (5844) generatorOptions: ekstra generator-parametre (ageBand,
+ *   nationalityWeights, topTalentIndex, topTalentMin); null = uændret.
+ *   (5844) source: academy_intake.source; null = kolonnen sendes IKKE
+ *   (DB-default 'intake'), så de eksisterende stier skriver præcis samme payload
+ *   som før migrationen.
  * @returns {Promise<string[]>} de nyindsatte akademi-rytteres id'er
  */
 export async function seedAcademyCohortForTeam(supabase, {
@@ -157,6 +163,8 @@ export async function seedAcademyCohortForTeam(supabase, {
   rng,
   identityBasis = null,
   countOverride = null,
+  generatorOptions = null,
+  source = null,
 }) {
   const candidates = generateAcademyCandidates({
     rng,
@@ -164,6 +172,7 @@ export async function seedAcademyCohortForTeam(supabase, {
     existingNames,
     identityBasis: identityBasis || null,
     countOverride,
+    ...(generatorOptions ?? {}),
   });
 
   // #2064/#2493: generation_tag = 's<sæsonnummer>' på alle ungdoms-genererede ryttere.
@@ -189,6 +198,7 @@ export async function seedAcademyCohortForTeam(supabase, {
     season_id: season.id,
     is_serious: candidates[idx].is_serious,
     status: "offered",
+    ...(source ? { source } : {}),
   }));
 
   const { error: intakeErr } = await supabase
@@ -415,6 +425,28 @@ export async function runAcademyIntakeForTeam(supabase, teamId, {
   return { teamId, candidates: newIds.length };
 }
 
+// #5844: intake-rækken inkl. `source`. Før migrationen er kørt (deploy-vinduet
+// før auto-migrate.yml) findes kolonnen ikke; så læses rækken uden den, og den
+// behandles som et normalt tilbud (ingen gave-rækker kan eksistere endnu).
+/**
+ * @param {any} supabase
+ * @param {{ teamId: string, riderId: string }} ids
+ * @returns {Promise<{ id: string, status: string, source?: string } | null>}
+ */
+async function fetchIntakeRowForSigning(supabase, { teamId, riderId }) {
+  /** @param {string} cols */
+  const read = (cols) => supabase
+    .from("academy_intake")
+    .select(cols)
+    .eq("team_id", teamId)
+    .eq("rider_id", riderId)
+    .maybeSingle();
+  let { data, error } = await read("id, status, source");
+  if (error && isMissingSchemaError(error)) ({ data, error } = await read("id, status"));
+  if (error) throw new Error(`signAcademyCandidate intake lookup: ${error.message}`);
+  return data ?? null;
+}
+
 /**
  * Signer en akademi-kandidat til holdet.
  *
@@ -433,13 +465,8 @@ export async function runAcademyIntakeForTeam(supabase, teamId, {
  */
 export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNumber }) {
   // 1. Hent academy_intake-rækken — skal eksistere og have status 'offered'.
-  const { data: intakeRow, error: intakeErr } = await supabase
-    .from("academy_intake")
-    .select("id, status")
-    .eq("team_id", teamId)
-    .eq("rider_id", riderId)
-    .maybeSingle();
-  if (intakeErr) throw new Error(`signAcademyCandidate intake lookup: ${intakeErr.message}`);
+  // #5844: `source` med, så bestyrelsens gave-kuld signes gratis.
+  const intakeRow = await fetchIntakeRowForSigning(supabase, { teamId, riderId });
   if (!intakeRow || intakeRow.status !== "offered") throw new Error("not_offered");
 
   // 2. Hent rytterens markedsværdi og beregn løn + signing-fee.
@@ -481,7 +508,8 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   const salary = computeFrozenSalary({
     current_production_value: rider.current_production_value,
   });
-  const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
+  // #5844: bestyrelsens gave (source 'board_gift') signes gratis; lønnen er normal.
+  const fee = signingFeeForSource(intakeRow.source, Math.round(value * ACADEMY.SIGNING_FEE_RATE));
   // #3550 punkt 3: intake-signeringer bruger INTAKE_CONTRACT_LENGTH (1 sæson),
   // isoleret fra den delte CONTRACT_LENGTH (3) som demote-stien (academyTransfer.js)
   // og youth-auktionsvinderen (auctionFinalization.js) fortsat bruger uændret.

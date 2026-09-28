@@ -11,6 +11,7 @@ import {
   login,
   stabilizePage,
 } from "./fixtures.js";
+import { SEED_ACADEMY } from "../../src/preview/seedData.js";
 
 test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
@@ -130,4 +131,37 @@ test("a backend failure reads as an error, not as 'coming soon' (#2796)", async 
   // En 500'er efterlod før enabled=false → spilleren fik "Akademiet kommer snart".
   await expect(page.locator("main")).not.toContainText(/coming soon|kommer snart/i);
   await expect(page.locator("main")).toContainText(/Could not load|Kunne ikke hente/i);
+});
+
+// #5844: bestyrelsens gave-kuld vises i sin egen sektion, signes gratis og
+// skjuler IKKE ugens hent-knap (den afgøres kun af de normale tilbud).
+test("board thank-you cohort: own section, free signing, weekly pull still offered (#5844)", async ({ page }) => {
+  const created = new Date(Date.now() - 3_600_000).toISOString();
+  const gift = {
+    ...SEED_ACADEMY.intake[1],
+    intakeId: "gift-1",
+    riderId: "gift-r1",
+    source: "board_gift",
+    signingFee: 0,
+    created_at: created,
+    expiresAt: new Date(new Date(created).getTime() + 14 * 86_400_000).toISOString(),
+    rider: { ...SEED_ACADEMY.intake[1].rider, id: "gift-r1", firstname: "Gustav", lastname: "Gavesen" },
+  };
+  await page.route("**/api/academy/me**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ...SEED_ACADEMY, intake: [gift], intakePull: { enabled: true, pulledThisWeek: false } }),
+  }));
+  await login(page);
+  await page.goto("/academy");
+
+  const section = page.getByTestId("academy-board-gift");
+  await expect(section).toBeVisible();
+  await expect(section).toContainText(/A thank-you from the board|Tak fra bestyrelsen/);
+  await expect(section).toContainText(/Gustav Gavesen/);
+  await expect(section).toContainText(/\bFree\b|Gratis/);
+  await expect(section).toContainText(/1[34]d left|1[34]d tilbage/i);
+  // Ingen guld-knap i gave-sektionen; ugens hent-knap står stadig.
+  await expect(section.locator("button.bg-cz-accent")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Scout this week|Scout denne uge/i })).toBeVisible();
 });

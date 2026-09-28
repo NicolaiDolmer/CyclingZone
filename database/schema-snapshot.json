@@ -28,7 +28,8 @@
         "status",
         "created_at",
         "resolved_at",
-        "signing_fee"
+        "signing_fee",
+        "source"
       ]
     },
     "academy_intake_ticks": {
@@ -3564,6 +3565,14 @@
         "user_id",
         "amount",
         "reason",
+        "created_at"
+      ]
+    },
+    "academy_gift_claims": {
+      "kind": "table",
+      "columns": [
+        "team_id",
+        "batch",
         "created_at"
       ]
     }
