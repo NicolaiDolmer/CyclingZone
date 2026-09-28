@@ -45,26 +45,33 @@
 
 ---
 
+## Aktuel S4-status (read-only prodmåling 28/9)
+
+`training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.
+Træningen kører én gang pr. løbsdag efter dagens sidste løb, tidligst kl. 20 dansk tid
+(`trainingDayCloseTrigger.js`). Managerens frivillige klik giver ingen bonus efter #5281.
+Afsnit med S3/off-status er historiske og skal læses med deres angivne dato.
+
 ## 1. Kadencen: hvornår træningen faktisk kører
 
-Der er **ét trænings-tick pr. hold pr. dansk kalenderdag**, og der findes ingen anden.
+Med løbsdagsflaget on er der **ét trænings-tick pr. hold og trup pr. løbsdag**. Kalenderdags-stien bruges kun når flaget er off.
 
 | Regel | Værdi | Kilde |
 |---|---|---|
-| Tick-enheden | ét hold, én `tick_date` (dansk dato) | `backend/lib/dailyTrainingEngine.js:129` (`copenhagenDateString(now)`) |
-| Idempotens-lås | `UNIQUE(team_id, tick_date)` i `training_day_runs`, reservation-first: INSERT af en `{pending:true}`-række er selve mutexen; Postgres 23505 → `alreadyRan` | `dailyTrainingEngine.js:132-147` |
+| Tick-enheden | flag on: ét hold, én trup og én `game_day` i sæsonen; flag off: én `tick_date` (dansk dato) | `trainingRaceDayTick.js`, `dailyTrainingEngine.js` |
+| Idempotens-lås | flag on: unik `(team_id, season_id, squad, game_day)`; flag off: unik `(team_id, tick_date)`. Reservation-first; Postgres 23505 → `alreadyRan` | `database/2026-09-15-4847-training-day-close-trigger.sql`, `dailyTrainingEngine.js` |
 | Manuel udløser | `POST /api/training/run-today`, `executedBy: "manager"` | `backend/routes/api.js:2733-2760` |
-| Automatisk udløser | assistent-sweep, `executedBy: "assistant"` | `backend/lib/trainingSweep.js` |
-| Sweep-vindue | **fra kl. 22:00 dansk tid og resten af døgnet** | `trainingSweep.js:17` (`SWEEP_FROM_HOUR = 22`), `shouldSweepNow` |
-| Sweep-frekvens | cron-jobbet tikker **hvert 5. minut**; `shouldSweepNow` er porten, så det første tick efter kl. 22 gør arbejdet og resten er no-op | `backend/cron.js:1441-1444` |
+| Automatisk udløser | flag on: samlet daglukning; flag off: assistent-sweep | `trainingDayCloseTrigger.js`, `trainingSweep.js` |
+| Sweep-vindue | Aktiv løbsdagssti: fra kl. 20 dansk tid **efter dagens sidste løb**. Kalenderdags-fallback (flag off): fra kl. 22. | `trainingDayCloseTrigger.js` (`SWEEP_FROM_HOUR = 20`), `trainingSweep.js` (`SWEEP_FROM_HOUR = 22`) |
+| Sweep-frekvens | cron-jobbet tikker **hvert 5. minut**; den aktive løbsdagssti venter både på kl. 20 og sidste finalization, og gentagne ticks er no-op | `trainingDayCloseTrigger.js`, `backend/cron.js` |
 | Hvem sweepes | hold hvor `is_bank=false`, `is_frozen=false`, `is_test_account=false`. `is_ai=false` er **fjernet** så længe `race_day_engine_enabled` er on (D4) | `trainingSweep.js:78-82` |
 | Master-flag | `daily_training_enabled` i `app_config`, fail-safe off | `backend/lib/dailyTrainingFlag.js` |
 
-**Manager-klikket er ikke en ekstra dag, det er den samme dag taget tidligere.** Klikker
-manageren "Træn i dag", tager han dagens ene tick og får en bonus-multiplikator
-(`DAILY_TRAINING_CONFIG.bonusMult`, `backend/lib/dailyTraining.js:15`); sweepen kl. 22 finder
-så en optaget `tick_date` og springer holdet over. Sweepen giver ikke bonus
-(`bonus = executedBy === "manager"`, `dailyTrainingEngine.js:130`).
+**Manager-klikket er ikke en ekstra dag og giver ingen bonus.** Med løbsdagsflaget on
+åbner den frivillige knap og assistentens sweep på samme betingelse: tidligst
+kl. 20 efter dagens sidste løb. Begge bruger samme tick og udbytte.
+`bonus_applied` i `training_day_runs` er et historisk audit-felt uden effekt
+på udviklingen efter #5281.
 
 **Målt i prod 30/8** (Supabase, `training_day_runs`): 2.695 kørsler de sidste 7 dage, heraf
 **398 manager-udløste og 2.297 assistent-udløste**. Dagsvolumen ligger stabilt på 346-360
@@ -109,7 +116,7 @@ brug. Rækkefølgen står i `dailyAbilityDelta` (`dailyTraining.js:113-159`):
 ```
 base(gap, alder)  ×  fokus-multiplikator  ×  rolle-rate  ×  kondition
                   ×  ungdomsfaktor(alder) ×  potentiale-rate
-                  ×  manager-bonus        ×  dagsstøj
+                  ×  dagsstøj
                   ×  træner-bonus         ×  facilitets-multiplikator
 ```
 
@@ -395,7 +402,7 @@ trænings- og løbsskader i denne optælling.
 > **Løbsdags-UDVIKLINGEN er slukket i sæson 3 og planlagt tilbage i sæson 4.**
 > `race_day_development_enabled` = **`off`**, sat **26/8 2026 kl. 22:46 dansk tid**
 > (`app_config`, målt 30/8). Ejer-beslutning 26/8, `#4277`: *"Modellen er ikke god nok endnu."*
-> Dette er en tilstand med en dato, ikke en regel om hvordan spillet skal virke.
+> Dette er en historisk S3-tilstand. Begge flag er målt `on` i `app_config` 28/9/2026; løbsdagsstien er aktiv i S4.
 
 #3459 samlede oprindeligt fire ting bag ét flag. #4277 splittede dem:
 
@@ -753,9 +760,9 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 
 **Rest (dokumenteret, ikke bygget):** en kalenderdato hvor en division slet ingen løb har, giver intet tick den dag, fordi spændets ende ikke kan læses uden en etape. Dagene samles op af næste dato med løb, op til ops-loftet `MAX_GAME_DAY_CATCH_UP`. I en kalender med eksakt kvote (hver dato bærer præcis divisionens tæthed i etaper, CALENDAR_RULES §1b) opstår det ikke. Er en divisions akse markant kortere end målet, forlænges den ikke (se "alt-eller-intet" ovenfor); divisionen ender da på sin akses længde, ikke på 140. Er aksen kun lidt kortere (forlængelsen passer stadig under loftet), kan lukningen ikke skelne den fra en rigtig akse, fordi den pakkede akses længde ikke gemmes, og de sidste løbsdage efter aksens ende bliver tikket. Det lukkes i kalenderen, ikke her. Kendt risiko uden for #4846: auto-stien (`tierCalendarMaterializer.js`) bruger standardkvoten `TIER_GAME_DAY_QUOTA`, som for division 4 ikke er tæthed × datoer og på den committede katalog-fixture gav division 4 en akse langt under 140 (probe 24/9), og kalender-gaten (`seasonCalendarGate.js`) tjekker hverken at alle divisioner har lige mange løbsdage eller at aksen rammer målet. CLI-stien (`buildSeasonCalendar.js`) bruger eksakt kvote, og auto-kalenderens flag (`auto_calendar_enabled`) findes ikke i prod, så den er slukket (fail-safe, tjekket 24/9).
 
-### 13.4 Status pr. 24/9 (15/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
+### 13.4 Status 28/9 (24/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
 
-Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off er bit-identisk med kalenderdags-ticket. **Én undtagelse:** off-seasonens loglinje og returværdi (#4848, se "B5" nedenfor) gælder uanset flaget, men kun når der ingen aktiv sæson er; selve træningen er uændret.
+Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-only prodmåling 28/9). Flag off bruger kalenderdags-ticket, nu uden manager-klik-bonus. **Én undtagelse:** off-seasonens loglinje og returværdi (#4848, se "B5" nedenfor) gælder uanset flaget, men kun når der ingen aktiv sæson er; selve træningen er uændret.
 
 | Del | Status | Hvor |
 |---|---|---|
@@ -768,7 +775,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **off**. Flag off e
 | Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus, samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |
 | Deleren kalibreret til 140 løbsdage, **læst** fra `calendarRaceDayTargets.js` (#4845) | **bygget**, statisk import (#4846; PR #5169 er merget, den defensive dynamiske import er fjernet) | `trainingRaceDayTick.js` |
 | Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
-| Manager-bonussen (`bonusMult` 1,25) + `bonus_applied` **slettet** fra kode og skema (B3) | **mangler** — neutraliseret på løbsdags-stien, men lever uændret på den gamle sti, så flag off er bit-identisk. Ryddes ved cutover | `dailyTraining.js:16`, `dailyTrainingEngine.js` |
+| Manager-klik-bonussen i vækstformlen (B3) | **fjernet i #5281** fra både løbsdags- og kalenderdagsstien. `bonus_applied` består som historisk audit-felt, men påvirker ikke udvikling; knappen er frivillig. | `dailyTraining.js`, `dailyTrainingEngine.js` |
 | Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag** (PR #5465 merget). Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
 | Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
 | Peak-plannerens konsistens-signal tæller datoer, ikke løbsdags-rækker (B5, gate G8) | **bygget** (#4848) — se "B5" nedenfor | `racePeakPlans.js` (`summarizeLeadupTraining`) |

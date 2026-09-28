@@ -1029,3 +1029,46 @@ test("#4582 den rapporterede 17k->22k-sag: arven forhindrer stigningen", () => {
   assert.equal(resolveDemoteSalary(rider), 17000);
   assert.equal(hasCompleteContract(rider), true, "dialogen skal kunne sige at kontrakten foelger med");
 });
+
+// #5843 (ejer-regel 28/9): flytningen rydder rytterens kommende løb i den gamle
+// trup. promote() og junior↔U23-RPC'en gjorde det ikke, så auto-udtagelser blev
+// hængende (prod 28/9: seniorer i U23-løb).
+test("#5843 moveRider: rydder entries uden for mål-truppen efter en gennemført flytning", async () => {
+  const { supabase } = makeSupabase({ rider: JUNIOR_ACADEMY, gradRow: null });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const calls = [];
+  const clearEntriesOutsideSquad = async (_sb, args) => { calls.push(args); return { cleared: 2 }; };
+  const res = await moveRider(supabase, {
+    teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState,
+    notify: spyNotify(), ridersInActiveStageRace: noStageRace, clearEntriesOutsideSquad,
+  });
+  assert.deepEqual(calls, [{ riderId: "j1", squad: "senior" }]);
+  assert.equal(res.offSquadEntriesCleared, 2);
+  assert.equal(res.to, "senior");
+});
+
+test("#5843 moveRider: en afvist flytning rydder intet", async () => {
+  const { supabase } = makeSupabase({ rider: U23_ACADEMY_20 });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30 });
+  const calls = [];
+  await assert.rejects(
+    () => moveRider(supabase, {
+      teamId: "t1", riderId: "u1", targetSquad: "senior", seasonNumber: 2, getMarketState,
+      notify: spyNotify(), ridersInActiveStageRace: noStageRace,
+      clearEntriesOutsideSquad: async (_sb, args) => { calls.push(args); return { cleared: 0 }; },
+    }),
+    /squad_full/,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("#5843 moveRider: fejl i oprydningen gør ikke en gennemført flytning til en fejl", async () => {
+  const { supabase } = makeSupabase({ rider: JUNIOR_ACADEMY, gradRow: null });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const res = await moveRider(supabase, {
+    teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState,
+    notify: spyNotify(), ridersInActiveStageRace: noStageRace,
+    clearEntriesOutsideSquad: async () => { throw new Error("boom"); },
+  });
+  assert.equal(res.action, "promoted");
+});

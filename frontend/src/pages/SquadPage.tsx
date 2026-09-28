@@ -10,9 +10,9 @@
 // Faner (HANDOFF pkt. 2): Squad · Calendar · Results · Standings · Development.
 //   • Squad og Development viser ægte data: truppen afgøres server-side
 //     (GET /api/youth-squads → effectiveSquad), visningen er My Teams.
-//   • Calendar og Results er tomme tilstande indtil ungdomsløb findes (og
-//     Standings indtil det første er kørt). Ingen tal for løb der ikke findes
-//     (TASTE P11).
+//   • Calendar og Results viser holdets ungdomsløb (YouthRacesTab, #5843);
+//     tom tilstand kun når holdet ingen ungdomspulje/løb har. Standings er tom
+//     indtil det første løb er kørt (TASTE P11).
 //
 // Bag kontakten youth_squad_pages: slukket svarer serveren 409, og siden sender
 // videre til My Team, så en gammel URL aldrig viser en halv side.
@@ -42,7 +42,8 @@ import { ErrorState, PageHeader, Tab, TabList, Tabs } from "../components/squad/
 import { useYouthSquad } from "../components/squad/useYouthSquad.ts";
 import YouthSquadTable from "../components/squad/YouthSquadTable.tsx";
 import YouthStandingsTab from "../components/squad/YouthStandingsTab.tsx";
-import { YouthRacesEmptyState, YouthSquadEmptyState } from "../components/squad/SquadEmptyStates.tsx";
+import { YouthSquadEmptyState } from "../components/squad/SquadEmptyStates.tsx";
+import YouthRacesTab from "../components/squad/YouthRacesTab.tsx";
 
 type SquadTabKey = "squad" | "calendar" | "results" | "standings" | "development" | "stats";
 // HANDOFF-rækkefølgen (#5519) + Stats sidst, efter Development som på My Team.
@@ -145,7 +146,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             : <TeamStatsTab riders={riders} />)}
           {tab === "standings" && <YouthStandingsTab squad={squad} myTeamId={team?.id ?? null} />}
           {(tab === "calendar" || tab === "results") && (
-            <YouthRacesEmptyState squad={squad} tab={tab} />
+            <YouthRacesTab squad={squad} tab={tab} />
           )}
         </>
       )}
