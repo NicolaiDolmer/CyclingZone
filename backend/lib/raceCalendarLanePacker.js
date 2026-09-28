@@ -754,7 +754,7 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG = 0,
-  gtEarliestStartDate = 0,
+  gtEarliestStartDate = 0, raceTypeSpreadEnabled = true,
 }) {
   if (D < 1 || days < 1 || cap < 1) return null;
 
@@ -815,10 +815,12 @@ function layoutContiguous({
   // Hvert trin proeves med R16/R17 og derefter uden, FOER naeste trin: monument- og GT-
   // reglerne gaar forud for loebstype-fordelingen (MAALT 27/9: med R16/R17 forrest i hele
   // stigen mistede D1 monument-reglen, og tre monumenter landede inde i Giroen).
-  const fuldStige = stige.flatMap((t) => [
-    { ...t, typeGap: true, maxSteps: t.maxSteps ?? MONUMENT_SOLVE_MAX_STEPS },
-    { ...t, typeGap: false },
-  ]);
+  const fuldStige = raceTypeSpreadEnabled
+    ? stige.flatMap((t) => [
+      { ...t, typeGap: true, maxSteps: t.maxSteps ?? MONUMENT_SOLVE_MAX_STEPS },
+      { ...t, typeGap: false },
+    ])
+    : stige.map((t) => ({ ...t, typeGap: false }));
   let typeGapRuleHeld = false;
   for (const trin of fuldStige) {
     const stats = {};
@@ -1231,6 +1233,8 @@ export function packLaneCalendar({
   // R15 (#5802, ejer 26/9): tidligste kalenderdato (0-baseret) en Grand Tour maa STARTE paa.
   // Se GRAND_TOUR_EARLIEST_START_DATE_INDEX for begrundelse og maaling.
   gtEarliestStartDate = GRAND_TOUR_EARLIEST_START_DATE_INDEX,
+  // Historiske offline-fixtures pakkes med deres oprindelige regler.
+  raceTypeSpreadEnabled = true,
 } = {}) {
   const D = Math.max(1, density);
   const cap = Math.max(1, overlapCap);
@@ -1273,7 +1277,7 @@ export function packLaneCalendar({
     ? { placements: [], timelineLength: 0 }
     : layoutContiguous({
       stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG: maal,
-      gtEarliestStartDate,
+      gtEarliestStartDate, raceTypeSpreadEnabled,
     });
   if (!res) {
     throw new Error(

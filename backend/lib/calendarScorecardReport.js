@@ -352,7 +352,7 @@ export function scoreCalendarPlan({
     n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
       + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0)
       + (t.gtOrderViol?.length ?? 0) + (t.gtEarlyStartViol?.length ?? 0)
-      + (t.typeGapViol?.length ?? 0), 0)
+      + (t.typeGapViol?.length ?? 0) + (t.typeWeekViol?.length ?? 0), 0)
     // §1d taeller kun med naar saesonen har et maal — se scorecardGateGroups' begrundelse.
     + (raceDayTarget != null ? (rapport.raceDayEqualityViol?.length ?? 0) : 0)
     // §1e/#5267: samme afgraensning som §1d — den taeller kun naar saesonen har et maal.
@@ -425,6 +425,8 @@ export function scorecardGateGroups(rapport) {
     for (const v of t.gtOrderViol ?? []) applyBlocking.push(`GT-rækkefølge (§3/#5802) — ${v}`);
     // #5802 (ejer 26/9 kl. 22:40): ingen GT paa saesonens foerste dag - samme klasse, ingen override.
     for (const v of t.gtEarlyStartViol ?? []) applyBlocking.push(`GT-start for tidligt (§3/#5802) — ${v}`);
+    for (const v of t.typeGapViol ?? []) applyBlocking.push(`løbstype-hul (§1a/#5830) — ${v}`);
+    for (const v of t.typeWeekViol ?? []) applyBlocking.push(`løbstype-uge (§1a/#5830) — ${v}`);
     for (const v of t.finaleViol) finaleDrift.push(`finale-bånd (§7b) — ${v}`);
     for (const v of t.uniformViol) uniformDrift.push(`uniformt mål (§6b) — ${v}`);
   }

@@ -76,6 +76,10 @@ Alle fire divisioner har `min = 1`. Et absolut gulv på 2 ville gå rødt på en
 
 **Ejer-bekræftelse 24/8** (#staff-chat, efter at have set før/efter-visningen): *"Ændre fra 4 overlappende løb til 3 nu. Og så i de mindre divisioner fra 3 overlap til 2 overlap igen."*
 
+### 1a. Løbstyper fordeles over sæsonen (R16/R17, #5830)
+
+Søgningen fordeler endagsløb og etapeløb, så ingen af de to typer forsvinder i en lang række løbsdatoer (R16), og endagsløb hverken klumpes i én uge eller næsten forsvinder i en anden (R17). Konstanterne og de præcise beregninger bor i raceCalendarLanePacker.js; calendarScorecardReport.js måler både de længste huller og ugentlige antal på den faktisk pakkede kalender. Scorecardets afvigelser stopper --apply. S4 blev skrevet med reglerne 27/9; efter aktivering ændres kalenderen ikke (§2c).
+
 ### 1b. Kvoten findes i tre indbyrdes uenige udgaver — brug density × løbsdatoer
 
 Kvoten er ikke ét tal noget sted. Den er tre, og de kender ikke hinanden:
