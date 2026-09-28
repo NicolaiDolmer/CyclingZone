@@ -790,12 +790,18 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
   return { data: out, error: null };
 }
 
+// Sub-2 (#2770): rutefelter tilføjet — computePassages (racePassages.js) læser
+// dem til passage-lag/bonussekunder. v3-motoren (raceSimulator.js) læser dem ALDRIG.
+// #5826: segments + weather er v4's gemte rute og vejr (routeAdapter.ts). Uden dem
+// genopbygger v4 ruten fra climbs/sectors og trækker vejret fra en fælles fallback-
+// nøgle, så alle etaper med samme profil og etapenummer får identisk vejr.
+export const STAGE_PROFILE_COLUMNS =
+  "stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors, segments, weather";
+
 async function loadStageProfiles(supabase, raceId) {
   const { data, error } = await supabase
     .from("race_stage_profiles")
-    // Sub-2 (#2770): rutefelter tilføjet — computePassages (racePassages.js) læser
-    // dem til passage-lag/bonussekunder. Motoren (raceSimulator.js) læser dem ALDRIG.
-    .select("stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors")
+    .select(STAGE_PROFILE_COLUMNS)
     .eq("race_id", raceId)
     .order("stage_number", { ascending: true });
   if (error) throw new Error(`race_stage_profiles: ${error.message}`);
