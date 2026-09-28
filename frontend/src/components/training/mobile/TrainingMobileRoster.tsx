@@ -39,6 +39,8 @@
 import { Fragment, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { expandScrollAdjustment, type MobileScoreCell, type RaceDayColumn } from "../../../lib/trainingMobileModel.ts";
+import { squadBadgeKey } from "../../../lib/squadBadge.ts";
+import RiderBadges from "../../rider/RiderBadges.jsx";
 
 export type RosterCell = {
   label: string;
@@ -54,6 +56,9 @@ export type RosterRider = {
   // ses i RAEKKEN, ikke kun i kortet eet tryk vaek. Faerdig tekst (samme
   // skade-noegler som desktop-raekken) + evt. ca.-datoen som title.
   injury?: { label: string; title?: string | null } | null;
+  // #5763: riders.squad (backend/lib/squads.js), ALDRIG alder — afgør et lille
+  // U23/JR-mærke bag navnet, samme mønster som desktop-tabellen (squadBadgeKey).
+  squad?: string | null;
 };
 
 // Tal-kolonnernes faste bredder (#4851, ejer-review 20/9). De er MAALT paa det
@@ -84,6 +89,7 @@ export default function TrainingMobileRoster({
   showHeader = true,
   picked = null,
   onTogglePick,
+  riderHeader = null,
 }: {
   riders: RosterRider[];
   columns: RaceDayColumn[];
@@ -111,6 +117,10 @@ export default function TrainingMobileRoster({
   // vaerktoejslinje. `null` = alt som foer.
   picked?: ReadonlySet<string> | null;
   onTogglePick?: (riderId: string) => void;
+  // #5805 (ejer 26/9): sorteringen i rytter-kolonnens header i stedet for
+  // "Rider". Den er oeverst ved tabellen uden at tilfoeje en raekke over den
+  // (mindst 8 ryttere paa foerste skaerm, #5485). `null` = "Rider" som foer.
+  riderHeader?: React.ReactNode;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
@@ -181,8 +191,12 @@ export default function TrainingMobileRoster({
         </colgroup>
         <thead>
           <tr>
-            <th className="border-b border-e border-cz-border px-2.5 py-1.5 text-start font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
-              {t("colRider")}
+            <th
+              className={`border-b border-e border-cz-border px-2.5 text-start font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3 ${
+                riderHeader ? "py-0 font-normal normal-case tracking-normal" : "py-1.5"
+              }`}
+            >
+              {riderHeader ?? t("colRider")}
             </th>
             {columns.map((column) => (
               <th
@@ -215,7 +229,12 @@ export default function TrainingMobileRoster({
                 className={isSelected ? "bg-cz-subtle" : isPicked ? "bg-cz-accent/5" : ""}
                 data-picked={pickMode ? String(isPicked) : undefined}
               >
-                <td className="border-b border-e border-cz-border align-middle last:border-b-0">
+                {/* `p-0` (#5805): uden den gav browserens standard-cellepolstring
+                    (1 px top + bund) raekken 47 px i stedet for knappens 44 + kant.
+                    Over 8 raekker betaler de 2 px for den hoejere header med
+                    sorteringen, saa mindst 8 ryttere stadig staar paa foerste
+                    skaerm (#5485). */}
+                <td className="border-b border-e border-cz-border p-0 align-middle last:border-b-0">
                   <button
                     type="button"
                     onClick={() => activate(rider.id)}
@@ -253,11 +272,14 @@ export default function TrainingMobileRoster({
                       </span>
                     )}
                     <span className="flex min-w-0 flex-1 flex-col justify-center">
-                    <span
-                      title={rider.name}
-                      className="w-full truncate text-[13px] font-medium leading-tight text-cz-1"
-                    >
-                      {rider.name}
+                    <span className="flex w-full items-center gap-1">
+                      <span
+                        title={rider.name}
+                        className="min-w-0 truncate text-[13px] font-medium leading-tight text-cz-1"
+                      >
+                        {rider.name}
+                      </span>
+                      <RiderBadges badges={[squadBadgeKey(rider.squad)]} className="flex-none" />
                     </span>
                     {/* `break-words` er selve rettelsen (#4851): uden den brydes
                         "PUNCHEUR/BAROUDEUR" slet ikke — der er hverken mellemrum

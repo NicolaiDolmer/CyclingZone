@@ -82,8 +82,12 @@ export default function OverviewSummaryRows({ vision, board, onOpenVision, onOpe
           }
         >
           {quote ? (
+            // #5633 · Navnet stod klistret paa citatet ("…" Ellen Kjær), som
+            // om det var en del af saetningen. Nu med skilletegn og kun naar
+            // navnet findes (boardRoom.js kan sende memberName: null).
             <span className="text-cz-2">
-              &ldquo;{t(quote.textKey, quote.textParams || {})}&rdquo; {quote.memberName}
+              &ldquo;{t(quote.textKey, quote.textParams || {})}&rdquo;
+              {quote.memberName ? <span className="text-cz-3">{` · ${quote.memberName}`}</span> : null}
             </span>
           ) : (
             <span className="text-cz-2">{t("boardroom.overview.boardNoQuote")}</span>

@@ -1,5 +1,439 @@
 export const PATCHES = [
   {
+    "version": "7.305",
+    "date": "2026-09-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "The season 4 calendar is out",
+          "body": "Season 4 runs from 28 September to 25 October, with 140 season days in every division: race days and training days. Open Race Hub, then Season, and pick season 4 to see your group's races. If your team moves division at the switch, you see your new group's calendar after the switch."
+        },
+        "da": {
+          "title": "Kalenderen for sæson 4 er klar",
+          "body": "Sæson 4 kører fra 28. september til 25. oktober, med 140 sæsondage i alle divisioner: løbsdage og træningsdage. Åbn Race Hub, så Sæson, og vælg sæson 4 for at se din gruppes løb. Skifter dit hold division ved skiftet, ser du din nye gruppes kalender efter skiftet."
+        },
+        "refs": [
+          5795,
+          5506
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Grand Tours in the right order",
+          "body": "Season 4 runs the Giro, then the Tour, then the Vuelta, and no Grand Tour starts in the first days of the season. The Giro starts on day 5."
+        },
+        "da": {
+          "title": "Grand Tours i den rigtige rækkefølge",
+          "body": "Sæson 4 kører Giro, så Tour og så Vuelta, og ingen Grand Tour starter i sæsonens første dage. Giroen starter på dag 5."
+        },
+        "refs": [
+          5802
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Upkeep is paid per race day",
+          "body": "From season 4, club upkeep is charged as Travel & staff for each senior race day you have a rider at the start, instead of one charge at the switch. Start every race and the total is the same as before; a race day with no rider of yours at the start costs nothing. U23 and junior races are free."
+        },
+        "da": {
+          "title": "Driften betales pr. løbsdag",
+          "body": "Fra sæson 4 trækkes holdets drift som Rejse og personale for hver seniorløbsdag, hvor du har en rytter til start, i stedet for ét træk ved skiftet. Stiller du til start i alle løb, er beløbet det samme som før; en løbsdag uden din rytter til start koster intet. U23- og juniorløb er gratis."
+        },
+        "refs": [
+          4385
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Auto-fill no longer double-books a rider",
+          "body": "Auto-fill again in the Race Hub now moves a rider between two races on the same race day without an error, and U23 and junior races lock him on their race day too. If Auto-fill again failed for you, try it again."
+        },
+        "da": {
+          "title": "Auto-udfyld dobbeltbooker ikke længere en rytter",
+          "body": "Auto-udfyld igen i Race Hub flytter nu en rytter mellem to løb på samme løbsdag uden fejl, og U23- og juniorløb låser ham også på deres løbsdag. Fejlede Auto-udfyld igen for dig, så prøv igen."
+        },
+        "refs": [
+          5789
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Prospects show their potential as numbers again",
+          "body": "Saturday night's intake came without values, types and abilities, so potential showed as stars and the profile said the abilities were not yet available. Every prospect has its data now."
+        },
+        "da": {
+          "title": "Emner viser potentiale som tal igen",
+          "body": "Lørdag nats indtag kom uden værdier, typer og evner, så potentialet stod som stjerner, og profilen skrev, at evnerne ikke var tilgængelige endnu. Alle emner har deres data nu."
+        },
+        "refs": [
+          5818
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "See how far today's session moved each ability",
+          "body": "The Training tab on a rider's profile shows a number next to each ability, for example \"today +41%\": how far the session moved that ability towards its next point. Before the evening training has run, it shows the last session."
+        },
+        "da": {
+          "title": "Se hvor langt dagens session flyttede hver evne",
+          "body": "Træningsfanen på rytterprofilen viser et tal ved hver evne, fx \"i dag +41%\": hvor langt sessionen flyttede evnen mod næste point. Før aftenens træning er kørt, vises seneste session."
+        },
+        "refs": [
+          5539
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "stage": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Training programs, in the beta group",
+          "body": "Give a rider one of 22 ready-made training programs with a day plan for each race day. The program is copied into his plan, so you can still change single days."
+        },
+        "da": {
+          "title": "Træningsprogrammer, i beta-gruppen",
+          "body": "Giv en rytter et af 22 færdige træningsprogrammer med en dagsplan for hver løbsdag. Programmet kopieres ind i hans plan, så du stadig kan ændre enkelte dage."
+        },
+        "refs": [
+          4629
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "U23 and junior lists sort by surname",
+          "body": "The Rider column sorts the same way as My Team. On the phone, Sort by sits in the training table's own header, so you no longer scroll past the whole list to find it."
+        },
+        "da": {
+          "title": "U23 og junior sorterer efter efternavn",
+          "body": "Kolonnen Rytter sorterer som My Team. På telefonen står Sortér efter i træningstabellens egen header, så du ikke skal scrolle forbi hele listen for at finde den."
+        },
+        "refs": [
+          5805
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.304",
+    "date": "2026-09-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Every rider has a best role, and no rating went down",
+          "body": "Every rider now has a best role, and the switch can only raise the number you see, never lower it. His natural role (the type badge) did not change."
+        },
+        "da": {
+          "title": "Alle ryttere har en bedste rolle, og ingen rating faldt",
+          "body": "Alle ryttere har nu en bedste rolle, og skiftet kan kun hæve det tal, du ser, aldrig sænke det. Hans naturlige rolle (typemærket) er ikke ændret."
+        },
+        "refs": [
+          5435
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Youth teams",
+        "en": {
+          "title": "U23 and Junior team pages are open to everyone",
+          "body": "Every manager can now open the U23 team page and the Junior team page. Beta testers have had them since 23/9. The pages now say riders aged 22 or younger and 18 or younger. There is no minimum age, so you can move a junior up to your U23 team."
+        },
+        "da": {
+          "title": "U23-holdets og juniorholdets sider er åbne for alle",
+          "body": "Alle managere kan nu åbne U23-holdets side og juniorholdets side. Beta-testerne har haft dem siden 23/9. Siderne siger nu ryttere på 22 år og yngre og 18 år og yngre. Der er ingen minimumsalder, så du kan rykke en junior op på dit U23-hold."
+        },
+        "refs": [
+          5794,
+          2492
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "stage": "beta",
+        "topic": "Boardroom",
+        "en": {
+          "title": "Board members talk like people, in the beta group",
+          "body": "The board members' comments are rewritten so they sound like people at your club. The debt goal now explains the real rule: it is met when your balance covers your active loans at season end. The vision shows a 4-season plan with season numbers instead of S3 to S6. The empty confidence line and the Portrait placeholder are gone."
+        },
+        "da": {
+          "title": "Bestyrelsesmedlemmerne taler som mennesker, i beta-gruppen",
+          "body": "Bestyrelsesmedlemmernes replikker er skrevet om, så de lyder som mennesker i din klub. Gældsmålet forklarer nu den rigtige regel: det er nået, når din saldo dækker dine aktive lån ved sæsonslut. Visionen viser en plan over 4 sæsoner med sæsonnumre i stedet for S3 til S6. Den tomme tillidslinje og pladsholderen Portræt er væk."
+        },
+        "refs": [
+          5633
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider values",
+        "en": {
+          "title": "No value update this Sunday",
+          "body": "Every rider's value was recalculated on Saturday evening, so the weekly update on Sunday 27 September is skipped. The next one is Sunday 4 October, where the extra premium on the very top riders takes its first step down."
+        },
+        "da": {
+          "title": "Ingen værdiopdatering på søndag",
+          "body": "Alle rytteres værdi blev regnet om lørdag aften, så den ugentlige opdatering søndag 27. september springes over. Den næste er søndag 4. oktober, hvor det ekstra tillæg på de allerdyreste ryttere tager sit første skridt ned."
+        },
+        "refs": [
+          5443
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.303",
+    "date": "2026-09-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider values",
+        "en": {
+          "title": "Rider values now follow the rider",
+          "body": "A rider's value is now calculated the same way for every rider, based on ability, age and expected career, not on which type he is. All riders were corrected at once, up and down. The riders at the very top had an extra premium in their price on top of what their racing earns. That premium steps down over the next Sundays until their price is performance alone. Wage demands did not change with this update, and signed contracts are never touched. From here, values update on Sundays only again."
+        },
+        "da": {
+          "title": "Rytterværdier følger nu rytteren",
+          "body": "En rytters værdi regnes nu ens for alle ryttere, ud fra evner, alder og forventet karriere, ikke ud fra hvilken type han er. Alle ryttere blev rettet på én gang, op og ned. Rytterne helt i toppen havde en ekstra præmie i prisen oven i det, deres resultater tjener. Den præmie glider ned over de næste søndage, indtil prisen er præstation alene. Lønkrav ændrede sig ikke med denne opdatering, og underskrevne kontrakter røres aldrig. Herfra opdateres værdier igen kun om søndagen."
+        },
+        "refs": [
+          5443,
+          5497
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rating shows the rider's best role now, for everyone",
+          "body": "A rider's rating is his rating in the role he is best at today, with the role named next to it. His type badge is labelled Natural role. Beta testers have had this since 24/9."
+        },
+        "da": {
+          "title": "Ratingen viser rytterens bedste rolle nu, for alle",
+          "body": "En rytters rating er hans rating i den rolle, han er bedst i i dag, med rollen skrevet ved siden af. Hans typemærke hedder Naturlig rolle. Beta-testerne har haft det siden 24/9."
+        },
+        "refs": [
+          5435
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.302",
+    "date": "2026-09-26",
+    "label": "Training, races and season recap",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Senior riders stay senior, and the U23/JR badge is back in training",
+          "body": "What changed: A short line on the U23 and Junior squad pages explains that a rider on your senior squad stays a senior until you move him. In Daily training, a rider's U23 or JR badge shows again next to his name, on desktop and phone.\n\nWhat it means for you: You know why a rider isn't on U23 or Junior yet, and you can tell youth riders apart in the training table again."
+        },
+        "da": {
+          "title": "Seniorryttere bliver seniorer, og U23/JR-mærket er tilbage i træning",
+          "body": "Hvad er ændret: En kort linje på U23- og Junior-siderne forklarer at en rytter på din seniortrup bliver senior, indtil du flytter ham. I Daglig træning viser rytterens U23- eller JR-mærke sig igen ved siden af navnet, på computer og telefon.\n\nHvad det betyder for dig: Du ved hvorfor en rytter ikke står på U23 eller Junior endnu, og du kan igen se forskel på ungdomsryttere i træningstabellen."
+        },
+        "refs": [
+          5763,
+          5519
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training score now shows in the report too",
+          "body": "What changed: Each rider's daily training score, already visible on Daily training, now also shows in the Report tab's history for that day.\n\nWhat it means for you: You can check a rider's score without switching back to Daily training."
+        },
+        "da": {
+          "title": "Træningsscore vises nu også i rapporten",
+          "body": "Hvad er ændret: Hver rytters daglige træningsscore, som allerede vises på Daglig træning, står nu også i rapport-fanens historik for den dag.\n\nHvad det betyder for dig: Du kan tjekke en rytters score uden at skifte tilbage til Daglig træning."
+        },
+        "refs": [
+          5734
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Rider name in the training card links to his profile",
+          "body": "What changed: In the expanded rider card on the phone's Daily training view, the rider's name is now a link to his profile page.\n\nWhat it means for you: Tap the name to jump straight to the rider, or ctrl/middle-click to open him in a new tab."
+        },
+        "da": {
+          "title": "Rytternavn i træningskortet linker til profilen",
+          "body": "Hvad er ændret: I det udfoldede rytterkort på telefonens Daglig træning-visning er rytterens navn nu et link til hans profilside.\n\nHvad det betyder for dig: Tryk på navnet for at hoppe direkte til rytteren, eller ctrl/midterklik for at åbne ham i en ny fane."
+        },
+        "refs": [
+          5735
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Today's story leads with real news, and injuries get their own warning",
+          "body": "What changed: The daily training story on the Report tab now shows a landed ability point or a fresh training injury before the near-breakthrough story. A new warning line above the story names every rider hurt in training today and roughly how many days he is expected to miss.\n\nWhat it means for you: Your daily story leads with what actually happened, and you no longer have to go hunting in the roster for a fresh injury."
+        },
+        "da": {
+          "title": "Dagens historie fører med rigtige nyheder, og skader får deres egen advarsel",
+          "body": "Hvad er ændret: Dagens træningshistorie på rapport-fanen viser nu et landet point eller en frisk træningsskade før den næsten-der-historien. En ny advarselslinje over historien nævner hver rytter der blev skadet i træning i dag, og cirka hvor mange dage han ventes at være ude.\n\nHvad det betyder for dig: Din daglige historie fører med det der faktisk skete, og du skal ikke længere lede i truppen efter en frisk skade."
+        },
+        "refs": [
+          5318
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Full standings now opens your own pool",
+          "body": "What changed: The Full standings link on the dashboard now opens your own group in the standings, not the whole division.\n\nWhat it means for you: One click takes you straight to your own pool, no more scrolling to find it."
+        },
+        "da": {
+          "title": "Fuld rangliste åbner nu din egen pulje",
+          "body": "Hvad er ændret: Fuld rangliste-linket på dashboardet åbner nu din egen pulje i stillingen, ikke hele divisionen.\n\nHvad det betyder for dig: Ét klik tager dig direkte til din egen pulje, uden at skulle rulle for at finde den."
+        },
+        "refs": [
+          5315
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "A stage result message now opens that stage",
+          "body": "What changed: Tapping an inbox message about a stage result now opens that stage's result, instead of the race's overall standings.\n\nWhat it means for you: You land on the result the message was actually about."
+        },
+        "da": {
+          "title": "En etaperesultat-besked åbner nu den etape",
+          "body": "Hvad er ændret: Trykker du på en indbakke-besked om et etaperesultat, åbner den nu netop den etapes resultat i stedet for løbets samlede stilling.\n\nHvad det betyder for dig: Du lander på det resultat beskeden faktisk handlede om."
+        },
+        "refs": [
+          5317
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "A tie in Compare no longer picks a fake winner",
+          "body": "What changed: When two or more riders you compare have the exact same value in a stat, Compare no longer highlights one of them as best.\n\nWhat it means for you: A highlighted stat now always means a real edge, never a tie."
+        },
+        "da": {
+          "title": "Uafgjort i Sammenlign udpeger ikke længere en falsk vinder",
+          "body": "Hvad er ændret: Har to eller flere ryttere du sammenligner nøjagtig samme værdi i en evne, fremhæver Sammenlign ikke længere en af dem som bedst.\n\nHvad det betyder for dig: En fremhævet evne betyder nu altid en reel forskel, aldrig uafgjort."
+        },
+        "refs": [
+          5316
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Extra safety check on a rider's first win",
+          "body": "What changed: The check behind a rider's first professional win now looks at his complete result history instead of a limited recent slice.\n\nWhy: A player reported a first-win message that looked wrong. I could not confirm what caused that specific report, but hardened the check regardless, since a limited slice could in theory miss an earlier win.\n\nWhat it means for you: Your rider's first-win moment stays reliable as his result history grows."
+        },
+        "da": {
+          "title": "Ekstra sikkerhedstjek på en rytters første sejr",
+          "body": "Hvad er ændret: Tjekket bag en rytters første professionelle sejr kigger nu på hele hans resultathistorik i stedet for et begrænset udsnit.\n\nHvorfor: En spiller rapporterede en første sejr-besked der så forkert ud. Jeg kunne ikke bekræfte hvad der udløste netop den rapport, men har hærdet tjekket alligevel, da et begrænset udsnit i teorien kunne overse en tidligere sejr.\n\nHvad det betyder for dig: Din rytters første sejr-øjeblik forbliver pålideligt efterhånden som hans resultathistorik vokser."
+        },
+        "refs": [
+          5733
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Switch stage right from the Team tab",
+          "body": "What changed: The Team tab on a multi-stage race now has the same stage stripe as the Stages tab, so you can browse stages and check the route fit without leaving Team.\n\nWhat it means for you: Pick a stage on Team to see its profile and your fit, then set your roster without switching tabs."
+        },
+        "da": {
+          "title": "Skift etape direkte fra Hold-fanen",
+          "body": "Hvad er ændret: Hold-fanen på et etapeløb har nu samme etape-stribe som Etaper-fanen, så du kan bladre etaper og tjekke rutepasset uden at forlade Hold.\n\nHvad det betyder for dig: Vælg en etape på Hold for at se dens profil og dit pas, og sæt så holdet uden at skifte fane."
+        },
+        "refs": [
+          5419
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Classic wins now show in your season recap",
+          "body": "What changed: The season recap now includes classic (one-day race) wins, both in your team's stat row and in the season's winners grid, alongside stage and overall wins.\n\nWhat it means for you: A strong one-day season finally shows up in your recap, not just stage races."
+        },
+        "da": {
+          "title": "Klassikersejre vises nu i din sæsonrecap",
+          "body": "Hvad er ændret: Sæsonrecappen viser nu klassikersejre (endagsløb), både i dit holds statistikrække og i sæsonens vindere-oversigt, ved siden af etape- og samlede sejre.\n\nHvad det betyder for dig: En stærk endagssæson viser sig nu endelig i din recap, ikke kun etapeløb."
+        },
+        "refs": [
+          5390
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Sponsor offers explain what sets the amount",
+          "body": "What changed: The sponsor page now explains that an offer follows your club's own reputation, division and standing in its group, not a fixed amount per sponsor type. The same explanation is now in Help.\n\nWhat it means for you: You know why two clubs see different offers from the same sponsor type."
+        },
+        "da": {
+          "title": "Sponsortilbud forklarer hvad der sætter beløbet",
+          "body": "Hvad er ændret: Sponsorsiden forklarer nu at et tilbud følger din klubs eget omdømme, division og placering i sin gruppe, ikke et fast beløb pr. sponsortype. Samme forklaring står nu i Hjælp.\n\nHvad det betyder for dig: Du ved hvorfor to klubber ser forskellige tilbud fra samme sponsortype."
+        },
+        "refs": [
+          5684
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.301",
     "date": "2026-09-25",
     "label": "Squads and boardroom",

@@ -49,6 +49,12 @@
 //     sluttider, saa ingen rytter uden uheld kan blive OTL, fordi et offer blev
 //     trukket ud af en kaede.
 //   - Ingen genindsaettelse uden et uheld. Grupetto-redningen er uaendret.
+//   - #5515 (26/9): lander offerets tid minus uheldet INDE i en reddet grupetto
+//     (under ankomst-vinduet fra en af dens ryttere), genindsaettes han ogsaa:
+//     uden uheldet var han reddet med grupettoen. Lukker hullet hvor en
+//     punktering i grupettoen kostede loebet (RULES §9 raekke 4).
+//   - Enkeltstarten (mechanics/individualTimeTrial.ts) har samme jury, per
+//     rytter, via teamTimeTrial.ts's applyTeamTimeLimit (#5515).
 //
 // POINTSTRAFFEN (ejer 23/9, UCI 2.6.032): ALLE genindsatte, baade juryens og
 // en reddet grupetto, mister deres point i loebets point- og bjergkonkurrence.
@@ -247,7 +253,12 @@ function juryTeamOf(jury: TimeLimitJuryInput, riderId: string): string | null {
  *
  * 1. Offeret: har et uheld med tidstab, kaempede videre (ikke grupetto/save),
  *    og sluttid minus uhelds-tidstabet (plus det han tabte ud over det lovede
- *    under jagten, `chaseLossByRider`) ligger inden for graensen.
+ *    under jagten, `chaseLossByRider`) ligger inden for graensen — ELLER
+ *    (#5515, 26/9) lander den tid inde i en REDDET grupetto (under
+ *    ankomst-vinduet fra en af dens ryttere): uden uheldet var han kommet i
+ *    maal med grupettoen og var blevet reddet med den. RULES §9 raekke 4:
+ *    et mekanisk uheld maa aldrig koste udgaaelse, og trappens haarde styrt
+ *    lover at han koerer videre. Uden `rescued` er reglen som foer.
  * 2. Hjaelperen: en OTL-doemt holdkammerat i SAMME maalgruppe som et
  *    genindsat offer.
  */
@@ -256,8 +267,14 @@ export function juryReinstatements(args: {
   otlRiderIds: ReadonlySet<string>;
   limitSeconds: number;
   jury: TimeLimitJuryInput;
+  /** #5515: den reddede grupettos sluttider + ankomst-vinduet den blev kaedet med. */
+  rescued?: { times: readonly number[]; windowSeconds: number };
 }): string[] {
-  const { results, otlRiderIds, limitSeconds, jury } = args;
+  const { results, otlRiderIds, limitSeconds, jury, rescued } = args;
+  const rescueWindow = Number(rescued?.windowSeconds);
+  const rescuedTimes = rescued && Number.isFinite(rescueWindow) && rescueWindow > 0 ? rescued.times : [];
+  const landsInRescuedGrupetto = (adjusted: number): boolean =>
+    rescuedTimes.some((t) => Math.abs(t - adjusted) < rescueWindow);
   if (otlRiderIds.size === 0) return [];
   const lossByRider = incidentTimeLossByRider(jury.incidents);
   if (lossByRider.size === 0) return [];
@@ -271,7 +288,8 @@ export function juryReinstatements(args: {
     if (effort && JURY_INELIGIBLE_EFFORTS.has(effort)) continue;
     const chaseLoss = Number(jury.chaseLossByRider?.[r.rider_id]);
     const loss = incidentLoss + (Number.isFinite(chaseLoss) && chaseLoss > 0 ? chaseLoss : 0);
-    if (round2(r.time_seconds - loss) <= limitSeconds) victims.add(r.rider_id);
+    const adjusted = round2(r.time_seconds - loss);
+    if (adjusted <= limitSeconds || landsInRescuedGrupetto(adjusted)) victims.add(r.rider_id);
   }
   if (victims.size === 0) return [];
 
@@ -399,7 +417,18 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
   // #5582: juryen koerer EFTER grupetto-kaedningen (se filhovedet). Den kan
   // kun flytte en rytter fra OTL til genindsat, aldrig den anden vej.
   const juryIds = new Set(
-    args.jury ? juryReinstatements({ results: args.results, otlRiderIds: otlIds, limitSeconds, jury: args.jury }) : [],
+    args.jury
+      ? juryReinstatements({
+          results: args.results,
+          otlRiderIds: otlIds,
+          limitSeconds,
+          jury: args.jury,
+          rescued: {
+            times: overLimit.filter((r) => rescuedIds.has(r.rider_id)).map((r) => r.time_seconds),
+            windowSeconds,
+          },
+        })
+      : [],
   );
   for (const id of juryIds) otlIds.delete(id);
 

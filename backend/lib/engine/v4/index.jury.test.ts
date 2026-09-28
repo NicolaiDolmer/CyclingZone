@@ -127,7 +127,10 @@ test("#5582 e2e: passage_totals er etapens point MED pointstraffen for alle geni
   // praecis de genindsatte, og alle andre beholder deres point uaendret.
   let reinstatedSeen = 0;
   let pointsKeptSeen = false;
-  for (let s = 0; s < 40; s++) {
+  // #5813: halen samles nu i én grupetto (groups.mergeTailGroupsDetailed), saa
+  // tidsgraensen bider sjaeldnere; samme seed-loft som juryCases ovenfor, og
+  // stop naar begge udsagn er set.
+  for (let s = 0; s < 120 && !(reinstatedSeen > 0 && pointsKeptSeen); s++) {
     const output = run(s);
     const reinstated = reinstatedRiderIdsOf(output);
     reinstatedSeen += reinstated.size;

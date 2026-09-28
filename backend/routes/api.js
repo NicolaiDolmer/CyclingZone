@@ -12,6 +12,8 @@
 import express from "express";
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
+import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
+import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
@@ -292,6 +294,7 @@ import {
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
 import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
+import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
 import { buildSeasonSwitchPreview } from "../lib/seasonSwitchPreview.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
@@ -512,6 +515,7 @@ import {
   getCacheStats,
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
+import { loadTeamSeasonEntries, raceIdsMissingWindow, withEntryRaceWindows, writeRegeneratedLineups } from "../lib/raceHubAutofill.js";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import {
   buildSelectionDeadlineReminder,
@@ -929,6 +933,12 @@ router.use("/rankings", createRankingsRouter({
   }),
 }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
+// #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
+// "programs" aldrig matches som et rytter-id.
+router.use("/training/programs", createTrainingProgramsRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException,
+}));
 
 async function requireAdmin(req, res, next) {
   await requireAuth(req, res, async () => {
@@ -3153,6 +3163,7 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
           seasonNumber: activeSeasonNumber,
           executedBy: "manager",
           gameDay,
+          dateGameDays: gameDays, // #4629: programslot = plads paa denne liste
         });
         lastTickDate = r.tickDate;
         if (!r.alreadyRan) {
@@ -3313,8 +3324,9 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
 // run-today/bulk ovenfor, #1479).
 router.put("/training/week-plan", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
-  const { days } = req.body ?? {};
-  if (!isValidWeekPlanDays(days)) return res.status(400).json({ error: "invalid_days" });
+  if (!isValidWeekPlanDays(req.body?.days)) return res.status(400).json({ error: "invalid_days" });
+  // #4629: holdets rytme er en REN intensitets-rytme; programceller fjernes.
+  const days = stripProgramFromWeekDays(req.body.days);
   try {
     // Manuel select-then-write i stedet for .upsert(onConflict): PostgREST kan ikke
     // udtrykke WHERE-predikatet på vores PARTIAL unique index (team_id) WHERE
@@ -3376,8 +3388,11 @@ router.delete("/training/week-plan", requireAuth, marketWriteLimiter, async (req
 router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
-  const { days } = req.body ?? {};
-  if (!isValidWeekPlanDays(days)) return res.status(400).json({ error: "invalid_days" });
+  if (!isValidWeekPlanDays(req.body?.days)) return res.status(400).json({ error: "invalid_days" });
+  // #4629: den gamle intensitets-editor skriver en REN ugerytme. Sender en klient
+  // programceller med (session/slots), fjernes de, saa en raekke aldrig baerer en
+  // session der modsiger sin intensitet. Uden programdata er `days` uaendret.
+  const days = stripProgramFromWeekDays(req.body.days);
   try {
     // Ejerskabs-check — samme mønster som POST /training/:riderId nedenfor:
     // individuel ugeplan er KUN for egne ryttere.
@@ -3400,10 +3415,20 @@ router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, asyn
 
     const now = new Date().toISOString();
     if (existing) {
-      const { error: updErr } = await supabase
+      // #4629: en haandredigeret ugerytme er ikke laengere "baseret paa" et
+      // program — proveniensen nulstilles. 42703 (kolonnen findes ikke endnu i
+      // deploy-vinduet foer auto-migrate.yml): skriv uden den.
+      // schema-columns-ok: program_key tilfoejes af database/2026-09-26-4629-training-programs.sql, applied post-merge.
+      let { error: updErr } = await supabase
         .from("training_week_plans")
-        .update({ days, updated_at: now })
+        .update({ days, updated_at: now, program_key: null })
         .eq("id", existing.id);
+      if (updErr?.code === "42703") {
+        ({ error: updErr } = await supabase
+          .from("training_week_plans")
+          .update({ days, updated_at: now })
+          .eq("id", existing.id));
+      }
       if (updErr) throw new Error(updErr.message);
     } else {
       const { error: insErr } = await supabase
@@ -6293,11 +6318,11 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: wRows } = await supabase.from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
     const withdrawn = new Set((wRows || []).map((w) => w.race_id));
 
-    // Holdets entries på tværs af alle løb: bruges til (a) manuel-detektion i mode=missing,
-    // (b) låsning af committede ryttere i løb der ikke regenereres.
-    const { data: allEntries } = await supabase.from("race_entries")
-      .select("race_id, rider_id, is_auto_filled").eq("team_id", req.team.id);
-    const manualRaceIds = new Set((allEntries || []).filter((e) => e.is_auto_filled === false).map((e) => e.race_id));
+    // Holdets entries i sæsonens løb (ALLE trupper, pagineret): bruges til (a) manuel-
+    // detektion i mode=missing, (b) låsning af committede ryttere i løb der ikke
+    // regenereres, (c) at slippe ryttere der flyttes mellem dagens løb (#5789).
+    const allEntries = await loadTeamSeasonEntries({ supabase, teamId: req.team.id, seasonId: season.id });
+    const manualRaceIds = new Set(allEntries.filter((e) => e.is_auto_filled === false).map((e) => e.race_id));
 
     // Regenererings-target: dagens kolonner minus afmeldte, minus igangværende (frys),
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
@@ -6356,8 +6381,18 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // Lås ALLE committede ryttere i løb der IKKE regenereres (binding-vinduer): andre
     // dages overlap (1b-fix), igangværende, og — i mode=missing — de manuelt-skippede.
     // Rod A (#1823): afmeldte løb låser IKKE (rytterne er frie) → med i excludeRaceIds.
+    // #5789: bindingWindowByRace dækker kun seniorløbene (#5517). En entry i et U23-/
+    // juniorløb samme løbsdag skal OGSÅ låse rytteren — hent vinduer for holdets øvrige
+    // løb i sæsonen (allEntries er sæson-scopet, så game_day-rummet blandes aldrig, #3070).
+    const extraRaceIds = raceIdsMissingWindow({ entries: allEntries, windowByRace: bindingWindowByRace });
+    const lockWindowByRace = extraRaceIds.length
+      ? withEntryRaceWindows({
+          windowByRace: bindingWindowByRace,
+          scheduleRows: await fetchAllScheduleRowsWithGameDay(supabase, extraRaceIds),
+        })
+      : bindingWindowByRace;
     const lockedWindows = lockedWindowsFromEntries({
-      entries: allEntries || [], windowByRace: bindingWindowByRace,
+      entries: allEntries, windowByRace: lockWindowByRace,
       excludeRaceIds: new Set([...target.map((r) => r.id), ...withdrawn]),
     });
 
@@ -6370,39 +6405,11 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
-    let regenerated = 0;
-    for (const race of target) {
-      const picks = picksByRace[race.id] || [];
-      const captainId = picks.find((p) => p.race_role === "captain")?.rider_id ?? picks[0]?.rider_id ?? null;
-      if (!picks.length || !captainId) continue;
-      const rows = picks.map((p) => ({
-        race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
-        // #5246: Race Hubs udfyld er managerens egen handling, ikke assistentens late-fill.
-        auto_filled_source: AUTO_FILL_SOURCES.MANAGER_AUTO,
-      }));
-      // Forward-guard (#2074): target er allerede filtreret til stages_completed===0, men
-      // gør invarianten lokal til delete'en så et igangværende felt aldrig nulstilles.
-      if (isRaceLineupFrozen(race)) continue;
-      // Surfacér delete/insert-fejl i stedet for tavst at efterlade et løb med 0 entries
-      // (ægte atomicitet kræver en RPC; her gør vi i det mindste fejlen synlig + retry-bar).
-      const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
-      if (delErr) throw new Error(`race_entries delete (${race.id}): ${delErr.message}`);
-      // #5246: tolerant hvis auto_filled_source-kolonnen ikke findes endnu (deploy-vinduet).
-      const { error: insErr } = await writeRaceEntriesWithSource({ supabase, rows });
-      if (insErr) {
-        // #3420: DB-backstoppet (no_rider_double_booking) er den sidste linje hvis
-        // bindingWindowByRace/lockedWindows ovenfor alligevel skulle overse en
-        // konflikt — tag samme navngivne fejlkode som PUT /selection i stedet for
-        // at lade en rå exclusion_violation nå kalderen som en opak 500 (#3098).
-        if (isRiderDayInvariantViolation(insErr)) {
-          const err = new Error(`race_entries insert (${race.id}): DB-invariant (#3420) afviste insert — ${insErr.message}`);
-          err.code = "selection_rider_bound";
-          throw err;
-        }
-        throw new Error(`race_entries insert (${race.id}): ${insErr.message}`);
-      }
-      regenerated++;
-    }
+    // #5789: skrivningen (frys-guard #2074, slip af ryttere der flyttes mellem dagens
+    // løb, delete-så-insert pr. løb, navngiven #3420-fejl) bor i raceHubAutofill.js.
+    const { regenerated } = await writeRegeneratedLineups({
+      supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
+    });
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
     captureException(err);
@@ -10727,6 +10734,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       activeStaffSalaries,
       academyRiderCount,
       facilitiesEnabled,
+      // #4385: upkeep pr. seniorløbsdag når flaget er on (fail-safe off).
+      upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
       // #3899: kvartilbånd-stikprøven for præmie-intervallet.
       divisionPrizeSamples,
     });
@@ -10884,6 +10893,8 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       activeStaffSalaries,
       academyRiderCount,
       facilitiesEnabled,
+      // #4385: med flaget on trækkes intet fladt upkeep ved skiftet.
+      upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
     });
 
     const preview = buildSeasonSwitchPreview({
@@ -14457,7 +14468,10 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
         .order("id", { ascending: true })),
     ]);
 
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });
+    // #4385: samme flag som processSeasonStart — med upkeep_per_race_day on
+    // trækkes intet fladt upkeep ved skiftet.
+    const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
+    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }

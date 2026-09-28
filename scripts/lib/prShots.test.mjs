@@ -2,7 +2,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,6 +30,7 @@ import {
   parseArgs,
   parseClick,
   parseMock,
+  parseMockRpc,
   pickPreviewUrl,
   planShoot,
   probeVerdict,
@@ -55,7 +57,7 @@ test("parseArgs shoot: spec'ens fulde kommando", () => {
   assert.deepEqual(opts.routes, ["/a", "/b"]);
   assert.deepEqual(opts.widths, [1440, 390]);
   assert.deepEqual(opts.clicks, [{ kind: "text", value: "Taktik" }, { kind: "css", value: "[data-testid=x]" }]);
-  assert.deepEqual(opts.mocks, [{ path: "/api/x", status: 200, file: "f.json" }]);
+  assert.deepEqual(opts.mocks, [{ path: "/api/x", rpc: null, status: 200, file: "f.json" }]);
   assert.equal(opts.dryRun, true);
   assert.equal(opts.build, true);
   assert.equal(opts.channel, "msedge");
@@ -129,20 +131,65 @@ test("parseClick og parseMock", () => {
   assert.deepEqual(parseClick("Taktik"), { kind: "text", value: "Taktik" });
   assert.deepEqual(parseClick("css:[data-testid=tab]"), { kind: "css", value: "[data-testid=tab]" });
   assert.throws(() => parseClick("css:"), /mangler en selector/);
-  assert.deepEqual(parseMock("/api/me=status:401"), { path: "/api/me", status: 401, file: null });
-  assert.deepEqual(parseMock("/api/races?day=today=today.json"), { path: "/api/races?day=today", status: 200, file: "today.json" });
+  assert.deepEqual(parseMock("/api/me=status:401"), { path: "/api/me", rpc: null, status: 401, file: null });
+  assert.deepEqual(parseMock("/api/races?day=today=today.json"), { path: "/api/races?day=today", rpc: null, status: 200, file: "today.json" });
   assert.throws(() => parseMock("/api/x"), /formen/);
   assert.throws(() => parseMock("api/x=f.json"), /starte med/);
   assert.throws(() => parseMock("/api/x=status:999"), /ikke en HTTP-status/);
 });
 
+test("parseMockRpc: funktionsnavn -> POST /rest/v1/rpc/<fn>; fil eller status; daarlige navne afvises", () => {
+  assert.deepEqual(parseMockRpc("get_season_recap=recap.json"), {
+    path: "/rest/v1/rpc/get_season_recap", rpc: "get_season_recap", status: 200, file: "recap.json",
+  });
+  assert.deepEqual(parseMockRpc("get_season_honours=status:404"), {
+    path: "/rest/v1/rpc/get_season_honours", rpc: "get_season_honours", status: 404, file: null,
+  });
+  assert.throws(() => parseMockRpc("get_season_recap"), /formen/);
+  assert.throws(() => parseMockRpc("=recap.json"), /formen/);
+  assert.throws(() => parseMockRpc("/rest/v1/rpc/get_season_recap=recap.json"), /funktionsnavn/, "kun navnet, ikke stien");
+  assert.throws(() => parseMockRpc("get season=recap.json"), /funktionsnavn/);
+  assert.throws(() => parseMockRpc("get_x=status:999"), /ikke en HTTP-status/);
+  const opts = parseArgs(["shoot", "l", "wt", "/season", "--mock-rpc=get_season_recap=recap.json", "--mock=/api/me=status:401"]);
+  assert.deepEqual(opts.mocks, [
+    { path: "/api/me", rpc: null, status: 401, file: null },
+    { path: "/rest/v1/rpc/get_season_recap", rpc: "get_season_recap", status: 200, file: "recap.json" },
+  ], "sti-mocks og RPC-mocks samles i een liste, sti-mocks foerst");
+  assert.throws(() => parseArgs(["login", "--mock-rpc=f=x.json"]), /Ukendt flag/);
+});
+
 test("mockFor: kun GET, praecis sti (query kun naar mocken selv har en)", () => {
-  const mocks = [parseMock("/api/me=status:401"), { path: "/api/races?day=today", status: 200, file: "t.json" }];
+  const mocks = [parseMock("/api/me=status:401"), { path: "/api/races?day=today", rpc: null, status: 200, file: "t.json" }];
   assert.equal(mockFor(mocks, "GET", "https://api.example.org/api/me?x=1").status, 401);
   assert.equal(mockFor(mocks, "POST", "https://api.example.org/api/me"), null, "en mock maa aldrig svare paa en skrivning");
   assert.equal(mockFor(mocks, "GET", "https://api.example.org/api/me/team"), null);
   assert.equal(mockFor(mocks, "GET", "https://api.example.org/api/races?day=today").file, "t.json");
   assert.equal(mockFor(mocks, "GET", "https://api.example.org/api/races?day=tomorrow"), null);
+  assert.equal(mockFor([], "GET", "https://api.example.org/api/me"), null);
+  assert.equal(mockFor(mocks, "GET", "not a url"), null);
+});
+
+test("mockFor: en RPC-mock svarer paa POST (supabase-js .rpc() er altid POST) og GET, kun paa sin egen funktion", () => {
+  const mocks = [parseMockRpc("get_season_recap=recap.json"), parseMock("/rest/v1/rpc/get_season_honours=h.json")];
+  const rpc = "https://abc.supabase.co/rest/v1/rpc/get_season_recap";
+  assert.equal(mockFor(mocks, "POST", rpc).file, "recap.json");
+  assert.equal(mockFor(mocks, "post", `${rpc}?select=*`).file, "recap.json", "query ignoreres naar mocken ingen har");
+  assert.equal(mockFor(mocks, "GET", rpc).file, "recap.json", ".rpc(fn, args, { get: true }) rammer samme mock");
+  assert.equal(mockFor(mocks, "POST", "https://abc.supabase.co/rest/v1/rpc/get_season_recap_v2"), null);
+  assert.equal(mockFor(mocks, "POST", "https://abc.supabase.co/rest/v1/get_season_recap"), null, "kun under /rpc/");
+  assert.equal(mockFor(mocks, "PATCH", rpc), null, "andre verber er skrivninger og gaar til vagten");
+  assert.equal(mockFor(mocks, "POST", "https://abc.supabase.co/rest/v1/rpc/get_season_honours"), null,
+    "en almindelig --mock paa rpc-stien matcher stadig kun GET; brug --mock-rpc");
+  assert.equal(mockFor(mocks, "GET", "https://abc.supabase.co/rest/v1/rpc/get_season_honours").file, "h.json");
+});
+
+test("RPC-mock og skrive-vagt: kaldet ER en skrivning for vagten, saa mocken SKAL registreres efter vagten (sidste route vinder)", () => {
+  // Kontrakten CLI'en bygger paa: isWriteRequest aendres ikke; mocken svarer foer vagten ser kaldet.
+  assert.equal(isWriteRequest("POST", "https://abc.supabase.co/rest/v1/rpc/get_season_recap"), true);
+  const cli = readFileSync(join(REPO_ROOT, "scripts", "pr-shots.mjs"), "utf8");
+  const guardAt = cli.indexOf("await installWriteGuard(context");
+  const mocksAt = cli.indexOf("await installMocks(context");
+  assert.ok(guardAt > 0 && mocksAt > guardAt, "installMocks skal kaldes EFTER installWriteGuard i runShoot");
 });
 
 // ── Navne og stier ─────────────────────────────────────────────────────────
@@ -219,11 +266,12 @@ test("planShoot: to routes med samme filnavn afvises", () => {
 });
 
 test("formatPlan: viser mocks, klik og advarsel om fallback; ingen em-dash", () => {
-  const opts = parseArgs(["shoot", "l", "wt", "/x", "--click=Taktik", "--mock=/api/me=status:401", "--wait-for=[data-testid=a]"]);
+  const opts = parseArgs(["shoot", "l", "wt", "/x", "--click=Taktik", "--mock=/api/me=status:401", "--mock-rpc=get_season_recap=r.json", "--wait-for=[data-testid=a]"]);
   const plan = planShoot(opts, { outRoot: "o" });
   const text = formatPlan(opts, plan, { profileDir: "P", outPrivate: false });
   assert.match(text, /origin: http:\/\/localhost:5173/);
   assert.match(text, /MOCK GET \/api\/me -> status 401/);
+  assert.match(text, /MOCK RPC get_season_recap \(POST \/rest\/v1\/rpc\/get_season_recap\) -> r\.json/);
   assert.match(text, /klik: tekst 'Taktik'/);
   assert.match(text, /vent paa: \[data-testid=a\]/);
   assert.match(text, /ADVARSEL/);
@@ -403,16 +451,30 @@ test("CLI'en laeser aldrig tokens, cookies eller storage og skruer aldrig uret (
   assert.ok(cli.includes('serviceWorkers: "block"'), "service workers skal blokeres, saa intet kald gaar uden om vagten");
 });
 
-test("dry-run: shoot printer planen og starter hverken build eller browser", () => {
-  const res = spawnSync(process.execPath, [join(REPO_ROOT, "scripts", "pr-shots.mjs"), "shoot", "x", REPO_ROOT, "/dashboard", "--dry-run", "--out", join(REPO_ROOT, "pr-screens", "live")], {
-    encoding: "utf8",
-    timeout: 30_000,
-  });
-  assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /origin: http:\/\/localhost:5173/);
-  assert.match(res.stdout, /dashboard-1440\.png/);
-  assert.match(res.stdout, /dashboard-390\.png/);
-  assert.match(res.stdout, /ingen browser startet, ingen build/);
+test("dry-run: shoot printer planen (inkl. RPC-mock) og starter hverken build eller browser", () => {
+  const tmp = mkdtempSync(join(tmpdir(), "cz-pr-shots-test-"));
+  const recap = join(tmp, "recap.json");
+  writeFileSync(recap, '{"season_id": 1, "champion": "Testhold"}');
+  try {
+    const res = spawnSync(process.execPath, [
+      join(REPO_ROOT, "scripts", "pr-shots.mjs"), "shoot", "x", REPO_ROOT, "/dashboard", "--dry-run",
+      `--mock-rpc=get_season_recap=${recap}`, "--out", join(REPO_ROOT, "pr-screens", "live"),
+    ], { encoding: "utf8", timeout: 30_000 });
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /origin: http:\/\/localhost:5173/);
+    assert.match(res.stdout, /dashboard-1440\.png/);
+    assert.match(res.stdout, /dashboard-390\.png/);
+    assert.match(res.stdout, /MOCK RPC get_season_recap/);
+    assert.match(res.stdout, /ingen browser startet, ingen build/);
+    const missing = spawnSync(process.execPath, [
+      join(REPO_ROOT, "scripts", "pr-shots.mjs"), "shoot", "x", REPO_ROOT, "/dashboard", "--dry-run",
+      "--mock-rpc=get_season_recap=findes-ikke.json", "--out", join(REPO_ROOT, "pr-screens", "live"),
+    ], { encoding: "utf8", timeout: 30_000 });
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /mock-filen findes ikke/);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test("dry-run: login og compose, og den gamle --pr-form giver en tydelig fejl", () => {

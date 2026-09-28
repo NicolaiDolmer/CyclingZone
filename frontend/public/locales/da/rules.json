@@ -42,7 +42,7 @@
         },
         "upkeep": {
           "title": "Driftsomkostning",
-          "text": "Hver sæson betaler dit hold en fast driftsomkostning (upkeep) ved sæsonstart, skaleret med division så højere divisioner betaler mere. De præcise beløb er en balance-knap udvikleren justerer mellem sæsoner; du ser altid beløbet bogført i din finanslog som 'upkeep'."
+          "text": "Hver sæson betaler dit hold en driftsomkostning (upkeep), skaleret med division så højere divisioner betaler mere. Den trækkes enten på én gang ved sæsonstart eller som Rejse og personale for hver seniorløbsdag dit hold stiller til start på; sæsonens samlede beløb er det samme. Jeg justerer de præcise beløb mellem sæsoner, og du ser altid hvert træk i din finanslog."
         },
         "salary": {
           "title": "Rytterløn",

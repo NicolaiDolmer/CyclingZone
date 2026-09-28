@@ -7,7 +7,17 @@
 // muteres aldrig, nyt array/objekt returneres) saa determinisme-testene kan
 // sammenligne deep-equal uden at bekymre sig om aliasing.
 
-import type { Entrant, EngineTuning, GroupKind, GroupOrigin, RaceGroup, RiderState, SegmentGroupSnapshot } from "./types.ts";
+import type {
+  Entrant,
+  EngineTuning,
+  GroupKind,
+  GroupOrigin,
+  RaceGroup,
+  RiderState,
+  SegmentGroupSnapshot,
+  StageResult,
+  TimelineEvent,
+} from "./types.ts";
 import { deriveWprimeMax, dayformComponent, jourSansComponent } from "./physiology.ts";
 
 export const INITIAL_GROUP_ID = "peloton-0";
@@ -200,6 +210,72 @@ export function mergeGroupsDetailed(
   return { groups: merged, merges };
 }
 
+/**
+ * #5813: afhaengte halegrupper samles i én grupetto.
+ *
+ * Paa en dag uden bjerge blev feltets hale til en raekke smaa grupper, der
+ * hver koerte i deres eget (svage) tempo og drev laengere og laengere fra
+ * hinanden. I virkeligheden finder de sammen: en grupetto dannes paa
+ * nedkoerslen og i dalen, og den koerer samlet mod maal.
+ *
+ * Reglen er en bredere udgave af den almindelige merge (`mergeGroupsDetailed`),
+ * men KUN for halen:
+ *   - En gruppe er "afhaengt", naar mindst `minRidersAhead` ryttere ligger foran
+ *     den. Loebet om sejren og de forreste placeringer roeres derfor aldrig:
+ *     en gruppe med faerre ryttere foran sig smelter kun sammen efter den
+ *     almindelige merge-taerskel.
+ *   - To afhaengte grupper inden for `windowSeconds` af hinanden smelter
+ *     sammen (samme konvention som den almindelige merge: den forreste gruppe
+ *     beholder id og gap, "samme gruppe = samme tid"). En afhaengt gruppe
+ *     traekkes ALDRIG op i en gruppe der ikke selv er afhaengt: en klump der
+ *     er sat af, kommer ikke gratis tilbage i feltet (maalt: det aendrede
+ *     udbrudsdynamikken, fordi feltet saa blev M5's jagtgruppe).
+ *   - Kaeder foldes som i `mergeGroupsDetailed`: vinduet maales fra den
+ *     sammenlagte gruppes gap.
+ * Ingen rng; sorteringen (gap_seconds, id) goer resultatet uafhaengigt af
+ * input-raekkefoelgen. Monotoni: ingen rytter kommer foran en rytter, der laa
+ * foran ham; de to grupper faar samme tid.
+ *
+ * REN: input muteres aldrig. Returnerer merges i samme form som
+ * `mergeGroupsDetailed`, saa segmentLoop kan emittere `group_merged` (#4971).
+ */
+export function mergeTailGroupsDetailed(
+  groups: RaceGroup[],
+  windowSeconds: number,
+  minRidersAhead: number,
+): { groups: RaceGroup[]; merges: GroupMerge[] } {
+  if (groups.length <= 1 || !(windowSeconds > 0)) {
+    return { groups: groups.map((g) => ({ ...g, rider_ids: [...g.rider_ids] })), merges: [] };
+  }
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const merged: RaceGroup[] = [];
+  const merges: GroupMerge[] = [];
+  let ridersAhead = 0;
+  let prevRidersAhead = 0; // ryttere foran den (sammenlagte) gruppe `prev`
+  for (const group of sorted) {
+    const prev = merged[merged.length - 1];
+    // Gruppen foran skal SELV vaere afhaengt (saa er denne det ogsaa): halen
+    // samles, men den traekkes aldrig op i en gruppe der koerer om placeringerne.
+    if (prev && prevRidersAhead >= minRidersAhead && group.gap_seconds - prev.gap_seconds < windowSeconds) {
+      merges.push({ absorbed_group_id: group.id, into_group_id: prev.id, rider_ids: [...group.rider_ids] });
+      const origin = mergedOrigin(prev, group);
+      merged[merged.length - 1] = {
+        id: prev.id,
+        kind: mergedKind(prev, group),
+        rider_ids: [...prev.rider_ids, ...group.rider_ids],
+        gap_seconds: prev.gap_seconds,
+        cohesion: Math.min(prev.cohesion, group.cohesion),
+        ...(origin ? { origin } : {}),
+      };
+    } else {
+      merged.push({ ...group, rider_ids: [...group.rider_ids] });
+      prevRidersAhead = ridersAhead;
+    }
+    ridersAhead += group.rider_ids.length;
+  }
+  return { groups: merged, merges };
+}
+
 /** Gruppe-billedet omkring finale-segmentet — det udbrudsankeret doemmer paa (#5578). */
 export type FinaleGroupTrace = {
   /** Grupperne ved INDGANGEN til finale-segmentet (etapens sidste segment). */
@@ -248,6 +324,73 @@ export function isBreakawayWin(trace: FinaleGroupTrace, winnerId: string | null)
     return escapeGroupOf(trace.postFinaleGroups, winnerId) !== null;
   }
   return finaleBuilt.every((g) => g.rider_ids.every((id) => escapeRiderIds.has(id)));
+}
+
+/**
+ * #5515: goer udbruddets udfald op i tidslinjen, efter finalen.
+ *
+ * mechanics/breakaway.ts udsender `breakaway_survived` paa etapens SIDSTE
+ * segment, foer finale-hooket. Dér betyder eventet kun "udbruddet er stadig
+ * sin egen gruppe"; finalen afgoer bagefter om det holder. Loebsfilmen
+ * (frontend stageTimelineFilm.js) oversaetter eventet til "udbruddet holder
+ * feltet fra livet helt til stregen" og viste derfor den linje ogsaa paa en
+ * etape, hvor udbruddet blev hentet (golden fixture bjerg-selektion: udbryderen
+ * bliver nr. 5).
+ *
+ * Dommen er motorens egen udbrudsdom (`isBreakawayWin`, #5578), den samme som
+ * etape-fortaellingen bruger (#5577), saa filmen og fortaellingen aldrig kan
+ * vaere uenige. Et `breakaway_survived` bliver staaende, naar begge holder:
+ *   1. Etapen blev vundet fra udbruddet (`breakawayWin`).
+ *   2. Gruppens bedst placerede rytter kom i maal foran enhver rytter uden for
+ *      udbruddet. Det skiller et andet stykke af udbruddet fra, som feltet
+ *      kom forbi, paa en dag hvor udbruddet vandt.
+ * Ellers skrives det om til `breakaway_caught` paa samme km (maalstregen) med
+ * samme gruppe og de af dens ryttere der kom i maal (en udgaaet udbryder blev
+ * ikke hentet ved stregen). Ingen ny event-type og
+ * ingen ny noegle: filmen har allerede copy til begge. Er hele gruppen udgaaet
+ * efter eventet, udelades udfaldet (uheldets event fortaeller historien).
+ *
+ * REN: input muteres ikke. Uden `breakaway_survived` returneres samme array.
+ */
+export function settleBreakawaySurvivedEvents(
+  events: TimelineEvent[],
+  args: { breakawayWin: boolean; trace: FinaleGroupTrace | null; results: readonly StageResult[] },
+): TimelineEvent[] {
+  if (!events.some((e) => e.type === "breakaway_survived")) return events;
+
+  const escapeRiderIds = new Set(
+    (args.trace?.preFinaleGroups ?? [])
+      .filter((g) => g.origin === "breakaway" && ESCAPE_KINDS.has(g.kind))
+      .flatMap((g) => g.rider_ids),
+  );
+  const rankOf = new Map<string, number>();
+  let bestOutsideEscape = Infinity;
+  for (const result of args.results) {
+    if (result.status === "abandoned") continue;
+    rankOf.set(result.rider_id, result.rank);
+    if (!escapeRiderIds.has(result.rider_id)) bestOutsideEscape = Math.min(bestOutsideEscape, result.rank);
+  }
+
+  return events.flatMap((event): TimelineEvent[] => {
+    if (event.type !== "breakaway_survived") return [event];
+    const riderIds = Array.isArray(event.params.rider_ids)
+      ? event.params.rider_ids.filter((id): id is string => typeof id === "string")
+      : [];
+    // Er ingen af gruppens ryttere i maal (alle udgaaet efter eventet), har
+    // udbruddet hverken holdt eller er blevet hentet: uheldets eget event
+    // fortaeller historien, saa udfaldet udelades.
+    // Kun ryttere der kom i maal: en udgaaet udbryder blev ikke "hentet ved stregen".
+    const finisherIds = riderIds.filter((id) => rankOf.has(id));
+    if (finisherIds.length === 0) return [];
+    const bestInGroup = Math.min(...finisherIds.map((id) => rankOf.get(id)!));
+    if (args.breakawayWin && bestInGroup < bestOutsideEscape) return [event];
+    const groupId = event.params.group_id;
+    return [{
+      km: event.km,
+      type: "breakaway_caught",
+      params: typeof groupId === "string" ? { group_id: groupId, rider_ids: finisherIds } : { rider_ids: finisherIds },
+    }];
+  });
 }
 
 /**

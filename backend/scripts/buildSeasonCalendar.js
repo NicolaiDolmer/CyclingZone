@@ -7,6 +7,9 @@
 //   ... --apply --replace-existing   # REGENERERING: sletter sæsonens nuværende kalender først
 //   ... --squad u23 | --squad junior # #5644: truppens egen kalender (EFTER seniorens); en
 //                                    # --replace-existing sletter da KUN truppens løb
+//   ... --target-structure s4        # #5795: planlæg mod S4's målstruktur (D4 E-H behandles
+//                                    # som pensioneret), så kalenderen kan skrives FØR
+//                                    # "Afslut sæson". Rører ikke retired_at. Kun senior.
 //
 // HVORFOR SCRIPTET FINDES (ejer-valg 6/8, SEASON_CUTOVER_RUNBOOK.md punkt 1):
 // S3-kalenderen fandtes ikke, og der var to veje: (A) byg den manuelt i god tid, eller
@@ -119,6 +122,7 @@ import {
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
 import { withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
+import { GRAND_TOUR_EARLIEST_START_DATE_INDEX } from "../lib/raceCalendarLanePacker.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
 import { ensureSeasonTransitionPlannedAt, SEASON_TRANSITION_PLANNED_AT_KEY } from "../lib/seasonTransitionBoundary.js";
 import {
@@ -129,6 +133,10 @@ import { withSeniorSquadScope } from "../lib/squads.js";
 import { SENIOR_SQUAD_OR_FILTER } from "../lib/racePoolCatalog.js";
 import { assertCalendarSquad } from "../lib/tierCalendarMaterializer.js";
 import { SENIOR_CALENDAR_POOLS_FROM_S4, SENIOR_CALENDAR_POOLS_FIRST_SEASON } from "../lib/calendarTierCaps.js";
+import {
+  resolveTargetStructure, targetStructureUsageError, resolveCutoverPoolRetirement,
+  racesInCutoverRetiredPools, formatTargetStructureReport,
+} from "../lib/calendarTargetStructure.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -162,7 +170,7 @@ export function detectSeniorPoolStructureViolations({ planTiers = [], seasonNumb
   for (const [tierKey, want] of Object.entries(expected)) {
     const got = byTier.get(Number(tierKey)) ?? 0;
     if (got !== want) {
-      violations.push(`D${tierKey}: ${got} puljer får en kalender, pyramiden kræver ${want} (#4592: sammenlægningen skal give hver D3-pulje managers, og D4 E-H skal være pensioneret, FØR kalenderen)`);
+      violations.push(`D${tierKey}: ${got} puljer får en kalender, pyramiden kræver ${want} (#4592: hver D3-pulje skal have managers, og D4 E-H skal være pensioneret FØR kalenderen — eller planlægges som pensioneret med --target-structure s4, #5795)`);
     }
   }
   return violations;
@@ -247,6 +255,32 @@ const WRITE_GATE_TEXT = Object.freeze({
   status_unknown: (n, s) => `sæson ${n} har status ${s == null ? "(tom/ikke en tekst)" : `'${s}'`} — hverken '${CALENDAR_WRITABLE_SEASON_STATUS}' eller en kendt låst status. Gaten nægter fail-closed frem for at gætte.`,
   season_missing: (n) => `sæson ${n} findes ikke i seasons — gaten kan ikke bekræfte at kalenderen må skrives (fail-closed). Ved --apply oprettes rækken med status '${CALENDAR_WRITABLE_SEASON_STATUS}' FØRST, og gaten køres igen mod den oprettede række.`,
 });
+
+/**
+ * #5802: GT'ernes startraekkefoelge pr. division som linjer til toerkoerslen - navn +
+ * foerste kalenderdato, i den raekkefoelge de STARTER. Laeser scorecardets
+ * `grandTourStarts`/`gtOrderViol`/`gtEarlyStartViol` (calendarPlacementGates.js), saa
+ * linjerne og gaterne aldrig kan vise hver sit. Divisioner uden GT'er springes over.
+ */
+export function formatGrandTourOrder(rapport) {
+  const tiers = (rapport?.tiers ?? []).filter((t) => t.grandTourStarts?.length);
+  if (!tiers.length) return [];
+  const out = [`\n── #5802 Grand Tours, startrækkefølge (skal være Giro → Tour → Vuelta) ──`];
+  for (const t of tiers) {
+    const linje = t.grandTourStarts
+      .map((g) => `${g.name} (${g.firstDate ?? `løbsdag ${g.firstGameDay}`})`).join(" → ");
+    // En GT uden virkelig dato kan ikke doemmes - da vises ⚠, aldrig ✅ (#2854).
+    const uvurderede = t.grandTourStarts.filter((g) => g.realOrder == null).map((g) => g.name);
+    const dom = (t.gtOrderViol?.length ?? 0) > 0 ? "❌"
+      : uvurderede.length ? `⚠ kan ikke vurderes uden virkelig dato: ${uvurderede.join(", ")}` : "✅";
+    out.push(`  D${t.tier}: ${linje}  ${dom}`);
+    // Ejer 26/9 kl. 22:40: ingen GT paa saesonens foerste dag (gaten detectGrandTourEarlyStartViolations).
+    const tidlige = t.gtEarlyStartViol ?? [];
+    out.push(`  D${t.tier}: ingen GT-start på sæsonens første dag (tidligst dag ${GRAND_TOUR_EARLIEST_START_DATE_INDEX + 1})  ${tidlige.length ? "❌" : "✅"}`);
+    for (const v of tidlige) out.push(`     ! ${v}`);
+  }
+  return out;
+}
 
 /** Menneske-læsbar forklaring på en skrive-gate-afgørelse (#5405). */
 export function describeSeasonCalendarWriteGate(gate, seasonNumber) {
@@ -572,6 +606,17 @@ export async function runSquadCalendar({
   return { applied: true, blocking, summary: applied, verify: v };
 }
 
+/**
+ * #5795: læs ALLE seniorpuljer (også pensionerede) og afgør hvilke målstrukturen
+ * pensionerer ved skiftet. Kun SELECT. `select("*")`, så læsningen virker både før og
+ * efter league_divisions.retired_at findes (samme valg som reconcilePoolCalendarOnActivation).
+ */
+export async function loadCutoverPoolRetirement({ supabase, structure }) {
+  const { data, error } = await withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("*")));
+  if (error) throw new Error(`league_divisions (#5795 målstruktur): ${error.message}`);
+  return resolveCutoverPoolRetirement({ pools: data ?? [], structure });
+}
+
 // ── CLI ─────────────────────────────────────────────────────────────────────────
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
@@ -609,6 +654,20 @@ if (isMain) {
     console.error("--season <N> kræves (heltal ≥ 1)"); process.exit(2);
   }
   try { assertCalendarSquad(squad); } catch (e) { console.error(`--squad: ${e.message}`); process.exit(2); }
+
+  // #5795: planlæg mod S4's MÅLSTRUKTUR (D4 E-H behandles som pensioneret), så kalenderen kan
+  // skrives før "Afslut sæson". Samme tomme-værdi-regel som --squad: en manglende værdi må
+  // aldrig stille og roligt betyde "ingen målstruktur".
+  const targetStructureArg = argOf("--target-structure");
+  if (process.argv.includes("--target-structure") && (!targetStructureArg || targetStructureArg.startsWith("--"))) {
+    console.error("--target-structure kræver en værdi (s4)"); process.exit(2);
+  }
+  let targetStructure = null;
+  if (targetStructureArg) {
+    try { targetStructure = resolveTargetStructure(targetStructureArg); } catch (e) { console.error(e.message); process.exit(2); }
+    const usageError = targetStructureUsageError({ structure: targetStructure, seasonNumber, squad });
+    if (usageError) { console.error(usageError); process.exit(2); }
+  }
 
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("⚠ Missing SUPABASE creds"); process.exit(2); }
@@ -758,10 +817,20 @@ if (isMain) {
       seasonTransitionAt: transition.at, previousSeasonLastStageAtByTier, seasonLastRaceDay: window.lastRaceDay,
     };
 
+    // #5795: målstrukturen. Kun SELECT; puljerne der pensioneres ved skiftet sendes til
+    // materializeren som `cutoverRetiredPoolIds` i BÅDE dry-run og apply, så de to ikke kan
+    // planlægge hver sin kalender.
+    let cutover = null;
+    if (targetStructure) {
+      cutover = await loadCutoverPoolRetirement({ supabase, structure: targetStructure });
+      for (const line of formatTargetStructureReport({ structure: targetStructure, ...cutover })) console.log(line);
+    }
+    const cutoverArgs = cutover ? { cutoverRetiredPoolIds: [...cutover.retireIds] } : {};
+
     // 1) Planlæg (altid dry-run først — også når vi skal apply'e).
     const plan = await materializeTierCalendars({
       supabase, seasonId, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {},
-      realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, squad,
+      realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, squad, ...cutoverArgs,
     });
 
     // #5644 (Y5): en trups kalender har sin egen, kortere vej: ingen K-B-komposition,
@@ -873,6 +942,10 @@ if (isMain) {
     for (const line of formatScorecard(rapport, {
       heading: `SÆSON ${seasonNumber} — KALENDER-SCORECARD (planlagt, docs/CALENDAR_RULES.md §1-§7)`,
     })) console.log(line);
+
+    // #5802: GT'ernes startraekkefoelge med navne og datoer, saa ejeren kan se den direkte
+    // i toerkoerslen. Dommen er scorecardets GT-raekkefoelge-gate (applyBlocking nedenfor).
+    for (const line of formatGrandTourOrder(rapport)) console.log(line);
 
     const scorecardGates = scorecardGateGroups(rapport);
     blocking.push(...scorecardGates.blocking);
@@ -1031,7 +1104,7 @@ if (isMain) {
       // ikke rettes bagefter.
       const applied = await materializeTierCalendars({
         supabase, seasonId, seasonStartDate: firstDay, from, dryRun: false, log: (m) => console.log(m),
-        realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs,
+        realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, ...cutoverArgs,
       });
       console.log(`\n  ${applied.racesInserted} løb · ${applied.stageProfiles} etape-profiler · ${applied.stageSchedules} etape-tider indsat.`);
 
@@ -1039,11 +1112,19 @@ if (isMain) {
       const v = await postVerify({ supabase, seasonId });
       console.log(`  races=${v.raceCount} · race_stage_profiles=${v.profileCount} · race_stage_schedule=${v.scheduleCount}`);
       console.log(`  løb pr. pulje: ${v.pools.map(([d, n]) => `${d}:${n}`).join(" · ")}`);
+      // #5795: med målstrukturen må ingen pulje der pensioneres ved skiftet have fået løb.
+      const orphanPools = cutover ? racesInCutoverRetiredPools({ poolCounts: v.pools, retireIds: cutover.retireIds }) : [];
+      if (cutover) console.log(`  løb i puljer der pensioneres ved skiftet: ${orphanPools.length ? orphanPools.map(([d, n]) => `${d}:${n}`).join(" · ") : "0"}  ${orphanPools.length ? "❌" : "✅"}`);
+      if (orphanPools.length) {
+        console.error(`\n❌ #5795: ${orphanPools.length} pulje(r) der pensioneres ved skiftet har fået løb — kalenderen er IKKE skrevet mod målstrukturen. Undersøg før pensioneringen køres; rollback: --apply --replace-existing.`);
+      }
       if (v.pastStages > 0) {
         console.error(`\n❌ ${v.pastStages} etape(r) er planlagt i FORTIDEN. Det er 27/6-blitzens tilstand — undersøg FØR race-scheduleren kører igen.`);
         process.exitCode = 1;
       } else if (v.raceCount === 0 || v.profileCount === 0) {
         console.error(`\n❌ Post-verify fandt 0 løb eller 0 profiler — apply gjorde ikke hvad den sagde.`);
+        process.exitCode = 1;
+      } else if (orphanPools.length) {
         process.exitCode = 1;
       } else {
         console.log(`\n✅ Sæson ${seasonNumber}-kalenderen er bygget og verificeret. Ingen etape i fortiden.\n`);

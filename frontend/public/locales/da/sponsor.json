@@ -119,6 +119,7 @@
     "divisionPicker": "Se rate for en division",
     "divisionPill": "Division {division} · {count} etaper",
     "deadline": "Beløbet låses i det øjeblik du skriver under, prissat ud fra den division og de resultater du har den dag, og det bliver stående hele aftalen. Selve aftalen starter med sæson {season}. Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig til den pris tilbuddene åbnede på.",
+    "amountFollowsClub": "Beløbet følger din egen klub: dit omdømme, din division og hvor du ligger i din pulje. To klubber kan vælge samme sponsor og få forskellige tilbud.",
     "empty": "Der er ingen tilbud lige nu. En ny aftale kan forhandles, når den nuværende kontrakt skal fornyes.",
     "choose": "Vælg",
     "pending": "Valgt",

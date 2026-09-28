@@ -64,6 +64,7 @@ import type {
   Entrant,
   EngineState,
   FinaleType,
+  ProfileType,
   RaceGroup,
   RiderState,
   SegmentHookContext,
@@ -72,6 +73,7 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
+import { isBunchCatchRoute } from "../finale.ts";
 import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 
@@ -142,6 +144,15 @@ const FORMATION_SEGMENT_INDEX = 0;
 const MIN_BREAKAWAY_SIZE = 2;
 const MAX_BREAKAWAY_SIZE = 8;
 const INITIAL_GAP_SECONDS = 25; // hovedstart ved formation (reelle udbrud har typisk allerede et forspring km 1)
+// #5812: udbruddet gaar kort inde i foerste segment, ikke paa dets to_km. Paa en
+// rute hvor foerste segment er langt (en flad etape skrevet som ét segment)
+// ville "udbrud gaar" ellers staa paa maalstregen.
+const FORMATION_WINDOW_KM = 12;
+
+/** Km hvor udbruddet dannes paa formations-segmentet (#5812). Eksporteret for kontrakt-tests. */
+export function formationKmFor(segment: { from_km: number; to_km: number }): number {
+  return round2(Math.min(segment.to_km, segment.from_km + FORMATION_WINDOW_KM));
+}
 
 const JOIN_SCORE_WEIGHTS: Readonly<Record<"aggression" | "endurance" | "tempo", number>> = {
   aggression: 0.45,
@@ -282,7 +293,7 @@ function attemptFormation(
   });
 
   events.push({
-    km: round2(ctx.segment.to_km),
+    km: formationKmFor(ctx.segment),
     type: "breakaway_formed",
     params: { group_id: newGroupId, rider_ids: [...selected] },
   });
@@ -559,6 +570,143 @@ export function computeNetChaseAdvantage(input: {
   return netAdvantage * stanceMultiplier;
 }
 
+/**
+ * #5812 (a): loftet paa "lad gaa"-hullet — hvor meget forspring feltet giver
+ * dette udbrud, foer det begynder at jage. Terraenets grundloft
+ * (`maxGapSecondsByProfile`) ganget med en trussel-faktor: udbruddets
+ * kollektive GC-trussel (samme evner som jagt-modellens gcThreat) som FORHOLD
+ * til feltets. Et udbrud af feltets farligste ryttere faar mindre, et af
+ * harmloese ryttere faar mere — bounded af `maxGapFactorBounds`.
+ *
+ * SKALA-INVARIANT (#4707): forholdet er homogent af grad 0 i evne-niveauet.
+ * MONOTONI: faktoren er ikke-stigende i udbruddets trussel. Ingen rng.
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function letGoMaxGapSeconds(input: {
+  breakawayRiderIds: string[];
+  fieldRiderIds: string[];
+  entrants: Readonly<Record<string, Entrant>>;
+  profileType: ProfileType;
+  finaleType?: FinaleType | null;
+}): number {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  const profileBase = extra.maxGapSecondsByProfile[input.profileType] ?? extra.maxGapSecondsDefault;
+  const finaleFactor = input.finaleType ? (extra.maxGapFinaleFactor[input.finaleType] ?? 1) : 1;
+  const base = profileBase * Math.max(0, finaleFactor);
+  const fieldThreat = collectiveAbility(input.fieldRiderIds, input.entrants, GC_THREAT_KEYS);
+  const breakawayThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS);
+  const ratio = fieldThreat > 0 ? breakawayThreat / fieldThreat : 1;
+  const [lo, hi] = extra.maxGapFactorBounds;
+  const reference = extra.threatReferenceRatio > 0 ? extra.threatReferenceRatio : 1;
+  const factor = clamp(1 - extra.threatGapSensitivity * (ratio / reference - 1), lo, hi);
+  return Math.max(0, base * factor);
+}
+
+/**
+ * #5813 (del 2): jagt-gulvet. Hvor mange af segmentets JAGT-km ligger i
+ * etapens sidste `chaseFloorFinalKm` km paa aabent terraen (flad/rullende
+ * profil), hvor feltet altid overtager jagten sent? Jagt-km er segmentets
+ * sidste `chaseKm` (lad-gaa-fasen ligger foerst, se letGoSplitKm). 0 paa
+ * alle andre profiler og foer vinduet.
+ *
+ * Strukturelt led (etape-fremdrift og profil), ingen evne-akse og ingen rng.
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function chaseFloorKm(input: {
+  profileType: ProfileType;
+  distanceKm: number;
+  toKm: number;
+  chaseKm: number;
+}): number {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  if (!extra.chaseFloorProfileTypes.includes(input.profileType)) return 0;
+  if (!(extra.chaseFloorFinalKm > 0) || !(input.chaseKm > 0)) return 0;
+  const windowStart = input.distanceKm - extra.chaseFloorFinalKm;
+  const chaseStart = input.toKm - input.chaseKm;
+  return clamp(input.toKm - Math.max(chaseStart, windowStart), 0, input.chaseKm);
+}
+
+/**
+ * #5813 (del 2): hvilket forspring feltet koerer udbruddet ned til ved maal
+ * paa DENNE etape. Paa en massefinale `chaseFloorTargetGapSeconds` (et hul
+ * finalens antals-vindue altid henter); paa andre finaler 0 (feltet koerer
+ * det helt ind, der er intet antals-vindue). Med sandsynligheden for
+ * finaletypen (`chaseFloorLateChanceByFinale`, ellers
+ * `chaseFloorLateChanceDefault`) regner feltet forkert og kommer for sent:
+ * `chaseFloorLateTargetGapSeconds`, og et udbrud med et reelt forspring kan
+ * holde. `lateRoll` er etapens ene lodtraekning (uniform 0-1).
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function chaseFloorTargetGapSeconds(
+  route: { finale_type: FinaleType | null; profile_type: ProfileType },
+  lateRoll: number,
+): number {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  const lateChance = (route.finale_type ? extra.chaseFloorLateChanceByFinale[route.finale_type] : undefined)
+    ?? extra.chaseFloorLateChanceDefault;
+  if (lateRoll < lateChance) return extra.chaseFloorLateTargetGapSeconds;
+  // Paa en massefinale henter finalens antals-vindue et kort forspring
+  // (finale.ts isBunchCatchRoute); ellers koerer feltet hullet helt i.
+  return isBunchCatchRoute(route) ? extra.chaseFloorTargetGapSeconds : 0;
+}
+
+/**
+ * #5813 (del 2): sekunder jagt-gulvet lukker paa segmentets gulv-km. Inden for
+ * vinduet koerer sprinterholdene hullet ned mod dagens maal (`targetGapSeconds`)
+ * ved maalstregen, jaevnt over de km der er tilbage: paa hvert segment lukkes
+ * segmentets andel af resten (`floorKm / kmToFinish`), saa hullet ved maal
+ * hoejst er maalet, uanset hvor stort det var da vinduet begyndte. Aldrig
+ * negativ, og et hul under maalet roeres ikke. Uafhaengigt af holdordrer (en
+ * ordre kan hverken fjerne gulvet eller skabe et forspring).
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function chaseFloorClosingSeconds(input: {
+  separationSeconds: number;
+  floorKm: number;
+  kmToFinish: number;
+  targetGapSeconds: number;
+}): number {
+  if (!(input.floorKm > 0)) return 0;
+  const excess = Math.max(0, input.separationSeconds - Math.max(0, input.targetGapSeconds));
+  if (excess === 0) return 0;
+  const share = input.kmToFinish > 0 ? clamp(input.floorKm / input.kmToFinish, 0, 1) : 1;
+  return excess * share;
+}
+
+/**
+ * #5812 (a): er jagtgruppen et FELT der kan lade et udbrud gaa? Delt af M5
+ * (lad-gaa-fasen) og segmentLoop (nulstillet tempo-drift), saa de to halvdele
+ * af mekanikken altid er slaaet til og fra sammen.
+ */
+export function isLetGoChaseGroup(chaseRiderCount: number): boolean {
+  return Number.isFinite(chaseRiderCount) && chaseRiderCount >= BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders;
+}
+
+/**
+ * #5812 (a): hvor mange af segmentets km der hoerer til "lad gaa"-fasen, og
+ * hvor mange til jagten. Fasen er STATELESS afledt af distancen: udbruddet
+ * dannes altid paa rutens foerste segment (`formationKmFor`), og fasen varer
+ * de km det tager hullet at vokse fra hovedstarten til loftet med
+ * `letGoSecondsPerKm`. Et segment kan derfor rumme begge faser (fx et langt
+ * foerste segment paa en legacy-rute). Kun km EFTER dannelsen taeller.
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function letGoSplitKm(input: {
+  formationKm: number;
+  maxGapSeconds: number;
+  fromKm: number;
+  toKm: number;
+}): { letGoKm: number; chaseKm: number } {
+  const rate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm;
+  const start = Math.max(input.fromKm, input.formationKm);
+  const span = Math.max(0, input.toKm - start);
+  const letGoEndKm = rate > 0
+    ? input.formationKm + Math.max(0, input.maxGapSeconds - INITIAL_GAP_SECONDS) / rate
+    : input.formationKm;
+  const letGoKm = clamp(letGoEndKm - start, 0, span);
+  return { letGoKm, chaseKm: span - letGoKm };
+}
+
 function flattenTryBreakRiderIds(orders: readonly BreakawayTeamOrder[] | undefined): Set<string> {
   const set = new Set<string>();
   if (!orders) return set;
@@ -608,8 +756,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
   let groups = state.groups;
   let changed = false;
-  let chased = false;
+  let chasedKm = 0;
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
+  const formationSegment = ctx.route.segments[FORMATION_SEGMENT_INDEX];
+  const formationKm = formationSegment ? formationKmFor(formationSegment) : ctx.segment.from_km;
 
   for (const breakaway of breakawayGroups) {
     // WIRING-GUARD (#4615): en gruppe med kind "breakaway" er ikke
@@ -617,7 +767,34 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // samme art. Er "udbruddet" ikke foran jagt-gruppen, er der intet hul at
     // lukke, og et blindt kald ville emittere et falsk breakaway_caught.
     if (breakaway.gap_seconds > chaseGroup.gap_seconds) continue;
-    chased = true;
+
+    // #5812 (a): "lad gaa"-fasen. Kun dagens udbrud (M5's egen oprindelse)
+    // faar den — et nedkoerselsangreb (M3) er et angreb feltet reagerer paa
+    // med det samme. Segmentets km deles i lad-gaa-km (hullet vokser mod
+    // loftet) og jagt-km (jagt-modellen nedenfor lukker).
+    let letGoKm = 0;
+    // Dagens udbrud findes foerst fra dannelses-km: paa formations-segmentet
+    // jages kun resten af segmentet (CodeRabbit-fund), ogsaa uden lad-gaa-fase.
+    let chaseKm = breakaway.origin === "breakaway"
+      ? Math.max(0, ctx.segment.to_km - Math.max(ctx.segment.from_km, formationKm))
+      : segmentLengthKm;
+    let maxGapSeconds = 0;
+    if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length)) {
+      maxGapSeconds = letGoMaxGapSeconds({
+        breakawayRiderIds: breakaway.rider_ids,
+        fieldRiderIds,
+        entrants: ctx.entrants,
+        profileType: ctx.route.profile_type,
+        finaleType: ctx.route.finale_type,
+      });
+      ({ letGoKm, chaseKm } = letGoSplitKm({
+        formationKm,
+        maxGapSeconds,
+        fromKm: ctx.segment.from_km,
+        toKm: ctx.segment.to_km,
+      }));
+    }
+    chasedKm = Math.max(chasedKm, chaseKm);
 
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
@@ -629,15 +806,23 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       fieldRiderIds,
     });
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
-    // et. Farten (og dermed hvor meget et udbrud traekker fra) afgoeres af
-    // segmentLoop's egen tempo-model; lod vi et negativt netto tilfoeje
-    // sekunder her, ville M5 bogfoere det samme forspring to gange — og en
-    // holdordre kunne dermed SKABE et forspring i stedet for at paavirke
-    // jagten paa det (mor-spec §5: spillerens valg kan aldrig vaelte et loeb).
-    const closingSeconds = Math.max(
+    // et. En holdordre (stancen) virker kun gennem jagten, saa den kan aldrig
+    // SKABE et forspring (mor-spec §5: spillerens valg kan aldrig vaelte et
+    // loeb). Hullet vokser KUN i lad-gaa-fasen ovenfor, som ingen ordre roerer.
+    // #5813 (del 2): paa aabent terraen overtager feltet jagten i etapens
+    // sidste km (jagt-gulvet). De km jages ikke af netto-fordelen.
+    const floorKm = chaseFloorKm({
+      profileType: ctx.route.profile_type,
+      distanceKm: ctx.route.distance_km,
+      toKm: ctx.segment.to_km,
+      chaseKm,
+    });
+    // #5812: jagten virker kun paa segmentets jagt-km.
+    const netClosingSeconds = Math.max(
       0,
-      netAdvantage * segmentLengthKm * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
+      netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
+    const letGoGrowth = letGoKm * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
     // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
@@ -654,7 +839,24 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const currentBreakaway = groups.find((g) => g.id === breakaway.id);
     if (!currentChase || !currentBreakaway) continue;
     const separation = currentChase.gap_seconds - currentBreakaway.gap_seconds;
-    const newSeparation = Math.max(0, separation - closingSeconds);
+    // Lad gaa: hullet vokser mod loftet, men et hul der allerede er over
+    // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
+    const grown = separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
+    const beforeFloor = Math.max(0, grown - netClosingSeconds);
+    // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
+    // den segment-noeglede stream): "kommer sprinterholdene for sent i dag" er
+    // en beslutning om etapen, og den maa ikke skifte med segmentinddelingen.
+    // Streamen genskabes pr. kald, saa lodtraekningen er den samme paa hvert
+    // segment i vinduet.
+    const floorClosingSeconds = floorKm > 0
+      ? chaseFloorClosingSeconds({
+          separationSeconds: beforeFloor,
+          floorKm,
+          kmToFinish: ctx.route.distance_km - (ctx.segment.to_km - floorKm),
+          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")()),
+        })
+      : 0;
+    const newSeparation = Math.max(0, beforeFloor - floorClosingSeconds);
     const newBreakawayGap = currentChase.gap_seconds - newSeparation;
     groups = groups.map((g) => (g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g));
     changed = true;
@@ -678,8 +880,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
   // #5570: jagten koster. Kun naar der faktisk var et udbrud foran at jage
   // (wiring-guarden ovenfor), og kun én gang pr. segment uanset antal udbrud.
-  const segmentShare = ctx.route.distance_km > 0 ? clamp(segmentLengthKm / ctx.route.distance_km, 0, 1) : 0;
-  const riders = chased ? applyChaseCost(state.riders, chasePlan.chaserWork, segmentShare) : null;
+  // #5812: kun for de km der faktisk jages — i lad-gaa-fasen jager ingen.
+  const segmentShare = ctx.route.distance_km > 0 ? clamp(chasedKm / ctx.route.distance_km, 0, 1) : 0;
+  const riders = chasedKm > 0 ? applyChaseCost(state.riders, chasePlan.chaserWork, segmentShare) : null;
 
   if (!changed && !riders) return { state, events };
   return { state: { ...state, groups, ...(riders ? { riders } : {}) }, events };
@@ -696,12 +899,14 @@ export const breakawayHook: BreakawayHook = (state: EngineState, ctx: BreakawayH
   if (ctx.segmentIndex === FORMATION_SEGMENT_INDEX && findBreakawayGroups(state.groups).length === 0) {
     const tryBreakRiderIds = flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders));
     const formationResult = attemptFormation(state, ctx, tryBreakRiderIds);
-    // Dannede vi et udbrud i DETTE segment, faar det sit hovedstart uantastet:
-    // jagten begynder foerst paa det naeste segment (#4615). Ellers ville en
-    // fuld segment-laengdes jagt-fremdrift blive bogfoert i samme kald som
-    // formationen og udslette forspringet foer det var kort.
-    if (findBreakawayGroups(formationResult.state.groups).length > 0) return formationResult;
-    return progressChase(formationResult.state, ctx);
+    // #5812: dannede vi et udbrud i DETTE segment, koerer resten af segmentet
+    // (fra dannelses-km) gennem samme lad-gaa/jagt-opdeling som alle andre
+    // segmenter. Paa et kort foerste segment er det ren lad-gaa-fase; paa et
+    // langt (legacy-rute) naar jagten ogsaa at begynde. Foer (#4615) fik
+    // formations-segmentet ingen fremdrift, fordi en fuld segment-laengdes
+    // jagt ellers udslettede hovedstarten.
+    const progressed = progressChase(formationResult.state, ctx);
+    return { state: progressed.state, events: [...formationResult.events, ...progressed.events] };
   }
   return progressChase(state, ctx);
 };

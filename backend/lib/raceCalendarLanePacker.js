@@ -212,6 +212,9 @@ function raceFootprint(race, spineMinStages) {
 //   R9  et monument ligger ALDRIG inde i et Grand Tours loebsdags-spaend (#4203)
 //   R10 mindst MIN_GAP kalenderdage mellem to nabo-monumenter (§4)
 //   R11 mindst MIN_SPREAD kalenderdage fra foerste til sidste monument (§4)
+//   R14 Grand Tours starter i deres rigtige kalenderraekkefoelge, Giro -> Tour -> Vuelta (#5802)
+//   R15 ingen Grand Tour starter foer dato `gtEarliestStartDate` - aldrig paa saesonens
+//       foerste dag (#5802, se GRAND_TOUR_EARLIEST_START_DATE_INDEX)
 //
 // R12 ER FJERNET IGEN (#5267, ejer-kort 19/9). Den bandt loebsdags-aksens LAENGDE inde i
 // selve soegningen, og det var roden til at PR #5169's maalte kalender faldt: saa snart et
@@ -254,7 +257,7 @@ function raceFootprint(race, spineMinStages) {
 // (D1 paa 709 skridt / 3 ms). R8 er den stramme: den afskar 609 forsoeg i D1.
 function solveContiguousStarts({
   races, D, days, cap, spineMinStages, monumentRules = null, maxSteps = 20000000,
-  stats = null,
+  stats = null, gtEarliestStartDate = 0,
 }) {
   const items = races
     .map((race, i) => ({
@@ -299,6 +302,34 @@ function solveContiguousStarts({
     sidsteIKlasse.set(klasseAf[k], k);
   }
 
+  // R14 (#5802, ejer 26/9): Grand Tours STARTER i deres rigtige kalenderraekkefoelge
+  // (Giro -> Tour -> Vuelta). Foer R14 afgjorde sorteringen ovenfor (fodaftryk faldende)
+  // hvilken GT soegningen proevede foerst, saa den eneste GT med 18 etaper (Touren) altid
+  // fik det foerste GT-slot og Giroen (17) det andet - MAALT paa den gyldne S4-kalender:
+  // Tour -> Giro -> Vuelta. Identiteterne kan ikke byttes bagefter, for GT'er med forskelligt
+  // etapeantal har forskelligt fodaftryk, og et bytte ville braekke R4's eksakte dags-kvote.
+  //
+  // Reglen er derfor en BINDING: raekkefoelgen af GT-KLASSER (fodaftryk) som soegningen
+  // starter dem i skal vaere den raekkefoelge GT'erne har i virkeligheden (seasonFraction,
+  // fra race_pool.date_text). Inden for samme klasse (Giro og Vuelta har begge 17 etaper)
+  // er de ombyttelige i soegningen, og identitets-paasaetningen i layoutContiguous giver dem
+  // slots i fase-raekkefoelge - saa klasse-raekkefoelgen er nok til at holde hele reglen.
+  // R6 sikrer at hoejst een GT starter ad gangen, saa GT-starterne er strengt sekventielle.
+  //
+  // Mangler EEN GT sin seasonFraction, er den rigtige raekkefoelge ukendt og R14 er slaaet
+  // fra - bit-identisk med foer #5802 (samme fallback-princip som #3469's orderByPhase).
+  // Bevidst ALT-ELLER-INTET: en udateret GT kan dele klasse med en dateret (Giro og Vuelta
+  // har begge 17 etaper), og identitets-paasaetningen i layoutContiguous falder da tilbage
+  // til id-orden for hele klassen, saa en delvis binding ville ikke kunne love noget. Den
+  // delvise situation er FAIL-CLOSED: gaten detectGrandTourOrderViolations doemmer stadig
+  // de daterede GT'er og stopper --apply, i stedet for at en gaettet raekkefoelge slipper
+  // igennem. Prods katalog har date_text paa alle tre GT'er (maalt 26/9).
+  // Overlap mellem en GT og et andet etapeloeb roeres IKKE (ejer 26/9: det er tilladt).
+  const gtIdx = items.map((it, k) => (it.gt ? k : -1)).filter((k) => k >= 0);
+  const gtKlasseRaekkefoelge = gtIdx.length >= 2 && gtIdx.every((k) => hasFraction(items[k].race))
+    ? [...gtIdx].sort((a, b) => byPhaseThenBigThenId(items[a].race, items[b].race)).map((k) => klasseAf[k])
+    : null;
+
   const brugt = new Array(items.length).fill(false);
   const startAf = new Array(items.length).fill(-1);
   const bandSizes = [];
@@ -338,6 +369,10 @@ function solveContiguousStarts({
     if (lo > hi) return false;
 
     const gtAktiv = aktive.some((a) => items[a.i].gt);
+    // R14: den klasse den NAESTE GT skal have. `brugt` indeholder her kun placerede loeb.
+    const naesteGtKlasse = gtKlasseRaekkefoelge
+      ? gtKlasseRaekkefoelge[gtIdx.reduce((n, k) => n + (brugt[k] ? 1 : 0), 0)]
+      : null;
 
     // TAETTEST FOERST. Soegningen tager den foerste loesning den finder, saa retningen her
     // afgoer kalenderens karakter: nedad fylder hver loebsdag til cap'en og holder
@@ -362,6 +397,8 @@ function solveContiguousStarts({
             if (gtAktiv || acc.some((x) => items[x].gt)) continue;                  // R6
             if (sidsteGtSlut != null && dato < sidsteGtSlut + 2) continue;          // R6
             if (mr && acc.some((x) => items[x].mon)) continue;                      // R9
+            if (naesteGtKlasse != null && klasseAf[k] !== naesteGtKlasse) continue; // R14
+            if (dato < gtEarliestStartDate) continue;                               // R15
           }
           if (mr && items[k].mon) {
             // R9: `gtAktiv` er praecis "en GT's loebsdags-spaend daekker denne loebsdag" -
@@ -641,6 +678,7 @@ function layoutContiguousRelaxed({ races, D, days, cap, spineMinStages }) {
 
 function layoutContiguous({
   stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG = 0,
+  gtEarliestStartDate = 0,
 }) {
   if (D < 1 || days < 1 || cap < 1) return null;
 
@@ -677,25 +715,37 @@ function layoutContiguous({
   // (padAxisWithTrainingDays) og kan derfor aldrig koste en placeringsregel. Hvert forsoeg
   // staar i `solveAttempts`, saa en tabt monument-regel er synlig i dry-runnet i stedet for
   // at forsvinde i en fallback.
+  //
+  // R15 (#5802) er SIDSTE trin i stigen, efter samme princip som monument-reglerne: den
+  // holdes i alle forsoeg med et skridt-loft, og kun hvis INGEN af dem finder en pakning,
+  // koeres det gamle, uafgraensede forsoeg uden den. Udfaldet er da ikke stille:
+  // `detectGrandTourEarlyStartViolations` er en haard gate uden override og stopper --apply,
+  // og `solveAttempts` viser `gtStartRule: false`. MAALT 26/9: prods katalog loeses i
+  // foerste forsoeg MED begge regler; tierCalendarMaterializer-testens syntetiske D1 (tre
+  // 21-etapers GT'er) finder ingen pakning med R15 inden for loftet og faar - som foer
+  // #5802 - kalenderen fra det sidste forsoeg.
+  const r15Aktiv = gtEarliestStartDate > 0 && gts.length > 0;
   const forsoeg = [];
   let loest = null;
   let monumentRulesHeld = false;
+  let gtStartRuleHeld = false;
   const stige = [];
-  if (monumentRules) stige.push({ rules: true, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
-  stige.push({ rules: false, maxSteps: undefined });
+  if (monumentRules) stige.push({ rules: true, gtStart: r15Aktiv, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
+  if (r15Aktiv) stige.push({ rules: false, gtStart: true, maxSteps: MONUMENT_SOLVE_MAX_STEPS });
+  stige.push({ rules: false, gtStart: false, maxSteps: undefined });
   for (const trin of stige) {
     const stats = {};
     loest = solveContiguousStarts({
       races: alle, D, days, cap, spineMinStages,
       monumentRules: trin.rules ? monumentRules : null,
-      stats,
+      stats, gtEarliestStartDate: trin.gtStart ? gtEarliestStartDate : 0,
       ...(trin.maxSteps != null ? { maxSteps: trin.maxSteps } : {}),
     });
     forsoeg.push({
-      rules: trin.rules, ok: Boolean(loest),
+      rules: trin.rules, gtStartRule: trin.gtStart, ok: Boolean(loest),
       steps: stats.steps ?? loest?.steps ?? null, exhausted: Boolean(stats.exhausted),
     });
-    if (loest) { monumentRulesHeld = trin.rules; break; }
+    if (loest) { monumentRulesHeld = trin.rules; gtStartRuleHeld = trin.gtStart; break; }
   }
   if (!loest) return layoutContiguousRelaxed({ races: alle, D, days, cap, spineMinStages });
   const naturalRaceDays = loest.G;
@@ -821,7 +871,8 @@ function layoutContiguous({
     .filter((g) => etapeSpaend.some(([a, b]) => g > a && g < b)).length;
 
   return {
-    placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, solveAttempts: forsoeg,
+    placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, gtStartRuleHeld,
+    solveAttempts: forsoeg,
     raceDayTargetRequested: maal, raceDayTargetHeld, trainingGameDays, restDayGameDays,
     dateOfTrainingGameDay,
     naturalRaceDays,
@@ -881,6 +932,24 @@ export const MAX_GT_STAGES_PER_DAY = 4;
 // GT'erne mod hinanden indtil to af dem delte en kalenderdag.
 export const MAX_GT_SPAN_DAYS = 6;
 
+// R15 (#5802, ejer 26/9 kl. 22:40): en Grand Tour maa ALDRIG starte paa saesonens foerste
+// kalenderdato. S3 aabnede med en GT paa dag 1, og det gav spiller-klager (sweep 20/8).
+// Tallet er et 0-BASERET DATO-INDEKS paa divisionens kalenderakse (0 = saesonens foerste
+// dag), saa 2 betyder "tidligst paa dag 3" - to dages luft, som ejeren foreslog.
+//
+// MAALT 26/9 paa prod-kataloget (racePoolCatalog.prod.json via calendarGoldenDiff): vaerdierne
+// 1, 2, 3 og 4 giver den SAMME kalender - Giroen starter paa dag 5, fordi det er dér
+// soegningen foerst finder en lovlig pakning - og ingen haard invariant brydes. Den read-only
+// S4-toerkoersel (--target-structure s4) med 2 giver ogsaa Giroen paa dag 5 og alle gates
+// groenne. Reglen koster altsaa ingen ekstra forskydning ud over at flytte
+// GT'en vaek fra dag 1. 2 er valgt som ejerens foreslaaede luft; den er ikke strammere end
+// hvad kataloget allerede giver, saa den ikke skubber paa kvote (§1b) eller monument-reglerne.
+//
+// Holdes som en BINDING i soegningen (R15 i solveContiguousStarts) og doemmes bagefter af
+// detectGrandTourEarlyStartViolations (calendarPlacementGates.js), der stopper --apply.
+// Kan et katalog ikke holde reglen, er den sidste trin i layoutContiguous' stige (se dér).
+export const GRAND_TOUR_EARLIEST_START_DATE_INDEX = 2;
+
 // Skridt-loft for det MONUMENT-BUNDNE soegeforsoeg (#4203). Det almindelige forsoeg beholder
 // solveContiguousStarts' eget loft paa 20 mio.
 //
@@ -895,7 +964,14 @@ export const MAX_GT_SPAN_DAYS = 6;
 // (dry-run 3/9), altsaa med en faktor 18 i luft. Rammer et fremtidigt katalog loftet, staar
 // det i `solveAttempts` i dry-runnet, og gaten detectMonumentsInsideGrandTours stopper
 // --apply - loftet kan da haeves med en maaling i haanden i stedet for paa fornemmelse.
-export const MONUMENT_SOLVE_MAX_STEPS = 2000000;
+//
+// HAEVET TIL 3 MIO. 26/9 (#5802), med maalingen i haanden. Paa prod-kataloget (offline
+// S3-planen, racePoolCatalog.prod.json) loeser D1 MED monument-reglerne nu paa 645.242
+// skridt med R14 og 1.523.270 med R14 + R15 - luften til 2 mio. var faldet til en faktor 1,3.
+// 3 mio. giver en faktor 2 igen. Loftet gaelder ogsaa R15-forsoeget uden monument-regler
+// (se stigen i layoutContiguous), saa et katalog der ikke kan holde R15 koster hoejst to
+// gange loftet foer det sidste forsoeg.
+export const MONUMENT_SOLVE_MAX_STEPS = 3000000;
 
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -1049,6 +1125,9 @@ export function packLaneCalendar({
   // Garantien: loebenes indbyrdes placering, datoer og etaper pr. dato er uae­ndrede -
   // padding tilfoejer KUN tomme loebsdage.
   raceDayTarget = 0,
+  // R15 (#5802, ejer 26/9): tidligste kalenderdato (0-baseret) en Grand Tour maa STARTE paa.
+  // Se GRAND_TOUR_EARLIEST_START_DATE_INDEX for begrundelse og maaling.
+  gtEarliestStartDate = GRAND_TOUR_EARLIEST_START_DATE_INDEX,
 } = {}) {
   const D = Math.max(1, density);
   const cap = Math.max(1, overlapCap);
@@ -1091,6 +1170,7 @@ export function packLaneCalendar({
     ? { placements: [], timelineLength: 0 }
     : layoutContiguous({
       stageRaces, classics, monuments, density: D, days, cap, spineMinStages, targetG: maal,
+      gtEarliestStartDate,
     });
   if (!res) {
     throw new Error(
@@ -1113,6 +1193,9 @@ export function packLaneCalendar({
     // false betyder enten "ingen monumenter i denne division" eller "der fandtes ingen
     // lovlig pakning med reglerne, saa den kalender du ser her er anden-forsoeget".
     monumentRulesHeld: Boolean(res.monumentRulesHeld),
+    // #5802: true naar pakningen blev fundet MED R15 (ingen GT paa saesonens foerste dage).
+    // false betyder "ingen GT'er", "reglen slaaet fra" eller "sidste forsoeg uden R15".
+    gtStartRuleHeld: Boolean(res.gtStartRuleHeld),
     // Skridt-forbrug pr. soegeforsoeg. Rent diagnostik: soegningen er den dyreste del af
     // pakningen, og et forsoeg der loeber toer ser ud som "ingen lovlig pakning".
     solveAttempts: res.solveAttempts ?? [],

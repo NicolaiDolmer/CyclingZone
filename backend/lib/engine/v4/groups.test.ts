@@ -13,11 +13,13 @@ import {
   mergedOrigin,
   mergeGroups,
   mergeGroupsDetailed,
+  mergeTailGroupsDetailed,
+  settleBreakawaySurvivedEvents,
   splitGroup,
 } from "./groups.ts";
 import type { FinaleGroupTrace } from "./groups.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
-import type { AbilityKey, Entrant, RaceGroup } from "./types.ts";
+import type { AbilityKey, Entrant, RaceGroup, StageResult, TimelineEvent } from "./types.ts";
 
 function abilities(): Record<AbilityKey, number> {
   return {
@@ -237,4 +239,117 @@ test("#5578 isBreakawayWin: feltets rytter vinder = ikke udbrudssejr; ingen vind
   const postFinaleGroups = [group("finale-winner-0", "solo", ["p1"], 0), group("finale-tier-1", "peloton", ["p2", "e1", "e2"], 4)];
   assert.equal(isBreakawayWin(trace({ postFinaleGroups }), "p1"), false);
   assert.equal(isBreakawayWin(trace({}), null), false);
+});
+
+// ── #5515: udbruddets udfald goeres op efter finalen ────────────────────────
+function survivedEvent(groupId: string, riderIds: string[]): TimelineEvent {
+  return { km: 150, type: "breakaway_survived", params: { group_id: groupId, rider_ids: riderIds, gap_seconds: 40 } };
+}
+
+function finished(order: string[]): StageResult[] {
+  return order.map((riderId, i) => ({ rider_id: riderId, rank: i + 1, time_seconds: 1000 + i, group_id: "g", status: "finished" }));
+}
+
+test("#5515 settleBreakawaySurvivedEvents: udbruddet hentet i finalen = breakaway_caught paa samme km, samme gruppe og ryttere", () => {
+  const events: TimelineEvent[] = [{ km: 10, type: "breakaway_formed", params: {} }, survivedEvent("breakaway-0", ["e1", "e2"])];
+  const settled = settleBreakawaySurvivedEvents(events, { breakawayWin: false, trace: trace({}), results: finished(["p1", "e1", "p2", "e2"]) });
+  assert.equal(settled[0], events[0]);
+  assert.deepEqual(settled[1], { km: 150, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["e1", "e2"] } });
+  assert.equal(events[1].type, "breakaway_survived", "input muteres ikke");
+});
+
+test("#5515 settleBreakawaySurvivedEvents: en udbryder vinder, men feltet var med i opgoeret = hentet (motorens dom)", () => {
+  const events = [survivedEvent("breakaway-0", ["e1", "e2"])];
+  const settled = settleBreakawaySurvivedEvents(events, { breakawayWin: false, trace: trace({}), results: finished(["e1", "p1", "e2", "p2"]) });
+  assert.equal(settled[0].type, "breakaway_caught");
+});
+
+test("#5515 settleBreakawaySurvivedEvents: udbruddet vandt = breakaway_survived bliver staaende uaendret", () => {
+  const events = [survivedEvent("breakaway-0", ["e1", "e2"])];
+  const settled = settleBreakawaySurvivedEvents(events, { breakawayWin: true, trace: trace({}), results: finished(["e1", "e2", "p1", "p2"]) });
+  assert.equal(settled[0], events[0]);
+});
+
+test("#5515 settleBreakawaySurvivedEvents: udbruddet vandt, men et andet stykke af det blev passeret af feltet = kun det stykke er hentet", () => {
+  const front = group("breakaway-0", "breakaway", ["e1"], 0, "breakaway");
+  const rear = group("breakaway-1", "solo", ["e2"], 50, "breakaway");
+  const peloton = group("peloton-0", "peloton", ["p1", "p2"], 30);
+  const t = trace({ entryGroups: [front, peloton, rear], preFinaleGroups: [front, peloton, rear] });
+  const events = [survivedEvent("breakaway-0", ["e1"]), survivedEvent("breakaway-1", ["e2"])];
+  const settled = settleBreakawaySurvivedEvents(events, { breakawayWin: true, trace: t, results: finished(["e1", "p1", "p2", "e2"]) });
+  assert.deepEqual(settled.map((e) => e.type), ["breakaway_survived", "breakaway_caught"]);
+});
+
+test("#5515 settleBreakawaySurvivedEvents: en gruppe hvor alle er udgaaet, faar intet udfald; intet survived-event = samme array", () => {
+  const results: StageResult[] = [
+    ...finished(["e1", "p1"]),
+    { rider_id: "e2", rank: 3, time_seconds: 0, group_id: "g", status: "abandoned" },
+  ];
+  const rear = group("breakaway-1", "solo", ["e2"], 50, "breakaway");
+  const t = trace({ preFinaleGroups: [group("breakaway-0", "breakaway", ["e1"], 0, "breakaway"), group("peloton-0", "peloton", ["p1"], 30), rear] });
+  const settled = settleBreakawaySurvivedEvents([survivedEvent("breakaway-1", ["e2"])], { breakawayWin: true, trace: t, results });
+  assert.deepEqual(settled, []);
+
+  // Én udgaaet og én hentet: kun den hentede staar i breakaway_caught.
+  const mixed = settleBreakawaySurvivedEvents([survivedEvent("breakaway-0", ["e2", "e1"])], {
+    breakawayWin: false,
+    trace: t,
+    results: [...finished(["p1", "e1"]), { rider_id: "e2", rank: 3, time_seconds: 0, group_id: "g", status: "abandoned" }],
+  });
+  assert.deepEqual(mixed[0].params.rider_ids, ["e1"]);
+
+  const none: TimelineEvent[] = [{ km: 10, type: "breakaway_formed", params: {} }];
+  assert.equal(settleBreakawaySurvivedEvents(none, { breakawayWin: false, trace: null, results: [] }), none);
+});
+
+// ── #5813: afhaengte halegrupper samles i én grupetto ─────────────────────────
+
+function tailGroup(id: string, count: number, gap: number, origin?: RaceGroup["origin"]): RaceGroup {
+  return {
+    id,
+    kind: "chase",
+    rider_ids: Array.from({ length: count }, (_, i) => `${id}-${i}`),
+    gap_seconds: gap,
+    cohesion: 1,
+    ...(origin ? { origin } : {}),
+  };
+}
+
+test("#5813 mergeTailGroupsDetailed: afhaengte grupper inden for vinduet samles; den forreste beholder id og gap", () => {
+  const groups = [tailGroup("front", 50, 0), tailGroup("a", 20, 400), tailGroup("b", 20, 460), tailGroup("c", 10, 530)];
+  const { groups: out, merges } = mergeTailGroupsDetailed(groups, 90, 40);
+  assert.equal(out.length, 3);
+  assert.equal(out[0].id, "front", "fronten roeres ikke");
+  assert.equal(out[1].id, "a");
+  assert.equal(out[1].gap_seconds, 400, "grupettoen faar den forreste afhaengte gruppes tid");
+  assert.equal(out[1].rider_ids.length, 40, "b smelter ind; c ligger 130 s efter a's tid og bliver udenfor");
+  assert.deepEqual(merges.map((m) => [m.absorbed_group_id, m.into_group_id]), [["b", "a"]]);
+  // c er udenfor vinduet maalt fra grupettoens gap (samme kaede-regel som mergeGroupsDetailed).
+  const withC = mergeTailGroupsDetailed(groups, 140, 40);
+  assert.deepEqual(withC.merges.map((m) => m.absorbed_group_id), ["b", "c"]);
+});
+
+test("#5813 mergeTailGroupsDetailed: en afhaengt gruppe traekkes aldrig op i en gruppe der koerer om placeringerne", () => {
+  // front 8 (udbrud), felt 120, og en klump 30 s bag feltet: feltet har kun 8
+  // foran sig og er ikke afhaengt, saa klumpen bliver hvor den er.
+  const groups = [tailGroup("front", 8, 0), tailGroup("felt", 120, 200), tailGroup("klump", 30, 230)];
+  const { groups: out, merges } = mergeTailGroupsDetailed(groups, 90, 40);
+  assert.equal(merges.length, 0);
+  assert.equal(out.length, 3);
+});
+
+test("#5813 mergeTailGroupsDetailed: uafhaengig af input-raekkefoelgen, input muteres ikke, vindue 0 er slukket", () => {
+  const groups = [tailGroup("front", 50, 0), tailGroup("a", 20, 400), tailGroup("b", 20, 460)];
+  const frozen = JSON.stringify(groups);
+  const forward = mergeTailGroupsDetailed(groups, 90, 40);
+  const reversed = mergeTailGroupsDetailed([...groups].reverse(), 90, 40);
+  assert.deepEqual(reversed, forward);
+  assert.equal(JSON.stringify(groups), frozen, "input maa ikke muteres");
+  assert.equal(mergeTailGroupsDetailed(groups, 0, 40).merges.length, 0);
+});
+
+test("#5813 mergeTailGroupsDetailed: et hentet udbrud mister oprindelsen, som i den almindelige merge", () => {
+  const groups = [tailGroup("front", 50, 0), tailGroup("a", 20, 400), tailGroup("escapee", 2, 420, "breakaway")];
+  const { groups: out } = mergeTailGroupsDetailed(groups, 90, 40);
+  assert.equal(out[1].origin, undefined);
 });

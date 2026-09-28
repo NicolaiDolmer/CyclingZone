@@ -19,7 +19,7 @@
         }
       },
       {
-        "km": 40,
+        "km": 12,
         "type": "breakaway_formed",
         "params": {
           "group_id": "breakaway-0",
@@ -136,6 +136,182 @@
       },
       {
         "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-winner-0",
+          "rider_ids": [
+            "r01"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-1",
+          "rider_ids": [
+            "r02"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-2",
+          "rider_ids": [
+            "r11"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-3",
+          "rider_ids": [
+            "r10"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-4",
+          "rider_ids": [
+            "r12"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-5",
+          "rider_ids": [
+            "r09"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-6",
+          "rider_ids": [
+            "r08"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-7",
+          "rider_ids": [
+            "r07"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-8",
+          "rider_ids": [
+            "r06"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-9",
+          "rider_ids": [
+            "r05"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-10",
+          "rider_ids": [
+            "r04"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-11",
+          "rider_ids": [
+            "r16"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-12",
+          "rider_ids": [
+            "r03"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-13",
+          "rider_ids": [
+            "r15"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-14",
+          "rider_ids": [
+            "r14"
+          ]
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-0",
+          "into_group_id": "finale-tier-15",
+          "rider_ids": [
+            "r13"
+          ]
+        }
+      },
+      {
+        "km": 70,
         "type": "finale_attack",
         "params": {
           "kind": "placement_gap",
@@ -145,11 +321,13 @@
       },
       {
         "km": 70,
-        "type": "sprint_decided",
+        "type": "finale_attack",
         "params": {
-          "winner_rider_id": "r01",
+          "kind": "stage_decided",
+          "rider_id": "r01",
           "group_id": "finale-winner-0",
-          "finale_type": "descent"
+          "finale_type": "descent",
+          "win_type": "close_win"
         }
       },
       {
@@ -328,7 +506,7 @@
               "gap": 24.07
             }
           ],
-          "win_type": "group_finish"
+          "win_type": "close_win"
         }
       }
     ]

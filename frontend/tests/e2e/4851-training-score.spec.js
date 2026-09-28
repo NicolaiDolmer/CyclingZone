@@ -465,6 +465,16 @@ async function mockWideTraining(page) {
 }
 
 async function setLanguage(page, lang) {
+  // #5747: src/i18n/index.js's egen filhoved (#5177) advarer eksplicit —
+  // "Kald ALDRIG changeLanguage foer 'initialized' er udsendt". Lige efter
+  // goto() kan i18next stadig vaere midt i SIN EGEN interne changeLanguage
+  // (til det detekterede sprog), og de to kald deler `isLanguageChangingTo`.
+  // Rammer vi ind i det vindue, kan vores "en"-kald tabe racen og blive
+  // nulstillet tilbage til dansk — reproduceret lokalt: 2/5 koersler af
+  // "360 px · en" viste stadig dansk indhold trods et fuldfoert
+  // changeLanguage("en"). Derfor: vent paa isInitialized FOER vi aendrer
+  // sproget, samme moenster som core-smoke.spec.js's forceEnglish().
+  await expect.poll(() => page.evaluate(() => window.__i18n?.isInitialized === true)).toBe(true);
   await page.evaluate(async (next) => {
     window.localStorage.setItem("cz_lang", next);
     if (window.__i18n) await window.__i18n.changeLanguage(next);
@@ -491,6 +501,10 @@ async function measureRoster(page) {
     for (const cell of roster.querySelectorAll("th, td")) {
       const cellRect = cell.getBoundingClientRect();
       for (const el of [cell, ...cell.querySelectorAll("*")]) {
+        // #5805: sorteringens <select> staar i rytter-kolonnens header. Dens
+        // <option>-elementer tegnes af systemets vaelger, ikke i cellen, og
+        // Chromium giver dem en tom rect i (0, 0). Selve <select>'en maales.
+        if (el.tagName === "OPTION") continue;
         // (a) teksten er bredere end sin egen kasse. Det er leddet der fanger
         //     et ubrydeligt ord: rect'en flytter sig ikke, men scrollWidth gør.
         if (el.scrollWidth > el.clientWidth + 1) {

@@ -4,7 +4,7 @@ import { Link } from "react-router";
 // (fx "scouting" for scoutingrapporten, spejder-historikkens "link til
 // rapporten"). RiderStatsPage læser ?tab= ved mount (fallback "overview"
 // uændret for alle eksisterende kald uden denne prop).
-export default function RiderLink({ id, tab, className = "", stopPropagation = false, children, ...rest }) {
+export default function RiderLink({ id, tab = undefined, className = "", stopPropagation = false, children, ...rest }) {
   if (!id) {
     return <span className={className} {...rest}>{children}</span>;
   }

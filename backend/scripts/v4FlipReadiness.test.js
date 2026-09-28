@@ -24,6 +24,7 @@ import {
   HEAD_TO_HEAD_SEEDS,
   accumulateStageRates,
   countSeedVerdicts,
+  incidentCausedOtl,
   measureHeadToHead,
   parseTap,
   renderPrivateReport,
@@ -34,6 +35,7 @@ import {
   summarizeRates,
   summarizeTimings,
 } from "./v4FlipReadiness.mjs";
+import { timeLimitSecondsFor } from "../lib/engine/v4/mechanics/timeLimit.ts";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = join(SCRIPT_DIR, "fixtures", "headToHeadV4-example");
@@ -161,6 +163,58 @@ test("OTL skilles ad efter aarsag: uden uheld / kun mekanisk / efter styrt (M10 
   const hillyRow = s.rows.find((r) => r.key === "hilly");
   assert.equal(hillyRow.mechanicalToOtlShare, 1 / 3);
   assert.equal(hillyRow.hardCrashToOtlShare, 1);
+});
+
+test("#5515: en OTL efter et uheld taeller kun som 'uheldet kostede loebet' naar uheldet var AARSAGEN", () => {
+  // Vinder 10000 s paa en bjergetape. Graensen udledes af motorens egen funktion
+  // i accumulateStageRates; her bruges kun relative placeringer omkring den.
+  const winner = 10000;
+  const limit = timeLimitSecondsFor(winner, "mountain");
+  const grupetto = Array.from({ length: 5 }, (_, i) => limit + 300 + i * 10);
+  const res = (id, time, status = "finished", extra = {}) => ({ rider_id: id, time_seconds: time, status, ...extra });
+  const output = {
+    results: [
+      res("w", winner),
+      ...grupetto.map((t, i) => res(`g${i}`, t, "finished", { reinstated_by: "grupetto" })),
+      // a: punktering, inden for graensen uden den -> AARSAG
+      res("a", limit + 40, "otl"),
+      // b: punktering, lander i grupettoen uden den -> AARSAG
+      res("b", grupetto[4] + 150, "otl"),
+      // c: punktering, over graensen og langt fra grupettoen ogsaa uden den -> IKKE aarsag
+      res("c", limit + 100, "otl"),
+      // d: haardt styrt, for langsom uanset -> IKKE aarsag
+      res("d", grupetto[4] + 2000, "otl"),
+    ],
+    incidents: [
+      { rider_id: "a", kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 60 },
+      { rider_id: "b", kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 140 },
+      { rider_id: "c", kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 20 },
+      { rider_id: "d", kind: "crash", severity: "hard", outcome: "time_loss", time_loss_seconds: 150 },
+    ],
+    timeline: { events: [{ type: "grupetto_saved", params: { rider_count: 5 } }] },
+  };
+  const acc = new Map();
+  accumulateStageRates(acc, "mountain", output);
+  const m = acc.get("mountain");
+  assert.equal(m.otlMechanicalOnly, 3, "raa taelling: tre OTL efter kun mekanisk");
+  assert.equal(m.otlMechanicalCaused, 2, "kun a og b mistede loebet paa grund af uheldet");
+  assert.equal(m.otlAfterCrash, 1);
+  assert.equal(m.otlCrashCaused, 0);
+  assert.equal(m.hardCrashToOtl, 1);
+  assert.equal(m.hardCrashCausedOtl, 0);
+  const s = summarizeRates(acc);
+  assert.equal(s.mechanicalToOtlObserved, true);
+  assert.equal(s.hardCrashToOtlObserved, false, "det haarde styrt var ikke aarsagen");
+  assert.equal(s.otlAfterIncidentNotCauseObserved, true);
+  assert.deepEqual(s.otlAfterIncidentNotCauseTypes, ["mountain"]);
+});
+
+test("#5515 incidentCausedOtl: grupetto-vinduet er strengt, og manglende tider regnes som aarsag", () => {
+  const base = { limitSeconds: 1000, rescuedTimes: [1200], windowSeconds: 120 };
+  assert.equal(incidentCausedOtl({ ...base, result: { time_seconds: 1050 }, lossSeconds: 50 }), true, "paa graensen er inden for");
+  assert.equal(incidentCausedOtl({ ...base, result: { time_seconds: 1400 }, lossSeconds: 81 }), true, "119 s fra grupettoen");
+  assert.equal(incidentCausedOtl({ ...base, result: { time_seconds: 1400 }, lossSeconds: 80 }), false, "120 s er ikke under vinduet");
+  assert.equal(incidentCausedOtl({ ...base, result: {}, lossSeconds: 10 }), true);
 });
 
 test("summarizeRates: dom mod ejer-maalet KUN paa totalen; typer uden OTL listes ikke", () => {
@@ -329,7 +383,7 @@ test("hard rule 17: den OFFENTLIGE blok indeholder ingen maalte vaerdier, rater 
   assert.match(block, /Felt-favoritters win-rate \| PASS \| 4\/5 \| \*\*FAIL\*\* \| 0\/5 \|/u);
   assert.match(block, /\| 180 \| 1 \| 12 ms/u);
   assert.match(block, /OTL forekommer:\*\* ja \(etapetyper: mountain\)/u);
-  assert.match(block, /Mekanisk uheld \(og intet andet\) ender som OTL, dvs\. ude af loebet:\*\* nej/u);
+  assert.match(block, /Et mekanisk uheld \(og intet andet\) koster loebet via tidsgraensen:\*\* nej/u);
   assert.match(block, /Kill-switch samlet:\*\* groen/u);
   assert.match(block, /IKKE OPFYLDT/u);
 });

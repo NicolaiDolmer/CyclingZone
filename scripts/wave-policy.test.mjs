@@ -319,7 +319,13 @@ const prFiles = (...names) => names.map(filename => ({ filename }));
 const HEAD = 'a'.repeat(40);
 function mergeIo(overrides = {}) {
   const calls = [];
-  return { calls, readHead: () => HEAD, readFiles: () => prFiles('docs/other.md'), merge: (pr, repo, sha) => { calls.push({ pr, repo, sha }); return 'merged'; }, ...overrides };
+  // #5677: readMergedBranches/hasWorktree default to neutral (nothing merged,
+  // every track has a worktree) so every PRE-#5677 test - none of which pass
+  // these fields - keeps its old "every active track still holds its files"
+  // behaviour unchanged. Only tests that exercise the new release logic
+  // override one of the two.
+  return { calls, readHead: () => HEAD, readFiles: () => prFiles('docs/other.md'), merge: (pr, repo, sha) => { calls.push({ pr, repo, sha }); return 'merged'; },
+    readMergedBranches: () => new Set(), hasWorktree: () => true, ...overrides };
 }
 
 test('#5562: a glob that stops mid-segment overlaps every path with the same prefix, both ways', () => {
@@ -651,4 +657,51 @@ test('#5562: assert-merge-allowed CLI passes without a marker and blocks a legac
   const blocked = call('--pr', '42');
   assert.equal(blocked.status, 2);
   assert.match(blocked.stderr, /Wave marker exists but is legacy or malformed; merge blocked/);
+});
+
+// ===== #5677: guarded-merge ownership release + state-lock fallback =====
+
+test('#5677: a track whose own PR is already merged no longer holds its files', t => {
+  const { dir } = runningWave(t); // tracks: [trackWith(1, ['scripts/one.mjs'])]
+  const merged = { mergedBranches: new Set(['feat/1-fixture']) };
+  assert.equal(assertMergeAllowed(dir, '42', () => prFiles('scripts/one.mjs'), undefined, merged).allowed, true);
+  const io = mergeIo({ readFiles: () => prFiles('scripts/one.mjs'), readMergedBranches: () => new Set(['feat/1-fixture']) });
+  assert.equal(guardedMerge(dir, '42', 'owner/repo', io), 'merged');
+  // Without the merged signal the same file still blocks - safety unchanged.
+  assert.throws(() => assertMergeAllowed(dir, '42', () => prFiles('scripts/one.mjs')), /track #1/);
+  assert.throws(() => guardedMerge(dir, '42', 'owner/repo', mergeIo({ readFiles: () => prFiles('scripts/one.mjs') })), /track #1/);
+});
+
+test('#5677: a track that never started (no worktree) does not hold its files', t => {
+  const { dir } = runningWave(t, { tracks: [trackWith(1, ['scripts/one.mjs']), trackWith(2, ['docs/two.md'])] });
+  // Track 1 never got a worktree (never started); track 2 is still running.
+  const release = { hasWorktree: branch => branch !== 'feat/1-fixture' };
+  assert.equal(assertMergeAllowed(dir, '42', () => prFiles('scripts/one.mjs'), undefined, release).allowed, true, 'never-started track releases its files');
+  assert.throws(() => assertMergeAllowed(dir, '42', () => prFiles('docs/two.md'), undefined, release), /track #2/, 'a running track still blocks');
+  const io = mergeIo({ readFiles: () => prFiles('scripts/one.mjs'), hasWorktree: () => false });
+  assert.equal(guardedMerge(dir, '42', 'owner/repo', io), 'merged');
+  // Without the hasWorktree signal the same file still blocks - safety unchanged.
+  assert.throws(() => assertMergeAllowed(dir, '42', () => prFiles('scripts/one.mjs')), /track #1/);
+});
+
+test('#5677: a lock busy past the fallback wait degrades to a lock-free read instead of failing outright', async t => {
+  const { dir } = runningWave(t); // tracks: [trackWith(1, ['scripts/one.mjs'])]
+  const moduleUrl = new URL('./wave-policy.mjs', import.meta.url).href;
+  const ready = path.join(dir, 'holder-ready');
+  // A separate process holds the SAME state lock for ~1.2 s - longer than
+  // the short fallback wait this test gives guardedMerge below.
+  const holder = spawn(process.execPath, ['--input-type=module', '-e', `import { writeFileSync } from 'node:fs';
+    import { withWaveStateLock } from ${JSON.stringify(moduleUrl)};
+    withWaveStateLock(${JSON.stringify(dir)}, () => { writeFileSync(${JSON.stringify(ready)}, 'x'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1200); });`], { windowsHide: true });
+  const exited = new Promise(resolve => holder.once('close', resolve));
+  while (!existsSync(ready)) await new Promise(r => setTimeout(r, 25));
+  let warnedMs;
+  const disjoint = mergeIo({ readFiles: () => prFiles('docs/other.md'), warnLockFallback: ms => { warnedMs = ms; } });
+  assert.equal(guardedMerge(dir, '42', 'owner/repo', disjoint, 200), 'merged', 'a non-conflicting merge succeeds via the lock-free fallback');
+  assert.equal(warnedMs, 200, 'the fallback warns with the timeout it waited');
+  // The fallback's read-only assessment still blocks a REAL conflict - every
+  // existing safety check keeps running, just without the lock.
+  const overlapping = mergeIo({ readFiles: () => prFiles('scripts/one.mjs') });
+  assert.throws(() => guardedMerge(dir, '42', 'owner/repo', overlapping, 200), /track #1/);
+  assert.equal(await exited, 0);
 });

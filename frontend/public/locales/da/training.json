@@ -25,7 +25,8 @@
     "weekplan": "Ugeplan",
     "development": "Udvikling",
     "history": "Historik",
-    "report": "Rapport"
+    "report": "Rapport",
+    "program": "Program"
   },
   "primary": {
     "setDays": "Sæt dag for {n, plural, one {# rytter} other {# ryttere}}"
@@ -129,6 +130,7 @@
   "colNextUp": "Næste +1",
   "colGains": "Fremgang",
   "colResult": "Resultat",
+  "colScore": "Score",
   "colStatus": "Status",
   "colWeekPlan": "Ugeplan",
   "groupByType": "Gruppér efter type",
@@ -215,7 +217,12 @@
     "pending": "Sæsonens tal vises, når den aktive sæson er hentet.",
     "notStarted": "Sæsonen starter {date}. Sæsonens tal begynder der, og træning inden da tæller stadig med mod næste point.",
     "noDaysYet": "Ingen træningsdage i denne sæson endnu. Sæsonens tal begynder efter første træningsdag, og hvert point rytterne allerede har fået bliver stående i linjerne.",
-    "yesterdayContribution": "{pct}% af denne bar kom fra gårsdagens pas."
+    "yesterdayContribution": "{pct}% af denne bar kom fra gårsdagens pas.",
+    "yesterdayGain": "i går +{pct} %",
+    "todayGain": "i dag +{pct} %",
+    "datedGain": "{date} +{pct} %",
+    "todayContribution": "{pct}% af denne bar kom fra dagens pas.",
+    "datedContribution": "{pct}% af denne bar kom fra passet {date}."
   },
   "gainedToday": "+{count} i dag",
   "yesterdayTrainedLine": "{n} trænede mod deres fokus",
@@ -251,6 +258,10 @@
   "momentBreakthrough_1": "{riderName} finder endnu et gear i {ability}, oppe på {to} nu.",
   "momentBreakthrough_2": "Et rigtigt fremskridt for {riderName} i dag, {ability} stiger til {to}.",
   "momentBreakthrough_3": "{riderName}s arbejde med {ability} betaler sig: {from} → {to}.",
+  "momentInjury_0": "{riderName} pådrog sig en træningsskade, forventet ude i omkring {daysPhrase}.",
+  "momentInjury_1": "Hårdt for {riderName}: en træningsskade betyder omkring {daysPhrase} på sidelinjen.",
+  "momentInjury_2": "{riderName} kom til skade i en træningssession, ser ud til omkring {daysPhrase} ude.",
+  "momentInjury_3": "Et tilbageslag for {riderName}: en træningsskade betyder omkring {daysPhrase} ude.",
   "momentNearBreakthrough_0": "{riderName} nærmer sig et gennembrud i {ability}, {pct}% af vejen.",
   "momentNearBreakthrough_1": "Én god session mere, og {riderName} rykker {ability} op et niveau, allerede {pct}% der.",
   "momentNearBreakthrough_2": "{riderName}s {ability} er tæt på næste spring, {pct}% gennem blokken.",
@@ -271,6 +282,11 @@
   "momentRest_1": "Fuld hvile for truppen i dag, i morgen starter træningen med friskere ben.",
   "momentRest_2": "Stille på træningscentret i dag: alle har fridag.",
   "momentRest_3": "Hele truppen tog den med ro i dag, restitution frem for output.",
+  "injuryDaysOne": "{days} træningsdag",
+  "injuryDaysOther": "{days} træningsdage",
+  "injuryAlertLabel": "Træningsskade i dag",
+  "injuryAlertEntry": "{riderName} (omkring {daysPhrase})",
+  "injuryAlertLine": "Kom til skade i træning i dag: {list}.",
   "tour": {
     "focus": {
       "title": "Vælg hvad hver rytter træner",
@@ -278,11 +294,11 @@
     },
     "runToday": {
       "title": "Træn én gang om dagen",
-      "body": "Trykker du her, træner truppen med det samme. Springer du over, kører din assistent samme pas efter kl. 22, med samme resultat. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
+      "body": "Trykker du her, træner truppen med det samme. Springer du over, kører assistenten samme pas automatisk, når dagen lukker, med samme resultat. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
     },
     "runNow": {
       "title": "Kør dagens træning",
-      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Tryk én gang om dagen for +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus."
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Et tryk giver ingen bonus. Springer du over, kører assistenten det samme pas automatisk."
     },
     "runTodayDayClose": {
       "title": "Kør dagens træning",
@@ -429,5 +445,33 @@
     "selectDone": "Færdig",
     "restSelected": "Sæt til hvile",
     "pickHint": "Tryk på de ryttere, du vil ændre."
+  },
+  "programs": {
+    "title": "Træningsprogrammer",
+    "intro": "Vælg et program og læg det på en rytter eller hele truppen. Det kopieres ind i planen, så du kan rette enhver dag bagefter.",
+    "putOn": "Læg på",
+    "squad": "Hele truppen · {n, plural, one {# rytter} other {# ryttere}}",
+    "squadShort": "hele truppen",
+    "apply": "Brug program",
+    "applying": "Lægger på…",
+    "replacesSquad": "Erstatter ugeplanen for {n, plural, one {# rytter} other {# ryttere}}.",
+    "applied": "{name} er nu lagt på {target}.",
+    "error": "Kunne ikke gemme. Prøv igen.",
+    "planTitle": "Plan",
+    "basedOn": "Baseret på {name}",
+    "changed": "{n} ændret",
+    "ownProgram": "Programplan",
+    "noProgram": "Intet program endnu",
+    "noProgramHint": "Rytteren har ikke et program endnu. Vælg et ovenfor og læg det på ham.",
+    "cellOverridden": "Ændret for denne løbsdag",
+    "raceNote": "På en løbsdag hvor rytteren kører løb, springes sessionen over.",
+    "audience_all": "Alle",
+    "audience_allYouth": "Alle, ungdom",
+    "audience_experienced": "Erfarne ryttere",
+    "audience_youth": "Ungdom",
+    "audience_manyRaceDays": "Mange løbsdage",
+    "audience_youngStars": "Unge stjerner, få løb",
+    "audience_veterans": "Ryttere 30+",
+    "audience_youthSquads": "Junior, U23, akademi"
   }
 }

@@ -371,6 +371,7 @@
       "prize": "Præmiepenge",
       "salary": "Løn",
       "upkeep": "Divisions-upkeep",
+      "travelStaff": "Rejse og personale",
       "staffFacilities": "Stab og faciliteter",
       "facilityUpkeep": "Facilitets-upkeep",
       "staffSalary": "Stab-løn",
@@ -390,6 +391,7 @@
       "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
     },
     "upkeepDetail": {
+      "perRaceDay": "{rate} pr. seniorløbsdag × {days} løbsdage. Trækkes når hvert løb afregnes, ikke ved sæsonstart.",
       "byDivision": "Bestemt af din division, ikke din trup"
     },
     "salaryDetail": {

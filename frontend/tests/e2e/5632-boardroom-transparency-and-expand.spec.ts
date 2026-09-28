@@ -182,6 +182,6 @@ test.describe("#5632/#5633 Bestyrelseslokalet: transparens + flere-mål-fold + m
     await openTab(page, "board");
 
     const card = page.getByTestId("boardroom-page");
-    await expect(card.getByText("Tryk på et medlem for at se dennes syn på bestyrelsen.")).toBeVisible();
+    await expect(card.getByText("Tryk på et medlem for at se, hvad de mener, og hvilke mål de ejer.")).toBeVisible();
   });
 });

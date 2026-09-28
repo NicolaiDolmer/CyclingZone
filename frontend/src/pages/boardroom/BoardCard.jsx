@@ -56,8 +56,10 @@ function MinuteRow({ minute, t }) {
         )}
         {t(minute.textKey, minute.textParams || {})}
       </p>
+      {/* #5633 · memberName kan vaere null (boardRoom.js), og saa stod der
+          " · TIRS." med et hul foran skilletegnet. */}
       <p className="flex-shrink-0 whitespace-nowrap text-2xs uppercase tracking-[.06em] text-cz-3">
-        {minute.memberName} · {formatWeekdayOnly(minute.occurredAt)}
+        {[minute.memberName, formatWeekdayOnly(minute.occurredAt)].filter(Boolean).join(" · ")}
       </p>
     </div>
   );
@@ -151,8 +153,10 @@ export default function BoardCard({ board, mandate, minutes = [], dna = null, on
             &ldquo;{t(board.chairmanQuote.textKey, board.chairmanQuote.textParams || {})}&rdquo;
           </p>
           <p className="mt-1.5 text-2xs uppercase tracking-[.08em] text-cz-3">
-            {board.chairmanQuote.memberName}
-            {board.chairmanQuote.contextKey ? ` · ${t(board.chairmanQuote.contextKey)}` : ""}
+            {[
+              board.chairmanQuote.memberName,
+              board.chairmanQuote.contextKey ? t(board.chairmanQuote.contextKey) : null,
+            ].filter(Boolean).join(" · ")}
           </p>
         </div>
       )}

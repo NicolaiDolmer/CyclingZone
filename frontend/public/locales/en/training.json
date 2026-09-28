@@ -25,7 +25,8 @@
     "weekplan": "Week plan",
     "development": "Development",
     "history": "History",
-    "report": "Report"
+    "report": "Report",
+    "program": "Program"
   },
   "primary": {
     "setDays": "Set days for {n, plural, one {# rider} other {# riders}}"
@@ -129,6 +130,7 @@
   "colNextUp": "Next +1",
   "colGains": "Gains",
   "colResult": "Result",
+  "colScore": "Score",
   "colStatus": "Status",
   "colWeekPlan": "Weekly plan",
   "groupByType": "Group by type",
@@ -215,7 +217,12 @@
     "pending": "Season totals appear once the active season is loaded.",
     "notStarted": "The season starts {date}. Season totals begin then, and training before that still counts toward the next point.",
     "noDaysYet": "No training days in this season yet. Season totals start after the first day of training, and every point already earned stays in the bars.",
-    "yesterdayContribution": "{pct}% of this bar came from yesterday's session."
+    "yesterdayContribution": "{pct}% of this bar came from yesterday's session.",
+    "yesterdayGain": "yesterday +{pct}%",
+    "todayGain": "today +{pct}%",
+    "datedGain": "{date} +{pct}%",
+    "todayContribution": "{pct}% of this bar came from today's session.",
+    "datedContribution": "{pct}% of this bar came from the session on {date}."
   },
   "gainedToday": "+{count} today",
   "yesterdayTrainedLine": "{n} trained toward their focus",
@@ -251,6 +258,10 @@
   "momentBreakthrough_1": "{riderName} finds another gear in {ability}, up to {to} now.",
   "momentBreakthrough_2": "A real step forward for {riderName} today, {ability} climbs to {to}.",
   "momentBreakthrough_3": "{riderName}'s {ability} work pays off: {from} → {to}.",
+  "momentInjury_0": "{riderName} picked up a training injury, expected out for about {daysPhrase}.",
+  "momentInjury_1": "Tough one for {riderName}: a training injury means about {daysPhrase} on the sidelines.",
+  "momentInjury_2": "{riderName} got hurt in a training session, looking at about {daysPhrase} out.",
+  "momentInjury_3": "A setback for {riderName}: a training injury means about {daysPhrase} out.",
   "momentNearBreakthrough_0": "{riderName} is closing in on a breakthrough in {ability}, {pct}% of the way there.",
   "momentNearBreakthrough_1": "One more good session and {riderName} bumps {ability} up a level, already {pct}% there.",
   "momentNearBreakthrough_2": "{riderName}'s {ability} is on the edge of the next step, {pct}% through the block.",
@@ -271,6 +282,11 @@
   "momentRest_1": "Full rest for the squad today, tomorrow's training starts from fresher legs.",
   "momentRest_2": "Quiet at the training base today: everyone's on a rest day.",
   "momentRest_3": "The whole roster took it easy today, recovery over output.",
+  "injuryDaysOne": "{days} training day",
+  "injuryDaysOther": "{days} training days",
+  "injuryAlertLabel": "Training injury today",
+  "injuryAlertEntry": "{riderName} (about {daysPhrase})",
+  "injuryAlertLine": "Hurt in training today: {list}.",
   "tour": {
     "focus": {
       "title": "Pick what each rider trains",
@@ -278,11 +294,11 @@
     },
     "runToday": {
       "title": "Train once a day",
-      "body": "Press this and the squad trains right away. Skip it and your assistant runs the same session after 22:00. The outcome is the same either way. Hard intensity gains more but leaves riders tired for their next race."
+      "body": "Press this and the squad trains right away. Skip it and your assistant runs the same session automatically when the day closes. The outcome is the same either way. Hard intensity gains more but leaves riders tired for their next race."
     },
     "runNow": {
       "title": "Run today's training",
-      "body": "Run now trains the whole squad today, including riders without a day: they train what your assistant picks for their type. Press it once a day for a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus."
+      "body": "Run now trains the whole squad today, including riders without a day: they train what your assistant picks for their type. Pressing it gives no bonus. Skip it and your assistant runs the same session automatically."
     },
     "runTodayDayClose": {
       "title": "Run today's training",
@@ -429,5 +445,33 @@
     "selectDone": "Done",
     "restSelected": "Set to rest",
     "pickHint": "Tap the riders you want to change."
+  },
+  "programs": {
+    "title": "Training programs",
+    "intro": "Pick a program and put it on a rider or the whole squad. It is copied into the plan, so you can change any day afterwards.",
+    "putOn": "Put on",
+    "squad": "Whole squad · {n, plural, one {# rider} other {# riders}}",
+    "squadShort": "the whole squad",
+    "apply": "Apply program",
+    "applying": "Applying…",
+    "replacesSquad": "Replaces the week plan of {n, plural, one {# rider} other {# riders}}.",
+    "applied": "{name} is now on {target}.",
+    "error": "Could not save. Try again.",
+    "planTitle": "Plan",
+    "basedOn": "Based on {name}",
+    "changed": "{n} changed",
+    "ownProgram": "Program plan",
+    "noProgram": "No program yet",
+    "noProgramHint": "This rider has no program yet. Pick one above and put it on him.",
+    "cellOverridden": "Changed for this race day",
+    "raceNote": "On a race day where the rider races, the session is skipped.",
+    "audience_all": "Everyone",
+    "audience_allYouth": "Everyone, youth",
+    "audience_experienced": "Experienced riders",
+    "audience_youth": "Youth",
+    "audience_manyRaceDays": "Many race days",
+    "audience_youngStars": "Young stars, few races",
+    "audience_veterans": "Riders 30+",
+    "audience_youthSquads": "Junior, U23, academy"
   }
 }

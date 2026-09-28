@@ -369,6 +369,14 @@ export const BONUS_SECONDS_EXTRA_TUNING = deepFreeze(bonusSecondsExtra);
 const descentExtra = {
   regroupSecondsPerKm: 0, // MIDTVEJS-nedkoersel, absolut led. BEVIDST 0 i denne PR: enhver regruppering paa en midtvejs-nedkoersel trækker direkte fra bjerg-top10-spredningen (#2415-baandet), og de to ankre deler etaper. Midtvejs-regruppering hoerer til en faelles kalibrering af begge baand, ikke til denne PR - se #4610
   regroupGapFractionPerKm: 0, // MIDTVEJS-nedkoersel, proportionalt led. Samme begrundelse som ovenfor
+  // #5813 (maalt 27/9, genovervejet og BEVIDST stadig 0): tidsgraense-udfaldet
+  // paa bakkede dage loeses af to andre led — en tom reserve tvinger kun
+  // rytteren af paa en stigning af en vis alvor (CLIMB_SELECTION_EXTRA_TUNING),
+  // og afhaengte halegrupper samles i én grupetto (TAIL_GRUPETTO_EXTRA_TUNING).
+  // En midtvejs-regruppering, ogsaa kun efter smaa bakker, lukkede OGSAA
+  // hullet til dagens udbrud (som M5 ejer, #5812) og skubbede udbrudsraten
+  // paa bjerg og kuperet ned mod baandets bund, uden at flytte tidsgraensen
+  // maalbart. Leddene staar derfor paa 0, med samme #4610-forbehold.
   regroupMaxGapFractionPerSegment: 0.85, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
   regroupTechnicalityFactor: { 1: 1.3, 2: 1.0, 3: 0.65 } as Record<1 | 2 | 3, number>, // T1 udligner mest (bred, hurtig vej), T3 mindst (teknisk vej lader en staerk descender forsvare hullet)
   regroupFinishSecondsPerKm: 10, // FINALE-nedkoersel, absolut led: sekunder af hullet til gruppen foran der lukkes pr. km
@@ -410,6 +418,54 @@ const descentExtra = {
 
 /** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
 export const DESCENT_EXTRA_TUNING = deepFreeze(descentExtra);
+
+// ── M2 (mechanics/climbSelection.ts, #5813) — ADDITIV selektions-tuning ──────
+// SS2's frosne SelectionTuning (types.ts) har kun de fire score-haandtag. Samme
+// "bevidst separat eksport"-moenster som descentExtra ovenfor.
+//
+// HVORFOR (#5813, S4-testpakken 27/9): en rytter med tom reserve blev sat af
+// paa ENHVER stigning, ogsaa en kort 4. kategori paa et par procent. Paa en
+// rullende etape uden bjerge sad en stor del af feltet saaledes af ved foerste
+// lille bakke midtvejs og koerte resten af dagen i smaa, langsomme grupper -
+// og landede langt uden for tidsgraensen. En tom reserve betyder at rytteren
+// ikke kan foelge et haardt tempo LAENGE; op ad en kort bakke haenger han paa
+// og henter de faa sekunder paa den anden side. Tvangs-splittet kraever
+// derfor en stigning af en vis alvor (samme skala som climbSeverity01: 1 = en
+// HC-agtig referenceklatring). Under taersklen afgoer selektions-scoren alene
+// (som allerede er alvors-skaleret, #4604), saa en reelt svag klatrer stadig
+// kan blive sat af.
+//
+// Taersklen er BEVIDST lav (kun de mindste bump). Maalt 27/9: en hoejere
+// taerskel (ogsaa kategori-3-bakker) lod udkoerte ryttere haenge paa laenger,
+// hvorefter de blev sat af paa naeste rigtige stigning i en endnu vaerre
+// tilstand, og tidsgraense-udfaldet steg paa kuperet og rullende.
+const climbSelectionExtra = {
+  wprimeForcedMinSeverity: 0.05, // mindste stigningsalvor (climbSeverity01) hvor en tom reserve TVINGER rytteren af. Under: kun selektions-scoren
+} as const;
+
+/** M2 additiv selektions-tuning (deep-frosset). Se climbSelectionExtra-kommentaren ovenfor. */
+export const CLIMB_SELECTION_EXTRA_TUNING = deepFreeze(climbSelectionExtra);
+
+// ── M1 (groups.mergeTailGroupsDetailed, #5813) — ADDITIV grupetto-samling ────
+// SS2's frosne GroupsTuning har kun den almindelige merge-taerskel. Se
+// groups.mergeTailGroupsDetailed for reglen og segmentLoop for hvornaar den
+// koerer (kun paa aabent terraen og aldrig paa finale-segmentet).
+//
+// HVORFOR (#5813): de ryttere en dag uden bjerge satte af, koerte i mange smaa
+// grupper, hver i sit eget svage tempo, og drev fra hinanden resten af dagen
+// (tidsgraense-udfald paa bakkede S4-etaper). Samlet i én grupetto koerer de i
+// laeet af hinanden og i tempoet fra de staerkeste i halen, som i virkeligheden.
+// Vinduet ligger i issue'ets baand (ca. 1-2 min); resultatet var robust over
+// hele baandet. Andelen foran beskytter placeringerne: halen samles, fronten
+// roeres aldrig.
+const tailGrupettoExtra = {
+  windowSeconds: 90, // hvor taet (sekunder) en afhaengt gruppe skal vaere paa den afhaengte gruppe foran for at blive en del af grupettoen
+  minRidersAheadFraction: 0.25, // andel af det koerende felt der skal ligge foran BEGGE grupper, foer de regnes som afhaengte
+  minRidersAheadFloor: 10, // absolut gulv, saa et lille felt aldrig samler de forreste placeringer
+} as const;
+
+/** M1 additiv grupetto-samling (deep-frosset). Se tailGrupettoExtra-kommentaren ovenfor. */
+export const TAIL_GRUPETTO_EXTRA_TUNING = deepFreeze(tailGrupettoExtra);
 
 // ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
 // SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
@@ -765,19 +821,101 @@ const breakawayExtra = {
   // (overskuds-grenen i strengthSpeedExtra) ikke flyttes af omlaegningen. Foer/
   // efter-maaling: PR'en for #4707 (tal i balance-internals/, hard rule 17).
   abilityReferenceLevel: 0.13,
-  closingSecondsPerKmPerUnit: 25, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
+  closingSecondsPerKmPerUnit: 40, // sekunder/km lukket pr. enheds netto jagt-fordel (samme formmoenster som finaleExtra.chaseClosingSecondsPerKmPerUnit)
   stanceEffectWeight: 0.3, // T3 breakaway_stance-signalets vaegt paa netto-fordelen (bounded, se stanceMultiplierBounds)
   stanceMultiplierBounds: [0.7, 1.3] as readonly [number, number], // clamp paa stance-multiplikatoren — forhindrer at EN holdordre kan vaelte jagtens fortegn (mor-spec §5)
   finaleTypeChaseWeightDefault: 0.4, // sprinterholds-interesse-vaegt naar finale_type er ukendt/null
   finaleTypeChaseWeight: {
-    bunch_sprint: 1.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
-    reduced_sprint: 0.65, // reduceret spurt: stadig hoej interesse
+    bunch_sprint: 4.0, // massespurt-finale: maksimal sprinterhold-interesse i at koere udbruddet ind
+    reduced_sprint: 2.6, // reduceret spurt: stadig hoej interesse
     punch: 0.3, // punch-finale: lav sprinter-interesse (sprinterhold jagter sjaeldent punch-finaler haardt)
     breakaway: 0.1, // breakaway-favoriseret finale: minimal sprinter-interesse (feltet forventer selv et udbrud)
     descent: 0.15, // nedkoersels-finale: lav sprinter-interesse
     long_climb: 0.1, // lang klatring: minimal sprinter-interesse
     solo_tt: 0.05, // enkeltstart: irrelevant (ingen felt-dynamik) men holdt lav i stedet for 0 for robusthed
   } as Partial<Record<import("./types.ts").FinaleType, number>>, // pr. finale-type sprinterhold-interesse-vaegt (#2416's "terraen + rest-km-proxy")
+
+  // ── "Lad gaa"-fasen (#5812 a) ────────────────────────────────────────────
+  // Foer kunne et udbrud aldrig bygge et forspring: det startede med sin
+  // hovedstart, tempo-modellen gav feltet mere lae end udbruddet, og M5 kunne
+  // kun lukke huller. Nu goer feltet som i virkeligheden: det lader udbruddet
+  // gaa, hullet vokser med `letGoSecondsPerKm` op til et loft, og FOERST
+  // derefter begynder jagten (closingSecondsPerKmPerUnit ovenfor). Loftet
+  // afhaenger af terraenet (profil) og af hvor farligt udbruddet er: jo mere
+  // GC-trussel udbruddet rummer RELATIVT til feltet, jo mindre lader feltet
+  // det faa (forhold, saa leddet er skala-invariant, #4707).
+  // M5 ejer hullet mellem udbrud og jagtgruppe alene paa aabent terraen
+  // (segmentLoop nulstiller tempo-driften mellem dem, se
+  // `neutralizeBreakawayTempoDrift`), saa intet bogfoeres to gange.
+  letGoSecondsPerKm: 12, // hvor hurtigt hullet vokser mens feltet lader det gaa
+  // "Lad gaa" er et FELT-valg: et stort felt der kontrollerer et lille udbrud.
+  // En jagtgruppe paa faerre ryttere end dette er ikke et felt (en mikro-
+  // startliste, eller et felt der allerede er sprunget i stykker), og der
+  // koerer M5 som foer: ingen lad-gaa-fase og ingen nulstillet tempo-drift.
+  // Prod-felter (150-192) ligger altid over.
+  letGoMinChaseRiders: 40,
+  // Profiler uden egen noegle (tidskoersler der koerer vejetape-vejen, fx en
+  // TTT uden hold-id) faar det flade loft — samme "ukendt = flad"-fallback som
+  // routeAdapter's resolveProfileType, saa profil-navnet alene aldrig flytter
+  // en tid (index.teamTimeTrial.test.ts).
+  maxGapSecondsDefault: 190,
+  maxGapSecondsByProfile: {
+    flat: 190,
+    rolling: 80,
+    hilly: 360,
+    mountain: 420,
+    high_mountain: 150,
+    cobbles: 45,
+    gravel: 300,
+    classic: 300,
+  } as Partial<Record<import("./types.ts").ProfileType, number>>, // pr. profil: hvor meget feltet typisk giver et udbrud
+  // Finalen flytter loftet: foran en nedkoerselsfinale kontrollerer
+  // favoritternes hold hullet taettere (dagen afgoeres over sidste top, og
+  // udbruddet skal ikke have et forspring de ikke kan hente ned ad bakke).
+  // Finaler uden noegle faar faktor 1.
+  maxGapFinaleFactor: {
+    descent: 0.5,
+  } as Partial<Record<import("./types.ts").FinaleType, number>>,
+  // Et udbrud er per konstruktion udvalgt paa aggression/endurance/tempo, saa
+  // dets GC-trussel ligger typisk et godt stykke OVER feltets snit. Referencen
+  // er det typiske forhold: et udbrud paa referencen faar terraenets grundloft,
+  // et farligere mindre, et mindre farligt mere.
+  threatReferenceRatio: 1.9,
+  threatGapSensitivity: 1.0, // hvor meget (forhold / reference - 1) krymper loftet
+  maxGapFactorBounds: [0.4, 1.3] as readonly [number, number], // clamp paa trussel-faktoren — ét farligt udbrud faar stadig noget, et harmloest faar ikke uendeligt
+
+  // ── Jagt-gulvet paa aabent terraen (#5813 del 2) ───────────────────────────
+  // Paa en dag der skal ende i en massespurt, jager sprinterholdene ALTID sent,
+  // uanset hvem der sidder i udbruddet. Netto-fordelen ovenfor er en balance af
+  // evner, og paa nogle felter krydser den aldrig nul: saa laa hullet paa
+  // lad-gaa-loftet hele dagen, og udbruddet vandt for ofte (S4-testpakken).
+  // Samme knivsaeg ramte rullende udbrudsfinaler, da feltet ikke laengere
+  // sprang i stykker paa de smaa bakker (CLIMB_SELECTION_EXTRA_TUNING): et
+  // samlet felt er M5's jagtgruppe, og hullet afgjordes igen alene af
+  // fortegnet paa netto-fordelen. Gulvet gaelder derfor alle finaler paa
+  // flad/rullende profil, med en stoerre chance for at feltet kommer for sent
+  // paa finaler der ikke er massespurter.
+  // Gulvet er et STRUKTURELT led (etape-fremdrift, profil og finaletype,
+  // ingen evne-akse, #4707): i de sidste `chaseFloorFinalKm` km overtager
+  // feltet jagten og koerer hullet jaevnt ned mod et maal ved stregen
+  // (mechanics/breakaway.ts chaseFloorClosingSeconds) — normalt et forspring
+  // finalen altid henter. Den lille chance for at udbruddet holder er
+  // eksplicit og maalbar: med `chaseFloorLateChanceByFinale` (én
+  // lodtraekning pr. etape) kommer feltet for sent og koerer kun ned til
+  // `chaseFloorLateTargetGapSeconds`; saa holder et udbrud der reelt har et
+  // forspring. Foer var udfaldet et knivsaeg paa om netto-fordelen krydsede nul.
+  // Kun paa flad/rullende profil — samme afgraensning som finalens antals-
+  // vindue (finale.ts BUNCH_CATCH_PROFILE_TYPES): paa kuperet/brosten er
+  // selektionen aegte.
+  chaseFloorProfileTypes: ["flat", "rolling"] as readonly import("./types.ts").ProfileType[],
+  chaseFloorFinalKm: 35, // km foer maal hvor feltet overtager jagten
+  chaseFloorTargetGapSeconds: 60, // forspring ved maal paa en massefinale naar feltet regner rigtigt (under finalens antals-vindue, saa det hentes); oevrige finaler koeres helt ind
+  chaseFloorLateChanceByFinale: {
+    bunch_sprint: 0.15, // massespurt: sprinterholdene kommer sjaeldent for sent
+    reduced_sprint: 0.15, // reduceret spurt: samme
+  } as Partial<Record<import("./types.ts").FinaleType, number>>,
+  chaseFloorLateChanceDefault: 0.35, // oevrige finaler paa aabent terraen (fx en udbrudsfinale): feltet lader oftere udbruddet koere
+  chaseFloorLateTargetGapSeconds: 150, // forspring ved maal naar feltet kommer for sent (over finalens antals-vindue)
 };
 
 /** M5 additiv udbruds-tuning (deep-frosset). Se breakawayExtra-kommentaren ovenfor. */
@@ -944,11 +1082,10 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // egen gruppe koerte FRA feltet i stedet for at falde tilbage til den sidste
 // gruppe paa vejen.
 //
-// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3); en
-// worker aendrer ikke defaulten:
-//   "cp_only"         (b, DEFAULT): som hidtil — tempoet foelger CP alene.
-//                                   Bit-identisk med main foer denne kontakt.
-//   "effort_weighted" (a): "grupettoen er den sidste gruppe paa vejen", to
+// To modeller bag én kontakt. Valget er EJERENS (issue #4914 punkt 3; ejeren
+// valgte a 23/9, default flippet i #5581); en worker aendrer ikke defaulten:
+//   "cp_only"         (b): tempoet foelger CP alene (reglen foer #4914).
+//   "effort_weighted" (a, DEFAULT): "grupettoen er den sidste gruppe paa vejen", to
 //                                   led der kun virker sammen:
 //                                   1. TEMPO (segmentLoop.groupEffortTempo): en
 //                                   grupetto-rytter saetter aldrig farten i en
@@ -974,12 +1111,29 @@ export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
 // (5 seeds): backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
 export type GroupTempoModel = "cp_only" | "effort_weighted";
 const groupTempoEffortExtra = {
-  model: "cp_only" as GroupTempoModel, // EJER-VALG (#4914 punkt 3): "cp_only" = b (default, uaendret), "effort_weighted" = a
+  model: "effort_weighted" as GroupTempoModel, // EJER-VALG (#4914 punkt 3, valgt 23/9 = a; default-flip i #5581): "effort_weighted" = a (default), "cp_only" = b
   grupettoTempoFactor: 0.8, // kun model "effort_weighted": andel af CP'en en grupetto-rytter bidrager med til gruppens tempo (< 1, aldrig 0). STARTGAET, maalt i A/B'en
 };
 
 /** #4914 grupetto-tempo-kontakt (deep-frosset). Se groupTempoEffortExtra-kommentaren ovenfor. */
 export const GROUP_TEMPO_EFFORT_EXTRA_TUNING = deepFreeze(groupTempoEffortExtra);
+
+// ── #5581 grupettoen regner paa tidsgraensen (mechanics/grupettoPace.ts) ─────
+// Ejer 23/9 (#4914 valg 1b, "foelg realismen"): grupettoen koerer saa langsomt
+// som muligt, men aldrig langsommere end tidsgraensen (M15,
+// TIME_LIMIT_EXTRA_TUNING nedenfor) tillader, saa laenge rytterne har reserven
+// til det — baade en ren grupetto-gruppe og grupetto-ryttere i en blandet
+// gruppe der er for langsom (de gaar selv frem). Virker kun i model
+// "effort_weighted" (det er kun dér grupetto har sit eget tempo). Reglen og hvorfor den er
+// deterministisk staar i mechanics/grupettoPace.ts's hoved. Maalt med
+// backend/scripts/v4EffortTwinMeasure.js; tal i balance-internals/.
+const grupettoPaceExtra = {
+  limitShare: 0.85, // andel af tidsgraensens margin grupettoen sigter efter: lidt inden for, ikke paa stregen (forudsigelsen af vindertiden er et skoen). STARTGAET, maalt i tvillingerne
+  reserveForFullFloor: 0.25, // W'-reserve (andel) hvor gulvet gaelder fuldt; en rytter med mindre reserve kan ikke holde kravet og kan stadig ryge ud. STARTGAET, maalt i tvillingerne
+};
+
+/** #5581 tidsgraense-gulv for grupetto-tempoet (deep-frosset). Se grupettoPaceExtra-kommentaren ovenfor. */
+export const GRUPETTO_PACE_EXTRA_TUNING = deepFreeze(grupettoPaceExtra);
 
 // ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
 // Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning

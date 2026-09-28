@@ -40,6 +40,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
+  // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
+  { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
@@ -71,6 +73,9 @@ export const STAGE_FLAGS = Object.freeze([
   // Fail-safe MODSAT resten af tavlen: manglende/fejlet læsning = true
   // (drift opkræves som i dag), se academyDriftFlag.ts.
   { key: "academy_drift_enabled", area: "economy", label: "Ungdomsdrift ved sæsonskifte" },
+  // #4385: upkeep pr. seniorløbsdag i stedet for fladt ved sæsonstart. Fail-safe
+  // OFF; "beta" læses som off (upkeepPerRaceDayFlag.ts). Flippes FØR sæsonskiftet.
+  { key: "upkeep_per_race_day", area: "economy", label: "Upkeep pr. løbsdag (rejse og personale)" },
   { key: "season_end_pool_reseed", area: "season", label: "Sæsonslut — genfyld rytterpulje" },
   { key: "season_end_skip_division_movement", area: "season", label: "Sæsonslut — spring op/nedrykning over" },
   { key: "season_fatigue_reset_enabled", area: "season", label: "Sæsonslut — nulstil træthed" },

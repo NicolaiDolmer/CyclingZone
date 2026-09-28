@@ -177,7 +177,7 @@ test("Stræk paa et mål viser ejerens forudberegnede reaktion inline (#4557)", 
   // lib/boardGoalLabel.js: "stage_wins" → "Mindst N sejre"), og medlemmets
   // citat vises inline (spec §4.2: kun ved Easier/Stretch, ikke Keep).
   await expect(page.getByText("Mindst 5 sejre")).toBeVisible();
-  await expect(page.getByText(/Jørgen Brandt bakker op om stræk/)).toBeVisible();
+  await expect(page.getByText(/Jørgen Brandt, der ejer målet/)).toBeVisible();
 
   // Det binaere mål (Goal 2, no_outstanding_debt) kan IKKE strækkes —
   // pillen er deaktiveret, ikke et dødt klik (#3012-klassen).

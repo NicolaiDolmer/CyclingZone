@@ -131,12 +131,18 @@ export function recomputeRiderValue(riderRow, abilities, baseline, model, { type
 // type ændrede sig. capsByRider er valgfri (bagudkompatibel) — udeladt/tom Map ⇒
 // recomputeRiderValue falder tilbage til abilities for typen (se ovenfor).
 // #5497: phaseStep (valgfri) videresendes til recomputeRiderValue; kun v6 læser den.
-export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline, productionModel, phaseStep) {
+// #5443 (v6-kørslen): freezeProductionValue=true lader current_production_value
+// URØRT — kolonnen hverken sammenlignes eller skrives. Den ekstraordinære
+// kørsel bruger det, så løngrundlaget beviseligt ikke flytter sig (runbookens
+// post-verify: 0 mod backuppen), heller ikke af den almindelige v4-drift fra
+// ugens træning; den tager den ordinære søndagskørsel som altid. Default false.
+export function selectChangedValueUpdates(riders, abilityByRider, baseline, model, capsByRider = new Map(), youthBaseline, productionModel, phaseStep, { freezeProductionValue = false } = {}) {
   const updates = [];
   for (const r of riders) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
     const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline, productionModel, phaseStep });
+    if (freezeProductionValue) next.current_production_value = r.current_production_value ?? null;
     const best = bestRoleForAbilities(ab);
     const bestChanged = best.best_role !== (r.best_role ?? null)
       || best.best_role_rating !== (r.best_role_rating ?? null);
@@ -157,7 +163,7 @@ export function selectChangedValueUpdates(riders, abilityByRider, baseline, mode
         primary_type: next.primary_type,
         secondary_type: next.secondary_type,
         base_value: next.base_value,
-        current_production_value: next.current_production_value,
+        ...(freezeProductionValue ? {} : { current_production_value: next.current_production_value }),
       });
     } else if (bestChanged) {
       updates.push({ id: r.id, ...best });
@@ -196,7 +202,9 @@ async function writeUpdates(supabase, updates) {
 // modellen (current_phase_step fra app_config) aldrig tavst overtager en
 // skrivende kørsel: den ekstraordinære kørsel er trin 0, søndagskørslen
 // vælger selv sit trin (sundayValueSweep.js). v4/v5 ignorerer det.
-export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride, dryRun = false, phaseStep = 0 } = {}) {
+// #5443 `freezeProductionValue` (default false): se selectChangedValueUpdates.
+// Kun den ekstraordinære kørsel sætter den; søndagen er uændret.
+export async function refreshChangedRiderValues(supabase, { baseline, youthBaseline, model, productionModel, log = noop, teamId, seasonNumber: seasonNumberOverride, dryRun = false, phaseStep = 0, freezeProductionValue = false } = {}) {
   const bl = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
   // #3570: OPT-IN via param, samme mønster som backfillCores.js — produktionens
   // CLI/sweep-callere sender ikke youthBaseline eksplicit og får derfor den
@@ -266,11 +274,11 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
   const abilityByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a]));
   const capsByRider = new Map(abilities.filter((a) => riderIds.has(a.rider_id)).map((a) => [a.rider_id, a.ability_caps]));
 
-  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl, pm, phaseStep);
+  const updates = selectChangedValueUpdates(riders, abilityByRider, bl, m, capsByRider, youthBl, pm, phaseStep, { freezeProductionValue });
   const productionChanged = countProductionValueChanges(updates, riders);
   const typefree = isTypefreeModel(m);
   const modelId = m?.model_id ?? (Number(m?.version) >= 4 ? DEFAULT_VALUATION_MODEL_ID : null);
-  log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret · model ${modelId ?? "?"}${typefree ? ` · phase step ${phaseStep}` : ""} · production_value changed: ${productionChanged}${dryRun ? " · TØRKØRSEL, intet skrevet" : ""}`);
+  log(`value-refresh${teamId ? ` (team ${teamId})` : ""}: ${riders.length} scannet · ${updates.length} ændret · model ${modelId ?? "?"}${typefree ? ` · phase step ${phaseStep}` : ""} · production_value changed: ${productionChanged}${freezeProductionValue ? " (frosset)" : ""}${dryRun ? " · TØRKØRSEL, intet skrevet" : ""}`);
   const meta = { modelId, typefree, phaseStep: typefree ? phaseStep : null, productionChanged };
   if (dryRun) {
     // `updates` returneres KUN i tørkørsel — den rigtige kørsel skal ikke bære

@@ -36,7 +36,7 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 
@@ -158,7 +158,7 @@ type RiderSelection = {
   riderId: string;
   baseScore: number; // stoej-fri: deficitWeight*climbDeficitScaled + energyDeficitWeight*energyDeficit
   scoreTriggered: boolean; // (baseScore + stoej) > splitThreshold, FOER rank-guard
-  wprimeForced: boolean; // wprime <= 0 — fysiologisk absolut, uafhaengig af rank-guard
+  wprimeForced: boolean; // wprime <= 0 paa en stigning af en vis alvor (#5813) — fysiologisk absolut, uafhaengig af rank-guard
   effortForced: boolean; // #4914: grupetto-rytter falder tilbage (kun model "effort_weighted") — rytterens EGET valg, uafhaengig af rank-guard
 };
 
@@ -195,6 +195,29 @@ export function climbSeverity01(gradientPct: number, lengthKm: number): number {
   const gradientNorm = clamp(gradientPct, 0, 100) / GRADIENT_NORM_PCT;
   const lengthNorm = clamp(lengthKm, 0, 1000) / LENGTH_NORM_KM;
   return clamp(gradientNorm * lengthNorm, 0, 1);
+}
+
+/**
+ * #5813: tvinger en tom reserve rytteren af paa DENNE stigning? Kun naar
+ * stigningen har en vis alvor (CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity,
+ * se begrundelsen dér). Under taersklen haenger en udkoert rytter paa op ad en
+ * kort bakke; om han saettes af, afgoer den alvors-skalerede selektions-score
+ * (og rank-guarden) alene.
+ *
+ * Monotoni: reglen afhaenger kun af rytterens egen reserve og stigningen, ikke
+ * af evner, saa den kan aldrig saette en staerkere rytter af foer en svagere
+ * med samme reserve. Ingen rng.
+ *
+ * Eksporteret for kontrakt-testbarhed.
+ */
+export function wprimeDepletionForcesSplit(
+  wprime: number,
+  severity01: number,
+  minSeverity: number = CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity,
+): boolean {
+  if (!(wprime <= 0)) return false;
+  const severity = Number.isFinite(severity01) ? severity01 : 0;
+  return severity >= minSeverity;
 }
 
 /**
@@ -263,7 +286,7 @@ function computeSelections(
       riderId,
       baseScore,
       scoreTriggered: noisyScore > splitThreshold,
-      wprimeForced: riderState.wprime <= 0,
+      wprimeForced: wprimeDepletionForcesSplit(riderState.wprime, severity),
       effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
     });
   }

@@ -200,6 +200,9 @@ export default function FinanceForecastCard({
     : forecast.inputs?.salary_basis === "production_s3"
       ? t("forecast.salaryDetail.productionS3")
       : undefined;
+  // #4385: med upkeep_per_race_day on er upkeep "Rejse og personale" pr.
+  // seniorløbsdag (sats × løbsdage), ikke et fladt sæsonstart-træk.
+  const upkeepPerRaceDay = forecast.inputs?.upkeep_model === "per_race_day";
   const showUpkeepRow = hasSeasonSwitch
     ? forecast.projected_upkeep !== 0 || s2?.upkeep !== 0
     : forecast.projected_upkeep !== 0;
@@ -394,10 +397,15 @@ export default function FinanceForecastCard({
             nul-linje der ikke betyder noget. */}
         {showUpkeepRow && (
           <Row
-            label={t("forecast.row.upkeep")}
+            label={upkeepPerRaceDay ? t("forecast.row.travelStaff") : t("forecast.row.upkeep")}
             value={forecast.projected_upkeep}
             accent="text-cz-danger"
-            detail={t("forecast.upkeepDetail.byDivision")}
+            detail={upkeepPerRaceDay
+              ? t("forecast.upkeepDetail.perRaceDay", {
+                rate: `${formatNumber(forecast.inputs?.upkeep_per_race_day ?? 0)} CZ$`,
+                days: formatNumber(forecast.inputs?.upkeep_race_days ?? 0),
+              })
+              : t("forecast.upkeepDetail.byDivision")}
             dualColumn={hasSeasonSwitch}
             s2Value={s2?.upkeep}
             activeCol={activeCol}

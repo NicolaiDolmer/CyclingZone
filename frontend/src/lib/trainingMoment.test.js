@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  selectTrainingMoment, dayTopCandidate, recentSignature, variantIndex, MOMENT_TYPES,
+  selectTrainingMoment, selectInjuryAlerts, dayTopCandidate, recentSignature, variantIndex, MOMENT_TYPES,
 } from "./trainingMoment.js";
 
 function row(overrides = {}) {
   return {
     rider_id: "r1", name: "Jansen", focus: "vo2max", intensity: "normal",
-    injured: false, status: null, form: 50, gains: {}, gains_detail: {}, ...overrides,
+    injured: false, injury_days: 0, status: null, form: 50, gains: {}, gains_detail: {}, ...overrides,
   };
 }
 
@@ -82,6 +82,22 @@ test("selectTrainingMoment: cooldown springer samme rytter over når et alternat
   assert.equal(moment.type, MOMENT_TYPES.PEAK_FORM);
 });
 
+test("selectTrainingMoment: gennembrud for en ANDEN rytter slaar stadig igennem, selv om gennembrud var gaarsdagens historie", () => {
+  const rows = [
+    row({ rider_id: "r2", name: "Dubois", gains: { climbing: 1 }, gains_detail: { climbing: { from: 71, to: 72 } } }),
+    row({ rider_id: "r3", name: "Petit", focus: "vo2max" }),
+  ];
+  const progress = { r3: { climbing: 0.2, punch: 0.5, tempo: 0.93 } }; // naermer-sig-gennembrud, skal IKKE vinde
+  // Gaarsdagens topvalg var et gennembrud, men for en ANDEN rytter (r1).
+  const yesterday = { tick_date: "2026-07-14", report: { riders: [row({ rider_id: "r1", gains: { climbing: 1 }, gains_detail: { climbing: { from: 70, to: 71 } } })] } };
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, progress, [yesterday]);
+  // Type-cooldown maa ALDRIG undertrykke et gennembrud pga. en ANDEN rytters gennembrud
+  // i gaars — kun rytter-cooldown gaelder for gennembrud (opgaven bad kun om at undgaa
+  // samme rytter to dage i traek, ikke samme historie-type).
+  assert.equal(moment.type, MOMENT_TYPES.BREAKTHROUGH);
+  assert.equal(moment.riderId, "r2");
+});
+
 test("selectTrainingMoment: cooldown giver alligevel ALTID en historie, selv hvis alt er cooled down", () => {
   const rows = [row({ rider_id: "r1", name: "Jansen", gains: { climbing: 1 }, gains_detail: { climbing: { from: 71, to: 72 } } })];
   const yesterday = { tick_date: "2026-07-14", report: { riders: [row({ rider_id: "r1", gains: { climbing: 1 }, gains_detail: { climbing: { from: 70, to: 71 } } })] } };
@@ -119,6 +135,78 @@ test("recentSignature: samler rytter-id'er + typer fra tidligere dages topvalg",
   assert.equal(sig.riderIds.has("r2"), true);
   assert.equal(sig.types.has(MOMENT_TYPES.BREAKTHROUGH), true);
   assert.equal(sig.types.has(MOMENT_TYPES.PEAK_FORM), true);
+});
+
+test("selectTrainingMoment: en traeningsskade i dag slaar topform, skarp dag og naermer-sig-gennembrud", () => {
+  const rows = [
+    row({ rider_id: "r1", name: "Jansen", injured: true, injury_days: 3 }),
+    row({ rider_id: "r2", name: "Dubois", form: 90, status: "over" }),
+    row({ rider_id: "r3", name: "Petit", focus: "vo2max" }),
+  ];
+  const progress = { r3: { climbing: 0.2, punch: 0.5, tempo: 0.93 } };
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, progress, []);
+  assert.equal(moment.type, MOMENT_TYPES.INJURY);
+  assert.equal(moment.riderId, "r1");
+  assert.equal(moment.injuryDays, 3);
+});
+
+test("selectTrainingMoment: et helt point slaar en traeningsskade samme dag", () => {
+  const rows = [
+    row({ rider_id: "r1", name: "Jansen", injured: true, injury_days: 5 }),
+    row({ rider_id: "r2", name: "Dubois", gains: { climbing: 1 }, gains_detail: { climbing: { from: 71, to: 72 } } }),
+  ];
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, null, []);
+  assert.equal(moment.type, MOMENT_TYPES.BREAKTHROUGH);
+  assert.equal(moment.riderId, "r2");
+});
+
+test("selectTrainingMoment: topform slaar naermer-sig-gennembrud (Mr. Naesten skal IKKE vinde over en anden historie)", () => {
+  const rows = [
+    row({ rider_id: "r1", name: "Jansen", form: 90 }),
+    row({ rider_id: "r2", name: "Dubois", focus: "vo2max", form: 50 }),
+  ];
+  const progress = { r2: { climbing: 0.2, punch: 0.5, tempo: 0.93 } };
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, progress, []);
+  assert.equal(moment.type, MOMENT_TYPES.PEAK_FORM);
+  assert.equal(moment.riderId, "r1");
+});
+
+test("selectTrainingMoment: en gammel (ikke-frisk) skade taeller IKKE som injury-historie", () => {
+  const rows = [row({ rider_id: "r1", name: "Jansen", injured: true, injury_days: 0, form: 50 })];
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, null, []);
+  assert.equal(moment.type, MOMENT_TYPES.QUIET);
+});
+
+test("selectTrainingMoment: cooldown springer den skadede rytter over naar et alternativ findes", () => {
+  const rows = [
+    row({ rider_id: "r1", name: "Jansen", injured: true, injury_days: 2 }),
+    row({ rider_id: "r2", name: "Dubois", form: 85, status: "over" }),
+  ];
+  const yesterday = { tick_date: "2026-07-14", report: { riders: [row({ rider_id: "r1", injured: true, injury_days: 4 })] } };
+  const moment = selectTrainingMoment({ tick_date: "2026-07-15", report: { riders: rows } }, null, [yesterday]);
+  assert.equal(moment.riderId, "r2");
+  assert.equal(moment.type, MOMENT_TYPES.PEAK_FORM);
+});
+
+test("selectInjuryAlerts: tom liste uden friske skader", () => {
+  assert.deepEqual(selectInjuryAlerts(null), []);
+  assert.deepEqual(selectInjuryAlerts({ tick_date: "2026-07-15", report: { riders: [] } }), []);
+  const rows = [row({ rider_id: "r1", injured: true, injury_days: 0 }), row({ rider_id: "r2" })];
+  assert.deepEqual(selectInjuryAlerts({ tick_date: "2026-07-15", report: { riders: rows } }), []);
+});
+
+test("selectInjuryAlerts: samler friske skader, stoerste antal dage foerst", () => {
+  const rows = [
+    row({ rider_id: "r1", name: "Jansen", injured: true, injury_days: 2 }),
+    row({ rider_id: "r2", name: "Dubois", injured: true, injury_days: 7 }),
+    row({ rider_id: "r3", name: "Petit" }),
+  ];
+  const alerts = selectInjuryAlerts({ tick_date: "2026-07-15", report: { riders: rows } });
+  assert.equal(alerts.length, 2);
+  assert.equal(alerts[0].riderId, "r2");
+  assert.equal(alerts[0].days, 7);
+  assert.equal(alerts[1].riderId, "r1");
+  assert.equal(alerts[1].days, 2);
 });
 
 test("variantIndex: deterministisk og inden for [0, count)", () => {

@@ -73,7 +73,7 @@ $argsList = @()
 
 if ($Rollback) {
   Write-Host "TILSTAND: ROLLBACK - lægger de sikrede vaerdier tilbage." -ForegroundColor Magenta
-  Write-Host "Husk bagefter at saette app_config.rider_valuation_model tilbage til 'v4';" -ForegroundColor Magenta
+  Write-Host "Husk bagefter at saette app_config.rider_valuation_model tilbage til 'v4' og rider_value_phase_step til 0;" -ForegroundColor Magenta
   Write-Host "ellers skriver naeste soendagskoersel de nye vaerdier igen." -ForegroundColor Magenta
   Confirm-Step -Question "Vil du rulle vaerdiskiftet tilbage?" -Phrase $RollbackPhrase
   $env:VALUE_EVENT_5443_OWNER_ACK = "true"
@@ -84,7 +84,8 @@ elseif ($Apply) {
   Write-Host "Tjek foer du fortsaetter:" -ForegroundColor Magenta
   Write-Host "  1. Spillerbeskeden er postet."
   Write-Host "  2. Du har set den friske toerkoersel og sagt god for tallene."
-  Write-Host "  3. app_config.rider_valuation_model staar paa 'v5'."
+  Write-Host "  3. app_config.rider_valuation_model staar paa 'v6' (flippet lige nu, efter dit 'koer')."
+  Write-Host "  4. app_config.rider_valuation_v6_market har markeds-fittet (toerkoerslen viste marked=ja)."
   Confirm-Step -Question "Vil du koere vaerdiskiftet nu?" -Phrase $ApplyPhrase
   $env:VALUE_EVENT_5443_OWNER_ACK = "true"
   $argsList = @("--apply", "--confirm", $ApplyPhrase)

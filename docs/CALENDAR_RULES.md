@@ -207,7 +207,9 @@ Bindingen bærer allerede den nye ordlyd: `race_entry_days_rebuild()` binder ryt
 | D4 (aktiv) | **altid**, også uden ægte managers | nyt 24/9 — spejler AI-fyldet (#5642) |
 | pensioneret (`league_divisions.retired_at` sat) | **aldrig**, heller ikke via `forceTiers` | nyt 24/9 — D4 E-H |
 
-Alle puljer i en division kører stadig den samme kalender (#2276), så D4's løbstal halveres (fire puljer i stedet for otte), mens løbene pr. pulje og de 140 løbsdage er uændrede. `buildSeasonCalendar.js` stopper en seniorkørsel fra S4 hvis antallet af puljer med kalender ikke er præcis 1/2/4/4 (`SENIOR_CALENDAR_POOLS_FROM_S4`), fordi det betyder at kalenderen køres før sammenlægningen og pensioneringen (se `SEASON_CUTOVER_RUNBOOK.md` trin 12b).
+Alle puljer i en division kører stadig den samme kalender (#2276), så D4's løbstal halveres (fire puljer i stedet for otte), mens løbene pr. pulje og de 140 løbsdage er uændrede. `buildSeasonCalendar.js` stopper en seniorkørsel fra S4 hvis antallet af puljer med kalender ikke er præcis 1/2/4/4 (`SENIOR_CALENDAR_POOLS_FROM_S4`), fordi det betyder at kalenderen køres før sammenlægningen og pensioneringen.
+
+**Kalenderen skrives før sæsonen er slut ([#5795](https://github.com/NicolaiDolmer/CyclingZone/issues/5795), ejer 26/9).** `--target-structure s4` planlægger mod S4's målstruktur: de D4-puljer som `retireD4PoolsS4.js` pensionerer ved "Afslut sæson" (de fire med højest `pool_index`, samme regel som scriptet, `lib/calendarTargetStructure.js`), behandles i planen som pensionerede (`cutoverRetiredPoolIds` i materializeren) og får ingen løb. Databasen røres ikke. Planen er den samme som efter en rigtig pensionering (test i `tierCalendarMaterializer.test.js`), og efter `--apply` fejler post-verify'en hvis en af de puljer har fået løb. Flaget gælder kun senioren og kun fra S4. Se `SEASON_CUTOVER_RUNBOOK.md` trin 1.
 
 **Truppernes kalender (U23 og junior, [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492) Y5).** Ejer 15/9 (spec 2026-09-15 §10.5) og [`YOUTH_RULES.md`](YOUTH_RULES.md) §2.3: U23 kører 1-2 løb om ugen, junior 1, på 140 løbsdage hvor de fleste er rene træningsdage. Bygges med `buildSeasonCalendar.js --squad u23|junior` EFTER seniorkalenderen:
 
@@ -319,7 +321,9 @@ node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 #    og aldrig som grundlag for et ejer-kort.
 
 # 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
-node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
+#    S4 skrives FØR "Afslut sæson" med --target-structure s4 (#5795, §1f); flaget
+#    skal også med i trin 1 og 4, så længe D4 E-H ikke er pensioneret.
+node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --target-structure s4 --apply
 
 # 4) REGENERERING af en sæson der allerede HAR en kalender (§2c, ejer 19/9).
 #    Uden --replace-existing stopper trin 3 og printer hvad der ville blive slettet.
@@ -397,6 +401,8 @@ scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
 | Etaperækkefølge (§7) | `gatePlan` | **ingen** |
 | Realisme-bånd (#3347/#3469) | `gatePlan` | **ingen** |
 | Løb hver kalenderdag (§2) | scorecardet | **ingen** - ejer-regel |
+| GT-rækkefølge Giro → Tour → Vuelta (§3, #5802) | scorecardet (stopper `--apply`) | **ingen** - ejer-regel |
+| Ingen GT-start på sæsonens første dag (§3, #5802) | scorecardet (stopper `--apply`) | **ingen** - ejer-regel |
 | Kvote-hul > 3 løbsdage | `gatePlan` | **ingen** |
 | K-B-komposition, sæson (§6) | `gatePlan` | `--allow-composition-drift` |
 | K-B-komposition, pr. division (§6) | `gatePlan` | `--allow-tier-composition-drift` |
@@ -548,6 +554,12 @@ S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningss
 | Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
 | GT'er kun i | tier 1 | — | [#2251](https://github.com/NicolaiDolmer/CyclingZone/issues/2251) | `tierCalendarMaterializer.js` |
 | To GT'er må ikke dele kalenderdag | real-day-separation | ≥ 1 dags mellemrum | 6/8 | [#3472](https://github.com/NicolaiDolmer/CyclingZone/issues/3472) |
+| GT'ernes startrækkefølge | R14 + `detectGrandTourOrderViolations` | **Giro → Tour → Vuelta** (virkelig startdato fra `date_text`) | **ejer 26/9** ([#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)) | `raceCalendarLanePacker.js`, `calendarPlacementGates.js` |
+| Tidligste GT-start | R15 + `detectGrandTourEarlyStartViolations` | **tidligst dag 3** (`GRAND_TOUR_EARLIEST_START_DATE_INDEX` = 2, 0-baseret) | **ejer 26/9 kl. 22:40** ([#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)) | `raceCalendarLanePacker.js`, `calendarPlacementGates.js` |
+
+**GT-rækkefølgen (ejer 26/9, [#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)).** Grand Tours starter i den rækkefølge de har i virkeligheden: Giro → Tour → Vuelta. S4-tørkørslen 26/9 lagde dem som Tour → Giro → Vuelta, fordi pakkerens søgning altid prøvede den længste GT først (Touren har 18 etaper, de to andre 17), og ingen gate målte rækkefølgen. Rækkefølgen kommer fra katalogets `date_text` (som `seasonFraction`), ikke fra navne. Den håndhæves to steder: som binding i søgningen (R14 i `solveContiguousStarts`: GT-klasserne skal startes i virkelig rækkefølge) og som **hård placerings-gate uden override** i scorecardet (`detectGrandTourOrderViolations`, stopper `--apply`). Tørkørslen udskriver GT'ernes navne og startdatoer pr. division. Overlap mellem en GT og et andet etapeløb er **tilladt** (ejer 26/9) og berøres ikke af reglen. Mangler en GT sin virkelige dato, kan reglen ikke dømme den og springer den over.
+
+**Ingen Grand Tour på sæsonens første dag (ejer 26/9 kl. 22:40, [#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)).** S3 åbnede med en GT på dag 1, og spillerne klagede (sweep 20/8); S4-tørkørslen 26/9 gjorde det samme (Giroen på første dag). En GT må nu tidligst starte på **dag 3** (`GRAND_TOUR_EARLIEST_START_DATE_INDEX` = 2, 0-baseret kalenderdato). Valget er målt: på prod-kataloget giver grænserne dag 2, 3, 4 og 5 den **samme** kalender (Giroen starter på dag 5, fordi det er dér søgningen først finder en lovlig pakning), og alle gates er grønne; dag 3 er ejerens foreslåede luft og koster intet ekstra. Reglen håndhæves som binding i søgningen (R15) og som **hård placerings-gate uden override** i scorecardet (`detectGrandTourEarlyStartViolations`, målt i kalenderdage fra sæsonens første dag, stopper `--apply`). R15 er sidste trin i søgestigen: kan et katalog ikke holde den inden for skridt-loftet, kører det gamle forsøg uden den, `solveAttempts` viser `gtStartRule: false`, og gaten stopper `--apply`. Rækkefølgen Giro → Tour → Vuelta (R14) holder uændret.
 
 Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no days with 5 gt stages"* + *"6 sounds like a decent max"*.
 
@@ -637,7 +649,7 @@ Begge konstanter bor i `calendarTierCaps.js`. **Spredningen måles fortsat i KAL
 
 **Hvorfor det ikke kunne ordnes efter søgningen.** Et monument er et 1-etapes løb som enhver anden klassiker, så den oplagte lap er at bytte dets slot med en klassikers. Målt på S4's plan er det umuligt: kun **7 af D1's 19 endagsløbs-slots** lå uden for et GT-vindue, fordelt på to klumper (4 + 3 datoer i træk). Med kravet om 2 kalenderdage mellem naboer kan der højst vælges 2 fra hver klump — **4 slots til 5 monumenter**, og en spredning på 12 dage mod kravet 14. Der findes flere frie datoer i sæsonen, men ingen af dem bar et endagsløb, og hvilke datoer der bærer et endagsløb afgøres netop af søgningen.
 
-**To søgeforsøg, og det er bevidst.** Findes der ingen lovlig pakning med R9-R11, kører pakkeren søgningen igen uden dem i stedet for at falde ned i det afslappede layout — ellers ville en placerings-regel betales med §1b's eksakte kvote. Udfaldet er ikke stille: `detectMonumentsInsideGrandTours` er en hård gate uden override i både scorecardet og `--apply`, og pakkeren rapporterer selv `monumentRulesHeld` + `monuments`-diagnostik i dry-runnet. Det monument-bundne forsøg har sit eget skridt-loft (`MONUMENT_SOLVE_MAX_STEPS`, 2 mio.) så et uopfyldeligt katalog ikke spiser hele budgettet; prods S4-plan løser D1 med reglerne på ca. 120.000 skridt.
+**To søgeforsøg, og det er bevidst.** Findes der ingen lovlig pakning med R9-R11, kører pakkeren søgningen igen uden dem i stedet for at falde ned i det afslappede layout — ellers ville en placerings-regel betales med §1b's eksakte kvote. Udfaldet er ikke stille: `detectMonumentsInsideGrandTours` er en hård gate uden override i både scorecardet og `--apply`, og pakkeren rapporterer selv `monumentRulesHeld` + `monuments`-diagnostik i dry-runnet. Det monument-bundne forsøg har sit eget skridt-loft (`MONUMENT_SOLVE_MAX_STEPS`, 3 mio. fra 26/9) så et uopfyldeligt katalog ikke spiser hele budgettet. Målt 26/9 på prod-kataloget: D1 løses med reglerne på ca. 645.000 skridt med R14 og ca. 1,5 mio. med R14 + R15 ([#5802](https://github.com/NicolaiDolmer/CyclingZone/issues/5802)); loftet blev hævet fra 2 til 3 mio. for at give en faktor 2 i luft.
 
 **Monument-kronologien er en del af leverancen.** Monumenterne får deres egen identitets-gruppe, så de lander i `seasonFraction`-rækkefølge: Sanremo → Ronde → Roubaix → Liège → Lombardia. Det krævede én rettelse mere: #3546 F's brostens-omformning (`reshapeCobblesFractionToTwoWindows`) skubbede De Vlaamse Ronde og L'Enfer du Nord ud i det sene vindue, så Liège lå før begge. **Monumenter er nu undtaget fra omformningen** — #3546 F's rod-årsag var brostens-*forsyningens* monotone fald hen over sæsonen, og de to monumenter er ikke forsyning.
 

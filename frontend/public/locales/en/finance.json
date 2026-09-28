@@ -163,6 +163,7 @@
       "facility_purchase": "Facility upgrade",
       "staff_severance": "Staff severance",
       "upkeep": "Upkeep",
+      "travel_staff": "Travel & staff",
       "scout_travel": "Scout travel",
       "auto_squad_purchase": "Automatic squad purchase",
       "auto_squad_sale": "Automatic squad sale",
@@ -328,6 +329,7 @@
     "reasonCode": {
       "season_start_sponsor": "Sponsor",
       "season_start_upkeep": "Upkeep & maintenance",
+      "race_day_travel_staff": "Travel & staff",
       "season_start_parachute": "Relegation parachute",
       "season_start_academy_drift": "Academy upkeep",
       "season_end_salary": "Salaries",

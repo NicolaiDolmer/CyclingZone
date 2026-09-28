@@ -5647,6 +5647,56 @@ test("#1678: processTeamSeasonPayroll BEHOLDER upkeep i sæson 2 (steady-state g
   assert.equal(upkeepRows[0].amount, -UPKEEP_BY_DIVISION[2], "Upkeep-beløb skal matche D2-konstanten");
 });
 
+// #4385 · upkeep_per_race_day. ON: sæsonstart trækker INTET fladt upkeep (det
+// trækkes pr. seniorløbsdag i autoPrizeSweep). OFF/udeladt: bit-identisk med før.
+test("#4385: processTeamSeasonPayroll trækker IKKE fladt upkeep når upkeepPerRaceDay er on", async () => {
+  const financeRows = [];
+  const supabase = makeUpkeepSupabase(financeRows);
+  const team = { id: "team-4385-on", name: "Per Day FC", division: 1, balance: 999_999, riders: [] };
+
+  const result = await processTeamSeasonPayroll(team, "season-4", {
+    supabase,
+    seasonNumber: 4,
+    upkeepPerRaceDay: true,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+  });
+
+  assert.equal(financeRows.filter((r) => r.type === "upkeep").length, 0, "flag on: ingen upkeep-post ved sæsonstart");
+  assert.equal(result.upkeep_total, 0);
+  assert.equal(result.upkeep_count, 0);
+});
+
+test("#4385: processTeamSeasonPayroll trækker fladt upkeep som før når upkeepPerRaceDay er off", async () => {
+  const financeRows = [];
+  const supabase = makeUpkeepSupabase(financeRows);
+  const team = { id: "team-4385-off", name: "Flat FC", division: 1, balance: 999_999, riders: [] };
+
+  const result = await processTeamSeasonPayroll(team, "season-4", {
+    supabase,
+    seasonNumber: 4,
+    upkeepPerRaceDay: false,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+  });
+
+  const upkeepRows = financeRows.filter((r) => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 1, "flag off: fladt upkeep trækkes som før");
+  assert.equal(upkeepRows[0].amount, -UPKEEP_BY_DIVISION[1]);
+  assert.equal(result.upkeep_total, UPKEEP_BY_DIVISION[1]);
+});
+
+test("#4385: buildSeasonEndPreviewRows viser 0 upkeep når upkeepPerRaceDay er on", () => {
+  const teams = [{ id: "t1", name: "A", division: 1, balance: 100_000, sponsor_income: 0, riders: [] }];
+  const [off] = buildSeasonEndPreviewRows({ teams, standings: [], loanData: [] });
+  const [on] = buildSeasonEndPreviewRows({ teams, standings: [], loanData: [], upkeepPerRaceDay: true });
+  assert.equal(off.upkeep, UPKEEP_BY_DIVISION[1]);
+  assert.equal(on.upkeep, 0);
+  assert.equal(on.balance_after - off.balance_after, UPKEEP_BY_DIVISION[1]);
+});
+
 // Genbruger upkeep-test-fakens form (teams.balance-single + riders count/in).
 function makeUpkeepSupabase(financeRows) {
   return {

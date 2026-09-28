@@ -32,6 +32,15 @@ const ALL_DIVISIONS = Array.from(
   { length: RULES_NUMBERS.maxDivision - RULES_NUMBERS.minDivision + 1 },
   (_, i) => RULES_NUMBERS.minDivision + i,
 );
+// #5315 (CodeRabbit-fund) — et ?division=-deep-link skal kun forvælges når
+// værdien rent faktisk er en kendt tier. Et ukendt tal (fx ?division=99, en
+// forkert URL eller en fremtidig ejer/tier-oprydning) skal falde tilbage til
+// almindeligt divTab=1 OG stadig lade "mine"-auto-select sætte holdets egen
+// division — ikke stå fast på en tom, ikke-eksisterende fane.
+function parseDivisionParam(raw) {
+  const n = Number(raw);
+  return ALL_DIVISIONS.includes(n) ? n : null;
+}
 // Division-markør holdt inden for guld+navy-systemet (ingen fremmede hues):
 // div 1 = fuld guld (--accent), div 2 = dyb guld (--accent-t), div 3 = neutral
 // (--div-3, tema-bevidst channel-token i index.css). Vi gemmer selve CSS-var-
@@ -88,11 +97,27 @@ export default function StandingsPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [divTab, setDivTab] = useState(1);
+  // #5315 — ?division=<tier>&pool=<id> (fra Dashboardets "Full standings"-link,
+  // se lib/standingsLink.ts) forvælger division+pulje-fane ved deep-link, så
+  // siden lander direkte på managerens egen pulje i stedet for hele tieren.
+  // parseDivisionParam validerer mod ALL_DIVISIONS (CodeRabbit-fund): et
+  // ukendt/ugyldigt tal (fx ?division=99) skal IKKE laase divTab fast på en
+  // tom fane — divTab falder til 1 (samme fallback som foer #5315), og
+  // "mine"-effekten nedenfor faar stadig lov at saette holdets egen division.
+  const [divTab, setDivTab] = useState(() => parseDivisionParam(searchParams.get("division")) ?? 1);
+  // #5315 — samme validerede ?division=-værdi, men bag en ref: loadAllInner
+  // nedenfor er bevidst memoized med tomme deps (#4068, kun stabile setters),
+  // og en ref læses sikkert derfra uden at ESLints exhaustive-deps skal have
+  // searchParams (en reaktiv værdi) med i den deps-liste. Initialiseres én
+  // gang ved mount, hvilket er præcis det et sideload-deep-link skal reagere
+  // på. null (ugyldig/manglende værdi) betyder "lad 'mine'-auto-select om det".
+  const initialDivisionParam = useRef(parseDivisionParam(searchParams.get("division")));
   // #1688 pulje-sub-faner: valgt pulje inden for tieren (league_division_id) eller
   // POOL_ALL = hele tieren samlet. league_divisions hentes ved load.
   const [pools, setPools] = useState([]);
-  const [poolTab, setPoolTab] = useState(POOL_ALL);
+  // matchesPoolTab (#2879) normaliserer selv string- vs. integer-id, så
+  // poolTab kan forblive en rå streng fra query-parameteren uden konvertering.
+  const [poolTab, setPoolTab] = useState(() => searchParams.get("pool") || POOL_ALL);
   const [myTeamId, setMyTeamId] = useState(null);
   const [season, setSeason] = useState(null);
   const [racePoints, setRacePoints] = useState({});
@@ -152,7 +177,13 @@ export default function StandingsPage() {
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
     setMyTeamId(mine?.id);
-    if (mine?.division) setDivTab(mine.division);
+    // #5315 — et ?division=-deep-link (se initialDivisionParam-refen ovenfor)
+    // vinder over "mine"-auto-select: uden vagten ville dette load-kald (kørt
+    // igen ved hver realtime-refetch) nulstille divTab til holdets EGEN
+    // division ved hvert kald — normalt identisk med query-parameteren (den
+    // ER managerens egen division), men vagten holder deep-linket stabilt
+    // hvis det nogensinde peger på en anden division end den indloggede ejer.
+    if (mine?.division && !initialDivisionParam.current) setDivTab(mine.division);
     setSeason(activeSeason);
 
     // #2444 · begge matview-reads afhænger kun af activeSeason.id (kendt nu) —

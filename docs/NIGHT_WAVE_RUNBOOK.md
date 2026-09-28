@@ -190,15 +190,13 @@ _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel
 > Hændelsen er ikke pynt: en regel uden den hændelse der udloeste den bliver til prosa der drifter.
 > Laes dem naar du skal forstaa HVORFOR en regel er skarp, eller naar du overvejer at boeje den.
 
-**Regel 5 - **
+**Regel 5 - Patch notes er obligatoriske ved enhver brugerrettet aendring**
 
-- _LOOPS.md) håndhæver dette. **Samme rutine for Hjælp/FAQ** (#1171): ændrer eller tilføjer slicen en spilmekanik spillere skal forstå, opdatér `frontend/public/locales/{en,da}/help.json` (+ `HelpPage.jsx` SECTION_
+- _Pre-push hook (loop B i AI_LOOPS.md) håndhæver dette. **Samme rutine for Hjælp/FAQ** (#1171): ændrer eller tilføjer slicen en spilmekanik spillere skal forstå, opdatér `frontend/public/locales/{en,da}/help.json` (+ `HelpPage.jsx` SECTION_DEFS/FAQ_KEYS ved nye blokke) eller skriv hvorfor ikke. **i18n leak-guard (#1068):** `scripts/i18n-check-leaks.mjs` (CI-job `leak-check` + pre-commit via lint-staged) blokerer NYE danske strenge i EN-locale-værdier og player-facing kode. Kendte leaks ligger i `scripts/i18n-leaks-baseline.json` — en ratchet der kun må skrumpe: fix leaks og stram med `node scripts/i18n-check-leaks.mjs --update-baseline` i en dedikeret commit; udvid den ALDRIG med nye leaks. Legitimt dansk (admin-flader, dual-page privacy, PatchNotes-data, brand-termer) tilføjes i stedet til LOCALE_ALLOWLIST/EXEMPT i scriptet med begrundelse._
 
-- _KEYS ved nye blokke) eller skriv hvorfor ikke. **i18n leak-guard (#1068):** `scripts/i18n-check-leaks.mjs` (CI-job `leak-check` + pre-commit via lint-staged) blokerer NYE danske strenge i EN-locale-værdier og player-facing kode. Kendte leaks ligger i `scripts/i18n-leaks-baseline.json` — en ratchet der kun må skrumpe: fix leaks og stram med `node scripts/i18n-check-leaks.mjs --update-baseline` i en dedikeret commit; udvid den ALDRIG med nye leaks. Legitimt dansk (admin-flader, dual-page privacy, PatchNotes-data, brand-termer) tilføjes i stedet til LOCALE_
+**Regel 8 - OneDrive-context hardlinks (siden 2026-05-07, scope reduceret 2026-05-12 per #327)**
 
-**Regel 8 - **
-
-- _CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. **Produktionssecrets (`*.env`, `.mcp.json`) er IKKE længere OneDrive-hardlinked** — bootstrappes nu via Infisical (`infisical export --env=dev > backend/.env`); se `docs/decisions/secret-management-adr.md`. Detaljer: `docs/CROSS_
+- _Memory og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. **Produktionssecrets (`*.env`, `.mcp.json`) er IKKE længere OneDrive-hardlinked** — bootstrappes nu via Infisical (`infisical export --env=dev > backend/.env`); se `docs/decisions/secret-management-adr.md`. Detaljer: `docs/CROSS_PC_SETUP.md` + `docs/HOOKS.md`._
 
 **Regel 10 - Enhver agent har en terminal-tilstand du har SET**
 
@@ -226,9 +224,7 @@ _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel
 
 **Regel 19 - Aldrig skip-logik paa prod-deploy-grenen**
 
-- _To hændelser på to dage: 17/8 mistede prod-deploys (skip-logikken åd ægte ændringer); 18/8 stod alle prod-deploys i ERROR fordi `VERCEL_
-
-- _SHA` lå uden for Vercels shallow clone og exit 128 tolkes som deploy-fejl ([#3838](https://github.com/NicolaiDolmer/CyclingZone/issues/3838))._
+- _To hændelser på to dage: 17/8 mistede prod-deploys (skip-logikken åd ægte ændringer); 18/8 stod alle prod-deploys i ERROR fordi `VERCEL_GIT_PREVIOUS_SHA` lå uden for Vercels shallow clone og exit 128 tolkes som deploy-fejl ([#3838](https://github.com/NicolaiDolmer/CyclingZone/issues/3838))._
 
 **Regel 20 - Deploy-verify er en del af merge-handlingen**
 

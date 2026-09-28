@@ -58,6 +58,10 @@ const CLOSE_GAP_S = 10;
 // formulering. Gap-tallet bæres stadig med i params (allerede offentligt i
 // resultat-tabellen), så copy senere kan bruge marginen uden en ny nøgle.
 export const TIME_TRIAL_WIN_KEY = Object.freeze({ itt: "itt_win", ttt: "ttt_win" });
+// #5577: de sejrstyper v4-motoren stempler på finish-eventet (engine/v4/
+// winType.ts WIN_TYPE_KEYS). Samme nøgler som vindermomenterne ovenfor, så
+// eksisterende EN/DA-copy bruges; en ukendt værdi falder tilbage til gap-vejen.
+const ENGINE_WIN_TYPE_KEYS = new Set(["sprint_win", "close_win", "solo_win", "itt_win", "ttt_win"]);
 const FAVORITE_OFF_DAY_RANK = 15;
 const HELPER_SHIFT_CAPTAIN_RANK = 5;
 const HELPER_SHIFT_HELPER_MIN_COUNT = 2;
@@ -210,7 +214,14 @@ export function extractStageMoments({
   const timeTrialWinKey = TIME_TRIAL_WIN_KEY[profileType] ?? null;
   if (winner) {
     const gap2 = second?.stageGap ?? null;
-    if (gap2 != null) {
+    // #5577 (spec M2): under v4 bærer vinderens række motorens EGEN sejrstype
+    // (raceEngineV4Bridge.rankedFromV4Output, fra finish-eventet). Den vinder
+    // over gap-tærsklerne, som kun gætter på forløbet ud fra sekunderne og
+    // fortsat gælder v3. Ukendte værdier ignoreres (fail-safe til v3-vejen).
+    const engineWinType = ENGINE_WIN_TYPE_KEYS.has(winner.win_type) ? winner.win_type : null;
+    if (engineWinType) {
+      push(moments, { key: engineWinType, params: { riderId: winner.rider_id, gapSeconds: gap2 }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
+    } else if (gap2 != null) {
       const key = timeTrialWinKey
         ?? (gap2 < SPRINT_GAP_S ? "sprint_win" : gap2 < CLOSE_GAP_S ? "close_win" : "solo_win");
       push(moments, { key, params: { riderId: winner.rider_id, gapSeconds: gap2 }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
@@ -218,8 +229,15 @@ export function extractStageMoments({
       push(moments, { key: timeTrialWinKey ?? "solo_win", params: { riderId: winner.rider_id, gapSeconds: null }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
     }
 
+    // #5577: v4's motor ved selv om udbruddet vandt (winner.breakaway_win, fra
+    // motorens trace). Uden den (v3) afgøres det som før af udbruds-statussen:
+    // "var i et udbrud og havde ingen ikke-udbryder foran sig" — under v4 ville
+    // det også stemple en nedkørselsangriber der blev hentet som "udbruddet holdt".
     const winnerBw = breakawayStatus.get(winner.rider_id);
-    if (winnerBw?.in_breakaway && !winnerBw.breakaway_caught) {
+    const breakawayHeld = typeof winner.breakaway_win === "boolean"
+      ? winner.breakaway_win
+      : Boolean(winnerBw?.in_breakaway && !winnerBw.breakaway_caught);
+    if (breakawayHeld) {
       const breakawayCount = [...breakawayStatus.values()].filter((b) => b.in_breakaway).length;
       push(moments, { key: "breakaway_survived", params: { riderId: winner.rider_id, count: breakawayCount }, riderIds: [winner.rider_id] });
     } else if ([...breakawayStatus.values()].some((b) => b.breakaway_caught)) {

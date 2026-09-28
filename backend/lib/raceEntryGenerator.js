@@ -79,6 +79,43 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
   return out;
 }
 
+/**
+ * #5693/#5789: find de ryttere der FLYTTES mellem to af ÉT holds løb i samme skrivning
+ * (rytteren slettes fra én enhed OG indsættes i en ANDEN). Skrives enhederne én ad
+ * gangen, kolliderer mål-enhedens insert med kilde-enhedens endnu-ikke-slettede række
+ * på rider-day-invarianten (#3420) — uanset om skriveren er insert-før-delete (sweepens
+ * fallback) eller delete-så-insert pr. løb (Race Hubs regenerate). Kalderen sletter
+ * derfor netop disse rækker i kilden FØR den skriver. Ren + deterministisk.
+ *
+ * @param {Array<{ race_id: string, toDelete?: string[], toInsert?: string[] }>} units
+ *   toDelete/toInsert er rider_ids.
+ * @returns {{ deleteRidersByRace: Map<string, string[]>, targetRaceByRider: Map<string, string> }}
+ */
+export function findCrossUnitMoves(units = []) {
+  const deleteRaceIdsByRider = new Map(); // rider_id → Set(race_id) enheden vil slette rytteren fra
+  for (const { race_id: raceId, toDelete = [] } of units) {
+    for (const riderId of toDelete) {
+      if (!deleteRaceIdsByRider.has(riderId)) deleteRaceIdsByRider.set(riderId, new Set());
+      deleteRaceIdsByRider.get(riderId).add(raceId);
+    }
+  }
+  const deleteRidersByRace = new Map(); // race_id → [rider_id] der skal forudslettes
+  const targetRaceByRider = new Map(); // rider_id → race_id enheden skal lande i
+  for (const { race_id: raceId, toInsert = [] } of units) {
+    for (const riderId of toInsert) {
+      const sourceRaceIds = deleteRaceIdsByRider.get(riderId);
+      if (!sourceRaceIds) continue;
+      for (const sourceRaceId of sourceRaceIds) {
+        if (sourceRaceId === raceId) continue; // samme enhed — ikke en cross-enheds-flytning
+        if (!deleteRidersByRace.has(sourceRaceId)) deleteRidersByRace.set(sourceRaceId, []);
+        deleteRidersByRace.get(sourceRaceId).push(riderId);
+        targetRaceByRider.set(riderId, raceId);
+      }
+    }
+  }
+  return { deleteRidersByRace, targetRaceByRider };
+}
+
 // PostgREST .in() encoder id-listen i URL'en — ved relaunch-skala (600-800 UUID'er)
 // rammer det 414/proxy-grænser. Batch derfor alle id-opslag i bidder. (kopieret fra
 // raceRunner.js, hvor den er modul-privat — #1307-review.)
@@ -1261,27 +1298,14 @@ export async function runRaceEntryGenerator({
     // kilde-løbet hvis mål-enheden ikke lykkedes. Pre-sletningens eget
     // Supabase-kald er desuden try/catch'et — en transportfejl (kastet, ikke
     // returneret som `{error}`) må aldrig vælte resten af sweepet.
-    const deleteRaceIdsByRider = new Map(); // rider_id → Set(race_id) enheden vil slette rytteren fra
-    for (const { unit, diff } of changed) {
-      for (const riderId of diff.toDelete) {
-        if (!deleteRaceIdsByRider.has(riderId)) deleteRaceIdsByRider.set(riderId, new Set());
-        deleteRaceIdsByRider.get(riderId).add(unit.race_id);
-      }
-    }
-    const swapDeleteRidersByRace = new Map(); // race_id → [rider_id] der skal forudslettes
-    const swapTargetRaceByRider = new Map(); // rider_id → race_id enheden skal lande i
-    for (const { unit, diff } of changed) {
-      for (const { rider_id: riderId } of diff.toInsert) {
-        const sourceRaceIds = deleteRaceIdsByRider.get(riderId);
-        if (!sourceRaceIds) continue;
-        for (const sourceRaceId of sourceRaceIds) {
-          if (sourceRaceId === unit.race_id) continue; // samme enhed — ikke en cross-enheds-flytning
-          if (!swapDeleteRidersByRace.has(sourceRaceId)) swapDeleteRidersByRace.set(sourceRaceId, []);
-          swapDeleteRidersByRace.get(sourceRaceId).push(riderId);
-          swapTargetRaceByRider.set(riderId, unit.race_id);
-        }
-      }
-    }
+    // #5789: prædikatet er trukket ud i findCrossUnitMoves (nedenfor), så Race Hubs
+    // "Auto-udfyld igen" (raceHubAutofill.js) bruger PRÆCIS samme regel.
+    const { deleteRidersByRace: swapDeleteRidersByRace, targetRaceByRider: swapTargetRaceByRider } =
+      findCrossUnitMoves(changed.map(({ unit, diff }) => ({
+        race_id: unit.race_id,
+        toDelete: diff.toDelete,
+        toInsert: diff.toInsert.map((i) => i.rider_id),
+      })));
     const unitByRaceId = new Map(changed.map(({ unit }) => [unit.race_id, unit]));
     const preDeletedRows = []; // { sourceRaceId, riderId, role, targetRaceId }
     for (const [sourceRaceId, riderIds] of swapDeleteRidersByRace) {

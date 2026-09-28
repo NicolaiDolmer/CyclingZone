@@ -371,6 +371,7 @@
       "prize": "Prize money",
       "salary": "Salary",
       "upkeep": "Division upkeep",
+      "travelStaff": "Travel & staff",
       "staffFacilities": "Staff and facilities",
       "facilityUpkeep": "Facility upkeep",
       "staffSalary": "Staff salaries",
@@ -390,6 +391,7 @@
       "divisionInterval": "Range based on measured prize money among division peers"
     },
     "upkeepDetail": {
+      "perRaceDay": "{rate} per senior race day × {days} race days. Charged when each race is settled, not at season start.",
       "byDivision": "Set by your division, not your squad"
     },
     "salaryDetail": {

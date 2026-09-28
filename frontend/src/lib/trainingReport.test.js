@@ -4,6 +4,9 @@ import {
   focusProgress, isBreakthrough, daySummary, breakthroughJumps, riderHistoryFromRuns,
   todayGainTotal,
   seasonAbilityGains, abilityReceipt, focusAbilityReceipt, abilityYesterdayPct,
+  abilityYesterdayGainPct,
+  latestReceiptRun, reportRowsByRider, receiptGainDay, receiptGainKeys,
+  RECEIPT_GAIN_DAY_TODAY, RECEIPT_GAIN_DAY_YESTERDAY, RECEIPT_GAIN_DAY_OLDER,
   yesterdaySummary, riderDayStories,
   seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_NOTE_KEY,
   SEASON_RECEIPT_UNKNOWN, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_RUNNING,
@@ -270,11 +273,11 @@ test("abilityReceipt: nu, sæson og fremdrift pr. evne (Weber, målt i prod 14/8
     seasonGains: { durability: 1 },
   });
   assert.deepEqual(rows, [
-    { ability: "sprint", value: 88, gained: 0, pct: null, locked: true, yesterdayPct: null },
-    { ability: "acceleration", value: 54, gained: 0, pct: 87, locked: false, yesterdayPct: null },
-    { ability: "tactics", value: 50, gained: 0, pct: null, locked: true, yesterdayPct: null },
-    { ability: "durability", value: 44, gained: 1, pct: 2, locked: false, yesterdayPct: null },
-    { ability: "climbing", value: 21, gained: 0, pct: null, locked: true, yesterdayPct: null },
+    { ability: "sprint", value: 88, gained: 0, pct: null, locked: true, yesterdayPct: null, gainDay: null },
+    { ability: "acceleration", value: 54, gained: 0, pct: 87, locked: false, yesterdayPct: null, gainDay: null },
+    { ability: "tactics", value: 50, gained: 0, pct: null, locked: true, yesterdayPct: null, gainDay: null },
+    { ability: "durability", value: 44, gained: 1, pct: 2, locked: false, yesterdayPct: null, gainDay: null },
+    { ability: "climbing", value: 21, gained: 0, pct: null, locked: true, yesterdayPct: null, gainDay: null },
   ]);
 });
 
@@ -297,7 +300,7 @@ test("abilityReceipt: fremdrift klippes ved 99 — en fuld bar der ikke springer
 
 test("abilityReceipt: manglende data giver null, ikke nul", () => {
   const [row] = abilityReceipt(["tactics"], { abilities: {}, progress: {}, capped: [], seasonGains: null });
-  assert.deepEqual(row, { ability: "tactics", value: null, gained: null, pct: null, locked: false, yesterdayPct: null });
+  assert.deepEqual(row, { ability: "tactics", value: null, gained: null, pct: null, locked: false, yesterdayPct: null, gainDay: null });
 });
 
 test("focusAbilityReceipt: fokussets egne evner, i fokussets rækkefølge", () => {
@@ -350,6 +353,31 @@ test("abilityYesterdayPct: segmentet kan aldrig overstige selve baren", () => {
   assert.equal(abilityYesterdayPct({ pct: 1, locked: false, rawFrac: 0.01, beforeFrac: 0 }), 1);
 });
 
+// ── #5539: "hvor mange procent af ET POINT flyttede sessionen evnen" ───────
+// Ren rendering-afledning oven på det EKSISTERENDE yesterdayPct — ingen nye
+// serverdata, intet loft-tal. En reel 0 % og "ingen data" skal begge give
+// null (komponenten viser en stille streg), aldrig teksten "0 %".
+
+test("abilityYesterdayGainPct: positivt tal går igennem uændret", () => {
+  assert.equal(abilityYesterdayGainPct(12), 12);
+  assert.equal(abilityYesterdayGainPct(1), 1);
+});
+
+test("abilityYesterdayGainPct: reel 0 % giver null, ikke '0 %' (ikke en fejl)", () => {
+  assert.equal(abilityYesterdayGainPct(0), null);
+});
+
+test("abilityYesterdayGainPct: ingen data (låst evne/ukendt pct) giver null", () => {
+  assert.equal(abilityYesterdayGainPct(null), null);
+  assert.equal(abilityYesterdayGainPct(undefined), null);
+});
+
+test("abilityYesterdayGainPct: negativt eller korrupt input giver null, ikke NaN/negativt", () => {
+  assert.equal(abilityYesterdayGainPct(-5), null);
+  assert.equal(abilityYesterdayGainPct("bogus"), null);
+  assert.equal(abilityYesterdayGainPct(NaN), null);
+});
+
 test("abilityReceipt: yesterdayPct sendes med når progressBefore/gainsToday leveres", () => {
   const rows = abilityReceipt(["acceleration"], {
     abilities: { acceleration: 54 },
@@ -360,6 +388,84 @@ test("abilityReceipt: yesterdayPct sendes med når progressBefore/gainsToday lev
     gainsToday: {},
   });
   assert.equal(rows[0].yesterdayPct, 7);
+});
+
+// ── #5539-fix (ejer 26/9): seneste kørsel som fallback før dagens tick ─────────
+
+const RUN_TODAY = { tick_date: "2026-09-26", report: { riders: [{ rider_id: "r1", progress_before: { acceleration: 0.5 }, gains: {} }] } };
+const RUN_YESTERDAY = { tick_date: "2026-09-25", report: { riders: [{ rider_id: "r1", progress_before: { acceleration: 0.55 }, gains: {} }] } };
+const RUN_OLDER = { tick_date: "2026-09-23", report: { riders: [{ rider_id: "r1", progress_before: { acceleration: 0.4 }, gains: {} }] } };
+
+test("latestReceiptRun: dagens kørsel vinder, når den findes", () => {
+  assert.equal(latestReceiptRun(RUN_TODAY, [RUN_YESTERDAY]), RUN_TODAY);
+});
+
+test("latestReceiptRun: før dagens tick falder den til den nyeste historiske kørsel (ikke '—' hele dagen)", () => {
+  assert.equal(latestReceiptRun(null, [RUN_YESTERDAY, RUN_OLDER]), RUN_YESTERDAY);
+  assert.equal(latestReceiptRun(undefined, [RUN_OLDER]), RUN_OLDER);
+});
+
+test("latestReceiptRun: ingen kørsler overhovedet → null", () => {
+  assert.equal(latestReceiptRun(null, []), null);
+  assert.equal(latestReceiptRun(null, undefined), null);
+  assert.equal(latestReceiptRun(null, null), null);
+});
+
+test("reportRowsByRider: rider_id → rapport-linje, tomt map ved manglende rapport", () => {
+  assert.deepEqual(Object.keys(reportRowsByRider(RUN_YESTERDAY)), ["r1"]);
+  assert.equal(reportRowsByRider(RUN_YESTERDAY).r1.progress_before.acceleration, 0.55);
+  assert.deepEqual(reportRowsByRider(null), {});
+  assert.deepEqual(reportRowsByRider({ report: null }), {});
+});
+
+test("receiptGainDay: i dag / i går / ældre på København-dato-aksen", () => {
+  assert.deepEqual(receiptGainDay("2026-09-26", "2026-09-26"), { kind: RECEIPT_GAIN_DAY_TODAY, date: "2026-09-26" });
+  assert.deepEqual(receiptGainDay("2026-09-25", "2026-09-26"), { kind: RECEIPT_GAIN_DAY_YESTERDAY, date: "2026-09-25" });
+  assert.deepEqual(receiptGainDay("2026-09-23", "2026-09-26"), { kind: RECEIPT_GAIN_DAY_OLDER, date: "2026-09-23" });
+  // Månedsskifte: 30/9 → 1/10 er stadig "i går".
+  assert.equal(receiptGainDay("2026-09-30", "2026-10-01").kind, RECEIPT_GAIN_DAY_YESTERDAY);
+});
+
+test("receiptGainDay: ukendt kørsel → null; ukendt 'i dag' → antag i går (den normale fallback)", () => {
+  assert.equal(receiptGainDay(null, "2026-09-26"), null);
+  assert.equal(receiptGainDay("bogus", "2026-09-26"), null);
+  assert.equal(receiptGainDay("2026-09-25", null).kind, RECEIPT_GAIN_DAY_YESTERDAY);
+});
+
+test("#5539-fix: fallback-stien giver et tal (ikke '—') før dagens tick, og rækken bærer dagen", () => {
+  const run = latestReceiptRun(null, [RUN_YESTERDAY, RUN_OLDER]);
+  const line = reportRowsByRider(run).r1;
+  const [row] = abilityReceipt(["acceleration"], {
+    abilities: { acceleration: 54 },
+    progress: { acceleration: 0.62 },
+    capped: [],
+    seasonGains: {},
+    progressBefore: line.progress_before,
+    gainsToday: line.gains,
+    gainDay: receiptGainDay(run.tick_date, "2026-09-26"),
+  });
+  assert.equal(row.yesterdayPct, 7);
+  assert.equal(abilityYesterdayGainPct(row.yesterdayPct), 7);
+  assert.deepEqual(row.gainDay, { kind: RECEIPT_GAIN_DAY_YESTERDAY, date: "2026-09-25" });
+});
+
+test("receiptGainKeys: today/older/yesterday (default ved ukendt dag)", () => {
+  assert.deepEqual(receiptGainKeys({ kind: RECEIPT_GAIN_DAY_TODAY }), { gainKey: "receipt.todayGain", contributionKey: "receipt.todayContribution" });
+  assert.deepEqual(receiptGainKeys({ kind: RECEIPT_GAIN_DAY_OLDER }), { gainKey: "receipt.datedGain", contributionKey: "receipt.datedContribution" });
+  assert.deepEqual(receiptGainKeys({ kind: RECEIPT_GAIN_DAY_YESTERDAY }), { gainKey: "receipt.yesterdayGain", contributionKey: "receipt.yesterdayContribution" });
+  assert.deepEqual(receiptGainKeys(null), { gainKey: "receipt.yesterdayGain", contributionKey: "receipt.yesterdayContribution" });
+});
+
+test("#5539-fix: rytter uden linje i den seneste kørsel → stadig '—' (null), aldrig et gættet tal", () => {
+  const run = latestReceiptRun(null, [RUN_YESTERDAY]);
+  const line = reportRowsByRider(run).r2;
+  const [row] = abilityReceipt(["acceleration"], {
+    abilities: { acceleration: 54 },
+    progress: { acceleration: 0.62 },
+    progressBefore: line?.progress_before ?? null,
+    gainsToday: line?.gains ?? null,
+  });
+  assert.equal(abilityYesterdayGainPct(row.yesterdayPct), null);
 });
 
 // ── #3924 trin 1: "Yesterday's gains"-resuméet ──────────────────────────────

@@ -218,7 +218,89 @@ export function abilityYesterdayPct({ pct, locked, rawFrac, beforeFrac, gainedTo
   return Math.min(pct, Math.max(1, Math.round(delta * 100)));
 }
 
-export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains, progressBefore, gainsToday } = {}) {
+// #5539: rendering-klar tekst-værdi for "hvor mange procent af ET POINT flyttede
+// gårsdagens (eller dagens, ved et landet helt point) session denne evne" —
+// det spillerne selv efterspurgte i forum-tråden ("% of daily training", 22/9),
+// i stedet for kun at skulle aflæse gold-segmentet visuelt eller føre regnskab
+// i hånden. SAMME rå tal som allerede driver segmentet (abilityYesterdayPct
+// ovenfor) — ingen nye serverdata, intet loft-tal (#1162: ability_caps forlader
+// aldrig serveren).
+//
+// Returnerer et helt tal > 0 (pct-point af et point), eller null når der intet
+// er at vise (låst evne, ingen data for evnen endnu, eller reel 0 % fremgang).
+// Komponenten oversætter selv null til en STILLE STREG ("—"), aldrig til teksten
+// "0 %" — en ægte 0 skal læses som "intet at vise i dag", ikke som en fejl.
+export function abilityYesterdayGainPct(yesterdayPct) {
+  const n = Number(yesterdayPct);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+// #5539-fix (ejer 26/9, PR #5782 holdt tilbage): procent-kolonnen byggede KUN
+// på dagens kørsel (todayRun). Den findes først ved dagens tick (kl. 20) eller
+// "Train today", så kolonnen viste "—" på alle evner fra midnat til aften.
+// Kilden er nu den SENESTE kørsel: dagens hvis den er kørt, ellers den nyeste
+// historiske dag — samme fallback som latestRun i TrainingPage.jsx (#2484).
+// `progress` (nu-tallet) er stadig det live tal, som ingen kørsel har rørt
+// siden den seneste, så nu minus progress_before er netop den kørsels bidrag.
+//
+//   todayRun : useTraining().todayRun | null
+//   runs     : useTrainingHistory().runs (nyeste først) | undefined
+export function latestReceiptRun(todayRun, runs) {
+  if (todayRun) return todayRun;
+  return Array.isArray(runs) && runs.length > 0 ? (runs[0] ?? null) : null;
+}
+
+// rider_id → rapport-linje for én kørsel ({} når kørslen/rapporten mangler).
+export function reportRowsByRider(run) {
+  const out = {};
+  for (const row of run?.report?.riders ?? []) {
+    if (row?.rider_id != null) out[row.rider_id] = row;
+  }
+  return out;
+}
+
+// Hvilken dag kolonnens tal stammer fra, så teksten kan sige det: "today"
+// (dagens tick er kørt), "yesterday" (den normale morgen/dag), "older" (seneste
+// kørsel er 2+ dage gammel, fx efter en pause — teksten viser da datoen).
+// Begge argumenter er "YYYY-MM-DD" på København-aksen (tick_date er en DATE,
+// copenhagenDayKey giver samme akse). null når kørslen/datoen er ukendt.
+export const RECEIPT_GAIN_DAY_TODAY = "today";
+export const RECEIPT_GAIN_DAY_YESTERDAY = "yesterday";
+export const RECEIPT_GAIN_DAY_OLDER = "older";
+
+function dayIndex(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(key ?? ""));
+  if (!m) return null;
+  return Math.round(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86400000);
+}
+
+export function receiptGainDay(tickDate, todayKey) {
+  const run = dayIndex(tickDate);
+  if (run == null) return null;
+  const date = String(tickDate).slice(0, 10);
+  const today = dayIndex(todayKey);
+  if (today == null) return { kind: RECEIPT_GAIN_DAY_YESTERDAY, date };
+  const diff = today - run;
+  if (diff <= 0) return { kind: RECEIPT_GAIN_DAY_TODAY, date };
+  if (diff === 1) return { kind: RECEIPT_GAIN_DAY_YESTERDAY, date };
+  return { kind: RECEIPT_GAIN_DAY_OLDER, date };
+}
+
+// i18n-nøglerne (training.json → receipt.*) for kolonnens tekst og baren-
+// tooltip'en, valgt ud fra receiptGainDay. Ukendt dag = "yesterday", den
+// normale situation (seneste kørsel er gårsdagens tick).
+export function receiptGainKeys(gainDay) {
+  switch (gainDay?.kind) {
+    case RECEIPT_GAIN_DAY_TODAY:
+      return { gainKey: "receipt.todayGain", contributionKey: "receipt.todayContribution" };
+    case RECEIPT_GAIN_DAY_OLDER:
+      return { gainKey: "receipt.datedGain", contributionKey: "receipt.datedContribution" };
+    default:
+      return { gainKey: "receipt.yesterdayGain", contributionKey: "receipt.yesterdayContribution" };
+  }
+}
+
+export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains, progressBefore, gainsToday, gainDay } = {}) {
   const keys = Array.isArray(abilityKeys) ? abilityKeys : [];
   const lockedSet = new Set(Array.isArray(capped) ? capped : []);
   return keys.map((ability) => {
@@ -241,6 +323,10 @@ export function abilityReceipt(abilityKeys, { abilities, progress, capped, seaso
         beforeFrac: Number(progressBefore?.[ability]),
         gainedToday: gainsToday?.[ability],
       }),
+      // #5539-fix: hvilken kørsel yesterdayPct stammer fra (receiptGainDay) —
+      // bæres på rækken, så alle tre flader (roster, mobilkort, rytterprofil)
+      // får dagen med uden ekstra props gennem komponent-træet.
+      gainDay: gainDay ?? null,
     };
   });
 }

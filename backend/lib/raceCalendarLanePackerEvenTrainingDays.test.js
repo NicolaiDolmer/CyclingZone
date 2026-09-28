@@ -36,6 +36,7 @@ import { dirname, join } from "node:path";
 import { buildTierMaterializationPlan } from "./tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "./calendarStartDate.js";
 import { packLaneCalendar, padAxisWithTrainingDays } from "./raceCalendarLanePacker.js";
+import { MAX_DATES_WITHOUT_TRAINING_DAY } from "./calendarRaceDayTargets.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "__fixtures__", "racePoolCatalog.prod.json");
@@ -110,10 +111,13 @@ test("#5267: HVER kalenderdato faar praecis maalet/datoer loebsdage", () => {
 
 test("#5267: traeningsrytmen — ingen lang stime af datoer uden en traeningsdag", () => {
   // Selve grunden til at ejeren valgte denne vej. Under den afviste maade A var tallene
-  // 16/11/23/11 datoer; her maa ingen division have mere end EEN dato i traek uden.
+  // 16/11/23/11 datoer. Testen doemmer nu mod gatens eget loft (SSOT), ikke et haardkodet 1:
+  // #5802 (26/9) satte Grand Tours i rigtig raekkefoelge (Giro -> Tour -> Vuelta), og D1's
+  // laengste stime gik dermed fra 1 til 2 datoer - PRAECIS loftet, som scorecardet og
+  // --apply-gaten allerede tillader. Et haardkodet 1 her ville doemme strengere end gaten.
   for (const t of plan({ raceDayTarget: TARGET })) {
     if (!eksaktKvote(t)) continue;
-    assert.ok((t.longestDateStreakWithoutTraining ?? 99) <= 1,
+    assert.ok((t.longestDateStreakWithoutTraining ?? 99) <= MAX_DATES_WITHOUT_TRAINING_DAY,
       `tier ${t.tier}: ${t.longestDateStreakWithoutTraining} kalenderdatoer i traek uden en traeningsdag`);
   }
 });

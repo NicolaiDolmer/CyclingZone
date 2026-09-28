@@ -15,7 +15,7 @@ import {
 
 // ── Fake supabase: generisk filter-builder over en in-memory rækkeliste ─────
 function makeQueryBuilder(rows) {
-  const state = { eqs: [], ins: [], ltes: [], neqs: [], limit: null, headCount: false };
+  const state = { eqs: [], ins: [], ltes: [], neqs: [], nots: [], limit: null, headCount: false };
   const b = {
     select(_cols, opts) {
       if (opts?.head) state.headCount = true;
@@ -25,6 +25,9 @@ function makeQueryBuilder(rows) {
     in(col, vals) { state.ins.push([col, vals]); return b; },
     lte(col, val) { state.ltes.push([col, val]); return b; },
     neq(col, val) { state.neqs.push([col, val]); return b; },
+    // Mirrors supabase-js's .not(col, "in", "(1,2,3)") — the only .not() shape
+    // careerFirsts.js uses (#5733's same-race stage-number exclusion).
+    not(col, op, val) { state.nots.push([col, op, val]); return b; },
     limit(n) { state.limit = n; return b; },
     then(resolve, reject) {
       try {
@@ -32,7 +35,12 @@ function makeQueryBuilder(rows) {
           state.eqs.every(([c, v]) => r[c] === v)
           && state.ins.every(([c, vs]) => vs.includes(r[c]))
           && state.ltes.every(([c, v]) => r[c] <= v)
-          && state.neqs.every(([c, v]) => r[c] !== v));
+          && state.neqs.every(([c, v]) => r[c] !== v)
+          && state.nots.every(([c, op, v]) => {
+            if (op !== "in") return true;
+            const list = String(v).replace(/^\(|\)$/g, "").split(",").map(Number);
+            return !list.includes(r[c]);
+          }));
         if (state.headCount) {
           resolve({ count: filtered.length, error: null });
           return;
@@ -148,6 +156,70 @@ test("detectCareerFirsts: rytter med tidligere sejr i ANDET løb får IKKE maide
   const stats = await detectCareerFirsts({ supabase, race, resultRows, stageNumbers: [1], notify: noopNotify });
 
   assert.equal(stats.detected, 0);
+  assert.equal(supabase.careerEvents.length, 0);
+});
+
+// #5733 (spillerverificeret 24/9): "Maiden victory" vises for en rytter der
+// allerede har vundet et monument. Endagsløb/monumenter persisteres som
+// result_type='gc' (raceRunner.js: `pushIndiv({ result_type: "gc", ...,
+// stage_number: 1 })` for isStageRace=false, se linje ~725) — WIN_RESULT_TYPES
+// dækker allerede "gc", så det simple tilfælde (kun ÉN tidligere sejr) virkede
+// allerede før denne PR. Regressionsdækning alligevel: den nøjagtige historie
+// fra Discord-rapporten.
+test("detectCareerFirsts: rytter med tidligere MONUMENT-sejr (result_type='gc') får IKKE maiden_win ved ny etapesejr", async () => {
+  const race = { id: "race-new-stage", name: "Some Stage Race" };
+  const resultRows = [
+    { rider_id: "r1", team_id: "tA", rider_name: "Monument Winner", team_name: "Team A", result_type: "stage", rank: 1, stage_number: 3 },
+  ];
+  const supabase = makeFakeSupabase({
+    raceResultsFixture: [
+      // Tidligere monument-sejr (endagsløb): result_type='gc', stage_number=1 (raceRunner.js's isStageRace=false-gren).
+      { rider_id: "r1", race_id: "race-old-monument", stage_number: 1, result_type: "gc", rank: 1 },
+    ],
+  });
+
+  const stats = await detectCareerFirsts({ supabase, race, resultRows, stageNumbers: [3], notify: noopNotify });
+
+  assert.equal(stats.detected, 0, "monument-sejren skal tælle som prior, ikke give en falsk maiden_win på den nye etapesejr");
+  assert.equal(supabase.careerEvents.length, 0);
+});
+
+// #5733 rodårsag: den GAMLE riderHasPriorResult hentede op til 30 RÆKKER (ingen
+// ORDER BY) og filtrerede i JS. En rytter der har vundet HVER ETAPE i EN grand
+// tour (fx sweep af 30 etaper, ALLE med race_id=DENNE-race og stage_number IN
+// currentStageNumbers → korrekt EKSKLUDERET som "prior", det er jo netop DENNE
+// afvikling) fylder hele det ubestemte 30-rækkers vindue med sine egne,
+// ikke-kvalificerende rækker — en ægte tidligere sejr i et ANDET løb (fx et
+// monument for flere sæsoner siden) falder uden for vinduet og bliver ALDRIG
+// læst, uanset at den ubetinget burde tælle som prior. Den nye, count-baserede
+// implementering har intet vindue at falde uden for.
+test("detectCareerFirsts: en tidligere monument-sejr overlever selvom rytteren har 35+ egne rækker i DENNE afvikling (LIMIT-trunkering, #5733)", async () => {
+  const race = { id: "race-current", name: "Mega Tour" };
+  const stageNumbers = Array.from({ length: 36 }, (_, i) => i + 1); // stage 1..36 — DENNE afviklings egne etaper
+  const resultRows = [
+    { rider_id: "r1", team_id: "tA", rider_name: "Serial Sweeper", team_name: "Team A", result_type: "stage", rank: 1, stage_number: 36 },
+  ];
+  // 35 af DENNE races egne stage-sejre (stage 1-35) — alle korrekt eksluderet
+  // som "prior" (samme race_id + stage_number IN currentStageNumbers), men de
+  // er PRÆCIS den slags rækker der før fyldte det bounded 30-rækkers vindue.
+  const sameRaceOwnRows = stageNumbers.slice(0, 35).map((sn) => (
+    { rider_id: "r1", race_id: "race-current", stage_number: sn, result_type: "stage", rank: 1 }
+  ));
+  const supabase = makeFakeSupabase({
+    raceResultsFixture: [
+      // De 35 ikke-kvalificerende rækker FØRST, så et bounded .limit(30) uden
+      // ORDER BY (den gamle implementering) sluger dem alle og ALDRIG når frem
+      // til rækken nedenfor — netop den non-determinisme #5733 handler om.
+      ...sameRaceOwnRows,
+      // Ægte tidligere monument-sejr, et helt ANDET (ældre) løb — 36. matchende
+      // række, uden for et 30-rækkers vindue.
+      { rider_id: "r1", race_id: "race-old-monument", stage_number: 1, result_type: "gc", rank: 1 },
+    ],
+  });
+
+  const stats = await detectCareerFirsts({ supabase, race, resultRows, stageNumbers, notify: noopNotify });
+
+  assert.equal(stats.detected, 0, "monument-sejren i et andet løb skal stadig tælle som prior, selv når 35 af rytterens EGNE rækker i denne afvikling ville have fyldt et bounded fetch-vindue");
   assert.equal(supabase.careerEvents.length, 0);
 });
 

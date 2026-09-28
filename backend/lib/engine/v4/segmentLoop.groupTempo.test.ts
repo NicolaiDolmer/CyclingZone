@@ -3,8 +3,9 @@
 //
 // Modellen er et EJER-VALG (tuning.ts's GROUP_TEMPO_EFFORT_EXTRA_TUNING). Disse
 // tests laaser to ting uafhaengigt af hvilken model ejeren vaelger:
-//   1. DEFAULT-modellen ("cp_only") er praecis den gamle regel — en worker kan
-//      ikke komme til at flippe den uden at en test braekker.
+//   1. DEFAULT-modellen er ejerens valg ("effort_weighted" siden #5581), og
+//      "cp_only" er stadig praecis den gamle regel — en worker kan ikke komme
+//      til at flippe den uden at en test braekker.
 //   2. Den alternative model ("effort_weighted") goer det den lover, og
 //      bryder hverken monotoni (styrke straffes aldrig) eller giver nogen en
 //      bonus over egen CP.
@@ -23,8 +24,8 @@ const EFFORTS: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_ou
 const CP_ONLY = { model: "cp_only" as const, grupettoTempoFactor: 0.8 };
 const EFFORT_WEIGHTED = { model: "effort_weighted" as const, grupettoTempoFactor: 0.8 };
 
-test("#4914 EJER-GATE: default-modellen er 'cp_only' (b) — en flip kraever ejer-go og en bevidst testaendring", () => {
-  assert.equal(GROUP_TEMPO_EFFORT_EXTRA_TUNING.model, "cp_only");
+test("#4914 EJER-GATE: default-modellen er 'effort_weighted' (a, ejer-valgt 23/9, flippet i #5581) — en aendring kraever ejer-go og en bevidst testaendring", () => {
+  assert.equal(GROUP_TEMPO_EFFORT_EXTRA_TUNING.model, "effort_weighted");
 });
 
 test("cp_only: indsats-faktoren er 1 for alle fem trin", () => {
@@ -104,8 +105,9 @@ test("tilbagefald paa stigninger: aldrig i cp_only; i effort_weighted kun grupet
   }
   // En gruppe der KUN er grupetto-ryttere ER den sidste gruppe — den splittes ikke op.
   assert.equal(grupettoDropBackForced("grupetto", false, EFFORT_WEIGHTED), false);
-  // Default-tuningen (cp_only) tvinger aldrig nogen tilbage.
-  assert.equal(grupettoDropBackForced("grupetto", true), false);
+  // Default-tuningen (effort_weighted siden #5581) tvinger grupetto-rytteren tilbage.
+  assert.equal(grupettoDropBackForced("grupetto", true), true);
+  assert.equal(grupettoDropBackForced("normal", true), false);
 });
 
 test("alle udvalgt til split: den der bliver i fronten er aldrig en tilbagefaldet grupetto-rytter", () => {

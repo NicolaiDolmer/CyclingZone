@@ -11,8 +11,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
-  scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar,
+  scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar, loadCutoverPoolRetirement,
+  formatGrandTourOrder,
 } from "./buildSeasonCalendar.js";
+import { resolveTargetStructure } from "../lib/calendarTargetStructure.js";
 import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
 import {
   evaluateSeasonCalendarWriteGate, RACE_DEPENDENCY_TABLES, dependencyKey,
@@ -372,6 +374,28 @@ test("#5644 detectSeniorPoolStructureViolations: S4 med 8 D4-puljer (E-H ikke pe
   assert.deepEqual(detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 8 }), seasonNumber: 3 }), [], "før S4 gælder vagten ikke");
 });
 
+// ── #5795 · S4-kalenderen før pensioneringen (--target-structure s4) ──────────────
+
+const d4Pool = (i, retired = null) => ({ id: 8 + i, tier: 4, pool_index: i, label: `Division 4 — ${"ABCDEFGH"[i]}`, squad: "senior", retired_at: retired });
+
+test("#5795 loadCutoverPoolRetirement: læser puljerne read-only og udpeger D4 E-H; intet skrives", async () => {
+  const league_divisions = [
+    { id: 1, tier: 1, pool_index: 0, label: "Division 1", squad: "senior", retired_at: null },
+    ...[7, 6, 5, 4, 3, 2, 1, 0].map((i) => d4Pool(i)),
+  ];
+  const supabase = fakeSupabase({ rowsByTable: { league_divisions } });
+  const cutover = await loadCutoverPoolRetirement({ supabase, structure: resolveTargetStructure("s4") });
+  assert.deepEqual(cutover.retire.map((p) => p.label), ["Division 4 — E", "Division 4 — F", "Division 4 — G", "Division 4 — H"]);
+  assert.deepEqual(supabase.writes, [], "målstrukturen skriver aldrig (retired_at røres ikke)");
+});
+
+test("#5795 strukturvagten: planen med målstrukturen (D4 = 4) er ren; uden flaget blokerer den som før", () => {
+  const withTarget = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 4 }), seasonNumber: 4 });
+  assert.deepEqual(withTarget, []);
+  const withoutTarget = detectSeniorPoolStructureViolations({ planTiers: planWithPools({ 1: 1, 2: 2, 3: 4, 4: 8 }), seasonNumber: 4 });
+  assert.match(withoutTarget[0], /--target-structure s4/, "bruddet peger på den nye vej");
+});
+
 // ── #5644 (Y5) · runSquadCalendar ─────────────────────────────────────────────────
 
 const squadPlan = (violations = []) => ({
@@ -424,3 +448,33 @@ test("#5644 runSquadCalendar --apply --replace-existing: sletter kun truppens l�
     rmSync(dir, { recursive: true, force: true });
   }
 }));
+
+// #5802: toerkoerslen udskriver GT'ernes startraekkefoelge med navne og datoer.
+test("#5802: formatGrandTourOrder viser GT'erne i start-rækkefølge med dato og gate-dom pr. division", () => {
+  const starts = [
+    { name: "Giro", firstDate: "2026-09-28", firstGameDay: 0, realOrder: 0.35 },
+    { name: "Tour", firstDate: "2026-10-07", firstGameDay: 45, realOrder: 0.55 },
+    { name: "Vuelta", firstDate: "2026-10-20", firstGameDay: 110, realOrder: 0.75 },
+  ];
+  const ok = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: [] }, { tier: 2, grandTourStarts: [] }] });
+  assert.equal(ok.length, 3, "overskrift + D1-rækkefølge + D1-første-dag; D2 uden GT'er springes over");
+  assert.match(ok[1], /D1: Giro \(2026-09-28\) → Tour \(2026-10-07\) → Vuelta \(2026-10-20\)\s+✅$/);
+  assert.match(ok[2], /D1: ingen GT-start på sæsonens første dag \(tidligst dag 3\)\s+✅$/);
+
+  // Ejer 26/9 kl. 22:40: en GT paa saesonens foerste dag vises som ❌ med gatens tekst.
+  const tidlig = formatGrandTourOrder({
+    tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: [], gtEarlyStartViol: ["tier 1: Giro starter for tidligt"] }],
+  });
+  assert.match(tidlig[2], /❌$/);
+  assert.match(tidlig[3], /! tier 1: Giro starter for tidligt/);
+
+  const fejl = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: starts, gtOrderViol: ["tier 1: forkert"] }] });
+  assert.match(fejl[1], /❌$/);
+  assert.deepEqual(formatGrandTourOrder({ tiers: [] }), [], "ingen GT'er = ingen blok");
+
+  // En GT uden virkelig dato kan gaten ikke doemme — da er linjen aldrig ✅ (#2854).
+  const uden = starts.map((g) => (g.name === "Vuelta" ? { ...g, realOrder: null } : g));
+  const uvurderet = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: uden, gtOrderViol: [] }] });
+  assert.match(uvurderet[1], /⚠ kan ikke vurderes uden virkelig dato: Vuelta$/);
+  assert.doesNotMatch(uvurderet[1], /✅/);
+});

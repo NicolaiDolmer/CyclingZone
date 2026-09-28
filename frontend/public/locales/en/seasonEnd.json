@@ -45,7 +45,8 @@
     "prize": { "title": "Prize leader", "secondary": "+{amount} earned", "empty": "No prizes yet" },
     "transfer": { "title": "Biggest transfer", "fallback": "Transfer", "empty": "No transfers" },
     "active": { "title": "Most active", "secondary": "{count} transfers", "empty": "No deals" },
-    "stageKing": { "title": "Stage king", "secondary": "{count, plural, one {# stage win} other {# stage wins}}", "empty": "No stages raced" }
+    "stageKing": { "title": "Stage king", "secondary": "{count, plural, one {# stage win} other {# stage wins}}", "empty": "No stages raced" },
+    "classicKing": { "title": "Classic wins", "secondary": "{count, plural, one {# classic win} other {# classic wins}}" }
   },
   "calendar": {
     "heading": "Calendar · {count} races",
@@ -79,7 +80,8 @@
       "rank": "Final rank",
       "points": "Points",
       "stageWins": "Stage wins",
-      "prize": "Prize won"
+      "prize": "Prize won",
+      "classicWins": "Classic wins"
     },
     "rankLine": "#{rank} of {size} in Division {division}",
     "movement": {
@@ -101,6 +103,8 @@
       "biggestSale": "Biggest sale of the season",
       "stageKing": "Team stage king: {name}",
       "stageKingValue": "{count, plural, one {# win} other {# wins}}",
+      "classicKing": "Team classic king: {name}",
+      "classicKingValue": "{count, plural, one {# win} other {# wins}}",
       "turningPoint": "Best day of the season",
       "turningPointValue": "{race} · {points} pts",
       "biggestResult": "Best individual result",

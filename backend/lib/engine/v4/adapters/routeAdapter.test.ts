@@ -7,26 +7,126 @@ import { routeFromStageProfileRow, type StageProfileRow } from "./routeAdapter.t
 
 // ── Moderne raekke (segments/weather allerede gemt, #3855 F1) ────────────────
 
-test("routeFromStageProfileRow: bruger gemte segments/weather uaendret naar de findes", () => {
+test("routeFromStageProfileRow: bruger gemte segments/weather naar de findes (korte segmenter uaendret)", () => {
+  const segments = [
+    { kind: "flat" as const, from_km: 0, to_km: 20 },
+    { kind: "climb" as const, from_km: 20, to_km: 26, category: "3" as const, avg_gradient: 5, top_elevation_m: 600 },
+    { kind: "descent" as const, from_km: 26, to_km: 32, technicality: 2 as const },
+    { kind: "rolling" as const, from_km: 32, to_km: 55 },
+  ];
   const row: StageProfileRow = {
     id: "p1",
     race_id: "r1",
     stage_number: 1,
     profile_type: "flat",
     finale_type: "bunch_sprint",
-    distance_km: 180,
+    distance_km: 55,
     climbs: [],
-    sprints: [{ name: "Sprint 1", km: 90, kind: "intermediate" }],
+    sprints: [{ name: "Sprint 1", km: 40, kind: "intermediate" }],
     sectors: [],
-    segments: [{ kind: "flat", from_km: 0, to_km: 180 }],
+    segments,
     weather: { kind: "rain", wind_exposure: 0.3 },
   };
   const route = routeFromStageProfileRow(row);
-  assert.equal(route.distance_km, 180);
+  assert.equal(route.distance_km, 55);
   assert.equal(route.profile_type, "flat");
   assert.equal(route.finale_type, "bunch_sprint");
-  assert.deepEqual(route.segments, [{ kind: "flat", from_km: 0, to_km: 180 }]);
+  assert.deepEqual(route.segments, segments);
   assert.deepEqual(route.weather, { kind: "rain", wind_exposure: 0.3 });
+});
+
+// ── #5812 (c): lange flade/rullende segmenter deles paa LAESESIDEN ───────────
+
+function assertContiguous(segments: readonly { from_km: number; to_km: number }[], distanceKm: number): void {
+  assert.equal(segments[0].from_km, 0);
+  assert.equal(segments[segments.length - 1].to_km, distanceKm);
+  for (let i = 1; i < segments.length; i++) {
+    assert.equal(segments[i].from_km, segments[i - 1].to_km, `segment ${i} skal starte hvor segment ${i - 1} slutter`);
+  }
+}
+
+test("#5812 en flad 190 km-etape uden stigninger bliver IKKE ét segment: stykker paa hoejst ca. 25 km", () => {
+  const row: StageProfileRow = {
+    id: "flat-190", race_id: "race-flat-190", stage_number: 1,
+    profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 190,
+    climbs: [], sprints: [], sectors: [],
+    // Praecis det S4-kalenderen har skrevet: ét segment fra start til maal.
+    segments: [{ kind: "flat", from_km: 0, to_km: 190 }],
+    weather: { kind: "sun", wind_exposure: 0 },
+  };
+  const route = routeFromStageProfileRow(row);
+  assert.ok(route.segments.length > 1, "en 190 km flad etape skal have flere segmenter");
+  for (const seg of route.segments) {
+    assert.equal(seg.kind, "flat");
+    assert.ok(seg.to_km - seg.from_km <= 25, `segment ${seg.from_km}-${seg.to_km} er for langt`);
+    assert.ok(seg.to_km - seg.from_km > 0);
+  }
+  assertContiguous(route.segments, 190);
+});
+
+test("#5812 opdelingen roerer kun flad/rullende: stigninger, nedkoersler og brosten beholdes 1:1", () => {
+  const climb = { kind: "climb" as const, from_km: 140, to_km: 170, category: "1" as const, avg_gradient: 7, top_elevation_m: 1800 };
+  const descent = { kind: "descent" as const, from_km: 170, to_km: 200, technicality: 3 as const };
+  const cobbles = { kind: "cobbles" as const, from_km: 60, to_km: 90, sector_name: "Lang sektor", stars: 5 as const };
+  const row: StageProfileRow = {
+    id: "mixed", race_id: "race-mixed", stage_number: 4,
+    profile_type: "mountain", finale_type: "long_climb",
+    distance_km: 230,
+    climbs: [], sprints: [], sectors: [],
+    segments: [
+      { kind: "flat", from_km: 0, to_km: 60 },
+      cobbles,
+      { kind: "rolling", from_km: 90, to_km: 140 },
+      climb,
+      descent,
+      { kind: "flat", from_km: 200, to_km: 230 },
+    ],
+    weather: { kind: "sun", wind_exposure: 0 },
+  };
+  const route = routeFromStageProfileRow(row);
+  assert.deepEqual(route.segments.filter((s) => s.kind === "climb"), [climb]);
+  assert.deepEqual(route.segments.filter((s) => s.kind === "descent"), [descent]);
+  assert.deepEqual(route.segments.filter((s) => s.kind === "cobbles"), [cobbles]);
+  for (const seg of route.segments.filter((s) => s.kind === "flat" || s.kind === "rolling")) {
+    assert.ok(seg.to_km - seg.from_km <= 25, `${seg.kind} ${seg.from_km}-${seg.to_km} er for langt`);
+  }
+  // Rullende forbliver rullende, flad forbliver flad.
+  assert.ok(route.segments.some((s) => s.kind === "rolling" && s.from_km === 90));
+  assert.ok(route.segments.every((s) => !(s.kind === "rolling" && s.from_km < 90)));
+  assertContiguous(route.segments, 230);
+});
+
+test("#5812 opdelingen er deterministisk og muterer ikke raekken", () => {
+  const stored = [{ kind: "flat" as const, from_km: 0, to_km: 173.4 }];
+  const row: StageProfileRow = {
+    id: "det", race_id: "race-det", stage_number: 2,
+    profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 173.4,
+    climbs: [], sprints: [], sectors: [],
+    segments: stored,
+    weather: { kind: "sun", wind_exposure: 0 },
+  };
+  const a = routeFromStageProfileRow(row);
+  const b = routeFromStageProfileRow(row);
+  assert.deepEqual(a, b);
+  assert.deepEqual(stored, [{ kind: "flat", from_km: 0, to_km: 173.4 }], "raekkens gemte segmenter maa ikke muteres");
+  assertContiguous(a.segments, 173.4);
+});
+
+test("#5812 legacy-syntesen (ingen gemte segmenter) faar ogsaa korte flade segmenter", () => {
+  const row: StageProfileRow = {
+    id: "legacy-flat", race_id: "race-legacy-flat", stage_number: 1,
+    profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 200,
+    climbs: [], sprints: [], sectors: [],
+    segments: null, weather: null,
+  };
+  const route = routeFromStageProfileRow(row);
+  for (const seg of route.segments.filter((s) => s.kind === "flat" || s.kind === "rolling")) {
+    assert.ok(seg.to_km - seg.from_km <= 25, `${seg.kind} ${seg.from_km}-${seg.to_km} er for langt`);
+  }
+  assertContiguous(route.segments, 200);
 });
 
 test("routeFromStageProfileRow: waypoints = kom (climbs) + sprint (intermediate) + finish, sorteret paa km", () => {

@@ -19,6 +19,15 @@
 // happened (a gain) or a live, observable progress fraction toward the next
 // point. NEVER phrase a story in ceiling/potential language — no "X's
 // potential", no "close to his ceiling", no projected max.
+//
+// #5318: rotation priority (ejer-request via Discord, 16/9) is, best first:
+//   1. BREAKTHROUGH      a whole ability point landed today (biggest jump first)
+//   2. INJURY             a training injury happened today
+//   3. PEAK_FORM/SHARP_DAY a personal-best-feeling day (form/output)
+//   4. NEAR_BREAKTHROUGH   "Mr. Near" — close to a point, but nothing landed
+// Score bands below are spaced with wide gaps (not just larger-than-neighbour)
+// so this ordering holds structurally, never by chance on the magnitude of n/
+// form/pct within a band.
 
 import {
   isBreakthrough,
@@ -31,6 +40,7 @@ import {
 
 export const MOMENT_TYPES = {
   BREAKTHROUGH: "breakthrough",
+  INJURY: "injury",
   NEAR_BREAKTHROUGH: "nearBreakthrough",
   PEAK_FORM: "peakForm",
   SHARP_DAY: "sharpDay",
@@ -56,13 +66,20 @@ export function variantIndex(seedParts, variantCount = MOMENT_VARIANT_COUNT) {
 }
 
 // All story candidates for one day's rows, best first. Score bands are
-// deliberately far apart so priority (breakthrough > near-breakthrough >
-// peak form > sharp day) never flips on magnitude within a band.
+// deliberately far apart (see priority note above) so priority never flips
+// on magnitude within a band: BREAKTHROUGH(10000+) > INJURY(5000+) >
+// PEAK_FORM(1000+) > SHARP_DAY(500) > NEAR_BREAKTHROUGH(100+).
 //
 // progressByRider = null skips the near-breakthrough band: it needs LIVE
 // ability_progress (state after the latest tick), which past days' stored
 // report rows don't carry. A rider who already broke through today is also
 // excluded from "nearing" — the breakthrough IS the story.
+//
+// `row.injury_days` is only ever > 0 the SAME tick a rider freshly injures
+// (backend/lib/dailyTrainingEngine.js: it stays 0 unless `!injuredToday &&
+// roll.injured`), so it doubles as "hurt in training today" without a new
+// backend field — a rider still out from an OLDER injury (injured, but
+// injury_days === 0 today) is correctly excluded from this band.
 function candidatesFor(rows, progressByRider) {
   const out = [];
   for (const row of rows) {
@@ -74,7 +91,7 @@ function candidatesFor(rows, progressByRider) {
       out.push({
         type: MOMENT_TYPES.BREAKTHROUGH, ...who,
         ability: best.ability, from: best.from, to: best.to, n: best.n,
-        score: 1000 + best.n,
+        score: 10000 + best.n,
       });
     } else if (progressByRider && row.focus && row.intensity !== "rest" && !row.injured) {
       const prog = focusProgress(row.focus, progressByRider[row.rider_id]);
@@ -82,19 +99,40 @@ function candidatesFor(rows, progressByRider) {
         out.push({
           type: MOMENT_TYPES.NEAR_BREAKTHROUGH, ...who,
           ability: prog.ability, pct: prog.pct,
-          score: 500 + prog.pct,
+          score: 100 + prog.pct,
         });
       }
     }
+    const injuryDays = Number(row.injury_days);
+    if (Number.isFinite(injuryDays) && injuryDays > 0) {
+      out.push({ type: MOMENT_TYPES.INJURY, ...who, injuryDays, score: 5000 + injuryDays });
+    }
     const form = Number(row.form);
     if (Number.isFinite(form) && form >= PEAK_FORM_THRESHOLD) {
-      out.push({ type: MOMENT_TYPES.PEAK_FORM, ...who, form, score: 200 + form });
+      out.push({ type: MOMENT_TYPES.PEAK_FORM, ...who, form, score: 1000 + form });
     }
     if (row.status === "over") {
-      out.push({ type: MOMENT_TYPES.SHARP_DAY, ...who, score: 100 });
+      out.push({ type: MOMENT_TYPES.SHARP_DAY, ...who, score: 500 });
     }
   }
   return out.sort((a, b) => b.score - a.score);
+}
+
+// All riders who freshly injured in training TODAY (latestRun's own day),
+// worst (longest) first — the standalone warning line's data source. Kept
+// separate from the story rotation above: an injury must surface even when
+// a bigger breakthrough wins the ONE featured story slot for the day (#5318
+// part 2 — "not just on the rider's own row").
+//
+//   latestRun : same shape as selectTrainingMoment's first argument
+// Returns [{ riderId, riderName, days }] — [] when nobody freshly injured.
+export function selectInjuryAlerts(latestRun) {
+  const rows = latestRun?.report?.riders;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => ({ riderId: row.rider_id, riderName: row.name, days: Number(row.injury_days) }))
+    .filter((r) => Number.isFinite(r.days) && r.days > 0)
+    .sort((a, b) => b.days - a.days);
 }
 
 // Best single candidate for ONE day's rows, ignoring cooldown. Used to
@@ -147,7 +185,18 @@ export function selectTrainingMoment(latestRun, progressByRider, pastRuns) {
   }
 
   const cooldown = recentSignature((pastRuns ?? []).slice(0, 2));
-  const fresh = candidates.filter((c) => !cooldown.riderIds.has(c.riderId) && !cooldown.types.has(c.type));
+  // BREAKTHROUGH is exempt from the story-TYPE cooldown (rider cooldown still
+  // applies): the task only asked to avoid featuring the same RIDER two days
+  // running, never the same story type. Without this, a whole point for rider
+  // B today gets silently dropped just because a DIFFERENT rider's
+  // breakthrough was yesterday's (or the day before's) top pick — breaking
+  // priority 1 ("a whole point landed today" must win) and letting
+  // NEAR_BREAKTHROUGH ("Mr. Near", priority 4) win by default instead (#5318).
+  const fresh = candidates.filter((c) => {
+    if (cooldown.riderIds.has(c.riderId)) return false;
+    if (c.type === MOMENT_TYPES.BREAKTHROUGH) return true;
+    return !cooldown.types.has(c.type);
+  });
   const pick = fresh[0] ?? candidates[0];
 
   return { ...pick, variant: variantIndex([tickDate, pick.riderId ?? "", pick.type]) };

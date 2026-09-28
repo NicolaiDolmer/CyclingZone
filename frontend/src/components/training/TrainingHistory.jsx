@@ -30,7 +30,13 @@ function executedByLabel(executedBy, t) {
 
 // Én udfoldet dags rytter-tabel — samme kolonner/styling som dagens rapport på
 // TrainingPage, men uden "Næste +1" (kræver live progress-state, ikke historik).
-function DayRiderTable({ rows, t, tRider }) {
+// #5734: valgfri "Score"-kolonne, samme gate som Today-tabellen (TrainingTodayTable.tsx):
+// findes kun naar trainingScore != null (training_score_visible on for holdet). Tallet pr.
+// raekke laeses af scoreFor(rider_id) — se DayCard, som slaar dagens dato op i
+// trainingScore[riderId].spark (TrainingScoreSparkline/backend/lib/trainingScore.js
+// buildTrainingScoreView). Ingen match (uden for spark-vinduet, eller loebsdag) ⇒ "—",
+// akkurat som Today viser stregen naar der ikke er et tal.
+function DayRiderTable({ rows, t, tRider, showScore, scoreFor }) {
   return (
     <div className={`${SCROLLER} border-t border-cz-border`}>
       <table data-sort-exempt="Per-dag traeningsrapport i rapport-orden" className={TABLE}>
@@ -41,6 +47,7 @@ function DayRiderTable({ rows, t, tRider }) {
             <th className={thClass({})}>{tRider("training.intensity")}</th>
             <th className={thClass({})}>{t("colGains")}</th>
             <th className={thClass({})}>{t("colResult")}</th>
+            {showScore && <th className={thClass({})}>{t("colScore")}</th>}
           </tr>
         </thead>
         <tbody>
@@ -49,6 +56,7 @@ function DayRiderTable({ rows, t, tRider }) {
             const breakthrough = isBreakthrough(row);
             const fatigueDelta = row.fatigue_delta ?? 0;
             const fatigueSign = fatigueDelta > 0 ? "+" : "";
+            const score = showScore ? scoreFor(row.rider_id) : null;
             return (
               <tr
                 key={row.rider_id}
@@ -94,6 +102,15 @@ function DayRiderTable({ rows, t, tRider }) {
                     </span>
                   </div>
                 </td>
+                {showScore && (
+                  <td className={`${tdClass({})} text-right font-data tabular-nums`} data-testid="training-history-score-cell">
+                    {score != null ? (
+                      <span className="text-sm font-bold leading-none text-cz-1">{score}</span>
+                    ) : (
+                      <span className="text-xs text-cz-3">—</span>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -103,7 +120,7 @@ function DayRiderTable({ rows, t, tRider }) {
   );
 }
 
-function DayCard({ run, t, tRider }) {
+function DayCard({ run, t, tRider, trainingScore }) {
   const [open, setOpen] = useState(false);
   // #5682: rapporten viste ryttere i genererings-/DB-raekkefoelge (reelt
   // tilfaeldig), forskellig fra Daglig traenings egen standard-visning.
@@ -113,12 +130,24 @@ function DayCard({ run, t, tRider }) {
   const reportRows = run.report?.riders ?? [];
   const rows = sortTrainingRiders(reportRows, null, "asc", { name: trainingReportRowName });
   const summary = daySummary(reportRows);
+  // #5734: samme gate som Today (trainingScore != null i /training/me-svaret).
+  // trainingScore[riderId].spark daekker kun de seneste dage (backend
+  // TRAINING_SCORE_VIEW.sparkDays) — dage udenfor vinduet faar ingen match og
+  // viser stregen, praecis som en loebsdag gør.
+  const showScore = trainingScore != null;
+  const scoreFor = (riderId) => {
+    const spark = trainingScore?.[riderId]?.spark;
+    if (!Array.isArray(spark)) return null;
+    const point = spark.find((p) => p.date === run.tick_date);
+    return point && point.score != null ? point.score : null;
+  };
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        data-testid="training-history-day-toggle"
         className="w-full flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-left hover:bg-cz-subtle transition-colors"
       >
         <div className="flex items-center gap-3 flex-wrap">
@@ -140,12 +169,14 @@ function DayCard({ run, t, tRider }) {
           <ChevronDownIcon size={14} className={`shrink-0 text-cz-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         </div>
       </button>
-      {open && rows.length > 0 && <DayRiderTable rows={rows} t={t} tRider={tRider} />}
+      {open && rows.length > 0 && (
+        <DayRiderTable rows={rows} t={t} tRider={tRider} showScore={showScore} scoreFor={scoreFor} />
+      )}
     </div>
   );
 }
 
-export default function TrainingHistory({ history }) {
+export default function TrainingHistory({ history, trainingScore = null }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
   const { runs, loading } = history;
@@ -165,7 +196,7 @@ export default function TrainingHistory({ history }) {
       ) : (
         <div className="space-y-2">
           {runs.map((run) => (
-            <DayCard key={run.tick_date} run={run} t={t} tRider={tRider} />
+            <DayCard key={run.tick_date} run={run} t={t} tRider={tRider} trainingScore={trainingScore} />
           ))}
         </div>
       )}

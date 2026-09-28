@@ -9,10 +9,17 @@ import {
   applyChaseCost,
   breakawayHook,
   chaseAbilityScale,
+  chaseFloorClosingSeconds,
+  chaseFloorKm,
+  chaseFloorTargetGapSeconds,
   computeJoinScore,
   computeNetChaseAdvantage,
   effortJoinBoost,
+  formationKmFor,
+  isLetGoChaseGroup,
   joinProbability,
+  letGoMaxGapSeconds,
+  letGoSplitKm,
   selectBreakawayRiders,
   teamChasePlan,
   type BreakawayHookContext,
@@ -22,7 +29,7 @@ import {
   TRY_BREAK_JOIN_SCORE_BOOST,
 } from "./breakaway.ts";
 import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
-import { RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_EXTRA_TUNING, RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import type { AbilityKey, EffortLevel, Entrant, EngineState, RaceGroup, RiderRole, RiderState, RouteV2, TimelineEvent } from "../types.ts";
 
 // ── Fixtures (samme moenster som descent.test.ts) ─────────────────────────────
@@ -466,6 +473,19 @@ test("formation paa segment 0 med stort felt danner en bounded udbruds-gruppe + 
   assert.deepEqual([...breakawayGroup!.rider_ids].sort(), [...riderIds].sort());
 });
 
+test("#5812 udbruddet dannes tidligt (km <= ca. 30), ogsaa naar foerste segment er langt", () => {
+  // Foer: dannelsen blev skrevet paa segmentets to_km, saa en flad etape med ét
+  // segment fik "udbrud gaar" paa maalstregen.
+  for (const route of [routeWithSegments(1), routeWithSegments(2), routeWithSegments(9)]) {
+    const { state, ctx } = buildFieldScenario(25, 0, route);
+    const result = breakawayHook(state, ctx);
+    const formed = eventsOfType(result.events, "breakaway_formed");
+    assert.equal(formed.length, 1, "der skal dannes et udbrud");
+    assert.ok(formed[0].km <= 30, `udbruddet dannes km ${formed[0].km} (foerste segment slutter km ${route.segments[0].to_km})`);
+    assert.ok(formed[0].km > route.segments[0].from_km, "dannelsen ligger inde i foerste segment");
+  }
+});
+
 test("try_break-flag garanterer ALDRIG medlemskab (kan udeblive selv med flaget saat)", () => {
   const route = routeWithSegments(6);
   const orders: BreakawayTeamOrder[] = [
@@ -733,8 +753,11 @@ const REALISM_TEAMS = ["tA", "tB", "tC", "tD", "tE", "tF", "tG", "tH"];
 const REALISM_BREAKAWAY_FACTORS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
 // Taet i det omraade hvor jagten er afgoerende (stancen er en BOUNDED
 // multiplikator paa jagten, saa den flytter kun udfaldet naer vippepunktet),
-// plus et par forspring ingen jagt henter.
-const REALISM_GAPS = Array.from({ length: 16 }, (_, i) => 40 + 20 * i).concat([600, 900]);
+// plus forspring ingen jagt henter. #5812: geometrisk (15 % mellem naboer) i
+// stedet for et fast sekund-vindue — vippepunktet flytter sig med jagtens
+// kalibrering (lad-gaa-fasen goer M5 til hullets eneste ejer), og et relativt
+// taet sweep rammer det uanset hvor det ligger.
+const REALISM_GAPS = Array.from({ length: 45 }, (_, i) => Math.round(40 * 1.15 ** i));
 
 type TeamChaseOutcome = {
   caughtAtSegment: number | null;
@@ -890,4 +913,161 @@ test("#5580 computeJoinScore: plusset loefter scoren bounded og aldrig over 1", 
   assert.ok(withBoost > base);
   assert.equal(computeJoinScore(ab, false, 0), base, "uden plus: uaendret score");
   assert.ok(computeJoinScore(abilities({ aggression: 99, endurance: 99, tempo: 99 }), true, 0.5) <= 1);
+});
+
+// ── #5812 (a): "lad gaa"-fasen ────────────────────────────────────────────────
+
+function threatScenario(level: number, breakawayThreat: number) {
+  const entrants: Record<string, Entrant> = {};
+  const field: string[] = [];
+  const escape: string[] = [];
+  for (let i = 0; i < 40; i++) {
+    const id = `f${i}`;
+    field.push(id);
+    entrants[id] = makeEntrant(id, { climbing: level, tempo: level, time_trial: level });
+  }
+  for (let i = 0; i < 6; i++) {
+    const id = `b${i}`;
+    escape.push(id);
+    const v = Math.min(99, level * breakawayThreat);
+    entrants[id] = makeEntrant(id, { climbing: v, tempo: v, time_trial: v });
+  }
+  return { entrants, field: [...field, ...escape], escape };
+}
+
+test("#5812 letGoMaxGapSeconds: et farligere udbrud faar aldrig mere forspring (monotont, bounded)", () => {
+  let previous = Infinity;
+  for (const threat of [1, 1.4, 1.8, 2.2, 2.6, 3]) {
+    const s = threatScenario(20, threat);
+    const gap = letGoMaxGapSeconds({ breakawayRiderIds: s.escape, fieldRiderIds: s.field, entrants: s.entrants, profileType: "flat" });
+    assert.ok(gap <= previous + 1e-9, `trussel ${threat}: ${gap} > ${previous}`);
+    const base = BREAKAWAY_EXTRA_TUNING.maxGapSecondsByProfile.flat ?? BREAKAWAY_EXTRA_TUNING.maxGapSecondsDefault;
+    const [lo, hi] = BREAKAWAY_EXTRA_TUNING.maxGapFactorBounds;
+    assert.ok(gap >= base * lo - 1e-9 && gap <= base * hi + 1e-9, `trussel ${threat}: ${gap} uden for loftets baand`);
+    previous = gap;
+  }
+});
+
+test("#5812 letGoMaxGapSeconds er skala-invariant (#4707) og foelger finalen", () => {
+  const at10 = threatScenario(10, 2);
+  const at40 = threatScenario(40, 2);
+  const gap = (s: ReturnType<typeof threatScenario>, finaleType: RouteV2["finale_type"] = null) =>
+    letGoMaxGapSeconds({ breakawayRiderIds: s.escape, fieldRiderIds: s.field, entrants: s.entrants, profileType: "mountain", finaleType });
+  assertClose(gap(at40), gap(at10), "samme relative udbrud paa to evne-niveauer");
+  assert.ok(gap(at10, "descent") < gap(at10, "long_climb"), "foran en nedkoerselsfinale giver feltet mindre");
+});
+
+test("#5812 letGoSplitKm: fasen starter ved dannelsen, slutter naar loftet er naaet, og km'ene gaar op", () => {
+  const formationKm = formationKmFor({ from_km: 0, to_km: 20 });
+  assert.ok(formationKm > 0 && formationKm <= 20);
+  const maxGapSeconds = 180;
+  let letGoTotal = 0;
+  for (let from = 0; from < 180; from += 20) {
+    const { letGoKm, chaseKm } = letGoSplitKm({ formationKm, maxGapSeconds, fromKm: from, toKm: from + 20 });
+    assert.ok(letGoKm >= 0 && chaseKm >= 0);
+    assertClose(letGoKm + chaseKm, 20 - Math.max(0, Math.min(20, formationKm - from)), `segment ${from}: km'ene skal gaa op`);
+    if (letGoTotal > 0 && letGoKm === 0) assert.ok(chaseKm > 0, "efter fasen jages der");
+    letGoTotal += letGoKm;
+  }
+  // Hovedstart + vaekst over fasen rammer praecis loftet.
+  assert.ok(Math.abs(letGoTotal * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm + 25 - maxGapSeconds) < 1e-6);
+});
+
+test("#5812 isLetGoChaseGroup: kun et felt lader et udbrud gaa", () => {
+  assert.equal(isLetGoChaseGroup(BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders), true);
+  assert.equal(isLetGoChaseGroup(BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders - 1), false);
+  assert.equal(isLetGoChaseGroup(Number.NaN), false);
+});
+
+test("#5812 en holdordre kan stadig aldrig SKABE et forspring: lad-gaa-fasen er ens for alle stances", () => {
+  // Stancen virker kun gennem jagten. I lad-gaa-fasen (foerste segmenter)
+  // giver chase, neutral og let_go derfor samme hul.
+  const route = routeWithSegments(9);
+  const gaps = (["chase", "neutral", "let_go"] as BreakawayStance[]).map((stance) => {
+    const orders: BreakawayTeamOrder[] = ["t0", "t1", "t2", "t3"].map((t) => ({ team_id: t, breakaway_stance: stance, riders: [] }));
+    const { state, ctx } = buildFieldScenario(60, 0, route, "5812-stance", orders, undefined, 4);
+    const formed = breakawayHook(state, ctx);
+    const peloton = formed.state.groups.find((g) => g.kind !== "breakaway")!;
+    const escape = formed.state.groups.find((g) => g.kind === "breakaway")!;
+    return peloton.gap_seconds - escape.gap_seconds;
+  });
+  assertClose(gaps[1], gaps[0], "chase vs neutral i lad-gaa-fasen");
+  assertClose(gaps[2], gaps[0], "let_go vs neutral i lad-gaa-fasen");
+});
+
+// ── #5813 del 2: jagt-gulvet paa aabent terraen ───────────────────────────────
+
+test("#5813 chaseFloorKm: kun jagt-km i etapens sidste km, kun paa flad/rullende profil", () => {
+  const finalKm = BREAKAWAY_EXTRA_TUNING.chaseFloorFinalKm;
+  const base = { profileType: "flat" as const, distanceKm: 180, toKm: 180, chaseKm: 30 };
+  assert.equal(chaseFloorKm(base), Math.min(30, finalKm), "sidste segment: hele jagten (op til vinduet)");
+  assert.equal(chaseFloorKm({ ...base, toKm: 120 }), 0, "foer vinduet: intet gulv");
+  assert.equal(chaseFloorKm({ ...base, toKm: 180 - finalKm + 5 }), 5, "segmentet der krydser vinduets start");
+  assert.equal(chaseFloorKm({ ...base, profileType: "rolling" }), Math.min(30, finalKm));
+  for (const profileType of ["hilly", "mountain", "high_mountain", "cobbles"] as const) {
+    assert.equal(chaseFloorKm({ ...base, profileType }), 0, `${profileType}: selektionen er aegte, intet gulv`);
+  }
+  assert.equal(chaseFloorKm({ ...base, chaseKm: 0 }), 0, "ren lad-gaa-fase: intet gulv");
+});
+
+test("#5813 chaseFloorClosingSeconds: hullet ved maal er hoejst maalet, aldrig under, aldrig negativt", () => {
+  // Sidste segment (floorKm = kmToFinish): hullet koeres praecis ned til maalet.
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 300, floorKm: 20, kmToFinish: 20, targetGapSeconds: 60 }), 240);
+  // Et segment midt i vinduet lukker sin andel af resten.
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 300, floorKm: 10, kmToFinish: 40, targetGapSeconds: 60 }), 60);
+  // Et hul under maalet roeres ikke; uden gulv-km lukkes intet.
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 40, floorKm: 20, kmToFinish: 20, targetGapSeconds: 60 }), 0);
+  assert.equal(chaseFloorClosingSeconds({ separationSeconds: 300, floorKm: 0, kmToFinish: 20, targetGapSeconds: 60 }), 0);
+  // Monoton: et stoerre hul lukkes aldrig mindre.
+  let previous = -Infinity;
+  for (let gap = 0; gap <= 600; gap += 20) {
+    const closed = chaseFloorClosingSeconds({ separationSeconds: gap, floorKm: 15, kmToFinish: 35, targetGapSeconds: 60 });
+    assert.ok(closed >= previous && closed >= 0 && gap - closed >= Math.min(gap, 60) - 1e-9);
+    previous = closed;
+  }
+});
+
+test("#5813 chaseFloorTargetGapSeconds: massefinale koeres ned til antals-vinduet, andre finaler helt ind; for sent giver et hul", () => {
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  const sprint = { finale_type: "bunch_sprint" as const, profile_type: "flat" as const };
+  const breakawayFinale = { finale_type: "breakaway" as const, profile_type: "rolling" as const };
+  assert.equal(chaseFloorTargetGapSeconds(sprint, 0.99), extra.chaseFloorTargetGapSeconds);
+  assert.equal(chaseFloorTargetGapSeconds(breakawayFinale, 0.99), 0);
+  assert.equal(chaseFloorTargetGapSeconds(sprint, 0), extra.chaseFloorLateTargetGapSeconds);
+  assert.equal(chaseFloorTargetGapSeconds(breakawayFinale, 0), extra.chaseFloorLateTargetGapSeconds);
+  const sprintLate = extra.chaseFloorLateChanceByFinale.bunch_sprint!;
+  assert.equal(chaseFloorTargetGapSeconds(sprint, sprintLate - 1e-9), extra.chaseFloorLateTargetGapSeconds);
+  assert.equal(chaseFloorTargetGapSeconds(sprint, sprintLate), extra.chaseFloorTargetGapSeconds);
+  assert.ok(
+    extra.chaseFloorLateChanceDefault > sprintLate,
+    "paa en massefinale kommer sprinterholdene sjaeldnere for sent end feltet paa en udbrudsfinale",
+  );
+});
+
+test("#5813 hook: paa sidste segment af en massefinale koeres et stort hul ned; kun paa de sene dage holder et hul, og de er faa", () => {
+  const route = routeWithSegments(6); // flad bunch_sprint 180 km, sidste segment 150-180
+  const extra = BREAKAWAY_EXTRA_TUNING;
+  let late = 0;
+  const seeds = 400;
+  for (let s = 0; s < seeds; s++) {
+    const { state, ctx } = chaseStateAtLevel(40, route, 5);
+    const seeded = makeHookCtx({ segment: ctx.segment, segmentIndex: 5, route, entrants: ctx.entrants, tuning: RACE_V4_TUNING, seed: `5813-floor-${s}` });
+    const result = breakawayHook(state, seeded);
+    const peloton = result.state.groups.find((g) => g.id === "peloton-0")!;
+    const escape = result.state.groups.find((g) => g.id === "breakaway-0")!;
+    const separation = peloton.gap_seconds - escape.gap_seconds;
+    assert.ok(separation <= extra.chaseFloorLateTargetGapSeconds + 1e-9, `seed ${s}: hullet ved maal (${separation}) er over gulvets loft`);
+    if (separation > extra.chaseFloorTargetGapSeconds + 1e-9) late += 1;
+  }
+  const rate = late / seeds;
+  const expected = extra.chaseFloorLateChanceByFinale.bunch_sprint!;
+  assert.ok(Math.abs(rate - expected) < 0.06, `andelen sene dage (${rate}) skal matche chancen (${expected})`);
+});
+
+test("#5813 hook: dagens 'for sent'-lodtraekning er etape-stabil (samme paa alle segmenter)", () => {
+  const route = routeWithSegments(6);
+  const roll = (segmentIndex: number) =>
+    makeHookCtx({ segment: route.segments[segmentIndex], segmentIndex, route, entrants: {}, tuning: RACE_V4_TUNING, seed: "5813-stable" })
+      .rngForStage("breakaway_chase_floor")();
+  assert.equal(roll(4), roll(5));
 });

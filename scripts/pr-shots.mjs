@@ -18,7 +18,8 @@
 //     Login-status maales kun som "landede /dashboard paa /login, eller svarede
 //     API'et 401?".
 //   - Browser-uret roeres aldrig (--shot-at m.fl. afvises i parseArgs). Andre
-//     tilstande fremkaldes med GET-mocks af datasvar (--mock).
+//     tilstande fremkaldes med mocks af datasvar: --mock (GET) og --mock-rpc
+//     (supabase-js' .rpc() er ALTID POST, ogsaa for laesende funktioner).
 //   - Skrive-vagt: alle ikke-laesende kald besvares lokalt med 204, undtagen
 //     Supabase' token-endpoint (login + refresh). Et signOut besvares 204 OG taelles.
 //     Service workers blokeres, saa intet kald kan gaa uden om vagten.
@@ -70,6 +71,7 @@ import {
   lookupPreviewUrl,
   masterProfileDir,
   mockFor,
+  mockLabel,
   pairShots,
   parseArgs,
   planShoot,
@@ -264,7 +266,11 @@ async function installWriteGuard(context, state) {
   });
 }
 
-/** GET-mocks registreres EFTER proben (senest registrerede route vinder i Playwright). */
+/**
+ * Mocks registreres EFTER proben og EFTER skrive-vagten (senest registrerede
+ * route vinder i Playwright). Det er ogsaa det der lader en --mock-rpc svare paa
+ * POST /rest/v1/rpc/<fn> foer vagten ville have givet den et tomt 204.
+ */
 async function installMocks(context, mocks) {
   if (!mocks.length) return;
   await context.route("**/*", async (route) => {
@@ -493,7 +499,7 @@ async function runShoot(opts) {
     stoppedAt,
     clicks: clickLog,
     waits: waitLog,
-    mocks: mocks.map((m) => ({ path: m.path, status: m.status, file: m.file })),
+    mocks: mocks.map((m) => ({ path: m.path, rpc: m.rpc ?? null, status: m.status, file: m.file })),
     blockedWrites,
     blockedWriteCount: blockedWrites.reduce((sum, b) => sum + b.count, 0),
     signOutAttempts: state.signOut,
@@ -505,7 +511,7 @@ async function runShoot(opts) {
     `signOut-forsoeg: ${state.signOut}. API: ${report.apiHosts.join(", ") || "(ingen set under proben)"}.`,
   );
   if (git.dirty) log("  [bemaerk] worktreet har ucommittede aendringer; billederne viser dem.");
-  if (mocks.length) log(`  [MOCK] ${mocks.map((m) => m.path).join(", ")}: billederne viser en mocket tilstand, ikke prod. Sig det i go-kortet.`);
+  if (mocks.length) log(`  [MOCK] ${mocks.map(mockLabel).join(", ")}: billederne viser en mocket tilstand, ikke prod. Sig det i go-kortet.`);
   if (stoppedAt) return 2;
   if (clickLog.some((c) => c.error) || waitLog.length) return 3;
   return 0;
@@ -539,8 +545,8 @@ async function runCompose(opts) {
   }
   const rows = pairShots(before, after).map((r) => ({ ...r, beforeSrc: dataUri(r.before), afterSrc: dataUri(r.after) }));
   const mocks = [
-    ...(before.mocks ?? []).map((m) => `${opts.before}: ${m.path}`),
-    ...(after.mocks ?? []).map((m) => `${opts.label}: ${m.path}`),
+    ...(before.mocks ?? []).map((m) => `${opts.before}: ${mockLabel(m)}`),
+    ...(after.mocks ?? []).map((m) => `${opts.label}: ${mockLabel(m)}`),
   ];
   const html = composeHtml({ before: opts.before, after: opts.label, rows, mocks });
   const playwright = loadPlaywright([join(REPO_ROOT, "frontend")]);

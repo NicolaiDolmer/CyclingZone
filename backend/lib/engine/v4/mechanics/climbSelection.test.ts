@@ -5,8 +5,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { climbSelectionHook, climbSeverity01, effortClimbScoreFactor, effortClimbScorePenalty } from "./climbSelection.ts";
-import { EFFORT_GAIN_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import {
+  climbSelectionHook,
+  climbSeverity01,
+  effortClimbScoreFactor,
+  effortClimbScorePenalty,
+  wprimeDepletionForcesSplit,
+} from "./climbSelection.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import type {
   AbilityKey,
@@ -110,7 +116,8 @@ test("selektion sker ved W'=0: rytter med wprime=0 splitter altid bagud", () => 
   const entrants = [entrant("a"), entrant("b"), entrant("c")];
   // Kort/moderat segment: deficit-vejen alene ville ikke udloese split for
   // ryttere med identisk klatre-evne — kun wprime=0 skal drive selektionen her.
-  const segment = climbSegment({ avg_gradient: 4, from_km: 0, to_km: 2 });
+  // #5813: stigningen skal have en vis alvor, foer en tom reserve tvinger af.
+  const segment = climbSegment({ avg_gradient: 6, from_km: 0, to_km: 3 });
   const state = makeState(entrants, { c: { wprime: 0 } });
   const ctx = makeCtx(entrants, segment);
 
@@ -465,6 +472,37 @@ test("#5580 MONOTONI pr. trin (100 seeds): P(sat) er ikke-stigende op ad trappen
     "all_out skal koebe position: kantrytteren skal sidde fast oftere end paa normal",
   );
   assert.ok(splitCount.get("save")! > splitCount.get("normal")!, "save skal give slip oftere end normal");
+});
+
+test("#5813: en tom reserve tvinger kun rytteren af paa en stigning af en vis alvor", () => {
+  const min = CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity;
+  assert.equal(wprimeDepletionForcesSplit(0, min), true, "paa taersklen: tvunget af");
+  assert.equal(wprimeDepletionForcesSplit(0, 1), true, "HC-stigning: tvunget af");
+  assert.equal(wprimeDepletionForcesSplit(0, min / 2), false, "et lille bump: haenger paa");
+  assert.equal(wprimeDepletionForcesSplit(0.01, 1), false, "reserve tilbage: aldrig tvunget af");
+  assert.equal(wprimeDepletionForcesSplit(0, Number.NaN), false, "ukendt alvor: ingen tvangs-split");
+  // Monoton i alvor: kan en rytter tvinges af paa en bakke, kan han ogsaa paa en haardere.
+  let forcedOnce = false;
+  for (let i = 0; i <= 20; i++) {
+    const forced = wprimeDepletionForcesSplit(0, i / 20);
+    if (forcedOnce) assert.equal(forced, true, `alvor ${i / 20}: tvangs-splittet forsvandt paa en haardere stigning`);
+    forcedOnce ||= forced;
+  }
+});
+
+test("#5813: en udkoert rytter haenger paa over et lille bump (ingen split); paa en rigtig stigning saettes han af", () => {
+  const entrants = [entrant("a"), entrant("b"), entrant("c")];
+  const state = makeState(entrants, { c: { wprime: 0 } });
+  // 1,1 km paa 5 %: under taersklen.
+  const bump = climbSegment({ avg_gradient: 5, from_km: 0, to_km: 1.1 });
+  assert.ok(climbSeverity01(5, 1.1) < CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity);
+  const onBump = climbSelectionHook(state, makeCtx(entrants, bump));
+  assert.ok(!splitRiderIdsFrom(onBump.state).has("c"), "c skal haenge paa over bumpet");
+  assert.equal(onBump.events.length, 0);
+  // 3 km paa 6 %: over taersklen.
+  const climb = climbSegment({ avg_gradient: 6, from_km: 0, to_km: 3 });
+  const onClimb = climbSelectionHook(state, makeCtx(entrants, climb));
+  assert.ok(splitRiderIdsFrom(onClimb.state).has("c"), "c skal saettes af paa stigningen");
 });
 
 test("#5580 knaek: med tom reserve koeber all_out intet (W'=0 er stadig fysiologisk absolut)", () => {

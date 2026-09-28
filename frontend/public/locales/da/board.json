@@ -622,34 +622,34 @@
           "Det her sætter næste sæsons sponsorforhandling i fare."
         ],
         "receipt_positive": [
-          "Budgettet holder, og sponsorerne ringer for at forny.",
-          "Vi krydsede målet uden at røre kassen.",
-          "Tre kvartaler i træk i sort. Det er ikke held, det er drift.",
-          "Regnskabet ser bedre ud end min prognose. Sjældent."
+          "Det er den slags tal, jeg kan tage med til sponsorerne.",
+          "Pengene kommer ind, og udgifterne er under kontrol. Sådan kan jeg lide det.",
+          "Bedre end min prognose. Det siger jeg ikke tit.",
+          "Godt. Sponsorerne lægger mærke til den slags, før vi gør."
         ],
         "receipt_negative": [
-          "Vi bruger af reserven igen. Det tal skal vende.",
-          "Sponsorindtægten er under budget tredje måned i træk.",
-          "Jeg kan ikke forsvare det her tal på næste møde.",
-          "Gælden vokser hurtigere end omsætningen. Det er ikke bæredygtigt."
+          "Jeg bryder mig ikke om, hvor det her tal er på vej hen.",
+          "Vi bruger penge, vi ikke har tjent endnu.",
+          "Det her kan jeg ikke sælge til sponsorerne. Ikke sådan her.",
+          "Gælden vokser hurtigere end indtægterne. Det skal vende."
         ],
         "meeting_easier": [
-          "Et lavere mål betyder et lavere loft for sponsorerne. Jeg tager det, men noterer det.",
-          "Det her er den forsigtige vej. Fint med mig.",
-          "Lempet, men stadig et tal jeg kan stå inde for over for sponsorerne.",
-          "Jeg foretrækker et mål vi rammer frem for et vi jagter."
+          "Lavere mål, lavere loft for sponsorerne. Jeg accepterer det, men jeg skriver det ned.",
+          "Den forsigtige løsning. Fint med mig.",
+          "Stadig et tal, jeg kan forsvare over for sponsorerne.",
+          "Hellere ramme et lille mål end jagte et stort."
         ],
         "meeting_keep": [
-          "Samme tal, samme forventning. Det respekterer jeg.",
-          "Ingen ændring i budgettet, ingen ændring i mit blik.",
-          "Vi holder kursen. Det er ofte den rigtige beslutning.",
-          "Fastholdt, som det bør være når tallene stadig går op."
+          "Samme tal, samme forventninger. Godt.",
+          "Budgettet er lagt efter det her mål. Lad os beholde det.",
+          "Ingen ændringer. Det er som regel det rigtige.",
+          "Så længe tallene går op, er jeg tilfreds."
         ],
         "meeting_stretch": [
-          "Et højere mål kræver et bedre regnskab bagved. Vis mig det.",
-          "Jeg strammer mit blik lige så meget som målet strammes.",
-          "Ambitiøst. Sponsorerne vil spørge hvordan vi finansierer det.",
-          "Et stræk-mål jeg accepterer, men jeg fører regnskab med hver måned."
+          "Et højere mål kræver et sundere budget bag sig. Vis mig det.",
+          "Hvis målet går op, holder jeg endnu tættere øje med regnskabet.",
+          "Ambitiøst. Sponsorerne vil spørge, hvordan vi betaler for det.",
+          "Jeg skriver under. Men jeg holder øje med regnskabet hele vejen."
         ],
         "midseason_status": [
           "Vi er midtvejs. Tallene på bordet i dag er dem jeg kan stå inde for.",
@@ -658,16 +658,16 @@
           "Jeg har set værre halvvejs-regnskaber end det her."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og regnskabet bekræfter det. Det er sjældent begge dele på samme tid.",
-          "Vi fejrer det her, og så finder bestyrelsen det næste mål til det tomme felt.",
-          "Nået før tid. Sponsorerne lægger mærke til den slags.",
-          "Et lukket kapitel med et rent regnskab. Godt arbejde."
+          "Vi nåede det, og regnskabet ser stadig pænt ud. Det er sjældent.",
+          "Den her vil sponsorerne gerne høre om.",
+          "Flot. Et resultat og et pænt regnskab på samme tid.",
+          "Lad os nyde det. Så finder vi det næste mål."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og det koster på tilliden, ikke kun på tallet.",
-          "Vi må se de her tal i øjnene uden at pynte på dem.",
-          "Ikke katastrofalt, men bestyrelsen forventede mere på det her tidspunkt.",
-          "Jeg skriver det ned. Næste årsmøde tager vi det op igen."
+          "Vi nåede det ikke. Det koster tillid, ikke kun et tal.",
+          "Ingen grund til at pynte på det. Vi kom til kort.",
+          "Ikke en katastrofe, men jeg havde forventet mere nu.",
+          "Jeg skriver det ned. Vi tager det op på næste årsmøde."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder til et ekstraordinært møde. Tallene kan ikke vente til næste årsmøde.",
@@ -737,34 +737,34 @@
           "Hvor er stoltheden henne?"
         ],
         "receipt_positive": [
-          "Klubben ligner stadig sig selv. Det er værd mere end noget enkelt resultat.",
-          "Vi skriver endnu en side den gamle garde ville genkende.",
-          "Det her er klubben jeg meldte mig til at beskytte, i god behold.",
-          "Historien gentager sig ikke her, den fortsætter."
+          "Klubben ligner stadig sig selv. Det betyder mere end et enkelt resultat.",
+          "De gamle medlemmer ville kunne genkende det her hold. Godt.",
+          "Det her er den klub, jeg har passet på det meste af mit liv.",
+          "Vi skriver videre på historien her, ikke kun på resultatlisten."
         ],
         "receipt_negative": [
-          "Vi glider væk fra det klubben altid har stået for.",
+          "Vi glider væk fra det, klubben altid har stået for.",
           "Klubmærket fortjener bedre end det her.",
-          "Jeg genkender os ikke i det her.",
-          "De gamle medlemmer ville ikke acceptere det her, og det bør vi heller ikke."
+          "Jeg kan ikke genkende os lige nu.",
+          "De gamle medlemmer ville ikke have fundet sig i det her. Det gør jeg heller ikke."
         ],
         "meeting_easier": [
           "Et lettere mål sletter ikke vores historie. Det kan jeg leve med.",
-          "Klubben har overlevet stillere sæsoner end den her før.",
-          "Lempet, men mærket på trøjen er det samme.",
-          "Fint, så længe vi ikke lemper på det vi står for."
+          "Klubben har overlevet stillere sæsoner.",
+          "Fint. Mærket på trøjen er det samme.",
+          "Okay, så længe vi ikke slækker på det, vi står for."
         ],
         "meeting_keep": [
-          "Fastholdt. Kontinuitet er halvdelen af hvad klubben er.",
-          "Ingen ændring, og de gamle medlemmer ville nikke til den stabilitet.",
+          "Kontinuitet er halvdelen af, hvad klubben er.",
+          "Uændret. Det ville de gamle medlemmer nikke til.",
           "Vi holder linjen, som klubben altid har gjort.",
-          "Samme mål. Klubben jagter ikke enhver ny trend."
+          "Vi løber ikke efter hver ny mode her. Godt."
         ],
         "meeting_stretch": [
-          "En større ambition, så længe det stadig ligner os når vi når derhen.",
-          "Stræk det, men stræk os ikke væk fra hvem vi er.",
-          "Jeg accepterer et hårdere mål for en klub med så meget historie bag sig.",
-          "Ambitiøst, og arkiverne vil huske hvilken æra der gjorde det her."
+          "Mere ambition, fint. Så længe det stadig ligner os, når vi når frem.",
+          "Sigt højere, men glem ikke, hvem vi er, undervejs.",
+          "En klub med så meget historie kan godt bære et større mål.",
+          "Ambitiøst. Man vil huske, hvilken generation der gjorde det."
         ],
         "midseason_status": [
           "Halvvejs, og klubben ligner stadig den fra de gamle billeder.",
@@ -773,16 +773,16 @@
           "Halvvejs, og jeg genkender stadig holdet vi sendte af sted om foråret."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og den hører hjemme i klubbens egne rekordbøger.",
-          "Endnu et kapitel skrevet, som grundlæggerne ville have ønsket det.",
-          "Det her er den slags øjeblik de gamle medlemmer taler om i årevis.",
-          "Nået, og klubbens historie blev lige en anelse længere."
+          "Den skal skrives ind i klubbens rekordbog.",
+          "Endnu et kapitel, skrevet som grundlæggerne ville have ønsket det.",
+          "Det her vil de gamle medlemmer tale om i årevis.",
+          "Klubbens historie blev lige lidt længere."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og det gør mere ondt her end et tal burde.",
-          "Klubben har stået værre igennem før og forblevet sig selv. Det gør den igen.",
-          "Vi skylder de gamle medlemmer bedre end en misset milepæl.",
-          "Ikke den slutning det her kapitel fortjente. Vi skriver det næste ordentligt."
+          "Vi nåede det ikke, og det gør mere ondt her, end et tal burde.",
+          "Klubben har været igennem værre og er forblevet sig selv. Det gør den igen.",
+          "Vi skylder de gamle medlemmer bedre end det her.",
+          "Ikke den slutning, kapitlet fortjente. Lad os skrive det næste ordentligt."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder til et ekstraordinært møde. Nogle ting kan ikke vente på kalenderen.",
@@ -852,34 +852,34 @@
           "Bedre rotation havde løst det her."
         ],
         "receipt_positive": [
-          "Jeg skrev den rytter ned for to sæsoner siden. Tallene indhenter endelig øjnene.",
-          "Endnu et navn fra min liste begynder at levere.",
-          "Det her er præcis den slags potentiale jeg spejder efter, og det dukker op til tiden.",
-          "Fundet tidligt, udviklet tålmodigt, og nu viser det sig."
+          "De unge, jeg pegede på, begynder at levere. Rart at få ret.",
+          "Endnu et navn fra min liste er ved at bryde igennem.",
+          "Fundet tidligt, udviklet tålmodigt. Nu kan man se det.",
+          "Det er præcis det potentiale, jeg leder efter."
         ],
         "receipt_negative": [
-          "Et talent jeg pegede på er gået i stå, og det er udviklingsplanen der fejler, ikke rytteren.",
-          "Potentialet er ægte. Vejen til at bruge det er det ikke.",
-          "Jeg spejder ikke efter ryttere for at se dem sidde stille.",
-          "Et sted skriver en spejder fra en anden klub navnet ned på den vi spilder."
+          "Talentet er der. Planen for at udvikle det er der ikke.",
+          "Jeg finder ikke ryttere for at se dem stå stille.",
+          "Et sted sidder en spejder fra en anden klub og skriver de navne ned, vi spilder.",
+          "Det er ikke rytterne, der fejler. Det er udviklingsplanen."
         ],
         "meeting_easier": [
-          "En lavere bar giver udviklingsrøret mere tid til at modne, den handel tager jeg.",
-          "Lempet, og det betyder færre tvungne valg på ryttere der ikke er klar endnu.",
+          "En lavere barre giver de unge mere tid. Den tager jeg.",
+          "Færre ryttere, der bliver presset, før de er klar. Godt.",
           "Fint med mig. Potentiale kræver tålmodighed mere end pres.",
-          "Jeg beskytter hellere det lange spil end jagter denne sæsons tal."
+          "Jeg passer hellere på det lange seje træk end at jagte denne sæsons tal."
         ],
         "meeting_keep": [
-          "Samme mål. Min spejderliste ændrer sig heller ikke på et indfald.",
-          "Fastholdt, og de fremskrivninger jeg har lavet holder stadig.",
-          "Ingen ændring nødvendig, udviklingsrøret følger den tidslinje jeg lagde.",
-          "Fint, de tal jeg følger behøver ikke et nyt mål for at flytte sig."
+          "Min liste ændrer sig ikke på et indfald, og det bør det her heller ikke.",
+          "Mine fremskrivninger holder stadig. Lad det være.",
+          "De unge følger den plan, jeg lagde. Ingen grund til at røre ved den.",
+          "De tal, jeg følger, flytter sig uden et nyt mål."
         ],
         "meeting_stretch": [
-          "En højere bar er fin, hvis den ikke tvinger et halvt-klart navn ind på startlisten.",
-          "Stræk det, men stræk ikke en nittenårig længere end tallene siger han kan klare.",
-          "Jeg accepterer det, så længe udviklingsrøret får den tid det har brug for.",
-          "Ambitiøst, og jeg holder klubben til at beskytte udviklingen mens vi jagter det."
+          "En højere barre er fin, hvis den ikke tvinger en halvfærdig rytter på startlisten.",
+          "Pres målet, ikke en nittenårig ud over, hvad han kan klare.",
+          "Jeg accepterer det, så længe de unge stadig får den tid, de har brug for.",
+          "Ambitiøst. Jeg sørger for, at det ikke er udviklingen, der betaler prisen."
         ],
         "midseason_status": [
           "Halvvejs, og jeg vil vide hvilke navne på min liste der faktisk fik minutter.",
@@ -888,16 +888,16 @@
           "Halvvejs, og tre navne jeg pegede på inden sæsonen udvikler sig præcis som forudsagt."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og et navn fra min gamle liste var med til at gøre det.",
-          "Det her beviser at spejder-modellen virker, ikke kun truppen.",
-          "Nået, og det startede som en fornemmelse i et regneark for tre år siden.",
-          "Det her er gevinsten ved at satse på potentiale før resultaterne fandtes."
+          "Milepælen er i hus. Jeg tror gerne, at min liste havde en finger med i spillet.",
+          "Det beviser, at spejderarbejdet virker, ikke kun truppen.",
+          "Det startede som en fornemmelse i et regneark. Se det nu.",
+          "Sådan ser det ud, når man satser tidligt på potentiale, og det betaler sig."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og jeg tjekker om udviklingsrøret nogensinde fik en reel chance.",
-          "Ikke katastrofalt, men et par navne på min liste havde brug for flere minutter end de fik.",
-          "Vi skylder udviklingsstien et hårdere kig før næste forsøg.",
-          "Jeg noterer hvilke emner der blev holdt tilbage. De data forsvinder ikke."
+          "Jeg bliver ved med at spørge mig selv, om de unge nogensinde fik en reel chance.",
+          "Et par navne på min liste havde brug for flere løb, end de fik.",
+          "Før næste forsøg skal vi kigge hårdt på, hvordan vi udvikler ryttere.",
+          "Jeg noterer, hvem der blev holdt tilbage. Det forsvinder ikke bare."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder ekstraordinært, og jeg vil have udviklingsrørets behov på bordet.",
@@ -968,33 +968,33 @@
         ],
         "receipt_positive": [
           "En sejr er en sejr. Bliv ved.",
-          "Vi klatrer i stillingen, og det er den eneste tabel jeg læser.",
-          "Podier. Endelig noget værd at tale om.",
-          "Det her er hvad en sejr ligner. Mere af det."
+          "Vi klatrer. Det er den eneste tabel, jeg læser.",
+          "Nu begynder det at ligne noget.",
+          "Sådan ser det ud, når man vinder. Mere af det."
         ],
         "receipt_negative": [
-          "Ingen sejre er ingen sejre. Undskyldninger tæller ikke på en tabel.",
-          "Vi glider ned i stillingen, og jeg accepterer ikke langsomt.",
-          "Andenpladsen er den første taber, og vi har samlet for mange af dem.",
-          "Den her tabsstime skal stoppe i denne uge, ikke næste."
+          "Ingen sejre er ingen sejre. Undskyldninger står ikke i stillingen.",
+          "Vi glider nedad, og jeg har ikke tålmodighed til langsomt.",
+          "En andenplads er stadig et nederlag. Vi har haft for mange.",
+          "Det her skal vende nu. Ikke næste måned."
         ],
         "meeting_easier": [
-          "Et lavere mål skal stadig ende med sejre, ellers er det ikke et mål.",
-          "Fint, men let betyder stadig en sejr i mål, ikke et godt forsøg.",
-          "Lempet, og jeg forventer det op igen så snart vi begynder at vinde.",
-          "Jeg accepterer det nødtvunget. Klubben sigter ikke lavt ret længe."
+          "Lavere mål. Det skal stadig ende med sejre.",
+          "Lettere betyder ikke et godt forsøg. Det betyder en sejr på stregen.",
+          "Fint. Det ryger op igen, så snart vi begynder at vinde.",
+          "Jeg accepterer det, men jeg kan ikke lide det. Vi sigter ikke lavt ret længe."
         ],
         "meeting_keep": [
-          "Samme mål. En sejr har ikke brug for rabat.",
-          "Fastholdt, fordi standarden ikke skal flyttes for nogen.",
-          "Ingen ændring. Vi blev hyret til at vinde, ikke til at genforhandle.",
-          "Fint, tallet står. Gå så ud og vind det."
+          "Sejre fås ikke på tilbud.",
+          "Standarden flytter sig ikke for nogen.",
+          "Vi er her for at vinde, ikke for at forhandle.",
+          "Tallet står. Så gå ud og vind det."
         ],
         "meeting_stretch": [
-          "Et hårdere mål. Endelig vil nogen i det her lokale vinde.",
-          "Stræk det. Jeg ville have bedt om mere alligevel.",
-          "Godt. Ambition er det eneste jeg altid accepterer uden kamp.",
-          "Sæt det højere. Klubben skal have ondt i maven ved at jagte mindre end det."
+          "Højere. Endelig er der nogen i lokalet, der vil vinde.",
+          "Jeg ville alligevel have bedt om mere.",
+          "Godt. Ambition er det eneste, jeg aldrig diskuterer.",
+          "Sæt det højt. Alt under det skal føles ubehageligt."
         ],
         "midseason_status": [
           "Halvvejs, og jeg tæller sejre, ikke indsats.",
@@ -1003,16 +1003,16 @@
           "Halvvejs, og jeg vil have flere sejre i anden halvdel end vi har nu."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, fordi vi vandt da det gjaldt.",
-          "Endelig en milepæl der matcher hvad klubben burde levere.",
-          "Nået. Find nu den næste, højere.",
-          "Sådan skal bestyrelsen altid se ud: sejre på tavlen."
+          "Klaret. Det er den standard, jeg forventer.",
+          "Endelig en milepæl, der passer til det, klubben burde levere.",
+          "Find så den næste, og gør den sværere.",
+          "Målet ramt. Sådan skal det altid se ud."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og det er uacceptabelt på det her niveau.",
-          "Vi havde truppen til at ramme det. Vi ramte det ikke. Forklar det.",
-          "At misse det her koster mere end selve milepælen. Det koster troværdighed.",
-          "Næste forsøg får et skarpere mål og nul tålmodighed med undskyldninger."
+          "Misset. På det her niveau er det ikke acceptabelt.",
+          "Vi havde truppen til det. Vi gjorde det ikke. Forklar mig det.",
+          "Det koster mere end en milepæl. Det koster troværdighed.",
+          "Næste gang: et skarpere mål og nul tålmodighed med undskyldninger."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder ekstraordinært. Den her tabsstime venter ikke på kalenderen.",
@@ -1082,34 +1082,34 @@
           "Bestyrelsen forventer en åben evaluering."
         ],
         "receipt_positive": [
-          "Risiko og belønning stemmer endelig overens. Det er alt jeg nogensinde beder om.",
-          "Ikke spektakulært, men heller ikke udsat noget sted. Det tager jeg.",
-          "Det her er den slags afbalanceret uge der faktisk bygger noget.",
-          "Vi vinder på flere fronter end vi taber på. Godt nok er godt."
+          "Risiko og gevinst passer endelig sammen. Mere beder jeg ikke om.",
+          "Intet spektakulært, men heller intet, der står åbent. Det tager jeg.",
+          "Vi vinder på flere fronter, end vi taber på. Godt nok er godt.",
+          "Stabilt. Det er sådan, man faktisk bygger noget."
         ],
         "receipt_negative": [
-          "Vægten har tippet, og jeg kan ikke lide hvilken vej.",
-          "Vi taber lidt på alle fronter. Det lægger sig hurtigere sammen end ét stort tab.",
-          "Det her er ikke en krise endnu, men det holder op med at være fint hvis det gentager sig.",
-          "Den afvejning vi accepterede betaler sig ikke, som den skulle."
+          "Vægtskålen har tippet, og ikke til vores fordel.",
+          "Vi taber lidt alle steder. Det løber hurtigere op end ét stort tab.",
+          "Ikke en krise endnu. Men sker det igen, er det ikke fint længere.",
+          "Det kompromis, vi valgte, betaler sig ikke."
         ],
         "meeting_easier": [
-          "Et lavere mål er en fair handel for en sæson der har brug for luft.",
-          "Lempet, og det er en fornuftig justering, ikke en tilbagetrækning.",
-          "Jeg kan leve med lavere, så længe det er en beslutning og ikke en glidning.",
-          "Fint. Nogle gange er det afbalancerede valg det mindre tal."
+          "Et lavere mål til en sæson, der har brug for luft. Fair handel.",
+          "Det er en justering, ikke et tilbagetog.",
+          "Jeg kan leve med lavere, så længe vi har valgt det og ikke bare er gledet derhen.",
+          "Nogle gange er det fornuftige valg det mindste tal."
         ],
         "meeting_keep": [
-          "Samme mål. Det var afbalanceret da vi satte det, og intet har ændret det.",
-          "Fastholdt. Jeg flytter ikke et tal bare fordi nogen er utålmodig.",
-          "Ingen ændring nødvendig, afvejningen holder stadig ved nærmere eftersyn.",
-          "Fint som det står. Et stabilt mål er mere værd end et reaktivt et."
+          "Det var fornuftigt, da vi satte det, og intet har ændret sig.",
+          "Jeg flytter ikke et tal, bare fordi nogen er utålmodige.",
+          "Regnestykket holder stadig. Behold det.",
+          "Et roligt mål slår et nervøst."
         ],
         "meeting_stretch": [
-          "Et højere mål, så længe vi er ærlige om hvad vi risikerer for det.",
-          "Stræk det, men jeg vil have ulempen skrevet ned før vi underskriver.",
-          "Jeg accepterer det, hvis fordelen reelt opvejer det der kan gå galt.",
-          "Ambitiøst er fint. Skødesløst er det ikke, og jeg holder øje med grænsen."
+          "Højere, fint. Så længe vi er ærlige om, hvad vi risikerer.",
+          "Kør bare, men jeg vil have bagsiden skrevet ned, før vi skriver under.",
+          "Jeg accepterer det, hvis gevinsten virkelig opvejer det, der kan gå galt.",
+          "Ambitiøst er fint. Uansvarligt er det ikke. Jeg holder øje med grænsen."
         ],
         "midseason_status": [
           "Halvvejs, og billedet er hverken så godt eller så dårligt som det føles.",
@@ -1118,16 +1118,16 @@
           "Halvvejs, og balancen holder stadig, lige akkurat, og netop derfor holder vi øje."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og afvejningerne undervejs var det værd.",
-          "Nået uden at bryde noget andet for at komme dertil. Det er den rigtige sejr.",
-          "Sådan ser en afbalanceret plan ud når den betaler sig.",
-          "Godt udfald, og jeg ville tage de samme afvejninger igen."
+          "Det var det værd. Kompromiserne undervejs betalte sig.",
+          "Klaret uden at ødelægge noget andet. Det er den egentlige sejr.",
+          "Sådan ser en fornuftig plan ud, når den betaler sig.",
+          "Godt resultat. Jeg ville træffe de samme valg igen."
         ],
         "milestone_missed": [
-          "Milepælen glipper. Ikke enden på planen, men et hårdt kig på hvorfor er det værd.",
-          "Vi regnede afvejningen forkert et sted. Lad os finde hvor.",
-          "Skuffende, men ingen grund til at forlade den afbalancerede tilgang.",
-          "Jeg noterer det. Næste plan justerer vægtningen, ikke filosofien."
+          "Ikke enden på planen, men vi skal forstå, hvorfor vi kom til kort.",
+          "Vi har ramt forkert et sted i balancen. Lad os finde ud af hvor.",
+          "Skuffende, men ingen grund til at smide hele tilgangen ud.",
+          "Noteret. Næste gang ændrer vi vægtningen, ikke filosofien."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder til et ekstraordinært møde. Balancen har tippet nok til at retfærdiggøre det.",
@@ -1197,34 +1197,34 @@
           "Hvis det fortsætter, ringer akademiet ikke."
         ],
         "receipt_positive": [
-          "En debutant fik sin første sejr i dag. Det er hele pointen med det her.",
           "De unge får plads, og de bruger den.",
-          "Endnu en U25'er tog et skridt i dag. Sådan bygges en generation.",
-          "Det her hold fostrer talent, ikke bare bruger det op."
+          "Endnu en ung rytter har taget et skridt frem. Sådan bygger man en generation.",
+          "Det her hold udvikler talent. Det bruger det ikke bare op.",
+          "Det er hele pointen. Jeg er stolt af dem."
         ],
         "receipt_negative": [
-          "De unge sidder på bænken igen. Det gør ondt at se.",
+          "De unge sidder på bænken igen. Det er svært at se på.",
           "Vi lover udvikling og leverer stilstand.",
-          "Endnu en debutant uden løb i benene denne måned.",
-          "Talentet er der. Chancen er der ikke."
+          "Talentet er der. Chancerne er der ikke.",
+          "Unge ryttere skal have løb, ikke bare en plads på holdbilledet."
         ],
         "meeting_easier": [
-          "Et lempet mål betyder mere tålmodighed med de unge. Det tager jeg gerne.",
-          "Færre point at jagte, mere plads til at lade en debutant lære.",
-          "Lempet er fint, så længe udviklingen ikke lempes med.",
-          "Jeg accepterer det her, hvis det betyder flere løb til U25-truppen."
+          "Et lettere mål betyder mere tålmodighed med de unge. Det er jeg glad for.",
+          "Færre point at jagte, mere plads til, at en ung rytter kan lære.",
+          "Fint, så længe udviklingen ikke også bliver lempet.",
+          "Ja, hvis det betyder flere løb til de unge."
         ],
         "meeting_keep": [
-          "Samme mål, samme løfte til de unge om at de bliver set.",
-          "Fastholdt. De unge fortjener konsistens, ikke omskiftelighed.",
-          "Ingen ændring, og det er fint. Udvikling tager den tid den tager.",
-          "Vi holder kursen for ungdommens skyld."
+          "Samme løfte til de unge: De bliver set.",
+          "Unge ryttere har brug for noget stabilt at vokse ind i.",
+          "Udvikling tager den tid, den tager. Det her er fint.",
+          "Godt for de unge. Lad det stå."
         ],
         "meeting_stretch": [
-          "Et strammere mål må ikke gå ud over debutanterne.",
-          "Jeg accepterer stræk-målet, men jeg holder øje med hvem der får løb.",
+          "Et hårdere mål må ikke gå ud over de unge.",
+          "Jeg accepterer det, men jeg holder øje med, hvem der får lov at køre.",
           "Ambitiøst er fint, så længe de unge stadig får deres chance.",
-          "Sæt målet højere. Bare glem ikke hvem der skal nå det."
+          "Sigt højere. Bare glem ikke, hvem der skal bringe os derhen."
         ],
         "midseason_status": [
           "Vi er midtvejs, og jeg vil vide hvor mange debutanter der har fået løb siden sidst.",
@@ -1233,16 +1233,16 @@
           "Midtvejs, og de unge har stadig min fulde opmærksomhed."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og en debutant var med til at gøre det. Sådan skal det se ud.",
-          "Nået, og bestyrelsen finder allerede det næste mål til de unge at vokse mod.",
-          "Det her beviser at udviklingssporet virker.",
-          "En fremtid der var lovet, er nu en fremtid der er leveret."
+          "Jeg håber, de unge ved, at de er en del af det her.",
+          "Dejligt. Lad os se, hvad de unge kan vokse ind i næste gang.",
+          "Det viser, at udviklingsvejen virker.",
+          "En fremtid, vi lovede, og nu en fremtid, vi har leveret."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og jeg spørger mig selv om de unge fik nok tid.",
-          "Ikke enden på verden, men udviklingen skal fremskyndes.",
+          "Milepælen glippede. Fik de unge tid nok?",
+          "Ikke verdens undergang, men udviklingen skal gå hurtigere.",
           "Vi skylder de unge en bedre plan herfra.",
-          "Jeg noterer det. Næste årsmøde skal give dem en reel chance igen."
+          "På næste årsmøde får de en reel chance igen. Det sørger jeg for."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder ekstraordinært. Jeg vil have de unges vilkår på dagsordenen.",
@@ -1312,34 +1312,34 @@
           "Vi taber jord vi ikke kan vinde tilbage let."
         ],
         "receipt_positive": [
-          "Vores egne ryttere bar flaget i dag, og fansene hørte deres eget sprog i feltet.",
-          "Det her er et hjemligt resultat, og det betyder mere end pointene.",
-          "Den nationale kerne leverede, præcis som en klub som vores bør.",
-          "Vores flag var i front i dag. Det er værd mere end marginen."
+          "Vores egne ryttere i front. Fansene hører deres eget sprog i feltet.",
+          "Et hjemmelavet resultat. Det betyder mere for mig end pointene.",
+          "Den nationale kerne leverede, som den skal i en klub som vores.",
+          "Vores flag i front. Det er mere værd end marginen."
         ],
         "receipt_negative": [
-          "Færre hjemlige ryttere på resultatlisten, og færre fans genkender sig selv i holdet.",
-          "Vi bliver en klub af importerede navne, og hjemmepublikummet lægger mærke til det.",
-          "Den nationale kerne udtyndes, og det er en langsommere katastrofe end noget nederlag.",
-          "Vores eget flag driver mod bagenden af feltet."
+          "Færre hjemlige ryttere på resultatlisten. Færre fans kan se sig selv i holdet.",
+          "Vi er ved at blive en klub af importerede navne, og hjemmepublikummet lægger mærke til det.",
+          "Den nationale kerne bliver tyndere. Det er en langsommere katastrofe end noget nederlag.",
+          "Vores eget flag driver bagud i feltet."
         ],
         "meeting_easier": [
-          "Et lavere mål for den nationale kerne, så længe kernen selv ikke skrumper.",
-          "Lempet, men jeg vil have de hjemlige ryttere stadig på startlisten, ikke bare tallet.",
-          "Fint, så længe det er tålmodighed med vores egne, ikke en stille tilbagetrækning fra dem.",
-          "Jeg accepterer det, hvis det giver det hjemlige talent mere tid til at vokse ind i rollen."
+          "Et lavere mål for den nationale kerne, så længe kernen ikke selv skrumper.",
+          "Jeg vil se vores egne ryttere på startlisten, ikke bare i tallene.",
+          "Fint, hvis det er tålmodighed med vores egne og ikke et stille skridt væk fra dem.",
+          "Jeg accepterer det, hvis det giver vores hjemlige talenter mere tid til at vokse."
         ],
         "meeting_keep": [
-          "Samme mål. Vores nationale identitet forhandles ikke om på et indfald.",
-          "Fastholdt, og hjemmepublikummet fortjener den konsistens.",
-          "Ingen ændring. Flaget på trøjen forbliver præcis lige så vigtigt som før.",
-          "Fint som det står. Klubbens kerne var aldrig til rabat."
+          "Hvem vi er, er ikke til forhandling.",
+          "Hjemmepublikummet fortjener den stabilitet.",
+          "Flaget på trøjen betyder lige så meget som altid.",
+          "Vores kerne har aldrig været til salg."
         ],
         "meeting_stretch": [
-          "Et højere mål for den nationale kerne, og jeg holder alle fast på det.",
-          "Stræk det. Det er på tide klubben læner sig hårdere ind i hvem vi er.",
-          "Jeg accepterer det, så længe det betyder flere hjemlige navne, ikke bare et større tal.",
-          "Ambitiøst, og hjemmepublikummet vil endelig se sig selv oftere."
+          "Et højere mål for den nationale kerne, og det holder jeg alle op på.",
+          "Det er på tide, at klubben står ved, hvem vi er.",
+          "Ja, så længe det betyder flere hjemlige ryttere og ikke bare et større tal.",
+          "Ambitiøst. Hjemmepublikummet kommer endelig til at se flere af deres egne."
         ],
         "midseason_status": [
           "Halvvejs, og jeg vil vide hvor mange hjemlige ryttere der faktisk har kørt løb.",
@@ -1348,16 +1348,16 @@
           "Halvvejs, og den nationale kerne holder, hvilket er det tal der betyder noget for mig."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og en hjemlig rytter var i front da det skete.",
-          "Nået, og hele landet kan gøre krav på den her.",
-          "Det her er den slags milepæl der gør hjemmepublikummet stolt af at bære farverne.",
-          "Vores eget flag leverede da det gjaldt. Det bliver husket."
+          "Den her kan hele landet tage æren for.",
+          "Den slags milepæl gør hjemmepublikummet stolte af at bære farverne.",
+          "Vores egne farver, vores egen milepæl. Det bliver husket.",
+          "Den her tilhører også hjemmepublikummet."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og jeg spørger om de hjemlige ryttere fik chancen til at bære den.",
-          "Ikke katastrofalt, men den nationale kerne fortjente bedre placering her.",
-          "Vi skylder hjemmepublikummet en klarere vej til den her milepæl næste gang.",
-          "Jeg noterer det. Flaget kommer tilbage i front til næste årsmøde."
+          "Fik vores egne ryttere overhovedet chancen for at bære det her?",
+          "Den nationale kerne fortjente en større rolle her.",
+          "Vi skylder hjemmepublikummet en klarere vej hertil næste gang.",
+          "På næste årsmøde kommer flaget tilbage i front."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder ekstraordinært, og jeg vil have den nationale kernes stilling på dagsordenen.",
@@ -1427,34 +1427,34 @@
           "Ingen tager klubben seriøst på Roubaix-rampen efter det her."
         ],
         "receipt_positive": [
-          "Det var en ordentlig brostens-præstation. Forårskampagnen lever.",
-          "Vi kørte som et klassikerhold i dag, og det viste sig på stenene.",
-          "Et resultat som det der hører hjemme på Roubaix-velodromen, ikke bare på resultatlisten.",
-          "Sådan ser en monument-formet sæson ud i april."
+          "Det er et ordentligt klassikerresultat. Det er det, klubben er til for.",
+          "Vi kørte som et klassikerhold, og det kunne ses.",
+          "Et resultat som det hører hjemme på velodromen i Roubaix, ikke bare på en resultatliste.",
+          "Nu føles det som en klub, der hører til på brostenene."
         ],
         "receipt_negative": [
-          "Ingen brosten, ingen forårsform, ingen historie værd at fortælle denne april.",
-          "Vi så fortabte ud i det øjeblik vejen blev til sten.",
-          "Et klassikerhold der undgår brostenene er ikke et klassikerhold.",
+          "Ingen brosten, ingen form, ingen historie værd at fortælle.",
+          "Vi ser fortabte ud, så snart vejen bliver til brosten.",
+          "Et klassikerhold, der undgår brostenene, er ikke et klassikerhold.",
           "Monumenterne vil ikke huske en sæson som den her."
         ],
         "meeting_easier": [
-          "Et lettere forårsmål, så længe vi stadig møder op til de sten der tæller.",
-          "Lempet, men monumenterne er ligeglade med vores undskyldninger uanset hvad.",
-          "Fint, hvis det betyder vi bygger ordentligt mod Roubaix i stedet for at tvinge det.",
-          "Jeg accepterer det, så længe det ikke er klassiker-identiteten der blev sænket."
+          "Et lettere mål, så længe vi stadig dukker op til de løb, der betyder noget.",
+          "Monumenterne er ligeglade med vores undskyldninger uanset hvad.",
+          "Fint, hvis det betyder, at vi bygger ordentligt op mod Roubaix i stedet for at tvinge det.",
+          "Jeg accepterer det, så længe det ikke er vores klassikeridentitet, vi lige har sænket."
         ],
         "meeting_keep": [
-          "Samme mål. Brostenene bliver ikke lettere fordi vi beder pænt.",
-          "Fastholdt. Foråret genforhandler ikke sin kalender for nogen.",
-          "Ingen ændring. Et klassikerhold holder sin ambition gennem mudderet.",
-          "Fint som det står. Monumenterne fortjener et fast mål, ikke et der flytter sig."
+          "Brostenene bliver ikke nemmere, fordi vi spørger pænt.",
+          "Klassikerne flytter ikke deres datoer for nogen.",
+          "En klassikerklub holder fast i ambitionen gennem mudderet.",
+          "Monumenterne fortjener et fast mål, ikke et, der flytter sig."
         ],
         "meeting_stretch": [
-          "Et hårdere forårsmål. Endelig noget brostenene er værd.",
-          "Stræk det. Klubben skal have ondt i maven ved at sigte på mindre end et monument.",
-          "Jeg accepterer det, med glæde. Klassikerne fortjener ægte ambition, ikke en beskeden en.",
-          "Ambitiøst, og forårskampagnen fik lige det pres den havde brug for."
+          "Et hårdere mål. Endelig noget, brostenene er værd.",
+          "Vi skal ikke nøjes med mindre end et monument.",
+          "Gerne. Klassikerne fortjener ægte ambition.",
+          "Ambitiøst. Godt, nu er presset på."
         ],
         "midseason_status": [
           "Halvvejs, og jeg bedømmer stadig sæsonen på hvad der skete i april.",
@@ -1463,16 +1463,16 @@
           "Halvvejs, og monumenterne fortalte os allerede det meste af det vi behøver at vide."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og det skete på de veje der betyder noget for klubben.",
-          "Nået, med brosten under hjulene. Sådan skal det gøres.",
-          "Det her er den slags milepæl klassiker-historiebøgerne faktisk vil nævne.",
-          "Et monument-værdigt resultat. Det er hvad klubben findes for."
+          "Klaret på de veje, der betyder noget for klubben.",
+          "Milepælen er i hus. Sådan gør en klassikerklub det.",
+          "Den her vil klassikernes historiebøger faktisk nævne.",
+          "Et resultat, der er et monument værdigt. Det er derfor, klubben findes."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og et forår uden et ægte resultat gør mere ondt end nogen anden sæson.",
-          "Ikke katastrofalt, men den brostensbelagte kampagne skyldte os mere end det her.",
-          "Vi skylder klassiker-identiteten et skarpere forår næste år.",
-          "Jeg noterer det. Næste forsøg begynder opbygningen mod april med det samme."
+          "Et år uden et ægte klassikerresultat svier mere end noget andet.",
+          "Klassikerne skyldte os mere end det her.",
+          "Vi har brug for en skarpere klassikersæson næste år.",
+          "Opbygningen til næste gang starter nu."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder til et ekstraordinært møde. Foråret venter ikke på den sædvanlige kalender.",
@@ -1542,34 +1542,34 @@
           "Vi mangler en plan for hvor stjernen skal komme fra."
         ],
         "receipt_positive": [
-          "Den bakke var Tour-form. Vi bygger noget rigtigt til juli.",
-          "GC-billedet ser bedre ud hver uge. Sådan bygger man et etapeløbsprojekt.",
-          "En præstation som den der hører hjemme i bjergene på et grand tour, ikke i et endagsløb.",
-          "Vi kører endelig som et hold med en treugers-ambition."
+          "Det er grand tour-form. Vi bygger noget ægte.",
+          "GC-billedet bliver ved med at blive bedre. Sådan bygger man et etapeløbshold.",
+          "Endelig kører vi som et hold med en ambition på tre uger.",
+          "Jeg kan se det nu. Touren kommer nærmere."
         ],
         "receipt_negative": [
-          "Ingen GC-tilstedeværelse, ingen bjergben, intet Tour-projekt værd navnet.",
-          "Vi faldt fra hinanden i det øjeblik vejen gik opad i mere end én etape.",
-          "Et hold uden en reel GC-trussel bygger ikke mod noget jeg interesserer mig for.",
-          "Touren er længere væk denne uge end den var sidste måned."
+          "Ingen GC-tilstedeværelse, ingen klatreben, intet Tour-projekt, der er navnet værd.",
+          "Vi falder fra hinanden, så snart vejen går opad i mere end én dag.",
+          "Et hold uden en reel GC-trussel bygger ikke mod noget, jeg går op i.",
+          "Touren føles længere væk end for en måned siden."
         ],
         "meeting_easier": [
-          "Et lettere GC-mål, så længe vi stadig kører de tre uger som om de betyder noget.",
-          "Lempet, men jeg vil have bjergbenene bygget uanset tallet.",
-          "Fint, hvis det giver klatrerne tid før vi beder dem om et grand tour.",
-          "Jeg accepterer det, så længe Touren stadig er den horisont vi kører mod."
+          "Et lettere GC-mål, så længe vi stadig kører tre uger, som om de betyder noget.",
+          "Klatrebenene skal bygges uanset hvad.",
+          "Fint, hvis det giver klatrerne tid, før vi beder dem om en grand tour.",
+          "Så længe Touren stadig er der, vi er på vej hen, kan jeg leve med det."
         ],
         "meeting_keep": [
-          "Samme mål. Bjergene er ligeglade med om vi har lyst denne uge.",
-          "Fastholdt. Et treugers-projekt genforhandler ikke sin egen tidslinje.",
-          "Ingen ændring. Touren er ikke rykket tilbage fordi vi bad om rabat.",
-          "Fint som det står. GC-ambitionen skal ikke være det første vi skærer i."
+          "Bjergene er ligeglade med, hvordan vi har det med det.",
+          "Et projekt på tre uger skriver ikke sin egen tidsplan om.",
+          "Touren venter ikke, fordi vi beder om rabat.",
+          "GC-ambitionen er det sidste, vi skal skære i."
         ],
         "meeting_stretch": [
-          "Et højere GC-mål. Endelig noget med en Tour-stor ambition.",
-          "Stræk det. Klubben skal altid sigte mod tre uger, ikke én dag.",
-          "Jeg accepterer det med glæde. Bjergene fortjener ægte ambition bag sig.",
-          "Ambitiøst, og det er den eneste indstilling det her projekt bør køre i."
+          "Endelig en ambition i Tour-størrelse.",
+          "Klubben skal altid sigte mod tre uger, ikke én dag.",
+          "Gerne. Bjergene fortjener ægte ambition.",
+          "Ambitiøst. Det er det eneste gear, det her projekt skal køre i."
         ],
         "midseason_status": [
           "Halvvejs, og jeg bedømmer sæsonen på hvor GC-projektet står, ikke på sprinterne.",
@@ -1578,16 +1578,16 @@
           "Halvvejs, og bjergbenene er på vej, hvilket er det eneste tal jeg følger."
         ],
         "milestone_achieved": [
-          "Milepælen er nået, og den skete med reel GC-tyngde bag sig.",
-          "Nået, på den slags bakke der afgør et grand tour.",
-          "Det her er den slags resultat der siger Tour-projektet er ægte, ikke en drøm.",
-          "Et resultat treugers-turen er værd. Det er det klubben er bygget til at jagte."
+          "Der er ægte GC-tyngde bag den her. Det elsker jeg.",
+          "Et skridt mere på vejen mod en grand tour.",
+          "Det her fortæller mig, at Tour-projektet er ægte, ikke en drøm.",
+          "Et resultat, der er tre uger værdigt. Det er det, klubben er bygget til."
         ],
         "milestone_missed": [
-          "Milepælen glipper, og et grand tour-projekt uden den mister en hel sæsons momentum.",
-          "Ikke katastrofalt, men bjergene skyldte os mere end det her.",
-          "Vi skylder GC-projektet en skarpere opbygning mod næste års tre uger.",
-          "Jeg noterer det. Vejen mod Touren bliver genopbygget fra i dag."
+          "Det koster et grand tour-projekt en hel sæsons momentum.",
+          "Klatrerne havde mere i sig, end det her viste.",
+          "Vi har brug for en skarpere opbygning mod næste grand tour.",
+          "Vi begynder at bygge vejen mod Touren op igen nu."
         ],
         "extraordinary_meeting": [
           "Bestyrelsen indkalder til et ekstraordinært møde. Et Tour-projekt venter ikke på den sædvanlige kalender.",
@@ -1870,9 +1870,9 @@
     },
     "vision": {
       "cardTitle": "Klubvision",
-      "meta": "S{start} til S{end}",
-      "seasonLabel": "S{season}",
-      "currentSeasonLabel": "S{season} · Du er her",
+      "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}}",
+      "seasonLabel": "Sæson {season}",
+      "currentSeasonLabel": "Sæson {season} · Du er her",
       "explainer": "Milepæle bedømmes i deres målsæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
       "empty": {
         "title": "Ingen vision sat endnu",
@@ -1888,7 +1888,7 @@
     "board": {
       "cardTitle": "Bestyrelsen",
       "minutesLink": "Referater",
-      "memberGridHint": "Tryk på et medlem for at se dennes syn på bestyrelsen.",
+      "memberGridHint": "Tryk på et medlem for at se, hvad de mener, og hvilke mål de ejer.",
       "role": {
         "chair": "Formand",
         "results": "Resultater",
@@ -1907,14 +1907,13 @@
     },
     "member": {
       "viewHint": "Se medlem",
-      "portraitLabel": "Portræt",
       "ownsGoalsCount": "ejer {count} mål",
       "sinceSeason": "i bestyrelsen siden S{season}",
       "personalityHeading": "Personlighed",
       "ownsGoalsHeading": "Ejer disse mål",
       "ownWordsHeading": "Med egne ord",
       "confidenceMove": "{sign}{delta} tillid · {date}",
-      "footerNote": "Portrætter kommer i en senere runde. Stemmen er identiteten.",
+      "footerNote": "Ingen billeder endnu. Indtil videre kender du dem på det, de siger.",
       "close": "Luk"
     },
     "minutesFixture": {
@@ -1956,7 +1955,7 @@
         "choiceDisabledEasier": "Dette mål kan ikke lempes yderligere.",
         "choiceDisabledStretch": "Dette mål kan ikke strækkes yderligere.",
         "choiceDisabledBudget": "Du har brugt alle dine justeringer til dette møde.",
-        "reactionAttribution": "{name} bakker op om {choice}"
+        "reactionAttribution": "{name}, der ejer målet"
       },
       "visionSlot": {
         "title": "Bestyrelsen foreslår en ny milepæl",
@@ -1996,7 +1995,7 @@
       "openBoard": "Åbn bestyrelsen",
       "visionLabel": "Klubvision",
       "boardLabel": "Bestyrelsen",
-      "nextMilestone": "Næste milepæl: {milestone}, mål i S{season}.",
+      "nextMilestone": "Næste milepæl: {milestone}, i sæson {season}.",
       "boardNoQuote": "Bestyrelsen har ikke sagt noget siden sidste møde.",
       "goalValue": "{achieved} / {target}"
     },
@@ -2026,7 +2025,7 @@
       "min_u25_riders": "U25-ryttere på dit hold lige nu.",
       "min_national_riders": "ryttere fra målets land på dit hold lige nu.",
       "min_riders": "ryttere på dit hold lige nu.",
-      "no_outstanding_debt": "din saldo minus aktive lån, holdt op mod én sæsons lønsum.",
+      "no_outstanding_debt": "din saldo minus aktive lån. Målet er nået, hvis det er nul eller mere ved sæsonens slutning.",
       "sponsor_growth": "stigningen i sponsorens sæsonudbetaling siden planens første sæson, i procent.",
       "monument_podium": "top 3-placeringer i Monuments, eller i klassikere når målet nævner dem. Et bonusmål tælles fra accepten.",
       "signature_rider": "ryttere med højt omdømme på dit hold. Et bonusmål tælles fra accepten.",

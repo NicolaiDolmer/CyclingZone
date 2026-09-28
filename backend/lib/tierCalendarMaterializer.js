@@ -824,10 +824,19 @@ export async function materializeTierCalendars({
   // foer. "u23"/"junior" laeser KUN truppens puljer (league_divisions.squad), truppens
   // katalog (race_pool.squad) og truppens eksisterende loeb, og skriver races.squad.
   squad = "senior",
+  // #5795: puljer der pensioneres VED SKIFTET (S4's målstruktur, calendarTargetStructure.js)
+  // men endnu står aktive i databasen. De behandles i planen PRÆCIS som en pensioneret pulje
+  // (retiredAt sat) og får ingen løb. Kun planen: retired_at i databasen røres ikke.
+  // null/tom = uændret adfærd.
+  cutoverRetiredPoolIds = null,
 } = {}) {
   assertCalendarSquad(squad);
   const isSenior = squad === "senior";
   const editionYear = editionYearFrom(seasonStartDate);
+  const cutoverRetired = new Set(cutoverRetiredPoolIds ?? []);
+  if (cutoverRetired.size && !isSenior) {
+    throw new Error("cutoverRetiredPoolIds is senior-only (#5795): squad groups are never retired at the cutover");
+  }
 
   // #5644: kun AKTIVE puljer (retired_at IS NULL, #4592 A2) i truppen.
   const { data: divisions, error: dErr } = await loadCalendarPools({ supabase, squad });
@@ -853,7 +862,7 @@ export async function materializeTierCalendars({
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({
     id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0,
-    retiredAt: d.retired_at ?? null, squad,
+    retiredAt: d.retired_at ?? (cutoverRetired.has(d.id) ? "cutover" : null), squad,
   }));
 
   // #3469: date_text tilføjet — race_pool's VIRKELIGE dato, kilden til seasonFraction

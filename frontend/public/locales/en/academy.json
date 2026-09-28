@@ -21,11 +21,11 @@
     "comingSoon": "Coming soon",
     "junior": {
       "title": "Junior team",
-      "description": "Ages 16-18. Own races and standings."
+      "description": "Riders aged 18 or younger. Own races and standings."
     },
     "u23": {
       "title": "U23 team",
-      "description": "Ages 19-22. Own races, divisions and promotion."
+      "description": "Riders aged 22 or younger. Own races, divisions and promotion."
     }
   },
   "seriousBadge": "Serious prospect",

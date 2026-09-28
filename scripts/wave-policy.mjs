@@ -143,13 +143,19 @@ export function hostBootId() {
 export const LONG_LOCK_ATTEMPTS = 2400; // ~120 s: intake, enqueue, release, watch CLI (#5602)
 export const HOOK_LOCK_ATTEMPTS = 1200; // ~60 s: first dispatch and the PostToolUse run binding (#5602)
 
-export function withWaveStateLock(dir, action, attempts = 100) {
-  // Keyed on a clock-independent boot identity (#5533), so every process in
-  // one boot shares the lock even across a clock correction.
+// Keyed on a clock-independent boot identity (#5533), so every process in
+// one boot shares the lock even across a clock correction. Shared with
+// acquireMergeLock (#5677) so the merge gate's own fallback attempt locks
+// the SAME directory as every other caller - never a second, divergent lock.
+function waveLockPath(dir) {
   const lockKey = hostBootIdentity().lockKey;
   if (!lockKey) throw Error('Cannot identify host boot for wave state lock');
   const key = createHash('sha256').update(lockKey).digest('hex').slice(0, 16);
-  const lock = path.join(dir, `wave-state-${key}.lock`);
+  return path.join(dir, `wave-state-${key}.lock`);
+}
+
+export function withWaveStateLock(dir, action, attempts = 100) {
+  const lock = waveLockPath(dir);
   let acquired = false;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try { fs.mkdirSync(lock); acquired = true; break; }
@@ -368,10 +374,46 @@ export function readPrHeadFromGitHub(pr, repo = REPO) {
   return ghJson(['pr', 'view', String(pr), '--repo', repo, '--json', 'headRefOid'])?.headRefOid;
 }
 
+// ---------------------------------------------------------------- ownership release (#5677)
+// A track's reserved files stop blocking a merge once it is no longer
+// genuinely contested: its own PR is already merged (#5652, #5665 - a
+// finished track kept blocking others until the wave's own intake got
+// around to marking its branch finished), or it was admitted but never
+// actually started (#5632 - no worktree ever created for it, holding files
+// indefinitely). Both are real signals here for the CLI; every test injects
+// its own fake instead (see mergeIo() in wave-policy.test.mjs), so an
+// ordinary `node --test` run never shells out to `gh` or touches the
+// filesystem for either check.
+export function readMergedBranches(repo = REPO) {
+  return new Set(ghJson(['pr', 'list', '--repo', repo, '--state', 'merged', '--json', 'headRefName', '--limit', '200']).map(p => p.headRefName));
+}
+
+// dir is the shared run dir (<repoRoot>/.claude/run, see sharedRunDir);
+// worktrees live as a SIBLING of the repo root, in `<repoRoot>-worktrees`
+// (new-worktree.ps1's own convention - see also DEFAULT_WORKTREE_ROOT in
+// report-orphan-worktree-dirs.mjs).
+function defaultWorktreeRoot(dir) {
+  const repoRoot = path.dirname(path.dirname(dir));
+  return path.join(path.dirname(repoRoot), `${path.basename(repoRoot)}-worktrees`);
+}
+
+export function branchHasWorktree(dir, branch) {
+  return fs.existsSync(path.join(defaultWorktreeRoot(dir), slugOf(branch)));
+}
+
 // Renames count with their previous path too.
-export function findOwnershipConflicts(wave, files) {
+// #5677: `release` optionally narrows which active tracks still hold their
+// files - `mergedBranches` (a Set of branches whose PR is already merged)
+// and `hasWorktree(branch)` (false = never started). Omitting either (the
+// default `{}`) preserves the pre-#5677 behaviour of every existing caller
+// unchanged: every active track still holds every one of its files.
+export function findOwnershipConflicts(wave, files, release = {}) {
   if (!Array.isArray(files)) throw Error('PR file list is not an array; merge blocked');
-  const owned = activeTracks(wave).flatMap(t => t.ownership.map(raw => ({ issue: t.issue, raw, own: ownershipPrefix(raw) })));
+  const { mergedBranches, hasWorktree } = release;
+  const owned = activeTracks(wave)
+    .filter(t => !mergedBranches?.has(t?.branch))
+    .filter(t => !hasWorktree || hasWorktree(t?.branch))
+    .flatMap(t => t.ownership.map(raw => ({ issue: t.issue, raw, own: ownershipPrefix(raw) })));
   const conflicts = [];
   for (const f of files) {
     if (typeof f?.filename !== 'string' || !f.filename) throw Error('PR file entry without filename; merge blocked');
@@ -403,14 +445,16 @@ function modernMarkerOrBlock(dir) {
 }
 
 // Pre-check for merge-queue.ps1. The authoritative check is guardedMerge.
-export function assertMergeAllowed(dir, pr, readFiles = readPrFilesFromGitHub, repo = REPO) {
+// `release` (#5677): see findOwnershipConflicts; defaults to the pre-#5677
+// "every active track still holds its files" behaviour.
+export function assertMergeAllowed(dir, pr, readFiles = readPrFilesFromGitHub, repo = REPO, release = {}) {
   if (!fs.existsSync(path.join(dir, 'wave-active.json'))) return { allowed: true, wave: null };
   const wave = modernMarkerOrBlock(dir);
   if (pr === undefined || pr === null) return { allowed: true, wave: wave.waveId };
   let files;
   try { files = readFiles(pr, repo); }
   catch (e) { throw Error(`PR file list unavailable; merge blocked (${e.message})`); }
-  const conflicts = findOwnershipConflicts(wave, files);
+  const conflicts = findOwnershipConflicts(wave, files, release);
   if (conflicts.length) throw conflictError(pr, conflicts);
   return { allowed: true, wave: wave.waveId, pr: Number(pr), files: files.length };
 }
@@ -421,7 +465,58 @@ const defaultMergeIo = {
   readFiles: readPrFilesFromGitHub,
   // fileURLToPath handles Windows drive paths; no shell-built command string.
   merge: (pr, repo, headSha) => execFileSync('pwsh', ['-NoProfile', '-File', mergeScript(), '-Pr', String(pr), '-Repo', repo, ...(headSha ? ['-HeadSha', headSha] : [])], { stdio: 'inherit' }),
+  // #5677: real ownership-release signals for the CLI path only.
+  readMergedBranches,
+  hasWorktree: branchHasWorktree,
 };
+
+// #5677: builds findOwnershipConflicts' `release` from an `io` bundle. A
+// failure of either signal falls back to "unknown" (never releases, i.e.
+// the pre-#5677 fail-closed default) rather than aborting the whole merge -
+// losing the optimisation is safe; losing the file-list read (readFiles)
+// is not, and that one still hard-blocks as before.
+function mergeReleaseInfo(dir, repo, io) {
+  const safe = (fn, fallback) => { try { return fn(); } catch { return fallback; } };
+  return {
+    mergedBranches: io.readMergedBranches ? safe(() => io.readMergedBranches(repo), undefined) : undefined,
+    hasWorktree: io.hasWorktree ? branch => safe(() => io.hasWorktree(dir, branch), true) : undefined,
+  };
+}
+
+function mergeAction(dir, marker, pinned, pr, repo, io) {
+  if (!fs.existsSync(marker)) return pinned ? io.merge(pr, repo, pinned.head) : io.merge(pr, repo);
+  const wave = modernMarkerOrBlock(dir);
+  if (!pinned) throw Error('A wave started while the merge was being prepared; merge blocked, run the queue again');
+  const conflicts = findOwnershipConflicts(wave, pinned.files, mergeReleaseInfo(dir, repo, io));
+  if (conflicts.length) throw conflictError(pr, conflicts);
+  return io.merge(pr, repo, pinned.head);
+}
+
+// #5677: the merge gate's own lock attempt - same lock file as
+// withWaveStateLock (waveLockPath), but with backoff up to
+// MERGE_LOCK_FALLBACK_MS (default 30 s). Every OTHER caller (admission,
+// intake, release, watch) is untouched; only guardedMerge degrades to a
+// lock-free read past this point instead of failing outright (#5654, #5668:
+// a merge from the main session must not starve just because the running
+// wave's own writes hold the lock for a while).
+export const MERGE_LOCK_FALLBACK_MS = 30000;
+function acquireMergeLock(dir, timeoutMs) {
+  const lock = waveLockPath(dir);
+  const deadline = Date.now() + timeoutMs;
+  let wait = 50;
+  for (;;) {
+    try { fs.mkdirSync(lock); return lock; }
+    catch (e) { if (e.code !== 'EEXIST') throw e; }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return null;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.min(wait, remaining));
+    wait = Math.min(wait * 2, 1000);
+  }
+}
+
+function defaultWarnLockFallback(timeoutMs) {
+  console.error(`wave-policy: Wave state lock busy after ~${Math.round(timeoutMs / 1000)} s; falling back to a lock-free ownership read (racy - another writer may be mid-update). Re-run once the lock clears if this merge looks wrong.`);
+}
 
 // Head, files, head again: the file list belongs to exactly that head.
 function readPinnedPrFiles(pr, repo, io) {
@@ -442,7 +537,10 @@ function readPinnedPrFiles(pr, repo, io) {
 // keeps them valid, and a lock held through network retries would starve
 // intake, enqueue and release in the running wave. Only the merge call and
 // its gh retries run under the lock, as before.
-export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo) {
+// #5677: `lockTimeoutMs` bounds how long a busy state lock is waited out
+// before this degrades to a lock-free read (see acquireMergeLock);
+// production default 30 s, tests inject a short one to stay fast.
+export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo, lockTimeoutMs = MERGE_LOCK_FALLBACK_MS) {
   fs.mkdirSync(dir, { recursive: true });
   const marker = path.join(dir, 'wave-active.json');
   let pinned = null;
@@ -450,14 +548,17 @@ export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo) {
     modernMarkerOrBlock(dir); // a legacy/malformed marker blocks before any GitHub read
     pinned = readPinnedPrFiles(pr, repo, io);
   }
-  return withWaveStateLock(dir, () => {
-    if (!fs.existsSync(marker)) return pinned ? io.merge(pr, repo, pinned.head) : io.merge(pr, repo);
-    const wave = modernMarkerOrBlock(dir);
-    if (!pinned) throw Error('A wave started while the merge was being prepared; merge blocked, run the queue again');
-    const conflicts = findOwnershipConflicts(wave, pinned.files);
-    if (conflicts.length) throw conflictError(pr, conflicts);
-    return io.merge(pr, repo, pinned.head);
-  });
+  const lock = acquireMergeLock(dir, lockTimeoutMs);
+  if (lock) {
+    try { return mergeAction(dir, marker, pinned, pr, repo, io); }
+    finally { fs.rmdirSync(lock); }
+  }
+  // Lock stayed busy past the fallback wait: warn loudly, then re-read the
+  // marker WITHOUT the lock (mergeAction re-reads it fresh) rather than
+  // refusing the merge outright. Every existing safety check still runs -
+  // a real ownership conflict still blocks, just on a possibly-stale read.
+  (io.warnLockFallback || defaultWarnLockFallback)(lockTimeoutMs);
+  return mergeAction(dir, marker, pinned, pr, repo, io);
 }
 
 export function stopWaveWatch(wave, observedBootId) {
@@ -533,9 +634,11 @@ async function cli() {
     console.log(JSON.stringify({ idle: true, runDir: dir }));
   } else if (command === 'assert-merge-allowed') {
     // #5562: replaces assert-idle in merge-queue.ps1. No override of the file reader here.
+    // #5677: same real release signals as guarded-merge, so the pre-check and
+    // the authoritative merge never disagree about which tracks still hold files.
     const pr = value('--pr'), repo = value('--repo') || REPO;
     if ((pr !== undefined && !/^[1-9]\d*$/.test(pr)) || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid PR and repository required');
-    console.log(JSON.stringify(assertMergeAllowed(dir, pr, readPrFilesFromGitHub, repo)));
+    console.log(JSON.stringify(assertMergeAllowed(dir, pr, readPrFilesFromGitHub, repo, mergeReleaseInfo(dir, repo, defaultMergeIo))));
   } else if (command === 'guarded-merge') {
     const pr = value('--pr'), repo = value('--repo') || REPO;
     if (!/^[1-9]\d*$/.test(pr || '') || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid merge PR and repository required');

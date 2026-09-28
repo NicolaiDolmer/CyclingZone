@@ -6,6 +6,7 @@ import {
   buildDay1Email,
   buildRaceDigestEmail,
   buildWinbackEmail,
+  buildSeasonSignupReminderEmail,
   buildLoopEmail,
 } from "./emailTemplates.js";
 import { WORDMARK_FILENAME } from "./emailWordmarkAsset.js";
@@ -601,5 +602,108 @@ test("winback email renders the EN rank as an ordinal (1st, 2nd, 3rd, 11th, 22nd
   for (const [rank, word] of Object.entries(cases)) {
     const t = buildWinbackEmail({ teamName: "T", daysSinceLastSeen: 30, rankInDivision: Number(rank), poolLabel: "D3 Pool A", unsubscribeUrl: UNSUB_URL });
     assert.ok(t.text.includes(`and currently sits ${word} in D3 Pool A.`), `rank ${rank}`);
+  }
+});
+
+// ─── season_signup_reminder (#5814) ─────────────────────────────────────────
+// Copy in docs/drafts/2026-09-27-season-signup-reminder-mail.md.
+
+const REMINDER_BULLETS_EN = [
+  "Training has been rebuilt for season 4.",
+  "A real board arrives with season 4.",
+  "Your U23 and junior squads are open.",
+  "Rider values have been recalculated.",
+  "Same chances to develop, whatever your division.",
+  "A new race engine is on its way.",
+];
+const REMINDER_BULLETS_DA = [
+  "Træningen er bygget om til sæson 4.",
+  "En rigtig bestyrelse kommer med sæson 4.",
+  "Dine U23- og juniorhold er åbne.",
+  "Rytterværdierne er regnet om.",
+  "Samme muligheder for udvikling, uanset division.",
+  "En ny løbsmotor er på vej.",
+];
+
+test("season signup reminder EN: subject, winback opening line, intro, all six bullets in order, closing, CTA, footer, no em-dash", () => {
+  const t = buildSeasonSignupReminderEmail({
+    teamName: "Team Velodrome",
+    rankInDivision: 5,
+    poolLabel: "Division 3 B",
+    unsubscribeUrl: UNSUB_URL,
+    language: "en",
+  });
+  assert.equal(t.subject, "Season 4 starts Monday. One tap keeps your spot.");
+  assert.ok(t.html.includes("Hi,"));
+  assert.ok(t.text.includes("Team Velodrome is still yours, exactly as you left it. It kept racing while you were away and currently sits 5th in Division 3 B."));
+  assert.ok(t.text.includes("A lot has happened since you were last here, and more lands with season 4:"));
+  let last = -1;
+  for (const lead of REMINDER_BULLETS_EN) {
+    const at = t.html.indexOf(`<strong>${lead}</strong>`);
+    assert.ok(at > last, `bullet "${lead}" present and in order`);
+    last = at;
+  }
+  assert.ok(t.text.includes("Races are run in segments, so breaks, climbs and finales play out where they should. I switch it on when it is ready."));
+  assert.ok(t.text.includes("Value now follows the rating you see on the card, so training you can see becomes value you can see."));
+  assert.ok(t.text.includes("on Graduation Day you decide who moves up, who is sold and who is released."));
+  assert.ok(t.text.includes("press Sign up for next season on your dashboard before 19:00 Danish time on Sunday 27 September."));
+  assert.ok(t.text.includes("If you miss it, nothing is deleted, and one tap brings you back later."));
+  assert.ok(t.html.includes(">Keep my spot<"));
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&amp;utm_medium=signup_reminder&amp;utm_campaign=signup_reminder"/);
+  assert.match(t.text, /Keep my spot: https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&utm_medium=signup_reminder&utm_campaign=signup_reminder$/m);
+  assert.equal((t.html.match(/class="cz-btn"/g) || []).length, 1, "exactly one gold primary button");
+  assertHasUnsubscribeLink(t);
+  assertHasSharedFooter(t);
+  assertNoEmDash(t, "season signup reminder en");
+  // The outdated win-back lines must not leak into this mail.
+  assert.ok(!t.text.includes("this is the week"));
+  assert.ok(!t.text.includes("U23 and junior squads are next"));
+  assert.ok(!t.text.includes("A new race engine arrives with season 4"));
+});
+
+test("season signup reminder DA: Danish copy, all six bullets in order, CTA, no em-dash, no English residue", () => {
+  const t = buildSeasonSignupReminderEmail({
+    teamName: "Team Velodrome",
+    rankInDivision: 5,
+    poolLabel: "Division 3 B",
+    unsubscribeUrl: UNSUB_URL,
+    language: "da",
+  });
+  assert.equal(t.subject, "Sæson 4 starter mandag. Ét tryk holder din plads.");
+  assert.ok(t.html.includes("Hej,"));
+  assert.ok(t.text.includes("Team Velodrome er stadig dit, præcis som du forlod det. Holdet kørte videre mens du var væk og ligger lige nu som nr. 5 i Division 3 B."));
+  assert.ok(t.text.includes("Der er sket meget siden sidst, og mere lander med sæson 4:"));
+  let last = -1;
+  for (const lead of REMINDER_BULLETS_DA) {
+    const at = t.html.indexOf(`<strong>${lead}</strong>`);
+    assert.ok(at > last, `bullet "${lead}" present and in order`);
+    last = at;
+  }
+  assert.ok(t.text.includes("Jeg tænder den, når den er klar."));
+  assert.ok(t.text.includes("tryk Tilmeld dig næste sæson på dit dashboard før kl. 19 søndag 27. september."));
+  assert.ok(t.text.includes("Når du det ikke, slettes intet, og ét tryk henter dig tilbage senere."));
+  assert.ok(t.html.includes(">Behold min plads<"));
+  assert.ok(t.text.includes("Behold min plads: https://cyclingzone.org/dashboard?utm_source=email&utm_medium=signup_reminder&utm_campaign=signup_reminder"));
+  assertNoEmDash(t, "season signup reminder da");
+  assert.ok(!t.html.includes("Hi,"));
+  assert.ok(!t.html.includes("Keep my spot<"));
+});
+
+test("season signup reminder: rank/pool clause dropped without a standing, team name escaped, generic fallback name", () => {
+  const noRank = buildSeasonSignupReminderEmail({ teamName: "Team <b>X</b>", rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
+  assert.ok(noRank.text.includes("Team <b>X</b> is still yours, exactly as you left it. It kept racing while you were away."));
+  assert.ok(noRank.html.includes("Team &lt;b&gt;X&lt;/b&gt; is still yours"));
+  assert.ok(!noRank.html.includes("<b>X</b>"));
+  assert.ok(!noRank.text.includes("undefined") && !noRank.text.includes("null"));
+  const noName = buildSeasonSignupReminderEmail({ teamName: "", rankInDivision: null, poolLabel: null, unsubscribeUrl: UNSUB_URL });
+  assert.ok(noName.text.includes("your team is still yours"));
+});
+
+test("season signup reminder shares the win-back opening line verbatim (same helper, EN and DA)", () => {
+  for (const language of ["en", "da"]) {
+    const args = { teamName: "Team Velodrome", rankInDivision: 5, poolLabel: "Division 3 B", unsubscribeUrl: UNSUB_URL, language };
+    const winbackOpening = buildWinbackEmail({ ...args, daysSinceLastSeen: 40 }).text.split("\n\n")[1];
+    const reminderOpening = buildSeasonSignupReminderEmail(args).text.split("\n\n")[1];
+    assert.equal(reminderOpening, winbackOpening, language);
   }
 });

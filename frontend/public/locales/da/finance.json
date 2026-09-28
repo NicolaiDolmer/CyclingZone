@@ -163,6 +163,7 @@
       "facility_purchase": "Facilitetsopgradering",
       "staff_severance": "Fratrædelsesgodtgørelse",
       "upkeep": "Drift og vedligehold",
+      "travel_staff": "Rejse og personale",
       "scout_travel": "Spejder-rejse",
       "auto_squad_purchase": "Automatisk trup-køb",
       "auto_squad_sale": "Automatisk trup-salg",
@@ -328,6 +329,7 @@
     "reasonCode": {
       "season_start_sponsor": "Sponsor",
       "season_start_upkeep": "Drift og vedligehold",
+      "race_day_travel_staff": "Rejse og personale",
       "season_start_parachute": "Nedrykningsfaldskærm",
       "season_start_academy_drift": "Akademi-drift",
       "season_end_salary": "Løn",

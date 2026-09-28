@@ -45,12 +45,6 @@ const WIN_RESULT_TYPES = ["stage", "gc"];
 const JERSEY_RESULT_TYPES = ["points", "mountain", "young"];
 // Hver 25. sejr i klubfarver er en fejrbar milepæl (25., 50., 75., ...).
 const CLUB_MILESTONE_STEP = 25;
-// Bounded fetch til "har rytteren nogensinde tidligere ..."-tjek: en ægte
-// debutant matcher kun DENNE afviklings egne række(r) (typisk 1-2); selv en
-// dominant rytter i én afviklingsbatch (fx flere etapesejre + GC i samme
-// simulateRace-kald for en hel grand tour) rammer sjældent 30. pagination-safe
-// via .limit() (scripts/lint-pagination-guard.mjs).
-const PRIOR_CHECK_LIMIT = 30;
 
 const SIGNIFICANCE = Object.freeze({
   [CAREER_EVENT_TYPES.MAIDEN_WIN]: 90,
@@ -96,30 +90,82 @@ export function pickCareerFirstCandidates({ resultRows = [] } = {}) {
 
 // ── I/O-helpers ──────────────────────────────────────────────────────────────
 
+// #5733 — HÆRDNING, IKKE en bekræftet rodårsag for den konkrete spillerrapport
+// (reviewer-fund 26/9, ret venligst se PR-bodyen for detaljer): den TIDLIGERE
+// udgave hentede op til 30 RÆKKER (ingen ORDER BY) og filtrerede i JS. I
+// TEORIEN kunne det lade en ægte TIDLIGERE sejr i et ANDET løb (fx et
+// monument) falde uden for det ubestemte 30-rækkers vindue for en rytter med
+// mange af DENNE races egne rækker (fx en grand tour-sweep) — men issuets eget
+// første skridt (slå rytterens rækker op i race_results/rider_career_events,
+// #5733) blev udført 26/9 EFTER at denne PR allerede påstod dette som
+// bekræftet rodårsag: for spillerens hold (cybersimon/"Team Hansen Pro
+// Cycling") er der KUN to maiden_win-events nogensinde (Daniel López 16/8,
+// Raúl Vargas 13/8), og INGEN af dem har en tidligere kvalificerende sejr i
+// et andet løb — begge er kronologisk korrekte "første sejr". Det samme
+// tjek kørt mod HELE prod (se database/proposals/5733-maiden-victory-cleanup.sql
+// trin 1) giver 0 mistænkelige maiden_win-events. Den påståede rodårsag er
+// altså IKKE verificeret at have udløst noget i prod, og den specifikke sag
+// bag #5733 er stadig uafklaret. Koden herunder er alligevel en reel
+// hærdning — en bounded, uordnet rækkehentning i et korrekthedstjek er en
+// fælde uanset om den er bevist at have udløst DENNE bug — så fixet bevares:
+// bounded rækkehentning erstattet med to UBEGRÆNSEDE COUNT-forespørgsler
+// (count:"exact", head:true — pagination-safe per definition, se
+// scripts/lint-pagination-guard.mjs: en HEAD-forespørgsel returnerer aldrig
+// rækker, kun et Content-Range-tal, og kan derfor ikke ramme PostgREST's
+// 1000-rækkers-loft eller nogen anden bounded-fetch-fælde). Semantik uændret:
+// (1) ETHVERT kvalificerende resultat i et ANDET løb er prior, uanset hvor
+//     langt tilbage det ligger eller hvor mange rækker rytteren har i alt; (2)
+// SAMME løb tæller kun de rækker der IKKE hører til DENNE finaliserings egne
+// etape-numre (se currentStageNumbers-scoping-noten øverst i filen).
 async function riderHasPriorResult({ supabase, riderId, raceId, currentStageNumbers, maxRank }) {
-  const { data, error } = await supabase
+  const { count: otherRaceCount, error: otherErr } = await supabase
     .from("race_results")
-    .select("race_id, stage_number")
+    .select("id", { count: "exact", head: true })
     .eq("rider_id", riderId)
     .in("result_type", WIN_RESULT_TYPES)
     .lte("rank", maxRank)
-    .limit(PRIOR_CHECK_LIMIT);
-  if (error) throw error;
-  const stageSet = new Set(currentStageNumbers);
-  return (data || []).some((r) => r.race_id !== raceId || !stageSet.has(r.stage_number));
+    .neq("race_id", raceId);
+  if (otherErr) throw otherErr;
+  if ((otherRaceCount ?? 0) > 0) return true;
+
+  let sameRaceQuery = supabase
+    .from("race_results")
+    .select("id", { count: "exact", head: true })
+    .eq("rider_id", riderId)
+    .eq("race_id", raceId)
+    .in("result_type", WIN_RESULT_TYPES)
+    .lte("rank", maxRank);
+  const stageList = [...new Set(currentStageNumbers)];
+  if (stageList.length) sameRaceQuery = sameRaceQuery.not("stage_number", "in", `(${stageList.join(",")})`);
+  const { count: sameRaceCount, error: sameErr } = await sameRaceQuery;
+  if (sameErr) throw sameErr;
+  return (sameRaceCount ?? 0) > 0;
 }
 
+// Samme fix som riderHasPriorResult ovenfor (#5733), for jersey-klassifikationer.
 async function riderHasPriorJersey({ supabase, riderId, raceId, resultType, currentStageNumbers }) {
-  const { data, error } = await supabase
+  const { count: otherRaceCount, error: otherErr } = await supabase
     .from("race_results")
-    .select("race_id, stage_number")
+    .select("id", { count: "exact", head: true })
     .eq("rider_id", riderId)
     .eq("result_type", resultType)
     .eq("rank", 1)
-    .limit(PRIOR_CHECK_LIMIT);
-  if (error) throw error;
-  const stageSet = new Set(currentStageNumbers);
-  return (data || []).some((r) => r.race_id !== raceId || !stageSet.has(r.stage_number));
+    .neq("race_id", raceId);
+  if (otherErr) throw otherErr;
+  if ((otherRaceCount ?? 0) > 0) return true;
+
+  let sameRaceQuery = supabase
+    .from("race_results")
+    .select("id", { count: "exact", head: true })
+    .eq("rider_id", riderId)
+    .eq("race_id", raceId)
+    .eq("result_type", resultType)
+    .eq("rank", 1);
+  const stageList = [...new Set(currentStageNumbers)];
+  if (stageList.length) sameRaceQuery = sameRaceQuery.not("stage_number", "in", `(${stageList.join(",")})`);
+  const { count: sameRaceCount, error: sameErr } = await sameRaceQuery;
+  if (sameErr) throw sameErr;
+  return (sameRaceCount ?? 0) > 0;
 }
 
 // Dokumenteret forenkling: ekskluderer HELE raceId (ikke kun denne batchs
