@@ -103,6 +103,8 @@ function makeMeetingSupabase({
             // signMandate awaiter direkte på .eq(...).eq(...) (ingen .select()) —
             // simulér ved at gøre chain "thenable".
             chain.then = (resolve) => resolve({ error: null, data: chain.__apply() });
+            // #5840 · .update().eq().eq().select("id") → matchede rækker.
+            chain.select = () => ({ then: (resolve) => resolve({ error: null, data: chain.__apply().map((m) => ({ id: m.id })) }) });
             return chain;
           },
         };
@@ -732,4 +734,29 @@ test("#5840 signMandate: afslag af kolliderende slot → slot lukket, intet inds
   assert.equal(supabase._state.milestones.length, 1);
   assert.equal(supabase._state.milestones[0].slot_open, false);
   assert.equal(supabase._state.mandates[0].status, "active");
+});
+
+test("#5840 signMandate: samtidigt sign vandt mandat-opdateringen → ingen dobbelte kvitteringer eller dual-write", async () => {
+  const base = makeCollisionSupabase();
+  const supabase = {
+    _state: base._state,
+    from(table) {
+      const real = base.from(table);
+      if (table !== "board_mandates") return real;
+      return {
+        ...real,
+        update: (payload) => {
+          // Vinderen sætter mandatet active lige før taberens betingede update.
+          base._state.mandates[0].status = "active";
+          return real.update(payload);
+        },
+      };
+    },
+  };
+  const payload = await signMandate(supabase, {
+    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: null,
+  });
+  assert.ok(payload, "taberen får den friske payload (idempotent svar)");
+  assert.equal(base._state.events.length, 0, "ingen kvittering fra taberen");
+  assert.equal(base._state.boardProfiles.length, 0, "ingen legacy dual-write fra taberen");
 });

@@ -610,7 +610,7 @@ export async function signMandate(supabase, {
   }
 
   const nowIso = now.toISOString();
-  const { error: updateError } = await supabase
+  const { data: signedRows, error: updateError } = await supabase
     .from("board_mandates")
     .update({
       status: "active",
@@ -622,8 +622,15 @@ export async function signMandate(supabase, {
       updated_at: nowIso,
     })
     .eq("id", mandateId)
-    .eq("status", "proposed");
+    .eq("status", "proposed")
+    .select("id");
   if (updateError) throw new Error(`board_mandates sign-update failed: ${updateError.message}`);
+  // #5840 (CodeRabbit) · 0 rækker = et samtidigt sign vandt den betingede
+  // opdatering. Stop FØR kvitteringer og legacy dual-write, så sideeffekterne
+  // kun skrives én gang; svar som idempotens-stien ovenfor.
+  if (!signedRows?.length) {
+    return buildBoardRoomPayload({ supabase, teamId });
+  }
 
   // Kvitteringer (spec §4.5 + addendum "stemme-kontrakten"): formandens
   // meeting_keep-linje som beat for selve underskriften, + evt.

@@ -46,6 +46,13 @@ function makeCronSupabase({
             const filters = {};
             const chain = {
               eq(col, value) { filters[col] = value; return chain; },
+              select: () => ({
+                then: (resolve) => {
+                  const matched = applyFilters(state.mandates, filters);
+                  matched.forEach((m) => Object.assign(m, payload));
+                  resolve({ data: matched.map((m) => ({ id: m.id })), error: null });
+                },
+              }),
               then: (resolve) => {
                 applyFilters(state.mandates, filters).forEach((m) => Object.assign(m, payload));
                 resolve({ error: null });
