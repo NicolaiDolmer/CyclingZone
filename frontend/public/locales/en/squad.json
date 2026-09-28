@@ -92,6 +92,36 @@
       "junior": "Junior standings, one group at a time"
     },
     "squadLabel": "Squad",
-    "tabsLabel": "Youth races sections"
+    "tabsLabel": "Youth races sections",
+    "calendarHint": "Pick your riders for each race. You can change the squad until the first stage starts, also when it was auto-picked.",
+    "headers": {
+      "race": "Race",
+      "status": "Status",
+      "team": "Your team",
+      "action": "Action"
+    },
+    "status": {
+      "open": "Selection open",
+      "live": "Racing",
+      "completed": "Finished"
+    },
+    "team": {
+      "none": "Not picked",
+      "auto": "{count, plural, one {1 rider, auto-picked} other {# riders, auto-picked}}",
+      "manual": "{count, plural, one {1 rider picked} other {# riders picked}}",
+      "rode": "{count, plural, one {1 rider} other {# riders}}"
+    },
+    "action": {
+      "pick": "Pick riders",
+      "edit": "Edit squad",
+      "view": "View race",
+      "results": "Results"
+    },
+    "error": {
+      "title": "Couldn't load youth races",
+      "description": "Try again in a moment."
+    },
+    "stages": "{count, plural, one {1 stage} other {# stages}}",
+    "count": "{count, plural, one {1 race} other {# races}}"
   }
 }

@@ -42,7 +42,8 @@ import { ErrorState, PageHeader, Tab, TabList, Tabs } from "../components/squad/
 import { useYouthSquad } from "../components/squad/useYouthSquad.ts";
 import YouthSquadTable from "../components/squad/YouthSquadTable.tsx";
 import YouthStandingsTab from "../components/squad/YouthStandingsTab.tsx";
-import { YouthRacesEmptyState, YouthSquadEmptyState } from "../components/squad/SquadEmptyStates.tsx";
+import { YouthSquadEmptyState } from "../components/squad/SquadEmptyStates.tsx";
+import YouthRacesTab from "../components/squad/YouthRacesTab.tsx";
 
 type SquadTabKey = "squad" | "calendar" | "results" | "standings" | "development" | "stats";
 // HANDOFF-rækkefølgen (#5519) + Stats sidst, efter Development som på My Team.
@@ -145,7 +146,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             : <TeamStatsTab riders={riders} />)}
           {tab === "standings" && <YouthStandingsTab squad={squad} myTeamId={team?.id ?? null} />}
           {(tab === "calendar" || tab === "results") && (
-            <YouthRacesEmptyState squad={squad} tab={tab} />
+            <YouthRacesTab squad={squad} tab={tab} />
           )}
         </>
       )}
