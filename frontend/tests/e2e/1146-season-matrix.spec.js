@@ -76,13 +76,17 @@ test.describe("Sæsonmatrix (#1146)", () => {
   });
 
   test("gitteret viser rytter-rækker, løbsdags-kolonner og en gemt udtagelse som ét sammenhængende spænd", async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize({ width: 1440, height: 900 });
     await login(page);
     await page.goto("/planning?view=season");
 
     await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
     await expect(page.getByTestId("season-matrix-desktop").getByText("Ada Pedersen")).toBeVisible();
     await expect(page.getByTestId("season-matrix-desktop").getByText("Bo Madsen")).toBeVisible();
+    if (testInfo.project.name === "desktop-chromium") {
+      await page.getByTestId("season-matrix-desktop").evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await page.screenshot({ path: testInfo.outputPath("desktop-unchanged.png") });
+    }
 
     // #4217/#3470: Tour des Hauts Plateaux (gameDay 14-17, hviledag 16) er ÉT
     // sammenhængende spænd for Ada — findes som ét klikbart element med
@@ -184,6 +188,18 @@ test.describe("Sæsonmatrix (#1146)", () => {
     const mobile = page.getByTestId("season-matrix-mobile");
     await expect(mobile).toBeVisible();
     await expect(page.getByTestId("season-matrix-desktop")).toBeHidden();
+    if (testInfo.project.name === "mobile-chromium") {
+      const desktop = page.getByTestId("season-matrix-desktop");
+      await mobile.evaluate((el) => { el.style.display = "none"; });
+      await desktop.evaluate((el) => { el.style.display = "block"; });
+      await desktop.evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await page.screenshot({ path: testInfo.outputPath("before-mobile.png") });
+      await desktop.evaluate((el) => { el.style.display = ""; });
+      await mobile.evaluate((el) => { el.style.display = ""; });
+      await mobile.getByLabel("Løb").selectOption("r2");
+      await mobile.evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await page.screenshot({ path: testInfo.outputPath("after-mobile.png") });
+    }
     await mobile.getByLabel("Løb").selectOption("r2");
     await expect(mobile.getByText("Dage 1-3 af 4")).toBeVisible();
     await expect(mobile.getByRole("button", { name: "Før" })).toBeDisabled();
