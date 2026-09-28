@@ -607,6 +607,7 @@ export async function resolveDayCloseStatus({
     // S4 28/9: sæsonen filtreres I databasen (races!inner-join) i stedet for at
     // sende alle sæsonens race-id'er i URL'en. Med ungdomsløbene har S4 ~500 løb
     // (~19 KB URL), og requesten døde som "fetch failed" før den nåede PostgREST.
+    // pagination-safe: ét dansk kalenderdøgn (titals rækker), se ovenfor.
     let stagesQuery = supabase
       .from("race_stage_schedule")
       .select("race_id, stage_number, game_day, scheduled_at, races!inner(season_id, league_division_id)")
