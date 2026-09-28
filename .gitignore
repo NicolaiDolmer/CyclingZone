@@ -145,3 +145,6 @@ pr-screens/live/
 # backend`, #5283) skrives hertil - de er deterministiske og regenereres med een
 # kommando, saa der er intet handoff der gaar tabt ved ikke at committe dem.
 balance-internals/
+
+# #5844: privat dry-run/apply-rapport for bestyrelsens gave (prod-tal + hold-id; committes aldrig)
+docs/snapshots/5844/
