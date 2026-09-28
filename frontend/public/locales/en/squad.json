@@ -121,6 +121,11 @@
       "description": "Try again in a moment."
     },
     "stages": "{count, plural, one {1 stage} other {# stages}}",
-    "count": "{count, plural, one {1 race} other {# races}}"
+    "count": "{count, plural, one {1 race} other {# races}}",
+    "noPool": {
+      "title": "No youth group for your team yet",
+      "u23": "Your team is not in a U23 group this season, so there are no U23 races to pick for.",
+      "junior": "Your team is not in a junior group this season, so there are no junior races to pick for."
+    }
   }
 }

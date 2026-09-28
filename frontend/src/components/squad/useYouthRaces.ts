@@ -6,17 +6,14 @@
 // den eksisterende løbsside, som senior.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { buildYouthRaceItems, type YouthEntryRow, type YouthRaceItem, type YouthRaceRow, type YouthScheduleRow } from "../../lib/youthRaceCalendar.ts";
+import { buildYouthRaceItems, youthPoolIdFor, type YouthEntryRow, type YouthRaceItem, type YouthRaceRow, type YouthScheduleRow } from "../../lib/youthRaceCalendar.ts";
 import type { YouthSquad } from "../../lib/youthSquadPages.ts";
 
+// no_pool = holdet har ingen pulje for truppen i den aktive sæson. Adskilt fra
+// "ready med 0 løb", så en tom fane altid siger hvilken af de to det er (#5843).
 export type YouthRacesStatus = "loading" | "ready" | "no_pool" | "error";
 
-const POOL_COLUMN: Record<YouthSquad, "u23_league_division_id" | "junior_league_division_id"> = {
-  u23: "u23_league_division_id",
-  junior: "junior_league_division_id",
-};
-
-type TeamRow = { id: string; u23_league_division_id: number | null; junior_league_division_id: number | null };
+type TeamRow = { id: string; league_division_id: number | null; u23_league_division_id: number | null; junior_league_division_id: number | null };
 
 export function useYouthRaces(squad: YouthSquad) {
   const [status, setStatus] = useState<YouthRacesStatus>("loading");
@@ -34,14 +31,14 @@ export function useYouthRaces(squad: YouthSquad) {
       if (!user) { setStatus("error"); return; }
 
       const [teamRes, seasonRes] = await Promise.all([
-        supabase.from("teams").select("id, u23_league_division_id, junior_league_division_id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("teams").select("id, league_division_id, u23_league_division_id, junior_league_division_id").eq("user_id", user.id).maybeSingle(),
         supabase.from("seasons").select("id").eq("status", "active").maybeSingle(),
       ]);
       if (!isCurrent()) return;
       if (teamRes.error || seasonRes.error) { setStatus("error"); return; }
       const team = teamRes.data as TeamRow | null;
       const seasonId = (seasonRes.data as { id?: string } | null)?.id ?? null;
-      const poolId = team?.[POOL_COLUMN[squad]] ?? null;
+      const poolId = youthPoolIdFor(team, squad);
       if (!team || poolId == null || !seasonId) {
         setCalendar([]); setResults([]); setStatus("no_pool");
         return;

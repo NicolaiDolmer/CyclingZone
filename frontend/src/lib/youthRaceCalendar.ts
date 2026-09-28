@@ -89,3 +89,19 @@ export function buildYouthRaceItems(
 export function youthSelectionOpen(item: YouthRaceItem): boolean {
   return item.status === "scheduled" && item.stagesCompleted === 0;
 }
+
+export interface YouthPoolTeam {
+  league_division_id?: number | null;
+  u23_league_division_id?: number | null;
+  junior_league_division_id?: number | null;
+}
+
+/**
+ * Holdets pulje for en ungdomstrup. Aldrig seniorpuljen (league_division_id):
+ * et hold i senior-division 1 kan ligge i U23-pulje 24 (prod 28/9, #5843).
+ */
+export function youthPoolIdFor(team: YouthPoolTeam | null | undefined, squad: "u23" | "junior"): number | null {
+  if (!team) return null;
+  const id = squad === "u23" ? team.u23_league_division_id : team.junior_league_division_id;
+  return id == null ? null : id;
+}

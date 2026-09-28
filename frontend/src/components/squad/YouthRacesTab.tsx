@@ -37,8 +37,11 @@ export default function YouthRacesTab({ squad, tab }: { squad: YouthSquad; tab: 
       />
     );
   }
+  if (status === "no_pool") {
+    return <div data-testid="youth-races-no-pool"><YouthRacesEmptyState squad={squad} tab={tab} noPool /></div>;
+  }
   const rows = tab === "calendar" ? calendar : results;
-  if (status !== "ready" || rows.length === 0) return <YouthRacesEmptyState squad={squad} tab={tab} />;
+  if (rows.length === 0) return <div data-testid="youth-races-empty"><YouthRacesEmptyState squad={squad} tab={tab} /></div>;
 
   const hrefFor = (r: YouthRaceItem) => `/races/${r.id}?tab=${tab === "calendar" ? "team" : "results"}`;
 

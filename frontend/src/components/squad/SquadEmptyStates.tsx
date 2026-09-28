@@ -38,14 +38,16 @@ const RACE_ICON: Record<YouthRaceTab, typeof CalendarIcon> = {
   standings: PodiumIcon,
 };
 
-export function YouthRacesEmptyState({ squad, tab }: { squad: YouthSquad; tab: YouthRaceTab }) {
+// #5843: noPool = holdet har ingen pulje for truppen. Samme flade og ikon, men
+// en tekst der siger hvorfor, så en tom fane kan skelnes fra "ingen løb endnu".
+export function YouthRacesEmptyState({ squad, tab, noPool = false }: { squad: YouthSquad; tab: YouthRaceTab; noPool?: boolean }) {
   const { t } = useTranslation("squad");
   const Icon = RACE_ICON[tab];
   return (
     <EmptyState
       icon={<Icon size={26} aria-hidden="true" />}
-      title={t("empty.races.title")}
-      description={t(`empty.races.${tab}.${squad}`)}
+      title={noPool ? t("youthRaces.noPool.title") : t("empty.races.title")}
+      description={noPool ? t(`youthRaces.noPool.${squad}`) : t(`empty.races.${tab}.${squad}`)}
       action={<Link to="/roadmap" className={SECONDARY_SM}>{t("empty.races.action")}</Link>}
     />
   );

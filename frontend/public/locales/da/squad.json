@@ -121,6 +121,11 @@
       "description": "Prøv igen om lidt."
     },
     "stages": "{count, plural, one {1 etape} other {# etaper}}",
-    "count": "{count, plural, one {1 løb} other {# løb}}"
+    "count": "{count, plural, one {1 løb} other {# løb}}",
+    "noPool": {
+      "title": "Dit hold har ingen ungdomsgruppe endnu",
+      "u23": "Dit hold er ikke i en U23-gruppe denne sæson, så der er ingen U23-løb at udtage til.",
+      "junior": "Dit hold er ikke i en juniorgruppe denne sæson, så der er ingen juniorløb at udtage til."
+    }
   }
 }

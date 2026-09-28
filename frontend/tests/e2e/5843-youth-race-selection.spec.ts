@@ -47,7 +47,7 @@ function wantsObject(route: Route): boolean {
   return (route.request().headers().accept || "").includes("vnd.pgrst.object");
 }
 
-async function setup(page: Page, c: (typeof CASES)[number]) {
+async function setup(page: Page, c: (typeof CASES)[number], { noPool = false }: { noPool?: boolean } = {}) {
   await stabilizePage(page);
   await installNetworkMocks(page);
   const scheduled = { ...c.race, stages_completed: 0, status: "scheduled", edition_year: 2026, season: { id: "season-e2e", number: 4 }, pool_race: null };
@@ -69,7 +69,11 @@ async function setup(page: Page, c: (typeof CASES)[number]) {
   await page.route("**/rest/v1/teams*", (route) => {
     if (preflight(route)) return;
     if (!route.request().url().includes("u23_league_division_id")) return route.fallback();
-    const row = { id: "team-e2e", u23_league_division_id: U23_POOL, junior_league_division_id: JUNIOR_POOL };
+    // Seniorpuljen (1) er bevidst forskellig fra ungdomspuljerne, som ejerens hold i
+    // prod (senior 1, U23 24, junior 30): fanen skal bruge truppens pulje.
+    const row = noPool
+      ? { id: "team-e2e", league_division_id: 1, u23_league_division_id: null, junior_league_division_id: null }
+      : { id: "team-e2e", league_division_id: 1, u23_league_division_id: U23_POOL, junior_league_division_id: JUNIOR_POOL };
     return json(route, wantsObject(route) ? row : [row]);
   });
   await page.route("**/rest/v1/seasons*", (route) => {
@@ -176,3 +180,12 @@ for (const c of CASES) {
     await expect(page.getByTestId(`youth-race-row-${c.race.id}`)).toHaveCount(0);
   });
 }
+
+test("#5843: hold uden ungdomspulje får en tom fane, der siger hvorfor", async ({ page }) => {
+  await setup(page, CASES[0], { noPool: true });
+  await login(page);
+  await page.goto("/squads/u23");
+  await page.getByRole("tablist").getByRole("tab", { name: /Calendar|Kalender/ }).click();
+  await expect(page.getByTestId("youth-races-no-pool")).toBeVisible();
+  await expect(page.getByTestId("youth-races-no-pool")).toContainText(/No youth group for your team yet|Dit hold har ingen ungdomsgruppe endnu/);
+});

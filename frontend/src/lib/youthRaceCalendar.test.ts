@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildYouthRaceItems, youthSelectionOpen } from "./youthRaceCalendar.ts";
+import { buildYouthRaceItems, youthPoolIdFor, youthSelectionOpen } from "./youthRaceCalendar.ts";
 
 const races = [
   { id: "b", name: "Beta U23", race_type: "single", stages: 1, stages_completed: 0, status: "scheduled" },
@@ -42,4 +42,12 @@ test("#5843: udtagelsen er åben til første etape er kørt, som senior", () => 
   const byId = Object.fromEntries(calendar.map((r) => [r.id, r]));
   assert.equal(youthSelectionOpen(byId.b), true);
   assert.equal(youthSelectionOpen(byId.a), false);
+});
+
+test("#5843: truppens pulje, aldrig seniorpuljen (ejerens hold: senior 1, U23 24, junior 30)", () => {
+  const team = { league_division_id: 1, u23_league_division_id: 24, junior_league_division_id: 30 };
+  assert.equal(youthPoolIdFor(team, "u23"), 24);
+  assert.equal(youthPoolIdFor(team, "junior"), 30);
+  assert.equal(youthPoolIdFor({ league_division_id: 1, u23_league_division_id: null }, "u23"), null);
+  assert.equal(youthPoolIdFor(null, "u23"), null);
 });

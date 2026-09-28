@@ -509,6 +509,8 @@ export async function moveRider(supabase, {
     const { cleared } = await clearEntriesOutsideSquad(supabase, { riderId, squad: targetSquad });
     if (cleared) result = { ...result, offSquadEntriesCleared: cleared };
   } catch (cleanupErr) {
+    // best-effort: flytningen er gennemført og må ikke blive en 500; motoren
+    // sorterer forkert-trup-entries fra ved start (filterEligibleEntries).
     const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
     console.error(`moveRider ${riderId}: off-squad entry cleanup failed — ${msg}`);
   }
