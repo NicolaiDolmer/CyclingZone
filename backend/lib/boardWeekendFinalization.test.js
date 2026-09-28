@@ -34,7 +34,39 @@ function makeFakeSupabase(state, opts = {}) {
   for (const [table, message] of Object.entries(opts.errorTables ?? {})) {
     errors[table] = { upsert: message };
   }
-  return createFakeSupabase(state, { errors });
+  const supabase = createFakeSupabase(state, { errors });
+  // #5893 · Tro kopi af apply_board_weekend_writes (database/2026-09-28-5893-
+  // board-weekend-bulk-write.sql): patch pr. board-id + upsert af events på
+  // (board_id, race_id). Én transaktion — en konfigureret event-fejl vælter
+  // hele kaldet, præcis som i Postgres, så fallback-stien bliver testet.
+  supabase.rpc = async (name, args = {}) => {
+    if (name !== "apply_board_weekend_writes") {
+      return { data: null, error: { code: "PGRST202", message: `unknown rpc ${name}` } };
+    }
+    if (opts.missingBulkRpc) {
+      return { data: null, error: { code: "PGRST202", message: "function not found" } };
+    }
+    const eventError = errors.board_satisfaction_events?.upsert;
+    if (eventError) return { data: null, error: { code: "XX000", message: eventError } };
+    state.board_profiles ??= [];
+    state.board_satisfaction_events ??= [];
+    let profiles = 0;
+    for (const { id, ...patch } of args.p_profiles || []) {
+      const row = state.board_profiles.find((r) => r.id === id);
+      if (!row) continue;
+      Object.assign(row, patch);
+      profiles += 1;
+    }
+    for (const ev of args.p_events || []) {
+      const existing = state.board_satisfaction_events.find(
+        (r) => r.board_id === ev.board_id && r.race_id === ev.race_id,
+      );
+      if (existing) Object.assign(existing, ev);
+      else state.board_satisfaction_events.push({ ...ev });
+    }
+    return { data: { profiles, events: (args.p_events || []).length }, error: null };
+  };
+  return supabase;
 }
 
 // #2932 · Tæller faktiske .range()-kald pr. tabel på en createFakeSupabase-
@@ -1055,4 +1087,69 @@ test("seniorløb (squad senior) opdaterer stadig bestyrelsen (kontrol)", async (
   });
   assert.equal(summary.skipped_reason, null);
   assert.equal(summary.baseline_boards_updated, 1);
+});
+
+// ── #5893 · samlet skrivning ─────────────────────────────────────────────────
+
+function countWrites(supabase) {
+  const counts = { rpc: 0, profilePatch: 0, eventUpsert: 0 };
+  const origRpc = supabase.rpc;
+  supabase.rpc = async (...args) => { counts.rpc += 1; return origRpc(...args); };
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const b = origFrom(table);
+    if (table === "board_profiles") {
+      const orig = b.update.bind(b);
+      b.update = (...a) => { counts.profilePatch += 1; return orig(...a); };
+    }
+    if (table === "board_satisfaction_events") {
+      const orig = b.upsert.bind(b);
+      b.upsert = (...a) => { counts.eventUpsert += 1; return orig(...a); };
+    }
+    return b;
+  };
+  return counts;
+}
+
+test("#5893: normal weekend skriver ALLE boards + events i ÉT rpc-kald (0 række-skrivninger)", async () => {
+  const state = makeState();
+  const supabase = makeFakeSupabase(state);
+  const counts = countWrites(supabase);
+  const summary = await processBoardWeekendFinalization({
+    supabase, season: { ...SEASON }, previousRaceDaysCompleted: 6,
+    race: { id: "race-1", name: "Testløb", squad: "senior" },
+    deps: baseDeps({ computeWeekendUpdate: stubComputeUpdate({ newSatisfaction: 45 }) }),
+  });
+  assert.deepEqual(counts, { rpc: 1, profilePatch: 0, eventUpsert: 0 });
+  assert.equal(summary.boards_updated, 1);
+  assert.equal(summary.events_written, 1);
+  assert.equal(state.board_profiles[0].satisfaction, 45);
+  assert.equal(state.board_satisfaction_events.length, 1);
+});
+
+test("#5893: mangler funktionen (deploy før migration) → samme resultat via række-for-række", async () => {
+  const state = makeState();
+  const supabase = makeFakeSupabase(state, { missingBulkRpc: true });
+  const counts = countWrites(supabase);
+  const summary = await processBoardWeekendFinalization({
+    supabase, season: { ...SEASON }, previousRaceDaysCompleted: 6,
+    race: { id: "race-1", name: "Testløb", squad: "senior" },
+    deps: baseDeps({ computeWeekendUpdate: stubComputeUpdate({ newSatisfaction: 45 }) }),
+  });
+  assert.equal(counts.rpc, 1);
+  assert.equal(counts.profilePatch, 1);
+  assert.equal(summary.boards_updated, 1);
+  assert.equal(summary.errors, 0);
+  assert.equal(state.board_profiles[0].satisfaction, 45);
+  assert.equal(state.board_profiles[0].season_start_anchor_season_id, "season-2");
+});
+
+test("#5893: migrationen findes og matcher JS-kontrakten (navn, konflikt-nøgle, kun service_role)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { resolve } = await import("node:path");
+  const sql = readFileSync(resolve(import.meta.dirname, "../../database/2026-09-28-5893-board-weekend-bulk-write.sql"), "utf8");
+  assert.match(sql, /FUNCTION public\.apply_board_weekend_writes\(\s*p_profiles jsonb,\s*p_events jsonb/);
+  assert.match(sql, /ON CONFLICT \(board_id, race_id\) DO UPDATE/);
+  assert.match(sql, /REVOKE EXECUTE ON FUNCTION public\.apply_board_weekend_writes\(jsonb, jsonb\) FROM anon/);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.apply_board_weekend_writes\(jsonb, jsonb\) TO service_role/);
 });
