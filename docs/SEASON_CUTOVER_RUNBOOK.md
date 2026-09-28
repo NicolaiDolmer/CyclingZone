@@ -208,6 +208,18 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
 > **Uændret og stadig bindende:** §2c's "én regenerering pr. sæsonkalender". Er S4's
 > kalender skrevet, er formen låst for S4 - en fejl bagefter står til S5.
 
+### Faktisk S3 → S4-forløb 27/9 og læring til næste skifte
+
+Dette er efterkontrol af den udførte rækkefølge. Ovenstående observationer fra 3/9 er historiske forberedelser; brug ikke deres "findes ikke endnu"-status som aktuel prod-tilstand.
+
+1. Skriv og verificér næste seniorkalender, mens den kommende sæson endnu kan ændres (§2c). Efter sidste kalenderændring flyttes eventuelle manager-entries kun mod holdets endelige pulje; fjern gamle tilmeldinger, hvis holdet oprykkes. Sammenlign ugefordelingen af løbstyper i alle divisioner, ikke kun det rapporterede D2-tilfælde (#5830).
+2. Kør **Afslut sæson** først. Frys derefter kilde-sæsonen for D4 → D3-sammenlægning: brug `mergeD4IntoD3S4.js --season=<afsluttet sæsons uuid>` i dry-run og kontrollér at rangeringens kilde er den afsluttede sæson. En dry-run uden eksplicit sæson valgte denne aften den højeste, kommende sæson og gav nul point til alle. Stol ikke på default, før #5857 er merget. Kør sammenlægningen med eget ejer-go og snapshot.
+3. Håndtér frosne hold eksplicit før D4 E-H-pensioneringen. Ét frosset hold blev parkeret manuelt efter ejerbeslutning for at frigøre puljen. Pensioneringsscriptet kan efterlade AI-hold med aktive markedsforpligtelser; behold dem markeret til nedlæggelse og genkør først efter at forpligtelserne er afsluttet. Ingen S4-løb må ligge i pensionerede puljer.
+4. Seed ungdomsgrupper efter den endelige seniorplacering, og byg U23-/juniorkalender mod de seedede grupper. Generér AI-ungdomstrupper og verificér startklare felter i alle grupper, før entries bygges. `academy_drift_enabled` var off ved netop dette cutover.
+5. Kontrollér transfervinduets markører før transition-preview. S3-rækken måtte normaliseres manuelt (`closed_at`, `final_whistle_sent_at`, `squad_enforcement_started_at` og `squad_enforcement_completed_at`), fordi readiness stadig kræver felter fra den afskaffede deadline-cyklus (#5855). Gør dette til et eksplicit, idempotent flow før næste skifte; behandl ikke en manglende markør som bevis for at løb faktisk mangler.
+6. **Udfør sæsonskifte** først efter preview. Denne aften blev auktion-gaten overstyret med ejer-go, efter særskilt måling af pensionsrisiko for de aktive auktioner. Log begrundelse og mål både auktioner og berørte ryttere før en fremtidig override. Bekræft én transition, form-reset, sponsor/payroll og puljer efter kørslen.
+7. Lad den timelige entry-generator fylde **AI-hold**. Dens første kørsel efter cutover var ikke en managerudtagelse. Managers kan selv vælge; den særskilte late-fill-regel og den sene redning ved første etape gælder efter deres egne tids- og trupkrav (`ASSISTANT_RULES.md`). Mål derfor managerhold under startgulvet før første etape (#5839), frem for at læse tomme tidlige entries som en generatorfejl.
+
 ## S4-tændingsplan (issue #5506)
 
 > **Rækkefølgen er et forslag; ejeren bestemmer.** Planen tænder intet. Hvert trin har ét go-punkt (ejeren), én kontrol og én fortryd-vej. Højst én kontakt pr. trin, og kontrollen skal være grøn, før næste trin startes. Tilstanden er målt read-only mod prod og GitHub 23/9.
