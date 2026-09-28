@@ -9,7 +9,7 @@
 
 **EN**
 1. Every real day has 5 race days.
-2. On each race day, a rider either races or trains. Never both.
+2. On each race day, a rider either races or trains. Never both (the only exception: rest days in a stage race, see 4).
 3. Racing trains what the stage demands (flat, hills, mountains, cobbles…) at medium intensity. Training trains what you pick.
 4. Stage races: on a day he rides a stage, the rest of that day is training. A full day without a stage in the middle of a stage race is a rest day.
 5. It's all settled in the evening after the last race (from 20:00).
@@ -18,7 +18,7 @@ Tip: pick races that suit the rider, and use the free race days to train what th
 
 **DA**
 1. Hver rigtig dag har 5 løbsdage.
-2. På hver løbsdag kører rytteren løb ELLER træner. Aldrig begge.
+2. På hver løbsdag kører rytteren løb ELLER træner. Aldrig begge (eneste undtagelse: hviledage i et etapeløb, se 4).
 3. Løb træner det etapen kræver (fladt, bakker, bjerge, brosten …) på mellem-intensitet. Træning træner det, du vælger.
 4. Etapeløb: på en dag hvor han kører en etape, er resten af dagen træning. En hel dag uden etape midt i et etapeløb er hviledag.
 5. Det hele gøres op om aftenen efter sidste løb (fra kl. 20).
@@ -32,7 +32,7 @@ Tip: vælg løb der passer til rytteren, og brug de frie løbsdage på det løbe
 > Thanks for the good questions, and thanks Dolamba for translating. Here's how it works, short version:
 >
 > 1. Every real day has 5 race days.
-> 2. On each race day, a rider either races or trains. Never both.
+> 2. On each race day, a rider either races or trains. Never both (the only exception: rest days in a stage race, see 4).
 > 3. Racing trains what the stage demands at medium intensity. Training trains what you pick.
 > 4. Stage races: on a day he rides a stage, the rest of that day is training. A full day without a stage in the middle of a stage race is a rest day.
 > 5. It's all settled in the evening after the last race.
@@ -54,7 +54,7 @@ Tip: vælg løb der passer til rytteren, og brug de frie løbsdage på det løbe
 > Hep! Samler lige svarene på træningsspørgsmålene ✌️
 >
 > 1. Hver rigtig dag har 5 løbsdage.
-> 2. På hver løbsdag kører rytteren løb ELLER træner. Aldrig begge.
+> 2. På hver løbsdag kører rytteren løb ELLER træner. Aldrig begge (eneste undtagelse: hviledage i et etapeløb, se 4).
 > 3. Løb træner det etapen kræver på mellem-intensitet. Træning træner det du vælger.
 > 4. Etapeløb: på en dag hvor han kører en etape, er resten af dagen træning. En hel dag uden etape midt i et etapeløb er hviledag.
 > 5. Det hele gøres op om aftenen efter sidste løb.
