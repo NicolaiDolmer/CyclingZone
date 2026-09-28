@@ -5,10 +5,10 @@
 // sidens eneste guld-knap (Set tactics, HANDOFF pkt. 7) kommer først med
 // ungdomsløbene.
 //
-// Calendar, Results og Standings er tomme indtil ungdomsløb findes (races har
-// endnu ingen trup-dimension, spec 2026-09-15 §3.2). De viser derfor ingen tal,
-// ingen tomme tabeller og intet løfte om en dato (TASTE P11), kun hvor man kan
-// følge med: roadmappen.
+// Calendar og Results viser ungdomsløbene siden #5843 (YouthRacesTab); tom
+// tilstand kun når holdet ingen ungdomspulje eller løb har. Standings er tom
+// indtil første løb er kørt. Ingen tal, ingen tomme tabeller og intet løfte om
+// en dato (TASTE P11), kun hvor man kan følge med: roadmappen.
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { BikeIcon, CalendarIcon, FlagIcon, PodiumIcon } from "../ui/index.js";

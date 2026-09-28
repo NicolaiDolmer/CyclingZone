@@ -10,9 +10,9 @@
 // Faner (HANDOFF pkt. 2): Squad · Calendar · Results · Standings · Development.
 //   • Squad og Development viser ægte data: truppen afgøres server-side
 //     (GET /api/youth-squads → effectiveSquad), visningen er My Teams.
-//   • Calendar og Results er tomme tilstande indtil ungdomsløb findes (og
-//     Standings indtil det første er kørt). Ingen tal for løb der ikke findes
-//     (TASTE P11).
+//   • Calendar og Results viser holdets ungdomsløb (YouthRacesTab, #5843);
+//     tom tilstand kun når holdet ingen ungdomspulje/løb har. Standings er tom
+//     indtil det første løb er kørt (TASTE P11).
 //
 // Bag kontakten youth_squad_pages: slukket svarer serveren 409, og siden sender
 // videre til My Team, så en gammel URL aldrig viser en halv side.
