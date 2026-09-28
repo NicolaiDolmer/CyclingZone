@@ -1,6 +1,6 @@
 {
   "title": "Daglig træning",
-  "trainToday": "Træn i dag (+25% konsistens-bonus)",
+  "trainToday": "Træn i dag",
   "runDayNow": "Kør dagens træning nu",
   "dayClose": {
     "waiting": "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. {hour}.",
@@ -110,7 +110,7 @@
   "injuredApprox": "Tilbage ca. {date}",
   "noRiders": "Ingen ryttere på holdet endnu.",
   "report": "Dagens træningsrapport",
-  "bonusApplied": "Konsistens-bonus aktiveret: +25% fremgang",
+  "bonusApplied": "Trænet af dig",
   "gains": "+{n} {ability}",
   "gainJump": "{from} → {to} {ability}",
   "noGains": "Ingen fremgang i dag",
@@ -294,11 +294,11 @@
     },
     "runToday": {
       "title": "Træn én gang om dagen",
-      "body": "Trykker du her, træner truppen med +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
+      "body": "Trykker du her, træner truppen med det samme. Springer du over, kører assistenten samme pas automatisk, når dagen lukker, med samme resultat. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
     },
     "runNow": {
       "title": "Kør dagens træning",
-      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Tryk én gang om dagen for +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus."
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Et tryk giver ingen bonus. Springer du over, kører assistenten det samme pas automatisk."
     },
     "runTodayDayClose": {
       "title": "Kør dagens træning",
