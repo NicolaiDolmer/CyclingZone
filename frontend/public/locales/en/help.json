@@ -1160,7 +1160,7 @@
       "label": "Contracts",
       "whatContract": {
         "title": "What is a rider contract?",
-        "text": "Every owned rider has a contract: a frozen salary, a length (1 to 3 seasons) and an expiry season. The salary is locked in at the moment of signing and does not change automatically as the rider develops. Free agents (riders without a team) have no contract until they are signed."
+        "text": "Every owned rider has a contract: a frozen salary, a length (1 to 3 seasons) and an expiry season. The salary is locked in at the moment of signing and does not change automatically as the rider develops. Free agents (riders without a team) have no contract until they are signed. If you win an auction for a rider without a contract after a season has ended but before the next one starts, his contract counts from the coming season, so it does not run out at the switch. A rider who already has a contract keeps it unchanged."
       },
       "frozenSalary": {
         "title": "Why salary is frozen (gold contracts and burdens)",
