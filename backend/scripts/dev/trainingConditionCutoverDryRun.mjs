@@ -96,8 +96,18 @@ export function buildConditionCutoverProposal(input) {
       // before it) and no clamp at 100. Anything else still needs evidence.
       const mine = loads.filter(l => l.rider_id === row.rider_id);
       const run = mine.length === 1 ? input.runs.find(r => r.race_id === mine[0].race_id && r.stage_number === mine[0].stage_number) : null;
-      const opened = Number(row.expected_fatigue) - Number(mine[0]?.load);
-      if (!run || run.stage_number !== 1 || !Number.isInteger(opened) || opened < 0 || !(row.expected_fatigue < 100)) {
+      // The legacy multiplier depended on engine flags (v3/v4) and on roles vs
+      // orders. Try EVERY multiplier the legacy writer could have used; accept
+      // only when exactly one non-negative integer opening is consistent.
+      const sameStage = r => r.race_id === run?.race_id && r.stage_number === run?.stage_number;
+      const efforts = new Set(['normal']);
+      for (const r of input.roles ?? []) if (sameStage(r) && r.rider_id === row.rider_id) efforts.add(r.effort ?? 'normal');
+      for (const o of input.orders ?? []) if (sameStage(o)) for (const x of o.riders ?? []) if (x?.rider_id === row.rider_id) efforts.add(x.effort ?? 'normal');
+      const base = run ? raceFatigueLoad(run.profile_type) : NaN;
+      const candidates = new Set([...efforts].map(e => Number(row.expected_fatigue) - Math.round(base * effortFatigueMultiplier(e)))
+        .filter(v => Number.isInteger(v) && v >= 0));
+      const opened = candidates.size === 1 ? [...candidates][0] : NaN;
+      if (!run || run.stage_number !== 1 || !Number.isInteger(opened) || !(row.expected_fatigue < 100)) {
         throw new Error('Yesterday final report or documented forward replay required');
       }
       opening = { ...row, opening_fatigue: opened, opening_form: row.expected_form,

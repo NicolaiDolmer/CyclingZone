@@ -33,8 +33,10 @@ const pgEnv = { ...process.env, PGHOST: u.hostname, PGPORT: u.port || "5432",
   PGUSER: decodeURIComponent(u.username || "postgres"), PGPASSWORD: decodeURIComponent(u.password || ""),
   PGSSLMODE: u.searchParams.get("sslmode") || "require" };
 
-const sql = `SET statement_timeout = 0;
+const sql = `BEGIN;
+SET LOCAL statement_timeout = 0;
 SELECT public.bootstrap_training_condition_date('${p_season_id}'::uuid, '${p_tick_date}'::date, ${tag}${openings}${tag}::jsonb, ${tag}${loads}${tag}::jsonb) AS result;
+COMMIT;
 `;
 const res = spawnSync("psql", ["-X", "-A", "-t", "-q", "-v", "ON_ERROR_STOP=1", "-f", "-"],
   { input: sql, env: pgEnv, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });

@@ -71,6 +71,18 @@ test('missing prior report: exact legacy inverse only for one stage-1 start with
   twice.openings[0].source = null; twice.openings[0].source_date = null;
   assert.throws(() => buildConditionCutoverProposal(twice), /Yesterday/);
 
+  // Ambiguous: flat=10; expected 40 fits x1 (opening 30) AND x1.2 (opening 28).
+  const ambiguous = fixture();
+  ambiguous.openings[0].source = null; ambiguous.openings[0].source_date = null;
+  ambiguous.orders = [{ race_id: 'race', stage_number: 1, team_id: 't', riders: [{ rider_id: 'starter', effort: 'protect' }],
+    updated_at: '2026-09-29T08:00:00Z' }];
+  assert.throws(() => buildConditionCutoverProposal(ambiguous), /Yesterday/);
+  // Unique: expected 10 fits only x1 (opening 0); x1.2 would need -2.
+  const unique = fixture();
+  unique.openings[0].source = null; unique.openings[0].source_date = null; unique.openings[0].expected_fatigue = 10;
+  unique.roles = [{ race_id: 'race', stage_number: 1, rider_id: 'starter', effort: 'protect', updated_at: '2026-09-29T08:00:00Z' }];
+  assert.equal(buildConditionCutoverProposal(unique).args.p_openings[0].opening_fatigue, 0);
+
   const none = fixture(); none.openings = [];
   assert.throws(() => buildConditionCutoverProposal(none), /Missing opening/);
 });
