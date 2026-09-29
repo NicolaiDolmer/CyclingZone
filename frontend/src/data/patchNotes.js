@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.321",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Training for riders without an initial condition",
+        "body": "Riders starting training without a saved condition now receive the usual starting condition before the day's activity is recorded. Existing fatigue, form and injuries are preserved. Earlier dates awaiting reconciliation are handled separately."
+      },
+      "da": {
+        "title": "Træning for ryttere uden en starttilstand",
+        "body": "Ryttere, der begynder træning uden en gemt tilstand, får nu den sædvanlige starttilstand, før dagens aktivitet registreres. Eksisterende træthed, form og skader bevares. Tidligere datoer, der afventer efterregulering, håndteres særskilt."
+      },
+      "refs": [5928]
+    }]
+  },
+  {
     "version": "7.320",
     "date": "2026-09-29",
     "label": "Beta",

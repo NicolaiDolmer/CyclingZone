@@ -61,7 +61,8 @@ test('normalized unfinished work is inspected before the legacy evening gate', a
 });
 
 test('deadline alarms aggregate per date and delivery failure leaves a durable retry', async () => {
-  const row = { id: 'alarm', tick_date: '2026-09-29', payload: { missing_evidence: [] }, updated_at: '2026-09-30T00:00:00Z' };
+  const evidence = { kind: 'quarantined', reason: 'roster_or_opening_evidence_unavailable', rider_id: 'missing-condition' };
+  const row = { id: 'alarm', tick_date: '2026-09-29', payload: { missing_evidence: [evidence] }, updated_at: '2026-09-30T00:00:00Z' };
   const attempts = [];
   let delivered = false, opsCalls = 0, sentryCalls = 0;
   const query = { select() { return this; }, is() { return this; }, lte() { return this; }, order() { return this; }, async range() { return { data: delivered ? [] : [row], error: null }; } };
@@ -71,7 +72,11 @@ test('deadline alarms aggregate per date and delivery failure leaves a durable r
     return { data: 1, error: null };
   } };
   const args = { supabase, now: new Date('2026-09-30T00:05:00Z'), logger: { error() {} },
-    onAlarm: async () => { sentryCalls++; }, sendOps: async () => { opsCalls++; if (opsCalls === 1) throw new Error('temporary outage'); } };
+    onAlarm: async (error, context) => {
+      sentryCalls++;
+      assert.equal(error.message, 'Training date requires reconciliation');
+      assert.deepEqual(JSON.parse(context.pendingEvidence), [evidence]);
+    }, sendOps: async () => { opsCalls++; if (opsCalls === 1) throw new Error('temporary outage'); } };
   assert.equal((await dispatchTrainingDateAlarms(args)).failed, 1);
   assert.equal(attempts[0].p_delivered, false);
   assert.equal((await dispatchTrainingDateAlarms(args)).failed, 0);

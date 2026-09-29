@@ -33,6 +33,8 @@ before(async () => {
   await db.exec(partial);
   const recovery=await readFile(new URL('../../database/2026-09-29-5928-training-condition-recovery.sql',import.meta.url),'utf8');
   await db.exec(recovery);await db.exec(recovery);
+  const initialization = await readFile(new URL('../../database/2026-09-29-5928-training-condition-initialization.sql', import.meta.url), 'utf8');
+  await db.exec(initialization); await db.exec(initialization);
 });
 after(async () => db?.close());
 beforeEach(async () => {
@@ -44,14 +46,86 @@ beforeEach(async () => {
     INSERT INTO rider_condition(rider_id,form,fatigue) VALUES('${rider}',50,60);`);
 });
 async function commit(day, fatigue = 55, raceLoads = [], dateDays = [1,2,3,4,5]) {
-  await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6)',[team,season,'2026-09-29',dateDays,[rider],'2026-09-29T19:00:00Z']);
+  const registration = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work',[team,season,'2026-09-29',dateDays,[rider],'2026-09-29T19:00:00Z']);
+  const opening = registration.rows[0].work.opening_conditions[rider];
   const observed=(await db.query('SELECT * FROM rider_condition WHERE rider_id=$1',[rider])).rows[0];
   const final=day===dateDays.at(-1);
   const values = [team, season, 'senior', day, '2026-09-29', dateDays, 'assistant',
-    JSON.stringify({condition_per_date:true, condition_settled:final, riders:[{rider_id:rider,game_day:day,intensity:'normal',form:53,fatigue,condition_before_date:{form:50,fatigue:60},condition_observed:observed,missing_evidence:[]}]}), JSON.stringify([{riderId:rider,patch:{climbing:50+day}}]),
+    JSON.stringify({condition_per_date:true, condition_settled:final, riders:[{rider_id:rider,game_day:day,intensity:'normal',form:53,fatigue,condition_before_date:opening,condition_observed:observed,missing_evidence:[]}]}), JSON.stringify([{riderId:rider,patch:{climbing:50+day}}]),
     JSON.stringify(final ? [{...observed,rider_id:rider,form:53,fatigue}] : []), '[]','[]','[]',JSON.stringify(raceLoads),false,'2026-09-29T19:00:00Z'];
   return (await db.query(`SELECT commit_training_date_tick(${values.map((_,i)=>`$${i+1}`).join(',')}) AS result`, values)).rows[0].result;
 }
+
+test('first date registration materializes the existing neutral fallback for an owned rider', async () => {
+  await db.exec('DELETE FROM rider_condition');
+  const args = [team, season, '2026-09-29', [1,2,3,4,5], [rider], '2026-09-29T18:00:00Z'];
+  const result = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work', args);
+  assert.deepEqual(result.rows[0].work.opening_conditions[rider]?.form, 50);
+  assert.equal(result.rows[0].work.opening_conditions[rider]?.fatigue, 0);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n, 1);
+  await db.exec('UPDATE rider_condition SET fatigue=20');
+  const retry = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work', args);
+  assert.equal(retry.rows[0].work.opening_conditions[rider].fatigue, 0, 'frozen opening survives retry');
+  assert.equal((await db.query('SELECT fatigue FROM rider_condition')).rows[0].fatigue, 20);
+});
+
+test('historical registration does not fabricate a missing condition after its deadline', async () => {
+  await db.exec('DELETE FROM rider_condition');
+  const result = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work',
+    [team, season, '2026-09-29', [1,2,3,4,5], [rider], '2026-09-30T08:00:00Z']);
+  assert.deepEqual(result.rows[0].work.opening_conditions, {});
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n, 0);
+});
+
+test('registration does not initialize a rider now owned by a different team', async () => {
+  await db.exec('DELETE FROM rider_condition');
+  await db.query('UPDATE riders SET team_id=$1 WHERE id=$2', [race, rider]);
+  const result = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work',
+    [team, season, '2026-09-29', [1,2,3,4,5], [rider], '2026-09-29T18:00:00Z']);
+  assert.deepEqual(result.rows[0].work.opening_conditions, {});
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n, 0);
+});
+
+test('a first-use rider receives all five receipts and one settlement; retries do not credit twice', async () => {
+  await db.exec('DELETE FROM rider_condition');
+  for (const day of [1,2,3,4,5]) await commit(day);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_rider_ticks')).rows[0].n, 5);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_condition_settlements')).rows[0].n, 1);
+  const before = (await db.query('SELECT * FROM rider_condition')).rows;
+  for (const day of [1,2,3,4,5]) assert.equal((await commit(day)).already_ran, true);
+  assert.deepEqual((await db.query('SELECT * FROM rider_condition')).rows, before);
+});
+
+test('a missing row with a saved legacy report is not reset to a neutral condition', async () => {
+  await db.exec('DELETE FROM rider_condition');
+  await db.query('INSERT INTO training_day_runs(team_id,season_id,game_day,tick_date,report) VALUES($1,$2,0,$3,$4)',
+    [team, season, '2026-09-28', JSON.stringify({ riders: [{ rider_id: rider, form: 65, fatigue: 40 }] })]);
+  const result = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work',
+    [team, season, '2026-09-29', [1,2,3,4,5], [rider], '2026-09-29T18:00:00Z']);
+  assert.deepEqual(result.rows[0].work.opening_conditions, {});
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n, 0);
+});
+
+test('legacy history from a previous owner prevents neutral initialization after transfer', async () => {
+  await db.exec('DELETE FROM rider_condition');
+  await db.query('INSERT INTO training_day_runs(team_id,season_id,game_day,tick_date,report) VALUES($1,$2,0,$3,$4)',
+    [race, season, '2026-09-28', JSON.stringify({ riders: [{ rider_id: rider, form: 65, fatigue: 40 }] })]);
+  const result = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work',
+    [team, season, '2026-09-29', [1,2,3,4,5], [rider], '2026-09-29T18:00:00Z']);
+  assert.deepEqual(result.rows[0].work.opening_conditions, {});
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n, 0);
+});
+
+test('a repeated registration with an extra rider cannot initialize outside the frozen roster', async () => {
+  const extra = '00000000-0000-0000-0000-000000000097';
+  await db.query('INSERT INTO riders(id,team_id) VALUES($1,$2)', [extra, team]);
+  const args = [team, season, '2026-09-29', [1,2,3,4,5], [rider], '2026-09-29T18:00:00Z'];
+  await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6)', args);
+  args[4] = [rider, extra];
+  const result = await db.query('SELECT register_training_date_work($1,$2,$3,$4,$5,NULL,$6) AS work', args);
+  assert.deepEqual(result.rows[0].work.expected_rider_ids, [rider]);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition WHERE rider_id=$1',[extra])).rows[0].n, 0);
+});
 test('five atomic commits settle once; duplicate and restart replay cannot change state', async () => {
   for(let day=1;day<=4;day++) await commit(day);
   assert.equal((await db.query('SELECT fatigue FROM rider_condition')).rows[0].fatigue,60);
