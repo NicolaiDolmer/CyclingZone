@@ -690,9 +690,10 @@ test('#5677: a lock busy past the fallback wait degrades to a lock-free read ins
   const ready = path.join(dir, 'holder-ready');
   // A separate process holds the SAME state lock for ~1.2 s - longer than
   // the short fallback wait this test gives guardedMerge below.
-  const holder = spawn(process.execPath, ['--input-type=module', '-e', `import { writeFileSync } from 'node:fs';
-    import { withWaveStateLock } from ${JSON.stringify(moduleUrl)};
-    withWaveStateLock(${JSON.stringify(dir)}, () => { writeFileSync(${JSON.stringify(ready)}, 'x'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1200); });`], { windowsHide: true });
+  const holderScript = `import { writeFileSync } from 'node:fs';
+    const { withWaveStateLock } = await import(process.argv[1]);
+    withWaveStateLock(process.argv[2], () => { writeFileSync(process.argv[3], 'x'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1200); });`;
+  const holder = spawn(process.execPath, ['--input-type=module', '-e', holderScript, moduleUrl, dir, ready], { windowsHide: true });
   const exited = new Promise(resolve => holder.once('close', resolve));
   while (!existsSync(ready)) await new Promise(r => setTimeout(r, 25));
   let warnedMs;

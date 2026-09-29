@@ -50,6 +50,12 @@ const REPO_DIR = join(BACKEND_DIR, "..");
 const DATABASE_DIR = join(REPO_DIR, "database");
 const MIGRATION_FILE = "2026-09-24-5517-squad-leagues-races-teams.sql";
 const HELPER = "withSeniorSquadScope";
+// #4753 repairs assignments inside already live youth groups. It creates no
+// youth division or initial membership, so the pre-seed gate does not apply.
+// Keep this allowlist exact; any later migration must earn its own review.
+const YOUTH_MEMBERSHIP_MAINTENANCE = new Set([
+  "2026-09-28-4753-youth-pool-retirement-replacement.sql",
+]);
 
 // ── Kilde-scanner ────────────────────────────────────────────────────────────────
 
@@ -347,7 +353,14 @@ test("#5517 seed-gate: ingen auto-migration seeder ungdomspuljer før de blokere
   const seeds = [];
   for (const file of readdirSync(DATABASE_DIR)) {
     if (!/^2026-.*\.sql$/.test(file)) continue; // = auto-migrate.yml's glob
-    for (const stmt of youthSeedStatements(readFileSync(join(DATABASE_DIR, file), "utf8"))) seeds.push(`${file}: ${stmt}`);
+    const sql = readFileSync(join(DATABASE_DIR, file), "utf8");
+    if (YOUTH_MEMBERSHIP_MAINTENANCE.has(file)) {
+      assert.match(sql, /CREATE OR REPLACE FUNCTION public\.replace_retired_ai_youth_group\(/);
+      assert.match(sql, /AFTER UPDATE OF retired_at ON public\.teams/);
+      assert.doesNotMatch(stripSqlComments(sql), /\b(?:INSERT\s+INTO|UPDATE)\s+(?:public\.)?league_divisions\b/i);
+      continue;
+    }
+    for (const stmt of youthSeedStatements(sql)) seeds.push(`${file}: ${stmt}`);
   }
   const blocking = Object.entries(KNOWN_UNSCOPED_LEAGUE_READERS).filter(([, e]) => e.blocksYouthSeed).map(([rel]) => rel);
   if (seeds.length === 0) return; // i dag: ingen seed (A2 seeder bevidst intet)

@@ -554,3 +554,66 @@ test("stallWatchdog: race_entries må ikke referere fantom-kolonnen id (#2536)",
     "race_entries-kaldet skal bruge PK-kolonnerne som select + total orden (orderCols)"
   );
 });
+
+// ── (c) nul-præmie-løb (CYCLINGZONE-2G, S4 løbsdag 1) ─────────────────────────
+// Ungdomsløb har ingen præmiepenge (YOUTH_RULES §7). Præmiemotoren springer
+// løb uden præmie-rækker over, så prize_paid_at forbliver NULL. Det må ikke
+// alarmere som prize-stall; et løb helt uden resultater skal stadig alarmere.
+function makePrizeSupabase({ results }) {
+  const builder = (rows, single = null) => {
+    const api = {
+      select: () => api,
+      eq: () => api,
+      neq: () => api,
+      gt: () => api,
+      lt: () => api,
+      is: () => api,
+      in: () => api,
+      order: () => api,
+      limit: () => api,
+      range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+      maybeSingle: () => Promise.resolve({ data: single, error: null }),
+      then: (res, rej) => Promise.resolve({ data: rows, error: null }).then(res, rej),
+    };
+    return api;
+  };
+  let racesCall = 0;
+  return {
+    from(table) {
+      if (table === "seasons") return builder([], { id: "s1" });
+      if (table === "races") {
+        racesCall += 1;
+        // 1. kald = ikke-completede (finalize), 2. kald = completed + prize NULL
+        return builder(racesCall === 1 ? [] : [
+          { id: "youth", name: "U23-løb" },
+          { id: "senior", name: "Seniorløb" },
+          { id: "empty", name: "Tomt løb" },
+        ]);
+      }
+      if (table === "race_results") return builder(results, { imported_at: hoursAgo(3) });
+      if (table === "race_stage_schedule") return builder([]);
+      if (table === "race_entries") return builder([]);
+      if (table === "season_standings") return builder([], { updated_at: hoursAgo(3) });
+      if (table === "matview_refresh_heartbeat") return builder([], { refreshed_at: hoursAgo(1) });
+      throw new Error(`unexpected table ${table}`);
+    },
+  };
+}
+
+test("fetchWatchdogState: completed løb uden præmie-rækker (ungdomsløb) er IKKE et prize-stall (CYCLINGZONE-2G)", async () => {
+  const supabase = makePrizeSupabase({
+    results: [
+      { id: "1", race_id: "youth", imported_at: hoursAgo(3), prize_money: 0 },
+      { id: "2", race_id: "youth", imported_at: hoursAgo(3), prize_money: null },
+      { id: "3", race_id: "senior", imported_at: hoursAgo(3), prize_money: 0 },
+      { id: "4", race_id: "senior", imported_at: hoursAgo(3), prize_money: 5000 },
+    ],
+  });
+  const state = await fetchWatchdogState({ supabase, now: NOW, autoPrizeEnabled: true });
+  assert.deepEqual(state.prizeCandidates.map((r) => r.id).sort(), ["empty", "senior"]);
+
+  const prizeFindings = evaluateStallFindings({ now: NOW, ...state, autoPrizeEnabled: true })
+    .filter((f) => f.type === "prize");
+  assert.deepEqual(prizeFindings.map((f) => f.raceId).sort(), ["empty", "senior"],
+    "seniorløb med ubetalt præmie + løb helt uden resultater alarmerer stadig; ungdomsløbet gør ikke");
+});

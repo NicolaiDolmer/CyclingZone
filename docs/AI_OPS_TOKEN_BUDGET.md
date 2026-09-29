@@ -2,17 +2,21 @@
 
 Disciplin der holder cold-start under kontrol over tid. Baselinet 2026-05-14 efter `scalable-wobbling-blossom` plan (Phase 1-5). P0-sporet for næste token-reduktion styres i [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
 
-## Aktuel baseline og mål
+## Pilot fra 29/9/2026
+
+[CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md) definerer den ejer-godkendte fem-opgavers pilot under #605. Primært mål er ejerens aktive tid pr. accepteret leverance; tokenforbrug er et separat mål. Nedenstående maj-snapshots er historiske og må ikke citeres som aktuel runtime-baseline. Ukendt forbrug er ukendt, ikke nul.
+
+## Historisk baseline og mål (maj 2026)
 
 Målt 2026-05-28 på NICOLAIPC via `scripts/check-agent-token-hygiene.ps1 -BaselineOut docs/metrics/token-baseline-ai-worldclass-v2-2026-05-28.json`.
 
 | Niveau | Claude cold-start | Codex cold-start | Brug |
 |---|---:|---:|---|
-| Aktuel runtime-baseline | ~19,600 tok | ~24,300 tok | Sandhed for #605 før trim |
-| Næste praktiske P0-target | <15,000 tok | <18,000 tok | Første realistiske reduktion uden at miste quality-canaries |
+| Historisk runtime-baseline (28/5) | ~19,600 tok | ~24,300 tok | Sandhed for #605 før trim |
+| Historisk P0-target (maj) | <15,000 tok | <18,000 tok | Første realistiske reduktion uden at miste quality-canaries |
 | Aspirational world-class target | <8,000 tok | <12,000 tok | Beholdes som nordstjerne, men ikke close-out-gate for #605 |
 
-Aktuelle største drivers: harness/tool schemas ~14,800 tok, Codex-only `AGENTS.md` + cache bringer Codex context til ~7,800 tok, HOT memory ~1,800 tok, on-demand memory-dir ~69,000 tok (+41% vs baseline).
+Største drivers ved målingen 28/5: harness/tool schemas ~14,800 tok, Codex-only `AGENTS.md` + cache bringer Codex context til ~7,800 tok, HOT memory ~1,800 tok, on-demand memory-dir ~69,000 tok (+41% vs baseline).
 
 ## Per-PC harness sammenligning (2026-05-29)
 
@@ -43,7 +47,7 @@ Cut-kandidater og procedure: `docs/AI_OPS_DISABLE_PLAYBOOK.md` → "DolmerPC-spe
 | `.codex.local/SESSION_CONTEXT.md` | Optional auto-load cache (hook) | HOT | <30 linjer / ~500 tok | hook-bounds checked; missing is OK; no unique handoff |
 | `docs/GUARDRAILS_CORE.md` | Conditional auto-load | HOT-conditional | <70 linjer / ~1,200 tok | >100 linjer |
 
-**Cold-start total mål:** Brug tabellen ovenfor. Det gamle <8,000 tok mål er nu aspirational, fordi runtime-målingen viser at harness alene ligger på ~14,800 tok.
+**Historiske cold-start-mål (maj):** Tabellen ovenfor er ikke en aktuel måling. Det gamle <8,000 tok mål er nu aspirational, fordi runtime-målingen viser at harness alene ligger på ~14,800 tok.
 
 ## Tier-system
 

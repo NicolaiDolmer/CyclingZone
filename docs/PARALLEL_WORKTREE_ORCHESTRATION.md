@@ -3,7 +3,7 @@
 
 ## Godkendte runtime-indgange (#5142, #5467)
 
-Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer. PR-loftet paa 8 er fjernet 22/9 (variant B, ejer-beslutning, #5510) - lanerne (4) og verifikations-semaforen (2) er fortsat bremsen. Resten af det historiske playbook laeses med disse aendringer: ingen automatisk merge, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer. PR-loftet paa 8 er fjernet 22/9 (variant B, ejer-beslutning, #5510) - lanerne (4) og verifikations-semaforen (2) er fortsat bremsen. Resten af det historiske playbook laeses med disse aendringer: merge kun efter mandat i AGENTS.md regel 35, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
 
 ## Codex-boelger (#5467)
 
@@ -16,21 +16,23 @@ node scripts/codex-wave.mjs plan.json --run
 
 Planen indeholder `lanes` (default 2, maks 4) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `ownNodeModules` og `checkedMergedPrs`. Ingen model tilsidesaettes automatisk. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
 
-Runneren reserverer alle planens nye PR-pladser, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
+Runneren optager planen under den faelles boelgelaas, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
 
 Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
 
 | Egenskab | Haandhaevelse og graense |
 |---|---|
 | Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
-| Otte aabne PR'er | Live GitHub-tal inkl. drafts plus planlagte nye PR'er; Claude-hook og Codex-runner deler koden |
+| Samtidighed | PR-loftet er fjernet (#5510); maks 4 laner og 2 tunge verifikationer |
 | Filansvar | Plan-overlap afvises; Codex kontrollerer committed diff foer review. Ikke en fil-ACL |
 | Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
 | Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
 | Semafor | Maks 2 for kommandoer gennem wrapperen. Wrapping er fortsat brief-/reviewdisciplin |
 | Oprydning | Optaget ejerproces, dens levende procestrae og registreret watch-identitet; ingen global proces- eller worktree-pruning |
 | Claudes setup/cleanup | Hookens admission er kode; setup-agentens rapport og terminal-observation er stadig agentdisciplin |
-| Merge | Kun efter ejerens ordrette `merge`, separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig. Under en koerende boelge kun PR'er uden ownership-overlap med boelgens aktive spor, laast til det tjekkede head (`--match-head-commit`), fail-closed (#5562) |
+| Merge | Hovedsessionen anvender AGENTS.md regel 35 (staaende mandat eller konkret ejer-go), separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig. Under en koerende boelge kun PR'er uden ownership-overlap med boelgens aktive spor, laast til det tjekkede head (`--match-head-commit`), fail-closed (#5562) |
+
+`ready` er overdragelse til hovedsessionen, ikke leveret status. Hovedsessionen ejer CI, godkendelsespakke, tilladt merge, deploy/main-kontrol og varigt close-out, jf. [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md). Pilotmaaling ligger paa #605.
 
 Rapporten ligger lokalt under `.claude/run/waves/<waveId>/report.json`; hver lane har privat scratch med brief, processtatus og output. Publicer en anonymiseret status og testbevis paa issue/PR inden close-out. Lokale logs er ikke varigt handoff. Maaling: tid til merget PR, ejerens aktive minutter (ejer-oplyst) og reviewrettelser. Ingen hastighedsgevinst paastaas ud fra fixture-tests.
 
@@ -102,7 +104,7 @@ Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.
 
 ## TL;DR
 
-Master-session kører `wave.js` med 4 laner (1 worktree pr. lane, semafor 2 på tunge kørsler, opdateret 11/9 pr. #5142 — tallet var 3 indtil da) → PRs merges sekventielt med rebase → én samlet close-out. Token-cost: roughly neutral vs. sekventielt. Wall-clock-besparelse: ~4-6×.
+Master-session kører `wave.js` med 4 laner (1 worktree pr. lane, semafor 2 på tunge kørsler, opdateret 11/9 pr. #5142 — tallet var 3 indtil da) → PRs merges sekventielt med rebase → én samlet close-out. Effektivitet maales paa de reelle pilotopgaver i [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md); ingen aktuel hastigheds- eller tokengevinst er dokumenteret.
 
 ## ⚠️ KRITISK forudsætning (2026-05-29, #684): brug `permissions.deny` til hard-blocks — ikke hooks alene
 
@@ -351,7 +353,7 @@ Dom: punkt 10 og 11 er advarsel foerst - BEMAERKNINGER foer 2026-10-01, BLOKEREN
 
 ## Ejer-regel 14/9: backend-only-merges kan spoerges igennem uden go-kort
 
-Rene backend-fixes (ingen UI-aendring, reviewer-verdikt GODKENDT, CI groen) maa orkestratoren **SPOERGE** ejeren om at merge uden et fuldt go-kort med skaermbillede - men ALDRIG antage det stiltiende og merge uden svar. Forskellen fra den generelle UI-regel ("aldrig merge uden ejer-go paa en preview med skaermbillede") er at et backend-only spor ikke har noget visuelt at godkende; et konkret spoergsmaal ("PR #N: backend-fix, reviewer GODKENDT, CI groen - maa jeg merge?") traeder i stedet for kortet, det fjerner ikke selve godkendelsen.
+Merge-mandat afgoeres af AGENTS.md regel 35. Backend-only er ikke i sig selv et staaende mandat: kun de naevnte kategorier med samtlige beviser maa merges uden nyt ejer-go. Andre backend-fixes forelaegges med problem, loesning, test/review og konkret merge-spoergsmaal; UI beholder de visuelle ejer-gates.
 
 ## Foer du melder faerdig
 
@@ -428,7 +430,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 | Master orchestration | ~25-40K |
 | **Total** | **~250-400K** |
 
-Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-besparelse er den primære gevinst** (~4-6×).
+Historisk estimat, ikke aktuel måling eller løfte. Sammenlign ejerens aktive tid, gennemløbstid og samlet agentforbrug på de reelle pilotopgaver i [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md); gevinsten er endnu uafklaret.
 
 ## Common pitfalls
 
