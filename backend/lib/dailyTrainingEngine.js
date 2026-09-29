@@ -226,11 +226,13 @@ export async function runTeamTrainingDay({
       .eq('squad', squadKey).in('game_day', dateDays);
     if (error) throw new Error(`daily condition reports: ${error.message}`);
     if((dateRuns??[]).some(row=>row.report?.condition_per_date!==true)) throw new Error('Cannot switch condition cadence during a partially executed date');
-    // maybesingle-scope-ok: owner-approved temporary annotation; full (team_id,season_id,tick_date) PK in this PR's tested partial.sql, reached only with conditionPerDate. Remove after post-apply snapshot refresh (#5928).
-    const {data:work,error:workError}=await supabase.from('training_date_work').select('*')
-      .eq('team_id',teamId).eq('season_id',seasonId).eq('tick_date',tickDate).maybeSingle();
+    // Full (team_id,season_id,tick_date) primary key: at most one row. Read as a
+    // capped list so a second row can never be silently ignored.
+    const {data:workRows,error:workError}=await supabase.from('training_date_work').select('*')
+      .eq('team_id',teamId).eq('season_id',seasonId).eq('tick_date',tickDate).limit(2);
     if(workError) throw new Error(`training date work: ${workError.message}`);
-    dateWork=work;
+    if((workRows??[]).length>1) throw new Error('training date work: duplicate primary key rows');
+    dateWork=workRows?.[0] ?? null;
   }
   const settlesCondition = conditionPerDate && raceDay === dateDays.at(-1);
   // ── #4847 (ejer-beslutning 15/9, §13.3 beslutning 3): INGEN BONUS paa loebsdags-

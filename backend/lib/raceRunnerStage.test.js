@@ -927,8 +927,22 @@ for (const value of ["on", "beta"]) {
     });
     let recoveryCalls = 0;
     await simulateStageByIndex({ supabase, race, stageIndex: 1, ...NOOP_DEPS,
+      checkFinalizeResumable: async () => true,
       applyGrandTourRestDayFatigue: async () => { recoveryCalls++; },
     });
     assert.equal(recoveryCalls, 0);
   });
 }
+
+test("#5928: normalized load ledger fails closed before writes when finalize-resume is off", async () => {
+  const race = { ...STAGE_RACE };
+  const supabase = cannedFor(race, STAGES_3, {
+    app_config: [{ key: "training_tick_per_race_day", value: "on" }, { key: "training_condition_per_date", value: "on" }],
+    race_stage_schedule: STAGES_3.map((s, i) => ({ race_id: race.id, stage_number: s.stage_number, game_day: i * 5 + 1 })),
+  });
+  await assert.rejects(
+    simulateStageByIndex({ supabase, race, stageIndex: 1, ...NOOP_DEPS, checkFinalizeResumable: async () => false }),
+    /requires race_finalize_resumable_enabled/,
+  );
+  assert.equal((supabase.__writes ?? []).length, 0, "no write may happen before the guard");
+});

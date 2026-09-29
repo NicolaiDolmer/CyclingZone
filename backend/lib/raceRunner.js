@@ -2915,6 +2915,11 @@ export async function simulateStageByIndex({
   // resten af funktionen er bit-identisk med før #4147: den grovkornede
   // finalizationPending-recovery (P0 2/7) er stadig den eneste redningsvej.
   const resumeEnabled = !dryRun && (await checkFinalizeResumable(supabase));
+  // #5928: the normalized load ledger relies on resumable, retry-until-success
+  // finalization. Fail closed BEFORE any write if that machinery is off.
+  if (trainingOwnsRecovery && !dryRun && !resumeEnabled) {
+    throw new Error("training_condition_per_date requires race_finalize_resumable_enabled");
+  }
   const finalizeStartedAt = new Date().toISOString();
   let finalizeDone = [];
   let resumedState = null;
