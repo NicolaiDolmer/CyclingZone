@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.318",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Steadier fatigue and form",
+        "body": "Race and training now share a daily assessment of fatigue, form and training injury risk. Delayed races only hold up the riders involved. Race development and recovery between stages now follow actual participation."
+      },
+      "da": {
+        "title": "Mere stabil træthed og form",
+        "body": "Løb og træning indgår nu i en samlet daglig vurdering af træthed, form og risiko for træningsskader. Forsinkede løb berører kun de involverede ryttere. Udvikling fra løb og restitution mellem etaper følger nu den faktiske deltagelse."
+      },
+      "refs": [5888, 5928]
+    }]
+  },
+  {
     "version": "7.317",
     "date": "2026-09-29",
     "label": "Beta",

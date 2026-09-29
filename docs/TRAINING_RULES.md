@@ -1,5 +1,22 @@
 # Træningens regler - SSOT
 
+## Integritet i dagsaktiviteten (#5888, 29/9)
+
+- Endagsløbets `gc`-resultat tæller som løbsaktivitet på den lagrede etapes løbsdag; etapeløbets samlede GC gør ikke. Reglen gælder senior, U23 og junior.
+- En gemt udtagelse binder ikke træningen, når første etapes uforanderlige `race_simulation_runs.entrant_snapshot` beviser, at rytteren aldrig var i startfeltet. Rytteren følger sit program, med den eksisterende skadesregel. Selve udtagelsen ændres ikke.
+- Manglende startfelt er ukendt og frigiver aldrig bindingen. Fejlede opslag og ugyldige snapshots stopper tick'et til genforsøg. Manglende resultater er ikke bevis for DNS: en legitim DNF må ikke blokere holdets øvrige ryttere. Proportionalt DNF-udbytte og frigivelse af senere løbsdage er et separat design, endnu ikke implementeret her.
+- Med `training_condition_per_date` aktivt ejer datoens aftenafregning restitutionen. Løbsmotorens tidligere ekstra restitution for huller mellem `game_day` må hverken forudberegnes eller skrives oveni. DNS-frigivelse kobles til samme flag, så den ikke leveres med den gamle hurtige tilstandskadence. Frie slots på en etapedato følger programmet; en hel bundet dato uden etape er fortsat hvile. Flag off bevarer den gamle restitution og DNS-binding.
+- Rettelsen ændrer ingen balancerater eller formmodel. Målingernes begrænsninger står i [integritetsauditten](audits/2026-09-29-training-day-integrity.md).
+
+## Tilstand én gang pr. dato (#5928, ejer-valg A 29/9)
+
+Forudsætning: `training_tick_per_race_day` skal være aktivt for motoren, før `training_condition_per_date` må være aktivt. Inkonsistente flag og fejlede flagopslag afvises før skrivning i træning, løbsbelastning og cutover. Løbsdagsaksen er nulbaseret; datoen kommer fra kalenderen, aldrig fra en udledning af løbsdagsnummeret.
+
+`training_condition_per_date` er bygget med standard `off`; ingen aktivering er godkendt. Ejerens efterfølgende build-go 29/9 normaliserer den SAMLEDE løbs- og træningsbelastning: hver etape optager ét af datoens fem slots. Evner udvikles fortsat på alle sæsonens 140 løbsdage. Datoens fem trin bruger samme gemte udgangspunkt for udviklingens form-/træthedsfaktor. Kun sidste trin afregner tilstanden, efter de fire tidligere rapporter er færdige: gennemsnittet af eksisterende belastninger, én restitution, én formændring og ét datoseedet skadesrul baseret på datoens starttilstand. Løb skriver under flaget kun idempotente belastningsrækker i `training_race_loads`, med eksisterende profil og indsats. Eksisterende restitutionskonstanter følger fortsat `race_day_engine_enabled`; skadens løbsdagsvarighed består. Ny formsemantik er ikke en del af rettelsen.
+
+Evner, historik, score, rapport, belastningsforbrug og tilstandsændring committes atomisk af `commit_training_date_tick`. Dubletter gør intet; fejl ruller hele trinnet tilbage. En ændret belastningsliste kræver genforsøg; nye løbsbelastninger efter afregning afvises. Manglende tidligere trin, blandet gammel/ny kadence eller uafsluttet tidligere dato stopper til genforsøg/recovery. Den manuelle knap og aftenens sweep bruger samme motor. Rollout sker ved en ubrugt dato eller via ejer-godkendt atomisk cutover fra dokumenteret starttilstand og faktiske etapelaster; aldrig midt i træningens fem trin. Legacy-finalisering skal være stoppet og observeret afsluttet før cutover. Skader bevares. #5926 må ikke frigives alene. Acceptmålinger og fuld verifikation afventer hovedsessionen; den historiske median-gate er midlertidigt fraveget af ejeren, og enhedstest er ikke populationsbevis. Se [implementeringsplanen](superpowers/plans/2026-09-29-training-condition-date.md).
+
+
 > **GDD-retning, ejer 10/9 (D-018):** videre design bygger på passende udfordring
 > og aftagende læring ved nye erfaringer. Begge dagsaktiviteter udvikler rytteren;
 > målrettet træning har præcision, passende løb giver fysisk stimulus og erfaring.

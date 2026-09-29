@@ -236,6 +236,7 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 // lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
 import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
+import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
@@ -3120,6 +3121,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    if (await isTrainingConditionPerDateEnabled(supabase)) {
+      return res.status(409).json({ error: "normalized_sweep_owns_date" });
+    }
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isDailyTrainingEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "daily_training_disabled" });

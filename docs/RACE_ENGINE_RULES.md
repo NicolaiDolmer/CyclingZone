@@ -1,5 +1,10 @@
 # Race-motorens regler — SSOT
 
+## Restitutionens ejer ved løbsdags-træning (#5888, 29/9)
+
+Når `training_condition_per_date` er aktivt, ejer datoens træningsafregning restitutionen mellem løbsdage. `raceRunner` og `raceFatigue` tilføjer derfor ingen separat restitution udledt af huller mellem etapers `game_day`, hverken i fuldløbets træthedsberegning eller ved finalisering. Løbets profil-/indsatsbelastning gemmes én gang i `training_race_loads`, afledt af etapens kanoniske kalenderdato og løbsdag; den ændrer ikke straks `rider_condition`. Datoens træningsafregning normaliserer hele belastningen over datoens slots. Etaper på samme dato bruger starttilstanden. Fejl i belastningsregistreringen skal genforsøges; de må ikke markeres som et afsluttet engangstrin. Med flaget off består den gamle model; en fejlet læsning af ejerskabet må ikke åbne den gamle skribent. Flaget kobler rettelsen til den sikre datokadence (#5928), så #5926 ikke leveres alene. Se [TRAINING_RULES.md](TRAINING_RULES.md#integritet-i-dagsaktiviteten-5888-299). Et immutable startsnapshot beviser deltagelse, ikke at finaliseringen er færdig; resultater og den eksisterende daglukning er fortsat nødvendige.
+
+
 > **GDD-retning, ejer 10/9 (D-019):** fremtidig læring af løbserfaring udvikler
 > eksisterende evner gennem progressionen; der tilføjes ikke en særskilt skjult
 > præstationsbonus oveni alene for erfaring. Se [PROGRESSION_RULES](PROGRESSION_RULES.md)
