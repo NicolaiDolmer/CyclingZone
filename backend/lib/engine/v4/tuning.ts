@@ -348,6 +348,17 @@ const bonusSecondsExtra = {
   komQualityWeightsSmall: { climbing: 0.5, punch: 0.35, acceleration: 0.15 },
   komSmallCategories: ["3", "4"] as readonly string[],
   komNoiseSd: 0.03, // samme stoej-niveau som racePassages.WAYPOINT_NOISE_SD
+
+  // ── Hvem KAEMPER om en passage (#5914, ejer-godkendt 29/9) ─────────────────
+  // I en lille gruppe (et udbrud, en jagtgruppe) koerer alle om pointene — det
+  // er det de sidder der for. I en stor gruppe (feltet) spurter kun
+  // pointjaegerne; kaptajner og hjaelpere ruller igennem bag dem. Foereren af
+  // point- hhv. bjergkonkurrencen kaemper altid (han forsvarer troejen). Er der
+  // faerre kaempere end pointpladser, gaar restpladserne til de bedste af de
+  // oevrige i gruppen, saa point altid uddeles.
+  passageOpenContestMaxGroupSize: 8, // = breakaway.ts's MAX_BREAKAWAY_SIZE: et helt udbrud kaemper altid
+  intermediateSprintContenderRoles: ["sprint_captain", "hunter", "free_role"] as readonly string[],
+  komContenderRoles: ["hunter", "free_role"] as readonly string[],
 };
 
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */

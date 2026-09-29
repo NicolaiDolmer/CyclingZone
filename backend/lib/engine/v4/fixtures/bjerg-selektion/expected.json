@@ -102,15 +102,15 @@
               "points": 10
             },
             {
-              "rider_id": "r02",
+              "rider_id": "r03",
               "points": 8
             },
             {
-              "rider_id": "r03",
+              "rider_id": "r04",
               "points": 6
             },
             {
-              "rider_id": "r04",
+              "rider_id": "r02",
               "points": 4
             },
             {
@@ -118,7 +118,7 @@
               "points": 2
             },
             {
-              "rider_id": "r06",
+              "rider_id": "r13",
               "points": 1
             }
           ]
@@ -807,19 +807,19 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r02",
+          "rider_id": "r03",
           "passage_rank": 2,
           "points": 8,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r03",
+          "rider_id": "r04",
           "passage_rank": 3,
           "points": 6,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r04",
+          "rider_id": "r02",
           "passage_rank": 4,
           "points": 4,
           "bonus_seconds": 0
@@ -831,7 +831,7 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r06",
+          "rider_id": "r13",
           "passage_rank": 6,
           "points": 1,
           "bonus_seconds": 0
@@ -948,19 +948,19 @@
     {
       "rider_id": "r02",
       "sprint_points": 13,
-      "kom_points": 8,
+      "kom_points": 4,
       "bonus_seconds": 0
     },
     {
       "rider_id": "r03",
       "sprint_points": 17,
-      "kom_points": 6,
+      "kom_points": 8,
       "bonus_seconds": 6
     },
     {
       "rider_id": "r04",
       "sprint_points": 15,
-      "kom_points": 4,
+      "kom_points": 6,
       "bonus_seconds": 4
     },
     {
@@ -972,7 +972,7 @@
     {
       "rider_id": "r06",
       "sprint_points": 8,
-      "kom_points": 1,
+      "kom_points": 0,
       "bonus_seconds": 0
     },
     {
@@ -1014,7 +1014,7 @@
     {
       "rider_id": "r13",
       "sprint_points": 10,
-      "kom_points": 0,
+      "kom_points": 1,
       "bonus_seconds": 0
     },
     {

@@ -64,6 +64,24 @@ export function rankByCompDesc(entrants, compMap) {
     .map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
+/**
+ * #5914: hvem foerer point- og bjergkonkurrencen FOER dagens etape? Samme
+ * rangering som troejerne (rankByCompDesc). En konkurrence uden point har
+ * ingen foerer (null) — saa kaemper ingen "som troejefoerer" paa 1. etape.
+ *
+ * @param {Array<{rider_id:string}>} entrants  dagens felt (kun ryttere der stadig koerer)
+ * @param {Map<string,number>} pointsComp
+ * @param {Map<string,number>} komComp
+ * @returns {{points: string|null, kom: string|null}}
+ */
+export function jerseyLeadersFromComps(entrants, pointsComp, komComp) {
+  const leaderOf = (comp) => {
+    const top = rankByCompDesc(entrants, comp)[0];
+    return top && top.score > 0 ? top.rider_id : null;
+  };
+  return { points: leaderOf(pointsComp), kom: leaderOf(komComp) };
+}
+
 // Holdklassement: sum af holdets BEDSTE 3 rytteres kumulative tid, lavest vinder.
 // Kun hold med mindst 3 fuldførende ryttere rangeres (UCI-konvention, #2694) — et
 // hold med 1-2 finishers har ikke et gyldigt holdresultat og kan ikke vinde.
