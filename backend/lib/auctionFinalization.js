@@ -960,17 +960,45 @@ async function finalizeAuctionRecord({
   // season_id eksplicit. DB-trigger fill_finance_tx_season() er en safety-net,
   // men callsites skal være selv-dokumenterende. activeSeasonId kan være null
   // i edge-cases (ingen aktiv sæson registreret) — lad triggeren tage over.
-  const { data: activeSeason } = await supabase
+  const { data: activeSeason, error: activeSeasonError } = await supabase
     .from("seasons")
     .select("id, number")
     .eq("status", "active")
     .order("number", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (activeSeasonError) throw activeSeasonError;
   const activeSeasonId = activeSeason?.id ?? null;
-  // #1309 kontrakt-on-acquire: aktiv sæson-number til contract_end_season-beregning.
-  // Default 1 hvis ingen aktiv sæson er registreret (edge-case).
-  const activeSeasonNumber = activeSeason?.number ?? 1;
+  // #5847: auctions still finalize between season end and next season start.
+  // Finance has no active season_id in that gap, but a newly acquired rider
+  // must receive a contract for the upcoming season, never season 1.
+  let activeSeasonNumber = Number(activeSeason?.number);
+  if (!Number.isInteger(activeSeasonNumber) || activeSeasonNumber < 1) {
+    const { data: upcomingSeason, error: upcomingError } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "upcoming")
+      .order("number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (upcomingError) throw upcomingError;
+    if (upcomingSeason?.number != null) {
+      activeSeasonNumber = Number(upcomingSeason.number);
+    } else {
+      const { data: completedSeason, error: completedError } = await supabase
+        .from("seasons")
+        .select("number")
+        .eq("status", "completed")
+        .order("number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (completedError) throw completedError;
+      activeSeasonNumber = Number(completedSeason?.number) + 1;
+    }
+  }
+  if (!Number.isInteger(activeSeasonNumber) || activeSeasonNumber < 1) {
+    throw new Error("Auction finalization could not resolve an acquisition season");
+  }
 
   // #1308 Fase B: ungdomsauktioner (is_youth) har ingen sælger og placerer
   // vinderen i akademiet (loft pr. ungdomstrup) frem for senior-truppen. Håndteres i en
