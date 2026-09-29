@@ -589,6 +589,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // ændrer hvilken fase (peak/payback/none) etapen rammer → skal med for at
         // to identiske inputs giver identisk output (determinisme-garantien).
         ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: stage.peakDay ?? null } : {}),
+        // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
+        // Kun naar en foerer faktisk sendes videre (bagudkompatibel checksum).
+        ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
       })),
       // #2352 (Race v3 S1, spec §11.3): komponenter pr. rytter pr. etape — KUN
       // beregnet/vedhæftet når v3 er ON (why-laget/admin-formål). v3=false →
@@ -2651,6 +2654,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
       // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
+      // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
+      ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
     })),
     // #2352 (Race v3 S1, spec §11.3) + #3855 (v4-undtagelsen): se
     // buildRaceResults' tilsvarende note.
