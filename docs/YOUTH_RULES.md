@@ -1,5 +1,10 @@
 # Ungdommens regler: akademi, junior, U23 og senior - SSOT
 
+## Træningsopgørelse efter ungdomsløb (#5888, 29/9)
+
+U23 og junior bruger samme dagsaktivitetsregel som senior: endagsløbets GC er løbsaktivitet, og en gemt udtagelse uden plads i det faktiske første startfelt tvinger ikke rytteren til hvile. Kun et uforanderligt startsnapshot kan bevise den manglende start; fravær i resultatlisten kan ikke. Manglende eller ulæseligt datagrundlag frigiver aldrig en ukendt deltager. Skadereglen består. Kontrakten ejes af [TRAINING_RULES.md](TRAINING_RULES.md#integritet-i-dagsaktiviteten-5888-299).
+
+
 > **GDD-retning, ejer 10/9 2026:** Egen ungdomsudvikling skal kunne vælges fra som
 > klubstrategi. En købeklub med minimal egen ungdomsindsats er en fuldgyldig vej,
 > ligesom talentfabrikken er et legitimt slutmål. Ungdom kan være vigtigt for den

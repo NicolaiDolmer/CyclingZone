@@ -2357,3 +2357,47 @@ test("#4629 loeb er loeb: en bundet rytter paa loebsdagen springer programmets s
   assert.equal(rr.intensity, "rest", "loeb (eller bundet) = ingen programsession");
   assert.deepEqual(rr.gains, {});
 });
+
+for (const executedBy of ["manager", "assistant"]) {
+  test(`confirmed DNS resumes the program in ${executedBy} tick and cannot duplicate credit`, async () => {
+    const state = seedStageRaceDate();
+    state.race_results = [];
+    state.race_simulation_runs = [{ race_id: "race-1", stage_number: 1, entrant_snapshot: ["other-rider"] }];
+    const result = await runDay(state, { gameDay: 13, executedBy, dateGameDays: [10, 11, 12, 13, 14] });
+    assert.equal(result.report.riders[0].bound_race_day, false);
+    assert.equal(result.report.riders[0].intensity, "hard");
+    const count = state.rider_training_scores.length;
+    const repeated = await runDay(state, { gameDay: 13, executedBy, dateGameDays: [10, 11, 12, 13, 14] });
+    assert.equal(repeated.alreadyRan, true);
+    assert.equal(state.rider_training_scores.length, count);
+  });
+}
+
+test("confirmed DNS still respects an active injury", async () => {
+  const state = seedStageRaceDate();
+  state.race_results = [];
+  state.race_simulation_runs = [{ race_id: "race-1", stage_number: 1, entrant_snapshot: ["other-rider"] }];
+  state.rider_condition[0].injured_until = "2026-12-31";
+  const result = await runDay(state, { gameDay: 13, dateGameDays: [10, 11, 12, 13, 14] });
+  assert.equal(result.report.riders[0].intensity, "rest");
+});
+
+test("normal abandon without ranked result does not block teammates or become DNS", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })],
+    abilities: [makeAbilityRow("r1"), makeAbilityRow("r2")],
+    conditions: [makeCondition("r1"), makeCondition("r2")],
+  });
+  seedFlagOn(state, "on");
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedBinding(state, { riderId: "r1", gameDay: 12 });
+  state.race_simulation_runs = [{ race_id: "race-1", stage_number: 1, entrant_snapshot: ["r1", "r2"] }];
+  state.race_results = [{ rider_id: "r2", result_type: "stage", race_id: "race-1", stage_number: 1 }];
+  const result = await runDay(state, { gameDay: 12 });
+  assert.equal(result.report.riders.length, 2);
+  const abandoned = result.report.riders.find(r => r.rider_id === "r1");
+  const finisher = result.report.riders.find(r => r.rider_id === "r2");
+  assert.equal(abandoned.bound_race_day, true, "actual starter must not become DNS");
+  assert.equal(abandoned.race_day, false, "no invented full race development for DNF");
+  assert.equal(finisher.race_day, true, "teammate keeps their race development");
+});

@@ -257,7 +257,7 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
   try {
     const { data, error } = await supabase
       .from("race_entry_days")
-      .select("rider_id")
+      .select("rider_id, race_id")
       // pagination-safe: afgraenset til ÉT holds egen trup (typisk < 30) paa ÉN
       // loebsdag i ÉN saeson — hoejst én raekke pr. rytter, fordi
       // no_rider_double_booking_day er UNIQUE (rider_id, season_id, game_day).
@@ -266,7 +266,26 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
       .eq("season_id", seasonId)
       .eq("game_day", Number(gameDay));
     if (error) return { data: null, error };
-    return { data: new Set((data ?? []).map((r) => r.rider_id)), error: null };
+    // Saved selections can include riders excluded from the actual start field.
+    // Only an immutable first-stage snapshot proves DNS; missing evidence keeps
+    // the binding. Never infer DNS from finishers or a missing result.
+    const raceIds = [...new Set((data ?? []).map(row => row.race_id).filter(Boolean))];
+    const fields = new Map();
+    if (raceIds.length) {
+      // pagination-safe: one first-stage run per bound race in this team's roster.
+      const { data: runs, error: runError } = await supabase.from("race_simulation_runs")
+        .select("race_id, entrant_snapshot").in("race_id", raceIds).eq("stage_number", 1);
+      if (runError) return { data: null, error: runError };
+      for (const run of runs ?? []) {
+        const entrantIds = Array.isArray(run.entrant_snapshot) ? run.entrant_snapshot.map(entry => typeof entry === "string" ? entry : entry?.rider_id) : null;
+        if (!entrantIds || !entrantIds.every(id => typeof id === "string" && id)) {
+          return { data: null, error: new Error("invalid immutable start field") };
+        }
+        if (fields.has(run.race_id)) return { data: null, error: new Error("ambiguous immutable start field") };
+        fields.set(run.race_id, new Set(entrantIds));
+      }
+    }
+    return { data: new Set((data ?? []).filter(row => !fields.has(row.race_id) || fields.get(row.race_id).has(row.rider_id)).map(row => row.rider_id)), error: null };
   } catch (err) {
     // best-effort HER, men ikke hos kalderen: fejlen sluges ikke, den RETURNERES
     // (`data: null` = "ved det ikke", ikke "ingen er bundet"), og

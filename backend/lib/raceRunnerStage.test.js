@@ -917,3 +917,18 @@ test("#2877: standings recompute-fejl vælter IKKE — run-snapshot + fatigue sk
   assert.ok(runIns, "#2877: run-snapshot SKAL persisteres selvom standings-recompute fejler");
   assert.equal(fatigueCalled, 1, "#2877: applyFatigue skal stadig køre selvom standings-recompute fejler");
 });
+
+for (const value of ["on", "beta"]) {
+  test(`race-day training ${value}: stage finalization never pre-credits future gap recovery`, async () => {
+    const race = { ...STAGE_RACE };
+    const supabase = cannedFor(race, STAGES_3, {
+      app_config: [{ key: "training_tick_per_race_day", value }],
+      race_stage_schedule: STAGES_3.map((s, i) => ({ race_id: race.id, stage_number: s.stage_number, game_day: i * 5 + 1 })),
+    });
+    let recoveryCalls = 0;
+    await simulateStageByIndex({ supabase, race, stageIndex: 1, ...NOOP_DEPS,
+      applyGrandTourRestDayFatigue: async () => { recoveryCalls++; },
+    });
+    assert.equal(recoveryCalls, 0);
+  });
+}

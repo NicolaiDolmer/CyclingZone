@@ -1,5 +1,14 @@
 # Træningens regler - SSOT
 
+## Integritet i dagsaktiviteten (#5888, 29/9)
+
+- Endagsløbets `gc`-resultat tæller som løbsaktivitet på den lagrede etapes løbsdag; etapeløbets samlede GC gør ikke. Reglen gælder senior, U23 og junior.
+- En gemt udtagelse binder ikke træningen, når første etapes uforanderlige `race_simulation_runs.entrant_snapshot` beviser, at rytteren aldrig var i startfeltet. Rytteren følger sit program, med den eksisterende skadesregel. Selve udtagelsen ændres ikke.
+- Manglende startfelt er ukendt og frigiver aldrig bindingen. Fejlede opslag og ugyldige snapshots stopper tick'et til genforsøg. Manglende resultater er ikke bevis for DNS: en legitim DNF må ikke blokere holdets øvrige ryttere. Proportionalt DNF-udbytte og frigivelse af senere løbsdage er et separat design, endnu ikke implementeret her.
+- Med `training_tick_per_race_day` aktivt ejer træningsticket restitutionen. Løbsmotorens tidligere ekstra restitution for huller mellem `game_day` må hverken forudberegnes eller skrives oveni. Frie slots på en etapedato følger programmet; en hel bundet dato uden etape er fortsat hvile. Flag off bevarer den gamle sti.
+- Rettelsen ændrer ingen balancerater eller formmodel. Målingernes begrænsninger står i [integritetsauditten](audits/2026-09-29-training-day-integrity.md).
+
+
 > **GDD-retning, ejer 10/9 (D-018):** videre design bygger på passende udfordring
 > og aftagende læring ved nye erfaringer. Begge dagsaktiviteter udvikler rytteren;
 > målrettet træning har præcision, passende løb giver fysisk stimulus og erfaring.

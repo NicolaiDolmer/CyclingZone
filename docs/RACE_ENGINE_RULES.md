@@ -1,5 +1,10 @@
 # Race-motorens regler — SSOT
 
+## Restitutionens ejer ved løbsdags-træning (#5888, 29/9)
+
+Når `training_tick_per_race_day` er aktivt, ejer træningsticket restitutionen mellem løbsdage. `raceRunner` og `raceFatigue` tilføjer derfor ingen separat restitution udledt af huller mellem etapers `game_day`, hverken i fuldløbets træthedsberegning eller ved finalisering. Løbets egen belastning skrives fortsat. Med flaget off består den gamle model; en fejlet læsning af ejerskabet må ikke åbne den gamle skribent. Se [TRAINING_RULES.md](TRAINING_RULES.md#integritet-i-dagsaktiviteten-5888-299). Et immutable startsnapshot beviser deltagelse, ikke at finaliseringen er færdig; resultater og den eksisterende daglukning er fortsat nødvendige.
+
+
 > **GDD-retning, ejer 10/9 (D-019):** fremtidig læring af løbserfaring udvikler
 > eksisterende evner gennem progressionen; der tilføjes ikke en særskilt skjult
 > præstationsbonus oveni alene for erfaring. Se [PROGRESSION_RULES](PROGRESSION_RULES.md)

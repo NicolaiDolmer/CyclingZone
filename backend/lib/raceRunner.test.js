@@ -1650,3 +1650,26 @@ test("#5675 simulateRace: fejl i refreshYouthStandings logges, men stopper ikke 
   assert.equal(upd.obj.status, "completed", "afviklingen skal fuldføre forbi en fejlet youth-standings-refresh");
   assert.equal(report.stages, 3);
 });
+
+test("race-day training owns recovery in full-race prediction and persistence", async () => {
+  const stages = STAGES_3.map((s, i) => ({ ...s, game_day: i * 5 + 1 }));
+  const expected = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const withGaps = buildRaceResults({ race: STAGE_RACE, stages, entrants: ENTRANTS, pointsLookup: POINTS, trainingOwnsRecovery: true });
+  assert.deepEqual(withGaps.resultRows, expected.resultRows);
+  const supabase = makeSupabase({
+    race_stage_profiles: stages,
+    ...cannedField(),
+    race_points: [],
+    app_config: [{ key: "training_tick_per_race_day", value: "on" }],
+    seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 5, race_days_total: 60 }],
+  });
+  let recoveryCalls = 0;
+  await simulateRace({ supabase, race: STAGE_RACE,
+    loadStageGameDays: async () => new Map(stages.map(s => [s.stage_number, s.game_day])),
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 8,
+    applyFatigue: async () => ({ updated: 0 }),
+    applyGrandTourRestDayFatigue: async () => { recoveryCalls++; },
+  });
+  assert.equal(recoveryCalls, 0);
+});

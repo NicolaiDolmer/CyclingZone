@@ -4,7 +4,7 @@
 // SPOERGSMAALET: "Hvilken etape koerte hver af holdets ryttere paa loebsdag N?"
 //
 // KILDEN ER `race_results` ⋈ `race_stage_schedule`, IKKE `race_entry_days`.
-//   · `race_results (result_type='stage')` siger hvem der faktisk KOERTE hvilken
+//   · `race_results` (stage, eller gc for race_type single) siger hvem der KOERTE hvilken
 //     (race_id, stage_number). Raekken skrives af finaliseringen og forsvinder aldrig.
 //   · `race_stage_schedule.game_day` siger hvilken LOEBSDAG den etape hoerte til.
 //     Én etape pr. loeb pr. loebsdag (CALENDAR_RULES), saa parret (race_id, game_day)
@@ -95,9 +95,9 @@ async function loadTeamSeasonRaceIds({ supabase, teamId, seasonId }) {
   // 2) Saesonens loeb i de divisioner. pagination-safe: senior 32-37 + ungdom 4-8 pr.
   //    gruppe i S4, langt under PostgREST's 1000-raekkers-loft.
   const { data: races, error: racesError } = await supabase
-    .from("races").select("id").eq("season_id", seasonId).in("league_division_id", divisionIds);
+    .from("races").select("id, race_type").eq("season_id", seasonId).in("league_division_id", divisionIds);
   if (racesError) return { raceIds: null, error: racesError };
-  return { raceIds: (races ?? []).map((r) => r.id).filter(Boolean), error: null };
+  return { raceIds: (races ?? []).map((r) => r.id).filter(Boolean), singleRaceIds: new Set((races ?? []).filter(r => r.race_type === "single").map(r => r.id)), error: null };
 }
 
 /**
@@ -134,7 +134,7 @@ export async function loadRaceDayStagesByRider({
   if (!riderIds?.length) return empty();
 
   try {
-    const { raceIds, error: raceIdsError } = await loadTeamSeasonRaceIds({ supabase, teamId, seasonId });
+    const { raceIds, singleRaceIds = new Set(), error: raceIdsError } = await loadTeamSeasonRaceIds({ supabase, teamId, seasonId });
     if (raceIdsError) return { data: null, error: raceIdsError, profileError: null };
     if (!raceIds.length) return empty();
 
@@ -151,16 +151,19 @@ export async function loadRaceDayStagesByRider({
     if (!stages.length) return empty();
     const raceIdsOnDay = [...new Set(stages.map((s) => s.race_id))];
 
-    // 4) Hvem af holdets ryttere har et etaperesultat i de loeb? Filtreret paa
+    // 4) Etaperesultater samt endagsloebets GC; tour-GC er aldrig en etape. Filtreret paa
     //    (race_id, stage_number) i JS: PostgREST har ingen tuple-IN. pagination-safe:
     //    holdets egne ryttere (< 30) × etaperne i hoejst et par loeb (≤ 21 hver).
     const { data: resultRows, error: resultsError } = await supabase
       .from("race_results")
-      .select("rider_id, race_id, stage_number")
-      .eq("result_type", "stage")
+      .select("rider_id, race_id, stage_number, result_type")
+      .in("result_type", ["stage", "gc"])
       .in("race_id", raceIdsOnDay)
       .in("rider_id", riderIds);
     if (resultsError) return { data: null, error: resultsError, profileError: null };
+
+    // A missing ranked result can be a normal abandon. Start snapshots establish
+    // DNS only in the binding lookup; they cannot require a result for every starter.
 
     // 5) Profil-typen (berigelse). Kun for loeb hvor mindst én af holdets ryttere
     //    faktisk koerte. pagination-safe: hoejst et par loeb pr. hold pr. loebsdag
@@ -178,7 +181,7 @@ export async function loadRaceDayStagesByRider({
     }
 
     return {
-      data: buildRaceDayStageByRider({ scheduleRows: stages, resultRows: resultRows ?? [], profileRows }),
+      data: buildRaceDayStageByRider({ scheduleRows: stages, resultRows: (resultRows ?? []).filter(row => row.result_type === "stage" || (row.result_type === "gc" && singleRaceIds.has(row.race_id))), profileRows }),
       error: null,
       profileError,
     };
@@ -210,7 +213,7 @@ export async function loadRiderIdsWithStageOnGameDays({ supabase, teamId, season
   const days = [...new Set((gameDays ?? []).map(Number).filter(Number.isFinite))];
   if (!days.length || !riderIds?.length) return { data: new Set(), error: null };
   try {
-    const { raceIds, error: raceIdsError } = await loadTeamSeasonRaceIds({ supabase, teamId, seasonId });
+    const { raceIds, singleRaceIds = new Set(), error: raceIdsError } = await loadTeamSeasonRaceIds({ supabase, teamId, seasonId });
     if (raceIdsError) return { data: null, error: raceIdsError };
     if (!raceIds.length) return { data: new Set(), error: null };
 
@@ -229,15 +232,15 @@ export async function loadRiderIdsWithStageOnGameDays({ supabase, teamId, season
     // pagination-safe: holdets egne ryttere (< 30) × datoens etaper.
     const { data: resultRows, error: resultsError } = await supabase
       .from("race_results")
-      .select("rider_id, race_id, stage_number")
-      .eq("result_type", "stage")
+      .select("rider_id, race_id, stage_number, result_type")
+      .in("result_type", ["stage", "gc"])
       .in("race_id", [...new Set(stages.map((row) => row.race_id))])
       .in("rider_id", riderIds);
     if (resultsError) return { data: null, error: resultsError };
 
     const out = new Set();
     for (const row of resultRows ?? []) {
-      if (stageKeys.has(stageKey(row.race_id, row.stage_number))) out.add(row.rider_id);
+      if ((row.result_type === "stage" || (row.result_type === "gc" && singleRaceIds.has(row.race_id))) && stageKeys.has(stageKey(row.race_id, row.stage_number))) out.add(row.rider_id);
     }
     return { data: out, error: null };
   } catch (err) {

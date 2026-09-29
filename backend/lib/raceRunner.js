@@ -350,7 +350,7 @@ function reportStageRoleConflicts({ raceId, stageNumber, conflicts, captureExcep
   }
 }
 
-export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [] }) {
+export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [], trainingOwnsRecovery = false }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -430,6 +430,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       return [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles, {
         ...(efforts ? { efforts } : {}),
         restDaysBefore,
+        trainingOwnsRecovery,
         recoveryAbility: e.abilities?.recovery,
       })];
     })
@@ -2103,6 +2104,7 @@ export async function simulateRace({
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
   // #5645: løbets trup (felt + præmievagt), se resolveRaceSquad.
   race = await resolveRaceSquad({ supabase, race });
+  const trainingOwnsRecovery = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true, strict: true });
 
   // #1187 · race_days_completed FØR afviklingen — checkpoint-udgangspunkt for
   // board-weekend-wiring nedenfor. Defensiv: manglende række → null (ingen
@@ -2141,7 +2143,7 @@ export async function simulateRace({
   // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
   if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
 
-  const { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows });
+  const { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -2288,7 +2290,7 @@ export async function simulateRace({
     // #3470: eksplicit hviledags-restitution FØR denne etapes belastning skrives, hvis
     // der er et game_day-hul til FORRIGE etape (GT-rest-dag). Fejl sluges (samme mønster
     // som applyFatigue nedenfor) — restitutionen er additiv berigelse, ikke kritisk sti.
-    if (persistRestDaysBefore[i] > 0) {
+    if (!trainingOwnsRecovery && persistRestDaysBefore[i] > 0) {
       try {
         await applyGrandTourRestDayFatigueFn({
           supabase, riderIds, restDays: persistRestDaysBefore[i], recoveryAbilityByRider,
@@ -2792,6 +2794,7 @@ export async function simulateStageByIndex({
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
   // #5645: løbets trup (felt + præmievagt), se resolveRaceSquad.
   race = await resolveRaceSquad({ supabase, race });
+  const trainingOwnsRecovery = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true, strict: true });
   if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
 
   // #4148: instrumentér afslutningsstien — måler varighed + Supabase-kald pr. fase
@@ -3097,7 +3100,7 @@ export async function simulateStageByIndex({
       // simulation af præcis denne dag — ingen akkumulering at hente. passageRows
       // er data-gated (Sub-2, #2770): computePassages returnerer altid tomt for
       // isStageRace=false, men filtreres for symmetri/fremtidssikring.
-      const { resultRows: allRows, passageRows: allPassageRows, runs: allRuns, incidents: allIncidents, moments: allMoments, timelines: allTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows });
+      const { resultRows: allRows, passageRows: allPassageRows, runs: allRuns, incidents: allIncidents, moments: allMoments, timelines: allTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       passageRows = (allPassageRows || []).filter((p) => p.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
@@ -3330,6 +3333,7 @@ export async function simulateStageByIndex({
     // (hasRestDayGap), så markeringen aldrig lover et trin der ikke skal køre.
     if (hasRestDayGap) {
       await runFinalizeStep("rest-day", async () => {
+        if (trainingOwnsRecovery) return;
         const nextGd = stagesSorted[stageIndex + 1]?.game_day;
         const curGd = thisStage.game_day;
         const restDays = Math.max(0, nextGd - curGd - 1);
