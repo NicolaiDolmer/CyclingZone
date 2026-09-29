@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.316",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Youth groups stay full when an AI club leaves",
+          "body": "An AI club finishing its last races now keeps its U23 and Junior places until it can safely leave. Another club with riders ready to race then takes those places. Your club and your own selections stay where they are."
+        },
+        "da": {
+          "title": "Ungdomspuljer forbliver fyldte, når et AI-hold forlader dem",
+          "body": "Et AI-hold, der kører sine sidste løb, beholder nu pladserne i U23- og juniorpuljerne, indtil det kan forlade dem uden at afbryde et løb. Et andet hold med startklare ryttere overtager pladserne. Dit hold og dine egne udtagelser bliver, hvor de er."
+        },
+        "refs": [4753]
+      }
+    ]
+  },
+  {
     "version": "7.311",
     "date": "2026-09-28",
     "label": "Beta",
