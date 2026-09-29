@@ -324,14 +324,24 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
   // lastResultByRace for (a)+(c)-kandidater
   const anchorIds = [...new Set([...finalizeCandidates, ...prizeCandidates].map((r) => r.id))];
   const lastResultByRace = {};
+  const racesWithPrize = new Set();
   if (anchorIds.length) {
-    const rows = await fetchAllRaceRows(supabase, "race_results", "race_id,imported_at,id", anchorIds);
+    const rows = await fetchAllRaceRows(supabase, "race_results", "race_id,imported_at,prize_money,id", anchorIds);
     for (const row of rows) {
       const cur = lastResultByRace[row.race_id];
       if (!cur || new Date(row.imported_at) > new Date(cur)) lastResultByRace[row.race_id] = row.imported_at;
+      if ((row.prize_money ?? 0) > 0) racesWithPrize.add(row.race_id);
     }
     for (const id of anchorIds) if (!(id in lastResultByRace)) lastResultByRace[id] = null;
   }
+  // Løb med resultater men uden én eneste præmie-række (fx ungdomsløb: ingen
+  // præmiepenge i v1, YOUTH_RULES §7) har intet at udbetale. Præmiemotoren
+  // springer dem over ("no_prize_results"), så prize_paid_at forbliver NULL for
+  // evigt — det er ikke et stall (CYCLINGZONE-2G, S4 løbsdag 1). Løb helt uden
+  // resultater bliver stående: det er en ægte anomali.
+  prizeCandidates = prizeCandidates.filter(
+    (r) => lastResultByRace[r.id] == null || racesWithPrize.has(r.id)
+  );
 
   // (b) forfaldne etaper (aktiv sæson, ikke-completede løb) via embedded inner-join
   const stageCutoff = new Date(now.getTime() - t.stageHours * HOUR_MS).toISOString();
