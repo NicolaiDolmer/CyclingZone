@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.319",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Yesterday's extra fatigue corrected",
+        "body": "Fatigue and form from the first day of the season have been recalculated with the fixed model. Riders who got far too tired yesterday are back where they should be, and the small form boost from the error is removed as well."
+      },
+      "da": {
+        "title": "Gårsdagens ekstra træthed er rettet",
+        "body": "Træthed og form fra sæsonens første dag er regnet om med den rettede model. Ryttere, der blev alt for trætte i går, er tilbage, hvor de skal være, og det lille formløft fra fejlen er også fjernet."
+      },
+      "refs": [5928, 5912]
+    }]
+  },
+  {
     "version": "7.318",
     "date": "2026-09-29",
     "label": "Beta",
