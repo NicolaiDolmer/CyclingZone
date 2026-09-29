@@ -184,6 +184,33 @@ function createMockSupabase(state, opts = {}) {
   }
 
   return {
+    async rpc(name, args) {
+      if(name==='register_training_date_work') {
+        state.training_date_work??=[];
+        let work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
+        if(!work){work={team_id:args.p_team_id,season_id:args.p_season_id,tick_date:args.p_tick_date,game_days:args.p_game_days,expected_rider_ids:args.p_expected_rider_ids,deadline_at:args.p_deadline_at,status:'pending',quarantined_rider_ids:[],opening_conditions:Object.fromEntries((state.rider_condition??[]).filter(row=>args.p_expected_rider_ids.includes(row.rider_id)).map(row=>[row.rider_id,structuredClone(row)]))};state.training_date_work.push(work);}
+        return {data:work,error:null};
+      }
+      if(name==='quarantine_training_date_riders') {
+        const work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
+        work.quarantined_rider_ids=[...new Set([...work.quarantined_rider_ids,...args.p_rider_ids])];
+        work.status='needs_reconciliation';
+        return {data:{work,work_status:work.status,quarantined_rider_ids:args.p_rider_ids},error:null};
+      }
+      assert.equal(name, 'commit_training_date_tick');
+      if (opts.failDateCommit) { opts.failDateCommit = false; return { error: { message: 'atomic commit failed' } }; }
+      for (const item of args.p_abilities) Object.assign(state.rider_derived_abilities.find(row => row.rider_id === item.riderId), item.patch);
+      for (const item of args.p_conditions) Object.assign(state.rider_condition.find(row => row.rider_id === item.rider_id), item);
+      state.rider_training_scores ??= [];
+      state.rider_training_scores.push(...args.p_scores);
+      state.training_rider_ticks??=[];
+      for(const report of args.p_report.riders) if(!state.training_rider_ticks.some(row=>row.rider_id===report.rider_id&&row.season_id===args.p_season_id&&row.game_day===args.p_game_day)) state.training_rider_ticks.push({rider_id:report.rider_id,season_id:args.p_season_id,game_day:args.p_game_day,tick_date:args.p_tick_date,team_id:args.p_team_id,report});
+      const report={...args.p_report,riders:state.training_rider_ticks.filter(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.game_day===args.p_game_day).map(row=>row.report)};
+      let aggregate=state.training_day_runs.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.game_day===args.p_game_day);
+      if(aggregate) aggregate.report=report;
+      else state.training_day_runs.push({ team_id: args.p_team_id, season_id: args.p_season_id, squad: args.p_squad, game_day: args.p_game_day, tick_date: args.p_tick_date, report });
+      return { data: { already_ran: false,report }, error: null };
+    },
     from(table) {
       state[table] ??= [];
       return builder(table);
@@ -1340,7 +1367,7 @@ function seedRaceDayTick(state, { gameDay = 12, divisionId = DIVISION_ID, value 
 function runDay(state, extra = {}) {
   return runTeamTrainingDay({
     supabase: createMockSupabase(state), teamId: TEAM_ID, seasonId: SEASON_ID,
-    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW, ...extra,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW, eligibleRiderIds:state.riders.map(rider=>rider.id), ...extra,
   });
 }
 
@@ -2363,6 +2390,8 @@ for (const executedBy of ["manager", "assistant"]) {
     const state = seedStageRaceDate();
     state.race_results = [];
     state.race_simulation_runs = [{ race_id: "race-1", stage_number: 1, entrant_snapshot: ["other-rider"] }];
+    state.app_config.push({ key: 'training_condition_per_date', value: 'on' });
+    for (const gameDay of [10, 11, 12]) await runDay(state, { gameDay, executedBy, dateGameDays: [10, 11, 12, 13, 14] });
     const result = await runDay(state, { gameDay: 13, executedBy, dateGameDays: [10, 11, 12, 13, 14] });
     assert.equal(result.report.riders[0].bound_race_day, false);
     assert.equal(result.report.riders[0].intensity, "hard");
@@ -2400,4 +2429,218 @@ test("normal abandon without ranked result does not block teammates or become DN
   assert.equal(abandoned.bound_race_day, true, "actual starter must not become DNS");
   assert.equal(abandoned.race_day, false, "no invented full race development for DNF");
   assert.equal(finisher.race_day, true, "teammate keeps their race development");
+});
+
+for (const executedBy of ['manager', 'assistant']) {
+  test(`date settlement freezes five ability ticks and writes condition once (${executedBy})`, async () => {
+    const state = seedState({ conditions: [makeCondition('r1', { fatigue: 60, form: 50 })], plans: [{ rider_id: 'r1', team_id: TEAM_ID, season_id: SEASON_ID, focus: 'climbing', intensity: 'hard' }] });
+    seedRaceDayTick(state, { gameDay: 1 });
+    state.app_config.push({ key: 'training_condition_per_date', value: 'on' });
+    state.app_config.push({ key: RACE_DAY_ENGINE_FLAG_KEY, value: 'on' });
+    const dateGameDays = [1,2,3,4,5];
+    for (const gameDay of dateGameDays) {
+      const result = await runDay(state, { gameDay, executedBy, dateGameDays });
+      assert.equal(result.report.condition_settled, gameDay === 5);
+      if (gameDay < 5) assert.equal(state.rider_condition[0].fatigue,60);
+    }
+    assert.equal(state.rider_condition[0].fatigue, nextFatigue({ fatigue:60, intensity:'hard', recoveryAbility:50, ...RACE_DAY_ENGINE_RECOVERY_CONFIG }));
+    assert.equal(state.rider_condition[0].form,53);
+    assert.equal(state.training_day_runs.length,5);
+  });
+}
+
+test('date tick rejects out-of-order and incomplete settlement without writes', async () => {
+  const state = seedState(); seedRaceDayTick(state, { gameDay: 1 });
+  state.app_config.push({ key: 'training_condition_per_date', value: 'on' });
+  await assert.rejects(runDay(state, { gameDay:2, dateGameDays:[1,2,3,4,5] }), /earlier game days/);
+  await assert.rejects(runDay(state, { gameDay:1, dateGameDays:[1] }), /complete five/);
+  assert.equal(state.training_day_runs.length,0);
+});
+
+test('flag off keeps DNS binding until safe daily condition rollout', async () => {
+  const state = seedStageRaceDate(); state.race_results = [];
+  state.race_simulation_runs = [{ race_id:'race-1', stage_number:1, entrant_snapshot:['other-rider'] }];
+  const result = await runDay(state, { gameDay:13, dateGameDays:[10,11,12,13,14] });
+  assert.equal(result.report.riders[0].bound_race_day,true);
+  assert.equal(result.report.riders[0].intensity,'rest');
+});
+
+test('failed atomic date tick can be retried after restart without partial ability gain', async () => {
+  const state = seedState(); seedRaceDayTick(state, {gameDay:1});
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  const options = {failDateCommit:true};
+  const abilities = structuredClone(state.rider_derived_abilities);
+  await assert.rejects(runDay(state,{gameDay:1,dateGameDays:[1,2,3,4,5],supabase:createMockSupabase(state,options)}),/atomic commit failed/);
+  assert.deepEqual(state.rider_derived_abilities,abilities);
+  assert.equal(state.training_day_runs.length,0);
+  const result=await runDay(state,{gameDay:1,dateGameDays:[1,2,3,4,5]});
+  assert.equal(result.alreadyRan,false);
+  assert.equal(state.training_day_runs.length,1);
+});
+
+test('training injury is date-seeded once after all five hard sessions', async () => {
+  const risk = injuryRisk({intensity:'hard',fatigue:99});
+  const riderId = Array.from({length:1000},(_,i)=>`injury-date-${i}`).find(id => rollInjury({riderId:id,dateStr:'2026-06-12',risk}).injured);
+  assert.ok(riderId);
+  const expected = rollInjury({riderId,dateStr:'2026-06-12',risk});
+  const state = seedState({riders:[makeRider({id:riderId})],abilities:[makeAbilityRow(riderId)],conditions:[makeCondition(riderId,{fatigue:99})],plans:[{rider_id:riderId,team_id:TEAM_ID,season_id:SEASON_ID,focus:'climbing',intensity:'hard'}]});
+  seedRaceDayTick(state,{gameDay:1});
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  for(const gameDay of [1,2,3,4]) {
+    await runDay(state,{gameDay,dateGameDays:[1,2,3,4,5],seasonNumber:4});
+    assert.equal(state.rider_condition[0].injured_until,null);
+  }
+  const result = await runDay(state,{gameDay:5,dateGameDays:[1,2,3,4,5],seasonNumber:4});
+  assert.equal(result.report.riders[0].injury_days,expected.days);
+  assert.equal(state.rider_condition[0].injury_cause,'training_overload');
+  assert.ok(state.rider_condition[0].injury_end_game_day > 5);
+  const snapshot = structuredClone(state.rider_condition);
+  await runDay(state,{gameDay:5,dateGameDays:[1,2,3,4,5],seasonNumber:4});
+  assert.deepEqual(state.rider_condition,snapshot);
+});
+
+test('race-day flag read error performs no legacy or date writes', async () => {
+  const state = seedState();
+  seedRaceDayTick(state,{gameDay:1});
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  const before = structuredClone(state);
+  const underlying = createMockSupabase(state);
+  const supabase = {
+    ...underlying,
+    from(table) {
+      if(table !== 'app_config') return underlying.from(table);
+      let key;
+      return {select(){return this;},eq(_column,value){key=value;return this;},async maybeSingle(){
+        if(key === TRAINING_TICK_PER_RACE_DAY_FLAG_KEY) return {data:null,error:{message:'temporary flag outage'}};
+        return {data:state.app_config.find(row=>row.key===key) ?? null,error:null};
+      }};
+    },
+  };
+  await assert.rejects(runDay(state,{supabase,gameDay:1,dateGameDays:[1,2,3,4,5]}),/temporary flag outage/);
+  assert.deepEqual(state,before,'failed ownership lookup cannot reserve or mutate any game state');
+});
+
+test('five hard sessions preserve legacy recovery when race-day engine is off', async () => {
+  const state = seedState({ conditions: [makeCondition('r1', { fatigue: 60, form: 50 })], plans: [{ rider_id: 'r1', team_id: TEAM_ID, season_id: SEASON_ID, focus: 'climbing', intensity: 'hard' }] });
+  seedRaceDayTick(state, { gameDay: 1 });
+  state.app_config.push({key:'training_condition_per_date',value:'on'},{key:RACE_DAY_ENGINE_FLAG_KEY,value:'off'});
+  for (const gameDay of [1,2,3,4,5]) await runDay(state,{gameDay,dateGameDays:[1,2,3,4,5]});
+  assert.equal(state.rider_condition[0].fatigue,nextFatigue({fatigue:60,intensity:'hard',recoveryAbility:50}));
+});
+
+for(const development of ['on','off']) {
+  test(`five recorded races average total load independently of development ${development}`,async()=>{
+    const state=seedState({conditions:[makeCondition('r1',{fatigue:40,form:50})]});
+    seedFlagOn(state); seedRaceDayTick(state,{gameDay:1});
+    state.app_config=state.app_config.filter(row=>row.key!==RACE_DAY_DEVELOPMENT_FLAG_KEY);
+    state.app_config.push({key:RACE_DAY_DEVELOPMENT_FLAG_KEY,value:development},{key:'training_condition_per_date',value:'on'},{key:RACE_DAY_ENGINE_FLAG_KEY,value:'on'});
+    const days=[1,2,3,4,5];
+    state.race_stage_schedule=days.map(day=>({race_id:'race-1',stage_number:day,game_day:day,scheduled_at:'2026-06-12T06:00:00Z'}));
+    state.race_results=days.map(day=>({rider_id:'r1',race_id:'race-1',stage_number:day,result_type:'stage'}));
+    state.race_stage_profiles=days.map(day=>({race_id:'race-1',stage_number:day,profile_type:'rolling'}));
+    state.training_race_loads=days.map(day=>({rider_id:'r1',race_id:'race-1',stage_number:day,game_day:day,season_id:SEASON_ID,tick_date:'2026-06-12',load:12,consumed_at:null}));
+    for(const gameDay of days){
+      const result=await runDay(state,{gameDay,dateGameDays:days});
+      assert.equal(result.report.riders[0].intensity,'race');
+      if(gameDay<5) assert.equal(state.rider_condition[0].fatigue,40);
+    }
+    assert.equal(state.rider_condition[0].fatigue,nextFatigue({fatigue:40,intensity:'race',raceLoad:12,recoveryAbility:50,...RACE_DAY_ENGINE_RECOVERY_CONFIG}));
+  });
+}
+
+test('known race without load ledger rejects partial-date activation before writes',async()=>{
+  const state=seedStageRaceDate();
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  await assert.rejects(runDay(state,{gameDay:12,dateGameDays:[12,13,14,15,16]}),/Missing recorded race load/);
+  assert.equal(state.training_day_runs.length,0);
+});
+
+test('date settlement rejects race loads for a rider with missing ability state',async()=>{
+  const state=seedState({abilities:[]});
+  seedRaceDayTick(state,{gameDay:5});
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  state.training_race_loads=[{rider_id:'r1',race_id:'race-1',stage_number:1,game_day:5,season_id:SEASON_ID,tick_date:'2026-06-12',load:12,consumed_at:null}];
+  state.training_day_runs=[1,2,3,4].map(game_day=>({team_id:TEAM_ID,season_id:SEASON_ID,squad:'senior',game_day,tick_date:'2026-06-12',report:{condition_per_date:true,riders:[]}}));
+  state.training_rider_ticks=[1,2,3,4].map(game_day=>({rider_id:'r1',team_id:TEAM_ID,season_id:SEASON_ID,game_day,tick_date:'2026-06-12',report:{rider_id:'r1',game_day,intensity:'normal',condition_before_date:{form:50,fatigue:10}}}));
+  await assert.rejects(runDay(state,{gameDay:5,dateGameDays:[1,2,3,4,5]}),/without a condition settlement/);
+  assert.equal(state.training_day_runs.length,4);
+  assert.equal(state.training_race_loads[0].consumed_at,null);
+});
+
+test('inconsistent condition flags prevent legacy training fallback writes',async()=>{
+  const state=seedState();seedRaceDayTick(state,{gameDay:0,value:'off'});
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  const before=structuredClone(state);
+  await assert.rejects(runDay(state,{gameDay:0,dateGameDays:[0,1,2,3,4]}),/requires training_tick_per_race_day/);
+  assert.deepEqual(state,before);
+});
+
+test('partial date trains only eligible riders and merges later deadline receipts without replay',async()=>{
+  const state=seedState({riders:[makeRider({id:'r1'}),makeRider({id:'r2'})],abilities:[makeAbilityRow('r1'),makeAbilityRow('r2')],conditions:[makeCondition('r1'),makeCondition('r2')]});
+  seedRaceDayTick(state,{gameDay:0});state.app_config.push({key:'training_condition_per_date',value:'on'});
+  const dateGameDays=[0,1,2,3,4];
+  for(const gameDay of dateGameDays){
+    const result=await runDay(state,{gameDay,dateGameDays,eligibleRiderIds:['r1']});
+    assert.deepEqual(result.report.riders.map(row=>row.rider_id),['r1']);
+  }
+  const r1Before=structuredClone(state.rider_derived_abilities.find(row=>row.rider_id==='r1'));
+  for(const gameDay of dateGameDays) await runDay(state,{gameDay,dateGameDays,eligibleRiderIds:['r2'],tickDateOverride:'2026-06-12',now:new Date('2026-06-13T00:00:00Z'),deadlineReached:true,unresolvedSlotsByRider:{r2:[{raceId:'late-race',stageNumber:1,gameDay:1}]}});
+  assert.deepEqual(state.rider_derived_abilities.find(row=>row.rider_id==='r1'),r1Before);
+  assert.equal(state.training_rider_ticks.length,10);
+  assert.equal(state.training_rider_ticks.find(row=>row.rider_id==='r2'&&row.game_day===1).report.intensity,'unknown_pending');
+  assert.equal(state.training_day_runs.find(row=>row.game_day===4).report.riders.length,2);
+});
+
+test('deadline keeps unresolved result evidence even when its race load is already recorded',async()=>{
+  const state=seedState();seedRaceDayTick(state,{gameDay:0});
+  state.app_config.push({key:'training_condition_per_date',value:'on'});
+  state.training_race_loads=[{rider_id:'r1',race_id:'race-1',stage_number:1,game_day:0,season_id:SEASON_ID,tick_date:'2026-06-12',load:12,consumed_at:null}];
+  let result;
+  for(const gameDay of [0,1,2,3,4]) result=await runDay(state,{gameDay,dateGameDays:[0,1,2,3,4],tickDateOverride:'2026-06-12',now:new Date('2026-06-13T00:00:00Z'),deadlineReached:true,unresolvedSlotsByRider:{r1:[{raceId:'race-1',stageNumber:1,gameDay:0}]}});
+  assert.equal(result.report.riders[0].settlement_status,'needs_reconciliation');
+  assert.deepEqual(result.report.riders[0].missing_evidence,[{raceId:'race-1',stageNumber:1,gameDay:0}]);
+  assert.equal(state.training_rider_ticks.find(row=>row.game_day===0).report.intensity,'race');
+  assert.deepEqual(state.training_rider_ticks.find(row=>row.game_day===0).report.gains,{});
+});
+
+test('pending same-date injury uses current injury with registered fatigue and gives no injured growth',async()=>{
+  const state=seedState();seedRaceDayTick(state,{gameDay:0});state.app_config.push({key:'training_condition_per_date',value:'on'});
+  await runDay(state,{gameDay:0,dateGameDays:[0,1,2,3,4],eligibleRiderIds:[]});
+  state.rider_condition[0].injured_until='2026-06-14';state.rider_condition[0].injury_cause='race_crash';
+  for(const gameDay of [0,1,2,3,4]) await runDay(state,{gameDay,dateGameDays:[0,1,2,3,4]});
+  assert.equal(state.rider_condition[0].injury_cause,'race_crash');
+  assert.equal(state.rider_derived_abilities[0].ability_progress,null);
+  const report=state.training_rider_ticks[0].report;
+  assert.equal(report.condition_before_date.injury_cause,null);assert.equal(report.condition_observed.injury_cause,'race_crash');
+});
+
+test('daily recovery freezes its opening ability when training crosses a recovery progress boundary',async()=>{
+  const state=seedState({abilities:[makeAbilityRow('r1',{recovery:8,ability_progress:{recovery:0.999999}})],conditions:[makeCondition('r1',{fatigue:11,form:50})],plans:[{rider_id:'r1',team_id:TEAM_ID,season_id:SEASON_ID,focus:'endurance',intensity:'hard'}]});
+  seedRaceDayTick(state,{gameDay:0});state.app_config.push({key:'training_condition_per_date',value:'on'},{key:RACE_DAY_ENGINE_FLAG_KEY,value:'on'});
+  for(const gameDay of [0,1,2,3,4]) await runDay(state,{gameDay,dateGameDays:[0,1,2,3,4]});
+  assert.ok(state.rider_derived_abilities[0].recovery>8,'fixture crosses a real recovery progress boundary');
+  assert.equal(state.rider_condition[0].fatigue,nextFatigue({fatigue:11,intensity:'hard',recoveryAbility:8,...RACE_DAY_ENGINE_RECOVERY_CONFIG}));
+});
+
+test('normalized engine requires an explicit ready-rider list before any writes',async()=>{
+  const state=seedState();seedRaceDayTick(state,{gameDay:0});state.app_config.push({key:'training_condition_per_date',value:'on'});
+  const before=structuredClone(state);
+  await assert.rejects(runDay(state,{gameDay:0,dateGameDays:[0,1,2,3,4],eligibleRiderIds:null}),/explicit ready-rider list/);
+  assert.deepEqual(state,before);
+});
+
+test('legacy engine with normalized flag off never reads date work or condition load snapshots',async()=>{
+  for(const tickFlag of ['off','on']) {
+    const state=seedState();seedRaceDayTick(state,{gameDay:0,value:tickFlag});state.app_config.push({key:'training_condition_per_date',value:'off'});
+    const base=createMockSupabase(state),tables=[],columns=[];
+    const supabase={...base,from(table){
+      tables.push(table);assert.notEqual(table,'training_date_work');
+      const query=base.from(table),select=query.select.bind(query);
+      query.select=(value,...rest)=>{columns.push(value);assert.doesNotMatch(value??'',/condition_load_snapshot/);return select(value,...rest);};
+      return query;
+    }};
+    const result=await runDay(state,{supabase,gameDay:0,dateGameDays:[0,1,2,3,4]});
+    assert.equal(result.alreadyRan,false);assert.equal(state.training_day_runs.length,1);
+    assert.ok(tables.includes('rider_derived_abilities'));assert.ok(columns.length>0);
+  }
 });

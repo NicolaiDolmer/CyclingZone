@@ -40,5 +40,28 @@ Patch notes and SSOT corrections accompany the implementation. Player-facing val
 
 
 ## Review follow-up
+The owner subsequently approved total-load normalization in #5928, including
+race effort within the date's activity slots. The population-median deviation
+is explicitly accepted temporarily; level calibration using actual programs
+and efforts is tracked in #5931. The model and the cost difference between hard
+and normal training are retained. The combined package still requires explicit
+owner release approval.
+
+`trainingCadenceAudit.mjs` now accepts an optional private population fixture.
+It compares deployed cadence and gap recovery, the intermediate date-only
+proposal, and production total-load normalization. The deployed comparison
+includes the single-race result-recognition defect. `buildStageMasks` protects
+the canonical zero-based calendar axis with boundary regressions. Outcomes are
+projections of saved selections and frozen base plans, not observed incidence
+or a historical season replay; injury probabilities assume a healthy start to
+each date and do not include later plan changes. Exact outputs stay private.
+
+`trainingConditionCutoverDryRun.mjs` produces a private proposal without a DB
+connection. It requires prior-date reports and unchanged effort evidence,
+preserves immutable starters, and retains current-condition comparisons.
+Activation requires fresh evidence after pausing and draining legacy race
+finalizers. The SQL bootstrap remains owner-gated; no execution is implied by
+producing a proposal.
+
 The first draft wrongly treated every starter without a ranked result as unsettled. Independent and CodeRabbit reviews identified legitimate DNF as a counterexample. The new check was removed and regression coverage added. DNS handling in this patch releases training only; saved selections and persistent booking rows remain. Durable release requires coordinated JS selection predicates and the database binding rebuild contract, plus owner-approved reconciliation of existing data. This is a reviewable first part of package 1, not completion of all package scope.
-Help consolidation remains tracked in #5885; this patch restores existing promised rules and does not claim the complete help rewrite is delivered.
+Targeted English and Danish training help accompanies the normalization. Broader help consolidation remains tracked in #5885; this patch does not claim the complete help rewrite is delivered.

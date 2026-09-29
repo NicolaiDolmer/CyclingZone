@@ -394,6 +394,17 @@ features:
     verified: 2026-09-28
     note: Samlet daglukning fra kl. 20 efter sidste løb; on verificeret read-only i prod 28/9.
 
+  - id: training-condition-per-date
+    area: training
+    title_en: Daily training condition settlement
+    title_da: Træningstilstand afregnet pr. dato
+    state: building
+    flag: training_condition_per_date
+    ssot: docs/TRAINING_RULES.md
+    epic: 5928
+    verified: 2026-09-29
+    note: Standard off; ejer-valg A bygget, acceptmåling og aktivering afventer ejer-go. Koblet rollout med 5926.
+
   - id: training-score
     area: training
     title_en: Training score 1-99

@@ -134,6 +134,31 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
 
   // ── Motor-output / ledgere (ingen manager-opsætning) ──────────────────────
   {
+    table: "training_race_loads",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#5928: immutable recorded stage loads and consumption state for daily condition settlement. Historical engine output; copying it would duplicate the previous season's race load.",
+  },
+  {
+    table: "training_condition_settlements",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#5928: per-rider date settlement receipts. Engine idempotency state, not manager configuration; copying receipts would block valid new-season settlement.",
+  },
+  {
+    table: "training_rider_ticks",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#5928: per-rider training receipts are historical engine output; copying them would suppress valid new-season growth.",
+  },
+  {
+    table: "training_date_work",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#5928: logical-date processing and frozen roster state belong to their original season, not manager configuration.",
+  },
+  {
+    table: "training_condition_timeout_outbox",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#5928: deadline reconciliation alarms retain historical evidence and must never be copied as new-season work.",
+  },
+  {
     table: "academy_graduation",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "Motor-output fra akademiet — hvem der dimitterede en given sæson. Manageren konfigurerer intet her.",

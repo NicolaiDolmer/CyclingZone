@@ -245,7 +245,7 @@ export async function resolveTeamRaceDay({ supabase, teamId, seasonId, now = new
  * @param {{supabase: object, riderIds: string[], seasonId: string, gameDay: number}} args
  * @returns {Promise<{data: Set<string>|null, error: unknown}>}
  */
-export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay }) {
+export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay, releaseDns = true }) {
   if (!supabase?.from) return { data: null, error: new Error("supabase client required") };
   if (!seasonId) return { data: null, error: new Error("seasonId required") };
   // `Number(null)` er 0, ikke NaN — en manglende loebsdag ville ellers slippe
@@ -266,6 +266,7 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
       .eq("season_id", seasonId)
       .eq("game_day", Number(gameDay));
     if (error) return { data: null, error };
+    if (!releaseDns) return { data: new Set((data ?? []).map(row => row.rider_id)), error: null };
     // Saved selections can include riders excluded from the actual start field.
     // Only an immutable first-stage snapshot proves DNS; missing evidence keeps
     // the binding. Never infer DNS from finishers or a missing result.

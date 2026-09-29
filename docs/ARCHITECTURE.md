@@ -324,6 +324,22 @@ Season flow notes:
 
 ## Database-tabeller
 
+Træningens datoafregning (#5928) bruger `training_race_loads` til uforanderlig
+løbsbelastning og `training_condition_settlements` til afsluttede rytterdatoer.
+`race_simulation_runs.condition_load_snapshot` fastholder startere og indsats ved
+genforsøg. Service-role-RPC'erne `record_training_race_load` og
+`commit_training_date_tick` deler datolåse; `bootstrap_training_condition_date`
+er den særskilt ejer-godkendte overgang for en dato med allerede afviklede løb.
+Kontrakt og flag: [TRAINING_RULES.md](TRAINING_RULES.md). Ingen direkte
+klientskrivning eller automatisk aktivering.
+
+`training_rider_ticks` bærer idempotens pr. rytter og løbsdag, mens
+`training_date_work` fastholder dato, roster og åbningsbevis på tværs af genstart.
+`training_condition_timeout_outbox` gemmer alarmer om efterregulering.
+`training_condition_activation_date` i `app_config` sættes af bootstrap og
+afgrænser opdagelse af manglende datoarbejde. Historisk genopretning er beskrevet i
+[`recoverRecordedRaceLoads.md`](../backend/scripts/recoverRecordedRaceLoads.md).
+
 ```
 rider_uci_history   id(uuid), rider_id(→riders), uci_points(int), synced_at(timestamptz)
                     INDEX: (rider_id, synced_at DESC)

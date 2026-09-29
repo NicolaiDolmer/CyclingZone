@@ -36,6 +36,22 @@ test("raceFatigueLoad: ukendt profil → 12 (rolling-default)", () => {
   assert.equal(raceFatigueLoad(""), 12);
 });
 
+test('normalized race fatigue records immutable effort load without condition writes', async () => {
+  const calls=[];
+  const supabase={from(table){assert.equal(table,'app_config');return {select(){return this;},eq(){return this;},async maybeSingle(){return {data:{value:'on'},error:null};}};},async rpc(name,args){calls.push({name,args});return {data:{recorded:1},error:null};}};
+  await applyRaceFatigue({supabase,riderIds:['r1'],raceId:'race1',stageNumber:2,profileType:'flat',effortByRider:new Map([['r1','save']])});
+  assert.equal(calls[0].name,'record_training_race_load');
+  assert.equal(calls[0].args.p_loads[0].load,7);
+  assert.equal(calls[0].args.p_stage_number,2);
+});
+
+test('inconsistent condition flags prevent every race load write',async()=>{
+  let writes=0;
+  const supabase={from(table){assert.equal(table,'app_config');let key;return {select(){return this;},eq(_column,value){key=value;return this;},async maybeSingle(){return {data:{value:key==='training_condition_per_date'?'on':'off'},error:null};}};},async rpc(){writes++;return {data:{recorded:1},error:null};}};
+  await assert.rejects(applyRaceFatigue({supabase,riderIds:['r1'],raceId:'race1',stageNumber:1,profileType:'flat'}),/requires training_tick_per_race_day/);
+  assert.equal(writes,0);
+});
+
 // ── applyRaceFatigue ──────────────────────────────────────────────────────────
 
 // Minimal mock-supabase der sporer upsert-kald.
@@ -407,7 +423,7 @@ test("race-day training owns gap recovery: the legacy writer must not read or wr
 
 test("race-day recovery ownership also disables inferred rest in simulated fatigue", () => {
   const profiles = ["flat", "flat"];
-  assert.deepEqual(stageEnteringFatigues(70, profiles, { restDaysBefore: [0, 3], trainingOwnsRecovery: true }), stageEnteringFatigues(70, profiles));
+  assert.deepEqual(stageEnteringFatigues(70, profiles, { restDaysBefore: [0, 3], trainingOwnsRecovery: true }), [70,70]);
 });
 
 test("unreadable recovery ownership fails closed before condition mutation", async () => {

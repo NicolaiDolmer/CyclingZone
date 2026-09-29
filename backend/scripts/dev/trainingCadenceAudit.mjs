@@ -8,18 +8,29 @@ import {applyDailyTick} from '../../lib/dailyTraining.js';
 import {VISIBLE_ABILITIES} from '../../lib/abilityDerivation.js';
 import {nextFatigue,nextForm,conditionMultiplier,injuryRisk,RACE_DAY_ENGINE_RECOVERY_CONFIG as rec} from '../../lib/riderCondition.js';
 import {resolveRaceDayBudgetDivisor} from '../../lib/trainingRaceDayTick.js';
+import {settleTrainingDateCondition} from '../../lib/trainingDateCondition.js';
+import {auditConditionPopulation} from './trainingConditionPopulationAudit.mjs';
 if (!process.argv[2]) throw new Error('Provide a private output path, for example balance-internals/training-cadence-audit.json');
 const start=Date.UTC(2026,8,28);const divisor=resolveRaceDayBudgetDivisor({seasonNumber:4});
-function simulate({age,recovery,intensity,ticks,newCadence,dynamic,seed}){
+function simulate({age,recovery,intensity,ticks,newCadence,dynamic,seed,dateCondition=false}){
  let abilities=Object.fromEntries(VISIBLE_ABILITIES.map(k=>[k,k==='recovery'?recovery:45]));
  const initial={...abilities};const caps=Object.fromEntries(VISIBLE_ABILITIES.map(k=>[k,Math.max(initial[k],80)]));
- let progress={},fatigue=0,form=50,riskDays=0,dayOne=null;
+ let progress={},fatigue=0,form=50,riskDays=0,dayOne=null,dateRecovery=recovery;
  for(let tick=0;tick<ticks;tick++){
+ const recoveryBeforeTick=abilities.recovery;
+ if(newCadence && tick%5===0)dateRecovery=recoveryBeforeTick;
  const dateStr=new Date(start+86400000*(newCadence?Math.floor(tick/5):tick)).toISOString().slice(0,10);
  const out=applyDailyTick({riderId:'synthetic-'+seed,dateStr,age,abilities,caps,progress,program:{focus:'vo2max',intensity},conditionMult:dynamic?conditionMultiplier({form,fatigue}):1,potentiale:4,primaryType:'climber',secondaryType:null,budgetDivisor:newCadence?divisor:null,hardDailyCap:newCadence?1:undefined,tickSeedKey:newCadence?'s4#gd'+tick:null});
  if(injuryRisk({intensity,fatigue})>0)riskDays++;
  abilities=out.abilities;progress=out.progress;
- fatigue=nextFatigue({fatigue,intensity,recoveryAbility:abilities.recovery,...rec});form=nextForm({form,fatigue});
+ if(dateCondition){
+   if(tick%5===4){
+     const settled=settleTrainingDateCondition({riderId:'synthetic-'+seed,dateStr,condition:{fatigue,form},intensities:Array(5).fill(intensity),recoveryAbility:dateRecovery});
+     fatigue=settled.fatigue;form=settled.form;
+   }
+ }else{
+   fatigue=nextFatigue({fatigue,intensity,recoveryAbility:recoveryBeforeTick,...rec});form=nextForm({form,fatigue});
+ }
  const gain=k=>abilities[k]-initial[k]+(progress[k]||0);
  if(tick===(newCadence?4:0))dayOne={fatigue,form,climbing:gain('climbing')};
  }
@@ -27,13 +38,14 @@ function simulate({age,recovery,intensity,ticks,newCadence,dynamic,seed}){
  return {growth,climbing:abilities.climbing-initial.climbing+(progress.climbing||0),fatigue,form,riskDays,dayOne};
 }
 const rows=[];
-for(const dynamic of [false,true])for(const age of [18,22,28,34])for(const recovery of [20,50,80])for(const intensity of ['normal','hard','rest']){
+for(const dateCondition of [false,true])for(const dynamic of [false,true])for(const age of [18,22,28,34])for(const recovery of [20,50,80])for(const intensity of ['normal','hard','rest']){
  const sums={oldGrowth:0,newGrowth:0,oldClimbing:0,newClimbing:0,oldDayGain:0,newDayGain:0};let oldResult,newResult;
  for(let seed=0;seed<64;seed++){
- oldResult=simulate({age,recovery,intensity,ticks:31,newCadence:false,dynamic,seed});newResult=simulate({age,recovery,intensity,ticks:140,newCadence:true,dynamic,seed});
+ oldResult=simulate({age,recovery,intensity,ticks:31,newCadence:false,dynamic,seed});newResult=simulate({age,recovery,intensity,ticks:140,newCadence:true,dynamic,seed,dateCondition});
  sums.oldGrowth+=oldResult.growth;sums.newGrowth+=newResult.growth;sums.oldClimbing+=oldResult.climbing;sums.newClimbing+=newResult.climbing;sums.oldDayGain+=oldResult.dayOne.climbing;sums.newDayGain+=newResult.dayOne.climbing;
  }
  rows.push({dynamic,age,recovery,intensity,seasonGrowthRatio:sums.oldGrowth?sums.newGrowth/sums.oldGrowth:null,seasonClimbingRatio:sums.oldClimbing?sums.newClimbing/sums.oldClimbing:null,firstDateClimbingRatio:sums.oldDayGain?sums.newDayGain/sums.oldDayGain:null,oldFatigue:oldResult.fatigue,newFatigue:newResult.fatigue,oldForm:oldResult.form,newForm:newResult.form,oldFirstDate:oldResult.dayOne,newFirstDate:newResult.dayOne,newRiskDays:newResult.riskDays});
+ rows.at(-1).conditionCadence=dateCondition?'once-per-date':'once-per-game-day';
 }
 
 function mixedSchedule({ profile, recovery, mode }) {
@@ -89,5 +101,6 @@ for (const profile of ['flat', 'rolling', 'mountain']) {
   }
 }
 
-fs.writeFileSync(process.argv[2],JSON.stringify({label:'Synthetic production-function cadence comparison; no injuries sampled; fixed caps/cohort inputs; no staff. Mixed examples include pre-fix, current evening and hypothetical chronological timing. Not historical S3 replay.',rows,mixedRows},null,2));
+const populationAudit = process.argv[3] ? auditConditionPopulation(JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))) : null;
+fs.writeFileSync(process.argv[2],JSON.stringify({label:'Synthetic production-function cadence comparison; no injury feedback; fixed caps/cohort inputs; no staff. Optional population fixture compares deployed cadence, date-only recovery and normalized total load. Not historical S3 replay.',rows,mixedRows,populationAudit},null,2));
 console.log('Cadence comparison written to the private output file. Review assumptions before judging balance.');

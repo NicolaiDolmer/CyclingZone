@@ -922,7 +922,7 @@ for (const value of ["on", "beta"]) {
   test(`race-day training ${value}: stage finalization never pre-credits future gap recovery`, async () => {
     const race = { ...STAGE_RACE };
     const supabase = cannedFor(race, STAGES_3, {
-      app_config: [{ key: "training_tick_per_race_day", value }],
+      app_config: [{ key: "training_tick_per_race_day", value }, { key: "training_condition_per_date", value }],
       race_stage_schedule: STAGES_3.map((s, i) => ({ race_id: race.id, stage_number: s.stage_number, game_day: i * 5 + 1 })),
     });
     let recoveryCalls = 0;

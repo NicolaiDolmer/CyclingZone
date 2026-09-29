@@ -6,14 +6,14 @@ export const PATCHES = [
     "changes": [{
       "category": "fixed", "audience": "player", "topic": "Training",
       "en": {
-        "title": "Race days and recovery follow the actual start",
-        "body": "One-day races now count correctly towards race development for all squads. Riders selected but absent from the actual start field follow their training programme, subject to injuries. Gaps between stages no longer add extra recovery on top of daily training."
+        "title": "Steadier fatigue and form",
+        "body": "Race and training now share a daily assessment of fatigue, form and training injury risk. Delayed races only hold up the riders involved. Race development and recovery between stages now follow actual participation."
       },
       "da": {
-        "title": "Løbsdage og restitution følger den faktiske start",
-        "body": "Endagsløb tæller nu korrekt som løbsudvikling for alle trupper. Udtagne ryttere, der ikke var med i det faktiske startfelt, følger deres træningsprogram under hensyn til skader. Huller mellem etaper giver ikke længere ekstra restitution oven i den daglige træning."
+        "title": "Mere stabil træthed og form",
+        "body": "Løb og træning indgår nu i en samlet daglig vurdering af træthed, form og risiko for træningsskader. Forsinkede løb berører kun de involverede ryttere. Udvikling fra løb og restitution mellem etaper følger nu den faktiske deltagelse."
       },
-      "refs": [5888]
+      "refs": [5888, 5928]
     }]
   },
   {

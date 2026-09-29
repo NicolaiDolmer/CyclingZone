@@ -1653,14 +1653,15 @@ test("#5675 simulateRace: fejl i refreshYouthStandings logges, men stopper ikke 
 
 test("race-day training owns recovery in full-race prediction and persistence", async () => {
   const stages = STAGES_3.map((s, i) => ({ ...s, game_day: i * 5 + 1 }));
-  const expected = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const expected = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS, trainingOwnsRecovery: true });
   const withGaps = buildRaceResults({ race: STAGE_RACE, stages, entrants: ENTRANTS, pointsLookup: POINTS, trainingOwnsRecovery: true });
   assert.deepEqual(withGaps.resultRows, expected.resultRows);
   const supabase = makeSupabase({
     race_stage_profiles: stages,
     ...cannedField(),
     race_points: [],
-    app_config: [{ key: "training_tick_per_race_day", value: "on" }],
+    app_config: [{ key: "training_tick_per_race_day", value: "on" }, { key: "training_condition_per_date", value: "on" }],
+    race_stage_schedule:stages.map(stage=>({race_id:STAGE_RACE.id,stage_number:stage.stage_number,game_day:stage.game_day,scheduled_at:'2026-09-29T09:00:00Z'})),
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 5, race_days_total: 60 }],
   });
   let recoveryCalls = 0;
@@ -1672,4 +1673,28 @@ test("race-day training owns recovery in full-race prediction and persistence", 
     applyGrandTourRestDayFatigue: async () => { recoveryCalls++; },
   });
   assert.equal(recoveryCalls, 0);
+});
+
+test('normalized single-race ledger failure precedes results and completion; retry commits once',async()=>{
+  const supabase=makeSupabase({race_stage_profiles:[STAGES_3[0]],...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'}],race_points:[]});
+  const race={...STAGE_RACE,id:'single-ledger-retry',race_type:'single',stages:1,status:'scheduled'};
+  let attempts=0,resultWrites=0;
+  const keys=new Set();
+  const args={supabase,race,checkV3Enabled:async()=>false,checkV4Enabled:async()=>false,
+    applyFatigue:async({raceId,stageNumber,riderIds})=>{attempts++;if(attempts===1)throw new Error('ledger offline');for(const id of riderIds)keys.add(`${raceId}:${stageNumber}:${id}`);},
+    applyRaceResults:async({resultRows})=>{resultWrites++;return {rowsImported:resultRows.length};},recomputeRaceDays:async()=>1};
+  await assert.rejects(simulateRace(args),/ledger offline/);
+  assert.equal(resultWrites,0);
+  assert.equal(supabase.__writes.some(row=>row.table==='race_simulation_runs'&&row.op==='delete'),false,'normalized snapshots are never deleted before retry');
+  assert.equal(supabase.__writes.some(row=>row.table==='races'&&row.obj?.status==='completed'),false);
+  await simulateRace(args);
+  assert.equal(resultWrites,1);
+  assert.equal(keys.size,FIELD_ENTRANTS.length);
+  assert.equal(attempts,2);
+});
+
+test('normal normalized full-race execution rejects multiple canonical dates before writes',async()=>{
+  const supabase=makeSupabase({race_stage_profiles:STAGES_3,...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'}],race_points:[],race_stage_schedule:STAGES_3.map((stage,index)=>({race_id:STAGE_RACE.id,stage_number:stage.stage_number,game_day:index,scheduled_at:index===2?'2026-09-30T09:00:00Z':'2026-09-29T09:00:00Z'}))});
+  await assert.rejects(simulateRace({supabase,race:STAGE_RACE,checkV3Enabled:async()=>false,checkV4Enabled:async()=>false,applyFatigue:async()=>({updated:0}),applyRaceResults:async()=>({rowsImported:0}),recomputeRaceDays:async()=>1}),/single canonical date/);
+  assert.equal(supabase.__writes.length,0);
 });

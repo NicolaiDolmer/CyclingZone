@@ -40,6 +40,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
+  { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },

@@ -21,12 +21,31 @@ import { fileURLToPath } from "node:url";
 
 import { evaluateFlagStage } from "./featureStage.js";
 import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
+import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
 import {
   resolveDayCloseStatus, shouldSweepNow, SWEEP_FROM_HOUR,
 } from "./trainingDayCloseTrigger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
+
+test('actual run-today handler rejects normalized ownership before loading or running training',async()=>{
+  const source=apiSource.replace(/\r\n/g,'\n');
+  const start=source.indexOf('router.post("/training/run-today"');
+  const end=source.indexOf('\n});',start)+4;
+  assert.ok(start>=0&&end>start);
+  let handler,loads=0,runs=0;
+  const router={post(_path,...handlers){handler=handlers.at(-1);}};
+  const supabase={from(table){assert.equal(table,'app_config');return {select(){return this;},eq(){return this;},async maybeSingle(){return {data:{value:'on'},error:null};}};}};
+  // Execute the production registration/handler verbatim, replacing only its I/O dependencies.
+  const register=new Function('router','requireAuth','marketWriteLimiter','isViewerBetaTester','isDailyTrainingEnabled','isTrainingConditionPerDateEnabled','supabase','loadTrainingState','runTeamTrainingDay','captureException',source.slice(start,end));
+  register(router,()=>{},()=>{},async()=>true,async()=>true,isTrainingConditionPerDateEnabled,supabase,
+    async()=>{loads++;throw new Error('training state must not load');},async()=>{runs++;throw new Error('training must not run');},()=>{});
+  const response={code:200,body:null,status(code){this.code=code;return this;},json(body){this.body=body;return this;}};
+  await handler({team:{id:'team'}},response);
+  assert.equal(response.code,409);assert.deepEqual(response.body,{error:'normalized_sweep_owns_date'});
+  assert.equal(loads,0);assert.equal(runs,0);
+});
 
 // ── Kilde-wiring ─────────────────────────────────────────────────────────────
 

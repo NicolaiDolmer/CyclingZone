@@ -54,6 +54,8 @@ import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
+import { runNormalizedTrainingDateSweep } from './trainingDateClose.js';
 
 /**
  * Fjern den indlejrede `races`-join fra etape-rækkerne, så resten af filen ser
@@ -698,6 +700,7 @@ export async function runTrainingDayCloseSweep({
   runDay = runTeamTrainingDay,
   onAlarm = null,
   logger = console,
+  runNormalized = runNormalizedTrainingDateSweep,
 } = {}) {
   // ── a) Overlap-guard (#2090-moenstret, G6-krav) ─────────────────────────────
   // Kode-invariant: to sweeps kan ALDRIG vaere i luften samtidig i samme proces.
@@ -706,6 +709,18 @@ export async function runTrainingDayCloseSweep({
   }
 
   const tickDate = copenhagenDateString(now);
+
+  // The normalized writer has durable per-rider work across midnight. It must
+  // inspect that work BEFORE the legacy same-date cache and evening-only gate.
+  if (await isTrainingConditionPerDateEnabled(supabase)) {
+    if (!await isDailyTrainingEnabled(supabase)) return { ran: false, skipped: 'daily_training_off' };
+    sweepRunning = true;
+    try {
+      return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans });
+    } finally {
+      sweepRunning = false;
+    }
+  }
 
   // ── b) Dags-claim ───────────────────────────────────────────────────────────
   if (lastCompletedDate === tickDate) {

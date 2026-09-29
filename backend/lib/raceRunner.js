@@ -54,6 +54,7 @@ import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_K
 import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled } from "./raceEngineFlag.js";
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
+import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
 import { injuryEndGameDay, injuryRaceDaysLeft, resolveInjuryEndDates, resolveIncidentInjuryEndDate } from "./injuryRaceDays.js";
 // Løbsmotor v4 (#3855/#4707) — flip-infrastruktur. Broen indlæser v4-kernen
 // DYNAMISK (se raceEngineV4Bridge.js designvalg 2), så flag-off ikke loader ét
@@ -67,7 +68,7 @@ import { ENGINE_VERSION_V4, loadRaceEngineV4, loadTeamOrderRows } from "./raceEn
 import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRaceFatigue, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { applyRaceFatigue, raceConditionLoads, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrants,
@@ -1657,6 +1658,26 @@ async function loadRacePoints(supabase, raceClass) {
 // linke race_simulation_rider_scores.run_id UDEN en select-roundtrip efter
 // insert. v3=false (langt de fleste kald i dag) rører IKKE denne sti — id
 // forbliver DB-genereret som altid, adfærd uændret.
+async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows}) {
+  // schema-columns-ok: condition_load_snapshot is added by this PR's 2026-09-29-5928-training-condition-date.sql and covered by actual SQL tests; reads are flag-gated until migration.
+  const {data:saved,error}=await supabase.from('race_simulation_runs')
+    .select('stage_number,entrant_snapshot,condition_load_snapshot').eq('race_id',race.id).in('stage_number',runs.map(run=>run.stage_number));
+  if(error) throw new Error(`race condition snapshot: ${error.message}`);
+  for(const run of runs) {
+    const previous=(saved??[]).find(row=>row.stage_number===run.stage_number && row.condition_load_snapshot != null);
+    if(previous) {
+      run.entrant_snapshot=previous.entrant_snapshot;
+      run.condition_load_snapshot=previous.condition_load_snapshot;
+    } else {
+      const stage=stages.find(row=>(row.stage_number||1)===run.stage_number);
+      const effortByRider=!v3?null:v4Engine
+        ?resolvedEffortByRiderForStage(stageRoleOverrides,run.stage_number,orderEffortByRiderForStage(teamOrderRows,run.stage_number))
+        :effortByRiderForStage(stageRoleOverrides,run.stage_number);
+      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider);
+    }
+  }
+}
+
 async function persistRuns({ supabase, race, runs, source = null }) {
   if (!runs.length) return;
   const hasRiderScores = runs.some((r) => Array.isArray(r.riderScores));
@@ -1667,6 +1688,7 @@ async function persistRuns({ supabase, race, runs, source = null }) {
     seed: r.seed,
     engine_version: r.engine_version,
     entrant_snapshot: r.entrant_snapshot,
+    ...(r.condition_load_snapshot ? {condition_load_snapshot:r.condition_load_snapshot} : {}),
     input_checksum: r.input_checksum,
     source,
     // #2351: salt_version-kolonnen findes først efter migrationen er applied —
@@ -1674,6 +1696,15 @@ async function persistRuns({ supabase, race, runs, source = null }) {
     // (salten aktiveres alligevel først når ejeren sætter env efter migrationen).
     ...(r.salt_version != null ? { salt_version: r.salt_version } : {}),
   }));
+  if(runs.every(run=>Array.isArray(run.condition_load_snapshot))) {
+    for(let i=0;i<runs.length;i++) {
+      const {error}=await supabase.rpc('persist_training_condition_run',{
+        p_run:rows[i],p_scores:runs[i].riderScores??[],
+      });
+      if(error) throw new Error(`immutable race condition run: ${error.message}`);
+    }
+    return;
+  }
   // Idempotent: slet tidligere runs for de samme etaper før insert. §11.3:
   // race_simulation_rider_scores.run_id har ON DELETE CASCADE → gamle
   // rider_scores-rækker ryddes automatisk op sammen med deres run — ingen
@@ -2104,7 +2135,7 @@ export async function simulateRace({
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
   // #5645: løbets trup (felt + præmievagt), se resolveRaceSquad.
   race = await resolveRaceSquad({ supabase, race });
-  const trainingOwnsRecovery = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true, strict: true });
+  const trainingOwnsRecovery = await isTrainingConditionPerDateEnabled(supabase);
 
   // #1187 · race_days_completed FØR afviklingen — checkpoint-udgangspunkt for
   // board-weekend-wiring nedenfor. Defensiv: manglende række → null (ingen
@@ -2122,6 +2153,23 @@ export async function simulateRace({
     await attachStageGameDays({ supabase, race, stages, loadStageGameDaysFn });
   }
   if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
+
+  if(trainingOwnsRecovery) {
+    const {data:state,error:stateError}=await supabase.from('races').select('finalize_state').eq('id',race.id).maybeSingle();
+    if(stateError) throw new Error(`race recovery hold: ${stateError.message}`);
+    if(state?.finalize_state?.condition_recovery_hold) throw new Error('Race is held for reviewed historical recovery');
+    if(stages.length>1) {
+      const schedule=await fetchAllRows(()=>supabase.from('race_stage_schedule').select('stage_number,scheduled_at').eq('race_id',race.id).order('stage_number'));
+      const byStage=new Map((schedule??[]).map(row=>[Number(row.stage_number),row]));
+      const dates=new Set();
+      for(const stage of stages) {
+        const row=byStage.get(stage.stage_number||1);
+        if(!row?.scheduled_at||!Number.isFinite(Date.parse(row.scheduled_at))) throw new Error('Normalized full simulation requires a single canonical date; use recorded-load recovery for historical dates');
+        dates.add(copenhagenDateString(new Date(row.scheduled_at)));
+      }
+      if(byStage.size!==stages.length||dates.size!==1) throw new Error('Normalized full simulation requires a single canonical date; use recorded-load recovery for historical dates');
+    }
+  }
 
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: !dryRun });
   if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
@@ -2173,6 +2221,16 @@ export async function simulateRace({
   // dækker slettes, så en gen-afvikling ikke wiper andre etaper.
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
 
+  if (trainingOwnsRecovery) {
+    await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows});
+    await persistRuns({supabase,race,runs});
+    for(const run of runs) {
+      await applyFatigue({supabase,raceId:race.id,stageNumber:run.stage_number,
+        riderIds:run.entrant_snapshot,loadSnapshot:run.condition_load_snapshot,
+        profileType:stages.find(stage=>(stage.stage_number||1)===run.stage_number)?.profile_type});
+    }
+  }
+
   const applied = await applyRaceResults({
     supabase,
     race: { ...race },
@@ -2212,7 +2270,7 @@ export async function simulateRace({
   // allerede skrevet) — en refresh-fejl må ikke vælte afviklingen.
   await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
 
-  await persistRuns({ supabase, race, runs });
+  if (!trainingOwnsRecovery) await persistRuns({ supabase, race, runs });
   // Sub-2 (#2770): passage-detalje — data-gated (ikke v3-gated), no-op'er selv
   // ved tom liste (legacy-løb uden rutedata). Scopet til DENNE afviklings etaper
   // (stagesInRun), samme mønster som race_results-deleten ovenfor.
@@ -2286,6 +2344,7 @@ export async function simulateRace({
   const persistStagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
   const persistRestDaysBefore = restDaysBeforeEachStage(persistStagesSorted);
   for (let i = 0; i < persistStagesSorted.length; i++) {
+    if (trainingOwnsRecovery) continue; // Durable normalized loads preceded results.
     const stage = persistStagesSorted[i];
     // #3470: eksplicit hviledags-restitution FØR denne etapes belastning skrives, hvis
     // der er et game_day-hul til FORRIGE etape (GT-rest-dag). Fejl sluges (samme mønster
@@ -2311,11 +2370,16 @@ export async function simulateRace({
         : v4Engine
           ? resolvedEffortByRiderForStage(stageRoleOverrides, fatigueStageNumber, orderEffortByRiderForStage(teamOrderRows, fatigueStageNumber))
           : effortByRiderForStage(stageRoleOverrides, fatigueStageNumber);
-      await applyFatigue({ supabase, riderIds, profileType: stage.profile_type, effortByRider });
+      const fatigueRiderIds = trainingOwnsRecovery
+        ? runs.find(run => run.stage_number === fatigueStageNumber)?.entrant_snapshot
+        : riderIds;
+      if (!Array.isArray(fatigueRiderIds)) throw new Error('Actual stage start field required for normalized race load');
+      await applyFatigue({ supabase, riderIds: fatigueRiderIds, profileType: stage.profile_type, effortByRider, raceId: race.id, stageNumber: fatigueStageNumber });
     } catch (err) {
       // #2389 A2: en fejlet fatigue-skrivning lader træthed drive ud af sync — capture.
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
       captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber: stage.stage_number });
+      if (trainingOwnsRecovery) throw err;
     }
   }
 
@@ -2794,7 +2858,7 @@ export async function simulateStageByIndex({
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
   // #5645: løbets trup (felt + præmievagt), se resolveRaceSquad.
   race = await resolveRaceSquad({ supabase, race });
-  const trainingOwnsRecovery = await isTrainingTickPerRaceDayEnabled(supabase, { engineWrite: true, strict: true });
+  const trainingOwnsRecovery = await isTrainingConditionPerDateEnabled(supabase);
   if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
 
   // #4148: instrumentér afslutningsstien — måler varighed + Supabase-kald pr. fase
@@ -2854,10 +2918,13 @@ export async function simulateStageByIndex({
   const finalizeStartedAt = new Date().toISOString();
   let finalizeDone = [];
   let resumedState = null;
-  if (resumeEnabled) {
+  if (resumeEnabled || trainingOwnsRecovery) {
     const row = await readFinalizeStateFn(supabase, race.id);
-    resumedState = normalizeFinalizeState(row?.finalize_state, { stageNumber });
-    if (resumedState) finalizeDone = [...resumedState.done];
+    if(row?.finalize_state?.condition_recovery_hold) throw new Error('Race is held for reviewed historical recovery');
+    if(resumeEnabled) {
+      resumedState = normalizeFinalizeState(row?.finalize_state, { stageNumber });
+      if (resumedState) finalizeDone = [...resumedState.done];
+    }
   }
   // "resuming" = markeringen siger at result-write ALLEREDE er committet for denne
   // etape. Så må vi under ingen omstændigheder køre apply_stage_result igen (den ville
@@ -2901,7 +2968,7 @@ export async function simulateStageByIndex({
   const runFinalizeStep = async (name, fn) => {
     if (!finalizeSteps.includes(name)) return false;
     if (stepDone(name)) return false;
-    if (isAttemptOnceStep(name)) {
+    if (isAttemptOnceStep(name) && !(trainingOwnsRecovery && name === 'fatigue')) {
       // Engangs-trin: markér FØR/uanset udfald. `fn` sluger selv sine fejl
       // (fatigue/rest-day/notify er alle best-effort i forvejen).
       try {
@@ -3248,6 +3315,7 @@ export async function simulateStageByIndex({
     // hele blokken er nået igennem. En afbrydelse midtvejs kører hele blokken igen, og
     // fordi simuleringen er seedet, skrives præcis de samme rækker.
     await runFinalizeStep("enrichment", async () => {
+    if(trainingOwnsRecovery) await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows});
     await persistRuns({ supabase, race, runs, source: runSource });
     // Sub-2 (#2770): samme scoping-mønster (denne etape alene) — data-gated,
     // no-op'er ved tom liste (legacy-løb uden rutedata).
@@ -3309,11 +3377,23 @@ export async function simulateStageByIndex({
           : v4Engine
             ? resolvedEffortByRiderForStage(stageRoleOverrides, stageNumber, orderEffortByRiderForStage(teamOrderRows, stageNumber))
             : effortByRiderForStage(stageRoleOverrides, stageNumber);
-        await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
+        let loadSnapshot=null;
+        if(trainingOwnsRecovery) {
+          if(resuming) {
+            // schema-columns-ok: condition_load_snapshot is added by this PR's tested 2026-09-29-5928-training-condition-date.sql; this read requires the disabled-by-default flag.
+            const {data:saved,error}=await supabase.from('race_simulation_runs')
+              .select('entrant_snapshot,condition_load_snapshot').eq('race_id',race.id).eq('stage_number',stageNumber).maybeSingle();
+            if(error) throw new Error(`race condition snapshot: ${error.message}`);
+            loadSnapshot=saved?.condition_load_snapshot;
+          } else loadSnapshot=runs.find(run=>run.stage_number===stageNumber)?.condition_load_snapshot;
+          if(!Array.isArray(loadSnapshot)||!loadSnapshot.length) throw new Error('Immutable current stage condition snapshot required');
+        }
+        await applyFatigue({ supabase, riderIds: loadSnapshot?.map(row=>row.rider_id) ?? entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider, raceId: race.id, stageNumber, loadSnapshot });
       } catch (err) {
         // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
         console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
         captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber });
+        if (trainingOwnsRecovery) throw err;
       }
     });
 
