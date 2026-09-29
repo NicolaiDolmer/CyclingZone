@@ -146,9 +146,27 @@ test('out of order is rejected and new flag remains off after repeated migration
   assert.equal((await db.query("SELECT value FROM app_config WHERE key='training_condition_per_date'")).rows[0].value,'off');
 });
 test('public roles cannot call privileged tick commit', async () => {
-  await db.exec('SET ROLE authenticated');
-  try { await assert.rejects(commit(1), /permission denied for function/); }
-  finally { await db.exec('RESET ROLE'); }
+  for (const role of ['anon', 'authenticated']) {
+    await db.exec(`SET ROLE ${role}`);
+    try {
+      // Invoke the protected function directly; the helper's registration must
+      // not reject first and conceal an accidental grant on the tick writer.
+      await assert.rejects(db.query(`SELECT commit_training_date_tick(
+        NULL::uuid,NULL::uuid,NULL::text,NULL::integer,NULL::date,NULL::integer[],NULL::text,
+        NULL::jsonb,NULL::jsonb,NULL::jsonb,NULL::jsonb,NULL::jsonb,NULL::jsonb,NULL::jsonb,
+        NULL::boolean,NULL::timestamptz)`), /permission denied for function commit_training_date_tick/);
+    } finally { await db.exec('RESET ROLE'); }
+  }
+});
+
+test('public roles cannot initialize conditions through date registration', async () => {
+  for (const role of ['anon', 'authenticated']) {
+    await db.exec(`SET ROLE ${role}`);
+    try {
+      await assert.rejects(db.query('SELECT register_training_date_work(NULL::uuid,NULL::uuid,NULL::date,NULL::integer[],NULL::uuid[],NULL::timestamptz,NULL::timestamptz)'),
+        /permission denied for function register_training_date_work/);
+    } finally { await db.exec('RESET ROLE'); }
+  }
 });
 
 test('an unfinished previous date cannot silently lose condition settlement', async () => {
