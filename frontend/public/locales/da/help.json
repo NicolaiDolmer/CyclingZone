@@ -1160,7 +1160,7 @@
       "label": "Kontrakter",
       "whatContract": {
         "title": "Hvad er en rytterkontrakt?",
-        "text": "Alle ejede ryttere har en kontrakt: en frossen løn, en længde (1 til 3 sæsoner) og en udløbssæson. Lønnen låses fast i det øjeblik rytteren signeres og ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Free agents (ryttere uden hold) har ingen kontrakt, før de signeres."
+        "text": "Alle ejede ryttere har en kontrakt: en frossen løn, en længde (1 til 3 sæsoner) og en udløbssæson. Lønnen låses fast i det øjeblik rytteren signeres og ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Free agents (ryttere uden hold) har ingen kontrakt, før de signeres. Vinder du en auktion på en rytter uden kontrakt, efter en sæson er slut og før den næste begynder, gælder hans kontrakt fra den kommende sæson, så den ikke udløber ved skiftet. En rytter, der allerede har en kontrakt, beholder den uændret."
       },
       "frozenSalary": {
         "title": "Hvorfor lønnen er frossen (guldkontrakter og byrder)",

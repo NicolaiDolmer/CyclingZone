@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.317",
+    "version": "7.318",
     "date": "2026-09-29",
     "label": "Beta",
     "changes": [{
@@ -15,6 +15,27 @@ export const PATCHES = [
       },
       "refs": [5888, 5928]
     }]
+  },
+  {
+    "version": "7.317",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction contracts through a season change",
+          "body": "If an auction finishes after one season ends and before the next begins, a rider who needs a new contract now receives one for the coming season. The winner will not lose that rider to an already expired contract at the season switch. Existing contracts still carry over unchanged."
+        },
+        "da": {
+          "title": "Auktionskontrakter gennem sæsonskiftet",
+          "body": "Slutter en auktion efter én sæson er afsluttet og før den næste begynder, får en rytter, der mangler kontrakt, nu en kontrakt for den kommende sæson. Vinderen mister ikke rytteren til en allerede udløbet kontrakt ved skiftet. Eksisterende kontrakter følger stadig med uændret."
+        },
+        "refs": [5847]
+      }
+    ]
   },
   {
     "version": "7.316",

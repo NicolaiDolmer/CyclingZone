@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Claude Code: åbn PR #5926 WIP; løs konkrete CodeRabbit-fund og maybeSingle-annotation, kør målrettede tests/preflight og push (overdragelse #5928).
+> **🎯 Next action (29/9, efter release):** 1) **#5908** tjek samlet board-skrivning ved første afsluttede løb (Railway `board=` ~1 kald, var 880). 2) **#5897** + **#5912** reparation af 217 bestyrelser + 1.759 tabte træningsdage (dry-run → ejer-go). 3) Resten af **#5893** (hændelsesplan) bygges af Codex; handoff-køen i **#5888** (#5885 help/patch, #5734, #5886, #5887). **28/9-hændelse:** ungdomsløb sprunget over → 2 DB-udfald (19:53, 20:12) fra board-storm → træning først 21:38. Rettet: #5890 #5891 #5892 #5896 #5909 #5880.
 >
-> **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956.
+> **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956. **29/9:** Sikkerheds-PR #5925; CI/deploy grøn, Vercel `READY`, tre alarmer `fixed`. #5889 merget (7.317); #5705/#5934 merget (CI/READY).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session, overdraget til Claude Code (se #5928)
+> **🤖 Working agent:** Ingen aktiv session (29/9: #5922/#5913/#5923; handoff på issues).
