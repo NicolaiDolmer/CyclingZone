@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (30/9):** **#5928 / PR #5962** afventer browser-CI og ejerens merge-/migrations-go. Modellen blev aktiveret 29/9 kl. 19:12; 8.346 ryttere afregnet, 84 på 17 hold kræver separat efterregulering. 68 backend-regressioner og uafhængigt review grønne; browser-fixturens midnatsdrift rettes. Derefter #5912 (tabte træningsdage 28/9), #5908, #5897.
+> **🎯 Next action (30/9):** **#5928 / PR #5962** afventer ejerens merge-/migrations-go (HEAD `ab2611e33`, CI grøn). Modellen blev aktiveret 29/9 kl. 19:12; 8.346 ryttere afregnet, 84 på 17 hold kræver separat efterregulering. 68 backend-regressioner og uafhængigt review grønne; browser-fixturens midnatsdrift rettet. Derefter #5912 (tabte træningsdage 28/9), #5908, #5897.
 >
 > **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956. **29/9:** Sikkerheds-PR #5925; CI/deploy grøn, Vercel `READY`, tre alarmer `fixed`. #5889 merget (7.317); #5705/#5934 merget (CI/READY).
 
