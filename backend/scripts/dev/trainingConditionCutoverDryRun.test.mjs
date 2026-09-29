@@ -49,12 +49,38 @@ test('cutover retains the original starter, authoritative opening and live CAS i
   assert.deepEqual(input, before);
 });
 
-test('cutover refuses a missing prior report instead of guessing the opening', () => {
-  const input = fixture();
-  input.openings[0].source_date = '2026-09-27';
-  assert.throws(() => buildConditionCutoverProposal(input), /Yesterday/);
-  input.openings = [];
-  assert.throws(() => buildConditionCutoverProposal(input), /Missing opening/);
+test('missing prior report: exact legacy inverse only for one stage-1 start without clamp', () => {
+  const ok = fixture();
+  ok.openings[0].source = null; ok.openings[0].source_date = null;
+  const result = buildConditionCutoverProposal(ok);
+  assert.equal(result.args.p_openings[0].opening_fatigue, 30);
+  assert.equal(result.args.p_openings[0].opening_form, 50);
+  assert.match(result.args.p_openings[0].source, /^legacy-single-start-inverse:race:1$/);
+
+  const stage2 = fixture(); stage2.runs[0].stage_number = 2;
+  stage2.openings[0].source = null; stage2.openings[0].source_date = null;
+  assert.throws(() => buildConditionCutoverProposal(stage2), /Yesterday/);
+  const clamped = fixture(); clamped.openings[0].expected_fatigue = 100;
+  clamped.openings[0].source = null; clamped.openings[0].source_date = null;
+  assert.throws(() => buildConditionCutoverProposal(clamped), /Yesterday/);
+  const below = fixture(); below.openings[0].expected_fatigue = 5;
+  below.openings[0].source = null; below.openings[0].source_date = null;
+  assert.throws(() => buildConditionCutoverProposal(below), /Yesterday/);
+  const twice = fixture();
+  twice.runs.push({ ...twice.runs[0], race_id: 'race2' });
+  twice.openings[0].source = null; twice.openings[0].source_date = null;
+  assert.throws(() => buildConditionCutoverProposal(twice), /Yesterday/);
+
+  const none = fixture(); none.openings = [];
+  assert.throws(() => buildConditionCutoverProposal(none), /Missing opening/);
+});
+
+test('cutover rejects unprovable snapshot or effort timestamps', () => {
+  const badRun = fixture(); badRun.runs[0].created_at = 'nope';
+  assert.throws(() => buildConditionCutoverProposal(badRun), /snapshot time/);
+  const badRole = fixture();
+  badRole.roles = [{ race_id: 'race', stage_number: 1, rider_id: 'starter', effort: 'normal', updated_at: 'nope' }];
+  assert.throws(() => buildConditionCutoverProposal(badRole), /Unprovable/);
 });
 
 test('cutover rejects effort edits made after the original simulation', () => {

@@ -64,7 +64,11 @@ export function buildConditionCutoverProposal(input) {
     if (!run.profile_type || !Array.isArray(run.entrant_snapshot)) throw new Error('Missing immutable stage input');
     const roles = (input.roles ?? []).filter(row => row.race_id === run.race_id && row.stage_number === run.stage_number);
     const orders = (input.orders ?? []).filter(row => row.race_id === run.race_id && row.stage_number === run.stage_number);
+    if (!Number.isFinite(Date.parse(run.created_at))) throw new Error('Stage snapshot time required');
     for (const row of [...roles, ...orders]) {
+      if (row.updated_at != null && !Number.isFinite(Date.parse(row.updated_at))) {
+        throw new Error('Unprovable effort timestamp; authoritative evidence required');
+      }
       if (row.updated_at && Date.parse(row.updated_at) > Date.parse(run.created_at)) {
         throw new Error('Effort was modified after the stage snapshot; authoritative evidence required');
       }
@@ -86,8 +90,19 @@ export function buildConditionCutoverProposal(input) {
     if (!starters.has(row.rider_id) || openingIds.has(row.rider_id)) throw new Error('Opening roster mismatch');
     openingIds.add(row.rider_id);
     let opening = row;
-    if (row.source_date !== yesterday || !row.source) {
-      if (!row.forward_evidence) throw new Error('Yesterday final report or documented forward replay required');
+    if ((row.source_date !== yesterday || !row.source) && !row.forward_evidence) {
+      // Exact inverse of the legacy race writer (fatigue += load, form untouched),
+      // valid only for ONE start today that is a stage 1 (no rest-day recovery
+      // before it) and no clamp at 100. Anything else still needs evidence.
+      const mine = loads.filter(l => l.rider_id === row.rider_id);
+      const run = mine.length === 1 ? input.runs.find(r => r.race_id === mine[0].race_id && r.stage_number === mine[0].stage_number) : null;
+      const opened = Number(row.expected_fatigue) - Number(mine[0]?.load);
+      if (!run || run.stage_number !== 1 || !Number.isInteger(opened) || opened < 0 || !(row.expected_fatigue < 100)) {
+        throw new Error('Yesterday final report or documented forward replay required');
+      }
+      opening = { ...row, opening_fatigue: opened, opening_form: row.expected_form,
+        source: `legacy-single-start-inverse:${run.race_id}:${run.stage_number}` };
+    } else if (row.source_date !== yesterday || !row.source) {
       const replay = replayOpeningFromSeasonReset({ riderId: row.rider_id, targetDate: input.date,
         proof: input.seasonResetProof, ...row.forward_evidence });
       opening = { ...row, opening_fatigue: replay.fatigue, opening_form: replay.form, source: replay.source };
