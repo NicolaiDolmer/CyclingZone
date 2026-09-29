@@ -97,3 +97,9 @@ test("buildLiveStandings: tom/ingen leader-rækker → null", () => {
   assert.equal(buildLiveStandings([]), null);
   assert.equal(buildLiveStandings([{ result_type: "stage", stage_number: 1, rank: 1, rider_id: "x" }]), null);
 });
+
+test("#5952 derived standing: equal time and placing sum use best individual placing", () => {
+  const row = (rider, team, rank) => ({ rider_id: rider, team_id: team, team_name: team, rank, finish_time: "+0:00" });
+  const rows = [row("a1", "alpha", 2), row("a2", "alpha", 3), row("a3", "alpha", 7), row("z1", "zeta", 1), row("z2", "zeta", 5), row("z3", "zeta", 6)];
+  assert.deepEqual(deriveTeamStandings(rows).map((r) => r.team_id), ["zeta", "alpha"]);
+});

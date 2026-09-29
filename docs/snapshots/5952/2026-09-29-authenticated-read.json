@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-29",
+  "method": "BEGIN READ ONLY; SET LOCAL ROLE authenticated; SELECT; ROLLBACK",
+  "production_writes": false,
+  "team_day_rows_visible": 44977,
+  "sample": {
+    "race_id": "ebab4e1d-0faa-493a-80ed-fb3ac77cc094",
+    "stage_number": 4,
+    "dashboard_team_day_rows": 21,
+    "live_team_day_rows": 21,
+    "same_rows": true
+  },
+  "scope": "Existing persisted rows through authenticated DB/RLS and the two query-filter shapes. Not an INSERT test or a browser end-to-end assertion."
+}

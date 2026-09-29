@@ -107,7 +107,7 @@ function compareDailyPlaces(a = [], b = []) {
  * tid tilbage paa team_id, dvs. reelt alfabetisk — og v4 giver hele feltet
  * samme tid ved massespurt, saa det ramte naesten hvert fladt loeb.
  *  - mode "stage" (endagsloeb, etapens holdresultat): summen af placeringerne
- *    for holdets 3 taellende ryttere.
+ *    for holdets 3 taellende ryttere, derefter holdets bedste enkeltplacering.
  *  - mode "overall" (etapeloebets samlede holdklassement): flest 1.-pladser i
  *    etapernes holdklassement, saa flest 2.-pladser osv., derefter holdets
  *    bedste rytters placering i det samlede klassement.
@@ -144,7 +144,7 @@ export function teamClassification(entrants, cumTime, tiebreak = {}) {
   }
   const tieBreak = mode === "overall"
     ? (a, b) => compareDailyPlaces(a.dailyPlaces, b.dailyPlaces) || a.bestPlace - b.bestPlace
-    : (a, b) => a.placeSum - b.placeSum;
+    : (a, b) => a.placeSum - b.placeSum || a.bestPlace - b.bestPlace;
   return rows
     .sort((a, b) => a.time - b.time || tieBreak(a, b) || String(a.team_id).localeCompare(String(b.team_id)))
     .map((r, i) => ({ team_id: r.team_id, time: r.time, rank: i + 1 }));

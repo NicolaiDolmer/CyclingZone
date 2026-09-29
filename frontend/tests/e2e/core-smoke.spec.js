@@ -198,6 +198,9 @@ async function forceEnglish(page) {
 }
 
 test("core manager pages render without blank screens", async ({ page }, testInfo) => {
+  // Fixed day before the scheduled stage fixture: midnight must not change
+  // the layout this snapshot checks. Active-day stages have separate coverage.
+  await page.clock.setFixedTime(new Date("2026-09-29T12:00:00Z"));
   const pageErrors = collectPageErrors(page, testInfo);
 
   await login(page);

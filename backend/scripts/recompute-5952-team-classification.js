@@ -206,17 +206,31 @@ export function buildReport({ races, results, profiles, racePoints }) {
   };
 }
 
-async function applyUnpaid(supabase, report) {
+export async function applyUnpaid(supabase, report, warn = console.warn) {
   let updated = 0;
   for (const race of report.races) {
     if (race.paid || race.status !== "ok") continue;
+    // Recheck payment immediately before this race's updates. A report is a
+    // snapshot, not a lock against concurrent payout; apply still requires a
+    // quiet payout window, verified by the operator before owner approval.
+    const { data: currentRace, error: raceError } = await supabase.from("races")
+      .select("id, prize_paid_at")
+      .eq("id", race.race_id)
+      .maybeSingle();
+    if (raceError) throw new Error(`races ${race.race_id}: ${raceError.message}`);
+    if (!currentRace || currentRace.prize_paid_at) {
+      warn(`races ${race.race_id}: skipped (missing or paid since report)`);
+      continue;
+    }
     for (const c of race.changes) {
-      const { error } = await supabase.from("race_results")
+      const { data, error } = await supabase.from("race_results")
         .update({ rank: c.new_rank, points_earned: c.new_points, prize_money: c.new_prize })
         .eq("id", c.id)
-        .eq("rank", c.old_rank); // optimistisk vagt: rækken må ikke have flyttet sig siden dry-run
+        .eq("rank", c.old_rank) // optimistisk vagt: rækken må ikke have flyttet sig siden dry-run
+        .select("id");
       if (error) throw new Error(`race_results ${c.id}: ${error.message}`);
-      updated++;
+      if (data?.length) updated += data.length;
+      else warn(`race_results ${c.id}: skipped (rank changed since dry-run)`);
     }
   }
   return updated;

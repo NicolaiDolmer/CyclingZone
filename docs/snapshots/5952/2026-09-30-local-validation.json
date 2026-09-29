@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-30",
+  "verify_local": "final verify-local exit 0",
+  "targeted_tests": {
+    "pass": 60,
+    "fail": 0
+  },
+  "e2e_full_initial": {
+    "pass": 1444,
+    "skip": 171,
+    "fail": 41
+  },
+  "e2e_failed_only_retry": {
+    "pass": 40,
+    "fail": 1
+  },
+  "clock_fixed_snapshot": {
+    "projects": [
+      "desktop-chromium",
+      "mobile-chromium",
+      "mobile-webkit"
+    ],
+    "pass": 3,
+    "fail": 0
+  },
+  "explanation": "Remaining failure was the unfrozen core dashboard snapshot crossing into the scheduled fixture date. Existing goldens and masks were preserved."
+}

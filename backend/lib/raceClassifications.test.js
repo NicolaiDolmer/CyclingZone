@@ -243,3 +243,13 @@ test("teamClassification: lige tid brydes deterministisk på team_id", () => {
   const rows = teamClassification(entrants, cumTime);
   assert.deepEqual(rows.map((r) => r.team_id), ["A", "Z"]);
 });
+
+test("#5952 stage: equal time and placing sum use the best individual placing", () => {
+  const entrants = [
+    { rider_id: "a1", team_id: "alpha" }, { rider_id: "a2", team_id: "alpha" }, { rider_id: "a3", team_id: "alpha" },
+    { rider_id: "z1", team_id: "zeta" }, { rider_id: "z2", team_id: "zeta" }, { rider_id: "z3", team_id: "zeta" },
+  ];
+  const time = new Map(entrants.map((r) => [r.rider_id, 0]));
+  const placeByRider = new Map([["a1", 2], ["a2", 3], ["a3", 7], ["z1", 1], ["z2", 5], ["z3", 6]]);
+  assert.deepEqual(teamClassification(entrants, time, { mode: "stage", placeByRider }).map((r) => r.team_id), ["zeta", "alpha"]);
+});

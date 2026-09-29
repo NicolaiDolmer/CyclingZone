@@ -108,3 +108,7 @@ test("#5601 RaceCentrePage: top-3-forespørgslen er afgrænset til gruppens løb
     "Race Centres top-3-forespørgsel skal være afgrænset af gruppens race_id'er, etapenumre, result_type og rank <= 3 (#5589/#5601)",
   );
 });
+
+test("#5952 dashboard standings read includes persisted team_day rows", () => {
+  assert.match(hookSource, /\.in\("result_type",\s*\["leader",\s*"team_day",\s*"team"\]\)/);
+});
