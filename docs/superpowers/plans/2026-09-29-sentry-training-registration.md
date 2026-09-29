@@ -25,3 +25,11 @@ Owner approved trying the proposed training fixes in chat, 29 September. SSOT:
    using measured receipts, load evidence and verified openings. The forward
    migration does not change them. Merge/migration and prod recovery retain the
    owner's gates; show concrete results before requesting approval.
+
+CI follow-up on 30 September: baseline browser specs used the wall clock while
+the preview calendar contains a fixed 30 September stage. Pin the two baseline
+specs to an explicit 29 September instant; preserve assertions and snapshots.
+[DASHBOARD_RULES.md](../../DASHBOARD_RULES.md) was read; no dashboard placement,
+width or player behavior changes. Selected verification: 46 browser tests pass
+on all three projects with 38 intentional matrix skips. Relative Node-side
+fixture dates and the stage-card-present state need their own explicit scenarios.

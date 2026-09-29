@@ -145,6 +145,8 @@ async function settle(page) {
 
 test.describe("#5383 · tekst holder sig inde i sin boks og kan laeses", () => {
   test.beforeEach(async ({ page }, testInfo) => {
+    // Measure the baseline's explicit calendar state, not the runner's date.
+    await page.clock.setFixedTime(new Date('2026-09-29T21:00:00Z'));
     test.skip(
       testInfo.project.name !== "desktop-chromium",
       "Specen saetter selv sine viewports — se filhovedet for hvorfor kun eet projekt koerer den.",
