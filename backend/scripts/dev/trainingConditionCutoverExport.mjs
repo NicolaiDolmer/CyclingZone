@@ -1,6 +1,6 @@
 // #5928: READ-ONLY export of a fresh cutover input for trainingConditionCutoverDryRun.mjs.
 // Never mutates. Output contains private rider data: write it OUTSIDE the repo.
-// Usage (repo root): infisical run --env=prod -- node backend/scripts/dev/trainingConditionCutoverExport.mjs <date> <season_id> <out.private.json> [season-reset-proof.private.json]
+// Usage (repo root): infisical run --env=prod -- node backend/scripts/dev/trainingConditionCutoverExport.mjs <date> <season_id> <out.private.json> [season-reset-proof.private.json|-] [yesterday-corrections.private.json]
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
@@ -82,13 +82,27 @@ const missing = openings.filter((o) => !o.source).map((o) => ({
   expected_form: o.expected_form, expected_fatigue: o.expected_fatigue,
 }));
 
+// Optional yesterday correction: CAS values for corrected riders who did NOT start today.
+const correctionsPath = process.argv[6];
+let corrections, extraOpenings = [];
+if (correctionsPath) {
+  corrections = JSON.parse(fs.readFileSync(correctionsPath, "utf8")).corrections;
+  const starterSet = new Set(starters);
+  const others = Object.keys(corrections).filter((id) => !starterSet.has(id));
+  const cur = await fetchAllRowsChunkedIn(others, (chunk) => sb.from("rider_condition")
+    .select("rider_id,form,fatigue").in("rider_id", chunk).order("rider_id"));
+  extraOpenings = cur.map((c) => ({ rider_id: c.rider_id, expected_form: c.form, expected_fatigue: c.fatigue }));
+}
+
 const { count: trainingRuns, error: trErr } = await sb.from("training_day_runs")
   .select("id", { count: "exact", head: true }).eq("tick_date", date);
 if (trErr) throw trErr;
-const seasonResetProof = proofPath ? JSON.parse(fs.readFileSync(proofPath, "utf8")) : undefined;
+const seasonResetProof = proofPath && proofPath !== "-" ? JSON.parse(fs.readFileSync(proofPath, "utf8")) : undefined;
 
 const out = { date, captured_at: new Date().toISOString(), training_runs: trainingRuns ?? 0,
-  runs, roles, orders, openings, ...(seasonResetProof ? { seasonResetProof } : {}), _missing_openings: missing, _unrun_stages: unrun };
+  runs, roles, orders, openings, ...(seasonResetProof ? { seasonResetProof } : {}),
+  ...(corrections ? { corrections, extra_openings: extraOpenings } : {}),
+  _missing_openings: missing, _unrun_stages: unrun };
 fs.writeFileSync(outPath, JSON.stringify(out, null, 2));
 console.log(JSON.stringify({ date, stages: schedule.length, runs: runs.length, unrun: unrun.length, starters: starters.length,
   missing_openings: missing.length, no_current_condition: openings.filter((o) => o.expected_form == null).length,
