@@ -86,6 +86,7 @@ export function buildConditionCutoverProposal(input) {
     }
   }
   const openingIds = new Set();
+  const correctionStats = { starters: 0, nonStarters: 0, unchanged: 0, mismatch: 0 };
   const openings = input.openings.map(row => {
     if (!starters.has(row.rider_id) || openingIds.has(row.rider_id)) throw new Error('Opening roster mismatch');
     openingIds.add(row.rider_id);
@@ -117,6 +118,13 @@ export function buildConditionCutoverProposal(input) {
         proof: input.seasonResetProof, ...row.forward_evidence });
       opening = { ...row, opening_fatigue: replay.fatigue, opening_form: replay.form, source: replay.source };
     }
+    // #5928 yesterday correction: replace the legacy (5x) result of yesterday with
+    // the normalized recompute, ONLY when the opening is exactly that legacy result.
+    const fix = input.corrections?.[row.rider_id];
+    if (fix && opening.source_date === yesterday && opening.opening_fatigue === fix.legacyFatigue && opening.opening_form === fix.legacyForm) {
+      opening = { ...opening, opening_fatigue: fix.fatigue, opening_form: fix.form, source: `${opening.source};${fix.source}` };
+      correctionStats.starters++;
+    } else if (fix) correctionStats.mismatch++;
     for (const field of ['opening_form', 'opening_fatigue', 'expected_form', 'expected_fatigue']) {
       if (!Number.isFinite(opening[field]) || opening[field] < 0 || opening[field] > 100) throw new Error(`Invalid ${field}`);
     }
@@ -124,11 +132,25 @@ export function buildConditionCutoverProposal(input) {
       expected_form: opening.expected_form, expected_fatigue: opening.expected_fatigue, source: opening.source };
   });
   if (openingIds.size !== starters.size) throw new Error('Missing opening conditions');
+  // Non-starters: their current condition IS yesterday's legacy result (nothing
+  // wrote it today). Correct it only when current matches that result exactly (CAS).
+  for (const row of input.extra_openings ?? []) {
+    if (starters.has(row.rider_id) || openingIds.has(row.rider_id)) throw new Error('Duplicate correction opening');
+    const fix = input.corrections?.[row.rider_id];
+    if (!fix) throw new Error('Non-starter opening requires a correction');
+    if (row.expected_fatigue !== fix.legacyFatigue || row.expected_form !== fix.legacyForm) { correctionStats.mismatch++; continue; }
+    if (fix.fatigue === fix.legacyFatigue && fix.form === fix.legacyForm) { correctionStats.unchanged++; continue; }
+    openingIds.add(row.rider_id);
+    openings.push({ rider_id: row.rider_id, opening_form: fix.form, opening_fatigue: fix.fatigue,
+      expected_form: row.expected_form, expected_fatigue: row.expected_fatigue, source: fix.source });
+    correctionStats.nonStarters++;
+  }
   const args = { p_season_id: [...seasonIds][0], p_tick_date: input.date, p_openings: openings, p_loads: loads };
   return { operation: 'bootstrap_training_condition_date', requiresOwnerGo: true,
     preconditions: ['Deploy verified code', 'Pause scheduler and drain legacy finalizers', 'Re-export fresh data', 'Review CAS and complete stage coverage'],
     summary: { date: input.date, riders: starters.size, stages: stageKeys.size, loads: loads.length,
-      changedConditions: openings.filter(row => row.opening_form !== row.expected_form || row.opening_fatigue !== row.expected_fatigue).length },
+      changedConditions: openings.filter(row => row.opening_form !== row.expected_form || row.opening_fatigue !== row.expected_fatigue).length,
+      yesterdayCorrection: correctionStats },
     sha256: createHash('sha256').update(JSON.stringify(args)).digest('hex'), args };
 }
 
