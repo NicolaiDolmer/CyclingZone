@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (29/9, efter release):** 1) **#5908** tjek samlet board-skrivning ved første afsluttede løb (Railway `board=` ~1 kald, var 880). 2) **#5897** + **#5912** reparation af 217 bestyrelser + 1.759 tabte træningsdage (dry-run → ejer-go). 3) Resten af **#5893** (hændelsesplan) bygges af Codex; handoff-køen i **#5888** (#5885 help/patch, #5734, #5886, #5887). **28/9-hændelse:** ungdomsløb sprunget over → 2 DB-udfald (19:53, 20:12) fra board-storm → træning først 21:38. Rettet: #5890 #5891 #5892 #5896 #5909 #5880.
+> **🎯 Next action (29/9 aften):** **#5928 aktivering efter etapen kl. 19:00**: kør runbooken i [#5928-kommentaren](https://github.com/NicolaiDolmer/CyclingZone/issues/5928#issuecomment-5893684912) (eksport → dry-run → ejer-ja → apply → verificér → aftentræning). Rettelse #5926 + værktøjer #5937 er merget, deployet og verificeret; flaget står off. Fallback kl. 19:45: pause træningen, aldrig den gamle model. Derefter #5912 (tabte træningsdage 28/9), #5908, #5897.
 >
 > **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956. **29/9:** Sikkerheds-PR #5925; CI/deploy grøn, Vercel `READY`, tre alarmer `fixed`. #5889 merget (7.317); #5705/#5934 merget (CI/READY).
 
