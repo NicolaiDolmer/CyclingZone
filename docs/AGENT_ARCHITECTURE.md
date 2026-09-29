@@ -9,7 +9,7 @@
 - 2 coding runtimes: **Claude Code** og **Codex**. Begge kan vaere arkitekt, orkestrator, worker og reviewer. Manus er udfaset. Clarity er UX-analytics, ikke en coding-agent.
 - 3 shared-state systemer: **GitHub** (issues + repo-docs, canonical) · **OneDrive-context** (memory hardlinks) · **Infisical** (secrets).
 - Lokale agent-filer (`.codex.local/`, auto-memory) er **caches**, ikke source of truth.
-- Parallel-sessions samme PC: brug `git worktree` + ét issue per session + skriv NOW.md kun ved close-out.
+- Parallel-sessions samme PC: brug isolerede worktrees og ét issue pr. worker. Hovedsessionens resultatansvar og pilot: [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
 
 ## Diagram
 
@@ -58,7 +58,7 @@ flowchart LR
 | Migrationer og merge | Ejerens mandat | En boelge giver ingen ny prod- eller merge-ret |
 | UX-data → slice | Clarity → Claude/Codex | [Loop I](./AI_LOOPS.md) |
 
-Fuldt regelsæt: [`AI_OPS_REFERENCE.md §Rolle-fordeling`](./AI_OPS_REFERENCE.md#rolle-fordeling-mellem-ai-assistenter-verdensklasse-ai-standard) (udfaset fra AGENTS.md 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
+Mandat: [AGENTS.md](../AGENTS.md). Hovedsessionen følger også `ready`-leverancer gennem CI, reviewrettelser, merge efter mandat og deploykontrol, jf. [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
 
 ## Parallel-session-safety (samme PC, flere Claude-sessions samtidigt)
 
@@ -74,7 +74,7 @@ Du kan have 2+ Claude Code-sessions åbne på samme PC. Følgende ressourcer kol
 | `.codex.local/SESSION_CONTEXT.md` | Single active-issue cache; én session overskriver anden | Regenererbar — slet ved tvivl. Sandhed = `gh issue view N` |
 | `PatchNotesPage.jsx` version | Begge bumper v3.X → merge-konflikt | Bump til `max(main, lokal) + 1` lige før commit ([memory: feedback_patch_notes.md](file:///../memory/feedback_patch_notes.md)) |
 | Vercel-deploy queue | Hver `git push` deployer → queue/race | Accept — Vercel queue'r. Kør `verify-deploy.ps1` efter sidste push |
-| GitHub issue ownership | Begge sessions claim samme `claude:todo` | **Én session = ét issue.** Kommenter `Claude working on this` ELLER skift label → `claude:in-progress` ved start |
+| GitHub issue ownership | Begge sessions claim samme `claude:todo` | **Ét issue pr. worker.** Registrér arbejdsejerskab på issue; hovedsessionen kan følge en godkendt kø, aldrig konkurrerende writers |
 | MCP-servers (Supabase, Discord, Vercel) | Stateful long-running connections | Hold MCP-kald stateless/ad-hoc. Undgå parallelle MCP-tråde mod samme target |
 | Branch-konflikt på push | Session 2 pusher; session 1's push fejler `non-fast-forward` | `git pull --rebase` inden push. Worktrees gør dette automatisk pr. branch |
 
@@ -122,7 +122,7 @@ SessionStart-hook cleaner `.claude/worktrees/` automatisk efter ship (per [AGENT
 
 ## Runtime-synlighed og boelger (#4016, #5467)
 
-Samme maskine bruger hovedrepoets `.claude/run/wave-active.json`. `scripts/wave-policy.mjs` reserverer den atomisk og afviser en eksisterende markoer, ogsaa naar dens gamle udloebstid er passeret. `runtime`, `owner`, `waveId`, spor og starttid er faelles kontrakt. `ownerProcess` fastholder ejerens PID, startidentitet og boot. Normal release kraever samme levende procestrae; Claude-resume kraever ogsaa samme session. Recovery er en separat bevisfoert vej, aldrig en release-parameter. En manglende GitHub-maaling lukker admission. Alle aabne PR'er taeller, inklusive drafts; planlagte nye PR'er reserveres foer start.
+Samme maskine bruger hovedrepoets `.claude/run/wave-active.json`. `scripts/wave-policy.mjs` reserverer den atomisk og afviser en eksisterende markoer, ogsaa naar dens gamle udloebstid er passeret. `runtime`, `owner`, `waveId`, spor og starttid er faelles kontrakt. `ownerProcess` fastholder ejerens PID, startidentitet og boot. Normal release kraever samme levende procestrae; Claude-resume kraever ogsaa samme session. Recovery er en separat bevisfoert vej, aldrig en release-parameter. En manglende GitHub-maaling lukker admission. PR-loftet er fjernet (#5510); faelles laner (4) og verifikations-semafor (2) begraenser samtidighed.
 
 Codex-indgangen er `scripts/codex-wave.mjs`: hovedsessionen er arkitekt, CLI-processer koerer i hver sit worktree, og hver leverance faar en frisk reviewer. Native subagents i desktop-proben 21/9 arvede hovedsessionens cwd og havde ingen separat cwd-/sandbox-parameter. Derfor bruges CLI'ens eksplicitte cwd og sandbox til skrivende spor.
 

@@ -1,6 +1,6 @@
 # Codex-prompter — CyclingZone
 
-> **Sådan bruger du filen.** Tre prompter til copy-paste. **Del A** køres én gang per PC (og igen efter ændringer i hook-opsætningen). **Del B** pastes ved hver session-start. **Del C** pastes oveni når opgaven rører frontend.
+> **Sådan bruger du filen.** Tre prompter til copy-paste. **Del A** køres én gang per PC (og igen efter ændringer i hook-opsætningen). **Del B** viser en valgfri kort opgavebeskrivelse; daglig procedure-copy-paste er ikke nødvendig. **Del C** pastes oveni når opgaven rører frontend.
 >
 > Start altid Codex inde fra repoet: `cd C:\Dev\CyclingZone; codex` — ellers auto-genererer den sin egen mappe (se `docs/CROSS_PC_SETUP.md`).
 >
@@ -105,42 +105,20 @@ Foreslå rettelser — men lav dem ikke uden mit go.
 
 ---
 
-## Del B — Daglig session-start
+## Del B — Opgavestart uden daglig procedure
 
+AGENTS.md er indgangen; agenten læser CLAUDE.md og følger [CODEX_WORKFLOWS.md](../CODEX_WORKFLOWS.md). Del A er fortsat en engangsverifikation af installationen. Ejeren skal ikke gentage startsekvensen eller selv koordinere workers.
+
+En valgfri opgavebeskrivelse:
+
+```text
+Færdiggør #N inden for det allerede godkendte scope og gældende mandat.
+Følg arbejdet gennem verifikation, review og CI; forbered nødvendige
+beslutninger, og verificér deploy efter en tilladt merge.
+Undersøg teknisk tvivl selv. Spørg ved et uløst produktvalg eller manglende mandat.
 ```
-Du er Codex i CyclingZone. Følg AGENTS.md. Før du rører noget:
 
-1. Læs CLAUDE.md — du auto-loader den ikke, og fire bindende regel-lag står
-   kun der (page templates, PR-preflight-tiers, close-out, merge-mekanik).
-2. git fetch --prune origin && git status -sb   (behind → git pull --ff-only)
-3. Læs docs/NOW.md. Står der en anden aktiv session under "🤖 Working agent"
-   → STOP og spørg mig før du tager noget op.
-4. Sæt dig selv på: skriv "Codex — <opgave>" i "🤖 Working agent" i NOW.md og
-   push den ændring med det samme. Dette er vigtigt: Claude kan IKKE se at du
-   kører (#4016), så feltet er den eneste lås mellem jer.
-5. Opret din worktree: pwsh -File scripts/new-worktree.ps1 -Branch <branch>
-   Arbejd derinde. Commit med:
-   bash scripts/guard-commit-branch.sh <branch> <worktree-sti> && git -C <sti> commit ...
-   Kører du fra PowerShell, så brug wrapperen i stedet — den finder Git Bash selv
-   og fejler HÅRDT hvis den ikke findes, i stedet for at lade kæden løbe forbi
-   guarden (#5094):
-   pwsh -File scripts/guard-commit-branch.ps1 <branch> <worktree-sti>
-   if ($LASTEXITCODE -ne 0) { exit 1 }
-   git -C <sti> commit ...
-   Springer du guarden over, afviser `.githooks/pre-commit` commit'et: guarden
-   skriver en engangs-markør, og pre-commit kræver den.
-6. Én issue per session. Rører opgaven et område med et SSOT-dokument
-   (hard rule 30), så læs det FØR du rører kode.
-
-Før push: pwsh -File scripts/preflight-pr.ps1
-Rørte du frontend/: også `npm run lint`, `node --test` og build i frontend/.
-
-Ved close-out: nulstil "🤖 Working agent" til "Ingen aktiv session", opdatér
-issuet, og kør: pwsh -File scripts/check-agent-token-hygiene.ps1
-(den skal ende på 0 fail).
-
-Spørg når du er 70-95% sikker. Gæt ikke.
-```
+Resultat, beslutningspakke, skills og pilotmåling har én kontrakt i [workflowet](../CODEX_WORKFLOWS.md). Claims/isolation følger [agentarkitekturen](../AGENT_ARCHITECTURE.md); en konfigureret hook er ikke en observeret lås.
 
 ---
 
