@@ -9,6 +9,7 @@ import {
   classPointsForRank,
   teamClassification,
   dailyTeamPlacesFromStageRows,
+  jerseyLeadersFromComps,
 } from "./raceClassifications.js";
 
 // ── #5952: holdklassementet ved lige tid (UCI) ──────────────────────────────
@@ -77,6 +78,23 @@ test("#5952: dailyTeamPlacesFromStageRows taeller etapernes holdplaceringer med 
   const counts = dailyTeamPlacesFromStageRows(stageRows);
   assert.deepEqual(counts.get("A"), [1, 1]);
   assert.deepEqual(counts.get("B"), [1, 1]);
+});
+
+// ── #5914: troejefoererne foer etapen ────────────────────────────────────────
+test("jerseyLeadersFromComps: flest point foerer; nul point = ingen foerer", () => {
+  const entrants = [{ rider_id: "a" }, { rider_id: "b" }, { rider_id: "c" }];
+  const leaders = jerseyLeadersFromComps(
+    entrants,
+    new Map([["a", 20], ["b", 45], ["c", 45]]),
+    new Map([["a", 0], ["b", 0]]),
+  );
+  // Lige point brydes paa rider_id — samme regel som troeje-klassementet.
+  assert.deepEqual(leaders, { points: "b", kom: null });
+});
+
+test("jerseyLeadersFromComps: en foerer der er udgaaet (ikke i feltet) kan ikke foere", () => {
+  const leaders = jerseyLeadersFromComps([{ rider_id: "a" }], new Map([["gone", 99], ["a", 5]]), new Map());
+  assert.deepEqual(leaders, { points: "a", kom: null });
 });
 
 // ── parseGapSeconds / formatGap roundtrip ─────────────────────────────────────

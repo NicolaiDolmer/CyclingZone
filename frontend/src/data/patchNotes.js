@@ -17,6 +17,23 @@ export const PATCHES = [
     }]
   },
   {
+    "version": "7.320",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {
+        "title": "Sprints and climbs follow the race",
+        "body": "Riders in a breakaway now cross intermediate sprints and mountain tops first, as they should. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at sprints, hunters and free-role riders on climbs, plus the points or mountains leader at the start of the stage. Captains and helpers roll through. Points already awarded on 28 and 29 September stay as they are."
+      },
+      "da": {
+        "title": "Spurter og stigninger følger løbet",
+        "body": "Ryttere i et udbrud passerer nu mellemsprinter og bjergtoppe først, som de skal. I en større gruppe kæmper kun pointjægerne om resten: sprinterkaptajner, jægere og ryttere med fri rolle ved spurter, jægere og ryttere med fri rolle på stigninger, plus den der førte point- eller bjergkonkurrencen ved etapens start. Kaptajner og hjælpere ruller igennem. Point, der allerede er uddelt 28. og 29. september, bliver stående."
+      },
+      "refs": [5914]
+    }]
+  },
+  {
     "version": "7.319",
     "date": "2026-09-29",
     "label": "Beta",

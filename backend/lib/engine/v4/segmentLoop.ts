@@ -934,6 +934,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngFor: segmentRngFor(rngForFn, segmentIndex),
       rngForStage: rngForFn,
       orders,
+      jerseyLeaders: input.jersey_leaders ?? null,
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.

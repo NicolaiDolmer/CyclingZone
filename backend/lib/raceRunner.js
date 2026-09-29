@@ -138,6 +138,7 @@ import {
   accumulateStageRows,
   filterCompletedEntrants,
   dailyTeamPlacesFromStageRows,
+  jerseyLeadersFromComps,
 } from "./raceClassifications.js";
 // Sub-2 (#2770): passage-lag — ren efterbehandling af simulateStage-output
 // (mellemsprint/KOM-konkurrencer + bonussekunder). Kaldes med SAMME seed som
@@ -517,8 +518,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // race_engine_v4 var ON da afviklingen startede; broen oversætter v4's
     // StageOutput til den samme `ranked`-form v3 returnerer, så ALT herunder
     // (pushIndiv, computePassages, akkumulering, klassementer) er uændret.
+    // #5914: troejefoererne FOER denne etape (pointsComp/komComp holder
+    // totalerne efter de foregaaende etaper i denne loop-instans).
+    const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp) : null;
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
-      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race) })
+      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -586,6 +590,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // ændrer hvilken fase (peak/payback/none) etapen rammer → skal med for at
         // to identiske inputs giver identisk output (determinisme-garantien).
         ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: stage.peakDay ?? null } : {}),
+        // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
+        // Kun naar en foerer faktisk sendes videre (bagudkompatibel checksum).
+        ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
       })),
       // #2352 (Race v3 S1, spec §11.3): komponenter pr. rytter pr. etape — KUN
       // beregnet/vedhæftet når v3 er ON (why-laget/admin-formål). v3=false →
@@ -2592,9 +2599,20 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // #3855/#4707: se buildRaceResults' note — v3 seeder på heltallet, v4 på strengen.
   const seedInput = raceSeedInput(race.id, stageNumber);
   const seed = stableSeed(seedInput);
+  // #5914: troejefoererne FOER dagens etape, fra de persisterede etaperaekker
+  // (samme akkumulering som klassementerne nedenfor). Etape 1 = ingen foerer.
+  const jerseyLeaders = v4Engine && priorStageRows.length
+    ? (() => {
+      const priorComps = accumulateStageRows({
+        stageRows: priorStageRows,
+        profileTypeByStage: new Map(stagesSorted.map((s) => [s.stage_number || 1, s.profile_type])),
+      });
+      return jerseyLeadersFromComps(simEntrants, priorComps.pointsComp, priorComps.komComp);
+    })()
+    : null;
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
-    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race) })
+    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders })
     : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
@@ -2648,6 +2666,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
       // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
+      // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
+      ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
     })),
     // #2352 (Race v3 S1, spec §11.3) + #3855 (v4-undtagelsen): se
     // buildRaceResults' tilsvarende note.

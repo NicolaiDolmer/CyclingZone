@@ -192,6 +192,16 @@ export type StageInput = {
   // M15's tidsgraense (mechanics/timeLimit.ts timeLimitTuningFor). Udeladt,
   // null eller "senior" = seniorreglen, bit-identisk med foer.
   squad?: "senior" | "u23" | "junior" | null;
+  // #5914 (ADDITIVT og VALGFRIT): foererne af point- og bjergkonkurrencen ved
+  // etapens start. Laeses KUN af M9's passager (mechanics/bonusSeconds.ts):
+  // troejefoereren kaemper altid om en passage, ogsaa i feltet. Udeladt/null =
+  // ingen foerer (1. etape, endagsloeb), bit-identisk med foer for fixtures.
+  jersey_leaders?: JerseyLeaders | null;
+};
+
+export type JerseyLeaders = {
+  points?: string | null;
+  kom?: string | null;
 };
 
 // #2410-taksonomien er AABEN for tilfoejelser (forward-kompatibel: ukendte typer
@@ -625,6 +635,9 @@ export type SegmentHookContext = {
   // `kind` og ignorerer resten; en tom liste er den neutrale default (T4 i
   // tactics-orders-specen — kernen kraever ALDRIG ordrer).
   orders: readonly TeamOrder[];
+  // #5914 (ADDITIVT og VALGFRIT): StageInput.jersey_leaders raat videregivet.
+  // Kun M9's passager laeser det; udeladt = ingen troejefoerer.
+  jerseyLeaders?: JerseyLeaders | null;
 };
 
 export type SegmentHookResult = {

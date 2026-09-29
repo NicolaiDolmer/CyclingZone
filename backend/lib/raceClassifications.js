@@ -64,6 +64,24 @@ export function rankByCompDesc(entrants, compMap) {
     .map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
+/**
+ * #5914: hvem foerer point- og bjergkonkurrencen FOER dagens etape? Samme
+ * rangering som troejerne (rankByCompDesc). En konkurrence uden point har
+ * ingen foerer (null) — saa kaemper ingen "som troejefoerer" paa 1. etape.
+ *
+ * @param {Array<{rider_id:string}>} entrants  dagens felt (kun ryttere der stadig koerer)
+ * @param {Map<string,number>} pointsComp
+ * @param {Map<string,number>} komComp
+ * @returns {{points: string|null, kom: string|null}}
+ */
+export function jerseyLeadersFromComps(entrants, pointsComp, komComp) {
+  const leaderOf = (comp) => {
+    const top = rankByCompDesc(entrants, comp)[0];
+    return top && top.score > 0 ? top.rider_id : null;
+  };
+  return { points: leaderOf(pointsComp), kom: leaderOf(komComp) };
+}
+
 // Placering der mangler (rytter uden placering i opslaget) sorteres sidst. Et
 // stort endeligt tal i stedet for Infinity, saa summer og differenser aldrig
 // bliver NaN i en comparator.

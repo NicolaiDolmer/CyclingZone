@@ -395,10 +395,12 @@ export function raceContextForStage({ raceStages, stageNumber, isStageRace, rout
  *   isStageRace?: boolean,
  *   raceStages?: Array<object>|null,
  *   squad?: string|null,
+ *   jerseyLeaders?: {points?: string|null, kom?: string|null}|null,
  * }} args  squad: løbets trup; kun "u23"/"junior" sættes på input (mildere tidsgrænse, ejer 28/9).
+ *   jerseyLeaders (#5914): point-/bjergfoererne foer etapen; sættes kun når mindst én findes.
  */
 export function buildV4StageInput({
-  modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null,
+  modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
 }) {
   const route = modules.route.routeFromStageProfileRow(stageProfile);
   // Ordrer (#4246): ROLLEN er standardordren, og etapens gemte række er dagens
@@ -438,6 +440,10 @@ export function buildV4StageInput({
   const input = { route, startlist, orders: plan.orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
   // Ejer 28/9: kun ungdomsloeb baerer truppen; seniorens input er uaendret.
   if (squad === "u23" || squad === "junior") input.squad = squad;
+  // #5914: kun naar der ER en foerer — et input uden foerere er uaendret.
+  if (jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom)) {
+    input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
+  }
   return input;
 }
 
@@ -492,7 +498,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -500,7 +506,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med
