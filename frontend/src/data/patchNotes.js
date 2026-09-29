@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
     "version": "7.320",
-    "date": "2026-09-30",
+    "date": "2026-09-29",
     "label": "Beta",
     "changes": [{
       "category": "fixed", "audience": "player", "topic": "Races",
