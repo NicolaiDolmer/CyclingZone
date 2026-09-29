@@ -2,7 +2,7 @@
 
 _Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen (Codex genindført 9/9, [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065))._
 
-> **Lean core (split 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).** Denne fil holder kun det der reelt skal i HVER session — hard rules (fuld tekst), start-sekvens og delt handoff-format. Rolle-matrix, cross-PC-detaljer, session-rytme-signaler, token-effektivitets-vejledning og loops-quick-ref er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md)** (WARM, on-demand). Intet indhold er slettet — kun flyttet.
+> **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
 ---
 
@@ -17,7 +17,7 @@ _Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Co
 
 3. **Verificér runtime FØR du listet noget som TODO/bug/mangler.** Dokumenter (Noter-til-spiller.txt, gamle session-notater, brugerens hukommelse) kan være måneder forældede mens koden er rettet. Grep mindst én relevant fil eller tjek `git log --grep=<keyword>` før du committer påstanden til en plan. Markér eksplicit "❓ ikke runtime-verificeret" på antagede status-stempler. Etableret 2026-05-04 efter Noter-fil-stale-incidenten.
 
-4. **Bliv ved med at stille spørgsmål når i tvivl.** 70-95% sikkerhed → spørg, antag ikke. Også for proaktive forbedringsforslag. AskUserQuestion-tool foretrækkes til strukturerede valg.
+4. **Undersøg teknisk tvivl; spørg ved en beslutningsgrænse** (ejer 29/9). Træf reversible tekniske valg inden for godkendt scope efter opslag/test. Spørg ved uafklaret spilleroplevelse, balance, prioritet eller manglende mandat; med bevis, anbefaling og konsekvens. Genbrug givne godkendelser. Hovedsessionen følger leverancen til verificeret afslutning, jf. [Codex-workflow](docs/CODEX_WORKFLOWS.md); øvrige ejer-gates består.
 
 5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
 
@@ -119,6 +119,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 7. Hvis arbejde matcher en slice i `docs/slices/<slug>.md` → læs den slice-brief (komplet kontrakt på 30-50 linjer)
 8. Hvis nye loop-implementeringer → læs `docs/AI_LOOPS.md` afsnittet for den specifikke loop
 
+**Codex:** [CODEX_WORKFLOWS.md](docs/CODEX_WORKFLOWS.md) er kontrakten for resultatansvar, skills og pilot. Ingen daglig copy-paste-procedure er nødvendig.
+
 **Token-effektiv kontekst-tabel** (hvilken doc læses hvornår) + **cold-start-recipe** + anti-patterns: [`docs/AI_OPS_REFERENCE.md §Token-effektiv kontekst`](docs/AI_OPS_REFERENCE.md#token-effektiv-kontekst).
 
 ---
@@ -170,4 +172,4 @@ Resten af AI-ops-disciplinen er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/
 
 ---
 
-_Sidst opdateret: 2026-05-29 — split i lean core + `docs/AI_OPS_REFERENCE.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733) (token-reduktion; Codex cold-start). Indhold bevaret, kun flyttet._
+_Sidst opdateret: 2026-09-29. Beslutningsgrænser og Codex-pilot: #605. Lean-core-split: #733._
