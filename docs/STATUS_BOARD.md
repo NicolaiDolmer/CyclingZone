@@ -9,10 +9,9 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #5894 feat: advar om for lille seniortrup før start (#5867) (0d) — groen
+- #5894 feat: advar om for lille seniortrup før start (#5867) (0d) — DIRTY
 - #5829 docs(design): #5124 mobile season matrix options (0d) — DIRTY
 - #5828 feat: show rider reputation visibility (0d) — DIRTY
-- #5705 chore(deps): Bump intl-messageformat from 11.2.14 to 12.1.2 in /frontend (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -21,7 +20,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (112d)
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (111d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (110d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (102d)
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (103d)
 - #2259 [chore] Supabase DB-hygiejne: ryd ~20 backup_*-tabeller + covering-index på unindexed for… (81d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (77d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (74d)
@@ -46,7 +45,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **Ikke-draft med roed tilstand:**
 
-- #5705 chore(deps): Bump intl-messageformat from 11.2.14 to 12.1.2 in /frontend (0d) — roed
+- ingen
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -58,7 +57,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (126d)
 - #931 [Epic] Træningssystem — nøglerytterplaner først, individuel dybde senere (119d)
 - #932 [Epic] Ungdomsakademi — intake, udvikling, promotion og ungdomsauktion (119d)
-- #954 [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score) (118d)
+- #954 [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score) (119d)
 - #994 [ops] Harness-oprettede worktrees mangler node_modules + .env (auto-setup hook/script) (118d)
 - #1136 [Epic] Progression & livscyklus — rytterudvikling, træning, ungdom (samler #930/#931/#932… (113d)
 - #1140 Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer) (113d)
@@ -73,7 +72,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 - #4453 [ops] Backendens Railway-logstrøm har ingen vagt — 25 strukturerede signaler går uset (si… (29d)
 - #4915 [engine-v4] TTT- og passage-foelgesager foer flip: uheld/tidsgraense paa TTT, TTT-point,… (22d)
-- #5485 [design] Traeningssiden: ingen scroll, faner/modals, det mest brugte oeverst, Clarity-dat… (6d)
+- #5485 [design] Traeningssiden: ingen scroll, faner/modals, det mest brugte oeverst, Clarity-dat… (7d)
 - #5493 [analytics] Ahrefs Web Analytics-script (ungated, ingen GTM) + IndexNow-noeglefil (6d)
 - #5484 [bug] Discord-MCP-connector fejler med Connection closed i Claude Code-sessioner (22/9) (7d)
 - #5741 [economy] Ingen akademi-drift for U23-/juniorryttere ved S3-skiftet 27/9 (588 ryttere x 5… (4d)
@@ -86,4 +85,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #5755 [board] Mandat-launch D: start-guidens bestyrelses-linje siger 'Sign your mandate' + till… (3d)
 - #5437 [docs] NIGHT_WAVE_RUNBOOK.md: sed-korruption 4 steder, Regel 5 og 8 har mistet titel + te… (9d)
 - #5677 [ops] guarded-merge: fil-ejerskab og state-laas blokerer merge af faerdige og ustartede s… (4d)
-- …og 30 mere
+- …og 31 mere
