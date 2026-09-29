@@ -8,7 +8,76 @@ import {
   filterCompletedEntrants,
   classPointsForRank,
   teamClassification,
+  dailyTeamPlacesFromStageRows,
 } from "./raceClassifications.js";
+
+// ── #5952: holdklassementet ved lige tid (UCI) ──────────────────────────────
+
+// Spillerens eksempel (stijnlah98 29/9, Rund um Köln Neu): massespurt, alle +0:00.
+// Hold A's ryttere blev nr. 9/19/24, hold B's nr. 29/45/49. Før: B foran A fordi
+// "Breakaway Racing" < "Slipstream" alfabetisk. Nu: A foran B.
+test("#5952: lige tid i endagsloeb brydes paa placeringssummen af de 3 taellende, aldrig alfabetisk", () => {
+  const entrants = [
+    { rider_id: "a1", team_id: "Slipstream" }, { rider_id: "a2", team_id: "Slipstream" }, { rider_id: "a3", team_id: "Slipstream" },
+    { rider_id: "b1", team_id: "Breakaway" }, { rider_id: "b2", team_id: "Breakaway" }, { rider_id: "b3", team_id: "Breakaway" },
+  ];
+  const time = new Map(entrants.map((e) => [e.rider_id, 0]));
+  const placeByRider = new Map([["a1", 9], ["a2", 19], ["a3", 24], ["b1", 29], ["b2", 45], ["b3", 49]]);
+  const rows = teamClassification(entrants, time, { mode: "stage", placeByRider });
+  assert.deepEqual(rows.map((r) => r.team_id), ["Slipstream", "Breakaway"]);
+  // Uden tiebreak (gammel adfaerd) ville det vaere omvendt — beviset paa fejlen.
+  assert.deepEqual(teamClassification(entrants, time).map((r) => r.team_id), ["Breakaway", "Slipstream"]);
+});
+
+test("#5952: tiden afgoer stadig foerst — placeringer bruges KUN ved lige tid", () => {
+  const entrants = ["x1", "x2", "x3", "y1", "y2", "y3"].map((id) => ({ rider_id: id, team_id: id[0] }));
+  const time = new Map([["x1", 0], ["x2", 0], ["x3", 5], ["y1", 0], ["y2", 0], ["y3", 0]]);
+  const placeByRider = new Map([["x1", 1], ["x2", 2], ["x3", 3], ["y1", 50], ["y2", 51], ["y3", 52]]);
+  assert.deepEqual(teamClassification(entrants, time, { placeByRider }).map((r) => r.team_id), ["y", "x"]);
+});
+
+test("#5952: de 3 taellende ved lige tid er de bedst placerede, ikke de foerste i listen", () => {
+  const entrants = ["a1", "a2", "a3", "a4", "b1", "b2", "b3"].map((id) => ({ rider_id: id, team_id: id[0] }));
+  const time = new Map(entrants.map((e) => [e.rider_id, 0]));
+  // Hold a: 4 ryttere; de 3 bedste (1, 2, 3) taeller, ikke nr. 90.
+  const placeByRider = new Map([["a1", 90], ["a2", 1], ["a3", 2], ["a4", 3], ["b1", 4], ["b2", 5], ["b3", 6]]);
+  assert.deepEqual(teamClassification(entrants, time, { placeByRider }).map((r) => r.team_id), ["a", "b"]);
+});
+
+test("#5952: samlet (overall): flest dagssejre i holdklassementet, saa 2.-pladser, saa bedste GC-rytter", () => {
+  const entrants = ["p1", "p2", "p3", "q1", "q2", "q3", "r1", "r2", "r3"].map((id) => ({ rider_id: id, team_id: id[0] }));
+  const time = new Map(entrants.map((e) => [e.rider_id, 100]));
+  const placeByRider = new Map([["p1", 1], ["q1", 2], ["r1", 3], ["p2", 4], ["q2", 5], ["r2", 6], ["p3", 7], ["q3", 8], ["r3", 9]]);
+  // q: 2 dagssejre; r: 1 sejr + 1 andenplads; p: 1 sejr. -> q, r, p (p har bedste GC-rytter, men faerre sejre).
+  const dailyPlacesByTeam = new Map([["q", [2]], ["r", [1, 1]], ["p", [1]]]);
+  const rows = teamClassification(entrants, time, { mode: "overall", placeByRider, dailyPlacesByTeam });
+  assert.deepEqual(rows.map((r) => r.team_id), ["q", "r", "p"]);
+  // Lige dagsplaceringer -> bedste rytter i GC afgoer.
+  const tied = teamClassification(entrants, time, { mode: "overall", placeByRider, dailyPlacesByTeam: new Map() });
+  assert.deepEqual(tied.map((r) => r.team_id), ["p", "q", "r"]);
+});
+
+test("#5952: <3 finishers rangeres stadig ikke (#2694), og resultatformen er {team_id,time,rank}", () => {
+  const entrants = [{ rider_id: "a1", team_id: "A" }, { rider_id: "a2", team_id: "A" }];
+  assert.deepEqual(teamClassification(entrants, new Map(), { placeByRider: new Map() }), []);
+  const three = ["b1", "b2", "b3"].map((id) => ({ rider_id: id, team_id: "B" }));
+  assert.deepEqual(teamClassification(three, new Map([["b1", 1], ["b2", 2], ["b3", 3]])), [{ team_id: "B", time: 6, rank: 1 }]);
+});
+
+test("#5952: dailyTeamPlacesFromStageRows taeller etapernes holdplaceringer med UCI-tiebreak", () => {
+  const row = (stage, rider, team, rank, gap = "+0:00") => ({ stage_number: stage, rider_id: rider, team_id: team, rank, finish_time: gap });
+  const stageRows = [
+    // Etape 1: alle samme tid; A har de bedste placeringer -> A vinder etapens holdklassement.
+    row(1, "a1", "A", 1), row(1, "a2", "A", 2), row(1, "a3", "A", 3),
+    row(1, "b1", "B", 4), row(1, "b2", "B", 5), row(1, "b3", "B", 6),
+    // Etape 2: B hurtigst paa tid.
+    row(2, "a1", "A", 4, "+0:10"), row(2, "a2", "A", 5, "+0:10"), row(2, "a3", "A", 6, "+0:10"),
+    row(2, "b1", "B", 1), row(2, "b2", "B", 2), row(2, "b3", "B", 3),
+  ];
+  const counts = dailyTeamPlacesFromStageRows(stageRows);
+  assert.deepEqual(counts.get("A"), [1, 1]);
+  assert.deepEqual(counts.get("B"), [1, 1]);
+});
 
 // ── parseGapSeconds / formatGap roundtrip ─────────────────────────────────────
 test("parseGapSeconds er invers af formatGap (afrundede sekunder)", () => {

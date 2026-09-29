@@ -72,6 +72,27 @@ test("buildLiveStandings: bruger seneste etape med FULDE leader-rækker; legacy 
   assert.equal(live.byType.mountain.length, 0);
 });
 
+test("#5952 deriveTeamStandings: lige tid brydes på placeringer, ikke alfabetisk", () => {
+  const gc = [
+    leaderRow(2, "b1", 29, "+0:00", "Breakaway"), leaderRow(2, "b2", 45, "+0:00", "Breakaway"), leaderRow(2, "b3", 49, "+0:00", "Breakaway"),
+    leaderRow(2, "s1", 9, "+0:00", "Slipstream"), leaderRow(2, "s2", 19, "+0:00", "Slipstream"), leaderRow(2, "s3", 24, "+0:00", "Slipstream"),
+  ];
+  assert.deepEqual(deriveTeamStandings(gc).map((t) => t.team_id), ["Slipstream", "Breakaway"]);
+});
+
+test("#5952 buildLiveStandings: motorens team_day-rækker vinder over afledningen", () => {
+  const results = [
+    leaderRow(2, "a1", 1, "+0:00", "A"), leaderRow(2, "a2", 2, "+0:00", "A"), leaderRow(2, "a3", 3, "+0:00", "A"),
+    leaderRow(2, "b1", 4, "+0:00", "B"), leaderRow(2, "b2", 5, "+0:00", "B"), leaderRow(2, "b3", 6, "+0:00", "B"),
+    // Motoren satte B først (fx flere dagssejre i holdklassementet).
+    { result_type: "team_day", stage_number: 2, rank: 1, rider_id: null, team_id: "B" },
+    { result_type: "team_day", stage_number: 2, rank: 2, rider_id: null, team_id: "A" },
+    { result_type: "team_day", stage_number: 1, rank: 1, rider_id: null, team_id: "A" },
+  ];
+  const live = buildLiveStandings(results);
+  assert.deepEqual(live.byType.team.map((t) => t.team_id), ["B", "A"]);
+});
+
 test("buildLiveStandings: tom/ingen leader-rækker → null", () => {
   assert.equal(buildLiveStandings([]), null);
   assert.equal(buildLiveStandings([{ result_type: "stage", stage_number: 1, rank: 1, rider_id: "x" }]), null);

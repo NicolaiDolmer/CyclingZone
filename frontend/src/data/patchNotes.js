@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.321",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {
+        "title": "Team classification on equal time",
+        "body": "When teams finish on the same time, which happens in every bunch sprint, the team classification was sorted by name. Now it follows the UCI rule: the placings of each team's three best riders decide. In a stage race's overall team classification, equal time goes to the team with the most daily team wins, then the most second places, then the best-placed rider overall."
+      },
+      "da": {
+        "title": "Holdklassement ved lige tid",
+        "body": "Når hold slutter på samme tid, hvilket sker i hver massespurt, blev holdklassementet sorteret efter navn. Nu følger det UCI-reglen: placeringerne for holdets tre bedste ryttere afgør. I et etapeløbs samlede holdklassement vinder ved lige tid det hold med flest dagssejre i holdklassementet, så flest andenpladser, så den bedst placerede rytter i det samlede klassement."
+      },
+      "refs": [5952]
+    }]
+  },
+  {
     "version": "7.319",
     "date": "2026-09-29",
     "label": "Beta",
