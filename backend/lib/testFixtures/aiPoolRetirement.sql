@@ -13,6 +13,7 @@
     CREATE TABLE riders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), team_id uuid REFERENCES teams,
       firstname text, lastname text, pending_team_id uuid REFERENCES teams, is_retired boolean DEFAULT false,
       squad text DEFAULT 'senior', is_academy boolean DEFAULT false);
+    CREATE TABLE rider_condition(rider_id uuid PRIMARY KEY REFERENCES riders, injured_until date);
     CREATE TABLE races(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), squad text DEFAULT 'senior', status text DEFAULT 'scheduled',
       stages_completed int DEFAULT 0, prize_paid_at timestamptz);
     CREATE TABLE race_entries(race_id uuid REFERENCES races, rider_id uuid REFERENCES riders,

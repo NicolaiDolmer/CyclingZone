@@ -12,7 +12,7 @@ The current league audit excludes a draining AI club from all three pool axes. I
 
 1. Senior occupancy keeps its existing pending-removal exclusion. A youth group counts a non-retired draining AI club while its race obligation still blocks retirement. A retired AI club never occupies an active youth place.
 2. A retirement that vacates a youth group clears the departing club's youth pointers and assigns one distinct eligible AI club to the same U23 and/or junior group **in the same database transaction**. No externally visible state has an empty youth slot.
-3. The replacement must be active, unparked, unfrozen, not a bank/test club, not pending removal, have no youth group already, have enough eligible U23 and junior riders to start, and have no uncompleted youth-race entries. Select deterministically. Conditional row locks prevent one spare being used twice.
+3. The replacement must be active, unparked, unfrozen, not a bank/test club, not pending removal, have no youth group already, have enough eligible U23 and junior riders to start (no pending transfer and no injury through the Copenhagen date at replacement time), and have no uncompleted youth-race entries. Select deterministically. Conditional row locks prevent one spare being used twice.
 4. A missing safe replacement fails closed: the retiring club remains active and marked for retry. Human group assignments are never changed.
 5. The existing retired ghost is corrected only by a separate owner-gated call after a read-only dry-run checks its empty roster and zero uncompleted race entries. No broad reseed of all youth groups.
 6. Dry-run reports the exact before/after youth and senior pool counts, candidates, rider eligibility, in-flight obligations, and any blocker. It never applies changes.

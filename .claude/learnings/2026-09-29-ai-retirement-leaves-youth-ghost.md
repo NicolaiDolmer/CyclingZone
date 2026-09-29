@@ -15,3 +15,5 @@ Count a race-bound pending AI in youth groups until its obligation ends, while c
 ## Verification boundary
 
 Local PostgreSQL and PGlite tests can prove the transaction and rollback paths. The current retired ghost requires a separate owner-approved production repair after the migration is merged and deployed. Never report live group occupancy green before that repair is measured.
+
+**Merge-review correction (29/9):** a roster count is not a startable-field check. Both SQL replacement and read-only preview must exclude pending transfers and injuries through the Copenhagen date. Explicit time and a midnight-boundary regression prevent the eligibility check drifting with the test clock.

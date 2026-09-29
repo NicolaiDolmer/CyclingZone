@@ -5,7 +5,7 @@
 -- YOUTH_RULES.md before changing this contract.
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.replace_retired_ai_youth_group(p_team_id uuid)
+CREATE OR REPLACE FUNCTION public.replace_retired_ai_youth_group(p_team_id uuid, p_now timestamptz)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 DECLARE
   target_u23 bigint;
@@ -16,6 +16,7 @@ DECLARE
   replacement_id uuid;
   changed integer;
 BEGIN
+  IF p_now IS NULL THEN RAISE EXCEPTION 'replacement_time_required'; END IF;
   SELECT t.u23_league_division_id,t.junior_league_division_id,t.retired_at,t.is_ai,t.user_id
     INTO target_u23,target_junior,target_retired_at,target_is_ai,target_user_id
     FROM public.teams t WHERE t.id=p_team_id FOR UPDATE;
@@ -64,9 +65,13 @@ BEGIN
       AND t.league_division_id IS NOT NULL
       AND t.u23_league_division_id IS NULL AND t.junior_league_division_id IS NULL
       AND (SELECT count(*) FROM public.riders r WHERE r.team_id=t.id AND r.squad='u23'
-        AND r.is_academy=true AND r.is_retired=false)>=6
+        AND r.is_academy=true AND r.is_retired=false AND r.pending_team_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM public.rider_condition c WHERE c.rider_id=r.id
+          AND c.injured_until >= (p_now AT TIME ZONE 'Europe/Copenhagen')::date))>=6
       AND (SELECT count(*) FROM public.riders r WHERE r.team_id=t.id AND r.squad='junior'
-        AND r.is_academy=true AND r.is_retired=false)>=6
+        AND r.is_academy=true AND r.is_retired=false AND r.pending_team_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM public.rider_condition c WHERE c.rider_id=r.id
+          AND c.injured_until >= (p_now AT TIME ZONE 'Europe/Copenhagen')::date))>=6
       AND NOT EXISTS (SELECT 1 FROM public.race_entries e JOIN public.races x ON x.id=e.race_id
         WHERE (e.team_id=t.id OR e.rider_id IN
           (SELECT id FROM public.riders WHERE team_id=t.id))
@@ -91,12 +96,18 @@ BEGIN
 END;
 $$;
 
+-- Preserve the service-role RPC entry point; tests and the trigger inject time.
+CREATE OR REPLACE FUNCTION public.replace_retired_ai_youth_group(p_team_id uuid)
+RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
+  SELECT public.replace_retired_ai_youth_group(p_team_id, now());
+$$;
+
 CREATE OR REPLACE FUNCTION public.replace_ai_youth_on_retirement()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 BEGIN
   IF NEW.is_ai=true AND OLD.retired_at IS NULL AND NEW.retired_at IS NOT NULL
       AND (NEW.u23_league_division_id IS NOT NULL OR NEW.junior_league_division_id IS NOT NULL) THEN
-    PERFORM public.replace_retired_ai_youth_group(NEW.id);
+    PERFORM public.replace_retired_ai_youth_group(NEW.id, NEW.retired_at);
   END IF;
   RETURN NEW;
 END;
@@ -109,8 +120,10 @@ CREATE TRIGGER trg_replace_ai_youth_on_retirement
   EXECUTE FUNCTION public.replace_ai_youth_on_retirement();
 
 REVOKE ALL ON FUNCTION public.replace_retired_ai_youth_group(uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.replace_retired_ai_youth_group(uuid,timestamptz) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.replace_ai_youth_on_retirement() FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.replace_retired_ai_youth_group(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.replace_retired_ai_youth_group(uuid,timestamptz) TO service_role;
 GRANT EXECUTE ON FUNCTION public.replace_ai_youth_on_retirement() TO service_role;
 NOTIFY pgrst, 'reload schema';
 COMMIT;

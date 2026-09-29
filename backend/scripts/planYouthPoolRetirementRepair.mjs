@@ -3,6 +3,8 @@
 // No apply option exists. Exact IDs and output are private owner evidence.
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
+import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { isRiderInjured } from "../lib/riderEligibility.js";
 import { planYouthPoolReplacements } from "../lib/youthPoolReplacementPlan.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,7 +27,9 @@ export function parseArgs(argv) {
   return options;
 }
 
-export async function readYouthPoolRepairPlan({ supabase, retiredTeamId, pendingTeamId }) {
+export async function readYouthPoolRepairPlan({ supabase, retiredTeamId, pendingTeamId, now }) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) throw new Error("Explicit valid now required");
+  const today = copenhagenDateString(now);
   const teams = await fetchAllRows(() => supabase.from("teams")
     .select("id, name, is_ai, user_id, is_bank, is_frozen, is_test_account, parked_at, retired_at, pending_removal_at, league_division_id, u23_league_division_id, junior_league_division_id")
     .order("id"));
@@ -37,7 +41,10 @@ export async function readYouthPoolRepairPlan({ supabase, retiredTeamId, pending
   const candidateIds = candidates.map((team) => team.id);
   const inspectedIds = [...ids, ...candidateIds];
   const riders = await fetchAllRowsChunkedIn(inspectedIds, (chunk) => supabase.from("riders")
-    .select("id, team_id, squad, is_academy, is_retired").in("team_id", chunk).order("id"));
+    .select("id, team_id, squad, is_academy, is_retired, pending_team_id").in("team_id", chunk).order("id"));
+  const conditions = await fetchAllRowsChunkedIn(riders.map((rider) => rider.id), (chunk) => supabase.from("rider_condition")
+    .select("rider_id, injured_until").in("rider_id", chunk).order("rider_id"));
+  const injuredUntilByRider = new Map(conditions.map((condition) => [condition.rider_id, condition.injured_until]));
   // An old entry can have a null/stale team_id but still bind this club's rider.
   // Mirror ai_team_retirement_reason and the replacement SQL: inspect both keys.
   const [entriesByTeamRows, entriesByRiderRows] = await Promise.all([
@@ -56,7 +63,8 @@ export async function readYouthPoolRepairPlan({ supabase, retiredTeamId, pending
   const raceById = new Map(races.map((race) => [race.id, race]));
   const countsByTeam = new Map();
   for (const rider of riders) {
-    if (rider.is_academy !== true || rider.is_retired !== false) continue;
+    if (rider.is_academy !== true || rider.is_retired !== false || rider.pending_team_id != null
+      || isRiderInjured(injuredUntilByRider.get(rider.id) ?? null, today)) continue;
     if (!countsByTeam.has(rider.team_id)) countsByTeam.set(rider.team_id, { u23: 0, junior: 0 });
     if (rider.squad === "u23" || rider.squad === "junior") countsByTeam.get(rider.team_id)[rider.squad]++;
   }
@@ -112,6 +120,8 @@ export async function readYouthPoolRepairPlan({ supabase, retiredTeamId, pending
   const plan = planYouthPoolReplacements({ targets: targetRows, candidates: candidateRows, groupCounts });
   return {
     readOnly: true,
+    asOf: now.toISOString(),
+    eligibilityDate: today,
     groupCounts: Object.fromEntries(groupCounts),
     targets: targetRows.map(({ id, name, retired_at, pending_removal_at, blockingRaces, futureEntries }) =>
       ({ id, name, retired_at, pending_removal_at, blockingRaces, futureEntries })),
@@ -127,7 +137,7 @@ if (process.argv[1] && process.argv[1].replaceAll("\\", "/").endsWith("/planYout
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY,
       { auth: { persistSession: false } });
     const plan = await readYouthPoolRepairPlan({ supabase,
-      retiredTeamId: args["retired-team-id"], pendingTeamId: args["pending-team-id"] });
+      retiredTeamId: args["retired-team-id"], pendingTeamId: args["pending-team-id"], now: new Date() });
     process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
     if (plan.blockers.length) process.exitCode = 1;
   } catch (error) {

@@ -50,3 +50,10 @@
 - [x] Update `docs/GAME_INVARIANTS.md` and `docs/YOUTH_RULES.md` in the same PR; add EN/DA patch note.
 - [ ] Run preflight, relevant backend suite and CI; review the diff independently.
 - [ ] Open PR with design-go, private dry-run pointer, owner apply steps and user-verification checklist. Mark merge-ready only after green CI and conflict check; never merge here.
+
+## Merge review correction (29 September)
+
+- [x] Reproduce raw roster counts accepting injured and pending-transfer reserves in SQL and read-only planning.
+- [x] Align both with runtime entry eligibility, using explicit Copenhagen-date time in tests and retirement-trigger calls; retain the service-role-only one-argument RPC wrapper.
+- [ ] Re-run focused SQL/PGlite, planner and audit tests, preflight and independent review before release.
+- [ ] Refresh the private live dry-run; historical data repair still needs separate owner-go after migration installation.

@@ -13,8 +13,9 @@ CREATE TABLE public.teams (
   u23_league_division_id bigint, junior_league_division_id bigint
 );
 CREATE TABLE public.riders (
-  id uuid PRIMARY KEY, team_id uuid, squad text, is_academy boolean, is_retired boolean
+  id uuid PRIMARY KEY, team_id uuid, squad text, is_academy boolean, is_retired boolean, pending_team_id uuid
 );
+CREATE TABLE public.rider_condition(rider_id uuid PRIMARY KEY, injured_until date);
 CREATE TABLE public.races (id uuid PRIMARY KEY, squad text, status text);
 CREATE TABLE public.race_entries (id uuid PRIMARY KEY, team_id uuid, rider_id uuid, race_id uuid);
 INSERT INTO public.league_divisions(id) VALUES (10),(21),(22),(23),(33),(34),(35);
@@ -47,7 +48,7 @@ INSERT INTO public.riders(id,team_id,squad,is_academy,is_retired)
 DO $$
 DECLARE result jsonb;
 BEGIN
-  SELECT public.replace_retired_ai_youth_group('00000000-0000-0000-0000-000000000001') INTO result;
+  SELECT public.replace_retired_ai_youth_group('00000000-0000-0000-0000-000000000001','2026-09-29T12:00:00Z'::timestamptz) INTO result;
   IF result->>'replacementTeamId'<>'00000000-0000-0000-0000-000000000101' THEN
     RAISE EXCEPTION 'ghost did not get first deterministic replacement: %',result;
   END IF;

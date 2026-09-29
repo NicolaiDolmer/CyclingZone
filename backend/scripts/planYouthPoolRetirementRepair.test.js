@@ -60,7 +60,7 @@ test("#4753 production-shaped dry-run reads only and previews two guarded replac
     };
     return builder;
   } };
-  const result = await readYouthPoolRepairPlan({ supabase, retiredTeamId: GHOST, pendingTeamId: RACING });
+  const result = await readYouthPoolRepairPlan({ supabase, retiredTeamId: GHOST, pendingTeamId: RACING, now: new Date("2026-09-29T12:00:00Z") });
   assert.deepEqual(result.repairs.map((r) => [r.targetId, r.replacementId, r.when]), [
     [GHOST, SPARE_2, "owner_go_now"], [RACING, SPARE_3, "after_last_race"],
   ]);
@@ -70,4 +70,41 @@ test("#4753 production-shaped dry-run reads only and previews two guarded replac
   assert.equal(result.repairs[1].lastScheduledAt, "2026-10-02T12:30:00Z");
   assert.deepEqual(result.blockers, []);
   assert.ok(calls.includes("race_entries"));
+});
+
+function eligibleRosterFixture({ injury = null, pending = false } = {}) {
+  const base = { is_ai:true,user_id:null,is_bank:false,is_frozen:false,is_test_account:false,
+    parked_at:null,retired_at:null,pending_removal_at:null,league_division_id:10,
+    u23_league_division_id:null,junior_league_division_id:null };
+  const rows = {
+    teams:[{...base,id:GHOST,retired_at:'2026-09-28T08:00:00Z',u23_league_division_id:21,junior_league_division_id:33},
+      {...base,id:RACING,pending_removal_at:'2026-09-28T20:00:00Z',u23_league_division_id:22,junior_league_division_id:34},
+      ...[SPARE_1,SPARE_2,SPARE_3].map(id=>({...base,id})),
+      ...Array.from({length:23},(_,i)=>({...base,id:`a${i}`,is_ai:false,u23_league_division_id:21,junior_league_division_id:33})),
+      ...Array.from({length:23},(_,i)=>({...base,id:`b${i}`,is_ai:false,u23_league_division_id:22,junior_league_division_id:34}))],
+    riders:[SPARE_1,SPARE_2,SPARE_3].flatMap(team_id=>Array.from({length:12},(_,i)=>({
+      id:`${team_id}-${i}`,team_id,squad:i<6?'u23':'junior',is_academy:true,is_retired:false,
+      pending_team_id:pending && team_id===SPARE_1 && i===6 ? RACING : null }))),
+    rider_condition:injury ? [{rider_id:`${SPARE_1}-6`,injured_until:injury}] : [],
+    race_entries:[],races:[],race_stage_schedule:[],
+  };
+  return {from(table){let selected=rows[table]||[];const q={
+    select(){return q;},order(){return q;},in(field,ids){selected=selected.filter(row=>ids.includes(row[field]));return q;},
+    range(from,to){return Promise.resolve({data:selected.slice(from,to+1),error:null});}};return q;}};
+}
+
+for (const scenario of [
+  { name:'injured on Copenhagen date',injury:'2026-09-29',expected:SPARE_2 },
+  { name:'recovered before Copenhagen date',injury:'2026-09-28',expected:SPARE_1 },
+  { name:'pending transfer',pending:true,expected:SPARE_2 },
+]) {
+  test(`#4753 dry-run counts eligible starters: ${scenario.name}`,async()=>{
+    const result=await readYouthPoolRepairPlan({supabase:eligibleRosterFixture(scenario),
+      retiredTeamId:GHOST,pendingTeamId:RACING,now:new Date('2026-09-28T22:30:00Z')});
+    assert.equal(result.repairs.find(row=>row.targetId===GHOST).replacementId,scenario.expected);
+  });
+}
+
+test('#4753 dry-run requires an explicit clock',async()=>{
+  await assert.rejects(readYouthPoolRepairPlan({supabase:eligibleRosterFixture(),retiredTeamId:GHOST,pendingTeamId:RACING}),/Explicit valid now/);
 });
