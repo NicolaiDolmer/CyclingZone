@@ -67,7 +67,7 @@ async function sendTrainingOpsAlarm({ tickDate, rows, now }) {
   if (!url) throw new Error('Training reconciliation ops webhook is not configured');
   const result = await attemptWebhookDelivery({ webhookUrl: assertDiscordWebhookUrl(url), payload: withOpsMention({
     embeds: [{ title: 'Training settlement needs reconciliation',
-      description: `Date: ${tickDate}. Affected teams: ${rows.length}. Available activity was settled; missing race evidence remains queued for review.`,
+      description: `Date: ${tickDate}. Affected teams: ${rows.length}. Available activity was settled; unavailable riders or missing activity evidence remain queued for review.`,
       timestamp: now.toISOString() }],
   }) });
   if (!result.ok) throw new Error(`Training reconciliation ops delivery failed (${result.status ?? 'network'})`);
@@ -83,9 +83,13 @@ export async function dispatchTrainingDateAlarms({ supabase, now, onAlarm, sendO
     let failure = null;
     try {
       if (!onAlarm) throw new Error('Training reconciliation Sentry callback is required');
-      await onAlarm(new Error('Training date settled with missing race evidence'), {
+      const pending = dateRows.flatMap(row => row.payload?.missing_evidence ?? []);
+      await onAlarm(new Error('Training date requires reconciliation'), {
         tickDate, eventKey: `training-date:${tickDate}`,
-        pending: dateRows.flatMap(row => row.payload?.missing_evidence ?? []),
+        pending,
+        // The cron wrapper nests extra fields. A string preserves actual reasons
+        // through Sentry's normalization depth instead of becoming [Object].
+        pendingEvidence: JSON.stringify(pending.slice(0, 20)),
       });
       await sendOps({ tickDate, rows: dateRows, now });
     } catch (error) {
