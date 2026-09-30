@@ -17,6 +17,7 @@
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const TRAINING_SCORE_VISIBLE_FLAG_KEY = "training_score_visible";
+export const TRAINING_DAILY_RECEIPT_FLAG_KEY = "training_daily_receipt";
 
 export async function isTrainingScoreVisible(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, TRAINING_SCORE_VISIBLE_FLAG_KEY), opts);

@@ -473,5 +473,36 @@
     "audience_youngStars": "Unge stjerner, få løb",
     "audience_veterans": "Ryttere 30+",
     "audience_youthSquads": "Junior, U23, akademi"
+  },
+  "dailyReceipt": {
+    "status": {
+      "complete": "Afregnet",
+      "pending": "Afventer afregning",
+      "reconciliation": "Kræver efterkontrol",
+      "recorded": "Registrerede aktiviteter"
+    },
+    "note": {
+      "complete": "Alle datoens aktiviteter er med. Form og træthed er opgjort én gang for datoen.",
+      "pending": "Datoen er ikke helt opgjort endnu. Endelig udvikling og ændringer i form og træthed afventer.",
+      "reconciliation": "Nogle aktiviteter kræver efterkontrol. Manglende bevis vises aldrig som nul udvikling.",
+      "recorded": "De registrerede aktiviteter er samlet for datoen. Ældre rapporter kan mangle fuld fremdrift eller bevis for afregningen."
+    },
+    "riderReceipts": "Rytterkvitteringer",
+    "activitiesRecorded": "Løbsdage registreret",
+    "wholePoints": "Hele evnepoint",
+    "development": "Dagens udvikling",
+    "latestPassScore": "Seneste passcore",
+    "fatigue": "Træthed",
+    "form": "Form",
+    "race": "Løb",
+    "training": "Træning",
+    "injured": "Skadet",
+    "noWholePoint": "Intet helt point registreret",
+    "raceDay": "Løbsdag {day}",
+    "activity": "Aktivitet {n}",
+    "pointContribution": "+{percent}% af et evnepoint",
+    "progressUnavailable": "Detaljeret fremdrift mangler",
+    "previousSeason": "Tidligere sæson",
+    "change": "{from} til {to}"
   }
 }

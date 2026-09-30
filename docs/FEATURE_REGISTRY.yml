@@ -395,6 +395,16 @@ features:
     verified: 2026-09-28
     note: Samlet daglukning fra kl. 20 efter sidste løb; on verificeret read-only i prod 28/9.
 
+  - id: training-daily-receipt
+    area: training
+    title_en: Daily rider training receipt
+    title_da: Daglig rytterkvittering
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 5915
+    verified: 2026-09-30
+    note: Beta-release godkendt; training_daily_receipt aktiveres først efter merge og deploy-verifikation.
+
   - id: training-score
     area: training
     title_en: Training score 1-99
