@@ -9,11 +9,10 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #5894 feat: advar om for lille seniortrup før start (#5867) (1d) — DIRTY
+- #5894 feat: advar om for lille seniortrup før start (#5867) (1d) — groen
 - #5829 docs(design): #5124 mobile season matrix options (1d) — DIRTY
 - #5828 feat: show rider reputation visibility (1d) — DIRTY
-- #5962 fix(training): preserve first-use condition and stop legacy sweep after cutover (0d) — groen
-- #5959 fix(races): holdklassement ved lige tid følger hele UCI-tiebreaket (#5952) (0d) — roed
+- #5959 fix(races): holdklassement ved lige tid følger hele UCI-tiebreaket (#5952) (0d) — DIRTY
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -28,7 +27,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (75d)
 - #2650 [balance/HØJ] Fatigue-mætning i hele populationen: AI-median 100, human-median 90 — recov… (73d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (73d)
-- #2688 AI-audit 19/7: Fable-optimering — workflow/judge-panels/effort-routing/ultra-review (ejer… (72d)
+- #2688 AI-audit 19/7: Fable-optimering — workflow/judge-panels/effort-routing/ultra-review (ejer… (73d)
 - #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (69d)
 - #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (66d)
 - #2887 [feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den de… (66d)
@@ -43,11 +42,10 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **Draft-PR'er:**
 
 - #5827 5268 rating-neutral mental ability dry run V3 (1d) — groen
-- #5963 docs(close-out): #5928 Sentry handoff and release gates (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- #5959 fix(races): holdklassement ved lige tid følger hele UCI-tiebreaket (#5952) (0d) — roed
+- ingen
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
