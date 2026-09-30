@@ -1,0 +1,50 @@
+# #5928: historical recovery dry run
+
+Owner approved preparation on 30 September and selected 75 riders with unchanged
+plans; nine riders whose plans changed remain excluded. The owner subsequently
+approved the concrete private proposal: "Godkend efterregulering af de 75".
+The immutable proposal and authorization are saved in private OneDrive. No new
+game behavior; only the approved missing historical effects may be restored.
+
+Sources: [TRAINING_RULES](../../TRAINING_RULES.md),
+[PROGRESSION_RULES](../../PROGRESSION_RULES.md), [YOUTH_RULES](../../YOUTH_RULES.md).
+Use the actual training engine and its existing neutral opening fallback. Never
+derive balance formulas in this tool or replay teammates' completed training.
+
+1. Export one read-only, consistent snapshot of the 29 September quarantine,
+   rider inputs, canonical evidence, programs, facilities, staff and calendar.
+   Save full player data and calculated deltas privately in OneDrive, not GitHub.
+2. Validate exact scope, ownership, missing condition, absence of receipts,
+   later settlement/race loads, and unchanged historical inputs. Reconstruct staff
+   firing timing from finance audit keys. Unknown inputs fail closed.
+3. Replay the five stored game days through `runTeamTrainingDay` with explicit
+   historical `now` and a network-free in-memory client. Capture commit payloads;
+   apply them only to the copy between ticks. Reject unsupported reads/mutations.
+4. Produce per-rider/team before/after deltas and checksums. Include excluded
+   riders, all evidence limitations and a guarded rollback procedure.
+5. Independent read-only review and focused tests for scope, deterministic
+   replay, sequential progress, once-only condition settlement and fail-closed
+   input checks. Run required preflight and verification before publishing code.
+6. Owner approval of the exact proposal is obtained. Compile application and
+   rollback together with one frozen execution timestamp. Preserve fresh private
+   before-images of alarm rows, canonical report headers/hashes and teammate
+   receipts. Compare source rows and global canonical history under transaction
+   locks, materialize the approved openings and use the existing atomic tick RPC.
+7. PostgreSQL tests prove complete rollback, idempotence, unchanged teammates and
+   exception riders, outbox reconciliation and rejection of changed source or
+   subsequent work/report/score/alarm data. Merge reviewed compiler before apply;
+   post-apply comparisons must match the immutable approved proposal exactly.
+
+Rollback must restore only approved riders' exact exported abilities and original
+absence of condition, and remove only recovery-owned receipts/history/scores.
+Team reports retain teammates' records. Refuse rollback after any later effects.
+Do not resolve Sentry until recovery and subsequent live operation are verified.
+
+Operational windows: validate the date close after 20:00 and legacy skip after
+22:00 Copenhagen time. Prefer applying reviewed recovery before newer effects;
+the clock alone never authorizes a write. If newer effects exist, stop and rebuild
+the chronological proposal rather than overwriting current state.
+
+Patch notes are unnecessary for the tooling preparation: it has no runtime caller
+and never executes SQL itself. After successful player-data repair, publish the
+verified recovery in patch notes. The feature registry remains unchanged.
