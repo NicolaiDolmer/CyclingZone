@@ -1547,6 +1547,12 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
   if(allowAutofill && race.season_id && !race.finalize_state && !(Number(race.stages_completed)>0) && existingEntries.length) {
     const spent=new Set((await loadSpentRaceDays({supabase,raceId:race.id,riderIds:existingEntries.map(row=>row.rider_id)})).map(row=>row.rider_id));
+    if(persist && spent.size>0) {
+      // Lock/check the fresh race row: never delete recorded participants based
+      // on a stale JS race object. Entry-day rows follow the existing cascade.
+      const {error:pruneError}=await supabase.rpc('prune_spent_race_entries',{p_race_id:race.id,p_rider_ids:[...spent]});
+      if(pruneError) throw new Error(`spent race selection cleanup: ${pruneError.message}`);
+    }
     existingEntries=existingEntries.filter(row=>!spent.has(row.rider_id));
   }
   const autopicked = allowAutofill

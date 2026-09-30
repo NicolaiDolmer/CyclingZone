@@ -3,7 +3,21 @@
 BEGIN;
 -- Admission references the race row. Take its table lock first, and never wait
 -- while holding a partial set of locks against an active result/selection writer.
-LOCK TABLE public.races,public.race_results,public.race_simulation_runs,public.race_entries IN EXCLUSIVE MODE NOWAIT;
+DO $$
+DECLARE attempt integer;
+BEGIN
+  FOR attempt IN 1..10 LOOP
+    BEGIN
+      LOCK TABLE public.races,public.race_results,public.race_simulation_runs,public.race_entries IN EXCLUSIVE MODE NOWAIT;
+      EXIT;
+    EXCEPTION WHEN lock_not_available THEN
+      -- Exception rollback releases every partial lock before the next attempt.
+      -- https://www.postgresql.org/docs/17/explicit-locking.html
+      IF attempt=10 THEN RAISE; END IF;
+    END;
+    PERFORM pg_sleep(0.5);
+  END LOOP;
+END $$;
 CREATE TABLE IF NOT EXISTS public.race_day_participation (
   rider_id uuid NOT NULL,season_id uuid NOT NULL,game_day integer NOT NULL,
   race_id uuid NOT NULL REFERENCES public.races(id) ON DELETE CASCADE,
@@ -52,6 +66,25 @@ LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public,pg_temp AS $$
 $$;
 REVOKE ALL ON FUNCTION public.find_spent_race_days(uuid,uuid[],integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.find_spent_race_days(uuid,uuid[],integer) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.prune_spent_race_entries(p_race_id uuid,p_rider_ids uuid[])
+RETURNS integer LANGUAGE plpgsql SECURITY INVOKER SET search_path=public,pg_temp AS $$
+DECLARE current_race public.races%ROWTYPE; removed integer;
+BEGIN
+  SELECT * INTO STRICT current_race FROM public.races WHERE id=p_race_id FOR UPDATE;
+  IF current_race.status<>'scheduled' OR current_race.stages_completed<>0 OR current_race.finalize_state IS NOT NULL
+    OR EXISTS(SELECT 1 FROM public.race_simulation_runs WHERE race_id=p_race_id)
+    OR EXISTS(SELECT 1 FROM public.race_results WHERE race_id=p_race_id AND result_type='stage') THEN
+    RAISE EXCEPTION 'Recorded race selection cannot be pruned';
+  END IF;
+  DELETE FROM public.race_entries e WHERE e.race_id=p_race_id AND e.rider_id=ANY(p_rider_ids)
+    AND jsonb_array_length(public.find_spent_race_days(p_race_id,ARRAY[e.rider_id]))>0;
+  GET DIAGNOSTICS removed=ROW_COUNT;
+  RETURN removed;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.prune_spent_race_entries(uuid,uuid[]) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.prune_spent_race_entries(uuid,uuid[]) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.guard_spent_race_entry()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
