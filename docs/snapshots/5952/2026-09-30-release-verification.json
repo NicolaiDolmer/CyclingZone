@@ -1,0 +1,34 @@
+{
+  "merge_sha": "6d18b48381a66dbca4ff77be1433efcedc7b6726",
+  "pr": 5959,
+  "main_ci": {
+    "run": 36676375320,
+    "conclusion": "success"
+  },
+  "deploy_verify": {
+    "run": 36676375356,
+    "conclusion": "success"
+  },
+  "vercel": {
+    "id": "dpl_FyRMUQNrko1bpnMfeiPSrA78HV81",
+    "target": "production",
+    "state": "READY",
+    "sha": "6d18b48381a66dbca4ff77be1433efcedc7b6726"
+  },
+  "warning_budget": "success",
+  "feature_liveness": {
+    "source": "current main code, read-only prod audit",
+    "skip": [
+      "C",
+      "E"
+    ],
+    "total_findings": 0
+  },
+  "patch_notes": {
+    "version": "7.322",
+    "version_guard": "main frontend-build success",
+    "coverage": "PR advisory success; canonical data changed"
+  },
+  "feature_registry": "unchanged: no feature/flag/retirement; generated status checked in sync",
+  "prod_apply": false
+}

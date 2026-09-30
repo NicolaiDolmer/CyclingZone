@@ -261,6 +261,10 @@ test.describe("#5383 · tekst holder sig inde i sin boks og kan laeses", () => {
 
   for (const target of PAGES) {
     test(`${target.name} (${target.path})`, async ({ page }, testInfo) => {
+      // Keep the scheduled-stage card in the two affected surfaces' coverage.
+      if (target.path === "/dashboard" || target.path === "/race-centre") {
+        await page.clock.setFixedTime(new Date("2026-09-30T08:00:00Z"));
+      }
       if (target.setup) await target.setup(page);
       await guardSurface(page, testInfo, target, { root: "main" });
     });
