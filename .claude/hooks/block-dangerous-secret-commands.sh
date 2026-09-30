@@ -51,10 +51,9 @@ fi
 # PY was runtime-verified above; never re-select by existence alone.
 
 if [ -n "${PY:-}" ]; then
-  export _BLOCK_SCAN_INPUT="$INPUT"
-  LEAK_TYPES=$("$PY" <<'PYEOF' 2>/dev/null
-import os, re, json, sys
-text = os.environ.get("_BLOCK_SCAN_INPUT", "")
+  INPUT_SCAN_CODE=$(cat <<'PYEOF'
+import re, json, sys
+text = sys.stdin.buffer.read().decode("utf-8")
 try:
     d = json.loads(text)
 except Exception:
@@ -94,8 +93,9 @@ for name, pat in PATTERNS:
 if found:
     print(",".join(sorted(set(found))))
 PYEOF
-  ) || { secret_runtime_failure 'tool-input scan failed'; exit 2; }
-  unset _BLOCK_SCAN_INPUT
+  ) || { secret_runtime_failure 'tool-input scanner unavailable'; exit 2; }
+  LEAK_TYPES=$(printf '%s' "$INPUT" | "$PY" -c "$INPUT_SCAN_CODE" 2>/dev/null) || { secret_runtime_failure 'tool-input scan failed'; exit 2; }
+  unset INPUT_SCAN_CODE
 
   if [ -n "$LEAK_TYPES" ]; then
     cat >&2 <<EOF
@@ -128,10 +128,9 @@ fi
 # matcheren. Denne block er proaktiv + indholds-uafhængig (fanger også custom
 # secrets uden genkendeligt format). Vektoren bed 2026-05-29 (.mcp.json).
 if [ -n "${PY:-}" ]; then
-  export _PATHSCAN_INPUT="$INPUT"
-  SECRET_PATH=$("$PY" <<'PYEOF' 2>/dev/null
-import os, json, re, sys
-text = os.environ.get("_PATHSCAN_INPUT", "")
+  PATH_SCAN_CODE=$(cat <<'PYEOF'
+import json, re, sys
+text = sys.stdin.buffer.read().decode("utf-8")
 try:
     d = json.loads(text)
 except Exception:
@@ -179,9 +178,10 @@ hits = [p for p in paths if is_secret_path(p)]
 if hits:
     print(hits[0])
 PYEOF
-  )
+  ) || { secret_runtime_failure 'secret-path scanner unavailable'; exit 2; }
+  SECRET_PATH=$(printf '%s' "$INPUT" | "$PY" -c "$PATH_SCAN_CODE" 2>/dev/null)
   path_scan_exit=$?
-  unset _PATHSCAN_INPUT
+  unset PATH_SCAN_CODE
   [ "$path_scan_exit" -eq 0 ] || { secret_runtime_failure 'secret-path scan failed'; exit 2; }
 
   if [ -n "$SECRET_PATH" ]; then
