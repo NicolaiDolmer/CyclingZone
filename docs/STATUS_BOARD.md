@@ -9,11 +9,11 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #5894 feat: advar om for lille seniortrup før start (#5867) (1d) — groen
+- #5894 feat: advar om for lille seniortrup før start (#5867) (1d) — DIRTY
 - #5829 docs(design): #5124 mobile season matrix options (1d) — DIRTY
-- #5828 feat: show rider reputation visibility (1d) — groen
-- #5976 fix(training): samlet rytterkvittering pr. dato (#5915) (0d) — DIRTY
-- #5977 fix(planning): label route match and current form in locked squads (#5930) (0d) — DIRTY
+- #5828 feat: show rider reputation visibility (1d) — DIRTY
+- #5986 docs(now): claim approved race engine correctness package (0d) — groen
+- #5976 fix(training): samlet rytterkvittering pr. dato (#5915) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -37,16 +37,17 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #5976 fix(training): samlet rytterkvittering pr. dato (#5915) (0d) — DIRTY
+- #5976 fix(training): samlet rytterkvittering pr. dato (#5915) (0d) — roed
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
 - #5827 5268 rating-neutral mental ability dry run V3 (2d) — groen
+- #5984 docs: race engine design, release plan and known issue drafts (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- ingen
+- #5976 fix(training): samlet rytterkvittering pr. dato (#5915) (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -66,7 +67,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1299 Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch (111d)
 - #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (107d)
 - #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (105d)
-- …og 680 mere
+- …og 674 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -86,4 +87,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #5755 [board] Mandat-launch D: start-guidens bestyrelses-linje siger 'Sign your mandate' + till… (5d)
 - #5437 [docs] NIGHT_WAVE_RUNBOOK.md: sed-korruption 4 steder, Regel 5 og 8 har mistet titel + te… (10d)
 - #5677 [ops] guarded-merge: fil-ejerskab og state-laas blokerer merge af faerdige og ustartede s… (6d)
-- …og 34 mere
+- …og 35 mere
