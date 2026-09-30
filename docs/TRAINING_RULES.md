@@ -23,6 +23,10 @@ uklare kvitteringer får ikke et opdigtet tal. Score uden for læsevinduet vises
 som ukendt. Visningen følger fortsat `training_score_visible` og ejerskabsfilteret.
 Legacy-kvitteringer uden sæson og løbsdag kan kun få en score, hvis datoen
 har præcis én matchende score uden løbsdags-id; tvetydige match er ukendte.
+Farver genbruger rytterprofilens `ConditionChips`-regler for form og træthed
+på hvert før-/eftertal. Dokumenteret positiv udvikling bruger den eksisterende
+gevinstfarve fra `AbilityReceiptRow`. Score forbliver neutral som på de øvrige
+scoreflader; ukendte værdier får ingen statusfarve (ejer-retning 30/9).
 API'ets additive `trainingScore[rider_id].sessions` bevarer de indlæste slots;
 den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
 

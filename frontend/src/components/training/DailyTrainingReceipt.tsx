@@ -8,6 +8,7 @@ import Section, { SectionHeader } from "../ui/Section.jsx";
 import { ChevronDownIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 import RiderLink from "../RiderLink.jsx";
 import { receiptPassScore, latestReceiptPassScore, type ReceiptScoreView } from "../../lib/trainingScoreView.ts";
+import { formColor, fatigueColor } from "../rider/ConditionChips.jsx";
 
 const isKnown = (row: DailyRiderReceipt) => row.receipt_status === "complete" || row.receipt_status === "recorded";
 
@@ -16,9 +17,9 @@ type ConditionView = Record<string, { injured_until?: string | null; injury_race
 export default function DailyTrainingReceipt({ run, trainingScore = null, defaultExpanded = true, condition, today }: { run: DateReceipt; trainingScore?: ScoreView; defaultExpanded?: boolean; condition?: ConditionView; today?: Date }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
-  const change = (from: number | null | undefined, to: number | null | undefined) =>
+  const change = (from: number | null | undefined, to: number | null | undefined, tone?: (value: number) => string) =>
     typeof from === "number" && typeof to === "number"
-      ? <span className="inline-flex items-center gap-1" aria-label={t("dailyReceipt.change",{from:formatNumber(from),to:formatNumber(to)})}><span>{formatNumber(from)}</span><ChevronRightIcon size={12} aria-hidden="true" /><span>{formatNumber(to)}</span></span> : "—";
+      ? <span className="inline-flex items-center gap-1" aria-label={t("dailyReceipt.change",{from:formatNumber(from),to:formatNumber(to)})}><span className={tone?.(from)}>{formatNumber(from)}</span><ChevronRightIcon size={12} className="text-cz-3" aria-hidden="true" /><span className={tone?.(to)}>{formatNumber(to)}</span></span> : "—";
   const [openRider, setOpenRider] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(defaultExpanded);
   const rows = [...run.report.riders].sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
@@ -65,6 +66,8 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
       {rows.map(row => {
         const open = openRider === row.rider_id;
         const latestScore = isKnown(row) ? latestReceiptPassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,row.activities) : null;
+        const gainTone = isKnown(row) && (todayGainTotal(row) > 0 || Object.values(row.gain_percent).some(value => value != null && value > 0))
+          ? "text-cz-success" : "text-cz-2";
         const reportInjury = condition && today ? injuryTimeLeft(condition[row.rider_id], today) : null;
         const injuryMessage = reportInjury && reportInjury.count > 0 ? injuryBadgeMessage(reportInjury, { compact: true }) : null;
         const detailId = `receipt-${run.tick_date}-${run.season_id ?? "legacy"}-${row.rider_id}`;
@@ -75,14 +78,14 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
             <button type="button" className={`grid min-h-[44px] w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2 py-3 text-left hover:bg-cz-subtle ${rowGrid}`}
               aria-expanded={open} aria-controls={detailId} onClick={()=>setOpenRider(open ? null : row.rider_id)}>
               <span className="flex min-w-0 items-start gap-1.5"><ChevronDownIcon size={13} className={`mt-1 shrink-0 text-cz-3 ${open ? "rotate-180" : ""}`} aria-hidden="true" /><span className="min-w-0"><span className="break-words text-[13px] font-semibold text-cz-1">{row.name || row.rider_id}</span>{showScore && <span className="mt-1 block text-2xs text-cz-2 sm:hidden" data-testid="daily-receipt-mobile-score">{t("dailyReceipt.latestPassScore")}: <span className="font-data tabular-nums">{latestScore ?? "—"}</span></span>}</span></span>
-              <span className="break-words text-xs text-cz-2">{gainsLabel(row)}</span>
+              <span className={`break-words text-xs ${gainTone}`}>{gainsLabel(row)}</span>
               {showScore && <span className="hidden text-right font-data text-xs tabular-nums text-cz-1 sm:block" data-testid="daily-receipt-latest-score">{latestScore ?? "—"}</span>}
-              <span className="text-right font-data text-xs tabular-nums text-cz-1">{change(row.fatigue_before,row.fatigue)}</span>
+              <span className="text-right font-data text-xs tabular-nums text-cz-1">{change(row.fatigue_before,row.fatigue,fatigueColor)}</span>
             </button>
             {open && <div id={detailId} className="border-t border-cz-border py-4" data-testid="daily-receipt-rider-details">
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                 <RiderLink id={row.rider_id} className="text-[13px] font-semibold text-cz-accent-t">{row.name || row.rider_id}</RiderLink>
-                <span className="font-data text-xs tabular-nums text-cz-2">{t("dailyReceipt.form")}: {change(row.form_before,row.form)}</span>
+                <span className="font-data text-xs tabular-nums text-cz-2">{t("dailyReceipt.form")}: {change(row.form_before,row.form,formColor)}</span>
               </div>
               {injuryMessage && <p className="mb-3 text-xs text-cz-danger" title={reportInjury?.unit === "race_day" && reportInjury.approxDate ? t("injuredApprox", {date:formatDate(reportInjury.approxDate)}) : undefined}>{t(injuryMessage.key,{days:injuryMessage.days})}</p>}
               <ol className="mb-4 grid grid-cols-3 gap-x-3 gap-y-3 sm:grid-cols-5">
