@@ -35,6 +35,10 @@ derive balance formulas in this tool or replay teammates' completed training.
    subsequent work/report/score/alarm data. Merge reviewed compiler before apply;
    post-apply comparisons must match the immutable approved proposal exactly.
 
+Roster freshness compares exactly the fields selected by `runTeamTrainingDay`.
+Unconsumed squad and UI-preference metadata remains untouched through application
+and rollback; owner, retirement and every actual training input still fail closed.
+
 Rollback must restore only approved riders' exact exported abilities and original
 absence of condition, and remove only recovery-owned receipts/history/scores.
 Team reports retain teammates' records. Refuse rollback after any later effects.

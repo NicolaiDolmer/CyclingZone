@@ -13,7 +13,7 @@ before(async()=>{
   db=new PGlite();
   await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;
   CREATE TABLE app_config(key text PRIMARY KEY,value jsonb,updated_at timestamptz DEFAULT now());
-  CREATE TABLE riders(id uuid PRIMARY KEY,team_id uuid,is_retired boolean DEFAULT false);
+  CREATE TABLE riders(id uuid PRIMARY KEY,team_id uuid,is_retired boolean DEFAULT false,primary_type text,secondary_type text,potentiale numeric,birthdate date,firstname text,lastname text,is_academy boolean DEFAULT false,squad text,peak_suggestions_dismissed_season_id uuid);
   CREATE TABLE teams(id uuid PRIMARY KEY,name text,user_id uuid,league_division_id integer,u23_league_division_id integer,junior_league_division_id integer);
   CREATE TABLE users(id uuid PRIMARY KEY,role text,is_beta_tester boolean);
   CREATE TABLE races(id uuid PRIMARY KEY,season_id uuid,league_division_id integer,race_type text);
@@ -41,7 +41,7 @@ before(async()=>{
 after(async()=>db?.close());
 beforeEach(async()=>{
   await db.exec('TRUNCATE riders,rider_condition,rider_derived_abilities,training_day_runs,training_rider_ticks,training_condition_settlements,training_date_work,training_condition_timeout_outbox,rider_training_scores,rider_derived_ability_history,rider_ability_race_day_history,training_plans,teams,app_config CASCADE');
-  await db.query('INSERT INTO riders VALUES($1,$4,false),($2,$4,false),($3,$4,false)',[rider,excluded,peer,team]);
+  await db.query('INSERT INTO riders(id,team_id,is_retired) VALUES($1,$4,false),($2,$4,false),($3,$4,false)',[rider,excluded,peer,team]);
   await db.query("INSERT INTO rider_derived_abilities VALUES($1,50,'{}'),($2,40,'{}'),($3,55,'{}')",[rider,excluded,peer]);
   await db.query("INSERT INTO teams VALUES($1,'Test',NULL,1,NULL,NULL)",[team]);
   for(const key of ['training_condition_per_date','training_tick_per_race_day','race_day_engine_enabled','race_day_development_enabled','training_programs'])await db.query("INSERT INTO app_config(key,value,updated_at) VALUES($1,$2,'2026-09-29T18:00:00Z')",[key,JSON.stringify(key==='training_programs'?'off':'on')]);
@@ -149,4 +149,20 @@ test('compiler rejects unsupported date axes and proposals with race loads',asyn
   assert.throws(()=>buildRecoverySql(axis),/game-day axis/);
   const loads=await fixture();loads.proposal.commits[0].p_race_loads=[{rider_id:rider}];resign(loads);
   assert.throws(()=>buildRecoverySql(loads),/cannot own race loads/);
+});
+test('changes to unused roster metadata are preserved during apply and rollback',async()=>{
+  const f=await fixture();
+  await db.query("UPDATE riders SET squad='junior',peak_suggestions_dismissed_season_id=$1 WHERE id=$2",[season,rider]);
+  await db.exec(buildRecoverySql(f));await db.exec(buildRecoverySql({...f,mode:'rollback'}));
+  const current=(await db.query('SELECT squad,peak_suggestions_dismissed_season_id FROM riders WHERE id=$1',[rider])).rows[0];
+  assert.deepEqual(current,{squad:'junior',peak_suggestions_dismissed_season_id:season});
+});
+test('changed training roster inputs and ownership still abort before writes',async()=>{
+  const f=await fixture();
+  for(const assignment of ["potentiale=91","team_id='00000000-0000-0000-0000-000000000099'","is_retired=true"]){
+    await db.query(`UPDATE riders SET ${assignment} WHERE id=$1`,[rider]);
+    await assert.rejects(db.exec(buildRecoverySql(f)),/snapshot changed: riders/);
+    await db.query('UPDATE riders SET potentiale=NULL,team_id=$1,is_retired=false WHERE id=$2',[team,rider]);
+  }
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n,0);
 });
