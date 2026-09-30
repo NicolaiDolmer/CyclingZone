@@ -32,9 +32,12 @@ den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
 
 Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
 regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
-datoens forventede løbsdage som visningsbevis. Den normale aktive træningssti
-er fortsat gaten; der tilføjes intet nyt rollout-flag. Visuel releaseaccept
-afventer hovedsessionen. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+datoens forventede løbsdage som visningsbevis. Ejerens beta-release-go 30/9
+gater den nye rapport med `training_daily_receipt`: `beta` åbner kun for
+serververificerede beta-testere/admin. `off`, manglende flag eller læsefejl
+bevarer den eksisterende rapport. `training_score_visible` ændres ikke.
+API-feltet `dailyReceiptEnabled` vælger frontendvisningen; flaget ændrer ingen
+træningsskrivninger. Kontrakten implementeres i `trainingDailyReceipt.ts`.
 
 ## Førstegangsregistrering og driftalarmer (#5928, 29/9)
 

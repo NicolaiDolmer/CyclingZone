@@ -1,12 +1,212 @@
+// TrainingHistory — træningsrapport-historik på TrainingPage (#1533).
+//
+// Viser de seneste 30 dages daglige trænings-kørsler (training_day_runs) som en
+// liste af dag-kort. Hvert kort har dato + hvem der kørte + dags-opsummering
+// (trænede / gennembrud / topform) og kan foldes ud til den fulde rytter-tabel
+// for dagen. Genbruger trainingReport-helpers (daySummary/breakthroughJumps/
+// isBreakthrough) + TrainingPage'ens kort/tabel-styling. Ren visning — data
+// kommer fra useTrainingHistory (RLS-begrænset SELECT, ingen ny datamodel).
+
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ClockIcon } from "../ui/icons/index.jsx";
+import { formatDate } from "../../lib/intl.js";
+import RiderLink from "../RiderLink.jsx";
+import { daySummary, breakthroughJumps, isBreakthrough } from "../../lib/trainingReport.js";
+import { sortTrainingRiders, trainingReportRowName } from "../../lib/trainingSort.ts";
+import { ChevronDownIcon, ClockIcon } from "../ui/icons/index.jsx";
 import { SkeletonLines } from "../ui/Skeleton.jsx";
 import Section, { SectionHeader } from "../ui/Section.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
+import { SCROLLER, TABLE, thClass, tdClass } from "../ui/dataTableStyles.js";
+
+// #2849 bølge 4 — kanonisk dataTableStyles-chrome (T2, docs/design/PAGE_TEMPLATES.md)
+// på dags-tabellen, samme opskrift som TrainingPage's egen rapport-tabel. Ren
+// layout — rører ikke daySummary/breakthroughJumps/isBreakthrough-beregningerne.
+
+function executedByLabel(executedBy, t) {
+  // cron-sweep og assistent vises ens (begge = ikke manuelt af dig).
+  return executedBy === "manager" ? t("historyByYou") : t("historyByAssistant");
+}
+
+// Én udfoldet dags rytter-tabel — samme kolonner/styling som dagens rapport på
+// TrainingPage, men uden "Næste +1" (kræver live progress-state, ikke historik).
+// #5734: valgfri "Score"-kolonne, samme gate som Today-tabellen (TrainingTodayTable.tsx):
+// findes kun naar trainingScore != null (training_score_visible on for holdet). Tallet pr.
+// raekke laeses af scoreFor(rider_id) — se DayCard, som slaar dagens dato op i
+// trainingScore[riderId].spark (TrainingScoreSparkline/backend/lib/trainingScore.js
+// buildTrainingScoreView). Ingen match (uden for spark-vinduet, eller loebsdag) ⇒ "—",
+// akkurat som Today viser stregen naar der ikke er et tal.
+function DayRiderTable({ rows, t, tRider, showScore, scoreFor }) {
+  return (
+    <div className={`${SCROLLER} border-t border-cz-border`}>
+      <table data-sort-exempt="Per-dag traeningsrapport i rapport-orden" className={TABLE}>
+        <thead>
+          <tr>
+            <th className={thClass({ sticky: true })}>{t("colRider")}</th>
+            <th className={thClass({})}>{tRider("training.focus")}</th>
+            <th className={thClass({})}>{tRider("training.intensity")}</th>
+            <th className={thClass({})}>{t("colGains")}</th>
+            <th className={thClass({})}>{t("colResult")}</th>
+            {showScore && <th className={thClass({})}>{t("colScore")}</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const jumps = breakthroughJumps(row);
+            const breakthrough = isBreakthrough(row);
+            const fatigueDelta = row.fatigue_delta ?? 0;
+            const fatigueSign = fatigueDelta > 0 ? "+" : "";
+            const score = showScore ? scoreFor(row.rider_id) : null;
+            return (
+              <tr
+                key={row.rider_id}
+                className={`group transition-colors duration-150 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
+              >
+                <td className={tdClass({ sticky: true })}>
+                  <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
+                    {row.name}
+                  </RiderLink>
+                  {row.injured && (
+                    <span className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger">
+                      {row.injury_days === 1
+                        ? t("injured", { days: row.injury_days })
+                        : t("injured_plural", { days: row.injury_days })}
+                    </span>
+                  )}
+                </td>
+                <td className={tdClass({})}>
+                  {row.focus ? tRider(`training.focus_${row.focus}`) : "—"}
+                </td>
+                <td className={tdClass({})}>
+                  {row.intensity ? tRider(`training.intensity_${row.intensity}`) : "—"}
+                </td>
+                <td className={tdClass({})}>
+                  {jumps.length > 0 ? (
+                    <span className="text-cz-success text-xs font-medium">
+                      {jumps.map((j) => (
+                        j.from != null && j.to != null
+                          ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`racePreview.derived.${j.ability}`) })
+                          : t("gains", { n: j.n, ability: tRider(`racePreview.derived.${j.ability}`) })
+                      )).join(", ")}
+                    </span>
+                  ) : (
+                    <span className="text-cz-3 text-xs">{t("noGains")}</span>
+                  )}
+                </td>
+                <td className={tdClass({})}>
+                  <div className="flex flex-col gap-0.5">
+                    {row.status === "over" && <span className="text-cz-success text-xs">{t("sharpDay")}</span>}
+                    {row.status === "under" && <span className="text-cz-danger text-xs">{t("flatDay")}</span>}
+                    <span className={`text-2xs font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                      {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
+                    </span>
+                  </div>
+                </td>
+                {showScore && (
+                  <td className={`${tdClass({})} text-right font-data tabular-nums`} data-testid="training-history-score-cell">
+                    {score != null ? (
+                      <span className="text-sm font-bold leading-none text-cz-1">{score}</span>
+                    ) : (
+                      <span className="text-xs text-cz-3">—</span>
+                    )}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DayCard({ run, t, tRider, trainingScore }) {
+  const [open, setOpen] = useState(false);
+  // #5682: rapporten viste ryttere i genererings-/DB-raekkefoelge (reelt
+  // tilfaeldig), forskellig fra Daglig traenings egen standard-visning.
+  // sortTrainingRiders (delt med TrainingPage) giver samme standard-
+  // sortering begge steder. daySummary er raekkefoelge-uafhaengig (tal-
+  // opsummering), saa den kan roligt bruge den USORTEREDE rapport.
+  const reportRows = run.report?.riders ?? [];
+  const rows = sortTrainingRiders(reportRows, null, "asc", { name: trainingReportRowName });
+  const summary = daySummary(reportRows);
+  // #5734: samme gate som Today (trainingScore != null i /training/me-svaret).
+  // trainingScore[riderId].spark daekker kun de seneste dage (backend
+  // TRAINING_SCORE_VIEW.sparkDays) — dage udenfor vinduet faar ingen match og
+  // viser stregen, praecis som en loebsdag gør.
+  const showScore = trainingScore != null;
+  const scoreFor = (riderId) => {
+    const spark = trainingScore?.[riderId]?.spark;
+    if (!Array.isArray(spark)) return null;
+    const point = spark.find((p) => p.date === run.tick_date);
+    return point && point.score != null ? point.score : null;
+  };
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        data-testid="training-history-day-toggle"
+        className="w-full flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-left hover:bg-cz-subtle transition-colors"
+      >
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-semibold text-cz-1">{formatDate(run.tick_date)}</span>
+          <span className="text-2xs px-2 py-0.5 rounded-cz bg-cz-subtle text-cz-3 border border-cz-border">
+            {executedByLabel(run.executed_by, t)}
+          </span>
+          {run.bonus_applied && (
+            <span className="text-2xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
+              {t("bonusApplied")}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-cz-2">
+            {t("historyDaySummary", { trained: summary.trained, breakthroughs: summary.breakthroughs, peakForm: summary.peakForm })}
+          </span>
+          <span className="text-xs text-cz-3">{open ? t("historyToggleClose") : t("historyToggleOpen")}</span>
+          <ChevronDownIcon size={14} className={`shrink-0 text-cz-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+        </div>
+      </button>
+      {open && rows.length > 0 && (
+        <DayRiderTable rows={rows} t={t} tRider={tRider} showScore={showScore} scoreFor={scoreFor} />
+      )}
+    </div>
+  );
+}
+
+function LegacyTrainingHistory({ history, trainingScore = null }) {
+  const { t } = useTranslation("training");
+  const tRider = useTranslation("rider").t;
+  const { runs, loading } = history;
+
+  // #2849 bølge 6: sektionen havde sin egen overskrifts-opskrift (`h2 text-lg
+  // font-bold` på sidens baggrund — en 10. header-stil uden for spec'en) og
+  // håndrullede kort-recipes til loading/empty. Nu kanonisk Section +
+  // SectionHeader, hvor chrome altid renderer og kun body swapper.
+  return (
+    <Section>
+      <SectionHeader title={t("historyTitle")} meta={t("historySubtitle")} />
+
+      {loading ? (
+        <SkeletonLines lines={4} />
+      ) : runs.length === 0 ? (
+        <EmptyState icon={<ClockIcon size={26} aria-hidden="true" />} title={t("historyEmpty")} />
+      ) : (
+        <div className="space-y-2">
+          {runs.map((run) => (
+            <DayCard key={run.tick_date} run={run} t={t} tRider={tRider} trainingScore={trainingScore} />
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 import DailyTrainingReceipt from "./DailyTrainingReceipt.tsx";
 import { copenhagenDayKey } from "../../lib/raceCentre.js";
-
-export default function TrainingHistory({ history, trainingScore = null, condition = null, today = null }) {
+function DailyTrainingHistory({ history, trainingScore = null, condition = null, today = null }) {
   const { t } = useTranslation("training");
   const { runs, loading } = history;
   if (loading && runs.length === 0) return <Section><SkeletonLines lines={4} /></Section>;
@@ -17,4 +217,8 @@ export default function TrainingHistory({ history, trainingScore = null, conditi
   return <div className="space-y-[14px]">{runs.map((run,index)=>
     <DailyTrainingReceipt key={`${run.tick_date}:${run.season_id ?? "legacy"}`} run={run} trainingScore={trainingScore} defaultExpanded={index===0} condition={today && run.tick_date===copenhagenDayKey(today.getTime()) ? condition : undefined} today={today ?? undefined} />
   )}</div>;
+}
+
+export default function TrainingHistory(props) {
+  return props.dailyReceiptEnabled === true ? <DailyTrainingHistory {...props} /> : <LegacyTrainingHistory {...props} history={{...props.history,runs:props.history.rawRuns ?? props.history.runs}} />;
 }
