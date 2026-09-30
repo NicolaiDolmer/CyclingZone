@@ -153,6 +153,13 @@
       "clearAnyway": "Clear anyway"
     },
     "column": {
+      "riderHeading": "Rider",
+      "orderHeading": "Order",
+      "helperOrder": "Domestique",
+      "editOrder": "{order}: change order for {name}",
+      "routeMatchHeading": "Route match",
+      "currentFormHeading": "Current form",
+      "numbersExplanation": "Route match: average for the whole race across its stages. Current form: today's form, not a forecast. A dash means unavailable.",
       "add": "Add from available",
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
@@ -182,7 +189,7 @@
       "compatibleHintNoDay": "Same day as {race}. Can ride both."
     },
     "role": {
-      "hint": "Tap a rider to set captain or role",
+      "hint": "Tap an order to change the rider's role",
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
       "hunter": "Breakaway hunter",

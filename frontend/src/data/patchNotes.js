@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.325",
+    "version": "7.326",
     "date": "2026-09-30",
     "label": "Beta",
     "changes": [{
@@ -14,6 +14,21 @@ export const PATCHES = [
         "body": "For beta-testere samler træningsrapporten datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Form, træthed og positiv udvikling bruger samme farver som ryttervisningerne. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
       },
       "refs": [5915]
+    }]
+  },
+  {
+    "version": "7.325", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Planning",
+      "en": {
+        "title": "Clearer planning numbers",
+        "body": "Planning now shows each rider's order in its own column and labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
+      },
+      "da": {
+        "title": "Tydeligere planlægningstal",
+        "body": "Planlægning viser nu rytterens ordre i sin egen kolonne og har tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
+      },
+      "refs": [5930]
     }]
   },
   {
