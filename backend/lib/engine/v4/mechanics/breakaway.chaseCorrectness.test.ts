@@ -20,7 +20,7 @@ function fixture() {
     entrants[riderId] = { rider_id: riderId, role: "helper", effort: "normal", condition: 1, abilities, team_id: group.id };
     riders[riderId] = { rider_id: riderId, group_id: group.id, cp: .5, wprimeMax: .4, wprime: .4, dayform: 0, seconds_over_cp: 0, work_norm: 0, incidents: 0, status: "racing", time_seconds: 0 };
   }
-  const route: RouteV2 = { distance_km: 100, profile_type: "rolling", finale_type: "bunch_sprint", segments: [{ kind: "climb", from_km: 0, to_km: 10 }, { kind: "flat", from_km: 10, to_km: 20 }], weather: { kind: "sun", wind_exposure: 0 }, waypoints: [] };
+  const route: RouteV2 = { distance_km: 100, profile_type: "rolling", finale_type: "bunch_sprint", segments: [{ kind: "climb", from_km: 0, to_km: 10, category: "3", avg_gradient: 5, top_elevation_m: 500 }, { kind: "flat", from_km: 10, to_km: 20 }], weather: { kind: "sun", wind_exposure: 0 }, waypoints: [] };
   const state: EngineState = { km: 10, groups, riders, virtual_gc: {} };
   const ctx = makeHookCtx({ segment: route.segments[1], segmentIndex: 1, route, entrants, tuning: RACE_V4_TUNING, seed: "large-tail-chase", orders: [{ team_id: "near", kind: "team_tactics", params: { breakaway_stance: "chase", riders: [] } }] });
   return { state, ctx };
