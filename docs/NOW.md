@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (30/9):** **#5928 / PR #5962** afventer ejerens merge-/migrations-go (HEAD `ab2611e33`, CI grøn). Modellen blev aktiveret 29/9 kl. 19:12; 8.346 ryttere afregnet, 84 på 17 hold kræver separat efterregulering. 68 backend-regressioner og uafhængigt review grønne; browser-fixturens midnatsdrift rettet. Derefter #5912 (tabte træningsdage 28/9), #5908, #5897.
+> **🎯 Next action (30/9):** **#5928: forslag til særskilt efterregulering af 84 ryttere på 17 hold fra 29/9.** #5962 merget med ejer-go; `8ae4ad0e4` har grøn main-CI, Deploy verify og Vercel READY. Migration applied; funktion, GIN-indeks og service-only adgang verificeret. 8.346 afregninger består; de 84 karantæner er bevaret. Derefter #5912 (tabte træningsdage 28/9), #5908, #5897.
 >
 > **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956. **29/9:** Sikkerheds-PR #5925; CI/deploy grøn, Vercel `READY`, tre alarmer `fixed`. #5889 merget (7.317); #5705/#5934 merget (CI/READY).
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session. #5928 handoff på PR #5962; migration og efterregulering er ejer-gated (30/9).
+> **🤖 Working agent:** Ingen aktiv session. #5962 er frigivet og verificeret; efterregulering af de 84 kræver separat ejer-go (30/9).
