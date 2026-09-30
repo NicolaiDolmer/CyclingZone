@@ -399,11 +399,12 @@ features:
     area: training
     title_en: Daily rider training receipt
     title_da: Daglig rytterkvittering
-    state: building
+    state: beta
+    flag: training_daily_receipt
     ssot: docs/TRAINING_RULES.md
     epic: 5915
     verified: 2026-09-30
-    note: Beta-release godkendt; training_daily_receipt aktiveres først efter merge og deploy-verifikation.
+    note: Beta/admin aktiveret 30/9 kl. 22.07; PR 5976, main-CI/Deploy verify og rigtigt holds datokvittering/passcorer verificeret. Off gendanner tidligere visninger.
 
   - id: training-score
     area: training
