@@ -28,6 +28,13 @@ Reglerne lå spredt over **25 design-dokumenter**. Denne fil er nu kilden. Ændr
 
 ---
 
+## Holdklassement ved lige tid (#5952, ejer 29/9)
+
+Holdets tre hurtigste fuldførende ryttere tæller; hold med færre end tre fuldførende ryttere får intet holdresultat. Ved lige samlet tid i et endagsløb eller en etapes holdresultat afgør placeringssummen for de tre tællende ryttere rækkefølgen; ved fortsat lighed afgør holdets bedste enkeltplacering. Ved lige tid i etapeløbets samlede holdklassement afgør flest dagssejre i etapernes holdklassement, derefter flest andenpladser, tredjepladser og senere placeringer, til sidst holdets bedst placerede rytter i GC. Hold-id er kun sidste deterministiske fallback.
+
+Reglen ligger i `backend/lib/raceClassifications.js` og bruges af begge runner-stier. Dagsplaceringer rekonstrueres fra publicerede `race_results`-etaperækker, aldrig ved en ny simulation. Dashboard og live-stilling foretrækker de gemte `team_day`-rækker. Genberegning er dry-run som standard, springer baseline-afvigelser og udbetalte løb over og kræver særskilt ejer-go før prod-skrivning. Opdaterede rækker optælles fra database-svaret; nul matches på den gamle rank rapporteres som sprunget over. Betalingsstatus genlæses pr. løb før apply, og læsefejl stopper kørslen. Genlæsningen er ikke en lås mod samtidig udbetaling; et roligt udbetalingsvindue skal verificeres før ejer-go. Sæsonstillingen opdateres efter en autoriseret apply.
+
+---
 ## 0. De to kontrakter (den hyppigste fejlkilde)
 
 **Afvikling under AI-nedlæggelse (#4753, design-go 9/9):** En claim til første etape

@@ -1,0 +1,102 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { recomputeTeamRowsForRace, buildReport } from "./recompute-5952-team-classification.js";
+
+const gc = (rider, team, rank) => ({ id: `gc-${rider}`, race_id: "r1", stage_number: 1, result_type: "gc", rank, rider_id: rider, team_id: team, finish_time: "+0:00" });
+const teamRow = (team, rank, points = 0) => ({ id: `t-${team}`, race_id: "r1", stage_number: 1, result_type: "team", rank, team_id: team, team_name: team, points_earned: points, prize_money: points * 1000 });
+
+// Spillerens eksempel: alle +0:00, Slipstream (9/19/24) blev sat bag Breakaway (29/45/49).
+const oneDayResults = [
+  gc("s1", "Slipstream", 9), gc("s2", "Slipstream", 19), gc("s3", "Slipstream", 24),
+  gc("b1", "Breakaway", 29), gc("b2", "Breakaway", 45), gc("b3", "Breakaway", 49),
+  teamRow("Breakaway", 1, 10), teamRow("Slipstream", 2, 5),
+];
+
+test("#5952 recompute: endagsløb flytter holdene og følger point/præmie med placeringen", () => {
+  const out = recomputeTeamRowsForRace({
+    race: { race_type: "single", squad: "senior" },
+    results: oneDayResults,
+    pointsLookup: { team__1: 10, team__2: 5 },
+  });
+  assert.equal(out.status, "ok");
+  const byTeam = Object.fromEntries(out.changes.map((c) => [c.team_id, c]));
+  assert.equal(byTeam.Slipstream.new_rank, 1);
+  assert.equal(byTeam.Slipstream.new_points, 10);
+  assert.equal(byTeam.Breakaway.new_rank, 2);
+  assert.equal(byTeam.Breakaway.new_points, 5);
+});
+
+test("#5952 recompute: baseline-vagten stopper et løb hvis den gamle regel ikke genskaber de gemte placeringer", () => {
+  const tampered = oneDayResults.map((r) => (r.result_type === "team" ? { ...r, rank: r.team_id === "Breakaway" ? 2 : 1 } : r));
+  // Gemt: Slipstream 1 (allerede "rigtigt"), men den gamle regel siger Breakaway 1 -> ukendt kilde, rør ikke.
+  const out = recomputeTeamRowsForRace({ race: { race_type: "single" }, results: tampered, pointsLookup: {} });
+  assert.equal(out.status, "baseline_mismatch");
+  assert.equal(out.changes.length, 0);
+});
+
+test("#5952 recompute: udbetalte løb optælles separat og markeres paid", () => {
+  const report = buildReport({
+    races: [{ id: "r1", name: "Klassiker", race_type: "single", race_class: "C1", prize_paid_at: "2026-09-29T18:00:00Z", squad: "senior" }],
+    results: oneDayResults,
+    profiles: [],
+    racePoints: [],
+  });
+  assert.equal(report.summary.paid_races_not_touched, 1);
+  assert.equal(report.summary.unpaid_races_to_apply, 0);
+  assert.equal(report.races[0].paid, true);
+});
+
+const makeApplyClient = (responses, payment = { data: { id: "r1", prize_paid_at: null }, error: null }) => {
+  const ids = [];
+  return {
+    ids,
+    from() {
+      return {
+        update() { return this; },
+        eq(key, value) { if (key === "id" && value !== "r1") ids.push(value); return this; },
+        select() { return { ...this, then: (resolve) => Promise.resolve(responses.shift()).then(resolve) }; },
+        async maybeSingle() { return payment; },
+        then(resolve) { return Promise.resolve({ error: null }).then(resolve); },
+      };
+    },
+  };
+};
+
+test("#5952 apply counts only returned rows, skips paid and unsafe races", async () => {
+  const { applyUnpaid } = await import("./recompute-5952-team-classification.js");
+  const client = makeApplyClient([{ data: [{ id: "updated" }], error: null }, { data: [], error: null }]);
+  const change = (id) => ({ id, old_rank: 2, new_rank: 1, new_points: 5, new_prize: 0 });
+  const report = { races: [
+    { paid: true, status: "ok", changes: [change("paid")] },
+    { paid: false, status: "baseline_mismatch", changes: [change("unsafe")] },
+    { race_id: "r1", paid: false, status: "ok", changes: [change("updated"), change("stale")] },
+  ] };
+  const warnings = [];
+  assert.equal(await applyUnpaid(client, report, (message) => warnings.push(message)), 1);
+  assert.deepEqual(client.ids, ["updated", "stale"]);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /stale/);
+});
+
+test("#5952 apply aborts on a database error", async () => {
+  const { applyUnpaid } = await import("./recompute-5952-team-classification.js");
+  const client = makeApplyClient([{ data: null, error: { message: "denied" } }]);
+  await assert.rejects(applyUnpaid(client, { races: [{ race_id: "r1", paid: false, status: "ok", changes: [{ id: "bad" }] }] }), /bad: denied/);
+});
+
+test("#5952 apply rechecks payment and skips a race paid after the report", async () => {
+  const { applyUnpaid } = await import("./recompute-5952-team-classification.js");
+  const client = makeApplyClient([], { data: { id: "r1", prize_paid_at: "2026-09-29T21:00:00Z" }, error: null });
+  const warnings = [];
+  assert.equal(await applyUnpaid(client, { races: [{ race_id: "r1", paid: false, status: "ok", changes: [{ id: "paid-now" }] }] }, (m) => warnings.push(m)), 0);
+  assert.deepEqual(client.ids, []);
+  assert.match(warnings[0], /paid since report/);
+});
+
+test("#5952 apply fails closed on payment-read errors", async () => {
+  const { applyUnpaid } = await import("./recompute-5952-team-classification.js");
+  const client = makeApplyClient([], { data: null, error: { message: "unavailable" } });
+  await assert.rejects(applyUnpaid(client, { races: [{ race_id: "r1", paid: false, status: "ok", changes: [{ id: "no-write" }] }] }), /races r1: unavailable/);
+  assert.deepEqual(client.ids, []);
+});

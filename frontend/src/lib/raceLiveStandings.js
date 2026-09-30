@@ -2,10 +2,9 @@
 //
 // Motoren persisterer fulde klassementer pr. mellem-etape under dag-typerne:
 // leader (GC m. "+M:SS"-gap), points_day, mountain_day, young_day (rank 1..N).
-// Hold-stillingen persisteres bevidst IKKE (race_points har team__1 → payout-
-// risiko under re-derivering, jf. #2072-PR'en); den deriveres her af GC-rækkernes
-// gap: sum af holdets 3 bedste gaps — samme rangorden som motorens
-// teamClassification (den fælles leder-tid forkortes ud af sammenligningen).
+// Holdstillingen: motorens team_day-rækker bruges når de findes (#5952). Ellers
+// (løb fra før team_day) deriveres den af GC-rækkernes gap: sum af holdets 3
+// bedste gaps (den fælles leder-tid forkortes ud af sammenligningen).
 // Kun hold med mindst 3 fuldførende ryttere rangeres (UCI-konvention, #2694) —
 // spejler backendens teamClassification, så et 1-2-rytters-hold ikke kan vinde.
 
@@ -24,13 +23,23 @@ export function deriveTeamStandings(gcRows) {
   const byTeam = new Map();
   for (const r of gcRows || []) {
     if (!r.team_id) continue;
-    if (!byTeam.has(r.team_id)) byTeam.set(r.team_id, { team_id: r.team_id, team_name: r.team_name, team: r.team, gaps: [] });
-    byTeam.get(r.team_id).gaps.push(parseGapSeconds(r.finish_time));
+    if (!byTeam.has(r.team_id)) byTeam.set(r.team_id, { team_id: r.team_id, team_name: r.team_name, team: r.team, riders: [] });
+    byTeam.get(r.team_id).riders.push({ gap: parseGapSeconds(r.finish_time), rank: r.rank ?? 9999 });
   }
+  // #5952: lige tid brydes på de 3 tællende rytteres placeringssum og derefter
+  // holdets bedste placering, ikke alfabetisk på team_id.
   return [...byTeam.values()]
-    .filter(({ gaps }) => gaps.length >= 3) // <3 finishers → intet gyldigt holdresultat (#2694)
-    .map(({ gaps, ...rest }) => ({ ...rest, total: gaps.sort((a, b) => a - b).slice(0, 3).reduce((s, g) => s + g, 0) }))
-    .sort((a, b) => a.total - b.total || String(a.team_id).localeCompare(String(b.team_id)))
+    .filter(({ riders }) => riders.length >= 3) // <3 finishers → intet gyldigt holdresultat (#2694)
+    .map(({ riders, ...rest }) => {
+      const counting = riders.sort((a, b) => a.gap - b.gap || a.rank - b.rank).slice(0, 3);
+      return {
+        ...rest,
+        total: counting.reduce((s, r) => s + r.gap, 0),
+        rankSum: counting.reduce((s, r) => s + r.rank, 0),
+        bestRank: Math.min(...riders.map((r) => r.rank)),
+      };
+    })
+    .sort((a, b) => a.total - b.total || a.rankSum - b.rankSum || a.bestRank - b.bestRank || String(a.team_id).localeCompare(String(b.team_id)))
     .map((row, i) => ({
       id: `live-team-${row.team_id}`,
       result_type: "team",
@@ -63,6 +72,11 @@ export function buildLiveStandings(results) {
       .filter(r => r.result_type === dayType && (r.stage_number ?? 1) === stage)
       .sort(byRank);
   }
-  byType.team = deriveTeamStandings(byType.gc);
+  // #5952: motorens egen holdstilling (team_day, UCI-tiebreak ved lige tid)
+  // vinder; afledningen af GC-gaps er kun fallback for løb uden team_day.
+  const teamDay = (results || [])
+    .filter((r) => r.result_type === "team_day" && (r.stage_number ?? 1) === stage)
+    .sort(byRank);
+  byType.team = teamDay.length ? teamDay : deriveTeamStandings(byType.gc);
   return { stage, byType };
 }

@@ -145,7 +145,7 @@ export default function useTodayStages(teamId) {
               .select("race_id, stage_number, result_type, rank, team_id, finish_time")
               .eq("race_id", race.id)
               .eq("stage_number", race.stages_completed)
-              .in("result_type", ["leader", "team"])
+              .in("result_type", ["leader", "team_day", "team"])
           )
         ),
       ]);

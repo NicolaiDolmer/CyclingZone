@@ -137,6 +137,7 @@ import {
   teamClassification,
   accumulateStageRows,
   filterCompletedEntrants,
+  dailyTeamPlacesFromStageRows,
   jerseyLeadersFromComps,
 } from "./raceClassifications.js";
 // Sub-2 (#2770): passage-lag — ren efterbehandling af simulateStage-output
@@ -732,7 +733,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // ENDAGSLØB: gc(all) + team. Ingen 'stage' (= dobbelttælling, jf. PCM).
       // gc-finish-order = denne ene etapes finish-order → udbruds-etiketten gælder direkte.
       for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: 1, finish_time: gcFinish(g), ...bwOf(g.rider_id) });
-      for (const t of teamClassification(classified, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: 1 });
+      // #5952: lige tid brydes paa placeringssummen af holdets 3 taellende ryttere.
+      const oneDayTiebreak = { mode: "stage", placeByRider: new Map(gc.map((g) => [g.rider_id, g.rank])) };
+      for (const t of teamClassification(classified, cumTime, oneDayTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: 1 });
       break;
     }
 
@@ -746,6 +749,15 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       });
     }
 
+    // #5952: det samlede holdklassements UCI-tiebreak — dagssejre i etapernes
+    // holdklassement (af de etaperaekker der er skrevet indtil nu), derefter
+    // holdets bedste rytter i GC.
+    const overallTeamTiebreak = {
+      mode: "overall",
+      placeByRider: new Map(gc.map((g) => [g.rider_id, g.rank])),
+      dailyPlacesByTeam: dailyTeamPlacesFromStageRows(resultRows.filter((r) => r.result_type === "stage")),
+    };
+
     if (!isFinal) {
       // Mellem-etape (#2081): FULDE løbende klassementer under dag-typerne — rank 1
       // beholder "holder trøjen"-pointet (race_points har KUN rank 1 for dag-typerne);
@@ -758,7 +770,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
       for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-      for (const t of teamClassification(classified, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
+      for (const t of teamClassification(classified, cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
     } else {
       // Slut-etape: hele klassementet udbetales.
       const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
@@ -768,7 +780,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       for (const p of pointsCls) pushIndiv({ result_type: "points", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
       for (const y of young) pushIndiv({ result_type: "young", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-      for (const t of teamClassification(classified, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
+      for (const t of teamClassification(classified, cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
     }
   }
 
@@ -2703,6 +2715,13 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const gc = rankByCumTimeAsc(classified, acc.cumTime, acc.posSum);
   const leaderTime = gc.length ? gc[0].time : 0;
   const gcFinish = (entry) => formatGap(entry.time - leaderTime);
+  // #5952: det samlede holdklassements UCI-tiebreak (se buildRaceResults'
+  // tilsvarende note) — af de persisterede etaperaekker + dagens.
+  const overallTeamTiebreak = {
+    mode: "overall",
+    placeByRider: new Map(gc.map((g) => [g.rider_id, g.rank])),
+    dailyPlacesByTeam: dailyTeamPlacesFromStageRows([...priorStageRows, ...todayStageRows]),
+  };
 
   // S6 (#2355): why-rapport-momenter. previousGcLeaderId = GC-lederen FØR
   // denne etape, udledt af PRIOR-rækkerne alene (samme akkumulerings-funktion
@@ -2788,14 +2807,14 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
     for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
     for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-    for (const t of teamClassification(classified, acc.cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
+    for (const t of teamClassification(classified, acc.cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
   } else {
     // Slut-etape: hele klassementet udbetales — fra AKKUMULERINGEN, ikke en re-sim.
     for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
     for (const p of pointsCls) pushIndiv({ result_type: "points", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
     for (const k of komCls) pushIndiv({ result_type: "mountain", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
     for (const y of young) pushIndiv({ result_type: "young", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-    for (const t of teamClassification(classified, acc.cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
+    for (const t of teamClassification(classified, acc.cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
   }
 
   return { resultRows, passageRows, runs, incidents: stampedIncidents, moments, timelines };
