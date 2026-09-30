@@ -1,3 +1,4 @@
+import { findChaseGroup } from "./chaseGroup.ts";
 // backend/lib/engine/v4/mechanics/breakaway.ts
 // Race Engine v4 F3 (#4030, #3855): M5 - udbrud v2, jagt-interesse-modellen
 // fra #2416, foldet ind som v4's udbrudsmekanik (mor-spec §3.3/§4 M5).
@@ -723,19 +724,12 @@ function findBreakawayGroups(groups: RaceGroup[]): RaceGroup[] {
   return groups.filter((g) => g.kind === "breakaway").sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** Den stoerste ikke-udbruds-gruppe = jagt-gruppen (typisk peloton). */
-function findChaseGroup(groups: RaceGroup[]): RaceGroup | null {
-  const rest = groups.filter((g) => g.kind !== "breakaway").sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id));
-  return rest[0] ?? null;
-}
+
 
 function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHookResult {
   const events: TimelineEvent[] = [];
   const breakawayGroups = findBreakawayGroups(state.groups);
   if (breakawayGroups.length === 0) return { state, events };
-
-  const chaseGroup = findChaseGroup(state.groups);
-  if (!chaseGroup) return { state, events };
 
   const remainingKmFraction = ctx.route.distance_km > 0 ? clamp(ctx.segment.to_km / ctx.route.distance_km, 0, 1) : 0;
   const segmentLengthKm = Math.max(0, ctx.segment.to_km - ctx.segment.from_km);
@@ -743,25 +737,22 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // jagten staar imellem — saa en afhaegtet grupetto som "jagt-gruppe" ikke
   // selv flytter skalaen den maales paa.
   const fieldRiderIds = state.groups.flatMap((g) => g.rider_ids);
-  // #5570: holdspecifik jagt gennem holdenes egne ryttere i jagt-gruppen.
-  // Regnes én gang pr. segment — jagt-gruppen er den samme for alle udbrud.
-  const chasePlan = teamChasePlan({
-    orders: parseBreakawayOrders(ctx.orders),
-    chaseGroupRiderIds: chaseGroup.rider_ids,
-    entrants: ctx.entrants,
-    riders: state.riders,
-    fieldRiderIds,
-  });
-  const stance = chasePlan.signal;
+  const parsedOrders = parseBreakawayOrders(ctx.orders);
+  const workByChaseGroup = new Map<string, { plan: ReturnType<typeof teamChasePlan>; km: number }>();
+  const caughtByChaseGroup = new Map<string, string>();
 
   let groups = state.groups;
   let changed = false;
-  let chasedKm = 0;
+
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
   const formationSegment = ctx.route.segments[FORMATION_SEGMENT_INDEX];
   const formationKm = formationSegment ? formationKmFor(formationSegment) : ctx.segment.from_km;
 
   for (const breakaway of breakawayGroups) {
+    const chaseGroup = findChaseGroup(state.groups, breakaway);
+    if (!chaseGroup) continue;
+    const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds });
+    const stance = chasePlan.signal;
     // WIRING-GUARD (#4615): en gruppe med kind "breakaway" er ikke
     // noedvendigvis ET udbrud M5 selv dannede — M3's descent attack bruger
     // samme art. Er "udbruddet" ikke foran jagt-gruppen, er der intet hul at
@@ -794,7 +785,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         toKm: ctx.segment.to_km,
       }));
     }
-    chasedKm = Math.max(chasedKm, chaseKm);
+    const priorWork = workByChaseGroup.get(chaseGroup.id);
+    workByChaseGroup.set(chaseGroup.id, { plan: chasePlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
 
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
@@ -832,16 +824,14 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // hvert hook-kald). Blev jagten maalt paa jagt-gruppens eget gap, ville et
     // udbrud dannet i dette segment fremstaa fanget med det samme.
     //
-    // Det er UDBRUDDETS gap der flyttes mod jagt-gruppen: separationen kan
-    // dermed aldrig blive negativ (jagten overhaler ikke det den jager), og
-    // jagt-gruppens eget gap — som segmentLoop's tempo-model ejer — roeres ikke.
+    // The pursuer closes by advancing. Closing alone never delays escapees.
     const currentChase = groups.find((g) => g.id === chaseGroup.id);
     const currentBreakaway = groups.find((g) => g.id === breakaway.id);
     if (!currentChase || !currentBreakaway) continue;
     const separation = currentChase.gap_seconds - currentBreakaway.gap_seconds;
     // Lad gaa: hullet vokser mod loftet, men et hul der allerede er over
     // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
-    const grown = separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
+    const grown = separation >= 0 && separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
     const beforeFloor = Math.max(0, grown - netClosingSeconds);
     // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
     // den segment-noeglede stream): "kommer sprinterholdene for sent i dag" er
@@ -856,14 +846,20 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")()),
         })
       : 0;
-    const newSeparation = Math.max(0, beforeFloor - floorClosingSeconds);
-    const newBreakawayGap = currentChase.gap_seconds - newSeparation;
-    groups = groups.map((g) => (g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g));
+
+    // Let-go growth advances the escape; active closing advances the pursuer.
+    // Multiple targets share one pursuing group's movement instead of stacking it.
+    const growthSeconds = grown - separation;
+    const newBreakawayGap = currentBreakaway.gap_seconds - growthSeconds;
+    const closingSeconds = netClosingSeconds + floorClosingSeconds;
+    const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
+    groups = groups.map((g) => g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g.id === chaseGroup.id ? { ...g, gap_seconds: newChaseGap } : g);
     changed = true;
 
-    const newGap = newSeparation;
+    const newGap = newChaseGap - newBreakawayGap;
     const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
     if (caught) {
+      caughtByChaseGroup.set(breakaway.id, chaseGroup.id);
       events.push({
         km: round2(ctx.segment.to_km),
         type: "breakaway_caught",
@@ -881,11 +877,23 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // #5570: jagten koster. Kun naar der faktisk var et udbrud foran at jage
   // (wiring-guarden ovenfor), og kun én gang pr. segment uanset antal udbrud.
   // #5812: kun for de km der faktisk jages — i lad-gaa-fasen jager ingen.
-  const segmentShare = ctx.route.distance_km > 0 ? clamp(chasedKm / ctx.route.distance_km, 0, 1) : 0;
-  const riders = chasedKm > 0 ? applyChaseCost(state.riders, chasePlan.chaserWork, segmentShare) : null;
+  // Once joined, escapees share any further progress by that same pursuer.
+  groups = groups.map((group) => {
+    const chaseId = caughtByChaseGroup.get(group.id);
+    const chase = chaseId ? groups.find((candidate) => candidate.id === chaseId) : undefined;
+    return chase ? { ...group, gap_seconds: Math.min(group.gap_seconds, chase.gap_seconds) } : group;
+  });
+  let updatedRiders = state.riders;
+  for (const { plan, km } of workByChaseGroup.values()) {
+    const share = ctx.route.distance_km > 0 ? clamp(km / ctx.route.distance_km, 0, 1) : 0;
+    updatedRiders = applyChaseCost(updatedRiders, plan.chaserWork, share) ?? updatedRiders;
+  }
+  const riders = updatedRiders === state.riders ? null : updatedRiders;
 
   if (!changed && !riders) return { state, events };
-  return { state: { ...state, groups, ...(riders ? { riders } : {}) }, events };
+  const frontGap = Math.min(...groups.map((group) => group.gap_seconds));
+  const rebasedGroups = frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
+  return { state: { ...state, groups: rebasedGroups, ...(riders ? { riders } : {}) }, events };
 }
 
 /**

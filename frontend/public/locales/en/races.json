@@ -1061,7 +1061,7 @@
         "breakaway_formed": "{riders} {count, plural, one {goes} other {go}} clear off the front.",
         "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
         "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
-        "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the bunch.",
+        "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the pursuing group.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "incident_crash_time_loss": "{rider} goes down and loses {seconds} sec.",
@@ -1080,11 +1080,17 @@
         "grupetto_saved": "The gruppetto comes home together: {count, plural, one {# rider is} other {# riders are}} saved.",
         "finish": "{rider} takes the stage win.",
         "finish_sprint_win": "{rider} wins the bunch sprint.",
-        "finish_close_win": "{rider} wins in a close finish.",
+        "finish_close_win": "{rider} takes the stage win.",
         "finish_solo_win": "{rider} solos to the stage win.",
         "finish_itt_win": "{rider} sets the fastest time of the day.",
         "finish_ttt_win": "{rider} leads home the fastest team of the day.",
-        "gc_change": "{rider} takes over the overall lead from {previousLeader}."
+        "gc_change": "{rider} takes over the overall lead from {previousLeader}.",
+        "group_merged": "{riders} {count, plural, one {rejoins} other {rejoin}} a group.",
+        "group_merged_many": "{count} riders regroup.",
+        "peloton_split": "{riders} {count, plural, one {moves} other {move}} into a separate group.",
+        "group_split_many": "{count} riders split into a separate group.",
+        "descent_attack": "{riders} {count, plural, one {attacks} other {attack}} on the descent.",
+        "descent_attack_many": "{count} riders attack on the descent."
       }
     },
     "recap": {
@@ -1349,9 +1355,11 @@
       "young_day": "Youth"
     },
     "breakaway": {
-      "label": "Breakaway",
+      "label": "Morning breakaway",
       "survived": "stayed away to the finish",
-      "caught": "caught by the bunch"
+      "caught": "caught",
+      "participated": "participated",
+      "laterAttack": "Later attack"
     },
     "stageProfile": {
       "label": "Terrain",

@@ -851,6 +851,13 @@ export function deriveBreakawayStatus(ranked = []) {
     }
   }
   for (const r of ranked) {
+    if (r.breakaway_status && typeof r.breakaway_status.in_breakaway === "boolean" && typeof r.breakaway_status.breakaway_caught === "boolean") {
+      out.set(r.rider_id, {
+        in_breakaway: r.breakaway_status.in_breakaway,
+        breakaway_caught: r.breakaway_status.in_breakaway && r.breakaway_status.breakaway_caught,
+      });
+      continue;
+    }
     const inBreakaway = (r.components?.breakaway || 0) > 0;
     out.set(r.rider_id, {
       in_breakaway: inBreakaway,

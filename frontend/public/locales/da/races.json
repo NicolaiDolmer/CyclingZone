@@ -1061,7 +1061,7 @@
         "breakaway_formed": "{riders} rykker væk fra feltet.",
         "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
         "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
-        "breakaway_caught": "{riders} bliver indhentet af feltet.",
+        "breakaway_caught": "{riders} {count, plural, one {bliver} other {bliver}} indhentet af jagtgruppen.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "incident_crash_time_loss": "{rider} vælter og taber {seconds} sek.",
@@ -1080,11 +1080,17 @@
         "grupetto_saved": "Grupettoen kommer samlet i mål: {count, plural, one {# rytter} other {# ryttere}} reddes.",
         "finish": "{rider} tager etapesejren.",
         "finish_sprint_win": "{rider} vinder massespurten.",
-        "finish_close_win": "{rider} vinder en tæt finish.",
+        "finish_close_win": "{rider} tager etapesejren.",
         "finish_solo_win": "{rider} soloer til etapesejr.",
         "finish_itt_win": "{rider} sætter dagens hurtigste tid.",
         "finish_ttt_win": "{rider} fører dagens hurtigste hold i mål.",
-        "gc_change": "{rider} overtager den samlede føring fra {previousLeader}."
+        "gc_change": "{rider} overtager den samlede føring fra {previousLeader}.",
+        "group_merged": "{riders} {count, plural, one {samler sig} other {samler sig}} med en gruppe.",
+        "group_merged_many": "{count} ryttere samler sig.",
+        "peloton_split": "{riders} {count, plural, one {kommer} other {kommer}} i en separat gruppe.",
+        "group_split_many": "{count} ryttere kommer i en separat gruppe.",
+        "descent_attack": "{riders} {count, plural, one {angriber} other {angriber}} på nedkørslen.",
+        "descent_attack_many": "{count} ryttere angriber på nedkørslen."
       }
     },
     "recap": {
@@ -1349,9 +1355,11 @@
       "young_day": "Ungdom"
     },
     "breakaway": {
-      "label": "Udbrud",
+      "label": "Morgenudbrud",
       "survived": "holdt hjem til mål",
-      "caught": "indhentet af feltet"
+      "caught": "indhentet",
+      "participated": "deltog",
+      "laterAttack": "Senere angreb"
     },
     "stageProfile": {
       "label": "Terræn",

@@ -181,7 +181,9 @@ test("golden fixture: bjerg-selektion — udbryderen der blev hentet, staar som 
   const caught = output.timeline.events.filter((e) => e.type === "breakaway_caught");
   assert.equal(caught.length, 1);
   assert.deepEqual(caught[0].params.rider_ids, ["r02"]);
-  assert.equal(caught[0].km, input.route.distance_km);
+  const formed = output.timeline.events.find((event) => event.type === "breakaway_formed");
+  assert.ok(formed && caught[0].km > formed.km && caught[0].km <= input.route.distance_km, "indhentningen sker efter formation og senest ved maal");
+  assert.equal(caught[0].km, loadFixture("bjerg-selektion").expected.timeline.events.find((event) => event.type === "breakaway_caught")?.km);
   const r02 = output.results.find((r) => r.rider_id === "r02");
   assert.ok(r02 && r02.rank > 1, "udbryderen vinder ikke etapen");
 });

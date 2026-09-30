@@ -17076,7 +17076,7 @@
           "status": "reviewed"
         },
         "sections.raceSelection.breakaway.text": {
-          "srcHash": "f661c9e20e0b6e7f",
+          "srcHash": "5647c3a00cf820ef",
           "status": "reviewed"
         },
         "sections.raceSelection.fatigue.title": {
@@ -23258,7 +23258,7 @@
           "status": "reviewed"
         },
         "detail.film.event.breakaway_caught": {
-          "srcHash": "bfd31f280e7ad23e",
+          "srcHash": "02f2e35a52d8a314",
           "status": "reviewed"
         },
         "detail.film.event.breakaway_survived": {
@@ -23298,7 +23298,7 @@
           "status": "reviewed"
         },
         "detail.film.event.finish_close_win": {
-          "srcHash": "50dd273603816ece",
+          "srcHash": "998c791649568307",
           "status": "reviewed"
         },
         "detail.film.event.finish_solo_win": {
@@ -23894,7 +23894,7 @@
           "status": "reviewed"
         },
         "detail.breakaway.label": {
-          "srcHash": "5284c91dfbcc19bc",
+          "srcHash": "2434417cf82bc0ae",
           "status": "reviewed"
         },
         "detail.breakaway.survived": {
@@ -23902,7 +23902,7 @@
           "status": "reviewed"
         },
         "detail.breakaway.caught": {
-          "srcHash": "f47a2c36f0ff9188",
+          "srcHash": "a47a2e1872852966",
           "status": "reviewed"
         },
         "detail.stageProfile.label": {
@@ -24379,6 +24379,38 @@
         },
         "tour.tactics.body": {
           "srcHash": "15c80711735bf9bb",
+          "status": "reviewed"
+        },
+        "detail.breakaway.participated": {
+          "srcHash": "46b3b9ce0c3d7ad9",
+          "status": "reviewed"
+        },
+        "detail.breakaway.laterAttack": {
+          "srcHash": "3955843a6f2298b0",
+          "status": "reviewed"
+        },
+        "detail.film.event.group_merged": {
+          "srcHash": "515b0a74e3691f10",
+          "status": "reviewed"
+        },
+        "detail.film.event.group_merged_many": {
+          "srcHash": "2de82e36d82b9e90",
+          "status": "reviewed"
+        },
+        "detail.film.event.peloton_split": {
+          "srcHash": "a9afb9d74acb4412",
+          "status": "reviewed"
+        },
+        "detail.film.event.group_split_many": {
+          "srcHash": "44b2b507ebcde754",
+          "status": "reviewed"
+        },
+        "detail.film.event.descent_attack": {
+          "srcHash": "4147d3d071aaa5d6",
+          "status": "reviewed"
+        },
+        "detail.film.event.descent_attack_many": {
+          "srcHash": "5c36bc13ed193a79",
           "status": "reviewed"
         }
       },

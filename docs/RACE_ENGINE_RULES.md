@@ -1,5 +1,16 @@
 # Race-motorens regler — SSOT
 
+## Jagt og hændelsesbaserede markeringer (#5951/#5953/#5954, build-go 30/9)
+
+Denne rettelse er bygget til review, ikke meldt live. Den fysisk nærmeste relevante gruppe bag et udbrud ejer jagten. Aktiv indhentning flytter jagtgruppen frem, aldrig udbryderne baglæns. Efter indhentning følger de fangede ryttere samme gruppes videre fremdrift; én gruppe betaler sit faktiske segmentarbejde én gang, også med flere mål. Gruppereferencen normaliseres uden at ændre deres indbyrdes afstand. Almindelig terræn-/energiselektion kan senere sætte ryttere af.
+
+`mechanics/chaseGroup.ts` deles af M5 og den åbne vejs tempo-neutralisering, så en stor fjern hale ikke bruges som jagtreference. `raceParticipationHistory.ts` er en ren projektion af optaget dannelse, angreb, split, indhentning og samling. Den ligger uden for den dovent indlæste kerne for at bevare flag-off-kontrakten. Resultatbroen bruger faktisk morgenudbrudsmedlemskab og indhentningshistorik; v3/ældre output uden registreret historie beholder sin tidligere mapping.
+
+Etapefladen bruger samme projektion for historiske markeringer, hvor en komplet native v2-tidslinje findes. Morgenudbrud har flag; senere offensive angreb har et særskilt ikon; passiv terrænselektion giver ikke angrebsmarkering. Et `stage_decided`-event er ikke bevis for et angreb. Ukendt overlevelsesudfald vises som deltagelse, ikke som en bekræftet overlevelse. Visningen omskriver ingen gemte resultater. Filmens native afstandskurve kræver eksplicit afstand til den faktiske jagtgruppe; eksisterende sparsomme absolutte gruppegaps giver derfor ingen kurve. Profil og faktiske hændelser vises fortsat. Ældre unavngivne kurver bevares.
+
+Ingen ny taktik-/GC-politik, formationsregel eller flagaktivering indgår i denne første correctness-leverance. Den fulde ejer-godkendte pakke er planlagt i #5984/#5978 og følger separat regimebinding for nye løb. Historiske resultat-/præmiekorrektioner kræver særskilt ejer-go.
+
+
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
 
 Faktisk deltagelse gemmes i `race_day_participation`, nøgle `(rider_id,season_id,game_day)`, uafhængigt af hold og mutable udtagelser. Afslutning eller holdskifte frigiver ikke en brugt løbsdag; næste løbsdag og næste sæson er uafhængige. Optagelse sker før officielle etaperesultater og ved frysning af startfeltet. Resultat-RPC'ens atomiske batch rulles tilbage ved konflikt, også på vejen hvor snapshots gemmes senere. Legacy-sletning/genindsættelse af et snapshot frigiver aldrig deltagelsen. Tabellen er privat; service-only hjælpere og snævre, ikke direkte bruger-kaldbare triggerfunktioner håndhæver reglen. Udtagelse og start-autofyld læser brugte dage på tværs af tidligere hold.
@@ -633,3 +644,5 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 | 14 | **Holdspils-niveau = v3-paritet.** Beskyttelses-gabet i v4 skal være samme størrelse som i v3 (~7 pladser mod den re-eksporterede 7/9-population), så en hjælper der har kørt for sin kaptajn hele dagen betaler synligt for det, præcis som spillerne oplever i dag. Valgt som variant **B** i A/B-målingen ([`backend/scripts/out/teamplay-ab-2026-09-07.md`](../backend/scripts/out/teamplay-ab-2026-09-07.md), PR #4978); sat i `TEAM_PLAY_EXTRA_TUNING` (hjælperens pris og kaptajnens loft ×2,7, CP-gulvet 0,70 → 0,58). Målt efter: v3 7,10 (3,67-9,99) · v4 -0,06 → **7,35** (4,38-10,19), ingen anker skifter dom, hale-gaten PASS. Referencetallet **19,4 pladser** i den gamle §2e-tekst var målt mod juli-populationen og er forældet | 7/9 |
 
 **Fog of war (ejer 6/9):** ingen procenter, multiplikatorer eller grænser på spillerens skærm. Han ser "taber 40 sek.", "ude i 4 dage", "uden for tidsgrænsen".
+
+Historikbegrænsning i første korrekthedsleverance: kun komplet native v2-historik med fuld formation må erstatte gemte flag. V1-navne er samplede. Filmens native afstandskurve kræver eksplicit afstand til den faktiske jagtgruppe; de eksisterende sparsomme absolutte gruppepositioner er utilstrækkelige og giver derfor ingen kurve. Profil og faktiske hændelser vises fortsat. Ingen historiske resultater omskrives.
