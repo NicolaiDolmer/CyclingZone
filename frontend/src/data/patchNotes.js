@@ -15,6 +15,15 @@ export const PATCHES = [
     }]
   },
   {
+    "version": "7.324", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {"title": "Race days follow transferred riders", "body": "After a transfer, a rider cannot enter another race on a race day already used for the previous team. Races starting on later race days remain available."},
+      "da": {"title": "Løbsdage følger solgte ryttere", "body": "Efter et holdskifte kan en rytter ikke udtages til et andet løb på en løbsdag, han allerede har kørt for sit tidligere hold. Løb på senere løbsdage er fortsat tilgængelige."},
+      "refs": [5860]
+    }]
+  },
+  {
     "version": "7.323", "date": "2026-09-30", "label": "Beta",
     "changes": [{
       "category": "fixed", "audience": "player", "topic": "Training",

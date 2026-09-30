@@ -463,6 +463,8 @@ uden kreditering når kontrakten udløber uden forlængelse (§8, `ECONOMY_RULES
 
 ## 10. Udskudte holdskifter under etapeløb
 
+**Brugt løbsdag følger rytteren (#5860, ejer-go 30/9).** En gennemført udskudt handel overfører ejerskabet som hidtil. Køberen kan udtage rytteren på senere løbsdage, men ikke genbruge en løbsdag rytteren allerede kørte for sælgeren. Afsluttet løb og opryddede/uegnede gamle entries er ikke bevis for en fri dag; faktisk deltagelse læses uafhængigt af hold. Kontrakt og håndhævelse: [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md), [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Ingen nye handelsfrister eller udsættelser indføres.
+
 **Model B (ejer 29/6 2026, option c, #1995):** handel og betaling sker **straks**, men selve
 holdskiftet parkeres hvis rytteren er midt i et aktivt fleretape-løb.
 

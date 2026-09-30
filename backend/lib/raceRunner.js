@@ -114,6 +114,7 @@ import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { loadSpentRaceDays } from './raceSpentDays.js';
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
 // stillingen, se hook-stedet i simulateStageByIndex nedenfor.
@@ -1278,9 +1279,11 @@ export async function fillMissingTeamEntries({
   const { thisWindow, otherRacesByTeam } = await loadFieldBindingContext({
     supabase, race, teamIds: [...byTeam.keys()],
   });
+  const spentRiderIds=new Set(race.season_id && thisWindow
+    ? (await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...byTeam.values()].flat().map(row=>row.rider_id)})).map(row=>row.rider_id) : []);
   for (const [teamId, teamRiders] of byTeam) {
     const available = excludeBoundRiders({
-      riders: teamRiders, thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
+      riders: teamRiders.filter(row=>!spentRiderIds.has(row.rider_id)), thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
     });
     // #4295: to forskellige jobs bag samme løkke.
     //   0 entries  → uændret #1307-autopick: assistenten udtager en HEL trup (sizeRule)
@@ -1542,6 +1545,16 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
+  if(allowAutofill && race.season_id && !race.finalize_state && !(Number(race.stages_completed)>0) && existingEntries.length) {
+    const spent=new Set((await loadSpentRaceDays({supabase,raceId:race.id,riderIds:existingEntries.map(row=>row.rider_id)})).map(row=>row.rider_id));
+    if(persist && spent.size>0) {
+      // Lock/check the fresh race row: never delete recorded participants based
+      // on a stale JS race object. Entry-day rows follow the existing cascade.
+      const {error:pruneError}=await supabase.rpc('prune_spent_race_entries',{p_race_id:race.id,p_rider_ids:[...spent]});
+      if(pruneError) throw new Error(`spent race selection cleanup: ${pruneError.message}`);
+    }
+    existingEntries=existingEntries.filter(row=>!spent.has(row.rider_id));
+  }
   const autopicked = allowAutofill
     ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist })
     : [];
