@@ -1,5 +1,26 @@
 # Træningens regler - SSOT
 
+## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
+
+Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
+løbsdags aktivitet tælles én gang, og de oprindelige aktiviteter kan foldes ud
+under rytteren. Hele gevinstpoint summeres; brøkfremgang vises kun med dokumenteret
+start- og slutfremdrift. Tilstanden kommer fra datoens afsluttende afregning,
+aldrig fra summen af flere normaliserede tilstandsændringer.
+
+Alle forventede slots skal have kompatibel datokadence, før kvitteringen er
+afregnet. Manglende slots er afventende; karantæne, modstridende dubletter og
+blandet kadence kræver efterkontrol. Disse tilstande må ikke blive til målte
+nul-gevinster, sæsontal eller en historie om en færdig træningsdag.
+Ældre rapporter uden afregningsbevis beskrives som registrerede aktiviteter.
+Sæsoner på samme dato holdes adskilt; sæsontotaler filtreres før sammenlægning.
+
+Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
+regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
+datoens forventede løbsdage som visningsbevis. Den normale aktive træningssti
+er fortsat gaten; der tilføjes intet nyt rollout-flag. Visuel releaseaccept
+afventer hovedsessionen. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+
 ## Førstegangsregistrering og driftalarmer (#5928, 29/9)
 
 Når `training_condition_per_date` ejer træningen, springer den gamle kl. 22-sweep

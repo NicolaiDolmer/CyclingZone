@@ -266,13 +266,14 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   // Sæsonen ER begyndt i både "running" og "noDays", så badgen siger "Siden
   // <dato>" i begge. Kun den ikke-begyndte sæson siger "Starter <dato>".
   const seasonBegun = seasonRunning || seasonState === SEASON_RECEIPT_NO_DAYS;
-  const seasonNoteKey = SEASON_RECEIPT_NOTE_KEY[seasonState] ?? "receipt.pending";
+  const seasonNoteKey = seasonRunning && seasonGains == null ? "receipt.pending" : SEASON_RECEIPT_NOTE_KEY[seasonState] ?? "receipt.pending";
   const rowsByAbility = Object.fromEntries(
     abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
       abilities: rider.abilities,
       progress,
       capped: capped?.[rider.id],
       seasonGains,
+      gainPercentToday: runRow?.gain_percent,
       progressBefore,
       gainsToday,
       gainDay,
@@ -330,6 +331,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
 
 // ── Daglig træningslog (sidste 7 dage) ──────────────────────────────────────────
 function DailyLogCard({ riderId, runs, t }) {
+  const { t: tTraining } = useTranslation("training");
   // Kun dage inden for de sidste 7 KALENDERDAGE, så overskriften er sand selv for
   // en nyligt købt rytter der ikke indgik i hver dags kørsel.
   const entries = riderHistoryFromRuns(runs, riderId)
@@ -350,7 +352,9 @@ function DailyLogCard({ riderId, runs, t }) {
           const intensityLabel = t(`training.intensity_${isRest ? "rest" : row.intensity}`);
           let result;
           let resultClass = "text-cz-3";
-          if (jumps.length === 1) {
+          if (row.receipt_status === "pending" || row.receipt_status === "reconciliation") {
+            result = tTraining(`dailyReceipt.status.${row.receipt_status}`);
+          } else if (jumps.length === 1) {
             const j = jumps[0];
             result = j.from != null && j.to != null
               ? `${j.from}→${j.to} ${t(`racePreview.derived.${j.ability}`)}`

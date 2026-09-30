@@ -10,6 +10,7 @@
  */
 
 import express from "express";
+import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js";
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
@@ -1528,14 +1529,7 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
 // snapshot nr. 200 og klippe al senere udvikling af (daily-snapshots vokser ubegrænset).
 router.get("/riders/:id/development", requireAuth, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("rider_derived_ability_history")
-      .select("snapshot_date, season_number, source, abilities")
-      .eq("rider_id", req.params.id)
-      .order("snapshot_date", { ascending: false })
-      .limit(200);
-    if (error) throw new Error(error.message);
-    res.json((data ?? []).reverse());
+    res.json(await loadDevelopmentReceiptHistory(supabase, req.params.id));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2927,19 +2921,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
       todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult,
     ] = await Promise.all([
       activeSeasonId
-        ? supabase
+        ? fetchAllRows(() => supabase
             .from("training_day_runs")
-            // #4847: limit(1) frem for maybeSingle() — paa loebsdags-noeglen kan
-            // holdet have flere raekker pr. kalenderdato (én pr. loebsdag), og
-            // maybeSingle() ville svare 406 praecis naar flaget flippes.
-            // created_at DESC = dagens SENESTE pas, som er det fladen viser.
-            .select("executed_by, bonus_applied, report, tick_date, created_at")
+            // #5915: all date activities feed the receipt; keep latestRun for old clients.
+            .select("id, season_id, squad, game_day, executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
             .eq("tick_date", todayDate)
+            .or(`season_id.eq.${activeSeasonId},season_id.is.null`)
             .order("created_at", { ascending: false })
-            .limit(1)
-            .then(({ data, error }) => ({ data: data?.[0] ?? null, error }))
-        : Promise.resolve({ data: null }),
+            .order("id", { ascending: true })).then(data => ({ data }))
+        : Promise.resolve({ data: [] }),
       riderIds.length
         ? (async () => {
             // #5462: `injury_race_days_left` med, saa traeningsfladen kan skrive
@@ -3002,7 +2993,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
         : Promise.resolve({ data: [] }),
     ]);
 
-    const todayRun = todayRunResult.data ?? null;
+    if (todayRunResult.error) throw new Error(todayRunResult.error.message);
+    const todayRuns = todayRunResult.data ?? [];
+    const todayRun = todayRuns[0] ?? null;
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
@@ -3072,7 +3065,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     }
 
     res.json({
-      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
+      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, todayRuns, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
       ...(dayClose ? { dayClose } : {}),
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den

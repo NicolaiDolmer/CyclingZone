@@ -14,6 +14,8 @@ import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
 import { copenhagenDayKey } from "./raceCentre.js";
 import { seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_UNKNOWN } from "./trainingReport.js";
+import { fetchAllRows } from "./supabasePagination.js";
+import { aggregateTrainingRuns } from "./trainingDailyReceipt.ts";
 
 // Vinduet historikken dækker (dage tilbage). Matcher idx_training_day_runs_team_date.
 export const HISTORY_DAYS = 30;
@@ -57,6 +59,7 @@ export function useTrainingHistory() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    let activeStart = null;
     try {
       const user = await getAuthedUser();
       if (!user) { setRuns([]); setSeasonRuns([]); setSeasonState(SEASON_RECEIPT_UNKNOWN); return; }
@@ -75,13 +78,13 @@ export function useTrainingHistory() {
       // 30-dages-trend siger begge "30 dage") mens `seasonRuns` er sæsonen.
       const { data: season, error: seasonError } = await supabase
         .from("seasons")
-        .select("start_date")
+        .select("id, start_date")
         .eq("status", "active")
         .maybeSingle();
       // En manglende/fejlende sæson må ikke fabrikere et sæsontal: seasonStart
       // bliver null, seasonAbilityGains returnerer null, og fladen viser en
       // afventende tilstand i stedet for et opfundet "+0".
-      const activeStart = !seasonError && season?.start_date ? String(season.start_date) : null;
+      activeStart = !seasonError && season?.start_date ? String(season.start_date) : null;
       setSeasonStart(activeStart);
 
       const windowStart = sinceDate(HISTORY_DAYS);
@@ -89,15 +92,20 @@ export function useTrainingHistory() {
 
       // RLS begrænser allerede til egne hold; team_id-filteret holder query'et
       // på det aktive hold (samme indeks (team_id, tick_date DESC)).
-      const { data, error } = await supabase
+      const data = await fetchAllRows(() => supabase
         .from("training_day_runs")
-        .select("tick_date, executed_by, bonus_applied, report")
+        .select("id, season_id, squad, game_day, created_at, tick_date, executed_by, bonus_applied, report")
         .eq("team_id", myTeam.id)
         .gte("tick_date", since)
-        .order("tick_date", { ascending: false });
-      if (!error) {
-        const rows = data ?? [];
-        const seasonRows = activeStart ? rows.filter((r) => String(r.tick_date) >= activeStart) : [];
+        .order("tick_date", { ascending: false })
+        .order("game_day", { ascending: true })
+        .order("id", { ascending: true }));
+      {
+        const rows = aggregateTrainingRuns(data).map(run => ({
+          ...run, previous_season: Boolean(season?.id && run.season_id && run.season_id !== season.id),
+        }));
+        const seasonRows = activeStart ? aggregateTrainingRuns(data.filter(run =>
+          String(run.tick_date) >= activeStart && (!season?.id || !run.season_id || run.season_id === season.id))) : [];
         setRuns(rows.filter((r) => String(r.tick_date) >= windowStart));
         setSeasonRuns(seasonRows);
         // Tilstanden afgøres FØRST her, EFTER at dagene er sat: en kørende
@@ -105,14 +113,9 @@ export function useTrainingHistory() {
         // tick) er ikke et målt "+0", men en sæson der lige er begyndt. Se
         // seasonReceiptView.
         setSeasonState(receiptState(activeStart, seasonRows));
-      } else {
-        // Fejlet hentning: vi ved intet om sæsonens dage, så tilstanden må ikke
-        // blive til et nul. receiptState(…, null) falder til "unknown" for en
-        // kørende sæson og lader "notStarted" stå (den er ren dato).
-        setSeasonState(receiptState(activeStart, null));
       }
     } catch {
-      /* netværk — behold tidligere state */
+      setSeasonState(receiptState(activeStart, null));
     } finally {
       setLoading(false);
     }

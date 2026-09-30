@@ -473,5 +473,35 @@
     "audience_youngStars": "Young stars, few races",
     "audience_veterans": "Riders 30+",
     "audience_youthSquads": "Junior, U23, academy"
+  },
+  "dailyReceipt": {
+    "status": {
+      "complete": "Settled",
+      "pending": "Awaiting settlement",
+      "reconciliation": "Needs reconciliation",
+      "recorded": "Recorded activities"
+    },
+    "note": {
+      "complete": "All activities for this date are included. Form and fatigue are settled once for the date.",
+      "pending": "This date is not fully settled yet. Final development and condition changes are still pending.",
+      "reconciliation": "Some activities need reconciliation. Missing evidence is never shown as zero development.",
+      "recorded": "Recorded activities are combined for this date. Older reports may not contain full progress or settlement evidence."
+    },
+    "riderReceipts": "Rider receipts",
+    "activitiesRecorded": "Race days recorded",
+    "wholePoints": "Whole ability points",
+    "development": "Daily development",
+    "fatigue": "Fatigue",
+    "form": "Form",
+    "race": "Race",
+    "training": "Training",
+    "injured": "Injured",
+    "noWholePoint": "No whole point recorded",
+    "raceDay": "Race day {day}",
+    "activity": "Activity {n}",
+    "pointContribution": "+{percent}% of an ability point",
+    "progressUnavailable": "Detailed progress unavailable",
+    "previousSeason": "Previous season",
+    "change": "{from} to {to}"
   }
 }

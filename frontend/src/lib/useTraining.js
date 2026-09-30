@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { logEvent } from "./logEvent";
+import { aggregateTrainingRuns } from "./trainingDailyReceipt.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -58,7 +59,7 @@ export function useTraining() {
         setPlans(data.plans ?? {});
         setTeamId(data.teamId ?? null);
         setEnabled(data.enabled ?? false);
-        setTodayRun(data.todayRun ?? null);
+        setTodayRun(aggregateTrainingRuns(data.todayRuns ?? (data.todayRun ? [data.todayRun] : []))[0] ?? null);
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
         setCapped(data.capped ?? {});

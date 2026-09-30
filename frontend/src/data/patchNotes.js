@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.324",
+    "date": "2026-09-30",
+    "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "One receipt for the whole training date",
+        "body": "The training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Pending or uncertain settlements are shown explicitly. Season receipts and development history use the same complete date evidence."
+      },
+      "da": {
+        "title": "Én kvittering for hele træningsdatoen",
+        "body": "Træningsrapporten samler datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Afventende og usikre afregninger vises tydeligt. Sæsonkvittering og udviklingshistorik bruger hele datoens dokumenterede grundlag."
+      },
+      "refs": [5915]
+    }]
+  },
+  {
     "version": "7.322",
     "date": "2026-09-30",
     "label": "Beta",
