@@ -110,6 +110,7 @@ test("reconciliation cannot advertise arbitrary gains in season totals or rider 
   assert.equal(seasonAbilityGains(receipts,"r1","2026-09-01"),null);
   assert.equal(riderHistoryFromRuns(receipts,"r1")[0].row.receipt_status,"reconciliation");
   assert.deepEqual(receipts[0].report.riders[0].gains,{});
+  assert.equal(receipts[0].report.riders[0].progress_after, undefined);
 });
 
 test("same-date seasons remain separate and active-season totals are scoped before aggregation", () => {
