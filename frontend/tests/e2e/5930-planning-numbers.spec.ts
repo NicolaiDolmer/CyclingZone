@@ -58,6 +58,16 @@ for (const language of ["en", "da"]) {
       const column = page.locator(`#race-col-${id}`);
       await expect(column.getByTestId("race-number-headings")).toContainText(labels.fit);
       await expect(column.getByTestId("race-number-headings")).toContainText(labels.form);
+      await expect(column.getByTestId("race-number-headings")).toContainText(language === "da" ? "Ordre" : "Order");
+      await expect(column.getByTestId("race-rider-name")).toHaveText(["P. Jensen", "L. Andersen", "M. Sørensen"]);
+      await expect(column.getByTestId("race-rider-order").nth(2)).toContainText(language === "da" ? "Kaptajn" : "Captain");
+      await expect(column.getByTestId("race-rider-order").first()).toContainText(language === "da" ? "Hjælper" : "Domestique");
+      const names = column.getByTestId("race-rider-name");
+      const orders = column.getByTestId("race-rider-order");
+      const nameBox = await names.nth(2).boundingBox();
+      const orderBox = await orders.nth(2).boundingBox();
+      expect(orderBox!.x).toBeGreaterThanOrEqual(nameBox!.x + nameBox!.width);
+      expect(Math.abs((orderBox!.y + orderBox!.height / 2) - (nameBox!.y + nameBox!.height / 2))).toBeLessThan(1);
       await expect(column.getByTestId("race-number-explanation")).toBeVisible();
       await expect(column.getByTestId("race-number-explanation")).toContainText(labels.explanation);
       await expect(column.getByTestId("race-number-explanation")).toContainText(labels.current);
@@ -72,5 +82,14 @@ for (const language of ["en", "da"]) {
       const overflow = await column.evaluate(node => node.scrollWidth - node.clientWidth);
       expect(overflow).toBeLessThanOrEqual(1);
     }
+    const editable = page.locator("#race-col-editable-one-day");
+    await editable.getByTestId("race-rider-order").nth(2).click();
+    await editable.getByRole("button", { name: language === "da" ? /Sprint-kaptajn/ : /Sprint captain/ }).click();
+    await expect(editable.getByTestId("race-rider-order").nth(2)).toContainText(language === "da" ? "Sprint-kaptajn" : "Sprint captain");
+    await page.setViewportSize({ width: 320, height: 844 });
+    const narrowOverflow = await editable.evaluate(node => node.scrollWidth - node.clientWidth);
+    expect(narrowOverflow).toBeLessThanOrEqual(1);
+    const orderTextFits = await editable.getByTestId("race-rider-order").nth(2).evaluate(node => node.scrollWidth <= node.clientWidth);
+    expect(orderTextFits).toBe(true);
   });
 }

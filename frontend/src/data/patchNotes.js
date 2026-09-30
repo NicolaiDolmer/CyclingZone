@@ -5,11 +5,11 @@ export const PATCHES = [
       "category": "improved", "audience": "player", "topic": "Planning",
       "en": {
         "title": "Clearer planning numbers",
-        "body": "Planning now labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
+        "body": "Planning now shows each rider's order in its own column and labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
       },
       "da": {
         "title": "Tydeligere planlægningstal",
-        "body": "Planlægning har nu tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
+        "body": "Planlægning viser nu rytterens ordre i sin egen kolonne og har tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
       },
       "refs": [5930]
     }]
