@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Team classification on equal time",
-          "body": "Teams that finish on equal time could appear in the wrong order. Equal time now follows the UCI tie-break: the placing sum of each team's three counting riders decides, then the best-placed rider if the sum also ties. In a stage race's overall team classification, equal time goes to the team with the most daily team wins, then the most second places, then the most third places and later placings, then the best-placed rider overall. Race names in Race centre and Today's stages are also easier to read."
+          "body": "Teams that finish on equal time could appear in the wrong order. Equal time now follows the UCI tie-break: the placing sum of each team's three counting riders decides, then the best-placed rider if the sum also ties. In a stage race's overall team classification, equal time goes to the team with the most daily team wins, then the most second places, then the most third places and later placings, then the best-placed rider overall. Race names in Race centre and Today's stages are also easier to read. Team classifications from this season have been recalculated."
         },
         "da": {
           "title": "Holdklassement ved lige tid",
-          "body": "Hold, der slutter på samme tid, kunne blive placeret i forkert rækkefølge. Lige tid følger nu UCI-reglen: placeringssummen for holdets tre tællende ryttere afgør, derefter holdets bedst placerede rytter, hvis summen også er ens. I et etapeløbs samlede holdklassement vinder ved lige tid det hold med flest dagssejre i holdklassementet, så flest andenpladser, så flest tredjepladser og senere placeringer, så den bedst placerede rytter i det samlede klassement. Løbsnavne i løbscenteret og dagens etaper er også lettere at læse."
+          "body": "Hold, der slutter på samme tid, kunne blive placeret i forkert rækkefølge. Lige tid følger nu UCI-reglen: placeringssummen for holdets tre tællende ryttere afgør, derefter holdets bedst placerede rytter, hvis summen også er ens. I et etapeløbs samlede holdklassement vinder ved lige tid det hold med flest dagssejre i holdklassementet, så flest andenpladser, så flest tredjepladser og senere placeringer, så den bedst placerede rytter i det samlede klassement. Løbsnavne i løbscenteret og dagens etaper er også lettere at læse. Holdklassementerne fra denne sæson er regnet om."
         },
         "refs": [
           5952
