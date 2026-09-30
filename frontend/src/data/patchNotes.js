@@ -1,5 +1,20 @@
 export const PATCHES = [
   {
+    "version": "7.325", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Planning",
+      "en": {
+        "title": "Clearer planning numbers",
+        "body": "Planning now labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
+      },
+      "da": {
+        "title": "Tydeligere planlægningstal",
+        "body": "Planlægning har nu tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
+      },
+      "refs": [5930]
+    }]
+  },
+  {
     "version": "7.323", "date": "2026-09-30", "label": "Beta",
     "changes": [{
       "category": "fixed", "audience": "player", "topic": "Training",

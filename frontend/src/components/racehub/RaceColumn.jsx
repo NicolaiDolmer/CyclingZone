@@ -4,7 +4,7 @@
 // vises read-only. Afmeld/deltag i footeren.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { computeColumnStatus, freshnessTier, raceDateRangeLabel, raceGameDayLabel, freeRiderCountForColumn } from "../../lib/raceHubLogic.js";
+import { computeColumnStatus, raceDateRangeLabel, raceGameDayLabel, freeRiderCountForColumn } from "../../lib/raceHubLogic.js";
 import { partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
 import RaceDayOverlapRow from "./RaceDayOverlapRow.jsx";
 import { terrainBucket } from "../../lib/stageTerrain.js";
@@ -25,13 +25,27 @@ const STATUS_CLASS = {
 // #2376: freeRole tilføjet — badge-label slår op i "selection.freeRole" (samme
 // opslagssti som de øvrige roller, se RoleBadge).
 const ROLE_KEY = { captain: "captain", sprint_captain: "sprintCaptain", hunter: "hunter", free_role: "freeRole" };
-const FRESH_CLASS = { fresh: "text-cz-success", ok: "text-cz-2", tired: "text-cz-warning" };
 
 function RoleBadge({ t, role }) {
   return (
     <span className="text-3xs uppercase text-cz-accent-t border border-cz-accent/40 px-1.5 py-px rounded ms-1.5">
       {t(`selection.${ROLE_KEY[role]}`)}
     </span>
+  );
+}
+
+// #5930: both row states use the same existing payload values. Reserving the
+// metric widths also keeps unavailable values under the correct heading.
+function RiderNumbers({ rider }) {
+  return (
+    <>
+      <span data-testid="race-rider-match" className="inline-flex w-20 justify-end">
+        <FitBar score={rider.suitability} />
+      </span>
+      <span data-testid="race-rider-form" className="w-14 text-right text-2xs font-data tabular-nums text-cz-2">
+        {rider.form ?? "—"}
+      </span>
+    </>
   );
 }
 
@@ -198,6 +212,22 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         />
       )}
 
+      {!column.withdrawn && (
+        <>
+          <p data-testid="race-number-explanation" className="px-3 py-2 text-2xs text-cz-3 border-b border-cz-border">
+            {t("racehub.column.numbersExplanation")}
+          </p>
+          <div data-testid="race-number-headings" className="flex items-center justify-between gap-2 px-3 py-2 text-2xs font-medium text-cz-3 border-b border-cz-border">
+            <span className="min-w-0 flex-1">{t("racehub.column.riderHeading")}</span>
+            <span className="flex items-center gap-2 shrink-0">
+              <span className="w-20 text-right">{t("racehub.column.routeMatchHeading")}</span>
+              <span className="w-14 text-right">{t("racehub.column.currentFormHeading")}</span>
+              <span className="w-6" aria-hidden="true" />
+            </span>
+          </div>
+        </>
+      )}
+
       {column.withdrawn ? (
         // #4306 (ejer-direktiv 27/8, Refs #4306): withdrawn har FORRANG over locked -
         // et hold der afmeldte sig FØR løbsstart skal blive ved med at vise denne note
@@ -216,19 +246,19 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             const role = roleOf(id);
             return (
               <div key={id} className="w-full flex items-center justify-between gap-2 px-3 py-1.5">
-                <span className="text-xs text-cz-1 truncate">
-                  {r.name}
+                <span className="min-w-0 flex-1 text-xs text-cz-1">
+                  <span className="block truncate">{r.name}</span>
                   {role && <RoleBadge t={t} role={role} />}
                 </span>
                 <span className="flex items-center gap-2 flex-shrink-0">
-                  <FitBar score={r.suitability} />
+                  <RiderNumbers rider={r} />
                   {/* #2637: en igangværende trup er ellers helt read-only, men fjernelse
                       skal ALTID være muligt (fx en rytter der bliver skadet midt i et
                       etapeløb) - kun tilføjelse er frosset. Backend accepterer en ren
                       fjernelse (ingen nye ryttere) selv når stages_completed>0. */}
                   <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
                     aria-label={t("racehub.column.remove")}
-                    className="text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
+                    className="w-6 text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
                 </span>
               </div>
             );
@@ -242,7 +272,6 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             const r = ridersById.get(id);
             if (!r) return null;
             const role = roleOf(id);
-            const fresh = freshnessTier(r.fatigue);
             return (
               <div key={id} className="relative">
                 {/* #1925: rækken kan trækkes til et andet løb (flyt) eller til puljen (fjern). */}
@@ -254,17 +283,18 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                       aria-haspopup + hover-farve gør nu tydeligt at navnet åbner rolle-menuen. */}
                   <button type="button" onClick={() => setRoleMenuFor(roleMenuFor === id ? null : id)} disabled={busy}
                     aria-haspopup="menu" aria-expanded={roleMenuFor === id}
-                    className="group/role flex items-center gap-1 text-left min-w-0 disabled:opacity-50">
+                    className="group/role flex flex-1 items-center gap-1 text-left min-w-0 disabled:opacity-50">
                     <span aria-hidden="true" className={`text-cz-3 text-3xs flex-shrink-0 transition-transform ${roleMenuFor === id ? "rotate-180" : ""}`}>▾</span>
-                    <span className="text-xs text-cz-1 truncate transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
-                    {role && <RoleBadge t={t} role={role} />}
+                    <span className="min-w-0 text-xs text-cz-1 transition-colors group-hover/role:text-cz-accent-t">
+                      <span className="block truncate">{r.name}</span>
+                      {role && <RoleBadge t={t} role={role} />}
+                    </span>
                   </button>
                   <span className="flex items-center gap-2 flex-shrink-0">
-                    <FitBar score={r.suitability} />
-                    <span className={`text-2xs font-mono ${FRESH_CLASS[fresh] || "text-cz-3"}`}>{r.form ?? "—"}</span>
+                    <RiderNumbers rider={r} />
                     <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
                       aria-label={t("racehub.column.remove")}
-                      className="text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
+                      className="w-6 text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
                   </span>
                 </div>
                 {roleMenuFor === id && (

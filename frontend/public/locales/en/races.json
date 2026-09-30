@@ -153,6 +153,10 @@
       "clearAnyway": "Clear anyway"
     },
     "column": {
+      "riderHeading": "Rider",
+      "routeMatchHeading": "Route match",
+      "currentFormHeading": "Current form",
+      "numbersExplanation": "Route match: average for the whole race across its stages. Current form: today's form, not a forecast. A dash means unavailable.",
       "add": "Add from available",
       "withdraw": "Withdraw",
       "reenter": "Re-enter",

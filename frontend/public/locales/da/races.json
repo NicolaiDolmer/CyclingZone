@@ -153,6 +153,10 @@
       "clearAnyway": "Ryd alligevel"
     },
     "column": {
+      "riderHeading": "Rytter",
+      "routeMatchHeading": "Rute-match",
+      "currentFormHeading": "Form nu",
+      "numbersExplanation": "Rute-match: gennemsnit for hele løbet på tværs af etaperne. Form nu: aktuel form, ikke en prognose. En streg betyder ukendt.",
       "add": "Tilføj fra ledige",
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
