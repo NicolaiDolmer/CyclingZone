@@ -157,6 +157,7 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       const trusted = state === "complete" || state === "recorded";
       return { ...last.row, rider_id: id, activities, receipt_status: state, gains: trusted ? gains : {},
         gains_detail: trusted ? details : {}, progress_before: trusted ? progressBefore : {}, gain_percent: trusted ? gainPercent : {},
+        progress_after: trusted ? last.row.progress_after : undefined,
         status: trusted ? last.row.status : "unknown_pending",
         focus: active?.focus ?? last.row.focus, intensity: active?.intensity ?? last.row.intensity,
         fatigue_before: fatigueBefore, form_before: formBefore,

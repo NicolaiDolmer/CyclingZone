@@ -36,7 +36,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     const whole = Object.entries(row.gains).filter(([, n])=>n > 0);
     if (whole.length) return whole.map(([key,n])=>`${abilityName(key)} +${formatNumber(n)}`).join(", ");
     const fractional = Object.entries(row.gain_percent).filter(([,n])=>n != null && n > 0);
-    if (fractional.length) return fractional.map(([key,n])=>`${abilityName(key)} +${formatNumber(n)} %`).join(", ");
+    if (fractional.length) return fractional.map(([key,n])=>`${abilityName(key)} ${t("dailyReceipt.pointContribution",{percent:formatNumber(n)})}`).join(", ");
     return t("dailyReceipt.noWholePoint");
   };
   return (

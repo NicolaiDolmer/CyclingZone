@@ -7,13 +7,28 @@ export const PATCHES = [
       "category": "improved", "audience": "player", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
-        "body": "The training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Pending or uncertain settlements are shown explicitly. Season receipts and development history use the same complete date evidence."
+        "body": "The training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
       },
       "da": {
         "title": "Én kvittering for hele træningsdatoen",
-        "body": "Træningsrapporten samler datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Afventende og usikre afregninger vises tydeligt. Sæsonkvittering og udviklingshistorik bruger hele datoens dokumenterede grundlag."
+        "body": "Træningsrapporten samler datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
       },
       "refs": [5915]
+    }]
+  },
+  {
+    "version": "7.323", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Earlier training restored",
+        "body": "Training from an earlier day has been restored for affected riders with documented inputs. Riders with changed programs are reviewed separately."
+      },
+      "da": {
+        "title": "Tidligere træning efterreguleret",
+        "body": "Træning fra en tidligere dag er efterreguleret for berørte ryttere med dokumenteret datagrundlag. Ryttere med ændrede programmer gennemgås særskilt."
+      },
+      "refs": [5928]
     }]
   },
   {
