@@ -61,3 +61,42 @@ test("#5951 a pursuing group does not leave a break it already caught behind whi
   assert.ok(caughtIds.includes("t0"), "the closer escape was actually caught");
   assert.equal(result.state.groups.find((g) => g.id === "a-rear")!.gap_seconds, chase.gap_seconds, "caught riders join the continuing chase instead of receiving a catch penalty");
 });
+
+function twoBreaks(frontId: string, rearId: string) {
+  const { state, ctx } = fixture();
+  const original = state.groups.find(group => group.id === "escape")!;
+  const rearIds = ["t0", "t1"];
+  const groups: RaceGroup[] = [
+    { ...original, id: frontId },
+    { ...original, id: rearId, rider_ids: rearIds, gap_seconds: 60 },
+    ...state.groups.filter(group => group.id !== "escape").map(group => ({ ...group, gap_seconds: group.id === "near" ? 120 : group.gap_seconds, rider_ids: group.rider_ids.filter(id => !rearIds.includes(id)) })),
+  ];
+  return { state: { ...state, groups }, ctx };
+}
+
+test("#5951 floor closing and outcomes do not depend on target identifiers", () => {
+  function run(frontId: string, rearId: string) {
+    const { state, ctx } = twoBreaks(frontId, rearId);
+    const segment = { kind: "flat" as const, from_km: 90, to_km: 95 };
+    return breakawayHook(state, { ...ctx, segment, route: { ...ctx.route, profile_type: "flat", finale_type: "breakaway", segments: [ctx.route.segments[0], segment] }, rngForStage: () => () => 0.99 });
+  }
+  const frontFirst = run("a-front", "z-rear");
+  const rearFirst = run("z-front", "a-rear");
+  const positions = (state: EngineState) => state.groups.map(group => [group.rider_ids.join(","), group.gap_seconds]).sort();
+  const outcomes = (events: typeof frontFirst.events) => events.filter(event => event.type === "breakaway_caught" || event.type === "breakaway_survived").map(event => [event.type, event.params.rider_ids, event.params.gap_seconds]).sort();
+  assert.deepEqual(positions(frontFirst.state), positions(rearFirst.state));
+  assert.deepEqual(frontFirst.state.riders, rearFirst.state.riders, "shared work is priced once and independent of target IDs");
+  assert.deepEqual(outcomes(frontFirst.events), outcomes(rearFirst.events));
+});
+
+test("#5951 a final shared advance catches a rear escape that resisted its own chase", () => {
+  const { state, ctx } = twoBreaks("z-front", "a-rear");
+  state.groups = state.groups.map(group => ({ ...group, gap_seconds: group.id === "near" ? 150 : group.id === "a-rear" ? 52 : group.gap_seconds }));
+  const entrants = Object.fromEntries(Object.entries(ctx.entrants).map(([id, entrant]) => [id, id === "t0" || id === "t1" ? { ...entrant, abilities: Object.fromEntries(Object.keys(entrant.abilities).map(key => [key, 100])) as Entrant["abilities"] } : entrant]));
+  const alone = breakawayHook({ ...state, groups: state.groups.map(group => group.id === "z-front" ? { ...group, kind: "chase" } : group) }, { ...ctx, entrants });
+  assert.ok(!alone.events.some(event => event.type === "breakaway_caught" && event.params.group_id === "a-rear"), "rear escape survives its own chase");
+  const together = breakawayHook(state, { ...ctx, entrants });
+  assert.ok(together.events.some(event => event.type === "breakaway_caught" && event.params.group_id === "a-rear"), "the final shared advance catches it");
+  assert.ok(!together.events.some(event => event.type === "breakaway_survived" && event.params.group_id === "a-rear"));
+  assert.equal(together.state.groups.find(group => group.id === "a-rear")!.gap_seconds, together.state.groups.find(group => group.id === "near")!.gap_seconds);
+});

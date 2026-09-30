@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { participationForResult, historyForStage } from "./raceParticipationMarkers.ts";
+import { participationForResult, historyForStage, participationFlagsForResult } from "./raceParticipationMarkers.ts";
 const timeline = { timeline_version: 2, stage_number: 6, events: [
   { km: 0, type: "stage_start", params: { field_count: 3 } },
   { km: 12, type: "breakaway_formed", params: { group_id: "escape", rider_ids: ["morning"] } },
@@ -31,4 +31,9 @@ test("legacy v1 sampled names cannot erase other stored morning flags", () => {
   const history = historyForStage({ ...timeline, timeline_version: 1 }, 6, ["morning", "fourth"]);
   assert.equal(history, null);
   assert.equal(participationForResult({ rider_id: "fourth", in_breakaway: true }, history)?.morning, true);
+});
+test("view flags preserve an unknown native outcome instead of claiming survival", () => {
+  const history = historyForStage({ ...timeline, events: timeline.events.filter(event => event.type !== "breakaway_caught") }, 6, ["morning", "attacker"]);
+  assert.ok(history);
+  assert.deepEqual(participationFlagsForResult({ rider_id: "morning", in_breakaway: true, breakaway_caught: false }, history), { in_breakaway: true, breakaway_caught: null });
 });

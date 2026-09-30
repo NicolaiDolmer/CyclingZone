@@ -739,7 +739,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const fieldRiderIds = state.groups.flatMap((g) => g.rider_ids);
   const parsedOrders = parseBreakawayOrders(ctx.orders);
   const workByChaseGroup = new Map<string, { plan: ReturnType<typeof teamChasePlan>; km: number }>();
-  const caughtByChaseGroup = new Map<string, string>();
+  const pursuitByBreakaway = new Map<string, string>();
 
   let groups = state.groups;
   let changed = false;
@@ -828,7 +828,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const currentChase = groups.find((g) => g.id === chaseGroup.id);
     const currentBreakaway = groups.find((g) => g.id === breakaway.id);
     if (!currentChase || !currentBreakaway) continue;
-    const separation = currentChase.gap_seconds - currentBreakaway.gap_seconds;
+    const separation = chaseGroup.gap_seconds - breakaway.gap_seconds;
     // Lad gaa: hullet vokser mod loftet, men et hul der allerede er over
     // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
     const grown = separation >= 0 && separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
@@ -850,16 +850,23 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // Let-go growth advances the escape; active closing advances the pursuer.
     // Multiple targets share one pursuing group's movement instead of stacking it.
     const growthSeconds = grown - separation;
-    const newBreakawayGap = currentBreakaway.gap_seconds - growthSeconds;
+    const newBreakawayGap = breakaway.gap_seconds - growthSeconds;
     const closingSeconds = netClosingSeconds + floorClosingSeconds;
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
     groups = groups.map((g) => g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g.id === chaseGroup.id ? { ...g, gap_seconds: newChaseGap } : g);
     changed = true;
+    pursuitByBreakaway.set(breakaway.id, chaseGroup.id);
+  }
 
-    const newGap = newChaseGap - newBreakawayGap;
+  // All targets share the final advance. Only these final positions decide outcomes.
+  for (const [breakawayId, chaseId] of pursuitByBreakaway) {
+    const breakaway = groups.find(group => group.id === breakawayId);
+    const chase = groups.find(group => group.id === chaseId);
+    if (!breakaway || !chase) continue;
+    const newGap = chase.gap_seconds - breakaway.gap_seconds;
     const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
     if (caught) {
-      caughtByChaseGroup.set(breakaway.id, chaseGroup.id);
+      groups = groups.map(group => group.id === breakawayId ? { ...group, gap_seconds: Math.min(group.gap_seconds, chase.gap_seconds) } : group);
       events.push({
         km: round2(ctx.segment.to_km),
         type: "breakaway_caught",
@@ -877,12 +884,6 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // #5570: jagten koster. Kun naar der faktisk var et udbrud foran at jage
   // (wiring-guarden ovenfor), og kun én gang pr. segment uanset antal udbrud.
   // #5812: kun for de km der faktisk jages — i lad-gaa-fasen jager ingen.
-  // Once joined, escapees share any further progress by that same pursuer.
-  groups = groups.map((group) => {
-    const chaseId = caughtByChaseGroup.get(group.id);
-    const chase = chaseId ? groups.find((candidate) => candidate.id === chaseId) : undefined;
-    return chase ? { ...group, gap_seconds: Math.min(group.gap_seconds, chase.gap_seconds) } : group;
-  });
   let updatedRiders = state.riders;
   for (const { plan, km } of workByChaseGroup.values()) {
     const share = ctx.route.distance_km > 0 ? clamp(km / ctx.route.distance_km, 0, 1) : 0;

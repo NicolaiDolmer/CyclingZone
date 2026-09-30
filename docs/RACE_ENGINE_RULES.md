@@ -646,3 +646,5 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 **Fog of war (ejer 6/9):** ingen procenter, multiplikatorer eller grænser på spillerens skærm. Han ser "taber 40 sek.", "ude i 4 dage", "uden for tidsgrænsen".
 
 Historikbegrænsning i første korrekthedsleverance: kun komplet native v2-historik med fuld formation må erstatte gemte flag. V1-navne er samplede. Filmens native afstandskurve kræver eksplicit afstand til den faktiske jagtgruppe; de eksisterende sparsomme absolutte gruppepositioner er utilstrækkelige og giver derfor ingen kurve. Profil og faktiske hændelser vises fortsat. Ingen historiske resultater omskrives.
+
+Review-opfølgning 1/10: alle mål beregner jagtbevægelse fra samme segment-start; den fælles fremrykning afsluttes før hver indhentning/overlevelse vurderes. Endagsresultater deler historikprojektionen med etaper. Ukendte udfald er nullable internt, men de eksisterende persistensflag er NOT NULL; ukendt udfald bevares i den native tidslinje og må ikke udledes af false-flaget eller slutplacering alene. Ingen migration indgår.

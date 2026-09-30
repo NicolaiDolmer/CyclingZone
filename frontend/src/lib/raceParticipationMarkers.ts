@@ -21,3 +21,9 @@ export function participationForResult(result: ResultMarkerRow, history: Partici
   }
   return { morning: Boolean(result.in_breakaway), caught: Boolean(result.in_breakaway && result.breakaway_caught), survived: Boolean(result.in_breakaway && !result.breakaway_caught), laterAttack: false, verified: false };
 }
+
+
+export function participationFlagsForResult(result: ResultMarkerRow, history: ParticipationHistory): { in_breakaway: boolean; breakaway_caught: boolean | null } {
+  const participation = participationForResult(result, history);
+  return { in_breakaway: Boolean(participation?.morning), breakaway_caught: participation?.caught ? true : participation?.survived ? false : null };
+}

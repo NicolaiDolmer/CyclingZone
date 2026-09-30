@@ -16,7 +16,7 @@ const API = import.meta.env.VITE_API_URL;
 // FinalKilometrePlayback's `available: false`.
 export function useStageTimeline(raceId, stageNumber) {
   const [timelineState, setTimelineState] = useState(null);
-  const timeline = timelineState?.raceId === raceId && timelineState?.stageNumber === stageNumber ? timelineState.data : null;
+  const timeline = timelineState && timelineState.raceId === raceId && timelineState.stageNumber === stageNumber ? timelineState.data : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 

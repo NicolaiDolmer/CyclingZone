@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, raceResultsRoute } from "./fixtures.js";
 import { MOUNTAIN_STAGE_PROFILE } from "../../src/lib/stageTimelineFixtures.js";
@@ -19,11 +20,11 @@ const timeline = { timeline_version: 2, stage_number: 1, events: [
   { km: 168, type: "finish", params: { win_type: "close_win", top: [{ rider_id: morning[0], rank: 1, gap: "+0:00" }] } },
 ] };
 
-test("recorded stage history replaces twenty legacy flags with eight morning flags and twelve attack markers", async ({ page }, testInfo) => {
+async function prepareRace(page: Page, raceType: "stage_race" | "single" = "stage_race") {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await page.route("**/rest/v1/races**", route => {
-    const race = { id: "history-race", name: "Testetape · udbrud og angreb", race_type: "stage_race", race_class: "TourFrance", stages: 1, stages_completed: 1, edition_year: 2026, status: "completed", season: { id: "history-season", number: 1 }, pool_race: null };
+    const race = { id: "history-race", name: "Testetape · udbrud og angreb", race_type: raceType, race_class: "TourFrance", stages: 1, stages_completed: 1, edition_year: 2026, status: "completed", season: { id: "history-season", number: 1 }, pool_race: null };
     return json(route, (route.request().headers().accept || "").includes("vnd.pgrst.object") ? race : [race]);
   });
   await page.route("**/rest/v1/race_results**", raceResultsRoute(results));
@@ -32,6 +33,10 @@ test("recorded stage history replaces twenty legacy flags with eight morning fla
   await page.route("**/api/races/*/timeline**", route => json(route, timeline));
   await login(page);
   await page.goto("/races/history-race?stage=1");
+}
+
+test("recorded stage history replaces twenty legacy flags with eight morning flags and twelve attack markers", async ({ page }, testInfo) => {
+  await prepareRace(page);
   await expect(page.getByRole("heading", { name: "Etape 1 · målrækkefølge", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Vis alle 20" }).click();
   await expect(page.locator('[aria-label^="Morgenudbrud:"]')).toHaveCount(8);
@@ -46,4 +51,13 @@ test("recorded stage history replaces twenty legacy flags with eight morning fla
   if (process.env.CZ_REVIEW_SCREENS === "1") {
     await page.screenshot({ path: testInfo.outputPath("race-history-film.png"), fullPage: false });
   }
+});
+
+test("one-day results use the same complete native participation history", async ({ page }) => {
+  await prepareRace(page, "single");
+  await page.getByRole("tab", { name: "Resultater", exact: true }).click();
+  await page.getByRole("button", { name: "Vis alle 20" }).click();
+  await expect(page.locator('[aria-label^="Morgenudbrud:"]')).toHaveCount(8);
+  await expect(page.locator('[aria-label="Senere angreb"]')).toHaveCount(12);
+  await expect(page.getByText("Udbruddet (8 ryttere) blev hentet før stregen.")).toBeVisible();
 });

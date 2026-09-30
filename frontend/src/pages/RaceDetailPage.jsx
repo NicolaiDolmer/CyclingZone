@@ -60,7 +60,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult } from "../lib/raceParticipationMarkers.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -628,6 +628,12 @@ export default function RaceDetailPage() {
   );
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
+  const { timeline: oneDayTimeline } = useStageTimeline(race?.race_type === "single" && results.length ? raceId : null, 1);
+  const oneDayParticipation = useMemo(() => historyForStage(oneDayTimeline, 1,
+    results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean)), [oneDayTimeline, results]);
+  const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
+    row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
+
 
   // stage_number → { profile_type, finale_type } for terræn-indikatoren (#1484).
   const profileByStage = useMemo(() => {
@@ -1215,6 +1221,7 @@ export default function RaceDetailPage() {
                     moments={moments}
                     stageNumber={1}
                     raceId={race.id}
+                    participationHistory={oneDayParticipation}
                   />
                   {finalByType.team?.length > 0 && (
                     <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
@@ -1223,7 +1230,7 @@ export default function RaceDetailPage() {
                 <SectionStack>
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={results} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
+                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" t={t} />
                 </SectionStack>
@@ -1630,8 +1637,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean)), [timeline, stage, results]);
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
-    const participation = participationForResult(row, participationHistory);
-    return { ...row, in_breakaway: Boolean(participation?.morning), breakaway_caught: participation?.caught ? true : participation?.survived ? false : null };
+    return { ...row, ...participationFlagsForResult(row, participationHistory) };
   }), [results, stage, participationHistory]);
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
 

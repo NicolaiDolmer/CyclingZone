@@ -851,10 +851,11 @@ export function deriveBreakawayStatus(ranked = []) {
     }
   }
   for (const r of ranked) {
-    if (r.breakaway_status && typeof r.breakaway_status.in_breakaway === "boolean" && typeof r.breakaway_status.breakaway_caught === "boolean") {
+    if (r.breakaway_status && typeof r.breakaway_status.in_breakaway === "boolean" && (typeof r.breakaway_status.breakaway_caught === "boolean" || r.breakaway_status.breakaway_caught === null)) {
       out.set(r.rider_id, {
         in_breakaway: r.breakaway_status.in_breakaway,
-        breakaway_caught: r.breakaway_status.in_breakaway && r.breakaway_status.breakaway_caught,
+        // Persistent compatibility flags are NOT NULL; unknown remains in native history.
+        breakaway_caught: r.breakaway_status.in_breakaway && r.breakaway_status.breakaway_caught === true,
       });
       continue;
     }
