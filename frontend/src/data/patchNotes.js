@@ -1,19 +1,28 @@
 export const PATCHES = [
   {
-    "version": "7.324",
+    "version": "7.325",
     "date": "2026-09-30",
     "label": "Beta",
     "changes": [{
       "category": "improved", "audience": "player", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
-        "body": "The training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
+        "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
       },
       "da": {
         "title": "Én kvittering for hele træningsdatoen",
-        "body": "Træningsrapporten samler datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Form, træthed og positiv udvikling bruger samme farver som ryttervisningerne. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
+        "body": "For beta-testere samler træningsrapporten datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Form, træthed og positiv udvikling bruger samme farver som ryttervisningerne. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
       },
       "refs": [5915]
+    }]
+  },
+  {
+    "version": "7.324", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {"title": "Race days follow transferred riders", "body": "After a transfer, a rider cannot enter another race on a race day already used for the previous team. Races starting on later race days remain available."},
+      "da": {"title": "Løbsdage følger solgte ryttere", "body": "Efter et holdskifte kan en rytter ikke udtages til et andet løb på en løbsdag, han allerede har kørt for sit tidligere hold. Løb på senere løbsdage er fortsat tilgængelige."},
+      "refs": [5860]
     }]
   },
   {

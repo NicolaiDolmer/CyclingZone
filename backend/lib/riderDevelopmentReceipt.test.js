@@ -2,6 +2,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as receipt from "./riderDevelopmentReceipt.js";
 
+test("non-beta development keeps calendar history and never reads race-day evidence", async () => {
+  const rows=[{snapshot_date:"2026-09-29",abilities:{tempo:55}},{snapshot_date:"2026-09-28",abilities:{tempo:54}}];
+  const client={from(table){
+    assert.equal(table,"rider_derived_ability_history");
+    const query={select(){return query;},eq(){return query;},order(){return query;},
+      limit(){return Promise.resolve({data:rows,error:null});}};
+    return query;
+  }};
+  assert.deepEqual(await receipt.loadDevelopmentReceiptHistory(client,"r1",{dailyReceiptEnabled:false}),[rows[1],rows[0]]);
+  assert.deepEqual(await receipt.loadDevelopmentReceiptHistory(client,"r1"),[rows[1],rows[0]]);
+});
+
 test("development history takes the last recorded race-day state, preserving season transitions", () => {
   assert.equal(typeof receipt.mergeDevelopmentSnapshots, "function");
   const result = receipt.mergeDevelopmentSnapshots(

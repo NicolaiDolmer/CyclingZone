@@ -40,6 +40,7 @@ export function useTraining() {
   // (training_mobile_table, stadie beta) mod viewerens beta-status; klienten
   // beder aldrig om en bestemt visning. Default false = fail-safe gammel visning.
   const [mobileTable, setMobileTable] = useState(false);
+  const [dailyReceiptEnabled, setDailyReceiptEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -59,7 +60,10 @@ export function useTraining() {
         setPlans(data.plans ?? {});
         setTeamId(data.teamId ?? null);
         setEnabled(data.enabled ?? false);
-        setTodayRun(aggregateTrainingRuns(data.todayRuns ?? (data.todayRun ? [data.todayRun] : []))[0] ?? null);
+        setDailyReceiptEnabled(data.dailyReceiptEnabled === true);
+        setTodayRun(data.dailyReceiptEnabled === true
+          ? aggregateTrainingRuns(data.todayRuns ?? (data.todayRun ? [data.todayRun] : []))[0] ?? null
+          : data.todayRun ?? null);
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
         setCapped(data.capped ?? {});
@@ -298,7 +302,7 @@ export function useTraining() {
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
-    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable,
+    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, dailyReceiptEnabled,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,
   };

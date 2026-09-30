@@ -9,6 +9,7 @@ import {
 // standard-fixturen (riders kommer fra Supabase-mocken: rider-1 = Ada Pedersen).
 
 const TRAINING_ME = {
+  dailyReceiptEnabled: true,
   enabled: true,
   betaTester: true,
   teamId: TEST_TEAM.id,

@@ -60,6 +60,9 @@
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
 
+### Brugte løbsdage (#5860)
+`race_day_participation` bevarer faktisk deltagelse pr. rytter/sæson/løbsdag efter holdskifte og snapshot-retries. Private claims optages før etaperesultater og start-snapshots. `find_spent_race_days` er en service-only RPC med scalar JSON, så feltets størrelse ikke rammer PostgRESTs tabel-loft. `raceSpentDays.js` bruger eksisterende resultater/snapshots i backend-før-migration-vinduet. Historisk, ejer-godkendt genopretning i `recover_transferred_race_loads` bevarer immutable snapshots; `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number` refererer det oprindelige bidrag. Tilstanden tæller kun originale belastninger, mens det atomiske afregningsbevis omfatter alle rækker. SSOT: [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md), [TRAINING_RULES](TRAINING_RULES.md).
+
 ### Rankings (#5176)
 `backend/routes/rankings.ts` monteres af api.js bag den eksisterende auth- og
 rate-limit-kæde. GET `/api/rankings/global` (valgfri team_id), `/riders`

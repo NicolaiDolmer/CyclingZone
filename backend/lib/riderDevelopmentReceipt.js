@@ -15,13 +15,15 @@ export function mergeDevelopmentSnapshots(calendarRows, raceDayRows) {
   return [...byDate.values()].sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date)).slice(-200);
 }
 
-export async function loadDevelopmentReceiptHistory(supabase, riderId) {
-  const { data, error } = await supabase.from("rider_derived_ability_history")
+export async function loadDevelopmentReceiptHistory(supabase, riderId, { dailyReceiptEnabled = false } = {}) {
+  let calendarQuery = supabase.from("rider_derived_ability_history")
     .select("snapshot_date, season_number, source, abilities")
-    .eq("rider_id", riderId).order("snapshot_date", { ascending: false })
-    .order("source", { ascending: true }).limit(200);
+    .eq("rider_id", riderId).order("snapshot_date", { ascending: false });
+  if (dailyReceiptEnabled === true) calendarQuery = calendarQuery.order("source", { ascending: true });
+  const { data, error } = await calendarQuery.limit(200);
   if (error) throw error;
   const calendarRows = data ?? [];
+  if (dailyReceiptEnabled !== true) return [...calendarRows].reverse();
   const oldest = calendarRows.at(-1)?.snapshot_date;
   // schema-columns-ok: introduced in database/2026-09-14-4846-training-tick-game-day.sql.
   const raceDayRows = await fetchAllRows(() => {

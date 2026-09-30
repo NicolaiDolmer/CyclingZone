@@ -79,7 +79,7 @@ function makeSupabase(state) {
     };
     return api;
   }
-  return { from: (t) => builder(t), __calls: calls };
+  return { from: (t) => builder(t),rpc:async()=>({data:state.spent_days??[],error:null}), __calls: calls };
 }
 
 const stages = [{ stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8, endurance: 0.2, randomness: 0.5 } }];

@@ -278,7 +278,7 @@
       },
       "midRaceTransfers": {
         "title": "Handler under et aktivt etapeløb",
-        "text": "Hvis en rytter handles (transfer, byttehandel eller auktion), mens han er midt i et aktivt etapeløb, gennemføres handlen og betalingen med det samme, men han kører løbet færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold i mellemtiden, og han kan ikke handles igen, før skiftet er gennemført. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme."
+        "text": "Hvis en rytter handles (transfer, byttehandel eller auktion), mens han er midt i et aktivt etapeløb, gennemføres handlen og betalingen med det samme, men han kører løbet færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold i mellemtiden, og han kan ikke handles igen, før skiftet er gennemført. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme. En løbsdag, han allerede har kørt for sit tidligere hold, er fortsat optaget efter skiftet. Han kan udtages til løb på senere løbsdage."
       },
       "negotiation": {
         "title": "Forhandling frem og tilbage",

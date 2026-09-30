@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 import * as condition from './trainingDateCondition.js';
 import { nextFatigue, nextForm, injuryRisk, RACE_DAY_ENGINE_RECOVERY_CONFIG } from './riderCondition.js';
 
+test('approved historical aliases contribute only the original load, irrespective of row order', () => {
+  const original={rider_id:'r1',race_id:'first',stage_number:5,game_day:12,load:7};
+  const alias={rider_id:'r1',race_id:'second',stage_number:1,game_day:12,load:14,duplicate_of_race_id:'first',duplicate_of_stage_number:5};
+  assert.deepEqual(condition.canonicalRaceLoads([alias,original]),[original]);
+  assert.deepEqual(condition.canonicalRaceLoads([original,alias]),[original]);
+  assert.throws(()=>condition.canonicalRaceLoads([alias]),/no matching original/);
+  assert.throws(()=>condition.canonicalRaceLoads([original,{...alias,duplicate_of_race_id:null}]),/Unapproved duplicate/);
+});
+
 test('five hard sessions settle as one historical hard day', () => {
   assert.equal(typeof condition.settleTrainingDateCondition, 'function');
   const result = condition.settleTrainingDateCondition({ riderId: 'r1', dateStr: '2026-09-29', condition: { fatigue: 75, form: 50 }, intensities: Array(5).fill('hard'), recoveryAbility: 50 });

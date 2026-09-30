@@ -31,7 +31,7 @@ import {
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
-import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
@@ -50,7 +50,7 @@ import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, SkeletonLines, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon, InfoIcon, ChevronRightIcon, PlayIcon,
-  Tabs, TabList, Tab, TabPanel,
+  Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
@@ -237,6 +237,68 @@ function MiniBar({ value, color, label }) {
 // NEAR_BREAKTHROUGH+ ("tæt på gennembrud"). info = { ability, pct } eller null (tom-tilstand).
 
 
+function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
+  if (!info) {
+    return <span className="text-cz-3 text-xs">{emptyLabel}</span>;
+  }
+  const near = info.pct >= NEAR_BREAKTHROUGH * 100;
+  const abilityLabel = tRider(`racePreview.derived.${info.ability}`);
+  return (
+    <div className="min-w-[96px]" title={toGoLabel({ pct: 100 - info.pct, ability: abilityLabel })}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-2xs text-cz-2 truncate">{abilityLabel}</span>
+        <span className={`text-3xs font-mono ${near ? "text-cz-success" : "text-cz-3"}`}>{info.pct}%</span>
+      </div>
+      <div className="h-1.5 bg-cz-subtle rounded-cz overflow-hidden">
+        <div
+          className={`h-full rounded-cz transition-all ${near ? "bg-cz-success" : "bg-cz-accent"}`}
+          style={{ width: `${info.pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// #3924 trin 1 (design-go 20/8): kvalitativ tekst pr. rytter til "Yesterday's
+// gains"-fold-ud'et. Ren i18n-komposition over riderDayStories' klassifikation
+// (trainingReport.js) — ingen ny data, ingen lofter/rater (kun det der faktisk
+// skete, eller en observerbar fremdriftsfraktion, jf. #1162 fog-gate).
+function yesterdayLineText(story, t, tRider) {
+  switch (story.type) {
+    case "injured":
+      return t("yesterdayLine.injured");
+    case "point": {
+      if (story.jumps.length === 1) {
+        const j = story.jumps[0];
+        const ability = tRider(`racePreview.derived.${j.ability}`);
+        return j.from != null && j.to != null
+          ? t("yesterdayLine.pointOne", { ability, from: j.from, to: j.to })
+          : t("yesterdayLine.pointOnePlain", { ability });
+      }
+      const abilities = story.jumps.map((j) => tRider(`racePreview.derived.${j.ability}`)).join(", ");
+      return t("yesterdayLine.pointMany", { abilities });
+    }
+    case "restFresh":
+      return t("yesterdayLine.restFresh", { from: story.fatigueFrom, to: story.fatigueTo });
+    case "rest":
+      return t("yesterdayLine.rest", { from: story.fatigueFrom, to: story.fatigueTo });
+    case "recovery":
+      return t("yesterdayLine.recovery", { from: story.fatigueFrom, to: story.fatigueTo });
+    case "nearBreakthrough":
+      return t("yesterdayLine.nearBreakthrough", { ability: tRider(`racePreview.derived.${story.ability}`) });
+    case "progressing":
+      return t("yesterdayLine.progressing", { ability: tRider(`racePreview.derived.${story.ability}`) });
+    case "trained":
+      return t("yesterdayLine.trained");
+    default:
+      return t("yesterdayLine.noFocus");
+  }
+}
+
+// #3721: fokus-åbne-knappen — DELT mellem roster-rækken og Development-fanens
+// rækker, så de to flader bruger samme komponent/mutation (FocusPanel via
+// onOpen) i stedet for at Development opfinder sin egen fokus-visning. Ren
+// visning: al state (plan, busy, fejl) ejes stadig af TrainingPage.
 function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, dataTour }) {
   return (
     <div>
@@ -491,7 +553,7 @@ export default function TrainingPage() {
     // i dag. Serveren afgør det — se trainingMobileTableFlag.js.
     // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
     // pinner at racingToday er det sidste felt før `} = training;`.
-    mobileTable,
+    mobileTable, dailyReceiptEnabled,
     racingToday,
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
@@ -535,6 +597,12 @@ export default function TrainingPage() {
 
 
 
+  const yesterday = todayRun?.report ? yesterdaySummary(todayRun.report.riders) : null;
+  const yesterdayStories = useMemo(
+    () => (todayRun?.report ? riderDayStories(todayRun.report.riders, progress) : []),
+    [todayRun, progress],
+  );
+
   // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
   const todayWeekday = useMemo(() => weekdayKeyForDate(new Date()), []);
   const [weekDraft, setWeekDraft] = useState(null); // null = ikke redigeret endnu (spejler weekPlan)
@@ -561,7 +629,7 @@ export default function TrainingPage() {
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
-  const history = useTrainingHistory();
+  const history = useTrainingHistory({ dailyReceiptEnabled });
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
@@ -870,6 +938,7 @@ export default function TrainingPage() {
   // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
   // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
   // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
+  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
   const latestRun = todayRun ?? history.runs[0] ?? null;
   const receiptRuns = useMemo(() => todayRun
     ? [todayRun, ...history.runs.filter(run => run.tick_date !== todayRun.tick_date || run.season_id !== todayRun.season_id)]
@@ -3233,8 +3302,202 @@ export default function TrainingPage() {
           Gårsdagens kvittering, dagens historie og rapport-tabellen stod før
           øverst på Train today og skubbede truppen ned under folden. */}
       <TabPanel value="report">
-        <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} />
+        {dailyReceiptEnabled ? <>
+
+        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} />
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
+
+        </> : <>
+
+      <div className="space-y-6">
+        {/* #3924 trin 1 (design-go 20/8, ejer-godkendt): "Yesterday's gains" —
+            ÉN resumé-linje øverst på Train today, foldet ud til en kvalitativ
+            linje pr. rytter. "Ingen nyt kort" (fold-disciplin): genbruger
+            CollapsibleSection (#3914's delte fold-primitiv) i stedet for en ny
+            stat-grid; ingen ny beregning — todayRun + live progress, samme
+            kilde som resten af siden. Skjult uden en dagens kørsel. */}
+        {yesterday && (
+          <CollapsibleSection
+            title={[
+              t("yesterdayTrainedLine", { n: yesterday.trainedFocus }),
+              t("yesterdayRestedLine", { n: yesterday.rested }),
+              t("yesterdayPointsLanded", { n: yesterday.pointsLanded }),
+            ].join(" · ")}
+          >
+            <ul className="flex flex-col gap-2">
+              {yesterdayStories.map((story) => (
+                <li key={story.riderId} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <RiderLink id={story.riderId} className="font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                    {story.riderName}
+                  </RiderLink>
+                  <span className="text-cz-3">{yesterdayLineText(story, t, tRider)}</span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        )}
+
+        {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
+            seneste kørsel i stedet for kun rå tal. Selvstændigt kort, rører
+            ikke roster-/rapport-tabellernes markup (koord. #2446-layoutfix). */}
+        <TrainingMoment
+          latestRun={latestRun}
+          isToday={latestIsToday}
+          progressByRider={progress}
+          pastRuns={pastRuns}
+        />
+
+        {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer
+            nu gælder fra i morgen + at form/træthed kun rykker ved det daglige tick.
+            Fjerner "fokus blev ikke gemt"/"træthed fryser"-forvirringen. */}
+        {todayRun && (
+          <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-cz px-4 py-2.5">
+            <p className="text-sm text-cz-2 leading-relaxed">{t("tickModelDone")}</p>
+          </div>
+        )}
+
+        {/* Rapport fra seneste kørsel */}
+        {todayRun?.report && (
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
+            <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-cz-1">{t("report")}</h2>
+              {todayRun.bonus_applied && (
+                <span className="text-xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
+                  {t("bonusApplied")}
+                </span>
+              )}
+            </div>
+
+            {/* Dags-opsummering (payoff, holdniveau) */}
+            <div className="grid grid-cols-3 divide-x divide-cz-border border-b border-cz-border">
+              <div className="px-5 py-3">
+                <div className="font-data text-lg font-bold tabular-nums text-cz-1">
+                  {summary.trained}<span className="text-cz-3 text-sm font-normal"> / {summary.total}</span>
+                </div>
+                <div className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("summaryTrained")}</div>
+              </div>
+              <div className="px-5 py-3">
+                <div className={`font-data text-lg font-bold tabular-nums ${summary.breakthroughs > 0 ? "text-cz-success" : "text-cz-1"}`}>
+                  {summary.breakthroughs}
+                </div>
+                <div className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("summaryBreakthroughs")}</div>
+              </div>
+              <div className="px-5 py-3">
+                <div className="font-data text-lg font-bold tabular-nums text-cz-1">{summary.peakForm}</div>
+                <div className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">{t("summaryPeakForm")}</div>
+              </div>
+            </div>
+
+            <div className={SCROLLER}>
+              <table className={TABLE} data-sort-exempt="Per-koersel traeningsrapport i rapport-orden">
+                <thead>
+                  <tr>
+                    <th className={thClass({ sticky: true })}>{t("colRider")}</th>
+                    <th className={thClass({})}>{tRider("training.focus")}</th>
+                    <th className={thClass({})}>{tRider("training.intensity")}</th>
+                    <th className={thClass({})}>{t("colNextUp")}</th>
+                    <th className={thClass({})}>{t("colGains")}</th>
+                    <th className={thClass({})}>{t("colResult")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(todayRun.report.riders ?? []).map((row) => {
+                    const jumps = breakthroughJumps(row);
+                    const breakthrough = isBreakthrough(row);
+                    const fatigueDelta = row.fatigue_delta ?? 0;
+                    const fatigueSign = fatigueDelta > 0 ? "+" : "";
+                    const prog = focusProgress(row.focus, progress[row.rider_id]);
+                    // #3541: rapportens egne skadefelter på denne række er en
+                    // engangs-snapshot fra selve dagens tick og opdateres aldrig
+                    // efterfølgende (0 for en rytter der allerede var skadet FØR i dag,
+                    // jf. dailyTrainingEngine.js hvor snapshot-tallet kun sættes i den
+                    // nyligt-skadet-gren). injuryDaysLeft på den samme condition-state
+                    // som roster-rækken (linje ~548) og ConditionChips på rytterprofilen
+                    // er ÉN kanonisk kilde, så de tre visninger ikke kan divergere.
+                    // #5462: samme kilde som roster-raekken — de to flader kan ikke
+                    // sige forskelligt om den samme skade (#1672-mønsteret).
+                    const reportInjury = injuryTimeLeft(condition[row.rider_id], today);
+                    const reportDaysLeft = reportInjury.count;
+                    const reportInjured = reportDaysLeft > 0;
+                    const reportInjuryMsg = injuryBadgeMessage(reportInjury, { compact: true });
+                    return (
+                      <tr
+                        key={row.rider_id}
+                        className={`group transition-colors duration-150 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
+                      >
+                        <td className={tdClass({ sticky: true })}>
+                          <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
+                            {row.name}
+                          </RiderLink>
+                          {reportInjured && (
+                            <span
+                              className="ms-2 text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger"
+                              title={reportInjury.unit === "race_day" && reportInjury.approxDate
+                                ? t("injuredApprox", { date: formatDate(reportInjury.approxDate, "medium") })
+                                : undefined}
+                            >
+                              {t(reportInjuryMsg.key, { days: reportInjuryMsg.days })}
+                            </span>
+                          )}
+                        </td>
+                        <td className={tdClass({})}>
+                          {row.focus ? tRider(`training.focus_${row.focus}`) : "—"}
+                        </td>
+                        <td className={tdClass({})}>
+                          {row.intensity ? tRider(`training.intensity_${row.intensity}`) : "—"}
+                        </td>
+                        {/* Progress mod næste +1 (anticipation efter kørsel) */}
+                        <td className={tdClass({})}>
+                          <FocusProgress
+                            info={prog}
+                            emptyLabel={row.intensity === "rest" ? t("restDay") : t("noFocus")}
+                            tRider={tRider}
+                            toGoLabel={(o) => t("toGo", o)}
+                          />
+                        </td>
+                        {/* Gevinster — gennembrud vist som faktisk tal-spring */}
+                        <td className={tdClass({})}>
+                          {jumps.length > 0 ? (
+                            <span className="text-cz-success text-xs font-medium">
+                              {jumps.map((j) => (
+                                j.from != null && j.to != null
+                                  ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`racePreview.derived.${j.ability}`) })
+                                  : t("gains", { n: j.n, ability: tRider(`racePreview.derived.${j.ability}`) })
+                              )).join(", ")}
+                            </span>
+                          ) : (
+                            <span className="text-cz-3 text-xs">{t("noGains")}</span>
+                          )}
+                        </td>
+                        {/* Result — dagsform + trætheds-delta (erstatter rå score) */}
+                        <td className={tdClass({})}>
+                          <div className="flex flex-col gap-0.5">
+                            {row.status === "over" && (
+                              <span className="text-cz-success text-xs">{t("sharpDay")}</span>
+                            )}
+                            {row.status === "under" && (
+                              <span className="text-cz-danger text-xs">{t("flatDay")}</span>
+                            )}
+                            <span className={`text-2xs font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                              {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Træningsrapport-historik (#1533) — seneste 30 dage. */}
+        {/* #5734: samme trainingScore-kort som Today (null = training_score_visible off) — TrainingHistory slaar selv dags-dato op i .spark. */}
+        <TrainingHistory history={history} trainingScore={trainingScore} />
+      </div>
+
+        </>}
       </TabPanel>
       </Tabs>
 

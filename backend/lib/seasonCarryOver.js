@@ -134,6 +134,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
 
   // ── Motor-output / ledgere (ingen manager-opsætning) ──────────────────────
   {
+    table: "race_day_participation",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#5860: immutable actual participation per rider/season/game day. Engine evidence stays in its original season; copying it would falsely occupy the next season's race days.",
+  },
+  {
     table: "training_race_loads",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "#5928: immutable recorded stage loads and consumption state for daily condition settlement. Historical engine output; copying it would duplicate the previous season's race load.",

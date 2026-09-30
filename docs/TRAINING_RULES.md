@@ -32,9 +32,18 @@ den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
 
 Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
 regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
-datoens forventede løbsdage som visningsbevis. Den normale aktive træningssti
-er fortsat gaten; der tilføjes intet nyt rollout-flag. Visuel releaseaccept
-afventer hovedsessionen. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+datoens forventede løbsdage som visningsbevis. Ejerens beta-release-go 30/9
+gater den nye rapport med `training_daily_receipt`: `beta` åbner kun for
+serververificerede beta-testere/admin. `off`, manglende flag eller læsefejl
+bevarer den eksisterende rapport. `training_score_visible` ændres ikke.
+API-feltet `dailyReceiptEnabled` vælger frontendvisningen; flaget ændrer ingen
+træningsskrivninger. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+
+## Historisk delt løbsdag efter holdskifte (#5860, ejer-go 30/9)
+
+Eksisterende resultater og immutable belastningssnapshots bevares ved den ejer-godkendte genopretning. Et ekstra bevis på samme rytter/sæson/løbsdag kan referere den oprindelige, tidligere afviklede aktivitet via `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number`. Kun det oprindelige bidrag tæller i datoens tilstand; alle bevisrækker indgår i den atomiske afregningskvittering og forbruges samlet. Der opstår ét udviklingstick pr. rytter/løbsdag og én tilstandsafregning pr. dato. Normale nye belastninger er fortsat unikke på rytter/sæson/løbsdag.
+
+`recover_transferred_race_loads` er service-only, sammenligner præcist snapshot og finaliseringsstatus, kræver eksisterende resultat og en tidligere, uafregnet aktivitet på samme slot og committer hele belastningsbatchen eller intet. Ukendte ekstra konflikter, ændret evidens eller allerede afregnet tilstand afviser genopretningen. Ingen resultater, programmer, evner, skader eller live-tilstand skrives af denne RPC. Fremtidige dobbeltstarter afvises før resultat/startsnapshot efter [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md); aksen står i [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Prod-genopretning og efterkontrol afventer ved denne ændring.
 
 ## Førstegangsregistrering og driftalarmer (#5928, 29/9)
 

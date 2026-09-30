@@ -1341,6 +1341,7 @@ test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp 
   assert.deepEqual(
     order,
     [
+      "rpc:find_spent_race_days",
       "applyRaceResults",
       "rpc:refresh_rider_rankings_mv",
       "rpc:refresh_team_standings_ext_mv",
