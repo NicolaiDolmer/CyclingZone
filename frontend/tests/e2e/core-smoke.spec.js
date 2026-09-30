@@ -50,6 +50,9 @@ const CORE_PAGES = [
 ];
 
 test.beforeEach(async ({ page }) => {
+  // The baseline has no today's-stage card. The fixed preview calendar contains
+  // a 30 September stage; the wall clock must not add it overnight (#5928).
+  await page.clock.setFixedTime(new Date('2026-09-29T21:00:00Z'));
   await installNetworkMocks(page);
   await stabilizePage(page);
 });

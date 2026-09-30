@@ -1,5 +1,22 @@
 # Træningens regler - SSOT
 
+## Førstegangsregistrering og driftalarmer (#5928, 29/9)
+
+Når `training_condition_per_date` ejer træningen, springer den gamle kl. 22-sweep
+over efter et strengt flagopslag. Et fejlet ejerskabsopslag må ikke genåbne den.
+Datoens lukning er fortsat den fælles trænings- og restitutionsvej.
+
+En ny registrering på selve den logiske dato materialiserer træningsmotorens
+eksisterende neutrale standardtilstand for ejede, ikke-pensionerede ryttere uden
+en tilstandsrække og uden tidligere gemte tilstandseffekter. Række og frossent
+udgangspunkt oprettes i samme transaktion. Eksisterende tilstande, skader og
+registreringer ændres aldrig af dette trin; historiske datoer og karantæner kræver
+eksplicit efterregulering. Reglen omfatter alle trupper, som den fælles motor.
+
+Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
+og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
+i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
+
 ## Integritet i dagsaktiviteten (#5888, 29/9)
 
 - Endagsløbets `gc`-resultat tæller som løbsaktivitet på den lagrede etapes løbsdag; etapeløbets samlede GC gør ikke. Reglen gælder senior, U23 og junior.
