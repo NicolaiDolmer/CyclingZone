@@ -1,5 +1,20 @@
 export const PATCHES = [
   {
+    "version": "7.323", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Earlier training restored",
+        "body": "Training from an earlier day has been restored for affected riders with documented inputs. Riders with changed programs are reviewed separately."
+      },
+      "da": {
+        "title": "Tidligere træning efterreguleret",
+        "body": "Træning fra en tidligere dag er efterreguleret for berørte ryttere med dokumenteret datagrundlag. Ryttere med ændrede programmer gennemgås særskilt."
+      },
+      "refs": [5928]
+    }]
+  },
+  {
     "version": "7.322",
     "date": "2026-09-30",
     "label": "Beta",
