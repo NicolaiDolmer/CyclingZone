@@ -327,6 +327,13 @@ export function buildTrainingScoreView(rows, {
       today: hasNumericScore(todayRow) ? Number(todayRow.score) : null,
       todayIsRaceDay: !!todayRow?.was_race_day,
       todaySession: todayRow?.session ?? null,
+      // Receipt details need every loaded slot, not the seven-point sparkline.
+      sessions: riderRows.map((r) => ({
+        date: String(r.tick_date), seasonId: r.season_id ?? null,
+        gameDay: r.game_day ?? null,
+        score: hasNumericScore(r) ? Number(r.score) : null,
+        raceDay: !!r.was_race_day,
+      })),
       spark: window.slice(-sparkDays).map((r) => ({
         date: String(r.tick_date),
         score: hasNumericScore(r) ? Number(r.score) : null,

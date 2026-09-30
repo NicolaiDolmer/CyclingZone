@@ -1056,6 +1056,7 @@ export async function runTeamTrainingDay({
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens
       // bidrag til "på vej mod næste point"-baren, aldrig til ny trænings-logik.
       progress_before: preProgress,
+      progress_after: tickResult?.progress ?? preProgress,
       status: unknownSlot ? 'unknown_pending' : tickResult?.status ?? "rest",
       form: newForm,
       fatigue: newFatigue,
@@ -1119,7 +1120,7 @@ export async function runTeamTrainingDay({
       throw new Error('Date race loads include a rider without a condition settlement');
     }
     const report = { riders: reportRiders, bonus_applied: bonus, executed_by: executedBy,
-      tick_date: tickDate, game_day: raceDay, condition_per_date: true,
+      tick_date: tickDate, game_day: raceDay, date_game_days: dateDays, condition_per_date: true,
       condition_settled: settlesCondition };
     const { data, error } = await supabase.rpc('commit_training_date_tick', {
       p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,

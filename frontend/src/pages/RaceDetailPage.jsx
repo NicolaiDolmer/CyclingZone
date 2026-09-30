@@ -201,6 +201,7 @@ function riderName(res) {
 function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
+  const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
   const label = participation.caught ? t("detail.breakaway.caught")
     : participation.verified && !participation.survived ? t("detail.breakaway.participated")
     : t("detail.breakaway.survived");
@@ -208,7 +209,7 @@ function BreakawayMarker({ result, t, history = null }) {
     <>
       {participation.morning && (
         <span className={`ms-1 inline-flex align-middle ${participation.caught || (participation.verified && !participation.survived) ? "text-cz-3" : "text-cz-accent-t"}`}
-          title={`${t("detail.breakaway.label")}: ${label}`} aria-label={`${t("detail.breakaway.label")}: ${label}`}>
+          title={`${markerLabel}: ${label}`} aria-label={`${markerLabel}: ${label}`}>
           <FlagIcon size={13} aria-hidden="true" />
         </span>
       )}

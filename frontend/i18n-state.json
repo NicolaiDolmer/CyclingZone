@@ -24412,6 +24412,10 @@
         "detail.film.event.descent_attack_many": {
           "srcHash": "5c36bc13ed193a79",
           "status": "reviewed"
+        },
+        "detail.breakaway.legacyLabel": {
+          "srcHash": "5284c91dfbcc19bc",
+          "status": "reviewed"
         }
       },
       "results": {

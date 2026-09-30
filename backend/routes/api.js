@@ -10,6 +10,7 @@
  */
 
 import express from "express";
+import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js";
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
@@ -238,7 +239,7 @@ import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trai
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
-import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
@@ -1528,14 +1529,12 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
 // snapshot nr. 200 og klippe al senere udvikling af (daily-snapshots vokser ubegrænset).
 router.get("/riders/:id/development", requireAuth, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("rider_derived_ability_history")
-      .select("snapshot_date, season_number, source, abilities")
-      .eq("rider_id", req.params.id)
-      .order("snapshot_date", { ascending: false })
-      .limit(200);
-    if (error) throw new Error(error.message);
-    res.json((data ?? []).reverse());
+    const [stage,isBetaTester] = await Promise.all([
+      readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY), isViewerBetaTester(req),
+    ]);
+    res.json(await loadDevelopmentReceiptHistory(supabase, req.params.id, {
+      dailyReceiptEnabled:evaluateFlagStage(stage,{isBetaTester}),
+    }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2861,7 +2860,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage,
+      mobileTableStage, dailyReceiptStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -2873,6 +2872,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // #3643 (ejer 19/9): gater KUN telefonens visning. Stadie `beta` ⇒ beta-
       // testere ser den nye tabel, alle andre den gamle. Desktop er uberoert.
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
+      readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
     ]);
     const enabled = evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
@@ -2889,6 +2889,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // se forskel på "gammel visning" og "svar uden flag-felt" — begge er false,
     // og det er med vilje: fail-safe er den visning der står i prod i dag.
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
+    const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -2927,19 +2928,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
       todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult,
     ] = await Promise.all([
       activeSeasonId
-        ? supabase
+        ? fetchAllRows(() => supabase
             .from("training_day_runs")
-            // #4847: limit(1) frem for maybeSingle() — paa loebsdags-noeglen kan
-            // holdet have flere raekker pr. kalenderdato (én pr. loebsdag), og
-            // maybeSingle() ville svare 406 praecis naar flaget flippes.
-            // created_at DESC = dagens SENESTE pas, som er det fladen viser.
-            .select("executed_by, bonus_applied, report, tick_date, created_at")
+            // #5915: all date activities feed the receipt; keep latestRun for old clients.
+            .select("id, season_id, squad, game_day, executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
             .eq("tick_date", todayDate)
+            .or(`season_id.eq.${activeSeasonId},season_id.is.null`)
             .order("created_at", { ascending: false })
-            .limit(1)
-            .then(({ data, error }) => ({ data: data?.[0] ?? null, error }))
-        : Promise.resolve({ data: null }),
+            .order("id", { ascending: true })).then(data => ({ data }))
+        : Promise.resolve({ data: [] }),
       riderIds.length
         ? (async () => {
             // #5462: `injury_race_days_left` med, saa traeningsfladen kan skrive
@@ -2994,7 +2992,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       trainingScoreOn && riderIds.length
         ? fetchAllRows(() => supabase
           .from("rider_training_scores")
-          .select("id, rider_id, tick_date, game_day, score, session, was_race_day, contributions")
+          .select("id, rider_id, season_id, tick_date, game_day, score, session, was_race_day, contributions")
           .eq("team_id", teamId)
           .gte("tick_date", trainingScoreSince)
           .order("tick_date", { ascending: false })
@@ -3002,7 +3000,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
         : Promise.resolve({ data: [] }),
     ]);
 
-    const todayRun = todayRunResult.data ?? null;
+    if (todayRunResult.error) throw new Error(todayRunResult.error.message);
+    const todayRuns = todayRunResult.data ?? [];
+    const todayRun = todayRuns[0] ?? null;
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
@@ -3072,12 +3072,13 @@ router.get("/training/me", requireAuth, async (req, res) => {
     }
 
     res.json({
-      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
+      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, todayRuns, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
       ...(dayClose ? { dayClose } : {}),
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
+      dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
       // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.

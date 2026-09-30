@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
     "version": "7.327",
-    "date": "2026-09-30",
+    "date": "2026-10-01",
     "label": "Beta",
     "changes": [
       {
@@ -38,6 +38,38 @@ export const PATCHES = [
         ]
       }
     ]
+  },
+  {
+    "version": "7.326",
+    "date": "2026-09-30",
+    "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "One receipt for the whole training date",
+        "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
+      },
+      "da": {
+        "title": "Én kvittering for hele træningsdatoen",
+        "body": "For beta-testere samler træningsrapporten datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Form, træthed og positiv udvikling bruger samme farver som ryttervisningerne. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
+      },
+      "refs": [5915]
+    }]
+  },
+  {
+    "version": "7.325", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Planning",
+      "en": {
+        "title": "Clearer planning numbers",
+        "body": "Planning now shows each rider's order in its own column and labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
+      },
+      "da": {
+        "title": "Tydeligere planlægningstal",
+        "body": "Planlægning viser nu rytterens ordre i sin egen kolonne og har tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
+      },
+      "refs": [5930]
+    }]
   },
   {
     "version": "7.324", "date": "2026-09-30", "label": "Beta",

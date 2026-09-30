@@ -153,6 +153,13 @@
       "clearAnyway": "Ryd alligevel"
     },
     "column": {
+      "riderHeading": "Rytter",
+      "orderHeading": "Ordre",
+      "helperOrder": "Hjælper",
+      "editOrder": "{order}: skift ordre for {name}",
+      "routeMatchHeading": "Rute-match",
+      "currentFormHeading": "Form nu",
+      "numbersExplanation": "Rute-match: gennemsnit for hele løbet på tværs af etaperne. Form nu: aktuel form, ikke en prognose. En streg betyder ukendt.",
       "add": "Tilføj fra ledige",
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
@@ -182,7 +189,7 @@
       "compatibleHintNoDay": "Samme dag som {race}. Kan bruges begge steder."
     },
     "role": {
-      "hint": "Tryk på en rytter for at sætte kaptajn eller rolle",
+      "hint": "Tryk på en ordre for at ændre rytterens rolle",
       "captain": "Kaptajn",
       "sprintCaptain": "Sprint-kaptajn",
       "hunter": "Udbrudsjæger",
@@ -1359,7 +1366,8 @@
       "survived": "holdt hjem til mål",
       "caught": "indhentet",
       "participated": "deltog",
-      "laterAttack": "Senere angreb"
+      "laterAttack": "Senere angreb",
+      "legacyLabel": "Udbrud"
     },
     "stageProfile": {
       "label": "Terræn",

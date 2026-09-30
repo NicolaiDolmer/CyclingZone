@@ -235,6 +235,8 @@ function MiniBar({ value, color, label }) {
 
 // Progress mod næste +1 for en fokus-evne (anticipation). Baren bliver grøn ved
 // NEAR_BREAKTHROUGH+ ("tæt på gennembrud"). info = { ability, pct } eller null (tom-tilstand).
+
+
 function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
   if (!info) {
     return <span className="text-cz-3 text-xs">{emptyLabel}</span>;
@@ -551,7 +553,7 @@ export default function TrainingPage() {
     // i dag. Serveren afgør det — se trainingMobileTableFlag.js.
     // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
     // pinner at racingToday er det sidste felt før `} = training;`.
-    mobileTable,
+    mobileTable, dailyReceiptEnabled,
     racingToday,
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
@@ -592,6 +594,9 @@ export default function TrainingPage() {
   // #3924 trin 1 (design-go 20/8): "Yesterday's gains"-resuméet øverst på Train
   // today — holdniveau-tallene til den ÉNE linje + kvitteringens per-rytter-
   // historier til fold-ud'et. Samme todayRun/progress som resten af siden.
+
+
+
   const yesterday = todayRun?.report ? yesterdaySummary(todayRun.report.riders) : null;
   const yesterdayStories = useMemo(
     () => (todayRun?.report ? riderDayStories(todayRun.report.riders, progress) : []),
@@ -624,7 +629,7 @@ export default function TrainingPage() {
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
-  const history = useTrainingHistory();
+  const history = useTrainingHistory({ dailyReceiptEnabled });
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
@@ -927,13 +932,17 @@ export default function TrainingPage() {
   const isLoading = loading;
 
   // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
-  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
+
 
   // Dagligt udviklings-moment (#2484, H3): ÉN kurateret historie i stedet for
   // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
   // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
   // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
+  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
   const latestRun = todayRun ?? history.runs[0] ?? null;
+  const receiptRuns = useMemo(() => todayRun
+    ? [todayRun, ...history.runs.filter(run => run.tick_date !== todayRun.tick_date || run.season_id !== todayRun.season_id)]
+    : history.runs, [todayRun, history.runs]);
   const latestIsToday = !!todayRun;
   const pastRuns = latestIsToday
     ? history.runs.filter((r) => r.tick_date !== todayRun.tick_date)
@@ -963,7 +972,7 @@ export default function TrainingPage() {
     const out = {};
     if (history.seasonState !== SEASON_RECEIPT_RUNNING || !history.seasonStart) return out;
     for (const r of riders) {
-      out[r.id] = seasonAbilityGains(history.seasonRuns, r.id, history.seasonStart) ?? {};
+      out[r.id] = seasonAbilityGains(history.seasonRuns, r.id, history.seasonStart);
     }
     return out;
   }, [riders, history.seasonRuns, history.seasonStart, history.seasonState]);
@@ -1182,6 +1191,7 @@ export default function TrainingPage() {
       // #5539-fix: seneste kørsel (dagens, ellers nyeste historiske).
       progressBefore: receiptRowByRider[rider.id]?.progress_before ?? null,
       gainsToday: receiptRowByRider[rider.id]?.gains ?? null,
+      gainPercentToday: receiptRowByRider[rider.id]?.gain_percent,
       gainDay: receiptDay,
     });
 
@@ -2044,6 +2054,7 @@ export default function TrainingPage() {
       seasonGains: seasonGainsByRider[riderId] ?? null,
       progressBefore: receiptRowByRider[riderId]?.progress_before ?? null,
       gainsToday: receiptRowByRider[riderId]?.gains ?? null,
+      gainPercentToday: receiptRowByRider[riderId]?.gain_percent,
       gainDay: receiptDay,
     });
   }
@@ -3291,6 +3302,13 @@ export default function TrainingPage() {
           Gårsdagens kvittering, dagens historie og rapport-tabellen stod før
           øverst på Train today og skubbede truppen ned under folden. */}
       <TabPanel value="report">
+        {dailyReceiptEnabled ? <>
+
+        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} />
+        <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
+
+        </> : <>
+
       <div className="space-y-6">
         {/* #3924 trin 1 (design-go 20/8, ejer-godkendt): "Yesterday's gains" —
             ÉN resumé-linje øverst på Train today, foldet ud til en kvalitativ
@@ -3478,6 +3496,8 @@ export default function TrainingPage() {
         {/* #5734: samme trainingScore-kort som Today (null = training_score_visible off) — TrainingHistory slaar selv dags-dato op i .spark. */}
         <TrainingHistory history={history} trainingScore={trainingScore} />
       </div>
+
+        </>}
       </TabPanel>
       </Tabs>
 

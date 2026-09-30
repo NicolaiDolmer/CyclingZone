@@ -6,7 +6,7 @@
 
 > **🎯 Next action (30/9):** **#5928: afklar de ni undtagelser med ændrede programmer.** Ejer-godkendt efterregulering af 75 gennemført og verificeret: 375 kvitteringer, 75 afregninger, ingen afvigelser eller ændrede holdkammerater. Privat bevis/rollback i OneDrive; #5969/#5970/#5971 merget. Read-only aftenkontrol 20.15/22.15. Derefter #5912, #5908, #5897. **#5960: apply og #5914-runtime verificeret.**
 >
-> **✅ Leveret 30/9:** #5983 beskytter brugte løbsdage efter holdskifte. Ejer-go, CI/main og deploy verificeret; migrationer gennemført. Godkendt genopretning har bevaret resultater; privat bevis i OneDrive-context. Det oprindelige sweep-spor #5860 står fortsat åbent.
+> **✅ Leveret 30/9:** #5983 beskytter brugte løbsdage efter holdskifte. Ejer-go, CI/main og deploy verificeret; migrationer gennemført. Godkendt genopretning har bevaret resultater; privat bevis i OneDrive-context. Det oprindelige sweep-spor #5860 står fortsat åbent. **#5930/#5977:** Ordre i egen kolonne; rute-match og aktuel form forklaret, også i låste trupper. Ejer-go, production READY og main-CI verificeret. Feature-liveness: tre kendte E-fund i #5218; ingen nye. **#5915/#5976:** beta live (7.326); CI/READY og holdvisning verificeret.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Codex, ejer-godkendt motorpakke #5951/#5953/#5954 (30/9). Første levering: jagt/tid, udbrudsmarkeringer og film; plan #5984. #5928s undtagelser består.
