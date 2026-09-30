@@ -38,6 +38,7 @@ export function useStageTimeline(raceId, stageNumber) {
         if (res.status === 404) { setTimelineState(null); return; }
         if (!res.ok) { setError(true); setTimelineState(null); return; }
         const data = await res.json().catch(() => null);
+        if (cancelled) return;
         // Degraderer ærligt hvis kontrakten ikke er opfyldt (fx en flad {} fra
         // en endnu-ikke-live backend) — ingen events-liste = ingen film/historie.
         setTimelineState(data && Array.isArray(data.events) ? { raceId, stageNumber, data } : null);

@@ -37,12 +37,13 @@ test("recorded stage history replaces twenty legacy flags with eight morning fla
   await expect(page.locator('[aria-label^="Morgenudbrud:"]')).toHaveCount(8);
   await expect(page.locator('[aria-label="Senere angreb"]')).toHaveCount(12);
   await expect(page.getByText("Udbruddet (8 ryttere) blev hentet før stregen.")).toBeVisible();
+  if (process.env.CZ_REVIEW_SCREENS === "1") await page.screenshot({ path: testInfo.outputPath("race-history-results.png"), fullPage: true });
   await page.getByRole("button", { name: "Se løbsfilmen" }).click();
   const film = page.getByRole("dialog");
   await film.getByRole("slider", { name: "Scrub gennem etapen" }).fill("168");
   await expect(film.getByText(/angriber på nedkørslen/)).toBeVisible();
   await expect(film.getByText(/angriber i finalen/)).toHaveCount(0);
   if (process.env.CZ_REVIEW_SCREENS === "1") {
-    await page.screenshot({ path: testInfo.outputPath("race-history-film.png"), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath("race-history-film.png"), fullPage: false });
   }
 });

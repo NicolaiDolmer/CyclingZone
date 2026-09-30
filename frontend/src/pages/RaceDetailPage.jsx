@@ -1630,7 +1630,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
     const participation = participationForResult(row, participationHistory);
-    return { ...row, in_breakaway: Boolean(participation?.morning), breakaway_caught: Boolean(participation?.caught) };
+    return { ...row, in_breakaway: Boolean(participation?.morning), breakaway_caught: participation?.caught ? true : participation?.survived ? false : null };
   }), [results, stage, participationHistory]);
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
 
