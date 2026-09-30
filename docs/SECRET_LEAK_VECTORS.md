@@ -10,6 +10,13 @@ ved manglende interpreter eller scanner-fejl. `command -v` alene er utilstrække
 Windows/Codex skal bevare denne exit-kode gennem den ydre PowerShell-proces.
 Aktivering og faktisk blokering skal måles separat: [GUARD_INVENTORY.md](GUARD_INVENTORY.md).
 
+**Store tool-inputs (30/9, #5928/#5326):** PreToolUse sender hele UTF-8-inputtet
+til begge Python-scanninger på stdin. Miljøvariablerne til input- og stiscanning
+kunne få processen til at fejle før scanning af store MCP-argumenter. Mønstre,
+secret-fil-regler og fail-closed fejl består. Store harmløse inputs, en syntetisk
+hemmelighed ved inputtets slutning, secret-fil-stier og ugyldig JSON testes i
+`scripts/hooks/__tests__/test-secret-runtime.mjs`; ingen inputdele springes over.
+
 Brugeren har været tvunget til at rotere produktions-secrets manuelt 2 gange på 14 dage pga. agent-fejl:
 
 - **2026-04-17 → 2026-05-11 ([#296](https://github.com/NicolaiDolmer/CyclingZone/issues/296)):** Supabase service_role JWT i klartekst i `setup.py`, committed til public repo, 25 dage før rotation. Forward-guards listet i postmortem ([`2026-05-11-supabase-key-rotation.md`](../.claude/learnings/2026-05-11-supabase-key-rotation.md)) — pre-commit gitleaks, audit-script, PR-template — **blev ALDRIG bygget**. Det er den primære årsag til at leak #2 skete.
