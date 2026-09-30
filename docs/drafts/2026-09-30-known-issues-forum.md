@@ -40,7 +40,7 @@ The plan for Thursday 1 October still includes all five:
 - **Rules that work while you're away.** Rest above your chosen fatigue limit and return to the selected programme afterwards.
 - **One clear report per date.** Bring the day's activity together so you're not judging an entire day from the last of several reports.
 
-The consolidated rider receipt is already built, but still awaiting review and release approval. It is not live yet. As mentioned earlier today, the report improvements may slip to Friday 2 October if the final checks take longer.
+The consolidated rider receipt is now released in beta, with the date’s saved activity and documented session scores together. This delivers the report part of the announced package. The other four changes still need their own delivery checks.
 
 **Historical missing training is a separate job.** The fatigue/form calculation has been corrected, and the approved historical repair has been applied. Some exceptions still need resolving. The training missed on 28 September has its own recovery case; I won't call that restored until it has actually been repaired and checked.
 
@@ -64,7 +64,7 @@ These are registered too. They don't all have a confirmed cause or a release dat
 - A sponsor report shows a mismatch between the displayed agreement and the amount per race day. I'm checking payment, display and units before claiming anyone was underpaid.
 - Some mobile pages have had loading/cache problems. A workaround helped a reported case; that doesn't mean the entire problem is solved.
 
-Clearer planning-column labels and current form are also built and awaiting visual review/release, alongside the training receipt.
+Clearer planning-column labels and current form are released. The transfer correction also protects race days already used for the previous team; future race days remain available.
 
 ### Already corrected
 
@@ -110,7 +110,7 @@ Planen for torsdag 1. oktober omfatter stadig alle fem:
 - **Regler, der virker mens du er væk.** Hvil over din valgte træthedsgrænse, og vend derefter tilbage til programmet.
 - **Én samlet rapport pr. dato.** Dagens aktivitet bliver samlet, så sidste rapport ikke ligner hele dagens træning.
 
-Den samlede rytterkvittering er allerede bygget, men afventer stadig gennemgang og godkendelse til release. Den er ikke live endnu. Som nævnt tidligere i dag kan rapportforbedringen glide til fredag 2. oktober, hvis de sidste kontroller tager længere tid.
+Den samlede rytterkvittering er nu udgivet i beta med datoens gemte aktiviteter og dokumenterede passcorer samlet. Det leverer rapportdelen af den annoncerede pakke. De fire øvrige ændringer skal stadig have deres egne leverancekontroller.
 
 **Historisk manglende træning er en særskilt opgave.** Beregningen af træthed og form er rettet, og den godkendte efterregulering er gennemført. Der er enkelte undtagelser tilbage. Den tabte træning fra 28. september har sin egen genopretningssag; den bliver ikke meldt gendannet, før den faktisk er rettet og kontrolleret.
 
@@ -134,7 +134,7 @@ De her er også registreret. Ikke alle har en bekræftet årsag eller dato endnu
 - Der er en melding om forskel mellem sponsoraftalens visning og beløbet pr. løbsdag. Betaling, visning og enheder kontrolleres, før jeg påstår, at nogen har fået for lidt.
 - Nogle mobilsider har haft problemer med indlæsning og cache. En løsning hjalp i en konkret sag; det gør ikke automatisk hele problemet færdigt.
 
-Tydeligere kolonner, ordre og aktuel form i planlægningen er også bygget og afventer visuel gennemgang/release sammen med træningskvitteringen.
+Tydeligere kolonner, ordre og aktuel form i planlægningen er udgivet. Transferrettelsen beskytter også løbsdage brugt på det tidligere hold; fremtidige løbsdage er fortsat tilgængelige.
 
 ### Allerede rettet
 

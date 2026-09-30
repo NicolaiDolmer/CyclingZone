@@ -23,7 +23,7 @@ The training package announced for Thursday 1 October still means ALL five thing
 • Automatic rest/resume rules while you're away.
 • One clear daily report with the day's activity together.
 
-The consolidated rider receipt is built and awaiting review/release, not live yet. As mentioned earlier today, the report could slip to Friday 2 October if final checks take longer.
+The consolidated rider receipt is now released in beta. It brings the date’s saved activity together and shows the documented session scores. That delivers the report part; it does not mean all five training changes are live.
 
 The excessive fatigue/form calculation has been corrected, with the approved historical repair applied. Some exceptions remain. Lost training from 28 September is a separate recovery case and isn't being called restored yet.
 
@@ -32,7 +32,7 @@ I've also heard the concerns about slower talent development. I'll compare actua
 ## EN message 3: other issues and what is fixed
 Also registered: confusing youth participation/bindings, youth opt-out (previously promised this week), development history, board goal/history discrepancies, returning deleted reminders, the dark-mode reminder switch, name search, prize estimates, the sponsor display/payment report and mobile loading problems. These don't all have a verified cause or a release date yet.
 
-Clearer planning-column labels/current form are built and awaiting visual review/release too.
+Clearer planning-column labels and current form are also released. Used race days now follow a rider after a transfer, so they cannot be used again for the new team.
 
 Already corrected: passage order at intermediate/KOM sprints and team-classification ties, with the approved classification recalculation completed. Those fixes don't mean the remaining race issues are solved.
 
@@ -59,7 +59,7 @@ Træningspakken, jeg har meldt ud til torsdag 1. oktober, er stadig ALLE fem tin
 • Automatiske hvile-/returregler, mens du er væk.
 • Én tydelig dagsrapport med dagens aktivitet samlet.
 
-Den samlede rytterkvittering er bygget og afventer gennemgang/release, ikke live endnu. Som nævnt tidligere i dag kan rapporten glide til fredag 2. oktober, hvis de sidste kontroller tager længere tid.
+Den samlede rytterkvittering er nu udgivet i beta. Den samler datoens gemte aktiviteter og viser de dokumenterede passcorer. Det leverer rapportdelen; det betyder ikke, at alle fem træningsændringer er live.
 
 Den for høje træthed/form er rettet, og den godkendte efterregulering er gennemført. Der er enkelte undtagelser tilbage. Tabt træning fra 28. september er en særskilt genopretning og bliver ikke meldt gendannet endnu.
 
@@ -68,7 +68,7 @@ Meldingerne om langsommere talentudvikling bliver også undersøgt ud fra faktis
 ## DA besked 3: øvrige sager og rettelser
 Også registreret: ungdomsdeltagelse/bindinger, fravalg af ungdomsløb (tidligere meldt til denne uge), udviklingshistorik, bestyrelsesmål/historik, slettede påmindelser der kommer igen, kontakten i mørkt tema, navnesøgning, præmieestimater, sponsormeldingen og mobilindlæsning. Ikke alle har bekræftet årsag eller dato endnu.
 
-Tydeligere kolonner/aktuel form i planlægningen er også bygget og afventer visuel gennemgang/release.
+Tydeligere kolonner og aktuel form i planlægningen er også udgivet. Brugte løbsdage følger nu rytteren efter en transfer, så de ikke kan bruges igen på det nye hold.
 
 Allerede rettet: rækkefølge ved mellemspurt/bjergpassager og afgørelse af holdklassement ved lige tid. Den godkendte klassementsgenberegning er også gennemført. Det betyder ikke, at resten af motorfejlene er løst.
 

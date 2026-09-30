@@ -15,7 +15,7 @@ SSOT: COMMS_PLAYBOOK, TONE_OF_VOICE and the domain documents. Explicit user requ
 ## Evidence/status mapping
 | Topic | Source | Status for draft |
 |---|---|---|
-| Chase causes artificial time losses | #5951 + code/prod audit | Confirmed failure; design approved, not implemented |
+| Chase causes artificial time losses | #5951 + code/prod audit | Confirmed failure; approved first correctness implementation in progress, not released |
 | Morning break permissions and filler | #5955 + all-declined diagnostic | Confirmed code gap; design approved |
 | Actual pre-stage GC/neutral reactions | #5978 + virtual_gc initialisation | Design approved, not live |
 | Flags mix morning escape/later attack | #5953, Auvergne stage 6 | Confirmed case; correction planned |
@@ -26,8 +26,8 @@ SSOT: COMMS_PLAYBOOK, TONE_OF_VOICE and the domain documents. Explicit user requ
 | Team classification ties | #5952, #5959/#5967, #5960 | Delivered; approved recomputation completed per #5960 close-out |
 | Excess fatigue/form | #5928, #5962/#5969/#5971 | Model corrected; historical recovery applied to approved scope; exceptions remain |
 | Lost training from 28/9 | #5912 | Separate recovery pending; not solved by condition repair |
-| Daily receipt and session scores | #5915, open PR #5976 | Built, CI/review/owner visual release pending; not live |
-| Planning labels/form/order | #5930, open PR #5977 | Built, current-head CI/visual merge approval pending; not live |
+| Daily receipt and session scores | #5915, merged #5976/#5988 | Beta delivered; issue close-out confirms deployments/runtime; training_daily_receipt=beta |
+| Planning labels/form/order | #5930, merged #5977/#5987 | Delivered; issue close-out confirms exact production READY/main-CI |
 | Train now without timing advantage | #4847 | Announced Thursday; verify actual delivery before calling live |
 | All race-day planning cells | #5932 | Announced Thursday; verify actual delivery |
 | Tonight fatigue forecast | #5933 | Announced Thursday; verify actual delivery |
@@ -37,7 +37,7 @@ SSOT: COMMS_PLAYBOOK, TONE_OF_VOICE and the domain documents. Explicit user requ
 | Youth opt-out | #5944 | Owner promised this week; not yet verified delivered |
 | Too-small junior squad marked participating | #5945 | Reported discrepancy; no date confirmed |
 | Squad switches leave invalid entries | #5903, merged #5869 | Existing cleanup partially overlaps; remaining scenario unverified |
-| Double participation after ownership change | #5860, NOW working agent | Active investigation/fix work; consequences private, no new public count |
+| Double participation after ownership change | #5860, #5983 + NOW | Transfer prevention delivered and approved repair verified; broader sweep remains open |
 | Board affected by youth racing | #5897, prevention #5892 | Historical reconciliation outstanding; do not claim all repaired |
 | Renegotiated board goal displayed wrongly | #5946 | Reported, not yet reproduced in this draft audit |
 | Deleted reminders recur | #5979 | Reported + dedup-code hypothesis; actual resend unverified |
@@ -50,3 +50,5 @@ SSOT: COMMS_PLAYBOOK, TONE_OF_VOICE and the domain documents. Explicit user requ
 ## Publication checks
 Keep publicly shared status qualitative and factual. No affected-account lists, exploit instructions, tuning values or internal thresholds. Explicitly separate already corrected, approved/planned, built-not-released and reported-under-investigation. Re-check PR/deploy status immediately before posting. Expectations follow stated owner dates, not issue labels or a guessed engineering duration.
 The proposed release principle is owner-approved: correctness forward from upcoming stages; new tactical/balance policy for new races; old results only after explicit review. Technical pinning is still to build, so copy describes the intended release, not a current guarantee.
+
+Status refreshed after release close-outs: #5915 comment5920083296 and #5930 latest session closure; Thursday remains the announced target for all five training items, not a claim that the whole package is delivered.
