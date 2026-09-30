@@ -2,6 +2,10 @@
 
 ## Datoens afsluttende historik (#5915, 30/9)
 
+Beta-release styres af `training_daily_receipt` mod serverens godkendte
+beta/admin-status. Off, manglende flag eller læsefejl bruger den eksisterende
+kalenderhistorik. Kun den godkendte beta-gruppe får datoens nye projektion.
+
 Udviklingsvisningen foretrækker datoens seneste dokumenterede evnevektor fra
 `rider_ability_race_day_history` frem for kalenderhistoriens første gevinst.
 Sæsonnummer har forrang ved sæsonskifte; inden for sæson/dato bevares
