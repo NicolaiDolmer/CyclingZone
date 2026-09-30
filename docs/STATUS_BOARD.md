@@ -11,8 +11,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 - #5894 feat: advar om for lille seniortrup før start (#5867) (1d) — groen
 - #5829 docs(design): #5124 mobile season matrix options (1d) — DIRTY
-- #5828 feat: show rider reputation visibility (1d) — DIRTY
-- #5959 fix(races): holdklassement ved lige tid følger hele UCI-tiebreaket (#5952) (0d) — DIRTY
+- #5828 feat: show rider reputation visibility (1d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -65,7 +64,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1299 Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch (110d)
 - #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (106d)
 - #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (104d)
-- …og 674 mere
+- …og 676 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -85,4 +84,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #5755 [board] Mandat-launch D: start-guidens bestyrelses-linje siger 'Sign your mandate' + till… (4d)
 - #5437 [docs] NIGHT_WAVE_RUNBOOK.md: sed-korruption 4 steder, Regel 5 og 8 har mistet titel + te… (9d)
 - #5677 [ops] guarded-merge: fil-ejerskab og state-laas blokerer merge af faerdige og ustartede s… (5d)
-- …og 32 mere
+- …og 33 mere
