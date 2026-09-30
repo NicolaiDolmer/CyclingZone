@@ -8,6 +8,10 @@ import {copenhagenDateString} from '../backend/lib/copenhagenTime.js';
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const literal=value=>`'${JSON.stringify(value).replaceAll("'","''")}'::jsonb`;
 const check=(ok,message)=>{if(!ok)throw new Error(message);};
+// Match runTeamTrainingDay's roster select. Metadata outside this list is not
+// consumed by historical training and is never written by this recovery.
+const rosterColumns=['id','primary_type','secondary_type','potentiale','birthdate','firstname','lastname','team_id','is_academy','is_retired'];
+const trainingRoster=row=>Object.fromEntries(rosterColumns.map(key=>[key,row[key]??null]));
 const block=body=>{
   check(!body.includes('$cz_recovery$'),'Recovery data contains the SQL block delimiter');
   return `DO $cz_recovery$\n${body}\n$cz_recovery$;`;
@@ -49,7 +53,7 @@ export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply
   const selectedStaff=new Set(t.team_staff.filter(r=>teams.has(r.team_id)).map(r=>r.id));
   const selectedUsers=new Set(t.teams.filter(r=>teams.has(r.id)).map(r=>r.user_id));
   const before={
-    riders:t.riders.filter(r=>selected.has(r.id)),rider_derived_abilities:t.rider_derived_abilities.filter(r=>selected.has(r.rider_id)),
+    riders:t.riders.filter(r=>selected.has(r.id)).map(trainingRoster),rider_derived_abilities:t.rider_derived_abilities.filter(r=>selected.has(r.rider_id)),
     training_date_work:t.training_date_work.filter(r=>teams.has(r.team_id)),
     training_plans:t.training_plans.filter(r=>selected.has(r.rider_id)),
     training_week_plans:t.training_week_plans.filter(r=>teams.has(r.team_id)&&(r.rider_id==null||selected.has(r.rider_id))),
@@ -61,6 +65,7 @@ export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply
     training_condition_timeout_outbox:executionState.outbox,training_day_runs:executionState.reports,
   };
   const projections={
+    riders:`jsonb_build_object(${rosterColumns.map(key=>`'${key}',x.${key}`).join(',')})`,
     finance_transactions:"jsonb_build_object('team_id',x.team_id,'idempotency_key',x.idempotency_key,'created_at',x.created_at)",
     app_config:"jsonb_build_object('key',x.key,'value',x.value)",
     teams:"jsonb_build_object('id',x.id,'name',x.name,'user_id',x.user_id,'league_division_id',x.league_division_id,'u23_league_division_id',x.u23_league_division_id,'junior_league_division_id',x.junior_league_division_id)",
