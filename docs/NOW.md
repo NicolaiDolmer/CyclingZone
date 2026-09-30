@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (30/9):** **#5928: afklar de ni undtagelser med ændrede programmer.** Ejer-godkendt efterregulering af 75 gennemført og verificeret: 375 kvitteringer, 75 afregninger, ingen afvigelser eller ændrede holdkammerater. Privat bevis/rollback i OneDrive; #5969/#5970/#5971 merget. Read-only aftenkontrol 20.15/22.15. Derefter #5912, #5908, #5897. **#5960: apply OK; #5914 afventer.**
+> **🎯 Next action (30/9):** **#5928: afklar de ni undtagelser med ændrede programmer.** Ejer-godkendt efterregulering af 75 gennemført og verificeret: 375 kvitteringer, 75 afregninger, ingen afvigelser eller ændrede holdkammerater. Privat bevis/rollback i OneDrive; #5969/#5970/#5971 merget. Read-only aftenkontrol 20.15/22.15. Derefter #5912, #5908, #5897. **#5960: apply og #5914-runtime verificeret.**
 >
 > **✅ Leveret 28/9:** auktioner (#5870) · bestyrelsesunderskrift (#5868) · U23/junior-udtagelse + trup-regel (#5869) · træning fra løb (#5281) · v4 (#5826, #5875) · ungdomsgave (#5874, kørt) · auktionsryttere retur (#5847) · visionsmål (#5877) · ungdomshjælp (#5786) · patch 7.306-7.311. Omdømme (#5828) ikke tændt før gulvet er rettet. **Mangler:** race sharpener #5238 · sekundær type #3813 · sæsonmatrix mobil #5124 · point-flyt #5268 · omdømme #4956. **29/9:** Sikkerheds-PR #5925; CI/deploy grøn, Vercel `READY`, tre alarmer `fixed`. #5889 merget (7.317); #5705/#5934 merget (CI/READY).
 
