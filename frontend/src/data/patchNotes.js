@@ -7,11 +7,11 @@ export const PATCHES = [
       "category": "improved", "audience": "player", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
-        "body": "The training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
+        "body": "The training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
       },
       "da": {
         "title": "Én kvittering for hele træningsdatoen",
-        "body": "Træningsrapporten samler datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
+        "body": "Træningsrapporten samler datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
       },
       "refs": [5915]
     }]

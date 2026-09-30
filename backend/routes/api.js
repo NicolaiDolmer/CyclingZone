@@ -2985,7 +2985,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       trainingScoreOn && riderIds.length
         ? fetchAllRows(() => supabase
           .from("rider_training_scores")
-          .select("id, rider_id, tick_date, game_day, score, session, was_race_day, contributions")
+          .select("id, rider_id, season_id, tick_date, game_day, score, session, was_race_day, contributions")
           .eq("team_id", teamId)
           .gte("tick_date", trainingScoreSince)
           .order("tick_date", { ascending: false })

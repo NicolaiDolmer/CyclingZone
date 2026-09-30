@@ -15,6 +15,17 @@ nul-gevinster, sæsontal eller en historie om en færdig træningsdag.
 Ældre rapporter uden afregningsbevis beskrives som registrerede aktiviteter.
 Sæsoner på samme dato holdes adskilt; sæsontotaler filtreres før sammenlægning.
 
+Scorevisningen er godkendt til build af ejeren 30/9: oversigten viser seneste
+dokumenterede træningspasscore på kvitteringens dato, og detaljerne viser hvert
+pas' kvalitet fra `rider_training_scores`. Opslaget matcher dato, sæson og løbsdag;
+rapportens ældre gevinst-score bruges aldrig som kvalitet. Løb, hvile, skade og
+uklare kvitteringer får ikke et opdigtet tal. Score uden for læsevinduet vises
+som ukendt. Visningen følger fortsat `training_score_visible` og ejerskabsfilteret.
+Legacy-kvitteringer uden sæson og løbsdag kan kun få en score, hvis datoen
+har præcis én matchende score uden løbsdags-id; tvetydige match er ukendte.
+API'ets additive `trainingScore[rider_id].sessions` bevarer de indlæste slots;
+den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
+
 Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
 regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
 datoens forventede løbsdage som visningsbevis. Den normale aktive træningssti

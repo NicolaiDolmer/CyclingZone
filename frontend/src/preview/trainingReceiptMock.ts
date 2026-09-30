@@ -23,5 +23,9 @@ export function trainingReceiptMock(seed: Record<string, unknown>, mode: string 
       })),
     },
   }));
-  return {...seed,todayRun:todayRuns.at(-1),todayRuns};
+  const trainingScore = Object.fromEntries(own.map(rider=>[rider.id,{
+    sessions:days.filter(day=>day!==4).map(day=>({date,seasonId:"receipt-season",gameDay:day,
+      score:day===1?null:[52,0,55,56][day],raceDay:day===1})),
+  }]));
+  return {...seed,todayRun:todayRuns.at(-1),todayRuns,trainingScore};
 }
