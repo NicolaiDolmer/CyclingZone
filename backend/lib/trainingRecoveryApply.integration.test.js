@@ -132,3 +132,21 @@ test('compiler checks the Copenhagen recovery date and the immutable owner check
   assert.throws(()=>buildRecoverySql({...f,now:'2026-09-30T22:30:00Z'}),/recovery window/);
   assert.throws(()=>buildRecoverySql({...f,approvedHash:'not-approved'}),/checksum/);
 });
+function resign(f){
+  f.proposal.snapshot_sha256=hash(f.snapshot);
+  const {proposal_sha256:_previous,...body}=f.proposal;
+  f.proposal.proposal_sha256=hash(body);f.approvedHash=f.proposal.proposal_sha256;return f;
+}
+test('compiler rejects SQL block delimiters in untrusted names and accepts ordinary apostrophes',async()=>{
+  await db.query('UPDATE teams SET name=$1', ["untrusted $cz_recovery$; DELETE FROM riders;"]);
+  const bad=await fixture();assert.throws(()=>buildRecoverySql(bad),/block delimiter/);
+  await db.query('UPDATE teams SET name=$1',["O'Brien"]);
+  const good=await fixture();await db.exec(buildRecoverySql(good));await db.exec(buildRecoverySql({...good,mode:'rollback'}));
+  assert.equal((await db.query('SELECT name FROM teams')).rows[0].name,"O'Brien");
+});
+test('compiler rejects unsupported date axes and proposals with race loads',async()=>{
+  const axis=await fixture();axis.snapshot.tables.training_date_work[0].game_days=[10,11,12,13,14];resign(axis);
+  assert.throws(()=>buildRecoverySql(axis),/game-day axis/);
+  const loads=await fixture();loads.proposal.commits[0].p_race_loads=[{rider_id:rider}];resign(loads);
+  assert.throws(()=>buildRecoverySql(loads),/cannot own race loads/);
+});

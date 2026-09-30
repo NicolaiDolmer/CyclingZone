@@ -8,6 +8,10 @@ import {copenhagenDateString} from '../backend/lib/copenhagenTime.js';
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const literal=value=>`'${JSON.stringify(value).replaceAll("'","''")}'::jsonb`;
 const check=(ok,message)=>{if(!ok)throw new Error(message);};
+const block=body=>{
+  check(!body.includes('$cz_recovery$'),'Recovery data contains the SQL block delimiter');
+  return `DO $cz_recovery$\n${body}\n$cz_recovery$;`;
+};
 
 export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply',scope,executionState}) {
   validateSnapshot(snapshot,scope);
@@ -16,6 +20,7 @@ export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply
   check(hash(snapshot)===proposal.snapshot_sha256,'Snapshot checksum changed');
   check(mode==='apply'||mode==='rollback','Invalid recovery mode');
   check(Number.isFinite(Date.parse(now)),'Explicit execution time required');
+  now=new Date(now).toISOString();
   check(copenhagenDateString(new Date(now))==='2026-09-30','Only the approved recovery window is supported');
   const ids=proposal.manifest.eligible;
   check(ids.length===(scope?.eligible??75),'Approved rider scope changed');
@@ -23,8 +28,10 @@ export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply
   check(Array.isArray(executionState?.outbox)&&Array.isArray(executionState?.reports)&&executionState?.peers?.length===teams.size,'Fresh report/outbox/peer before-images required');
   check(executionState.existing_scores===0&&executionState.existing_daily_history===0,'Preexisting recovery write keys');
   const season=snapshot.tables.training_date_work[0].season_id;
+  check(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(season),'Invalid season key');
   check(proposal.riders.length===ids.length && proposal.riders.every(r=>selected.has(r.rider_id)),'Proposal rider membership changed');
   const expectedDays=new Map(snapshot.tables.training_date_work.map(w=>[w.team_id,w.game_days]));
+  for(const days of expectedDays.values())check(JSON.stringify(days)==='[5,6,7,8,9]','Unsupported game-day axis');
   const seen=new Set();
   for(const c of proposal.commits) {
     check(teams.has(c.p_team_id)&&c.p_season_id===season&&c.p_tick_date===snapshot.tick_date&&c.p_squad==='senior','Commit outside approved team/date');
@@ -34,6 +41,7 @@ export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply
       const key=`${r.rider_id}:${c.p_game_day}`;check(!seen.has(key),'Duplicate proposed receipt');seen.add(key);
     }
     for(const a of c.p_abilities)check(selected.has(a.riderId),'Ability patch outside approved scope');
+    check((c.p_race_loads??[]).length===0,'Recovery cannot own race loads');
     for(const field of ['p_conditions','p_history','p_race_history','p_scores','p_race_loads'])for(const r of c[field]??[])check(selected.has(r.rider_id),'Write outside approved scope');
   }
   check(seen.size===ids.length*5,'Complete five receipts per approved rider required');
@@ -96,8 +104,7 @@ export function buildRecoverySql({snapshot,proposal,approvedHash,now,mode='apply
   });
   const compact={manifest:proposal.manifest,commits:proposal.commits,riders:proposal.riders.map(r=>({rider_id:r.rider_id,team_id:r.team_id,opening:r.opening,condition_after:r.condition_after})),after_abilities:afterAbilities,after_work:afterWork,after_outbox:afterOutbox,peers:executionState.peers};
   const lockTables=[...new Set([...Object.keys(before),'rider_condition','race_results','race_entry_days','race_incidents','training_rider_ticks','training_condition_settlements','training_race_loads','training_day_runs','rider_training_scores','rider_derived_ability_history','rider_ability_race_day_history','training_condition_timeout_outbox'])].sort();
-  const start=`DO $cz_recovery$
-DECLARE b jsonb:=${literal(before)};p jsonb:=${literal(compact)};
+  const start=`DECLARE b jsonb:=${literal(before)};p jsonb:=${literal(compact)};
   proposal_hash text:='${approvedHash}';execution_time timestamptz:='${now}';
   date_key date:='2026-09-29';season_key uuid:='${season}';ids uuid[];team_ids uuid[];
   team_key uuid;rider_key uuid;item jsonb;c jsonb;result jsonb;patch jsonb;assignments text;affected integer;
@@ -124,7 +131,7 @@ BEGIN
     IF (SELECT md5(COALESCE(string_agg(to_jsonb(t)::text,',' ORDER BY t.rider_id,t.game_day),'')) FROM training_rider_ticks t WHERE t.team_id=(item->>'team_id')::uuid AND t.season_id=season_key AND t.tick_date=date_key AND NOT t.rider_id=ANY(ids)) IS DISTINCT FROM item->>'md5'
       THEN RAISE EXCEPTION 'Recovery teammate receipts changed';END IF;
   END LOOP;`;
-  if(mode==='apply') return start+`
+  if(mode==='apply') return block(start+`
   IF (SELECT count(*) FROM training_rider_ticks WHERE rider_id=ANY(ids) AND season_id=season_key AND tick_date=date_key AND report->>'recovery_proposal_sha256'=proposal_hash)=cardinality(ids)*5
     AND (SELECT count(*) FROM training_condition_settlements WHERE rider_id=ANY(ids) AND season_id=season_key AND tick_date=date_key AND status='complete')=cardinality(ids)
     THEN RETURN; END IF;
@@ -170,8 +177,8 @@ BEGIN
   IF (SELECT count(*) FROM training_rider_ticks WHERE rider_id=ANY(ids) AND season_id=season_key AND tick_date=date_key AND report->>'recovery_proposal_sha256'=proposal_hash)<>cardinality(ids)*5
     OR (SELECT count(*) FROM training_condition_settlements WHERE rider_id=ANY(ids) AND season_id=season_key AND tick_date=date_key AND status='complete')<>cardinality(ids)
     THEN RAISE EXCEPTION 'Recovery incomplete';END IF;
-END $cz_recovery$;`;
-  return start+noLater+peerGuard+`
+END;`);
+  return block(start+noLater+peerGuard+`
   IF (SELECT count(*) FROM training_rider_ticks WHERE rider_id=ANY(ids) AND season_id=season_key AND tick_date=date_key AND report->>'recovery_proposal_sha256'=proposal_hash)<>cardinality(ids)*5 THEN RAISE EXCEPTION 'Rollback receipt ownership missing';END IF;
   b:=jsonb_set(b,'{rider_derived_abilities}',p->'after_abilities');
   ${compare('riders')}${compare('rider_derived_abilities')}
@@ -231,7 +238,7 @@ END $cz_recovery$;`;
   INSERT INTO training_condition_timeout_outbox SELECT * FROM jsonb_populate_recordset(NULL::public.training_condition_timeout_outbox,b->'training_condition_timeout_outbox');
   b:=jsonb_set(b,'{rider_derived_abilities}',${literal(before.rider_derived_abilities)});
   ${compare('rider_derived_abilities')}${compare('training_date_work')}${compare('training_day_runs')}${compare('training_condition_timeout_outbox')}
-END $cz_recovery$;`;
+END;`);
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href) {
