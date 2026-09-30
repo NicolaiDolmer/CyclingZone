@@ -1,19 +1,42 @@
 export const PATCHES = [
   {
-    "version": "7.321",
+    "version": "7.322",
     "date": "2026-09-30",
     "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Team classification on equal time",
+          "body": "Teams that finish on equal time could appear in the wrong order. Equal time now follows the UCI tie-break: the placing sum of each team's three counting riders decides, then the best-placed rider if the sum also ties. In a stage race's overall team classification, equal time goes to the team with the most daily team wins, then the most second places, then the most third places and later placings, then the best-placed rider overall. Race names in Race centre and Today's stages are also easier to read."
+        },
+        "da": {
+          "title": "Holdklassement ved lige tid",
+          "body": "Hold, der slutter på samme tid, kunne blive placeret i forkert rækkefølge. Lige tid følger nu UCI-reglen: placeringssummen for holdets tre tællende ryttere afgør, derefter holdets bedst placerede rytter, hvis summen også er ens. I et etapeløbs samlede holdklassement vinder ved lige tid det hold med flest dagssejre i holdklassementet, så flest andenpladser, så flest tredjepladser og senere placeringer, så den bedst placerede rytter i det samlede klassement. Løbsnavne i løbscenteret og dagens etaper er også lettere at læse."
+        },
+        "refs": [
+          5952
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.321",
+    "date": "2026-09-29",
+    "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Races",
+      "category": "fixed", "audience": "player", "topic": "Training",
       "en": {
-        "title": "Team classification on equal time",
-        "body": "Teams that finish on equal time could appear in the wrong order. Equal time now follows the UCI tie-break: the placing sum of each team's three counting riders decides, then the best-placed rider if the sum also ties. In a stage race's overall team classification, equal time goes to the team with the most daily team wins, then the most second places, then the most third places and later placings, then the best-placed rider overall. Race names in Race centre and Today's stages are also easier to read."
+        "title": "Training for riders without an initial condition",
+        "body": "Riders starting training without a saved condition now receive the usual starting condition before the day's activity is recorded. Existing fatigue, form and injuries are preserved. Earlier dates awaiting reconciliation are handled separately."
       },
       "da": {
-        "title": "Holdklassement ved lige tid",
-        "body": "Hold, der slutter på samme tid, kunne blive placeret i forkert rækkefølge. Lige tid følger nu UCI-reglen: placeringssummen for holdets tre tællende ryttere afgør, derefter holdets bedst placerede rytter, hvis summen også er ens. I et etapeløbs samlede holdklassement vinder ved lige tid det hold med flest dagssejre i holdklassementet, så flest andenpladser, så flest tredjepladser og senere placeringer, så den bedst placerede rytter i det samlede klassement. Løbsnavne i løbscenteret og dagens etaper er også lettere at læse."
+        "title": "Træning for ryttere uden en starttilstand",
+        "body": "Ryttere, der begynder træning uden en gemt tilstand, får nu den sædvanlige starttilstand, før dagens aktivitet registreres. Eksisterende træthed, form og skader bevares. Tidligere datoer, der afventer efterregulering, håndteres særskilt."
       },
-      "refs": [5952]
+      "refs": [5928]
     }]
   },
   {

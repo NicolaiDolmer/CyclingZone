@@ -6,4 +6,4 @@
 - Rettelse: eksisterende leading-tight. Efter: 20 / 20 px og 28 / 28 px. Font, størrelse, bredde og dashboardkortets faste 172 px-højde/skelet er bevaret.
 - Guards, masks og allowlists er urørte. De to guard-tests bestod; hvert test måler DA/EN på mobil/desktop. Fire øvrige projektvarianter er deklarerede skips i denne guard.
 - Frontend Node-tests: 4157 beståede. Native før/efter-billeder er gemt og kontrolleret, og read-only UI-review har ingen blokeringer.
-- Patch note 7.321 dækker den brugerrettede læsbarhedsrettelse. Ingen prod-data er skrevet.
+- Patch note 7.322 dækker den brugerrettede læsbarhedsrettelse. Ingen prod-data er skrevet.

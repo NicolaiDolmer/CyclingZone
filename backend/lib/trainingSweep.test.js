@@ -88,6 +88,7 @@ function makeChainMock({ resolveWith }) {
 
 function makeFullMockSupabase({
   configValue = true,
+  conditionPerDate = 'off',
   teams = [],
   season = { id: "s1", number: 1 },
   runs = [],
@@ -95,7 +96,13 @@ function makeFullMockSupabase({
   return {
     from(table) {
       if (table === "app_config") {
-        return makeChainMock({ table, resolveWith: { data: { value: configValue }, error: null } });
+        const chain = makeChainMock({ resolveWith: { data: { value: configValue }, error: null } });
+        chain.eq = (_column, key) => {
+          const value = key === 'training_condition_per_date' ? conditionPerDate : configValue;
+          chain.maybeSingle = async () => ({ data: { value }, error: null });
+          return chain;
+        };
+        return chain;
       }
       if (table === "seasons") {
         return makeChainMock({ table, resolveWith: { data: season, error: null } });
@@ -116,6 +123,21 @@ describe("runTrainingSweep", () => {
   const beforeWindow = new Date("2026-06-20T19:00:00Z");
   // Tidspunkt EFTER kl. 22 dansk tid: 20:30 UTC = 22:30 CEST
   const afterWindow = new Date("2026-06-20T20:30:00Z");
+
+  it('does not run the legacy engine when normalized date settlement owns training', async () => {
+    const supabase = makeFullMockSupabase({ conditionPerDate: 'on', teams: [{ id: 't1' }] });
+    let calls = 0;
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay: async () => { calls++; return {}; } });
+    assert.equal(calls, 0);
+    assert.deepEqual(result, { swept: 0, skipped: 'condition_per_date' });
+  });
+
+  it('does not enter legacy training when condition ownership cannot be read', async () => {
+    const supabase = { from() { return { select() { return this; }, eq(_column, key) { this.key = key; return this; },
+      async maybeSingle() { return this.key === 'training_condition_per_date'
+        ? { data: null, error: { message: 'offline' } } : { data: { value: true }, error: null }; } }; } };
+    await assert.rejects(runTrainingSweep({ supabase, now: afterWindow, runDay: async () => assert.fail('legacy training must stay closed') }), /ownership: offline/);
+  });
 
   it("returnerer before_window når det er for tidligt", async () => {
     const supabase = makeFullMockSupabase();
@@ -257,9 +279,10 @@ describe("runTrainingSweep query-fejl", () => {
     const supabase = {
       from(table) {
         const b = {
+          key: null,
           select() { return b; },
-          eq() { return b; },
-          maybeSingle() { return Promise.resolve({ data: { value: true }, error: null }); },
+          eq(_column, key) { b.key = key; return b; },
+          maybeSingle() { return Promise.resolve({ data: { value: b.key === 'training_condition_per_date' ? 'off' : true }, error: null }); },
           then(resolve) {
             if (table === "teams") {
               return Promise.resolve({ data: null, error: { message: "permission denied" } }).then(resolve);
@@ -306,7 +329,7 @@ function makeD4MockSupabase({ raceDayEngineValue = false, teams, season = { id: 
           select() {
             return {
               eq(_col, key) {
-                const value = key === "race_day_engine_enabled" ? raceDayEngineValue : true; // daily_training_enabled=on
+                const value = key === 'training_condition_per_date' ? 'off' : key === "race_day_engine_enabled" ? raceDayEngineValue : true; // daily_training_enabled=on
                 return { maybeSingle: async () => ({ data: { value }, error: null }) };
               },
             };
