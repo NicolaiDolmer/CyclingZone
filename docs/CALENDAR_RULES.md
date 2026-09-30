@@ -1128,6 +1128,8 @@ Terræner under stikproeveminimum vises som `n<min, kun rapport` i begge lag. De
 
 ## 8. Rytterbinding og trupkrav
 
+**Brugte løbsdage efter holdskifte (#5860, ejer-go 30/9).** Afslutning frigiver fremtidige forpligtelser, men ikke en faktisk brugt løbsdag. Deltagelsen følger rytterens id og sæson på tværs af holdskift; en senere løbsdag er fri. `race_day_participation` og adgang før etaperesultater er kontrakten i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md). Kalenderdato eller klokkeslæt erstatter aldrig `game_day`. Historiske resultater bevares; særskilt genopretning af belastningsbevis er ejer-gated. Ingen kalender flyttes af denne rettelse.
+
 | Regel | Værdi | Kilde |
 |---|---|---|
 | En rytter kan køre | 1 løb pr. **løbsdag** | [#3420](https://github.com/NicolaiDolmer/CyclingZone/issues/3420) |
