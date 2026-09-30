@@ -278,7 +278,7 @@
       },
       "midRaceTransfers": {
         "title": "Trades during an active stage race",
-        "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the deal and payment complete immediately, but he finishes the race for his selling team and joins his new team right after the finish. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. Races that have not started yet are unaffected: the rider moves instantly."
+        "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the deal and payment complete immediately, but he finishes the race for his selling team and joins his new team right after the finish. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. Races that have not started yet are unaffected: the rider moves instantly. A race day already used for the previous team stays occupied after the move. He can enter races on later race days."
       },
       "negotiation": {
         "title": "Back-and-forth negotiation",

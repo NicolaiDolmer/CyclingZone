@@ -132,6 +132,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 1307
     verified: 2026-09-06
+    note: 'Genbrugte løbsdage efter holdskifte: rettelse i #5860; prodverifikation afventer.'
 
   - id: race-intention-choice
     area: race-engine
