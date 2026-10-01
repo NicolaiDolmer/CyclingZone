@@ -102,7 +102,9 @@
     "save": "Gem plan",
     "undo": "Fortryd ændringer",
     "unsaved": "{n, plural, one {# ændring ikke gemt} other {# ændringer ikke gemt}}",
-    "ownPlansEmpty": "Ingen rytter har sin egen plan endnu. Vælg en rytter under Plan for for at give ham en."
+    "ownPlansEmpty": "Ingen rytter har sin egen plan endnu. Vælg en rytter under Plan for for at give ham en.",
+    "ownPlansChips": "Ryttere med egen plan:",
+    "ownPlansMore": "+{n}"
   },
   "howTrainingWorksLink": "Sådan virker træning",
   "development": {
@@ -487,7 +489,8 @@
     "cellsIntro": "Hver dag har fem løbsdagsfelter. Ugedagens session udfylder dem. Ret enkelte felter for at vælge, hvor mange der er restitution.",
     "seededHint": "Viser hvad rytteren træner nu. Din første ændring gemmer det som hans egen plan.",
     "stageLocked": "Etape",
-    "stageLockedTitle": "Låst af løbet"
+    "stageLockedTitle": "Låst af løbet",
+    "listNote": "Tryk på et program for at se ugen. Det kopieres ind i Plan, så du kan rette hvert felt bagefter."
   },
   "dailyReceipt": {
     "status": {
@@ -527,7 +530,8 @@
     "band_warn": "Træt",
     "band_risk": "Over skadegrænsen",
     "aria": "Træthed i aften: ca. {value}. {band}",
-    "ariaSettled": "Træthed i aften: {value}. {band}"
+    "ariaSettled": "Træthed i aften: {value}. {band}",
+    "teamLabel": "Træthed i aften, højest"
   },
   "fatigueRule": {
     "title": "Træthedsgrænse",
@@ -555,6 +559,26 @@
     "reason_fatigue": "Træthed {fatigue} over {threshold}: {fallback}",
     "reason_after_stage": "Dagen efter en etape: {fallback}",
     "overNow": "{count, plural, one {# rytter er} other {# ryttere er}} over grænsen nu",
-    "stripCount": "{count, plural, one {# rytter} other {# ryttere}}"
+    "stripCount": "{count, plural, one {# rytter} other {# ryttere}}",
+    "teamRuleAbove": "Holdregel: over",
+    "teamRuleRun": "kør",
+    "teamRuleInstead": "i stedet",
+    "add": "Tilføj",
+    "chipOwn": "{name} · {threshold} · {fallback}",
+    "chipOff": "{name} · ingen grænse",
+    "summaryRule": "over {threshold}: {fallback}",
+    "summaryAfterStage": "dagen efter en etape: aktiv restitution",
+    "summaryExceptionsOnly": "kun undtagelser",
+    "summaryOff": "ikke sat",
+    "summaryToday": "{count, plural, one {# rytter} other {# ryttere}} i dag",
+    "summaryEdit": "Ret",
+    "summarySet": "Sæt op"
+  },
+  "subtabs": {
+    "label": "Program-visninger",
+    "plan": "Plan",
+    "programs": "Programmer",
+    "limit": "Træthedsgrænse",
+    "limitShort": "Grænse"
   }
 }

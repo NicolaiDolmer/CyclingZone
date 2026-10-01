@@ -61,8 +61,13 @@ import TrainingOverview from "../components/training/TrainingOverview.tsx";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
-import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
 import FatigueRulePanel from "../components/training/FatigueRulePanel.tsx"; // #4854
+// #5932: Program-fanens tre under-faner (ejer-godkendt mockup 1/10).
+import TrainingPlanCard from "../components/training/TrainingPlanCard.tsx";
+import TrainingProgramList from "../components/training/TrainingProgramList.tsx";
+import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
+import { useFatigueRules } from "../components/training/useFatigueRules.ts";
+import { Segmented } from "../components/ui/Segmented.jsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
 import { useTrainNow } from "../components/training/TrainNowClient.ts";
@@ -583,6 +588,28 @@ export default function TrainingPage() {
   const reloadForecast = fatigueForecast.reload;
   useEffect(() => { reloadForecast(); }, [reloadForecast, riderWeekPlans, weekPlan, training.plans, todayRun]);
   const forecastFor = (riderId) => (cellsOn ? fatigueForecast.entryFor(riderId) : null);
+  // #4854/#5620: traethedsgraensen. Hentes her (ikke i panelet), fordi Today-
+  // fanens overblik viser samme regel som een linje (#5932, mockup pin 8).
+  const fatigueRules = useFatigueRules();
+  const fatigueRulesOn = fatigueRules.enabled;
+  // #5932 (ejer-godkendt omstrukturering 1/10): Program-fanen faar under-faner
+  // Plan · Programs · Fatigue limit, valget huskes i ?sub=. Kun naar mindst een
+  // af de nye funktioner er aaben for holdet; ellers er fanen praecis som i dag.
+  const programSubTabs = [
+    "plan",
+    ...(programsOn ? ["programs"] : []),
+    ...(fatigueRulesOn ? ["limit"] : []),
+  ];
+  const programLayout = programsOn || cellsOn || fatigueRulesOn;
+  const requestedSub = searchParams.get("sub");
+  const activeSub = programSubTabs.includes(requestedSub) ? requestedSub : "plan";
+  const setSub = (sub) =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", "weekplan");
+      p.set("sub", sub);
+      return p;
+    }, { replace: true });
   const scoreVisible = trainingScore != null;
   // #5485 (ejer-valg A 23/9): er dagens pas kørt? Før det har ingen rytter et
   // tal for i dag, og Score viser det SENESTE tal dæmpet (mobileScoreCell).
@@ -771,6 +798,8 @@ export default function TrainingPage() {
   // #5485 (aendring 6): fanen Week plan redigerer enten holdets plan ("team")
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
+  // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
+  const [planCellError, setPlanCellError] = useState(null);
 
   // Hent egne ryttere fra Supabase — samme mønster som TeamPage.
   useEffect(() => {
@@ -2341,8 +2370,8 @@ export default function TrainingPage() {
       <span data-tour={tourAnchor("primary")} className={isMobile ? "flex flex-1" : "inline-flex"}>
         <Button
           type="button"
-          // #4629: på Program-fanen er "Brug program" viewets ene guld-knap.
-          variant={assistantPanelOpen || (programsOn && activeTab === "weekplan") ? "secondary" : "primary"}
+          // #5932: Program-fanen har ingen egen guld-knap længere ("Put on" er et valg).
+          variant={assistantPanelOpen ? "secondary" : "primary"}
           size={isMobile ? "md" : "sm"}
           onClick={handlePrimary}
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
@@ -2647,6 +2676,142 @@ export default function TrainingPage() {
     );
   }
 
+  // ── #5932: Program-fanens tre under-faner (ejer-godkendt mockup 1/10) ─────
+  // Plan: EET kort med "Plan for" + "Fatigue tonight" i top-raekken. For holdet
+  // er "Whole day" den gamle ugeplan (samme kladde/gem som renderWeekPlanTab);
+  // for en rytter hans 35 felter (cellsOn) eller hans egen intensitets-uge.
+  // Week plan- og Individual weekly plans-kortene er vaek her; ryttere med egen
+  // plan staar som chips. Flags off: renderWeekPlanTab() som i dag (se TabPanel).
+  function renderPlanSubTab() {
+    const isTeam = weekPlanFor === "team" || !riderByIdMap.has(weekPlanFor);
+    const key = isTeam ? "team" : weekPlanFor;
+    const rider = isTeam ? null : riderByIdMap.get(key);
+    const draft = isTeam ? (activeWeekDays ?? flatWeekTemplate()) : riderWeekDraftFor(key);
+    const saved = isTeam ? (weekPlan ?? flatWeekTemplate()) : (riderWeekPlans[key] ?? flatWeekTemplate());
+    const changed = WEEKDAY_KEYS.filter(
+      (weekday) => (draft[weekday]?.intensity ?? "normal") !== (saved[weekday]?.intensity ?? "normal"),
+    ).length;
+    const ordered = sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc");
+    const hasOwn = (r) => riderWeekPlans[r.id] != null;
+    const options = [
+      { value: "team", label: t("weekPlan.team", { n: riders.length }) },
+      ...ordered.map((r) => ({
+        value: r.id,
+        label: `${r.firstname} ${r.lastname}${hasOwn(r) ? ` · ${t("individualWeekPlanBadge")}` : ""}`,
+      })),
+    ];
+    // Holdets tal: den mest traette rytter i aften (et gennemsnit ville skjule
+    // netop den rytter grænsen handler om).
+    let forecastEntry = null;
+    if (cellsOn) {
+      if (isTeam) {
+        for (const entry of Object.values(fatigueForecast.forecast?.riders ?? {})) {
+          if (Number.isFinite(entry?.fatigue) && (!forecastEntry || entry.fatigue > forecastEntry.fatigue)) forecastEntry = entry;
+        }
+      } else {
+        forecastEntry = forecastFor(key);
+      }
+    }
+    const ownDays = isTeam ? null : riderWeekPlans[key];
+    const seedDays = isTeam ? null : programs.seeds?.[key];
+    const isSeed = !isTeam && !isProgramPlan(ownDays, WEEKDAY_KEYS) && isProgramPlan(seedDays, WEEKDAY_KEYS);
+    const cells = !isTeam && cellsOn
+      ? {
+        days: isSeed ? seedDays : ownDays,
+        isSeed,
+        program: programs.catalog.find((p) => p.key === programs.assigned?.[key]) ?? null,
+        lockedToday: raceSlotsFor(fatigueForecast.forecast, key),
+        busy: programs.busy,
+        onSetCell: async (weekday, slotIndex, session) => {
+          const result = await programs.setCell(key, weekday, slotIndex, session);
+          setPlanCellError(result.ok ? null : t("programs.error"));
+        },
+        message: planCellError,
+      }
+      : null;
+    return (
+      <TrainingPlanCard
+        weekdays={WEEKDAY_KEYS}
+        todayWeekday={todayWeekday}
+        // #4629: med training_tick_per_race_day on (dayClose findes) bærer hver
+        // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
+        columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
+        planFor={key}
+        planForOptions={options}
+        onPlanFor={(value) => { setPlanCellError(null); setWeekPlanFor(value); }}
+        forecast={forecastEntry ? (
+          <FatigueForecast
+            entry={forecastEntry}
+            settled={fatigueForecast.settled}
+            label={isTeam ? t("forecast.teamLabel") : null}
+          />
+        ) : null}
+        intro={isTeam
+          ? t("weekPlan.teamIntro")
+          : t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
+        intensity={{
+          intensities: TRAINING_INTENSITIES,
+          intensityFor: (weekday) => draft[weekday]?.intensity ?? "normal",
+          onSetDay: (weekday, intensity) =>
+            (isTeam ? setWeekDraftDay(weekday, intensity) : setRiderWeekDraftDay(key, weekday, intensity)),
+          changedCount: changed,
+          saving: isTeam ? !!savingWeekPlan : savingRiderWeekPlanId === key,
+          onSave: () => (isTeam ? handleSaveWeekPlan() : handleSaveRiderWeekPlan(key)),
+          onUndo: () => {
+            if (isTeam) setWeekDraft(null);
+            else setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[key]; return next; });
+          },
+          resetLabel: isTeam
+            ? (weekPlan ? t("weekRhythmResetButton") : null)
+            : (riderWeekPlans[key] != null ? t("individualWeekPlanRemove") : null),
+          onReset: () => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key)),
+          message: isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null,
+        }}
+        cells={cells}
+        ownPlans={ordered.filter(hasOwn).map((r) => ({ id: r.id, name: `${r.firstname.charAt(0)}. ${r.lastname}` }))}
+        onOpenOwnPlan={(riderId) => { setPlanCellError(null); setWeekPlanFor(riderId); }}
+      />
+    );
+  }
+
+  function renderProgramTab() {
+    const subLabel = (sub) => (sub === "limit"
+      ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
+      : t(`subtabs.${sub}`));
+    return (
+      <div className="space-y-3" data-testid="training-program-tab">
+        {programSubTabs.length > 1 && (
+          <Segmented
+            label={t("subtabs.label")}
+            value={activeSub}
+            onChange={setSub}
+            options={programSubTabs.map((sub) => ({ value: sub, label: subLabel(sub) }))}
+            className={isMobile ? "flex w-full [&>button]:flex-1 [&>button]:min-h-11" : ""}
+          />
+        )}
+        {activeSub === "programs" && programsOn ? (
+          <TrainingProgramList
+            weekdays={WEEKDAY_KEYS}
+            riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
+              id: r.id,
+              name: `${r.firstname} ${r.lastname}`,
+              type: r.primary_type ?? null,
+            }))}
+            catalog={programs.catalog}
+            busy={programs.busy}
+            onApply={programs.applyProgram}
+            sessionShort={(session) => t(`mobile.sessionShort_${session}`, {
+              defaultValue: session === "rest" || session === "recovery"
+                ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`),
+            })}
+          />
+        ) : activeSub === "limit" && fatigueRulesOn ? (
+          <FatigueRulePanel rules={fatigueRules} />
+        ) : renderPlanSubTab()}
+      </div>
+    );
+  }
+
   // ── #5485: fanen Today på desktop ─────────────────────────────────────────
   function renderDesktopToday() {
     const groupsForTable = groupByType
@@ -2857,7 +3022,7 @@ export default function TrainingPage() {
               <span className="ms-1 font-data text-2xs tabular-nums text-cz-3">{overview.needsDay.length}</span>
             )}
           </Tab>
-          <Tab value="weekplan">{cellsOn ? t("tabs.program") : t("tabs.weekplan")}</Tab>
+          <Tab value="weekplan">{programLayout ? t("tabs.program") : t("tabs.weekplan")}</Tab>
           <Tab value="development">{t("tabs.development")}</Tab>
           <Tab value="report">{t("tabs.report")}</Tab>
         </TabList>
@@ -2872,6 +3037,7 @@ export default function TrainingPage() {
           onToggle={toggleOverviewFilter}
           variant={overviewVariant}
           status={overviewStatus}
+          footer={fatigueRulesOn ? <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} /> : null}
         />
       </div>
       {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
@@ -3205,39 +3371,10 @@ export default function TrainingPage() {
           egen plan i ét gitter, valgt med "Plan for". Ingen nye API-kald:
           weekPlan/riderWeekPlans kommer fra useTraining som før. */}
       <TabPanel value="weekplan">
-        {/* #4854/#5620: spillerens traethedsgraense (selvstaendig, flag-gatet; renderer intet naar slukket). */}
-        <FatigueRulePanel className="mb-3.5" />
-        {/* #4629 (beta 26/9): Program-fanen — katalog, tildeling og 7 x N-
-            gitteret øverst. Holdets gamle intensitets-rytme står uændret under. */}
-        {programsOn || cellsOn ? (
-          <div className="space-y-3.5">
-            <TrainingProgramsPanel
-              catalogEnabled={programsOn}
-              seeds={programs.seeds}
-              forecastFor={forecastFor}
-              forecastSettled={fatigueForecast.settled}
-              raceSlotsFor={(riderId) => raceSlotsFor(fatigueForecast.forecast, riderId)}
-              weekdays={WEEKDAY_KEYS}
-              todayWeekday={todayWeekday}
-              // #4629: programmet har ÉN kolonne ("Hele dagen") med
-              // training_tick_per_race_day off; on (dayClose findes) bærer hver
-              // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
-              columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
-              riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
-                id: r.id,
-                name: `${r.firstname} ${r.lastname}`,
-                type: r.primary_type ?? null,
-              }))}
-              riderWeekPlans={riderWeekPlans}
-              catalog={programs.catalog}
-              assigned={programs.assigned}
-              busy={programs.busy}
-              onApply={programs.applyProgram}
-              onSetCell={programs.setCell}
-            />
-            {renderWeekPlanTab()}
-          </div>
-        ) : renderWeekPlanTab()}
+        {/* #5932 (ejer-godkendt mockup 1/10): med programmer, felter eller
+            traethedsgraensen aaben faar fanen tre under-faner, et kort pr.
+            under-fane. Ellers praecis som i dag (Week plan + egne planer). */}
+        {programLayout ? renderProgramTab() : renderWeekPlanTab()}
       </TabPanel>
 
       {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,

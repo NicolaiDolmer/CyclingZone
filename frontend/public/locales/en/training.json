@@ -102,7 +102,9 @@
     "save": "Save plan",
     "undo": "Undo changes",
     "unsaved": "{n, plural, one {# change not saved} other {# changes not saved}}",
-    "ownPlansEmpty": "No rider has his own plan yet. Pick a rider under Plan for to give him one."
+    "ownPlansEmpty": "No rider has his own plan yet. Pick a rider under Plan for to give him one.",
+    "ownPlansChips": "Riders with own plan:",
+    "ownPlansMore": "+{n}"
   },
   "howTrainingWorksLink": "How training works",
   "development": {
@@ -487,7 +489,8 @@
     "cellsIntro": "Each day has five race-day cells. The weekday's session fills them. Change single cells to choose how many are recovery.",
     "seededHint": "Shows what the rider trains now. Your first change saves it as his own plan.",
     "stageLocked": "Stage",
-    "stageLockedTitle": "Locked by the race"
+    "stageLockedTitle": "Locked by the race",
+    "listNote": "Tap a program to see its week. It is copied into Plan, so you can change any cell after."
   },
   "dailyReceipt": {
     "status": {
@@ -527,7 +530,8 @@
     "band_warn": "Tired",
     "band_risk": "Above the injury limit",
     "aria": "Fatigue tonight: approx. {value}. {band}",
-    "ariaSettled": "Fatigue tonight: {value}. {band}"
+    "ariaSettled": "Fatigue tonight: {value}. {band}",
+    "teamLabel": "Fatigue tonight, highest"
   },
   "fatigueRule": {
     "title": "Fatigue limit",
@@ -555,6 +559,26 @@
     "reason_fatigue": "Fatigue {fatigue} over {threshold}: {fallback}",
     "reason_after_stage": "Day after a stage: {fallback}",
     "overNow": "{count, plural, one {# rider is} other {# riders are}} over the limit now",
-    "stripCount": "{count, plural, one {# rider} other {# riders}}"
+    "stripCount": "{count, plural, one {# rider} other {# riders}}",
+    "teamRuleAbove": "Team rule: above",
+    "teamRuleRun": "run",
+    "teamRuleInstead": "instead",
+    "add": "Add",
+    "chipOwn": "{name} · {threshold} · {fallback}",
+    "chipOff": "{name} · no limit",
+    "summaryRule": "above {threshold}: {fallback}",
+    "summaryAfterStage": "day after a stage: active recovery",
+    "summaryExceptionsOnly": "exceptions only",
+    "summaryOff": "not set",
+    "summaryToday": "{count, plural, one {# rider} other {# riders}} today",
+    "summaryEdit": "Edit",
+    "summarySet": "Set up"
+  },
+  "subtabs": {
+    "label": "Program views",
+    "plan": "Plan",
+    "programs": "Programs",
+    "limit": "Fatigue limit",
+    "limitShort": "Limit"
   }
 }

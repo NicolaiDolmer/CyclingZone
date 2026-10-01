@@ -19,10 +19,13 @@ export default function FatigueForecast({
   entry,
   settled = false,
   className = "",
+  label = null,
 }: {
   entry: ForecastEntry | null | undefined;
   settled?: boolean;
   className?: string;
+  // #5932: holdets top-raekke viser den mest traette rytter ("highest").
+  label?: string | null;
 }) {
   const { t } = useTranslation("training");
   if (!entry || !Number.isFinite(entry.fatigue)) return null;
@@ -38,7 +41,7 @@ export default function FatigueForecast({
       aria-label={t(settled ? "forecast.ariaSettled" : "forecast.aria", { value, band: bandText })}
       role="status"
     >
-      <span className="font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">{t("forecast.label")}</span>
+      <span className="font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">{label ?? t("forecast.label")}</span>
       <span className="font-data text-[13px] font-semibold tabular-nums text-cz-1" aria-hidden="true">
         {settled ? value : t("forecast.value", { value })}
       </span>
