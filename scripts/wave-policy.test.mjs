@@ -7,7 +7,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock, withWaveStateLock, stopWaveWatch,
   ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks, intakeTracks, readTracksFile, assertMergeAllowed, guardedMerge,
-  flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS } from './wave-policy.mjs';
+  flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
 import { normalizeBootId } from './wave-boot-identity.mjs';
 
@@ -705,4 +705,95 @@ test('#5677: a lock busy past the fallback wait degrades to a lock-free read ins
   const overlapping = mergeIo({ readFiles: () => prFiles('scripts/one.mjs') });
   assert.throws(() => guardedMerge(dir, '42', 'owner/repo', overlapping, 200), /track #1/);
   assert.equal(await exited, 0);
+});
+
+// ---------------------------------------------------------------- touches (#5997)
+const withTouches = (n, ownership, touches, extra = {}) => trackWith(n, ownership, { touches, ...extra });
+
+test('#5997: tracks without touches behave exactly as before (backward compatible)', () => {
+  const a = trackWith(1, ['scripts/a.mjs']), b = trackWith(2, ['scripts/b.mjs']);
+  assert.deepEqual(validateTracks([a, b]), [a, b]);
+  assert.deepEqual(trackTouches(a), []);
+  assert.deepEqual(trackTouches({ ...a, touches: [] }), []);
+  assert.deepEqual(sharedTouchPlan([a, b]), { shared: [], mergeOrder: [] });
+  assert.throws(() => validateTracks([a, trackWith(2, ['scripts/a.mjs'])]), /ownership overlap/);
+  assert.deepEqual(assertCompatibleWithActive([a], [b]), { shared: [], mergeOrder: [] });
+  assert.throws(() => assertCompatibleWithActive([a], [trackWith(2, ['scripts/a.mjs'])]), /ownership overlap with running #1/);
+});
+
+test('#5997: admission matrix - ownership vs ownership and ownership vs touches block, touches vs touches is allowed', () => {
+  const shared = 'frontend/src/pages/Shared.jsx';
+  // own vs own: blocks (unchanged)
+  assert.throws(() => validateTracks([trackWith(1, [shared]), trackWith(2, [shared])]), /ownership overlap/);
+  // own vs other's touches: blocks in both orders, and for directories/globs
+  assert.throws(() => validateTracks([trackWith(1, [shared]), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
+  assert.throws(() => validateTracks([withTouches(2, ['b/x.mjs'], [shared]), trackWith(1, [shared])]), /touches/);
+  assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages']), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
+  assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages/Sh*']), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
+  // touches vs touches: allowed
+  const a = withTouches(1, ['a/x.mjs'], [shared]), b = withTouches(2, ['b/x.mjs'], [shared]);
+  assert.deepEqual(validateTracks([a, b]), [a, b]);
+  // a track's own touches may overlap its own ownership (same issue)
+  assert.doesNotThrow(() => validateTracks([withTouches(1, [shared], [shared])]));
+  // touches follow the same path rules as ownership
+  assert.throws(() => validateTracks([withTouches(1, ['a/x.mjs'], ['docs/now.md'])]), /reserved/);
+  assert.throws(() => validateTracks([withTouches(1, ['a/x.mjs'], ['*.md'])]), /too broad/);
+  assert.throws(() => validateTracks([withTouches(1, ['a/x.mjs'], '/etc')]), /touches/);
+  assert.throws(() => validateTracks([withTouches(1, ['a/x.mjs'], [5])]), /touches/);
+});
+
+test('#5997: shared touches are listed and a merge order is derived (smallest footprint first, then issue number)', () => {
+  const shared = 'frontend/src/pages/Shared.jsx';
+  const big = withTouches(3, ['a/1.mjs', 'a/2.mjs'], [shared]);
+  const small = withTouches(7, ['b/1.mjs'], [shared]);
+  const alone = withTouches(9, ['c/1.mjs'], ['c/only.mjs']);
+  const same = withTouches(5, ['d/1.mjs'], [shared]);
+  const plan = sharedTouchPlan([big, small, alone, same]);
+  assert.deepEqual(plan.shared, [{ path: shared, issues: [3, 5, 7] }]);
+  assert.deepEqual(plan.mergeOrder, [5, 7, 3]);
+  // a directory touch overlapping a file touch is listed under the more specific path
+  const dir = sharedTouchPlan([withTouches(1, ['a/x'], ['frontend/src/pages']), withTouches(2, ['b/x'], [shared])]);
+  assert.deepEqual(dir.shared, [{ path: shared, issues: [1, 2] }]);
+});
+
+test('#5997: the touches rules also hold against the running wave (assertCompatibleWithActive)', () => {
+  const shared = 'frontend/src/pages/Shared.jsx';
+  const active = [withTouches(1, ['a/x.mjs'], [shared])];
+  assert.throws(() => assertCompatibleWithActive(active, [trackWith(2, [shared])]), /overlaps running #1's touches/);
+  assert.throws(() => assertCompatibleWithActive(active, [trackWith(2, ['frontend/src/pages'])]), /overlaps running #1's touches/);
+  assert.throws(() => assertCompatibleWithActive([trackWith(1, [shared])], [withTouches(2, ['b/x.mjs'], [shared])]), /touches overlap with running #1's ownership/);
+  const plan = assertCompatibleWithActive(active, [withTouches(2, ['b/x.mjs'], [shared])]);
+  assert.deepEqual(plan, { shared: [{ path: shared, issues: [1, 2] }], mergeOrder: [1, 2] });
+});
+
+test('#5997: admission stores the shared files in the marker; a marker without sharing stays unchanged', async t => {
+  const dir = fixture(t);
+  const shared = 'frontend/src/pages/Shared.jsx';
+  const wave = await acquireWave(dir, { ...request('claude'), tracks: [withTouches(1, ['a/x.mjs'], [shared]), withTouches(2, ['b/x.mjs'], [shared])] }, async () => []);
+  assert.deepEqual(wave.sharedTouches, { shared: [{ path: shared, issues: [1, 2] }], mergeOrder: [1, 2] });
+  const dir2 = fixture(t);
+  const plain = await acquireWave(dir2, request('claude'), async () => []);
+  assert.equal('sharedTouches' in plain, false);
+});
+
+test('#5997: enqueue allows touches vs touches, reports them, and rejects ownership vs touches', t => {
+  const shared = 'frontend/src/pages/Shared.jsx';
+  const { dir } = runningWave(t, { tracks: [withTouches(1, ['scripts/one.mjs'], [shared])] });
+  assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, [shared])], ownSnapshot), /overlaps running #1's touches/);
+  const result = enqueueTracks(dir, 'rolling-wave', [withTouches(2, ['scripts/two.mjs'], [shared])], ownSnapshot);
+  assert.deepEqual(result.sharedTouches, { shared: [{ path: shared, issues: [1, 2] }], mergeOrder: [1, 2] });
+  // the report covers the whole active set, so it still lists the earlier share
+  assert.deepEqual(enqueueTracks(dir, 'rolling-wave', [trackWith(3, ['scripts/three.mjs'])], ownSnapshot).sharedTouches.mergeOrder, [1, 2]);
+  // a wave without any share has no sharedTouches key
+  const plain = runningWave(t);
+  assert.equal('sharedTouches' in enqueueTracks(plain.dir, 'rolling-wave', [trackWith(3, ['scripts/three.mjs'])], ownSnapshot), false);
+});
+
+test('#5997: a malformed touches field in the marker fails closed; touches never block a merge by themselves', t => {
+  const shared = 'frontend/src/pages/Shared.jsx';
+  const bad = runningWave(t, { tracks: [{ ...trackWith(1, ['scripts/one.mjs']), touches: 'nope' }] });
+  assert.throws(() => assertMergeAllowed(bad.dir, 42, () => prFiles('docs/other.md')), /malformed touches/);
+  const ok = runningWave(t, { tracks: [withTouches(1, ['scripts/one.mjs'], [shared])] });
+  assert.equal(assertMergeAllowed(ok.dir, 42, () => prFiles(shared)).allowed, true);
+  assert.throws(() => assertMergeAllowed(ok.dir, 42, () => prFiles('scripts/one.mjs')), /overlaps running wave track #1/);
 });

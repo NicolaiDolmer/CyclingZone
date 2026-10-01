@@ -42,6 +42,45 @@ export function ownershipOverlaps(a, b) {
   return covers(x, y) || covers(y, x);
 }
 
+// #5997: `touches` = shared files a track may touch with a minimal coupling.
+// Optional; same path/glob syntax as ownership. Absent or [] = the old behaviour.
+// Malformed touches fail closed (throw) everywhere they are read.
+export function trackTouches(t) {
+  if (t?.touches === undefined || t?.touches === null) return [];
+  if (!Array.isArray(t.touches) || t.touches.some(x => typeof x !== 'string')) throw Error(`Invalid touches for #${t?.issue}: expected an array of paths`);
+  return t.touches;
+}
+
+// Merge order for tracks that share touched files (#5997): the track with the
+// fewest declared paths (ownership + touches) merges first - the smallest
+// footprint conflicts least - then the lower issue number. Deterministic; the
+// merge queue merges main into each branch before its merge.
+const footprint = t => (Array.isArray(t.ownership) ? t.ownership.length : 0) + trackTouches(t).length;
+const byMergeOrder = (a, b) => footprint(a) - footprint(b) || a.issue - b.issue;
+
+// touches vs touches across tracks: allowed, but listed. Returns
+// { shared: [{ path, issues }], mergeOrder: [issue, ...] }; mergeOrder holds only
+// tracks that actually share a file. `path` is the more specific of two
+// overlapping entries (as written).
+export function sharedTouchPlan(tracks) {
+  const entries = [];
+  for (const t of tracks) for (const raw of trackTouches(t)) entries.push({ issue: t.issue, raw, own: ownershipPrefix(raw) });
+  const groups = new Map();
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = entries[i], b = entries[j];
+      if (a.issue === b.issue || !ownershipOverlaps(a.own, b.own)) continue;
+      const key = (a.own.prefix.length >= b.own.prefix.length ? a : b).raw;
+      if (!groups.has(key)) groups.set(key, new Set());
+      groups.get(key).add(a.issue).add(b.issue);
+    }
+  }
+  const shared = [...groups].map(([path, set]) => ({ path, issues: [...set].sort((x, y) => x - y) })).sort((x, y) => x.path.localeCompare(y.path));
+  const sharing = new Set(shared.flatMap(s => s.issues));
+  const mergeOrder = tracks.filter(t => sharing.has(t.issue)).sort(byMergeOrder).map(t => t.issue);
+  return { shared, mergeOrder };
+}
+
 export function validateTracks(tracks) {
   if (!Array.isArray(tracks) || !tracks.length || tracks.length > 12) throw Error('Expected 1-12 tracks');
   const issues = new Set(), branches = new Set(), slugs = new Set(), files = [];
@@ -62,6 +101,21 @@ export function validateTracks(tracks) {
       files.push({ issue: t.issue, own });
     }
   }
+  // #5997: touches. own-vs-others'-touches blocks (both directions, in any order);
+  // touches-vs-touches is allowed and listed by sharedTouchPlan.
+  const touchEntries = [];
+  for (const t of tracks) {
+    for (const raw of trackTouches(t)) {
+      const touch = ownershipPrefix(raw);
+      if (reserved.some(r => ownershipOverlaps(touch, { prefix: r, open: false }))) throw Error(`reserved touches: ${raw}`);
+      touchEntries.push({ issue: t.issue, raw, own: touch });
+    }
+  }
+  for (const f of files) {
+    for (const x of touchEntries) {
+      if (f.issue !== x.issue && ownershipOverlaps(f.own, x.own)) throw Error(`ownership overlaps another track's touches: ${x.raw}`);
+    }
+  }
   if (tracks.filter(t => t.tier === 'FULL').length > 1) throw Error('Only one FULL verification track');
   return tracks;
 }
@@ -77,6 +131,7 @@ export function activeTracks(wave) {
   const active = [...wave.tracks.filter(t => !finished.has(t?.branch)), ...(wave.pendingTracks || [])];
   for (const t of active) {
     if (!t || !Array.isArray(t.ownership) || !t.ownership.length) throw Error('Wave marker has a track without ownership; merge blocked');
+    try { trackTouches(t); } catch { throw Error('Wave marker has a track with malformed touches; merge blocked'); }
   }
   return active;
 }
@@ -93,10 +148,22 @@ export function assertCompatibleWithActive(active, incoming) {
       for (const a of active) {
         const hit = a.ownership.find(other => ownershipOverlaps(raw, other));
         if (hit !== undefined) throw Error(`ownership overlap with running #${a.issue}: ${raw} vs ${hit}`);
+        // #5997: incoming ownership vs the running track's touches.
+        const touched = trackTouches(a).find(other => ownershipOverlaps(raw, other));
+        if (touched !== undefined) throw Error(`ownership overlaps running #${a.issue}'s touches: ${raw} vs ${touched}`);
+      }
+    }
+    // #5997: incoming touches vs the running tracks' ownership. touches vs touches is allowed.
+    for (const raw of trackTouches(t)) {
+      for (const a of active) {
+        const hit = a.ownership.find(other => ownershipOverlaps(raw, other));
+        if (hit !== undefined) throw Error(`touches overlap with running #${a.issue}'s ownership: ${raw} vs ${hit}`);
       }
     }
   }
   if ([...active, ...incoming].filter(t => t.tier === 'FULL').length > 1) throw Error('Only one FULL verification track');
+  // Shared files across the whole active + incoming set, with the merge order.
+  return sharedTouchPlan([...active, ...incoming]);
 }
 
 // Ejer-beslutning 22/9 (variant B, #5510): PR-loftet paa 8 er fjernet helt.
@@ -233,6 +300,9 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   catch (e) { if (e.code === 'EEXIST') throw Error('wave-active.json exists; inspect owner, never expire or overwrite it'); throw e; }
   try {
     wave.capacity = checkCapacity(await readPrs(), request.tracks);
+    // #5997: shared touched files + merge order, only when something is shared.
+    const plan = sharedTouchPlan(request.tracks);
+    if (plan.shared.length) wave.sharedTouches = plan;
     wave.state = 'running';
     updateWave(dir, wave.waveId, () => wave);
     return wave;
@@ -297,12 +367,13 @@ export function assertEnqueueable(tracks) {
 export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot) {
   validateTracks(tracks);
   assertEnqueueable(tracks);
+  let plan;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
     if (wave.rollingIntake !== true) throw Error('Rolling intake is disabled for this wave');
     const pending = Array.isArray(wave.pendingTracks) ? wave.pendingTracks : [];
     if (pending.length + tracks.length > MAX_PENDING_TRACKS) throw Error(`At most ${MAX_PENDING_TRACKS} pending tracks`);
-    assertCompatibleWithActive(activeTracks(wave), tracks);
+    plan = assertCompatibleWithActive(activeTracks(wave), tracks);
     // #5602 fund 7: activeTracks() drops finished branches, so a finished
     // branch queued again would pass the check above. Its second copy would
     // then be filtered out as finished too, and the merge gate would not
@@ -311,7 +382,7 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
     for (const t of tracks) if (ran.has(slugOf(t.branch))) throw Error(`branch already ran in this wave (finished or active): ${t.branch}`);
     return { ...wave, pendingTracks: [...pending, ...tracks] };
   }, LONG_LOCK_ATTEMPTS);
-  return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef) };
+  return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef), ...(plan.shared.length ? { sharedTouches: plan } : {}) };
 }
 
 // Marks finished branches (only admitted ones) and moves ALL pending tracks
