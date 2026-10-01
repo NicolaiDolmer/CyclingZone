@@ -142,3 +142,64 @@ test('an older season is evidence-only recovery and cannot overwrite a newer inj
   assert.equal(runCalls, 0);
   assert.equal(result.failed, 0);
 });
+
+// #6004: one stuck partial team must not re-sweep every division-less team each tick.
+function retryLoopOptions({ calls, legacyLookups, legacyRan = new Set(), forceRetry = true }) {
+  const work = { team_id: 'stuck', game_days: [5], expected_rider_ids: ['r-stuck'], status: 'partial', opening_conditions: { 'r-stuck': {} } };
+  return {
+    supabase: {}, now: new Date('2026-10-01T13:30:00Z'), elapsedClock: () => 0, logger: { error() {} },
+    loadIndex: async () => ({ today: '2026-10-01', activeSeasonId: 'season', jobs: [{ tickDate: '2026-09-30', season: { id: 'season', number: 4 }, ...(forceRetry ? { forceRetry: true } : {}) }] }),
+    loadWorkRows: async () => (forceRetry ? [work] : []),
+    loadContext: async () => ({
+      teams: [{ id: 'stuck', league_division_id: 'division' }, { id: 'legacy-a', league_division_id: null }, { id: 'legacy-b', league_division_id: null }],
+      riders: [{ id: 'r-stuck', team_id: 'stuck' }, { id: 'r-a', team_id: 'legacy-a' }, { id: 'r-b', team_id: 'legacy-b' }],
+      races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+      gameDaysByDivision: new Map([['division', [5]]]),
+    }),
+    loadLegacyRuns: async () => { legacyLookups.push(1); return legacyRan; },
+    runDay: async args => { calls.push(args.teamId); if (args.teamId === 'stuck') throw new Error('Missing recorded race load'); return {}; },
+    dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
+  };
+}
+
+test('a forced retry runs only the unfinished team and never re-reserves legacy rows', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const calls = [], legacyLookups = [];
+  // First pass in a fresh process: legacy teams already settled, found in one lookup.
+  const options = retryLoopOptions({ calls, legacyLookups, legacyRan: new Set(['legacy-a', 'legacy-b']) });
+  const first = await runNormalizedTrainingDateSweep(options);
+  assert.deepEqual(calls, ['stuck']);
+  assert.equal(legacyLookups.length, 1);
+  assert.equal(first.failed, 1);
+  assert.equal(first.failures[0].tickDate, '2026-09-30');
+  // Later ticks are retry-only: the legacy branch is skipped without a lookup.
+  calls.length = 0; legacyLookups.length = 0;
+  const retryOnly = retryLoopOptions({ calls, legacyLookups, legacyRan: new Set() });
+  await runNormalizedTrainingDateSweep(retryOnly);
+  await runNormalizedTrainingDateSweep(retryOnly);
+  assert.deepEqual(calls, ['stuck', 'stuck']);
+  assert.equal(legacyLookups.length, 0);
+});
+
+test('a normal date pass still settles division-less teams without a legacy row', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const calls = [], legacyLookups = [];
+  const result = await runNormalizedTrainingDateSweep({
+    ...retryLoopOptions({ calls, legacyLookups, legacyRan: new Set(['legacy-b']), forceRetry: false }),
+    registerWork: async args => ({ team_id: args.teamId, game_days: args.gameDays, expected_rider_ids: args.riderIds, status: 'pending', opening_conditions: { 'r-stuck': {} } }),
+  });
+  assert.deepEqual(calls.filter(id => id.startsWith('legacy')), ['legacy-a']);
+  assert.equal(legacyLookups.length, 1);
+  assert.equal(result.failed, 1);
+});
+
+test('a legacy failure keeps the forced retry on a full pass', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const calls = [], legacyLookups = [];
+  const options = retryLoopOptions({ calls, legacyLookups });
+  const runDay = async args => { calls.push(args.teamId); throw new Error('transient'); };
+  await runNormalizedTrainingDateSweep({ ...options, runDay });
+  await runNormalizedTrainingDateSweep({ ...options, runDay });
+  assert.equal(calls.filter(id => id === 'legacy-a').length, 2);
+  assert.equal(legacyLookups.length, 2);
+});
