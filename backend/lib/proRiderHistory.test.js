@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createProRiderHistoryHandler } from "./proRiderHistory.js";
 
 // #4649: fake supabase — subscriptions (isPro-opslag) + rider_derived_ability_history.
-function fakeSupabase({ sub = null, subError = null, historyRows = [], historyError = null } = {}) {
+function fakeSupabase({ sub = null, subError = null, historyRows = [], historyError = null, raceDayRows = [] } = {}) {
   return {
     from(table) {
       if (table === "subscriptions") {
@@ -19,6 +19,13 @@ function fakeSupabase({ sub = null, subError = null, historyRows = [], historyEr
           eq() { return this; },
           order: () => Promise.resolve({ data: historyRows, error: historyError }),
         };
+      }
+      if (table === "rider_ability_race_day_history") {
+        const q = {
+          select() { return q; }, eq() { return q; }, order() { return q; }, gte() { return q; },
+          range: (from) => Promise.resolve({ data: from === 0 ? raceDayRows : [], error: null }),
+        };
+        return q;
       }
       throw new Error(`uventet tabel: ${table}`);
     },
@@ -77,4 +84,19 @@ test("proRiderHistory: Founder uden aktivt abonnement er alligevel Pro (permanen
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.equal(r.body.errorCode, undefined);
   assert.deepEqual(r.body.seasons, []);
+});
+
+test("#5947 proRiderHistory: season end uses the last race day of the date, not the frozen first-gain row", async () => {
+  const sub = { status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: false };
+  const historyRows = [
+    { snapshot_date: "2026-09-29", season_number: 4, source: "daily_training", abilities: { climbing: 50 } },
+  ];
+  const raceDayRows = [
+    { snapshot_date: "2026-09-29", season_number: 4, source: "daily_training", game_day: 7, abilities: { climbing: 50 } },
+    { snapshot_date: "2026-09-29", season_number: 4, source: "race_development", game_day: 9, abilities: { climbing: 52 } },
+  ];
+  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows, raceDayRows }) });
+  const r = res();
+  await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+  assert.deepEqual(r.body.seasons, [{ season_number: 4, abilities: { climbing: 52 } }]);
 });

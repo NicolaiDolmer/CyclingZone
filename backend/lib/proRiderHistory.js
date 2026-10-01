@@ -29,6 +29,7 @@
 
 import { isProOrFounder } from "./entitlement.js";
 import { captureException } from "./sentry.js";
+import { loadRaceDayHistory, mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
 
 export function createProRiderHistoryHandler({ supabase }) {
   return async function proRiderHistory(req, res) {
@@ -43,13 +44,17 @@ export function createProRiderHistoryHandler({ supabase }) {
 
       const { data, error } = await supabase
         .from("rider_derived_ability_history")
-        .select("snapshot_date, season_number, abilities")
+        .select("snapshot_date, season_number, source, abilities")
         .eq("rider_id", req.params.riderId)
         .order("snapshot_date", { ascending: true });
       if (error) throw new Error(error.message);
+      // #5947: kalenderdags-raekken fryser paa datoens foerste gevinst-tick; den
+      // seneste loebsdag pr. dato er saesonens sande slut-tilstand.
+      const raceDayRows = await loadRaceDayHistory(supabase, req.params.riderId);
+      const rows = mergeDevelopmentSnapshots(data ?? [], raceDayRows, { limit: Infinity });
 
       const bySeason = new Map();
-      for (const row of data ?? []) {
+      for (const row of rows) {
         if (row.season_number == null || !row.abilities) continue;
         // ASC-raekkefoelge → seneste raekke pr. saeson overskriver (saesonens slut).
         bySeason.set(row.season_number, { season_number: row.season_number, abilities: row.abilities });
