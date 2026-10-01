@@ -11,7 +11,7 @@
 //
 // Data kommer fra useFatigueRules (siden ejer det, fordi Today-fanen viser
 // samme regel som een linje). Default slukket (G7): ingen raekke = ingen regel.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from "../ui/icons/index.jsx";
 import {
@@ -27,7 +27,10 @@ const controlClass = "rounded-cz border border-cz-border bg-cz-card px-2 py-1 te
 const labelClass = "font-data text-2xs font-semibold uppercase tracking-[.04em] text-cz-3";
 const rowClass = "flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-cz-border px-4 py-2.5 first:border-t-0 sm:px-5";
 
-export default function FatigueRulePanel({ rules, className = "" }: { rules: FatigueRulesClient; className?: string }) {
+// #6000: `groupExceptions` = gruppe-undtagelsernes chips (groups/GroupFatigueExceptions.tsx).
+export default function FatigueRulePanel({ rules, className = "", groupExceptions = null }: {
+  rules: FatigueRulesClient; className?: string; groupExceptions?: ReactNode;
+}) {
   const { t } = useTranslation("training");
   const { data, busy, save } = rules;
   const [status, setStatus] = useState<"saved" | "error" | null>(null);
@@ -192,7 +195,8 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
       <div className={rowClass}>
         <span className={`${labelClass} basis-full sm:basis-auto`}>{t("fatigueRule.exceptions")}</span>
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          {exceptionIds.length === 0 && !adding && <span className="text-xs text-cz-3">{t("fatigueRule.exceptionsEmpty")}</span>}
+          {exceptionIds.length === 0 && !adding && !groupExceptions && <span className="text-xs text-cz-3">{t("fatigueRule.exceptionsEmpty")}</span>}
+          {groupExceptions}
           {exceptionIds.map((id) => (
             <button
               key={id}

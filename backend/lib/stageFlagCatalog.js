@@ -49,6 +49,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_program_cells", area: "training", label: "Træningsfelter pr. løbsdag (35 felter)" },
   // #4854/#5620: spillerens egne regler (træthedsgrænse), seedet i beta. Flip til on er ejer-only.
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)" },
+  // #6000: træningsgrupper, seedet i beta. Kræver training_program_cells. Flip til on er ejer-only.
+  { key: "training_groups", area: "training", label: "Træningsgrupper" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
@@ -148,4 +150,6 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "youth_squad_pages",
   // #4854: HelpPage gater traethedsgraense-blokken paa dette flag.
   "training_fatigue_rules",
+  // #6000: HelpPage gater traeningsgruppe-blokken paa dette flag.
+  "training_groups",
 ]);
