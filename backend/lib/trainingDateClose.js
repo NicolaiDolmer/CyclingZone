@@ -55,8 +55,20 @@ async function quarantineTrainingRiders({ supabase, teamId, seasonId, tickDate, 
   }), 'quarantine unprovable training inputs');
 }
 
+// #6004: division-less teams settle into one legacy row per (team, tick_date,
+// game_day IS NULL). One lookup per date keeps a re-swept date from re-reserving
+// those rows (unique-index 409 per team per tick).
+async function loadLegacyRunTeamIds({ supabase, tickDate }) {
+  const rows = await fetchAllRows(() => supabase.from('training_day_runs').select('team_id').eq('tick_date', tickDate).is('game_day', null).order('team_id'));
+  return new Set(rows.map(row => row.team_id));
+}
+
 const completedDates = new Set();
-export function __resetNormalizedTrainingDateCacheForTests() { completedDates.clear(); }
+// #6004: dates whose full pass already ran in this process without a failure
+// outside durable work. A forced retry of such a past date only revisits teams
+// with pending/partial work instead of re-sweeping every team each tick.
+const fullPassDates = new Set();
+export function __resetNormalizedTrainingDateCacheForTests() { completedDates.clear(); fullPassDates.clear(); }
 
 async function sendTrainingOpsAlarm({ tickDate, rows, now }) {
   // Lazy import: tests and ordinary dates never initialise a Discord client.
@@ -110,6 +122,7 @@ export async function runNormalizedTrainingDateSweep({
   loadIndex = loadTrainingDateIndex, loadContext = loadTrainingDateContext,
   registerWork = registerTrainingDateWork, dispatchAlarms = dispatchTrainingDateAlarms,
   loadWorkRows = loadTrainingWorkRows, quarantineRiders = quarantineTrainingRiders,
+  loadLegacyRuns = loadLegacyRunTeamIds,
   elapsedClock = () => performance.now(),
 }) {
   const startedAt = elapsedClock();
@@ -120,13 +133,17 @@ export async function runNormalizedTrainingDateSweep({
     const dateKey = `${job.season.id}:${job.tickDate}`;
     if (completedDates.has(dateKey) && !job.forceRetry) continue;
     const failuresBeforeDate = summary.failed;
-    let waitingForDate = false;
+    let waitingForDate = false, untrackedFailure = false, legacyRan = null;
+    // #6004: a forced retry of a past, already fully swept date is retry-only:
+    // just the teams whose durable work is still pending/partial.
+    const retryOnly = Boolean(job.forceRetry) && job.tickDate < index.today && fullPassDates.has(dateKey);
     const workRows = await loadWorkRows({ supabase, ...job });
     const context = await loadContext({ supabase, ...job, loadDaySpans, registeredTeamIds: workRows.map(row => row.team_id) });
     const workByTeam = new Map(workRows.map(row => [row.team_id, row]));
     for (const team of context.teams) {
       const unsafeSeason = index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id;
       if (unsafeSeason && !workByTeam.has(team.id)) continue;
+      if (retryOnly && !['pending', 'partial'].includes(workByTeam.get(team.id)?.status)) continue;
       if (['complete', 'needs_reconciliation'].includes(workByTeam.get(team.id)?.status)) continue;
       const dateEnd = trainingDateBounds(job.tickDate).end;
       const currentIds = context.riders.filter(rider => rider.team_id === team.id &&
@@ -137,17 +154,22 @@ export async function runNormalizedTrainingDateSweep({
       // Division-less teams retain their existing calendar-day fallback.
       if (!team.league_division_id && !workByTeam.has(team.id)) {
         try {
+          legacyRan ??= await loadLegacyRuns({ supabase, tickDate: job.tickDate });
+          if (legacyRan.has(team.id)) continue;
           const result = await runDay({ supabase, teamId: team.id, seasonId: job.season.id, seasonNumber: job.season.number, now, tickDateOverride: job.tickDate, gameDay: null, executedBy: 'assistant' });
           summary.ran = true; summary.planned++; if (result?.alreadyRan) summary.alreadyRan++; else summary.swept++;
         } catch (error) {
           // best-effort per team: failures are returned for cron.js's aggregated Sentry capture.
-          summary.failed++; summary.failures.push({ teamId: team.id, message: error.message });
+          summary.failed++; summary.failures.push({ teamId: team.id, tickDate: job.tickDate, message: error.message });
+          untrackedFailure = true;
         }
         continue;
       }
       if (!days?.length) continue;
+      let tracked = workByTeam.has(team.id);
       try {
         const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now });
+        tracked = true;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
         const unavailable = remaining.filter(id => unsafeSeason || team.is_bank || team.is_frozen || team.is_test_account ||
           !currentIds.includes(id) || (work.opening_conditions !== undefined && !work.opening_conditions[id]));
@@ -176,11 +198,14 @@ export async function runNormalizedTrainingDateSweep({
       } catch (error) {
         // best-effort per team: retain durable work and continue unaffected teams.
         summary.failed++; summary.failures.push({ teamId: team.id, tickDate: job.tickDate, message: error.message });
+        if (!tracked) untrackedFailure = true;
         logger.error?.('[training-date] team retained for retry', team.id, error.message);
       }
     }
     // Capacity only: persisted unfinished work always bypasses this cache.
     if (!waitingForDate && summary.failed === failuresBeforeDate) completedDates.add(dateKey);
+    // Failures without durable work are only found again by a full pass.
+    if (!untrackedFailure) fullPassDates.add(dateKey);
   }
   summary.gameDays = [...allDays].sort((a, b) => a - b);
   summary.divisions = divisions.size;

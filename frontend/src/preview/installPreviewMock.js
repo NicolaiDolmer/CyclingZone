@@ -11,7 +11,8 @@ import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
-import { trainingProgramsMockRoute, previewSingleRaceDay } from "./trainingProgramsMock.js"; // #4629
+import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
+import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
 import { trainNowPreviewRoute } from "../components/training/TrainNowPreviewMock.ts"; // #4847
@@ -356,6 +357,14 @@ export function installPreviewMock() {
         let body = null;
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = trainingProgramsMockRoute(method, u.pathname, body, SEED_TRAINING);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+      // #6000: traeningsgrupper (beta), statefuld. ?groups=off = Plan-fanen foer #6000.
+      if (/\/api\/training\/groups/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = trainingGroupsMockRoute(method, u.pathname, body, SEED_TRAINING, PREVIEW_TRAINING_PROGRAMS);
         if (res) return jsonResponse(res.body, res.status);
       }
       // #4847: "Train now" (preview-override af stadie-flaget; ?trainNow=off|locked).

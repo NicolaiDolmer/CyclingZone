@@ -1118,6 +1118,10 @@
       "fatigueLimit": {
         "title": "Fatigue limit",
         "text": "You can set one rule for the team: above a fatigue level you choose, riders run a lighter session instead (the same session on light load, active recovery or rest). A single rider can have his own limit or no limit. The rule is checked on fatigue at the start of each date, so the result is the same whenever you log in. It never changes the plan, so the rider goes back to his program once he is under the limit. You can also choose that the first slot the day after a stage is active recovery. You set it under Program, Fatigue limit, where the last 7 days show when a rule kicked in. Racing always comes first: a rider in a race is not affected."
+      },
+      "trainingGroups": {
+        "title": "Training groups",
+        "text": "A group lets you make one training decision for several riders. Create one under Program, Plan: open 'Plan for' and pick '+ New group'. Give it a name and start from a rider type or pick the riders yourself. A rider can be in one group. A change in a field then applies to the whole group, and riders with a stage keep the stage. 'Fatigue tonight' shows the most tired rider in the group. The order is fixed: a rider's own plan first, then his group's plan, then the team plan. If you change one rider's own fields, his plan wins until you choose 'Follow group' again. You can also put a program on a group under Programs, and give a group its own exception under Fatigue limit."
       }
     },
     "activityfeed": {

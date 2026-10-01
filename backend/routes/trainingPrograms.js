@@ -34,6 +34,7 @@ import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
+import { markRidersOwnPlan, syncGroupsToSquadProgram } from "../lib/trainingGroups.ts"; // #6000
 
 const PASS = (_req, _res, next) => next();
 
@@ -180,6 +181,8 @@ export function createTrainingProgramsRouter({
       else if (riderIds.includes(target)) targets = [target];
       else return res.status(403).json({ error: "not_own_rider" });
       if (targets.length === 0) return res.json({ ok: true, applied: 0 });
+      // #6000: en rytter-tildeling er rytterens egen plan (vinder over gruppen). Foer skrivningen.
+      if (target !== "squad") await markRidersOwnPlan(supabase, teamId, targets);
 
       const { data: rows, error: loadError } = await loadProgramRows(supabase, teamId);
       if (loadError) throw new Error(loadError.message);
@@ -214,6 +217,8 @@ export function createTrainingProgramsRouter({
         captureExceptionFn(new Error(`training programs apply partial (${applied}/${targets.length}): ${firstError.message}`));
         return res.status(500).json({ error: "partial_apply", applied, total: targets.length });
       }
+      // #6000: "hele truppen" saetter ogsaa gruppernes plan, saa de ikke siger noget andet.
+      if (target === "squad") await syncGroupsToSquadProgram(supabase, teamId, program.key, programWeekDaysFor(program.key), captureExceptionFn);
       res.json({ ok: true, applied, programKey: program.key });
     } catch (err) {
       captureExceptionFn(err);
@@ -248,6 +253,7 @@ export function createTrainingProgramsRouter({
         : seedsFor([rider], rows, await teamPlans(teamId))[riderId];
       const days = setProgramCell(current, { weekday, slotIndex, session });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
+      await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
       const now = new Date().toISOString();
       const { error } = row
         ? await updateRow(supabase, row.id, { days, updated_at: now })

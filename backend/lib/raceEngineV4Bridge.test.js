@@ -23,6 +23,7 @@ import {
   passagesFromV4Output,
   rankedFromV4Output,
   stageHasPassageRouteData,
+  buildGcContext,
   __resetRaceEngineV4Cache,
 } from "./raceEngineV4Bridge.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
@@ -439,4 +440,118 @@ test("#2770 adapteren leverer INGEN passager på et endagsløb (dobbelt-tildelin
     isStageRace: false,
   });
   assert.equal(passages, null);
+});
+
+// ── #5978: publiceret GC før etapen (kun orders_gc_v1) ──────────────────────
+
+test("#5978 buildGcContext: eksplicitte tilstande, kun dagens startere, hul fra bedste starter", () => {
+  assert.deepEqual(buildGcContext({ isStageRace: false, stageNumber: 1, standings: [], starterIds: [] }), { status: "one_day" });
+  assert.deepEqual(buildGcContext({ isStageRace: true, stageNumber: 1, standings: [], starterIds: ["a"] }), { status: "first_stage", stage_number: 1 });
+  assert.deepEqual(buildGcContext({ isStageRace: true, stageNumber: 4, standings: null, starterIds: ["a"] }), { status: "missing", stage_number: 4 });
+  // Den førende er udgået: hullet regnes fra den bedste STARTER, ikke fra et nul der ikke er med.
+  const ctx = buildGcContext({
+    isStageRace: true,
+    stageNumber: 4,
+    standings: [
+      { rider_id: "gone", time: 1000 },
+      { rider_id: "b", time: 1010 },
+      { rider_id: "c", time: 1075.5 },
+    ],
+    starterIds: ["b", "c"],
+  });
+  assert.deepEqual(ctx, {
+    status: "standings",
+    stage_number: 4,
+    leader_id: "b",
+    standings: [
+      { rider_id: "b", rank: 1, gap_seconds: 0 },
+      { rider_id: "c", rank: 2, gap_seconds: 65.5 },
+    ],
+  });
+  // Ingen af klassementets ryttere starter: mangler, aldrig et tomt klassement.
+  assert.deepEqual(buildGcContext({ isStageRace: true, stageNumber: 4, standings: [{ rider_id: "x", time: 1 }], starterIds: ["b"] }), { status: "missing", stage_number: 4 });
+});
+
+function gcModules() {
+  return {
+    route: { routeFromStageProfileRow: () => ({ distance_km: 10, segments: [], waypoints: [] }) },
+    entrants: { entrantFromAbilitiesRow: (row, opts) => ({ rider_id: opts.riderId, condition: opts.condition }) },
+    tuning: { RACE_V4_TUNING: {} },
+    orders: { buildStageOrderPlan: () => ({ orders: [], aiEffortByRider: new Map() }) },
+  };
+}
+const GC_ENTRANTS = [
+  { rider_id: "a", team_id: "T1", race_role: "captain", abilities: {}, fatigue: 0 },
+  { rider_id: "b", team_id: "T2", race_role: "captain", abilities: {}, fatigue: 0 },
+];
+
+test("#5978 buildV4StageInput: legacy bærer aldrig gc_context, selv når klassementet gives", () => {
+  const args = { modules: gcModules(), entrants: GC_ENTRANTS, stageProfile: stageProfile(), seedString: "race:2", stageNumber: 2, isStageRace: true };
+  const plain = buildV4StageInput(args);
+  const withGc = buildV4StageInput({ ...args, gcStandings: [{ rider_id: "a", time: 10 }, { rider_id: "b", time: 20 }] });
+  assert.deepEqual(withGc, plain);
+  assert.equal("gc_context" in withGc, false);
+  assert.equal("rules_revision" in withGc, false);
+});
+
+test("#5978 buildV4StageInput: orders_gc_v1 bærer altid en eksplicit gc_context", () => {
+  const args = { modules: gcModules(), entrants: GC_ENTRANTS, stageProfile: stageProfile(), seedString: "race:2", stageNumber: 2, isStageRace: true, rulesRevision: "orders_gc_v1" };
+  assert.deepEqual(buildV4StageInput(args).gc_context, { status: "missing", stage_number: 2 });
+  const withGc = buildV4StageInput({ ...args, gcStandings: [{ rider_id: "b", time: 10 }, { rider_id: "a", time: 25 }] });
+  assert.deepEqual(withGc.gc_context, {
+    status: "standings", stage_number: 2, leader_id: "b",
+    standings: [{ rider_id: "b", rank: 1, gap_seconds: 0 }, { rider_id: "a", rank: 2, gap_seconds: 15 }],
+  });
+  assert.deepEqual(buildV4StageInput({ ...args, stageNumber: 1, gcStandings: [] }).gc_context, { status: "first_stage", stage_number: 1 });
+  assert.deepEqual(buildV4StageInput({ ...args, isStageRace: false }).gc_context, { status: "one_day" });
+});
+
+// Runnerens to kaldsteder (raceRunner.js er en delt fil; koblingen testes her).
+test("#5978 runner: kun orders_gc_v1 sender klassementet FØR etapen, på begge stier", async () => {
+  const { buildRaceResults, buildStageRowsAccumulated } = await import("./raceRunner.js");
+  const race = { id: "race-5978", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 2 };
+  const stages = [
+    { ...stageProfile({ stage_number: 1, id: "sp-1", race_id: race.id }), profile_type: "flat", finale_type: "bunch_sprint", climbs: [] },
+    { ...stageProfile({ stage_number: 2, id: "sp-2", race_id: race.id }) },
+  ];
+  const entrants = makeEntrants(16).map((e) => ({ ...e, team_name: e.team_id, rider_name: e.rider_id }));
+  const spy = (calls) => ({
+    version: ENGINE_VERSION_V4,
+    simulateStage: (args) => {
+      calls.push(args);
+      return {
+        ranked: args.entrants.map((e, i) => ({ rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: i * 5, components: {} })),
+        incidents: [], passages: null, timeline: null,
+      };
+    },
+  });
+
+  const legacyCalls = [];
+  buildRaceResults({ race, stages, entrants, pointsLookup: {}, v4Engine: spy(legacyCalls) });
+  assert.equal(legacyCalls.length, 2);
+  assert.ok(legacyCalls.every((a) => !("gcStandings" in a) && !("rulesRevision" in a)), "legacy-kaldet er uændret");
+
+  const calls = [];
+  buildRaceResults({ race, stages, entrants, pointsLookup: {}, v4Engine: spy(calls), rulesRevision: "orders_gc_v1" });
+  assert.deepEqual(calls[0].gcStandings, [], "1. etape: intet klassement endnu");
+  assert.equal(calls[1].gcStandings.length, entrants.length);
+  // Klassementet efter etape 1 (spionen gav r000 bedst, derefter stigende tid): IKKE etape 2's resultat.
+  assert.equal(calls[1].gcStandings[0].rider_id, "r000");
+  assert.ok(calls[1].gcStandings[1].time > calls[1].gcStandings[0].time);
+
+  // Etape-for-etape-stien: tidligere etaperækker -> klassement; mangler de -> null (motoren diagnosticerer).
+  const stageRows = buildRaceResults({ race, stages, entrants, pointsLookup: {}, v4Engine: spy([]) }).resultRows
+    .filter((r) => r.result_type === "stage" && r.stage_number === 1);
+  const single = [];
+  buildStageRowsAccumulated({ race, stagesSorted: stages, stageIndex: 1, entrants, priorStageRows: stageRows, v4Engine: spy(single), rulesRevision: "orders_gc_v1" });
+  assert.equal(single[0].gcStandings[0].rider_id, "r000");
+  const missing = [];
+  buildStageRowsAccumulated({ race, stagesSorted: stages, stageIndex: 1, entrants, priorStageRows: [], v4Engine: spy(missing), rulesRevision: "orders_gc_v1" });
+  assert.equal(missing[0].gcStandings, null);
+  const first = [];
+  buildStageRowsAccumulated({ race, stagesSorted: stages, stageIndex: 0, entrants, v4Engine: spy(first), rulesRevision: "orders_gc_v1" });
+  assert.deepEqual(first[0].gcStandings, []);
+  const legacySingle = [];
+  buildStageRowsAccumulated({ race, stagesSorted: stages, stageIndex: 1, entrants, priorStageRows: stageRows, v4Engine: spy(legacySingle) });
+  assert.equal("gcStandings" in legacySingle[0], false);
 });

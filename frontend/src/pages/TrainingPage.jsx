@@ -69,6 +69,12 @@ import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
 import { useFatigueRules } from "../components/training/useFatigueRules.ts";
 import { Segmented } from "../components/ui/Segmented.jsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
+// #6000: traeningsgrupper (beta, egne filer, minimal indsaettelse her).
+import TrainingGroupsPlan from "../components/training/TrainingGroupsPlan.tsx";
+import TrainingGroupDialog from "../components/training/groups/TrainingGroupDialog.tsx";
+import GroupFatigueExceptions from "../components/training/groups/GroupFatigueExceptions.tsx";
+import { useTrainingGroups } from "../components/training/groups/useTrainingGroups.ts";
+import { planForWithGroups, groupNameByRider, groupIdOf, groupValue, NEW_GROUP_VALUE } from "../components/training/groups/trainingGroupsModel.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
 import { useTrainNow } from "../components/training/TrainNowClient.ts";
 import { trainNowRunGate } from "../components/training/TrainNowState.ts";
@@ -575,6 +581,9 @@ export default function TrainingPage() {
   // false = Ugeplan-fanen præcis som i dag. Efter en tildeling/celle-rettelse
   // genindlæses useTraining, så planen har ÉN kilde (riderWeekPlans).
   const programs = useTrainingPrograms({ onChanged: training.refresh });
+  // #6000: traeningsgrupper (beta). groupDialog: null = lukket, { group: null } = ny.
+  const trainingGroups = useTrainingGroups({ onChanged: training.refresh });
+  const [groupDialog, setGroupDialog] = useState(null);
   // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
   const trainNow = useTrainNow({ onSettled: training.refresh });
   const runGate = trainNowRunGate(trainNow.status, { trainedToday: !!todayRun, dayClose });
@@ -2692,14 +2701,48 @@ export default function TrainingPage() {
       (weekday) => (draft[weekday]?.intensity ?? "normal") !== (saved[weekday]?.intensity ?? "normal"),
     ).length;
     const ordered = sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc");
-    const hasOwn = (r) => riderWeekPlans[r.id] != null;
-    const options = [
+    // #6000: en rytter der foelger en gruppe har gruppens plan, ikke en egen.
+    const groupOf = trainingGroups.enabled ? groupNameByRider(trainingGroups.groups) : new Map();
+    const hasOwn = (r) => riderWeekPlans[r.id] != null && !groupOf.has(r.id);
+    const baseOptions = [
       { value: "team", label: t("weekPlan.team", { n: riders.length }) },
       ...ordered.map((r) => ({
         value: r.id,
         label: `${r.firstname} ${r.lastname}${hasOwn(r) ? ` · ${t("individualWeekPlanBadge")}` : ""}`,
       })),
     ];
+    const options = trainingGroups.enabled
+      ? planForWithGroups(baseOptions, trainingGroups.groups, {
+        count: (n) => t("groups.count", { n }),
+        newGroup: t("groups.newOption"),
+        followerLabel: (id) => (groupOf.has(id) ? `${riderByIdMap.get(id)?.firstname} ${riderByIdMap.get(id)?.lastname} · ${groupOf.get(id)}` : null),
+      })
+      : baseOptions;
+    const choosePlanFor = (value) => {
+      if (value === NEW_GROUP_VALUE) { setGroupDialog({ group: null }); return; }
+      setPlanCellError(null);
+      setWeekPlanFor(value);
+    };
+    const activeGroup = trainingGroups.enabled ? trainingGroups.groups.find((g) => g.id === groupIdOf(weekPlanFor)) : null;
+    if (activeGroup) {
+      return (
+        <TrainingGroupsPlan
+          weekdays={WEEKDAY_KEYS}
+          todayWeekday={todayWeekday}
+          columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
+          planFor={weekPlanFor}
+          planForOptions={options}
+          onPlanFor={choosePlanFor}
+          group={activeGroup}
+          client={trainingGroups}
+          forecast={cellsOn ? fatigueForecast.forecast : null}
+          lockedFor={(id) => raceSlotsFor(fatigueForecast.forecast, id)}
+          catalog={programs.catalog}
+          riderShortName={(id) => `${riderByIdMap.get(id)?.firstname?.charAt(0) ?? ""}. ${riderByIdMap.get(id)?.lastname ?? ""}`}
+          onEdit={() => setGroupDialog({ group: activeGroup })}
+        />
+      );
+    }
     // Holdets tal: den mest traette rytter i aften (et gennemsnit ville skjule
     // netop den rytter grænsen handler om).
     let forecastEntry = null;
@@ -2738,7 +2781,7 @@ export default function TrainingPage() {
         columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
         planFor={key}
         planForOptions={options}
-        onPlanFor={(value) => { setPlanCellError(null); setWeekPlanFor(value); }}
+        onPlanFor={choosePlanFor}
         forecast={forecastEntry ? (
           <FatigueForecast
             entry={forecastEntry}
@@ -2798,16 +2841,52 @@ export default function TrainingPage() {
               type: r.primary_type ?? null,
             }))}
             catalog={programs.catalog}
-            busy={programs.busy}
-            onApply={programs.applyProgram}
+            busy={programs.busy || trainingGroups.busy}
+            groups={trainingGroups.enabled ? trainingGroups.groups.map((g) => ({ value: groupValue(g.id), label: t("groups.putOnGroup", { name: g.name }) })) : []}
+            onApply={(programKey, target) => (groupIdOf(target)
+              ? trainingGroups.putProgram(groupIdOf(target), programKey)
+              : programs.applyProgram(programKey, target))}
             sessionShort={(session) => t(`mobile.sessionShort_${session}`, {
               defaultValue: session === "rest" || session === "recovery"
                 ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`),
             })}
           />
         ) : activeSub === "limit" && fatigueRulesOn ? (
-          <FatigueRulePanel rules={fatigueRules} />
+          <FatigueRulePanel
+            rules={fatigueRules}
+            groupExceptions={trainingGroups.enabled && trainingGroups.groups.length > 0
+              ? <GroupFatigueExceptions groups={trainingGroups.groups} busy={trainingGroups.busy} onSave={trainingGroups.setFatigue} />
+              : null}
+          />
         ) : renderPlanSubTab()}
+        {groupDialog && (
+          <TrainingGroupDialog
+            open
+            group={groupDialog.group}
+            riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
+              id: r.id, name: `${r.firstname} ${r.lastname}`, type: r.primary_type ?? null,
+            }))}
+            groups={trainingGroups.groups}
+            busy={trainingGroups.busy}
+            onClose={() => setGroupDialog(null)}
+            onSave={async (name, riderIds) => {
+              const editing = groupDialog.group;
+              const result = editing ? await trainingGroups.update(editing.id, { name, riderIds }) : await trainingGroups.create(name, riderIds);
+              if (!result.ok) return false;
+              const created = editing ?? result.groups?.[result.groups.length - 1];
+              if (created) { setPlanCellError(null); setWeekPlanFor(groupValue(created.id)); }
+              setGroupDialog(null);
+              return true;
+            }}
+            onDelete={async () => {
+              const result = await trainingGroups.remove(groupDialog.group.id);
+              if (!result.ok) return false;
+              setWeekPlanFor("team");
+              setGroupDialog(null);
+              return true;
+            }}
+          />
+        )}
       </div>
     );
   }

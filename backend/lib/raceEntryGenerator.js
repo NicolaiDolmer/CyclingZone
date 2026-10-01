@@ -25,6 +25,7 @@ import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.j
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
+import { isRaceLockedForTeam, loadTrainNowLockedDatesByTeam, raceStageDates } from "./trainNowLock.js"; // #6006
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -265,6 +266,13 @@ export async function runRaceEntryGenerator({
     }
     if (earliest !== null) firstStartByRace.set(raceId, earliest);
   }
+  // #6006: "Train now"-laase (I3, #5267). En enhed med en etape paa en dato holdet har
+  // trykket for, er afgjort: ingen nye ryttere, ingen fjernede. Kun datoer fra i dag.
+  const todayStr = copenhagenDateString(new Date(nowMs));
+  const raceDatesByRace = new Map([...schedByRace].map(([raceId, rows]) => [raceId, raceStageDates(rows)]));
+  const trainNowLockedDates = await loadTrainNowLockedDatesByTeam({
+    supabase, dates: [...raceDatesByRace.values()].flat().filter((date) => date >= todayStr),
+  });
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({
@@ -658,6 +666,9 @@ export async function runRaceEntryGenerator({
         const isWithdrawn = withdrawnByRace.get(race.id)?.has(team.id);
         const hasManual = manualByRaceTeam.has(key);
         const isStarted = startedRaceIds.has(race.id);
+        const isTrainNowLocked = isRaceLockedForTeam({ // #6006
+          lockedDatesByTeam: trainNowLockedDates, teamId: team.id, raceDates: raceDatesByRace.get(race.id),
+        });
         const sizeRule = selectionSizeForRace(race);
         const manualRiders = manualRidersByRaceTeam.get(key) || [];
         const fullManual = hasManual && manualRiders.length >= sizeRule.max;
@@ -675,7 +686,7 @@ export async function runRaceEntryGenerator({
           && ownerTeamIds.has(team.id)
           && (!nearRaceIds.has(race.id) || existingUnitRiders.length > 0);
         // Afmeldt, igangværende, ryddet, eller FULD manuel trup → spring over (lås rytter-tid).
-        if (isWithdrawn || fullManual || isStarted || isCleared || lateFillBlocked) {
+        if (isWithdrawn || fullManual || isStarted || isCleared || lateFillBlocked || isTrainNowLocked) {
           skipped += 1;
           // #3119-opfølgning (CYCLINGZONE-44, prod 5/8): en FULD manuel trup skal stadig
           // PRUNES. Enheden genererer ingen picks, men dens forældede is_auto_filled=true-
@@ -694,7 +705,7 @@ export async function runRaceEntryGenerator({
           // #4201: en late_fill-blokeret enhed maa ALDRIG stages med tomme picks —
           // det ville diffe spillerens egne raekker vaek (hans auto-udfyld skriver
           // ogsaa is_auto_filled=true). Sweepen skriver kun ind i tomme enheder.
-          if (fullManual && !isWithdrawn && !isStarted && !isCleared && !lateFillBlocked) {
+          if (fullManual && !isWithdrawn && !isStarted && !isCleared && !lateFillBlocked && !isTrainNowLocked) {
             staged.push({ race_id: race.id, team_id: team.id, picks: [] });
           }
           // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte/ryddede gør ikke).
@@ -716,6 +727,8 @@ export async function runRaceEntryGenerator({
             // ellers regnes spillerens egne ryttere som frie og bliver udtaget til et
             // overlappende naboloeb → dobbeltbooking (samme klasse som #3113).
             if (lateFillBlocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
+            // #6006: en Train now-laast enhed er frosset; dens ryttere er bundet i vinduet.
+            if (isTrainNowLocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
             if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
           }
           continue;

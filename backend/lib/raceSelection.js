@@ -9,6 +9,7 @@ import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDate
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 import { isRaceDateTrainNowLocked } from "./trainNowLock.js";
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
+import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
 export function validateSelection({
@@ -197,6 +198,10 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     availableCount: ctx.availableCount,
   });
   if (!result.ok) return { ok: false, status: 400, error: result.errors[0], errors: result.errors };
+  // #6009: en allerede KOERT loebsdag binder ogsaa (bindingen frigives ved completed). Fail-closed.
+  const raced = await loadRidersAlreadyRacedInSpan({ supabase, race, riderIds });
+  if (raced.error) return { ok: false, status: 503, error: "selection_lookup_failed" };
+  if (raced.data.size) return { ok: false, status: 409, error: "selection_rider_bound", bound_rider_ids: [...raced.data] };
 
   return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, ctx };
 }

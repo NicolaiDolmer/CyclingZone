@@ -388,6 +388,8 @@ const SECTION_DEFS = [
       { id: "formFatiguePerRaceDay", kind: "text" },
       // #4854/#5620: spillerens egen traethedsgraense, kun naar flaget er taendt for viewereren.
       { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
+      // #6000: traeningsgrupper, kun naar flaget er taendt for viewereren.
+      { id: "trainingGroups", kind: "text", flag: "training_groups" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —

@@ -14,6 +14,7 @@ import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
+import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -965,6 +966,11 @@ router.use("/training/train-now", createTrainNowRouter({
 // #5944: "Enter races" / "Train only" pr. ungdomstrup.
 router.use("/youth-race-opt-out", createYouthRaceOptOutRouter({
   supabase, requireAuth, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter, captureExceptionFn: captureException,
+}));
+// #6000: traeningsgrupper (beta). Ogsaa foer `/training/:riderId`.
+router.use("/training/groups", createTrainingGroupsRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException, planLock: trainNowPlanLock,
 }));
 // #4854/#5620: spillerens traeningsregler (beta). Ogsaa foer `/training/:riderId`.
 router.use("/training/fatigue-rules", createTrainingFatigueRulesRouter({
@@ -6384,6 +6390,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
+    // #6006 (I3): samme "Train now"-laas som PUT/bulk/auto-fill — en laast dag er afgjort.
+    for (const r of target) {
+      if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: r.id })) {
+        return res.status(409).json({ error: "selection_train_now_locked" });
+      }
+    }
 
     // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
     // det er en eksplicit handling der supersederer en evt. tidligere "Ryd dag/alt"
