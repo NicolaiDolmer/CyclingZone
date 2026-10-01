@@ -66,6 +66,11 @@ export const GC_THREAT_TUNING = Object.freeze({
   // Hvor mange sekunder et udbrud plausibelt kan vinde pr. resterende km paa
   // aabent terraen, hvis ingen reagerer.
   potentialSecondsPerOpenKm: 1.5,
+  // #5955: loft paa det AABNE terraens fremskrivning. Uden loft blev naesten
+  // enhver klassementsrytter i et udbrud tidligt paa en lang etape vurderet
+  // som alvorlig (aabne km x sats), selv om feltet aldrig giver et udbrud
+  // ubegraenset plads. Stigningsleddet (styrkeforholdet) er ikke loftet.
+  potentialOpenCapSeconds: 150,
   // Pr. resterende stignings-km, skaleret med (styrkeforhold - 1): en staerkere
   // klatrer vinder tid op ad bakke, en svagere taber den igen.
   potentialSecondsPerClimbKm: 10,
@@ -250,7 +255,7 @@ export function assessGcThreat(input: {
       const strength = clamp(strengthRaw, ratioLo, ratioHi);
       const potential = Math.max(
         0,
-        terrain.openKm * tuning.potentialSecondsPerOpenKm + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1),
+        Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1),
       );
       const margin = deficit - lead - potential;
       const isRival = strengthRaw >= tuning.rivalStrengthMin;

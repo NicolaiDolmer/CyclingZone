@@ -139,6 +139,83 @@ export function capPreventiveIntensity(plan: TeamReactionPlan, fullIntensityCost
   return Math.max(0, Math.min(plan.intensity, plan.budgetRemaining / fullIntensityCostBound));
 }
 
+// ── #5955 (ejer-valg B 1/10, KUN orders_gc_v1): GC-bremsen i lad-gaa-fasen ──
+//
+// Under legacy roerer ingen ordre lad-gaa-fasen (#5812-kontrakten): hullet
+// vokser mod loftet uanset hvad holdene vil. Under orders_gc_v1 maa et hold
+// ved en REEL GC-trussel bremse fasen og holde hullet nede:
+//   - et hold hvis GC-reaktion er aktiv (neutral eller den forebyggende
+//     lad-gaa-undtagelse), med de hjaelpere der allerede reagerer, og
+//   - et hold med eksplicit jagtordre, men kun naar dets GC-rytter er truet
+//     (moderat eller alvorlig). En jagtordre uden GC-trussel bremser ikke:
+//     feltet lader stadig dagens udbrud faa sit forspring.
+// Bremsen er arbejde: de bremsende ryttere betaler for lad-gaa-km'ene i samme
+// valuta som jagten, og den forebyggende undtagelses budget daekker hele
+// segmentet (capPreventiveIntensity), saa bremsen holder sig inden for det
+// eksisterende budget pr. hold pr. etape. Bremsen er bounded (maxBrake < 1):
+// et udbrud faar altid noget plads, og ingen indhentning er garanteret.
+
+export const LET_GO_BRAKE_TUNING = Object.freeze({
+  /** Hoejeste andel af lad-gaa-vaeksten bremsen kan fjerne (aldrig hele). */
+  maxBrake: 0.75,
+  /** Effektive bremse-ryttere (fuld effort, friske) der giver den fulde bremse. */
+  referenceBrakers: 4,
+});
+
+/** Et holds beslutning for segmentet, som bremsen laeser den (strukturel type). */
+export type LetGoBrakeDecision = {
+  teamId: string;
+  threat: GcThreat;
+  stance: ReactionStance;
+  plan: Pick<TeamReactionPlan, "intensity">;
+};
+
+/**
+ * Holdene der bremser lad-gaa-fasen foran `chaseGroupId`: GC-rytteren sidder i
+ * den jagtgruppe, og holdet enten reagerer (plan > 0) eller har eksplicit
+ * jagtordre ved en reel trussel.
+ */
+export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chaseGroupId: string): Set<string> {
+  const out = new Set<string>();
+  for (const d of decisions) {
+    if (d.threat.chase_group_id !== chaseGroupId) continue;
+    const reacting = d.plan.intensity > 0;
+    const threatenedChase = d.stance === "chase" && d.threat.severity !== "none";
+    if (reacting || threatenedChase) out.add(d.teamId);
+  }
+  return out;
+}
+
+/**
+ * Bremsens styrke i [0, maxBrake] og de ryttere der betaler for den. Kun
+ * ryttere fra de bremsende hold, der allerede arbejder i jagtplanen
+ * (`chaserWork`: effort-vaegt, for reaktioner skaleret med intensiteten), og
+ * hver taeller med sin friskhed: et traet hold bremser svagere.
+ */
+export function letGoBrake(input: {
+  chaserWork: ReadonlyMap<string, number>;
+  brakingTeamIds: ReadonlySet<string>;
+  entrants: Readonly<Record<string, Entrant>>;
+  riders: Readonly<Record<string, RiderState>>;
+}): { fraction: number; work: Map<string, number> } {
+  const tuning = LET_GO_BRAKE_TUNING;
+  const work = new Map<string, number>();
+  if (input.brakingTeamIds.size === 0) return { fraction: 0, work };
+  let pull = 0;
+  for (const riderId of [...input.chaserWork.keys()].sort((a, b) => a.localeCompare(b))) {
+    const weight = input.chaserWork.get(riderId) ?? 0;
+    const teamId = input.entrants[riderId]?.team_id;
+    if (!(weight > 0) || typeof teamId !== "string" || !input.brakingTeamIds.has(teamId)) continue;
+    const factor = input.riders[riderId]?.team_cp_factor;
+    const freshness = Math.max(0, Math.min(1, Number.isFinite(factor) ? (factor as number) : 1));
+    pull += weight * freshness;
+    work.set(riderId, weight);
+  }
+  if (!(pull > 0) || !(tuning.referenceBrakers > 0)) return { fraction: 0, work: new Map() };
+  const fraction = tuning.maxBrake * Math.max(0, Math.min(1, pull / tuning.referenceBrakers));
+  return { fraction, work };
+}
+
 function reactionEvent(km: number, teamId: string, status: string, reason: string, threat: GcThreat, mode: TeamReactionMode | null): TimelineEvent {
   return {
     km,
