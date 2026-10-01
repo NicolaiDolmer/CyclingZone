@@ -72,8 +72,8 @@ export function trainingGroupsMockRoute(
   }
   const riderIds = Object.keys(seed.condition ?? {});
   groups ??= riderIds.length ? [{
-    id: "g-1", name: "Climbers", days: null, programKey: null, fatigue: null,
-    members: riderIds.slice(-1).map((riderId) => ({ riderId, followsGroup: true })),
+    id: "g-1", name: "Climbers", days: null, programKey: null, fatigue: { threshold: 70, fallback: "light" },
+    members: riderIds.slice(0, 1).map((riderId) => ({ riderId, followsGroup: true })),
   }] : [];
   const match = pathname.match(/^\/api\/training\/groups\/?([^/]*)\/?([^/]*)$/);
   const id = match?.[1] || null;
