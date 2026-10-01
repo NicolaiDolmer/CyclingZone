@@ -93,3 +93,16 @@ test("#5957 korrelationsanker: v4 rangerer specialisterne efter evnen paa prod-l
   }
   assert.deepEqual(failures, [], `korrelationsankeret fejler:\n${failures.join("\n")}\n${JSON.stringify(summarize(rows))}`);
 });
+
+// #6049: prod-divisionernes felter er ensartede (mange ryttere taet paa den
+// bedste). Ankeret ovenfor fangede ikke det resterende fald paa flad; et felt
+// fra et smalt evne-baand goer. v4 skal ordne det mindst som v3 (lille margin).
+test("#6049 korrelationsanker: flad paa ensartede divisionsfelter ordnes efter evnen", async () => {
+  const population = JSON.parse(readFileSync(POPULATION, "utf8"));
+  const stagesFile = JSON.parse(readFileSync(STAGES, "utf8"));
+  const stages = (Array.isArray(stagesFile) ? stagesFile : stagesFile.stages).filter((s) => s.profile_type === "flat");
+  const band = { ...population, riders: population.riders.filter((r) => { const s = Number(r.abilities?.sprint) || 0; return s >= 5 && s <= 30; }) };
+  const rows = await offlineCorrelation({ population: band, stages, seeds: ["s1"], fieldSize: 140, orderMode: "ai", divisionFields: true });
+  const mean = (k) => { const v = rows.map((r) => r[k]).filter(Number.isFinite); return v.reduce((s, x) => s + x, 0) / v.length; };
+  assert.ok(mean("v4") >= 0.7 && mean("v4") >= mean("v3") - 0.05, `flad, ensartede felter: v4 ${mean("v4").toFixed(2)} mod v3 ${mean("v3").toFixed(2)}`);
+});
