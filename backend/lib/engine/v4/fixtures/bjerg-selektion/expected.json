@@ -246,7 +246,7 @@
         "params": {
           "kind": "placement_gap",
           "group_id": "finale-winner-0",
-          "gap_seconds": 2.96
+          "gap_seconds": 3.06
         }
       },
       {
@@ -265,7 +265,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "finale-tier-1",
-          "gap_seconds": 2.96
+          "gap_seconds": 3.06
         }
       },
       {
@@ -273,7 +273,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "finale-tier-2",
-          "gap_seconds": 5.85
+          "gap_seconds": 6.01
         }
       },
       {
@@ -329,12 +329,12 @@
             {
               "rider_id": "r02",
               "rank": 2,
-              "gap": 2.95
+              "gap": 3.05
             },
             {
               "rider_id": "r03",
               "rank": 3,
-              "gap": 5.84
+              "gap": 6.01
             },
             {
               "rider_id": "r04",
@@ -389,7 +389,7 @@
     {
       "rider_id": "r02",
       "rank": 2,
-      "time_seconds": 13375.93,
+      "time_seconds": 13376.03,
       "group_id": "finale-tier-1",
       "status": "finished",
       "injury_days": null
@@ -397,7 +397,7 @@
     {
       "rider_id": "r03",
       "rank": 3,
-      "time_seconds": 13378.82,
+      "time_seconds": 13378.99,
       "group_id": "finale-tier-2",
       "status": "finished",
       "injury_days": null
@@ -467,7 +467,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r12",
+      "rider_id": "r15",
       "rank": 12,
       "time_seconds": 14181.64,
       "group_id": "chase-3002",
@@ -475,7 +475,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r15",
+      "rider_id": "r12",
       "rank": 13,
       "time_seconds": 14181.64,
       "group_id": "chase-3002",
@@ -483,7 +483,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r10",
+      "rider_id": "r11",
       "rank": 14,
       "time_seconds": 14181.64,
       "group_id": "chase-3002",
@@ -491,7 +491,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r11",
+      "rider_id": "r10",
       "rank": 15,
       "time_seconds": 14181.64,
       "group_id": "chase-3002",
@@ -725,7 +725,7 @@
           "rider_ids": [
             "r02"
           ],
-          "gap_seconds": 2.956760383095321
+          "gap_seconds": 3.057718361071068
         },
         {
           "group_id": "finale-tier-2",
@@ -733,7 +733,7 @@
           "rider_ids": [
             "r03"
           ],
-          "gap_seconds": 5.846681908548257
+          "gap_seconds": 6.013886490477473
         },
         {
           "group_id": "solo-3000",
@@ -906,25 +906,25 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r12",
+          "rider_id": "r15",
           "passage_rank": 12,
           "points": 4,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r15",
+          "rider_id": "r12",
           "passage_rank": 13,
           "points": 3,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r10",
+          "rider_id": "r11",
           "passage_rank": 14,
           "points": 2,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r11",
+          "rider_id": "r10",
           "passage_rank": 15,
           "points": 1,
           "bonus_seconds": 0
@@ -989,19 +989,19 @@
     },
     {
       "rider_id": "r10",
-      "sprint_points": 2,
-      "kom_points": 0,
-      "bonus_seconds": 0
-    },
-    {
-      "rider_id": "r11",
       "sprint_points": 1,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
+      "rider_id": "r11",
+      "sprint_points": 2,
+      "kom_points": 0,
+      "bonus_seconds": 0
+    },
+    {
       "rider_id": "r12",
-      "sprint_points": 4,
+      "sprint_points": 3,
       "kom_points": 0,
       "bonus_seconds": 0
     },
@@ -1019,7 +1019,7 @@
     },
     {
       "rider_id": "r15",
-      "sprint_points": 3,
+      "sprint_points": 4,
       "kom_points": 0,
       "bonus_seconds": 0
     }

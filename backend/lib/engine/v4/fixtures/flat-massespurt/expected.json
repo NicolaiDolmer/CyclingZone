@@ -70,21 +70,21 @@
           "into_group_id": "finale-bunch-0",
           "rider_ids": [
             "r01",
-            "r04",
             "r02",
+            "r04",
             "r03",
-            "r07",
-            "r06",
             "r14",
-            "r09",
             "r15",
+            "r07",
+            "r09",
+            "r06",
             "r05",
-            "r11",
             "r10",
-            "r13",
             "r08",
-            "r12",
-            "r16"
+            "r11",
+            "r13",
+            "r16",
+            "r12"
           ]
         }
       },
@@ -109,12 +109,12 @@
               "gap": 0
             },
             {
-              "rider_id": "r04",
+              "rider_id": "r02",
               "rank": 2,
               "gap": 0
             },
             {
-              "rider_id": "r02",
+              "rider_id": "r04",
               "rank": 3,
               "gap": 0
             },
@@ -124,17 +124,17 @@
               "gap": 0
             },
             {
-              "rider_id": "r07",
+              "rider_id": "r14",
               "rank": 5,
               "gap": 0
             },
             {
-              "rider_id": "r06",
+              "rider_id": "r15",
               "rank": 6,
               "gap": 0
             },
             {
-              "rider_id": "r14",
+              "rider_id": "r07",
               "rank": 7,
               "gap": 0
             },
@@ -144,7 +144,7 @@
               "gap": 0
             },
             {
-              "rider_id": "r15",
+              "rider_id": "r06",
               "rank": 9,
               "gap": 0
             },
@@ -169,7 +169,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r04",
+      "rider_id": "r02",
       "rank": 2,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -177,7 +177,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r02",
+      "rider_id": "r04",
       "rank": 3,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -193,7 +193,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r07",
+      "rider_id": "r14",
       "rank": 5,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -201,7 +201,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r06",
+      "rider_id": "r15",
       "rank": 6,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -209,7 +209,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r14",
+      "rider_id": "r07",
       "rank": 7,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -225,7 +225,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r15",
+      "rider_id": "r06",
       "rank": 9,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -241,7 +241,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r11",
+      "rider_id": "r10",
       "rank": 11,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -249,7 +249,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r10",
+      "rider_id": "r08",
       "rank": 12,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -257,7 +257,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r13",
+      "rider_id": "r11",
       "rank": 13,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -265,7 +265,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r08",
+      "rider_id": "r13",
       "rank": 14,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -273,7 +273,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r12",
+      "rider_id": "r16",
       "rank": 15,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -281,7 +281,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r16",
+      "rider_id": "r12",
       "rank": 16,
       "time_seconds": 14711.86,
       "group_id": "finale-bunch-0",
@@ -452,21 +452,21 @@
           "kind": "peloton",
           "rider_ids": [
             "r01",
-            "r04",
             "r02",
+            "r04",
             "r03",
-            "r07",
-            "r06",
             "r14",
-            "r09",
             "r15",
+            "r07",
+            "r09",
+            "r06",
             "r05",
-            "r11",
             "r10",
-            "r13",
             "r08",
-            "r12",
-            "r16"
+            "r11",
+            "r13",
+            "r16",
+            "r12"
           ],
           "gap_seconds": 0
         }
@@ -489,13 +489,13 @@
           "bonus_seconds": 10
         },
         {
-          "rider_id": "r04",
+          "rider_id": "r02",
           "passage_rank": 2,
           "points": 30,
           "bonus_seconds": 6
         },
         {
-          "rider_id": "r02",
+          "rider_id": "r04",
           "passage_rank": 3,
           "points": 20,
           "bonus_seconds": 4
@@ -507,19 +507,19 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r07",
+          "rider_id": "r14",
           "passage_rank": 5,
           "points": 16,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r06",
+          "rider_id": "r15",
           "passage_rank": 6,
           "points": 14,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r14",
+          "rider_id": "r07",
           "passage_rank": 7,
           "points": 12,
           "bonus_seconds": 0
@@ -531,7 +531,7 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r15",
+          "rider_id": "r06",
           "passage_rank": 9,
           "points": 8,
           "bonus_seconds": 0
@@ -543,31 +543,31 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r11",
+          "rider_id": "r10",
           "passage_rank": 11,
           "points": 6,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r10",
+          "rider_id": "r08",
           "passage_rank": 12,
           "points": 5,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r13",
+          "rider_id": "r11",
           "passage_rank": 13,
           "points": 4,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r08",
+          "rider_id": "r13",
           "passage_rank": 14,
           "points": 3,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r12",
+          "rider_id": "r16",
           "passage_rank": 15,
           "points": 2,
           "bonus_seconds": 0
@@ -584,9 +584,9 @@
     },
     {
       "rider_id": "r02",
-      "sprint_points": 20,
+      "sprint_points": 30,
       "kom_points": 0,
-      "bonus_seconds": 4
+      "bonus_seconds": 6
     },
     {
       "rider_id": "r03",
@@ -596,9 +596,9 @@
     },
     {
       "rider_id": "r04",
-      "sprint_points": 30,
+      "sprint_points": 20,
       "kom_points": 0,
-      "bonus_seconds": 6
+      "bonus_seconds": 4
     },
     {
       "rider_id": "r05",
@@ -608,19 +608,19 @@
     },
     {
       "rider_id": "r06",
-      "sprint_points": 14,
+      "sprint_points": 8,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
       "rider_id": "r07",
-      "sprint_points": 16,
+      "sprint_points": 12,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
       "rider_id": "r08",
-      "sprint_points": 3,
+      "sprint_points": 5,
       "kom_points": 0,
       "bonus_seconds": 0
     },
@@ -632,37 +632,37 @@
     },
     {
       "rider_id": "r10",
-      "sprint_points": 5,
-      "kom_points": 0,
-      "bonus_seconds": 0
-    },
-    {
-      "rider_id": "r11",
       "sprint_points": 6,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
-      "rider_id": "r12",
-      "sprint_points": 2,
-      "kom_points": 0,
-      "bonus_seconds": 0
-    },
-    {
-      "rider_id": "r13",
+      "rider_id": "r11",
       "sprint_points": 4,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
+      "rider_id": "r13",
+      "sprint_points": 3,
+      "kom_points": 0,
+      "bonus_seconds": 0
+    },
+    {
       "rider_id": "r14",
-      "sprint_points": 12,
+      "sprint_points": 16,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
       "rider_id": "r15",
-      "sprint_points": 8,
+      "sprint_points": 14,
+      "kom_points": 0,
+      "bonus_seconds": 0
+    },
+    {
+      "rider_id": "r16",
+      "sprint_points": 2,
       "kom_points": 0,
       "bonus_seconds": 0
     }

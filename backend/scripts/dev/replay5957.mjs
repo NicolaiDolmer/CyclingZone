@@ -248,13 +248,38 @@ export function summarize(rows) {
  * Isolerer om rolle-/ordre-/holdspils-laget er det der skiller prod-felter fra
  * flip-gatens orders=none-maaling.
  */
-export async function offlineCorrelation({ population, stages, seeds, fieldSize, orderMode }) {
+/**
+ * Prod-lignende felter: prod-loeb koeres i en liga-division, saa feltet kommer
+ * fra hold af samme niveau (smallere evne-spredning end et felt trukket fra
+ * hele populationen). Etaperne fordeles round-robin over divisionerne, og hver
+ * etape faar sit felt fra netop den divisions ryttere.
+ */
+export function divisionBatches(population, stages) {
+  const divisionByTeam = new Map((population.teams || []).map((t) => [t.id, t.league_division_id ?? null]));
+  const ridersByDivision = new Map();
+  for (const r of population.riders) {
+    const d = divisionByTeam.get(r.team_id);
+    if (d == null) continue;
+    if (!ridersByDivision.has(d)) ridersByDivision.set(d, []);
+    ridersByDivision.get(d).push(r);
+  }
+  const divisions = [...ridersByDivision.keys()].sort((a, b) => a - b);
+  if (divisions.length === 0) return [{ population, stages }];
+  const stagesByDivision = new Map(divisions.map((d) => [d, []]));
+  stages.forEach((s, i) => stagesByDivision.get(divisions[i % divisions.length]).push(s));
+  return divisions
+    .filter((d) => stagesByDivision.get(d).length > 0)
+    .map((d) => ({ population: { ...population, riders: ridersByDivision.get(d) }, stages: stagesByDivision.get(d) }));
+}
+
+export async function offlineCorrelation({ population, stages, seeds, fieldSize, orderMode, divisionFields = false }) {
   const { runHeadToHead } = await import("../headToHeadV4.js");
   const { rankedFromV4Output } = await import("../../lib/raceEngineV4Bridge.js");
   const abilitiesById = new Map(population.riders.map((r) => [r.id, r.abilities]));
+  const batches = divisionFields ? divisionBatches(population, stages) : [{ population, stages }];
   const rows = [];
   for (const seed of seeds) {
-    const h2h = runHeadToHead({ population, stages, seedInput: seed, fieldSize, orderMode });
+    const h2h = batches.flatMap((b) => runHeadToHead({ population: b.population, stages: b.stages, seedInput: seed, fieldSize, orderMode }));
     for (const r of h2h) {
       const ability = RELEVANT_ABILITY[r.profileType];
       if (!ability) continue;
@@ -284,6 +309,7 @@ async function main() {
       seeds: argValue("seeds", "s1,s2,s3").split(","),
       fieldSize: Number(argValue("field", "180")),
       orderMode: argValue("orders", "none"),
+      divisionFields: hasFlag("division-fields"),
     });
     const fmt = (x) => (x == null ? "  -  " : x.toFixed(2));
     console.log(`offline orders=${argValue("orders", "none")} etaper=${rows.length}`);
