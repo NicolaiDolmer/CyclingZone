@@ -235,7 +235,8 @@ import {
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 // #4847: den frivillige knap "Koer dagens traening nu" haenger paa PRAECIS samme
 // lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
-import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR, loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js";
+import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
+import { loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js"; // #4847: train-now deler sweepens spaend
 import { createTrainNowRouter } from "./trainNow.js"; // #4847
 import { createTrainNowPlanLock } from "../lib/trainNow.js"; // #4847
 import { isRaceDateTrainNowLocked } from "../lib/trainNowLock.js"; // #4847
