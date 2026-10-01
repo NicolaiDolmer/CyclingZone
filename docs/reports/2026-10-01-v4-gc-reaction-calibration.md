@@ -2,11 +2,31 @@
 
 Refs #5978, #5984 (Task 4). Status: bygget og **slukket**. Intet er tændt.
 
-Repoet er offentligt, så denne rapport er kvalitativ. De præcise tal (før/efter pr. variant, pr. profil og pr. scenarie) ligger privat i `balance-internals/5978-gc-reaction/2026-10-01-v4-gc-reaction-calibration-tal.md`.
+Repoet er offentligt, så denne rapport er kvalitativ. De præcise tal (før/efter pr. variant, pr. profil og pr. scenarie) ligger privat i `balance-internals/5978-gc-reaction/2026-10-01-v4-gc-reaction-calibration-tal.md` (første måling) og `balance-internals/5955-breakaway-balance/2026-10-01-5955-breakaway-balance-tal.md` (genkørslen efter udbrud/jagt-balancen).
 
 ## Kort fortalt
 
-Holdene kan nu reagere på en reel trussel mod deres klassement, ud fra det klassement der var offentliggjort før etapen. Reaktionen virker som den skal. Men i dag ændrer den næsten ingen resultater, fordi udbruddene under den nye regel-revision allerede bliver hentet. **Anbefaling: tænd den ikke endnu.** Først skal den nye regel-revisions udbrud og jagt balanceres, derefter skal GC-reaktionen kalibreres igen.
+Holdene kan nu reagere på en reel trussel mod deres klassement, ud fra det klassement der var offentliggjort før etapen. I første måling ændrede reaktionen næsten ingen resultater, fordi udbruddene under den nye regel-revision faldt fra hinanden eller blev hentet. Udbrud og jagt er nu balanceret (#5955), og udbruddene overlever omtrent lige så ofte som under legacy. Reaktionen ændrer dog stadig næsten intet, fordi den ikke kan påvirke den fase hvor hullet bygges op. **Anbefaling: tænd den ikke endnu.** Først kræves én designbeslutning (se Anbefaling).
+
+## Opdatering samme dag: genkørt efter udbrud/jagt-balancen (#5955)
+
+Refs #5955 (Task 3 og 6). Stadig **slukket**: `CURRENT_RACE_RULES_REVISION` er `legacy`, legacy-løb er byte-identiske, intet er skrevet i prod.
+
+**Hvad var galt.** Under `orders_gc_v1` faldt morgenudbruddet næsten altid fra hinanden allerede ved dannelsen. Næsten alle hold havde en jæger med i forsøget, og fradraget for et overfyldt forsøg voksede med antallet af angribere, så hvert enkelt forsøg nærmest altid mislykkedes. Resultatet var ofte slet intet udbrud, og ellers en enkelt rytter. Den del der overlevede dannelsen, blev hentet: lad-gå-modellen fra legacy er kalibreret på udbrud hvor stærke ryttere, også kaptajner, blev fyldt ind. Under den nye regel-revision kommer kun de ryttere med, der faktisk fik ordre til at angribe. Det er typisk jægere, og de taber meget tid på stigningerne.
+
+**Hvad er ændret (kun `orders_gc_v1`):**
+
+- *Dannelsen:* fradraget for overfyldning og for modreaktion er gjort mildere. Et travlt morgenforsøg giver nu en rigtig gruppe på nogle få til en håndfuld ryttere i stedet for en enkelt rytter. Reglerne er de samme som før: der fyldes aldrig op med ryttere, et forsøg koster stadig, nul udbrydere er stadig et gyldigt udfald, og der er en øvre grænse for gruppens størrelse. En ny test sikrer at en travl morgen ikke igen ender med at udbruddet falder fra hinanden.
+- *Lad gå:* feltet giver et ufarligt udbrud mere plads, forskelligt pr. etapetype. På bjergetaper når hullet også at blive bygget op før første stigning. Jagtmodellen, jagtgulvet i finalen og klatreselektionen er de samme. Legacy læser intet af det (test: faktor 1 for legacy på alle profiler).
+
+**Resultat (AI-scenariet, samme harness, felt, etaper og seeds som før):**
+
+- Udbruddet bliver dannet på stort set alle vejetaper, og gruppen er af realistisk størrelse. Den er mindre end legacy's altid fyldte gruppe.
+- Udbruddets overlevelse pr. etapetype ligger nu tæt på legacy-niveauet: sjælden på flade etaper, af og til på rullende, oftest på kuperede, og jævnligt på bjerg- og højfjeldsetaper.
+- Udbrudsryttere vinder klart sjældnere etaper end under legacy. Under legacy var kaptajner fyldt ind i udbruddet, og det pustede tallet op (samme mønster som #5957 fandt i prod). Det er en forbedring.
+- Stresstesten (alle hold lader gå) giver, som forventet, flere overlevende udbrud end legacy, fordi ingen jager.
+
+**GC-reaktionen kan nu vurderes, og den er for svag.** Holdene reagerer nu på omkring halvdelen af etaperne og meget oftere i stresstesten, og i stresstesten bliver budgettet ofte brugt op. Alligevel ændrer reaktionen næsten intet: udbruddets overlevelse, nye førere fra udbrud og GC-favoritternes tidstab er praktisk talt ens med og uden GC-kontekst, og den samlede vinder skifter kun i ganske få løb. Årsagen er strukturel og ligger ikke i balancen. Reaktionen virker kun gennem jagtens stance-multiplikator. Den har ingen effekt i lad-gå-fasen, hvor hullet vokser uanset ordrer (#5812-kontrakten: "ingen ordre rører lad-gå-fasen"). Bagefter ganger den kun på jagtens nettofordel, og den er ofte nul eller negativ uden for massespurtsetaper. En truet GC-rytters hold kan altså hverken bremse hullets vækst eller lukke det mærkbart.
 
 ## Hvad er bygget
 
@@ -28,7 +48,7 @@ Jeg kørte en lokal harness, kun på diagnostiske data. Den bygger på den eksis
 
 Der er to scenarier: et hvor alle holdene er AI-hold, og en stresstest hvor alle hold lader gå og alle jægere og frie roller går efter udbruddet.
 
-## Hvad ændrer sig
+## Første måling (før #5955): hvad ændrede sig
 
 **GC-reaktionen alene (gc_off mod gc_on):**
 
@@ -43,15 +63,19 @@ Der er to scenarier: et hvor alle holdene er AI-hold, og en stresstest hvor alle
 
 **Hastighed:** samme størrelsesorden som før, langt under flip-gatens loft.
 
-## Anbefaling
+## Anbefaling (efter genkørslen)
 
-**Ikke klar til at blive tændt for nye løb.** Rækkefølgen bør være:
+**Ikke klar til et ejer-kort om at tænde `orders_gc_v1` for nye løb.** Udbrud og jagt er nu balanceret under den nye regel-revision. Men GC-reaktionen, som er en af revisionens to bærende dele, flytter stadig næsten ingen resultater. Tænder man nu, får spillerne en "reagér på GC-trussel"-adfærd, som de ikke kan se virke.
 
-1. Balancér udbrud og jagt under `orders_gc_v1` (Task 3 og 6), så udbrud kan overleve i et realistisk omfang. Ellers kan GC-reaktionen ikke vurderes.
-2. Kør denne kalibrering igen bagefter, og tag stilling til tre ting: hvor følsom truslen skal være tidligt på lange etaper, hvor træt en hjælper må være før han ikke kan reagere, og hvor stort budgettet for "lad gå" skal være.
-3. Ejeren godkender kvalitetsmål for reaktionen. En regressionsbund er ikke en godkendelse.
+Næste skridt, i denne rækkefølge:
 
-Strukturen kan godt merges slukket allerede nu: legacy er uændret, intet løb kan få den nye regel-revision uden et separat ejer-go, og testene låser kontrakten.
+1. **Designbeslutning (ejer):** må en GC-reaktion, eller en eksplicit jagtordre, bremse lad-gå-fasen og lukke hullet uden om jagtens nettofordel, når truslen er reel? #5812-kontrakten siger i dag nej ("ingen ordre rører lad-gå-fasen"). Uden et ja kan reaktionen ikke få reel effekt. Anbefaling: ja, kun under `orders_gc_v1`, begrænset af det budget der allerede findes.
+2. Byg det bag samme regel-revision, og kør denne kalibrering igen. Tag samtidig stilling til tre ting: hvor følsom truslen skal være tidligt på lange etaper (stadig næsten kun "rival foran"), hvor ofte der mangler ledige hjælpere, og hvor stort budgettet for "lad gå" skal være.
+3. Ejeren godkender kvalitetsmål for udbrud og reaktion. Regressionsbunden og legacy-niveauet er referencer, ikke en godkendelse.
+
+Udbruds-balancen kan merges slukket allerede nu: legacy er byte-identisk, intet løb kan få `orders_gc_v1` uden et separat ejer-go, og testene låser kontrakten.
+
+Uden for dette spor, men set i målingen: på bjergetaper henter klatreselektionen på tidlige stigninger et udbrud af jægere meget hurtigt, også under legacy. Det passer med #5957 (for stor top-10-spredning på bjergetaper). Balancen kompenserer under `orders_gc_v1` ved at give hullet mere plads, men det egentlige greb er selektionens timing på stigninger før finalen. Det ligger i den fælles motor og kræver en separat beslutning.
 
 ## Hvad målingen ikke dækker
 

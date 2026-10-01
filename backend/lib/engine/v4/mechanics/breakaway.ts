@@ -457,6 +457,43 @@ const TEAM_CHASE = {
   chaseCostFraction: 0.15,
 };
 
+// ── #5955 (#5984 Task 3+6, KUN orders_gc_v1): udbrud/jagt-balance ───────────
+// Under orders_gc_v1 bestaar morgenudbruddet af de ryttere der FAKTISK fik en
+// udbrudsordre (typisk jaegere og frie roller) — ikke laengere af kaptajner der
+// blev fyldt ind som under legacy. Den lad-gaa-model legacy er kalibreret paa,
+// forudsatte de staerke ryttere i udbruddet; med de faktiske udbrydere blev
+// udbruddet hentet paa naesten hver etape. Feltet giver derfor et ikke-farligt
+// udbrud mere plads under denne regel-revision, pr. profil:
+//  - maxGapFactor: ganges paa letGoMaxGapSeconds (hvor meget feltet giver).
+//  - letGoRateFactor: ganges paa letGoSecondsPerKm (hvor hurtigt hullet
+//    vokser). Paa bjergetaper skal hullet vaere bygget foer foerste stigning.
+// Jagt-modellen, jagt-gulvet og klatre-selektionen er uaendrede. Legacy laeser
+// intet herfra (golden fixtures uaendrede). Lokale kalibrerings-kandidater (samme
+// praecedens som TEAM_CHASE ovenfor); tallene og maalingen ligger i den private
+// kalibreringsrapport, kvalitetsmaalene er ejer-gated (#5984 Task 6).
+const ORDERS_GC_V1_LET_GO: Readonly<{
+  maxGapFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
+  letGoRateFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
+}> = Object.freeze({
+  maxGapFactorByProfile: Object.freeze({ flat: 1.5, rolling: 2.2, hilly: 1.8, mountain: 2.2, high_mountain: 3.5 }),
+  letGoRateFactorByProfile: Object.freeze({ mountain: 2.2, high_mountain: 2.5 }),
+});
+
+/**
+ * #5955: lad-gaa-faktorerne for en etape. Legacy (og enhver anden revision)
+ * faar altid 1/1, saa legacy-stien er bit-identisk. Eksporteret for kontrakt-tests.
+ */
+export function letGoBalanceFor(
+  rulesRevision: string | undefined,
+  profileType: ProfileType,
+): { maxGapFactor: number; rateFactor: number } {
+  if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1 };
+  return {
+    maxGapFactor: ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1,
+    rateFactor: ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1,
+  };
+}
+
 /**
  * En leder trækker ikke jagten: kaptajnen og sprint-kaptajnen er dem holdet
  * jager FOR (samme rolle-skel som M16's WORKER_ROLES/protectedRoleOrder).
@@ -886,8 +923,10 @@ export function letGoSplitKm(input: {
   maxGapSeconds: number;
   fromKm: number;
   toKm: number;
+  /** #5955 (KUN orders_gc_v1): lad-gaa-hastighed. Udeladt = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm. */
+  secondsPerKm?: number;
 }): { letGoKm: number; chaseKm: number } {
-  const rate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm;
+  const rate = input.secondsPerKm ?? BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm;
   const start = Math.max(input.fromKm, input.formationKm);
   const span = Math.max(0, input.toKm - start);
   const letGoEndKm = rate > 0
@@ -1094,6 +1133,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
   const formationSegment = ctx.route.segments[FORMATION_SEGMENT_INDEX];
   const formationKm = formationSegment ? formationKmFor(formationSegment) : ctx.segment.from_km;
+  // #5955: lad-gaa-balancen under orders_gc_v1 (legacy: 1/1, bit-identisk).
+  const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type);
+  const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
 
   for (const breakaway of breakawayGroups) {
     const chaseGroup = findChaseGroup(state.groups, breakaway);
@@ -1126,11 +1168,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         profileType: ctx.route.profile_type,
         finaleType: ctx.route.finale_type,
       });
+      maxGapSeconds *= letGoBalance.maxGapFactor;
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
         fromKm: ctx.segment.from_km,
         toKm: ctx.segment.to_km,
+        secondsPerKm: letGoRate,
       }));
     }
     const priorWork = workByChaseGroup.get(chaseGroup.id);
@@ -1158,11 +1202,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       chaseKm,
     });
     // #5812: jagten virker kun paa segmentets jagt-km.
+
     const netClosingSeconds = Math.max(
       0,
       netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
-    const letGoGrowth = letGoKm * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm;
+    const letGoGrowth = letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
     // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
