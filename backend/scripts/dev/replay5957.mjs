@@ -97,8 +97,8 @@ async function fetchCache(cachePath) {
   }
   async function inChunks(table, columns, col, ids, apply) {
     const out = [];
-    for (let i = 0; i < ids.length; i += 150) {
-      out.push(...await all(table, columns, (q) => { q = q.in(col, ids.slice(i, i + 150)); return apply ? apply(q) : q; }));
+    for (let i = 0; i < ids.length; i += 50) { // 50 uuid'er holder URL'en under PostgREST-/proxy-graenser
+      out.push(...await all(table, columns, (q) => { q = q.in(col, ids.slice(i, i + 50)); return apply ? apply(q) : q; }));
     }
     return out;
   }
