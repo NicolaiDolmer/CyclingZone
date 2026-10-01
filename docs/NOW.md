@@ -6,7 +6,7 @@
 
 > **🎯 Next action (2/10, Giro della Penisola etape 1 kl. 11.00):** 1) **#5957** (v4 tilfældig: flad-korrelation 0,33 mod S3 0,78) bølge-lane i nat: replay + rettelse → ejer-kort; er det en beregningsfejl, gælder den fra næste ikke-kørte etape (også i Giroen). 2) **#5955 B** (GC-reaktion må bremse lad-gå, ejer 1/10) bølge-lane + kalibrering; slukket. 3) **Train now-flip:** verificér "Trænet nu" i prod efter første tryk 2/10 → kort (ejer: ikke flip før set virke). 4) **#6030** bundle-lane (død flag-fra-kode + lazy). 5) #5268 A + fyld tomme Holdarbejde/Lederskab: dry-run → kort. 6) #5897: ejeren kører `--apply --owner-go --events-only` (dry-run 1/10 21.55: 2.100). 7) #5911 forslag på issuet → ejer-go.
 >
-> **✅ 1/10 aften:** merget #6028 (Train now-rapport, beta), #6026 (Today kun i dag, live alle, verificeret), #6017 patch notes 7.330 live, #6022 (udbrud/jagt slukket). #5912: alle 1.031 genoprettet (11 sidste via fix #6029). Beslutninger: #5955 B, #5268 A + fyld tomme.
+> **✅ 1/10 aften:** merget #6028 (Train now-rapport, beta), #6026 (Today kun i dag, live alle, verificeret), #6017 patch notes 7.330 live, #6022 (udbrud/jagt slukket) + #6029 i merge-køen. #5912: alle 1.031 genoprettet (11 sidste via fix #6029). Beslutninger: #5955 B, #5268 A + fyld tomme.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
