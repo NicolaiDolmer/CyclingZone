@@ -80,13 +80,14 @@ export async function isTeamSquadTrainOnly(
   { teamId, squad }: { teamId: string | null | undefined; squad: string | null | undefined },
 ): Promise<boolean> {
   if (!teamId || !isOptOutSquad(squad)) return false;
+  // (team_id, squad) er PK, saa hoejst én raekke.
   const { data, error } = (await supabase.from(YOUTH_RACE_OPT_OUT_TABLE)
-    .select("team_id").eq("team_id", teamId).eq("squad", squad).limit(1)) as Result<unknown[]>;
+    .select("team_id").eq("team_id", teamId).eq("squad", squad).maybeSingle()) as Result<unknown>;
   if (error) {
     if (isMissingOptOutTable(error)) return false;
     throw new Error(`${YOUTH_RACE_OPT_OUT_TABLE}: ${error.message ?? error}`);
   }
-  return (data ?? []).length > 0;
+  return data != null;
 }
 
 /** Holdets valg for begge ungdomstrupper. `available=false` = tabellen findes ikke endnu. */

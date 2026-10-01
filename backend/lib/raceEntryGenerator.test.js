@@ -2512,3 +2512,14 @@ test("#5843 late_fill: managerhold med U23-trup får kun U23-ryttere i U23-løbe
     assert.equal(riderById.get(e.rider_id).squad ?? "senior", race.squad, `${e.rider_id} står i et ${race.squad}-løb`);
   }
 });
+
+// #5944: en U23-trup sat til "Train only" udtages aldrig af sweepen; seniorløbet og
+// andre hold er uændrede.
+test("#5944 generator: Train only-trup udtages ikke til U23-løbet, seniorløbet er uændret", async () => {
+  const state = youthGeneratorState();
+  state.team_youth_race_opt_outs = [{ team_id: "t1", squad: "u23" }];
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId: "season1", dryRun: false });
+  assert.equal(state.race_entries.filter((e) => e.race_id === "U").length, 0, "U23-truppen er sat til Train only");
+  const sTeams = [...new Set(state.race_entries.filter((e) => e.race_id === "S").map((e) => e.team_id))].sort();
+  assert.deepEqual(sTeams, ["t1", "t2"], "seniorer er upåvirkede");
+});
