@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8"><title>GC-reaktion A/B</title>
+<style>
+body{margin:0;background:#f4f2ec;font-family:Segoe UI,Arial,sans-serif;color:#1d2238}
+.wrap{width:1400px;padding:28px 32px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:#5b6070;margin:0 0 20px;font-size:15px}
+.row{display:flex;gap:24px}
+.card{flex:1;background:#fff;border:1px solid #d9d6cc;border-radius:5px;padding:18px 20px}
+.card h2{font-size:19px;margin:0 0 4px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border:1px solid;border-radius:5px;margin-left:8px;vertical-align:2px}
+.rec{color:#1f7a3d;border-color:#1f7a3d}
+.now{color:#5b6070;border-color:#9aa0ad}
+.lead{font-size:14px;color:#3a3f52;margin:6px 0 10px}
+ul{margin:10px 0 0;padding-left:18px;font-size:14px;line-height:1.5}
+.legend{font-size:13px;color:#5b6070;margin-top:16px}
+.foot{font-size:13px;color:#5b6070;margin-top:16px}
+</style></head><body><div class="wrap">
+<h1>GC-reaktion i løbsmotoren: må et truet GC-hold bremse udbruddet tidligt?</h1>
+<p class="sub">Eksempel: en bjergetape. En klassementsrytter (nr. 6 samlet) sidder i morgenudbruddet. Førertrøjens hold er truet. Illustration, ikke målte tal. Alt er slukket under begge valg.</p>
+<div class="row">
+
+<div class="card"><h2>A · Behold regel #5812<span class="tag now">som i dag</span></h2>
+<p class="lead">Holdet må først reagere, når jagten er i gang. Hullet vokser frit i lad-gå-fasen.</p>
+<svg width="640" height="300" viewBox="0 0 640 300">
+ <rect x="60" y="20" width="230" height="230" fill="#efeee8"/>
+ <text x="175" y="40" text-anchor="middle" font-size="13" fill="#5b6070">LAD-GÅ-FASEN</text>
+ <text x="175" y="56" text-anchor="middle" font-size="12" fill="#9a3b3b">holdet må ikke gøre noget</text>
+ <text x="440" y="40" text-anchor="middle" font-size="13" fill="#5b6070">JAGTEN</text>
+ <line x1="60" y1="250" x2="620" y2="250" stroke="#1d2238"/>
+ <line x1="60" y1="20" x2="60" y2="250" stroke="#1d2238"/>
+ <text x="30" y="140" font-size="12" fill="#5b6070" transform="rotate(-90 30 140)" text-anchor="middle">Udbruddets forspring</text>
+ <text x="340" y="275" font-size="12" fill="#5b6070" text-anchor="middle">Etapens km →</text>
+ <path d="M60 248 C120 200 200 90 290 70 S 520 92 620 104" fill="none" stroke="#c0392b" stroke-width="3"/>
+ <circle cx="620" cy="104" r="6" fill="#c0392b"/>
+ <text x="610" y="130" font-size="13" text-anchor="end" fill="#c0392b" font-weight="600">Stort hul i mål</text>
+ <path d="M300 64 l0 -14 M300 50 l-5 6 M300 50 l5 6" stroke="#1d2238"/>
+ <text x="305" y="160" font-size="12" fill="#1d2238">GC-holdet reagerer her,</text>
+ <text x="305" y="175" font-size="12" fill="#1d2238">men hullet er allerede stort</text>
+</svg>
+<ul>
+<li>Klassementsrytteren i udbruddet tager tid; favoritten taber placering.</li>
+<li>GC-reaktionen fyrer, men ændrer næsten intet. Spilleren ser "holdet reagerer" uden effekt.</li>
+<li>Ingen ny regel, intet nyt arbejde.</li>
+</ul></div>
+
+<div class="card"><h2>B · Må bremse inden for budget<span class="tag rec">anbefalet</span></h2>
+<p class="lead">Ved en reel trussel må holdet (eller en eksplicit jagtordre) holde hullet nede allerede i lad-gå-fasen.</p>
+<svg width="640" height="300" viewBox="0 0 640 300">
+ <rect x="60" y="20" width="230" height="230" fill="#efeee8"/>
+ <text x="175" y="40" text-anchor="middle" font-size="13" fill="#5b6070">LAD-GÅ-FASEN</text>
+ <text x="175" y="56" text-anchor="middle" font-size="12" fill="#1f7a3d">holdet må bremse (budget)</text>
+ <text x="440" y="40" text-anchor="middle" font-size="13" fill="#5b6070">JAGTEN</text>
+ <line x1="60" y1="250" x2="620" y2="250" stroke="#1d2238"/>
+ <line x1="60" y1="20" x2="60" y2="250" stroke="#1d2238"/>
+ <text x="30" y="140" font-size="12" fill="#5b6070" transform="rotate(-90 30 140)" text-anchor="middle">Udbruddets forspring</text>
+ <text x="340" y="275" font-size="12" fill="#5b6070" text-anchor="middle">Etapens km →</text>
+ <path d="M60 248 C120 200 200 90 290 70 S 520 92 620 104" fill="none" stroke="#c0392b" stroke-width="2" stroke-dasharray="5 5" opacity=".45"/>
+ <path d="M60 248 C110 215 150 160 180 150 S 260 150 290 152 S 500 200 620 214" fill="none" stroke="#1f7a3d" stroke-width="3"/>
+ <circle cx="180" cy="150" r="5" fill="#1d2238"/>
+ <text x="186" y="176" font-size="12" fill="#1d2238">Trussel opdaget: holdet bremser</text>
+ <circle cx="620" cy="214" r="6" fill="#1f7a3d"/>
+ <text x="610" y="236" font-size="13" text-anchor="end" fill="#1f7a3d" font-weight="600">Lille hul i mål</text>
+ <text x="610" y="128" font-size="12" text-anchor="end" fill="#c0392b" opacity=".7">A til sammenligning</text>
+</svg>
+<ul>
+<li>Den truede favorit forsvarer sin placering; tidstabet bliver synligt mindre.</li>
+<li>Det koster hjælpernes kræfter. Budgettet slipper op, og så stopper holdet (også i dag).</li>
+<li>Kun under den nye regelrevision. Dagens løb er uændrede. Kræver byg + ny kalibrering + nyt kort før noget tændes.</li>
+</ul></div>
+</div>
+<p class="foot">Uændret under begge valg: udbrud/jagt-balancen merges slukket nu, og dagens løb (legacy) er byte-identiske.</p>
+</div></body></html>
