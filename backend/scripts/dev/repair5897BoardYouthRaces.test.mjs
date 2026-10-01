@@ -192,9 +192,11 @@ test("planRepair: atTargetNow når seneste senior-skridt er 0 og værdien matche
 });
 
 test("verifyAgainstPlan: events-only forventer uændrede værdier", () => {
-  const plan = { plans: [{ board_id: "b1", current: 60, repaired: 54, baseline: false, newModifier: 1.0 }] };
+  const plan = { plans: [{ board_id: "b1", current: 60, repaired: 54, baseline: false, oldModifier: 1.1, newModifier: 1.0 }] };
   const r = verifyAgainstPlan({ plan, youthEventsRemaining: 0, boards: [{ id: "b1", satisfaction: 60, budget_modifier: 1.1 }], eventsOnly: true });
   assert.equal(r.ok, true);
+  const changed = verifyAgainstPlan({ plan, youthEventsRemaining: 0, boards: [{ id: "b1", satisfaction: 60, budget_modifier: 1.0 }], eventsOnly: true });
+  assert.deepEqual(changed.mismatches.map((m) => m.reason), ["budget_modifier"]);
 });
 
 test("verifyAgainstPlan: ok når events er væk og boards matcher", () => {

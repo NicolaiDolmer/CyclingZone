@@ -449,8 +449,13 @@ export function verifyAgainstPlan({ plan, youthEventsRemaining, boards, eventsOn
     const expectedSatisfaction = eventsOnly ? p.current : p.repaired;
     if (Number(board.satisfaction) !== expectedSatisfaction) {
       mismatches.push({ board_id: p.board_id, reason: "satisfaction", expected: expectedSatisfaction, actual: Number(board.satisfaction) });
-    } else if (!eventsOnly && !p.baseline && Number(board.budget_modifier) !== p.newModifier) {
-      mismatches.push({ board_id: p.board_id, reason: "budget_modifier", expected: p.newModifier, actual: Number(board.budget_modifier) });
+    } else {
+      // events-only og baseline: budget_modifier skal være uændret.
+      const expectedModifier = eventsOnly || p.baseline ? p.oldModifier : p.newModifier;
+      const actualModifier = board.budget_modifier == null ? null : Number(board.budget_modifier);
+      if (expectedModifier !== undefined && actualModifier !== expectedModifier) {
+        mismatches.push({ board_id: p.board_id, reason: "budget_modifier", expected: expectedModifier, actual: actualModifier });
+      }
     }
   }
   return { ok: youthEventsRemaining === 0 && mismatches.length === 0, youthEventsRemaining, checked: plan.plans.length, mismatches };
