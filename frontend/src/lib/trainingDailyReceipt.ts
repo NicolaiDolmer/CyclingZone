@@ -162,6 +162,25 @@ function trainedSlots(days: number[], expected: number[] | null): number[] {
   return days.map(day => expected.indexOf(day) + 1).filter(slot => slot > 0);
 }
 
+/** #6027: progress so far = the sum of each stored race day's own contribution
+ *  (its whole points + progress_after - progress_before). A race day missing an
+ *  end point makes that ability unknown (null), never a guess across the gap. */
+function activityContributions(rows: TrainingActivity[]): Record<string, number | null> {
+  const keys = new Set(rows.flatMap(row => [...Object.keys(row.progress_before ?? {}), ...Object.keys(row.progress_after ?? {})]));
+  const result: Record<string, number | null> = {};
+  for (const ability of keys) {
+    let sum = 0;
+    for (const row of rows) {
+      const before = row.progress_before?.[ability], after = row.progress_after?.[ability];
+      const whole = row.gains?.[ability];
+      if (!finite(before) || !finite(after)) { sum = NaN; break; }
+      sum += (finite(whole) && whole > 0 ? whole : 0) + after - before;
+    }
+    result[ability] = Number.isFinite(sum) && sum >= -1e-9 ? Math.max(0, Math.round(sum * 100)) : null;
+  }
+  return result;
+}
+
 /** #6027: "1-4" for a contiguous run, "1, 3" otherwise, "" for none. */
 export function formatSlotRange(slots: number[]): string {
   const sorted = [...new Set(slots)].sort((a, b) => a - b);
@@ -276,7 +295,7 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       // shows what its stored race days trained. Only stored end points count
       // (never a derived one), and never for quarantined/mixed evidence.
       const trainedNow = state === "pending" && evidence.every(e => e.normalized && !e.settled)
-        ? { gains, gains_detail: details, gain_percent: stored ? gainPercent : {} } : null;
+        ? { gains, gains_detail: details, gain_percent: activityContributions(evidence.map(e => e.row)) } : null;
       return { ...last.row, rider_id: id, activities, receipt_status: state, trained_now: trainedNow, gains: trusted ? gains : {},
         gains_detail: trusted ? details : {}, progress_before: trusted ? progressBefore : {}, gain_percent: trusted ? gainPercent : {},
         progress_after: trusted ? progressAfter : undefined,

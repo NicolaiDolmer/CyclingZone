@@ -283,7 +283,9 @@ test("#6027: fractional progress shows before a whole point; a stored end point 
   assert.deepEqual(day.report.riders[0].trained_now, { gains: {}, gains_detail: {}, gain_percent: { tempo: 15 } });
   const noEnd = run(0);
   delete (noEnd.report.riders[0] as Record<string, unknown>).progress_after;
-  assert.deepEqual(aggregateTrainingRuns([noEnd])[0].report.riders[0].trained_now?.gain_percent, {});
+  assert.deepEqual(aggregateTrainingRuns([noEnd])[0].report.riders[0].trained_now?.gain_percent, { tempo: null });
+  // A gap between stored race days never bridges the missing day: each day counts its own part.
+  assert.deepEqual(aggregateTrainingRuns([run(0), run(2)])[0].report.riders[0].trained_now?.gain_percent, { tempo: 95 });
 });
 
 test("#6027: settled, quarantined and legacy dates never get a trained-now view", () => {
