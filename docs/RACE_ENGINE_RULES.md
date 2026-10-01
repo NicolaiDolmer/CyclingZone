@@ -32,7 +32,7 @@ Dannelsen er omstridt: tilladelse → faktisk forsøg med pris → rivalholdenes
 
 ## Brosten under `orders_gc_v1` (#6046)
 
-Kun på `cobbles`- og `gravel`-etaper og kun når løbets revision er `orders_gc_v1`; legacy og alle andre profiler (også `classic`) er uændrede. To ting ændres: (1) en brostenssektor deler de afhængte ryttere i flere grupper efter hvor langt de er under gruppens bedste brostensrytter, og tidstabet vokser med underskuddet (før tabte alle afhængte det samme); (2) placeringen i finalen vægter brostensevnen sammen med finale-typens egne evner. En stærkere brostensrytter ender aldrig bag en svagere fra samme gruppe. Kode: `mechanics/cobbles.ts`, `finale.ts`, tuning i `COBBLES_EXTRA_TUNING`.
+Kun på `cobbles`- og `gravel`-etaper og kun når løbets revision er `orders_gc_v1`; legacy og alle andre profiler (også `classic`) er uændrede. To ting ændres: (1) en brostenssektor deler de afhængte ryttere i flere grupper efter hvor langt de er under gruppens bedste brostensrytter, og tidstabet vokser med underskuddet (før tabte alle afhængte det samme); (2) placeringen i finalen vægter brostensevnen sammen med finale-typens egne evner. På sektoren ender en stærkere brostensrytter aldrig bag en svagere fra samme gruppe; i finalen gælder det kun når rytternes øvrige finale-evner og dagens tillæg er ens. Kode: `mechanics/cobbles.ts`, `finale.ts`, tuning i `COBBLES_EXTRA_TUNING`.
 
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)

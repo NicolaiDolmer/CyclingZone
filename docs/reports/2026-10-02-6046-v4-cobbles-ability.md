@@ -20,7 +20,7 @@ Genafspil af de rigtige S4-brosten- og grusetaper fra cachen (`backend/scripts/d
 
 ## Rettelsen (kun `orders_gc_v1`, kun `cobbles`/`gravel`)
 
-- `mechanics/cobbles.ts`: de afhængte ryttere deles i op til fire lag efter deres underskud til gruppens bedste brostensrytter, og hvert lag taber mere tid jo større underskuddet er. Lagene følger den støjfri score, så en stærkere rytter aldrig ender bag en svagere fra samme gruppe (fast-check-testet).
+- `mechanics/cobbles.ts`: de afhængte ryttere deles i op til fire lag efter deres underskud til gruppens bedste brostensrytter, og hvert lag taber mere tid jo større underskuddet er. Lagene følger den støjfri score, så en stærkere rytter aldrig ender bag en svagere fra samme gruppe på sektoren (fast-check-testet).
 - `finale.ts` (få linjer): på brosten/grus blandes brostensevnen ind i finale-vektoren. Vægtsummen er uændret, og alle vægte er ikke-negative, så finale-scoren stadig stiger i hver evne.
 - Tuning: fire linjer i `COBBLES_EXTRA_TUNING` (profiler, antal lag, tidstab-bånd, finale-andel).
 
