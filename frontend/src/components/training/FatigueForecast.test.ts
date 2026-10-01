@@ -33,9 +33,11 @@ test("wiring: rytterkortet (desktop + telefon) og gitteret faar prognosen", () =
   const page = read("../../pages/TrainingPage.jsx");
   assert.match(page, /forecast=\{renderForecast\(riderId\)\}/);
   assert.match(page, /forecastFor=\{renderForecast\}/);
-  assert.match(page, /programsOn \|\| cellsOn \?/);
+  // #5932: under-fanerne vises naar programmer, felter eller graensen er aaben.
+  assert.match(page, /const programLayout = programsOn \|\| cellsOn \|\| fatigueRulesOn;/);
+  assert.match(page, /programLayout \? renderProgramTab\(\) : renderWeekPlanTab\(\)/);
   assert.match(read("mobile/TrainingMobileToday.tsx"), /forecast=\{forecastFor \? forecastFor\(selected\.id\) : null\}/);
-  assert.match(read("TrainingProgramsPanel.tsx"), /training-program-cell-locked/);
+  assert.match(read("TrainingPlanCard.tsx"), /training-program-cell-locked/);
 });
 
 test("I dag-tabel, egne planer og fanenavn gates paa felt-flaget (samme som motoren)", () => {
@@ -43,7 +45,7 @@ test("I dag-tabel, egne planer og fanenavn gates paa felt-flaget (samme som moto
   // cells=on + katalog=off: tabellen skal vise feltet, ikke ugedagens gamle session.
   assert.match(page, /if \(cellsOn && column\.state !== "done"\)/);
   assert.match(page, /!\(cellsOn && isProgramPlan\(riderWeekPlans\[r\.id\]/);
-  assert.match(page, /\{cellsOn \? t\("tabs\.program"\) : t\("tabs\.weekplan"\)\}/);
+  assert.match(page, /\{programLayout \? t\("tabs\.program"\) : t\("tabs\.weekplan"\)\}/);
   assert.doesNotMatch(page, /programsOn && column\.state/);
 });
 

@@ -54,7 +54,9 @@ export default function TrainingProgramList({
 
   return (
     <section className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" data-testid="training-programs">
-      <ul className="max-h-[min(560px,calc(100vh-330px))] min-h-[240px] divide-y divide-cz-border overflow-y-auto">
+      {/* Desktop: listen ruller inde i kortet, saa siden ikke scroller (mockup pin 1).
+          Telefonen: ingen indlejret scroll, siden ruller som normalt. */}
+      <ul className="divide-y divide-cz-border sm:max-h-[min(560px,calc(100vh-330px))] sm:min-h-[240px] sm:overflow-y-auto">
         {ordered.map((program) => {
           const open = openKey === program.key;
           return (

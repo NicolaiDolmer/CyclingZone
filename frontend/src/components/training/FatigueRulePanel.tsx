@@ -136,7 +136,7 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
           />
           <span>{t("fatigueRule.teamRuleAbove")}</span>
         </label>
-        <span className="flex flex-wrap items-center gap-2 text-[13px] text-cz-1">
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-[13px] text-cz-1 sm:flex-none">
           <input
             type="number"
             inputMode="numeric"
@@ -159,12 +159,12 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
             disabled={busy || !limitOn}
             onChange={(e) => saveTeam({ on: true, threshold: savedThreshold, fallback: e.target.value as FatigueFallback, afterStage })}
             aria-label={t("fatigueRule.insteadLabel")}
-            className={`${controlClass} min-h-11 sm:min-h-0`}
+            className={`${controlClass} min-h-11 min-w-0 flex-1 sm:min-h-0 sm:flex-none`}
             data-testid="fatigue-rule-fallback"
           >
             {FATIGUE_FALLBACKS.map((f) => <option key={f} value={f}>{fallbackLabel(f)}</option>)}
           </select>
-          <span>{t("fatigueRule.teamRuleInstead")}</span>
+          <span className="flex-none">{t("fatigueRule.teamRuleInstead")}</span>
         </span>
         {limitOn && (
           <span className="ms-auto font-data text-2xs tabular-nums text-cz-3" data-testid="fatigue-rule-over-now">
@@ -190,7 +190,7 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
 
       {/* ── 3. Undtagelser som chips ────────────────────────────────────── */}
       <div className={rowClass}>
-        <span className={labelClass}>{t("fatigueRule.exceptions")}</span>
+        <span className={`${labelClass} basis-full sm:basis-auto`}>{t("fatigueRule.exceptions")}</span>
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {exceptionIds.length === 0 && !adding && <span className="text-xs text-cz-3">{t("fatigueRule.exceptionsEmpty")}</span>}
           {exceptionIds.map((id) => (
