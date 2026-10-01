@@ -40,7 +40,9 @@
             "r09",
             "r11",
             "r12"
-          ]
+          ],
+          "chase_group_id": "peloton-0",
+          "chase_group_kind": "peloton"
         }
       },
       {
