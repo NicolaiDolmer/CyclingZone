@@ -533,6 +533,16 @@
     "ariaSettled": "Træthed i aften: {value}. {band}",
     "teamLabel": "Træthed i aften, højest"
   },
+  "oneTap": {
+    "choice_rest": "Hvile",
+    "choice_recovery": "Restitution",
+    "choice_session": "Program",
+    "groupAria": "I dag for {name}",
+    "approx": "~{value}",
+    "season": "Sæson",
+    "stageToday": "etape i dag",
+    "locked": "I dag er låst efter Træn nu."
+  },
   "groups": {
     "section_groups": "Grupper",
     "section_riders": "Ryttere",

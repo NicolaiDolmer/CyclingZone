@@ -1,0 +1,70 @@
+// todayRowModel — ren logik bag telefonens Today-raekke, retning A (#5685/#5630).
+//
+// Ejer-go 1/10 paa docs/design/mockups-5630-5685-mobile-day-choice-2026-10-01:
+// hver raekke viser (1) "Fatigue tonight ~X" fra SAMME prognose som
+// Program -> Plan (#5933, serveren regner med aftenopgoerelsens funktioner, I5;
+// her vises kun tal + baand, aldrig en formel), (2) saesonens evne-fremgang og
+// (3) et segmenteret valg Rest / Recovery / Program med samme semantik som
+// desktoppens hurtig-knapper (QUICK_DAY_TYPES i TrainingPage.jsx).
+//
+// Ingen React/i18n-imports ud over den rene baand-funktion, saa node --test kan
+// koere filen uden en browser.
+
+import { forecastTone, type ForecastBand, type ForecastEntry } from "./FatigueForecastModel.ts";
+
+export type QuickChoice = "rest" | "recovery" | "session";
+
+export type RowForecast = { value: number; tone: ForecastBand };
+
+/** "Fatigue tonight ~X": afrundet tal + baandet serveren gav (ukendt baand = "warn"). */
+export function rowForecast(entry: ForecastEntry | null | undefined): RowForecast | null {
+  if (!entry || typeof entry.fatigue !== "number" || !Number.isFinite(entry.fatigue)) return null;
+  return { value: Math.round(entry.fatigue), tone: forecastTone(entry) };
+}
+
+export type SeasonGain = { ability: string; points: number };
+
+/**
+ * Saesonens fremgang (#5630): evner med mindst eet helt point i saesonen,
+ * stoerst foerst, hoejst `max`. `null` (ingen loebende saeson) => tom liste,
+ * saa raekken ikke paastaar et "+0" om en periode der ikke har maalt noget.
+ */
+export function seasonGainItems(
+  gains: Record<string, unknown> | null | undefined,
+  max = 3,
+): SeasonGain[] {
+  if (!gains || typeof gains !== "object") return [];
+  const items: SeasonGain[] = [];
+  for (const [ability, raw] of Object.entries(gains)) {
+    const points = Math.round(Number(raw));
+    if (Number.isFinite(points) && points >= 1) items.push({ ability, points });
+  }
+  items.sort((a, b) => b.points - a.points || a.ability.localeCompare(b.ability));
+  return items.slice(0, Math.max(0, max));
+}
+
+/**
+ * Hvilket segment er trykket ind. `activeDay` er dagstypen planen giver i dag
+ * (dayTypeForProgram), `sessionDay` den dagstype rytterens gemte session hoerer
+ * til. Samme regel som desktoppens knapper: "session" er inde naar dagen ER
+ * rytterens egen session; hvile og restitution sammenlignes direkte.
+ */
+export function pressedChoice(
+  activeDay: string | null | undefined,
+  sessionDay: string | null | undefined,
+  hasPlan: boolean,
+): QuickChoice | null {
+  if (!hasPlan || !activeDay) return null;
+  if (activeDay === "rest") return "rest";
+  if (activeDay === "recovery") return "recovery";
+  if (sessionDay && activeDay === sessionDay) return "session";
+  return null;
+}
+
+/**
+ * Beslutning 2: efter Train now (eller naar dagen er afregnet) er dagens valg
+ * laast, praecis som det er i dag. `trainedToday` er sidens egen run-gate.
+ */
+export function rowLocked({ trainedToday }: { trainedToday: boolean }): boolean {
+  return trainedToday === true;
+}
