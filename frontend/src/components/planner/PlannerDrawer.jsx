@@ -22,6 +22,7 @@ import { formatOrdinalShort, formatRaceDateLabel, riderShortName, dateToOrdinal 
 // Trup-fanen (effekt/dip/vindue/lås) — to formler for samme tal er
 // #3071-fejlklassen.
 import { PeakValue } from "./PlannerSquad";
+import { isPeakTargetOpen, isYouthPlannerRider } from "./plannerSquadModel";
 
 // #3012: egen komponent — useBlockedAction er et hook og kan ikke kaldes
 // betinget inde i .map()/en renderet-gren uden at bryde rules-of-hooks. Hver
@@ -60,13 +61,17 @@ function StageMini({ terrain, summit }) {
   );
 }
 
-function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy, divisionPending }) {
+function RaceDrawer({ race, riders: allRiders, maxPerRider, today, onCreatePeak, busy, divisionPending }) {
   const { t } = useTranslation("planner");
   const months = t("months", { returnObjects: true });
   const [showProfiles, setShowProfiles] = useState(false);
   const summary = race.profileSummary || { stages: race.stages ?? 1, summitFinishes: 0 };
 
-  const ranked = (riders || [])
+  // #5992: kun seniortruppen rangeres. Peak-mål er seniorkalenderens løb, og
+  // et startet eller kørt løb kan ikke længere vælges som mål.
+  const riders = (allRiders || []).filter((rd) => !isYouthPlannerRider(rd));
+  const raceOpen = isPeakTargetOpen(race, dateToOrdinal(today));
+  const ranked = riders
     .map((rd) => ({ rider: rd, ...riderSuitability(rd.abilities, race.demandVector) }))
     .sort((a, b) => b.score - a.score);
   const demands = ranked[0]?.contributions?.slice(0, 3) || [];
@@ -76,7 +81,7 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy, divisionPen
   // for at falde tavst til den statiske "allerede topper her"-tekst.
   const peakingSet = new Set();
   const suggestingSet = new Set();
-  for (const rd of riders || []) for (const p of rd.peaks || []) {
+  for (const rd of riders) for (const p of rd.peaks || []) {
     if (p.targetRaceId !== race.id) continue;
     if (p.isSuggestion) suggestingSet.add(rd.id); else peakingSet.add(rd.id);
   }
@@ -171,6 +176,8 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy, divisionPen
               <span className="font-mono text-[12px] text-cz-1 w-6 text-right">{score}</span>
               {peaking ? (
                 <span className="text-3xs text-cz-accent-t w-[74px] text-right">✓ {t("drawer.race.alreadyPeaking")}</span>
+              ) : !raceOpen ? (
+                <span className="text-3xs text-cz-3 w-[74px] text-right">{t("drawer.race.started")}</span>
               ) : divisionPending ? (
                 // #3018: serveren afviser peaks mod en sæson hvor divisionen ikke
                 // er afgjort (division_not_settled). Vis grunden frem for en knap
@@ -226,8 +233,8 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, paybackDays, on
   // rytter assistenten allerede har foreslået to peaks til).
   const canAddPeak = (rider.peaks || []).filter((p) => !p.isSuggestion).length < maxPerRider;
   const todayOrd = dateToOrdinal(today);
-  const targetable = (races || []).filter((r) => r.isMine && r.date
-    && (todayOrd == null || (dateToOrdinal(r.date) ?? -Infinity) >= todayOrd)
+  // #5992: kun løb der ikke er startet (samme regel som Squad-fanens dropdown).
+  const targetable = (races || []).filter((r) => r.isMine && isPeakTargetOpen(r, todayOrd)
     && !(rider.peaks || []).some((p) => p.targetRaceId === r.id))
     .sort((a, b) => (dateToOrdinal(a.date) || 0) - (dateToOrdinal(b.date) || 0));
 
@@ -374,7 +381,7 @@ export default function PlannerDrawer({ mode, race, rider, riders, races, maxPer
       <button className="absolute top-3 right-3 text-cz-2 hover:text-cz-1" aria-label={t("drawer.close")} onClick={onClose}>
         <XIcon size={18} aria-hidden="true" />
       </button>
-      {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} onCreatePeak={onCreatePeak} busy={busy} divisionPending={divisionPending} />}
+      {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} today={today} onCreatePeak={onCreatePeak} busy={busy} divisionPending={divisionPending} />}
       {mode === "rider" && rider && (
         <RiderDrawer
           rider={rider} races={races} maxPerRider={maxPerRider} months={months} today={today} paybackDays={paybackDays}

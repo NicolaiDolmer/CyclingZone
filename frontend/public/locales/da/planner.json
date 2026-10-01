@@ -66,6 +66,14 @@
     "payback": {
       "collision": "Dykket efter denne peak dækker {race}, {days, plural, one {# dag} other {# dage}} senere. Regn med {payback} form dér.",
       "unknownRace": "et andet løb på rytterens program"
+    },
+    "youth": {
+      "title": "U23- og juniorryttere",
+      "note": "Disse ryttere kører U23- og juniorløb. Peaks planlægges mod seniorkalenderen, så deres peaks kan kun fjernes her.",
+      "squad": {
+        "u23": "U23",
+        "junior": "Junior"
+      }
     }
   },
   "assistant": {
@@ -123,7 +131,6 @@
     "label": "OVR"
   },
   "today": "I dag",
-  "academy": "Akademi",
   "form": {
     "now": "Nuværende form {value}"
   },
@@ -146,7 +153,8 @@
       "suggestedHere": "Assistenten foreslår her",
       "viewPage": "Se løbsside",
       "peaksLocked": "Division afventer",
-      "maxedReached": "Peak-grænsen er nået (maks {max} pr. rytter)"
+      "maxedReached": "Peak-grænsen er nået (maks {max} pr. rytter)",
+      "started": "Startet"
     },
     "rider": {
       "abilities": "Evner",

@@ -20,9 +20,9 @@ import { riderSuitability } from "../../lib/suitability";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
-import { Section, SectionHeader, StarIcon, FlagIcon, AlertTriangleIcon, LockIcon, XIcon, ChevronRightIcon } from "../ui";
+import { Section, SectionHeader, SectionStack, StarIcon, FlagIcon, AlertTriangleIcon, LockIcon, XIcon, ChevronRightIcon } from "../ui";
 import { formatOrdinalShort, formatRaceDateLabel, riderShortName, dateToOrdinal, statusMeta } from "./plannerShared";
-import { squadSlots, riderPendingSuggestions, targetableRacesFor, paybackRiskRaceIds, locksImmediatelyRaceIds, riderSeasonLoad } from "./plannerSquadModel";
+import { squadSlots, riderPendingSuggestions, targetableRacesFor, paybackRiskRaceIds, locksImmediatelyRaceIds, riderSeasonLoad, splitPlannerSquads } from "./plannerSquadModel";
 
 // Tabellen bliver til en kort-liste under md. Cellerne beholder deres semantik
 // (<td>), så en skærmlæser stadig læser rækken som en række.
@@ -247,7 +247,11 @@ export default function PlannerSquad({
   // Bedste ryttere først: det er dem en manager bruger sine peaks på, og det er
   // den rækkefølge truppen ellers vises i på tværs af appen. #2772: belastningen
   // (løbsdage) regnes samme sted, så rækken har den ved hånden.
-  const rows = useMemo(() => (riders || [])
+  // #5992: kun seniortruppen planlægges. Ungdomsryttere kører U23-/juniorløb,
+  // ikke seniorkalenderen peak-målene kommer fra; de med en gammel peak vises
+  // adskilt nedenfor, så peaken kan fjernes.
+  const { senior, youthWithPeaks } = useMemo(() => splitPlannerSquads(riders), [riders]);
+  const rows = useMemo(() => senior
     .map((rd) => ({
       rider: rd,
       // #5321: samme server-beregnede rating som resten af appen — se
@@ -258,9 +262,10 @@ export default function PlannerSquad({
     // Rytter uden beregnelig rating (ingen af rollens evner på rækken) sorterer
     // sidst i stedet for at blive NaN-sammenlignet.
     .sort((a, b) => (b.ovr ?? -1) - (a.ovr ?? -1) || String(a.rider.lastname).localeCompare(String(b.rider.lastname))),
-  [riders, races]);
+  [senior, races]);
 
   return (
+    <SectionStack>
     <Section>
       <SectionHeader title={t("squad.title")} meta={t("squad.count", { count: rows.length })} />
       {/* Bevidst usorteret: rækkefølgen ER information (bedste ryttere først, det
@@ -360,6 +365,54 @@ export default function PlannerSquad({
           })}
         </tbody>
       </table>
+    </Section>
+    {youthWithPeaks.length > 0 && (
+      <YouthPeaksSection riders={youthWithPeaks} months={months} busy={busy} onRemovePeak={onRemovePeak} />
+    )}
+    </SectionStack>
+  );
+}
+
+// #5992: ungdomsryttere med en ÆGTE peak fra før trup-scopet. De kan ikke
+// planlægges her (peak-mål er seniorløb), men en peak må aldrig blive usynlig
+// og ufjernelig, så de står i deres egen, tydeligt adskilte gruppe.
+function YouthPeaksSection({ riders, months, busy, onRemovePeak }) {
+  const { t } = useTranslation("planner");
+  return (
+    <Section>
+      <SectionHeader title={t("squad.youth.title")} meta={t("squad.count", { count: riders.length })} />
+      <p className="mb-2 text-[13px] text-cz-2">{t("squad.youth.note")}</p>
+      <ul className="divide-y divide-cz-border">
+        {riders.map((rider) => (
+          <li key={rider.id} className="flex flex-col gap-1.5 py-2.5 md:flex-row md:items-center md:gap-4">
+            <div className="flex min-w-0 items-center gap-1.5 md:w-[34%]">
+              {rider.nationality && <Flag code={rider.nationality} className="text-[11px]" />}
+              <span className="truncate text-[13.5px] font-medium text-cz-1">{riderShortName(rider)}</span>
+              <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t(`squad.youth.squad.${rider.squad}`)}</span>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              {(rider.peaks || []).filter((p) => !p.isSuggestion && p.targetRaceId).map((p) => (
+                <div key={p.id} className="flex items-center gap-1.5">
+                  <FlagIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-cz-2">
+                    <span className="font-data tabular-nums">{formatOrdinalShort(dateToOrdinal(p.windowStart), months)}</span> · {p.targetRaceName || "-"}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center text-cz-3 hover:text-cz-1 disabled:opacity-40 md:min-h-0 md:min-w-0 md:p-0.5"
+                    disabled={busy || p.locked}
+                    aria-label={t("squad.remove")}
+                    title={p.locked ? t("squad.lockedTooltipGeneric") : t("squad.remove")}
+                    onClick={() => onRemovePeak(p.id)}
+                  >
+                    {p.locked ? <LockIcon size={13} aria-hidden="true" /> : <XIcon size={14} aria-hidden="true" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }

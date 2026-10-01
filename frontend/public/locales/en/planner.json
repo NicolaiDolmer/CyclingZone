@@ -66,6 +66,14 @@
     "payback": {
       "collision": "The dip after this peak covers {race}, {days, plural, one {# day} other {# days}} later. Expect {payback} form there.",
       "unknownRace": "another race on this rider's program"
+    },
+    "youth": {
+      "title": "U23 and junior riders",
+      "note": "These riders race U23 and junior races. Peaks are planned for the senior calendar, so their peaks can only be removed here.",
+      "squad": {
+        "u23": "U23",
+        "junior": "Junior"
+      }
     }
   },
   "assistant": {
@@ -123,7 +131,6 @@
     "label": "OVR"
   },
   "today": "Today",
-  "academy": "Academy",
   "form": {
     "now": "Current form {value}"
   },
@@ -146,7 +153,8 @@
       "suggestedHere": "Assistant suggests here",
       "viewPage": "View race page",
       "peaksLocked": "Division pending",
-      "maxedReached": "Peak limit reached (max {max} per rider)"
+      "maxedReached": "Peak limit reached (max {max} per rider)",
+      "started": "Started"
     },
     "rider": {
       "abilities": "Abilities",
