@@ -52,3 +52,5 @@ Keep publicly shared status qualitative and factual. No affected-account lists, 
 The proposed release principle is owner-approved: correctness forward from upcoming stages; new tactical/balance policy for new races; old results only after explicit review. Technical pinning is still to build, so copy describes the intended release, not a current guarantee.
 
 Status refreshed after release close-outs: #5915 comment5920083296 and #5930 latest session closure; Thursday remains the announced target for all five training items, not a claim that the whole package is delivered.
+
+1 October: first correctness implementation is PR #5990, head 07c46b095. Full local backend/frontend and affected browser flows passed; all current CI checks passed and CodeRabbit resolved all six review threads. Owner visual release/merge-go remains pending; nothing is called live. Annotated screenshot proof uses the identical synthetic fixture on old/new code.

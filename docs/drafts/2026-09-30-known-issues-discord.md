@@ -6,7 +6,7 @@ Owner draft only. Three separate messages per language, each below Discord's nor
 Hi 🙂 A proper status update, so you don't need to piece everything together from the chat.
 
 The engine issues I'm working through:
-• Breakaway flags mix the morning escape with some later attacks. This evening's Auvergne had eight morning escapees, but twenty flagged riders. I'm separating the markers and explaining the events in the film.
+• Breakaway flags mix the morning escape with some later attacks. Auvergne stage 6 on 30 September had eight morning escapees, but twenty flagged riders. I'm separating the markers and explaining the events in the film.
 • Captains/helpers can attempt morning breaks without the intended order. Roles, autonomy and saving energy need to behave predictably.
 • I've reproduced forced breakaway selection even when the selection rolls say no. An attempt needs to be able to fail, and rival teams need to react while the break forms.
 • GC reactions need the actual standing before the stage, not just rider abilities. Neutral should be a useful default.
@@ -42,7 +42,7 @@ For a new example, please include the race link, stage, rider and chosen order. 
 Hejsa 🙂 Her er en ordentlig status, så du ikke skal samle det hele op mellem beskederne.
 
 Motorproblemerne, jeg arbejder mig igennem:
-• Udbrudsflag blander morgenudbrud med nogle senere angreb. Aftenens Auvergne havde otte morgenudbrydere, men tyve med flag. Markeringerne skilles ad, og filmen skal forklare hændelserne.
+• Udbrudsflag blander morgenudbrud med nogle senere angreb. Auvergnes etape 6 den 30. september havde otte morgenudbrydere, men tyve med flag. Markeringerne skilles ad, og filmen skal forklare hændelserne.
 • Kaptajner/hjælpere kan forsøge morgenudbrud uden den tænkte ordre. Roller, selvstændighed og spar kræfter skal opføre sig forudsigeligt.
 • Jeg har reproduceret tvungen udbrudsudvælgelse, selv når lodtrækningerne siger nej. Forsøg skal kunne mislykkes, og rivalhold skal reagere, mens udbruddet dannes.
 • Klassementet før etapen skal ind i vurderingen, ikke kun rytternes evner. Neutral skal være et brugbart standardvalg.
