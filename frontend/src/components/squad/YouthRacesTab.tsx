@@ -114,7 +114,7 @@ export default function YouthRacesTab({ squad, tab, trainOnly = false }: { squad
 
   return (
     <div>
-      {tab === "calendar" && <p className="mb-3 text-[13px] text-cz-2">{t("youthRaces.calendarHint")}</p>}
+      {tab === "calendar" && !trainOnly && <p className="mb-3 text-[13px] text-cz-2">{t("youthRaces.calendarHint")}</p>}
       <DataTable
         label={t(`tabs.${tab}`)}
         columns={columns}

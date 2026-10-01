@@ -26,7 +26,8 @@ interface OptOutPayload {
 export function parseOptOut(data: unknown): { available: boolean; trainOnly: boolean; effectiveFromDay: number | null } {
   const d = (data ?? {}) as OptOutPayload;
   const day = typeof d.effectiveFromDay === "number" && Number.isFinite(d.effectiveFromDay) ? d.effectiveFromDay : null;
-  return { available: d.available !== false, trainOnly: d.trainOnly === true, effectiveFromDay: day };
+  // Kun et eksplicit available=true viser valget (serveren sender altid feltet).
+  return { available: d.available === true, trainOnly: d.trainOnly === true, effectiveFromDay: day };
 }
 
 export function useYouthRaceOptOut(squad: YouthSquad, onSaved?: () => void) {
