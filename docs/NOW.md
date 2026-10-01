@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Hovedsession 1-2/10 afsluttet ca. 00.30; natsession 2/10 starter (prompt: docs/drafts/2026-10-02-night-session-prompt.md + #6013). Bølgen 47f874c9 kører videre.
+> **🤖 Working agent:** Natsession 2/10 (Claude, startet 00.45): #6032 i merge-køen, fodrer bølgen 47f874c9 via enqueue; morgenpakke kl. 08.30. Prompt: docs/drafts/2026-10-02-night-session-prompt.md.
