@@ -85,13 +85,14 @@ test("allowlisten er ikke tom, har unikke noegler, og hver noegle er et stadie-f
   for (const key of PLAYER_VISIBLE_FLAG_KEYS) {
     assert.ok(isStageFlagKey(key), `${key} staar ikke i STAGE_FLAGS, men endpointet evaluerer den som et stadie-flag`);
   }
-  // De fem Hjaelp-siden gater paa (#4948, #5274, #5519).
+  // De seks Hjaelp-siden gater paa (#4948, #5274, #5519, #4854).
   for (const key of [
     "race_engine_v4",
     "board_mandate_model_enabled",
     "training_tick_per_race_day",
     "training_score_visible",
     "youth_squad_pages",
+    "training_fatigue_rules",
   ]) {
     assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(key), `${key} mangler i allowlisten`);
   }
@@ -111,6 +112,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_tick_per_race_day: false,
     training_score_visible: false,
     youth_squad_pages: false,
+    training_fatigue_rules: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -150,6 +152,7 @@ test("manglende raekke, ukendt vaerdi og DB-fejl er alle off (fail-safe)", async
     training_tick_per_race_day: false,
     training_score_visible: false,
     youth_squad_pages: false,
+    training_fatigue_rules: false,
   });
 });
 
@@ -196,6 +199,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_tick_per_race_day: true,
     training_score_visible: false,
     youth_squad_pages: false,
+    training_fatigue_rules: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -203,5 +207,6 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_tick_per_race_day: true,
     training_score_visible: false,
     youth_squad_pages: false,
+    training_fatigue_rules: false,
   });
 });

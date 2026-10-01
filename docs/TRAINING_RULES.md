@@ -1,5 +1,50 @@
 # Træningens regler - SSOT
 
+## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
+
+Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
+løbsdags aktivitet tælles én gang, og de oprindelige aktiviteter kan foldes ud
+under rytteren. Hele gevinstpoint summeres; brøkfremgang vises kun med dokumenteret
+start- og slutfremdrift. Tilstanden kommer fra datoens afsluttende afregning,
+aldrig fra summen af flere normaliserede tilstandsændringer.
+
+Alle forventede slots skal have kompatibel datokadence, før kvitteringen er
+afregnet. Manglende slots er afventende; karantæne, modstridende dubletter og
+blandet kadence kræver efterkontrol. Disse tilstande må ikke blive til målte
+nul-gevinster, sæsontal eller en historie om en færdig træningsdag.
+Ældre rapporter uden afregningsbevis beskrives som registrerede aktiviteter.
+Sæsoner på samme dato holdes adskilt; sæsontotaler filtreres før sammenlægning.
+
+Scorevisningen er godkendt til build af ejeren 30/9: oversigten viser seneste
+dokumenterede træningspasscore på kvitteringens dato, og detaljerne viser hvert
+pas' kvalitet fra `rider_training_scores`. Opslaget matcher dato, sæson og løbsdag;
+rapportens ældre gevinst-score bruges aldrig som kvalitet. Løb, hvile, skade og
+uklare kvitteringer får ikke et opdigtet tal. Score uden for læsevinduet vises
+som ukendt. Visningen følger fortsat `training_score_visible` og ejerskabsfilteret.
+Legacy-kvitteringer uden sæson og løbsdag kan kun få en score, hvis datoen
+har præcis én matchende score uden løbsdags-id; tvetydige match er ukendte.
+Farver genbruger rytterprofilens `ConditionChips`-regler for form og træthed
+på hvert før-/eftertal. Dokumenteret positiv udvikling bruger den eksisterende
+gevinstfarve fra `AbilityReceiptRow`. Score forbliver neutral som på de øvrige
+scoreflader; ukendte værdier får ingen statusfarve (ejer-retning 30/9).
+API'ets additive `trainingScore[rider_id].sessions` bevarer de indlæste slots;
+den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
+
+Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
+regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
+datoens forventede løbsdage som visningsbevis. Ejerens beta-release-go 30/9
+gater den nye rapport med `training_daily_receipt`: `beta` åbner kun for
+serververificerede beta-testere/admin. `off`, manglende flag eller læsefejl
+bevarer den eksisterende rapport. `training_score_visible` ændres ikke.
+API-feltet `dailyReceiptEnabled` vælger frontendvisningen; flaget ændrer ingen
+træningsskrivninger. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+
+## Historisk delt løbsdag efter holdskifte (#5860, ejer-go 30/9)
+
+Eksisterende resultater og immutable belastningssnapshots bevares ved den ejer-godkendte genopretning. Et ekstra bevis på samme rytter/sæson/løbsdag kan referere den oprindelige, tidligere afviklede aktivitet via `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number`. Kun det oprindelige bidrag tæller i datoens tilstand; alle bevisrækker indgår i den atomiske afregningskvittering og forbruges samlet. Der opstår ét udviklingstick pr. rytter/løbsdag og én tilstandsafregning pr. dato. Normale nye belastninger er fortsat unikke på rytter/sæson/løbsdag.
+
+`recover_transferred_race_loads` er service-only, sammenligner præcist snapshot og finaliseringsstatus, kræver eksisterende resultat og en tidligere, uafregnet aktivitet på samme slot og committer hele belastningsbatchen eller intet. Ukendte ekstra konflikter, ændret evidens eller allerede afregnet tilstand afviser genopretningen. Ingen resultater, programmer, evner, skader eller live-tilstand skrives af denne RPC. Fremtidige dobbeltstarter afvises før resultat/startsnapshot efter [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md); aksen står i [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Den godkendte genopretning er gennemført 30/9 efter PR #5983. Resultatfingeraftrykket er bevaret; privat før-/efterbevis og rollback-note ligger i OneDrive-context.
+
 ## Førstegangsregistrering og driftalarmer (#5928, 29/9)
 
 Når `training_condition_per_date` ejer træningen, springer den gamle kl. 22-sweep

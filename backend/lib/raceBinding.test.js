@@ -216,7 +216,7 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 // (id, season_id → nu + league_division_id). seasonRaces dækker den NYE
 // .eq("season_id", ...)-gren (uden .in("id", ...)) som loadPoolLocalCetSpans bruger til
 // at bygge det pulje-lokale monument-indeks — separat fra otherRaceIds-opslaget ovenfor.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null, raceLeagueDivisionById = null, seasonRaces = null } = {}) {
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null, raceLeagueDivisionById = null, seasonRaces = null,ownedRiderIds=[],spentDays=[] } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -224,6 +224,8 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
       eq(col, val) { f[col] = val; return b; },
       neq(col, val) { f["neq_" + col] = val; return b; },
       in(col, vals) { f["in_" + col] = vals; return b; },
+      order() {return b;},
+      range(start,end) {f.range=[start,end];return b;},
       then(resolve, reject) {
         let data = [];
         if (table === "race_stage_schedule") {
@@ -235,7 +237,7 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
           data = teamEntries.map((e) => ({ team_id: teamId, ...e }));
         } else if (table === "riders") {
           // Entry-ryttere: berettigede som default; ghosts markeres off-team (team_id=null).
-          const ids = f.in_id || [];
+          const ids = f.in_id || ownedRiderIds;
           data = ids.map((id) => ({
             id, team_id: ghostRiderIds.includes(id) ? null : teamId, is_academy: false, is_retired: false,
           }));
@@ -252,13 +254,24 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
             data = seasonRaces;
           }
         }
+        if(f.range && Array.isArray(data)) data=data.slice(f.range[0],f.range[1]+1);
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
     };
     return b;
   }
-  return { from };
+  return { from,rpc:async()=>({data:spentDays,error:null}) };
 }
+
+test('loadTeamBindingContext retains transferred participation in a race the buyer also entered',async()=>{
+  const supabase=makeSupabase({raceSeasonById:{old:'s4'},ownedRiderIds:['buyer-own','transferred'],
+    scheduleByRace:{new:[{game_day:12}],old:[{race_id:'old',game_day:12}]},
+    teamEntries:[{race_id:'old',rider_id:'buyer-own'}],
+    spentDays:[{race_id:'old',rider_id:'transferred',game_day:12}],
+  });
+  const context=await loadTeamBindingContext({supabase,race:{id:'new',season_id:'s4'},teamId:'team-1'});
+  assert.deepEqual(findRiderBindingConflicts({riderIds:['transferred'],...context}),['transferred']);
+});
 
 test("loadTeamBindingContext: bygger thisWindow + otherRaces grupperet pr. løb", async () => {
   const supabase = makeSupabase({
@@ -853,6 +866,8 @@ function squadBindingSupabase({ riders, teamEntries, scheduleByRace, raceSeasonB
       eq(col, val) { f[col] = val; return b; },
       neq(col, val) { f["neq_" + col] = val; return b; },
       in(col, vals) { f["in_" + col] = vals; return b; },
+      order() {return b;},
+      range() {return b;},
       then(resolve, reject) {
         let data = [];
         if (table === "race_stage_schedule") {

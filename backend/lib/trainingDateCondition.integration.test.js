@@ -35,6 +35,9 @@ before(async () => {
   await db.exec(recovery);await db.exec(recovery);
   const initialization = await readFile(new URL('../../database/2026-09-29-5928-training-condition-initialization.sql', import.meta.url), 'utf8');
   await db.exec(initialization); await db.exec(initialization);
+  await db.exec('ALTER TABLE race_results ADD COLUMN rider_id uuid');
+  const sharedRecovery=await readFile(new URL('../../database/2026-09-30-5860-shared-race-day-recovery.sql',import.meta.url),'utf8');
+  await db.exec(sharedRecovery);await db.exec(sharedRecovery);
 });
 after(async () => db?.close());
 beforeEach(async () => {
@@ -197,6 +200,35 @@ async function record(stageNumber,load=12) {
   return (await db.query('SELECT record_training_race_load($1,$2,$3) AS result',[race,stageNumber,JSON.stringify([{rider_id:rider,load}])])).rows[0].result;
 }
 async function ledger() {return (await db.query('SELECT rider_id,race_id,stage_number,game_day,load::float AS load FROM training_race_loads ORDER BY game_day')).rows;}
+
+test('approved transfer overlap preserves immutable evidence and counts one physical load',async()=>{
+  await seedRace(); await record(1);
+  const second='00000000-0000-0000-0000-000000000099';
+  const state={stage_number:1,done:['write','standings','enrichment'],final:false};
+  const loads=[{rider_id:rider,load:14}];
+  const sources=[{rider_id:rider,race_id:race,stage_number:1}];
+  await db.query('INSERT INTO races(id,season_id,finalize_state) VALUES($1,$2,$3)',[second,season,JSON.stringify(state)]);
+  await db.query("INSERT INTO race_stage_schedule VALUES($1,1,1,'2026-09-29T12:00:00Z')",[second]);
+  await db.query('INSERT INTO race_simulation_runs(race_id,stage_number,entrant_snapshot,condition_load_snapshot) VALUES($1,1,$2,$3)',[second,JSON.stringify([rider]),JSON.stringify(loads)]);
+  await db.query("INSERT INTO race_results(race_id,stage_number,rider_id,result_type) VALUES($1,1,$2,'stage')",[second,rider]);
+  const args=[second,1,JSON.stringify(loads),JSON.stringify(sources),JSON.stringify(state)];
+  const recover=()=>db.query('SELECT recover_transferred_race_loads($1,$2,$3,$4,$5) AS result',args);
+  const stale=[...args];stale[4]=JSON.stringify({...state,stage_number:2});
+  await assert.rejects(()=>db.query('SELECT recover_transferred_race_loads($1,$2,$3,$4,$5)',stale),/finalization changed/);
+  const altered=[...args];altered[2]=JSON.stringify([{rider_id:rider,load:15}]);
+  await assert.rejects(()=>db.query('SELECT recover_transferred_race_loads($1,$2,$3,$4,$5)',altered),/exact immutable loads/);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_race_loads')).rows[0].n,1,'failed repairs leave no alias');
+  assert.deepEqual((await recover()).rows[0].result,{recorded:0,aliases:1});
+  assert.deepEqual((await recover()).rows[0].result,{recorded:0,aliases:0});
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_race_loads')).rows[0].n,2);
+  assert.equal((await db.query('SELECT fatigue FROM rider_condition')).rows[0].fatigue,60);
+  assert.deepEqual((await db.query('SELECT condition_load_snapshot FROM race_simulation_runs WHERE race_id=$1',[second])).rows[0].condition_load_snapshot,loads);
+  const rows=await ledger();
+  for(const day of [1,2,3,4,5]) await commit(day,55,rows);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_rider_ticks')).rows[0].n,5);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_condition_settlements')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM training_race_loads WHERE consumed_at IS NOT NULL')).rows[0].n,2);
+});
 test('race ledger is idempotent, immutable and does not write live fatigue', async()=>{
   await seedRace();
   assert.deepEqual(await record(1),{recorded:1});

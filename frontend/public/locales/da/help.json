@@ -278,7 +278,7 @@
       },
       "midRaceTransfers": {
         "title": "Handler under et aktivt etapeløb",
-        "text": "Hvis en rytter handles (transfer, byttehandel eller auktion), mens han er midt i et aktivt etapeløb, gennemføres handlen og betalingen med det samme, men han kører løbet færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold i mellemtiden, og han kan ikke handles igen, før skiftet er gennemført. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme."
+        "text": "Hvis en rytter handles (transfer, byttehandel eller auktion), mens han er midt i et aktivt etapeløb, gennemføres handlen og betalingen med det samme, men han kører løbet færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold i mellemtiden, og han kan ikke handles igen, før skiftet er gennemført. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme. En løbsdag, han allerede har kørt for sit tidligere hold, er fortsat optaget efter skiftet. Han kan udtages til løb på senere løbsdage."
       },
       "negotiation": {
         "title": "Forhandling frem og tilbage",
@@ -1114,6 +1114,10 @@
       "individualWeeklyPlan": {
         "title": "Individuel ugeplan pr. rytter",
         "text": "Klik \"Individuel ugeplan\" på en rytters række i rosteret for at sætte netop den rytters egen ønskede intensitet pr. dag, adskilt fra både rytterens eget fokus/intensitet og holdets rytme. Dette er det mest specifikke lag: en individuel ugeplan vinder over alt andet for netop denne rytter, inklusive rytterens egen eksplicitte intensitet, som i forvejen vinder over holdets ugentlige rytme. Den er tænkt til de 2-3 ryttere hvis træning du vil variere dag for dag. Ryttere med egen ugeplan viser et \"Egen plan\"-mærkat i rosteret."
+      },
+      "fatigueLimit": {
+        "title": "Træthedsgrænse",
+        "text": "Du kan sætte én regel for holdet: over en træthed, du selv vælger, kører rytterne et lettere pas i stedet (samme pas på let belastning, aktiv restitution eller hvile). En enkelt rytter kan få sin egen grænse eller ingen grænse. Reglen tjekkes på trætheden ved datoens start, så resultatet er det samme, uanset hvornår du logger ind. Den ændrer aldrig planen, så rytteren vender tilbage til sit program, når han er under grænsen. Du kan også vælge, at første felt dagen efter en etape er aktiv restitution. Du sætter den under Program, Træthedsgrænse, hvor de seneste 7 dage viser, hvornår en regel slog til. Løb kommer altid først: en rytter i et løb påvirkes ikke."
       }
     },
     "activityfeed": {
@@ -1361,7 +1365,7 @@
       },
       "breakaway": {
         "title": "Udbrud",
-        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Etaperesultater markerer ryttere der var i udbruddet med et flag, og viser om de holdt hjem til mål eller blev indhentet af feltet. At komme med i udbruddet koster rytteren intet ekstra: ingen ekstra træthed og ingen straf på egen placering hvis det bliver hentet. Det er et gratis forsøg på et bedre resultat, aldrig en gambling med en bagside."
+        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Når en etape har en komplet, oprindelig løbshistorik fra den nye motor, viser resultaterne et flag for morgenudbruddet og en pil for et senere angreb. Flaget skelner mellem deltagelse, en registreret indhentning og et udbrud, der holdt hjem. Ældre etaper uden den historik beholder deres gemte markeringer. At komme med i udbruddet koster rytteren intet ekstra: ingen ekstra træthed og ingen straf på egen placering hvis det bliver hentet. Det er et gratis forsøg på et bedre resultat, aldrig en gambling med en bagside."
       },
       "fatigue": {
         "title": "Træthed betyder noget",

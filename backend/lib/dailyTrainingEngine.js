@@ -15,6 +15,9 @@
 // (buildCapsForRider, #2471 — ikke lazy-initeret), batched writes (runBatched),
 // ageForSeason-helper genbrugt herfra.
 //
+// #4847 "Train now" (design 29/9): POST /api/training/train-now kalder SAMME motor
+// via trainNow.js for datoens loebsdage undtagen den sidste (I4: kun aftenens commit
+// skriver traethed/form), med samme laaste opening-condition som sweepen (I1).
 // Kaldes af: POST /api/training/run-today (manager) + cron-sweeps (assistant):
 // trainingSweep.js paa den gamle kalenderdags-sti, trainingDayCloseTrigger.js paa
 // loebsdags-stien (#4847). BONUS: `bonus` er true KUN paa den gamle sti — loebsdags-
@@ -31,7 +34,11 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 // #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
-import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
+// #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
+import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import {
+  loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
+} from "./trainingFatigueRules.ts"; // #4854/#5620
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -42,7 +49,7 @@ import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
-import { settleTrainingDateCondition } from './trainingDateCondition.js';
+import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
   loadBoundRiderIdsForRaceDay,
@@ -293,6 +300,7 @@ export async function runTeamTrainingDay({
   // Ved fejl her slettes reservationen, så holdet kan retrye samme dag.
   let abilityUpdates, conditionUpserts, reportRiders, historyRows, raceDayHistoryRows, scoreRows;
   let raceLoadRows = [];
+  let canonicalLoadRows = [];
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   let ridersQuery = supabase
@@ -351,10 +359,13 @@ export async function runTeamTrainingDay({
   const riderIds = riders.map((r) => r.id);
   if (conditionPerDate) {
     const { data, error } = await supabase.from('training_race_loads')
-      .select('rider_id,race_id,stage_number,game_day,load,consumed_at')
+      // Full ledger records keep this reader compatible before the recovery
+      // columns migrate, and retain every original/alias in the atomic receipt.
+      .select('*')
       .eq('season_id', seasonId).eq('tick_date', tickDate).in('rider_id', riderIds);
     if (error) throw new Error(`race condition ledger load: ${error.message}`);
     raceLoadRows = data ?? [];
+    canonicalLoadRows = canonicalRaceLoads(raceLoadRows);
     if (raceLoadRows.some(row => !dateDays.includes(row.game_day) || row.consumed_at != null)) {
       throw new Error('Race condition ledger does not match unsettled date');
     }
@@ -525,7 +536,7 @@ export async function runTeamTrainingDay({
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
   const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
-    ? await isTrainingProgramsEnabledForTeam(supabase, teamId)
+    ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
   // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
   // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").
@@ -551,6 +562,12 @@ export async function runTeamTrainingDay({
   }
 
   const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
+  // #4854/#5620: spillerens EGNE regler (traethedsgraense + dagen efter en etape).
+  // Al logik bor i trainingFatigueRules.ts; hold uden regler = null = uaendret sti.
+  const fatigueRules = await loadTeamFatigueRules(supabase, teamId);
+  const stageYesterdayRiderIds = fatigueRules && programSlot === 0 && fatigueRules.anyAfterStage(riderIds)
+    ? await loadRiderIdsWithStageOnDate(supabase, { riderIds, previousDate: previousDateString(tickDate) })
+    : new Set();
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
@@ -612,6 +629,15 @@ export async function runTeamTrainingDay({
     });
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
+    // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
+    const fatigueRuleResult = fatigueRules ? applyFatigueRules({
+      program, rule: fatigueRules.forRider(rider.id), fatigueAtDateStart: Number(conditionBeforeDate.fatigue ?? 0),
+      slotIndex: programSlot, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
+    }) : null;
+    if (fatigueRuleResult?.stamp) {
+      program.focus = fatigueRuleResult.focus;
+      program.intensity = fatigueRuleResult.intensity;
+    }
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};
@@ -673,7 +699,7 @@ export async function runTeamTrainingDay({
     // traening, uanset om bindings-raekken stadig findes.
     // KOERTE han en etape i dag? (uafhaengigt af om udviklingen er taendt)
     const rodeToday = racedRiderIds.has(rider.id);
-    const raceLoadToday = conditionPerDate ? raceLoadRows.find(row => row.rider_id === rider.id && row.game_day === raceDay) : null;
+    const raceLoadToday = conditionPerDate ? canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === raceDay) : null;
     const unresolvedSlots=(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id])??[];
     const unresolvedOnThisSlot=conditionPerDate&&deadlineReached?unresolvedSlots.filter(slot=>Number(slot.gameDay)===raceDay):[];
     const unknownSlot=!raceLoadToday&&unresolvedOnThisSlot.length>0;
@@ -819,8 +845,8 @@ export async function runTeamTrainingDay({
     // "sluk udviklingen for S3" umulig før dette split.
     const dailyCondition = settlesCondition ? settleTrainingDateCondition({
       riderId: rider.id, dateStr: tickDate, condition: conditionBeforeDate,
-      intensities: [...priorDateReports.map(report=>raceLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity],
-      raceLoads: dateDays.map(day => Number(raceLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)),
+      intensities: [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity],
+      raceLoads: dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)),
       recoveryAbility: recoveryBeforeDate,
       recoveryConfig: raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {},
     }) : null;
@@ -1052,6 +1078,7 @@ export async function runTeamTrainingDay({
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens
       // bidrag til "på vej mod næste point"-baren, aldrig til ny trænings-logik.
       progress_before: preProgress,
+      progress_after: tickResult?.progress ?? preProgress,
       status: unknownSlot ? 'unknown_pending' : tickResult?.status ?? "rest",
       form: newForm,
       fatigue: newFatigue,
@@ -1071,6 +1098,11 @@ export async function runTeamTrainingDay({
       bound_race_day: boundToday,
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
+      // #4854: kun naar holdet har regler; stemplet kun naar programmet faktisk koertes.
+      ...(fatigueRuleResult ? {
+        fatigue_rule: fatigueRuleResult.stamp && !raceLoadToday && !unknownSlot && !injuredToday && !racedToday && !boundRestToday
+          ? fatigueRuleResult.stamp : null,
+      } : {}),
     });
   }
 
@@ -1115,7 +1147,7 @@ export async function runTeamTrainingDay({
       throw new Error('Date race loads include a rider without a condition settlement');
     }
     const report = { riders: reportRiders, bonus_applied: bonus, executed_by: executedBy,
-      tick_date: tickDate, game_day: raceDay, condition_per_date: true,
+      tick_date: tickDate, game_day: raceDay, date_game_days: dateDays, condition_per_date: true,
       condition_settled: settlesCondition };
     const { data, error } = await supabase.rpc('commit_training_date_tick', {
       p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,

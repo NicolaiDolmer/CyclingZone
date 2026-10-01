@@ -7,6 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
+import { isRaceDateTrainNowLocked } from "./trainNowLock.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
 export function validateSelection({
@@ -170,6 +171,12 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   const seasonStatus = await loadRaceSeasonStatus({ supabase, seasonId: race.season_id });
   if (!seasonAllowsSelectionWrites(seasonStatus)) {
     return { ok: false, status: 409, error: "selection_season_not_active" };
+  }
+
+  // #4847 (I3): efter et "Train now"-tryk er datoens tilmelding afgjort for holdet.
+  // Et loeb med en etape paa en laast dato kan hverken faa nye eller miste ryttere.
+  if (await isRaceDateTrainNowLocked({ supabase, teamId, raceId: race.id })) {
+    return { ok: false, status: 409, error: "selection_train_now_locked" };
   }
 
   const ctx = await getSelectionContext({ supabase, race, teamId });

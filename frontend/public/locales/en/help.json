@@ -278,7 +278,7 @@
       },
       "midRaceTransfers": {
         "title": "Trades during an active stage race",
-        "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the deal and payment complete immediately, but he finishes the race for his selling team and joins his new team right after the finish. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. Races that have not started yet are unaffected: the rider moves instantly."
+        "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the deal and payment complete immediately, but he finishes the race for his selling team and joins his new team right after the finish. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. Races that have not started yet are unaffected: the rider moves instantly. A race day already used for the previous team stays occupied after the move. He can enter races on later race days."
       },
       "negotiation": {
         "title": "Back-and-forth negotiation",
@@ -1114,6 +1114,10 @@
       "individualWeeklyPlan": {
         "title": "Individual weekly plan per rider",
         "text": "Click 'Individual weekly plan' on any rider's row in the roster to set that rider's own target intensity per day, separate from both their own focus/intensity and the team rhythm. This is the most specific layer: an individual weekly plan wins over everything else for that rider, including their own explicit intensity, which in turn already wins over the team's weekly rhythm. It's meant for the 2-3 riders whose training you want to vary day by day. Riders with their own weekly plan show an 'Own plan' badge in the roster."
+      },
+      "fatigueLimit": {
+        "title": "Fatigue limit",
+        "text": "You can set one rule for the team: above a fatigue level you choose, riders run a lighter session instead (the same session on light load, active recovery or rest). A single rider can have his own limit or no limit. The rule is checked on fatigue at the start of each date, so the result is the same whenever you log in. It never changes the plan, so the rider goes back to his program once he is under the limit. You can also choose that the first slot the day after a stage is active recovery. You set it under Program, Fatigue limit, where the last 7 days show when a rule kicked in. Racing always comes first: a rider in a race is not affected."
       }
     },
     "activityfeed": {
@@ -1361,7 +1365,7 @@
       },
       "breakaway": {
         "title": "Breakaways",
-        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. Stage results mark riders who were in the breakaway with a flag, showing whether they stayed away to the finish or were caught by the bunch. Joining the breakaway costs a rider nothing extra: no added fatigue and no penalty to his own finishing position if it gets caught. It is a free shot at a better result, never a gamble with a downside."
+        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. When a stage has a complete native race history, the results use a flag for the morning breakaway and an arrow for a later attack. The flag distinguishes participation, a recorded catch and a break that stayed away. Older stages without that history keep their stored markers. Joining the breakaway costs a rider nothing extra: no added fatigue and no penalty to his own finishing position if it gets caught. It is a free shot at a better result, never a gamble with a downside."
       },
       "fatigue": {
         "title": "Fatigue matters",

@@ -1,5 +1,86 @@
 export const PATCHES = [
   {
+    "version": "7.327",
+    "date": "2026-10-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Chasing no longer pushes escapees backwards",
+          "body": "What changed\nA pursuing group closes the gap by moving forward. Catching a breakaway no longer moves its riders backwards towards a distant group.\n\nWhat it means for you\nThe correction applies to upcoming stage calculations. Completed results are unchanged."
+        },
+        "da": {
+          "title": "Jagten flytter ikke udbrydere baglæns",
+          "body": "Hvad er ændret\nJagtgruppen lukker hullet ved at rykke frem. Indhentning flytter ikke længere udbryderne baglæns mod en fjern gruppe.\n\nHvad betyder det for dig\nRettelsen gælder kommende etapeberegninger. Afsluttede resultater ændres ikke."
+        },
+        "refs": [
+          5951
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Morning breakaways and later attacks have separate markers",
+          "body": "What changed\nThe stage results distinguish morning breakaways from later attacks. The film shows recorded regrouping and descent attacks, and omits a breakaway curve when the actual pursuit distance is not recorded.\n\nWhat it means for you\nWhere complete native history exists, the markers follow the recorded events. Older stages without that history retain their stored markers."
+        },
+        "da": {
+          "title": "Morgenudbrud og senere angreb får hver sin markering",
+          "body": "Hvad er ændret\nEtaperesultatet skelner mellem morgenudbrud og senere angreb. Filmen viser registrerede samlinger og nedkørselsangreb, og udelader udbrudskurven, når den faktiske jagtafstand ikke er registreret.\n\nHvad betyder det for dig\nHvor der er en komplet historik fra den nye motor, følger markeringerne det registrerede forløb. Ældre etaper uden den historik beholder de gemte markeringer."
+        },
+        "refs": [
+          5953,
+          5954
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.326",
+    "date": "2026-09-30",
+    "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "One receipt for the whole training date",
+        "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
+      },
+      "da": {
+        "title": "Én kvittering for hele træningsdatoen",
+        "body": "For beta-testere samler træningsrapporten datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Form, træthed og positiv udvikling bruger samme farver som ryttervisningerne. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
+      },
+      "refs": [5915]
+    }]
+  },
+  {
+    "version": "7.325", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Planning",
+      "en": {
+        "title": "Clearer planning numbers",
+        "body": "Planning now shows each rider's order in its own column and labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
+      },
+      "da": {
+        "title": "Tydeligere planlægningstal",
+        "body": "Planlægning viser nu rytterens ordre i sin egen kolonne og har tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
+      },
+      "refs": [5930]
+    }]
+  },
+  {
+    "version": "7.324", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {"title": "Race days follow transferred riders", "body": "After a transfer, a rider cannot enter another race on a race day already used for the previous team. Races starting on later race days remain available."},
+      "da": {"title": "Løbsdage følger solgte ryttere", "body": "Efter et holdskifte kan en rytter ikke udtages til et andet løb på en løbsdag, han allerede har kørt for sit tidligere hold. Løb på senere løbsdage er fortsat tilgængelige."},
+      "refs": [5860]
+    }]
+  },
+  {
     "version": "7.323", "date": "2026-09-30", "label": "Beta",
     "changes": [{
       "category": "fixed", "audience": "player", "topic": "Training",

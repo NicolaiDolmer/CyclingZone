@@ -235,7 +235,8 @@ function productionDeps(root, worktreesRoot) {
       t.reviewBase = git(t.worktree, 'merge-base', 'origin/main', 'HEAD');
       const files = git(t.worktree, 'diff', '--name-only', `${t.reviewBase}...HEAD`).split('\n').filter(Boolean);
       if (!files.length) throw Error('Worker made no committed change');
-      const allowed = file => t.ownership.some(raw => {
+      // #5997: shared files (touches) are allowed paths too.
+      const allowed = file => [...t.ownership, ...(Array.isArray(t.touches) ? t.touches : [])].some(raw => {
         const prefix = raw.replaceAll('\\', '/').split('*')[0].replace(/\/$/, '');
         return file === prefix || file.startsWith(prefix + '/');
       });

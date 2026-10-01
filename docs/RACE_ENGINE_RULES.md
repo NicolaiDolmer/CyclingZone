@@ -1,5 +1,42 @@
 # Race-motorens regler — SSOT
 
+## Jagt og hændelsesbaserede markeringer (#5951/#5953/#5954, build-go 30/9)
+
+Denne rettelse er bygget til review, ikke meldt live. Den fysisk nærmeste relevante gruppe bag et udbrud ejer jagten. Aktiv indhentning flytter jagtgruppen frem, aldrig udbryderne baglæns. Efter indhentning følger de fangede ryttere samme gruppes videre fremdrift; én gruppe betaler sit faktiske segmentarbejde én gang, også med flere mål. Gruppereferencen normaliseres uden at ændre deres indbyrdes afstand. Almindelig terræn-/energiselektion kan senere sætte ryttere af.
+
+`mechanics/chaseGroup.ts` deles af M5 og den åbne vejs tempo-neutralisering, så en stor fjern hale ikke bruges som jagtreference. `raceParticipationHistory.ts` er en ren projektion af optaget dannelse, angreb, split, indhentning og samling. Den ligger uden for den dovent indlæste kerne for at bevare flag-off-kontrakten. Resultatbroen bruger faktisk morgenudbrudsmedlemskab og indhentningshistorik; v3/ældre output uden registreret historie beholder sin tidligere mapping.
+
+Etapefladen bruger samme projektion for historiske markeringer, hvor en komplet native v2-tidslinje findes. Morgenudbrud har flag; senere offensive angreb har et særskilt ikon; passiv terrænselektion giver ikke angrebsmarkering. Et `stage_decided`-event er ikke bevis for et angreb. Ukendt overlevelsesudfald vises som deltagelse, ikke som en bekræftet overlevelse. Visningen omskriver ingen gemte resultater. Filmens native afstandskurve kræver eksplicit afstand til den faktiske jagtgruppe; eksisterende sparsomme absolutte gruppegaps giver derfor ingen kurve. Profil og faktiske hændelser vises fortsat. Ældre unavngivne kurver bevares.
+
+Ingen ny taktik-/GC-politik, formationsregel eller flagaktivering indgår i denne første correctness-leverance. Den fulde ejer-godkendte pakke er planlagt i #5984/#5978 og følger separat regimebinding for nye løb. Historiske resultat-/præmiekorrektioner kræver særskilt ejer-go.
+
+## Regel-revision pr. løb (#5955, #5984 Task 2)
+
+Et løbs taktiske regler bindes ved løbets første etape-claim og ændres aldrig siden. `races.engine_rules_revision` er `legacy` eller `orders_gc_v1`; den skrives kun af backend-runneren med én betinget opdatering (kun når kolonnen er tom og ingen etape er afviklet), derefter genlæses værdien, så samtidige claims ender ens. Retry, genoptagelse og senere etaper genbruger den gemte værdi. Et startet løb uden gemt værdi er `legacy`, aldrig automatisk opt-in; `engine_version = 4` alene vælger ikke ny politik. En ukendt værdi stopper afviklingen synligt: aldrig nyeste regler og aldrig v3-fallback. Før migrationen er anvendt, kører alt `legacy` uden skrivning. Bindingen sker kun når v4 afvikler etapen.
+
+`StageInput.rules_revision` er valgfri; udeladt er `legacy`, byte-identisk med før. Begge revisioner deler korrekthedsrettelser. Nye løb bindes i dag til `legacy` (`CURRENT_RACE_RULES_REVISION`): `orders_gc_v1` aktiveres først som samlet pakke (dannelse + faktisk GC-reaktion) efter ejer-godkendt privat kalibrering. Kode: `backend/lib/raceEngineRulesRevision.ts`, `raceRunner.bindRaceRulesRevision`, migration `2026-10-01-race-engine-rules-revision.sql`.
+
+## Morgenudbrud under `orders_gc_v1` (#5955, #5984 Task 3)
+
+Kun aktivt når løbets revision er `orders_gc_v1`; legacy-dannelsen er uændret. Tilladelse beregnes fra rolle, indsats og den effektive låste ordre (rolledefault + etapens overlay; fravær og eksplicit `try_break=false` holdes adskilt):
+
+| Rolle | Uden ordre | Med effektiv udbrudsordre |
+|---|---|---|
+| captain / sprint_captain / helper | forsøger ikke | forsøger |
+| hunter | forsøger (rolledefault); eksplicit fravalg gælder etapen | forsøger |
+| free_role | kan selv forsøge på `normal` | forsøger (prioriteret) |
+
+`save` stopper spontane forsøg, men en effektiv ordre forsøger stadig med normal pris. `protect`/`all_out` giver ikke spontane forsøg. `grupetto` forsøger aldrig.
+
+Dannelsen er omstridt: tilladelse → faktisk forsøg med pris → rivalholdenes modreaktion → eventuelt udbrud. Hvert forsøg koster én gang, også ved fiasko. Rivalhold er hold uden egen rytter i forsøget; deres faktiske arbejdere i feltet (ikke kaptajner) reagerer efter holdets stance (jag fuldt, neutral delvist, lad gå ikke) og betaler for arbejdet. Evne hjælper altid forsøget; ingen skjult svækkelse af stærke ryttere. Kun lykkede forsøg kommer med; der fyldes aldrig op, og nul udbrydere er gyldigt. Et overfyldt forsøg lukkes til udbruddets maksimale størrelse. En hjælper i udbruddet kan ikke samtidig hjælpe kaptajnen i en anden gruppe (holdspil, jagt og leadout regner kun med gruppens faktiske medlemmer). Tidslinjen får `breakaway_attempt` (forsøgte, kom afsted, reagerende hold) før `breakaway_formed`; ingen sandsynligheder eller vægte. Tuning-værdierne er ukalibrerede startkandidater. GC-reaktion er næste pakke. Kode: `mechanics/breakawayPermission.ts`.
+
+
+## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
+
+Faktisk deltagelse gemmes i `race_day_participation`, nøgle `(rider_id,season_id,game_day)`, uafhængigt af hold og mutable udtagelser. Afslutning eller holdskifte frigiver ikke en brugt løbsdag; næste løbsdag og næste sæson er uafhængige. Optagelse sker før officielle etaperesultater og ved frysning af startfeltet. Resultat-RPC'ens atomiske batch rulles tilbage ved konflikt, også på vejen hvor snapshots gemmes senere. Legacy-sletning/genindsættelse af et snapshot frigiver aldrig deltagelsen. Tabellen er privat; service-only hjælpere og snævre, ikke direkte bruger-kaldbare triggerfunktioner håndhæver reglen. Udtagelse og start-autofyld læser brugte dage på tværs af tidligere hold.
+
+Migrationen låser evidens-tabellerne under bootstrap og medtager både etaperesultater og snapshots i sæsoner med åbne løb. Ved låsekonflikt frigives delvise låse før et begrænset genforsøg. Start-autofyld rydder kun ugyldige udtagelser efter en frisk, låst kontrol af, at løbet endnu ikke har registreret deltagelse eller resultater. Historiske overlap bevarer resultater og retries; nye overlap afvises. Særskilt ejer-godkendt genopretning kan sammenkæde et ekstra belastningsbevis med den oprindelige aktivitet, jf. [TRAINING_RULES](TRAINING_RULES.md). Kode: `2026-09-30-5860-spent-race-days.sql`, `raceSpentDays.js`; akse: [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Migration og service-only adgang verificeret 30/9 efter PR #5983; brugt løbsdag afvises, senere dag er fri.
+
 ## Restitutionens ejer ved løbsdags-træning (#5888, 29/9)
 
 Når `training_condition_per_date` er aktivt, ejer datoens træningsafregning restitutionen mellem løbsdage. `raceRunner` og `raceFatigue` tilføjer derfor ingen separat restitution udledt af huller mellem etapers `game_day`, hverken i fuldløbets træthedsberegning eller ved finalisering. Løbets profil-/indsatsbelastning gemmes én gang i `training_race_loads`, afledt af etapens kanoniske kalenderdato og løbsdag; den ændrer ikke straks `rider_condition`. Datoens træningsafregning normaliserer hele belastningen over datoens slots. Etaper på samme dato bruger starttilstanden. Fejl i belastningsregistreringen skal genforsøges; de må ikke markeres som et afsluttet engangstrin. Med flaget off består den gamle model; en fejlet læsning af ejerskabet må ikke åbne den gamle skribent. Flaget kobler rettelsen til den sikre datokadence (#5928), så #5926 ikke leveres alene. Se [TRAINING_RULES.md](TRAINING_RULES.md#integritet-i-dagsaktiviteten-5888-299). Et immutable startsnapshot beviser deltagelse, ikke at finaliseringen er færdig; resultater og den eksisterende daglukning er fortsat nødvendige.
@@ -611,7 +648,7 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 
 **Én motor.** Der findes præcis én v4: `backend/lib/engine/v4`. Ny motor-logik uden for den mappe er forbudt. Mekanik-kataloget skal altid vise **bygget** og **koblet ind** som to kolonner; "bygget" alene betyder at motoren ikke kalder det.
 
-**Prod-status (#4951):** `app_config`-rækken `race_engine_v4` er `"off"`. Flip planlagt til 28/9, ejer-only (jf. mål-vs-garanti i regel 1 nedenfor).
+**Historisk prod-status (#4951, beslutninger 5.-6. september):** `app_config`-rækken `race_engine_v4` var `"off"`. Flip var planlagt til 28/9, ejer-only (jf. mål-vs-garanti i regel 1 nedenfor). Aktuel status findes i [NOW.md](NOW.md).
 
 | # | Regel | Ejer |
 |---|---|---|
@@ -627,3 +664,7 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 | 14 | **Holdspils-niveau = v3-paritet.** Beskyttelses-gabet i v4 skal være samme størrelse som i v3 (~7 pladser mod den re-eksporterede 7/9-population), så en hjælper der har kørt for sin kaptajn hele dagen betaler synligt for det, præcis som spillerne oplever i dag. Valgt som variant **B** i A/B-målingen ([`backend/scripts/out/teamplay-ab-2026-09-07.md`](../backend/scripts/out/teamplay-ab-2026-09-07.md), PR #4978); sat i `TEAM_PLAY_EXTRA_TUNING` (hjælperens pris og kaptajnens loft ×2,7, CP-gulvet 0,70 → 0,58). Målt efter: v3 7,10 (3,67-9,99) · v4 -0,06 → **7,35** (4,38-10,19), ingen anker skifter dom, hale-gaten PASS. Referencetallet **19,4 pladser** i den gamle §2e-tekst var målt mod juli-populationen og er forældet | 7/9 |
 
 **Fog of war (ejer 6/9):** ingen procenter, multiplikatorer eller grænser på spillerens skærm. Han ser "taber 40 sek.", "ude i 4 dage", "uden for tidsgrænsen".
+
+Historikbegrænsning i første korrekthedsleverance: kun komplet native v2-historik med fuld formation må erstatte gemte flag. V1-navne er samplede. Filmens native afstandskurve kræver eksplicit afstand til den faktiske jagtgruppe; de eksisterende sparsomme absolutte gruppepositioner er utilstrækkelige og giver derfor ingen kurve. Profil og faktiske hændelser vises fortsat. Ingen historiske resultater omskrives.
+
+Review-opfølgning 1/10: alle mål beregner jagtbevægelse fra samme segment-start; den fælles fremrykning afsluttes før hver indhentning/overlevelse vurderes. Endagsresultater deler historikprojektionen med etaper. Ukendte udfald er nullable internt, men de eksisterende persistensflag er NOT NULL; ukendt udfald bevares i den native tidslinje og må ikke udledes af false-flaget eller slutplacering alene. Ingen migration indgår.
