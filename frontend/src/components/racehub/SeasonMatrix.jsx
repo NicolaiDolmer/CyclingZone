@@ -15,8 +15,9 @@ import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { riderSuitability } from "../../lib/suitability.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixMobile.ts";
+import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { fitTier } from "../../lib/raceHubLogic.js";
-import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
+import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
 import {
   ROLE_LETTER, buildDraftsFromEntries, roleOf, dirtyRaceIds, roleBadgeClass,
@@ -62,6 +63,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   const [popoverAnchor, setPopoverAnchor] = useState(null);
   const [mobileRaceId, setMobileRaceId] = useState(null);
   const [mobileStart, setMobileStart] = useState(0);
+  // #5124 (ejer 1/10): mobilvisningen ligger bag stadie-flaget
+  // season_matrix_mobile (start: beta). Flag fra eller ikke-beta = den fulde
+  // tabel praecis som foer. Fejl i opslaget = off (fetchPlayerFeatureFlags er
+  // fail-safe), saa ingen ser den nye visning ved et uheld.
+  const [mobileView, setMobileView] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchPlayerFeatureFlags().then((flags) => { if (alive) setMobileView(flags.season_matrix_mobile === true); });
+    return () => { alive = false; };
+  }, []);
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -264,28 +275,26 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="font-data text-sm font-semibold text-cz-1">{t("matrix.heading")}</h2>
-          <div className="flex gap-1.5" role="tablist" aria-label={t("matrix.heading")}>
-            {LENSES.map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={lens === key}
-                onClick={() => setLens(key)}
-                className={`text-2xs uppercase tracking-wide px-2.5 py-1 rounded-full border transition-colors ${
-                  lens === key ? "bg-cz-accent text-cz-on-accent border-cz-accent" : "border-cz-border text-cz-2 hover:bg-cz-subtle"
-                }`}
-              >
-                {t(`matrix.lens.${key}`)}
-              </button>
-            ))}
-          </div>
+          {/* #5124 AI-slop-tjek (ejer 1/10: "nogle knapper er maerkeligt store"):
+              linserne var runde versal-piller med fyldt guld paa den aktive, dvs.
+              en anden guld-flade ved siden af "Gem plan". Linsevalg er en
+              visningsskifter, saa den bruger den kanoniske Segmented (hairline,
+              5px, 12px/500 sentence case, aktiv = guld-tekst paa 10% guld).
+              Paa mobil fylder gruppen bredden og hvert segment deler den lige;
+              min-h-8 = 32px tryk-maal. */}
+          <Segmented
+            label={t("matrix.heading")}
+            value={lens}
+            onChange={setLens}
+            options={LENSES.map((key) => ({ value: key, label: t(`matrix.lens.${key}`) }))}
+            className="w-full sm:w-auto [&>button]:min-h-8 [&>button]:flex-1 [&>button]:px-1.5 sm:[&>button]:flex-none sm:[&>button]:px-3"
+          />
           <button
             type="button"
             aria-pressed={problemsOnly}
             onClick={() => setProblemsOnly((v) => !v)}
-            className={`inline-flex items-center gap-1 text-2xs uppercase tracking-wide px-2.5 py-1 rounded-full border transition-colors ${
-              problemsOnly ? "bg-cz-danger/15 text-cz-danger border-cz-danger/40" : "border-cz-border text-cz-2 hover:bg-cz-subtle"
+            className={`inline-flex min-h-8 items-center gap-1 rounded-cz border px-3 text-xs font-medium transition-colors duration-150 ${
+              problemsOnly ? "bg-cz-danger-bg text-cz-danger border-cz-danger/40" : "border-cz-border bg-cz-card text-cz-2 hover:text-cz-1"
             }`}
           >
             <AlertTriangleIcon size={12} />
@@ -316,6 +325,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
       {/* #5124, ejerens A-go 28/9: mobil beholder rytter × løbsdag, men ét løb
           og tre løbsdage ad gangen. Dato og game_day vises hver for sig.
           Samme draft, popover og Save plan bruges på begge layouts. */}
+      {mobileView && (
       <div data-testid="season-matrix-mobile" className="sm:hidden rounded-cz border border-cz-border bg-cz-card min-w-0">
         <div className="px-3 py-3 border-b border-cz-border space-y-2">
           <label htmlFor="season-matrix-mobile-race" className="block text-2xs uppercase tracking-wide text-cz-3">
@@ -325,30 +335,30 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             id="season-matrix-mobile-race"
             value={selectedMobileRace.id}
             onChange={(e) => { setMobileRaceId(e.target.value); setMobileStart(0); }}
-            className="w-full min-w-0 rounded-cz border border-cz-border bg-cz-card px-2 py-2 text-xs text-cz-1"
+            className="w-full min-w-0 rounded-cz border border-cz-border bg-cz-card min-h-8 px-2 py-1.5 text-xs text-cz-1"
           >
             {races.map((race) => <option key={race.id} value={race.id}>{race.name}</option>)}
           </select>
-          <div className="flex items-center justify-between gap-1 text-2xs text-cz-2">
-            <button type="button" disabled={!mobileWindow.canEarlier} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, -1, mobileWindow.total))} className="rounded-cz border border-cz-border px-2 py-1.5 disabled:opacity-40">
+          <div className="flex items-center justify-between gap-2 text-2xs text-cz-2">
+            <button type="button" disabled={!mobileWindow.canEarlier} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, -1, mobileWindow.total))} className="min-h-8 rounded-cz border border-cz-border bg-cz-card px-3 text-xs font-medium text-cz-2 transition-colors duration-150 hover:text-cz-1 disabled:cursor-not-allowed disabled:opacity-40">
               {t("matrix.mobile.earlier")}
             </button>
             <span className="tabular-nums text-center">{t("matrix.mobile.windowStatus", { first: mobileWindow.start + 1, last: mobileWindow.start + mobileWindow.days.length, total: mobileWindow.total })}</span>
-            <button type="button" disabled={!mobileWindow.canLater} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, 1, mobileWindow.total))} className="rounded-cz border border-cz-border px-2 py-1.5 disabled:opacity-40">
+            <button type="button" disabled={!mobileWindow.canLater} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, 1, mobileWindow.total))} className="min-h-8 rounded-cz border border-cz-border bg-cz-card px-3 text-xs font-medium text-cz-2 transition-colors duration-150 hover:text-cz-1 disabled:cursor-not-allowed disabled:opacity-40">
               {t("matrix.mobile.later")}
             </button>
           </div>
-          <div className="text-2xs text-cz-3">
+          <div className="text-2xs tabular-nums text-cz-3">
             {selectedMobileRace.withdrawn ? t("racehub.status.withdrawn") : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, selectedMobileRace.id), max: selectedMobileRace.sizeMax })}
           </div>
         </div>
         <table data-sort-exempt="mobile rytter x loebsdag-gitter" className="w-full table-fixed border-collapse">
           <colgroup><col style={{ width: "40%" }} />{mobileWindow.days.map((day) => <col key={day.key} style={{ width: `${60 / mobileWindow.days.length}%` }} />)}</colgroup>
           <thead><tr>
-            <th className="border-b border-r border-cz-border bg-cz-subtle px-2 py-2 text-left text-2xs text-cz-3">{t("matrix.mobile.riderLabel")}</th>
+            <th className="border-b border-r border-cz-border bg-cz-subtle px-2 py-2 text-left text-2xs uppercase tracking-wide text-cz-3">{t("matrix.mobile.riderLabel")}</th>
             {mobileWindow.days.map((day) => {
               const date = dayDatesMap.get(day.gameDay);
-              return <th key={day.key} className="border-b border-cz-border bg-cz-subtle px-1 py-1 text-center text-2xs text-cz-3">
+              return <th key={day.key} className="border-b border-cz-border bg-cz-subtle px-1 py-1 text-center text-2xs uppercase tracking-wide text-cz-3">
                 <button type="button" disabled={!date} onClick={() => date && onOpenDay?.(date)} title={t("matrix.dayAria", { index: day.stageIndex, date: date ?? "?" })} className="w-full leading-tight disabled:cursor-default">
                   <span className="block font-semibold">{date ? formatBandDate(date) : "—"}</span>
                   <span className="block tabular-nums">{t("matrix.mobile.gameDay", { day: day.gameDay })}</span>
@@ -384,8 +394,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           })}</tbody>
         </table>
       </div>
+      )}
 
-      <div data-testid="season-matrix-desktop" className="hidden sm:block rounded-cz border border-cz-border bg-cz-card overflow-x-auto">
+      {/* Flag off/ikke-beta: den fulde tabel paa ALLE bredder, praecis som foer
+          #5124 (sticky navnekolonne + kontaineret vandret scroll, #1146). */}
+      <div data-testid="season-matrix-desktop" className={`${mobileView ? "hidden sm:block " : ""}rounded-cz border border-cz-border bg-cz-card overflow-x-auto`}>
         <table
           data-sort-exempt="rytter x loebsdag-gitter, ikke en sorterbar liste"
           className="border-collapse"
