@@ -31,7 +31,8 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 // #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
-import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
+// #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
+import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -529,7 +530,7 @@ export async function runTeamTrainingDay({
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
   const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
-    ? await isTrainingProgramsEnabledForTeam(supabase, teamId)
+    ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
   // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
   // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").

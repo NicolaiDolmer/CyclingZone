@@ -39,6 +39,7 @@ export const FORECAST_SLOTS = 5;
 
 // Farvebaand: groen / gul / roed over skadegraensen. Ingen nye konstanter.
 export function forecastBand(fatigue) {
+  if (fatigue == null) return null;
   const value = Number(fatigue);
   if (!Number.isFinite(value)) return null;
   if (value >= CONDITION_CONFIG.injuryFatigueFloor) return "risk";
