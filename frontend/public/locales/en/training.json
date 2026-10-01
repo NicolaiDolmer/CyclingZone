@@ -535,6 +535,15 @@
     "ariaSettled": "Fatigue tonight: {value}. {band}",
     "teamLabel": "Fatigue tonight, highest"
   },
+  "oneTap": {
+    "choice_rest": "Rest",
+    "choice_recovery": "Recovery",
+    "choice_session": "Program",
+    "groupAria": "Today for {name}",
+    "approx": "~{value}",
+    "stageToday": "stage today",
+    "locked": "Today is locked after Train now."
+  },
   "groups": {
     "section_groups": "Groups",
     "section_riders": "Riders",
