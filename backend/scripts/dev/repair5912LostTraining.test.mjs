@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   classifyLostRiderDays, isLostRestCandidate, markerBlocks, repairKey, withMarkers,
-  parseArgs, assertApplyAllowed, simulateRiderRepair, summarizePlan, MARKER_FIELD,
+  parseArgs, assertApplyAllowed, simulateRiderRepair, summarizePlan, MARKER_FIELD, sameProgress,
 } from "./repair5912LostTraining.mjs";
 
 const SEASON = "season-x";
@@ -122,6 +122,7 @@ test("simulate: deterministic, same engine, gains chain over the rider's lost da
   assert.ok(a.totalProgress > 0, "a training day always moves the progress bar");
   // Input rows are never mutated.
   assert.deepEqual(abilityRow.ability_progress, {});
+  assert.deepEqual(a.beforeProgress, {});
 });
 
 test("summary: counts by team type and squad", () => {
@@ -143,4 +144,10 @@ test("summary: counts by team type and squad", () => {
   assert.deepEqual(s.byCategory.map((c) => c.category), ["AI / senior", "menneske / junior"]);
   assert.deepEqual(s.gainPointsPerRider, { min: 0, median: 1, max: 2, ridersWithZero: 1 });
   assert.deepEqual(s.progressPerRider, { min: 0, median: 0, max: 0 });
+});
+
+test("sameProgress: key order independent, detects changed progress", () => {
+  assert.equal(sameProgress({ a: 0.5, b: 0.2 }, { b: 0.2, a: 0.5 }), true);
+  assert.equal(sameProgress({ a: 0.5 }, { a: 0.6 }), false);
+  assert.equal(sameProgress(null, {}), true);
 });

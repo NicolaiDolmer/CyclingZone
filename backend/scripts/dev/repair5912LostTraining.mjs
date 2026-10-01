@@ -173,7 +173,9 @@ export function simulateRiderRepair({
   for (const k of VISIBLE_ABILITIES) if (abilities[k] !== startAbilities[k]) patch[k] = abilities[k];
   const totalPoints = Object.values(totalGains).reduce((s, n) => s + n, 0);
   // totalProgress = summen af raa evne-deltaer (inkl. fremdrift under et helt point).
-  return { gains: totalGains, totalPoints, totalProgress: Math.round(totalProgress * 100) / 100, perDay, patch, before: startAbilities };
+  return { gains: totalGains, totalPoints, totalProgress: Math.round(totalProgress * 100) / 100, perDay, patch, before: startAbilities,
+    // Den laeste fremdrift (null = kolonnen var NULL) - optimistisk vagt ved apply.
+    beforeProgress: abilityRow?.ability_progress ?? null };
 }
 
 function quantile(sorted, q) {
@@ -363,6 +365,12 @@ async function planAll(supabase, { lost, season }) {
   return { plans, teamById, riderById };
 }
 
+/** jsonb-sammenligning uafhaengig af noegle-raekkefoelge. */
+export function sameProgress(a, b) {
+  const norm = (o) => JSON.stringify(Object.keys(o ?? {}).sort().map((k) => [k, Number(o[k])]));
+  return norm(a) === norm(b);
+}
+
 function stamp(now) {
   return now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
 }
@@ -434,6 +442,10 @@ async function applyPlans(supabase, { plans, runs, season, now, privateDir }) {
   for (const [riderId, p] of applicable) {
     let query = supabase.from("rider_derived_abilities").update(p.patch).eq("rider_id", riderId);
     for (const k of Object.keys(p.patch)) if (k !== "ability_progress") query = query.eq(k, p.before[k]);
+    // Ogsaa fremdriften skal staa uaendret: mange ryttere faar kun en progress-patch.
+    query = p.beforeProgress == null
+      ? query.is("ability_progress", null)
+      : query.eq("ability_progress", JSON.stringify(p.beforeProgress));
     const { data, error } = await query.select("rider_id");
     outcome.set(riderId, error ? `error:${error.message}` : (data?.length === 1 ? "applied" : "conflict"));
   }
@@ -458,7 +470,9 @@ async function applyPlans(supabase, { plans, runs, season, now, privateDir }) {
   for (const [riderId, p] of applicable) {
     if (outcome.get(riderId) !== "applied") continue;
     const row = afterById.get(riderId);
-    const ok = Object.keys(p.patch).every((k) => k === "ability_progress" || Number(row?.[k]) === Number(p.patch[k]));
+    const ok = Object.keys(p.patch).every((k) => (k === "ability_progress"
+      ? sameProgress(row?.ability_progress, p.patch.ability_progress)
+      : Number(row?.[k]) === Number(p.patch[k])));
     if (ok) verified += 1; else mismatched += 1;
   }
   const counts = {};
