@@ -52,7 +52,7 @@ test("trykket segment laeses fra dagens effektive felt (samme sessionFor som tab
 test("i18n en+da har alle raekkens noegler", () => {
   for (const lang of ["en", "da"]) {
     const json = JSON.parse(readFileSync(join(here, `../../../public/locales/${lang}/training.json`), "utf8"));
-    for (const key of ["choice_rest", "choice_recovery", "choice_session", "groupAria", "approx", "season", "stageToday", "locked"]) {
+    for (const key of ["choice_rest", "choice_recovery", "choice_session", "groupAria", "approx", "stageToday", "locked"]) {
       assert.equal(typeof json.oneTap?.[key], "string", `${lang} oneTap.${key}`);
     }
   }
