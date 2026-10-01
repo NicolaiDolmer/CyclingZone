@@ -6,6 +6,17 @@
     "waiting": "Today's training runs on its own once the last race is done, from {hour}:00.",
     "ready": "Today's training is ready. Run it now, or let it run on its own."
   },
+  "trainNow": {
+    "button": "Train now",
+    "helper": "Locks today's training and entries. The result is the same as if you wait.",
+    "locked": "Today's training and entries are locked. Fatigue and form update at the evening settlement.",
+    "afterRace": "Riders racing today are settled after their stage.",
+    "settled": "Today's training is settled.",
+    "previousOpen": "Yesterday's training is still being settled. Try again in a moment.",
+    "noRaceDay": "There is no race day today, so there is nothing to lock.",
+    "error": "Today could not be locked. Try again.",
+    "planLocked": "Today's fields are locked. You can still change tomorrow."
+  },
   "trainedToday_you": "Trained today (by you)",
   "trainedToday_assistant": "Trained today (by assistant)",
   "trainedTodayAt_you": "Trained today at {time} (by you)",

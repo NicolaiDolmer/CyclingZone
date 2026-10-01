@@ -2629,6 +2629,82 @@ test('normalized engine requires an explicit ready-rider list before any writes'
   assert.deepEqual(state,before);
 });
 
+// ── #4847 "Train now" (design 29/9, invariants I1 + I4) ─────────────────────
+// The press runs THIS engine for the date's race days except the final one; the
+// evening sweep settles the rest. Same inputs at 06:00 and 20:30 must give the
+// same riders, the same growth and the same single condition update.
+function trainNowFixture() {
+  const state = seedState({
+    riders: [makeRider({ id: 'r1' }), makeRider({ id: 'r2', primary_type: 'sprinter' })],
+    abilities: [makeAbilityRow('r1', { ability_progress: { climbing: 0.4 } }), makeAbilityRow('r2')],
+    conditions: [makeCondition('r1', { fatigue: 64, form: 48 }), makeCondition('r2', { fatigue: 12, form: 55 })],
+    plans: [
+      { rider_id: 'r1', team_id: TEAM_ID, season_id: SEASON_ID, focus: 'climbing', intensity: 'hard' },
+      { rider_id: 'r2', team_id: TEAM_ID, season_id: SEASON_ID, focus: 'sprint', intensity: 'normal' },
+    ],
+  });
+  seedRaceDayTick(state, { gameDay: 1 });
+  state.app_config.push({ key: 'training_condition_per_date', value: 'on' }, { key: RACE_DAY_ENGINE_FLAG_KEY, value: 'on' });
+  return state;
+}
+const TRAIN_NOW_MORNING = new Date('2026-06-12T06:00:00+02:00');
+const TRAIN_NOW_EVENING = new Date('2026-06-12T20:30:00+02:00');
+const TRAIN_NOW_DAYS = [1, 2, 3, 4, 5];
+const withoutClock = (rows) => rows.map(({ updated_at: _u, created_at: _c, ...row }) => row);
+
+test('#4847 I1: a press at 06:00 gives the bit-identical result of the automatic evening settlement', async () => {
+  const pressed = trainNowFixture();
+  const automatic = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) {
+    await runDay(pressed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  }
+  await runDay(pressed, { gameDay: 5, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  }
+  assert.deepEqual(pressed.rider_derived_abilities, automatic.rider_derived_abilities, 'same growth');
+  assert.deepEqual(withoutClock(pressed.rider_condition), withoutClock(automatic.rider_condition), 'same fatigue/form');
+  assert.deepEqual(pressed.rider_training_scores, automatic.rider_training_scores, 'same session scores');
+  assert.deepEqual(
+    pressed.training_rider_ticks.map((row) => row.report),
+    automatic.training_rider_ticks.map((row) => row.report),
+    'same per-rider receipts',
+  );
+  for (const run of pressed.training_day_runs) assert.notEqual(run.report.bonus_applied, true, 'no bonus');
+});
+
+test('#4847 I4: the press writes no fatigue/form; only the evening settlement does, once', async () => {
+  const state = trainNowFixture();
+  const opening = withoutClock(structuredClone(state.rider_condition));
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) {
+    const result = await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+    assert.equal(result.report.condition_settled, false);
+  }
+  assert.deepEqual(withoutClock(state.rider_condition), opening, 'condition untouched after the press');
+  assert.ok(state.rider_derived_abilities.some((row) => row.ability_progress), 'growth is visible right after the press');
+  await runDay(state, { gameDay: 5, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.notDeepEqual(withoutClock(state.rider_condition), opening, 'the evening settles condition');
+});
+
+test('#4847 I2: press retry and the evening sweep never credit a race day twice', async () => {
+  const state = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) {
+    await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  }
+  const afterPress = structuredClone(state.rider_derived_abilities);
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) {
+    const retry = await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+    assert.equal(retry.alreadyRan, true);
+  }
+  assert.deepEqual(state.rider_derived_abilities, afterPress, 'double press changes nothing');
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  }
+  const receipts = state.training_rider_ticks.map((row) => `${row.rider_id}:${row.game_day}`);
+  assert.equal(new Set(receipts).size, receipts.length, 'one receipt per rider + race day');
+  assert.equal(receipts.length, 10);
+});
+
 test('legacy engine with normalized flag off never reads date work or condition load snapshots',async()=>{
   for(const tickFlag of ['off','on']) {
     const state=seedState();seedRaceDayTick(state,{gameDay:0,value:tickFlag});state.app_config.push({key:'training_condition_per_date',value:'off'});

@@ -15,6 +15,9 @@
 // (buildCapsForRider, #2471 — ikke lazy-initeret), batched writes (runBatched),
 // ageForSeason-helper genbrugt herfra.
 //
+// #4847 "Train now" (design 29/9): POST /api/training/train-now kalder SAMME motor
+// via trainNow.js for datoens loebsdage undtagen den sidste (I4: kun aftenens commit
+// skriver traethed/form), med samme laaste opening-condition som sweepen (I1).
 // Kaldes af: POST /api/training/run-today (manager) + cron-sweeps (assistant):
 // trainingSweep.js paa den gamle kalenderdags-sti, trainingDayCloseTrigger.js paa
 // loebsdags-stien (#4847). BONUS: `bonus` er true KUN paa den gamle sti — loebsdags-

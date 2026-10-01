@@ -154,6 +154,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "#5928: per-rider training receipts are historical engine output; copying them would suppress valid new-season growth.",
   },
   {
+    table: "training_train_now_locks",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#4847: a 'Train now' press locks one date's entries and plan; it belongs to that date and never carries over.",
+  },
+  {
     table: "training_date_work",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "#5928: logical-date processing and frozen roster state belong to their original season, not manager configuration.",

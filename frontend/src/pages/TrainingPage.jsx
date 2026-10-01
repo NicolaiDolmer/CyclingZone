@@ -63,6 +63,10 @@ import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
+// #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
+import { useTrainNow } from "../components/training/TrainNowClient.ts";
+import { trainNowRunGate } from "../components/training/TrainNowState.ts";
+import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
@@ -563,6 +567,9 @@ export default function TrainingPage() {
   // false = Ugeplan-fanen præcis som i dag. Efter en tildeling/celle-rettelse
   // genindlæses useTraining, så planen har ÉN kilde (riderWeekPlans).
   const programs = useTrainingPrograms({ onChanged: training.refresh });
+  // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
+  const trainNow = useTrainNow({ onSettled: training.refresh });
+  const runGate = trainNowRunGate(trainNow.status, { trainedToday: !!todayRun, dayClose });
   const programsOn = programs.enabled;
   const scoreVisible = trainingScore != null;
   // #5485 (ejer-valg A 23/9): er dagens pas kørt? Før det har ingen rytter et
@@ -817,6 +824,8 @@ export default function TrainingPage() {
 
   async function handleRunToday() {
     setRunError(null);
+    // #4847: fejl og laast-status vises af TrainNowNote under knappen.
+    if (trainNow.status.enabled) { await trainNow.press(); return; }
     const result = await runToday();
     if (result && !result.ok) {
       setRunError(result.error || "failed");
@@ -1943,18 +1952,19 @@ export default function TrainingPage() {
   // primaryActionFor, ét sted.
   const primaryAction = primaryActionFor({
     needsDay: overview.needsDay.length,
-    trainedToday: !!todayRun,
+    trainedToday: runGate.trainedToday,
     enabled,
-    dayClose,
+    dayClose: runGate.dayClose,
   });
-  const runnable = canRunToday({ trainedToday: !!todayRun, enabled, dayClose });
+  const runnable = canRunToday({ trainedToday: runGate.trainedToday, enabled, dayClose: runGate.dayClose });
   // #2819/#5485: turens trin 2 peger på det tryk der KØRER dagen (se
   // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
   // statuslinjen.
   const tourTarget = tourRunTarget(primaryAction, runnable);
   const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null);
   const selectedCount = pruneSelection(selected, filterIds).size;
-  const runTodayLabel = running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"));
+  const runTodayLabel = running || trainNow.pressing ? t("loading")
+    : trainNow.status.enabled ? t("trainNow.button") : (dayClose ? t("runDayNow") : t("trainToday"));
   const primaryLabel = primaryAction.kind === "setDays"
     ? t("primary.setDays", { n: primaryAction.riders })
     : runTodayLabel;
@@ -2318,7 +2328,7 @@ export default function TrainingPage() {
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
           // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
           // største kilder til døde klik).
-          disabled={running || bulkApplying}
+          disabled={running || trainNow.pressing || bulkApplying}
           // min-h-11 = #1602's 44px tryk-mål på telefonen.
           className={isMobile ? "min-h-11 flex-1" : ""}
           data-testid="training-primary"
@@ -2334,7 +2344,7 @@ export default function TrainingPage() {
             size={isMobile ? "md" : "sm"}
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || bulkApplying}
+            disabled={running || trainNow.pressing || bulkApplying}
             className={isMobile ? "min-h-11 flex-none" : ""}
             data-testid="training-run-now"
           >
@@ -2368,7 +2378,7 @@ export default function TrainingPage() {
             size="sm"
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running}
+            disabled={running || trainNow.pressing}
             data-testid="training-run-now"
           >
             {running ? t("loading") : t("overview.runNow")}
@@ -2812,6 +2822,7 @@ export default function TrainingPage() {
       />
 
       {isMobile && primaryButton}
+      <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
 
       {/* #5485: fanerne hedder Today / Week plan / Development / Report.
           Tallet ved Today er antallet af ryttere der mangler en dag.
