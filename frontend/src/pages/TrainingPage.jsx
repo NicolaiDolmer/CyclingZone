@@ -5,10 +5,11 @@
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, useMemo, useRef, Fragment, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import RiderLink from "../components/RiderLink.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
@@ -77,11 +78,11 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast } from "../components/training/todayRowModel.ts";
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
-// (React.lazy), saa foerste visning af Today henter mindre. Fallback er den
+// (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
 // Een dynamisk import for alle fane-dele (trainingTabParts.js forklarer hvorfor).
 const loadTabParts = () => import("../components/training/trainingTabParts.js");
-const tabPart = (name) => lazy(() => loadTabParts().then((m) => ({ default: m[name] })));
+const tabPart = (name) => lazyWithRetry(() => loadTabParts().then((m) => ({ default: m[name] })));
 const TrainingPlanCard = tabPart("TrainingPlanCard");
 const TrainingProgramList = tabPart("TrainingProgramList");
 const FatigueRulePanel = tabPart("FatigueRulePanel");
