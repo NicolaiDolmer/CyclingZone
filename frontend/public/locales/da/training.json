@@ -6,6 +6,17 @@
     "waiting": "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. {hour}.",
     "ready": "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv."
   },
+  "trainNow": {
+    "button": "Træn nu",
+    "helper": "Låser dagens træning og tilmelding. Resultatet er det samme, som hvis du venter.",
+    "locked": "Dagens træning og tilmelding er låst. Træthed og form opdateres ved aftenopgørelsen.",
+    "afterRace": "Ryttere med løb i dag afregnes efter deres etape.",
+    "settled": "Dagens træning er afregnet.",
+    "previousOpen": "Gårsdagens træning bliver stadig afregnet. Prøv igen om lidt.",
+    "noRaceDay": "Der er ingen løbsdag i dag, så der er intet at låse.",
+    "error": "Dagen kunne ikke låses. Prøv igen.",
+    "planLocked": "Dagens felter er låst. Du kan stadig ændre i morgen."
+  },
   "trainedToday_you": "Trænet i dag (af dig)",
   "trainedToday_assistant": "Trænet i dag (af assistenten)",
   "trainedTodayAt_you": "Trænet i dag kl. {time} (af dig)",
