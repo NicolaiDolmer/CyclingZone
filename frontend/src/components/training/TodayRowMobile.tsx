@@ -94,11 +94,11 @@ export default function TodayRowsMobile({
   const choiceLabel = (choice: QuickChoice) => t(`oneTap.choice_${choice}`);
 
   return (
-    <div className="space-y-3" data-testid="training-today-rows">
+    <div className="space-y-3" data-testid="training-onetap-rows">
       {sortSlot}
       {bulkSlot}
       {locked && (
-        <p className="text-xs text-cz-3" data-testid="training-today-rows-locked">
+        <p className="text-xs text-cz-3" data-testid="training-onetap-locked">
           {t("oneTap.locked")}
         </p>
       )}
@@ -113,12 +113,12 @@ export default function TodayRowsMobile({
           const busy = busyFor(rider.id);
           const isPicked = pickMode && picked.has(rider.id);
           const isOpen = !pickMode && rider.id === selectedRiderId;
-          const detailId = `training-today-row-detail-${rider.id}`;
+          const detailId = `training-onetap-detail-${rider.id}`;
           return (
             <Fragment key={rider.id}>
               <li
                 className={`border-b border-cz-border px-3 py-2.5 last:border-b-0 ${isPicked ? "bg-cz-accent/5" : ""}`}
-                data-testid="training-today-row"
+                data-testid="training-onetap-row"
                 data-rider-id={rider.id}
                 data-picked={pickMode ? String(isPicked) : undefined}
               >
@@ -160,7 +160,7 @@ export default function TodayRowsMobile({
                   {forecast && (
                     <span
                       className="flex-none pt-0.5 text-xs text-cz-2"
-                      data-testid="training-today-row-forecast"
+                      data-testid="training-onetap-forecast"
                       data-band={forecast.tone}
                       aria-label={t(forecastSettled ? "forecast.ariaSettled" : "forecast.aria", {
                         value: forecast.value,
@@ -176,7 +176,7 @@ export default function TodayRowsMobile({
                 </div>
 
                 {gains.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-x-2 text-xs tabular-nums" data-testid="training-today-row-season">
+                  <div className="mt-1 flex flex-wrap gap-x-2 text-xs tabular-nums" data-testid="training-onetap-season">
                     <span className="text-cz-3">{t("oneTap.season")}</span>
                     {gains.map((gain) => (
                       <span key={gain.ability} className="text-cz-2">
@@ -192,7 +192,7 @@ export default function TodayRowsMobile({
                     role="group"
                     aria-label={t("oneTap.groupAria", { name })}
                     className="mt-2 grid grid-cols-3 overflow-hidden rounded-cz border border-cz-border"
-                    data-testid="training-today-row-choice"
+                    data-testid="training-onetap-choice"
                   >
                     {choices.map((choice, i) => {
                       const active = pressed === choice;
@@ -223,8 +223,8 @@ export default function TodayRowsMobile({
                 )}
               </li>
               {isOpen && (
-                <li id={detailId} className="border-b border-cz-border p-2 last:border-b-0" data-testid="training-today-row-detail">
-                  {detailFor(rider.id, detailId)}
+                <li id={detailId} className="border-b border-cz-border p-2 last:border-b-0" data-testid="training-onetap-detail">
+                  {detailFor(rider.id, `${detailId}-card`)}
                 </li>
               )}
             </Fragment>
