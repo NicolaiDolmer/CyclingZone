@@ -16,11 +16,11 @@ const PASS = (_req, _res, next) => next();
 
 export function createTrainNowRouter({
   supabase, requireAuth, isViewerBetaTester, loadActiveSeason, loadDaySpans,
-  writeLimiter = PASS, captureExceptionFn = () => {}, run = runTrainNow, status = loadTrainNowStatus,
+  writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {}, run = runTrainNow, status = loadTrainNowStatus,
 }) {
   const router = express.Router();
 
-  router.get("/", requireAuth, async (req, res) => {
+  router.get("/", requireAuth, readLimiter, async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
       const isBetaTester = await isViewerBetaTester(req);

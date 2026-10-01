@@ -949,7 +949,8 @@ router.use("/training/programs", createTrainingProgramsRouter({
 }));
 // #4847: "Train now" uden bonus. Monteret FOER `/training/:riderId`.
 router.use("/training/train-now", createTrainNowRouter({
-  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, captureExceptionFn: captureException,
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException,
   loadDaySpans: loadDayCloseSpans,
   loadActiveSeason: async () => {
     const { data, error } = await supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle();
