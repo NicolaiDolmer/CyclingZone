@@ -154,6 +154,7 @@ import {
 // (mellemsprint/KOM-konkurrencer + bonussekunder). Kaldes med SAMME seed som
 // simulateStage; motoren selv læser aldrig rutefelterne (bit-identisk).
 import { computePassages } from "./racePassages.js";
+import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 
 // #1995: flush parkerede holdskifter (pending_team_id → team_id) når et etapeløb
 // er finaliseret. Idempotent → sikker ved recovery-genkørsel (bevidst UDEN
@@ -1257,6 +1258,9 @@ export async function fillMissingTeamEntries({
     // #5645: holdets U23-/juniorpulje, ikke seniorpuljen. Et hold uden pulje for
     // truppen, eller et ungdomsløb uden pulje, giver intet felt (fejl lukket).
     eligibleTeams = eligibleTeams.filter((t) => teamInRaceSquadPool({ team: t, race }));
+    // #5944: en trup sat til "Train only" reddes aldrig ind i feltet.
+    const trainOnlyKeys = eligibleTeams.length ? await loadOptedOutKeys(supabase, { teamIds: eligibleTeams.map((t) => t.id) }) : new Set();
+    eligibleTeams = eligibleTeams.filter((t) => !trainOnlyKeys.has(optOutKey(t.id, raceSquad)));
   } else if (racePoolId != null) {
     eligibleTeams = eligibleTeams.filter((t) => t.league_division_id === racePoolId);
   }

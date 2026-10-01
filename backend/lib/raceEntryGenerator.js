@@ -24,6 +24,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
+import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 import { isRaceLockedForTeam, loadTrainNowLockedDatesByTeam, raceStageDates } from "./trainNowLock.js"; // #6006
 
 /**
@@ -386,11 +387,13 @@ export async function runRaceEntryGenerator({
   // #5645: hvert hold har én pulje pr. trup. Senior: uændret (null = standalone-gruppen).
   // Ungdom: kun hvis holdet HAR en pulje for truppen — null = ikke i noget ungdomsfelt.
   const youthTeamIdsBySquad = new Map(youthSquadsInPlay.map((s) => [s, []]));
+  // #5944: en trup sat til "Train only" udtages aldrig af assistenten.
+  const trainOnlyKeys = youthSquadsInPlay.length ? await loadOptedOutKeys(supabase) : new Set();
   for (const t of eligibleTeams) {
     addTeamToPool(t.league_division_id ?? null, t);
     for (const squad of youthSquadsInPlay) {
       const poolId = teamPoolIdForSquad(t, squad);
-      if (poolId == null) continue;
+      if (poolId == null || trainOnlyKeys.has(optOutKey(t.id, squad))) continue;
       addTeamToPool(poolKeyFor(squad, poolId), t);
       youthTeamIdsBySquad.get(squad).push(t.id);
     }

@@ -8,6 +8,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 import { isRaceDateTrainNowLocked } from "./trainNowLock.js";
+import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
@@ -178,6 +179,11 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   // Et loeb med en etape paa en laast dato kan hverken faa nye eller miste ryttere.
   if (await isRaceDateTrainNowLocked({ supabase, teamId, raceId: race.id })) {
     return { ok: false, status: 409, error: "selection_train_now_locked" };
+  }
+
+  // #5944: en ungdomstrup sat til "Train only" kan ikke tilmeldes. Tom trup (ryd) er tilladt.
+  if (riderIds.length && await isTeamSquadTrainOnly(supabase, { teamId, squad: raceSquadOf(race) })) {
+    return { ok: false, status: 409, error: TRAIN_ONLY_SELECTION_ERROR };
   }
 
   const ctx = await getSelectionContext({ supabase, race, teamId });

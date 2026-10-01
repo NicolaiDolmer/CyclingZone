@@ -396,6 +396,16 @@ afvejning.
 | 14 | **Gulvet skrives kun hvis det nås** | auto-entries der binder ryttere til et felt de ikke kommer i | `raceRunner.js:984` |
 | 15 | **Flag** `race_engine_v2_enabled` | assistent-skrivning bag en slukket motor | `api.js:5306-5308`, `:5681-5683` |
 | 16 | **Rate limit** `marketWriteLimiter` | 30 skrivninger pr. 60 s | `rateLimiters.js:64-68` |
+| 17 | **"Train only" pr. ungdomstrup** (`team_youth_race_opt_outs`, [#5944](https://github.com/NicolaiDolmer/CyclingZone/issues/5944)) | at en U23-/juniortrup, spilleren har sat til kun at træne, tilmeldes et ungdomsløb | `loadOptedOutKeys` i `raceEntryGenerator.js` (sweep) og `raceRunner.fillMissingTeamEntries` (sen redning); `isTeamSquadTrainOnly` i `POST /races/:id/selection/auto` og `prepareSelectionChange` (manuel, `409 selection_youth_squad_train_only`). Regler: `backend/lib/youthRaceOptOut.ts` |
+
+**Gate 17 (#5944, ejer-go 1/10).** Ét valg pr. ungdomstrup (u23, junior) pr. hold: *Enter
+races* (standard, ingen række) eller *Train only* (én række). Train only gælder fra næste
+ulåste løbsdag: et skift fjerner holdets tilmeldinger til truppens løb, der stadig kan ændres
+(`scheduled`, ingen etape kørt, ingen "Train now"-lås på løbets dato), og bevarer resten.
+Skift tilbage sletter rækken; assistenten tilmelder truppen igen ved sin næste kørsel. En tom
+manuel udtagelse (ryd) er stadig tilladt. Seniorer kan ikke vælges fra. Mangler tabellen
+(før migrationen), svarer alle læsere *Enter races*. Fire håndhævere læser samme tabel og skal
+blive ved med at være enige, samme klasse som gate 3.
 
 **Gate 3 har to håndhævere der skal blive ved med at være enige.** `raceEntryGenerator.js`
 (sweepen) og `raceRunner.js` (afviklingen) læser samme tabel hver for sig; koden siger det
