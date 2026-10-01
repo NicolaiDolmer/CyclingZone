@@ -478,19 +478,6 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const modifierScaleOf = (riderId: string): number =>
     finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
 
-  // #5957: puljens bedste rene finale-evne er referencen for hvor meget af
-  // dagens modifikatorer hver rytter faar (finaleModifierScale). Én reference
-  // for alle ryttere i finalen (front + overlevende grupper), saa den samme
-  // rytter altid faar samme skala uanset hvilken maalpulje han ender i.
-  const finaleIds = [...contenderIds, ...survivingGroups.flatMap((group) => group.rider_ids)];
-  const abilityTermOf = (riderId: string): number => {
-    const abilities = entrants[riderId]?.abilities;
-    return abilities ? finaleAbilityTerm(abilities, demandVector) : 0;
-  };
-  const poolBestAbilityTerm = finaleIds.reduce((best, id) => Math.max(best, abilityTermOf(id)), 0);
-  const modifierScaleOf = (riderId: string): number =>
-    finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
-
   const scoreOf = (riderId: string, dayformWeight = extra.dayformScoreWeight): number | null => {
     const entrant = entrants[riderId];
     if (!entrant) return null;
