@@ -206,3 +206,16 @@ test("purity: inputs are not mutated and results are deterministic", () => {
   assert.deepEqual(a, b);
   assert.equal(JSON.stringify({ g, GC, ENTRANTS }), snapshot);
 });
+
+test("#5955: early on a long stage the open-terrain projection is capped, so a rival minutes down is not serious yet", () => {
+  const lead = 10;
+  const deficit = GC_THREAT_TUNING.potentialOpenCapSeconds + GC_THREAT_TUNING.moderateWindowSeconds / 2 + lead;
+  assert.ok(FLAT.distance_km * GC_THREAT_TUNING.potentialSecondsPerOpenKm > deficit, "uncapped, this rider would project past the leader");
+  const gc = standings([["lead", 0], ["rival", deficit], ["bCap", deficit + 30], ["far", 1800], ["weak", 2400], ["aHelp", 3000]]);
+  const early = assess({ gcContext: gc, km: 0, groups: groups(["rival"], lead, ["lead", "aHelp", "weak", "far", "bCap"]) });
+  assert.equal(early.severity, "moderate");
+  assert.equal(early.reason, "rival_close");
+  // Har han faktisk taget tiden paa vejen, er han stadig en alvorlig trussel.
+  const real = assess({ gcContext: gc, km: 0, groups: groups(["rival"], deficit, ["lead", "aHelp", "weak", "far", "bCap"]) });
+  assert.equal(real.severity, "serious");
+});

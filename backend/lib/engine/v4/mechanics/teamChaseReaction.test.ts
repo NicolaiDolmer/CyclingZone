@@ -15,6 +15,9 @@ import {
   availableReactionWorkers,
   capPreventiveIntensity,
   IDLE_TEAM_REACTION,
+  LET_GO_BRAKE_TUNING,
+  letGoBrake,
+  letGoBrakingTeams,
   planTeamReaction,
   TEAM_REACTION_TUNING,
 } from "./teamChaseReaction.ts";
@@ -372,4 +375,120 @@ test("full engine: orders_gc_v1 reports its GC context explicitly and stays dete
     assert.equal(ctxEvents[0].params.status, status);
     assert.equal(run1.results.length, input.startlist.length);
   }
+});
+
+// ── #5955 (ejer-valg B 1/10): GC-bremsen i lad-gaa-fasen ─────────────────────
+
+test("brake: only reacting teams and explicit chase at a real threat brake, only in their own chase group", () => {
+  const decisions = [
+    { teamId: "A", threat: SERIOUS, stance: "neutral" as const, plan: { intensity: 1 } },
+    { teamId: "B", threat: MODERATE, stance: "chase" as const, plan: { intensity: 0 } },
+    { teamId: "C", threat: NONE, stance: "chase" as const, plan: { intensity: 0 } },
+    { teamId: "D", threat: SERIOUS, stance: "let_go" as const, plan: { intensity: 0 } },
+    { teamId: "E", threat: { ...SERIOUS, chase_group_id: "chase-9" }, stance: "chase" as const, plan: { intensity: 0 } },
+  ];
+  assert.deepEqual([...letGoBrakingTeams(decisions, "peloton-0")].sort(), ["A", "B"]);
+  assert.deepEqual([...letGoBrakingTeams(decisions, "chase-9")], ["E"]);
+});
+
+test("brake: bounded below the full let-go, weaker when tired, only braking teams pay", () => {
+  const entrants: Record<string, Entrant> = {
+    a1: entrant("a1", "A", "helper"), a2: entrant("a2", "A", "helper"), a3: entrant("a3", "A", "helper"),
+    a4: entrant("a4", "A", "helper"), a5: entrant("a5", "A", "helper"), b1: entrant("b1", "B", "helper"),
+  };
+  const fresh: Record<string, RiderState> = Object.fromEntries(Object.keys(entrants).map((id) => [id, riderState(id)]));
+  const chaserWork = new Map(Object.keys(entrants).map((id) => [id, 1]));
+  const none = letGoBrake({ chaserWork, brakingTeamIds: new Set(), entrants, riders: fresh });
+  assert.equal(none.fraction, 0);
+  assert.equal(none.work.size, 0);
+  const full = letGoBrake({ chaserWork, brakingTeamIds: new Set(["A"]), entrants, riders: fresh });
+  assert.ok(full.fraction > 0 && full.fraction <= LET_GO_BRAKE_TUNING.maxBrake + 1e-12);
+  assert.ok(LET_GO_BRAKE_TUNING.maxBrake < 1, "the field never stops the let-go completely");
+  assert.deepEqual([...full.work.keys()].sort(), ["a1", "a2", "a3", "a4", "a5"], "team B is not braking and pays nothing");
+  const tired = Object.fromEntries(Object.entries(fresh).map(([id, r]) => [id, { ...r, team_cp_factor: 0.3 }]));
+  const weak = letGoBrake({ chaserWork: new Map([["a1", 1]]), brakingTeamIds: new Set(["A"]), entrants, riders: tired });
+  const strong = letGoBrake({ chaserWork: new Map([["a1", 1]]), brakingTeamIds: new Set(["A"]), entrants, riders: fresh });
+  assert.ok(weak.fraction < strong.fraction);
+});
+
+const BRAKE_TEAMS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+const BRAKE_ROUTE: RouteV2 = {
+  distance_km: 150, profile_type: "flat", finale_type: "bunch_sprint",
+  segments: Array.from({ length: 30 }, (_, i) => ({ kind: "flat" as const, from_km: i * 5, to_km: (i + 1) * 5 })),
+  weather: { kind: "sun", wind_exposure: 0 }, waypoints: [],
+};
+const BRAKE_GC: GcContext = {
+  status: "standings", stage_number: 6, leader_id: "A0",
+  standings: [
+    ...BRAKE_TEAMS.map((t, i) => [`${t}0`, i * 20] as [string, number]),
+    ...BRAKE_TEAMS.flatMap((t) => [1, 2, 3, 4].map((i) => [`${t}${i}`, 3600 + i] as [string, number])),
+  ].map(([rider_id, gap_seconds], i) => ({ rider_id, rank: i + 1, gap_seconds })),
+};
+
+/** Dagens udbrud lige dannet (lad-gaa-fasen), feltet stort nok til at lade det gaa. */
+function runLetGo(opts: {
+  stanceA: "chase" | "neutral" | "let_go";
+  breakawayIds: string[];
+  gcContext?: GcContext;
+  revision?: "legacy" | "orders_gc_v1";
+}) {
+  const entrants: Record<string, Entrant> = {};
+  for (const team of BRAKE_TEAMS) {
+    for (let i = 0; i < 5; i++) entrants[`${team}${i}`] = entrant(`${team}${i}`, team, i === 0 ? "captain" : "helper", i === 0 ? 70 : 50);
+  }
+  const riders: Record<string, RiderState> = {};
+  for (const id of Object.keys(entrants)) riders[id] = riderState(id, opts.breakawayIds.includes(id) ? "breakaway-0" : "peloton-0");
+  let state: EngineState = {
+    km: 5,
+    groups: [
+      { id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: [...opts.breakawayIds].sort(), gap_seconds: 0, cohesion: 1 },
+      { id: "peloton-0", kind: "peloton", rider_ids: Object.keys(entrants).filter((id) => !opts.breakawayIds.includes(id)).sort(), gap_seconds: 25, cohesion: 1 },
+    ],
+    riders, virtual_gc: {},
+  };
+  const orders = [teamOrder("A", opts.stanceA), ...BRAKE_TEAMS.slice(1).map((t) => teamOrder(t, "neutral"))];
+  const events: TimelineEvent[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const base = makeHookCtx({ segment: BRAKE_ROUTE.segments[i], segmentIndex: i, route: BRAKE_ROUTE, entrants, tuning: RACE_V4_TUNING, orders });
+    const ctx: SegmentHookContext = { ...base, rulesRevision: opts.revision ?? "orders_gc_v1", ...(opts.gcContext ? { gcContext: opts.gcContext } : {}) };
+    const r = breakawayHook(state, ctx);
+    state = r.state;
+    events.push(...r.events);
+  }
+  return { state, events };
+}
+
+test("hook: a threatened GC team brakes the let-go phase, holds the gap down and pays for it", () => {
+  const braked = runLetGo({ stanceA: "neutral", breakawayIds: ["B0", "C3"], gcContext: BRAKE_GC });
+  const free = runLetGo({ stanceA: "neutral", breakawayIds: ["B0", "C3"], gcContext: { status: "missing" } });
+  assert.ok(separation(free.state) > 25, "without a reaction the let-go phase grows the gap");
+  assert.ok(separation(braked.state) < separation(free.state), "the brake holds the gap down");
+  assert.ok(separation(braked.state) > 25, "the brake dampens growth, it never closes during the let-go phase");
+  assert.ok(teamFactorLoss(braked.state, "A") > 0, "braking is work, paid by the reacting helpers");
+  assert.equal(teamFactorLoss(free.state, "A"), 0);
+});
+
+test("hook: explicit chase brakes only at a real GC threat", () => {
+  const threatened = runLetGo({ stanceA: "chase", breakawayIds: ["B0", "C3"], gcContext: BRAKE_GC });
+  const harmless = runLetGo({ stanceA: "chase", breakawayIds: ["C3", "D2"], gcContext: BRAKE_GC });
+  const harmlessNoCtx = runLetGo({ stanceA: "chase", breakawayIds: ["C3", "D2"], gcContext: { status: "missing" } });
+  assert.ok(separation(threatened.state) < separation(harmless.state));
+  assert.equal(separation(harmless.state), separation(harmlessNoCtx.state), "no threat: the let-go phase is untouched");
+  assert.equal(teamFactorLoss(harmless.state, "A"), 0, "no threat: no brake work in the let-go phase");
+});
+
+test("hook: the preventive let-go brake stays inside the per-team stage budget", () => {
+  const r = runLetGo({ stanceA: "let_go", breakawayIds: ["B0", "C3"], gcContext: BRAKE_GC });
+  const spent = r.state.team_reactions?.A?.preventive_work ?? 0;
+  assert.ok(spent > 0, "the preventive exception brakes");
+  assert.ok(spent <= TEAM_REACTION_TUNING.preventiveBudget + 1e-9);
+  assert.ok(Math.abs(teamFactorLoss(r.state, "A") - spent) < 1e-9, "brake work is booked once, as paid");
+});
+
+test("hook: legacy never brakes the let-go phase (byte-identical with or without GC context)", () => {
+  const withCtx = runLetGo({ stanceA: "chase", breakawayIds: ["B0", "C3"], gcContext: BRAKE_GC, revision: "legacy" });
+  const without = runLetGo({ stanceA: "chase", breakawayIds: ["B0", "C3"], revision: "legacy" });
+  assert.deepEqual(withCtx.state, without.state);
+  assert.deepEqual(withCtx.events, without.events);
+  assert.equal(teamFactorLoss(withCtx.state, "A"), 0, "legacy: nobody works in the let-go phase");
 });
