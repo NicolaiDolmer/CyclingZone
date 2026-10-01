@@ -766,6 +766,45 @@ test("runRaceEntryGenerator: solgt-men-parkeret rytter (pending_team_id) auto-v�
   assert.ok(!picked.includes("t1-sold-pending"), "solgt-men-parkeret rytter må ALDRIG auto-vælges til et nyt løb");
 });
 
+// #6006: et "Train now"-tryk afgoer dagen for holdet (I3, #5267: en loebsdag = loeb
+// ELLER traening). Sweepen maa aldrig tilfoeje (eller fjerne) en rytter i et loeb med
+// en etape paa en laast dato. Andre hold og andre datoer er uaendrede.
+test("runRaceEntryGenerator: Train now-laast dato faar ALDRIG nye ryttere (#6006)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [
+    { id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+    { id: "C", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-10-01T13:00:00Z", game_day: 33 },
+    { race_id: "C", stage_number: 1, scheduled_at: "2026-10-02T13:00:00Z", game_day: 36 },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "C", ...flatProfile(1) }];
+  state.teams = [
+    { id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 },
+    { id: "t2", is_test_account: false, is_frozen: false, league_division_id: 1 },
+  ];
+  seedTeamRiders(state, "t1", 8);
+  seedTeamRiders(state, "t2", 8);
+  state.race_entries = [
+    { race_id: "A", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: true },
+    { race_id: "A", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+  state.training_train_now_locks = ["t1-r0", "t1-r1", "t1-r2"].map((rider_id) => ({
+    rider_id, tick_date: "2026-10-01", team_id: "t1", season_id: seasonId,
+  }));
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false, now: new Date("2026-10-01T06:00:00Z") });
+
+  const ids = (raceId, teamId) => state.race_entries
+    .filter((e) => e.race_id === raceId && e.team_id === teamId).map((e) => e.rider_id).sort();
+  assert.deepEqual(ids("A", "t1"), ["t1-r0", "t1-r1"], "laast enhed er frosset: ingen top-up, ingen regenerering");
+  assert.ok(ids("A", "t2").length > 0, "et ulaast hold samme dag udtages som foer");
+  assert.ok(ids("C", "t1").length > 0, "holdets ulaaste dato i morgen udtages som foer");
+});
+
 test("runRaceEntryGenerator: dryRun=true skriver intet", async () => {
   const state = emptyState();
   const seasonId = "season1";
@@ -2511,4 +2550,15 @@ test("#5843 late_fill: managerhold med U23-trup får kun U23-ryttere i U23-løbe
     const race = state.races.find((r) => r.id === e.race_id);
     assert.equal(riderById.get(e.rider_id).squad ?? "senior", race.squad, `${e.rider_id} står i et ${race.squad}-løb`);
   }
+});
+
+// #5944: en U23-trup sat til "Train only" udtages aldrig af sweepen; seniorløbet og
+// andre hold er uændrede.
+test("#5944 generator: Train only-trup udtages ikke til U23-løbet, seniorløbet er uændret", async () => {
+  const state = youthGeneratorState();
+  state.team_youth_race_opt_outs = [{ team_id: "t1", squad: "u23" }];
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId: "season1", dryRun: false });
+  assert.equal(state.race_entries.filter((e) => e.race_id === "U").length, 0, "U23-truppen er sat til Train only");
+  const sTeams = [...new Set(state.race_entries.filter((e) => e.race_id === "S").map((e) => e.team_id))].sort();
+  assert.deepEqual(sTeams, ["t1", "t2"], "seniorer er upåvirkede");
 });

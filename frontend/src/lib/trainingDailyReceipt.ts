@@ -1,4 +1,6 @@
-export type ReceiptStatus = "complete" | "pending" | "reconciliation" | "recorded";
+import { receiptPassScore, type ReceiptScoreView } from "./trainingScoreView.ts";
+
+export type ReceiptStatus ="complete" | "pending" | "reconciliation" | "recorded";
 type Numbers = Record<string, number>;
 type Jump = { from: number; to: number };
 export interface TrainingActivity {
@@ -71,16 +73,89 @@ const order = (a: TrainingRun, b: TrainingRun) =>
   || String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""))
   || String(a.id ?? "").localeCompare(String(b.id ?? ""));
 
+/**
+ * #5915: ticks written before `progress_after` existed (29/9 and 30/9) carry
+ * only `progress_before`. Ability progress only moves through training ticks
+ * within a season, so the rider's NEXT stored tick in the same season starts
+ * exactly where this date ended: its first `progress_before` IS this date's
+ * final progress. Only normalized (per-date) evidence on both sides is chained.
+ * The successor start is only trusted when it is the date's FIRST expected
+ * slot (explicit date_game_days, or - for ticks stored without them - its
+ * lowest stored game_day when that is exactly the previous date's last + 1),
+ * every copy of that slot agrees, and none of them is quarantined; otherwise
+ * the previous endpoint stays unknown.
+ * Key: `${season}:${rider}:${date}` -> the next date's starting progress.
+ */
+function nextDateStartProgress(runs: TrainingRun[]): Map<string, Numbers> {
+  type Slot = { day: number | null; first: number | null; last: number | null; row: TrainingActivity };
+  const starts = new Map<string, Map<string, Slot[]>>();
+  for (const run of runs) {
+    if (run.report?.condition_per_date !== true) continue;
+    const days = run.report.date_game_days;
+    const explicit = Array.isArray(days) && days.length > 0 && days.every(Number.isInteger);
+    const first = explicit ? Math.min(...days) : null;
+    const last = explicit ? Math.max(...days) : null;
+    for (const row of run.report.riders ?? []) {
+      if (!row?.rider_id) continue;
+      const timeline = `${run.season_id ?? ""}:${row.rider_id}`;
+      const dates = starts.get(timeline) ?? new Map<string, Slot[]>();
+      const slots = dates.get(run.tick_date) ?? [];
+      slots.push({ day: row.game_day ?? dayOf(run), first, last, row });
+      dates.set(run.tick_date, slots);
+      starts.set(timeline, dates);
+    }
+  }
+  const quarantined = (row: TrainingActivity) => row.status === "unknown_pending"
+    || row.settlement_status === "needs_reconciliation" || (row.missing_evidence?.length ?? 0) > 0;
+  const storedDays = (slots: Slot[]) => slots.map(s => s.day).filter((d): d is number => Number.isInteger(d));
+  // Last game day of a date: its explicit date_game_days, else its highest stored slot.
+  const lastOf = (slots: Slot[]): number | null => {
+    const explicit = slots.map(s => s.last).filter((d): d is number => d != null);
+    const days = explicit.length ? explicit : storedDays(slots);
+    return days.length ? Math.max(...days) : null;
+  };
+  const startOf = (slots: Slot[], previous: Slot[]): Numbers | undefined => {
+    let first = slots[0]?.first ?? null;
+    if (slots.some(s => s.first !== first)) return undefined;
+    // Ticks stored before date_game_days existed (29/9, 30/9): trust the lowest
+    // stored slot only when it continues the previous date exactly (its last + 1).
+    if (first == null) {
+      const days = storedDays(slots);
+      const end = lastOf(previous);
+      if (days.length === 0 || end == null || Math.min(...days) !== end + 1) return undefined;
+      first = Math.min(...days);
+    }
+    const opening = slots.filter(s => s.day === first);
+    if (opening.length === 0 || opening.some(s => quarantined(s.row))) return undefined;
+    const before = opening[0].row.progress_before;
+    if (!before || typeof before !== "object") return undefined;
+    const same = JSON.stringify(before);
+    return opening.every(s => JSON.stringify(s.row.progress_before) === same) ? before : undefined;
+  };
+  const next = new Map<string, Numbers>();
+  for (const [timeline, dates] of starts) {
+    const sorted = [...dates.keys()].sort();
+    sorted.slice(0, -1).forEach((date, i) => {
+      const before = startOf(dates.get(sorted[i + 1])!, dates.get(date)!);
+      if (before) next.set(`${timeline}:${date}`, before);
+    });
+  }
+  return next;
+}
+
 /** Read-only projection of stored reports; no training mathematics or wall-clock reads. */
 export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): DailyTrainingReceipt[] {
   const byDate = new Map<string, TrainingRun[]>();
+  const valid: TrainingRun[] = [];
   for (const run of input ?? []) {
     if (!run || !/^\d{4}-\d{2}-\d{2}$/.test(run.tick_date) || !Array.isArray(run.report?.riders)) continue;
+    valid.push(run);
     const scope = `${run.tick_date}:${run.season_id ?? "legacy"}`;
     const group = byDate.get(scope) ?? [];
     group.push(run);
     byDate.set(scope, group);
   }
+  const nextStart = nextDateStartProgress(valid);
   return [...byDate.values()].sort((a, b) =>
     b[0].tick_date.localeCompare(a[0].tick_date)
     || String([...b].sort(order).at(-1)!.created_at ?? "").localeCompare(String([...a].sort(order).at(-1)!.created_at ?? ""))
@@ -142,11 +217,17 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       }
       const progressBefore = { ...(first.row.progress_before ?? {}) };
       const gainPercent: Record<string, number | null> = {};
-      const keys = new Set([...Object.keys(progressBefore), ...Object.keys(last.row.progress_after ?? {}), ...Object.keys(gains)]);
+      const stored = last.row.progress_after;
+      const derived = !stored && normalized && evidence.every(e => e.normalized)
+        ? nextStart.get(`${first.season}:${id}:${date}`) : undefined;
+      const progressAfter = stored ?? derived;
+      const keys = new Set([...Object.keys(progressBefore), ...Object.keys(progressAfter ?? {}), ...Object.keys(gains)]);
       for (const ability of keys) {
-        const before = progressBefore[ability], after = last.row.progress_after?.[ability];
-        gainPercent[ability] = finite(before) && finite(after)
-          ? Math.max(0, Math.round(((gains[ability] ?? 0) + after - before) * 100)) : null;
+        const before = progressBefore[ability], after = progressAfter?.[ability];
+        const raw = finite(before) && finite(after) ? (gains[ability] ?? 0) + after - before : null;
+        // A derived end point that would mean negative progress is inconsistent
+        // evidence (something other than training moved it): say unknown, not 0.
+        gainPercent[ability] = raw == null || (derived && raw < -1e-9) ? null : Math.max(0, Math.round(raw * 100));
       }
       const knownCondition = state === "complete" || state === "recorded";
       const fatigueBefore = finite(first.row.condition_before_date?.fatigue)
@@ -157,7 +238,7 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       const trusted = state === "complete" || state === "recorded";
       return { ...last.row, rider_id: id, activities, receipt_status: state, gains: trusted ? gains : {},
         gains_detail: trusted ? details : {}, progress_before: trusted ? progressBefore : {}, gain_percent: trusted ? gainPercent : {},
-        progress_after: trusted ? last.row.progress_after : undefined,
+        progress_after: trusted ? progressAfter : undefined,
         status: trusted ? last.row.status : "unknown_pending",
         focus: active?.focus ?? last.row.focus, intensity: active?.intensity ?? last.row.intensity,
         fatigue_before: fatigueBefore, form_before: formBefore,
@@ -177,5 +258,40 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       expected_game_days: expected.size ? [...expected].sort((a,b)=>a-b) : null,
       report: { riders: rows, condition_settled: state === "complete" },
     };
+  });
+}
+
+/** #5915 player wish: mean of the date's recorded session scores. Race days, rest,
+ *  injured and unknown slots have no session score and are left out, never 0. */
+export function averagePassScore(view: ReceiptScoreView | undefined, date: string,
+  seasonId: string | null | undefined, activities: TrainingActivity[]): number | null {
+  const scores = activities
+    .map(activity => receiptPassScore(view, date, seasonId, activity))
+    .filter((score): score is number => score != null);
+  return scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
+}
+
+export type ReceiptSort = "name" | "lastname" | "score";
+/** #5915 player wish: order the date's riders. Name = stored display name (first
+ *  name first). Last name = the final word of it. Score = average session score,
+ *  best first; riders without one go last. Ties fall back to the display name. */
+export function sortReceiptRiders<T extends { name?: string; rider_id: string }>(riders: T[], by: ReceiptSort,
+  score: (row: T) => number | null = () => null): T[] {
+  const name = (row: T) => String(row.name || row.rider_id);
+  const last = (row: T) => name(row).trim().split(/\s+/).at(-1) ?? "";
+  return [...riders].sort((a, b) => {
+    if (by === "score") {
+      const sa = score(a), sb = score(b);
+      if (sa != null || sb != null) {
+        if (sa == null) return 1;
+        if (sb == null) return -1;
+        if (sb !== sa) return sb - sa;
+      }
+    }
+    if (by === "lastname") {
+      const byLast = last(a).localeCompare(last(b));
+      if (byLast) return byLast;
+    }
+    return name(a).localeCompare(name(b));
   });
 }

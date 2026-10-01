@@ -85,6 +85,20 @@
       "description": "Nothing was changed. Try again in a moment."
     }
   },
+  "optOut": {
+    "label": "Races",
+    "enter": "Enter races",
+    "trainOnly": "Train only",
+    "noteTitle": {
+      "u23": "Your U23 squad trains instead of racing.",
+      "junior": "Your junior squad trains instead of racing."
+    },
+    "noteBody": "The assistant won't enter it, and you can't enter it by hand.",
+    "fromDay": "Takes effect from day {day}, the first race day that isn't locked yet.",
+    "help": "How it works",
+    "saveError": "Couldn't save your choice. Nothing was changed. Try again.",
+    "unavailable": "This choice isn't available yet. Try again later."
+  },
   "youthRaces": {
     "title": "Youth races",
     "subtitle": {
@@ -106,6 +120,7 @@
     },
     "team": {
       "none": "Not picked",
+      "training": "Not entered · training",
       "auto": "{count, plural, one {1 rider, auto-picked} other {# riders, auto-picked}}",
       "manual": "{count, plural, one {1 rider picked} other {# riders picked}}",
       "rode": "{count, plural, one {1 rider} other {# riders}}"

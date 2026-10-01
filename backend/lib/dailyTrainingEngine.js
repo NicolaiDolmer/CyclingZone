@@ -82,6 +82,25 @@ function addDaysToDate(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
+// #6009: matcher etape-opslagets etape den kanoniske belastning for loebsdagen?
+// Etape-opslaget (raceDayStageLookup) vaelger den FOERSTE etape, hvis en rytter
+// har to resultater paa samme loebsdag (dobbeltbooking, brud paa #4209). Ledgeren
+// har da én kanonisk raekke og en godkendt alias-raekke (duplicate_of_race_id/
+// duplicate_of_stage_number peger paa den kanoniske; canonicalRaceLoads har
+// allerede verificeret parret). Peger opslaget paa aliasset, afregnes rytteren
+// paa den kanoniske belastning. Alt andet (ingen ledger-raekke for etapen, eller
+// et alias der ikke peger paa den kanoniske) er stadig en uafklaret dato.
+export function stageMatchesCanonicalLoad(stage, canonical, ledgerRows = []) {
+  if (!stage || !canonical) return false;
+  const same = (raceId, stageNumber) => raceId === stage.raceId && Number(stageNumber) === Number(stage.stageNumber);
+  if (same(canonical.race_id, canonical.stage_number)) return true;
+  return ledgerRows.some(row => row.rider_id === canonical.rider_id
+    && Number(row.game_day) === Number(canonical.game_day)
+    && row.duplicate_of_race_id === canonical.race_id
+    && Number(row.duplicate_of_stage_number) === Number(canonical.stage_number)
+    && same(row.race_id, row.stage_number));
+}
+
 // #3459 D1: batch-lookup "hvilke af holdets ryttere racede i dag" — race_results
 // (result_type='stage') med imported_at i tickDate's danske kalenderdøgn, filtreret
 // på holdets rider_ids. Fail-safe by construction: ALDRIG throw — en query-fejl
@@ -707,7 +726,7 @@ export async function runTeamTrainingDay({
       .map(slot=>[`${slot.raceId}:${slot.stageNumber}:${slot.gameDay}`,slot])).values()];
     if (conditionPerDate && rodeToday && !unknownSlot) {
       const stage = raceDayResult.data.get(rider.id);
-      if (!raceLoadToday || raceLoadToday.race_id !== stage.raceId || raceLoadToday.stage_number !== stage.stageNumber) {
+      if (!raceLoadToday || !stageMatchesCanonicalLoad(stage, raceLoadToday, raceLoadRows)) {
         throw new Error('Missing recorded race load; cannot settle a partially activated date');
       }
     }

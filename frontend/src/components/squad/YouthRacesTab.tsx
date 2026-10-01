@@ -18,7 +18,9 @@ import type { YouthSquad } from "../../lib/youthSquadPages.ts";
 const LINK_SM = `${buttonClass({ variant: "secondary", size: "sm" })} inline-flex whitespace-nowrap`;
 const MOBILE_DEFAULTS = ["team", "action"];
 
-export default function YouthRacesTab({ squad, tab }: { squad: YouthSquad; tab: "calendar" | "results" }) {
+// #5944: trainOnly = truppen er sat til "Train only"; kommende ulåste løb uden felt
+// vises som "Not entered · training".
+export default function YouthRacesTab({ squad, tab, trainOnly = false }: { squad: YouthSquad; tab: "calendar" | "results"; trainOnly?: boolean }) {
   const { t } = useTranslation("squad");
   const navigate = useNavigate();
   const { status, calendar, results, reload } = useYouthRaces(squad);
@@ -45,13 +47,15 @@ export default function YouthRacesTab({ squad, tab }: { squad: YouthSquad; tab: 
 
   const hrefFor = (r: YouthRaceItem) => `/races/${r.id}?tab=${tab === "calendar" ? "team" : "results"}`;
 
+  const isTraining = (r: YouthRaceItem) => trainOnly && youthSelectionOpen(r) && r.selection === "none";
+
   const teamCell = (r: YouthRaceItem) => {
     if (tab === "results") {
       return r.riders > 0
         ? <span className="text-cz-2">{t("youthRaces.team.rode", { count: r.riders })}</span>
         : <span className="text-cz-3">{t("youthRaces.team.none")}</span>;
     }
-    if (r.selection === "none") return <span className="text-cz-3">{t("youthRaces.team.none")}</span>;
+    if (r.selection === "none") return <span className="text-cz-3">{t(isTraining(r) ? "youthRaces.team.training" : "youthRaces.team.none")}</span>;
     return (
       <span className="text-cz-2">
         {t(r.selection === "auto" ? "youthRaces.team.auto" : "youthRaces.team.manual", { count: r.riders })}
@@ -100,7 +104,7 @@ export default function YouthRacesTab({ squad, tab }: { squad: YouthSquad; tab: 
         >
           {tab === "results"
             ? t("youthRaces.action.results")
-            : youthSelectionOpen(r)
+            : youthSelectionOpen(r) && !isTraining(r)
               ? t(r.selection === "none" ? "youthRaces.action.pick" : "youthRaces.action.edit")
               : t("youthRaces.action.view")}
         </Link>
@@ -110,7 +114,7 @@ export default function YouthRacesTab({ squad, tab }: { squad: YouthSquad; tab: 
 
   return (
     <div>
-      {tab === "calendar" && <p className="mb-3 text-[13px] text-cz-2">{t("youthRaces.calendarHint")}</p>}
+      {tab === "calendar" && !trainOnly && <p className="mb-3 text-[13px] text-cz-2">{t("youthRaces.calendarHint")}</p>}
       <DataTable
         label={t(`tabs.${tab}`)}
         columns={columns}

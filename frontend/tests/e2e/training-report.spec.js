@@ -100,7 +100,9 @@ test("training report shows day summary, progress and breakthrough jump", async 
   await expect(details.getByLabel("71 til 72")).toBeVisible();
   await expect(receipt.getByLabel("25 til 20")).toBeVisible();
   await receipt.getByRole("button", { name: /Ming Zhou/ }).click();
-  await expect(receipt.getByTestId("daily-receipt-rider-details")).toContainText("Hviledag");
+  // #5915: flere ryttere kan staa foldet ud samtidig (Ada er stadig aaben).
+  await expect(receipt.getByTestId("daily-receipt-rider-details")).toHaveCount(2);
+  await expect(receipt.getByTestId("daily-receipt-rider-details").filter({ hasText: "Hviledag" })).toHaveCount(1);
   await expect(receipt).not.toContainText("Intet fokus valgt");
 
 });

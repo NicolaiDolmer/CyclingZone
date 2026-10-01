@@ -159,7 +159,6 @@ export function copyWeekDays(days: WeekDays): WeekDays {
 
 // ── DB ─────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Supa = { from: (table: string) => any };
 type PgError = { code?: string; message?: string } | null | undefined;
 

@@ -88,7 +88,6 @@ test("stigen rytter → gruppe → hold for traethedsgraensen", () => {
   assert.equal(resolveRiderFatigueRule(team, effectiveRiderRuleRow(null, groupRuleRow({ fatigue_threshold: null, fallback: "off" }))).threshold, null);
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fakeSupabase(tables: Record<string, any[]>, { errorOn = {} as Record<string, { code?: string; message: string }> } = {}) {
   const writes: Array<{ table: string; patch: unknown }> = [];
   return {
@@ -96,7 +95,6 @@ function fakeSupabase(tables: Record<string, any[]>, { errorOn = {} as Record<st
     from(table: string) {
       const filters: Array<(r: Record<string, unknown>) => boolean> = [];
       let patch: unknown = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const q: any = {
         select() { return q; },
         update(p: unknown) { patch = p; return q; },
