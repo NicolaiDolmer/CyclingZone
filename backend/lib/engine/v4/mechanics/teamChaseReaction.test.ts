@@ -380,15 +380,17 @@ test("full engine: orders_gc_v1 reports its GC context explicitly and stays dete
 
 // ── #5955 (ejer-valg B 1/10): GC-bremsen i lad-gaa-fasen ─────────────────────
 
-test("brake: only reacting teams and explicit chase at a real threat brake, only in their own chase group", () => {
+test("brake: only a serious threat brakes (reacting team or explicit chase), only in its own chase group", () => {
   const decisions = [
     { teamId: "A", threat: SERIOUS, stance: "neutral" as const, plan: { intensity: 1 } },
     { teamId: "B", threat: MODERATE, stance: "chase" as const, plan: { intensity: 0 } },
     { teamId: "C", threat: NONE, stance: "chase" as const, plan: { intensity: 0 } },
     { teamId: "D", threat: SERIOUS, stance: "let_go" as const, plan: { intensity: 0 } },
     { teamId: "E", threat: { ...SERIOUS, chase_group_id: "chase-9" }, stance: "chase" as const, plan: { intensity: 0 } },
+    { teamId: "F", threat: SERIOUS, stance: "chase" as const, plan: { intensity: 0 } },
+    { teamId: "G", threat: MODERATE, stance: "neutral" as const, plan: { intensity: 0.5 } },
   ];
-  assert.deepEqual([...letGoBrakingTeams(decisions, "peloton-0").keys()].sort(), ["A", "B"]);
+  assert.deepEqual([...letGoBrakingTeams(decisions, "peloton-0").keys()].sort(), ["A", "F"]);
   assert.deepEqual([...letGoBrakingTeams(decisions, "chase-9").keys()], ["E"]);
 });
 

@@ -143,21 +143,23 @@ export function capPreventiveIntensity(plan: TeamReactionPlan, fullIntensityCost
 //
 // Under legacy roerer ingen ordre lad-gaa-fasen (#5812-kontrakten): hullet
 // vokser mod loftet uanset hvad holdene vil. Under orders_gc_v1 maa et hold
-// ved en REEL GC-trussel bremse fasen og holde hullet nede:
+// ved en REEL (alvorlig) GC-trussel bremse fasen og holde hullet nede:
 //   - et hold hvis GC-reaktion er aktiv (neutral eller den forebyggende
 //     lad-gaa-undtagelse), med de hjaelpere der allerede reagerer, og
-//   - et hold med eksplicit jagtordre, men kun naar dets GC-rytter er truet
-//     (moderat eller alvorlig). En jagtordre uden GC-trussel bremser ikke:
-//     feltet lader stadig dagens udbrud faa sit forspring.
-// Bremsen er arbejde: de bremsende ryttere betaler for lad-gaa-km'ene i samme
-// valuta som jagten, og den forebyggende undtagelses budget daekker hele
-// segmentet (capPreventiveIntensity), saa bremsen holder sig inden for det
-// eksisterende budget pr. hold pr. etape. Bremsen er bounded (maxBrake < 1):
-// et udbrud faar altid noget plads, og ingen indhentning er garanteret.
+//   - et hold med eksplicit jagtordre.
+// En moderat trussel eller en jagtordre uden trussel bremser ikke: feltet
+// lader stadig dagens udbrud faa sit forspring (den moderate reaktion virker
+// som foer kun i jagtfasen). Op til det forspring holdet kan tolerere
+// (GcThreat.tolerated_lead_seconds) vokser hullet frit; over det daempes det.
+// Bremsen er arbejde: de bremsende ryttere betaler for de bremsede lad-gaa-km
+// i samme valuta som jagten, og den forebyggende undtagelses budget daekker
+// hele segmentet (capPreventiveIntensity), saa bremsen holder sig inden for
+// det eksisterende budget pr. hold pr. etape. Bremsen er bounded (maxBrake
+// < 1): et udbrud faar altid plads at vokse, og ingen indhentning er garanteret.
 
 export const LET_GO_BRAKE_TUNING = Object.freeze({
   /** Hoejeste andel af lad-gaa-vaeksten bremsen kan fjerne (aldrig hele). */
-  maxBrake: 0.75,
+  maxBrake: 0.3,
   /** Effektive bremse-ryttere (fuld effort, friske) der giver den fulde bremse. */
   referenceBrakers: 4,
 });
@@ -180,8 +182,9 @@ export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chas
   const out = new Map<string, number>();
   for (const d of decisions) {
     if (d.threat.chase_group_id !== chaseGroupId) continue;
+    if (d.threat.severity !== "serious") continue;
     const reacting = d.plan.intensity > 0;
-    const threatenedChase = d.stance === "chase" && d.threat.severity !== "none";
+    const threatenedChase = d.stance === "chase";
     if (!reacting && !threatenedChase) continue;
     const tolerated = d.threat.tolerated_lead_seconds;
     out.set(d.teamId, Number.isFinite(tolerated) ? Math.max(0, tolerated as number) : 0);
