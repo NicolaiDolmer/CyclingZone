@@ -23,10 +23,16 @@ import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
-import type { RosterCell } from "./mobile/TrainingMobileRoster.tsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "./TrainingScoreSparkline.tsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import { squadBadgeKey } from "../../lib/squadBadge.ts";
+
+// En loebsdags-celle (flyttet hertil fra den slettede mobil-tabel, #6030).
+export type RosterCell = {
+  label: string;
+  tone: "race" | "session" | "off";
+  title?: string;
+};
 // Den ENE kanoniske sorterbare header (samme pil, aria-sort og klik-maal som
 // resten af spillet), ikke en lokal kopi.
 import SortableTh from "../ui/SortableTh.jsx";

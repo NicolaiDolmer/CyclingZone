@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
-import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
@@ -19,7 +18,7 @@ import { useScouting } from "../lib/useScouting.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { riderOverallRating } from "../lib/riderRating.js";
-import { TRAINING_INTENSITIES, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
+import { TRAINING_INTENSITIES, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
   SESSION_INTENSITY,
@@ -31,10 +30,9 @@ import {
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
-import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, todayGainTotal, NEAR_BREAKTHROUGH, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, yesterdaySummary, riderDayStories, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
+import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
-import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
@@ -43,24 +41,20 @@ import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistant
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import { readTour } from "../lib/onboardingTour.js";
-import SortTh from "../components/rider/RiderSortTh.jsx";
-import TrainingScoreSparkline from "../components/training/TrainingScoreSparkline.tsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, SkeletonLines, ChevronDownIcon, TeamIcon,
-  ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon, InfoIcon, ChevronRightIcon, PlayIcon,
-  Tabs, TabList, Tab, TabPanel, CollapsibleSection,
+  ArrowUpIcon, ArrowDownIcon, StarIcon, ChevronRightIcon, PlayIcon,
+  Tabs, TabList, Tab, TabPanel,
 } from "../components/ui";
-import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
+import { WRAP, COUNT } from "../components/ui/dataTableStyles.js";
 import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
-import { useMobileTableColumns, MobileColumnChips } from "../components/ui/MobileTableChips.jsx";
 // #5485 (ejer-go 23/9): overblik oeverst, een guld-knap der skifter med
 // situationen, een dagsvaelger pr. rytter og rytterens kort under raekken.
 import TrainingOverview from "../components/training/TrainingOverview.tsx";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
-import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import FatigueRulePanel from "../components/training/FatigueRulePanel.tsx"; // #4854
 // #5932: Program-fanens tre under-faner (ejer-godkendt mockup 1/10).
 import TrainingPlanCard from "../components/training/TrainingPlanCard.tsx";
@@ -89,14 +83,10 @@ import {
 } from "../components/training/trainingOverview.ts";
 import { countsForRole, mobileScoreCell, pacePerWeek, scoreSortValue } from "../lib/trainingMobileModel.ts";
 import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
-// #3643: telefonens egen visning af I dag-fanen (ejer-valg 18/9, mockup 2).
-// BAG FLAG (training_mobile_table, stadie beta — ejer 19/9): kun beta-testere
-// ser den; alle andre ser #5124's D-047-gren, som derfor er bevaret nedenfor.
-import TrainingMobileToday from "../components/training/mobile/TrainingMobileToday.tsx";
-// #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke, bag beta (cellsOn).
+// #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke.
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast } from "../components/training/todayRowModel.ts";
-// #6025: saesonens fremgang som trup-overblik i fanen Development (beta, cellsOn).
+// #6025: saesonens fremgang som trup-overblik i fanen Development.
 import SeasonOverview from "../components/training/SeasonOverview.jsx";
 import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 
@@ -155,24 +145,6 @@ const STATUS_INJURED_WEIGHT = 1;
 // Hvile · Aktiv restitution · rytterens egen session. Den sidste er en sentinel,
 // ikke en dagstype: hvilken dag den fører til afhænger af rytterens session.
 const QUICK_DAY_TYPES = Object.freeze(["rest", "recovery", "session"]);
-
-// #4851: praecis samme funktion som DataTable.jsx's egen `withBreakHints`
-// (D-047/#5124) — kopieret lokalt i stedet for importeret, saa denne fil
-// (den GAMLE, haandrullede mobil-gren, ikke DataTable) ikke traekker en
-// deling ind i en delt UI-komponent for en enkelt intern hjaelpefunktion.
-// "Klatrer/GC" er EET ord for browseren uden en brydningsmulighed ved "/",
-// saa linjen falder ellers tilbage paa break-words og braekker midt i ordet
-// ("SPRINTE/R/ROULE/UR", maalt 21/9 paa 412px). `<wbr>` er en frivillig
-// brydning der hverken tegner noget eller aendrer `textContent`.
-function withBreakHints(value) {
-  const parts = String(value).split("/");
-  if (parts.length === 1) return value;
-  // Brydningen ligger EFTER skraastregen, saa "SPRINTER/" bliver staaende paa
-  // den foerste linje — ikke "/ROULEUR" paa den naeste.
-  return parts.flatMap((part, index) =>
-    index === parts.length - 1 ? [part] : [`${part}/`, <wbr key={`wbr-${index}`} />],
-  );
-}
 
 // Dagstypen rytterens gemte session hører til (skill eller training), eller
 // null hvis planen ikke bærer en session (fx en restitutionsdag).
@@ -243,80 +215,6 @@ function useTrainingTourSteps(t, runTarget, dayCloseOn) {
 // Bred side — samme mønster som TeamPage / RidersPage.
 // (Layout WIDE_CONTENT_ROUTES håndterer kun specific paths — vi bruger inline max-w)
 
-function MiniBar({ value, color, label }) {
-  // value = 0..100
-  const pct = Math.max(0, Math.min(100, value ?? 0));
-  return (
-    <div className="flex items-center gap-1.5 min-w-[80px]" title={`${label}: ${pct}`}>
-      <div className="flex-1 h-1.5 bg-cz-subtle rounded-cz-pill overflow-hidden">
-        <div className={`h-full rounded-cz-pill transition-all ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-3xs font-mono text-cz-3 w-6 text-right">{pct}</span>
-    </div>
-  );
-}
-
-// Progress mod næste +1 for en fokus-evne (anticipation). Baren bliver grøn ved
-// NEAR_BREAKTHROUGH+ ("tæt på gennembrud"). info = { ability, pct } eller null (tom-tilstand).
-
-
-function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
-  if (!info) {
-    return <span className="text-cz-3 text-xs">{emptyLabel}</span>;
-  }
-  const near = info.pct >= NEAR_BREAKTHROUGH * 100;
-  const abilityLabel = tRider(`racePreview.derived.${info.ability}`);
-  return (
-    <div className="min-w-[96px]" title={toGoLabel({ pct: 100 - info.pct, ability: abilityLabel })}>
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-2xs text-cz-2 truncate">{abilityLabel}</span>
-        <span className={`text-3xs font-mono ${near ? "text-cz-success" : "text-cz-3"}`}>{info.pct}%</span>
-      </div>
-      <div className="h-1.5 bg-cz-subtle rounded-cz overflow-hidden">
-        <div
-          className={`h-full rounded-cz transition-all ${near ? "bg-cz-success" : "bg-cz-accent"}`}
-          style={{ width: `${info.pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// #3924 trin 1 (design-go 20/8): kvalitativ tekst pr. rytter til "Yesterday's
-// gains"-fold-ud'et. Ren i18n-komposition over riderDayStories' klassifikation
-// (trainingReport.js) — ingen ny data, ingen lofter/rater (kun det der faktisk
-// skete, eller en observerbar fremdriftsfraktion, jf. #1162 fog-gate).
-function yesterdayLineText(story, t, tRider) {
-  switch (story.type) {
-    case "injured":
-      return t("yesterdayLine.injured");
-    case "point": {
-      if (story.jumps.length === 1) {
-        const j = story.jumps[0];
-        const ability = tRider(`racePreview.derived.${j.ability}`);
-        return j.from != null && j.to != null
-          ? t("yesterdayLine.pointOne", { ability, from: j.from, to: j.to })
-          : t("yesterdayLine.pointOnePlain", { ability });
-      }
-      const abilities = story.jumps.map((j) => tRider(`racePreview.derived.${j.ability}`)).join(", ");
-      return t("yesterdayLine.pointMany", { abilities });
-    }
-    case "restFresh":
-      return t("yesterdayLine.restFresh", { from: story.fatigueFrom, to: story.fatigueTo });
-    case "rest":
-      return t("yesterdayLine.rest", { from: story.fatigueFrom, to: story.fatigueTo });
-    case "recovery":
-      return t("yesterdayLine.recovery", { from: story.fatigueFrom, to: story.fatigueTo });
-    case "nearBreakthrough":
-      return t("yesterdayLine.nearBreakthrough", { ability: tRider(`racePreview.derived.${story.ability}`) });
-    case "progressing":
-      return t("yesterdayLine.progressing", { ability: tRider(`racePreview.derived.${story.ability}`) });
-    case "trained":
-      return t("yesterdayLine.trained");
-    default:
-      return t("yesterdayLine.noFocus");
-  }
-}
 
 // #3721: fokus-åbne-knappen — DELT mellem roster-rækken og Development-fanens
 // rækker, så de to flader bruger samme komponent/mutation (FocusPanel via
@@ -499,7 +397,6 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
 
 export default function TrainingPage() {
   const { t } = useTranslation("training");
-  const tRider = useTranslation("rider").t;
 
   const tTypes = useTranslation("riderTypes").t;
 
@@ -571,12 +468,9 @@ export default function TrainingPage() {
     riderWeekPlans, savingRiderWeekPlanId, setRiderWeekPlan, clearRiderWeekPlan,
     // #4851: null naar training_score_visible er off ⇒ kolonnen findes ikke.
     trainingScore,
-    // #3643 (ejer 19/9): true = telefonen tegner den nye løbsdags-tabel (kun
-    // beta-testere, stadie `beta`); false = den mobil-visning der står i prod
-    // i dag. Serveren afgør det — se trainingMobileTableFlag.js.
     // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
     // pinner at racingToday er det sidste felt før `} = training;`.
-    mobileTable, dailyReceiptEnabled,
+    dailyReceiptEnabled,
     racingToday,
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
@@ -646,27 +540,13 @@ export default function TrainingPage() {
     return out;
   }, [todayRun]);
 
-  // #3924 trin 1 (design-go 20/8): "Yesterday's gains"-resuméet øverst på Train
-  // today — holdniveau-tallene til den ÉNE linje + kvitteringens per-rytter-
-  // historier til fold-ud'et. Samme todayRun/progress som resten af siden.
-
-
-
-  const yesterday = todayRun?.report ? yesterdaySummary(todayRun.report.riders) : null;
-  const yesterdayStories = useMemo(
-    () => (todayRun?.report ? riderDayStories(todayRun.report.riders, progress) : []),
-    [todayRun, progress],
-  );
-
   // #1895 PR 1: dagens ugedag (display) + lokalt draft-state for ugerytme-panelet.
   const todayWeekday = useMemo(() => weekdayKeyForDate(new Date()), []);
   const [weekDraft, setWeekDraft] = useState(null); // null = ikke redigeret endnu (spejler weekPlan)
   const [weekPlanMsg, setWeekPlanMsg] = useState(null);
   const activeWeekDays = weekDraft ?? weekPlan;
 
-  // #1895 PR 2: individuel ugeplan pr. rytter — udvidbar inline-flade i rosteret,
-  // tænkt til de 2-3 ryttere man mikro-styrer. Kun ÉN rytter udvidet ad gangen.
-  const [expandedRiderId, setExpandedRiderId] = useState(null);
+  // #1895 PR 2: individuel ugeplan pr. rytter (kladder indtil Gem).
   const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
   const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
 
@@ -919,10 +799,6 @@ export default function TrainingPage() {
 
   // #1895 PR 2: individuel ugeplan pr. rytter — samme draft/gem/nulstil-mønster
   // som holdets ugerytme ovenfor, men skoped pr. rytter-id.
-  function toggleRiderWeekPlan(riderId) {
-    setExpandedRiderId((prev) => (prev === riderId ? null : riderId));
-  }
-
   function riderWeekDraftFor(riderId) {
     return riderWeekDraftMap[riderId] ?? riderWeekPlans[riderId] ?? flatWeekTemplate();
   }
@@ -994,14 +870,10 @@ export default function TrainingPage() {
   // mounted; only the body swaps between loading / empty / error / content."
   const isLoading = loading;
 
-  // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
-
-
   // Dagligt udviklings-moment (#2484, H3): ÉN kurateret historie i stedet for
   // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
   // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
   // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
-  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
   const latestRun = todayRun ?? history.runs[0] ?? null;
   const receiptRuns = useMemo(() => todayRun
     ? [todayRun, ...history.runs.filter(run => run.tick_date !== todayRun.tick_date || run.season_id !== todayRun.season_id)]
@@ -1039,14 +911,6 @@ export default function TrainingPage() {
     }
     return out;
   }, [riders, history.seasonRuns, history.seasonStart, history.seasonState]);
-
-  // #3746 trin 7: Week plan-fanens kompakte oversigt — ryttere med en egen
-  // individuel ugeplan-override. Genbruger riderWeekPlans (allerede hentet af
-  // useTraining til roster-rækkens udvidelige panel), ingen nyt kald.
-  const ridersWithOwnWeekPlan = useMemo(
-    () => riders.filter((r) => riderWeekPlans[r.id] != null),
-    [riders, riderWeekPlans],
-  );
 
   // #6030: training_mobile_table er on for alle (1/10), saa #5124's D-047-gren
   // (rosterMobile*, chip-raekken, den dynamiske colSpan) er slettet, jf. #3643.
@@ -1086,10 +950,6 @@ export default function TrainingPage() {
   }), [condition, today, seasonYear, trainingScore, scoreSettled]);
   const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
   const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
-
-  // Vis enten flade rækker eller type-grupper. Begge bruger samme allerede-hentede
-  // riders-array (ingen ny query) og den samme aktive sortering.
-  const groups = groupByType ? groupRidersByType(riders) : null;
 
   function toggleSelect(riderId) {
     setSelected((prev) => {
@@ -1639,10 +1499,8 @@ export default function TrainingPage() {
   }
 
   function renderMobileToday() {
-    const columns = raceDayColumns;
     // #5485: overblikkets filter gælder også telefonens tabel.
     const rows = sortRoster(visibleRiders);
-    const seasonDays = seasonDaysElapsed;
     const riderById = riderByIdMap;
 
     return (
