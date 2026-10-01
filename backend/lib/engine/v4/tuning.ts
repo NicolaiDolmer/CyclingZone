@@ -1342,8 +1342,8 @@ const morningBreakFormation = {
   // fradrag pr. enhed modstand og pr. overfyldt plads. STARTGAET
   successBase: 0.55,
   successStrengthGain: 1.2,
-  successPressureWeight: 0.12,
-  successCrowdWeight: 0.35,
+  successPressureWeight: 0.06,
+  successCrowdWeight: 0.05,
   successBounds: [0.03, 0.85] as readonly [number, number],
   // Rytterens motor relativt til feltets snit, clampet. STARTGAET
   relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
