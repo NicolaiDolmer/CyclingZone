@@ -30,7 +30,7 @@ export function YouthRaceOptOutControl({ trainOnly, saving, onChange, variant }:
       className={mobile ? "mb-4 flex flex-col gap-1.5 sm:hidden" : "hidden sm:flex flex-col items-end gap-1.5"}
       data-testid={`youth-race-opt-out-${variant}`}
     >
-      <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-cz-3">{t("optOut.label")}</span>
+      <span className="text-2xs font-medium uppercase tracking-[0.06em] text-cz-3">{t("optOut.label")}</span>
       <Segmented
         label={t("optOut.label")}
         value={trainOnly ? "train_only" : "enter"}
