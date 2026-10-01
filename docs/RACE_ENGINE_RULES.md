@@ -30,6 +30,10 @@ Kun aktivt når løbets revision er `orders_gc_v1`; legacy-dannelsen er uændret
 
 Dannelsen er omstridt: tilladelse → faktisk forsøg med pris → rivalholdenes modreaktion → eventuelt udbrud. Hvert forsøg koster én gang, også ved fiasko. Rivalhold er hold uden egen rytter i forsøget; deres faktiske arbejdere i feltet (ikke kaptajner) reagerer efter holdets stance (jag fuldt, neutral delvist, lad gå ikke) og betaler for arbejdet. Evne hjælper altid forsøget; ingen skjult svækkelse af stærke ryttere. Kun lykkede forsøg kommer med; der fyldes aldrig op, og nul udbrydere er gyldigt. Et overfyldt forsøg lukkes til udbruddets maksimale størrelse. En hjælper i udbruddet kan ikke samtidig hjælpe kaptajnen i en anden gruppe (holdspil, jagt og leadout regner kun med gruppens faktiske medlemmer). Tidslinjen får `breakaway_attempt` (forsøgte, kom afsted, reagerende hold) før `breakaway_formed`; ingen sandsynligheder eller vægte. Tuning-værdierne er ukalibrerede startkandidater. GC-reaktion er næste pakke. Kode: `mechanics/breakawayPermission.ts`.
 
+## Brosten under `orders_gc_v1` (#6046)
+
+Kun på `cobbles`- og `gravel`-etaper og kun når løbets revision er `orders_gc_v1`; legacy og alle andre profiler (også `classic`) er uændrede. To ting ændres: (1) en brostenssektor deler de afhængte ryttere i flere grupper efter hvor langt de er under gruppens bedste brostensrytter, og tidstabet vokser med underskuddet (før tabte alle afhængte det samme); (2) placeringen i finalen vægter brostensevnen sammen med finale-typens egne evner. På sektoren ender en stærkere brostensrytter aldrig bag en svagere fra samme gruppe; i finalen gælder det kun når rytternes øvrige finale-evner og dagens tillæg er ens. Kode: `mechanics/cobbles.ts`, `finale.ts`, tuning i `COBBLES_EXTRA_TUNING`.
+
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
 

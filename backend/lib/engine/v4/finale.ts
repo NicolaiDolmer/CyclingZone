@@ -32,6 +32,7 @@ import type {
 } from "./types.ts";
 import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
+import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -458,8 +459,11 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   }
 
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
-  const demandVector =
-    (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR;
+  // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
+  const demandVector = cobbledFinaleDemandVector(
+    (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR,
+    ctx,
+  );
 
   // #5957: puljens bedste rene finale-evne er referencen for hvor meget af
   // dagens modifikatorer hver rytter faar (finaleModifierScale). Én reference

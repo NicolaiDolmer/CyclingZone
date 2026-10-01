@@ -53,8 +53,25 @@
 // invertere en evne-baseret rangordning). Risiko rulles for HELE gruppen
 // (ikke kun de udvalgte til split), FOER splittet afgoeres, saa udfaldet er
 // uafhaengigt af split-beslutningen.
+//
+// #6046 (BALANCE, kun under orders_gc_v1 og kun paa brosten-/grusprofiler):
+// genafspil af rigtige S4-etaper viste at brostensevnen naesten ikke forudsagde
+// placeringen. To grunde, maalt hver for sig (tal privat, balance-internals/6046/):
+//   1. Sektoren gav ALLE afhaengte ryttere samme tidstab (gruppens gennemsnit
+//      inden for et smalt baand). En rytter lidt under fronten og en rytter
+//      langt under tabte det samme, saa evnen talte kun som "med/ikke med".
+//      Nu deles de afhaengte i op til `maxSplitTiers` grupper efter deres
+//      underskud, og tidstabet vokser med underskuddet
+//      (`tieredEffectFractionBounds`). Lagene er sorteret paa den stoej-fri
+//      score, saa en staerkere rytter aldrig ender i et senere lag end en
+//      svagere fra samme gruppe (monotoni-invarianten er uaendret).
+//   2. Finalens placering laeste kun finale-typens vektor (spurt, udbrud osv.),
+//      saa ordenen INDEN for en ankommen gruppe ignorerede brostensevnen helt.
+//      `cobbledFinaleDemandVector` blander evnen ind med `finaleCobblestoneShare`.
+// Andre profiler (flad, klassiker osv.) og legacy-revisionen er uroerte.
 
 import type {
+  AbilityKey,
   CobblesSegment,
   EngineState,
   GroupKind,
@@ -103,8 +120,8 @@ function sectorTraversalSeconds(segment: CobblesSegment, baseSpeedKmhCobbles: nu
 }
 
 /** [lo,hi]-fraktionsbaand, ganget op paa "udvalgte punch-etaper" (finale_type==='punch'). Clampet til [0,1] uanset multiplikator. */
-function effectFractionBoundsFor(route: Pick<RouteV2, "finale_type">): readonly [number, number] {
-  const [lo, hi] = COBBLES_EXTRA_TUNING.effectFractionBounds;
+function effectFractionBoundsFor(route: Pick<RouteV2, "finale_type">, tiered = false): readonly [number, number] {
+  const [lo, hi] = tiered ? COBBLES_EXTRA_TUNING.tieredEffectFractionBounds : COBBLES_EXTRA_TUNING.effectFractionBounds;
   const multiplier = route.finale_type === "punch" ? COBBLES_EXTRA_TUNING.punchFinaleMultiplier : 1;
   return [clamp(lo * multiplier, 0, 1), clamp(hi * multiplier, 0, 1)];
 }
@@ -185,6 +202,56 @@ function gapSecondsDeltaFor(
   return round2(lo + fraction * (hi - lo));
 }
 
+/** #6046: gaelder brostens-balancen paa denne etape? Kun brosten/grus under orders_gc_v1. */
+export function cobbledBalanceActive(ctx: Pick<SegmentHookContext, "rulesRevision" | "route">): boolean {
+  return ctx.rulesRevision === "orders_gc_v1" && COBBLES_EXTRA_TUNING.tieredProfileTypes.includes(ctx.route.profile_type);
+}
+
+/**
+ * #6046: finale-vektoren paa en brosten-/grusetape. Finale-typens vaegte
+ * skaleres ned, og brostensevnen faar `finaleCobblestoneShare`; summen af
+ * vaegtene er uaendret og alle vaegte forbliver >= 0 (finale-scorens
+ * monotoni i hver evne holder). Inaktiv => den uaendrede vektor.
+ */
+export function cobbledFinaleDemandVector(
+  demandVector: Partial<Record<AbilityKey, number>>,
+  ctx: Pick<SegmentHookContext, "rulesRevision" | "route">,
+): Partial<Record<AbilityKey, number>> {
+  if (!cobbledBalanceActive(ctx)) return demandVector;
+  const share = clamp(COBBLES_EXTRA_TUNING.finaleCobblestoneShare, 0, 1);
+  const total = Object.values(demandVector).reduce((sum: number, w) => sum + (w ?? 0), 0);
+  const out: Partial<Record<AbilityKey, number>> = {};
+  for (const key of Object.keys(demandVector) as AbilityKey[]) out[key] = (demandVector[key] ?? 0) * (1 - share);
+  out.cobblestone = (out.cobblestone ?? 0) + share * total;
+  return out;
+}
+
+/**
+ * #6046: del de udvalgte ryttere i op til `maxTiers` lag efter stoej-fri score
+ * (lige brede baand mellem laveste og hoejeste score blandt de udvalgte). Et
+ * lag med hoejere score (stoerre underskud) faar altid stoerre tidstab i
+ * gapSecondsDeltaFor, saa raekkefoelgen foelger evnen. maxTiers <= 1 => ét lag.
+ * Eksporteret for direkte enheds-test af monotonien.
+ */
+export function splitTiers(
+  selections: ReadonlyArray<Pick<RiderCobblesSelection, "riderId" | "baseScore">>,
+  splitRiderIds: readonly string[],
+  maxTiers: number,
+): string[][] {
+  const splitSet = new Set(splitRiderIds);
+  const chosen = selections.filter((s) => splitSet.has(s.riderId));
+  if (maxTiers <= 1 || chosen.length < 2) return chosen.length ? [chosen.map((s) => s.riderId).sort()] : [];
+  const lo = Math.min(...chosen.map((s) => s.baseScore));
+  const hi = Math.max(...chosen.map((s) => s.baseScore));
+  const width = (hi - lo) / maxTiers;
+  const tiers: string[][] = Array.from({ length: maxTiers }, () => []);
+  for (const s of chosen) {
+    const idx = width > 0 ? Math.min(maxTiers - 1, Math.floor((s.baseScore - lo) / width)) : 0;
+    tiers[idx].push(s.riderId);
+  }
+  return tiers.filter((t) => t.length > 0).map((t) => t.sort());
+}
+
 /** Solo-split (én rytter) faar "solo"-kind; ellers "gruppetto" naar kilden er peloton (samme konvention som climbSelection.ts), ellers "chase". */
 function splitKindFor(sourceKind: GroupKind, splitCount: number): GroupKind {
   if (splitCount === 1) return "solo";
@@ -225,7 +292,8 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
 
   const events: TimelineEvent[] = [];
   const sectorSeconds = sectorTraversalSeconds(cobblesSegment, ctx.tuning.terrain.baseSpeedKmh.cobbles);
-  const bounds = effectFractionBoundsFor(ctx.route);
+  const tiered = cobbledBalanceActive(ctx);
+  const bounds = effectFractionBoundsFor(ctx.route, tiered);
 
   // Deterministisk behandlingsraekkefolge (id-sorteret) — paavirker ikke
   // resultatet (rngFor er noeglet pr. rytter, ikke pr. kalde-raekkefolge),
@@ -271,32 +339,37 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
     // uden nogen selektions-begrundelse.
     if (splitRiderIds.length === 0 || splitRiderIds.length >= group.rider_ids.length) continue;
 
-    const kind = splitKindFor(group.kind, splitRiderIds.length);
-    const seq = ctx.segmentIndex * 1000 + localSeq;
-    localSeq += 1;
-    const newGroupId = makeGroupId(kind, seq);
-    const gapSecondsDelta = gapSecondsDeltaFor(selections, splitRiderIds, sectorSeconds, bounds);
+    // #6046: under brostens-balancen et lag pr. underskuds-baand, ellers ét
+    // split (den uaendrede legacy-adfaerd).
+    const tiers = tiered ? splitTiers(selections, splitRiderIds, COBBLES_EXTRA_TUNING.maxSplitTiers) : [splitRiderIds];
+    for (const tierRiderIds of tiers) {
+      const kind = splitKindFor(group.kind, tierRiderIds.length);
+      const seq = ctx.segmentIndex * 1000 + localSeq;
+      localSeq += 1;
+      const newGroupId = makeGroupId(kind, seq);
+      const gapSecondsDelta = gapSecondsDeltaFor(selections, tierRiderIds, sectorSeconds, bounds);
 
-    const groups = splitGroup(nextState.groups, group.id, splitRiderIds, {
-      id: newGroupId,
-      kind,
-      gapSecondsDelta,
-    });
-    nextState = { ...nextState, groups };
+      const groups = splitGroup(nextState.groups, group.id, tierRiderIds, {
+        id: newGroupId,
+        kind,
+        gapSecondsDelta,
+      });
+      nextState = { ...nextState, groups };
 
-    events.push({
-      km: round2(cobblesSegment.to_km),
-      type: "peloton_splits",
-      params: {
-        group_id: newGroupId,
-        source_group_id: group.id,
-        rider_ids: [...splitRiderIds],
-        cause: "cobbles_sector",
-        sector_name: cobblesSegment.sector_name,
-        stars: cobblesSegment.stars,
-        gap_seconds: round2(gapSecondsDelta),
-      },
-    });
+      events.push({
+        km: round2(cobblesSegment.to_km),
+        type: "peloton_splits",
+        params: {
+          group_id: newGroupId,
+          source_group_id: group.id,
+          rider_ids: [...tierRiderIds],
+          cause: "cobbles_sector",
+          sector_name: cobblesSegment.sector_name,
+          stars: cobblesSegment.stars,
+          gap_seconds: round2(gapSecondsDelta),
+        },
+      });
+    }
   }
 
   return { state: nextState, events };
