@@ -13,15 +13,15 @@
 --
 -- Stadie-flaget `training_program_cells` styrer felterne (rette et felt +
 -- motorens laesning). Kataloget bliver bag `training_programs`.
--- Oprettes i 'on': ejer-beslutning 6 aabner felterne for alle, og loeftet i
--- roadbooken gaelder i dag. Flaget er kill-switchen: 'beta' = kun beta-testere
+-- Oprettes i 'beta' (ejer-beslutning 1/10: alle tre traeningsflag i beta foerst).
+-- 'on' (ejer-only flip) aabner felterne for alle; 'beta' = kun beta-testere
 -- (adfaerden foer #5932), 'off' = ingen felter ud over training_programs.
 -- ON CONFLICT DO NOTHING: overskriver aldrig et stadie ejeren har flyttet.
 
 INSERT INTO public.app_config (key, value, description)
 VALUES (
   'training_program_cells',
-  '"on"'::jsonb,
+  '"beta"'::jsonb,
   'Stage flag (off|beta|on) for the 35 training cells per rider (7 weekdays x 5 race days, #5932, owner call 2026-09-29). on = every team can edit single cells and the engine reads them; beta = beta testers only (today''s behaviour through training_programs). The 22-program catalogue stays behind training_programs.'
 )
 ON CONFLICT (key) DO NOTHING;

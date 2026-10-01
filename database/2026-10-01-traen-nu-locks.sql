@@ -20,11 +20,11 @@ ALTER TABLE public.training_train_now_locks ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.training_train_now_locks FROM anon, authenticated;
 GRANT SELECT, INSERT ON public.training_train_now_locks TO service_role;
 
--- Stage flag, off until the owner turns it on (off | beta | on).
+-- Stage flag, seeded in beta (owner call 2026-10-01: all three training flags beta first). Flip to on is owner-only (off | beta | on).
 INSERT INTO public.app_config (key, value, description)
 VALUES (
   'training_train_now',
-  '"off"'::jsonb,
+  '"beta"'::jsonb,
   'Stage flag (off|beta|on) for "Train now" without bonus (#4847, design 2026-09-29): settles the date''s training race days now from the start-of-date condition and locks the date''s entries. Requires training_condition_per_date.'
 )
 ON CONFLICT (key) DO NOTHING;
