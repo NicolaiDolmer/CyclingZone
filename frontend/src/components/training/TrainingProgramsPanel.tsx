@@ -26,6 +26,8 @@ import {
   programName, programTagline, slotForColumnIndex, type CatalogProgram, type ProgramWeekDays,
 } from "../../lib/trainingPrograms.ts";
 import type { ProgramsResult } from "./useTrainingPrograms.ts";
+import FatigueForecast from "./FatigueForecast.tsx";
+import type { ForecastEntry } from "./FatigueForecastModel.ts";
 
 export type ProgramRider = { id: string; name: string; type: string | null };
 
@@ -49,6 +51,11 @@ export default function TrainingProgramsPanel({
   busy,
   onApply,
   onSetCell,
+  catalogEnabled = true,
+  seeds = {},
+  forecastFor = null,
+  forecastSettled = false,
+  raceSlotsFor = null,
 }: {
   weekdays: readonly string[];
   todayWeekday: string;
@@ -60,6 +67,16 @@ export default function TrainingProgramsPanel({
   busy: boolean;
   onApply: (programKey: string, target: string) => Promise<ProgramsResult>;
   onSetCell: (riderId: string, weekday: string, slotIndex: number | null, session: string) => Promise<ProgramsResult>;
+  // #5932: kataloget (training_programs) kan vaere slukket mens felterne er
+  // aabne for alle (training_program_cells). Saa vises kun gitteret.
+  catalogEnabled?: boolean;
+  // #5932: saaede uger for ryttere uden felter (fra serveren).
+  seeds?: Record<string, ProgramWeekDays>;
+  // #5933: "Fatigue tonight: approx. X" for den valgte rytter, live.
+  forecastFor?: ((riderId: string) => ForecastEntry | null) | null;
+  forecastSettled?: boolean;
+  // #5932 regel A: dagens felter et loeb har laast for rytteren.
+  raceSlotsFor?: ((riderId: string) => ReadonlySet<number>) | null;
 }) {
   const { t, i18n } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -82,8 +99,14 @@ export default function TrainingProgramsPanel({
   const editRiderId = planRiderId && riders.some((r) => r.id === planRiderId)
     ? planRiderId
     : (onProgram[0]?.id ?? riders[0]?.id ?? null);
-  const editDays = editRiderId ? riderWeekPlans[editRiderId] : null;
+  // #5932: en rytter uden felter vises med sin saaede uge (det serveren skriver
+  // ved foerste rettelse), saa alle ryttere har et gitter.
+  const ownDays = editRiderId ? riderWeekPlans[editRiderId] : null;
+  const editIsSeed = !isProgramPlan(ownDays, weekdays) && !!editRiderId && isProgramPlan(seeds[editRiderId], weekdays);
+  const editDays = editIsSeed && editRiderId ? seeds[editRiderId] : ownDays;
   const editIsProgram = isProgramPlan(editDays, weekdays);
+  const lockedToday = editRiderId && raceSlotsFor ? raceSlotsFor(editRiderId) : new Set<number>();
+  const editForecast = editRiderId && forecastFor ? forecastFor(editRiderId) : null;
   const editProgram = editRiderId ? programByKey.get(assigned[editRiderId] ?? "") ?? null : null;
 
   const sessionLabel = (session: string) =>
@@ -139,6 +162,7 @@ export default function TrainingProgramsPanel({
   return (
     <div className="space-y-3.5" data-testid="training-programs">
       {/* ── Kataloget + tildeling ─────────────────────────────────────────── */}
+      {catalogEnabled && (
       <section className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
         <div className="border-b border-cz-border px-4 py-3 sm:px-5">
           <h2 className="text-[15px] font-semibold text-cz-1">{t("programs.title")}</h2>
@@ -234,6 +258,7 @@ export default function TrainingProgramsPanel({
           )}
         </div>
       </section>
+      )}
 
       {/* ── Planen: 7 ugedage x N loebsdage ──────────────────────────────── */}
       <section className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
@@ -241,7 +266,9 @@ export default function TrainingProgramsPanel({
           <div className="min-w-0">
             <h2 className="text-[15px] font-semibold text-cz-1">{t("programs.planTitle")}</h2>
             <p className="mt-0.5 text-[12.5px] text-cz-2">
-              {editIsProgram && editProgram
+              {editIsSeed
+                ? t("programs.seededHint")
+                : editIsProgram && editProgram
                 ? (
                   <>
                     {t("programs.basedOn", { name: programName(editProgram, lang) })}
@@ -254,6 +281,9 @@ export default function TrainingProgramsPanel({
                 )
                 : editIsProgram ? t("programs.ownProgram") : t("programs.noProgram")}
             </p>
+            {!catalogEnabled && <p className="mt-0.5 text-xs text-cz-3">{t("programs.cellsIntro")}</p>}
+            {/* #5933: ét tal for den valgte rytter, opdateret efter hver rettelse. */}
+            <FatigueForecast entry={editForecast} settled={forecastSettled} className="mt-1.5" />
           </div>
           {riders.length > 0 && (
             <label className="flex min-w-0 items-center gap-2">
@@ -358,6 +388,23 @@ export default function TrainingProgramsPanel({
                       if (slot >= PROGRAM_SLOTS) return null;
                       const session = cellSession(editDays, weekday, slot) ?? daySession;
                       const overridden = isCellOverridden(editDays, weekday, slot);
+                      // #5932 regel A: i dag er et felt med en etape laast af loebet.
+                      // De oevrige felter er traening og kan rettes som altid.
+                      if (isToday && lockedToday.has(slot)) {
+                        return (
+                          <span
+                            key={column.key}
+                            title={t("programs.stageLockedTitle")}
+                            aria-label={`${t(`weekday_${weekday}`)} · ${t("mobile.raceDayShort", { n: column.index })} · ${t("programs.stageLockedTitle")}`}
+                            data-testid="training-program-cell-locked"
+                            className={`flex min-h-11 items-center justify-center border-s border-t border-cz-border px-0.5 sm:min-h-0 sm:py-1 ${rowBg}`}
+                          >
+                            <span className="truncate rounded-cz bg-cz-1 px-1 font-data text-3xs font-semibold text-cz-card sm:text-2xs">
+                              {t("programs.stageLocked")}
+                            </span>
+                          </span>
+                        );
+                      }
                       return (
                         <span
                           key={column.key}

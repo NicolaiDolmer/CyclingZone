@@ -83,6 +83,7 @@ export default function TrainingMobileToday({
   openFirstForTour = false,
   overviewLayout = false,
   cardFooterFor = null,
+  forecastFor = null,
   changeLabel,
   picked = null,
   onTogglePick,
@@ -137,6 +138,8 @@ export default function TrainingMobileToday({
   // struktur tegnes hverken dagens stribe, programmet eller tabellens titel-
   // linje her, saa mindst 8 ryttere staar paa foerste skaerm (390 x 844).
   overviewLayout?: boolean;
+  // #5933: "Fatigue tonight: approx. X" i det udfoldede kort, ét tryk vaek.
+  forecastFor?: ((riderId: string) => React.ReactNode) | null;
   // Rytterens ugeplan + profil-linket, inde i kortet (A3).
   cardFooterFor?: ((riderId: string) => React.ReactNode) | null;
   changeLabel?: string;
@@ -325,6 +328,7 @@ export default function TrainingMobileToday({
           scoreSpark={selectedScore?.spark ? [...selectedScore.spark] : null}
           changeLabel={changeLabel}
           footer={cardFooterFor ? cardFooterFor(selected.id) : null}
+          forecast={forecastFor ? forecastFor(selected.id) : null}
           scoreAria={t("score.sparkAria", {
             name: `${selected.firstname ?? ""} ${selected.lastname ?? ""}`.trim(),
           })}

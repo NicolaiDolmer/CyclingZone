@@ -16,6 +16,13 @@
 // truppen" = en kopi pr. rytter, ikke holdets raekke: holdets raekke er lag 3
 // og taber til rytterens egen eksplicitte plan (#2438), saa et klik paa "hele
 // truppen" ville ellers ikke ramme de fleste ryttere.
+//
+// #5932 (ejer 29/9): FELTERNE har sit eget flag, `training_program_cells`
+// (trainingWeekPlanCellsFlag.js). Kataloget og "Brug program" bliver bag
+// `training_programs`; at rette et felt (PUT /cell) og prognosen (GET /forecast,
+// #5933) foelger felt-flaget. En rytter uden felter faar sin uge saaet ved
+// foerste rettelse (trainingWeekPlanCells.js), og GET leverer de saaede uger,
+// saa gitteret viser praecis det serveren vil skrive.
 
 import express from "express";
 import { WEEKDAY_KEYS } from "../lib/training.js";
@@ -24,6 +31,9 @@ import {
   trainingProgramCatalog, isProgramSession,
 } from "../lib/trainingPrograms.js";
 import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
+import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
+import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
+import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 
 const PASS = (_req, _res, next) => next();
 
@@ -67,21 +77,65 @@ export function createTrainingProgramsRouter({
     return isTrainingProgramsEnabled(supabase, { isBetaTester });
   }
 
-  async function ownRiderIds(teamId) {
+  // #5932: felterne (rette et felt, prognosen) foelger felt-flaget.
+  async function cellsOn(req) {
+    const isBetaTester = await isViewerBetaTester(req);
+    return isTrainingCellsEnabled(supabase, { isBetaTester });
+  }
+
+  async function ownRiders(teamId) {
     const { data, error } = await supabase
       // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
-      .from("riders").select("id").eq("team_id", teamId).eq("is_retired", false);
+      .from("riders").select("id, primary_type").eq("team_id", teamId).eq("is_retired", false);
     if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => r.id);
+    return data ?? [];
+  }
+
+  async function ownRiderIds(teamId) {
+    return (await ownRiders(teamId)).map((r) => r.id);
+  }
+
+  async function activeSeasonId() {
+    const { data, error } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (error) throw new Error(error.message);
+    return data?.id ?? null;
+  }
+
+  // training_plans for den aktive saeson (samme filter som motoren).
+  async function teamPlans(teamId) {
+    const seasonId = await activeSeasonId();
+    if (!seasonId) return new Map();
+    const { data, error } = await supabase
+      // pagination-safe: one row per rider on one team roster.
+      .from("training_plans").select("rider_id, focus, intensity").eq("team_id", teamId).eq("season_id", seasonId);
+    if (error) throw new Error(error.message);
+    return new Map((data ?? []).map((row) => [row.rider_id, row]));
+  }
+
+  // De saaede uger for ryttere uden felter (#5932): det gitteret viser, og det
+  // PUT /cell skriver ved foerste rettelse. Ryttere MED felter er ikke med.
+  function seedsFor(riders, rows, plansByRider) {
+    const teamDays = (rows ?? []).find((r) => r.rider_id == null)?.days ?? null;
+    const seeds = {};
+    for (const rider of riders) {
+      const riderDays = (rows ?? []).find((r) => r.rider_id === rider.id)?.days ?? null;
+      if (isValidProgramWeekDays(riderDays)) continue;
+      seeds[rider.id] = seedProgramWeekDays({
+        riderDays, teamDays, plan: plansByRider.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
+      });
+    }
+    return seeds;
   }
 
   // GET /api/training/programs — kataloget + hvilke ryttere der staar paa hvilket
   // program (proveniens). Selve cellerne leveres af /api/training/me
-  // (riderWeekPlans), saa der kun er een kilde til planen.
+  // (riderWeekPlans), saa der kun er een kilde til planen. #5932: `cellsEnabled`
+  // + `seeds` naar felterne er aabne (ogsaa uden kataloget).
   router.get("/", requireAuth, readLimiter, async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
-      if (!(await programsOn(req))) return res.json({ enabled: false });
+      const [catalogOn, cellsEnabled] = await Promise.all([programsOn(req), cellsOn(req)]);
+      if (!catalogOn && !cellsEnabled) return res.json({ enabled: false, cellsEnabled: false });
       const { data: rows, error } = await loadProgramRows(supabase, req.team.id);
       if (error) throw new Error(error.message);
       const assigned = {};
@@ -90,7 +144,19 @@ export function createTrainingProgramsRouter({
           assigned[row.rider_id] = row.program_key;
         }
       }
-      res.json({ enabled: true, slots: PROGRAM_SLOTS, catalog: trainingProgramCatalog(), assigned });
+      let seeds = {};
+      if (cellsEnabled) {
+        const [riders, plansByRider] = await Promise.all([ownRiders(req.team.id), teamPlans(req.team.id)]);
+        seeds = seedsFor(riders, rows, plansByRider);
+      }
+      res.json({
+        enabled: catalogOn,
+        cellsEnabled,
+        slots: PROGRAM_SLOTS,
+        catalog: catalogOn ? trainingProgramCatalog() : [],
+        assigned,
+        seeds,
+      });
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });
@@ -167,19 +233,44 @@ export function createTrainingProgramsRouter({
       return res.status(400).json({ error: "invalid_slot" });
     }
     try {
-      if (!(await programsOn(req))) return res.status(404).json({ error: "not_found" });
+      if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
       const teamId = req.team.id;
-      const riderIds = await ownRiderIds(teamId);
-      if (!riderIds.includes(riderId)) return res.status(403).json({ error: "not_own_rider" });
+      const riders = await ownRiders(teamId);
+      const rider = riders.find((r) => r.id === riderId);
+      if (!rider) return res.status(403).json({ error: "not_own_rider" });
       const { data: rows, error: loadError } = await loadProgramRows(supabase, teamId);
       if (loadError) throw new Error(loadError.message);
-      const row = (rows ?? []).find((r) => r.rider_id === riderId);
-      if (!row || !isValidProgramWeekDays(row.days)) return res.status(409).json({ error: "no_program" });
-      const days = setProgramCell(row.days, { weekday, slotIndex, session });
+      const row = (rows ?? []).find((r) => r.rider_id === riderId) ?? null;
+      // #5932: en rytter uden felter faar sin uge saaet foerst (samme saaning som
+      // GET viser), og saa rettes feltet.
+      const current = row && isValidProgramWeekDays(row.days)
+        ? row.days
+        : seedsFor([rider], rows, await teamPlans(teamId))[riderId];
+      const days = setProgramCell(current, { weekday, slotIndex, session });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
-      const { error } = await updateRow(supabase, row.id, { days, updated_at: new Date().toISOString() });
+      const now = new Date().toISOString();
+      const { error } = row
+        ? await updateRow(supabase, row.id, { days, updated_at: now })
+        : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, days, updated_at: now }]);
       if (error) throw new Error(error.message);
       res.json({ ok: true, riderId, days });
+    } catch (err) {
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/training/programs/forecast — "Traethed i aften: ca. X" pr. rytter
+  // (#5933). Beregnet af aftenopgoerelsens egne funktioner
+  // (trainingWeekPlanForecast.js, invariant I5). Kun tallet og et farvebaand
+  // forlader serveren; ingen formel.
+  router.get("/forecast", requireAuth, readLimiter, async (req, res) => {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    try {
+      if (!(await cellsOn(req))) return res.json({ available: false, reason: "disabled", riders: {} });
+      const seasonId = await activeSeasonId();
+      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: new Date() });
+      res.json(forecast);
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });

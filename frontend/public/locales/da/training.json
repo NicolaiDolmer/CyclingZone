@@ -483,7 +483,11 @@
     "audience_manyRaceDays": "Mange løbsdage",
     "audience_youngStars": "Unge stjerner, få løb",
     "audience_veterans": "Ryttere 30+",
-    "audience_youthSquads": "Junior, U23, akademi"
+    "audience_youthSquads": "Junior, U23, akademi",
+    "cellsIntro": "Hver dag har fem løbsdagsfelter. Ugedagens session udfylder dem. Ret enkelte felter for at vælge, hvor mange der er restitution.",
+    "seededHint": "Viser hvad rytteren træner nu. Din første ændring gemmer det som hans egen plan.",
+    "stageLocked": "Etape",
+    "stageLockedTitle": "Låst af løbet"
   },
   "dailyReceipt": {
     "status": {
@@ -515,5 +519,14 @@
     "progressUnavailable": "Detaljeret fremdrift mangler",
     "previousSeason": "Tidligere sæson",
     "change": "{from} til {to}"
+  },
+  "forecast": {
+    "label": "Træthed i aften",
+    "value": "ca. {value}",
+    "band_ok": "Frisk",
+    "band_warn": "Træt",
+    "band_risk": "Over skadegrænsen",
+    "aria": "Træthed i aften: ca. {value}. {band}",
+    "ariaSettled": "Træthed i aften: {value}. {band}"
   }
 }
