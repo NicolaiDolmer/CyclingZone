@@ -18,7 +18,7 @@ const API: string | undefined = import.meta.env.VITE_API_URL;
 
 // Samme felter som My Team's trup-query (TeamPage.jsx loadAll), minus
 // transfer-markørerne (pending_team_id) som ungdomstrupperne ikke viser.
-const RIDER_SELECT = `id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`;
+const RIDER_SELECT = `id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, nationality_code, primary_type, secondary_type, contract_end_season, popularity, reputation, ${ABILITY_SELECT}, ${CONDITION_SELECT}`;
 
 export type YouthSquadStatus = "loading" | "ready" | "disabled" | "error";
 
@@ -33,6 +33,8 @@ export interface YouthSquadRider {
   salary: number | null;
   contract_end_season: number | null;
   market_value: number | null;
+  popularity: number | null;
+  reputation: number | null;
   [key: string]: unknown;
 }
 

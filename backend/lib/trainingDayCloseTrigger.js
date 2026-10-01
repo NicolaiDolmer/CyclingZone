@@ -611,7 +611,7 @@ export async function resolveDayCloseStatus({
     // (~19 KB URL), og requesten døde som "fetch failed" før den nåede PostgREST.
     // pagination-safe: ét dansk kalenderdøgn (titals rækker), se ovenfor.
     let stagesQuery = supabase
-      .from("race_stage_schedule")
+      .from("race_stage_schedule") // pagination-safe: season + one Danish calendar day, well below 1000 stages.
       .select("race_id, stage_number, game_day, scheduled_at, races!inner(season_id, league_division_id)")
       .eq("races.season_id", seasonId)
       .gte("scheduled_at", dayStart.toISOString())
@@ -786,7 +786,7 @@ export async function runTrainingDayCloseSweep({
     // S4 28/9: sæson-filter i databasen, ikke ~500 id'er i URL'en (se
     // resolveDayCloseStatus). CYCLINGZONE-79: "race_stage_schedule: fetch failed".
     const { data: stageRows, error: stageError } = await supabase
-      .from("race_stage_schedule")
+      .from("race_stage_schedule") // pagination-safe: season + one Danish calendar day, well below 1000 stages.
       .select("race_id, stage_number, game_day, scheduled_at, races!inner(season_id)")
       .eq("races.season_id", season.id)
       .gte("scheduled_at", dayStart.toISOString())

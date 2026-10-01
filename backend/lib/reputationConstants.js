@@ -168,13 +168,11 @@ export const SEASON_DECAY_FACTOR = 0.5;
 // reputation nærmer sig 100 asymptotisk uden nogensinde at ramme det eksakt
 // (bortset fra afrunding ved POINT_DECIMALS ved ekstreme raw-værdier).
 //
-// 74 er valgt af harnessens 8-variant-grid (docs/audits/reputation-
-// calibration-2026-09-05.md, kørsel 2): sammen med gulv-kredit-ændringerne
-// nedenfor er det den LAVESTE værdi i det afsøgte interval [70, 95] der
-// rammer BÅDE Stjerne- (1-2 %) og Legende-målet (≤ 0,3 %) samtidig, uden en
-// eneste rytter ≥ 99 (mod 70, som klarer star-målet men lander 1 rytter på
-// 99,1 — for tæt på det gamle "klemt på 100"-problem).
-export const SOFT_CAP = 74;
+// #5828: overgangsgulvet bevarer spillerens gamle popularitet i det synlige
+// tal. Det bløde loft er genkalibreret mod netop den synlige fordeling; den
+// tidligere rå-motor-kalibrering er historik i auditten fra 5/9. Ingen
+// populationsskrivning sker ved at ændre denne konstant alene.
+export const SOFT_CAP = 80;
 
 // Alle numeriske resultater afrundes hertil. Uden en fast afrunding ville
 // 0,1-multiplikatoren og W_CLASS tilsammen give flydende-komma-hale

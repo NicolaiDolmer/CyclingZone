@@ -11,6 +11,7 @@ import {
   STAR_PROFILE_SPONSOR_PRESSURE_BY_LEVEL,
 } from "./boardConstants.js";
 import { clamp, roundNumber, averageNumbers, averageTopScores } from "./boardUtils.js";
+import { STAR_BAND_THRESHOLD } from "./reputationConstants.js";
 
 export function deriveBoardPersonality({ focus = "balanced", planType = "1yr" } = {}) {
   const basePersonality = PERSONALITY_BY_FOCUS[focus] || PERSONALITY_BY_FOCUS.balanced;
@@ -93,7 +94,7 @@ export function deriveDefaultFocusFromIdentity(identityBasis = null) {
   return "balanced";
 }
 
-export function deriveTeamIdentityProfile({ team = null, riders = [], standing = null } = {}) {
+export function deriveTeamIdentityProfile({ team = null, riders = [], standing = null, reputationEnabled = false } = {}) {
   const riderPool = Array.isArray(riders) && riders.length
     ? riders
     : Array.isArray(team?.riders)
@@ -114,7 +115,7 @@ export function deriveTeamIdentityProfile({ team = null, riders = [], standing =
   const competitiveTier = deriveCompetitiveTier({ division, standing });
   const specializationScores = calculateTeamSpecializationScores(normalizedRiders, u25Share);
   const nationalCore = calculateNationalCore(normalizedRiders);
-  const starProfile = calculateStarProfile(normalizedRiders);
+  const starProfile = calculateStarProfile(normalizedRiders, { reputationEnabled });
   const [primaryEntry, secondaryEntry] = Object.entries(specializationScores)
     .sort((a, b) => b[1] - a[1]);
   const primarySpecialization = riderCount === 0 ? "balanced" : (primaryEntry?.[0] || "balanced");
@@ -180,6 +181,7 @@ export function normalizeBoardRider(rider = {}) {
   const numericKeys = [
     "uci_points",
     "popularity",
+    "reputation",
     "stat_fl",
     "stat_bj",
     "stat_kb",
@@ -338,7 +340,7 @@ function calculateNationalCore(riders = []) {
 // så en rytter kunne tælle som "stjerne" på kortet uden at tælle mod planen.
 export const STAR_RIDER_SCORE_THRESHOLD = 68;
 
-function calculateStarProfile(riders = []) {
+function calculateStarProfile(riders = [], { reputationEnabled = false } = {}) {
   if (!riders.length) {
     return {
       level: "low",
@@ -356,12 +358,13 @@ function calculateStarProfile(riders = []) {
     name: rider.name || `${rider.firstname || ""} ${rider.lastname || ""}`.trim(),
     firstname: rider.firstname || "",
     lastname: rider.lastname || "",
-    score: calculateRiderStarScore(rider),
+    score: calculateRiderStarScore(rider, { reputationEnabled }),
     // #3983 · rå popularity (samme kolonne/skala som rytterprofilen og
     // markedet, #3622) ved siden af den interne star-score. UI viser DENNE
     // — score afgør stadig hvem der kvalificerer (uændret tærskel/vægtning,
     // #1205 out-of-scope), men spilleren skal se ÉT tal, ikke to skalaer.
     popularity: clamp(Number(rider.popularity || 0), 0, 100),
+    reputation: clamp(Number(rider.reputation || 0), 0, 100),
   }));
   const starScores = scoredRiders.map((rider) => rider.score);
   const headlineScores = [...starScores]
@@ -371,7 +374,7 @@ function calculateStarProfile(riders = []) {
   // #1889 · Selvsamme tærskel som star_rider_count — de navngivne ryttere
   // ER tællingen, ikke en separat liste, så antal og navne aldrig divergerer.
   const starRiders = scoredRiders
-    .filter((rider) => rider.score >= STAR_RIDER_SCORE_THRESHOLD)
+    .filter((rider) => rider.score >= getStarRiderScoreThreshold({ reputationEnabled }))
     .sort((a, b) => b.score - a.score);
   const starRiderCount = starRiders.length;
   const sharePct = Math.round((starRiderCount / riders.length) * 100);
@@ -401,8 +404,15 @@ function calculateStarProfile(riders = []) {
   };
 }
 
-export function calculateRiderStarScore(rider = {}) {
+export function getStarRiderScoreThreshold({ reputationEnabled = false } = {}) {
+  return reputationEnabled ? STAR_BAND_THRESHOLD : STAR_RIDER_SCORE_THRESHOLD;
+}
+
+export function calculateRiderStarScore(rider = {}, { reputationEnabled = false } = {}) {
   const popularityScore = clamp(Number(rider.popularity || 0), 0, 100);
+  if (reputationEnabled) {
+    return roundNumber(Math.max(popularityScore, clamp(Number(rider.reputation || 0), 0, 100)));
+  }
   const uciScore = clamp(Math.round(Number(rider.uci_points || 0) / 4.5), 0, 100);
   return roundNumber((popularityScore * 0.70) + (uciScore * 0.30));
 }
@@ -412,8 +422,9 @@ export function calculateRiderStarScore(rider = {}) {
 // optælling ved bonustilbuds-accept (routes/api.js) bruger PRÆCIS samme
 // tælling som selve målet efterfølgende evalueres mod — ingen risiko for at
 // baseline og evaluering drifter fra hinanden via to separate implementeringer.
-export function countTeamStarRiders(riders = []) {
-  return (riders || []).filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+export function countTeamStarRiders(riders = [], { reputationEnabled = false } = {}) {
+  const threshold = getStarRiderScoreThreshold({ reputationEnabled });
+  return (riders || []).filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
 }
 
 function calculateTeamSpecializationScores(riders = [], u25Share = 0) {

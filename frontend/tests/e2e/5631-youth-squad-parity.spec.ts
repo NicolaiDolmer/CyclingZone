@@ -14,7 +14,7 @@
 import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import {
-  installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath, RIDERS, TEST_TEAM,
+  installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath, revealMobileTableColumn, RIDERS, TEST_TEAM,
 } from "./fixtures.js";
 import { wantsObject } from "../../src/preview/mockHandlers.js";
 import { PREVIEW_YOUTH_RIDERS, previewYouthSquadsPayload, previewYouthRiderRows } from "../../src/preview/youthSquadsMock.ts";
@@ -56,6 +56,65 @@ async function shots(page: Page, name: string) {
 }
 
 test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
+  for (const stage of ["off", "shadow", "on"] as const) {
+    test(`#4956 youth squad shows the ${stage === "on" ? "earned" : "legacy"} rider measure at ${stage}`, async ({ page }) => {
+      await setup(page);
+      await page.route("**/api/display-flags", (route) => {
+        if (preflight(route)) return;
+        return json(route, { rider_best_role_display: false, youth_squad_pages: true, rider_reputation_enabled: stage === "on" });
+      });
+      await page.route("**/rest/v1/riders*", (route) => {
+        if (preflight(route)) return;
+        const rows = previewYouthRiderRows(route.request().url());
+        return rows ? json(route, rows.map((r) => ({ ...r, reputation: 83 }))) : route.fallback();
+      });
+      await login(page);
+      await page.goto("/squads/u23");
+      // D-047: paa mobil ligger denne valgfrie kolonne bag chip-raekken
+      // ("Vaelg kolonner"). Testen vaelger chippen; mobillayoutet er uaendret.
+      // No-op paa desktop, hvor kolonnen altid er synlig.
+      await revealMobileTableColumn(page, stage === "on" ? /^(Reputation|Omdømme)$/ : /^(Popularity|Popularitet)$/);
+      const table = page.locator("main table").first();
+      await expect(table.getByRole("columnheader", { name: stage === "on" ? /Reputation|Omdømme/ : /Popularity|Popularitet/ })).toBeVisible();
+      const row = table.getByRole("row", { name: /Emil Vestergaard/ });
+      await expect(row).toContainText(stage === "on" ? "83" : "12");
+      if (stage === "on") await expect(row).toContainText(/Star|Stjerne/);
+    });
+  }
+
+  test("#5828 reputation launch floor keeps a formerly popular rider's visible number", async ({ page }, testInfo) => {
+    const takeShots = testInfo.project.name === "desktop-chromium" || testInfo.project.name === "mobile-chromium";
+    await setup(page);
+    await page.route("**/api/display-flags", (route) => {
+      if (preflight(route)) return;
+      return json(route, { rider_best_role_display: false, youth_squad_pages: true, rider_reputation_enabled: false });
+    });
+    await page.route("**/rest/v1/riders*", (route) => {
+      if (preflight(route)) return;
+      const rows = previewYouthRiderRows(route.request().url());
+      return rows ? json(route, rows.map((r) => r.firstname === "Emil"
+        ? { ...r, popularity: 82, reputation: 60 }
+        : r)) : route.fallback();
+    });
+    await login(page);
+    await page.goto("/squads/u23");
+    await revealMobileTableColumn(page, /^(Popularity|Popularitet)$/);
+    const beforeRow = page.locator("main table").first().getByRole("row", { name: /Emil Vestergaard/ });
+    await expect(beforeRow).toContainText("82");
+    if (takeShots) await page.screenshot({ path: evidenceShotPath(`pr-screens/5828/floor-before-${testInfo.project.name}.png`), fullPage: true });
+
+    await page.route("**/api/display-flags", (route) => {
+      if (preflight(route)) return;
+      return json(route, { rider_best_role_display: false, youth_squad_pages: true, rider_reputation_enabled: true });
+    });
+    await page.reload();
+    await revealMobileTableColumn(page, /^(Reputation|Omdømme)$/);
+    const row = page.locator("main table").first().getByRole("row", { name: /Emil Vestergaard/ });
+    await expect(row).toContainText("82");
+    await expect(row).toContainText(/Star|Stjerne/);
+    if (takeShots) await page.screenshot({ path: evidenceShotPath(`pr-screens/5828/floor-after-${testInfo.project.name}.png`), fullPage: true });
+  });
+
   test("U23 team: Evner, Stats og Standings med egen gruppe", async ({ page }, testInfo) => {
     const takeShots = testInfo.project.name === "desktop-chromium";
     await setup(page);

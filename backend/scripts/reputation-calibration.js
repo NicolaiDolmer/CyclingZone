@@ -121,19 +121,23 @@ export function scorePopulation({ riders, byRider, currentSeasonIndex, seedFloor
       seasonIndexOf: (event) => Number(event?.season_number ?? currentSeasonIndex),
       options,
     });
+    const seed = Number(rider.popularity) || 0;
+    const displayReputation = Math.max(0, Math.min(100, Math.max(seed, reputation)));
     scored.push({
       rider_id: rider.id,
       name: riderName(rider),
       team_name: teamNamesById.get(rider.team_id) ?? null,
       nationality: rider.nationality_code ?? null,
-      seed: Number(rider.popularity) || 0,
+      seed,
       is_retired: rider.is_retired === true,
       events: events.length,
       wins: winCount(events),
       floor,
       form,
       reputation,
-      band: band.key,
+      displayReputation,
+      rawBand: band.key,
+      band: bandFor(displayReputation).key,
       // Kortfattet "hvorfor" til Top-tabellen: de 3 hændelser med flest
       // formpoint, i klart sprog (spec §7 punkt 3's "hvorfor"-liste).
       topEvents: byRider.get(rider.id) ?? [],
@@ -144,30 +148,32 @@ export function scorePopulation({ riders, byRider, currentSeasonIndex, seedFloor
   // spillet og ville skævvride både median og Stjerne-andel (de har karriere-
   // gulv, men ingen ny form). De rapporteres separat.
   const population = scored.filter((r) => !r.is_retired);
-  const values = population.map((r) => r.reputation).sort((a, b) => a - b);
+  const values = population.map((r) => r.displayReputation).sort((a, b) => a - b);
 
-  const starCount = population.filter((r) => r.reputation >= STAR_BAND_THRESHOLD).length;
-  const legendCount = population.filter((r) => r.reputation >= LEGEND_BAND_THRESHOLD).length;
+  const starCount = population.filter((r) => r.displayReputation >= STAR_BAND_THRESHOLD).length;
+  const legendCount = population.filter((r) => r.displayReputation >= LEGEND_BAND_THRESHOLD).length;
+  const rawStarCount = population.filter((r) => r.reputation >= STAR_BAND_THRESHOLD).length;
+  const rawLegendCount = population.filter((r) => r.reputation >= LEGEND_BAND_THRESHOLD).length;
   // "Klemt på toppen"-signal for det bløde loft: hvor mange lander ≥ 99 (i
   // praksis umuligt at skelne fra "ramte 100" for en spiller).
-  const legendCap99Count = population.filter((r) => r.reputation >= 99).length;
+  const legendCap99Count = population.filter((r) => r.displayReputation >= 99).length;
   const bandCounts = new Map(REPUTATION_BANDS.map((b) => [b.key, 0]));
   for (const r of population) bandCounts.set(r.band, (bandCounts.get(r.band) ?? 0) + 1);
 
   const top = [...population]
-    .sort((a, b) => b.reputation - a.reputation || b.wins - a.wins || a.name.localeCompare(b.name))
+    .sort((a, b) => b.displayReputation - a.displayReputation || b.wins - a.wins || a.name.localeCompare(b.name))
     .slice(0, topN);
 
   // Spec §9's advarselssignal: Stjerner der KUN er stjerner fordi de blev
   // seedet kendte — nul hændelser i tre sæsoner.
-  const seedOnlyStars = population.filter((r) => r.reputation >= STAR_BAND_THRESHOLD && r.events === 0);
+  const seedOnlyStars = population.filter((r) => r.displayReputation >= STAR_BAND_THRESHOLD && r.events === 0);
 
   // "De 20 mest vindende ryttere i S1-S3" — rangeret på antal SEJRE (ikke
   // omdømme, ellers ville tjekket være cirkulært).
   const topWinners = [...scored]
     .sort((a, b) => b.wins - a.wins || b.events - a.events || a.name.localeCompare(b.name))
     .slice(0, TARGETS.topWinnersChecked);
-  const topWinnersBelowStar = topWinners.filter((r) => r.reputation < STAR_BAND_THRESHOLD);
+  const topWinnersBelowStar = topWinners.filter((r) => r.displayReputation < STAR_BAND_THRESHOLD);
 
   const p50 = percentile(values, 50);
   const p75 = percentile(values, 75);
@@ -182,8 +188,8 @@ export function scorePopulation({ riders, byRider, currentSeasonIndex, seedFloor
     retiredSize: scored.length - population.length,
     scored,
     p50, p75, p95, max,
-    mean: population.length ? population.reduce((s, r) => s + r.reputation, 0) / population.length : 0,
-    starCount, legendCount, starShare, legendShare, legendCap99Count,
+    mean: population.length ? population.reduce((s, r) => s + r.displayReputation, 0) / population.length : 0,
+    starCount, legendCount, rawStarCount, rawLegendCount, starShare, legendShare, legendCap99Count,
     bandCounts,
     top,
     seedOnlyStars,
@@ -210,7 +216,9 @@ function tick(ok) {
 
 function renderSummaryTable(run) {
   const lines = [];
-  lines.push("| Mål (spec §9) | Krav | Opnået |");
+  lines.push("Synligt overgangstal = max(gammel popularitet, råt omdømme). Fordelingsmålene gælder det tal spilleren ser; rå motorværdi rapporteres særskilt.");
+  lines.push("");
+  lines.push("| Mål (spec §9, synligt tal) | Krav | Opnået |");
   lines.push("|---|---|---|");
   lines.push(`| Median (p50) | ≤ ${TARGETS.medianMax} | ${run.p50.toFixed(1)} (${tick(run.targets.medianOk)}) |`);
   lines.push(`| p75 | — | ${run.p75.toFixed(1)} |`);
@@ -218,6 +226,8 @@ function renderSummaryTable(run) {
   lines.push(`| Max | — | ${run.max.toFixed(1)} |`);
   lines.push(`| Andel ≥ 70 (Stjerne) | 1-2 % | ${pct(run.starShare)} = ${run.starCount} (${tick(run.targets.starShareOk)}) |`);
   lines.push(`| Andel ≥ 90 (Legende) | ≤ 0,3 % | ${pct(run.legendShare)} = ${run.legendCount} (${tick(run.targets.legendShareOk)}) |`);
+  lines.push(`| Rå motorværdi ≥ 70 (diagnostik) | — | ${run.rawStarCount} |`);
+  lines.push(`| Rå motorværdi ≥ 90 (diagnostik) | — | ${run.rawLegendCount} |`);
   lines.push(`| Antal ≥ 99 (klemt på toppen) | lavt | ${run.legendCap99Count} |`);
   lines.push(`| Top-20 vindere alle ≥ 70 | ja | ${tick(run.targets.topWinnersOk)} (${run.topWinnersBelowStar.length} under) |`);
   lines.push(`| Stjerner UDEN hændelser (kun seed) | lavt | ${run.seedOnlyStars.length} |`);
@@ -262,19 +272,19 @@ function topEventSummaries(row, n = 3) {
 
 function renderTopTable(run, topN) {
   const lines = [
-    `| # | Rytter | Hold | Omdømme | Gulv | Form | Seed | Bånd | Hvorfor (top 3 hændelser) |`,
-    "|---|---|---|---|---|---|---|---|---|",
+    `| # | Rytter | Hold | Synligt | Råt | Gulv | Form | Seed | Bånd | Hvorfor (top 3 hændelser) |`,
+    "|---|---|---|---|---|---|---|---|---|---|",
   ];
   run.top.slice(0, topN).forEach((r, i) => {
-    lines.push(`| ${i + 1} | ${r.name} | ${r.team_name ?? "—"} | ${r.reputation.toFixed(1)} | ${r.floor.toFixed(1)} | ${r.form.toFixed(1)} | ${r.seed} | ${r.band} | ${topEventSummaries(r)} |`);
+    lines.push(`| ${i + 1} | ${r.name} | ${r.team_name ?? "—"} | ${r.displayReputation.toFixed(1)} | ${r.reputation.toFixed(1)} | ${r.floor.toFixed(1)} | ${r.form.toFixed(1)} | ${r.seed} | ${r.band} | ${topEventSummaries(r)} |`);
   });
   return lines.join("\n");
 }
 
 function renderWinnersTable(run) {
-  const lines = ["| # | Rytter | Sejre | Omdømme | Gulv | Form | Seed | ≥ 70 |", "|---|---|---|---|---|---|---|---|"];
+  const lines = ["| # | Rytter | Sejre | Synligt | Råt | Gulv | Form | Seed | ≥ 70 |", "|---|---|---|---|---|---|---|---|---|"];
   run.topWinners.forEach((r, i) => {
-    lines.push(`| ${i + 1} | ${r.name} | ${r.wins} | ${r.reputation.toFixed(1)} | ${r.floor.toFixed(1)} | ${r.form.toFixed(1)} | ${r.seed} | ${r.reputation >= STAR_BAND_THRESHOLD ? "ja" : "NEJ"} |`);
+    lines.push(`| ${i + 1} | ${r.name} | ${r.wins} | ${r.displayReputation.toFixed(1)} | ${r.reputation.toFixed(1)} | ${r.floor.toFixed(1)} | ${r.form.toFixed(1)} | ${r.seed} | ${r.displayReputation >= STAR_BAND_THRESHOLD ? "ja" : "NEJ"} |`);
   });
   return lines.join("\n");
 }
@@ -284,9 +294,9 @@ function renderSeedComparison(run) {
   const risers = [...withEvents].sort((a, b) => (b.reputation - b.seed) - (a.reputation - a.seed)).slice(0, 15);
   const fallers = [...run.scored.filter((r) => !r.is_retired)]
     .sort((a, b) => (a.reputation - a.seed) - (b.reputation - b.seed)).slice(0, 15);
-  const lines = ["**Største stigninger vs. seed (`riders.popularity`)**", "", "| Rytter | Seed | Omdømme | Δ | Hændelser |", "|---|---|---|---|---|"];
+  const lines = ["**Rå motorværdis største stigninger vs. seed (`riders.popularity`)**", "", "| Rytter | Seed | Råt omdømme | Δ | Hændelser |", "|---|---|---|---|---|"];
   for (const r of risers) lines.push(`| ${r.name} | ${r.seed} | ${r.reputation.toFixed(1)} | +${(r.reputation - r.seed).toFixed(1)} | ${r.events} |`);
-  lines.push("", "**Største fald vs. seed** (seedede kendisser uden resultater)", "", "| Rytter | Seed | Omdømme | Δ | Hændelser |", "|---|---|---|---|---|");
+  lines.push("", "**Rå motorværdis største fald vs. seed** (disse fald er ikke synlige under overgangsgulvet)", "", "| Rytter | Seed | Råt omdømme | Δ | Hændelser |", "|---|---|---|---|---|");
   for (const r of fallers) lines.push(`| ${r.name} | ${r.seed} | ${r.reputation.toFixed(1)} | ${(r.reputation - r.seed).toFixed(1)} | ${r.events} |`);
   return lines.join("\n");
 }
@@ -370,8 +380,10 @@ function printConsole({ run, replay, constantsLabel }) {
   console.log(`  Løb afspillet: ${replay.races.length} · hændelser: ${replay.events.length} · aktiv sæson S${replay.activeSeason?.number ?? "?"}`);
   console.log("");
   console.log(`    p50 ${run.p50.toFixed(1)} (mål ≤ ${TARGETS.medianMax}: ${tick(run.targets.medianOk)}) · p75 ${run.p75.toFixed(1)} · p95 ${run.p95.toFixed(1)} · max ${run.max.toFixed(1)}`);
-  console.log(`    ≥70: ${run.starCount} (${pct(run.starShare)}, mål 1-2 %: ${tick(run.targets.starShareOk)})`);
-  console.log(`    ≥90: ${run.legendCount} (${pct(run.legendShare)}, mål ≤0,3 %: ${tick(run.targets.legendShareOk)})`);
+  console.log("    Fordelingsmål gælder synligt max(popularitet, råt omdømme).");
+  console.log(`    Synligt ≥70: ${run.starCount} (${pct(run.starShare)}, mål 1-2 %: ${tick(run.targets.starShareOk)})`);
+  console.log(`    Synligt ≥90: ${run.legendCount} (${pct(run.legendShare)}, mål ≤0,3 %: ${tick(run.targets.legendShareOk)})`);
+  console.log(`    Rå motorværdi: ≥70 ${run.rawStarCount} · ≥90 ${run.rawLegendCount}`);
   console.log(`    ≥99 (klemt på toppen): ${run.legendCap99Count}`);
   console.log(`    top-20 vindere alle ≥70: ${tick(run.targets.topWinnersOk)} (${run.topWinnersBelowStar.length} under${run.topWinnersBelowStar.length ? ": " + run.topWinnersBelowStar.map((r) => r.name).join(", ") : ""})`);
   console.log(`    Stjerner uden hændelser (kun seed): ${run.seedOnlyStars.length}`);

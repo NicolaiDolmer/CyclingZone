@@ -247,6 +247,7 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js"
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
+import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
 import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/youthSquadRoster.js"; // #5519
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
@@ -1280,19 +1281,26 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 // mod viewerens beta-status; klienten læser aldrig app_config selv.
 //   rider_best_role_display (#5435): rating = bedste rolle nu + "Natural role"-badge.
 //   youth_squad_pages (#5519): U23 team- og Junior team-siderne + menupunkterne.
+//   rider_reputation_enabled (#4956): earned rider reputation is visible/readable
+//     only when the custom off|shadow|on flag is on; shadow stays false here.
 // Fail-safe false (featureStage.js) = dagens visning.
 router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
-    const [riderBestRoleDisplay, youthSquadPages] = await Promise.all([
+    const [riderBestRoleDisplay, youthSquadPages, reputationStage] = await Promise.all([
       isRiderBestRoleDisplayEnabled(supabase, { isBetaTester }),
       isYouthSquadPagesEnabled(supabase, { isBetaTester }),
+      readReputationStage(supabase),
     ]);
-    res.json({ rider_best_role_display: riderBestRoleDisplay, youth_squad_pages: youthSquadPages });
+    res.json({
+      rider_best_role_display: riderBestRoleDisplay,
+      youth_squad_pages: youthSquadPages,
+      rider_reputation_enabled: isReputationReadEnabled(reputationStage),
+    });
   } catch (err) {
     captureException(err);
     // Visnings-kontakt: en fejl må aldrig vælte siden — svar med fail-safe.
-    res.json({ rider_best_role_display: false, youth_squad_pages: false });
+    res.json({ rider_best_role_display: false, youth_squad_pages: false, rider_reputation_enabled: false });
   }
 });
 
@@ -16678,7 +16686,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
     }
 
-    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes, membersRes] = await Promise.all([
+    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes, membersRes, reputationStage] = await Promise.all([
       supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId),
       // #2463 · created_at er anker-fallbacken resolveNegotiationOpenedAt bruger
@@ -16699,6 +16707,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         .select("archetype_key, selection_kind, alignment_score, is_chairman, assigned_at")
         .eq("team_id", teamId)
         .order("alignment_score", { ascending: false }),
+      readReputationStage(supabase),
     ]);
 
     if (seasonRes.error && !isMissingRow(seasonRes.error)) return res.status(500).json({ error: seasonRes.error.message });
@@ -16722,11 +16731,13 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const wageBillPerSeason = sumRiderSalaries(ridersRes.data || []);
     const currentStanding = standingRes.data || null;
     const currentTeam = { ...(teamRes.data || {}), riders: ridersRes.data || [] };
+    const reputationEnabled = isReputationReadEnabled(reputationStage);
 
     const identityProfile = deriveTeamIdentityProfile({
       team: teamRes.data || null,
       riders: ridersRes.data || [],
       standing: currentStanding,
+      reputationEnabled,
     });
 
     // Fetch snapshots and request logs for all board IDs in one query each
@@ -16904,6 +16915,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
           // initials i stedet for at opfinde et navn.
           teamId,
           dnaKey: teamDnaKey,
+          reputationEnabled,
         },
       });
 
@@ -17507,6 +17519,7 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
     const proposal = buildBoardProposal({
       focus,
       planType: plan_type,
+      reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
       team: context.team,
       riders: context.riders,
       standing: context.standing,
@@ -17576,6 +17589,7 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
     const proposal = buildBoardProposal({
       focus,
       planType: plan_type,
+      reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
       team,
       riders,
       standing,
@@ -17701,6 +17715,7 @@ async function computeBoardRequestOutcome(req) {
 
   const context = await loadBoardPlanningContext(teamId);
   const { activeSeason, boards, riders, standing, team } = context;
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
   const board = boards.find(b => b.plan_type === plan_type) || null;
 
   if (!board) return { ok: false, status: 404, error: "No active board plan for this plan type" };
@@ -17799,6 +17814,7 @@ async function computeBoardRequestOutcome(req) {
           : null,
         satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
         activeSeasonId: activeSeason?.id ?? null,
+        reputationEnabled,
       },
     }),
   });

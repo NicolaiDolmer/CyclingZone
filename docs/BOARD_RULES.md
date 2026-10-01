@@ -242,12 +242,21 @@ grunden til at bonustilbuddets timing føles tilfældig for spillerne.
 | 1 | Sponsor-modifier | løbende | ±20 %, §2 |
 | 2 | Lønloft | tilfredshed < 40 | Loft = lønsum × 1,5, gulv 5.000. **Strammes aldrig** under en tidligere sat cap. 30 dages grace for nye managere |
 | 3 | Signerings-restriktion | < 30 | Køb over **300.000 CZ$** kræver bestyrelsens godkendelse |
-| 4 | Tvangslistning | < 15 | Beskytter ryttere med popularitet ≥ 70 eller stjerne-værdi |
+| 4 | Tvangslistning | < 15 | Beskytter højt profilerede ryttere og ryttere med stjerne-værdi. Når `rider_reputation_enabled` er `on`, læses samme optjente `riders.reputation` som rytterfladerne og stjerneprofilen; `shadow`/`off` bevarer den gamle popularitetsbeskyttelse |
 | 5 | Sponsor-pullout | < 10 **eller** 2× planudløb i træk under 30 % | Faktor **0,90**, stacker multiplikativt med lag 1. Varer én sæson |
 | 6 | Bonustilbud | **> 75** (strengt, `isBonusOfferEligible` afviser `satisfaction <= 75`) **og** mindst 75 % af mål nået | **200.000 CZ$**. Bestyrelsens eneste egne penge. Berettigelsen tjekkes **pr. plan**, så alle tre plantyper kan udløse tilbuddet, men højst ét pr. hold pr. sæson (`expires_at_season_id`-guard). Det accepterede ekstra-mål lægges **altid** på 1-årsplanen, uanset hvilken plan der udløste tilbuddet (`api.js:15125-15145`). **Rettet 5/9 (#3574):** ekstra-målet (`signature_rider` eller `monument_podium`, `selectBonusExtraGoal`) er en beholdning, ikke en handling — uden en baseline ville et hold der allerede kvalificerede sig (sandsynligt, da netop det er tilbuddets forudsætning) se målet opfyldt i samme sekund det blev tilføjt. Accept-routen fastfryser nu holdets stjerne-antal/podie-sum PÅ ACCEPT-TIDSPUNKTET som `baseline` på goal-objektet; `evaluateGoal`/`evaluateGoalProgress` (`boardGoals.js`) kræver NETTO +target oveni baseline for disse to typer når feltet er sat — DNA-tradition-mål af samme typer bærer aldrig `baseline` og er uændrede |
 
 Lag 2-3 håndhæves i transfer- og auktions-routes via `assertSigningAllowed`. Lag 5 hookes ind i
 `processSeasonStart`s modifier-stak og udløber automatisk ved sæsonskifte.
+
+**Rytteromdømme (#4956/#5828):** Ved `rider_reputation_enabled=on` viser
+rytterfladerne mindst den gamle popularitet: `max(popularity, reputation)`.
+Den aktuelle stjerneprofil, tvangslistning og nye mål bruger det samme tal.
+Nye `signature_rider`-mål bærer `star_score_basis: "reputation"`; eksisterende
+mål uden markøren beholder det oprindelige stjerne-kriterium ved evaluering
+og progress, også når flaget senere er on. En bonus-baseline og dens senere
+evaluering bruger derfor samme kontrakt. `off` og `shadow` bevarer den gamle
+adfærd. Ingen eksisterende opfyldt mål må flippe alene ved flag-skiftet.
 
 ---
 

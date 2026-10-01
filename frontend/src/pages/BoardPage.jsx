@@ -71,6 +71,8 @@ import {
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+import { useRiderReputation } from "../lib/useRiderReputation.ts";
+import { riderReputationValue } from "../lib/riderReputationView.ts";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
@@ -976,6 +978,7 @@ function SeasonSnapshotGrid({ snapshots }) {
 
 function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
   const { t } = useTranslation("board");
+  const reputationOn = useRiderReputation();
   const resolvedTitle = title || t("identity.defaultTitle");
   if (!identityProfile) return null;
   // #1738 · Forklar relationen mellem squad-læsningen (denne kort) og det valgte
@@ -1096,9 +1099,10 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
                   {rider.name || t("identity.starRiderUnnamed")}
                 </span>
                 <span className="text-cz-2 text-xs font-mono flex-shrink-0">
-                  {/* #3983 · Popularitet — samme tal som rytterprofilens hero-stat,
-                      så bestyrelsens tal og rytterens tal aldrig divergerer igen. */}
-                  {t("identity.starRiderPopularity", { popularity: Math.round(rider.popularity ?? 0) })}
+                  {t(reputationOn ? "identity.starRiderReputation" : "identity.starRiderPopularity", {
+                    score: Math.round(riderReputationValue(rider, reputationOn) ?? 0),
+                    popularity: Math.round(rider.popularity ?? 0),
+                  })}
                 </span>
               </li>
             ))}

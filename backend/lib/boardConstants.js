@@ -212,8 +212,9 @@ export const STAR_PROFILE_SPONSOR_PRESSURE_BY_LEVEL = {
 
 // NB: market_value bruges af selectForcedListingRider (sortering + asking_price,
 // #1205) — manglede før, så lag 4 listede til asking_price 0. uci_points bruges
-// stadig af boardIdentity.calculateRiderStarScore (frossen kolonne, skifte = separat
-// kalibrerings-beslutning, se #1205 out-of-scope).
+// stadig af boardIdentity.calculateRiderStarScore når reputation-flaget er off.
+// `reputation` er den nye earned-renown-kolonne og læses kun af forbrugere når
+// rider_reputation_enabled er on.
 export const BOARD_IDENTITY_RIDER_SELECT = [
   "id",
   // #1889 · firstname/lastname så star_profile kan navngive profilrytterne på
@@ -226,6 +227,7 @@ export const BOARD_IDENTITY_RIDER_SELECT = [
   "uci_points",
   "nationality_code",
   "popularity",
+  "reputation",
   "stat_fl",
   "stat_bj",
   "stat_kb",

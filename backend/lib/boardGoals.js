@@ -12,7 +12,7 @@ import {
   getStarProfileGoalPressure,
   getStarProfileSponsorPressure,
   calculateRiderStarScore,
-  STAR_RIDER_SCORE_THRESHOLD,
+  getStarRiderScoreThreshold,
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import { stampGoalsOwners } from "./boardMembers.js";
@@ -90,6 +90,7 @@ export function generateBoardGoals({
   // ind for at få `owner_archetype_key` stemplet på hvert genereret mål ÉN
   // gang. Se boardMembers.js::stampGoalOwner for kontrakten.
   assignedMembers = null,
+  reputationEnabled = false,
 } = {}) {
   const planDuration = getPlanDuration(planType);
   const isMultiYear = planDuration > 1;
@@ -102,7 +103,7 @@ export function generateBoardGoals({
   const division = normalizeDivisionForGoals(team?.division ?? standing?.division);
   const useDynamicTargets = division != null || riderPool.length > 0 || standing?.rank_in_division != null;
   const identityProfile = useDynamicTargets
-    ? deriveTeamIdentityProfile({ team, riders: riderPool, standing })
+    ? deriveTeamIdentityProfile({ team, riders: riderPool, standing, reputationEnabled })
     : null;
   const squadLimits = identityProfile?.squad_limits || (division != null ? getDivisionSquadLimits(division) : null);
 
@@ -360,6 +361,7 @@ export function generateBoardGoals({
     .filter((goal) => isMultiYear || goal.type !== "sponsor_growth");
   const enrichedGoals = selectedGoals.map((goal) => addGoalMetadata({
     ...goal,
+    ...(reputationEnabled && goal.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
     satisfaction_penalty: Math.round(goal.satisfaction_penalty * penaltyModifier),
   }));
   return assignedMembers ? stampGoalsOwners(enrichedGoals, { assignedMembers }) : enrichedGoals;
@@ -607,10 +609,11 @@ export function buildBoardProposal({
   identityBasis = null,
   dnaKey = null,
   tradeoffPayload = null,
+  reputationEnabled = false,
 } = {}) {
-  const baseGoals = generateBoardGoals({ focus, planType, team, riders, standing });
+  const baseGoals = generateBoardGoals({ focus, planType, team, riders, standing, reputationEnabled });
   const personality = deriveBoardPersonality({ focus, planType });
-  const identityProfile = deriveTeamIdentityProfile({ team, riders, standing });
+  const identityProfile = deriveTeamIdentityProfile({ team, riders, standing, reputationEnabled });
 
   // S-02f · Klub-DNA-tradition-mål injiceres som 6. (bonus) mål for 5yr-forslag.
   // Bevarer focus-baserede mål uændret — DNA-mål er bonus, ikke erstatning.
@@ -623,7 +626,10 @@ export function buildBoardProposal({
     g.type === traditionGoal.type
     && (g.nationality_code || null) === (traditionGoal.nationality_code || null)
   )
-    ? [...baseGoals, addGoalMetadata(traditionGoal)]
+    ? [...baseGoals, addGoalMetadata({
+      ...traditionGoal,
+      ...(reputationEnabled && traditionGoal.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
+    })]
     : baseGoals;
 
   // S-02f · DNA-vægtning multiplicerer satisfaction_bonus + _penalty på mål
@@ -1087,8 +1093,10 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       // #1889) — score = popularity*0.70 + uciScore*0.30 >= 68. Før #3141
       // brugte dette mål rå popularity>=75 alene, så en rytter kunne tælle
       // som "stjerne" på kortet uden at tælle mod 5-års-planens mål.
+      const reputationEnabled = context.reputationEnabled === true && enrichedGoal.star_score_basis === "reputation";
+      const threshold = getStarRiderScoreThreshold({ reputationEnabled });
       const starRiderCount = (team?.riders || [])
-        .filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+        .filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
       // #3574 · Samme baseline-mekanik som monument_podium ovenfor: bonus-
       // tilbuddets "sign 1 star" var i praksis en beholdning ("har mindst 1
       // stjerne-rytter NU"), ikke en handling — de fleste hold der bliver
@@ -1400,7 +1408,9 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
     }
     case "signature_rider": {
       // #3141 · Samme star-score-SSOT som evaluateGoal ovenfor + board-kortet.
-      const starRiderCount = riders.filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+      const reputationEnabled = context.reputationEnabled === true && enrichedGoal.star_score_basis === "reputation";
+      const threshold = getStarRiderScoreThreshold({ reputationEnabled });
+      const starRiderCount = riders.filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
       // #3574 · Samme netto-siden-accept-visning som monument_podium ovenfor.
       if (enrichedGoal.baseline != null) {
         actual = Math.max(0, starRiderCount - enrichedGoal.baseline);

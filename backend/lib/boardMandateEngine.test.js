@@ -619,6 +619,7 @@ test("unlockExtraordinaryRequestForTeam: on + aktivt mandat → låser op", asyn
 
 function makeMandateLifecycleSupabase({
   flagValue = "on",
+  reputationStage = "off",
   seasons = [],
   mandates = [],
   relations = [],
@@ -647,7 +648,7 @@ function makeMandateLifecycleSupabase({
     _state: state,
     from(table) {
       if (table === "app_config") {
-        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: flagValue }, error: null }) }) }) };
+        return { select: () => ({ eq: (_column, key) => ({ maybeSingle: async () => ({ data: { value: key === "rider_reputation_enabled" ? reputationStage : flagValue }, error: null }) }) }) };
       }
       if (table === "seasons") {
         // Understøtter både findSeasonByNumber (.eq.maybeSingle) og
@@ -771,6 +772,26 @@ test("proposeNextMandate: opretter proposed mandat med 3-5 mål, tillids-trappen
   // KORTE default (5 dage) — se boardNegotiationThresholds.js.
   const deadlineDays = (new Date(row.auto_accept_deadline).getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
   assert.equal(deadlineDays, 5);
+});
+
+test("#4956 season mandate generation keeps off/shadow parity and reads reputation on", async () => {
+  const riders = Array.from({ length: 3 }, (_, index) => ({
+    id: `r${index}`, team_id: "t1", popularity: 5, uci_points: 0, reputation: 90,
+  }));
+  const goals = [];
+  for (const reputationStage of ["off", "shadow", "on"]) {
+    const supabase = makeMandateLifecycleSupabase({
+      reputationStage, seasons: [{ id: "season-4", number: 4 }],
+    });
+    await proposeNextMandate(supabase, {
+      teamId: "t1", targetSeasonNumber: 4, confidence: 60,
+      previousFocus: "star_signing", team: { division: 2 }, riders,
+      now: new Date("2026-09-03T12:00:00Z"),
+    });
+    goals.push(supabase._state.mandates[0].goals);
+  }
+  assert.deepEqual(goals[0], goals[1]);
+  assert.notDeepEqual(goals[1], goals[2]);
 });
 
 test("proposeNextMandate: idempotent — allerede et mandat for (team, sæson) → no-op", async () => {

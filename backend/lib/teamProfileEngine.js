@@ -1,6 +1,7 @@
 import { createInitialBoardProfile, generateBoardGoals, preserveExternalGoals } from "./boardEngine.js";
 import { computeSeasonOneIdentity } from "./boardIdentity.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
+import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { runAcademyIntakeForTeam } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
@@ -463,6 +464,7 @@ export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
   };
 
   let calibratedAny = false;
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
   for (const board of boards) {
     // #4865 · Kalibreringen ejer kun de mål generateBoardGoals selv genererer.
     // Fremmede mål (source ≠ genereret) på den eksisterende række bæres med
@@ -474,6 +476,7 @@ export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
         team: teamContext,
         riders,
         standing: null,
+        reputationEnabled,
       }),
       previousGoals: board.current_goals ?? [],
     });

@@ -102,7 +102,7 @@
           [
             "4",
             "Satisfaction <15%",
-            "Forced sale: your lowest-value rider is auto-listed (riders with popularity ≥70 or value ≥8,000,000 CZ$ are protected)"
+            "Forced sale: your lowest-value rider is listed automatically. High-profile riders and riders with very high market value are protected."
           ],
           [
             "5",
@@ -1683,7 +1683,7 @@
     },
     "boardProfileRiders": {
       "q": "Who are my team's profile riders?",
-      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with the rider's popularity score, the same number shown on their profile. A rider qualifies as a star when popularity plus UCI points clear the star threshold. Popularity weighs more than results (roughly 70/30), so a well-known rider can be a star even without big point hauls, while a strong but anonymous worker usually is not. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the threshold yet, the card says so instead of listing names."
+      "a": "The Board page names them under the star profile tile. When reputation is enabled, it shows the same number as the rider pages, with a transition floor at each rider's old popularity. The list changes as you sign or sell riders. A star-rider goal you already agreed keeps its original measure until that mandate ends; new goals use the displayed reputation number."
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",
@@ -1711,7 +1711,7 @@
     },
     "starSigningGoal": {
       "q": "What does the new 'star rider' target in star_signing plans mean?",
-      "a": "Star_signing focus now gets a 5th target: 'At least 1 star rider (popularity ≥75)'. The board expects that a plan to chase results also manifests as at least one rider with a high profile, whether you buy an existing star on the market or develop one internally. Checked at evaluation time, so it's your current squad that counts. You can negotiate the target, but it's already the minimum (target=1)."
+      "a": "A plan focused on signing stars gets an extra target: at least one high-profile rider. The board expects a plan to chase results to show up in your squad, whether you sign a star or develop one yourself. The target is checked at evaluation, so your current squad is what counts."
     },
     "u25StatGain": {
       "q": "What is 'U25 stat gain' in youth plans?",
@@ -1723,11 +1723,11 @@
     },
     "boardUnsatisfiedConsequences": {
       "q": "What happens when the board is very unhappy, can I be fired?",
-      "a": "You cannot be fired. Instead the board reacts gradually through 6 layers the lower satisfaction goes: at <40% it imposes a salary cap (you can't grow the team's total salary, sell a rider first). At <30% comes a signing restriction: buys above 300K CZ$ are blocked. At <15% the board force-lists one rider on the market: it picks your lowest-value rider and lists him at his market value. Your stars are protected here, any rider with popularity 70 or higher, or a value of 8,000,000 CZ$ or more, is left alone. At <10% a main sponsor pulls out: sponsor income is reduced by 10% for the next season. All active consequences show in the 'Active consequences' panel on the Board page, and layers 4-5 also send 'Action required' notifications. Satisfaction that rises again automatically expires layers 2-3."
+      "a": "You cannot be fired. As satisfaction falls, the board responds gradually: first with a salary cap, then restrictions on signings, a forced sale, and pressure on the sponsor deal. A forced sale lists your lowest-value unprotected rider at market value. High-profile riders and riders with very high market value are protected. You can see active consequences on the Board page, and serious changes send you a notification. If satisfaction rises again, the lighter restrictions are lifted."
     },
     "bonusOffer": {
       "q": "What is the bonus offer I just got from the board?",
-      "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. Eligibility is checked per plan, so the offer can come from your 3-year or 5-year plan just as well as from the 1-year plan. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the extra target is always added to your 1-year plan and evaluated at season end, whichever plan the offer came from. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met. An offer lasts exactly one season: earned at the season-end evaluation it can be redeemed throughout the following season, earned at the mid-season review it lasts for the rest of that season. See 'How the 3-year and 5-year plans run' under Board for the full plan lifecycle."
+      "a": "When the board is satisfied and most of your targets are met, it may offer you a one-time payment for taking on an extra target. If your plan focuses on signing a star, you need to sign a new high-profile rider. Otherwise, you need a Monument podium. You can accept or decline. If you accept, you receive the payment immediately, and the extra target is checked at season end. The board offers only one bonus per season. If you decline, the chance can return next season."
     },
     "boardSatisfactionArrow": {
       "q": "What is the arrow/prognosis under my satisfaction number?",

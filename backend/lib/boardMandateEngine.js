@@ -40,6 +40,7 @@ import {
 import { buildGoalKey, evaluateGoalProgress, generateBoardGoals } from "./boardGoals.js";
 import { clampSatisfaction } from "./boardUtils.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import { resolveThresholds } from "./boardNegotiationThresholds.js";
 import { findNextSeason } from "./seasonLookup.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
@@ -727,7 +728,8 @@ export async function proposeNextMandate(supabase, {
   }
 
   const focus = previousFocus || "balanced";
-  const goals = generateBoardGoals({ focus, planType: "1yr", team, riders, standing, assignedMembers });
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
+  const goals = generateBoardGoals({ focus, planType: "1yr", team, riders, standing, assignedMembers, reputationEnabled });
   const negotiationPower = allocateNegotiationPower(confidence);
   const thresholds = resolveThresholds(lastSeenSource, now);
   const deadline = new Date(now.getTime() + thresholds.AUTO_ACCEPT * DAY_MS);

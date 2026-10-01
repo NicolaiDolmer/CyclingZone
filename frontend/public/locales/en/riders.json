@@ -20,7 +20,18 @@
     "value": "Value",
     "salary": "Salary",
     "popularity": "Popularity",
-    "popularityTitle": "Fan popularity (0-100). Used by the board's 5-year plan star-rider goal.",
+    "popularityTitle": "Fan popularity (0-100). Existing board star-rider goals keep the measure they were agreed under.",
+    "reputationLabel": "Reputation",
+    "reputationTitle": "Race reputation. During the transition, it never shows below this rider's old popularity. The board reads this number for new profile goals.",
+    "reputation": {
+      "band": {
+        "unknown": "Unknown",
+        "known": "Known",
+        "profile": "Profile",
+        "star": "Star",
+        "legend": "Legend"
+      }
+    },
     "compareTooltip": "Select for comparison",
     "teamFree": "Free",
     "pendingTransfer": "Transfer pending: joining {team} once his current stage race finishes"

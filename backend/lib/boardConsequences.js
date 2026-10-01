@@ -15,6 +15,8 @@
 
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { tierSupportsRaceScope } from "./boardConstants.js";
+import { STAR_BAND_THRESHOLD } from "./reputationConstants.js";
+import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
 
 const SATISFACTION_THRESHOLDS = {
   SALARY_CAP: 40,
@@ -351,12 +353,18 @@ export async function assertSalaryIncreaseAllowed({ supabase, teamId, oldSalary,
  * - Vælger laveste market_value blandt resten.
  * - Returnerer null hvis ingen kandidat (alle beskyttede eller ingen ryttere).
  */
-export function selectForcedListingRider(riders) {
+export function selectForcedListingRider(riders, { reputationEnabled = false } = {}) {
   if (!Array.isArray(riders) || riders.length === 0) return null;
 
   const candidates = riders.filter((r) => {
     if (!r || !r.id) return false;
-    if ((r.popularity || 0) >= FORCED_LISTING_PROTECTION_POPULARITY) return false;
+    const profileScore = reputationEnabled
+      ? Math.max(Number(r.popularity || 0), Number(r.reputation || 0))
+      : Number(r.popularity || 0);
+    const profileThreshold = reputationEnabled
+      ? STAR_BAND_THRESHOLD
+      : FORCED_LISTING_PROTECTION_POPULARITY;
+    if (profileScore >= profileThreshold) return false;
     if ((r.market_value || 0) >= FORCED_LISTING_PROTECTION_STAR_VALUE) return false;
     return true;
   });
@@ -450,6 +458,7 @@ export async function evaluateAndApplyConsequences({
   consecutiveLowExpirations = 0,
   boardTestMode = false,
   now = new Date(),
+  reputationEnabled = false,
   // #4482 · Regel A (ejer 31/8): et lag 6-tilbud optjent ved SÆSON-SLUT-evalueringen
   // skal kunne indløses i hele den FØLGENDE sæson. Den følgende sæsons row findes
   // ikke endnu når processTeamSeasonEnd kører (FK til seasons.id), så tilbuddet
@@ -466,6 +475,7 @@ export async function evaluateAndApplyConsequences({
   const applied = [];
   const skipped = [];
   const byLayer = await loadActiveConsequencesByLayer(supabase, team.id);
+  const reputationReadEnabled = reputationEnabled || isReputationReadEnabled(await readReputationStage(supabase));
   // status='active' eksplicit (DB har DEFAULT 'active', men vi sætter det explicit
   // så fake supabase i tests + dependent code kan stole på feltet uden at gå via DB).
   const baseRow = {
@@ -569,7 +579,7 @@ export async function evaluateAndApplyConsequences({
     if (existing) {
       skipped.push({ layer: 4, reason: "already_active" });
     } else {
-      const target = selectForcedListingRider(team.riders || []);
+      const target = selectForcedListingRider(team.riders || [], { reputationEnabled: reputationReadEnabled });
       if (target) {
         const askingPrice = target.market_value || 0;
         const { data: listing, error: listingError } = await supabase

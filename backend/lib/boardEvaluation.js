@@ -162,6 +162,7 @@ export function calculateBoardPerformance({ board, standing, team, context = {} 
     team,
     riders: team?.riders || [],
     standing,
+    reputationEnabled: context.reputationEnabled === true,
   });
   const personality = deriveBoardPersonality({
     focus: board?.focus,

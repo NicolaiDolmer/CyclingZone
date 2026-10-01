@@ -141,7 +141,7 @@
   },
   "goalHelp": {
     "heading": "Hvordan måles dette?",
-    "signature_rider": "Tæller ryttere som bestyrelsen anerkender som stjerneryttere, med samme tærskel som bestyrelsens stjernerytter-optælling: omdømme vægtet sammen med UCI-point til én samlet score. Omdømme tæller mere end point, så en kendt rytter kan kvalificere sig uden store pointhøster.",
+    "signature_rider": "Tæller ryttere som bestyrelsen anerkender som stjerneryttere. Når omdømme er slået til, læser den samme optjente omdømmeværdi som rytterfladerne viser.",
     "top_n_finish": "Vurderes på din slutplacering i planens SIDSTE sæson, ikke et gennemsnit over planens sæsoner.",
     "u25_development_delta": "Den gennemsnitlige stat-point-gevinst pr. U25-rytter pr. sæson. Udvikl unge ryttere, så deres stats stiger over sæsonen.",
     "sponsor_growth": "Sammenligner din sponsors sæson-udbetaling (kontrakt-base, forholdsmæssig hvis dit hold kom til midt i sæsonen, plus løbsdags-indtægt) mellem denne sæson og planens første sæson. Engangsbonusser (signering, resultater, mål) tælles ikke med. Vises først fra planens anden sæson, når der findes et rigtigt grundlag at måle fra."
@@ -312,8 +312,9 @@
     "starProfileSub": "{count, plural, one {1 profilrytter} other {# profilryttere}}",
     "starRidersHeading": "Profilryttere",
     "starRidersEmpty": "Ingen rytter er endnu profileret nok til at bestyrelsen læser ham som en stjerne.",
-    "starRidersExplainer": "Bestyrelsen læser disse ryttere som dine stjerner: hver kombinerer høj popularitet med UCI-point over stjernetærsklen. Popularitet vejer tungere end resultater, så en velkendt rytter kan være en stjerne selv uden store pointhøst.",
+    "starRidersExplainer": "Bestyrelsen læser disse ryttere som dine stjerner. Når omdømme er slået til, er det samme optjente omdømme-tal som på rytterfladerne der afgør tællingen.",
     "starRiderPopularity": "Popularitet {popularity}",
+    "starRiderReputation": "Omdømme {score}",
     "starRiderUnnamed": "Unavngiven rytter",
     "dnaRelation": "Dette afspejler din nuværende trup, ikke dit valgte klub-DNA ({dna}). Bestyrelsen læser de ryttere du har nu; DNA'et former de langsigtede mål du forhandler.",
     "dnaRelationNoDna": "Dette afspejler din nuværende trup. Bestyrelsen læser de ryttere du har nu."

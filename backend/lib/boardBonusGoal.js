@@ -33,6 +33,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { countTeamStarRiders } from "./boardIdentity.js";
 import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 
 function ensureSupabase(supabase) {
   if (!supabase) throw new Error("supabase client is required");
@@ -42,9 +43,10 @@ function ensureSupabase(supabase) {
  * Bygger selve mål-objektet. Samme form i BEGGE tabeller — mandatet og
  * profilen skal ikke drifte fra hinanden på feltnavne.
  */
-export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null }) {
+export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null, reputationEnabled = false }) {
   return {
     type: extraGoal?.type,
+    ...(reputationEnabled && extraGoal?.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
     target: extraGoal?.target,
     cumulative: false,
     source: "bonus_offer",
@@ -78,6 +80,7 @@ export async function computeBonusGoalBaseline({
   teamId,
   boardId,
   extraGoal,
+  reputationEnabled = false,
   loadGoalContext = loadGoalContextForBoard,
 } = {}) {
   ensureSupabase(supabase);
@@ -88,7 +91,7 @@ export async function computeBonusGoalBaseline({
       .select(BOARD_IDENTITY_RIDER_SELECT)
       .eq("team_id", teamId);
     if (error) throw new Error(`riders (bonus-offer baseline): ${error.message}`);
-    return countTeamStarRiders(currentRiders || []);
+    return countTeamStarRiders(currentRiders || [], { reputationEnabled });
   }
 
   if (extraGoal?.type === "monument_podium") {
@@ -221,16 +224,18 @@ export async function applyAcceptedBonusGoal({
   // Ét opslag: samme række bærer BÅDE skrivemålet for den gamle sti og det
   // board_id monument_podium-baselinen måles imod (uændret fra api.js).
   const oneYrBoard = await loadCompletedOneYearBoard({ supabase, teamId });
+  const reputationEnabled = isReputationReadEnabled(await readReputationStage(supabase));
 
   const baseline = await computeBonusGoalBaseline({
     supabase,
     teamId,
     boardId: oneYrBoard?.id ?? null,
     extraGoal,
+    reputationEnabled,
     loadGoalContext,
   });
 
-  const goal = buildBonusExtraGoal({ extraGoal, baseline, offerId });
+  const goal = buildBonusExtraGoal({ extraGoal, baseline, offerId, reputationEnabled });
 
   const profile = await appendBonusGoalToBoardProfile({ supabase, teamId, goal, offerId, board: oneYrBoard });
 

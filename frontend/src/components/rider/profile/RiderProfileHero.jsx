@@ -32,6 +32,8 @@ import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey } from "../../../lib/riderAge";
+import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
+import { riderReputationBand, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
 
@@ -115,6 +117,38 @@ function StatusBanner({ banner }) {
   );
 }
 
+function ReputationEventList({ events = [] }) {
+  const { t } = useTranslation("rider");
+  const rows = Array.isArray(events) ? events.slice(0, 4) : [];
+  return (
+    <div className="mt-4 rounded-cz border border-cz-border bg-cz-subtle/50 px-3.5 py-3">
+      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-2">
+        {t("profile.reputation.whyTitle")}
+      </p>
+      {rows.length ? (
+        <ul className="space-y-1.5">
+          {rows.map((event, index) => {
+            const label = t(`profile.reputation.events.${event.event_kind}`, {
+              defaultValue: t("profile.reputation.events.fallback"),
+            });
+            const raceName = event.race?.name || t("profile.reputation.unknownRace");
+            return (
+              <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="min-w-0 truncate text-cz-2">{label}</span>
+                <span className="max-w-[58%] truncate text-right font-data text-3xs uppercase tracking-[.06em] text-cz-3">
+                  {raceName}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-xs text-cz-3">{t("profile.reputation.noEvents")}</p>
+      )}
+    </div>
+  );
+}
+
 export default function RiderProfileHero({
   rider,
   viewer = "own",                 // "own" | "scouting"
@@ -137,9 +171,11 @@ export default function RiderProfileHero({
   onToggleWatchlist,
   onCompare,                      // () => void — navigér til /compare?ids=... (parent styrer routing)
   actions = null,                 // action-række (ReactNode) — injiceres af parent
+  reputationEvents = [],
 }) {
   const { t } = useTranslation("rider");
   const bestRoleOn = useBestRoleDisplay();
+  const reputationOn = useRiderReputation();
 
   const teamName = rider.team?.name ?? t("header.freeAgent");
   const potentialEyebrow = viewer === "scouting"
@@ -170,6 +206,14 @@ export default function RiderProfileHero({
   const contractText = rider.contract_end_season != null
     ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
     : t("header.noContract");
+  const reputationValue = riderReputationValue(rider, reputationOn);
+  // Niveauet (Ukendt..Legende) hører kun til omdømmet: off/shadow viser popularitet uden label.
+  const reputationBand = reputationOn ? riderReputationBand(reputationValue) : null;
+  const reputationSub = reputationBand ? (
+    <p className="font-data text-2xs text-cz-3 tabular-nums mt-1">
+      {t(`profile.reputation.band.${reputationBand}`)}
+    </p>
+  ) : null;
 
   return (
     <>
@@ -328,9 +372,10 @@ export default function RiderProfileHero({
         />
         <HeroStat label={t("profile.hero.salary")} value={salaryText ?? "—"} valueClassName="text-[20px] font-[650] truncate" />
         <HeroStat
-          label={t("profile.hero.popularityEyebrow")}
-          value={Number.isFinite(rider.popularity) ? rider.popularity : "—"}
+          label={t(reputationOn ? "profile.hero.reputationEyebrow" : "profile.hero.popularityEyebrow")}
+          value={reputationValue == null ? "—" : Math.round(reputationValue)}
           valueClassName="text-[20px] font-[650]"
+          sub={reputationSub}
         />
         <HeroStat
           label={t("profile.hero.contract")}
@@ -338,6 +383,8 @@ export default function RiderProfileHero({
           valueClassName="text-[20px] font-[650] truncate"
         />
       </div>
+
+      {reputationOn && <ReputationEventList events={reputationEvents} />}
 
       {/* Action-række — injiceres af parent (genbruger eksisterende handlinger). */}
       {actions && <div className="mt-5 pt-5 border-t border-cz-border">{actions}</div>}

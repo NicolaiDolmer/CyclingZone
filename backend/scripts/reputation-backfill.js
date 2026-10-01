@@ -6,9 +6,9 @@
 // reputationReplay.js), og skriver — kun med --apply --owner-go — hændelserne
 // til `rider_reputation_events` plus de afledte tal på `riders`.
 //
-// Uden backfill starter hele spillet med et tomt omdømme: 7.500 ryttere,
-// tre sæsoners resultater, og et tal der først begynder at bevæge sig ved
-// næste løb. Med backfill er tallet sandt fra dag ét.
+// Uden backfill har ryttere uden resultat-hændelser fortsat NULL i de afledte
+// felter. Genberegn derfor hele rytterpopulationen, også seed-only ryttere,
+// før ejeren tager stilling til det synlige flag.
 //
 // Usage:
 //   node backend/scripts/reputation-backfill.js --dry-run          # default, READ-ONLY
@@ -25,7 +25,8 @@
 // intet. Rytter-tallene genberegnes altid fra hele bogen, aldrig som delta.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role)
-// Exit: 0 = ok, 1 = dry-run fandt hændelser at skrive, 2 = kald-/konfigurationsfejl.
+// Exit: 0 = intet arbejde, 1 = dry-run fandt hændelser eller ryttere at genberegne,
+//       2 = kald-/konfigurationsfejl.
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -35,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { runReplay } from "../lib/reputationReplay.js";
 import { persistReputationEvents, refreshRiderReputations } from "../lib/reputationPersist.js";
 import { SEED_FLOOR_WEIGHT } from "../lib/reputationConstants.js";
+import { fetchAllRowsKeyset } from "../lib/supabasePagination.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -58,8 +60,20 @@ export function parseArgs(argv = process.argv.slice(2)) {
  * REN planlægning (DB injiceres): hvad VILLE backfill'en skrive?
  * Ingen writes. Testbar uden createClient.
  */
-export async function planBackfill({ supabase }) {
-  const replay = await runReplay(supabase);
+async function defaultFetchRiderIds({ supabase }) {
+  const rows = await fetchAllRowsKeyset((after) => {
+    let query = supabase.from("riders").select("id").order("id", { ascending: true });
+    if (after) query = query.gt("id", after);
+    return query;
+  }, { keyColumn: "id" });
+  return rows.map((row) => row.id);
+}
+
+export async function planBackfill({ supabase, replayFn = runReplay, fetchRiderIds = defaultFetchRiderIds }) {
+  const [replay, riderIds] = await Promise.all([
+    replayFn(supabase),
+    fetchRiderIds({ supabase }),
+  ]);
   const { events, byRider, perSeasonClass, racesWithEvents, skippedResults, races, seasons, activeSeason } = replay;
 
   const perSeason = new Map();
@@ -85,6 +99,8 @@ export async function planBackfill({ supabase }) {
     skipped_results_on_unknown_races: skippedResults,
     total_events: events.length,
     riders_touched: byRider.size,
+    riders_to_refresh: riderIds.length,
+    riderIds,
     per_season: [...perSeason.values()].sort((a, b) => (a.season_number ?? 0) - (b.season_number ?? 0)),
     per_season_class: perSeasonClass,
     per_kind: [...perKind.entries()].sort((a, b) => b[1] - a[1]).map(([kind, count]) => ({ kind, count })),
@@ -100,6 +116,7 @@ function printPlan(plan) {
   console.log(`  Løb der gav hændelser:     ${plan.races_with_events}`);
   console.log(`  Hændelser i alt:           ${plan.total_events}`);
   console.log(`  Ryttere berørt:            ${plan.riders_touched}`);
+  console.log(`  Ryttere til genberegning:  ${plan.riders_to_refresh}`);
   console.log(`  Aktiv sæson (nummer):      ${plan.active_season_number ?? "ukendt"}`);
   if (plan.skipped_results_on_unknown_races) {
     console.log(`  Resultatrækker sprunget over (løb ikke 'completed'): ${plan.skipped_results_on_unknown_races}`);
@@ -125,15 +142,20 @@ function printPlan(plan) {
   console.log("");
 }
 
-export async function applyBackfill({ supabase, plan }) {
+export async function applyBackfill({
+  supabase,
+  plan,
+  persistEvents = persistReputationEvents,
+  refreshRiders = refreshRiderReputations,
+}) {
   const seasonNumberById = new Map(plan.seasons.map((s) => [s.id, Number(s.number)]));
-  const { inserted, deduped } = await persistReputationEvents({ supabase, events: plan.events });
+  const { inserted, deduped } = await persistEvents({ supabase, events: plan.events });
 
-  const riderIds = [...new Set(plan.events.map((e) => e.rider_id))];
+  const riderIds = [...new Set(plan.riderIds)];
   let updated = 0;
   for (let i = 0; i < riderIds.length; i += RIDER_REFRESH_CHUNK) {
     const chunk = riderIds.slice(i, i + RIDER_REFRESH_CHUNK);
-    const stats = await refreshRiderReputations({
+    const stats = await refreshRiders({
       supabase,
       riderIds: chunk,
       currentSeasonIndex: plan.active_season_number,
@@ -165,7 +187,7 @@ async function main() {
   if (args.json) {
     // Hændelseslisten selv er titusinder af rækker — den hører ikke i et
     // rapport-JSON. Tallene gør.
-    const { events: _events, seasons: _seasons, ...summary } = plan;
+    const { events: _events, seasons: _seasons, riderIds: _riderIds, ...summary } = plan;
     console.log(JSON.stringify(summary, null, 2));
   } else {
     printPlan(plan);
@@ -173,7 +195,7 @@ async function main() {
 
   if (!args.apply) {
     console.log("DRY-RUN — intet er skrevet. Kør med --apply --owner-go efter ejer-go.");
-    process.exit(plan.total_events > 0 ? 1 : 0);
+    process.exit(plan.total_events > 0 || plan.riders_to_refresh > 0 ? 1 : 0);
   }
 
   console.log("APPLY — skriver hændelsesbog + rytter-omdømme …");

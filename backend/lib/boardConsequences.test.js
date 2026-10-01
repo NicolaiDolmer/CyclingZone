@@ -193,6 +193,20 @@ test("#3574 · countTeamStarRiders returnerer 0 for tom eller manglende trup (ba
   assert.equal(countTeamStarRiders(), 0);
 });
 
+test("#5828 · bestyrelsens nye stjernescore viser mindst gammel popularitet", () => {
+  const riders = [{ id: "high-popularity", popularity: 82, reputation: 60, uci_points: 0 }];
+  assert.equal(countTeamStarRiders(riders, { reputationEnabled: true }), 1);
+  assert.equal(countTeamStarRiders(riders, { reputationEnabled: false }), 0);
+});
+
+test("#5828 · tvangssalg beskytter en tidligere populær rytter efter omdømme-flip", () => {
+  const riders = [
+    { id: "popular", popularity: 82, reputation: 40, market_value: 1 },
+    { id: "other", popularity: 20, reputation: 20, market_value: 2 },
+  ];
+  assert.equal(selectForcedListingRider(riders, { reputationEnabled: true })?.id, "other");
+});
+
 // =====================================================================
 // evaluateAndApplyConsequences — per-lag triggers + idempotency
 // =====================================================================

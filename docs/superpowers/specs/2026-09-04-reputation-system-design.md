@@ -43,8 +43,13 @@ seedFloor  = min(popularity, FLOOR_CAP) · SEED_FLOOR_WEIGHT (default 1,0; harne
 Ordbånd (samme overalt, en/da): Unknown/Ukendt 0-19 · Known/Kendt 20-44 · Profile/Profil 45-69 ·
 Star/Stjerne 70-89 · Legend/Legende 90+.
 
-`popularity` bevares som "ry ved ankomst" (seed) og bruges kun som `seedFloor`-input. Ingen kode læser den som
-omdømme når flaget er `on`.
+**Overgang ved synlig lancering (#5828, ejer-go 28/9):** motorens rå `reputation`
+og hændelsesbog bevares. Det tal spilleren ser og nye bestyrelsesmål læser er
+`max(popularity, reputation)`; ingen rytter går dermed under den gamle
+popularitet ved flag-flip. `popularity` bevares desuden som input til den
+nuværende markedsværdi. Overgangsgulvets senere udfasning kræver et særskilt
+ejer-valg. Flaget bliver i `shadow`, indtil ejeren har set den nye private
+måling og givet særskilt flip-go.
 
 ## 4. Hændelser og point (kalibreringsudgangspunkt)
 
@@ -101,9 +106,13 @@ Alle vægte bor i én konstantfil (`backend/lib/reputationConstants.js`) og kali
 
 ## 7. Forbrugere (første version)
 
-1. **Bestyrelsen:** `calculateRiderStarScore` returnerer `reputation` når flaget er `on`; tærskel 70
-   (`STAR_RIDER_SCORE_THRESHOLD` 68 → 70, UCI-led fjernes). Forced-listing-beskyttelsen (`boardConsequences.js:359`,
-   popularity ≥ 70) læser samme tal. Bestyrelsens rytter-tal = rytterens tal overalt. Lukker #2261, #3983-restgæld.
+1. **Bestyrelsen:** Nye mål oprettet efter synligt flag læser overgangstallet
+   `max(popularity, reputation)` og bærer `star_score_basis: "reputation"` i
+   målkontrakten. Eksisterende mål uden markøren, også bonusmål med baseline,
+   beholder deres oprindelige stjerne-kriterium til mandatets slutning; et
+   opfyldt mål må ikke blive uopfyldt alene på grund af flag-flippet.
+   Den aktuelle stjerneprofil og forced-listing-beskyttelsen læser det samme
+   overgangstal som rytterfladerne. Lukker #2261, #3983-restgæld.
 2. **Marked og løn:** `marketValueModel` feature `popularity` fødes med `reputation`; kræver refit (fit-script) og
    scorecard i #3448's kadence med ejer-go pr. trin. Lønkravet følger via Fase 3-krogen
    (`2026-07-05-economy-fase3-empire-design.md` L85). **Først efter 27/9** (grundregler udskudt, ejer 28/8 + 4/9).
@@ -132,9 +141,15 @@ Rollback: flag `off` → alle forbrugere læser som i dag (`popularity`/UCI-blan
 - Enhedstests (`node --test`): point-tabel pr. klasse/resultat, gulv-kap, halvering over sæsonskifte, ordbånd,
   dedupe ved gen-afslutning, seedFloor.
 - Afspilnings-harness (`backend/scripts/reputation-calibration.js`, read-only): kører alle sæsoner, rapporterer
-  fordeling (p50/p75/p95, andel ≥ 70/≥ 90), top 50 med hændelses-forklaring, og sammenligning mod seed.
+  fordeling (p50/p75/p95, andel ≥ 70/≥ 90) på det **synlige overgangstal**,
+  rå motorværdi særskilt, top 50 med hændelses-forklaring og sammenligning mod seed.
   **Mål:** median lav (≤ 10), 1-2 % ≥ 70, ≤ 0,3 % ≥ 90, og de 20 mest vindende ryttere i S1-S3 skal alle være ≥ 70.
-  Rammer seed-gulvet for mange Stjerner uden resultater → `SEED_FLOOR_WEIGHT` sænkes (0,5) før PR 1 merges.
+  Antal synlige Stjerner uden hændelser er et kvalitativt ejer-review-signal,
+  ikke et grønt mål uden ejer-godkendt grænse. Den gamle rå-motor-kalibrering
+  fra 5/9 er historisk, ikke lanceringens fordeling.
+- Før flag-go genberegnes **alle** ryttere fra seed og hændelsesbogen, også dem
+  uden hændelser, via `reputation-backfill.js --apply --owner-go` efter et nyt
+  privat dry-run og eksplicit ejer-go. Ingen apply følger automatisk af merge.
 - e2e: profil viser tal + ordbånd + hvorfor-liste (mobile + desktop projekter).
 - Dry-run-scripts efter mønster fra `backend/scripts/retire-stuck-ai-teams.js`.
 

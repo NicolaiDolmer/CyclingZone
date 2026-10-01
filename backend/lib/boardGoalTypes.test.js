@@ -216,6 +216,23 @@ test("#3141 · signature_rider evaluateGoal returns false when no rider clears t
   assert.equal(evaluateGoal(goal, null, team, {}), false);
 });
 
+test("#5828 · et eksisterende opfyldt stjernemål beholder den aftalte score efter flag-skift", () => {
+  const team = { riders: [{ id: "legacy-star", popularity: 60, reputation: 58, uci_points: 500 }] };
+  const oldGoal = { type: "signature_rider", target: 1 };
+  const newGoal = { ...oldGoal, star_score_basis: "reputation" };
+
+  assert.equal(evaluateGoal(oldGoal, null, team, { reputationEnabled: true }), true);
+  assert.equal(evaluateGoalProgress(oldGoal, null, team, { reputationEnabled: true }).actual, 1);
+  assert.equal(evaluateGoal(newGoal, null, team, { reputationEnabled: true }), false);
+});
+
+test("#5828 · nye stjernemål bærer scorekontrakten når omdømme er synligt", () => {
+  const goals = generateBoardGoals({ focus: "star_signing", reputationEnabled: true });
+  assert.equal(goals.find((goal) => goal.type === "signature_rider")?.star_score_basis, "reputation");
+  const legacyGoals = generateBoardGoals({ focus: "star_signing", reputationEnabled: false });
+  assert.equal(legacyGoals.find((goal) => goal.type === "signature_rider")?.star_score_basis, undefined);
+});
+
 // =====================================================================
 // #3574 · Bonustilbuds-mål (source: "bonus_offer") bærer en baseline
 // (routes/api.js, sat på accept-tidspunktet) — signature_rider og
