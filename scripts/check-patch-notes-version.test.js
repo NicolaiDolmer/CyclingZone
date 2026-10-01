@@ -14,7 +14,22 @@ const {
   hasOptOutToken,
   arraysEqual,
   importCheck,
+  missingRollout,
 } = require("./check-patch-notes-version.js");
+
+test("#6014: nye player-changes kræver rollout; historiske og interne gør ikke", () => {
+  const patches = [
+    { version: "2.1", changes: [
+      { audience: "player", rollout: "beta" },
+      { audience: "player" },
+      { audience: "internal" },
+      { audience: "player", rollout: "soon" },
+    ] },
+    { version: "2.0", changes: [{ audience: "player" }] },
+  ];
+  assert.deepEqual(missingRollout(patches, ["2.0"]), ["2.1#1", "2.1#3"]);
+  assert.deepEqual(missingRollout(patches, ["2.1", "2.0"]), []);
+});
 
 const TOKEN = "[patch-notes-snapshot-ok]";
 

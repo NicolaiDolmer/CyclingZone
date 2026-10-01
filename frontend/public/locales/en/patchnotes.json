@@ -19,8 +19,11 @@
     "fixed": "Fixed"
   },
   "newBadge": "New",
-  "stage": {
-    "beta": "Beta"
+  "rollout": {
+    "beta": "Beta",
+    "beta_to_live": "Now live for all",
+    "switched_on": "Switched on",
+    "event": "Season event"
   },
   "fallbackLang": {
     "da": "Danish",
@@ -37,6 +40,7 @@
     "description": "Try a different search term or category."
   },
   "footer": {
-    "hiddenNote": "Internal and technical notes are hidden from this page."
+    "hiddenNote": "Internal and technical notes are hidden from this page.",
+    "rolloutNote": "Beta: only the beta group has it. No label: live for everyone."
   }
 }
