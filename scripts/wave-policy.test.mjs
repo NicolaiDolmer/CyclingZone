@@ -778,10 +778,12 @@ test('#5997: admission stores the shared files in the marker; a marker without s
 
 test('#5997: enqueue allows touches vs touches, reports them, and rejects ownership vs touches', t => {
   const shared = 'frontend/src/pages/Shared.jsx';
-  const { dir } = runningWave(t, { tracks: [withTouches(1, ['scripts/one.mjs'], [shared])] });
+  const { dir, file } = runningWave(t, { tracks: [withTouches(1, ['scripts/one.mjs'], [shared])] });
   assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, [shared])], ownSnapshot), /overlaps running #1's touches/);
   const result = enqueueTracks(dir, 'rolling-wave', [withTouches(2, ['scripts/two.mjs'], [shared])], ownSnapshot);
   assert.deepEqual(result.sharedTouches, { shared: [{ path: shared, issues: [1, 2] }], mergeOrder: [1, 2] });
+  // the marker carries the current plan (CodeRabbit)
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')).sharedTouches, result.sharedTouches);
   // the report covers the whole active set, so it still lists the earlier share
   assert.deepEqual(enqueueTracks(dir, 'rolling-wave', [trackWith(3, ['scripts/three.mjs'])], ownSnapshot).sharedTouches.mergeOrder, [1, 2]);
   // a wave without any share has no sharedTouches key

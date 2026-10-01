@@ -380,7 +380,11 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
     // protect its ownership. Every branch the wave ever held is refused.
     const ran = new Set((Array.isArray(wave.tracks) ? wave.tracks : []).map(t => slugOf(String(t?.branch))));
     for (const t of tracks) if (ran.has(slugOf(t.branch))) throw Error(`branch already ran in this wave (finished or active): ${t.branch}`);
-    return { ...wave, pendingTracks: [...pending, ...tracks] };
+    // #5997: keep the marker's sharing plan current under the same lock; drop it when nothing is shared.
+    const updated = { ...wave, pendingTracks: [...pending, ...tracks] };
+    delete updated.sharedTouches;
+    if (plan.shared.length) updated.sharedTouches = plan;
+    return updated;
   }, LONG_LOCK_ATTEMPTS);
   return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef), ...(plan.shared.length ? { sharedTouches: plan } : {}) };
 }
