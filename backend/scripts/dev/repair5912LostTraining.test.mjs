@@ -151,3 +151,16 @@ test("sameProgress: key order independent, detects changed progress", () => {
   assert.equal(sameProgress({ a: 0.5 }, { a: 0.6 }), false);
   assert.equal(sameProgress(null, {}), true);
 });
+
+test("--human-only keeps only human-team rider-days and plans (owner 1/10)", async () => {
+  const { onlyHumanTeams, parseArgs } = await import("./repair5912LostTraining.mjs");
+  const teamById = new Map([["ai", { is_ai: true }], ["human", { is_ai: false }]]);
+  const r = onlyHumanTeams({
+    lost: [{ teamId: "ai" }, { teamId: "human" }],
+    plans: new Map([["r-ai", { teamId: "ai" }], ["r-human", { teamId: "human" }]]),
+    teamById,
+  });
+  assert.equal(r.lost.length, 1);
+  assert.deepEqual([...r.plans.keys()], ["r-human"]);
+  assert.equal(parseArgs(["--human-only"]).humanOnly, true);
+});

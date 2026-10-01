@@ -224,11 +224,13 @@ export function summarizePlan({ lost, plans, teamById, riderById }) {
 }
 
 export function parseArgs(argv) {
-  const opts = { apply: false, ownerGo: false, expectRiderDays: null };
+  const opts = { apply: false, ownerGo: false, expectRiderDays: null, humanOnly: false };
   for (const arg of argv) {
     if (arg === "--dry-run") continue;
     else if (arg === "--apply") opts.apply = true;
     else if (arg === "--owner-go") opts.ownerGo = true;
+    // Ejer 1/10: genopret kun menneskehold; AI-hold roeres ikke.
+    else if (arg === "--human-only") opts.humanOnly = true;
     else if (arg.startsWith("--expect-rider-days=")) opts.expectRiderDays = Number(arg.split("=")[1]);
     else throw new Error(`Unsupported argument: ${arg}`);
   }
@@ -237,6 +239,15 @@ export function parseArgs(argv) {
     throw new Error("--apply requires --expect-rider-days=N from the dry-run the owner approved");
   }
   return opts;
+}
+
+/** Ejer 1/10 (--human-only): behold kun rytter-loebsdage og planer for menneskehold. Ren. */
+export function onlyHumanTeams({ lost, plans, teamById }) {
+  const isHuman = (teamId) => teamById.get(teamId)?.is_ai === false;
+  return {
+    lost: lost.filter((d) => isHuman(d.teamId)),
+    plans: new Map([...plans].filter(([, p]) => isHuman(p.teamId))),
+  };
 }
 
 /** Apply-gate: ren funktion, saa vagten kan testes. */
@@ -492,8 +503,14 @@ async function main() {
   mkdirSync(privateDir, { recursive: true });
 
   const state = await loadState(supabase);
-  const { lost, alreadyMarked, legitRest } = classifyLostRiderDays(state);
-  const { plans, teamById, riderById } = await planAll(supabase, { lost, season: state.season });
+  const classified = classifyLostRiderDays(state);
+  const { alreadyMarked, legitRest } = classified;
+  const planned = await planAll(supabase, { lost: classified.lost, season: state.season });
+  const { teamById, riderById } = planned;
+  // Ejer 1/10: --human-only genopretter kun menneskehold.
+  const { lost, plans } = opts.humanOnly
+    ? onlyHumanTeams({ lost: classified.lost, plans: planned.plans, teamById })
+    : { lost: classified.lost, plans: planned.plans };
   const summary = summarizePlan({ lost, plans, teamById, riderById });
 
   const detailPath = resolve(privateDir, `dry-run-${stamp(now)}.json`);
