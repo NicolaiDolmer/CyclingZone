@@ -8,6 +8,8 @@
 // nøgler/params er alle rene funktioner af (events, distanceKm) — ingen skjult
 // tilstand, ingen engine-kald.
 
+import { catchActor, findMorningCatch } from "./raceCatchActor.js";
+
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
 // ttt_team_result (M13, #3463) er af samme art: motoren emitterer ÉT resultat-
@@ -97,10 +99,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
   // ikke beskriver noget. Kurven udelades derfor på tidskørsler (GapCurveLayer
   // renderer ingenting på en tom liste); tallene bliver stående i tidslinjen.
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
-  const morningIds = new Set(formation?.params?.rider_ids ?? []);
-  const caughtEvent = sorted.find((e) => e?.type === "breakaway_caught"
-    && (!formation || (e.params?.rider_ids ?? []).some((id) => morningIds.has(id)))
-    && (!formation?.params?.group_id || !e.params?.group_id || e.params.group_id === formation.params.group_id));
+  const caughtEvent = findMorningCatch(sorted);
   const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
   let gapCurve = [];
   if (!isTimeTrialStage(sorted)) {
@@ -237,7 +236,7 @@ export function collectRiderIds(events) {
  * de navne der KAN opløses og skipper kun når ingen kan; count følger de viste
  * navne så flertalsbøjningen ({count, plural}) matcher den synlige liste.
  */
-export function describeEvent(event, { riderNameById } = {}) {
+export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (!event?.type) return null;
   const p = event.params || {};
   const breakawayParams = () => {
@@ -267,7 +266,12 @@ export function describeEvent(event, { riderNameById } = {}) {
     }
     case "breakaway_caught": {
       const params = breakawayParams();
-      return params ? { key: "breakaway_caught", params } : null;
+      if (!params) return null;
+      // #6050: nævn aktøren når motoren har skrevet den; ellers den gamle linje.
+      const actor = catchActor(event, { teamNameById });
+      if (actor?.kind === "teams") return { key: "breakaway_caught_by_teams", params: { ...params, teams: actor.teams, teamCount: actor.teamCount } };
+      if (actor?.kind === "peloton") return { key: "breakaway_caught_by_peloton", params };
+      return { key: "breakaway_caught", params };
     }
     case "breakaway_survived": {
       const params = breakawayParams();

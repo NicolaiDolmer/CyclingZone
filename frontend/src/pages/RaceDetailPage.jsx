@@ -1230,7 +1230,7 @@ export default function RaceDetailPage() {
                 <SectionStack>
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
+                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" t={t} />
                 </SectionStack>
@@ -1247,11 +1247,11 @@ export default function RaceDetailPage() {
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
 // S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
 // samme output som før S4 (ingen abandon/notableCrash-momenter).
-function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null }) {
+function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
-    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType }),
-    [results, scopeType, stageNumber, incidents, profileType],
+    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById }),
+    [results, scopeType, stageNumber, incidents, profileType, timelineEvents, teamNameById],
   );
   if (!moments.length) return null;
   return (
@@ -1343,10 +1343,10 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
-function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, profileType = null, t }) {
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, t }) {
   const report = useMemo(
-    () => buildRaceReport({ raceId, stageNumber, moments }),
-    [raceId, stageNumber, moments],
+    () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById }),
+    [raceId, stageNumber, moments, timelineEvents, teamNameById],
   );
 
   const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
@@ -1376,7 +1376,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
   }, [results, moments, myTeamId, stageNumber, report]);
 
   if (!report) {
-    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} />;
+    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} timelineEvents={timelineEvents} teamNameById={teamNameById} />;
   }
 
   const ctx = { riderName, teamName, raceName };
@@ -1401,7 +1401,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
         <ul className="space-y-1.5 mt-2">
           {report.beats.map((b) => (
             <li key={b.moment.moment_key} className="text-cz-1 text-sm leading-relaxed">
-              {t(`detail.report.beat.${b.beatKey}.v${b.variant + 1}`, beatParamsFor(b.moment, ctx))}
+              {t(`detail.report.beat.${b.beatKey}.v${b.variant + 1}`, b.params ?? beatParamsFor(b.moment, ctx))}
             </li>
           ))}
         </ul>
@@ -1751,7 +1751,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
           <RaceReportPanel
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={reportResults} incidents={incidents} myTeamId={myTeamId}
-            riderNameById={riderNameById} teamNameById={teamNameById}
+            riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
             profileType={profile?.profile_type ?? null} t={t}
           />
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
