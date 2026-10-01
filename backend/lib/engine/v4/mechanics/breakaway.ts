@@ -88,6 +88,9 @@ import {
   advanceTeamReaction,
   availableReactionWorkers,
   capPreventiveIntensity,
+  brakedLetGoGrowth,
+  letGoBrake,
+  letGoBrakingTeams,
   planTeamReaction,
   type ReactionStance,
   type TeamReactionPlan,
@@ -1126,6 +1129,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const parsedOrders = parseBreakawayOrders(ctx.orders);
   const workByChaseGroup = new Map<string, { plan: ReturnType<typeof teamChasePlan>; km: number }>();
   const pursuitByBreakaway = new Map<string, string>();
+  const brakeByChaseGroup = new Map<string, { work: Map<string, number>; km: number }>();
 
   let groups = state.groups;
   let changed = false;
@@ -1179,6 +1183,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     }
     const priorWork = workByChaseGroup.get(chaseGroup.id);
     workByChaseGroup.set(chaseGroup.id, { plan: chasePlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
+    // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
+    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id), entrants: ctx.entrants, riders: state.riders }) : null;
+    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
+    if (brake && braked && braked.brakedShare > 0) brakeByChaseGroup.set(chaseGroup.id, { work: brake.work, km: Math.max(brakeByChaseGroup.get(chaseGroup.id)?.km ?? 0, letGoKm * braked.brakedShare) });
 
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
@@ -1192,7 +1200,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
     // et. En holdordre (stancen) virker kun gennem jagten, saa den kan aldrig
     // SKABE et forspring (mor-spec §5: spillerens valg kan aldrig vaelte et
-    // loeb). Hullet vokser KUN i lad-gaa-fasen ovenfor, som ingen ordre roerer.
+    // loeb). Hullet vokser KUN i lad-gaa-fasen ovenfor, som ingen ordre roerer
+    // under legacy (under orders_gc_v1 kan GC-bremsen kun DAEMPE vaeksten, #5955).
     // #5813 (del 2): paa aabent terraen overtager feltet jagten i etapens
     // sidste km (jagt-gulvet). De km jages ikke af netto-fordelen.
     const floorKm = chaseFloorKm({
@@ -1207,7 +1216,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       0,
       netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
-    const letGoGrowth = letGoKm * letGoRate;
+    const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
     // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
@@ -1281,6 +1290,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   for (const { plan, km } of workByChaseGroup.values()) {
     const share = ctx.route.distance_km > 0 ? clamp(km / ctx.route.distance_km, 0, 1) : 0;
     updatedRiders = applyChaseCost(updatedRiders, plan.chaserWork, share) ?? updatedRiders;
+  }
+  // #5955: bremsen er arbejde — de bremsende betaler for de bremsede lad-gaa-km,
+  // aldrig for km der allerede er betalt som jagt-km i samme segment.
+  for (const [chaseId, { work, km }] of brakeByChaseGroup) {
+    const brakeKm = Math.min(km, Math.max(0, segmentLengthKm - (workByChaseGroup.get(chaseId)?.km ?? 0)));
+    const share = ctx.route.distance_km > 0 ? clamp(brakeKm / ctx.route.distance_km, 0, 1) : 0;
+    updatedRiders = applyChaseCost(updatedRiders, work, share) ?? updatedRiders;
   }
   const riders = updatedRiders === state.riders ? null : updatedRiders;
 

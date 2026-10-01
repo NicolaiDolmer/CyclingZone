@@ -57,6 +57,12 @@ export type GcThreat = {
   threat_rider_ids: string[];
   /** Sand naar den alvorligste trussel staar paa samme klassementstid som GC-rytteren. */
   tied: boolean;
+  /**
+   * #5955: det forspring paa vejen holdet kan tolerere foer truslen bliver
+   * reel (klassementshul minus fremskrivning, aldrig negativ) — den mindste
+   * blandt truslens ryttere. Kun sat naar severity ikke er "none".
+   */
+  tolerated_lead_seconds?: number;
 };
 
 export const GC_THREAT_TUNING = Object.freeze({
@@ -66,6 +72,11 @@ export const GC_THREAT_TUNING = Object.freeze({
   // Hvor mange sekunder et udbrud plausibelt kan vinde pr. resterende km paa
   // aabent terraen, hvis ingen reagerer.
   potentialSecondsPerOpenKm: 1.5,
+  // #5955: loft paa det AABNE terraens fremskrivning. Uden loft blev naesten
+  // enhver klassementsrytter i et udbrud tidligt paa en lang etape vurderet
+  // som alvorlig (aabne km x sats), selv om feltet aldrig giver et udbrud
+  // ubegraenset plads. Stigningsleddet (styrkeforholdet) er ikke loftet.
+  potentialOpenCapSeconds: 150,
   // Pr. resterende stignings-km, skaleret med (styrkeforhold - 1): en staerkere
   // klatrer vinder tid op ad bakke, en svagere taber den igen.
   potentialSecondsPerClimbKm: 10,
@@ -235,7 +246,7 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; tied: boolean };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   for (const group of ahead) {
@@ -250,7 +261,7 @@ export function assessGcThreat(input: {
       const strength = clamp(strengthRaw, ratioLo, ratioHi);
       const potential = Math.max(
         0,
-        terrain.openKm * tuning.potentialSecondsPerOpenKm + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1),
+        Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1),
       );
       const margin = deficit - lead - potential;
       const isRival = strengthRaw >= tuning.rivalStrengthMin;
@@ -274,7 +285,7 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, tied: deficit === 0 });
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0 });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -289,5 +300,9 @@ export function assessGcThreat(input: {
   const threatRiderIds = worst.severity === "none"
     ? []
     : candidates.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
-  return { ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied };
+  const toleratedLead = Math.max(0, Math.min(...candidates.filter((c) => c.severity !== "none").map((c) => c.lead + c.margin)));
+  return {
+    ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied,
+    ...(worst.severity !== "none" ? { tolerated_lead_seconds: toleratedLead } : {}),
+  };
 }

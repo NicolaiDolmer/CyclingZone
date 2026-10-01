@@ -8,6 +8,37 @@ Repoet er offentligt, så denne rapport er kvalitativ. De præcise tal (før/eft
 
 Holdene kan nu reagere på en reel trussel mod deres klassement, ud fra det klassement der var offentliggjort før etapen. I første måling ændrede reaktionen næsten ingen resultater, fordi udbruddene under den nye regel-revision faldt fra hinanden eller blev hentet. Udbrud og jagt er nu balanceret (#5955), og udbruddene overlever omtrent lige så ofte som under legacy. Reaktionen ændrer dog stadig næsten intet, fordi den ikke kan påvirke den fase hvor hullet bygges op. **Anbefaling: tænd den ikke endnu.** Først kræves én designbeslutning (se Anbefaling).
 
+**Opdatering 2 (ejer-valg B, samme aften):** reaktionen må nu bremse lad-gå-fasen ved en alvorlig trussel og flytter mærkbart resultater. Se næste afsnit.
+
+## Opdatering 2, samme aften: GC-reaktionen må bremse lad-gå-fasen (ejer-valg B)
+
+Refs #5955. Stadig **slukket**: `CURRENT_RACE_RULES_REVISION` er `legacy`, legacy-løb er byte-identiske (golden fixtures og en test med klassementet sendt med), intet er skrevet i prod. Tallene ligger privat i `balance-internals/5955-gc-brake/2026-10-01-5955-gc-brake-tal.md`.
+
+**Hvad er bygget (kun `orders_gc_v1`):**
+
+- *Bremsen:* ved en alvorlig GC-trussel må holdet bremse lad-gå-fasen. Det gælder et hold hvis GC-reaktion er i gang (neutral eller den forebyggende undtagelse ved "lad gå"), og et hold med eksplicit jagtordre. Bremsen virker med de hjælpere der allerede arbejder i GC-rytterens gruppe, og et træt hold bremser svagere.
+- *Hold hullet nede, ikke luk det:* hullet vokser frit op til det forspring holdet kan tåle (truslens klassementshul minus det han kan nå at vinde på resten af etapen). Over det dæmpes væksten. Bremsen stopper aldrig væksten helt, så et udbrud får altid plads, og ingen indhentning er garanteret.
+- *Bremsen koster:* de bremsende ryttere betaler for de km de faktisk bremser, i samme valuta som jagten. Den forebyggende undtagelses budget pr. hold pr. etape dækker nu også bremsen og holder (test). Eksplicit jagt er som før ikke begrænset af budgettet, men betaler sit arbejde.
+- *Moderat trussel og jagtordre uden trussel bremser ikke.* De virker som før kun i jagtfasen. En jagtordre alene giver altså ikke længere et udbrud mindre plads, hvis ingen GC-rytter er truet.
+- *Trussel-følsomhed:* fremskrivningen på åbent terræn har nu et loft. Før blev næsten enhver klassementsrytter i et udbrud tidligt på en lang etape vurderet som alvorlig, fordi mange åbne km tilbage gav en stor fremskrivning. Stigningsleddet er uændret.
+
+**Resultat (samme harness, felt, etaper og seeds; legacy / gc_off / gc_on, AI og stresstest):**
+
+- GC-reaktionen har nu en reel, synlig effekt. På etaper hvor et hold reagerer, overlever udbruddet klart sjældnere end uden GC-kontekst. På etaper uden reaktion er overlevelsen næsten uændret, så bremsen rammer de udbrud der faktisk truer klassementet, ikke alle udbrud.
+- Færre nye førere kommer fra udbrud, GC-favoritterne taber mindre tid, og den samlede vinder skifter nu i en mærkbar del af løbene (før: kun i ganske få). Udbrud vinder stadig etaper jævnligt, oftest på kuperede og bjergetaper.
+- Stresstesten (alle lader gå): den forebyggende undtagelse bruger nu oftest hele budgettet, og udbruddene overlever sjældnere end uden GC-kontekst, men stadig oftere end under legacy. Loftet bider, som det skal.
+- Hastighed: lidt langsommere pr. etape, stadig langt under flip-gatens loft.
+
+**Stillingtagen til de tre punkter fra første måling:**
+
+1. *Trussel-følsomhed tidligt på lange etaper:* loftet på åbent terræn er indført. Reaktionerne starter stadig typisk ved dannelsen, men truslerne er nu ryttere der står tæt på holdets GC-rytter i klassementet (ofte foran ham). Det er reelle trusler, ikke støj fra lange etaper. Anbefaling: behold.
+2. *Manglende ledige hjælpere:* det sker stadig ofte, typisk når holdets hjælpere allerede er brugt på holdspillet eller sidder i en anden gruppe. Det meldes ærligt i tidslinjen. Jeg har ikke ændret reglen: at lade trætte eller fraværende hjælpere bremse ville være gratis arbejde. Et senere valg kunne være at lade GC-rytteren selv bidrage lidt; det er en produktbeslutning.
+3. *Budgetstørrelse:* uændret. I AI-scenariet bliver det sjældent brugt op; i stresstesten ofte. Bremsen gør budgettet mere relevant, fordi den koster fra første km. Anbefaling: behold størrelsen nu, og vurder den igen med rigtige spillerordrer efter en eventuel aktivering.
+
+**Valg undervejs (kvalitativt, tallene ligger privat):** en stærk bremse på både moderate og alvorlige trusler tog næsten alle udbrud på de truede etaper, også med tolerancen for forspring, fordi de truende ryttere typisk står tæt i klassementet. Jeg valgte derfor en mildere bremse, kun ved alvorlig trussel, så et truet hold mærkbart holder udbruddet nede, men ikke afgør etapen alene.
+
+**Anbefaling nu:** GC-reaktionen flytter nu resultater. Næste skridt er ejerens vurdering af kvalitetsmålene (hvor ofte et udbrud med en klassementstrussel skal kunne holde hjem), og derefter et ejer-kort om at tænde `orders_gc_v1` for nye løb. Spillerfladerne (Task 5) er ikke rørt.
+
 ## Opdatering samme dag: genkørt efter udbrud/jagt-balancen (#5955)
 
 Refs #5955 (Task 3 og 6). Stadig **slukket**: `CURRENT_RACE_RULES_REVISION` er `legacy`, legacy-løb er byte-identiske, intet er skrevet i prod.
