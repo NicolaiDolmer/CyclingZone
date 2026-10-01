@@ -6,14 +6,14 @@ Owner draft only. Three separate messages per language, each below Discord's nor
 Hi 🙂 A proper status update, so you don't need to piece everything together from the chat.
 
 The engine issues I'm working through:
-• Breakaway flags mix the morning escape with some later attacks. Auvergne stage 6 on 30 September had eight morning escapees, but twenty flagged riders. I'm separating the markers and explaining the events in the film.
+• The flag correction is live. Auvergne stage 6 on 30 September had eight morning escapees but twenty flags. Complete native histories now distinguish morning breaks and later attacks. Older incomplete histories keep their stored markers.
 • Captains/helpers can attempt morning breaks without the intended order. Roles, autonomy and saving energy need to behave predictably.
 • I've reproduced forced breakaway selection even when the selection rolls say no. An attempt needs to be able to fail, and rival teams need to react while the break forms.
 • GC reactions need the actual standing before the stage, not just rider abilities. Neutral should be a useful default.
-• There is a chase calculation that can cause artificial time losses after groups split. That's a calculation problem as well as a storytelling problem.
+• The chase/time correction is live for upcoming stage calculations. The pursuing group moves forward; catching escapees does not push them backwards towards a distant group. Completed results are unchanged.
 • Specialist underperformance and mountain points on a flat time trial are also reported; those specific causes are still being investigated.
 
-I'm aiming for the first corrections from Thursday 1 October, after testing. New tactical/balance rules are intended for new stage races; calculation/display fixes can apply to upcoming stages. That release separation still has to be built. The whole package isn't being promised in one update.
+The first corrections are live on 1 October: chase/time, markers and the film. Roles, formation and GC reactions remain separate work. New tactical/balance rules are intended for new stage races; that binding still needs building and testing before activation. There is no confirmed date for the rest yet.
 
 ## EN message 2: training
 The training package announced for Thursday 1 October still means ALL five things:
@@ -42,14 +42,14 @@ For a new example, please include the race link, stage, rider and chosen order. 
 Hejsa 🙂 Her er en ordentlig status, så du ikke skal samle det hele op mellem beskederne.
 
 Motorproblemerne, jeg arbejder mig igennem:
-• Udbrudsflag blander morgenudbrud med nogle senere angreb. Auvergnes etape 6 den 30. september havde otte morgenudbrydere, men tyve med flag. Markeringerne skilles ad, og filmen skal forklare hændelserne.
+• Flagrettelsen er live. Auvergnes etape 6 den 30. september havde otte morgenudbrydere, men tyve flag. Komplet historik fra den nye motor skelner nu mellem morgenudbrud og senere angreb. Ældre, ufuldstændig historik beholder de gemte markeringer.
 • Kaptajner/hjælpere kan forsøge morgenudbrud uden den tænkte ordre. Roller, selvstændighed og spar kræfter skal opføre sig forudsigeligt.
 • Jeg har reproduceret tvungen udbrudsudvælgelse, selv når lodtrækningerne siger nej. Forsøg skal kunne mislykkes, og rivalhold skal reagere, mens udbruddet dannes.
 • Klassementet før etapen skal ind i vurderingen, ikke kun rytternes evner. Neutral skal være et brugbart standardvalg.
-• En jagtberegning kan give kunstige tidstab, når grupperne er splittet. Det er både beregning og fortælling, der skal ordnes.
+• Jagt-/tidsrettelsen er live fra kommende etapeberegninger. Jagtgruppen rykker frem; indhentning flytter ikke udbryderne baglæns mod en fjern gruppe. Afsluttede resultater ændres ikke.
 • Svage resultater for specialister og bjergpoint på flad enkeltstart er også meldt ind. De konkrete årsager undersøges stadig.
 
-Jeg sigter mod de første rettelser fra torsdag 1. oktober efter test. Nye taktik-/balanceregler er tiltænkt nye etapeløb; beregnings-/visningsrettelser kan gælde kommende etaper. Den releaseopdeling skal stadig bygges. Hele pakken loves ikke i én opdatering.
+De første rettelser er live 1. oktober: jagt/tid, markeringer og filmen. Roller, formation og klassementsreaktioner er særskilte spor. Nye taktik-/balanceregler er tiltænkt nye etapeløb; den binding skal stadig bygges og testes før aktivering. Resten har endnu ingen bekræftet dato.
 
 ## DA besked 2: træning
 Træningspakken, jeg har meldt ud til torsdag 1. oktober, er stadig ALLE fem ting:

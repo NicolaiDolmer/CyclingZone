@@ -12,7 +12,7 @@ The new engine has caused some frustrating results. I understand why it feels wo
 
 ### Races and the engine
 
-**Breakaway flags are mixing different things.** On this evening's Auvergne stage, eight riders were in the morning break, while twenty had a breakaway flag in the result. The flag also picked up some later attacks. I'm separating morning breakaways from later attacks and making the race report explain the difference. A flag currently doesn't prove that your rider deliberately joined the morning break.
+**The flag correction is live.** Auvergne stage 6 on 30 September had eight morning escapees but twenty flags, because some later attacks were mixed in. Complete native histories now distinguish the two, with the actual morning count in the recap. Older incomplete histories keep their stored markers. A morning flag means participation, not necessarily an explicit manager order.
 
 **Riders can attempt the morning break without the order you intended.** I'm making the existing roles and orders much clearer in the engine. A captain or helper should not decide to join the morning break without the appropriate order. Free role will retain some autonomy, while saving energy will limit spontaneous attempts. Choosing to attempt a break won't guarantee getting away.
 
@@ -20,15 +20,15 @@ The new engine has caused some frustrating results. I understand why it feels wo
 
 **GC threats aren't evaluated using the actual standing properly.** The reaction currently relies on an ability-based assessment instead of the full pre-stage GC situation. A rider close to the leader and a rider well behind should be treated differently. Neutral should be a sensible plan that reacts to the race, without everyone needing to select chase on every stage.
 
-**Some catches can produce artificial time losses.** I've found a group/chase calculation that can place escapees incorrectly when the field has split. This needs a calculation fix, not just nicer wording. Getting caught shouldn't itself come with a mysterious extra time penalty.
+**The chase/time correction is live for upcoming calculations.** The relevant pursuing group moves forward to close the gap; escapees are no longer pushed backwards towards a distant group. Shared pursuit is calculated together before catch/survival outcomes are recorded. Normal terrain and fatigue can still drop a rider afterwards.
 
-**The film and result don't always tell the same story.** Missing catches, later attacks presented as morning breaks, and misleading finish descriptions are being addressed together. Catching a rider and dropping him afterwards need to be separate events you can understand.
+**The first film corrections are live.** Recorded reunions and descent attacks are explained, and a stage decision is no longer presented as an extra attack. Where the actual pursuit distance is not recorded, the native gap curve is omitted; the profile and factual events remain visible.
 
 **Specialists finishing unexpectedly far back are also on the list.** I have reports about strong sprinters, climbers and cobbled riders finishing behind weaker teammates. Some cases overlap the failures above. I'm checking the remaining cases against terrain, condition, orders and support rather than promising that the best single stat always wins.
 
 **Mountain points on a flat time trial have been reported.** That specific route/points case still needs checking. It isn't covered by saying the intermediate-sprint problem is fixed.
 
-My aim is to start releasing the first engine corrections from Thursday 1 October, once they're tested. That isn't a promise that the entire tactical update lands at once. Calculation and display fixes can apply to the next unrun stage. New tactical and balance rules are intended for newly starting stage races, so your plan doesn't change halfway through a race. That release separation still has to be implemented. I'm not announcing a recalculation of completed results here.
+The first correctness package is live on 1 October after testing and release verification. New role, formation and GC-reaction rules are still separate work. They are intended for newly starting stage races; the binding and tests for that separation still need building before activation. No date is confirmed for the rest. Completed results have not been recalculated.
 
 ### Training: the five things announced for Thursday
 
@@ -68,7 +68,7 @@ Clearer planning-column labels and current form are released. The transfer corre
 
 ### Already corrected
 
-Intermediate sprint and mountain passage ordering has been corrected and checked in actual stages after release. Team-classification tie handling has also been delivered, with the approved recalculation completed. Those aren't the same problems as the remaining flags, chase behaviour or time-trial mountain-point report.
+Intermediate sprint and mountain passage ordering has been corrected and checked in actual stages after release. Team-classification tie handling has also been delivered, with the approved recalculation completed. Those aren't the same problems as the remaining role/GC issues or time-trial mountain-point report.
 
 Thanks for the examples, including the ones where the game is doing something completely ridiculous 🙂 A race link, stage number, rider name and the order you selected help much more than a screenshot on its own. I'll update this list as things actually go live. Planned, built and released need to mean different things.
 
@@ -82,7 +82,7 @@ Den nye motor har givet nogle frustrerende resultater. Jeg kan godt forstå, at 
 
 ### Løbene og motoren
 
-**Udbrudsflagene blander forskellige ting sammen.** På aftenens Auvergne-etape var otte ryttere i morgenudbruddet, mens tyve fik et udbrudsflag i resultatet. Flaget fangede også nogle senere angreb. Jeg skiller morgenudbrud og senere angreb ad, og løbsrapporten skal forklare forskellen. Et flag er lige nu ikke bevis for, at din rytter bevidst gik i morgenudbruddet.
+**Flagrettelsen er live.** Auvergnes etape 6 den 30. september havde otte morgenudbrydere, men tyve flag, fordi nogle senere angreb blev blandet ind. Komplet historik fra den nye motor skelner nu mellem de to, og referatet tæller de faktiske morgenudbrydere. Ældre, ufuldstændig historik beholder de gemte markeringer. Et morgenflag betyder deltagelse, ikke nødvendigvis en udtrykkelig managerordre.
 
 **Ryttere kan forsøge morgenudbrud uden den ordre, du havde tænkt.** Roller og ordrer får en tydeligere betydning i motoren. En kaptajn eller hjælper skal ikke selv vælge morgenudbrud uden den relevante ordre. Fri rolle beholder noget selvstændighed, mens spar kræfter begrænser spontane forsøg. Forsøg udbrud bliver stadig et forsøg, ikke en garanti for at komme afsted.
 
@@ -90,15 +90,15 @@ Den nye motor har givet nogle frustrerende resultater. Jeg kan godt forstå, at 
 
 **Klassementstrusler bliver ikke vurderet ordentligt ud fra den faktiske stilling.** Reaktionen bruger lige nu en vurdering af evner frem for hele situationen inden etapen. En rytter tæt på føreren og en rytter langt tilbage skal vurderes forskelligt. Neutral skal være et fornuftigt valg, der reagerer på løbet, uden at alle skal vælge jagt på hver etape.
 
-**Nogle indhentninger kan give kunstige tidstab.** Jeg har fundet en gruppe-/jagtberegning, som kan placere udbryderne forkert, når feltet er splittet. Det kræver en rettelse af beregningen, ikke kun pænere tekst. At blive indhentet skal ikke i sig selv udløse en mystisk ekstra tidsstraf.
+**Jagt-/tidsrettelsen er live fra kommende beregninger.** Den relevante jagtgruppe rykker frem og lukker hullet; udbryderne bliver ikke længere flyttet baglæns mod en fjern gruppe. Fælles jagt beregnes samlet, før indhentning/overlevelse registreres. Almindeligt terræn og træthed kan stadig sætte en rytter af bagefter.
 
-**Løbsfilm og resultat fortæller ikke altid samme historie.** Manglende indhentninger, senere angreb vist som morgenudbrud og misvisende beskrivelser af afslutningen bliver taget samlet. At blive hentet og bagefter blive sat af skal være to forskellige hændelser, man kan forstå.
+**De første filmrettelser er live.** Registrerede samlinger og nedkørselsangreb forklares, og en afgjort etape bliver ikke længere vist som et ekstra angreb. Når den faktiske jagtafstand ikke er registreret, udelades den native afstandskurve; profil og faktiske hændelser vises stadig.
 
 **Specialister, der slutter overraskende langt tilbage, er også på listen.** Der er meldinger om stærke sprintere, klatrere og brostensryttere bag svagere holdkammerater. Nogle tilfælde hænger sammen med fejlene ovenfor. Resten skal undersøges ud fra terræn, tilstand, ordrer og hjælp, frem for at love, at det højeste enkeltstående tal altid vinder.
 
 **Bjergpoint på en flad enkeltstart er meldt ind.** Den konkrete rute og pointtildeling mangler stadig kontrol. Den sag er ikke løst, bare fordi fejlen ved mellemspurterne er rettet.
 
-Jeg sigter mod at begynde at sende de første motorrettelser ud fra torsdag 1. oktober, når de er testet. Det er ikke et løfte om, at hele taktikpakken lander på én gang. Beregnings- og visningsfejl kan rettes fra næste etape, der ikke er kørt. Nye taktik- og balanceregler er tiltænkt nye etapeløb, så din plan ikke ændrer betydning midt i et startet løb. Den opdeling skal stadig bygges. Jeg annoncerer ikke en genberegning af afsluttede resultater her.
+Den første korrekthedspakke er live 1. oktober efter test og verificeret release. Nye rolle-, formations- og klassementsreaktioner er stadig særskilte spor. De er tiltænkt nye etapeløb; bindingen og testen af den opdeling skal stadig bygges før aktivering. Resten har ingen bekræftet dato. Afsluttede resultater er ikke blevet genberegnet.
 
 ### Træning: de fem ting, jeg har meldt ud til torsdag
 
@@ -138,6 +138,6 @@ Tydeligere kolonner, ordre og aktuel form i planlægningen er udgivet. Transferr
 
 ### Allerede rettet
 
-Rækkefølgen ved mellemspurter og bjergpassager er rettet og kontrolleret i faktiske etaper efter release. Holdklassementets afgørelse ved lige tid er også leveret, og den godkendte genberegning er gennemført. Det er andre sager end de resterende flag, jagtproblemer og bjergpoint på enkeltstarten.
+Rækkefølgen ved mellemspurter og bjergpassager er rettet og kontrolleret i faktiske etaper efter release. Holdklassementets afgørelse ved lige tid er også leveret, og den godkendte genberegning er gennemført. Det er andre sager end de resterende rolle-/klassementsproblemer og bjergpoint på enkeltstarten.
 
 Tak for eksemplerne, også dem hvor spillet gør noget komplet åndsvagt 🙂 Et løbslink, etapenummer, rytternavn og den valgte ordre hjælper meget mere end et billede alene. Jeg opdaterer listen, når tingene faktisk bliver live. Planlagt, bygget og udgivet skal betyde tre forskellige ting.
