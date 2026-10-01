@@ -1122,9 +1122,9 @@
       "breakawaySurvived": "{count, plural, one {En enkelt rytter holdt hjem til mål.} other {Et udbrud på # ryttere holdt hjem til mål.}}",
       "breakawayCaught": "{count, plural, one {Den udbrudte rytter blev hentet før stregen.} other {Udbruddet (# ryttere) blev hentet før stregen.}}",
       "breakawayCaughtByTeams": "{teams} førte jagten og hentede {count, plural, one {den udbrudte rytter} other {udbruddet (# ryttere)}} før stregen.",
-      "breakawayCaughtByTeamsKm": "{teams} førte jagten og hentede {count, plural, one {den udbrudte rytter} other {udbruddet (# ryttere)}} {km} km før mål.",
+      "breakawayCaughtByTeamsKm": "{teams} førte jagten, og {km} km før mål var {count, plural, one {den udbrudte rytter} other {udbruddet (# ryttere)}} hentet.",
       "breakawayCaughtByPeloton": "Feltet hentede {count, plural, one {den udbrudte rytter} other {udbruddet (# ryttere)}} før stregen.",
-      "breakawayCaughtByPelotonKm": "Feltet hentede {count, plural, one {den udbrudte rytter} other {udbruddet (# ryttere)}} {km} km før mål.",
+      "breakawayCaughtByPelotonKm": "{km} km før mål hentede feltet {count, plural, one {den udbrudte rytter} other {udbruddet (# ryttere)}}.",
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
       "teamWon": "{team} vandt holdkonkurrencen.",
       "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg.",
@@ -1333,13 +1333,13 @@
           "v1": "{teams} førte jagten og hentede {count, plural, one {den udbrudte rytter} other {udbruddet på #}} før mål."
         },
         "breakaway_caught_by_teams_km": {
-          "v1": "{teams} førte jagten og hentede {count, plural, one {den udbrudte rytter} other {udbruddet på #}} {km} km før mål."
+          "v1": "{teams} førte jagten, og {km} km før mål var {count, plural, one {den udbrudte rytter} other {udbruddet på #}} hentet."
         },
         "breakaway_caught_by_peloton": {
           "v1": "Feltet hentede {count, plural, one {den udbrudte rytter} other {udbruddet på #}} før mål."
         },
         "breakaway_caught_by_peloton_km": {
-          "v1": "Feltet hentede {count, plural, one {den udbrudte rytter} other {udbruddet på #}} {km} km før mål."
+          "v1": "{km} km før mål hentede feltet {count, plural, one {den udbrudte rytter} other {udbruddet på #}}."
         },
         "breakaway_survived": {
           "v1": "{count, plural, one {Den udbrudte rytter blev aldrig hentet.} other {De # udbrudte holdt feltet bag sig helt til stregen.}}"
