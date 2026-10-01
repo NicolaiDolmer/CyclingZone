@@ -64,6 +64,8 @@ export function useYouthRaceOptOut(squad: YouthSquad, onSaved?: () => void) {
   }, [load]);
 
   const setMode = useCallback(async (mode: YouthRaceMode) => {
+    // Et gem gør en igangværende GET forældet: dens svar må ikke overskrive valget.
+    requestRef.current += 1;
     setSaving(true);
     setSaveError(false);
     try {
