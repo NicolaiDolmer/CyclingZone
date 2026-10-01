@@ -949,6 +949,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       orders,
       jerseyLeaders: input.jersey_leaders ?? null,
       rulesRevision,
+      // #5978: GC-konteksten naar KUN hooksene under orders_gc_v1. Udeladt
+      // under den revision = "missing" (aerlig diagnose i mechanics/breakaway.ts).
+      ...(rulesRevision === "orders_gc_v1" ? { gcContext: input.gc_context ?? null } : {}),
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
