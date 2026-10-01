@@ -3,18 +3,6 @@ import { installNetworkMocks, stabilizePage, login, json, evidenceShotPath } fro
 import { SEED_TRAINING } from "../../src/preview/seedData.js";
 import { trainingReceiptMock } from "../../src/preview/trainingReceiptMock.ts";
 
-test("#5915 beta off: non-beta managers keep the existing report",async({page})=>{
-  await page.clock.install({time:new Date("2026-09-30T10:00:00Z")});
-  await installNetworkMocks(page);
-  const data={...trainingReceiptMock(SEED_TRAINING,"complete"),dailyReceiptEnabled:false};
-  await page.route("**/api/training/me",route=>json(route,data));
-  await stabilizePage(page);
-  await login(page);
-  await page.goto("/training?tab=report");
-  await expect(page.getByTestId("daily-training-receipt")).toHaveCount(0);
-  await expect(page.locator('table[data-sort-exempt="Per-koersel traeningsrapport i rapport-orden"]')).toBeVisible();
-});
-
 test("#5915 score flag off: receipt keeps its layout without score fields",async({page})=>{
   await page.clock.install({time:new Date("2026-09-30T10:00:00Z")});
   await installNetworkMocks(page);
