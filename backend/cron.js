@@ -685,6 +685,7 @@ async function runTrainingSweepCron() {
 // er faerdig. Gated bag `training_tick_per_race_day` (off i dag) — flag off er et
 // rent no-op-tick, saa den kan sameksistere med runTrainingSweepCron ovenfor indtil
 // cutover. Overlap-guarden bor i modulet (kode-invariant, testet), ikke her.
+let lastTrainingDayCloseFailureKey = "";
 async function runTrainingDayCloseCron() {
   const result = await runTrainingDayCloseSweep({
     supabase,
@@ -702,7 +703,13 @@ async function runTrainingDayCloseCron() {
   if (result.ran) {
     console.log(`🚴 Traenings-lukning: ${result.swept} tick(s) koert paa loebsdag(e) ${result.gameDays.join(", ")} (${result.divisions} division(er), ${result.alreadyRan} allerede koert, ${result.failed} fejl, ${Math.round(result.durationMs / 1000)} s)`);
   }
-  if (result.failed) {
+  // #6004: samme (dato, hold, besked)-saet hvert tick giver kun EEN Sentry-capture;
+  // fejlen logges stadig hvert tick, og et nyt/aendret saet capturer igen.
+  const failureKey = (result.failures ?? []).map((f) => `${f.tickDate}|${f.teamId}|${f.message}`).sort().join("\n");
+  const repeatedFailure = failureKey === lastTrainingDayCloseFailureKey;
+  lastTrainingDayCloseFailureKey = failureKey;
+  if (result.failed) console.error(`❌ Traenings-lukning: ${result.failed} fejl${repeatedFailure ? " (uaendret, ingen ny Sentry-capture)" : ""}`, result.failures?.slice(0, 20));
+  if (result.failed && !repeatedFailure) {
     // #2389 A2-moenstret: én aggregeret capture pr. tick. Daglig traening er
     // kerne-gameplay; systemiske fejl maa ikke vaere usynlige i Sentry.
     sentryCapture(new Error(`training day-close sweep: ${result.failed} tick(s) fejlede`), {
