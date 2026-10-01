@@ -119,6 +119,7 @@ test("simulate: deterministic, same engine, gains chain over the rider's lost da
     assert.equal(v, abilityRow[k] + (a.gains[k] ?? 0));
   }
   assert.equal(a.totalPoints, Object.values(a.gains).reduce((s, n) => s + n, 0));
+  assert.ok(a.totalProgress > 0, "a training day always moves the progress bar");
   // Input rows are never mutated.
   assert.deepEqual(abilityRow.ability_progress, {});
 });
@@ -141,4 +142,5 @@ test("summary: counts by team type and squad", () => {
   assert.deepEqual(s.byKind, { free_slot: 2, raced_missed: 1 });
   assert.deepEqual(s.byCategory.map((c) => c.category), ["AI / senior", "menneske / junior"]);
   assert.deepEqual(s.gainPointsPerRider, { min: 0, median: 1, max: 2, ridersWithZero: 1 });
+  assert.deepEqual(s.progressPerRider, { min: 0, median: 0, max: 0 });
 });

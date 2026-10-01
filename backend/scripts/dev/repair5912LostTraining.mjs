@@ -138,6 +138,7 @@ export function simulateRiderRepair({
   const weekday = copenhagenWeekdayKey(REPAIR_TICK_DATE);
   const totalGains = {};
   const perDay = [];
+  let totalProgress = 0;
   for (const day of [...days].sort((a, b) => a.gameDay - b.gameDay)) {
     const program = resolveProgram(plan, rider.primary_type);
     let tickProgram = program;
@@ -165,12 +166,14 @@ export function simulateRiderRepair({
     abilities = result.abilities;
     progress = result.progress;
     for (const [k, n] of Object.entries(result.gains)) totalGains[k] = (totalGains[k] ?? 0) + n;
-    perDay.push({ key: day.key, gameDay: day.gameDay, kind: day.kind, intensity: tickProgram.intensity, gains: result.gains });
+    totalProgress += result.score;
+    perDay.push({ key: day.key, gameDay: day.gameDay, kind: day.kind, intensity: tickProgram.intensity, gains: result.gains, progress: result.score });
   }
   const patch = { ability_progress: progress };
   for (const k of VISIBLE_ABILITIES) if (abilities[k] !== startAbilities[k]) patch[k] = abilities[k];
   const totalPoints = Object.values(totalGains).reduce((s, n) => s + n, 0);
-  return { gains: totalGains, totalPoints, perDay, patch, before: startAbilities };
+  // totalProgress = summen af raa evne-deltaer (inkl. fremdrift under et helt point).
+  return { gains: totalGains, totalPoints, totalProgress: Math.round(totalProgress * 100) / 100, perDay, patch, before: startAbilities };
 }
 
 function quantile(sorted, q) {
@@ -198,7 +201,9 @@ export function summarizePlan({ lost, plans, teamById, riderById }) {
     byKind[d.kind] = (byKind[d.kind] ?? 0) + 1;
     teams.add(d.teamId); riders.add(d.riderId);
   }
-  const points = [...plans.values()].filter((p) => !p.skipped).map((p) => p.totalPoints).sort((a, b) => a - b);
+  const done = [...plans.values()].filter((p) => !p.skipped);
+  const points = done.map((p) => p.totalPoints).sort((a, b) => a - b);
+  const progress = done.map((p) => p.totalProgress ?? 0).sort((a, b) => a - b);
   return {
     riderDays: lost.length,
     riders: riders.size,
@@ -211,6 +216,7 @@ export function summarizePlan({ lost, plans, teamById, riderById }) {
       min: points[0] ?? null, median: quantile(points, 0.5), max: points.at(-1) ?? null,
       ridersWithZero: points.filter((p) => p === 0).length,
     },
+    progressPerRider: { min: progress[0] ?? null, median: quantile(progress, 0.5), max: progress.at(-1) ?? null },
     skipped: [...plans.values()].filter((p) => p.skipped).length,
   };
 }
@@ -383,7 +389,10 @@ ${rows}
 ## Evne-gevinst
 Forventet gevinst pr. rytter (min/median/max) er beregnet med samme motor som
 sweepen, men staar kun i den gitignorerede detaljefil under \`balance-internals/5912/\`
-(offentligt repo: ingen maalte fordelinger fra motoren her).
+(offentligt repo: ingen maalte fordelinger fra motoren her). Kvalitativt: de
+fleste seniorryttere mistede én loebsdag og faar typisk under ét helt evnepoint;
+gevinsten ligger da i fremdriftsbaren. Ungdomsryttere mistede flere loebsdage og
+faar mere.
 
 ## Afgraensning
 - Traethed og form roeres ikke (#5928, gennemfoert separat).
@@ -477,7 +486,7 @@ async function main() {
   writeFileSync(detailPath, JSON.stringify({
     at: now.toISOString(), summary, alreadyMarked,
     riders: [...plans.entries()].map(([riderId, p]) => ({
-      riderId, teamId: p.teamId, skipped: p.skipped ?? null, totalPoints: p.totalPoints ?? 0,
+      riderId, teamId: p.teamId, skipped: p.skipped ?? null, totalPoints: p.totalPoints ?? 0, totalProgress: p.totalProgress ?? 0,
       gains: p.gains ?? {}, perDay: p.perDay ?? [],
     })),
   }, null, 2) + "\n");
