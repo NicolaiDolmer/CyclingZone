@@ -91,6 +91,8 @@ export async function loadRidersAlreadyRacedInSpan({ supabase, race, riderIds })
 
     return { data: ridersWithStageInSpan({ span, scheduleRows: scheduleRows ?? [], resultRows, singleRaceIds }), error: null };
   } catch (err) {
+    // best-effort HER, ikke hos kalderen: fejlen RETURNERES (data: null = "ved det
+    // ikke"), og prepareSelectionChange afviser udtagelsen (fail-closed).
     return { data: null, error: err };
   }
 }
