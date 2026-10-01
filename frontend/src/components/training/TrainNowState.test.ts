@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  TRAIN_NOW_OFF, parseTrainNowStatus, trainNowNoteKeys, trainNowRunGate,
+  TRAIN_NOW_OFF, parseTrainNowStatus, trainNowNoteKeys, trainNowPressCounts, trainNowRunGate,
   type TrainNowStatus,
 } from "./TrainNowState.ts";
 
@@ -38,10 +38,22 @@ test("run gate: with the press, the gold button is open all date until the press
 test("note: helper before the press, locked after, settled in the evening", () => {
   assert.deepEqual(trainNowNoteKeys(available, null, null), ["trainNow.helper"]);
   assert.deepEqual(trainNowNoteKeys(locked, null, null), ["trainNow.locked"]);
+  // #6006: the press says what it did right away: X trained now, Y waiting.
   assert.deepEqual(
-    trainNowNoteKeys(locked, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"] }, null),
+    trainNowNoteKeys(locked, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"], settledGameDays: [15] }, null),
+    ["trainNow.pressResult", "trainNow.locked"],
+  );
+  assert.deepEqual(
+    trainNowNoteKeys(locked, { settledRiderIds: ["a", "b"], afterRaceRiderIds: [], settledGameDays: [15] }, null),
+    ["trainNow.pressResultAll", "trainNow.locked"],
+  );
+  // Nothing settled now (one race day kept for the evening, I4): no "trained now" claim.
+  assert.deepEqual(
+    trainNowNoteKeys(locked, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"], settledGameDays: [] }, null),
     ["trainNow.locked", "trainNow.afterRace"],
   );
+  assert.deepEqual(trainNowPressCounts({ settledRiderIds: ["a", "b"], afterRaceRiderIds: ["c"], settledGameDays: [1] }),
+    { trained: 2, waiting: 1 });
   assert.deepEqual(trainNowNoteKeys({ ...locked, settled: true }, null, null), ["trainNow.settled"]);
   assert.deepEqual(trainNowNoteKeys(TRAIN_NOW_OFF, null, null), []);
 });

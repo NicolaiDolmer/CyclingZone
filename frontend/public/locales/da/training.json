@@ -11,6 +11,8 @@
     "helper": "Låser dagens træning og tilmelding. Resultatet er det samme, som hvis du venter.",
     "locked": "Dagens træning og tilmelding er låst. Træthed og form opdateres ved aftenopgørelsen.",
     "afterRace": "Ryttere med løb i dag afregnes efter deres etape.",
+    "pressResult": "{trained, plural, one {# rytter trænet nu} other {# ryttere trænet nu}}, {waiting, plural, one {# venter på sit løb} other {# venter på deres løb}}.",
+    "pressResultAll": "{trained, plural, one {# rytter trænet nu.} other {# ryttere trænet nu.}}",
     "settled": "Dagens træning er afregnet.",
     "previousOpen": "Gårsdagens træning bliver stadig afregnet. Prøv igen om lidt.",
     "noRaceDay": "Der er ingen løbsdag i dag, så der er intet at låse.",
