@@ -789,6 +789,22 @@ test('#5997: enqueue allows touches vs touches, reports them, and rejects owners
   assert.equal('sharedTouches' in enqueueTracks(plain.dir, 'rolling-wave', [trackWith(3, ['scripts/three.mjs'])], ownSnapshot), false);
 });
 
+test('#5997: wave.js mirror of sharedTouchPlan gives the same plan as wave-policy.mjs (drift guard)', () => {
+  const src = readFileSync(fileURLToPath(new URL('../.claude/workflows/wave.js', import.meta.url)), 'utf8');
+  const start = src.indexOf('function touchPrefix(');
+  const end = src.indexOf('// Hvad EET spor deler');
+  assert.ok(start > 0 && end > start, 'mirror block not found in wave.js');
+  const mirror = new Function(`${src.slice(start, end)}; return sharedTouchPlan;`)();
+  const shared = 'frontend/src/pages/Shared.jsx';
+  const sets = [
+    [],
+    [trackWith(1, ['a/x.mjs']), trackWith(2, ['b/x.mjs'])],
+    [withTouches(3, ['a/1.mjs', 'a/2.mjs'], [shared]), withTouches(7, ['b/1.mjs'], [shared]), withTouches(9, ['c/1.mjs'], ['c/only.mjs']), withTouches(5, ['d/1.mjs'], ['Frontend\\src\\pages'])],
+    [withTouches(1, ['a/x'], ['scripts/wave-*.mjs']), withTouches(2, ['b/x'], ['scripts/wave-policy.mjs']), withTouches(4, ['c/x'], ['scripts/wavx.mjs'])],
+  ];
+  for (const set of sets) assert.deepEqual(mirror(set), sharedTouchPlan(set));
+});
+
 test('#5997: a malformed touches field in the marker fails closed; touches never block a merge by themselves', t => {
   const shared = 'frontend/src/pages/Shared.jsx';
   const bad = runningWave(t, { tracks: [{ ...trackWith(1, ['scripts/one.mjs']), touches: 'nope' }] });

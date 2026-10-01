@@ -31,7 +31,8 @@
 //         scopeText: "...",           // hvad lanen skal loese
 //         model: "sonnet",            // 'opus' | 'sonnet' - saettes EKSPLICIT
 //         tier: "TARGETED",           // 'TARGETED' | 'FULL' (maks een FULL)
-//         ownership: ["scripts/x.ps1"],
+//         ownership: ["scripts/x.ps1"],  // eksklusivt: ejede filer maa aendres frit
+//         touches: ["frontend/src/pages/X.jsx"], // valgfrit (#5997): delte filer, kun minimal kobling (faa linjer)
 //         verifyCommands: ["node --test scripts/x.test.mjs"],
 //         ownNodeModules: false       // true = lanen maa selv npm-installere
 //       }
@@ -248,6 +249,7 @@ const TRACK_CONFIG_SCHEMA = {
     tier: { type: 'string' },
     kind: { type: 'string' },
     ownership: { type: 'array', items: { type: 'string' } },
+    touches: { type: 'array', items: { type: 'string' } },
     verifyCommands: { type: 'array', items: { type: 'string' } },
     ownNodeModules: { type: 'boolean' },
   },
@@ -350,6 +352,47 @@ function slugOf(branch) {
   return String(branch).replace(/[\\/]/g, '-')
 }
 
+// SPEJLING af sharedTouchPlan() i scripts/wave-policy.mjs (#5997) - hold dem
+// identiske. Admission (hooken) afviser ownership-vs-touches; her vises kun de
+// delte filer og merge-raekkefoelgen i planen/rapporten og i lane-briefen.
+// Samme prefix-semantik som ownershipPrefix(): lukket prefix daekker sig selv
+// og understi, en glob midt i et led er aaben.
+function touchPrefix(raw) {
+  const p = String(raw).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+  const head = p.split('*')[0]
+  return { prefix: head.replace(/\/$/, ''), open: p.includes('*') && !head.endsWith('/') }
+}
+function touchCovers(x, y) {
+  return x.open ? y.prefix.startsWith(x.prefix) : (y.prefix === x.prefix || y.prefix.startsWith(x.prefix + '/'))
+}
+function sharedTouchPlan(list) {
+  const entries = []
+  for (const t of list) for (const raw of (t.touches || [])) entries.push({ issue: t.issue, raw, own: touchPrefix(raw) })
+  const groups = new Map()
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const a = entries[i]
+      const b = entries[j]
+      if (a.issue === b.issue || !(touchCovers(a.own, b.own) || touchCovers(b.own, a.own))) continue
+      const key = (a.own.prefix.length >= b.own.prefix.length ? a : b).raw
+      if (!groups.has(key)) groups.set(key, new Set())
+      groups.get(key).add(a.issue)
+      groups.get(key).add(b.issue)
+    }
+  }
+  const shared = [...groups].map(([path, set]) => ({ path, issues: [...set].sort((x, y) => x - y) })).sort((x, y) => x.path.localeCompare(y.path))
+  const sharing = new Set(shared.flatMap((s) => s.issues))
+  const footprint = (t) => (t.ownership || []).length + (t.touches || []).length
+  const mergeOrder = list.filter((t) => sharing.has(t.issue)).sort((a, b) => footprint(a) - footprint(b) || a.issue - b.issue).map((t) => t.issue)
+  return { shared, mergeOrder }
+}
+// Hvad EET spor deler med de andre startspor (til briefen). undefined = intet.
+function sharedWithFor(t) {
+  const plan = sharedTouchPlan(tracks)
+  const files = plan.shared.filter((s) => s.issues.includes(t.issue)).map((s) => ({ path: s.path, with: s.issues.filter((n) => n !== t.issue) }))
+  return files.length > 0 ? { files, mergeOrder: plan.mergeOrder } : undefined
+}
+
 function normalizeTrack(raw, index) {
   if (!raw || typeof raw !== 'object') throw new Error(`wave: spor ${index} er ikke et objekt`)
   const issue = raw.issue
@@ -373,6 +416,8 @@ function normalizeTrack(raw, index) {
     kind: raw.kind === 'investigate' ? 'investigate' : 'build',
     tier: raw.tier === 'FULL' ? 'FULL' : 'TARGETED',
     ownership: Array.isArray(raw.ownership) ? raw.ownership : [],
+    // #5997: delte filer (valgfri). Admission i wave-policy.mjs validerer dem.
+    touches: Array.isArray(raw.touches) ? raw.touches : [],
     verifyCommands: Array.isArray(raw.verifyCommands) ? raw.verifyCommands : [],
     ownNodeModules: raw.ownNodeModules === true,
     worktree: `${WORKTREES_ROOT}\\${slug}`,
@@ -644,6 +689,10 @@ function laneBrief(track) {
     '',
     `Issue: #${track.issue} - ${track.title}`,
     track.scopeText ? `Scope: ${track.scopeText}` : '',
+    ...(track.touches && track.touches.length > 0 ? [
+      '',
+      `Ejede filer (ownership) maa du aendre frit. Delte filer (touches: ${track.touches.join(', ')}) kun med minimal kobling (faa linjer) - andre spor roerer dem ogsaa (#5997).`,
+    ] : []),
     '',
     'Slutrapport (kort, dansk): branch, PR-URL, commit-SHA, hovedaendringer, verifikations-status, hvad verifikationen IKKE daekker.',
   ].filter(Boolean).join('\n')
@@ -806,6 +855,9 @@ function trackConfigRow(t) {
     title: t.title,
     scopeText: t.scopeText,
     ownership: t.ownership,
+    touches: t.touches,
+    // Delte filer + merge-raekkefoelge (#5997), saa briefen kan sige hvem du deler med.
+    sharedWith: sharedWithFor(t),
     tier: t.tier,
     verifyCommands: t.verifyCommands,
     ownNodeModules: t.ownNodeModules,
@@ -967,6 +1019,10 @@ const planLines = tracks.map((t, i) => `  ${i + 1}. #${t.issue} ${t.branch} [${t
 log(`Boelgeplan: ${tracks.length} spor (tungeste foerst), ${lanes} laner, verifikations-semafor 2, spor-vindue ${trackTimeoutMinutes} min (haardt loft ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min), rullende optag ${rollingIntake ? 'til' : 'fra'}.`)
 log(`Frys maales paa BRANCH-aktivitet (#5178): et udloebet vindue forlaenges saa laenge seneste commit er under ${WAVE_FREEZE.BRANCH_STALL_MINUTES} min gammel.`)
 for (const line of planLines) log(line)
+// #5997: delte filer (touches) + udledt merge-raekkefoelge.
+const sharedPlan = sharedTouchPlan(tracks)
+for (const s of sharedPlan.shared) log(`Delt fil (touches): ${s.path} <- ${s.issues.map((n) => '#' + n).join(', ')}`)
+if (sharedPlan.mergeOrder.length > 0) log(`Merge-raekkefoelge for spor med delte filer: ${sharedPlan.mergeOrder.map((n) => '#' + n).join(' -> ')} (merge-koeen merger main ind foer hver; mindste fodaftryk foerst).`)
 
 if (dryRun) {
   log('DRY-RUN: intet spawnes, intet skrives. Fjern args.dryRun for at koere boelgen.')
@@ -982,6 +1038,7 @@ if (dryRun) {
     cleanup: cleanupMode,
     expiresInMinutes,
     rollingIntake,
+    sharedTouches: sharedPlan,
     tracks: tracks.map((t) => ({
       issue: t.issue,
       branch: t.branch,
@@ -1725,6 +1782,7 @@ return {
   cleanupMode,
   stoppedByFreeze,
   rollingIntake,
+  sharedTouches: sharedPlan,
   intakeRuns,
   intakeChecks,
   selfStoppedLanes,
