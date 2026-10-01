@@ -43,6 +43,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
+  // #5932: de 35 felter for alle hold (ejer 29/9). Kataloget bliver bag training_programs.
+  { key: "training_program_cells", area: "training", label: "Træningsfelter pr. løbsdag (35 felter)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
