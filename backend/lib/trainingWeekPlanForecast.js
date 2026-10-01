@@ -137,7 +137,10 @@ export function buildTeamFatigueForecast({
     });
     const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig });
     if (fatigue == null) continue;
-    out[rider.id] = { fatigue, band: forecastBand(fatigue) };
+    // raceSlots: dagens felter der er laast af et loeb (regel A). Gitteret viser
+    // dem som etape; de oevrige felter er traening.
+    const raceSlots = slots.flatMap((slot, index) => (slot.intensity === "race" ? [index] : []));
+    out[rider.id] = { fatigue, band: forecastBand(fatigue), raceSlots };
   }
   return out;
 }

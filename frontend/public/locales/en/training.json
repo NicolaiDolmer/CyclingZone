@@ -472,7 +472,11 @@
     "audience_manyRaceDays": "Many race days",
     "audience_youngStars": "Young stars, few races",
     "audience_veterans": "Riders 30+",
-    "audience_youthSquads": "Junior, U23, academy"
+    "audience_youthSquads": "Junior, U23, academy",
+    "cellsIntro": "Each day has five race-day cells. The weekday's session fills them. Change single cells to choose how many are recovery.",
+    "seededHint": "Shows what the rider trains now. Your first change saves it as his own plan.",
+    "stageLocked": "Stage",
+    "stageLockedTitle": "Locked by the race"
   },
   "dailyReceipt": {
     "status": {
@@ -504,5 +508,14 @@
     "progressUnavailable": "Detailed progress unavailable",
     "previousSeason": "Previous season",
     "change": "{from} to {to}"
+  },
+  "forecast": {
+    "label": "Fatigue tonight",
+    "value": "approx. {value}",
+    "band_ok": "Fresh",
+    "band_warn": "Tired",
+    "band_risk": "Above the injury limit",
+    "aria": "Fatigue tonight: approx. {value}. {band}",
+    "ariaSettled": "Fatigue tonight: {value}. {band}"
   }
 }
