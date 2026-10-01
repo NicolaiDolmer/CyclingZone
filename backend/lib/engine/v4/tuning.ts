@@ -572,6 +572,11 @@ const cobblesExtra = {
   punchFinaleMultiplier: 1.15, // ekstra vaegt naar route.finale_type === 'punch' ("udvalgte punch-etaper" — brosten+punch-kombinationen mor-spec §3.1 fremhaever) — multiplicerer effectFractionBounds, stadig clampet til [0,1]-krydsningstidsandel af hook'en
   incidentRiskBase: 0.008, // basis-styrt-risiko pr. reel-vaegt-cobbles-passage (F3-fundament for brosten-kaos, groups.ts's RaceGroup.cohesion-kommentar), samme stoerrelsesorden som tuning.descent.incidentRiskBase
   incidentRiskCobblestoneDampening: 0.00012, // daempning pr. cobblestone-evne-point (0-99-skala) — samme subtraktive moenster som tuning.descent.incidentRiskDescendingDampening
+  // #6046 (balance, KUN under orders_gc_v1 og KUN paa disse profiler; se mechanics/cobbles.ts's #6046-blok)
+  tieredProfileTypes: ["cobbles", "gravel"] as ProfileType[],
+  maxSplitTiers: 4, // en sektor deler de afhaengte i op til saa mange grupper efter brostens-underskud
+  tieredEffectFractionBounds: [0.15, 0.8] as const, // tidstab-baand for de lagdelte grupper (andel af sektorens krydsningstid)
+  finaleCobblestoneShare: 0.66, // brostensevnens andel af finale-placeringen paa brosten/grus (resten: finale-typens vektor)
 };
 
 /** M8 additiv cobbles-tuning (deep-frosset). Se cobblesExtra-kommentaren ovenfor. */
