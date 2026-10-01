@@ -235,6 +235,24 @@ test("points_earned/prize_money udledes af (result_type, rank) via lookup", () =
   assert.equal(gcLast.points_earned, 0); // rank 8 ikke seedet → 0
 });
 
+// #5956: en etape uden bjergpoint (flad enkeltstart) maa aldrig udbetale bjerg-trojepraemie.
+test("#5956: bjerg-trojepraemie kraever bjergpoint — flad enkeltstart giver 0 point til rank 1", () => {
+  const flatStages = [
+    { stage_number: 1, profile_type: "itt", demand_vector: DEMAND_VECTORS.itt ?? DEMAND_VECTORS.flat },
+    { stage_number: 2, profile_type: "flat", demand_vector: DEMAND_VECTORS.flat },
+    { stage_number: 3, profile_type: "itt", demand_vector: DEMAND_VECTORS.itt ?? DEMAND_VECTORS.flat },
+  ];
+  const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: flatStages, entrants: ENTRANTS, pointsLookup: POINTS });
+  // Raekkerne findes stadig (fuldt klassement, #2081) — men uden praemie, fordi ingen har bjergpoint.
+  assert.equal(rowsBy(resultRows, "mountain_day").length, ENTRANTS.length * 2);
+  for (const r of rowsBy(resultRows, "mountain_day")) assert.equal(r.points_earned, 0, `mountain_day rank ${r.rank}`);
+  for (const r of rowsBy(resultRows, "mountain")) assert.equal(r.points_earned, 0, `mountain rank ${r.rank}`);
+  // Kontrol: med bjergetaper scorer klatrerne, og rank 1 beholder sit trojepoint.
+  const withMountains = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS }).resultRows;
+  assert.equal(rowsBy(withMountains, "mountain_day").find((r) => r.stage_number === 2 && r.rank === 1).points_earned, 5);
+  assert.equal(rowsBy(withMountains, "mountain").find((r) => r.rank === 1).points_earned, 40);
+});
+
 test("finish_time: sat på stage+gc+leader (display), null på øvrige trøjer/hold", () => {
   const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   for (const r of rowsBy(resultRows, "stage")) assert.match(r.finish_time, /^\+\d+:\d{2}$/);

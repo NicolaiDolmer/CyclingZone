@@ -254,13 +254,24 @@ export async function rederiveSeasonRacePoints({
     const results = await fetchAllRows(() => (
       supabase
         .from("race_results")
-        .select("id, result_type, rank, points_earned, prize_money")
+        .select("id, result_type, rank, points_earned, prize_money, rider_id, stage_number, kom_points")
         .eq("race_id", race.id)
         .order("id", { ascending: true })
     ));
 
+    // #5956: bjerg-trojepraemien kraever bjergpoint (samme regel som raceRunner).
+    // Kun passage-aeraen (kom_points != null) gates; legacy-raekker uaendrede.
+    const komStages = new Map();
+    for (const r of results || []) {
+      if (r.result_type !== "stage" || r.kom_points == null) continue;
+      komStages.set(r.rider_id, [...(komStages.get(r.rider_id) || []), [r.stage_number, Number(r.kom_points) || 0]]);
+    }
+    const komScored = (row) => !komStages.has(row.rider_id)
+      || komStages.get(row.rider_id).some(([n, k]) => n <= row.stage_number && k > 0);
+
     for (const row of results || []) {
-      const pts = lookup[`${row.result_type}__${row.rank}`] || 0;
+      const mountainRow = row.result_type === "mountain" || row.result_type === "mountain_day";
+      const pts = mountainRow && !komScored(row) ? 0 : lookup[`${row.result_type}__${row.rank}`] || 0;
       const prize = prizeMoneyForPoints(pts, race);
       // Skip rækker der allerede matcher → undgå unødige writes.
       if (row.points_earned === pts && row.prize_money === prize) continue;
