@@ -1833,9 +1833,9 @@ export default function TrainingPage() {
 
   const sessionFor = (riderId, column) => {
     if (racingFor(riderId, column)) return null;
-    // #4629: står rytteren på et program (beta), viser en ikke-afregnet celle
-    // programmets celle for i dag i netop den løbsdag — samme regel som motoren.
-    if (programsOn && column.state !== "done") {
+    // #4629/#5932: står rytteren på et program, viser en ikke-afregnet celle
+    // feltet for i dag i netop den løbsdag. Gates på cellsOn = samme flag som motoren.
+    if (cellsOn && column.state !== "done") {
       const fromProgram = programSessionToday(riderWeekPlans[riderId], WEEKDAY_KEYS, todayWeekday, column.index);
       if (fromProgram) return fromProgram;
     }
@@ -2624,7 +2624,7 @@ export default function TrainingPage() {
         onReset={() => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key))}
         message={isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null}
         // #4629: ryttere på et program vises i Program-gitteret, ikke her som intensiteter.
-        ownPlans={ridersWithOwnWeekPlan.filter((r) => !(programsOn && isProgramPlan(riderWeekPlans[r.id], WEEKDAY_KEYS))).map((r) => ({
+        ownPlans={ridersWithOwnWeekPlan.filter((r) => !(cellsOn && isProgramPlan(riderWeekPlans[r.id], WEEKDAY_KEYS))).map((r) => ({
           id: r.id,
           name: `${r.firstname} ${r.lastname}`,
           summary: WEEKDAY_KEYS.map(
@@ -2845,7 +2845,7 @@ export default function TrainingPage() {
               <span className="ms-1 font-data text-2xs tabular-nums text-cz-3">{overview.needsDay.length}</span>
             )}
           </Tab>
-          <Tab value="weekplan">{programsOn ? t("tabs.program") : t("tabs.weekplan")}</Tab>
+          <Tab value="weekplan">{cellsOn ? t("tabs.program") : t("tabs.weekplan")}</Tab>
           <Tab value="development">{t("tabs.development")}</Tab>
           <Tab value="report">{t("tabs.report")}</Tab>
         </TabList>

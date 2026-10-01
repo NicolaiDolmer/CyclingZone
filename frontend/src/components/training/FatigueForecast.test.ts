@@ -38,6 +38,15 @@ test("wiring: rytterkortet (desktop + telefon) og gitteret faar prognosen", () =
   assert.match(read("TrainingProgramsPanel.tsx"), /training-program-cell-locked/);
 });
 
+test("I dag-tabel, egne planer og fanenavn gates paa felt-flaget (samme som motoren)", () => {
+  const page = read("../../pages/TrainingPage.jsx");
+  // cells=on + katalog=off: tabellen skal vise feltet, ikke ugedagens gamle session.
+  assert.match(page, /if \(cellsOn && column\.state !== "done"\)/);
+  assert.match(page, /!\(cellsOn && isProgramPlan\(riderWeekPlans\[r\.id\]/);
+  assert.match(page, /\{cellsOn \? t\("tabs\.program"\) : t\("tabs\.weekplan"\)\}/);
+  assert.doesNotMatch(page, /programsOn && column\.state/);
+});
+
 test("i18n: EN og DA har de samme prognose-noegler", () => {
   const en = JSON.parse(read("../../../public/locales/en/training.json"));
   const da = JSON.parse(read("../../../public/locales/da/training.json"));
