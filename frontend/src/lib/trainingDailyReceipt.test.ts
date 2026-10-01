@@ -195,6 +195,28 @@ test("#5915: the successor must be its date's first expected slot, unquarantined
   assert.equal(pct([...old(), noDays]), null);
 });
 
+test("#5915: prod-shaped dates without date_game_days chain when game days continue exactly", () => {
+  // Prod: 29/9 = game days 5-9, 30/9 = 10-14, 1/10 = 15-18; none stored date_game_days.
+  const tick = (tickDate: string, day: number, before: number) => {
+    const r = withoutAfter(0, tickDate, { game_day: day, progress_before: { tempo: before }, gains: {}, gains_detail: {} });
+    r.id = `${tickDate}-${day}`; r.game_day = day; r.report.condition_settled = true;
+    delete (r.report as Record<string, unknown>).date_game_days;
+    return r;
+  };
+  const rows = [
+    ...[5, 6, 7, 8, 9].map(d => tick("2026-09-29", d, 0.1)),
+    ...[10, 11, 12, 13, 14].map(d => tick("2026-09-30", d, 0.3)),
+    ...[15, 16, 17, 18].map(d => tick("2026-10-01", d, 0.6)),
+  ];
+  const pct = (input: typeof rows, tickDate: string) =>
+    aggregateTrainingRuns(input).find(r => r.tick_date === tickDate)!.report.riders[0].gain_percent.tempo;
+  assert.equal(pct(rows, "2026-09-29"), 20, "29/9 ends where 30/9 (game day 10) starts");
+  assert.equal(pct(rows, "2026-09-30"), 30, "30/9 ends where 1/10 (game day 15) starts");
+  // A gap (successor's first stored slot is not previous last + 1) stays unknown.
+  const gap = rows.filter(r => !(r.tick_date === "2026-09-30" && r.game_day === 10));
+  assert.equal(pct(gap, "2026-09-29"), null);
+});
+
 test("#5915: legacy (non per-date) days are never chained", () => {
   const legacy = [withoutAfter(0), withoutAfter(1)];
   const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
