@@ -108,7 +108,6 @@ export default function TrainingTodayTable({
   renderNoDay,
   toolbar,
   empty = null,
-  showSeason = true,
   forecastSettled = false,
 }: {
   rows: TodayRow[];
@@ -133,14 +132,11 @@ export default function TrainingTodayTable({
   renderNoDay: (riderId: string) => ReactNode;
   toolbar: ReactNode;
   empty?: ReactNode;
-  // #6025 (ejer-valg A 1/10): Today handler kun om i dag; saesonens point bor
-  // i fanen Development, naar beta-fladen er aaben.
-  showSeason?: boolean;
   forecastSettled?: boolean;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
-  const colCount = 5 + (showScore ? 1 : 0) + columns.length + (showSeason ? 1 : 0);
+  const colCount = 5 + (showScore ? 1 : 0) + columns.length;
   const tonightOn = [...rows, ...(groups ?? []).flatMap((g) => g.rows)].some((r) => r.fatigueTonight);
   // Justeringen saettes pr. kolonne, saa text-left aldrig kaemper med
   // text-center/text-right i samme klasseliste.
@@ -267,11 +263,6 @@ export default function TrainingTodayTable({
               </td>
             ))
           )}
-          {showSeason && (
-          <td className={`${cellBase} w-[84px] pe-4 text-right font-data text-[13px] tabular-nums text-cz-1`}>
-            {row.seasonPoints != null ? `+${row.seasonPoints}` : <span className="text-cz-3">—</span>}
-          </td>
-          )}
         </tr>
         {isOpen && (
           <tr data-testid="training-rider-detail">
@@ -345,7 +336,7 @@ export default function TrainingTodayTable({
                   {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}
                 </th>
               ))}
-              {showSeason && <th className={`${headClass} pe-4 text-right`}>{t("today.colSeasonPoints")}</th>}
+              {/* #6025/#6030: Today handler kun om i dag; saesonens point bor i Development. */}
             </tr>
           </thead>
           <tbody>
