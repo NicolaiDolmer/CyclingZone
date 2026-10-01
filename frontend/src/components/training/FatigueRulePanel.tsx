@@ -23,6 +23,7 @@ import {
 const BASE = "/api/training/fatigue-rules";
 const DEFAULT_THRESHOLD = 70;
 
+const controlClass = "rounded-cz border border-cz-border bg-cz-card px-2.5 py-1.5 text-sm text-cz-1 disabled:opacity-50";
 const inputClass = "w-full rounded-cz border border-cz-border bg-cz-card px-2.5 py-1.5 text-sm text-cz-1 disabled:opacity-50";
 const labelClass = "font-data text-2xs font-semibold uppercase tracking-[.04em] text-cz-3";
 
@@ -324,7 +325,7 @@ function ExceptionRow({
         disabled={busy}
         onChange={(e) => setMode(e.target.value as ExceptionMode)}
         aria-label={name}
-        className={`${inputClass} w-auto`}
+        className={`${controlClass} min-h-11 sm:min-h-0`}
       >
         {(["team", "own", "off"] as const).map((m) => <option key={m} value={m}>{t(`fatigueRule.mode_${m}`)}</option>)}
       </select>
@@ -341,14 +342,14 @@ function ExceptionRow({
             aria-label={t("fatigueRule.aboveLabel")}
             aria-invalid={!valid}
             onChange={(e) => setThreshold(e.target.value)}
-            className={`${inputClass} w-20 font-data tabular-nums`}
+            className={`${controlClass} min-h-11 w-20 font-data tabular-nums sm:min-h-0`}
           />
           <select
             value={fallback}
             disabled={busy}
             aria-label={t("fatigueRule.insteadLabel")}
             onChange={(e) => setFallback(e.target.value as FatigueFallback)}
-            className={`${inputClass} w-auto`}
+            className={`${controlClass} min-h-11 sm:min-h-0`}
           >
             {FATIGUE_FALLBACKS.map((f) => <option key={f} value={f}>{fallbackLabel(f)}</option>)}
           </select>

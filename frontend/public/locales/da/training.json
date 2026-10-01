@@ -520,8 +520,6 @@
     "saving": "Gemmer…",
     "saved": "Gemt",
     "error": "Kunne ikke gemme. Prøv igen.",
-    "overNow_one": "{{count}} rytter er over grænsen nu",
-    "overNow_other": "{{count}} ryttere er over grænsen nu",
     "exceptions": "Undtagelser",
     "exceptionsEmpty": "Alle ryttere følger holdreglen.",
     "addException": "Tilføj en undtagelse for en rytter",
@@ -530,9 +528,9 @@
     "mode_off": "Ingen grænse",
     "stripTitle": "Seneste 7 dage",
     "stripEmpty": "Ingen regel slog til denne dag.",
-    "stripCount_one": "{{count}} rytter",
-    "stripCount_other": "{{count}} ryttere",
-    "reason_fatigue": "Træthed {{fatigue}} over {{threshold}}: {{fallback}}",
-    "reason_after_stage": "Dagen efter en etape: {{fallback}}"
+    "reason_fatigue": "Træthed {fatigue} over {threshold}: {fallback}",
+    "reason_after_stage": "Dagen efter en etape: {fallback}",
+    "overNow": "{count, plural, one {# rytter er} other {# ryttere er}} over grænsen nu",
+    "stripCount": "{count, plural, one {# rytter} other {# ryttere}}"
   }
 }
