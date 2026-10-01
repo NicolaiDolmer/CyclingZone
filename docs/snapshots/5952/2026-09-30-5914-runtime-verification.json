@@ -1,0 +1,44 @@
+{
+  "observed_at_utc": "2026-09-30 14:05:05 UTC",
+  "mode": "READ ONLY",
+  "scope": "Actual stage-race stages after 2026-09-29 22:00 Europe/Copenhagen",
+  "samples": [
+    {
+      "race": "La Course au Soleil",
+      "stage": 5,
+      "profile": "flat",
+      "executed_at_utc": "2026-09-30T09:00:14.765281Z",
+      "engine_version": 4,
+      "passages": 2,
+      "rows_checked": 16
+    },
+    {
+      "race": "Tour de la Somme",
+      "stage": 1,
+      "profile": "hilly",
+      "executed_at_utc": "2026-09-30T13:01:36.689025Z",
+      "engine_version": 4,
+      "passages": 4,
+      "rows_checked": 25
+    }
+  ],
+  "supplemental": {
+    "race": "Závod Mladých Krušnohor",
+    "stage": 3,
+    "profile": "flat",
+    "purpose": "Positive observation of the points-jersey exception for a captain in the peloton",
+    "passages": 1,
+    "rows_checked": 15,
+    "jersey_exception_observed": true
+  },
+  "checks": {
+    "total_passages": 7,
+    "total_rows": 56,
+    "persisted_rank_points_vs_timeline_mismatches": 0,
+    "main_sample_group_order_violations": 0,
+    "role_priority_violations": 0
+  },
+  "method": "Replay rider memberships from immutable entrant IDs and chronological timeline formation/split/merge/attack events; account for incidents. Compare stored passages to timeline tops, current groups and entry roles. Derive pre-stage jerseys from prior stage rows among active entrants. Check role priority before non-contenders in the same large group.",
+  "limits": "Bounded runtime samples, not proof of every future race. No claim about exact instantaneous gaps between emitted gap updates. No row-level production payload or tuning values published.",
+  "production_writes": false
+}

@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
-    "version": "7.312",
-    "date": "2026-09-28",
+    "version": "7.328",
+    "date": "2026-10-01",
     "label": "Beta",
     "changes": [
       {
@@ -17,6 +17,235 @@ export const PATCHES = [
           "body": "En rytters profil viser nu omdømmet, et niveau fra Ukendt til Legende, og de resultater der har flyttet det. Rytterdatabasen, dine holdsider inkl. U23 og Junior, auktioner og markedet viser samme tal. Ved lanceringen kan det ikke være lavere end rytterens gamle popularitet. Bestyrelsen bruger det til nye stjernemål; mål, du allerede har aftalt, beholder deres oprindelige måling."
         },
         "refs": [4956]
+      }
+    ]
+  },
+  {
+    "version": "7.327",
+    "date": "2026-10-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Chasing no longer pushes escapees backwards",
+          "body": "What changed\nA pursuing group closes the gap by moving forward. Catching a breakaway no longer moves its riders backwards towards a distant group.\n\nWhat it means for you\nThe correction applies to upcoming stage calculations. Completed results are unchanged."
+        },
+        "da": {
+          "title": "Jagten flytter ikke udbrydere baglæns",
+          "body": "Hvad er ændret\nJagtgruppen lukker hullet ved at rykke frem. Indhentning flytter ikke længere udbryderne baglæns mod en fjern gruppe.\n\nHvad betyder det for dig\nRettelsen gælder kommende etapeberegninger. Afsluttede resultater ændres ikke."
+        },
+        "refs": [
+          5951
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Morning breakaways and later attacks have separate markers",
+          "body": "What changed\nThe stage results distinguish morning breakaways from later attacks. The film shows recorded regrouping and descent attacks, and omits a breakaway curve when the actual pursuit distance is not recorded.\n\nWhat it means for you\nWhere complete native history exists, the markers follow the recorded events. Older stages without that history retain their stored markers."
+        },
+        "da": {
+          "title": "Morgenudbrud og senere angreb får hver sin markering",
+          "body": "Hvad er ændret\nEtaperesultatet skelner mellem morgenudbrud og senere angreb. Filmen viser registrerede samlinger og nedkørselsangreb, og udelader udbrudskurven, når den faktiske jagtafstand ikke er registreret.\n\nHvad betyder det for dig\nHvor der er en komplet historik fra den nye motor, følger markeringerne det registrerede forløb. Ældre etaper uden den historik beholder de gemte markeringer."
+        },
+        "refs": [
+          5953,
+          5954
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.326",
+    "date": "2026-09-30",
+    "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "One receipt for the whole training date",
+        "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
+      },
+      "da": {
+        "title": "Én kvittering for hele træningsdatoen",
+        "body": "For beta-testere samler træningsrapporten datoens aktiviteter i én kvittering pr. rytter. Åbn en rytter for at se de registrerede løbsdage, udvikling og ændringer i form og træthed. Hvor træningsscore er aktiveret, viser listen seneste registrerede passcore og detaljerne kvaliteten af hvert træningspas. Form, træthed og positiv udvikling bruger samme farver som ryttervisningerne. Afventende og usikre afregninger vises tydeligt. Sæsonkvitteringen samler hele datoens dokumenterede grundlag; udviklingshistorikken viser det seneste dokumenterede øjebliksbillede for hver dato."
+      },
+      "refs": [5915]
+    }]
+  },
+  {
+    "version": "7.325", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "improved", "audience": "player", "topic": "Planning",
+      "en": {
+        "title": "Clearer planning numbers",
+        "body": "Planning now shows each rider's order in its own column and labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
+      },
+      "da": {
+        "title": "Tydeligere planlægningstal",
+        "body": "Planlægning viser nu rytterens ordre i sin egen kolonne og har tydelige overskrifter for rute-match og aktuel form. Form vises også i låste etapeløbstrupper, og ukendte værdier adskilles fra nul."
+      },
+      "refs": [5930]
+    }]
+  },
+  {
+    "version": "7.324", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {"title": "Race days follow transferred riders", "body": "After a transfer, a rider cannot enter another race on a race day already used for the previous team. Races starting on later race days remain available."},
+      "da": {"title": "Løbsdage følger solgte ryttere", "body": "Efter et holdskifte kan en rytter ikke udtages til et andet løb på en løbsdag, han allerede har kørt for sit tidligere hold. Løb på senere løbsdage er fortsat tilgængelige."},
+      "refs": [5860]
+    }]
+  },
+  {
+    "version": "7.323", "date": "2026-09-30", "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Earlier training restored",
+        "body": "Training from an earlier day has been restored for affected riders with documented inputs. Riders with changed programs are reviewed separately."
+      },
+      "da": {
+        "title": "Tidligere træning efterreguleret",
+        "body": "Træning fra en tidligere dag er efterreguleret for berørte ryttere med dokumenteret datagrundlag. Ryttere med ændrede programmer gennemgås særskilt."
+      },
+      "refs": [5928]
+    }]
+  },
+  {
+    "version": "7.322",
+    "date": "2026-09-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Team classification on equal time",
+          "body": "Teams that finish on equal time could appear in the wrong order. Equal time now follows the UCI tie-break: the placing sum of each team's three counting riders decides, then the best-placed rider if the sum also ties. In a stage race's overall team classification, equal time goes to the team with the most daily team wins, then the most second places, then the most third places and later placings, then the best-placed rider overall. Race names in Race centre and Today's stages are also easier to read. Team classifications from this season have been recalculated."
+        },
+        "da": {
+          "title": "Holdklassement ved lige tid",
+          "body": "Hold, der slutter på samme tid, kunne blive placeret i forkert rækkefølge. Lige tid følger nu UCI-reglen: placeringssummen for holdets tre tællende ryttere afgør, derefter holdets bedst placerede rytter, hvis summen også er ens. I et etapeløbs samlede holdklassement vinder ved lige tid det hold med flest dagssejre i holdklassementet, så flest andenpladser, så flest tredjepladser og senere placeringer, så den bedst placerede rytter i det samlede klassement. Løbsnavne i løbscenteret og dagens etaper er også lettere at læse. Holdklassementerne fra denne sæson er regnet om."
+        },
+        "refs": [
+          5952
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.321",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Training for riders without an initial condition",
+        "body": "Riders starting training without a saved condition now receive the usual starting condition before the day's activity is recorded. Existing fatigue, form and injuries are preserved. Earlier dates awaiting reconciliation are handled separately."
+      },
+      "da": {
+        "title": "Træning for ryttere uden en starttilstand",
+        "body": "Ryttere, der begynder træning uden en gemt tilstand, får nu den sædvanlige starttilstand, før dagens aktivitet registreres. Eksisterende træthed, form og skader bevares. Tidligere datoer, der afventer efterregulering, håndteres særskilt."
+      },
+      "refs": [5928]
+    }]
+  },
+  {
+    "version": "7.320",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Races",
+      "en": {
+        "title": "Sprints and climbs follow the race",
+        "body": "Riders in a breakaway now cross intermediate sprints and mountain tops first, as they should. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at sprints, hunters and free-role riders on climbs, plus the points or mountains leader at the start of the stage. Captains and helpers roll through. Points already awarded on 28 and 29 September stay as they are."
+      },
+      "da": {
+        "title": "Spurter og stigninger følger løbet",
+        "body": "Ryttere i et udbrud passerer nu mellemsprinter og bjergtoppe først, som de skal. I en større gruppe kæmper kun pointjægerne om resten: sprinterkaptajner, jægere og ryttere med fri rolle ved spurter, jægere og ryttere med fri rolle på stigninger, plus den der førte point- eller bjergkonkurrencen ved etapens start. Kaptajner og hjælpere ruller igennem. Point, der allerede er uddelt 28. og 29. september, bliver stående."
+      },
+      "refs": [5914]
+    }]
+  },
+  {
+    "version": "7.319",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Yesterday's extra fatigue corrected",
+        "body": "Fatigue and form from the first day of the season have been recalculated with the fixed model. Riders who got far too tired yesterday are back where they should be, and the small form boost from the error is removed as well."
+      },
+      "da": {
+        "title": "Gårsdagens ekstra træthed er rettet",
+        "body": "Træthed og form fra sæsonens første dag er regnet om med den rettede model. Ryttere, der blev alt for trætte i går, er tilbage, hvor de skal være, og det lille formløft fra fejlen er også fjernet."
+      },
+      "refs": [5928, 5912]
+    }]
+  },
+  {
+    "version": "7.318",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [{
+      "category": "fixed", "audience": "player", "topic": "Training",
+      "en": {
+        "title": "Steadier fatigue and form",
+        "body": "Race and training now share a daily assessment of fatigue, form and training injury risk. Delayed races only hold up the riders involved. Race development and recovery between stages now follow actual participation."
+      },
+      "da": {
+        "title": "Mere stabil træthed og form",
+        "body": "Løb og træning indgår nu i en samlet daglig vurdering af træthed, form og risiko for træningsskader. Forsinkede løb berører kun de involverede ryttere. Udvikling fra løb og restitution mellem etaper følger nu den faktiske deltagelse."
+      },
+      "refs": [5888, 5928]
+    }]
+  },
+  {
+    "version": "7.317",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction contracts through a season change",
+          "body": "If an auction finishes after one season ends and before the next begins, a rider who needs a new contract now receives one for the coming season. The winner will not lose that rider to an already expired contract at the season switch. Existing contracts still carry over unchanged."
+        },
+        "da": {
+          "title": "Auktionskontrakter gennem sæsonskiftet",
+          "body": "Slutter en auktion efter én sæson er afsluttet og før den næste begynder, får en rytter, der mangler kontrakt, nu en kontrakt for den kommende sæson. Vinderen mister ikke rytteren til en allerede udløbet kontrakt ved skiftet. Eksisterende kontrakter følger stadig med uændret."
+        },
+        "refs": [5847]
+      }
+    ]
+  },
+  {
+    "version": "7.316",
+    "date": "2026-09-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Youth groups stay full when an AI club leaves",
+          "body": "An AI club finishing its last races now keeps its U23 and Junior places until it can safely leave. Another club with riders ready to race then takes those places. Your club and your own selections stay where they are."
+        },
+        "da": {
+          "title": "Ungdomspuljer forbliver fyldte, når et AI-hold forlader dem",
+          "body": "Et AI-hold, der kører sine sidste løb, beholder nu pladserne i U23- og juniorpuljerne, indtil det kan forlade dem uden at afbryde et løb. Et andet hold med startklare ryttere overtager pladserne. Dit hold og dine egne udtagelser bliver, hvor de er."
+        },
+        "refs": [4753]
       }
     ]
   },

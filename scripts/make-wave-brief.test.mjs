@@ -114,6 +114,16 @@ test("optionelt ejerskab-afsnit medtages naar givet", () => {
   assert.match(brief, /scripts\/wave-lane-watch\.ps1/);
 });
 
+test("#5997: touches giver et afsnit om delte filer; uden touches er briefen uaendret", () => {
+  assert.doesNotMatch(generateBrief(baseConfig), /Delte filer/);
+  const brief = generateBrief({ ...baseConfig, touches: ["frontend/src/pages/X.jsx"], sharedWith: { files: [{ path: "frontend/src/pages/X.jsx", with: [7] }], mergeOrder: [3, 7] } });
+  assert.match(brief, /# Delte filer \(touches\) - kun minimal kobling/);
+  assert.match(brief, /Ejede filer maa du aendre frit/);
+  assert.match(brief, /minimal kobling \(faa linjer\)/);
+  assert.match(brief, /deles med #7/);
+  assert.match(brief, /#3 -> #7/);
+});
+
 // ===== Orkestrator-standard v2 (#5142) =====
 // Hver af disse svarer til en konkret fejl fra 11/9-boelgen. De er tests og
 // ikke prosa, fordi praecis den slags regler er dem der forsvinder naar en

@@ -6,6 +6,8 @@
 // træder DB-defaults i kraft — form har DEFAULT 50 og sættes automatisk. Det er præcis
 // den ønskede adfærd: vi opdaterer kun træthed, rører aldrig form.
 
+import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
+
 import { effortFatigueMultiplier } from "./raceRoles.js";
 import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
@@ -62,19 +64,19 @@ export function raceFatigueLoad(profileType) {
  * @param {{effort?: 'grupetto'|'save'|'normal'|'protect'|'all_out', efforts?: string[], restDaysBefore?: number[], recoveryAbility?: number}} [opts]
  * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
  */
-export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts, restDaysBefore, recoveryAbility = 50 } = {}) {
+export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts, restDaysBefore, recoveryAbility = 50, trainingOwnsRecovery = false } = {}) {
   let f = Number.isFinite(Number(startFatigue))
     ? Math.max(0, Math.min(100, Number(startFatigue)))
     : 0;
   const out = [];
   for (let i = 0; i < profileTypes.length; i++) {
     const rest = Array.isArray(restDaysBefore) ? (Number(restDaysBefore[i]) || 0) : 0;
-    if (rest > 0) f = restDayFatigue({ fatigue: f, restDays: rest, recoveryAbility });
+    if (!trainingOwnsRecovery && rest > 0) f = restDayFatigue({ fatigue: f, restDays: rest, recoveryAbility });
     const p = profileTypes[i];
     const stageEffort = Array.isArray(efforts) ? (efforts[i] || "normal") : effort;
     const mult = effortFatigueMultiplier(stageEffort);
     out.push(f);
-    f = Math.min(100, f + raceFatigueLoad(p) * mult);
+    if (!trainingOwnsRecovery) f = Math.min(100, f + raceFatigueLoad(p) * mult);
   }
   return out;
 }
@@ -95,9 +97,18 @@ export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "no
  * @param {{ supabase, riderIds: string[], profileType: string, now?: Date, effortByRider?: Map<string,string>|null }}
  * @returns {{ updated: number }}
  */
-export async function applyRaceFatigue({ supabase, riderIds, profileType, now = new Date(), effortByRider = null }) {
+export async function applyRaceFatigue({ supabase, riderIds, profileType, now = new Date(), effortByRider = null, raceId = null, stageNumber = null, loadSnapshot = null }) {
   if (!riderIds?.length) return { updated: 0 };
   const load = raceFatigueLoad(profileType);
+  if (await isTrainingConditionPerDateEnabled(supabase)) {
+    if (!raceId || !Number.isInteger(stageNumber) || stageNumber < 1) throw new Error('Normalized race load requires race and stage identifiers');
+    const { data, error } = await supabase.rpc('record_training_race_load', {
+      p_race_id: raceId, p_stage_number: stageNumber,
+      p_loads: loadSnapshot ?? raceConditionLoads(riderIds, profileType, effortByRider),
+    });
+    if (error) throw new Error(`race condition load ledger: ${error.message}`);
+    return { updated: 0, recorded: data?.recorded ?? 0 };
+  }
 
   const { data, error } = await supabase
     .from("rider_condition")
@@ -123,6 +134,10 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
   if (upErr) throw new Error(`rider_condition upsert (race fatigue): ${upErr.message}`);
 
   return { updated: rows.length };
+}
+
+export function raceConditionLoads(riderIds, profileType, effortByRider = null) {
+  return [...new Set(riderIds)].map(riderId => ({rider_id:riderId,load:raceFatigueLoad(profileType)*effortFatigueMultiplier(effortByRider?.get(riderId) ?? 'normal')}));
 }
 
 /**
@@ -175,6 +190,11 @@ export function restDayFatigue({ fatigue, restDays, recoveryAbility = 50, recove
 export async function applyGrandTourRestDayFatigue({ supabase, riderIds, restDays, recoveryAbilityByRider = new Map(), now = new Date() }) {
   if (!riderIds?.length || !restDays) return { updated: 0, fatigueByRider: new Map() };
 
+  // Recovery is already applied once per game day by the training tick.
+  // A free slot is not necessarily rest, and the race writer must not pre-credit it.
+  if (await isTrainingConditionPerDateEnabled(supabase)) {
+    return { updated: 0, fatigueByRider: new Map() };
+  }
   const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
   const recoveryOverrides = raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {};
 

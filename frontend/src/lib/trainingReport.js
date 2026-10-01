@@ -157,6 +157,7 @@ export function seasonAbilityGains(runs, riderId, seasonStart) {
     const rows = run?.report?.riders;
     if (!Array.isArray(rows)) continue;
     const row = rows.find((r) => r && r.rider_id === riderId);
+    if (row?.receipt_status === "pending" || row?.receipt_status === "reconciliation") return null;
     const gains = row?.gains;
     if (!gains) continue;
     for (const [ability, n] of Object.entries(gains)) {
@@ -235,6 +236,12 @@ export function abilityYesterdayGainPct(yesterdayPct) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+export function abilityReceiptGainPct(row) {
+  return abilityYesterdayGainPct(
+    Object.hasOwn(row, "dailyGainPct") ? row.dailyGainPct : row.yesterdayPct,
+  );
+}
+
 // #5539-fix (ejer 26/9, PR #5782 holdt tilbage): procent-kolonnen byggede KUN
 // på dagens kørsel (todayRun). Den findes først ved dagens tick (kl. 20) eller
 // "Train today", så kolonnen viste "—" på alle evner fra midnat til aften.
@@ -300,7 +307,7 @@ export function receiptGainKeys(gainDay) {
   }
 }
 
-export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains, progressBefore, gainsToday, gainDay } = {}) {
+export function abilityReceipt(abilityKeys, { abilities, progress, capped, seasonGains, progressBefore, gainsToday, gainPercentToday, gainDay } = {}) {
   const keys = Array.isArray(abilityKeys) ? abilityKeys : [];
   const lockedSet = new Set(Array.isArray(capped) ? capped : []);
   return keys.map((ability) => {
@@ -318,6 +325,7 @@ export function abilityReceipt(abilityKeys, { abilities, progress, capped, seaso
       gained: seasonGains ? Number(seasonGains[ability] ?? 0) : null,
       pct,
       locked,
+      ...(Number.isFinite(gainPercentToday?.[ability]) ? { dailyGainPct: locked ? null : gainPercentToday[ability] } : {}),
       yesterdayPct: abilityYesterdayPct({
         pct, locked, rawFrac,
         beforeFrac: Number(progressBefore?.[ability]),

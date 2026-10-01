@@ -17,12 +17,13 @@ before(async () => {
   await db.exec(await readFile(new URL('./testFixtures/aiPoolRetirement.sql', import.meta.url),'utf8'));
   // Execute the actual migration, not a JavaScript imitation of its SQL.
   await db.exec(await readFile(new URL('../../database/2026-09-09-4753-ai-pool-retirement.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../../database/2026-09-28-4753-youth-pool-retirement-replacement.sql', import.meta.url), 'utf8'));
 });
 after(async () => { await db?.close(); });
 beforeEach(async () => {
   await db.exec(`TRUNCATE race_stage_claims,notifications,rider_watchlist,auctions,swap_offers,transfer_listings,
     transfer_offers,race_results,race_entries,riders,races,teams,league_divisions CASCADE;
-    INSERT INTO league_divisions VALUES (13,4,5,'Division 4 F');
+    INSERT INTO league_divisions (id,tier,pool_index,label) VALUES (13,4,5,'Division 4 F');
     INSERT INTO teams(name,league_division_id) SELECT 'Manager '||i,13 FROM generate_series(1,23) i;
     INSERT INTO teams(id,name,is_ai,league_division_id) VALUES ('${AI}','AI',true,13);
     INSERT INTO riders(id,team_id,firstname,lastname) VALUES ('${RIDER}','${AI}','Test','Rider');`);
@@ -32,6 +33,20 @@ async function retire(id = AI) {
   return (await db.query('SELECT retire_ai_pool_team($1,$2) AS result', [id, NOW])).rows[0].result;
 }
 async function team() { return (await db.query('SELECT * FROM teams WHERE id=$1',[AI])).rows[0]; }
+async function seedYouthGroupForAi(targetId = AI) {
+  await db.exec(`INSERT INTO league_divisions (id,tier,pool_index,label) VALUES
+    (21,1,5,'U23 Group F'),(33,1,7,'Junior Group H');
+    INSERT INTO teams(name,u23_league_division_id,junior_league_division_id)
+      SELECT 'Youth peer '||i,21,33 FROM generate_series(1,23) i;`);
+  await db.query('UPDATE teams SET u23_league_division_id=21,junior_league_division_id=33 WHERE id=$1',[targetId]);
+}
+async function seedYouthSpare(id) {
+  await db.exec("INSERT INTO league_divisions (id,tier,pool_index,label) VALUES (14,4,3,'Spare senior pool') ON CONFLICT (id) DO NOTHING");
+  await db.query("INSERT INTO teams(id,name,is_ai,league_division_id) VALUES ($1,'Spare AI',true,14)",[id]);
+  await db.query(`INSERT INTO riders(team_id,firstname,lastname,squad,is_academy,is_retired)
+    SELECT $1,'Spare','Rider',CASE WHEN i<=6 THEN 'u23' ELSE 'junior' END,true,false
+    FROM generate_series(1,12) i`,[id]);
+}
 async function count() { return Number((await db.query('SELECT count(*) AS n FROM teams WHERE league_division_id=13')).rows[0].n); }
 
 // Only the transport is adapted; planning, mutations and constraints run in SQL.
@@ -180,6 +195,8 @@ test('draining keeps ongoing race entries and clears future entries', async () =
 test('retirement RPC is unavailable to anon and authenticated',async () => {
   for (const role of ['anon','authenticated']) {
     assert.equal((await db.query("SELECT has_function_privilege($1,'retire_ai_pool_team(uuid,timestamp with time zone)','EXECUTE') allowed",[role])).rows[0].allowed,false);
+    assert.equal((await db.query("SELECT has_function_privilege($1,'replace_retired_ai_youth_group(uuid)','EXECUTE') allowed",[role])).rows[0].allowed,false);
+    assert.equal((await db.query("SELECT has_function_privilege($1,'replace_retired_ai_youth_group(uuid,timestamptz)','EXECUTE') allowed",[role])).rows[0].allowed,false);
   }
 });
 
@@ -363,4 +380,101 @@ test('watchlist notification and cleanup commit only with retirement and are ret
   await retire();
   assert.equal(Number((await db.query('SELECT count(*) n FROM notifications')).rows[0].n),1);
   assert.equal(Number((await db.query('SELECT count(*) n FROM rider_watchlist')).rows[0].n),0);
+});
+
+test('#4753 repairs an already retired youth ghost with one guarded spare',async()=>{
+  const ghost='00000000-0000-0000-0000-000000000090';
+  const spare='00000000-0000-0000-0000-000000000091';
+  await db.query("INSERT INTO teams(id,name,is_ai,retired_at) VALUES ($1,'Retired ghost',true,$2)",[ghost,NOW]);
+  await seedYouthGroupForAi(ghost);
+  await seedYouthSpare(spare);
+  const result=(await db.query('SELECT replace_retired_ai_youth_group($1,$2) AS result',[ghost,NOW])).rows[0].result;
+  assert.equal(result.replaced,true);
+  assert.equal(result.replacementTeamId,spare);
+  assert.equal((await db.query('SELECT u23_league_division_id FROM teams WHERE id=$1',[ghost])).rows[0].u23_league_division_id,null);
+  const replacement=(await db.query('SELECT u23_league_division_id,junior_league_division_id FROM teams WHERE id=$1',[spare])).rows[0];
+  assert.deepEqual([replacement.u23_league_division_id,replacement.junior_league_division_id],[21,33]);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE u23_league_division_id=21')).rows[0].n),24);
+});
+
+test('#4753 keeps an in-flight AI racing, then replaces both youth places in its retirement transaction',async()=>{
+  const spare='00000000-0000-0000-0000-000000000091';
+  await seedYouthGroupForAi();
+  await seedYouthSpare(spare);
+  const race=(await db.query("INSERT INTO races(squad,stages_completed) VALUES ('junior',1) RETURNING id")).rows[0].id;
+  await db.query('INSERT INTO race_entries VALUES ($1,$2,$3)',[race,RIDER,AI]);
+  await excess();
+  assert.equal((await retire()).retired,false);
+  assert.equal((await team()).retired_at,null);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE junior_league_division_id=33')).rows[0].n),24);
+  await db.query("UPDATE races SET status='completed' WHERE id=$1",[race]);
+  assert.equal((await retire()).retired,true);
+  assert.equal((await db.query('SELECT junior_league_division_id FROM teams WHERE id=$1',[AI])).rows[0].junior_league_division_id,null);
+  assert.equal((await db.query('SELECT junior_league_division_id FROM teams WHERE id=$1',[spare])).rows[0].junior_league_division_id,33);
+  assert.equal(await count(),24);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE junior_league_division_id=33')).rows[0].n),24);
+});
+
+test('#4753 no safe spare aborts the whole retirement, including rider changes',async()=>{
+  await seedYouthGroupForAi();
+  await excess();
+  await assert.rejects(retire(),/no_safe_youth_replacement/);
+  assert.equal((await team()).retired_at,null);
+  assert.equal((await db.query('SELECT team_id FROM riders WHERE id=$1',[RIDER])).rows[0].team_id,AI);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE u23_league_division_id=21')).rows[0].n),24);
+});
+
+test('#4753 spare with an uncompleted youth entry is skipped',async()=>{
+  const ghost='00000000-0000-0000-0000-000000000090';
+  const busy='00000000-0000-0000-0000-000000000091';
+  const safe='00000000-0000-0000-0000-000000000092';
+  await db.query("INSERT INTO teams(id,name,is_ai,retired_at) VALUES ($1,'Retired ghost',true,$2)",[ghost,NOW]);
+  await seedYouthGroupForAi(ghost);
+  await seedYouthSpare(busy);
+  await seedYouthSpare(safe);
+  const race=(await db.query("INSERT INTO races(squad) VALUES ('u23') RETURNING id")).rows[0].id;
+  const rider=(await db.query("SELECT id FROM riders WHERE team_id=$1 AND squad='u23' LIMIT 1",[busy])).rows[0].id;
+  // A stale entry can omit team_id while still binding this AI's rider.
+  await db.query('INSERT INTO race_entries VALUES ($1,$2,NULL)',[race,rider]);
+  const result=(await db.query('SELECT replace_retired_ai_youth_group($1,$2) AS result',[ghost,NOW])).rows[0].result;
+  assert.equal(result.replacementTeamId,safe);
+});
+
+for (const scenario of [
+  { name: 'injured through retirement day', injury: '2026-09-09', pending: false, chooseSecond: true },
+  { name: 'injury expired before retirement day', injury: '2026-09-08', pending: false, chooseSecond: false },
+  { name: 'pending transfer', injury: null, pending: true, chooseSecond: true },
+]) {
+  test(`#4753 replacement counts eligible starters: ${scenario.name}`, async () => {
+    const first = '00000000-0000-0000-0000-000000000101';
+    const second = '00000000-0000-0000-0000-000000000102';
+    await excess(); await seedYouthGroupForAi();
+    await seedYouthSpare(first); await seedYouthSpare(second);
+    const rider = (await db.query("SELECT id FROM riders WHERE team_id=$1 AND squad='junior' ORDER BY id LIMIT 1", [first])).rows[0].id;
+    if (scenario.injury) await db.query('INSERT INTO rider_condition(rider_id,injured_until) VALUES ($1,$2)', [rider,scenario.injury]);
+    if (scenario.pending) await db.query('UPDATE riders SET pending_team_id=$1 WHERE id=$2', [second,rider]);
+    const result = await retire();
+    assert.equal(result.retired,true);
+    const selected = (await db.query('SELECT id FROM teams WHERE is_ai=true AND retired_at IS NULL AND u23_league_division_id=21')).rows;
+    assert.deepEqual(selected.map(row=>row.id),[scenario.chooseSecond ? second : first]);
+  });
+}
+
+test('#4753 no eligible youth reserve rolls back the entire retirement', async () => {
+  const spare = '00000000-0000-0000-0000-000000000101';
+  await excess(); await seedYouthGroupForAi(); await seedYouthSpare(spare);
+  await db.query("INSERT INTO rider_condition(rider_id,injured_until) SELECT id,'2026-09-09'::date FROM riders WHERE team_id=$1 AND squad='junior' ORDER BY id LIMIT 1",[spare]);
+  await assert.rejects(retire(),/no_safe_youth_replacement/);
+  assert.equal((await team()).retired_at,null);
+  assert.equal((await team()).u23_league_division_id,21);
+});
+
+test('#4753 replacement injury gate uses Copenhagen date across UTC midnight',async()=>{
+  const first='00000000-0000-0000-0000-000000000101';
+  const second='00000000-0000-0000-0000-000000000102';
+  await excess(); await seedYouthGroupForAi(); await seedYouthSpare(first); await seedYouthSpare(second);
+  await db.query("INSERT INTO rider_condition(rider_id,injured_until) SELECT id,'2026-09-09'::date FROM riders WHERE team_id=$1 AND squad='junior' ORDER BY id LIMIT 1",[first]);
+  const result=(await db.query('SELECT retire_ai_pool_team($1,$2) AS result',[AI,'2026-09-09T22:30:00Z'])).rows[0].result;
+  assert.equal(result.retired,true);
+  assert.equal((await db.query('SELECT u23_league_division_id FROM teams WHERE id=$1',[first])).rows[0].u23_league_division_id,21);
 });

@@ -76,15 +76,77 @@ function copyOf(program) {
 
 // Statefuld: tildeling/celle-rettelse muterer seedTraining.riderWeekPlans, saa
 // /api/training/me viser planen bagefter (samme kilde som i prod).
+// #5932: felterne for alle (training_program_cells). ?cells=off giver fladen
+// foer #5932 (et foer/efter-par); ?programs=off&cells=on er "alle spillere":
+// gitteret uden katalog.
+export function previewTrainingCellsEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("cells");
+    if (param === "on") localStorage.setItem("cz_mock_cells", "1");
+    if (param === "off") localStorage.setItem("cz_mock_cells", "0");
+    return localStorage.getItem("cz_mock_cells") !== "0";
+  } catch {
+    return true;
+  }
+}
+
+// Saaning paa preview: en enkel uge (rolig tur, hvile om soendagen). Serveren
+// saar fra rytterens faktiske plan (trainingWeekPlanCells.js).
+function previewSeed() {
+  return Object.fromEntries(WEEKDAYS.map((w) => {
+    const session = w === "sun" ? "rest" : w === "thu" ? "tempo" : "endurance";
+    return [w, { session, intensity: INTENSITY[session] }];
+  }));
+}
+
+// #5933: prognosen paa preview. ILLUSTRATIVE tal, ikke motorens: serveren
+// regner med aftenopgoerelsens egne funktioner, og preview kan ikke importere
+// backend-kode. Kun retningen er aegte (restitution saenker, haardt haever).
+const PREVIEW_LOAD = { rest: -3, recovery: -2, easy: 0, normal: 1, hard: 3, race: 4 };
+const TODAY_WEEKDAY = () => WEEKDAYS[(new Date().getDay() + 6) % 7];
+
+function previewForecast(seedTraining) {
+  const riders = {};
+  const ids = Object.keys(seedTraining.condition ?? {});
+  ids.forEach((id, index) => {
+    const days = seedTraining.riderWeekPlans?.[id] ?? previewSeed();
+    const entry = days[TODAY_WEEKDAY()] ?? { session: "endurance" };
+    const raceSlots = index === 0 ? [2] : [];
+    let fatigue = Number(seedTraining.condition[id]?.fatigue ?? 40);
+    for (let slot = 0; slot < SLOTS; slot += 1) {
+      const session = raceSlots.includes(slot) ? "race" : (entry.slots?.[slot] ?? entry.session);
+      fatigue += PREVIEW_LOAD[session === "race" ? "race" : INTENSITY[session]] ?? 0;
+    }
+    fatigue = Math.max(0, Math.min(100, Math.round(fatigue)));
+    riders[id] = { fatigue, band: fatigue >= 70 ? "risk" : fatigue > 60 ? "warn" : "ok", raceSlots };
+  });
+  return { available: true, settled: false, riders };
+}
+
 export function trainingProgramsMockRoute(method, pathname, body, seedTraining) {
   if (!/^\/api\/training\/programs(\/|$)/.test(pathname)) return null;
-  if (!previewTrainingProgramsEnabled()) {
-    return method === "GET" ? { status: 200, body: { enabled: false } } : { status: 404, body: { error: "not_found" } };
+  const catalogOn = previewTrainingProgramsEnabled();
+  const cellsOn = previewTrainingCellsEnabled();
+  if (!catalogOn && !cellsOn) {
+    return method === "GET" ? { status: 200, body: { enabled: false, cellsEnabled: false } } : { status: 404, body: { error: "not_found" } };
   }
   seedTraining.riderWeekPlans ??= {};
   const riderIds = Object.keys(seedTraining.condition ?? {});
+  if (method === "GET" && pathname.endsWith("/forecast")) {
+    return { status: 200, body: cellsOn ? previewForecast(seedTraining) : { available: false, riders: {} } };
+  }
   if (method === "GET" && /\/programs\/?$/.test(pathname)) {
-    return { status: 200, body: { enabled: true, slots: SLOTS, catalog: PREVIEW_TRAINING_PROGRAMS, assigned: { ...assigned } } };
+    const seeds = cellsOn
+      ? Object.fromEntries(riderIds.filter((id) => !seedTraining.riderWeekPlans[id]?.mon?.session).map((id) => [id, previewSeed()]))
+      : {};
+    return {
+      status: 200,
+      body: { enabled: catalogOn, cellsEnabled: cellsOn, slots: SLOTS, catalog: catalogOn ? PREVIEW_TRAINING_PROGRAMS : [], assigned: { ...assigned }, seeds },
+    };
+  }
+  if (!catalogOn && method === "POST") return { status: 404, body: { error: "not_found" } };
+  if (method === "PUT" && pathname.endsWith("/cell") && cellsOn && !seedTraining.riderWeekPlans[body?.riderId]?.mon?.session) {
+    seedTraining.riderWeekPlans[body.riderId] = previewSeed();
   }
   if (method === "POST" && pathname.endsWith("/apply")) {
     const program = PREVIEW_TRAINING_PROGRAMS.find((p) => p.key === body?.programKey);

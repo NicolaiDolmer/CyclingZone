@@ -10,10 +10,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
-import type { CatalogProgram } from "../../lib/trainingPrograms.ts";
+import type { CatalogProgram, ProgramWeekDays } from "../../lib/trainingPrograms.ts";
 
 type ProgramsResponse = {
   enabled?: boolean;
+  // #5932: felterne har eget flag; kataloget kan vaere slukket mens felterne er aabne.
+  cellsEnabled?: boolean;
+  // #5932: saaede uger for ryttere uden felter (det PUT /cell skriver ved foerste rettelse).
+  seeds?: Record<string, ProgramWeekDays>;
   catalog?: CatalogProgram[];
   assigned?: Record<string, string>;
 };
@@ -22,6 +26,8 @@ export type ProgramsResult = { ok: boolean; error?: string };
 
 export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<unknown> | void } = {}) {
   const [enabled, setEnabled] = useState(false);
+  const [cellsEnabled, setCellsEnabled] = useState(false);
+  const [seeds, setSeeds] = useState<Record<string, ProgramWeekDays>>({});
   const [catalog, setCatalog] = useState<CatalogProgram[]>([]);
   const [assigned, setAssigned] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -34,6 +40,8 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     const data = (res.data ?? {}) as ProgramsResponse;
     // `=== true`: et aeldre backend-svar uden feltet skal give den GAMLE flade.
     setEnabled(data.enabled === true);
+    setCellsEnabled(data.cellsEnabled === true || data.enabled === true);
+    setSeeds(data.seeds && typeof data.seeds === "object" ? data.seeds : {});
     setCatalog(Array.isArray(data.catalog) ? data.catalog : []);
     setAssigned(data.assigned && typeof data.assigned === "object" ? data.assigned : {});
   }, []);
@@ -70,5 +78,5 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     [send],
   );
 
-  return { enabled, catalog, assigned, busy, applyProgram, setCell, reload: load };
+  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, applyProgram, setCell, reload: load };
 }

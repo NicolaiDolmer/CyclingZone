@@ -9,6 +9,7 @@ import {
 // standard-fixturen (riders kommer fra Supabase-mocken: rider-1 = Ada Pedersen).
 
 const TRAINING_ME = {
+  dailyReceiptEnabled: true,
   enabled: true,
   betaTester: true,
   teamId: TEST_TEAM.id,
@@ -89,29 +90,19 @@ test("training report shows day summary, progress and breakthrough jump", async 
   // rapporten øverst på Train today og skubbede truppen ned under folden.
   await page.goto("/training?tab=report");
 
-  // Dags-opsummering (payoff, holdniveau) — DA-locale via stabilizePage.
-  await expect(page.getByText("Ryttere trænet")).toBeVisible();
-  await expect(page.getByText("Gennembrud")).toBeVisible();
-  await expect(page.getByText("I topform")).toBeVisible();
+  // #5915: the legacy fixture is one recorded date, not a falsely settled day.
+  const receipt = page.locator('[data-testid="daily-training-receipt"][data-date="2026-06-18"]');
+  await expect(receipt).toHaveAttribute("data-status", "recorded");
+  await expect(receipt.getByText("Rytterkvitteringer")).toBeVisible();
+  await expect(receipt.getByText("Hele evnepoint")).toBeVisible();
+  await receipt.getByRole("button", { name: /Ada Pedersen/ }).click();
+  const details = receipt.getByTestId("daily-receipt-rider-details");
+  await expect(details.getByLabel("71 til 72")).toBeVisible();
+  await expect(receipt.getByLabel("25 til 20")).toBeVisible();
+  await receipt.getByRole("button", { name: /Ming Zhou/ }).click();
+  await expect(receipt.getByTestId("daily-receipt-rider-details")).toContainText("Hviledag");
+  await expect(receipt).not.toContainText("Intet fokus valgt");
 
-  // Gennembrud vist som faktisk tal-spring (71 → 72), ikke flad "+1".
-  // #3924: samme spring findes nu OGSÅ i den sammenfoldede kvitteringslinje
-  // ("Landede et point i Klatring: 71 → 72."), så locatoren matcher rapportens
-  // rækkefølge ("71 → 72 Klatring") for at ramme den synlige Resultat-celle.
-  await expect(page.getByText(/71\s*→\s*72\s*Klatring/)).toBeVisible();
-
-  // Result-kolonnen har erstattet rå score: ingen "Score"-kolonne mere.
-  await expect(page.getByRole("columnheader", { name: "Resultat" }).first()).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Score" })).toHaveCount(0);
-
-  // Roster viser progress-kolonnen mod næste +1 (anticipation).
-  await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
-
-  // #1937: en hviledags-rytter MED valgt fokus vises som "Hviledag" i Næste +1,
-  // ikke som "Intet fokus valgt". Fokus-kolonnen viser stadig fokusset.
-  // #3924: exact, så kvitteringens "Hviledag. Træthed …"-linje ikke rammer strict mode.
-  await expect(page.getByText("Hviledag", { exact: true })).toBeVisible();
-  await expect(page.getByText("Intet fokus valgt")).toHaveCount(0);
 });
 
 // #3194: portræt-regression fra PR #3075 — den nye Type/Form/Træthed-underlinje

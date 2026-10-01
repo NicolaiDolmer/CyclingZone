@@ -9,12 +9,12 @@ import { injuryTimeLeft } from "../../lib/training.js";
 import { formatDate } from "../../lib/intl.js";
 
 // Farve-semantik: form høj = grøn, lav = rød. Træthed høj = rød, lav = grøn.
-function formColor(form) {
+export function formColor(form) {
   if (form >= 70) return "text-cz-success";
   if (form >= 40) return "text-cz-2";
   return "text-cz-danger";
 }
-function fatigueColor(fatigue) {
+export function fatigueColor(fatigue) {
   if (fatigue >= 70) return "text-cz-danger";
   if (fatigue >= 40) return "text-cz-2";
   return "text-cz-success";

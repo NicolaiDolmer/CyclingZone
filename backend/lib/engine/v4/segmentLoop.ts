@@ -41,6 +41,7 @@ import type {
   SegmentKind,
   StageInput,
   TeamOrder,
+  RulesRevision,
   TimelineEvent,
   Weather,
 } from "./types.ts";
@@ -82,6 +83,7 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
+import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -671,13 +673,11 @@ export function neutralizeBreakawayTempoDrift(
   if (!BREAKAWAY_NEUTRAL_KINDS.has(kind)) return tempoByGroup;
   const escapes = groups.filter((g) => g.kind === "breakaway" && g.origin === "breakaway");
   if (escapes.length === 0) return tempoByGroup;
-  const chase = [...groups]
-    .filter((g) => g.kind !== "breakaway")
-    .sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
-  const chaseTempo = chase ? tempoByGroup.get(chase.id) : undefined;
-  if (!chase || !chaseTempo || !isLetGoChaseGroup(chase.rider_ids.length)) return tempoByGroup;
   let out: Map<string, GroupTempo> | null = null;
   for (const escape of escapes) {
+    const chase = findChaseGroup(groups, escape);
+    const chaseTempo = chase ? tempoByGroup.get(chase.id) : undefined;
+    if (!chase || !chaseTempo || !isLetGoChaseGroup(chase.rider_ids.length)) continue;
     if (!(escape.gap_seconds <= chase.gap_seconds)) continue;
     const own = tempoByGroup.get(escape.id);
     if (!own || own.dtSeconds === chaseTempo.dtSeconds) continue;
@@ -735,6 +735,18 @@ export type SegmentLoopResult = {
 };
 
 /**
+ * #5955: StageInput.rules_revision -> den revision hooksene ser. Udeladt/null =
+ * "legacy". En ukendt vaerdi kaster: motoren maa aldrig gaette sig til nyeste
+ * regler (eller tavst koere legacy) for et loeb der er bundet til noget andet.
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function normalizeRulesRevision(raw: unknown): RulesRevision {
+  if (raw === undefined || raw === null || raw === "legacy") return "legacy";
+  if (raw === "orders_gc_v1") return "orders_gc_v1";
+  throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
+}
+
+/**
  * Koerer hele segment-listen for én etape og returnerer sluttilstand + tidslinje
  * + gruppe-snapshots. `simulateStageV4` (index.ts) bygger StageOutput oven paa
  * dette (results/loads afledes af sluttilstanden, finish-eventet tilfoejes der).
@@ -744,6 +756,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // T4 (tactics-orders-specen): kernen kraever ALDRIG ordrer — en manglende
   // eller tom liste er den neutrale default.
   const orders: readonly TeamOrder[] = input.orders ?? [];
+  const rulesRevision = normalizeRulesRevision(input.rules_revision);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
@@ -934,6 +947,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngFor: segmentRngFor(rngForFn, segmentIndex),
       rngForStage: rngForFn,
       orders,
+      jerseyLeaders: input.jersey_leaders ?? null,
+      rulesRevision,
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.

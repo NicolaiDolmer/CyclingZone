@@ -84,7 +84,7 @@ export default function RaceCentreCard({
         <div className="min-w-0">
           <Link
             to={raceHref}
-            className="block truncate font-display text-[22px] uppercase leading-none text-cz-1 hover:text-cz-accent-t"
+            className="block truncate font-display text-[22px] uppercase leading-tight text-cz-1 hover:text-cz-accent-t"
           >
             {raceName}
           </Link>

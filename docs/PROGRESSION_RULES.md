@@ -1,5 +1,19 @@
 # Rytterudviklingens regler — SSOT
 
+## Datoens afsluttende historik (#5915, 30/9)
+
+Beta-release styres af `training_daily_receipt` mod serverens godkendte
+beta/admin-status. Off, manglende flag eller læsefejl bruger den eksisterende
+kalenderhistorik. Kun den godkendte beta-gruppe får datoens nye projektion.
+
+Udviklingsvisningen foretrækker datoens seneste dokumenterede evnevektor fra
+`rider_ability_race_day_history` frem for kalenderhistoriens første gevinst.
+Sæsonnummer har forrang ved sæsonskifte; inden for sæson/dato bevares
+source-prioriteten, og den seneste løbsdag afgør løbsdags-snapshots.
+Baseline og sæsonskiftets snapshots bevares. Læsningen ændrer ingen
+historiske rækker, evner, rating eller potentiale. Ukendt daglig afregning
+er ukendt i kvitteringen, ikke et målt sæsonnul.
+
 > **GDD-retning, ejer 10/9 2026 (D-010):** En fornuftigt udviklet ung rytter kan
 > få en god hjælperkarriere uden at indfri managerens stjernedrøm. Det er et
 > almindeligt acceptabelt udfald; der skal være troværdige udviklingstegn og

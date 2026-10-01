@@ -49,6 +49,17 @@ export function computeStageRaceStanding(rows, teamId) {
     return mine ? { rank: mine.rank, total: finalRows.length, final: true } : null;
   }
 
+  // #5952: motorens egen løbende holdstilling (team_day, skrevet hver etape med
+  // UCI-tiebreak) vinder over afledningen, så dashboardet aldrig viser en anden
+  // rækkefølge end løbets side ved lige tid.
+  const teamDayRows = rows.filter((r) => r.result_type === "team_day");
+  if (teamDayRows.length) {
+    const maxStage = Math.max(...teamDayRows.map((r) => r.stage_number ?? 1));
+    const dayTeamRows = teamDayRows.filter((r) => (r.stage_number ?? 1) === maxStage);
+    const mine = dayTeamRows.find((r) => r.team_id === teamId);
+    return mine ? { rank: mine.rank, total: dayTeamRows.length, final: false } : null;
+  }
+
   const leaderRows = rows.filter((r) => r.result_type === "leader");
   if (!leaderRows.length) return null;
   const maxStage = Math.max(...leaderRows.map((r) => r.stage_number ?? 1));

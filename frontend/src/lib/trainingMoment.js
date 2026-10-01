@@ -83,6 +83,7 @@ export function variantIndex(seedParts, variantCount = MOMENT_VARIANT_COUNT) {
 function candidatesFor(rows, progressByRider) {
   const out = [];
   for (const row of rows) {
+    if (row.receipt_status === "pending" || row.receipt_status === "reconciliation") continue;
     const who = { riderId: row.rider_id, riderName: row.name };
     const jumps = isBreakthrough(row) ? breakthroughJumps(row) : [];
     if (jumps.length > 0) {
@@ -167,7 +168,9 @@ export function recentSignature(pastRuns) {
 // Returns a moment object ({ type, riderId?, riderName?, ability?, ... ,
 // variant }) or null when there is no report to feature at all.
 export function selectTrainingMoment(latestRun, progressByRider, pastRuns) {
-  const rows = latestRun?.report?.riders;
+  const recorded = latestRun?.report?.riders;
+  const rows = Array.isArray(recorded) ? recorded.filter(row =>
+    row.receipt_status !== "pending" && row.receipt_status !== "reconciliation") : null;
   const tickDate = latestRun?.tick_date ?? "";
   if (!Array.isArray(rows) || rows.length === 0) return null;
 

@@ -18,6 +18,8 @@ export const STORY_EVENT_WEIGHTS = {
   favorite_crack: 62,
   breakaway_caught: 56,
   breakaway_formed: 42,
+  group_merged: 38,
+  peloton_splits: 36,
   incident: 34,
   intermediate_sprint: 16,
   kom_passage: 14,
@@ -41,6 +43,7 @@ export const MAX_STORY_EVENTS = 5;
  */
 export function selectStoryEvents(events = []) {
   const candidates = (events || [])
+    .filter((event) => !(event?.type === "finale_attack" && event.params?.kind === "stage_decided"))
     .map((event, i) => ({ event, weight: STORY_EVENT_WEIGHTS[event?.type] ?? 0, i }))
     .filter((c) => c.weight > 0);
 

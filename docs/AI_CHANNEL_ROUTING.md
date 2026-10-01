@@ -1,89 +1,25 @@
-# AI_CHANNEL_ROUTING.md — kanal-til-task-matrix
+# AI-kanaler og opgaveansvar
 
-> **Læs hvornår:** Når du står med en opgave og er i tvivl om hvilken AI-kanal du skal bruge. Ellers skipper du den.
-> **Kilde:** Klassificering fra workflow-analyse 2026-05-22 (`docs/archive/2026-05-22-workflow-analyse.md`, sektion 3-4). Tracker: [#556](https://github.com/NicolaiDolmer/CyclingZone/issues/556).
-> **Sidst opdateret:** 2026-09-24 (cloud-session + go fra telefonen, ejer 24/9).
+Læs ved kanalvalg. Roller/claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md). Mandat: [AGENTS.md](../AGENTS.md). Resultatansvar/pilot: [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md). Opdateret 29/9/2026, Refs #605 #1341 #5467.
 
-## Hvorfor docen findes
+Claude Code og Codex kan begge eje et helt godkendt forløb: undersøgelse, design, implementation, verifikation, reviewkoordinering og release efter mandat. Vælg efter faktisk adgang og opgavens behov; et ekstra kanalskift kræves ikke af opgavetypen alene. Ejeren skal ikke transportere prompts mellem agenter.
 
-Du har 5 Claude-kanaler i daglig drift (Claude Code, Claude chat PC, Claude chat mobil, Cowork, Dispatch). Kanal-valg sker implicit hver gang — og det er det største enkelte hul i AI-workflowet per analyse i [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555). Denne doc gør valget eksplicit: hvilken kanal er optimal til hvilken task, og hvilke aldrig bør bruges. (Solo Claude-operation siden 2026-06-12 — ingen Codex/Manus-kanaler længere; opdateret 2026-06-25.)
-
-## Kanal-inventory (kort)
-
-| Kanal | God til | Dårlig til |
+| Behov | Kanal og ansvar | Grænse |
 |---|---|---|
-| **Claude Code** | Multi-fil edits, git/npm/tests/builds, hooks, plan mode, lokal verifikation/browser-smoke, connector-checks | Strategi-samtaler, lange research-tasks, visuel review |
-| **Claude chat (PC)** | Project Knowledge søgning, strategi/prioritering, web search, issue-grooming, generere Claude Code-prompts | Direkte fil-edits, lange agentiske workflows |
-| **Claude chat (mobil)** | Læse status, godkende plans, mini-beslutninger, dispatch-trigger | Lange kodeblokke, multi-fil context, komplekse prompts |
-| **Claude Cowork** | Lokale filsystem-tasks der IKKE er kode (Excel, screenshots, doc-formatering) | Kode-implementation, tasks der kræver løbende beslutning |
-| **Claude Code i cloud** (web, `cloud/`-grene, draft-PR'er) | Specs til næste bølge dagen før, docs, read-only audits, stackede kode-spor uden prod-adgang | Merge, flag, prod-skrivninger, billeder med ægte data (intet login), filer en lokal bølge ejer |
-| **Dispatch (mobil→PC)** | Asynkrone fetches/audits uden beslutninger | Beslutninger undervejs, high-blast-radius (deploy, migrations, sletninger) |
+| Arbejde i repoet, fejlundersøgelse, tests, deploykontrol | Claude Code eller Codex med den nødvendige adgang | Isoleret worktree, samme SSOT'er og gates |
+| Produktvalg, strategi, design | Ejerens valgte samtale; coding-agenten kan fremskaffe kode- og runtimebevis | Ejeren beslutter; nye spillerfeatures kræver godkendt design/testplan |
+| Uafhængigt PR-review | Frisk read-only reviewer i tilgængelig runtime | Krav + diff + testbevis; implementeren godkender ikke sig selv |
+| Beslutning fra telefonen | Mobil-chat med beslutningspakke og preview/billeder | UI-go kræver visuelt bevis, ikke kun tekst |
+| Spec eller audit i cloud | Cloud-session med afgrænset adgang og delt GitHub-handoff | Ingen antagelse om prod-login, lokale filer eller ret til merge/prod-skrivning |
+| Dokumenter og regneark | Kanal med relevante dokumentværktøjer, fx Cowork eller Codex | Adgang og filplacering verificeres; repo-edits følger git-disciplin |
+| Asynkront arbejde | Eksplicit bestilt opgave/automation med resultat og stopgrænser | Tavshed er ikke godkendelse; ingen ny monitor uden bestilling |
 
-> Cowork-note: "research preview" per Anthropic — vent med kritiske workflows til det er stable.
+**Arbejdsform besluttet 24/9:** specs kan forberedes i cloud dagen før; lokal implementering følger den færdige godkendte spec. UI-kort bærer preview-link og desktop-/mobilbilleder, så ejeren kan give go fra telefonen. Denne mulighed består; den kræver ikke et nyt kanal-hop, hvis den valgte hovedsession allerede har design og mandat.
 
-## Use-case → kanal matrix
+## Handoff og værktøjer
 
-| Use case | Optimal kanal | Alternative | Aldrig brug |
-|---|---|---|---|
-| Læs `NOW.md` status | Mobil-chat | PC-chat | Cowork (overkill) |
-| Tag beslutning om next slice | PC-chat | Mobil-chat | Claude Code |
-| Skriv Claude Code-prompt | PC-chat | Mobil-chat | Claude Code |
-| Implementer feature (multi-fil) | Claude Code PC1/PC2 | — | Chat, Cowork |
-| Bugfix (1 fil) | Claude Code | PC-chat (kun planning) | Mobil |
-| Investigation / kode-audit | Claude Code (plan mode) | PC-chat (read-only) | Mobil, Cowork |
-| Update `PatchNotesPage.jsx` | Cowork (draft) + Claude Code (commit) | Claude Code direkte | Mobil |
-| Excel race-results import | Cowork (lokalt) + Claude Code (DB) | Claude Code direkte (manuel kopi) | Chat, Mobil |
-| Audit memory drift ([#78](https://github.com/NicolaiDolmer/CyclingZone/issues/78)) | Dispatch (asynk) | PC-chat manuel | Mobil direkte |
-| Review PR | PC-chat | Mobil-chat (skim) | Claude Code |
-| Tjek deploy-status efter push | Mobil-chat (Vercel MCP) | PC-chat | Claude Code (overkill) |
-| Lokal verifikation af issue/PR | Claude Code | PC-chat (read-only) | Mobil |
-| Browser-smoke af lokal frontend | Claude Code (preview-tools / Playwright) | — | Mobil |
-| Vercel/Supabase/Sentry connector-check | Claude Code | PC-chat | Mobil hvis beslutning kræver context |
-| Generér postmortem efter incident | PC-chat (kontekst-tung) | Claude Code (læser logs) | Mobil, Cowork |
-| Strategisk overvejelse (fx fuld-tid) | PC-chat (lang dialog) | Mobil-chat (tænk-arbejde) | Claude Code |
-| Doc-konsolidering (fx 3 epics → 1) | PC-chat (planning) + Claude Code (commits) | Claude Code direkte | Mobil |
-| Tjek "hvor var jeg?" efter pause | Mobil-chat (`NOW.md`-læsning) | Claude Code SessionStart-hook | — |
-| Brand/marketing-tekst | PC-chat | Cowork (hvis lokale filer) | Claude Code |
-| Spec til næste bølge (ejer 24/9) | Claude Code i cloud, dagen før | PC-chat (beslutninger) | Lokal bølge uden færdig spec |
-| Go på et UI-kort (ejer 24/9) | Mobil-chat: Vercel-preview-link + billeder i kortet | PC-chat | Tekst-beskrivelse uden billeder |
+Behold én hovedsession som ansvarlig, indtil resultatet er verificeret eller et konkret handoff er nødvendigt. Delt handoff ligger på GitHub: mål, låste beslutninger, SHA/PR, verifikation og næste handling. Lokale caches er regenererbare.
 
-**Arbejdsform 24/9 (ejer):** specs skrives i cloud dagen før; lokal bygger kun fra en færdig spec; ejeren giver go fra telefonen, og hvert UI-kort bærer et Vercel-preview-link + billeder (desktop + mobil).
+Vælg model/effort efter opgave og måling i den faktisk tilgængelige runtime. Ingen fast leverandørrolle eller modelnavn fra en gammel matrix er et mandat. Bølger bruger de godkendte indgange og fælles kapacitetsgrænser. Skills bruges efter konkret behov; deres proces må ikke genåbne allerede givne godkendelser.
 
-**Vigtigste indsigt:** De fleste tasks involverer 2 kanaler, ikke 1. `PC-chat planlægger → Claude Code implementerer` er det mest almindelige mønster. Det er ikke ineffektivt — det er det rigtige.
-
-## Anti-patterns ("aldrig brug X til Y")
-
-Aldrig-kolonnen i matrixen er ikke konvention — det er konkrete fejl-modes vi har set:
-
-| Forbudt kombination | Hvorfor |
-|---|---|
-| **Claude Code som første kontakt med ny feature** | Optimerer mod kodebase-fokus → savner bredt overblik. Plan i chat først, implementér i Code. |
-| **Mobil til multi-fil context** | Skærmen er for lille, typing-friction for høj, læsbarhed på kodeblokke dårlig. Brug mobil til tænk-arbejde, ikke implementation. |
-| **Cowork til kode-implementation i kodebasen** | Det er Claude Codes domæne. Cowork er til ikke-kode lokale filer. |
-| **Chat til direkte fil-edits i kodebasen** | Container-filsystem ≠ dit faktiske setup. Brug chat til at generere prompts/diffs som Code udfører. |
-| **Dispatch til high-blast-radius tasks** | Deploy, migrations, sletninger må ikke køre uden din løbende verifikation. Dispatch er til low-risk asynk. |
-| **Claude Code til review af eksisterende PR** | Du ender med implementation-fokus. Chat er bedre til at læse + score + give feedback. |
-| **Chat til lange agentiske workflows** | Cowork gør det bedre med filsystem-adgang. |
-| **Mobil til komplekse prompts** | Typing-friction → genererer halvfærdige instruktioner. Skriv på PC, copy-paste til mobil hvis dispatch. |
-
-## Når du er i tvivl
-
-1. **Er det implementation i kodebasen?** → Claude Code.
-2. **Er det beslutning, strategi, eller "skal vi gøre X eller Y?"** → PC-chat.
-3. **Er du væk fra PC'en og det haster ikke?** → Mobil-chat eller Dispatch (afhængig af om det skal udføres eller bare gennemtænkes).
-4. **Er det lokale filer der IKKE er kode?** → Cowork.
-5. **Er der overlap?** → Det er normalt. Vælg første kanal efter listen ovenfor; den næste kanal kommer naturligt.
-
-## Cross-refs
-
-- Workflow-analyse (kilde): [`docs/archive/2026-05-22-workflow-analyse.md`](archive/2026-05-22-workflow-analyse.md), sektion 3-4.
-- ~~Agent-rolle-matrix~~ (RETIRED 2026-06-25 — solo Claude, ingen council; gravsten i [`docs/AI_COUNCIL.md`](AI_COUNCIL.md)).
-- Mobile → Claude Code task-format (5-linje template + eksempler): [`docs/prompts/mobile-to-code.md`](prompts/mobile-to-code.md) (B8, [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)).
-- Session-prompt templates (når Claude Code modtager en task):
-  - Bugfix: [`docs/prompts/bugfix.md`](prompts/bugfix.md) (5-fase flow med gates) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
-  - Investigation: [`docs/prompts/investigation.md`](prompts/investigation.md) (hypothesis-tracking, evidence-first) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
-  - Postmortem: [`docs/prompts/postmortem.md`](prompts/postmortem.md) (struktur for `.claude/learnings/`) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
-  - Ultrareview economy/finalization: [`docs/prompts/ultrareview-economy.md`](prompts/ultrareview-economy.md).
-- Dispatch-konkret playbook (safe/forbidden tasks + verification on return): [`docs/DISPATCH_PLAYBOOK.md`](DISPATCH_PLAYBOOK.md) (B2, [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557)).
-- Cowork-konkret playbook: planned senere ([fase C i analyse-doc, B3]).
-- Tracker: [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555) (workflow-analyse epic) → [#556](https://github.com/NicolaiDolmer/CyclingZone/issues/556) (denne doc).
+Historiske kanalmatricer findes i git-historikken. De tidligere forbud mod coding-agenter til strategi, review og deploykontrol gælder ikke som generelle regler.

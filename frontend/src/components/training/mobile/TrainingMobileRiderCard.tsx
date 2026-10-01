@@ -59,6 +59,7 @@ export default function TrainingMobileRiderCard({
   scoreAria,
   changeLabel,
   footer = null,
+  forecast = null,
 }: {
   id: string;
   // #5735: rytterens id, kun til at bygge profil-linket i sidehovedet. `null`
@@ -93,6 +94,8 @@ export default function TrainingMobileRiderCard({
   // ugeplan og profil-linket, som Clarity viste hoerer til INDE i kortet.
   changeLabel?: string;
   footer?: React.ReactNode;
+  // #5933: "Fatigue tonight: approx. X" (FatigueForecast). null = ingen linje.
+  forecast?: React.ReactNode;
 }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -129,6 +132,9 @@ export default function TrainingMobileRiderCard({
       {injuryLabel && (
         <p className="mt-2 text-[12px] font-medium text-cz-danger">{injuryLabel}</p>
       )}
+
+      {/* #5933: aftenens prognose staar lige under form og traethed, ét tal. */}
+      {forecast && <div className="mt-2">{forecast}</div>}
 
       {/* #4851: dagens score, stort, med de sidste 7 loebsdage ved siden af.
           Samme form som rytterprofilens kort (RiderTrainingScoreCard) — to

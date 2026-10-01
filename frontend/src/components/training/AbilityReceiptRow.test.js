@@ -17,12 +17,12 @@ const da = JSON.parse(readFileSync(join(localesDir, "da", "training.json"), "utf
 test("#5539 komponenten afleder yesterdayGainPct via den delte, unit-testede helper (ingen egen matematik)", () => {
   assert.match(
     source,
-    /import \{ abilityYesterdayGainPct(?:, [A-Za-z_]+)* \} from "\.\.\/\.\.\/lib\/trainingReport\.js";/,
-    "skal genbruge abilityYesterdayGainPct fra trainingReport.js — ikke duplikere afledningen i komponenten",
+    /import \{ abilityReceiptGainPct(?:, [A-Za-z_]+)* \} from "\.\.\/\.\.\/lib\/trainingReport\.js";/,
+    "skal genbruge abilityReceiptGainPct fra trainingReport.js",
   );
   assert.match(
     source,
-    /const yesterdayGainPct = abilityYesterdayGainPct\(yesterdayPct\);/,
+    /const yesterdayGainPct = abilityReceiptGainPct\(row\);/,
   );
 });
 

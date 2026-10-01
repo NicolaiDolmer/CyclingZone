@@ -140,21 +140,21 @@ for (const locked of [false, true]) {
     await page.goto("/planning");
     const race = page.locator("#race-col-race-adriatique");
     await expect(race).toBeVisible();
-    for (const label of ["Kaptajn", "Spurt-kaptajn (valgfri)", "Udbrudsjæger", "Fri rolle"]) {
+    for (const label of ["Kaptajn", "Sprint-kaptajn", "Udbrudsjæger", "Fri rolle"]) {
       await expect(race.getByText(label, { exact: true })).toBeVisible();
     }
     // Helpers have no badge by design. Their role card must still translate.
     if (!locked) {
-      await race.getByRole("button", { name: "Role Rider 4" }).click();
+      await race.getByRole("button", { name: "Role Rider 4", exact: true }).click();
       await expect(race.getByText("Kun rytter", { exact: true })).toBeVisible();
-      await race.getByRole("button", { name: "Role Rider 4" }).click();
+      await race.getByRole("button", { name: "Role Rider 4", exact: true }).click();
     }
     await expect(race).not.toContainText(/selection\.|tacticsOrders\.|racehub\.roleCard\./i);
     await page.screenshot({ path: evidenceShotPath(`pr-screens/5289-roles-da-${locked ? "locked" : "editable"}-${testInfo.project.name}.png`), fullPage: true });
     const languageButton = page.getByRole("button", { name: /Skift sprog/ }).filter({ visible: true }).first();
     await languageButton.click();
     await page.getByRole("option", { name: /^English$/ }).click();
-    for (const label of ["Captain", "Sprint captain (optional)", "Breakaway hunter", "Free role"]) {
+    for (const label of ["Captain", "Sprint captain", "Breakaway hunter", "Free role"]) {
       await expect(race.getByText(label, { exact: true })).toBeVisible();
     }
     await expect(race).not.toContainText(/selection\.|tacticsOrders\.|racehub\.roleCard\./i);

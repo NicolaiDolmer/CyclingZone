@@ -213,6 +213,20 @@ test("buildV4StageInput bærer både profile_type ttt og team_id videre til kern
   assert.equal(new Set(input.startlist.map((e) => e.team_id)).size, TEAMS);
 });
 
+test("#5914: buildV4StageInput sætter jersey_leaders kun når der ER en fører", async () => {
+  const raw = await import("./engine/v4/index.ts");
+  const tuning = await import("./engine/v4/tuning.ts");
+  const entrants = await import("./engine/v4/adapters/entrantAdapter.ts");
+  const routeMod = await import("./engine/v4/adapters/routeAdapter.ts");
+  const orders = await import("./engine/v4/orders/teamOrdersAdapter.ts");
+  const modules = { core: raw, tuning, entrants, route: routeMod, orders };
+  const base = { modules, entrants: makeEntrants(), stageProfile: stageProfile("flat"), seedString: "race-5914:2", stageNumber: 2 };
+  assert.equal("jersey_leaders" in buildV4StageInput(base), false, "ingen førere = uændret input");
+  assert.equal("jersey_leaders" in buildV4StageInput({ ...base, jerseyLeaders: { points: null, kom: null } }), false);
+  const withLeader = buildV4StageInput({ ...base, jerseyLeaders: { points: "t0r1", kom: null } });
+  assert.deepEqual(withLeader.jersey_leaders, { points: "t0r1", kom: null });
+});
+
 test("adapter-kontrakten er uændret: engine_version 4 og samme simulateStage-form", () => {
   const engine = createRaceEngineV4Adapter({ core: {}, tuning: {}, entrants: {}, route: {}, orders: {} });
   assert.equal(engine.version, 4);

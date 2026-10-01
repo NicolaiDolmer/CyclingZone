@@ -10,7 +10,7 @@ const TIER_FILL = {
   poor: "bg-cz-3",
 };
 
-export default function FitBar({ score, className = "" }) {
+export default function FitBar({ score, className = "", showBar = true }) {
   const { t } = useTranslation("races");
   const tier = fitTier(score);
   if (tier == null) return <span className="text-cz-3 text-3xs font-mono">—</span>;
@@ -23,9 +23,9 @@ export default function FitBar({ score, className = "" }) {
       className={`inline-flex items-center gap-1.5 ${className}`}
       title={label}
     >
-      <span className="relative inline-block w-9 h-1 rounded-full bg-cz-border/60 overflow-hidden align-middle">
+      {showBar && <span className="relative inline-block w-9 h-1 rounded-full bg-cz-border/60 overflow-hidden align-middle">
         <span className={`absolute inset-y-0 left-0 rounded-full ${TIER_FILL[tier]}`} style={{ width: `${pct}%` }} />
-      </span>
+      </span>}
       <span className="text-3xs font-mono tabular-nums text-cz-2 w-5 text-right">{score}</span>
     </span>
   );

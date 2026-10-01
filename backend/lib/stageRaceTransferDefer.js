@@ -169,17 +169,17 @@ export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flush
  *
  * @param {object} supabase
  * @param {{ id: string, race_type?: string, name?: string }} race det netop finaliserede løb
- * @param {{ notifyTeamOwner?: Function, now?: Date|null }} [deps]
+ * @param {{ notifyTeamOwner?: Function, now?: Date|null, originalRiderIds?: string[]|null }} [deps] Recovery can scope to immutable original participants instead of current entries.
  * @returns {Promise<{ ridersFlushed: number, riderIds: string[] }>}
  */
-export async function flushDeferredTransfersForRace(supabase, race, { notifyTeamOwner = NOOP, now = null } = {}) {
+export async function flushDeferredTransfersForRace(supabase, race, { notifyTeamOwner = NOOP, now = null, originalRiderIds = null } = {}) {
   const empty = { ridersFlushed: 0, riderIds: [] };
   // Kun fleretape-løb kan have parkeret et skifte pga. sig selv (single races
   // importeres atomisk, så ingen handel kan ramme "midt i").
   if (!race || race.race_type !== "stage_race" || !race.id) return empty;
   const raceId = race.id;
 
-  const entries = await fetchAllRows(() =>
+  const entries = Array.isArray(originalRiderIds) ? originalRiderIds.map(rider_id=>({rider_id})) : await fetchAllRows(() =>
     supabase.from("race_entries").select("rider_id").eq("race_id", raceId).order("rider_id")
   );
   const riderIds = [...new Set((entries || []).map((e) => e.rider_id))];
