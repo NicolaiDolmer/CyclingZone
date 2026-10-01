@@ -1,5 +1,84 @@
 export const PATCHES = [
   {
+    "version": "7.330",
+    "date": "2026-10-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Board",
+        "en": {
+          "title": "The new board is live for every club",
+          "body": "Since the season switch on 27 September, every club runs on the Mandate: one confidence score instead of three satisfaction numbers, one set of targets for the season and a club vision of milestones further out. The board calls the annual meeting at the switch, where you accept or adjust the proposed mandate and sign. Your season recap opens with the board's verdict. Beta testers had the boardroom first. Help explains it under The Mandate."
+        },
+        "da": {
+          "title": "Den nye bestyrelse er live for alle klubber",
+          "body": "Siden sæsonskiftet 27. september kører alle klubber på Mandatet: ét tillidstal i stedet for tre tilfredshedstal, ét sæt mål for sæsonen og en klubvision med milepæle længere ude. Bestyrelsen indkalder til årsmødet ved skiftet, hvor du accepterer eller justerer det foreslåede mandat og skriver under. Din sæsonopsummering starter med bestyrelsens dom. Beta-testere fik bestyrelseslokalet først. Hjælp forklarer det under Mandatet."
+        },
+        "refs": [3514, 4859, 5758, 5759, 5760, 5761]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta", "topic": "Training",
+        "en": {
+          "title": "Train now, a plan for each race day and a fatigue limit, in the beta group",
+          "body": "On Daily training, Train now runs today's training whenever it suits you, with the same result as the evening run. After you press it, today's training is locked. Under Program, Plan sets each of the day's race days to hard, normal, recovery or rest, for the team or one rider, and Fatigue tonight shows roughly how tired each rider will be before you choose. Fatigue limit lets you set a rule, for example rest above a fatigue level, and the rider goes back to his plan afterwards. The rule is checked at the start of each date."
+        },
+        "da": {
+          "title": "Træn nu, en plan for hver løbsdag og en træthedsgrænse, i beta-gruppen",
+          "body": "På Daglig træning kører Træn nu dagens træning, når det passer dig, med samme resultat som aftenkørslen. Når du har trykket, er dagens træning låst. Under Program sætter Plan hver af dagens løbsdage til hård, normal, restitution eller hvile, for holdet eller én rytter, og Træthed i aften viser cirka, hvor træt hver rytter bliver, før du vælger. Med Træthedsgrænse sætter du en regel, fx hvile over et bestemt træthedsniveau, og rytteren går tilbage til sin plan bagefter. Reglen tjekkes ved starten af hver dato."
+        },
+        "refs": [4847, 4854, 5620, 5932, 5933, 5999]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Youth teams",
+        "en": {
+          "title": "U23 and junior races count as racing",
+          "body": "U23 and junior riders who race now develop from the race, instead of being given a rest day. On the first race day of season 4, the U23 and junior races did not start at 19:30; youth races now start on schedule. Youth results no longer move your senior board."
+        },
+        "da": {
+          "title": "U23- og juniorløb tæller som løb",
+          "body": "U23- og juniorryttere, der kører løb, udvikler sig nu af løbet i stedet for at få en hviledag. På sæson 4's første løbsdag startede U23- og juniorløbene ikke kl. 19.30; ungdomsløb starter nu til tiden. Ungdomsresultater flytter ikke længere din seniorbestyrelse."
+        },
+        "refs": [5879, 5880, 5890, 5892]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Free race days inside a stage race are training days",
+          "body": "A stage race still holds a rider from its first to its last stage. On a date where he rides a stage, he now trains on that date's other race days. Only whole dates without a stage in the middle of the race are rest."
+        },
+        "da": {
+          "title": "Frie løbsdage inde i et etapeløb er træningsdage",
+          "body": "Et etapeløb binder stadig rytteren fra første til sidste etape. På en dato, hvor han kører en etape, træner han nu på datoens øvrige løbsdage. Kun hele datoer uden etape midt i løbet er hvile."
+        },
+        "refs": [5267, 5880]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "No mountain prize without mountain points",
+          "body": "On a stage without categorised climbs, such as a flat time trial, the first rider in the mountain classification was paid the mountain jersey prize although nobody had scored a point. A mountain prize now needs mountain points. This applies to upcoming stages."
+        },
+        "da": {
+          "title": "Ingen bjergpræmie uden bjergpoint",
+          "body": "På en etape uden kategoriserede stigninger, fx en flad enkeltstart, fik den første rytter i bjergkonkurrencen bjergtrøjens præmie, selvom ingen havde scoret point. En bjergpræmie kræver nu bjergpoint. Det gælder kommende etaper."
+        },
+        "refs": [5956, 6003]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "A withdrawn team shows Withdrawn",
+          "body": "If your team has withdrawn from a stage race, the race card in Race Centre now says Withdrawn instead of Line-up ready, and a sale of one of your riders goes through straight away instead of waiting for that race to finish."
+        },
+        "da": {
+          "title": "Et afmeldt hold vises som Afmeldt",
+          "body": "Har dit hold meldt sig fra et etapeløb, viser løbskortet i løbscenteret nu Afmeldt i stedet for Opstillingen er klar, og et salg af en af dine ryttere går igennem med det samme i stedet for at vente på, at løbet er slut."
+        },
+        "refs": [5636, 5732]
+      }
+    ]
+  },
+  {
     "version": "7.329",
     "date": "2026-10-01",
     "label": "Beta",
