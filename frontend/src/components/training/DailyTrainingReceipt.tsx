@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DailyTrainingReceipt as DateReceipt, DailyRiderReceipt, TrainingActivity } from "../../lib/trainingDailyReceipt.ts";
+import { averagePassScore } from "../../lib/trainingDailyReceipt.ts";
 import { formatDate, formatNumber } from "../../lib/intl.js";
 import { todayGainTotal } from "../../lib/trainingReport.js";
 import { injuryTimeLeft, injuryBadgeMessage } from "../../lib/training.js";
@@ -114,6 +115,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
                 <span className="text-cz-2">{row.gain_percent[key] != null ? t("dailyReceipt.pointContribution",{percent:formatNumber(row.gain_percent[key])}) : t("dailyReceipt.progressUnavailable")}</span>
               </div>)}
               {showScore && <p className="mt-3 font-data text-xs tabular-nums text-cz-2" data-testid="training-history-score-cell">{t("dailyReceipt.latestPassScore")}: {latestScore ?? "—"}</p>}
+              {showScore && <p className="mt-1 font-data text-xs tabular-nums text-cz-2" data-testid="daily-receipt-avg-score">{t("dailyReceipt.averagePassScore")}: {(isKnown(row) ? averagePassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,row.activities) : null) ?? "—"}</p>}
               <p className="mt-3 text-xs text-cz-3">{t(`dailyReceipt.note.${row.receipt_status}`)}</p>
             </div>}
           </div>

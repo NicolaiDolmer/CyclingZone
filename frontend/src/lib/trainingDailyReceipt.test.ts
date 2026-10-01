@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aggregateTrainingRuns } from "./trainingDailyReceipt.ts";
+import { aggregateTrainingRuns, averagePassScore } from "./trainingDailyReceipt.ts";
 import type { TrainingActivity } from "./trainingDailyReceipt.ts";
 import { seasonAbilityGains, riderHistoryFromRuns, abilityReceipt, abilityReceiptGainPct } from "./trainingReport.js";
 import { selectTrainingMoment } from "./trainingMoment.js";
@@ -183,6 +183,13 @@ test("#5915: legacy (non per-date) days are never chained", () => {
   const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
   for (const row of [...legacy, next]) delete (row.report as Record<string, unknown>).condition_per_date;
   assert.equal(aggregateTrainingRuns([...legacy, next]).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo, null);
+});
+
+test("#5915: average session score covers only scored sessions, never counts a race day as 0", () => {
+  const rider = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i, i === 2 ? { race_day: true } : {})))[0].report.riders[0];
+  const view = { sessions: [0, 1, 3].map((gameDay, i) => ({ date, seasonId: "s4", gameDay, score: [50, 61, 58][i] })) };
+  assert.equal(averagePassScore(view, date, "s4", rider.activities), 56);
+  assert.equal(averagePassScore(undefined, date, "s4", rider.activities), null);
 });
 
 test("ability receipts expose the full date contribution separately from the wrapped progress-bar segment", () => {

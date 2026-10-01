@@ -1,4 +1,6 @@
-export type ReceiptStatus = "complete" | "pending" | "reconciliation" | "recorded";
+import { receiptPassScore, type ReceiptScoreView } from "./trainingScoreView.ts";
+
+export type ReceiptStatus ="complete" | "pending" | "reconciliation" | "recorded";
 type Numbers = Record<string, number>;
 type Jump = { from: number; to: number };
 export interface TrainingActivity {
@@ -220,4 +222,14 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       report: { riders: rows, condition_settled: state === "complete" },
     };
   });
+}
+
+/** #5915 player wish: mean of the date's recorded session scores. Race days, rest,
+ *  injured and unknown slots have no session score and are left out, never 0. */
+export function averagePassScore(view: ReceiptScoreView | undefined, date: string,
+  seasonId: string | null | undefined, activities: TrainingActivity[]): number | null {
+  const scores = activities
+    .map(activity => receiptPassScore(view, date, seasonId, activity))
+    .filter((score): score is number => score != null);
+  return scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
 }
