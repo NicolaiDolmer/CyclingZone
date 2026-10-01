@@ -1903,7 +1903,7 @@
     },
     "betaGroupFaq": {
       "q": "What is the beta group, and how do I join?",
-      "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone."
+      "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone. In patch notes, Beta marks a change only the beta group has, Now live for all marks the day it reaches everyone, Switched on marks something built earlier that is now in use, and Season event marks things like a season switch. A change with no label is live for everyone."
     },
     "sharpFlatTrainingDaysFaq": {
       "q": "What do 'sharp' and 'flat' training days mean, and should a run of flat days worry me?",

@@ -1903,7 +1903,7 @@
     },
     "betaGroupFaq": {
       "q": "Hvad er beta-gruppen, og hvordan kommer jeg med?",
-      "a": "Jeg åbner de fleste nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar inden alle får dem. En beta-tester ser de funktioner tidligt, og nogle af dem bliver lavet om eller går i stykker undervejs. Bed om at komme med under Profil, Beta-gruppen: jeg svarer i hånden, og du får en besked i indbakken uanset hvad. Sig hvad der føles forkert på Discord eller gennem feedback-formularen. Du kan forlade gruppen igen samme sted, og du beholder alt det der allerede er live for alle."
+      "a": "Jeg åbner de fleste nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar inden alle får dem. En beta-tester ser de funktioner tidligt, og nogle af dem bliver lavet om eller går i stykker undervejs. Bed om at komme med under Profil, Beta-gruppen: jeg svarer i hånden, og du får en besked i indbakken uanset hvad. Sig hvad der føles forkert på Discord eller gennem feedback-formularen. Du kan forlade gruppen igen samme sted, og du beholder alt det der allerede er live for alle. I patch notes markerer Beta en ændring, kun beta-gruppen har, Nu for alle markerer dagen, den når alle, Tændt markerer noget, der er bygget tidligere og nu er i brug, og Sæsonbegivenhed markerer fx et sæsonskifte. En ændring uden mærke er live for alle."
     },
     "sharpFlatTrainingDaysFaq": {
       "q": "Hvad betyder 'skarpe' og 'flade' træningsdage, og skal jeg bekymre mig hvis jeg får flere flade dage i træk?",

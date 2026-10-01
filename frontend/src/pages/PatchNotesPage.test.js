@@ -24,7 +24,28 @@ test("gemmer last-seen i localStorage", () => {
   assert.match(src, /cz_patchnotes_last_seen/);
 });
 
-test("viser Beta-badge pr. punkt for beta-only ændringer (#5422)", () => {
-  assert.match(src, /c\.stage === "beta"/);
-  assert.match(src, /t\("stage\.beta"\)/);
+test("viser Beta-badge pr. punkt for beta-only ændringer (#5422), også fra gammelt stage-felt", () => {
+  assert.match(src, /change\.stage === "beta" \? "beta"/);
+});
+
+test("rollout-chip pr. change: fire markeringer, live uden chip (#6014)", () => {
+  for (const r of ["beta", "beta_to_live", "switched_on", "event"]) {
+    assert.match(src, new RegExp(`\\b${r}: "`));
+  }
+  assert.doesNotMatch(src, /\blive: "/);
+  assert.match(src, /t\(`rollout\.\$\{rollout\}`\)/);
+  // TASTE: 5px-radius og hairline, ingen guld/accent og ingen fyldt baggrund.
+  assert.match(src, /rounded-cz me-2/);
+  const chip = src.slice(src.indexOf("const ROLLOUT_CHIP"), src.indexOf("function rolloutOf"));
+  assert.doesNotMatch(chip, /accent|gold|bg-/);
+});
+
+test("rollout-noeglerne findes paa begge sprog (#6014)", () => {
+  for (const lang of ["en", "da"]) {
+    const j = JSON.parse(readFileSync(join(__dirname, `../../public/locales/${lang}/patchnotes.json`), "utf8"));
+    for (const r of ["beta", "beta_to_live", "switched_on", "event"]) {
+      assert.ok(j.rollout?.[r], `${lang}: rollout.${r}`);
+    }
+    assert.ok(j.footer?.rolloutNote, `${lang}: footer.rolloutNote`);
+  }
 });

@@ -19,8 +19,11 @@
     "fixed": "Fejlrettelser"
   },
   "newBadge": "Ny",
-  "stage": {
-    "beta": "Beta"
+  "rollout": {
+    "beta": "Beta",
+    "beta_to_live": "Nu for alle",
+    "switched_on": "Tændt",
+    "event": "Sæsonbegivenhed"
   },
   "fallbackLang": {
     "da": "dansk",
@@ -37,6 +40,7 @@
     "description": "Prøv et andet søgeord eller en anden kategori."
   },
   "footer": {
-    "hiddenNote": "Interne og tekniske noter vises ikke på denne side."
+    "hiddenNote": "Interne og tekniske noter vises ikke på denne side.",
+    "rolloutNote": "Beta: kun beta-gruppen har det. Intet mærke: live for alle."
   }
 }

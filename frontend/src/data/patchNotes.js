@@ -1,12 +1,163 @@
 export const PATCHES = [
   {
+    "version": "7.330",
+    "date": "2026-10-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Board",
+        "en": {
+          "title": "The new board is live for every club",
+          "body": "Since the season switch on 27 September, every club runs on the Mandate: one confidence score instead of three satisfaction numbers, one set of targets for the season and a club vision of milestones further out. The board calls the annual meeting at the switch, where you accept or adjust the proposed mandate and sign. Your season recap opens with the board's verdict. Beta testers had the boardroom first. Help explains it under The Mandate."
+        },
+        "da": {
+          "title": "Den nye bestyrelse er live for alle klubber",
+          "body": "Siden sæsonskiftet 27. september kører alle klubber på Mandatet: ét tillidstal i stedet for tre tilfredshedstal, ét sæt mål for sæsonen og en klubvision med milepæle længere ude. Bestyrelsen indkalder til årsmødet ved skiftet, hvor du accepterer eller justerer det foreslåede mandat og skriver under. Din sæsonopsummering starter med bestyrelsens dom. Beta-testere fik bestyrelseslokalet først. Hjælp forklarer det under Mandatet."
+        },
+        "refs": [3514, 4859, 5758, 5759, 5760, 5761]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "switched_on", "topic": "Riders",
+        "en": {
+          "title": "See each rider's reputation",
+          "body": "A rider's profile now shows their reputation, a level from Unknown to Legend, and the results that moved it. The rider database, your team pages including U23 and Junior, auctions and the market show the same number. At launch it cannot be lower than the rider's old popularity. The board uses it for new star-rider goals; goals you already agreed keep their original measure."
+        },
+        "da": {
+          "title": "Se hver rytters omdømme",
+          "body": "En rytters profil viser nu omdømmet, et niveau fra Ukendt til Legende, og de resultater der har flyttet det. Rytterdatabasen, dine holdsider inkl. U23 og Junior, auktioner og markedet viser samme tal. Ved lanceringen kan det ikke være lavere end rytterens gamle popularitet. Bestyrelsen bruger det til nye stjernemål; mål, du allerede har aftalt, beholder deres oprindelige måling."
+        },
+        "refs": [4956, 5828]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Training",
+        "en": {
+          "title": "A plan for each race day, a fatigue limit and the daily report, now for everyone",
+          "body": "Under Program, Plan sets each of the day's race days to hard, normal, recovery or rest, for the team or one rider, and Fatigue tonight shows roughly how tired each rider will be before you choose. Fatigue limit lets you set a rule, for example rest above a fatigue level, and the rider goes back to his plan afterwards. The Report tab shows one receipt per rider for each training date, with the progress he made. Beta testers had these first."
+        },
+        "da": {
+          "title": "En plan for hver løbsdag, en træthedsgrænse og den daglige rapport, nu for alle",
+          "body": "Under Program sætter Plan hver af dagens løbsdage til hård, normal, restitution eller hvile, for holdet eller én rytter, og Træthed i aften viser cirka, hvor træt hver rytter bliver, før du vælger. Med Træthedsgrænse sætter du en regel, fx hvile over et bestemt træthedsniveau, og rytteren går tilbage til sin plan bagefter. Fanen Rapport viser én kvittering pr. rytter for hver træningsdato med det fremskridt, han fik. Beta-testere fik dem først."
+        },
+        "refs": [4854, 5620, 5915, 5932, 5933, 5999, 6018]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Today is about today",
+          "body": "On the phone, each rider on Today is one row with fatigue tonight, his progress this season and one tap for Rest, Recovery or Program. On a computer, the Fatigue column shows now and tonight, for example 20 > ~31, coloured by the injury limit. Season points have moved to a This season overview at the top of Development."
+        },
+        "da": {
+          "title": "I dag handler om i dag",
+          "body": "På telefonen er hver rytter på I dag én række med træthed i aften, hans fremgang i sæsonen og ét tryk for Hvile, Restitution eller Program. På computer viser kolonnen Træthed nu og i aften, fx 20 > ~31, farvet efter skadegrænsen. Sæsonpoint er flyttet til overblikket Denne sæson øverst i Udvikling."
+        },
+        "refs": [5630, 5685, 6025]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta", "topic": "Training",
+        "en": {
+          "title": "Train now and training groups, in the beta group",
+          "body": "On Daily training, Train now runs today's training whenever it suits you, with the same result as the evening run, and locks today's training afterwards. It now trains the whole squad, also for teams where the assistant picks the riders, and the Report shows the race days already trained straight away; fatigue and form follow at the evening settlement. Training groups let one decision cover several riders: a group gets one plan, and each rider keeps his own copy."
+        },
+        "da": {
+          "title": "Træn nu og træningsgrupper, i beta-gruppen",
+          "body": "På Daglig træning kører Træn nu dagens træning, når det passer dig, med samme resultat som aftenkørslen, og låser derefter dagens træning. Den træner nu hele truppen, også for hold hvor assistenten udtager rytterne, og Rapport viser straks de løbsdage, der er trænet; træthed og form følger ved aftenens afregning. Med træningsgrupper dækker én beslutning flere ryttere: gruppen får én plan, og hver rytter beholder sin egen kopi."
+        },
+        "refs": [4847, 6000, 6001, 6006, 6008, 6027]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Youth teams",
+        "en": {
+          "title": "Let a youth squad train instead of race",
+          "body": "On the U23 team or Junior team page, set Races to Train only. The assistant then stops entering that squad, and its riders train on every day without a race. It takes effect from the next race day that isn't locked. Switch back to Enter races at any time. Your senior team is not affected."
+        },
+        "da": {
+          "title": "Lad en ungdomstrup træne i stedet for at køre løb",
+          "body": "På siden for U23-holdet eller juniorholdet sætter du Løb til Kun træning. Assistenten stopper så med at tilmelde truppen, og dens ryttere træner hver dag uden løb. Det gælder fra næste løbsdag, der ikke er låst. Du kan skifte tilbage til Kør løb når som helst. Dit seniorhold påvirkes ikke."
+        },
+        "refs": [5944, 6007]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Development history shows every gain on the right date",
+          "body": "Since training moved to race days, a rider's development curve and season gains could miss gains from the date's later race days, or show them on the next date. Each date now shows how the rider ended that date."
+        },
+        "da": {
+          "title": "Udviklingshistorikken viser hver fremgang på den rigtige dato",
+          "body": "Siden træningen flyttede til løbsdage, kunne en rytters udviklingskurve og sæsongevinster mangle fremgang fra datoens senere løbsdage eller vise den på næste dato. Hver dato viser nu, hvordan rytteren sluttede datoen."
+        },
+        "refs": [5947, 6019]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta", "topic": "Planning",
+        "en": {
+          "title": "Season matrix on the phone, in the beta group",
+          "body": "On a phone, the season matrix in Planning now fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see."
+        },
+        "da": {
+          "title": "Sæsonmatrixen på telefonen, i beta-gruppen",
+          "body": "På telefonen passer sæsonmatrixen i Planlægning nu til skærmen: én række linser i fuld bredde, og Før og Senere flytter de løbsdage, du ser."
+        },
+        "refs": [5124, 6010]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Youth teams",
+        "en": {
+          "title": "U23 and junior races count as racing",
+          "body": "U23 and junior riders who race now develop from the race, instead of being given a rest day. On the first race day of season 4, the U23 and junior races did not start at 19:30; youth races now start on schedule. Youth results no longer move your senior board."
+        },
+        "da": {
+          "title": "U23- og juniorløb tæller som løb",
+          "body": "U23- og juniorryttere, der kører løb, udvikler sig nu af løbet i stedet for at få en hviledag. På sæson 4's første løbsdag startede U23- og juniorløbene ikke kl. 19.30; ungdomsløb starter nu til tiden. Ungdomsresultater flytter ikke længere din seniorbestyrelse."
+        },
+        "refs": [5879, 5880, 5890, 5892]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Free race days inside a stage race are training days",
+          "body": "A stage race still holds a rider from its first to its last stage. On a date where he rides a stage, he now trains on that date's other race days. Only whole dates without a stage in the middle of the race are rest."
+        },
+        "da": {
+          "title": "Frie løbsdage inde i et etapeløb er træningsdage",
+          "body": "Et etapeløb binder stadig rytteren fra første til sidste etape. På en dato, hvor han kører en etape, træner han nu på datoens øvrige løbsdage. Kun hele datoer uden etape midt i løbet er hvile."
+        },
+        "refs": [5267, 5880]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "No mountain prize without mountain points",
+          "body": "On a stage without categorised climbs, such as a flat time trial, the first rider in the mountain classification was paid the mountain jersey prize although nobody had scored a point. A mountain prize now needs mountain points. This applies to upcoming stages."
+        },
+        "da": {
+          "title": "Ingen bjergpræmie uden bjergpoint",
+          "body": "På en etape uden kategoriserede stigninger, fx en flad enkeltstart, fik den første rytter i bjergkonkurrencen bjergtrøjens præmie, selvom ingen havde scoret point. En bjergpræmie kræver nu bjergpoint. Det gælder kommende etaper."
+        },
+        "refs": [5956, 6003]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "A withdrawn team shows Withdrawn",
+          "body": "If your team has withdrawn from a stage race, the race card in Race Centre now says Withdrawn instead of Line-up ready, and a sale of one of your riders goes through straight away instead of waiting for that race to finish."
+        },
+        "da": {
+          "title": "Et afmeldt hold vises som Afmeldt",
+          "body": "Har dit hold meldt sig fra et etapeløb, viser løbskortet i løbscenteret nu Afmeldt i stedet for Opstillingen er klar, og et salg af en af dine ryttere går igennem med det samme i stedet for at vente på, at løbet er slut."
+        },
+        "refs": [5636, 5732]
+      }
+    ]
+  },
+  {
     "version": "7.329",
     "date": "2026-10-01",
     "label": "Beta",
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "A clearer warning when your senior squad is too small",
@@ -27,7 +178,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Chasing no longer pushes escapees backwards",
@@ -43,7 +194,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Morning breakaways and later attacks have separate markers",
@@ -65,7 +216,7 @@ export const PATCHES = [
     "date": "2026-09-30",
     "label": "Beta",
     "changes": [{
-      "category": "improved", "audience": "player", "topic": "Training",
+      "category": "improved", "audience": "player", "rollout": "beta", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
         "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
@@ -80,7 +231,7 @@ export const PATCHES = [
   {
     "version": "7.325", "date": "2026-09-30", "label": "Beta",
     "changes": [{
-      "category": "improved", "audience": "player", "topic": "Planning",
+      "category": "improved", "audience": "player", "rollout": "live", "topic": "Planning",
       "en": {
         "title": "Clearer planning numbers",
         "body": "Planning now shows each rider's order in its own column and labels route match and current form. Form is also shown in locked stage-race squads, and unavailable values are distinguished from zero."
@@ -95,7 +246,7 @@ export const PATCHES = [
   {
     "version": "7.324", "date": "2026-09-30", "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Races",
+      "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
       "en": {"title": "Race days follow transferred riders", "body": "After a transfer, a rider cannot enter another race on a race day already used for the previous team. Races starting on later race days remain available."},
       "da": {"title": "Løbsdage følger solgte ryttere", "body": "Efter et holdskifte kan en rytter ikke udtages til et andet løb på en løbsdag, han allerede har kørt for sit tidligere hold. Løb på senere løbsdage er fortsat tilgængelige."},
       "refs": [5860]
@@ -104,7 +255,7 @@ export const PATCHES = [
   {
     "version": "7.323", "date": "2026-09-30", "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Training",
+      "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
       "en": {
         "title": "Earlier training restored",
         "body": "Training from an earlier day has been restored for affected riders with documented inputs. Riders with changed programs are reviewed separately."
@@ -123,7 +274,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Team classification on equal time",
@@ -144,7 +295,7 @@ export const PATCHES = [
     "date": "2026-09-29",
     "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Training",
+      "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
       "en": {
         "title": "Training for riders without an initial condition",
         "body": "Riders starting training without a saved condition now receive the usual starting condition before the day's activity is recorded. Existing fatigue, form and injuries are preserved. Earlier dates awaiting reconciliation are handled separately."
@@ -161,7 +312,7 @@ export const PATCHES = [
     "date": "2026-09-29",
     "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Races",
+      "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
       "en": {
         "title": "Sprints and climbs follow the race",
         "body": "Riders in a breakaway now cross intermediate sprints and mountain tops first, as they should. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at sprints, hunters and free-role riders on climbs, plus the points or mountains leader at the start of the stage. Captains and helpers roll through. Points already awarded on 28 and 29 September stay as they are."
@@ -178,7 +329,7 @@ export const PATCHES = [
     "date": "2026-09-29",
     "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Training",
+      "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
       "en": {
         "title": "Yesterday's extra fatigue corrected",
         "body": "Fatigue and form from the first day of the season have been recalculated with the fixed model. Riders who got far too tired yesterday are back where they should be, and the small form boost from the error is removed as well."
@@ -195,7 +346,7 @@ export const PATCHES = [
     "date": "2026-09-29",
     "label": "Beta",
     "changes": [{
-      "category": "fixed", "audience": "player", "topic": "Training",
+      "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
       "en": {
         "title": "Steadier fatigue and form",
         "body": "Race and training now share a daily assessment of fatigue, form and training injury risk. Delayed races only hold up the riders involved. Race development and recovery between stages now follow actual participation."
@@ -214,7 +365,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Auctions",
         "en": {
           "title": "Auction contracts through a season change",
@@ -235,7 +386,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Youth groups stay full when an AI club leaves",
@@ -256,7 +407,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Board",
         "en": {
           "title": "Vision milestones show when they count",
@@ -279,7 +430,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "switched_on",
         "topic": "Races",
         "en": {
           "title": "A new race engine from race day 1",
@@ -296,7 +447,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Milder time limit in U23 and junior races",
@@ -319,7 +470,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Academy",
         "en": {
           "title": "A thank-you from the board",
@@ -342,7 +493,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "switched_on",
         "topic": "Training",
         "en": {
           "title": "Training follows race days",
@@ -360,7 +511,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Auctions",
         "en": {
           "title": "New auctions can start again after the season switch",
@@ -376,7 +527,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Board",
         "en": {
           "title": "Board meeting signing works again",
@@ -399,7 +550,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Pick your own U23 and junior riders",
@@ -422,7 +573,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Season",
         "en": {
           "title": "Season 4 has started",
@@ -438,7 +589,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Season",
         "en": {
           "title": "Division 3 and 4 merged",
@@ -455,7 +606,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Season",
         "en": {
           "title": "Inactive teams are parked",
@@ -471,7 +622,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Youth teams",
         "en": {
           "title": "U23 and junior races start Monday",
@@ -488,7 +639,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Season",
         "en": {
           "title": "One-day races spread over division 2's whole season",
@@ -504,7 +655,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Rankings",
         "en": {
           "title": "Standings show only teams that race in the division",
@@ -527,7 +678,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Season",
         "en": {
           "title": "The season 4 calendar is out",
@@ -544,7 +695,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Season",
         "en": {
           "title": "Grand Tours in the right order",
@@ -560,7 +711,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "switched_on",
         "topic": "Economy",
         "en": {
           "title": "Upkeep is paid per race day",
@@ -576,7 +727,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Auto-fill no longer double-books a rider",
@@ -592,7 +743,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Academy",
         "en": {
           "title": "Prospects show their potential as numbers again",
@@ -608,7 +759,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "See how far today's session moved each ability",
@@ -624,7 +775,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "beta",
         "stage": "beta",
         "topic": "Training",
         "en": {
@@ -641,7 +792,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Team",
         "en": {
           "title": "U23 and junior lists sort by surname",
@@ -664,7 +815,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Riders",
         "en": {
           "title": "Every rider has a best role, and no rating went down",
@@ -680,7 +831,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "beta_to_live",
         "topic": "Youth teams",
         "en": {
           "title": "U23 and Junior team pages are open to everyone",
@@ -697,7 +848,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "beta",
         "stage": "beta",
         "topic": "Boardroom",
         "en": {
@@ -714,7 +865,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "event",
         "topic": "Rider values",
         "en": {
           "title": "No value update this Sunday",
@@ -737,7 +888,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "switched_on",
         "topic": "Rider values",
         "en": {
           "title": "Rider values now follow the rider",
@@ -754,7 +905,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "beta_to_live",
         "topic": "Riders",
         "en": {
           "title": "Rating shows the rider's best role now, for everyone",
@@ -777,7 +928,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Team",
         "en": {
           "title": "Senior riders stay senior, and the U23/JR badge is back in training",
@@ -794,7 +945,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Training score now shows in the report too",
@@ -810,7 +961,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Rider name in the training card links to his profile",
@@ -826,7 +977,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Today's story leads with real news, and injuries get their own warning",
@@ -842,7 +993,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Dashboard",
         "en": {
           "title": "Full standings now opens your own pool",
@@ -858,7 +1009,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Notifications",
         "en": {
           "title": "A stage result message now opens that stage",
@@ -874,7 +1025,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Riders",
         "en": {
           "title": "A tie in Compare no longer picks a fake winner",
@@ -890,7 +1041,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Riders",
         "en": {
           "title": "Extra safety check on a rider's first win",
@@ -906,7 +1057,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Switch stage right from the Team tab",
@@ -922,7 +1073,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Season",
         "en": {
           "title": "Classic wins now show in your season recap",
@@ -938,7 +1089,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Sponsors",
         "en": {
           "title": "Sponsor offers explain what sets the amount",
@@ -961,7 +1112,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Team",
         "en": {
           "title": "Move squad: one dialog, all three squads",
@@ -978,7 +1129,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "beta",
         "topic": "Board",
         "en": {
           "title": "The boardroom shows the targets you negotiated",
@@ -1002,7 +1153,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Economy",
         "en": {
           "title": "No youth squad upkeep at this season change",
@@ -1019,7 +1170,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Team",
         "en": {
           "title": "Move to U23 or Move to Junior",
@@ -1037,7 +1188,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Training report in the same order as Daily training",
@@ -1061,7 +1212,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Interface",
         "en": {
           "title": "Settings now has tabs",
@@ -1078,7 +1229,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Echelon Drills toned down slightly",
@@ -1095,7 +1246,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Interface",
         "en": {
           "title": "Beta features are marked",
@@ -1114,7 +1265,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Interface",
         "en": {
           "title": "New roadmap items get the yellow dot",
@@ -1131,7 +1282,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Help",
         "en": {
           "title": "Six new FAQ answers",
@@ -1155,7 +1306,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "beta",
         "topic": "Squad",
         "en": {
           "title": "U23 team and Junior team pages on a par with My Team, in the beta group",
@@ -1172,7 +1323,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "beta",
         "stage": "beta",
         "topic": "Board",
         "en": {
@@ -1192,7 +1343,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "beta",
         "stage": "beta",
         "topic": "Riders",
         "en": {
@@ -1210,7 +1361,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Results reach the page before the Discord post",
@@ -1226,7 +1377,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Help",
         "en": {
           "title": "Help: does my training session need to match the race?",
@@ -1250,7 +1401,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Dashboard",
         "en": {
           "title": "Today's stages shows every winner and the right overall position",
@@ -1268,7 +1419,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Dashboard",
         "en": {
           "title": "Sign up for next season from the top of the dashboard",
@@ -1285,7 +1436,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Inbox",
         "en": {
           "title": "Discord invitation in your inbox",
@@ -1302,7 +1453,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Roadmap",
         "en": {
           "title": "The roadmap's Today column is true",
@@ -1319,7 +1470,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Calendar",
         "en": {
           "title": "At least 24 hours to pick your squad at the season change",
@@ -1336,7 +1487,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Academy",
         "en": {
           "title": "Squad caps: 12 U23 riders and 10 juniors",
@@ -1354,7 +1505,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Mobile",
         "en": {
           "title": "Bottom bars no longer cover the bottom menu",
@@ -1371,7 +1522,7 @@ export const PATCHES = [
       },
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Board",
         "en": {
           "title": "The Vision tab reads as a list on your phone",
@@ -1388,7 +1539,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Quick rest on your phone",
@@ -1406,7 +1557,7 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "player", "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Training progress carries over on race days",

@@ -35,6 +35,29 @@ duplikerer den ikke. Kort resumé:
 | EN først, DA under, ingen em-dash, intet opfundet indhold | ToV §2 "Uændret" |
 | `scripts/tone-check-em-dash.mjs` + `scripts/tone-check-terms.mjs` kører i CI (`i18n-check.yml`) | ToV §"Ord og termer" |
 
+## 2a. Udrulning: fast markering pr. change (ejer 1/10, [#6014](https://github.com/NicolaiDolmer/CyclingZone/issues/6014))
+
+En spiller skal kunne se, om en ændring gælder ham nu, kun beta-gruppen, eller er noget der blev
+*tændt* (bygget tidligere). Hver spillervendt change får derfor feltet `rollout`:
+
+| `rollout` | Betyder | Chip på sitet (EN / DA) | Eksempel |
+|---|---|---|---|
+| `live` | For alle, fra i dag | ingen chip | En fejlrettelse |
+| `beta` | Kun beta-gruppen (flag i stadie `beta`) | Beta / Beta | Træn nu 1/10 |
+| `beta_to_live` | Gik fra beta til alle. Skriv en NY entry den dag flaget går `on` | Now live for all / Nu for alle | Mandatet for alle 27/9 |
+| `switched_on` | Bygget før, men tændt/i brug fra denne dato (flag-flip, motor) | Switched on / Tændt | Løbsmotoren 28/9 |
+| `event` | Begivenhed, ikke en kodeændring | Season event / Sæsonbegivenhed | Sæsonskiftet S3→S4 |
+
+- Det eksisterende top-felt `"label": "Beta"` er spillets **open beta** og forbliver uændret. Det er ikke `rollout`.
+- Ældre entries med `"stage": "beta"` (#5422) læses af siden som `rollout: "beta"`; nye entries bruger `rollout`.
+- **Guard:** `scripts/check-patch-notes-version.js` fejler, hvis en player-change i en *ny* version mangler en
+  gyldig `rollout`. Historiske versioner røres ikke.
+- **Flag-flip = patch note.** Et beta→on-flip eller et off→on-flip af noget spillervendt får sin egen entry samme
+  dag (`beta_to_live` / `switched_on`), også når koden blev merget og noteret dage før. 7-dages-auditten 1/10 fandt
+  at Mandatets flip 27/9 aldrig blev noteret, fordi koden var noteret som beta.
+- Siden: chippen er en rolig hairline (5px radius, ingen fyld, ingen guld). Hjælp forklarer mærkerne under
+  beta-gruppe-FAQ'en, og sidens fod har én forklarende linje.
+
 ## 3. Discord: udsnit, ikke en ny tekst
 
 **Reglen (ToV §2.2, 14/8):** Discord får **titlen plus feltet "What changed", ordret**. Der skrives
@@ -84,6 +107,11 @@ Efterkontrollen sammenligner tre ting for et givent vindue: merged PR'er (git-lo
   Discord-udsnit for v7.256-7.261 (commit `5f7548787`), ikke en fuld krydskontrol af vinduet. En fuld
   14-dages-efterkontrol er altså ikke dokumenteret kørt.
 
+- **1/10** (7 dage, 24/9-1/10, [#6014](https://github.com/NicolaiDolmer/CyclingZone/issues/6014)): 223 merges,
+  prod-flag (`app_config`) og Discord krydstjekket. 6 spillervendte ændringer manglede på sitet, tilføjet som
+  v7.330; `rollout` sat på alle entries 7.297-7.329. Rapport: [`docs/reports/2026-10-01-patch-notes-7day-audit.md`](reports/2026-10-01-patch-notes-7day-audit.md);
+  Discord-udkast: [`docs/drafts/2026-10-01-patch-notes-catchup-discord.md`](drafts/2026-10-01-patch-notes-catchup-discord.md).
+
 Denne rutine er ikke schemalagt automatisk; den køres når ejeren beder om det, eller når en session opdager
 at Discord er kommet bagud.
 
@@ -91,6 +119,7 @@ at Discord er kommet bagud.
 
 | Emne | Kilde |
 |---|---|
+| Udrulnings-markering (`rollout`) | §2a, ejer 1/10, [#6014](https://github.com/NicolaiDolmer/CyclingZone/issues/6014) |
 | Format-regler (felter, ét tal, EN/DA, em-dash) | [`TONE_OF_VOICE.md`](TONE_OF_VOICE.md) §"Patch notes · format", låst 14/8, [#3680](https://github.com/NicolaiDolmer/CyclingZone/issues/3680) |
 | "Udsnit, ikke ny tekst"-reglen | ToV §2.2, samme afsnit |
 | Udsnit-praksis (eksempel) | [`docs/drafts/discord-patch-notes-2026-09-17.md`](drafts/discord-patch-notes-2026-09-17.md) |

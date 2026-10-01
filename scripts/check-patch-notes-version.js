@@ -133,11 +133,26 @@ function fail(message) {
 // kaster SyntaxError hvis den ikke parser, uden at kræve en fuld testrunner.
 async function importCheck(absPath) {
   try {
-    await import(pathToFileURL(absPath).href);
-    return { ok: true };
+    const mod = await import(pathToFileURL(absPath).href);
+    return { ok: true, mod };
   } catch (error) {
     return { ok: false, error };
   }
+}
+
+// #6014: hver spillervendt change i en NY version skal bære en udrulnings-markering
+// (docs/PATCH_NOTES_RULES.md §2a). Historiske versioner (allerede på base) røres ikke.
+const ROLLOUTS = ["live", "beta", "beta_to_live", "switched_on", "event"];
+function missingRollout(patches, baseVersions) {
+  const known = new Set(baseVersions);
+  const bad = [];
+  for (const p of patches || []) {
+    if (known.has(p.version)) continue;
+    (p.changes || []).forEach((c, i) => {
+      if (c.audience === "player" && !ROLLOUTS.includes(c.rollout)) bad.push(`${p.version}#${i}`);
+    });
+  }
+  return bad;
 }
 
 async function main() {
@@ -197,6 +212,14 @@ async function main() {
   // stadig bump-kravet nedenfor (#154-beskyttelsen).
   const versionsUnchanged = baseVersions.length > 0 && arraysEqual(versions, baseVersions);
 
+  const noRollout = baseVersions.length > 0 ? missingRollout(importResult.mod.PATCHES, baseVersions) : [];
+  if (noRollout.length > 0) {
+    fail(
+      `New player changes without a valid "rollout" (${ROLLOUTS.join("|")}): ${noRollout.join(", ")}. `
+      + `See docs/PATCH_NOTES_RULES.md §2a.`
+    );
+  }
+
   if (patchNotesChanged && baseVersions.length > 0 && !versionsUnchanged) {
     const currentTop = versions[0];
     const baseTop = baseVersions[0];
@@ -240,6 +263,7 @@ module.exports = {
   arraysEqual,
   patchNotesRouteIsSnapshotted,
   importCheck,
+  missingRollout,
 };
 
 if (require.main === module) {

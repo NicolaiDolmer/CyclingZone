@@ -12,6 +12,21 @@ import {
 const LAST_SEEN_KEY = "cz_patchnotes_last_seen";
 const CATEGORIES = ["all", "new", "improved", "fixed"];
 
+// #6014: fast udrulnings-markering pr. change (docs/PATCH_NOTES_RULES.md §2a).
+// "live" (for alle) faar ingen chip; de fire andre faar en rolig hairline-chip.
+// Aeldre entries bruger stadig `stage: "beta"` (#5422) og laeses som rollout beta.
+const ROLLOUT_CHIP = {
+  beta: "border-cz-warning/40 text-cz-warning",
+  beta_to_live: "border-cz-success/40 text-cz-success",
+  switched_on: "border-cz-info/40 text-cz-info",
+  event: "border-cz-border text-cz-2",
+};
+
+function rolloutOf(change) {
+  const r = change.rollout || (change.stage === "beta" ? "beta" : null);
+  return ROLLOUT_CHIP[r] ? r : null;
+}
+
 function formatDate(iso, lang) {
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString(lang === "da" ? "da-DK" : "en-GB", {
@@ -249,6 +264,7 @@ export default function PatchNotesPage() {
                               const v = pickLang(c, lang);
                               const expanded = openChanges.has(c._key);
                               const hasBody = v.body && v.body !== v.title;
+                              const rollout = rolloutOf(c);
                               return (
                                 <li key={c._key} className="py-[13px] first:pt-0">
                                   <button
@@ -259,9 +275,12 @@ export default function PatchNotesPage() {
                                     }`}
                                   >
                                     <span className="text-cz-1 text-[13.5px] font-medium leading-snug">
-                                      {c.stage === "beta" && (
-                                        <span className="text-3xs uppercase bg-cz-warning-bg text-cz-warning border border-cz-warning/30 px-1.5 py-0.5 rounded-cz-pill me-1.5 align-middle">
-                                          {t("stage.beta")}
+                                      {rollout && (
+                                        <span
+                                          data-rollout={rollout}
+                                          className={`inline-block text-3xs font-semibold uppercase tracking-[.06em] border px-1.5 py-px rounded-cz me-2 align-[2px] whitespace-nowrap ${ROLLOUT_CHIP[rollout]}`}
+                                        >
+                                          {t(`rollout.${rollout}`)}
                                         </span>
                                       )}
                                       {v.title || v.body}
@@ -297,7 +316,8 @@ export default function PatchNotesPage() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 text-cz-3 text-xs mt-6">
+      <div className="flex flex-col gap-1 text-cz-3 text-xs mt-6">
+        <span>{t("footer.rolloutNote")}</span>
         <span>{t("footer.hiddenNote")}</span>
       </div>
     </div>
