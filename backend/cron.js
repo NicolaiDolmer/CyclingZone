@@ -705,7 +705,7 @@ async function runTrainingDayCloseCron() {
   }
   // #6004: samme (dato, hold, besked)-saet hvert tick giver kun EEN Sentry-capture;
   // fejlen logges stadig hvert tick, og et nyt/aendret saet capturer igen.
-  const failureKey = (result.failures ?? []).map((f) => `${f.tickDate}|${f.teamId}|${f.message}`).sort().join("\n");
+  const failureKey = result.failed ? `${result.failed}\n${(result.failures ?? []).map((f) => `${f.tickDate}|${f.teamId}|${f.message}`).sort().join("\n")}` : "";
   const repeatedFailure = failureKey === lastTrainingDayCloseFailureKey;
   lastTrainingDayCloseFailureKey = failureKey;
   if (result.failed) console.error(`❌ Traenings-lukning: ${result.failed} fejl${repeatedFailure ? " (uaendret, ingen ny Sentry-capture)" : ""}`, result.failures?.slice(0, 20));
