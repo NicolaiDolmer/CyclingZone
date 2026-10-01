@@ -66,9 +66,16 @@ export function createTrainingFatigueRulesRouter({
   async function writeRow(teamId, riderId, patch) {
     const id = await findRow(teamId, riderId);
     const updated_at = now().toISOString();
-    const result = id
-      ? await supabase.from("team_training_rules").update({ ...patch, updated_at }).eq("id", id)
+    const update = (rowId) => supabase.from("team_training_rules").update({ ...patch, updated_at }).eq("id", rowId);
+    let result = id
+      ? await update(id)
       : await supabase.from("team_training_rules").insert({ team_id: teamId, rider_id: riderId, ...patch, updated_at });
+    // Dobbeltklik / to faner: den anden INSERT rammer det partielle unikke index
+    // (23505). Raekken findes nu, saa skrivningen goeres faerdig som en update.
+    if (!id && result.error?.code === "23505") {
+      const existing = await findRow(teamId, riderId);
+      if (existing) result = await update(existing);
+    }
     if (result.error) throw new Error(result.error.message);
   }
 

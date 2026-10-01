@@ -14,6 +14,12 @@ function fakeSupabase(state) {
       state[table] ??= [];
       const match = (row) => filters.every((f) => f(row));
       if (op === "update") { for (const row of state[table]) if (match(row)) Object.assign(row, payload); return { error: null }; }
+      if (op === "insert" && state.__raceOnInsert) {
+        // Simulerer en samtidig skrivning: en anden request naaede at indsaette raekken foerst.
+        state.__raceOnInsert = false;
+        state[table].push({ id: "row-race", ...[payload].flat()[0], fatigue_threshold: 1 });
+        return { error: { code: "23505", message: "duplicate key" } };
+      }
       if (op === "insert") { for (const row of [payload].flat()) state[table].push({ id: `row-${seq += 1}`, ...row }); return { error: null }; }
       if (op === "delete") { state[table] = state[table].filter((row) => !match(row)); return { error: null }; }
       let rows = state[table].filter(match).map((r) => ({ ...r }));
@@ -139,4 +145,13 @@ test("ugestriben: kun dage hvor en regel slog til, inden for 7 datoer", async (t
   const { call } = await fixture(t, { state });
   const got = (await call("GET", "/")).body;
   assert.deepEqual(got.recent, [{ date: "2026-09-30", gameDay: 10, riderId: "r1", kind: "fatigue", fallback: "rest", fatigue: 72, threshold: 65 }]);
+});
+
+test("samtidig foerste skrivning (23505) goeres faerdig som update, ikke 500", async (t) => {
+  const state = seed();
+  state.__raceOnInsert = true;
+  const { call } = await fixture(t, { state });
+  assert.equal((await call("PUT", "/team", { threshold: 55, fallback: "light", recoveryAfterStage: false })).status, 200);
+  assert.equal(state.team_training_rules.length, 1);
+  assert.equal(state.team_training_rules[0].fatigue_threshold, 55);
 });

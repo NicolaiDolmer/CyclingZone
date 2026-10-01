@@ -88,7 +88,7 @@ export default function FatigueRulePanel({ className = "" }: { className?: strin
 
   if (!data?.enabled) return null;
 
-  const thresholdNumber = Number(threshold);
+  const thresholdNumber = threshold.trim() === "" ? NaN : Number(threshold);
   const thresholdValid = isThreshold(thresholdNumber);
   const draftTeam: RuleView = limitOn && thresholdValid
     ? { threshold: thresholdNumber, fallback, recoveryAfterStage: afterStage }
@@ -311,7 +311,7 @@ function ExceptionRow({
   const [mode, setMode] = useState<ExceptionMode>(initialMode ?? savedMode);
   const [threshold, setThreshold] = useState(String(rule.threshold ?? DEFAULT_THRESHOLD));
   const [fallback, setFallback] = useState<FatigueFallback>(isFallback(rule.fallback) ? rule.fallback : "rest");
-  const thresholdNumber = Number(threshold);
+  const thresholdNumber = threshold.trim() === "" ? NaN : Number(threshold);
   const valid = mode !== "own" || isThreshold(thresholdNumber);
   const own = effectiveLimit(null, rule);
   const dirty = mode !== savedMode
