@@ -160,7 +160,7 @@ export async function refreshRankingMatviewsGated(
     try {
       settling = await isTrainingSettlementInProgress(supabase, { now });
     } catch (err) {
-      // Fail-safe: uden statusopslag refreshes som før #5911.
+      // best-effort: fail-safe, uden statusopslag refreshes som før #5911.
       logger.warn?.(`⚠️  ranking refresh: training status lookup failed, refreshing anyway: ${err.message}`);
     }
   }
@@ -186,6 +186,7 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     try {
       settling = await isTrainingSettlementInProgress(supabase, { now });
     } catch (err) {
+      // best-effort: fail-safe, uden statusopslag refreshes straks.
       logger.warn?.(`⚠️  ranking refresh after training: status lookup failed, refreshing anyway: ${err.message}`);
     }
     if (settling) return "deferred";
@@ -238,6 +239,7 @@ export async function requestRankingMatviewRefresh(
   try {
     return await refresh(supabase, { captureExceptionFn, now: nowFn(), logger });
   } catch (err) {
+    // best-effort: resultaterne er skrevet; refreshRankingMatviewsSafe capturer selv, cron fanger resten.
     logger.warn?.(`⚠️  ranking refresh failed (cron catches it): ${err.message}`);
     return false;
   }
