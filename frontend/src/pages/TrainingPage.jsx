@@ -61,8 +61,20 @@ import TrainingOverview from "../components/training/TrainingOverview.tsx";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
-import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
+import FatigueRulePanel from "../components/training/FatigueRulePanel.tsx"; // #4854
+// #5932: Program-fanens tre under-faner (ejer-godkendt mockup 1/10).
+import TrainingPlanCard from "../components/training/TrainingPlanCard.tsx";
+import TrainingProgramList from "../components/training/TrainingProgramList.tsx";
+import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
+import { useFatigueRules } from "../components/training/useFatigueRules.ts";
+import { Segmented } from "../components/ui/Segmented.jsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
+// #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
+import { useTrainNow } from "../components/training/TrainNowClient.ts";
+import { trainNowRunGate } from "../components/training/TrainNowState.ts";
+import TrainNowNote from "../components/training/TrainNowNote.tsx";
+import FatigueForecast from "../components/training/FatigueForecast.tsx";
+import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
@@ -235,6 +247,8 @@ function MiniBar({ value, color, label }) {
 
 // Progress mod næste +1 for en fokus-evne (anticipation). Baren bliver grøn ved
 // NEAR_BREAKTHROUGH+ ("tæt på gennembrud"). info = { ability, pct } eller null (tom-tilstand).
+
+
 function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
   if (!info) {
     return <span className="text-cz-3 text-xs">{emptyLabel}</span>;
@@ -551,7 +565,7 @@ export default function TrainingPage() {
     // i dag. Serveren afgør det — se trainingMobileTableFlag.js.
     // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
     // pinner at racingToday er det sidste felt før `} = training;`.
-    mobileTable,
+    mobileTable, dailyReceiptEnabled,
     racingToday,
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
@@ -561,7 +575,41 @@ export default function TrainingPage() {
   // false = Ugeplan-fanen præcis som i dag. Efter en tildeling/celle-rettelse
   // genindlæses useTraining, så planen har ÉN kilde (riderWeekPlans).
   const programs = useTrainingPrograms({ onChanged: training.refresh });
+  // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
+  const trainNow = useTrainNow({ onSettled: training.refresh });
+  const runGate = trainNowRunGate(trainNow.status, { trainedToday: !!todayRun, dayClose });
   const programsOn = programs.enabled;
+  // #5932: de 35 felter for alle (eget flag, training_program_cells). Kataloget
+  // følger stadig `programsOn`; gitteret vises når en af dem er åben.
+  const cellsOn = programs.cellsEnabled;
+  // #5933: "Fatigue tonight: approx. X". Hentes igen hver gang planen eller
+  // dagsvalget ændrer sig, så tallet følger felterne live før dagen bekræftes.
+  const fatigueForecast = useFatigueForecast({ enabled: cellsOn });
+  const reloadForecast = fatigueForecast.reload;
+  useEffect(() => { reloadForecast(); }, [reloadForecast, riderWeekPlans, weekPlan, training.plans, todayRun]);
+  const forecastFor = (riderId) => (cellsOn ? fatigueForecast.entryFor(riderId) : null);
+  // #4854/#5620: traethedsgraensen. Hentes her (ikke i panelet), fordi Today-
+  // fanens overblik viser samme regel som een linje (#5932, mockup pin 8).
+  const fatigueRules = useFatigueRules();
+  const fatigueRulesOn = fatigueRules.enabled;
+  // #5932 (ejer-godkendt omstrukturering 1/10): Program-fanen faar under-faner
+  // Plan · Programs · Fatigue limit, valget huskes i ?sub=. Kun naar mindst een
+  // af de nye funktioner er aaben for holdet; ellers er fanen praecis som i dag.
+  const programSubTabs = [
+    "plan",
+    ...(programsOn ? ["programs"] : []),
+    ...(fatigueRulesOn ? ["limit"] : []),
+  ];
+  const programLayout = programsOn || cellsOn || fatigueRulesOn;
+  const requestedSub = searchParams.get("sub");
+  const activeSub = programSubTabs.includes(requestedSub) ? requestedSub : "plan";
+  const setSub = (sub) =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", "weekplan");
+      p.set("sub", sub);
+      return p;
+    }, { replace: true });
   const scoreVisible = trainingScore != null;
   // #5485 (ejer-valg A 23/9): er dagens pas kørt? Før det har ingen rytter et
   // tal for i dag, og Score viser det SENESTE tal dæmpet (mobileScoreCell).
@@ -592,6 +640,9 @@ export default function TrainingPage() {
   // #3924 trin 1 (design-go 20/8): "Yesterday's gains"-resuméet øverst på Train
   // today — holdniveau-tallene til den ÉNE linje + kvitteringens per-rytter-
   // historier til fold-ud'et. Samme todayRun/progress som resten af siden.
+
+
+
   const yesterday = todayRun?.report ? yesterdaySummary(todayRun.report.riders) : null;
   const yesterdayStories = useMemo(
     () => (todayRun?.report ? riderDayStories(todayRun.report.riders, progress) : []),
@@ -624,7 +675,7 @@ export default function TrainingPage() {
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
-  const history = useTrainingHistory();
+  const history = useTrainingHistory({ dailyReceiptEnabled });
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
@@ -747,6 +798,8 @@ export default function TrainingPage() {
   // #5485 (aendring 6): fanen Week plan redigerer enten holdets plan ("team")
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
+  // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
+  const [planCellError, setPlanCellError] = useState(null);
 
   // Hent egne ryttere fra Supabase — samme mønster som TeamPage.
   useEffect(() => {
@@ -812,6 +865,8 @@ export default function TrainingPage() {
 
   async function handleRunToday() {
     setRunError(null);
+    // #4847: fejl og laast-status vises af TrainNowNote under knappen.
+    if (trainNow.status.enabled) { await trainNow.press(); return; }
     const result = await runToday();
     if (result && !result.ok) {
       setRunError(result.error || "failed");
@@ -927,13 +982,17 @@ export default function TrainingPage() {
   const isLoading = loading;
 
   // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
-  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
+
 
   // Dagligt udviklings-moment (#2484, H3): ÉN kurateret historie i stedet for
   // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
   // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
   // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
+  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
   const latestRun = todayRun ?? history.runs[0] ?? null;
+  const receiptRuns = useMemo(() => todayRun
+    ? [todayRun, ...history.runs.filter(run => run.tick_date !== todayRun.tick_date || run.season_id !== todayRun.season_id)]
+    : history.runs, [todayRun, history.runs]);
   const latestIsToday = !!todayRun;
   const pastRuns = latestIsToday
     ? history.runs.filter((r) => r.tick_date !== todayRun.tick_date)
@@ -963,7 +1022,7 @@ export default function TrainingPage() {
     const out = {};
     if (history.seasonState !== SEASON_RECEIPT_RUNNING || !history.seasonStart) return out;
     for (const r of riders) {
-      out[r.id] = seasonAbilityGains(history.seasonRuns, r.id, history.seasonStart) ?? {};
+      out[r.id] = seasonAbilityGains(history.seasonRuns, r.id, history.seasonStart);
     }
     return out;
   }, [riders, history.seasonRuns, history.seasonStart, history.seasonState]);
@@ -1182,6 +1241,7 @@ export default function TrainingPage() {
       // #5539-fix: seneste kørsel (dagens, ellers nyeste historiske).
       progressBefore: receiptRowByRider[rider.id]?.progress_before ?? null,
       gainsToday: receiptRowByRider[rider.id]?.gains ?? null,
+      gainPercentToday: receiptRowByRider[rider.id]?.gain_percent,
       gainDay: receiptDay,
     });
 
@@ -1812,9 +1872,9 @@ export default function TrainingPage() {
 
   const sessionFor = (riderId, column) => {
     if (racingFor(riderId, column)) return null;
-    // #4629: står rytteren på et program (beta), viser en ikke-afregnet celle
-    // programmets celle for i dag i netop den løbsdag — samme regel som motoren.
-    if (programsOn && column.state !== "done") {
+    // #4629/#5932: står rytteren på et program, viser en ikke-afregnet celle
+    // feltet for i dag i netop den løbsdag. Gates på cellsOn = samme flag som motoren.
+    if (cellsOn && column.state !== "done") {
       const fromProgram = programSessionToday(riderWeekPlans[riderId], WEEKDAY_KEYS, todayWeekday, column.index);
       if (fromProgram) return fromProgram;
     }
@@ -1933,18 +1993,19 @@ export default function TrainingPage() {
   // primaryActionFor, ét sted.
   const primaryAction = primaryActionFor({
     needsDay: overview.needsDay.length,
-    trainedToday: !!todayRun,
+    trainedToday: runGate.trainedToday,
     enabled,
-    dayClose,
+    dayClose: runGate.dayClose,
   });
-  const runnable = canRunToday({ trainedToday: !!todayRun, enabled, dayClose });
+  const runnable = canRunToday({ trainedToday: runGate.trainedToday, enabled, dayClose: runGate.dayClose });
   // #2819/#5485: turens trin 2 peger på det tryk der KØRER dagen (se
   // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
   // statuslinjen.
   const tourTarget = tourRunTarget(primaryAction, runnable);
   const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null);
   const selectedCount = pruneSelection(selected, filterIds).size;
-  const runTodayLabel = running ? t("loading") : (dayClose ? t("runDayNow") : t("trainToday"));
+  const runTodayLabel = running || trainNow.pressing ? t("loading")
+    : trainNow.status.enabled ? t("trainNow.button") : (dayClose ? t("runDayNow") : t("trainToday"));
   const primaryLabel = primaryAction.kind === "setDays"
     ? t("primary.setDays", { n: primaryAction.riders })
     : runTodayLabel;
@@ -2044,6 +2105,7 @@ export default function TrainingPage() {
       seasonGains: seasonGainsByRider[riderId] ?? null,
       progressBefore: receiptRowByRider[riderId]?.progress_before ?? null,
       gainsToday: receiptRowByRider[riderId]?.gains ?? null,
+      gainPercentToday: receiptRowByRider[riderId]?.gain_percent,
       gainDay: receiptDay,
     });
   }
@@ -2058,6 +2120,12 @@ export default function TrainingPage() {
     return rider.secondary_type && rider.secondary_type !== rider.primary_type
       ? `${tTypes(`types.${rider.primary_type}`)}/${tTypes(`types.${rider.secondary_type}`)}`
       : tTypes(`types.${rider.primary_type}`);
+  }
+
+  // #5933: "Fatigue tonight: approx. X" i rytterkortet (desktop + telefon).
+  function renderForecast(riderId) {
+    const entry = forecastFor(riderId);
+    return entry ? <FatigueForecast entry={entry} settled={fatigueForecast.settled} /> : null;
   }
 
   // Desktop-kortet (A3): den samme komponent som telefonens låste variant
@@ -2092,6 +2160,7 @@ export default function TrainingPage() {
           scoreSpark={riderScore?.spark ? [...riderScore.spark] : null}
           scoreAria={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
           footer={riderCardFooter(riderId)}
+          forecast={renderForecast(riderId)}
         />
       </div>
     );
@@ -2242,6 +2311,7 @@ export default function TrainingPage() {
             // Week plan og gårsdagens kvittering i Report.
             overviewLayout
             cardFooterFor={riderCardFooter}
+            forecastFor={renderForecast}
             changeLabel={t("card.changeDay")}
             weekdays={WEEKDAY_KEYS}
             intensityForWeekday={(weekday) => (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal"}
@@ -2300,14 +2370,14 @@ export default function TrainingPage() {
       <span data-tour={tourAnchor("primary")} className={isMobile ? "flex flex-1" : "inline-flex"}>
         <Button
           type="button"
-          // #4629: på Program-fanen er "Brug program" viewets ene guld-knap.
-          variant={assistantPanelOpen || (programsOn && activeTab === "weekplan") ? "secondary" : "primary"}
+          // #5932: Program-fanen har ingen egen guld-knap længere ("Put on" er et valg).
+          variant={assistantPanelOpen ? "secondary" : "primary"}
           size={isMobile ? "md" : "sm"}
           onClick={handlePrimary}
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
           // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
           // største kilder til døde klik).
-          disabled={running || bulkApplying}
+          disabled={running || trainNow.pressing || bulkApplying}
           // min-h-11 = #1602's 44px tryk-mål på telefonen.
           className={isMobile ? "min-h-11 flex-1" : ""}
           data-testid="training-primary"
@@ -2323,7 +2393,7 @@ export default function TrainingPage() {
             size={isMobile ? "md" : "sm"}
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || bulkApplying}
+            disabled={running || trainNow.pressing || bulkApplying}
             className={isMobile ? "min-h-11 flex-none" : ""}
             data-testid="training-run-now"
           >
@@ -2357,7 +2427,7 @@ export default function TrainingPage() {
             size="sm"
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running}
+            disabled={running || trainNow.pressing}
             data-testid="training-run-now"
           >
             {running ? t("loading") : t("overview.runNow")}
@@ -2594,7 +2664,7 @@ export default function TrainingPage() {
         onReset={() => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key))}
         message={isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null}
         // #4629: ryttere på et program vises i Program-gitteret, ikke her som intensiteter.
-        ownPlans={ridersWithOwnWeekPlan.filter((r) => !(programsOn && isProgramPlan(riderWeekPlans[r.id], WEEKDAY_KEYS))).map((r) => ({
+        ownPlans={ridersWithOwnWeekPlan.filter((r) => !(cellsOn && isProgramPlan(riderWeekPlans[r.id], WEEKDAY_KEYS))).map((r) => ({
           id: r.id,
           name: `${r.firstname} ${r.lastname}`,
           summary: WEEKDAY_KEYS.map(
@@ -2603,6 +2673,142 @@ export default function TrainingPage() {
         }))}
         onOpenOwnPlan={setWeekPlanFor}
       />
+    );
+  }
+
+  // ── #5932: Program-fanens tre under-faner (ejer-godkendt mockup 1/10) ─────
+  // Plan: EET kort med "Plan for" + "Fatigue tonight" i top-raekken. For holdet
+  // er "Whole day" den gamle ugeplan (samme kladde/gem som renderWeekPlanTab);
+  // for en rytter hans 35 felter (cellsOn) eller hans egen intensitets-uge.
+  // Week plan- og Individual weekly plans-kortene er vaek her; ryttere med egen
+  // plan staar som chips. Flags off: renderWeekPlanTab() som i dag (se TabPanel).
+  function renderPlanSubTab() {
+    const isTeam = weekPlanFor === "team" || !riderByIdMap.has(weekPlanFor);
+    const key = isTeam ? "team" : weekPlanFor;
+    const rider = isTeam ? null : riderByIdMap.get(key);
+    const draft = isTeam ? (activeWeekDays ?? flatWeekTemplate()) : riderWeekDraftFor(key);
+    const saved = isTeam ? (weekPlan ?? flatWeekTemplate()) : (riderWeekPlans[key] ?? flatWeekTemplate());
+    const changed = WEEKDAY_KEYS.filter(
+      (weekday) => (draft[weekday]?.intensity ?? "normal") !== (saved[weekday]?.intensity ?? "normal"),
+    ).length;
+    const ordered = sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc");
+    const hasOwn = (r) => riderWeekPlans[r.id] != null;
+    const options = [
+      { value: "team", label: t("weekPlan.team", { n: riders.length }) },
+      ...ordered.map((r) => ({
+        value: r.id,
+        label: `${r.firstname} ${r.lastname}${hasOwn(r) ? ` · ${t("individualWeekPlanBadge")}` : ""}`,
+      })),
+    ];
+    // Holdets tal: den mest traette rytter i aften (et gennemsnit ville skjule
+    // netop den rytter grænsen handler om).
+    let forecastEntry = null;
+    if (cellsOn) {
+      if (isTeam) {
+        for (const entry of Object.values(fatigueForecast.forecast?.riders ?? {})) {
+          if (Number.isFinite(entry?.fatigue) && (!forecastEntry || entry.fatigue > forecastEntry.fatigue)) forecastEntry = entry;
+        }
+      } else {
+        forecastEntry = forecastFor(key);
+      }
+    }
+    const ownDays = isTeam ? null : riderWeekPlans[key];
+    const seedDays = isTeam ? null : programs.seeds?.[key];
+    const isSeed = !isTeam && !isProgramPlan(ownDays, WEEKDAY_KEYS) && isProgramPlan(seedDays, WEEKDAY_KEYS);
+    const cells = !isTeam && cellsOn
+      ? {
+        days: isSeed ? seedDays : ownDays,
+        isSeed,
+        program: programs.catalog.find((p) => p.key === programs.assigned?.[key]) ?? null,
+        lockedToday: raceSlotsFor(fatigueForecast.forecast, key),
+        busy: programs.busy,
+        onSetCell: async (weekday, slotIndex, session) => {
+          const result = await programs.setCell(key, weekday, slotIndex, session);
+          setPlanCellError(result.ok ? null : t("programs.error"));
+        },
+        message: planCellError,
+      }
+      : null;
+    return (
+      <TrainingPlanCard
+        weekdays={WEEKDAY_KEYS}
+        todayWeekday={todayWeekday}
+        // #4629: med training_tick_per_race_day on (dayClose findes) bærer hver
+        // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
+        columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
+        planFor={key}
+        planForOptions={options}
+        onPlanFor={(value) => { setPlanCellError(null); setWeekPlanFor(value); }}
+        forecast={forecastEntry ? (
+          <FatigueForecast
+            entry={forecastEntry}
+            settled={fatigueForecast.settled}
+            label={isTeam ? t("forecast.teamLabel") : null}
+          />
+        ) : null}
+        intro={isTeam
+          ? t("weekPlan.teamIntro")
+          : t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
+        intensity={{
+          intensities: TRAINING_INTENSITIES,
+          intensityFor: (weekday) => draft[weekday]?.intensity ?? "normal",
+          onSetDay: (weekday, intensity) =>
+            (isTeam ? setWeekDraftDay(weekday, intensity) : setRiderWeekDraftDay(key, weekday, intensity)),
+          changedCount: changed,
+          saving: isTeam ? !!savingWeekPlan : savingRiderWeekPlanId === key,
+          onSave: () => (isTeam ? handleSaveWeekPlan() : handleSaveRiderWeekPlan(key)),
+          onUndo: () => {
+            if (isTeam) setWeekDraft(null);
+            else setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[key]; return next; });
+          },
+          resetLabel: isTeam
+            ? (weekPlan ? t("weekRhythmResetButton") : null)
+            : (riderWeekPlans[key] != null ? t("individualWeekPlanRemove") : null),
+          onReset: () => (isTeam ? handleResetWeekPlan() : handleRemoveRiderWeekPlan(key)),
+          message: isTeam ? weekPlanMsg : riderWeekMsgMap[key] ?? null,
+        }}
+        cells={cells}
+        ownPlans={ordered.filter(hasOwn).map((r) => ({ id: r.id, name: `${r.firstname.charAt(0)}. ${r.lastname}` }))}
+        onOpenOwnPlan={(riderId) => { setPlanCellError(null); setWeekPlanFor(riderId); }}
+      />
+    );
+  }
+
+  function renderProgramTab() {
+    const subLabel = (sub) => (sub === "limit"
+      ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
+      : t(`subtabs.${sub}`));
+    return (
+      <div className="space-y-3" data-testid="training-program-tab">
+        {programSubTabs.length > 1 && (
+          <Segmented
+            label={t("subtabs.label")}
+            value={activeSub}
+            onChange={setSub}
+            options={programSubTabs.map((sub) => ({ value: sub, label: subLabel(sub) }))}
+            className={isMobile ? "flex w-full [&>button]:flex-1 [&>button]:min-h-11" : ""}
+          />
+        )}
+        {activeSub === "programs" && programsOn ? (
+          <TrainingProgramList
+            weekdays={WEEKDAY_KEYS}
+            riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
+              id: r.id,
+              name: `${r.firstname} ${r.lastname}`,
+              type: r.primary_type ?? null,
+            }))}
+            catalog={programs.catalog}
+            busy={programs.busy}
+            onApply={programs.applyProgram}
+            sessionShort={(session) => t(`mobile.sessionShort_${session}`, {
+              defaultValue: session === "rest" || session === "recovery"
+                ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`),
+            })}
+          />
+        ) : activeSub === "limit" && fatigueRulesOn ? (
+          <FatigueRulePanel rules={fatigueRules} />
+        ) : renderPlanSubTab()}
+      </div>
     );
   }
 
@@ -2801,6 +3007,7 @@ export default function TrainingPage() {
       />
 
       {isMobile && primaryButton}
+      <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
 
       {/* #5485: fanerne hedder Today / Week plan / Development / Report.
           Tallet ved Today er antallet af ryttere der mangler en dag.
@@ -2815,7 +3022,7 @@ export default function TrainingPage() {
               <span className="ms-1 font-data text-2xs tabular-nums text-cz-3">{overview.needsDay.length}</span>
             )}
           </Tab>
-          <Tab value="weekplan">{programsOn ? t("tabs.program") : t("tabs.weekplan")}</Tab>
+          <Tab value="weekplan">{programLayout ? t("tabs.program") : t("tabs.weekplan")}</Tab>
           <Tab value="development">{t("tabs.development")}</Tab>
           <Tab value="report">{t("tabs.report")}</Tab>
         </TabList>
@@ -2830,6 +3037,7 @@ export default function TrainingPage() {
           onToggle={toggleOverviewFilter}
           variant={overviewVariant}
           status={overviewStatus}
+          footer={fatigueRulesOn ? <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} /> : null}
         />
       </div>
       {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
@@ -3163,32 +3371,10 @@ export default function TrainingPage() {
           egen plan i ét gitter, valgt med "Plan for". Ingen nye API-kald:
           weekPlan/riderWeekPlans kommer fra useTraining som før. */}
       <TabPanel value="weekplan">
-        {/* #4629 (beta 26/9): Program-fanen — katalog, tildeling og 7 x N-
-            gitteret øverst. Holdets gamle intensitets-rytme står uændret under. */}
-        {programsOn ? (
-          <div className="space-y-3.5">
-            <TrainingProgramsPanel
-              weekdays={WEEKDAY_KEYS}
-              todayWeekday={todayWeekday}
-              // #4629: programmet har ÉN kolonne ("Hele dagen") med
-              // training_tick_per_race_day off; on (dayClose findes) bærer hver
-              // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
-              columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
-              riders={sortRows(riders, (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`, "asc").map((r) => ({
-                id: r.id,
-                name: `${r.firstname} ${r.lastname}`,
-                type: r.primary_type ?? null,
-              }))}
-              riderWeekPlans={riderWeekPlans}
-              catalog={programs.catalog}
-              assigned={programs.assigned}
-              busy={programs.busy}
-              onApply={programs.applyProgram}
-              onSetCell={programs.setCell}
-            />
-            {renderWeekPlanTab()}
-          </div>
-        ) : renderWeekPlanTab()}
+        {/* #5932 (ejer-godkendt mockup 1/10): med programmer, felter eller
+            traethedsgraensen aaben faar fanen tre under-faner, et kort pr.
+            under-fane. Ellers praecis som i dag (Week plan + egne planer). */}
+        {programLayout ? renderProgramTab() : renderWeekPlanTab()}
       </TabPanel>
 
       {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,
@@ -3291,6 +3477,13 @@ export default function TrainingPage() {
           Gårsdagens kvittering, dagens historie og rapport-tabellen stod før
           øverst på Train today og skubbede truppen ned under folden. */}
       <TabPanel value="report">
+        {dailyReceiptEnabled ? <>
+
+        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} />
+        <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
+
+        </> : <>
+
       <div className="space-y-6">
         {/* #3924 trin 1 (design-go 20/8, ejer-godkendt): "Yesterday's gains" —
             ÉN resumé-linje øverst på Train today, foldet ud til en kvalitativ
@@ -3478,6 +3671,8 @@ export default function TrainingPage() {
         {/* #5734: samme trainingScore-kort som Today (null = training_score_visible off) — TrainingHistory slaar selv dags-dato op i .spark. */}
         <TrainingHistory history={history} trainingScore={trainingScore} />
       </div>
+
+        </>}
       </TabPanel>
       </Tabs>
 

@@ -10,9 +10,11 @@
  */
 
 import express from "express";
+import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js";
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
+import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
@@ -235,9 +237,14 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 // #4847: den frivillige knap "Koer dagens traening nu" haenger paa PRAECIS samme
 // lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
 import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
+import { loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js"; // #4847: train-now deler sweepens spaend
+import { createTrainNowRouter } from "./trainNow.js"; // #4847
+import { createTrainNowPlanLock } from "../lib/trainNow.js"; // #4847
+import { isRaceDateTrainNowLocked } from "../lib/trainNowLock.js"; // #4847
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
+import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
-import { TRAINING_SCORE_VISIBLE_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
@@ -935,7 +942,25 @@ router.use("/rankings", createRankingsRouter({
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
+// #4847: efter et "Train now"-tryk er dagens traeningsfelter laast til aftenopgoerelsen.
+const trainNowPlanLock = createTrainNowPlanLock({ supabase, captureExceptionFn: captureException });
 router.use("/training/programs", createTrainingProgramsRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException, planLock: trainNowPlanLock,
+}));
+// #4847: "Train now" uden bonus. Monteret FOER `/training/:riderId`.
+router.use("/training/train-now", createTrainNowRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException,
+  loadDaySpans: loadDayCloseSpans,
+  loadActiveSeason: async () => {
+    const { data, error } = await supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle();
+    if (error) throw new Error(`seasons: ${error.message}`);
+    return data ?? null;
+  },
+}));
+// #4854/#5620: spillerens traeningsregler (beta). Ogsaa foer `/training/:riderId`.
+router.use("/training/fatigue-rules", createTrainingFatigueRulesRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
   captureExceptionFn: captureException,
 }));
@@ -1527,14 +1552,12 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
 // snapshot nr. 200 og klippe al senere udvikling af (daily-snapshots vokser ubegrænset).
 router.get("/riders/:id/development", requireAuth, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("rider_derived_ability_history")
-      .select("snapshot_date, season_number, source, abilities")
-      .eq("rider_id", req.params.id)
-      .order("snapshot_date", { ascending: false })
-      .limit(200);
-    if (error) throw new Error(error.message);
-    res.json((data ?? []).reverse());
+    const [stage,isBetaTester] = await Promise.all([
+      readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY), isViewerBetaTester(req),
+    ]);
+    res.json(await loadDevelopmentReceiptHistory(supabase, req.params.id, {
+      dailyReceiptEnabled:evaluateFlagStage(stage,{isBetaTester}),
+    }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2860,7 +2883,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage,
+      mobileTableStage, dailyReceiptStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -2872,6 +2895,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // #3643 (ejer 19/9): gater KUN telefonens visning. Stadie `beta` ⇒ beta-
       // testere ser den nye tabel, alle andre den gamle. Desktop er uberoert.
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
+      readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
     ]);
     const enabled = evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
@@ -2888,6 +2912,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // se forskel på "gammel visning" og "svar uden flag-felt" — begge er false,
     // og det er med vilje: fail-safe er den visning der står i prod i dag.
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
+    const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -2926,19 +2951,16 @@ router.get("/training/me", requireAuth, async (req, res) => {
       todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult,
     ] = await Promise.all([
       activeSeasonId
-        ? supabase
+        ? fetchAllRows(() => supabase
             .from("training_day_runs")
-            // #4847: limit(1) frem for maybeSingle() — paa loebsdags-noeglen kan
-            // holdet have flere raekker pr. kalenderdato (én pr. loebsdag), og
-            // maybeSingle() ville svare 406 praecis naar flaget flippes.
-            // created_at DESC = dagens SENESTE pas, som er det fladen viser.
-            .select("executed_by, bonus_applied, report, tick_date, created_at")
+            // #5915: all date activities feed the receipt; keep latestRun for old clients.
+            .select("id, season_id, squad, game_day, executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
             .eq("tick_date", todayDate)
+            .or(`season_id.eq.${activeSeasonId},season_id.is.null`)
             .order("created_at", { ascending: false })
-            .limit(1)
-            .then(({ data, error }) => ({ data: data?.[0] ?? null, error }))
-        : Promise.resolve({ data: null }),
+            .order("id", { ascending: true })).then(data => ({ data }))
+        : Promise.resolve({ data: [] }),
       riderIds.length
         ? (async () => {
             // #5462: `injury_race_days_left` med, saa traeningsfladen kan skrive
@@ -2993,7 +3015,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       trainingScoreOn && riderIds.length
         ? fetchAllRows(() => supabase
           .from("rider_training_scores")
-          .select("id, rider_id, tick_date, game_day, score, session, was_race_day, contributions")
+          .select("id, rider_id, season_id, tick_date, game_day, score, session, was_race_day, contributions")
           .eq("team_id", teamId)
           .gte("tick_date", trainingScoreSince)
           .order("tick_date", { ascending: false })
@@ -3001,7 +3023,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
         : Promise.resolve({ data: [] }),
     ]);
 
-    const todayRun = todayRunResult.data ?? null;
+    if (todayRunResult.error) throw new Error(todayRunResult.error.message);
+    const todayRuns = todayRunResult.data ?? [];
+    const todayRun = todayRuns[0] ?? null;
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
@@ -3071,12 +3095,13 @@ router.get("/training/me", requireAuth, async (req, res) => {
     }
 
     res.json({
-      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress, capped,
+      ...state, teamId, enabled, betaTester: isBetaTester, todayRun, todayRuns, condition, progress, capped,
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
       ...(dayClose ? { dayClose } : {}),
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
+      dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
       // kan skelne "flag off" fra "ingen data" på et felt der ikke findes.
@@ -3120,6 +3145,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    if (await isTrainingConditionPerDateEnabled(supabase)) {
+      return res.status(409).json({ error: "normalized_sweep_owns_date" });
+    }
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isDailyTrainingEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "daily_training_disabled" });
@@ -3216,7 +3244,7 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
 // de sidste ryttere fik 429 ("det åd den ikke"). Ét batch-request = én rate-enhed
 // + én atomisk upsert. SKAL stå FØR POST /training/:riderId så Express ikke
 // matcher "bulk" som et :riderId (samme rækkefølge-regel som run-today, #1479).
-router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) => {
+router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock("plan"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const { riderIds, focus, session } = req.body ?? {};
   if (!Array.isArray(riderIds) || riderIds.length === 0) {
@@ -3322,7 +3350,7 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
 // training-week-plans.sql). SKAL stå FØR POST/DELETE /training/:riderId — ellers
 // matcher Express "week-plan" som et :riderId (samme rækkefølge-fælde som
 // run-today/bulk ovenfor, #1479).
-router.put("/training/week-plan", requireAuth, marketWriteLimiter, async (req, res) => {
+router.put("/training/week-plan", requireAuth, marketWriteLimiter, trainNowPlanLock("weekPlan"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!isValidWeekPlanDays(req.body?.days)) return res.status(400).json({ error: "invalid_days" });
   // #4629: holdets rytme er en REN intensitets-rytme; programceller fjernes.
@@ -3364,7 +3392,7 @@ router.put("/training/week-plan", requireAuth, marketWriteLimiter, async (req, r
 // DELETE /api/training/week-plan — fjern holdets ugerytme (tilbage til flad
 // sæson-intensitet hver dag). Rytterne rammer ALDRIG en manglende row (motoren
 // falder tilbage til planIntensity/"normal" i resolveDayIntensity).
-router.delete("/training/week-plan", requireAuth, marketWriteLimiter, async (req, res) => {
+router.delete("/training/week-plan", requireAuth, marketWriteLimiter, trainNowPlanLock("weekPlanClear"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const { error: delErr } = await supabase
@@ -3385,7 +3413,7 @@ router.delete("/training/week-plan", requireAuth, marketWriteLimiter, async (req
 // (team_id, rider_id) WHERE rider_id IS NOT NULL (partial unique index, samme
 // migration som PR 1's team-row). SKAL stå FØR POST/DELETE /training/:riderId —
 // ellers matcher Express "week-plan" som et :riderId (samme fælde som ovenfor).
-router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, trainNowPlanLock("weekPlan"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
   if (!isValidWeekPlanDays(req.body?.days)) return res.status(400).json({ error: "invalid_days" });
@@ -3444,7 +3472,7 @@ router.put("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, asyn
 
 // DELETE /api/training/week-plan/:riderId — fjern én rytters egen ugerytme-
 // override (tilbage til holdets rytme / sæson-intensitet for netop denne rytter).
-router.delete("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+router.delete("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, trainNowPlanLock("weekPlanClear"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
   try {
@@ -3469,7 +3497,7 @@ router.delete("/training/week-plan/:riderId", requireAuth, marketWriteLimiter, a
 // POST /api/training/:riderId — sæt/ændr en træningsfokus på en EGEN rytter.
 // Body: { focus, intensity }. Ny plan forbruger ét slot; om-målretning af en
 // eksisterende plan koster ikke et nyt slot (upsert på (team,rider,season)).
-router.post("/training/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+router.post("/training/:riderId", requireAuth, marketWriteLimiter, trainNowPlanLock("plan"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
   try {
@@ -3512,7 +3540,7 @@ router.post("/training/:riderId", requireAuth, marketWriteLimiter, async (req, r
 });
 
 // DELETE /api/training/:riderId — fjern en træningsfokus (frigør slottet).
-router.delete("/training/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+router.delete("/training/:riderId", requireAuth, marketWriteLimiter, trainNowPlanLock("plan"), async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const riderId = req.params.riderId;
   try {
@@ -5892,6 +5920,10 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     // Et bevidst fravalg (afmeldt) er ikke "mangler udtagelse" — assistenten skal
     // ikke tilmelde holdet igen uden om manageren.
     if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+    // #4847 (I3): samme "Train now"-laas som PUT/bulk (prepareSelectionChange).
+    if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: race.id })) {
+      return res.status(409).json({ error: "selection_train_now_locked" });
+    }
 
     const { data: existingEntries, error: entErr } = await supabase
       .from("race_entries").select("rider_id, is_auto_filled")

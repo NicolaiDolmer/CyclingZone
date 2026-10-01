@@ -220,6 +220,9 @@ test("view: flere loebsdage samme kalenderdato sorteres paa game_day, og 'i dag'
   const view = buildTrainingScoreView(rows, { today: "2026-09-12" });
   assert.deepEqual(view.r1.spark.map((p) => p.score), [40, 55, 70], "kurven skal foelge loebsdagen");
   assert.equal(view.r1.today, 70, "'i dag' er den SENESTE loebsdag paa datoen");
+  assert.deepEqual(view.r1.sessions.map(p=>[p.date,p.gameDay,p.score]),[
+    ["2026-09-12",12,40],["2026-09-12",13,55],["2026-09-12",14,70],
+  ]);
 });
 
 test("view: tom raekkeliste giver et tomt objekt, ikke et kast", () => {

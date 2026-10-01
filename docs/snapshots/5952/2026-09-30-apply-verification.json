@@ -1,0 +1,15 @@
+{
+  "observed_at": "2026-09-30T08:34:47+02:00",
+  "owner_authorization": "Literal Kør in the task chat after the fresh decision card",
+  "season_number": 4,
+  "approved_scope_rechecked_identical": true,
+  "races_applied": 27,
+  "rows_updated": 271,
+  "points_moved": 128,
+  "standings": { "method": "updateStandings via canonical RPC", "rows_updated": 581, "teams_with_points": 228 },
+  "select_verification": { "updated_rows_checked": 271, "paid_rows_checked_unchanged": 255, "row_mismatches": 0, "standings_teams_checked": 581, "standings_points_mismatches": 0 },
+  "baseline_mismatch_races_excluded": 3,
+  "paid_races_excluded": 22,
+  "owner_paid_race_decision": "A: leave paid races and their booked payments unchanged",
+  "detailed_production_snapshots_published": false
+}

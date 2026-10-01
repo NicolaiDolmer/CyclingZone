@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-> **GitHub-first start-rutine** (#70).
+> **GitHub-first** (#70).
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
-Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · spørg ved tvivl (70-95 %) · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **stående merge-regler** (hard rule 35, #5508): brand-fix uden ny spillertekst, motor bag slukket v4, Dependabot/docs uden spillertekst merges uden ejer-"merge" ved grøn CI + rent diff-tjek + CodeRabbit · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
+Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · teknisk tvivl undersøges; beslutningsgrænser: §4 · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **stående merge-regler** (hard rule 35, #5508): brand-fix uden ny spillertekst, motor bag slukket v4, Dependabot/docs uden spillertekst merges uden ejer-"merge" ved grøn CI + rent diff-tjek + CodeRabbit · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
 
 ## Orkestrator-standard (ejer 11/9, #5142)
 
@@ -54,9 +54,9 @@ Ingen lokal-only handoff: state, beslutninger og næste skridt skal ligge i GitH
 
 ## Session-rytme
 
-- Signalér 🟢/🟡/🔴/🆕 ved naturlige break-points
-- Tjekliste før commit; ÉN issue pr. session
-- Foreslå "Næste session starter med #N..." ved close-out
+- Signalér 🟢/🟡/🔴/🆕 ved break-points
+- Ét issue pr. worker; hovedsessionen ejer afslutningen ([workflow](docs/CODEX_WORKFLOWS.md))
+- Handoff på issue; fortsæt efter commit
 
 ## Token-budget
 

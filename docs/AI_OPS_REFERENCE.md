@@ -159,17 +159,9 @@ Uden `<dir>` tjekker `guard-commit-branch.sh` shell-cwd'en, som agent-shells nul
 
 ---
 
-## Rolle-fordeling mellem AI-assistenter — RETIRED (2026-06-25)
+## Rolle-fordeling mellem AI-assistenter
 
-> **Solo Claude-operation siden 2026-06-12.** Ingen Codex, ingen Manus. Claude ejer alle
-> beslutninger og al eksekvering; der er ingen council-roster, AI-ejerskabs-tabel eller
-> reassign-protokol mere. Den fulde historiske 3-AI-kontrakt er gravsten i
-> [`docs/AI_COUNCIL.md`](AI_COUNCIL.md) (+ git-historik).
->
-> **Microsoft Clarity** (UX-data → slice-input via loop I i `AI_LOOPS.md`) er ikke en AI og er uberørt.
->
-> **Konflikt-resolution gælder nu kun parallelle Claude-sessioner samme PC** (worktrees):
-> se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](AGENT_ARCHITECTURE.md).
+Codex og Claude Code kan begge eje arkitektur, orkestrering, implementation og review. Manus er udfaset; Clarity er UX-data. Roller/claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md). Kanalvalg: [AI_CHANNEL_ROUTING.md](AI_CHANNEL_ROUTING.md). Codex-resultatansvar og pilot: [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md). Ingen særskilt council-kontrakt.
 
 ---
 
@@ -236,9 +228,9 @@ _AI'en skal proaktivt signalere session-tilstand. Brugeren behøver ikke selv hu
 | Signal | Hvornår | Hvad AI'en siger |
 |---|---|---|
 | 🟢 **Klar til close-out** | Slicens verification-path er gennemført | "Slicen er klar til at lukkes — tjekliste:" + checklist nedenfor |
-| 🟡 **Naturligt break-point** | Logisk underopgave færdig (research, design, kode-blok), men slice ikke helt færdig | "Vi nærmer os et naturligt break-point. Vil du lukke her eller fortsætte?" |
+| 🟡 **Naturligt break-point** | Logisk underopgave færdig (research, design, kode-blok), men slice ikke helt færdig | "Delresultatet er verificeret; næste autoriserede skridt er ..." |
 | 🔴 **Kontekst-vinduet tungt** | Mange tool-resultater af kode-læsning der ikke længere er relevant | "Kontekst-vinduet bliver tungt af X. Anbefaler vi lukker her og starter ny session for Y" |
-| 🆕 **Scope-skift** | Brugeren får idé/bug-fund der ikke hører til aktiv slice | "Det her hører ikke til aktiv slice — vil du lukke og starte ny session, eller skal jeg flagge det som spawn-task?" |
+| 🆕 **Scope-skift** | Brugeren får idé/bug-fund der ikke hører til aktiv slice | "Det nye scope kræver en prioritering; jeg bevarer ansvaret for det igangværende arbejde og forelægger næste valg." |
 
 ### Tjekliste — kode-slice klar til close-out
 
@@ -263,14 +255,14 @@ Alle skal være ✅ før commit + push:
 
 | Signal | Hvorfor |
 |---|---|
-| Slice committed + pushed | Ny slice = ren context, ingen rester |
+| Godkendt leverance afsluttet | Nyt selvstændigt scope kan få ren kontekst; commit alene kræver ikke ny chat |
 | Brugeren skifter emne mid-session | Bevarer fokus, undgår scope-creep |
 | Kontekst-vindue er fyldt med uddateret kode-læsning | Kostbart at re-læse, billigere at /clear |
 | Soak-gate kvitteres | Smoke-test deserves cold start med fokus |
 | Tids-skift (timer/dage mellem) | Friske øjne ved næste tilgang |
 | Slice-doc kræver subagent-orkestrering | Hovedagent kan starte med ren context |
 
-**Tommelfingerregel:** ÉN slice pr. session. Hvis du beder mig om noget der ikke matcher aktiv slice, vil jeg bede dig om at lukke og starte ny.
+**Tommelfingerregel:** Ét issue pr. worker; hovedsessionen følger godkendt scope til afslutning. En commit kræver ikke en ny chat. Nyt scope afklares uden automatisk at lukke det eksisterende arbejde; reelt handoff gemmes på GitHub.
 
 ### Hvad AI'en gør AKTIVT i close-out
 
@@ -279,7 +271,7 @@ I rækkefølge før jeg foreslår commit:
 2. Læs NOW.md, opdater hvis ikke gjort
 3. Tjek `git status` for orphaned filer eller forglemte ændringer
 4. Foreslå commit-message i projektets stil
-5. Vent på godkendelse → commit + push
+5. Guard-commit + push inden for godkendt scope; spørg kun ved en faktisk beslutningsgrænse
 6. Foreslå "Næste session starter med..."-linje for næste cold start
 
 ### Token-effektivitet pr. session

@@ -14,6 +14,24 @@ const run = (script, payload, path = process.env.PATH) => {
   env.PATH = path;
   return spawnSync(bash,['--noprofile','--norc',script],{cwd:root,input:payload,encoding:'utf8',env});
 };
+test('PreToolUse scans a complete large UTF-8 MCP input without environment-size failure',()=>{
+  const result=run('.claude/hooks/block-dangerous-secret-commands.sh',JSON.stringify({tool_name:'mcp__read_only_probe',tool_input:{query:'harmless æøå 漢字 '.repeat(150000)}}));
+  assert.equal(result.status,0,result.stderr);
+});
+test('PreToolUse blocks a named secret at the end of a large MCP input',()=>{
+  const fake='sb_'+'secret_'+'A'.repeat(40);
+  const result=run('.claude/hooks/block-dangerous-secret-commands.sh',JSON.stringify({tool_name:'mcp__read_only_probe',tool_input:{query:'harmless '.repeat(250000)+fake}}));
+  assert.equal(result.status,2,result.stderr);assert.match(result.stderr,/supabase-secret/);
+  assert.doesNotMatch(result.stderr,/scan failed/);
+});
+test('PreToolUse retains secret-path blocking for large Read input',()=>{
+  const result=run('.claude/hooks/block-dangerous-secret-commands.sh',JSON.stringify({tool_name:'Read',tool_input:{file_path:'backend/.env',context:'harmless '.repeat(250000)}}));
+  assert.equal(result.status,2,result.stderr);assert.match(result.stderr,/Read\/Grep mod secret-fil/);
+});
+test('PreToolUse rejects malformed large JSON without accepting a partial scan',()=>{
+  const result=run('.claude/hooks/block-dangerous-secret-commands.sh','{"tool_input":{"query":"'+'harmless '.repeat(250000));
+  assert.equal(result.status,2,result.stderr);assert.match(result.stderr,/scan failed/);
+});
 for (const name of ['dangerous-cat-env','dangerous-env','safe-git-status','safe-railway']) {
   test(`existing Claude fixture: ${name}`, () => {
     const result=run('.claude/hooks/block-dangerous-secret-commands.sh',readFileSync(join(root,`.claude/hooks/test-fixtures/${name}.json`),'utf8'));

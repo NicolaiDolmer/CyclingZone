@@ -38,6 +38,17 @@ test("computeStageRaceStanding — null with no rows / no teamId", () => {
   assert.equal(computeStageRaceStanding([{ result_type: "team", rank: 1, team_id: "team-1" }], null), null);
 });
 
+test("#5952 computeStageRaceStanding — uses the engine's team_day rows over the leader derivation", () => {
+  const leader = (rider, rank, team) => ({ result_type: "leader", stage_number: 3, rank, rider_id: rider, team_id: team, finish_time: "+0:00" });
+  const rows = [
+    leader("a1", 1, "team-a"), leader("a2", 2, "team-a"), leader("a3", 3, "team-a"),
+    leader("b1", 4, "team-b"), leader("b2", 5, "team-b"), leader("b3", 6, "team-b"),
+    { result_type: "team_day", stage_number: 3, rank: 1, team_id: "team-b" },
+    { result_type: "team_day", stage_number: 3, rank: 2, team_id: "team-a" },
+  ];
+  assert.deepEqual(computeStageRaceStanding(rows, "team-a"), { rank: 2, total: 2, final: false });
+});
+
 test("computeStageRaceStanding — prefers the DEFINITIVE final 'team' classification", () => {
   const rows = [
     { result_type: "team", stage_number: 3, rank: 1, team_id: "rival" },

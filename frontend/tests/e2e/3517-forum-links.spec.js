@@ -1,7 +1,5 @@
-import { mkdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, stabilizePage, login, json, RIVAL_TEAM } from "./fixtures.js";
+import { installNetworkMocks, stabilizePage, login, json, RIVAL_TEAM, evidenceShotPath } from "./fixtures.js";
 import { apiResponse } from "../../src/preview/mockHandlers.js";
 
 const longUrl = `https://example.com/${"lang".repeat(500)}`;
@@ -26,11 +24,10 @@ async function openThread(page, body = postBody) {
 test("links i indlaeg og svar er sikre, og mentions bevares", async ({ page }, testInfo) => {
   await openThread(page);
   if (testInfo.project.name === "desktop-chromium") {
-    const out = resolve("pr-screens/3517", process.env.FORUM_SHOT_PHASE || "after");
-    mkdirSync(out, { recursive: true });
+    const phase = process.env.FORUM_SHOT_PHASE || "after";
     for (const [name, width, height] of [["mobile", 412, 915], ["desktop", 1280, 900]]) {
       await page.setViewportSize({ width, height });
-      await page.screenshot({ path: resolve(out, `${name}.png`), fullPage: true });
+      await page.screenshot({ path: evidenceShotPath(`frontend/pr-screens/3517/${phase}/${name}.png`), fullPage: true });
     }
   }
   for (const [name, href] of [

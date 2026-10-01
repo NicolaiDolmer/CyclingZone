@@ -86,6 +86,7 @@ test("finalizeExpiredAuctions surfaces lookup errors before processing auctions"
 
 function createFinalizeAuctionSupabase({
   auction,
+  seasonsByStatus = { active: { id: "season-active-mock", number: 1 } },
   teams = {},
   teamMarketCounts = {},
   transferWindowStatus = "open",
@@ -397,13 +398,16 @@ function createFinalizeAuctionSupabase({
       }
 
       if (table === "seasons") {
-        // 07d Fase B / #240: finalizeAuctionRecord slår activeSeason op for season_id-stamping.
+        // Season transition fixtures: the auction can finish while no season is active.
         return {
           select: () => ({
-            eq: () => ({
+            eq: (column, status) => ({
               order: () => ({
                 limit: () => ({
-                  maybeSingle: () => Promise.resolve({ data: { id: "season-active-mock" }, error: null }),
+                  maybeSingle: () => {
+                    assert.equal(column, "status");
+                    return Promise.resolve({ data: seasonsByStatus[status] ?? null, error: null });
+                  },
                 }),
               }),
             }),
@@ -2620,6 +2624,67 @@ test("finalizeAuctionById creates a default contract for a contractless winner (
     contract_end_season: 2, // aktiv sæson 1 + 2 - 1
   }]);
 });
+
+for (const { label, seasonsByStatus } of [
+  {
+    label: "an upcoming season exists",
+    seasonsByStatus: {
+      active: null,
+      upcoming: { id: "season-4", number: 4 },
+      completed: { id: "season-3", number: 3 },
+    },
+  },
+  {
+    label: "only the most recently completed season exists",
+    seasonsByStatus: {
+      active: null,
+      upcoming: null,
+      completed: { id: "season-3", number: 3 },
+    },
+  },
+]) {
+  test(`finalizeAuctionById starts a new contract in season 4 between seasons when ${label} (#5847)`, async () => {
+    const riderUpdates = [];
+    const result = await finalizeAuctionById({
+      supabase: createFinalizeAuctionSupabase({
+        auction: {
+          id: "auction-between-seasons",
+          status: "active",
+          current_bidder_id: "buyer-team",
+          current_price: 100,
+          seller_team_id: "seller-team",
+          rider: {
+            id: "rider-between-seasons",
+            firstname: "Between",
+            lastname: "Seasons",
+            team_id: "seller-team",
+            salary: null,
+            current_production_value: 500_000,
+          },
+        },
+        seasonsByStatus,
+        teams: {
+          "buyer-team": { id: "buyer-team", balance: 500000, division: 3, user_id: "user-buyer" },
+          "seller-team": { id: "seller-team", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+        },
+        teamMarketCounts: {
+          "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+          "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
+        },
+        auctionUpdates: [],
+        riderUpdates,
+      }),
+      auctionId: "auction-between-seasons",
+      notifyTeamOwner: async () => {},
+      now: new Date("2026-09-27T19:56:00.000Z"),
+    });
+
+    assert.equal(result.code, "completed");
+    assert.equal(riderUpdates.length, 1);
+    assert.equal(riderUpdates[0].contract_length, 2);
+    assert.equal(riderUpdates[0].contract_end_season, 5);
+  });
+}
 
 // Vinder MED eksisterende kontrakt (salary != null) → ejerskab skifter, men
 // kontrakten arves UÆNDRET (salary/contract_length/contract_end_season røres ikke).

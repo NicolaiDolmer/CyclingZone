@@ -3413,7 +3413,10 @@
         "executed_by",
         "bonus_applied",
         "report",
-        "created_at"
+        "created_at",
+        "season_id",
+        "game_day",
+        "squad"
       ]
     },
     "training_plans": {

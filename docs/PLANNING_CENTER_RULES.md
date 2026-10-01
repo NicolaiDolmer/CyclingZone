@@ -116,6 +116,31 @@ Belastning er ikke binding: bindingen er hele spændet `min(game_day)..max(game_
 
 ## 6. Komponenter der allerede findes
 
+### Tal i dagsboardets løbskort (#5930, ejer-design-go 30/9)
+
+`RaceColumn` viser **Rute-match / Route match** og **Form nu / Current form**
+med overskrifter og en altid synlig forklaring inde i det eksisterende kort
+(varianten "Forklaring altid synlig"). Begge tal vises også når etapeløbets
+trup er låst. Match er hele løbets gennemsnit på tværs af etaperne fra
+`raceSelection.buildRiderRows` (`suitability`), og form er den aktuelle
+`rider_condition.form` videresendt som `form`. Ingen af dem er en prognose
+for den valgte kalenderdag. Det ændrer hverken matchberegningen, formmodellen
+eller reglerne for låst udtagelse. Ukendt værdi vises som `—`, mens et målt
+nul vises som `0`. Låste og redigerbare rækker deler den samme talvisning.
+
+Ejer-korrektion 30/9: **Rytter | Ordre | Rute-match | Form nu** er fire
+separate kolonner. Kaptajn og andre roller står aldrig under navnet. Ordre
+viser den eksisterende rytterrolle efter [RACE_ENGINE_RULES §1](RACE_ENGINE_RULES.md),
+med hjælper som standard; den er ikke en ny `TeamOrder`-kontrakt. Den samme
+rollevælger kan åbnes fra ordre-kolonnen. Match vises kompakt som tal her,
+så alle fire kolonner også kan læses i smalle løbskort. Andre fit-bare bevarer
+deres hidtidige visning.
+
+Fladen følger [PAGE_TEMPLATES.md](design/PAGE_TEMPLATES.md) og
+[TASTE.md](design/TASTE.md): forklaringen bor i løbskortet, ingen ny kortstak.
+Acceptbevis omfatter begge sprog, mobil og desktop, låst etapeløb og
+redigerbart endagsløb samt ukendt og målt nul. Testens ur er eksplicit.
+
 Byg aldrig disse om. Verificeret mod koden 25/8.
 
 | Komponent | Ansvar |

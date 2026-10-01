@@ -131,6 +131,7 @@ const HEDJAZ = { id: "hedjaz", season_id: "s3" };
 // afventes direkte (ingen .range()). `tables` er rene raekke-arrays.
 function makeBindingSupabase(tables, { entriesError = null } = {}) {
   return {
+    rpc:async()=>({data:[],error:null}),
     from(table) {
       const f = { table, eqs: {}, ins: {}, neqs: {} };
       const b = {
@@ -138,6 +139,8 @@ function makeBindingSupabase(tables, { entriesError = null } = {}) {
         eq(c, v) { f.eqs[c] = v; return b; },
         in(c, v) { f.ins[c] = v; return b; },
         neq(c, v) { f.neqs[c] = v; return b; },
+        order() {return b;},
+        range() {return b;},
         then(resolve, reject) {
           if (table === "race_entries" && entriesError) {
             return Promise.resolve({ data: null, error: entriesError }).then(resolve, reject);

@@ -934,6 +934,7 @@
     "focus_echelon_drills": "Echelon Drills",
     "focus_attack_repeats": "Attack Repeats",
     "intensity_rest": "Rest",
+    "intensity_unknown_pending": "Awaiting race review",
     "intensity_easy": "Easy",
     "intensity_normal": "Normal",
     "intensity_hard": "Hard",

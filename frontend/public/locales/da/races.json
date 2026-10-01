@@ -161,6 +161,13 @@
       "clearAnyway": "Ryd alligevel"
     },
     "column": {
+      "riderHeading": "Rytter",
+      "orderHeading": "Ordre",
+      "helperOrder": "Hjælper",
+      "editOrder": "{order}: skift ordre for {name}",
+      "routeMatchHeading": "Rute-match",
+      "currentFormHeading": "Form nu",
+      "numbersExplanation": "Rute-match: gennemsnit for hele løbet på tværs af etaperne. Form nu: aktuel form, ikke en prognose. En streg betyder ukendt.",
       "add": "Tilføj fra ledige",
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
@@ -190,7 +197,7 @@
       "compatibleHintNoDay": "Samme dag som {race}. Kan bruges begge steder."
     },
     "role": {
-      "hint": "Tryk på en rytter for at sætte kaptajn eller rolle",
+      "hint": "Tryk på en ordre for at ændre rytterens rolle",
       "captain": "Kaptajn",
       "sprintCaptain": "Sprint-kaptajn",
       "hunter": "Udbrudsjæger",
@@ -557,6 +564,7 @@
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
       "selection_withdrawn": "Du er afmeldt dette løb, så der kan ikke gemmes en trup til det.",
+      "selection_train_now_locked": "Du har trykket Træn nu i dag, så dagens tilmelding er låst.",
       "selection_duplicate_race": "Kunne ikke gemme: samme løb var med to gange. Prøv igen.",
       "selection_bulk_too_large": "Du kan højst gemme {max} ændrede løb ad gangen. Gem nogle nu, og resten bagefter.",
       "race_not_found": "Dette løb findes ikke længere. Genindlæs og prøv igen.",
@@ -1069,7 +1077,7 @@
         "breakaway_formed": "{riders} rykker væk fra feltet.",
         "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
         "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
-        "breakaway_caught": "{riders} bliver indhentet af feltet.",
+        "breakaway_caught": "{riders} {count, plural, one {bliver} other {bliver}} indhentet af jagtgruppen.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "incident_crash_time_loss": "{rider} vælter og taber {seconds} sek.",
@@ -1088,11 +1096,17 @@
         "grupetto_saved": "Grupettoen kommer samlet i mål: {count, plural, one {# rytter} other {# ryttere}} reddes.",
         "finish": "{rider} tager etapesejren.",
         "finish_sprint_win": "{rider} vinder massespurten.",
-        "finish_close_win": "{rider} vinder en tæt finish.",
+        "finish_close_win": "{rider} tager etapesejren.",
         "finish_solo_win": "{rider} soloer til etapesejr.",
         "finish_itt_win": "{rider} sætter dagens hurtigste tid.",
         "finish_ttt_win": "{rider} fører dagens hurtigste hold i mål.",
-        "gc_change": "{rider} overtager den samlede føring fra {previousLeader}."
+        "gc_change": "{rider} overtager den samlede føring fra {previousLeader}.",
+        "group_merged": "{riders} {count, plural, one {samler sig} other {samler sig}} med en gruppe.",
+        "group_merged_many": "{count} ryttere samler sig.",
+        "peloton_split": "{riders} {count, plural, one {kommer} other {kommer}} i en separat gruppe.",
+        "group_split_many": "{count} ryttere kommer i en separat gruppe.",
+        "descent_attack": "{riders} {count, plural, one {angriber} other {angriber}} på nedkørslen.",
+        "descent_attack_many": "{count} ryttere angriber på nedkørslen."
       }
     },
     "recap": {
@@ -1357,9 +1371,12 @@
       "young_day": "Ungdom"
     },
     "breakaway": {
-      "label": "Udbrud",
+      "label": "Morgenudbrud",
       "survived": "holdt hjem til mål",
-      "caught": "indhentet af feltet"
+      "caught": "indhentet",
+      "participated": "deltog",
+      "laterAttack": "Senere angreb",
+      "legacyLabel": "Udbrud"
     },
     "stageProfile": {
       "label": "Terræn",

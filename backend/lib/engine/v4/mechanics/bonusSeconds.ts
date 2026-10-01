@@ -159,17 +159,52 @@ export function stageAwardsFinishBonus(
  * samme art paa samme etape ville ellers dele stroem og faa identisk stoej —
  * og et vejpunkt ville skifte stroem hvis rutens segmentinddeling aendrede sig.
  */
+export type PassageContest = {
+  // Roller der kaemper om passagen i en STOR gruppe (feltet).
+  contenderRoles: readonly string[];
+  // Grupper paa hoejst saa mange ryttere kaemper samlet (udbrud, jagtgrupper).
+  openContestMaxGroupSize: number;
+  // Foereren af den konkurrence passagen giver point til (kaemper altid).
+  jerseyLeaderId?: string | null;
+};
+
+/**
+ * Rytter -> den gruppe han FAKTISK sidder i lige nu.
+ *
+ * #5914: `RiderState.group_id` er IKKE en live-kilde midt i etapen. Den saettes
+ * til startgruppen og opdateres foerst af `applyGroupTimes` efter maalstregen
+ * (groups.ts) — `splitGroup`/merges roerer kun `groups[].rider_ids`. Passagerne
+ * slog gappet op via `group_id` og gav derfor alle ryttere samme gap: et udbrud
+ * 5 minutter foran kunne tabe en indlagt spurt til feltet. Sandheden midt i
+ * loebet er `state.groups[].rider_ids`.
+ */
+export function liveGroupByRider(state: EngineState): Map<string, { gap: number; size: number }> {
+  const byRider = new Map<string, { gap: number; size: number }>();
+  for (const g of state.groups) {
+    for (const riderId of g.rider_ids) byRider.set(riderId, { gap: g.gap_seconds, size: g.rider_ids.length });
+  }
+  return byRider;
+}
+
 export function computePassageOrder(
   state: EngineState,
   entrants: Readonly<Record<string, Entrant>>,
   rngFor: RngForFn,
-  args: { stream: string; qualityWeights: Partial<Record<AbilityKey, number>>; noiseSd: number },
+  args: {
+    stream: string;
+    qualityWeights: Partial<Record<AbilityKey, number>>;
+    noiseSd: number;
+    // #5914: udeladt = alle kaemper (evne alene inden for gruppen).
+    contest?: PassageContest;
+  },
 ): string[] {
-  const gapByGroup = new Map(state.groups.map((g) => [g.id, g.gap_seconds]));
-  const scored: Array<{ riderId: string; gap: number; score: number }> = [];
+  const groupOf = liveGroupByRider(state);
+  const contest = args.contest;
+  const scored: Array<{ riderId: string; gap: number; contends: boolean; score: number }> = [];
   for (const rider of Object.values(state.riders)) {
     if (rider.status === "abandoned") continue;
-    const abilities = entrants[rider.rider_id]?.abilities;
+    const entrant = entrants[rider.rider_id];
+    const abilities = entrant?.abilities;
     let base = 0;
     if (abilities) {
       for (const key of Object.keys(args.qualityWeights) as AbilityKey[]) {
@@ -177,14 +212,26 @@ export function computePassageOrder(
       }
     }
     const noise = gaussian(rngFor(args.stream, rider.rider_id), 0, args.noiseSd);
+    const group = groupOf.get(rider.rider_id);
+    // Kaemper han om passagen? En lille gruppe koerer samlet; i feltet kun
+    // pointjaegerne og troejefoereren. Resten ruller igennem BAG kaemperne i
+    // samme gruppe (de passerer stadig stregen, saa restpladser uddeles).
+    const contends = !contest
+      || (group?.size ?? Number.MAX_SAFE_INTEGER) <= contest.openContestMaxGroupSize
+      || contest.contenderRoles.includes(String(entrant?.role ?? ""))
+      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id);
     scored.push({
       riderId: rider.rider_id,
-      gap: gapByGroup.get(rider.group_id) ?? Number.MAX_SAFE_INTEGER,
+      gap: group?.gap ?? Number.MAX_SAFE_INTEGER,
+      contends,
       score: base + noise,
     });
   }
   return scored
-    .sort((a, b) => a.gap - b.gap || b.score - a.score || a.riderId.localeCompare(b.riderId))
+    .sort((a, b) => a.gap - b.gap
+      || Number(b.contends) - Number(a.contends)
+      || b.score - a.score
+      || a.riderId.localeCompare(b.riderId))
     .map((s) => s.riderId);
 }
 
@@ -281,6 +328,11 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
       stream: `passage:${wp.kind}:${wp.index}`,
       qualityWeights,
       noiseSd: isKom ? extra.komNoiseSd : extra.intermediateSprintNoiseSd,
+      contest: {
+        contenderRoles: isKom ? extra.komContenderRoles : extra.intermediateSprintContenderRoles,
+        openContestMaxGroupSize: extra.passageOpenContestMaxGroupSize,
+        jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.jerseyLeaders?.points) ?? null,
+      },
     });
     const passage = buildPassage({
       kind: wp.kind as StagePassage["kind"],

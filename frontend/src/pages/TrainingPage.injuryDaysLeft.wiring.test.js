@@ -38,6 +38,7 @@ import { injuryDaysLeft } from "../lib/training.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const trainingPageSource = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
+const receiptSource = readFileSync(join(__dirname, "../components/training/DailyTrainingReceipt.tsx"), "utf8");
 const conditionChipsSource = readFileSync(
   join(__dirname, "../components/rider/ConditionChips.jsx"),
   "utf8",
@@ -53,7 +54,7 @@ test("#3541 TrainingPage's dagsrapport-tabel bruger IKKE længere backend-snapsh
 
 test("#3541/#5462 TrainingPage's dagsrapport-tabel beregner skadedage via den kanoniske kerne på condition-state", () => {
   assert.match(
-    trainingPageSource,
+    receiptSource,
     /injuryTimeLeft\(condition\[row\.rider_id\], today\)/,
     "rapport-rækken skal kalde injuryTimeLeft med SAMME condition-kilde + today som roster-rækken",
   );

@@ -189,3 +189,14 @@ test("#4373: itt/ttt-profil giver disciplinens egen sejrslinje, ikke sprintWin/s
   const noProfile = buildRaceRecap({ results: rows, scope: { type: "overall" } });
   assert.ok(keys(noProfile).includes("sprintWin"));
 });
+
+test("unknown breakaway outcomes neither invent survival nor inflate caught counts", () => {
+  const rows = [
+    { result_type: "stage", stage_number: 1, rank: 1, rider_id: "a", rider_name: "A", finish_time: "+0:00", in_breakaway: true, breakaway_caught: null },
+    { result_type: "stage", stage_number: 1, rank: 2, rider_id: "b", rider_name: "B", finish_time: "+0:20", in_breakaway: true, breakaway_caught: null },
+  ];
+  const scope = { type: "stage", stageNumber: 1 };
+  assert.ok(!buildRaceRecap({ results: rows, scope }).some(moment => moment.key === "breakawaySurvived"));
+  rows[1].breakaway_caught = true;
+  assert.equal(buildRaceRecap({ results: rows, scope }).find(moment => moment.key === "breakawayCaught")?.params.count, 1);
+});

@@ -259,9 +259,9 @@ describe("runTrainingDayCloseSweep", () => {
     assert.equal(calls, 0);
   });
 
-  it("#4846 flag off = bit-identisk: kun flag-opslaget, ingen af kanternes opslag", async () => {
+  it("flag off: kun ejerskabsflagene læses, ingen af kanternes opslag", async () => {
     // De nye opslag (sidste-dato-query, saesonens maal) ligger EFTER flag-gaten.
-    // Med flaget off maa sweepen ikke spoerge paa andet end sit eget flag.
+    // Begge ejer-flags læses, men ingen kalender- eller træningsdata ved off.
     const tableLog = [];
     const supabase = makeSupabase({
       flags: { training_tick_per_race_day: false, daily_training_enabled: true },
@@ -273,7 +273,7 @@ describe("runTrainingDayCloseSweep", () => {
     });
     const result = await runTrainingDayCloseSweep({ supabase, now: inWindow, runDay: async () => ({}) });
     assert.deepEqual(result, { ran: false, skipped: "flag_off" });
-    assert.deepEqual(tableLog, ["app_config"]);
+    assert.deepEqual(tableLog, ["app_config", "app_config"]);
   });
 
   // #4848: off-season er en DEFINERET, LOGGET tilstand — ikke en stille no-op.

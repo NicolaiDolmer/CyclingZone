@@ -1,0 +1,12 @@
+# Condition cadence and ability cadence are separate contracts
+
+The game-day rollout kept the season ability budget but applied the complete daily condition transition on every game-day tick. Multiple game days on the same calendar date therefore repeated fatigue, form and training-injury transitions.
+
+The owner-approved fix keeps ability progression on its game-day axis and settles normalized TOTAL race/training load once after the complete date. Race load is recorded durably using actual stage identity and existing effort modifiers, without mutating fatigue before settlement. The date flag also owns removal of race-gap recovery and DNS release. An atomic commit binds progression, reports, consumed loads and condition; failed writes leave the tick retryable. Idempotent load recording must be success-only in race finalization: the old attempt-once fatigue wrapper would mark a failed ledger write completed in `finally`.
+
+Evidence: helper and engine tests, actual migration execution in PGlite, including duplicate apply, replay, rollback, restricted permissions, stale load snapshots and late arrivals. Cutover restores an explicitly audited opening state and exact actual stage loads atomically; no subtraction from current fatigue is valid after clamping or recovery. Old finalizers must be drained before cutover because their direct writes cannot acquire the new SQL locks. Population/season measurements remain separate; the owner temporarily waived the historical median gate. The historical D3 simulation and production order race load and proportional recovery differently, so compare them explicitly.
+
+Prevention: every cadence change must enumerate each state transition's time unit, test whole-date outcomes and retry boundaries, and measure season progression independently. Reusing constants alone is not proof of preserving a daily model.
+
+Handoff lessons: manual API entry points must not bypass sweep readiness. Flag-off regression tests must prove absence of new-schema reads. Game days are zero-based; derived population masks must be validated before quoting metrics. Cutover snapshots become stale as races finish: original coverage is not current coverage. Separate aggregate acceptance from human/AI subgroup results. Preserve every raw evidence packet privately and link durable handoff before ending a session. Owner stopped development before final review blockers were closed; see docs/snapshots/5928/CLAUDE_HANDOFF.md.
+

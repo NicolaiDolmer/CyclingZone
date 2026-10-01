@@ -6,6 +6,8 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { selectInChunks } from "./dbChunk.js";
 import { ANY_SQUAD, raceSquadOf } from "./riderEligibility.js";
+import { loadSpentRaceDays, spentRaceBindingWindows } from './raceSpentDays.js';
+import { fetchAllRows } from './supabasePagination.js';
 
 const DAY_MS = 86_400_000;
 
@@ -373,6 +375,12 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (e1) throw new Error(`race_stage_schedule (this): ${e1.message}`);
   const thisWindow = raceBindingWindow(thisSched);
 
+  let spentBindings=[];
+  if(race.season_id && thisSched?.length && thisSched.every(row=>Number.isInteger(row.game_day))) {
+    const owned=await fetchAllRows(()=>supabase.from('riders').select('id').eq('team_id',teamId).eq('is_retired',false).order('id'));
+    spentBindings=spentRaceBindingWindows(await loadSpentRaceDays({supabase,raceId:race.id,riderIds:(owned??[]).map(row=>row.id)}));
+  }
+
   // Rod A (#1823): holdets afmeldte løb binder IKKE — de udtagne ryttere er frie til
   // det overlappende løb. Entries bevares (gen-tilmelding giver samme trup), men de
   // tæller ikke som optaget tid. Tidligere låste afmeldte løb stadig rytterne.
@@ -409,7 +417,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   }
   let otherRaceIds = [...ridersByRace.keys()];
   // Ingen andre committede løb → intet at binde imod.
-  if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
+  if (!otherRaceIds.length) return { thisWindow, otherRaces: spentBindings };
 
   // Sæson-filter (#3070): et separat opslag mod races (ikke et embedded
   // race_entries.select("...,races!inner(season_id)")-filter) — vi har allerede
@@ -423,7 +431,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (e3Season) throw new Error(`races season lookup (binding): ${e3Season.message}`);
   const seasonByRaceId = new Map((otherRaceRows || []).map((r) => [r.id, r.season_id]));
   otherRaceIds = otherRaceIds.filter((rid) => seasonByRaceId.get(rid) === race.season_id);
-  if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
+  if (!otherRaceIds.length) return { thisWindow, otherRaces: spentBindings };
 
   const { data: scheds, error: e3 } = await supabase
     .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", otherRaceIds);
@@ -438,6 +446,9 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const otherRaces = otherRaceIds
     .map((rid) => ({ raceId: rid, window: raceBindingWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
     .filter((o) => o.window); // løb uden vindue kan ikke binde
+  // The spent-day RPC already scopes its private claims to this race's season.
+  for(const row of spentBindings) seasonByRaceId.set(row.raceId,race.season_id);
+  otherRaces.push(...spentBindings);
 
   // Forward-guard (#3070): sæson-filtret ovenfor er den ENESTE ting der forhindrer
   // game_day-nøglerummet (sæson-relativt, nulstilles hver sæson) i at blande to

@@ -1,5 +1,10 @@
 # Ungdommens regler: akademi, junior, U23 og senior - SSOT
 
+## Træningsopgørelse efter ungdomsløb (#5888, 29/9)
+
+U23 og junior bruger samme dagsaktivitetsregel som senior: endagsløbets GC er løbsaktivitet, og en gemt udtagelse uden plads i det faktiske første startfelt tvinger ikke rytteren til hvile. Kun et uforanderligt startsnapshot kan bevise den manglende start; fravær i resultatlisten kan ikke. Manglende eller ulæseligt datagrundlag frigiver aldrig en ukendt deltager. Skadereglen består. Kontrakten ejes af [TRAINING_RULES.md](TRAINING_RULES.md#integritet-i-dagsaktiviteten-5888-299).
+
+
 > **GDD-retning, ejer 10/9 2026:** Egen ungdomsudvikling skal kunne vælges fra som
 > klubstrategi. En købeklub med minimal egen ungdomsindsats er en fuldgyldig vej,
 > ligesom talentfabrikken er et legitimt slutmål. Ungdom kan være vigtigt for den
@@ -127,6 +132,8 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 | Løbsfrekvens v1 (forslag) | U23 1-2 løb pr. uge, junior 1 pr. uge (addendum §7.3). Kalibreres i kalender-SSOT'en `CALENDAR_RULES.md` når slicen bygges |
 | Resultater | Føder rytterens profil, årgangens side (#2493) og krøniken (#2490). Ungdomsranglister vises pr. gruppe og samlet |
 | Hvor ungdomsløb vises (ejer 2/9, handoff) | To steder: i truppens egne faner (Calendar · Results · Standings · Development på Junior team- og U23 team-siden) OG på en egen side **"Youth races"** under Results (Select U23 team / Junior team, guld-knap `Set tactics`, faner Calendar · Results · Standings · Rankings). "A race is a race." Amenderer briefens antagelse om én side |
+
+**AI-hold der forlader en ungdomspulje (#4753, ejer-go 28/9).** Et AI-hold, der er markeret til udfasning fra en overfyldt seniorpulje, bliver i sin U23- og juniorgruppe, mens det stadig kører et igangværende løb. Det må ikke forsvinde midt i etapeløbet. Når AI-holdet kan pensioneres, overtager ét andet, aktivt AI-hold med startbar trup begge ungdomspladser i samme database-transaktion. Er der intet sikkert reservehold, bliver pensioneringen udskudt uden delvis ændring. Et allerede pensioneret AI-hold med gamle gruppefelter er ikke et aktivt gruppemedlem; sådan en historisk spøgelsesplads repareres kun efter read-only dry-run og ejerens særskilte prod-go. Startbar reserve tæller kun ryttere uden afventende holdskifte og uden skade på den relevante danske dato; SQL og dry-run bruger samme regel. Menneskehold flyttes aldrig af denne regel. SQL: `database/2026-09-28-4753-youth-pool-retirement-replacement.sql`; audit: `backend/scripts/audit-league-size-invariant.js`.
 
 ### 2.4 Én kontraktmodel (ejer 2/9, svar 2)
 

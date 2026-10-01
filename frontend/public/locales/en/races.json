@@ -161,6 +161,13 @@
       "clearAnyway": "Clear anyway"
     },
     "column": {
+      "riderHeading": "Rider",
+      "orderHeading": "Order",
+      "helperOrder": "Domestique",
+      "editOrder": "{order}: change order for {name}",
+      "routeMatchHeading": "Route match",
+      "currentFormHeading": "Current form",
+      "numbersExplanation": "Route match: average for the whole race across its stages. Current form: today's form, not a forecast. A dash means unavailable.",
       "add": "Add from available",
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
@@ -190,7 +197,7 @@
       "compatibleHintNoDay": "Same day as {race}. Can ride both."
     },
     "role": {
-      "hint": "Tap a rider to set captain or role",
+      "hint": "Tap an order to change the rider's role",
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
       "hunter": "Breakaway hunter",
@@ -557,6 +564,7 @@
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",
       "selection_withdrawn": "You've withdrawn from this race, so a lineup can't be saved for it.",
+      "selection_train_now_locked": "You pressed Train now today, so today's entries are locked.",
       "selection_duplicate_race": "Couldn't save: the same race was included twice. Try again.",
       "selection_bulk_too_large": "You can save at most {max} changed races at once. Save some now, then the rest.",
       "race_not_found": "This race no longer exists. Refresh and try again.",
@@ -1069,7 +1077,7 @@
         "breakaway_formed": "{riders} {count, plural, one {goes} other {go}} clear off the front.",
         "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
         "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
-        "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the bunch.",
+        "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the pursuing group.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "incident_crash_time_loss": "{rider} goes down and loses {seconds} sec.",
@@ -1088,11 +1096,17 @@
         "grupetto_saved": "The gruppetto comes home together: {count, plural, one {# rider is} other {# riders are}} saved.",
         "finish": "{rider} takes the stage win.",
         "finish_sprint_win": "{rider} wins the bunch sprint.",
-        "finish_close_win": "{rider} wins in a close finish.",
+        "finish_close_win": "{rider} takes the stage win.",
         "finish_solo_win": "{rider} solos to the stage win.",
         "finish_itt_win": "{rider} sets the fastest time of the day.",
         "finish_ttt_win": "{rider} leads home the fastest team of the day.",
-        "gc_change": "{rider} takes over the overall lead from {previousLeader}."
+        "gc_change": "{rider} takes over the overall lead from {previousLeader}.",
+        "group_merged": "{riders} {count, plural, one {rejoins} other {rejoin}} a group.",
+        "group_merged_many": "{count} riders regroup.",
+        "peloton_split": "{riders} {count, plural, one {moves} other {move}} into a separate group.",
+        "group_split_many": "{count} riders split into a separate group.",
+        "descent_attack": "{riders} {count, plural, one {attacks} other {attack}} on the descent.",
+        "descent_attack_many": "{count} riders attack on the descent."
       }
     },
     "recap": {
@@ -1357,9 +1371,12 @@
       "young_day": "Youth"
     },
     "breakaway": {
-      "label": "Breakaway",
+      "label": "Morning breakaway",
       "survived": "stayed away to the finish",
-      "caught": "caught by the bunch"
+      "caught": "caught",
+      "participated": "participated",
+      "laterAttack": "Later attack",
+      "legacyLabel": "Breakaway"
     },
     "stageProfile": {
       "label": "Terrain",
