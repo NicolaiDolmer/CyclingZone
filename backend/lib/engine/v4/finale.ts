@@ -580,7 +580,6 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     return pool;
   };
   const baseScored = adjustWithinPool(contenderIds);
-  if ((globalThis as any).__dump6049) for (const id of contenderIds) { const e = entrants[id]; const st = state.riders[id]; (globalThis as any).__dump6049.push({ id, at: abilityTermOf(id), reserve: e.effort === "grupetto" ? 0 : wprimeReserveFraction(st), dayform: st?.dayform ?? 0, effort: e.effort, scale: modifierScaleOf(id), score: scoreOf(id), adj: baseScored.find((s) => s.riderId === id)?.score }); }
   const adjustedScores = new Map([
     ...baseScored,
     ...survivingGroups.flatMap((group) => adjustWithinPool(group.rider_ids)),
