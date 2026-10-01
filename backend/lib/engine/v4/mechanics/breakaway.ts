@@ -88,6 +88,7 @@ import {
   advanceTeamReaction,
   availableReactionWorkers,
   capPreventiveIntensity,
+  brakedLetGoGrowth,
   letGoBrake,
   letGoBrakingTeams,
   planTeamReaction,
@@ -1183,8 +1184,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const priorWork = workByChaseGroup.get(chaseGroup.id);
     workByChaseGroup.set(chaseGroup.id, { plan: chasePlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
-    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, brakingTeamIds: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id), entrants: ctx.entrants, riders: state.riders }) : null;
-    if (brake && brake.work.size > 0) brakeByChaseGroup.set(chaseGroup.id, { work: brake.work, km: Math.max(brakeByChaseGroup.get(chaseGroup.id)?.km ?? 0, letGoKm) });
+    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id), entrants: ctx.entrants, riders: state.riders }) : null;
+    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds }) : null;
+    if (brake && braked && braked.brakedShare > 0) brakeByChaseGroup.set(chaseGroup.id, { work: brake.work, km: Math.max(brakeByChaseGroup.get(chaseGroup.id)?.km ?? 0, letGoKm * braked.brakedShare) });
 
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
@@ -1214,7 +1216,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       0,
       netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
-    const letGoGrowth = letGoKm * letGoRate * (1 - (brake?.fraction ?? 0));
+    const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
     // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",

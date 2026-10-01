@@ -57,6 +57,12 @@ export type GcThreat = {
   threat_rider_ids: string[];
   /** Sand naar den alvorligste trussel staar paa samme klassementstid som GC-rytteren. */
   tied: boolean;
+  /**
+   * #5955: det forspring paa vejen holdet kan tolerere foer truslen bliver
+   * reel (klassementshul minus fremskrivning, aldrig negativ) — den mindste
+   * blandt truslens ryttere. Kun sat naar severity ikke er "none".
+   */
+  tolerated_lead_seconds?: number;
 };
 
 export const GC_THREAT_TUNING = Object.freeze({
@@ -240,7 +246,7 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; tied: boolean };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   for (const group of ahead) {
@@ -279,7 +285,7 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, tied: deficit === 0 });
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0 });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -294,5 +300,9 @@ export function assessGcThreat(input: {
   const threatRiderIds = worst.severity === "none"
     ? []
     : candidates.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
-  return { ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied };
+  const toleratedLead = Math.max(0, Math.min(...candidates.filter((c) => c.severity !== "none").map((c) => c.lead + c.margin)));
+  return {
+    ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied,
+    ...(worst.severity !== "none" ? { tolerated_lead_seconds: toleratedLead } : {}),
+  };
 }

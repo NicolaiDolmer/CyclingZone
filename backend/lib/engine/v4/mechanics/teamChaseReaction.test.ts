@@ -16,6 +16,7 @@ import {
   capPreventiveIntensity,
   IDLE_TEAM_REACTION,
   LET_GO_BRAKE_TUNING,
+  brakedLetGoGrowth,
   letGoBrake,
   letGoBrakingTeams,
   planTeamReaction,
@@ -387,8 +388,8 @@ test("brake: only reacting teams and explicit chase at a real threat brake, only
     { teamId: "D", threat: SERIOUS, stance: "let_go" as const, plan: { intensity: 0 } },
     { teamId: "E", threat: { ...SERIOUS, chase_group_id: "chase-9" }, stance: "chase" as const, plan: { intensity: 0 } },
   ];
-  assert.deepEqual([...letGoBrakingTeams(decisions, "peloton-0")].sort(), ["A", "B"]);
-  assert.deepEqual([...letGoBrakingTeams(decisions, "chase-9")], ["E"]);
+  assert.deepEqual([...letGoBrakingTeams(decisions, "peloton-0").keys()].sort(), ["A", "B"]);
+  assert.deepEqual([...letGoBrakingTeams(decisions, "chase-9").keys()], ["E"]);
 });
 
 test("brake: bounded below the full let-go, weaker when tired, only braking teams pay", () => {
@@ -398,17 +399,32 @@ test("brake: bounded below the full let-go, weaker when tired, only braking team
   };
   const fresh: Record<string, RiderState> = Object.fromEntries(Object.keys(entrants).map((id) => [id, riderState(id)]));
   const chaserWork = new Map(Object.keys(entrants).map((id) => [id, 1]));
-  const none = letGoBrake({ chaserWork, brakingTeamIds: new Set(), entrants, riders: fresh });
+  const none = letGoBrake({ chaserWork, braking: new Map(), entrants, riders: fresh });
   assert.equal(none.fraction, 0);
   assert.equal(none.work.size, 0);
-  const full = letGoBrake({ chaserWork, brakingTeamIds: new Set(["A"]), entrants, riders: fresh });
+  const full = letGoBrake({ chaserWork, braking: new Map([["A", 0]]), entrants, riders: fresh });
   assert.ok(full.fraction > 0 && full.fraction <= LET_GO_BRAKE_TUNING.maxBrake + 1e-12);
   assert.ok(LET_GO_BRAKE_TUNING.maxBrake < 1, "the field never stops the let-go completely");
   assert.deepEqual([...full.work.keys()].sort(), ["a1", "a2", "a3", "a4", "a5"], "team B is not braking and pays nothing");
   const tired = Object.fromEntries(Object.entries(fresh).map(([id, r]) => [id, { ...r, team_cp_factor: 0.3 }]));
-  const weak = letGoBrake({ chaserWork: new Map([["a1", 1]]), brakingTeamIds: new Set(["A"]), entrants, riders: tired });
-  const strong = letGoBrake({ chaserWork: new Map([["a1", 1]]), brakingTeamIds: new Set(["A"]), entrants, riders: fresh });
+  const weak = letGoBrake({ chaserWork: new Map([["a1", 1]]), braking: new Map([["A", 0]]), entrants, riders: tired });
+  const strong = letGoBrake({ chaserWork: new Map([["a1", 1]]), braking: new Map([["A", 0]]), entrants, riders: fresh });
   assert.ok(weak.fraction < strong.fraction);
+  // Flere bremsende hold: det mindste tolererede forspring gaelder.
+  const two = letGoBrake({ chaserWork, braking: new Map([["A", 90], ["B", 40]]), entrants, riders: fresh });
+  assert.equal(two.toleratedSeconds, 40);
+});
+
+test("brakedLetGoGrowth: free up to the tolerated lead, dampened above it, only braked km are paid", () => {
+  const free = brakedLetGoGrowth({ separationSeconds: 30, growthSeconds: 60, fraction: 0.5, toleratedSeconds: 200 });
+  assert.deepEqual(free, { growthSeconds: 60, brakedShare: 0 }, "well below the tolerated lead nobody brakes");
+  const above = brakedLetGoGrowth({ separationSeconds: 100, growthSeconds: 60, fraction: 0.5, toleratedSeconds: 50 });
+  assert.equal(above.growthSeconds, 30);
+  assert.equal(above.brakedShare, 1);
+  const across = brakedLetGoGrowth({ separationSeconds: 30, growthSeconds: 60, fraction: 0.5, toleratedSeconds: 60 });
+  assert.equal(across.growthSeconds, 30 + 30 * 0.5);
+  assert.equal(across.brakedShare, 0.5);
+  assert.deepEqual(brakedLetGoGrowth({ separationSeconds: 30, growthSeconds: 60, fraction: 0, toleratedSeconds: 0 }), { growthSeconds: 60, brakedShare: 0 });
 });
 
 const BRAKE_TEAMS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];

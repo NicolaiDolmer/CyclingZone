@@ -173,47 +173,77 @@ export type LetGoBrakeDecision = {
 /**
  * Holdene der bremser lad-gaa-fasen foran `chaseGroupId`: GC-rytteren sidder i
  * den jagtgruppe, og holdet enten reagerer (plan > 0) eller har eksplicit
- * jagtordre ved en reel trussel.
+ * jagtordre ved en reel trussel. Vaerdien er det forspring holdet tolererer
+ * (GcThreat.tolerated_lead_seconds; mangler det, 0 = ingen tolerance).
  */
-export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chaseGroupId: string): Set<string> {
-  const out = new Set<string>();
+export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chaseGroupId: string): Map<string, number> {
+  const out = new Map<string, number>();
   for (const d of decisions) {
     if (d.threat.chase_group_id !== chaseGroupId) continue;
     const reacting = d.plan.intensity > 0;
     const threatenedChase = d.stance === "chase" && d.threat.severity !== "none";
-    if (reacting || threatenedChase) out.add(d.teamId);
+    if (!reacting && !threatenedChase) continue;
+    const tolerated = d.threat.tolerated_lead_seconds;
+    out.set(d.teamId, Number.isFinite(tolerated) ? Math.max(0, tolerated as number) : 0);
   }
   return out;
 }
 
 /**
- * Bremsens styrke i [0, maxBrake] og de ryttere der betaler for den. Kun
- * ryttere fra de bremsende hold, der allerede arbejder i jagtplanen
- * (`chaserWork`: effort-vaegt, for reaktioner skaleret med intensiteten), og
- * hver taeller med sin friskhed: et traet hold bremser svagere.
+ * Bremsens styrke i [0, maxBrake], de ryttere der betaler for den, og det
+ * forspring bremsen holder hullet under (det mindste blandt de hold der
+ * faktisk bremser). Kun ryttere fra de bremsende hold, der allerede arbejder i
+ * jagtplanen (`chaserWork`: effort-vaegt, for reaktioner skaleret med
+ * intensiteten), og hver taeller med sin friskhed: et traet hold bremser
+ * svagere.
  */
 export function letGoBrake(input: {
   chaserWork: ReadonlyMap<string, number>;
-  brakingTeamIds: ReadonlySet<string>;
+  braking: ReadonlyMap<string, number>;
   entrants: Readonly<Record<string, Entrant>>;
   riders: Readonly<Record<string, RiderState>>;
-}): { fraction: number; work: Map<string, number> } {
+}): { fraction: number; work: Map<string, number>; toleratedSeconds: number } {
   const tuning = LET_GO_BRAKE_TUNING;
   const work = new Map<string, number>();
-  if (input.brakingTeamIds.size === 0) return { fraction: 0, work };
+  const none = { fraction: 0, work: new Map<string, number>(), toleratedSeconds: Infinity };
+  if (input.braking.size === 0) return none;
   let pull = 0;
+  let toleratedSeconds = Infinity;
   for (const riderId of [...input.chaserWork.keys()].sort((a, b) => a.localeCompare(b))) {
     const weight = input.chaserWork.get(riderId) ?? 0;
     const teamId = input.entrants[riderId]?.team_id;
-    if (!(weight > 0) || typeof teamId !== "string" || !input.brakingTeamIds.has(teamId)) continue;
+    if (!(weight > 0) || typeof teamId !== "string" || !input.braking.has(teamId)) continue;
     const factor = input.riders[riderId]?.team_cp_factor;
     const freshness = Math.max(0, Math.min(1, Number.isFinite(factor) ? (factor as number) : 1));
     pull += weight * freshness;
     work.set(riderId, weight);
+    toleratedSeconds = Math.min(toleratedSeconds, input.braking.get(teamId) ?? 0);
   }
-  if (!(pull > 0) || !(tuning.referenceBrakers > 0)) return { fraction: 0, work: new Map() };
+  if (!(pull > 0) || !(tuning.referenceBrakers > 0)) return none;
   const fraction = tuning.maxBrake * Math.max(0, Math.min(1, pull / tuning.referenceBrakers));
-  return { fraction, work };
+  return { fraction, work, toleratedSeconds };
+}
+
+/**
+ * Lad-gaa-vaeksten med bremsen: op til det tolererede forspring vokser hullet
+ * frit (feltet lader et ufarligt forspring gaa), over det daempes vaeksten med
+ * `fraction`. `brakedShare` er den andel af lad-gaa-km'ene der faktisk blev
+ * bremset — kun dem betaler de bremsende ryttere for. Uden bremse er vaeksten
+ * uaendret og andelen 0.
+ */
+export function brakedLetGoGrowth(input: {
+  separationSeconds: number;
+  growthSeconds: number;
+  fraction: number;
+  toleratedSeconds: number;
+}): { growthSeconds: number; brakedShare: number } {
+  const growth = Math.max(0, input.growthSeconds);
+  if (!(input.fraction > 0) || !(growth > 0)) return { growthSeconds: input.growthSeconds, brakedShare: 0 };
+  const free = Math.max(0, Math.min(growth, input.toleratedSeconds - input.separationSeconds));
+  const excess = growth - free;
+  if (!(excess > 0)) return { growthSeconds: input.growthSeconds, brakedShare: 0 };
+  const fraction = Math.min(1, input.fraction);
+  return { growthSeconds: free + excess * (1 - fraction), brakedShare: excess / growth };
 }
 
 function reactionEvent(km: number, teamId: string, status: string, reason: string, threat: GcThreat, mode: TeamReactionMode | null): TimelineEvent {

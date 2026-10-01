@@ -215,6 +215,10 @@ test("#5955: early on a long stage the open-terrain projection is capped, so a r
   const early = assess({ gcContext: gc, km: 0, groups: groups(["rival"], lead, ["lead", "aHelp", "weak", "far", "bCap"]) });
   assert.equal(early.severity, "moderate");
   assert.equal(early.reason, "rival_close");
+  // Holdet kan tolerere mere forspring end han har nu (klassementshul minus fremskrivning).
+  assert.ok((early.tolerated_lead_seconds ?? -1) > lead);
+  const harmless = assess({ gcContext: gc, km: 0, groups: groups(["weak"], lead, ["lead", "aHelp", "rival", "far", "bCap"]) });
+  assert.equal(harmless.tolerated_lead_seconds, undefined, "no threat: no tolerance figure");
   // Har han faktisk taget tiden paa vejen, er han stadig en alvorlig trussel.
   const real = assess({ gcContext: gc, km: 0, groups: groups(["rival"], deficit, ["lead", "aHelp", "weak", "far", "bCap"]) });
   assert.equal(real.severity, "serious");
