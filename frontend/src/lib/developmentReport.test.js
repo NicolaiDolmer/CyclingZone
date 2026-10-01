@@ -37,6 +37,17 @@ test("dedupeSnapshots: daily_training vinder over baseline på samme dato, sorte
   assert.equal(out[0].abilities.sprint, 41);
 });
 
+test("#5947 dedupeSnapshots: seneste løbsdag er datoens slut-tilstand, uanset rækkefølge og kilde", () => {
+  const rows = [
+    { ...snap("2026-09-29", "race_development", 4, abilities({ sprint: 43 })), game_day: 9 },
+    { ...snap("2026-09-29", "daily_training", 4, abilities({ sprint: 41 })) },
+    { ...snap("2026-09-29", "daily_training", 4, abilities({ sprint: 42 })), game_day: 7 },
+  ];
+  const out = dedupeSnapshots(rows);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].abilities.sprint, 43);
+});
+
 test("dedupeSnapshots: season_transition (nyt sæsonnummer) vinder over præ-transition daily på samme dato", () => {
   // Sæsonskifte-dagen: træningen kan have kørt FØR auto-transitionen, så dagens
   // daily-række bærer det gamle sæsonnummer + præ-progression-evner. Højeste
