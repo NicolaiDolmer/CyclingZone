@@ -85,7 +85,7 @@ export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recover
     });
     return settled.fatigue;
   } catch {
-    // Et felt med en ukendt intensitet (fx et ufaerdigt bevis) giver ingen
+    // best-effort: et felt med en ukendt intensitet (fx et ufaerdigt bevis) giver ingen
     // prognose frem for et gaet.
     return null;
   }
@@ -184,7 +184,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     // pagination-safe: roster x five game days, UNIQUE (rider_id, season_id, game_day).
     rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast bindings"),
     isRaceDayEngineEnabled(supabase),
-    weekRowsHaveSessionsAsync(supabase, team.id),
+    cellsGateForTeam(supabase, team.id),
   ]);
 
   const work = workRows[0] ?? null;
@@ -245,10 +245,11 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
 // Motorens gate for programceller (samme svar som isTrainingCellsEnabledForTeam
 // giver dailyTrainingEngine.js). Fejl → false: prognosen er en visning, ikke en
 // skrivning, og en ukendt gate maa aldrig vaelte siden.
-async function weekRowsHaveSessionsAsync(supabase, teamId) {
+async function cellsGateForTeam(supabase, teamId) {
   try {
     return await isTrainingCellsEnabledForTeam(supabase, teamId);
   } catch {
+    // best-effort: prognosen er kun en visning; ukendt gate = gamle intensiteter.
     return false;
   }
 }
