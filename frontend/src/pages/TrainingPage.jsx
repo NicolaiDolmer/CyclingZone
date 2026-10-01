@@ -95,7 +95,9 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 import TrainingMobileToday from "../components/training/mobile/TrainingMobileToday.tsx";
 // #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke, bag beta (cellsOn).
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
-import { pressedChoice, pressedChoiceFromSession, rowLocked } from "../components/training/todayRowModel.ts";
+import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast } from "../components/training/todayRowModel.ts";
+// #6025: saesonens fremgang som trup-overblik i fanen Development (beta, cellsOn).
+import SeasonOverview from "../components/training/SeasonOverview.jsx";
 import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 
 // #3721: siden fik faner (Train today / Development / History), ?tab=-
@@ -1110,17 +1112,18 @@ export default function TrainingPage() {
   const rosterMobileColumns = useMemo(
     () => [
       { key: "day", header: `${t("dayPanel.colDay")} / ${t("dayPanel.colChangeDay")}` },
-      { key: "receipt", header: t("receipt.title") },
+      ...(cellsOn ? [] : [{ key: "receipt", header: t("receipt.title") }]),
       { key: "status", header: t("colStatus") },
       { key: "weekplan", header: t("colWeekPlan") },
     ],
-    [t]
+    [t, cellsOn]
   );
-  const ROSTER_MOBILE_DEFAULTS = useMemo(() => ["day", "receipt", "status"], []);
+  const ROSTER_MOBILE_DEFAULTS = useMemo(() => (cellsOn ? ["day", "status"] : ["day", "receipt", "status"]), [cellsOn]);
   const rosterMobile = useMobileTableColumns(rosterMobileColumns, ROSTER_MOBILE_DEFAULTS);
   // Desktop er uændret: `!mobileRosterView` gør showRosterCol altid true dér,
   // uanset chip-valg. Kun ≤640px MED flaget off filtrerer efter kolonnesættet.
-  const showRosterCol = (key) => !mobileRosterView || rosterMobile.visibleKeys.includes(key);
+  // #6025: med beta-fladen (cellsOn) er "This season" flyttet til Development.
+  const showRosterCol = (key) => !(cellsOn && key === "receipt") && (!mobileRosterView || rosterMobile.visibleKeys.includes(key));
   const showRosterChips = mobileRosterView && rosterMobile.hasChips;
   // "Fuld tabel" på mobil genbruger den kontaminerede (egen scroller, ikke
   // sidescroll) sticky-navnekolonne-mekanik denne tabel allerede bruger på
@@ -1154,7 +1157,7 @@ export default function TrainingPage() {
   const ROSTER_SWAPPABLE_WEIGHTS = { day: 2, receipt: 1, status: 1, weekplan: 1 };
   const rosterHiddenPhysicalCols = mobileRosterView
     ? Object.entries(ROSTER_SWAPPABLE_WEIGHTS).reduce(
-        (sum, [key, weight]) => sum + (rosterMobile.visibleKeys.includes(key) ? 0 : weight),
+        (sum, [key, weight]) => sum + (showRosterCol(key) ? 0 : weight),
         0
       )
     : 0;
@@ -2600,6 +2603,8 @@ export default function TrainingPage() {
         fatigue: cond.fatigue ?? null,
         tired: isTired(cond.fatigue),
         seasonPoints: seasonPointsFor(rider.id),
+        // #6025: "nu -> i aften", samme prognose som telefonens raekke (#6021).
+        fatigueTonight: cellsOn ? rowForecast(forecastFor(rider.id)) : null,
         noDay: !planFor(rider.id)?.focus && !racingTodayFor(rider.id),
         squad: rider.squad ?? null,
         score: cell
@@ -3014,7 +3019,8 @@ export default function TrainingPage() {
       <div className="space-y-3">
         {assistantPanel}
         {runError && <p className="text-sm text-cz-danger">{runError}</p>}
-        {(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
+        {/* #6025: med beta-fladen staar saesonens note i Development (SeasonOverview). */}
+        {!cellsOn && (history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
           <p className="text-2xs leading-snug text-cz-3">
             {t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })}
           </p>
@@ -3062,6 +3068,8 @@ export default function TrainingPage() {
               renderStatus={renderRowStatus}
               renderNoDay={renderNoDay}
               toolbar={toolbar}
+              showSeason={!cellsOn}
+              forecastSettled={fatigueForecast.settled}
               empty={visibleRiders.length === 0 ? <p className="text-sm text-cz-3">{t("overview.emptyFiltered")}</p> : null}
             />
           </div>
@@ -3324,7 +3332,7 @@ export default function TrainingPage() {
                 stedet for at lade en kolonne fuld af "—" tale for sig selv.
                 Samme copy-nøgle som rytterprofilens kvittering, så de to steder
                 ikke kan sige forskellige ting. */}
-            {(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
+            {!cellsOn && (history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
               <p className="mb-2 text-2xs text-cz-3 leading-snug">
                 {t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })}
               </p>
@@ -3503,6 +3511,23 @@ export default function TrainingPage() {
           spejder-fladerne) — egne ryttere er altid et bånd, så der er ingen
           scout-knap eller slots-tilstand at vise her. */}
       <TabPanel value="development">
+        {/* #6025 (ejer-valg A 1/10, beta): saesonens fremgang staar oeverst her
+            i stedet for i Today-tabellen. Samme tal og samme kvittering. */}
+        {cellsOn && !ridersLoading && (
+          <SeasonOverview
+            note={(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart
+              ? t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })
+              : null}
+            rows={sortRoster(riders).map((rider) => ({
+              id: rider.id,
+              name: `${rider.firstname} ${rider.lastname}`,
+              sub: riderTypeLine(rider),
+              seasonPoints: seasonPointsFor(rider.id),
+              receipt: receiptRowsFor(rider.id),
+              gainedToday: todayGainsByRider[rider.id] ?? 0,
+            }))}
+          />
+        )}
         {ridersLoading ? (
           // #4160: samme regel som roster-tabellen — skelet mens truppen
           // hydrerer, aldrig et falsk "ingen ryttere".

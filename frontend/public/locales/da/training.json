@@ -72,6 +72,8 @@
     "colSelect": "Vælg",
     "colDay": "Dagens dag",
     "colSeasonPoints": "Sæsonpoint",
+    "colFatigueTonight": "Træthed nu / i aften",
+    "fatigueTonightAria": "Træthed nu {now}, i aften ca. {value}. {band}",
     "selectRider": "Vælg {name}",
     "applyTo": "Brug på {n}",
     "clear": "Ryd",

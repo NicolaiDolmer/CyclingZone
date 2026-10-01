@@ -72,6 +72,8 @@
     "colSelect": "Select",
     "colDay": "Today's day",
     "colSeasonPoints": "Season pts",
+    "colFatigueTonight": "Fatigue now / tonight",
+    "fatigueTonightAria": "Fatigue now {now}, tonight approx. {value}. {band}",
     "selectRider": "Select {name}",
     "applyTo": "Apply to {n}",
     "clear": "Clear",

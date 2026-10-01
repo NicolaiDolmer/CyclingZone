@@ -30,7 +30,7 @@ import { squadBadgeKey } from "../../lib/squadBadge.ts";
 // Den ENE kanoniske sorterbare header (samme pil, aria-sort og klik-maal som
 // resten af spillet), ikke en lokal kopi.
 import SortableTh from "../ui/SortableTh.jsx";
-import { ChevronDownIcon, FlagIcon, InfoIcon } from "../ui/icons/index.jsx";
+import { ChevronDownIcon, ChevronRightIcon, FlagIcon, InfoIcon } from "../ui/icons/index.jsx";
 
 export type TodayRow = {
   id: string;
@@ -45,7 +45,12 @@ export type TodayRow = {
   // #5763: riders.squad (backend/lib/squads.js), ALDRIG alder — afgør et lille
   // U23/JR-mærke bag navnet. Senior/ukendt = intet mærke (squadBadgeKey).
   squad?: string | null;
+  // #6025: "nu -> i aften" fra SAMME prognose som Program -> Plan (#5933) og
+  // telefonens raekke (#6021, rowForecast). null = ingen prognose (flag off).
+  fatigueTonight?: { value: number; tone: "ok" | "warn" | "risk" } | null;
 };
+
+const TONIGHT_TEXT = { ok: "text-cz-success", warn: "text-cz-warning", risk: "text-cz-danger" } as const;
 
 export type TodayGroup = { key: string; label: string; count: string; rows: TodayRow[] };
 
@@ -103,6 +108,8 @@ export default function TrainingTodayTable({
   renderNoDay,
   toolbar,
   empty = null,
+  showSeason = true,
+  forecastSettled = false,
 }: {
   rows: TodayRow[];
   groups?: TodayGroup[] | null;
@@ -126,10 +133,15 @@ export default function TrainingTodayTable({
   renderNoDay: (riderId: string) => ReactNode;
   toolbar: ReactNode;
   empty?: ReactNode;
+  // #6025 (ejer-valg A 1/10): Today handler kun om i dag; saesonens point bor
+  // i fanen Development, naar beta-fladen er aaben.
+  showSeason?: boolean;
+  forecastSettled?: boolean;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
-  const colCount = 5 + (showScore ? 1 : 0) + columns.length + 1;
+  const colCount = 5 + (showScore ? 1 : 0) + columns.length + (showSeason ? 1 : 0);
+  const tonightOn = [...rows, ...(groups ?? []).flatMap((g) => g.rows)].some((r) => r.fatigueTonight);
   // Justeringen saettes pr. kolonne, saa text-left aldrig kaemper med
   // text-center/text-right i samme klasseliste.
   const headClass =
@@ -183,8 +195,31 @@ export default function TrainingTodayTable({
           <td className={`${cellBase} w-[104px]`}>
             <Meter value={row.form} warn={false} tone="form" />
           </td>
-          <td className={`${cellBase} w-[104px]`}>
-            <Meter value={row.fatigue} warn={row.tired} tone="fatigue" />
+          <td className={`${cellBase} ${row.fatigueTonight ? "w-[150px]" : "w-[104px]"}`}>
+            {row.fatigueTonight ? (
+              <div
+                className="flex items-center gap-1.5 whitespace-nowrap"
+                data-testid="fatigue-now-tonight"
+                data-band={row.fatigueTonight.tone}
+                role="img"
+                aria-label={t("today.fatigueTonightAria", {
+                  now: row.fatigue ?? "—",
+                  value: row.fatigueTonight.value,
+                  band: t(`forecast.band_${row.fatigueTonight.tone}`),
+                })}
+              >
+                <Meter value={row.fatigue} warn={row.tired} tone="fatigue" />
+                <ChevronRightIcon size={11} aria-hidden="true" className="flex-none text-cz-3" />
+                <span
+                  className={`font-data text-[12.5px] font-semibold tabular-nums ${TONIGHT_TEXT[row.fatigueTonight.tone]}`}
+                  aria-hidden="true"
+                >
+                  {forecastSettled ? row.fatigueTonight.value : `~${row.fatigueTonight.value}`}
+                </span>
+              </div>
+            ) : (
+              <Meter value={row.fatigue} warn={row.tired} tone="fatigue" />
+            )}
           </td>
           {showScore && (
             <td
@@ -232,9 +267,11 @@ export default function TrainingTodayTable({
               </td>
             ))
           )}
+          {showSeason && (
           <td className={`${cellBase} w-[84px] pe-4 text-right font-data text-[13px] tabular-nums text-cz-1`}>
             {row.seasonPoints != null ? `+${row.seasonPoints}` : <span className="text-cz-3">—</span>}
           </td>
+          )}
         </tr>
         {isOpen && (
           <tr data-testid="training-rider-detail">
@@ -275,7 +312,7 @@ export default function TrainingTodayTable({
                 {t("form")}
               </SortableTh>
               <SortableTh sortKey="fatigue" sort={sort} sortDir={sortDir} onSort={onSort} className={sortHeadClass}>
-                {t("fatigue")}
+                {tonightOn ? t("today.colFatigueTonight") : t("fatigue")}
               </SortableTh>
               {/* #4851: "Score" forklarer ikke sig selv. Kort tekst paa fladen
                   (title) og et stille link til Hjaelpens prosa (#4025), samme
@@ -308,7 +345,7 @@ export default function TrainingTodayTable({
                   {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}
                 </th>
               ))}
-              <th className={`${headClass} pe-4 text-right`}>{t("today.colSeasonPoints")}</th>
+              {showSeason && <th className={`${headClass} pe-4 text-right`}>{t("today.colSeasonPoints")}</th>}
             </tr>
           </thead>
           <tbody>

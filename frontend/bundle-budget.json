@@ -8,6 +8,7 @@
   "_reputation_note": "2026-10-01 #5828 (owner-approved raise): CI measured 1209.6 KB vs loft 1207.5 KB. Reputation column + level label on rider surfaces adds ~2.1 KB; flag stays shadow. Baseline 1150 -> 1155.",
   "_training_groups_note": "2026-10-01 #6000 (owner-approved raise): CI measured 1213.6 KB vs loft 1212.8 KB. Groups section, editor and group fatigue exception on the Training route add ~0.9 KB. Baseline -> 1158.",
   "_one_tap_note": "2026-10-01 #5685 + #6010/#6018 (owner-approved, <=2 KB per approved PR tonight): CI measured 1218.8 KB vs loft 1218.0 KB after #6010 and #6018 landed. Follow-up: lazy-load new training parts.",
+  "_season_overview_note": "2026-10-01 #6025: SeasonOverview + fatigue now/tonight on Today. Measured 1220.3 KB after #6027 landed, inside the 1163 loft (1221.2 KB); no raise.",
   "_trained_now_receipt_note": "2026-10-01 #6027: measured locally 1219.6 KB vs loft 1219.0 KB (0.6 KB over). The pending-date receipt now shows what race days 1-4 already trained (trained-now projection, slot range, waiting-for-race rows) plus 4 en+da training keys, all in the TrainingPage route chunk and the training namespace; no new dependency, index chunk unchanged. Lazy-loading would not help because the gate sums all chunks. Baseline 1161 -> 1163 (loft 1221.2 KB).",
   "margin_pct": 5
 }
