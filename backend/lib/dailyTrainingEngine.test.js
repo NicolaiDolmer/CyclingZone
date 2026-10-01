@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { runTeamTrainingDay, stageMatchesCanonicalLoad } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
 import { conditionMultiplier, nextFatigue, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
@@ -2553,6 +2553,60 @@ test('known race without load ledger rejects partial-date activation before writ
   state.app_config.push({key:'training_condition_per_date',value:'on'});
   await assert.rejects(runDay(state,{gameDay:12,dateGameDays:[12,13,14,15,16]}),/Missing recorded race load/);
   assert.equal(state.training_day_runs.length,0);
+});
+
+// #6009: en rytter med etaperesultat i TO loeb paa samme loebsdag. Etape-opslaget
+// vaelger den foerste (her dubletten); ledgeren har én kanonisk raekke + et
+// godkendt alias. Datoen skal afregnes paa den kanoniske belastning, ikke kaste.
+function seedDoubleBookedDate(state,{withAlias=true}={}){
+  seedFlagOn(state); seedRaceDayTick(state,{gameDay:1});
+  state.app_config.push({key:'training_condition_per_date',value:'on'},{key:RACE_DAY_ENGINE_FLAG_KEY,value:'on'});
+  const days=[1,2,3,4,5];
+  state.races.push({id:'race-2',season_id:SEASON_ID,league_division_id:DIVISION_ID});
+  state.race_stage_schedule=[
+    ...days.map(day=>({race_id:'race-1',stage_number:day,game_day:day,scheduled_at:'2026-06-12T06:00:00Z'})),
+    {race_id:'race-2',stage_number:1,game_day:2,scheduled_at:'2026-06-12T06:00:00Z'},
+  ];
+  // Dubletten (race-2) staar FOERST, saa opslaget vaelger den: praecis prod-tilfaeldet.
+  state.race_results=[
+    {rider_id:'r1',race_id:'race-2',stage_number:1,result_type:'stage'},
+    ...days.map(day=>({rider_id:'r1',race_id:'race-1',stage_number:day,result_type:'stage'})),
+  ];
+  state.race_stage_profiles=[...days.map(day=>({race_id:'race-1',stage_number:day,profile_type:'rolling'})),{race_id:'race-2',stage_number:1,profile_type:'rolling'}];
+  state.training_race_loads=[
+    ...days.map(day=>({rider_id:'r1',race_id:'race-1',stage_number:day,game_day:day,season_id:SEASON_ID,tick_date:'2026-06-12',load:12,consumed_at:null,duplicate_of_race_id:null,duplicate_of_stage_number:null})),
+    ...(withAlias?[{rider_id:'r1',race_id:'race-2',stage_number:1,game_day:2,season_id:SEASON_ID,tick_date:'2026-06-12',load:30,consumed_at:null,duplicate_of_race_id:'race-1',duplicate_of_stage_number:2}]:[]),
+  ];
+  return days;
+}
+
+test('#6009 double race-day: settles on the canonical load when the lookup picks the approved alias',async()=>{
+  const state=seedState({conditions:[makeCondition('r1',{fatigue:40,form:50})]});
+  const days=seedDoubleBookedDate(state);
+  for(const gameDay of days){
+    const result=await runDay(state,{gameDay,dateGameDays:days});
+    assert.equal(result.report.riders[0].intensity,'race');
+  }
+  // Kun de kanoniske belastninger (12 pr. loebsdag) taeller; aliassets 30 indgaar ikke.
+  assert.equal(state.rider_condition[0].fatigue,nextFatigue({fatigue:40,intensity:'race',raceLoad:12,recoveryAbility:50,...RACE_DAY_ENGINE_RECOVERY_CONFIG}));
+});
+
+test('#6009 double race-day without an approved alias still refuses to settle',async()=>{
+  const state=seedState({conditions:[makeCondition('r1',{fatigue:40,form:50})]});
+  const days=seedDoubleBookedDate(state,{withAlias:false});
+  await runDay(state,{gameDay:1,dateGameDays:days});
+  await assert.rejects(runDay(state,{gameDay:2,dateGameDays:days}),/Missing recorded race load/);
+});
+
+test('#6009 stageMatchesCanonicalLoad: canonical, approved alias, foreign alias',()=>{
+  const canonical={rider_id:'r1',race_id:'A',stage_number:5,game_day:12};
+  const alias={rider_id:'r1',race_id:'B',stage_number:1,game_day:12,duplicate_of_race_id:'A',duplicate_of_stage_number:5};
+  assert.equal(stageMatchesCanonicalLoad({raceId:'A',stageNumber:5},canonical,[canonical,alias]),true);
+  assert.equal(stageMatchesCanonicalLoad({raceId:'B',stageNumber:1},canonical,[canonical,alias]),true);
+  assert.equal(stageMatchesCanonicalLoad({raceId:'B',stageNumber:1},canonical,[canonical]),false);
+  assert.equal(stageMatchesCanonicalLoad({raceId:'B',stageNumber:1},canonical,[canonical,{...alias,duplicate_of_stage_number:4}]),false);
+  assert.equal(stageMatchesCanonicalLoad({raceId:'C',stageNumber:1},canonical,[canonical,alias]),false);
+  assert.equal(stageMatchesCanonicalLoad(undefined,canonical,[canonical]),false);
 });
 
 test('date settlement rejects race loads for a rider with missing ability state',async()=>{

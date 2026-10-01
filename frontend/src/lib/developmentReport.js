@@ -21,13 +21,17 @@ import { isBreakthrough } from "./trainingReport.js";
 //    auto-transitionen; se review-fund #2000 stykke 5).
 // 2) Derefter source-prioritet: daily_training er dagens slut-tilstand (inkl.
 //    gevinst), season_transition sæsonskiftets resultat, baseline backfill-start.
-const SOURCE_PRIORITY = { daily_training: 3, season_transition: 2, baseline: 1 };
+const SOURCE_PRIORITY = { daily_training: 3, race_development: 3, season_transition: 2, baseline: 1 };
 
 function beats(row, prev) {
   const sa = row.season_number ?? -Infinity;
   const sb = prev.season_number ?? -Infinity;
   if (sa !== sb) return sa > sb;
-  return (SOURCE_PRIORITY[row.source] ?? 0) >= (SOURCE_PRIORITY[prev.source] ?? 0);
+  const pa = SOURCE_PRIORITY[row.source] ?? 0;
+  const pb = SOURCE_PRIORITY[prev.source] ?? 0;
+  if (pa !== pb) return pa > pb;
+  // #5947: flere løbsdage pr. dato — den seneste løbsdag er datoens slut-tilstand.
+  return (row.game_day ?? -1) >= (prev.game_day ?? -1);
 }
 
 // Rens + dedup: gyldige rækker, sorteret kronologisk (ASC), én pr. snapshot_date.

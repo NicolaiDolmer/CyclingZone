@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>#5630/#5685 directions</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fffdf8;--line:#e3ddd0;--t1:#1c1c1e;--t2:#5d5a54;--t3:#8c877e;--gold:#c9a227;--goldt:#8a6d12;--ok:#2f7d4f;--warn:#b4531b;--bad:#a8322a}
+*{box-sizing:border-box}body{margin:0;background:#151a24;font-family:'DM Sans',system-ui,sans-serif;color:var(--t1);padding:32px;width:1560px}
+h1{font-family:'Inter Tight';color:#fff;font-size:28px;margin:0 0 4px}.sub{color:#b9bfcc;font-size:14px;margin:0 0 22px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;align-items:start}
+.col h2{color:#fff;font-family:'Inter Tight';font-size:17px;margin:0 0 4px}.col h2 span{color:#e8c547}.col p.h{color:#b9bfcc;font-size:13px;margin:0 0 10px;min-height:36px}
+.phone{width:390px;background:var(--bg);border-radius:5px;padding:14px;position:relative}
+.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
+.top b{font:700 17px 'Inter Tight'}.top span{font-size:12px;color:var(--t2)}
+.row{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:10px 11px;margin-bottom:8px;position:relative}
+.r1{display:flex;justify-content:space-between;align-items:baseline}
+.nm{font-weight:600;font-size:14px}.meta{font-size:11.5px;color:var(--t3);margin-top:2px}
+.num{font-variant-numeric:tabular-nums}
+.fat{font-size:12px;text-align:right}.fat b{font-variant-numeric:tabular-nums}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.prog{font-size:11.5px;color:var(--t2);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+.prog i{font-style:normal;color:var(--ok);font-variant-numeric:tabular-nums}
+.seg{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-top:8px;font-size:12.5px}
+.seg div{flex:1;text-align:center;padding:8px 0;color:var(--t2);border-left:1px solid var(--line)}.seg div:first-child{border-left:none}
+.seg .sel{background:#f3ead0;color:var(--goldt);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:5px;padding:5px 9px;font-size:12.5px;background:#fff}
+.chip svg{width:12px;height:12px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);border-radius:5px 5px 0 0;padding:12px 14px 16px}
+.opt{display:flex;justify-content:space-between;border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin-top:8px;font-size:13px}
+.opt.sel{border-color:var(--gold);background:#fbf5e3}
+.opt span{color:var(--t3);font-size:12px}
+.old .row{opacity:1}
+.pin{position:absolute;width:22px;height:22px;border-radius:50%;background:#e8c547;color:#141a2e;font:700 12px 'Inter Tight';display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #151a24;z-index:2}
+.legend{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;color:#d7dbe4;font-size:14px;line-height:1.45}
+.legend b{color:#e8c547;margin-right:6px}
+.rec{color:#e8c547}
+</style></head><body>
+<h1>#5630 / #5685 · Day choice on the phone + progress back in the row</h1>
+<p class="sub">Training → Today, phone 390 px. Fictional riders. Today = date with 5 race days; "day choice" sets all of today's open training fields at once (stage riders keep their stage field, rule A).</p>
+<div class="cols">
+ <div class="col"><h2>TODAY</h2><p class="h">Empty rows. Changing the day = open the rider, tap "Change day", choose, close. 4 taps per rider.</p>
+  <div class="phone old">
+   <div class="top"><b>Today · 1 Oct</b><span>45 riders</span></div>
+   <div class="row"><div class="r1"><div><div class="nm">M. Laurent</div><div class="meta">Climber · 24</div></div><span style="color:var(--t3);font-size:18px">›</span></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">J. Okafor</div><div class="meta">Sprinter · 22</div></div><span style="color:var(--t3);font-size:18px">›</span></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">P. Nielsen</div><div class="meta">Rouleur · 27</div></div><span style="color:var(--t3);font-size:18px">›</span></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">T. Brandt</div><div class="meta">Puncheur · 19 · Junior</div></div><span style="color:var(--t3);font-size:18px">›</span></div></div>
+  </div></div>
+ <div class="col"><h2><span class="rec">A · RECOMMENDED</span> · one tap in the row</h2><p class="h">Three choices always visible on each row: Rest · Recovery · Program. One tap = done. Progress and tonight's fatigue in the row.</p>
+  <div class="phone">
+   <span class="pin" style="right:-9px;top:66px">1</span><span class="pin" style="right:-9px;top:118px">2</span><span class="pin" style="left:-9px;top:142px">3</span>
+   <div class="top"><b>Today · 1 Oct</b><span>45 riders</span></div>
+   <div class="row"><div class="r1"><div><div class="nm">M. Laurent</div><div class="meta">Climber · 24</div></div><div class="fat">Fatigue tonight <b class="warn">~58</b></div></div>
+    <div class="prog">Season <i>+3 climbing</i><i>+1 endurance</i></div>
+    <div class="seg"><div>Rest</div><div class="sel">Recovery</div><div>Program</div></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">J. Okafor</div><div class="meta">Sprinter · 22 · stage today</div></div><div class="fat">Fatigue tonight <b class="ok">~31</b></div></div>
+    <div class="prog">Season <i>+2 sprint</i></div>
+    <div class="seg"><div>Rest</div><div>Recovery</div><div class="sel">Program</div></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">T. Brandt</div><div class="meta">Puncheur · 19 · Junior</div></div><div class="fat">Fatigue tonight <b class="bad">~74</b></div></div>
+    <div class="prog">Season <i>+4 punch</i><i>+2 acceleration</i></div>
+    <div class="seg"><div class="sel">Rest</div><div>Recovery</div><div>Program</div></div></div>
+  </div></div>
+ <div class="col"><h2>B · compact row + sheet</h2><p class="h">Row stays one line. Tap the day chip → a sheet with the three choices. Two taps, more riders on screen.</p>
+  <div class="phone" style="min-height:420px">
+   <div class="top"><b>Today · 1 Oct</b><span>45 riders</span></div>
+   <div class="row"><div class="r1"><div><div class="nm">M. Laurent</div><div class="meta">Climber · 24 · Season +4</div></div><span class="chip">Recovery <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">J. Okafor</div><div class="meta">Sprinter · 22 · Season +2</div></div><span class="chip">Program <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+   <div class="row"><div class="r1"><div><div class="nm">T. Brandt</div><div class="meta">Puncheur · 19 · Season +6</div></div><span class="chip">Rest <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+   <div class="sheet"><div style="font-weight:600;font-size:13.5px">T. Brandt · today</div>
+    <div class="opt sel">Rest <span>fatigue tonight ~74 → ~52</span></div>
+    <div class="opt">Recovery <span>~61</span></div>
+    <div class="opt">Program <span>~74</span></div></div>
+  </div></div>
+</div>
+<div class="legend">
+ <div><b>1</b>Tonight's fatigue (the same forecast as Program → Plan, #5933), colour green/amber/red against the injury limit. One number per rider.</div>
+ <div><b>2</b>#5630: the row gets its season progress back (abilities gained this season), so the list is informative before you open a rider.</div>
+ <div><b>3</b>#5685: one tap sets today's open fields to Rest, Recovery or back to the rider's Program. Stage riders keep their stage field; the choice only covers their training fields.</div>
+ <div><b>Shared</b> Same choices and wording as desktop's quick buttons (QUICK_DAY_TYPES). Multi-select "Rest for several" (#5638) stays. A tap after Train now for today is locked, as today (decision 2).</div>
+</div>
+</body></html>

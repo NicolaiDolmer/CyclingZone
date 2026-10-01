@@ -637,6 +637,28 @@ test("rederiveSeasonRacePoints re-maps points from current config, skips paid + 
   assert.deepEqual(updateCalls, ["season-1"]);
 });
 
+test("#5956: rederive restores a mountain prize only for riders who have mountain points", async () => {
+  const { supabase, state } = createRederiveDouble({
+    races: [{ id: "race-1", race_class: "uci_wt", race_type: "stage_race", prize_paid_at: null }],
+    racePointsByClass: { uci_wt: [{ result_type: "Bjergtroje", rank: 1, points: 40 }] },
+    raceResults: [
+      // Stage rows (passage era): "scorer" has bjergpoint paa etape 2, "nobody" aldrig.
+      { id: "s1", race_id: "race-1", result_type: "stage", rank: 1, rider_id: "nobody", stage_number: 1, kom_points: 0, points_earned: 0, prize_money: 0 },
+      { id: "s2", race_id: "race-1", result_type: "stage", rank: 2, rider_id: "scorer", stage_number: 2, kom_points: 3, points_earned: 0, prize_money: 0 },
+      // mountain_day etape 1: rank 1 = "nobody" (0 point) -> skal forblive 0 (ingen scorer endnu).
+      { id: "m1", race_id: "race-1", result_type: "mountain_day", rank: 1, rider_id: "nobody", stage_number: 1, points_earned: 0, prize_money: 0 },
+      // slut-mountain: rank 1 = "scorer" -> faar praemien; "nobody" paa rank 1 ville ikke.
+      { id: "m2", race_id: "race-1", result_type: "mountain", rank: 1, rider_id: "scorer", stage_number: 2, points_earned: 0, prize_money: 0 },
+      { id: "m3", race_id: "race-1", result_type: "mountain", rank: 1, rider_id: "nobody", stage_number: 2, points_earned: 0, prize_money: 0 },
+    ],
+  });
+  await rederiveSeasonRacePoints({ supabase, seasonId: "season-1", updateStandings: async () => {} });
+  const byId = Object.fromEntries(state.raceResults.map((r) => [r.id, r]));
+  assert.equal(byId.m1.points_earned, 0);
+  assert.equal(byId.m2.points_earned, 40);
+  assert.equal(byId.m3.points_earned, 0);
+});
+
 test("rederiveSeasonRacePoints refreshes rider values after standings when injected", async () => {
   const { supabase } = createRederiveDouble({
     races: [

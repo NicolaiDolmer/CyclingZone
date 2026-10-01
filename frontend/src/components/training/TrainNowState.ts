@@ -18,7 +18,21 @@ export type TrainNowStatus = {
 export type TrainNowPressResult = {
   settledRiderIds: string[];
   afterRaceRiderIds: string[];
+  settledGameDays?: number[];
 };
+
+/**
+ * #6006: the press's immediate effect, for "X riders trained now, Y waiting for
+ * their race". Null when nothing could settle now (a date with one race day keeps
+ * that day for the evening, I4), so the line never claims training that did not run.
+ */
+export function trainNowPressCounts(result: TrainNowPressResult | null): { trained: number; waiting: number } | null {
+  if (!result) return null;
+  if (Array.isArray(result.settledGameDays) && result.settledGameDays.length === 0) return null;
+  const trained = result.settledRiderIds.length;
+  if (!trained) return null;
+  return { trained, waiting: result.afterRaceRiderIds.length };
+}
 
 export const TRAIN_NOW_OFF: TrainNowStatus = {
   enabled: false, available: false, reason: "flag_off", tickDate: null, locked: false, lockedAt: null, settled: false,
@@ -73,6 +87,8 @@ export function trainNowNoteKeys(
   }
   if (status.settled) return ["trainNow.settled"];
   if (status.locked) {
+    const counts = trainNowPressCounts(result);
+    if (counts) return [counts.waiting > 0 ? "trainNow.pressResult" : "trainNow.pressResultAll", "trainNow.locked"];
     return result && result.afterRaceRiderIds.length > 0
       ? ["trainNow.locked", "trainNow.afterRace"]
       : ["trainNow.locked"];

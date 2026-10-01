@@ -8,7 +8,10 @@ import {
   runTrainNow, loadTrainNowStatus, trainNowGameDays, splitTrainNowRiders,
   createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY,
 } from "./trainNow.js";
-import { isRaceDateTrainNowLocked, TRAIN_NOW_LOCK_TABLE } from "./trainNowLock.js";
+import {
+  isRaceDateTrainNowLocked, TRAIN_NOW_LOCK_TABLE, loadTrainNowLockedDatesByTeam, isRaceLockedForTeam, raceStageDates,
+} from "./trainNowLock.js";
+import { loadTrainingDateContext } from "./trainingDateReadiness.js";
 import { prepareSelectionChange } from "./raceSelection.js";
 
 const TEAM = { id: "team-a", league_division_id: "div-1" };
@@ -35,6 +38,14 @@ function fakeSupabase(state, { missing = [] } = {}) {
       eq(col, val) { filters.push((row) => row[col] === val); return q; },
       is(col, val) { filters.push((row) => (row[col] ?? null) === val); return q; },
       lt(col, val) { filters.push((row) => row[col] < val); return q; },
+      // #6006: enough for the real loadTrainingDateContext (paginated selects).
+      gte(col, val) { filters.push((row) => row[col] >= val); return q; },
+      not(col, op, val) { if (op === "is" && val === null) filters.push((row) => row[col] != null); return q; },
+      order() { return q; },
+      range(from, to) {
+        const r = run();
+        return Promise.resolve(r.error ? r : { data: r.data.slice(from, to + 1), error: null });
+      },
       in(col, vals) { filters.push((row) => vals.includes(row[col])); return q; },
       limit(n) { limit = n; return q; },
       async maybeSingle() { const r = run(); return { data: r.data?.[0] ?? null, error: r.error }; },
@@ -316,6 +327,87 @@ test("plan lock: tomorrow's cells may change, today's may not", async () => {
 test("plan lock lifts once the evening settlement completed the date", async () => {
   const { call } = planLockHarness({ settled: true });
   assert.equal((await call("plan", {})).nextCalled, true);
+});
+
+// #6006: an assistant-selected squad (autopick on) of 45, 10 entered in today's
+// race. Runs the REAL loadTrainingDateContext against the fake, so the lock read
+// in the readiness is exercised end to end.
+function autopickState({ autopick = true } = {}) {
+  const state = baseState();
+  const team = { ...TEAM, is_ai: false, assistant_autopick_enabled: autopick, created_at: null };
+  const riders = Array.from({ length: 45 }, (_, i) => ({
+    id: `r${String(i).padStart(2, "0")}`, team_id: TEAM.id, squad: "senior", is_academy: false,
+    is_retired: false, pending_team_id: null, created_at: null, acquired_at: null,
+  }));
+  Object.assign(state, {
+    teams: [team],
+    riders,
+    races: [{ id: "race-1", season_id: SEASON.id, league_division_id: TEAM.league_division_id, race_type: "single",
+      squad: "senior", stages_completed: 0, finalize_state: null }],
+    race_stage_schedule: [{ race_id: "race-1", stage_number: 1, game_day: 33,
+      scheduled_at: "2026-10-01T15:00:00.000Z", "races.season_id": SEASON.id }],
+    race_entries: riders.slice(0, 10).map((r) => ({ race_id: "race-1", rider_id: r.id, team_id: TEAM.id })),
+    training_race_loads: [], race_simulation_runs: [], race_results: [], race_incidents: [],
+  });
+  return state;
+}
+
+function realContextDeps(state) {
+  const { deps, calls, supabase } = harness(state);
+  const spans = async () => new Map([[TEAM.league_division_id, { gameDays: [31, 32, 33, 34, 35] }]]);
+  return { calls, supabase, deps: { ...deps, team: { ...TEAM }, loadDaySpans: spans, loadContext: loadTrainingDateContext } };
+}
+
+test("#6006: autopick team with 45 riders, 10 entered: 35 settle now, the 10 entered wait for their race", async () => {
+  const state = autopickState();
+  const { deps, calls } = realContextDeps(state);
+  const result = await runTrainNow(deps);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.settledRiderIds.length, 35);
+  assert.deepEqual(result.body.afterRaceRiderIds, state.race_entries.map((e) => e.rider_id));
+  assert.deepEqual(result.body.settledGameDays, [31, 32, 33, 34], "final race day stays with the evening (I4)");
+  assert.equal(calls.length, 4);
+  for (const call of calls) assert.equal(call.eligibleRiderIds.length, 35);
+});
+
+test("#6006: before the press the same team's free riders are autopick candidates (they could still be picked)", async () => {
+  const state = autopickState();
+  const context = await loadTrainingDateContext({
+    supabase: fakeSupabase(state), season: SEASON, tickDate: TODAY,
+    loadDaySpans: async () => new Map(), registeredTeamIds: [TEAM.id],
+  });
+  assert.equal(context.candidateRiderIdsByRace.get("race-1").length, 45);
+  state[TRAIN_NOW_LOCK_TABLE].push({ rider_id: "r00", tick_date: TODAY, season_id: SEASON.id, team_id: TEAM.id });
+  const locked = await loadTrainingDateContext({
+    supabase: fakeSupabase(state), season: SEASON, tickDate: TODAY,
+    loadDaySpans: async () => new Map(), registeredTeamIds: [TEAM.id],
+  });
+  assert.deepEqual(locked.candidateRiderIdsByRace.get("race-1"), [], "a pressed team has a frozen selection");
+});
+
+test("#6006: a team without autopick is unchanged: free riders settle, entered riders wait", async () => {
+  const state = autopickState({ autopick: false });
+  const { deps } = realContextDeps(state);
+  const result = await runTrainNow(deps);
+  assert.equal(result.body.settledRiderIds.length, 35);
+  assert.equal(result.body.afterRaceRiderIds.length, 10);
+});
+
+test("#6006: lock helpers - dates per team, race lock and the missing-table fallback", async () => {
+  const state = { [TRAIN_NOW_LOCK_TABLE]: [
+    { rider_id: "a", tick_date: TODAY, team_id: "t1" },
+    { rider_id: "b", tick_date: TODAY, team_id: "t1" },
+    { rider_id: "c", tick_date: "2026-10-02", team_id: "t2" },
+  ] };
+  const byTeam = await loadTrainNowLockedDatesByTeam({ supabase: fakeSupabase(state), dates: [TODAY] });
+  assert.deepEqual([...byTeam.keys()], ["t1"]);
+  assert.equal(isRaceLockedForTeam({ lockedDatesByTeam: byTeam, teamId: "t1", raceDates: ["2026-09-30", TODAY] }), true);
+  assert.equal(isRaceLockedForTeam({ lockedDatesByTeam: byTeam, teamId: "t2", raceDates: [TODAY] }), false);
+  const missing = await loadTrainNowLockedDatesByTeam({
+    supabase: fakeSupabase({}, { missing: [TRAIN_NOW_LOCK_TABLE] }), dates: [TODAY],
+  });
+  assert.equal(missing.size, 0);
+  assert.deepEqual(raceStageDates([{ scheduled_at: "2026-10-01T22:30:00.000Z" }]), ["2026-10-02"], "Copenhagen date");
 });
 
 test("sameWeekdayCell ignores key order", () => {
