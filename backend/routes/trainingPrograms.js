@@ -34,6 +34,7 @@ import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
+import { markRidersOwnPlan, syncGroupsToSquadProgram } from "../lib/trainingGroups.ts"; // #6000
 
 const PASS = (_req, _res, next) => next();
 
@@ -214,6 +215,10 @@ export function createTrainingProgramsRouter({
         captureExceptionFn(new Error(`training programs apply partial (${applied}/${targets.length}): ${firstError.message}`));
         return res.status(500).json({ error: "partial_apply", applied, total: targets.length });
       }
+      // #6000: en rytter-tildeling er rytterens egen plan (vinder over gruppen);
+      // "hele truppen" saetter ogsaa gruppernes plan, saa de ikke siger noget andet.
+      if (target === "squad") await syncGroupsToSquadProgram(supabase, teamId, program.key, programWeekDaysFor(program.key), captureExceptionFn);
+      else await markRidersOwnPlan(supabase, teamId, targets, captureExceptionFn);
       res.json({ ok: true, applied, programKey: program.key });
     } catch (err) {
       captureExceptionFn(err);
@@ -253,6 +258,7 @@ export function createTrainingProgramsRouter({
         ? await updateRow(supabase, row.id, { days, updated_at: now })
         : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, days, updated_at: now }]);
       if (error) throw new Error(error.message);
+      await markRidersOwnPlan(supabase, teamId, [riderId], captureExceptionFn); // #6000: egen plan vinder over gruppen
       res.json({ ok: true, riderId, days });
     } catch (err) {
       captureExceptionFn(err);

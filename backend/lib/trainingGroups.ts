@@ -212,7 +212,8 @@ export async function loadTeamGroups(supabase: Supa, teamId: string): Promise<{ 
 export async function loadGroupFatigueRuleRows(supabase: Supa, teamId: string): Promise<Map<string, FatigueRuleRow>> {
   const out = new Map<string, FatigueRuleRow>();
   const { data, error } = await supabase.from(GROUPS_TABLE)
-    .select("id, fatigue_threshold, fallback").eq("team_id", teamId).not("fallback", "is", null);
+    // pagination-safe: one team's groups (a handful).
+    .select("id, fatigue_threshold, fallback").eq("team_id", teamId);
   if (error) {
     if (isMissingGroupsTable(error)) return out;
     throw new Error(`training group rules load (team ${teamId}): ${error.message ?? error}`);
