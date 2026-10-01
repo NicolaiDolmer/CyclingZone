@@ -14,7 +14,7 @@ for BETA-blokken (og den nye entry på sitet samme aften).
 ```
 Catch-up: v7.310 to v7.330 (28 Sep to 1 Oct)
 
-Every change now carries a label on cyclingzone.org/patch-notes: Beta (beta group only), Now live for all, Switched on (built earlier, in use now) or Season event. No label means live for everyone.
+New on the patch notes page: Beta: only the beta group has it. No label: live for everyone.
 
 **Now live for all**
 - **The new board is live for every club**: since the season switch on 27 September, every club runs on the Mandate: one confidence score, one set of targets for the season and a club vision. Your season recap opens with the board's verdict. Help explains it under The Mandate.
