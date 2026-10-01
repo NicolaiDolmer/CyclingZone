@@ -174,6 +174,41 @@ test("I2: a double press keeps one lock row per rider + date and the first press
   assert.equal(state.training_date_work.length, 1, "date registered once");
 });
 
+test("a failed registration leaves no lock behind", async () => {
+  const state = baseState();
+  const { deps, calls } = harness(state);
+  await assert.rejects(runTrainNow({ ...deps, registerWork: async () => { throw new Error("rpc down"); } }), /rpc down/);
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 0);
+  assert.equal(calls.length, 0);
+});
+
+test("entries are re-read after the lock: a rider entered mid-press is not settled", async () => {
+  const state = baseState();
+  const { deps, calls } = harness(state);
+  let reads = 0;
+  const result = await runTrainNow({
+    ...deps,
+    loadContext: async () => {
+      reads += 1;
+      const ctx = fakeContext();
+      // The second read happens after the lock: r1 was entered in the meantime.
+      if (reads > 1) ctx.entries.push({ race_id: "race-1", rider_id: "r1", team_id: TEAM.id });
+      return ctx;
+    },
+  });
+  assert.equal(reads, 2);
+  assert.deepEqual(result.body.settledRiderIds, []);
+  assert.deepEqual(result.body.afterRaceRiderIds.sort(), ["r1", "r2"]);
+  assert.equal(calls.length, 0, "nobody free, nothing settled");
+});
+
+test("an open date from an earlier season does not block the press", async () => {
+  const state = baseState();
+  state.training_date_work.push({ team_id: TEAM.id, season_id: "season-0", tick_date: "2026-05-30", status: "partial" });
+  const { deps } = harness(state);
+  assert.equal((await runTrainNow(deps)).status, 200);
+});
+
 test("a settled date cannot be pressed (409 date_settled)", async () => {
   const state = baseState();
   state.training_date_work.push({ team_id: TEAM.id, season_id: SEASON.id, tick_date: TODAY, status: "complete", game_days: [31, 32, 33, 34, 35], expected_rider_ids: ["r1"] });

@@ -2328,7 +2328,7 @@ export default function TrainingPage() {
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
           // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
           // største kilder til døde klik).
-          disabled={running || bulkApplying}
+          disabled={running || trainNow.pressing || bulkApplying}
           // min-h-11 = #1602's 44px tryk-mål på telefonen.
           className={isMobile ? "min-h-11 flex-1" : ""}
           data-testid="training-primary"
@@ -2344,7 +2344,7 @@ export default function TrainingPage() {
             size={isMobile ? "md" : "sm"}
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || bulkApplying}
+            disabled={running || trainNow.pressing || bulkApplying}
             className={isMobile ? "min-h-11 flex-none" : ""}
             data-testid="training-run-now"
           >
@@ -2378,7 +2378,7 @@ export default function TrainingPage() {
             size="sm"
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running}
+            disabled={running || trainNow.pressing}
             data-testid="training-run-now"
           >
             {running ? t("loading") : t("overview.runNow")}

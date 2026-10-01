@@ -85,9 +85,10 @@ async function loadTeamDateWork({ supabase, teamId, seasonId, tickDate }) {
 // The opening condition is snapshotted when the date is registered. Registering
 // today before the previous date has written its one condition update would freeze
 // a stale opening, so the press waits for the previous date to be settled.
-async function hasOpenEarlierDate({ supabase, teamId, tickDate }) {
+async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
   const rows = await checked(supabase.from("training_date_work")
-    .select("tick_date").eq("team_id", teamId).lt("tick_date", tickDate).in("status", OPEN_STATUSES).limit(1),
+    .select("tick_date").eq("team_id", teamId).eq("season_id", seasonId)
+      .lt("tick_date", tickDate).in("status", OPEN_STATUSES).limit(1),
   "earlier training date work");
   return (rows ?? []).length > 0;
 }
@@ -107,7 +108,7 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
   const [locks, work, earlierOpen] = await Promise.all([
     loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate }),
     loadTeamDateWork({ supabase, teamId: team.id, seasonId, tickDate }),
-    hasOpenEarlierDate({ supabase, teamId: team.id, tickDate }),
+    hasOpenEarlierDate({ supabase, teamId: team.id, seasonId, tickDate }),
   ]);
   const locked = locks.length > 0;
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
@@ -139,7 +140,7 @@ export async function runTrainNow({
   if (SETTLED_STATUSES.has(existingWork?.status)) {
     return { status: 409, body: { error: "date_settled", tickDate } };
   }
-  if (await hasOpenEarlierDate({ supabase, teamId: team.id, tickDate })) {
+  if (await hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
 
@@ -153,31 +154,38 @@ export async function runTrainNow({
   const currentIds = context.riders.filter((rider) => rider.team_id === team.id
     && (!rider.created_at || new Date(rider.created_at) < dateEnd)
     && (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)).map((rider) => rider.id);
-  const expectedIds = existingWork?.expected_rider_ids ?? currentIds;
-  if (!expectedIds.length) return { status: 409, body: { error: "no_riders", tickDate } };
+  if (!(existingWork?.expected_rider_ids ?? currentIds).length) {
+    return { status: 409, body: { error: "no_riders", tickDate } };
+  }
 
-  // 1) Lock FIRST: from here the date's entries are frozen for this team, so the
-  //    readiness below cannot be invalidated by a selection saved mid-press.
-  //    Idempotent per rider + date (I2); a repeated press keeps the first time.
+  // 1) Register the date exactly as the sweep does (frozen roster + opening
+  //    condition). Before the lock, so a failed registration leaves no lock behind.
+  const work = existingWork ?? await registerWork({
+    supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now,
+  });
+
+  // 2) Lock the registered roster: from here the date's entries are frozen for
+  //    this team. Idempotent per rider + date (I2); a repeated press keeps the
+  //    first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
   const { error: lockError } = await supabase.from(TRAIN_NOW_LOCK_TABLE).upsert(
-    expectedIds.map((riderId) => ({
+    work.expected_rider_ids.map((riderId) => ({
       rider_id: riderId, tick_date: tickDate, season_id: season.id, team_id: team.id, pressed_at: pressedAt,
     })),
     { onConflict: "rider_id,tick_date", ignoreDuplicates: true },
   );
   if (lockError) throw new Error(`train-now lock: ${lockError.message ?? lockError}`);
 
-  // 2) Register the date exactly as the sweep does (frozen roster + opening condition).
-  const work = existingWork ?? await registerWork({
-    supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now,
-  });
+  // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
+  //    saved during the press cannot make an entered rider look free. Then the
+  //    sweep's own readiness rule, before the deadline.
+  const locked = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });
+  const lockedIds = new Set(locked.riders.filter((rider) => rider.team_id === team.id).map((rider) => rider.id));
   const quarantined = new Set(work.quarantined_rider_ids ?? []);
   const available = work.expected_rider_ids.filter((id) => !quarantined.has(id)
-    && currentIds.includes(id) && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
-
-  // 3) Who can settle now? The sweep's own readiness rule, before the deadline.
-  const readiness = resolveTrainingDateReadiness({ ...context, tickDate, now, riderIds: available });
+    && currentIds.includes(id) && lockedIds.has(id)
+    && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
+  const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
   const { settleNow, afterRace } = splitTrainNowRiders({
     riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
   });
