@@ -7,6 +7,11 @@ Architecture: shared correctness fixes plus one pinned tactical policy within th
 Tech stack: existing Node/TypeScript engine, Supabase/Postgres runner, React/i18n. No new dependency.
 Spec: [review design](../specs/2026-09-30-race-engine-orders-gc-film-design.md).
 
+## Verified delivery status, 1 October
+The shared chase/history correctness package and its film/result presentation shipped in [PR #5990](https://github.com/NicolaiDolmer/CyclingZone/pull/5990), patch notes 7.327. Owner visual merge/release approval, exact-commit Vercel READY and Railway SUCCESS, main CI and Deploy verify were observed. The delivered implementation lives in `mechanics/chaseGroup.ts`, shared `backend/lib/raceParticipationHistory.ts` and the matching frontend projection; the originally proposed path below is a design proposal, not unfinished delivery.
+
+Tasks 1 and the correctness-only portion of Task 5 are delivered. No historical results were rerun. Policy pinning (Task 2), order/contested formation (Task 3), actual pre-stage GC and cumulative reactions (Task 4), and their tactical UI/calibration remain separate work. Preserve the next-race release policy; do not restart the delivered fix from the unchecked original planning checklist. Protected lieutenant and phase-specific helper roles remain separate issues #5981/#5982.
+
 ## Global constraints
 - Five existing roles; no lieutenant/luxury-helper feature in this package.
 - No real rider inputs, precise engine tuning or balance thresholds in public docs/PRs/fixtures.
