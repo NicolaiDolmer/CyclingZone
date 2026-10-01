@@ -18,6 +18,7 @@ import {
   formationKmFor,
   isLetGoChaseGroup,
   joinProbability,
+  letGoBalanceFor,
   letGoMaxGapSeconds,
   letGoSplitKm,
   selectBreakawayRiders,
@@ -971,6 +972,33 @@ test("#5812 letGoSplitKm: fasen starter ved dannelsen, slutter naar loftet er na
   }
   // Hovedstart + vaekst over fasen rammer praecis loftet.
   assert.ok(Math.abs(letGoTotal * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm + 25 - maxGapSeconds) < 1e-6);
+});
+
+test("#5955 letGoBalanceFor: legacy er altid 1/1, orders_gc_v1 giver aldrig mindre plads", () => {
+  const profiles = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "cobbles"] as const;
+  for (const profile of profiles) {
+    assert.deepEqual(letGoBalanceFor("legacy", profile), { maxGapFactor: 1, rateFactor: 1 });
+    assert.deepEqual(letGoBalanceFor(undefined, profile), { maxGapFactor: 1, rateFactor: 1 });
+    const v1 = letGoBalanceFor("orders_gc_v1", profile);
+    assert.ok(v1.maxGapFactor >= 1 && Number.isFinite(v1.maxGapFactor), profile);
+    assert.ok(v1.rateFactor >= 1 && Number.isFinite(v1.rateFactor), profile);
+  }
+  // Enkeltstart har intet morgenudbrud: ingen balance at give.
+  assert.deepEqual(letGoBalanceFor("orders_gc_v1", "itt"), { maxGapFactor: 1, rateFactor: 1 });
+  // De vejprofiler hvor udbruddet blev hentet paa naesten hver etape, faar plads.
+  for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const) {
+    assert.ok(letGoBalanceFor("orders_gc_v1", profile).maxGapFactor > 1, profile);
+  }
+});
+
+test("#5955 letGoSplitKm: en hurtigere lad-gaa-fase naar samme loft paa faerre km, og default er uaendret", () => {
+  const formationKm = formationKmFor({ from_km: 0, to_km: 20 });
+  const base = { formationKm, maxGapSeconds: 300, fromKm: 0, toKm: 200 };
+  assert.deepEqual(letGoSplitKm(base), letGoSplitKm({ ...base, secondsPerKm: BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm }));
+  const slow = letGoSplitKm(base);
+  const fast = letGoSplitKm({ ...base, secondsPerKm: BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * 2 });
+  assert.ok(fast.letGoKm < slow.letGoKm);
+  assertClose(fast.letGoKm * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * 2, slow.letGoKm * BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm, "same ceiling");
 });
 
 test("#5812 isLetGoChaseGroup: kun et felt lader et udbrud gaa", () => {

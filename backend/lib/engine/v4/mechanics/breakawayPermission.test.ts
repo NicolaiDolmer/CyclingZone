@@ -188,6 +188,22 @@ test("an overcrowded move keeps at most maxSize successes and never adds non-att
   assert.equal(result.failed.length, 7);
 });
 
+test("#5955 a crowded morning where every team has an attacker still forms a real group, not a lone rider", () => {
+  // Regression: a crowd penalty that scaled with the number of attackers made
+  // every attempt fail on a busy morning, so the break collapsed to 0-1 riders.
+  // Mid-range rolls on a full field of equal hunters must let several through.
+  const riders: FormationRider[] = [];
+  for (let i = 0; i < 22; i++) {
+    const team = `T${String(i).padStart(2, "0")}`;
+    riders.push(rider(`${team}-hunter`, team, { role: "hunter" }));
+    for (let h = 0; h < 7; h++) riders.push(rider(`${team}-h${h}`, team));
+  }
+  const result = resolveMorningBreakFormation({ riders, stances: new Map(), roll: always(0.3), maxSize: 8 });
+  assert.equal(result.attempted.length, 22);
+  assert.ok(result.escaped.length >= 2, `escaped ${result.escaped.length}`);
+  assert.ok(result.escaped.length <= 8);
+});
+
 test("a spontaneous free role attempts only when its own roll says so", () => {
   const riders = [rider("A-free", "A", { role: "free_role", spontaneousChance: 0.3 }), rider("B-x", "B"), rider("C-x", "C")];
   const yes = resolveMorningBreakFormation({ riders, stances: new Map(), roll: (s) => (s === "attempt" ? 0.1 : 0.999), maxSize: 8 });
