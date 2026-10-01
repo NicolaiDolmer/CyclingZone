@@ -185,6 +185,22 @@ function gapSecondsDeltaFor(
   return round2(lo + fraction * (hi - lo));
 }
 
+function splitTiers(selections: RiderCobblesSelection[], splitRiderIds: string[]): string[][] {
+  const maxTiers = Number(process.env.COB_TIERS || 1);
+  const splitSet = new Set(splitRiderIds);
+  const chosen = selections.filter((s) => splitSet.has(s.riderId));
+  if (maxTiers <= 1 || chosen.length === 0) return [splitRiderIds];
+  const lo = Math.min(...chosen.map((s) => s.baseScore));
+  const hi = Math.max(...chosen.map((s) => s.baseScore));
+  const width = (hi - lo) / maxTiers;
+  const tiers: string[][] = Array.from({ length: maxTiers }, () => []);
+  for (const s of chosen) {
+    const idx = width > 0 ? Math.min(maxTiers - 1, Math.floor((s.baseScore - lo) / width)) : 0;
+    tiers[idx].push(s.riderId);
+  }
+  return tiers.filter((t) => t.length > 0).map((t) => t.sort());
+}
+
 /** Solo-split (én rytter) faar "solo"-kind; ellers "gruppetto" naar kilden er peloton (samme konvention som climbSelection.ts), ellers "chase". */
 function splitKindFor(sourceKind: GroupKind, splitCount: number): GroupKind {
   if (splitCount === 1) return "solo";
@@ -271,13 +287,14 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
     // uden nogen selektions-begrundelse.
     if (splitRiderIds.length === 0 || splitRiderIds.length >= group.rider_ids.length) continue;
 
-    const kind = splitKindFor(group.kind, splitRiderIds.length);
+    for (const tier of splitTiers(selections, splitRiderIds)) {
+    const kind = splitKindFor(group.kind, tier.length);
     const seq = ctx.segmentIndex * 1000 + localSeq;
     localSeq += 1;
     const newGroupId = makeGroupId(kind, seq);
-    const gapSecondsDelta = gapSecondsDeltaFor(selections, splitRiderIds, sectorSeconds, bounds);
+    const gapSecondsDelta = gapSecondsDeltaFor(selections, tier, sectorSeconds, bounds);
 
-    const groups = splitGroup(nextState.groups, group.id, splitRiderIds, {
+    const groups = splitGroup(nextState.groups, group.id, tier, {
       id: newGroupId,
       kind,
       gapSecondsDelta,
@@ -290,13 +307,14 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
       params: {
         group_id: newGroupId,
         source_group_id: group.id,
-        rider_ids: [...splitRiderIds],
+        rider_ids: [...tier],
         cause: "cobbles_sector",
         sector_name: cobblesSegment.sector_name,
         stars: cobblesSegment.stars,
         gap_seconds: round2(gapSecondsDelta),
       },
     });
+    }
   }
 
   return { state: nextState, events };

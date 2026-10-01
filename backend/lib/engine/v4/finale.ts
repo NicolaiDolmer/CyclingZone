@@ -458,8 +458,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   }
 
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
-  const demandVector =
+  const demandVector0 =
     (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR;
+  const cobS = (route.profile_type === "cobbles" || route.profile_type === "gravel") ? Number(process.env.COB_S || 0) : 0;
+  const demandVector: Partial<Record<AbilityKey, number>> = cobS > 0
+    ? { ...Object.fromEntries(Object.entries(demandVector0).map(([k, v]) => [k, (v as number) * (1 - cobS)])), cobblestone: ((demandVector0 as Record<string, number>).cobblestone ?? 0) * (1 - cobS) + cobS }
+    : demandVector0;
 
   // #5957: puljens bedste rene finale-evne er referencen for hvor meget af
   // dagens modifikatorer hver rytter faar (finaleModifierScale). Én reference
