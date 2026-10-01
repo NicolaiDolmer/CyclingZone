@@ -45,6 +45,14 @@ export interface TrainingRun {
     [key: string]: unknown;
   } | null;
 }
+/** #6027: what a not-yet-settled date has already trained (Train now / earlier
+ *  race days). Kept apart from `gains` so season totals, stories and rider logs
+ *  keep treating the date as pending; only the date receipt reads it. */
+export interface TrainedNowProgress {
+  gains: Numbers;
+  gains_detail: Record<string, Jump>;
+  gain_percent: Record<string, number | null>;
+}
 export interface DailyRiderReceipt extends TrainingActivity {
   activities: TrainingActivity[];
   receipt_status: ReceiptStatus;
@@ -54,12 +62,16 @@ export interface DailyRiderReceipt extends TrainingActivity {
   fatigue_before: number | null;
   form_before: number | null;
   progress_before: Numbers;
+  trained_now: TrainedNowProgress | null;
 }
 export interface DailyTrainingReceipt extends TrainingRun {
   previous_season?: boolean;
   receipt_status: ReceiptStatus;
   game_days: number[];
   expected_game_days: number[] | null;
+  /** #6027: 1-based positions within the date of the race days already trained
+   *  (e.g. [1,2,3,4]) when the date is pending; empty otherwise. */
+  trained_now_slots: number[];
   report: { riders: DailyRiderReceipt[]; condition_settled: boolean };
 }
 type Evidence = {
@@ -141,6 +153,49 @@ function nextDateStartProgress(runs: TrainingRun[]): Map<string, Numbers> {
     });
   }
   return next;
+}
+
+/** #6027: 1-based position of each trained race day within its date. Without the
+ *  date's expected days the stored days are counted from 1. */
+function trainedSlots(days: number[], expected: number[] | null): number[] {
+  if (!expected) return days.map((_, i) => i + 1);
+  return days.map(day => expected.indexOf(day) + 1).filter(slot => slot > 0);
+}
+
+/** #6027: progress so far = the sum of each stored race day's own contribution
+ *  (its whole points + progress_after - progress_before). A race day missing an
+ *  end point makes that ability unknown (null), never a guess across the gap. */
+function activityContributions(rows: TrainingActivity[]): Record<string, number | null> {
+  const keys = new Set(rows.flatMap(row => [...Object.keys(row.progress_before ?? {}), ...Object.keys(row.progress_after ?? {})]));
+  const result: Record<string, number | null> = {};
+  for (const ability of keys) {
+    let sum = 0;
+    for (const row of rows) {
+      const before = row.progress_before?.[ability], after = row.progress_after?.[ability];
+      const whole = row.gains?.[ability];
+      if (!finite(before) || !finite(after)) { sum = NaN; break; }
+      sum += (finite(whole) && whole > 0 ? whole : 0) + after - before;
+    }
+    result[ability] = Number.isFinite(sum) && sum >= -1e-9 ? Math.max(0, Math.round(sum * 100)) : null;
+  }
+  return result;
+}
+
+/** #6027: "1-4" for a contiguous run, "1, 3" otherwise, "" for none. */
+export function formatSlotRange(slots: number[]): string {
+  const sorted = [...new Set(slots)].sort((a, b) => a - b);
+  if (sorted.length === 0) return "";
+  if (sorted.length === 1) return String(sorted[0]);
+  const contiguous = sorted.every((slot, i) => i === 0 || slot === sorted[i - 1] + 1);
+  return contiguous ? `${sorted[0]}-${sorted.at(-1)}` : sorted.join(", ");
+}
+
+/** #6027: riders on today's roster with no stored race day on a pending date are
+ *  waiting for their race (Train now leaves riders with an open race slot). */
+export function waitingForRace<T extends { id: string }>(receipt: DailyTrainingReceipt, roster: T[] | null | undefined): T[] {
+  if (receipt.receipt_status !== "pending" || !receipt.trained_now_slots?.length || !Array.isArray(roster)) return [];
+  const present = new Set(receipt.report.riders.map(row => row.rider_id));
+  return roster.filter(rider => rider?.id && !present.has(rider.id));
 }
 
 /** Read-only projection of stored reports; no training mathematics or wall-clock reads. */
@@ -236,7 +291,12 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       const formBefore = finite(first.row.condition_before_date?.form) ? first.row.condition_before_date.form : null;
       const active = activities.find(a => a.intensity && a.intensity !== "rest" && !a.injured);
       const trusted = state === "complete" || state === "recorded";
-      return { ...last.row, rider_id: id, activities, receipt_status: state, gains: trusted ? gains : {},
+      // #6027: a normalized date whose evening settlement has not run yet still
+      // shows what its stored race days trained. Only stored end points count
+      // (never a derived one), and never for quarantined/mixed evidence.
+      const trainedNow = state === "pending" && evidence.every(e => e.normalized && !e.settled)
+        ? { gains, gains_detail: details, gain_percent: activityContributions(evidence.map(e => e.row)) } : null;
+      return { ...last.row, rider_id: id, activities, receipt_status: state, trained_now: trainedNow, gains: trusted ? gains : {},
         gains_detail: trusted ? details : {}, progress_before: trusted ? progressBefore : {}, gain_percent: trusted ? gainPercent : {},
         progress_after: trusted ? progressAfter : undefined,
         status: trusted ? last.row.status : "unknown_pending",
@@ -253,9 +313,14 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       : rows.some(r=>r.receipt_status==="pending") ? "pending"
       : rows.length > 0 && rows.every(r=>r.receipt_status==="complete") ? "complete" : "recorded";
     const latest = runs.at(-1)!;
+    const sortedDays = [...gameDays].sort((a,b)=>a-b);
+    const expectedDays = expected.size ? [...expected].sort((a,b)=>a-b) : null;
+    const trainedNowSlots = state === "pending" && rows.some(r => r.trained_now)
+      ? trainedSlots(sortedDays, expectedDays) : [];
     return { ...latest, tick_date: date, receipt_status: state,
-      game_days: [...gameDays].sort((a,b)=>a-b),
-      expected_game_days: expected.size ? [...expected].sort((a,b)=>a-b) : null,
+      game_days: sortedDays,
+      expected_game_days: expectedDays,
+      trained_now_slots: trainedNowSlots,
       report: { riders: rows, condition_settled: state === "complete" },
     };
   });
