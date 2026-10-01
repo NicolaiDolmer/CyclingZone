@@ -34,6 +34,11 @@ import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+// #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
+// efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
+import {
+  applyFatigueRules, loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString,
+} from "./trainingFatigueRules.ts";
 
 export const FORECAST_SLOTS = 5;
 
@@ -98,6 +103,8 @@ export function buildTeamFatigueForecast({
   recoveryByRider = new Map(), planByRider = new Map(), teamWeekDays = null, riderWeekDaysByRider = new Map(),
   receipts = [], recordedLoads = [], plannedStages = [], boundRiderIdsByGameDay = new Map(),
   cellsOn = false, raceDayEngineOn = true,
+  // #4854: holdets regler (loadTeamFatigueRules) + hvem koerte etape i gaar.
+  fatigueRules = null, stageYesterdayRiderIds = new Set(),
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -117,19 +124,31 @@ export function buildTeamFatigueForecast({
       || recordedLoads.some((row) => row.rider_id === rider.id);
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
-      const planIntensity = resolveDayProgram({
+      const dayProgram = resolveDayProgram({
         weekday, slotIndex,
         riderOverrideDays: riderWeekDaysByRider.get(rider.id) ?? null,
         teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn,
-      }).intensity;
+      });
+      // Samme raekkefoelge som dailyTrainingEngine.js: planens pas, derefter
+      // spillerens regel vurderet paa traethed ved datoens start.
+      const planned = {
+        focus: dayProgram.source === "program" ? dayProgram.focus : program.focus,
+        intensity: dayProgram.intensity,
+      };
+      const ruled = fatigueRules ? applyFatigueRules({
+        program: planned, rule: fatigueRules.forRider(rider.id),
+        fatigueAtDateStart: Number(opening?.fatigue ?? 0),
+        slotIndex, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
+      }) : null;
+      const planIntensity = ruled?.stamp ? ruled.intensity : planned.intensity;
       const recorded = recordedLoads.find((row) => row.rider_id === rider.id && Number(row.game_day) === day && row.duplicate_of_race_id == null);
-      const planned = plannedStages.find((row) => row.rider_id === rider.id && Number(row.game_day) === day);
+      const plannedStage = plannedStages.find((row) => row.rider_id === rider.id && Number(row.game_day) === day);
       const bound = boundRiderIdsByGameDay.get(day)?.has(rider.id) ?? false;
       return forecastSlotActivity({
         riderId: rider.id,
         receipt: riderReceipts.find((row) => row.game_day === day) ?? null,
         recordedLoad: recorded ? recorded.load : null,
-        plannedStageProfile: planned ? (planned.profile_type ?? "rolling") : null,
+        plannedStageProfile: plannedStage ? (plannedStage.profile_type ?? "rolling") : null,
         injured: isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate }),
         boundRestDate: bound && !hasStageOnDate,
         planIntensity,
@@ -224,7 +243,10 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     boundRiderIdsByGameDay.get(day).add(entry.rider_id);
   }
 
+  const { fatigueRules, stageYesterdayRiderIds } = await fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
   const forecast = buildTeamFatigueForecast({
+    fatigueRules,
+    stageYesterdayRiderIds,
     tickDate, seasonId, dateGameDays, riders,
     conditionByRider,
     openingByRider: new Map(Object.entries(work?.opening_conditions ?? {})),
@@ -240,6 +262,22 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     raceDayEngineOn,
   });
   return { ...base, available: true, settled: false, riders: forecast };
+}
+
+// Motorens regler (samme loader som dailyTrainingEngine.js). Motoren kaster ved
+// fejl; prognosen er kun en visning, saa en fejl giver "ingen regel" frem for
+// en vaeltet side. Etape-opslaget koeres kun naar en rytter har reglen sat.
+async function fatigueRulesForForecast(supabase, teamId, riderIds, tickDate) {
+  try {
+    const fatigueRules = await loadTeamFatigueRules(supabase, teamId);
+    const stageYesterdayRiderIds = fatigueRules && fatigueRules.anyAfterStage(riderIds)
+      ? await loadRiderIdsWithStageOnDate(supabase, { riderIds, previousDate: previousDateString(tickDate) })
+      : new Set();
+    return { fatigueRules, stageYesterdayRiderIds };
+  } catch {
+    // best-effort: prognosen er kun en visning; ukendte regler = planens pas.
+    return { fatigueRules: null, stageYesterdayRiderIds: new Set() };
+  }
 }
 
 // Motorens gate for programceller (samme svar som isTrainingCellsEnabledForTeam

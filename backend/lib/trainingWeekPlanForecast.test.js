@@ -41,6 +41,43 @@ test("I5: uaendret plan uden loeb == aftenopgoerelsens traethed", () => {
   assert.equal(out.r1.fatigue, settle([thu, thu, thu, thu, thu]));
 });
 
+// #5932-integrationen (CodeRabbit-fund): motoren anvender spillerens
+// traethedsgraense (#4854) efter planen; prognosen skal goere det samme.
+function rulesFor(rule) {
+  return { forRider: () => rule, anyAfterStage: () => rule.recoveryAfterStage === true };
+}
+
+test("I5 + #4854: holdregel over graensen giver aftenens pas, ikke planens", () => {
+  const days = programWeekDaysFor("sprinter");
+  const thu = intensityForSession(days.thu.session);
+  const rule = { threshold: 40, fallback: "rest", recoveryAfterStage: false };
+  const out = buildTeamFatigueForecast(base({
+    riderWeekDaysByRider: new Map([["r1", days]]),
+    fatigueRules: rulesFor(rule),
+  }));
+  assert.notEqual(thu, "rest");
+  assert.equal(out.r1.fatigue, settle(["rest", "rest", "rest", "rest", "rest"]));
+  // Under graensen: planen som foer.
+  const under = buildTeamFatigueForecast(base({
+    riderWeekDaysByRider: new Map([["r1", days]]),
+    fatigueRules: rulesFor({ ...rule, threshold: 90 }),
+  }));
+  assert.equal(under.r1.fatigue, settle([thu, thu, thu, thu, thu]));
+});
+
+test("I5 + #4854: dagen efter en etape rammer kun foerste felt", () => {
+  const days = programWeekDaysFor("sprinter");
+  const thu = intensityForSession(days.thu.session);
+  const rule = { threshold: null, fallback: null, recoveryAfterStage: true };
+  const out = buildTeamFatigueForecast(base({
+    riderWeekDaysByRider: new Map([["r1", days]]),
+    fatigueRules: rulesFor(rule),
+    stageYesterdayRiderIds: new Set(["r1"]),
+  }));
+  const expectedFirst = thu === "recovery" || thu === "rest" ? thu : "recovery";
+  assert.equal(out.r1.fatigue, settle([expectedFirst, thu, thu, thu, thu]));
+});
+
 test("I5: afregnede felter + registreret etape + planlagt etape == aftenopgoerelsen", () => {
   const days = programWeekDaysFor("sprinter");
   const thu = intensityForSession(days.thu.session);

@@ -157,7 +157,7 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
           <select
             value={fallback}
             disabled={busy || !limitOn}
-            onChange={(e) => saveTeam({ on: true, threshold: savedThreshold, fallback: e.target.value as FatigueFallback, afterStage })}
+            onChange={(e) => saveTeam({ on: true, threshold: thresholdValid ? thresholdNumber : savedThreshold, fallback: e.target.value as FatigueFallback, afterStage })}
             aria-label={t("fatigueRule.insteadLabel")}
             className={`${controlClass} min-h-11 min-w-0 flex-1 sm:min-h-0 sm:flex-none`}
             data-testid="fatigue-rule-fallback"
@@ -180,7 +180,7 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
             type="checkbox"
             checked={afterStage}
             disabled={busy}
-            onChange={(e) => saveTeam({ on: limitOn, threshold: savedThreshold, fallback, afterStage: e.target.checked })}
+            onChange={(e) => saveTeam({ on: limitOn, threshold: limitOn && thresholdValid ? thresholdNumber : savedThreshold, fallback, afterStage: e.target.checked })}
             className="h-4 w-4 accent-cz-1"
             data-testid="fatigue-rule-after-stage"
           />
