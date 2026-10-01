@@ -354,18 +354,22 @@ BEGIN
   END IF;
 
   -- 2. Invers-delta pr. board + budget_modifier fra repareret satisfaction.
+  --    Plan beregnes fra backup-rækkerne (= værdien lige før UPDATE, under lås).
   CREATE TEMP TABLE _repair_${ISSUE} ON COMMIT DROP AS
-    SELECT e.board_id, sum(e.satisfaction_delta)::numeric AS yd
-    FROM public.${BACKUP_EVENTS_TABLE} e WHERE e.board_id IS NOT NULL GROUP BY e.board_id;
+    SELECT b.id AS board_id, d.yd,
+      (b.is_baseline IS TRUE OR b.plan_type = 'baseline') AS baseline,
+      ${repairedExpr}::int AS repaired
+    FROM public.${BACKUP_PROFILES_TABLE} b
+    JOIN (SELECT e.board_id, sum(e.satisfaction_delta)::numeric AS yd
+          FROM public.${BACKUP_EVENTS_TABLE} e WHERE e.board_id IS NOT NULL GROUP BY e.board_id) d
+      ON d.board_id = b.id;
 
-  UPDATE public.board_profiles b SET
-    satisfaction = ${repairedExpr},
-    budget_modifier = CASE WHEN (b.is_baseline IS TRUE OR b.plan_type = 'baseline')
-      THEN b.budget_modifier
-      ELSE ${modifierCaseSql(repairedExpr)} END,
+  UPDATE public.board_profiles p SET
+    satisfaction = r.repaired,
+    budget_modifier = CASE WHEN r.baseline THEN p.budget_modifier ELSE ${modifierCaseSql("r.repaired")} END,
     updated_at = now()
-  FROM _repair_${ISSUE} d
-  WHERE b.id = d.board_id;
+  FROM _repair_${ISSUE} r
+  WHERE p.id = r.board_id;
   GET DIAGNOSTICS n_upd = ROW_COUNT;
   IF n_upd <> n_backup_p THEN
     RAISE EXCEPTION 'STOP #${ISSUE}: opdaterede % boards, backup har %', n_upd, n_backup_p;
@@ -385,12 +389,11 @@ BEGIN
   END IF;
   SELECT count(*) INTO n_bad
   FROM public.${BACKUP_PROFILES_TABLE} b
-  JOIN _repair_${ISSUE} d ON d.board_id = b.id
+  JOIN _repair_${ISSUE} r ON r.board_id = b.id
   JOIN public.board_profiles n ON n.id = b.id
-  WHERE n.satisfaction IS DISTINCT FROM ${repairedExpr}
-     OR ((b.is_baseline IS NOT TRUE AND b.plan_type IS DISTINCT FROM 'baseline')
-         AND n.budget_modifier IS DISTINCT FROM ${modifierCaseSql(repairedExpr)})
-     OR ((b.is_baseline IS TRUE OR b.plan_type = 'baseline') AND n.budget_modifier IS DISTINCT FROM b.budget_modifier);
+  WHERE n.satisfaction IS DISTINCT FROM r.repaired
+     OR (NOT r.baseline AND n.budget_modifier IS DISTINCT FROM ${modifierCaseSql("r.repaired")})
+     OR (r.baseline AND n.budget_modifier IS DISTINCT FROM b.budget_modifier);
   IF n_bad > 0 THEN
     RAISE EXCEPTION 'STOP #${ISSUE}: % boards matcher ikke den forventede værdi', n_bad;
   END IF;
