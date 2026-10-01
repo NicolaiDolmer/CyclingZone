@@ -79,28 +79,46 @@ const order = (a: TrainingRun, b: TrainingRun) =>
  * within a season, so the rider's NEXT stored tick in the same season starts
  * exactly where this date ended: its first `progress_before` IS this date's
  * final progress. Only normalized (per-date) evidence on both sides is chained.
+ * The successor start is only trusted when it is the date's FIRST expected
+ * slot (explicit date_game_days), every copy of that slot agrees, and none of
+ * them is quarantined; otherwise the previous endpoint stays unknown.
  * Key: `${season}:${rider}:${date}` -> the next date's starting progress.
  */
 function nextDateStartProgress(runs: TrainingRun[]): Map<string, Numbers> {
-  const starts = new Map<string, Map<string, { run: TrainingRun; before?: Numbers }>>();
+  type Slot = { day: number | null; first: number | null; row: TrainingActivity };
+  const starts = new Map<string, Map<string, Slot[]>>();
   for (const run of runs) {
     if (run.report?.condition_per_date !== true) continue;
+    const days = run.report.date_game_days;
+    const first = Array.isArray(days) && days.length > 0 && days.every(Number.isInteger) ? Math.min(...days) : null;
     for (const row of run.report.riders ?? []) {
       if (!row?.rider_id) continue;
       const timeline = `${run.season_id ?? ""}:${row.rider_id}`;
-      const dates = starts.get(timeline) ?? new Map();
-      const current = dates.get(run.tick_date);
-      const earlier = !current || order({ ...run, game_day: row.game_day ?? dayOf(run) }, current.run) < 0;
-      if (earlier) dates.set(run.tick_date, { run: { ...run, game_day: row.game_day ?? dayOf(run) }, before: row.progress_before });
+      const dates = starts.get(timeline) ?? new Map<string, Slot[]>();
+      const slots = dates.get(run.tick_date) ?? [];
+      slots.push({ day: row.game_day ?? dayOf(run), first, row });
+      dates.set(run.tick_date, slots);
       starts.set(timeline, dates);
     }
   }
+  const quarantined = (row: TrainingActivity) => row.status === "unknown_pending"
+    || row.settlement_status === "needs_reconciliation" || (row.missing_evidence?.length ?? 0) > 0;
+  const startOf = (slots: Slot[]): Numbers | undefined => {
+    const first = slots[0]?.first;
+    if (first == null || slots.some(s => s.first !== first)) return undefined;
+    const opening = slots.filter(s => s.day === first);
+    if (opening.length === 0 || opening.some(s => quarantined(s.row))) return undefined;
+    const before = opening[0].row.progress_before;
+    if (!before || typeof before !== "object") return undefined;
+    const same = JSON.stringify(before);
+    return opening.every(s => JSON.stringify(s.row.progress_before) === same) ? before : undefined;
+  };
   const next = new Map<string, Numbers>();
   for (const [timeline, dates] of starts) {
     const sorted = [...dates.keys()].sort();
     sorted.slice(0, -1).forEach((date, i) => {
-      const before = dates.get(sorted[i + 1])?.before;
-      if (before && typeof before === "object") next.set(`${timeline}:${date}`, before);
+      const before = startOf(dates.get(sorted[i + 1])!);
+      if (before) next.set(`${timeline}:${date}`, before);
     });
   }
   return next;

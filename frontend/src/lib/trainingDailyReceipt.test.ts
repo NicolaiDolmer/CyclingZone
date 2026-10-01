@@ -178,6 +178,23 @@ test("#5915: chaining never crosses seasons and never shows negative progress as
   assert.equal(aggregateTrainingRuns([...noGain, lower]).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo, null);
 });
 
+test("#5915: the successor must be its date's first expected slot, unquarantined and unambiguous", () => {
+  const old = () => [0, 1, 2, 3, 4].map(i => withoutAfter(i));
+  const pct = (rows: ReturnType<typeof withoutAfter>[]) =>
+    aggregateTrainingRuns(rows).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo;
+  // Only day 1 of the next date stored: its start already includes day 0's training.
+  assert.equal(pct([...old(), withoutAfter(1, "2026-09-30", { progress_before: { tempo: 0.35 } })]), null);
+  assert.equal(pct([...old(), withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 }, status: "unknown_pending",
+    settlement_status: "needs_reconciliation", missing_evidence: ["missing_result"] })]), null);
+  const a = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  const b = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.4 } });
+  b.id = "conflict"; b.squad = "u23";
+  assert.equal(pct([...old(), a, b]), null);
+  const noDays = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  delete (noDays.report as Record<string, unknown>).date_game_days;
+  assert.equal(pct([...old(), noDays]), null);
+});
+
 test("#5915: legacy (non per-date) days are never chained", () => {
   const legacy = [withoutAfter(0), withoutAfter(1)];
   const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
