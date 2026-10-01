@@ -6,7 +6,7 @@
 // surface). Renders nothing while the flag is off, so the page is unchanged.
 import { useTranslation } from "react-i18next";
 import { LockIcon } from "../ui/icons/index.jsx";
-import { trainNowNoteKeys, type TrainNowPressResult, type TrainNowStatus } from "./TrainNowState.ts";
+import { trainNowNoteKeys, trainNowPressCounts, type TrainNowPressResult, type TrainNowStatus } from "./TrainNowState.ts";
 
 export default function TrainNowNote({
   status, result = null, error = null, className = "",
@@ -27,7 +27,7 @@ export default function TrainNowNote({
       role={error ? "alert" : undefined}
     >
       {decided && !error && <LockIcon size={12} aria-hidden="true" className="mt-px flex-none" />}
-      <span>{keys.map((key) => t(key)).join(" ")}</span>
+      <span>{keys.map((key) => t(key, trainNowPressCounts(result) ?? undefined)).join(" ")}</span>
     </div>
   );
 }

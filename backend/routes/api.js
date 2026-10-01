@@ -6380,6 +6380,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
+    // #6006 (I3): samme "Train now"-laas som PUT/bulk/auto-fill — en laast dag er afgjort.
+    for (const r of target) {
+      if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: r.id })) {
+        return res.status(409).json({ error: "selection_train_now_locked" });
+      }
+    }
 
     // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
     // det er en eksplicit handling der supersederer en evt. tidligere "Ryd dag/alt"
