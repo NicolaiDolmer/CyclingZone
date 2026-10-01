@@ -85,6 +85,20 @@
       "description": "Intet blev ændret. Prøv igen om lidt."
     }
   },
+  "optOut": {
+    "label": "Løb",
+    "enter": "Kør løb",
+    "trainOnly": "Kun træning",
+    "noteTitle": {
+      "u23": "Dit U23-hold træner i stedet for at køre løb.",
+      "junior": "Dit juniorhold træner i stedet for at køre løb."
+    },
+    "noteBody": "Assistenten tilmelder det ikke, og du kan ikke selv tilmelde det.",
+    "fromDay": "Gælder fra dag {day}, den første løbsdag der ikke er låst endnu.",
+    "help": "Sådan virker det",
+    "saveError": "Dit valg kunne ikke gemmes. Intet blev ændret. Prøv igen.",
+    "unavailable": "Valget er ikke klar endnu. Prøv igen senere."
+  },
   "youthRaces": {
     "title": "Ungdomsløb",
     "subtitle": {
@@ -106,6 +120,7 @@
     },
     "team": {
       "none": "Ikke udtaget",
+      "training": "Ikke tilmeldt · træner",
       "auto": "{count, plural, one {1 rytter, auto-udtaget} other {# ryttere, auto-udtaget}}",
       "manual": "{count, plural, one {1 rytter udtaget} other {# ryttere udtaget}}",
       "rode": "{count, plural, one {1 rytter} other {# ryttere}}"

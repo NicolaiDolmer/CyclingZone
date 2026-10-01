@@ -38,7 +38,13 @@ export function trainNowPreviewRoute(method: string): MockResponse | null {
     pressedAt = new Date().toISOString();
     return {
       status: 200,
-      body: { ok: true, tickDate: TICK_DATE, lockedAt: pressedAt, settledRiderIds: ["preview-free"], afterRaceRiderIds: ["preview-racing"] },
+      // #6006: an assistant-selected squad of 45 with 10 entered today.
+      body: {
+        ok: true, tickDate: TICK_DATE, lockedAt: pressedAt,
+        settledRiderIds: Array.from({ length: 35 }, (_, i) => `preview-free-${i}`),
+        afterRaceRiderIds: Array.from({ length: 10 }, (_, i) => `preview-racing-${i}`),
+        settledGameDays: [15, 16, 17, 18], gameDays: [15, 16, 17, 18, 19],
+      },
     };
   }
   return null;

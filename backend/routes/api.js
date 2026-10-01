@@ -242,6 +242,8 @@ import { loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js"; // #4847:
 import { createTrainNowRouter } from "./trainNow.js"; // #4847
 import { createTrainNowPlanLock } from "../lib/trainNow.js"; // #4847
 import { isRaceDateTrainNowLocked } from "../lib/trainNowLock.js"; // #4847
+import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "../lib/youthRaceOptOut.ts"; // #5944
+import { createYouthRaceOptOutRouter } from "./youthRaceOptOut.js"; // #5944
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
@@ -960,6 +962,10 @@ router.use("/training/train-now", createTrainNowRouter({
     if (error) throw new Error(`seasons: ${error.message}`);
     return data ?? null;
   },
+}));
+// #5944: "Enter races" / "Train only" pr. ungdomstrup.
+router.use("/youth-race-opt-out", createYouthRaceOptOutRouter({
+  supabase, requireAuth, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter, captureExceptionFn: captureException,
 }));
 // #6000: traeningsgrupper (beta). Ogsaa foer `/training/:riderId`.
 router.use("/training/groups", createTrainingGroupsRouter({
@@ -5938,6 +5944,10 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: race.id })) {
       return res.status(409).json({ error: "selection_train_now_locked" });
     }
+    // #5944: "Train only" — assistenten udtager ikke truppen, heller ikke via knappen.
+    if (await isTeamSquadTrainOnly(supabase, { teamId: req.team.id, squad: raceSquadOf(race) })) {
+      return res.status(409).json({ error: TRAIN_ONLY_SELECTION_ERROR });
+    }
 
     const { data: existingEntries, error: entErr } = await supabase
       .from("race_entries").select("rider_id, is_auto_filled")
@@ -6380,6 +6390,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
+    // #6006 (I3): samme "Train now"-laas som PUT/bulk/auto-fill — en laast dag er afgjort.
+    for (const r of target) {
+      if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: r.id })) {
+        return res.status(409).json({ error: "selection_train_now_locked" });
+      }
+    }
 
     // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
     // det er en eksplicit handling der supersederer en evt. tidligere "Ryd dag/alt"

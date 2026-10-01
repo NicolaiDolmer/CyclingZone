@@ -387,6 +387,39 @@ export function raceContextForStage({ raceStages, stageNumber, isStageRace, rout
 }
 
 /**
+ * #5978 (#5984 Task 4): StageInput.gc_context af det PUBLICEREDE klassement
+ * foer etapen. REN. Kun dagens startere tæller; hullet regnes fra den bedste
+ * starter (en udgået førende rytter er ikke med i dagens løb). Eksplicitte
+ * tilstande, aldrig en tom liste der kunne læses som "alle står lige":
+ *   - endagsløb                 -> { status: "one_day" }
+ *   - standings === [] (ingen etaper kørt endnu) -> { status: "first_stage" }
+ *   - standings null/ugyldig    -> { status: "missing" } (motoren diagnosticerer)
+ *
+ * @param {{ isStageRace: boolean, stageNumber: number,
+ *   standings: Array<{rider_id: string, time: number}>|null|undefined,
+ *   starterIds: Iterable<string> }} args  standings = rankByCumTimeAsc-output
+ *   (kumuleret tid minus bonus, allerede rangeret) for etaperne FØR i dag.
+ */
+export function buildGcContext({ isStageRace, stageNumber, standings, starterIds }) {
+  if (!isStageRace) return { status: "one_day" };
+  const stage = Number(stageNumber);
+  const stageNo = Number.isFinite(stage) && stage >= 1 ? stage : null;
+  if (Array.isArray(standings) && standings.length === 0) {
+    return stageNo ? { status: "first_stage", stage_number: stageNo } : { status: "missing" };
+  }
+  if (!Array.isArray(standings) || !stageNo) return stageNo ? { status: "missing", stage_number: stageNo } : { status: "missing" };
+  const starters = new Set([...starterIds].map(String));
+  const rows = standings
+    .filter((s) => s && s.rider_id != null && starters.has(String(s.rider_id)) && Number.isFinite(Number(s.time)))
+    .map((s) => ({ rider_id: String(s.rider_id), time: Number(s.time) }));
+  if (rows.length === 0) return { status: "missing", stage_number: stageNo };
+  // Rækkefølgen er klassementets egen (tid, countback, rider_id) — bevares.
+  const best = Math.min(...rows.map((r) => r.time));
+  const ranked = rows.map((r, i) => ({ rider_id: r.rider_id, rank: i + 1, gap_seconds: Math.max(0, Math.round((r.time - best) * 100) / 100) }));
+  return { status: "standings", stage_number: stageNo, leader_id: ranked[0].rider_id, standings: ranked };
+}
+
+/**
  * Byg v4's StageInput af PRÆCIS de data raceRunner allerede har i hånden.
  * REN: ingen DB-kald (kaldstedet henter etape-rækken og ordre-rækkerne).
  *
@@ -406,7 +439,7 @@ export function raceContextForStage({ raceStages, stageNumber, isStageRace, rout
  */
 export function buildV4StageInput({
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
-  rulesRevision = "legacy",
+  rulesRevision = "legacy", gcStandings = null,
 }) {
   // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
   // En ukendt værdi er en fejl, aldrig nyeste regler.
@@ -456,7 +489,16 @@ export function buildV4StageInput({
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
   }
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
-  if (rulesRevision === "orders_gc_v1") input.rules_revision = rulesRevision;
+  if (rulesRevision === "orders_gc_v1") {
+    input.rules_revision = rulesRevision;
+    // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
+    input.gc_context = buildGcContext({
+      isStageRace,
+      stageNumber,
+      standings: gcStandings,
+      starterIds: startlist.map((e) => e.rider_id),
+    });
+  }
   return input;
 }
 
@@ -511,7 +553,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy" }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -519,7 +561,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med

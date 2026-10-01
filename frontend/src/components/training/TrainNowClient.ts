@@ -43,7 +43,7 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       if (!headers) return { ok: false, error: "auth" };
       const res = await apiFetch(PATH, { method: "POST", headers }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
-        error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[];
+        error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
       };
       if (!res.ok) {
         const code = data.error || "failed";
@@ -58,6 +58,7 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       setResult({
         settledRiderIds: Array.isArray(data.settledRiderIds) ? data.settledRiderIds : [],
         afterRaceRiderIds: Array.isArray(data.afterRaceRiderIds) ? data.afterRaceRiderIds : [],
+        ...(Array.isArray(data.settledGameDays) ? { settledGameDays: data.settledGameDays } : {}),
       });
       try {
         await Promise.all([load(), onSettled?.()]);

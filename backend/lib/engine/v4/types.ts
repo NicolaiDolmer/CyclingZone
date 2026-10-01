@@ -202,10 +202,50 @@ export type StageInput = {
   // = de taktiske regler fra foer #5955, bit-identisk for fixtures og igangvaerende
   // loeb. Delte korrekthedsrettelser gaelder begge revisioner.
   rules_revision?: RulesRevision | null;
+  // #5978 (ADDITIVT og VALGFRIT, #5984 Task 4): det PUBLICEREDE klassement FOER
+  // etapen for dagens startere. Laeses KUN under rules_revision "orders_gc_v1"
+  // (mechanics/gcThreat.ts); legacy ignorerer feltet helt. Udeladt under
+  // orders_gc_v1 = "missing" (aerlig diagnose, aldrig et opdigtet nul-hul).
+  gc_context?: GcContext | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
 export type RulesRevision = "legacy" | "orders_gc_v1";
+
+/** #5978: én rytters plads i det publicerede klassement foer etapen. */
+export type GcStanding = { rider_id: string; rank: number; gap_seconds: number };
+
+/**
+ * #5978: GC-konteksten etapen afvikles med. Eksplicitte tilstande i stedet for
+ * en tom liste der kunne laeses som "alle staar lige":
+ *   "standings"   = publiceret klassement foer etapen (kun aktuelle startere)
+ *   "first_stage" = etapeloebets foerste etape: intet klassement endnu
+ *   "one_day"     = endagsloeb: ingen GC, ingen GC-reaktion
+ *   "missing"     = et etapeloeb uden brugbart klassement (diagnosticeres)
+ */
+export type GcContext =
+  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[] }
+  | { status: "first_stage"; stage_number: number }
+  | { status: "one_day" }
+  | { status: "missing"; stage_number?: number };
+
+/**
+ * #5978: et holds GC-reaktion paa én etape (EngineState.team_reactions).
+ * Arbejdet er KUMULATIVT for hele etapen: det nulstilles aldrig pr. segment,
+ * pr. pause eller pr. ny trussel. `preventive_work` er det der taeller mod
+ * "lad gaa"-undtagelsens begraensede budget; `neutral_work` er diagnostik.
+ * INTERN simulations-tilstand: budget og arbejde naar aldrig en event-param.
+ */
+export type TeamReactionStatus = "idle" | "reacting" | "exhausted";
+export type TeamReactionMode = "neutral" | "preventive";
+export type TeamReactionState = {
+  status: TeamReactionStatus;
+  mode: TeamReactionMode | null;
+  neutral_work: number;
+  preventive_work: number;
+  /** Seneste kvalitative start-/stop-grund (samme ordforraad som eventsene). */
+  reason: string | null;
+};
 
 export type JerseyLeaders = {
   points?: string | null;
@@ -610,6 +650,10 @@ export type EngineState = {
   // Laeses KUN af juryen (index.ts -> mechanics/timeLimit.ts): uheldets tid er
   // hele jagten, ikke kun hjulskiftet. INTERN; naar aldrig en event-param.
   incident_chase_loss?: Record<string, number>;
+  // #5978 (ADDITIVT, valgfrit): holdenes GC-reaktion paa etapen, team_id ->
+  // tilstand. Kun saat under orders_gc_v1 (mechanics/breakaway.ts). Baeres
+  // gennem hele segment-loopet, saa arbejdet deles paa tvaers af start/stop.
+  team_reactions?: Record<string, TeamReactionState>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
@@ -649,6 +693,9 @@ export type SegmentHookContext = {
   // #5955 (ADDITIVT og VALGFRIT): StageInput.rules_revision normaliseret.
   // Udeladt = "legacy".
   rulesRevision?: RulesRevision;
+  // #5978 (ADDITIVT og VALGFRIT): StageInput.gc_context, KUN sat under
+  // orders_gc_v1 (segmentLoop). Legacy-hooks ser aldrig feltet.
+  gcContext?: GcContext | null;
 };
 
 export type SegmentHookResult = {
