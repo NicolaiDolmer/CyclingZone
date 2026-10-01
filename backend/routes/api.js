@@ -942,7 +942,7 @@ router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, i
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
 // #4847: efter et "Train now"-tryk er dagens traeningsfelter laast til aftenopgoerelsen.
-const trainNowPlanLock = createTrainNowPlanLock({ supabase });
+const trainNowPlanLock = createTrainNowPlanLock({ supabase, captureExceptionFn: captureException });
 router.use("/training/programs", createTrainingProgramsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
   captureExceptionFn: captureException, planLock: trainNowPlanLock,

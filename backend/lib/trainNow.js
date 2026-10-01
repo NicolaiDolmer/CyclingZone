@@ -240,7 +240,7 @@ export async function isTodayPlanLocked({ supabase, teamId, now = new Date() }) 
  *   "programCell"   one program cell - allowed for any other weekday
  *   "programApply"  apply a program - touches today
  */
-export function createTrainNowPlanLock({ supabase, now = () => new Date() }) {
+export function createTrainNowPlanLock({ supabase, now = () => new Date(), captureExceptionFn = () => {} }) {
   return (kind) => async (req, res, next) => {
     try {
       if (!req.team?.id) return next();
@@ -262,7 +262,8 @@ export function createTrainNowPlanLock({ supabase, now = () => new Date() }) {
       }
       return res.status(409).json({ error: "train_now_locked" });
     } catch (err) {
-      return next(err);
+      captureExceptionFn(err);
+      return res.status(500).json({ error: "train_now_lock_check_failed" });
     }
   };
 }
