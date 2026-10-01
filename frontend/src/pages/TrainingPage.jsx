@@ -63,6 +63,8 @@ import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
+import FatigueForecast from "../components/training/FatigueForecast.tsx";
+import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
@@ -564,6 +566,15 @@ export default function TrainingPage() {
   // genindlæses useTraining, så planen har ÉN kilde (riderWeekPlans).
   const programs = useTrainingPrograms({ onChanged: training.refresh });
   const programsOn = programs.enabled;
+  // #5932: de 35 felter for alle (eget flag, training_program_cells). Kataloget
+  // følger stadig `programsOn`; gitteret vises når en af dem er åben.
+  const cellsOn = programs.cellsEnabled;
+  // #5933: "Fatigue tonight: approx. X". Hentes igen hver gang planen eller
+  // dagsvalget ændrer sig, så tallet følger felterne live før dagen bekræftes.
+  const fatigueForecast = useFatigueForecast({ enabled: cellsOn });
+  const reloadForecast = fatigueForecast.reload;
+  useEffect(() => { reloadForecast(); }, [reloadForecast, riderWeekPlans, weekPlan, training.plans, todayRun]);
+  const forecastFor = (riderId) => (cellsOn ? fatigueForecast.entryFor(riderId) : null);
   const scoreVisible = trainingScore != null;
   // #5485 (ejer-valg A 23/9): er dagens pas kørt? Før det har ingen rytter et
   // tal for i dag, og Score viser det SENESTE tal dæmpet (mobileScoreCell).
@@ -2071,6 +2082,12 @@ export default function TrainingPage() {
       : tTypes(`types.${rider.primary_type}`);
   }
 
+  // #5933: "Fatigue tonight: approx. X" i rytterkortet (desktop + telefon).
+  function renderForecast(riderId) {
+    const entry = forecastFor(riderId);
+    return entry ? <FatigueForecast entry={entry} settled={fatigueForecast.settled} /> : null;
+  }
+
   // Desktop-kortet (A3): den samme komponent som telefonens låste variant
   // (#5458), foldet ud lige under rækken.
   function renderRiderCard(riderId, detailId) {
@@ -2103,6 +2120,7 @@ export default function TrainingPage() {
           scoreSpark={riderScore?.spark ? [...riderScore.spark] : null}
           scoreAria={t("score.sparkAria", { name: `${rider.firstname} ${rider.lastname}` })}
           footer={riderCardFooter(riderId)}
+          forecast={renderForecast(riderId)}
         />
       </div>
     );
@@ -2253,6 +2271,7 @@ export default function TrainingPage() {
             // Week plan og gårsdagens kvittering i Report.
             overviewLayout
             cardFooterFor={riderCardFooter}
+            forecastFor={renderForecast}
             changeLabel={t("card.changeDay")}
             weekdays={WEEKDAY_KEYS}
             intensityForWeekday={(weekday) => (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal"}
@@ -3176,9 +3195,14 @@ export default function TrainingPage() {
       <TabPanel value="weekplan">
         {/* #4629 (beta 26/9): Program-fanen — katalog, tildeling og 7 x N-
             gitteret øverst. Holdets gamle intensitets-rytme står uændret under. */}
-        {programsOn ? (
+        {programsOn || cellsOn ? (
           <div className="space-y-3.5">
             <TrainingProgramsPanel
+              catalogEnabled={programsOn}
+              seeds={programs.seeds}
+              forecastFor={forecastFor}
+              forecastSettled={fatigueForecast.settled}
+              raceSlotsFor={(riderId) => raceSlotsFor(fatigueForecast.forecast, riderId)}
               weekdays={WEEKDAY_KEYS}
               todayWeekday={todayWeekday}
               // #4629: programmet har ÉN kolonne ("Hele dagen") med
