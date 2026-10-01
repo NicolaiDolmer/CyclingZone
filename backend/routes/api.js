@@ -14,6 +14,7 @@ import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
+import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -959,6 +960,11 @@ router.use("/training/train-now", createTrainNowRouter({
     if (error) throw new Error(`seasons: ${error.message}`);
     return data ?? null;
   },
+}));
+// #6000: traeningsgrupper (beta). Ogsaa foer `/training/:riderId`.
+router.use("/training/groups", createTrainingGroupsRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException, planLock: trainNowPlanLock,
 }));
 // #4854/#5620: spillerens traeningsregler (beta). Ogsaa foer `/training/:riderId`.
 router.use("/training/fatigue-rules", createTrainingFatigueRulesRouter({

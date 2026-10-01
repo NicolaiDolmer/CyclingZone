@@ -1118,6 +1118,10 @@
       "fatigueLimit": {
         "title": "Træthedsgrænse",
         "text": "Du kan sætte én regel for holdet: over en træthed, du selv vælger, kører rytterne et lettere pas i stedet (samme pas på let belastning, aktiv restitution eller hvile). En enkelt rytter kan få sin egen grænse eller ingen grænse. Reglen tjekkes på trætheden ved datoens start, så resultatet er det samme, uanset hvornår du logger ind. Den ændrer aldrig planen, så rytteren vender tilbage til sit program, når han er under grænsen. Du kan også vælge, at første felt dagen efter en etape er aktiv restitution. Du sætter den under Program, Træthedsgrænse, hvor de seneste 7 dage viser, hvornår en regel slog til. Løb kommer altid først: en rytter i et løb påvirkes ikke."
+      },
+      "trainingGroups": {
+        "title": "Træningsgrupper",
+        "text": "En gruppe lader dig træffe én træningsbeslutning for flere ryttere. Du opretter den under Program, Plan: åbn \"Plan for\" og vælg \"+ Ny gruppe\". Giv den et navn, og start fra en ryttertype, eller vælg rytterne selv. En rytter kan være i én gruppe. En ændring i et felt gælder så hele gruppen, og ryttere med en etape beholder etapen. \"Træthed i aften\" viser gruppens mest trætte rytter. Rækkefølgen ligger fast: rytterens egen plan først, så gruppens plan, så holdets plan. Retter du én rytters egne felter, vinder hans plan, indtil du vælger \"Følg gruppen\" igen. Du kan også sætte et program på en gruppe under Programmer og give en gruppe sin egen undtagelse under Træthedsgrænse."
       }
     },
     "activityfeed": {
