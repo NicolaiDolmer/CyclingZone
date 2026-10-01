@@ -196,3 +196,32 @@ test("bind: an unknown stored revision fails the run instead of choosing rules",
     RaceRulesRevisionError,
   );
 });
+
+// ── Broen: StageInput.rules_revision ───────────────────────────────────────
+
+async function bridgeInput(rulesRevision?: unknown) {
+  const { buildV4StageInput } = await import("./raceEngineV4Bridge.js");
+  const [entrants, route, orders] = await Promise.all([
+    import("./engine/v4/adapters/entrantAdapter.ts"),
+    import("./engine/v4/adapters/routeAdapter.ts"),
+    import("./engine/v4/orders/teamOrdersAdapter.ts"),
+  ]);
+  const field = Array.from({ length: 6 }, (_, i) => ({ rider_id: `r${i}`, team_id: `t${i % 2}`, race_role: i === 0 ? "hunter" : "helper", abilities: { tempo: 40 + i }, fatigue: 0 }));
+  const args: Record<string, unknown> = {
+    modules: { entrants, route, orders, tuning: { RACE_V4_TUNING: {} } },
+    entrants: field,
+    stageProfile: { stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint", distance_km: 150 },
+    seedString: "race:5955:1",
+    stageNumber: 1,
+  };
+  if (rulesRevision !== undefined) args.rulesRevision = rulesRevision;
+  return buildV4StageInput(args as never);
+}
+
+test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unknown fails", async () => {
+  const plain = await bridgeInput();
+  assert.equal("rules_revision" in plain, false);
+  assert.deepEqual(await bridgeInput("legacy"), plain);
+  assert.equal((await bridgeInput("orders_gc_v1")).rules_revision, "orders_gc_v1");
+  await assert.rejects(bridgeInput("orders_gc_v2"));
+});

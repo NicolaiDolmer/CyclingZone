@@ -470,7 +470,8 @@ function makeSupabase(canned = {}) {
       update(obj) {
         const rec = { table, op: "update", obj, eqs: [] };
         writes.push(rec);
-        const u = { eq(c, v) { rec.eqs.push([c, v]); return u; }, in() { return u; }, then(r) { return Promise.resolve({ error: null }).then(r); } };
+        // #5955: bindRaceRulesRevision's betingede UPDATE bruger .is(kolonne, null).
+        const u = { eq(c, v) { rec.eqs.push([c, v]); return u; }, is(c, v) { rec.eqs.push([c, v]); return u; }, in() { return u; }, then(r) { return Promise.resolve({ error: null }).then(r); } };
         return u;
       },
       delete() {
