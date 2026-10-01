@@ -162,12 +162,9 @@ export function computeFinaleAbilityScore(
   dayform = 0,
   dayformScoreWeight = 0,
   dayformScoreClamp = 0.1,
+  modifierScale = 1,
 ): number {
-  let sum = 0;
-  for (const key of Object.keys(demandVector) as AbilityKey[]) {
-    const weight = demandVector[key] ?? 0;
-    sum += weight * normAbility(abilities[key]);
-  }
+  const sum = finaleAbilityTerm(abilities, demandVector);
   const reserve = clamp(wprimeReserveFraction, 0, 1);
   const formBound = Number.isFinite(dayformScoreClamp) ? Math.max(0, dayformScoreClamp) : 0;
   const form = Number.isFinite(dayform) ? clamp(dayform, -formBound, formBound) : 0;
@@ -175,7 +172,45 @@ export function computeFinaleAbilityScore(
   // Samme forskydning for alle koerende ryttere bevarer deres indbyrdes
   // dagsform-forskelle. Grupetto faar hverken forskydningen eller dagsformen.
   const formTerm = effort === "grupetto" ? 0 : formWeight * (form + formBound);
-  return sum + wprimeReserveWeight * reserve + formTerm + effortFinaleTerm(effort, reserve);
+  // #5957: reserve, dagsform og indsats er dagens MODIFIKATORER af rytterens
+  // finale-evne, ikke en evne i sig selv: de virker som et praestations-
+  // tillaeg oven paa evnen, og en rytter uden finale-evne har intet at gange
+  // det paa. `modifierScale` (0-1) skalerer dem derfor med rytterens evne-led
+  // relativt til puljens bedste (se finaleHook). 1 = det gamle, rene additive
+  // opgoer (default, saa ITT-kaldet og alle direkte kald er bit-uaendrede).
+  const scale = Number.isFinite(modifierScale) ? clamp(modifierScale, 0, 1) : 1;
+  return sum + scale * (wprimeReserveWeight * reserve + formTerm + effortFinaleTerm(effort, reserve));
+}
+
+/** Det rene evne-led i finale-scoren: summen af demand-vaegt x normaliseret evne. */
+export function finaleAbilityTerm(
+  abilities: Record<AbilityKey, number>,
+  demandVector: Partial<Record<AbilityKey, number>>,
+): number {
+  let sum = 0;
+  for (const key of Object.keys(demandVector) as AbilityKey[]) {
+    const weight = demandVector[key] ?? 0;
+    sum += weight * normAbility(abilities[key]);
+  }
+  return sum;
+}
+
+/**
+ * #5957: hvor stor en del af dagens modifikatorer (reserve, dagsform, indsats)
+ * en rytter faar i finalen: hans evne-led delt med en reference, clampet til
+ * [0, 1]. Referencen er `fullShare` x puljens bedste evne-led: alle reelle
+ * kandidater over den andel faar modifikatorerne fuldt ud, saa favorit-
+ * opgoeret er uaendret; under den falder udsvinget proportionalt med evnen.
+ * Foer var udsvinget det samme absolutte tal for alle, saa en frisk
+ * hjaelperytter uden spurt kunne slaa en spurter paa friskhed og dagsform
+ * alene. `floor` er et gulv under referencen, saa en pulje af meget svage
+ * ryttere ikke goer skalaen uendelig stejl (monotoni-kontrakten i evnen).
+ */
+export function finaleModifierScale(abilityTerm: number, poolBestAbilityTerm: number, floor: number, fullShare = 1): number {
+  const share = Number.isFinite(fullShare) && fullShare > 0 ? Math.min(1, fullShare) : 1;
+  const ref = Math.max((Number.isFinite(poolBestAbilityTerm) ? poolBestAbilityTerm : 0) * share, Number.isFinite(floor) ? floor : 0);
+  if (!(ref > 0)) return 1;
+  return clamp((Number.isFinite(abilityTerm) ? abilityTerm : 0) / ref, 0, 1);
 }
 
 /**
@@ -426,6 +461,19 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const demandVector =
     (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR;
 
+  // #5957: puljens bedste rene finale-evne er referencen for hvor meget af
+  // dagens modifikatorer hver rytter faar (finaleModifierScale). Én reference
+  // for alle ryttere i finalen (front + overlevende grupper), saa den samme
+  // rytter altid faar samme skala uanset hvilken maalpulje han ender i.
+  const finaleIds = [...contenderIds, ...survivingGroups.flatMap((group) => group.rider_ids)];
+  const abilityTermOf = (riderId: string): number => {
+    const abilities = entrants[riderId]?.abilities;
+    return abilities ? finaleAbilityTerm(abilities, demandVector) : 0;
+  };
+  const poolBestAbilityTerm = finaleIds.reduce((best, id) => Math.max(best, abilityTermOf(id)), 0);
+  const modifierScaleOf = (riderId: string): number =>
+    finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
+
   const scoreOf = (riderId: string, dayformWeight = extra.dayformScoreWeight): number | null => {
     const entrant = entrants[riderId];
     if (!entrant) return null;
@@ -452,6 +500,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       entrant.effort === "grupetto" ? 0 : state.riders[riderId]?.dayform ?? 0,
       dayformWeight,
       extra.dayformScoreClamp,
+      modifierScaleOf(riderId),
     );
   };
 
