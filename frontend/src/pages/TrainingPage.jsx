@@ -2885,6 +2885,7 @@ export default function TrainingPage() {
               type: r.primary_type ?? null,
             }))}
             catalog={programs.catalog}
+            assigned={programs.assigned}
             busy={programs.busy || trainingGroups.busy}
             groups={trainingGroups.enabled ? trainingGroups.groups.map((g) => ({ value: groupValue(g.id), label: t("groups.putOnGroup", { name: g.name }) })) : []}
             onApply={(programKey, target) => (groupIdOf(target)
