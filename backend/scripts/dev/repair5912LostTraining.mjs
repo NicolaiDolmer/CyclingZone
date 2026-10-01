@@ -432,6 +432,23 @@ faar mere.
 `;
 }
 
+/**
+ * Optimistisk vagt: praecis de evner der stiger skal staa uaendret, og fremdriften med.
+ * En evne der var NULL (fx holdarbejde/lederskab paa aeldre ryttere, #5268) mangler i
+ * `before`; den vagtes med IS NULL. `.eq(k, undefined)` matchede aldrig (#5912, 11 ryttere).
+ */
+export function guardAbilityUpdate(query, p) {
+  let q = query;
+  for (const k of Object.keys(p.patch)) {
+    if (k === "ability_progress") continue;
+    q = p.before[k] == null ? q.is(k, null) : q.eq(k, p.before[k]);
+  }
+  // Ogsaa fremdriften skal staa uaendret: mange ryttere faar kun en progress-patch.
+  return p.beforeProgress == null
+    ? q.is("ability_progress", null)
+    : q.eq("ability_progress", JSON.stringify(p.beforeProgress));
+}
+
 async function applyPlans(supabase, { plans, runs, season, now, privateDir }) {
   const at = now.toISOString();
   const applicable = [...plans.entries()].filter(([, p]) => !p.skipped && p.patch);
@@ -463,14 +480,12 @@ async function applyPlans(supabase, { plans, runs, season, now, privateDir }) {
   // 3) Skriv evner med optimistisk vagt (praecis de evner der stiger skal staa uaendret).
   const outcome = new Map();
   for (const [riderId, p] of applicable) {
-    let query = supabase.from("rider_derived_abilities").update(p.patch).eq("rider_id", riderId);
-    for (const k of Object.keys(p.patch)) if (k !== "ability_progress") query = query.eq(k, p.before[k]);
-    // Ogsaa fremdriften skal staa uaendret: mange ryttere faar kun en progress-patch.
-    query = p.beforeProgress == null
-      ? query.is("ability_progress", null)
-      : query.eq("ability_progress", JSON.stringify(p.beforeProgress));
+    const query = guardAbilityUpdate(
+      supabase.from("rider_derived_abilities").update(p.patch).eq("rider_id", riderId), p);
     const { data, error } = await query.select("rider_id");
-    outcome.set(riderId, error ? `error:${error.message}` : (data?.length === 1 ? "applied" : "conflict"));
+    const result = error ? `error:${error.message}` : (data?.length === 1 ? "applied" : "conflict");
+    outcome.set(riderId, result);
+    if (result !== "applied") console.error(`rider ${riderId}: ${result}`);
   }
 
   // 4) Afslut markoerer: applied, eller released saa en ny koersel kan proeve igen.
