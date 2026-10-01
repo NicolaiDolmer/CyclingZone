@@ -4,15 +4,15 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (1/10):** **Aften 1/10 ca. 20.35:** read-only tjek af beta-træning (12 beta-hold: Train now-låse, regler, kvitteringer, prognose vs. faktisk træthed, Sentry/Railway) → ét kort med tal → ejer-go → flip `training_train_now`, `training_program_cells`, `training_fatigue_rules`, `training_daily_receipt` til `on` (roadbook 30/9 lovede alle fem til torsdag) → patch note + EN-udkast. Derefter [planen](superpowers/plans/2026-10-02-next-session-merge-and-pick.md).
+> **🎯 Next action (2/10):** 1) **#6028** (#6027 Train now viser respons i rapporten før afregning) → ejer-billede → merge → flip `training_train_now` til `on`. 2) **#6026** desktop "Today kun i dag" (merge main ind, billede). 3) **#6017** patch notes-audit opdateres med alt fra 1/10 (liste på #6014) → ejer-kort → EN Discord-udkast. 4) #5912: 11 ryttere fejler systematisk (log fejl, ret, kør). 5) #6022 motor-balance: kalibreringsrapport til ejer. 6) #5268 mentale evner (A anbefalet). 7) Railway-deploy #6016 fejlede healthcheck (Supabase-udfald 20.28) → redeploy/næste merge. 8) Bundle 1161 KB: lazy-load træning.
 >
-> **✅ Leveret 30/9:** #5983 beskytter brugte løbsdage efter holdskifte. Verificeret; sweep-spor #5860 åbent. **#5930/#5977:** Ordre i egen kolonne; rute-match og aktuel form forklaret, også i låste trupper. Ejer-go, production READY og main-CI verificeret. Feature-liveness: tre kendte E-fund i #5218; ingen nye. **#5915/#5976:** beta live (7.326); CI/READY og holdvisning verificeret.
+> **✅ 1/10:** LIVE alle: omdømme (flag on, backfill 17.404), #5894 trup-advarsel, #6003 bjergpoint, #6007 ungdomsfravalg (lovet 4/10), #6019 udviklingshistorik, #6005/#6011 Supabase-loop + Whteam. **Flip 20.40 beta→alle:** `training_program_cells`, `training_fatigue_rules`, `training_daily_receipt`. **Beta:** #6001 grupper, #6008 Train now-fix, #6018 rapport, #6010 sæsonmatrix mobil, #6021 ét-tryks dagvalg. #5912: 1.020/1.031 genoprettet. #6002 GC merget slukket.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = JA (ejer 26/9). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret. **S3:** sidste etape 27/9 kl. 19 (D1) / 18 (D2-D4); skiftet ca. 19:30.
+> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = JA (ejer 26/9). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret.
 
 > **✅ 29/9:** #5922 watchdog og #5913 ungdomspuljer live; audit 35 puljer/0 afvigelser. #5923 Codex-arbejdsform indført; pilot 0/5 målt.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code hovedsession 1/10 14.52: merge-blok + bølge (#5944, GC-reaktion, #6000, #5820+#5956) + kort #5912/#5928/#5897 + aftentjek 20.35.
+> **🤖 Working agent:** Hovedsession 2/10 (Claude Code) aktiv efter startprompten på #6013.
