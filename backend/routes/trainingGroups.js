@@ -181,11 +181,6 @@ export function createTrainingGroupsRouter({
     res.json({ ok: true, groups: ctx.groups.map((g) => groupView(g, ctx)) });
   }
 
-  function fail(res, err) {
-    captureExceptionFn(err);
-    res.status(500).json({ error: err.message });
-  }
-
   router.get("/", requireAuth, readLimiter, async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
@@ -193,7 +188,8 @@ export function createTrainingGroupsRouter({
       const ctx = await context(req.team.id);
       res.json({ enabled: true, groups: ctx.groups.map((g) => groupView(g, ctx)) });
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -213,7 +209,8 @@ export function createTrainingGroupsRouter({
       await setMembers(req.team.id, data.id, riderIds, ctx.members);
       await respond(req, res);
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -242,7 +239,8 @@ export function createTrainingGroupsRouter({
       }
       await respond(req, res);
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -257,7 +255,8 @@ export function createTrainingGroupsRouter({
       if (error) throw new Error(error.message);
       await respond(req, res);
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -285,7 +284,8 @@ export function createTrainingGroupsRouter({
       await writeCopies(req.team.id, ctx.rows, followerIds(ctx.members, group.id, ctx.ownIds), days, group.program_key);
       await respond(req, res);
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -313,7 +313,8 @@ export function createTrainingGroupsRouter({
       await writeCopies(req.team.id, ctx.rows, memberIds, days, program.key);
       res.json({ ok: true, applied: memberIds.length, programKey: program.key });
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -334,7 +335,8 @@ export function createTrainingGroupsRouter({
       }
       await respond(req, res);
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -351,7 +353,8 @@ export function createTrainingGroupsRouter({
       if (error) throw new Error(error.message);
       await respond(req, res);
     } catch (err) {
-      fail(res, err);
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
     }
   });
 
