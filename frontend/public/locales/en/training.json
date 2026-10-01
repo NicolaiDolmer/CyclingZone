@@ -520,6 +520,8 @@
     "activity": "Activity {n}",
     "pointContribution": "+{percent}% of an ability point",
     "progressUnavailable": "Shown after the next training day",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
     "previousSeason": "Previous season",
     "change": "{from} to {to}"
   },

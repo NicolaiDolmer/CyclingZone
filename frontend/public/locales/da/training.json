@@ -520,6 +520,8 @@
     "activity": "Aktivitet {n}",
     "pointContribution": "+{percent}% af et evnepoint",
     "progressUnavailable": "Vises efter næste træningsdag",
+    "expandAll": "Fold alle ud",
+    "collapseAll": "Fold alle sammen",
     "previousSeason": "Tidligere sæson",
     "change": "{from} til {to}"
   },
