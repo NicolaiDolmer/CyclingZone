@@ -10,6 +10,26 @@ Etapefladen bruger samme projektion for historiske markeringer, hvor en komplet 
 
 Ingen ny taktik-/GC-politik, formationsregel eller flagaktivering indgår i denne første correctness-leverance. Den fulde ejer-godkendte pakke er planlagt i #5984/#5978 og følger separat regimebinding for nye løb. Historiske resultat-/præmiekorrektioner kræver særskilt ejer-go.
 
+## Regel-revision pr. løb (#5955, #5984 Task 2)
+
+Et løbs taktiske regler bindes ved løbets første etape-claim og ændres aldrig siden. `races.engine_rules_revision` er `legacy` eller `orders_gc_v1`; den skrives kun af backend-runneren med én betinget opdatering (kun når kolonnen er tom og ingen etape er afviklet), derefter genlæses værdien, så samtidige claims ender ens. Retry, genoptagelse og senere etaper genbruger den gemte værdi. Et startet løb uden gemt værdi er `legacy`, aldrig automatisk opt-in; `engine_version = 4` alene vælger ikke ny politik. En ukendt værdi stopper afviklingen synligt: aldrig nyeste regler og aldrig v3-fallback. Før migrationen er anvendt, kører alt `legacy` uden skrivning. Bindingen sker kun når v4 afvikler etapen.
+
+`StageInput.rules_revision` er valgfri; udeladt er `legacy`, byte-identisk med før. Begge revisioner deler korrekthedsrettelser. Nye løb bindes i dag til `legacy` (`CURRENT_RACE_RULES_REVISION`): `orders_gc_v1` aktiveres først som samlet pakke (dannelse + faktisk GC-reaktion) efter ejer-godkendt privat kalibrering. Kode: `backend/lib/raceEngineRulesRevision.ts`, `raceRunner.bindRaceRulesRevision`, migration `2026-10-01-race-engine-rules-revision.sql`.
+
+## Morgenudbrud under `orders_gc_v1` (#5955, #5984 Task 3)
+
+Kun aktivt når løbets revision er `orders_gc_v1`; legacy-dannelsen er uændret. Tilladelse beregnes fra rolle, indsats og den effektive låste ordre (rolledefault + etapens overlay; fravær og eksplicit `try_break=false` holdes adskilt):
+
+| Rolle | Uden ordre | Med effektiv udbrudsordre |
+|---|---|---|
+| captain / sprint_captain / helper | forsøger ikke | forsøger |
+| hunter | forsøger (rolledefault); eksplicit fravalg gælder etapen | forsøger |
+| free_role | kan selv forsøge på `normal` | forsøger (prioriteret) |
+
+`save` stopper spontane forsøg, men en effektiv ordre forsøger stadig med normal pris. `protect`/`all_out` giver ikke spontane forsøg. `grupetto` forsøger aldrig.
+
+Dannelsen er omstridt: tilladelse → faktisk forsøg med pris → rivalholdenes modreaktion → eventuelt udbrud. Hvert forsøg koster én gang, også ved fiasko. Rivalhold er hold uden egen rytter i forsøget; deres faktiske arbejdere i feltet (ikke kaptajner) reagerer efter holdets stance (jag fuldt, neutral delvist, lad gå ikke) og betaler for arbejdet. Evne hjælper altid forsøget; ingen skjult svækkelse af stærke ryttere. Kun lykkede forsøg kommer med; der fyldes aldrig op, og nul udbrydere er gyldigt. Et overfyldt forsøg lukkes til udbruddets maksimale størrelse. En hjælper i udbruddet kan ikke samtidig hjælpe kaptajnen i en anden gruppe (holdspil, jagt og leadout regner kun med gruppens faktiske medlemmer). Tidslinjen får `breakaway_attempt` (forsøgte, kom afsted, reagerende hold) før `breakaway_formed`; ingen sandsynligheder eller vægte. Tuning-værdierne er ukalibrerede startkandidater. GC-reaktion er næste pakke. Kode: `mechanics/breakawayPermission.ts`.
+
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
 

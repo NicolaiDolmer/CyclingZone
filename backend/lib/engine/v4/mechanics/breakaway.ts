@@ -77,6 +77,12 @@ import { makeGroupId, splitGroup } from "../groups.ts";
 import { isBunchCatchRoute } from "../finale.ts";
 import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
+import {
+  effectiveTryBreakByRider,
+  resolveMorningBreakFormation,
+  type FormationRider,
+  type FormationStance,
+} from "./breakawayPermission.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -300,6 +306,97 @@ function attemptFormation(
   });
 
   return { state: { ...state, groups }, events };
+}
+
+/**
+ * #5955 (orders_gc_v1): ordrestyret, omstridt morgenudbrud. Samme kildegruppe
+ * og samme udbrudsgruppe-form som legacy (`attemptFormation`), men hvem der
+ * kommer afsted afgoeres af mechanics/breakawayPermission.ts: tilladelse ->
+ * forsoeg med pris -> rivalholdenes faktiske modreaktion -> eventuel dannelse.
+ * Ingen fyldning: lykkes ingen forsoeg, er der intet morgenudbrud.
+ *
+ * Events: `breakaway_attempt` (hvem forsoegte, hvem kom afsted, hvilke hold
+ * reagerede — ingen sandsynligheder/vaegte, fog-gate #1791) og, kun ved mindst
+ * én udbryder, `breakaway_formed` i samme form som legacy.
+ */
+function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext): SegmentHookResult {
+  const events: TimelineEvent[] = [];
+  const sourceGroup = [...state.groups].sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
+  if (!sourceGroup) return { state, events };
+
+  const tryBreakByRider = effectiveTryBreakByRider(ctx.orders);
+  const formationRiders: FormationRider[] = [];
+  for (const riderId of sourceGroup.rider_ids) {
+    const entrant = ctx.entrants[riderId];
+    const riderState = state.riders[riderId];
+    if (!entrant || !riderState || riderState.status !== "racing") continue;
+    const strength = computeJoinScore(entrant.abilities, false, 0);
+    const factor = riderState.team_cp_factor;
+    formationRiders.push({
+      rider_id: riderId,
+      team_id: teamIdOf(entrant),
+      role: entrant.role,
+      effort: entrant.effort,
+      tryBreak: tryBreakByRider.get(riderId),
+      strength,
+      spontaneousChance: joinProbability(strength),
+      engine: collectiveAbility([riderId], ctx.entrants, CHASE_ENGINE_KEYS),
+      freshness: clamp(Number.isFinite(factor) ? (factor as number) : 1, 0, 1),
+    });
+  }
+  // Et udbrud kraever et felt at koere fra.
+  if (formationRiders.length < 2) return { state, events };
+
+  const stances = new Map<string, FormationStance>();
+  for (const order of parseBreakawayOrders(ctx.orders)) stances.set(order.team_id, order.breakaway_stance);
+
+  const formation = resolveMorningBreakFormation({
+    riders: formationRiders,
+    stances,
+    roll: (stream, riderId) => ctx.rngFor(stream === "attempt" ? "breakaway_attempt" : "breakaway_attempt_success", riderId)(),
+    maxSize: Math.min(MAX_BREAKAWAY_SIZE, formationRiders.length - 1),
+  });
+  if (formation.attempted.length === 0) return { state, events };
+
+  // Pris: forsoeget (én gang, ogsaa ved fiasko) og modreaktionen, i samme
+  // team_cp_factor-valuta og med samme gulv/loft som M16/jagten.
+  const floor = TEAM_PLAY_EXTRA_TUNING.minCpFactor;
+  const ceiling = 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction;
+  let riders: Record<string, RiderState> | null = null;
+  for (const costs of [formation.attemptCost, formation.reactionCost]) {
+    for (const [riderId, paid] of [...costs.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      const current = (riders ?? state.riders)[riderId];
+      if (!current || !(paid > 0)) continue;
+      const factor = Number.isFinite(current.team_cp_factor) ? (current.team_cp_factor as number) : 1;
+      riders ??= { ...state.riders };
+      riders[riderId] = { ...current, team_cp_factor: clamp(factor - paid, floor, ceiling) };
+    }
+  }
+
+  const km = formationKmFor(ctx.segment);
+  events.push({
+    km,
+    type: "breakaway_attempt",
+    params: {
+      rider_ids: [...formation.attempted],
+      escaped_rider_ids: [...formation.escaped],
+      reacting_team_ids: [...formation.reactingTeamIds],
+    },
+  });
+
+  let groups = state.groups;
+  if (formation.escaped.length > 0) {
+    const newGroupId = makeGroupId("breakaway", ctx.segmentIndex * 1000);
+    groups = splitGroup(state.groups, sourceGroup.id, formation.escaped, {
+      id: newGroupId,
+      kind: "breakaway",
+      gapSecondsDelta: -INITIAL_GAP_SECONDS,
+      origin: "breakaway",
+    });
+    events.push({ km, type: "breakaway_formed", params: { group_id: newGroupId, rider_ids: [...formation.escaped] } });
+  }
+
+  return { state: { ...state, groups, ...(riders ? { riders } : {}) }, events };
 }
 
 // ── Jagt-interesse (#2416) ─────────────────────────────────────────────────────
@@ -906,8 +1003,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
  */
 export const breakawayHook: BreakawayHook = (state: EngineState, ctx: BreakawayHookContext): SegmentHookResult => {
   if (ctx.segmentIndex === FORMATION_SEGMENT_INDEX && findBreakawayGroups(state.groups).length === 0) {
-    const tryBreakRiderIds = flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders));
-    const formationResult = attemptFormation(state, ctx, tryBreakRiderIds);
+    // #5955: regel-revisionen vaelger dannelses-politikken. Legacy (default,
+    // fixtures og alle loeb bundet foer orders_gc_v1) er uaendret.
+    const formationResult = ctx.rulesRevision === "orders_gc_v1"
+      ? attemptOrderedFormation(state, ctx)
+      : attemptFormation(state, ctx, flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders)));
     // #5812: dannede vi et udbrud i DETTE segment, koerer resten af segmentet
     // (fra dannelses-km) gennem samme lad-gaa/jagt-opdeling som alle andre
     // segmenter. Paa et kort foerste segment er det ren lad-gaa-fase; paa et
