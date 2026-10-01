@@ -13,6 +13,7 @@ import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
 import {
   FlagIcon,
+  ArrowUpIcon,
   PageLoader,
   Button,
   CategoryTag,
@@ -58,6 +59,8 @@ import {
   defaultRaceTab,
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
+import { useStageTimeline } from "../hooks/useStageTimeline.js";
+import { historyForStage, participationForResult, participationFlagsForResult } from "../lib/raceParticipationMarkers.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -195,21 +198,29 @@ function riderName(res) {
 
 // #1499 Deskriptiv udbruds-markør: vises kun for ryttere der var i (morgen-)udbruddet.
 // Holdt hjem (survived) = accent-toned; indhentet (caught) = dæmpet. Tooltip via title.
-function BreakawayMarker({ result, t }) {
-  if (!result?.in_breakaway) return null;
-  const caught = !!result.breakaway_caught;
-  const label = caught ? t("detail.breakaway.caught") : t("detail.breakaway.survived");
+function BreakawayMarker({ result, t, history = null }) {
+  const participation = participationForResult(result, history);
+  if (!participation) return null;
+  const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
+  const label = participation.caught ? t("detail.breakaway.caught")
+    : participation.verified && !participation.survived ? t("detail.breakaway.participated")
+    : t("detail.breakaway.survived");
   return (
-    <span
-      className={`ms-1 inline-flex align-middle ${caught ? "text-cz-3" : "text-cz-accent-t"}`}
-      title={`${t("detail.breakaway.label")} — ${label}`}
-      aria-label={`${t("detail.breakaway.label")} — ${label}`}
-    >
-      <FlagIcon size={13} />
-    </span>
+    <>
+      {participation.morning && (
+        <span className={`ms-1 inline-flex align-middle ${participation.caught || (participation.verified && !participation.survived) ? "text-cz-3" : "text-cz-accent-t"}`}
+          title={`${markerLabel}: ${label}`} aria-label={`${markerLabel}: ${label}`}>
+          <FlagIcon size={13} aria-hidden="true" />
+        </span>
+      )}
+      {participation.laterAttack && (
+        <span className="ms-1 inline-flex align-middle text-cz-2" title={t("detail.breakaway.laterAttack")} aria-label={t("detail.breakaway.laterAttack")}>
+          <ArrowUpIcon size={13} aria-hidden="true" />
+        </span>
+      )}
+    </>
   );
 }
-
 function byRank(a, b) {
   return (a.rank ?? 9999) - (b.rank ?? 9999);
 }
@@ -617,6 +628,12 @@ export default function RaceDetailPage() {
   );
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
+  const { timeline: oneDayTimeline } = useStageTimeline(race?.race_type === "single" && results.length ? raceId : null, 1);
+  const oneDayParticipation = useMemo(() => historyForStage(oneDayTimeline, 1,
+    results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean)), [oneDayTimeline, results]);
+  const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
+    row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
+
 
   // stage_number → { profile_type, finale_type } for terræn-indikatoren (#1484).
   const profileByStage = useMemo(() => {
@@ -1204,6 +1221,7 @@ export default function RaceDetailPage() {
                     moments={moments}
                     stageNumber={1}
                     raceId={race.id}
+                    participationHistory={oneDayParticipation}
                   />
                   {finalByType.team?.length > 0 && (
                     <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
@@ -1212,7 +1230,7 @@ export default function RaceDetailPage() {
                 <SectionStack>
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={results} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
+                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" t={t} />
                 </SectionStack>
@@ -1614,6 +1632,13 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
   const [classTab, setClassTab] = useState("stage");
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
+  const { timeline } = useStageTimeline(raceId, stage);
+  const participationHistory = useMemo(() => historyForStage(timeline, stage,
+    (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean)), [timeline, stage, results]);
+  const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
+    if (row.result_type !== "stage" || row.stage_number !== stage) return row;
+    return { ...row, ...participationFlagsForResult(row, participationHistory) };
+  }), [results, stage, participationHistory]);
   const rows = filterRows(classificationRowsForStage(results, stage, classTab));
 
   // #3519: point-totaler "efter etape {stage}" for mountain/points-sub-fanen —
@@ -1700,7 +1725,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
         <SectionStack>
-          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} />
+          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId}  participationHistory={participationHistory} />
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
@@ -1710,6 +1735,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
               Gater selv på tidslinje-data OG Final Kilometre-availability
               (renderer kun helt intet hvis INGEN af de to findes). */}
           <StoryOfTheStageSection
+            timeline={timeline}
             raceId={raceId} stageNumber={stage} profile={profile}
             riderNameById={riderNameById} teamNameById={teamNameById}
             stageLabel={stageLabel}
@@ -1724,7 +1750,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
           )}
           <RaceReportPanel
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
-            results={results} incidents={incidents} myTeamId={myTeamId}
+            results={reportResults} incidents={incidents} myTeamId={myTeamId}
             riderNameById={riderNameById} teamNameById={teamNameById}
             profileType={profile?.profile_type ?? null} t={t}
           />
@@ -1830,7 +1856,7 @@ function YouBadge({ t }) {
   );
 }
 
-function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumber, raceId }) {
+function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumber, raceId, participationHistory = null }) {
   const entity = resultEntity(row);
   const isWinner = highlightWinner && row.rank === 1;
   if (entity.kind === "team") {
@@ -1855,7 +1881,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
       <span className="text-cz-1">
         {entity.nationality && (<Flag code={entity.nationality} className="me-1" />)}
         {entity.name || "—"}
-        <BreakawayMarker result={row} t={t} />
+        <BreakawayMarker result={row} t={t} history={participationHistory} />
         {entity.linkId && <StoryTagBadges moments={moments} riderId={entity.linkId} stageNumber={stageNumber} t={t} />}
         {isMine && <YouBadge t={t} />}
       </span>
@@ -1874,7 +1900,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = null }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = null, participationHistory = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
@@ -1958,7 +1984,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   >
                     <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="px-2 py-2">
-                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId} />
+                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId}  participationHistory={participationHistory} />
                     </td>
                     {showTeamCol && (
                       <td className="px-2 py-2 text-cz-3 text-xs">

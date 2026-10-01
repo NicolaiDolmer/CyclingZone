@@ -15,13 +15,14 @@ const API = import.meta.env.VITE_API_URL;
 // Section) renderer da INTET i stedet for en fejlmelding — samme princip som
 // FinalKilometrePlayback's `available: false`.
 export function useStageTimeline(raceId, stageNumber) {
-  const [timeline, setTimeline] = useState(null);
+  const [timelineState, setTimelineState] = useState(null);
+  const timeline = timelineState && timelineState.raceId === raceId && timelineState.stageNumber === stageNumber ? timelineState.data : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    if (!raceId || !stageNumber) { setTimeline(null); return undefined; }
+    if (!raceId || !stageNumber) { setTimelineState(null); return undefined; }
 
     (async () => {
       setLoading(true);
@@ -34,14 +35,15 @@ export function useStageTimeline(raceId, stageNumber) {
           { headers },
         );
         if (cancelled) return;
-        if (res.status === 404) { setTimeline(null); return; }
-        if (!res.ok) { setError(true); setTimeline(null); return; }
+        if (res.status === 404) { setTimelineState(null); return; }
+        if (!res.ok) { setError(true); setTimelineState(null); return; }
         const data = await res.json().catch(() => null);
+        if (cancelled) return;
         // Degraderer ærligt hvis kontrakten ikke er opfyldt (fx en flad {} fra
         // en endnu-ikke-live backend) — ingen events-liste = ingen film/historie.
-        setTimeline(data && Array.isArray(data.events) ? data : null);
+        setTimelineState(data && Array.isArray(data.events) ? { raceId, stageNumber, data } : null);
       } catch {
-        if (!cancelled) { setError(true); setTimeline(null); }
+        if (!cancelled) { setError(true); setTimelineState(null); }
       } finally {
         if (!cancelled) setLoading(false);
       }

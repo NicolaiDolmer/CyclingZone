@@ -82,6 +82,7 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
+import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -671,13 +672,11 @@ export function neutralizeBreakawayTempoDrift(
   if (!BREAKAWAY_NEUTRAL_KINDS.has(kind)) return tempoByGroup;
   const escapes = groups.filter((g) => g.kind === "breakaway" && g.origin === "breakaway");
   if (escapes.length === 0) return tempoByGroup;
-  const chase = [...groups]
-    .filter((g) => g.kind !== "breakaway")
-    .sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
-  const chaseTempo = chase ? tempoByGroup.get(chase.id) : undefined;
-  if (!chase || !chaseTempo || !isLetGoChaseGroup(chase.rider_ids.length)) return tempoByGroup;
   let out: Map<string, GroupTempo> | null = null;
   for (const escape of escapes) {
+    const chase = findChaseGroup(groups, escape);
+    const chaseTempo = chase ? tempoByGroup.get(chase.id) : undefined;
+    if (!chase || !chaseTempo || !isLetGoChaseGroup(chase.rider_ids.length)) continue;
     if (!(escape.gap_seconds <= chase.gap_seconds)) continue;
     const own = tempoByGroup.get(escape.id);
     if (!own || own.dtSeconds === chaseTempo.dtSeconds) continue;
