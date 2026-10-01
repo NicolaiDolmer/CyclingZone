@@ -406,7 +406,13 @@ export function raceContextForStage({ raceStages, stageNumber, isStageRace, rout
  */
 export function buildV4StageInput({
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
+  rulesRevision = "legacy",
 }) {
+  // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
+  // En ukendt værdi er en fejl, aldrig nyeste regler.
+  if (rulesRevision !== "legacy" && rulesRevision !== "orders_gc_v1") {
+    throw new Error(`raceEngineV4Bridge: ukendt rulesRevision ${JSON.stringify(rulesRevision)}`);
+  }
   const route = modules.route.routeFromStageProfileRow(stageProfile);
   // Ordrer (#4246): ROLLEN er standardordren, og etapens gemte række er dagens
   // overlay oven på den. Adapteren får derfor hele startlistens (hold, rytter,
@@ -449,6 +455,8 @@ export function buildV4StageInput({
   if (jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom)) {
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
   }
+  // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
+  if (rulesRevision === "orders_gc_v1") input.rules_revision = rulesRevision;
   return input;
 }
 
@@ -503,7 +511,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy" }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -511,7 +519,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med

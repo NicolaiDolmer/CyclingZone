@@ -41,6 +41,7 @@ import type {
   SegmentKind,
   StageInput,
   TeamOrder,
+  RulesRevision,
   TimelineEvent,
   Weather,
 } from "./types.ts";
@@ -734,6 +735,18 @@ export type SegmentLoopResult = {
 };
 
 /**
+ * #5955: StageInput.rules_revision -> den revision hooksene ser. Udeladt/null =
+ * "legacy". En ukendt vaerdi kaster: motoren maa aldrig gaette sig til nyeste
+ * regler (eller tavst koere legacy) for et loeb der er bundet til noget andet.
+ * Eksporteret for direkte kontrakt-tests.
+ */
+export function normalizeRulesRevision(raw: unknown): RulesRevision {
+  if (raw === undefined || raw === null || raw === "legacy") return "legacy";
+  if (raw === "orders_gc_v1") return "orders_gc_v1";
+  throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
+}
+
+/**
  * Koerer hele segment-listen for én etape og returnerer sluttilstand + tidslinje
  * + gruppe-snapshots. `simulateStageV4` (index.ts) bygger StageOutput oven paa
  * dette (results/loads afledes af sluttilstanden, finish-eventet tilfoejes der).
@@ -743,6 +756,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // T4 (tactics-orders-specen): kernen kraever ALDRIG ordrer — en manglende
   // eller tom liste er den neutrale default.
   const orders: readonly TeamOrder[] = input.orders ?? [];
+  const rulesRevision = normalizeRulesRevision(input.rules_revision);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
@@ -934,6 +948,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngForStage: rngForFn,
       orders,
       jerseyLeaders: input.jersey_leaders ?? null,
+      rulesRevision,
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
