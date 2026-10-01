@@ -139,6 +139,122 @@ export function capPreventiveIntensity(plan: TeamReactionPlan, fullIntensityCost
   return Math.max(0, Math.min(plan.intensity, plan.budgetRemaining / fullIntensityCostBound));
 }
 
+// ── #5955 (ejer-valg B 1/10, KUN orders_gc_v1): GC-bremsen i lad-gaa-fasen ──
+//
+// Under legacy roerer ingen ordre lad-gaa-fasen (#5812-kontrakten): hullet
+// vokser mod loftet uanset hvad holdene vil. Under orders_gc_v1 maa et hold
+// ved en REEL (alvorlig) GC-trussel bremse fasen og holde hullet nede:
+//   - et hold hvis GC-reaktion er aktiv (neutral eller den forebyggende
+//     lad-gaa-undtagelse), med de hjaelpere der allerede reagerer, og
+//   - et hold med eksplicit jagtordre.
+// En moderat trussel eller en jagtordre uden trussel bremser ikke: feltet
+// lader stadig dagens udbrud faa sit forspring (den moderate reaktion virker
+// som foer kun i jagtfasen). Op til det forspring holdet kan tolerere
+// (GcThreat.tolerated_lead_seconds) vokser hullet frit; over det daempes det.
+// Bremsen er arbejde: de bremsende ryttere betaler for de bremsede lad-gaa-km
+// i samme valuta som jagten, og den forebyggende undtagelses budget daekker
+// hele segmentet (capPreventiveIntensity), saa bremsen holder sig inden for
+// det eksisterende budget pr. hold pr. etape. Bremsen er bounded (maxBrake
+// < 1): et udbrud faar altid plads at vokse, og ingen indhentning er garanteret.
+
+export const LET_GO_BRAKE_TUNING = Object.freeze({
+  /** Hoejeste andel af lad-gaa-vaeksten bremsen kan fjerne (aldrig hele). */
+  maxBrake: 0.3,
+  /** Effektive bremse-ryttere (fuld effort, friske) der giver den fulde bremse. */
+  referenceBrakers: 4,
+});
+
+/** Et holds beslutning for segmentet, som bremsen laeser den (strukturel type). */
+export type LetGoBrakeDecision = {
+  teamId: string;
+  threat: GcThreat;
+  stance: ReactionStance;
+  plan: Pick<TeamReactionPlan, "intensity">;
+};
+
+/**
+ * Holdene der bremser lad-gaa-fasen foran `chaseGroupId`: GC-rytteren sidder i
+ * den jagtgruppe, og holdet enten reagerer (plan > 0) eller har eksplicit
+ * jagtordre ved en reel trussel. Vaerdien er det forspring holdet tolererer
+ * (GcThreat.tolerated_lead_seconds; mangler det, 0 = ingen tolerance).
+ */
+export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chaseGroupId: string): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const d of decisions) {
+    if (d.threat.chase_group_id !== chaseGroupId) continue;
+    if (d.threat.severity !== "serious") continue;
+    const reacting = d.plan.intensity > 0;
+    const threatenedChase = d.stance === "chase";
+    if (!reacting && !threatenedChase) continue;
+    const tolerated = d.threat.tolerated_lead_seconds;
+    out.set(d.teamId, Number.isFinite(tolerated) ? Math.max(0, tolerated as number) : 0);
+  }
+  return out;
+}
+
+/**
+ * Bremsens styrke i [0, maxBrake], de ryttere der betaler for den, og det
+ * forspring bremsen holder hullet under (det mindste blandt de hold der
+ * faktisk bremser). Kun ryttere fra de bremsende hold, der allerede arbejder i
+ * jagtplanen (`chaserWork`: effort-vaegt, for reaktioner skaleret med
+ * intensiteten), og hver taeller med sin friskhed: et traet hold bremser
+ * svagere.
+ */
+export function letGoBrake(input: {
+  chaserWork: ReadonlyMap<string, number>;
+  braking: ReadonlyMap<string, number>;
+  entrants: Readonly<Record<string, Entrant>>;
+  riders: Readonly<Record<string, RiderState>>;
+}): { fraction: number; work: Map<string, number>; toleratedSeconds: number } {
+  const tuning = LET_GO_BRAKE_TUNING;
+  const work = new Map<string, number>();
+  const none = { fraction: 0, work: new Map<string, number>(), toleratedSeconds: Infinity };
+  if (input.braking.size === 0) return none;
+  let pull = 0;
+  let toleratedSeconds = Infinity;
+  for (const riderId of [...input.chaserWork.keys()].sort((a, b) => a.localeCompare(b))) {
+    const weight = input.chaserWork.get(riderId) ?? 0;
+    const teamId = input.entrants[riderId]?.team_id;
+    if (!(weight > 0) || typeof teamId !== "string" || !input.braking.has(teamId)) continue;
+    const factor = input.riders[riderId]?.team_cp_factor;
+    const freshness = Math.max(0, Math.min(1, Number.isFinite(factor) ? (factor as number) : 1));
+    pull += weight * freshness;
+    work.set(riderId, weight);
+    toleratedSeconds = Math.min(toleratedSeconds, input.braking.get(teamId) ?? 0);
+  }
+  if (!(pull > 0) || !(tuning.referenceBrakers > 0)) return none;
+  const fraction = tuning.maxBrake * Math.max(0, Math.min(1, pull / tuning.referenceBrakers));
+  return { fraction, work, toleratedSeconds };
+}
+
+/**
+ * Lad-gaa-vaeksten med bremsen: op til det tolererede forspring vokser hullet
+ * frit (feltet lader et ufarligt forspring gaa), over det daempes vaeksten med
+ * `fraction`. `brakedShare` er den andel af lad-gaa-km'ene der faktisk blev
+ * bremset — kun dem betaler de bremsende ryttere for. Uden bremse er vaeksten
+ * uaendret og andelen 0. `ceilingSeconds` er lad-gaa-loftet: vaekst over det
+ * sker alligevel ikke, saa den bremses (og betales) heller ikke.
+ */
+export function brakedLetGoGrowth(input: {
+  separationSeconds: number;
+  growthSeconds: number;
+  fraction: number;
+  toleratedSeconds: number;
+  ceilingSeconds?: number;
+}): { growthSeconds: number; brakedShare: number } {
+  const raw = Math.max(0, input.growthSeconds);
+  const room = input.ceilingSeconds !== undefined && Number.isFinite(input.ceilingSeconds)
+    ? Math.max(0, input.ceilingSeconds - input.separationSeconds)
+    : raw;
+  const growth = Math.min(raw, room);
+  if (!(input.fraction > 0) || !(growth > 0)) return { growthSeconds: input.growthSeconds, brakedShare: 0 };
+  const free = Math.max(0, Math.min(growth, input.toleratedSeconds - input.separationSeconds));
+  const excess = growth - free;
+  if (!(excess > 0)) return { growthSeconds: input.growthSeconds, brakedShare: 0 };
+  const fraction = Math.min(1, input.fraction);
+  return { growthSeconds: free + excess * (1 - fraction), brakedShare: excess / raw };
+}
+
 function reactionEvent(km: number, teamId: string, status: string, reason: string, threat: GcThreat, mode: TeamReactionMode | null): TimelineEvent {
   return {
     km,
