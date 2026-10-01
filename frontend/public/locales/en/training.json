@@ -11,6 +11,8 @@
     "helper": "Locks today's training and entries. The result is the same as if you wait.",
     "locked": "Today's training and entries are locked. Fatigue and form update at the evening settlement.",
     "afterRace": "Riders racing today are settled after their stage.",
+    "pressResult": "{trained, plural, one {# rider trained now} other {# riders trained now}}, {waiting, plural, one {# waiting for his race} other {# waiting for their race}}.",
+    "pressResultAll": "{trained, plural, one {# rider trained now.} other {# riders trained now.}}",
     "settled": "Today's training is settled.",
     "previousOpen": "Yesterday's training is still being settled. Try again in a moment.",
     "noRaceDay": "There is no race day today, so there is nothing to lock.",
@@ -500,16 +502,22 @@
       "recorded": "Recorded activities"
     },
     "note": {
+      "trainedNow": "Final race day, fatigue and form at the evening settlement.",
       "complete": "All activities for this date are included. Form and fatigue are settled once for the date.",
       "pending": "This date is not fully settled yet. Final development and condition changes are still pending.",
       "reconciliation": "Some activities need reconciliation. Missing evidence is never shown as zero development.",
       "recorded": "Recorded activities are combined for this date. Older reports may not contain full progress or settlement evidence."
     },
     "riderReceipts": "Rider receipts",
+    "trainedNow": "{count, plural, one {Trained now · race day {range}} other {Trained now · race days {range}}}",
+    "trainedNowCount": "Trained now",
+    "wholePointsSoFar": "Whole ability points so far",
+    "waitingForRace": "Waiting for their race",
     "activitiesRecorded": "Race days recorded",
     "wholePoints": "Whole ability points",
     "development": "Daily development",
     "latestPassScore": "Latest session score",
+    "averagePassScore": "Average session score",
     "fatigue": "Fatigue",
     "form": "Form",
     "race": "Race",
@@ -519,7 +527,12 @@
     "raceDay": "Race day {day}",
     "activity": "Activity {n}",
     "pointContribution": "+{percent}% of an ability point",
-    "progressUnavailable": "Detailed progress unavailable",
+    "progressUnavailable": "Shown after the next training day",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "sortLabel": "Sort riders",
+    "sortFirstName": "First name",
+    "sortLastName": "Last name",
     "previousSeason": "Previous season",
     "change": "{from} to {to}"
   },
@@ -532,6 +545,15 @@
     "aria": "Fatigue tonight: approx. {value}. {band}",
     "ariaSettled": "Fatigue tonight: {value}. {band}",
     "teamLabel": "Fatigue tonight, highest"
+  },
+  "oneTap": {
+    "choice_rest": "Rest",
+    "choice_recovery": "Recovery",
+    "choice_session": "Program",
+    "groupAria": "Today for {name}",
+    "approx": "~{value}",
+    "stageToday": "stage today",
+    "locked": "Today is locked after Train now."
   },
   "groups": {
     "section_groups": "Groups",

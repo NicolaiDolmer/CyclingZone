@@ -53,6 +53,10 @@ for (const mode of ["complete","pending","reconciliation"]) {
       await expect(date.getByTestId("daily-receipt-latest-score")).toHaveText("56");
       await expect(details.getByTestId("daily-receipt-pass-score")).toHaveText(["Score: 52","Score: 55","Score: 56"]);
       await expect(date.getByTestId("daily-receipt-mobile-score")).toHaveText("Seneste passcore: 56");
+    } else if(mode==="pending") {
+      // #6027: race days already stored show their session scores before the evening settlement.
+      await expect(date.getByLabel("11 til 19")).toHaveCount(0);
+      await expect(details.getByTestId("daily-receipt-pass-score")).toHaveText(["Score: 52","Score: 55"]);
     } else {
       await expect(date.getByLabel("11 til 19")).toHaveCount(0);
       await expect(date.getByTestId("daily-receipt-latest-score")).toHaveText("—");

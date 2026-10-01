@@ -93,6 +93,9 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 // BAG FLAG (training_mobile_table, stadie beta — ejer 19/9): kun beta-testere
 // ser den; alle andre ser #5124's D-047-gren, som derfor er bevaret nedenfor.
 import TrainingMobileToday from "../components/training/mobile/TrainingMobileToday.tsx";
+// #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke, bag beta (cellsOn).
+import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
+import { pressedChoice, pressedChoiceFromSession, rowLocked } from "../components/training/todayRowModel.ts";
 import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 
 // #3721: siden fik faner (Train today / Development / History), ?tab=-
@@ -784,6 +787,10 @@ export default function TrainingPage() {
       return;
     }
     await handlePlanChange(riderId, dayTypeForProgram({ focus: session, intensity: SESSION_INTENSITY[session] }), session);
+  }
+  // #5685: telefonens eet-tryks valg = desktoppens hurtig-knapper.
+  function handleOneTapChoice(riderId, choice) {
+    return handleDayQuickChange(riderId, choice, planFor(riderId)?.focus);
   }
   async function handleFocusPanelClear() {
     if (await handleClearPlan(focusPanelRiderId)) setFocusPanelRiderId(null);
@@ -2281,6 +2288,38 @@ export default function TrainingPage() {
           </div>
         ) : riders.length === 0 ? (
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
+        ) : cellsOn ? (
+          <TodayRowsMobile
+            riders={rows}
+            choices={QUICK_DAY_TYPES}
+            metaFor={(riderId) => {
+              const age = ageForSeason(riderById.get(riderId)?.birthdate, seasonYear);
+              return [riderTypeLine(riderById.get(riderId)), age != null ? String(age) : null].filter(Boolean).join(" · ") || null;
+            }}
+            stageToday={racingTodayFor}
+            forecastFor={forecastFor}
+            forecastSettled={fatigueForecast.settled}
+            pressedFor={(riderId) => {
+              // Dagens EFFEKTIVE felt (programcellen foer planen), samme kilde som tabellens celle.
+              const column = raceDayColumns.find((c) => c.state === "now") ?? raceDayColumns[0];
+              const effective = column ? pressedChoiceFromSession(sessionFor(riderId, column)) : null;
+              if (effective) return effective;
+              const plan = planFor(riderId);
+              return pressedChoice(plan?.focus ? dayTypeForProgram(plan) : null, sessionDayType(plan), !!plan?.focus);
+            }}
+            onChoose={handleOneTapChoice}
+            errorFor={(riderId) => (planActionError?.riderId === riderId ? planActionError.error : null)}
+            busyFor={(riderId) => savingId === riderId || bulkApplying}
+            locked={rowLocked({ trainedToday: runGate.trainedToday })}
+            selectedRiderId={mobileRiderId}
+            onSelectRider={(riderId) => setMobileRiderId((prev) => (prev === riderId ? null : riderId))}
+            detailFor={renderRiderCard}
+            openFirstForTour={tourActiveAtMount}
+            picked={mobilePickMode ? selected : null}
+            onTogglePick={toggleSelect}
+            sortSlot={<RosterMobileSortControl header sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} scoreVisible={scoreVisible} t={t} />}
+            bulkSlot={renderMobileBulkBar()}
+          />
         ) : (
           <TrainingMobileToday
             riders={rows}
@@ -3558,7 +3597,7 @@ export default function TrainingPage() {
       <TabPanel value="report">
         {dailyReceiptEnabled ? <>
 
-        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} />
+        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
 
         </> : <>

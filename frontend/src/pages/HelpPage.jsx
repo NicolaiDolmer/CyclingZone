@@ -451,6 +451,7 @@ const SECTION_DEFS = [
       { id: "upwardAlwaysAllowed", kind: "text" },
       { id: "graduationDayAt23", kind: "text" },
       { id: "youthRacesFromS4", kind: "text" },
+      { id: "trainOnly", kind: "text" },
       { id: "noUpkeepAtSeasonChange", kind: "text" },
     ],
   },

@@ -206,7 +206,7 @@ function LegacyTrainingHistory({ history, trainingScore = null }) {
 
 import DailyTrainingReceipt from "./DailyTrainingReceipt.tsx";
 import { copenhagenDayKey } from "../../lib/raceCentre.js";
-function DailyTrainingHistory({ history, trainingScore = null, condition = null, today = null }) {
+function DailyTrainingHistory({ history, trainingScore = null, condition = null, today = null, roster = null }) {
   const { t } = useTranslation("training");
   const { runs, loading } = history;
   if (loading && runs.length === 0) return <Section><SkeletonLines lines={4} /></Section>;
@@ -215,7 +215,7 @@ function DailyTrainingHistory({ history, trainingScore = null, condition = null,
     <EmptyState icon={<ClockIcon size={26} aria-hidden="true" />} title={t("historyEmpty")} />
   </Section>;
   return <div className="space-y-[14px]">{runs.map((run,index)=>
-    <DailyTrainingReceipt key={`${run.tick_date}:${run.season_id ?? "legacy"}`} run={run} trainingScore={trainingScore} defaultExpanded={index===0} condition={today && run.tick_date===copenhagenDayKey(today.getTime()) ? condition : undefined} today={today ?? undefined} />
+    <DailyTrainingReceipt key={`${run.tick_date}:${run.season_id ?? "legacy"}`} run={run} trainingScore={trainingScore} defaultExpanded={index===0} condition={today && run.tick_date===copenhagenDayKey(today.getTime()) ? condition : undefined} today={today ?? undefined} roster={today && roster && run.tick_date===copenhagenDayKey(today.getTime()) ? roster : undefined} />
   )}</div>;
 }
 

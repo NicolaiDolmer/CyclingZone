@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aggregateTrainingRuns } from "./trainingDailyReceipt.ts";
+import { aggregateTrainingRuns, averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace } from "./trainingDailyReceipt.ts";
 import type { TrainingActivity } from "./trainingDailyReceipt.ts";
 import { seasonAbilityGains, riderHistoryFromRuns, abilityReceipt, abilityReceiptGainPct } from "./trainingReport.js";
 import { selectTrainingMoment } from "./trainingMoment.js";
@@ -137,6 +137,109 @@ test("pending-only receipts do not produce a completed-day quiet story", () => {
   assert.equal(selectTrainingMoment(receipt,{},[]),null);
 });
 
+// #5915: 29/9 and 30/9 ticks were stored before `progress_after` existed.
+const withoutAfter = (day: number, tickDate = date, patch: Partial<TrainingActivity> = {}) => {
+  const r = run(day, patch);
+  r.tick_date = tickDate;
+  r.id = `${tickDate}-${day}`;
+  r.created_at = `${tickDate}T20:0${day}:00Z`;
+  delete (r.report.riders[0] as Record<string, unknown>).progress_after;
+  return r;
+};
+
+test("#5915: an old date without progress_after derives its end point from the next date's first tick", () => {
+  const old = [0, 1, 2, 3, 4].map(i => withoutAfter(i));
+  const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  const receipts = aggregateTrainingRuns([...old, next]);
+  const rider = receipts.find(r => r.tick_date === date)!.report.riders[0];
+  assert.equal(rider.gain_percent.tempo, 140, "0.8 -> two whole points -> 0.2 = 140% of a point");
+  assert.deepEqual(rider.progress_after, { tempo: 0.2 });
+});
+
+test("#5915: the newest old date with no later tick stays honestly unknown", () => {
+  const receipts = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => withoutAfter(i)));
+  assert.equal(receipts[0].report.riders[0].gain_percent.tempo, null);
+});
+
+test("#5915: a stored progress_after wins over the next date's start", () => {
+  const stored = [0, 1, 2, 3, 4].map(i => run(i));
+  const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.7 } });
+  const rider = aggregateTrainingRuns([...stored, next]).find(r => r.tick_date === date)!.report.riders[0];
+  assert.equal(rider.gain_percent.tempo, 140);
+});
+
+test("#5915: chaining never crosses seasons and never shows negative progress as zero", () => {
+  const old = [0, 1, 2, 3, 4].map(i => withoutAfter(i));
+  const otherSeason = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  otherSeason.season_id = "s5";
+  assert.equal(aggregateTrainingRuns([...old, otherSeason]).find(r => r.season_id === "s4")!.report.riders[0].gain_percent.tempo, null);
+  const noGain = [0, 1, 2, 3, 4].map(i => withoutAfter(i, date, { gains: {}, gains_detail: {} }));
+  const lower = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.5 } });
+  assert.equal(aggregateTrainingRuns([...noGain, lower]).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo, null);
+});
+
+test("#5915: the successor must be its date's first expected slot, unquarantined and unambiguous", () => {
+  const old = () => [0, 1, 2, 3, 4].map(i => withoutAfter(i));
+  const pct = (rows: ReturnType<typeof withoutAfter>[]) =>
+    aggregateTrainingRuns(rows).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo;
+  // Only day 1 of the next date stored: its start already includes day 0's training.
+  assert.equal(pct([...old(), withoutAfter(1, "2026-09-30", { progress_before: { tempo: 0.35 } })]), null);
+  assert.equal(pct([...old(), withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 }, status: "unknown_pending",
+    settlement_status: "needs_reconciliation", missing_evidence: ["missing_result"] })]), null);
+  const a = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  const b = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.4 } });
+  b.id = "conflict"; b.squad = "u23";
+  assert.equal(pct([...old(), a, b]), null);
+  const noDays = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  delete (noDays.report as Record<string, unknown>).date_game_days;
+  assert.equal(pct([...old(), noDays]), null);
+});
+
+test("#5915: prod-shaped dates without date_game_days chain when game days continue exactly", () => {
+  // Prod: 29/9 = game days 5-9, 30/9 = 10-14, 1/10 = 15-18; none stored date_game_days.
+  const tick = (tickDate: string, day: number, before: number) => {
+    const r = withoutAfter(0, tickDate, { game_day: day, progress_before: { tempo: before }, gains: {}, gains_detail: {} });
+    r.id = `${tickDate}-${day}`; r.game_day = day; r.report.condition_settled = true;
+    delete (r.report as Record<string, unknown>).date_game_days;
+    return r;
+  };
+  const rows = [
+    ...[5, 6, 7, 8, 9].map(d => tick("2026-09-29", d, 0.1)),
+    ...[10, 11, 12, 13, 14].map(d => tick("2026-09-30", d, 0.3)),
+    ...[15, 16, 17, 18].map(d => tick("2026-10-01", d, 0.6)),
+  ];
+  const pct = (input: typeof rows, tickDate: string) =>
+    aggregateTrainingRuns(input).find(r => r.tick_date === tickDate)!.report.riders[0].gain_percent.tempo;
+  assert.equal(pct(rows, "2026-09-29"), 20, "29/9 ends where 30/9 (game day 10) starts");
+  assert.equal(pct(rows, "2026-09-30"), 30, "30/9 ends where 1/10 (game day 15) starts");
+  // A gap (successor's first stored slot is not previous last + 1) stays unknown.
+  const gap = rows.filter(r => !(r.tick_date === "2026-09-30" && r.game_day === 10));
+  assert.equal(pct(gap, "2026-09-29"), null);
+});
+
+test("#5915: legacy (non per-date) days are never chained", () => {
+  const legacy = [withoutAfter(0), withoutAfter(1)];
+  const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  for (const row of [...legacy, next]) delete (row.report as Record<string, unknown>).condition_per_date;
+  assert.equal(aggregateTrainingRuns([...legacy, next]).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo, null);
+});
+
+test("#5915: average session score covers only scored sessions, never counts a race day as 0", () => {
+  const rider = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i, i === 2 ? { race_day: true } : {})))[0].report.riders[0];
+  const view = { sessions: [0, 1, 3].map((gameDay, i) => ({ date, seasonId: "s4", gameDay, score: [50, 61, 58][i] })) };
+  assert.equal(averagePassScore(view, date, "s4", rider.activities), 56);
+  assert.equal(averagePassScore(undefined, date, "s4", rider.activities), null);
+});
+
+test("#5915: riders sort by first name, last name or average score (unscored last)", () => {
+  const riders = [{ rider_id: "a", name: "Hugo Zane" }, { rider_id: "b", name: "Anna Berg" }, { rider_id: "c", name: "Carl Ahl" }];
+  const scores: Record<string, number | null> = { a: 61, b: null, c: 54 };
+  assert.deepEqual(sortReceiptRiders(riders, "name").map(r => r.rider_id), ["b", "c", "a"]);
+  assert.deepEqual(sortReceiptRiders(riders, "lastname").map(r => r.rider_id), ["c", "b", "a"]);
+  assert.deepEqual(sortReceiptRiders(riders, "score", r => scores[r.rider_id]).map(r => r.rider_id), ["a", "c", "b"]);
+  assert.deepEqual(riders.map(r => r.rider_id), ["a", "b", "c"], "sorting must not mutate the receipt");
+});
+
 test("ability receipts expose the full date contribution separately from the wrapped progress-bar segment", () => {
   const rows=abilityReceipt(["tempo"],{abilities:{tempo:56},progress:{tempo:0.2},
     progressBefore:{tempo:0.8},gainsToday:{tempo:2},gainPercentToday:{tempo:140}});
@@ -149,4 +252,66 @@ test("older ability receipts retain the legacy contribution when no stored final
   const rows=abilityReceipt(["tempo"],{abilities:{tempo:54},progress:{tempo:0.2},
     progressBefore:{tempo:0.1},gainsToday:{},gainPercentToday:{tempo:null}});
   assert.equal(abilityReceiptGainPct(rows[0]),10);
+});
+
+test("#6027: race days 1-4 before the evening settlement show what was trained, kept apart from settled gains", () => {
+  const input = [run(3), run(0), run(2), run(1)];
+  const before = structuredClone(input);
+  const day = aggregateTrainingRuns(input)[0];
+  assert.deepEqual(input, before);
+  assert.equal(day.receipt_status, "pending");
+  assert.deepEqual(day.trained_now_slots, [1, 2, 3, 4]);
+  const rider = day.report.riders[0];
+  assert.equal(rider.receipt_status, "pending");
+  assert.deepEqual(rider.trained_now, {
+    gains: { tempo: 2 }, gains_detail: { tempo: { from: 54, to: 56 } }, gain_percent: { tempo: 140 },
+  });
+  // Season totals, stories and rider logs still read the date as pending.
+  assert.deepEqual(rider.gains, {});
+  assert.deepEqual(rider.gain_percent, {});
+  assert.equal(seasonAbilityGains([day], "r1", "2026-09-01"), null);
+  assert.equal(selectTrainingMoment(day, {}, []), null);
+  // Fatigue and form stay with the evening settlement.
+  assert.equal(rider.fatigue, null);
+  assert.equal(rider.form, null);
+  assert.deepEqual(rider.activities.map(a => [a.game_day, a.focus, a.intensity]),
+    [[0, "threshold", "normal"], [1, "threshold", "normal"], [2, "threshold", "normal"], [3, "threshold", "normal"]]);
+});
+
+test("#6027: fractional progress shows before a whole point; a stored end point is required", () => {
+  const day = aggregateTrainingRuns([run(0)])[0];
+  assert.deepEqual(day.report.riders[0].trained_now, { gains: {}, gains_detail: {}, gain_percent: { tempo: 15 } });
+  const noEnd = run(0);
+  delete (noEnd.report.riders[0] as Record<string, unknown>).progress_after;
+  assert.deepEqual(aggregateTrainingRuns([noEnd])[0].report.riders[0].trained_now?.gain_percent, { tempo: null });
+  // A gap between stored race days never bridges the missing day: each day counts its own part.
+  assert.deepEqual(aggregateTrainingRuns([run(0), run(2)])[0].report.riders[0].trained_now?.gain_percent, { tempo: 95 });
+});
+
+test("#6027: settled, quarantined and legacy dates never get a trained-now view", () => {
+  const settled = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i)))[0];
+  assert.equal(settled.report.riders[0].trained_now, null);
+  assert.deepEqual(settled.trained_now_slots, []);
+  const gap = aggregateTrainingRuns([run(0), run(1), run(3), run(4)])[0];
+  assert.equal(gap.report.riders[0].trained_now, null);
+  const quarantined = aggregateTrainingRuns([run(0), run(1, { status: "unknown_pending", settlement_status: "needs_reconciliation" })])[0];
+  assert.equal(quarantined.report.riders[0].trained_now, null);
+  assert.deepEqual(quarantined.trained_now_slots, []);
+  const legacy = run(0);
+  delete (legacy.report as Record<string, unknown>).condition_per_date;
+  assert.equal(aggregateTrainingRuns([legacy])[0].report.riders[0].trained_now, null);
+});
+
+test("#6027: slot ranges and riders still waiting for their race", () => {
+  assert.equal(formatSlotRange([4, 1, 2, 3]), "1-4");
+  assert.equal(formatSlotRange([1]), "1");
+  assert.equal(formatSlotRange([1, 3]), "1, 3");
+  assert.equal(formatSlotRange([]), "");
+  const pending = aggregateTrainingRuns([run(0), run(1)])[0];
+  assert.deepEqual(pending.trained_now_slots, [1, 2]);
+  const roster = [{ id: "r1" }, { id: "r2" }];
+  assert.deepEqual(waitingForRace(pending, roster), [{ id: "r2" }]);
+  assert.deepEqual(waitingForRace(pending, null), []);
+  const settled = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i)))[0];
+  assert.deepEqual(waitingForRace(settled, roster), []);
 });

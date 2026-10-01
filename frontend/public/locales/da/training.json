@@ -11,6 +11,8 @@
     "helper": "Låser dagens træning og tilmelding. Resultatet er det samme, som hvis du venter.",
     "locked": "Dagens træning og tilmelding er låst. Træthed og form opdateres ved aftenopgørelsen.",
     "afterRace": "Ryttere med løb i dag afregnes efter deres etape.",
+    "pressResult": "{trained, plural, one {# rytter trænet nu} other {# ryttere trænet nu}}, {waiting, plural, one {# venter på sit løb} other {# venter på deres løb}}.",
+    "pressResultAll": "{trained, plural, one {# rytter trænet nu.} other {# ryttere trænet nu.}}",
     "settled": "Dagens træning er afregnet.",
     "previousOpen": "Gårsdagens træning bliver stadig afregnet. Prøv igen om lidt.",
     "noRaceDay": "Der er ingen løbsdag i dag, så der er intet at låse.",
@@ -500,16 +502,22 @@
       "recorded": "Registrerede aktiviteter"
     },
     "note": {
+      "trainedNow": "Sidste løbsdag, træthed og form ved aftenens afregning.",
       "complete": "Alle datoens aktiviteter er med. Form og træthed er opgjort én gang for datoen.",
       "pending": "Datoen er ikke helt opgjort endnu. Endelig udvikling og ændringer i form og træthed afventer.",
       "reconciliation": "Nogle aktiviteter kræver efterkontrol. Manglende bevis vises aldrig som nul udvikling.",
       "recorded": "De registrerede aktiviteter er samlet for datoen. Ældre rapporter kan mangle fuld fremdrift eller bevis for afregningen."
     },
     "riderReceipts": "Rytterkvitteringer",
+    "trainedNow": "{count, plural, one {Trænet nu · løbsdag {range}} other {Trænet nu · løbsdage {range}}}",
+    "trainedNowCount": "Trænet nu",
+    "wholePointsSoFar": "Hele evnepoint indtil nu",
+    "waitingForRace": "Venter på sit løb",
     "activitiesRecorded": "Løbsdage registreret",
     "wholePoints": "Hele evnepoint",
     "development": "Dagens udvikling",
     "latestPassScore": "Seneste passcore",
+    "averagePassScore": "Gennemsnitlig passcore",
     "fatigue": "Træthed",
     "form": "Form",
     "race": "Løb",
@@ -519,7 +527,12 @@
     "raceDay": "Løbsdag {day}",
     "activity": "Aktivitet {n}",
     "pointContribution": "+{percent}% af et evnepoint",
-    "progressUnavailable": "Detaljeret fremdrift mangler",
+    "progressUnavailable": "Vises efter næste træningsdag",
+    "expandAll": "Fold alle ud",
+    "collapseAll": "Fold alle sammen",
+    "sortLabel": "Sortér ryttere",
+    "sortFirstName": "Fornavn",
+    "sortLastName": "Efternavn",
     "previousSeason": "Tidligere sæson",
     "change": "{from} til {to}"
   },
@@ -532,6 +545,15 @@
     "aria": "Træthed i aften: ca. {value}. {band}",
     "ariaSettled": "Træthed i aften: {value}. {band}",
     "teamLabel": "Træthed i aften, højest"
+  },
+  "oneTap": {
+    "choice_rest": "Hvile",
+    "choice_recovery": "Restitution",
+    "choice_session": "Program",
+    "groupAria": "I dag for {name}",
+    "approx": "~{value}",
+    "stageToday": "etape i dag",
+    "locked": "I dag er låst efter Træn nu."
   },
   "groups": {
     "section_groups": "Grupper",

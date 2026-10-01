@@ -207,3 +207,12 @@ test("#5645 startfelt: en committet 16-årig junior-entry starter (ejer 24/9: in
   assert.ok(ids.includes("t1-j16-0"), "16-årig junior-entry skal starte — trup-medlemskab er hele kravet (ejer 24/9)");
   for (let i = 0; i < 6; i++) assert.ok(ids.includes(`t1-j17-${i}`));
 });
+
+// #5944: løbstidens redning springer en U23-trup sat til "Train only" over.
+test("#5944 autofyld: Train only-trup reddes ikke ind i U23-feltet", async () => {
+  const state = youthState();
+  state.team_youth_race_opt_outs = [{ team_id: "t1", squad: "u23" }];
+  const race = { id: "raceU", race_type: "single", season_id: "s1", league_division_id: 10, squad: "u23" };
+  const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false });
+  assert.equal(entrants.filter((e) => e.team_id === "t1").length, 0);
+});

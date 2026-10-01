@@ -116,6 +116,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
+import { loadTrainNowLockedTeamIdsForRace } from "./trainNowLock.js"; // #6006
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
@@ -153,6 +154,7 @@ import {
 // (mellemsprint/KOM-konkurrencer + bonussekunder). Kaldes med SAMME seed som
 // simulateStage; motoren selv læser aldrig rutefelterne (bit-identisk).
 import { computePassages } from "./racePassages.js";
+import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 
 // #1995: flush parkerede holdskifter (pending_team_id → team_id) når et etapeløb
 // er finaliseret. Idempotent → sikker ved recovery-genkørsel (bevidst UDEN
@@ -1238,6 +1240,9 @@ export async function fillMissingTeamEntries({
   // forsvinder af sig selv i samme øjeblik spilleren udtager manuelt eller selv beder
   // om auto-fill, så tilstanden er altid spillerens egen og altid omgørlig.
   const clearedTeams = await loadClearedTeamIds({ supabase, raceId: race.id });
+  // #6006: et "Train now"-tryk paa en af loebets datoer afgoer dagen for holdet (I3):
+  // assistenten maa aldrig tilfoeje en rytter bagefter (en loebsdag = loeb ELLER traening, #5267).
+  const trainNowLockedTeams = await loadTrainNowLockedTeamIdsForRace({ supabase, raceId: race.id });
 
   // #1688 pulje-filter: kun hold i løbets pulje (når løbet har en). NB: DB-eq på
   // league_division_id kunne gøre dette server-side, men selectInChunks-/teams-stien
@@ -1247,12 +1252,15 @@ export async function fillMissingTeamEntries({
   const drainingEnabled = await isAiTeamRetireEnabled(supabase);
   let eligibleTeams = (teams || []).filter(
     (t) => !t.is_frozen && !(drainingEnabled && t.is_ai && t.pending_removal_at) && !teamsAtOrAboveFloor.has(t.id)
-      && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
+      && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id) && !trainNowLockedTeams.has(t.id)
   );
   if (isYouthRace) {
     // #5645: holdets U23-/juniorpulje, ikke seniorpuljen. Et hold uden pulje for
     // truppen, eller et ungdomsløb uden pulje, giver intet felt (fejl lukket).
     eligibleTeams = eligibleTeams.filter((t) => teamInRaceSquadPool({ team: t, race }));
+    // #5944: en trup sat til "Train only" reddes aldrig ind i feltet.
+    const trainOnlyKeys = eligibleTeams.length ? await loadOptedOutKeys(supabase, { teamIds: eligibleTeams.map((t) => t.id) }) : new Set();
+    eligibleTeams = eligibleTeams.filter((t) => !trainOnlyKeys.has(optOutKey(t.id, raceSquad)));
   } else if (racePoolId != null) {
     eligibleTeams = eligibleTeams.filter((t) => t.league_division_id === racePoolId);
   }
