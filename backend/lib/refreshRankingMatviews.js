@@ -53,8 +53,8 @@
 // Derfor tre indgange:
 //   - refreshRankingMatviewsSafe: ubetinget og straks (recovery, repair-scripts).
 //   - refreshRankingMatviewsGated (10-min cron): springer over ("deferred") mens
-//     training_date_work for i dag (Copenhagen, fra kl. 20) har pending/partial-
-//     rækker. Loft: efter MAX_DEFER_MS i træk refreshes alligevel, så en afregning
+//     training_date_work for i dag (Copenhagen, fra kl. 20; efter midnat gårsdagens
+//     dato indtil kl. 03) har pending/partial-rækker. Loft: efter MAX_DEFER_MS i træk refreshes alligevel, så en afregning
 //     der hænger (fx venter til deadline kl. 02) ikke fryser ranglisten.
 //   - requestRankingMatviewRefresh (løbsfinalisering): gated + samlet, så flere løb
 //     der slutter inden for samme vindue giver én refresh i stedet for én pr. løb.
@@ -64,6 +64,7 @@
 import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
 
 export const SETTLEMENT_WINDOW_START_HOUR = 20;
+export const SETTLEMENT_OVERNIGHT_END_HOUR = 3;
 export const MAX_DEFER_MS = 20 * 60 * 1000;
 export const COALESCE_WINDOW_MS = 60 * 1000;
 
@@ -132,15 +133,24 @@ export async function refreshRankingMatviewsSafe(supabase, { captureExceptionFn 
 
 // Sand når dagens (Copenhagen) træningsafregning stadig har hold i gang. Kaster
 // ved opslagsfejl, så kalderen selv kan vælge fail-safe (refresh som før).
-export async function isTrainingSettlementInProgress(supabase, { now = new Date() } = {}) {
+export async function isTrainingSettlementInProgress(supabase, { now = new Date(), dates = [copenhagenDateString(now)] } = {}) {
   const { data, error } = await supabase
     .from("training_date_work")
     .select("status")
-    .eq("tick_date", copenhagenDateString(now))
+    .in("tick_date", dates)
     .in("status", ["pending", "partial"])
     .limit(1);
   if (error) throw new Error(error.message);
   return (data?.length ?? 0) > 0;
+}
+
+// Hvilke træningsdatoer der kan være under afregning nu: dagens fra kl. 20, og
+// gårsdagens efter midnat indtil afregningsfristen (kl. 02, + en times margen).
+export function settlementDatesToCheck(now = new Date()) {
+  const hour = copenhagenHour(now);
+  if (hour >= SETTLEMENT_WINDOW_START_HOUR) return [copenhagenDateString(now)];
+  if (hour < SETTLEMENT_OVERNIGHT_END_HOUR) return [copenhagenDateString(new Date(now.getTime() - 12 * 3600 * 1000))];
+  return [];
 }
 
 let deferredSinceMs = null;
@@ -156,9 +166,10 @@ export async function refreshRankingMatviewsGated(
   { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
 ) {
   let settling = false;
-  if (copenhagenHour(now) >= SETTLEMENT_WINDOW_START_HOUR) {
+  const dates = settlementDatesToCheck(now);
+  if (dates.length) {
     try {
-      settling = await isTrainingSettlementInProgress(supabase, { now });
+      settling = await isTrainingSettlementInProgress(supabase, { now, dates });
     } catch (err) {
       // best-effort: fail-safe, uden statusopslag refreshes som før #5911.
       logger.warn?.(`⚠️  ranking refresh: training status lookup failed, refreshing anyway: ${err.message}`);

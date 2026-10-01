@@ -47,9 +47,9 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = 
           in(col, vals) { q.filters.push(["in", col, vals]); return b; },
           async limit() {
             if (workError) return { data: null, error: { message: workError } };
-            const tick = q.filters.find((f) => f[0] === "eq" && f[1] === "tick_date")?.[2];
+            const ticks = q.filters.find((f) => f[0] === "in" && f[1] === "tick_date")?.[2] ?? [];
             const statuses = q.filters.find((f) => f[0] === "in" && f[1] === "status")?.[2] ?? [];
-            return { data: workRows.filter((r) => r.tick_date === tick && statuses.includes(r.status)).slice(0, 1), error: null };
+            return { data: workRows.filter((r) => ticks.includes(r.tick_date) && statuses.includes(r.status)).slice(0, 1), error: null };
           },
         };
         return b;
@@ -237,9 +237,23 @@ test("#5911 gate — dagens afregning har pending-hold kl. 20.30: refresh holdes
   assert.equal(result, "deferred");
   assert.deepEqual(supabase.rpcCalls, []);
   assert.deepEqual(supabase.workQueries[0].filters, [
-    ["eq", "tick_date", "2026-10-01"],
+    ["in", "tick_date", ["2026-10-01"]],
     ["in", "status", ["pending", "partial"]],
   ]);
+});
+
+test("#5911 gate — efter midnat gater gårsdagens uafsluttede afregning indtil kl. 03", async () => {
+  __resetRankingRefreshStateForTests();
+  const rows = [{ tick_date: "2026-10-01", status: "partial" }];
+  const night = new Date("2026-10-01T23:30:00Z"); // 01:30 Copenhagen 2/10
+  const supabase = createMockSupabase({ workRows: rows });
+  assert.equal(await refreshRankingMatviewsGated(supabase, { now: night, clock: () => 0, logger: quietLogger }), "deferred");
+  assert.deepEqual(supabase.workQueries[0].filters[0], ["in", "tick_date", ["2026-10-01"]]);
+  // Kl. 03 er vinduet lukket: ingen opslag, refresh som normalt.
+  const morning = new Date("2026-10-02T01:00:00Z"); // 03:00 Copenhagen
+  const later = createMockSupabase({ workRows: rows });
+  assert.equal(await refreshRankingMatviewsGated(later, { now: morning, logger: quietLogger }), true);
+  assert.equal(later.workQueries.length, 0);
 });
 
 test("#5911 gate — partial tæller også som igangværende afregning", async () => {
