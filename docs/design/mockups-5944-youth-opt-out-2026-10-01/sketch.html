@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>#5944 sketch</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--card:#fffdf8;--line:#e3ddd0;--t1:#1c1c1e;--t2:#5d5a54;--t3:#8c877e;--gold:#c9a227;--goldt:#8a6d12;--warn:#b4531b;--warnbg:#fbf1e9;--ink:#141a2e}
+*{box-sizing:border-box}body{margin:0;background:#151a24;font-family:'DM Sans',system-ui,sans-serif;color:var(--t1);padding:32px;width:1720px}
+h1{font-family:'Inter Tight';color:#fff;font-size:28px;margin:0 0 4px}.sub{color:#b9bfcc;font-size:14px;margin:0 0 24px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.col h2{color:#fff;font-family:'Inter Tight';font-size:17px;margin:0 0 10px}.col h2 span{color:#e8c547}
+.page{background:var(--bg);border-radius:5px;padding:20px 22px;position:relative}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:14px}
+.ph .t{font-family:'Inter Tight';font-weight:700;font-size:20px}.ph .s{font-size:12.5px;color:var(--t2);margin-top:3px}
+.tabs{display:flex;gap:20px;font-size:13px;color:var(--t2);margin:12px 0 14px;border-bottom:1px solid var(--line)}
+.tabs div{padding:0 0 8px}.tabs .on{color:var(--goldt);border-bottom:2px solid var(--gold);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;font-size:12.5px;background:var(--card)}
+.seg div{padding:6px 11px;color:var(--t2)}.seg .sel{background:#f3ead0;color:var(--goldt);font-weight:600}
+.lbl{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;text-align:right}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px}
+.row{display:grid;grid-template-columns:1.6fr .5fr .5fr 1.2fr;padding:9px 14px;border-top:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}
+.row.h{border-top:none;font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.muted{color:var(--t3)}
+.note{display:flex;gap:10px;align-items:flex-start;background:var(--warnbg);border:1px solid #efd6c3;border-radius:5px;padding:10px 12px;font-size:13px;margin-bottom:12px;color:#5a3216}
+.note svg{flex:none;margin-top:1px}
+.pin{position:absolute;width:24px;height:24px;border-radius:50%;background:#e8c547;color:#141a2e;font:700 13px 'Inter Tight';display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #151a24}
+.legend{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;color:#d7dbe4;font-size:14px;line-height:1.45}
+.legend b{color:#e8c547;margin-right:6px}
+.mob{display:flex;gap:24px;margin-top:22px;align-items:flex-start}
+.phone{width:390px;background:var(--bg);border-radius:5px;padding:16px;position:relative}
+.cap{color:#b9bfcc;font-size:12.5px;margin:6px 0 0}
+.q{color:#fff;background:#1f2636;border:1px solid #2c3550;border-radius:5px;padding:14px 16px;font-size:14px;line-height:1.5;flex:1}
+.q b{color:#e8c547}
+</style></head><body>
+<h1>#5944 · Opt out of U23/Junior races per squad</h1>
+<p class="sub">Sketch, not final UI. U23 squad page (/squads/u23) at 1280 px and phone at 390 px. Fictional team and race data shaped like Season 4.</p>
+<div class="cols">
+ <div class="col"><h2>TODAY · no way to opt out</h2>
+  <div class="page">
+   <div class="ph"><div><div class="t">Nordlys CK · U23</div><div class="s">12 riders · Pool 3</div></div></div>
+   <div class="tabs"><div class="on">Riders</div><div>Races</div><div>Standings</div></div>
+   <div class="card">
+    <div class="row h"><div>Next U23 races</div><div>Day</div><div>Riders</div><div>Entered by</div></div>
+    <div class="row"><div>GP Espoirs Liège</div><div>22</div><div>6</div><div class="muted">Assistant</div></div>
+    <div class="row"><div>Ronde van Vlaanderen U23</div><div>24</div><div>6</div><div class="muted">Assistant</div></div>
+    <div class="row"><div>Tour de l'Avenir · stage 1</div><div>27</div><div>6</div><div class="muted">Assistant</div></div>
+   </div>
+   <p style="font-size:12.5px;color:var(--t2);margin:12px 2px 0">The assistant enters the squad automatically. The only way to stop it is to empty the squad.</p>
+  </div>
+ </div>
+ <div class="col"><h2><span>RECOMMENDED</span> · one choice in the squad header</h2>
+  <div class="page">
+   <span class="pin" style="right:-10px;top:14px">1</span>
+   <div class="ph"><div><div class="t">Nordlys CK · U23</div><div class="s">12 riders · Pool 3</div></div>
+    <div><div class="lbl">Races</div><div class="seg"><div>Enter races</div><div class="sel">Train only</div></div></div></div>
+   <div class="tabs"><div class="on">Riders</div><div>Races</div><div>Standings</div></div>
+   <span class="pin" style="left:-10px;top:120px">2</span>
+   <div class="note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+    <div><b>Your U23 squad trains instead of racing.</b> The assistant won't enter it, and you can't enter it by hand. Takes effect from day 22, the first race day that isn't locked yet.</div></div>
+   <span class="pin" style="left:-10px;top:200px">3</span>
+   <div class="card">
+    <div class="row h"><div>Next U23 races</div><div>Day</div><div>Riders</div><div>Status</div></div>
+    <div class="row"><div>GP Espoirs Liège</div><div>22</div><div class="muted">0</div><div class="muted">Not entered · training</div></div>
+    <div class="row"><div>Ronde van Vlaanderen U23</div><div>24</div><div class="muted">0</div><div class="muted">Not entered · training</div></div>
+    <div class="row"><div>Tour de l'Avenir · stage 1</div><div>27</div><div class="muted">0</div><div class="muted">Not entered · training</div></div>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="mob">
+ <div><div class="phone">
+  <span class="pin" style="right:-10px;top:12px">1</span>
+  <div style="font:700 18px 'Inter Tight'">Nordlys CK · U23</div><div style="font-size:12px;color:var(--t2);margin:2px 0 10px">12 riders · Pool 3</div>
+  <div class="lbl" style="text-align:left">Races</div><div class="seg" style="display:flex"><div style="flex:1;text-align:center">Enter races</div><div class="sel" style="flex:1;text-align:center">Train only</div></div>
+  <div class="note" style="margin-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div><b>Your U23 squad trains instead of racing.</b> From day 22.</div></div>
+ </div><p class="cap">Phone 390 px: the choice spans the full width under the title.</p></div>
+ <div class="legend" style="flex:1;margin-top:0">
+  <div><b>1</b>One choice per squad, in the U23 page header and again on the Junior page: <i>Enter races / Train only</i>. Default: <i>Enter races</i>, as today. No new page or card.</div>
+  <div><b>2</b>A short note while the squad is set to train only. Copy follows TONE_OF_VOICE: no "we", and a link to Help.</div>
+  <div><b>3</b>Upcoming youth races show "Not entered · training" instead of being hidden, so the player sees what they are skipping.</div>
+  <div><b>Rules</b> Changing the choice only affects race days that aren't locked. Riders who were entered for a locked day keep that race. Turning races back on lets the assistant enter the squad from the next unlocked day. Seniors are not affected. Riders keep their training on every day without a race (the race-day rule, #5267).</div>
+ </div>
+</div>
+</body></html>
