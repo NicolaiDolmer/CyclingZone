@@ -5,39 +5,22 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // #5805 (ejer 26/9): på telefonen står sorteringen ØVERST ved træningstabellen,
-// ikke under den. Den bor i tabellens egen kolonne-header (rytter-kolonnen), så
-// den ikke tilføjer en række over tabellen: mindst 8 ryttere skal stadig stå på
-// første skærm (#5485, e2e 5485-training-overview-tabs). Kontrakten her:
-// kontrollen sendes i sortSlot (header-udgaven), TrainingMobileToday sender den
-// videre som tabellens riderHeader, og tabellen tegner den i <thead>.
+// ikke under den. Kontrakten her: kontrollen sendes i sortSlot (header-udgaven)
+// til telefonens række-liste (TodayRowsMobile), som tegner den før rækkerne.
+// #6030: TrainingMobileToday/TrainingMobileRoster (training_program_cells off)
+// er slettet; telefonen tegner altid TodayRowsMobile.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const page = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
-const mobileDir = join(__dirname, "../components/training/mobile");
-const today = readFileSync(join(mobileDir, "TrainingMobileToday.tsx"), "utf8");
-const roster = readFileSync(join(mobileDir, "TrainingMobileRoster.tsx"), "utf8");
+const rows = readFileSync(join(__dirname, "../components/training/TodayRowMobile.tsx"), "utf8");
 
 test("#5805 mobil-sorteringen sendes i sortSlot som header-udgaven, ikke i assistantSlot", () => {
   assert.match(page, /sortSlot=\{\s*<RosterMobileSortControl\s+header\b/);
   assert.doesNotMatch(page, /assistantSlot=\{[^}]*<RosterMobileSortControl/);
 });
 
-test("#5805 TrainingMobileToday lægger sortSlot i tabellens header, ikke som egen række", () => {
-  assert.match(today, /riderHeader=\{sortInHeader \? sortSlot : null\}/);
-  // Header-pladsen er reglen med én løbsdags-kolonne (prod i dag). Kun med
-  // flere kolonner, hvor navnekolonnen er for smal, står den som egen række;
-  // en ubetinget række over tabellen kostede to ryttere på første skærm
-  // (CI på PR #5810: 6 i stedet for 8).
-  assert.match(today, /const sortInHeader = columns\.length === 1;/);
-  assert.match(today, /\{!sortInHeader && sortSlot\}/);
-  assert.doesNotMatch(today, /^\s*\{sortSlot\}\s*$/m);
-});
-
-test("#5805 TrainingMobileRoster tegner riderHeader i <thead> før rækkerne", () => {
-  // Kun selve tabel-markuppen: filens kommentar-hoved nævner også <tbody>.
-  const markup = roster.slice(roster.indexOf("<table "));
-  const theadAt = markup.indexOf("<thead>");
-  const headerAt = markup.indexOf("{riderHeader ?? t(\"colRider\")}");
-  const tbodyAt = markup.indexOf("<tbody>");
-  assert.ok(theadAt > -1 && headerAt > -1 && tbodyAt > -1);
-  assert.ok(theadAt < headerAt && headerAt < tbodyAt, "sorteringen skal stå i tabellens header");
+test("#5805 TodayRowsMobile tegner sortSlot før rækkerne", () => {
+  const slotAt = rows.indexOf("{sortSlot}");
+  const mapAt = rows.indexOf("riders.map(");
+  assert.ok(slotAt > -1 && mapAt > -1, "sortSlot og rækkerne skal findes");
+  assert.ok(slotAt < mapAt, "sorteringen skal stå over rækkerne");
 });

@@ -72,10 +72,11 @@ test("TrainingPage: roster-row focus/intensity/clear handlers await setPlan/clea
   assert.match(trainingPage, /async function handleClearPlan\(riderId\)/);
   assert.match(trainingPage, /const result = await setPlan\(riderId, dayType, session\)/);
   assert.match(trainingPage, /const result = await clearPlan\(riderId\)/);
-  // #3762: the intensity buttons became DAY buttons (intensity is a property of
-  // the session now, not a free choice). They still go through the wrapper.
-  assert.match(trainingPage, /onClick=\{\(\) => handleDayQuickChange\(rider\.id, isSession \? "session" : k, plan\.focus\)\}/);
-  assert.match(trainingPage, /planActionError\?\.riderId === rider\.id/);
+  // #3762/#6030: the day choice (TrainingDaySelect on desktop) still goes
+  // through the wrapper, and its error is rendered on the same row.
+  assert.match(trainingPage, /onChoose=\{\(choice\) => handleDayChoice\(riderId, choice\)\}/);
+  assert.match(trainingPage, /return handlePlanChange\(riderId, dayType, session\);/);
+  assert.match(trainingPage, /planActionError\?\.riderId === riderId/);
 
   // #3721: the focus <select> + its clear button became the focus PANEL, so
   // set/clear now route through handleFocusPanelSave/handleFocusPanelClear.
