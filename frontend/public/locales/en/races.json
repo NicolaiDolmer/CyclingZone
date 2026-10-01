@@ -557,6 +557,7 @@
       "selection_wrong_pool": "You can only enter races in your own division.",
       "selection_withdrawn": "You've withdrawn from this race, so a lineup can't be saved for it.",
       "selection_train_now_locked": "You pressed Train now today, so today's entries are locked.",
+      "selection_youth_squad_train_only": "This squad is set to Train only. Switch it to Enter races on the squad page to enter it.",
       "selection_duplicate_race": "Couldn't save: the same race was included twice. Try again.",
       "selection_bulk_too_large": "You can save at most {max} changed races at once. Save some now, then the rest.",
       "race_not_found": "This race no longer exists. Refresh and try again.",

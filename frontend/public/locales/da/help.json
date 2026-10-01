@@ -1258,6 +1258,10 @@
         "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
         "text": "Ja, fra sæson 4. Hver trup kører på sin egen kalender med sin egen stilling, på samme løbsmotor som senior. Der er ingen præmiepenge i ungdomsløb til at starte med."
       },
+      "trainOnly": {
+        "title": "Kan en ungdomstrup springe løbene over og kun træne?",
+        "text": "Ja. Sæt Løb til Kun træning på siden for U23-holdet eller Juniorholdet. Så tilmelder assistenten ikke truppen, og du kan ikke selv tilmelde den. Valget gælder fra den næste løbsdag, der ikke er låst: ryttere, der allerede er tilmeldt en låst dag, kører det løb, og tilmeldinger til senere løb fjernes. Rytterne træner hver dag uden løb. Skifter du tilbage til Kør løb, tilmelder assistenten truppen igen fra den næste ulåste løbsdag. Dit seniorhold påvirkes ikke."
+      },
       "noUpkeepAtSeasonChange": {
         "title": "Hvad kostede mine ungdomstrupper ved dette sæsonskifte?",
         "text": "Ingenting. Dine U23- og juniorryttere kostede ingen drift ved skiftet fra sæson 3 til sæson 4. Hvad de kommer til at koste i drift fra sæson 4 og frem, er endnu ikke besluttet."

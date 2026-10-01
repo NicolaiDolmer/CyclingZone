@@ -26,7 +26,7 @@
 //   • Development har én linje om hvad fanen viser.
 //
 // Hard rule 31: nye frontend-filer skrives i .ts/.tsx.
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useScouting } from "../lib/useScouting.js";
@@ -44,6 +44,8 @@ import YouthSquadTable from "../components/squad/YouthSquadTable.tsx";
 import YouthStandingsTab from "../components/squad/YouthStandingsTab.tsx";
 import { YouthSquadEmptyState } from "../components/squad/SquadEmptyStates.tsx";
 import YouthRacesTab from "../components/squad/YouthRacesTab.tsx";
+import { YouthRaceOptOutControl, YouthRaceOptOutError, YouthRaceOptOutNote } from "../components/squad/YouthRaceOptOut.tsx";
+import { useYouthRaceOptOut } from "../components/squad/YouthRaceOptOutState.ts";
 
 type SquadTabKey = "squad" | "calendar" | "results" | "standings" | "development" | "stats";
 // HANDOFF-rækkefølgen (#5519) + Stats sidst, efter Development som på My Team.
@@ -63,6 +65,14 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
   const seasonYear = useActiveSeasonYear();
   const { status, team, riders, cap, reload } = useYouthSquad(squad);
   const [tab, setTab] = useState<SquadTabKey>("squad");
+  // #5944: løbsvalget; et gemt skift genindlæser kalenderen (racesVersion).
+  const [racesVersion, setRacesVersion] = useState(0);
+  const bumpRaces = useCallback(() => setRacesVersion((v) => v + 1), []);
+  const optOut = useYouthRaceOptOut(squad, bumpRaces);
+  const optOutControl = (variant: "header" | "mobile") => optOut.status === "ready" && (
+    <YouthRaceOptOutControl variant={variant} trainOnly={optOut.trainOnly} saving={optOut.saving}
+      onChange={(mode) => { void optOut.setMode(mode); }} />
+  );
 
   if (status === "loading") return <PageLoader />;
   if (status === "disabled") return <Navigate to="/team" replace />;
@@ -85,7 +95,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
 
   return (
     <div className="max-w-[1600px] mx-auto" data-testid={`squad-page-${squad}`}>
-      <PageHeader title={title} subtitle={t(`page.subtitle.${squad}`)} />
+      <PageHeader title={title} subtitle={t(`page.subtitle.${squad}`)} actions={optOutControl("header")} />
 
       {status === "error" ? (
         <ErrorState
@@ -112,6 +122,12 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
               </>
             )}
           </div>
+
+          {optOutControl("mobile")}
+          {optOut.saveError && <YouthRaceOptOutError message={t("optOut.saveError")} />}
+          {optOut.status === "ready" && optOut.trainOnly && (
+            <YouthRaceOptOutNote squad={squad} effectiveFromDay={optOut.effectiveFromDay} />
+          )}
 
           <Tabs value={tab} onChange={(next) => setTab(next as SquadTabKey)} className="mb-5">
             <TabList label={t("tabs.ariaLabel")}>
@@ -146,7 +162,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             : <TeamStatsTab riders={riders} />)}
           {tab === "standings" && <YouthStandingsTab squad={squad} myTeamId={team?.id ?? null} />}
           {(tab === "calendar" || tab === "results") && (
-            <YouthRacesTab squad={squad} tab={tab} />
+            <YouthRacesTab key={racesVersion} squad={squad} tab={tab} trainOnly={optOut.trainOnly} />
           )}
         </>
       )}
