@@ -29,7 +29,7 @@
 
 import { isProOrFounder } from "./entitlement.js";
 import { captureException } from "./sentry.js";
-import { loadRaceDayHistory, mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
+import { loadRaceDayHistory } from "./riderDevelopmentReceipt.js";
 
 export function createProRiderHistoryHandler({ supabase }) {
   return async function proRiderHistory(req, res) {
@@ -50,8 +50,13 @@ export function createProRiderHistoryHandler({ supabase }) {
       if (error) throw new Error(error.message);
       // #5947: kalenderdags-raekken fryser paa datoens foerste gevinst-tick; den
       // seneste loebsdag pr. dato er saesonens sande slut-tilstand.
+      // Noeglet er saesonen, ikke datoen: paa saesonskifte-datoen deler to saesoner
+      // samme dato, og en dato-fletning ville kassere den gamle saesons slut-raekke.
+      // Kalenderraekken (game_day -1) sorteres foer datoens loebsdage.
       const raceDayRows = await loadRaceDayHistory(supabase, req.params.riderId);
-      const rows = mergeDevelopmentSnapshots(data ?? [], raceDayRows, { limit: Infinity });
+      const rows = [...(data ?? []), ...raceDayRows].sort((a, b) =>
+        String(a.snapshot_date).localeCompare(String(b.snapshot_date))
+        || (a.game_day ?? -1) - (b.game_day ?? -1));
 
       const bySeason = new Map();
       for (const row of rows) {

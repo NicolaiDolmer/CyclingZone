@@ -100,3 +100,22 @@ test("#5947 proRiderHistory: season end uses the last race day of the date, not 
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.deepEqual(r.body.seasons, [{ season_number: 4, abilities: { climbing: 52 } }]);
 });
+
+test("#5947 proRiderHistory: a season-transition date shared by two seasons keeps both season ends", async () => {
+  const sub = { status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: false };
+  const historyRows = [
+    { snapshot_date: "2026-09-26", season_number: 3, source: "daily_training", abilities: { climbing: 48 } },
+    { snapshot_date: "2026-09-27", season_number: 3, source: "daily_training", abilities: { climbing: 49 } },
+    { snapshot_date: "2026-09-27", season_number: 4, source: "season_transition", abilities: { climbing: 50 } },
+  ];
+  const raceDayRows = [
+    { snapshot_date: "2026-09-27", season_number: 3, source: "daily_training", game_day: 139, abilities: { climbing: 49 } },
+  ];
+  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows, raceDayRows }) });
+  const r = res();
+  await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+  assert.deepEqual(r.body.seasons, [
+    { season_number: 3, abilities: { climbing: 49 } },
+    { season_number: 4, abilities: { climbing: 50 } },
+  ]);
+});

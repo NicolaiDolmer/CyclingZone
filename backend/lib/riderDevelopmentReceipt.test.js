@@ -45,13 +45,14 @@ test("#5947: history shows each date's end state, so no gain is missing or shift
   }
 });
 
-test("#5947: merge without a limit keeps every date (Pro season history)", () => {
+test("#5947: merged history keeps the newest 200 dates", () => {
   const rows = Array.from({ length: 250 }, (_, i) => ({
     snapshot_date: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10),
     season_number: 1, source: "daily_training", abilities: { tempo: i },
   }));
-  assert.equal(receipt.mergeDevelopmentSnapshots(rows, []).length, 200);
-  assert.equal(receipt.mergeDevelopmentSnapshots(rows, [], { limit: Infinity }).length, 250);
+  const merged = receipt.mergeDevelopmentSnapshots(rows, []);
+  assert.equal(merged.length, 200);
+  assert.equal(merged.at(-1).abilities.tempo, 249);
 });
 
 test("development history takes the last recorded race-day state, preserving season transitions", () => {

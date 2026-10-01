@@ -10,7 +10,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 const priority = { daily_training: 3, race_development: 3, season_transition: 2, baseline: 1 };
 export const DEVELOPMENT_HISTORY_LIMIT = 200;
 
-export function mergeDevelopmentSnapshots(calendarRows, raceDayRows, { limit = DEVELOPMENT_HISTORY_LIMIT } = {}) {
+export function mergeDevelopmentSnapshots(calendarRows, raceDayRows) {
   const byDate = new Map();
   for (const row of [...(calendarRows ?? []), ...(raceDayRows ?? [])]) {
     if (!row?.snapshot_date || !row.abilities) continue;
@@ -21,8 +21,8 @@ export function mergeDevelopmentSnapshots(calendarRows, raceDayRows, { limit = D
         || (row.game_day ?? -1) - (previous.game_day ?? -1);
     if (difference > 0) byDate.set(row.snapshot_date, row);
   }
-  const merged = [...byDate.values()].sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date));
-  return Number.isFinite(limit) ? merged.slice(-limit) : merged;
+  return [...byDate.values()].sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date))
+    .slice(-DEVELOPMENT_HISTORY_LIMIT);
 }
 
 // Loebsdags-snapshots for en rytter, valgfrit fra en dato. Bevidst uden flag-gate:
