@@ -136,7 +136,7 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
           />
           <span>{t("fatigueRule.teamRuleAbove")}</span>
         </label>
-        <span className="flex min-w-0 flex-1 items-center gap-2 text-[13px] text-cz-1 sm:flex-none">
+        <span className="flex min-w-0 basis-full items-center gap-2 text-[13px] text-cz-1 sm:basis-auto">
           <input
             type="number"
             inputMode="numeric"
@@ -167,7 +167,7 @@ export default function FatigueRulePanel({ rules, className = "" }: { rules: Fat
           <span className="flex-none">{t("fatigueRule.teamRuleInstead")}</span>
         </span>
         {limitOn && (
-          <span className="ms-auto font-data text-2xs tabular-nums text-cz-3" data-testid="fatigue-rule-over-now">
+          <span className="basis-full font-data text-2xs tabular-nums text-cz-3 sm:ms-auto sm:basis-auto" data-testid="fatigue-rule-over-now">
             {t("fatigueRule.overNow", { count: overNow })}
           </span>
         )}
