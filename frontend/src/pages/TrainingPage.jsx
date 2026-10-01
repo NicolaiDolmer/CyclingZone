@@ -5,7 +5,7 @@
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
@@ -34,11 +34,8 @@ import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptR
 import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import FocusPanel from "../components/training/FocusPanel.jsx";
-import TrainingHistory from "../components/training/TrainingHistory.jsx";
-import TrainingMoment from "../components/training/TrainingMoment.jsx";
 import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";
 import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions, acceptableSuggestionIds, acceptableSelectionIds } from "../lib/assistantTrainingSuggestions.js";
-import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import { readTour } from "../lib/onboardingTour.js";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
@@ -55,18 +52,11 @@ import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
 import TrainingOverview from "../components/training/TrainingOverview.tsx";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
-import FatigueRulePanel from "../components/training/FatigueRulePanel.tsx"; // #4854
-// #5932: Program-fanens tre under-faner (ejer-godkendt mockup 1/10).
-import TrainingPlanCard from "../components/training/TrainingPlanCard.tsx";
-import TrainingProgramList from "../components/training/TrainingProgramList.tsx";
 import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
 import { useFatigueRules } from "../components/training/useFatigueRules.ts";
 import { Segmented } from "../components/ui/Segmented.jsx";
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
 // #6000: traeningsgrupper (beta, egne filer, minimal indsaettelse her).
-import TrainingGroupsPlan from "../components/training/TrainingGroupsPlan.tsx";
-import TrainingGroupDialog from "../components/training/groups/TrainingGroupDialog.tsx";
-import GroupFatigueExceptions from "../components/training/groups/GroupFatigueExceptions.tsx";
 import { useTrainingGroups } from "../components/training/groups/useTrainingGroups.ts";
 import { planForWithGroups, groupNameByRider, groupIdOf, groupValue, NEW_GROUP_VALUE } from "../components/training/groups/trainingGroupsModel.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
@@ -86,8 +76,32 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 // #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke.
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast } from "../components/training/todayRowModel.ts";
-// #6025: saesonens fremgang som trup-overblik i fanen Development.
-import SeasonOverview from "../components/training/SeasonOverview.jsx";
+// #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
+// (React.lazy), saa foerste visning af Today henter mindre. Fallback er den
+// kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
+// Een dynamisk import for alle fane-dele (trainingTabParts.js forklarer hvorfor).
+const loadTabParts = () => import("../components/training/trainingTabParts.js");
+const tabPart = (name) => lazy(() => loadTabParts().then((m) => ({ default: m[name] })));
+const TrainingPlanCard = tabPart("TrainingPlanCard");
+const TrainingProgramList = tabPart("TrainingProgramList");
+const FatigueRulePanel = tabPart("FatigueRulePanel");
+const TrainingGroupsPlan = tabPart("TrainingGroupsPlan");
+const TrainingGroupDialog = tabPart("TrainingGroupDialog");
+const GroupFatigueExceptions = tabPart("GroupFatigueExceptions");
+const SeasonOverview = tabPart("SeasonOverview");
+const DevelopmentGlyph = tabPart("DevelopmentGlyph");
+const TrainingHistory = tabPart("TrainingHistory");
+const TrainingMoment = tabPart("TrainingMoment");
+
+// Skelet mens en lazy fane hentes (samme markup som Development-fanens egen
+// indlaesning: Card + SkeletonLines).
+function TabFallback() {
+  return (
+    <Card className="p-5">
+      <SkeletonLines lines={10} />
+    </Card>
+  );
+}
 import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 
 // #3721: siden fik faner (Train today / Development / History), ?tab=-
@@ -2268,10 +2282,12 @@ export default function TrainingPage() {
           egen plan i ét gitter, valgt med "Plan for". Ingen nye API-kald:
           weekPlan/riderWeekPlans kommer fra useTraining som før. */}
       <TabPanel value="weekplan">
+        <Suspense fallback={<TabFallback />}>
         {/* #5932 (ejer-godkendt mockup 1/10): fanen har under-faner, et kort
             pr. under-fane. #6030: felterne er on for alle, saa den gamle
             ugeplan-fane uden under-faner er slettet. */}
         {renderProgramTab()}
+        </Suspense>
       </TabPanel>
 
       {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,
@@ -2282,6 +2298,7 @@ export default function TrainingPage() {
           spejder-fladerne) — egne ryttere er altid et bånd, så der er ingen
           scout-knap eller slots-tilstand at vise her. */}
       <TabPanel value="development">
+        <Suspense fallback={<TabFallback />}>
         {/* #6025 (ejer-valg A 1/10): saesonens fremgang staar oeverst her
             i stedet for i Today-tabellen. Samme tal og samme kvittering. */}
         {!ridersLoading && (
@@ -2385,16 +2402,19 @@ export default function TrainingPage() {
             </div>
           </Card>
         )}
+        </Suspense>
       </TabPanel>
 
       {/* #5485: Report samler dagens rapport og historikken (før fanen History).
           Gårsdagens kvittering, dagens historie og rapport-tabellen stod før
           øverst på Train today og skubbede truppen ned under folden. */}
       <TabPanel value="report">
+        <Suspense fallback={<TabFallback />}>
         {/* #6030: training_daily_receipt er on for alle (1/10); den gamle
             rapport-gren (legacy-tabellen + gaarsdagens fold-ud) er slettet. */}
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
+        </Suspense>
       </TabPanel>
       </Tabs>
 
