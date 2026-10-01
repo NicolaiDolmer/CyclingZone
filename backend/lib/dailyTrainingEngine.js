@@ -32,6 +32,9 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
+import {
+  loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
+} from "./trainingFatigueRules.ts"; // #4854/#5620
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -555,6 +558,12 @@ export async function runTeamTrainingDay({
   }
 
   const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
+  // #4854/#5620: spillerens EGNE regler (traethedsgraense + dagen efter en etape).
+  // Al logik bor i trainingFatigueRules.ts; hold uden regler = null = uaendret sti.
+  const fatigueRules = await loadTeamFatigueRules(supabase, teamId);
+  const stageYesterdayRiderIds = fatigueRules && programSlot === 0 && fatigueRules.anyAfterStage(riderIds)
+    ? await loadRiderIdsWithStageOnDate(supabase, { riderIds, previousDate: previousDateString(tickDate) })
+    : new Set();
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
@@ -616,6 +625,15 @@ export async function runTeamTrainingDay({
     });
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
+    // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
+    const fatigueRuleResult = fatigueRules ? applyFatigueRules({
+      program, rule: fatigueRules.forRider(rider.id), fatigueAtDateStart: Number(conditionBeforeDate.fatigue ?? 0),
+      slotIndex: programSlot, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
+    }) : null;
+    if (fatigueRuleResult?.stamp) {
+      program.focus = fatigueRuleResult.focus;
+      program.intensity = fatigueRuleResult.intensity;
+    }
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};
@@ -1076,6 +1094,11 @@ export async function runTeamTrainingDay({
       bound_race_day: boundToday,
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
+      // #4854: kun naar holdet har regler; stemplet kun naar programmet faktisk koertes.
+      ...(fatigueRuleResult ? {
+        fatigue_rule: fatigueRuleResult.stamp && !raceLoadToday && !unknownSlot && !injuredToday && !racedToday && !boundRestToday
+          ? fatigueRuleResult.stamp : null,
+      } : {}),
     });
   }
 
