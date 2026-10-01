@@ -27,7 +27,7 @@ import {
 } from "../../lib/trainingPrograms.ts";
 import type { ProgramsResult } from "./useTrainingPrograms.ts";
 import FatigueForecast from "./FatigueForecast.tsx";
-import type { ForecastEntry } from "./FatigueForecastData.ts";
+import type { ForecastEntry } from "./FatigueForecastModel.ts";
 
 export type ProgramRider = { id: string; name: string; type: string | null };
 

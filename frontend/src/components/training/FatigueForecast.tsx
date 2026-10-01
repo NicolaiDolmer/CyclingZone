@@ -10,7 +10,7 @@
 // farve), ingen ikoner.
 
 import { useTranslation } from "react-i18next";
-import { forecastTone, type ForecastEntry } from "./FatigueForecastData.ts";
+import { forecastTone, type ForecastEntry } from "./FatigueForecastModel.ts";
 
 const TONE_TEXT = { ok: "text-cz-success", warn: "text-cz-warning", risk: "text-cz-danger" } as const;
 const TONE_FILL = { ok: "bg-cz-success", warn: "bg-cz-warning", risk: "bg-cz-danger" } as const;
