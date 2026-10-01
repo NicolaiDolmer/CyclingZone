@@ -66,6 +66,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_day_intention_enabled", area: "race-day", label: "Løbsdags-intention" },
   { key: "race_stage_timeline", area: "race-day", label: "Etape-tidslinje" },
   { key: "race_day_development_enabled", area: "race-day", label: "Udvikling på løbsdage" },
+  // #5124: kun visning (frontend). Beta foerst, ejer 1/10.
+  { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -150,6 +152,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "youth_squad_pages",
   // #4854: HelpPage gater traethedsgraense-blokken paa dette flag.
   "training_fatigue_rules",
+  // #5124: SeasonMatrix vaelger mobilvisningen paa dette flag.
+  "season_matrix_mobile",
   // #6000: HelpPage gater traeningsgruppe-blokken paa dette flag.
   "training_groups",
 ]);

@@ -68,6 +68,19 @@ async function mockSelectionSeason(page, body = SEASON_MATRIX_BODY) {
   });
 }
 
+// #5124 (ejer 1/10): mobilvisningen ligger bag stadie-flaget
+// season_matrix_mobile. Beta-testerens svar fra GET /api/feature-flags.
+async function mockMobileFlag(page) {
+  await page.route("**/api/feature-flags**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return route.fulfill({
+      status: 200, contentType: "application/json", headers: corsHeaders(request),
+      body: JSON.stringify({ flags: { season_matrix_mobile: true } }),
+    });
+  });
+}
+
 test.describe("Sæsonmatrix (#1146)", () => {
   test.beforeEach(async ({ page }) => {
     await stabilizePage(page);
@@ -76,12 +89,13 @@ test.describe("Sæsonmatrix (#1146)", () => {
   });
 
   test("gitteret viser rytter-rækker, løbsdags-kolonner og en gemt udtagelse som ét sammenhængende spænd", async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await login(page);
     await page.goto("/planning?view=season");
 
     await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
-    await expect(page.getByText("Ada Pedersen")).toBeVisible();
-    await expect(page.getByText("Bo Madsen")).toBeVisible();
+    await expect(page.getByTestId("season-matrix-desktop").getByText("Ada Pedersen")).toBeVisible();
+    await expect(page.getByTestId("season-matrix-desktop").getByText("Bo Madsen")).toBeVisible();
 
     // #4217/#3470: Tour des Hauts Plateaux (gameDay 14-17, hviledag 16) er ÉT
     // sammenhængende spænd for Ada — findes som ét klikbart element med
@@ -97,6 +111,7 @@ test.describe("Sæsonmatrix (#1146)", () => {
   });
 
   test("celle-klik åbner en popover (ikke en klik-cyklus); vælger man en rolle, laves en kladde-ændring og 'Gem plan' vises", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await login(page);
     await page.goto("/planning?view=season");
     await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
@@ -124,6 +139,7 @@ test.describe("Sæsonmatrix (#1146)", () => {
   });
 
   test("flerløbs-dag (akse-konvertering, kontrakt #7): to løb der deler en kalenderdag vises som ADSKILTE kolonner — en tom celle peger entydigt på sit eget løb, ingen løbsvælger", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await mockSelectionSeason(page, MULTI_RACE_DAY_BODY); // LIFO-override af beforeEach's default body
     await login(page);
     await page.goto("/planning?view=season");
@@ -170,13 +186,16 @@ test.describe("Sæsonmatrix (#1146)", () => {
     await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(4);
   });
 
-  test("mobil 375px: vandret scroll + sticky rytter-kolonne, dag-kolonne-headeren har et tap-mål ≥24px", async ({ page }, testInfo) => {
+  // Flag fra (default: den generiske /api/**-fallback svarer {} paa
+  // GET /api/feature-flags): den fulde tabel, praecis som foer #5124.
+  test("mobil 375px (flag fra): vandret scroll + sticky rytter-kolonne, dag-kolonne-headeren har et tap-mål ≥24px", async ({ page }, testInfo) => {
     await login(page);
     await page.goto("/planning?view=season");
     await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
 
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
+    await expect(page.getByTestId("season-matrix-mobile")).toHaveCount(0);
 
     // Body scroller ALDRIG vandret (hård regel) — kun gitterets egen container gør.
     const bodyOverflowX = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
@@ -197,5 +216,81 @@ test.describe("Sæsonmatrix (#1146)", () => {
     expect(roleBox?.height ?? 0).toBeGreaterThanOrEqual(24);
 
     await page.screenshot({ path: evidenceShotPath(`pr-screens/1146-season-matrix-mobile-375-${testInfo.project.name}.png`), fullPage: false });
+  });
+
+  test("beta mobil 375px: ét løb, tre løbsdage, Før/Senere og cellevalg uden vandret scroll", async ({ page }, testInfo) => {
+    await mockMobileFlag(page);
+    await login(page);
+    await page.goto("/planning?view=season");
+    await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
+
+    const mobile = page.getByTestId("season-matrix-mobile");
+    await expect(mobile).toBeVisible();
+    await expect(page.getByTestId("season-matrix-desktop")).toBeHidden();
+    await mobile.getByLabel("Løb").selectOption("r2");
+    await expect(mobile.getByText("Dage 1-3 af 4")).toBeVisible();
+    await expect(mobile.getByRole("button", { name: "Før" })).toBeDisabled();
+    await mobile.getByRole("button", { name: "Senere" }).click();
+    await expect(mobile.getByText("Dage 2-4 af 4")).toBeVisible();
+    await expect(mobile.getByRole("button", { name: "Senere" })).toBeDisabled();
+    await expect(mobile.getByText("Dag 17")).toBeVisible();
+
+    // Hele siden og selve matrixen holder sig inden for telefonens bredde.
+    const bodyOverflowX = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
+    expect(bodyOverflowX).toBe(true);
+    const matrixOverflowX = await mobile.evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
+    expect(matrixOverflowX).toBe(true);
+
+    const dayHeaderButton = mobile.locator("thead button").first();
+    const box = await dayHeaderButton.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+
+    // #4323: cellepopoverens rollevalg er også tap-mål, ikke kun gitterets egne
+    // celler — samme ≥24px-regel gælder.
+    await mobile.getByLabel("Løb").selectOption("r3");
+    const emptyCell = mobile.getByTitle(/Cecilie Holm, Giro Veneto/);
+    await emptyCell.click();
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+    const roleOption = popover.getByRole("option").first();
+    const roleBox = await roleOption.boundingBox();
+    expect(roleBox?.height ?? 0).toBeGreaterThanOrEqual(24);
+
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-season-matrix-beta-mobile-375-${testInfo.project.name}.png`), fullPage: false });
+  });
+
+  test("#5124 beta mobil: overlap-løb vælger egen celle, bevarer ugemt vagt og gemmer ét samlet diff", async ({ page }) => {
+    await mockSelectionSeason(page, MULTI_RACE_DAY_BODY);
+    let savedChanges = null;
+    await page.route("**/api/races/selection/bulk", async (route) => {
+      savedChanges = route.request().postDataJSON()?.changes;
+      await route.fulfill({ status: 200, contentType: "application/json", headers: corsHeaders(route.request()), body: "{}" });
+    });
+    await mockMobileFlag(page);
+    await login(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/planning?view=season");
+    const mobile = page.getByTestId("season-matrix-mobile");
+    await expect(mobile).toBeVisible();
+    await mobile.getByLabel("Løb").selectOption("r4");
+    await expect(mobile.getByText("Dag 15")).toBeVisible();
+    await mobile.getByTitle(/Bo Madsen, Ocean Road Classic: ikke udtaget/).click();
+    await page.getByRole("dialog").getByRole("option", { name: "C Kaptajn" }).click();
+    await expect(mobile.getByTitle(/Bo Madsen, Ocean Road Classic: Kaptajn/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Gem plan" })).toBeVisible();
+    const blockedReload = await page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(blockedReload).toBe(true);
+    await page.getByRole("button", { name: "Gem plan" }).click();
+    await expect.poll(() => savedChanges).not.toBeNull();
+    expect(savedChanges).toHaveLength(1);
+    expect(savedChanges[0].raceId).toBe("r4");
+    expect(savedChanges[0].captain_id).toBe("rider-2");
   });
 });
