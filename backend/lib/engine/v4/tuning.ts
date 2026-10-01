@@ -173,6 +173,7 @@ const finaleExtra = {
   dayformScoreWeight: 5.0, // dagsformen er allerede dagens performance-signal; finalen laeser den for at undgaa at evne-favoritten bliver naesten deterministisk
   modifierScaleFloor: 0.1, // #5957: gulv under puljens bedste finale-evne naar reserve/dagsform/indsats skaleres med evnen (finale.ts finaleModifierScale)
   modifierFullScaleShare: 0.4, // #5957: ryttere med mindst denne andel af puljens bedste finale-evne faar dagens modifikatorer fuldt ud (favorit-opgoeret blandt reelle kandidater)
+  modifierCandidateCount: 20, // #6049: de N bedste finale-evner i puljen er de reelle kandidater, uanset hvor ensartet feltet er (finale.ts finaleCandidateReference)
   modifierReferenceAbilityTerm: 0.5, // #6049: puljens bedste finale-evne hvor modifikatorerne gaelder fuldt; et svagere felt faar dem i forhold til sit niveau (finale.ts finaleLevelScale)
   dayformScoreClamp: 0.1, // haardt loft paa finale-scorebidragets dagsform-input; Gaussian-halen maa aldrig blive ubundet placeringsstoej
 
