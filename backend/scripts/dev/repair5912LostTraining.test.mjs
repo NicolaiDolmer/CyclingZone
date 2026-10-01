@@ -164,3 +164,11 @@ test("--human-only keeps only human-team rider-days and plans (owner 1/10)", asy
   assert.deepEqual([...r.plans.keys()], ["r-human"]);
   assert.equal(parseArgs(["--human-only"]).humanOnly, true);
 });
+
+test("apply after 17:00 is allowed only when today's date close is complete (owner 1/10)", async () => {
+  const { assertApplyAllowed } = await import("./repair5912LostTraining.mjs");
+  const opts = { apply: true, ownerGo: true, expectRiderDays: 5 };
+  const evening = new Date("2026-10-01T19:00:00Z"); // 21:00 Copenhagen
+  assert.throws(() => assertApplyAllowed({ opts, plannedRiderDays: 5, now: evening }), /until today's training date close is complete/);
+  assert.doesNotThrow(() => assertApplyAllowed({ opts, plannedRiderDays: 5, now: evening, todayCloseComplete: true }));
+});

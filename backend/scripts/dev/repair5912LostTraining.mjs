@@ -41,7 +41,7 @@ import { riderLevelBand } from "../../lib/staffAbilityConstants.js";
 import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey,
 } from "../../lib/trainingRaceDayTick.js";
-import { copenhagenWeekdayKey, copenhagenHour } from "../../lib/copenhagenTime.js";
+import { copenhagenWeekdayKey, copenhagenHour, copenhagenDateString } from "../../lib/copenhagenTime.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
 
 export const REPAIR_TICK_DATE = "2026-09-28";
@@ -251,14 +251,26 @@ export function onlyHumanTeams({ lost, plans, teamById }) {
 }
 
 /** Apply-gate: ren funktion, saa vagten kan testes. */
-export function assertApplyAllowed({ opts, plannedRiderDays, now = new Date() }) {
+// Ejer 1/10: aftenvinduet er kun lukket MENS dagens afregning koerer. Er dagens
+// datolukning helt faerdig (ingen pending/partial work-raekker og mindst een complete
+// for i dag), kan der ikke vaere en samtidig skriver, og apply er tilladt.
+export function assertApplyAllowed({ opts, plannedRiderDays, now = new Date(), todayCloseComplete = false }) {
   if (!opts.apply || !opts.ownerGo) throw new Error("apply not authorised");
   if (plannedRiderDays !== opts.expectRiderDays) {
     throw new Error(`plan changed since dry-run: ${plannedRiderDays} rider-days, expected ${opts.expectRiderDays} - rerun dry-run and get a new owner go`);
   }
-  if (copenhagenHour(now) >= APPLY_FORBIDDEN_FROM_HOUR) {
-    throw new Error(`apply refused after ${APPLY_FORBIDDEN_FROM_HOUR}:00 Copenhagen time (evening training writes)`);
+  if (copenhagenHour(now) >= APPLY_FORBIDDEN_FROM_HOUR && !todayCloseComplete) {
+    throw new Error(`apply refused after ${APPLY_FORBIDDEN_FROM_HOUR}:00 Copenhagen time until today's training date close is complete (evening training writes)`);
   }
+}
+
+/** Er dagens datolukning helt faerdig? Ingen pending/partial og mindst een complete. */
+export async function loadTodayCloseComplete(supabase, now = new Date()) {
+  const today = copenhagenDateString(now);
+  const { data, error } = await supabase.from("training_date_work").select("status").eq("tick_date", today);
+  if (error) throw new Error(`training_date_work: ${error.message}`);
+  const rows = data ?? [];
+  return rows.length > 0 && rows.some((r) => r.status === "complete") && !rows.some((r) => r.status === "pending" || r.status === "partial");
 }
 
 /**
@@ -530,7 +542,8 @@ async function main() {
     return;
   }
 
-  assertApplyAllowed({ opts, plannedRiderDays: summary.riderDays, now });
+  const todayCloseComplete = await loadTodayCloseComplete(supabase, now);
+  assertApplyAllowed({ opts, plannedRiderDays: summary.riderDays, now, todayCloseComplete });
   const result = await applyPlans(supabase, { plans, runs: state.runs, season: state.season, now, privateDir });
   console.log(JSON.stringify({ applied: true, ...result }, null, 2));
 }
