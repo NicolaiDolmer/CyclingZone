@@ -173,10 +173,11 @@ export function computeFinaleAbilityScore(
   // dagsform-forskelle. Grupetto faar hverken forskydningen eller dagsformen.
   const formTerm = effort === "grupetto" ? 0 : formWeight * (form + formBound);
   // #5957: reserve, dagsform og indsats er dagens MODIFIKATORER af rytterens
-  // finale-evne, ikke en evne i sig selv. `modifierScale` (0-1) skalerer dem
-  // med rytterens evne-led relativt til puljens bedste (se finaleHook). 1 =
-  // det gamle, rene additive opgoer (default, saa ITT-kaldet og alle direkte
-  // kald er bit-uaendrede).
+  // finale-evne, ikke en evne i sig selv: de virker som et praestations-
+  // tillaeg oven paa evnen, og en rytter uden finale-evne har intet at gange
+  // det paa. `modifierScale` (0-1) skalerer dem derfor med rytterens evne-led
+  // relativt til puljens bedste (se finaleHook). 1 = det gamle, rene additive
+  // opgoer (default, saa ITT-kaldet og alle direkte kald er bit-uaendrede).
   const scale = Number.isFinite(modifierScale) ? clamp(modifierScale, 0, 1) : 1;
   return sum + scale * (wprimeReserveWeight * reserve + formTerm + effortFinaleTerm(effort, reserve));
 }
@@ -196,16 +197,18 @@ export function finaleAbilityTerm(
 
 /**
  * #5957: hvor stor en del af dagens modifikatorer (reserve, dagsform, indsats)
- * en rytter faar i finalen: hans evne-led delt med puljens bedste evne-led,
- * clampet til [0, 1]. Puljens bedste faar dem fuldt ud (favorit-opgoeret er
- * uaendret); en rytter med halvt saa meget finale-evne faar halvt saa stort et
- * udsving. Foer var udsvinget det samme absolutte tal for alle, saa en frisk
+ * en rytter faar i finalen: hans evne-led delt med en reference, clampet til
+ * [0, 1]. Referencen er `fullShare` x puljens bedste evne-led: alle reelle
+ * kandidater over den andel faar modifikatorerne fuldt ud, saa favorit-
+ * opgoeret er uaendret; under den falder udsvinget proportionalt med evnen.
+ * Foer var udsvinget det samme absolutte tal for alle, saa en frisk
  * hjaelperytter uden spurt kunne slaa en spurter paa friskhed og dagsform
  * alene. `floor` er et gulv under referencen, saa en pulje af meget svage
  * ryttere ikke goer skalaen uendelig stejl (monotoni-kontrakten i evnen).
  */
-export function finaleModifierScale(abilityTerm: number, poolBestAbilityTerm: number, floor: number): number {
-  const ref = Math.max(Number.isFinite(poolBestAbilityTerm) ? poolBestAbilityTerm : 0, Number.isFinite(floor) ? floor : 0);
+export function finaleModifierScale(abilityTerm: number, poolBestAbilityTerm: number, floor: number, fullShare = 1): number {
+  const share = Number.isFinite(fullShare) && fullShare > 0 ? Math.min(1, fullShare) : 1;
+  const ref = Math.max((Number.isFinite(poolBestAbilityTerm) ? poolBestAbilityTerm : 0) * share, Number.isFinite(floor) ? floor : 0);
   if (!(ref > 0)) return 1;
   return clamp((Number.isFinite(abilityTerm) ? abilityTerm : 0) / ref, 0, 1);
 }
@@ -469,7 +472,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   };
   const poolBestAbilityTerm = finaleIds.reduce((best, id) => Math.max(best, abilityTermOf(id)), 0);
   const modifierScaleOf = (riderId: string): number =>
-    finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor);
+    finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
 
   const scoreOf = (riderId: string, dayformWeight = extra.dayformScoreWeight): number | null => {
     const entrant = entrants[riderId];

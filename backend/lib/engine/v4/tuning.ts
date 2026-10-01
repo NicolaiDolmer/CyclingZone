@@ -172,6 +172,7 @@ const finaleExtra = {
   placementFullResolutionCount: 20, // kun de N bedst placerede kontendere faar individuelle tiers; resten bunches i én samlet haleklump-gruppe
   dayformScoreWeight: 5.0, // dagsformen er allerede dagens performance-signal; finalen laeser den for at undgaa at evne-favoritten bliver naesten deterministisk
   modifierScaleFloor: 0.1, // #5957: gulv under puljens bedste finale-evne naar reserve/dagsform/indsats skaleres med evnen (finale.ts finaleModifierScale)
+  modifierFullScaleShare: 0.4, // #5957: ryttere med mindst denne andel af puljens bedste finale-evne faar dagens modifikatorer fuldt ud (favorit-opgoeret blandt reelle kandidater)
   dayformScoreClamp: 0.1, // haardt loft paa finale-scorebidragets dagsform-input; Gaussian-halen maa aldrig blive ubundet placeringsstoej
 
   // ── Massefinale: feltets antals-fordel i jagten (#4914) ────────────────────

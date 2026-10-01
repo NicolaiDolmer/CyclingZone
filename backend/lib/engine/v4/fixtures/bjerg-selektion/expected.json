@@ -246,7 +246,7 @@
         "params": {
           "kind": "placement_gap",
           "group_id": "finale-winner-0",
-          "gap_seconds": 3.06
+          "gap_seconds": 2.96
         }
       },
       {
@@ -265,7 +265,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "finale-tier-1",
-          "gap_seconds": 3.06
+          "gap_seconds": 2.96
         }
       },
       {
@@ -273,7 +273,7 @@
         "type": "gap_update",
         "params": {
           "group_id": "finale-tier-2",
-          "gap_seconds": 6.01
+          "gap_seconds": 5.85
         }
       },
       {
@@ -329,12 +329,12 @@
             {
               "rider_id": "r02",
               "rank": 2,
-              "gap": 3.05
+              "gap": 2.95
             },
             {
               "rider_id": "r03",
               "rank": 3,
-              "gap": 6.01
+              "gap": 5.84
             },
             {
               "rider_id": "r04",
@@ -389,7 +389,7 @@
     {
       "rider_id": "r02",
       "rank": 2,
-      "time_seconds": 13376.03,
+      "time_seconds": 13375.93,
       "group_id": "finale-tier-1",
       "status": "finished",
       "injury_days": null
@@ -397,7 +397,7 @@
     {
       "rider_id": "r03",
       "rank": 3,
-      "time_seconds": 13378.99,
+      "time_seconds": 13378.82,
       "group_id": "finale-tier-2",
       "status": "finished",
       "injury_days": null
@@ -483,7 +483,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r11",
+      "rider_id": "r10",
       "rank": 14,
       "time_seconds": 14181.64,
       "group_id": "chase-3002",
@@ -491,7 +491,7 @@
       "injury_days": null
     },
     {
-      "rider_id": "r10",
+      "rider_id": "r11",
       "rank": 15,
       "time_seconds": 14181.64,
       "group_id": "chase-3002",
@@ -725,7 +725,7 @@
           "rider_ids": [
             "r02"
           ],
-          "gap_seconds": 3.057718361071068
+          "gap_seconds": 2.956760383095321
         },
         {
           "group_id": "finale-tier-2",
@@ -733,7 +733,7 @@
           "rider_ids": [
             "r03"
           ],
-          "gap_seconds": 6.013886490477473
+          "gap_seconds": 5.846681908548256
         },
         {
           "group_id": "solo-3000",
@@ -918,13 +918,13 @@
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r11",
+          "rider_id": "r10",
           "passage_rank": 14,
           "points": 2,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r10",
+          "rider_id": "r11",
           "passage_rank": 15,
           "points": 1,
           "bonus_seconds": 0
@@ -989,13 +989,13 @@
     },
     {
       "rider_id": "r10",
-      "sprint_points": 1,
+      "sprint_points": 2,
       "kom_points": 0,
       "bonus_seconds": 0
     },
     {
       "rider_id": "r11",
-      "sprint_points": 2,
+      "sprint_points": 1,
       "kom_points": 0,
       "bonus_seconds": 0
     },
