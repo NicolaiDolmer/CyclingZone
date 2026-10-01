@@ -3622,7 +3622,7 @@ export default function TrainingPage() {
       <TabPanel value="report">
         {dailyReceiptEnabled ? <>
 
-        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} />
+        <TrainingHistory dailyReceiptEnabled={dailyReceiptEnabled} history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
 
         </> : <>

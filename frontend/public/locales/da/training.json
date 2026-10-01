@@ -504,12 +504,17 @@
       "recorded": "Registrerede aktiviteter"
     },
     "note": {
+      "trainedNow": "Sidste løbsdag, træthed og form ved aftenens afregning.",
       "complete": "Alle datoens aktiviteter er med. Form og træthed er opgjort én gang for datoen.",
       "pending": "Datoen er ikke helt opgjort endnu. Endelig udvikling og ændringer i form og træthed afventer.",
       "reconciliation": "Nogle aktiviteter kræver efterkontrol. Manglende bevis vises aldrig som nul udvikling.",
       "recorded": "De registrerede aktiviteter er samlet for datoen. Ældre rapporter kan mangle fuld fremdrift eller bevis for afregningen."
     },
     "riderReceipts": "Rytterkvitteringer",
+    "trainedNow": "{count, plural, one {Trænet nu · løbsdag {range}} other {Trænet nu · løbsdage {range}}}",
+    "trainedNowCount": "Trænet nu",
+    "wholePointsSoFar": "Hele evnepoint indtil nu",
+    "waitingForRace": "Venter på sit løb",
     "activitiesRecorded": "Løbsdage registreret",
     "wholePoints": "Hele evnepoint",
     "development": "Dagens udvikling",

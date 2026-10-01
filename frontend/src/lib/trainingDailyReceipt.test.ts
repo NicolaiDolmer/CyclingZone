@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aggregateTrainingRuns, averagePassScore, sortReceiptRiders } from "./trainingDailyReceipt.ts";
+import { aggregateTrainingRuns, averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace } from "./trainingDailyReceipt.ts";
 import type { TrainingActivity } from "./trainingDailyReceipt.ts";
 import { seasonAbilityGains, riderHistoryFromRuns, abilityReceipt, abilityReceiptGainPct } from "./trainingReport.js";
 import { selectTrainingMoment } from "./trainingMoment.js";
@@ -252,4 +252,66 @@ test("older ability receipts retain the legacy contribution when no stored final
   const rows=abilityReceipt(["tempo"],{abilities:{tempo:54},progress:{tempo:0.2},
     progressBefore:{tempo:0.1},gainsToday:{},gainPercentToday:{tempo:null}});
   assert.equal(abilityReceiptGainPct(rows[0]),10);
+});
+
+test("#6027: race days 1-4 before the evening settlement show what was trained, kept apart from settled gains", () => {
+  const input = [run(3), run(0), run(2), run(1)];
+  const before = structuredClone(input);
+  const day = aggregateTrainingRuns(input)[0];
+  assert.deepEqual(input, before);
+  assert.equal(day.receipt_status, "pending");
+  assert.deepEqual(day.trained_now_slots, [1, 2, 3, 4]);
+  const rider = day.report.riders[0];
+  assert.equal(rider.receipt_status, "pending");
+  assert.deepEqual(rider.trained_now, {
+    gains: { tempo: 2 }, gains_detail: { tempo: { from: 54, to: 56 } }, gain_percent: { tempo: 140 },
+  });
+  // Season totals, stories and rider logs still read the date as pending.
+  assert.deepEqual(rider.gains, {});
+  assert.deepEqual(rider.gain_percent, {});
+  assert.equal(seasonAbilityGains([day], "r1", "2026-09-01"), null);
+  assert.equal(selectTrainingMoment(day, {}, []), null);
+  // Fatigue and form stay with the evening settlement.
+  assert.equal(rider.fatigue, null);
+  assert.equal(rider.form, null);
+  assert.deepEqual(rider.activities.map(a => [a.game_day, a.focus, a.intensity]),
+    [[0, "threshold", "normal"], [1, "threshold", "normal"], [2, "threshold", "normal"], [3, "threshold", "normal"]]);
+});
+
+test("#6027: fractional progress shows before a whole point; a stored end point is required", () => {
+  const day = aggregateTrainingRuns([run(0)])[0];
+  assert.deepEqual(day.report.riders[0].trained_now, { gains: {}, gains_detail: {}, gain_percent: { tempo: 15 } });
+  const noEnd = run(0);
+  delete (noEnd.report.riders[0] as Record<string, unknown>).progress_after;
+  assert.deepEqual(aggregateTrainingRuns([noEnd])[0].report.riders[0].trained_now?.gain_percent, { tempo: null });
+  // A gap between stored race days never bridges the missing day: each day counts its own part.
+  assert.deepEqual(aggregateTrainingRuns([run(0), run(2)])[0].report.riders[0].trained_now?.gain_percent, { tempo: 95 });
+});
+
+test("#6027: settled, quarantined and legacy dates never get a trained-now view", () => {
+  const settled = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i)))[0];
+  assert.equal(settled.report.riders[0].trained_now, null);
+  assert.deepEqual(settled.trained_now_slots, []);
+  const gap = aggregateTrainingRuns([run(0), run(1), run(3), run(4)])[0];
+  assert.equal(gap.report.riders[0].trained_now, null);
+  const quarantined = aggregateTrainingRuns([run(0), run(1, { status: "unknown_pending", settlement_status: "needs_reconciliation" })])[0];
+  assert.equal(quarantined.report.riders[0].trained_now, null);
+  assert.deepEqual(quarantined.trained_now_slots, []);
+  const legacy = run(0);
+  delete (legacy.report as Record<string, unknown>).condition_per_date;
+  assert.equal(aggregateTrainingRuns([legacy])[0].report.riders[0].trained_now, null);
+});
+
+test("#6027: slot ranges and riders still waiting for their race", () => {
+  assert.equal(formatSlotRange([4, 1, 2, 3]), "1-4");
+  assert.equal(formatSlotRange([1]), "1");
+  assert.equal(formatSlotRange([1, 3]), "1, 3");
+  assert.equal(formatSlotRange([]), "");
+  const pending = aggregateTrainingRuns([run(0), run(1)])[0];
+  assert.deepEqual(pending.trained_now_slots, [1, 2]);
+  const roster = [{ id: "r1" }, { id: "r2" }];
+  assert.deepEqual(waitingForRace(pending, roster), [{ id: "r2" }]);
+  assert.deepEqual(waitingForRace(pending, null), []);
+  const settled = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i)))[0];
+  assert.deepEqual(waitingForRace(settled, roster), []);
 });

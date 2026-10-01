@@ -504,12 +504,17 @@
       "recorded": "Recorded activities"
     },
     "note": {
+      "trainedNow": "Final race day, fatigue and form at the evening settlement.",
       "complete": "All activities for this date are included. Form and fatigue are settled once for the date.",
       "pending": "This date is not fully settled yet. Final development and condition changes are still pending.",
       "reconciliation": "Some activities need reconciliation. Missing evidence is never shown as zero development.",
       "recorded": "Recorded activities are combined for this date. Older reports may not contain full progress or settlement evidence."
     },
     "riderReceipts": "Rider receipts",
+    "trainedNow": "{count, plural, one {Trained now · race day {range}} other {Trained now · race days {range}}}",
+    "trainedNowCount": "Trained now",
+    "wholePointsSoFar": "Whole ability points so far",
+    "waitingForRace": "Waiting for their race",
     "activitiesRecorded": "Race days recorded",
     "wholePoints": "Whole ability points",
     "development": "Daily development",
