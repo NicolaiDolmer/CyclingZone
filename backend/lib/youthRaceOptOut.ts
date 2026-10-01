@@ -30,7 +30,8 @@ type PgError = { code?: string; message?: string } | null | undefined;
 type Result<T> = { data: T | null; error: PgError };
 
 // Minimal kontrakt for den del af supabase-js vi bruger. Testen giver en fake.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Samme bevidste `any`-moenster som trainingFatigueRules.ts (Supa): backendens
+// ESLint linter ikke .ts og har ingen no-explicit-any-regel, saa intet direktiv.
 type Supabase = { from: (table: string) => any };
 
 export function isOptOutSquad(value: unknown): value is OptOutSquad {
