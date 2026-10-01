@@ -60,7 +60,9 @@ test("fladen: vaelgeren foerst, ingen gold, samme API og gammel sti bevaret", ()
   const src = read("TrainingProgramAssign.tsx");
   assert.doesNotMatch(src, /variant="primary"/);
   assert.ok(src.indexOf('data-testid="training-program-target"') < src.indexOf("<ul"), "vaelgeren staar over listen");
-  assert.match(src, /disabled=\{busy \|\| target\.kind === "none" \|\| isCurrent\}/);
+  // Kun "intet valgt" slaar fra; det nuvaerende program kan laegges paa igen
+  // og nulstiller saa rettede felter til katalogets uge.
+  assert.match(src, /disabled=\{busy \|\| target\.kind === "none"\}/);
   assert.match(src, /onApply\(program\.key, targetValue\)/);
   // Ingen select pr. programraekke laengere.
   assert.equal((src.match(/<select/g) ?? []).length, 1);

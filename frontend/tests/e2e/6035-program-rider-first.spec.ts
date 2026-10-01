@@ -117,7 +117,8 @@ test("desktop 1440: rytter foerst, saa programmet", async ({ page }) => {
   await expect(options.first()).toContainText("Hill climber");
   await expect(page.getByText("Fits Climber")).toBeVisible();
   await expect(page.getByTestId("training-program-current")).toHaveCount(1);
-  await expect(options.first().getByTestId("training-program-put-on")).toBeDisabled();
+  // Det nuvaerende program kan laegges paa igen (nulstiller rettede felter).
+  await expect(options.first().getByTestId("training-program-put-on")).toBeEnabled();
 
   // (3) Samme kald som foer.
   // Foerste program under "Other programs" (raekke 2; klatreren har eet passende).

@@ -104,7 +104,7 @@ export default function TrainingProgramAssign({
           <Button
             variant="secondary"
             size="sm"
-            disabled={busy || target.kind === "none" || isCurrent}
+            disabled={busy || target.kind === "none"}
             onClick={() => apply(program)}
             aria-label={`${t("programs.putOn")} · ${programName(program, lang)}${targetName ? ` · ${targetName}` : ""}`}
             className="min-h-11 flex-none sm:min-h-0"
