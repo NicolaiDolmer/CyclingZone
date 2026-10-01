@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.329",
+    "date": "2026-10-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A clearer warning when your senior squad is too small",
+          "body": "If your active club has too few senior riders to start, a warning stays at the top of your dashboard until you have enough. You can go straight to the rider market from there. The inbox also reminds you before an affected race day while the shortage remains."
+        },
+        "da": {
+          "title": "Tydeligere advarsel, når seniortruppen er for lille",
+          "body": "Har dit aktive hold for få seniorryttere til at stille til start, bliver advarslen øverst på dashboardet, indtil truppen er stor nok. Derfra kan du gå direkte til ryttermarkedet. Indbakken minder dig også om manglen før en berørt løbsdag, så længe den består."
+        },
+        "refs": [5867]
+      }
+    ]
+  },
+  {
     "version": "7.327",
     "date": "2026-10-01",
     "label": "Beta",

@@ -346,6 +346,8 @@ fordi dens skrivninger er.
 Paritetsreglen findes fordi den samme fejl ramte tre gange: en type tilføjet i koden men ikke i
 constrainten fejler tavst i prod. Se §10.
 
+**Seniorstart (#5867, ejer-go 28/9):** `squad_below_minimum` genbruges til to særskilte in-app-påmindelser før en seniorløbsdag, ved 24 og 3 timer, kun hvis det aktive managerhold fortsat har færre end startgulvets seniorryttere. `seniorStartReminder.js` samler samtidige løb på `game_day`; stabil titel og tekst pr. sæson/dag/vindue lader `notifyTeamOwner` deduplikere cron-retries, også hvis antallet af ryttere ændres. Det aktuelle antal ligger i oversættelsesmetadata. Nye påmindelser har `metadata.action=market` og åbner markedet; historiske `squad_below_minimum`-beskeder beholder deres gamle link. Intet Discord-spejl.
+
 **Forum-svar-notifikationen** er den nyeste sociale type og har sine egne regler
 (`notificationService.js:966-1030`):
 

@@ -92,6 +92,10 @@
     "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
     "ctaMyTeam": "My Team"
   },
+  "seniorStartWarning": {
+    "message": "Senior squad: {count} of {min}. You need {missing, plural, one {1 more rider} other {# more riders}} to start a race.",
+    "cta": "Find a rider"
+  },
   "contractWarning": {
     "message": "{count, plural, one {1 rider's contract expires} other {# riders' contracts expire}} at the season change. Renew from the rider's profile to keep them, or they'll be released as free agents.",
     "cta": "Review contracts",

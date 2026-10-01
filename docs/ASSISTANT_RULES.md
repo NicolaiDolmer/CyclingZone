@@ -146,6 +146,8 @@ en løgn om hvad spilleren styrer.
 
 ### Påmindelsen før fristen ([#4983](https://github.com/NicolaiDolmer/CyclingZone/issues/4983), D-034)
 
+**Separat startgulvs-påmindelse (#5867, ejer-go 28/9):** Hvis et aktivt managerhold har færre end `MIN_RACE_ENTRIES` seniorryttere (hverken akademi eller pensionerede), vises dashboardets vedvarende advarsel. Indbakken får højst én besked pr. sæson, løbsdag og vindue, når første relevante seniorstart er inden for 24 timer, og igen inden for 3 timer, hvis manglen består. Flere løb samme løbsdag samles. Frosne, parkerede, AI- og testhold samt afmeldte løb udelukkes. Beskeden leder til markedet. Den eksisterende holdudtagelses-påmindelse undertrykkes for disse hold i cron, så assistenten ikke lover at kunne skaffe ryttere; når truppen når gulvet, kan udtagelses-påmindelsen virke normalt igen. Markedets særskilte risikobuffer ændres ikke. Implementering: `seniorStartReminder.js`, `selectionWarningSweep.js`, `DashboardPage.jsx`.
+
 D-034's synlige halvdel: **før** assistenten må gøre noget, får manageren at vide at truppen
 mangler. Ren UI-tilstand - den skriver intet, sender ingen notifikation og læser ikke
 `assistant_selection_mode`. Den virker derfor ens i alle tre tilstande.

@@ -50,6 +50,10 @@ export function resolveNotificationLink(notification, fallbackLink) {
     return fallbackLink ?? null;
   }
 
+  if (n.type === "squad_below_minimum" && meta.action === "market") {
+    return "/auctions";
+  }
+
   // #4943: invitationen til det in-app spoergeskema sendes som admin_notice,
   // som med vilje ikke har et generisk link i TYPE_CONFIG. Slug'en ligger i
   // metadata (samme moenster som #4557's aarsmoede-regel), saa beskeden kan

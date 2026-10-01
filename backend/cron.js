@@ -45,6 +45,7 @@ import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
+import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #5867
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
 import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
@@ -648,7 +649,7 @@ async function runSquadEnforcementCron() {
 // tiden (ikke kl.22-gatet som trænings-/scout-sweepene) — et løb kan starte når som
 // helst i døgnet, så varslet skal kunne fyre uafhængigt af den daglige rytme.
 async function runSelectionWarningSweepCron() {
-  const result = await runSelectionWarningSweep({ supabase, now: new Date() });
+  const result = await runSelectionWarningSweep({ supabase, now: new Date(), suppressLowRoster: true });
   if (result.warned) {
     console.log(`📋 Holdudtagelse-varsel: ${result.warned} hold varslet (løb <36t væk uden manuel udtagelse)`);
   }
@@ -659,6 +660,19 @@ async function runSelectionWarningSweepCron() {
     sentryCapture(new Error(`selection warning sweep: ${result.failed} notifikationer fejlede`), {
       tags: { cron: "selection-warning" },
       extra: { racesDue: result.racesDue, warned: result.warned, deduped: result.deduped, failed: result.failed },
+    });
+  }
+}
+
+async function runSeniorStartReminderCron() {
+  const result = await runSeniorStartReminderSweep({ supabase, now: new Date() });
+  if (result.sent || result.failed) {
+    console.log(`Senior-startpåmindelse: ${result.sent} sendt, ${result.deduped} deduplikeret, ${result.failed} fejlet`);
+  }
+  if (result.failed) {
+    sentryCapture(new Error(`senior-start reminder: ${result.failed} notification(s) failed`), {
+      tags: { cron: "senior-start-reminder" },
+      extra: result,
     });
   }
 }
@@ -1877,6 +1891,11 @@ export function startCron() {
   // MANUEL udtagelse. notifyTeamOwner-dedup (24t) holder gentagne ticks harmløse.
   setInterval(
     trackedTick("selection warning", monitorCron("selection-warning", runSelectionWarningSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  setInterval(
+    trackedTick("senior start reminder", monitorCron("senior-start-reminder", runSeniorStartReminderCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
 

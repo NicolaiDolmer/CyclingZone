@@ -192,6 +192,26 @@ test("runSelectionWarningSweep: hold under target varsles; hold MED fuld trup sp
   assert.equal(notified[0].relatedId, "r1");
 });
 
+test("#5867 selection warning does not promise assistant rescue to a team with too few senior riders", async () => {
+  const notified = [];
+  await runSelectionWarningSweep({
+    supabase: makeNoopSupabase(),
+    now: new Date("2026-08-04T12:00:00Z"),
+    suppressLowRoster: true,
+    notify: async (payload) => { notified.push(payload); return { delivered: true }; },
+    fetchUpcomingScheduledRaces: async () => ({ seasonId: "s1", races: [{ id: "r1", name: "Race", status: "scheduled", stages_completed: 0, league_division_id: 1, race_class: "Class1" }] }),
+    fetchScheduleByRace: async () => new Map([["r1", [{ scheduled_at: "2026-08-05T12:00:00Z" }]]]),
+    fetchHumanTeams: async () => [
+      { id: "short", user_id: "u1", league_division_id: 1 },
+      { id: "enough", user_id: "u2", league_division_id: 1 },
+    ],
+    fetchEntryCountsByRace: async () => new Map(),
+    fetchWithdrawnTeamIdsByRace: async () => new Map(),
+    fetchSeniorCounts: async () => new Map([["short", 5], ["enough", 6]]),
+  });
+  assert.deepEqual(notified.map((n) => n.teamId), ["enough"]);
+});
+
 test("runSelectionWarningSweep: #4038 — fuldt auto-udfyldt trup (0 manuelle, target nået) varsles IKKE", async () => {
   const now = new Date("2026-08-04T12:00:00Z");
   const notified = [];

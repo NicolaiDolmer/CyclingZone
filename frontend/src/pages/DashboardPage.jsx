@@ -11,6 +11,7 @@ import SurveyInviteCard from "../components/SurveyInviteCard"; // #4943
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #4231
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
+import { computeSeniorStartWarning } from "../lib/seniorStartWarning.ts";
 // #2182 — rangliste-modulet skal defaulte til spillerens egen division+pulje,
 // ikke hele tieren. Genbruger StandingsPage's rene merge/pulje-match-helpers i
 // stedet for en parallel implementering (samme princip som #3197: "default-
@@ -162,6 +163,7 @@ export default function DashboardPage() {
   const { ready: boardCopyReady } = useTranslation("board");
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
+  const [seniorRosterReady, setSeniorRosterReady] = useState(false);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [allAuctions, setAllAuctions] = useState([]);
   // #3508: reserveret beløb i førende auktionsbud + proxy-max — samme
@@ -482,7 +484,7 @@ export default function DashboardPage() {
       // getTeamMarketState (marketUtils.js).
       // #1150: contract_end_season med i selectet (samme rækker, ingen ekstra
       // tur) — driver contractExpiringCount nedenfor (kontraktudløb-varsel).
-      supabase.from("riders").select("id, salary, is_u25, pending_team_id, contract_end_season")
+      supabase.from("riders").select("id, salary, is_u25, pending_team_id, contract_end_season, squad, is_academy, is_retired")
         .eq("team_id", teamData.id)
         .eq("is_academy", false)
         .eq("is_retired", false),
@@ -556,6 +558,7 @@ export default function DashboardPage() {
     setPools(poolsRes.data || []);
     setPoolStages(poolStageTotals(poolRacesRes.data || []));
     setRiders(ridersRes.data || []);
+    setSeniorRosterReady(!ridersRes.error);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
     setAllAuctions(auctionsRes.data || []);
     // #2328: hold ALLE holdets kommende puljeløb i state (ikke kun top-3) — både
@@ -1087,6 +1090,7 @@ export default function DashboardPage() {
     division: team?.division,
   });
   const { ownedNow, outgoingCount, warning: squadWarning } = squadStats;
+  const seniorStartWarning = seniorRosterReady ? computeSeniorStartWarning({ team, riders }) : null;
 
   // #1150 · kontraktudløb-varsel: ryttere hvis kontrakt udløber ved NÆSTE
   // sæsonskifte (contract_end_season <= den AKTIVE sæsons nummer) — samme rene
@@ -1289,6 +1293,16 @@ export default function DashboardPage() {
           over dem: en trup under minimum og udløbende kontrakter er de eneste
           ting på siden der koster point hvis de overses (Clarity: 94,65%
           scroll-dybde — synlighed er ikke problemet, punktér de dyre ting). */}
+      {seniorStartWarning && (
+        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-danger-bg text-cz-danger border-cz-danger/30">
+          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <span className="flex-1 min-w-[200px]">{t("dashboard:seniorStartWarning.message", seniorStartWarning)}</span>
+          <Link to="/auctions" className="ms-auto inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
+            {t("dashboard:seniorStartWarning.cta")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
+          </Link>
+        </div>
+      )}
       {squadWarning && (
         <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
           ${squadWarning.color === "red"

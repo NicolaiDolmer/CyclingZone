@@ -648,6 +648,7 @@ const FAQ_KEYS = [
   "relaunchFounderBadge",
   "relaunchNextSeasonBuys",
   "contractExpiryRetirementFaq",
+  "seniorStartReminderFaq",
   "staffReleaseFaq",
   // #3202: tre ubesvarede mekanik-spørgsmål fra Discord-ugesweepet (spar
   // kræfter på tværs af løb, form ved sæsonskifte, sprint-kaptajn vs. kaptajn)
