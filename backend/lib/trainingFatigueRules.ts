@@ -29,6 +29,7 @@
 
 import { programForChoice, RECOVERY_FOCUS, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
 import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
+import { loadGroupFatigueRuleRows, effectiveRiderRuleRow } from "./trainingGroups.ts"; // #6000
 
 export const TRAINING_FATIGUE_RULES_FLAG_KEY = "training_fatigue_rules";
 
@@ -220,11 +221,15 @@ export async function loadTeamFatigueRules(supabase: Supa, teamId: string): Prom
     throw new Error(`training fatigue rules load (team ${teamId}): ${error.message ?? error}`);
   }
   const rows = (data ?? []) as FatigueRuleRow[];
-  if (rows.length === 0) return null;
+  // #6000: gruppe-undtagelser (rytter → gruppe → hold). Eet opslag for hold uden.
+  const groupRules = await loadGroupFatigueRuleRows(supabase, teamId);
+  if (rows.length === 0 && groupRules.size === 0) return null;
   if (!(await isEnabledForTeam(supabase, teamId))) return null;
   const teamRule = rows.find((row) => row.rider_id == null) ?? null;
   const riderRules = new Map(rows.filter((row) => row.rider_id != null).map((row) => [row.rider_id as string, row]));
-  const forRider = (riderId: string) => resolveRiderFatigueRule(teamRule, riderRules.get(riderId) ?? null);
+  const forRider = (riderId: string) => resolveRiderFatigueRule(
+    teamRule, effectiveRiderRuleRow(riderRules.get(riderId) ?? null, groupRules.get(riderId) ?? null),
+  );
   return {
     forRider,
     anyAfterStage: (riderIds) => riderIds.some((id) => forRider(id).recoveryAfterStage),

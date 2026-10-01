@@ -224,6 +224,33 @@ test("prepareSelectionChange: for stor trup afvises med 400 selection_wrong_size
   assert.equal(result.error, "selection_wrong_size");
 });
 
+// #6009: et afsluttet loeb har frigivet bindingen, men rytteren har ALLEREDE koert en
+// etape paa loebsdag 12, som dette loeb starter paa. Udtagelsen skal afvises.
+test("prepareSelectionChange: a race day the rider already rode blocks with 409 selection_rider_bound (#6009)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: ACTIVE_SEASONS,
+    race_stage_schedule: [
+      { race_id: "race1", stage_number: 1, game_day: 12 },
+      { race_id: "race1", stage_number: 2, game_day: 14 },
+      { race_id: "done", stage_number: 5, game_day: 12 },
+    ],
+    race_results: [{ rider_id: "r2", race_id: "done", stage_number: 5, result_type: "stage", races: { season_id: ACTIVE_SEASON_ID, race_type: "stage_race" } }],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 409);
+  assert.equal(result.error, "selection_rider_bound");
+  assert.deepEqual(result.bound_rider_ids, ["r2"]);
+});
+
 // "ukendt rolle": sprint_captain_id peger på en rytter der ikke er i den valgte trup.
 test("prepareSelectionChange: rolle-reference uden for truppen afvises med 400 selection_role_not_selected", async () => {
   const teamId = "t1";
@@ -606,6 +633,10 @@ function makeSelectionSupabase(state) {
       eq(col, val) { f.eqs[col] = val; return b; },
       in(col, vals) { f.ins[col] = vals; return b; },
       or() { f.orRetired = true; return b; },
+      // #6009: koert-loebsdag-opslaget; spaend-filtret sker i den rene funktion.
+      neq() { return b; },
+      gte() { return b; },
+      lte() { return b; },
       is(col, val) { f.is[col] = val; return b; },
       order() { return b; },
       // #5405: sæson-opslaget (loadRaceSeasonStatus) er det eneste .maybeSingle() i

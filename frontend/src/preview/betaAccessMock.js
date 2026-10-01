@@ -64,6 +64,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_score_visible", // #5274
   "youth_squad_pages", // #5519
   "training_fatigue_rules", // #4854
+  "training_groups", // #6000
 ];
 
 function playerFlags() {

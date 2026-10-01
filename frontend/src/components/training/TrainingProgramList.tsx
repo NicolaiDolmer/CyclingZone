@@ -22,9 +22,12 @@ export default function TrainingProgramList({
   busy,
   onApply,
   sessionShort,
+  groups = [],
 }: {
   weekdays: readonly string[];
   riders: ProgramRider[];
+  // #6000: "Put on" en gruppe; target = "group:<id>".
+  groups?: Array<{ value: string; label: string }>;
   catalog: CatalogProgram[];
   busy: boolean;
   onApply: (programKey: string, target: string) => Promise<ProgramsResult>;
@@ -46,7 +49,8 @@ export default function TrainingProgramList({
     if (!target) return;
     setMessage(null);
     const result = await onApply(program.key, target);
-    const who = target === "squad" ? t("programs.squadShort") : (riders.find((r) => r.id === target)?.name ?? "");
+    const who = target === "squad" ? t("programs.squadShort")
+      : (riders.find((r) => r.id === target)?.name ?? groups.find((g) => g.value === target)?.label ?? "");
     setMessage(result.ok
       ? { type: "ok", text: t("programs.applied", { name: programName(program, lang), target: who }) }
       : { type: "error", text: t("programs.error") });
@@ -87,6 +91,7 @@ export default function TrainingProgramList({
                 >
                   <option value="">{t("programs.putOn")}</option>
                   <option value="squad">{t("programs.squad", { n: riders.length })}</option>
+                  {groups.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
                   {riders.map((rider) => (
                     <option key={rider.id} value={rider.id}>{rider.name}</option>
                   ))}

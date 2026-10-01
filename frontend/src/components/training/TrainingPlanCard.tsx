@@ -22,7 +22,8 @@ import {
 } from "../../lib/trainingPrograms.ts";
 
 export type ProgramRider = { id: string; name: string; type: string | null };
-export type PlanForOption = { value: string; label: string };
+// #6000: `section` grupperer vaelgeren (Hold · Groups · Riders, mockup pin 1).
+export type PlanForOption = { value: string; label: string; section?: "groups" | "riders" };
 export type OwnPlanChip = { id: string; name: string };
 
 // Raekkefoelgen i session-vaelgeren: hele dage, faerdighed, traening.
@@ -72,6 +73,7 @@ export default function TrainingPlanCard({
   cells,
   ownPlans,
   onOpenOwnPlan,
+  planForExtra = null,
 }: {
   weekdays: readonly string[];
   todayWeekday: string;
@@ -85,6 +87,7 @@ export default function TrainingPlanCard({
   cells: CellEditor | null;
   ownPlans: OwnPlanChip[];
   onOpenOwnPlan: (riderId: string) => void;
+  planForExtra?: ReactNode;
 }) {
   const { t, i18n } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -147,8 +150,15 @@ export default function TrainingPlanCard({
           className="min-h-11 min-w-0 max-w-[240px] rounded-cz border border-cz-border bg-cz-card px-2.5 py-1.5 text-xs text-cz-1 sm:min-h-0"
           data-testid="training-plan-for"
         >
-          {planForOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          {planForOptions.some((o) => o.section)
+            ? [undefined, "groups", "riders"].map((section) => {
+              const items = planForOptions.filter((o) => o.section === section);
+              const rows = items.map((option) => <option key={option.value} value={option.value}>{option.label}</option>);
+              return section && items.length ? <optgroup key={section} label={t(`groups.section_${section}`)}>{rows}</optgroup> : rows;
+            })
+            : planForOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
+        {planForExtra}
         {forecast}
         <p className="basis-full text-[12.5px] text-cz-2">{hint}</p>
       </div>
