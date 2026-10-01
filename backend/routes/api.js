@@ -14,6 +14,7 @@ import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js
 import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
+import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
@@ -938,6 +939,11 @@ router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, i
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
 router.use("/training/programs", createTrainingProgramsRouter({
+  supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
+  captureExceptionFn: captureException,
+}));
+// #4854/#5620: spillerens traeningsregler (beta). Ogsaa foer `/training/:riderId`.
+router.use("/training/fatigue-rules", createTrainingFatigueRulesRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter: marketWriteLimiter, readLimiter: presencePulseLimiter,
   captureExceptionFn: captureException,
 }));
