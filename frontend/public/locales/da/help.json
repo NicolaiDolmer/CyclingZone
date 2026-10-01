@@ -1117,7 +1117,7 @@
       },
       "fatigueLimit": {
         "title": "Træthedsgrænse",
-        "text": "Du kan sætte én regel for holdet: over en træthed, du selv vælger, kører rytterne et lettere pas i stedet (samme pas på let belastning, aktiv restitution eller hvile). En enkelt rytter kan få sin egen grænse eller ingen grænse. Reglen tjekkes på trætheden ved datoens start, så resultatet er det samme, uanset hvornår du logger ind. Den ændrer aldrig planen, så rytteren vender tilbage til sit program, når han er under grænsen. Du kan også vælge, at første felt dagen efter en etape er aktiv restitution. Dage hvor en regel slog til, vises på fanen Ugeplan. Løb kommer altid først: en rytter i et løb påvirkes ikke."
+        "text": "Du kan sætte én regel for holdet: over en træthed, du selv vælger, kører rytterne et lettere pas i stedet (samme pas på let belastning, aktiv restitution eller hvile). En enkelt rytter kan få sin egen grænse eller ingen grænse. Reglen tjekkes på trætheden ved datoens start, så resultatet er det samme, uanset hvornår du logger ind. Den ændrer aldrig planen, så rytteren vender tilbage til sit program, når han er under grænsen. Du kan også vælge, at første felt dagen efter en etape er aktiv restitution. Du sætter den under Program, Træthedsgrænse, hvor de seneste 7 dage viser, hvornår en regel slog til. Løb kommer altid først: en rytter i et løb påvirkes ikke."
       }
     },
     "activityfeed": {
