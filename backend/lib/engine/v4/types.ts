@@ -192,6 +192,24 @@ export type StageInput = {
   // M15's tidsgraense (mechanics/timeLimit.ts timeLimitTuningFor). Udeladt,
   // null eller "senior" = seniorreglen, bit-identisk med foer.
   squad?: "senior" | "u23" | "junior" | null;
+  // #5914 (ADDITIVT og VALGFRIT): foererne af point- og bjergkonkurrencen ved
+  // etapens start. Laeses KUN af M9's passager (mechanics/bonusSeconds.ts):
+  // troejefoereren kaemper altid om en passage, ogsaa i feltet. Udeladt/null =
+  // ingen foerer (1. etape, endagsloeb), bit-identisk med foer for fixtures.
+  jersey_leaders?: JerseyLeaders | null;
+  // #5955 (ADDITIVT og VALGFRIT, #5984 Task 2): loebets bundne taktiske regel-
+  // revision, afgjort af runneren ved foerste etape-claim. Udeladt/null/"legacy"
+  // = de taktiske regler fra foer #5955, bit-identisk for fixtures og igangvaerende
+  // loeb. Delte korrekthedsrettelser gaelder begge revisioner.
+  rules_revision?: RulesRevision | null;
+};
+
+/** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
+export type RulesRevision = "legacy" | "orders_gc_v1";
+
+export type JerseyLeaders = {
+  points?: string | null;
+  kom?: string | null;
 };
 
 // #2410-taksonomien er AABEN for tilfoejelser (forward-kompatibel: ukendte typer
@@ -625,6 +643,12 @@ export type SegmentHookContext = {
   // `kind` og ignorerer resten; en tom liste er den neutrale default (T4 i
   // tactics-orders-specen — kernen kraever ALDRIG ordrer).
   orders: readonly TeamOrder[];
+  // #5914 (ADDITIVT og VALGFRIT): StageInput.jersey_leaders raat videregivet.
+  // Kun M9's passager laeser det; udeladt = ingen troejefoerer.
+  jerseyLeaders?: JerseyLeaders | null;
+  // #5955 (ADDITIVT og VALGFRIT): StageInput.rules_revision normaliseret.
+  // Udeladt = "legacy".
+  rulesRevision?: RulesRevision;
 };
 
 export type SegmentHookResult = {

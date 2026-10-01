@@ -73,7 +73,7 @@ function TodayStageCard({ card, t }) {
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate font-display text-base uppercase leading-none text-cz-1">{raceName}</p>
+            <p className="truncate font-display text-base uppercase leading-tight text-cz-1">{raceName}</p>
             <p className="mt-1 text-2xs uppercase tracking-[.08em] text-cz-3">{stageLabel}</p>
           </div>
           <StatusBadge state={STATE_TO_BADGE[state]} emphasis={state === "live"} pulse={state === "live"} className="shrink-0">

@@ -709,7 +709,7 @@ async function runTrainingDayCloseCron() {
     onAlarm: (err, ctx) => {
       sentryCapture(err, {
         tags: { cron: "training-day-close" },
-        extra: { tickDate: ctx?.tickDate, pending: ctx?.pending?.slice(0, 20) },
+        extra: { tickDate: ctx?.tickDate, pending: ctx?.pending?.slice(0, 20), pendingEvidence: ctx?.pendingEvidence },
       });
     },
   });

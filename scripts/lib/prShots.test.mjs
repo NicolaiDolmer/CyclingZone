@@ -372,7 +372,8 @@ test("composeHtml: to kolonner, een raekke pr. route, mobil 50 %, mocks markeret
   assert.match(html, /base64,AA" style="width:100%"/);
   assert.match(html, /mangler/);
   assert.match(html, /MOCK \(ikke prod-tilstand\): feat-x: \/api\/me/);
-  assert.doesNotMatch(html, /<script>/, "route-tekst escapes");
+  assert.ok(html.includes("&lt;script&gt;"), "route-tekst vises escaped");
+  assert.ok(!html.includes("<script>"), "route-tekst escapes");
   assert.doesNotMatch(html, /\u2014/);
 });
 

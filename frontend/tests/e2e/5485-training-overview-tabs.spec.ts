@@ -391,6 +391,9 @@ test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus, men siger at
 });
 
 test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Apply to 2', og A overskrives ikke", async ({ page }) => {
+  // Kontroller den korte Saved-periode uden at CI-belastning kan udløse
+  // rækkens 2-sekunders timer mellem assertions.
+  await page.clock.install({ time: new Date("2026-09-29T10:00:00Z") });
   await page.route("**/api/training/rider-5485-3", (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
@@ -417,6 +420,7 @@ test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Ap
   await primary(page).click();
   await expect(page.getByTestId("training-today-row")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Apply to 3" })).toBeVisible();
+  await page.clock.pauseAt(new Date("2026-09-29T10:01:00Z"));
 
   // A (Rafael Duran) får en dag i sin egen vælger.
   const rowA = page.locator("[data-testid='training-today-row'][data-rider-id='rider-5485-3']");
@@ -428,6 +432,7 @@ test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Ap
   await expect(page.getByRole("button", { name: "Apply to 2" })).toBeVisible();
   await expect(rowA.getByRole("checkbox")).not.toBeChecked();
   // Efter ca. 2 sekunder forsvinder han fra "Needs a day".
+  await page.clock.runFor(2000);
   await expect(page.getByTestId("training-today-row")).toHaveCount(2, { timeout: 6000 });
 
   // Mængde-handlingen rammer kun B og C.

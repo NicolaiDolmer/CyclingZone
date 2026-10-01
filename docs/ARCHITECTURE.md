@@ -60,6 +60,9 @@
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
 
+### Brugte løbsdage (#5860)
+`race_day_participation` bevarer faktisk deltagelse pr. rytter/sæson/løbsdag efter holdskifte og snapshot-retries. Private claims optages før etaperesultater og start-snapshots. `find_spent_race_days` er en service-only RPC med scalar JSON, så feltets størrelse ikke rammer PostgRESTs tabel-loft. `raceSpentDays.js` bruger eksisterende resultater/snapshots i backend-før-migration-vinduet. Historisk, ejer-godkendt genopretning i `recover_transferred_race_loads` bevarer immutable snapshots; `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number` refererer det oprindelige bidrag. Tilstanden tæller kun originale belastninger, mens det atomiske afregningsbevis omfatter alle rækker. SSOT: [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md), [TRAINING_RULES](TRAINING_RULES.md).
+
 ### Rankings (#5176)
 `backend/routes/rankings.ts` monteres af api.js bag den eksisterende auth- og
 rate-limit-kæde. GET `/api/rankings/global` (valgfri team_id), `/riders`
@@ -323,6 +326,22 @@ Season flow notes:
 ---
 
 ## Database-tabeller
+
+Træningens datoafregning (#5928) bruger `training_race_loads` til uforanderlig
+løbsbelastning og `training_condition_settlements` til afsluttede rytterdatoer.
+`race_simulation_runs.condition_load_snapshot` fastholder startere og indsats ved
+genforsøg. Service-role-RPC'erne `record_training_race_load` og
+`commit_training_date_tick` deler datolåse; `bootstrap_training_condition_date`
+er den særskilt ejer-godkendte overgang for en dato med allerede afviklede løb.
+Kontrakt og flag: [TRAINING_RULES.md](TRAINING_RULES.md). Ingen direkte
+klientskrivning eller automatisk aktivering.
+
+`training_rider_ticks` bærer idempotens pr. rytter og løbsdag, mens
+`training_date_work` fastholder dato, roster og åbningsbevis på tværs af genstart.
+`training_condition_timeout_outbox` gemmer alarmer om efterregulering.
+`training_condition_activation_date` i `app_config` sættes af bootstrap og
+afgrænser opdagelse af manglende datoarbejde. Historisk genopretning er beskrevet i
+[`recoverRecordedRaceLoads.md`](../backend/scripts/recoverRecordedRaceLoads.md).
 
 ```
 rider_uci_history   id(uuid), rider_id(→riders), uci_points(int), synced_at(timestamptz)

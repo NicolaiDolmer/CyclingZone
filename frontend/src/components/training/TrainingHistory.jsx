@@ -176,7 +176,7 @@ function DayCard({ run, t, tRider, trainingScore }) {
   );
 }
 
-export default function TrainingHistory({ history, trainingScore = null }) {
+function LegacyTrainingHistory({ history, trainingScore = null }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
   const { runs, loading } = history;
@@ -202,4 +202,23 @@ export default function TrainingHistory({ history, trainingScore = null }) {
       )}
     </Section>
   );
+}
+
+import DailyTrainingReceipt from "./DailyTrainingReceipt.tsx";
+import { copenhagenDayKey } from "../../lib/raceCentre.js";
+function DailyTrainingHistory({ history, trainingScore = null, condition = null, today = null }) {
+  const { t } = useTranslation("training");
+  const { runs, loading } = history;
+  if (loading && runs.length === 0) return <Section><SkeletonLines lines={4} /></Section>;
+  if (runs.length === 0) return <Section>
+    <SectionHeader title={t("historyTitle")} />
+    <EmptyState icon={<ClockIcon size={26} aria-hidden="true" />} title={t("historyEmpty")} />
+  </Section>;
+  return <div className="space-y-[14px]">{runs.map((run,index)=>
+    <DailyTrainingReceipt key={`${run.tick_date}:${run.season_id ?? "legacy"}`} run={run} trainingScore={trainingScore} defaultExpanded={index===0} condition={today && run.tick_date===copenhagenDayKey(today.getTime()) ? condition : undefined} today={today ?? undefined} />
+  )}</div>;
+}
+
+export default function TrainingHistory(props) {
+  return props.dailyReceiptEnabled === true ? <DailyTrainingHistory {...props} /> : <LegacyTrainingHistory {...props} history={{...props.history,runs:props.history.rawRuns ?? props.history.runs}} />;
 }

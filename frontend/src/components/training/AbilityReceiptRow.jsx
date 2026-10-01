@@ -33,7 +33,7 @@
 // "today"/"yesterday" eller datoen, når den seneste kørsel er ældre.
 
 import { useTranslation } from "react-i18next";
-import { abilityYesterdayGainPct, receiptGainKeys, RECEIPT_GAIN_DAY_OLDER } from "../../lib/trainingReport.js";
+import { abilityReceiptGainPct, receiptGainKeys, RECEIPT_GAIN_DAY_OLDER } from "../../lib/trainingReport.js";
 import { formatDate } from "../../lib/intl.js";
 
 // Bredder er faste, så de fire kolonner flugter linje for linje (tabular-nums på
@@ -41,9 +41,9 @@ import { formatDate } from "../../lib/intl.js";
 export default function AbilityReceiptRow({ row, inFocus = false }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
-  const { ability, value, gained, pct, locked, yesterdayPct, gainDay } = row;
+  const { ability, value, gained, pct, locked, gainDay } = row;
   const label = tRider(`racePreview.derived.${ability}`);
-  const yesterdayGainPct = abilityYesterdayGainPct(yesterdayPct);
+  const yesterdayGainPct = abilityReceiptGainPct(row);
   const { gainKey, contributionKey } = receiptGainKeys(gainDay);
   const gainVars = {
     pct: yesterdayGainPct,

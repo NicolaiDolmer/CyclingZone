@@ -44,8 +44,8 @@ test('a fresh reservation blocked by a stalled race is an audit finding',async()
   assert.equal(summary.waiting.length,0);
 });
 
-function makeTeam(id, { league_division_id = null, is_ai = false, is_frozen = false, is_bank = false, created_at = "2026-06-01T00:00:00Z", pending_removal_at = null, name } = {}) {
-  return { id, name: name || `Team ${id}`, is_ai, is_frozen, is_bank, created_at, pending_removal_at, league_division_id };
+function makeTeam(id, { league_division_id = null, u23_league_division_id = null, junior_league_division_id = null, retired_at = null, is_ai = false, is_frozen = false, is_bank = false, created_at = "2026-06-01T00:00:00Z", pending_removal_at = null, name } = {}) {
+  return { id, name: name || `Team ${id}`, is_ai, is_frozen, is_bank, created_at, pending_removal_at, retired_at, league_division_id, u23_league_division_id, junior_league_division_id };
 }
 
 test("no findings when every division has exactly 24 teams", async () => {
@@ -126,6 +126,42 @@ test("excludes bank teams from the invariant count", async () => {
 const NOW = new Date("2026-07-20T22:00:00Z");
 const FRESH_PENDING = "2026-07-20T10:00:00Z";   // 12t gammel — inden for grace
 const STALE_PENDING = "2026-06-20T10:00:00Z";   // 30 dage gammel — langt over grace
+
+test("#4753 youth groups still count a race-bound pending AI while senior reserves its removal", async () => {
+  const divisions = [
+    makeDivision(10, 4, 2, "Division 4 — C"),
+    makeDivision(21, 1, 5, "U23 Group F"),
+    makeDivision(33, 1, 7, "Junior Group H"),
+  ];
+  const senior = Array.from({ length: 24 }, (_, i) => makeTeam(`senior-${i}`, { league_division_id: 10 }));
+  const youth = Array.from({ length: 23 }, (_, i) => makeTeam(`youth-${i}`, {
+    u23_league_division_id: 21, junior_league_division_id: 33,
+  }));
+  const pending = makeTeam("still-racing", {
+    league_division_id: 10, u23_league_division_id: 21, junior_league_division_id: 33,
+    is_ai: true, pending_removal_at: FRESH_PENDING,
+  });
+  const summary = await runLeagueSizeAudit({
+    supabase: makeMock({ divisions, teams: [...senior, ...youth, pending], reason: "inflight_entries" }),
+    now: NOW,
+  });
+  assert.equal(summary.waiting.length, 1);
+  assert.equal(summary.total_findings, 0, "senior has 24 effective; both youth groups have 24 active racers");
+});
+
+test("#4753 an already retired AI with stale youth pointers cannot fill a youth group", async () => {
+  const divisions = [makeDivision(21, 1, 5, "U23 Group F"), makeDivision(33, 1, 7, "Junior Group H")];
+  const active = Array.from({ length: 23 }, (_, i) => makeTeam(`active-${i}`, {
+    u23_league_division_id: 21, junior_league_division_id: 33,
+  }));
+  const ghost = makeTeam("retired-ghost", {
+    u23_league_division_id: 21, junior_league_division_id: 33,
+    is_ai: true, retired_at: "2026-07-20T09:00:00Z",
+  });
+  const summary = await runLeagueSizeAudit({ supabase: makeMock({ divisions, teams: [...active, ghost] }), now: NOW });
+  assert.equal(summary.total_findings, 2);
+  assert.deepEqual(summary.findings.map((finding) => finding.count), [23, 23]);
+});
 
 test("hold markeret til fjernelse tæller ikke med i invarianten (#2639)", async () => {
   const divisions = [makeDivision(1, 4, 0, "Division 4 — C")];

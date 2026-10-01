@@ -35,6 +35,11 @@ const STAGES_2 = [
 function makeSupabase(canned, racesRowRef) {
   const writes = [];
   function rpc(name, params) {
+    if(name==='persist_training_condition_run') {
+      canned.race_simulation_runs??=[];
+      if(!canned.race_simulation_runs.some(row=>row.stage_number===params.p_run.stage_number)) canned.race_simulation_runs.push(structuredClone(params.p_run));
+      return Promise.resolve({data:{already_saved:false},error:null});
+    }
     if (name === "apply_stage_result") {
       return Promise.resolve({ data: { lock_won: true, rows_imported: params.p_result_rows?.length ?? 0 }, error: null });
     }
@@ -47,7 +52,11 @@ function makeSupabase(canned, racesRowRef) {
       is() { return b; }, not() { return b; }, gt() { return b; }, order() { return b; },
       limit() { return b; }, range() { return b; }, gte() { return b; }, lt() { return b; },
       maybeSingle() { return Promise.resolve({ data: rows[0] ?? null, error: null }); },
-      insert(r) { writes.push({ table, op: "insert", rows: r }); return Promise.resolve({ error: null }); },
+      insert(r) {
+        writes.push({ table, op: "insert", rows: r });
+        if(table==='race_simulation_runs' && r.some(row=>row.condition_load_snapshot)) canned[table]=structuredClone(r);
+        return Promise.resolve({ error: null });
+      },
       upsert(r) { writes.push({ table, op: "upsert", rows: r }); return Promise.resolve({ error: null }); },
       update(obj) {
         writes.push({ table, op: "update", obj });
@@ -74,12 +83,13 @@ function makeSupabase(canned, racesRowRef) {
  * Ét fuldt scenarie: kør etapen, dø efter `crashAfterStep`, kør den igen.
  * Returnerer tællerne for de sideeffekt-bærende kald summeret over BEGGE kørsler.
  */
-async function runWithCrashAfter(crashAfterStep, { stageIndex = 1, stages = STAGES_2 } = {}) {
+async function runWithCrashAfter(crashAfterStep, { stageIndex = 1, stages = STAGES_2, normalized = false, failLoadOnce = false, omitStarterOnResume = false } = {}) {
   const racesRow = {
     id: "race-1", season_id: "s1", name: "Test GP", race_type: "stage_race",
     race_class: "ProSeries", stages: stages.length, stages_completed: stageIndex, status: "scheduled",
   };
   const canned = {
+    ...(normalized ? {app_config:[{key:'training_condition_per_date',value:'on'}]} : {}),
     race_stage_profiles: stages,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
     riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: false, birthdate: "1995-01-01" })),
@@ -92,8 +102,10 @@ async function runWithCrashAfter(crashAfterStep, { stageIndex = 1, stages = STAG
   const store = { finalize_state: null, finalize_updated_at: null };
   const counts = { applyStageResult: 0, fatigue: 0, restDay: 0, notifyDiscord: 0, notifyInApp: 0, board: 0, standings: 0, matview: 0 };
   let crashed = false;
+  const fatigueFields=[];
 
   const deps = {
+    ...(normalized ? {checkV3Enabled:async()=>false,checkV4Enabled:async()=>false} : {}),
     checkFinalizeResumable: async () => true,
     readFinalizeStateFn: async () => ({ ...store }),
     writeFinalizeStateFn: async (_sb, _id, state, { now = new Date() } = {}) => {
@@ -112,7 +124,12 @@ async function runWithCrashAfter(crashAfterStep, { stageIndex = 1, stages = STAG
     updateStandings: async () => {},
     recomputeRaceDays: async () => { counts.board++; return 12; },
     processBoardWeekend: async () => ({}),
-    applyFatigue: async () => { counts.fatigue++; },
+    applyFatigue: async ({raceId,stageNumber,riderIds,loadSnapshot}) => {
+      counts.fatigue++;
+      fatigueFields.push({riderIds:[...riderIds],loadSnapshot:structuredClone(loadSnapshot)});
+      if(normalized) {assert.equal(raceId,racesRow.id);assert.equal(stageNumber,stageIndex+1);}
+      if(failLoadOnce && counts.fatigue===1) throw new Error('ledger offline');
+    },
     applyGrandTourRestDayFatigue: async () => { counts.restDay++; },
     notifyDiscord: async () => { counts.notifyDiscord++; },
     notifyInApp: async () => { counts.notifyInApp++; },
@@ -126,13 +143,31 @@ async function runWithCrashAfter(crashAfterStep, { stageIndex = 1, stages = STAG
   } catch (err) {
     firstError = err;
   }
+  const firstDone = [...(store.finalize_state?.done ?? [])];
+  if(omitStarterOnResume) canned.riders=canned.riders.filter(row=>row.id!==ENTRANTS[0].rider_id);
 
   // ── Næste cron-tick: samme etape tages op igen med den markering der overlevede.
   const supabase2 = makeSupabase(canned, racesRow);
   const second = await simulateStageByIndex({ supabase: supabase2, race: { ...racesRow }, stageIndex, ...deps });
 
-  return { counts, store, racesRow, firstError, second };
+  return { counts, store, racesRow, firstError, second, firstDone, fatigueFields };
 }
+
+test('normalized race ledger failure retries without replaying results or marking fatigue done',async()=>{
+  const result=await runWithCrashAfter(null,{normalized:true,failLoadOnce:true});
+  assert.match(result.firstError?.message??'',/ledger offline/);
+  assert.equal(result.firstDone.includes('fatigue'),false);
+  assert.equal(result.counts.fatigue,2);
+  assert.equal(result.counts.applyStageResult,1);
+  assert.equal(result.store.finalize_state,null);
+});
+
+test('ledger retry preserves original stage starters and effort when current entrant loader omits a rider',async()=>{
+  const result=await runWithCrashAfter(null,{normalized:true,failLoadOnce:true,omitStarterOnResume:true});
+  assert.equal(result.fatigueFields.length,2);
+  assert.deepEqual(result.fatigueFields[1],result.fatigueFields[0]);
+  assert.equal(result.fatigueFields[1].riderIds.includes(ENTRANTS[0].rider_id),true);
+});
 
 const FINAL_STAGE_STEPS = ["write", "standings", "matview", "enrichment", "fatigue", "board", "notify", "status-flush"];
 

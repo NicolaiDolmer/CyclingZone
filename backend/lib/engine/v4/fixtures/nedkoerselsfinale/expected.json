@@ -55,11 +55,11 @@
           "category": "3",
           "top": [
             {
-              "rider_id": "r05",
+              "rider_id": "r03",
               "points": 2
             },
             {
-              "rider_id": "r12",
+              "rider_id": "r13",
               "points": 1
             }
           ]
@@ -982,13 +982,13 @@
       "category": "3",
       "results": [
         {
-          "rider_id": "r05",
+          "rider_id": "r03",
           "passage_rank": 1,
           "points": 2,
           "bonus_seconds": 0
         },
         {
-          "rider_id": "r12",
+          "rider_id": "r13",
           "passage_rank": 2,
           "points": 1,
           "bonus_seconds": 0
@@ -1111,7 +1111,7 @@
     {
       "rider_id": "r03",
       "sprint_points": 1,
-      "kom_points": 0,
+      "kom_points": 2,
       "bonus_seconds": 0
     },
     {
@@ -1123,7 +1123,7 @@
     {
       "rider_id": "r05",
       "sprint_points": 13,
-      "kom_points": 2,
+      "kom_points": 0,
       "bonus_seconds": 0
     },
     {
@@ -1165,13 +1165,13 @@
     {
       "rider_id": "r12",
       "sprint_points": 7,
-      "kom_points": 1,
+      "kom_points": 0,
       "bonus_seconds": 0
     },
     {
       "rider_id": "r13",
       "sprint_points": 6,
-      "kom_points": 0,
+      "kom_points": 1,
       "bonus_seconds": 0
     },
     {

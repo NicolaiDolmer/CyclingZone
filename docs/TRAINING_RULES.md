@@ -1,5 +1,84 @@
 # Træningens regler - SSOT
 
+## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
+
+Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
+løbsdags aktivitet tælles én gang, og de oprindelige aktiviteter kan foldes ud
+under rytteren. Hele gevinstpoint summeres; brøkfremgang vises kun med dokumenteret
+start- og slutfremdrift. Tilstanden kommer fra datoens afsluttende afregning,
+aldrig fra summen af flere normaliserede tilstandsændringer.
+
+Alle forventede slots skal have kompatibel datokadence, før kvitteringen er
+afregnet. Manglende slots er afventende; karantæne, modstridende dubletter og
+blandet kadence kræver efterkontrol. Disse tilstande må ikke blive til målte
+nul-gevinster, sæsontal eller en historie om en færdig træningsdag.
+Ældre rapporter uden afregningsbevis beskrives som registrerede aktiviteter.
+Sæsoner på samme dato holdes adskilt; sæsontotaler filtreres før sammenlægning.
+
+Scorevisningen er godkendt til build af ejeren 30/9: oversigten viser seneste
+dokumenterede træningspasscore på kvitteringens dato, og detaljerne viser hvert
+pas' kvalitet fra `rider_training_scores`. Opslaget matcher dato, sæson og løbsdag;
+rapportens ældre gevinst-score bruges aldrig som kvalitet. Løb, hvile, skade og
+uklare kvitteringer får ikke et opdigtet tal. Score uden for læsevinduet vises
+som ukendt. Visningen følger fortsat `training_score_visible` og ejerskabsfilteret.
+Legacy-kvitteringer uden sæson og løbsdag kan kun få en score, hvis datoen
+har præcis én matchende score uden løbsdags-id; tvetydige match er ukendte.
+Farver genbruger rytterprofilens `ConditionChips`-regler for form og træthed
+på hvert før-/eftertal. Dokumenteret positiv udvikling bruger den eksisterende
+gevinstfarve fra `AbilityReceiptRow`. Score forbliver neutral som på de øvrige
+scoreflader; ukendte værdier får ingen statusfarve (ejer-retning 30/9).
+API'ets additive `trainingScore[rider_id].sessions` bevarer de indlæste slots;
+den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
+
+Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
+regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
+datoens forventede løbsdage som visningsbevis. Ejerens beta-release-go 30/9
+gater den nye rapport med `training_daily_receipt`: `beta` åbner kun for
+serververificerede beta-testere/admin. `off`, manglende flag eller læsefejl
+bevarer den eksisterende rapport. `training_score_visible` ændres ikke.
+API-feltet `dailyReceiptEnabled` vælger frontendvisningen; flaget ændrer ingen
+træningsskrivninger. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+
+## Historisk delt løbsdag efter holdskifte (#5860, ejer-go 30/9)
+
+Eksisterende resultater og immutable belastningssnapshots bevares ved den ejer-godkendte genopretning. Et ekstra bevis på samme rytter/sæson/løbsdag kan referere den oprindelige, tidligere afviklede aktivitet via `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number`. Kun det oprindelige bidrag tæller i datoens tilstand; alle bevisrækker indgår i den atomiske afregningskvittering og forbruges samlet. Der opstår ét udviklingstick pr. rytter/løbsdag og én tilstandsafregning pr. dato. Normale nye belastninger er fortsat unikke på rytter/sæson/løbsdag.
+
+`recover_transferred_race_loads` er service-only, sammenligner præcist snapshot og finaliseringsstatus, kræver eksisterende resultat og en tidligere, uafregnet aktivitet på samme slot og committer hele belastningsbatchen eller intet. Ukendte ekstra konflikter, ændret evidens eller allerede afregnet tilstand afviser genopretningen. Ingen resultater, programmer, evner, skader eller live-tilstand skrives af denne RPC. Fremtidige dobbeltstarter afvises før resultat/startsnapshot efter [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md); aksen står i [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Den godkendte genopretning er gennemført 30/9 efter PR #5983. Resultatfingeraftrykket er bevaret; privat før-/efterbevis og rollback-note ligger i OneDrive-context.
+
+## Førstegangsregistrering og driftalarmer (#5928, 29/9)
+
+Når `training_condition_per_date` ejer træningen, springer den gamle kl. 22-sweep
+over efter et strengt flagopslag. Et fejlet ejerskabsopslag må ikke genåbne den.
+Datoens lukning er fortsat den fælles trænings- og restitutionsvej.
+
+En ny registrering på selve den logiske dato materialiserer træningsmotorens
+eksisterende neutrale standardtilstand for ejede, ikke-pensionerede ryttere uden
+en tilstandsrække og uden tidligere gemte tilstandseffekter. Række og frossent
+udgangspunkt oprettes i samme transaktion. Eksisterende tilstande, skader og
+registreringer ændres aldrig af dette trin; historiske datoer og karantæner kræver
+eksplicit efterregulering. Reglen omfatter alle trupper, som den fælles motor.
+
+Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
+og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
+i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
+
+## Integritet i dagsaktiviteten (#5888, 29/9)
+
+- Endagsløbets `gc`-resultat tæller som løbsaktivitet på den lagrede etapes løbsdag; etapeløbets samlede GC gør ikke. Reglen gælder senior, U23 og junior.
+- En gemt udtagelse binder ikke træningen, når første etapes uforanderlige `race_simulation_runs.entrant_snapshot` beviser, at rytteren aldrig var i startfeltet. Rytteren følger sit program, med den eksisterende skadesregel. Selve udtagelsen ændres ikke.
+- Manglende startfelt er ukendt og frigiver aldrig bindingen. Fejlede opslag og ugyldige snapshots stopper tick'et til genforsøg. Manglende resultater er ikke bevis for DNS: en legitim DNF må ikke blokere holdets øvrige ryttere. Proportionalt DNF-udbytte og frigivelse af senere løbsdage er et separat design, endnu ikke implementeret her.
+- Med `training_condition_per_date` aktivt ejer datoens aftenafregning restitutionen. Løbsmotorens tidligere ekstra restitution for huller mellem `game_day` må hverken forudberegnes eller skrives oveni. DNS-frigivelse kobles til samme flag, så den ikke leveres med den gamle hurtige tilstandskadence. Frie slots på en etapedato følger programmet; en hel bundet dato uden etape er fortsat hvile. Flag off bevarer den gamle restitution og DNS-binding.
+- Rettelsen ændrer ingen balancerater eller formmodel. Målingernes begrænsninger står i [integritetsauditten](audits/2026-09-29-training-day-integrity.md).
+
+## Tilstand én gang pr. dato (#5928, ejer-valg A 29/9)
+
+Forudsætning: `training_tick_per_race_day` skal være aktivt for motoren, før `training_condition_per_date` må være aktivt. Inkonsistente flag og fejlede flagopslag afvises før skrivning i træning, løbsbelastning og cutover. Løbsdagsaksen er nulbaseret; datoen kommer fra kalenderen, aldrig fra en udledning af løbsdagsnummeret.
+
+`training_condition_per_date` er bygget med standard `off`; ingen aktivering er godkendt. Ejerens efterfølgende build-go 29/9 normaliserer den SAMLEDE løbs- og træningsbelastning: hver etape optager ét af datoens fem slots. Evner udvikles fortsat på alle sæsonens 140 løbsdage. Datoens fem trin bruger samme gemte udgangspunkt for udviklingens form-/træthedsfaktor. Kun sidste trin afregner tilstanden, efter de fire tidligere rapporter er færdige: gennemsnittet af eksisterende belastninger, én restitution, én formændring og ét datoseedet skadesrul baseret på datoens starttilstand. Løb skriver under flaget kun idempotente belastningsrækker i `training_race_loads`, med eksisterende profil og indsats. Eksisterende restitutionskonstanter følger fortsat `race_day_engine_enabled`; skadens løbsdagsvarighed består. Ny formsemantik er ikke en del af rettelsen.
+
+Evner, historik, score, rapport, belastningsforbrug og tilstandsændring committes atomisk af `commit_training_date_tick`. Dubletter gør intet; fejl ruller hele trinnet tilbage. En ændret belastningsliste kræver genforsøg; nye løbsbelastninger efter afregning afvises. Manglende tidligere trin, blandet gammel/ny kadence eller uafsluttet tidligere dato stopper til genforsøg/recovery. Den manuelle knap og aftenens sweep bruger samme motor. Rollout sker ved en ubrugt dato eller via ejer-godkendt atomisk cutover fra dokumenteret starttilstand og faktiske etapelaster; aldrig midt i træningens fem trin. Legacy-finalisering skal være stoppet og observeret afsluttet før cutover. Skader bevares. #5926 må ikke frigives alene. Acceptmålinger og fuld verifikation afventer hovedsessionen; den historiske median-gate er midlertidigt fraveget af ejeren, og enhedstest er ikke populationsbevis. Se [implementeringsplanen](superpowers/plans/2026-09-29-training-condition-date.md).
+
+
 > **GDD-retning, ejer 10/9 (D-018):** videre design bygger på passende udfordring
 > og aftagende læring ved nye erfaringer. Begge dagsaktiviteter udvikler rytteren;
 > målrettet træning har præcision, passende løb giver fysisk stimulus og erfaring.
@@ -512,7 +591,7 @@ Hver post er ÉN ting der mangler at blive afgjort. Ingen af dem må gættes på
 | # | Spørgsmålet | Hvorfor det er åbent |
 |---|---|---|
 | 1 | ~~Hvad skal bestemme en rytters udbytte på en løbsdag, når planen ikke længere må være input?~~ **Afgjort 24/9 (variant A, #4850):** etapens profil som et mellem-pas, maks +1 pr. evne pr. løbsdag, planen er ikke input. Se §6.2. **Stadig åbent:** variant B, intentionen (grupetto → all-out, #4632) som modifikator ovenpå, når v4 tændes | §6.2, #4850, #4632 |
-| 2 | **Skal restitutionen have sit eget tidspunkt i døgnet, adskilt fra trænings-tick'et?** I dag er der ét tick, og et manager-klik kl. 08 bruger døgnets eneste restitution før etaperne kl. 11-19 | #3461, åben, priority:high. Ingen besluttet retning: nat-tick, to-delt tick, eller restitution løsrevet fra træning |
+| 2 | **Skal restitutionen have sit eget tidspunkt i døgnet, adskilt fra trænings-tick'et?** I dag er der ét tick, og et manager-klik kl. 08 bruger døgnets eneste restitution før etaperne kl. 11-19 | #3461. **Retning valgt 29/9:** træthed/form opdateres én gang pr. dato ved aftenopgørelsen (#5928), og træningen regnes fra datoens starttilstand, så et tidligt tryk ikke kan bruge restitutionen før etaperne |
 | 3 | **Skal `aiRecoverySweep.js` slettes?** Den er en garanteret no-op så længe `race_day_engine_enabled` er on, men står stadig i cron og forbruger et 5-minutters slot | `aiRecoverySweep.js:144-154` lover sletning "i en opfølgnings-PR efter 23/8-verifikation". Sletningen kræver en beslutning om hvorvidt `race_day_engine_enabled` nogensinde skal kunne slukkes igen |
 | 4 | **Hvad er den rigtige måldistribution for træthed, og gælder den hele bestanden eller kun menneskehold?** Målt 30/8: hele bestandens median er 41, mens D3 blev kalibreret mod en menneske-median på 57 i 40-60-båndet | §5.3. Uden en besluttet definition kan ingen vagt måle om D3 stadig holder |
 | 5 | **Skal 31 % af alle aktive planer stå på Hvile?** Tallet kan være et rationelt spillervalg (friske ryttere bliver udtaget) eller et symptom på at træning ikke betaler sig nok | §3, målt 30/8. Kræver en ejer-udmelding om hvad den ønskede fordeling er, før nogen kan kalde tallet forkert |
@@ -660,7 +739,7 @@ Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og ræ
 | # | Beslutning | Ejerens ord | Konsekvens |
 |---|---|---|---|
 | 1 | **Tick-enheden er løbsdagen (`game_day`), og alle divisioner har SAMME antal løbsdage pr. sæson** | *"Det skal være samme antal dage ind i spillet. Men divisionerne behøves ikke nødvendigvis at køre lige mange løb. Altså det kan sagtens være, at divisionerne der er lidt lavere, de bare får flere muligheder for at træne."* | Kalenderpakkeren fylder et fast antal løbsdage (fx 3 pr. kalenderdag) i alle divisioner; løbsdage uden løb er rene træningsdage. En rytter enten kører løb eller træner på hver løbsdag (§6.2-afvigelsen forsvinder strukturelt). Restitutionen får sin plads efter hver løbsdag (#3461). Rater rekalibreres så en sæsons samlede udvikling ikke stiger med antallet af ticks; "+1 pr. evne pr. dag" (#4801) betyder pr. løbsdag |
-| 2 | **"Træn i dag"-knappen og 25 %-bonussen fjernes** | valgt 6/9 (anbefaling: fjern begge) | Programmet kører af sig selv når løbsdagen lukker. Ingen fordel af at logge ind ofte. `DAILY_TRAINING_CONFIG.bonusMult` og `POST /api/training/run-today` udgår sammen med omlægningen; spillerens arbejde er program, dagens override og løbsdagens intention |
+| 2 | **"Træn i dag"-knappen og 25 %-bonussen fjernes** · **ÆNDRET 29/9:** bonussen forbliver fjernet, men knappen kommer tilbage som tidsuafhængig "Træn nu" (samme resultat som automatisk afregning, dagen afgøres i begge retninger). Se [`2026-09-29-traen-nu-og-prognose-design.md`](superpowers/specs/2026-09-29-traen-nu-og-prognose-design.md) | valgt 6/9 (anbefaling: fjern begge); revideret af ejeren 29/9 efter forumtråd | Programmet kører af sig selv når løbsdagen lukker. Ingen fordel af at logge ind ofte. `DAILY_TRAINING_CONFIG.bonusMult` og `POST /api/training/run-today` udgår sammen med omlægningen; spillerens arbejde er program, dagens override og løbsdagens intention |
 | 3 | **Løbsdagens intention vælges i holdudtagelsen pr. etape, sammen med rolle og taktik; standard = Normal** | valgt 6/9 (anbefaling) | Træningssiden viser intentionen read-only ("Race: attack") med link til etapen. Én kilde, tre forbrugere: løbsmotor, træthed, udvikling. Lukker #4632 punkt 1. **`race_entries` har ingen intentions-kolonne i dag** (kolonner: `race_id, rider_id, team_id, is_auto_filled, created_at, race_role, binding_span`), så det er migration + API-kontrakt + holdudtagelses-UI, ikke en aflæsning |
 | 4 | **Træningsscoren måler PASSETS KVALITET (1-99), ikke udbyttet** | *"Tættest på 1 - Men det skal også være alt efter hvor hurtigt/godt han udvikler sig. Sådan store talenter har bedre score, end nær så gode talenter. Derudover skal det også stige, hvis man har bedre træner, hvis man har bedre akademi mv. Altså underforstået, fordi man træner bedre."* | Score = f(potentiale, alder, session/intensitet, form/træthed, fokus-match, træner, faciliteter/akademi), og udviklingen udledes AF scoren. Bekræfter #3564 beslutning 5 og vender kausalretningen om: i dag er `tickResult.score` summen af de deltaer motoren allerede har beregnet (`dailyTraining.js:214, 233`). Scoren må IKKE være cap-afhængig som i dag (`dailyTraining.js:118-119`), hvor en rytter med fokus-evner på loftet får 0 efter et perfekt pas. Udbyttet pr. evne vises fortsat som +point på udviklingsfanen |
 | 5 | **Scoren ses KUN af rytterens egen manager og er ÆRLIG fra dag ét** | valgt 6/9 | RLS som i dag (`training_day_runs_select`-mønsteret: kun holdets ejer kan læse). **#3564 beslutning C frafalder** - ingen støj-gate, ingen "median ≥14 dage før potentialet kan aflæses". Accepteret pris: køb-træn-sælg bliver et scouting-loop. Markedsværdi og fremmede ryttere røres ikke, så #2798-sidekanalen er uændret |

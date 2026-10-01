@@ -140,8 +140,8 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByText("+0:23")).toBeVisible();
 
   // #1499 udbruds-markør: survived (ADA) + caught (MIK) via title-tooltip.
-  await expect(page.getByTitle("Udbrud — holdt hjem til mål")).toBeVisible();
-  await expect(page.getByTitle("Udbrud — indhentet af feltet")).toBeVisible();
+  await expect(page.getByTitle("Udbrud: holdt hjem til mål")).toBeVisible();
+  await expect(page.getByTitle("Udbrud: indhentet")).toBeVisible();
 
   // #3985 (regression af #3914): terræn-badget skal være synligt i etape-fanens
   // metadata-linje UDEN at folde "Etapeprofil"-sektionen ud — det var netop

@@ -21,5 +21,12 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 export const TRAINING_TICK_PER_RACE_DAY_FLAG_KEY = "training_tick_per_race_day";
 
 export async function isTrainingTickPerRaceDayEnabled(supabase, opts = {}) {
+  if (opts.strict) {
+    // Writers choosing a recovery owner cannot interpret a failed read as off.
+    const { data, error } = await supabase.from("app_config").select("value")
+      .eq("key", TRAINING_TICK_PER_RACE_DAY_FLAG_KEY).maybeSingle();
+    if (error) throw new Error(`training recovery ownership: ${error.message ?? error}`);
+    return evaluateFlagStage(data?.value ?? null, opts);
+  }
   return evaluateFlagStage(await readFlagStage(supabase, TRAINING_TICK_PER_RACE_DAY_FLAG_KEY), opts);
 }

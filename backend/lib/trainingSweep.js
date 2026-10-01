@@ -15,6 +15,7 @@ import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
 
 export const SWEEP_FROM_HOUR = 22;
 
@@ -85,6 +86,12 @@ export async function runTrainingSweep({
   const enabled = await isDailyTrainingEnabled(supabase);
   if (!enabled) {
     return { swept: 0, skipped: "flag_off" };
+  }
+
+  // Date close owns both training and recovery after cutover. A failed ownership
+  // read must throw rather than revive the incompatible legacy entrypoint.
+  if (await isTrainingConditionPerDateEnabled(supabase)) {
+    return { swept: 0, skipped: 'condition_per_date' };
   }
 
   // ── Hold + sæson + dagens kørsler ─────────────────────────────────────────────

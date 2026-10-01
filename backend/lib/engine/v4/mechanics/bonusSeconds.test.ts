@@ -241,6 +241,154 @@ test("computePassageOrder: en UDGAAET rytter er ude af opgoerelsen", () => {
   assert.deepEqual(order, ["a"]);
 });
 
+// ── #5914: passagerne foelger loebet ────────────────────────────────────────
+
+function withRole(e: Entrant, role: Entrant["role"]): Entrant {
+  return { ...e, role };
+}
+
+// Et felt paa 20 (> passageOpenContestMaxGroupSize) — en "stor gruppe".
+function bigPeloton(ids: string[], gap = 0): RaceGroup {
+  return { id: "peloton-0", kind: "peloton", rider_ids: ids, gap_seconds: gap, cohesion: 1 };
+}
+const FILLER = Array.from({ length: 18 }, (_, i) => `f${i}`);
+
+const SPRINT_CONTEST = {
+  contenderRoles: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintContenderRoles,
+  openContestMaxGroupSize: BONUS_SECONDS_EXTRA_TUNING.passageOpenContestMaxGroupSize,
+};
+
+test("#5914 regression: udbruddet vinder passagen selvom RiderState.group_id stadig peger paa startgruppen", () => {
+  // Praecis prod-tilstanden 28-29/9: splitGroup flytter kun groups[].rider_ids,
+  // saa ALLE ryttere har stadig group_id "peloton-0" midt i etapen.
+  const entrants: Record<string, Entrant> = {
+    breaker: makeEntrant("breaker", abilities({ sprint: 20, acceleration: 20, positioning: 20 })),
+    sprinter: withRole(makeEntrant("sprinter", abilities({ sprint: 99, acceleration: 99, positioning: 99 })), "sprint_captain"),
+  };
+  const state = scenarioState(
+    [
+      { id: "breakaway-0", kind: "breakaway", rider_ids: ["breaker"], gap_seconds: 0, cohesion: 1 },
+      { id: "peloton-0", kind: "peloton", rider_ids: ["sprinter"], gap_seconds: 300, cohesion: 1 },
+    ],
+    { breaker: makeRiderState("breaker", "peloton-0"), sprinter: makeRiderState("sprinter", "peloton-0") },
+  );
+  const order = computePassageOrder(state, entrants, boundRngFor("s"), {
+    stream: "passage:sprint:0",
+    qualityWeights: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintQualityWeights,
+    noiseSd: 0,
+    contest: SPRINT_CONTEST,
+  });
+  assert.deepEqual(order, ["breaker", "sprinter"]);
+});
+
+test("#5914: i feltet ruller kaptajn og hjaelper igennem bag pointjaegerne, uanset evne", () => {
+  const strong = abilities({ sprint: 99, acceleration: 99, positioning: 99 });
+  const weak = abilities({ sprint: 30, acceleration: 30, positioning: 30 });
+  const entrants: Record<string, Entrant> = {
+    capt: withRole(makeEntrant("capt", strong), "captain"),
+    helper: withRole(makeEntrant("helper", strong), "helper"),
+    hunter: withRole(makeEntrant("hunter", weak), "hunter"),
+    ...Object.fromEntries(FILLER.map((id) => [id, withRole(makeEntrant(id, abilities({ sprint: 10 })), "helper")])),
+  };
+  const ids = ["capt", "helper", "hunter", ...FILLER];
+  const state = scenarioState([bigPeloton(ids)], Object.fromEntries(ids.map((id) => [id, makeRiderState(id, "peloton-0")])));
+  const order = computePassageOrder(state, entrants, boundRngFor("s"), {
+    stream: "passage:sprint:0",
+    qualityWeights: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintQualityWeights,
+    noiseSd: 0,
+    contest: SPRINT_CONTEST,
+  });
+  assert.equal(order[0], "hunter", "den eneste pointjaeger tager feltspurten");
+  // Restpladserne uddeles stadig: de oevrige passerer bagefter paa evne.
+  assert.deepEqual(order.slice(1, 3).sort(), ["capt", "helper"]);
+});
+
+test("#5914: bjergtop — sprinterkaptajnen er IKKE pointjaeger, kun jaeger/fri rolle", () => {
+  assert.ok(!BONUS_SECONDS_EXTRA_TUNING.komContenderRoles.includes("sprint_captain"));
+  assert.ok(!BONUS_SECONDS_EXTRA_TUNING.komContenderRoles.includes("captain"));
+  assert.ok(BONUS_SECONDS_EXTRA_TUNING.intermediateSprintContenderRoles.includes("sprint_captain"));
+});
+
+test("#5914: troejefoereren kaemper altid med i feltet, ogsaa som kaptajn", () => {
+  const entrants: Record<string, Entrant> = {
+    leader: withRole(makeEntrant("leader", abilities({ sprint: 90, acceleration: 90, positioning: 90 })), "captain"),
+    hunter: withRole(makeEntrant("hunter", abilities({ sprint: 50, acceleration: 50, positioning: 50 })), "hunter"),
+    ...Object.fromEntries(FILLER.map((id) => [id, withRole(makeEntrant(id, abilities({ sprint: 99, acceleration: 99 })), "helper")])),
+  };
+  const ids = ["leader", "hunter", ...FILLER];
+  const state = scenarioState([bigPeloton(ids)], Object.fromEntries(ids.map((id) => [id, makeRiderState(id, "peloton-0")])));
+  const order = computePassageOrder(state, entrants, boundRngFor("s"), {
+    stream: "passage:sprint:0",
+    qualityWeights: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintQualityWeights,
+    noiseSd: 0,
+    contest: { ...SPRINT_CONTEST, jerseyLeaderId: "leader" },
+  });
+  assert.deepEqual(order.slice(0, 2), ["leader", "hunter"]);
+});
+
+test("#5914: i en lille gruppe (udbrud) kaemper alle — ogsaa kaptajnen", () => {
+  const entrants: Record<string, Entrant> = {
+    capt: withRole(makeEntrant("capt", abilities({ sprint: 90, acceleration: 90, positioning: 90 })), "captain"),
+    hunter: withRole(makeEntrant("hunter", abilities({ sprint: 40, acceleration: 40, positioning: 40 })), "hunter"),
+  };
+  const state = scenarioState(
+    [{ id: "breakaway-0", kind: "breakaway", rider_ids: ["capt", "hunter"], gap_seconds: 0, cohesion: 1 }],
+    { capt: makeRiderState("capt", "peloton-0"), hunter: makeRiderState("hunter", "peloton-0") },
+  );
+  const order = computePassageOrder(state, entrants, boundRngFor("s"), {
+    stream: "passage:sprint:0",
+    qualityWeights: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintQualityWeights,
+    noiseSd: 0,
+    contest: SPRINT_CONTEST,
+  });
+  assert.deepEqual(order, ["capt", "hunter"]);
+});
+
+test("#5914: udbrud foran -> udbruddet tager de foerste pladser, feltets jaegere de naeste (fuld pointliste)", () => {
+  const entrants: Record<string, Entrant> = {
+    b1: withRole(makeEntrant("b1", abilities({ sprint: 30 })), "helper"),
+    b2: withRole(makeEntrant("b2", abilities({ sprint: 20 })), "helper"),
+    hunter: withRole(makeEntrant("hunter", abilities({ sprint: 99, acceleration: 99, positioning: 99 })), "sprint_captain"),
+    ...Object.fromEntries(FILLER.map((id) => [id, withRole(makeEntrant(id, abilities()), "helper")])),
+  };
+  const pelotonIds = ["hunter", ...FILLER];
+  const state = scenarioState(
+    [
+      { id: "breakaway-0", kind: "breakaway", rider_ids: ["b1", "b2"], gap_seconds: 0, cohesion: 1 },
+      bigPeloton(pelotonIds, 240),
+    ],
+    Object.fromEntries(["b1", "b2", ...pelotonIds].map((id) => [id, makeRiderState(id, "peloton-0")])),
+  );
+  const order = computePassageOrder(state, entrants, boundRngFor("s"), {
+    stream: "passage:sprint:0",
+    qualityWeights: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintQualityWeights,
+    noiseSd: 0,
+    contest: SPRINT_CONTEST,
+  });
+  assert.deepEqual(order.slice(0, 3), ["b1", "b2", "hunter"]);
+  const passage = buildPassage({
+    kind: "sprint", index: 0, name: "Spurt", km: 50, order,
+    pointScale: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintPoints,
+    bonusScale: RACE_V4_TUNING.bonusSeconds.intermediateSeconds,
+  });
+  assert.equal(passage?.results.length, BONUS_SECONDS_EXTRA_TUNING.intermediateSprintPoints.length, "point uddeles altid fuldt ud");
+});
+
+test("#5914: samme input giver samme raekkefolge (determinisme med stoej)", () => {
+  const entrants: Record<string, Entrant> = Object.fromEntries(
+    ["a", "b", ...FILLER].map((id, i) => [id, withRole(makeEntrant(id, abilities({ sprint: 40 + i })), i % 3 === 0 ? "hunter" : "helper")]),
+  );
+  const ids = Object.keys(entrants);
+  const state = scenarioState([bigPeloton(ids)], Object.fromEntries(ids.map((id) => [id, makeRiderState(id, "peloton-0")])));
+  const run = () => computePassageOrder(state, entrants, boundRngFor("seed-x"), {
+    stream: "passage:sprint:3",
+    qualityWeights: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintQualityWeights,
+    noiseSd: BONUS_SECONDS_EXTRA_TUNING.intermediateSprintNoiseSd,
+    contest: SPRINT_CONTEST,
+  });
+  assert.deepEqual(run(), run());
+});
+
 // ── passagesHook (segment-hook-kontrakt) ───────────────────────────────────
 
 const ROUTE_STUB: RouteV2 = {

@@ -348,6 +348,17 @@ const bonusSecondsExtra = {
   komQualityWeightsSmall: { climbing: 0.5, punch: 0.35, acceleration: 0.15 },
   komSmallCategories: ["3", "4"] as readonly string[],
   komNoiseSd: 0.03, // samme stoej-niveau som racePassages.WAYPOINT_NOISE_SD
+
+  // ── Hvem KAEMPER om en passage (#5914, ejer-godkendt 29/9) ─────────────────
+  // I en lille gruppe (et udbrud, en jagtgruppe) koerer alle om pointene — det
+  // er det de sidder der for. I en stor gruppe (feltet) spurter kun
+  // pointjaegerne; kaptajner og hjaelpere ruller igennem bag dem. Foereren af
+  // point- hhv. bjergkonkurrencen kaemper altid (han forsvarer troejen). Er der
+  // faerre kaempere end pointpladser, gaar restpladserne til de bedste af de
+  // oevrige i gruppen, saa point altid uddeles.
+  passageOpenContestMaxGroupSize: 8, // = breakaway.ts's MAX_BREAKAWAY_SIZE: et helt udbrud kaemper altid
+  intermediateSprintContenderRoles: ["sprint_captain", "hunter", "free_role"] as readonly string[],
+  komContenderRoles: ["hunter", "free_role"] as readonly string[],
 };
 
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
@@ -1303,3 +1314,40 @@ const teamPlayExtra = {
 
 /** M16 additiv holdspils-tuning (deep-frosset). Se teamPlayExtra-kommentaren ovenfor. */
 export const TEAM_PLAY_EXTRA_TUNING = deepFreeze(teamPlayExtra);
+
+// ── #5955 (#5984 Task 3): ordrestyret, omstridt morgenudbrud (orders_gc_v1) ──
+// KUN laest naar loebets regel-revision er "orders_gc_v1" (mechanics/
+// breakawayPermission.ts). Legacy-stien laeser intet herfra.
+//
+// UKALIBREREDE START-KANDIDATER: de strukturelle invarianter (tilladelse, pris
+// én gang, ingen fyldning, nul udbrydere gyldigt, faktisk modreaktion) er
+// testet uafhaengigt af tallene. Kalibreringen og kvalitetsmaalene er ejer-
+// gated (#5984 Task 6) og foretages privat paa parrede simulationer; ingen
+// loeb bindes til orders_gc_v1 foer det go (raceEngineRulesRevision.ts).
+const morningBreakFormation = {
+  // Forsoegets pris, andel af rytterens egen CP (team_cp_factor-valutaen).
+  // Betales én gang pr. forsoeg, ogsaa ved fiasko og uanset indsatstrin. STARTGAET
+  attemptCostFraction: 0.02,
+  // Modreaktionens pris for en arbejdende rytter paa et rivalhold med fuld
+  // arbejdsvaegt, andel af egen CP. Deles naar flere arbejder. STARTGAET
+  oppositionCostFraction: 0.015,
+  // Effektive arbejdere der giver ét hold dets fulde modreaktion. STARTGAET
+  referenceWorkers: 3,
+  // Et neutralt holds andel af en jagende reaktion paa et udbrud det ikke er
+  // med i (lad gaa = 0, jag = 1). STARTGAET
+  neutralReactionShare: 0.35,
+  // Loft over feltets samlede modstand (summen af holdenes reaktion). STARTGAET
+  maxPressure: 3,
+  // Succes-sandsynlighed: grundniveau, evne relativt til feltets snit, og
+  // fradrag pr. enhed modstand og pr. overfyldt plads. STARTGAET
+  successBase: 0.55,
+  successStrengthGain: 1.2,
+  successPressureWeight: 0.12,
+  successCrowdWeight: 0.35,
+  successBounds: [0.03, 0.85] as readonly [number, number],
+  // Rytterens motor relativt til feltets snit, clampet. STARTGAET
+  relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
+};
+
+/** #5955 orders_gc_v1-dannelse (deep-frosset). Se morningBreakFormation-kommentaren ovenfor. */
+export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);

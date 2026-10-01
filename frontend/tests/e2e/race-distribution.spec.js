@@ -172,8 +172,11 @@ test("board: redigering gemmer ikke før Gem (underbemandet vises lokalt)", asyn
 
   // Fjern én rytter fra den fulde 6/6-trup → 5/6.
   const removeBtn = board.getByRole("button", { name: /Fjern rytter/ }).first();
-  await removeBtn.scrollIntoViewIfNeeded();
-  await removeBtn.click({ force: true });
+  // #5930: the visible explanation moves this row down. A forced WebKit
+  // click can hit MobileQuickNav over the button instead of removing a rider.
+  await removeBtn.evaluate(button => button.scrollIntoView({ block: "center", behavior: "instant" }));
+  await removeBtn.click();
+  await expect(page).toHaveURL(/\/planning/);
 
   // Underbemandet vises; INGEN fejl-alert; INGEN PUT (ugyldig kladde gemmes ikke).
   await expect(board.getByText(/5 \/ 6/).first()).toBeVisible();

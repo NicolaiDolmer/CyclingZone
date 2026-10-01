@@ -1,0 +1,133 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#f4f3ef;--card:#fff;--line:#e2e0da;--t1:#14161f;--t2:#5b5e6b;--t3:#9a9ca6;--gold:#e8c547;--goldf:rgba(232,197,71,.14);--navy:#1b1f3b;--green:#2e7d32;--yellow:#c58a00;--red:#c62828}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:"Segoe UI",Arial,sans-serif;color:var(--t1);width:2000px;padding:28px}
+h1{font-size:28px;margin:0 0 4px}.sub{color:var(--t2);font-size:15px;margin-bottom:22px}
+.cols{display:grid;grid-template-columns:560px 1fr;gap:28px}
+.lbl{font-size:14px;letter-spacing:.06em;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase}.lbl.g{color:#9a7400}
+.frame{background:var(--card);border:1px solid var(--line);border-radius:5px;overflow:hidden;position:relative}
+.app{display:flex}.side{width:120px;background:var(--navy);flex:none}.main{flex:1;padding:14px 16px}
+.ph{font-size:16px;font-weight:700}.ph small{display:block;color:var(--green);font-weight:400;font-size:11px}
+.tabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin:10px 0 12px;font-size:12px;color:var(--t2)}.tabs span{padding:6px 0}.tabs .on{color:var(--t1);border-bottom:2px solid var(--gold);font-weight:600}
+.card{border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin-bottom:10px;background:#fff}
+.ct{font-size:12px;font-weight:700}.cd{font-size:10px;color:var(--t2);margin-top:2px}
+.bar{height:7px;background:#eceae4;border-radius:3px;margin-top:6px}
+.fold{position:absolute;left:0;right:0;border-top:2px dashed var(--red)}.fold span{position:absolute;right:6px;top:-18px;font-size:11px;color:var(--red);font-weight:700;background:#fff;padding:0 4px}
+.pin{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#b8860b;color:#fff;font-weight:700;font-size:13px;flex:none}
+.pinabs{position:absolute}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;font-size:12px}.seg span{padding:6px 14px;border-right:1px solid var(--line);color:var(--t2)}.seg span:last-child{border-right:0}.seg .on{background:var(--goldf);color:#8a6a00;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:10.5px}td,th{border-bottom:1px solid var(--line);padding:5px 4px;text-align:left}th{color:var(--t3);font-weight:600;font-size:9.5px;text-transform:uppercase}
+.today td{background:#faf8f1}.stage{background:var(--navy);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px}.rec{color:var(--green);font-weight:600}
+.fc{display:flex;align-items:center;gap:8px;font-size:11px}.fc b{font-size:13px}.dot{width:34px;height:5px;background:var(--green);border-radius:3px}
+.sel{border:1px solid var(--line);border-radius:5px;padding:4px 8px;font-size:11px;display:inline-block;min-width:150px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.mini .main{padding:12px}.legend{background:#fff;border:1px solid var(--line);border-radius:5px;padding:14px 18px;font-size:15px;line-height:1.55;margin-top:18px}.legend div{display:flex;gap:10px;margin:6px 0;align-items:flex-start}
+.phone{width:300px;border:1px solid var(--line);border-radius:5px;background:#fff;overflow:hidden}.ptop{background:var(--navy);height:34px}.pb{padding:12px}.pnav{background:var(--navy);height:40px}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:10px;margin:2px}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 0;border-bottom:1px solid var(--line)}
+</style></head><body>
+<h1>Træning · Program-fanen: færre scroll og klik</h1>
+<div class="sub">Venstre: sådan bliver fanen, hvis de tre PR'er merges som de er. Højre: anbefalet opbygning med under-faner. Illustrative tal, samme komponenter og farver som spillet.</div>
+<div class="cols">
+<!-- FØR -->
+<div>
+ <div class="lbl">I dag (efter de 3 PR'er) · desktop</div>
+ <div class="frame" style="height:1240px"><div class="app" style="height:100%"><div class="side"></div><div class="main">
+  <div class="ph">Daily training<small>Trained today at 07:00 (by you)</small></div>
+  <div class="tabs"><span>Today</span><span class="on">Program</span><span>Development</span><span>Report</span></div>
+  <div class="card" style="height:250px"><div class="ct">Training programs</div><div class="cd">6 programmer + "Put on"</div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+  <div class="card" style="height:250px"><div class="ct">Plan (35 felter)</div><div class="cd">Fatigue tonight approx. 40 · rytter-vælger</div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+  <div class="card" style="height:220px"><div class="ct">Week plan (hele dagen)</div><div class="cd">Samme 7 dage igen, kun hele-dags-kolonnen</div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+  <div class="card" style="height:70px"><div class="ct">Individual weekly plans</div><div class="cd">Liste over ryttere med egen plan</div></div>
+  <div class="card" style="height:280px"><div class="ct">Fatigue limit</div><div class="cd">Holdregel · dagen efter etape · undtagelser · 7-dages stribe</div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+ </div></div>
+ <div class="fold" style="top:900px"><span>Skærmkant 1280×900</span></div>
+ <span class="pin pinabs" style="left:18px;top:520px">A</span>
+ <span class="pin pinabs" style="left:18px;top:1120px">B</span>
+ </div>
+</div>
+<!-- EFTER -->
+<div>
+ <div class="lbl g">Anbefalet · én fane, tre under-faner · desktop</div>
+ <div class="trio">
+  <!-- Plan -->
+  <div class="frame mini"><div class="app"><div class="side" style="width:60px"></div><div class="main">
+   <div class="ph">Daily training</div>
+   <div class="tabs"><span>Today</span><span class="on">Program</span><span>Development</span><span>Report</span></div>
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div class="seg"><span class="on">Plan</span><span>Programs</span><span>Fatigue limit</span></div></div>
+   <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="sel">Team · 14 riders ▾</span><span class="fc">Fatigue tonight <b>approx. 40</b><span class="dot"></span></span></div>
+    <table style="margin-top:8px"><tr><th>Day</th><th>Whole day</th><th>RD1</th><th>RD2</th><th>RD3</th><th>RD4</th><th>RD5</th></tr>
+    <tr><td>Mon</td><td>Long ride</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr>
+    <tr><td>Tue</td><td>Long ride</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr>
+    <tr><td>Wed</td><td>Long ride</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr>
+    <tr class="today"><td>Thu</td><td>Tempo</td><td>Tempo</td><td class="rec">Recov</td><td><span class="stage">Stage</span></td><td class="rec">Recov</td><td>Tempo</td></tr>
+    <tr><td>Fri</td><td>Long ride</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr>
+    <tr><td>Sat</td><td>Long ride</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr>
+    <tr><td>Sun</td><td>Rest</td><td>Rest</td><td>Rest</td><td>Rest</td><td>Rest</td><td>Rest</td></tr></table>
+    <div class="cd" style="margin-top:6px">Riders with own plan: <span class="chip">A. Pedersen</span><span class="chip">L. Holm</span><span class="chip">+3</span></div>
+   </div>
+  </div></div><span class="pin pinabs" style="left:8px;top:150px">1</span><span class="pin pinabs" style="right:10px;top:150px">2</span><span class="pin pinabs" style="left:8px;top:420px">3</span></div>
+  <!-- Programs -->
+  <div class="frame mini"><div class="app"><div class="side" style="width:60px"></div><div class="main">
+   <div class="ph">Daily training</div>
+   <div class="tabs"><span>Today</span><span class="on">Program</span><span>Development</span><span>Report</span></div>
+   <div class="seg" style="margin-bottom:10px"><span>Plan</span><span class="on">Programs</span><span>Fatigue limit</span></div>
+   <div class="card">
+    <div class="row"><span><b>Sprinter</b> · sprint twice a week</span><span class="sel" style="min-width:0">Put on ▾</span></div>
+    <div class="row"><span><b>Hill climber</b> · climbing intervals</span><span class="sel" style="min-width:0">Put on ▾</span></div>
+    <div class="row"><span><b>Cobbles rider</b> · technique + cobbles</span><span class="sel" style="min-width:0">Put on ▾</span></div>
+    <div class="row"><span><b>GC rider</b> · threshold + climbing</span><span class="sel" style="min-width:0">Put on ▾</span></div>
+    <div class="row"><span><b>All-rounder</b> · tempo + aero</span><span class="sel" style="min-width:0">Put on ▾</span></div>
+    <div class="row" style="border:0"><span><b>Puncheur</b> · short hard efforts</span><span class="sel" style="min-width:0">Put on ▾</span></div>
+    <div class="cd" style="margin-top:6px">Week shown on tap. Copied into Plan, so any cell can be changed after.</div>
+   </div>
+  </div></div><span class="pin pinabs" style="left:8px;top:150px">4</span></div>
+  <!-- Fatigue limit -->
+  <div class="frame mini"><div class="app"><div class="side" style="width:60px"></div><div class="main">
+   <div class="ph">Daily training</div>
+   <div class="tabs"><span>Today</span><span class="on">Program</span><span>Development</span><span>Report</span></div>
+   <div class="seg" style="margin-bottom:10px"><span>Plan</span><span>Programs</span><span class="on">Fatigue limit</span></div>
+   <div class="card">
+    <div class="row"><span>Team rule: above <b>65</b> run <b>Rest</b> instead</span><span>On</span></div>
+    <div class="row"><span>Day after a stage: first slot is active recovery</span><span>On</span></div>
+    <div class="row"><span>Exceptions</span><span><span class="chip">L. Holm · 75 · Active recovery</span> <span class="chip">+ Add</span></span></div>
+    <div class="row" style="border:0"><span>Last 7 days</span><span style="font-size:10px">Fri 0 · Sat 0 · Sun 1 · Mon 0 · Tue 2 · Wed 1 · <b>Thu 3</b> ▸</span></div>
+    <div class="cd">Checked on fatigue at the start of each date, so it does not matter when you log in.</div>
+   </div>
+  </div></div><span class="pin pinabs" style="left:8px;top:150px">5</span><span class="pin pinabs" style="right:10px;top:290px">6</span></div>
+ </div>
+ <div style="display:flex;gap:24px;margin-top:22px;align-items:flex-start">
+  <div><div class="lbl g">Anbefalet · telefon</div>
+   <div class="phone" style="position:relative"><div class="ptop"></div><div class="pb">
+    <div class="ph">Daily training</div>
+    <div class="tabs"><span>Today</span><span class="on">Program</span><span>Dev.</span><span>Report</span></div>
+    <div class="seg" style="display:flex;margin-bottom:10px"><span class="on" style="flex:1;text-align:center">Plan</span><span style="flex:1;text-align:center">Programs</span><span style="flex:1;text-align:center">Limit</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="sel" style="min-width:0">Team ▾</span><span class="fc">Tonight <b>~40</b><span class="dot"></span></span></div>
+    <table style="margin-top:8px"><tr><th>Day</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+    <tr><td>Mo</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr>
+    <tr class="today"><td>Th</td><td>Tempo</td><td class="rec">Rec</td><td><span class="stage">Stage</span></td><td class="rec">Rec</td><td>Tempo</td></tr>
+    <tr><td>Fr</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr></table>
+   </div><div class="pnav"></div><span class="pin pinabs" style="right:-12px;top:120px">7</span></div>
+  </div>
+  <div><div class="lbl g">Anbefalet · Today-fanen får én linje</div>
+   <div class="frame" style="width:560px;padding:12px;position:relative">
+    <div class="row"><span><b>Fatigue limit</b> · above 65: Rest · <b>3 riders</b> today</span><span style="color:#8a6a00">Edit ›</span></div>
+    <div class="cd">Erstatter intet kort: linjen står i den eksisterende resumé-række over rytterlisten.</div>
+    <span class="pin pinabs" style="right:-12px;top:6px">8</span>
+   </div>
+  </div>
+ </div>
+</div></div>
+<div class="legend">
+ <div><span class="pin">A</span><span><b>I dag:</b> fem kort under hinanden. Kun to er synlige uden at scrolle. Week plan gentager de samme 7 dage som Plan.</span></div>
+ <div><span class="pin">B</span><span>Træthedsgrænsen ligger nederst, ca. 1.200 px nede. På telefonen er det endnu længere.</span></div>
+ <div><span class="pin">1</span><span><b>Under-faner Plan · Programs · Fatigue limit.</b> Ét kort pr. under-fane, intet scroll på desktop. Valget huskes (også i link).</span></div>
+ <div><span class="pin">2</span><span>Rytter-vælger og "Fatigue tonight" sidder i kortets top-række. Vælg "Team" for holdplanen eller én rytter for hans egen.</span></div>
+ <div><span class="pin">3</span><span><b>Week plan og Individual weekly plans slås sammen ind i Plan:</b> "Whole day"-kolonnen er den gamle ugeplan. Ryttere med egen plan vises som chips, ét tryk åbner dem.</span></div>
+ <div><span class="pin">4</span><span>Programs bliver en kompakt liste med "Put on" i hver række (ét klik i stedet for vælg + knap).</span></div>
+ <div><span class="pin">5</span><span>Fatigue limit på én skærm: regel, dagen-efter-etape, undtagelser som chips, 7-dages stribe som én linje med fold-ud.</span></div>
+ <div><span class="pin">6</span><span>Ingen ny gold-knap: gem sker ved ændring med kort "Saved"-kvittering.</span></div>
+ <div><span class="pin">7</span><span>Telefon: samme under-faner som fuld bredde segment. Gitteret passer uden sidelæns scroll.</span></div>
+ <div><span class="pin">8</span><span>Today-fanen viser grænsen som én linje i den eksisterende resumé-række, så man ser den uden at skifte fane.</span></div>
+</div>
+</body></html>

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildRaceDayStageByRider, loadRaceDayStagesByRider } from "./raceDayStageLookup.js";
+import { buildRaceDayStageByRider, loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./raceDayStageLookup.js";
 
 // ── Lille in-memory mock: kun det opslaget bruger (select/eq/in/maybeSingle) ──
 function createMock(state, opts = {}) {
@@ -223,4 +223,73 @@ test("ungdomsgrupper mangler: kun seniordivisionen bruges, ingen fejl", async ()
   });
   assert.equal(out.error, null);
   assert.deepEqual([...out.data.keys()].sort(), ["A", "B"]);
+});
+
+for (const divisionField of ["league_division_id", "junior_league_division_id", "u23_league_division_id"]) {
+  test(`single-race GC is race activity for ${divisionField}, tour GC is not`, async () => {
+    const state = seedState();
+    state.teams[0][divisionField] = "single-division";
+    state.races = [
+      { id: "one-day", season_id: SEASON, league_division_id: "single-division", race_type: "single" },
+      { id: "tour", season_id: SEASON, league_division_id: "single-division", race_type: "stage_race" },
+    ];
+    state.race_stage_schedule = state.races.map(r => ({ race_id: r.id, stage_number: 1, game_day: 12 }));
+    state.race_results = [
+      { rider_id: "A", race_id: "one-day", stage_number: 1, result_type: "gc" },
+      { rider_id: "B", race_id: "tour", stage_number: 1, result_type: "gc" },
+    ];
+    const args = { supabase: createMock(state), teamId: TEAM, seasonId: SEASON, riderIds: RIDERS };
+    const day = await loadRaceDayStagesByRider({ ...args, gameDay: 12 });
+    assert.equal(day.error, null);
+    assert.deepEqual([...day.data.keys()], ["A"]);
+    const date = await loadRiderIdsWithStageOnGameDays({ ...args, gameDays: [12, 13] });
+    assert.equal(date.error, null);
+    assert.deepEqual([...date.data], ["A"]);
+  });
+}
+
+import { loadBoundRiderIdsForRaceDay } from "./trainingRaceDayTick.js";
+
+function bindingState(snapshot = ["A"]) {
+  return {
+    race_entry_days: ["A", "B"].map(rider_id => ({ rider_id, race_id: "tour", season_id: SEASON, game_day: 12 })),
+    race_simulation_runs: [{ race_id: "tour", stage_number: 1, entrant_snapshot: snapshot }],
+  };
+}
+const bindingArgs = { riderIds: ["A", "B"], seasonId: SEASON, gameDay: 12 };
+
+test("actual start field releases a saved nonstarter binding and preserves actual entrants on repeated reads", async () => {
+  const supabase = createMock(bindingState());
+  for (let i = 0; i < 2; i++) {
+    const result = await loadBoundRiderIdsForRaceDay({ ...bindingArgs, supabase });
+    assert.equal(result.error, null);
+    assert.deepEqual([...result.data], ["A"]);
+  }
+});
+
+test("missing immutable field preserves binding; unreadable or malformed field fails closed", async () => {
+  const state = bindingState();
+  state.race_simulation_runs = [];
+  const pending = await loadBoundRiderIdsForRaceDay({ ...bindingArgs, supabase: createMock(state) });
+  assert.deepEqual([...pending.data], ["A", "B"]);
+  for (const supabase of [createMock(bindingState(), { errorOn: "race_simulation_runs" }), createMock(bindingState(null))]) {
+    const result = await loadBoundRiderIdsForRaceDay({ ...bindingArgs, supabase });
+    assert.ok(result.error);
+    assert.equal(result.data, null);
+  }
+});
+
+test("normal abandon without a ranked result does not block the result lookup", async () => {
+  const state = seedState();
+  state.race_simulation_runs = [{ race_id: "race-1", stage_number: 1, entrant_snapshot: ["A", "C"] }];
+  const result = await loadRaceDayStagesByRider({ supabase: createMock(state), teamId: TEAM, seasonId: SEASON, gameDay: 12, riderIds: RIDERS });
+  assert.equal(result.error, null);
+  assert.deepEqual([...result.data.keys()], ["A", "B"]);
+  assert.equal(result.data.has("C"), false, "an abandon is not granted full race development");
+});
+
+test("legacy object start snapshots retain actual entrants", async () => {
+  const result = await loadBoundRiderIdsForRaceDay({ ...bindingArgs, supabase: createMock(bindingState([{ rider_id: "A" }])) });
+  assert.equal(result.error, null);
+  assert.deepEqual([...result.data], ["A"]);
 });

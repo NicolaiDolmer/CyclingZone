@@ -868,7 +868,7 @@ export default function RiderStatsPage() {
   const seasonYear = useActiveSeasonYear();
   const training = useTraining();
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
-  const trainingHistory = useTrainingHistory();
+  const trainingHistory = useTrainingHistory({ dailyReceiptEnabled: training.dailyReceiptEnabled });
   // #3496 punkt 3: genvej til et åbent transfer-tilbud på DENNE rytter, på
   // samme måde som en aktiv auktion allerede vises på rytter-siden (se
   // activeAuction/RiderBidPanel nedenfor). Samme kanoniske "skal handles"-kilde

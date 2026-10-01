@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--line:#e2e0da;--t2:#5b5e6b;--t3:#9a9ca6;--navy:#1b1f3b;--goldf:rgba(232,197,71,.16);--green:#2e7d32}
+*{box-sizing:border-box}body{margin:0;background:#f4f3ef;font-family:"Segoe UI",Arial,sans-serif;color:#14161f;width:1900px;padding:28px}
+h1{font-size:28px;margin:0 0 4px}.sub{color:var(--t2);font-size:15px;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:1.15fr 1fr .75fr;gap:22px;align-items:start}
+.lbl{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9a7400;margin-bottom:8px}
+.frame{background:#fff;border:1px solid var(--line);border-radius:5px;padding:14px 16px;position:relative}
+.tabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin:4px 0 12px;font-size:12px;color:var(--t2)}.tabs span{padding:6px 0}.tabs .on{color:#14161f;border-bottom:2px solid #e8c547;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;font-size:12px;margin-bottom:10px}.seg span{padding:6px 14px;border-right:1px solid var(--line);color:var(--t2)}.seg span:last-child{border-right:0}.seg .on{background:var(--goldf);color:#8a6a00;font-weight:600}
+.card{border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.sel{border:1px solid var(--line);border-radius:5px;padding:5px 9px;font-size:12px;display:inline-block;background:#fff}
+.dd{position:absolute;left:28px;top:118px;width:250px;background:#fff;border:1px solid var(--line);border-radius:5px;box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:12px;z-index:2}
+.dd div{padding:7px 10px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.dd .h{font-size:10px;color:var(--t3);text-transform:uppercase;padding:5px 10px}.dd .on{background:var(--goldf);font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:11px;margin-top:8px}td,th{border-bottom:1px solid var(--line);padding:5px 4px;text-align:left}th{font-size:9.5px;color:var(--t3);text-transform:uppercase}
+.today td{background:#faf8f1}.stage{background:var(--navy);color:#fff;border-radius:3px;padding:1px 4px;font-size:9px}.rec{color:var(--green);font-weight:600}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:11px;margin:2px}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.pin{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#b8860b;color:#fff;font-weight:700;font-size:13px;flex:none}.pa{position:absolute}
+.legend{background:#fff;border:1px solid var(--line);border-radius:5px;padding:14px 18px;font-size:15px;line-height:1.5;margin-top:20px}.legend div{display:flex;gap:10px;margin:6px 0}
+.lay{display:flex;flex-direction:column;gap:8px;font-size:13px}.lay div{border:1px solid var(--line);border-radius:5px;padding:9px 12px;background:#fff}.lay .a{background:var(--goldf)}
+.fc{font-size:11px}.fc b{font-size:13px}
+</style></head><body>
+<h1>Træningsgrupper: én beslutning for flere ryttere</h1>
+<div class="sub">Forslag. Bygger oven på Plan-fanen fra #5999. Grupper bor i den eksisterende "Plan for"-vælger, så der kommer ingen ny fane og intet nyt kort.</div>
+<div class="grid">
+<div><div class="lbl">Plan-fanen · vælg en gruppe</div>
+<div class="frame" style="height:470px">
+ <div class="tabs"><span>Today</span><span class="on">Program</span><span>Development</span><span>Report</span></div>
+ <div class="seg"><span class="on">Plan</span><span>Programs</span><span>Fatigue limit</span></div>
+ <div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center"><span class="sel">Group: Climbers · 5 riders ▾</span><span class="fc">Fatigue tonight, most tired <b>approx. 58</b></span></div>
+  <div style="font-size:11px;margin-top:6px"><span class="chip">M. Rossi</span><span class="chip">J. Berg</span><span class="chip">T. Lind</span><span class="chip">K. Sato</span><span class="chip">+1</span> <span style="color:#8a6a00">Edit group ›</span></div>
+  <table><tr><th>Day</th><th>Whole day</th><th>RD1</th><th>RD2</th><th>RD3</th><th>RD4</th><th>RD5</th></tr>
+  <tr><td>Wed</td><td>Climbing</td><td>Climb</td><td>Climb</td><td>Climb</td><td>Climb</td><td>Climb</td></tr>
+  <tr class="today"><td>Thu</td><td>Climbing</td><td>Climb</td><td class="rec">Recov</td><td><span class="stage">Stage</span></td><td class="rec">Recov</td><td>Climb</td></tr>
+  <tr><td>Fri</td><td>Long ride</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td><td>Long</td></tr></table>
+  <div style="font-size:11px;color:var(--t2);margin-top:6px">A change here applies to all 5 riders at once. Riders with a stage keep the stage slot.</div>
+ </div>
+ <div class="dd"><div class="h">Plan for</div><div>Team · 18 riders</div><div class="h">Groups</div><div class="on">Climbers <span>5</span></div><div>Sprint train <span>4</span></div><div>Recovering <span>3</span></div><div style="color:#8a6a00">+ New group</div><div class="h">Riders</div><div>A. Pedersen…</div></div>
+ <span class="pin pa" style="left:6px;top:110px">1</span><span class="pin pa" style="right:8px;top:170px">2</span><span class="pin pa" style="left:6px;top:330px">3</span>
+</div></div>
+<div><div class="lbl">Ny gruppe · ét lille vindue</div>
+<div class="frame">
+ <div style="font-weight:700;font-size:15px;margin-bottom:8px">New group</div>
+ <div class="row"><span>Name</span><span class="sel" style="min-width:200px">Climbers</span></div>
+ <div class="row"><span>Start from</span><span><span class="chip" style="background:var(--goldf)">Rider type: Climber</span><span class="chip">Pick by hand</span></span></div>
+ <div class="row" style="display:block"><div style="margin-bottom:4px">Riders (5)</div><span class="chip">✓ M. Rossi</span><span class="chip">✓ J. Berg</span><span class="chip">✓ T. Lind</span><span class="chip">✓ K. Sato</span><span class="chip">✓ P. Novak</span></div>
+ <div class="row" style="border:0"><span style="color:var(--t2);font-size:11px">A rider can be in one group. Moving him removes him from the old one.</span><span class="sel">Create</span></div>
+ <span class="pin pa" style="right:-10px;top:60px">4</span>
+</div>
+<div class="lbl" style="margin-top:18px">Fatigue limit · undtagelse pr. gruppe</div>
+<div class="frame">
+ <div class="row"><span>Team rule: above <b>65</b> run <b>Rest</b></span><span>On</span></div>
+ <div class="row" style="border:0"><span>Exceptions</span><span><span class="chip">Group: Sprint train · 70 · Light</span><span class="chip">L. Holm · 75</span><span class="chip">+ Add</span></span></div>
+ <span class="pin pa" style="right:-10px;top:30px">5</span>
+</div></div>
+<div><div class="lbl">Hvilken plan gælder?</div>
+<div class="lay"><div class="a"><b>1. Rytterens egen plan</b><br><span style="color:var(--t2)">hvis han har en</span></div><div style="text-align:center;border:0;padding:0">↓ ellers</div><div class="a"><b>2. Gruppens plan</b><br><span style="color:var(--t2)">hvis han er i en gruppe</span></div><div style="text-align:center;border:0;padding:0">↓ ellers</div><div><b>3. Holdets plan</b></div></div>
+<span class="pin" style="margin-top:10px">6</span>
+</div>
+</div>
+<div class="legend">
+ <div><span class="pin">1</span><span><b>"Plan for"-vælgeren får grupper</b> mellem Hold og de enkelte ryttere, og "+ New group" ligger i bunden. Der kommer ingen ny fane og intet nyt kort.</span></div>
+ <div><span class="pin">2</span><span>"Fatigue tonight" viser gruppens mest trætte rytter, så du ser risikoen for hele gruppen.</span></div>
+ <div><span class="pin">3</span><span>Ét klik i et felt ændrer det for hele gruppen. Ryttere med etape beholder etape-feltet (regel A).</span></div>
+ <div><span class="pin">4</span><span>Opret hurtigt: start fra rytter-type (fx alle klatrere) eller vælg selv. En rytter kan kun være i én gruppe.</span></div>
+ <div><span class="pin">5</span><span>Træthedsgrænsen kan få en undtagelse for en hel gruppe, ikke kun for én rytter.</span></div>
+ <div><span class="pin">6</span><span>Fast rækkefølge: egen plan, så gruppe, så hold. Programs-fanen kan også sætte et program på en gruppe ("Put on: Climbers").</span></div>
+</div>
+</body></html>

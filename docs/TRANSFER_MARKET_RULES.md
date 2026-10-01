@@ -150,6 +150,14 @@ klokkeslæt der ikke er sandt bryder doktrinen om at spilleren kan stole på det
 `seasonTransitionBoundary.js` - **ikke** `transfer_windows.closes_at`, som blev målt til at
 være død data 21/8 og derfor aldrig ville have fyret.
 
+**Finalisering i skiftevinduet (#5847):** en allerede startet auktion kan alligevel
+blive finaliseret efter den gamle sæson er afsluttet og før den nye er aktiv.
+`auctionFinalization.js` beregner da en *ny* erhvervelseskontrakt fra den tidligste
+kommende sæson, eller fra senest afsluttede sæson + 1 hvis ingen kommende række
+findes. Findes ingen gyldig sæson, fejler finaliseringen i stedet for at bruge
+sæson 1. Finanspostens `season_id` er fortsat kun den faktisk aktive sæson og
+kan være NULL i vinduet. En eksisterende kontrakt arves fortsat uændret.
+
 ### 2.3 12-timers-gulvet - hvor det gælder og hvor det ikke gælder
 
 `FREE_AGENT_MIN_DURATION_HOURS = 12` (`auctionEngine.js:119`, ejer-beslutning 21/8, #4004,
@@ -454,6 +462,8 @@ uden kreditering når kontrakten udløber uden forlængelse (§8, `ECONOMY_RULES
 ---
 
 ## 10. Udskudte holdskifter under etapeløb
+
+**Brugt løbsdag følger rytteren (#5860, ejer-go 30/9).** En gennemført udskudt handel overfører ejerskabet som hidtil. Køberen kan udtage rytteren på senere løbsdage, men ikke genbruge en løbsdag rytteren allerede kørte for sælgeren. Afsluttet løb og opryddede/uegnede gamle entries er ikke bevis for en fri dag; faktisk deltagelse læses uafhængigt af hold. Kontrakt og håndhævelse: [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md), [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Ingen nye handelsfrister eller udsættelser indføres.
 
 **Model B (ejer 29/6 2026, option c, #1995):** handel og betaling sker **straks**, men selve
 holdskiftet parkeres hvis rytteren er midt i et aktivt fleretape-løb.
