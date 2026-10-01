@@ -27,6 +27,7 @@ function makeSupabase(canned = {}) {
       select() { return b; },
       eq() { return b; },
       in() { return b; },
+      neq() { return b; }, // #6006: binding-konteksten naar loebet har en etapeplan
       or() { return b; },
       is() { return b; },
       order() { return b; },
@@ -97,6 +98,31 @@ test("fillMissingTeamEntries: hold fra andre puljer ekskluderes når race har le
   const teamIds = new Set(rows.map((r) => r.team_id));
   assert.ok(teamIds.has("in-1") && teamIds.has("in-2"), "hold i puljen skal auto-fyldes");
   assert.ok(!teamIds.has("out-1") && !teamIds.has("out-2"), "hold fra andre puljer må IKKE auto-fyldes");
+});
+
+// #6006: et hold der har trykket "Train now" paa en af loebets datoer er afgjort (I3).
+// Loebsstartens autofyld maa aldrig tilfoeje en rytter til det hold bagefter (#5267).
+test("fillMissingTeamEntries: Train now-laast hold auto-fyldes ALDRIG (#6006)", async () => {
+  const poolId = 100;
+  const state = buildPoolState({
+    poolId,
+    teamsInPool: [{ id: "locked", base_value: 1000 }, { id: "free", base_value: 1000 }],
+  });
+  state.race_stage_schedule = [{ race_id: "race-lock", scheduled_at: "2026-10-01T13:00:00Z" }];
+  state.training_train_now_locks = [{ rider_id: "r-0", tick_date: "2026-10-01", team_id: "locked" }];
+  const supabase = makeSupabase(state);
+
+  const rows = await fillMissingTeamEntries({
+    supabase,
+    race: { id: "race-lock", league_division_id: poolId },
+    stages: [],
+    existingEntries: [],
+    persist: false,
+  });
+
+  const teamIds = new Set(rows.map((r) => r.team_id));
+  assert.ok(!teamIds.has("locked"), "et laast hold faar ingen auto-ryttere");
+  assert.ok(teamIds.has("free"), "et ulaast hold auto-fyldes som foer");
 });
 
 test("fillMissingTeamEntries: felt-cap — pulje med >24 hold giver præcis 24 hold i feltet", async () => {
