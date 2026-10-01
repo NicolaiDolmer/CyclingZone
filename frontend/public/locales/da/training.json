@@ -528,7 +528,7 @@
     "noWholePoint": "Intet helt point registreret",
     "raceDay": "Løbsdag {day}",
     "activity": "Aktivitet {n}",
-    "pointContribution": "+{percent}% af et evnepoint",
+    "pointContribution": "+{percent}%",
     "progressUnavailable": "Vises efter næste træningsdag",
     "expandAll": "Fold alle ud",
     "collapseAll": "Fold alle sammen",
