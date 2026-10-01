@@ -48,6 +48,8 @@ Fem værdier, og de ejes af motoren, ikke af denne flade: `captain` · `sprint_c
 
 Kolonnerne i Z1 kan ikke låses uden at kende kalenderens akse-tilstand. Se [`CALENDAR_RULES.md`](CALENDAR_RULES.md) §0: en løbsdag bor **inde i** én kalenderdag, og `game_day` kan aldrig udledes af `scheduled_at`.
 
+**Mobilmatrix #5124 (ejerens A-go 28/9):** På smalle skærme beholder Z1 rytter × løbsdag-kontrakten, men viser ét valgt løb og tre af dets ordnede løbsdage ad gangen. Løbsvælgeren skifter race, Før/Senere flytter vinduet med højst én løbsdag og standser ved begge ender. Hver header viser både kalenderdato og den selvstændige `game_day`; ændringer, popover og det atomare `PUT /races/selection/bulk` deles med desktop. Den eksisterende fulde matrix og tidslinje er uændret på desktop. Designkilde: `docs/design/mockups-season-matrix-mobile-2026-09-27/README.md`; implementering: `SeasonMatrix.jsx`, `seasonMatrixMobile.ts`.
+
 Uanset udfald vises **begge akser**: dato-kalenderen som ramme, løbsdags-striben som sandhed. En flade der kun viser den ene lyver om den anden — det kostede en spiller-bugrapport 24/8 ([#4193](https://github.com/NicolaiDolmer/CyclingZone/issues/4193)).
 
 ---

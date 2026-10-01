@@ -14,6 +14,7 @@ import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt 
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { riderSuitability } from "../../lib/suitability.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
+import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixMobile.ts";
 import { fitTier } from "../../lib/raceHubLogic.js";
 import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
@@ -59,6 +60,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   // som ER cellen, ved åbning.
   const [popover, setPopover] = useState(null);
   const [popoverAnchor, setPopoverAnchor] = useState(null);
+  const [mobileRaceId, setMobileRaceId] = useState(null);
+  const [mobileStart, setMobileStart] = useState(0);
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -193,6 +196,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   }
 
   const readOnly = !!data.readOnly;
+  const selectedMobileRace = raceById.get(mobileRaceId) ?? races[0];
+  const mobileWindow = mobileRaceWindow(dayColumns, selectedMobileRace?.id, mobileStart);
+  const visibleRiders = riders.filter((r) => !problemsOnly || problems.affectedRiderIds.has(r.id) || races.some((race) => problems.affectedRaceIds.has(race.id) && roleOf(draftByRace.get(race.id), r.id) != null));
 
   function setRaceDraft(raceId, updater) {
     setDraftByRace((prev) => {
@@ -307,20 +313,79 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         )}
       </div>
 
-      {/* #5124 — D-047-undtagelse (skriftlig begrundelse, jf. issuets krav):
-          gitteret her er en RYTTER × LØBSDAG-matrix, ikke en liste af entiteter
-          med tre valgfrie egenskaber. D-047's "navn + tre faste kolonner" giver
-          kun mening når kolonnerne er UDSKIFTELIGE datapunkter om ÉN entitet
-          (OVR/værdi/løn for en rytter); her er hver kolonne en FORSKELLIG
-          kalenderdag — de kan ikke vælges "3 ad gangen" uden at gøre kalenderen
-          ulæselig (spilleren skal se rækkefølgen af løb, ikke tre tilfældige
-          dage). Sticky navnekolonne (`sticky left-0`) + kontaineret vandret
-          scroll (denne `overflow-x-auto`, ALDRIG page-level) er derfor den
-          rigtige mobil-løsning, ikke chips: samme mønster har allerede levet
-          her siden #1146 (ejer-godkendt design 27/8, FØR #5124) og er dækket af
-          frontend/tests/e2e/1146-season-matrix.spec.js's "mobil 375px"-test —
-          verificeret på ny for #5124, ingen kodeændring nødvendig. */}
-      <div className="rounded-cz border border-cz-border bg-cz-card overflow-x-auto">
+      {/* #5124, ejerens A-go 28/9: mobil beholder rytter × løbsdag, men ét løb
+          og tre løbsdage ad gangen. Dato og game_day vises hver for sig.
+          Samme draft, popover og Save plan bruges på begge layouts. */}
+      <div data-testid="season-matrix-mobile" className="sm:hidden rounded-cz border border-cz-border bg-cz-card min-w-0">
+        <div className="px-3 py-3 border-b border-cz-border space-y-2">
+          <label htmlFor="season-matrix-mobile-race" className="block text-2xs uppercase tracking-wide text-cz-3">
+            {t("matrix.mobile.raceLabel")}
+          </label>
+          <select
+            id="season-matrix-mobile-race"
+            value={selectedMobileRace.id}
+            onChange={(e) => { setMobileRaceId(e.target.value); setMobileStart(0); }}
+            className="w-full min-w-0 rounded-cz border border-cz-border bg-cz-card px-2 py-2 text-xs text-cz-1"
+          >
+            {races.map((race) => <option key={race.id} value={race.id}>{race.name}</option>)}
+          </select>
+          <div className="flex items-center justify-between gap-1 text-2xs text-cz-2">
+            <button type="button" disabled={!mobileWindow.canEarlier} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, -1, mobileWindow.total))} className="rounded-cz border border-cz-border px-2 py-1.5 disabled:opacity-40">
+              {t("matrix.mobile.earlier")}
+            </button>
+            <span className="tabular-nums text-center">{t("matrix.mobile.windowStatus", { first: mobileWindow.start + 1, last: mobileWindow.start + mobileWindow.days.length, total: mobileWindow.total })}</span>
+            <button type="button" disabled={!mobileWindow.canLater} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, 1, mobileWindow.total))} className="rounded-cz border border-cz-border px-2 py-1.5 disabled:opacity-40">
+              {t("matrix.mobile.later")}
+            </button>
+          </div>
+          <div className="text-2xs text-cz-3">
+            {selectedMobileRace.withdrawn ? t("racehub.status.withdrawn") : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, selectedMobileRace.id), max: selectedMobileRace.sizeMax })}
+          </div>
+        </div>
+        <table data-sort-exempt="mobile rytter x loebsdag-gitter" className="w-full table-fixed border-collapse">
+          <colgroup><col style={{ width: "40%" }} />{mobileWindow.days.map((day) => <col key={day.key} style={{ width: `${60 / mobileWindow.days.length}%` }} />)}</colgroup>
+          <thead><tr>
+            <th className="border-b border-r border-cz-border bg-cz-subtle px-2 py-2 text-left text-2xs text-cz-3">{t("matrix.mobile.riderLabel")}</th>
+            {mobileWindow.days.map((day) => {
+              const date = dayDatesMap.get(day.gameDay);
+              return <th key={day.key} className="border-b border-cz-border bg-cz-subtle px-1 py-1 text-center text-2xs text-cz-3">
+                <button type="button" disabled={!date} onClick={() => date && onOpenDay?.(date)} title={t("matrix.dayAria", { index: day.stageIndex, date: date ?? "?" })} className="w-full leading-tight disabled:cursor-default">
+                  <span className="block font-semibold">{date ? formatBandDate(date) : "—"}</span>
+                  <span className="block tabular-nums">{t("matrix.mobile.gameDay", { day: day.gameDay })}</span>
+                </button>
+              </th>;
+            })}
+          </tr></thead>
+          <tbody>{visibleRiders.map((rider) => {
+            const role = roleOf(draftByRace.get(selectedMobileRace.id), rider.id);
+            const fit = lens === "routeMatch" && rider.abilities ? riderSuitability(rider.abilities, selectedMobileRace.demandVector).score : null;
+            const loadDays = lens === "load" ? riderLoadDays(races, draftByRace, rider.id) : null;
+            return <tr key={rider.id}>
+              <td className="border-b border-r border-cz-border px-2 py-2 align-middle text-xs font-medium text-cz-1 break-words">
+                {rider.name}
+                {loadDays != null && <span className="block text-2xs font-normal tabular-nums text-cz-3">{t("matrix.loadSuffix", { count: loadDays })}</span>}
+              </td>
+              {mobileWindow.days.map((day) => {
+                const peak = peakDaysByRider.get(rider.id)?.get(day.gameDay);
+                const hasError = saveError?.raceId === selectedMobileRace.id;
+                const isDraftCell = dirtyIdSet.has(selectedMobileRace.id);
+                return <td key={day.key} className={`border-b border-cz-border p-0 text-center ${peak ? "bg-cz-accent/10" : ""} ${hasError ? "outline outline-1 outline-offset-[-1px] outline-cz-danger" : isDraftCell ? "outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : ""}`}>
+                  <button
+                    type="button"
+                    onClick={(e) => openCellPopover(e, { kind: role == null ? "empty" : "filled", raceId: selectedMobileRace.id, riderId: rider.id })}
+                    title={role == null ? t("matrix.cellEmptyAria", { rider: rider.name, race: selectedMobileRace.name }) : t("matrix.cellFilledAria", { rider: rider.name, race: selectedMobileRace.name, role: t(`tacticsOrders.roleLabel.${role}`) })}
+                    className={`w-full min-h-10 px-1 text-xs tabular-nums ${role == null ? "text-cz-3" : roleBadgeClass(role)} ${selectedMobileRace.withdrawn ? "opacity-40" : ""}`}
+                  >
+                    {role == null ? (fit ?? "+") : (selectedMobileRace.restGameDays?.includes(day.gameDay) ? <LockIcon size={11} className="mx-auto" /> : <>{ROLE_LETTER[role]}{fit != null && <span className={`ms-1 ${FIT_TEXT[fitTier(fit)]}`}>{fit}</span>}</>)}
+                  </button>
+                </td>;
+              })}
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>
+
+      <div data-testid="season-matrix-desktop" className="hidden sm:block rounded-cz border border-cz-border bg-cz-card overflow-x-auto">
         <table
           data-sort-exempt="rytter x loebsdag-gitter, ikke en sorterbar liste"
           className="border-collapse"
@@ -409,9 +474,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             </tr>
           </thead>
           <tbody>
-            {riders
-              .filter((r) => !problemsOnly || problems.affectedRiderIds.has(r.id) || races.some((race) => problems.affectedRaceIds.has(race.id) && roleOf(draftByRace.get(race.id), r.id) != null))
-              .map((rider) => {
+            {visibleRiders.map((rider) => {
                 const segments = buildRiderRowSegments(dayColumns, races, draftByRace, rider.id);
                 const loadDays = lens === "load" ? riderLoadDays(races, draftByRace, rider.id) : null;
                 const peakDays = peakDaysByRider.get(rider.id);

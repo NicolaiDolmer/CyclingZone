@@ -58,6 +58,14 @@
   },
   "matrix": {
     "heading": "Selection matrix",
+    "mobile": {
+      "raceLabel": "Race",
+      "riderLabel": "Rider",
+      "earlier": "Earlier",
+      "later": "Later",
+      "windowStatus": "Days {first}-{last} of {total}",
+      "gameDay": "Day {day}"
+    },
     "lens": {
       "entries": "Entries",
       "routeMatch": "Route match",
