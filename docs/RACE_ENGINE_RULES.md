@@ -628,7 +628,7 @@ Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres)
 
 **Én motor.** Der findes præcis én v4: `backend/lib/engine/v4`. Ny motor-logik uden for den mappe er forbudt. Mekanik-kataloget skal altid vise **bygget** og **koblet ind** som to kolonner; "bygget" alene betyder at motoren ikke kalder det.
 
-**Prod-status (#4951):** `app_config`-rækken `race_engine_v4` er `"off"`. Flip planlagt til 28/9, ejer-only (jf. mål-vs-garanti i regel 1 nedenfor).
+**Historisk prod-status (#4951, beslutninger 5.-6. september):** `app_config`-rækken `race_engine_v4` var `"off"`. Flip var planlagt til 28/9, ejer-only (jf. mål-vs-garanti i regel 1 nedenfor). Aktuel status findes i [NOW.md](NOW.md).
 
 | # | Regel | Ejer |
 |---|---|---|
