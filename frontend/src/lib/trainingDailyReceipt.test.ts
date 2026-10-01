@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aggregateTrainingRuns, averagePassScore } from "./trainingDailyReceipt.ts";
+import { aggregateTrainingRuns, averagePassScore, sortReceiptRiders } from "./trainingDailyReceipt.ts";
 import type { TrainingActivity } from "./trainingDailyReceipt.ts";
 import { seasonAbilityGains, riderHistoryFromRuns, abilityReceipt, abilityReceiptGainPct } from "./trainingReport.js";
 import { selectTrainingMoment } from "./trainingMoment.js";
@@ -190,6 +190,15 @@ test("#5915: average session score covers only scored sessions, never counts a r
   const view = { sessions: [0, 1, 3].map((gameDay, i) => ({ date, seasonId: "s4", gameDay, score: [50, 61, 58][i] })) };
   assert.equal(averagePassScore(view, date, "s4", rider.activities), 56);
   assert.equal(averagePassScore(undefined, date, "s4", rider.activities), null);
+});
+
+test("#5915: riders sort by first name, last name or average score (unscored last)", () => {
+  const riders = [{ rider_id: "a", name: "Hugo Zane" }, { rider_id: "b", name: "Anna Berg" }, { rider_id: "c", name: "Carl Ahl" }];
+  const scores: Record<string, number | null> = { a: 61, b: null, c: 54 };
+  assert.deepEqual(sortReceiptRiders(riders, "name").map(r => r.rider_id), ["b", "c", "a"]);
+  assert.deepEqual(sortReceiptRiders(riders, "lastname").map(r => r.rider_id), ["c", "b", "a"]);
+  assert.deepEqual(sortReceiptRiders(riders, "score", r => scores[r.rider_id]).map(r => r.rider_id), ["a", "c", "b"]);
+  assert.deepEqual(riders.map(r => r.rider_id), ["a", "b", "c"], "sorting must not mutate the receipt");
 });
 
 test("ability receipts expose the full date contribution separately from the wrapped progress-bar segment", () => {

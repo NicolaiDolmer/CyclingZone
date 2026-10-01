@@ -233,3 +233,28 @@ export function averagePassScore(view: ReceiptScoreView | undefined, date: strin
     .filter((score): score is number => score != null);
   return scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
 }
+
+export type ReceiptSort = "name" | "lastname" | "score";
+/** #5915 player wish: order the date's riders. Name = stored display name (first
+ *  name first). Last name = the final word of it. Score = average session score,
+ *  best first; riders without one go last. Ties fall back to the display name. */
+export function sortReceiptRiders<T extends { name?: string; rider_id: string }>(riders: T[], by: ReceiptSort,
+  score: (row: T) => number | null = () => null): T[] {
+  const name = (row: T) => String(row.name || row.rider_id);
+  const last = (row: T) => name(row).trim().split(/\s+/).at(-1) ?? "";
+  return [...riders].sort((a, b) => {
+    if (by === "score") {
+      const sa = score(a), sb = score(b);
+      if (sa != null || sb != null) {
+        if (sa == null) return 1;
+        if (sb == null) return -1;
+        if (sb !== sa) return sb - sa;
+      }
+    }
+    if (by === "lastname") {
+      const byLast = last(a).localeCompare(last(b));
+      if (byLast) return byLast;
+    }
+    return name(a).localeCompare(name(b));
+  });
+}

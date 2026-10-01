@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DailyTrainingReceipt as DateReceipt, DailyRiderReceipt, TrainingActivity } from "../../lib/trainingDailyReceipt.ts";
-import { averagePassScore } from "../../lib/trainingDailyReceipt.ts";
+import { averagePassScore, sortReceiptRiders, type ReceiptSort } from "../../lib/trainingDailyReceipt.ts";
+import Segmented from "../ui/Segmented.jsx";
 import { formatDate, formatNumber } from "../../lib/intl.js";
 import { todayGainTotal } from "../../lib/trainingReport.js";
 import { injuryTimeLeft, injuryBadgeMessage } from "../../lib/training.js";
@@ -28,7 +29,10 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     return next;
   });
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const rows = [...run.report.riders].sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+  const [sortBy, setSortBy] = useState<ReceiptSort>("name");
+  const avgScore = (row: DailyRiderReceipt) => isKnown(row)
+    ? averagePassScore(trainingScore?.[row.rider_id], run.tick_date, run.season_id, row.activities) : null;
+  const rows = sortReceiptRiders(run.report.riders, sortBy, avgScore);
   const showScore = trainingScore != null;
   const rowGrid = showScore
     ? "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_5rem_6rem]"
@@ -67,7 +71,10 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
         <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{run.game_days.length || "—"}{run.expected_game_days ? ` / ${run.expected_game_days.length}` : ""}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.activitiesRecorded")}</p></div>
         <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{wholeDateKnown ? points : "—"}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.wholePoints")}</p></div>
       </div>
-      {rows.length > 1 && <div className="mb-1 flex flex-wrap items-center justify-end gap-2" data-testid="daily-receipt-toolbar">
+      {rows.length > 1 && <div className="mb-1 flex flex-wrap items-center justify-between gap-2" data-testid="daily-receipt-toolbar">
+        <Segmented label={t("dailyReceipt.sortLabel")} value={sortBy} onChange={(value: ReceiptSort)=>setSortBy(value)}
+          options={[{value:"name",label:t("dailyReceipt.sortFirstName")},{value:"lastname",label:t("dailyReceipt.sortLastName")},
+            ...(showScore ? [{value:"score",label:t("colScore")}] : [])]} />
         <button type="button" className="min-h-[44px] px-1 text-xs font-medium text-cz-accent-t hover:text-cz-1" data-testid="daily-receipt-expand-all"
           onClick={()=>setOpenRiders(allOpen ? new Set() : new Set(rows.map(row=>row.rider_id)))}>
           {t(allOpen ? "dailyReceipt.collapseAll" : "dailyReceipt.expandAll")}
@@ -115,7 +122,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
                 <span className="text-cz-2">{row.gain_percent[key] != null ? t("dailyReceipt.pointContribution",{percent:formatNumber(row.gain_percent[key])}) : t("dailyReceipt.progressUnavailable")}</span>
               </div>)}
               {showScore && <p className="mt-3 font-data text-xs tabular-nums text-cz-2" data-testid="training-history-score-cell">{t("dailyReceipt.latestPassScore")}: {latestScore ?? "—"}</p>}
-              {showScore && <p className="mt-1 font-data text-xs tabular-nums text-cz-2" data-testid="daily-receipt-avg-score">{t("dailyReceipt.averagePassScore")}: {(isKnown(row) ? averagePassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,row.activities) : null) ?? "—"}</p>}
+              {showScore && <p className="mt-1 font-data text-xs tabular-nums text-cz-2" data-testid="daily-receipt-avg-score">{t("dailyReceipt.averagePassScore")}: {avgScore(row) ?? "—"}</p>}
               <p className="mt-3 text-xs text-cz-3">{t(`dailyReceipt.note.${row.receipt_status}`)}</p>
             </div>}
           </div>

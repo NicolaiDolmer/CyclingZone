@@ -523,6 +523,9 @@
     "progressUnavailable": "Shown after the next training day",
     "expandAll": "Expand all",
     "collapseAll": "Collapse all",
+    "sortLabel": "Sort riders",
+    "sortFirstName": "First name",
+    "sortLastName": "Last name",
     "previousSeason": "Previous season",
     "change": "{from} to {to}"
   },
