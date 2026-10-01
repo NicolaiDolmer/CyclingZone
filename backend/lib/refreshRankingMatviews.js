@@ -46,6 +46,27 @@
 // Fejler en RPC fordi migrationen endnu ikke er applied i prod (funktionen findes
 // ikke endnu), er warn'en forventet og ufarlig — de andre matviews refreshes
 // stadig (best-effort pr. matview, ikke alt-eller-intet).
+//
+// #5911: AFTENAFREGNINGEN HAR FORRANG. Refreshen tager ACCESS EXCLUSIVE pr.
+// matview, og dagens sidste løb finaliserer lige før kl. 20, så refreshes landede
+// oven i træningsafregningens commit_training_date_tick og trak den ud (målt 1/10).
+// Derfor tre indgange:
+//   - refreshRankingMatviewsSafe: ubetinget og straks (recovery, repair-scripts).
+//   - refreshRankingMatviewsGated (10-min cron): springer over ("deferred") mens
+//     training_date_work for i dag (Copenhagen, fra kl. 20) har pending/partial-
+//     rækker. Loft: efter MAX_DEFER_MS i træk refreshes alligevel, så en afregning
+//     der hænger (fx venter til deadline kl. 02) ikke fryser ranglisten.
+//   - requestRankingMatviewRefresh (løbsfinalisering): gated + samlet, så flere løb
+//     der slutter inden for samme vindue giver én refresh i stedet for én pr. løb.
+//   - refreshRankingsAfterTrainingSettlement: træningslukningen kalder den efter et
+//     sweep der afregnede dagens hold; den refresher når sidste hold er færdigt.
+// FAIL-SAFE: fejler statusopslaget, refreshes som før #5911.
+import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
+
+export const SETTLEMENT_WINDOW_START_HOUR = 20;
+export const MAX_DEFER_MS = 20 * 60 * 1000;
+export const COALESCE_WINDOW_MS = 60 * 1000;
+
 const REFRESH_RPCS = [
   { rpc: "refresh_rider_rankings_mv", label: "rider_rankings_mv" },
   { rpc: "refresh_team_standings_ext_mv", label: "team_standings_ext_mv" },
@@ -105,4 +126,118 @@ export async function refreshRankingMatviewsSafe(supabase, { captureExceptionFn 
   }
 
   return true;
+}
+
+// ─── #5911: aftenafregningen først ───────────────────────────────────────────
+
+// Sand når dagens (Copenhagen) træningsafregning stadig har hold i gang. Kaster
+// ved opslagsfejl, så kalderen selv kan vælge fail-safe (refresh som før).
+export async function isTrainingSettlementInProgress(supabase, { now = new Date() } = {}) {
+  const { data, error } = await supabase
+    .from("training_date_work")
+    .select("status")
+    .eq("tick_date", copenhagenDateString(now))
+    .in("status", ["pending", "partial"])
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+}
+
+let deferredSinceMs = null;
+
+export function __resetRankingRefreshStateForTests() {
+  deferredSinceMs = null;
+}
+
+// Gate for cron + finalisering. Returnerer "deferred" når refreshen holdes
+// tilbage, ellers refreshRankingMatviewsSafe's true/false.
+export async function refreshRankingMatviewsGated(
+  supabase,
+  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
+) {
+  let settling = false;
+  if (copenhagenHour(now) >= SETTLEMENT_WINDOW_START_HOUR) {
+    try {
+      settling = await isTrainingSettlementInProgress(supabase, { now });
+    } catch (err) {
+      // Fail-safe: uden statusopslag refreshes som før #5911.
+      logger.warn?.(`⚠️  ranking refresh: training status lookup failed, refreshing anyway: ${err.message}`);
+    }
+  }
+  if (settling) {
+    const nowMs = clock();
+    deferredSinceMs ??= nowMs;
+    if (nowMs - deferredSinceMs < maxDeferMs) {
+      logger.log?.("[ranking-refresh] deferred: training settlement in progress");
+      return "deferred";
+    }
+    logger.warn?.("[ranking-refresh] max deferral reached during training settlement, refreshing anyway");
+  }
+  deferredSinceMs = null;
+  return refreshRankingMatviewsSafe(supabase, { captureExceptionFn });
+}
+
+// Træningslukningen kalder denne efter et sweep der afregnede dagens hold. Er
+// sidste hold færdigt (ingen pending/partial for i dag), refreshes straks og
+// ubetinget; ellers venter den på næste sweep/cron. Kaster aldrig.
+export async function refreshRankingsAfterTrainingSettlement({ supabase, now = new Date(), captureExceptionFn, logger = console } = {}) {
+  try {
+    let settling = false;
+    try {
+      settling = await isTrainingSettlementInProgress(supabase, { now });
+    } catch (err) {
+      logger.warn?.(`⚠️  ranking refresh after training: status lookup failed, refreshing anyway: ${err.message}`);
+    }
+    if (settling) return "deferred";
+    deferredSinceMs = null;
+    return await refreshRankingMatviewsSafe(supabase, { captureExceptionFn });
+  } catch (err) {
+    // best-effort: en refresh-fejl må aldrig vælte træningsafregningen.
+    logger.warn?.(`⚠️  ranking refresh after training failed (cron catches it): ${err.message}`);
+    return false;
+  }
+}
+
+// Samler refreshes ved løbsfinalisering: første kald i et roligt vindue kører
+// straks (ranglisten er frisk lige efter løbet, #3193); kald inden for
+// COALESCE_WINDOW_MS efter den seneste start samles til ÉN efterfølgende refresh
+// ved vinduets udløb. Tilstand pr. Supabase-klient. Kaster aldrig.
+const coalesceState = new WeakMap();
+
+export async function requestRankingMatviewRefresh(
+  supabase,
+  {
+    captureExceptionFn,
+    windowMs = COALESCE_WINDOW_MS,
+    clock = () => Date.now(),
+    setTimer = setTimeout,
+    refresh = (client, opts) => refreshRankingMatviewsGated(client, opts),
+    logger = console,
+  } = {},
+) {
+  let state = coalesceState.get(supabase);
+  if (!state) {
+    state = { lastStartedAt: -Infinity, timer: null };
+    coalesceState.set(supabase, state);
+  }
+  if (state.timer) return "coalesced";
+  const wait = state.lastStartedAt + windowMs - clock();
+  if (wait > 0) {
+    state.timer = setTimer(() => {
+      state.timer = null;
+      state.lastStartedAt = clock();
+      Promise.resolve()
+        .then(() => refresh(supabase, { captureExceptionFn, now: new Date(), logger }))
+        .catch((err) => logger.warn?.(`⚠️  coalesced ranking refresh failed (cron catches it): ${err.message}`));
+    }, wait);
+    state.timer?.unref?.();
+    return "coalesced";
+  }
+  state.lastStartedAt = clock();
+  try {
+    return await refresh(supabase, { captureExceptionFn, now: new Date(), logger });
+  } catch (err) {
+    logger.warn?.(`⚠️  ranking refresh failed (cron catches it): ${err.message}`);
+    return false;
+  }
 }
