@@ -127,10 +127,10 @@ export function buildRaceRecap({ results = [], scope, incidents = [], profileTyp
   // endagsløbs-gc). Overlevede vinderen som escapee, eller blev udbruddet indhentet?
   const inBreak = finish.filter((r) => r.in_breakaway);
   if (inBreak.length) {
-    if (first.in_breakaway && !first.breakaway_caught) {
-      moments.push({ key: "breakawaySurvived", params: { count: inBreak.length } });
-    } else if (finish.some((r) => r.breakaway_caught)) {
-      moments.push({ key: "breakawayCaught", params: { count: inBreak.length } });
+    if (first.in_breakaway && first.breakaway_caught === false) {
+      moments.push({ key: "breakawaySurvived", params: { count: inBreak.filter((r) => r.breakaway_caught === false).length } });
+    } else if (inBreak.some((r) => r.breakaway_caught === true)) {
+      moments.push({ key: "breakawayCaught", params: { count: inBreak.filter((r) => r.breakaway_caught === true).length } });
     }
   }
 

@@ -1,3 +1,4 @@
+import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -122,7 +123,10 @@ const V4_OUT_OF_RACE_STATUSES = Object.freeze(new Set(["abandoned", "otl"]));
 export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawayWin = null } = {}) {
   const results = (output?.results ?? []).filter((r) => !V4_OUT_OF_RACE_STATUSES.has(r.status));
   if (!results.length) return [];
-  const inBreakaway = breakawayRiderIdsFromSnapshots(output?.groupSnapshots);
+  const recordedEvents = output?.timeline?.events;
+  const projected = Array.isArray(recordedEvents) ? deriveParticipationHistory(recordedEvents, (output?.results ?? []).map((r) => r.rider_id)) : null;
+  const history = projected && (projected.complete || projected.morningRiderIds.size > 0) ? projected : null;
+  const inBreakaway = history ? history.morningRiderIds : breakawayRiderIdsFromSnapshots(output?.groupSnapshots);
   // v4 rangerer allerede (tid, finish_order, rider_id); vinderens tid er
   // referencen for etape-gappet, præcis som v3's gapFor er gap-til-vinder.
   const winnerTime = results[0].time_seconds;
@@ -135,6 +139,7 @@ export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawa
     rank: index + 1,
     stageGap: clampGap(r.time_seconds - winnerTime),
     components: { breakaway: inBreakaway.has(r.rider_id) ? 1 : 0 },
+    ...(history ? { breakaway_status: { in_breakaway: inBreakaway.has(r.rider_id), breakaway_caught: !inBreakaway.has(r.rider_id) ? false : history.riders.get(r.rider_id)?.caught ? true : history.riders.get(r.rider_id)?.survived ? false : null } } : {}),
   }));
   // Begge domme gælder motorens vinder (finish-eventets top[0] = results[0]).
   // Er han filtreret fra (udgået/OTL), taler de om en anden rytter end rækkens

@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.327",
+    "date": "2026-10-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Chasing no longer pushes escapees backwards",
+          "body": "What changed\nA pursuing group closes the gap by moving forward. Catching a breakaway no longer moves its riders backwards towards a distant group.\n\nWhat it means for you\nThe correction applies to upcoming stage calculations. Completed results are unchanged."
+        },
+        "da": {
+          "title": "Jagten flytter ikke udbrydere baglæns",
+          "body": "Hvad er ændret\nJagtgruppen lukker hullet ved at rykke frem. Indhentning flytter ikke længere udbryderne baglæns mod en fjern gruppe.\n\nHvad betyder det for dig\nRettelsen gælder kommende etapeberegninger. Afsluttede resultater ændres ikke."
+        },
+        "refs": [
+          5951
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Morning breakaways and later attacks have separate markers",
+          "body": "What changed\nThe stage results distinguish morning breakaways from later attacks. The film shows recorded regrouping and descent attacks, and omits a breakaway curve when the actual pursuit distance is not recorded.\n\nWhat it means for you\nWhere complete native history exists, the markers follow the recorded events. Older stages without that history retain their stored markers."
+        },
+        "da": {
+          "title": "Morgenudbrud og senere angreb får hver sin markering",
+          "body": "Hvad er ændret\nEtaperesultatet skelner mellem morgenudbrud og senere angreb. Filmen viser registrerede samlinger og nedkørselsangreb, og udelader udbrudskurven, når den faktiske jagtafstand ikke er registreret.\n\nHvad betyder det for dig\nHvor der er en komplet historik fra den nye motor, følger markeringerne det registrerede forløb. Ældre etaper uden den historik beholder de gemte markeringer."
+        },
+        "refs": [
+          5953,
+          5954
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.326",
     "date": "2026-09-30",
     "label": "Beta",

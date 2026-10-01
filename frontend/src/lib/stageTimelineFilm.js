@@ -84,9 +84,10 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null}} input */
 export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
   const sorted = [...(events || [])].sort((a, b) => (a?.km ?? 0) - (b?.km ?? 0));
-  const feedEvents = sorted.filter((e) => !NON_FEED_TYPES.has(e?.type));
+  const feedEvents = sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided"));
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
     .map((e) => ({ km: e.km, category: e.params?.category ?? null, name: e.params?.name ?? null }));
@@ -95,12 +96,30 @@ export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
   // til det hurtigste hold — tyve hold flettet ind i én kurve er en zigzag der
   // ikke beskriver noget. Kurven udelades derfor på tidskørsler (GapCurveLayer
   // renderer ingenting på en tom liste); tallene bliver stående i tidslinjen.
-  const gapCurve = isTimeTrialStage(sorted)
-    ? []
-    : sorted
-      .filter((e) => e?.type === "gap_update")
-      .map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
-  const caughtEvent = sorted.find((e) => e?.type === "breakaway_caught");
+  const formation = sorted.find((e) => e?.type === "breakaway_formed");
+  const morningIds = new Set(formation?.params?.rider_ids ?? []);
+  const caughtEvent = sorted.find((e) => e?.type === "breakaway_caught"
+    && (!formation || (e.params?.rider_ids ?? []).some((id) => morningIds.has(id)))
+    && (!formation?.params?.group_id || !e.params?.group_id || e.params.group_id === formation.params.group_id));
+  const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
+  let gapCurve = [];
+  if (!isTimeTrialStage(sorted)) {
+    if (!namedGroups) {
+      gapCurve = sorted.filter((e) => e?.type === "gap_update").map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
+    } else if (formation?.params?.group_id) {
+      // Sparse absolute group gaps cannot prove distance to the actual pursuer.
+      // Only an explicit pursuit relationship may supply the native break-lead curve.
+      const escapeId = formation.params.group_id;
+      const explicit = sorted.filter(event => event.type === "gap_update"
+        && event.params?.group_id === escapeId
+        && typeof event.params?.chase_group_id === "string"
+        && Number.isFinite(event.params?.separation_seconds)
+        && Number(event.params?.separation_seconds) >= 0
+        && (!caughtEvent || event.km <= caughtEvent.km));
+      gapCurve = explicit.map(event => ({ km: event.km, gapSeconds: Number(event.params.separation_seconds) }));
+      if (gapCurve.length && caughtEvent) gapCurve.push({ km: caughtEvent.km, gapSeconds: 0 });
+    }
+  }
   const finishEvent = sorted.find((e) => e?.type === "finish");
   const maxKm = distanceKm ?? finishEvent?.km ?? (sorted.length ? sorted[sorted.length - 1].km : 0);
 
@@ -268,7 +287,20 @@ export function describeEvent(event, { riderNameById } = {}) {
         params: { rider, reason: p.reason || "unexplained" },
       };
     }
+    case "group_merged": {
+      const params = breakawayParams();
+      return params ? { key: params.count > 4 ? "group_merged_many" : "group_merged", params } : null;
+    }
+    case "peloton_splits": {
+      const params = breakawayParams();
+      return params ? { key: params.count > 4 ? "group_split_many" : "peloton_split", params } : null;
+    }
     case "finale_attack": {
+      if (p.kind === "stage_decided") return null;
+      if (p.direction === "descent" && Array.isArray(p.rider_ids)) {
+        const params = breakawayParams();
+        return params ? { key: params.count > 4 ? "descent_attack_many" : "descent_attack", params } : null;
+      }
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
       return { key: "finale_attack", params: { rider } };

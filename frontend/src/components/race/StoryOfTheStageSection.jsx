@@ -50,10 +50,11 @@ function StoryRow({ event, riderNameById, teamNameById, t }) {
 
 export default function StoryOfTheStageSection({
   raceId, stageNumber, profile, riderNameById, teamNameById, stageLabel,
-  finalKmAvailable = false, finalKmOpen = false, onToggleFinalKm,
+  finalKmAvailable = false, finalKmOpen = false, onToggleFinalKm, timeline: suppliedTimeline,
 }) {
   const { t } = useTranslation("races");
-  const { timeline } = useStageTimeline(raceId, stageNumber);
+  const { timeline: fetchedTimeline } = useStageTimeline(suppliedTimeline === undefined ? raceId : null, stageNumber);
+  const timeline = suppliedTimeline === undefined ? fetchedTimeline : suppliedTimeline;
   const [playerOpen, setPlayerOpen] = useState(false);
 
   const story = timeline?.events?.length ? selectStoryEvents(timeline.events) : [];
