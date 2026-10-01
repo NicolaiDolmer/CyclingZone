@@ -91,16 +91,27 @@ CREATE POLICY training_group_members_own_select ON public.training_group_members
   FOR SELECT TO authenticated
   USING (team_id IN (SELECT teams.id FROM public.teams WHERE teams.user_id = (SELECT auth.uid())));
 
+-- Skrivning kraever ogsaa at rytteren OG gruppen hoerer til samme hold som
+-- raekken (CodeRabbit-fund): ellers kunne en klient indsaette et fremmed holds
+-- rytter, og da rider_id er PRIMARY KEY, ville det blokere ham fra sit eget hold.
 DROP POLICY IF EXISTS training_group_members_own_insert ON public.training_group_members;
 CREATE POLICY training_group_members_own_insert ON public.training_group_members
   FOR INSERT TO authenticated
-  WITH CHECK (team_id IN (SELECT teams.id FROM public.teams WHERE teams.user_id = (SELECT auth.uid())));
+  WITH CHECK (
+    team_id IN (SELECT teams.id FROM public.teams WHERE teams.user_id = (SELECT auth.uid()))
+    AND EXISTS (SELECT 1 FROM public.riders r WHERE r.id = training_group_members.rider_id AND r.team_id = training_group_members.team_id)
+    AND EXISTS (SELECT 1 FROM public.training_groups g WHERE g.id = training_group_members.group_id AND g.team_id = training_group_members.team_id)
+  );
 
 DROP POLICY IF EXISTS training_group_members_own_update ON public.training_group_members;
 CREATE POLICY training_group_members_own_update ON public.training_group_members
   FOR UPDATE TO authenticated
   USING (team_id IN (SELECT teams.id FROM public.teams WHERE teams.user_id = (SELECT auth.uid())))
-  WITH CHECK (team_id IN (SELECT teams.id FROM public.teams WHERE teams.user_id = (SELECT auth.uid())));
+  WITH CHECK (
+    team_id IN (SELECT teams.id FROM public.teams WHERE teams.user_id = (SELECT auth.uid()))
+    AND EXISTS (SELECT 1 FROM public.riders r WHERE r.id = training_group_members.rider_id AND r.team_id = training_group_members.team_id)
+    AND EXISTS (SELECT 1 FROM public.training_groups g WHERE g.id = training_group_members.group_id AND g.team_id = training_group_members.team_id)
+  );
 
 DROP POLICY IF EXISTS training_group_members_own_delete ON public.training_group_members;
 CREATE POLICY training_group_members_own_delete ON public.training_group_members

@@ -141,15 +141,13 @@ test("gruppe-opslaget: manglende tabel = ingen; anden fejl kaster; ingen undtage
   assert.equal(none.size, 0);
 });
 
-test("egen plan: rytterne holder op med at foelge gruppen; fejl vaelter aldrig rettelsen", async () => {
-  const supabase = fakeSupabase({ training_group_members: [
+test("egen plan: rytteren holder op med at foelge gruppen; en fejl KASTER (rettelsen skrives saa ikke)", async () => {
+  const members = [
     { rider_id: "r1", team_id: "t1", follows_group: true }, { rider_id: "r2", team_id: "t1", follows_group: true },
-  ] });
-  await markRidersOwnPlan(supabase, "t1", ["r1"]);
-  assert.deepEqual(supabase.writes, [{ table: "training_group_members", patch: { follows_group: false } }]);
-  const reported: Error[] = [];
-  await markRidersOwnPlan(fakeSupabase({}, { errorOn: { training_group_members: { code: "500", message: "boom" } } }), "t1", ["r1"], (e) => reported.push(e));
-  assert.equal(reported.length, 1);
-  await markRidersOwnPlan(fakeSupabase({}, { errorOn: { training_group_members: { code: "42P01", message: "x" } } }), "t1", ["r1"], (e) => reported.push(e));
-  assert.equal(reported.length, 1);
+  ];
+  await markRidersOwnPlan(fakeSupabase({ training_group_members: members }), "t1", ["r1"]);
+  assert.deepEqual(members.map((m) => m.follows_group), [false, true]);
+  await assert.rejects(() => markRidersOwnPlan(fakeSupabase({}, { errorOn: { training_group_members: { code: "500", message: "boom" } } }), "t1", ["r1"]));
+  // Foer migrationen: ingen grupper, intet at markere.
+  await markRidersOwnPlan(fakeSupabase({}, { errorOn: { training_group_members: { code: "42P01", message: "x" } } }), "t1", ["r1"]);
 });

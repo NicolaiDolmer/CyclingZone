@@ -235,19 +235,18 @@ export async function loadGroupFatigueRuleRows(supabase: Supa, teamId: string): 
   return out;
 }
 
-// Spilleren har rettet disse rytteres EGEN plan: de foelger ikke laengere
-// gruppen. Fail-safe: en manglende tabel eller en fejl her maa aldrig vaelte
-// selve rettelsen (den er allerede gemt); fejlen rapporteres og kastes ikke.
-export async function markRidersOwnPlan(
-  supabase: Supa, teamId: string, riderIds: readonly string[], report: (err: Error) => void = () => {},
-): Promise<void> {
-  if (!riderIds.length) return;
-  try {
+// Spilleren retter disse rytteres EGEN plan: de foelger ikke laengere gruppen.
+// Kaldes FOER rettelsen skrives og KASTER ved fejl (CodeRabbit-fund): ellers
+// kunne rettelsen gemmes, mens rytteren stadig staar som foelger, og naeste
+// gruppe-aendring ville overskrive hans egen plan. Lykkes markeringen, men
+// rettelsen fejler, er rytteren blot koblet fra med sin uaendrede plan.
+// En manglende tabel (foer migrationen) = ingen grupper = intet at markere.
+export async function markRidersOwnPlan(supabase: Supa, teamId: string, riderIds: readonly string[]): Promise<void> {
+  // Kaldes med een rytter ad gangen (et felt / et program paa een rytter).
+  for (const riderId of riderIds) {
     const { error } = await supabase.from(MEMBERS_TABLE).update({ follows_group: false })
-      .eq("team_id", teamId).in("rider_id", [...riderIds]);
-    if (error && !isMissingGroupsTable(error)) report(new Error(`training groups own-plan mark: ${error.message}`));
-  } catch (err) {
-    report(err instanceof Error ? err : new Error(String(err)));
+      .eq("team_id", teamId).eq("rider_id", riderId);
+    if (error && !isMissingGroupsTable(error)) throw new Error(`training groups own-plan mark: ${error.message}`);
   }
 }
 
@@ -260,7 +259,12 @@ export async function syncGroupsToSquadProgram(
   try {
     const { error } = await supabase.from(GROUPS_TABLE)
       .update({ days, program_key: programKey, updated_at: new Date().toISOString() }).eq("team_id", teamId);
-    if (error && !isMissingGroupsTable(error)) report(new Error(`training groups squad sync: ${error.message}`));
+    // Fejlede gruppe-opdateringen, meldes ingen ind igen (CodeRabbit-fund):
+    // ellers ville de foelge en gruppe der stadig baerer det gamle program.
+    if (error) {
+      if (!isMissingGroupsTable(error)) report(new Error(`training groups squad sync: ${error.message}`));
+      return;
+    }
     const { error: followError } = await supabase.from(MEMBERS_TABLE).update({ follows_group: true }).eq("team_id", teamId);
     if (followError && !isMissingGroupsTable(followError)) report(new Error(`training groups squad follow: ${followError.message}`));
   } catch (err) {
