@@ -266,6 +266,22 @@ export function generateBrief(config) {
   if (ownership.length > 0) {
     parts.push("# Ejerskab - filer/omraader denne lane ejer");
     for (const item of ownership) parts.push(`- ${item}`);
+    parts.push("Ejede filer maa du aendre frit.", "");
+  }
+
+  // #5997: delte filer. Andre spor roerer dem ogsaa, saa kun en minimal kobling.
+  const touches = Array.isArray(config.touches) ? config.touches : [];
+  if (touches.length > 0) {
+    parts.push("# Delte filer (touches) - kun minimal kobling");
+    for (const item of touches) parts.push(`- ${item}`);
+    parts.push("Andre spor roerer de samme filer. Hold aendringen til en minimal kobling (faa linjer): ingen refactor, ingen omformatering, ingen flytning.");
+    const shared = config.sharedWith;
+    if (shared && Array.isArray(shared.files)) {
+      for (const f of shared.files) parts.push(`- ${f.path} deles med ${(f.with || []).map((n) => `#${n}`).join(", ")}`);
+      if (Array.isArray(shared.mergeOrder) && shared.mergeOrder.length > 0) {
+        parts.push(`Merge-raekkefoelge for spor med delte filer: ${shared.mergeOrder.map((n) => `#${n}`).join(" -> ")}. Merge-koeen merger main ind foer hver merge; er du ikke foerst, kan du faa en konflikt i en delt fil - los den ved at beholde begges kobling.`);
+      }
+    }
     parts.push("");
   }
 

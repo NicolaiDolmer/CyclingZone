@@ -333,6 +333,21 @@ I `wave.js` starter alle laner, ogsaa naar koeen er kortere. En lane uden spor s
 
 **5. Hale-tomgang.** `wave.js` har intet `Date.now()`, saa den maaler med et monotont minut-ur (et selv-genplanlagt `setTimeout`, ryddet foer scriptet returnerer). Start- og slutminut pr. spor og lane giver via `tailIdleLaneMinutes()` tre tal i rapportens `tailIdle`: `tailStartMinute` (seneste sporstart), `idleLaneMinutes` (tomme lane-minutter derfra til boelgens slut; en lukket lane taeller som optaget) og `capacityPct` (tomgang i procent af lanes x boelgens varighed). Loggen skriver `Hale-tomgang: X lane-minutter (Y % af kapacitet)`. Minut 0 er lane-fasens start.
 
+## Delte filer: `touches` (1/10, #5997)
+
+Et spor kan have et valgfrit felt `touches: []` ved siden af `ownership`: delte hotspot-filer (fx en side flere spor skal sætte en lille kobling ind i). Samme sti-/glob-syntaks som `ownership`, samme reserverede stier og "for bredt"-regel.
+
+| Kombination | Resultat |
+|---|---|
+| `ownership` mod `ownership` | blokerer (som foer) |
+| `ownership` mod andres `touches` (begge retninger) | blokerer, ogsaa i `enqueue` mod det koerende saet |
+| `touches` mod `touches` | tilladt og listet |
+| spor uden `touches` | uaendret adfaerd |
+
+Ejede filer maa en lane aendre frit; rørte filer kun med minimal kobling (faa linjer). Briefen siger det, og for startspor nævner den hvem filen deles med. `touches` blokerer ikke selv en merge under en bølge: merge-gaten tjekker stadig kun aktiv `ownership`.
+
+Planen (dry-run-resultat, bølgens `log` og slutrapportens `sharedTouches`) lister de delte filer og udleder en merge-raekkefoelge for de spor der deler en fil: mindste fodaftryk (antal ownership + touches) først, derefter laveste issue-nummer. Merge-koeen merger main ind før hver. Markoeren faar `sharedTouches` (`shared` + `mergeOrder`), kun naar noget deles; `enqueue` returnerer det samme for hele det aktive saet. `wave.js` spejler `sharedTouchPlan()` fra `wave-policy.mjs` (drift-vagt i `wave-policy.test.mjs`). Et spor optaget via rullende intake faar `touches` i briefen, men ikke "deles med"-linjen.
+
 ## Reviewer-tjeklisten: input og punkt 10-12 (24/9, #5507)
 
 Spejl af `reviewPrompt()` i [`.claude/workflows/wave.js`](../.claude/workflows/wave.js), som er kilden. Samme tekst staar i [`NIGHT_WAVE_RUNBOOK.md`](NIGHT_WAVE_RUNBOOK.md); [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs) fejler, hvis et af punkterne 10-12 i prompten mangler i en af de to filer. Baggrund: tre PR'er kom igennem review med en body der paastod noget koden ikke bar (#5501 en preview-parameter der kun fandtes i mocken, #5503 en kontakt uden kaldested, #5446 en kontakt som tre laesere gik udenom).
