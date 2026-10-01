@@ -80,3 +80,15 @@ Træningspakken (beta) er allerede beskrevet for beta-gruppen i `#updates` 1/10;
 - Om #6003 er deployet til Railway på skrivetidspunktet (merget 1/10 17:05 CEST); entryen siger "kommende etaper".
 - Aftenens planlagte flip af træningspakken til alle: skal have sin egen `beta_to_live`-entry samme aften.
 - Discord-tråde og forum er ikke gennemgået, kun kanalerne ovenfor.
+
+## Tillæg 1/10 aften (hovedsessionen, efter flippet kl. 20.40)
+
+Prod læst read-only 1/10 kl. ca. 21.30: `training_program_cells`, `training_fatigue_rules` og `training_daily_receipt` = `on`; `training_train_now`, `training_groups`, `season_matrix_mobile` = `beta`.
+
+Ændringer i v7.330:
+- Træningspakken er delt: Plan pr. løbsdag + Træthedsgrænse + Rapport = `beta_to_live`; Train now + træningsgrupper (#6001, #6008, #6027) = `beta`.
+- Nye `live`: ungdomstrup Kun træning (#6007), udviklingshistorik pr. dato (#6019), "I dag handler om i dag" (#6021 + #6025). De to sidste er gated på `training_program_cells`, som er `on` for alle, så de er live, ikke beta.
+- Ny `beta`: sæsonmatrix på telefon (#6010).
+- Trup-advarslen (#5894) stod allerede i 7.329; bjergpoint (#6003) og omdømme stod allerede i 7.330.
+- Ikke noteret (intern drift): #6005 retry-jobs, #6011 dobbelt løbsdag for to ryttere (én dato for ét hold), #6002 GC-kontekst bag inaktiv regelrevision.
+- Flippes `training_train_now` til `on`, ændres Train now-entryen til `beta_to_live` samme aften.

@@ -29,16 +29,76 @@ export const PATCHES = [
         "refs": [4956, 5828]
       },
       {
-        "category": "new", "audience": "player", "rollout": "beta", "topic": "Training",
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Training",
         "en": {
-          "title": "Train now, a plan for each race day and a fatigue limit, in the beta group",
-          "body": "On Daily training, Train now runs today's training whenever it suits you, with the same result as the evening run. After you press it, today's training is locked. Under Program, Plan sets each of the day's race days to hard, normal, recovery or rest, for the team or one rider, and Fatigue tonight shows roughly how tired each rider will be before you choose. Fatigue limit lets you set a rule, for example rest above a fatigue level, and the rider goes back to his plan afterwards. The rule is checked at the start of each date."
+          "title": "A plan for each race day, a fatigue limit and the daily report, now for everyone",
+          "body": "Under Program, Plan sets each of the day's race days to hard, normal, recovery or rest, for the team or one rider, and Fatigue tonight shows roughly how tired each rider will be before you choose. Fatigue limit lets you set a rule, for example rest above a fatigue level, and the rider goes back to his plan afterwards. The Report tab shows one receipt per rider for each training date, with the progress he made. Beta testers had these first."
         },
         "da": {
-          "title": "Træn nu, en plan for hver løbsdag og en træthedsgrænse, i beta-gruppen",
-          "body": "På Daglig træning kører Træn nu dagens træning, når det passer dig, med samme resultat som aftenkørslen. Når du har trykket, er dagens træning låst. Under Program sætter Plan hver af dagens løbsdage til hård, normal, restitution eller hvile, for holdet eller én rytter, og Træthed i aften viser cirka, hvor træt hver rytter bliver, før du vælger. Med Træthedsgrænse sætter du en regel, fx hvile over et bestemt træthedsniveau, og rytteren går tilbage til sin plan bagefter. Reglen tjekkes ved starten af hver dato."
+          "title": "En plan for hver løbsdag, en træthedsgrænse og den daglige rapport, nu for alle",
+          "body": "Under Program sætter Plan hver af dagens løbsdage til hård, normal, restitution eller hvile, for holdet eller én rytter, og Træthed i aften viser cirka, hvor træt hver rytter bliver, før du vælger. Med Træthedsgrænse sætter du en regel, fx hvile over et bestemt træthedsniveau, og rytteren går tilbage til sin plan bagefter. Fanen Rapport viser én kvittering pr. rytter for hver træningsdato med det fremskridt, han fik. Beta-testere fik dem først."
         },
-        "refs": [4847, 4854, 5620, 5932, 5933, 5999]
+        "refs": [4854, 5620, 5915, 5932, 5933, 5999, 6018]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Today is about today",
+          "body": "On the phone, each rider on Today is one row with fatigue tonight, his progress this season and one tap for Rest, Recovery or Program. On a computer, the Fatigue column shows now and tonight, for example 20 > ~31, coloured by the injury limit. Season points have moved to a This season overview at the top of Development."
+        },
+        "da": {
+          "title": "I dag handler om i dag",
+          "body": "På telefonen er hver rytter på I dag én række med træthed i aften, hans fremgang i sæsonen og ét tryk for Hvile, Restitution eller Program. På computer viser kolonnen Træthed nu og i aften, fx 20 > ~31, farvet efter skadegrænsen. Sæsonpoint er flyttet til overblikket Denne sæson øverst i Udvikling."
+        },
+        "refs": [5630, 5685, 6025]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta", "topic": "Training",
+        "en": {
+          "title": "Train now and training groups, in the beta group",
+          "body": "On Daily training, Train now runs today's training whenever it suits you, with the same result as the evening run, and locks today's training afterwards. It now trains the whole squad, also for teams where the assistant picks the riders, and the Report shows the race days already trained straight away; fatigue and form follow at the evening settlement. Training groups let one decision cover several riders: a group gets one plan, and each rider keeps his own copy."
+        },
+        "da": {
+          "title": "Træn nu og træningsgrupper, i beta-gruppen",
+          "body": "På Daglig træning kører Træn nu dagens træning, når det passer dig, med samme resultat som aftenkørslen, og låser derefter dagens træning. Den træner nu hele truppen, også for hold hvor assistenten udtager rytterne, og Rapport viser straks de løbsdage, der er trænet; træthed og form følger ved aftenens afregning. Med træningsgrupper dækker én beslutning flere ryttere: gruppen får én plan, og hver rytter beholder sin egen kopi."
+        },
+        "refs": [4847, 6000, 6001, 6006, 6008, 6027]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Youth teams",
+        "en": {
+          "title": "Let a youth squad train instead of race",
+          "body": "On the U23 team or Junior team page, set Races to Train only. The assistant then stops entering that squad, and its riders train on every day without a race. It takes effect from the next race day that isn't locked. Switch back to Enter races at any time. Your senior team is not affected."
+        },
+        "da": {
+          "title": "Lad en ungdomstrup træne i stedet for at køre løb",
+          "body": "På siden for U23-holdet eller juniorholdet sætter du Løb til Kun træning. Assistenten stopper så med at tilmelde truppen, og dens ryttere træner hver dag uden løb. Det gælder fra næste løbsdag, der ikke er låst. Du kan skifte tilbage til Kør løb når som helst. Dit seniorhold påvirkes ikke."
+        },
+        "refs": [5944, 6007]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Development history shows every gain on the right date",
+          "body": "Since training moved to race days, a rider's development curve and season gains could miss gains from the date's later race days, or show them on the next date. Each date now shows how the rider ended that date."
+        },
+        "da": {
+          "title": "Udviklingshistorikken viser hver fremgang på den rigtige dato",
+          "body": "Siden træningen flyttede til løbsdage, kunne en rytters udviklingskurve og sæsongevinster mangle fremgang fra datoens senere løbsdage eller vise den på næste dato. Hver dato viser nu, hvordan rytteren sluttede datoen."
+        },
+        "refs": [5947, 6019]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta", "topic": "Planning",
+        "en": {
+          "title": "Season matrix on the phone, in the beta group",
+          "body": "On a phone, the season matrix in Planning now fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see."
+        },
+        "da": {
+          "title": "Sæsonmatrixen på telefonen, i beta-gruppen",
+          "body": "På telefonen passer sæsonmatrixen i Planlægning nu til skærmen: én række linser i fuld bredde, og Før og Senere flytter de løbsdage, du ser."
+        },
+        "refs": [5124, 6010]
       },
       {
         "category": "fixed", "audience": "player", "rollout": "live", "topic": "Youth teams",
