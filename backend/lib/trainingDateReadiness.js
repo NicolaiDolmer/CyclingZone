@@ -3,10 +3,15 @@ import { fetchAllRows } from './supabasePagination.js';
 import { resolveCalendarRaceDayTarget } from './trainingRaceDayTick.js';
 import { isEligibleRider, raceSquadOf, ANY_SQUAD } from './riderEligibility.js';
 import { teamPoolIdForSquad } from './raceBinding.js';
+import { loadTrainNowLockedDatesByTeam } from './trainNowLock.js';
 
-export function trainingAutopickCandidates(race, teams, riders) {
+// #6006: a team that pressed "Train now" for the date has a frozen selection (I3).
+// The assistant cannot add any of its riders afterwards, so only real entries can
+// still hold one of its riders back; the rest are free to settle now.
+export function trainingAutopickCandidates(race, teams, riders, trainNowLockedTeamIds = new Set()) {
   const squad = raceSquadOf(race);
   const possibleTeams = new Set(teams.filter(team => (team.is_ai || team.assistant_autopick_enabled) &&
+    !trainNowLockedTeamIds.has(team.id) &&
     teamPoolIdForSquad(team, squad) === race.league_division_id).map(team => team.id));
   return riders.filter(rider => possibleTeams.has(rider.team_id) && rider.pending_team_id == null &&
     isEligibleRider(rider, { squad })).map(rider => rider.id);
@@ -104,9 +109,11 @@ export async function loadTrainingDateContext({ supabase, season, tickDate, load
     ]);
     results.push(...stageResults); incidents.push(...stageIncidents);
   }
+  const trainNowLockedTeamIds = raceIds.length
+    ? new Set((await loadTrainNowLockedDatesByTeam({ supabase, dates: [tickDate] })).keys()) : new Set();
   const candidateRiderIdsByRace = new Map();
   for (const race of races.filter(row => raceIds.includes(row.id))) {
-    candidateRiderIdsByRace.set(race.id, trainingAutopickCandidates(race, teams, riders));
+    candidateRiderIdsByRace.set(race.id, trainingAutopickCandidates(race, teams, riders, trainNowLockedTeamIds));
   }
   const riderById = new Map(riders.map(rider => [rider.id, rider]));
   const validEntries = entries.filter(entry => isEligibleRider(riderById.get(entry.rider_id), { teamId: entry.team_id, squad: ANY_SQUAD }));
