@@ -215,6 +215,23 @@ export function finaleModifierScale(abilityTerm: number, poolBestAbilityTerm: nu
 }
 
 /**
+ * #6049: hvor meget af dagens modifikatorer en hel finale-pulje faar, givet
+ * puljens niveau: puljens bedste finale-evne delt med en reference, clampet til
+ * [0, 1]. Modifikatorerne (reserve, dagsform, indsats, leadout) er absolutte
+ * tal paa score-skalaen, men evne-leddet foelger feltets niveau. I et felt hvor
+ * selv den bedste ligger langt under referencen, er hele evne-spredningen
+ * lille, og et fast tillaeg ville afgoere raekkefoelgen alene. Med skalaen er
+ * tillaeggets stoerrelse i forhold til evnen den samme i et svagt og et staerkt
+ * felt. Ved og over referencen er opgoeret uaendret. `floor` holder skalaen
+ * over 0 i en pulje helt uden finale-evne. Ugyldig reference = 1 (neutral).
+ */
+export function finaleLevelScale(poolBestAbilityTerm: number, reference: number, floor = 0): number {
+  if (!(Number.isFinite(reference) && reference > 0)) return 1;
+  const best = Number.isFinite(poolBestAbilityTerm) ? poolBestAbilityTerm : 0;
+  return clamp(Math.max(best, Number.isFinite(floor) ? floor : 0) / reference, 0, 1);
+}
+
+/**
  * #5580 (M1 punkt 2, indsatstrappen model 3): indsatsens led i placerings-
  * opgoeret inden for gruppen, vaegtet af rest-reserven:
  * `push[effort] x reserve - crack[effort] x (1 - reserve)`.
@@ -475,8 +492,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     return abilities ? finaleAbilityTerm(abilities, demandVector) : 0;
   };
   const poolBestAbilityTerm = finaleIds.reduce((best, id) => Math.max(best, abilityTermOf(id)), 0);
+  // #6049: modifikatorerne er absolutte score-enheder, men evne-leddet foelger
+  // feltets niveau. I et svagt felt er hele evne-spredningen lille, og saa
+  // overtrumfer et fast tillaeg den. Skalaen foelger derfor ogsaa puljens niveau.
+  const levelScale = finaleLevelScale(poolBestAbilityTerm, extra.modifierReferenceAbilityTerm, extra.modifierScaleFloor);
   const modifierScaleOf = (riderId: string): number =>
-    finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
+    levelScale * finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
 
   const scoreOf = (riderId: string, dayformWeight = extra.dayformScoreWeight): number | null => {
     const entrant = entrants[riderId];
@@ -559,6 +580,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     return pool;
   };
   const baseScored = adjustWithinPool(contenderIds);
+  if ((globalThis as any).__dump6049) for (const id of contenderIds) { const e = entrants[id]; const st = state.riders[id]; (globalThis as any).__dump6049.push({ id, at: abilityTermOf(id), reserve: e.effort === "grupetto" ? 0 : wprimeReserveFraction(st), dayform: st?.dayform ?? 0, effort: e.effort, scale: modifierScaleOf(id), score: scoreOf(id), adj: baseScored.find((s) => s.riderId === id)?.score }); }
   const adjustedScores = new Map([
     ...baseScored,
     ...survivingGroups.flatMap((group) => adjustWithinPool(group.rider_ids)),
