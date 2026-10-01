@@ -24,7 +24,7 @@ function abilities(base: number, overrides: Partial<Record<AbilityKey, number>> 
   return { ...out, ...overrides };
 }
 
-const SPRINT = RACE_V4_TUNING.finale.demandVectorByFinaleType.bunch_sprint;
+const SPRINT: Partial<Record<AbilityKey, number>> = RACE_V4_TUNING.finale.demandVectorByFinaleType.bunch_sprint ?? {};
 const EXTRA = FINALE_EXTRA_TUNING;
 const EFFORTS: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
 
