@@ -21,6 +21,7 @@ New on the patch notes page: Beta: only the beta group has it. No label: live fo
 
 **Switched on**
 - **A new race engine from race day 1**: races are now ridden kilometre by kilometre. Breakaways go clear and get caught, climbs split the field, and each stage's route and weather play a part. Open a stage result to watch the race film.
+- **See each rider's reputation**: a rider's profile now shows their reputation, a level from Unknown to Legend, and the results that moved it. The rider database, your team pages, auctions and the market show the same number.
 
 **Beta group**
 - **Train now, a plan for each race day and a fatigue limit**: Train now runs today's training whenever it suits you, Plan sets each race day to hard, normal, recovery or rest, Fatigue tonight shows roughly how tired each rider will be, and Fatigue limit rests a rider above a level you choose.

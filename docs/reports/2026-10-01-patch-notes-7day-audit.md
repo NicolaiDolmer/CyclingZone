@@ -31,16 +31,18 @@ Udført 1/10 ca. 17-18 (CEST), read-only mod prod og Discord. Standarden der kom
 | `email_loop_race_digest` | on | 24/9 18:28 | (mail, ikke patch note-flade) | Nej, bevidst |
 | `academy_drift_enabled` | off | 25/9 | Ja, 7.300 | Ja |
 
-**Briefing-afvigelse:** briefen sagde `rider_reputation_enabled` er `on` i dag. Prod viser `shadow` (sidst ændret
-10/9). Omdømmet er derfor IKKE synligt for spillere, og der er ikke skrevet en patch note for det. PR #5828 siger
-selv, at flippet er en særskilt ejerbeslutning. Patch note-teksten (7.312 i PR #5828's historik) skal ind samme dag
-flaget går `on`, som `switched_on`.
+**Omdømme (`rider_reputation_enabled`):** prod står på `on` (sat 10/9, read-only SQL 1/10). Kun `on` åbner for
+læsning (`isReputationReadEnabled` i `backend/lib/reputationFlag.js`), og `/api/display-flags` sender den videre til
+klienten. Visningen kom med #5828, merget 1/10 15:48 CEST, så omdømmet er synligt for alle fra i dag. Patch note-
+teksten fra #5828 (7.312 i PR'ens historik, endelig ordlyd fra PR-bodyen) er tilføjet i 7.330 som `switched_on`.
+(En tidligere version af denne rapport sagde fejlagtigt `shadow`.)
 
 ## Manglede på sitet (tilføjet som v7.330, dato 1/10)
 
 | Ændring | PR | Klasse |
 |---|---|---|
 | Mandatet (ny bestyrelse, årsmøde, bestyrelsens dom i sæsonopsummeringen) for alle siden 27/9 | #5758 #5759 #5760 #5761, flag 27/9 | BETA→LIVE |
+| Rytterens omdømme synligt (profil, database, holdsider, auktioner, marked, bestyrelsens stjernemål) | #5828, flag `on` | TÆNDT |
 | Træn nu, plan pr. løbsdag, Træthed i aften, Træthedsgrænse | #5999 | BETA |
 | U23-/juniorløb gav hvile i stedet for udvikling; startede ikke løbsdag 1; rørte seniorbestyrelsen | #5880 #5890 #5892 | RETTELSE |
 | Frie løbsdage inde i et etapeløb er træning | #5880 (ejer-valg A 28/9) | LIVE |
@@ -67,7 +69,7 @@ event: 7.304 ingen værdiopdatering, 7.305 S4-kalender, 7.306 sæsonstart/sammen
 |---|---|
 | 7.307 rest, 7.309 (postet som separat opslag 28/9, ok), 7.310 ny løbsmotor (kun nævnt i `#the-roadbook`), 7.311 | ja |
 | 7.316, 7.317, 7.320-7.327, 7.329 | ja |
-| 7.330 (alle seks) | ja efter denne PR |
+| 7.330 (alle syv) | ja efter denne PR |
 | Mandatet for alle | hverken site eller Discord før denne PR |
 
 Discord-udkast til ejeren: [`docs/drafts/2026-10-01-patch-notes-catchup-discord.md`](../drafts/2026-10-01-patch-notes-catchup-discord.md).
