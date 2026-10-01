@@ -104,7 +104,9 @@ function sectorTraversalSeconds(segment: CobblesSegment, baseSpeedKmhCobbles: nu
 
 /** [lo,hi]-fraktionsbaand, ganget op paa "udvalgte punch-etaper" (finale_type==='punch'). Clampet til [0,1] uanset multiplikator. */
 function effectFractionBoundsFor(route: Pick<RouteV2, "finale_type">): readonly [number, number] {
-  const [lo, hi] = COBBLES_EXTRA_TUNING.effectFractionBounds;
+  const [lo0, hi0] = COBBLES_EXTRA_TUNING.effectFractionBounds;
+  const lo = Number(process.env.COB_LO || lo0);
+  const hi = Number(process.env.COB_HI || hi0);
   const multiplier = route.finale_type === "punch" ? COBBLES_EXTRA_TUNING.punchFinaleMultiplier : 1;
   return [clamp(lo * multiplier, 0, 1), clamp(hi * multiplier, 0, 1)];
 }
@@ -251,6 +253,43 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
 
   let nextState = state;
   let localSeq = 0;
+
+  const drain = Number(process.env.COB_DRAIN || 0);
+  if (drain > 0) {
+    let ref = 0;
+    for (const g of state.groups) for (const id of g.rider_ids) {
+      const e = ctx.entrants[id];
+      if (e && state.riders[id]?.status === "racing") ref = Math.max(ref, e.abilities.cobblestone);
+    }
+    const riders = { ...nextState.riders };
+    for (const g of state.groups) for (const id of g.rider_ids) {
+      const e = ctx.entrants[id];
+      const rs = riders[id];
+      if (!e || !rs || rs.status !== "racing") continue;
+      const d = clamp((ref - e.abilities.cobblestone) / 99, 0, 1);
+      riders[id] = { ...rs, wprime: Math.max(0, rs.wprime - drain * d * (cobblesSegment.stars / 5) * rs.wprimeMax) };
+    }
+    nextState = { ...nextState, riders };
+  }
+  const paceFactor = Number(process.env.COB_PACE || 0);
+  if (paceFactor > 0) {
+    const bestOf = (ids: readonly string[]) => {
+      let best = 0;
+      for (const id of ids) {
+        const e = ctx.entrants[id];
+        if (e && state.riders[id]?.status === "racing") best = Math.max(best, e.abilities.cobblestone);
+      }
+      return best;
+    };
+    const ref = bestOf(state.groups.flatMap((g) => g.rider_ids));
+    nextState = {
+      ...nextState,
+      groups: nextState.groups.map((g) => {
+        const d = clamp((ref - bestOf(g.rider_ids)) / 99, 0, 1);
+        return d > 0 ? { ...g, gap_seconds: g.gap_seconds + paceFactor * d * (cobblesSegment.stars / 5) * sectorSeconds } : g;
+      }),
+    };
+  }
 
   for (const group of groupsSorted) {
     // 1) Styrt-risiko for HELE gruppen (M11-forbrug), FOER split-beslutningen
