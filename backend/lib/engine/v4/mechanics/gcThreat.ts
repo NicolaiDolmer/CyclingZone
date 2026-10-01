@@ -35,6 +35,7 @@ export type GcThreatReason =
   | "protected_not_racing"
   // Holdets GC-rytter kan ikke hjaelpes af en jagt fra hans gruppe.
   | "protected_ahead"
+  | "protected_in_other_group"
   // Vurderinger af ryttere foran.
   | "nothing_ahead"
   | "no_classified_rider_ahead"
@@ -188,6 +189,13 @@ export function assessGcThreat(input: {
   protectedRiderId: string | null;
   km: number;
   racingRiderIds?: ReadonlySet<string>;
+  /**
+   * Grupper der faktisk jager noget foran sig (M5's jagtgrupper). Er GC-
+   * rytterens gruppe ikke iblandt dem (han er fx sat af bag en anden gruppe),
+   * kan holdets hjaelpere ikke beskytte ham: severity "none",
+   * "protected_in_other_group". Udeladt = ingen saadan begraensning.
+   */
+  chasingGroupIds?: ReadonlySet<string>;
 }): GcThreat {
   const tuning = GC_THREAT_TUNING;
   const gcContext = input.gcContext ?? null;
@@ -275,6 +283,9 @@ export function assessGcThreat(input: {
     (a, b) => severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || a.riderId.localeCompare(b.riderId),
   );
   const worst = candidates[0];
+  if (worst.severity !== "none" && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
+    return { ...base, threat_rider_ids: [], tied: worst.tied, severity: "none", reason: "protected_in_other_group" };
+  }
   const threatRiderIds = worst.severity === "none"
     ? []
     : candidates.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
