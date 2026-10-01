@@ -39,6 +39,16 @@ test("'Rest for several' (#5638) bevares: markering skjuler valget og toggler ra
   assert.match(row, /onTogglePick\?\.\(rider\.id\)/);
 });
 
+test("en fejlet hurtig-aendring vises i raekken (role=alert, sidens egne fejltekster)", () => {
+  assert.ok(page.includes("errorFor={(riderId) => (planActionError?.riderId === riderId"));
+  assert.match(row, /role="alert"/);
+  assert.match(row, /planActionErrorGeneric/);
+});
+
+test("trykket segment laeses fra dagens effektive felt (samme sessionFor som tabellen)", () => {
+  assert.ok(page.includes("pressedChoiceFromSession(sessionFor(riderId, column))"));
+});
+
 test("i18n en+da har alle raekkens noegler", () => {
   for (const lang of ["en", "da"]) {
     const json = JSON.parse(readFileSync(join(here, `../../../public/locales/${lang}/training.json`), "utf8"));

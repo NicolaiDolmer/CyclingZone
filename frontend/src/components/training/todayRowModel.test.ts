@@ -1,7 +1,7 @@
 // #5685/#5630 · telefonens Today-raekke (retning A): ren logik.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pressedChoice, rowForecast, rowLocked, seasonGainItems } from "./todayRowModel.ts";
+import { pressedChoice, pressedChoiceFromSession, rowForecast, rowLocked, seasonGainItems } from "./todayRowModel.ts";
 
 test("prognosen: afrundet tal + serverens baand; ukendt baand er aldrig 'frisk'", () => {
   assert.deepEqual(rowForecast({ fatigue: 57.6, band: "ok" }), { value: 58, tone: "ok" });
@@ -40,4 +40,12 @@ test("trykket segment foelger desktoppens regel", () => {
 test("laast efter Train now (beslutning 2)", () => {
   assert.equal(rowLocked({ trainedToday: true }), true);
   assert.equal(rowLocked({ trainedToday: false }), false);
+});
+
+test("effektivt felt: programcellen vinder over planen", () => {
+  assert.equal(pressedChoiceFromSession("rest"), "rest");
+  assert.equal(pressedChoiceFromSession("recovery"), "recovery");
+  assert.equal(pressedChoiceFromSession("restitution"), "recovery");
+  assert.equal(pressedChoiceFromSession("threshold"), "session");
+  assert.equal(pressedChoiceFromSession(null), null);
 });

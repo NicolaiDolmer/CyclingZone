@@ -44,6 +44,7 @@ export type TodayRowsMobileProps = {
   seasonGainsFor: (riderId: string) => Record<string, unknown> | null;
   pressedFor: (riderId: string) => QuickChoice | null;
   onChoose: (riderId: string, choice: QuickChoice) => void;
+  errorFor?: (riderId: string) => string | null;
   busyFor: (riderId: string) => boolean;
   locked: boolean;
   selectedRiderId: string | null;
@@ -66,6 +67,7 @@ export default function TodayRowsMobile({
   seasonGainsFor,
   pressedFor,
   onChoose,
+  errorFor,
   busyFor,
   locked,
   selectedRiderId,
@@ -111,6 +113,7 @@ export default function TodayRowsMobile({
           const gains = seasonGainItems(seasonGainsFor(rider.id));
           const pressed = pressedFor(rider.id);
           const busy = busyFor(rider.id);
+          const error = errorFor ? errorFor(rider.id) : null;
           const isPicked = pickMode && picked.has(rider.id);
           const isOpen = !pickMode && rider.id === selectedRiderId;
           const detailId = `training-onetap-detail-${rider.id}`;
@@ -220,6 +223,11 @@ export default function TodayRowsMobile({
                       );
                     })}
                   </div>
+                )}
+                {error && !pickMode && (
+                  <p role="alert" className="mt-1 text-xs text-cz-danger" data-testid="training-onetap-error">
+                    {t([`planActionError_${error}`, "planActionErrorGeneric"])}
+                  </p>
                 )}
               </li>
               {isOpen && (

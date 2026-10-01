@@ -95,7 +95,7 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 import TrainingMobileToday from "../components/training/mobile/TrainingMobileToday.tsx";
 // #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke, bag beta (cellsOn).
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
-import { pressedChoice, rowLocked } from "../components/training/todayRowModel.ts";
+import { pressedChoice, pressedChoiceFromSession, rowLocked } from "../components/training/todayRowModel.ts";
 import { buildRaceDayColumns } from "../lib/trainingMobileModel.ts";
 
 // #3721: siden fik faner (Train today / Development / History), ?tab=-
@@ -2301,10 +2301,15 @@ export default function TrainingPage() {
             forecastSettled={fatigueForecast.settled}
             seasonGainsFor={(riderId) => seasonGainsByRider[riderId] ?? null}
             pressedFor={(riderId) => {
+              // Dagens EFFEKTIVE felt (programcellen foer planen), samme kilde som tabellens celle.
+              const column = raceDayColumns.find((c) => c.state === "now") ?? raceDayColumns[0];
+              const effective = column ? pressedChoiceFromSession(sessionFor(riderId, column)) : null;
+              if (effective) return effective;
               const plan = planFor(riderId);
               return pressedChoice(plan?.focus ? dayTypeForProgram(plan) : null, sessionDayType(plan), !!plan?.focus);
             }}
             onChoose={handleOneTapChoice}
+            errorFor={(riderId) => (planActionError?.riderId === riderId ? planActionError.error : null)}
             busyFor={(riderId) => savingId === riderId || bulkApplying}
             locked={rowLocked({ trainedToday: runGate.trainedToday })}
             selectedRiderId={mobileRiderId}
@@ -2313,7 +2318,7 @@ export default function TrainingPage() {
             openFirstForTour={tourActiveAtMount}
             picked={mobilePickMode ? selected : null}
             onTogglePick={toggleSelect}
-            sortSlot={<RosterMobileSortControl sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} scoreVisible={scoreVisible} t={t} />}
+            sortSlot={<RosterMobileSortControl header sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} scoreVisible={scoreVisible} t={t} />}
             bulkSlot={renderMobileBulkBar()}
           />
         ) : (

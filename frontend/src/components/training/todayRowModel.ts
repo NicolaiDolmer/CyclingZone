@@ -62,6 +62,19 @@ export function pressedChoice(
 }
 
 /**
+ * Segmentet ud fra dagens EFFEKTIVE felt (programcellen naar den findes, ellers
+ * planen), dvs. det tabellens celle viser. "rest"/"recovery" er dagstyper uden
+ * session; enhver anden session er rytterens program. `null` = ukendt (fx en
+ * etape-rytter), saa kalderen falder tilbage paa planen.
+ */
+export function pressedChoiceFromSession(session: string | null | undefined): QuickChoice | null {
+  if (!session) return null;
+  if (session === "rest") return "rest";
+  if (session === "recovery" || session === "restitution") return "recovery";
+  return "session";
+}
+
+/**
  * Beslutning 2: efter Train now (eller naar dagen er afregnet) er dagens valg
  * laast, praecis som det er i dag. `trainedToday` er sidens egen run-gate.
  */
