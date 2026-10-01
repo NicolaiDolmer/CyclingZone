@@ -2720,3 +2720,65 @@ test('legacy engine with normalized flag off never reads date work or condition 
     assert.ok(tables.includes('rider_derived_abilities'));assert.ok(columns.length>0);
   }
 });
+
+// ── #4854/#5620: spillerens egne regler (traethedsgraense + dagen efter en etape) ──
+function seedFatigueRuleDate({ fatigue = 60, rule = {}, plan = 'hard' } = {}) {
+  const state = seedState({
+    conditions: [makeCondition('r1', { fatigue, form: 50 })],
+    plans: [{ rider_id: 'r1', team_id: TEAM_ID, season_id: SEASON_ID, focus: 'threshold', intensity: plan }],
+  });
+  seedRaceDayTick(state, { gameDay: 0 });
+  state.app_config.push({ key: 'training_condition_per_date', value: 'on' }, { key: 'training_fatigue_rules', value: 'on' });
+  state.team_training_rules = rule == null ? [] : [{
+    team_id: TEAM_ID, rider_id: null, fatigue_threshold: 40, fallback: 'rest', recovery_after_stage: false, ...rule,
+  }];
+  return state;
+}
+
+test('#4854: over graensen koerer hele datoen erstatnings-passet, planen roeres ikke, dagen stemples', async () => {
+  const state = seedFatigueRuleDate({ fatigue: 60 });
+  const planBefore = structuredClone(state.training_plans);
+  for (const gameDay of [0, 1, 2, 3, 4]) {
+    const result = await runDay(state, { gameDay, dateGameDays: [0, 1, 2, 3, 4] });
+    const row = result.report.riders[0];
+    assert.equal(row.intensity, 'rest', `loebsdag ${gameDay}`);
+    assert.deepEqual(row.gains, {});
+    assert.equal(row.fatigue_rule.kind, 'fatigue');
+    assert.equal(row.fatigue_rule.fallback, 'rest');
+    assert.equal(row.fatigue_rule.from_intensity, 'hard');
+  }
+  assert.deepEqual(state.training_plans, planBefore, 'G5: reglen retter aldrig planen');
+});
+
+test('#4854: under graensen = programmet koerer som valgt (retur til program), intet stempel', async () => {
+  const state = seedFatigueRuleDate({ fatigue: 20 });
+  const result = await runDay(state, { gameDay: 0, dateGameDays: [0, 1, 2, 3, 4] });
+  assert.equal(result.report.riders[0].intensity, 'hard');
+  assert.equal(result.report.riders[0].fatigue_rule, null);
+});
+
+test('#4854 G7: hold uden regel = rapporten er uaendret (intet fatigue_rule-felt)', async () => {
+  const state = seedFatigueRuleDate({ fatigue: 90, rule: null });
+  const result = await runDay(state, { gameDay: 0, dateGameDays: [0, 1, 2, 3, 4] });
+  assert.equal(result.report.riders[0].intensity, 'hard');
+  assert.equal('fatigue_rule' in result.report.riders[0], false);
+});
+
+test('#4854: flaget slukket = reglen ignoreres af motoren', async () => {
+  const state = seedFatigueRuleDate({ fatigue: 90 });
+  state.app_config = state.app_config.map((row) => row.key === 'training_fatigue_rules' ? { ...row, value: 'off' } : row);
+  const result = await runDay(state, { gameDay: 0, dateGameDays: [0, 1, 2, 3, 4] });
+  assert.equal(result.report.riders[0].intensity, 'hard');
+});
+
+test('#5620: dagen efter en etape er kun foerste felt restitution', async () => {
+  const state = seedFatigueRuleDate({ fatigue: 10, rule: { fatigue_threshold: null, fallback: null, recovery_after_stage: true } });
+  state.training_race_loads = [{ rider_id: 'r1', race_id: 'race-0', stage_number: 3, game_day: -1, season_id: SEASON_ID, tick_date: '2026-06-11', load: 12, consumed_at: new Date().toISOString() }];
+  const intensities = [];
+  for (const gameDay of [0, 1, 2, 3, 4]) {
+    const result = await runDay(state, { gameDay, dateGameDays: [0, 1, 2, 3, 4] });
+    intensities.push(result.report.riders[0].intensity);
+    if (gameDay === 0) assert.equal(result.report.riders[0].fatigue_rule.kind, 'after_stage');
+  }
+  assert.deepEqual(intensities, ['recovery', 'hard', 'hard', 'hard', 'hard']);
+});

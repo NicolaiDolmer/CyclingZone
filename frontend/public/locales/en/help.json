@@ -1114,6 +1114,10 @@
       "individualWeeklyPlan": {
         "title": "Individual weekly plan per rider",
         "text": "Click 'Individual weekly plan' on any rider's row in the roster to set that rider's own target intensity per day, separate from both their own focus/intensity and the team rhythm. This is the most specific layer: an individual weekly plan wins over everything else for that rider, including their own explicit intensity, which in turn already wins over the team's weekly rhythm. It's meant for the 2-3 riders whose training you want to vary day by day. Riders with their own weekly plan show an 'Own plan' badge in the roster."
+      },
+      "fatigueLimit": {
+        "title": "Fatigue limit",
+        "text": "You can set one rule for the team: above a fatigue level you choose, riders run a lighter session instead (the same session on light load, active recovery or rest). A single rider can have his own limit or no limit. The rule is checked on fatigue at the start of each date, so the result is the same whenever you log in. It never changes the plan, so the rider goes back to his program once he is under the limit. You can also choose that the first slot the day after a stage is active recovery. Days where a rule kicked in are shown on the Week plan tab. Racing always comes first: a rider in a race is not affected."
       }
     },
     "activityfeed": {

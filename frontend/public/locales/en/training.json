@@ -528,5 +528,33 @@
     "band_risk": "Above the injury limit",
     "aria": "Fatigue tonight: approx. {value}. {band}",
     "ariaSettled": "Fatigue tonight: {value}. {band}"
+  },
+  "fatigueRule": {
+    "title": "Fatigue limit",
+    "intro": "Your own rule. Above the limit a rider runs a lighter session instead. His plan stays as it is, so he goes back to it once he is under the limit.",
+    "useLimit": "Use a fatigue limit for the team",
+    "aboveLabel": "Above fatigue",
+    "insteadLabel": "Run instead",
+    "fallback_light": "Same session, light load",
+    "fallback_recovery": "Active recovery",
+    "fallback_rest": "Rest",
+    "afterStage": "Day after a stage: the first slot is active recovery",
+    "dateStartNote": "Checked on fatigue at the start of each date, so it does not matter when you log in.",
+    "save": "Save rule",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Could not save. Try again.",
+    "exceptions": "Exceptions",
+    "exceptionsEmpty": "All riders follow the team rule.",
+    "addException": "Add an exception for a rider",
+    "mode_team": "Follow team rule",
+    "mode_own": "Own limit",
+    "mode_off": "No limit",
+    "stripTitle": "Last 7 days",
+    "stripEmpty": "No rule kicked in on this day.",
+    "reason_fatigue": "Fatigue {fatigue} over {threshold}: {fallback}",
+    "reason_after_stage": "Day after a stage: {fallback}",
+    "overNow": "{count, plural, one {# rider is} other {# riders are}} over the limit now",
+    "stripCount": "{count, plural, one {# rider} other {# riders}}"
   }
 }

@@ -62,6 +62,7 @@ import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import TrainingWeekPlan from "../components/training/TrainingWeekPlan.tsx";
 import TrainingProgramsPanel from "../components/training/TrainingProgramsPanel.tsx";
+import FatigueRulePanel from "../components/training/FatigueRulePanel.tsx"; // #4854
 import { useTrainingPrograms } from "../components/training/useTrainingPrograms.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
 import { useTrainNow } from "../components/training/TrainNowClient.ts";
@@ -3204,6 +3205,8 @@ export default function TrainingPage() {
           egen plan i ét gitter, valgt med "Plan for". Ingen nye API-kald:
           weekPlan/riderWeekPlans kommer fra useTraining som før. */}
       <TabPanel value="weekplan">
+        {/* #4854/#5620: spillerens traethedsgraense (selvstaendig, flag-gatet; renderer intet naar slukket). */}
+        <FatigueRulePanel className="mb-3.5" />
         {/* #4629 (beta 26/9): Program-fanen — katalog, tildeling og 7 x N-
             gitteret øverst. Holdets gamle intensitets-rytme står uændret under. */}
         {programsOn || cellsOn ? (

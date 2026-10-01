@@ -528,5 +528,33 @@
     "band_risk": "Over skadegrænsen",
     "aria": "Træthed i aften: ca. {value}. {band}",
     "ariaSettled": "Træthed i aften: {value}. {band}"
+  },
+  "fatigueRule": {
+    "title": "Træthedsgrænse",
+    "intro": "Din egen regel. Over grænsen kører rytteren et lettere pas i stedet. Hans plan står urørt, så han vender tilbage til den, når han er under grænsen.",
+    "useLimit": "Brug en træthedsgrænse for holdet",
+    "aboveLabel": "Over træthed",
+    "insteadLabel": "Kør i stedet",
+    "fallback_light": "Samme pas, let belastning",
+    "fallback_recovery": "Aktiv restitution",
+    "fallback_rest": "Hvile",
+    "afterStage": "Dagen efter en etape: første felt er aktiv restitution",
+    "dateStartNote": "Tjekkes på trætheden ved datoens start, så det er lige meget, hvornår du logger ind.",
+    "save": "Gem regel",
+    "saving": "Gemmer…",
+    "saved": "Gemt",
+    "error": "Kunne ikke gemme. Prøv igen.",
+    "exceptions": "Undtagelser",
+    "exceptionsEmpty": "Alle ryttere følger holdreglen.",
+    "addException": "Tilføj en undtagelse for en rytter",
+    "mode_team": "Følg holdreglen",
+    "mode_own": "Egen grænse",
+    "mode_off": "Ingen grænse",
+    "stripTitle": "Seneste 7 dage",
+    "stripEmpty": "Ingen regel slog til denne dag.",
+    "reason_fatigue": "Træthed {fatigue} over {threshold}: {fallback}",
+    "reason_after_stage": "Dagen efter en etape: {fallback}",
+    "overNow": "{count, plural, one {# rytter er} other {# ryttere er}} over grænsen nu",
+    "stripCount": "{count, plural, one {# rytter} other {# ryttere}}"
   }
 }

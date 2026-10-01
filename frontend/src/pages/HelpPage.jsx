@@ -386,6 +386,8 @@ const SECTION_DEFS = [
       // #4849: formFatigue' tvilling (restitution pr. loebsdag, samlet koersel
       // tidligst kl. 20 i stedet for kl. 22). Kun én af de to vises ad gangen.
       { id: "formFatiguePerRaceDay", kind: "text" },
+      // #4854/#5620: spillerens egen traethedsgraense, kun naar flaget er taendt for viewereren.
+      { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —

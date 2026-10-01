@@ -45,6 +45,7 @@ let flags = [
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4", stage: "off", raw_value: null, boolean_only: false, configured: false, unknown_value: false },
   { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -62,6 +63,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_tick_per_race_day",
   "training_score_visible", // #5274
   "youth_squad_pages", // #5519
+  "training_fatigue_rules", // #4854
 ];
 
 function playerFlags() {
