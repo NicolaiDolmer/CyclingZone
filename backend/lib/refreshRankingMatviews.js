@@ -210,6 +210,7 @@ export async function requestRankingMatviewRefresh(
     captureExceptionFn,
     windowMs = COALESCE_WINDOW_MS,
     clock = () => Date.now(),
+    nowFn = () => new Date(),
     setTimer = setTimeout,
     refresh = (client, opts) => refreshRankingMatviewsGated(client, opts),
     logger = console,
@@ -227,7 +228,7 @@ export async function requestRankingMatviewRefresh(
       state.timer = null;
       state.lastStartedAt = clock();
       Promise.resolve()
-        .then(() => refresh(supabase, { captureExceptionFn, now: new Date(), logger }))
+        .then(() => refresh(supabase, { captureExceptionFn, now: nowFn(), logger }))
         .catch((err) => logger.warn?.(`⚠️  coalesced ranking refresh failed (cron catches it): ${err.message}`));
     }, wait);
     state.timer?.unref?.();
@@ -235,7 +236,7 @@ export async function requestRankingMatviewRefresh(
   }
   state.lastStartedAt = clock();
   try {
-    return await refresh(supabase, { captureExceptionFn, now: new Date(), logger });
+    return await refresh(supabase, { captureExceptionFn, now: nowFn(), logger });
   } catch (err) {
     logger.warn?.(`⚠️  ranking refresh failed (cron catches it): ${err.message}`);
     return false;
