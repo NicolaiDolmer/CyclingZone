@@ -113,6 +113,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_score_visible: false,
     youth_squad_pages: false,
     training_fatigue_rules: false,
+    season_matrix_mobile: false,
     training_groups: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
@@ -154,6 +155,7 @@ test("manglende raekke, ukendt vaerdi og DB-fejl er alle off (fail-safe)", async
     training_score_visible: false,
     youth_squad_pages: false,
     training_fatigue_rules: false,
+    season_matrix_mobile: false,
     training_groups: false,
   });
 });
@@ -202,6 +204,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_score_visible: false,
     youth_squad_pages: false,
     training_fatigue_rules: false,
+    season_matrix_mobile: false,
     training_groups: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
@@ -211,6 +214,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_score_visible: false,
     youth_squad_pages: false,
     training_fatigue_rules: false,
+    season_matrix_mobile: false,
     training_groups: false,
   });
 });
