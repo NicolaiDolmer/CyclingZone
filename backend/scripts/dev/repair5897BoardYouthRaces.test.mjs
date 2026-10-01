@@ -161,6 +161,42 @@ test("apply-SQL er én atomisk, idempotent blok uden ids og med backup + verify"
   assert.doesNotMatch(sql, /^\s*(COMMIT|ROLLBACK)\s*;/m,"DO-blokken styrer selv transaktionen");
 });
 
+test("events-only-SQL sletter events men rører hverken satisfaction eller budget_modifier", () => {
+  const sql = buildApplySql({ eventsOnly: true });
+  assert.match(sql, /EVENTS-ONLY/);
+  assert.doesNotMatch(sql, /UPDATE public\.board_profiles/);
+  assert.doesNotMatch(sql, /_repair_5897/);
+  assert.doesNotMatch(sql, /--@profiles/);
+  assert.match(sql, /DELETE FROM public\.board_satisfaction_events/);
+  assert.match(sql, /CREATE TABLE public\.backup_board_satisfaction_events_5897/);
+  assert.doesNotMatch(buildApplySql(), /--@profiles/);
+});
+
+test("planRepair: atTargetNow når seneste senior-skridt er 0 og værdien matcher", () => {
+  const youthEvents = [ev("e1", "b1", "y1", 6, T0), ev("e2", "b2", "y1", 4, T0)];
+  const boards = [
+    { id: "b1", team_id: "tA", satisfaction: 60, budget_modifier: 1.1, negotiation_status: "completed" },
+    { id: "b2", team_id: "tB", satisfaction: 58, budget_modifier: 1.0, negotiation_status: "completed" },
+  ];
+  const laterEvents = [
+    { id: "s1", board_id: "b1", race_id: "sr1", satisfaction_after: 60, satisfaction_delta: -2, created_at: T2 },
+    { id: "s2", board_id: "b1", race_id: "sr2", satisfaction_after: 60, satisfaction_delta: 0, created_at: LATER },
+    { id: "s3", board_id: "b2", race_id: "sr2", satisfaction_after: 58, satisfaction_delta: 3, created_at: LATER },
+  ];
+  const { summary, plans } = planRepair({ youthEvents, boards, teamBoards: boards, teams: [], laterEvents });
+  assert.equal(plans.find((p) => p.board_id === "b1").atTargetNow, true);
+  assert.equal(plans.find((p) => p.board_id === "b2").atTargetNow, false);
+  assert.equal(summary.atTargetNow, 1);
+  assert.equal(summary.atTargetNowWithNonZeroDelta, 1);
+  assert.equal(summary.eventsSinceYouthWindow.max, 2);
+});
+
+test("verifyAgainstPlan: events-only forventer uændrede værdier", () => {
+  const plan = { plans: [{ board_id: "b1", current: 60, repaired: 54, baseline: false, newModifier: 1.0 }] };
+  const r = verifyAgainstPlan({ plan, youthEventsRemaining: 0, boards: [{ id: "b1", satisfaction: 60, budget_modifier: 1.1 }], eventsOnly: true });
+  assert.equal(r.ok, true);
+});
+
 test("verifyAgainstPlan: ok når events er væk og boards matcher", () => {
   const plan = { plans: [
     { board_id: "b1", repaired: 50, baseline: false, newModifier: 1.0 },
@@ -176,7 +212,9 @@ test("verifyAgainstPlan: ok når events er væk og boards matcher", () => {
 });
 
 test("CLI: dry-run er default, apply kræver owner-go", () => {
-  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, verify: null, dryRun: true });
+  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, verify: null, dryRun: true, eventsOnly: false });
+  assert.throws(() => parseArgs(["--events-only"]), /kræver/);
+  assert.equal(parseArgs(["--apply", "--owner-go", "--events-only"]).eventsOnly, true);
   assert.equal(parseArgs(["--dry-run"]).dryRun, true);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
   assert.throws(() => parseArgs(["--owner-go"]), /--apply/);

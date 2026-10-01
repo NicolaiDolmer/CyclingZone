@@ -23,7 +23,10 @@
 //     → aggregeret rapport i docs/snapshots/5897/dry-run-<tid>.md (ingen navne/ids)
 //     → fuld plan pr. board i balance-internals/5897/dry-run-<tid>.json (gitignoreret)
 //   apply (kræver BÅDE --apply og --owner-go):
-//     ... node scripts/dev/repair5897BoardYouthRaces.mjs --apply --owner-go
+//     ... node scripts/dev/repair5897BoardYouthRaces.mjs --apply --owner-go [--events-only]
+//     (--events-only: fjern kun ungdoms-events; satisfaction/budget_modifier røres
+//      ikke. Se "atTargetNow" i dry-run: et board på sit target har allerede
+//      absorberet ungdomsløbenes ekstra skridt mod samme senior-target.)
 //     → tager et frisk JSON-backup-snapshot (balance-internals) og skriver ÉN
 //       transaktions-SQL (DO-blok) til balance-internals/5897/apply-<tid>.sql.
 //       Backend har ingen pg-driver, og PostgREST kan ikke køre en transaktion,
@@ -139,11 +142,19 @@ export function planRepair({
   const windowEnd = youthTimes.length ? Math.max(...youthTimes) : null;
 
   const laterByBoard = new Map();
+  const lastRaceEventByBoard = new Map();
   for (const event of laterEvents) {
     if (youthEventIds.has(event.id) || !event.board_id) continue;
+    const at = toMs(event.created_at);
     const list = laterByBoard.get(event.board_id) || [];
-    list.push(toMs(event.created_at));
+    list.push(at);
     laterByBoard.set(event.board_id, list);
+    // Seneste (senior-)løbs-event efter ungdomsløbene: weekend-opdateringen er
+    // target-tracking, så et 0-skridt betyder at boardet står PÅ sit target.
+    if (event.race_id && at != null) {
+      const prev = lastRaceEventByBoard.get(event.board_id);
+      if (!prev || at > prev.at) lastRaceEventByBoard.set(event.board_id, { at, event });
+    }
   }
 
   const plans = [];
@@ -158,12 +169,23 @@ export function planRepair({
       || later.some((t) => t != null && t > entry.lastAt);
     const changedAfterWindow = (updatedAt != null && updatedAt > windowEnd + CHANGED_SINCE_MARGIN_MS)
       || later.some((t) => t != null && t > windowEnd);
+    // Konvergens: står boardet i dag på det target senior-standingen giver?
+    // (seneste senior-event havde 0-skridt OG nuværende værdi = dets "after").
+    // Ungdomsløbene evaluerede samme senior-standing, så deres skridt var ekstra
+    // skridt mod SAMME target; et konvergeret board vil blive trukket tilbage af
+    // næste løb hvis invers-delta flytter det væk fra target.
+    const lastRace = lastRaceEventByBoard.get(boardId)?.event;
+    const atTargetNow = Boolean(lastRace)
+      && Number(lastRace.satisfaction_delta) === 0
+      && Number(lastRace.satisfaction_after) === repair.current;
     plans.push({
       board_id: boardId,
       team_id: board.team_id,
       events: entry.events,
       changedAfterOwnLast,
       changedAfterWindow,
+      raceEventsSince: later.length,
+      atTargetNow,
       ...repair,
     });
   }
@@ -238,6 +260,9 @@ export function planRepair({
     negativeDeltaBoards: deltas.filter((d) => d < 0).length,
     changedAfterOwnLastYouthEvent: plans.filter((p) => p.changedAfterOwnLast).length,
     changedAfterYouthWindow: plans.filter((p) => p.changedAfterWindow).length,
+    eventsSinceYouthWindow: describeDistribution(plans.map((p) => p.raceEventsSince)),
+    atTargetNow: plans.filter((p) => p.atTargetNow).length,
+    atTargetNowWithNonZeroDelta: plans.filter((p) => p.atTargetNow && p.youthDelta !== 0).length,
     clampedBoards: plans.filter((p) => p.clamped).length,
     satisfactionChangedBoards: plans.filter((p) => p.repaired !== p.current).length,
     modifierChangedBoards: plans.filter((p) => p.modifierChanged).length,
@@ -287,7 +312,7 @@ export async function loadRepairInput(supabase) {
   if (times.length) {
     const start = Math.min(...times);
     const end = Math.max(...times);
-    laterEvents = await fetchIn(supabase, "board_satisfaction_events", "id, board_id, created_at", "board_id", boardIds,
+    laterEvents = await fetchIn(supabase, "board_satisfaction_events", "id, board_id, race_id, satisfaction_after, satisfaction_delta, created_at", "board_id", boardIds,
       (q) => q.gt("created_at", new Date(start).toISOString()));
     windowEvents = await fetchAllRows(() => supabase.from("board_satisfaction_events")
       .select("id, board_id, satisfaction_before, satisfaction_after, created_at")
@@ -316,12 +341,12 @@ export function modifierCaseSql(expr) {
  * Én atomisk DO-blok: lås → no-op-tjek → backup-tabeller → UPDATE → DELETE →
  * verify. Indeholder ingen ids/holdnavne — alt afledes live i transaktionen.
  */
-export function buildApplySql() {
+export function buildApplySql({ eventsOnly = false } = {}) {
   const youthEvents = `public.board_satisfaction_events e JOIN public.races r ON r.id = e.race_id WHERE r.squad <> 'senior'`;
   const repairedExpr = `(CASE WHEN (b.is_baseline IS TRUE OR b.plan_type = 'baseline')
         THEN LEAST(${BASELINE_SATISFACTION_MAX}, GREATEST(${BASELINE_SATISFACTION_MIN}, round(b.satisfaction - d.yd)))
         ELSE LEAST(100, GREATEST(0, round(b.satisfaction - d.yd))) END)`;
-  return `-- #${ISSUE} · Reparation af bestyrelser flyttet af ungdomsløb. EJER-GATED.
+  const sql = `-- #${ISSUE} · Reparation af bestyrelser flyttet af ungdomsløb. EJER-GATED.
 -- Kør som ÉT kald. DO-blokken er atomisk: enhver RAISE EXCEPTION ruller alt tilbage.
 -- Idempotent: 0 ungdoms-events tilbage => NOTICE + no-op. Backup findes => STOP.
 DO $repair$
@@ -353,6 +378,7 @@ BEGIN
     RAISE EXCEPTION 'STOP #${ISSUE}: event-backup % <> % events', n_backup_e, n_events;
   END IF;
 
+  --@profiles-begin
   -- 2. Invers-delta pr. board + budget_modifier fra repareret satisfaction.
   --    Plan beregnes fra backup-rækkerne (= værdien lige før UPDATE, under lås).
   CREATE TEMP TABLE _repair_${ISSUE} ON COMMIT DROP AS
@@ -375,6 +401,7 @@ BEGIN
     RAISE EXCEPTION 'STOP #${ISSUE}: opdaterede % boards, backup har %', n_upd, n_backup_p;
   END IF;
 
+  --@profiles-end
   -- 3. Fjern ungdoms-events fra historikken.
   DELETE FROM public.board_satisfaction_events e USING public.races r
   WHERE r.id = e.race_id AND r.squad <> 'senior';
@@ -387,6 +414,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM ${youthEvents}) THEN
     RAISE EXCEPTION 'STOP #${ISSUE}: ungdoms-events tilbage efter DELETE';
   END IF;
+  --@profiles-begin
   SELECT count(*) INTO n_bad
   FROM public.${BACKUP_PROFILES_TABLE} b
   JOIN _repair_${ISSUE} r ON r.board_id = b.id
@@ -397,26 +425,31 @@ BEGIN
   IF n_bad > 0 THEN
     RAISE EXCEPTION 'STOP #${ISSUE}: % boards matcher ikke den forventede værdi', n_bad;
   END IF;
+  --@profiles-end
 
   RAISE NOTICE '#${ISSUE}: OK - % boards repareret, % events fjernet, backup i % og %',
-    n_upd, n_del, '${BACKUP_PROFILES_TABLE}', '${BACKUP_EVENTS_TABLE}';
+    COALESCE(n_upd, 0), n_del, '${BACKUP_PROFILES_TABLE}', '${BACKUP_EVENTS_TABLE}';
 END
 $repair$;
 `;
+  if (!eventsOnly) return sql.replace(/^ {2}--@profiles-(begin|end)\n/gm, "");
+  return sql
+    .replace(/^ {2}--@profiles-begin\n[\s\S]*?^ {2}--@profiles-end\n/gm, "")
+    .replace("-- #" + ISSUE + " · Reparation", "-- #" + ISSUE + " · EVENTS-ONLY (satisfaction/budget_modifier røres ikke) · Reparation");
 }
 
 /** READ-ONLY post-apply verify mod den private dry-run-plan. */
-export function verifyAgainstPlan({ plan, youthEventsRemaining, boards }) {
+export function verifyAgainstPlan({ plan, youthEventsRemaining, boards, eventsOnly = false }) {
   const byId = new Map(boards.map((b) => [b.id, b]));
   const mismatches = [];
   for (const p of plan.plans) {
     const board = byId.get(p.board_id);
     if (!board) { mismatches.push({ board_id: p.board_id, reason: "missing" }); continue; }
     // Kun boards der ikke er skrevet af andre siden dry-run kan sammenlignes eksakt.
-    const expectedSatisfaction = p.repaired;
+    const expectedSatisfaction = eventsOnly ? p.current : p.repaired;
     if (Number(board.satisfaction) !== expectedSatisfaction) {
       mismatches.push({ board_id: p.board_id, reason: "satisfaction", expected: expectedSatisfaction, actual: Number(board.satisfaction) });
-    } else if (!p.baseline && Number(board.budget_modifier) !== p.newModifier) {
+    } else if (!eventsOnly && !p.baseline && Number(board.budget_modifier) !== p.newModifier) {
       mismatches.push({ board_id: p.board_id, reason: "budget_modifier", expected: p.newModifier, actual: Number(board.budget_modifier) });
     }
   }
@@ -424,22 +457,23 @@ export function verifyAgainstPlan({ plan, youthEventsRemaining, boards }) {
 }
 
 export function parseArgs(args) {
-  const options = { apply: false, ownerGo: false, verify: null, dryRun: true };
+  const options = { apply: false, ownerGo: false, verify: null, dryRun: true, eventsOnly: false };
   for (const arg of args) {
     if (arg === "--dry-run") options.dryRun = true;
     else if (arg === "--apply") options.apply = true;
     else if (arg === "--owner-go") options.ownerGo = true;
+    else if (arg === "--events-only") options.eventsOnly = true;
     else if (arg.startsWith("--verify=") && arg.length > 9) options.verify = arg.slice(9);
     else throw new Error(`Ukendt argument: ${arg}`);
   }
   if (options.apply && !options.ownerGo) throw new Error("--apply kræver --owner-go (ejer-gated, #5897)");
   if (options.ownerGo && !options.apply) throw new Error("--owner-go uden --apply giver ingen mening");
   if (options.apply && options.verify) throw new Error("--apply og --verify kan ikke kombineres");
+  if (options.eventsOnly && !options.apply && !options.verify) throw new Error("--events-only kræver --apply --owner-go eller --verify");
   if (options.apply || options.verify) options.dryRun = false;
   return options;
 }
 
-const fmt = (v) => (v == null ? "-" : String(v));
 
 /** Aggregeret, repo-sikker rapport: kun antal og kvalitative udsagn. */
 export function renderPublicReport(summary, { generatedAt, privateFile }) {
@@ -461,6 +495,8 @@ pr. board ligger i \`balance-internals/${privateFile}\` (gitignoreret).
 | Boards med netto-delta forskellig fra 0 | ${summary.nonZeroDeltaBoards} |
 | Boards med stor bevægelse (abs. delta i top-båndet, se privat fil) | ${summary.absDeltaAtLeast10} |
 | Boards ændret af andre skrivninger efter ungdomsvinduet | ${summary.changedAfterYouthWindow} |
+| Boards der i dag står PÅ deres target (seneste senior-skridt = 0) | ${summary.atTargetNow} |
+| Heraf med netto-delta forskellig fra 0 (invers-delta flytter dem væk fra target) | ${summary.atTargetNowWithNonZeroDelta} |
 | Boards hvor clamp bider ved reparationen | ${summary.clampedBoards} |
 | Boards hvor satisfaction ændres | ${summary.satisfactionChangedBoards} |
 | Boards hvor budget_modifier ændres (op / ned) | ${summary.modifierChangedBoards} (${summary.modifierUp} / ${summary.modifierDown}) |
@@ -470,6 +506,22 @@ pr. board ligger i \`balance-internals/${privateFile}\` (gitignoreret).
 
 Netto-retning: ${summary.positiveDeltaBoards} boards blev løftet og ${summary.negativeDeltaBoards} sænket af ungdomsløbene.
 Økonomisk effekt findes: ${has(summary.economyTeams)} (beløb kun i privat fil).
+
+## Vigtigt fund: bevægelsen er allerede absorberet
+
+Weekend-opdateringen er target-tracking: hvert løb flytter satisfaction et begrænset
+skridt mod et target beregnet ud fra holdets SENIOR-standing. Ungdomsløbene brugte
+samme senior-standing, så deres skridt var ekstra skridt mod SAMME target, ikke en
+anden retning. Siden er der kørt mange seniorløb, og når et board står på sit target
+(seneste skridt = 0), har ungdomsløbene kun gjort konvergensen hurtigere.
+
+Konsekvens for et konvergeret board: invers-delta flytter det VÆK fra target, og de
+næste seniorløb trækker det tilbage igen (med budget_modifier-udsving undervejs).
+Derfor har scriptet to apply-varianter (ejer-valg):
+
+- **A. Fuld reparation** (issuets forslag): invers-delta + budget_modifier + fjern events.
+- **B. Kun events** (\`--events-only\`): fjern ungdoms-events fra historikken; satisfaction
+  og budget_modifier røres ikke, fordi de allerede står hvor senior-resultaterne siger.
 
 ## Metode
 
@@ -520,7 +572,7 @@ async function main() {
     const plan = JSON.parse(readFileSync(resolvePrivate(options.verify), "utf8"));
     const input = await loadRepairInput(supabase);
     const boards = await fetchIn(supabase, "board_profiles", BOARD_COLUMNS, "id", plan.plans.map((p) => p.board_id));
-    const result = verifyAgainstPlan({ plan, youthEventsRemaining: input.youthEvents.length, boards });
+    const result = verifyAgainstPlan({ plan, youthEventsRemaining: input.youthEvents.length, boards, eventsOnly: options.eventsOnly });
     console.log(JSON.stringify({ ok: result.ok, youthEventsRemaining: result.youthEventsRemaining, checked: result.checked, mismatches: result.mismatches.length }));
     if (result.mismatches.length) {
       const file = resolvePrivate(`5897/verify-${stamp}.json`);
@@ -542,7 +594,7 @@ async function main() {
       boards: input.boards, youthEvents: input.youthEvents,
     }, null, 2) + "\n");
     const sqlFile = resolvePrivate(`5897/apply-${stamp}.sql`);
-    writeFileEnsured(sqlFile, buildApplySql());
+    writeFileEnsured(sqlFile, buildApplySql({ eventsOnly: options.eventsOnly }));
     console.log(JSON.stringify(plan.summary));
     console.log(`Backup-snapshot: balance-internals/5897/backup-${stamp}.json`);
     console.log(`Transaktions-SQL: ${sqlFile}`);
