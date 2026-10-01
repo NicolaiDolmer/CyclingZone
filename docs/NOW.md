@@ -6,7 +6,7 @@
 
 > **🎯 Next action (1/10):** **Aften 1/10 ca. 20.35:** read-only tjek af beta-træning (12 beta-hold: Train now-låse, regler, kvitteringer, prognose vs. faktisk træthed, Sentry/Railway) → ét kort med tal → ejer-go → flip `training_train_now`, `training_program_cells`, `training_fatigue_rules`, `training_daily_receipt` til `on` (roadbook 30/9 lovede alle fem til torsdag) → patch note + EN-udkast. Derefter [planen](superpowers/plans/2026-10-02-next-session-merge-and-pick.md).
 >
-> **✅ Leveret 30/9:** #5983 beskytter brugte løbsdage efter holdskifte. Ejer-go, CI/main og deploy verificeret; migrationer gennemført. Godkendt genopretning har bevaret resultater; privat bevis i OneDrive-context. Det oprindelige sweep-spor #5860 står fortsat åbent. **#5930/#5977:** Ordre i egen kolonne; rute-match og aktuel form forklaret, også i låste trupper. Ejer-go, production READY og main-CI verificeret. Feature-liveness: tre kendte E-fund i #5218; ingen nye. **#5915/#5976:** beta live (7.326); CI/READY og holdvisning verificeret.
+> **✅ Leveret 30/9:** #5983 beskytter brugte løbsdage efter holdskifte. Verificeret; sweep-spor #5860 åbent. **#5930/#5977:** Ordre i egen kolonne; rute-match og aktuel form forklaret, også i låste trupper. Ejer-go, production READY og main-CI verificeret. Feature-liveness: tre kendte E-fund i #5218; ingen nye. **#5915/#5976:** beta live (7.326); CI/READY og holdvisning verificeret.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session. 1/10: #5996, #5999 (træning beta), #5998 merget; CI/deploy grøn.
+> **🤖 Working agent:** Claude Code hovedsession 1/10 14.52: merge-blok + bølge (#5944, GC-reaktion, #6000, #5820+#5956) + kort #5912/#5928/#5897 + aftentjek 20.35.
