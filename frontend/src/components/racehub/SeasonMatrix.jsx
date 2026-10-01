@@ -339,6 +339,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           >
             {races.map((race) => <option key={race.id} value={race.id}>{race.name}</option>)}
           </select>
+          {/* AI-slop-tjek: et loeb med <=3 loebsdage har intet at bladre i; to
+              doede knapper og "Dage 1-1 af 1" er stoej, saa raekken vises kun naar
+              vinduet faktisk kan flytte sig. */}
+          {(mobileWindow.canEarlier || mobileWindow.canLater) && (
           <div className="flex items-center justify-between gap-2 text-2xs text-cz-2">
             <button type="button" disabled={!mobileWindow.canEarlier} onClick={() => setMobileStart((start) => shiftMobileRaceWindow(start, -1, mobileWindow.total))} className="min-h-8 rounded-cz border border-cz-border bg-cz-card px-3 text-xs font-medium text-cz-2 transition-colors duration-150 hover:text-cz-1 disabled:cursor-not-allowed disabled:opacity-40">
               {t("matrix.mobile.earlier")}
@@ -348,6 +352,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
               {t("matrix.mobile.later")}
             </button>
           </div>
+          )}
           <div className="text-2xs tabular-nums text-cz-3">
             {selectedMobileRace.withdrawn ? t("racehub.status.withdrawn") : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, selectedMobileRace.id), max: selectedMobileRace.sizeMax })}
           </div>

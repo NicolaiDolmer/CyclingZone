@@ -28,7 +28,7 @@ const [b390, b1440, a390, a1440, bSizes, aSizes] = await Promise.all([
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 function sizeTable(list) {
   return `<table><tr><th>Kontrol</th><th>B×H</th><th>Radius</th><th>Tekst</th></tr>${list.map((c) =>
-    `<tr><td>${esc(c.label)}</td><td>${c.w}×${c.h}</td><td>${esc(c.radius)}</td><td>${c.transform === "uppercase" ? "VERSALER" : "sentence"}</td></tr>`).join("")}</table>`;
+    `<tr><td>${esc(c.label)}</td><td>${c.w}×${c.h}</td><td>${c.radius === "0px" ? "5px (gruppe)" : c.radius === "9999px" ? "pille" : esc(c.radius)}</td><td>${c.transform === "uppercase" ? "VERSALER" : "sentence"}</td></tr>`).join("")}</table>`;
 }
 
 const browser = await chromium.launch();

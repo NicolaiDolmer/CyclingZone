@@ -158,7 +158,9 @@ test("evidens: matrix-kontroller på 390 og 1440 px", async ({ page }, testInfo)
     await page.goto("/planning?view=season");
     const heading = page.getByRole("heading", { name: "Udtagelsesmatrix" });
     await expect(heading).toBeVisible();
-    await expect(page.getByText("Ada Pedersen").first()).toBeVisible();
+    await expect(page.locator("text=Ada Pedersen >> visible=true").first()).toBeVisible();
+    // Etapeløbet viser vinduet (tre af fire løbsdage + Før/Senere).
+    if (phase === "after" && width === 390) await page.getByTestId("season-matrix-mobile").getByLabel("Løb").selectOption("r2");
     await heading.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 12));
     const controls = page.locator("button", { hasText: /^(Udtagelser|Rutematch|Form og peak|Belastning|Kun problemer)$/ });
     sizes[width] = await controls.evaluateAll((els) => els.map((el) => {
