@@ -58,6 +58,14 @@
   },
   "matrix": {
     "heading": "Udtagelsesmatrix",
+    "mobile": {
+      "raceLabel": "Løb",
+      "riderLabel": "Rytter",
+      "earlier": "Før",
+      "later": "Senere",
+      "windowStatus": "Dage {first}-{last} af {total}",
+      "gameDay": "Dag {day}"
+    },
     "lens": {
       "entries": "Udtagelser",
       "routeMatch": "Rutematch",
