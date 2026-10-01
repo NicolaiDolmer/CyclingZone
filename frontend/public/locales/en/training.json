@@ -519,7 +519,7 @@
     "raceDay": "Race day {day}",
     "activity": "Activity {n}",
     "pointContribution": "+{percent}% of an ability point",
-    "progressUnavailable": "Detailed progress unavailable",
+    "progressUnavailable": "Shown after the next training day",
     "previousSeason": "Previous season",
     "change": "{from} to {to}"
   },

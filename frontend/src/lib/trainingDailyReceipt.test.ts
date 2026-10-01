@@ -137,6 +137,54 @@ test("pending-only receipts do not produce a completed-day quiet story", () => {
   assert.equal(selectTrainingMoment(receipt,{},[]),null);
 });
 
+// #5915: 29/9 and 30/9 ticks were stored before `progress_after` existed.
+const withoutAfter = (day: number, tickDate = date, patch: Partial<TrainingActivity> = {}) => {
+  const r = run(day, patch);
+  r.tick_date = tickDate;
+  r.id = `${tickDate}-${day}`;
+  r.created_at = `${tickDate}T20:0${day}:00Z`;
+  delete (r.report.riders[0] as Record<string, unknown>).progress_after;
+  return r;
+};
+
+test("#5915: an old date without progress_after derives its end point from the next date's first tick", () => {
+  const old = [0, 1, 2, 3, 4].map(i => withoutAfter(i));
+  const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  const receipts = aggregateTrainingRuns([...old, next]);
+  const rider = receipts.find(r => r.tick_date === date)!.report.riders[0];
+  assert.equal(rider.gain_percent.tempo, 140, "0.8 -> two whole points -> 0.2 = 140% of a point");
+  assert.deepEqual(rider.progress_after, { tempo: 0.2 });
+});
+
+test("#5915: the newest old date with no later tick stays honestly unknown", () => {
+  const receipts = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => withoutAfter(i)));
+  assert.equal(receipts[0].report.riders[0].gain_percent.tempo, null);
+});
+
+test("#5915: a stored progress_after wins over the next date's start", () => {
+  const stored = [0, 1, 2, 3, 4].map(i => run(i));
+  const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.7 } });
+  const rider = aggregateTrainingRuns([...stored, next]).find(r => r.tick_date === date)!.report.riders[0];
+  assert.equal(rider.gain_percent.tempo, 140);
+});
+
+test("#5915: chaining never crosses seasons and never shows negative progress as zero", () => {
+  const old = [0, 1, 2, 3, 4].map(i => withoutAfter(i));
+  const otherSeason = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  otherSeason.season_id = "s5";
+  assert.equal(aggregateTrainingRuns([...old, otherSeason]).find(r => r.season_id === "s4")!.report.riders[0].gain_percent.tempo, null);
+  const noGain = [0, 1, 2, 3, 4].map(i => withoutAfter(i, date, { gains: {}, gains_detail: {} }));
+  const lower = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.5 } });
+  assert.equal(aggregateTrainingRuns([...noGain, lower]).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo, null);
+});
+
+test("#5915: legacy (non per-date) days are never chained", () => {
+  const legacy = [withoutAfter(0), withoutAfter(1)];
+  const next = withoutAfter(0, "2026-09-30", { progress_before: { tempo: 0.2 } });
+  for (const row of [...legacy, next]) delete (row.report as Record<string, unknown>).condition_per_date;
+  assert.equal(aggregateTrainingRuns([...legacy, next]).find(r => r.tick_date === date)!.report.riders[0].gain_percent.tempo, null);
+});
+
 test("ability receipts expose the full date contribution separately from the wrapped progress-bar segment", () => {
   const rows=abilityReceipt(["tempo"],{abilities:{tempo:56},progress:{tempo:0.2},
     progressBefore:{tempo:0.8},gainsToday:{tempo:2},gainPercentToday:{tempo:140}});

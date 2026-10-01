@@ -71,16 +71,52 @@ const order = (a: TrainingRun, b: TrainingRun) =>
   || String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""))
   || String(a.id ?? "").localeCompare(String(b.id ?? ""));
 
+/**
+ * #5915: ticks written before `progress_after` existed (29/9 and 30/9) carry
+ * only `progress_before`. Ability progress only moves through training ticks
+ * within a season, so the rider's NEXT stored tick in the same season starts
+ * exactly where this date ended: its first `progress_before` IS this date's
+ * final progress. Only normalized (per-date) evidence on both sides is chained.
+ * Key: `${season}:${rider}:${date}` -> the next date's starting progress.
+ */
+function nextDateStartProgress(runs: TrainingRun[]): Map<string, Numbers> {
+  const starts = new Map<string, Map<string, { run: TrainingRun; before?: Numbers }>>();
+  for (const run of runs) {
+    if (run.report?.condition_per_date !== true) continue;
+    for (const row of run.report.riders ?? []) {
+      if (!row?.rider_id) continue;
+      const timeline = `${run.season_id ?? ""}:${row.rider_id}`;
+      const dates = starts.get(timeline) ?? new Map();
+      const current = dates.get(run.tick_date);
+      const earlier = !current || order({ ...run, game_day: row.game_day ?? dayOf(run) }, current.run) < 0;
+      if (earlier) dates.set(run.tick_date, { run: { ...run, game_day: row.game_day ?? dayOf(run) }, before: row.progress_before });
+      starts.set(timeline, dates);
+    }
+  }
+  const next = new Map<string, Numbers>();
+  for (const [timeline, dates] of starts) {
+    const sorted = [...dates.keys()].sort();
+    sorted.slice(0, -1).forEach((date, i) => {
+      const before = dates.get(sorted[i + 1])?.before;
+      if (before && typeof before === "object") next.set(`${timeline}:${date}`, before);
+    });
+  }
+  return next;
+}
+
 /** Read-only projection of stored reports; no training mathematics or wall-clock reads. */
 export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): DailyTrainingReceipt[] {
   const byDate = new Map<string, TrainingRun[]>();
+  const valid: TrainingRun[] = [];
   for (const run of input ?? []) {
     if (!run || !/^\d{4}-\d{2}-\d{2}$/.test(run.tick_date) || !Array.isArray(run.report?.riders)) continue;
+    valid.push(run);
     const scope = `${run.tick_date}:${run.season_id ?? "legacy"}`;
     const group = byDate.get(scope) ?? [];
     group.push(run);
     byDate.set(scope, group);
   }
+  const nextStart = nextDateStartProgress(valid);
   return [...byDate.values()].sort((a, b) =>
     b[0].tick_date.localeCompare(a[0].tick_date)
     || String([...b].sort(order).at(-1)!.created_at ?? "").localeCompare(String([...a].sort(order).at(-1)!.created_at ?? ""))
@@ -142,11 +178,17 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       }
       const progressBefore = { ...(first.row.progress_before ?? {}) };
       const gainPercent: Record<string, number | null> = {};
-      const keys = new Set([...Object.keys(progressBefore), ...Object.keys(last.row.progress_after ?? {}), ...Object.keys(gains)]);
+      const stored = last.row.progress_after;
+      const derived = !stored && normalized && evidence.every(e => e.normalized)
+        ? nextStart.get(`${first.season}:${id}:${date}`) : undefined;
+      const progressAfter = stored ?? derived;
+      const keys = new Set([...Object.keys(progressBefore), ...Object.keys(progressAfter ?? {}), ...Object.keys(gains)]);
       for (const ability of keys) {
-        const before = progressBefore[ability], after = last.row.progress_after?.[ability];
-        gainPercent[ability] = finite(before) && finite(after)
-          ? Math.max(0, Math.round(((gains[ability] ?? 0) + after - before) * 100)) : null;
+        const before = progressBefore[ability], after = progressAfter?.[ability];
+        const raw = finite(before) && finite(after) ? (gains[ability] ?? 0) + after - before : null;
+        // A derived end point that would mean negative progress is inconsistent
+        // evidence (something other than training moved it): say unknown, not 0.
+        gainPercent[ability] = raw == null || (derived && raw < -1e-9) ? null : Math.max(0, Math.round(raw * 100));
       }
       const knownCondition = state === "complete" || state === "recorded";
       const fatigueBefore = finite(first.row.condition_before_date?.fatigue)
@@ -157,7 +199,7 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       const trusted = state === "complete" || state === "recorded";
       return { ...last.row, rider_id: id, activities, receipt_status: state, gains: trusted ? gains : {},
         gains_detail: trusted ? details : {}, progress_before: trusted ? progressBefore : {}, gain_percent: trusted ? gainPercent : {},
-        progress_after: trusted ? last.row.progress_after : undefined,
+        progress_after: trusted ? progressAfter : undefined,
         status: trusted ? last.row.status : "unknown_pending",
         focus: active?.focus ?? last.row.focus, intensity: active?.intensity ?? last.row.intensity,
         fatigue_before: fatigueBefore, form_before: formBefore,

@@ -519,7 +519,7 @@
     "raceDay": "Løbsdag {day}",
     "activity": "Aktivitet {n}",
     "pointContribution": "+{percent}% af et evnepoint",
-    "progressUnavailable": "Detaljeret fremdrift mangler",
+    "progressUnavailable": "Vises efter næste træningsdag",
     "previousSeason": "Tidligere sæson",
     "change": "{from} til {to}"
   },
