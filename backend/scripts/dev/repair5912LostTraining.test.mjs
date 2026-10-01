@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   classifyLostRiderDays, isLostRestCandidate, markerBlocks, repairKey, withMarkers,
-  parseArgs, assertApplyAllowed, simulateRiderRepair, summarizePlan, MARKER_FIELD, sameProgress,
+  parseArgs, assertApplyAllowed, simulateRiderRepair, summarizePlan, MARKER_FIELD, sameProgress, guardAbilityUpdate,
 } from "./repair5912LostTraining.mjs";
 
 const SEASON = "season-x";
@@ -171,4 +171,22 @@ test("apply after 17:00 is allowed only when today's date close is complete (own
   const evening = new Date("2026-10-01T19:00:00Z"); // 21:00 Copenhagen
   assert.throws(() => assertApplyAllowed({ opts, plannedRiderDays: 5, now: evening }), /until today's training date close is complete/);
   assert.doesNotThrow(() => assertApplyAllowed({ opts, plannedRiderDays: 5, now: evening, todayCloseComplete: true }));
+});
+
+test("guard: a NULL ability (missing in before) is guarded with IS NULL, never eq undefined (#5912)", () => {
+  const calls = [];
+  const q = { eq(k, v) { calls.push(["eq", k, v]); return q; }, is(k, v) { calls.push(["is", k, v]); return q; } };
+  guardAbilityUpdate(q, {
+    patch: { teamwork: 1, tempo: 46, ability_progress: { tempo: 0.2 } },
+    before: { tempo: 45 },
+    beforeProgress: { tempo: 0.9 },
+  });
+  assert.deepEqual(calls, [
+    ["is", "teamwork", null],
+    ["eq", "tempo", 45],
+    ["eq", "ability_progress", JSON.stringify({ tempo: 0.9 })],
+  ]);
+  calls.length = 0;
+  guardAbilityUpdate(q, { patch: { ability_progress: {} }, before: {}, beforeProgress: null });
+  assert.deepEqual(calls, [["is", "ability_progress", null]]);
 });
