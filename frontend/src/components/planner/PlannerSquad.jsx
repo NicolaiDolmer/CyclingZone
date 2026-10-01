@@ -367,7 +367,7 @@ export default function PlannerSquad({
         </table>
       </Section>
       {youthWithPeaks.length > 0 && (
-        <YouthPeaksSection riders={youthWithPeaks} months={months} busy={busy} onRemovePeak={onRemovePeak} />
+        <YouthPeaksSection riders={youthWithPeaks} races={races} months={months} busy={busy} onRemovePeak={onRemovePeak} />
       )}
     </SectionStack>
   );
@@ -376,10 +376,16 @@ export default function PlannerSquad({
 // #5992: ungdomsryttere med en ÆGTE peak fra før trup-scopet. De kan ikke
 // planlægges her (peak-mål er seniorløb), men en peak må aldrig blive usynlig
 // og ufjernelig, så de står i deres egen, tydeligt adskilte gruppe.
-function YouthPeaksSection({ riders, months, busy, onRemovePeak }) {
+function YouthPeaksSection({ riders, races, months, busy, onRemovePeak }) {
   const { t } = useTranslation("planner");
+  // Samme datomærkat som seniortabellens dropdown: løbets egen dato, ikke vinduet.
+  const raceById = useMemo(() => new Map((races || []).map((r) => [r.id, r])), [races]);
+  const dateLabel = (p) => {
+    const race = raceById.get(p.targetRaceId);
+    return race ? formatRaceDateLabel(race, months) : formatOrdinalShort(dateToOrdinal(p.windowStart), months);
+  };
   return (
-    <Section>
+    <Section data-testid="planner-youth-peaks">
       <SectionHeader title={t("squad.youth.title")} meta={t("squad.count", { count: riders.length })} />
       <p className="mb-2 text-[13px] text-cz-2">{t("squad.youth.note")}</p>
       <ul className="divide-y divide-cz-border">
@@ -395,7 +401,7 @@ function YouthPeaksSection({ riders, months, busy, onRemovePeak }) {
                 <div key={p.id} className="flex items-center gap-1.5">
                   <FlagIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                   <span className="min-w-0 flex-1 truncate text-[12.5px] text-cz-2">
-                    <span className="font-data tabular-nums">{formatOrdinalShort(dateToOrdinal(p.windowStart), months)}</span> · {p.targetRaceName || "-"}
+                    <span className="font-data tabular-nums">{dateLabel(p)}</span> · {p.targetRaceName || "-"}
                   </span>
                   <button
                     type="button"

@@ -100,9 +100,15 @@ async function routeBoard(page, payload) {
   });
 }
 
-async function openPlanner(page, width) {
+async function openPlanner(page, width, { english = false } = {}) {
   await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
   await page.goto("/planning?tab=form");
+  // Spillertekst reviewes EN-first; stabilizePage låser ellers dansk.
+  if (english) {
+    await expect.poll(() => page.evaluate(() => window.__i18n?.isInitialized === true)).toBe(true);
+    await page.evaluate(async () => { if (window.__i18n) await window.__i18n.changeLanguage("en"); });
+    await expect.poll(() => page.evaluate(() => window.__i18n?.language)).toBe("en");
+  }
   await page.getByText("Holm", { exact: false }).first().waitFor();
 }
 
@@ -135,16 +141,17 @@ test("#5992: startede løb kan ikke vælges, og ungdomsryttere står adskilt", a
   await expect(seniorTable).not.toContainText("Gao");
 
   // Ungdomsryttere med en ægte peak står i deres egen gruppe, hvor peaken kan fjernes.
-  const youth = page.getByRole("heading", { name: /U23 (and|og) junior/i });
+  const youth = page.getByRole("heading", { name: /U23-? (and|og) junior/i });
   await expect(youth).toBeVisible();
-  const youthSection = page.locator("section, div").filter({ has: youth }).last();
+  const youthSection = page.getByTestId("planner-youth-peaks");
   await expect(youthSection).toContainText("Barbieri");
   await expect(youthSection).toContainText("Trofeo Ligure");
   await expect(youthSection.getByRole("button", { name: /Remove|Fjern/ }).first()).toBeEnabled();
 
   if (WRITES_COMMITTED_SHOTS) {
-    await page.screenshot({ path: evidenceShotPath(`pr-screens/5992/after-1440-${testInfo.project.name}.png`), fullPage: true });
-    await openPlanner(page, 390);
+    await openPlanner(page, 1440, { english: true });
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/5992/after-1440-en-${testInfo.project.name}.png`), fullPage: true });
+    await openPlanner(page, 390, { english: true });
     await page.screenshot({ path: evidenceShotPath(`pr-screens/5992/after-390-${testInfo.project.name}.png`), fullPage: true });
   }
 });
@@ -153,10 +160,10 @@ test("#5992: billede af boardet før rettelsen", async ({ page }, testInfo) => {
   test.skip(!WRITES_COMMITTED_SHOTS, "kun til PR-billedet");
   await routeBoard(page, board({ fixed: false }));
   await login(page);
-  await openPlanner(page, 1440);
+  await openPlanner(page, 1440, { english: true });
   const options = (await hughesOptions(page)).join("\n");
   expect(options).toContain("Trofeo Ligure");
-  await page.screenshot({ path: evidenceShotPath(`pr-screens/5992/before-1440-${testInfo.project.name}.png`), fullPage: true });
-  await openPlanner(page, 390);
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/5992/before-1440-en-${testInfo.project.name}.png`), fullPage: true });
+  await openPlanner(page, 390, { english: true });
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5992/before-390-${testInfo.project.name}.png`), fullPage: true });
 });

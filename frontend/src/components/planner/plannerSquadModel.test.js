@@ -343,3 +343,13 @@ test("#5992 splitPlannerSquads: kun senior planlægges, ungdom med ægte peak st
   assert.equal(isYouthPlannerRider({ squad: "senior" }), false);
   assert.equal(isYouthPlannerRider({}), false);
 });
+
+test("#5992 status-linje og Accept all ser kun seniortruppen", () => {
+  const riders = [
+    { id: "s1", squad: "senior", peaks: [peak({ targetRaceId: "r1" }), peak({ targetRaceId: "r2", isSuggestion: true })] },
+    { id: "u1", squad: "u23", peaks: [peak({ targetRaceId: "r3" }), peak({ targetRaceId: "r4", isSuggestion: true })] },
+  ];
+  assert.equal(plannerStatusSummary({ riders, today: null, leadupDays: 14 }).peaksPlanned, 1);
+  assert.deepEqual(pendingSuggestionPairs(riders), [{ riderId: "s1", raceId: "r2" }]);
+  assert.equal(ridersWithSuggestions(riders), 1);
+});

@@ -306,6 +306,8 @@ export function plannerStatusSummary({ riders, today, leadupDays }) {
   let daysToNextLeadup = null;
 
   for (const rider of riders || []) {
+    // #5992: status-linjen beskriver seniorplanen; ungdommens gamle peaks står i egen gruppe.
+    if (isYouthPlannerRider(rider)) continue;
     for (const peak of rider?.peaks || []) {
       if (!peak.isSuggestion) peaksPlanned += 1;
       if (peakNeedsAction(peak)) needsAction += 1;
@@ -332,6 +334,7 @@ export function plannerStatusSummary({ riders, today, leadupDays }) {
 export function pendingSuggestionPairs(riders) {
   const pairs = [];
   for (const rider of riders || []) {
+    if (isYouthPlannerRider(rider)) continue; // #5992: kun seniortruppen
     const suggestions = (rider?.peaks || [])
       .filter((p) => p.isSuggestion && p.targetRaceId)
       .sort((a, b) => (dateToOrdinal(a.windowStart) ?? 0) - (dateToOrdinal(b.windowStart) ?? 0));
@@ -350,5 +353,5 @@ export function pendingSuggestionPairs(riders) {
  * @returns {number}
  */
 export function ridersWithSuggestions(riders) {
-  return (riders || []).filter((r) => (r?.peaks || []).some((p) => p.isSuggestion && p.targetRaceId)).length;
+  return (riders || []).filter((r) => !isYouthPlannerRider(r) && (r?.peaks || []).some((p) => p.isSuggestion && p.targetRaceId)).length;
 }
