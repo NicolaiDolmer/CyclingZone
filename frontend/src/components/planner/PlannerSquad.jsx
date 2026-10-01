@@ -266,109 +266,109 @@ export default function PlannerSquad({
 
   return (
     <SectionStack>
-    <Section>
-      <SectionHeader title={t("squad.title")} meta={t("squad.count", { count: rows.length })} />
-      {/* Bevidst usorteret: rækkefølgen ER information (bedste ryttere først, det
-          er dem peaks bruges på), og rækkerne bærer input-kontroller frem for
-          sammenlignelige tal-kolonner. Det man leder efter — hvad der kræver
-          handling — findes via status-linjen og advarslerne, ikke via en sortering. */}
-      <table className="block w-full border-collapse md:table" data-sort-exempt="Rangeret efter rating; input-raekker, ikke en sammenlignings-tabel">
-        <thead className="hidden md:table-header-group">
-          <tr>
-            <th className="whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colRider")}</th>
-            <th className="whitespace-nowrap bg-cz-card px-2 py-3 text-right font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colForm")}</th>
-            <th className="w-[38%] whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colTarget")}</th>
-            <th className="whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colValue")}</th>
-          </tr>
-        </thead>
-        <tbody className="block md:table-row-group">
-          {rows.map(({ rider, ovr, load }) => {
-            const slots = squadSlots(rider, maxPerRider);
-            const suggestions = riderPendingSuggestions(rider);
-            const selected = rider.id === selectedRiderId;
-            return (
-              <tr key={rider.id} className={`${ROW} ${selected ? "bg-cz-subtle" : ""}`}>
-                <td className={CELL}>
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-cz font-data text-[12.5px] font-medium tabular-nums"
-                      style={statStyle(ovr, { scale: "rating" })}
-                    >{ovr ?? "—"}</span>
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-left text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t"
-                        onClick={() => onSelectRider(rider.id)}
-                      >
-                        <span className="truncate">{riderShortName(rider)}</span>
-                        <ChevronRightIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-                      </button>
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        {rider.nationality && <Flag code={rider.nationality} className="text-[11px]" />}
-                        {rider.primaryType && <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} size="sm" />}
-                        {rider.age != null && (
-                          <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t("squad.age", { age: rider.age })}</span>
-                        )}
-                        {/* #2772: sæson-belastning — en peak er kun troværdig hvis
-                            rytteren ikke også er kørt træt i optakten. Tallet gør
-                            opportunity cost synlig, uden en opfundet farve-tærskel. */}
-                        {load.raceDays > 0 && (
-                          <span
-                            className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3"
-                            title={t("squad.loadTitle", { races: load.races, days: load.raceDays })}
-                          >{t("squad.load", { days: load.raceDays })}</span>
-                        )}
+      <Section>
+        <SectionHeader title={t("squad.title")} meta={t("squad.count", { count: rows.length })} />
+        {/* Bevidst usorteret: rækkefølgen ER information (bedste ryttere først, det
+            er dem peaks bruges på), og rækkerne bærer input-kontroller frem for
+            sammenlignelige tal-kolonner. Det man leder efter — hvad der kræver
+            handling — findes via status-linjen og advarslerne, ikke via en sortering. */}
+        <table className="block w-full border-collapse md:table" data-sort-exempt="Rangeret efter rating; input-raekker, ikke en sammenlignings-tabel">
+          <thead className="hidden md:table-header-group">
+            <tr>
+              <th className="whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colRider")}</th>
+              <th className="whitespace-nowrap bg-cz-card px-2 py-3 text-right font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colForm")}</th>
+              <th className="w-[38%] whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colTarget")}</th>
+              <th className="whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colValue")}</th>
+            </tr>
+          </thead>
+          <tbody className="block md:table-row-group">
+            {rows.map(({ rider, ovr, load }) => {
+              const slots = squadSlots(rider, maxPerRider);
+              const suggestions = riderPendingSuggestions(rider);
+              const selected = rider.id === selectedRiderId;
+              return (
+                <tr key={rider.id} className={`${ROW} ${selected ? "bg-cz-subtle" : ""}`}>
+                  <td className={CELL}>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-cz font-data text-[12.5px] font-medium tabular-nums"
+                        style={statStyle(ovr, { scale: "rating" })}
+                      >{ovr ?? "—"}</span>
+                      <div className="min-w-0">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-left text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t"
+                          onClick={() => onSelectRider(rider.id)}
+                        >
+                          <span className="truncate">{riderShortName(rider)}</span>
+                          <ChevronRightIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
+                        </button>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          {rider.nationality && <Flag code={rider.nationality} className="text-[11px]" />}
+                          {rider.primaryType && <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} size="sm" />}
+                          {rider.age != null && (
+                            <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t("squad.age", { age: rider.age })}</span>
+                          )}
+                          {/* #2772: sæson-belastning — en peak er kun troværdig hvis
+                              rytteren ikke også er kørt træt i optakten. Tallet gør
+                              opportunity cost synlig, uden en opfundet farve-tærskel. */}
+                          {load.raceDays > 0 && (
+                            <span
+                              className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3"
+                              title={t("squad.loadTitle", { races: load.races, days: load.raceDays })}
+                            >{t("squad.load", { days: load.raceDays })}</span>
+                          )}
+                        </div>
                       </div>
+                      {/* Formen står hos navnet på mobil; på desktop har den sin egen kolonne. */}
+                      <span className="ms-auto font-data text-[13px] tabular-nums text-cz-1 md:hidden">
+                        {t("squad.formInline", { value: rider.form ?? "-" })}
+                      </span>
                     </div>
-                    {/* Formen står hos navnet på mobil; på desktop har den sin egen kolonne. */}
-                    <span className="ms-auto font-data text-[13px] tabular-nums text-cz-1 md:hidden">
-                      {t("squad.formInline", { value: rider.form ?? "-" })}
-                    </span>
-                  </div>
-                </td>
-                <td className={`${CELL} hidden md:table-cell md:px-2 md:text-right`}>
-                  <span className="font-data text-[13px] tabular-nums text-cz-1">{rider.form ?? "-"}</span>
-                </td>
-                <td className={`${CELL} md:w-[38%]`}>
-                  <div className="mt-2 flex flex-col gap-1.5 md:mt-0">
-                    {slots.map((slot) => (
-                      <PeakSlot
-                        key={slot.key}
-                        rider={rider} slot={slot} races={races} todayOrd={todayOrd} months={months}
-                        paybackDays={paybackDays} busy={busy} disabled={divisionPending}
-                        onCreatePeak={onCreatePeak} onRetarget={onRetarget} onRemovePeak={onRemovePeak}
-                      />
-                    ))}
-                    {/* #4212: forslag i eget stiplet spor, ALDRIG inde i en plads
-                        ovenfor — se squadSlots' topkommentar. */}
-                    {suggestions.map((s) => (
-                      <SuggestionGhostRow
-                        key={s.id}
-                        rider={rider} suggestion={s} busy={busy} disabled={divisionPending}
-                        onAcceptSuggestion={onAcceptSuggestion} onDismissSuggestion={onDismissSuggestion}
-                      />
-                    ))}
-                  </div>
-                </td>
-                <td className={CELL}>
-                  <div className="mt-1.5 flex flex-col gap-2 md:mt-0">
-                    {slots.filter((s) => s.peak).map((slot) => (
-                      <PeakValue key={slot.key} peak={slot.peak} paybackDays={paybackDays} months={months} />
-                    ))}
-                    {slots.every((s) => !s.peak) && (
-                      <span className="text-3xs text-cz-3">{t("squad.value.unset")}</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Section>
-    {youthWithPeaks.length > 0 && (
-      <YouthPeaksSection riders={youthWithPeaks} months={months} busy={busy} onRemovePeak={onRemovePeak} />
-    )}
+                  </td>
+                  <td className={`${CELL} hidden md:table-cell md:px-2 md:text-right`}>
+                    <span className="font-data text-[13px] tabular-nums text-cz-1">{rider.form ?? "-"}</span>
+                  </td>
+                  <td className={`${CELL} md:w-[38%]`}>
+                    <div className="mt-2 flex flex-col gap-1.5 md:mt-0">
+                      {slots.map((slot) => (
+                        <PeakSlot
+                          key={slot.key}
+                          rider={rider} slot={slot} races={races} todayOrd={todayOrd} months={months}
+                          paybackDays={paybackDays} busy={busy} disabled={divisionPending}
+                          onCreatePeak={onCreatePeak} onRetarget={onRetarget} onRemovePeak={onRemovePeak}
+                        />
+                      ))}
+                      {/* #4212: forslag i eget stiplet spor, ALDRIG inde i en plads
+                          ovenfor — se squadSlots' topkommentar. */}
+                      {suggestions.map((s) => (
+                        <SuggestionGhostRow
+                          key={s.id}
+                          rider={rider} suggestion={s} busy={busy} disabled={divisionPending}
+                          onAcceptSuggestion={onAcceptSuggestion} onDismissSuggestion={onDismissSuggestion}
+                        />
+                      ))}
+                    </div>
+                  </td>
+                  <td className={CELL}>
+                    <div className="mt-1.5 flex flex-col gap-2 md:mt-0">
+                      {slots.filter((s) => s.peak).map((slot) => (
+                        <PeakValue key={slot.key} peak={slot.peak} paybackDays={paybackDays} months={months} />
+                      ))}
+                      {slots.every((s) => !s.peak) && (
+                        <span className="text-3xs text-cz-3">{t("squad.value.unset")}</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Section>
+      {youthWithPeaks.length > 0 && (
+        <YouthPeaksSection riders={youthWithPeaks} months={months} busy={busy} onRemovePeak={onRemovePeak} />
+      )}
     </SectionStack>
   );
 }

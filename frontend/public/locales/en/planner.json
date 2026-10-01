@@ -199,7 +199,9 @@
     "description": "Nothing was lost. Your peaks and training plans are safe. Try again.",
     "session": "Your session has ended. Sign in again to keep planning.",
     "retry": "Try again",
-    "division_not_settled": "Your division for that season is decided at the season rollover, so peaks cannot be set yet."
+    "division_not_settled": "Your division for that season is decided at the season rollover, so peaks cannot be set yet.",
+    "race_already_started": "That race has already started, so it can no longer be a peak target.",
+    "rider_not_senior_squad": "Peaks are planned for senior riders. This rider is in your U23 or junior squad."
   },
   "months": [
     "Jan",

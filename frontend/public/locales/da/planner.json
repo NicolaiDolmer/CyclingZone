@@ -199,7 +199,9 @@
     "description": "Intet gik tabt. Dine peaks og træningsplaner er sikre. Prøv igen.",
     "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
     "retry": "Prøv igen",
-    "division_not_settled": "Din division for den sæson afgøres ved sæsonskiftet, så peaks kan ikke sættes endnu."
+    "division_not_settled": "Din division for den sæson afgøres ved sæsonskiftet, så peaks kan ikke sættes endnu.",
+    "race_already_started": "Det løb er allerede startet, så det kan ikke længere være et peak-mål.",
+    "rider_not_senior_squad": "Peaks planlægges for seniorryttere. Denne rytter er i din U23- eller juniortrup."
   },
   "months": [
     "jan",
