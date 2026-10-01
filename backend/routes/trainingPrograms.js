@@ -57,6 +57,8 @@ async function insertRows(supabase, rows) {
 
 export function createTrainingProgramsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
+  // #4847: "Train now" laaser dagens felter (backend/lib/trainNow.js). Default = ingen laas.
+  planLock = () => PASS,
 }) {
   const router = express.Router();
 
@@ -97,7 +99,7 @@ export function createTrainingProgramsRouter({
 
   // POST /api/training/programs/apply — body { programKey, target: "squad" | <riderId> }.
   // Kopierer programmet ind i hver maal-rytters egen raekke.
-  router.post("/apply", requireAuth, writeLimiter, async (req, res) => {
+  router.post("/apply", requireAuth, writeLimiter, planLock("programApply"), async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const { programKey, target } = req.body ?? {};
     const program = findTrainingProgram(programKey);
@@ -156,7 +158,7 @@ export function createTrainingProgramsRouter({
   // PUT /api/training/programs/cell — body { riderId, weekday, slotIndex (null = hele
   // ugedagen, 0-4 = een loebsdag), session }. Spillerens klik paa EEN celle.
   // Proveniensen bevares (UI'et viser "Sprinter · 2 aendret").
-  router.put("/cell", requireAuth, writeLimiter, async (req, res) => {
+  router.put("/cell", requireAuth, writeLimiter, planLock("programCell"), async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const { riderId, weekday, slotIndex = null, session } = req.body ?? {};
     if (!WEEKDAY_KEYS.includes(weekday)) return res.status(400).json({ error: "invalid_weekday" });

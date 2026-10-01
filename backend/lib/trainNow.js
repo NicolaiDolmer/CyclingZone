@@ -37,21 +37,17 @@ import {
 import { registerTrainingDateWork } from "./trainingDateClose.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
+import {
+  TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks, isRaceDateTrainNowLocked,
+} from "./trainNowLock.js";
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
-export const TRAIN_NOW_LOCK_TABLE = "training_train_now_locks";
+export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks, isRaceDateTrainNowLocked };
 const SETTLED_STATUSES = new Set(["complete", "needs_reconciliation"]);
 const OPEN_STATUSES = ["pending", "partial"];
 
 export async function isTrainNowEnabled(supabase, { isBetaTester = false } = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, TRAIN_NOW_FLAG_KEY), { isBetaTester });
-}
-
-// 42P01 (Postgres) / PGRST205 (PostgREST schema cache): the lock table is not
-// migrated yet. The feature cannot have been used then, so readers treat it as
-// "no lock" instead of failing every plan edit and race selection.
-export function isMissingTable(error) {
-  return error?.code === "42P01" || error?.code === "PGRST205";
 }
 
 async function checked(query, label) {
@@ -77,17 +73,6 @@ export function splitTrainNowRiders({ riderIds, unresolvedSlotsByRider = {} }) {
   return { settleNow, afterRace };
 }
 
-/** Lock rows for the team on one date (empty when the table is not migrated). */
-export async function loadTeamTrainNowLocks({ supabase, teamId, tickDate }) {
-  const { data, error } = await supabase.from(TRAIN_NOW_LOCK_TABLE)
-    // pagination-safe: one team's roster on one date, far below the 1000-row cap.
-    .select("rider_id, pressed_at").eq("team_id", teamId).eq("tick_date", tickDate);
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(`train-now locks: ${error.message ?? error}`);
-  }
-  return data ?? [];
-}
 
 async function loadTeamDateWork({ supabase, teamId, seasonId, tickDate }) {
   const rows = await checked(supabase.from("training_date_work")
@@ -219,28 +204,6 @@ export async function runTrainNow({
       settledGameDays: settledDays, gameDays: work.game_days,
     },
   };
-}
-
-/**
- * I3 guard for race selection: is this race's date locked for the team?
- * A race with a stage on a locked date cannot have its selection changed by the
- * team (no new rider, no removal): "the day is decided in both directions".
- */
-export async function isRaceDateTrainNowLocked({ supabase, teamId, raceId }) {
-  if (!teamId || !raceId) return false;
-  const stages = await checked(supabase.from("race_stage_schedule")
-    // pagination-safe: one race's stages (max ~21).
-    .select("scheduled_at").eq("race_id", raceId), "race stage dates");
-  const dates = [...new Set((stages ?? []).filter((row) => row.scheduled_at)
-    .map((row) => copenhagenDateString(new Date(row.scheduled_at))))];
-  if (!dates.length) return false;
-  const { data, error } = await supabase.from(TRAIN_NOW_LOCK_TABLE)
-    .select("rider_id").eq("team_id", teamId).in("tick_date", dates).limit(1);
-  if (error) {
-    if (isMissingTable(error)) return false;
-    throw new Error(`train-now locks: ${error.message ?? error}`);
-  }
-  return (data ?? []).length > 0;
 }
 
 // Stable comparison of one weekday cell (key order independent).
