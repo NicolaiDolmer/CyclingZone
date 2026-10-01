@@ -539,7 +539,6 @@
     "choice_session": "Program",
     "groupAria": "Today for {name}",
     "approx": "~{value}",
-    "season": "Season",
     "stageToday": "stage today",
     "locked": "Today is locked after Train now."
   },

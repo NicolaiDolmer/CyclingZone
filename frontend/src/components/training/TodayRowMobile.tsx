@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import { squadBadgeKey } from "../../lib/squadBadge.ts";
 import type { ForecastEntry } from "./FatigueForecastModel.ts";
-import { rowForecast, seasonGainItems, type QuickChoice } from "./todayRowModel.ts";
+import { rowForecast, type QuickChoice } from "./todayRowModel.ts";
 
 const TONE_TEXT = { ok: "text-cz-success", warn: "text-cz-warning", risk: "text-cz-danger" } as const;
 
@@ -41,7 +41,6 @@ export type TodayRowsMobileProps = {
   stageToday: (riderId: string) => boolean;
   forecastFor: (riderId: string) => ForecastEntry | null;
   forecastSettled?: boolean;
-  seasonGainsFor: (riderId: string) => Record<string, unknown> | null;
   pressedFor: (riderId: string) => QuickChoice | null;
   onChoose: (riderId: string, choice: QuickChoice) => void;
   errorFor?: (riderId: string) => string | null;
@@ -64,7 +63,6 @@ export default function TodayRowsMobile({
   stageToday,
   forecastFor,
   forecastSettled = false,
-  seasonGainsFor,
   pressedFor,
   onChoose,
   errorFor,
@@ -80,7 +78,6 @@ export default function TodayRowsMobile({
   bulkSlot = null,
 }: TodayRowsMobileProps) {
   const { t } = useTranslation("training");
-  const tRider = useTranslation("rider").t;
   const pickMode = picked != null;
 
   // #2819: touren peger paa fremgangen i rytterens kort; fold den oeverste
@@ -110,7 +107,6 @@ export default function TodayRowsMobile({
           const meta = metaFor(rider.id);
           const stage = stageToday(rider.id);
           const forecast = rowForecast(forecastFor(rider.id));
-          const gains = seasonGainItems(seasonGainsFor(rider.id));
           const pressed = pressedFor(rider.id);
           const busy = busyFor(rider.id);
           const error = errorFor ? errorFor(rider.id) : null;
@@ -177,18 +173,6 @@ export default function TodayRowsMobile({
                     </span>
                   )}
                 </div>
-
-                {gains.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-x-2 text-xs tabular-nums" data-testid="training-onetap-season">
-                    <span className="text-cz-3">{t("oneTap.season")}</span>
-                    {gains.map((gain) => (
-                      <span key={gain.ability} className="text-cz-2">
-                        <span className="font-data font-semibold text-cz-success">+{gain.points}</span>{" "}
-                        {tRider(`racePreview.derived.${gain.ability}`).toLowerCase()}
-                      </span>
-                    ))}
-                  </div>
-                )}
 
                 {!pickMode && (
                   <div

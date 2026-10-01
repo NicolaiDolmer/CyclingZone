@@ -22,27 +22,6 @@ export function rowForecast(entry: ForecastEntry | null | undefined): RowForecas
   return { value: Math.round(entry.fatigue), tone: forecastTone(entry) };
 }
 
-export type SeasonGain = { ability: string; points: number };
-
-/**
- * Saesonens fremgang (#5630): evner med mindst eet helt point i saesonen,
- * stoerst foerst, hoejst `max`. `null` (ingen loebende saeson) => tom liste,
- * saa raekken ikke paastaar et "+0" om en periode der ikke har maalt noget.
- */
-export function seasonGainItems(
-  gains: Record<string, unknown> | null | undefined,
-  max = 3,
-): SeasonGain[] {
-  if (!gains || typeof gains !== "object") return [];
-  const items: SeasonGain[] = [];
-  for (const [ability, raw] of Object.entries(gains)) {
-    const points = Math.round(Number(raw));
-    if (Number.isFinite(points) && points >= 1) items.push({ ability, points });
-  }
-  items.sort((a, b) => b.points - a.points || a.ability.localeCompare(b.ability));
-  return items.slice(0, Math.max(0, max));
-}
-
 /**
  * Hvilket segment er trykket ind. `activeDay` er dagstypen planen giver i dag
  * (dayTypeForProgram), `sessionDay` den dagstype rytterens gemte session hoerer

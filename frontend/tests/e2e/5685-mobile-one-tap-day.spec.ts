@@ -136,9 +136,8 @@ test("mobil 390 × 844 (beta): prognose, saesonfremgang og eet tryk = hvile", as
   await expect(row(page, 0).getByTestId("training-onetap-forecast")).toContainText("Fatigue tonight ~31");
   await expect(row(page, 2).getByTestId("training-onetap-forecast")).toHaveAttribute("data-band", "risk");
 
-  // (2) saesonens fremgang (#5630); en rytter uden point viser ingen linje.
-  await expect(row(page, 0).getByTestId("training-onetap-season")).toContainText("+3");
-  await expect(row(page, 4).getByTestId("training-onetap-season")).toHaveCount(0);
+  // Dagens valg alene: saesonens fremgang hoerer til Development-fanen (ejer 1/10).
+  await expect(row(page, 0).getByTestId("training-onetap-season")).toHaveCount(0);
 
   // Etape i dag staar i meta-linjen; valget gaelder kun traeningsfelterne.
   await expect(row(page, 1)).toContainText("stage today");

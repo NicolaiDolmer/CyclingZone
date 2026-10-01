@@ -2299,7 +2299,6 @@ export default function TrainingPage() {
             stageToday={racingTodayFor}
             forecastFor={forecastFor}
             forecastSettled={fatigueForecast.settled}
-            seasonGainsFor={(riderId) => seasonGainsByRider[riderId] ?? null}
             pressedFor={(riderId) => {
               // Dagens EFFEKTIVE felt (programcellen foer planen), samme kilde som tabellens celle.
               const column = raceDayColumns.find((c) => c.state === "now") ?? raceDayColumns[0];

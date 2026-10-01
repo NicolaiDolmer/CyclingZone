@@ -1,7 +1,7 @@
 // #5685/#5630 · telefonens Today-raekke (retning A): ren logik.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pressedChoice, pressedChoiceFromSession, rowForecast, rowLocked, seasonGainItems } from "./todayRowModel.ts";
+import { pressedChoice, pressedChoiceFromSession, rowForecast, rowLocked } from "./todayRowModel.ts";
 
 test("prognosen: afrundet tal + serverens baand; ukendt baand er aldrig 'frisk'", () => {
   assert.deepEqual(rowForecast({ fatigue: 57.6, band: "ok" }), { value: 58, tone: "ok" });
@@ -13,20 +13,6 @@ test("prognosen: intet tal => ingen visning", () => {
   assert.equal(rowForecast(null), null);
   assert.equal(rowForecast(undefined), null);
   assert.equal(rowForecast({ fatigue: Number.NaN, band: "ok" }), null);
-});
-
-test("saesonfremgang: kun hele point, stoerst foerst, hoejst tre", () => {
-  const items = seasonGainItems({ endurance: 1, climbing: 3, sprint: 0, punch: 0.2, tt: 2, flat: 1 });
-  assert.deepEqual(items, [
-    { ability: "climbing", points: 3 },
-    { ability: "tt", points: 2 },
-    { ability: "endurance", points: 1 },
-  ]);
-});
-
-test("saesonfremgang: ingen loebende saeson eller intet vundet => tom", () => {
-  assert.deepEqual(seasonGainItems(null), []);
-  assert.deepEqual(seasonGainItems({ climbing: 0, sprint: -1 }), []);
 });
 
 test("trykket segment foelger desktoppens regel", () => {
