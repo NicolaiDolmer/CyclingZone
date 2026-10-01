@@ -31,12 +31,15 @@ export default function TrainingOverview({
   onToggle,
   variant,
   status = null,
+  footer = null,
 }: {
   cells: OverviewCell[];
   active: OverviewFilter | null;
   onToggle: (key: OverviewFilter) => void;
   variant: "desktop" | "compact" | "chips";
   status?: ReactNode;
+  // #5932: een fuld-bredde linje under tallene (traethedsgraensen), intet nyt kort.
+  footer?: ReactNode;
 }) {
   const { t } = useTranslation("training");
 
@@ -130,6 +133,7 @@ export default function TrainingOverview({
           {status}
         </div>
       )}
+      {footer && <div className="col-span-full min-w-0">{footer}</div>}
     </div>
   );
 }

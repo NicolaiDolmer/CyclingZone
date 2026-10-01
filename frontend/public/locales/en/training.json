@@ -6,6 +6,17 @@
     "waiting": "Today's training runs on its own once the last race is done, from {hour}:00.",
     "ready": "Today's training is ready. Run it now, or let it run on its own."
   },
+  "trainNow": {
+    "button": "Train now",
+    "helper": "Locks today's training and entries. The result is the same as if you wait.",
+    "locked": "Today's training and entries are locked. Fatigue and form update at the evening settlement.",
+    "afterRace": "Riders racing today are settled after their stage.",
+    "settled": "Today's training is settled.",
+    "previousOpen": "Yesterday's training is still being settled. Try again in a moment.",
+    "noRaceDay": "There is no race day today, so there is nothing to lock.",
+    "error": "Today could not be locked. Try again.",
+    "planLocked": "Today's fields are locked. You can still change tomorrow."
+  },
   "trainedToday_you": "Trained today (by you)",
   "trainedToday_assistant": "Trained today (by assistant)",
   "trainedTodayAt_you": "Trained today at {time} (by you)",
@@ -91,7 +102,9 @@
     "save": "Save plan",
     "undo": "Undo changes",
     "unsaved": "{n, plural, one {# change not saved} other {# changes not saved}}",
-    "ownPlansEmpty": "No rider has his own plan yet. Pick a rider under Plan for to give him one."
+    "ownPlansEmpty": "No rider has his own plan yet. Pick a rider under Plan for to give him one.",
+    "ownPlansChips": "Riders with own plan:",
+    "ownPlansMore": "+{n}"
   },
   "howTrainingWorksLink": "How training works",
   "development": {
@@ -472,7 +485,12 @@
     "audience_manyRaceDays": "Many race days",
     "audience_youngStars": "Young stars, few races",
     "audience_veterans": "Riders 30+",
-    "audience_youthSquads": "Junior, U23, academy"
+    "audience_youthSquads": "Junior, U23, academy",
+    "cellsIntro": "Each day has five race-day cells. The weekday's session fills them. Change single cells to choose how many are recovery.",
+    "seededHint": "Shows what the rider trains now. Your first change saves it as his own plan.",
+    "stageLocked": "Stage",
+    "stageLockedTitle": "Locked by the race",
+    "listNote": "Tap a program to see its week. It is copied into Plan, so you can change any cell after."
   },
   "dailyReceipt": {
     "status": {
@@ -504,5 +522,63 @@
     "progressUnavailable": "Detailed progress unavailable",
     "previousSeason": "Previous season",
     "change": "{from} to {to}"
+  },
+  "forecast": {
+    "label": "Fatigue tonight",
+    "value": "approx. {value}",
+    "band_ok": "Fresh",
+    "band_warn": "Tired",
+    "band_risk": "Above the injury limit",
+    "aria": "Fatigue tonight: approx. {value}. {band}",
+    "ariaSettled": "Fatigue tonight: {value}. {band}",
+    "teamLabel": "Fatigue tonight, highest"
+  },
+  "fatigueRule": {
+    "title": "Fatigue limit",
+    "intro": "Your own rule. Above the limit a rider runs a lighter session instead. His plan stays as it is, so he goes back to it once he is under the limit.",
+    "useLimit": "Use a fatigue limit for the team",
+    "aboveLabel": "Above fatigue",
+    "insteadLabel": "Run instead",
+    "fallback_light": "Same session, light load",
+    "fallback_recovery": "Active recovery",
+    "fallback_rest": "Rest",
+    "afterStage": "Day after a stage: the first slot is active recovery",
+    "dateStartNote": "Checked on fatigue at the start of each date, so it does not matter when you log in.",
+    "save": "Save rule",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Could not save. Try again.",
+    "exceptions": "Exceptions",
+    "exceptionsEmpty": "All riders follow the team rule.",
+    "addException": "Add an exception for a rider",
+    "mode_team": "Follow team rule",
+    "mode_own": "Own limit",
+    "mode_off": "No limit",
+    "stripTitle": "Last 7 days",
+    "stripEmpty": "No rule kicked in on this day.",
+    "reason_fatigue": "Fatigue {fatigue} over {threshold}: {fallback}",
+    "reason_after_stage": "Day after a stage: {fallback}",
+    "overNow": "{count, plural, one {# rider is} other {# riders are}} over the limit now",
+    "stripCount": "{count, plural, one {# rider} other {# riders}}",
+    "teamRuleAbove": "Team rule: above",
+    "teamRuleRun": "run",
+    "teamRuleInstead": "instead",
+    "add": "Add",
+    "chipOwn": "{name} · {threshold} · {fallback}",
+    "chipOff": "{name} · no limit",
+    "summaryRule": "above {threshold}: {fallback}",
+    "summaryAfterStage": "day after a stage: active recovery",
+    "summaryExceptionsOnly": "exceptions only",
+    "summaryOff": "not set",
+    "summaryToday": "{count, plural, one {# rider} other {# riders}} today",
+    "summaryEdit": "Edit",
+    "summarySet": "Set up"
+  },
+  "subtabs": {
+    "label": "Program views",
+    "plan": "Plan",
+    "programs": "Programs",
+    "limit": "Fatigue limit",
+    "limitShort": "Limit"
   }
 }

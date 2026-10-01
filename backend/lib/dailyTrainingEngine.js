@@ -15,6 +15,9 @@
 // (buildCapsForRider, #2471 — ikke lazy-initeret), batched writes (runBatched),
 // ageForSeason-helper genbrugt herfra.
 //
+// #4847 "Train now" (design 29/9): POST /api/training/train-now kalder SAMME motor
+// via trainNow.js for datoens loebsdage undtagen den sidste (I4: kun aftenens commit
+// skriver traethed/form), med samme laaste opening-condition som sweepen (I1).
 // Kaldes af: POST /api/training/run-today (manager) + cron-sweeps (assistant):
 // trainingSweep.js paa den gamle kalenderdags-sti, trainingDayCloseTrigger.js paa
 // loebsdags-stien (#4847). BONUS: `bonus` er true KUN paa den gamle sti — loebsdags-
@@ -31,7 +34,11 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 // #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
-import { isTrainingProgramsEnabledForTeam } from "./trainingProgramsFlag.js";
+// #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
+import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import {
+  loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
+} from "./trainingFatigueRules.ts"; // #4854/#5620
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
@@ -529,7 +536,7 @@ export async function runTeamTrainingDay({
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
   const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
-    ? await isTrainingProgramsEnabledForTeam(supabase, teamId)
+    ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
   // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
   // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").
@@ -555,6 +562,12 @@ export async function runTeamTrainingDay({
   }
 
   const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
+  // #4854/#5620: spillerens EGNE regler (traethedsgraense + dagen efter en etape).
+  // Al logik bor i trainingFatigueRules.ts; hold uden regler = null = uaendret sti.
+  const fatigueRules = await loadTeamFatigueRules(supabase, teamId);
+  const stageYesterdayRiderIds = fatigueRules && programSlot === 0 && fatigueRules.anyAfterStage(riderIds)
+    ? await loadRiderIdsWithStageOnDate(supabase, { riderIds, previousDate: previousDateString(tickDate) })
+    : new Set();
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
@@ -616,6 +629,15 @@ export async function runTeamTrainingDay({
     });
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
+    // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
+    const fatigueRuleResult = fatigueRules ? applyFatigueRules({
+      program, rule: fatigueRules.forRider(rider.id), fatigueAtDateStart: Number(conditionBeforeDate.fatigue ?? 0),
+      slotIndex: programSlot, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
+    }) : null;
+    if (fatigueRuleResult?.stamp) {
+      program.focus = fatigueRuleResult.focus;
+      program.intensity = fatigueRuleResult.intensity;
+    }
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};
@@ -1076,6 +1098,11 @@ export async function runTeamTrainingDay({
       bound_race_day: boundToday,
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
+      // #4854: kun naar holdet har regler; stemplet kun naar programmet faktisk koertes.
+      ...(fatigueRuleResult ? {
+        fatigue_rule: fatigueRuleResult.stamp && !raceLoadToday && !unknownSlot && !injuredToday && !racedToday && !boundRestToday
+          ? fatigueRuleResult.stamp : null,
+      } : {}),
     });
   }
 

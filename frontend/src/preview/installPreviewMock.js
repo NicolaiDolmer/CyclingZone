@@ -12,7 +12,9 @@ import { scoutingMockRoute } from "./scoutingMock.js";
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import { trainingProgramsMockRoute, previewSingleRaceDay } from "./trainingProgramsMock.js"; // #4629
+import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
+import { trainNowPreviewRoute } from "../components/training/TrainNowPreviewMock.ts"; // #4847
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
@@ -354,6 +356,19 @@ export function installPreviewMock() {
         let body = null;
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = trainingProgramsMockRoute(method, u.pathname, body, SEED_TRAINING);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+      // #4847: "Train now" (preview-override af stadie-flaget; ?trainNow=off|locked).
+      if (/\/api\/training\/train-now$/.test(url)) {
+        const res = trainNowPreviewRoute(method);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+      // #4854/#5620: traethedsgraensen (beta), statefuld.
+      if (/\/api\/training\/fatigue-rules/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = trainingFatigueRulesMockRoute(method, u.pathname, body);
         if (res) return jsonResponse(res.body, res.status);
       }
 

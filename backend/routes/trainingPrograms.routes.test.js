@@ -7,6 +7,7 @@ import express from "express";
 
 import { createTrainingProgramsRouter } from "./trainingPrograms.js";
 import { TRAINING_PROGRAMS_FLAG_KEY } from "../lib/trainingProgramsFlag.js";
+import { TRAINING_PROGRAM_CELLS_FLAG_KEY } from "../lib/trainingWeekPlanCellsFlag.js";
 import { TRAINING_PROGRAMS } from "../lib/trainingPrograms.js";
 
 // Minimal PostgREST-fake: select/eq/maybeSingle/update/insert paa et in-memory state.
@@ -80,8 +81,10 @@ async function fixture(t, { state, betaTester = true, missingProgramKey = false 
 test("flag off: GET svarer enabled:false, og skrivestierne findes ikke (404) — intet skrives", async (t) => {
   const state = seed({ stage: "off" });
   const { call } = await fixture(t, { state });
-  assert.deepEqual((await call("GET", "/")).body, { enabled: false });
+  assert.deepEqual((await call("GET", "/")).body, { enabled: false, cellsEnabled: false });
   assert.equal((await call("POST", "/apply", { programKey: "sprinter", target: "squad" })).status, 404);
+  assert.equal((await call("PUT", "/cell", { riderId: "r1", weekday: "fri", slotIndex: 1, session: "recovery" })).status, 404);
+  assert.equal((await call("GET", "/forecast")).body.available, false);
   assert.equal(state.training_week_plans.length, 0);
 });
 
@@ -139,9 +142,53 @@ test("celle-override: et loebsdags-slot overstyres, ugedagen og proveniensen bev
   assert.equal(row.days.fri.session, "sprint");
   assert.equal(row.program_key, "sprinter");
 
-  assert.equal((await call("PUT", "/cell", { riderId: "r2", weekday: "fri", session: "rest" })).status, 409, "r2 har intet program");
+  assert.equal((await call("PUT", "/cell", { riderId: "x9", weekday: "fri", session: "rest" })).status, 403, "fremmed rytter");
   assert.equal((await call("PUT", "/cell", { riderId: "r1", weekday: "fri", slotIndex: 7, session: "rest" })).status, 400);
   assert.equal((await call("PUT", "/cell", { riderId: "r1", weekday: "fri", session: "moonwalk" })).status, 400);
+});
+
+// ── #5932: felterne for alle hold bag `training_program_cells` ───────────────
+function cellsSeed({ cells = "on", programs = "off", weekPlans = [] } = {}) {
+  const state = seed({ stage: programs, weekPlans });
+  state.app_config.push({ key: TRAINING_PROGRAM_CELLS_FLAG_KEY, value: cells });
+  return state;
+}
+
+test("#5932 felt-flag on, katalog off: GET leverer saaede uger, men intet katalog, og tildeling findes ikke", async (t) => {
+  const state = cellsSeed();
+  const { call } = await fixture(t, { state, betaTester: false });
+  const res = await call("GET", "/");
+  assert.equal(res.body.enabled, false);
+  assert.equal(res.body.cellsEnabled, true);
+  assert.deepEqual(res.body.catalog, []);
+  assert.deepEqual(Object.keys(res.body.seeds).sort(), ["r1", "r2"]);
+  assert.ok(Object.values(res.body.seeds.r1).every((d) => typeof d.session === "string"), "hver ugedag har en session");
+  assert.equal((await call("POST", "/apply", { programKey: "sprinter", target: "r1" })).status, 404);
+});
+
+test("#5932 foerste felt-rettelse saar ugen (som GET viste) og retter saa feltet", async (t) => {
+  const state = cellsSeed();
+  const { call } = await fixture(t, { state, betaTester: false });
+  const shown = (await call("GET", "/")).body.seeds.r2;
+  const res = await call("PUT", "/cell", { riderId: "r2", weekday: "wed", slotIndex: 1, session: "recovery" });
+  assert.equal(res.status, 200);
+  const row = state.training_week_plans.find((r) => r.rider_id === "r2");
+  assert.ok(row, "ny raekke for rytteren");
+  assert.equal(row.program_key, undefined, "egen plan, intet program");
+  assert.deepEqual(row.days.wed.slots, [null, "recovery", null, null, null]);
+  for (const weekday of ["mon", "tue", "thu", "fri", "sat", "sun"]) {
+    assert.deepEqual(row.days[weekday], shown[weekday], `${weekday} er praecis den viste saaning`);
+  }
+  // Rytteren har nu felter og er ikke laengere en saaning.
+  assert.equal((await call("GET", "/")).body.seeds.r2, undefined);
+});
+
+test("#5932 felt-flag beta: kun beta-viewer kan rette; off = adfaerden foer #5932", async (t) => {
+  const betaState = cellsSeed({ cells: "beta" });
+  const nonBeta = await fixture(t, { state: betaState, betaTester: false });
+  assert.equal((await nonBeta.call("PUT", "/cell", { riderId: "r1", weekday: "mon", session: "rest" })).status, 404);
+  const beta = await fixture(t, { state: cellsSeed({ cells: "beta" }), betaTester: true });
+  assert.equal((await beta.call("PUT", "/cell", { riderId: "r1", weekday: "mon", session: "rest" })).status, 200);
 });
 
 test("deploy-vinduet (42703, program_key findes ikke endnu): tildeling virker uden proveniens", async (t) => {
