@@ -232,21 +232,27 @@ export function letGoBrake(input: {
  * frit (feltet lader et ufarligt forspring gaa), over det daempes vaeksten med
  * `fraction`. `brakedShare` er den andel af lad-gaa-km'ene der faktisk blev
  * bremset — kun dem betaler de bremsende ryttere for. Uden bremse er vaeksten
- * uaendret og andelen 0.
+ * uaendret og andelen 0. `ceilingSeconds` er lad-gaa-loftet: vaekst over det
+ * sker alligevel ikke, saa den bremses (og betales) heller ikke.
  */
 export function brakedLetGoGrowth(input: {
   separationSeconds: number;
   growthSeconds: number;
   fraction: number;
   toleratedSeconds: number;
+  ceilingSeconds?: number;
 }): { growthSeconds: number; brakedShare: number } {
-  const growth = Math.max(0, input.growthSeconds);
+  const raw = Math.max(0, input.growthSeconds);
+  const room = input.ceilingSeconds !== undefined && Number.isFinite(input.ceilingSeconds)
+    ? Math.max(0, input.ceilingSeconds - input.separationSeconds)
+    : raw;
+  const growth = Math.min(raw, room);
   if (!(input.fraction > 0) || !(growth > 0)) return { growthSeconds: input.growthSeconds, brakedShare: 0 };
   const free = Math.max(0, Math.min(growth, input.toleratedSeconds - input.separationSeconds));
   const excess = growth - free;
   if (!(excess > 0)) return { growthSeconds: input.growthSeconds, brakedShare: 0 };
   const fraction = Math.min(1, input.fraction);
-  return { growthSeconds: free + excess * (1 - fraction), brakedShare: excess / growth };
+  return { growthSeconds: free + excess * (1 - fraction), brakedShare: excess / raw };
 }
 
 function reactionEvent(km: number, teamId: string, status: string, reason: string, threat: GcThreat, mode: TeamReactionMode | null): TimelineEvent {

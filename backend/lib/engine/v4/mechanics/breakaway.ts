@@ -1185,7 +1185,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     workByChaseGroup.set(chaseGroup.id, { plan: chasePlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
     const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id), entrants: ctx.entrants, riders: state.riders }) : null;
-    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds }) : null;
+    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
     if (brake && braked && braked.brakedShare > 0) brakeByChaseGroup.set(chaseGroup.id, { work: brake.work, km: Math.max(brakeByChaseGroup.get(chaseGroup.id)?.km ?? 0, letGoKm * braked.brakedShare) });
 
     const netAdvantage = computeNetChaseAdvantage({
@@ -1291,9 +1291,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const share = ctx.route.distance_km > 0 ? clamp(km / ctx.route.distance_km, 0, 1) : 0;
     updatedRiders = applyChaseCost(updatedRiders, plan.chaserWork, share) ?? updatedRiders;
   }
-  // #5955: bremsen er arbejde — de bremsende betaler for lad-gaa-km'ene.
-  for (const { work, km } of brakeByChaseGroup.values()) {
-    const share = ctx.route.distance_km > 0 ? clamp(km / ctx.route.distance_km, 0, 1) : 0;
+  // #5955: bremsen er arbejde — de bremsende betaler for de bremsede lad-gaa-km,
+  // aldrig for km der allerede er betalt som jagt-km i samme segment.
+  for (const [chaseId, { work, km }] of brakeByChaseGroup) {
+    const brakeKm = Math.min(km, Math.max(0, segmentLengthKm - (workByChaseGroup.get(chaseId)?.km ?? 0)));
+    const share = ctx.route.distance_km > 0 ? clamp(brakeKm / ctx.route.distance_km, 0, 1) : 0;
     updatedRiders = applyChaseCost(updatedRiders, work, share) ?? updatedRiders;
   }
   const riders = updatedRiders === state.riders ? null : updatedRiders;

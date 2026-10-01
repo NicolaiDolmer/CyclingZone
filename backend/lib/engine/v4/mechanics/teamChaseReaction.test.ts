@@ -427,6 +427,11 @@ test("brakedLetGoGrowth: free up to the tolerated lead, dampened above it, only 
   assert.equal(across.growthSeconds, 30 + 30 * 0.5);
   assert.equal(across.brakedShare, 0.5);
   assert.deepEqual(brakedLetGoGrowth({ separationSeconds: 30, growthSeconds: 60, fraction: 0, toleratedSeconds: 0 }), { growthSeconds: 60, brakedShare: 0 });
+  // Ved lad-gaa-loftet vokser hullet alligevel ikke: intet bremses, intet betales.
+  assert.equal(brakedLetGoGrowth({ separationSeconds: 300, growthSeconds: 60, fraction: 0.5, toleratedSeconds: 0, ceilingSeconds: 300 }).brakedShare, 0);
+  const nearCeiling = brakedLetGoGrowth({ separationSeconds: 280, growthSeconds: 60, fraction: 0.5, toleratedSeconds: 0, ceilingSeconds: 300 });
+  assert.equal(nearCeiling.growthSeconds, 10);
+  assert.ok(Math.abs(nearCeiling.brakedShare - 20 / 60) < 1e-12, "only the km that could still grow are paid");
 });
 
 const BRAKE_TEAMS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
