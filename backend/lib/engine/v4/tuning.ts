@@ -1378,3 +1378,28 @@ const morningBreakFormation = {
 
 /** #5955 orders_gc_v1-dannelse (deep-frosset). Se morningBreakFormation-kommentaren ovenfor. */
 export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);
+
+// ── #6084 (KUN orders_gc_v2): bjergetaper holder samlet til finalen ─────────
+// Laeses kun af mechanics/mountainSelection.ts, og kun naar segmentLoop har sat
+// en fase (orders_gc_v2 + en profil herunder). Legacy og orders_gc_v1 er
+// uroerte. Kalibreret privat mod ejer-maalene i #6084 (balance-internals/6084/).
+const mountainSelectionV2 = {
+  // Profiler hvor revisionen gaelder. Kuperede etaper er bevidst udeladt.
+  profileTypes: ["mountain", "high_mountain"] as readonly ProfileType[],
+  // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
+  preFinalSplitThresholdFactor: 3.2,
+  // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
+  preFinalWprimeForcedMinSeverity: 0.3,
+  // A: andel af tempo-driften mellem favoritgruppen og dagens udbrud der nulstilles paa stigninger foer
+  // finalestigningen (1 = kun jagten flytter hullet, som paa aabent terraen).
+  preFinalBreakawayDriftNeutralShare: 1,
+  // M5: skalering af lad-gaa-loftet (oven paa orders_gc_v1-faktoren) paa hele etapen.
+  letGoMaxGapScale: 0.7,
+  // M5: jagtens lukning paa segmenter foer finalestigningen (kontrolleret jagt).
+  preFinalChaseClosingScale: 0.4,
+  // M5: jagtens lukning paa og efter finalestigningen (favoritternes hold jager for alvor).
+  finalChaseClosingScale: 2.5,
+};
+
+/** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
+export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
