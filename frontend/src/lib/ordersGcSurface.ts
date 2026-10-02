@@ -17,9 +17,13 @@ export const ORDERS_GC_REVISION = "orders_gc_v1";
 
 export type RulesRevision = "legacy" | "orders_gc_v1";
 
-/** Løbets effektive regel-revision. Alt andet end orders_gc_v1 er legacy. */
+/**
+ * Løbets effektive regel-revision for spillerfladerne. #6084: orders_gc_v2 er
+ * hele orders_gc_v1-pakken plus en motorændring uden egen flade, så den vises
+ * som orders_gc_v1. Alt andet er legacy.
+ */
 export function raceRulesRevision(raw: unknown): RulesRevision {
-  return raw === ORDERS_GC_REVISION ? ORDERS_GC_REVISION : "legacy";
+  return raw === ORDERS_GC_REVISION || raw === "orders_gc_v2" ? ORDERS_GC_REVISION : "legacy";
 }
 
 export function isOrdersGcRevision(raw: unknown): boolean {

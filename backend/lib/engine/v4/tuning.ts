@@ -1360,3 +1360,19 @@ const morningBreakFormation = {
 
 /** #5955 orders_gc_v1-dannelse (deep-frosset). Se morningBreakFormation-kommentaren ovenfor. */
 export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);
+
+// ── #6084 (KUN orders_gc_v2): bjergetaper holder samlet til finalen ─────────
+// Laeses kun af mechanics/mountainSelection.ts, og kun naar segmentLoop har sat
+// en fase (orders_gc_v2 + en profil herunder). Legacy og orders_gc_v1 er
+// uroerte. Kalibreret privat mod ejer-maalene i #6084 (balance-internals/6084/).
+const mountainSelectionV2 = {
+  // Profiler hvor revisionen gaelder. Kuperede etaper er bevidst udeladt.
+  profileTypes: ["mountain", "high_mountain"] as readonly ProfileType[],
+  // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
+  preFinalSplitThresholdFactor: 2,
+  // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
+  preFinalWprimeForcedMinSeverity: 0.5,
+};
+
+/** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
+export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);

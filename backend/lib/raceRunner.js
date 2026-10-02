@@ -312,7 +312,7 @@ function v4RulesRevisionArg(rulesRevision) {
  *  - Kolonnen findes ikke (migrationen er ikke applied) → legacy, intet skrives.
  *  - dryRun skriver aldrig; et ikke-startet løb previewes på den aktuelle revision.
  *
- * @returns {Promise<"legacy"|"orders_gc_v1">}
+ * @returns {Promise<"legacy"|"orders_gc_v1"|"orders_gc_v2">}
  */
 export async function bindRaceRulesRevision({ supabase, race, firstStageClaim, dryRun = false, currentRevision = CURRENT_RACE_RULES_REVISION }) {
   const readRow = async () => supabase
@@ -601,7 +601,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // totalerne efter de foregaaende etaper i denne loop-instans).
     const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp) : null;
     // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape); legacy-kaldet er uændret.
-    const gcStandings = v4Engine && isStageRace && rulesRevision === "orders_gc_v1" ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
+    const gcStandings = v4Engine && isStageRace && (rulesRevision === "orders_gc_v1" || rulesRevision === "orders_gc_v2") ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
       ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}) })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
@@ -2717,8 +2717,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     })()
     : null;
   // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape, null = mangler); legacy-kaldet er uændret.
-  const priorGcAcc = v4Engine && rulesRevision === "orders_gc_v1" && stageIndex > 0 && priorStageRows.length ? accumulateStageRows({ stageRows: priorStageRows }) : null;
-  const gcStandings = v4Engine && rulesRevision === "orders_gc_v1" ? (stageIndex === 0 ? [] : priorGcAcc ? rankByCumTimeAsc(filterCompletedEntrants(simEntrants, priorGcAcc.stagesByRider, priorGcAcc.stageNumbers), priorGcAcc.cumTime, priorGcAcc.posSum) : null) : undefined;
+  const priorGcAcc = v4Engine && (rulesRevision === "orders_gc_v1" || rulesRevision === "orders_gc_v2") && stageIndex > 0 && priorStageRows.length ? accumulateStageRows({ stageRows: priorStageRows }) : null;
+  const gcStandings = v4Engine && (rulesRevision === "orders_gc_v1" || rulesRevision === "orders_gc_v2") ? (stageIndex === 0 ? [] : priorGcAcc ? rankByCumTimeAsc(filterCompletedEntrants(simEntrants, priorGcAcc.stagesByRider, priorGcAcc.stageNumbers), priorGcAcc.cumTime, priorGcAcc.posSum) : null) : undefined;
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
     ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}) })

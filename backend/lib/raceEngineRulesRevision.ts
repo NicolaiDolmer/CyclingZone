@@ -18,7 +18,10 @@
 //
 // REN: ingen IO. Kaldstedet (raceRunner.js) laeser og skriver kolonnen.
 
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1"] as const;
+// #6084: "orders_gc_v2" = hele orders_gc_v1-pakken + bjergselektionen (feltet
+// holder samlet til finalestigningen, udbruddet hentes dér). Kendt, men nye loeb
+// bindes foerst til den naar CURRENT_RACE_RULES_REVISION skiftes (ejer-go).
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";

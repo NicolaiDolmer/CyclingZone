@@ -84,6 +84,7 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
+import { finalClimbStartIndex, mountainSelectionPhaseFor } from "./mechanics/mountainSelection.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -669,8 +670,11 @@ export function neutralizeBreakawayTempoDrift(
   groups: readonly RaceGroup[],
   tempoByGroup: Map<string, GroupTempo>,
   kind: SegmentKind,
+  // #6084 (KUN orders_gc_v2): ogsaa paa en stigning foer finalestigningen
+  // (mechanics/mountainSelection.ts, forslag A). Udeladt = uaendret.
+  neutralClimb = false,
 ): Map<string, GroupTempo> {
-  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind)) return tempoByGroup;
+  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind) && !(neutralClimb && kind === "climb")) return tempoByGroup;
   const escapes = groups.filter((g) => g.kind === "breakaway" && g.origin === "breakaway");
   if (escapes.length === 0) return tempoByGroup;
   let out: Map<string, GroupTempo> | null = null;
@@ -743,6 +747,7 @@ export type SegmentLoopResult = {
 export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === undefined || raw === null || raw === "legacy") return "legacy";
   if (raw === "orders_gc_v1") return "orders_gc_v1";
+  if (raw === "orders_gc_v2") return "orders_gc_v2";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -757,6 +762,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // eller tom liste er den neutrale default.
   const orders: readonly TeamOrder[] = input.orders ?? [];
   const rulesRevision = normalizeRulesRevision(input.rules_revision);
+  // #6084: orders_gc_v2 = hele orders_gc_v1-pakken + bjergselektionen. Hooksene
+  // ser v1 (alle v1-grene uaendrede) og faar fasen separat.
+  const hookRevision: RulesRevision = rulesRevision === "orders_gc_v2" ? "orders_gc_v1" : rulesRevision;
+  const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
@@ -918,7 +927,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
 
     // #5812 (a): M5 ejer hullet mellem dagens udbrud og jagtgruppen paa aabent
     // terraen. Se neutralizeBreakawayTempoDrift.
-    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind);
+    const mountainPhase = mountainSelectionPhaseFor(rulesRevision, route.profile_type, segmentIndex, finalClimbStart);
+    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, mountainPhase === "pre_final");
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -948,10 +958,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngForStage: rngForFn,
       orders,
       jerseyLeaders: input.jersey_leaders ?? null,
-      rulesRevision,
+      rulesRevision: hookRevision,
       // #5978: GC-konteksten naar KUN hooksene under orders_gc_v1. Udeladt
       // under den revision = "missing" (aerlig diagnose i mechanics/breakaway.ts).
-      ...(rulesRevision === "orders_gc_v1" ? { gcContext: input.gc_context ?? null } : {}),
+      ...(hookRevision === "orders_gc_v1" ? { gcContext: input.gc_context ?? null } : {}),
+      ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
