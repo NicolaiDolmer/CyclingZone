@@ -6,7 +6,7 @@
 
 > **🎯 Next action (2/10 eftermiddag): LØBENE ER PAUSET** (`stage_scheduler_enabled` off siden 09.44, kun ejeren tænder) og åbnes i dag, når motoren er rettet. Start: `docs/drafts/2026-10-02-next-session-prompt.md`. Blokerer genstart (ægte test på Giroens prod-felt, `backend/scripts/dev/dryRunUpcomingStage.mjs`): **#6088** GC-kaptajner taber 3-5x mere tid under orders_gc_v1 end legacy; **#6089** udbruddet vinder aldrig i rigtige felter. Plus **#6084** bjergetaper (branch, WIP). Sporfiler: `docs/drafts/2026-10-02-urgent-tracks-6088-6089.json`.
 >
-> **✅ 2/10:** live: #6032/#6051/#6056/#6077 (specialister efter evne, AI-kaptajner), #6068/#6078 (udbrud), #6069/#6070 (nye løb binder til orders_gc_v1: roller styrer udbruddet, 0 overtrædelser i ægte test), #6079 (beordret udbrud + Kør roligt), #6080 (mellemtider), #6052, patch note 7.331. Tal privat i balance-internals/night-2-10/.
+> **✅ 2/10:** live: #6032/#6051/#6056/#6077 (specialister efter evne, AI-kaptajner), #6068/#6078 (udbrud), #6069/#6070 (nye løb binder til orders_gc_v1: roller styrer udbruddet, 0 overtrædelser i ægte test), #6079 (beordret udbrud + Kør roligt), #6080 (mellemtider), #6052, patch note 7.331. #6101 fair play-regel om AI-værktøjer og automatisering (7.333, #6100). Tal privat i balance-internals/night-2-10/.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
