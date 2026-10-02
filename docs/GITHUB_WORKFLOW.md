@@ -241,6 +241,7 @@ Hvis CI fejler: PR forbliver åben, ingen merge sker, du får besked via GitHub-
 5. Kopiér token-værdien (vises kun én gang)
 6. Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 7. Navn: `AUTO_MERGE_PAT`, værdi: den kopierede token → **Add secret**
+7b. Gentag under **Secrets and variables** → **Dependabot** → **New repository secret** med samme navn og værdi. Workflows udløst af Dependabot-PR'er kan KUN læse Dependabot-secrets, så uden denne fejler `dependabot-auto-merge` (#6066).
 8. Sæt en kalender-reminder til fornyelse hver 90. dag — udløbet PAT fejler synligt (guard-skridtet i begge workflows tjekker `AUTO_MERGE_PAT` er sat, men opdager ikke en udløbet værdi før selve merge-kaldet fejler)
 
 **Sådan bruges labelen fra telefonen:** åbn PR'en i GitHub-mobilappen → Labels → tilføj `auto-merge` (2 tryk). Workflowet gør resten — venter på required checks + frontend-smoke + advisory review, squash-merger, trigger deploy-verify.
