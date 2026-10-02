@@ -16,7 +16,7 @@ Flere varianter blev målt (flere forsøg pr. hold, også neutrale hold, intet t
 
 - **Udbruddets størrelse:** fra typisk 1-2 ryttere til en median inden for ejer-målet på alle terræntyper.
 - **Etaper uden udbrud:** fra en stor andel til næsten ingen.
-- **Udbrud foran favoritterne på bjerg:** fra et godt stykke under til omkring ejer-målet (ca. 45 %).
+- **Udbrud foran favoritterne på bjerg:** fra et godt stykke under til omkring ejer-målet.
 - **Udbruddet vinder:** stiger moderat. Flad er stadig sjælden, rullende under kuperet, bjerg højest.
 - **GC-kaptajnernes tidstab til favoritterne:** uændret på bjerg og kuperet (median og andel over 5 minutter).
 - **GC-kaptajnernes tidstab til vinderen og "nr. 10 efter vinderen":** stiger på bjerg. Det er den direkte følge af at udbruddet oftere ender foran favoritterne, som ejer-målet beder om, og ikke et større tab inden for favoritgruppen.
