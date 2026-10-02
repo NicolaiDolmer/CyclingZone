@@ -39,7 +39,7 @@
     "format:check": "prettier --check --ignore-unknown ."
   },
   "dependencies": {
-    "@sentry/node": "^10.75.0",
+    "@sentry/node": "^11.0.0",
     "@supabase/supabase-js": "^2.116.0",
     "cors": "^2.8.5",
     "dotenv": "^18.0.0",
