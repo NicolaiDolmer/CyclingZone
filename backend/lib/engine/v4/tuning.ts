@@ -794,6 +794,20 @@ const effortGainExtra = {
 /** M1 (#5580) additiv effort-gevinst-tuning (deep-frosset). Se effortGainExtra-kommentaren ovenfor. */
 export const EFFORT_GAIN_EXTRA_TUNING = deepFreeze(effortGainExtra);
 
+// #6079 (ejer 2/10, beslutning D, KUN orders_gc_v1): "Koer roligt" (save)
+// koster mindre placering paa stigningerne, taettere paa v3. Kun save's to
+// stignings-tal aendres; resten af trappen er effortGainExtra's. Ordenen
+// holder stadig (grupetto <= save <= normal, laast af test), saa en save-
+// rytter stadig taber tid mod en normal-rytter. Legacy laeser aldrig dette.
+// Maalt privat (balance-internals/6079/), tal ikke i PR-body.
+const ordersGcV1ClimbGain = {
+  climbScoreRelief: { ...effortGainExtra.climbScoreRelief, save: -0.6 } as Record<EffortLevel, number>,
+  climbScorePenalty: { ...effortGainExtra.climbScorePenalty, save: 0.3 } as Record<EffortLevel, number>,
+};
+
+/** #6079: stignings-tabellerne for save under orders_gc_v1 (deep-frosset). */
+export const ORDERS_GC_V1_CLIMB_GAIN_TUNING = deepFreeze(ordersGcV1ClimbGain);
+
 // ── M7 (mechanics/distanceFatigue.ts, #4030) — ADDITIV distance-slid-tuning ──
 // Samme moenster som finaleExtra/effortCostExtra ovenfor. Kontrakt (mor-spec
 // §4 M7 + §8 beslutning 12): monument-effekten (250 km+ draener finalen,
