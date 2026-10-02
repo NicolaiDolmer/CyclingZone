@@ -14,7 +14,7 @@ Kvalitativ rapport. Tal, fordelinger og varianter ligger privat i `balance-inter
 Målt FØR justering med tvillinger: to identiske ryttere i samme felt, den ene på Kør roligt, den anden på normal, på alle bjerg- og højfjeldsetaper i proxy-kalenderen, fem seeds, samme felt og etaper i v3 og v4.
 
 - v3: en Kør roligt-rytter uden holdarbejde taber ingen placering på etapen; en hjælper på Kør roligt kommer lidt foran (han arbejder ikke).
-- v4 før: en stærk rytter (feltets top-10 %) på Kør roligt tabte flere minutter på bjergetaper og mere på højfjeld. Det er det uforståelige tidstab ejeren beskriver.
+- v4 før: en stærk rytter på Kør roligt tabte flere minutter på bjergetaper og mere på højfjeld. Det er det uforståelige tidstab ejeren beskriver.
 - Ændring: save har under orders_gc_v1 egne stignings-tal, så han giver mindre slip end før. Kun save ændres; de øvrige trin er uændrede.
 - v4 efter: tidstabet for stærke og topryttere er omtrent halveret på bjergetaper og tydeligt mindre på højfjeld. En Kør roligt-rytter taber stadig tid mod en normal-rytter i medianen og i de fleste etaper (trappen vender ikke; låst af test).
 - Afvejning (ejer-synlig): jo mindre tab for stærke ryttere, jo oftere slutter en Kør roligt-rytter midt i feltet foran sin normal-tvilling, fordi normal-rytteren brænder ud. Det sker også i dag; ændringen gør det lidt hyppigere. Den valgte værdi er et midtpunkt; mere reduktion er muligt, men flytter den afvejning tydeligt.
