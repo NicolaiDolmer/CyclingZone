@@ -76,7 +76,7 @@ export function catchActorCopy(
   const actor = event ? catchActor(event, { teamNameById, distanceKm: timelineDistanceKm(timelineEvents) }) : null;
   if (!actor) return null;
   // Én nøgle pr. aktør; `where` vælger "med N km igen" / "før stregen" i ICU-teksten.
-  const where = actor.km == null ? { where: "line" } : { where: "km", km: actor.km };
+  const where: Record<string, string | number> = actor.km == null ? { where: "line" } : { where: "km", km: actor.km };
   const params: Record<string, string | number> = actor.kind === "teams"
     ? { count, teams: actor.teams, ...where }
     : { count, ...where };

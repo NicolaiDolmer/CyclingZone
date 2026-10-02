@@ -1121,8 +1121,8 @@
       "tttWin": "{rider} led home the fastest team.",
       "breakawaySurvived": "{count, plural, one {A lone rider stayed away to the finish.} other {A #-rider breakaway stayed away to the finish.}}",
       "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
-      "breakawayCaughtByTeams": "{teams} led the chase and caught {count, plural, one {the lone breakaway rider} other {the breakaway (# riders)}} {where, select, km {with {km} km to go} other {before the line}}.",
-      "breakawayCaughtByPeloton": "The peloton caught {count, plural, one {the lone breakaway rider} other {the breakaway (# riders)}} {where, select, km {with {km} km to go} other {before the line}}.",
+      "breakawayCaughtByTeams": "{teams} led the chase and caught the breakaway {where, select, km {with {km} km to go} other {before the line}}.",
+      "breakawayCaughtByPeloton": "The peloton caught the breakaway {where, select, km {with {km} km to go} other {before the line}}.",
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
       "teamWon": "{team} won the team classification.",
       "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains.",
@@ -1328,10 +1328,10 @@
           "v2": "{count, plural, one {The field closed down the lone leader in time.} other {The field closed down the # leaders in time.}}"
         },
         "breakaway_caught_by_teams": {
-          "v1": "{teams} led the chase and brought {count, plural, one {the lone escapee} other {the break of #}} back {where, select, km {with {km} km to go} other {before the finish}}."
+          "v1": "{teams} led the chase and brought the break back {where, select, km {with {km} km to go} other {before the finish}}."
         },
         "breakaway_caught_by_peloton": {
-          "v1": "The peloton brought {count, plural, one {the lone escapee} other {the break of #}} back {where, select, km {with {km} km to go} other {before the finish}}."
+          "v1": "The peloton brought the break back {where, select, km {with {km} km to go} other {before the finish}}."
         },
         "breakaway_survived": {
           "v1": "{count, plural, one {The lone leader was never caught.} other {The # escapees held the field off all the way to the line.}}"
