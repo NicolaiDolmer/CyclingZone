@@ -6,14 +6,13 @@ Kopiér alt under stregen ind som første besked i en ny Claude Code-session i `
 
 Race engine-session (efter morgen-sessionen 2/10). ENESTE fokus: vigtige og lovede ændringer til løbsmotoren, som spillerne mærker med det samme. Alt bygges hurtigst muligt i høj kvalitet. Ingen deadlines, ingen udskydelser, ingen Dependabot/vedligehold medmindre noget er i stykker her og nu. Intet i motoren må stå slukket, hvis det giver en stor, mærkbar forbedring for spillerne: byg, mål, vis mig, og få det live.
 
-**Ejer-beslutning 2/10 12.50: løbene forbliver pauset** (skemalæggeren `stage_scheduler_enabled` = off), indtil motoren har fået enorme forbedringer af høj kvalitet, der overgår spillernes forventninger, og et flertal af de problemer spillerne har nævnt (og som har fyldt mest for deres glæde) er løst. Kun ejeren beslutter genstart. Giro della Penisola + 11 andre løb er endnu ikke startet og binder ved første etape efter genstart til den revision der er aktuel DA: alt vi bygger kan altså nå dem fra etape 1 (gør den nyeste gode regel-revision aktuel før genstart).
+**Ejer 2/10 12.50: løbene åbnes igen I DAG**, så snart forbedringerne er færdige og live. Byg, mål, vis, merge, nu; ikke planlægning, ikke senere. Skemalæggeren (`stage_scheduler_enabled`) er pauset siden 09.44; kun ejeren tænder den. Giro della Penisola + 11 andre løb er ikke startet og binder ved første etape til den revision der er aktuel DA, så alt der merges før genstart når dem fra etape 1.
 
-## Definition af færdig (før jeg kan overveje genstart)
-Lav og vedligehold en tjekliste over spillernes klager om løb (Discord, issues med spillerkilde, mindst de seneste 3 uger) med status pr. punkt og bevis (replay/kalibrering/prod-data). Vis den for mig visuelt som ét billede. Mindst disse skal være løst og målt: tilfældige resultater/specialister bag svagere holdkammerater, uforklarlige og alt for store tidstab for kaptajner og stjerner (især bjerg), roller og ordrer der ikke virker som valgt, udbrud der opfører sig urealistisk, store vindermarginer, og at spillerne kan se hvor og hvorfor tid blev tabt.
+## Definition af færdig (i dag, før genstart)
+Lav og vedligehold en tjekliste over spillernes klager om løb (Discord, issues med spillerkilde, mindst de seneste 3 uger) med status pr. punkt og bevis (replay/kalibrering/prod-data). Vis den for mig visuelt som ét billede. Mindst disse skal være løst og målt i dag: tilfældige resultater/specialister bag svagere holdkammerater, uforklarlige og alt for store tidstab for kaptajner og stjerner (især bjerg), roller og ordrer der ikke virker som valgt, udbrud der opfører sig urealistisk, store vindermarginer, og at spillerne kan se hvor og hvorfor tid blev tabt.
 
-## Før genstart (forbered, men intet skrives i prod uden mit go)
-- Kalenderen skal skubbes frem med pausens længde (race_stage_schedule), så der ikke køres en bunke forfaldne etaper på én gang, og træningsdage/løbsdage hænger sammen. Find det eksisterende værktøj (planRaceSchedules / reschedule-scripts), lav dry-run med tal og vis mig.
-- Aftenens træning afregnes også uden løb (alarm efter maks-ventetid); tjek hver aften om noget gik galt og ret det.
+## Genstart i dag
+- Dagens forfaldne etaper (11-19) køres én pr. løb når skemalæggeren tændes; det er OK. Tjek bagefter at aftenens træning afregnes korrekt.
 - Discord-tekst om genstart (kun EN) skrives færdig til mig; jeg poster selv.
 
 ## Start
@@ -24,7 +23,7 @@ Lav og vedligehold en tjekliste over spillernes klager om løb (Discord, issues 
 ## Tilstand ved overdragelse (2/10 ca. 12.45, verificér)
 - Live i prod: specialister efter evne (#6032, #6051, #6077), AI-kaptajner gemmer kræfter (#6056), loft på lad-gå (#6078), udbrudsjustering (#6068), spillerflader for de nye regler (#6069), løbsfilmen nævner hvem der hentede udbruddet (#6052), patch note 7.331 (#6072).
 - **Nye løb binder til `orders_gc_v1`** (#6070): roller styrer morgenudbruddet (kaptajn/spurtkaptajn/hjælper kun med "Forsøg udbrud", hunter som standard, "Kør roligt" stopper spontane forsøg, grupetto aldrig), GC-hold reagerer og kan bremse udbruddet.
-- Skemalæggeren er pauset siden 09.44 og forbliver det efter ejer-beslutningen ovenfor. **Kun ejeren tænder den igen.**
+- Skemalæggeren er pauset siden 09.44 og tændes af ejeren i dag, når forbedringerne er live.
 - Var i gang: #6087 (rød main efter #6071), #6083 (#6079 beordret udbrud slår spontant + "Kør roligt" sparer mere i bjergene og koster mindre tid på stigninger; ejer-go givet), #6082 (#6080 mellemtider + "hvor og hvorfor tabte dine ryttere tid"; tre review-rettelser lavet i worktreet, mangler e2e-billede og ejer-"merge"), #6084 (bjergetaper, se 1).
 - Private tal: `balance-internals/night-2-10/` og hver lanes `balance-internals/<issue>/`. Replay-cache med 208 S4-etaper: `C:\Dev\CyclingZone-worktrees\replay-5957-main\balance-internals\5957\replay-cache.json` (`backend/scripts/dev/replay5957.mjs`, `--rules=orders_gc_v1`). Kalibreringsharness: `balance-internals/night-2-10/cal/calibrate.mjs` + `analyze.mjs`.
 
