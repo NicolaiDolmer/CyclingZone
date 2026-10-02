@@ -24,7 +24,7 @@
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
     "@microsoft/clarity": "^1.0.2",
-    "@sentry/react": "^10.75.0",
+    "@sentry/react": "^11.0.0",
     "@supabase/supabase-js": "^2.117.1",
     "@vercel/analytics": "^2.0.1",
     "flag-icons": "^7.5.0",
