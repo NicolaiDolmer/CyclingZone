@@ -201,7 +201,7 @@ function spearmanFor(c, rankedRows) {
   return spearmanAbilityVsRank(pairs);
 }
 
-export async function replayCases(cases, { variant = "prod", withV3 = true } = {}) {
+export async function replayCases(cases, { variant = "prod", withV3 = true, rulesRevision = "legacy" } = {}) {
   const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
   const { simulateStage, stableSeed } = await import("../../lib/raceSimulator.js");
   const v4 = await loadRaceEngineV4();
@@ -214,7 +214,7 @@ export async function replayCases(cases, { variant = "prod", withV3 = true } = {
     const v4Res = v4.simulateStage({
       entrants, stageProfile: c.profile, seedString, stageNumber: c.stage_number,
       teamOrderRows: variant === "neutral" ? [] : c.teamOrderRows, isStageRace: c.isStageRace, raceStages: c.raceStages,
-      squad: c.race.squad ?? null,
+      squad: c.race.squad ?? null, rulesRevision, // #6073: --rules=orders_gc_v1
     });
     const row = {
       profile_type: c.profile_type,
@@ -332,7 +332,7 @@ async function main() {
   const limit = Number(argValue("limit", "0"));
   const variant = argValue("variant", "prod");
   const selected = limit > 0 ? cases.slice(0, limit) : cases;
-  const rows = await replayCases(selected, { variant, withV3: !hasFlag("no-v3") });
+  const rows = await replayCases(selected, { variant, withV3: !hasFlag("no-v3"), rulesRevision: argValue("rules", "legacy") });
   const summary = summarize(rows);
   const fmt = (x) => (x == null ? "  -  " : x.toFixed(2));
   console.log(`variant=${variant} etaper=${rows.length}`);
