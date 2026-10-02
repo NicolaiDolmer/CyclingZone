@@ -132,7 +132,7 @@ import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
 import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
-import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
+import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
@@ -2393,7 +2393,7 @@ export async function simulateRace({
   // stadig viste løbets FØR-tilstand. Flyttet hertil skærer det vindue ned til
   // selve REFRESH-statements' egen eksekveringstid. Best-effort (resultaterne ER
   // allerede skrevet) — en refresh-fejl må ikke vælte afviklingen.
-  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+  await requestRankingMatviewRefresh(supabase, { captureExceptionFn: captureException });
 
   if (!trainingOwnsRecovery) await persistRuns({ supabase, race, runs });
   // Sub-2 (#2770): passage-detalje — data-gated (ikke v3-gated), no-op'er selv
@@ -3465,7 +3465,7 @@ export async function simulateStageByIndex({
     // refresh — cron-fallback (10 min) dækker allerede mellem-etaper.
     if (isFinalStage) {
       const ran = await runFinalizeStep("matview", async () => {
-        await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+        await requestRankingMatviewRefresh(supabase, { captureExceptionFn: captureException });
       });
       __markPhase(ran ? "matview" : "matview-resumed");
     }
@@ -3774,7 +3774,7 @@ export async function simulateStageByIndex({
   // crash-recovery-genoptagelse indtil næste 10-min cron-tick.
   if (finalizationPending) {
     await runFinalizeStep("matview", async () => {
-      await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+      await requestRankingMatviewRefresh(supabase, { captureExceptionFn: captureException });
     });
     __markPhase("matview");
   }

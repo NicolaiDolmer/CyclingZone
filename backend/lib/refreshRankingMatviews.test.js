@@ -4,7 +4,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
+import {
+  refreshRankingMatviewsSafe,
+  refreshRankingMatviewsGated,
+  refreshRankingsAfterTrainingSettlement,
+  requestRankingMatviewRefresh,
+  isTrainingSettlementInProgress,
+  __resetRankingRefreshStateForTests,
+  MAX_DEFER_MS,
+  COALESCE_WINDOW_MS,
+} from "./refreshRankingMatviews.js";
 
 const ALL_RPCS = [
   "refresh_rider_rankings_mv",
@@ -14,18 +23,37 @@ const ALL_RPCS = [
   "refresh_youth_rider_rankings_mv", // #5647: sidst, efter de fire seniorviews
 ];
 
-function createMockSupabase({ rpcErrors = {}, heartbeatError = null } = {}) {
+function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = [], workError = null } = {}) {
   const rpcCalls = [];
   const upsertCalls = [];
+  const workQueries = [];
   return {
     rpcCalls,
     upsertCalls,
+    workQueries,
     async rpc(name) {
       rpcCalls.push(name);
       if (rpcErrors[name]) return { error: { message: rpcErrors[name] } };
       return { error: null };
     },
     from(table) {
+      if (table === "training_date_work") {
+        // #5911: statusopslaget select().eq(tick_date).in(status).limit(1).
+        const q = { filters: [] };
+        workQueries.push(q);
+        const b = {
+          select() { return b; },
+          eq(col, val) { q.filters.push(["eq", col, val]); return b; },
+          in(col, vals) { q.filters.push(["in", col, vals]); return b; },
+          async limit() {
+            if (workError) return { data: null, error: { message: workError } };
+            const ticks = q.filters.find((f) => f[0] === "in" && f[1] === "tick_date")?.[2] ?? [];
+            const statuses = q.filters.find((f) => f[0] === "in" && f[1] === "status")?.[2] ?? [];
+            return { data: workRows.filter((r) => ticks.includes(r.tick_date) && statuses.includes(r.status)).slice(0, 1), error: null };
+          },
+        };
+        return b;
+      }
       assert.equal(table, "matview_refresh_heartbeat");
       return {
         async upsert(row, opts) {
@@ -194,4 +222,173 @@ test("#4866 forward-guard — kildefilen dokumenterer at den afhænger af servic
     /IKKE\s+8s\s+længere/i,
     "Kommentaren skal eksplicit sige at 8s-loftet ikke længere gælder denne kodesti (#4866).",
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #5911: aftenafregningen har forrang for rangliste-refreshen.
+const EVENING = new Date("2026-10-01T18:30:00Z"); // 20:30 Copenhagen (CEST), 1/10
+const MIDDAY = new Date("2026-10-01T10:00:00Z"); // 12:00 Copenhagen
+const quietLogger = { log() {}, warn() {} };
+
+test("#5911 gate — dagens afregning har pending-hold kl. 20.30: refresh holdes tilbage", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "pending" }] });
+  const result = await refreshRankingMatviewsGated(supabase, { now: EVENING, clock: () => 0, logger: quietLogger });
+  assert.equal(result, "deferred");
+  assert.deepEqual(supabase.rpcCalls, []);
+  assert.deepEqual(supabase.workQueries[0].filters, [
+    ["in", "tick_date", ["2026-10-01"]],
+    ["in", "status", ["pending", "partial"]],
+  ]);
+});
+
+test("#5911 gate — efter midnat gater gårsdagens uafsluttede afregning indtil kl. 03", async () => {
+  __resetRankingRefreshStateForTests();
+  const rows = [{ tick_date: "2026-10-01", status: "partial" }];
+  const night = new Date("2026-10-01T23:30:00Z"); // 01:30 Copenhagen 2/10
+  const supabase = createMockSupabase({ workRows: rows });
+  assert.equal(await refreshRankingMatviewsGated(supabase, { now: night, clock: () => 0, logger: quietLogger }), "deferred");
+  assert.deepEqual(supabase.workQueries[0].filters[0], ["in", "tick_date", ["2026-10-01"]]);
+  // Kl. 03 er vinduet lukket: ingen opslag, refresh som normalt.
+  const morning = new Date("2026-10-02T01:00:00Z"); // 03:00 Copenhagen
+  const later = createMockSupabase({ workRows: rows });
+  assert.equal(await refreshRankingMatviewsGated(later, { now: morning, logger: quietLogger }), true);
+  assert.equal(later.workQueries.length, 0);
+});
+
+test("#5911 gate — partial tæller også som igangværende afregning", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "partial" }] });
+  assert.equal(await isTrainingSettlementInProgress(supabase, { now: EVENING }), true);
+});
+
+test("#5911 gate — alle hold complete/needs_reconciliation: refresh kører", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({
+    workRows: [
+      { tick_date: "2026-10-01", status: "complete" },
+      { tick_date: "2026-10-01", status: "needs_reconciliation" },
+      { tick_date: "2026-09-30", status: "pending" }, // gårsdagens rest gater ikke
+    ],
+  });
+  const result = await refreshRankingMatviewsGated(supabase, { now: EVENING, logger: quietLogger });
+  assert.equal(result, true);
+  assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
+});
+
+test("#5911 gate — før kl. 20 slås status ikke op og refreshen kører som før", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "pending" }] });
+  const result = await refreshRankingMatviewsGated(supabase, { now: MIDDAY, logger: quietLogger });
+  assert.equal(result, true);
+  assert.equal(supabase.workQueries.length, 0);
+  assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
+});
+
+test("#5911 gate — fail-safe: fejler statusopslaget, refreshes som før", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workError: "connection reset" });
+  const warnings = [];
+  const result = await refreshRankingMatviewsGated(supabase, { now: EVENING, logger: { log() {}, warn: (m) => warnings.push(m) } });
+  assert.equal(result, true);
+  assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
+  assert.match(warnings[0], /refreshing anyway/);
+});
+
+test("#5911 gate — loft: efter MAX_DEFER_MS i træk refreshes alligevel, så en hængende afregning ikke fryser ranglisten", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "pending" }] });
+  let t = 1_000;
+  const opts = { now: EVENING, clock: () => t, logger: quietLogger };
+  assert.equal(await refreshRankingMatviewsGated(supabase, opts), "deferred");
+  t += MAX_DEFER_MS - 1;
+  assert.equal(await refreshRankingMatviewsGated(supabase, opts), "deferred");
+  assert.deepEqual(supabase.rpcCalls, []);
+  t += 1;
+  assert.equal(await refreshRankingMatviewsGated(supabase, opts), true);
+  assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
+  // Loftet nulstilles efter en refresh: næste tick holdes tilbage igen.
+  assert.equal(await refreshRankingMatviewsGated(supabase, opts), "deferred");
+});
+
+test("#5911 træningslukning — sidste hold færdigt: én ubetinget refresh", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "complete" }] });
+  const result = await refreshRankingsAfterTrainingSettlement({ supabase, now: EVENING, logger: quietLogger });
+  assert.equal(result, true);
+  assert.deepEqual(supabase.rpcCalls, ALL_RPCS);
+});
+
+test("#5911 træningslukning — hold stadig i gang: ingen refresh endnu", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "partial" }] });
+  const result = await refreshRankingsAfterTrainingSettlement({ supabase, now: EVENING, logger: quietLogger });
+  assert.equal(result, "deferred");
+  assert.deepEqual(supabase.rpcCalls, []);
+});
+
+test("#5911 træningslukning — kaster aldrig, heller ikke med en defekt klient", async () => {
+  const result = await refreshRankingsAfterTrainingSettlement({ supabase: {}, now: EVENING, logger: quietLogger });
+  assert.equal(result, false);
+});
+
+function fakeTimers() {
+  const timers = [];
+  return {
+    timers,
+    setTimer(fn, ms) { const t = { fn, ms, unref() { t.unrefed = true; } }; timers.push(t); return t; },
+  };
+}
+
+test("#5911 samling — fem løb der slutter inden for vinduet giver to refreshes (straks + én samlet), ikke fem", async () => {
+  const supabase = {};
+  const calls = [];
+  const refresh = async () => { calls.push("refresh"); return true; };
+  const { timers, setTimer } = fakeTimers();
+  let t = 0;
+  const opts = { clock: () => t, setTimer, refresh, logger: quietLogger };
+
+  assert.equal(await requestRankingMatviewRefresh(supabase, opts), true, "første løb refreshes straks (#3193)");
+  for (let i = 0; i < 4; i++) {
+    t += 5_000;
+    assert.equal(await requestRankingMatviewRefresh(supabase, opts), "coalesced");
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(timers.length, 1, "kun én efterfølgende refresh planlægges");
+  assert.equal(timers[0].ms, COALESCE_WINDOW_MS - 5_000, "planlagt ved vinduets udløb, målt fra seneste start");
+  assert.equal(timers[0].unrefed, true, "timeren må ikke holde processen i live");
+
+  t = COALESCE_WINDOW_MS;
+  timers[0].fn();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(calls.length, 2);
+});
+
+test("#5911 samling — efter et roligt vindue refreshes straks igen", async () => {
+  const supabase = {};
+  const calls = [];
+  const { timers, setTimer } = fakeTimers();
+  let t = 0;
+  const opts = { clock: () => t, setTimer, refresh: async () => { calls.push(t); return true; }, logger: quietLogger };
+  await requestRankingMatviewRefresh(supabase, opts);
+  t = COALESCE_WINDOW_MS + 1;
+  assert.equal(await requestRankingMatviewRefresh(supabase, opts), true);
+  assert.equal(calls.length, 2);
+  assert.equal(timers.length, 0);
+});
+
+test("#5911 samling — tilstanden er pr. klient, og en refresh-fejl kastes ikke videre", async () => {
+  const { setTimer } = fakeTimers();
+  const opts = { clock: () => 0, setTimer, refresh: async () => { throw new Error("boom"); }, logger: quietLogger };
+  assert.equal(await requestRankingMatviewRefresh({}, opts), false);
+  assert.equal(await requestRankingMatviewRefresh({}, opts), false, "en ny klient deler ikke vindue med den forrige");
+});
+
+test("#5911 samling — standard-refresh er den gatede: kl. 20.30 med afregning i gang refreshes ikke", async () => {
+  __resetRankingRefreshStateForTests();
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "pending" }] });
+  // Ingen refresh-injektion: default-stien skal gå gennem gaten.
+  const result = await requestRankingMatviewRefresh(supabase, { nowFn: () => EVENING, logger: quietLogger });
+  assert.equal(result, "deferred");
+  assert.deepEqual(supabase.rpcCalls, []);
 });
