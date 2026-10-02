@@ -801,25 +801,47 @@ test("#5602/#6058: det billige intake-tjek koerer paa sonnet med en minimal prom
   assert.ok(worker.includes("idleLanes: livingLanes - busyLanes,") && /\} finally \{\s*livingLanes -= 1\s*\}/.test(worker), "planIdleLane skal kende antallet af ledige laner, talt ned synkront ved lanens return");
 });
 
-test("#6058: fase 0, intake og intake-tjek starter med scope-vaernet og kan ikke drive", () => {
+test("#6058: ALLE boelgens agent-prompts starter med scope-vaernet", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
-  for (const name of ["setupPrompt", "intakePrompt", "intakeCheckPrompt"]) {
+  const kinds = {
+    setupPrompt: "setup", intakePrompt: "setup", intakeCheckPrompt: "setup", probePrompt: "setup", cleanupPrompt: "setup",
+    laneBrief: "worker", stopPrompt: "worker", reviewPrompt: "worker", fixPrompt: "worker",
+  };
+  for (const [name, kind] of Object.entries(kinds)) {
     const fn = extractFunction(src, name);
     assert.ok(fn, `wave.js mangler ${name}()`);
-    assert.ok(/'WAVE-SETUP: [^']*',\s*'',\s*\.\.\.subStepScopeLines\(/.test(fn), `${name}() skal have subStepScopeLines() lige efter WAVE-SETUP-linjen`);
+    const calls = fn.match(/\.\.\.subStepScopeLines\([^\n]*?, '(setup|worker)'\)/g) || [];
+    assert.ok(calls.length > 0, `${name}() skal starte med subStepScopeLines()`);
+    assert.ok(calls.every((c) => c.endsWith(`'${kind}')`)), `${name}() skal bruge kind '${kind}'`);
   }
-  const lines = subStepScopeLines("X").join("\n");
-  assert.ok(lines.includes("Din ENESTE opgave: X."), "opgaven skal staa ordret");
-  assert.ok(/user request/.test(lines) && /hovedsessionen/.test(lines), "vaernet skal sige at ejerens relayede besked tilhoerer hovedsessionen");
-  for (const forbidden of ["docs/NOW.md", "Working agent", "gh issue view", "backend/", "prod"]) {
-    assert.ok(lines.includes(forbidden), `vaernet skal naevne ${forbidden}`);
+  assert.equal(extractFunction(src, "laneBrief").match(/subStepScopeLines\(/g).length, 2, "baade bygge- og undersoegelsesgrenen af laneBrief skal have vaernet");
+  // Hvert agent()-kald i wave.js skal bruge en af de vaernede prompt-funktioner.
+  const promptCalls = [...src.matchAll(/\bagent(?:WithType)?\((\w+)\(/g)].map((m) => m[1]).filter((n) => n !== "prompt");
+  assert.ok(promptCalls.length >= 10, `forventede mindst 10 agent()-kald med prompt-funktion, fandt ${promptCalls.length}`);
+  for (const name of promptCalls) {
+    assert.ok(name in kinds, `agent(${name}(...)) bruger en prompt uden scope-vaern - tilfoej subStepScopeLines() og saet den i testen`);
   }
-  assert.ok(/MED DET SAMME og stop/.test(lines), "vaernet skal kraeve at skemaet returneres straks");
   const check = extractFunction(src, "intakeCheckPrompt");
   assert.ok(check.includes("pending > 0 betyder IKKE"), "tjekket maa ikke laese pending > 0 som en opgave");
   assert.ok(!/model: 'haiku'/.test(src), "#6058: ingen boelge-agent koerer paa haiku");
   const helper = extractFunction(src, "agentWithType");
   assert.ok(helper && /not found/.test(helper) && helper.includes("delete rest.agentType"), "en ukendt agentType skal falde tilbage til et kald uden typen, ikke slaa optaget fra");
+});
+
+test("#6058: vaernet siger hvem ejerens besked tilhoerer og hvad trinet aldrig maa", () => {
+  for (const kind of ["setup", "worker"]) {
+    const lines = subStepScopeLines("X", kind).join("\n");
+    assert.ok(lines.includes("Din ENESTE opgave: X."), `${kind}: opgaven skal staa ordret`);
+    assert.ok(/user request/.test(lines) && /hovedsessionen/.test(lines), `${kind}: ejerens relayede besked tilhoerer hovedsessionen`);
+    for (const forbidden of ["NOW.md", "Working agent", "backend/", "prod"]) {
+      assert.ok(lines.includes(forbidden), `${kind}: vaernet skal naevne ${forbidden}`);
+    }
+  }
+  const setup = subStepScopeLines("X", "setup").join("\n");
+  assert.ok(setup.includes("gh issue view") && /MED DET SAMME og stop/.test(setup), "setup: ingen issue-laesning, svar straks");
+  const worker = subStepScopeLines("X", "worker").join("\n");
+  assert.ok(worker.includes("Laes kun dit eget issue") && worker.includes("Merge aldrig"), "worker: kun eget issue, aldrig merge");
+  assert.notEqual(setup, worker);
 });
 
 test("#6058: agent-typerne findes og mangler fil-redigering", () => {
