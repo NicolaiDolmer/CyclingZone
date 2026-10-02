@@ -20,7 +20,12 @@
 // lukker langsommere). I finalen jager feltet som under orders_gc_v1.
 //
 // Alt gaelder kun paa profilerne i MOUNTAIN_SELECTION_V2_TUNING.profileTypes.
-// Kuperede etaper er uroerte af konstruktion.
+//
+// #6092: kuperede etaper er med. Under orders_gc_v1 fik et svagt udbrud paa
+// kuperet terraen langt mere lad-gaa-plads end under legacy, og naar det holdt,
+// blev forspringet til vinderen hele kaptajnernes tidstab (de koerte selv med
+// favoritterne). Pakken gaelder nu ogsaa her, med et lavere lad-gaa-loft. Hver
+// profil kan afvige paa knapperne (MOUNTAIN_SELECTION_V2_TUNING.byProfile).
 //
 // REN: ingen IO, ingen rng. Legacy og orders_gc_v1 ser aldrig en fase
 // (segmentLoop saetter kun `mountainSelectionPhase` under orders_gc_v2).
@@ -56,8 +61,7 @@ export function mountainSelectionKnobsFor(profileType: ProfileType): MountainSel
     preFinalChaseClosingScale: t.preFinalChaseClosingScale,
     finalChaseClosingScale: t.finalChaseClosingScale,
   };
-  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[`V2_TUNE_${profileType}`];
-  return { ...base, ...(t.byProfile[profileType] ?? {}), ...(env ? JSON.parse(env) : {}) };
+  return { ...base, ...(t.byProfile[profileType] ?? {}) };
 }
 
 /**
