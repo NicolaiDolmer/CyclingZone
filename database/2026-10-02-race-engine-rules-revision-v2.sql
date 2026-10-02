@@ -4,9 +4,10 @@
 -- samlet til finalestigningen, udbruddet hentes dér). Se backend/lib/raceEngineRulesRevision.ts
 -- og docs/RACE_ENGINE_RULES.md "Regel-revision pr. løb".
 --
--- Migrationen gør kun værdien LOVLIG. Ingen række får den: nye løb bindes stadig til
--- CURRENT_RACE_RULES_REVISION i koden ('orders_gc_v1'), og skiftet til 'orders_gc_v2' er et
--- særskilt ejer-go. Uden migrationen ville en binding til 'orders_gc_v2' fejle på CHECK.
+-- Migrationen gør kun værdien LOVLIG og ændrer ingen række. Koden binder nye løb til
+-- CURRENT_RACE_RULES_REVISION = 'orders_gc_v2' (ejer-go 2/10) ved deres første etape-claim.
+-- Migrationen SKAL derfor være applied før det første nye løb claimes efter deploy; ellers
+-- fejler bindingen på CHECK (højlydt, ingen tavs fallback).
 --
 -- Additiv og idempotent: constrainten erstattes med en bredere udgave i samme transaktion.
 -- Alle eksisterende værdier (NULL, 'legacy', 'orders_gc_v1') er fortsat gyldige.

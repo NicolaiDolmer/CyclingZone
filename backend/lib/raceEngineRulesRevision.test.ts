@@ -86,8 +86,8 @@ test("an unreadable stages_completed counts as started", () => {
   assert.equal(raceHasStarted({ stages_completed: "0" }), false);
 });
 
-test("new races are bound to orders_gc_v1 since the owner activated the package (2/10)", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v1");
+test("new races are bound to orders_gc_v2 since the owner activated the mountain selection (2/10, #6084)", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
 });
 
 test("only a missing-column error degrades to legacy", () => {
@@ -230,11 +230,11 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 
 // ── #6084: orders_gc_v2 (orders_gc_v1 + bjergselektionen) ─────────────────────
 
-test("#6084: orders_gc_v2 is a known revision but new races are still bound to orders_gc_v1", () => {
+test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
   assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2"]);
-  // Aktivering er et separat ejer-go: CURRENT er uaendret.
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v1");
+  // Ejer-go 2/10: nye loeb bindes til v2; loeb bundet til v1 beholder v1.
+  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
 });
 
 test("#6084: a race stored on orders_gc_v2 keeps it; a new race binds to v2 only when v2 is current", () => {
