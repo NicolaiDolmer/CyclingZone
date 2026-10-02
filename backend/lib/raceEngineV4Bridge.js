@@ -443,7 +443,7 @@ export function buildV4StageInput({
 }) {
   // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
   // En ukendt værdi er en fejl, aldrig nyeste regler.
-  if (rulesRevision !== "legacy" && rulesRevision !== "orders_gc_v1") {
+  if (rulesRevision !== "legacy" && rulesRevision !== "orders_gc_v1" && rulesRevision !== "orders_gc_v2") {
     throw new Error(`raceEngineV4Bridge: ukendt rulesRevision ${JSON.stringify(rulesRevision)}`);
   }
   const route = modules.route.routeFromStageProfileRow(stageProfile);
@@ -489,7 +489,7 @@ export function buildV4StageInput({
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
   }
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
-  if (rulesRevision === "orders_gc_v1") {
+  if (rulesRevision === "orders_gc_v1" || rulesRevision === "orders_gc_v2") {
     input.rules_revision = rulesRevision;
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({

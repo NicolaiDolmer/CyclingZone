@@ -39,6 +39,7 @@ import { makeGroupId, splitGroup } from "../groups.ts";
 import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
+import { phaseSplitThreshold, phaseWprimeForcedMinSeverity } from "./mountainSelection.ts";
 
 /**
  * #5580 (M1 punkt 1, indsatstrappen model 3): indsatsens GEVINST paa
@@ -249,7 +250,10 @@ function computeSelections(
   lengthKm: number,
 ): RiderSelection[] {
   const { entrants, tuning, rngFor } = ctx;
-  const { deficitWeight, energyDeficitWeight, noiseSdBase, splitThreshold } = tuning.selection;
+  const { deficitWeight, energyDeficitWeight, noiseSdBase } = tuning.selection;
+  // #6084 (KUN orders_gc_v2): bloedere selektion foer finalestigningen (mountainSelection.ts).
+  const splitThreshold = phaseSplitThreshold(tuning.selection.splitThreshold, ctx.mountainSelectionPhase);
+  const wprimeMinSeverity = phaseWprimeForcedMinSeverity(CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity, ctx.mountainSelectionPhase);
 
   let referenceClimbing = 0;
   let groupHasRacers = false;
@@ -288,7 +292,7 @@ function computeSelections(
       riderId,
       baseScore,
       scoreTriggered: noisyScore > splitThreshold,
-      wprimeForced: wprimeDepletionForcesSplit(riderState.wprime, severity),
+      wprimeForced: wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity),
       effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
     });
   }

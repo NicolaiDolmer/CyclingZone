@@ -310,6 +310,21 @@ test("#6079 applyRaceFatigue: rulesRevision sendes med til multiplikatoren (bjer
   assert.ok(Number.isInteger(f(gcDb)));
 });
 
+test("#6084 orders_gc_v2 arver orders_gc_v1's save-træthed (stageEnteringFatigues + applyRaceFatigue)", async () => {
+  const profiles = ["flat", "mountain", "high_mountain", "hilly"];
+  assert.deepEqual(
+    stageEnteringFatigues(10, profiles, { effort: "save", rulesRevision: "orders_gc_v2" }),
+    stageEnteringFatigues(10, profiles, { effort: "save", rulesRevision: "orders_gc_v1" }),
+  );
+  const v1Db = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }] });
+  const v2Db = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }] });
+  const effortByRider = new Map([["r1", "save"]]);
+  await applyRaceFatigue({ supabase: v1Db, riderIds: ["r1"], profileType: "mountain", effortByRider, rulesRevision: "orders_gc_v1" });
+  await applyRaceFatigue({ supabase: v2Db, riderIds: ["r1"], profileType: "mountain", effortByRider, rulesRevision: "orders_gc_v2" });
+  const f = (db) => db.__calls.find((c) => c.op === "upsert").rows[0].fatigue;
+  assert.equal(f(v2Db), f(v1Db));
+});
+
 // ── #3470: restDayFatigue (REN kerne, GT-hviledags-restitution) ────────────────────
 
 test("restDayFatigue: 0 hviledage → uændret træthed (identitet)", () => {
