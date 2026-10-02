@@ -26,49 +26,13 @@ test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   assert.match(src, /setRiders\(\(data \|\| \[\]\)\.map\(flattenAbilities\)\)/);
 });
 
-// #3300 (rework efter ejer-feedback): akademi-status pr. rytter-række —
-// is_academy medtages read-only i den eksisterende roster-query (INGEN ny
-// query/migration) og vises via den eksisterende RiderBadges-recipe (samme
-// "academy"-badge som TeamPage/TeamProfilePage). Ejer afviste v1 (badge inline
-// i navne-cellen) — badgen skal stå i sin EGEN kolonne, "på samme måde som
-// badges andre steder" (TeamPages Status-kolonne, der bundler badges via
-// RiderBadges). Guarden tjekker derfor BÅDE at RiderBadges bruges, OG at den
-// ikke længere ligger inde i den sticky navne-celle.
-test("#3300 roster-rækken viser akademi-status via den delte RiderBadges-recipe, i sin egen kolonne", () => {
+// #3300/#3761: akademi-status, kontraktudløb og pensionsrisiko vises via den
+// delte RiderBadges-recipe (samme nøgler som TeamPage), ikke håndrullet markup.
+// Akademiryttere undtages fra de to risiko-badges (squad-risk-spærren #2748
+// tæller kun senior-ryttere). #6030: D-047-roster-rækkens Status-kolonne er
+// slettet med flaget training_mobile_table; badgerne står i rytterkortet.
+test("#3300/#3761 rytterkortet viser akademi, kontraktudløb og pensionsrisiko via de delte helpers", () => {
   assert.match(src, /import RiderBadges from "\.\.\/components\/rider\/RiderBadges\.jsx"/);
-  assert.match(
-    src,
-    /<RiderBadges badges=\{\[[\s\S]*?rider\.is_academy && "academy",/,
-    "skal genbruge den eksisterende academy-badge-nøgle, ikke en ny visuel",
-  );
-
-  // Navne-cellen (sticky left-10) må IKKE længere indeholde RiderBadges eller
-  // ugeplan-toggle-knappen — begge er flyttet til deres egne kolonner.
-  const nameCellStart = src.indexOf("sticky-name-cell sticky left-10");
-  assert.ok(nameCellStart > -1, "navne-cellen skal stadig eksistere");
-  const nameCellEnd = src.indexOf("</td>", nameCellStart);
-  const nameCellSrc = src.slice(nameCellStart, nameCellEnd);
-  assert.doesNotMatch(nameCellSrc, /RiderBadges/, "akademi-badgen må ikke længere ligge i navne-cellen");
-  assert.doesNotMatch(nameCellSrc, /toggleRiderWeekPlan/, "ugeplan-toggle-knappen må ikke længere ligge i navne-cellen");
-
-  // Badgen skal stå i "Status"-kolonnen (samme header-mønster som TeamPage).
-  assert.match(src, /t\("colStatus"\)/, "Status-kolonnen skal stadig have sin header");
-  const statusCellStart = src.indexOf("Status: akademi");
-  assert.ok(statusCellStart > -1, "Status-kolonnen skal have en kommentar der forklarer akademi+badges-bundlingen");
-  const statusCellTdStart = src.indexOf("<td", statusCellStart);
-  const statusCellEnd = src.indexOf("</td>", statusCellTdStart);
-  const statusCellSrc = src.slice(statusCellTdStart, statusCellEnd);
-  assert.match(statusCellSrc, /<RiderBadges badges=\{\[[\s\S]*?rider\.is_academy && "academy",/, "akademi-badgen skal stå i Status-kolonnen");
-});
-
-// #3761: Status-cellen viste kun akademi-badgen. Kontraktudløb + pensionsrisiko
-// er de to badges der afgør om træning på rytteren overhovedet er en
-// investering værd, og begge findes allerede som beregnede helpers i
-// riderAge.js (samme kald-form som TeamPage.jsx). Guarden låser at de sendes
-// ind i det EKSISTERENDE RiderBadges — ikke som ny håndrullet markup — og at
-// akademiryttere undtages, ligesom på TeamPage (squad-risk-spærren #2748
-// tæller kun senior-ryttere).
-test("#3761 Status-cellen viser kontraktudloeb + pensionsrisiko via de delte helpers", () => {
   assert.match(
     src,
     /import \{ ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear \} from "\.\.\/lib\/riderAge\.js"/,
@@ -79,94 +43,42 @@ test("#3761 Status-cellen viser kontraktudloeb + pensionsrisiko via de delte hel
     /const activeSeasonNumber = seasonNumberFromReferenceYear\(seasonYear\);/,
     "contract_end_season er et sæson-NUMMER — nummeret udledes af det allerede hentede referenceår, ingen ekstra kald",
   );
-
-  const statusCellStart = src.indexOf("Status: akademi");
-  const statusCellTdStart = src.indexOf("<td", statusCellStart);
-  const statusCellEnd = src.indexOf("</td>", statusCellTdStart);
-  const statusCellSrc = src.slice(statusCellTdStart, statusCellEnd);
   assert.match(
-    statusCellSrc,
-    /!rider\.is_academy && retirementRiskBadgeKey\(rider, seasonYear\)/,
-    "pensionsrisiko-badgen skal stå i Status-kolonnen, og ikke på akademiryttere",
-  );
-  assert.match(
-    statusCellSrc,
-    /!rider\.is_academy && contractExpiringBadgeKey\(rider, activeSeasonNumber\)/,
-    "kontraktudløb-badgen skal stå i Status-kolonnen, og ikke på akademiryttere",
+    src,
+    /<RiderBadges badges=\{\[\s*rider\.is_academy && "academy",\s*!rider\.is_academy && retirementRiskBadgeKey\(rider, seasonYear\),\s*!rider\.is_academy && contractExpiringBadgeKey\(rider, activeSeasonNumber\),/,
   );
 });
 
 // #3815: alderen er den vigtigste enkeltvariabel når man vælger hvem der skal
-// trænes hårdt, og manglede på den flade hvor valget træffes (@knud_r_flink,
-// Discord 15/8). #1674 lukkede hullet på rytteroverblik + transferliste, men
-// ikke her. Kolonnen skal være sorterbar som de øvrige (SortTh +
-// rosterAccessors) og eksponeres i mobil-sortkontrollen, jf. #3706.
-test("#3815 roster-tabellen har en sorterbar Alder-kolonne", () => {
-  assert.match(src, /"colAge"/, "kolonnen skal have sin egen locale-nøgle");
-  assert.match(
-    src,
-    /<SortTh sortKey="age"/,
-    "alderen skal bruge den delte SortTh, ikke et bart <th> (samme fejl som #3706 rettede)",
-  );
-  assert.match(
-    src,
-    /age: \(r\) => ageForSeason\(r\.birthdate, seasonYear\),/,
-    "sorteringen skal bruge samme helper som cellen viser, så rækkefølgen ikke kan drive fra tallet",
-  );
-  assert.match(
-    src,
-    /\{ key: "age", label: t\("colAge"\) \}/,
-    "mobil-sortkontrollen skal eksponere præcis de samme nøgler som desktop-headerne (#3706)",
-  );
-  assert.match(
-    src,
-    /ageForSeason\(rider\.birthdate, seasonYear\) \?\? "—"/,
-    "cellen skal vise sæson-alderen med '—' når sæson-året mangler (#3071: aldrig et gættet tal)",
-  );
-  assert.match(
-    src,
-    /ROSTER_DESC_FIRST = new Set\(\["age",/,
-    "alder er numerisk og følger sidens desc-først-konvention: ét klik = de ældste øverst",
-  );
+// trænes hårdt (@knud_r_flink, Discord 15/8). Sorteringen bruger samme helper
+// som visningen og eksponeres i mobil-sortkontrollen, jf. #3706.
+test("#3815 alderen er sorterbar med samme helper som visningen", () => {
+  assert.match(src, /age: \(r\) => ageForSeason\(r\.birthdate, seasonYear\),/,
+    "sorteringen skal bruge samme helper som cellen viser, så rækkefølgen ikke kan drive fra tallet");
+  assert.match(src, /\{ key: "age", label: t\("colAge"\) \}/,
+    "mobil-sortkontrollen skal eksponere præcis de samme nøgler som desktop-headerne (#3706)");
+  assert.match(src, /ROSTER_DESC_FIRST = new Set\(\["age",/,
+    "alder er numerisk og følger sidens desc-først-konvention: ét klik = de ældste øverst");
 });
 
-// #3300-rework: ugeplan-knappen får sin egen kolonne (ejer-feedback, samme
-// session som badge-flytningen ovenfor) — "colWeekPlan" er den nye header-nøgle.
-test("#3300-rework individuel ugeplan-knap har sin egen kolonne", () => {
-  assert.match(src, /"colWeekPlan"/, "skal have en dedikeret kolonne-header for ugeplan-knappen");
-  // #3815 lagde Alder-kolonnen oveni, så tallet er 11.
-  assert.match(src, /const ROSTER_COLS = 11;/, "kolonnetal skal være opdateret til den nye kolonne");
-
-  const weekPlanCellStart = src.indexOf("Individuel ugeplan — egen kolonne");
-  assert.ok(weekPlanCellStart > -1, "ugeplan-kolonnens celle skal have sin egen kommentar");
-  const weekPlanTdStart = src.indexOf("<td", weekPlanCellStart);
-  const weekPlanTdEnd = src.indexOf("</td>", weekPlanTdStart);
-  const weekPlanCellSrc = src.slice(weekPlanTdStart, weekPlanTdEnd);
-  assert.match(weekPlanCellSrc, /toggleRiderWeekPlan\(rider\.id\)/, "ugeplan-toggle-knappen skal stå i sin egen kolonne");
-  assert.match(weekPlanCellSrc, /individualWeekPlanToggleOpen/, "knap-teksten skal genbruges uændret");
-});
-
-test("#1480.1 hver række renderer en RiderTypeBadge", () => {
-  assert.match(src, /import RiderTypeBadge from/);
-  assert.match(
-    src,
-    /<RiderTypeBadge primaryType=\{rider\.primary_type\} secondaryType=\{rider\.secondary_type\} \/>/,
-  );
+test("#1480.1 rytterens type vises fra primary_type/secondary_type", () => {
+  assert.match(src, /function riderTypeLine\(rider\) \{/);
+  assert.match(src, /tTypes\(`types\.\$\{rider\.primary_type\}`\)/);
 });
 
 test("#1480.2 group-by-type-toggle styrer grupperet visning via groupRidersByType", () => {
   assert.match(src, /import \{ groupRidersByType, UNTYPED_KEY \} from/);
-  assert.match(src, /groupByType\s*\?\s*groupRidersByType\(riders\)/);
+  assert.match(src, /groupByType\s*\?\s*groupRidersByType\(visibleRiders\)/);
   assert.match(src, /t\("groupByType"\)/);
 });
 
 test("#1480.3 multi-select + bulk-apply via setPlanBulk", () => {
   assert.match(src, /setPlanBulk/, "skal bruge bulk-handleren");
   assert.match(src, /handleBulkApply/);
-  assert.match(src, /t\("bulkApply"/);
-  // Select-all + per-række checkbox.
-  assert.match(src, /toggleSelectAll/);
-  assert.match(src, /toggleSelect\(rider\.id\)/);
+  assert.match(src, /t\("today\.applyTo"/);
+  // Select-all + per-række checkbox (TrainingTodayTable).
+  assert.match(src, /onToggleAll=\{toggleSelectAll\}/);
+  assert.match(src, /onToggleSelect=\{toggleSelect\}/);
 });
 
 // #1894 variant 1: hint under fokus-dropdown for ryttere UDEN plan — viser hvilket
@@ -192,31 +104,20 @@ test("#1894.3 bulk-select har smart-fokus-mulighed + viser skipped-med-plan", ()
   assert.match(src, /skippedHasPlan/);
 });
 
-// #1895 PR 1: ugentlig træningsrytme — panel med 7 dags-selects + gem/nulstil,
-// wired mod useTraining's setWeekPlan/clearWeekPlan (aldrig frontend-fokus-logik).
-test("#1895 ugerytme-panel har 7 ugedags-selects + gem/nulstil wired mod useTraining", () => {
+// #1895 PR 1: ugentlig træningsrytme — gem/nulstil wired mod useTraining's
+// setWeekPlan/clearWeekPlan (aldrig frontend-fokus-logik). #5932/#6030: holdets
+// plan redigeres i Program-fanens Plan-kort (TrainingPlanCard, "Plan for: Team").
+test("#1895 ugerytmen gemmes/nulstilles mod useTraining", () => {
   assert.match(src, /weekPlan, savingWeekPlan, setWeekPlan, clearWeekPlan/, "skal destrukturere ugerytme-state fra useTraining");
-  // #5485: holdets plan redigeres i fanen Week plan (TrainingWeekPlan, "Plan
-  // for: Team"), stadig mod de samme handlers nedenfor.
-  assert.match(src, /<TrainingWeekPlan/);
-  assert.match(src, /onSave=\{\(\) => \(isTeam \? handleSaveWeekPlan\(\) : handleSaveRiderWeekPlan\(key\)\)\}/);
-  assert.match(src, /WEEKDAY_KEYS\.map\(\(weekday\)/, "skal rendere én select pr. WEEKDAY_KEYS-nøgle");
-  assert.match(src, /handleSaveWeekPlan/);
+  assert.match(src, /<TrainingPlanCard/);
+  assert.match(src, /onSave: \(\) => \(isTeam \? handleSaveWeekPlan\(\) : handleSaveRiderWeekPlan\(key\)\)/);
   assert.match(src, /handleResetWeekPlan/);
   assert.match(src, /setWeekPlan\(days\)/, "gem skal kalde useTraining's setWeekPlan");
   assert.match(src, /clearWeekPlan\(\)/, "nulstil skal kalde useTraining's clearWeekPlan");
 });
 
-test("#1895/#2438 roster-rækker viser altid dagens effektive intensitet + kilde, når holdet har en ugerytme (ren visning)", () => {
-  assert.match(src, /resolveDayIntensityDisplay/, "skal genbruge den delte lagdelings-funktion (samme regel som motoren)");
-  assert.match(src, /resolveDayIntensitySource/, "#2438: skal genbruge kilde-funktionen (individualPlan/ownSetting/teamRhythm)");
-  assert.match(src, /teamRhythmActive/, "hint vises altid når holdet HAR en ugerytme (ikke kun ved 'differs')");
-  // #2438: hint-nøglen er dynamisk (todayHintKey) og skelner nu mellem individuel
-  // ugeplan, rytterens egen eksplicitte plan (der overtrumfer rytmen) og holdrytmen.
-  assert.match(src, /t\(todayHintKey,/);
-  assert.match(src, /weekRhythmTodayHint"/);
-  assert.match(src, /weekRhythmTodayHintPlan"/, "#2438: ny variant for rytterens egen indstilling, der overtrumfer holdrytmen");
-});
+// #1895/#2438: D-047-roster-rækkens dags-hint (resolveDayIntensityDisplay) er
+// slettet med grenen (#6030); dagens celle viser nu dagstypen direkte.
 
 // ── #1895 PR 2: individuel ugeplan pr. rytter (rider_id-override) ─────────────
 test("#1895.2 individuel ugeplan wired mod useTraining's riderWeekPlans/setRiderWeekPlan/clearRiderWeekPlan", () => {
@@ -231,19 +132,9 @@ test("#1895.2 individuel ugeplan wired mod useTraining's riderWeekPlans/setRider
   assert.match(src, /clearRiderWeekPlan\(riderId\)/, "fjern skal kalde useTraining's clearRiderWeekPlan");
 });
 
-test("#1895.2 roster-tabellen har en toggle-knap pr. rytter til individuel ugeplan", () => {
-  assert.match(src, /toggleRiderWeekPlan\(rider\.id\)/);
-  assert.match(src, /t\("individualWeekPlanToggleOpen"\)/);
-});
-
-test("#1895.2 ryttere MED egen ugeplan markeres i rosteret (badge)", () => {
-  assert.match(src, /hasOwnWeekPlan/, "skal beregne om rytteren har egen override");
+test("#1895.2 ryttere MED egen ugeplan markeres (badge) i Plan for og i dagens række", () => {
+  assert.match(src, /const hasOwn = \(r\) => riderWeekPlans\[r\.id\] != null/, "skal beregne om rytteren har egen override");
   assert.match(src, /t\("individualWeekPlanBadge"\)/);
-});
-
-test("#1895.2 dagens-hint tager højde for rytter-override (samme opløsningsrækkefølge som motoren)", () => {
-  assert.match(src, /riderOverrideDays/, "skal sende rytterens egen override til resolveDayIntensityDisplay");
-  assert.match(src, /weekRhythmTodayHintOwn/);
 });
 
 // #3299: Form/Træthed-kolonnerne foldes ind i portræt (#3045-kontrakten, "hidden
@@ -259,36 +150,24 @@ test("#3299 mobil-sort-kontrol eksponerer træthed (+ form) via rosterSort, kun 
   assert.match(src, /onSort=\{rosterSort\.handleSort\}/, "skal skrive til samme sort-state som desktop-headerne (ingen ny sort-logik)");
 });
 
-// ── #3706: Status-kolonnen kunne klikkes uden at sortere ──────────────────────
-//
-// @cybersimon, Discord #feedback-and-ideas 13/8: "if you press on status it
-// would show academy first or last, right now it is doing nothing." Verificeret
-// i koden: overskriften var et bart <th>, ikke en SortTh, og der fandtes ingen
-// comparator for kolonnen. De øvrige ikke-sorterbare kolonner (fokus,
-// intensitet, kvittering, ugeplan) er ligeledes bare <th> og ser derfor heller
-// ikke klikbare ud, så Status var den eneste egentlige mangel.
-test("#3706 Status-kolonnen er sorterbar via samme SortTh/useSortState-mønster som resten", () => {
-  assert.match(
-    src,
-    /<SortTh sortKey="status" sort=\{rosterSort\.sort\} sortDir=\{rosterSort\.sortDir\} onSort=\{rosterSort\.handleSort\}/,
-    "Status-headeren skal være en SortTh, ikke et bart <th>",
-  );
+// ── #3706: Status-sorteringen ─────────────────────────────────────────────────
+// @cybersimon, Discord #feedback-and-ideas 13/8: Status skulle kunne sorteres
+// (akademi først/sidst). #6030: D-047-roster-rækkens bare <th>/SortTh er slettet
+// med flaget training_mobile_table; sorteringen lever i rosterAccessors og
+// mobil-sortkontrollen, som dagens tabel og telefonens rækker deler.
+test("#3706 Status-sorteringen vægter akademi og er desc-først", () => {
   assert.match(src, /status: \(r\) => \(r\.is_academy \? STATUS_ACADEMY_WEIGHT : 0\)/,
     "comparatoren skal vægte akademi-flaget, så akademi-rytterne samles");
-  // #3815 tilføjede "age" til samme sæt (numerisk kolonne, samme konvention);
-  // det afgørende her er at "status" stadig er desc-først.
   assert.match(src, /ROSTER_DESC_FIRST = new Set\(\[(?:[^\]]*, )?"status"\]\)/,
     "første klik skal give akademi ØVERST (desc-først), som spilleren beskrev");
   assert.match(src, /key:\s*"status"/, "mobil-sort-kontrollen skal eksponere den samme nøgle");
 });
 
-// ── #3709 trin 1: kvitteringen på roster-rækken ───────────────────────────────
-test("#3709 roster-kolonnen viser kvitteringen pr. evne i fokusset, ikke én aggregeret bar", () => {
-  assert.match(src, /import AbilityReceiptRow from "\.\.\/components\/training\/AbilityReceiptRow\.jsx"/);
-  assert.match(src, /focusAbilityReceipt\(plan\?\.focus, \{/, "rækkerne skal komme fra den delte helper");
+// ── #3709 trin 1: kvitteringen pr. evne ───────────────────────────────────────
+test("#3709 kvitteringen viser fremgang pr. evne i fokusset via den delte helper", () => {
+  assert.match(src, /focusAbilityReceipt\(planFor\(riderId\)\?\.focus, \{/, "rækkerne skal komme fra den delte helper");
   assert.match(src, /seasonAbilityGains\(history\.seasonRuns, r\.id, history\.seasonStart\)/,
     "sæson-point skal filtreres på den AKTIVE sæsons start, ikke bare 30 dage");
-  assert.match(src, /t\("receipt\.title"\)/, "kolonne-headeren skal være kvitteringens titel");
 });
 
 // De tre loft-tekster er slettet: de lovede spilleren at en evne aldrig steg

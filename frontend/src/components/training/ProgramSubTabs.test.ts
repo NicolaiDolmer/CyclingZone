@@ -9,17 +9,18 @@ const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(join(here, rel), "utf8");
 const page = read("../../pages/TrainingPage.jsx");
 
-test("under-fanerne huskes i ?sub= og gates pr. flag", () => {
+test("under-fanerne huskes i ?sub=; kataloget gates stadig af training_programs", () => {
   assert.match(page, /searchParams\.get\("sub"\)/);
   assert.match(page, /p\.set\("sub", sub\)/);
-  assert.match(page, /\.\.\.\(programsOn \? \["programs"\] : \[\]\)/);
-  assert.match(page, /\.\.\.\(fatigueRulesOn \? \["limit"\] : \[\]\)/);
-  // Flags off: fanen er praecis som i dag.
-  assert.match(page, /programLayout \? renderProgramTab\(\) : renderWeekPlanTab\(\)/);
+  // #6030: felter og traethedsgraense er on for alle; kun kataloget er beta.
+  assert.match(page, /const programSubTabs = \["plan", \.\.\.\(programsOn \? \["programs"\] : \[\]\), "limit"\];/);
+  assert.match(page, /\{renderProgramTab\(\)\}/);
 });
 
 test("Today-fanen faar een linje i overblikket, intet nyt kort", () => {
-  assert.match(page, /footer=\{fatigueRulesOn \? <FatigueRuleSummary/);
+  // Linjen tegner selv intet foer reglen er aaben (data.enabled), #6030.
+  assert.match(page, /footer=\{<FatigueRuleSummary data=\{fatigueRules\.data\}/);
+  assert.match(read("FatigueRuleSummary.tsx"), /if \(!data\?\.enabled\) return null;/);
   assert.match(page, /onEdit=\{\(\) => setSub\("limit"\)\}/);
 });
 

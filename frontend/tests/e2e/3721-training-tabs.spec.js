@@ -83,33 +83,31 @@ test("Train today er default: rosteret er synligt, den slettede FAQ er væk, uge
   await expect(helpLink).toHaveAttribute("href", "/help?section=dailytraining");
 });
 
-test("Week plan-fanen viser ugeplanen åben (ingen accordion) + den individuelle ugeplan-oversigt", async ({ page }) => {
+// #5932/#6030: fanen hedder Program og har under-faner; holdets plan står i
+// Plan-kortet (TrainingPlanCard). Den gamle Ugeplan-fane (flag fra) er slettet.
+test("Program-fanen viser holdets plan åben (ingen accordion) med Plan for", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
 
-  await page.getByRole("tab", { name: "Ugeplan" }).click();
+  await page.getByRole("tab", { name: "Program" }).click();
   await expect(page).toHaveURL(/\/training\?tab=weekplan$/);
 
-  // Rosterets tabel er væk (kun Week plan-fanens indhold rendres).
+  // Rosterets tabel er væk (kun Program-fanens indhold rendres).
   await expect(page.locator("table[data-sortable]")).toHaveCount(0);
 
-  // #5485 (aendring 6): ugeplanen er synlig UDEN at skulle åbnes — ingen
+  // #5485 (aendring 6): planen er synlig UDEN at skulle åbnes — ingen
   // <details>-element — som 7 dage med en vælger pr. dag og en Gem-knap.
-  const plan = page.getByTestId("training-week-plan");
-  await expect(plan.getByRole("heading", { name: "Ugeplan", exact: true })).toBeVisible();
+  const plan = page.getByTestId("training-plan-card");
+  await expect(plan).toContainText("Sæt intensiteten for hver af ugens dage.");
   await expect(page.locator("details")).toHaveCount(0);
   await expect(plan.getByTestId("training-week-plan-row")).toHaveCount(7);
   await expect(plan.getByRole("button", { name: "Gem plan" })).toBeVisible();
 
-  // Den individuelle ugeplan-oversigt (tom i denne fixture — riderWeekPlans: {}).
-  await expect(page.getByRole("heading", { name: "Individuelle ugeplaner" })).toBeVisible();
-  await expect(page.getByText("Ingen rytter har sin egen plan endnu.", { exact: false })).toBeVisible();
-
   // #3643/PR #5552 fandt "Gå til rosteret" død på telefonen. Rytterens egen
-  // plan åbnes nu på fanen selv via "Plan for" — samme kladde/gem som holdets.
+  // plan åbnes på fanen selv via "Plan for" — samme kladde/gem som holdets.
   await expect(page.getByRole("button", { name: "Gå til rosteret" })).toHaveCount(0);
-  await plan.getByRole("combobox", { name: "Plan for" }).selectOption("rider-1");
+  await plan.getByTestId("training-plan-for").selectOption("rider-1");
   await expect(plan).toContainText("Ada Pedersen");
 });
 
@@ -124,7 +122,8 @@ test("Development-fanen viser navn+alder, glyf-tallene og en fungerende fokus-kn
   // Rosterets tabel er væk (kun Development-fanens indhold rendres).
   await expect(page.locator("table[data-sortable]")).toHaveCount(0);
 
-  await expect(page.getByText("Ada Pedersen")).toBeVisible();
+  // #6025: sæsonoverblikket øverst nævner også rytteren; rækken er linket.
+  await expect(page.getByRole("link", { name: "Ada Pedersen" })).toBeVisible();
   // rider-1 er født 2002-04-12; alderen selv afhænger af aktiv sæsons
   // referenceår, så vi tester KUN at en alders-linje findes, ikke det eksakte tal.
   // Tester-feedback 20/8 (#3798): rollen står PÅ rækken — alders-linjen bærer
@@ -167,13 +166,13 @@ test("?tab=development er et gyldigt dyb-link (samme VALID_TABS-mønster som Rid
   await page.goto("/training?tab=development");
 
   await expect(page.getByRole("tab", { name: "Udvikling", selected: true })).toBeVisible();
-  await expect(page.getByText("Ada Pedersen")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ada Pedersen" })).toBeVisible();
 });
 
 test("?tab=weekplan er et gyldigt dyb-link", async ({ page }) => {
   await login(page);
   await page.goto("/training?tab=weekplan");
 
-  await expect(page.getByRole("tab", { name: "Ugeplan", selected: true })).toBeVisible();
-  await expect(page.getByTestId("training-week-plan").getByRole("heading", { name: "Ugeplan", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Program", selected: true })).toBeVisible();
+  await expect(page.getByTestId("training-plan-card")).toBeVisible();
 });

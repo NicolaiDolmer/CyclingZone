@@ -12,7 +12,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cardSource = readFileSync(join(__dirname, "TrainingMobileRiderCard.tsx"), "utf8");
-const todaySource = readFileSync(join(__dirname, "TrainingMobileToday.tsx"), "utf8");
 
 test("#5735 kortet importerer RiderLink (samme profil-link-komponent som resten af appen)", () => {
   assert.match(
@@ -38,10 +37,5 @@ test("#5735 sidehovedets <h3> render'er navnet som et anchor via RiderLink, med 
   );
 });
 
-test("#5735 mobil-traeningssiden sender rytterens id med ind i kortet", () => {
-  assert.match(
-    todaySource,
-    /<TrainingMobileRiderCard\s*\n\s*id=\{detailId\}\s*\n\s*riderId=\{selected\.id\}/,
-    "TrainingMobileToday skal sende selected.id som riderId, saa mobil-popup'ens navn faar et rigtigt profil-link",
-  );
-});
+// #6030: TrainingMobileToday (training_program_cells = off) er slettet; den
+// test der pinnede dens riderId-wiring forsvandt med den.
