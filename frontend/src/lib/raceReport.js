@@ -20,7 +20,7 @@
 // fnv1aHash duplikeret bevidst fra backend/lib/raceSimulator.js's stableSeed
 // (samme begrundelse som resten af kodebasens frontend/backend-duplikationer —
 // ingen delt pakke mellem de to sider, jf. raceStageMoments.js's isStoryTagKey).
-import { catchActorCopy } from "./raceCatchActor.js";
+import { catchActorCopy } from "./raceCatchActor.ts";
 
 function fnv1aHash(str) {
   let h = 0x811c9dc5;
@@ -57,8 +57,7 @@ export const BEAT_VARIANT_COUNTS = Object.freeze({
   favorite_off_day: 1, gc_takeover: 2, team_day: 1,
   aggression_no_cost: 2, saved_effort: 2, gave_everything: 2,
   // #6050: aktør-varianter af breakaway_caught (kun når tidslinjen navngiver den).
-  breakaway_caught_by_teams: 1, breakaway_caught_by_teams_km: 1,
-  breakaway_caught_by_peloton: 1, breakaway_caught_by_peloton_km: 1,
+  breakaway_caught_by_teams: 1, breakaway_caught_by_peloton: 1,
 });
 
 // #4373: itt_win/ttt_win er tidskørslernes vindermomenter (backend/lib/
@@ -152,6 +151,8 @@ export function selectBeats(stageMoments, headline) {
  * @param {string} [args.raceId]
  * @param {number} args.stageNumber
  * @param {Array} [args.moments]  ALLE løbets moments (race_stage_moments-rækker), filtreres internt til denne etape.
+ * @param {Array|null} [args.timelineEvents]  #6050: etapens tidslinje-events (aktøren bag en indhentning).
+ * @param {{get(id: string): string|undefined}|null} [args.teamNameById]  #6050: team_id → holdnavn.
  * @returns {{ headline: {moment, variant}, lede: {key, variant, winMoment}, beats: Array<{moment, beatKey, variant}> } | null}
  */
 export function buildRaceReport({ raceId, stageNumber, moments, timelineEvents = null, teamNameById = null } = {}) {

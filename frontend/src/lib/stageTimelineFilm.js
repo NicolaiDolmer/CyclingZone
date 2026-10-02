@@ -8,7 +8,7 @@
 // nøgler/params er alle rene funktioner af (events, distanceKm) — ingen skjult
 // tilstand, ingen engine-kald.
 
-import { catchActor, findMorningCatch } from "./raceCatchActor.js";
+import { catchActor, findMorningCatch } from "./raceCatchActor.ts";
 
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
@@ -269,7 +269,7 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
       if (!params) return null;
       // #6050: nævn aktøren når motoren har skrevet den; ellers den gamle linje.
       const actor = catchActor(event, { teamNameById });
-      if (actor?.kind === "teams") return { key: "breakaway_caught_by_teams", params: { ...params, teams: actor.teams, teamCount: actor.teamCount } };
+      if (actor?.kind === "teams") return { key: "breakaway_caught_by_teams", params: { ...params, teams: actor.teams } };
       if (actor?.kind === "peloton") return { key: "breakaway_caught_by_peloton", params };
       return { key: "breakaway_caught", params };
     }

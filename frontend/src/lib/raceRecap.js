@@ -7,7 +7,7 @@
 // Degraderer ærligt: tynde/gamle data → færre eller ingen momenter, aldrig falske
 // påstande, aldrig kast.
 import { resultEntity } from "./raceResultEntity.js";
-import { catchActorCopy } from "./raceCatchActor.js";
+import { catchActorCopy } from "./raceCatchActor.ts";
 
 // Solo vs. spurt-grænse: et gab på ≥10s til nr. 2 = en "solo"-fortælling.
 const SOLO_THRESHOLD_S = 10;

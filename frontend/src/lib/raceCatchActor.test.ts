@@ -3,21 +3,27 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { catchActor, catchActorCopy, findMorningCatch, timelineDistanceKm } from "./raceCatchActor.js";
-import { describeEvent } from "./stageTimelineFilm.js";
-import { buildRaceRecap } from "./raceRecap.js";
-import { buildRaceReport, BEAT_VARIANT_COUNTS } from "./raceReport.js";
+import { catchActor, catchActorCopy, findMorningCatch, timelineDistanceKm } from "./raceCatchActor.ts";
+import { describeEvent as describeEventJs } from "./stageTimelineFilm.js";
+import { buildRaceRecap as buildRaceRecapJs } from "./raceRecap.js";
+import { buildRaceReport as buildRaceReportJs, BEAT_VARIANT_COUNTS } from "./raceReport.js";
+
+// JS-modulerne har løse, afledte typer (JSDoc), så testen kalder dem løst typet.
+type Loose = any;
+const describeEvent = describeEventJs as unknown as (event: unknown, opts: unknown) => Loose;
+const buildRaceRecap = buildRaceRecapJs as unknown as (input: unknown) => Loose[];
+const buildRaceReport = buildRaceReportJs as unknown as (input: unknown) => Loose;
 
 const riderNameById = new Map([["r1", "Ada Pedersen"], ["r2", "Mikkel Hansen"], ["r9", "Jonas Berg"]]);
 const teamNameById = new Map([["t1", "Team A"], ["t2", "Team B"]]);
 
 const formed = { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["r1", "r2"] } };
 const start = { km: 0, type: "stage_start", params: { field_count: 120, distance_km: 180 } };
-const caughtV4 = (extra) => ({ km: 176, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["r1", "r2"], chase_group_id: "peloton-0", ...extra } });
+const caughtV4 = (extra: Record<string, unknown>) => ({ km: 176, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["r1", "r2"], chase_group_id: "peloton-0", ...extra } });
 
 test("catchActor: hold med jagt-arbejde navngives, km til mål afrundes", () => {
   const actor = catchActor(caughtV4({ chase_group_kind: "peloton", chasing_team_ids: ["t1", "t2"] }), { teamNameById, distanceKm: 180 });
-  assert.deepEqual(actor, { kind: "teams", teams: "Team A, Team B", teamCount: 2, km: 4 });
+  assert.deepEqual(actor, { kind: "teams", teams: "Team A, Team B", km: 4 });
 });
 
 test("catchActor: ukendte hold-navne falder tilbage til feltet, aldrig et råt id", () => {
@@ -64,7 +70,7 @@ const scope = { type: "stage", stageNumber: 1 };
 test("buildRaceRecap: aktør-linje med km når tidslinjen bærer den", () => {
   const events = [start, formed, caughtV4({ chase_group_kind: "peloton", chasing_team_ids: ["t2"] })];
   const caught = buildRaceRecap({ results: stageRows, scope, timelineEvents: events, teamNameById }).find((m) => m.key.startsWith("breakawayCaught"));
-  assert.deepEqual(caught, { key: "breakawayCaughtByTeamsKm", params: { count: 2, teams: "Team B", teamCount: 1, km: 4 } });
+  assert.deepEqual(caught, { key: "breakawayCaughtByTeams", params: { count: 2, teams: "Team B", where: "km", km: 4 } });
 });
 
 test("buildRaceRecap: uden tidslinje eller felter er linjen uændret", () => {
@@ -82,11 +88,11 @@ test("buildRaceReport: breakaway_caught-beat skifter til aktør-nøgle med færd
   ];
   const events = [start, formed, caughtV4({ chase_group_kind: "peloton" })];
   const withActor = buildRaceReport({ raceId: "race-x", stageNumber: 1, moments, timelineEvents: events, teamNameById });
-  const beat = withActor.beats.find((b) => b.moment.moment_key === "breakaway_caught");
-  assert.equal(beat.beatKey, "breakaway_caught_by_peloton_km");
+  const beat = withActor.beats.find((b: Loose) => b.moment.moment_key === "breakaway_caught");
+  assert.equal(beat.beatKey, "breakaway_caught_by_peloton");
   assert.equal(beat.variant, 0);
-  assert.deepEqual(beat.params, { count: 2, km: 4 });
-  const without = buildRaceReport({ raceId: "race-x", stageNumber: 1, moments }).beats.find((b) => b.moment.moment_key === "breakaway_caught");
+  assert.deepEqual(beat.params, { count: 2, where: "km", km: 4 });
+  const without = buildRaceReport({ raceId: "race-x", stageNumber: 1, moments }).beats.find((b: Loose) => b.moment.moment_key === "breakaway_caught");
   assert.equal(without.beatKey, "breakaway_caught");
   assert.equal(without.params, undefined);
 });
@@ -95,8 +101,8 @@ test("catchActorCopy: beat- og recap-familier giver nøgler der findes i en+da",
   for (const lang of ["en", "da"]) {
     const races = JSON.parse(readFileSync(new URL(`../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
     for (const key of ["breakaway_caught_by_teams", "breakaway_caught_by_peloton"]) assert.ok(races.detail.film.event[key], `${lang} film ${key}`);
-    for (const suffix of ["", "Km"]) {
-      for (const base of ["breakawayCaughtByTeams", "breakawayCaughtByPeloton"]) assert.ok(races.detail.recap[`${base}${suffix}`], `${lang} recap ${base}${suffix}`);
+    for (const key of ["breakawayCaughtByTeams", "breakawayCaughtByPeloton"]) {
+      assert.match(races.detail.recap[key], /\{where, select, km \{/, `${lang} recap ${key}`);
     }
     for (const key of Object.keys(BEAT_VARIANT_COUNTS).filter((k) => k.startsWith("breakaway_caught_by"))) {
       assert.ok(races.detail.report.beat[key]?.v1, `${lang} beat ${key}`);
