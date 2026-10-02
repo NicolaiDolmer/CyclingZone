@@ -38,8 +38,8 @@ async function fetchStage() {
 
   const [race] = await one(db.from("races").select("id, name, stages, squad, race_class").eq("id", RACE_ID), "races");
   if (!race) throw new Error(`Loeb ${RACE_ID} findes ikke`);
-  const profiles = await one(db.from("race_stage_profiles").select("*").eq("race_id", RACE_ID), "race_stage_profiles");
-  const entries = await one(db.from("race_entries").select("rider_id, team_id, race_role").eq("race_id", RACE_ID), "race_entries");
+  const profiles = await one(db.from("race_stage_profiles").select("*").eq("race_id", RACE_ID), "race_stage_profiles"); // pagination-safe: ét løbs etaper (< 30 rækker)
+  const entries = await one(db.from("race_entries").select("rider_id, team_id, race_role").eq("race_id", RACE_ID), "race_entries"); // pagination-safe: ét løbs startliste (< 300 rækker)
   const orders = await one(db.from("race_team_orders").select("team_id, race_id, stage_number, breakaway_stance, riders").eq("race_id", RACE_ID), "race_team_orders");
   const teamIds = [...new Set(entries.map((e) => e.team_id).filter(Boolean))];
   const riderIds = entries.map((e) => e.rider_id);
