@@ -104,7 +104,7 @@ export default function StageSplitTimes({
   if (!splits.length && !losses.length) return null;
 
   const body = (
-    <div className="space-y-4" data-testid="stage-split-times">
+    <div className="space-y-4" data-testid={variant === "section" ? undefined : "stage-split-times"}>
       {shownSplits.length > 0 && (
         <div className="space-y-3">
           {variant !== "section" && <p className="text-3xs font-bold uppercase tracking-wide text-cz-3">{t("detail.film.split.title")}</p>}
@@ -124,7 +124,7 @@ export default function StageSplitTimes({
 
   if (variant !== "section") return body;
   return (
-    <Section>
+    <Section data-testid="stage-split-times">
       <SectionHeader title={t("detail.film.split.title")} />
       {body}
     </Section>
