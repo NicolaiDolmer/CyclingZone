@@ -513,6 +513,28 @@ function teamIdOf(entrant: Entrant | undefined): string | null {
   return typeof raw === "string" && raw.length > 0 ? raw : null;
 }
 
+/**
+ * #6050: aktoeren bag en indhentning, til loebsfilmen (ren beskrivelse, ingen tal).
+ * chase_group_kind = jagt-gruppens art (fx "peloton"/"chase"); chasing_team_ids =
+ * sorterede team_ids med ryttere i jagt-arbejde, udeladt naar ingen hold jagede.
+ */
+export function catchActorParams(
+  chase: { id: string; kind: string },
+  chaserWork: ReadonlyMap<string, number> | undefined,
+  entrants: Readonly<Record<string, Entrant>>,
+): Record<string, unknown> {
+  const teamIds = new Set<string>();
+  for (const [riderId, work] of chaserWork ?? []) {
+    const teamId = work > 0 ? teamIdOf(entrants[riderId]) : null;
+    if (teamId) teamIds.add(teamId);
+  }
+  return {
+    chase_group_id: chase.id,
+    chase_group_kind: chase.kind,
+    ...(teamIds.size > 0 ? { chasing_team_ids: [...teamIds].sort((a, b) => a.localeCompare(b)) } : {}),
+  };
+}
+
 export type TeamChasePlan = {
   /** Signeret stance-signal i [-1, 1] — samme akse som computeNetChaseAdvantage's `stance`. */
   signal: number;
@@ -1277,7 +1299,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       events.push({
         km: round2(ctx.segment.to_km),
         type: "breakaway_caught",
-        params: { group_id: breakaway.id, rider_ids: [...breakaway.rider_ids] },
+        // #6050 (ADDITIV, kun fortaelling): hvem hentede udbruddet. chasing_team_ids =
+        // de hold der havde ryttere i jagt-arbejde i det segment hvor hullet lukkede.
+        params: { group_id: breakaway.id, rider_ids: [...breakaway.rider_ids], ...catchActorParams(chase, workByChaseGroup.get(chaseId)?.plan.chaserWork, ctx.entrants) },
       });
     } else if (isLastSegment) {
       events.push({

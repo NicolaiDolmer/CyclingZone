@@ -7,6 +7,7 @@
 // Degraderer ærligt: tynde/gamle data → færre eller ingen momenter, aldrig falske
 // påstande, aldrig kast.
 import { resultEntity } from "./raceResultEntity.js";
+import { catchActorCopy } from "./raceCatchActor.ts";
 
 // Solo vs. spurt-grænse: et gab på ≥10s til nr. 2 = en "solo"-fortælling.
 const SOLO_THRESHOLD_S = 10;
@@ -98,7 +99,13 @@ function jerseyWinnerName(results, type) {
   return first ? resultEntity(first).name : null;
 }
 
-export function buildRaceRecap({ results = [], scope, incidents = [], profileType = null } = {}) {
+// #6050: hvem hentede udbruddet, når etapens tidslinje bærer det (v4). Uden
+// tidslinje eller felter → den oprindelige "breakawayCaught"-linje.
+function caughtMoment(count, timelineEvents, teamNameById) {
+  return catchActorCopy(timelineEvents, { teamNameById, family: "recap", count }) ?? { key: "breakawayCaught", params: { count } };
+}
+
+export function buildRaceRecap({ results = [], scope, incidents = [], profileType = null, timelineEvents = null, teamNameById = null } = {}) {
   const sc = scope || { type: "overall" };
   const moments = [];
   const finish = selectFinishOrder(results, sc);
@@ -130,7 +137,8 @@ export function buildRaceRecap({ results = [], scope, incidents = [], profileTyp
     if (first.in_breakaway && first.breakaway_caught === false) {
       moments.push({ key: "breakawaySurvived", params: { count: inBreak.filter((r) => r.breakaway_caught === false).length } });
     } else if (inBreak.some((r) => r.breakaway_caught === true)) {
-      moments.push({ key: "breakawayCaught", params: { count: inBreak.filter((r) => r.breakaway_caught === true).length } });
+      const count = inBreak.filter((r) => r.breakaway_caught === true).length;
+      moments.push(caughtMoment(count, timelineEvents, teamNameById));
     }
   }
 

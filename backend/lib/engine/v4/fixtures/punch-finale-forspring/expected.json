@@ -37,7 +37,9 @@
           "rider_ids": [
             "r02",
             "r14"
-          ]
+          ],
+          "chase_group_id": "peloton-0",
+          "chase_group_kind": "peloton"
         }
       },
       {
