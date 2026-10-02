@@ -198,6 +198,9 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
   const rawGap = (g: string) => state.gaps.get(g) ?? 0;
   const minGap = Math.min(...alive.map(rawGap));
   const own = new Set(ownRiderIds);
+  // Et "udbrud" bag feltet er ikke laengere et udbrud (fx hentet nedkoersels-
+  // angreb): det vises som en almindelig gruppe.
+  const pelotonGap = alive.includes(INITIAL_GROUP) ? rawGap(INITIAL_GROUP) : null;
   return alive
     .map((g): SplitGroup => {
       const ids = members.get(g) ?? [];
@@ -206,7 +209,8 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
         : ids.filter((id) => own.has(id));
       const count = g === INITIAL_GROUP ? implicitPeloton : ids.length;
       const soloRiderId = g !== INITIAL_GROUP && ids.length === 1 ? ids[0] : null;
-      const base = groupKind(g);
+      const kindOf = groupKind(g);
+      const base = kindOf === "breakaway" && pelotonGap != null && rawGap(g) > pelotonGap ? "group" : kindOf;
       return {
         groupId: g,
         kind: soloRiderId ? "solo" : (base === "solo" ? "group" : base),

@@ -17,12 +17,13 @@ function GroupRow({ group, riderNameById, t }) {
   const label = group.kind === "solo"
     ? (nameOf(riderNameById, group.soloRiderId) || t("detail.film.split.group.group"))
     : t(`detail.film.split.group.${group.kind}`);
-  const yours = group.ownRiderIds.map((id) => nameOf(riderNameById, id)).filter(Boolean);
+  // En solo-rytter står allerede med navn; "Dine: X" ville gentage ham.
+  const yours = group.kind === "solo" ? [] : group.ownRiderIds.map((id) => nameOf(riderNameById, id)).filter(Boolean);
   const gap = formatSplitGap(group.gapSeconds);
   return (
     <li className="text-sm flex items-baseline gap-2 py-0.5">
       <span className="min-w-0 flex-1">
-        <span className="text-cz-1">{label}</span>
+        <span className={group.kind === "solo" && group.ownRiderIds.length ? "text-cz-1 font-semibold" : "text-cz-1"}>{label}</span>
         {group.kind !== "solo" && group.riderCount != null && (
           <span className="text-cz-3 text-xs tabular-nums"> {t("detail.film.split.riders", { count: group.riderCount })}</span>
         )}

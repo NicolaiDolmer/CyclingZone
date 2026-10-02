@@ -77,14 +77,15 @@ test("race film shows split times only up to the scrubber", async ({ page }) => 
   await page.getByRole("button", { name: "Se løbsfilmen" }).click();
   const dialog = page.getByRole("dialog");
   const scrubber = dialog.getByRole("slider", { name: "Scrub gennem etapen" });
+  const splits = dialog.getByTestId("stage-split-times");
 
   await scrubber.fill("80");
-  await expect(dialog.getByText("Mont Saint-Roch (kat. 3)", { exact: false })).toBeVisible();
-  await expect(dialog.getByText("Col de la Colombière", { exact: false })).toHaveCount(0);
+  await expect(splits.getByText("Mont Saint-Roch (kat. 3)", { exact: false })).toBeVisible();
+  await expect(splits.getByText("Col de la Colombière", { exact: false })).toHaveCount(0);
 
   await scrubber.fill("165");
-  await expect(dialog.getByText("Mont Portet (kat. 2)", { exact: false })).toBeVisible();
-  await expect(dialog.getByText("Johan Aas mistede kontakten til feltet på Mont Portet.")).toBeVisible();
+  await expect(splits.getByText("Mont Portet (kat. 2)", { exact: false })).toBeVisible();
+  await expect(splits.getByText("Johan Aas mistede kontakten til feltet på Mont Portet.")).toBeVisible();
 });
 
 test("older timeline without group gaps shows no split times", async ({ page }) => {
@@ -101,7 +102,7 @@ test("older timeline without group gaps shows no split times", async ({ page }) 
 
 // Før/efter-billedet til PR'en (ejer-krav). Kører kun med SHOTS_6080=1.
 // "Før" = samme side med de nye sektioner fjernet (præcis main's markup).
-test("before/after image", async ({ page, browser }, testInfo) => {
+test("before/after image", async ({ browser }, testInfo) => {
   test.skip(!process.env.SHOTS_6080 || testInfo.project.name !== "desktop-chromium", "kun ved billedgenerering");
   const here = dirname(fileURLToPath(import.meta.url));
   const out = resolve(here, "../../../pr-screens/6080");
@@ -115,7 +116,7 @@ test("before/after image", async ({ page, browser }, testInfo) => {
     const section = p.getByTestId("stage-split-times");
     await expect(section).toBeVisible();
 
-    const column = section.locator("xpath=..");
+    const column = await section.evaluateHandle((el) => el.parentElement);
     await column.screenshot({ path: `${out}/${name}-after.png` });
     await section.evaluate((el) => el.remove());
     await column.screenshot({ path: `${out}/${name}-before.png` });
