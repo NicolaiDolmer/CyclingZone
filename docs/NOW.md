@@ -4,11 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (2/10 morgen, Giroen etape 1 kl. 11.00):** ejer-kort fra natsessionen, én ad gangen: 1) **#6051+#6056** motor (flad-rest + AI-spurtere, begge beregningsfejl → gælder næste ikke-kørte etape; merge #6056 først, delte filer). 2) **#6046** brosten: balance (bag slukket orders_gc_v1) eller beregningsfejl. 3) **CYCLINGZONE-44** 8 dobbeltbookede rytter-par S4, kan nås før afvikling: kør `audit-4700-double-booked-riders.js` FØR kl. 11. 4) **Train now-flip** (prod: 30/44 ryttere med ticks hos ét beta-hold). 5) PR'er: #6045, #6053, #6054, #6052 (0,5 KB over bundle-loft), #6031 (sænker loftet tæt), #6044. 6) Start bølgen for orders_gc_v1-flader (sporfil i natsessionen; klassifikatoren afviste start). Efter 11: mål korrelationen på Giro-etape 1.
+> **🎯 Next action (2/10 eftermiddag): LØBENE ER PAUSET** (`stage_scheduler_enabled` off siden 09.44, kun ejeren tænder) og åbnes i dag, når motoren er rettet. Start: `docs/drafts/2026-10-02-next-session-prompt.md`. Blokerer genstart (ægte test på Giroens prod-felt, `backend/scripts/dev/dryRunUpcomingStage.mjs`): **#6088** GC-kaptajner taber 3-5x mere tid under orders_gc_v1 end legacy; **#6089** udbruddet vinder aldrig i rigtige felter. Plus **#6084** bjergetaper (branch, WIP). Sporfiler: `docs/drafts/2026-10-02-urgent-tracks-6088-6089.json`.
 >
-> **🔑 Ejer kl. 15 (#6066):** opret `AUTO_MERGE_PAT` som Actions- OG Dependabot-secret; Claude verificerer, genkører #6057, merger PR #6071.
->
-> **✅ Nat 2/10:** merget #6032 (#5957, live 00.50, deploy verify grøn), #6033 (#5955 bremse, slukket), #6048 (#6046 brosten, slukket), Dependabot #6041/#6042/#6038/#6039. Replay af 208 S4-etaper: flad stadig under S3, tydeligt bedre med #6051+#6056 (tal privat i balance-internals/night-2-10/).
+> **✅ 2/10:** live: #6032/#6051/#6056/#6077 (specialister efter evne, AI-kaptajner), #6068/#6078 (udbrud), #6069/#6070 (nye løb binder til orders_gc_v1: roller styrer udbruddet, 0 overtrædelser i ægte test), #6079 (beordret udbrud + Kør roligt), #6080 (mellemtider), #6052, patch note 7.331. Tal privat i balance-internals/night-2-10/.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (natsession 2/10 afsluttet ca. 07.30; morgenkort venter på ejeren i natsessionen).
+> **🤖 Working agent:** Race engine-session 2/10 eftermiddag (Claude Code, DOLMERPC): bølge #6084/#6088/#6089 + klage-tjekliste, genstart i dag.
