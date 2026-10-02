@@ -21,10 +21,12 @@ Lav og vedligehold en tjekliste over spillernes klager om løb (Discord, issues 
 3. Bølger kun via `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })`, 4 laner, `model` eksplicit. Lav en NY session-bølge; findes en gammel markør uden levende ejer, så frigiv den efter runbookens regler.
 
 ## Tilstand ved overdragelse (2/10 ca. 12.45, verificér)
-- Live i prod: specialister efter evne (#6032, #6051, #6077), AI-kaptajner gemmer kræfter (#6056), loft på lad-gå (#6078), udbrudsjustering (#6068), spillerflader for de nye regler (#6069), løbsfilmen nævner hvem der hentede udbruddet (#6052), patch note 7.331 (#6072).
+- Live i prod: specialister efter evne (#6032, #6051, #6077), AI-kaptajner gemmer kræfter (#6056), loft på lad-gå (#6078), udbrudsjustering (#6068), spillerflader for de nye regler (#6069), løbsfilmen nævner hvem der hentede udbruddet (#6052), patch note 7.331 (#6072), beordret udbrud slår spontant + "Kør roligt" (#6083/#6079), mellemtider + "hvor og hvorfor tabte dine ryttere tid" (#6082/#6080).
 - **Nye løb binder til `orders_gc_v1`** (#6070): roller styrer morgenudbruddet (kaptajn/spurtkaptajn/hjælper kun med "Forsøg udbrud", hunter som standard, "Kør roligt" stopper spontane forsøg, grupetto aldrig), GC-hold reagerer og kan bremse udbruddet.
 - Skemalæggeren er pauset siden 09.44 og tændes af ejeren i dag, når forbedringerne er live.
-- Var i gang: #6087 (rød main efter #6071), #6083 (#6079 beordret udbrud slår spontant + "Kør roligt" sparer mere i bjergene og koster mindre tid på stigninger; ejer-go givet), #6082 (#6080 mellemtider + "hvor og hvorfor tabte dine ryttere tid"; tre review-rettelser lavet i worktreet, mangler e2e-billede og ejer-"merge"), #6084 (bjergetaper, se 1).
+- Ingen bølge kører (frigivet 13.05). Start en ny med det samme med disse tre spor:
+  - **#6088 og #6089** (hastespor, aldrig startet): færdige sporbeskrivelser i `docs/drafts/2026-10-02-urgent-tracks-6088-6089.json`, kan gives direkte som `tracks`.
+  - **#6084** bjergetaper: branch `feat/6084-mountain-selection-revision`, draft-PR #6086, worktree `C:\Dev\CyclingZone-worktrees\feat-6084-mountain-selection-revision`. Sidste commit 34f27eb er en WIP der blev committet med `--no-verify` ved overdragelsen (raceRoles/raceFatigue-tests for orders_gc_v2): kør tsc, backend-tests og preflight på branchen før den gøres klar. Recovery i samme worktree, aldrig reset.
 - Private tal: `balance-internals/night-2-10/` og hver lanes `balance-internals/<issue>/`. Replay-cache med 208 S4-etaper: `C:\Dev\CyclingZone-worktrees\replay-5957-main\balance-internals\5957\replay-cache.json` (`backend/scripts/dev/replay5957.mjs`, `--rules=orders_gc_v1`). Kalibreringsharness: `balance-internals/night-2-10/cal/calibrate.mjs` + `analyze.mjs`.
 
 ## ÆGTE TEST FØRST (fund 2/10 13.00, blokerer genstart)

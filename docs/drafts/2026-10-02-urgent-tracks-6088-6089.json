@@ -1,0 +1,45 @@
+[
+{
+  "issue": 6088,
+  "branch": "fix/6088-v1-captain-time-loss",
+  "title": "[engine-v4][HASTER] orders_gc_v1: GC-kaptajner taber 3-5x mere tid end legacy på Giroens rigtige felt",
+  "scopeText": "HØJESTE PRIORITET, hurtigst muligt (ejer 2/10: løbene er pauset og skal åbnes i dag når dette er rettet; uforklarlige tidstab for kaptajner er spillernes største klage). Læs gh issue view 6088. Brancher fra origin/main. REPRO uden prod: node backend/scripts/dev/dryRunUpcomingStage.mjs --race=07f2090c-c4d2-49e7-9c1b-9a9a268b7e3f --stage=6 --seeds=10 --rules=orders_gc_v1 --cache=C:/Dev/CyclingZone/balance-internals/night-2-10/giro-cache.json (og --rules=legacy til sammenligning; etaper 3,6,7,8,11,13,14,15,16 er kuperede/bjerg). Under orders_gc_v1 er gc_captain_gap_median_s ca. 3-5 gange legacy, og næsten alle GC-kaptajner er over 5 min bagud. 1) Find præcis hvilken orders_gc_v1-mekanik der gør det (breakawayPermission/formation-reaktionens pris, lad-gå-balancen ORDERS_GC_V1_LET_GO, GC-reaktion uden gcContext, cobbles, chase-cost, effort/ordre-parsing under v1, hjælpere der brænder ud eller sidder i udbrud og ikke kan hjælpe kaptajnen) ved at slå mekanikkerne til/fra én ad gangen i en harness-kopi (ikke i motoren) og måle med dry-run-scriptet; instrumentér hvor og hvorfor kaptajnerne falder af (segment, årsag). 2) Ret rod-årsagen i motoren, så GC-kaptajnernes tidstab under orders_gc_v1 er på legacy-niveau eller bedre i det rigtige felt, uden at rolle-reglerne (kun beordrede/hunters/fri roller i udbrud: dry-run violators_total skal forblive 0) eller GC-reaktionen fjernes. 3) Tests + et nyt anker (fx i backend/scripts/dev/ med Giro-cachen som fixture-udsnit uden navne) der fejler før og er grønt efter. 4) Mål også replay5957.mjs (cache C:/Dev/CyclingZone-worktrees/replay-5957-main/balance-internals/5957/replay-cache.json, --rules=orders_gc_v1) og kalibreringsharnessen C:/Dev/CyclingZone/balance-internals/night-2-10/cal/calibrate.mjs: må ikke forringes. Klassificér (beregningsfejl). Rapport kvalitativ i docs/reports/2026-10-02-6088-v1-captain-time-loss.md; tal KUN privat i balance-internals/6088/. Lanen #6084 (bjergselektion, ny revision orders_gc_v2) arbejder i climbSelection.ts/segmentLoop.ts: merge main ind før du afslutter og bevar begge. Intet flag, intet prod, ingen patch note, rør aldrig docs/NOW.md. Draft-PR straks, push hvert 15. min, tests i FORGRUNDEN. Ingen heredoc. Arbejd sekventielt, ingen under-agenter.",
+  "model": "opus",
+  "tier": "TARGETED",
+  "ownership": ["docs/reports/2026-10-02-6088-v1-captain-time-loss.md", "balance-internals/6088/"],
+  "touches": [
+    "backend/lib/engine/v4/mechanics/breakaway.ts",
+    "backend/lib/engine/v4/mechanics/breakawayPermission.ts",
+    "backend/lib/engine/v4/mechanics/teamPlay.ts",
+    "backend/lib/engine/v4/mechanics/teamChaseReaction.ts",
+    "backend/lib/engine/v4/segmentLoop.ts",
+    "backend/lib/engine/v4/groups.ts",
+    "backend/lib/engine/v4/tuning.ts",
+    "backend/scripts/dev/"
+  ],
+  "verifyCommands": [
+    "cd backend && npx tsc -p tsconfig.engine.json --noEmit",
+    "cd backend && node --test lib/engine/v4/"
+  ]
+},
+{
+  "issue": 6089,
+  "branch": "fix/6089-breakaway-never-wins-real-field",
+  "title": "[engine-v4][HASTER] Morgenudbruddet vinder aldrig i Giroens rigtige felt (0/160 etaper)",
+  "scopeText": "HØJESTE PRIORITET, hurtigst muligt (ejer 2/10: løbene åbnes i dag når motoren er rettet). Læs gh issue view 6089 og #6084 (ejer-mål: udbrud foran favoritterne ca. 45 % på bjerg). Brancher fra origin/main. REPRO uden prod: node backend/scripts/dev/dryRunUpcomingStage.mjs --race=07f2090c-c4d2-49e7-9c1b-9a9a268b7e3f --stage=<2..17> --seeds=10 --rules=orders_gc_v1 --cache=C:/Dev/CyclingZone/balance-internals/night-2-10/giro-cache.json: winner_from_break er 0 på alle vejetaper, også med --rules=legacy, mens S4-prod og kalibreringsharnessen viser udbrudssejre. 1) Find hvorfor: udbrudsstørrelse og -sammensætning i dette felt (kun 3 hunters, 7 med 'Forsøg udbrud'), udbrydernes evner mod feltet, jagt/lad-gå, hvornår og af hvem de hentes; instrumentér med timeline-events. Tjek også om dry-run-scriptets winner_from_break-måling er korrekt (ranked[0].components.breakaway) før du konkluderer. 2) Ret årsagen så udbruddet i rigtige felter vinder på et realistisk niveau pr. terræn (bjerg/kuperet oftest, flad sjældent) uden at rolle-reglerne brydes (violators_total skal være 0). Kun under orders_gc_v1 hvis det er balance; legacy byte-identisk. 3) Tests + anker. 4) Mål kalibreringsharnessen og replay5957.mjs: specialist-korrelation må ikke forringes. Rapport kvalitativ i docs/reports/2026-10-02-6089-breakaway-real-field.md; tal KUN privat i balance-internals/6089/. Lanen #6088 arbejder også i breakaway.ts/segmentLoop.ts: merge main ind før du afslutter og bevar begge. Intet flag, intet prod, ingen patch note, rør aldrig docs/NOW.md. Draft-PR straks, push hvert 15. min, tests i FORGRUNDEN. Ingen heredoc. Arbejd sekventielt, ingen under-agenter.",
+  "model": "opus",
+  "tier": "TARGETED",
+  "ownership": ["docs/reports/2026-10-02-6089-breakaway-real-field.md", "balance-internals/6089/"],
+  "touches": [
+    "backend/lib/engine/v4/mechanics/breakaway.ts",
+    "backend/lib/engine/v4/mechanics/breakawayPermission.ts",
+    "backend/lib/engine/v4/segmentLoop.ts",
+    "backend/lib/engine/v4/tuning.ts",
+    "backend/scripts/dev/"
+  ],
+  "verifyCommands": [
+    "cd backend && npx tsc -p tsconfig.engine.json --noEmit",
+    "cd backend && node --test lib/engine/v4/"
+  ]
+}
+]
