@@ -45,8 +45,8 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   try {
     const { data, error } = await supabase.from("app_config").select("key,value").in("key", keys);
     if (error) throw error;
-    if (data !== null && !Array.isArray(data)) throw new Error("feature flags: invalid app_config response");
-    stages = new Map((data ?? []).map(({ key, value }) => [key, value]));
+    if (!Array.isArray(data)) throw new Error("feature flags: invalid app_config response");
+    stages = new Map(data.map(({ key, value }) => [key, value]));
   } catch (error) {
     stages = new Map();
     reportError(error, { tags: { route: "/feature-flags", read: "app_config" } });

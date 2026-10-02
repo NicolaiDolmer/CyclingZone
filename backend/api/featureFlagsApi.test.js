@@ -259,3 +259,12 @@ test("batch-laesning: malformet DB-svar giver aldrig adgang", async () => {
   assert.equal(failures.length, 1);
   assert.match(failures[0].message, /invalid app_config response/);
 });
+
+test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {
+  const failures = [];
+  const client = { from: () => ({ select: () => ({ in: async () => ({ data: null, error: null }) }) }) };
+  const flags = await readPlayerFeatureFlags(client, { reportError: (error) => failures.push(error) });
+  assert.ok(Object.values(flags).every((value) => value === false));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0].message, /invalid app_config response/);
+});
