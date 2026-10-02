@@ -1,4 +1,8 @@
 version: 2
+# Dependabot bumper kun DIREKTE afhaengigheder. Transitive pakker i lockfilerne
+# holdes opdateret af .github/workflows/lockfile-maintenance.yml (ugentligt,
+# samme 7-dages cooldown), og prod-saarbarheder fanges dagligt af
+# .github/workflows/prod-dependency-audit.yml (#6066).
 updates:
   # Backend dependencies — Express, Supabase, Multer mv.
   - package-ecosystem: npm
