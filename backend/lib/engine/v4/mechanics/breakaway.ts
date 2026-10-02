@@ -534,22 +534,66 @@ export function letGoTeamShare(input: {
   return Math.min(1, letGo / teams.size);
 }
 
+// #6088 (KUN orders_gc_v1, kun terraen med stigninger): den ekstra plads ovenfor
+// kompenserer for at udbruddet under orders_gc_v1 er SVAGERE end under legacy
+// (ingen kaptajner fyldt ind), saa stigningerne ellers spiste det. Sender
+// holdene staerke ryttere med (en ordre til en kaptajn/hjaelper), klatrer
+// udbruddet ikke laengere fra hinanden, og hele det ekstra loft blev etapens
+// forspring: kaptajnerne bag tabte langt mere tid end under legacy (beregningsfejl:
+// kompensationen blev givet ogsaa der hvor det den kompenserer for ikke findes).
+// Det ekstra loft (ikke vaeksthastigheden) trappes derfor lineaert ned fra fuldt
+// ved udbrud-/felt-trussel-forholdet `[0]` til intet ved `[1]` (samme forhold som
+// letGoMaxGapSeconds). Profiler uden noegle er uaendrede.
+const ORDERS_GC_V1_LET_GO_THREAT_BAND: Readonly<Partial<Record<ProfileType, readonly [number, number]>>> = Object.freeze({
+  hilly: Object.freeze([1.25, 1.55] as const),
+  mountain: Object.freeze([1.2, 1.5] as const),
+  high_mountain: Object.freeze([1.2, 1.4] as const),
+});
+
+/**
+ * #6088: andel [0, 1] af det ekstra lad-gaa-loft et udbrud med dette
+ * trussel-forhold faar. 1 = fuld plads (svagt udbrud), 0 = intet ekstra.
+ * Monotont ikke-stigende i forholdet. Eksporteret for kontrakt-tests.
+ */
+export function letGoThreatDamping(profileType: ProfileType, threatRatio: number | undefined): number {
+  const band = ORDERS_GC_V1_LET_GO_THREAT_BAND[profileType];
+  if (!band || threatRatio === undefined || !Number.isFinite(threatRatio)) return 1;
+  return clamp((band[1] - threatRatio) / Math.max(1e-9, band[1] - band[0]), 0, 1);
+}
+
+/**
+ * #6088: udbruddets GC-trussel som forhold til feltets (samme maal som
+ * letGoMaxGapSeconds bruger til grundloftet). 1 naar feltet er tomt.
+ */
+export function breakawayThreatRatio(
+  breakawayRiderIds: string[],
+  fieldRiderIds: string[],
+  entrants: Readonly<Record<string, Entrant>>,
+): number {
+  const fieldThreat = collectiveAbility(fieldRiderIds, entrants, GC_THREAT_KEYS);
+  return fieldThreat > 0 ? collectiveAbility(breakawayRiderIds, entrants, GC_THREAT_KEYS) / fieldThreat : 1;
+}
+
 /**
  * #5955: lad-gaa-faktorerne for en etape. Legacy (og enhver anden revision)
  * faar altid 1/1, saa legacy-stien er bit-identisk. Eksporteret for kontrakt-tests.
  * #6074: `letGoShare` (andel af jagtgruppens hold der lader gaa) daemper det
  * ekstra over 1 via letGoCrowdDamping. Udeladt = ingen daempning.
+ * #6088: `threatRatio` (breakawayThreatRatio) daemper det ekstra LOFT via
+ * letGoThreatDamping. Udeladt = ingen daempning.
  */
 export function letGoBalanceFor(
   rulesRevision: string | undefined,
   profileType: ProfileType,
   letGoShare?: number,
+  threatRatio?: number,
 ): { maxGapFactor: number; rateFactor: number } {
   if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1 };
   const damping = letGoShare === undefined ? 1 : letGoCrowdDamping(letGoShare);
   const damp = (factor: number) => 1 + (factor - 1) * damping;
+  const threatDamping = letGoThreatDamping(profileType, threatRatio);
   return {
-    maxGapFactor: damp(ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1),
+    maxGapFactor: 1 + (damp(ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1) - 1) * threatDamping,
     rateFactor: damp(ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1),
   };
 }
@@ -1224,7 +1268,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #5955: lad-gaa-balancen under orders_gc_v1 (legacy: 1/1, bit-identisk).
     // #6074: daempet naar mange af jagtgruppens hold lader gaa.
     const letGoShare = ordersGcV1 ? letGoTeamShare({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders }) : undefined;
-    const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, letGoShare);
+    // #6088: et udbrud med staerke ryttere faar ikke det ekstra loft.
+    const threatRatio = ordersGcV1 ? breakawayThreatRatio(breakaway.rider_ids, fieldRiderIds, ctx.entrants) : undefined;
+    const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, letGoShare, threatRatio);
     const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);
     const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}) });
