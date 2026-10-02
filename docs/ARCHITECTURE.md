@@ -60,6 +60,14 @@
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
 
+### Spillersynlige feature-flags (#4948, #6103)
+GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`
+i ét `app_config`-opslag. Svaret evalueres pr. viewer gennem `evaluateFlagStage`:
+`on` er synligt, `beta` kræver beta/admin, og manglende/ukendte værdier er `off`.
+En fejlet batch lukker alle flag og rapporteres til drift; rå værdier returneres
+aldrig. Ingen delt cache og `Cache-Control: no-store` bevarer flag-flips ved næste
+request. Endpointet kræver ikke login, men en sendt token skal verificeres først.
+
 ### Brugte løbsdage (#5860)
 `race_day_participation` bevarer faktisk deltagelse pr. rytter/sæson/løbsdag efter holdskifte og snapshot-retries. Private claims optages før etaperesultater og start-snapshots. `find_spent_race_days` er en service-only RPC med scalar JSON, så feltets størrelse ikke rammer PostgRESTs tabel-loft. `raceSpentDays.js` bruger eksisterende resultater/snapshots i backend-før-migration-vinduet. Historisk, ejer-godkendt genopretning i `recover_transferred_race_loads` bevarer immutable snapshots; `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number` refererer det oprindelige bidrag. Tilstanden tæller kun originale belastninger, mens det atomiske afregningsbevis omfatter alle rækker. SSOT: [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md), [TRAINING_RULES](TRAINING_RULES.md).
 
