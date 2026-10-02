@@ -1,8 +1,7 @@
 import { test, expect } from "./e2e-base.js";
 import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { installNetworkMocks, login, stabilizePage, json, raceResultsRoute, TEST_TEAM } from "./fixtures.js";
+import { dirname } from "node:path";
+import { installNetworkMocks, login, stabilizePage, json, raceResultsRoute, TEST_TEAM, evidenceShotPath } from "./fixtures.js";
 import { SPLIT_TIMELINE, SPLIT_RIDERS, OWN_TEAM_ID } from "./6080-split-stage.fixture.js";
 
 // #6080: mellemtider + "hvor tabte dine ryttere tid" i løbsfilmen og på etape-
@@ -104,9 +103,11 @@ test("older timeline without group gaps shows no split times", async ({ page }) 
 // "Før" = samme side med de nye sektioner fjernet (præcis main's markup).
 test("before/after image", async ({ browser }, testInfo) => {
   test.skip(!process.env.SHOTS_6080 || testInfo.project.name !== "desktop-chromium", "kun ved billedgenerering");
-  const here = dirname(fileURLToPath(import.meta.url));
-  const out = resolve(here, "../../../pr-screens/6080");
-  mkdirSync(out, { recursive: true });
+  // Mellemtrin i test-results; det samlede billede via evidenceShotPath (#3554,
+  // CZ_WRITE_COMMITTED_SHOTS=1 skriver til pr-screens/6080/).
+  const shot = (n) => testInfo.outputPath(`${n}.png`);
+  const finalPath = evidenceShotPath("pr-screens/6080/before-after.png");
+  mkdirSync(dirname(finalPath), { recursive: true });
 
   const shoot = async (width, name) => {
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
@@ -119,21 +120,21 @@ test("before/after image", async ({ browser }, testInfo) => {
     // Bundnavigationen paa mobil er fixed og ville ligge hen over elementet.
     await p.addStyleTag({ content: "nav.fixed, .fixed.bottom-0 { display: none !important; }" });
     const column = await section.evaluateHandle((el) => el.parentElement);
-    await column.screenshot({ path: `${out}/${name}-after.png` });
+    await column.screenshot({ path: shot(`${name}-after`) });
     await section.evaluate((el) => el.remove());
-    await column.screenshot({ path: `${out}/${name}-before.png` });
+    await column.screenshot({ path: shot(`${name}-before`) });
     // Filmen (efter): scrub til mål.
     await p.getByRole("button", { name: "Se løbsfilmen" }).click();
     const dialog = p.getByRole("dialog");
     await dialog.getByRole("slider", { name: "Scrub gennem etapen" }).fill("165");
     await expect(dialog.getByTestId("stage-split-times")).toBeVisible();
-    await dialog.getByTestId("stage-split-times").screenshot({ path: `${out}/${name}-film.png` });
+    await dialog.getByTestId("stage-split-times").screenshot({ path: shot(`${name}-film`) });
     await ctx.close();
   };
   await shoot(1440, "desktop");
   await shoot(390, "mobile");
 
-  const img = (n) => `data:image/png;base64,${readFileSync(`${out}/${n}.png`).toString("base64")}`;
+  const img = (n) => `data:image/png;base64,${readFileSync(shot(n)).toString("base64")}`;
   const p = await browser.newPage({ viewport: { width: 2000, height: 1000 } });
   await p.setContent(`<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ee;font:14px system-ui;color:#1c1b19">
     <h1 style="font-size:20px;margin:0 0 4px">#6080 Mellemtider og tidstab (ægte v4-etape, kuperet 165 km, anonymiseret)</h1>
@@ -146,6 +147,6 @@ test("before/after image", async ({ browser }, testInfo) => {
       <figure style="margin:0"><figcaption><b>390 EFTER</b></figcaption><img src="${img("mobile-after")}" style="width:240px;border:2px solid #a33"></figure>
     </div></body></html>`);
   await p.waitForTimeout(200);
-  await p.screenshot({ path: `${out}/before-after.png`, fullPage: true });
+  await p.screenshot({ path: finalPath, fullPage: true });
   await p.close();
 });
