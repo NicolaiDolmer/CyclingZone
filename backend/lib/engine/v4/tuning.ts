@@ -801,8 +801,8 @@ export const EFFORT_GAIN_EXTRA_TUNING = deepFreeze(effortGainExtra);
 // rytter stadig taber tid mod en normal-rytter. Legacy laeser aldrig dette.
 // Maalt privat (balance-internals/6079/), tal ikke i PR-body.
 const ordersGcV1ClimbGain = {
-  climbScoreRelief: { ...effortGainExtra.climbScoreRelief, save: -0.6 } as Record<EffortLevel, number>,
-  climbScorePenalty: { ...effortGainExtra.climbScorePenalty, save: 0.3 } as Record<EffortLevel, number>,
+  climbScoreRelief: { ...effortGainExtra.climbScoreRelief, save: -0.45 } as Record<EffortLevel, number>,
+  climbScorePenalty: { ...effortGainExtra.climbScorePenalty, save: 0.2 } as Record<EffortLevel, number>,
 };
 
 /** #6079: stignings-tabellerne for save under orders_gc_v1 (deep-frosset). */
