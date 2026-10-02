@@ -191,8 +191,10 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
   const alive: string[] = [];
   for (const g of state.known) {
     if (state.aliases.has(g)) continue;
-    const count = g === INITIAL_GROUP ? implicitPeloton : (members.get(g)?.length ?? 0);
-    if (g === INITIAL_GROUP ? (count == null || count > 0) : count > 0) alive.push(g);
+    const isAlive = g === INITIAL_GROUP
+      ? (implicitPeloton == null || implicitPeloton > 0)
+      : (members.get(g)?.length ?? 0) > 0;
+    if (isAlive) alive.push(g);
   }
   if (!alive.length) return [];
   const rawGap = (g: string) => state.gaps.get(g) ?? 0;
