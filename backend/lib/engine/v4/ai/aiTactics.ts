@@ -86,6 +86,12 @@ export type AiTacticsInput = {
    */
   field?: readonly AiFieldRider[];
   race?: AiRaceContext;
+  /**
+   * #6097 (VALGFRIT): loebets bundne regel-revision. Kun "orders_gc_v2" aendrer
+   * noget (udbrudsforsoeg fra hjaelpere, se generateAiTeamOrder punkt 6);
+   * udeladt eller enhver anden vaerdi giver praecis samme ordre som foer.
+   */
+  rules_revision?: string;
 };
 
 export type AiTacticsReasons = {
@@ -130,6 +136,13 @@ export const AI_TACTICS_TUNING = Object.freeze({
   /** En fri rytter proever udbruddet naar hans udbruds-score er i feltets top-andel. */
   BREAK_CANDIDATE_FIELD_SHARE: 0.2,
   MAX_BREAK_CANDIDATES: 2,
+  /**
+   * #6097 (KUN orders_gc_v2): en hjaelper/fri rytter er en passende
+   * udbrudskandidat naar hans udbruds-score er i denne top-andel af feltet.
+   */
+  V2_BREAK_CANDIDATE_FIELD_SHARE: 0.5,
+  /** #6097 (KUN orders_gc_v2): udbrudsforsoeg pr. hold paa en neutral dag (let_go: MAX_BREAK_CANDIDATES). */
+  V2_NEUTRAL_BREAK_CANDIDATES: 1,
 });
 
 /** Klassificerer dagens terraen-krav ud fra rute-typen (samme felter som RouteV2). */
@@ -310,6 +323,28 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
         .filter((c) => c.role === "hunter" || fieldRank(c.score, fieldBreakScores) <= freeRoleRankCap)
         .map(({ riderId, score }) => ({ riderId, score })),
     ).slice(0, AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES);
+    // #6097 (KUN orders_gc_v2): AI-holdenes trupper har sjaeldent hunters/frie
+    // roller, saa ovenstaaende gav naesten aldrig et forsoeg, og morgenudbruddet
+    // blev for lille. Under v2 vaelger holdet derfor selv sine bedste passende
+    // ryttere (hunter, fri rolle ELLER hjaelper; aldrig kaptajn/sprint-kaptajn,
+    // aldrig grupetto): 2 paa en let_go-dag, 1 paa en neutral dag (dog mindst
+    // lige saa mange som holdets hunters, hoejst 2). Ingen paa en jagt-dag. Et forsoeg er aldrig en garanti; motoren
+    // afgoer stadig hvem der kommer afsted (breakawayPermission.ts).
+    if (input.rules_revision === "orders_gc_v2") {
+      const v2RankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
+      const hunterCount = input.roster.filter((r) => r.role === "hunter" && !grupettoIds.has(r.rider_id)).length;
+      const slots = stance === "let_go"
+        ? AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES
+        : Math.min(AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES, Math.max(AI_TACTICS_TUNING.V2_NEUTRAL_BREAK_CANDIDATES, hunterCount));
+      breakCandidates = sortByScoreDesc(
+        input.roster
+          .filter((r) => !grupettoIds.has(r.rider_id))
+          .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
+          .map((r) => ({ riderId: r.rider_id, role: r.role, score: breakScore(r.abilities, primaryAbility) }))
+          .filter((c) => c.role === "hunter" || fieldRank(c.score, fieldBreakScores) <= v2RankCap)
+          .map(({ riderId, score }) => ({ riderId, score })),
+      ).slice(0, slots);
+    }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));
 
