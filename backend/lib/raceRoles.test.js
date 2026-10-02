@@ -119,6 +119,19 @@ test("#6079 orders_gc_v1: kun save ændres, og trappen vender aldrig (grupetto <
   }
 });
 
+test("#6084 orders_gc_v2 arver orders_gc_v1's save-træthed for alle profiler og trin", () => {
+  for (const profileType of ALL_PROFILES_6079) {
+    for (const effort of ALL_EFFORTS_6079) {
+      assert.equal(
+        effortFatigueMultiplier(effort, { profileType, rulesRevision: "orders_gc_v2" }),
+        effortFatigueMultiplier(effort, { profileType, rulesRevision: "orders_gc_v1" }),
+        `${effort}/${profileType}`,
+      );
+    }
+  }
+  assert.ok(effortFatigueMultiplier("save", { profileType: "mountain", rulesRevision: "orders_gc_v2" }) < RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE);
+});
+
 // ── Team-vægt v1 → v3 ──────────────────────────────────────────────────────────
 
 test("teamRaceWeightV3() returnerer det kalibrerede v3-tal (> v1's 0.024)", () => {

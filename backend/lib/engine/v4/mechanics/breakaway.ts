@@ -96,6 +96,7 @@ import {
   type TeamReactionPlan,
 } from "./teamChaseReaction.ts";
 import type { GcContext, TeamReactionState } from "../types.ts";
+import { phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1262,6 +1263,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         finaleType: ctx.route.finale_type,
       });
       maxGapSeconds *= letGoBalance.maxGapFactor;
+      // #6084 (KUN orders_gc_v2 paa bjerg): feltet holder samlet, saa loftet skaleres (mountainSelection.ts).
+      if (ctx.mountainSelectionPhase) maxGapSeconds *= phaseLetGoMaxGapScale(ctx.mountainSelectionPhase);
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
@@ -1301,10 +1304,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     });
     // #5812: jagten virker kun paa segmentets jagt-km.
 
-    const netClosingSeconds = Math.max(
+    const netClosingRaw = Math.max(
       0,
       netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
+    // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
+    // En GC-reaktion (et farligt udbrud) jager uden daempning.
+    const netClosingSeconds = ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase) : netClosingRaw;
     const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-

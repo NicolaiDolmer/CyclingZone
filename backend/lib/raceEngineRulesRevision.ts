@@ -18,7 +18,10 @@
 //
 // REN: ingen IO. Kaldstedet (raceRunner.js) laeser og skriver kolonnen.
 
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1"] as const;
+// #6084: "orders_gc_v2" = hele orders_gc_v1-pakken + bjergselektionen (feltet
+// holder samlet til finalestigningen, udbruddet hentes dér). Aktuel for nye
+// loeb siden ejer-go 2/10 (se CURRENT_RACE_RULES_REVISION).
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -31,8 +34,12 @@ export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
  * er komplet og kalibreret. Loeb der allerede er startet beholder deres gemte
  * revision (eller legacy); kun loeb hvis foerste etape claimes efter deploy
  * bindes hertil. Et skifte tilbage er ogsaa et eksplicit ejer-go.
+ *
+ * "orders_gc_v2" siden ejer-go 2/10 (#6084): v1-pakken + bjergselektionen er
+ * aktuel for de loeb der starter ved genstarten. Loeb der allerede er bundet
+ * til orders_gc_v1 (eller legacy) faerdiggoeres paa den.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "orders_gc_v1";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "orders_gc_v2";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;
