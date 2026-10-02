@@ -1,5 +1,72 @@
 export const PATCHES = [
   {
+    "version": "7.331",
+    "date": "2026-10-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "New race rules for races that start from 2 October",
+          "body": "Races whose first stage runs from 2 October use new rules. Captains, sprint captains and helpers only go for the morning breakaway when you tick Try the break. Breakaway hunters try by default, and you can switch it off for a stage. A rider on Ride easy does not attack on his own, and a grupetto rider never does. An attempt costs energy, also when it fails. GC teams react when a dangerous rider is up the road, with the helpers they have free. Races that had already started finish on the old rules. The Tactics tab shows which rules a race uses, and Help explains them."
+        },
+        "da": {
+          "title": "Nye løbsregler for løb der starter fra 2. oktober",
+          "body": "Løb hvis første etape køres fra 2. oktober, bruger nye regler. Kaptajner, spurtkaptajner og hjælpere går kun i morgenudbrud, når du sætter Forsøg udbrud. Udbrudsjægere forsøger som standard, og du kan slå det fra for en etape. En rytter på Kør roligt angriber ikke selv, og en grupetto-rytter gør det aldrig. Et forsøg koster kræfter, også når det mislykkes. Klassementshold reagerer, når en farlig rytter er kørt væk, med de hjælpere de har ledige. Løb der allerede var startet, køres færdige på de gamle regler. Taktik-fanen viser, hvilke regler et løb bruger, og Hjælp forklarer dem."
+        },
+        "refs": [5955, 5978, 6067]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The best specialists finish where their ability says again",
+          "body": "In the finale, the day's form and fresh legs counted as much as ability, so a team's best sprinter or puncheur could finish behind weaker teammates. Form and reserve now follow ability, and AI teams no longer ride their leader at full effort all day so he is empty for the sprint. It applies from the next stage that has not been raced, also in stage races under way."
+        },
+        "da": {
+          "title": "De bedste specialister slutter igen efter evne",
+          "body": "I finalen talte dagsform og friske ben lige så meget som evnen, så holdets bedste spurter eller puncheur kunne slutte bag svagere holdkammerater. Form og reserve følger nu evnen, og AI-hold kører ikke længere deres kaptajn på fuld indsats hele dagen, så han er tom til spurten. Det gælder fra næste etape der ikke er kørt, også i etapeløb der er i gang."
+        },
+        "refs": [5957, 6049, 6055]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The race film says who caught the breakaway",
+          "body": "When the breakaway is brought back, the race film, the stage report and the recap name the teams that led the chase and how far from the line it happened. Older races keep the text they had."
+        },
+        "da": {
+          "title": "Løbsfilmen siger, hvem der hentede udbruddet",
+          "body": "Når udbruddet bliver hentet, nævner løbsfilmen, etaperapporten og opsummeringen de hold, der førte jagten, og hvor langt fra stregen det skete. Ældre løb beholder deres tekst."
+        },
+        "refs": [6050]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Planning",
+        "en": {
+          "title": "The form planner only offers races that have not started",
+          "body": "Peak targets can only be races that have not started yet, and U23 and junior riders no longer sit in the senior plan. A youth rider with an old peak shows in his own box, where you can remove it."
+        },
+        "da": {
+          "title": "Formplanlæggeren tilbyder kun løb der ikke er startet",
+          "body": "Peak-mål kan kun være løb, der ikke er startet endnu, og U23- og juniorryttere står ikke længere i seniorplanen. En ungdomsrytter med et gammelt peak står i sin egen boks, hvor du kan fjerne det."
+        },
+        "refs": [5992]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "The training report shows progress as Flat +10%",
+          "body": "Progress below a whole ability point now reads like Flat +10% instead of +10% of an ability point. 100% equals one whole point, and Help explains it."
+        },
+        "da": {
+          "title": "Træningsrapporten viser fremgang som Flad +10%",
+          "body": "Fremgang under et helt evnepoint står nu som fx Flad +10% i stedet for +10% af et evnepoint. 100% svarer til ét helt point, og Hjælp forklarer det."
+        },
+        "refs": [6034]
+      }
+    ]
+  },
+  {
     "version": "7.330",
     "date": "2026-10-01",
     "label": "Beta",
