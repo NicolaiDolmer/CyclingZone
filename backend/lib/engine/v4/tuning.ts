@@ -1385,7 +1385,7 @@ export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);
 // uroerte. Kalibreret privat mod ejer-maalene i #6084 (balance-internals/6084/).
 const mountainSelectionV2 = {
   // Profiler hvor revisionen gaelder. Kuperede etaper er bevidst udeladt.
-  profileTypes: ["mountain", "high_mountain"] as readonly ProfileType[],
+  profileTypes: ["mountain", "high_mountain", "hilly"] as readonly ProfileType[],
   // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
   preFinalSplitThresholdFactor: 3.2,
   // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
@@ -1399,6 +1399,18 @@ const mountainSelectionV2 = {
   preFinalChaseClosingScale: 0.4,
   // M5: jagtens lukning paa og efter finalestigningen (favoritternes hold jager for alvor).
   finalChaseClosingScale: 2.5,
+  // #6092: profil-vise afvigelser fra knapperne ovenfor (mechanics/mountainSelection.ts).
+  byProfile: {} as Partial<Record<ProfileType, Partial<MountainSelectionV2Knobs>>>,
+};
+
+/** #6092: de knapper en profil kan afvige paa (alle tal i mountainSelectionV2). */
+export type MountainSelectionV2Knobs = {
+  preFinalSplitThresholdFactor: number;
+  preFinalWprimeForcedMinSeverity: number;
+  preFinalBreakawayDriftNeutralShare: number;
+  letGoMaxGapScale: number;
+  preFinalChaseClosingScale: number;
+  finalChaseClosingScale: number;
 };
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */

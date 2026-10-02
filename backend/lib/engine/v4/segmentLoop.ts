@@ -84,7 +84,7 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
-import { finalClimbStartIndex, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
+import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -931,7 +931,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // #5812 (a): M5 ejer hullet mellem dagens udbrud og jagtgruppen paa aabent
     // terraen. Se neutralizeBreakawayTempoDrift.
     const mountainPhase = mountainSelectionPhaseFor(rulesRevision, route.profile_type, segmentIndex, finalClimbStart);
-    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase));
+    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.

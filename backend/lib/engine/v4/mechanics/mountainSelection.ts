@@ -26,7 +26,7 @@
 // (segmentLoop saetter kun `mountainSelectionPhase` under orders_gc_v2).
 
 import type { ProfileType, Segment, RulesRevision } from "../types.ts";
-import { MOUNTAIN_SELECTION_V2_TUNING } from "../tuning.ts";
+import { MOUNTAIN_SELECTION_V2_TUNING, type MountainSelectionV2Knobs } from "../tuning.ts";
 
 export type MountainSelectionPhase = "pre_final" | "final";
 
@@ -40,6 +40,24 @@ export function finalClimbStartIndex(segments: readonly Pick<Segment, "kind">[])
   if (i < 0) return -1;
   while (i > 0 && segments[i - 1].kind === "climb") i--;
   return i;
+}
+
+/**
+ * #6092: knapperne for en profil = de faelles vaerdier med profilens afvigelser
+ * (MOUNTAIN_SELECTION_V2_TUNING.byProfile) lagt ovenpaa.
+ */
+export function mountainSelectionKnobsFor(profileType: ProfileType): MountainSelectionV2Knobs {
+  const t = MOUNTAIN_SELECTION_V2_TUNING;
+  const base: MountainSelectionV2Knobs = {
+    preFinalSplitThresholdFactor: t.preFinalSplitThresholdFactor,
+    preFinalWprimeForcedMinSeverity: t.preFinalWprimeForcedMinSeverity,
+    preFinalBreakawayDriftNeutralShare: t.preFinalBreakawayDriftNeutralShare,
+    letGoMaxGapScale: t.letGoMaxGapScale,
+    preFinalChaseClosingScale: t.preFinalChaseClosingScale,
+    finalChaseClosingScale: t.finalChaseClosingScale,
+  };
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[`V2_TUNE_${profileType}`];
+  return { ...base, ...(t.byProfile[profileType] ?? {}), ...(env ? JSON.parse(env) : {}) };
 }
 
 /**
