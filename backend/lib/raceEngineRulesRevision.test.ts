@@ -3,7 +3,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CURRENT_RACE_RULES_REVISION,
+  RACE_RULES_REVISIONS,
   RaceRulesRevisionError,
+  isKnownRulesRevision,
   isMissingRulesRevisionColumnError,
   raceHasStarted,
   resolveRaceRulesRevision,
@@ -223,5 +225,46 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
   assert.equal("rules_revision" in plain, false);
   assert.deepEqual(await bridgeInput("legacy"), plain);
   assert.equal((await bridgeInput("orders_gc_v1")).rules_revision, "orders_gc_v1");
-  await assert.rejects(bridgeInput("orders_gc_v2"));
+  await assert.rejects(bridgeInput("orders_gc_v9"));
+});
+
+// ── #6084: orders_gc_v2 (orders_gc_v1 + bjergselektionen) ─────────────────────
+
+test("#6084: orders_gc_v2 is a known revision but new races are still bound to orders_gc_v1", () => {
+  assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
+  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2"]);
+  // Aktivering er et separat ejer-go: CURRENT er uaendret.
+  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v1");
+});
+
+test("#6084: a race stored on orders_gc_v2 keeps it; a new race binds to v2 only when v2 is current", () => {
+  assert.equal(
+    resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v2", currentRevision: "orders_gc_v1" }),
+    "orders_gc_v2",
+  );
+  assert.equal(
+    resolveRaceRulesRevision({ race: notStarted, firstStageClaim: true, storedRevision: null, currentRevision: "orders_gc_v2" }),
+    "orders_gc_v2",
+  );
+  // En orders_gc_v1-race forbliver v1, selv naar v2 bliver den aktuelle.
+  assert.equal(
+    resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v1", currentRevision: "orders_gc_v2" }),
+    "orders_gc_v1",
+  );
+});
+
+test("#6084: the bridge carries orders_gc_v2 with the same GC context as orders_gc_v1", async () => {
+  const v1 = await bridgeInput("orders_gc_v1");
+  const v2 = await bridgeInput("orders_gc_v2");
+  assert.equal(v2.rules_revision, "orders_gc_v2");
+  assert.deepEqual({ ...v2, rules_revision: "orders_gc_v1" }, v1);
+});
+
+test("#6084: the migration allows exactly the known revisions in the CHECK constraint", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync(new URL("../../database/2026-10-02-race-engine-rules-revision-v2.sql", import.meta.url), "utf8");
+  const check = sql.match(/IN \(([^)]*)\)/);
+  assert.ok(check, "CHECK-listen findes");
+  const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
+  assert.deepEqual(allowed, [...RACE_RULES_REVISIONS]);
 });

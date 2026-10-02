@@ -325,7 +325,8 @@ test("an unknown rules revision is an error, never silently legacy or newest", (
   assert.equal(normalizeRulesRevision(undefined), "legacy");
   assert.equal(normalizeRulesRevision(null), "legacy");
   assert.equal(normalizeRulesRevision("orders_gc_v1"), "orders_gc_v1");
-  assert.throws(() => normalizeRulesRevision("orders_gc_v2"));
+  assert.equal(normalizeRulesRevision("orders_gc_v2"), "orders_gc_v2"); // #6084
+  assert.throws(() => normalizeRulesRevision("orders_gc_v9"));
   const input = fixtureInput("flat-massespurt");
   assert.throws(() => simulateStageV4({ ...input, rules_revision: "next" as unknown as "legacy" }));
 });
