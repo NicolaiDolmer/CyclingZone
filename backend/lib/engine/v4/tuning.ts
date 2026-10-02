@@ -794,6 +794,20 @@ const effortGainExtra = {
 /** M1 (#5580) additiv effort-gevinst-tuning (deep-frosset). Se effortGainExtra-kommentaren ovenfor. */
 export const EFFORT_GAIN_EXTRA_TUNING = deepFreeze(effortGainExtra);
 
+// #6079 (ejer 2/10, beslutning D, KUN orders_gc_v1): "Koer roligt" (save)
+// koster mindre placering paa stigningerne, taettere paa v3. Kun save's to
+// stignings-tal aendres; resten af trappen er effortGainExtra's. Ordenen
+// holder stadig (grupetto <= save <= normal, laast af test), saa en save-
+// rytter stadig taber tid mod en normal-rytter. Legacy laeser aldrig dette.
+// Maalt privat (balance-internals/6079/), tal ikke i PR-body.
+const ordersGcV1ClimbGain = {
+  climbScoreRelief: { ...effortGainExtra.climbScoreRelief, save: -0.45 } as Record<EffortLevel, number>,
+  climbScorePenalty: { ...effortGainExtra.climbScorePenalty, save: 0.2 } as Record<EffortLevel, number>,
+};
+
+/** #6079: stignings-tabellerne for save under orders_gc_v1 (deep-frosset). */
+export const ORDERS_GC_V1_CLIMB_GAIN_TUNING = deepFreeze(ordersGcV1ClimbGain);
+
 // ── M7 (mechanics/distanceFatigue.ts, #4030) — ADDITIV distance-slid-tuning ──
 // Samme moenster som finaleExtra/effortCostExtra ovenfor. Kontrakt (mor-spec
 // §4 M7 + §8 beslutning 12): monument-effekten (250 km+ draener finalen,
@@ -1354,6 +1368,10 @@ const morningBreakFormation = {
   successPressureWeight: 0.06,
   successCrowdWeight: 0.05,
   successBounds: [0.03, 0.85] as readonly [number, number],
+  // #6079 (ejer 2/10, beslutning A): et forsoeg med effektiv udbrudsordre
+  // (hunterens rolledefault eller "Forsoeg udbrud") faar dette tillaeg til
+  // succes-sandsynligheden; en fri rolle der selv forsoeger faar det ikke.
+  orderedSuccessBonus: 0.15,
   // Rytterens motor relativt til feltets snit, clampet. STARTGAET
   relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
 };

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { raceFatigueLoad, applyRaceFatigue, stageEnteringFatigues, restDayFatigue, applyGrandTourRestDayFatigue } from "./raceFatigue.js";
+import { raceFatigueLoad, applyRaceFatigue, stageEnteringFatigues, restDayFatigue, applyGrandTourRestDayFatigue, raceConditionLoads } from "./raceFatigue.js";
+import { effortFatigueMultiplier } from "./raceRoles.js";
 import { nextFatigue } from "./riderCondition.js";
 
 // ── raceFatigueLoad ───────────────────────────────────────────────────────────
@@ -267,6 +268,46 @@ test("applyRaceFatigue: rytter uden nøgle i effortByRider falder til multiplika
   const rows = supabase.__calls.find((c) => c.op === "upsert").rows;
   assert.equal(rows.find((r) => r.rider_id === "r1").fatigue, 27); // 20 + 10*0.7
   assert.equal(rows.find((r) => r.rider_id === "r2").fatigue, 30); // 20 + 10*1.0 (ikke i map → normal)
+});
+
+// ── #6079: save-træthed pr. profil under orders_gc_v1 (løbets engine_rules_revision) ──
+
+test("#6079 raceConditionLoads: legacy/manglende revision er bit-identisk; orders_gc_v1 sparer mere på bjerg og mindre på flad", () => {
+  const effortByRider = new Map([["s", "save"], ["n", "normal"]]);
+  for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt"]) {
+    const legacy = raceConditionLoads(["s", "n"], profile, effortByRider);
+    assert.deepEqual(raceConditionLoads(["s", "n"], profile, effortByRider, "legacy"), legacy, profile);
+    const gc = raceConditionLoads(["s", "n"], profile, effortByRider, "orders_gc_v1");
+    assert.equal(gc[1].load, legacy[1].load, `normal uændret paa ${profile}`);
+    const expected = raceFatigueLoad(profile) * effortFatigueMultiplier("save", { profileType: profile, rulesRevision: "orders_gc_v1" });
+    assert.equal(gc[0].load, expected, profile);
+    assert.ok(gc[0].load < gc[1].load, `save skal stadig spare paa ${profile}`);
+  }
+  const share = (p) => raceConditionLoads(["s"], p, effortByRider, "orders_gc_v1")[0].load / raceFatigueLoad(p);
+  assert.ok(share("mountain") < share("hilly") && share("hilly") < share("flat"));
+});
+
+test("#6079 stageEnteringFatigues: rulesRevision orders_gc_v1 giver profil-afhængig save; uden revision bit-identisk", () => {
+  const profiles = ["flat", "mountain", "high_mountain", "hilly"];
+  const legacy = stageEnteringFatigues(10, profiles, { effort: "save" });
+  assert.deepEqual(stageEnteringFatigues(10, profiles, { effort: "save", rulesRevision: "legacy" }), legacy);
+  const gc = stageEnteringFatigues(10, profiles, { effort: "save", rulesRevision: "orders_gc_v1" });
+  assert.equal(gc[0], legacy[0]);
+  assert.ok(gc[1] > legacy[1], "flad sparer mindre end legacy");
+  assert.ok(gc[3] < gc[2] + raceFatigueLoad("mountain") * 0.7, "bjergdagen sparer mere end legacy");
+  // normal er uændret uanset revision.
+  assert.deepEqual(stageEnteringFatigues(10, profiles, { rulesRevision: "orders_gc_v1" }), stageEnteringFatigues(10, profiles));
+});
+
+test("#6079 applyRaceFatigue: rulesRevision sendes med til multiplikatoren (bjergdag på save)", async () => {
+  const legacyDb = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }] });
+  const gcDb = makeSupabase({ conditionRows: [{ rider_id: "r1", fatigue: 20 }] });
+  const effortByRider = new Map([["r1", "save"]]);
+  await applyRaceFatigue({ supabase: legacyDb, riderIds: ["r1"], profileType: "mountain", effortByRider });
+  await applyRaceFatigue({ supabase: gcDb, riderIds: ["r1"], profileType: "mountain", effortByRider, rulesRevision: "orders_gc_v1" });
+  const f = (db) => db.__calls.find((c) => c.op === "upsert").rows[0].fatigue;
+  assert.ok(f(gcDb) < f(legacyDb), `${f(gcDb)} skal vaere under ${f(legacyDb)}`);
+  assert.ok(Number.isInteger(f(gcDb)));
 });
 
 // ── #3470: restDayFatigue (REN kerne, GT-hviledags-restitution) ────────────────────

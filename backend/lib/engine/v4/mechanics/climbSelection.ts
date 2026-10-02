@@ -36,7 +36,7 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { phaseSplitThreshold, phaseWprimeForcedMinSeverity } from "./mountainSelection.ts";
@@ -279,8 +279,10 @@ function computeSelections(
     // #5580: indsats-leddet (gevinsten), skaleret med rest-reserven — se
     // effortClimbScoreFactor — plus de lave trins straf-led (se
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
-    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit);
-    const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01);
+    // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
+    const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
+    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
+    const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
