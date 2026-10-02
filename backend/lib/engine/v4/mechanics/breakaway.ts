@@ -495,7 +495,7 @@ const ORDERS_GC_V1_LET_GO: Readonly<{
 // "let_go") trappes det ekstra (faktor - 1) lineaert ned til `floorAtAll` af sig
 // selv, naar alle hold lader gaa. Under taersklen er intet aendret.
 const ORDERS_GC_V1_LET_GO_CROWD: Readonly<{ fromShare: number; floorAtAll: number }> = Object.freeze({
-  fromShare: 0.75,
+  fromShare: 0.8,
   floorAtAll: 0.45,
 });
 
