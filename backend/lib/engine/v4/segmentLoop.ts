@@ -85,6 +85,7 @@ import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./
 import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 import { finalClimbStartIndex, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
+import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -966,6 +967,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // under den revision = "missing" (aerlig diagnose i mechanics/breakaway.ts).
       ...(hookRevision === "orders_gc_v1" ? { gcContext: input.gc_context ?? null } : {}),
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
+      ...(rollingBreakawayV2For(rulesRevision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
