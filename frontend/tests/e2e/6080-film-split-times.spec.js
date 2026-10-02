@@ -116,6 +116,8 @@ test("before/after image", async ({ browser }, testInfo) => {
     const section = p.getByTestId("stage-split-times");
     await expect(section).toBeVisible();
 
+    // Bundnavigationen paa mobil er fixed og ville ligge hen over elementet.
+    await p.addStyleTag({ content: "nav.fixed, .fixed.bottom-0 { display: none !important; }" });
     const column = await section.evaluateHandle((el) => el.parentElement);
     await column.screenshot({ path: `${out}/${name}-after.png` });
     await section.evaluate((el) => el.remove());
@@ -139,7 +141,7 @@ test("before/after image", async ({ browser }, testInfo) => {
     <div style="display:flex;gap:24px;align-items:flex-start">
       <figure style="margin:0"><figcaption><b>1440 FØR</b> (main)</figcaption><img src="${img("desktop-before")}" style="width:420px;border:1px solid #ccc"></figure>
       <figure style="margin:0"><figcaption><b>1440 EFTER</b> <span style="color:#a33">1</span> Mellemtider pr. stigning/mellemsprint <span style="color:#a33">2</span> Hvor dine ryttere tabte tid + grund</figcaption><img src="${img("desktop-after")}" style="width:420px;border:2px solid #a33"></figure>
-      <figure style="margin:0"><figcaption><b>Løbsfilm EFTER</b> (scrubbet til mål)</figcaption><img src="${img("desktop-film")}" style="width:420px;border:2px solid #a33"></figure>
+      <figure style="margin:0"><figcaption><b>Løbsfilm EFTER</b> (scrubbet til mål)</figcaption><img src="${img("desktop-film")}" style="width:560px;border:2px solid #a33"></figure>
       <figure style="margin:0"><figcaption><b>390 FØR</b></figcaption><img src="${img("mobile-before")}" style="width:240px;border:1px solid #ccc"></figure>
       <figure style="margin:0"><figcaption><b>390 EFTER</b></figcaption><img src="${img("mobile-after")}" style="width:240px;border:2px solid #a33"></figure>
     </div></body></html>`);
