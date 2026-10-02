@@ -1369,9 +1369,16 @@ const mountainSelectionV2 = {
   // Profiler hvor revisionen gaelder. Kuperede etaper er bevidst udeladt.
   profileTypes: ["mountain", "high_mountain"] as readonly ProfileType[],
   // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
-  preFinalSplitThresholdFactor: 2,
+  preFinalSplitThresholdFactor: 3.2,
   // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
   preFinalWprimeForcedMinSeverity: 0.5,
+  // A: andel af tempo-driften mellem favoritgruppen og dagens udbrud der nulstilles paa stigninger foer
+  // finalestigningen (1 = kun jagten flytter hullet, som paa aabent terraen).
+  preFinalBreakawayDriftNeutralShare: 1,
+  // M5: skalering af lad-gaa-loftet (oven paa orders_gc_v1-faktoren) paa hele etapen.
+  letGoMaxGapScale: 0.25,
+  // M5: jagtens lukning paa segmenter foer finalestigningen (kontrolleret jagt).
+  preFinalChaseClosingScale: 1,
 };
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */

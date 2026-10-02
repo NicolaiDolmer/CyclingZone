@@ -72,3 +72,31 @@ export function phaseWprimeForcedMinSeverity(
 ): number {
   return phase === "pre_final" ? Math.max(base, preFinal) : base;
 }
+
+/** A: andel af tempo-driften mod dagens udbrud der nulstilles paa stigningen. 0 uden for "pre_final". */
+export function phaseClimbNeutralShare(
+  phase: MountainSelectionPhase | undefined,
+  share: number = MOUNTAIN_SELECTION_V2_TUNING.preFinalBreakawayDriftNeutralShare,
+): number {
+  return phase === "pre_final" ? share : 0;
+}
+
+/**
+ * M5-loftet over dagens lad-gaa-forspring under orders_gc_v2 paa bjerg. orders_gc_v1-
+ * faktorerne kompenserede for at elitegruppen hentede udbruddet med sit klatretempo;
+ * naar feltet holder samlet, skaleres loftet. 1 uden en fase.
+ */
+export function phaseLetGoMaxGapScale(
+  phase: MountainSelectionPhase | undefined,
+  scale: number = MOUNTAIN_SELECTION_V2_TUNING.letGoMaxGapScale,
+): number {
+  return phase ? scale : 1;
+}
+
+/** M5: jagtens lukning foer finalestigningen (kontrolleret jagt). 1 i "final" og uden fase. */
+export function phaseChaseClosingScale(
+  phase: MountainSelectionPhase | undefined,
+  scale: number = MOUNTAIN_SELECTION_V2_TUNING.preFinalChaseClosingScale,
+): number {
+  return phase === "pre_final" ? scale : 1;
+}

@@ -84,7 +84,7 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
-import { finalClimbStartIndex, mountainSelectionPhaseFor } from "./mechanics/mountainSelection.ts";
+import { finalClimbStartIndex, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -670,11 +670,13 @@ export function neutralizeBreakawayTempoDrift(
   groups: readonly RaceGroup[],
   tempoByGroup: Map<string, GroupTempo>,
   kind: SegmentKind,
-  // #6084 (KUN orders_gc_v2): ogsaa paa en stigning foer finalestigningen
-  // (mechanics/mountainSelection.ts, forslag A). Udeladt = uaendret.
-  neutralClimb = false,
+  // #6084 (KUN orders_gc_v2): andel af driften der ogsaa nulstilles paa en
+  // stigning foer finalestigningen (mechanics/mountainSelection.ts, forslag A).
+  // 0 = uaendret (stigninger beholder driften), 1 = som paa aabent terraen.
+  climbNeutralShare = 0,
 ): Map<string, GroupTempo> {
-  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind) && !(neutralClimb && kind === "climb")) return tempoByGroup;
+  const climbShare = kind === "climb" ? climbNeutralShare : 0;
+  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind) && !(climbShare > 0)) return tempoByGroup;
   const escapes = groups.filter((g) => g.kind === "breakaway" && g.origin === "breakaway");
   if (escapes.length === 0) return tempoByGroup;
   let out: Map<string, GroupTempo> | null = null;
@@ -686,7 +688,8 @@ export function neutralizeBreakawayTempoDrift(
     const own = tempoByGroup.get(escape.id);
     if (!own || own.dtSeconds === chaseTempo.dtSeconds) continue;
     out ??= new Map(tempoByGroup);
-    out.set(escape.id, { ...own, dtSeconds: chaseTempo.dtSeconds });
+    const dtSeconds = climbShare > 0 && climbShare < 1 ? own.dtSeconds + (chaseTempo.dtSeconds - own.dtSeconds) * climbShare : chaseTempo.dtSeconds;
+    out.set(escape.id, { ...own, dtSeconds });
   }
   return out ?? tempoByGroup;
 }
@@ -928,7 +931,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // #5812 (a): M5 ejer hullet mellem dagens udbrud og jagtgruppen paa aabent
     // terraen. Se neutralizeBreakawayTempoDrift.
     const mountainPhase = mountainSelectionPhaseFor(rulesRevision, route.profile_type, segmentIndex, finalClimbStart);
-    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, mountainPhase === "pre_final");
+    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase));
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
