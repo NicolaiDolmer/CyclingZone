@@ -101,7 +101,13 @@ for (let s = 1; s <= SEEDS; s++) {
   }
   const gapsOf = (role) => ranked.filter((r) => roleById.get(r.rider_id) === role).map((r) => Number(r.stageGap)).filter(Number.isFinite);
   const gc = gapsOf("captain"), sp = gapsOf("sprint_captain");
-  perSeed.push({ gcCapMedian: median(gc), gcCapOver5: gc.filter((g) => g > 300).length, gcCapN: gc.length, spCapMedian: median(sp), seed: s, breakSize: breakIds.length, roles, violators: violators.length, capGapMedian: median(capGaps), capGapMax: capGaps.length ? Math.max(...capGaps) : null, capOver5min: capGaps.filter((g) => g > 300).length, nCaptains: capGaps.length, winnerInBreak: ranked[0]?.components?.breakaway === true });
+  perSeed.push({ gcCapMedian: median(gc), gcCapOver5: gc.filter((g) => g > 300).length, gcCapN: gc.length, spCapMedian: median(sp), seed: s, breakSize: breakIds.length, roles, violators: violators.length, capGapMedian: median(capGaps), capGapMax: capGaps.length ? Math.max(...capGaps) : null, capOver5min: capGaps.filter((g) => g > 300).length, nCaptains: capGaps.length,
+    // #6089: broen saetter components.breakaway til 1/0 (ikke true/false), saa
+    // `=== true` var altid falsk. Motorens egen dom (breakaway_win) foerst.
+    winnerInBreak: typeof ranked[0]?.breakaway_win === "boolean" ? ranked[0].breakaway_win : Number(ranked[0]?.components?.breakaway) > 0,
+    winnerInMorningBreak: Number(ranked[0]?.components?.breakaway) > 0,
+    // Udbruddet foran favoritterne: en morgenudbryder i maal foer den foerste kaptajn uden for udbruddet.
+    breakAheadOfFavourites: (() => { const b = ranked.findIndex((r) => Number(r.components?.breakaway) > 0); const c = ranked.findIndex((r) => roleById.get(r.rider_id) === "captain" && !(Number(r.components?.breakaway) > 0)); return b >= 0 && c >= 0 && b < c; })() });
 }
 
 const summary = {
@@ -111,6 +117,8 @@ const summary = {
   violators_total: perSeed.reduce((s, r) => s + r.violators, 0),
   breakSize_median: median(perSeed.map((r) => r.breakSize)),
   winner_from_break: perSeed.filter((r) => r.winnerInBreak).length,
+  winner_in_morning_break: perSeed.filter((r) => r.winnerInMorningBreak).length,
+  break_ahead_of_favourites: perSeed.filter((r) => r.breakAheadOfFavourites).length,
   captain_gap_median_s: median(perSeed.map((r) => r.capGapMedian)),
   captain_gap_max_s: Math.max(...perSeed.map((r) => r.capGapMax ?? 0)),
   captains_over_5min_per_seed: median(perSeed.map((r) => r.capOver5min)),
