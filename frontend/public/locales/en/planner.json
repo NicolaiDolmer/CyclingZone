@@ -66,6 +66,14 @@
     "payback": {
       "collision": "The dip after this peak covers {race}, {days, plural, one {# day} other {# days}} later. Expect {payback} form there.",
       "unknownRace": "another race on this rider's program"
+    },
+    "youth": {
+      "title": "U23 and junior riders",
+      "note": "These riders race U23 and junior races. Peaks are planned for the senior calendar, so their peaks can only be removed here.",
+      "squad": {
+        "u23": "U23",
+        "junior": "Junior"
+      }
     }
   },
   "assistant": {
@@ -123,7 +131,6 @@
     "label": "OVR"
   },
   "today": "Today",
-  "academy": "Academy",
   "form": {
     "now": "Current form {value}"
   },
@@ -146,7 +153,8 @@
       "suggestedHere": "Assistant suggests here",
       "viewPage": "View race page",
       "peaksLocked": "Division pending",
-      "maxedReached": "Peak limit reached (max {max} per rider)"
+      "maxedReached": "Peak limit reached (max {max} per rider)",
+      "started": "Started"
     },
     "rider": {
       "abilities": "Abilities",
@@ -191,7 +199,9 @@
     "description": "Nothing was lost. Your peaks and training plans are safe. Try again.",
     "session": "Your session has ended. Sign in again to keep planning.",
     "retry": "Try again",
-    "division_not_settled": "Your division for that season is decided at the season rollover, so peaks cannot be set yet."
+    "division_not_settled": "Your division for that season is decided at the season rollover, so peaks cannot be set yet.",
+    "race_already_started": "That race has already started, so it can no longer be a peak target.",
+    "rider_not_senior_squad": "Peaks are planned for senior riders. This rider is in your U23 or junior squad."
   },
   "months": [
     "Jan",

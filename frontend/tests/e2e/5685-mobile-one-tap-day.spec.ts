@@ -179,13 +179,6 @@ test("mobil 390 × 844 (beta): Select riders skjuler valget og markerer raekker"
   await expect(page.getByTestId("training-mobile-bulk-bar")).toContainText("1 selected");
 });
 
-test("mobil 390 × 844 uden beta: telefonens Today er uaendret (tabellen)", async ({ page }) => {
-  await openTraining(page, 390, 844, { beta: false });
-  await expect(page.getByTestId("training-mobile-roster")).toBeVisible();
-  await expect(rows(page)).toHaveCount(0);
-  await page.screenshot({ path: evidenceShotPath("pr-screens/5685/before-390.png") });
-});
-
 test("desktop 1440 × 900 (beta): desktop beholder sine hurtig-knapper", async ({ page }) => {
   await openTraining(page, 1440, 900);
   await expect(page.getByTestId("training-today-table")).toBeVisible();

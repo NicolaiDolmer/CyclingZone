@@ -55,7 +55,7 @@ function effortOf(decision: ReturnType<typeof generateAiTeamOrder>, riderId: str
 
 // ── Kaptajn beskyttes paa bjergetaper (opgave-eksemplet) ──────────────────────
 
-test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn beskyttes, hjaelper arbejder", () => {
+test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn gemmer sig til finalen, hjaelper arbejder", () => {
   const roster: AiRosterEntrant[] = [
     rider("cap", "captain", { climbing: 85 }),
     rider("sprint-cap", "sprint_captain", { sprint: 90 }),
@@ -68,7 +68,8 @@ test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn beskytt
 
   assert.equal(decision.order.breakaway_stance, "chase");
   const capOrder = decision.order.riders.find((r) => r.rider_id === "cap");
-  assert.equal(capOrder?.effort, "protect");
+  // #6055: kaptajnen koerer normal; protect/all_out braendte hans reserve af.
+  assert.equal(capOrder?.effort, "normal");
   assert.equal(capOrder?.try_break, false);
   // "Arbejd eller angrib": hjaelperen koerer ved kaptajnen holdet koerer for.
   assert.equal(effortOf(decision, "h1"), "protect");
@@ -81,12 +82,12 @@ test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn beskytt
   // Forklarlighed: hver rytter + stance har en ikke-tom reason-streng.
   assert.ok(decision.reasons.breakaway_stance.length > 0);
   for (const r of roster) assert.ok((decision.reasons.riders[r.rider_id] ?? "").length > 0);
-  assert.match(decision.reasons.riders.cap, /Beskyttes/);
+  assert.match(decision.reasons.riders.cap, /Gemmer kraefterne til finalen/);
 });
 
 // ── Sprint-tog-narrativ paa flade etaper ──────────────────────────────────────
 
-test("sprint-kaptajn blandt feltets hurtigste til flad spurtetape -> chase + beskyttes, toget sat", () => {
+test("sprint-kaptajn blandt feltets hurtigste til flad spurtetape -> chase, sprinteren gemmer sig til spurten, toget sat", () => {
   const roster: AiRosterEntrant[] = [
     rider("cap", "captain", { climbing: 80 }),
     rider("sprint-cap", "sprint_captain", { sprint: 92 }),
@@ -96,7 +97,7 @@ test("sprint-kaptajn blandt feltets hurtigste til flad spurtetape -> chase + bes
   const decision = generateAiTeamOrder({ team_id: "team-2", route: FLAT_SPRINT, roster, field });
 
   assert.equal(decision.order.breakaway_stance, "chase");
-  assert.equal(effortOf(decision, "sprint-cap"), "protect");
+  assert.equal(effortOf(decision, "sprint-cap"), "normal");
   // GC-kaptajnen er off-specialty paa en flad spurtetape -> spares.
   assert.equal(effortOf(decision, "cap"), "save");
   // M6: hjaelperen koerer i toget (rollens standard), maalet selv goer aldrig.
@@ -187,7 +188,7 @@ test("styrken er feltets plads, ikke en absolut evne: lav skala giver samme besl
   });
   assert.equal(highDecision.order.breakaway_stance, "chase");
   assert.equal(lowDecision.order.breakaway_stance, "chase");
-  assert.equal(effortOf(lowDecision, "cap"), "protect");
+  assert.equal(effortOf(lowDecision, "cap"), "normal");
 });
 
 // ── #5571: indsatstrappen brugt realistisk ─────────────────────────────────
@@ -222,26 +223,40 @@ test("endagsloeb paa bjergterraen: ingen grupetto (der er ingen i morgen at gemm
   assert.equal(effortOf(decision, "sprint-cap"), "save");
 });
 
-test("den afgoerende dag: kaptajnen gaar alt ud paa loebets sidste etape af hans terraen", () => {
+test("#6055: den afgoerende dag gemmer kaptajnen ogsaa kraefterne til finalen (aldrig all_out/protect)", () => {
   const roster: AiRosterEntrant[] = [rider("cap", "captain", { climbing: 85 }), rider("h1", "helper")];
   const field = fieldOf(roster, opponents("climbing", spread(30, 20, 60)));
 
   const notYet = generateAiTeamOrder({ team_id: "gt", route: MOUNTAIN, roster, field, race: stageRace([MOUNTAIN, FLAT_SPRINT]) });
-  assert.equal(effortOf(notYet, "cap"), "protect");
+  assert.equal(effortOf(notYet, "cap"), "normal");
 
   const lastMountain = generateAiTeamOrder({ team_id: "gt", route: MOUNTAIN, roster, field, race: stageRace([FLAT_SPRINT]) });
-  assert.equal(effortOf(lastMountain, "cap"), "all_out");
-  assert.match(lastMountain.reasons.riders.cap, /Alt ud/);
+  assert.equal(effortOf(lastMountain, "cap"), "normal");
+  assert.match(lastMountain.reasons.riders.cap, /sidste etape af denne type/);
+  // Hjaelperen arbejder stadig for ham.
+  assert.equal(effortOf(lastMountain, "h1"), "protect");
 
   const oneDay = generateAiTeamOrder({ team_id: "od", route: MOUNTAIN, roster, field, race: ONE_DAY });
-  assert.equal(effortOf(oneDay, "cap"), "all_out");
+  assert.equal(effortOf(oneDay, "cap"), "normal");
+  assert.match(oneDay.reasons.riders.cap, /endagsloeb/);
 
-  // Uden loebs-kontekst kender AI'en ikke den afgoerende dag.
   const unknownRace = generateAiTeamOrder({ team_id: "u", route: MOUNTAIN, roster, field });
-  assert.equal(effortOf(unknownRace, "cap"), "protect");
+  assert.equal(effortOf(unknownRace, "cap"), "normal");
 });
 
-test("alt ud kun for en favorit: en kaptajn midt i feltet koerer normalt ogsaa paa den afgoerende dag", () => {
+test("#6055: sprint-kaptajnen paa sidste flade etape koerer normal, ikke alt ud", () => {
+  const roster: AiRosterEntrant[] = [
+    rider("sprint-cap", "sprint_captain", { sprint: 92 }),
+    rider("h1", "helper", { sprint: 70, climbing: 30 }),
+  ];
+  const field = fieldOf(roster, opponents("sprint", spread(30, 20, 60)));
+  const decision = generateAiTeamOrder({ team_id: "gt", route: FLAT_SPRINT, roster, field, race: stageRace([MOUNTAIN]) });
+  assert.equal(decision.order.breakaway_stance, "chase");
+  assert.equal(effortOf(decision, "sprint-cap"), "normal");
+  assert.equal(decision.order.riders.find((r) => r.rider_id === "h1")?.leadout, true);
+});
+
+test("en kaptajn midt i feltet koerer normalt ogsaa paa den afgoerende dag (neutral stance)", () => {
   const roster: AiRosterEntrant[] = [rider("cap", "captain", { climbing: 62 })];
   const field = fieldOf(roster, [...opponents("climbing", spread(10, 70, 79)), ...opponents("climbing", spread(20, 10, 40))]);
   const decision = generateAiTeamOrder({ team_id: "od", route: MOUNTAIN, roster, field, race: ONE_DAY });
@@ -342,7 +357,7 @@ test("property: try_break er kun nogensinde true for hunter/free_role, output va
 
 // ── #5571: trappens yderpunkter bruges kun hvor et rigtigt hold ville ────────
 
-test("property: all_out kun for dagens kaptajn i et kendt loeb, grupetto kun i bjergene i etapeloeb", () => {
+test("property: AI'en bruger aldrig all_out, kaptajnen aldrig protect, grupetto kun i bjergene i etapeloeb", () => {
   const roleArb = fc.constantFrom<RiderRole>("captain", "sprint_captain", "helper", "hunter", "free_role");
   const routeArb = fc.constantFrom<AiTacticsRoute>(
     MOUNTAIN,
@@ -380,11 +395,10 @@ test("property: all_out kun for dagens kaptajn i et kendt loeb, grupetto kun i b
       const climbDay = route.profile_type === "mountain" || route.profile_type === "high_mountain";
       for (const r of decision.order.riders) {
         const role = roster.find((e) => e.rider_id === r.rider_id)?.role;
-        if (r.effort === "all_out") {
-          assert.ok(race !== undefined, "all_out kraever et kendt loeb");
-          assert.equal(decision.order.breakaway_stance, "chase");
-          assert.ok(role === "captain" || role === "sprint_captain");
-        }
+        // #6055: all_out braender reserven af foer finalen; protect er
+        // hjaelpernes trin ("arbejd eller angrib"), aldrig kaptajnens.
+        assert.notEqual(r.effort, "all_out");
+        if (role === "captain" || role === "sprint_captain") assert.notEqual(r.effort, "protect");
         if (r.effort === "grupetto") {
           assert.equal(race?.is_stage_race, true);
           assert.ok(climbDay);

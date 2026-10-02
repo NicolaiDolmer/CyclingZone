@@ -7,11 +7,14 @@ import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
 import { StarIcon, FlagIcon, ChevronRightIcon } from "../ui";
 import { dateToOrdinal, formatRaceDateLabel, statusMeta, riderShortName } from "./plannerShared";
+import { isYouthPlannerRider } from "./plannerSquadModel";
 
-export default function MobileLanes({ riders, races, filter, today, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider }) {
+export default function MobileLanes({ riders: allRiders, races, filter, today, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider }) {
   const { t } = useTranslation("planner");
   const months = t("months", { returnObjects: true });
   const nowOrd = dateToOrdinal(today);
+  // #5992: samme seniortrup som desktop-brættet (MasterCanvas).
+  const riders = (allRiders || []).filter((rd) => !isYouthPlannerRider(rd));
 
   const visRaces = (races || [])
     .filter((r) => r.date && (filter === "all" || r.isMine))

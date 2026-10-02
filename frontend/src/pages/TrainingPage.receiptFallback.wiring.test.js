@@ -18,9 +18,10 @@ test("#5539-fix /training: kvitteringens kilde er latestReceiptRun(todayRun, his
   assert.match(page, /const receiptRowByRider = useMemo\(\(\) => reportRowsByRider\(receiptRun\), \[receiptRun\]\);/);
 });
 
-test("#5539-fix /training: BEGGE focusAbilityReceipt-kald (desktop-roster + mobilkort) bruger seneste kørsel + dag", () => {
+test("#5539-fix /training: focusAbilityReceipt-kaldet (rytterkortet) bruger seneste kørsel + dag", () => {
   const calls = page.match(/focusAbilityReceipt\((?:plan\?\.focus|planFor\(riderId\)\?\.focus), \{[\s\S]*?\n\s*\}\);/g) ?? [];
-  assert.equal(calls.length, 2, "forventer præcis to focusAbilityReceipt-kald");
+  // #6030: D-047-roster-rækken (det andet kald) er slettet med flaget training_mobile_table.
+  assert.equal(calls.length, 1, "forventer præcis ét focusAbilityReceipt-kald");
   for (const call of calls) {
     assert.match(call, /progressBefore: receiptRowByRider\[/);
     assert.match(call, /gainsToday: receiptRowByRider\[/);

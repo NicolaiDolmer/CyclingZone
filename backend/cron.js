@@ -66,7 +66,7 @@ import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
 import { startClockAlignedInterval } from "./lib/schedulerTick.js"; // #3624 trin 1
 import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
-import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
+import { refreshRankingMatviewsGated } from "./lib/refreshRankingMatviews.js"; // #5911
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
@@ -1337,7 +1337,7 @@ async function runRaceFinalizeWatchCron() {
 // + holder ranglisten fersk under et igangværende etapeløb (mellem-etaper). Best-
 // effort i sig selv (refreshRankingMatviewsSafe sluger + logger fejl).
 async function runRankingMatviewRefreshCron() {
-  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: sentryCapture });
+  await refreshRankingMatviewsGated(supabase, { captureExceptionFn: sentryCapture });
 }
 
 // ─── Global Rank ugentligt bevægelses-snapshot (#2453) ────────────────────────

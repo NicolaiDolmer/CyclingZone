@@ -203,3 +203,18 @@ test('a legacy failure keeps the forced retry on a full pass', async () => {
   assert.equal(calls.filter(id => id === 'legacy-a').length, 2);
   assert.equal(legacyLookups.length, 2);
 });
+
+// #5911: the close triggers one ranking refresh after a sweep that settled today's teams.
+test('a sweep that settles today triggers one ranking refresh; a past-date retry does not', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const refreshes = [];
+  const today = { ...retryLoopOptions({ calls: [], legacyLookups: [], forceRetry: false }),
+    loadIndex: async () => ({ today: '2026-10-01', activeSeasonId: 'season', jobs: [{ tickDate: '2026-10-01', season: { id: 'season', number: 4 } }] }),
+    refreshRankings: async args => { refreshes.push(args.now.toISOString()); } };
+  const result = await runNormalizedTrainingDateSweep(today);
+  assert.ok(result.swept > 0);
+  assert.equal(refreshes.length, 1);
+  __resetNormalizedTrainingDateCacheForTests();
+  await runNormalizedTrainingDateSweep({ ...retryLoopOptions({ calls: [], legacyLookups: [] }), refreshRankings: async () => { refreshes.push('past'); } });
+  assert.equal(refreshes.length, 1);
+});

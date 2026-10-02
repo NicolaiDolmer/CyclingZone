@@ -528,7 +528,7 @@
     "noWholePoint": "No whole point recorded",
     "raceDay": "Race day {day}",
     "activity": "Activity {n}",
-    "pointContribution": "+{percent}% of an ability point",
+    "pointContribution": "+{percent}%",
     "progressUnavailable": "Shown after the next training day",
     "expandAll": "Expand all",
     "collapseAll": "Collapse all",

@@ -227,10 +227,24 @@ test("#4375 frontend tåler at feltet mangler: useTraining normaliserer med ?? {
     resolve(__dirname, "../../frontend/src/pages/TrainingPage.jsx"),
     "utf8",
   );
-  assert.match(pageSource, /const raceToday = racingToday\[rider\.id\] \?\? null;/);
-  // Tom racingToday ⇒ raceToday er null for hver rytter ⇒ hverken badge eller
-  // opacity-dæmpning renderes, og knapperne er kun disabled af `busy`.
-  assert.match(pageSource, /\$\{raceToday \? "opacity-\[0\.55\]" : ""\}/);
-  assert.match(pageSource, /disabled=\{busy\}/);
-  assert.doesNotMatch(pageSource, /disabled=\{busy\s*\|\|\s*raceToday/);
+  // #6030: den gamle renderRosterRow er slettet; vagten sidder nu på de LEVENDE
+  // rækker. Begge løbsdags-opslag er pr. rytter og tåler et tomt objekt.
+  assert.match(pageSource, /const racingFor = \(riderId, column\) =>\s*racingToday\[riderId\] != null/);
+  assert.match(pageSource, /const racingTodayFor = \(riderId\) => racingToday\[riderId\] != null;/);
+  // Desktop-tabellen: kun racingFor giver Race-cellen (badgen).
+  assert.match(pageSource, /if \(racingFor\(riderId, column\)\) \{\s*return \{ label: t\("mobile\.raceShort"\), tone: "race"/);
+  // Telefonens rækker: "stage today"-mærket hænger på samme opslag.
+  assert.match(pageSource, /stageToday=\{racingTodayFor\}/);
+  const mobileRowsSource = readFileSync(
+    resolve(__dirname, "../../frontend/src/components/training/TodayRowMobile.tsx"),
+    "utf8",
+  );
+  assert.match(mobileRowsSource, /const stage = stageToday\(rider\.id\);/);
+  assert.match(mobileRowsSource, /stage \? t\("oneTap\.stageToday"\) : null/);
+  // Tom racingToday ⇒ ingen badge og ingen dæmpning/låsning: valgknapperne er
+  // kun disabled af lås/busy, aldrig af løbsdagen.
+  assert.match(mobileRowsSource, /const disabled = locked \|\| busy;/);
+  assert.doesNotMatch(mobileRowsSource, /disabled = [^;]*stage/);
+  assert.doesNotMatch(pageSource, /disabled=\{busy\s*\|\|\s*racing/);
+  assert.doesNotMatch(pageSource, /racing[A-Za-z]*\([^)]*\)\s*\?\s*"opacity-/);
 });

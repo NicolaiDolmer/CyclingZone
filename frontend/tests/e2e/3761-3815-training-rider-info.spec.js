@@ -179,9 +179,10 @@ test("#3815 alderen forsvinder ikke på mobil — den står i rytterens kort", a
   await login(page);
   await page.setViewportSize({ width: 412, height: 915 });
   await page.goto("/training");
-  await page.locator('[data-testid="training-mobile-roster"]').waitFor();
+  // #6030: telefonens Today er række-listen (TodayRowsMobile) for alle.
+  await page.getByTestId("training-onetap-rows").waitFor();
 
-  await page.getByRole("button", { name: /M\. Aagaard/ }).click();
+  await page.getByTestId("training-onetap-row").filter({ hasText: "Aagaard" }).getByRole("button").first().click();
   await expect(page.getByText(/Alder 38/i)).toBeVisible();
 });
 

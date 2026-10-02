@@ -24,48 +24,17 @@ test("#3459 racingToday hentes fra useTraining (ingen ny fetch/config-endpoint p
     /const \{[\s\S]{0,1200}?\bracingToday,[\s\S]{0,400}?\} = training;/,
     "skal destrukturere racingToday fra useTraining()",
   );
-  assert.match(src, /const raceToday = racingToday\[rider\.id\] \?\? null;/, "tilstedeværelse pr. rytter er hele gaten");
+  // Tilstedeværelse pr. rytter er hele gaten (løbsdags-cellen og telefonens række).
+  assert.match(src, /const racingTodayFor = \(riderId\) => racingToday\[riderId\] != null;/);
+  assert.match(src, /tone: "race", title: racingToday\[riderId\]\?\.race \?\? undefined/);
 });
 
-test("#3459 badge bruger FlagIcon (stroke-ikon, ingen emoji) + de rette i18n-nøgler", () => {
-  assert.match(src, /FlagIcon/, "skal importere/bruge FlagIcon fra ui-kittet");
-  assert.match(src, /t\("raceDayBadge"\)/);
-  assert.match(src, /t\("raceDayTooltip",/);
-  // Ingen emoji-tegn i selve komponentkilden nær badgen (repo-krav: stroke-ikoner, aldrig emoji).
+// #6030: badgen i #5124's D-047-roster-række (FlagIcon + dæmpede intensitets-
+// knapper) er slettet sammen med grenen (training_mobile_table er on for alle).
+// Løbsdagen vises nu som "race"-cellen i dagens tabel (ovenfor).
+test("#3459 ingen emoji på siden (stroke-ikoner, aldrig emoji)", () => {
   assert.doesNotMatch(src, /🚩|🏁|🚴/);
 });
-
-test("#3459 løbsdags-linjen ERSTATTER (ikke supplerer) den normale weekRhythmTodayShort-linje", () => {
-  assert.match(
-    src,
-    /\{raceToday \? \(/,
-    "skal branche på raceToday FØR teamRhythmActive-grenen",
-  );
-  assert.match(
-    src,
-    /\) : teamRhythmActive && \(/,
-    "den gamle rytme-linje skal stå i else-grenen, ikke som et separat sideordnet villkor",
-  );
-});
-
-test("#3459 intensitets-knapperne dæmpes (opacity) på løbsdage, men forbliver AKTIVE (ingen ny disabled-betingelse)", () => {
-  // #5124: gruppen bryder til to linjer på mobil (flex-wrap i stedet for
-  // overflow-hidden, ingen vandret scroll-garanti brydes) — desktop beholder
-  // overflow-hidden uændret (isMobile er altid false dér). Regexen tolererer
-  // begge grene af `isMobile ? "flex-wrap" : "overflow-hidden"`, men kræver
-  // stadig den samme raceToday-dæmpning som før #5124.
-  assert.match(
-    src,
-    /className=\{`inline-flex rounded-cz border border-cz-border \$\{[\s\S]{0,120}"overflow-hidden"[\s\S]{0,20}\} \$\{raceToday \? "opacity-\[0\.55\]" : ""\}`\}/,
-    "intensitets-gruppen skal dæmpes visuelt når raceToday er sat",
-  );
-  // disabled-betingelsen på selve knapperne er UÆNDRET (kun busy) — raceToday må
-  // ALDRIG optræde i disabled-udtrykket, ellers er planen ikke længere "urørt".
-  assert.match(src, /disabled=\{busy\}/);
-  assert.doesNotMatch(src, /disabled=\{busy\s*\|\|\s*raceToday/);
-  assert.doesNotMatch(src, /disabled=\{raceToday/);
-});
-
 test("#3459 planen (fokus/intensitet-handlers) kaldes uændret — badgen rører ALDRIG handlePlanChange", () => {
   assert.doesNotMatch(
     src,

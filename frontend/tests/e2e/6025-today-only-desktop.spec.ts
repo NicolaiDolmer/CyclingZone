@@ -142,18 +142,6 @@ test("desktop 1440 (beta): Today uden saesonkolonne, traethed nu / i aften", asy
   await page.screenshot({ path: evidenceShotPath("pr-screens/6025/after-1440-development.png") });
 });
 
-test("desktop 1440 uden beta: Today og Development er uaendrede", async ({ page }) => {
-  await openTraining(page, 1440, 900, { beta: false });
-  const table = page.getByTestId("training-today-table");
-  await expect(table.getByRole("columnheader", { name: /Season pts/ })).toBeVisible();
-  await expect(table.getByRole("columnheader", { name: /Fatigue now \/ tonight/ })).toHaveCount(0);
-  await expect(page.getByTestId("fatigue-now-tonight")).toHaveCount(0);
-  await page.screenshot({ path: evidenceShotPath("pr-screens/6025/before-1440-today.png") });
-
-  await openDevelopment(page);
-  await expect(page.getByTestId("training-season-overview")).toHaveCount(0);
-});
-
 test("mobil 390 (beta): telefonens raekke uroert, overblikket i Development", async ({ page }) => {
   await openTraining(page, 390, 844);
   // #6021's raekke er uroert: ingen saesonfremgang i den.
@@ -166,17 +154,4 @@ test("mobil 390 (beta): telefonens raekke uroert, overblikket i Development", as
   const noPageScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   await expect.poll(noPageScroll).toBe(true);
   await page.screenshot({ path: evidenceShotPath("pr-screens/6025/after-390-development.png") });
-});
-
-test("mobil 390 (beta, uden mobil-tabel): D-047-grenen har ingen This season-kolonne", async ({ page }) => {
-  await openTraining(page, 390, 844, { mobileTable: false });
-  await expect(page.getByRole("columnheader", { name: "Status" }).first()).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "This season" })).toHaveCount(0);
-});
-
-test("mobil 390 uden beta: Development uden overblik (foer-billede)", async ({ page }) => {
-  await openTraining(page, 390, 844, { beta: false });
-  await openDevelopment(page);
-  await expect(page.getByTestId("training-season-overview")).toHaveCount(0);
-  await page.screenshot({ path: evidenceShotPath("pr-screens/6025/before-390-development.png") });
 });

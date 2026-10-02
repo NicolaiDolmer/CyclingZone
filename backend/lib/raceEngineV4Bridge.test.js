@@ -301,8 +301,8 @@ test("#5571 buildV4StageInput (rigtige adaptere): AI-holdets indsats lander på 
     raceStages: [mountain, flat],
   });
   const effort = new Map(input.startlist.map((e) => [e.rider_id, e.effort]));
-  // Sidste bjergetape i etapeløbet: kaptajnen alt ud, hjælperen ved ham, sprinteren i grupettoen.
-  assert.equal(effort.get("ai-cap"), "all_out");
+  // Sidste bjergetape i etapeløbet: kaptajnen gemmer sig til finalen (#6055), hjælperen ved ham, sprinteren i grupettoen.
+  assert.equal(effort.get("ai-cap"), "normal");
   assert.equal(effort.get("ai-dom"), "protect");
   assert.equal(effort.get("ai-spr"), "grupetto");
   // Menneskeholdet: ingen autopilot, rollens standard.

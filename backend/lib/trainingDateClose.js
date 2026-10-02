@@ -1,5 +1,6 @@
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
+import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
 import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
 
 async function checked(query, label) {
@@ -123,16 +124,18 @@ export async function runNormalizedTrainingDateSweep({
   registerWork = registerTrainingDateWork, dispatchAlarms = dispatchTrainingDateAlarms,
   loadWorkRows = loadTrainingWorkRows, quarantineRiders = quarantineTrainingRiders,
   loadLegacyRuns = loadLegacyRunTeamIds,
+  refreshRankings = refreshRankingsAfterTrainingSettlement,
   elapsedClock = () => performance.now(),
 }) {
   const startedAt = elapsedClock();
   const index = await loadIndex({ supabase, now });
   const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, durationMs: 0 };
   const allDays = new Set(), divisions = new Set();
+  let settledToday = false;
   for (const job of index.jobs) {
     const dateKey = `${job.season.id}:${job.tickDate}`;
     if (completedDates.has(dateKey) && !job.forceRetry) continue;
-    const failuresBeforeDate = summary.failed;
+    const failuresBeforeDate = summary.failed, sweptBeforeDate = summary.swept;
     let waitingForDate = false, untrackedFailure = false, legacyRan = null;
     // #6004: a forced retry of a past, already fully swept date is retry-only:
     // just the teams whose durable work is still pending/partial.
@@ -206,7 +209,10 @@ export async function runNormalizedTrainingDateSweep({
     if (!waitingForDate && summary.failed === failuresBeforeDate) completedDates.add(dateKey);
     // Failures without durable work are only found again by a full pass.
     if (!untrackedFailure) fullPassDates.add(dateKey);
+    if (job.tickDate === index.today && summary.swept > sweptBeforeDate) settledToday = true;
   }
+  // #5911: one ranking refresh once today's last team has settled (best-effort).
+  if (settledToday) await refreshRankings({ supabase, now, logger });
   summary.gameDays = [...allDays].sort((a, b) => a - b);
   summary.divisions = divisions.size;
   summary.alarms = await dispatchAlarms({ supabase, now, onAlarm, logger });
