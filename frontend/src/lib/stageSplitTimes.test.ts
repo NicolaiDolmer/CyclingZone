@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, formatSplitGap, hasGroupGaps,
+  buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, formatSplitGap, hasGroupGaps,
 } from "./stageSplitTimes.ts";
 
 // Formen er kopieret fra en ægte v4-etape (kuperet, 165 km): udbrud, en stor
@@ -157,6 +157,17 @@ test("effortByRiderForStage: kun overrides for etapen", () => {
   assert.deepEqual([...effortByRiderForStage(roles, 2)], [["a", "save"], ["b", "normal"]]);
   assert.equal(effortByRiderForStage(null, 2).size, 0);
   assert.equal(effortByRiderForStage(false, 2).size, 0);
+});
+
+test("effectiveEffortByRider: v4-ordren vinder over stage-roles, v3 bruger kun stage-roles", () => {
+  const roles = { overrides: [{ stage_number: 2, rider_id: "a", effort: "normal" }, { stage_number: 2, rider_id: "b", effort: "save" }] };
+  const orders = { orders: [
+    { stage_number: 2, riders: [{ rider_id: "a", effort: "save" }, { rider_id: "c", effort: "bogus" }] },
+    { stage_number: 3, riders: [{ rider_id: "b", effort: "grupetto" }] },
+  ] };
+  assert.deepEqual([...effectiveEffortByRider(roles, orders, 2, { v4: true })], [["a", "save"], ["b", "save"]]);
+  assert.deepEqual([...effectiveEffortByRider(roles, orders, 2, { v4: false })], [["a", "normal"], ["b", "save"]]);
+  assert.equal(effectiveEffortByRider(null, null, 2, { v4: true }).size, 0);
 });
 
 test("formatSplitGap", () => {

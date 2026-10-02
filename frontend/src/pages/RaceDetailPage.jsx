@@ -74,7 +74,8 @@ import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
 import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
-import { ownRiderIdsForStage, effortByRiderForStage } from "../lib/stageSplitTimes.ts"; // #6080
+import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
+import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -1634,10 +1635,22 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
   const [classTab, setClassTab] = useState("stage");
   // #6080: egne ryttere + egne indsats-ordrer til mellemtider/tidstab.
   const ownRiderIds = useMemo(() => ownRiderIdsForStage(results, stage, myOwnTeamId), [results, stage, myOwnTeamId]);
-  const effortByRider = useMemo(() => effortByRiderForStage(stageRoles, stage), [stageRoles, stage]);
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
   const { timeline } = useStageTimeline(raceId, stage);
+  // v4: holdets ordre-effort vinder over stage-roles (samme forrang som raceRunner).
+  const isV4Timeline = (timeline?.timeline_version ?? 1) >= 2 && ownRiderIds.length > 0;
+  const [teamOrders, setTeamOrders] = useState(null);
+  useEffect(() => {
+    if (!isV4Timeline) return undefined;
+    let live = true;
+    fetchTeamOrders({ raceId }).then((o) => { if (live) setTeamOrders(o); }).catch(() => {});
+    return () => { live = false; };
+  }, [raceId, isV4Timeline]);
+  const effortByRider = useMemo(
+    () => effectiveEffortByRider(stageRoles, teamOrders, stage, { v4: isV4Timeline }),
+    [stageRoles, teamOrders, stage, isV4Timeline],
+  );
   const participationHistory = useMemo(() => historyForStage(timeline, stage,
     (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean)), [timeline, stage, results]);
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {

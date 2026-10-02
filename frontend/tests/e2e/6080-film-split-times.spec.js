@@ -33,7 +33,7 @@ const RESULTS = SPLIT_RIDERS.map((r) => {
   };
 }).sort((a, b) => a.rank - b.rank);
 
-async function mockRace(page, { timeline = SPLIT_TIMELINE, overrides = [] } = {}) {
+async function mockRace(page, { timeline = SPLIT_TIMELINE, overrides = [], teamOrders = [] } = {}) {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await page.route("**/rest/v1/races**", (route) => {
@@ -48,11 +48,18 @@ async function mockRace(page, { timeline = SPLIT_TIMELINE, overrides = [] } = {}
     enabled: true, intention_enabled: true, valid_efforts: ["grupetto", "save", "normal", "protect", "all_out"],
     stages_completed: 1, stage_count: 1, riders: [], overrides,
   }));
+  await page.route("**/api/races/*/team-orders**", (route) => json(route, {
+    stages: [], stage_count: 1, stages_completed: 1, race_completed: true, riders: [], default_order: null, orders: teamOrders,
+  }));
   await login(page);
 }
 
 test("stage tab shows split times at each climb and where own riders lost time", async ({ page }) => {
-  await mockRace(page, { overrides: [{ stage_number: 1, rider_id: "r141", race_role: "helper", effort: "save" }] });
+  // v4-etape: holdets ordre (team-orders) vinder over en stage-roles-override.
+  await mockRace(page, {
+    overrides: [{ stage_number: 1, rider_id: "r141", race_role: "helper", effort: "normal" }],
+    teamOrders: [{ stage_number: 1, riders: [{ rider_id: "r141", effort: "save" }] }],
+  });
   await page.goto("/races/race-6080?stage=1");
 
   const section = page.getByTestId("stage-split-times");

@@ -382,6 +382,34 @@ export function effortByRiderForStage(stageRoles: unknown, stageNumber: number):
   return out;
 }
 
+const EFFORTS = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
+
+/**
+ * Den indsats motoren faktisk koerte paa, samme forrang som raceRunner
+ * (#5580): paa en v4-etape vinder holdets ordre (race_team_orders.riders[].
+ * effort); stage-roles-overriden er kun fallback. v3-etaper: kun overriden.
+ */
+export function effectiveEffortByRider(
+  stageRoles: unknown,
+  teamOrders: unknown,
+  stageNumber: number,
+  { v4 = false }: { v4?: boolean } = {},
+): Map<string, string> {
+  const out = effortByRiderForStage(stageRoles, stageNumber);
+  if (!v4) return out;
+  const orders = (teamOrders as { orders?: unknown } | null)?.orders;
+  if (!Array.isArray(orders)) return out;
+  for (const row of orders as Array<Record<string, unknown>>) {
+    if (Number(row?.stage_number) !== stageNumber || !Array.isArray(row?.riders)) continue;
+    for (const r of row.riders as Array<Record<string, unknown>>) {
+      const rider = str(r?.rider_id);
+      const effort = str(r?.effort);
+      if (rider && effort && EFFORTS.has(effort)) out.set(rider, effort);
+    }
+  }
+  return out;
+}
+
 /** "+1:05" / "+1:02:03". 0 → null (fronten har intet gab). */
 export function formatSplitGap(seconds: number): string | null {
   const s = Math.round(Number(seconds) || 0);
