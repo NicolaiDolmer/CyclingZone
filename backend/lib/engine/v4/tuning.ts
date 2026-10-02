@@ -1379,6 +1379,8 @@ const mountainSelectionV2 = {
   letGoMaxGapScale: 0.7,
   // M5: jagtens lukning paa segmenter foer finalestigningen (kontrolleret jagt).
   preFinalChaseClosingScale: 0.4,
+  // M5: jagtens lukning paa og efter finalestigningen (favoritternes hold jager for alvor).
+  finalChaseClosingScale: 2.5,
 };
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */

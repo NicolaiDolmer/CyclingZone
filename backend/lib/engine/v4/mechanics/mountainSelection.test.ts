@@ -66,17 +66,19 @@ test("fasen findes kun under orders_gc_v2 paa en bjergprofil", () => {
   }
 });
 
-test("haandtagene er neutrale uden fase og i finalen (undtagen M5-loftet, som gaelder hele etapen)", () => {
+test("selektion og tempo er neutrale uden fase og i finalen; M5 er kontrolleret foer og skarp i finalen", () => {
   const t = RACE_V4_TUNING.selection.splitThreshold;
   const s = CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity;
   for (const phase of [undefined, "final"] as const) {
     assert.equal(phaseSplitThreshold(t, phase), t);
     assert.equal(phaseWprimeForcedMinSeverity(s, phase), s);
     assert.equal(phaseClimbNeutralShare(phase), 0);
-    assert.equal(phaseChaseClosingScale(phase), 1);
   }
   assert.equal(phaseLetGoMaxGapScale(undefined), 1);
   assert.equal(phaseLetGoMaxGapScale("final"), MOUNTAIN_SELECTION_V2_TUNING.letGoMaxGapScale);
+  assert.equal(phaseChaseClosingScale(undefined), 1);
+  assert.ok(phaseChaseClosingScale("pre_final") < 1, "kontrolleret jagt foer finalestigningen");
+  assert.ok(phaseChaseClosingScale("final") >= 1, "favoritternes hold jager paa finalestigningen");
   assert.ok(phaseSplitThreshold(t, "pre_final") > t, "hoejere split-taerskel foer finalestigningen");
   assert.ok(phaseWprimeForcedMinSeverity(s, "pre_final") > s, "W'-tvangen kun paa alvorlige stigninger foer finalestigningen");
   const share = phaseClimbNeutralShare("pre_final");

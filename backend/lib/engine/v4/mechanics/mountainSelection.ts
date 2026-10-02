@@ -98,10 +98,17 @@ export function phaseLetGoMaxGapScale(
   return phase ? scale : 1;
 }
 
-/** M5: jagtens lukning foer finalestigningen (kontrolleret jagt). 1 i "final" og uden fase. */
+/**
+ * M5: jagtens lukning i fasen. Foer finalestigningen er jagten kontrolleret (lukker
+ * langsommere); paa og efter finalestigningen jager favoritternes hold for alvor.
+ * 1 uden fase.
+ */
 export function phaseChaseClosingScale(
   phase: MountainSelectionPhase | undefined,
-  scale: number = MOUNTAIN_SELECTION_V2_TUNING.preFinalChaseClosingScale,
+  preFinal: number = MOUNTAIN_SELECTION_V2_TUNING.preFinalChaseClosingScale,
+  final: number = MOUNTAIN_SELECTION_V2_TUNING.finalChaseClosingScale,
 ): number {
-  return phase === "pre_final" ? scale : 1;
+  if (phase === "pre_final") return preFinal;
+  if (phase === "final") return final;
+  return 1;
 }
