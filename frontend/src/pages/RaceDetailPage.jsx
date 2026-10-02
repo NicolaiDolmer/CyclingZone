@@ -73,6 +73,8 @@ import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
+import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
+import { ownRiderIdsForStage, effortByRiderForStage } from "../lib/stageSplitTimes.ts"; // #6080
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -1198,7 +1200,7 @@ export default function RaceDetailPage() {
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} t={t} />
                   : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
@@ -1628,8 +1630,11 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, stageRoles = null, t }) {
   const [classTab, setClassTab] = useState("stage");
+  // #6080: egne ryttere + egne indsats-ordrer til mellemtider/tidstab.
+  const ownRiderIds = useMemo(() => ownRiderIdsForStage(results, stage, myOwnTeamId), [results, stage, myOwnTeamId]);
+  const effortByRider = useMemo(() => effortByRiderForStage(stageRoles, stage), [stageRoles, stage]);
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
   const { timeline } = useStageTimeline(raceId, stage);
@@ -1742,6 +1747,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             finalKmAvailable={finalKmPlayback.available}
             finalKmOpen={finalKmOpen}
             onToggleFinalKm={() => setFinalKmOpen(o => !o)}
+            ownRiderIds={ownRiderIds} effortByRider={effortByRider}
           />
           {finalKmOpen && finalKmPlayback.available && (
             <Suspense fallback={null}>
@@ -1754,6 +1760,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
             profileType={profile?.profile_type ?? null} t={t}
           />
+          <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (

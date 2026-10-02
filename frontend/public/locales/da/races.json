@@ -1084,6 +1084,31 @@
       "play": "Afspil",
       "pause": "Pause",
       "feedEmpty": "Scrub fremad for at se hvad der skete.",
+      "split": {
+        "title": "Mellemtider",
+        "lossTitle": "Hvor dine ryttere tabte tid",
+        "front": "Front",
+        "riders": "{count, plural, one {# rytter} other {# ryttere}}",
+        "yours": "Dine: {names}",
+        "more": "{count, plural, one {# gruppe mere længere tilbage} other {# grupper mere længere tilbage}}",
+        "group": {
+          "breakaway": "Udbrud",
+          "peloton": "Feltet",
+          "group": "Gruppe"
+        },
+        "drop": "{rider} mistede kontakten til {from, select, breakaway {udbruddet} peloton {feltet} other {sin gruppe}}{where, select, climb { på {place}} sector { på {place}} other {}}.",
+        "reason": {
+          "climb_deficit": "Tempoet på stigningen var for højt for ham.",
+          "wprime_depleted": "Han var løbet tør for kræfter.",
+          "mixed": "Tempoet var for højt, og nogle i hans gruppe var løbet tør for kræfter.",
+          "grupetto": "Han skulle køre grupetto.",
+          "cobbles_sector": "Brostenene splittede gruppen."
+        },
+        "order": {
+          "save": "Din ordre: Kør roligt.",
+          "grupetto": "Din ordre: Grupetto."
+        }
+      },
       "event": {
         "stage_start": "{count} ryttere ruller ud på {distance} km.",
         "stage_start_itt": "{count} ryttere sendes af sted én ad gangen over {distance} km mod uret.",

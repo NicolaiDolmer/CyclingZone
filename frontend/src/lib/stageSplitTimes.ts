@@ -338,6 +338,21 @@ export function buildOwnTimeLoss(
   return [...firstDrops, ...other].sort((a, b) => a.km - b.km || a.riderId.localeCompare(b.riderId));
 }
 
+/** Holdets egne ryttere paa etapen (etaperesultatets raekker). */
+export function ownRiderIdsForStage(
+  results: ReadonlyArray<Record<string, any>> | null | undefined,
+  stageNumber: number,
+  teamId: unknown,
+): string[] {
+  if (teamId == null) return [];
+  const ids = (results || [])
+    .filter((r) => r?.result_type === "stage" && (r.stage_number ?? 1) === stageNumber
+      && String(r.team_id ?? r.rider?.team?.id) === String(teamId))
+    .map((r) => str(r.rider_id ?? r.rider?.id))
+    .filter((id): id is string => Boolean(id));
+  return [...new Set(ids)];
+}
+
 /** Spillerens egne indsats-ordrer for én etape fra /stage-roles (overrides). */
 export function effortByRiderForStage(stageRoles: unknown, stageNumber: number): Map<string, string> {
   const out = new Map<string, string>();

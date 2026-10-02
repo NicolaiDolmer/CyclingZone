@@ -1084,6 +1084,31 @@
       "play": "Play",
       "pause": "Pause",
       "feedEmpty": "Scrub forward to see what happened.",
+      "split": {
+        "title": "Split times",
+        "lossTitle": "Where your riders lost time",
+        "front": "Front",
+        "riders": "{count, plural, one {# rider} other {# riders}}",
+        "yours": "Yours: {names}",
+        "more": "{count, plural, one {# more group further back} other {# more groups further back}}",
+        "group": {
+          "breakaway": "Breakaway",
+          "peloton": "Peloton",
+          "group": "Group"
+        },
+        "drop": "{rider} lost contact with {from, select, breakaway {the breakaway} peloton {the peloton} other {his group}}{where, select, climb { on {place}} sector { on {place}} other {}}.",
+        "reason": {
+          "climb_deficit": "The pace on the climb was too high for him.",
+          "wprime_depleted": "He had run out of strength.",
+          "mixed": "The pace was too high, and some in his group had run out of strength.",
+          "grupetto": "He was set to ride in the grupetto.",
+          "cobbles_sector": "The cobbles split the group."
+        },
+        "order": {
+          "save": "Your order: Ride easy.",
+          "grupetto": "Your order: Grupetto."
+        }
+      },
       "event": {
         "stage_start": "{count} riders roll out for {distance} km.",
         "stage_start_itt": "{count} riders go off one by one over {distance} km against the clock.",
