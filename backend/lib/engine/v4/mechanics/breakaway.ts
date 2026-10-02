@@ -474,12 +474,17 @@ const TEAM_CHASE = {
 // intet herfra (golden fixtures uaendrede). Lokale kalibrerings-kandidater (samme
 // praecedens som TEAM_CHASE ovenfor); tallene og maalingen ligger i den private
 // kalibreringsrapport, kvalitetsmaalene er ejer-gated (#5984 Task 6).
+// Genkalibreret 2/10 (#5955) oven paa GC-reaktionen (#6033) og GC-bremsen:
+// med reaktionen taendt holdt udbruddet langt sjaeldnere end under legacy, saa
+// pladsen og vaeksten er haevet (ogsaa paa rullende/kuperet terraen), indtil
+// overlevelsen pr. profil ligger paa legacy-niveau. Reaktionen og bremsen
+// rammer stadig de farlige udbrud (de kan holde hullet nede inden for budgettet).
 const ORDERS_GC_V1_LET_GO: Readonly<{
   maxGapFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
   letGoRateFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
 }> = Object.freeze({
-  maxGapFactorByProfile: Object.freeze({ flat: 1.5, rolling: 2.2, hilly: 1.8, mountain: 2.2, high_mountain: 3.5 }),
-  letGoRateFactorByProfile: Object.freeze({ mountain: 2.2, high_mountain: 2.5 }),
+  maxGapFactorByProfile: Object.freeze({ flat: 1.9, rolling: 4, hilly: 2.4, mountain: 2.7, high_mountain: 5.5 }),
+  letGoRateFactorByProfile: Object.freeze({ rolling: 2, hilly: 1.3, mountain: 2.5, high_mountain: 3.5 }),
 });
 
 /**

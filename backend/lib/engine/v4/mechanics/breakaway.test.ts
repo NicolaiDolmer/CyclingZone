@@ -991,6 +991,26 @@ test("#5955 letGoBalanceFor: legacy er altid 1/1, orders_gc_v1 giver aldrig mind
   }
 });
 
+test("#5955 (2/10) letGoBalanceFor: med GC-reaktionen bygges hullet hurtigere paa alt terraen med stigninger, og bjergene giver mest plads", () => {
+  // Kalibreret oven paa GC-reaktionen (#6033): paa rullende, kuperet og
+  // bjergterraen skal hullet vaere bygget foer reaktionen og stigningerne
+  // bider, ellers holder udbruddet langt sjaeldnere end under legacy.
+  for (const profile of ["rolling", "hilly", "mountain", "high_mountain"] as const) {
+    assert.ok(letGoBalanceFor("orders_gc_v1", profile).rateFactor > 1, profile);
+  }
+  // Paa flad vej afgoer jagt-gulvet sagen; vaeksten er uaendret.
+  assert.equal(letGoBalanceFor("orders_gc_v1", "flat").rateFactor, 1);
+  const gap = (p: "flat" | "rolling" | "hilly" | "mountain" | "high_mountain") => letGoBalanceFor("orders_gc_v1", p).maxGapFactor;
+  for (const profile of ["flat", "rolling", "hilly", "mountain"] as const) {
+    assert.ok(gap("high_mountain") >= gap(profile), profile);
+    assert.ok(gap(profile) >= gap("flat"), profile);
+  }
+  // Legacy roeres aldrig af kalibreringen.
+  for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const) {
+    assert.deepEqual(letGoBalanceFor("legacy", profile), { maxGapFactor: 1, rateFactor: 1 });
+  }
+});
+
 test("#5955 letGoSplitKm: en hurtigere lad-gaa-fase naar samme loft paa faerre km, og default er uaendret", () => {
   const formationKm = formationKmFor({ from_km: 0, to_km: 20 });
   const base = { formationKm, maxGapSeconds: 300, fromKm: 0, toKm: 200 };
