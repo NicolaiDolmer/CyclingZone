@@ -1384,8 +1384,8 @@ export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);
 // en fase (orders_gc_v2 + en profil herunder). Legacy og orders_gc_v1 er
 // uroerte. Kalibreret privat mod ejer-maalene i #6084 (balance-internals/6084/).
 const mountainSelectionV2 = {
-  // Profiler hvor revisionen gaelder. Kuperede etaper er bevidst udeladt.
-  profileTypes: ["mountain", "high_mountain"] as readonly ProfileType[],
+  // Profiler hvor revisionen gaelder. #6092: kuperet er med (eget, lavere lad-gaa-loft i byProfile).
+  profileTypes: ["mountain", "high_mountain", "hilly"] as readonly ProfileType[],
   // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
   preFinalSplitThresholdFactor: 3.2,
   // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
@@ -1399,6 +1399,26 @@ const mountainSelectionV2 = {
   preFinalChaseClosingScale: 0.4,
   // M5: jagtens lukning paa og efter finalestigningen (favoritternes hold jager for alvor).
   finalChaseClosingScale: 2.5,
+  // #6092: profil-vise afvigelser fra knapperne ovenfor (mechanics/mountainSelection.ts).
+  // Kalibreret privat paa rigtige felter (balance-internals/6092/).
+  byProfile: {
+    // Kuperet: lavere lad-gaa-loft, saa et holdt udbruds forspring ikke bliver hele kaptajnernes tidstab.
+    hilly: { letGoMaxGapScale: 0.45 },
+    // Bjerg: favoritternes hold jager i finalen uden ekstra skarphed.
+    mountain: { finalChaseClosingScale: 1 },
+    // Hoejfjeld: roligere jagt foer finalestigningen og uden ekstra skarphed i finalen.
+    high_mountain: { preFinalChaseClosingScale: 0.2, finalChaseClosingScale: 1 },
+  } as Partial<Record<ProfileType, Partial<MountainSelectionV2Knobs>>>,
+};
+
+/** #6092: de knapper en profil kan afvige paa (alle tal i mountainSelectionV2). */
+export type MountainSelectionV2Knobs = {
+  preFinalSplitThresholdFactor: number;
+  preFinalWprimeForcedMinSeverity: number;
+  preFinalBreakawayDriftNeutralShare: number;
+  letGoMaxGapScale: number;
+  preFinalChaseClosingScale: number;
+  finalChaseClosingScale: number;
 };
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */

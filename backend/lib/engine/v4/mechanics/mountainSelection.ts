@@ -20,13 +20,18 @@
 // lukker langsommere). I finalen jager feltet som under orders_gc_v1.
 //
 // Alt gaelder kun paa profilerne i MOUNTAIN_SELECTION_V2_TUNING.profileTypes.
-// Kuperede etaper er uroerte af konstruktion.
+//
+// #6092: kuperede etaper er med. Under orders_gc_v1 fik et svagt udbrud paa
+// kuperet terraen langt mere lad-gaa-plads end under legacy, og naar det holdt,
+// blev forspringet til vinderen hele kaptajnernes tidstab (de koerte selv med
+// favoritterne). Pakken gaelder nu ogsaa her, med et lavere lad-gaa-loft. Hver
+// profil kan afvige paa knapperne (MOUNTAIN_SELECTION_V2_TUNING.byProfile).
 //
 // REN: ingen IO, ingen rng. Legacy og orders_gc_v1 ser aldrig en fase
 // (segmentLoop saetter kun `mountainSelectionPhase` under orders_gc_v2).
 
 import type { ProfileType, Segment, RulesRevision } from "../types.ts";
-import { MOUNTAIN_SELECTION_V2_TUNING } from "../tuning.ts";
+import { MOUNTAIN_SELECTION_V2_TUNING, type MountainSelectionV2Knobs } from "../tuning.ts";
 
 export type MountainSelectionPhase = "pre_final" | "final";
 
@@ -40,6 +45,23 @@ export function finalClimbStartIndex(segments: readonly Pick<Segment, "kind">[])
   if (i < 0) return -1;
   while (i > 0 && segments[i - 1].kind === "climb") i--;
   return i;
+}
+
+/**
+ * #6092: knapperne for en profil = de faelles vaerdier med profilens afvigelser
+ * (MOUNTAIN_SELECTION_V2_TUNING.byProfile) lagt ovenpaa.
+ */
+export function mountainSelectionKnobsFor(profileType: ProfileType): MountainSelectionV2Knobs {
+  const t = MOUNTAIN_SELECTION_V2_TUNING;
+  const base: MountainSelectionV2Knobs = {
+    preFinalSplitThresholdFactor: t.preFinalSplitThresholdFactor,
+    preFinalWprimeForcedMinSeverity: t.preFinalWprimeForcedMinSeverity,
+    preFinalBreakawayDriftNeutralShare: t.preFinalBreakawayDriftNeutralShare,
+    letGoMaxGapScale: t.letGoMaxGapScale,
+    preFinalChaseClosingScale: t.preFinalChaseClosingScale,
+    finalChaseClosingScale: t.finalChaseClosingScale,
+  };
+  return { ...base, ...(t.byProfile[profileType] ?? {}) };
 }
 
 /**
