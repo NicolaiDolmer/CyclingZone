@@ -48,6 +48,7 @@ function entrantsOf(data) {
 export function runCaptainTimeLoss({ v4, data, rules, seeds = 5, mode = "chain" }) {
   const all = entrantsOf(data);
   const roleById = new Map(all.map((e) => [e.rider_id, e.race_role]));
+  const aiById = new Map(all.map((e) => [e.rider_id, e.team_is_ai === true]));
   const stages = data.profiles.slice().sort((a, b) => a.stage_number - b.stage_number);
   const targets = stages.filter((p) => CLIMB_PROFILES.includes(p.profile_type)).map((p) => p.stage_number);
   const maxTarget = Math.max(...targets);
@@ -79,7 +80,8 @@ export function runCaptainTimeLoss({ v4, data, rules, seeds = 5, mode = "chain" 
         const bucket = per.get(st);
         bucket.gaps.push(median(caps));
         const formed = out.timeline.events.filter((e) => e.type === "breakaway_formed").flatMap((e) => e.params.rider_ids || []);
-        bucket.violators += formed.filter((id) => LEADERS.has(roleById.get(id)) && tryBreak.get(`${st}:${id}`) !== true).length;
+        // #6097: under orders_gc_v2 sender AI-hold selv en hjaelper i udbrud (M14). Rolle-reglen gaelder spillernes ryttere.
+        bucket.violators += formed.filter((id) => !aiById.get(id) && LEADERS.has(roleById.get(id)) && tryBreak.get(`${st}:${id}`) !== true).length;
       }
       if (mode === "single") continue;
       const bonus = new Map((out.passage_totals ?? []).map((t) => [t.rider_id, t.bonus_seconds ?? 0]));
