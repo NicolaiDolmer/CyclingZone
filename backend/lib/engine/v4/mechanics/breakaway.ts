@@ -1302,7 +1302,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
     // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
-    const netClosingSeconds = ctx.mountainSelectionPhase ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase) : netClosingRaw;
+    // En GC-reaktion (et farligt udbrud) jager uden daempning.
+    const netClosingSeconds = ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase) : netClosingRaw;
     const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
