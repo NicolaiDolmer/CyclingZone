@@ -6,7 +6,7 @@
 export type TimelineEvent = { km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 export type TeamNameLookup = { get(id: string): string | undefined } | null | undefined;
 export type CatchActor =
-  | { kind: "teams"; teams: string; km: number | null }
+  | { kind: "teams"; teams: string; teamCount: number; teamsHead: string; teamLast: string; km: number | null }
   | { kind: "peloton"; km: number | null };
 export type CatchActorCopy = { key: string; params: Record<string, string | number> };
 
@@ -47,7 +47,10 @@ export function catchActor(
   const eventKm = event?.km;
   const kmToGo = Number.isFinite(distanceKm) && Number.isFinite(eventKm) ? Math.round((distanceKm as number) - (eventKm as number)) : null;
   const km = kmToGo != null && kmToGo >= 1 ? kmToGo : null;
-  if (teams.length) return { kind: "teams", teams: teams.join(", "), km };
+  // Sidste hold står for sig, så oversættelsen selv sætter "and"/"og" ind.
+  if (teams.length) {
+    return { kind: "teams", teams: teams.join(", "), teamCount: teams.length, teamsHead: teams.slice(0, -1).join(", "), teamLast: teams[teams.length - 1], km };
+  }
   if (p.chase_group_kind === "peloton") return { kind: "peloton", km };
   return null;
 }
@@ -78,7 +81,7 @@ export function catchActorCopy(
   // Én nøgle pr. aktør; `where` vælger "med N km igen" / "før stregen" i ICU-teksten.
   const where: Record<string, string | number> = actor.km == null ? { where: "line" } : { where: "km", km: actor.km };
   const params: Record<string, string | number> = actor.kind === "teams"
-    ? { count, teams: actor.teams, ...where }
+    ? { count, teams: actor.teams, teamCount: actor.teamCount, teamsHead: actor.teamsHead, teamLast: actor.teamLast, ...where }
     : { count, ...where };
   return { key: (family === "beat" ? BEAT_KEY : RECAP_KEY)[actor.kind], params };
 }

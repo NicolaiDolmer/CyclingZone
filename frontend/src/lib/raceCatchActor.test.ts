@@ -23,7 +23,13 @@ const caughtV4 = (extra: Record<string, unknown>) => ({ km: 176, type: "breakawa
 
 test("catchActor: hold med jagt-arbejde navngives, km til mål afrundes", () => {
   const actor = catchActor(caughtV4({ chase_group_kind: "peloton", chasing_team_ids: ["t1", "t2"] }), { teamNameById, distanceKm: 180 });
-  assert.deepEqual(actor, { kind: "teams", teams: "Team A, Team B", km: 4 });
+  assert.deepEqual(actor, { kind: "teams", teams: "Team A, Team B", teamCount: 2, teamsHead: "Team A", teamLast: "Team B", km: 4 });
+});
+
+test("catchActor: sidste hold står for sig, så oversættelsen indsætter 'og'/'and'", () => {
+  const three = new Map([["t1", "Team A"], ["t2", "Team B"], ["t3", "Team C"]]);
+  const actor = catchActor(caughtV4({ chase_group_kind: "peloton", chasing_team_ids: ["t1", "t2", "t3"] }), { teamNameById: three, distanceKm: 180 });
+  assert.equal(actor?.kind === "teams" && `${actor.teamsHead} og ${actor.teamLast}`, "Team A, Team B og Team C");
 });
 
 test("catchActor: ukendte hold-navne falder tilbage til feltet, aldrig et råt id", () => {
@@ -70,7 +76,7 @@ const scope = { type: "stage", stageNumber: 1 };
 test("buildRaceRecap: aktør-linje med km når tidslinjen bærer den", () => {
   const events = [start, formed, caughtV4({ chase_group_kind: "peloton", chasing_team_ids: ["t2"] })];
   const caught = buildRaceRecap({ results: stageRows, scope, timelineEvents: events, teamNameById }).find((m) => m.key.startsWith("breakawayCaught"));
-  assert.deepEqual(caught, { key: "breakawayCaughtByTeams", params: { count: 2, teams: "Team B", where: "km", km: 4 } });
+  assert.deepEqual(caught, { key: "breakawayCaughtByTeams", params: { count: 2, teams: "Team B", teamCount: 1, teamsHead: "", teamLast: "Team B", where: "km", km: 4 } });
 });
 
 test("buildRaceRecap: uden tidslinje eller felter er linjen uændret", () => {
