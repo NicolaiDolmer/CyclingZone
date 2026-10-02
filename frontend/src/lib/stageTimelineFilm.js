@@ -8,6 +8,8 @@
 // nøgler/params er alle rene funktioner af (events, distanceKm) — ingen skjult
 // tilstand, ingen engine-kald.
 
+import { describeGcReactionEvent } from "./ordersGcSurface.ts"; // #6067
+
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
 // ttt_team_result (M13, #3463) er af samme art: motoren emitterer ÉT resultat-
@@ -219,6 +221,7 @@ export function collectRiderIds(events) {
     add(p.winner_rider_id);
     add(p.new_leader_id);
     add(p.previous_leader_id);
+    add(p.protected_rider_id); // #6067: gc_reaction navngiver holdets GC-rytter
     for (const t of p.top || []) add(t?.rider_id);
   }
   return [...out];
@@ -352,6 +355,10 @@ export function describeEvent(event, { riderNameById } = {}) {
       if (!rider || !previousLeader) return null;
       return { key: "gc_change", params: { rider, previousLeader } };
     }
+    // #6067: orders_gc_v1's ærlige kvitteringer, uden tal.
+    case "gc_reaction":
+    case "gc_context":
+      return describeGcReactionEvent(event, (id) => riderName(id, riderNameById));
     default:
       return null;
   }

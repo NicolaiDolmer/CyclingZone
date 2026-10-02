@@ -49,10 +49,27 @@
 // rækkefølge som før, og sorteringen følger sidens konvention: første klik =
 // bedst øverst, næste klik vender retningen.
 
+//
+// #6067: løb med regel-revisionen orders_gc_v1 (#5955/#5978) får tre ting, og
+// legacy-løb er uændrede: en linje i hovedet der siger hvilke regler løbet
+// bruger (før gem), jagt-stancen med de nye labels plus én linje om den
+// begrænsede GC-reaktion, og én linje om at kaptajn/spurtkaptajn/hjælper kun
+// går i morgenudbrud med "Forsøg udbrud". Ordre-halvdelen er preview-gated for
+// legacy, men vises altid under orders_gc_v1: dér styrer ordrerne udbruddet.
+// Revisionen læses direkte fra races (RLS: offentlig SELECT); en fejlet
+// læsning betyder legacy, aldrig de nye regler. Prosaen bor i Hjælp.
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import i18n from "i18next";
-import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import { authHeaders, supabase } from "../../lib/supabase"; // #4348: kanonisk kopi
+import {
+  breakawayStanceLabelKey,
+  isOrdersGcRevision,
+  ordersVisible,
+  raceRulesRevision,
+} from "../../lib/ordersGcSurface.ts";
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatLocalTime } from "../../lib/intl.js";
@@ -243,8 +260,24 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
   );
 }
 
-export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders = true }) {
+export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = true }) {
   const { t } = useTranslation("races");
+  // #6067: løbets regel-revision. "legacy" indtil læsningen siger andet.
+  const [rulesRevision, setRulesRevision] = useState("legacy");
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from("races")
+      .select("engine_rules_revision")
+      .eq("id", raceId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (active && !error) setRulesRevision(raceRulesRevision(data?.engine_rules_revision));
+      }, () => { /* fejlet læsning = legacy */ });
+    return () => { active = false; };
+  }, [raceId]);
+  const ordersGc = isOrdersGcRevision(rulesRevision);
+  const showOrders = ordersVisible({ showOrders: showOrdersProp, revision: rulesRevision });
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     // Keep an open tab's calendar labels current across Copenhagen midnight.
@@ -729,6 +762,16 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         <div className="min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm">{t("racePage.tactics.title")}</h2>
           <p className="text-cz-3 text-xs mt-0.5">{t(isOneDay ? "racePage.tactics.helpRaceDay" : "racePage.tactics.help")}</p>
+          {ordersGc && (
+            <p data-testid="race-rules-revision" className="text-xs mt-1 text-cz-2">
+              <span className="text-cz-3">{t("tacticsOrders.ordersGc.rulesLabel")}:</span>{" "}
+              <span className="font-medium text-cz-1">{t("tacticsOrders.ordersGc.rulesName")}</span>
+              {" · "}
+              <Link to="/help?section=raceSelection" className="text-cz-accent-t hover:underline">
+                {t("tacticsOrders.ordersGc.rulesHelp")}
+              </Link>
+            </p>
+          )}
         </div>
         {!stageLocked && lockTime && !isOneDay && (
           <span className="font-data text-2xs text-cz-3 whitespace-nowrap tabular-nums">
@@ -790,8 +833,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           <p className="text-xs text-cz-1 mt-0.5 leading-snug">{t(plan.key, plan.params)}</p>
         </div>
         <div>
-          <p className="text-3xs uppercase tracking-wide text-cz-3 mb-1">{t("tacticsOrders.breakawayLabel")}</p>
-          <div role="group" aria-label={t("tacticsOrders.breakawayAria")} className="flex rounded-cz border border-cz-border overflow-hidden w-fit">
+          <p className="text-3xs uppercase tracking-wide text-cz-3 mb-1">
+            {t(ordersGc ? "tacticsOrders.ordersGc.stanceLabel" : "tacticsOrders.breakawayLabel")}
+          </p>
+          <div role="group" aria-label={t("tacticsOrders.breakawayAria")} className={`flex rounded-cz border border-cz-border overflow-hidden ${ordersGc ? "w-full" : "w-fit"}`}>
             {BREAKAWAY_STANCES.map((stance) => (
               <button
                 key={stance}
@@ -800,12 +845,16 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 aria-pressed={order.breakaway_stance === stance}
                 onClick={() => updateOrder((o) => setBreakawayStance(o, stance))}
                 className={`px-2 py-1 text-3xs font-medium transition-colors disabled:opacity-60 disabled:pointer-events-none
+                  ${ordersGc ? "flex-1 leading-tight border-s border-cz-border first:border-s-0" : ""}
                   ${order.breakaway_stance === stance ? "bg-cz-accent/10 text-cz-accent-t" : "bg-cz-card text-cz-2 hover:text-cz-1"}`}
               >
-                {t(`tacticsOrders.breakaway.${stance}`)}
+                {t(breakawayStanceLabelKey(stance, rulesRevision))}
               </button>
             ))}
           </div>
+          {ordersGc && (
+            <p className="text-2xs text-cz-3 mt-1 leading-snug">{t("tacticsOrders.ordersGc.gcNote")}</p>
+          )}
         </div>
         <div>
           <p className="text-3xs uppercase tracking-wide text-cz-3">{t("tacticsOrders.leadout")}</p>
@@ -815,6 +864,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
               : t("racePage.tactics.sprintTrainNone")}
           </p>
         </div>
+        {ordersGc && (
+          <p data-testid="orders-gc-break-note" className="sm:col-span-3 text-2xs text-cz-3 leading-snug">
+            {t("tacticsOrders.ordersGc.breakNote")}
+          </p>
+        )}
       </div>
       )}
 

@@ -672,6 +672,19 @@
       "letGo": "{captain} er kaptajn. Holdet lader det tidlige udbrud gå."
     },
     "breakawayAria": "Holdets udbruds-holdning",
+    "ordersGc": {
+      "rulesLabel": "Løbets regler",
+      "rulesName": "Udbrudsordrer og GC-reaktion",
+      "rulesHelp": "Sådan virker de",
+      "stanceLabel": "Jagten på udbruddet",
+      "stance": {
+        "chase": "Jag",
+        "neutral": "Vurder undervejs",
+        "let_go": "Overlad jagten til andre"
+      },
+      "gcNote": "Holdet kan reagere begrænset på en alvorlig GC-trussel med de ledige ryttere.",
+      "breakNote": "Kaptajn, spurt-kaptajn og hjælper går kun i morgenudbrud med Forsøg udbrud valgt."
+    },
     "breakaway": {
       "chase": "Kør det ind",
       "neutral": "Neutral",
@@ -1107,7 +1120,14 @@
         "peloton_split": "{riders} {count, plural, one {kommer} other {kommer}} i en separat gruppe.",
         "group_split_many": "{count} ryttere kommer i en separat gruppe.",
         "descent_attack": "{riders} {count, plural, one {angriber} other {angriber}} på nedkørslen.",
-        "descent_attack_many": "{count} ryttere angriber på nedkørslen."
+        "descent_attack_many": "{count} ryttere angriber på nedkørslen.",
+        "gc_reaction_started": "Holdet omkring {rider} begynder at arbejde for at beskytte hans placering i klassementet.",
+        "gc_reaction_started_threat": "Holdet omkring {rider} begynder at arbejde for at begrænse truslen fra {threats} i klassementet.",
+        "gc_reaction_contained": "Holdet omkring {rider} stopper arbejdet. Truslen mod hans placering i klassementet er under kontrol.",
+        "gc_reaction_stopped": "Holdet omkring {rider} stopper reaktionen.",
+        "gc_reaction_exhausted": "Holdet omkring {rider} har brugt det, det kan på reaktionen på denne etape, og stopper arbejdet.",
+        "gc_reaction_no_workers": "Holdet omkring {rider} ser truslen, men har ingen ledige ryttere i hans gruppe til at reagere.",
+        "gc_context_missing": "Klassementet før etapen er ikke tilgængeligt, så intet hold reagerer på en trussel i klassementet i dag."
       }
     },
     "recap": {
