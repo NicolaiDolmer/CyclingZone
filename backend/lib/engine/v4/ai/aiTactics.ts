@@ -36,6 +36,11 @@
 //    `protect` ("Arbejd eller angrib") ved en kaptajn holdet koerer for, og
 //    kaptajnen paa `all_out` paa den afgoerende dag. Aldrig et frikort: hvert
 //    trin betaler sin egen pris i motoren (M12/M16), praecis som for spillere.
+//  * #6055 (2/10): kaptajnen selv koerer `normal` paa jagt-dage, ogsaa den
+//    afgoerende. Replayet af prod-etaperne viste at `all_out` og `protect`
+//    koster ham mere reserve end finalen giver tilbage; han ankom tom til
+//    netop den finale holdet satsede paa. Om `all_out` skal kunne betale sig
+//    for en kaptajn er et prisvalg (det gaelder ogsaa spillere), ikke AI'ens.
 //  * `leadout` (M6, sprint-toget) saettes som rollens standard, saa et AI-hold
 //    ikke mister sit tog ved at M14 overtager standardordren.
 
@@ -230,9 +235,10 @@ function isSprintTrainRider(entrant: AiRosterEntrant, teamHasSprintCaptain: bool
  * 1. Find holdets terraen-relevante kaptajn (captain for alt undtagen rene
  *    spurtetaper, sprint_captain for dem — samme rollemodel som lineuppet)
  *    og hans plads i FELTET paa dagens primaere evne.
- * 2. Kaptajn blandt feltets favoritter -> "chase": kaptajnen beskyttes
- *    (`protect`), hjaelperne arbejder ved ham (`protect`, "Arbejd eller
- *    angrib"), og paa den afgoerende dag gaar kaptajnen `all_out`.
+ * 2. Kaptajn blandt feltets favoritter -> "chase": hjaelperne arbejder ved
+ *    ham (`protect`, "Arbejd eller angrib"), og kaptajnen selv koerer
+ *    `normal` og gemmer reserven til finalen, ogsaa paa den afgoerende dag
+ *    (#6055: `protect`/`all_out` braendte hans reserve af foer finalen).
  * 3. Kaptajn uden for feltets top eller ingen kaptajn -> "let_go": kaptajnen
  *    spares, og op til to hunter/free_role-ryttere forsoeger udbrud (bounded
  *    via try_break — oeger sandsynlighed, garanterer aldrig, T3).
@@ -325,14 +331,18 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
           ? `Grupetto: ${terrainLabel} i et etapeloeb er ikke en sprinters dag — i maal inden for tidsgraensen, benene gemmes til spurtetaperne.`
           : `Grupetto: tog-rytter for sprint-kaptajnen; ${terrainLabel} er ikke hans dag, benene gemmes til spurtetaperne.`;
     } else if (isLeader) {
-      if (stance === "chase" && decisiveDay) {
-        effort = "all_out";
-        reason = input.race?.is_stage_race
-          ? `Alt ud: loebets sidste etape af denne type, og ${leaderNoun} er nr. ${leaderRank} i feltet (${primaryAbility}).`
-          : `Alt ud: endagsloeb, og ${leaderNoun} er nr. ${leaderRank} i feltet (${primaryAbility}).`;
-      } else if (stance === "chase") {
-        effort = "protect";
-        reason = `Beskyttes: holdets ${terrainLabel.replace(/^den |^det /, "")}-kaptajn mens holdet jager (nr. ${leaderRank} i feltet, ${primaryAbility}).`;
+      // #6055: kaptajnen holdet koerer for, koerer `normal`. Hjaelperne tager
+      // arbejdet (`protect`), og han gemmer reserven til finalen. Hverken
+      // `protect` (i motoren "arbejd eller angrib": hoejere kraftkrav) eller
+      // `all_out` (hoejere kraftkrav hele dagen) beskytter ham: replayet af
+      // prod-etaperne viste at begge braender reserven af foer finalen, saa
+      // favoritten ankom tom og tabte netop den dag holdet satsede paa ham.
+      // Trinnenes pris er den samme for spillere og er ikke roert her.
+      if (stance === "chase") {
+        effort = "normal";
+        reason = decisiveDay
+          ? `Gemmer kraefterne til finalen: ${input.race?.is_stage_race ? "loebets sidste etape af denne type" : "endagsloeb"}, og ${leaderNoun} er nr. ${leaderRank} i feltet (${primaryAbility}). Hjaelperne tager arbejdet.`
+          : `Gemmer kraefterne til finalen: holdet koerer for ${leaderNoun} paa ${terrainLabel} (nr. ${leaderRank} i feltet, ${primaryAbility}). Hjaelperne tager arbejdet.`;
       } else if (stance === "let_go") {
         effort = "save";
         reason = `Spares: ${terrainLabel} er ikke kaptajnens staerke side (nr. ${leaderRank} i feltet, ${primaryAbility}), og holdet jager ikke i dag.`;
