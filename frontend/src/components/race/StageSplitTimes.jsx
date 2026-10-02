@@ -63,13 +63,15 @@ function LossRow({ entry, riderNameById, teamNameById, t }) {
   let reason = null;
   let order = null;
   if (entry.type === "drop") {
-    const rider = nameOf(riderNameById, entry.riderId);
-    if (!rider) return null;
+    const names = (entry.riderIds ?? [entry.riderId]).map((id) => nameOf(riderNameById, id)).filter(Boolean);
+    if (!names.length) return null;
+    const count = names.length;
     const placeName = entry.sectorName ?? entry.climbName;
     main = t("detail.film.split.drop", {
-      rider, from: entry.from, where: entry.sectorName ? "sector" : (entry.climbName ? "climb" : "none"), place: placeName ?? "",
+      rider: names.join(", "), count, from: entry.from,
+      where: entry.sectorName ? "sector" : (entry.climbName ? "climb" : "none"), place: placeName ?? "",
     });
-    reason = entry.reason !== "unknown" ? t(`detail.film.split.reason.${entry.reason}`) : null;
+    reason = entry.reason !== "unknown" ? t(`detail.film.split.reason.${entry.reason}`, { count }) : null;
     order = entry.order && !(entry.order === "grupetto" && entry.reason === "grupetto")
       ? t(`detail.film.split.order.${entry.order}`) : null;
   } else {

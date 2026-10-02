@@ -1096,12 +1096,12 @@
           "peloton": "Feltet",
           "group": "Gruppe"
         },
-        "drop": "{rider} mistede kontakten til {from, select, breakaway {udbruddet} peloton {feltet} other {sin gruppe}}{where, select, climb { på {place}} sector { på {place}} other {}}.",
+        "drop": "{rider} mistede kontakten til {from, select, breakaway {udbruddet} peloton {feltet} other {{count, plural, one {sin gruppe} other {deres gruppe}}}}{where, select, climb { på {place}} sector { på {place}} other {}}.",
         "reason": {
-          "climb_deficit": "Tempoet på stigningen var for højt for ham.",
-          "wprime_depleted": "Han var løbet tør for kræfter.",
-          "mixed": "Tempoet var for højt, og nogle i hans gruppe var løbet tør for kræfter.",
-          "grupetto": "Han skulle køre grupetto.",
+          "climb_deficit": "Tempoet på stigningen var for højt for {count, plural, one {ham} other {dem}}.",
+          "wprime_depleted": "{count, plural, one {Han} other {De}} var løbet tør for kræfter.",
+          "mixed": "Tempoet var for højt, og nogle i gruppen var løbet tør for kræfter.",
+          "grupetto": "{count, plural, one {Han} other {De}} skulle køre grupetto.",
           "cobbles_sector": "Brostenene splittede gruppen."
         },
         "order": {

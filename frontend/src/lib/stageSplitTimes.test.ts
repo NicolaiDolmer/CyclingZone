@@ -107,6 +107,20 @@ test("buildOwnTimeLoss: et fald hvor rytteren kom tilbage til sin gruppe tæller
   assert.deepEqual(loss.map((l) => l.km), [72]);
 });
 
+test("buildOwnTimeLoss: egne ryttere der faldt af samme sted af samme grund bliver én linje", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { field_count: 6 } },
+    { km: 50, type: "peloton_splits", params: { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["a", "x", "b"], cause: "climb_deficit" } },
+    { km: 50, type: "gap_update", params: { group_id: "chase-1", gap_seconds: 40 } },
+    { km: 50, type: "kom_passage", params: { name: "Col", category: "1", top: [] } },
+  ];
+  const loss = buildOwnTimeLoss(events, { ownRiderIds: ["a", "b"], effortByRider: new Map([["b", "save"]]) });
+  // b havde en anden ordre end a, saa de staar paa hver sin linje.
+  assert.deepEqual(loss.map((l) => l.type === "drop" && l.riderIds), [["a"], ["b"]]);
+  const same = buildOwnTimeLoss(events, { ownRiderIds: ["a", "b"] });
+  assert.deepEqual(same.map((l) => l.type === "drop" && l.riderIds), [["a", "b"]]);
+});
+
 test("buildOwnTimeLoss: ukendt aarsag opfindes ikke", () => {
   const events = [
     { km: 0, type: "stage_start", params: { field_count: 3 } },

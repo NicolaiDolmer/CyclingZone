@@ -1096,12 +1096,12 @@
           "peloton": "Peloton",
           "group": "Group"
         },
-        "drop": "{rider} lost contact with {from, select, breakaway {the breakaway} peloton {the peloton} other {his group}}{where, select, climb { on {place}} sector { on {place}} other {}}.",
+        "drop": "{rider} lost contact with {from, select, breakaway {the breakaway} peloton {the peloton} other {{count, plural, one {his group} other {their group}}}}{where, select, climb { on {place}} sector { on {place}} other {}}.",
         "reason": {
-          "climb_deficit": "The pace on the climb was too high for him.",
-          "wprime_depleted": "He had run out of strength.",
-          "mixed": "The pace was too high, and some in his group had run out of strength.",
-          "grupetto": "He was set to ride in the grupetto.",
+          "climb_deficit": "The pace on the climb was too high for {count, plural, one {him} other {them}}.",
+          "wprime_depleted": "{count, plural, one {He} other {They}} had run out of strength.",
+          "mixed": "The pace was too high, and some in the group had run out of strength.",
+          "grupetto": "{count, plural, one {He was} other {They were}} set to ride in the grupetto.",
           "cobbles_sector": "The cobbles split the group."
         },
         "order": {

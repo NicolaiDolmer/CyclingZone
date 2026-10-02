@@ -44,6 +44,8 @@ export type TimeLossEntry =
     type: "drop";
     km: number;
     riderId: string;
+    /** Alle egne ryttere i samme fald (samme km, gruppe og grund). */
+    riderIds: string[];
     from: "breakaway" | "peloton" | "group";
     reason: DropReason;
     climbName: string | null;
@@ -308,6 +310,7 @@ export function buildOwnTimeLoss(
           type: "drop",
           km: event.km ?? 0,
           riderId,
+          riderIds: [riderId],
           from: fromKind(resolveAlias(state, source)),
           reason: cause && KNOWN_CAUSES.has(cause) ? (cause as DropReason) : "unknown",
           climbName: cause === "cobbles_sector" ? null : (komKms.get(event.km ?? 0) ?? null),
@@ -333,9 +336,17 @@ export function buildOwnTimeLoss(
     }
   });
 
-  const firstDrops: TimeLossEntry[] = [];
-  for (const list of drops.values()) if (list.length) firstDrops.push(list[0].entry);
-  return [...firstDrops, ...other].sort((a, b) => a.km - b.km || a.riderId.localeCompare(b.riderId));
+  // Ryttere der faldt af samme sted af samme grund bliver én linje.
+  const merged = new Map<string, Extract<TimeLossEntry, { type: "drop" }>>();
+  for (const list of drops.values()) {
+    if (!list.length) continue;
+    const e = list[0].entry;
+    const key = [e.km, e.from, e.reason, e.climbName, e.sectorName, e.order].join("|");
+    const hit = merged.get(key);
+    if (hit) hit.riderIds.push(e.riderId);
+    else merged.set(key, { ...e, riderIds: [e.riderId] });
+  }
+  return [...merged.values(), ...other].sort((a, b) => a.km - b.km || a.riderId.localeCompare(b.riderId));
 }
 
 /** Holdets egne ryttere paa etapen (etaperesultatets raekker). */
