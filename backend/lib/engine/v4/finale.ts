@@ -140,6 +140,36 @@ export function isBunchSizedChaseGroup(
   return chaseCount >= Math.max(minRiders, minFieldFraction * fieldSize);
 }
 
+/**
+ * #6073: hvilken finale feltet BAG et udbrud koerer paa en etape med
+ * finale_type "breakaway". Udbrudsfinalens demand (aggression, tempo,
+ * udholdenhed, taktik) beskriver flugten, ikke hvordan feltet afgoer de
+ * oevrige placeringer: det spurter, puncher eller klatrer paa terraenet.
+ * Profil -> terraenets afgoerende evne foelger korrelationsankerets kort
+ * (replay5957.mjs RELEVANT_ABILITY): rullende og kuperet = punch. null =
+ * etapen er ikke en udbrudsfinale, eller profilen har ingen feltfinale.
+ */
+const FIELD_FINALE_BY_PROFILE: Partial<Record<ProfileType, FinaleType>> = {
+  flat: "bunch_sprint",
+  rolling: "punch",
+  hilly: "punch",
+  classic: "punch",
+  mountain: "long_climb",
+  high_mountain: "long_climb",
+  cobbles: "reduced_sprint",
+  gravel: "reduced_sprint",
+};
+
+export function fieldFinaleTypeBehindBreakaway(route: { finale_type: FinaleType | null; profile_type: ProfileType }): FinaleType | null {
+  if (route.finale_type !== "breakaway") return null;
+  return FIELD_FINALE_BY_PROFILE[route.profile_type] ?? null;
+}
+
+/** #6073: dagens udbrud ved finalen (samme definition som groups.ts's escapeGroupOf). */
+export function isEscapeGroup(group: Pick<RaceGroup, "kind" | "origin">): boolean {
+  return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");
+}
+
 // Kollektiv "flugt"-evne: staying-power til at forsvare et forspring.
 const FLIGHT_KEYS: AbilityKey[] = ["tempo", "endurance", "durability"];
 // Kollektiv "jagt"-evne: villighed/kapacitet til at lukke et hul.
@@ -499,6 +529,15 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR,
     ctx,
   );
+  // #6073: paa en udbrudsfinale gaelder udbrudsdemand kun for udbruddet selv;
+  // resten af feltet afgoer sine placeringer paa terraenets egen finale.
+  const fieldFinaleType = fieldFinaleTypeBehindBreakaway(route);
+  const fieldDemandVector = fieldFinaleType
+    ? cobbledFinaleDemandVector(tuning.finale.demandVectorByFinaleType[fieldFinaleType] || DEFAULT_DEMAND_VECTOR, ctx)
+    : demandVector;
+  const escapeRiderIds = new Set(state.groups.filter(isEscapeGroup).flatMap((g) => g.rider_ids));
+  const demandVectorOf = (riderId: string): Partial<Record<AbilityKey, number>> =>
+    escapeRiderIds.has(riderId) ? demandVector : fieldDemandVector;
 
   // #5957: puljens bedste rene finale-evne er referencen for hvor meget af
   // dagens modifikatorer hver rytter faar (finaleModifierScale). Én reference
@@ -507,7 +546,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const finaleIds = [...contenderIds, ...survivingGroups.flatMap((group) => group.rider_ids)];
   const abilityTermOf = (riderId: string): number => {
     const abilities = entrants[riderId]?.abilities;
-    return abilities ? finaleAbilityTerm(abilities, demandVector) : 0;
+    return abilities ? finaleAbilityTerm(abilities, demandVectorOf(riderId)) : 0;
   };
   const poolBestAbilityTerm = finaleIds.reduce((best, id) => Math.max(best, abilityTermOf(id)), 0);
   // #6049: modifikatorerne er absolutte score-enheder, men evne-leddet foelger
@@ -538,7 +577,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     return computeFinaleAbilityScore(
       entrant.abilities,
       reserve,
-      demandVector,
+      demandVectorOf(riderId),
       extra.wprimeReserveWeight,
       entrant.effort,
       entrant.effort === "grupetto" ? 0 : state.riders[riderId]?.dayform ?? 0,
