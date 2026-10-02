@@ -75,6 +75,7 @@ const entrants = data.entries.filter((e) => abilitiesById.has(e.rider_id)).map((
   return { rider_id: e.rider_id, team_id: e.team_id ?? null, team_is_ai: aiByTeam.get(e.team_id) === true, race_role: e.race_role ?? null, effort: "normal", abilities };
 });
 const roleById = new Map(entrants.map((e) => [e.rider_id, e.race_role]));
+const teamById = new Map(entrants.map((e) => [e.rider_id, e.team_id]));
 
 const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
 const v4 = await loadRaceEngineV4();
@@ -89,7 +90,10 @@ for (let s = 1; s <= SEEDS; s++) {
   });
   const ranked = res.ranked || [];
   const breakIds = ranked.filter((r) => r.components?.breakaway).map((r) => r.rider_id);
-  const violators = breakIds.filter((id) => LEADERS.has(roleById.get(id)) && tryBreakById.get(id) !== true);
+  // #6097: AI-holdenes egne udbrudsforsoeg (M14 under orders_gc_v2) er ikke overtraedelser; de taelles separat.
+  const isAiRider = (id) => aiByTeam.get(teamById.get(id)) === true;
+  const violators = breakIds.filter((id) => !isAiRider(id) && LEADERS.has(roleById.get(id)) && tryBreakById.get(id) !== true);
+  const aiInBreak = breakIds.filter((id) => isAiRider(id)).length;
   const capGaps = ranked.filter((r) => roleById.get(r.rider_id) === "captain" || roleById.get(r.rider_id) === "sprint_captain")
     .map((r) => Number(r.stageGap)).filter(Number.isFinite);
   const roles = {};
@@ -101,7 +105,7 @@ for (let s = 1; s <= SEEDS; s++) {
   }
   const gapsOf = (role) => ranked.filter((r) => roleById.get(r.rider_id) === role).map((r) => Number(r.stageGap)).filter(Number.isFinite);
   const gc = gapsOf("captain"), sp = gapsOf("sprint_captain");
-  perSeed.push({ gcCapMedian: median(gc), gcCapOver5: gc.filter((g) => g > 300).length, gcCapN: gc.length, spCapMedian: median(sp), seed: s, breakSize: breakIds.length, roles, violators: violators.length, capGapMedian: median(capGaps), capGapMax: capGaps.length ? Math.max(...capGaps) : null, capOver5min: capGaps.filter((g) => g > 300).length, nCaptains: capGaps.length,
+  perSeed.push({ aiInBreak, gcCapMedian: median(gc), gcCapOver5: gc.filter((g) => g > 300).length, gcCapN: gc.length, spCapMedian: median(sp), seed: s, breakSize: breakIds.length, roles, violators: violators.length, capGapMedian: median(capGaps), capGapMax: capGaps.length ? Math.max(...capGaps) : null, capOver5min: capGaps.filter((g) => g > 300).length, nCaptains: capGaps.length,
     // #6089: broen saetter components.breakaway til 1/0 (ikke true/false), saa
     // `=== true` var altid falsk. Motorens egen dom (breakaway_win) foerst.
     winnerInBreak: typeof ranked[0]?.breakaway_win === "boolean" ? ranked[0].breakaway_win : Number(ranked[0]?.components?.breakaway) > 0,
@@ -115,6 +119,8 @@ const summary = {
   roles_in_field: entrants.reduce((m, e) => { m[e.race_role] = (m[e.race_role] || 0) + 1; return m; }, {}),
   try_break_true: [...tryBreakById.values()].filter((v) => v === true).length,
   violators_total: perSeed.reduce((s, r) => s + r.violators, 0),
+  ai_in_break_total: perSeed.reduce((s, r) => s + r.aiInBreak, 0),
+  no_break_seeds: perSeed.filter((r) => r.breakSize === 0).length,
   breakSize_median: median(perSeed.map((r) => r.breakSize)),
   winner_from_break: perSeed.filter((r) => r.winnerInBreak).length,
   winner_in_morning_break: perSeed.filter((r) => r.winnerInMorningBreak).length,
