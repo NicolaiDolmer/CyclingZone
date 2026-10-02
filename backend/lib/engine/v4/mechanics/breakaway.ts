@@ -1224,7 +1224,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #5955: lad-gaa-balancen under orders_gc_v1 (legacy: 1/1, bit-identisk).
     // #6074: daempet naar mange af jagtgruppens hold lader gaa.
     const letGoShare = ordersGcV1 ? letGoTeamShare({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders }) : undefined;
-    const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, letGoShare);
+    const dangerous = gcSetup !== null && letGoBrakingTeams(gcSetup.decisions, chaseGroup.id).size > 0;
+    const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, dangerous ? 1 : letGoShare);
     const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);
     const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}) });
