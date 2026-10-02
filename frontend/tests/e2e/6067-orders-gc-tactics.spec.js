@@ -148,7 +148,11 @@ test("orders_gc_v1-løb: regel-linje, jagt-stance, GC-note og break-note før ge
     .toHaveText("Kaptajn, spurt-kaptajn og hjælper går kun i morgenudbrud med Forsøg udbrud valgt.");
 
   // Ordrerne kan sættes: Forsøg udbrud findes pr. rytter.
-  await expect(visible(panel.getByRole("button", { name: "Rider One forsøger at komme med i udbruddet" }))).toBeVisible();
+  await expect(visible(panel.getByRole("button", { name: "Rider One forsøger at komme med i udbruddet" })))
+    .toHaveAttribute("aria-pressed", "false");
+  // Udbrudsjægerens rolledefault (forsøger) vises, også før noget er gemt.
+  await expect(visible(panel.getByRole("button", { name: "Rider Three forsøger at komme med i udbruddet" })))
+    .toHaveAttribute("aria-pressed", "true");
 
   // Siden må ikke overflowe vandret (#1834-mønster).
   const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -167,5 +171,8 @@ test("orders_gc_v1-løb: regel-linje, jagt-stance, GC-note og break-note før ge
   await stances.getByRole("button", { name: "Overlad jagten til andre", exact: true }).click();
   await visible(panel.getByRole("button", { name: "Gem etape 1" })).click();
   await expect.poll(() => putBodies().length).toBeGreaterThan(0);
-  expect(putBodies().at(-1).breakaway_stance).toBe("let_go");
+  const saved = putBodies().at(-1);
+  expect(saved.breakaway_stance).toBe("let_go");
+  // Et gem må ikke gøre jægerens rolledefault til et fravalg.
+  expect(saved.riders.find((r) => r.rider_id === "r3").try_break).toBe(true);
 });
