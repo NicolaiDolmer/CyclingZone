@@ -72,8 +72,12 @@ export async function fetchTeamOrders({ raceId }) {
 export function orderForStage(context, stage) {
   const riderIds = (context?.riders ?? []).map((r) => r.rider_id);
   const saved = (context?.orders ?? []).find((o) => o.stage_number === stage) ?? null;
+  // #6067: uden gemt ordre er ROLLENS standard svaret. defaultTeamOrder()'s
+  // neutrale rytter-rækker (try_break:false) overskrev før rolledefaulten, så
+  // en udbrudsjæger viste "ikke Forsøg udbrud", og et gem blev et eksplicit
+  // fravalg (#5955: fravær af override og try_break=false er to ting).
   return mergeOrderWithRoster(
-    saved ?? defaultTeamOrder(riderIds),
+    saved ?? (context?.defaultOrder ? { breakaway_stance: context.defaultOrder.breakaway_stance, riders: [] } : defaultTeamOrder(riderIds)),
     riderIds,
     context?.defaultOrder ?? null,
   );

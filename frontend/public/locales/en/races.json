@@ -672,6 +672,19 @@
       "letGo": "{captain} leads. The team lets the early move go."
     },
     "breakawayAria": "Team breakaway stance",
+    "ordersGc": {
+      "rulesLabel": "Race rules",
+      "rulesName": "Break orders and GC reaction",
+      "rulesHelp": "How they work",
+      "stanceLabel": "Chasing the break",
+      "stance": {
+        "chase": "Chase",
+        "neutral": "Read the race",
+        "let_go": "Leave the chase to others"
+      },
+      "gcNote": "The team can make a limited response to a serious GC threat with its free riders.",
+      "breakNote": "Captain, sprint captain and domestique only go for the morning break with Try the break selected."
+    },
     "breakaway": {
       "chase": "Chase it down",
       "neutral": "Neutral",
@@ -1109,7 +1122,14 @@
         "peloton_split": "{riders} {count, plural, one {moves} other {move}} into a separate group.",
         "group_split_many": "{count} riders split into a separate group.",
         "descent_attack": "{riders} {count, plural, one {attacks} other {attack}} on the descent.",
-        "descent_attack_many": "{count} riders attack on the descent."
+        "descent_attack_many": "{count} riders attack on the descent.",
+        "gc_reaction_started": "{rider}'s team starts working to protect his place in the GC.",
+        "gc_reaction_started_threat": "{rider}'s team starts working to limit the threat from {threats} in the GC.",
+        "gc_reaction_contained": "{rider}'s team stops working. The threat to his place in the GC is under control.",
+        "gc_reaction_stopped": "{rider}'s team stops reacting.",
+        "gc_reaction_exhausted": "{rider}'s team has spent what it can on the reaction this stage and stops working.",
+        "gc_reaction_no_workers": "{rider}'s team sees the threat, but has no free riders in his group to react.",
+        "gc_context_missing": "The GC standings before this stage are not available, so no team reacts to a GC threat today."
       }
     },
     "recap": {

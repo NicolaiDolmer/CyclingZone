@@ -18,6 +18,10 @@ import { catchActor, findMorningCatch } from "./raceCatchActor.ts";
 // mur, ikke en broadcast. Vinderen står allerede i `finish`-eventet.
 const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
 
+// #6067: orders_gc_v1's GC-reaktion (importen står her, ikke øverst, så den
+// ikke kolliderer med #6050's import i samme fil).
+import { describeGcReactionEvent } from "./ordersGcSurface.ts";
+
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
 // CAT_ALPHA (HC størst, kat. 4 mindst). Højde i px (scrubber er kompakt, ikke
@@ -218,6 +222,7 @@ export function collectRiderIds(events) {
     add(p.winner_rider_id);
     add(p.new_leader_id);
     add(p.previous_leader_id);
+    add(p.protected_rider_id); // #6067: gc_reaction navngiver holdets GC-rytter
     for (const t of p.top || []) add(t?.rider_id);
   }
   return [...out];
@@ -358,6 +363,10 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
       if (!rider || !previousLeader) return null;
       return { key: "gc_change", params: { rider, previousLeader } };
     }
+    // #6067: orders_gc_v1's ærlige kvitteringer, uden tal.
+    case "gc_reaction":
+    case "gc_context":
+      return describeGcReactionEvent(event, (id) => riderName(id, riderNameById));
     default:
       return null;
   }

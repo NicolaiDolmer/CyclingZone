@@ -496,6 +496,7 @@ const SECTION_DEFS = [
       { id: "stageTactics", kind: "text" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
+      { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
       { id: "fatigue", kind: "text" },
       // #4201: hvornaar assistenten selv udfylder — tilstanden er runtime-styret,
       // saa teksten beskriver reglerne uden at love én bestemt indstilling.
