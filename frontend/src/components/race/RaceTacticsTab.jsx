@@ -262,20 +262,23 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
 
 export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = true }) {
   const { t } = useTranslation("races");
-  // #6067: løbets regel-revision. "legacy" indtil læsningen siger andet.
-  const [rulesRevision, setRulesRevision] = useState("legacy");
+  // #6067: løbets regel-revision, bundet til DET løb den er læst for. Et skift
+  // af raceId kan derfor aldrig arve et andet løbs revision, og en fejlet
+  // læsning er legacy: "legacy" indtil læsningen for netop dette løb siger andet.
+  const [revisionRead, setRevisionRead] = useState({ raceId: null, revision: "legacy" });
   useEffect(() => {
     let active = true;
+    const settle = (revision) => { if (active) setRevisionRead({ raceId, revision }); };
     supabase
       .from("races")
       .select("engine_rules_revision")
       .eq("id", raceId)
       .maybeSingle()
-      .then(({ data, error }) => {
-        if (active && !error) setRulesRevision(raceRulesRevision(data?.engine_rules_revision));
-      }, () => { /* fejlet læsning = legacy */ });
+      .then(({ data, error }) => settle(error ? "legacy" : raceRulesRevision(data?.engine_rules_revision)),
+        () => settle("legacy"));
     return () => { active = false; };
   }, [raceId]);
+  const rulesRevision = revisionRead.raceId === raceId ? revisionRead.revision : "legacy";
   const ordersGc = isOrdersGcRevision(rulesRevision);
   const showOrders = ordersVisible({ showOrders: showOrdersProp, revision: rulesRevision });
   const [nowMs, setNowMs] = useState(() => Date.now());
