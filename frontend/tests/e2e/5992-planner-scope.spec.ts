@@ -10,16 +10,20 @@
 //
 // `before`-varianten er boardets payload FØR rettelsen (ingen `started`, ingen
 // `squad`) og bruges kun til PR-billedet (CZ_WRITE_COMMITTED_SHOTS=1).
+import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks, stabilizePage, login, json, corsHeaders, evidenceShotPath, WRITES_COMMITTED_SHOTS,
 } from "./fixtures.js";
 import { previewPlannerBoard } from "../../src/preview/plannerMock.js";
 
+// VITE_E2E eksponerer i18next på window (playwright.config.js).
+type E2EWindow = { __i18n?: { isInitialized: boolean; language: string; changeLanguage: (lng: string) => Promise<unknown> } };
+
 const TODAY = "2026-10-01";
 const DAY = 86_400_000;
-const shift = (iso, d) => new Date(Date.parse(`${iso}T00:00:00Z`) + d * DAY).toISOString().slice(0, 10);
-const ord = (iso) => Date.parse(`${iso}T00:00:00Z`) / DAY;
+const shift = (iso: string, d: number): string => new Date(Date.parse(`${iso}T00:00:00Z`) + d * DAY).toISOString().slice(0, 10);
+const ord = (iso: string): number => Date.parse(`${iso}T00:00:00Z`) / DAY;
 
 const BASE = previewPlannerBoard();
 const DEMAND = BASE.races[0].demandVector;
@@ -27,7 +31,7 @@ const VALUE = BASE.riders.find((r) => r.peaks.length)?.peaks[0]?.value ?? null;
 const ABILITIES = BASE.riders[0].abilities;
 
 // [id, navn, klasse, etaper, startet?, startdato, slutdato]
-const RACES = [
+const RACES: Array<[string, string, string, number, boolean, string, string]> = [
   ["trofeo-ligure", "Trofeo Ligure", "ProSeries", 1, true, "2026-10-01", "2026-10-01"],
   ["volta-catalana", "Volta Catalana", "OtherWorldTourB", 7, true, "2026-10-01", "2026-10-04"],
   ["sierra-nevada", "Vuelta a Sierra Nevada", "OtherWorldTourC", 7, false, "2026-10-02", "2026-10-05"],
@@ -43,7 +47,7 @@ const RACES = [
 ];
 const raceName = Object.fromEntries(RACES.map(([id, name]) => [id, name]));
 
-function races({ withStarted }) {
+function races({ withStarted }: { withStarted: boolean }) {
   return RACES.map(([id, name, raceClass, stages, started, date, dateEnd]) => ({
     id, name, raceClass, division: 3, isMine: true, date, dateEnd,
     ...(withStarted ? { started } : {}),
@@ -55,7 +59,7 @@ function races({ withStarted }) {
 }
 
 // [id, fornavn, efternavn, nation, type, sekundær, trup, rating, form, [mål-løb]]
-const RIDERS = [
+const RIDERS: Array<[string, string, string, string, string, string, string, number, number, string[]]> = [
   ["vargas", "Raúl", "Vargas", "co", "sprinter", "rouleur", "senior", 60, 67, ["brugge", "avesnois"]],
   ["holm", "Viktor", "Holm", "dk", "gc", "climber", "senior", 59, 67, ["sierra-nevada"]],
   ["hughes", "Lachlan", "Hughes", "gb", "baroudeur", "gc", "senior", 41, 65, ["cantabrico"]],
@@ -67,14 +71,14 @@ const RIDERS = [
   ["barbieri", "Michele", "Barbieri", "it", "gc", "rouleur", "junior", 12, 56, ["trofeo-ligure", "vosges"]],
 ];
 
-function riders({ withSquad }) {
+function riders({ withSquad }: { withSquad: boolean }) {
   return RIDERS.map(([id, firstname, lastname, nationality, primaryType, secondaryType, squad, rating, form, targets]) => ({
     id, firstname, lastname, nationality, age: squad === "senior" ? 27 : squad === "u23" ? 20 : 17,
     primaryType, secondaryType, isAcademy: squad !== "senior",
     ...(withSquad ? { squad } : {}),
     abilities: ABILITIES, rating, form, fatigue: 20, injuredUntil: null, registeredRaceIds: [],
     peaks: targets.map((raceId) => {
-      const date = RACES.find((r) => r[0] === raceId)[5];
+      const date = RACES.find((r) => r[0] === raceId)?.[5] ?? TODAY;
       return {
         id: `pk-${id}-${raceId}`, riderId: id, seasonId: "s4", targetRaceId: raceId, targetRaceName: raceName[raceId],
         windowStart: shift(date, -2), windowEnd: shift(date, 2), lockedAt: null, locked: false, createdAt: "2026-09-28",
@@ -84,7 +88,7 @@ function riders({ withSquad }) {
   }));
 }
 
-function board({ fixed }) {
+function board({ fixed }: { fixed: boolean }) {
   return {
     ...BASE, season: { id: "s4", number: 4, status: "active" },
     availableSeasons: [{ id: "s4", number: 4, status: "active" }], today: TODAY,
@@ -92,28 +96,28 @@ function board({ fixed }) {
   };
 }
 
-async function routeBoard(page, payload) {
-  await page.route("**/api/peak-plans/board**", (route) => {
+async function routeBoard(page: Page, payload: unknown) {
+  await page.route("**/api/peak-plans/board**", (route: Route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     return json(route, payload);
   });
 }
 
-async function openPlanner(page, width, { english = false } = {}) {
+async function openPlanner(page: Page, width: number, { english = false }: { english?: boolean } = {}) {
   await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
   await page.goto("/planning?tab=form");
   // Spillertekst reviewes EN-first; stabilizePage låser ellers dansk.
   if (english) {
-    await expect.poll(() => page.evaluate(() => window.__i18n?.isInitialized === true)).toBe(true);
-    await page.evaluate(async () => { if (window.__i18n) await window.__i18n.changeLanguage("en"); });
-    await expect.poll(() => page.evaluate(() => window.__i18n?.language)).toBe("en");
+    await expect.poll(() => page.evaluate(() => (window as unknown as E2EWindow).__i18n?.isInitialized === true)).toBe(true);
+    await page.evaluate(async () => { await (window as unknown as E2EWindow).__i18n?.changeLanguage("en"); });
+    await expect.poll(() => page.evaluate(() => (window as unknown as E2EWindow).__i18n?.language)).toBe("en");
   }
   await page.getByText("Holm", { exact: false }).first().waitFor();
 }
 
 // Dropdown-valgmulighederne for en tom/sat plads hos seniorrytteren Hughes.
-async function hughesOptions(page) {
+async function hughesOptions(page: Page): Promise<string[]> {
   const select = page.getByRole("combobox", { name: /Hughes/ }).first();
   return select.locator("option").allInnerTexts();
 }

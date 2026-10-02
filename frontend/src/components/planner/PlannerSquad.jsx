@@ -392,7 +392,7 @@ function YouthPeaksSection({ riders, races, months, busy, onRemovePeak }) {
         {riders.map((rider) => (
           <li key={rider.id} className="flex flex-col gap-1.5 py-2.5 md:flex-row md:items-center md:gap-4">
             <div className="flex min-w-0 items-center gap-1.5 md:w-[34%]">
-              {rider.nationality && <Flag code={rider.nationality} className="text-[11px]" />}
+              {rider.nationality && <Flag code={rider.nationality} className="text-2xs" />}
               <span className="truncate text-[13.5px] font-medium text-cz-1">{riderShortName(rider)}</span>
               <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t(`squad.youth.squad.${rider.squad}`)}</span>
             </div>
