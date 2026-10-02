@@ -12,7 +12,7 @@ Ingen ny taktik-/GC-politik, formationsregel eller flagaktivering indgår i denn
 
 ## Regel-revision pr. løb (#5955, #5984 Task 2)
 
-Et løbs taktiske regler bindes ved løbets første etape-claim og ændres aldrig siden. `races.engine_rules_revision` er `legacy` eller `orders_gc_v1`; den skrives kun af backend-runneren med én betinget opdatering (kun når kolonnen er tom og ingen etape er afviklet), derefter genlæses værdien, så samtidige claims ender ens. Retry, genoptagelse og senere etaper genbruger den gemte værdi. Et startet løb uden gemt værdi er `legacy`, aldrig automatisk opt-in; `engine_version = 4` alene vælger ikke ny politik. En ukendt værdi stopper afviklingen synligt: aldrig nyeste regler og aldrig v3-fallback. Før migrationen er anvendt, kører alt `legacy` uden skrivning. Bindingen sker kun når v4 afvikler etapen.
+Et løbs taktiske regler bindes ved løbets første etape-claim og ændres aldrig siden. `races.engine_rules_revision` er `legacy`, `orders_gc_v1` eller `orders_gc_v2` (#6084); den skrives kun af backend-runneren med én betinget opdatering (kun når kolonnen er tom og ingen etape er afviklet), derefter genlæses værdien, så samtidige claims ender ens. Retry, genoptagelse og senere etaper genbruger den gemte værdi. Et startet løb uden gemt værdi er `legacy`, aldrig automatisk opt-in; `engine_version = 4` alene vælger ikke ny politik. En ukendt værdi stopper afviklingen synligt: aldrig nyeste regler og aldrig v3-fallback. Før migrationen er anvendt, kører alt `legacy` uden skrivning. Bindingen sker kun når v4 afvikler etapen.
 
 `StageInput.rules_revision` er valgfri; udeladt er `legacy`, byte-identisk med før. Begge revisioner deler korrekthedsrettelser. Nye løb bindes i dag til `legacy` (`CURRENT_RACE_RULES_REVISION`): `orders_gc_v1` aktiveres først som samlet pakke (dannelse + faktisk GC-reaktion) efter ejer-godkendt privat kalibrering. Kode: `backend/lib/raceEngineRulesRevision.ts`, `raceRunner.bindRaceRulesRevision`, migration `2026-10-01-race-engine-rules-revision.sql`.
 
@@ -36,6 +36,10 @@ Loft (#6074): lader næsten alle hold i jagtgruppen det gå samtidig, trappes de
 ## Brosten under `orders_gc_v1` (#6046)
 
 Kun på `cobbles`- og `gravel`-etaper og kun når løbets revision er `orders_gc_v1`; legacy og alle andre profiler (også `classic`) er uændrede. To ting ændres: (1) en brostenssektor deler de afhængte ryttere i flere grupper efter hvor langt de er under gruppens bedste brostensrytter, og tidstabet vokser med underskuddet (før tabte alle afhængte det samme); (2) placeringen i finalen vægter brostensevnen sammen med finale-typens egne evner. På sektoren ender en stærkere brostensrytter aldrig bag en svagere fra samme gruppe; i finalen gælder det kun når rytternes øvrige finale-evner og dagens tillæg er ens. Kode: `mechanics/cobbles.ts`, `finale.ts`, tuning i `COBBLES_EXTRA_TUNING`.
+
+## Bjergetaper under `orders_gc_v2` (#6084)
+
+`orders_gc_v2` er hele `orders_gc_v1`-pakken plus én ændring på `mountain`- og `high_mountain`-etaper: feltet holder samlet til finalestigningen, og dagens udbrud hentes dér. Finalestigningen er etapens sidste blok af sammenhængende stigningssegmenter. Før den er selektionen blødere (en tom reserve tvinger kun rytteren af på en alvorlig stigning, og split-tærsklen er højere), tempo-modellen flytter ikke hullet til dagens udbrud på stigningerne (kun jagten gør, som på fladt terræn), og jagten er kontrolleret. På og efter finalestigningen er selektion og tempo som under `orders_gc_v1`, og favoritternes hold jager for alvor. En GC-reaktion jager altid udæmpet. Alle andre profiler er byte-identiske med `orders_gc_v1`, og legacy og `orders_gc_v1` er uændrede. Nye løb bindes stadig til `orders_gc_v1`; skiftet er et separat ejer-go (migration `2026-10-02-race-engine-rules-revision-v2.sql` gør værdien lovlig). Kode: `mechanics/mountainSelection.ts`, tuning i `MOUNTAIN_SELECTION_V2_TUNING`.
 
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
