@@ -19,6 +19,8 @@ import {
   isLetGoChaseGroup,
   joinProbability,
   letGoBalanceFor,
+  letGoCrowdDamping,
+  letGoTeamShare,
   letGoMaxGapSeconds,
   letGoSplitKm,
   selectBreakawayRiders,
@@ -1009,6 +1011,46 @@ test("#5955 (2/10) letGoBalanceFor: med GC-reaktionen bygges hullet hurtigere pa
   for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const) {
     assert.deepEqual(letGoBalanceFor("legacy", profile), { maxGapFactor: 1, rateFactor: 1 });
   }
+});
+
+test("#6074 lad-gaa-loft: daemper kun det ekstra forspring naar mange hold lader gaa, aldrig under legacy, legacy uroert", () => {
+  const profiles = ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const;
+  for (const profile of profiles) {
+    const full = letGoBalanceFor("orders_gc_v1", profile);
+    // Udeladt eller lav/typisk andel = uaendret (AI-scenariet).
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, 0), full, profile);
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, 0.5), full, profile);
+    const all = letGoBalanceFor("orders_gc_v1", profile, 1);
+    assert.ok(all.maxGapFactor <= full.maxGapFactor && all.maxGapFactor >= 1, profile);
+    assert.ok(all.rateFactor <= full.rateFactor && all.rateFactor >= 1, profile);
+    // Legacy laeser aldrig andelen.
+    assert.deepEqual(letGoBalanceFor("legacy", profile, 1), { maxGapFactor: 1, rateFactor: 1 });
+    assert.deepEqual(letGoBalanceFor(undefined, profile, 1), { maxGapFactor: 1, rateFactor: 1 });
+  }
+  assert.ok(letGoBalanceFor("orders_gc_v1", "high_mountain", 1).maxGapFactor < letGoBalanceFor("orders_gc_v1", "high_mountain").maxGapFactor);
+  // Monotont ikke-stigende i andelen, inden for [0, 1].
+  let prev = Infinity;
+  for (let s = 0; s <= 1.0001; s += 0.05) {
+    const d = letGoCrowdDamping(s);
+    assert.ok(d <= prev && d >= 0 && d <= 1, String(s));
+    prev = d;
+  }
+  assert.equal(letGoCrowdDamping(Number.NaN), 1);
+});
+
+test("#6074 letGoTeamShare: andel af jagtgruppens koerende hold med let_go; hold uden ordre er neutrale", () => {
+  const entrants: Record<string, Entrant> = {
+    a1: { team_id: "A" } as Entrant, a2: { team_id: "A" } as Entrant,
+    b1: { team_id: "B" } as Entrant, c1: { team_id: "C" } as Entrant, d1: { team_id: "D" } as Entrant,
+  };
+  const riders: Record<string, RiderState> = Object.fromEntries(
+    Object.keys(entrants).map((id) => [id, { status: id === "d1" ? "dnf" : "racing" } as RiderState]),
+  );
+  const order = (team_id: string, breakaway_stance: BreakawayStance) => ({ team_id, breakaway_stance }) as BreakawayTeamOrder;
+  const ids = ["a1", "a2", "b1", "c1", "d1"];
+  assert.equal(letGoTeamShare({ orders: [order("A", "let_go"), order("B", "chase"), order("D", "let_go")], chaseGroupRiderIds: ids, entrants, riders }), 1 / 3);
+  assert.equal(letGoTeamShare({ orders: [order("A", "let_go"), order("B", "let_go"), order("C", "let_go")], chaseGroupRiderIds: ids, entrants, riders }), 1);
+  assert.equal(letGoTeamShare({ orders: [], chaseGroupRiderIds: [], entrants, riders }), 0);
 });
 
 test("#5955 letGoSplitKm: en hurtigere lad-gaa-fase naar samme loft paa faerre km, og default er uaendret", () => {

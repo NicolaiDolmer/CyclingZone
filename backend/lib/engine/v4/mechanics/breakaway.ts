@@ -487,18 +487,70 @@ const ORDERS_GC_V1_LET_GO: Readonly<{
   letGoRateFactorByProfile: Object.freeze({ rolling: 2, hilly: 1.3, mountain: 2.5, high_mountain: 3.5 }),
 });
 
+// #6074 (KUN orders_gc_v1): loft paa det ekstra lad-gaa-forspring, naar mange
+// hold i jagtgruppen SAMTIDIG lader gaa. Faktorerne ovenfor er kalibreret paa
+// et felt hvor en del af holdene lader gaa; lader naesten alle det gaa, stabler
+// den ekstra plads oven i et felt der slet ikke jager, og udbruddet holder langt
+// oftere end under legacy. Over `fromShare` (andel af jagtgruppens hold med
+// "let_go") trappes det ekstra (faktor - 1) lineaert ned til `floorAtAll` af sig
+// selv, naar alle hold lader gaa. Under taersklen er intet aendret.
+const ORDERS_GC_V1_LET_GO_CROWD: Readonly<{ fromShare: number; floorAtAll: number }> = Object.freeze({
+  fromShare: 0.8,
+  floorAtAll: 0.45,
+});
+
+/**
+ * #6074: daempning [floorAtAll, 1] af det ekstra lad-gaa-forspring ud fra
+ * andelen af hold der lader gaa. 1 = ingen daempning. Monotont ikke-stigende
+ * i andelen. Eksporteret for kontrakt-tests.
+ */
+export function letGoCrowdDamping(letGoShare: number): number {
+  const { fromShare, floorAtAll } = ORDERS_GC_V1_LET_GO_CROWD;
+  if (!Number.isFinite(letGoShare) || letGoShare <= fromShare) return 1;
+  const t = clamp((letGoShare - fromShare) / Math.max(1e-9, 1 - fromShare), 0, 1);
+  return 1 - t * (1 - floorAtAll);
+}
+
+/**
+ * #6074: andelen af hold med koerende ryttere i jagtgruppen, hvis ordre er
+ * "let_go". Hold uden ordre taeller som neutrale. 0 naar gruppen er tom.
+ * Deterministisk, ingen evne-akse. Eksporteret for kontrakt-tests.
+ */
+export function letGoTeamShare(input: {
+  orders: readonly BreakawayTeamOrder[];
+  chaseGroupRiderIds: readonly string[];
+  entrants: Readonly<Record<string, Entrant>>;
+  riders: Readonly<Record<string, RiderState>>;
+}): number {
+  const teams = new Set<string>();
+  for (const id of input.chaseGroupRiderIds) {
+    if (input.riders[id]?.status !== "racing") continue;
+    const teamId = teamIdOf(input.entrants[id]);
+    if (teamId) teams.add(teamId);
+  }
+  if (teams.size === 0) return 0;
+  let letGo = 0;
+  for (const order of input.orders) if (order.breakaway_stance === "let_go" && teams.has(order.team_id)) letGo += 1;
+  return Math.min(1, letGo / teams.size);
+}
+
 /**
  * #5955: lad-gaa-faktorerne for en etape. Legacy (og enhver anden revision)
  * faar altid 1/1, saa legacy-stien er bit-identisk. Eksporteret for kontrakt-tests.
+ * #6074: `letGoShare` (andel af jagtgruppens hold der lader gaa) daemper det
+ * ekstra over 1 via letGoCrowdDamping. Udeladt = ingen daempning.
  */
 export function letGoBalanceFor(
   rulesRevision: string | undefined,
   profileType: ProfileType,
+  letGoShare?: number,
 ): { maxGapFactor: number; rateFactor: number } {
   if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1 };
+  const damping = letGoShare === undefined ? 1 : letGoCrowdDamping(letGoShare);
+  const damp = (factor: number) => 1 + (factor - 1) * damping;
   return {
-    maxGapFactor: ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1,
-    rateFactor: ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1,
+    maxGapFactor: damp(ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1),
+    rateFactor: damp(ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1),
   };
 }
 
@@ -1164,13 +1216,16 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
   const formationSegment = ctx.route.segments[FORMATION_SEGMENT_INDEX];
   const formationKm = formationSegment ? formationKmFor(formationSegment) : ctx.segment.from_km;
-  // #5955: lad-gaa-balancen under orders_gc_v1 (legacy: 1/1, bit-identisk).
-  const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type);
-  const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
+  const ordersGcV1 = ctx.rulesRevision === "orders_gc_v1";
 
   for (const breakaway of breakawayGroups) {
     const chaseGroup = findChaseGroup(state.groups, breakaway);
     if (!chaseGroup) continue;
+    // #5955: lad-gaa-balancen under orders_gc_v1 (legacy: 1/1, bit-identisk).
+    // #6074: daempet naar mange af jagtgruppens hold lader gaa.
+    const letGoShare = ordersGcV1 ? letGoTeamShare({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders }) : undefined;
+    const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, letGoShare);
+    const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);
     const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}) });
     const stance = chasePlan.signal;
