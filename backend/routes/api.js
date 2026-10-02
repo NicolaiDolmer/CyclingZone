@@ -280,6 +280,7 @@ import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakT
 import { RACE_V3_TUNING, validEffortsFor } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
+import { peakTargetRaceStarted, plannerSquadFor } from "../lib/peakTargetScope.js"; // #5992
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -3670,11 +3671,12 @@ async function resolveTeamDivisionForSeason({ teamId, season, currentDivisionId 
 // { race } eller { status, error }.
 async function loadTargetRaceForPeak(targetRaceId, seasonId, team) {
   const { data: race, error } = await supabase
-    .from("races").select("id, season_id, league_division_id, status")
+    .from("races").select("id, season_id, league_division_id, status, stages_completed")
     .eq("id", targetRaceId).maybeSingle();
   if (error) throw new Error(`races (peak target): ${error.message}`);
   if (!race) return { status: 404, error: "race_not_found" };
   if (race.season_id !== seasonId) return { status: 409, error: "race_not_in_season" };
+  if (peakTargetRaceStarted(race)) return { status: 409, error: "race_already_started" }; // #5992
 
   const { data: season, error: seasonErr } = await supabase
     .from("seasons").select("id, status").eq("id", seasonId).maybeSingle();
@@ -3855,9 +3857,10 @@ router.post("/peak-plans", requireAuth, marketWriteLimiter, async (req, res) => 
 
     // Ejerskab: peaks kun for egne ryttere.
     const { data: rider } = await supabase
-      .from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+      .from("riders").select("id, team_id, squad, is_academy").eq("id", riderId).maybeSingle();
     if (!rider) return res.status(404).json({ error: "Rider not found" });
     if (rider.team_id !== req.team.id) return res.status(403).json({ error: "not_own_rider" });
+    if (plannerSquadFor(rider) !== "senior") return res.status(409).json({ error: "rider_not_senior_squad" }); // #5992
 
     const rt = await loadTargetRaceForPeak(targetRaceId, season.id, req.team);
     if (rt.error) return res.status(rt.status).json({ error: rt.error });
@@ -3952,8 +3955,8 @@ router.post("/peak-plans/bulk", requireAuth, marketWriteLimiter, async (req, res
     const raceIds = [...new Set(requested.map((p) => p.targetRaceId))];
 
     const [ridersRes, racesRes, existingRes, scheduleRes] = await Promise.all([
-      supabase.from("riders").select("id, team_id, is_retired").in("id", riderIds),
-      supabase.from("races").select("id, season_id, league_division_id").in("id", raceIds),
+      supabase.from("riders").select("id, team_id, is_retired, squad, is_academy").in("id", riderIds),
+      supabase.from("races").select("id, season_id, league_division_id, status, stages_completed").in("id", raceIds),
       supabase.from("rider_peak_plans").select("rider_id, target_race_id").eq("season_id", season.id).in("rider_id", riderIds),
       supabase.from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds),
     ]);
@@ -3991,6 +3994,15 @@ router.post("/peak-plans/bulk", requireAuth, marketWriteLimiter, async (req, res
       const race = raceById.get(targetRaceId);
       if (!race || race.season_id !== season.id || race.league_division_id !== divisionId) {
         skipped.push({ rider_id: riderId, target_race_id: targetRaceId, reason: "race_not_in_calendar" });
+        continue;
+      }
+      // #5992: samme to regler som enkelt-POST'en.
+      if (peakTargetRaceStarted(race)) {
+        skipped.push({ rider_id: riderId, target_race_id: targetRaceId, reason: "race_already_started" });
+        continue;
+      }
+      if (plannerSquadFor(riderById.get(riderId)) !== "senior") {
+        skipped.push({ rider_id: riderId, target_race_id: targetRaceId, reason: "rider_not_senior_squad" });
         continue;
       }
       const guard = canCreatePeakPlan({ existingTargetRaceIds: targetsByRider.get(riderId) || [], targetRaceId });
@@ -4188,7 +4200,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // ALDRIG eksponeret i ridersOut (samme skjul som resten af rytter-fladen).
     const { data: riders, error: ridErr } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, nationality_code, primary_type, secondary_type, is_academy, birthdate")
+      .select("id, firstname, lastname, nationality_code, primary_type, secondary_type, is_academy, squad, birthdate")
       .eq("team_id", req.team.id)
       .eq("is_retired", false);
     if (ridErr) throw new Error(`riders (planner board): ${ridErr.message}`);
@@ -4250,7 +4262,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // #5517: seniorkalenderen — ungdomspuljer og ungdomsløb holdes ude (squads.withSeniorSquadScope).
     const [racesRes, divisionsRes] = await Promise.all([
       withSeniorSquadScope((senior) => senior(supabase.from("races")
-        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start"))
+        .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, game_day_start"))
         .eq("season_id", season.id)),
       withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index")),
     ]);
@@ -4326,6 +4338,8 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         // DEN sæson planlæggeren kigger på, ikke wall-clock. birthdate selv
         // forbliver skjult, som overalt ellers på rytter-fladen.
         age: ageForSeason(r.birthdate, season.number),
+        // #5992: trup fra det fælles prædikat. Klienten planlægger kun "senior".
+        squad: plannerSquadFor(r),
         abilities: abilByRider.get(r.id) || {},
         // #5321: ratingen leveres FÆRDIGBEREGNET. Planlæggeren regnede den før
         // selv ud af `abilities` ovenfor — og det felt er motorens udsnit, ikke
@@ -4371,6 +4385,8 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       stageDatesByRaceId.get(row.race_id).push(toCopenhagenISODate(ms));
     }
 
+    // #5992: startet/kørt pr. løb, samme definition som løbskalenderen.
+    const startedByRaceId = new Map(raceList.map((r) => [r.id, peakTargetRaceStarted(r)]));
     const racesOut = model.entries
       .filter((e) => e.date)
       .map((e) => {
@@ -4382,6 +4398,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           division: e.division,
           isMine: e.isMine,
           date: e.date,
+          started: startedByRaceId.get(e.id) === true,
           // #3102 PR 2 (hul 2): det vindue en peak mod DETTE løb ville få, færdig-
           // snappet med præcis samme snapPeakWindow som skrive-stien — så dropdownen
           // kan vise payback-risiko pr. løb FØR valget uden at klienten har sin egen
@@ -4443,7 +4460,8 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     }
 
     const suggestRiderIdSet = new Set(
-      divisionSettled ? ridersOut.filter((r) => r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id) : [],
+      // #5992: kun seniortruppen får forslag (peak-mål er seniorkalenderens løb).
+      divisionSettled ? ridersOut.filter((r) => r.squad === "senior" && r.peaks.length < MAX_PEAK_PLANS_PER_SEASON).map((r) => r.id) : [],
     );
     if (suggestRiderIdSet.size) {
       const suggestRiderIds = [...suggestRiderIdSet];
@@ -4458,7 +4476,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         const realTargetIds = new Set(rd.peaks.map((p) => p.targetRaceId).filter(Boolean));
         const reservedOrds = rd.peaks.map((p) => dateStringToOrdinal(p.windowStart)).filter((o) => o != null);
         const candidateRaces = racesOut
-          .filter((r) => r.isMine && r.date && !realTargetIds.has(r.id))
+          .filter((r) => r.isMine && r.date && !r.started && !realTargetIds.has(r.id))
           .map((r) => ({ id: r.id, ord: dateStringToOrdinal(r.date), demandVector: r.demandVector }))
           .filter((r) => r.ord != null && r.ord >= nowOrd);
 
