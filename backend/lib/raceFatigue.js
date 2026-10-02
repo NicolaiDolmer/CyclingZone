@@ -61,10 +61,14 @@ export function raceFatigueLoad(profileType) {
  *
  * @param {number|null|undefined} startFatigue
  * @param {string[]} profileTypes  etapeprofiler i etape-rækkefølge
- * @param {{effort?: 'grupetto'|'save'|'normal'|'protect'|'all_out', efforts?: string[], restDaysBefore?: number[], recoveryAbility?: number}} [opts]
+ * #6079: valgfri `rulesRevision` (løbets engine_rules_revision). Under
+ * "orders_gc_v1" afhænger save's besparelse af etapeprofilen (raceRoles.js
+ * effortFatigueMultiplier). Udeladt/legacy → BIT-IDENTISK.
+ *
+ * @param {{effort?: 'grupetto'|'save'|'normal'|'protect'|'all_out', efforts?: string[], restDaysBefore?: number[], recoveryAbility?: number, rulesRevision?: string|null}} [opts]
  * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
  */
-export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts, restDaysBefore, recoveryAbility = 50, trainingOwnsRecovery = false } = {}) {
+export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts, restDaysBefore, recoveryAbility = 50, trainingOwnsRecovery = false, rulesRevision = null } = {}) {
   let f = Number.isFinite(Number(startFatigue))
     ? Math.max(0, Math.min(100, Number(startFatigue)))
     : 0;
@@ -74,7 +78,7 @@ export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "no
     if (!trainingOwnsRecovery && rest > 0) f = restDayFatigue({ fatigue: f, restDays: rest, recoveryAbility });
     const p = profileTypes[i];
     const stageEffort = Array.isArray(efforts) ? (efforts[i] || "normal") : effort;
-    const mult = effortFatigueMultiplier(stageEffort);
+    const mult = effortFatigueMultiplier(stageEffort, { profileType: p, rulesRevision });
     out.push(f);
     if (!trainingOwnsRecovery) f = Math.min(100, f + raceFatigueLoad(p) * mult);
   }
@@ -97,14 +101,14 @@ export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "no
  * @param {{ supabase, riderIds: string[], profileType: string, now?: Date, effortByRider?: Map<string,string>|null }}
  * @returns {{ updated: number }}
  */
-export async function applyRaceFatigue({ supabase, riderIds, profileType, now = new Date(), effortByRider = null, raceId = null, stageNumber = null, loadSnapshot = null }) {
+export async function applyRaceFatigue({ supabase, riderIds, profileType, now = new Date(), effortByRider = null, raceId = null, stageNumber = null, loadSnapshot = null, rulesRevision = null }) {
   if (!riderIds?.length) return { updated: 0 };
   const load = raceFatigueLoad(profileType);
   if (await isTrainingConditionPerDateEnabled(supabase)) {
     if (!raceId || !Number.isInteger(stageNumber) || stageNumber < 1) throw new Error('Normalized race load requires race and stage identifiers');
     const { data, error } = await supabase.rpc('record_training_race_load', {
       p_race_id: raceId, p_stage_number: stageNumber,
-      p_loads: loadSnapshot ?? raceConditionLoads(riderIds, profileType, effortByRider),
+      p_loads: loadSnapshot ?? raceConditionLoads(riderIds, profileType, effortByRider, rulesRevision),
     });
     if (error) throw new Error(`race condition load ledger: ${error.message}`);
     return { updated: 0, recorded: data?.recorded ?? 0 };
@@ -118,7 +122,7 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
 
   const by = new Map((data ?? []).map((r) => [r.rider_id, r.fatigue]));
   const rows = riderIds.map((id) => {
-    const mult = effortByRider?.has(id) ? effortFatigueMultiplier(effortByRider.get(id)) : 1;
+    const mult = effortByRider?.has(id) ? effortFatigueMultiplier(effortByRider.get(id), { profileType, rulesRevision }) : 1;
     return {
       rider_id: id,
       // rider_condition.fatigue er smallint — afrund så load*mult ikke sender
@@ -136,8 +140,10 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
   return { updated: rows.length };
 }
 
-export function raceConditionLoads(riderIds, profileType, effortByRider = null) {
-  return [...new Set(riderIds)].map(riderId => ({rider_id:riderId,load:raceFatigueLoad(profileType)*effortFatigueMultiplier(effortByRider?.get(riderId) ?? 'normal')}));
+// #6079: `rulesRevision` (løbets bundne engine_rules_revision) gør save's
+// multiplikator profil-afhængig under orders_gc_v1; udeladt/legacy = bit-identisk.
+export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null) {
+  return [...new Set(riderIds)].map(riderId => ({rider_id:riderId,load:raceFatigueLoad(profileType)*effortFatigueMultiplier(effortByRider?.get(riderId) ?? 'normal', { profileType, rulesRevision })}));
 }
 
 /**

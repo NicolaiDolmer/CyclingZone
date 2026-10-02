@@ -794,6 +794,20 @@ const effortGainExtra = {
 /** M1 (#5580) additiv effort-gevinst-tuning (deep-frosset). Se effortGainExtra-kommentaren ovenfor. */
 export const EFFORT_GAIN_EXTRA_TUNING = deepFreeze(effortGainExtra);
 
+// #6079 (ejer 2/10, beslutning D, KUN orders_gc_v1): "Koer roligt" (save)
+// koster mindre placering paa stigningerne, taettere paa v3. Kun save's to
+// stignings-tal aendres; resten af trappen er effortGainExtra's. Ordenen
+// holder stadig (grupetto <= save <= normal, laast af test), saa en save-
+// rytter stadig taber tid mod en normal-rytter. Legacy laeser aldrig dette.
+// Maalt privat (balance-internals/6079/), tal ikke i PR-body.
+const ordersGcV1ClimbGain = {
+  climbScoreRelief: { ...effortGainExtra.climbScoreRelief, save: -0.45 } as Record<EffortLevel, number>,
+  climbScorePenalty: { ...effortGainExtra.climbScorePenalty, save: 0.2 } as Record<EffortLevel, number>,
+};
+
+/** #6079: stignings-tabellerne for save under orders_gc_v1 (deep-frosset). */
+export const ORDERS_GC_V1_CLIMB_GAIN_TUNING = deepFreeze(ordersGcV1ClimbGain);
+
 // ── M7 (mechanics/distanceFatigue.ts, #4030) — ADDITIV distance-slid-tuning ──
 // Samme moenster som finaleExtra/effortCostExtra ovenfor. Kontrakt (mor-spec
 // §4 M7 + §8 beslutning 12): monument-effekten (250 km+ draener finalen,
@@ -1354,9 +1368,58 @@ const morningBreakFormation = {
   successPressureWeight: 0.06,
   successCrowdWeight: 0.05,
   successBounds: [0.03, 0.85] as readonly [number, number],
+  // #6079 (ejer 2/10, beslutning A): et forsoeg med effektiv udbrudsordre
+  // (hunterens rolledefault eller "Forsoeg udbrud") faar dette tillaeg til
+  // succes-sandsynligheden; en fri rolle der selv forsoeger faar det ikke.
+  orderedSuccessBonus: 0.15,
   // Rytterens motor relativt til feltets snit, clampet. STARTGAET
   relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
 };
 
 /** #5955 orders_gc_v1-dannelse (deep-frosset). Se morningBreakFormation-kommentaren ovenfor. */
 export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);
+
+// ── #6084 (KUN orders_gc_v2): bjergetaper holder samlet til finalen ─────────
+// Laeses kun af mechanics/mountainSelection.ts, og kun naar segmentLoop har sat
+// en fase (orders_gc_v2 + en profil herunder). Legacy og orders_gc_v1 er
+// uroerte. Kalibreret privat mod ejer-maalene i #6084 (balance-internals/6084/).
+const mountainSelectionV2 = {
+  // Profiler hvor revisionen gaelder. #6092: kuperet er med (eget, lavere lad-gaa-loft i byProfile).
+  profileTypes: ["mountain", "high_mountain", "hilly"] as readonly ProfileType[],
+  // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
+  preFinalSplitThresholdFactor: 3.2,
+  // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
+  preFinalWprimeForcedMinSeverity: 0.3,
+  // A: andel af tempo-driften mellem favoritgruppen og dagens udbrud der nulstilles paa stigninger foer
+  // finalestigningen (1 = kun jagten flytter hullet, som paa aabent terraen).
+  preFinalBreakawayDriftNeutralShare: 1,
+  // M5: skalering af lad-gaa-loftet (oven paa orders_gc_v1-faktoren) paa hele etapen.
+  letGoMaxGapScale: 0.7,
+  // M5: jagtens lukning paa segmenter foer finalestigningen (kontrolleret jagt).
+  preFinalChaseClosingScale: 0.4,
+  // M5: jagtens lukning paa og efter finalestigningen (favoritternes hold jager for alvor).
+  finalChaseClosingScale: 2.5,
+  // #6092: profil-vise afvigelser fra knapperne ovenfor (mechanics/mountainSelection.ts).
+  // Kalibreret privat paa rigtige felter (balance-internals/6092/).
+  byProfile: {
+    // Kuperet: lavere lad-gaa-loft, saa et holdt udbruds forspring ikke bliver hele kaptajnernes tidstab.
+    hilly: { letGoMaxGapScale: 0.45 },
+    // Bjerg: favoritternes hold jager i finalen uden ekstra skarphed.
+    mountain: { finalChaseClosingScale: 1 },
+    // Hoejfjeld: roligere jagt foer finalestigningen og uden ekstra skarphed i finalen.
+    high_mountain: { preFinalChaseClosingScale: 0.2, finalChaseClosingScale: 1 },
+  } as Partial<Record<ProfileType, Partial<MountainSelectionV2Knobs>>>,
+};
+
+/** #6092: de knapper en profil kan afvige paa (alle tal i mountainSelectionV2). */
+export type MountainSelectionV2Knobs = {
+  preFinalSplitThresholdFactor: number;
+  preFinalWprimeForcedMinSeverity: number;
+  preFinalBreakawayDriftNeutralShare: number;
+  letGoMaxGapScale: number;
+  preFinalChaseClosingScale: number;
+  finalChaseClosingScale: number;
+};
+
+/** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
+export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);

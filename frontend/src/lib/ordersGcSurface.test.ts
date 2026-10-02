@@ -21,11 +21,14 @@ const at = (obj: unknown, path: string): unknown =>
 
 test("regel-revision: kun orders_gc_v1 er de nye regler; null/ukendt/legacy er legacy", () => {
   assert.equal(raceRulesRevision(ORDERS_GC_REVISION), "orders_gc_v1");
-  for (const raw of [null, undefined, "", "legacy", "orders_gc_v2", 1, {}]) {
+  for (const raw of [null, undefined, "", "legacy", "orders_gc_v3", 1, {}]) {
     assert.equal(raceRulesRevision(raw), "legacy", String(raw));
     assert.equal(isOrdersGcRevision(raw), false);
   }
   assert.equal(isOrdersGcRevision("orders_gc_v1"), true);
+  // #6084: orders_gc_v2 = orders_gc_v1-pakken + bjergselektionen; samme flader.
+  assert.equal(raceRulesRevision("orders_gc_v2"), "orders_gc_v1");
+  assert.equal(isOrdersGcRevision("orders_gc_v2"), true);
 });
 
 test("ordre-halvdelen: preview-gaten gælder legacy, orders_gc_v1 viser altid ordrerne", () => {

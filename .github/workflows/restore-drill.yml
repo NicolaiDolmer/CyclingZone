@@ -72,7 +72,7 @@ jobs:
           /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" \
             --schema=public --format=custom --no-owner --no-privileges \
             --file=/tmp/drill.dump
-          ls -la /tmp/drill.dump | awk '{print "dump size:", $5, "bytes"}'
+          echo "dump size: $(stat -c %s /tmp/drill.dump) bytes"
 
       - name: Restore into fresh Postgres 17
         run: |

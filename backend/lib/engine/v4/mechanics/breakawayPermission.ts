@@ -158,6 +158,8 @@ function emptyFormation(): MorningBreakFormation {
  *     modstand og minus overfyldning (flere forsoeg end der er plads til).
  *     Kun succeser kommer med. Er der flere succeser end maxSize, beholdes dem
  *     med stoerst margin (feltet lukker det overfyldte hul) — aldrig fyld.
+ *     #6079: et beordret forsoeg faar orderedSuccessBonus oveni, og ved for
+ *     mange succeser beholdes beordrede foer spontane (dernaest margin).
  */
 export function resolveMorningBreakFormation(input: {
   riders: readonly FormationRider[];
@@ -172,9 +174,11 @@ export function resolveMorningBreakFormation(input: {
 
   // 1. Faktiske forsoeg.
   const attempted: FormationRider[] = [];
+  const orderedIds = new Set<string>();
   for (const rider of riders) {
     const intent = morningBreakIntent({ role: rider.role, effort: rider.effort, tryBreak: rider.tryBreak });
     if (intent === "none") continue;
+    if (intent === "ordered") orderedIds.add(rider.rider_id);
     if (intent === "spontaneous") {
       const chance = clamp(Number.isFinite(rider.spontaneousChance) ? rider.spontaneousChance : 0, 0, 1);
       if (!(input.roll("attempt", rider.rider_id) < chance)) continue;
@@ -238,10 +242,13 @@ export function resolveMorningBreakFormation(input: {
   const fieldStrength = riders.reduce((s, r) => s + clamp(r.strength, 0, 1), 0) / riders.length;
   const crowd = maxSize > 0 ? Math.max(0, attempted.length - maxSize) / maxSize : 0;
   const [pLo, pHi] = t.successBounds;
-  const successes: Array<{ riderId: string; margin: number }> = [];
+  const successes: Array<{ riderId: string; margin: number; ordered: boolean }> = [];
+  const orderedBonus = Math.max(0, Number.isFinite(t.orderedSuccessBonus) ? t.orderedSuccessBonus : 0);
   for (const rider of attempted) {
+    const ordered = orderedIds.has(rider.rider_id);
     const p = clamp(
       t.successBase
+        + (ordered ? orderedBonus : 0)
         + t.successStrengthGain * (clamp(rider.strength, 0, 1) - fieldStrength)
         - t.successPressureWeight * pressure
         - t.successCrowdWeight * crowd,
@@ -249,9 +256,11 @@ export function resolveMorningBreakFormation(input: {
       pHi,
     );
     const r = input.roll("success", rider.rider_id);
-    if (r < p) successes.push({ riderId: rider.rider_id, margin: p - r });
+    if (r < p) successes.push({ riderId: rider.rider_id, margin: p - r, ordered });
   }
-  successes.sort((a, b) => b.margin - a.margin || a.riderId.localeCompare(b.riderId));
+  // #6079: ved flere succeser end maxSize beholdes beordrede foer spontane,
+  // derefter stoerst margin.
+  successes.sort((a, b) => Number(b.ordered) - Number(a.ordered) || b.margin - a.margin || a.riderId.localeCompare(b.riderId));
   const escaped = successes.slice(0, maxSize).map((s) => s.riderId).sort((a, b) => a.localeCompare(b));
   const escapedSet = new Set(escaped);
   const failed = [...attemptedIds].filter((id) => !escapedSet.has(id)).sort((a, b) => a.localeCompare(b));

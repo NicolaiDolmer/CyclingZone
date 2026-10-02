@@ -1,5 +1,101 @@
 export const PATCHES = [
   {
+    "version": "7.333",
+    "date": "2026-10-02",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Fair play",
+        "en": {
+          "title": "New rule: AI tools and automation",
+          "body": "You may use AI tools and spreadsheets to analyse riders and plan your team. Every action in the game must be made by you. Scripts, bots or AI agents that act on your account count as cheating. See Rules, Fair play."
+        },
+        "da": {
+          "title": "Ny regel: AI-værktøjer og automatisering",
+          "body": "Du må gerne bruge AI-værktøjer og regneark til at analysere ryttere og planlægge dit hold. Alle handlinger i spillet skal du selv udføre. Scripts, bots eller AI-agenter, der handler på din konto, tæller som snyd. Se Regler, Fair play."
+        },
+        "refs": [6100]
+      }
+    ]
+  },
+  {
+    "version": "7.332",
+    "date": "2026-10-02",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Captains no longer lose minutes for no reason",
+          "body": "GC captains lost far too much time on hilly and mountain stages, because a strong breakaway got the same extra room as a harmless one. A breakaway that threatens the stage or the GC no longer gets that extra room, so captains stay with the favourites far more often. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Kaptajner taber ikke længere minutter uden grund",
+          "body": "GC-kaptajner tabte alt for meget tid på kuperede etaper og bjergetaper, fordi et stærkt udbrud fik samme ekstra plads som et ufarligt. Et udbrud der truer etapen eller klassementet, får ikke længere den ekstra plads, så kaptajnerne langt oftere kommer ind med favoritterne. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6088, 6089, 6092]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Mountain stages are decided on the final climb",
+          "body": "The favourites now stay together until the final climb instead of splitting up early, and the day's breakaway is usually caught there. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Bjergetaper afgøres på finalestigningen",
+          "body": "Favoritterne holder nu samlet til finalestigningen i stedet for at blive splittet tidligt, og dagens udbrud bliver typisk hentet dér. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6084]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Rolling stages end in a sprint or a reduced group more often",
+          "body": "The morning breakaway won about every second rolling stage. It now gets less room, so these stages more often end in a sprint or with a reduced group. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Rullende etaper ender oftere i spurt eller med en reduceret gruppe",
+          "body": "Morgenudbruddet vandt omkring hver anden rullende etape. Det får nu mindre plads, så etaperne oftere ender i spurt eller med en reduceret gruppe. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6073]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Teams fight for a place in the breakaway",
+          "body": "AI teams now send a rider for the morning breakaway on stages that suit them, so almost every road stage has one again. Many teams can try, but only some get away. Your own riders still follow your roles and Try the break. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Holdene kæmper om en plads i udbruddet",
+          "body": "AI-hold sender nu en rytter i morgenudbrud på etaper der passer dem, så næsten alle vejetaper har et igen. Mange hold kan forsøge, men kun nogle kommer af sted. Dine egne ryttere følger stadig dine roller og Forsøg udbrud. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6097]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Your breakaway orders count, and Ride easy saves more in the mountains",
+          "body": "A rider you send with Try the break, or a breakaway hunter, now gets in ahead of riders who just go on their own. A rider on Ride easy loses less time on the climbs and saves most energy in the mountains."
+        },
+        "da": {
+          "title": "Dine udbrudsordrer tæller, og Kør roligt sparer mere i bjergene",
+          "body": "En rytter du sender med Forsøg udbrud, eller en udbrudsjæger, kommer nu med før ryttere der bare kører selv. En rytter på Kør roligt taber mindre tid på stigningerne og sparer flest kræfter i bjergene."
+        },
+        "refs": [6079]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Split times, and where and why your riders lost time",
+          "body": "The stage tab and the race film show the groups and their gaps at each climb and intermediate sprint. Below, you see where each of your riders lost contact and why, for example the pace on a climb, empty legs, a crash or your own Ride easy order."
+        },
+        "da": {
+          "title": "Mellemtider, og hvor og hvorfor dine ryttere tabte tid",
+          "body": "Etape-fanen og løbsfilmen viser grupperne og deres afstand ved hver stigning og mellemsprint. Nedenunder ser du, hvor hver af dine ryttere mistede kontakten og hvorfor, fx tempoet på en stigning, tomme ben, et styrt eller din egen Kør roligt-ordre."
+        },
+        "refs": [6080]
+      }
+    ]
+  },
+  {
     "version": "7.331",
     "date": "2026-10-02",
     "label": "Beta",

@@ -40,9 +40,11 @@ const WORKFLOW_DIR = ".github/workflows";
 //   - weekly-steering-report.yml (job "publish"): kører `git commit` + `git push
 //     origin HEAD:main` for at lande den ugentlige styringsrapport. Jobbet "report" i
 //     samme fil pusher IKKE og skal derfor fortsat være false.
+//   - lockfile-maintenance.yml (job "lockfile-maintenance"): `git push --force origin
+//     "$BRANCH"` med den ugentlige lockfil-opdatering og `gh pr create` bagefter (#6066).
 // Nye tilføjelser til denne liste kræver en tilsvarende begrundelse i selve workflowen
 // (kommentar ved siden af `persist-credentials: true`).
-const ALLOW_TRUE = new Set(["claude.yml:claude", "weekly-steering-report.yml:publish"]);
+const ALLOW_TRUE = new Set(["claude.yml:claude", "weekly-steering-report.yml:publish", "lockfile-maintenance.yml:lockfile-maintenance"]);
 
 /**
  * Find alle `actions/checkout`-steps i teksten. For hvert step: hvilket job det står i

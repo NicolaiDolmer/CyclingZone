@@ -96,6 +96,8 @@ import {
   type TeamReactionPlan,
 } from "./teamChaseReaction.ts";
 import type { GcContext, TeamReactionState } from "../types.ts";
+import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
+import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -534,22 +536,84 @@ export function letGoTeamShare(input: {
   return Math.min(1, letGo / teams.size);
 }
 
+// #6088 (KUN orders_gc_v1, kun terraen med stigninger): den ekstra plads ovenfor
+// kompenserer for at udbruddet under orders_gc_v1 er SVAGERE end under legacy
+// (ingen kaptajner fyldt ind), saa stigningerne ellers spiste det. Sender
+// holdene staerke ryttere med (en ordre til en kaptajn/hjaelper), klatrer
+// udbruddet ikke laengere fra hinanden, og hele det ekstra loft blev etapens
+// forspring: kaptajnerne bag tabte langt mere tid end under legacy (beregningsfejl:
+// kompensationen blev givet ogsaa der hvor det den kompenserer for ikke findes).
+// Det ekstra loft (ikke vaeksthastigheden) trappes derfor ned, men KUN for et
+// udbrud der er staerkt paa begge maal: samlet trussel (udbrud-/felt-forholdet,
+// samme som letGoMaxGapSeconds) OG en klatrer paa favoritniveau (udbruddets
+// bedste klatrer mod snittet af feltets bedste klatrere). Hvert maal giver en
+// andel, fuld ved baandets `[0]` og ingen ved `[1]`; den STOERSTE andel gaelder,
+// saa et bredt men harmloest udbrud (mange jaegere) beholder pladsen.
+// Profiler uden noegle er uaendrede.
+const ORDERS_GC_V1_LET_GO_THREAT_BAND: Readonly<Partial<Record<ProfileType, readonly [number, number]>>> = Object.freeze({
+  hilly: Object.freeze([1.25, 1.55] as const),
+  mountain: Object.freeze([1.2, 1.5] as const),
+  high_mountain: Object.freeze([1.2, 1.4] as const),
+});
+const ORDERS_GC_V1_LET_GO_CLIMB_LEAD: Readonly<{ band: readonly [number, number]; fieldTopN: number }> = Object.freeze({
+  band: Object.freeze([0.75, 0.95] as const),
+  fieldTopN: 10,
+});
+
+/** #6088: maalene for hvor staerkt et udbrud er (se breakawayStrength). */
+export type BreakawayStrength = { threatRatio: number; climbLead: number };
+
+/**
+ * #6088: andel [0, 1] af det ekstra lad-gaa-loft et udbrud faar. 1 = fuld plads,
+ * 0 = intet ekstra (kun naar udbruddet er staerkt paa BEGGE maal). Monotont
+ * ikke-stigende i hvert maal. Udeladt/ugyldigt = 1. Eksporteret for kontrakt-tests.
+ */
+export function letGoThreatDamping(profileType: ProfileType, strength: BreakawayStrength | undefined): number {
+  const band = ORDERS_GC_V1_LET_GO_THREAT_BAND[profileType];
+  if (!band || !strength || !Number.isFinite(strength.threatRatio) || !Number.isFinite(strength.climbLead)) return 1;
+  const share = (value: number, [lo, hi]: readonly [number, number]) => clamp((hi - value) / Math.max(1e-9, hi - lo), 0, 1);
+  return Math.max(share(strength.threatRatio, band), share(strength.climbLead, ORDERS_GC_V1_LET_GO_CLIMB_LEAD.band));
+}
+
+/**
+ * #6088: udbruddets styrke. `threatRatio`: GC-trussel som forhold til feltets
+ * (1 naar feltet er tomt). `climbLead`: udbruddets bedste klatrer mod snittet
+ * af feltets bedste klatrere (0 naar feltet er tomt). Ren, ingen rng.
+ */
+export function breakawayStrength(
+  breakawayRiderIds: string[],
+  fieldRiderIds: string[],
+  entrants: Readonly<Record<string, Entrant>>,
+): BreakawayStrength {
+  const fieldThreat = collectiveAbility(fieldRiderIds, entrants, GC_THREAT_KEYS);
+  const threatRatio = fieldThreat > 0 ? collectiveAbility(breakawayRiderIds, entrants, GC_THREAT_KEYS) / fieldThreat : 1;
+  const climbing = (id: string) => normAbility(entrants[id]?.abilities?.climbing);
+  const top = fieldRiderIds.map(climbing).sort((a, b) => b - a).slice(0, ORDERS_GC_V1_LET_GO_CLIMB_LEAD.fieldTopN);
+  const topMean = top.length > 0 ? top.reduce((a, b) => a + b, 0) / top.length : 0;
+  const best = breakawayRiderIds.length > 0 ? Math.max(...breakawayRiderIds.map(climbing)) : 0;
+  return { threatRatio, climbLead: topMean > 0 ? best / topMean : 0 };
+}
+
 /**
  * #5955: lad-gaa-faktorerne for en etape. Legacy (og enhver anden revision)
  * faar altid 1/1, saa legacy-stien er bit-identisk. Eksporteret for kontrakt-tests.
  * #6074: `letGoShare` (andel af jagtgruppens hold der lader gaa) daemper det
  * ekstra over 1 via letGoCrowdDamping. Udeladt = ingen daempning.
+ * #6088: `strength` (breakawayStrength) daemper det ekstra LOFT via
+ * letGoThreatDamping. Udeladt = ingen daempning.
  */
 export function letGoBalanceFor(
   rulesRevision: string | undefined,
   profileType: ProfileType,
   letGoShare?: number,
+  strength?: BreakawayStrength,
 ): { maxGapFactor: number; rateFactor: number } {
   if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1 };
   const damping = letGoShare === undefined ? 1 : letGoCrowdDamping(letGoShare);
   const damp = (factor: number) => 1 + (factor - 1) * damping;
+  const threatDamping = letGoThreatDamping(profileType, strength);
   return {
-    maxGapFactor: damp(ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1),
+    maxGapFactor: 1 + (damp(ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1) - 1) * threatDamping,
     rateFactor: damp(ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1),
   };
 }
@@ -1224,7 +1288,17 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #5955: lad-gaa-balancen under orders_gc_v1 (legacy: 1/1, bit-identisk).
     // #6074: daempet naar mange af jagtgruppens hold lader gaa.
     const letGoShare = ordersGcV1 ? letGoTeamShare({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders }) : undefined;
-    const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, letGoShare);
+    // #6089: det ekstra lad-gaa-forspring er til et IKKE-farligt udbrud. Rummer
+    // udbruddet en alvorlig GC-trussel som et hold i jagtgruppen reagerer paa
+    // (samme dom som GC-bremsen), daempes det ekstra som naar hele feltet lader
+    // gaa (#6074's gulv), saa en GC-rytter med udbrudsordre ikke faar et forspring
+    // der goer ham til klassementets foerer etape efter etape.
+    const dangerous = gcSetup !== null
+      && letGoBrakingTeams(gcSetup.decisions.filter((d) => d.threat.threat_rider_ids.some((id) => breakaway.rider_ids.includes(id))), chaseGroup.id).size > 0;
+    // #6088: et udbrud med staerke ryttere faar ikke det ekstra loft.
+    const strength = ordersGcV1 ? breakawayStrength(breakaway.rider_ids, fieldRiderIds, ctx.entrants) : undefined;
+    // #6073 (KUN orders_gc_v2 paa rullende): mindre ekstra plads (rollingBreakaway.ts).
+    const letGoBalance = rollingLetGoBalance(ctx.rollingBreakawayV2, letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, dangerous ? 1 : letGoShare, strength), ORDERS_GC_V1_LET_GO.maxGapFactorByProfile.rolling ?? 1);
     const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);
     const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}) });
@@ -1255,6 +1329,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         finaleType: ctx.route.finale_type,
       });
       maxGapSeconds *= letGoBalance.maxGapFactor;
+      // #6084 (KUN orders_gc_v2 paa bjerg): feltet holder samlet, saa loftet skaleres (mountainSelection.ts).
+      if (ctx.mountainSelectionPhase) maxGapSeconds *= phaseLetGoMaxGapScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).letGoMaxGapScale);
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
@@ -1294,10 +1370,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     });
     // #5812: jagten virker kun paa segmentets jagt-km.
 
-    const netClosingSeconds = Math.max(
+    const netClosingRaw = Math.max(
       0,
       netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
+    // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
+    // En GC-reaktion (et farligt udbrud) jager uden daempning.
+    const netClosingSeconds = ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw;
     const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-

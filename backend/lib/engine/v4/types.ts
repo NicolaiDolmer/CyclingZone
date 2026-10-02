@@ -210,7 +210,7 @@ export type StageInput = {
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
-export type RulesRevision = "legacy" | "orders_gc_v1";
+export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2";
 
 /** #5978: én rytters plads i det publicerede klassement foer etapen. */
 export type GcStanding = { rider_id: string; rank: number; gap_seconds: number };
@@ -691,8 +691,15 @@ export type SegmentHookContext = {
   // Kun M9's passager laeser det; udeladt = ingen troejefoerer.
   jerseyLeaders?: JerseyLeaders | null;
   // #5955 (ADDITIVT og VALGFRIT): StageInput.rules_revision normaliseret.
-  // Udeladt = "legacy".
+  // Udeladt = "legacy". #6084: under orders_gc_v2 ser hooksene "orders_gc_v1"
+  // (v2 = hele v1-pakken) plus `mountainSelectionPhase` nedenfor.
   rulesRevision?: RulesRevision;
+  // #6084 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v2 paa en bjergprofil
+  // (mechanics/mountainSelection.ts). Udeladt = selektionen er uaendret.
+  mountainSelectionPhase?: "pre_final" | "final";
+  // #6073 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v2 paa rullende profil
+  // (mechanics/rollingBreakaway.ts). Udeladt = lad-gaa-balancen er uaendret.
+  rollingBreakawayV2?: true;
   // #5978 (ADDITIVT og VALGFRIT): StageInput.gc_context, KUN sat under
   // orders_gc_v1 (segmentLoop). Legacy-hooks ser aldrig feltet.
   gcContext?: GcContext | null;

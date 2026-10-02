@@ -12,7 +12,7 @@ import {
   effortClimbScorePenalty,
   wprimeDepletionForcesSplit,
 } from "./climbSelection.ts";
-import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import type {
   AbilityKey,
@@ -472,6 +472,61 @@ test("#5580 MONOTONI pr. trin (100 seeds): P(sat) er ikke-stigende op ad trappen
     "all_out skal koebe position: kantrytteren skal sidde fast oftere end paa normal",
   );
   assert.ok(splitCount.get("save")! > splitCount.get("normal")!, "save skal give slip oftere end normal");
+});
+
+// ── #6079 (ejer 2/10, beslutning D, KUN orders_gc_v1) ────────────────────────
+
+test("#6079 orders_gc_v1-tabellerne aendrer kun save, og trappen holder", () => {
+  const legacy = EFFORT_GAIN_EXTRA_TUNING;
+  const gc = ORDERS_GC_V1_CLIMB_GAIN_TUNING;
+  for (const effort of LADDER) {
+    if (effort === "save") continue;
+    assert.equal(gc.climbScoreRelief[effort], legacy.climbScoreRelief[effort], effort);
+    assert.equal(gc.climbScorePenalty[effort], legacy.climbScorePenalty[effort], effort);
+  }
+  // Mindre tab for save end legacy, men stadig et tab mod normal.
+  assert.ok(gc.climbScoreRelief.save > legacy.climbScoreRelief.save);
+  assert.ok(gc.climbScoreRelief.save < 0);
+  assert.ok(gc.climbScorePenalty.save < legacy.climbScorePenalty.save);
+  assert.ok(gc.climbScorePenalty.save > 0);
+  for (let i = 1; i < LADDER.length; i++) {
+    assert.ok(gc.climbScoreRelief[LADDER[i]!] >= gc.climbScoreRelief[LADDER[i - 1]!], `relief ${LADDER[i]}`);
+    assert.ok(gc.climbScorePenalty[LADDER[i]!] <= gc.climbScorePenalty[LADDER[i - 1]!], `penalty ${LADDER[i]}`);
+  }
+});
+
+function edgeRiderSplitRev(effort: EffortLevel, seed: string, rulesRevision: "legacy" | "orders_gc_v1"): boolean {
+  const entrants = [
+    entrant("lead-a", { climbing: 80 }),
+    entrant("lead-b", { climbing: 80 }),
+    { ...entrant("edge", { climbing: 40 }), effort },
+  ];
+  const state = makeState(entrants, { edge: { wprimeMax: 0.4, wprime: 0.4 * 0.6 } });
+  const segment = climbSegment({ avg_gradient: 5, from_km: 0, to_km: 4 });
+  const ctx: SegmentHookContext = { ...makeCtx(entrants, segment, seed), rulesRevision };
+  const out = climbSelectionHook(state, ctx);
+  return splitRiderIdsFrom(out.state).has("edge");
+}
+
+test("#6079 MONOTONI under orders_gc_v1 (100 seeds): trappen vender ikke, save giver stadig slip oftere end normal, men ikke oftere end i legacy", () => {
+  const seeds = Array.from({ length: 100 }, (_, i) => `ladder-${i}`);
+  let saveGc = 0;
+  let saveLegacy = 0;
+  let normalGc = 0;
+  for (const seed of seeds) {
+    const splits = LADDER.map((e) => edgeRiderSplitRev(e, seed, "orders_gc_v1"));
+    for (let i = 1; i < splits.length; i++) {
+      assert.ok(!(splits[i] && !splits[i - 1]), `${seed}: sat paa ${LADDER[i]} men ikke paa ${LADDER[i - 1]}`);
+    }
+    if (splits[LADDER.indexOf("save")]) saveGc += 1;
+    if (splits[LADDER.indexOf("normal")]) normalGc += 1;
+    const legacySave = edgeRiderSplitRev("save", seed, "legacy");
+    if (legacySave) saveLegacy += 1;
+    // Legacy-revisionen er bit-identisk med en ctx uden revision.
+    assert.equal(legacySave, edgeRiderSplit("save", seed));
+  }
+  assert.ok(saveGc > normalGc, "save skal stadig give slip oftere end normal");
+  assert.ok(saveGc <= saveLegacy, "save maa ikke give slip oftere end i legacy");
 });
 
 test("#5813: en tom reserve tvinger kun rytteren af paa en stigning af en vis alvor", () => {
