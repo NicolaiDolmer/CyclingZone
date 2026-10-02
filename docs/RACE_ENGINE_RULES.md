@@ -49,6 +49,12 @@ Kun på `cobbles`- og `gravel`-etaper og kun når løbets revision er `orders_gc
 
 Kun på `rolling`-etaper og kun under `orders_gc_v2`: dagens udbrud får et mindre ekstra lad-gå-loft end under `orders_gc_v1` (stadig mere end legacy). Under `orders_gc_v1` voksede forspringet på rullende terræn til et niveau jagten ikke kunne lukke, og morgenudbruddet vandt for ofte. Nu vinder udbruddet på rullende sjældnere end på kuperet og oftere end på flad. Væksthastigheden og dæmpningerne for mange hold der lader gå (#6074) og for et farligt udbrud (#6089) er uændrede. Legacy, `orders_gc_v1` og alle andre profiler er uændrede. Kode: `mechanics/rollingBreakaway.ts`, tuning i `ROLLING_BREAKAWAY_V2_TUNING`.
 
+## AI-holdenes udbrudsforsøg under `orders_gc_v2` (#6097)
+
+Ejer-beslutning 2/10 (A). AI-holdenes trupper består af kaptajner, sprint-kaptajner og hjælpere, så under rolle-reglerne forsøgte de næsten aldrig morgenudbruddet. Udbruddet blev derfor ofte meget lille, og på en del vejetaper kom der intet. Under `orders_gc_v2` vælger et AI-hold, der lader udbruddet gå (M14-stance `let_go`), selv sin bedste passende rytter som udbrudsforsøg ("Forsøg udbrud" i holdets ordre). Passende betyder hunter, fri rolle eller hjælper, aldrig kaptajn eller sprint-kaptajn og aldrig en rytter på `grupetto`, og kun en rytter hvis aggression og evne til dagens terræn ligger højt nok i feltet. Holdets hunters forsøger stadig som rollens standard (højst to forsøg pr. hold i alt). Neutrale hold og hold der jager sender ingen ekstra. Valget sker i M14 (`ai/aiTactics.ts`) og når motoren som en almindelig `TeamOrder`, så prod og dry-run bruger samme logik, og intet skrives til databasen.
+
+Et forsøg er aldrig en garanti. Motoren afgør stadig hvem der kommer afsted efter reglerne i "Morgenudbrud under `orders_gc_v1`": evne, rivalholdenes modreaktion, kamp om pladserne og det faste loft over udbruddets størrelse. Forsøger alle hold (stresstesten i `mechanics/breakawayStress6097.test.ts`), lykkes kun en realistisk del, og udbruddet bliver aldrig større end loftet. Menneskeholdenes ryttere følger rolle-reglerne uændret. Legacy og `orders_gc_v1` er uændrede: M14 får kun revisionen under `orders_gc_v2`.
+
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
 

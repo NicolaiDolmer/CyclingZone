@@ -60,6 +60,18 @@ export const PATCHES = [
       {
         "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
         "en": {
+          "title": "Teams fight for a place in the breakaway",
+          "body": "AI teams now send a rider for the morning breakaway on stages that suit them, so almost every road stage has one again. Many teams can try, but only some get away. Your own riders still follow your roles and Try the break. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Holdene kæmper om en plads i udbruddet",
+          "body": "AI-hold sender nu en rytter i morgenudbrud på etaper der passer dem, så næsten alle vejetaper har et igen. Mange hold kan forsøge, men kun nogle kommer af sted. Dine egne ryttere følger stadig dine roller og Forsøg udbrud. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6097]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
           "title": "Your breakaway orders count, and Ride easy saves more in the mountains",
           "body": "A rider you send with Try the break, or a breakaway hunter, now gets in ahead of riders who just go on their own. A rider on Ride easy loses less time on the climbs and saves most energy in the mountains."
         },

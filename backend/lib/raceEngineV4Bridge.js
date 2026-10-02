@@ -478,6 +478,9 @@ export function buildV4StageInput({
         isStageRace,
         routeFromStageProfileRow: modules.route.routeFromStageProfileRow,
       }),
+      // #6097: kun orders_gc_v2 aendrer AI-holdenes udbrudsforsoeg (M14);
+      // legacy/orders_gc_v1 faar et uaendret kontekst-objekt.
+      ...(rulesRevision === "orders_gc_v2" ? { rules_revision: rulesRevision } : {}),
     },
   });
   const startlist = toV4Entrants(entrants, modules.entrants, plan.aiEffortByRider);

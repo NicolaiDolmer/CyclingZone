@@ -84,6 +84,8 @@ export type RosterRider = {
 export type StageOrderContext = {
   route: AiTacticsRoute;
   race?: AiRaceContext;
+  /** #6097 (VALGFRIT): loebets regel-revision, videre til M14. Udeladt = uaendret. */
+  rules_revision?: string;
 };
 
 export type StageOrderPlan = {
@@ -248,6 +250,7 @@ export function buildStageOrderPlan(args: {
           })),
           field,
           race: context.race,
+          ...(context.rules_revision ? { rules_revision: context.rules_revision } : {}),
         }).order
       : defaultTeamOrderForRoster(teamId, teamRoster);
     const row = byTeam.get(teamId);
