@@ -1,0 +1,161 @@
+name: Lockfile maintenance
+
+# #6066 (ejer-valg A, 2/10): Dependabot bumper kun DIREKTE afhaengigheder i
+# package.json. Transitive pakker i lockfilerne opdateres aldrig loebende, saa
+# sikkerhedsrettelser i dem landede som alerts der skulle ryddes op i haanden
+# (43 lukkede alerts indtil 2/10; brace-expansion #50/#55/#56/#59 var udloeseren).
+#
+# Dette workflow koerer `npm update` INDEN FOR de eksisterende semver-ranges i
+# alle fire npm-mapper og aabner/opdaterer EEN samlet PR. package.json roeres
+# aldrig - majors og range-aendringer er stadig Dependabots (ejer-gatede) bord.
+#
+# Cooldown: `--before` holder samme 7-dages release-cooldown som
+# .github/dependabot.yml (ejer-beslutning 1/9, #4552), saa supply-chain-
+# beskyttelsen mod friske releases ogsaa gaelder transitive pakker.
+#
+# Token: PR'er aabnet med GITHUB_TOKEN udloeser IKKE pull_request-workflows
+# (GitHubs anti-loop-vaern), saa CI ville aldrig koere. Med AUTO_MERGE_PAT sat
+# koerer CI normalt. Uden den aabnes PR'en stadig, men faar en kommentar om at
+# CI skal startes ved at lukke+genaabne PR'en.
+#
+# Merge: daekket af staaende merge-regel (#5508): groen CI + rent diff +
+# CodeRabbit, ingen ejer-"merge" kraevet (ingen spillertekst).
+
+on:
+  schedule:
+    # Mandag 05:00 UTC (07:00 dansk sommertid) - efter Dependabots ugentlige koersel.
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: lockfile-maintenance
+  cancel-in-progress: false
+
+env:
+  BRANCH: chore/deps-lockfile-maintenance
+  COOLDOWN_DAYS: 7
+
+jobs:
+  lockfile-maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.AUTO_MERGE_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: npm update inden for semver-ranges (med cooldown)
+        run: |
+          set -euo pipefail
+          BEFORE=$(date -u -d "${COOLDOWN_DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Kun versioner udgivet foer $BEFORE"
+          for dir in . backend frontend marketing; do
+            echo "::group::npm update i $dir"
+            (cd "$dir" && npm update --before="$BEFORE" --package-lock-only --no-audit --no-fund)
+            echo "::endgroup::"
+          done
+          if git diff --quiet -- '*package.json'; then
+            echo "package.json uroert (forventet)."
+          else
+            echo "::error::npm update aendrede en package.json - forventede kun lockfile-aendringer."
+            git --no-pager diff -- '*package.json'
+            exit 1
+          fi
+
+      - name: Opsummer aendringer
+        id: summary
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Ingen lockfile-aendringer i denne uge."
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          node - <<'EOF' > lockfile-summary.md
+          const { execSync } = require('node:child_process');
+          const dirs = ['.', 'backend', 'frontend', 'marketing'];
+          const out = [];
+          for (const dir of dirs) {
+            const file = dir === '.' ? 'package-lock.json' : `${dir}/package-lock.json`;
+            let before;
+            try {
+              before = JSON.parse(execSync(`git --no-pager show HEAD:${file}`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+            } catch { continue; }
+            const after = JSON.parse(require('node:fs').readFileSync(file, 'utf8'));
+            const a = before.packages || {};
+            const b = after.packages || {};
+            const rows = [];
+            for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+              if (!key) continue;
+              const va = a[key]?.version;
+              const vb = b[key]?.version;
+              if (va === vb) continue;
+              rows.push(`| \`${key.replace(/^.*node_modules\//, '')}\` | ${va ?? '-'} | ${vb ?? '-'} |`);
+            }
+            if (!rows.length) continue;
+            rows.sort();
+            out.push(`<details><summary><code>${file}</code>: ${rows.length} pakker</summary>\n\n| Pakke | Foer | Efter |\n|---|---|---|\n${rows.join('\n')}\n\n</details>\n`);
+          }
+          process.stdout.write(out.join('\n'));
+          EOF
+
+      - name: Push branch og aabn/opdater PR
+        if: steps.summary.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_PAT || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.AUTO_MERGE_PAT != '' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -- package-lock.json backend/package-lock.json frontend/package-lock.json marketing/package-lock.json
+          git commit -m "chore(deps): ugentlig lockfile-maintenance (transitive deps)" -m "Refs #6066"
+          git push --force origin "$BRANCH"
+
+          {
+            echo "## Hvad"
+            echo "Ugentlig \`npm update\` inden for eksisterende semver-ranges i \`/\`, \`/backend\`, \`/frontend\` og \`/marketing\`. Kun lockfiler; ingen \`package.json\`-aendringer. ${COOLDOWN_DAYS} dages release-cooldown (#4552)."
+            echo
+            echo "Refs #6066"
+            echo
+            echo "## Aendrede pakker"
+            cat lockfile-summary.md
+            echo
+            echo "## Brugerverifikation (KRÆVET)"
+            echo "- [x] Hvis ikke testet end-to-end: forklar hvorfor (pure backend-refactor / docs-only / migration uden UI-impact osv.)"
+            echo
+            echo "**Hvad jeg verificerede konkret:** Automatisk lockfile-opdatering uden kode- eller tekstaendringer. CI (build, tests, e2e, dependency-review) er verifikationen."
+            echo
+            echo "## Risk / auto-merge"
+            echo "- [x] Dependency/security-impact er vurderet: kun patch/minor inden for eksisterende ranges, cooldown overholdt."
+            echo
+            echo "Merges under staaende regel #5508 ved groen CI + rent diff + CodeRabbit."
+          } > pr-body.md
+
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --body-file pr-body.md
+            PR="$EXISTING"
+          else
+            PR_URL=$(gh pr create --base main --head "$BRANCH" \
+              --title "chore(deps): ugentlig lockfile-maintenance" \
+              --body-file pr-body.md --label dependencies)
+            PR="${PR_URL##*/}"
+          fi
+          echo "PR #$PR"
+
+          if [ "$HAS_PAT" != "true" ]; then
+            gh pr comment "$PR" --body "⚠️ \`AUTO_MERGE_PAT\` mangler som repo-secret, så PR'en er åbnet med \`GITHUB_TOKEN\`, og CI starter ikke af sig selv (GitHubs anti-loop-værn). Luk og genåbn PR'en for at starte CI. Varig løsning: opret secret'en (se #6066)."
+          fi

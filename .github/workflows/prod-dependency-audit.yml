@@ -1,0 +1,122 @@
+name: Prod dependency audit
+
+# #6066 (ejer-valg A, 2/10): daglig `npm audit --omit=dev` paa de pakker der
+# faktisk koerer i produktion (backend paa Railway, frontend- og marketing-
+# bundles paa Vercel). Dev-vaerktoejer (eslint, vitest, playwright ...) er
+# bevidst udeladt: de stoejer i Dependabot-alerts men naar aldrig spillerne.
+#
+# Hvorfor IKKE en PR-gate: en advisory der publiceres i dag ville goere ALLE
+# aabne PR'er roede uanset hvad de roerer. Nye saarbare pakker i en PR fanges
+# allerede af dependency-review.yml (fail-on-severity: high). Dette workflow
+# fanger det andet tilfaelde - en pakke vi allerede har, faar en ny advisory -
+# og lander det som et issue i den normale koe i stedet for i alert-fanen.
+#
+# Maaler-intet-vaern (#4463): fejler npm audit selv (netvaerk, registry), er
+# workflowet ROEDT. Et groent flueben uden maaling ville vaere en loegn.
+
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - 'package-lock.json'
+      - 'backend/package-lock.json'
+      - 'frontend/package-lock.json'
+      - 'marketing/package-lock.json'
+      - '.github/workflows/prod-dependency-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: prod-dependency-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: npm audit --omit=dev (high+)
+        id: audit
+        run: |
+          set -uo pipefail
+          for dir in . backend frontend marketing; do
+            name=$([ "$dir" = "." ] && echo root || echo "$dir")
+            # Exit 1 betyder baade "fund" og "fejl" - JSON-parsningen nedenfor skelner.
+            (cd "$dir" && npm audit --omit=dev --json > "$GITHUB_WORKSPACE/audit-$name.json" 2> "$GITHUB_WORKSPACE/audit-$name.err") || true
+          done
+          node - <<'EOF'
+          const fs = require('node:fs');
+          const dirs = ['root', 'backend', 'frontend', 'marketing'];
+          const findings = [];
+          const broken = [];
+          for (const name of dirs) {
+            let json;
+            try { json = JSON.parse(fs.readFileSync(`audit-${name}.json`, 'utf8')); } catch { json = null; }
+            if (!json || json.error || !json.metadata?.vulnerabilities) {
+              broken.push(name);
+              continue;
+            }
+            for (const [pkg, v] of Object.entries(json.vulnerabilities || {})) {
+              if (v.severity !== 'high' && v.severity !== 'critical') continue;
+              const via = (v.via || []).filter((x) => typeof x === 'object').map((x) => x.url).filter(Boolean);
+              findings.push(`| ${name} | \`${pkg}\` | ${v.severity} | ${v.range} | ${v.fixAvailable ? 'ja' : 'nej'} | ${[...new Set(via)].join(' ')} |`);
+            }
+          }
+          fs.writeFileSync('audit-findings.md', findings.join('\n'));
+          const out = fs.createWriteStream(process.env.GITHUB_OUTPUT, { flags: 'a' });
+          out.write(`findings=${findings.length}\nbroken=${broken.join(',')}\n`);
+          console.log(`Fund: ${findings.length}; uden maaling: ${broken.join(',') || 'ingen'}`);
+          EOF
+
+      - name: Fejl hvis auditten ikke maalte
+        if: steps.audit.outputs.broken != ''
+        run: |
+          echo "::error::npm audit gav intet brugbart resultat for: ${{ steps.audit.outputs.broken }}. Vagten maalte ikke (#4463)."
+          for f in audit-*.err; do echo "== $f"; cat "$f"; done
+          exit 1
+
+      - name: Opret eller opdater issue ved fund
+        if: steps.audit.outputs.findings != '0' && steps.audit.outputs.findings != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          TITLE="[bot] Prod dependency audit: ${{ steps.audit.outputs.findings }} high/critical"
+          {
+            echo "Daglig \`npm audit --omit=dev\` fandt high/critical-saarbarheder i pakker der koerer i produktion."
+            echo
+            echo "| Mappe | Pakke | Alvor | Saarbare versioner | Fix i range | Advisory |"
+            echo "|---|---|---|---|---|---|"
+            cat audit-findings.md
+            echo
+            echo "Fix: koer \`Lockfile maintenance\`-workflowet (workflow_dispatch) hvis fix ligger i range, ellers bump direkte afhaengighed. Koersel: $RUN_URL"
+            echo
+            echo "Refs #6066"
+          } > issue-body.md
+          EXISTING=$(gh issue list --repo "${{ github.repository }}" --state open --label prod-dependency-audit --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" --repo "${{ github.repository }}" --title "$TITLE" --body-file issue-body.md
+          else
+            gh label create prod-dependency-audit --repo "${{ github.repository }}" --color B60205 --description "Automatisk prod-audit (#6066)" 2>/dev/null || true
+            gh issue create --repo "${{ github.repository }}" --title "$TITLE" --body-file issue-body.md \
+              --label prod-dependency-audit --label security --label priority:high --label claude:todo
+          fi
+          echo "::error::${{ steps.audit.outputs.findings }} high/critical-saarbarheder i prod-afhaengigheder."
+          exit 1
