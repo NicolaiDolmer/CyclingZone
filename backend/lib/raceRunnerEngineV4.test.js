@@ -384,3 +384,24 @@ test("#3855 (d) kill-switch: etape 1 på v4 + etape 2 på v3 → GC bygges på B
   // Sanity: mindst én rytter har et gap fra etape 1 med i sin GC-tid.
   assert.ok([...cum.values()].some((v) => v > leaderTime), "etape 1 skal bidrage til GC");
 });
+
+// ── #6079: løbets regel-revision når trætheds-akkumuleringen (save pr. profil) ──
+
+test("#6079 orders_gc_v1: save-træthed ind i næste etape følger etapeprofilen; legacy uændret", async () => {
+  __resetRaceEngineV4Cache();
+  const real = await loadRaceEngineV4();
+  const run = (rulesRevision) => {
+    const seen = [];
+    const spy = { ...real, simulateStage: (args) => { seen.push(new Map(args.entrants.map((e) => [e.rider_id, e.fatigue]))); return real.simulateStage(args); } };
+    // Etape 1 er flad: r01 kører save, r02 normal.
+    const overrides = new Map([[1, new Map([["r01", { race_role: "free_role", effort: "save" }]])]]);
+    buildRaceResults(baseArgs({ v4Engine: spy, stageRoleOverrides: overrides, rulesRevision }));
+    return seen;
+  };
+  const legacy = run("legacy");
+  const gc = run("orders_gc_v1");
+  assert.equal(legacy.length, 2);
+  assert.equal(gc[0].get("r01"), legacy[0].get("r01"), "etape 1 køres på start-trætheden");
+  assert.ok(gc[1].get("r01") > legacy[1].get("r01"), "save sparer mindre på en flad etape under orders_gc_v1");
+  assert.equal(gc[1].get("r02"), legacy[1].get("r02"), "normal er uændret");
+});
