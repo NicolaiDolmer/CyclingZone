@@ -1229,7 +1229,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // (samme dom som GC-bremsen), daempes det ekstra som naar hele feltet lader
     // gaa (#6074's gulv), saa en GC-rytter med udbrudsordre ikke faar et forspring
     // der goer ham til klassementets foerer etape efter etape.
-    const dangerous = gcSetup !== null && letGoBrakingTeams(gcSetup.decisions, chaseGroup.id).size > 0;
+    const dangerous = gcSetup !== null
+      && letGoBrakingTeams(gcSetup.decisions.filter((d) => d.threat.threat_rider_ids.some((id) => breakaway.rider_ids.includes(id))), chaseGroup.id).size > 0;
     const letGoBalance = letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, dangerous ? 1 : letGoShare);
     const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor;
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);

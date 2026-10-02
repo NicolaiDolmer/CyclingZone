@@ -107,7 +107,7 @@ for (let s = 1; s <= SEEDS; s++) {
     winnerInBreak: typeof ranked[0]?.breakaway_win === "boolean" ? ranked[0].breakaway_win : Number(ranked[0]?.components?.breakaway) > 0,
     winnerInMorningBreak: Number(ranked[0]?.components?.breakaway) > 0,
     // Udbruddet foran favoritterne: en morgenudbryder i maal foer den foerste kaptajn uden for udbruddet.
-    breakAheadOfFavourites: (() => { const b = ranked.findIndex((r) => Number(r.components?.breakaway) > 0); const c = ranked.findIndex((r) => roleById.get(r.rider_id) === "captain" && !(Number(r.components?.breakaway) > 0)); return b >= 0 && (c < 0 || b < c); })() });
+    breakAheadOfFavourites: (() => { const b = ranked.findIndex((r) => Number(r.components?.breakaway) > 0); const c = ranked.findIndex((r) => roleById.get(r.rider_id) === "captain" && !(Number(r.components?.breakaway) > 0)); return b >= 0 && c >= 0 && b < c; })() });
 }
 
 const summary = {
