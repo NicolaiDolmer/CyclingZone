@@ -10,6 +10,25 @@ Holdene kan nu reagere på en reel trussel mod deres klassement, ud fra det klas
 
 **Opdatering 2 (ejer-valg B, samme aften):** reaktionen må nu bremse lad-gå-fasen ved en alvorlig trussel og flytter mærkbart resultater. Se næste afsnit.
 
+## Opdatering 3, 2. oktober: udbrudsstyrken efter rolle-reglerne (#5955)
+
+**Problemet:** Kalibreringen 2/10 om morgenen viste, at udbruddet under `orders_gc_v1` med GC-reaktionen tændt holdt til mål langt sjældnere end under legacy. Udbrudsryttere vandt også langt færre etaper. Legacy ligger tæt på virkeligheden. Årsagen er kombinationen af de nye rolle-regler (udbruddet består af de ryttere, der faktisk har en udbrudsordre, ikke af kaptajner der fyldes ind) og GC-reaktionen oven i.
+
+**Ændringen:** Kun lad-gå-faktorerne under `orders_gc_v1` er justeret. Feltet giver et ikke-farligt udbrud mere plads, og på rullende, kuperet og bjergterræn bygges hullet hurtigere, så det står, før stigningerne og reaktionen bider. Rolle-reglerne, dannelsen, GC-reaktionen, GC-bremsen og jagtmodellen er urørte. Legacy læser intet herfra (golden fixtures og tests uændrede).
+
+**Resultat i AI-scenariet** (samme harness, felt, etaper og 10 seeds):
+- Udbruddet holder til mål på legacy-niveau, samlet og på hver vejprofil (inden for få procentpoint).
+- Sejre fra et udbrud, der holder hjem, ligger på legacy-niveau.
+- GC-reaktionen reducerer stadig udbrydernes klassementsgevinst tydeligt i forhold til reaktionen slukket, og den samlede vinder skifter lige så sjældent som før.
+
+**Tilbage, og ikke et tuning-spørgsmål:** Det bredere mål "vinderen var med i morgenudbruddet på et tidspunkt" ligger stadig klart under legacy. Under legacy blev kaptajner fyldt ind i udbruddet og vandt ofte efter at være hentet. Rolle-reglerne udelukker det med vilje.
+
+**Stress-scenariet** (alle hold lader gå, alle jægere og frie roller forsøger): her holder udbruddet nu klart oftere end under legacy. GC-reaktionen dæmper stadig klassementsgevinsten. Det er et ekstremt scenarie, men værd at se på før aktivering: vælger mange managere samtidig "lad gå", lykkes udbruddene ofte.
+
+**Specialist-korrelationen** (genafspilning af sæson 4-etaper under `orders_gc_v1`): praktisk talt uændret mod main og stadig på eller over legacy på alle etapetyper. Et meget lille fald på flade og kuperede etaper.
+
+Tallene ligger privat i `balance-internals/5955-strength/RESULTS.md`. Aktiveringen er en separat PR.
+
 ## Opdatering 2, samme aften: GC-reaktionen må bremse lad-gå-fasen (ejer-valg B)
 
 Refs #5955. Stadig **slukket**: `CURRENT_RACE_RULES_REVISION` er `legacy`, legacy-løb er byte-identiske (golden fixtures og en test med klassementet sendt med), intet er skrevet i prod. Tallene ligger privat i `balance-internals/5955-gc-brake/2026-10-01-5955-gc-brake-tal.md`.
