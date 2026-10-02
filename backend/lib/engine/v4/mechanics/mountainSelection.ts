@@ -14,7 +14,12 @@
 //      mellem dagens udbrud og jagtgruppen. Det goer kun jagten (M5), praecis
 //      som paa fladt og rullende terraen (segmentLoop.neutralizeBreakawayTempoDrift).
 //
-// Begge gaelder kun paa profilerne i MOUNTAIN_SELECTION_V2_TUNING.profileTypes.
+// Jagten (M5) kalibreres med, fordi orders_gc_v1's lad-gaa-balance var sat til
+// at kompensere for den tidlige elitegruppe: naar feltet holder samlet, er
+// lad-gaa-loftet lavere, og jagten foer finalestigningen er kontrolleret (den
+// lukker langsommere). I finalen jager feltet som under orders_gc_v1.
+//
+// Alt gaelder kun paa profilerne i MOUNTAIN_SELECTION_V2_TUNING.profileTypes.
 // Kuperede etaper er uroerte af konstruktion.
 //
 // REN: ingen IO, ingen rng. Legacy og orders_gc_v1 ser aldrig en fase
