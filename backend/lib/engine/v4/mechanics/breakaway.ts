@@ -496,7 +496,7 @@ const ORDERS_GC_V1_LET_GO: Readonly<{
 // selv, naar alle hold lader gaa. Under taersklen er intet aendret.
 const ORDERS_GC_V1_LET_GO_CROWD: Readonly<{ fromShare: number; floorAtAll: number }> = Object.freeze({
   fromShare: 0.75,
-  floorAtAll: 0,
+  floorAtAll: 0.5,
 });
 
 /**
