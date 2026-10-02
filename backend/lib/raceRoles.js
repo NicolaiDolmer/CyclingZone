@@ -414,7 +414,9 @@ export const ORDERS_GC_V1_SAVE_FATIGUE_BY_PROFILE = Object.freeze({
 
 function saveFatigueMultiplier(profileType, rulesRevision) {
   const legacy = RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE;
-  if (rulesRevision !== "orders_gc_v1") return legacy;
+  // #6084: orders_gc_v2 = hele orders_gc_v1-pakken + bjergselektionen, saa
+  // v2 arver v1's profil-afhaengige save-traethed.
+  if (rulesRevision !== "orders_gc_v1" && rulesRevision !== "orders_gc_v2") return legacy;
   const m = ORDERS_GC_V1_SAVE_FATIGUE_BY_PROFILE[profileType];
   if (!Number.isFinite(m)) return legacy;
   // Trappen må ikke vende: grupetto <= save < normal.
