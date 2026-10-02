@@ -6,6 +6,8 @@
 
 > **🎯 Next action (2/10 morgen, Giroen etape 1 kl. 11.00):** ejer-kort fra natsessionen, én ad gangen: 1) **#6051+#6056** motor (flad-rest + AI-spurtere, begge beregningsfejl → gælder næste ikke-kørte etape; merge #6056 først, delte filer). 2) **#6046** brosten: balance (bag slukket orders_gc_v1) eller beregningsfejl. 3) **CYCLINGZONE-44** 8 dobbeltbookede rytter-par S4, kan nås før afvikling: kør `audit-4700-double-booked-riders.js` FØR kl. 11. 4) **Train now-flip** (prod: 30/44 ryttere med ticks hos ét beta-hold). 5) PR'er: #6045, #6053, #6054, #6052 (0,5 KB over bundle-loft), #6031 (sænker loftet tæt), #6044. 6) Start bølgen for orders_gc_v1-flader (sporfil i natsessionen; klassifikatoren afviste start). Efter 11: mål korrelationen på Giro-etape 1.
 >
+> **🔑 Ejer kl. 15 (#6066):** opret `AUTO_MERGE_PAT` som Actions- OG Dependabot-secret; Claude verificerer, genkører #6057, merger PR #6071.
+>
 > **✅ Nat 2/10:** merget #6032 (#5957, live 00.50, deploy verify grøn), #6033 (#5955 bremse, slukket), #6048 (#6046 brosten, slukket), Dependabot #6041/#6042/#6038/#6039. Replay af 208 S4-etaper: flad stadig under S3, tydeligt bedre med #6051+#6056 (tal privat i balance-internals/night-2-10/).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
@@ -13,8 +15,6 @@
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
 > **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = JA (ejer 26/9). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret.
-
-> **✅ 29/9:** #5922 watchdog og #5913 ungdomspuljer live; audit 35 puljer/0 afvigelser. #5923 Codex-arbejdsform indført; pilot 0/5 målt.
 
 ## Standing context (forever-relaunch)
 
