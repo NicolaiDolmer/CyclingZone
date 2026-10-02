@@ -474,12 +474,14 @@ const TEAM_CHASE = {
 // intet herfra (golden fixtures uaendrede). Lokale kalibrerings-kandidater (samme
 // praecedens som TEAM_CHASE ovenfor); tallene og maalingen ligger i den private
 // kalibreringsrapport, kvalitetsmaalene er ejer-gated (#5984 Task 6).
-const ORDERS_GC_V1_LET_GO: Readonly<{
+export const ORDERS_GC_V1_LET_GO: Readonly<{
   maxGapFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
   letGoRateFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
-}> = Object.freeze({
-  maxGapFactorByProfile: Object.freeze({ flat: 1.5, rolling: 2.2, hilly: 1.8, mountain: 2.2, high_mountain: 3.5 }),
-  letGoRateFactorByProfile: Object.freeze({ mountain: 2.2, high_mountain: 2.5 }),
+  closingFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
+}> = /*CAL*/({
+  maxGapFactorByProfile: ({ flat: 1.5, rolling: 2.2, hilly: 1.8, mountain: 2.2, high_mountain: 3.5 }),
+  letGoRateFactorByProfile: ({ mountain: 2.2, high_mountain: 2.5 }),
+  closingFactorByProfile: ({}),
 });
 
 /**
@@ -489,11 +491,12 @@ const ORDERS_GC_V1_LET_GO: Readonly<{
 export function letGoBalanceFor(
   rulesRevision: string | undefined,
   profileType: ProfileType,
-): { maxGapFactor: number; rateFactor: number } {
-  if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1 };
+): { maxGapFactor: number; rateFactor: number; closingFactor: number } {
+  if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1, closingFactor: 1 };
   return {
     maxGapFactor: ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1,
     rateFactor: ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1,
+    closingFactor: ORDERS_GC_V1_LET_GO.closingFactorByProfile[profileType] ?? 1,
   };
 }
 
@@ -1214,7 +1217,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
     const netClosingSeconds = Math.max(
       0,
-      netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
+      netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit * letGoBalance.closingFactor,
     );
     const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
