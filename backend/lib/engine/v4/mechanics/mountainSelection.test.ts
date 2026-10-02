@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   finalClimbStartIndex,
+  mountainSelectionKnobsFor,
   mountainSelectionPhaseFor,
   phaseChaseClosingScale,
   phaseClimbNeutralShare,
@@ -50,15 +51,16 @@ test("finalestigningen er den sidste blok af sammenhaengende stigningssegmenter"
   assert.equal(finalClimbStartIndex([]), -1);
 });
 
-test("fasen findes kun under orders_gc_v2 paa en bjergprofil", () => {
+test("fasen findes kun under orders_gc_v2 paa en bjerg- eller kuperet profil", () => {
   for (const rev of ["legacy", "orders_gc_v1"] as const) {
     for (const i of [0, 3, 5]) assert.equal(mountainSelectionPhaseFor(rev, "mountain", i, 3), undefined, `${rev} ${i}`);
   }
-  for (const prof of ["flat", "rolling", "hilly", "cobbles", "itt"] as const) {
+  for (const prof of ["flat", "rolling", "cobbles", "itt"] as const) {
     assert.equal(mountainSelectionPhaseFor("orders_gc_v2", prof, 0, 3), undefined, prof);
   }
   assert.equal(mountainSelectionPhaseFor("orders_gc_v2", "mountain", 2, -1), undefined, "ingen stigning, ingen fase");
-  for (const prof of ["mountain", "high_mountain"] as const) {
+  // #6092: kuperet er med.
+  for (const prof of ["mountain", "high_mountain", "hilly"] as const) {
     assert.equal(mountainSelectionPhaseFor("orders_gc_v2", prof, 0, 3), "pre_final");
     assert.equal(mountainSelectionPhaseFor("orders_gc_v2", prof, 2, 3), "pre_final");
     assert.equal(mountainSelectionPhaseFor("orders_gc_v2", prof, 3, 3), "final");
@@ -83,6 +85,29 @@ test("selektion og tempo er neutrale uden fase og i finalen; M5 er kontrolleret 
   assert.ok(phaseWprimeForcedMinSeverity(s, "pre_final") > s, "W'-tvangen kun paa alvorlige stigninger foer finalestigningen");
   const share = phaseClimbNeutralShare("pre_final");
   assert.ok(share > 0 && share <= 1);
+});
+
+// ── #6092: profil-vise knapper ──────────────────────────────────────────────
+
+test("#6092: knapperne er de faelles vaerdier med profilens afvigelser ovenpaa", () => {
+  const t = MOUNTAIN_SELECTION_V2_TUNING;
+  const shared = mountainSelectionKnobsFor("flat");
+  assert.deepEqual(shared, {
+    preFinalSplitThresholdFactor: t.preFinalSplitThresholdFactor,
+    preFinalWprimeForcedMinSeverity: t.preFinalWprimeForcedMinSeverity,
+    preFinalBreakawayDriftNeutralShare: t.preFinalBreakawayDriftNeutralShare,
+    letGoMaxGapScale: t.letGoMaxGapScale,
+    preFinalChaseClosingScale: t.preFinalChaseClosingScale,
+    finalChaseClosingScale: t.finalChaseClosingScale,
+  }, "en profil uden afvigelser faar de faelles vaerdier");
+  for (const prof of t.profileTypes) {
+    const k = mountainSelectionKnobsFor(prof);
+    for (const [key, value] of Object.entries(t.byProfile[prof] ?? {})) assert.equal(k[key as keyof typeof k], value, `${prof}.${key}`);
+    assert.ok(k.letGoMaxGapScale > 0 && k.letGoMaxGapScale <= 1, `${prof}: loftet skaleres ned, aldrig op`);
+    assert.ok(k.preFinalChaseClosingScale > 0 && k.preFinalChaseClosingScale <= k.finalChaseClosingScale, `${prof}: jagten er hoejst lige saa skarp foer finalen som i finalen`);
+  }
+  // Kuperet: lavere lad-gaa-loft end bjergetaperne (kaptajnernes tidstab = udbruddets forspring).
+  assert.ok(mountainSelectionKnobsFor("hilly").letGoMaxGapScale < mountainSelectionKnobsFor("mountain").letGoMaxGapScale);
 });
 
 // ── selektionen (B) ──────────────────────────────────────────────────────────

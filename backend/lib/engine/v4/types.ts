@@ -697,6 +697,9 @@ export type SegmentHookContext = {
   // #6084 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v2 paa en bjergprofil
   // (mechanics/mountainSelection.ts). Udeladt = selektionen er uaendret.
   mountainSelectionPhase?: "pre_final" | "final";
+  // #6073 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v2 paa rullende profil
+  // (mechanics/rollingBreakaway.ts). Udeladt = lad-gaa-balancen er uaendret.
+  rollingBreakawayV2?: true;
   // #5978 (ADDITIVT og VALGFRIT): StageInput.gc_context, KUN sat under
   // orders_gc_v1 (segmentLoop). Legacy-hooks ser aldrig feltet.
   gcContext?: GcContext | null;
