@@ -1354,6 +1354,10 @@ const morningBreakFormation = {
   successPressureWeight: 0.06,
   successCrowdWeight: 0.05,
   successBounds: [0.03, 0.85] as readonly [number, number],
+  // #6079 (ejer 2/10, beslutning A): et forsoeg med effektiv udbrudsordre
+  // (hunterens rolledefault eller "Forsoeg udbrud") faar dette tillaeg til
+  // succes-sandsynligheden; en fri rolle der selv forsoeger faar det ikke.
+  orderedSuccessBonus: 0.15,
   // Rytterens motor relativt til feltets snit, clampet. STARTGAET
   relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
 };
