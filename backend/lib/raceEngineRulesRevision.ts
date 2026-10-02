@@ -26,13 +26,13 @@ export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
 /**
  * Den revision et NYT loeb bindes til ved sin foerste etape-claim.
  *
- * Bevidst "legacy" indtil videre: orders_gc_v1 er en samlet pakke (ordrestyret
- * dannelse + faktisk GC-reaktion, #5955/#5978), og dens kalibrering er ejer-
- * gated (#5984 Task 6). Et loeb bundet til orders_gc_v1 FOER pakken er komplet,
- * ville faa reglerne aendret midt i loebet, naar resten lander. Skiftet til
- * "orders_gc_v1" er derfor et eksplicit ejer-go, ikke en sideeffekt af et deploy.
+ * "orders_gc_v1" siden ejer-go 2/10 (#5955): pakken (ordrestyret dannelse,
+ * rolle-tilladelser, GC-reaktion og -bremse, udbrud/jagt-balance, brostenslag)
+ * er komplet og kalibreret. Loeb der allerede er startet beholder deres gemte
+ * revision (eller legacy); kun loeb hvis foerste etape claimes efter deploy
+ * bindes hertil. Et skifte tilbage er ogsaa et eksplicit ejer-go.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = LEGACY_RULES_REVISION;
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "orders_gc_v1";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;

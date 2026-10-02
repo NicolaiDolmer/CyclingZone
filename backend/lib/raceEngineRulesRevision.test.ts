@@ -84,8 +84,8 @@ test("an unreadable stages_completed counts as started", () => {
   assert.equal(raceHasStarted({ stages_completed: "0" }), false);
 });
 
-test("new races are bound to legacy until the owner activates the package", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "legacy");
+test("new races are bound to orders_gc_v1 since the owner activated the package (2/10)", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v1");
 });
 
 test("only a missing-column error degrades to legacy", () => {
