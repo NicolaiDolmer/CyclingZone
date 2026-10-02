@@ -106,3 +106,15 @@ test("#6049 korrelationsanker: flad paa ensartede divisionsfelter ordnes efter e
   const mean = (k) => { const v = rows.map((r) => r[k]).filter(Number.isFinite); return v.reduce((s, x) => s + x, 0) / v.length; };
   assert.ok(mean("v4") >= 0.7 && mean("v4") >= mean("v3") - 0.05, `flad, ensartede felter: v4 ${mean("v4").toFixed(2)} mod v3 ${mean("v3").toFixed(2)}`);
 });
+
+// #6073: paa kuperede/rullende udbrudsfinaler skal feltet bag udbruddet stadig
+// afgoere placeringerne paa terraenet (punch), ikke paa udbrudsevnerne.
+test("#6073 korrelationsanker: kuperet/rullende udbrudsfinaler ordnes efter punch", async () => {
+  const population = JSON.parse(readFileSync(POPULATION, "utf8"));
+  const stagesFile = JSON.parse(readFileSync(STAGES, "utf8"));
+  const stages = (Array.isArray(stagesFile) ? stagesFile : stagesFile.stages)
+    .filter((s) => ["hilly", "rolling"].includes(s.profile_type) && s.finale_type === "breakaway");
+  const rows = await offlineCorrelation({ population, stages, seeds: ["s1"], fieldSize: 180, orderMode: "ai", divisionFields: true });
+  const mean = (k) => { const v = rows.map((r) => r[k]).filter(Number.isFinite); return v.reduce((s, x) => s + x, 0) / v.length; };
+  assert.ok(stages.length > 0 && mean("v4") >= 0.68 && mean("v4") >= mean("v3"), `kuperet/rullende udbrud: v4 ${mean("v4").toFixed(2)} mod v3 ${mean("v3").toFixed(2)}`);
+});
