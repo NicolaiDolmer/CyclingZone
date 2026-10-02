@@ -1,5 +1,23 @@
 export const PATCHES = [
   {
+    "version": "7.333",
+    "date": "2026-10-02",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Fair play",
+        "en": {
+          "title": "New rule: AI tools and automation",
+          "body": "You may use AI tools and spreadsheets to analyse riders and plan your team. Every action in the game must be made by you. Scripts, bots or AI agents that act on your account count as cheating. See Rules, Fair play."
+        },
+        "da": {
+          "title": "Ny regel: AI-værktøjer og automatisering",
+          "body": "Du må gerne bruge AI-værktøjer og regneark til at analysere ryttere og planlægge dit hold. Alle handlinger i spillet skal du selv udføre. Scripts, bots eller AI-agenter, der handler på din konto, tæller som snyd. Se Regler, Fair play."
+        },
+        "refs": [6100]
+      }
+    ]
+  },
+  {
     "version": "7.332",
     "date": "2026-10-02",
     "changes": [
