@@ -474,14 +474,17 @@ const TEAM_CHASE = {
 // intet herfra (golden fixtures uaendrede). Lokale kalibrerings-kandidater (samme
 // praecedens som TEAM_CHASE ovenfor); tallene og maalingen ligger i den private
 // kalibreringsrapport, kvalitetsmaalene er ejer-gated (#5984 Task 6).
-export const ORDERS_GC_V1_LET_GO: Readonly<{
+// Genkalibreret 2/10 (#5955) oven paa GC-reaktionen (#6033) og GC-bremsen:
+// med reaktionen taendt holdt udbruddet langt sjaeldnere end under legacy, saa
+// pladsen og vaeksten er haevet (ogsaa paa rullende/kuperet terraen), indtil
+// overlevelsen pr. profil ligger paa legacy-niveau. Reaktionen og bremsen
+// rammer stadig de farlige udbrud (de kan holde hullet nede inden for budgettet).
+const ORDERS_GC_V1_LET_GO: Readonly<{
   maxGapFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
   letGoRateFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
-  closingFactorByProfile: Readonly<Partial<Record<ProfileType, number>>>;
-}> = /*CAL*/({
-  maxGapFactorByProfile: ({ flat: 1.5, rolling: 2.2, hilly: 1.8, mountain: 2.2, high_mountain: 3.5 }),
-  letGoRateFactorByProfile: ({ mountain: 2.2, high_mountain: 2.5 }),
-  closingFactorByProfile: ({}),
+}> = Object.freeze({
+  maxGapFactorByProfile: Object.freeze({ flat: 1.9, rolling: 4, hilly: 2.4, mountain: 2.7, high_mountain: 5.5 }),
+  letGoRateFactorByProfile: Object.freeze({ rolling: 2, hilly: 1.3, mountain: 2.5, high_mountain: 3.5 }),
 });
 
 /**
@@ -491,12 +494,11 @@ export const ORDERS_GC_V1_LET_GO: Readonly<{
 export function letGoBalanceFor(
   rulesRevision: string | undefined,
   profileType: ProfileType,
-): { maxGapFactor: number; rateFactor: number; closingFactor: number } {
-  if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1, closingFactor: 1 };
+): { maxGapFactor: number; rateFactor: number } {
+  if (rulesRevision !== "orders_gc_v1") return { maxGapFactor: 1, rateFactor: 1 };
   return {
     maxGapFactor: ORDERS_GC_V1_LET_GO.maxGapFactorByProfile[profileType] ?? 1,
     rateFactor: ORDERS_GC_V1_LET_GO.letGoRateFactorByProfile[profileType] ?? 1,
-    closingFactor: ORDERS_GC_V1_LET_GO.closingFactorByProfile[profileType] ?? 1,
   };
 }
 
@@ -1217,7 +1219,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
     const netClosingSeconds = Math.max(
       0,
-      netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit * letGoBalance.closingFactor,
+      netAdvantage * (chaseKm - floorKm) * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
     );
     const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
