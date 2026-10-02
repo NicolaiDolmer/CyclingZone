@@ -295,9 +295,9 @@ test("#5571: et AI-hold faar M14's ordre — jagt, beskyttet kaptajn, hjaelper v
   const ai = plan.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics")!;
   assert.equal(params(ai).breakaway_stance, "chase");
   const byRider = new Map(params(ai).riders.map((r) => [r.rider_id as string, r]));
-  assert.equal(byRider.get("ai-cap")!.effort, "protect");
+  assert.equal(byRider.get("ai-cap")!.effort, "normal"); // #6055: kaptajnen gemmer sig til finalen
   assert.equal(byRider.get("ai-dom")!.effort, "protect");
-  assert.equal(plan.aiEffortByRider.get("ai-cap"), "protect");
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "normal");
 });
 
 test("#5571: aldrig autopilot for mennesker — et menneskehold beholder rollernes standard", () => {
@@ -341,8 +341,8 @@ test("#5571: etapeloeb i bjergene — AI-sprinterne koerer grupetto og er ude af
   const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context });
   assert.equal(plan.aiEffortByRider.get("ai-spr"), "grupetto");
   assert.equal(plan.aiEffortByRider.get("ai-train"), "grupetto");
-  // Sidste bjergetape i loebet: kaptajnen gaar alt ud.
-  assert.equal(plan.aiEffortByRider.get("ai-cap"), "all_out");
+  // Sidste bjergetape i loebet: kaptajnen gemmer sig til finalen (#6055).
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "normal");
   const aiTrain = plan.orders.find((o) => o.team_id === "ai" && o.kind === "leadout");
   assert.deepEqual(aiTrain?.params?.leadout_rider_ids, ["ai-dom"]);
   // Hele planen bestaar motorens egne parsere + kontrakten.
