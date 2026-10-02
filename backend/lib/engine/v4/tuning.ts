@@ -1403,7 +1403,7 @@ const mountainSelectionV2 = {
   // Kalibreret privat paa rigtige felter (balance-internals/6092/).
   byProfile: {
     // Kuperet: lavere lad-gaa-loft, saa et holdt udbruds forspring ikke bliver hele kaptajnernes tidstab.
-    hilly: { letGoMaxGapScale: 0.45 },
+    hilly: { letGoMaxGapScale: 0.5 },
     // Bjerg: favoritternes hold jager i finalen uden ekstra skarphed.
     mountain: { finalChaseClosingScale: 1 },
     // Hoejfjeld: roligere jagt foer finalestigningen og uden ekstra skarphed i finalen.
