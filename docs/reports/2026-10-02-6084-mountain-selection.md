@@ -20,7 +20,7 @@ Finalestigningens selektion og tempo er uændrede.
 
 Målt på samme to harnesses som #6075 (proxy: låst population og proxy-etaper med AI-ordrer; replay: S4-bjerg- og højfjeldsetaperne fra #5957), plus etapeløb med klassement (`calibrate.mjs`).
 
-1. **Favoritgruppen ved foden af finalestigningen**: medianen ligger nu inden for eller tæt på målet (ca. 15-25) i begge harnesses, mod en lille håndfuld i dag. Spredningen mellem etaperne er stor: en etape uden en rigtig stigning før finalen kommer med næsten hele feltet til foden, og en etape med en hård stigning tidligt giver stadig en lille gruppe. Det er realistisk, men betyder at "typisk" er en median, ikke en garanti for hver etape.
+1. **Favoritgruppen ved foden af finalestigningen**: medianen ligger nu inden for eller tæt på ejerens målområde i begge harnesses, mod en lille håndfuld i dag. Spredningen mellem etaperne er stor: en etape uden en rigtig stigning før finalen kommer med næsten hele feltet til foden, og en etape med en hård stigning tidligt giver stadig en lille gruppe. Det er realistisk, men betyder at "typisk" er en median, ikke en garanti for hver etape.
 2. **Fangsten sker typisk på finalestigningen**: tydeligt flertal i proxy, og også flest i replay. Fangsten sker markant tættere på mål end i dag.
 3. **Udbruddet foran favoritterne ved mål**: på niveau med i dag i både proxy og replay.
 
