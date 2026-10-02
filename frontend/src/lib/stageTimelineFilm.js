@@ -8,8 +8,6 @@
 // nøgler/params er alle rene funktioner af (events, distanceKm) — ingen skjult
 // tilstand, ingen engine-kald.
 
-import { describeGcReactionEvent } from "./ordersGcSurface.ts"; // #6067
-
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
 // ttt_team_result (M13, #3463) er af samme art: motoren emitterer ÉT resultat-
@@ -17,6 +15,10 @@ import { describeGcReactionEvent } from "./ordersGcSurface.ts"; // #6067
 // data. Som feed-linjer ville det være hele startlisten af hold på én km — en
 // mur, ikke en broadcast. Vinderen står allerede i `finish`-eventet.
 const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
+
+// #6067: orders_gc_v1's GC-reaktion (importen står her, ikke øverst, så den
+// ikke kolliderer med #6050's import i samme fil).
+import { describeGcReactionEvent } from "./ordersGcSurface.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
