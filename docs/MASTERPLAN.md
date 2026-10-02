@@ -12,6 +12,8 @@
 
 🔵 flip beta → alle efter aftentjek: `training_train_now` (#6006/#6027), `training_programs`, `training_groups` (#6000), `season_matrix_mobile` (#5124), rapport #5915, ét-tryks dagvalg #5685 · 🔵 #6035 vælg rytter først (PR #6053 venter på ejer-go på billede) · ⚪ #5947 udviklingshistorik (ny Discord-evidens 1/10) · #5949 · #5929 · #5630 · #5539 · #5911 aftentræning < 2 min (#6044 merget, tjek aftenen). **Lovet man 5/10:** #5965 analyse af udviklingsfart.
 
+🔵 **Udvikling 2.0 [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110) (ejer 3/10, S4):** design søn 4/10-man 5/10 (kort D1-D7, ét ad gangen) → byg uge 41 (6.-10/10): kurve B #3564 · løbsdag + rolle #5950 · tilbagegang/løbsbremse #6109 (klar før S4→S5) · én kurve for AI/frie #6059. Spec `2026-10-03-udvikling-2-design.md`.
+
 ## Bane 1 · Lovet til spillerne (dato først)
 
 27/9: ⚪ #5831 besked til hold (kun holdsiden). 28/9: ⚪ #5917 transferliste → U23. 30/9: ⚪ #5979 påmindelser kommer igen (S4). 1/10: #6035 (se træning). 2/10: ⚪ #6060 kopiér en dags plan (egomadsen).
@@ -30,7 +32,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-Mentale evner #5268 (A: eksisterende ryttere røres ikke, 0 ratingfald · B: ratingneutral omregning) · #5827 point-flyt (følger #5268) · fast søndagstidspunkt for værdikørslen (#5842; kører kl. 06 indtil da) · #5833 pause mellem sæsoner til S5 · #5955 udbrudsrolle: `needs-decision` stadig sat, pakken er live.
+**Søn 4/10-man 5/10:** Udvikling 2.0 D1-D7 (#6110) · Mentale evner #5268 (A: eksisterende ryttere røres ikke, 0 ratingfald · B: ratingneutral omregning) · #5827 point-flyt (følger #5268) · fast søndagstidspunkt for værdikørslen (#5842; kører kl. 06 indtil da) · #5833 pause mellem sæsoner til S5 · #5955 udbrudsrolle: `needs-decision` stadig sat, pakken er live.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
