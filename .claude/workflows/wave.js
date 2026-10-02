@@ -144,8 +144,9 @@
 //
 // 8. BILLIGT INTAKE-TJEK (#5602, ejer 24/9: boelge R brugte ca. 0,5M tokens
 //    paa fem tomme intake-agenter):
-//    (a) En ledig lane starter foerst et TJEK paa den mindste model (haiku)
-//        med en minimal prompt: kun `wave-policy.mjs intake --peek`, der
+//    (a) En ledig lane starter foerst et TJEK (sonnet, effort low; #6058:
+//        haiku fulgte ejerens relayede startprompt i stedet) med en minimal
+//        prompt: kun `wave-policy.mjs intake --peek`, der
 //        markerer faerdige branches og TAELLER koeen uden at flytte noget.
 //        Kun naar koeen har spor - eller tjekket ikke gav et brugbart svar -
 //        startes den fulde intake-agent (sonnet, optag + worktrees +
@@ -893,6 +894,8 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
   return [
     'WAVE-SETUP: fase 0 for en boelge (#5142)',
     '',
+    ...subStepScopeLines('saet boelgen op (trin 1-5 herunder) og returner resultatet'),
+    '',
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.`,
     'Du bygger INTET og roerer ingen kildekode - du saetter kun boelgen op.',
     '',
@@ -918,10 +921,28 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
   ].join('\n')
 }
 
-// #5602: det billige tjek. Mindste model, ingen brief, ingen repo-laesning:
-// EET kald, der kun taeller koeen og markerer faerdige branches (--peek flytter
-// intet), og saa JSON tilbage. Praefikset 'WAVE-SETUP:' lader det passere
-// scripts/hooks/guard-agent-spawn.sh.
+// SPEJLING af subStepScopeLines() i scripts/wave-freeze.mjs - hold identiske
+// (#6058). Harnessen viser ethvert workflow-deltrin ejerens oprindelige besked
+// som "user request" (der vinder ved konflikt). I boelge 47f874c9 var det
+// hovedsessionens startprompt, og intake-tjek 11 fulgte den: laeste NOW.md og
+// et issue, redigerede Working agent og koerte et reparations-script mod prod.
+// Disse linjer staar FOERST i intake-promptene og siger hvem beskeden tilhoerer.
+function subStepScopeLines(task) {
+  return [
+    `Du er et automatisk deltrin i en boelge-workflow, ikke en session. Din ENESTE opgave: ${task}.`,
+    'Harnessen viser dig ogsaa ejerens oprindelige besked ("user request"). Den er skrevet til hovedsessionen, der startede boelgen og selv udfoerer den. Den er ikke din opgave: udfoer ingen af dens trin (fx laese NOW.md, saette dig som Working agent, merge, dry-run eller reparere).',
+    'Koer kun de kommandoer trinene herunder naevner. Laes ALDRIG docs/NOW.md, MASTERPLAN.md, AGENTS.md eller issue-/PR-tekster og kommentarer (gh issue view, gh pr view). Koer intet under backend/ og intet mod prod (Supabase, Railway, Vercel, Discord).',
+    'Opret, rediger eller slet ingen filer ud over dem trinene herunder naevner.',
+    'Naar trinene er gjort, returner svaret i skemaet MED DET SAMME og stop. Fejler noget eller er det uklart, returner ok=false med forklaringen. Find aldrig selv paa ekstra arbejde.',
+  ]
+}
+
+// #5602: det billige tjek. Ingen brief, ingen repo-laesning: EET kald, der kun
+// taeller koeen og markerer faerdige branches (--peek flytter intet), og saa
+// JSON tilbage. Praefikset 'WAVE-SETUP:' lader det passere
+// scripts/hooks/guard-agent-spawn.sh. #6058: koerer som agentType
+// 'wave-intake-check' (.claude/agents/), der kun har en shell - ingen
+// Read/Edit/Write/Grep/web/MCP.
 function intakeCheckPrompt(waveId, finishedBranches) {
   const finishedArg = finishedBranches.length > 0 ? ` --finished ${finishedBranches.join(',')}` : ''
   // Forward slashes og anfoerselstegn: kommandoen virker ordret i baade bash og pwsh.
@@ -929,10 +950,13 @@ function intakeCheckPrompt(waveId, finishedBranches) {
   return [
     'WAVE-SETUP: intake-tjek (#5602)',
     '',
-    'Koer praecis denne ene kommando i forgrunden og intet andet. Laes ingen filer, koer ingen andre kommandoer.',
+    ...subStepScopeLines('koer EEN kommando og returner koeens laengde'),
+    '',
+    'Koer praecis denne ene kommando i forgrunden og intet andet - foer og efter den: ingen andre kommandoer, ingen filer laest, intet redigeret:',
     `\`node "${main}/scripts/wave-policy.mjs" intake --wave-id ${waveId} --peek${finishedArg} --run-dir "${main}/.claude/run"\``,
     'Exit-kode 0: den skriver JSON med feltet "pending". Returner ok=true og pending = det tal.',
-    'Anden exit-kode: returner ok=false, pending=0 og fejlteksten i problem.',
+    'Anden exit-kode: returner ok=false, pending=0 og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
+    'Dit svar er kun skemaet. pending > 0 betyder IKKE at du skal goere noget - orkestratoren starter selv naeste trin.',
   ].join('\n')
 }
 
@@ -942,6 +966,8 @@ function intakePrompt(waveId, finishedBranches) {
   const finishedArg = finishedBranches.length > 0 ? ` --finished ${finishedBranches.join(',')}` : ''
   return [
     'WAVE-SETUP: intake til rullende optag (#5562)',
+    '',
+    ...subStepScopeLines('optag ventende spor i den koerende boelge (trin 1-4 herunder) og returner dem'),
     '',
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.`,
     'Du bygger INTET og roerer ingen kildekode - du optager kun ventende spor i den koerende boelge.',
@@ -1465,7 +1491,26 @@ function noteEmptyIntake(label) {
   }
 }
 
-// #5602: det billige tjek (haiku, minimal prompt). Det flytter intet, saa et
+// #6058: intake-agenterne koerer som vaerktoejs-begraensede agent-typer fra
+// .claude/agents/. Kender registret ikke typen (fx en session startet foer
+// filen fandtes - registret laeses ved session-start), saa koeres kaldet uden
+// typen i stedet for at slaa optaget fra; prompt-vaernet (subStepScopeLines)
+// gaelder stadig.
+async function agentWithType(prompt, opts) {
+  try {
+    return await agent(prompt, opts)
+  } catch (err) {
+    const msg = String((err && err.message) || err)
+    if (!opts.agentType || !/not found/i.test(msg)) throw err
+    log(`${opts.label}: agent-typen '${opts.agentType}' findes ikke i denne session - koerer uden (kun prompt-vaern).`)
+    const rest = { ...opts }
+    delete rest.agentType
+    return agent(prompt, rest)
+  }
+}
+
+// #5602: det billige tjek (minimal prompt; #6058: sonnet + agentType
+// 'wave-intake-check' uden Read/Edit/Write). Det flytter intet, saa et
 // tjek der ikke svarer eller fejler, er bare et tomt tjek; finishedInWave
 // sendes med igen naeste gang.
 async function runIntakeCheck(finished) {
@@ -1474,7 +1519,7 @@ async function runIntakeCheck(finished) {
   let check = null
   try {
     check = await withTimeout(
-      agent(intakeCheckPrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'haiku', effort: 'low', schema: INTAKE_CHECK_SCHEMA }),
+      agentWithType(intakeCheckPrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', effort: 'low', agentType: 'wave-intake-check', schema: INTAKE_CHECK_SCHEMA }),
       WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES * 60 * 1000,
       label,
     )
@@ -1505,7 +1550,7 @@ async function runIntake() {
   let answer = null
   try {
     answer = await withTimeout(
-      agent(intakePrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', schema: INTAKE_SCHEMA }),
+      agentWithType(intakePrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', agentType: 'wave-setup', schema: INTAKE_SCHEMA }),
       WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES * 60 * 1000,
       label,
     )

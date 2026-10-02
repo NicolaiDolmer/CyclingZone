@@ -41,9 +41,9 @@
 // #5562/#5567 sammenligner vagten ogsaa de normaliserede funktionskroppe af
 // trackWeight, sortHeavyFirst, planIdleLane, releasesOwnership,
 // applySchemaEvidenceRule og tailIdleLaneMinutes (#5602: og
-// intakeBackoffMinutes).
+// intakeBackoffMinutes; #6058: og subStepScopeLines).
 //
-// Refs #5178, #5142, #4918, #5562, #5567, #5602.
+// Refs #5178, #5142, #4918, #5562, #5567, #5602, #6058.
 
 /** Konstanter. Spejles i .claude/workflows/wave.js - hold dem synkrone. */
 export const WAVE_FREEZE = {
@@ -432,6 +432,25 @@ export function tailIdleLaneMinutes(input) {
     idleLaneMinutes: idle,
     capacityPct: Math.round((idle / (lanes * end)) * 1000) / 10,
   }
+}
+
+/**
+ * #6058 scope-vaern for workflow-deltrin (fase 0, intake, intake-tjek).
+ * Harnessen viser ethvert agent()-deltrin ejerens oprindelige besked som
+ * "user request"; i boelge 47f874c9 fulgte intake-tjek 11 den (NOW.md-edit,
+ * dry-run mod prod). Linjerne staar forrest i promptene og siger hvem
+ * beskeden tilhoerer, og hvad trinet aldrig maa.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function subStepScopeLines(task) {
+  return [
+    `Du er et automatisk deltrin i en boelge-workflow, ikke en session. Din ENESTE opgave: ${task}.`,
+    'Harnessen viser dig ogsaa ejerens oprindelige besked ("user request"). Den er skrevet til hovedsessionen, der startede boelgen og selv udfoerer den. Den er ikke din opgave: udfoer ingen af dens trin (fx laese NOW.md, saette dig som Working agent, merge, dry-run eller reparere).',
+    'Koer kun de kommandoer trinene herunder naevner. Laes ALDRIG docs/NOW.md, MASTERPLAN.md, AGENTS.md eller issue-/PR-tekster og kommentarer (gh issue view, gh pr view). Koer intet under backend/ og intet mod prod (Supabase, Railway, Vercel, Discord).',
+    'Opret, rediger eller slet ingen filer ud over dem trinene herunder naevner.',
+    'Naar trinene er gjort, returner svaret i skemaet MED DET SAMME og stop. Fejler noget eller er det uklart, returner ok=false med forklaringen. Find aldrig selv paa ekstra arbejde.',
+  ]
 }
 
 import { pathToFileURL } from 'node:url';

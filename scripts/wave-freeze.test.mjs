@@ -9,6 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   WAVE_FREEZE,
@@ -23,6 +24,7 @@ import {
   releasesOwnership,
   resolveTrackTimeoutMinutes,
   sortHeavyFirst,
+  subStepScopeLines,
   tailIdleLaneMinutes,
   trackWeight,
   wipCommitMessage,
@@ -751,7 +753,7 @@ function normalizeFunction(text) {
 test("#5562/#5567: de spejlede funktioner er identiske i wave.js og modulet", () => {
   const waveSrc = readFileSync(WAVE_JS_PATH, "utf8");
   const moduleSrc = readFileSync(MODULE_PATH, "utf8");
-  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes"]) {
+  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines"]) {
     const inWave = extractFunction(waveSrc, name);
     const inModule = extractFunction(moduleSrc, name);
     assert.ok(inWave, `wave.js mangler den spejlede funktion ${name}()`);
@@ -774,7 +776,7 @@ test("#5562: rullende optag bruger WAVE-SETUP-praefikset og deler trin 2-3b med 
   const src = readFileSync(WAVE_JS_PATH, "utf8");
   assert.ok(src.includes("'WAVE-SETUP: intake til rullende optag (#5562)'"), "intake-agenten skal have WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader den passere");
   assert.equal((src.match(/\.\.\.trackSetupSteps\(\)/g) || []).length, 2, "fase 0 og intake skal begge bruge trackSetupSteps()");
-  assert.ok(/label, phase: 'Laner', model: 'sonnet', schema: INTAKE_SCHEMA/.test(src), "intake-agenten koerer paa sonnet med INTAKE_SCHEMA");
+  assert.ok(/label, phase: 'Laner', model: 'sonnet', agentType: 'wave-setup', schema: INTAKE_SCHEMA/.test(src), "intake-agenten koerer paa sonnet som agentType wave-setup med INTAKE_SCHEMA");
   assert.ok(src.includes("const laneCount = lanes"), "alle laner starter, ogsaa naar koeen er kortere");
   assert.ok(src.includes("planIdleLane({") && src.includes("releasesOwnership(row.status)"), "lane-poolen skal bruge de spejlede planIdleLane() og releasesOwnership()");
   assert.ok(src.includes("cleanupPrompt(allTracks,"), "oprydningen skal have ALLE boelgens branches, ogsaa de optagne");
@@ -782,21 +784,57 @@ test("#5562: rullende optag bruger WAVE-SETUP-praefikset og deler trin 2-3b med 
   assert.ok(src.includes("input.rollingIntake !== false"), "args.rollingIntake: false slaar optaget fra; default er til");
 });
 
-test("#5602: det billige intake-tjek koerer paa haiku med en minimal prompt, der kun taeller koeen", () => {
+test("#5602/#6058: det billige intake-tjek koerer paa sonnet med en minimal prompt, der kun taeller koeen", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
-  assert.ok(/agent\(intakeCheckPrompt\(setup\.waveId, finished\), \{ label, phase: 'Laner', model: 'haiku', effort: 'low', schema: INTAKE_CHECK_SCHEMA \}\)/.test(src), "tjekket skal koere paa haiku med INTAKE_CHECK_SCHEMA");
+  assert.ok(/agentWithType\(intakeCheckPrompt\(setup\.waveId, finished\), \{ label, phase: 'Laner', model: 'sonnet', effort: 'low', agentType: 'wave-intake-check', schema: INTAKE_CHECK_SCHEMA \}\)/.test(src), "tjekket skal koere paa sonnet som agentType wave-intake-check med INTAKE_CHECK_SCHEMA (#6058)");
   const prompt = extractFunction(src, "intakeCheckPrompt");
   assert.ok(prompt, "wave.js mangler intakeCheckPrompt()");
   assert.ok(prompt.includes("'WAVE-SETUP: intake-tjek (#5602)'"), "tjekket skal have WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader det passere");
   assert.ok(prompt.includes("intake --wave-id ${waveId} --peek"), "tjekket maa kun taelle koeen (--peek flytter intet)");
   assert.ok(!prompt.includes("trackSetupSteps") && !prompt.includes("brief"), "tjekket faar hverken brief eller setup-trin");
   const runIntake = extractFunction(src, "runIntake");
-  assert.ok(runIntake.indexOf("runIntakeCheck(finished)") < runIntake.indexOf("agent(intakePrompt("), "den fulde intake startes foerst efter tjekket");
+  assert.ok(runIntake.indexOf("runIntakeCheck(finished)") < runIntake.indexOf("agentWithType(intakePrompt("), "den fulde intake startes foerst efter tjekket");
   assert.ok(runIntake.includes("if (check.answered && check.pending === 0) {"), "kun et besvaret, tomt tjek springer den fulde intake over");
   // CodeRabbit (#5602): et fejlet tjek er ikke en tom koe - det faar den fulde intake.
   assert.ok(runIntake.includes("if (!check.answered) log("), "et fejlet tjek skal logges og gaa videre til den fulde intake");
   const worker = extractFunction(src, "laneWorker");
   assert.ok(worker.includes("idleLanes: livingLanes - busyLanes,") && /\} finally \{\s*livingLanes -= 1\s*\}/.test(worker), "planIdleLane skal kende antallet af ledige laner, talt ned synkront ved lanens return");
+});
+
+test("#6058: fase 0, intake og intake-tjek starter med scope-vaernet og kan ikke drive", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  for (const name of ["setupPrompt", "intakePrompt", "intakeCheckPrompt"]) {
+    const fn = extractFunction(src, name);
+    assert.ok(fn, `wave.js mangler ${name}()`);
+    assert.ok(/'WAVE-SETUP: [^']*',\s*'',\s*\.\.\.subStepScopeLines\(/.test(fn), `${name}() skal have subStepScopeLines() lige efter WAVE-SETUP-linjen`);
+  }
+  const lines = subStepScopeLines("X").join("\n");
+  assert.ok(lines.includes("Din ENESTE opgave: X."), "opgaven skal staa ordret");
+  assert.ok(/user request/.test(lines) && /hovedsessionen/.test(lines), "vaernet skal sige at ejerens relayede besked tilhoerer hovedsessionen");
+  for (const forbidden of ["docs/NOW.md", "Working agent", "gh issue view", "backend/", "prod"]) {
+    assert.ok(lines.includes(forbidden), `vaernet skal naevne ${forbidden}`);
+  }
+  assert.ok(/MED DET SAMME og stop/.test(lines), "vaernet skal kraeve at skemaet returneres straks");
+  const check = extractFunction(src, "intakeCheckPrompt");
+  assert.ok(check.includes("pending > 0 betyder IKKE"), "tjekket maa ikke laese pending > 0 som en opgave");
+  assert.ok(!/model: 'haiku'/.test(src), "#6058: ingen boelge-agent koerer paa haiku");
+  const helper = extractFunction(src, "agentWithType");
+  assert.ok(helper && /not found/.test(helper) && helper.includes("delete rest.agentType"), "en ukendt agentType skal falde tilbage til et kald uden typen, ikke slaa optaget fra");
+});
+
+test("#6058: agent-typerne findes og mangler fil-redigering", () => {
+  const agentsDir = path.join(path.dirname(WAVE_JS_PATH), "..", "agents");
+  const check = readFileSync(path.join(agentsDir, "wave-intake-check.md"), "utf8");
+  const setupAgent = readFileSync(path.join(agentsDir, "wave-setup.md"), "utf8");
+  const denied = (src) => (src.match(/^disallowedTools:\s*(.+)$/m) || [, ""])[1].split(",").map((t) => t.trim());
+  assert.match(check, /^name: wave-intake-check$/m);
+  assert.match(setupAgent, /^name: wave-setup$/m);
+  for (const tool of ["Read", "Edit", "Write", "Grep", "Glob", "WebFetch", "Agent", "Workflow", "ToolSearch"]) {
+    assert.ok(denied(check).includes(tool), `wave-intake-check skal naegte ${tool}`);
+  }
+  for (const tool of ["Edit", "WebFetch", "Agent", "Workflow", "ToolSearch"]) {
+    assert.ok(denied(setupAgent).includes(tool), `wave-setup skal naegte ${tool}`);
+  }
 });
 
 test("#5602: voksende pauser og selv-stop er koblet ind i lane-loekken", () => {
