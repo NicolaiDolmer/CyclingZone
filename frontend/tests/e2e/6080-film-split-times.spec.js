@@ -66,6 +66,11 @@ test("stage tab shows split times at each climb and where own riders lost time",
   await expect(section).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mellemtider" })).toBeVisible();
 
+  // Overblik først: tidstabet står åbent, de fulde mellemtider er foldet ind.
+  await expect(section.getByText("Hvor dine ryttere tabte tid")).toBeVisible();
+  await expect(section.getByText("Mont Portet (kat. 2)", { exact: false })).toBeHidden();
+  await section.getByText("Vis alle grupper").click();
+
   // Mål-stigningen: feltet +1:35 og Johan Aas alene +2:32, præcis som resultatlisten.
   await expect(section.getByText("Mont Portet (kat. 2)", { exact: false })).toBeVisible();
   await expect(section.getByText("+1:35").first()).toBeVisible();

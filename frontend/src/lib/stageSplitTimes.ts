@@ -203,7 +203,7 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
   // Et "udbrud" bag feltet er ikke laengere et udbrud (fx hentet nedkoersels-
   // angreb): det vises som en almindelig gruppe.
   const pelotonGap = alive.includes(INITIAL_GROUP) ? rawGap(INITIAL_GROUP) : null;
-  return alive
+  const groups = alive
     .map((g): SplitGroup => {
       const ids = members.get(g) ?? [];
       const ownIds = g === INITIAL_GROUP
@@ -223,6 +223,16 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
       };
     })
     .sort((a, b) => a.gapSeconds - b.gapSeconds || a.groupId.localeCompare(b.groupId));
+  // "Feltet" er den stoerste gruppe ved passagen, ikke blot motorens startgruppe
+  // (som efter splits kan vaere en lille rest foran en stor gruppe laengere tilbage).
+  let largest: SplitGroup | null = null;
+  for (const g of groups) {
+    if ((g.kind === "peloton" || g.kind === "group") && (g.riderCount ?? 0) > (largest?.riderCount ?? 0)) largest = g;
+  }
+  return groups.map((g) => {
+    if (g === largest) return { ...g, kind: "peloton" };
+    return g.kind === "peloton" ? { ...g, kind: "group" } : g;
+  });
 }
 
 /**

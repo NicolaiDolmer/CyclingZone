@@ -1087,6 +1087,7 @@
       "split": {
         "title": "Split times",
         "lossTitle": "Where your riders lost time",
+        "showAll": "Show all groups",
         "front": "Front",
         "riders": "{count, plural, one {# rider} other {# riders}}",
         "yours": "Yours: {names}",

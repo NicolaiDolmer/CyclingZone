@@ -1087,6 +1087,7 @@
       "split": {
         "title": "Mellemtider",
         "lossTitle": "Hvor dine ryttere tabte tid",
+        "showAll": "Vis alle grupper",
         "front": "Front",
         "riders": "{count, plural, one {# rytter} other {# ryttere}}",
         "yours": "Dine: {names}",

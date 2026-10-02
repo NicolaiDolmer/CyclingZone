@@ -37,15 +37,16 @@ function GroupRow({ group, riderNameById, t }) {
 }
 
 function SplitPointBlock({ point, riderNameById, t }) {
+  // Motorens generiske spurtnavn er engelsk og gentager blot overskriften; vis kun egne navne.
+  const genericSprint = point.kind === "sprint" && /^intermediate sprint$/i.test(point.name ?? "");
   const place = point.kind === "kom" && point.category
     ? `${point.name ?? ""} (${t("detail.passages.category", { cat: point.category })})`
-    : (point.name ?? "");
+    : (genericSprint ? "" : (point.name ?? ""));
   return (
     <div>
       <p className="text-cz-3 text-2xs mb-1">
         <span className="uppercase tracking-wide font-semibold text-cz-2">{t(`detail.passages.${point.kind}`)}</span>
-        {" · "}
-        {place}
+        {place ? <>{" · "}{place}</> : null}
         {" · "}
         <span className="tabular-nums">{t("detail.film.km", { value: formatNumber(point.km) })}</span>
       </p>
@@ -104,22 +105,36 @@ export default function StageSplitTimes({
   const shownLosses = uptoKm == null ? losses : losses.filter((l) => l.km <= uptoKm);
   if (!splits.length && !losses.length) return null;
 
+  const splitList = (
+    <div className="space-y-3">
+      {shownSplits.map((p, i) => <SplitPointBlock key={`${p.kind}-${p.km}-${i}`} point={p} riderNameById={riderNameById} t={t} />)}
+    </div>
+  );
+  // Overblik først: hvor dine ryttere tabte tid står øverst. På etapefanen er de
+  // fulde mellemtider foldet ind; i filmen (følger scrubberen) står de åbne.
   const body = (
     <div className="space-y-4" data-testid={variant === "section" ? undefined : "stage-split-times"}>
-      {shownSplits.length > 0 && (
-        <div className="space-y-3">
-          {variant !== "section" && <p className="text-3xs font-bold uppercase tracking-wide text-cz-3">{t("detail.film.split.title")}</p>}
-          {shownSplits.map((p, i) => <SplitPointBlock key={`${p.kind}-${p.km}-${i}`} point={p} riderNameById={riderNameById} t={t} />)}
-        </div>
-      )}
       {shownLosses.length > 0 && (
-        <div className={shownSplits.length > 0 ? "pt-3 border-t border-cz-border" : ""}>
+        <div>
           <p className="text-3xs font-bold uppercase tracking-wide text-cz-3 mb-1">{t("detail.film.split.lossTitle")}</p>
           <ul>
             {shownLosses.map((l, i) => <LossRow key={`${l.riderId}-${l.km}-${i}`} entry={l} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />)}
           </ul>
         </div>
       )}
+      {shownSplits.length > 0 && (variant === "section" ? (
+        <details className={shownLosses.length > 0 ? "pt-3 border-t border-cz-border" : ""} data-testid="stage-split-times-details">
+          <summary className="cursor-pointer text-3xs font-bold uppercase tracking-wide text-cz-2 select-none">
+            {t("detail.film.split.showAll")}
+          </summary>
+          <div className="mt-3">{splitList}</div>
+        </details>
+      ) : (
+        <div className={shownLosses.length > 0 ? "pt-3 border-t border-cz-border space-y-3" : "space-y-3"}>
+          <p className="text-3xs font-bold uppercase tracking-wide text-cz-3">{t("detail.film.split.title")}</p>
+          {splitList}
+        </div>
+      ))}
     </div>
   );
 

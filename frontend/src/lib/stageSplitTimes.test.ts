@@ -75,6 +75,20 @@ test("buildSplitTimes: gab, antal og egne ryttere ved hver stigning og mellemspr
   assert.deepEqual(sprint.groups.map((g) => g.groupId), points[1].groups.map((g) => g.groupId));
 });
 
+test("buildSplitTimes: 'feltet' er den største gruppe, ikke motorens startgruppe", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { field_count: 20, distance_km: 100 } },
+    { km: 40, type: "peloton_splits", params: { cause: "climb_deficit", group_id: "chase-1", source_group_id: "peloton-0", rider_ids: Array.from({ length: 15 }, (_, i) => `r${i}`), gap_seconds: 60 } },
+    { km: 40, type: "gap_update", params: { group_id: "chase-1", gap_seconds: 60 } },
+    { km: 40, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 0 } },
+    { km: 40, type: "kom_passage", params: { name: "Col", category: "2", top: [] } },
+  ];
+  const [point] = buildSplitTimes(events, { ownRiderIds: [] });
+  const kinds = Object.fromEntries(point.groups.map((g) => [g.groupId, g.kind]));
+  assert.equal(kinds["chase-1"], "peloton");
+  assert.equal(kinds["peloton-0"], "group");
+});
+
 test("buildSplitTimes: viser de forreste grupper + grupper med egne ryttere", () => {
   const [, colombiere] = buildSplitTimes(EVENTS, { ownRiderIds: ["own1"], maxGroups: 2 });
   assert.deepEqual(colombiere.groups.map((g) => g.groupId), ["breakaway-0", "peloton-0", "chase-7002"]);
