@@ -1,4 +1,27 @@
 export const PATCHES = [
+{
+  "version": "7.334",
+  "date": "2026-10-03",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "Training starts correctly for new riders",
+        "body": "New riders, including riders bought before their first activity, get their starting condition when they join a team. Their first race no longer prevents evening training from starting. Earlier missed training days are reviewed separately."
+      },
+      "da": {
+        "title": "Træningen starter korrekt for nye ryttere",
+        "body": "Nye ryttere, også ryttere købt før deres første aktivitet, får deres starttilstand, når de kommer på holdet. Deres første løb forhindrer ikke længere aftentræningen i at starte. Tidligere manglende træningsdage undersøges særskilt."
+      },
+      "refs": [
+        6061
+      ]
+    }
+  ]
+},
   {
     "version": "7.333",
     "date": "2026-10-02",

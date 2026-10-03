@@ -1,5 +1,21 @@
 # Træningens regler - SSOT
 
+## Forberedt kompensation #6061 (3/10, ikke i produktion)
+
+Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
+planer, staff og motor. Dette er kompensation, ikke rekonstruktion af gamle
+planer. Løbsresultater og oprindelige start-snapshots afgør løb/hvile, også når
+belastningsregistrering mangler. Datoens frosne tilstand bruges hvis den findes,
+ellers nuværende tilstand eller motorens normale førstegangstilstand.
+
+Skriveforslaget kræver separat prod-go og præcis fil-hash. Det ændrer kun evner
+og brøkfremgang; nyere condition/skader bevares. Kildeændringer, allerede
+afregnede slots og tvetydige ejere afviser kompensation. Manglende neutral
+førstegangstilstand kan kun oprettes uden anvendt aktivitetshistorik; historiske
+tilstandsafregninger og rapporter opfindes ikke. En separat kompensationskvittering
+forhindrer både genanvendelse og efterfølgende normal træning af samme slot.
+Prototypen ligger i database/proposals og er ikke godkendt til anvendelse.
+
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
 Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
@@ -57,6 +73,14 @@ en tilstandsrække og uden tidligere gemte tilstandseffekter. Række og frossent
 udgangspunkt oprettes i samme transaktion. Eksisterende tilstande, skader og
 registreringer ændres aldrig af dette trin; historiske datoer og karantæner kræver
 eksplicit efterregulering. Reglen omfatter alle trupper, som den fælles motor.
+
+Forebyggelse #6061 (ejer-go 3/10): ved oprettelse af en ejet rytter eller et
+reelt ejerskifte materialiseres den samme manglende førstegangstilstand i
+oprettelses-/købstransaktionen, før første løbsbelastning kan blokere den.
+Samme historikværn gælder; eksisterende tilstand/skade, tidligere aktiviteter
+og frosne datoer ændres ikke. Funktionen er invoker og åbner ingen klientgrants.
+Installation efterregulerer ingen eksisterende rytter. Tabte dage har separat
+read-only recovery-manifest og kræver ejer-go til den konkrete skrivning.
 
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
