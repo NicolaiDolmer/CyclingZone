@@ -7,6 +7,7 @@
  */
 
 import { fetchAllRows } from "./supabasePagination.js";
+import { toSupabaseError } from "./supabaseErrorNormalize.js";
 
 export const SQUAD_MINS = { 1: 20, 2: 14, 3: 8 };
 
@@ -400,7 +401,12 @@ export async function processDeadlineDayCron({
     .limit(1)
     .single();
   if (windowError && windowError.code !== "PGRST116") {
-    throw new Error(`processDeadlineDayCron: could not load latest transfer_window: ${windowError.message}`);
+    // CYCLINGZONE-82: under et Supabase/Cloudflare-udfald er fejlobjektet ikke et
+    // PostgREST-svar og har ingen `message` — beskeden blev "…: undefined".
+    // toSupabaseError giver altid en læsbar besked og bevarer `code`.
+    const wrapped = toSupabaseError(windowError);
+    wrapped.message = `processDeadlineDayCron: could not load latest transfer_window: ${wrapped.message}`;
+    throw wrapped;
   }
 
   if (!window) return { warnings: 0, errors: 0, whistleSent: false, autoClosed: false };

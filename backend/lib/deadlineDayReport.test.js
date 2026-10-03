@@ -650,3 +650,65 @@ test("processDeadlineDayCron skips Final Whistle when already claimed", async ()
   assert.equal(result.whistleSent, false);
   assert.equal(sentCount, 0);
 });
+
+test("processDeadlineDayCron: window-læsefejl uden message giver læsbar fejl, ikke 'undefined' (CYCLINGZONE-82)", async () => {
+  const supabase = {
+    from() {
+      return {
+        select: () => ({
+          order: () => ({
+            limit: () => ({
+              single: () => Promise.resolve({ data: null, error: { status: 521, title: "Error 521: Web server is down" } }),
+            }),
+          }),
+        }),
+      };
+    },
+  };
+
+  await assert.rejects(
+    processDeadlineDayCron({
+      supabase,
+      notifyTeamOwnerFn: async () => ({ delivered: true }),
+      sendDiscordWebhookFn: async () => {},
+      getDefaultWebhookFn: async () => null,
+      now: new Date(),
+    }),
+    (err) => {
+      assert.ok(err instanceof Error);
+      assert.match(err.message, /^processDeadlineDayCron: could not load latest transfer_window: /);
+      assert.doesNotMatch(err.message, /undefined/);
+      return true;
+    },
+  );
+});
+
+test("processDeadlineDayCron: Cloudflare-HTML i window-læsefejl normaliseres (CYCLINGZONE-82)", async () => {
+  const supabase = {
+    from() {
+      return {
+        select: () => ({
+          order: () => ({
+            limit: () => ({
+              single: () => Promise.resolve({
+                data: null,
+                error: { message: "<!DOCTYPE html><title>cyclingzone | 521: Web server is down</title>" },
+              }),
+            }),
+          }),
+        }),
+      };
+    },
+  };
+
+  await assert.rejects(
+    processDeadlineDayCron({
+      supabase,
+      notifyTeamOwnerFn: async () => ({ delivered: true }),
+      sendDiscordWebhookFn: async () => {},
+      getDefaultWebhookFn: async () => null,
+      now: new Date(),
+    }),
+    /could not load latest transfer_window: Supabase unavailable \(521/,
+  );
+});
