@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (2/10 aften): LØBENE KØRER IGEN** (skemalæggeren tændt 19.01 efter ejer-go; 23 forfaldne etaper kørt i første kørsel uden fejl, alle 13 genstartsløb bundet til `orders_gc_v2`). Næste: **(1)** tjek at aftenens træning afregnes korrekt (sweep ≥ kl. 20) og at de 14 resterende forfaldne etaper kører; **(2)** følg de første rigtige v2-etaper mod den endelige test (privat: `balance-internals/final-2-10/`), især udbrudsvindere på bjerg; **(3)** **#6098** liga-vagten giver falsk rød under planlagt pause (blokerede 3 merges 2/10); **(4)** roller der mangler: #5981 beskyttet løjtnant, #5982 hjælpere gemt til finalen (design med ejeren, ét spørgsmål ad gangen).
+> **🎯 Next action (3/10 aften): fast rytme fra nu, se [`OPERATING_PLAN.md`](OPERATING_PLAN.md)** (ejer-godkendt 3/10: morgen 08.30 + aften 20.15 i Claude Code, Codex bygger Stabilitet/Betaling/Fabrikken og rører aldrig NOW/MASTERPLAN). **(1)** Brand: #6095 gem af etapetaktik (ikke startet) og #5860 dobbeltbooking (sat op 3/10); Codex har #6115-kodefix + #6061. **(2)** Søn 4/10: Udvikling 2.0 D1-D4 (#6110, spillersignaler på issuet) + kort #5912/#5897. **(3)** Man 5/10: mandagsstyring m. Discord-fund #6122-#6126, træningspakken (#6053 parkeret til da, #6123, #6060, #5915, #5485), flip-listen beta → alle, lovet #5965.
 >
-> **✅ 2/10:** live (aften): #6084/#6086 bjergetaper + `orders_gc_v2` aktuel, #6088/#6091 kaptajners tidstab, #6089/#6090 udbrud (målefejl rettet), #6092+#6073/#6094 kuperet + rullende, #6097/#6099 AI-hold forsøger udbrud + kamp om pladserne, patch note 7.332 (#6096). Endelig test: 13 genstartsløb × 74 vejetaper + replay 208 S4-etaper + flerdags-kæde. #6101 fair play-regel om AI-værktøjer og automatisering (7.333, #6100). Tal privat i balance-internals/.
+> **✅ 3/10:** #6117 liga-vagt + #6107 flag-batching merget og live; #6115 data repareret (5 forældreløse tilbud trukket tilbage, 2 AI-hold nedlagt). Lukket: #6114/#6108/#6043 + Sentry v11 #6040/#6037 (privatliv → #6121); død Deadline Day-cron → #6120. Audit: 7 lukket, 4 → done, 3 → todo (`.claude/audits/audit-2026-10-03.md`).
 
 > **📌 #6110 Udvikling 2.0:** design-kort søn 4/10-man 5/10, byg uge 41.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (Codex-claim for #5893 nulstillet 3/10 efter ejer-bekræftelse; PR #6103 fandtes aldrig).
+> **🤖 Working agent:** Ingen aktiv Claude Code-session. Codex arbejder på #6061 (PR #6119) og #6115 (claims på issuerne; Codex rører ikke NOW.md, jf. OPERATING_PLAN).

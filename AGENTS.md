@@ -109,7 +109,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 ## Start-sekvens (hver session)
 
-0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` — ingen egne sidehoveder, bredder eller radii · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** (NOW.md-budget, patch notes, FEATURE_REGISTRY, token-hygiejne) · **merge-mekanik** (`--squash --delete-branch --admin`, én PR ad gangen via merge-køen).
+0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst.
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
 3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
