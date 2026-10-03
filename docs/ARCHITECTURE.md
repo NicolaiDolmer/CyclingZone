@@ -2,6 +2,15 @@
 
 ## Stack
 
+#6061 (forberedt, ikke live): kompensationsforslaget i
+`database/proposals/2026-10-03-6061-apply-compensation.sql` indeholder
+`training_compensation_receipts` og service-only RPC
+`apply_training_compensation_6061`. En særskilt kvittering pr. rytter/sæson/løbsdag
+beskytter gentagne reparationer og afviser almindelig træning på samme slot.
+Kildekontrol, korte tabel-låse og compare-before-write beskytter atomisk
+evnekompensation; historiske rapporter/condition-afregninger rekonstrueres ikke.
+Forslaget kræver separat ejer-go og ligger uden for auto-migrate.
+
 | Lag | Teknologi | Deploy |
 |-----|-----------|--------|
 | Frontend | React 18 + Vite + Tailwind CSS | Vercel |

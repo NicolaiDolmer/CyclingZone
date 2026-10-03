@@ -1,5 +1,13 @@
 # Rytterudviklingens regler — SSOT
 
+## Forberedt kompensation #6061 (ikke live)
+
+Ejeren godkendte 3/10 beregning med nuværende planer og motor for dokumenterede
+uafregnede slots. Motorens eksisterende udvikling/lofter anvendes pr. tick;
+resultater og start-snapshots afgør løb/hvile. Synlige evner må ikke reduceres.
+Historisk tilstand rekonstrueres ikke. Produktionsanvendelse kræver separat
+ejer-go, uændrede kilde-rækker og atomiske kvitteringer, jf. TRAINING_RULES.
+
 ## Datoens afsluttende historik (#5915, 30/9)
 
 Beta-release styres af `training_daily_receipt` mod serverens godkendte

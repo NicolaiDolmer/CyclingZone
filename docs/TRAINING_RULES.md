@@ -1,5 +1,21 @@
 # Træningens regler - SSOT
 
+## Forberedt kompensation #6061 (3/10, ikke i produktion)
+
+Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
+planer, staff og motor. Dette er kompensation, ikke rekonstruktion af gamle
+planer. Løbsresultater og oprindelige start-snapshots afgør løb/hvile, også når
+belastningsregistrering mangler. Datoens frosne tilstand bruges hvis den findes,
+ellers nuværende tilstand eller motorens normale førstegangstilstand.
+
+Skriveforslaget kræver separat prod-go og præcis fil-hash. Det ændrer kun evner
+og brøkfremgang; nyere condition/skader bevares. Kildeændringer, allerede
+afregnede slots og tvetydige ejere afviser kompensation. Manglende neutral
+førstegangstilstand kan kun oprettes uden anvendt aktivitetshistorik; historiske
+tilstandsafregninger og rapporter opfindes ikke. En separat kompensationskvittering
+forhindrer både genanvendelse og efterfølgende normal træning af samme slot.
+Prototypen ligger i database/proposals og er ikke godkendt til anvendelse.
+
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
 Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
