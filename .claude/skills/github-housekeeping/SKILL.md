@@ -296,6 +296,14 @@ Når ejeren beder om gennemgang af ALLE åbne issues (ikke kun done/K-pass), bru
 6. **NUA-reality-check** — én agent over alle needs-user-action.
 7. **Manglende-issues-sweep** — 3 agenter: NOW.md-parkerede · launch-/doctrine-docs · Discord-feedback (REST-script-workaround hvis MCP-login fejler).
 
+**Token-budget (lektion 2026-10-03, bidt: ~10,0M mod mål ~6M):** regn med **~140k tokens pr. agent** (72 agenter = 10M). Antal agenter = ejerens mål ÷ 140k; fordel loftet mellem dimensionerne FØR scriptet skrives. Klassifikations-chunks: `effort: 'low'` og bodies afkortet til 1.200 tegn (ikke 2.000). Refute-trin (opus) skæres ALDRIG — det er dér kvaliteten ligger (44 af 82 lukkeforslag væltet 3/10).
+
+**Betingede lukkeforslag = "senere", ikke lukkekandidat (lektion 2026-10-03):** klassifikationsprompten skal sige, at en begrundelse med betingelse ("tjek X og luk", "luk når Y", "verificér og luk") giver bucket `senere`, aldrig `lukkekandidat`. 7 betingede forslag måtte sorteres fra i hånden.
+
+**Beskyttet sæt filtreres i main-loopet (lektion 2026-10-03):** før lister vises, fjern automatisk dublet- og lukkeforslag hvis issuet er FROSSET, i release-gaten, i dagens tidligere audit eller i MASTERPLAN/OPERATING_PLAN. Byg sættet i prep-scriptet (regex `#\d+` over de tre filer + dagens audit-fil) og send det med i workflowet. 3/10 ramte 5 dubletter sættet (#4100 FROSSET, #4512 release-gate m.fl.).
+
+**Verificér målet før luk-ind-i / flyt-rest-til (lektion 2026-10-03):** før eksekvering: `gh issue view <mål> --json state,title` for hvert primary/rest-mål. Målet skal være åbent, og titlen skal passe til påstanden. Ellers: vælg andet mål eller tag issuet ud af batchen og rapportér det. 3/10: #4149 var lukket (rest fra #4150 kunne ikke flyttes), #6059 var knæk-efterforskningen, ikke kurve-arbejdet.
+
 Output: batch-godkendelser pr. kategori (lister synlige! jf. Trin 6-lektion) + ejer-dashboard i `docs/audits/<dato>-ejer-dashboard.md` + artifact. Ejer-mandat indhentes FØR kørsel via AskUserQuestion: prioriterings-linse-hårdhed, done-batch-metode, token-scope, parallelle sessioners issues (ekskluderes).
 
 ## Billig ugentlig sweep (2026-07-19-mønsteret — DEFAULT når målet er at lukke puklen)
@@ -370,6 +378,8 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 - **Routine auto-lukker IKKE dette repos done-pukkel (lektion 2026-06-18):** En fokuseret audit (fx 2026-06-13 launch-blocker) udskyder de ikke-scope done-issues til "daglig routine #627 dækker" — men routinen auto-lukker kun Tier 1+2, og dette repos AI-author/WEAK-comment-mønster sender stort set ALT til Tier 3. Resultat: ikke-scope done-issues hober sig op (21→29 done på 5 dage fra 13/6→18/6), routinen rører dem ikke, og **kun en manuel fuld done-sweep lukker dem reelt**. Antag derfor ALDRIG at routinen dækker akkumuleret done — kør en periodisk fuld done-sweep (alle `claude:done`, ikke kun dagens slice) uanset. `score_done.py`s nye `keep_done_gated`/`GATED-KEEP`-flag adskiller de bevidst beholdte launch-gatede fra de close-eligible, så en fuld sweep er hurtig at triagere.
 
 ## Changelog
+
+- **2026-10-03 — Fuld-backlog-variant B som workflow (ejer: "følg dine anbefalinger", alle 4 edits).** 27. kørsel: 72 agenter (sonnet chunks/dubletter, opus K-verify/refute/beslutningsark), 0 fejl, ~10,0M tok mod mål ~6M. 727 → 684 åbne: 45 lukket (10 leveret, 5 forældet, 12 overhalet, 19 dubletter), 4 todo→done, 12 needs-decision fjernet, 2 nye (#6129, #6130), K-cache +16. 35 beslutningsark + 313 prioritetsforslag i ejer-dashboard. Edits i fuld-backlog-varianten: (1) token-budget ~140k/agent + `effort:'low'`/1.200 tegn på klassifikation, refute urørt; (2) betingede lukkeforslag → `senere`; (3) beskyttet sæt filtreres i main-loop; (4) verificér primary/rest-mål åbent og emne-korrekt før eksekvering. Observation: refute-tjekket væltede 44 af 82 klassifikations-lukkeforslag og 0 af 4 K-done-verdikter — K-scope-verify med opus var præcis, klassifikations-close er støjende.
 
 - **2026-09-22 — Kontrol-session + billig sweep (ejer-godkendt retro, 1 edit).** 26. kørsel: analyse-agent (opus) + eksekverings-agent (sonnet), 0 workflow. **8 closes** (7 done-sweep + dublet #5337→#5031), 2 done→todo (#4982 ny spiller-evidens, #4851 ejer-observation), 1 todo→done (#5267), unblock #4753, K: 24 titel-match verificeret → 1 handling, 23 i cache, 46 kun-body ikke verificeret. 6 nye issues (#5479-#5484) fra dagens fund efter dublet-tjek. Accepteret edit: **citeret PR lukket uden merge → tjek nyere merget PR på samme branch** (#5470→#5478 ville ellers have parkeret #4759/#2491). Observation: `open_issues_count` 659 mod limit 1000 OK; 200-PR-vinduet ramte cap præcis på 14 dage igen.
 
