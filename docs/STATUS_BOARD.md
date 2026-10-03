@@ -9,51 +9,44 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (1d) — groen
-- #6037 chore(deps): Bump @sentry/node from 10.75.3 to 11.0.0 in /backend (0d) — roed
-- #6043 chore(deps-dev): Bump eslint from 9.39.5 to 10.11.0 in /marketing (0d) — roed
-- #6040 chore(deps): Bump @sentry/react from 10.75.3 to 11.0.0 in /frontend (0d) — groen
 - #6107 perf(flags): batch player-visible config reads (Refs #6103) (0d) — groen
-- #6108 docs(close-out): release Supabase session and refresh status (Refs #5893) (0d) — DIRTY
-- #6114 fix(transfers): læsbar fejl når deadline-day ikke kan læse transfervinduet (CYCLINGZONE-8… (0d) — roed
-- #6116 docs(now): Codex driftkontrol og training quarantine investigation (0d) — roed
 - #6117 fix(ops): liga-vagt respekterer planlagt scheduler-pause (#6098) (0d) — groen
+- #6116 docs(now): #6061 approved prevention and recovery session (0d) — roed
+- #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (0d) — groen
+- #6119 fix(training): førstegangstilstand før løb + recovery-forberedelse (#6061) (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
 
-- #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (116d)
-- #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (116d)
-- #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (115d)
+- #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (117d)
+- #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (117d)
+- #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (116d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (114d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (106d)
-- #2259 [chore] Supabase DB-hygiejne: ryd ~20 backup_*-tabeller + covering-index på unindexed for… (84d)
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (107d)
+- #2259 [chore] Supabase DB-hygiejne: ryd ~20 backup_*-tabeller + covering-index på unindexed for… (85d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (81d)
-- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (78d)
-- #2650 [balance/HØJ] Fatigue-mætning i hele populationen: AI-median 100, human-median 90 — recov… (76d)
+- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (79d)
+- #2650 [balance/HØJ] Fatigue-mætning i hele populationen: AI-median 100, human-median 90 — recov… (77d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (76d)
 - #2688 AI-audit 19/7: Fable-optimering — workflow/judge-panels/effort-routing/ultra-review (ejer… (76d)
 - #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (72d)
-- #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (69d)
-- #2887 [feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den de… (69d)
+- #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (70d)
+- #2887 [feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den de… (70d)
 - #2991 season_grand_tour_rider kan ingen menneskemanager opnå: Grand Tours er Division-1-only og… (69d)
 - …og 57 mere
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- ingen
+- #6119 fix(training): førstegangstilstand før løb + recovery-forberedelse (#6061) (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
-- #5827 5268 rating-neutral mental ability dry run V3 (4d) — groen
+- #5827 5268 rating-neutral mental ability dry run V3 (5d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- #6037 chore(deps): Bump @sentry/node from 10.75.3 to 11.0.0 in /backend (0d) — roed
-- #6043 chore(deps-dev): Bump eslint from 9.39.5 to 10.11.0 in /marketing (0d) — roed
-- #6114 fix(transfers): læsbar fejl når deadline-day ikke kan læse transfervinduet (CYCLINGZONE-8… (0d) — roed
-- #6116 docs(now): Codex driftkontrol og training quarantine investigation (0d) — roed
+- #6116 docs(now): #6061 approved prevention and recovery session (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -65,27 +58,27 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (130d)
 - #931 [Epic] Træningssystem — nøglerytterplaner først, individuel dybde senere (123d)
 - #932 [Epic] Ungdomsakademi — intake, udvikling, promotion og ungdomsauktion (123d)
-- #954 [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score) (122d)
-- #994 [ops] Harness-oprettede worktrees mangler node_modules + .env (auto-setup hook/script) (121d)
+- #954 [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score) (123d)
+- #994 [ops] Harness-oprettede worktrees mangler node_modules + .env (auto-setup hook/script) (122d)
 - #1136 [Epic] Progression & livscyklus — rytterudvikling, træning, ungdom (samler #930/#931/#932… (117d)
 - #1140 Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer) (117d)
 - #1270 Session-hardening hooks: pre-push område-tests (D1) + dep-sync-vagt (D7) + kollisionsvars… (114d)
 - #1299 Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch (113d)
-- #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (109d)
-- #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (107d)
-- …og 684 mere
+- #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (110d)
+- #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (108d)
+- …og 688 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
 
 - #4915 [engine-v4] TTT- og passage-foelgesager foer flip: uheld/tidsgraense paa TTT, TTT-point,… (26d)
-- #5485 [design] Traeningssiden: ingen scroll, faner/modals, det mest brugte oeverst, Clarity-dat… (10d)
-- #5484 [bug] Discord-MCP-connector fejler med Connection closed i Claude Code-sessioner (22/9) (10d)
+- #5485 [design] Traeningssiden: ingen scroll, faner/modals, det mest brugte oeverst, Clarity-dat… (11d)
+- #5484 [bug] Discord-MCP-connector fejler med Connection closed i Claude Code-sessioner (22/9) (11d)
 - #5519 [trupper] U23 team- og Junior team-sider + Academy-kortet bliver ægte (bag youth_squad_pa… (10d)
-- #4629 [design] Traeningsprogrammer: ugeplan med session pr. ugedag + 10-25 default-programmer (… (30d)
+- #4629 [design] Traeningsprogrammer: ugeplan med session pr. ugedag + 10-25 default-programmer (… (31d)
 - #4956 [omdoemme] PR 3: synlighed (profil/marked/auktion, ordbaand + hvorfor-liste) + bestyrelse… (26d)
-- #6000 [træning] Træningsgrupper: én beslutning for flere ryttere (ejer 1/10) (1d)
-- #6006 [bug/brand] Train now (beta) træner kun 10 af 45 ryttere: autopick-hold behandles som om… (1d)
+- #6000 [træning] Træningsgrupper: én beslutning for flere ryttere (ejer 1/10) (2d)
+- #6006 [bug/brand] Train now (beta) træner kun 10 af 45 ryttere: autopick-hold behandles som om… (2d)
 - #5124 [mobil] D-047-standarden til de fire haandrullede tabeller: Auktioner, Transferlisten, Da… (22d)
 - #5685 [traening/mobil] Et-tryks dagvalg (Hvile/Restitution/Pas) paa rytterraekken paa telefonen… (8d)
 - #6027 [træning] Train now giver ingen synlig respons: rapporten skjuler løbsdag 1-4 indtil dato… (1d)

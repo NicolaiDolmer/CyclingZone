@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (3/10 Codex):** Driftkontrol: ingen uafviklede etaper før 3/10. **#6061:** 7 hold i efterkontrol; gentagen karantæne reproduceret (løbsbelastning før manglende starttilstand). Ejer-valg om tabte dage afventes; bevis på issue. **#6098:** rettet i PR **#6117**, lokal verifikation og uafhængigt review færdige. Prod-facit før/efter identisk; merge blokeret af **#6115**, CodeRabbit af review-loft. Næste: afklar træningsgenopretning og liga-fund; følg v2-etaper mod privat test, især udbrud på bjerg; roller #5981/#5982 designes med ejeren.
+> **🎯 Next action (3/10 Codex):** #6061 forberedt i **PR #6119**: forebyggelse + ejer-godkendt kompensationsberegning (17 ryttere/131 slots; tre ejer-review). Privat plan i OneDrive; 23 kildechecks, atomisk retry-værn, eksisterende tilstand/skader bevares. Fuld backend/preflight og uafhængigt review grønne; ny CI/CodeRabbit afventes. Ingen merge/prod-go. **#6098 PR #6117**: rettet; merge blokeret af **#6115**/review-loft. Næste: afklar liga-gaten, afslut review og særskilt ejer-go før migration/kompensation. Følg v2-etaper mod privat test; roller #5981/#5982 designes med ejeren.
 >
 > **✅ 2/10:** live (aften): #6084/#6086 bjergetaper + `orders_gc_v2` aktuel, #6088/#6091 kaptajners tidstab, #6089/#6090 udbrud (målefejl rettet), #6092+#6073/#6094 kuperet + rullende, #6097/#6099 AI-hold forsøger udbrud + kamp om pladserne, patch note 7.332 (#6096). Endelig test: 13 genstartsløb × 74 vejetaper + replay 208 S4-etaper + flerdags-kæde. #6101 fair play-regel om AI-værktøjer og automatisering (7.333, #6100). Tal privat i balance-internals/.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Codex 3/10: #6061 forebyggelse + recovery dry-run (ejer-ja). Prod-go udestår; #6117 blokeret af #6115/review.
+> **🤖 Working agent:** Ingen aktiv session. Codex-handoff 3/10 på #6061; PR #6119 klar til review, ingen produktionstilpasning.
