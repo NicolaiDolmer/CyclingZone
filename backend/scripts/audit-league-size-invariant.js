@@ -41,6 +41,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatSupabaseAuditError } from "./audit-error-classifier.js";
 import { getStalledInflightRaceIds, teamInflightRaceIds } from '../lib/aiTeamRaceObligations.js';
+import { evaluateFlagStage } from '../lib/featureStage.js';
+import { STAGE_SCHEDULER_FLAG_KEY } from '../lib/stageSchedulerFlag.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -206,13 +208,26 @@ export async function runLeagueSizeAudit({
   const waitingIds = new Set();
   const raceBoundWaitingIds = new Set();
   let stalledIds;
+  let schedulerEnabled;
   for (const team of teams) {
     if (!team.is_ai || team.is_bank || team.is_frozen || team.is_test_account ||
         team.user_id != null || team.retired_at != null || !isWithinPendingGrace(team)) continue;
     const { data: reason, error } = await supabase.rpc('ai_team_retirement_reason', { p_team_id: team.id });
     if (error) throw new Error('League audit obligation check: ' + error.message);
     if (reason === 'inflight_entries') {
-      stalledIds ??= await getStalledIds(supabase, now);
+      // #6098: only an explicit disabled scheduler proves a planned pause.
+      // The runtime helper fails off on read errors; an audit must instead fail
+      // loudly so an outage can never masquerade as a justified reservation.
+      if (schedulerEnabled === undefined) {
+        const { data: flag, error: flagError } = await supabase.from('app_config')
+          .select('value').eq('key', STAGE_SCHEDULER_FLAG_KEY).maybeSingle();
+        if (flagError) throw new Error(formatSupabaseAuditError('League audit scheduler lookup', flagError));
+        if (![true, false, 'on', 'off', 'beta'].includes(flag?.value)) {
+          throw new Error('League audit scheduler state missing or unknown');
+        }
+        schedulerEnabled = evaluateFlagStage(flag.value);
+      }
+      stalledIds ??= schedulerEnabled ? await getStalledIds(supabase, now) : [];
       if (stalledIds.length && (await teamBlockingRaceIds(supabase, team.id, stalledIds)).length) continue;
     }
     if (['inflight_entries','pending_transfer','live_transfer_offers','live_swap_offers','live_auctions'].includes(reason)) {
