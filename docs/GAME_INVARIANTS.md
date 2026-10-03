@@ -45,7 +45,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
     |---|---|---|
     | `write` | Ingen delvis tilstand: `apply_stage_result` er ÉN Postgres-transaktion (counter-bump + `race_results`). Enten alt eller intet (#1598). | Uden markering: etapen køres helt om. Med markering: springes over. |
     | `standings` | `race_results` er korrekte; `season_standings` er stale. | Fuld re-derivation — køres om. Markeres KUN ved succes. |
-    | `matview` | Ranglister er stale (op til 10 min, indtil cron-fallbacken). | Idempotent REFRESH — køres om. |
+    | `matview` | Ranglister er stale; sidste færdige snapshot kan læses. Normaldriftsmålet fra #5692 er refresh senest fem minutter efter færdig finalisering; målet er ikke bevist af admission-fixet. | Idempotent REFRESH — køres om. |
     | `enrichment` | Etapen mangler helt eller delvist `race_simulation_runs`/`race_incidents`/`race_stage_moments`/tidslinjer. **Dette var det stille hul:** counteren var bumpet, så etapen kunne aldrig tages op igen. Målt i prod 4/9: 34 etaper (S1 29, S2 4, S3 1) uden ét eneste sim-run. | Alle skrivninger er delete-then-insert scopet til etapen, og simuleringen er seedet (`stableSeed(raceSeedInput(race.id, stageNumber))`) → en genkørsel skriver præcis de samme rækker. |
     | `fatigue` / `rest-day` | Trætheden er enten skrevet eller ikke — aldrig halvt (ét upsert-kald pr. felt). | **ENGANGS-trin:** markeres efter FORSØGET, ikke efter succes. De akkumulerer på `rider_condition.fatigue`; en manglende skrivning er langt billigere end en dobbelt. |
     | `board` | `race_days_completed` og board-weekend kan være halvt anvendt. | `recomputeSeasonRaceDays` er re-derivation og board-weekenden differ previous-vs-new → køres helt om. |
@@ -105,6 +105,20 @@ Dette præciserer audit-delen af occupancy-reglen ovenfor; signup-balanceringens
 Løbs-stall og den aktuelle blokerings alder overvåges fortsat af sweepet (#2434/#4828).
 Kode: `database/2026-09-09-4753-ai-pool-retirement.sql`, `backend/lib/aiPoolRetirement.js`.
 Marked: [`TRANSFER_MARKET_RULES.md`](TRANSFER_MARKET_RULES.md). Lokalt verificeret; prod-go udestår.
+
+## Ranking-refresh admission (#5900)
+
+Cron, løbsfinalisering, træningslukning og recovery bruger den samme admission
+i `refreshRankingMatviews.js` / `rankingRefreshQueue.ts`. Pr. delt Supabase-klient
+og proces kører én pass ad gangen; callers under en aktiv pass samles i en frisk
+opfølgning. Nye requests under opfølgningen kan kræve endnu en pass. En caller må
+ikke kvitteres med et snapshot, som startede før callerens nye data.
+Træningsgate genlæses ved faktisk start af et ventende job; ubetinget Safe beholder
+sin bypass-kontrakt. RPC-rækkefølge, `false`/`deferred`/`coalesced` og heartbeat-reglen
+bevares. En fejl i første pass forbruger ikke opfølgningen.
+Dette er et regressionsværn for process-lokal samtidighed, ikke et bevis for
+#5692's ejer-godkendte friskhedsmål eller fuld load-test. Schedulerbudget, holdbare
+claims/restarts, cross-process coordination og concurrent transport er separate.
 
 ## Matviews eksponeret i API (fog of war-gennemgang 6/9, [#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870))
 

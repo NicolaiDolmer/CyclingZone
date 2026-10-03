@@ -62,6 +62,7 @@
 //     sweep der afregnede dagens hold; den refresher når sidste hold er færdigt.
 // FAIL-SAFE: fejler statusopslaget, refreshes som før #5911.
 import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
+import { createRankingRefreshQueue } from "./rankingRefreshQueue.ts";
 
 export const SETTLEMENT_WINDOW_START_HOUR = 20;
 export const SETTLEMENT_OVERNIGHT_END_HOUR = 3;
@@ -80,7 +81,18 @@ const REFRESH_RPCS = [
   { rpc: "refresh_youth_rider_rankings_mv", label: "youth_rider_rankings_mv" },
 ];
 
-export async function refreshRankingMatviewsSafe(supabase, { captureExceptionFn } = {}) {
+const runRefreshQueued = createRankingRefreshQueue();
+
+// #5900: all entry points (cron/finalization/training/recovery) share admission.
+// Requests during a pass share one fresh follow-up, preserving later DB writes.
+export function refreshRankingMatviewsSafe(supabase, options = {}) {
+  return runRefreshQueued(supabase, () => refreshRankingMatviewsPass(supabase, options), 1);
+}
+
+async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn = () => new Date() } = {}) {
+  // A physically admitted pass consumes any expired training deferral, also
+  // when Safe replaced a queued expiry-entitled request in the shared queue.
+  deferredSinceMs = null;
   const failures = [];
 
   for (const { rpc, label } of REFRESH_RPCS) {
@@ -111,7 +123,7 @@ export async function refreshRankingMatviewsSafe(supabase, { captureExceptionFn 
   try {
     const { error: hbError } = await supabase
       .from("matview_refresh_heartbeat")
-      .upsert({ matview_group: "ranking", refreshed_at: new Date().toISOString() }, { onConflict: "matview_group" });
+      .upsert({ matview_group: "ranking", refreshed_at: nowFn().toISOString() }, { onConflict: "matview_group" });
     if (hbError) throw new Error(hbError.message);
   } catch (err) {
     console.warn(`⚠️  matview_refresh_heartbeat upsert fejlede (best-effort): ${err.message}`);
@@ -161,9 +173,9 @@ export function __resetRankingRefreshStateForTests() {
 
 // Gate for cron + finalisering. Returnerer "deferred" når refreshen holdes
 // tilbage, ellers refreshRankingMatviewsSafe's true/false.
-export async function refreshRankingMatviewsGated(
+async function rankingRefreshGateState(
   supabase,
-  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
+  { now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
 ) {
   let settling = false;
   const dates = settlementDatesToCheck(now);
@@ -183,15 +195,36 @@ export async function refreshRankingMatviewsGated(
       return "deferred";
     }
     logger.warn?.("[ranking-refresh] max deferral reached during training settlement, refreshing anyway");
+    // Keep the interval alive while admission is pending. The caller carries
+    // this entitlement through the queue, even if later requests are gated.
+    return "expired";
   }
   deferredSinceMs = null;
-  return refreshRankingMatviewsSafe(supabase, { captureExceptionFn });
+  return "ready";
+}
+
+export async function refreshRankingMatviewsGated(
+  supabase,
+  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date() } = {},
+) {
+  const requestedAt = clock();
+  const gateOptions = { now, clock, maxDeferMs, logger };
+  const gateState = await rankingRefreshGateState(supabase, gateOptions);
+  if (gateState === "deferred") return "deferred";
+  return runRefreshQueued(supabase, async (queued) => {
+    if (queued && gateState !== "expired") {
+      const admittedAt = new Date(now.getTime() + Math.max(0, clock() - requestedAt));
+      if (await rankingRefreshGateState(supabase, { ...gateOptions, now: admittedAt }) === "deferred") return "deferred";
+    }
+    return refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn });
+  }, gateState === "expired" ? 1 : 0);
 }
 
 // Træningslukningen kalder denne efter et sweep der afregnede dagens hold. Er
 // sidste hold færdigt (ingen pending/partial for i dag), refreshes straks og
 // ubetinget; ellers venter den på næste sweep/cron. Kaster aldrig.
-export async function refreshRankingsAfterTrainingSettlement({ supabase, now = new Date(), captureExceptionFn, logger = console } = {}) {
+export async function refreshRankingsAfterTrainingSettlement({ supabase, now = new Date(), captureExceptionFn, logger = console, heartbeatNowFn = () => new Date(), clock = () => Date.now() } = {}) {
+  const requestedAt = clock();
   try {
     let settling = false;
     try {
@@ -202,7 +235,19 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     }
     if (settling) return "deferred";
     deferredSinceMs = null;
-    return await refreshRankingMatviewsSafe(supabase, { captureExceptionFn });
+    return await runRefreshQueued(supabase, async (queued) => {
+      if (queued) {
+        const admittedAt = new Date(now.getTime() + Math.max(0, clock() - requestedAt));
+        try {
+          if (await isTrainingSettlementInProgress(supabase, { now: admittedAt })) return "deferred";
+        } catch (err) {
+          // best-effort: preserve the existing status-lookup fail-open policy;
+          // the actual refresh still validates every RPC and its heartbeat.
+          logger.warn?.(`⚠️  ranking refresh after training: queued status lookup failed, refreshing anyway: ${err.message}`);
+        }
+      }
+      return refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn });
+    });
   } catch (err) {
     // best-effort: en refresh-fejl må aldrig vælte træningsafregningen.
     logger.warn?.(`⚠️  ranking refresh after training failed (cron catches it): ${err.message}`);
@@ -224,7 +269,7 @@ export async function requestRankingMatviewRefresh(
     clock = () => Date.now(),
     nowFn = () => new Date(),
     setTimer = setTimeout,
-    refresh = (client, opts) => refreshRankingMatviewsGated(client, opts),
+    refresh = (client, opts) => refreshRankingMatviewsGated(client, { ...opts, clock, heartbeatNowFn: nowFn }),
     logger = console,
   } = {},
 ) {
