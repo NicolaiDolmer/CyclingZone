@@ -26,6 +26,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 import { isRaceLockedForTeam, loadTrainNowLockedDatesByTeam, raceStageDates } from "./trainNowLock.js"; // #6006
+import { indexGeneratorBindings, generatorBindingLocks } from "./raceEntryGeneratorBindings.ts";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -587,7 +588,7 @@ export async function runRaceEntryGenerator({
         supabase, table: "rider_condition", columns: "rider_id, injured_until",
         inColumn: "rider_id", ids: riderIds, orderBy: ["rider_id"],
         // #3896: kanonisk skades-filter (riderEligibility.applyInjuredFilter).
-        extra: (q) => applyInjuredFilter(q, copenhagenDateString()),
+        extra: (q) => applyInjuredFilter(q, todayStr),
       });
       if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
       injuredIds = new Set((injured || []).map((r) => r.rider_id));
@@ -607,6 +608,31 @@ export async function runRaceEntryGenerator({
   const ridersFor = (teamId, squad) => (squad === DEFAULT_SQUAD
     ? ridersByTeam.get(teamId)
     : youthRidersBySquadTeam.get(`${squad}|${teamId}`)) || [];
+
+  // #5860: the DB binds rider identity, not current ownership/pool/squad.
+  // One canonical binding_span per entry avoids loading every occupied day.
+  // Recorded participation
+  // survives completed races and entry deletion. Both reads are season-scoped.
+  const candidateIds = [...new Set([...ridersByTeam.values(), ...youthRidersBySquadTeam.values()]
+    .flat().map((r) => r.rider_id))];
+  const targetWindows = usableRaces.filter((r) => !startedRaceIds.has(r.id)).map((r) => windowByRace.get(r.id));
+  const firstTargetDay = Math.min(...targetWindows.map((w) => w.start));
+  const lastTargetDay = Math.max(...targetWindows.map((w) => w.end));
+  const bindingRows = [];
+  for (const table of ["race_entries", "race_day_participation"]) {
+    const { data, error } = await selectInChunks({
+      supabase, table, columns: table === "race_entries"
+        ? "race_id, rider_id, team_id, binding_span, races!inner(season_id)" : "race_id, rider_id, game_day",
+      inColumn: "rider_id", ids: targetWindows.length ? candidateIds : [],
+      orderBy: table === "race_entries" ? ["race_id", "rider_id"] : ["rider_id", "game_day"],
+      extra: (q) => table === "race_entries"
+        ? q.eq("races.season_id", seasonId).not("binding_span", "is", null)
+        : q.eq("season_id", seasonId).gte("game_day", firstTargetDay).lte("game_day", lastTargetDay),
+    });
+    if (error) throw new Error(`${table} (generator bindings): ${error.message}`);
+    bindingRows.push(data || []);
+  }
+  const canonicalBindings = indexGeneratorBindings(bindingRows[0], bindingRows[1]);
 
   // 8b. S3: load holdstrategier for egnede hold. rosterByTeam = holdets ryttere (til
   // stale-filter). Hold uden strategi-row/regler → null → uændret generator-adfærd.
@@ -743,6 +769,10 @@ export async function runRaceEntryGenerator({
           sizeRule: { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length },
         });
       }
+      lockedWindows.push(...generatorBindingLocks({
+        bindings: canonicalBindings, riderIds: ridersFor(team.id, poolSquad).map((r) => r.rider_id),
+        teamId: team.id, regeneratingRaceIds: new Set(teamRaces.map((r) => r.race_id)),
+      }));
       const assignment = assignTeamAcrossRaces({
         riders: ridersFor(team.id, poolSquad), races: teamRaces, lockedWindows,
         strategy: strategyByTeam.get(team.id) ?? null,
@@ -976,7 +1006,12 @@ export async function runRaceEntryGenerator({
   // færre picks (partiel fyldning, se autopickTeamSelection — aldrig en crash).
   async function siblingLockedWindows({ raceId, teamId, window }) {
     if (!window) return [];
-    const locked = [];
+    const locked = generatorBindingLocks({
+      bindings: canonicalBindings, riderIds: ridersFor(teamId, raceSquadOf(raceById.get(raceId))).map((r) => r.rider_id),
+      // All this team's mutable units may already have released their old rows
+      // through #5693's pre-delete. Fresh entries + staged picks below bind them.
+      teamId, regeneratingRaceIds: new Set(staged.filter((unit) => unit.team_id === teamId).map((unit) => unit.race_id)),
+    });
     // pagination-safe: bounded by ÉT holds SAMLEDE sæson-entries (typisk et par
     // hundrede rækker — antal-løb × trupstørrelse), langt under PostgREST's 1000-cap.
     const { data: otherRows, error: oErr } = await supabase
