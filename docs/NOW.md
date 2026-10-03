@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (3/10 aften): fast rytme fra nu, se [`OPERATING_PLAN.md`](OPERATING_PLAN.md)** (ejer-godkendt 3/10: morgen 08.30 + aften 20.15 i Claude Code, Codex bygger Stabilitet/Betaling/Fabrikken og rører aldrig NOW/MASTERPLAN). **(1)** Brand: #6095 gem af etapetaktik (ikke startet) og #5860 dobbeltbooking (sat op 3/10); Codex har #6115-kodefix. #6061 forebyggelse live 3/10 (PR #6119, `2abc92efd`, migration post-verificeret); historisk kompensation afventer ejer-go i #6129. **(2)** Søn 4/10: Udvikling 2.0 D1-D4 (#6110, spillersignaler på issuet) + kort #5912/#5897. **(3)** Man 5/10: mandagsstyring m. Discord-fund #6122-#6126, træningspakken (#6053 parkeret til da, #6123, #6060, #5915, #5485), flip-listen beta → alle, lovet #5965.
+> **🎯 Next action (3/10 aften): fast rytme fra nu, se [`OPERATING_PLAN.md`](OPERATING_PLAN.md)** (ejer-godkendt 3/10: morgen 08.30 + aften 20.15 i Claude Code, Codex bygger Stabilitet/Betaling/Fabrikken og rører aldrig NOW/MASTERPLAN). **(1)** Brand: #6095 gem af etapetaktik (ikke startet) og #5860 dobbeltbooking (sat op 3/10); #6115-kodefix PR #6128 reviewet 3/10: én blokering (sync med main, patch note 7.335 over 7.334), derefter ejer-go. #6061 forebyggelse live 3/10 (`2abc92efd`, migration post-verificeret); kompensation afventer genberegning + ejer-go i #6129. **(2)** Søn 4/10: Udvikling 2.0 D1-D4 (#6110, spillersignaler på issuet) + kort #5897 (#5912 kørt 1/10, kun spillersvar mangler). **(3)** Man 5/10: mandagsstyring m. Discord-fund #6122-#6126, træningspakken (#6053 parkeret til da, #6123, #6060, #5915, #5485), flip-listen beta → alle, lovet #5965. **Fra man 5/10 08.30:** beslutningsark ét ad gangen fra `docs/audits/2026-10-03-ejer-dashboard.md` (først #4514, #4714, #5901/#5902, #1461).
 >
-> **✅ 3/10:** #6117 liga-vagt + #6107 flag-batching merget og live; #6115 data repareret (5 forældreløse tilbud trukket tilbage, 2 AI-hold nedlagt). Lukket: #6114/#6108/#6043 + Sentry v11 #6040/#6037 (privatliv → #6121); død Deadline Day-cron → #6120. Audit: 7 lukket, 4 → done, 3 → todo (`.claude/audits/audit-2026-10-03.md`).
+> **✅ 3/10:** #6117, #6107, #6119 merget og live; #6115-data repareret. Backlog-audit: 52 lukket, 8 → done (`.claude/audits/audit-2026-10-03.md`).
 
 > **📌 #6110 Udvikling 2.0:** design-kort søn 4/10-man 5/10, byg uge 41.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code: github-housekeeping fuld-backlog-audit (3/10 aften, read-only indtil ejer-go). Codex arbejder på #6115 (claim på issuet).
+> **🤖 Working agent:** Ingen aktiv Claude Code-session. Codex arbejder på #6115 (PR #6128; claim på issuet).

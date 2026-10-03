@@ -6,11 +6,11 @@
 
 ## 🔴 Brand (nu)
 
-⚪ #6095 gem af etapetaktik overskriver alle etapers intentioner (spillerdata tabt, Giro) · ⚪ #5860 entry-generatoren dobbeltbooker stadig (Sentry 1-3/10, ejer 3/10) · 🔵 #6129 kompensation for tabte træningsdage (#6061-forebyggelse live 3/10; ejer-go på genberegnet hash) · 🟠 #6115 tilbud annulleres ved holdskifte (Codex; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🔵 #5912 tabte træningsdage 28/9 (kort søn) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ #6095 gem af etapetaktik overskriver alle etapers intentioner (spillerdata tabt, Giro) · ⚪ #5860 entry-generatoren dobbeltbooker stadig (Sentry 1-3/10, ejer 3/10) · 🔵 #6129 kompensation for tabte træningsdage (#6061-forebyggelse live 3/10; ejer-go på genberegnet hash) · 🟠 #6115 tilbud annulleres ved holdskifte (Codex; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
-🔵 **Flip-liste beta → alle** (flip lukker alle i samme tur): `training_train_now` (#6006/#6027) · `training_programs` (#4629, #5932) · `training_groups` (#6000) · `season_matrix_mobile` (#5124) · dagvalg #5685 · prognose #5933 · auto-hvile #5620 · historik #5947. **Træningspakke man 5/10:** #6035 (PR #6053) · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · **lovet:** #5965 analyse. Derefter #5949 · #5630 · #5539 · #5911 < 2 min (kun delvist).
+🔵 **Flip-liste beta → alle** (flip lukker alle i samme tur): `training_train_now` (#6006/#6027/#4847) · `training_fatigue_rules` (#4854) · `training_programs` (#4629, #5932) · `training_groups` (#6000) · `season_matrix_mobile` (#5124) · dagvalg #5685 · prognose #5933 · auto-hvile #5620 · historik #5947. **Træningspakke man 5/10:** #6035 (PR #6053) · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · **lovet:** #5965 analyse. Derefter #5949 · #5630 · #5539 · #5911 < 2 min (kun delvist).
 
 🔵 **Udvikling 2.0 [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110) (ejer 3/10, S4):** design søn 4/10-man 5/10 (kort D1-D7, ét ad gangen) → byg uge 41 (6.-10/10): kurve B #3564 · løbsdag + rolle #5950 · tilbagegang/løbsbremse #6109 (klar før S4→S5) · én kurve for AI/frie #6059. Spec `2026-10-03-udvikling-2-design.md`.
 
