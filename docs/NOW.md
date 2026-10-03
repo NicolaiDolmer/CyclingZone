@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (2/10 aften): LØBENE KØRER IGEN** (skemalæggeren tændt 19.01 efter ejer-go; 23 forfaldne etaper kørt i første kørsel uden fejl, alle 13 genstartsløb bundet til `orders_gc_v2`). Næste: **(1)** tjek at aftenens træning afregnes korrekt (sweep ≥ kl. 20) og at de 14 resterende forfaldne etaper kører; **(2)** følg de første rigtige v2-etaper mod den endelige test (privat: `balance-internals/final-2-10/`), især udbrudsvindere på bjerg; **(3)** **#6098** liga-vagten giver falsk rød under planlagt pause (blokerede 3 merges 2/10); **(4)** roller der mangler: #5981 beskyttet løjtnant, #5982 hjælpere gemt til finalen (design med ejeren, ét spørgsmål ad gangen).
+> **🎯 Next action (3/10 Codex):** Driftkontrol: ingen uafviklede etaper før 3/10. **#6061:** 7 hold i efterkontrol; gentagen karantæne reproduceret (løbsbelastning før manglende starttilstand). Ejer-valg om tabte dage afventes; bevis på issue. **#6098:** rettet i PR **#6117**, lokal verifikation og uafhængigt review færdige. Prod-facit før/efter identisk; merge blokeret af **#6115**, CodeRabbit af review-loft. Næste: afklar træningsgenopretning og liga-fund; følg v2-etaper mod privat test, især udbrud på bjerg; roller #5981/#5982 designes med ejeren.
 >
 > **✅ 2/10:** live (aften): #6084/#6086 bjergetaper + `orders_gc_v2` aktuel, #6088/#6091 kaptajners tidstab, #6089/#6090 udbrud (målefejl rettet), #6092+#6073/#6094 kuperet + rullende, #6097/#6099 AI-hold forsøger udbrud + kamp om pladserne, patch note 7.332 (#6096). Endelig test: 13 genstartsløb × 74 vejetaper + replay 208 S4-etaper + flerdags-kæde. #6101 fair play-regel om AI-værktøjer og automatisering (7.333, #6100). Tal privat i balance-internals/.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Codex 3/10: driftkontrol → #6061 karantæner → #6098 liga-vagt (ejer-go i chat).
+> **🤖 Working agent:** Ingen aktiv session. Codex 3/10: #6117 afventer CI/review og #6115; #6061 afventer ejer-valg. Ingen prod-skrivning.
