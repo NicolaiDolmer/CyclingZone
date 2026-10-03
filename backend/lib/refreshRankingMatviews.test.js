@@ -66,6 +66,217 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = 
   };
 }
 
+test("#5900: cron, finalization and training share one active refresh and one fresh follow-up", async () => {
+  const supabase = createMockSupabase();
+  let releaseFirst;
+  const firstGate = new Promise((resolve) => { releaseFirst = resolve; });
+  let active = 0;
+  let peak = 0;
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    const call = ++calls;
+    peak = Math.max(peak, ++active);
+    if (call === 1) await firstGate;
+    active--;
+    return { error: null };
+  };
+  const fixedNow = new Date("2026-10-03T10:00:00Z");
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => fixedNow });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const cron = refreshRankingMatviewsGated(supabase, { now: fixedNow, heartbeatNowFn: () => fixedNow, clock: () => 0 });
+  const training = refreshRankingsAfterTrainingSettlement({ supabase, now: fixedNow, heartbeatNowFn: () => fixedNow, clock: () => 0 });
+  const finalization = requestRankingMatviewRefresh(supabase, { nowFn: () => fixedNow, clock: () => COALESCE_WINDOW_MS + 1 });
+  const recovery = refreshRankingMatviewsSafe(supabase, { nowFn: () => fixedNow });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  // Release even on failure, so a failed assertion cannot hang the suite.
+  releaseFirst();
+  const outcomes = await Promise.all([first, cron, training, finalization, recovery]);
+  assert.deepEqual(outcomes, [true, true, true, true, true]);
+  assert.equal(peak, 1, "the five refresh sources must never overlap RPCs");
+  assert.equal(calls, ALL_RPCS.length * 2, "requests after the first snapshot share one new pass");
+  assert.equal(supabase.upsertCalls.length, 2);
+});
+
+test("#5900: a queued gated pass rechecks training when it finally starts", async () => {
+  const workRows = [];
+  const supabase = createMockSupabase({ workRows });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) await gate;
+    return { error: null };
+  };
+  const now = new Date("2026-10-03T17:59:00Z");
+  let elapsed = 0;
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => now });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const pending = refreshRankingMatviewsGated(supabase, { now, clock: () => elapsed,
+    heartbeatNowFn: () => now, logger: quietLogger });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  workRows.push({ tick_date: "2026-10-03", status: "pending" });
+  elapsed = 2 * 60 * 1000;
+  release();
+  assert.equal(await first, true);
+  assert.equal(await pending, "deferred", "training began while the pass waited for admission");
+  assert.equal(calls, ALL_RPCS.length, "no second pass competes with training");
+});
+
+test("#5900: queued training-close retains its settlement date across midnight", async () => {
+  const workRows = [];
+  const supabase = createMockSupabase({ workRows });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) await gate;
+    return { error: null };
+  };
+  const now = new Date("2026-10-03T21:59:00Z");
+  let elapsed = 0;
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => now });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const pending = refreshRankingsAfterTrainingSettlement({ supabase, now, clock: () => elapsed,
+    heartbeatNowFn: () => now, logger: quietLogger });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  workRows.push({ tick_date: "2026-10-03", status: "partial" });
+  elapsed = 2 * 60 * 1000;
+  release();
+  assert.equal(await first, true);
+  assert.equal(await pending, "deferred", "midnight cannot release an unfinished requested settlement date");
+  assert.equal(calls, ALL_RPCS.length);
+});
+
+test("#5900: merging a new-day training close cannot discard the pending previous date", async () => {
+  const workRows = [];
+  const supabase = createMockSupabase({ workRows });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) await gate;
+    return { error: null };
+  };
+  const beforeMidnight = new Date("2026-10-03T21:59:00Z");
+  let elapsed = 0;
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => beforeMidnight });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const options = { clock: () => elapsed, heartbeatNowFn: () => beforeMidnight, logger: quietLogger };
+  const previousDate = refreshRankingsAfterTrainingSettlement({ supabase, now: beforeMidnight, ...options });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  workRows.push({ tick_date: "2026-10-03", status: "partial" });
+  elapsed = 2 * 60 * 1000;
+  const newDate = refreshRankingsAfterTrainingSettlement({ supabase, now: new Date("2026-10-03T22:01:00Z"), ...options });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  release();
+  assert.equal(await first, true);
+  assert.equal(await previousDate, "deferred");
+  assert.equal(await newDate, "deferred");
+  assert.equal(calls, ALL_RPCS.length);
+});
+
+for (const safeOverride of [false, true]) {
+test(`#5900: queue waiting does not restart an expired maximum training deferral (Safe override=${safeOverride})`, async () => {
+  __resetRankingRefreshStateForTests();
+  const now = new Date("2026-10-03T18:30:00Z");
+  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-03", status: "pending" }] });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) await gate;
+    return { error: null };
+  };
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => now });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  let clock = 0;
+  const opts = { now, clock: () => clock, heartbeatNowFn: () => now, logger: quietLogger };
+  assert.equal(await refreshRankingMatviewsGated(supabase, opts), "deferred");
+  clock = MAX_DEFER_MS;
+  const expired = refreshRankingMatviewsGated(supabase, opts);
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const safe = safeOverride ? refreshRankingMatviewsSafe(supabase, { nowFn: () => now }) : null;
+  release();
+  assert.equal(await first, true);
+  assert.equal(await expired, true, "the already expired interval survives queue waiting");
+  if (safe) assert.equal(await safe, true);
+  assert.equal(calls, ALL_RPCS.length * 2);
+  assert.equal(await refreshRankingMatviewsGated(supabase, opts), "deferred", "the clock resets after a real pass");
+});
+}
+
+test("#5900: finalization timer cannot overlap a refresh slower than its window", async () => {
+  const supabase = createMockSupabase();
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let completed;
+  const followUpDone = new Promise((resolve) => { completed = resolve; });
+  let active = 0;
+  let peak = 0;
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    peak = Math.max(peak, ++active);
+    if (++calls === 1) await gate;
+    active--;
+    return { error: null };
+  };
+  const upsert = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const builder = upsert(table);
+    if (table !== "matview_refresh_heartbeat") return builder;
+    const save = builder.upsert;
+    builder.upsert = async (...args) => {
+      const result = await save(...args);
+      if (supabase.upsertCalls.length === 2) completed();
+      return result;
+    };
+    return builder;
+  };
+  const { timers, setTimer } = fakeTimers();
+  let clock = 0;
+  const nowFn = () => new Date("2026-10-03T10:00:00Z");
+  const options = { clock: () => clock, nowFn, setTimer, logger: quietLogger };
+  const first = requestRankingMatviewRefresh(supabase, options);
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  clock = 1_000;
+  assert.equal(await requestRankingMatviewRefresh(supabase, options), "coalesced");
+  clock = COALESCE_WINDOW_MS;
+  timers[0].fn();
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  release();
+  assert.equal(await first, true);
+  await followUpDone;
+  assert.equal(peak, 1);
+  assert.equal(calls, ALL_RPCS.length * 2);
+});
+
+test("#5900: a failed pass does not consume the successful pending pass's heartbeat", async () => {
+  const supabase = createMockSupabase();
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) { await gate; return { error: { message: "upstream" } }; }
+    return { error: null };
+  };
+  const nowFn = () => new Date("2026-10-03T10:00:00Z");
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const pending = refreshRankingMatviewsSafe(supabase, { nowFn });
+  release();
+  assert.equal(await first, false);
+  assert.equal(await pending, true);
+  assert.equal(supabase.upsertCalls.length, 1);
+  assert.equal(supabase.upsertCalls[0].row.refreshed_at, nowFn().toISOString());
+});
+
 test("refreshRankingMatviewsSafe — alle lykkes: kalder alle RPC'er + upserter heartbeat", async () => {
   const supabase = createMockSupabase();
   const captured = [];
