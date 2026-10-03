@@ -7,6 +7,8 @@
   nye dataforespørgsler samles i en frisk opfølgningspass.
 - Et pending gate-tjek skal genlæses ved faktisk start; ellers kan træning
   begynde mens jobbet venter. Ubetinget Safe beholder sin bypass-kontrakt.
+- Pending merge skal bevare tidligere datoers gates, også over midnat.
+  Seneste callbacks snapshot-options kan bruges uden at slette tidligere krav.
 - Queue failure rydder admission og bevarer næste pass. Heartbeat skrives
   fortsat kun efter alle RPC'er har været vellykkede.
 - Dette løser ikke schedulerbudget, holdbare claims/restarts, cross-process

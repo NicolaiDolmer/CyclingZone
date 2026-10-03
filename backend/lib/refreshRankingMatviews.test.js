@@ -124,6 +124,61 @@ test("#5900: a queued gated pass rechecks training when it finally starts", asyn
   assert.equal(calls, ALL_RPCS.length, "no second pass competes with training");
 });
 
+test("#5900: queued training-close retains its settlement date across midnight", async () => {
+  const workRows = [];
+  const supabase = createMockSupabase({ workRows });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) await gate;
+    return { error: null };
+  };
+  const now = new Date("2026-10-03T21:59:00Z");
+  let elapsed = 0;
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => now });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const pending = refreshRankingsAfterTrainingSettlement({ supabase, now, clock: () => elapsed,
+    heartbeatNowFn: () => now, logger: quietLogger });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  workRows.push({ tick_date: "2026-10-03", status: "partial" });
+  elapsed = 2 * 60 * 1000;
+  release();
+  assert.equal(await first, true);
+  assert.equal(await pending, "deferred", "midnight cannot release an unfinished requested settlement date");
+  assert.equal(calls, ALL_RPCS.length);
+});
+
+test("#5900: merging a new-day training close cannot discard the pending previous date", async () => {
+  const workRows = [];
+  const supabase = createMockSupabase({ workRows });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let calls = 0;
+  supabase.rpc = async (name) => {
+    supabase.rpcCalls.push(name);
+    if (++calls === 1) await gate;
+    return { error: null };
+  };
+  const beforeMidnight = new Date("2026-10-03T21:59:00Z");
+  let elapsed = 0;
+  const first = refreshRankingMatviewsSafe(supabase, { nowFn: () => beforeMidnight });
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  const options = { clock: () => elapsed, heartbeatNowFn: () => beforeMidnight, logger: quietLogger };
+  const previousDate = refreshRankingsAfterTrainingSettlement({ supabase, now: beforeMidnight, ...options });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  workRows.push({ tick_date: "2026-10-03", status: "partial" });
+  elapsed = 2 * 60 * 1000;
+  const newDate = refreshRankingsAfterTrainingSettlement({ supabase, now: new Date("2026-10-03T22:01:00Z"), ...options });
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  release();
+  assert.equal(await first, true);
+  assert.equal(await previousDate, "deferred");
+  assert.equal(await newDate, "deferred");
+  assert.equal(calls, ALL_RPCS.length);
+});
+
 for (const safeOverride of [false, true]) {
 test(`#5900: queue waiting does not restart an expired maximum training deferral (Safe override=${safeOverride})`, async () => {
   __resetRankingRefreshStateForTests();

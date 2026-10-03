@@ -114,8 +114,11 @@ og proces kører én pass ad gangen; callers under en aktiv pass samles i en fri
 opfølgning. Nye requests under opfølgningen kan kræve endnu en pass. En caller må
 ikke kvitteres med et snapshot, som startede før callerens nye data.
 Træningsgate genlæses ved faktisk start af et ventende job; ubetinget Safe beholder
-sin bypass-kontrakt. RPC-rækkefølge, `false`/`deferred`/`coalesced` og heartbeat-reglen
-bevares. En fejl i første pass forbruger ikke opfølgningen.
+sin bypass-kontrakt. Et ventende træningslukningsjob beholder sin forespørgselsdato
+over midnat. RPC-rækkefølge, `false`/`deferred`/`coalesced` og heartbeat-reglen
+bevares. Samling af pending jobs bevarer datogates fra tidligere callers;
+kun ubetinget Safe eller udløbet maksimal udskydelse tilsidesætter dem.
+En fejl i første pass forbruger ikke opfølgningen.
 Dette er et regressionsværn for process-lokal samtidighed, ikke et bevis for
 #5692's ejer-godkendte friskhedsmål eller fuld load-test. Schedulerbudget, holdbare
 claims/restarts, cross-process coordination og concurrent transport er separate.

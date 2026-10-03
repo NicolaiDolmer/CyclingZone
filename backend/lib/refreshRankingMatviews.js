@@ -211,13 +211,17 @@ export async function refreshRankingMatviewsGated(
   const gateOptions = { now, clock, maxDeferMs, logger };
   const gateState = await rankingRefreshGateState(supabase, gateOptions);
   if (gateState === "deferred") return "deferred";
-  return runRefreshQueued(supabase, async (queued) => {
-    if (queued && gateState !== "expired") {
+  return runRefreshQueued(supabase,
+    () => refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn }),
+    gateState === "expired" ? 1 : 0, {
+      key: `gated:${copenhagenDateString(now)}:${maxDeferMs}`,
+      check: async () => {
       const admittedAt = new Date(now.getTime() + Math.max(0, clock() - requestedAt));
-      if (await rankingRefreshGateState(supabase, { ...gateOptions, now: admittedAt }) === "deferred") return "deferred";
-    }
-    return refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn });
-  }, gateState === "expired" ? 1 : 0);
+      const state = await rankingRefreshGateState(supabase, { ...gateOptions, now: admittedAt });
+      if (state === "deferred") return { kind: "skip", result: "deferred" };
+      return { kind: state === "expired" ? "force" : "proceed" };
+      },
+    });
 }
 
 // Træningslukningen kalder denne efter et sweep der afregnede dagens hold. Er
@@ -234,20 +238,23 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
       logger.warn?.(`⚠️  ranking refresh after training: status lookup failed, refreshing anyway: ${err.message}`);
     }
     if (settling) return "deferred";
-    deferredSinceMs = null;
-    return await runRefreshQueued(supabase, async (queued) => {
-      if (queued) {
+    return await runRefreshQueued(supabase,
+      () => refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn }),
+      0, {
+        key: `training-close:${copenhagenDateString(now)}`,
+        check: async () => {
         const admittedAt = new Date(now.getTime() + Math.max(0, clock() - requestedAt));
         try {
-          if (await isTrainingSettlementInProgress(supabase, { now: admittedAt })) return "deferred";
+          const dates = [...new Set([copenhagenDateString(now), copenhagenDateString(admittedAt)])];
+          if (await isTrainingSettlementInProgress(supabase, { now: admittedAt, dates })) return { kind: "skip", result: "deferred" };
         } catch (err) {
           // best-effort: preserve the existing status-lookup fail-open policy;
           // the actual refresh still validates every RPC and its heartbeat.
           logger.warn?.(`⚠️  ranking refresh after training: queued status lookup failed, refreshing anyway: ${err.message}`);
         }
-      }
-      return refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn });
-    });
+        return { kind: "proceed" };
+        },
+      });
   } catch (err) {
     // best-effort: en refresh-fejl må aldrig vælte træningsafregningen.
     logger.warn?.(`⚠️  ranking refresh after training failed (cron catches it): ${err.message}`);

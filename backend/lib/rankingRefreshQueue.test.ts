@@ -58,3 +58,35 @@ test('an unconditional pending request cannot be replaced by a gated request', a
   assert.equal(await unconditional, true);
   assert.equal(await gated, true);
 });
+
+test('merging pending work retains distinct admission requirements', async () => {
+  const run = createRankingRefreshQueue<boolean | 'deferred'>();
+  const client = {};
+  const gate = Promise.withResolvers<void>();
+  let passes = 0;
+  const first = run(client, async () => { passes++; await gate.promise; return true; });
+  const old = run(client, async () => { passes++; return true; }, 0,
+    { key: 'old-date', check: async () => ({ kind: 'skip', result: 'deferred' }) });
+  const current = run(client, async () => { passes++; return true; }, 0,
+    { key: 'current-date', check: async () => ({ kind: 'proceed' }) });
+  gate.resolve();
+  assert.equal(await first, true);
+  assert.equal(await old, 'deferred');
+  assert.equal(await current, 'deferred');
+  assert.equal(passes, 1);
+});
+
+test('expiry at actual admission overrides a normal training deferral', async () => {
+  const run = createRankingRefreshQueue<boolean | 'deferred'>();
+  const client = {};
+  const gate = Promise.withResolvers<void>();
+  const first = run(client, async () => { await gate.promise; return true; });
+  const delayed = run(client, async () => true, 0,
+    { key: 'training', check: async () => ({ kind: 'skip', result: 'deferred' }) });
+  const expired = run(client, async () => true, 0,
+    { key: 'expired-at-admission', check: async () => ({ kind: 'force' }) });
+  gate.resolve();
+  assert.equal(await first, true);
+  assert.equal(await delayed, true);
+  assert.equal(await expired, true);
+});
