@@ -6,7 +6,7 @@
 
 ## 🔴 Brand (nu)
 
-⚪ #6095 gem af etapetaktik overskriver alle etapers intentioner (spillerdata tabt, Giro) · ⚪ #5860 entry-generatoren dobbeltbooker stadig (Sentry 1-3/10, ejer 3/10) · 🟠 #6061 karantæne hver aften (Codex, PR #6119; ejer-valg om tabte dage) · 🟠 #6115 tilbud annulleres ved holdskifte (Codex; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🔵 #5912 tabte træningsdage 28/9 (kort søn) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ #6095 gem af etapetaktik overskriver alle etapers intentioner (spillerdata tabt, Giro) · ⚪ #5860 entry-generatoren dobbeltbooker stadig (Sentry 1-3/10, ejer 3/10) · 🔵 #6129 kompensation for tabte træningsdage (#6061-forebyggelse live 3/10; ejer-go på genberegnet hash) · 🟠 #6115 tilbud annulleres ved holdskifte (Codex; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🔵 #5912 tabte træningsdage 28/9 (kort søn) · 🔵 #5897 217 bestyrelser (kort søn).
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
@@ -32,7 +32,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Søn 4/10-man 5/10:** Udvikling 2.0 D1-D7 (#6110) · Mentale evner #5268 (A: eksisterende ryttere røres ikke, 0 ratingfald · B: ratingneutral omregning) · #5827 point-flyt (følger #5268) · fast søndagstidspunkt for værdikørslen (#5842; kører kl. 06 indtil da) · #5833 pause mellem sæsoner til S5 · #6061 tabte dage i aftentræningens karantæne. **Ny triage man 5/10:** Discord-fund #6122-#6126.
+**Søn 4/10-man 5/10:** Udvikling 2.0 D1-D7 (#6110) · Mentale evner #5268 (A: eksisterende ryttere røres ikke, 0 ratingfald · B: ratingneutral omregning) · #5827 point-flyt (følger #5268) · fast søndagstidspunkt for værdikørslen (#5842; kører kl. 06 indtil da) · #5833 pause mellem sæsoner til S5 · #6129 kompensation for tabte træningsdage (16 ryttere/130 slots). **Ny triage man 5/10:** Discord-fund #6122-#6126.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
