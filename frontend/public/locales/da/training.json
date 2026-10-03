@@ -494,7 +494,11 @@
     "seededHint": "Viser hvad rytteren træner nu. Din første ændring gemmer det som hans egen plan.",
     "stageLocked": "Etape",
     "stageLockedTitle": "Låst af løbet",
-    "listNote": "Tryk på et program for at se ugen. Det kopieres ind i Plan, så du kan rette hvert felt bagefter."
+    "listNote": "Tryk på et program for at se ugen. Det kopieres ind i Plan, så du kan rette hvert felt bagefter.",
+    "pickTarget": "Vælg først en rytter eller gruppe",
+    "fitsType": "Passer til {type}",
+    "otherPrograms": "Andre programmer",
+    "current": "Nuværende"
   },
   "dailyReceipt": {
     "status": {
