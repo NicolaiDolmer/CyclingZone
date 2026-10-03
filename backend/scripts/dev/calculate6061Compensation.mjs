@@ -36,6 +36,11 @@ export async function calculateCompensation({state,fullRiders,abilityRows,season
   if((currentCondition?.injured_until&&currentCondition.injured_until>=copenhagenDateString(new Date(state.asOf)))||Number(currentCondition?.injury_race_days_left)>0){blocked.push({rider_id:id,reason:'injury_state_requires_review'});continue;}
   const entries=inventory.candidates.filter(c=>c.rider_id===id&&c.team_id===rider.team_id);
   if(!entries.length){blocked.push({rider_id:id,reason:'historical_owner_differs'});continue;}
+  const affected=inventory.candidates.filter(c=>c.rider_id===id&&c.missing_game_days.length);
+  const waived=new Set(['missing_opening_condition','missing_historical_training_inputs']);
+  const hard=affected.flatMap(c=>c.blockers).filter(b=>!waived.has(b));
+  if(hard.length){blocked.push({rider_id:id,reason:`inventory_blocker:${[...new Set(hard)].sort().join(',')}`});continue;}
+  if(!currentCondition&&affected.some(c=>c.category==='missing_state_with_history_review')){blocked.push({rider_id:id,reason:'missing_state_with_applied_history'});continue;}
   const seasonIds=[...new Set(entries.map(c=>c.season_id))];
   if(seasonIds.length!==1){blocked.push({rider_id:id,reason:'multiple_seasons'});continue;}
   const season=seasons.find(s=>s.id===seasonIds[0]);

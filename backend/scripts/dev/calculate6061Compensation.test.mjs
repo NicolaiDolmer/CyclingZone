@@ -15,17 +15,23 @@ test('recorded race receives race development even when current plan is rest',as
  assert.ok(result.plans[0].totalProgress>0);assert.equal(result.plans[0].perDay.filter(d=>d.kind==='free_slot').every(d=>d.progress===0),true);
 });
 test('existing receipts cannot be credited again',async()=>{
- const data=input();data.state.ticks=[{rider_id:'r',season_id:'s',game_day:20,team_id:'t',tick_date:'2026-10-02'}];
+ const data=input();data.state.conditions=[{rider_id:'r',form:50,fatigue:0}];data.state.ticks=[{rider_id:'r',season_id:'s',game_day:20,team_id:'t',tick_date:'2026-10-02'}];
  assert.equal((await calculateCompensation(data)).summary.rider_days,4);
 });
 test('a fully receipted first date does not hide later missing dates',async()=>{
- const data=input();data.state.work.unshift({...data.state.work[0],tick_date:'2026-10-01',game_days:[15,16,17,18,19]});
+ const data=input();data.state.conditions=[{rider_id:'r',form:50,fatigue:0}];data.state.work.unshift({...data.state.work[0],tick_date:'2026-10-01',game_days:[15,16,17,18,19]});
  data.state.ticks=[15,16,17,18,19].map(game_day=>({rider_id:'r',season_id:'s',game_day}));
  assert.equal((await calculateCompensation(data)).summary.rider_days,5);
 });
-test('same global slot in two owner rows is never credited twice',async()=>{
+test('same global slot in two owner rows requires review instead of compensation',async()=>{
  const data=input();data.state.work.push({...data.state.work[0],team_id:'former'});
- assert.equal((await calculateCompensation(data)).summary.rider_days,5);
+ const result=await calculateCompensation(data);assert.equal(result.summary.rider_days,0);assert.equal(result.summary.blocked_riders,1);
+});
+test('consumed load or applied history without condition cannot enter the write batch',async()=>{
+ const data=input();data.state.loads=[{rider_id:'r',season_id:'s',tick_date:'2026-10-02',game_day:20,consumed_at:'2026-10-02T18:00:00Z'}];
+ data.stageBySlot['r:s:20']={raceId:'race',stageNumber:1,profileType:'mountain'};
+ assert.equal((await calculateCompensation(data)).summary.rider_days,0);
+ data.state.loads=[];data.state.settlements=[{rider_id:'r'}];assert.equal((await calculateCompensation(data)).summary.rider_days,0);
 });
 test('a bound day without a stage is legitimate rest under the current motor',async()=>{
  const data=input();data.boundBySlot={'r:s:20':true,'r:s:21':true,'r:s:22':true,'r:s:23':true,'r:s:24':true};
