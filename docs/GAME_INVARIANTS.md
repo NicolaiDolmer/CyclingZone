@@ -95,6 +95,10 @@ aldrig tilbagefald til hård sletning. Den eksplicitte relaunch-wipe er en separ
 dens AI-reset bevarer nedlagte hold og afviser aktive tilbudsreferencer før første sletning.
 Audit må kun fratrække en frisk AI-markør med en konkret, levende blokering; markøren alene
 er ikke bevis. Uforklaret overskud, et stallet blokerende løb eller overskredet ventefrist fejler `league-size-invariant`.
+Ved eksplicit slukket `stage_scheduler_enabled` må en frisk, levende løbsbinding
+ikke blive til et stall-fund alene på grund af et forfaldent etapetidspunkt (#6098).
+Auditten bruger schedulerens flag-semantik; fejl, manglende eller ukendt værdi er
+ikke pausebevis og stopper auditen med fejl. Genstart genåbner stall-målingen.
 Auditens samlede markørgrænse er fortsat 120 timer; en ny blokeringsårsag forlænger
 ikke audit-fritagelsen. Langvarigt overskud kræver stadig en synlig reaktion.
 Dette præciserer audit-delen af occupancy-reglen ovenfor; signup-balanceringens tæller er uændret.
