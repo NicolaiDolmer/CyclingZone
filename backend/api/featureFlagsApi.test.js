@@ -26,8 +26,13 @@ function fakeSupabase(rows, { failKeys = [] } = {}) {
     reads,
     from(table) {
       return {
-        select() {
+        select(columns) {
           return {
+            async in(column, keys) {
+              reads.push({ table, columns, column, keys: [...keys] });
+              if (keys.some((key) => failKeys.includes(key))) return { data: null, error: { message: "boom" } };
+              return { data: keys.filter((key) => Object.hasOwn(rows, key)).reverse().map((key) => ({ key, value: rows[key] })), error: null };
+            },
             eq(_column, key) {
               reads.push({ table, key });
               return {
@@ -122,8 +127,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
 test("laeser KUN allowlistens noegler i app_config, aldrig resten af tabellen", async (t) => {
   const f = await fixture(t);
   const body = await (await f.call(null)).json();
-  assert.deepEqual(f.supabase.reads.map((r) => r.table), PLAYER_VISIBLE_FLAG_KEYS.map(() => "app_config"));
-  assert.deepEqual(f.supabase.reads.map((r) => r.key).sort(), [...PLAYER_VISIBLE_FLAG_KEYS].sort());
+  assert.deepEqual(f.supabase.reads, [{ table: "app_config", columns: "key,value", column: "key", keys: [...PLAYER_VISIBLE_FLAG_KEYS] }]);
   for (const secret of ["market_value_weekly_cap", "email_loop_enabled", "stage_scheduler_enabled"]) {
     assert.equal(Object.hasOwn(body.flags, secret), false, `${secret} laekkede ud af endpointet`);
   }
@@ -142,9 +146,9 @@ test("gammelt boolean-skema honoreres: true er on, false er off", async (t) => {
   assert.equal(body.flags.training_tick_per_race_day, false);
 });
 
-test("manglende raekke, ukendt vaerdi og DB-fejl er alle off (fail-safe)", async (t) => {
+test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) => {
   const rows = { board_mandate_model_enabled: "shadow" };
-  const f = await fixture(t, { rows, failKeys: ["training_tick_per_race_day"] });
+  const f = await fixture(t, { rows });
   const res = await f.call(null);
   assert.equal(res.status, 200);
   const body = await res.json();
@@ -217,4 +221,50 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     season_matrix_mobile: false,
     training_groups: false,
   });
+});
+
+test("batch-laesning: DB-fejl er synlig for drift og giver aldrig adgang", async (t) => {
+  const f = await fixture(t, { rows: { race_engine_v4: "on" }, failKeys: ["race_engine_v4"] });
+  const res = await f.call(null);
+  assert.equal(res.status, 200);
+  assert.ok(Object.values((await res.json()).flags).every((value) => value === false));
+  assert.equal(f.reported.length, 1);
+  assert.match(f.reported[0].message, /boom/);
+});
+
+test("batch-laesning: flag-flips ses paa naeste kald uden delt cache", async () => {
+  const rows = { race_engine_v4: "on", board_mandate_model_enabled: "beta" };
+  const client = fakeSupabase(rows);
+  assert.equal((await readPlayerFeatureFlags(client, { isBetaTester: true })).race_engine_v4, true);
+  rows.race_engine_v4 = "off";
+  const next = await readPlayerFeatureFlags(client);
+  assert.equal(next.race_engine_v4, false);
+  assert.equal(next.board_mandate_model_enabled, false);
+  assert.equal(client.reads.length, 2);
+});
+
+test("batch-laesning: kastet transportfejl lukker alle flag og rapporteres", async () => {
+  const failures = [];
+  const client = { from() { throw new Error("transport unavailable"); } };
+  const flags = await readPlayerFeatureFlags(client, { isBetaTester: true, reportError: (error) => failures.push(error) });
+  assert.ok(Object.values(flags).every((value) => value === false));
+  assert.equal(failures.length, 1);
+});
+
+test("batch-laesning: malformet DB-svar giver aldrig adgang", async () => {
+  const failures = [];
+  const client = { from: () => ({ select: () => ({ in: async () => ({ data: { race_engine_v4: "on" }, error: null }) }) }) };
+  const flags = await readPlayerFeatureFlags(client, { isBetaTester: true, reportError: (error) => failures.push(error) });
+  assert.ok(Object.values(flags).every((value) => value === false));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0].message, /invalid app_config response/);
+});
+
+test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {
+  const failures = [];
+  const client = { from: () => ({ select: () => ({ in: async () => ({ data: null, error: null }) }) }) };
+  const flags = await readPlayerFeatureFlags(client, { reportError: (error) => failures.push(error) });
+  assert.ok(Object.values(flags).every((value) => value === false));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0].message, /invalid app_config response/);
 });
