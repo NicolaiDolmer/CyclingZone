@@ -58,6 +58,14 @@ udgangspunkt oprettes i samme transaktion. Eksisterende tilstande, skader og
 registreringer ændres aldrig af dette trin; historiske datoer og karantæner kræver
 eksplicit efterregulering. Reglen omfatter alle trupper, som den fælles motor.
 
+Forebyggelse #6061 (ejer-go 3/10): ved oprettelse af en ejet rytter eller et
+reelt ejerskifte materialiseres den samme manglende førstegangstilstand i
+oprettelses-/købstransaktionen, før første løbsbelastning kan blokere den.
+Samme historikværn gælder; eksisterende tilstand/skade, tidligere aktiviteter
+og frosne datoer ændres ikke. Funktionen er invoker og åbner ingen klientgrants.
+Installation efterregulerer ingen eksisterende rytter. Tabte dage har separat
+read-only recovery-manifest og kræver ejer-go til den konkrete skrivning.
+
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
 i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
