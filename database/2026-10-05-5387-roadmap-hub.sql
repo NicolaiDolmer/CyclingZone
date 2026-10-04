@@ -148,10 +148,13 @@ ALTER TABLE known_issue_reports ENABLE ROW LEVEL SECURITY;
 -- Tabel-grants (efter #2830 får nye tabeller kun SELECT som default; uden
 -- disse rammer en skrivning 42501 før RLS overhovedet evalueres, jf. #4943).
 -- Ingen DELETE på known_issues/known_issue_updates: fejl lukkes via status.
-GRANT SELECT ON known_issues, known_issue_updates TO anon;
-GRANT SELECT, INSERT, UPDATE ON known_issues, known_issue_updates TO authenticated;
-GRANT SELECT, INSERT, DELETE ON known_issue_reports TO authenticated;
-REVOKE ALL ON known_issue_reports FROM anon;
+-- Én tabel pr. linje (scripts/lint-sql-policy-grants.mjs læser kun den form).
+GRANT SELECT ON public.known_issues TO anon;
+GRANT SELECT ON public.known_issue_updates TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.known_issues TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.known_issue_updates TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.known_issue_reports TO authenticated;
+REVOKE ALL ON public.known_issue_reports FROM anon;
 
 -- To læse-policies pr. tabel, som roadmap_items: anon har ikke EXECUTE på
 -- is_admin() (#5153), så anon-policyen må ikke kalde den.
