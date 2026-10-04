@@ -75,11 +75,12 @@ features:
     area: race-engine
     title_en: Race engine v4
     title_da: Løbsmotor v4
-    state: dormant
+    state: live
+    flag: race_engine_v4
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 3855
-    verified: 2026-09-07
-    note: Off i prod (#4951).
+    verified: 2026-10-04
+    note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
   - id: race-notify-outbox
     area: race-engine
@@ -290,12 +291,11 @@ features:
     area: market
     title_en: Rider value on the same abilities as the rating
     title_da: Rytterværdi på samme evner som ratingen
-    state: dormant
-    flag: rider_valuation_model
+    state: live
     ssot: docs/ECONOMY_RULES.md
     epic: 5443
-    verified: 2026-09-21
-    note: PR #5446, nøglen står på v4. Ejer flipper til v5 + ekstraordinær kørsel (runbook 5443); lønnen har egen nøgle rider_production_value_model.
+    verified: 2026-10-04
+    note: Modelnøglen rider_valuation_model = v6 siden 26/9 (læst i prod 4/10; ikke on/off, derfor ikke i flag). Lønnen kører stadig v4 (rider_production_value_model).
 
   # --- squad ---------------------------------------------------------------
   - id: contracts
@@ -465,8 +465,30 @@ features:
     flag: training_programs
     ssot: docs/TRAINING_RULES.md
     epic: 4629
-    verified: 2026-09-27
+    verified: 2026-10-04
     note: 'PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil.'
+
+  - id: training-program-cells
+    area: training
+    title_en: Training cells per race day (35 cells)
+    title_da: Træningsfelter pr. løbsdag (35 felter)
+    state: live
+    flag: training_program_cells
+    ssot: docs/TRAINING_RULES.md
+    epic: 5932
+    verified: 2026-10-04
+    note: 'On for alle 1/10 (patch note 7.330; læst i prod 4/10). Prognosen #5933 følger samme flag.'
+
+  - id: training-fatigue-rules
+    area: training
+    title_en: Fatigue limit (player-set rules)
+    title_da: Træthedsgrænse (spillerens regler)
+    state: live
+    flag: training_fatigue_rules
+    ssot: docs/TRAINING_RULES.md
+    epic: 4854
+    verified: 2026-10-04
+    note: 'On for alle 1/10 (patch note 7.330; læst i prod 4/10). Inkl. auto-hvile #5620.'
 
   # --- academy -------------------------------------------------------------
   - id: academy
