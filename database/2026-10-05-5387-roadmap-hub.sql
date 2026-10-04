@@ -20,7 +20,7 @@
 --     2026-06-16-rls-initplan-and-hot-indexes.sql).
 --   - anon har ikke EXECUTE på is_admin() (#5153), så anon-policies kalder den ikke.
 --
--- Rollback: se bunden af filen.
+-- Rollback: se note i bunden af filen.
 
 -- 1. roadmap_items ---------------------------------------------------------
 ALTER TABLE roadmap_items DROP CONSTRAINT IF EXISTS roadmap_items_status_check;
@@ -399,10 +399,9 @@ NOTIFY pgrst, 'reload schema';
 --   (backend/lib/testdb/roadmapHub.integration.test.js). Rør ALDRIG en rigtig
 --   kontakt i prod for at teste (ejer-only).
 --
--- Rollback (kun hvis ingen rækker bruger de nye værdier):
---   DROP TRIGGER app_config_sync_roadmap ON app_config; DROP FUNCTION public.app_config_sync_roadmap();
---   DROP TRIGGER roadmap_items_sync_flag ON roadmap_items; DROP FUNCTION public.roadmap_items_sync_flag();
---   DROP FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER);
---   DROP FUNCTION public.roadmap_admin_stats(); DROP VIEW known_issue_scores;
---   DROP TABLE known_issue_reports, known_issue_updates, known_issues;
---   (roadmap_items/roadmap_votes-ændringerne er bagudkompatible og kan blive stående.)
+-- Rollback: står med vilje IKKE som SQL her (auto-migrate kører database/2026-*.sql,
+-- #4677). Skulle det blive nødvendigt, skrives et manual-only-script i
+-- database/manual/ med markøren KOERES IKKE AUTOMATISK, ejer-gated. Det fjerner
+-- de to triggere og deres funktioner, de to RPC'er, known_issue_scores og de tre
+-- known_issue-tabeller. roadmap_items/roadmap_votes-ændringerne er
+-- bagudkompatible og kan blive stående.
