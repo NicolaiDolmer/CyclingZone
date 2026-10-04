@@ -645,7 +645,7 @@
     },
     "errors": {
       "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
-      "stage_roles_stage_locked": "One of the changes is on a completed stage, so it can't be saved.",
+      "stage_roles_stage_locked": "One of the changes is on a stage that has already started, so it can't be saved.",
       "stage_roles_rider_not_entered": "One of the riders isn't entered in this race.",
       "stage_roles_invalid_role": "One of the roles isn't valid.",
       "stage_roles_invalid_effort": "One of the intentions isn't valid.",
@@ -653,7 +653,8 @@
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
       "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",
-      "generic": "Couldn't save the intentions. Try again."
+      "generic": "Couldn't save the intentions. Try again.",
+      "stage_roles_conflict": "Your tactics were changed in another window. The latest version is loaded. Check it and save again."
     }
   },
   "tacticsOrders": {
@@ -798,7 +799,11 @@
       "rolePickerTitle": "{name}'s role",
       "roleScope": "From stage {number} to the end of the race",
       "roleScopeRaceDay": "For this race",
+      "roleScopeLabel": "Applies to",
+      "roleScopeRest": "Stage {number} to the end of the race",
+      "roleScopeStageOnly": "Stage {number} only",
       "roleExclusiveNote": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique.",
+      "roleExclusiveNoteScoped": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique on the same stages. Earlier stages keep their roles.",
       "roleWhy": {
         "captain": "The team rides for him and he gets the protection.",
         "sprint_captain": "He gets the sprint train and the lead out.",

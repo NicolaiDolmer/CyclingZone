@@ -316,22 +316,28 @@ function makeSupabase() {
   return { from, __calls: calls };
 }
 
-test("saveStageRoleOverrides: delete scoped til redigerbare etaper (gt stagesCompleted) + holdets ryttere", async () => {
+test("saveStageRoleOverrides (#6095): delete scoped til PRÆCIS de skrevne etaper + holdets ryttere", async () => {
   const supabase = makeSupabase();
   await saveStageRoleOverrides({
-    supabase, raceId: "race-1", teamRiderIds: new Set(["r1", "r2"]), stagesCompleted: 2,
+    supabase, raceId: "race-1", teamRiderIds: new Set(["r1", "r2"]), stages: [3],
     overrides: [{ stage_number: 3, rider_id: "r1", race_role: "captain", effort: "protect" }],
   });
   const del = supabase.__calls.find((c) => c.op === "delete");
   assert.deepEqual(del.eqs, [["race_id", "race-1"]]);
-  assert.deepEqual(del.gts, [["stage_number", 2]]);
-  assert.deepEqual(del.ins, [["rider_id", ["r1", "r2"]]]);
+  assert.deepEqual(del.gts, [], "aldrig et bredt gt(stagesCompleted)-delete");
+  assert.deepEqual(del.ins, [["stage_number", [3]], ["rider_id", ["r1", "r2"]]]);
+});
+
+test("saveStageRoleOverrides (#6095): ingen etaper → ingen kald overhovedet", async () => {
+  const supabase = makeSupabase();
+  await saveStageRoleOverrides({ supabase, raceId: "race-1", teamRiderIds: new Set(["r1"]), stages: [], overrides: [] });
+  assert.equal(supabase.__calls.length, 0);
 });
 
 test("saveStageRoleOverrides: insert kun de nye overrides-rækker", async () => {
   const supabase = makeSupabase();
   await saveStageRoleOverrides({
-    supabase, raceId: "race-1", teamRiderIds: new Set(["r1"]), stagesCompleted: 2,
+    supabase, raceId: "race-1", teamRiderIds: new Set(["r1"]), stages: [3],
     overrides: [{ stage_number: 3, rider_id: "r1", race_role: "hunter", effort: "save" }],
   });
   const ins = supabase.__calls.find((c) => c.op === "insert");
@@ -346,14 +352,14 @@ test("saveStageRoleOverrides: insert kun de nye overrides-rækker", async () => 
 
 test("saveStageRoleOverrides: tom overrides → INGEN insert-kald (kun delete/revert)", async () => {
   const supabase = makeSupabase();
-  await saveStageRoleOverrides({ supabase, raceId: "race-1", teamRiderIds: new Set(["r1"]), stagesCompleted: 2, overrides: [] });
+  await saveStageRoleOverrides({ supabase, raceId: "race-1", teamRiderIds: new Set(["r1"]), stages: [3], overrides: [] });
   assert.equal(supabase.__calls.some((c) => c.op === "insert"), false);
   assert.equal(supabase.__calls.some((c) => c.op === "delete"), true);
 });
 
 test("saveStageRoleOverrides: tomt teamRiderIds → INGEN delete-kald", async () => {
   const supabase = makeSupabase();
-  await saveStageRoleOverrides({ supabase, raceId: "race-1", teamRiderIds: new Set(), stagesCompleted: 2, overrides: [] });
+  await saveStageRoleOverrides({ supabase, raceId: "race-1", teamRiderIds: new Set(), stages: [3], overrides: [] });
   assert.equal(supabase.__calls.length, 0);
 });
 
@@ -363,10 +369,11 @@ test("saveStageRoleOverrides: tomt teamRiderIds → INGEN delete-kald", async ()
 // tre nye tabeller Hold-fanens fit/form/traethed-kolonner laeser.
 function makeContextSupabase({
   entries = [], riders = [], overrides = [], incidents = [],
-  abilities = [], conditions = [], profiles = [],
+  abilities = [], conditions = [], profiles = [], schedule = [],
 } = {}) {
   function from(table) {
-    const rowsFor = () => (table === "race_entries" ? entries
+    const rowsFor = () => (table === "race_stage_schedule" ? schedule
+      : table === "race_entries" ? entries
       : table === "riders" ? riders
       : table === "race_stage_roles" ? overrides
       : table === "race_incidents" ? incidents
@@ -408,6 +415,23 @@ test("getStageRolesContext: bygger riders[] med navn + basis-race_role fra race_
   assert.equal(ctx.stage_count, 5);
   assert.equal(ctx.stages_completed, 1);
   assert.deepEqual(ctx.teamRiderIds, new Set(["r1", "r2"]));
+});
+
+test("getStageRolesContext (#6095): startede etaper er tidslåste, og hver etape har en version", async () => {
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "helper" }],
+    riders: [{ id: "r1", firstname: "A", lastname: "B" }],
+    overrides: [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort: "protect" }],
+    schedule: [
+      { stage_number: 2, scheduled_at: "2000-01-01T10:00:00Z" }, // startet, ikke kørt
+      { stage_number: 3, scheduled_at: "2999-01-01T10:00:00Z" },
+      { stage_number: 4, scheduled_at: null }, // schedule-hul = åben
+    ],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 4, stages_completed: 1 }, teamId: "team-1" });
+  assert.deepEqual([...ctx.timeLockedStages], [2]);
+  assert.equal(typeof ctx.stage_versions[3], "string");
+  assert.equal(ctx.stage_versions[4], undefined);
 });
 
 // ── #4538: abandoned/skadet-status ─────────────────────────────────────────────
