@@ -75,6 +75,28 @@
 --   get_cohort_retention              auth. Read-only admin-analytics, intern gate.
 --   get_sprint_metrics                auth. Read-only admin-analytics, intern gate.
 --   get_retention_scorecard_activity  auth. Read-only admin-analytics, intern gate.
+--   roadmap_admin_stats               auth. Read-only (#5387, database/2026-10-05-5387-roadmap-hub.sql).
+--                                     Admin-fanens nøgletal, kaldt fra browseren som RPC. DEFINER, så
+--                                     tallene ikke afhænger af kalderens RLS på roadmap_votes. Intern
+--                                     gate: `WHERE public.is_admin()` giver NUL rækker til alle andre.
+--                                     Dækket af backend/lib/testdb/roadmapHub.integration.test.js.
+--   roadmap_split_item                auth. SKRIVER (insert i roadmap_items + roadmap_votes). Admin-fanens
+--                                     "del punkt", kaldt fra browseren. Må være klient-eksekverbar, fordi
+--                                     stemmekopien (stemmerne fra kilden dubleres på det nye punkt) kræver
+--                                     DEFINER: RLS lader en bruger kun skrive egne stemmer. Intern gate
+--                                     øverst i kroppen: `IF NOT public.is_admin() THEN RAISE ... 42501`,
+--                                     så alle andre end admin afvises før noget skrives. Det nye punkt
+--                                     oprettes skjult (approved = false). Dækket af
+--                                     roadmapHub.integration.test.js.
+--   roadmap_resync_flags              auth. SKRIVER (update af roadmap_items-status). Afstemning af koblede
+--                                     punkter mod app_config; idempotent. Intern gate:
+--                                     `IF NOT (is_admin() OR auth.role() = 'service_role') THEN RAISE ...
+--                                     42501`. Admin kalder den fra browseren, drift-scriptet
+--                                     (scripts/roadmap-drift.mjs) som service_role. Rører kun
+--                                     roadmap_items. Dækket af roadmapHub.integration.test.js.
+--                                     Alternativ (ejer-beslutning, #5387): flyt de to skrivende
+--                                     funktioner bag backend (service_role) og revoke dem fra
+--                                     authenticated.
 
 WITH secdef AS (
   SELECT
@@ -99,7 +121,15 @@ WITH secdef AS (
       -- Founder-badgen (#4649, database/2026-09-03-4649-founder-public.sql):
       -- read-only liste af founder-brugere til profil/forum; EXECUTE for
       -- authenticated er tilsigtet. Audit 17/9 flaggede den som WARN.
-      'founder_public_list'
+      'founder_public_list',
+      -- Roadmap-hubben (#5387, ejer-godkendelse afventer): admin-fanen kalder
+      -- dem fra browseren; hver har intern is_admin()-gate (resync også
+      -- service_role) der giver 42501 eller nul rækker. To af dem SKRIVER
+      -- (roadmap_split_item, roadmap_resync_flags) — se begrundelse i listen
+      -- øverst.
+      'roadmap_admin_stats',
+      'roadmap_split_item',
+      'roadmap_resync_flags'
     )
 )
 SELECT
