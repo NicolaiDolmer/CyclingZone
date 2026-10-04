@@ -199,6 +199,16 @@ features:
     verified: 2026-09-07
     note: PR #4913, 6/9; patch note 7.259.
 
+  - id: role-scope-choice
+    area: race-day
+    title_en: Role picker scope (stage N to the end / stage N only)
+    title_da: Rollevælger med etape-valg (etape N og løbet ud / kun etape N)
+    state: beta
+    flag: race_role_scope_choice
+    epic: 6095
+    verified: 2026-10-04
+    note: PR #6141; beta sat af Claude 4/10 kl. 10.26 efter ejer-go, læst tilbage i prod. Off gendanner #4980-vælgeren.
+
   - id: race-day-development
     area: race-day
     title_en: Race day development
@@ -399,12 +409,12 @@ features:
     area: training
     title_en: Daily rider training receipt
     title_da: Daglig rytterkvittering
-    state: beta
+    state: live
     flag: training_daily_receipt
     ssot: docs/TRAINING_RULES.md
     epic: 5915
-    verified: 2026-09-30
-    note: Beta/admin aktiveret 30/9 kl. 22.07; PR 5976, main-CI/Deploy verify og rigtigt holds datokvittering/passcorer verificeret. Off gendanner tidligere visninger.
+    verified: 2026-10-04
+    note: Beta 30/9, til alle 1/10 (patch note 7.330); flag on læst i prod 4/10.
 
   - id: training-score
     area: training
@@ -806,9 +816,10 @@ features:
     area: ops
     title_en: Rider reputation
     title_da: Rytter-omdømme
-    state: building
+    state: live
     flag: rider_reputation_enabled
-    verified: 2026-09-10
+    verified: 2026-10-04
+    note: Slået til 1/10 (PR #5828, patch note 7.330); flag on læst i prod 4/10.
 
   - id: survey-banner
     area: ops
