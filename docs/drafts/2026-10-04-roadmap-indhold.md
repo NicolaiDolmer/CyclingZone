@@ -368,6 +368,58 @@ Bestyrelsesbeskederne (#6122) er meldt af 12 spillere og står kun som "being ch
 
 Omstridt og ikke foreslået: lås og bonus til aktive managers i Train now (#6139; 2 for, 1 imod; strider mod "alle hold træner ens").
 
+## 6b. Verificering mod det, der er live (4/10)
+
+Ejeren fandt 4/10, at "grusvejsløb" stod som ny idé, selvom grusetaper er live (v7.336, #4105 lukket, motoren har grus). Derfor er hvert punkt tjekket mod patch notes (til og med 7.337), koden, kontakterne i prod og issuet. **Dommen her går forud for afsnit 1-6.** Løb og træning tilføjes, når den del er færdig.
+
+### Ungdom, marked og klub
+
+**Ud af listerne (live):**
+
+| Punkt | Bevis |
+|---|---|
+| Ikoner på ønskelisten for auktion/transferliste (5.4) | v7.165 (#4036) |
+| Potentiale som ord eller bånd (#3967) | Vises altid som interval + ord; aldrig ét tal |
+| Citér et indlæg, og den citerede får besked (#3517) | v7.192 |
+| Økonomiside med overblik og prognose (#986) | v5.41 + v7.146/v7.162 |
+| Sponsor betaler mere for berømt hold (#3987) | v7.302: tilbud følger omdømme, division og placering (ejer bekræfter) |
+| Driftsudgift i andre divisioner (#4125) | Satserne står i Hjælp (ejer bekræfter, om det er nok) |
+| Grusvejsløb (5.4) | v7.336, #4105 |
+
+**Delvist live: titlen skrives om til det, der mangler** (del-reglen; stemmerne følger med):
+
+| Punkt | Live i dag | Ny titel EN / DA |
+|---|---|---|
+| 00000215 ungdomssæsoner | Stilling for egen pulje (v7.304) | Promotion and relegation for U23 and junior groups, from season 5. / Op- og nedrykning for U23- og juniorpuljer fra sæson 5. |
+| 00000217 spejdere | Bedre spejder ser mere og kører to opgaver (v7.85, v7.287) | A better scout charges less per report, so two scouts are never the same. / En bedre spejder tager mindre pr. rapport, så to spejdere aldrig er ens. |
+| #3657 målrettet scouting | Land, type, U23, division (v7.137) | Send your scout after riders within your budget. / Send din spejder efter ryttere inden for dit budget. |
+| #5920 aldersgrænse | Står på U23- og Junior-siderne (v7.304) | See the age limit for U23 and Junior in the squad filter on My Team. / Se aldersgrænsen for U23 og Junior i trupfilteret på Mit hold. |
+| 00000011 forhandling | Modbud uden grænse, 1-mod-1-bytte med penge (v7.221) | Trade several riders in one deal, ask the other manager for cash, and set a deadline on an offer. / Byt flere ryttere i én handel, bed den anden manager om penge, og sæt en frist på et tilbud. (dækker også #5918 og #6024) |
+| 00000012 rygter | Anonym "en manager kigger på X" (v4.45) | Market rumours: news about which clubs are looking for which riders. / Markedsrygter: nyheder om, hvilke klubber der leder efter hvilke ryttere. |
+| 00000219 marked du kan stole på | Åben log + rapportér handel (v7.288, v7.275). Grænserne findes i koden, men er slået fra i prod | Limits on deals between friends: a floor and a ceiling on what a rider can be traded for. / Grænser for handler mellem venner: et gulv og et loft for, hvad en rytter kan handles for. |
+| 00000221 skade på andres rytter | Skadesmærke på andre holds trup | See an injury on another team's rider on his profile, and how long he is out. / Se en skade på en rytter fra et andet hold på hans profil, og hvor længe han er ude. |
+| #2884 auktioner | 10 min. forlængelse ved sent bud; sælger vælger 1-48 t | A longer minimum time on auctions for free riders. / Længere minimumstid på auktioner over frie ryttere. (kun ét sted: forum-afstemningen #4714 eller Vote) |
+| #2399 filter | AI-hold skjult som standard | Filter the rider database by division. / Filtrér rytterdatabasen på division. |
+| #26 transferrum | Ønskeliste + sammenligning | See what a rider does to your budget before you buy him. / Se hvad en rytter gør ved dit budget, før du køber ham. |
+| #6125 nykøbt rytter | "Joining once his current stage race finishes" | A rider you just bought shows which race he joins you after. / En rytter, du lige har købt, viser hvilket løb han kommer til dig efter. |
+| 00000224 faciliteter | Alle fem kan bygges; kun træning og scouting har effekt | Medical, academy and commercial facilities that work: faster recovery, more academy places and more sponsor money. / Medicinsk afdeling, akademi og kommerciel afdeling, der virker: hurtigere restitution, flere akademipladser og flere sponsorpenge. |
+| 00000227 assistent/indbakke | Én linje pr. løb, bud samlet pr. auktion (v7.288-7.289) | Similar inbox messages grouped into one. / Ens beskeder i indbakken samlet i én. (delen "svar fra indbakken" udgår: veto 30 %) |
+| 00000018 statistik | Palmarès, sæsonsider, resultatvælger | Your league and division across all seasons in one view: champions, records and standings. / Din liga og division på tværs af alle sæsoner i ét overblik: vindere, rekorder og stillinger. |
+| 00000021 museum | Æresliste og karrieretotaler | A club museum: your legends and the races your club is remembered for. / Et klubmuseum: dine legender og de løb, klubben huskes for. |
+| 00000022 venner | Følg rytter, handels-feed, beskeder | Follow a manager, invite a friend, and see a feed of results from the whole game. / Følg en manager, invitér en ven, og se et feed med resultater fra hele spillet. |
+| #1928 stjerner | Rytterens omdømme er synligt (v7.330) | See which riders the board counts as your stars. / Se hvilke ryttere bestyrelsen regner som dine stjerner. |
+| #3948 bestyrelsesmål | Kvittering "Counted: …" pr. mål | Board goals that say in the title what counts, for example stage races only. / Bestyrelsesmål, der i selve titlen siger, hvad der tæller, for eksempel kun etapeløb. |
+| #3147 sponsorpenge | Løbsdagsbetalinger er løbende | Your sponsor's base amount paid race day by race day, like the rest. / Sponsorens basisbeløb udbetalt løbsdag for løbsdag ligesom resten. |
+| #2398 trænere | Egenskaber vises; fyring koster 4 ugers løn | A fee when you hire staff, not only when you release them. / Et gebyr, når du ansætter personale, ikke kun når du afskediger. |
+| #3451 forum | Ulæste tråde er live | Search the forum. / Søg i forummet. |
+| N17 Pro-betaling | Pro falder ikke længere ved fornyelse (v7.236) | If a CZ Pro payment fails, Pro stops and you get one message about it. / Fejler en betaling for CZ Pro, stopper Pro, og du får én besked om det. |
+
+**Ikke live (bliver stående som foreslået):** 00000216, 00000008, 00000218, 00000220, 00000222, 00000223, 00000019, 00000226, 00000228, N1, N2, N13, N14, N20, #6126, #5876, #3964, #5895, #3970, #2493, #2494, #2495, #2798, #2176, #450, #4825, #5683, #5293, #5062, #5833, #1981, #4032, #2161, #5385, #1108, #1154, #1113, #1110, #2218, #4110, #938, egne akademi-talenter, løn pr. løbsdag (koden er klar, men slået fra i prod).
+
+**Uklart (ejeren afgør):** #4703 akademiryttere i holdudtagelsen (hvert løb bruger nu kun sin egen trup, v7.307) · #4381 akademilisten som Mit hold (U23- og Junior-siderne matcher allerede).
+
+Sidefund: Hjælp lover mindst 12 aktive timer på auktioner over frie ryttere, men en spillervalgt sluttid kan omgå det. Det forklarer klagerne over "1 time". Hjælp henviser til en liste over profilryttere, som kun findes på den gamle bestyrelsesside.
+
 ## 7. Åbne spørgsmål til ejeren
 
 1. **Rytterværdier (00000017):** titlen lover "prices shaped by real auctions and transfers". Modellen bruger handler, men patch note 7.303 nævner det ikke. Done med nuværende titel, eller omskriv først?
