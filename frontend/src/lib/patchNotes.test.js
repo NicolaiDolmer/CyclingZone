@@ -54,6 +54,13 @@ test("computeNewDays markerer dage nyere end lastSeen; tom ved første besøg", 
   assert.equal(computeNewDays(["2026-06-20"], null).size, 0);
 });
 
+test("effectiveRollout: gammelt stage-felt giver Beta-mærke (#5422), rollout vinder over stage", () => {
+  assert.equal(effectiveRollout({ stage: "beta" }, null), "beta");
+  assert.equal(effectiveRollout({ stage: "beta", flag: "x" }, { x: true }), "beta_to_live");
+  assert.equal(effectiveRollout({ rollout: "switched_on", stage: "beta" }, null), "switched_on");
+  assert.equal(effectiveRollout({}, null), "live");
+});
+
 test("effectiveRollout: en beta-note med flag der er on for alle, læses som beta_to_live", () => {
   const change = { rollout: "beta", flag: "training_groups" };
   assert.equal(effectiveRollout(change, { training_groups: true }), "beta_to_live");
