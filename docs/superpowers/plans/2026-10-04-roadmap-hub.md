@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Planen udføres som ÉN bølge via `.claude/workflows/wave.js` (orkestrator-standard, CLAUDE.md). Hvert spor herunder er ét issue og én lane; bølge-args ligger i `2026-10-04-roadmap-hub-wave.json` ved siden af. Du ser kun dit eget spor: læs "Global Constraints", "Fælles kontrakt" og dit spor. Steps bruger checkbox-syntaks (`- [ ]`).
 
-**Goal:** `/roadmap` bliver en hub med fire faner (Plan, Vote, Known issues, Done), og ejeren får analyse og vedligehold i en ny fane under `/admin/growth`.
+**Goal:** `/roadmap` bliver en hub med fem faner (Plan, Beta, Vote, Known issues, Done), Beta-fanen og patch notes følger kontakterne automatisk, og ejeren får analyse og vedligehold i en ny fane under `/admin/growth`.
 
 **Architecture:** Én additiv migration udvider `roadmap_items`/`roadmap_votes` og tilføjer tre tabeller til kendte fejl. Spillersiden og admin-fanen læser og skriver direkte mod Supabase bag RLS (samme mønster som i dag). Al afledt logik (opdeling, tælling, filter) ligger i rene `.ts`-moduler med `node --test`.
 
@@ -31,7 +31,7 @@
 
 | Tabel | Kolonner |
 |---|---|
-| `roadmap_items` | `id, engine, sort_order, title_en, title_da, approved, status, horizon, issue_ref, created_at, updated_at, shipped_at` |
+| `roadmap_items` | `id, engine, sort_order, title_en, title_da, approved, status, horizon, issue_ref, flag_key, beta_since, beta_soon, live_soon, created_at, updated_at, shipped_at` |
 | `roadmap_votes` | `id, item_id, user_id, idea_score (nullable), importance_score, created_at, updated_at` |
 | `known_issues` | `id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, updated_at, closed_at` |
 | `known_issue_updates` | `id, issue_id, body_en, body_da, created_at` |
@@ -40,6 +40,8 @@
 | view `known_issue_scores` | `issue_id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, closed_at, reports, days_open` |
 | rpc `roadmap_admin_stats()` | én række: `voters, voters_14d, votes_total, voted_all, managed_teams` (nul rækker for ikke-admin) |
 | rpc `roadmap_split_item(p_source uuid, p_title_en text, p_title_da text, p_status text, p_horizon text, p_issue_ref int)` | returnerer det nye punkts `id`; kun admin; nyt punkt er `approved = false` med kopi af kildens stemmer |
+
+**Beta-kobling (spec §5.6):** `flag_key` er en nøgle i `app_config`. Triggere holder `status`, `beta_since` og `shipped_at` i takt med kontakten. "I beta nu" = `status = 'in_progress' AND beta_since IS NOT NULL`. "Coming to beta" = `beta_soon AND beta_since IS NULL`. "For everyone soon" = i beta nu + `live_soon`.
 
 **Værdier:** `status` ∈ `active | planned | in_progress | shipped | archived` · `horizon` ∈ `next | later` · `area` ∈ `races | training | youth | market | club | other` · issue-`status` ∈ `checking | confirmed | fixing | fixed | dismissed` (`checking` = meldt ind, ikke bekræftet; `dismissed` = tjekket, intet problem fundet). `closed_at` sættes ved `fixed` og `dismissed`.
 
@@ -87,6 +89,9 @@ test("kun admin kan insert/update known_issues og known_issue_updates");
 test("spiller kan oprette og slette EGET report på en publiceret, ikke-rettet fejl");
 test("spiller kan ikke oprette report på en rettet, lukket (dismissed) eller upubliceret fejl, og ikke for en anden bruger");
 test("known_issues.status er checking som default og afviser ukendte værdier");
+test("kobling: et punkt der får flag_key til en kontakt på beta, bliver in_progress med beta_since");
+test("flip: app_config beta -> on sætter koblede punkter til shipped med shipped_at; ukoblede punkter er uændrede");
+test("flip: en kontakt uden koblede punkter kan flippes uden fejl, og et flip til off nulstiller beta_since");
 test("spiller ser kun egne reports; known_issue_scores.reports er fuldt tal for admin");
 test("roadmap_admin_stats() giver én række til admin og nul rækker til spiller");
 test("roadmap_split_item: admin får nyt skjult punkt med samme område og en kopi af alle kildens stemmer; kilden er uændret");
@@ -367,6 +372,75 @@ $$;
 REVOKE ALL ON FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
 
+-- 7. Beta-kobling (ejer 4/10): Beta-fanen følger kontakterne automatisk.
+--    SIKKERHEDSKRAV: et flag-flip må ALDRIG kunne fejle pga. roadmappet.
+--    Triggeren på app_config fanger derfor alt i sin egen blok og skriver kun
+--    i roadmap_items. Tjek app_config.value's type i Task 1.1 (forventet TEXT).
+ALTER TABLE roadmap_items ADD COLUMN IF NOT EXISTS flag_key TEXT;
+ALTER TABLE roadmap_items ADD COLUMN IF NOT EXISTS beta_since TIMESTAMPTZ;
+ALTER TABLE roadmap_items ADD COLUMN IF NOT EXISTS beta_soon BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE roadmap_items ADD COLUMN IF NOT EXISTS live_soon BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS roadmap_items_flag_key_idx ON roadmap_items (flag_key) WHERE flag_key IS NOT NULL;
+
+-- Når et punkt kobles (eller oprettes koblet): læs kontaktens stadie nu.
+CREATE OR REPLACE FUNCTION public.roadmap_items_sync_flag() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $
+DECLARE
+  v_stage TEXT;
+BEGIN
+  IF NEW.flag_key IS NULL OR NEW.status IN ('shipped', 'archived') THEN
+    RETURN NEW;
+  END IF;
+  SELECT value INTO v_stage FROM app_config WHERE key = NEW.flag_key;
+  IF v_stage = 'beta' THEN
+    NEW.status := 'in_progress';
+    NEW.beta_since := COALESCE(NEW.beta_since, NOW());
+    NEW.beta_soon := FALSE;
+  ELSIF v_stage IN ('on', 'true') THEN
+    NEW.status := 'shipped';
+    NEW.shipped_at := COALESCE(NEW.shipped_at, NOW());
+    NEW.beta_soon := FALSE;
+    NEW.live_soon := FALSE;
+  END IF;
+  RETURN NEW;
+END;
+$;
+DROP TRIGGER IF EXISTS roadmap_items_sync_flag ON roadmap_items;
+CREATE TRIGGER roadmap_items_sync_flag
+  BEFORE INSERT OR UPDATE OF flag_key ON roadmap_items
+  FOR EACH ROW EXECUTE FUNCTION public.roadmap_items_sync_flag();
+
+-- Når en kontakt flippes: flyt de koblede punkter. Fejl her må aldrig vælte flippet.
+CREATE OR REPLACE FUNCTION public.app_config_sync_roadmap() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $
+BEGIN
+  BEGIN
+    IF NEW.value = 'beta' THEN
+      UPDATE roadmap_items
+        SET status = 'in_progress', beta_since = COALESCE(beta_since, NOW()), beta_soon = FALSE, updated_at = NOW()
+        WHERE flag_key = NEW.key AND status NOT IN ('shipped', 'archived');
+    ELSIF NEW.value IN ('on', 'true') THEN
+      UPDATE roadmap_items
+        SET status = 'shipped', shipped_at = COALESCE(shipped_at, NOW()), beta_soon = FALSE, live_soon = FALSE, updated_at = NOW()
+        WHERE flag_key = NEW.key AND status NOT IN ('shipped', 'archived');
+    ELSIF NEW.value = 'off' THEN
+      UPDATE roadmap_items
+        SET beta_since = NULL, live_soon = FALSE, updated_at = NOW()
+        WHERE flag_key = NEW.key AND status = 'in_progress' AND beta_since IS NOT NULL;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'roadmap sync failed for flag %: %', NEW.key, SQLERRM;
+  END;
+  RETURN NEW;
+END;
+$;
+DROP TRIGGER IF EXISTS app_config_sync_roadmap ON app_config;
+CREATE TRIGGER app_config_sync_roadmap
+  AFTER INSERT OR UPDATE OF value ON app_config
+  FOR EACH ROW EXECUTE FUNCTION public.app_config_sync_roadmap();
+
 COMMENT ON TABLE known_issues IS
   'Kendte fejl på /roadmap (#5387). EN+DA i samme række; published gater visning (ejeren godkender teksten). status: checking (meldt ind, ikke bekræftet) -> confirmed -> fixing -> fixed, eller checking -> dismissed (tjekket, intet problem). issue_ref = GitHub-issue, bruges af scripts/roadmap-flip.mjs.';
 COMMENT ON TABLE known_issue_reports IS
@@ -378,6 +452,9 @@ COMMENT ON TABLE known_issue_reports IS
 --   3. SELECT count(*) FROM roadmap_votes;                      -- uændret ift. før apply
 --   4. SELECT tablename, rowsecurity FROM pg_tables WHERE tablename LIKE 'known_issue%';  -- 3 rækker, alle true
 --   5. SELECT * FROM roadmap_item_scores LIMIT 1;               -- 15 kolonner
+--   6. SELECT tgname FROM pg_trigger WHERE tgname IN ('app_config_sync_roadmap', 'roadmap_items_sync_flag');  -- 2 rækker
+--   7. Flip-prøve på en kontakt UDEN koblede punkter er ikke nødvendig: triggeren er dækket af integrationstesten.
+--      Rør ALDRIG en rigtig kontakt i prod for at teste (ejer-only).
 --
 -- Rollback (kun hvis ingen rækker bruger de nye værdier):
 --   DROP FUNCTION public.roadmap_admin_stats(); DROP VIEW known_issue_scores;
@@ -388,7 +465,7 @@ COMMENT ON TABLE known_issue_reports IS
 - [ ] **Step 2: Kør testen til grøn**
 
 Run: `node --test backend/lib/testdb/roadmapHub.integration.test.js`
-Expected: PASS, 19 tests.
+Expected: PASS, 22 tests.
 
 - [ ] **Step 3: Kør RLS-audit og nabotests**
 
@@ -437,12 +514,14 @@ import {
 const item = (over = {}) => ({
   id: "i1", engine: "races", sort_order: 10, title_en: "A", title_da: "A",
   approved: true, status: "active", horizon: "next",
+  beta_since: null, beta_soon: false, live_soon: false,
   created_at: "2026-09-24T00:00:00Z", shipped_at: null, ...over,
 });
 
 test("parseTab falder tilbage til plan ved ukendt eller manglende værdi", () => {
   assert.equal(parseTab("vote"), "vote");
   assert.equal(parseTab("issues"), "issues");
+  assert.equal(parseTab("beta"), "beta");
   assert.equal(parseTab("nope"), "plan");
   assert.equal(parseTab(null), "plan");
 });
@@ -456,8 +535,14 @@ test("partitionItems deler efter status og horizon og sorterer på sort_order", 
     item({ id: "e", status: "active" }),
     item({ id: "f", status: "shipped", shipped_at: "2026-09-21T00:00:00Z" }),
     item({ id: "g", status: "archived" }),
+    item({ id: "h", status: "in_progress", beta_since: "2026-10-01T00:00:00Z" }),
+    item({ id: "k", status: "in_progress", beta_since: "2026-09-27T00:00:00Z", live_soon: true, sort_order: 90 }),
+    item({ id: "j", status: "planned", beta_soon: true, sort_order: 30 }),
   ]);
-  assert.deepEqual(p.plannedNext.map((i) => i.id), ["c", "b"]);
+  // I beta står kun på Beta-fanen; "snart for alle" først.
+  assert.deepEqual(p.inBeta.map((i) => i.id), ["k", "h"]);
+  assert.deepEqual(p.comingToBeta.map((i) => i.id), ["j"]);
+  assert.deepEqual(p.plannedNext.map((i) => i.id), ["c", "b", "j"]);
   assert.deepEqual(p.plannedLater.map((i) => i.id), ["a"]);
   assert.deepEqual(p.inProgress.map((i) => i.id), ["d"]);
   assert.deepEqual(p.ideas.map((i) => i.id), ["e"]);
@@ -542,15 +627,16 @@ export type RoadmapStatus = "active" | "planned" | "in_progress" | "shipped" | "
 export type RoadmapHorizon = "next" | "later";
 export type IssueStatus = "checking" | "confirmed" | "fixing" | "fixed" | "dismissed";
 export type IssueArea = "races" | "training" | "youth" | "market" | "club" | "other";
-export type RoadmapTab = "plan" | "vote" | "issues" | "done";
+export type RoadmapTab = "plan" | "beta" | "vote" | "issues" | "done";
 
-export const ROADMAP_TABS: RoadmapTab[] = ["plan", "vote", "issues", "done"];
+export const ROADMAP_TABS: RoadmapTab[] = ["plan", "beta", "vote", "issues", "done"];
 export const RECENTLY_FIXED_DAYS = 14;
 export const DONE_PAGE_SIZE = 30;
 
 export interface RoadmapItem {
   id: string; engine: string; sort_order: number; title_en: string; title_da: string;
   approved: boolean; status: RoadmapStatus; horizon: RoadmapHorizon;
+  beta_since: string | null; beta_soon: boolean; live_soon: boolean;
   created_at: string; shipped_at: string | null;
 }
 export interface RoadmapVote { item_id: string; idea_score: number | null; importance_score: number | null; }
@@ -570,8 +656,12 @@ const byOrder = (a: RoadmapItem, b: RoadmapItem) =>
 export function partitionItems(items: RoadmapItem[] | null | undefined) {
   const list = items ?? [];
   const pick = (fn: (i: RoadmapItem) => boolean) => list.filter(fn).sort(byOrder);
+  const inBetaNow = (i: RoadmapItem) => i.status === "in_progress" && !!i.beta_since;
   return {
-    inProgress: pick((i) => i.status === "in_progress"),
+    // I gang, men ikke i beta: det, der er i beta, står kun på Beta-fanen.
+    inProgress: pick((i) => i.status === "in_progress" && !i.beta_since),
+    inBeta: list.filter(inBetaNow).sort((a, b) => Number(b.live_soon) - Number(a.live_soon) || byOrder(a, b)),
+    comingToBeta: pick((i) => i.beta_soon && !i.beta_since && (i.status === "planned" || i.status === "in_progress")),
     plannedNext: pick((i) => i.status === "planned" && i.horizon !== "later"),
     plannedLater: pick((i) => i.status === "planned" && i.horizon === "later"),
     ideas: pick((i) => i.status === "active"),
@@ -646,7 +736,7 @@ test("buildImportancePayload sender kun importance_score (idea_score røres ikke
 ```
 
 ```js
-export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, horizon, created_at, shipped_at";
+export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, horizon, beta_since, beta_soon, live_soon, created_at, shipped_at";
 
 export function buildImportancePayload({ itemId, userId, importanceScore }) {
   if (!itemId || !userId) throw new Error("itemId and userId are required");
@@ -707,17 +797,18 @@ async function toggleReport(issue) {                   // Known issues
 }
 ```
 
-Layout: `PageHeader` (titel, undertekst; i handlingsklyngen `Checkbox` "Only what I have not rated" + tælleren fra `countUnrated`, begge kun for indloggede) → `Tabs`/`TabList` med fire `Tab` (tal fra `countUnrated().plan`, `.vote` og `splitIssues().confirmed.length`) → fire `TabPanel`. `useDocumentHead` og `writeLastSeenRoadmap` bevares.
+Layout: `PageHeader` (titel, undertekst; i handlingsklyngen `Checkbox` "Only what I have not rated" + tælleren fra `countUnrated`, begge kun for indloggede) → `Tabs`/`TabList` med fem `Tab` i rækkefølgen Plan, Beta, Vote, Known issues, Done (tal fra `countUnrated().plan`, `partitionItems().inBeta.length`, `countUnrated().vote` og `splitIssues().confirmed.length`) → fem `TabPanel`. `useDocumentHead` og `writeLastSeenRoadmap` bevares.
 
 - [ ] **Step 3:** Kør `node --test frontend/src/pages/RoadmapPage.test.js`: PASS. Commit.
 
-### Task 2.3: De fire faner
+### Task 2.3: De fem faner
 
-Markup og tekster følger `pr-screens/roadmap-4-10/roadmap-foer-efter.html` felt for felt. Hver fane er en ren komponent uden egen hentning.
+Markup og tekster følger `pr-screens/roadmap-4-10/roadmap-foer-efter.html` felt for felt (Beta-fanen og skalaen i to trin: `beta-overblik.html`; Known issues: `known-issues-to-grupper.html`). Hver fane er en ren komponent uden egen hentning.
 
 - [ ] **`ScoreScale`** `{ label, value, disabled, onSelect, size }`: den nuværende `VoteAxis` flyttet ud. `role="radiogroup"`, knapper `w-7 h-7`, på telefon `min-w-[34px] min-h-[34px]`.
 - [ ] **`PlanTab`** `{ inProgress, plannedNext, plannedLater, votes, saveState, canVote, language, onRate, lastSeen }`: `Section` "In progress" (rækker uden skala, meta-linje med område) + `Section` "Planned" (nummererede rækker, én `ScoreScale`; `plannedLater` i `CollapsibleSection` "Later · N more"). Tom plan med filter slået til: `EmptyState` med handling der slår filteret fra.
-- [ ] **`VoteTab`** `{ ideas, votes, saveState, canVote, language, onScore }`: `Segmented` fra `engineCounts(ideas)` plus "All"; rækker med to `ScoreScale`; stille handling nederst med link til forummets Roadmap-kategori (se `frontend/src/components/forum/forumCategories.js` for ruten).
+- [ ] **`BetaTab`** `{ inBeta, comingToBeta, betaState, language }`: `Section` "In beta now" med undertekst; række = mærke ("In beta" warning, eller "For everyone soon" success når `live_soon`), titel, meta (område · "in beta since" + dato fra `beta_since`). `Section` "Coming to beta" med mærket "Next in beta". Fanens ene primære knap "Join the beta" står i første korts header og fører til den eksisterende beta-ansøgning (find fladen via `frontend/src/pages/ProfilePage.jsx` og `backend/lib/betaAccess.js`; `betaState` er `member | pending | rejected | none`). Et medlem ser teksten "You are in the beta" i stedet for knappen; `pending` ser "Request sent". Ingen skalaer. Tom fane: `EmptyState` med "Join the beta" som handling.
+- [ ] **`VoteTab`** `{ ideas, votes, saveState, canVote, language, onScore }`: `Segmented` fra `engineCounts(ideas)` plus "All"; skalaen i to trin: en række viser kun `ScoreScale` "Good idea?"; når den er valgt (eller der allerede findes en stemme), vises "Important to you?" under den (ingen layout-hop for resten af listen: kun rækken selv vokser); stille handling nederst med link til forummets Roadmap-kategori (se `frontend/src/components/forum/forumCategories.js` for ruten).
 - [ ] **`KnownIssuesTab`** `{ confirmed, checking, recentlyFixed, recentlyDismissed, updatesByIssue, reports, canReport, language, onToggleReport }` (visuel reference: `pr-screens/roadmap-4-10/known-issues-to-grupper.html`): ét `Segmented` pr. område over to kort. Kortet "Confirmed" (undertekst "Problems I have seen myself or found the cause of."): `StatusBadge` confirmed → warning, fixing → info; knap "Affects me too". Kortet "Reported, being checked" (undertekst "Players have reported these. I have not confirmed them, and I am not promising a change."): neutralt mærke "Being checked"; knap "I see this too"; nederst `CollapsibleSection` "Checked, no problem found" med `recentlyDismissed` og ejerens forklaring (nyeste opdatering). Fælles for rækkerne: titel, meta, nyeste opdatering synlig og ældre i fold, `Button variant="secondary" size="sm"` der viser "Reported" efter tryk. `recentlyFixed` i egen `CollapsibleSection` nederst. Begge kort tomme: `EmptyState` med handling der fører til feedback-fladen.
 - [ ] **`DoneTab`** `{ entries, language }`: dato (data-font, lokal formatering uden årstal), titel, mærke (Feature = neutral, Fix = success). "Show more" efter 30.
 - [ ] **Udlogget:** `canVote`/`canReport` er `false`, skalaer og knap vises ikke, og én linje med login-link står over listen.
@@ -808,6 +899,8 @@ test("statusPatch sætter og nulstiller shipped_at", () => {
   4. "Kendte fejl" i to tabeller fra `rankIssues` ("Bekræftet" og "Meldt ind, tjekkes"): trin, ramt, åben i dage. Handlinger: "Ny opdatering" (insert i `known_issue_updates` + `updated_at = now` på fejlen), "Trin" (tjekkes, bekræftet, rettes, rettet, lukket uden fund; `fixed` og `dismissed` sætter `closed_at = now`, andre trin nulstiller den). "Lukket uden fund" kræver, at der skrives en opdatering med forklaringen i samme handling.
 - [ ] `RoadmapAdminForms`: opret/ret punkt (område, EN, DA, status, horizon, issue_ref, godkendt) og opret/ret fejl (område, EN, DA, trin, issue_ref, publiceret). Validering: begge titler udfyldt. Fejl vises med `ErrorState`-anatomien; "Prøv igen" er secondary.
 - [ ] "Del punkt" (færdig-reglen, spec §2 punkt 6): handling på hver række i plan- og idé-tabellen. Formularen beder om restens titel (EN + DA), status og Next/Later og kalder `supabase.rpc("roadmap_split_item", { p_source, p_title_en, p_title_da, p_status, p_horizon, p_issue_ref })`. Det nye punkt vises med mærket "Skjult", til ejeren slår "godkendt" til. Formularen minder om næste skridt: ret det oprindelige punkts titel til det, der er live, og sæt det til færdig.
+- [ ] Beta-kobling (spec §4/§5.6): punkt-formularen får `flag_key` som `Select` over stadie-kontakterne (samme kilde som `components/admin/sections/FeatureFlagBoardSection.jsx` bruger) og de to hak "Næste i beta" (`beta_soon`) og "Snart for alle" (`live_soon`). Plan-tabellen viser en kolonne "Kontakt" med nøgle og nuværende stadie. Formularen fortæller, at status derefter følger kontakten.
+- [ ] Idé-pulje (spec §4): egen tabel over idéer med `approved = false` (`roadmap_item_scores` hvor `status = 'active'`), med handlingen "Vis på Vote" (sætter `approved = true`) og "Tag af Vote" på synlige idéer. Over tabellen: "Synlige idéer: N (mål ca. 30)".
 - [ ] Alle øvrige skrivninger går direkte mod Supabase bag `is_admin()`-policies (samme mønster som den slettede `RoadmapAdminCreateForm.jsx`). Efter en skrivning genhentes de to views.
 - [ ] Rækker med `approved = false` / `published = false` vises med mærket "Skjult".
 - [ ] Dansk tekst, hardcoded som resten af admin. `npm run lint`, `node --test`, build, `node scripts/verify-affected.mjs`. Før/efter-billede, draft-PR, `Refs #5388`.
@@ -884,9 +977,86 @@ CLI-delen (kører kun når filen startes direkte): læs `--issue` og `--apply`; 
 
 ---
 
+## Spor 5 · Patch notes: beta-filter og mærke der følger kontakten (#6154)
+
+**Files:**
+- Modify: `frontend/src/lib/patchNotes.js` + `frontend/src/lib/patchNotes.test.js`
+- Modify: `frontend/src/pages/PatchNotesPage.jsx`
+- Modify: `frontend/src/data/patchNotes.js` (kun feltet `flag` på eksisterende beta-noter)
+- Modify: `frontend/public/locales/{en,da}/patchnotes.json`
+- Touch: `docs/PATCH_NOTES_RULES.md` §2a og den eksisterende patch notes-kontrol i `scripts/` (find den med `grep -rl "rollout" scripts`)
+
+**Interfaces:**
+- Consumes: `GET /api/feature-flags` uden Authorization-header (svaret `{ flags: { <nøgle>: boolean } }` er evalueret anonymt: `true` = slået til for alle). Kun nøgler i `PLAYER_VISIBLE_FLAG_KEYS` (`backend/lib/stageFlagCatalog.js`) findes i svaret.
+- Produces: `effectiveRollout(change, liveFlags)` og `filterByRollout(changes, mode, liveFlags)`.
+
+### Task 5.1: Ren logik (TDD)
+
+- [ ] **Step 1: Test** i `frontend/src/lib/patchNotes.test.js`:
+
+```js
+import { effectiveRollout, filterByRollout } from "./patchNotes.js";
+
+test("effectiveRollout: en beta-note med flag der er on for alle, læses som beta_to_live", () => {
+  const change = { rollout: "beta", flag: "training_groups" };
+  assert.equal(effectiveRollout(change, { training_groups: true }), "beta_to_live");
+  assert.equal(effectiveRollout(change, { training_groups: false }), "beta");
+  assert.equal(effectiveRollout(change, {}), "beta");          // ukendt kontakt: som skrevet
+  assert.equal(effectiveRollout(change, null), "beta");        // kaldet fejlede: som skrevet
+});
+
+test("effectiveRollout: noter uden flag og gamle stage:beta-noter er uændrede", () => {
+  assert.equal(effectiveRollout({ rollout: "live" }, { x: true }), "live");
+  assert.equal(effectiveRollout({ stage: "beta" }, {}), "beta");
+  assert.equal(effectiveRollout({ rollout: "beta_to_live" }, {}), "beta_to_live");
+});
+
+test("filterByRollout: all, beta og now_live", () => {
+  const changes = [
+    { id: 1, rollout: "beta", flag: "a" }, { id: 2, rollout: "beta", flag: "b" },
+    { id: 3, rollout: "beta_to_live" }, { id: 4, rollout: "live" },
+  ];
+  const flags = { a: true, b: false };
+  assert.deepEqual(filterByRollout(changes, "all", flags).map((c) => c.id), [1, 2, 3, 4]);
+  assert.deepEqual(filterByRollout(changes, "beta", flags).map((c) => c.id), [2]);
+  assert.deepEqual(filterByRollout(changes, "now_live", flags).map((c) => c.id), [1, 3]);
+});
+```
+
+- [ ] **Step 2:** Kør `node --test frontend/src/lib/patchNotes.test.js`: FAIL.
+- [ ] **Step 3: Implementér** i `frontend/src/lib/patchNotes.js`:
+
+```js
+// Roadmap-hub (#5387): en beta-note følger sin kontakt. Er kontakten slået til
+// for alle, læses noten som "beta_to_live" uden at datafilen skal rettes.
+export function effectiveRollout(change, liveFlags) {
+  const written = change.rollout || (change.stage === "beta" ? "beta" : "live");
+  if (written === "beta" && change.flag && liveFlags && liveFlags[change.flag] === true) return "beta_to_live";
+  return written;
+}
+
+export function filterByRollout(changes, mode, liveFlags) {
+  if (mode === "beta") return changes.filter((c) => effectiveRollout(c, liveFlags) === "beta");
+  if (mode === "now_live") return changes.filter((c) => effectiveRollout(c, liveFlags) === "beta_to_live");
+  return changes;
+}
+```
+
+- [ ] **Step 4:** Kør testen: PASS. Commit.
+
+### Task 5.2: Siden, data og reglen
+
+- [ ] `PatchNotesPage.jsx`: hent de anonyme flag én gang (genbrug det anonyme kald i `frontend/src/lib/featureStage.ts`; eksportér det derfra frem for at kopiere det). `rolloutOf(change)` bruger `effectiveRollout(change, liveFlags)`. Tilføj et filter med tre valg (All / Beta / Now for everyone) i samme filterrække som kategorierne, med `Segmented`. Filteret kombineres med kategori og søgning. Tom liste: eksisterende `EmptyState`.
+- [ ] `frontend/src/data/patchNotes.js`: tilføj `"flag": "<nøgle>"` på de eksisterende `rollout: "beta"`-noter, hvor kontakten er entydig (slå op via notens `refs` og `docs/FEATURE_REGISTRY.yml`). Rør ingen tekst. Noter, hvor kontakten ikke kan afgøres, listes i PR'en.
+- [ ] Patch notes-kontrollen: en NY note med `rollout: "beta"` uden `flag` fejler (ratchet: eksisterende noter uden `flag` er undtaget via en eksplicit liste).
+- [ ] Locale: nøglerne `filter.rollout.all`, `filter.rollout.beta`, `filter.rollout.nowLive` (en + da). `docs/PATCH_NOTES_RULES.md` §2a: beskriv `flag`-feltet og den automatiske mærke-skift.
+- [ ] `npm run lint`, `node --test`, build, `node scripts/verify-affected.mjs`, e2e for patch notes-siden. Før/efter-billede, draft-PR, `Refs #5387`.
+
+---
+
 ## Efter bølgen (orkestrator)
 
-1. Merge-kø, én ad gangen (`scripts/merge-queue.ps1`): spor 1 → post-verify → spor 4 → spor 3 → spor 2. Hvert UI-spor kræver ejerens "merge" på preview.
+1. Merge-kø, én ad gangen (`scripts/merge-queue.ps1`): spor 1 → post-verify → spor 4 → spor 5 → spor 3 → spor 2. Hvert UI-spor kræver ejerens "merge" på preview.
 2. Indhold: ejer-godkendt `docs/drafts/2026-10-04-roadmap-indhold.md` skrives til prod i samme session som spor 2 går live (statusser, horizon, issue_ref, nye idéer, kendte fejl + første opdatering). Stemmetallet før og efter skal være ens.
 3. Patch note (EN først) + `help.json`, `FEATURE_REGISTRY.yml` + `node scripts/generate-feature-status.mjs`, NOW.md, statusboard, done-flip på issues.
 4. Ejeren poster selv i Discord.
@@ -896,7 +1066,9 @@ CLI-delen (kører kun når filen startes direkte): læs `--issue` og `--apply`; 
 | Spec | Spor/Task |
 |---|---|
 | §3 sidehoved, faner, filter, tæller | 2.1, 2.2 |
-| §3.1 Plan · §3.2 Vote · §3.3 Known issues · §3.4 Done · §3.5 tilstande | 2.3, 2.5 |
+| §3.1 Plan · §3.2 Vote (to trin) · §3.3 Known issues (to felter) · §3.4 Done · §3.5 Beta · §3.6 tilstande | 2.1, 2.3, 2.5 |
+| §5.6 beta-kobling | 1.2, 1.3, 3.2 |
+| §6b patch notes | 5.1, 5.2 |
 | §3.3 Hjælp-viderestilling og banner-link | 2.4 |
 | §4 admin | 3.1, 3.2 |
 | §5 data | 1.2, 1.3 |

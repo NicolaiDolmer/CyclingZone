@@ -25,28 +25,32 @@ Målt i prod 4/10:
 5. **Analysen bor bagved** som ny fane under `/admin/growth`.
 6. **Færdig-reglen: del punktet.** Er kun en del af et punkt leveret, flytter det leverede til Done med en titel, der siger præcis hvad der er live, og resten bliver et nyt punkt på planen. Stemmerne kopieres, så de står på begge punkter (billede: `pr-screens/roadmap-4-10/faerdig-regel.png`).
 
+7. **Beta får sin egen fane, og den følger kontakterne automatisk.** Et punkt står under "In beta now", så længe dets kontakt står på beta, og flytter selv til Done, når kontakten slås til for alle. Ejeren markerer kun "For everyone soon" og "Coming to beta". Patch notes får et filter (Beta / Now for everyone), og en beta-note skifter selv mærke, når funktionen er for alle. Billede: `pr-screens/roadmap-4-10/beta-overblik.png`.
+8. **Stemmeskalaen i to trin:** en idé viser kun "Good idea?", og "Important to you?" folder ud, når den første er besvaret.
+9. **Ca. 30 idéer ad gangen** på Vote-fanen. Resten ligger klar bagved, og ejeren skifter 5-10 ud ad gangen.
+
 Uændrede, tidligere beslutninger: spillere ser kun deres egen stemme (11/6) · ingen datoer på planen, kun rækkefølge · EN først, DA under · ejeren godkender al spillertekst før den vises.
 
 ## 3. Spillersiden (`/roadmap`)
 
-Skabelon T1 (max-w-4xl), det kanoniske sidehoved, `Tabs`-primitiven. Ruten forbliver offentlig. Fanen ligger i URL'en (`?tab=plan|vote|issues|done`, standard `plan`), så der kan linkes direkte til en fane.
+Skabelon T1 (max-w-4xl), det kanoniske sidehoved, `Tabs`-primitiven. Ruten forbliver offentlig. Fem faner i rækkefølgen Plan, Beta, Vote, Known issues, Done. Fanen ligger i URL'en (`?tab=plan|beta|vote|issues|done`, standard `plan`), så der kan linkes direkte til en fane.
 
 **Sidehoved:** titel "Roadmap" og én linje undertekst. I handlingsklyngen til højre: afkrydsningen "Only what I have not rated" og tælleren "Rated 27 of 42". Afkrydsningen gælder Plan og Vote, er slået til som standard for en indlogget spiller, og valget huskes i `localStorage`. Tælleren dækker planlagte punkter plus idéer.
 
-**Fane-tal:** Plan og Vote viser hvor mange punkter spilleren mangler at svare på. Known issues viser antal åbne fejl. Done har intet tal.
+**Fane-tal:** Plan og Vote viser hvor mange punkter spilleren mangler at svare på. Beta viser antal funktioner i beta nu. Known issues viser antal bekræftede, åbne fejl. Done har intet tal.
 
 ### 3.1 Plan
 
 To kort:
 
-- **In progress:** rækker med titel og en meta-linje (område, evt. "in beta"). Ingen skala.
+- **In progress:** rækker med titel og en meta-linje (område). Ingen skala. Det, der er i beta, står på Beta-fanen og ikke her.
 - **Planned:** nummererede rækker i ejerens rækkefølge. Titel, område, og én skala til højre (under titlen på telefon). Stemmen gemmes ved tryk. Punkter med `horizon = later` ligger bag en fold ("Later · 9 more").
 
 Motorernes "Today"-prosa fra den nuværende side udgår. Done-fanen viser, hvad der findes.
 
 ### 3.2 Vote
 
-Ét kort med `Segmented` pr. område (All, Races, Training, Youth, Market, Club; kun områder med punkter vises, hvert med antal). Hver række har titel, område og de to skalaer. Stemmen gemmes, når begge skalaer er valgt (som i dag). Nederst en stille handling, der fører til forummet for egne idéer.
+Ét kort med `Segmented` pr. område (All, Races, Training, Youth, Market, Club; kun områder med punkter vises, hvert med antal). Hver række har titel og område. Skalaen vises i to trin: først kun "Good idea?"; når den er valgt, folder "Important to you?" ud under den. Et punkt, spilleren allerede har stemt på, viser begge. Stemmen gemmes, når begge skalaer er valgt (som i dag). Fanen viser ca. 30 idéer ad gangen (§8). Nederst en stille handling, der fører til forummet for egne idéer.
 
 ### 3.3 Known issues
 
@@ -69,7 +73,17 @@ Hjælp-sidens "Known issues"-fane fjernes. `/help?section=knownIssues` videresti
 
 Én liste, nyeste først: dato, titel og et mærke (Feature eller Fix). Kilder: `roadmap_items` med `status = shipped` og `known_issues` med `status = fixed`. Viser de 30 nyeste, resten bag "Show more".
 
-### 3.5 Tilstande
+### 3.5 Beta
+
+Tre grupper, alle læst fra `roadmap_items` (§5.6):
+
+- **In beta now:** punkter, hvis kontakt står på beta. Undertekst: "Beta testers have these. Everyone else gets them when they are ready." Mærke "In beta", eller "For everyone soon" når ejeren har sat hakket. Meta-linjen viser område og "in beta since" + dato.
+- **Coming to beta:** planlagte eller igangværende punkter, ejeren har markeret som de næste i beta. Mærke "Next in beta".
+- Kortets ene primære knap er "Join the beta", som fører til den eksisterende ansøgning. En beta-tester ser i stedet teksten "You are in the beta".
+
+Ingen skalaer på denne fane. Når kontakten slås til for alle, står punktet under Done.
+
+### 3.6 Tilstande
 
 - **Udlogget:** alt kan læses. Skalaer og "Affects me too" vises ikke. Én linje med login-link står over listen.
 - **Loading:** `Skeleton` i kortene, kort-chrome står. Antallet af skeleton-rækker er fast (den statiske `engines.*.next`-fallback i locale-filerne fjernes).
@@ -86,6 +100,8 @@ Ny fane "Roadmap" i `AdminGrowthPage` (T2, dansk tekst som resten af admin). Adm
 - **Idéer:** sorteret efter styringsscore. Kolonner: god idé, vigtighed, score, stemmer. Handling: "Til planen" (status `active` → `planned`; stemmerne følger med).
 - **Kendte fejl:** to tabeller (bekræftet / meldt ind), hver sorteret efter antal tryk. Kolonner: fejl, trin, ramt, åben i dage. Handlinger: ny opdatering (EN + DA), skift trin (tjekkes, bekræftet, rettes, rettet, lukket uden fund), ret titel. "Lukket uden fund" kræver en opdatering med forklaringen.
 - **Opret:** nyt punkt eller ny fejl (EN + DA, område, synlig ja/nej).
+- **Beta-kobling:** på et punkt vælges kontakten (fra listen over stadie-kontakter), og der er to hak: "Næste i beta" og "Snart for alle". Status følger derefter kontakten automatisk.
+- **Idé-pulje:** idéer med `approved = false` står i en egen tabel med kilde og antal spillere bag. "Vis på Vote" slår en idé til; tabellen viser, hvor mange der er synlige (mål ca. 30).
 - **Del punkt:** på et punkt vælges "Del", og resten får sin egen titel (EN + DA), status og Next/Later. Det nye punkt oprettes skjult med en kopi af alle stemmer fra det oprindelige, så teksten kan godkendes, før det vises. Det oprindelige punkt får bagefter sin nye, præcise titel og flyttes til Done.
 
 Rækker med `approved = false` / `published = false` vises kun her, så tekst kan godkendes før den er synlig.
@@ -123,7 +139,14 @@ Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, 
 
 RPC `roadmap_split_item(source, title_en, title_da, status, horizon, issue_ref)` bag `is_admin()`: opretter et nyt punkt (samme område, `approved = false`) og kopierer alle stemmerækker fra kildepunktet til det nye. En spillers stemme kan ændres på hvert punkt for sig bagefter. Kildepunktet røres ikke.
 
-### 5.6 Nøgletal
+### 5.6 Beta-kobling
+
+- Nye kolonner på `roadmap_items`: `flag_key TEXT NULL` (en nøgle i `app_config`), `beta_since TIMESTAMPTZ NULL`, `beta_soon BOOLEAN` ("Coming to beta"), `live_soon BOOLEAN` ("For everyone soon").
+- En trigger på `app_config` følger kontakten: `beta` sætter koblede punkter til `in_progress` med `beta_since`; `on` sætter dem til `shipped` med `shipped_at`; `off` nulstiller `beta_since`. En tilsvarende trigger på `roadmap_items` læser kontakten, når et punkt kobles.
+- **Sikkerhedskrav:** et flag-flip må aldrig kunne fejle på grund af roadmappet. Triggeren på `app_config` fanger alle fejl i sin egen blok og logger en advarsel. Den skriver kun i `roadmap_items`.
+- Færdig-rutinen (§7) bruges derefter kun til funktioner uden kontakt og til kendte fejl.
+
+### 5.7 Nøgletal
 
 View eller RPC bag `is_admin()`, der giver de fire nøgletal i §4 i ét kald, så admin-fanen ikke henter alle stemmerækker til klienten.
 
@@ -140,6 +163,13 @@ Nye frontend-filer er `.ts`/`.tsx`. `RoadmapPage.jsx` (431 linjer i dag) bliver 
 - Locale: `roadmap.json` (en + da) får de nye nøgler, `help.json` (en + da) retter henvisningen. Tekst følger `docs/TONE_OF_VOICE.md` (jeg/I, ingen em-dash). Teksterne i mockuppen er udkast, ejeren godkender de endelige.
 - `database/schema-snapshot.json` og `frontend/src/types/database.types.ts` opdateres.
 
+## 6b. Patch notes
+
+- Filter på patch notes-siden: All / Beta / Now for everyone. Mærkerne (`rollout`) findes allerede; filteret er nyt.
+- En note med `rollout: "beta"` kan få feltet `flag`. Når den kontakt er slået til for alle (læst anonymt fra `GET /api/feature-flags`), viser noten mærket "Now for everyone" i stedet for "Beta", uden at noten skal rettes.
+- Nye beta-noter skal have `flag` (håndhæves i den eksisterende patch notes-kontrol; eksisterende noter mappes, hvor kontakten kendes).
+- `docs/PATCH_NOTES_RULES.md` §2a opdateres.
+
 ## 7. Færdig-rutinen
 
 `scripts/roadmap-flip.mjs --issue N` finder roadmap-punkter og kendte fejl med `issue_ref = N` og viser, hvad der ville blive flyttet (dry-run). Med `--apply` sættes `shipped`/`fixed` og tidsstemplet.
@@ -152,7 +182,8 @@ Indholdet er ikke en del af byggeriet og godkendes for sig i `docs/drafts/2026-1
 
 1. De tre punkter, der skulle være flyttet 27-28/9 (træning pr. løbsdag, U23/junior-trupper, rytterværdier), verificeres mod prod og flyttes til færdig.
 2. Hvert af de 42 aktive punkter får et forslag: i gang, planlagt (Next/Later), idé eller færdig, med bevis.
-3. Nye idéer til afstemning fra spørgeskemaet 10/9, forummet og backloggen.
+3. Nye idéer til afstemning fra spørgeskemaet 10/9, Discord og backloggen. Ca. 30 er synlige ad gangen: de idéer flest spillere har bedt om, fordelt på områderne. Resten oprettes med `approved = false` og skiftes ind 5-10 ad gangen.
+3b. Punkter i beta kobles til deres kontakt (`flag_key`), så Beta-fanen er rigtig fra første dag.
 4. Kendte fejl fra forum-udkastet 30/9, genverificeret mod live-tilstand, med trin og første opdatering.
 5. Planens rækkefølge afstemmes med planlægningssessionen til 1/1-2027 (#6148), så roadmap og `MASTERPLAN.md` ikke vedligeholdes hver for sig.
 
@@ -162,7 +193,7 @@ Trin 1 kan køres med det samme. Trin 2-4 skrives til prod, når migrationen er 
 
 1. **Migration** (egen PR, merges først): §5. Idempotent, additiv, post-verify efter auto-migrate. Den nuværende side virker uændret bagefter.
 2. **Spillersiden** og **admin-fanen** bygges parallelt mod den applied migration. Hver UI-PR får ét annoteret før/efter-billede og ejer-go på preview før merge.
-3. **Færdig-rutinen** (script + docs).
+3. **Færdig-rutinen** (script + docs) og **patch notes-filteret** (§6b) er uafhængige spor.
 4. **Indhold** skrives til prod efter ejerens godkendelse af §8.
 5. Patch note (EN først) og `help.json` følger spillersidens PR. Ejeren poster selv i Discord.
 
@@ -172,7 +203,9 @@ Intet feature-flag: siden er offentlig læsning, migrationen er additiv, og den 
 
 - `node --test`: `roadmapModel.ts` (opdeling, tælling, filter, Done-fletning), `roadmapVoting` (payload for én og to skalaer), `roadmapUnread`.
 - RLS-integration (`backend/lib/testdb`): anon læser kun publicerede/godkendte rækker · spiller kan stemme på `active` og `planned`, ikke på `in_progress`/`shipped` · spiller ser kun egne stemmer og egne reports · kun admin skriver punkter, fejl og opdateringer · `audit-rls-coverage` dækker de tre nye tabeller.
-- Playwright: fane-skift og dyb-link, filteret, stem på idé (to skalaer) og på planlagt (én skala), "Affects me too" til/fra, udlogget visning, viderestillingen fra Hjælp. Snapshots i alle tre projekter.
+- Kontakt-koblingen: flip til beta og til on flytter koblede punkter; et flip uden koblede punkter virker uændret; kobling af et punkt til en kontakt, der allerede står på beta, sætter punktet i beta.
+- `node --test`: patch notes-mærket følger kontakten (`effectiveRollout`, `filterByRollout`).
+- Playwright: fane-skift og dyb-link, Beta-fanens tre grupper, filteret, stem på idé (to trin, to skalaer) og på planlagt (én skala), "Affects me too" til/fra, udlogget visning, viderestillingen fra Hjælp. Snapshots i alle tre projekter.
 - TIER FULL før push (i18n og delte libs er rørt): `scripts/verify-local.ps1`, lint, build, hele `npm run test:e2e`.
 
 ## 11. Ikke med

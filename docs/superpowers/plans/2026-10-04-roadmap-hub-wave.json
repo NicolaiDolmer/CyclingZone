@@ -4,7 +4,7 @@
       "issue": 6149,
       "branch": "feat/6149-roadmap-hub-migration",
       "title": "[db] Roadmap-hub: migration (statusser, kendte fejl, admin-tal) - spor 1",
-      "scopeText": "Udfoer 'Spor 1' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en docs/superpowers/specs/2026-10-04-roadmap-hub-design.md §5). TDD: integrationstesten foerst, saa migrationen. Migrationen maa IKKE applies af dig; den applies post-merge af auto-migrate. Task 1.4 er orkestratorens.",
+      "scopeText": "Udfoer 'Spor 1' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en docs/superpowers/specs/2026-10-04-roadmap-hub-design.md §5). TDD: integrationstesten foerst, saa migrationen. Migrationen maa IKKE applies af dig; den applies post-merge af auto-migrate. Task 1.4 er orkestratorens. Migrationen daekker ogsaa del-punkt-RPCen og beta-koblingen (trigger paa app_config med fejl-fangst: et flag-flip maa ALDRIG kunne fejle pga. roadmappet). Roer aldrig en rigtig kontakt i prod.",
       "model": "opus",
       "tier": "TARGETED",
       "ownership": [
@@ -22,8 +22,8 @@
     {
       "issue": 6150,
       "branch": "feat/6150-roadmap-hub-player-page",
-      "title": "[roadmap] Roadmap-hub: spillersiden i fire faner (Plan, Vote, Known issues, Done) - spor 2",
-      "scopeText": "Udfoer 'Spor 2' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt, spec'en §3 og §6, docs/design/PAGE_TEMPLATES.md, docs/design/TASTE.md og docs/TONE_OF_VOICE.md). Visuel reference: pr-screens/roadmap-4-10/roadmap-foer-efter.html. Kod mod kolonnerne i Faelles kontrakt og brug preview-mocks; migrationen er maaske ikke applied endnu. Ingen patch note i PR'en. Draft-PR inden 30 min, push hvert 15. min.",
+      "title": "[roadmap] Roadmap-hub: spillersiden i fem faner (Plan, Beta, Vote, Known issues, Done) - spor 2",
+      "scopeText": "Udfoer 'Spor 2' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt, spec'en §3 og §6, docs/design/PAGE_TEMPLATES.md, docs/design/TASTE.md og docs/TONE_OF_VOICE.md). Visuel reference: pr-screens/roadmap-4-10/roadmap-foer-efter.html, beta-overblik.html (Beta-fanen + stemmeskala i to trin) og known-issues-to-grupper.html (Known issues i to felter). Kod mod kolonnerne i Faelles kontrakt og brug preview-mocks; migrationen er maaske ikke applied endnu. Ingen patch note i PR'en. Draft-PR inden 30 min, push hvert 15. min.",
       "model": "opus",
       "tier": "FULL",
       "ownership": [
@@ -97,6 +97,30 @@
       "verifyCommands": [
         "node --test scripts/roadmap-flip.test.mjs",
         "pwsh -File scripts/check-agent-token-hygiene.ps1"
+      ]
+    },
+    {
+      "issue": 6154,
+      "branch": "feat/6154-patch-notes-beta-filter",
+      "title": "[patch-notes] Roadmap-hub: beta-filter og maerke der foelger kontakten - spor 5",
+      "scopeText": "Udfoer 'Spor 5' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints og spec'en §6b, docs/PATCH_NOTES_RULES.md, docs/TONE_OF_VOICE.md). Visuel reference: feltet 'Patch notes' i pr-screens/roadmap-4-10/beta-overblik.html. Roer ingen patch note-TEKST; kun feltet flag. Ingen patch note i PR'en.",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": [
+        "frontend/src/lib/patchNotes.js",
+        "frontend/src/lib/patchNotes.test.js",
+        "frontend/src/pages/PatchNotesPage.jsx",
+        "frontend/public/locales/en/patchnotes.json",
+        "frontend/public/locales/da/patchnotes.json"
+      ],
+      "touches": [
+        "frontend/src/data/patchNotes.js",
+        "frontend/src/lib/featureStage.ts",
+        "docs/PATCH_NOTES_RULES.md"
+      ],
+      "verifyCommands": [
+        "node --test frontend/src/lib/patchNotes.test.js",
+        "node scripts/verify-affected.mjs"
       ]
     }
   ]
