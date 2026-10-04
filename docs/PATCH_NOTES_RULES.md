@@ -49,6 +49,7 @@ En spiller skal kunne se, om en ændring gælder ham nu, kun beta-gruppen, eller
 | `event` | Begivenhed, ikke en kodeændring | Season event / Sæsonbegivenhed | Sæsonskiftet S3→S4 |
 
 - Det eksisterende top-felt `"label": "Beta"` er spillets **open beta** og forbliver uændret. Det er ikke `rollout`.
+- **`flag` (valgfrit, påkrævet på nye `beta`-noter, #6154):** nøglen på den kontakt noten handler om. Er kontakten slået til for alle (anonymt `GET /api/feature-flags`), læser siden noten som `beta_to_live` uden at datafilen rettes; filteret "Now for everyone" bruger samme læsning. Kun nøgler i `PLAYER_VISIBLE_FLAG_KEYS` kendes af siden, andre noter forbliver som skrevet. Guarden fejler en ny beta-note uden `flag`; eksisterende noter er undtaget.
 - Ældre entries med `"stage": "beta"` (#5422) læses af siden som `rollout: "beta"`; nye entries bruger `rollout`.
 - **Guard:** `scripts/check-patch-notes-version.js` fejler, hvis en player-change i en *ny* version mangler en
   gyldig `rollout`. Historiske versioner røres ikke.

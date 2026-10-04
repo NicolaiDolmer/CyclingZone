@@ -2,15 +2,18 @@ import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   loadPatches, flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
+  effectiveRollout, filterByRollout,
 } from "../lib/patchNotes.js";
+import { loadAnonymousFlags } from "../lib/featureStage.ts";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import {
-  PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader,
+  PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader, Segmented,
   SearchIcon, ChevronDownIcon, ChevronRightIcon,
 } from "../components/ui";
 
 const LAST_SEEN_KEY = "cz_patchnotes_last_seen";
 const CATEGORIES = ["all", "new", "improved", "fixed"];
+const ROLLOUT_FILTERS = ["all", "beta", "now_live"];
 
 // #6014: fast udrulnings-markering pr. change (docs/PATCH_NOTES_RULES.md §2a).
 // "live" (for alle) faar ingen chip; de fire andre faar en rolig hairline-chip.
@@ -22,8 +25,9 @@ const ROLLOUT_CHIP = {
   event: "border-cz-border text-cz-2",
 };
 
-function rolloutOf(change) {
-  const r = change.rollout || (change.stage === "beta" ? "beta" : null);
+// #6154: en beta-note foelger sin kontakt (effectiveRollout) - er kontakten on for alle, vises "Now live".
+function rolloutOf(change, liveFlags) {
+  const r = effectiveRollout(change, liveFlags);
   return ROLLOUT_CHIP[r] ? r : null;
 }
 
@@ -55,6 +59,8 @@ export default function PatchNotesPage() {
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  const [rolloutMode, setRolloutMode] = useState("all");
+  const [liveFlags, setLiveFlags] = useState(null);
   const [openDays, setOpenDays] = useState(() => new Set());
   const [openChanges, setOpenChanges] = useState(() => new Set());
 
@@ -75,6 +81,13 @@ export default function PatchNotesPage() {
     return () => { active = false; };
   }, [reloadToken]);
 
+  // #6154: de anonyme flag hentes én gang; fejler kaldet, læses noterne som skrevet.
+  useEffect(() => {
+    let active = true;
+    loadAnonymousFlags().then((flags) => { if (active) setLiveFlags(flags); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   function retryLoad() {
     setPatches(null);
     setReloadToken((n) => n + 1);
@@ -82,8 +95,8 @@ export default function PatchNotesPage() {
 
   const flat = useMemo(() => flattenChanges(patches || []), [patches]);
   const days = useMemo(
-    () => groupByDay(filterChanges(flat, { lang, category, query })),
-    [flat, lang, category, query],
+    () => groupByDay(filterByRollout(filterChanges(flat, { lang, category, query }), rolloutMode, liveFlags)),
+    [flat, lang, category, query, rolloutMode, liveFlags],
   );
 
   const [lastSeen] = useState(() => {
@@ -102,7 +115,7 @@ export default function PatchNotesPage() {
   }, [days]);
 
   const latest = days[0]?.date;
-  const filtering = Boolean(query) || category !== "all";
+  const filtering = Boolean(query) || category !== "all" || rolloutMode !== "all";
   const isDayOpen = (date) =>
     openDays.has(date) || (date === latest && openDays.size === 0 && !filtering);
 
@@ -172,31 +185,42 @@ export default function PatchNotesPage() {
         />
       </div>
 
-      <div
-        className="flex flex-wrap gap-2 mb-6"
-        role="group"
-        aria-label={t("filter.ariaLabel")}
-      >
-        {CATEGORIES.map((cat) => {
-          const active = category === cat;
-          const meta = CATEGORY_META[cat];
-          const label = t(`category.${cat}`);
-          return (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              aria-pressed={active}
-              className={`text-xs px-3 py-1.5 rounded-cz-pill border transition-colors flex items-center gap-2 ${
-                active
-                  ? "border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
-                  : "border-cz-border text-cz-2 hover:text-cz-1"
-              }`}
-            >
-              {meta && <span className={`w-1.5 h-1.5 rounded-cz-pill ${meta.dot}`} />}
-              {label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("filter.ariaLabel")}
+        >
+          {CATEGORIES.map((cat) => {
+            const active = category === cat;
+            const meta = CATEGORY_META[cat];
+            const label = t(`category.${cat}`);
+            return (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                aria-pressed={active}
+                className={`text-xs px-3 py-1.5 rounded-cz-pill border transition-colors flex items-center gap-2 ${
+                  active
+                    ? "border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
+                    : "border-cz-border text-cz-2 hover:text-cz-1"
+                }`}
+              >
+                {meta && <span className={`w-1.5 h-1.5 rounded-cz-pill ${meta.dot}`} />}
+                {label}
+              </button>
+            );
+          })}
+        </div>
+          <Segmented
+            label={t("filter.rollout.ariaLabel")}
+            value={rolloutMode}
+            onChange={setRolloutMode}
+            options={ROLLOUT_FILTERS.map((m) => ({
+              value: m,
+              label: t(`filter.rollout.${m === "now_live" ? "nowLive" : m}`),
+            }))}
+          />
       </div>
 
       {days.length === 0 ? (
@@ -264,7 +288,7 @@ export default function PatchNotesPage() {
                               const v = pickLang(c, lang);
                               const expanded = openChanges.has(c._key);
                               const hasBody = v.body && v.body !== v.title;
-                              const rollout = rolloutOf(c);
+                              const rollout = rolloutOf(c, liveFlags);
                               return (
                                 <li key={c._key} className="py-[13px] first:pt-0">
                                   <button

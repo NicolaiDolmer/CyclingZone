@@ -10,7 +10,13 @@
     "placeholder": "Search updates…"
   },
   "filter": {
-    "ariaLabel": "Filter by category"
+    "ariaLabel": "Filter by category",
+    "rollout": {
+      "ariaLabel": "Filter by rollout",
+      "all": "All",
+      "beta": "Beta",
+      "nowLive": "Now for everyone"
+    }
   },
   "category": {
     "all": "All",

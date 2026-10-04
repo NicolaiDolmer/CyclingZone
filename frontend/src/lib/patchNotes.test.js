@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   flattenChanges, pickLang, filterChanges, groupByDay, computeNewDays,
+  effectiveRollout, filterByRollout,
 } from "./patchNotes.js";
 
 const PATCHES = [
@@ -51,4 +52,29 @@ test("groupByDay grupperer player-changes pr. dato, nyeste først", () => {
 test("computeNewDays markerer dage nyere end lastSeen; tom ved første besøg", () => {
   assert.deepEqual([...computeNewDays(["2026-06-20", "2026-06-19"], "2026-06-19")], ["2026-06-20"]);
   assert.equal(computeNewDays(["2026-06-20"], null).size, 0);
+});
+
+test("effectiveRollout: en beta-note med flag der er on for alle, læses som beta_to_live", () => {
+  const change = { rollout: "beta", flag: "training_groups" };
+  assert.equal(effectiveRollout(change, { training_groups: true }), "beta_to_live");
+  assert.equal(effectiveRollout(change, { training_groups: false }), "beta");
+  assert.equal(effectiveRollout(change, {}), "beta");
+  assert.equal(effectiveRollout(change, null), "beta");
+});
+
+test("effectiveRollout: noter uden flag og gamle stage:beta-noter er uændrede", () => {
+  assert.equal(effectiveRollout({ rollout: "live" }, { x: true }), "live");
+  assert.equal(effectiveRollout({ stage: "beta" }, {}), "beta");
+  assert.equal(effectiveRollout({ rollout: "beta_to_live" }, {}), "beta_to_live");
+});
+
+test("filterByRollout: all, beta og now_live", () => {
+  const changes = [
+    { id: 1, rollout: "beta", flag: "a" }, { id: 2, rollout: "beta", flag: "b" },
+    { id: 3, rollout: "beta_to_live" }, { id: 4, rollout: "live" },
+  ];
+  const flags = { a: true, b: false };
+  assert.deepEqual(filterByRollout(changes, "all", flags).map((c) => c.id), [1, 2, 3, 4]);
+  assert.deepEqual(filterByRollout(changes, "beta", flags).map((c) => c.id), [2]);
+  assert.deepEqual(filterByRollout(changes, "now_live", flags).map((c) => c.id), [1, 3]);
 });
