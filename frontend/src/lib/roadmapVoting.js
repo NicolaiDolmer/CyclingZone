@@ -12,7 +12,8 @@ export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 // men begge steder skal stadig SELECT'e/INSERT'e de samme kolonner.
 // #5673: created_at tilføjet — kilden til roadmap-siden og -menupunktets nye
 // ulæst-prik (lib/roadmapUnread.ts: roadmap_items.created_at > sidst set).
-export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, created_at, shipped_at";
+// #6150 (roadmap-hub): horizon (Next/Later) og beta-koblingens tre felter.
+export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, horizon, beta_since, beta_soon, live_soon, created_at, shipped_at";
 
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 6;
@@ -50,6 +51,14 @@ export function buildVotePayload({ itemId, userId, ideaScore, importanceScore })
     importance_score: importanceScore,
     updated_at: new Date().toISOString(),
   };
+}
+
+// #6150: planlagte punkter har kun "Important to you?". idea_score sendes
+// ikke med, så en eksisterende idea_score (fra da punktet var en idé) bevares.
+export function buildImportancePayload({ itemId, userId, importanceScore }) {
+  if (!itemId || !userId) throw new Error("itemId and userId are required");
+  if (!isValidScore(importanceScore)) throw new Error(`score must be an integer ${SCORE_MIN}-${SCORE_MAX}`);
+  return { item_id: itemId, user_id: userId, importance_score: importanceScore, updated_at: new Date().toISOString() };
 }
 
 // Privacy (#1599): når userId er sat, filtreres til KUN den brugers egne
