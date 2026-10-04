@@ -2108,7 +2108,7 @@ export const SEED_SEASON_HONOURS = {
 // ── #3941 · Race Control ops-notices ────────────────────────────────────────
 // Én dismissable "warning" (viser dismiss-knappen) + én "incident" (viser at
 // incident IKKE kan dismisses) — begge active:true, saa preview/e2e ser begge
-// banner-strimler stakket + begge rækker i Hjælp-sidens "Kendte problemer".
+// banner-strimler stakket.
 export const SEED_OPS_NOTICES = [
   {
     id: "opsnotice-1",

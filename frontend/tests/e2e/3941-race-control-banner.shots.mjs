@@ -1,5 +1,5 @@
-// #3941 — screenshots af Race Control driftsbanneret + Hjælp-sidens "Kendte
-// problemer"-liste. Ad-hoc capture-script (ikke en del af CI-suiten;
+// #3941 — screenshots af Race Control driftsbanneret + roadmappens "Kendte
+// fejl"-fane (flyttet fra Hjælp i #6150). Ad-hoc capture-script (ikke en del af CI-suiten;
 // testMatch fanger kun *.spec.js) — samme mønster som
 // 3811-patchnotes-unread-dot.shots.mjs. Data kommer fra
 // frontend/src/preview/seedData.js (SEED_OPS_NOTICES) via installNetworkMocks
@@ -69,7 +69,7 @@ for (const vp of VIEWPORTS) {
   await context.close();
 }
 
-// "Kendte problemer" — kun desktop (samme deep-link som banneret linker til).
+// "Kendte fejl" — kun desktop (samme destination som banneret linker til, #6150).
 {
   const context = await browser.newContext({
     baseURL: BASE,
@@ -82,8 +82,8 @@ for (const vp of VIEWPORTS) {
   await stabilizePage(page);
   await login(page);
 
-  await page.goto("/help?section=knownIssues");
-  await page.getByRole("heading", { name: "Kendte problemer" }).first().waitFor();
+  await page.goto("/roadmap?tab=issues");
+  await page.getByRole("tab", { name: /Kendte fejl/, selected: true }).waitFor();
   await page.waitForTimeout(200);
   await page.screenshot({ path: resolve(OUT, "3941-known-issues-desktop.png") });
 
