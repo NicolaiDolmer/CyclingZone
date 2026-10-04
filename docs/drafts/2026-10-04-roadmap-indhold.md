@@ -2,7 +2,7 @@
 
 Udkast 4/10. Intet er skrevet til prod. Design: `docs/superpowers/specs/2026-10-04-roadmap-hub-design.md` §8. Byggeplan: `docs/superpowers/plans/2026-10-04-roadmap-hub.md`.
 
-**Kilder (del 1-4):** prod-SELECT 4/10 (`roadmap_items`, `roadmap_votes`, `app_config`, spørgeskema `2026-09-features`), `patchNotes.js` til og med 7.337, `FEATURE_STATUS.md`, `MASTERPLAN.md`, `NOW.md`, `OPERATING_PLAN.md`, GitHub-issues. Read-only gennemgang. **Del 5 (Discord)** tilføjes, når gennemgangen af de fem kanaler er færdig.
+**Kilder (del 1-4):** prod-SELECT 4/10 (`roadmap_items`, `roadmap_votes`, `app_config`, spørgeskema `2026-09-features`), `patchNotes.js` til og med 7.337, `FEATURE_STATUS.md`, `MASTERPLAN.md`, `NOW.md`, `OPERATING_PLAN.md`, GitHub-issues. Read-only gennemgang. Del 5 er Discord (fem kanaler + daglige udtræk), del 6 er backlog-gennemgangen.
 
 Forkortelser: S = shipped (Done) · IP = in_progress · P = planned (next/later) · A = active (idé til afstemning) · AR = archived. **LØFTE** = stammer fra et løfte til spillerne. Tal i sidste kolonne: stemmer / god idé / vigtighed.
 
@@ -161,11 +161,107 @@ Ingen af dem findes i `roadmap_items`. Alle har veto under 20 % i spørgeskemaet
 
 Udeladt pga. veto over 20 %: flere løb i lave divisioner (24,1 %), én stor trup (28,1 %), træner-feedback (22,2 %), AI-bud (32,4 %).
 
-## 5. Discord (fem kanaler)
+## 5. Discord (fem kanaler + de daglige udtræk 20/9-4/10)
+
+**Dækning:** Discord-værktøjet henter kun de 100 nyeste beskeder pr. kanal. #feedback-from-dolmer (15/8-28/9), #løse-informationer (2/9-4/10), #the-roadbook (hele kanalen) og #patch-notes (17/7-3/10) er læst direkte. #staff-chat kun 2-3/10 direkte; resten og alle spillerkanaler og forummer er dækket af de daglige udtræk `scripts/discord/.sweep-daily-2026-09-20.md` til `-10-04.md`, som er læst helt. Ældre forumtråde (3/8-19/9) er ikke læst her; de dækkes af auditten 10/9 og af backlog-gennemgangen (afsnit 6). Intet i det læste lignede en instruktion til en AI. Spillernavne er udeladt, fordi repoet er offentligt.
+
+### 5.1 De vigtigste temaer, 20/9-4/10 (antal forskellige spillere)
+
+| # | Tema | Spillere | Dækket på roadmappet af |
+|---|---|---|---|
+| 1 | Ungdomsholdene: løb ikke synlige, udløbne U23-kontrakter, låste ryttere, forkert alder, ingen gevinst ved at vinde | 15 | Idé "Prize money in youth races" · fejl #5945, #6124 · idé #6126 · **nye fejl 5.3** |
+| 2 | v4-motoren: favoritter i udbrud, kunstige tidstab, resultater der virker tilfældige | 14 | Fejl #5978, #5951 · **nye fejl 5.3** (løbsfilm, tidshuller) |
+| 3 | Træningen efter sæsonskiftet er svær at forstå (rapporter, tidspunkt, løbsdage) | 13 | N5 Train now · N8 træningssiden · fejl #5915 |
+| 4 | Bestyrelsen: gentagne beskeder, 3-års-plan man ikke kan svare på, mål der ikke passer | 12 | Fejl #6122, #5946 |
+| 5 | Marked: frie ryttere på auktion i kun 1 time, bytte med flere ryttere, penge der "kommer tilbage" | 10 | Idé #2884/#4714 · punktet "Deeper negotiation" · **ny fejl 5.3** |
+| 6 | Træthed og form talt 5 gange, træning tabt 28-29/9 | 9 | Fejl #5928, #5912, #6129 |
+| 7 | Udviklingen føles langsommere, og løb giver for lidt i forhold til træning | 9 | N9 Udvikling 2.0 · fejl #5965 |
+| 8 | Økonomi: drift pr. løbsdag mod indtægt, lønkrav, sponsorbeløb, frygt for at blive "feeder-hold" | 6 | Fejl #5916 · **nye idéer 5.4** |
+| 9 | Kommunikation og stabilitet, ønske om ét sted med kendte problemer | 5 | Selve roadmap-hubben |
+| 10 | Rytterværdier ændrede sig ved skiftet | 5 | Fejl #5842 |
+| 11 | For kort pause mellem sæsoner | 5 | Idé #5833 |
+| 12 | Scouting er for tyndt | 5 | Punktet "Scouts that differ" · fejl #6138 |
+| 13 | Scouted projection og alder | 5 | N9 · **ny fejl 5.3** |
+| 14 | Træningsskader føles hyppige, advarslen kommer for sent | 5 | **Ny fejl 5.3** (#5418) |
+| 15 | Siden hænger (28/9 og 1/10) | 3 | Fejl #5878/#5893, #5162 · N16 |
+
+### 5.2 Åbne løfter, der ikke står i afsnit 1-3
+
+| Dato | Løfte | Status | Issue | Forslag |
+|---|---|---|---|---|
+| 22/9 | Eget ikon for kuperede etaper i kalenderen | Ikke startet | #6125 | Plan · later |
+| 25/9 | Potentiale forlader værdimodellen og erstattes af træningsscore | Ikke startet | intet fundet | Plan · next (del af #5443) |
+| 26/9 | Topryttere: den ekstra præmie i prisen trappes ned hver søndag fra 4/10 | Ikke verificeret, om det kørte 4/10 | #5443 | Verificér først |
+| 26/9 | Drift pr. ungdomsplads vender tilbage med en sats, der meldes ud først | Ikke meldt ud | intet fundet | Plan · later |
+| 27/9 | Træthedsadvarslen flyttes fra 78 til 70 | Ikke leveret | #5418 | Known issue (5.3) |
+| 27/9 | Afstemning om pause mellem sæsoner | Ikke set | #5833 | Idé (afsnit 4) |
+| 27/9 | Sprinttog med fra start i den nye motor | Uverificeret | #6125 | Verificér først |
+| 28/9 | Skader nulstilles ved sæsonskiftet fremover | Ikke startet | #5865 | Idé (afsnit 4) eller Plan |
+| 1/10 | Vicekaptajn / delt kaptajn | Ikke startet | #5981 | Plan · next (med i #6148) |
+| 3/10 | Sortering på omdømme rettes | Ukendt | intet fundet | Known issue (5.3) |
+| 30/9 | "Jeg opdaterer status, når ting faktisk er live" | Indfries af Known issues-fanen | #5387 | |
+
+### 5.3 Kendte fejl, der mangler i afsnit 3
+
+| Omr. | Trin | Issue | Spillere | EN / DA |
+|---|---|---|---|---|
+| races | inv | #6137 | 1 | The race film repeats the same event many times in a row. / Løbsfilmen gentager den samme hændelse mange gange i træk. |
+| races | inv | intet fundet | 3 | Rolling and punchy uphill finishes can still give too big time gaps. / Kuperede etaper og punch-afslutninger opad kan stadig give for store tidsforskelle. |
+| training | inv | #5418 | 5 | Training injuries feel too frequent, and the fatigue warning comes too late. / Træningsskader føles for hyppige, og træthedsadvarslen kommer for sent. |
+| training | inv | #6110 | 5 | Scouted projection is too low for the biggest young talents. / Scouted projection viser for lavt for de største unge talenter. |
+| training | inv | #6059 | 2 | Some riders jumped or dropped in abilities at the season switch. / Nogle ryttere sprang op eller ned i evner ved sæsonskiftet. |
+| training | fix | #6006 (+#6027) | 4 | Train now (beta) does not show the result right away. / Train now (beta) viser ikke resultatet med det samme. |
+| training | fix | #5949 | 1 | A rider who left a race could block training for the whole team. / En rytter, der udgik af et løb, kunne blokere træningen for hele holdet. |
+| training | inv | intet fundet | 1 | A rider can still gain two points in one ability on the same day. / En rytter kan stadig stige to point i samme evne på én dag. |
+| training | inv | intet fundet | 1 | On a phone, training cannot be changed after a rider has trained. / På telefonen kan træningen ikke ændres, når rytteren har trænet. |
+| training | done | #6061 | 1 | Some riders did not train in the evening. / Nogle ryttere trænede ikke om aftenen. (v7.334) |
+| youth | inv | intet fundet | 3 | Some U23 riders with an expired contract stayed on the U23 team. / Nogle U23-ryttere med udløbet kontrakt blev på U23-holdet. |
+| youth | inv | intet fundet | 1 | Riders moving from junior to U23 can show the wrong age. / Ryttere, der går fra junior til U23, kan vise forkert alder. |
+| market | inv | intet fundet | 2-3 | Money from a sale can look like it came back to your account. / Penge fra et salg kan se ud, som om de kom tilbage på kontoen. |
+| market | inv | #6138 | 1 | A 24-hour scout mission can return 4 riders instead of 5. / En 24-timers scoutmission kan give 4 ryttere i stedet for 5. |
+| market | inv | intet fundet | 1 | Sorting riders by reputation is not fully correct. / Sortering af ryttere efter omdømme er ikke helt korrekt. |
+| market | fix | #5919 | 1 | You get an outbid mail when your own team bids. / Du får en overbudt-mail, når dit eget hold byder. |
+| club | inv | intet fundet | 1 | The left menu disappears in the board meeting. / Venstremenuen forsvinder i bestyrelsesmødet. |
+
+Fem af dem mangler et GitHub-issue (udløbne U23-kontrakter, penge der "kommer tilbage", sortering på omdømme, forkert alder ved junior til U23, menuen i bestyrelsesmødet). De oprettes i næste triage.
+
+Uenighed mellem gennemgangene, som skal afgøres ved apply: #5951 (indhentede udbrydere) står som "undersøges" i afsnit 3, men rettelsen er live i v7.327, og nye meldinger kan have en anden årsag. #5928, #6095, #5860, #5947 og #6061 er rettet ifølge patch notes, men står stadig åbne i GitHub.
+
+### 5.4 Nye idéer fra Discord (ikke i afsnit 4)
+
+| Omr. | EN / DA | Kilde | Issue |
+|---|---|---|---|
+| races | Crashes that depend on a rider's technique, not only on luck. / Styrt der afhænger af rytterens teknik, ikke kun af held. | 1 spiller, 24/9 | intet fundet |
+| races | Gravel races, where cobble riders feel at home. / Grusvejsløb, hvor brostensryttere føler sig hjemme. | Ejeren 3/9 (staff-kanal) | intet fundet |
+| races | Time trials of different lengths, flat and hilly, so different riders win them. / Enkeltstarter i forskellige længder, flade og bakkede, så forskellige ryttere vinder dem. | 1 spiller, 2/9 (staff-kanal) | intet fundet |
+| races | African, Asian and Pan American Games next to the Europeans. / Afrikanske, asiatiske og panamerikanske lege ved siden af EM. | 1 spiller, 28/7 | intet fundet |
+| races | The race film groups repeated events into one line. / Løbsfilmen samler gentagne hændelser i én linje. | 1 spiller, 3/10 | #6137 |
+| training | Balanced training pays off: a rider far ahead in one ability trains it slower. / Alsidig træning betaler sig: en rytter langt foran i én evne træner den langsommere. | 1 spiller, 3/10 (staff-kanal) | intet fundet |
+| training | Punch and climbing as separate training sessions. / Punch og klatring som to forskellige træningspas. | Ejeren 2/9 (roadbook) | intet fundet |
+| training | Pick riders for a training rule or group by ticking them on your squad list. / Vælg ryttere til en træningsregel eller -gruppe ved at sætte flueben på truplisten. | 1 spiller, 3/10 | intet fundet |
+| training | The daily report opens every rider at once and sorts by age, score or name. / Den daglige rapport folder alle ryttere ud på én gang og sorterer efter alder, score eller navn. | 2 spillere, 1/10 | intet fundet |
+| youth | Homegrown riders: follow every rider from your academy, also after he leaves. / Egne talenter: følg hver rytter fra dit akademi, også når han forlader holdet. | Ejeren 10/9 (staff-kanal) | intet fundet |
+| market | Watchlist icons for riders on auction or the transfer list. / Ikoner på ønskelisten for ryttere på auktion eller transferlisten. | 1 spiller, 20/8 | intet fundet |
+| club | A way back for small clubs: cheaper ways to develop when you start late or fall behind. / En vej tilbage for små klubber: billigere udvikling, når du starter sent eller er bagud. | 2 spillere, 1/10; ejeren: "senere" | #1981 |
+| club | Wages paid per race day, like upkeep, instead of in one go. / Løn betalt pr. løbsdag ligesom drift, i stedet for i én omgang. | Ejeren + 1 spiller, 1/10 | intet fundet |
+
+Ikke foreslået: "75 % træning som standard og 25 % ekstra til aktive managers" (2 spillere, 3/10), fordi det strider mod løftet i v7.308 om, at alle hold træner ens.
+
+### 5.5 Spørgsmål fra Discord-gennemgangen
+
+- Må idéer fra de lukkede staff-kanaler stå som offentlige Vote-punkter?
+- Grusvejsløb: Plan eller Vote?
+- "Udviklingen føles langsom" (9 spillere): kendt fejl, eller kun Udvikling 2.0 på Plan?
+- 12-timers auktioner på frie ryttere: forum-afstemningen (#4714) eller Vote-fanen, ikke begge.
+- Skader i løbsdage (#5462) er lukket, men der er ikke fundet en patch note. Er det live?
+- Kørte nedtrapningen af topryttere-præmien søndag 4/10?
+- Et hold ved navn "Dolmer Racing" udgav sig 3/10 for at være ejeren (ikke roadmap, men bør håndteres).
+
+## 6. Backlog-gennemgang (spillerønsker i GitHub-issues)
 
 Tilføjes, når gennemgangen er færdig.
 
-## 6. Åbne spørgsmål til ejeren
+## 7. Åbne spørgsmål til ejeren
 
 1. **Rytterværdier (00000017):** titlen lover "prices shaped by real auctions and transfers". Modellen bruger handler, men patch note 7.303 nævner det ikke. Done med nuværende titel, eller omskriv først?
 2. **Delvist leveret (cab2228d, 00000209, 00000212):** live for alle, men dækker kun en del af titlen. Done eller i gang?
