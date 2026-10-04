@@ -4,6 +4,41 @@ import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
+import * as runner from './codex-wave.mjs';
+
+const localAppData = 'C:\\Users\\Fixture\\AppData\\Local';
+const appCli = `${localAppData}\\OpenAI\\Codex\\bin\\current\\codex.exe`;
+const npmCli = 'C:\\Users\\Fixture\\AppData\\Roaming\\npm\\codex.ps1';
+const command = sources => runner.codexCommand({ platform: 'win32', localAppData, discover: () => sources });
+
+test('Windows discovery selects the app CLI when npm shims precede it on PATH', () => {
+  assert.deepEqual(command([npmCli, npmCli.replace('.ps1', '.cmd'), appCli]), { file: appCli, prefix: [] });
+});
+
+test('app CLI discovery accepts Windows case and slash differences', () => {
+  const executable = appCli.replaceAll('\\', '/').toUpperCase();
+  assert.deepEqual(command([npmCli, executable]), { file: executable, prefix: [] });
+});
+
+test('an unrelated codex.exe does not masquerade as the app binary', () => {
+  const unrelated = `${localAppData}\\OpenAI\\Codex\\bin-old\\codex.exe`;
+  assert.deepEqual(command([npmCli, unrelated]), { file: 'pwsh', prefix: ['-NoProfile', '-File', npmCli] });
+});
+
+test('CLI-only Windows installations preserve PowerShell and executable fallback', () => {
+  assert.deepEqual(command(npmCli), { file: 'pwsh', prefix: ['-NoProfile', '-File', npmCli] });
+  const exe = 'C:\\Tools\\codex.exe';
+  assert.deepEqual(command([exe]), { file: exe, prefix: [] });
+});
+
+test('missing CLI discovery fails before a child can be spawned', () => {
+  assert.throws(() => command([]), /No Codex CLI found/);
+});
+
+test('non-Windows runner preserves PATH resolution without Windows discovery', () => {
+  assert.deepEqual(runner.codexCommand({ platform: 'linux', discover: () => { assert.fail('unexpected discovery'); } }),
+    { file: 'codex', prefix: [] });
+});
 
 const now = 1790000000000;
 function fixture(t) {
