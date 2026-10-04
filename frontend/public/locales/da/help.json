@@ -1929,13 +1929,5 @@
       "q": "Hvis jeg annullerer en scout-mission, får jeg pengene tilbage? Betyder det noget, hvornår jeg annullerer?",
       "a": "Ingen refusion, uanset hvornår. Rejseomkostningen trækkes i det øjeblik du starter en mission, og en annullering stopper den bare og frigør din spejder; den giver ikke nogen af de penge du allerede har brugt tilbage, uanset hvor tidligt eller sent du annullerer. Vej det ind før du sætter en mission i gang: start kun én du er villig til at se igennem, eller villig til at tabe omkostningen på hvis dine planer ændrer sig."
     }
-  },
-  "knownIssues": {
-    "label": "Kendte problemer",
-    "heading": "Kendte problemer",
-    "emptyTitle": "Ingen kendte problemer",
-    "emptyDescription": "Intet at melde lige nu. Aktive og nylige hændelser vises her.",
-    "activeLabel": "Aktiv",
-    "resolvedLabel": "Løst"
   }
 }

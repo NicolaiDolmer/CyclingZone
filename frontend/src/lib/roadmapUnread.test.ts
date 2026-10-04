@@ -55,3 +55,10 @@ test("latestRoadmapCreatedAt springer punkter uden created_at over", () => {
 test("LAST_SEEN_KEY er en egen nøgle, adskilt fra patch notes' cz_patchnotes_last_seen", () => {
   assert.equal(LAST_SEEN_KEY, "cz_roadmap_last_seen");
 });
+
+// #6150: nav-prikken tager også nyeste publicerede known_issues.created_at med.
+test("latestRoadmapCreatedAt over en blandet liste af punkter og kendte fejl", () => {
+  const items = [{ created_at: "2026-09-24T10:00:00Z" }];
+  const issues = [{ created_at: "2026-10-02T08:00:00Z" }, { created_at: "2026-09-30T00:00:00Z" }];
+  assert.equal(latestRoadmapCreatedAt([...items, ...issues]), "2026-10-02T08:00:00Z");
+});

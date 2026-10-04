@@ -1,7 +1,7 @@
-// #3941 — Race Control ops-notices: rene helpers til driftsbanneret + "Kendte
-// problemer"-listen paa Hjaelp-siden.
+// #3941 — Race Control ops-notices: rene helpers til driftsbanneret.
+// (#6150: listen paa Hjaelp-siden er afloest af /roadmap?tab=issues.)
 //
-// fetchActiveOpsNotices/fetchRecentOpsNotices importerer ../lib/supabase.ts
+// fetchActiveOpsNotices importerer ../lib/supabase.ts
 // DYNAMISK (await import) i stedet for statisk i toppen af filen: et statisk
 // `import { supabase } from "./supabase"` er extensionless og kan ikke
 // resolves af Node's ESM-loader uden en TS-loader (samme begraensning som
@@ -26,23 +26,6 @@ export async function fetchActiveOpsNotices() {
     .eq("active", true)
     .lte("starts_at", nowIso)
     .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
-    .order("starts_at", { ascending: false });
-  if (error) throw error;
-  return data || [];
-}
-
-// Hjaelp-siden: aktive + seneste 14 dages notices — samme datakilde, bredere
-// vindue, saa en notice forbliver synlig som historik lidt efter den er
-// slukket/udloebet.
-const RECENT_WINDOW_DAYS = 14;
-
-export async function fetchRecentOpsNotices() {
-  const { supabase } = await import("./supabase");
-  const cutoffIso = new Date(Date.now() - RECENT_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const { data, error } = await supabase
-    .from("ops_notices")
-    .select(OPS_NOTICE_COLUMNS)
-    .or(`active.eq.true,created_at.gte.${cutoffIso}`)
     .order("starts_at", { ascending: false });
   if (error) throw error;
   return data || [];
