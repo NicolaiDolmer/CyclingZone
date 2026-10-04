@@ -538,8 +538,9 @@ NOTIFY pgrst, 'reload schema';
 --   kontakt i prod for at teste (ejer-only).
 --
 -- Rollback: står med vilje IKKE som SQL her (auto-migrate kører database/2026-*.sql,
--- #4677). Skulle det blive nødvendigt, skrives et manual-only-script i
--- database/manual/ med markøren KOERES IKKE AUTOMATISK, ejer-gated. Det fjerner
+-- #4677). Skulle det blive nødvendigt, skrives et manuelt script i
+-- database/manual/ med den manuelle markør (se auto-migrate.yml), ejer-gated.
+-- (Markørens ordlyd må ikke stå i denne fil: auto-migrate afviser filen på den.) Det fjerner
 -- de tre triggere og deres funktioner, de tre RPC'er, known_issue_scores og de tre
 -- known_issue-tabeller. roadmap_items/roadmap_votes-ændringerne er
 -- bagudkompatible og kan blive stående.
