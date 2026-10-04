@@ -54,5 +54,10 @@ export function SkeletonRows({ withScale = false }: { withScale?: boolean }) {
   );
 }
 
+/** Korttitel med antal ("In beta now 5"), samme greb på alle fem faner. */
+export function TitleCount({ label, count }: { label: string; count: number }) {
+  return <span>{label} <span className="ms-1 font-data tabular-nums text-cz-3">{count}</span></span>;
+}
+
 export const ROW_LIST = "divide-y divide-cz-border";
 export const ROW = "py-3";

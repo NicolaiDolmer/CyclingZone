@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { RoadmapItem, RoadmapVote } from "../../lib/roadmapModel.ts";
 import { CollapsibleSection, EmptyState, Section, SectionHeader, SectionStack, Button } from "./roadmapUi.ts";
 import ScoreScale from "./ScoreScale.tsx";
-import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
+import { RowMeta, RowTitle, SaveNote, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localTitle, type SaveState } from "./roadmapFormat.ts";
 import { CheckIcon, ClipboardIcon } from "../ui/index.js";
 
@@ -86,7 +86,7 @@ export default function PlanTab(props: PlanTabProps) {
     <SectionStack>
       {inProgress.length > 0 && (
         <Section>
-          <SectionHeader title={t("plan.inProgress")} meta={<span className="tabular-nums">{inProgress.length}</span>} />
+          <SectionHeader title={<TitleCount label={t("plan.inProgress")} count={inProgress.length} />} />
           <ul className={ROW_LIST}>
             {inProgress.map((item) => (
               <li key={item.id} className={ROW}>

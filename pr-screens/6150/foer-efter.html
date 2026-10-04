@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Roadmap-hub: i dag og efter (#6150)</title>
+<!-- Samlet foer/efter til ejer-review. "I dag" = prod 4/10 (pr-screens/roadmap-4-10/prod-roadmap-4-10.png).
+     "Efter" = preview-mocks fra denne branch (eksempeltekst, ikke indhold). EN-locale. -->
+<style>
+  body{margin:0;background:#fff;font-family:system-ui,sans-serif;color:#0e0f15}
+  .sheet{width:2200px;padding:24px 28px}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{font-size:13px;color:#66637a;margin:0 0 18px}
+  .row{display:flex;gap:18px;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:6px}
+  .lbl{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#66637a}
+  .lbl b{color:#a07800}
+  .shot{position:relative;border:1px solid #e5e0d5;border-radius:5px;overflow:hidden;background:#f4f2ec}
+  .shot img{display:block}
+  .pin{position:absolute;width:26px;height:26px;border-radius:50%;background:#1a1f38;color:#e8c547;font:700 13px/26px system-ui;text-align:center;box-shadow:0 0 0 3px #fff}
+  .legend{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px 28px;font-size:13.5px;line-height:1.45}
+  .legend div{display:flex;gap:10px}
+  .legend span{flex:0 0 22px;height:22px;border-radius:50%;background:#1a1f38;color:#e8c547;font:700 12px/22px system-ui;text-align:center}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Roadmap: i dag og efter (#6150, spor 2 af roadmap-hubben)</h1>
+  <p class="sub">Venstre: prod i dag (én lang side, ca. 8 skærme). Højre: samme side i fem faner fra denne branch, med eksempeltekst fra preview-mocks. Teksterne er udkast; du godkender de endelige.</p>
+  <div class="row">
+    <div class="col">
+      <div class="lbl">I dag · prod 4/10</div>
+      <div class="shot"><img src="../roadmap-4-10/prod-roadmap-4-10.png" width="640"></div>
+    </div>
+    <div class="col">
+      <div class="lbl"><b>Efter</b> · Plan</div>
+      <div class="shot"><img src="desktop-plan.png" width="560">
+        <span class="pin" style="left:150px;top:52px">1</span>
+        <span class="pin" style="left:500px;top:8px">2</span>
+        <span class="pin" style="left:8px;top:175px">3</span>
+        <span class="pin" style="left:330px;top:258px">4</span>
+      </div>
+      <div class="lbl" style="margin-top:10px"><b>Efter</b> · Beta</div>
+      <div class="shot"><img src="desktop-beta.png" width="560">
+        <span class="pin" style="left:520px;top:90px">5</span>
+        <span class="pin" style="left:8px;top:135px">6</span>
+      </div>
+    </div>
+    <div class="col">
+      <div class="lbl"><b>Efter</b> · Known issues</div>
+      <div class="shot"><img src="desktop-issues.png" width="560">
+        <span class="pin" style="left:8px;top:80px">7</span>
+        <span class="pin" style="left:520px;top:155px">8</span>
+        <span class="pin" style="left:8px;top:315px">9</span>
+        <span class="pin" style="left:8px;top:440px">10</span>
+      </div>
+      <div class="lbl" style="margin-top:10px"><b>Efter</b> · Done</div>
+      <div class="shot"><img src="desktop-done.png" width="560">
+        <span class="pin" style="left:8px;top:95px">11</span>
+      </div>
+    </div>
+    <div class="col">
+      <div class="lbl"><b>Efter</b> · Vote, 375 px</div>
+      <div class="shot"><img src="mobile-vote.png" width="300">
+        <span class="pin" style="left:8px;top:160px">12</span>
+        <span class="pin" style="left:8px;top:330px">13</span>
+      </div>
+    </div>
+  </div>
+  <div class="legend">
+    <div><span>1</span>Fem faner i stedet for én lang side. Tallet er, hvor mange punkter du mangler at svare på (Plan, Vote), antal i beta, og antal bekræftede fejl.</div>
+    <div><span>2</span>"Only what I have not rated" er slået til som standard og huskes. Tælleren dækker planlagte punkter plus idéer.</div>
+    <div><span>3</span>In progress: ingen skala. Det, der er i beta, står kun på Beta-fanen.</div>
+    <div><span>4</span>Planned: nummereret i din rækkefølge, én skala ("Important to you?"). Later-punkterne ligger i en fold.</div>
+    <div><span>5</span>Fanens ene guld-knap "Join the beta" fører til ansøgningen under Indstillinger. Et medlem ser "You are in the beta".</div>
+    <div><span>6</span>Mærket følger kontakten: "In beta", eller "For everyone soon" når du har sat hakket. "Next in beta" under Coming to beta.</div>
+    <div><span>7</span>Ét fælles områdefilter over begge kort.</div>
+    <div><span>8</span>"Affects me too" / "I see this too": ét tryk pr. manager, et nyt tryk fortryder. Spilleren ser kun sit eget.</div>
+    <div><span>9</span>Dine daterede opdateringer: den nyeste står fremme, ældre i en fold.</div>
+    <div><span>10</span>Indmeldt, ikke bekræftet, med teksten der ikke lover en ændring. "Checked, no problem found" og "Fixed in the last 14 days" i folde.</div>
+    <div><span>11</span>Done: features og rettede fejl i én liste, nyeste først, dato uden årstal. 30 ad gangen.</div>
+    <div><span>12</span>Telefon: fanerne scroller vandret, ingen vandret sidescroll (testet på 375 px).</div>
+    <div><span>13</span>Skalaen i to trin: kun "Good idea?", "Important to you?" folder ud når den første er valgt. Knapper 34 px.</div>
+  </div>
+</div>
+</body>
+</html>

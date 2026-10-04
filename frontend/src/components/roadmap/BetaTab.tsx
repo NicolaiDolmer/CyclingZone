@@ -6,7 +6,7 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { RoadmapItem } from "../../lib/roadmapModel.ts";
 import { CategoryTag, EmptyState, Section, SectionHeader, SectionStack, StatusBadge } from "./roadmapUi.ts";
-import { RowMeta, RowTitle, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
+import { RowMeta, RowTitle, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localTitle, shortDate } from "./roadmapFormat.ts";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { CheckIcon, RocketIcon } from "../ui/index.js";
@@ -83,7 +83,7 @@ export default function BetaTab({ loading, inBeta, comingToBeta, betaState, isLo
     <SectionStack>
       <Section>
         <SectionHeader
-          title={<span>{t("beta.inBeta")} <span className="ms-1 font-data tabular-nums text-cz-3">{inBeta.length}</span></span>}
+          title={<TitleCount label={t("beta.inBeta")} count={inBeta.length} />}
           action={join}
           className="mb-1"
         />
@@ -109,7 +109,7 @@ export default function BetaTab({ loading, inBeta, comingToBeta, betaState, isLo
 
       {comingToBeta.length > 0 && (
         <Section>
-          <SectionHeader title={t("beta.coming")} meta={<span className="tabular-nums">{comingToBeta.length}</span>} />
+          <SectionHeader title={<TitleCount label={t("beta.coming")} count={comingToBeta.length} />} />
           <ul className={ROW_LIST}>
             {comingToBeta.map((item) => (
               <li key={item.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3`}>

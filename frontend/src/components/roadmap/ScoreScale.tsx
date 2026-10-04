@@ -12,7 +12,7 @@ export interface ScoreScaleProps {
 
 export default function ScoreScale({ label, value, disabled = false, onSelect }: ScoreScaleProps) {
   return (
-    <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+    <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
       <span className="text-cz-3 text-xs">{label}</span>
       <div role="radiogroup" aria-label={label} className="flex gap-1">
         {(SCALE as number[]).map((n) => (

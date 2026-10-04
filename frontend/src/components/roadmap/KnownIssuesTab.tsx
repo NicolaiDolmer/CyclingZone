@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { issueAreaCounts, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, CollapsibleSection, EmptyState, Section, SectionHeader, SectionStack, Segmented, StatusBadge } from "./roadmapUi.ts";
-import { RowMeta, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
+import { RowMeta, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localBody, localTitle, shortDate } from "./roadmapFormat.ts";
 import { AlertTriangleIcon } from "../ui/index.js";
 
@@ -131,7 +131,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
 
       <Section>
         <SectionHeader
-          title={<span>{t("issues.confirmed")} <span className="ms-1 font-data tabular-nums text-cz-3">{confirmedShown.length}</span></span>}
+          title={<TitleCount label={t("issues.confirmed")} count={confirmedShown.length} />}
           className="mb-1"
         />
         <p className="mb-2 text-cz-3 text-xs">{t("issues.confirmedHint")}</p>
@@ -142,7 +142,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
 
       <Section>
         <SectionHeader
-          title={<span>{t("issues.checking")} <span className="ms-1 font-data tabular-nums text-cz-3">{checkingShown.length}</span></span>}
+          title={<TitleCount label={t("issues.checking")} count={checkingShown.length} />}
           className="mb-1"
         />
         <p className="mb-2 text-cz-3 text-xs">{t("issues.checkingHint")}</p>
