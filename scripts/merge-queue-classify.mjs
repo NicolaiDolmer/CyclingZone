@@ -11,7 +11,8 @@
 //       #5580/#5581 (indsats/realisme-gate med ejerens maaltal) er undtaget
 //   (c) Dependabot patch/minor · docs uden spillertekst · CI/hooks/test-only
 // Alt andet: "kraever ejer-go" med den foerste grund (UI, spillertekst,
-// spillervendte tal, migrationer, flag-flips, prod-skrivninger).
+// spillervendte tal, migrationer, flag-flips, prod-skrivninger, og fra 4/10
+// release-tjek/deploy/overvaagning). Ejer-go er klaebende pr. PR (OWNER_GO_MARKER).
 //
 // Input er labels + filstier + titel + body (+ author). Alt herunder er rent;
 // gh-kaldet ligger kun i main() nederst.
@@ -57,7 +58,11 @@ const PLAYER_TEXT_RE = /^(frontend\/public\/locales\/|backend\/locales\/|fronten
 const PLAYER_NUMBER_FILE_RE = /^backend\/lib\/(economy|salary|prize|sponsor|training|dailyTraining|raceDayYield|riderProgression|riderCondition|weights\/|balance)/i;
 const FLAG_FLIP_RE = /(flip|taend|tænd|slaa .* til|slå .* til|enable|turn(s|ed)? on)\b/i;
 const FLAG_FILE_RE = /(app_config|feature[-_ ]?flag|stageFlagCatalog)/i;
-const PROD_WRITE_RE = /(^|\s)(--execute|--apply)(\s|$)|\b(OWNER_GO=1|backfill|prod-skrivning|prod write)\b/i;
+// Release-tjek, deploy og overvaagning er ejerens (hard rule 35, ejer 4/10): #6135
+// aendrede baade deploy-verify og hvad uptime-monitoren paa /health ser. Gaelder
+// ogsaa merge-reglernes egen klassifikator. Rene testfiler er undtaget.
+const RELEASE_OPS_RE = /^(\.github\/workflows\/(deploy-verify|auto-migrate|auto-merge|dependabot-auto-merge|railway-log-watch|supabase-log-watch|drift-monitor|db-health)\.ya?ml$|backend\/railway\.json$|(frontend\/)?vercel\.json$|backend\/instrument\.mjs$|backend\/lib\/(healthRoutes|sentry|stallWatchdog|raceFinalizeWatch|opsAlert)[^/]*$|backend\/scripts\/checkBackendReadiness\.[jt]s$|scripts\/(verify-deploy\.ps1|merge-queue[^/]*)$)/;
+const PROD_WRITE_RE =/(^|\s)(--execute|--apply)(\s|$)|\b(OWNER_GO=1|backfill|prod-skrivning|prod write)\b/i;
 
 export const isTestFile = (p) => TEST_FILE_RE.test(p);
 export const isDocsFile = (p) => DOCS_RE.test(p);
@@ -68,6 +73,7 @@ export const isPlayerTextFile = (p) => PLAYER_TEXT_RE.test(p);
 export const isFrontendUiFile = (p) => FRONTEND_UI_RE.test(p) && !isTestFile(p) && !isPlayerTextFile(p);
 export const isLockfile = (p) => LOCKFILE_RE.test(p);
 export const isPlayerNumberFile = (p) => PLAYER_NUMBER_FILE_RE.test(p) && !isTestFile(p);
+export const isReleaseOpsFile = (p) => RELEASE_OPS_RE.test(p) && !isTestFile(p);
 
 // ── Hjaelpere ──────────────────────────────────────────────────────────────
 
@@ -99,9 +105,31 @@ export function semverBumpKind(title) {
   return "patch";
 }
 
-/** "maalt i prod foer og efter": body naevner en prod-maaling (hard rule 35 (a)). */
+/**
+ * "fejlen og effekten maalt i prod foer og efter" (hard rule 35 (a), strammet 4/10).
+ * Kraever en egen sektion `## Fejlens effekt i prod` med en ikke-tom `Før:`- og
+ * `Efter:`-linje. Et loest "maalt i prod" et sted i teksten taeller ikke laengere:
+ * #6135 skiftede kategori alene fordi en saetning blev omformuleret. Om tallene
+ * maaler selve fejlen (ikke en endpoint- eller tekstform) vurderer diff-tjekket.
+ */
+export const PROD_EFFECT_HEADING_RE = /^#{2,4}\s*(fejlens effekt i prod|fault effect in prod)\s*$/im;
+
 export function hasProdMeasurement(body) {
-  return /(m(aa|å|a)lt i prod|measured in prod|prod-tal|prod-m(aa|å|a)ling|f(oe|ø|o)r\/efter i prod|before\/after in prod)/i.test(String(body ?? ""));
+  const text = String(body ?? "");
+  const heading = PROD_EFFECT_HEADING_RE.exec(text);
+  if (!heading) return false;
+  const section = text.slice(heading.index + heading[0].length).split(/^#{1,4}\s/m)[0];
+  const line = (re) => section.split(/\r?\n/).some((l) => re.test(l));
+  return line(/^\s*[-*]?\s*(f(oe|ø|o)r|before)\s*:\s*\S/i) && line(/^\s*[-*]?\s*(efter|after)\s*:\s*\S/i);
+}
+
+// Markoer som merge-queue.ps1 skriver paa PR'en foerste gang den klassificeres
+// ejer-go. Klaebende: en senere omformulering af body kan ikke loefte PR'en ud af
+// ejer-go (hard rule 35, ejer 4/10). Kun ejerens ordrette "merge" loefter den.
+export const OWNER_GO_MARKER = "<!-- merge-queue-category: ejer-go -->";
+
+export function hasOwnerGoMarker(comments) {
+  return (comments ?? []).some((c) => String(typeof c === "string" ? c : c?.body ?? "").includes(OWNER_GO_MARKER));
 }
 
 // ── Klassifikationen ───────────────────────────────────────────────────────
@@ -134,6 +162,9 @@ export function classifyPr(pr) {
 
   if (!files.length) return done(CATEGORY.OWNER, "ingen filliste (kan ikke klassificere)");
 
+  // 0) Klaebende ejer-go: en gang ejer-go, altid ejer-go for denne PR.
+  if (hasOwnerGoMarker(pr?.comments)) return done(CATEGORY.OWNER, "klaebende: tidligere klassificeret ejer-go (omformulering loefter ikke)");
+
   // 1) Ejerens roede linjer FOERST: findes en af dem, er intet andet relevant.
   const migrations = files.filter(isMigrationFile);
   if (migrations.length) return done(CATEGORY.OWNER, `migration: ${migrations[0]}`);
@@ -146,6 +177,8 @@ export function classifyPr(pr) {
   if (playerText.length) return done(CATEGORY.OWNER, `spillertekst: ${playerText[0]}`);
   const ui = files.filter(isFrontendUiFile);
   if (ui.length) return done(CATEGORY.OWNER, `UI: ${ui[0]}`);
+  const releaseOps = files.filter(isReleaseOpsFile);
+  if (releaseOps.length) return done(CATEGORY.OWNER, `release/deploy/overvaagning: ${releaseOps[0]}`);
 
   // 2) (c) Dependabot patch/minor.
   const isDependabot = author.startsWith("dependabot") || labels.includes("dependencies");
@@ -214,7 +247,7 @@ export function parseCliArgs(argv) {
 }
 
 export function fetchPrFromGh(pr, repo, runGh = defaultRunGh) {
-  const json = runGh(["pr", "view", String(pr), "--repo", repo, "--json", "number,title,body,labels,files,author"]);
+  const json = runGh(["pr", "view", String(pr), "--repo", repo, "--json", "number,title,body,labels,files,author,comments"]);
   return JSON.parse(json);
 }
 

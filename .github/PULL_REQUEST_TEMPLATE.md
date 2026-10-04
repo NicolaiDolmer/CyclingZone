@@ -25,6 +25,12 @@ Refs #
 
 **Hvad jeg verificerede konkret:** <!-- URL + 1-2 sætninger om hvad jeg så -->
 
+## Fejlens effekt i prod
+<!-- Kun for brand-fix under hard rule 35 (a). Mål SELVE fejlens effekt (fx hold berørt, fejlede deploys),
+     ikke at et endpoint eller en tekst skiftede form. Mangler sektionen, er PR'en ejer-go. Slet ellers sektionen. -->
+- Før:
+- Efter:
+
 ## Risk / auto-merge
 <!-- Tilføj label hvis relevant: risk:med, risk:high, security, needs-decision eller manual-review stopper auto-merge. -->
 - [ ] `auto-merge` er kun sat hvis PR'en er lav-risiko og ikke kræver menneskelig beslutning

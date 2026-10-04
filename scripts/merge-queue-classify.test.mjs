@@ -15,11 +15,15 @@ import {
   hasProdMeasurement,
   isFrontendUiFile,
   isPlayerTextFile,
+  isReleaseOpsFile,
+  OWNER_GO_MARKER,
   parseCliArgs,
   semverBumpKind,
 } from "./merge-queue-classify.mjs";
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "merge-queue-classify.mjs");
+
+const MEASURED = "## Hvad\nRettet.\n\n## Fejlens effekt i prod\n- Før: 69 hold mistede rækker 23/9\n- Efter: 0 hold 24/9\n\n## Risk\nlav";
 
 const pr = (over = {}) => ({ number: 100, title: "feat: x", body: "", labels: [], files: [], author: { login: "NicolaiDolmer" }, ...over });
 
@@ -88,7 +92,7 @@ test("(a) brand-fix uden spillertekst kraever prod-maaling i body", () => {
   const files = ["backend/routes/api.js", "backend/routes/api.test.js"];
   const withMeasure = classifyPr(pr({
     title: "fix(dashboard): resultater tabt ved 1.000-raekker (Refs #5589)",
-    body: "## Hvad\nFejlen er maalt i prod foer og efter: 69 hold mistede raekker 23/9, 0 efter.",
+    body: MEASURED,
     files,
     labels: [{ name: "brand" }],
   }));
@@ -97,11 +101,59 @@ test("(a) brand-fix uden spillertekst kraever prod-maaling i body", () => {
   assert.equal(noMeasure.category, CATEGORY.OWNER);
   assert.match(noMeasure.reason, /prod-maaling/);
   // Samme fix med spillertekst er ejer-go uanset maaling.
-  const withText = classifyPr(pr({ title: "fix(dashboard): x", body: "maalt i prod", files: [...files, "frontend/public/locales/en/dashboard.json"] }));
+  const withText = classifyPr(pr({ title: "fix(dashboard): x", body: MEASURED, files: [...files, "frontend/public/locales/en/dashboard.json"] }));
   assert.equal(withText.category, CATEGORY.OWNER);
-  assert.equal(hasProdMeasurement("Målt i prod 23/9: 12 hold"), true);
-  assert.equal(hasProdMeasurement("measured in prod before/after"), true);
+});
+
+test("(a) prod-maaling kraever sektion med Foer: og Efter:; loese formuleringer taeller ikke (ejer 4/10)", () => {
+  assert.equal(hasProdMeasurement(MEASURED), true);
+  assert.equal(hasProdMeasurement("## Fault effect in prod\n- Before: 503 on deploy\n- After: deploy passes\n"), true);
+  // #6135-klassen: loes saetning eller "Prod-maaling foer/efter:"-overskrift i fritekst.
+  assert.equal(hasProdMeasurement("Målt i prod 23/9: 12 hold"), false);
+  assert.equal(hasProdMeasurement("measured in prod before/after"), false);
+  assert.equal(hasProdMeasurement("**Prod-måling før/efter:** Før merge: 404. Efter: 200."), false);
+  // Sektion uden begge linjer, eller med tom Efter:, er ikke en maaling.
+  assert.equal(hasProdMeasurement("## Fejlens effekt i prod\nFør: 69 hold\n"), false);
+  assert.equal(hasProdMeasurement("## Fejlens effekt i prod\nFør: 69 hold\nEfter:\n"), false);
+  // Linjerne skal staa I sektionen, ikke i en senere.
+  assert.equal(hasProdMeasurement("## Fejlens effekt i prod\nFør: 69 hold\n## Andet\nEfter: 0 hold\n"), false);
   assert.equal(hasProdMeasurement("virker lokalt"), false);
+});
+
+test("ejer-go er klaebende: markoer paa PR'en slaar en senere maaling i body (ejer 4/10)", () => {
+  const files = ["backend/routes/api.js"];
+  const base = { title: "fix(x): y", body: MEASURED, files, labels: [{ name: "brand" }] };
+  assert.equal(classifyPr(pr(base)).category, CATEGORY.A_BRAND_FIX);
+  const sticky = classifyPr(pr({ ...base, comments: [{ body: "andet" }, { body: `${OWNER_GO_MARKER}\nmerge-koe: EJER-GO` }] }));
+  assert.equal(sticky.category, CATEGORY.OWNER);
+  assert.match(sticky.reason, /klaebende/);
+  assert.equal(classifyPr(pr({ ...base, comments: [{ body: "ingen markoer" }] })).category, CATEGORY.A_BRAND_FIX);
+});
+
+test("release-tjek, deploy og overvaagning er ejer-go, ogsaa som CI-fil (ejer 4/10)", () => {
+  for (const f of [
+    ".github/workflows/deploy-verify.yml",
+    ".github/workflows/auto-migrate.yml",
+    "backend/railway.json",
+    "backend/lib/healthRoutes.ts",
+    "backend/lib/stallWatchdog.js",
+    "backend/scripts/checkBackendReadiness.ts",
+    "scripts/verify-deploy.ps1",
+    "scripts/merge-queue-classify.mjs",
+  ]) {
+    assert.equal(isReleaseOpsFile(f), true, f);
+    const r = classifyPr(pr({ title: "fix(x): y", body: MEASURED, files: [f], labels: [{ name: "brand" }] }));
+    assert.equal(r.category, CATEGORY.OWNER, f);
+    assert.match(r.reason, /release\/deploy\/overvaagning/);
+  }
+  // Rene tests af de samme filer og almindelige CI-filer forbliver (c).
+  assert.equal(isReleaseOpsFile("backend/lib/healthRoutes.test.ts"), false);
+  assert.equal(classifyPr(pr({ files: ["backend/lib/stallWatchdog.test.js"] })).category, CATEGORY.C_SAFE);
+  assert.equal(classifyPr(pr({ files: [".github/workflows/ci.yml"] })).category, CATEGORY.C_SAFE);
+  // #6135's faktiske filsaet.
+  const pr6135 = classifyPr(pr({ title: "fix(health): separate deployment liveness from DB readiness (#5905)", body: MEASURED,
+    files: [".github/workflows/deploy-verify.yml", "backend/lib/healthRoutes.ts", "backend/server.js", "scripts/verify-deploy.ps1"] }));
+  assert.equal(pr6135.category, CATEGORY.OWNER);
 });
 
 test("(a) fix i spillervendte tal (oekonomi/traening/vaegte) er ejer-go", () => {
@@ -161,7 +213,7 @@ test("parseCliArgs og fetchPrFromGh (gh-kaldet er injiceret)", () => {
   const calls = [];
   const out = fetchPrFromGh(7, "o/r", (args) => { calls.push(args); return JSON.stringify({ number: 7, title: "t", files: [] }); });
   assert.equal(out.number, 7);
-  assert.deepEqual(calls[0], ["pr", "view", "7", "--repo", "o/r", "--json", "number,title,body,labels,files,author"]);
+  assert.deepEqual(calls[0], ["pr", "view", "7", "--repo", "o/r", "--json", "number,title,body,labels,files,author,comments"]);
 });
 
 test("CLI end-to-end med --input (ingen gh): tekst og --json", (t) => {

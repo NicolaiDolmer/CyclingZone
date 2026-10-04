@@ -152,6 +152,18 @@ function Get-PrMergeCategory([int]$number) {
   }
 }
 
+function Set-PrOwnerGoMarker([int]$number, [string]$classification) {
+  # Best-effort: en fejl her stopper aldrig koeen. Klassifikatoren returnerer
+  # "klaebende: ..." naar markoeren allerede findes, saa den skrives kun een gang.
+  if ($classification -like '*klaebende*') { return }
+  $marker = '<!-- merge-queue-category: ejer-go -->'
+  try {
+    & gh pr comment $number --repo $Repo --body "$marker`nmerge-koe: $classification (klaebende, hard rule 35)" 2>&1 | Out-Null
+  } catch {
+    Write-Host "      (kunne ikke skrive ejer-go-markoer: $($_.Exception.Message))" -ForegroundColor DarkGray
+  }
+}
+
 function Get-PrDraftState([int]$number) {
   # Let, dedikeret laesning af draft-status - IKKE et fuldt Get-PrPlanEntry-kald
   # (som ogsaa slaar checks og league-regler op), fordi denne kaldes FOERST i
@@ -256,6 +268,10 @@ $plan | ForEach-Object {
   # Logikken ligger i scripts/merge-queue-classify.mjs (ren Node, node --test);
   # dette script viser kun linjen. Fejler node-kaldet, vises det som ukendt.
   $classification = Get-PrMergeCategory $_.number
+  # Ejer 4/10: ejer-go er klaebende. Foerste ejer-go-klassifikation skrives som
+  # markoer paa PR'en, saa en senere omformulering af body ikke kan loefte den til
+  # (a)-(c). Ogsaa i -DryRun: markoeren er metadata, ikke en merge. Slet den aldrig.
+  if ($classification -like 'EJER-GO*') { Set-PrOwnerGoMarker $_.number $classification }
   $classColor = if ($classification -like 'KATEGORI *') { 'Green' } elseif ($classification -like 'EJER-GO*') { 'Yellow' } else { 'DarkGray' }
   Write-Host ("      merge-regel: $classification") -ForegroundColor $classColor
 }
