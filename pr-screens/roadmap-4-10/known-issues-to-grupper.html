@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Known issues: bekræftet og meldt ind (4/10)</title>
+<!-- Beslutningsbillede til ejeren 4/10: Known issues-fanen delt i "bekraeftet" og "meldt ind, tjekkes".
+     Fejlene er fra docs/drafts/2026-10-04-roadmap-indhold.md (afsnit 3 og 5). Teksterne er udkast. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#fff; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --navy:#1a1f38;
+  --warning:#9a6b00; --warning-bg:rgba(154,107,0,.08); --info:#2b5c9a; --info-bg:rgba(43,92,154,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.sheet{width:1500px;padding:28px 32px 30px}
+h1{font-family:"Inter Tight";font-size:25px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.lead{font-size:14px;color:var(--text-2);margin:0 0 18px;line-height:1.5;max-width:110ch}
+.wrap{display:grid;grid-template-columns:930px 1fr;gap:30px;align-items:start}
+.frame{position:relative;background:var(--bg-body);border:1px solid var(--border);border-radius:5px;padding:20px 24px 24px}
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{font-size:14px;font-weight:500;color:var(--text-3);padding:8px 1px 9px;margin-bottom:-1px;border-bottom:2px solid transparent}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:11px;color:var(--text-3);margin-left:5px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:18px 20px}
+.card + .card{margin-top:14px}
+.ch{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.ch .ct{font-size:15px;font-weight:600}
+.ch .cm{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.sub{font-size:13px;color:var(--text-2);margin:0 0 10px;line-height:1.45}
+.row{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.row:last-child{padding-bottom:0}
+.body{flex:1;min-width:0}
+.title{font-size:13.5px;font-weight:500;line-height:1.4}
+.meta{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.upd{font-size:12.5px;color:var(--text-2);line-height:1.45;margin-top:6px;padding-left:12px;border-left:1px solid var(--border)}
+.upd b{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);margin-right:6px}
+.badge{flex:none;width:112px;text-align:center;font-family:"Inter Tight";font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:3px 0;white-space:nowrap}
+.badge.conf{color:var(--warning);background:var(--warning-bg)}
+.badge.fix{color:var(--info);background:var(--info-bg)}
+.badge.chk{color:var(--text-2);border:1px solid var(--border)}
+.btn{flex:none;font-size:12px;font-weight:500;border:1px solid var(--border);border-radius:5px;padding:5px 10px;background:var(--bg-elevated);white-space:nowrap}
+.fold{display:flex;align-items:center;justify-content:space-between;padding:11px 0 0;border-top:1px solid var(--border);font-size:12.5px;font-weight:500;color:var(--accent-t)}
+.fold + .fold{margin-top:11px}
+.ico{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pin{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--navy);color:var(--accent);font-family:"Inter Tight";font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.legend{display:flex;flex-direction:column;gap:14px;padding-top:6px}
+.legend .item{display:flex;gap:11px}
+.legend .p{position:static;flex:none;border:0}
+.legend .t{font-family:"Inter Tight";font-size:15px;font-weight:700;margin-bottom:2px}
+.legend .d{font-size:13.5px;line-height:1.5;color:var(--text-2)}
+.legend .d b{color:var(--text-1);font-weight:600}
+.flow{margin-top:8px;border:1px solid var(--border);border-radius:5px;padding:12px 14px;font-size:13px;line-height:1.7;background:var(--bg-card)}
+.flow b{font-weight:600}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Known issues: bekræftet for sig, meldt ind for sig</h1>
+  <p class="lead">Din regel: noget er først en kendt fejl, når du har set, at det er et problem. Det, spillerne har meldt ind, men som ikke er bekræftet, står i sit eget felt, og teksten lover ingen ændring.</p>
+
+  <div class="wrap">
+    <div class="frame">
+      <div class="tabs"><div class="tab">Plan<span class="cnt">3</span></div><div class="tab">Vote<span class="cnt">12</span></div><div class="tab on">Known issues<span class="cnt">9</span></div><div class="tab">Done</div></div>
+
+      <div class="card">
+        <div class="ch"><span class="ct">Confirmed</span><span class="cm">9</span></div>
+        <p class="sub">Problems I have seen myself or found the cause of.</p>
+        <div class="row"><span class="badge fix">Fix in progress</span><div class="body"><div class="title">Some riders missed evening training on several days.</div><div class="meta">Training · updated 3 Oct</div><div class="upd"><b>3 Oct</b>New riders now train from their first day. The missed days will be made up once I have approved the calculation.</div></div><span class="btn">Affects me too</span></div>
+        <div class="row"><span class="badge conf">Confirmed</span><div class="body"><div class="title">A dangerous GC rider can get into the break without the GC teams reacting.</div><div class="meta">Races · updated 2 Oct</div></div><span class="btn">Affects me too</span></div>
+        <div class="row"><span class="badge fix">Fix in progress</span><div class="body"><div class="title">Youth race results moved some senior boards.</div><div class="meta">Club · updated 1 Oct</div></div><span class="btn">Affects me too</span></div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct">Reported, being checked</span><span class="cm">14</span></div>
+        <p class="sub">Players have reported these. I have not confirmed them, and I am not promising a change.</p>
+        <div class="row"><span class="badge chk">Being checked</span><div class="body"><div class="title">Riders seem to develop more slowly since the season start.</div><div class="meta">Training · reported by players</div><div class="upd"><b>30 Sep</b>I am comparing actual daily gains and programs. Nothing is confirmed yet.</div></div><span class="btn">I see this too</span></div>
+        <div class="row"><span class="badge chk">Being checked</span><div class="body"><div class="title">The sponsor amount per race day looks lower than the deal you signed.</div><div class="meta">Club · reported by players</div></div><span class="btn">I see this too</span></div>
+        <div class="row"><span class="badge chk">Being checked</span><div class="body"><div class="title">The board can show your old target after you renegotiated it.</div><div class="meta">Club · reported by players</div></div><span class="btn">I see this too</span></div>
+        <div class="fold"><span>Checked, no problem found · last 14 days</span><svg class="ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+
+      <div class="card" style="padding-top:6px">
+        <div class="fold" style="border-top:0"><span>Fixed in the last 14 days · 13</span><svg class="ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+
+      <div class="pin" style="left:-12px;top:84px">1</div>
+      <div class="pin" style="left:-12px;top:418px">2</div>
+      <div class="pin" style="right:-12px;top:520px">3</div>
+      <div class="pin" style="left:-12px;top:704px">4</div>
+    </div>
+
+    <div class="legend">
+      <div class="item"><span class="pin p">1</span><div><div class="t">Confirmed</div><div class="d">Kun fejl, du selv har set eller fundet årsagen til. To mærker: <b>Confirmed</b> (bekræftet, ikke i gang endnu) og <b>Fix in progress</b>.</div></div></div>
+      <div class="item"><span class="pin p">2</span><div><div class="t">Reported, being checked</div><div class="d">Det spillerne har meldt ind, og som du ikke har bekræftet. Linjen under overskriften siger det direkte: ikke bekræftet, ingen ændring lovet. Udviklingstempoet står her, ikke under fejl.</div></div></div>
+      <div class="item"><span class="pin p">3</span><div><div class="t">"I see this too"</div><div class="d">Samme knap som under bekræftede fejl, men med en ordlyd, der ikke kalder det en fejl. Du ser tallet bagved og kan bruge det, når du vælger, hvad du tjekker først.</div></div></div>
+      <div class="item"><span class="pin p">4</span><div><div class="t">Når du har tjekket</div><div class="d">Enten rykker punktet op under Confirmed, eller det lukkes med din forklaring og ligger i folden "Checked, no problem found" i 14 dage. Så får spilleren et svar, også når svaret er, at det virker som det skal.</div></div></div>
+      <div class="flow"><b>Vejen for et punkt:</b><br>Being checked → Confirmed → Fix in progress → Fixed (Done)<br>Being checked → Checked, no problem found (med din forklaring)</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

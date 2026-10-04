@@ -257,9 +257,116 @@ Ikke foreslået: "75 % træning som standard og 25 % ekstra til aktive managers"
 - Kørte nedtrapningen af topryttere-præmien søndag 4/10?
 - Et hold ved navn "Dolmer Racing" udgav sig 3/10 for at være ejeren (ikke roadmap, men bør håndteres).
 
+### 5.6 Kendte fejl fordelt efter ejerens regel (4/10)
+
+Ejer 4/10: noget er først en kendt fejl, når det er identificeret som et problem. Det, spillerne har meldt ind, men som ikke er bekræftet, står i sit eget felt uden løfte om ændring (billede: `pr-screens/roadmap-4-10/known-issues-to-grupper.png`). Trinene "inv" i afsnit 3 og 5.3 afløses af denne fordeling. Ejeren bekræfter fordelingen ved apply.
+
+| Felt | Trin | Fejl (issue) |
+|---|---|---|
+| **Confirmed** | Fix in progress | Træthed og form flyttede sig for meget (#5928) · tabte aftentræninger, kompensation (#6129) · ungdomsløb flyttede seniorbestyrelser (#5897) · spillet kunne ikke nås nogle aftener (#5878/#5893) · Train now (beta) viser ikke resultatet (#6006) · udgået rytter blokerede træningen (#5949) · løbsdagenes numre i rapporten (#5915) |
+| **Confirmed** | Confirmed | Farlig klassementsrytter i udbrud uden reaktion (#5978) · aftentræningen tager lang tid (#5911, årsag fundet) · rytterværdier ændrede sig ved skiftet (#5842) · scouted projection for lav for toptalenter (#6110, meldt ud 2/10) · kan ikke sætte rytter tilbage på holdprogram (#6123) · Malwarebytes blokerer siden (#6047) |
+| **Reported, being checked** | Being checked | Udviklingen føles langsommere (#5965) · bestyrelsesbeskeder gentager sig (#6122, 12 spillere) · gammelt bestyrelsesmål efter genforhandling (#5946) · sponsorbeløb pr. løbsdag (#5916) · præmieestimat (#5940) · ryttersøgning (#5941) · slettede påmindelser kommer igen (#5979) · kontakt svær at se i mørkt tema (#5980) · mobilsider indlæser ikke (#5162) · juniorhold under minimum (#5945) · rytter på forkert startliste efter trupskift (#5903) · assistenten fylder U23-hold op (#6124) · løbsfilmen gentager sig (#6137) · tidshuller på kuperede afslutninger · træningsskader og sen advarsel (#5418) · evner sprang ved skiftet (#6059) · to point i samme evne på én dag · træning kan ikke ændres på telefon · udløbne U23-kontrakter · forkert alder junior til U23 · penge der "kommer tilbage" · scoutmission giver 4 ryttere (#6138) · sortering på omdømme · overbudt-mail ved eget bud (#5919) · menuen i bestyrelsesmødet · nye meldinger om tidstab for indhentede udbrydere (#5951) |
+| **Fixed** | Fixed | #5955 · #5953 · #5957 · #5956 · #5914 · #5952 · #5860 · #6095 · #5912 · #5947 · #5944 · #6061 · jagten skubbede udbrydere baglæns (#5951, v7.327) |
+
+Bestyrelsesbeskederne (#6122) er meldt af 12 spillere og står kun som "being checked", fordi årsagen ikke er fundet. Ejeren kan flytte den til Confirmed med det samme.
+
 ## 6. Backlog-gennemgang (spillerønsker i GitHub-issues)
 
-Tilføjes, når gennemgangen er færdig.
+693 åbne issues listet, ca. 286 gennemgået på titel, ca. 150 læst helt. Kun ønsker, der ikke står i afsnit 1, 2 eller 4. "Spillere" er et minimum talt i issuet. "Tjek" = kan være helt eller delvist live og skal verificeres, før punktet kommer på Vote.
+
+### Races
+
+| Issue | EN / DA | Spillere | Note |
+|---|---|---|---|
+| #2009 | See a rider's stats and age on hover, or in a pop-up, while you pick a squad or plan training. / Se en rytters evner og alder ved hover eller i et pop-up, mens du udtager hold eller planlægger træning. | 6+ | Ejeren positiv. Tjek |
+| #4122 | Iconic races are written by hand, so a classic stays the same classic every season. / Ikoniske løb er skrevet i hånden, så en klassiker er den samme klassiker hver sæson. | 5+ | Ejeren positiv. Kan slås sammen med #3471 |
+| #2457 | AI teams field riders that fit their division, so Division 4 is no walkover. / AI-holdene stiller ryttere, der passer til deres division, så Division 4 ikke er en walkover. | 3+ | Ejer-ønske |
+| #2794 | A race page in tabs, so you never scroll past a locked squad to reach the result. / En løbsside i faner, så du aldrig scroller forbi en låst udtagelse for at nå resultatet. | 3 | Tjek |
+| #2030 | After today's last race, Planning jumps to the next race day. / Når dagens sidste løb er kørt, hopper Planlægning videre til næste løbsdag. | 2 | Ejeren positiv |
+| #3982 | Under each stage: the top 5 and your own team's top 5 once it is ridden, favourites and GC before it. / Under hver etape: top 5 og dit holds top 5, når den er kørt, og favoritter og klassement før. | 1 | Ejeren positiv |
+| #5981 | A shared captain: a second rider with his own GC chance, without a free role's breakaway or a helper's sacrifice. / Delt kaptajn: en anden rytter med egen klassementschance, uden en fri rolles udbrud eller en hjælpers ofring. | 1 | Lovet (staff-kanal 1/10); med i #6148. Plan |
+| #5982 | Choose which helper works in which phase of the race: save your best helper for the mountain or the finale. / Vælg hvilken hjælper der arbejder i hvilken fase: gem din bedste hjælper til bjerget eller finalen. | 1 | Afventer beslutning |
+| #3529 | See which races each rider has ridden, and which he will ride, in one view. / Se hvilke løb hver rytter har kørt og skal køre, i ét overblik. | 1 | |
+| #3955 | See stage profiles right in Planning, so you can plan without opening every race. / Se etapeprofiler direkte i Planlægning, så du kan planlægge uden at åbne hvert løb. | 1 | |
+| #4259 | Planning shows an icon when a rider is already picked for a race that day. / Planlægning viser et ikon, når en rytter allerede er udtaget til et løb den dag. | 1 | Tjek |
+| #3900 | See next season's races and routes in one overview, and only the races your team can enter. / Se næste sæsons løb og ruter i ét overblik, og kun de løb dit hold kan stille op i. | 1 + ejer | Delvist leveret |
+| #1900 | See the standings of all divisions in one view, with a filter for your own. / Se stillingen for alle divisioner i ét overblik, med et filter til din egen. | ejer | Tjek |
+| #4611 | Your riders talk to you before and after a stage, and you act with one click, for example by giving him a free role. / Dine ryttere taler til dig før og efter en etape, og du handler med ét klik, for eksempel ved at give ham fri rolle. | ikke angivet | Trin 1 er live |
+| #939 | Weather and wind on stages, and crosswinds that split the peloton into echelons. / Vejr og vind på etaper, og sidevind der splitter feltet i vifter. | ikke angivet | |
+| #3444 | Division 1 is the endgame: named AI teams with a philosophy, a history and press coverage. / Division 1 er endgame: navngivne AI-hold med filosofi, historie og pressedækning. | ejer | |
+| #2477 | The world ranking decides who gets into big races, with wildcards and invitations from organisers. / Verdensranglisten afgør, hvem der kommer med i de store løb, med wildcards og invitationer fra arrangører. | ikke angivet | Meget stor |
+
+### Training
+
+| Issue | EN / DA | Spillere | Note |
+|---|---|---|---|
+| #1833 | Rider abilities and power intervals explained on hover, in plain words. / Rytterens evner og effektintervaller forklaret ved hover, i klart sprog. | 3+ | Tjek |
+| #5076 | The form dip after a peak is explained where you see it. / Formdykket efter et peak bliver forklaret, der hvor du ser det. | 2+ | Tjek |
+| #3705 | Hard cobbled training and combined sessions, so a cobbled rider can be built. / Hård brostenstræning og kombinerede pas, så en brostensrytter kan bygges op. | 5 | Fra Discord 2-14/9 |
+| #5882 | Racing at your rider's level develops him most, and new experiences such as cobbles, a bigger field or a long stage race give extra. / Løb på din rytters niveau udvikler ham mest, og nye erfaringer som brosten, større felt eller et langt etapeløb giver ekstra. | ejer | Kan være del af N9 |
+| #3763 | See a rider's form rise and fall from training, not only where it stands. / Se en rytters form stige og falde af træning, ikke kun hvor den står. | 1 + ejer | Tjek |
+| #2488 | Name up to three project riders with a development plan over several seasons. / Udpeg op til tre projekt-ryttere med en udviklingsplan over flere sæsoner. | ejer-spec | |
+| #2487 | Breakthrough windows and plateaus come with a visible reason, not only luck. / Gennembrud og stilstand har en synlig årsag, ikke kun held. | ejer-spec | |
+| #2489 | A season map: races on top, training blocks (base, build, peak, recovery) underneath. / Et sæsonkort: løb øverst, træningsblokke (base, opbygning, peak, restitution) nedenunder. | ejer-spec | Tæt på sæsonplanlæggeren |
+| #1679 | See other teams' training score and training facility, and no more than that. / Se andre holds træningsscore og træningsanlæg, og ikke mere end det. | ejer | |
+
+### Youth
+
+| Issue | EN / DA | Spillere | Note |
+|---|---|---|---|
+| #3657 | Targeted scouting: send your scout after a nation, a rider type or a budget. / Målrettet scouting: send din scout efter en nation, en ryttertype eller et budget. | 3 | Issue lukket; overlapper "Scouts that differ" |
+| #5876 | New riders come mostly from the nations that are big in real cycling. / Nye ryttere kommer mest fra de nationer, der er store i rigtig cykelsport. | ejer | |
+| #3964 | Swap an academy rider and a senior rider in one step when your squad is full. / Byt en akademirytter og en seniorrytter i ét trin, når truppen er fuld. | 1 | |
+| #4703 | Show academy riders in squad selection behind a tick box, so you can compare route fit. / Vis akademiryttere i holdudtagelsen bag et hak, så du kan sammenligne rutematch. | 1 | Lav prioritet |
+| #5920 | See the age limit for U23 and Junior on the squad overview. / Se aldersgrænsen for U23 og Junior på trup-oversigten. | 1 | Ejeren enig. Tjek |
+| #5895 | An optional board goal for your academy work. / Et valgfrit bestyrelsesmål for dit akademiarbejde. | ejer | |
+| #4381 | The academy list looks and sorts like My Team. / Akademilisten ser ud og sorterer som Mit hold. | 1 | |
+| #3970 | Contracts counted in days, with short intro contracts for academy riders. / Kontrakter i dage, med korte intro-kontrakter for akademiryttere. | forum-debat | |
+| #2493 | Each academy intake is a named class with a leaderboard across clubs. / Hvert akademi-kuld er en navngivet årgang med et leaderboard på tværs af klubber. | ejer-spec | |
+| #2494 | A scout window before a youth auction, so you bid with what you have learned. / Et spejder-vindue før en ungdomsauktion, så du byder med det, du har fundet ud af. | ejer-spec | |
+| #2495 | Choose an academy school that shapes the types of your intakes. / Vælg en akademi-skole, der farver typerne i dine kuld. | ejer-spec | Tæt på "Your own young stars" |
+
+### Market
+
+| Issue | EN / DA | Spillere | Note |
+|---|---|---|---|
+| #3967 | See a rider's potential as a word or a band, not an exact number. / Se en rytters potentiale som et ord eller et bånd, ikke et præcist tal. | 6+ | Ejeren positiv. Tjek |
+| #2399 | Filter the rider list by division, and show only riders owned by managers. / Filtrér rytterlisten på division, og vis kun ryttere ejet af managers. | 4+ | Ikke live |
+| #2176 | Set an auto-accept price on a listed rider: when someone hits it, a short public auction starts at once. / Sæt en auto-accept-pris på en listet rytter: rammer nogen den, starter en kort offentlig auktion med det samme. | 1 + ejer | Ejeren: "kommer". Plan |
+| #450 | Set a minimum price on your own riders, so offers below it are turned down automatically. / Sæt en minimumspris på dine egne ryttere, så bud under den automatisk afvises. | 1 + ejer | Ejer-prioritet |
+| #26 | A transfer room: shortlist, compare two riders and see the budget effect before you buy. / Et transferrum: shortlist, sammenlign to ryttere og se budgeteffekten, før du køber. | ejer | Delvist live |
+| #4825 | Cancel a bid within a short window on your own sales. / Træk et bud tilbage inden for et kort vindue på dine egne salg. | 1 | |
+| #5918 | Ask the other side for cash in a swap. / Bed den anden side om et pengetillæg i en byttehandel. | 1 | Tæt på "Deeper negotiation" |
+| #5683 | The potential band stays steady between seasons, with its midpoint shown. / Potentialebåndet er stabilt mellem sæsoner, og midtpunktet vises. | 3+ | Ejeren positiv |
+| #6125 | A rider you just bought shows "joins you after race X" instead of nothing. / En rytter, du lige har købt, viser "starter hos dig efter løb X" i stedet for ingenting. | 1+ | |
+| #5293 | An auction page where the live bids block does not push the important parts down. / En auktionsside, hvor live-budblokken ikke skubber det vigtige ned. | 1 | Lav prioritet |
+
+### Club
+
+| Issue | EN / DA | Spillere | Note |
+|---|---|---|---|
+| #1928 | See which of your riders are your team's stars, and what makes one. / Se hvilke af dine ryttere der er holdets stjerner, og hvad der gør en. | 4 | Tjek |
+| #3948 | The board's goals say exactly what counts, and what you get for taking the harder option. / Bestyrelsens mål siger præcis, hvad der tæller, og hvad du får ved at tage den sværere mulighed. | 3+ | Mest tekst |
+| #3147 | See sponsor money arrive race day by race day, base amount included. / Se sponsorpengene komme løbsdag for løbsdag, også basisbeløbet. | 3 | Delvist leveret |
+| #3987 | Your sponsor pays more the more famous your team is. / Din sponsor betaler mere, jo mere berømt dit hold er. | 2 | Overlapper sponsor-punktet |
+| #2398 | Click a coach to see his attributes, and pay a fee to hire or fire him. / Klik på en træner og se hans egenskaber, og betal et gebyr for at hyre eller fyre ham. | 2 | Overlapper "Staff you can feel" |
+| #4032 | Retirement that follows the career: riders with good results keep racing longer. / Pension der følger karrieren: ryttere med gode resultater kører længere. | 2 | Ejeren: S4+ |
+| #986 | A finance page that opens with an overview and a real forecast for next season. / En økonomiside, der åbner med et overblik og en rigtig prognose for næste sæson. | 2 | Delvist leveret |
+| #2161 | Log in with Discord in one click. / Log ind med Discord med ét klik. | ejer | Besluttet. Plan |
+| #5385 | Click the online counter to see who is online now and who was online recently. / Klik på online-tælleren og se, hvem der er online nu og senest. | ejer | Mockup klar |
+| #3451 | Search the forum, and see unread threads. / Søg i forummet, og se ulæste tråde. | 1 + ejer | Ulæst er live, søgning mangler |
+| #3517 | Quote a post when you reply, and the person quoted gets a message. / Citér et indlæg, når du svarer, og den citerede får besked. | ejer | Delvist live |
+| #1108 | Pick the nationality of your manager and your club, and find your settings in one place. / Vælg din managers og din klubs nationalitet, og find dine indstillinger ét sted. | ejer | |
+| #1154 | Riders with a personality: role wishes, ambition and loyalty. / Ryttere med personlighed: rolleønsker, ambition og loyalitet. | 1 + ejer | |
+| #1113 | Your results build a fan base, and fans buy merchandise that pays you. / Dine resultater bygger en fanbase, og fans køber merchandise, der betaler dig. | ikke angivet | |
+| #1110 | The board asks for a balanced squad, for example a sprinter, climbers and a captain. / Bestyrelsen vil have en afbalanceret trup, for eksempel en sprinter, klatrere og en kaptajn. | ikke angivet | |
+| #2218 | Retired riders become coaches or scouts. / Pensionerede ryttere bliver trænere eller spejdere. | ejer-vision | Frosset (MASTERPLAN) |
+| #4110 | The game in more languages, starting with Spanish. / Spillet på flere sprog, først spansk. | 1 | Issue lukket (analyse) |
+| #938 | One search for riders, teams, races and managers. / Én søgning efter ryttere, hold, løb og managers. | ikke angivet | |
+
+**Sum:** 65 nye kandidater (races 17, training 9, youth 11, market 10, club 18). Sammen med afsnit 4 (13) og 5.4 (13) er der ca. 90 nye idéer at vælge imellem, oven i de 23 nuværende.
+
+Omstridt og ikke foreslået: lås og bonus til aktive managers i Train now (#6139; 2 for, 1 imod; strider mod "alle hold træner ens").
 
 ## 7. Åbne spørgsmål til ejeren
 

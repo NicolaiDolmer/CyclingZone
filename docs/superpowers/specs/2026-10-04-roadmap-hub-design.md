@@ -21,7 +21,7 @@ Målt i prod 4/10:
 1. **Plan og afstemning skilles ad.** Det besluttede står på en Plan-fane. Idéer, der overvejes, står på en Vote-fane.
 2. **Det planlagte har én skala** ("Important to you?", 1-6), så ejeren får spillernes prioritering og selv lægger den endelige rækkefølge. Det, der er i gang, stemmes der ikke på.
 3. **Idéer beholder begge skalaer** ("Good idea?" og "Important to you?", 1-6) præcis som i dag. Styringsscoren regnes som i dag: (Ø vigtighed · 0,6 + Ø god idé · 0,4) · √(antal stemmer). Ingen stemmer slettes eller nulstilles.
-4. **Kendte fejl får en fane** med tre trin, daterede ejer-opdateringer og knappen "Affects me too".
+4. **Kendte fejl får en fane i to felter.** "Confirmed" har kun fejl, ejeren selv har set eller fundet årsagen til. "Reported, being checked" har det, spillerne har meldt ind, og som ikke er bekræftet; teksten lover ingen ændring. Begge felter har daterede ejer-opdateringer og en knap ("Affects me too" / "I see this too"). Billede: `pr-screens/roadmap-4-10/known-issues-to-grupper.png`.
 5. **Analysen bor bagved** som ny fane under `/admin/growth`.
 6. **Færdig-reglen: del punktet.** Er kun en del af et punkt leveret, flytter det leverede til Done med en titel, der siger præcis hvad der er live, og resten bliver et nyt punkt på planen. Stemmerne kopieres, så de står på begge punkter (billede: `pr-screens/roadmap-4-10/faerdig-regel.png`).
 
@@ -50,11 +50,18 @@ Motorernes "Today"-prosa fra den nuværende side udgår. Done-fanen viser, hvad 
 
 ### 3.3 Known issues
 
-Kortet "Being worked on" med `Segmented` pr. område. Hver række: `StatusBadge` (Investigating = advarsel, Fix in progress = info), titel, meta-linje (område · "updated" + dato) og knappen "Affects me too" (secondary sm). Efter tryk viser knappen "Reported", og et nyt tryk fortryder. Spilleren ser kun sit eget tryk.
+To kort, med ét fælles `Segmented` pr. område over dem:
+
+- **Confirmed:** fejl ejeren selv har set eller fundet årsagen til. Undertekst: "Problems I have seen myself or found the cause of." Mærker: Confirmed (advarsel) og Fix in progress (info). Knap: "Affects me too".
+- **Reported, being checked:** indmeldt af spillere, ikke bekræftet. Undertekst: "Players have reported these. I have not confirmed them, and I am not promising a change." Mærke: Being checked (neutral). Knap: "I see this too".
+
+Hver række: mærke, titel, meta-linje (område · dato) og knappen (secondary sm). Efter tryk viser knappen "Reported", og et nyt tryk fortryder. Spilleren ser kun sit eget tryk.
+
+Vejen for et punkt: Being checked → Confirmed → Fix in progress → Fixed. Eller: Being checked → lukket med ejerens forklaring ("Checked, no problem found"). Et lukket punkt ligger i en fold under det nederste kort i 14 dage, så spilleren får et svar, også når svaret er, at det virker som det skal.
 
 Opdateringer står som en dateret liste under titlen, nyeste først. Den nyeste vises altid, ældre ligger bag en fold pr. fejl.
 
-Under listen en fold: "Fixed in the last 14 days". Rettede fejl står desuden i Done.
+Nederst en fold: "Fixed in the last 14 days". Rettede fejl står desuden i Done. Fanens tal er antallet af bekræftede, åbne fejl.
 
 Hjælp-sidens "Known issues"-fane fjernes. `/help?section=knownIssues` viderestiller til `/roadmap?tab=issues`, og driftsbannerets link peger samme sted. `ops_notices` og selve banneret er uændrede (akut drift). Listen over tidligere driftsbeskeder udgår (1 række i alt siden 18/8).
 
@@ -77,7 +84,7 @@ Ny fane "Roadmap" i `AdminGrowthPage` (T2, dansk tekst som resten af admin). Adm
 - **Nøgletal:** har stemt (af hold med manager) · aktive 14 dage · stemmer i alt · har svaret på alt.
 - **Planen, som spillerne vil have den:** planlagte punkter sorteret efter Ø vigtighed. Kolonner: punkt, vigtighed, stemmer, ejerens rækkefølge. Mærket "Deler spillerne" når spredningen på vigtighed er høj (standardafvigelse ≥ 1,75). Handlinger: flyt op/ned, skift status (idé, planlagt, i gang, færdig, arkiveret), Next/Later, ret titel (EN + DA).
 - **Idéer:** sorteret efter styringsscore. Kolonner: god idé, vigtighed, score, stemmer. Handling: "Til planen" (status `active` → `planned`; stemmerne følger med).
-- **Kendte fejl:** sorteret efter antal "rammer også mig". Kolonner: fejl, trin, ramt, åben i dage. Handlinger: ny opdatering (EN + DA), skift trin, ret titel.
+- **Kendte fejl:** to tabeller (bekræftet / meldt ind), hver sorteret efter antal tryk. Kolonner: fejl, trin, ramt, åben i dage. Handlinger: ny opdatering (EN + DA), skift trin (tjekkes, bekræftet, rettes, rettet, lukket uden fund), ret titel. "Lukket uden fund" kræver en opdatering med forklaringen.
 - **Opret:** nyt punkt eller ny fejl (EN + DA, område, synlig ja/nej).
 - **Del punkt:** på et punkt vælges "Del", og resten får sin egen titel (EN + DA), status og Next/Later. Det nye punkt oprettes skjult med en kopi af alle stemmer fra det oprindelige, så teksten kan godkendes, før det vises. Det oprindelige punkt får bagefter sin nye, præcise titel og flyttes til Done.
 
@@ -106,10 +113,10 @@ Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, 
 
 ### 5.4 Kendte fejl (nye tabeller)
 
-- `known_issues`: `id`, `area` (`races, training, youth, market, club, other`), `status` (`investigating, fixing, fixed`), `title_en`, `title_da`, `published` (default false), `sort_order`, `issue_ref`, `created_at`, `updated_at`, `fixed_at`.
+- `known_issues`: `id`, `area` (`races, training, youth, market, club, other`), `status` (`checking, confirmed, fixing, fixed, dismissed`; default `checking`), `title_en`, `title_da`, `published` (default false), `sort_order`, `issue_ref`, `created_at`, `updated_at`, `closed_at`.
 - `known_issue_updates`: `id`, `issue_id` (FK, cascade), `body_en`, `body_da`, `created_at`.
 - `known_issue_reports`: `issue_id`, `user_id`, `created_at`, primærnøgle (`issue_id`, `user_id`).
-- RLS: publicerede fejl og deres opdateringer kan læses af anon og authenticated. Skrivning kun `is_admin()`. Reports: spilleren læser, opretter og sletter kun sine egne, og kun på publicerede fejl der ikke er rettet. Admin læser alle.
+- RLS: publicerede fejl og deres opdateringer kan læses af anon og authenticated. Skrivning kun `is_admin()`. Reports: spilleren læser, opretter og sletter kun sine egne, og kun på publicerede fejl der hverken er rettet eller lukket. Admin læser alle.
 - View `known_issue_scores` (`security_invoker`): antal reports pr. fejl og dage åben.
 
 ### 5.5 Del punkt

@@ -33,15 +33,15 @@
 |---|---|
 | `roadmap_items` | `id, engine, sort_order, title_en, title_da, approved, status, horizon, issue_ref, created_at, updated_at, shipped_at` |
 | `roadmap_votes` | `id, item_id, user_id, idea_score (nullable), importance_score, created_at, updated_at` |
-| `known_issues` | `id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, updated_at, fixed_at` |
+| `known_issues` | `id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, updated_at, closed_at` |
 | `known_issue_updates` | `id, issue_id, body_en, body_da, created_at` |
 | `known_issue_reports` | `issue_id, user_id, created_at` (PK `issue_id, user_id`) |
 | view `roadmap_item_scores` | `item_id, engine, title_en, approved, status, votes, avg_idea, avg_importance, steering_score, title_da, sort_order, horizon, issue_ref, idea_votes, sd_importance` |
-| view `known_issue_scores` | `issue_id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, fixed_at, reports, days_open` |
+| view `known_issue_scores` | `issue_id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, closed_at, reports, days_open` |
 | rpc `roadmap_admin_stats()` | én række: `voters, voters_14d, votes_total, voted_all, managed_teams` (nul rækker for ikke-admin) |
 | rpc `roadmap_split_item(p_source uuid, p_title_en text, p_title_da text, p_status text, p_horizon text, p_issue_ref int)` | returnerer det nye punkts `id`; kun admin; nyt punkt er `approved = false` med kopi af kildens stemmer |
 
-**Værdier:** `status` ∈ `active | planned | in_progress | shipped | archived` · `horizon` ∈ `next | later` · `area` ∈ `races | training | youth | market | club | other` · issue-`status` ∈ `investigating | fixing | fixed`.
+**Værdier:** `status` ∈ `active | planned | in_progress | shipped | archived` · `horizon` ∈ `next | later` · `area` ∈ `races | training | youth | market | club | other` · issue-`status` ∈ `checking | confirmed | fixing | fixed | dismissed` (`checking` = meldt ind, ikke bekræftet; `dismissed` = tjekket, intet problem fundet). `closed_at` sættes ved `fixed` og `dismissed`.
 
 **Delt frontend-modul (ejes af spor 2, importeres af spor 3):** `frontend/src/lib/roadmapModel.ts` med de typer og funktioner, der står i spor 2, Task 2.1. Spor 3 må importere typerne `RoadmapStatus`, `RoadmapHorizon`, `IssueStatus`, `IssueArea`; alt andet admin-specifikt bor i spor 3's egen `roadmapAdminModel.ts`.
 
@@ -85,7 +85,8 @@ test("roadmap_item_scores: sd_importance og idea_votes regnes rigtigt når idea_
 test("anon læser publicerede known_issues og deres updates, ikke upublicerede");
 test("kun admin kan insert/update known_issues og known_issue_updates");
 test("spiller kan oprette og slette EGET report på en publiceret, ikke-rettet fejl");
-test("spiller kan ikke oprette report på en rettet eller upubliceret fejl, og ikke for en anden bruger");
+test("spiller kan ikke oprette report på en rettet, lukket (dismissed) eller upubliceret fejl, og ikke for en anden bruger");
+test("known_issues.status er checking som default og afviser ukendte værdier");
 test("spiller ser kun egne reports; known_issue_scores.reports er fuldt tal for admin");
 test("roadmap_admin_stats() giver én række til admin og nul rækker til spiller");
 test("roadmap_split_item: admin får nyt skjult punkt med samme område og en kopi af alle kildens stemmer; kilden er uændret");
@@ -192,7 +193,7 @@ GROUP BY i.id, i.engine, i.title_en, i.approved, i.status, i.title_da, i.sort_or
 CREATE TABLE IF NOT EXISTS known_issues (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   area        TEXT NOT NULL CHECK (area IN ('races', 'training', 'youth', 'market', 'club', 'other')),
-  status      TEXT NOT NULL DEFAULT 'investigating' CHECK (status IN ('investigating', 'fixing', 'fixed')),
+  status      TEXT NOT NULL DEFAULT 'checking' CHECK (status IN ('checking', 'confirmed', 'fixing', 'fixed', 'dismissed')),
   title_en    TEXT NOT NULL,
   title_da    TEXT NOT NULL,
   published   BOOLEAN NOT NULL DEFAULT FALSE,
@@ -200,7 +201,7 @@ CREATE TABLE IF NOT EXISTS known_issues (
   issue_ref   INTEGER,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  fixed_at    TIMESTAMPTZ
+  closed_at    TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS known_issue_updates (
@@ -280,7 +281,7 @@ CREATE POLICY "Users can insert own known issue reports"
     auth.uid() = user_id
     AND EXISTS (
       SELECT 1 FROM known_issues k
-      WHERE k.id = known_issue_reports.issue_id AND k.published AND k.status <> 'fixed'
+      WHERE k.id = known_issue_reports.issue_id AND k.published AND k.status NOT IN ('fixed', 'dismissed')
     )
   );
 
@@ -301,9 +302,9 @@ SELECT
   k.sort_order,
   k.issue_ref,
   k.created_at,
-  k.fixed_at,
+  k.closed_at,
   COUNT(r.user_id) AS reports,
-  GREATEST(0, EXTRACT(DAY FROM (COALESCE(k.fixed_at, NOW()) - k.created_at)))::int AS days_open
+  GREATEST(0, EXTRACT(DAY FROM (COALESCE(k.closed_at, NOW()) - k.created_at)))::int AS days_open
 FROM known_issues k
 LEFT JOIN known_issue_reports r ON r.issue_id = k.id
 GROUP BY k.id;
@@ -367,7 +368,7 @@ REVOKE ALL ON FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, I
 GRANT EXECUTE ON FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
 
 COMMENT ON TABLE known_issues IS
-  'Kendte fejl på /roadmap (#5387). EN+DA i samme række; published gater visning (ejeren godkender teksten). status: investigating -> fixing -> fixed. issue_ref = GitHub-issue, bruges af scripts/roadmap-flip.mjs.';
+  'Kendte fejl på /roadmap (#5387). EN+DA i samme række; published gater visning (ejeren godkender teksten). status: checking (meldt ind, ikke bekræftet) -> confirmed -> fixing -> fixed, eller checking -> dismissed (tjekket, intet problem). issue_ref = GitHub-issue, bruges af scripts/roadmap-flip.mjs.';
 COMMENT ON TABLE known_issue_reports IS
   '"Affects me too": én række pr. (fejl, bruger). Spillere ser kun egne; admin ser alle via known_issue_scores.';
 
@@ -387,7 +388,7 @@ COMMENT ON TABLE known_issue_reports IS
 - [ ] **Step 2: Kør testen til grøn**
 
 Run: `node --test backend/lib/testdb/roadmapHub.integration.test.js`
-Expected: PASS, 18 tests.
+Expected: PASS, 19 tests.
 
 - [ ] **Step 3: Kør RLS-audit og nabotests**
 
@@ -496,17 +497,21 @@ test("engineCounts giver kun områder med punkter, i fast rækkefølge", () => {
   assert.deepEqual(counts, [{ key: "races", count: 1 }, { key: "club", count: 2 }]);
 });
 
-test("splitIssues: åbne først efter sort_order, rettede kun de seneste 14 dage", () => {
+test("splitIssues: bekræftede og indmeldte hver for sig, lukkede kun de seneste 14 dage", () => {
   const now = new Date("2026-10-10T12:00:00Z");
-  const iss = (over) => ({ id: "k", area: "races", status: "investigating", title_en: "t", title_da: "t",
-    sort_order: 0, created_at: "2026-09-30T00:00:00Z", updated_at: "2026-09-30T00:00:00Z", fixed_at: null, ...over });
+  const iss = (over) => ({ id: "k", area: "races", status: "checking", title_en: "t", title_da: "t",
+    sort_order: 0, created_at: "2026-09-30T00:00:00Z", updated_at: "2026-09-30T00:00:00Z", closed_at: null, ...over });
   const s = splitIssues([
     iss({ id: "a", sort_order: 2 }), iss({ id: "b", sort_order: 1, status: "fixing" }),
-    iss({ id: "c", status: "fixed", fixed_at: "2026-10-01T00:00:00Z" }),
-    iss({ id: "d", status: "fixed", fixed_at: "2026-09-20T00:00:00Z" }),
+    iss({ id: "e", sort_order: 3, status: "confirmed" }), iss({ id: "f", sort_order: 1 }),
+    iss({ id: "c", status: "fixed", closed_at: "2026-10-01T00:00:00Z" }),
+    iss({ id: "d", status: "fixed", closed_at: "2026-09-20T00:00:00Z" }),
+    iss({ id: "g", status: "dismissed", closed_at: "2026-10-05T00:00:00Z" }),
   ], now);
-  assert.deepEqual(s.open.map((i) => i.id), ["b", "a"]);
+  assert.deepEqual(s.confirmed.map((i) => i.id), ["b", "e"]);
+  assert.deepEqual(s.checking.map((i) => i.id), ["f", "a"]);
   assert.deepEqual(s.recentlyFixed.map((i) => i.id), ["c"]);
+  assert.deepEqual(s.recentlyDismissed.map((i) => i.id), ["g"]);
 });
 
 test("buildDoneList fletter features og fixes, nyeste først, med loft", () => {
@@ -514,7 +519,7 @@ test("buildDoneList fletter features og fixes, nyeste først, med loft", () => {
     [item({ id: "f1", status: "shipped", shipped_at: "2026-09-21T00:00:00Z" }),
      item({ id: "f0", status: "shipped", shipped_at: null })],
     [{ id: "k1", area: "races", status: "fixed", title_en: "Fix", title_da: "Rettelse", sort_order: 0,
-       created_at: "2026-09-29T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", fixed_at: "2026-10-01T00:00:00Z" }],
+       created_at: "2026-09-29T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", closed_at: "2026-10-01T00:00:00Z" }],
     30,
   );
   assert.deepEqual(done.map((d) => [d.id, d.kind]), [["k1", "fix"], ["f1", "feature"], ["f0", "feature"]]);
@@ -535,7 +540,7 @@ import { ENGINE_ORDER, isValidScore } from "./roadmapVoting.js";
 
 export type RoadmapStatus = "active" | "planned" | "in_progress" | "shipped" | "archived";
 export type RoadmapHorizon = "next" | "later";
-export type IssueStatus = "investigating" | "fixing" | "fixed";
+export type IssueStatus = "checking" | "confirmed" | "fixing" | "fixed" | "dismissed";
 export type IssueArea = "races" | "training" | "youth" | "market" | "club" | "other";
 export type RoadmapTab = "plan" | "vote" | "issues" | "done";
 
@@ -551,7 +556,7 @@ export interface RoadmapItem {
 export interface RoadmapVote { item_id: string; idea_score: number | null; importance_score: number | null; }
 export interface KnownIssue {
   id: string; area: IssueArea; status: IssueStatus; title_en: string; title_da: string;
-  sort_order: number; created_at: string; updated_at: string; fixed_at: string | null;
+  sort_order: number; created_at: string; updated_at: string; closed_at: string | null;
 }
 export interface DoneEntry { id: string; kind: "feature" | "fix"; title_en: string; title_da: string; date: string | null; }
 
@@ -603,11 +608,17 @@ export function engineCounts(items: Array<{ engine: string }>) {
 export function splitIssues(issues: KnownIssue[] | null | undefined, now: Date = new Date()) {
   const list = issues ?? [];
   const cutoff = now.getTime() - RECENTLY_FIXED_DAYS * 86_400_000;
+  const bySort = (a: KnownIssue, b: KnownIssue) => a.sort_order - b.sort_order;
+  const recent = (status: IssueStatus) => list
+    .filter((i) => i.status === status && i.closed_at && new Date(i.closed_at).getTime() >= cutoff)
+    .sort((a, b) => (b.closed_at ?? "").localeCompare(a.closed_at ?? ""));
   return {
-    open: list.filter((i) => i.status !== "fixed").sort((a, b) => a.sort_order - b.sort_order),
-    recentlyFixed: list
-      .filter((i) => i.status === "fixed" && i.fixed_at && new Date(i.fixed_at).getTime() >= cutoff)
-      .sort((a, b) => (b.fixed_at ?? "").localeCompare(a.fixed_at ?? "")),
+    // Bekræftet af ejeren (spec §3.3): "Confirmed"-kortet.
+    confirmed: list.filter((i) => i.status === "confirmed" || i.status === "fixing").sort(bySort),
+    // Meldt ind af spillere, ikke bekræftet: "Reported, being checked"-kortet.
+    checking: list.filter((i) => i.status === "checking").sort(bySort),
+    recentlyFixed: recent("fixed"),
+    recentlyDismissed: recent("dismissed"),
   };
 }
 
@@ -615,7 +626,7 @@ export function buildDoneList(shipped: RoadmapItem[], issues: KnownIssue[], limi
   const entries: DoneEntry[] = [
     ...shipped.map((i) => ({ id: i.id, kind: "feature" as const, title_en: i.title_en, title_da: i.title_da, date: i.shipped_at })),
     ...issues.filter((k) => k.status === "fixed")
-      .map((k) => ({ id: k.id, kind: "fix" as const, title_en: k.title_en, title_da: k.title_da, date: k.fixed_at })),
+      .map((k) => ({ id: k.id, kind: "fix" as const, title_en: k.title_en, title_da: k.title_da, date: k.closed_at })),
   ];
   // Punkter uden dato (tre gamle shipped-rækker) lægges sidst.
   entries.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
@@ -661,7 +672,7 @@ const [{ data: itemData }, { data: issueData }, { data: updateData }, { data: au
   supabase.from("roadmap_items").select(ROADMAP_ITEM_COLUMNS)
     .eq("approved", true).in("status", ["active", "planned", "in_progress", "shipped"]).order("sort_order"),
   supabase.from("known_issues")
-    .select("id, area, status, title_en, title_da, sort_order, created_at, updated_at, fixed_at")
+    .select("id, area, status, title_en, title_da, sort_order, created_at, updated_at, closed_at")
     .eq("published", true).order("sort_order"),
   supabase.from("known_issue_updates")
     .select("id, issue_id, body_en, body_da, created_at").order("created_at", { ascending: false }),
@@ -696,7 +707,7 @@ async function toggleReport(issue) {                   // Known issues
 }
 ```
 
-Layout: `PageHeader` (titel, undertekst; i handlingsklyngen `Checkbox` "Only what I have not rated" + tælleren fra `countUnrated`, begge kun for indloggede) → `Tabs`/`TabList` med fire `Tab` (tal fra `countUnrated().plan`, `.vote` og `splitIssues().open.length`) → fire `TabPanel`. `useDocumentHead` og `writeLastSeenRoadmap` bevares.
+Layout: `PageHeader` (titel, undertekst; i handlingsklyngen `Checkbox` "Only what I have not rated" + tælleren fra `countUnrated`, begge kun for indloggede) → `Tabs`/`TabList` med fire `Tab` (tal fra `countUnrated().plan`, `.vote` og `splitIssues().confirmed.length`) → fire `TabPanel`. `useDocumentHead` og `writeLastSeenRoadmap` bevares.
 
 - [ ] **Step 3:** Kør `node --test frontend/src/pages/RoadmapPage.test.js`: PASS. Commit.
 
@@ -707,7 +718,7 @@ Markup og tekster følger `pr-screens/roadmap-4-10/roadmap-foer-efter.html` felt
 - [ ] **`ScoreScale`** `{ label, value, disabled, onSelect, size }`: den nuværende `VoteAxis` flyttet ud. `role="radiogroup"`, knapper `w-7 h-7`, på telefon `min-w-[34px] min-h-[34px]`.
 - [ ] **`PlanTab`** `{ inProgress, plannedNext, plannedLater, votes, saveState, canVote, language, onRate, lastSeen }`: `Section` "In progress" (rækker uden skala, meta-linje med område) + `Section` "Planned" (nummererede rækker, én `ScoreScale`; `plannedLater` i `CollapsibleSection` "Later · N more"). Tom plan med filter slået til: `EmptyState` med handling der slår filteret fra.
 - [ ] **`VoteTab`** `{ ideas, votes, saveState, canVote, language, onScore }`: `Segmented` fra `engineCounts(ideas)` plus "All"; rækker med to `ScoreScale`; stille handling nederst med link til forummets Roadmap-kategori (se `frontend/src/components/forum/forumCategories.js` for ruten).
-- [ ] **`KnownIssuesTab`** `{ open, recentlyFixed, updatesByIssue, reports, canReport, language, onToggleReport }`: `Segmented` pr. område; række = `StatusBadge` (investigating → warning, fixing → info), titel, meta, nyeste opdatering synlig og ældre i fold, `Button variant="secondary" size="sm"` ("Affects me too" / "Reported"). `recentlyFixed` i `CollapsibleSection`. Ingen åbne fejl: `EmptyState` med handling der fører til feedback-fladen.
+- [ ] **`KnownIssuesTab`** `{ confirmed, checking, recentlyFixed, recentlyDismissed, updatesByIssue, reports, canReport, language, onToggleReport }` (visuel reference: `pr-screens/roadmap-4-10/known-issues-to-grupper.html`): ét `Segmented` pr. område over to kort. Kortet "Confirmed" (undertekst "Problems I have seen myself or found the cause of."): `StatusBadge` confirmed → warning, fixing → info; knap "Affects me too". Kortet "Reported, being checked" (undertekst "Players have reported these. I have not confirmed them, and I am not promising a change."): neutralt mærke "Being checked"; knap "I see this too"; nederst `CollapsibleSection` "Checked, no problem found" med `recentlyDismissed` og ejerens forklaring (nyeste opdatering). Fælles for rækkerne: titel, meta, nyeste opdatering synlig og ældre i fold, `Button variant="secondary" size="sm"` der viser "Reported" efter tryk. `recentlyFixed` i egen `CollapsibleSection` nederst. Begge kort tomme: `EmptyState` med handling der fører til feedback-fladen.
 - [ ] **`DoneTab`** `{ entries, language }`: dato (data-font, lokal formatering uden årstal), titel, mærke (Feature = neutral, Fix = success). "Show more" efter 30.
 - [ ] **Udlogget:** `canVote`/`canReport` er `false`, skalaer og knap vises ikke, og én linje med login-link står over listen.
 - [ ] **Loading:** mens data hentes, viser hver fane kortets chrome med et fast antal `Skeleton`-rækker (4) i samme højde som en rigtig række, så siden ikke hopper (CLS-reglen fra #5177). Antallet afhænger ikke længere af locale-filen.
@@ -768,10 +779,12 @@ test("isSplit bruger tærsklen 1,75", () => {
   assert.equal(SPLIT_SD, 1.75);
   assert.equal(isSplit(1.75), true); assert.equal(isSplit(1.74), false); assert.equal(isSplit(null), false);
 });
-test("rankIssues: åbne fejl, flest ramte først", () => {
-  const r = rankIssues([{ issue_id: "x", status: "fixing", reports: 3 }, { issue_id: "y", status: "investigating", reports: 11 },
-    { issue_id: "z", status: "fixed", reports: 40 }]);
-  assert.deepEqual(r.map((x) => x.issue_id), ["y", "x"]);
+test("rankIssues: bekræftede og indmeldte hver for sig, flest ramte først, lukkede udeladt", () => {
+  const r = rankIssues([{ issue_id: "x", status: "fixing", reports: 3 }, { issue_id: "y", status: "confirmed", reports: 11 },
+    { issue_id: "c", status: "checking", reports: 7 }, { issue_id: "z", status: "fixed", reports: 40 },
+    { issue_id: "d", status: "dismissed", reports: 9 }]);
+  assert.deepEqual(r.confirmed.map((x) => x.issue_id), ["y", "x"]);
+  assert.deepEqual(r.checking.map((x) => x.issue_id), ["c"]);
 });
 test("nextSortOrder lægger et punkt sidst i planen med 10 i afstand", () => {
   assert.equal(nextSortOrder([row({ sort_order: 10 }), row({ sort_order: 30 })]), 40);
@@ -792,7 +805,7 @@ test("statusPatch sætter og nulstiller shipped_at", () => {
   1. Nøgletal (`HeroStats`-anatomi: label `text-3xs` uppercase, værdi data-font tabular).
   2. "Planen, som spillerne vil have den" (`DataTable`, rækker fra `rankPlan`): punkt, vigtighed, stemmer, din rækkefølge, mærket "Deler spillerne" ved `isSplit`. Handlinger (secondary sm): flyt op/ned (bytter `sort_order` med naboen), status (`Select` → `statusPatch`), Next/Later, ret titel.
   3. "Idéer" (`rankIdeas`): god idé, vigtighed, score, stemmer. Handling "Til planen": `update({ status: "planned", horizon: "next", sort_order: nextSortOrder(plan) })`.
-  4. "Kendte fejl" (`rankIssues`): trin, ramt, åben i dage. Handlinger: "Ny opdatering" (insert i `known_issue_updates` + `updated_at = now` på fejlen), "Trin" (`fixed` sætter `fixed_at = now`, andre trin nulstiller den).
+  4. "Kendte fejl" i to tabeller fra `rankIssues` ("Bekræftet" og "Meldt ind, tjekkes"): trin, ramt, åben i dage. Handlinger: "Ny opdatering" (insert i `known_issue_updates` + `updated_at = now` på fejlen), "Trin" (tjekkes, bekræftet, rettes, rettet, lukket uden fund; `fixed` og `dismissed` sætter `closed_at = now`, andre trin nulstiller den). "Lukket uden fund" kræver, at der skrives en opdatering med forklaringen i samme handling.
 - [ ] `RoadmapAdminForms`: opret/ret punkt (område, EN, DA, status, horizon, issue_ref, godkendt) og opret/ret fejl (område, EN, DA, trin, issue_ref, publiceret). Validering: begge titler udfyldt. Fejl vises med `ErrorState`-anatomien; "Prøv igen" er secondary.
 - [ ] "Del punkt" (færdig-reglen, spec §2 punkt 6): handling på hver række i plan- og idé-tabellen. Formularen beder om restens titel (EN + DA), status og Next/Later og kalder `supabase.rpc("roadmap_split_item", { p_source, p_title_en, p_title_da, p_status, p_horizon, p_issue_ref })`. Det nye punkt vises med mærket "Skjult", til ejeren slår "godkendt" til. Formularen minder om næste skridt: ret det oprindelige punkts titel til det, der er live, og sæt det til færdig.
 - [ ] Alle øvrige skrivninger går direkte mod Supabase bag `is_admin()`-policies (samme mønster som den slettede `RoadmapAdminCreateForm.jsx`). Efter en skrivning genhentes de to views.
@@ -832,7 +845,7 @@ test("planFlips finder punkter og fejl med issue_ref og foreslår færdig-status
   });
   assert.deepEqual(plan, [
     { table: "roadmap_items", id: "a", title: "Secondary type", from: "in_progress", patch: { status: "shipped", shipped_at: NOW } },
-    { table: "known_issues", id: "k", title: "Bug", from: "fixing", patch: { status: "fixed", fixed_at: NOW, updated_at: NOW } },
+    { table: "known_issues", id: "k", title: "Bug", from: "fixing", patch: { status: "fixed", closed_at: NOW, updated_at: NOW } },
   ]);
 });
 
@@ -854,8 +867,8 @@ export function planFlips({ issue, now, items, issues }) {
   return [
     ...items.filter((i) => i.issue_ref === issue && i.status !== "shipped" && i.status !== "archived")
       .map((i) => ({ table: "roadmap_items", id: i.id, title: i.title_en, from: i.status, patch: { status: "shipped", shipped_at: now } })),
-    ...issues.filter((k) => k.issue_ref === issue && k.status !== "fixed")
-      .map((k) => ({ table: "known_issues", id: k.id, title: k.title_en, from: k.status, patch: { status: "fixed", fixed_at: now, updated_at: now } })),
+    ...issues.filter((k) => k.issue_ref === issue && k.status !== "fixed" && k.status !== "dismissed")
+      .map((k) => ({ table: "known_issues", id: k.id, title: k.title_en, from: k.status, patch: { status: "fixed", closed_at: now, updated_at: now } })),
   ];
 }
 ```
