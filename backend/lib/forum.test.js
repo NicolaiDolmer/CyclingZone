@@ -1398,3 +1398,21 @@ test("#5000 getForumAuthorStats: tæller egne tråde + svar, ignorerer slettede 
   // AI-hold har ingen brugerkonto — nul-objekt uden DB-opslag.
   assert.deepEqual(await getForumAuthorStats({ supabase: fake, userId: null }), { posts: 0, replies: 0, total: 0 });
 });
+
+// Ejer 4/10: en afstemning må have op til 10 svarmuligheder (fx 10 bud på minimumstid, #4714).
+test("createForumPost: 10 svarmuligheder accepteres, 11 afvises", async () => {
+  const ten = Array.from({ length: 10 }, (_, i) => `Option ${i + 1}`);
+  const fake = createFakeSupabase(seedState());
+  const ok = await createForumPost({
+    supabase: fake, userId: "admin1", isAdmin: true,
+    category: "general", title: "Poll", body: "Vote!", pollOptions: ten,
+  });
+  assert.equal(ok.status, 200);
+  assert.equal(fake.state.forum_poll_options.length, 10);
+
+  const tooMany = await createForumPost({
+    supabase: createFakeSupabase(seedState()), userId: "admin1", isAdmin: true,
+    category: "general", title: "Poll", body: "Vote!", pollOptions: [...ten, "Option 11"],
+  });
+  assert.equal(tooMany.body.errorCode, "forum_poll_invalid_options");
+});
