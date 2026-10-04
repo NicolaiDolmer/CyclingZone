@@ -2,13 +2,10 @@
 // /admin/growth?tab=roadmap. Ingen React, ingen Supabase, så alt her kan testes
 // med node --test.
 //
-// De fire delte typer ejes af spor 2 (frontend/src/lib/roadmapModel.ts, #6150).
-// Den fil findes ikke i dette spors worktree endnu, så typerne er deklareret
-// lokalt her og samles ved merge (importér dem derfra, når spor 2 er på main).
-export type RoadmapStatus = "active" | "planned" | "in_progress" | "shipped" | "archived";
-export type RoadmapHorizon = "next" | "later";
-export type IssueStatus = "checking" | "confirmed" | "fixing" | "fixed" | "dismissed";
-export type IssueArea = "races" | "training" | "youth" | "market" | "club" | "other";
+// De fire delte typer ejes af spillersiden (lib/roadmapModel.ts, #6150, planens
+// "Fælles kontrakt") og gen-eksporteres her, så admin-fladens importer er uændrede.
+import type { RoadmapStatus, RoadmapHorizon, IssueStatus, IssueArea } from "./roadmapModel.ts";
+export type { RoadmapStatus, RoadmapHorizon, IssueStatus, IssueArea };
 
 // Standardafvigelse på vigtighed, hvor "Deler spillerne" vises (spec §4).
 export const SPLIT_SD = 1.75;

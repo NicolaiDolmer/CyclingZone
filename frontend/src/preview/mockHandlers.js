@@ -13,6 +13,8 @@ import {
   RIDERS,
   POOL_RACES,
   ROADMAP_ITEMS,
+  KNOWN_ISSUES,
+  KNOWN_ISSUE_UPDATES,
   AUCTIONS,
   SEED_RACES,
   SEED_RACE_ENTRIES,
@@ -236,6 +238,11 @@ export function restRows(table, requestUrl = "") {
     }
     case "roadmap_items":
       return ROADMAP_ITEMS;
+    // #6150: Known issues-fanen paa /roadmap.
+    case "known_issues":
+      return KNOWN_ISSUES;
+    case "known_issue_updates":
+      return KNOWN_ISSUE_UPDATES;
     // #3941: tom som standard — en aktiv notice ville ellers vise banneret i
     // ALLE siders visuelle snapshots (frontend-smoke rød 18/8). Shots-scriptet
     // 3941-race-control-banner.shots.mjs overlejrer selv SEED_OPS_NOTICES.
@@ -513,6 +520,7 @@ export function restRows(table, requestUrl = "") {
     case "player_events":
     case "rider_watchlist":
     case "roadmap_votes":
+    case "known_issue_reports":
       return [];
     case "seasons":
       return [ACTIVE_SEASON];

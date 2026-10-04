@@ -51,6 +51,6 @@
   "opsNotice": {
     "regionAriaLabel": "Driftsstatus",
     "dismissAriaLabel": "Luk besked",
-    "knownIssuesLink": "Kendte problemer"
+    "knownIssuesLink": "Kendte fejl"
   }
 }

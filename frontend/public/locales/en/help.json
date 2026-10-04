@@ -1929,13 +1929,5 @@
       "q": "If I cancel a scouting mission, do I get the money back? Does it matter when I cancel?",
       "a": "No refund, at any point. The travel cost is charged the moment you start a mission, and cancelling just stops it and frees up your scout; it doesn't return any of the money you already spent, no matter how early or late you cancel. Weigh that before you commit a mission: only start one you're willing to see through, or willing to lose the cost of if your plans change."
     }
-  },
-  "knownIssues": {
-    "label": "Known issues",
-    "heading": "Known issues",
-    "emptyTitle": "No known issues",
-    "emptyDescription": "Nothing to report right now. Active and recent incidents will show up here.",
-    "activeLabel": "Active",
-    "resolvedLabel": "Resolved"
   }
 }
