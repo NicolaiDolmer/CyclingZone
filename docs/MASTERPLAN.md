@@ -6,11 +6,11 @@
 
 ## 🔴 Brand (nu)
 
-⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. **Trin 0 først:** tjek hvad der allerede er løst + kvaliteten af de 22 motorændringer siden flippet · 🔵 #6129 kompensation for tabte træningsdage (#6061-forebyggelse live 3/10; ejer-go på genberegnet hash) · 🔵 #6115 tilbud annulleres ved holdskifte (PR #6128 klar til go-kort; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. **Trin 0 først:** tjek hvad der allerede er løst + kvaliteten af de 22 motorændringer siden flippet · 🔴 #6129 ca. 20 ryttere på 9 spillerhold har ikke trænet i S4 og misser hver aften (målt 4/10; starttilstand + kompensation, ejer-go) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
 
 ## Uge 41 · rækkefølge (ejer 4/10)
 
-1 løbsmotor-pakken (start man 5/10) · 2 go-kort #6128 + #6053 · **🟠 roadmap-hub #5387 bygges nu** (5 spor #6149-#6152 + #6154; spec + plan `superpowers/*/2026-10-04-roadmap-hub*`; indfrier løftet 30/9 om status, når ting er live) · **stabilitet rykker op** (ejer: infrastrukturen skal fungere fantastisk igen; Codex om natten, se release-gate 1) · løfter · beta → alle · Udvikling 2.0 · betaling. Én bølge ad gangen: Claude om dagen, Codex om natten. Overblik: `pr-screens/roadmap-4-10/samlet-plan-uge41.png`.
+1 #6129 + løbsmotor-pakken (start man 5/10) · 2 go-kort #6053 · ✅ roadmap-hub #5387 live 4/10; opfølgning i uge 41 (ejer 4/10): #6174 sikkerhed · #6175 · #6172 merge-kø · #6165 bundle-model · #6164 gamle tilbud + inaktive managers · GitHub-audit (planlægges 5/10) · **stabilitet rykker op** (ejer: infrastrukturen skal fungere fantastisk igen; Codex om natten, se release-gate 1) · løfter · beta → alle · Udvikling 2.0 · betaling. Én bølge ad gangen: Claude om dagen, Codex om natten. Overblik: `pr-screens/roadmap-4-10/samlet-plan-uge41.png`.
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
