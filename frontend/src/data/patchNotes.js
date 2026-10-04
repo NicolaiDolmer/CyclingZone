@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.337",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Races",
+      "en": {
+        "title": "Choose which stages a role applies to, in the beta group",
+        "body": "When you change a rider's role on the Tactics tab, you choose Stage N to the end of the race or Stage N only. Earlier stages keep their roles."
+      },
+      "da": {
+        "title": "Vælg hvilke etaper en rolle gælder for, i beta-gruppen",
+        "body": "Når du skifter en rytters rolle på Taktik-fanen, vælger du Etape N og løbet ud eller Kun etape N. Tidligere etaper beholder deres roller."
+      },
+      "refs": [
+        6095
+      ]
+    }
+  ]
+},
+{
   "version": "7.336",
   "date": "2026-10-04",
   "changes": [
