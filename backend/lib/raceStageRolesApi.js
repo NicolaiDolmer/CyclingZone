@@ -273,11 +273,13 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
 
   // #6095: etaper hvis start er passeret er laast for skrivning, samme regel som
   // ordrerne (raceTeamOrdersApi.isStageLocked), ogsaa foer stages_completed bumpes.
-  const { data: schedRows, error: schedErr } = await supabase
+  // Ét løbs etaper (≤ ~21) — pagineret alligevel, så PostgREST-cap'en aldrig
+  // kan skjule en etape (pagination-guard, #3331). Kaster ved fejl.
+  const schedRows = await fetchAllRows(() => supabase
     .from("race_stage_schedule")
     .select("stage_number, scheduled_at")
-    .eq("race_id", race.id);
-  if (schedErr) throw new Error(`race_stage_schedule: ${schedErr.message}`);
+    .eq("race_id", race.id)
+    .order("stage_number", { ascending: true }));
   const now = new Date();
   const timeLockedStages = new Set(
     (schedRows || [])
