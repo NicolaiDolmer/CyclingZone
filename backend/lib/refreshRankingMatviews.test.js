@@ -23,6 +23,35 @@ const ALL_RPCS = [
   "refresh_youth_rider_rankings_mv", // #5647: sidst, efter de fire seniorviews
 ];
 
+test("#5692: every refresh explicitly selects the reader-safe RPC overload", async () => {
+  const supabase = createMockSupabase();
+  const requests = [];
+  supabase.rpc = async (name, args) => {
+    requests.push({ name, args });
+    return { error: null };
+  };
+  const now = new Date("2026-10-04T10:00:00Z");
+  assert.equal(await refreshRankingMatviewsSafe(supabase, { nowFn: () => now }), true);
+  assert.deepEqual(requests, ALL_RPCS.map(name => ({ name, args: { p_concurrently: true } })));
+});
+
+test("#5692: an unavailable concurrent overload never falls back to a blocking refresh or heartbeat", async () => {
+  const supabase = createMockSupabase();
+  const requests = [];
+  const captured = [];
+  supabase.rpc = async (name, args) => {
+    requests.push({ name, args });
+    return { error: { code: "PGRST202", message: "Concurrent overload unavailable" } };
+  };
+  const now = new Date("2026-10-04T10:00:00Z");
+  assert.equal(await refreshRankingMatviewsSafe(supabase, {
+    nowFn: () => now, captureExceptionFn: (err, context) => captured.push({ err, context }),
+  }), false);
+  assert.deepEqual(requests, ALL_RPCS.map(name => ({ name, args: { p_concurrently: true } })));
+  assert.equal(supabase.upsertCalls.length, 0);
+  assert.equal(captured.length, 1);
+});
+
 function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = [], workError = null } = {}) {
   const rpcCalls = [];
   const upsertCalls = [];
