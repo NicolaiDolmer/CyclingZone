@@ -259,6 +259,7 @@ import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
+import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
@@ -6072,6 +6073,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 // etaper (stage_number <= stages_completed) er ALTID skrivebeskyttede (håndhævet
 // i raceStageRolesApi.js, ikke her).
 
+// #6095: rollevælgerens "kun denne etape / resten af løbet". Manglende nøgle = off.
+const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
+
 // GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -6089,9 +6093,17 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
-    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const [ctx, roleScopeStage, isBetaTester] = await Promise.all([
+      getStageRolesContext({ supabase, race, teamId: req.team.id }),
+      readFlagStage(supabase, RACE_ROLE_SCOPE_CHOICE_FLAG_KEY),
+      isViewerBetaTester(req),
+    ]);
     res.json({
       enabled,
+      // #6095: "kun denne etape / resten af løbet" i rollevælgeren (beta først).
+      role_scope_choice: evaluateFlagStage(roleScopeStage, { isBetaTester }),
+      // #6095: pr. etape; klienten sender dem retur som base_versions ved gem.
+      stage_versions: ctx.stage_versions,
       // #4632: fladen skal kunne rendre de rigtige trin uden at kende
       // multiplikatorerne. FOG OF WAR: kun enum-vaerdier ud, aldrig tal.
       intention_enabled: intentionEnabled,
@@ -6119,13 +6131,25 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
-    const { overrides = [] } = req.body || {};
+    const { overrides = [], stages, base_versions: baseVersions } = req.body || {};
     if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
+    if (race.status === "completed") return res.status(409).json({ error: "stage_roles_race_completed", errors: ["stage_roles_race_completed"] });
 
     const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    // #6095: skriv kun de etaper klienten har ændret, aldrig en startet etape, og
+    // aldrig hvis etapen er ændret et andet sted siden klienten indlæste den.
+    const scope = resolveWriteScope({
+      stages, baseVersions, overrides,
+      stageCount: ctx.stage_count, stagesCompleted: ctx.stages_completed,
+      timeLockedStages: ctx.timeLockedStages, currentVersions: ctx.stage_versions,
+    });
+    if (!scope.ok) {
+      const status = scope.error === "stage_roles_conflict" ? 409 : 400;
+      return res.status(status).json({ error: scope.error, errors: [scope.error] });
+    }
     const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateStageRoleOverrides({
-      overrides,
+      overrides: scope.overrides,
       intentionEnabled,
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
@@ -6141,7 +6165,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
 
     await saveStageRoleOverrides({
       supabase, raceId: race.id, teamRiderIds: ctx.teamRiderIds,
-      stagesCompleted: ctx.stages_completed, overrides,
+      stages: scope.stages, overrides: scope.overrides,
     });
     res.json({ ok: true });
   } catch (err) {

@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.335",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Saving tactics for one stage no longer changes other stages",
+        "body": "Saving now only stores the stages you changed. If your tactics were changed in another window, nothing is overwritten: the latest version is loaded so you can check it and save again. A stage that has started can no longer be changed."
+      },
+      "da": {
+        "title": "Gem af taktik på én etape ændrer ikke længere andre etaper",
+        "body": "Et gem gemmer nu kun de etaper, du har ændret. Er taktikken ændret i et andet vindue, overskrives intet: den nyeste udgave hentes, så du kan tjekke den og gemme igen. En etape, der er startet, kan ikke længere ændres."
+      },
+      "refs": [
+        6095
+      ]
+    }
+  ]
+},
+{
   "version": "7.334",
   "date": "2026-10-03",
   "changes": [
