@@ -150,13 +150,13 @@ $env:SUPABASE_URL = "https://<restore-ref>.supabase.co"
 $env:SUPABASE_SERVICE_KEY = "<restore-service-key>"  # NB: service-key, ikke service-role-key
 cd backend; npm start
 # i anden terminal:
-curl http://localhost:3001/health                    # forvent 200
+curl http://localhost:3001/health/ready              # forvent 200 med db=ok
 curl http://localhost:3001/api/auctions              # forvent 401 (auth-gate)
 curl http://localhost:3001/api/admin/system-status   # forvent 401 uden token
 ```
 
 - [ ] Backend starter uden DB-errors i log
-- [ ] Health = 200
+- [ ] Readiness `/health/ready` = 200 med `db=ok` (jf. `ARCHITECTURE.md`; `/health` beviser kun processen)
 - [ ] Auth-gates virker (401)
 
 ---

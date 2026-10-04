@@ -22,6 +22,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
 import { isAllowedOrigin } from "./lib/corsOrigin.js";
+import { createHealthRouter } from "./lib/healthRoutes.ts";
 import { errorMiddleware, shouldReportToSentry } from "./lib/errorMiddleware.js";
 import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
@@ -93,36 +94,13 @@ app.use("/api", apiRoutes);
 // sheetsSync.js + verify-scriptet er slettet (git-historik er revert-stien).
 // Routes må ikke genopstå her i server.js — backend/routes/api.js ejer admin-routes.
 
-// #2899: Railways deploy-healthcheck (deploy/config-as-code, IKKE continuous
-// monitoring — Railway poller kun denne path under en igangværende deploy,
-// indtil den svarer 200 eller healthcheckTimeout udløber, se backend/railway.json).
-// En triviel Supabase-round-trip afslører en død DB-forbindelse, som en process
-// der bare har bundet porten ellers ville skjule. Kort per-forsøg timeout (3s)
-// betyder at ÉT langsomt DB-kald aldrig hænger checken — Railway prøver igen
-// helt af sig selv inden for healthcheckTimeout-vinduet, så en midlertidigt
-// langsom (men sund) DB ikke fejler deployet permanent.
+// #5905: Railway uses DB-independent /health for deployment liveness, so a
+// recovery hotfix can deploy during a DB outage. /health/ready retains the
+// bounded DB check for deployment smoke and monitoring (never cached).
 const healthSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false },
 });
-const HEALTH_DB_TIMEOUT_MS = 3000;
-app.get("/health", async (_req, res) => {
-  const timestamp = new Date().toISOString();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), HEALTH_DB_TIMEOUT_MS);
-  try {
-    const { error } = await healthSupabase
-      .from("app_config")
-      .select("key", { count: "exact", head: true })
-      .abortSignal(controller.signal);
-    if (error) throw error;
-    res.json({ status: "ok", db: "ok", timestamp });
-  } catch (err) {
-    console.error("[health] DB round-trip failed:", err?.message || err);
-    res.status(503).json({ status: "degraded", db: "error", timestamp });
-  } finally {
-    clearTimeout(timer);
-  }
-});
+app.use(createHealthRouter({ supabase: healthSupabase }));
 
 // #5144: Sentry ser fejlen FØR vores handler (den kalder next(err) videre).
 // `shouldHandleError` deler status-udledning med errorMiddleware, så en 4xx

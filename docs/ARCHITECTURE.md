@@ -173,8 +173,16 @@ POST /api/login-streak
 GET  /api/online-count
 GET  /api/achievements
 POST /api/achievements/check
-GET  /health
+GET  /health                            → proces-liveness, ingen DB
+GET  /health/ready                      → DB-readiness, 200/503, 3s deadline
 ```
+
+Health-kontrakten (#5905): begge svar er `Cache-Control: no-store`. Railway bruger
+`/health`, så et hotfix kan deployes under DB-pres. Deploy-smoke/overvågning skal
+bruge `/health/ready`; den laver HEAD på højst én `app_config`-række uden exact-count.
+CI og `verify-deploy.ps1` deler `backend/scripts/checkBackendReadiness.ts`: højst
+seks forsøg, 5s request-timeout og 5s pause (maks. 55s); kun HTTP 200 med
+`status=ok, db=ok` består. Dette kontrollerer DB-forbindelsen, ikke alle spilflows.
 
 ### Transfer Window
 ```
