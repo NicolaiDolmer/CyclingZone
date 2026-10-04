@@ -1,5 +1,35 @@
 export const PATCHES = [
   {
+    "version": "7.340",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The roadmap is one page with five tabs",
+          "body": "Plan shows what I am building and what comes next, and you rate how important each planned item is to you. Vote holds the ideas I am considering. Beta shows what the beta group has now. Known issues moved here from Help, with my updates and a button to tell me it affects you too. Done lists what is finished."
+        },
+        "da": {
+          "title": "Roadmappen er én side med fem faner",
+          "body": "Plan viser, hvad jeg bygger, og hvad der kommer bagefter, og du vurderer, hvor vigtigt hvert planlagt punkt er for dig. Stem har de idéer, jeg overvejer. Beta viser, hvad beta-gruppen har nu. Kendte fejl er flyttet hertil fra Hjælp, med mine opdateringer og en knap til at fortælle mig, at det også rammer dig. Færdigt viser det, der er færdigt."
+        },
+        "refs": [5387, 6150]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "Filter patch notes by Beta or Now live for all",
+          "body": "A new filter on this page shows everything, only what the beta group has, or what has moved from beta to everyone. A beta note changes its label by itself when the feature is switched on for everyone."
+        },
+        "da": {
+          "title": "Filtrér patch notes på Beta eller Nu for alle",
+          "body": "Et nyt filter på denne side viser alt, kun det beta-gruppen har, eller det, der er gået fra beta til alle. En beta-note skifter selv mærke, når funktionen slås til for alle."
+        },
+        "refs": [6154]
+      }
+    ]
+  },
+  {
     "version": "7.339",
     "date": "2026-10-04",
     "changes": [

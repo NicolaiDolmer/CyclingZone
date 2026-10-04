@@ -847,6 +847,16 @@ features:
     verified: 2026-09-17
     note: PR #5019, 8/9; ingen flag.
 
+  - id: roadmap-hub
+    area: comms
+    title_en: Roadmap hub (five tabs)
+    title_da: Roadmap-hub (fem faner)
+    state: live
+    ssot: docs/superpowers/specs/2026-10-04-roadmap-hub-design.md
+    epic: 5387
+    verified: 2026-10-04
+    note: Live for alle 4/10, intet flag; /roadmap og /admin/growth?tab=roadmap; #5387/#5388; patch note 7.340.
+
   # --- billing -------------------------------------------------------------
   - id: cz-pro
     area: billing
