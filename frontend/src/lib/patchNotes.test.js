@@ -4,6 +4,8 @@ import {
   flattenChanges, pickLang, filterChanges, groupByDay, computeNewDays,
   effectiveRollout, filterByRollout,
 } from "./patchNotes.js";
+import { PATCHES as REAL_PATCHES } from "../data/patchNotes.js";
+import { PLAYER_VISIBLE_FLAG_KEYS } from "../../../backend/lib/stageFlagCatalog.js";
 
 const PATCHES = [
   { version: "2.0", date: "2026-06-20", label: "Beta", changes: [
@@ -84,4 +86,23 @@ test("filterByRollout: all, beta og now_live", () => {
   assert.deepEqual(filterByRollout(changes, "all", flags).map((c) => c.id), [1, 2, 3, 4]);
   assert.deepEqual(filterByRollout(changes, "beta", flags).map((c) => c.id), [2]);
   assert.deepEqual(filterByRollout(changes, "now_live", flags).map((c) => c.id), [1, 3]);
+});
+
+// #6154: GET /api/feature-flags svarer kun paa PLAYER_VISIBLE_FLAG_KEYS. En note med et
+// `flag` uden for listen kan aldrig skifte maerke til "Now for everyone".
+// Kendt hul: training_daily_receipt staar ikke i STAGE_FLAGS (kun i trainingScoreFlag.js),
+// og endpointet kraever stadie-flag. Fjernes naar noeglen er lagt i kataloget.
+const KNOWN_GAPS = new Set(["training_daily_receipt"]);
+
+test("hver note med flag i patchNotes.js har en noegle i PLAYER_VISIBLE_FLAG_KEYS", () => {
+  const missing = [];
+  for (const p of REAL_PATCHES) {
+    (p.changes || []).forEach((c, i) => {
+      if (c.flag && !KNOWN_GAPS.has(c.flag) && !PLAYER_VISIBLE_FLAG_KEYS.includes(c.flag)) missing.push(`${p.version}#${i}:${c.flag}`);
+    });
+  }
+  assert.deepEqual(
+    missing, [],
+    "flag mangler i PLAYER_VISIBLE_FLAG_KEYS (backend/lib/stageFlagCatalog.js), saa maerket skifter aldrig: " + missing.join(", "),
+  );
 });
