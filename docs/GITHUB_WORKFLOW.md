@@ -166,7 +166,7 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 ## Roadmap-flip og drift (roadmap-hub, #6152)
 - PR der lukker et issue: kør `node scripts/roadmap-flip.mjs --issue N` (dry-run, via `infisical run`). Et fund skrives i go-kortet som "flytter roadmap-punktet X til Done", så ejerens "merge" dækker flyttet. `--apply` køres efter merge, og først når funktionen er live for alle (ikke beta).
-- `node scripts/roadmap-drift.mjs` (read-only) køres ved §Aften og i mandagens styring; fund rettes samme dag eller står i go-kortet.
+- `node scripts/roadmap-drift.mjs` (read-only) køres ved §Aften og i mandagens styring; fund rettes samme dag eller står i go-kortet. Rapporten viser også beta-drift (punkt ude af takt med sin kontakt, fordi triggeren springer låste rækker over), og `--resync` retter den via `roadmap_resync_flags()`.
 - Ved hver ændring spillerne kan se skriver Claude et færdigt roadbook-opslag på engelsk, som ejeren selv poster (intet postes automatisk).
 
 ## Commit/PR-konvention
