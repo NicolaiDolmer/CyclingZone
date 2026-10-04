@@ -4,13 +4,12 @@
 > Kilde: `gh pr list` / `gh issue list` (live) + [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
 > Regenerér: `node scripts/generate-status-board.mjs`
 
-86 features i FEATURE_REGISTRY.yml: live 63 · beta 6 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2.
+87 features i FEATURE_REGISTRY.yml: live 64 · beta 6 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2.
 
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (1d) — groen
-- #6160 feat(roadmap): roadmap-hub spillerside i fem faner (Refs #6150) (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -55,7 +54,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #428 [community] Fast ugentlig kommunikations-rytme (Man/Ons/Soen) - LOEBENDE opgave (142d)
 - #481 Brand identity overhaul — logo + design manual (once-and-for-all) (139d)
 - #658 chore(ops): Schedule check-agent-token-hygiene.ps1 as local cron (Windows Task Scheduler) (132d)
-- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (131d)
+- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (132d)
 - #931 [Epic] Træningssystem — nøglerytterplaner først, individuel dybde senere (124d)
 - #932 [Epic] Ungdomsakademi — intake, udvikling, promotion og ungdomsauktion (124d)
 - #954 [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score) (124d)
@@ -66,7 +65,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (111d)
 - #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (109d)
 - #1461 security(email): DMARC enforcement — p=none → quarantine → reject (108d)
-- …og 648 mere
+- …og 647 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -86,4 +85,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #4753 [bug/HOEJ] 4 puljer staar paa 25 hold - 13 AI-hold permanent utrimbare af doede transfer_… (30d)
 - #3643 [ux] Træningssiden på mobil: rework til langt højere standard (ejer-mandat 12/8) (54d)
 - #5860 [races] Entry-generator sweep dobbeltbooker igen i S4 - regression af #5693 (CYCLINGZONE-… (6d)
-- …og 10 mere
+- …og 14 mere
