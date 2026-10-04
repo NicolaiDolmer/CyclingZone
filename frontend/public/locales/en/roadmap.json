@@ -1,101 +1,138 @@
 {
   "meta": {
     "title": "Roadmap · Cycling Zone",
-    "description": "What is being built next in Cycling Zone, and how players rate the plans."
+    "description": "What is being built in Cycling Zone, what players can vote on, what is in beta and which issues are being fixed."
   },
   "page": {
     "title": "Roadmap",
-    "subtitle": "Where Cycling Zone is heading"
+    "subtitle": "What I am building, what you can vote on, and what I am fixing."
   },
   "labels": {
-    "today": "Where it is today",
-    "next": "Where it's heading",
     "new": "New"
   },
+  "loginToVote": {
+    "text": "Log in to rate the plans and report issues.",
+    "link": "Log in"
+  },
+  "filter": {
+    "onlyUnrated": "Only what I have not rated",
+    "rated": "Rated {{rated}} of {{total}}"
+  },
+  "tabs": {
+    "label": "Roadmap sections",
+    "plan": "Plan",
+    "beta": "Beta",
+    "vote": "Vote",
+    "issues": "Known issues",
+    "done": "Done"
+  },
   "voting": {
-    "intro": "Rate the plans below. Your votes help decide what gets built next. What comes after season 4, I decide with you in the Roadmap threads on the forum.",
-    "idea": "How good an idea?",
-    "importance": "How important is it to you?",
+    "idea": "Good idea?",
+    "importance": "Important to you?",
     "saved": "Saved",
     "error": "Your vote was not saved. Try again."
   },
-  "shipped": {
-    "title": "Already built",
-    "subtitle": "Things from the roadmap that are now live in the game."
+  "plan": {
+    "inProgress": "In progress",
+    "planned": "Planned",
+    "plannedHint": "In roughly this order",
+    "later": "Later · {{count}} more"
   },
-  "admin": {
-    "panel": "Admin · roadmap maintenance",
-    "markShipped": "Mark as built",
-    "markShippedConfirm": "Move this item to \"Already built\"? Players will see it in the history section and can no longer vote on it.",
-    "markActive": "Move back to roadmap",
-    "markActiveConfirm": "Move this item back to the active roadmap? Players will be able to vote on it again.",
-    "createTitle": "Add a roadmap idea",
-    "engine": "Engine",
-    "sortOrder": "Sort order",
-    "titleEn": "Title (English)",
-    "titleDa": "Title (Danish)",
-    "approved": "Approved (visible to players)",
-    "status": "Status",
-    "statusActive": "Active (on the roadmap)",
-    "statusShipped": "Built (history)",
-    "statusArchived": "Archived (hidden)",
-    "create": "Add idea",
-    "creating": "Adding…",
-    "created": "Idea added.",
-    "saving": "Saving…",
-    "error": "That didn't save. Try again.",
-    "missingFields": "Fill in both titles before adding."
+  "beta": {
+    "inBeta": "In beta now",
+    "inBetaHint": "Beta testers have these. Everyone else gets them when they are ready.",
+    "coming": "Coming to beta",
+    "badgeInBeta": "In beta",
+    "badgeSoon": "For everyone soon",
+    "badgeNext": "Next in beta",
+    "since": "in beta since {{date}}",
+    "join": "Join the beta",
+    "member": "You are in the beta",
+    "pending": "Request sent"
+  },
+  "vote": {
+    "title": "Ideas I am considering",
+    "hint": "Your ratings decide what moves to the plan",
+    "areaLabel": "Area",
+    "all": "All",
+    "forum": "Have an idea of your own? Post it in the forum"
+  },
+  "issues": {
+    "areaLabel": "Area",
+    "all": "All",
+    "confirmed": "Confirmed",
+    "confirmedHint": "Problems I have seen myself or found the cause of.",
+    "checking": "Reported, being checked",
+    "checkingHint": "Players have reported these. I have not confirmed them, and I am not promising a change.",
+    "status": {
+      "checking": "Being checked",
+      "confirmed": "Confirmed",
+      "fixing": "Fix in progress",
+      "fixed": "Fixed",
+      "dismissed": "No problem found"
+    },
+    "affectsMe": "Affects me too",
+    "seeToo": "I see this too",
+    "reported": "Reported",
+    "reportError": "That did not save. Try again.",
+    "updated": "updated {{date}}",
+    "reportedByPlayers": "reported by players",
+    "earlierUpdates": "Earlier updates · {{count}}",
+    "dismissed": "Checked, no problem found · last 14 days",
+    "fixed": "Fixed in the last 14 days"
+  },
+  "done": {
+    "title": "Done",
+    "hint": "Newest first",
+    "feature": "Feature",
+    "fix": "Fix",
+    "showMore": "Show more"
+  },
+  "empty": {
+    "plan": {
+      "title": "Show the plans you have rated",
+      "description": "You have rated everything on the plan.",
+      "action": "Show all"
+    },
+    "planNone": {
+      "title": "Rate the ideas instead",
+      "description": "Nothing is planned right now.",
+      "action": "Go to Vote"
+    },
+    "vote": {
+      "title": "Show the ideas you have rated",
+      "description": "You have rated every idea.",
+      "action": "Show all"
+    },
+    "voteNone": {
+      "title": "Share your own idea",
+      "description": "There are no ideas to vote on right now.",
+      "action": "Go to the forum"
+    },
+    "beta": {
+      "title": "Join the beta",
+      "description": "Nothing is in beta right now. New features show up here when they go to beta.",
+      "memberTitle": "See what is planned",
+      "memberAction": "Go to Plan"
+    },
+    "issues": {
+      "title": "Tell me if something looks wrong",
+      "description": "There are no known issues right now.",
+      "action": "Send feedback",
+      "loginAction": "Log in"
+    },
+    "done": {
+      "title": "See what is planned",
+      "description": "Nothing is finished yet.",
+      "action": "Go to Plan"
+    }
   },
   "engines": {
-    "races": {
-      "title": "Races",
-      "today": "A full season calendar with scheduled races, results, standings, prize money and history, plus a race film of every finished stage.",
-      "next": [
-        "A smarter season planner: overlapping races, fatigue and qualification rules you can plan a whole season around.",
-        "National championships, worlds and europeans: ride for your country, win the jersey, and coach a national team.",
-        "Realistic race routes modeled on real racing.",
-        "The racing math explained in plain words, without revealing exact numbers."
-      ]
-    },
-    "training": {
-      "title": "Training",
-      "today": "Daily training: pick a session for each rider every day, plan form peaks, and let the assistant suggest a plan.",
-      "next": [
-        "Training per race day: one rebuilt training page where you plan each rider around his races.",
-        "The training score for everyone: see how good each training day was, and steer your riders' development season over season.",
-        "Coaches as a real resource: balance training load and risk burnout if you push too hard.",
-        "Ready-made training programs, and later a way to share your own."
-      ]
-    },
-    "youth": {
-      "title": "Youth development",
-      "today": "Your own academy and a talent scout: find young riders, develop them, and decide on Graduation Day who moves up.",
-      "next": [
-        "Your own young stars: choose the country your young riders come from, and steer which rider types your academy produces.",
-        "U23 and junior squads: two real squads under your first team, with a path from the academy to the top."
-      ]
-    },
-    "market": {
-      "title": "Transfers & auctions",
-      "today": "Live auctions, auto-bids, transfers, swaps and negotiations with other managers.",
-      "next": [
-        "Deeper negotiation between managers.",
-        "A market that tells stories: rumors, rivalries and big moves the whole world talks about.",
-        "Rider values that make sense: values follow your rider's abilities and what the market really pays, and I explain how they are set."
-      ]
-    },
-    "club": {
-      "title": "Club & world",
-      "today": "A board with goals you have to hit, club finances with consequences, your own staff, and a forum and messages to talk with other managers.",
-      "next": [
-        "Earn renown: statistics, records and history that build your club's reputation in the world.",
-        "Road captains, mentors and teamwork: riders who lift the team around them.",
-        "A club museum: champions, legendary riders and the races people still talk about.",
-        "Friends and following: follow managers and riders across the world.",
-        "Negotiate your board's goals upward, for a bigger reward.",
-        "Invite a friend and build your rivalry together.",
-        "A living world feed of results, transfers and rivalries."
-      ]
-    }
+    "races": { "title": "Races" },
+    "training": { "title": "Training" },
+    "youth": { "title": "Youth development" },
+    "market": { "title": "Transfers & auctions" },
+    "club": { "title": "Club & world" },
+    "other": { "title": "Other" }
   }
 }
