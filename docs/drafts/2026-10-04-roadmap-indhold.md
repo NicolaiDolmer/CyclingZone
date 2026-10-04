@@ -418,6 +418,62 @@ Ejeren fandt 4/10, at "grusvejsløb" stod som ny idé, selvom grusetaper er live
 
 **Uklart (ejeren afgør):** #4703 akademiryttere i holdudtagelsen (hvert løb bruger nu kun sin egen trup, v7.307) · #4381 akademilisten som Mit hold (U23- og Junior-siderne matcher allerede).
 
+### Løb og træning
+
+**Ud af listerne (live):**
+
+| Punkt | Bevis |
+|---|---|
+| N19 roller og taktik pr. rytter i endagsløb (#3049) | v7.259; rolle, intention og ordre pr. rytter i endagsløb. Issuet står stadig åbent |
+| Grusvejsløb (5.4) | v7.336; S4 har 2 grusetaper (Strade Bianche del Nord, Terre di Toscana) |
+| Enkeltstarter i forskellige længder, flade og bakkede (5.4) | S4 har enkeltstarter på 6-40 km (107 etaper) og 3 bakkede; v7.296 |
+| Styrt afhænger af teknik (5.4) | v6.97 + v4-motoren: positionering dæmper styrtrisiko |
+| Løbsside i faner (#2794) | v7.239 + v7.259 |
+| Punch og klatring som to træningspas (5.4) | v7.239 (#4631) |
+| Hård brostenstræning (#3705) | v7.276 Cobbled Sectors |
+| Se form stige og falde af træning (#3763) | v7.330: rapporten viser form før og efter pr. dato |
+| N8 træningsside uden scroll (#5485) | v7.296: overblik øverst og fire faner. Til Done; kun kvalitetsrester tilbage |
+
+Bekræftet som Done-forslag i afsnit 1: cab2228d (mellemtider, hvor og hvorfor), 00000209 (hel uge pr. rytter), 00000212 (% pr. pas), 00000213 (auto-hvile).
+
+**I beta (Beta-fanen):** N5 Train now (`training_train_now`) · N6 træningsgrupper (`training_groups`) · N7 sæsonmatrix på telefon (`season_matrix_mobile`) · 538c4798 færdige programmer (`training_programs`; delingsdelen udgår, veto 37,9 %) · rollevælger med etape-valg (`race_role_scope_choice`).
+
+**Delvist live: titlen skrives om til det, der mangler:**
+
+| Punkt | Live i dag | Ny titel EN / DA |
+|---|---|---|
+| 00000201 sekundær type | Forklaret generelt i Hjælp | See on a rider's profile what his second type means for him, and why another ability can still reach higher. / Se på rytterens profil, hvad hans anden type betyder for ham, og hvorfor en anden evne stadig kan nå højere. |
+| 00000203 peak i etapeløb | Peak pr. løb, op til 2 (v7.39) | Pick which part of a stage race a rider peaks in, with a main goal and a backup goal. / Vælg hvilken del af et etapeløb en rytter topper i, med et hovedmål og et reservemål. |
+| 00000013 sæsonplanlægger | Træthed i aften (v7.330) | A season planner that warns you about fatigue two weeks ahead. / En sæsonplanlægger, der advarer dig om træthed to uger frem. (kvalifikation findes ikke i spillet og udgår af titlen) |
+| 00000206 kalender | Guldtone ved gemt udtagelse i Planning | The calendar page shows your own status on each race: entered, withdrawn or squad set. / Kalendersiden viser din egen status på hvert løb: tilmeldt, udmeldt eller hold sat. |
+| 00000015 personale | Sportsdirektør og chefspejder | Hire a team doctor and more staff roles, with skills that change how your season goes. / Ansæt en holdlæge og flere personaleroller med evner, der ændrer, hvordan din sæson går. |
+| N10 kort pr. rytter | "Hvad skete" pr. rytter (v7.332) | After each race, a card per rider with the order you gave him and a verdict on how he carried it out. / Efter hvert løb et kort pr. rytter med den ordre, du gav ham, og en dom over, hvordan han løste den. |
+| N18 assistenten | Rækkefølge i målløb | Keep a rider out of the assistant's picks, and let your rider ranking count in every race, not only target races. / Hold en rytter ude af assistentens udtagelse, og lad din rangering af rytterne gælde i alle løb, ikke kun i målløb. |
+| #4916 følg etape live | Live-kort i Race Centre + løbsfilm | Watch a stage play out on the race page while it is being ridden, with the field moving along the profile. / Se en etape udspille sig på løbssiden, mens den køres, med feltet der bevæger sig hen over profilen. |
+| #4342 træningssiden | Viser dagens løb pr. rytter | See on the training page how many days until each rider's next race. / Se på træningssiden, hvor mange dage der er til hver rytters næste løb. |
+| Flueben (5.4) | Gruppedialog med flueben (beta) | Put the riders you tick on your squad list on a fatigue rule or in a training group. / Sæt de ryttere, du sætter flueben ved på truplisten, på en træthedsregel eller i en træningsgruppe. |
+| #2009 rytter-pop-up | Pop-up i holdudtagelsen (v7.107) | See a rider's age and abilities in a pop-up while you plan training or use the Planning board. / Se en rytters alder og evner i et pop-up, mens du planlægger træning eller bruger planlægningsbrættet. |
+| #3955 profiler i Planning | Terrænglyf pr. løb | See each stage's profile right on the Planning board. / Se hver etapes profil direkte på planlægningsbrættet. |
+| #3900 næste sæson | Kalender for næste sæson kan ses | The calendar page shows a route profile for every race and stage, with filters for race type and terrain. / Kalendersiden viser en ruteprofil for hvert løb og hver etape, med filtre for løbstype og terræn. |
+| #1900 stillinger | Faner pr. division | See the standings of all four divisions on one page. / Se stillingen for alle fire divisioner på én side. |
+| #4611 ryttere taler | Linje efter etapen (v7.233) | Your riders talk to you before a stage, and you answer with one click, for example by giving him a free role. / Dine ryttere taler til dig før en etape, og du svarer med ét klik, for eksempel ved at give ham fri rolle. |
+| #939 vejr | Vejr på alle etaper (v7.310) | Crosswinds that split the peloton into echelons. / Sidevind, der splitter feltet i vifter. |
+| #1833 evner forklaret | Koder ved hover, korte undertekster | Each ability and power number explained in plain words when you hover over it or tap it. / Hver evne og hvert effekttal forklaret i klart sprog, når du holder musen over det eller trykker på det. |
+| #5076 formdyk | Forklaret i Hjælp og på peak-kortet | The form dip after a peak is explained on the rider's form, where you see it drop. / Formdykket efter et peak forklares ved rytterens form, der hvor du ser den falde. |
+| #5882 løb på niveau | Løb udvikler ryttere (v7.308) | Racing at your rider's level develops him most, and new experiences like cobbles or a long stage race give extra. / Løb på din rytters niveau udvikler ham mest, og nye erfaringer som brosten eller et langt etapeløb giver ekstra. |
+| #2489 sæsonkort | Peak-planlæggeren foreslår opbygning | A season map with training blocks (base, build, peak, recovery) under your races. / Et sæsonkort med træningsblokke (base, opbygning, peak, restitution) under dine løb. |
+| #1679 andre hold | Andre holds personale og anlæg (v7.19) | See other teams' training score. / Se andre holds træningsscore. |
+
+"Sortér den daglige rapport efter alder" (5.4) er for lille til roadmappet og går direkte i backloggen.
+
+**Ikke live (bliver stående):** 00000202, 00000204, 00000014, 00000205, 00000207, N11, N12 (motoren kan køre holdtidskørsel, men S4 har ingen), N15, #3471, #3050, #4540 (bevidst fjernet i v7.225, bør udgå), afrikanske/asiatiske lege, #6137, #4122, #2457, #2030, #3982, #5981, #5982, #3444, #2477, 00000208, 00000210, 00000211, 00000214, N3, N4, N9, #5865, #4942, alsidig træning, #2488, #2487.
+
+**Uklart (ejeren afgør):** ca980fca ruter (brosten, slutstigninger og profiler er live; mangler "lang dal før sidste stigning"?) · #4259 ikon for udtaget rytter (Planning viser allerede lås + løbets navn) · #3529 løbslog pr. rytter (sæsonmatricen viser rytter × løbsdag).
+
+**Samlet efter verificering:** 16 punkter ud (live) · 44 omskrevet til det, der mangler · 5 i beta · 5 uklare · resten uændret.
+
+Sidefund (ikke roadmap, bør undersøges for sig): formplanlæggerens peaks sendes muligvis ikke med ind i v4-motoren (`raceEngineV4Bridge.js` sender evner, rolle, indsats og træthed; peak-vinduerne lægges kun på under v3 i `raceRunner.js`). Ikke verificeret til bunds.
+
 Sidefund: Hjælp lover mindst 12 aktive timer på auktioner over frie ryttere, men en spillervalgt sluttid kan omgå det. Det forklarer klagerne over "1 time". Hjælp henviser til en liste over profilryttere, som kun findes på den gamle bestyrelsesside.
 
 ## 7. Åbne spørgsmål til ejeren
