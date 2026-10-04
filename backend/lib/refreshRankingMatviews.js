@@ -14,11 +14,13 @@
 // stå og vente på den LANGSOMSTE (målt maks 7,8s i prod, dengang mod et
 // statement_timeout på 8s). Fire separate transaktioner (database/2026-07-27-
 // 3013-refresh-matviews-concurrently.sql) frigiver hver lås så snart DEN matview
-// er færdig i stedet for at holde alle fire til den sidste er done. CONCURRENTLY
-// er IKKE muligt her — Postgres afviser den fra enhver funktion kaldt via
-// RPC/SPI, se migrationens header-kommentar. Ægte nul-blokering kræver en
-// transport-ændring (pg_cron eller rå pg-forbindelse), sporet som opfølgning på
-// #3013 i #3121.
+// er færdig i stedet for at holde alle fire til den sidste er done.
+// #5692: den gamle SPI/isTopLevel-påstand var forkert for PostgreSQL 17.
+// Hvert kald vælger nu eksplicit overloaden med p_concurrently=true, foreslået
+// i database/proposals/2026-10-05-5692-ranking-refresh.sql. Den kører CONCURRENTLY
+// i samme SECURITY DEFINER/PostgREST-transport. Ingen fallback til plain REFRESH:
+// mangler overload/index/populerede data, beholdes sidste færdige snapshot og
+// heartbeat flyttes ikke. SQL-proposal kræver separat ejer-go før aktivering.
 //
 // TIMEOUT-BUDGET (#4866, gældende fra 5/9): de fire RPC'er går gennem PostgREST
 // som service_role. Rollen havde ingen egen rolconfig og arvede derfor
@@ -97,7 +99,7 @@ async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn 
 
   for (const { rpc, label } of REFRESH_RPCS) {
     try {
-      const { error } = await supabase.rpc(rpc);
+      const { error } = await supabase.rpc(rpc, { p_concurrently: true });
       if (error) throw new Error(error.message);
     } catch (err) {
       failures.push({ label, message: err.message });
