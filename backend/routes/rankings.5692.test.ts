@@ -177,7 +177,7 @@ test("#5692 real RPC: plain refresh blocks readers; concurrent overload serves l
   // Restore the same old snapshot before the concurrent run. This local fixture
   // setup is not a production write, migration deployment or data repair.
   sql("DELETE FROM public.fixture_source WHERE id=2; SELECT public.refresh_team_race_points_mv(); INSERT INTO public.fixture_source VALUES (2,9)");
-  const proposal = readFileSync(new URL("../../database/proposals/2026-10-05-5692-ranking-refresh.sql", import.meta.url), "utf8");
+  const proposal = readFileSync(new URL("../../database/2026-10-05-5692-ranking-refresh.sql", import.meta.url), "utf8");
   sql(proposal); sql(proposal); // idempotence on an isolated throwaway DB only
   // Verify actual grants and mode enforcement, not just comments/source matches.
   assert.equal(sql("SELECT has_function_privilege('anon','public.refresh_team_race_points_mv(boolean)','EXECUTE')"), "f");

@@ -6,7 +6,11 @@
 
 ## 🔴 Brand (nu)
 
-⚪ #6095 gem af etapetaktik overskriver alle etapers intentioner (spillerdata tabt, Giro) · ⚪ #5860 entry-generatoren dobbeltbooker stadig (Sentry 1-3/10, ejer 3/10) · 🔵 #6129 kompensation for tabte træningsdage (#6061-forebyggelse live 3/10; ejer-go på genberegnet hash) · 🟠 #6115 tilbud annulleres ved holdskifte (Codex; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. **Trin 0 først:** tjek hvad der allerede er løst + kvaliteten af de 22 motorændringer siden flippet · 🔵 #6129 kompensation for tabte træningsdage (#6061-forebyggelse live 3/10; ejer-go på genberegnet hash) · 🔵 #6115 tilbud annulleres ved holdskifte (PR #6128 klar til go-kort; data repareret 3/10) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
+
+## Uge 41 · rækkefølge (ejer 4/10)
+
+1 løbsmotor-pakken (start man 5/10) · 2 go-kort #6128 + #6053 · **🟠 roadmap-hub #5387 bygges nu** (5 spor #6149-#6152 + #6154; spec + plan `superpowers/*/2026-10-04-roadmap-hub*`; indfrier løftet 30/9 om status, når ting er live) · **stabilitet rykker op** (ejer: infrastrukturen skal fungere fantastisk igen; Codex om natten, se release-gate 1) · løfter · beta → alle · Udvikling 2.0 · betaling. Én bølge ad gangen: Claude om dagen, Codex om natten. Overblik: `pr-screens/roadmap-4-10/samlet-plan-uge41.png`.
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
@@ -20,7 +24,7 @@
 
 ## Release-gate (beta → "færdigt spil", ejer 30/9)
 
-1. **Stabilitet:** 0 brand i 7 dage · aftentræning < 2 min (#5911) · #5900 · #5904 · #5905 · chunk #5162 · Supabase-stabilisering #5893 (#6103 lukket 3/10; tilbage #6102 #6104 #6105) · API på eget domæne. 2. **Motor:** v4-drift-vagt grøn · v2-etaper holder mod testen · #5978 · #5951 · #4914. 3. **Træning:** alle beta-features til alle. 4. **Økonomi:** #5916 · #5842 · #5443-tjekliste ajourført. 5. **Fastholdelse:** #4964. 6. **Mobil:** #5131. 7. **Billing:** #4514 · #4512 · #4511 · #6062 periode uden faktura.
+1. **Stabilitet:** 0 brand i 7 dage · aftentræning < 2 min (#5911) · #5904 · #6134 (rest af #5900; #5900 + #5905 done) · chunk #5162 · Supabase-stabilisering #5893 (#6103 lukket 3/10; tilbage #6102 #6104 #6105) · API på eget domæne. 2. **Motor:** #6156 · v4-drift-vagt grøn · v2-etaper holder mod testen · #5978 · #5951 · #4914. 3. **Træning:** alle beta-features til alle. 4. **Økonomi:** #5916 · #5842 · #5443-tjekliste ajourført. 5. **Fastholdelse:** #4964. 6. **Mobil:** #5131. 7. **Billing:** #4514 · #4512 · #4511 · #6062 periode uden faktura.
 
 ## Bane 2 · Forretning (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
@@ -28,7 +32,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Bane 3 · Færdiggør
 
-#6081 merge-køen melder rød for tidligt · #5692 matview-lås · #5792 smoke · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 (først #5115) · #6064/#6065 bølge-værn · #5145 (parkeret).
+#6081 merge-køen melder rød for tidligt · #5692 matview-lås (PR #6153 draft: SQL lægges i prod først, ejer-go) · #5792 smoke + #6132 + #6120 (blokeret på filmandat; nyt mandat i plan-fil) · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 (først #5115) · #6064/#6065 bølge-værn · #5145 (parkeret).
 
 ## Ejer-beslutninger (ét kort ad gangen)
 

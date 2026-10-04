@@ -970,9 +970,78 @@ CLI-delen (kører kun når filen startes direkte): læs `--issue` og `--apply`; 
 
 - [ ] **Step 4:** Kør testen: PASS. Kør `node scripts/roadmap-flip.mjs --issue 1` uden nøgle og bekræft en læsbar fejl (ingen stack trace med hemmeligheder). Commit.
 
+### Task 4.3: Drift-tjek mod masterplanen (ejer 4/10)
+
+**Files:** Create `scripts/roadmap-drift.mjs`, `scripts/roadmap-drift.test.mjs`.
+
+- [ ] **Step 1: Test:**
+
+```js
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { planIssueNumbers, findDrift } from "./roadmap-drift.mjs";
+
+test("planIssueNumbers læser issue-numre fra Brand, Bane 1 og Lovet, ikke fra resten", () => {
+  const md = "## 🔴 Brand (nu)
+⚪ #6156 form · 🟠 #6115
+## Bane 1 · Lovet til spillerne (dato først)
+27/9: #5831
+## Bane 3 · Færdiggør
+#6081";
+  assert.deepEqual(planIssueNumbers(md), [6156, 6115, 5831]);
+});
+
+test("findDrift: lovet uden punkt, og punkt hvis issue er færdigt", () => {
+  const drift = findDrift({
+    planIssues: [6156, 5831],
+    items: [{ id: "a", issue_ref: 5831, status: "planned", title_en: "Message" },
+            { id: "b", issue_ref: 4385, status: "planned", title_en: "Upkeep" }],
+    issues: [{ id: "k", issue_ref: 5952, status: "fixing", title_en: "Team classification" }],
+    doneIssues: new Set([4385, 5952]),
+  });
+  assert.deepEqual(drift.missing, [6156]);
+  assert.deepEqual(drift.stale.map((s) => [s.table, s.id]), [["roadmap_items", "b"], ["known_issues", "k"]]);
+});
+```
+
+- [ ] **Step 2:** Kør: FAIL. **Step 3: Implementér:**
+
+```js
+// Sektioner i docs/MASTERPLAN.md, hvis issues spillerne kan mærke.
+const PLAN_SECTIONS = [/^## .*Brand/, /^## Bane 1/];
+
+export function planIssueNumbers(markdown) {
+  const out = [];
+  let inside = false;
+  for (const line of markdown.split("
+")) {
+    if (line.startsWith("## ")) inside = PLAN_SECTIONS.some((re) => re.test(line));
+    else if (inside) for (const m of line.matchAll(/#(d+)/g)) if (!out.includes(Number(m[1]))) out.push(Number(m[1]));
+  }
+  return out;
+}
+
+export function findDrift({ planIssues, items, issues, doneIssues }) {
+  const linked = new Set([...items, ...issues].map((r) => r.issue_ref).filter(Boolean));
+  return {
+    missing: planIssues.filter((n) => !linked.has(n)),
+    stale: [
+      ...items.filter((i) => doneIssues.has(i.issue_ref) && !["shipped", "archived"].includes(i.status))
+        .map((i) => ({ table: "roadmap_items", id: i.id, title: i.title_en, status: i.status, issue: i.issue_ref })),
+      ...issues.filter((k) => doneIssues.has(k.issue_ref) && !["fixed", "dismissed"].includes(k.status))
+        .map((k) => ({ table: "known_issues", id: k.id, title: k.title_en, status: k.status, issue: k.issue_ref })),
+    ],
+  };
+}
+```
+
+CLI-delen: læs `docs/MASTERPLAN.md`, hent de to tabeller read-only (samme klient-mønster som `roadmap-flip.mjs`), slå hvert `issue_ref` op med `gh issue view N --json state,labels` (lukket eller `claude:done` = færdigt), og print de to lister. Scriptet skriver aldrig noget. Exit 0 også ved fund (det er en rapport, ikke en gate).
+
+- [ ] **Step 4:** Kør testen: PASS. Commit.
+
 ### Task 4.2: Rutinen i docs
 
-- [ ] Tilføj til close-protokollen i `docs/GITHUB_WORKFLOW.md`: ved PR der lukker et issue køres `node scripts/roadmap-flip.mjs --issue N` (dry-run). Et fund skrives i go-kortet som "flytter roadmap-punktet X til Done", så ejerens "merge" dækker flyttet. `--apply` køres efter merge, og først når funktionen er live for alle (ikke beta). Kør `pwsh -File scripts/check-agent-token-hygiene.ps1` bagefter.
+- [ ] Tilføj til close-protokollen i `docs/GITHUB_WORKFLOW.md`: ved PR der lukker et issue køres `node scripts/roadmap-flip.mjs --issue N` (dry-run). Et fund skrives i go-kortet som "flytter roadmap-punktet X til Done", så ejerens "merge" dækker flyttet. `--apply` køres efter merge, og først når funktionen er live for alle (ikke beta). Tilføj også: `node scripts/roadmap-drift.mjs` køres ved §Aften og i mandagens styring (fund rettes samme dag eller står i go-kortet), og ved hver ændring spillerne kan se, skriver Claude et færdigt roadbook-opslag på engelsk, som ejeren selv poster (intet postes automatisk). Kør `pwsh -File scripts/check-agent-token-hygiene.ps1` bagefter.
 - [ ] Draft-PR, `Refs #5387`.
 
 ---

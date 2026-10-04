@@ -39,6 +39,41 @@
 
 ## 0. De tre veje ind på markedet
 
+### Åbne tilbud følger faktisk ejerskab (#6115, ejerbeslutning A 3/10)
+
+Ved en faktisk ændring af `riders.team_id` trækkes åbne `transfer_offers` og
+`swap_offers` tilbage med `status='withdrawn'` i samme database-statement.
+Åbent betyder `pending`, `countered` eller `awaiting_confirmation`, som i
+`ACTIVE_MARKET_STATUSES` i `transferExecution.js`. Bytter rammes både via
+`offered_rider_id` og `requested_rider_id`. Afsluttede tilbud bevares.
+Samme ejer, også null til null, samt ændring af kun `pending_team_id` gør intet.
+Skift til/fra null tæller som ejerskabsskift; udskudte handler rammes ved ankomst.
+
+Kontrakten håndhæves af den særskilte invoker-funktion
+`withdraw_open_offers_on_rider_owner_change` og trigger
+`trg_withdraw_open_offers_on_rider_owner_change` i
+`database/2026-10-03-6115-withdraw-offers-on-owner-change.sql`.
+Den dækker auktion, transfer/bytte, AI-erhvervelse, frigivelse/kontraktudløb,
+pensionering, akademi, starttrup, admin-flytning, nulstilling og udskudt ankomst.
+Fejler annulleringen, rulles ejerskabet og begge tilbudstyper tilbage samlet.
+Backendens `service_role` beholder sine eksisterende tabelrettigheder;
+ingen frontend-rolle får nye skriverettigheder.
+
+Eksisterende JS-oprydning er idempotent og bevares, herunder tilbudslukning ved
+accepterede, parkerede handler. Direkte transfer/bytte sætter fortsat sit eget
+tilbud til `accepted` efter udført ejerskabsændring. Triggerens atomicitet gælder
+ejerskabs-statementet, ikke hele JS-handlens separate saldo-/notifikationskald.
+`ai_team_retirement_reason` og nedlæggelsens gates er uændrede.
+
+Migrationen skal kunne eksistere sammen med #6061/#6119's
+`trg_initialize_first_use_rider_condition` / `initialize_first_use_rider_condition`.
+Den hverken erstatter denne trigger eller skriver condition/skader/træning.
+Begge apply-rækkefølger og gentagen apply testes mod lokal PostgreSQL.
+Ingen backfill, historisk oprydning eller ny udløbsregel. Manuel oprydning er
+allerede udført ifølge [ejerens kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/6115#issuecomment-5970967006);
+det særskilte historiske `awaiting_confirmation`-tilbud ændres ikke.
+**Release-status:** lokalt verificeret; merge og migration-apply kræver særskilt ejer-go.
+
 ### AI-hold på vej ud af puljen (#4753, design-go 9/9)
 
 Et overskydende AI-hold nedlægges; hold, ryttere, tilbud og resultater bevares.

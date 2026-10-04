@@ -44,7 +44,7 @@ Næste uges største spor: designkort ét ad gangen → spec i `docs/superpowers
 
 1. **Stabilitet** (Codex): 0 brand 7 dage i træk; load-test før hvert sæsonskifte. #5900 → #5904 → #5905/#6102 → #5692 → #5162 → API eget domæne.
 2. **Udvikling og træning** (Claude Code): alle træningsfeatures til alle; Udvikling 2.0 live i S4. Beta → alle · #6110 · #5965 · #5947/#5949/#5929.
-3. **Løbsmotoren** (Claude Code): v4-drift grøn; v2-etaper holder mod testen. #5951 → #5978 → #5981/#5982 → #4914 → #5575 (S5).
+3. **Løbsmotoren** (Claude Code): v4-drift grøn; v2-etaper holder mod testen. **Pakke fra 5/10 (ejer 4/10, spec `2026-10-04-form-og-formtoppe-i-v4-design.md`):** trin 0 sandhedstjek → #6156 ∥ #5951/#5978 ∥ genmål gamle fejl ∥ #4914/#4197/#5515. Derefter #5981/#5982 → #5575 (S5).
 4. **Økonomi og marked** (Claude Code; backend til Codex): #6115 → #5916 → #5842 → #5443 → #2885.
 5. **Fastholdelse** (Claude Code): D7 ≥ 45 %, aktive/7d ≥ 100. #5305 → #4964 → #6122 → #5131 → #1140.
 6. **Betaling og tillid** (Codex): #4514 → #4512/#6062 → #4511 → #6121 → #6047.

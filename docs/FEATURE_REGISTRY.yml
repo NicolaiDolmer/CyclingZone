@@ -383,7 +383,8 @@ features:
     flag: peak_planner_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 2224
-    verified: 2026-09-06
+    verified: 2026-10-04
+    note: Planlægning virker, men toppe og form har INGEN virkning i løb under v4 siden 28/9 (#6156; rettes fra 5/10, spec 2026-10-04-form-og-formtoppe-i-v4-design.md).
 
   - id: training-tick-system
     area: training

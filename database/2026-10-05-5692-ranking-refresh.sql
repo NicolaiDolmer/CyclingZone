@@ -1,4 +1,4 @@
--- PROPOSAL ONLY. Refs #5692; no production apply/deploy authority in this lane.
+-- Additive concurrent-refresh overloads. Refs #5692; SQL precedes Node activation.
 -- SSOT: docs/GAME_INVARIANTS.md, ranking admission + public aggregate contracts.
 -- Preserve #5911 cadence/training gates and #6133 admission. No view definition,
 -- index, historical data, role timeout, owner or scheduler change.

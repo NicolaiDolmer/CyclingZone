@@ -17,10 +17,10 @@
 // er færdig i stedet for at holde alle fire til den sidste er done.
 // #5692: den gamle SPI/isTopLevel-påstand var forkert for PostgreSQL 17.
 // Hvert kald vælger nu eksplicit overloaden med p_concurrently=true, foreslået
-// i database/proposals/2026-10-05-5692-ranking-refresh.sql. Den kører CONCURRENTLY
+// i database/2026-10-05-5692-ranking-refresh.sql. Den kører CONCURRENTLY
 // i samme SECURITY DEFINER/PostgREST-transport. Ingen fallback til plain REFRESH:
 // mangler overload/index/populerede data, beholdes sidste færdige snapshot og
-// heartbeat flyttes ikke. SQL-proposal kræver separat ejer-go før aktivering.
+// heartbeat flyttes ikke. SQL-migration kræver separat ejer-go før aktivering.
 //
 // TIMEOUT-BUDGET (#4866, gældende fra 5/9): de fire RPC'er går gennem PostgREST
 // som service_role. Rollen havde ingen egen rolconfig og arvede derfor
