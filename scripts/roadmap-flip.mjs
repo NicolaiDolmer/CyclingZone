@@ -97,8 +97,17 @@ async function main() {
   }
 
   for (const p of plan) {
-    const { error } = await db.from(p.table).update(p.patch).eq("id", p.id);
+    // Optimistisk laas: kun hvis status stadig er den vi planlagde ud fra.
+    const { data: changed, error } = await db
+      .from(p.table)
+      .update(p.patch)
+      .eq("id", p.id)
+      .eq("status", p.from)
+      .select("id");
     if (error) throw new Error(`${p.table} ${p.id}: ${error.message}`);
+    if (!changed || changed.length === 0) {
+      throw new Error(`${p.table} ${p.id}: status ændret siden planen blev lavet, intet skrevet`);
+    }
     const { data, error: vErr } = await db.from(p.table).select("id, status").eq("id", p.id).single();
     if (vErr) throw new Error(`verify ${p.table} ${p.id}: ${vErr.message}`);
     if (data.status !== p.patch.status) {

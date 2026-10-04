@@ -61,11 +61,11 @@ export function findDrift({ planIssues, items, issues, doneIssues }) {
 export function formatDrift(drift) {
   const lines = [];
   lines.push(`Lovet/brand uden roadmap-punkt eller kendt fejl (${drift.missing.length}):`);
-  lines.push(...(drift.missing.length ? drift.missing.map((n) => `  #${n}`) : ["  ingen"]));
+  lines.push(...(drift.missing.length ? drift.missing.map((n) => `  \`#${n}\``) : ["  ingen"]));
   lines.push(`Punkter/fejl med færdigt issue men åben status (${drift.stale.length}):`);
   lines.push(
     ...(drift.stale.length
-      ? drift.stale.map((s) => `  #${s.issue}  ${s.table} ${String(s.id).slice(0, 8)}  ${s.status}  ${s.title}`)
+      ? drift.stale.map((s) => `  \`#${s.issue}\`  ${s.table} ${String(s.id).slice(0, 8)}  ${s.status}  ${s.title}`)
       : ["  ingen"]),
   );
   return lines.join("\n");
@@ -82,6 +82,7 @@ function isIssueDone(n) {
     const j = JSON.parse(raw);
     return j.state === "CLOSED" || (j.labels || []).some((l) => l.name === "claude:done");
   } catch {
+    console.error(`advarsel: kunne ikke læse issue ${n} via gh, behandles som ikke færdigt`);
     return false;
   }
 }
