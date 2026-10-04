@@ -8,7 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const dir = dirname(fileURLToPath(import.meta.url));
 const boxes = JSON.parse(readFileSync(resolve(dir, "boxes.json"), "utf8")).after;
 const W = 1100, S = W / 1440, GAP = 40, M = 30, TOP = 64;
-const SPLIT = 2244; // mellem Idéer (slutter ca. 2237) og Idé-pulje (starter ca. 2251)
+// Klip mellem Idéer og Idé-pulje, beregnet fra boxes.json (planen er nu fuld højde).
+const SPLIT = Math.round((boxes.ideas.y + boxes.ideas.h + boxes.pool.y) / 2);
 const H = boxes.pageHeight;
 const cols = [M, M + W + GAP, M + 2 * (W + GAP)];
 const colsH = Math.round(SPLIT * S);
@@ -51,10 +52,10 @@ const legendTop = TOP + Math.max(colsH, bH, dagH + 60) + 30;
 const legend = [
   "Ny fane Roadmap (I dag findes den ikke), med knapperne Nyt punkt, Ny fejl og Genindlæs.",
   "Nøgletal: 42 har stemt, 31 aktive seneste 14 dage, 1.121 stemmer, 19 har svaret på alt.",
-  "Planen, som spillerne vil have den: rangeret efter vigtighed, med din rækkefølge, flyt, status, Next/Later, Ret og Del.",
+  "Planen, som spillerne vil have den: alle 13 punkter uden scroll i tabellen, rangeret efter vigtighed; flyt-pilene står ved din rækkefølge, og status, Next/Later, Ret og Del står på én linje.",
   "I gang: beta-koblingen viser kontakt (flag) og beta-startdato pr. punkt.",
   "Idéer rangeret efter score, og Idé-pulje med skjulte idéer (Til planen, Tag af Vote, Vis på Vote).",
-  "Kendte fejl i to tabeller (bekræftet, meldt ind og tjekkes), flest ramte først, med Ny opdatering og Trin.",
+  "Kendte fejl i to tabeller (bekræftet, meldt ind og tjekkes), flest ramte først; handlinger og \"Åben i\" på én linje.",
 ].map((t, i) => `<div class="leg"><b>${i + 1}</b> ${t}</div>`).join("");
 const totalW = cols[2] + W + M;
 const totalH = legendTop + 6 * 34 + 50;

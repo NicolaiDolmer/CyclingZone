@@ -31,6 +31,7 @@ import {
 } from "../../ui";
 
 const API = import.meta.env.VITE_API_URL;
+const UNBOUNDED = "[&>div>div]:max-h-none";
 
 const nowIso = () => new Date().toISOString();
 const fmtInt = (n) => (n === null || n === undefined ? "–" : Number(n).toLocaleString("da-DK"));
@@ -52,17 +53,27 @@ function IssueStepBadge({ status }) {
   return <Tag>{ISSUE_STATUS_LABELS[status] ?? status}</Tag>;
 }
 
+// Én linje pr. række ved 1440 px: handlingerne ombrydes aldrig (rækkerne blev
+// ellers dobbelt så høje); titel-kolonnen er den, der giver plads.
 function Actions({ children }) {
-  return <div className="flex flex-wrap items-center justify-end gap-1.5">{children}</div>;
+  return <div className="flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap">{children}</div>;
+}
+
+// Tal og datoer i tal-kolonner ombrydes aldrig ("11 dage" på to linjer).
+function Num({ children }) {
+  return <span className="whitespace-nowrap tabular-nums">{children}</span>;
 }
 
 function RowButton({ children, ...rest }) {
   return <Button variant="secondary" size="sm" type="button" {...rest}>{children}</Button>;
 }
 
+// `whitespace-normal`: DataTable's navnecelle er nowrap på desktop, så den
+// længste titel satte tabellens bredde og skubbede handlingerne ud over kortet.
+// Titlen er den, der må ombryde; handlingerne og tallene gør aldrig.
 function TitleCell({ title, children }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 whitespace-normal">
       <div className="text-cz-1">{title}</div>
       {children && <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-3xs uppercase tracking-[.06em] text-cz-3">{children}</div>}
     </div>
@@ -196,16 +207,17 @@ export default function GrowthRoadmapTab() {
         </TitleCell>
       ),
     },
-    { key: "importance", header: "Vigtighed", numeric: true, render: (r) => fmtScore(r.avg_importance) },
-    { key: "votes", header: "Stemmer", numeric: true, render: (r) => fmtInt(r.votes) },
-    { key: "own", header: "Din rækkefølge", mobileHeader: "Din", numeric: true, render: (r) => order.get(r.item_id) ?? "–" },
-    { key: "flag", header: "Kontakt", fold: true, foldValue: (r) => r.flag_key ?? "", render: flagCell },
+    { key: "importance", header: "Vigtighed", numeric: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
+    { key: "votes", header: "Stemmer", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
+    // Pilene står ved nummeret, de flytter: det holder handlingskolonnen smal nok
+    // til, at hele rækken er én linje ved 1440 px.
     {
-      key: "actions", header: "", fold: true, foldValue: () => "",
+      key: "own", header: "Din rækkefølge", mobileHeader: "Din", numeric: true,
       render: (r) => {
         const pos = order.get(r.item_id) ?? 0;
         return (
-          <Actions>
+          <div className="flex flex-nowrap items-center justify-end gap-1.5">
+            <Num>{pos || "–"}</Num>
             <RowButton aria-label="Flyt op" disabled={busy !== null || pos <= 1}
               onClick={() => run(`up-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, -1)
                 .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))))}>
@@ -216,16 +228,24 @@ export default function GrowthRoadmapTab() {
                 .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))))}>
               <ArrowDownIcon size={14} aria-hidden="true" />
             </RowButton>
-            <div className="w-[118px]">{statusSelect(r)}</div>
-            <RowButton disabled={busy !== null}
-              onClick={() => run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon: r.horizon === "later" ? "next" : "later" }))}>
-              {r.horizon === "later" ? "Til Next" : "Til Later"}
-            </RowButton>
-            <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
-            <RowButton onClick={() => setModal({ kind: "split", row: r })}>Del</RowButton>
-          </Actions>
+          </div>
         );
       },
+    },
+    { key: "flag", header: "Kontakt", fold: true, foldValue: (r) => r.flag_key ?? "", render: flagCell },
+    {
+      key: "actions", header: "", fold: true, foldValue: () => "",
+      render: (r) => (
+        <Actions>
+          <div className="w-[118px]">{statusSelect(r)}</div>
+          <RowButton disabled={busy !== null}
+            onClick={() => run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon: r.horizon === "later" ? "next" : "later" }))}>
+            {r.horizon === "later" ? "Til Next" : "Til Later"}
+          </RowButton>
+          <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
+          <RowButton onClick={() => setModal({ kind: "split", row: r })}>Del</RowButton>
+        </Actions>
+      ),
     },
   ];
 
@@ -233,7 +253,7 @@ export default function GrowthRoadmapTab() {
     { key: "title", header: "Punkt", sticky: true, render: (r) => <TitleCell title={r.title_da || r.title_en}>{itemTags(r)}</TitleCell> },
     {
       key: "beta", header: "I beta siden", numeric: true,
-      render: (r) => (r.beta_since ? fmtDate(r.beta_since) : <span className="text-cz-3">–</span>),
+      render: (r) => (r.beta_since ? <Num>{fmtDate(r.beta_since)}</Num> : <span className="text-cz-3">–</span>),
     },
     { key: "flag", header: "Kontakt", render: flagCell },
     {
@@ -251,10 +271,10 @@ export default function GrowthRoadmapTab() {
   const ideaColumns = [
     { key: "rank", header: "", compact: true, render: (_r, i) => <span className="font-data tabular-nums text-cz-3">{i + 1}</span> },
     { key: "title", header: "Idé", sticky: true, render: (r) => <TitleCell title={r.title_da || r.title_en}>{itemTags(r)}</TitleCell> },
-    { key: "idea", header: "God idé", numeric: true, render: (r) => fmtScore(r.avg_idea) },
-    { key: "importance", header: "Vigtighed", numeric: true, render: (r) => fmtScore(r.avg_importance) },
-    { key: "score", header: "Score", numeric: true, render: (r) => fmtScore(r.steering_score, 1) },
-    { key: "votes", header: "Stemmer", numeric: true, render: (r) => fmtInt(r.votes) },
+    { key: "idea", header: "God idé", numeric: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
+    { key: "importance", header: "Vigtighed", numeric: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
+    { key: "score", header: "Score", numeric: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
+    { key: "votes", header: "Stemmer", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
     {
       key: "actions", header: "", fold: true, foldValue: () => "",
       render: (r) => (
@@ -276,7 +296,7 @@ export default function GrowthRoadmapTab() {
 
   const poolColumns = [
     { key: "title", header: "Idé", sticky: true, render: (r) => <TitleCell title={r.title_da || r.title_en}>{itemTags(r)}</TitleCell> },
-    { key: "votes", header: "Spillere bag", numeric: true, render: (r) => fmtInt(r.votes) },
+    { key: "votes", header: "Spillere bag", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
     {
       key: "actions", header: "", fold: true, foldValue: () => "",
       render: (r) => (
@@ -306,8 +326,8 @@ export default function GrowthRoadmapTab() {
       },
     },
     { key: "step", header: "Trin", render: (r) => <IssueStepBadge status={r.status} /> },
-    { key: "reports", header: "Ramt", numeric: true, render: (r) => fmtInt(r.reports) },
-    { key: "days", header: "Åben i", numeric: true, render: (r) => `${fmtInt(r.days_open)} dage` },
+    { key: "reports", header: "Ramt", numeric: true, render: (r) => <Num>{fmtInt(r.reports)}</Num> },
+    { key: "days", header: "Åben i", numeric: true, render: (r) => <Num>{fmtInt(r.days_open)} dage</Num> },
     {
       key: "actions", header: "", fold: true, foldValue: () => "",
       render: (r) => (
@@ -327,7 +347,14 @@ export default function GrowthRoadmapTab() {
     { label: "Har svaret på alt", value: fmtInt(stats?.voted_all) },
   ];
 
-  const table = (props) => (loading ? <TableSkeleton /> : <DataTable rowKey={(r) => r.item_id ?? r.issue_id} {...props} />);
+  // DataTable's SCROLLER lægger på desktop et loft på 100dvh - 240px med egen
+  // lodret scroll (#4747), så planen (13 rækker) blev skåret midt i række 7.
+  // Fanen er seks tabeller under hinanden: her scroller SIDEN, aldrig en tabel.
+  // `[&>div>div]` rammer SCROLLER-div'en (className > WRAP > SCROLLER) og vinder
+  // på specificitet over media-query-loftet; vandret scroll er uændret.
+  const table = (props) => (loading ? <TableSkeleton /> : (
+    <DataTable rowKey={(r) => r.item_id ?? r.issue_id} className={UNBOUNDED} {...props} />
+  ));
 
   return (
     <div className="space-y-4">
