@@ -107,12 +107,17 @@ export default function PatchNotesPage() {
     [days, lastSeen],
   );
 
+  // Seneste dato uafhaengigt af filtre (kategori, soegning, udrulning): et filter maa ikke
+  // flytte "sidst set" tilbage og faa allerede sete dage til at staa som nye.
+  const latestOverall = useMemo(
+    () => groupByDay(filterChanges(flat, { lang, category: "all", query: "" }))[0]?.date,
+    [flat, lang],
+  );
   useEffect(() => {
-    const latest = days[0]?.date;
-    if (latest) {
-      try { localStorage.setItem(LAST_SEEN_KEY, latest); } catch { /* ignore */ }
+    if (latestOverall) {
+      try { localStorage.setItem(LAST_SEEN_KEY, latestOverall); } catch { /* ignore */ }
     }
-  }, [days]);
+  }, [latestOverall]);
 
   const latest = days[0]?.date;
   const filtering = Boolean(query) || category !== "all" || rolloutMode !== "all";
