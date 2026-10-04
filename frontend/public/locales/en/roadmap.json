@@ -16,7 +16,7 @@
   },
   "filter": {
     "onlyUnrated": "Only what I have not rated",
-    "rated": "Rated {{rated}} of {{total}}"
+    "rated": "Rated {rated} of {total}"
   },
   "tabs": {
     "label": "Roadmap sections",
@@ -36,7 +36,7 @@
     "inProgress": "In progress",
     "planned": "Planned",
     "plannedHint": "In roughly this order",
-    "later": "Later · {{count}} more"
+    "later": "Later · {count} more"
   },
   "beta": {
     "inBeta": "In beta now",
@@ -45,7 +45,7 @@
     "badgeInBeta": "In beta",
     "badgeSoon": "For everyone soon",
     "badgeNext": "Next in beta",
-    "since": "in beta since {{date}}",
+    "since": "in beta since {date}",
     "join": "Join the beta",
     "member": "You are in the beta",
     "pending": "Request sent"
@@ -75,9 +75,9 @@
     "seeToo": "I see this too",
     "reported": "Reported",
     "reportError": "That did not save. Try again.",
-    "updated": "updated {{date}}",
+    "updated": "updated {date}",
     "reportedByPlayers": "reported by players",
-    "earlierUpdates": "Earlier updates · {{count}}",
+    "earlierUpdates": "Earlier updates · {count}",
     "dismissed": "Checked, no problem found · last 14 days",
     "fixed": "Fixed in the last 14 days"
   },

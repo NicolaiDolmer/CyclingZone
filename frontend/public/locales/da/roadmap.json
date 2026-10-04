@@ -16,7 +16,7 @@
   },
   "filter": {
     "onlyUnrated": "Kun det jeg ikke har bedømt",
-    "rated": "Bedømt {{rated}} af {{total}}"
+    "rated": "Bedømt {rated} af {total}"
   },
   "tabs": {
     "label": "Roadmappens afsnit",
@@ -36,7 +36,7 @@
     "inProgress": "I gang",
     "planned": "Planlagt",
     "plannedHint": "Cirka i denne rækkefølge",
-    "later": "Senere · {{count}} mere"
+    "later": "Senere · {count} mere"
   },
   "beta": {
     "inBeta": "I beta nu",
@@ -45,7 +45,7 @@
     "badgeInBeta": "I beta",
     "badgeSoon": "Snart for alle",
     "badgeNext": "Næste i beta",
-    "since": "i beta siden {{date}}",
+    "since": "i beta siden {date}",
     "join": "Kom med i beta",
     "member": "Du er med i beta",
     "pending": "Anmodning sendt"
@@ -75,9 +75,9 @@
     "seeToo": "Jeg ser det også",
     "reported": "Meldt",
     "reportError": "Det blev ikke gemt. Prøv igen.",
-    "updated": "opdateret {{date}}",
+    "updated": "opdateret {date}",
     "reportedByPlayers": "meldt ind af spillere",
-    "earlierUpdates": "Tidligere opdateringer · {{count}}",
+    "earlierUpdates": "Tidligere opdateringer · {count}",
     "dismissed": "Tjekket, intet problem fundet · seneste 14 dage",
     "fixed": "Rettet de seneste 14 dage"
   },
