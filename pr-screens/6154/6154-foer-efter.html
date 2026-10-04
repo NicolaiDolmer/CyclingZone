@@ -1,0 +1,44 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#111;width:2000px}
+.row{display:flex;gap:20px;padding:0 20px}
+.col{width:960px}
+h2{font-size:26px;margin:18px 0 10px}
+.win{position:relative;width:960px;height:1260px;overflow:hidden;background:#f4f2ec;border:1px solid #ddd}
+.win img{position:absolute;left:-380px;top:-100px;width:1440px}
+.box{position:absolute;border:3px solid #d00;box-sizing:border-box}
+.pin{position:absolute;width:30px;height:30px;border-radius:50%;background:#d00;color:#fff;font-weight:bold;font-size:18px;line-height:30px;text-align:center}
+.bottom{display:flex;gap:40px;padding:20px;align-items:flex-start}
+.legend{width:1380px;font-size:23px;line-height:1.55}
+.legend div{margin-bottom:6px}
+.strip{position:relative;width:390px;height:120px;overflow:hidden;border:1px solid #ddd;flex:none;margin-left:auto}
+.strip img{position:absolute;left:0;top:-150px;width:390px}
+.cap{font-size:15px;color:#555;margin-top:4px;width:390px}
+</style></head><body>
+<div class="row">
+ <div class="col"><h2>I DAG (main): beta-noter viser altid BETA</h2>
+  <div class="win"><img src="raw-foer-1440.png">
+   <div class="box" style="left:31px;top:585px;width:41px;height:17px"></div><div class="pin" style="left:740px;top:578px">2</div>
+   <div class="box" style="left:31px;top:1088px;width:41px;height:17px"></div><div class="pin" style="left:740px;top:1081px">3</div>
+   <div class="box" style="left:31px;top:370px;width:41px;height:64px"></div><div class="pin" style="left:740px;top:390px">4</div>
+  </div></div>
+ <div class="col"><h2>EFTER #6154: filter + mærket følger kontakten</h2>
+  <div class="win"><img src="raw-efter-1440.png">
+   <div class="box" style="left:677px;top:44px;width:218px;height:36px"></div><div class="pin" style="left:640px;top:47px">1</div>
+   <div class="box" style="left:28px;top:582px;width:120px;height:23px"></div><div class="pin" style="left:740px;top:578px">2</div>
+   <div class="box" style="left:28px;top:1085px;width:120px;height:23px"></div><div class="pin" style="left:740px;top:1081px">3</div>
+   <div class="box" style="left:28px;top:367px;width:47px;height:70px"></div><div class="pin" style="left:740px;top:390px">4</div>
+  </div></div>
+</div>
+<div class="bottom">
+ <div class="legend">
+  <div>1  Nyt filter ved siden af kategorierne: All / Beta / Now for everyone. I dag findes det ikke.</div>
+  <div>2  Training programs: kontakten er tændt for alle, så noten skifter selv fra BETA til NOW LIVE FOR ALL.</div>
+  <div>3  Samme for Rating shows the rider's best role: BETA bliver til NOW LIVE FOR ALL.</div>
+  <div>4  Noter hvis kontakt kun er tændt for betagruppen (her Train now og Season matrix) forbliver BETA.</div>
+  <div>5  Telefon 390 px (udsnit til højre): filterrækken får egen linje under kategorierne, intet bryder.</div>
+ </div>
+ <div><div class="strip"><img src="raw-efter-390.png">
+   <div class="box" style="left:13px;top:69px;width:218px;height:36px"></div><div class="pin" style="left:236px;top:72px">5</div></div>
+   <div class="cap">Efter, 390 px. Mock-data: søgning "in the beta group"; kontakterne training_programs og rider_best_role_display er tændt for alle.</div></div>
+</div>
+</body></html>
