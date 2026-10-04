@@ -40,6 +40,7 @@
  */
 
 import { fetchAllRows } from "./supabasePagination.js";
+import { fetchWatchdogResultSummaries, WATCHDOG_RESULT_MIGRATION } from "./stallWatchdogAggregates.ts";
 
 export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
   finalizeHours: 2,
@@ -246,17 +247,12 @@ export function evaluateStallFindings({
  * I/O-lag: henter alle rows evaluatoren behøver fra Supabase. Kaster ved query-fejl
  * (ikke tavst `|| []`) så trackedTick surfacer det i Sentry. Scoper til aktiv sæson.
  */
-// Range-pagineret + id-chunked load af race-scopede tabeller. race_results-rækker =
-// løb × etaper × ryttere, så et enkelt flerugers etapeløb alene sprænger PostgREST's
-// 1000-rækkers cap; en rå .in() trunkerer TAVST (samme klasse som #1798/#1839).
-//
-// Netop dét gav watchdogen FALSKE etape-stall-alarmer (#2430): resultKeys blev bygget
-// af de første 1000 af 7.277 rækker, så etaper der HAVDE resultater så tomme ud →
-// "forfalden m. startfelt, ingen resultater". Sorteringen SKAL være total (unik nøgle
-// sidst: id — eller PK-kolonnerne via orderCols for tabeller uden id-kolonne, #2536),
-// ellers kan ties flytte rækker mellem sider → gaps.
+// Entry rows retain range pagination and total composite-PK order (#2536).
+// #2430 previously needed full result pagination to avoid false missing-stage
+// alarms. #6102 instead obtains every distinct result key in one summary per
+// candidate, avoiding rider-row transfer and expensive ORDER BY id/OFFSET scans.
 async function fetchAllRaceRows(supabase, table, columns, raceIds, orderCols = ["id"]) {
-  const ID_CHUNK = 300;
+  const ID_CHUNK = 100; // UUID IN URLs stay below the transport ceiling; results use POST RPC.
   const rows = [];
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
@@ -323,27 +319,8 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
 
   // lastResultByRace for (a)+(c)-kandidater
   const anchorIds = [...new Set([...finalizeCandidates, ...prizeCandidates].map((r) => r.id))];
-  const lastResultByRace = {};
-  const racesWithPrize = new Set();
-  if (anchorIds.length) {
-    const rows = await fetchAllRaceRows(supabase, "race_results", "race_id,imported_at,prize_money,id", anchorIds);
-    for (const row of rows) {
-      const cur = lastResultByRace[row.race_id];
-      if (!cur || new Date(row.imported_at) > new Date(cur)) lastResultByRace[row.race_id] = row.imported_at;
-      if ((row.prize_money ?? 0) > 0) racesWithPrize.add(row.race_id);
-    }
-    for (const id of anchorIds) if (!(id in lastResultByRace)) lastResultByRace[id] = null;
-  }
-  // Løb med resultater men uden én eneste præmie-række (fx ungdomsløb: ingen
-  // præmiepenge i v1, YOUTH_RULES §7) har intet at udbetale. Præmiemotoren
-  // springer dem over ("no_prize_results"), så prize_paid_at forbliver NULL for
-  // evigt — det er ikke et stall (CYCLINGZONE-2G, S4 løbsdag 1). Løb helt uden
-  // resultater bliver stående: det er en ægte anomali.
-  prizeCandidates = prizeCandidates.filter(
-    (r) => lastResultByRace[r.id] == null || racesWithPrize.has(r.id)
-  );
 
-  // (b) forfaldne etaper (aktiv sæson, ikke-completede løb) via embedded inner-join
+  // Fetch due candidates before the shared summary; overlapping races are read once.
   const stageCutoff = new Date(now.getTime() - t.stageHours * HOUR_MS).toISOString();
   const dueRaw = await run(
     supabase
@@ -356,11 +333,38 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     "race_stage_schedule(due)"
   );
   const dueRaceIds = [...new Set(dueRaw.map((s) => s.race_id))];
+  if (anchorIds.length || dueRaceIds.length) {
+    // auto-migrate records this only after function + ACL transaction succeeds.
+    // No new RPC invocation during an unauthorized/unverified rollout window.
+    const { data: marker, error: markerError } = await supabase.from("schema_migrations")
+      .select("filename").eq("filename", WATCHDOG_RESULT_MIGRATION).maybeSingle();
+    if (markerError) throw new Error(`stall-watchdog migration marker: ${markerError.message}`);
+    if (marker?.filename !== WATCHDOG_RESULT_MIGRATION) throw new Error("stall-watchdog result summary migration not verified");
+  }
+  const summaries = await fetchWatchdogResultSummaries(supabase, [...anchorIds, ...dueRaceIds]);
+  const lastResultByRace = {};
+  const racesWithPrize = new Set();
+  for (const id of anchorIds) {
+    const row = summaries.get(id);
+    lastResultByRace[id] = row.last_imported_at;
+    if (row.has_prize) racesWithPrize.add(id);
+  }
+  // Løb med resultater men uden én eneste præmie-række (fx ungdomsløb: ingen
+  // præmiepenge i v1, YOUTH_RULES §7) har intet at udbetale. Præmiemotoren
+  // springer dem over ("no_prize_results"), så prize_paid_at forbliver NULL for
+  // evigt — det er ikke et stall (CYCLINGZONE-2G, S4 løbsdag 1). Løb helt uden
+  // resultater bliver stående: det er en ægte anomali.
+  prizeCandidates = prizeCandidates.filter(
+    (r) => lastResultByRace[r.id] == null || racesWithPrize.has(r.id)
+  );
+
+  // (b) forfaldne etaper (aktiv sæson, ikke-completede løb) via embedded inner-join
   const resultKeys = new Set();
   const entryRaceIds = new Set();
   if (dueRaceIds.length) {
-    const rr = await fetchAllRaceRows(supabase, "race_results", "race_id,stage_number,id", dueRaceIds);
-    for (const row of rr) resultKeys.add(`${row.race_id}:${row.stage_number}`);
+    for (const id of dueRaceIds) {
+      for (const stage of summaries.get(id).stage_numbers) resultKeys.add(`${id}:${stage}`);
+    }
     // race_entries har composite PK (race_id, rider_id) og INGEN id-kolonne (#2536,
     // samme fantom-kolonne-klasse som #2516) — total orden via PK-kolonnerne.
     const ent = await fetchAllRaceRows(supabase, "race_entries", "race_id,rider_id", dueRaceIds, ["race_id", "rider_id"]);

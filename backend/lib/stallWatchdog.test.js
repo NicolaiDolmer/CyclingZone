@@ -446,6 +446,18 @@ test("processStallWatchdog — dedup gælder OGSÅ info-findings (samme dag alar
 
 const PAGE = 1000;
 
+function resultSummaries(raceIds, results) {
+  return raceIds.map(race_id => {
+    const rows = results.filter(row => row.race_id === race_id);
+    const dates = rows.map(row => row.imported_at).filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
+    return {
+      race_id, last_imported_at: dates.at(-1) ?? null,
+      has_prize: rows.some(row => (row.prize_money ?? 0) > 0),
+      stage_numbers: [...new Set(rows.map(row => row.stage_number ?? null))],
+    };
+  });
+}
+
 // Realistisk load: 8 kørte etaper à ~190 ryttere = 1.520 rækker for ÉT løb. Sorteret
 // på id rummer de første 1000 kun etape 1-5 → etape 6-8 ser resultat-løse ud for en
 // ikke-pagineret læsning, præcis som i prod (7.277 rækker for 5 forfaldne løb).
@@ -486,8 +498,13 @@ function makeWatchdogSupabase({ raceId = "r1", stageNumbers = [1, 2, 3, 4, 5, 6,
   };
 
   return {
+    async rpc(name, { p_race_ids }) {
+      assert.equal(name, 'stall_watchdog_result_summary');
+      return { data: resultSummaries(p_race_ids, results), error: null };
+    },
     from(table) {
       if (table === "seasons") return builder([], { id: "s1" });
+      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-04-6102-watchdog-result-summary.sql' });
       if (table === "races") return builder([{ id: raceId, name: "Giro X", stages: 21, stages_completed: 2 }]);
       if (table === "race_stage_schedule") {
         return builder(
@@ -508,7 +525,7 @@ function makeWatchdogSupabase({ raceId = "r1", stageNumbers = [1, 2, 3, 4, 5, 6,
   };
 }
 
-test("fetchWatchdogState: race_results pagineres — etape bag PostgREST-cap'en ses som havende resultater (#2430)", async () => {
+test("fetchWatchdogState: SQL-summary bevarer etaper bag den gamle PostgREST-cap (#2430/#6102)", async () => {
   const supabase = makeWatchdogSupabase();
   const state = await fetchWatchdogState({ supabase, now: NOW });
 
@@ -524,6 +541,65 @@ test("fetchWatchdogState: race_results pagineres — etape bag PostgREST-cap'en 
     [],
     "ingen etape-stall når alle forfaldne etaper faktisk har resultater"
   );
+});
+
+test('watchdog alarm boundaries are strictly greater than the configured duration with injected now', () => {
+  for (const delta of [-1, 0, 1]) {
+    const timestamp = hours => new Date(NOW.getTime() - hours * 3_600_000 - delta).toISOString();
+    const findings = evaluateStallFindings({
+      now: NOW, autoPrizeEnabled: true,
+      finalizeCandidates: [{ id: 'f' }], prizeCandidates: [{ id: 'p' }],
+      lastResultByRace: { f: timestamp(2), p: timestamp(1) },
+      dueStages: [{ race_id: 's', stage_number: 1, scheduled_at: timestamp(4), has_entries: true, has_results: false }],
+      standings: { maxResultsImported: NOW.toISOString(), maxStandingsUpdated: timestamp(1) },
+      matviewHeartbeat: timestamp(0.5),
+    });
+    assert.deepEqual(findings.map(finding => finding.type), delta > 0 ? ['finalize', 'stage', 'prize', 'standings', 'matview'] : []);
+  }
+});
+
+test('fetchWatchdogState: candidate result metadata uses bounded RPC, never rider-row pagination (#6102)', async () => {
+  const supabase = makeWatchdogSupabase({ rowsPerStage: 1000 });
+  let bulkReads = 0;
+  let rpcCalls = 0;
+  let returnedRows = 0;
+  const from = supabase.from.bind(supabase);
+  supabase.from = table => {
+    const builder = from(table);
+    const select = builder.select;
+    builder.select = (columns, ...args) => {
+      if (table === 'race_results' && columns.includes('race_id')) bulkReads++;
+      return select(columns, ...args);
+    };
+    return builder;
+  };
+  const rpc = supabase.rpc.bind(supabase);
+  supabase.rpc = async (...args) => {
+    rpcCalls++;
+    const response = await rpc(...args);
+    returnedRows += response.data.length;
+    return response;
+  };
+  const state = await fetchWatchdogState({ supabase, now: NOW });
+  assert.ok(state.dueStages.every(stage => stage.has_results));
+  assert.equal(bulkReads, 0, '8,000 rider rows must stay inside SQL');
+  assert.equal(rpcCalls, 1);
+  assert.equal(returnedRows, 1, 'one summary per candidate race');
+});
+
+test('fetchWatchdogState: an unapplied migration cannot invoke the new summary RPC', async () => {
+  const supabase = makeWatchdogSupabase();
+  const from = supabase.from.bind(supabase);
+  supabase.from = table => {
+    if (table !== 'schema_migrations') return from(table);
+    const query = { select: () => query, eq: () => query, maybeSingle: async () => ({ data: null, error: null }) };
+    return query;
+  };
+  let rpcCalls = 0;
+  const rpc = supabase.rpc.bind(supabase);
+  supabase.rpc = (...args) => { rpcCalls++; return rpc(...args); };
+  await assert.rejects(fetchWatchdogState({ supabase, now: NOW }), /migration not verified/);
+  assert.equal(rpcCalls, 0);
 });
 
 test("fetchWatchdogState: en etape UDEN resultater giver stadig en ægte stall-alarm (#2430 må ikke maskere hangs)", async () => {
@@ -579,8 +655,13 @@ function makePrizeSupabase({ results }) {
   };
   let racesCall = 0;
   return {
+    async rpc(name, { p_race_ids }) {
+      assert.equal(name, 'stall_watchdog_result_summary');
+      return { data: resultSummaries(p_race_ids, results), error: null };
+    },
     from(table) {
       if (table === "seasons") return builder([], { id: "s1" });
+      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-04-6102-watchdog-result-summary.sql' });
       if (table === "races") {
         racesCall += 1;
         // 1. kald = ikke-completede (finalize), 2. kald = completed + prize NULL
