@@ -1,4 +1,22 @@
 export const PATCHES = [
+  {
+    "version": "7.338",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Transfers",
+        "en": {
+          "title": "Old offers close when a rider changes teams",
+          "body": "Open transfer and swap offers are withdrawn when a rider changes teams or is released, regardless of how the move happens. Completed deals are preserved."
+        },
+        "da": {
+          "title": "Gamle tilbud lukkes, når en rytter skifter hold",
+          "body": "Åbne transfer- og byttetilbud trækkes tilbage, når en rytter skifter hold eller frigives, uanset hvordan skiftet sker. Afsluttede handler bevares."
+        },
+        "refs": [6115]
+      }
+    ]
+  },
 {
   "version": "7.337",
   "date": "2026-10-04",
