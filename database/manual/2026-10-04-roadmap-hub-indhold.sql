@@ -127,9 +127,26 @@ UPDATE roadmap_items SET status = 'shipped', approved = true, shipped_at = '2026
 -- A3. Planned · Next (afsnit 8, liste 2; eksisterende punkter) -----------------
 UPDATE roadmap_items SET status = 'planned', approved = true, horizon = 'next', sort_order = 10,
   issue_ref = 3813, updated_at = NOW(),
-  title_en = 'See on a rider''s profile what his second type means for him, and why another ability can still reach higher.',
-  title_da = 'Se på rytterens profil, hvad hans anden type betyder for ham, og hvorfor en anden evne stadig kan nå højere.'
+  title_en = 'Explain on the profile why a rider can reach higher in an ability outside his two natural roles.',
+  title_da = 'Forklar på profilen, hvorfor en rytter kan nå højere i en evne uden for hans to naturlige roller.'
   WHERE id = '00005387-0000-4000-8000-000000000201';
+
+-- Del-reglen (ejer 4/10 sent: "udfoer de andre anbefalinger"): det, der blev leveret 24/9
+-- (D-049, PR #5501), faar sin egen Done-raekke med en kopi af punktets stemmer.
+INSERT INTO roadmap_items
+  (id, engine, sort_order, title_en, title_da, approved, status, horizon, issue_ref, shipped_at, created_at, updated_at)
+VALUES
+  ('00006149-0000-4000-8000-000000000061', 'races', 800,
+   'Rating shows the rider''s best role now, with his natural roles on the profile.',
+   'Ratingen viser rytterens bedste rolle nu, med hans naturlige roller på profilen.',
+   true, 'shipped', 'next', 5435, '2026-09-24T12:00:00Z', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO roadmap_votes (item_id, user_id, idea_score, importance_score, created_at, updated_at)
+SELECT '00006149-0000-4000-8000-000000000061', v.user_id, v.idea_score, v.importance_score, v.created_at, v.updated_at
+FROM roadmap_votes v
+WHERE v.item_id = '00005387-0000-4000-8000-000000000201'
+ON CONFLICT (user_id, item_id) DO NOTHING;
 
 UPDATE roadmap_items SET status = 'planned', approved = true, horizon = 'next', sort_order = 20,
   issue_ref = 5074, updated_at = NOW(),
