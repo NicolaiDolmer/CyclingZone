@@ -40,9 +40,11 @@ const SUPABASE_SIM = `
     $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean LANGUAGE sql STABLE AS
     $$ SELECT coalesce(current_setting('test.is_admin', true), '') = 'true' $$;
+  CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS
+    $$ SELECT nullif(current_setting('request.jwt.claim.role', true), '') $$;
   REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
   GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
-  GRANT USAGE ON SCHEMA public, auth TO anon, authenticated;
+  GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
   GRANT SELECT ON public.app_config TO anon, authenticated;
 `;
 
@@ -74,10 +76,10 @@ after(async () => {
 // Kør fn som en rolle. Kaster fn, rulles transaktionen tilbage.
 function as(role, { uid = null, admin = false } = {}, fn) {
   return db.transaction(async (tx) => {
-    await tx.query("SELECT set_config('request.jwt.claim.sub', $1, true), set_config('test.is_admin', $2, true)", [
-      uid ?? "",
-      admin ? "true" : "false",
-    ]);
+    await tx.query(
+      "SELECT set_config('request.jwt.claim.sub', $1, true), set_config('test.is_admin', $2, true), set_config('request.jwt.claim.role', $3, true)",
+      [uid ?? "", admin ? "true" : "false", role],
+    );
     await tx.exec(`SET LOCAL ROLE ${role}`);
     return fn(tx);
   });
@@ -85,6 +87,7 @@ function as(role, { uid = null, admin = false } = {}, fn) {
 const asAnon = (fn) => as("anon", {}, fn);
 const asPlayer = (uid, fn) => as("authenticated", { uid }, fn);
 const asAdmin = (fn) => as("authenticated", { uid: ADMIN, admin: true }, fn);
+const asService = (fn) => as("service_role", {}, fn);
 
 async function item(fields = {}) {
   const f = { engine: "races", title: "Item", approved: true, status: "active", ...fields };
@@ -186,6 +189,67 @@ test("upsert med kun importance_score bevarer en eksisterende idea_score", async
   );
   const { rows } = await db.query("SELECT idea_score, importance_score FROM roadmap_votes WHERE item_id = $1", [it.id]);
   assert.deepEqual(rows, [{ idea_score: 6, importance_score: 4 }]);
+});
+
+test("P2a: en stemme på et låst punkt (in_progress, shipped, archived) kan ikke flyttes til et åbent punkt", async () => {
+  const target = await item({ status: "planned" });
+  for (const status of ["in_progress", "shipped", "archived"]) {
+    const locked = await item({ status: "active" });
+    await asPlayer(P1, (tx) => vote(tx, locked.id, P1, 4, 4));
+    await db.query("UPDATE roadmap_items SET status = $2 WHERE id = $1", [locked.id, status]);
+    // USING filtrerer den gamle række fra (låst punkt) -> ingen række ændres;
+    // og skulle den slippe igennem, afviser identitets-triggeren flytningen.
+    let res = null;
+    try {
+      res = await asPlayer(P1, (tx) =>
+        tx.query("UPDATE roadmap_votes SET item_id = $1 WHERE item_id = $2 AND user_id = $3", [target.id, locked.id, P1]),
+      );
+    } catch (err) {
+      assert.match(String(err.message), /row-level security|cannot be changed/, status);
+    }
+    if (res) assert.equal(res.affectedRows ?? 0, 0, status);
+    const { rows } = await db.query("SELECT item_id FROM roadmap_votes WHERE user_id = $1 AND item_id IN ($2, $3)", [
+      P1, locked.id, target.id,
+    ]);
+    assert.deepEqual(rows.map((r) => r.item_id), [locked.id], status);
+  }
+});
+
+test("P2a: en spiller kan ikke ændre en stemmes score på et låst punkt", async () => {
+  const locked = await item({ status: "active" });
+  await asPlayer(P1, (tx) => vote(tx, locked.id, P1, 4, 4));
+  await db.query("UPDATE roadmap_items SET status = 'shipped' WHERE id = $1", [locked.id]);
+  const res = await asPlayer(P1, (tx) =>
+    tx.query("UPDATE roadmap_votes SET importance_score = 6 WHERE item_id = $1 AND user_id = $2", [locked.id, P1]),
+  );
+  assert.equal(res.affectedRows ?? 0, 0);
+  const { rows } = await db.query("SELECT importance_score FROM roadmap_votes WHERE item_id = $1", [locked.id]);
+  assert.equal(rows[0].importance_score, 4);
+});
+
+test("P2a: item_id og user_id på en stemme kan ikke ændres, heller ikke mellem to åbne punkter", async () => {
+  const a = await item({ status: "active" });
+  const b = await item({ status: "active" });
+  await asPlayer(P1, (tx) => vote(tx, a.id, P1, 4, 4));
+  await assert.rejects(
+    () => asPlayer(P1, (tx) => tx.query("UPDATE roadmap_votes SET item_id = $1 WHERE item_id = $2 AND user_id = $3", [b.id, a.id, P1])),
+    /cannot be changed/,
+  );
+  await assert.rejects(
+    () => db.query("UPDATE roadmap_votes SET user_id = $1 WHERE item_id = $2 AND user_id = $3", [P2, a.id, P1]),
+    /cannot be changed/,
+  );
+  // PostgREST-upsert sender item_id/user_id med i SET (samme værdi) og skal stadig virke.
+  await asPlayer(P1, (tx) =>
+    tx.query(
+      `INSERT INTO roadmap_votes (item_id, user_id, idea_score, importance_score) VALUES ($1, $2, 2, 6)
+       ON CONFLICT (user_id, item_id) DO UPDATE SET item_id = EXCLUDED.item_id, user_id = EXCLUDED.user_id,
+         idea_score = EXCLUDED.idea_score, importance_score = EXCLUDED.importance_score`,
+      [a.id, P1],
+    ),
+  );
+  const { rows } = await db.query("SELECT idea_score, importance_score FROM roadmap_votes WHERE item_id = $1", [a.id]);
+  assert.deepEqual(rows, [{ idea_score: 2, importance_score: 6 }]);
 });
 
 test("spiller læser kun egne stemmer; admin læser alle", async () => {
@@ -295,6 +359,33 @@ test("spiller kan ikke oprette report på en rettet, lukket (dismissed) eller up
   assert.equal(rows[0].n, 1);
 });
 
+test("P2b: efter fixed, dismissed eller afpublicering kan spilleren hverken slette eller læse sit report; admin læser det", async () => {
+  for (const change of [{ status: "fixed" }, { status: "dismissed" }, { published: false }]) {
+    const k = await knownIssue({ status: "confirmed" });
+    await asPlayer(P1, (tx) => tx.query("INSERT INTO known_issue_reports (issue_id, user_id) VALUES ($1, $2)", [k.id, P1]));
+    if (change.status) await db.query("UPDATE known_issues SET status = $2 WHERE id = $1", [k.id, change.status]);
+    else await db.query("UPDATE known_issues SET published = false WHERE id = $1", [k.id]);
+
+    const del = await asPlayer(P1, (tx) =>
+      tx.query("DELETE FROM known_issue_reports WHERE issue_id = $1 AND user_id = $2", [k.id, P1]),
+    );
+    assert.equal(del.affectedRows ?? 0, 0, JSON.stringify(change));
+    const { rows } = await db.query("SELECT count(*)::int AS n FROM known_issue_reports WHERE issue_id = $1", [k.id]);
+    assert.equal(rows[0].n, 1, JSON.stringify(change));
+
+    const seen = await asPlayer(P1, (tx) => tx.query("SELECT user_id FROM known_issue_reports WHERE issue_id = $1", [k.id]));
+    assert.equal(seen.rows.length, 0, JSON.stringify(change));
+    const adminSeen = await asAdmin((tx) => tx.query("SELECT user_id FROM known_issue_reports WHERE issue_id = $1", [k.id]));
+    assert.equal(adminSeen.rows.length, 1, JSON.stringify(change));
+  }
+});
+
+test("P3: known_issue_scores er en admin/authenticated-kontrakt; anon har ingen adgang", async () => {
+  const { rows } = await db.query("SELECT has_table_privilege('anon', 'public.known_issue_scores', 'SELECT') AS ok");
+  assert.equal(rows[0].ok, false);
+  await assert.rejects(() => asAnon((tx) => tx.query("SELECT * FROM known_issue_scores")), /permission denied/);
+});
+
 test("known_issues.status er checking som default og afviser ukendte værdier", async () => {
   const { rows } = await db.query("INSERT INTO known_issues (area, title_en, title_da) VALUES ('club', 'x', 'x') RETURNING status, published");
   assert.deepEqual(rows[0], { status: "checking", published: false });
@@ -390,6 +481,109 @@ test("flip: kontakten flippes, selv om roadmap-opdateringen fejler (sikkerhedskr
   assert.equal((await getItem(it.id)).status, "planned");
 });
 
+test("P1: app_config_sync_roadmap venter aldrig: SKIP LOCKED + funktionslokalt lock_timeout", async () => {
+  const { rows } = await db.query("SELECT prosrc FROM pg_proc WHERE proname = 'app_config_sync_roadmap'");
+  const src = rows[0].prosrc;
+  assert.equal((src.match(/FOR UPDATE SKIP LOCKED/g) ?? []).length, 3, "alle tre UPDATE-grene låser med SKIP LOCKED");
+  assert.match(src, /set_config\('lock_timeout', '200ms', true\)/);
+});
+
+test("P1: en lock_not_available (55P03) under roadmap-UPDATE vælter ikke flippet", async () => {
+  await setFlag("roadmap_test_locked", '"off"');
+  const it = await item({ status: "planned", flag_key: "roadmap_test_locked" });
+  await db.exec(`
+    CREATE FUNCTION test_locked() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'simulated lock timeout' USING ERRCODE = '55P03'; END $$;
+    CREATE TRIGGER test_locked BEFORE UPDATE ON roadmap_items FOR EACH ROW EXECUTE FUNCTION test_locked();
+  `);
+  try {
+    await db.query("UPDATE app_config SET value = '\"beta\"'::jsonb WHERE key = 'roadmap_test_locked'");
+  } finally {
+    await db.exec("DROP TRIGGER test_locked ON roadmap_items; DROP FUNCTION test_locked();");
+  }
+  const flag = await db.query("SELECT value FROM app_config WHERE key = 'roadmap_test_locked'");
+  assert.equal(flag.rows[0].value, "beta");
+  assert.equal((await getItem(it.id)).status, "planned");
+});
+
+test("P1: kalderens lock_timeout er uændret efter triggeren, både i succes- og fejlstien", async () => {
+  await setFlag("roadmap_test_lt", '"off"');
+  await item({ status: "planned", flag_key: "roadmap_test_lt" });
+  const ok = await db.transaction(async (tx) => {
+    await tx.exec("SET LOCAL lock_timeout = '7s'");
+    await tx.query("UPDATE app_config SET value = '\"beta\"'::jsonb WHERE key = 'roadmap_test_lt'");
+    return (await tx.query("SELECT current_setting('lock_timeout') AS v")).rows[0].v;
+  });
+  assert.equal(ok, "7s");
+
+  await db.exec(`
+    CREATE FUNCTION test_explode2() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'boom'; END $$;
+    CREATE TRIGGER test_explode2 BEFORE UPDATE ON roadmap_items FOR EACH ROW EXECUTE FUNCTION test_explode2();
+  `);
+  try {
+    const failed = await db.transaction(async (tx) => {
+      await tx.exec("SET LOCAL lock_timeout = '9s'");
+      await tx.query("UPDATE app_config SET value = '\"on\"'::jsonb WHERE key = 'roadmap_test_lt'");
+      return (await tx.query("SELECT current_setting('lock_timeout') AS v")).rows[0].v;
+    });
+    assert.equal(failed, "9s");
+  } finally {
+    await db.exec("DROP TRIGGER test_explode2 ON roadmap_items; DROP FUNCTION test_explode2();");
+  }
+  const { rows } = await db.query("SELECT value FROM app_config WHERE key = 'roadmap_test_lt'");
+  assert.equal(rows[0].value, "on");
+});
+
+test("P1: roadmap_resync_flags() retter en bevidst skæv række, er idempotent og kun for admin/service_role", async () => {
+  await setFlag("roadmap_test_drift", '"beta"');
+  const beta = await item({ status: "planned", flag_key: "roadmap_test_drift" });
+  assert.equal(beta.status, "in_progress");
+  // Skæv: som hvis flippet sprang rækken over (SKIP LOCKED).
+  await db.query("UPDATE roadmap_items SET status = 'planned', beta_since = NULL, beta_soon = true WHERE id = $1", [beta.id]);
+
+  await setFlag("roadmap_test_drift_on", '"off"');
+  const live = await item({ status: "planned", flag_key: "roadmap_test_drift_on" });
+  await db.query("UPDATE app_config SET value = '\"on\"'::jsonb WHERE key = 'roadmap_test_drift_on'");
+  await db.query("UPDATE roadmap_items SET status = 'in_progress', shipped_at = NULL WHERE id = $1", [live.id]);
+
+  const first = await asAdmin((tx) => tx.query("SELECT public.roadmap_resync_flags() AS n"));
+  assert.ok(first.rows[0].n >= 2, `rettede ${first.rows[0].n}`);
+  const fixedBeta = await getItem(beta.id);
+  assert.equal(fixedBeta.status, "in_progress");
+  assert.ok(fixedBeta.beta_since);
+  assert.equal(fixedBeta.beta_soon, false);
+  const fixedLive = await getItem(live.id);
+  assert.equal(fixedLive.status, "shipped");
+  assert.ok(fixedLive.shipped_at);
+
+  const second = await asService((tx) => tx.query("SELECT public.roadmap_resync_flags() AS n"));
+  assert.equal(second.rows[0].n, 0);
+
+  await assert.rejects(
+    () => asPlayer(P1, (tx) => tx.query("SELECT public.roadmap_resync_flags()")),
+    (err) => err.code === "42501",
+  );
+  await assert.rejects(() => asAnon((tx) => tx.query("SELECT public.roadmap_resync_flags()")), /permission denied/);
+});
+
+test("P2c: alle SECURITY DEFINER-funktioner i migrationen har search_path = public, pg_temp", async () => {
+  const { rows } = await db.query(
+    `SELECT proname, proconfig FROM pg_proc
+     WHERE proname IN ('roadmap_admin_stats', 'roadmap_split_item', 'roadmap_items_sync_flag',
+                       'app_config_sync_roadmap', 'roadmap_resync_flags')
+     ORDER BY proname`,
+  );
+  assert.equal(rows.length, 5);
+  for (const r of rows) assert.deepEqual(r.proconfig, ["search_path=public, pg_temp"], r.proname);
+  // Funktionskroppe ($$...$$) må kun pege på skema-kvalificerede relationer.
+  const bodies = readMigration(NEW_MIGRATION).match(/\$\$[\s\S]*?\$\$/g) ?? [];
+  assert.ok(bodies.length >= 6, `fandt ${bodies.length} funktionskroppe`);
+  for (const body of bodies) {
+    assert.doesNotMatch(body, /\b(FROM|INTO|JOIN|UPDATE)\s+(roadmap_items|roadmap_votes|app_config|teams)\b/, body.slice(0, 80));
+    assert.doesNotMatch(body, /[^.]roadmap_items%ROWTYPE/);
+  }
+});
+
 test("roadmap_admin_stats() giver én række til admin og nul rækker til spiller", async () => {
   const admin = await asAdmin((tx) => tx.query("SELECT * FROM roadmap_admin_stats()"));
   assert.equal(admin.rows.length, 1);
@@ -448,7 +642,7 @@ test("roadmap_split_item: en spiller afvises (42501), og intet punkt oprettes", 
 });
 
 test("triggerfunktionerne kan ikke kaldes som RPC af anon eller authenticated", async () => {
-  for (const fn of ["roadmap_items_sync_flag()", "app_config_sync_roadmap()"]) {
+  for (const fn of ["roadmap_items_sync_flag()", "app_config_sync_roadmap()", "roadmap_votes_lock_identity()"]) {
     for (const role of ["anon", "authenticated"]) {
       const { rows } = await db.query("SELECT has_function_privilege($1, $2, 'EXECUTE') AS ok", [role, `public.${fn}`]);
       assert.equal(rows[0].ok, false, `${role} ${fn}`);
