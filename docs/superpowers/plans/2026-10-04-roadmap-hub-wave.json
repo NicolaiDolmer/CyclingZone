@@ -1,0 +1,129 @@
+{
+  "tracks": [
+    {
+      "issue": 6149,
+      "branch": "feat/6149-roadmap-hub-migration",
+      "title": "[db] Roadmap-hub: migration (statusser, kendte fejl, admin-tal) - spor 1",
+      "scopeText": "Udfoer 'Spor 1' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en docs/superpowers/specs/2026-10-04-roadmap-hub-design.md §5). TDD: integrationstesten foerst, saa migrationen. Migrationen maa IKKE applies af dig; den applies post-merge af auto-migrate. Task 1.4 er orkestratorens. Migrationen daekker ogsaa del-punkt-RPCen og beta-koblingen (trigger paa app_config med fejl-fangst: et flag-flip maa ALDRIG kunne fejle pga. roadmappet). Roer aldrig en rigtig kontakt i prod.",
+      "model": "opus",
+      "tier": "TARGETED",
+      "ownership": [
+        "database/2026-10-05-5387-roadmap-hub.sql",
+        "backend/lib/testdb/roadmapHub.integration.test.js"
+      ],
+      "touches": [
+        "backend/scripts/audit-rls-coverage.test.js"
+      ],
+      "verifyCommands": [
+        "node --test backend/lib/testdb/roadmapHub.integration.test.js",
+        "node --test backend/scripts/audit-rls-coverage.test.js"
+      ]
+    },
+    {
+      "issue": 6150,
+      "branch": "feat/6150-roadmap-hub-player-page",
+      "title": "[roadmap] Roadmap-hub: spillersiden i fem faner (Plan, Beta, Vote, Known issues, Done) - spor 2",
+      "scopeText": "Udfoer 'Spor 2' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt, spec'en §3 og §6, docs/design/PAGE_TEMPLATES.md, docs/design/TASTE.md og docs/TONE_OF_VOICE.md). Visuel reference: pr-screens/roadmap-4-10/roadmap-foer-efter.html, beta-overblik.html (Beta-fanen + stemmeskala i to trin) og known-issues-to-grupper.html (Known issues i to felter). Kod mod kolonnerne i Faelles kontrakt og brug preview-mocks; migrationen er maaske ikke applied endnu. Ingen patch note i PR'en. Draft-PR inden 30 min, push hvert 15. min.",
+      "model": "opus",
+      "tier": "FULL",
+      "ownership": [
+        "frontend/src/pages/RoadmapPage.jsx",
+        "frontend/src/pages/RoadmapPage.test.js",
+        "frontend/src/components/roadmap/",
+        "frontend/src/components/RoadmapAdminCreateForm.jsx",
+        "frontend/src/lib/roadmapModel.ts",
+        "frontend/src/lib/roadmapModel.test.ts",
+        "frontend/src/lib/roadmapVoting.js",
+        "frontend/src/lib/roadmapVoting.test.js",
+        "frontend/src/lib/roadmapUnread.ts",
+        "frontend/src/lib/roadmapUnread.test.ts",
+        "frontend/public/locales/en/roadmap.json",
+        "frontend/public/locales/da/roadmap.json",
+        "frontend/tests/e2e/roadmap-hub.spec.js",
+        "frontend/tests/e2e/roadmap-voting.spec.js"
+      ],
+      "touches": [
+        "frontend/src/pages/HelpPage.jsx",
+        "frontend/src/components/RaceControlBanner.jsx",
+        "frontend/src/components/Layout.jsx",
+        "frontend/src/lib/opsNotices.js",
+        "frontend/src/preview/mockHandlers.js",
+        "frontend/src/preview/seedData.js",
+        "frontend/public/locales/en/help.json",
+        "frontend/public/locales/da/help.json"
+      ],
+      "verifyCommands": [
+        "node --test frontend/src/lib/roadmapModel.test.ts frontend/src/lib/roadmapVoting.test.js frontend/src/pages/RoadmapPage.test.js",
+        "pwsh -File scripts/verify-lock.ps1 -Max 2 -- pwsh -File scripts/verify-local.ps1"
+      ]
+    },
+    {
+      "issue": 6151,
+      "branch": "feat/6151-roadmap-hub-admin-tab",
+      "title": "[admin] Roadmap-hub: Roadmap-fane under /admin/growth (analyse + vedligehold) - spor 3",
+      "scopeText": "Udfoer 'Spor 3' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en §4). Visuel reference: feltet 'Bagved' i pr-screens/roadmap-4-10/roadmap-foer-efter.html. roadmapModel.ts ejes af spor 2: findes den ikke i dit worktree, deklarer de fire typer lokalt i roadmapAdminModel.ts. Dansk admin-tekst. Ingen patch note i PR'en.",
+      "model": "opus",
+      "tier": "TARGETED",
+      "ownership": [
+        "frontend/src/lib/roadmapAdminModel.ts",
+        "frontend/src/lib/roadmapAdminModel.test.ts",
+        "frontend/src/components/admin/growth/GrowthRoadmapTab.jsx",
+        "frontend/src/components/admin/growth/GrowthRoadmapTab.tsx",
+        "frontend/src/components/admin/growth/RoadmapAdminForms.jsx",
+        "frontend/src/components/admin/growth/RoadmapAdminForms.tsx"
+      ],
+      "touches": [
+        "frontend/src/pages/AdminGrowthPage.jsx"
+      ],
+      "verifyCommands": [
+        "node --test frontend/src/lib/roadmapAdminModel.test.ts",
+        "node scripts/verify-affected.mjs"
+      ]
+    },
+    {
+      "issue": 6152,
+      "branch": "feat/6152-roadmap-flip-routine",
+      "title": "[ops] Roadmap-hub: faerdig-rutine (roadmap-flip.mjs + close-protokol) - spor 4",
+      "scopeText": "Udfoer 'Spor 4' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en §7). Scriptet maa ALDRIG koeres med --apply af dig, og du maa ikke printe secrets (hard rule om secret-leaks i AGENTS.md). Spor 4 omfatter ogsaa Task 4.3 (roadmap-drift.mjs, read-only tjek mod MASTERPLAN).",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": [
+        "scripts/roadmap-flip.mjs",
+        "scripts/roadmap-flip.test.mjs",
+        "scripts/roadmap-drift.mjs",
+        "scripts/roadmap-drift.test.mjs"
+      ],
+      "touches": [
+        "docs/GITHUB_WORKFLOW.md"
+      ],
+      "verifyCommands": [
+        "node --test scripts/roadmap-flip.test.mjs scripts/roadmap-drift.test.mjs",
+        "pwsh -File scripts/check-agent-token-hygiene.ps1"
+      ]
+    },
+    {
+      "issue": 6154,
+      "branch": "feat/6154-patch-notes-beta-filter",
+      "title": "[patch-notes] Roadmap-hub: beta-filter og maerke der foelger kontakten - spor 5",
+      "scopeText": "Udfoer 'Spor 5' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints og spec'en §6b, docs/PATCH_NOTES_RULES.md, docs/TONE_OF_VOICE.md). Visuel reference: feltet 'Patch notes' i pr-screens/roadmap-4-10/beta-overblik.html. Roer ingen patch note-TEKST; kun feltet flag. Ingen patch note i PR'en.",
+      "model": "sonnet",
+      "tier": "TARGETED",
+      "ownership": [
+        "frontend/src/lib/patchNotes.js",
+        "frontend/src/lib/patchNotes.test.js",
+        "frontend/src/pages/PatchNotesPage.jsx",
+        "frontend/public/locales/en/patchnotes.json",
+        "frontend/public/locales/da/patchnotes.json"
+      ],
+      "touches": [
+        "frontend/src/data/patchNotes.js",
+        "frontend/src/lib/featureStage.ts",
+        "docs/PATCH_NOTES_RULES.md"
+      ],
+      "verifyCommands": [
+        "node --test frontend/src/lib/patchNotes.test.js",
+        "node scripts/verify-affected.mjs"
+      ]
+    }
+  ]
+}

@@ -49,7 +49,7 @@
     "bodyLabel": "Message",
     "bodyPlaceholder": "Write your post",
     "pollLabel": "Poll options (admin only, one per line)",
-    "pollHelp": "Add 2 to 8 options to attach a poll to this post.",
+    "pollHelp": "Add 2 to 10 options to attach a poll to this post.",
     "submit": "Publish",
     "cancel": "Cancel"
   },

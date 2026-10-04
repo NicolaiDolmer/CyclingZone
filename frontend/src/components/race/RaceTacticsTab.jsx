@@ -19,9 +19,10 @@
 //   GET     /api/races/:raceId/team-orders          → ordrer + lås pr. etape
 //   PUT     /api/races/:raceId/team-orders/:stage   → ordren for ÉN etape
 //
-// Intentionens PUT er REPLACE for ALT over stages_completed — derfor sendes
-// hele diffen for de redigerbare etaper, ikke kun den åbne. Et gem af etape 4
-// må aldrig slette etape 5's intention.
+// #6095: intentionens PUT erstatter KUN de etaper kladden har ændret (`stages`)
+// og afvises med stage_roles_conflict, hvis en af dem er ændret et andet sted
+// siden indlæsning. Et gem af etape 4 kan aldrig røre etape 5's intention, heller
+// ikke fra en fane med en ældre kladde (Giro della Penisola 2/10).
 //
 // FOG OF WAR: ingen tal, ingen procenter, ingen loft-signaler. Trinnene kommer
 // fra serverens `valid_efforts`, aldrig fra en hardkodet liste her.
@@ -82,6 +83,7 @@ import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.j
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import {
   buildDraftMatrix,
+  changedStages,
   diffToOverrides,
   isDirty,
   overridesIndex,
@@ -200,7 +202,11 @@ function IntentionPicker({ t, riderName, scopeLabel, steps, value, disabled, onP
 // flueben til venstre, én sætning i ord) — to vælgere i samme kolonne-familie
 // skal ikke se ud som to forskellige idéer. Forskellen står i hovedet og
 // fodnoten: rollen gælder resten af løbet, intentionen kun den åbne etape.
-function RolePicker({ t, riderName, scopeNote, value, disabled, onPick }) {
+//
+// #6095 (beta, ejer 4/10): med `scopeChoice` vælger manageren først hvilke etaper
+// valget gælder: "etape N og løbet ud" (forvalgt) eller "kun etape N". Tidligere
+// etaper røres aldrig. Uden flaget: præcis den gamle vælger.
+function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeChoice = false, scope = "rest", onScope, stageNumber }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -209,6 +215,35 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick }) {
         </span>
         <span className="text-3xs text-cz-3 whitespace-nowrap">{scopeNote}</span>
       </div>
+      {scopeChoice && (
+        <div className="px-3.5 py-2.5 border-b border-cz-border">
+          <div className="text-3xs uppercase tracking-wider text-cz-3 mb-1.5">{t("racePage.tactics.roleScopeLabel")}</div>
+          <div role="radiogroup" aria-label={t("racePage.tactics.roleScopeLabel")} className="grid grid-cols-2 rounded-cz border border-cz-border overflow-hidden">
+            {[
+              ["rest", t("racePage.tactics.roleScopeRest", { number: stageNumber })],
+              ["stage", t("racePage.tactics.roleScopeStageOnly", { number: stageNumber })],
+            ].map(([key, label], i) => {
+              const on = scope === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={disabled}
+                  onClick={() => onScope?.(key)}
+                  className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors disabled:opacity-50 ${i ? "border-l border-cz-border" : ""} ${
+                    on ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "font-medium text-cz-2 hover:bg-cz-subtle"
+                  }`}
+                >
+                  {on && <CheckIcon size={12} aria-hidden="true" />}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {SELECTABLE_ROLES.map((role) => {
         const on = role === value;
         return (
@@ -235,7 +270,7 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick }) {
         );
       })}
       <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-3">
-        {t("racePage.tactics.roleExclusiveNote")}
+        {t(scopeChoice ? "racePage.tactics.roleExclusiveNoteScoped" : "racePage.tactics.roleExclusiveNote")}
       </p>
     </div>
   );
@@ -300,6 +335,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #4980: rolle-vælgeren har sin EGEN åbne-rytter — to vælgere i samme række
   // må aldrig stå udfoldet samtidig, og et klik i den ene lukker den anden.
   const [openRoleRiderId, setOpenRoleRiderId] = useState(null);
+  // #6095 (beta): "rest" = den åbne etape og løbet ud (forvalgt, ejer 4/10),
+  // "stage" = kun den åbne etape. Nulstilles til "rest" når en vælger åbnes.
+  const [roleScopeChoice, setRoleScopeChoice] = useState("rest");
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
   // #4992: rute-match-sorteringen. null = ingen sortering valgt → holdets
@@ -469,7 +507,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // er netop de etaper vælgeren må røre. Gemmes af fanens eksisterende
   // "Gem etape N" sammen med intentionen (samme PUT, samme diff).
   function pickRole(riderId, role) {
-    setDraftMatrix((m) => applyRoleForRest({ matrix: m, riderId, role, stages: editableStages }));
+    // #6095 (beta): med etape-valget rammer et rollevalg aldrig etaper FØR den
+    // åbne. Uden flaget: uændret #4980-adfærd (alle ulåste etaper).
+    const stages = roles?.role_scope_choice === true && stageCount > 1
+      ? (roleScopeChoice === "stage" ? [activeStage] : editableStages.filter((sn) => sn >= activeStage))
+      : editableStages;
+    setDraftMatrix((m) => applyRoleForRest({ matrix: m, riderId, role, stages }));
     setOpenRoleRiderId(null);
     if (status !== "idle") setStatus("idle");
   }
@@ -510,18 +553,29 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     setStatus("saving");
     setErrorKey(null);
     try {
-      // 1) Intentionen: hele diffen for de redigerbare etaper (REPLACE-semantik).
-      const overrides = diffToOverrides({ matrix: draftMatrix, riders });
-      const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({ overrides }),
-      });
-      const body = res.data || {};
-      if (!res.ok) {
-        setStatus("error");
-        setErrorKey(body.error || "generic");
-        return;
+      // 1) Intentionen. #6095: serveren erstatter KUN `stages` (de etaper denne
+      // kladde har ændret), og kun hvis ingen andre har ændret dem siden load.
+      // Hele kladden sendes stadig i `overrides`, så en ny frontend mod en
+      // backend fra før #6095 (deploy-vinduet) opfører sig som før, ikke værre.
+      const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn));
+      if (stages.length) {
+        const overrides = diffToOverrides({ matrix: draftMatrix, riders });
+        // "empty" = serverens EMPTY_STAGE_VERSION for en etape uden rækker.
+        const baseVersions = Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"]));
+        const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ overrides, stages, base_versions: baseVersions }),
+        });
+        const body = res.data || {};
+        if (!res.ok) {
+          // Ændret i en anden fane/enhed: hent den nyeste udgave i stedet for at
+          // overskrive den. Kladden kasseres; beskeden beder om at tjekke + gemme.
+          if (body.error === "stage_roles_conflict") await load();
+          setStatus("error");
+          setErrorKey(body.error || "generic");
+          return;
+        }
       }
       // 2) Ordrerne for DEN ÅBNE etape (endpointet er én-etape-scopet). Springes
       // over når ordre-halvdelen er gated væk — så gemmer fanen kun det
@@ -608,6 +662,18 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const roleScopeNote = isOneDay
     ? t("racePage.tactics.roleScopeRaceDay")
     : t("racePage.tactics.roleScope", { number: firstEditableStage });
+  // #6095 (beta): manageren vælger selv "etape N og løbet ud" / "kun etape N".
+  // Endagsløb har kun én etape, så valget giver ingen mening dér.
+  const scopeChoice = roles.role_scope_choice === true && !isOneDay;
+  const rolePickerScope = scopeChoice
+    ? {
+      scopeNote: t("intention.stage", { number: activeStage }),
+      scopeChoice: true,
+      scope: roleScopeChoice,
+      onScope: setRoleScopeChoice,
+      stageNumber: activeStage,
+    }
+    : { scopeNote: roleScopeNote };
 
   // Rene render-funktioner, IKKE nestede komponenter: en komponent defineret
   // inde i render remountes ved hver tastetryk-render (React ser en ny type),
@@ -623,14 +689,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     return (
       <>
         <div className="text-cz-1 text-xs">{t(`tacticsOrders.roleLabel.${roleKey(role)}`)}</div>
-        <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">{roleScope}</div>
+        {/* #6095: med etape-valget kan rollen afvige pr. etape; "hele løbet" ville lyve. */}
+        {!scopeChoice && <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">{roleScope}</div>}
         {canEdit && (
           <button
             type="button"
             disabled={saving}
             aria-expanded={open}
             aria-label={t("racePage.tactics.changeRoleAria", { name: rider.name || "—" })}
-            onClick={() => { setOpenRoleRiderId(open ? null : rider.rider_id); setOpenRiderId(null); }}
+            onClick={() => { setOpenRoleRiderId(open ? null : rider.rider_id); setOpenRiderId(null); setRoleScopeChoice("rest"); }}
             className="mt-1 text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {open ? t("intention.close") : t("intention.change")}
@@ -764,7 +831,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       <div className="px-4 py-3 border-b border-cz-border flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm">{t("racePage.tactics.title")}</h2>
-          <p className="text-cz-3 text-xs mt-0.5">{t(isOneDay ? "racePage.tactics.helpRaceDay" : "racePage.tactics.help")}</p>
+          <p className="text-cz-3 text-xs mt-0.5">{t(isOneDay ? "racePage.tactics.helpRaceDay" : scopeChoice ? "racePage.tactics.helpScoped" : "racePage.tactics.help")}</p>
           {ordersGc && (
             <p data-testid="race-rules-revision" className="text-xs mt-1 text-cz-2">
               <span className="text-cz-3">{t("tacticsOrders.ordersGc.rulesLabel")}:</span>{" "}
@@ -921,7 +988,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                         <RolePicker
                           t={t}
                           riderName={rider.name}
-                          scopeNote={roleScopeNote}
+                          {...rolePickerScope}
                           value={roleFor(rider)}
                           disabled={saving}
                           onPick={(role) => pickRole(rider.rider_id, role)}
@@ -971,7 +1038,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                   <RolePicker
                     t={t}
                     riderName={rider.name}
-                    scopeNote={roleScopeNote}
+                    {...rolePickerScope}
                     value={roleFor(rider)}
                     disabled={saving}
                     onPick={(role) => pickRole(rider.rider_id, role)}

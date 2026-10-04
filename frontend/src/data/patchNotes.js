@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
-    "version": "7.335",
-    "date": "2026-10-03",
+    "version": "7.338",
+    "date": "2026-10-04",
     "changes": [
       {
         "category": "fixed", "audience": "player", "rollout": "live", "topic": "Transfers",
@@ -17,6 +17,116 @@ export const PATCHES = [
       }
     ]
   },
+{
+  "version": "7.337",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Races",
+      "en": {
+        "title": "Choose which stages a role applies to, in the beta group",
+        "body": "When you change a rider's role on the Tactics tab, you choose Stage N to the end of the race or Stage N only. Earlier stages keep their roles."
+      },
+      "da": {
+        "title": "Vælg hvilke etaper en rolle gælder for, i beta-gruppen",
+        "body": "Når du skifter en rytters rolle på Taktik-fanen, vælger du Etape N og løbet ud eller Kun etape N. Tidligere etaper beholder deres roller."
+      },
+      "refs": [
+        6095
+      ]
+    }
+  ]
+},
+{
+  "version": "7.336",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Riders no longer race twice on one race day",
+        "body": "Two riders raced two races on the same race day after a transfer. Selection now checks every race a rider has already ridden that day, also races that have finished, and the assistant follows the same rule when it picks riders."
+      },
+      "da": {
+        "title": "Ryttere kører ikke længere to løb på én løbsdag",
+        "body": "To ryttere kørte to løb på samme løbsdag efter en transfer. Udtagelsen tjekker nu alle løb, rytteren allerede har kørt den dag, også løb der er afsluttet, og assistenten følger samme regel, når den udtager ryttere."
+      },
+      "refs": [
+        6009,
+        5860
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Races",
+      "en": {
+        "title": "Cobble specialists count on cobbled stages",
+        "body": "On cobbled and gravel stages, the gap after a sector now grows with how much weaker a rider is on cobbles, and cobble ability counts in the finale. Applies to races that started from 2 October."
+      },
+      "da": {
+        "title": "Brostensryttere tæller på brostensetaper",
+        "body": "På brostens- og grusetaper vokser tidstabet efter en sektor nu med, hvor meget svagere en rytter er på brosten, og brostensevnen tæller med i finalen. Gælder løb, der er startet fra 2. oktober."
+      },
+      "refs": [
+        6046
+      ]
+    }
+  ]
+},
+{
+  "version": "7.335",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Saving tactics for one stage no longer changes other stages",
+        "body": "Saving now only stores the stages you changed. If your tactics were changed in another window, nothing is overwritten: the latest version is loaded so you can check it and save again. A stage that has started can no longer be changed."
+      },
+      "da": {
+        "title": "Gem af taktik på én etape ændrer ikke længere andre etaper",
+        "body": "Et gem gemmer nu kun de etaper, du har ændret. Er taktikken ændret i et andet vindue, overskrives intet: den nyeste udgave hentes, så du kan tjekke den og gemme igen. En etape, der er startet, kan ikke længere ændres."
+      },
+      "refs": [
+        6095
+      ]
+    }
+  ]
+},
+{
+  "version": "7.334",
+  "date": "2026-10-03",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "Training starts correctly for new riders",
+        "body": "New riders, including riders bought before their first activity, get their starting condition when they join a team. Their first race no longer prevents evening training from starting. Earlier missed training days are reviewed separately."
+      },
+      "da": {
+        "title": "Træningen starter korrekt for nye ryttere",
+        "body": "Nye ryttere, også ryttere købt før deres første aktivitet, får deres starttilstand, når de kommer på holdet. Deres første løb forhindrer ikke længere aftentræningen i at starte. Tidligere manglende træningsdage undersøges særskilt."
+      },
+      "refs": [
+        6061
+      ]
+    }
+  ]
+},
   {
     "version": "7.333",
     "date": "2026-10-02",

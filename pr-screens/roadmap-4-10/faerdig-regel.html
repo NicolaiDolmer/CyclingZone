@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Roadmap: hvornår er et punkt færdigt? (4/10)</title>
+<!-- Beslutningsbillede til ejeren 4/10. Titel og stemmetal for punktet er fra prod 4/10; "live"-delen er
+     patch note 7.332, "mangler"-delen er #5101 (skubbet til S5 i MASTERPLAN). Den nye titel under A er et forslag. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --navy:#1a1f38;
+  --success:#2e7d4f; --success-bg:rgba(46,125,79,.08); --danger:#b3392f; --danger-bg:rgba(179,57,47,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.sheet{width:1760px;padding:28px 32px 30px}
+h1{font-family:"Inter Tight";font-size:25px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.lead{font-size:14px;color:var(--text-2);margin:0 0 18px;line-height:1.5}
+.case{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:0;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);margin-bottom:22px}
+.case > div{padding:14px 18px;border-left:1px solid var(--border)}
+.case > div:first-child{border-left:0}
+.k{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px}
+.case .t{font-size:14.5px;font-weight:500;line-height:1.45}
+.case .m{font-size:12.5px;color:var(--text-2);margin-top:4px}
+.live{color:var(--success)} .miss{color:var(--danger)}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.col-title{display:flex;align-items:center;gap:11px;margin-bottom:9px}
+.col-title .n{font-family:"Bebas Neue";font-size:30px;line-height:1;color:var(--navy)}
+.col-title .t{font-family:"Inter Tight";font-size:17px;font-weight:700}
+.rec{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--accent-t);color:var(--accent-t);border-radius:999px;padding:2px 9px}
+.frame{background:var(--bg-body);border:1px solid var(--border);border-radius:5px;padding:18px 20px 20px;min-height:386px}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.tab{font-size:13.5px;font-weight:500;color:var(--text-3);padding:7px 1px 8px;margin-bottom:-1px;border-bottom:2px solid transparent}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:14px 16px}
+.card + .tabs{margin-top:16px}
+.ch{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.ch .ct{font-size:14.5px;font-weight:600}
+.ch .cm{font-family:"Inter Tight";font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.row{display:flex;align-items:flex-start;gap:10px;padding:9px 0 0;border-top:1px solid var(--border)}
+.body{flex:1;min-width:0}
+.title{font-size:13.5px;font-weight:500;line-height:1.4}
+.meta{font-family:"Inter Tight";font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.date{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-3);width:40px;flex:none;margin-top:1px}
+.badge{flex:none;font-family:"Inter Tight";font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:3px 9px;white-space:nowrap;color:var(--text-2);border:1px solid var(--border)}
+.badge.go{border-color:var(--accent-t);color:var(--accent-t)}
+.scale{display:flex;gap:4px;margin-top:7px}
+.sb{width:24px;height:24px;border-radius:5px;font-family:"Inter Tight";font-size:11px;font-weight:600;border:1px solid var(--border);color:var(--text-2);display:inline-flex;align-items:center;justify-content:center}
+.empty{font-size:13px;color:var(--text-3);padding:9px 0 0;border-top:1px solid var(--border)}
+.verdict{margin-top:11px;display:flex;flex-direction:column;gap:7px}
+.verdict div{display:flex;gap:9px;font-size:13.5px;line-height:1.45}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:6px}
+.dot.g{background:var(--success)} .dot.r{background:var(--danger)} .dot.n{background:var(--text-3)}
+.foot{margin-top:20px;border-top:1px solid var(--border);padding-top:12px;font-size:13px;color:var(--text-2);line-height:1.55}
+.foot b{color:var(--text-1);font-weight:600}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Roadmap: hvornår er et punkt færdigt?</h1>
+  <p class="lead">Ét rigtigt eksempel, vist i de tre muligheder. Det samme valg gælder tre andre punkter (nederst).</p>
+
+  <div class="case">
+    <div><div class="k">Punktet i dag · 20 stemmer</div><div class="t">Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.</div></div>
+    <div><div class="k live">Det der er live for alle</div><div class="t">Mellemtider, og hvor og hvorfor dine ryttere tabte tid.</div><div class="m">Patch note 7.332, 2. oktober</div></div>
+    <div><div class="k miss">Det der mangler</div><div class="t">Et kort pr. rytter efter løbet: hans ordre, hvad der skete og dommen.</div><div class="m">Skubbet til sæson 5 i masterplanen</div></div>
+  </div>
+
+  <div class="cols">
+    <!-- A -->
+    <div>
+      <div class="col-title"><span class="n">A</span><span class="t">Del punktet</span><span class="rec">Anbefalet</span></div>
+      <div class="frame">
+        <div class="tabs"><div class="tab">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab on">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Done</span><span class="cm">Newest first</span></div>
+          <div class="row"><span class="date">2 Oct</span><div class="body"><div class="title">Split times, and where and why your riders lost time.</div></div><span class="badge">Feature</span></div>
+        </div>
+        <div class="tabs"><div class="tab on">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Planned</span><span class="cm">Later</span></div>
+          <div class="row"><div class="body"><div class="title">After each race, a card per rider: his order, what happened and the verdict.</div><div class="meta">Races · important to you?</div>
+            <div class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></div></div></div>
+        </div>
+      </div>
+      <div class="verdict">
+        <div><span class="dot g"></span><span>Done siger præcis, hvad der er live. Spillerne ser fremdrift med det samme.</span></div>
+        <div><span class="dot g"></span><span>Det, der mangler, står synligt på planen, og spillerne kan sige, hvor vigtigt det er.</span></div>
+        <div><span class="dot r"></span><span>De 20 stemmer bliver på Done-punktet. Det nye punkt starter på 0.</span></div>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div>
+      <div class="col-title"><span class="n">B</span><span class="t">Først når alt er leveret</span></div>
+      <div class="frame">
+        <div class="tabs"><div class="tab">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab on">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Done</span><span class="cm">Newest first</span></div>
+          <div class="empty">Punktet står her ikke før sæson 5.</div>
+        </div>
+        <div class="tabs"><div class="tab on">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">In progress</span><span class="cm">1</span></div>
+          <div class="row"><div class="body"><div class="title">Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.</div><div class="meta">Races</div></div><span class="badge go">In progress</span></div>
+        </div>
+      </div>
+      <div class="verdict">
+        <div><span class="dot g"></span><span>Enkelt: ét punkt, og stemmerne bliver på det.</span></div>
+        <div><span class="dot r"></span><span>Punktet står "i gang" i månedsvis, selvom det meste er live, og selvom ingen bygger på resten lige nu.</span></div>
+        <div><span class="dot r"></span><span>Spillerne kan ikke se, at mellemtiderne kom, uden at læse patch notes.</span></div>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div>
+      <div class="col-title"><span class="n">C</span><span class="t">Done når kernen er live</span></div>
+      <div class="frame">
+        <div class="tabs"><div class="tab">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab on">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Done</span><span class="cm">Newest first</span></div>
+          <div class="row"><span class="date">2 Oct</span><div class="body"><div class="title">Why a stage went the way it did: what climbing, sprint and form did today, in plain words and without the exact numbers.</div></div><span class="badge">Feature</span></div>
+        </div>
+        <div class="tabs"><div class="tab on">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Planned</span><span class="cm">Later</span></div>
+          <div class="empty">Kortet pr. rytter står ingen steder.</div>
+        </div>
+      </div>
+      <div class="verdict">
+        <div><span class="dot g"></span><span>Mindst arbejde: punktet flyttes, som det er.</span></div>
+        <div><span class="dot r"></span><span>Done lover "what climbing, sprint and form did today". Det er kun delvist sandt.</span></div>
+        <div><span class="dot r"></span><span>Resten forsvinder fra roadmappet, selvom det er lovet til sæson 5.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>Samme valg gælder:</b> "Plan a whole week per rider in one go" (felterne er live, færdige programmer er stadig beta) · "See how many percent a session moved an ability" (live, men en fejl ved evnepoint-skift er genåbnet) · "Rider values that follow the market" (ny værdimodel er live, lønnen er ikke færdig).
+  </div>
+</div>
+</body>
+</html>

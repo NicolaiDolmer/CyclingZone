@@ -76,7 +76,7 @@ export const FORUM_REPORT_REASON_MAX_LENGTH = 500;
 // for kort til at stoppe en tom-klik-rapport uden kontekst).
 export const FORUM_REPORT_REASON_MIN_LENGTH = 10;
 export const FORUM_POLL_MIN_OPTIONS = 2;
-export const FORUM_POLL_MAX_OPTIONS = 8;
+export const FORUM_POLL_MAX_OPTIONS = 10; // ejer 4/10: 10 svarmuligheder (fx afstemning om auktionstid, #4714)
 export const FORUM_POLL_OPTION_MAX_LENGTH = 100;
 export const FORUM_LIST_DEFAULT_LIMIT = 25;
 export const FORUM_LIST_MAX_LIMIT = 100;

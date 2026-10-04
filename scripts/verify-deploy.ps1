@@ -179,9 +179,9 @@ function Invoke-WebRequestAllowError {
 }
 
 function Test-LiveSmoke {
-  $health = Invoke-WebRequest -Uri "$BackendUrl/health" -UseBasicParsing -TimeoutSec 30
-  if ($health.StatusCode -ne 200) {
-    throw "Backend health returnerede $($health.StatusCode)."
+  & node (Join-Path $PSScriptRoot '..\backend\scripts\checkBackendReadiness.ts') $BackendUrl
+  if ($LASTEXITCODE -ne 0) {
+    throw "Backend /health/ready fejlede efter afgraensede retries."
   }
 
   $auctions = Invoke-WebRequestAllowError -Uri "$BackendUrl/api/auctions" -TimeoutSec 30
@@ -194,7 +194,7 @@ function Test-LiveSmoke {
     throw "Frontend alias returnerede uventet status $($frontend.StatusCode)."
   }
 
-  Write-Host "[ok] Backend /health = 200"
+  Write-Host "[ok] Backend /health/ready = 200 (DB-readiness)"
   Write-Host "[ok] Backend /api/auctions uden token = 401"
   Write-Host "[ok] Frontend alias svarer = $($frontend.StatusCode)"
 }

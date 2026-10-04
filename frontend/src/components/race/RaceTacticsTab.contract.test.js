@@ -62,8 +62,12 @@ test("rollen redigeres for resten af løbet, aldrig pr. etape og aldrig i et <se
   // race_entries-rollen alene.
   assert.match(source, /tacticsOrders\.roleLabel\.\$\{roleKey\(role\)\}/);
   assert.match(source, /const roleFor = \(rider\) =>/);
-  // Skrivningen rammer editableStages (de ULÅSTE etaper), aldrig kun activeStage.
-  assert.match(source, /applyRoleForRest\(\{ matrix: m, riderId, role, stages: editableStages \}\)/);
+  // Uden beta-flaget rammer skrivningen editableStages (de ULÅSTE etaper).
+  // #6095 (beta): "etape N og løbet ud" = ulåste etaper >= den åbne; "kun etape N"
+  // = kun den åbne. Aldrig en etape FØR den åbne.
+  assert.match(source, /applyRoleForRest\(\{ matrix: m, riderId, role, stages \}\)/);
+  assert.match(source, /roleScopeChoice === "stage" \? \[activeStage\] : editableStages\.filter\(\(sn\) => sn >= activeStage\)/);
+  assert.match(source, /: editableStages;/);
   // Rollerne kommer fra den delte liste, ikke fra en lokal opremsning i fladen.
   assert.match(source, /SELECTABLE_ROLES\.map/);
 });
@@ -152,4 +156,20 @@ test("mobil viser kun tallet — ingen bar, ingen vandret scroll", () => {
 test("fog of war: ingen tal, procenter eller loft-signaler i fladens tekst", () => {
   assert.doesNotMatch(source, /%/);
   assert.doesNotMatch(source, /WORK_COST|MULT|multiplier/i);
+});
+
+// #6095: gemmet sender kun de ændrede etaper + deres version, og en konflikt
+// henter den nyeste udgave i stedet for at overskrive den.
+test("#6095 gem skriver kun ændrede etaper og respekterer konflikter", () => {
+  assert.match(source, /const stages = changedStages\(draftMatrix, initialMatrix\)\.filter\(\(sn\) => editableStages\.includes\(sn\)\);/);
+  assert.match(source, /body: JSON\.stringify\(\{ overrides, stages, base_versions: baseVersions \}\)/);
+  assert.match(source, /if \(body\.error === "stage_roles_conflict"\) await load\(\);/);
+  // Et ordre-gem uden intentions-ændringer må ikke røre intentionen.
+  assert.match(source, /if \(stages\.length\) \{/);
+});
+
+test("#6095 etape-valget i rollevælgeren findes kun bag serverens flag", () => {
+  assert.match(source, /const scopeChoice = roles\.role_scope_choice === true && !isOneDay;/);
+  assert.match(source, /racePage\.tactics\.roleScopeRest/);
+  assert.match(source, /racePage\.tactics\.roleScopeStageOnly/);
 });

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Roadmap: mulighed 1 mod mulighed 2 (4/10)</title>
+<!-- Beslutningsbillede til ejeren 4/10. Titler og stemmetal er laest fra prod (roadmap_items +
+     roadmap_votes) 4/10. Hvilke punkter der staar som "plan" og "ide" er et EKSEMPEL, ikke en beslutning. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --on-accent:#1a1f38; --navy:#1a1f38;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.sheet{width:1680px;padding:28px 32px 32px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;margin-bottom:6px}
+.head h1{font-family:"Inter Tight";font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
+.head .src{font-size:12.5px;color:var(--text-2)}
+.lead{font-size:14px;color:var(--text-2);margin:0 0 20px;max-width:120ch;line-height:1.5}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.col-title{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.col-title .n{font-family:"Bebas Neue";font-size:30px;line-height:1;color:var(--navy)}
+.col-title .t{font-family:"Inter Tight";font-size:18px;font-weight:700}
+.col-title .s{font-size:13px;color:var(--text-2)}
+.rec{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--accent-t);color:var(--accent-t);border-radius:999px;padding:2px 9px}
+
+.frame{position:relative;background:var(--bg-body);border:1px solid var(--border);border-radius:5px;padding:20px 22px 22px}
+.frame-label{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin:18px 0 8px}
+.frame-label:first-child{margin-top:0}
+.ph{font-family:"Inter Tight";font-size:19px;font-weight:700;margin:0 0 12px}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{font-size:13.5px;font-weight:500;color:var(--text-3);padding:8px 1px 9px;margin-bottom:-1px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:"Inter Tight";font-size:11px;color:var(--text-3);margin-left:4px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:14px 16px}
+.card + .card{margin-top:12px}
+.grp{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-t);margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.grp .hint{font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-3);font-size:12px}
+.row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0;padding-top:2px}
+.row:last-child{padding-bottom:0}
+.num{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;color:var(--text-3);width:16px;flex:none;margin-top:2px;text-align:right}
+.body{flex:1;min-width:0}
+.title{font-size:13.5px;line-height:1.45;color:var(--text-1)}
+.chip{flex:none;font-family:"Inter Tight";font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-2);white-space:nowrap;margin-top:1px}
+.chip.go{border-color:var(--accent-t);color:var(--accent-t)}
+.axis{display:flex;align-items:center;gap:10px;margin-top:6px}
+.axis .lbl{font-size:11.5px;color:var(--text-3);width:112px;flex:none}
+.scale{display:flex;gap:4px}
+.sb{width:24px;height:24px;border-radius:5px;font-family:"Inter Tight";font-size:11px;font-weight:600;border:1px solid var(--border);color:var(--text-2);display:inline-flex;align-items:center;justify-content:center;background:transparent}
+.sb.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.filter{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);margin:0 0 10px}
+.box{width:15px;height:15px;border-radius:3px;background:var(--text-1);display:inline-flex;align-items:center;justify-content:center}
+.box svg{width:10px;height:10px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.filter b{color:var(--text-1);font-family:"Inter Tight";font-variant-numeric:tabular-nums}
+
+.admin{background:var(--navy);color:#fff;border-radius:5px;padding:14px 16px;margin-top:0}
+.admin h3{font-family:"Inter Tight";font-size:13px;font-weight:700;margin:0 0 2px}
+.admin .sub{font-size:12px;color:rgba(255,255,255,.6);margin:0 0 10px}
+.admin table{width:100%;border-collapse:collapse;font-size:12.5px}
+.admin th{font-family:"Inter Tight";font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45);text-align:left;padding:0 0 6px}
+.admin td{padding:6px 0;border-top:1px solid rgba(255,255,255,.09);vertical-align:top}
+.admin td.n,.admin th.n{text-align:right;font-family:"Inter Tight";font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:14px}
+.admin td.r{width:20px;font-family:"Inter Tight";font-weight:700;color:var(--accent)}
+.admin .none{font-size:13px;color:rgba(255,255,255,.75);padding:10px 0 4px;line-height:1.5}
+
+.pin{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--navy);color:var(--accent);font-family:"Inter Tight";font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.legend{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+.legend div{display:flex;gap:10px;font-size:13.5px;line-height:1.45}
+.legend .p{position:static;flex:none;border:0;width:22px;height:22px;font-size:12px}
+.foot{margin-top:22px;border-top:1px solid var(--border);padding-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.foot .k{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.foot .v{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:20px;font-weight:700}
+.foot .d{font-size:12.5px;color:var(--text-2);margin-top:2px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="head">
+    <h1>Roadmap: skal det planlagte kunne stemmes på?</h1>
+    <div class="src">Titler og stemmetal er læst fra prod 4/10. Hvilke punkter der står som plan og idé, er mit eksempel.</div>
+  </div>
+  <p class="lead">Begge muligheder har de samme fire faner, og idéerne under Stem har begge skalaer. Forskellen er kun Plan-fanen, og hvad du kan se bagved.</p>
+
+  <div class="cols">
+    <!-- ───────── Mulighed 1 ───────── -->
+    <div>
+      <div class="col-title"><span class="n">1</span><span class="t">Adskilt</span><span class="s">Planen vises. Kun idéer stemmes der på.</span></div>
+      <div class="frame">
+        <div class="frame-label">Det spilleren ser</div>
+        <div class="ph">Roadmap</div>
+        <div class="tabs">
+          <div class="tab on">Plan</div><div class="tab">Vote<span class="cnt">12 left</span></div><div class="tab">Known issues<span class="cnt">9</span></div><div class="tab">Done</div>
+        </div>
+        <div class="card">
+          <div class="grp">In progress</div>
+          <div class="row"><div class="body"><div class="title">Auto-rest: set your own fatigue limit, and a tired rider rests by himself…</div></div><span class="chip go">In progress</span></div>
+          <div class="row"><div class="body"><div class="title">Secondary rider type explained: see what a rider's second type means and where it helps him.</div></div><span class="chip go">In progress</span></div>
+        </div>
+        <div class="card">
+          <div class="grp">Next <span class="hint">in roughly this order</span></div>
+          <div class="row"><span class="num">1</span><div class="body"><div class="title">Your own young stars: choose a country you want more young riders from…</div></div><span class="chip">Planned</span></div>
+          <div class="row"><span class="num">2</span><div class="body"><div class="title">A training camp: pay to focus one ability hard for a while, and lose race days while you do it.</div></div><span class="chip">Planned</span></div>
+          <div class="row"><span class="num">3</span><div class="body"><div class="title">Ride for the mountain or points jersey from day one…</div></div><span class="chip">Planned</span></div>
+          <div class="row"><span class="num">4</span><div class="body"><div class="title">Form training for riders who are done developing…</div></div><span class="chip">Planned</span></div>
+        </div>
+        <div class="pin" style="left:-12px;top:268px">1</div>
+
+        <div class="frame-label">Det du ser bagved</div>
+        <div class="admin">
+          <h3>Planen</h3>
+          <div class="none">Ingen tal. Du ved ikke, hvilket af de fire planlagte punkter spillerne helst vil have først.</div>
+        </div>
+        <div class="pin" style="left:-12px;bottom:46px">2</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">1</span><span>Rækkefølgen lægger du selv, uden hjælp fra stemmer. Ingen knapper på planen.</span></div>
+        <div><span class="pin p">2</span><span>Analysen dækker kun idéerne under Stem.</span></div>
+      </div>
+    </div>
+
+    <!-- ───────── Mulighed 2 ───────── -->
+    <div>
+      <div class="col-title"><span class="n">2</span><span class="t">Vigtighed på planen</span><span class="s">Én skala pr. planlagt punkt.</span><span class="rec">Passer til dit svar</span></div>
+      <div class="frame">
+        <div class="frame-label">Det spilleren ser</div>
+        <div class="ph">Roadmap</div>
+        <div class="tabs">
+          <div class="tab on">Plan<span class="cnt">3 left</span></div><div class="tab">Vote<span class="cnt">12 left</span></div><div class="tab">Known issues<span class="cnt">9</span></div><div class="tab">Done</div>
+        </div>
+        <div class="card">
+          <div class="grp">In progress</div>
+          <div class="row"><div class="body"><div class="title">Auto-rest: set your own fatigue limit, and a tired rider rests by himself…</div></div><span class="chip go">In progress</span></div>
+          <div class="row"><div class="body"><div class="title">Secondary rider type explained: see what a rider's second type means and where it helps him.</div></div><span class="chip go">In progress</span></div>
+        </div>
+        <div class="card">
+          <div class="grp">Planned <span class="hint">tell me what matters most to you</span></div>
+          <div class="filter"><span class="box" style="background:#fff;border:1.5px solid var(--text-3)"></span>Only show what I have not rated <b>· 3 of 4 left</b></div>
+          <div class="row"><div class="body"><div class="title">Your own young stars: choose a country you want more young riders from…</div>
+            <div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb on">5</span><span class="sb">6</span></span></div></div></div>
+          <div class="row"><div class="body"><div class="title">A training camp: pay to focus one ability hard for a while, and lose race days while you do it.</div>
+            <div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          <div class="row"><div class="body"><div class="title">Ride for the mountain or points jersey from day one…</div>
+            <div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          <div class="row"><div class="body"><div class="title">Form training for riders who are done developing…</div>
+            <div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+        </div>
+        <div class="pin" style="left:-12px;top:150px">1</div>
+        <div class="pin" style="left:-12px;top:268px">2</div>
+
+        <div class="frame-label">Det du ser bagved</div>
+        <div class="admin">
+          <h3>Planen, som spillerne vil have den</h3>
+          <p class="sub">Gennemsnit af "Important to you?" (1-6). Rigtige tal fra prod 4/10.</p>
+          <table>
+            <tr><th></th><th>Punkt</th><th class="n">Vigtighed</th><th class="n">Stemmer</th></tr>
+            <tr><td class="r">1</td><td>Ride for the mountain or points jersey from day one</td><td class="n">5,17</td><td class="n">12</td></tr>
+            <tr><td class="r">2</td><td>Form training for riders who are done developing</td><td class="n">5,10</td><td class="n">10</td></tr>
+            <tr><td class="r">3</td><td>Your own young stars</td><td class="n">5,08</td><td class="n">37</td></tr>
+            <tr><td class="r">4</td><td>A training camp</td><td class="n">4,80</td><td class="n">10</td></tr>
+          </table>
+        </div>
+        <div class="pin" style="left:-12px;bottom:92px">3</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">1</span><span>Det, der allerede er i gang, stemmes der ikke på.</span></div>
+        <div><span class="pin p">2</span><span>Det planlagte har én skala: hvor vigtigt er det for dig? Filteret skjuler det, spilleren har svaret på.</span></div>
+        <div><span class="pin p">3</span><span>Du får spillernes rækkefølge og lægger selv den endelige. Spilleren ser kun sin egen stemme, som i dag.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div><div class="k">Klik for at svare på alt · i dag</div><div class="v">84</div><div class="d">42 punkter × 2 skalaer. 8 af 41 managers har gjort det.</div></div>
+    <div><div class="k">Mulighed 1 · eksempel 20 planlagte + 22 idéer</div><div class="v">44</div><div class="d">Kun idéerne: 22 × 2 skalaer.</div></div>
+    <div><div class="k">Mulighed 2 · samme eksempel</div><div class="v">64</div><div class="d">20 planlagte × 1 skala + 22 idéer × 2 skalaer.</div></div>
+  </div>
+</div>
+</body>
+</html>

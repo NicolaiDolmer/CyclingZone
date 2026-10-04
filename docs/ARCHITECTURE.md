@@ -2,6 +2,15 @@
 
 ## Stack
 
+#6061 (forberedt, ikke live): kompensationsforslaget i
+`database/proposals/2026-10-03-6061-apply-compensation.sql` indeholder
+`training_compensation_receipts` og service-only RPC
+`apply_training_compensation_6061`. En særskilt kvittering pr. rytter/sæson/løbsdag
+beskytter gentagne reparationer og afviser almindelig træning på samme slot.
+Kildekontrol, korte tabel-låse og compare-before-write beskytter atomisk
+evnekompensation; historiske rapporter/condition-afregninger rekonstrueres ikke.
+Forslaget kræver separat ejer-go og ligger uden for auto-migrate.
+
 | Lag | Teknologi | Deploy |
 |-----|-----------|--------|
 | Frontend | React 18 + Vite + Tailwind CSS | Vercel |
@@ -164,8 +173,16 @@ POST /api/login-streak
 GET  /api/online-count
 GET  /api/achievements
 POST /api/achievements/check
-GET  /health
+GET  /health                            → proces-liveness, ingen DB
+GET  /health/ready                      → DB-readiness, 200/503, 3s deadline
 ```
+
+Health-kontrakten (#5905): begge svar er `Cache-Control: no-store`. Railway bruger
+`/health`, så et hotfix kan deployes under DB-pres. Deploy-smoke/overvågning skal
+bruge `/health/ready`; den laver HEAD på højst én `app_config`-række uden exact-count.
+CI og `verify-deploy.ps1` deler `backend/scripts/checkBackendReadiness.ts`: højst
+seks forsøg, 5s request-timeout og 5s pause (maks. 55s); kun HTTP 200 med
+`status=ok, db=ok` består. Dette kontrollerer DB-forbindelsen, ikke alle spilflows.
 
 ### Transfer Window
 ```

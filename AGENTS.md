@@ -97,9 +97,9 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 34. **Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md`, republiceres Masterplan-artifacten (samme URL, aldrig en ny) FØR sessionen lukker. Fuld tekst: [`docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync`](docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync).
 
-### Merge-regler (ejer 22/9 + 24/9, #5508)
+### Merge-regler (ejer 22/9 + 24/9 + 4/10, #5508)
 
-35. **Stående merge-regler.** Merges UDEN ejerens ordrette "merge", når CI er grøn, et uafhængigt read-only diff-tjek er rent, CodeRabbit ikke har blokerende fund, og hvert merge står i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter · **(b)** motor-PR'er bag slukket `race_engine_v4`, når intet ændrer sig for spillerne og ingen måling bliver NY rød (#5580/#5581 undtaget) · **(c)** Dependabot patch/minor, docs uden spillertekst, CI/hooks/test-only. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger. `scripts/merge-queue.ps1`s klassifikator skal kende (a)-(c) og logge kategorien på PR'en.
+35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`, uden spillerændring og uden ny rød måling (#5580/#5581 undtaget) · **(c)** Dependabot patch/minor, docs uden spillertekst, CI/hooks/test-only. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
 
 ### §LOKAL lokal-only-state
 
@@ -109,7 +109,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 ## Start-sekvens (hver session)
 
-0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` — ingen egne sidehoveder, bredder eller radii · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** (NOW.md-budget, patch notes, FEATURE_REGISTRY, token-hygiejne) · **merge-mekanik** (`--squash --delete-branch --admin`, én PR ad gangen via merge-køen).
+0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst.
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
 3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.

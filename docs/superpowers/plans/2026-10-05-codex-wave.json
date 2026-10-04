@@ -1,0 +1,47 @@
+{
+  "tracks": [
+    {
+      "issue": 5692,
+      "branch": "codex/5692-ranking-refresh-readers",
+      "ownership": [
+        "backend/lib/refreshRankingMatviews.js",
+        "backend/lib/refreshRankingMatviews.test.js",
+        "backend/lib/rankingRefreshQueue.ts",
+        "backend/lib/rankingRefreshQueue.test.ts",
+        "backend/routes/rankings.ts",
+        "backend/routes/rankings.5692.test.ts",
+        "database/proposals/2026-10-05-5692-ranking-refresh.sql"
+      ],
+      "tier": "FULL"
+    },
+    {
+      "issue": 6132,
+      "branch": "codex/6132-bulk-regenerate-used-race-days",
+      "ownership": [
+        "backend/lib/raceHubAutofill.js",
+        "backend/lib/raceHubAutofill.test.js",
+        "backend/lib/raceHubAutofill6132.test.ts"
+      ]
+    },
+    {
+      "issue": 6120,
+      "branch": "codex/6120-remove-deadline-day-cron",
+      "ownership": [
+        "backend/lib/deadlineDayReport.js",
+        "backend/lib/deadlineDayReport.test.js"
+      ],
+      "touches": [
+        "backend/cron.js",
+        "backend/lib/cronMonitorRegistry.js"
+      ]
+    },
+    {
+      "issue": 5792,
+      "branch": "codex/5792-nightly-smoke",
+      "ownership": [
+        "frontend/tests/e2e/core-smoke.spec.js",
+        "frontend/tests/e2e/core-smoke.spec.js-snapshots/"
+      ]
+    }
+  ]
+}

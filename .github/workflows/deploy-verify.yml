@@ -65,6 +65,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Node 24 (readiness probe and deploy tooling)
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
       - name: Resolve target sha and PR number
         id: pr
         env:
@@ -279,7 +284,13 @@ jobs:
       - name: Smoke-test prod
         id: smoke
         run: |
-          BACKEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/health)
+          # #5905: deployment liveness stays DB-independent; release smoke requires DB readiness.
+          # Shared probe: at most 6 x 5s requests + 5 x 5s pauses; fails closed on non-ready payloads.
+          if node backend/scripts/checkBackendReadiness.ts https://cyclingzone-production.up.railway.app; then
+            BACKEND_HEALTH=200
+          else
+            BACKEND_HEALTH=unavailable
+          fi
           BACKEND_AUTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/api/auctions)
           FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" -L https://cyclingzone.org/)
 
@@ -290,7 +301,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           # Acceptkriterier:
-          # - /health returnerer 200
+          # - /health/ready returnerer 200 med status=ok, db=ok
           # - /api/auctions uden token returnerer 401 (auth virker)
           # - frontend root returnerer 200 (efter redirect)
           OK=true
@@ -482,7 +493,7 @@ jobs:
           ✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
           - Vercel deploy: ${VERCEL:-success}
           - Railway deploy: ${RAILWAY:-success}
-          - Backend \`/health\` = 200
+          - Backend \`/health/ready\` = 200 (DB-readiness med retry)
           - Backend \`/api/auctions\` (no auth) = 401 (auth gates virker)
           - Frontend root = 200
 
@@ -511,7 +522,7 @@ jobs:
           ❌ **Deploy-verify FEJLEDE** — \`${SHA:0:7}\` — [se log]($RUN_URL)
           - Vercel: \`${VERCEL:-unknown}\`
           - Railway: \`${RAILWAY:-unknown}\`
-          - Backend \`/health\`: \`${BACKEND_HEALTH:-?}\` (forventet 200)
+          - Backend \`/health/ready\`: \`${BACKEND_HEALTH:-?}\` (forventet 200)
           - Backend \`/api/auctions\`: \`${BACKEND_AUTH:-?}\` (forventet 401)
           - Frontend: \`${FRONTEND:-?}\` (forventet 200)
 

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Roadmap: i dag og anbefalet (4/10)</title>
+<!-- Samlet foer/efter-billede til ejeren 4/10 (#5387 + #5388 + kendte fejl). Statisk mockup, intet i prod.
+     Titler, stemmetal og datoer er laest fra prod (roadmap_items/roadmap_votes) 4/10; kendte fejl er taget
+     fra ejerens eget forum-udkast docs/drafts/2026-09-30-known-issues-forum.md. Hvilke punkter der staar som
+     "i gang"/"planlagt"/"ide" og tallene ved "rammer ogsaa mig" er EKSEMPLER (markeret i billedet). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --on-accent:#1a1f38; --navy:#1a1f38;
+  --success:#2e7d4f; --success-bg:rgba(46,125,79,.08);
+  --warning:#9a6b00; --warning-bg:rgba(154,107,0,.08);
+  --info:#2b5c9a; --info-bg:rgba(43,92,154,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.sheet{width:1840px;padding:28px 32px 32px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:24px;margin-bottom:4px}
+.head h1{font-family:"Inter Tight";font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em}
+.head .src{font-size:12.5px;color:var(--text-2);max-width:86ch;text-align:right;line-height:1.45}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 28px;margin-top:20px}
+.blk-title{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
+.blk-title .k{font-family:"Inter Tight";font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--navy);border-radius:999px;padding:3px 10px}
+.blk-title .k.old{background:var(--text-3)}
+.blk-title .t{font-family:"Inter Tight";font-size:17px;font-weight:700}
+.blk-title .s{font-size:13px;color:var(--text-2)}
+
+.frame{position:relative;background:var(--bg-body);border:1px solid var(--border);border-radius:5px;padding:22px 24px 24px}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.ph h2{font-family:"Inter Tight";font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0}
+.ph .sub{font-size:13px;color:var(--text-2);margin-top:3px}
+.cluster{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.check{display:flex;align-items:center;gap:8px;font-size:13px}
+.box{width:16px;height:16px;border-radius:3px;background:var(--text-1);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.box svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.count{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--text-3)}
+.count b{color:var(--text-1)}
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{font-size:14px;font-weight:500;color:var(--text-3);padding:8px 1px 9px;margin-bottom:-1px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:11px;color:var(--text-3);margin-left:5px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:18px 20px}
+.card + .card{margin-top:14px}
+.ch{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.ch .ct{font-size:15px;font-weight:600}
+.ch .cm{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.row.top{align-items:flex-start}
+.num{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;color:var(--text-3);width:16px;flex:none;text-align:right}
+.body{flex:1;min-width:0}
+.title{font-size:13.5px;font-weight:500;line-height:1.4}
+.meta{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.scale{display:flex;gap:4px;flex:none}
+.sb{width:26px;height:26px;border-radius:5px;font-family:"Inter Tight";font-size:11.5px;font-weight:600;border:1px solid var(--border);color:var(--text-2);display:inline-flex;align-items:center;justify-content:center}
+.sb.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.axes{display:flex;flex-direction:column;gap:5px;flex:none}
+.axis{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.axis .lbl{font-size:11.5px;color:var(--text-3)}
+.colhint{font-size:11.5px;color:var(--text-3);text-align:right;margin:-4px 0 4px}
+.fold{display:flex;align-items:center;justify-content:space-between;padding:11px 0 0;border-top:1px solid var(--border);font-size:12.5px;font-weight:500;color:var(--accent-t)}
+.ico{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:6px}
+.seg span{font-size:12px;font-weight:500;color:var(--text-2);padding:5px 11px;border-left:1px solid var(--border)}
+.seg span:first-child{border-left:0}
+.seg span.on{color:var(--accent-t);background:rgba(232,197,71,.10)}
+.badge{flex:none;font-family:"Inter Tight";font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.badge.inv{color:var(--warning);background:var(--warning-bg)}
+.badge.fix{color:var(--info);background:var(--info-bg)}
+.badge.ok{color:var(--success);background:var(--success-bg)}
+.badge.neutral{color:var(--text-2);border:1px solid var(--border)}
+.btn{flex:none;font-size:12px;font-weight:500;border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text-1);background:var(--bg-elevated);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn.done{color:var(--text-3);background:transparent}
+.log{margin:9px 0 0;padding:0;list-style:none;border-left:1px solid var(--border)}
+.log li{font-size:12.5px;color:var(--text-2);line-height:1.45;padding:0 0 6px 12px}
+.log li:last-child{padding-bottom:0}
+.log b{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);margin-right:6px}
+.quiet{font-size:12.5px;font-weight:500;color:var(--accent-t);display:inline-flex;align-items:center;gap:4px;margin-top:12px}
+.date{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-3);width:48px;flex:none}
+
+/* I dag */
+.today-img{display:block;width:100%;border:1px solid var(--border);border-radius:5px}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:12px}
+.facts .v{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:22px;font-weight:700}
+.facts .d{font-size:12.5px;color:var(--text-2);line-height:1.4;margin-top:1px}
+
+/* mobil */
+.phone{width:375px;background:var(--bg-body);border:1px solid var(--border);border-radius:5px;flex:none}
+.phone .top{border-radius:4px 4px 0 0;height:46px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:"Bebas Neue";color:var(--accent);font-size:17px;letter-spacing:.02em}
+.phone .pg{padding:16px}
+.phone .tabs{gap:18px;overflow:hidden}
+.phone .tab{font-size:13.5px}
+.phone .card{padding:14px 16px}
+.phone .row{display:block}
+.phone .axes{margin-top:8px}
+.phone .axis{justify-content:space-between}
+.phone .sb{width:34px;height:34px;font-size:12.5px}
+
+/* admin */
+.admin{background:var(--bg-body);border:1px solid var(--border);border-radius:5px;padding:20px 22px}
+.admin h2{font-family:"Inter Tight";font-size:20px;font-weight:700;margin:0 0 10px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);margin-bottom:14px}
+.stats div{padding:12px 14px;border-left:1px solid var(--border)}
+.stats div:first-child{border-left:0}
+.stats .l{font-family:"Inter Tight";font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.stats .v{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:20px;font-weight:650;margin-top:2px}
+.stats .v small{font-size:12px;font-weight:500;color:var(--text-3)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:0 8px 7px 0}
+td{padding:8px 8px 8px 0;border-top:1px solid var(--border);vertical-align:middle}
+td.n,th.n{text-align:right;font-family:"Inter Tight";font-variant-numeric:tabular-nums;white-space:nowrap}
+td.r{width:18px;font-family:"Inter Tight";font-weight:700;color:var(--text-3)}
+td.act{text-align:right;white-space:nowrap}
+.split{font-family:"Inter Tight";font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--warning);background:var(--warning-bg);border-radius:999px;padding:2px 7px;margin-left:6px}
+.ex{font-family:"Inter Tight";font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);border:1px dashed var(--text-3);border-radius:999px;padding:1px 7px;margin-left:8px}
+
+.pin{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--navy);color:var(--accent);font-family:"Inter Tight";font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.legend{margin-top:11px;display:flex;flex-direction:column;gap:6px}
+.legend div{display:flex;gap:10px;font-size:13.5px;line-height:1.45}
+.legend .p{position:static;flex:none;border:0;width:22px;height:22px;font-size:12px}
+.pair{display:flex;gap:24px;align-items:flex-start}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="head">
+    <h1>Roadmap: i dag og anbefalet</h1>
+    <div class="src">Titler, stemmetal og datoer er læst fra prod 4/10. Kendte fejl er fra dit forum-udkast 30/9. Hvilke punkter der står som i gang, planlagt og idé, er eksempler: indholdet godkender du for sig.</div>
+  </div>
+
+  <div class="grid">
+    <!-- ───────── I DAG ───────── -->
+    <div>
+      <div class="blk-title"><span class="k old">I dag</span><span class="t">Én lang side</span><span class="s">cyclingzone.org/roadmap, første skærm</span></div>
+      <div class="frame" style="padding:14px">
+        <img class="today-img" src="prod-roadmap-4-10.png" alt="">
+        <div class="facts">
+          <div><div class="v">7.037 px</div><div class="d">høj. Det er ca. 8 skærme at scrolle.</div></div>
+          <div><div class="v">42</div><div class="d">punkter, plan og idéer blandet.</div></div>
+          <div><div class="v">8 af 41</div><div class="d">managers har stemt på det hele.</div></div>
+          <div><div class="v">0</div><div class="d">kendte fejl. De står under Hjælp, og listen er tom.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────── PLAN ───────── -->
+    <div>
+      <div class="blk-title"><span class="k">Anbefalet</span><span class="t">Fane 1 · Plan</span><span class="s">det besluttede, i din rækkefølge</span></div>
+      <div class="frame">
+        <div class="ph">
+          <div><h2>Roadmap</h2><div class="sub">What I am building, what you can vote on, and what I am fixing.</div></div>
+          <div class="cluster">
+            <div class="check"><span class="box"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5"/></svg></span>Only what I have not rated</div>
+            <div class="count">Rated <b>27</b> of 42</div>
+          </div>
+        </div>
+        <div class="tabs"><div class="tab on">Plan<span class="cnt">3</span></div><div class="tab">Vote<span class="cnt">12</span></div><div class="tab">Known issues<span class="cnt">7</span></div><div class="tab">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">In progress</span><span class="cm">3</span></div>
+          <div class="row"><div class="body"><div class="title">Auto-rest: set your own fatigue limit, and a tired rider rests by himself…</div><div class="meta">Training · in beta</div></div></div>
+          <div class="row"><div class="body"><div class="title">Plan a whole week per rider in one go…</div><div class="meta">Training · in beta</div></div></div>
+          <div class="row"><div class="body"><div class="title">Secondary rider type explained: see what a rider's second type means and where it helps him.</div><div class="meta">Races</div></div></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Planned</span><span class="cm">In roughly this order</span></div>
+          <div class="colhint">Important to you?</div>
+          <div class="row"><span class="num">1</span><div class="body"><div class="title">Ride for the mountain or points jersey from day one…</div><div class="meta">Races</div></div><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div>
+          <div class="row"><span class="num">2</span><div class="body"><div class="title">Form training for riders who are done developing…</div><div class="meta">Training</div></div><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div>
+          <div class="row"><span class="num">3</span><div class="body"><div class="title">A training camp: pay to focus one ability hard for a while…</div><div class="meta">Training</div></div><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div>
+          <div class="fold"><span>Later · 9 more</span><svg class="ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+        </div>
+        <div class="pin" style="left:-12px;top:100px">1</div>
+        <div class="pin" style="right:-12px;top:34px">2</div>
+        <div class="pin" style="left:-12px;top:190px">3</div>
+        <div class="pin" style="left:-12px;top:440px">4</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">1</span><span>Fire faner i stedet for én lang side. Tallet er, hvor mange punkter spilleren mangler at svare på.</span></div>
+        <div><span class="pin p">2</span><span>"Kun det jeg ikke har stemt på" gælder alle faner og er slået til, når man er logget ind.</span></div>
+        <div><span class="pin p">3</span><span>Det, der er i gang, stemmes der ikke på.</span></div>
+        <div><span class="pin p">4</span><span>Det planlagte står i din rækkefølge med én skala. Punkter, spilleren har svaret på, forsvinder med filteret. Resten ligger foldet under "Later".</span></div>
+      </div>
+    </div>
+
+    <!-- ───────── VOTE ───────── -->
+    <div>
+      <div class="blk-title"><span class="k">Anbefalet</span><span class="t">Fane 2 · Vote</span><span class="s">idéer, du overvejer</span></div>
+      <div class="frame">
+        <div class="tabs"><div class="tab">Plan<span class="cnt">3</span></div><div class="tab on">Vote<span class="cnt">12</span></div><div class="tab">Known issues<span class="cnt">7</span></div><div class="tab">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Ideas I am considering</span><span class="cm">Your ratings decide what moves to the plan</span></div>
+          <div class="seg"><span class="on">All 12</span><span>Races 3</span><span>Training 2</span><span>Youth 2</span><span>Market 2</span><span>Club 3</span></div>
+          <div class="row top"><div class="body"><div class="title">More facilities: more of your club to build than training and scouting.</div><div class="meta">Club</div></div>
+            <div class="axes"><div class="axis"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb on">6</span></span></div><div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb on">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          <div class="row top"><div class="body"><div class="title">Your club's look: logo, team colours and rider faces.</div><div class="meta">Club</div></div>
+            <div class="axes"><div class="axis"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div><div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          <div class="row top"><div class="body"><div class="title">Watch a stage as a 3D replay with your own riders and colours.</div><div class="meta">Races</div></div>
+            <div class="axes"><div class="axis"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div><div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          <div class="quiet">Have an idea of your own? Post it in the forum<svg class="ico" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+        <div class="pin" style="left:-12px;top:128px">5</div>
+        <div class="pin" style="right:-12px;top:176px">6</div>
+        <div class="pin" style="left:-12px;bottom:34px">7</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">5</span><span>Idéerne kan sorteres pr. område (løb, træning, ungdom, marked, klub), så ingen skal igennem alle på én gang.</span></div>
+        <div><span class="pin p">6</span><span>To skalaer som i dag. Stemmen gemmes, når begge er valgt, og spilleren ser kun sin egen.</span></div>
+        <div><span class="pin p">7</span><span>Nye idéer fra spillerne går gennem forummet. Du bestemmer, hvad der kommer på listen.</span></div>
+      </div>
+    </div>
+
+    <!-- ───────── KNOWN ISSUES ───────── -->
+    <div>
+      <div class="blk-title"><span class="k">Anbefalet</span><span class="t">Fane 3 · Known issues</span><span class="s">flyttet hertil fra Hjælp</span></div>
+      <div class="frame">
+        <div class="tabs"><div class="tab">Plan<span class="cnt">3</span></div><div class="tab">Vote<span class="cnt">12</span></div><div class="tab on">Known issues<span class="cnt">7</span></div><div class="tab">Done</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">Being worked on</span><span class="cm">7</span></div>
+          <div class="seg"><span class="on">All 7</span><span>Races 4</span><span>Training 1</span><span>Other 2</span></div>
+          <div class="row top"><span class="badge fix">Fix in progress</span><div class="body"><div class="title">Riders can attempt the morning break without the order you intended.</div><div class="meta">Races · updated 1 Oct</div>
+            <ul class="log"><li><b>1 Oct</b>The first correctness package is live. The new role rules are separate work.</li><li><b>30 Sep</b>I am making the existing roles and orders much clearer in the engine.</li></ul></div>
+            <span class="btn done"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Reported</span></div>
+          <div class="row top"><span class="badge inv">Investigating</span><div class="body"><div class="title">GC threats are not judged from the actual standing.</div><div class="meta">Races · updated 30 Sep</div></div><span class="btn">Affects me too</span></div>
+          <div class="row top"><span class="badge inv">Investigating</span><div class="body"><div class="title">Mountain points on a flat time trial.</div><div class="meta">Races · updated 30 Sep</div></div><span class="btn">Affects me too</span></div>
+          <div class="row top"><span class="badge fix">Fix in progress</span><div class="body"><div class="title">Deleted squad-selection reminders can come back.</div><div class="meta">Other · updated 30 Sep</div></div><span class="btn">Affects me too</span></div>
+          <div class="fold"><span>Fixed in the last 14 days · 2</span><svg class="ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+        </div>
+        <div class="pin" style="left:-12px;top:150px">8</div>
+        <div class="pin" style="left:-12px;top:212px">9</div>
+        <div class="pin" style="right:-12px;top:300px">10</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">8</span><span>Tre trin: Investigating, Fix in progress, Fixed. Du skifter trin bagved.</span></div>
+        <div><span class="pin p">9</span><span>Dine opdateringer står med dato under fejlen, nyeste først. Det er her, du giver løbende status.</span></div>
+        <div><span class="pin p">10</span><span>"Affects me too": ét tryk pr. manager. Spilleren ser kun sit eget tryk, du ser tallet bagved.</span></div>
+      </div>
+    </div>
+
+    <!-- ───────── DONE + MOBIL ───────── -->
+    <div>
+      <div class="blk-title"><span class="k">Anbefalet</span><span class="t">Fane 4 · Done, og telefonen</span><span class="s">375 px</span></div>
+      <div class="pair">
+        <div class="frame" style="flex:1">
+          <div class="tabs"><div class="tab">Plan</div><div class="tab">Vote</div><div class="tab">Known issues</div><div class="tab on">Done</div></div>
+          <div class="card">
+            <div class="ch"><span class="ct">Done</span><span class="cm">Newest first</span></div>
+            <div class="row"><span class="date">1 Oct</span><div class="body"><div class="title">Breakaways are no longer pulled backwards by the chase.</div></div><span class="badge ok">Fix</span></div>
+            <div class="row"><span class="date">23 Sep</span><div class="body"><div class="title">The training score for everyone.</div></div><span class="badge neutral">Feature</span></div>
+            <div class="row"><span class="date">21 Sep</span><div class="body"><div class="title">Graduation Day: once a season you decide who moves up, who is sold and who leaves.</div></div><span class="badge neutral">Feature</span></div>
+            <div class="row"><span class="date">19 Sep</span><div class="body"><div class="title">Your assistant tells you when it picked a squad you left empty.</div></div><span class="badge neutral">Feature</span></div>
+            <div class="row"><span class="date">14 Sep</span><div class="body"><div class="title">All trades in one list.</div></div><span class="badge neutral">Feature</span></div>
+          </div>
+          <div class="pin" style="left:-12px;top:120px">11</div>
+        </div>
+        <div class="phone" style="position:relative">
+          <div class="top">CYCLING ZONE</div>
+          <div class="pg">
+            <div class="ph" style="margin-bottom:10px"><div><h2>Roadmap</h2></div><div class="count">Rated <b>27</b> of 42</div></div>
+            <div class="tabs"><div class="tab">Plan<span class="cnt">3</span></div><div class="tab on">Vote<span class="cnt">12</span></div><div class="tab">Known issues<span class="cnt">7</span></div><div class="tab">Do</div></div>
+            <div class="check" style="margin-bottom:12px"><span class="box"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5"/></svg></span>Only what I have not rated</div>
+            <div class="card">
+              <div class="row" style="border-top:0;padding-top:0"><div class="title">More facilities: more of your club to build than training and scouting.</div><div class="meta">Club</div>
+                <div class="axes"><div class="axis"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb on">6</span></span></div><div class="axis"><span class="lbl">Important?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb on">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+              <div class="row"><div class="title">Your club's look: logo, team colours and rider faces.</div><div class="meta">Club</div>
+                <div class="axes"><div class="axis"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div><div class="axis"><span class="lbl">Important?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+            </div>
+          </div>
+          <div class="pin" style="right:-12px;top:250px">12</div>
+        </div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">11</span><span>Færdige ting og rettede fejl lander her med dato. Punktet flyttes, når det er live, og ikke før.</span></div>
+        <div><span class="pin p">12</span><span>Telefon: fanerne kan swipes, knapperne er 34 px, så de kan rammes med en tommelfinger.</span></div>
+      </div>
+    </div>
+
+    <!-- ───────── ADMIN ───────── -->
+    <div>
+      <div class="blk-title"><span class="k">Anbefalet</span><span class="t">Bagved · /admin/growth, ny fane "Roadmap"</span><span class="s">kun dig</span></div>
+      <div class="admin" style="position:relative">
+        <div class="stats">
+          <div><div class="l">Har stemt</div><div class="v">42 <small>af 276 hold</small></div></div>
+          <div><div class="l">Aktive 14 dage</div><div class="v">14</div></div>
+          <div><div class="l">Stemmer i alt</div><div class="v">1.121</div></div>
+          <div><div class="l">Har svaret på alt</div><div class="v">8</div></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Planen, som spillerne vil have den</span><span class="cm">Vigtighed 1-6</span></div>
+          <table>
+            <tr><th></th><th>Punkt</th><th class="n">Vigtighed</th><th class="n">Stemmer</th><th class="n">Din rækkefølge</th><th></th></tr>
+            <tr><td class="r">1</td><td>Ride for the mountain or points jersey</td><td class="n">5,17</td><td class="n">12</td><td class="n">1</td><td class="act"><span class="btn">Flyt</span> <span class="btn">Status</span></td></tr>
+            <tr><td class="r">2</td><td>Form training for riders who are done developing</td><td class="n">5,10</td><td class="n">10</td><td class="n">2</td><td class="act"><span class="btn">Flyt</span> <span class="btn">Status</span></td></tr>
+            <tr><td class="r">3</td><td>Your own young stars</td><td class="n">5,08</td><td class="n">37</td><td class="n">4</td><td class="act"><span class="btn">Flyt</span> <span class="btn">Status</span></td></tr>
+            <tr><td class="r">4</td><td>A training camp<span class="split">Deler spillerne</span></td><td class="n">4,80</td><td class="n">10</td><td class="n">3</td><td class="act"><span class="btn">Flyt</span> <span class="btn">Status</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Idéer</span><span class="cm">God idé × vigtighed</span></div>
+          <table>
+            <tr><th></th><th>Idé</th><th class="n">God idé</th><th class="n">Vigtighed</th><th class="n">Score</th><th class="n">Stemmer</th><th></th></tr>
+            <tr><td class="r">1</td><td>More facilities</td><td class="n">5,44</td><td class="n">4,56</td><td class="n">25,4</td><td class="n">9</td><td class="act"><span class="btn">Til planen</span></td></tr>
+            <tr><td class="r">2</td><td>Statistics and history</td><td class="n">5,06</td><td class="n">4,15</td><td class="n">21,4</td><td class="n">34</td><td class="act"><span class="btn">Til planen</span></td></tr>
+            <tr><td class="r">3</td><td>Sponsors reworked</td><td class="n">5,11</td><td class="n">3,89</td><td class="n">21,3</td><td class="n">9</td><td class="act"><span class="btn">Til planen</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Kendte fejl<span class="ex">tal er eksempler</span></span><span class="cm">Rammer også mig</span></div>
+          <table>
+            <tr><th>Fejl</th><th>Trin</th><th class="n">Ramt</th><th class="n">Åben i</th><th></th></tr>
+            <tr><td>Morning break without the intended order</td><td><span class="badge fix">Rettes</span></td><td class="n">19</td><td class="n">6 dage</td><td class="act"><span class="btn">Ny opdatering</span> <span class="btn">Trin</span></td></tr>
+            <tr><td>GC threats not judged from the standing</td><td><span class="badge inv">Undersøges</span></td><td class="n">11</td><td class="n">5 dage</td><td class="act"><span class="btn">Ny opdatering</span> <span class="btn">Trin</span></td></tr>
+          </table>
+        </div>
+        <div class="pin" style="left:-12px;top:160px">13</div>
+        <div class="pin" style="left:-12px;top:444px">14</div>
+        <div class="pin" style="left:-12px;top:682px">15</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">13</span><span>Spillernes rækkefølge ved siden af din egen. "Deler spillerne" markerer punkter, hvor svarene spreder sig meget.</span></div>
+        <div><span class="pin p">14</span><span>Idéer rangeret efter score. "Til planen" flytter en idé over på Plan-fanen og beholder stemmerne.</span></div>
+        <div><span class="pin p">15</span><span>Kendte fejl sorteret efter, hvor mange de rammer. Her skriver du opdateringer og skifter trin.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
