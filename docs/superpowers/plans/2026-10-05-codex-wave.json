@@ -24,11 +24,15 @@
       ]
     },
     {
-      "issue": 6062,
-      "branch": "codex/6062-period-roll-guard",
+      "issue": 6120,
+      "branch": "codex/6120-remove-deadline-day-cron",
       "ownership": [
-        "backend/lib/aluntaPeriodRollWatch.js",
-        "backend/lib/aluntaPeriodRollWatch.test.js"
+        "backend/lib/deadlineDayReport.js",
+        "backend/lib/deadlineDayReport.test.js"
+      ],
+      "touches": [
+        "backend/cron.js",
+        "backend/lib/cronMonitorRegistry.js"
       ]
     },
     {
