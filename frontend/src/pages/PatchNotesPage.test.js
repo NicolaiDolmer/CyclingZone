@@ -25,7 +25,10 @@ test("gemmer last-seen i localStorage", () => {
 });
 
 test("viser Beta-badge pr. punkt for beta-only ændringer (#5422), også fra gammelt stage-felt", () => {
-  assert.match(src, /change\.stage === "beta" \? "beta"/);
+  // Adfærden (gammelt stage: "beta" giver beta) bevises i patchNotes.test.js på effectiveRollout;
+  // her sikres kun at siden bruger den, så mærket og filteret aldrig kan glide fra hinanden.
+  assert.match(src, /effectiveRollout\(/);
+  assert.doesNotMatch(src, /change\.stage === "beta"/);
 });
 
 test("rollout-chip pr. change: fire markeringer, live uden chip (#6014)", () => {

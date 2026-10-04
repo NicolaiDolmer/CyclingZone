@@ -38,3 +38,22 @@ test("getAnonymousId falls back gracefully when storage throws", () => {
   const id = getAnonymousId(throwingStorage);
   assert.ok(typeof id === "string" && id.length > 0, "still returns an id in private mode");
 });
+
+test("getAnonymousId falls back when the window.localStorage lookup itself throws (CYCLINGZONE-8V)", () => {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const blocked = {};
+  Object.defineProperty(blocked, "localStorage", {
+    get() {
+      throw new Error("SecurityError: Access is denied for this document.");
+    },
+  });
+  Object.defineProperty(globalThis, "window", { value: blocked, configurable: true, writable: true });
+  try {
+    const id = getAnonymousId();
+    assert.equal(typeof id, "string");
+    assert.ok(id.length > 0);
+  } finally {
+    if (prev) Object.defineProperty(globalThis, "window", prev);
+    else delete globalThis.window;
+  }
+});

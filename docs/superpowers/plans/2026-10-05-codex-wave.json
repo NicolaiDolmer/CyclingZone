@@ -1,7 +1,9 @@
 {
+  "lanes": 4,
   "tracks": [
     {
       "issue": 5692,
+      "title": "Ranking-refresh: concurrent RPC uden laeselaas",
       "branch": "codex/5692-ranking-refresh-readers",
       "ownership": [
         "backend/lib/refreshRankingMatviews.js",
@@ -16,6 +18,7 @@
     },
     {
       "issue": 6132,
+      "title": "Bulk-regenerate: brugte loebsdage efter holdskifte",
       "branch": "codex/6132-bulk-regenerate-used-race-days",
       "ownership": [
         "backend/lib/raceHubAutofill.js",
@@ -25,6 +28,7 @@
     },
     {
       "issue": 6120,
+      "title": "Fjern doed Deadline Day-cron",
       "branch": "codex/6120-remove-deadline-day-cron",
       "ownership": [
         "backend/lib/deadlineDayReport.js",
@@ -37,6 +41,7 @@
     },
     {
       "issue": 5792,
+      "title": "Nightly Playwright smoke: undersoeg konkret fejl",
       "branch": "codex/5792-nightly-smoke",
       "ownership": [
         "frontend/tests/e2e/core-smoke.spec.js",

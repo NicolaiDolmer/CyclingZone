@@ -280,6 +280,10 @@ export const RACE_DEPENDENCY_TABLES = Object.freeze([
   { table: "rider_reputation_events", column: "race_id", group: "gameplay" },
   { table: "rider_peak_plans", column: "target_race_id", group: "gameplay" },
   { table: "finance_transactions", column: "race_id", group: "gameplay" },
+  // Løbsdags-modellen (#5267): en rytters løbsdag og løbets træningsbelastning er
+  // spillerdata der ville gå tabt. Fail-closed som resten af gameplay-gruppen.
+  { table: "race_day_participation", column: "race_id", group: "gameplay" },
+  { table: "training_race_loads", column: "race_id", group: "gameplay" },
 
   // ── Ren UI-seen-state: nulles, gater ikke ──
   { table: "teams", column: "my_result_seen_race_id", group: "ui" },
