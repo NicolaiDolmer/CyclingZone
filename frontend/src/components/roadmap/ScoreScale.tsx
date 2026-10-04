@@ -1,6 +1,8 @@
 // #6150: én 1-6-skala ("Good idea?" eller "Important to you?"). Den tidligere
 // VoteAxis fra RoadmapPage.jsx flyttet ud, så Plan- og Vote-fanen deler den.
 // Knapperne er 28 px på desktop og mindst 34 px på telefon (spec §3.6).
+// Skalaens venstrekant står fast (etiketten har fast bredde fra sm), så Vote-
+// fanens rækker med og uden andet trin flugter (spec §3.2).
 import { SCALE } from "../../lib/roadmapVoting.js";
 
 export interface ScoreScaleProps {
@@ -12,8 +14,10 @@ export interface ScoreScaleProps {
 
 export default function ScoreScale({ label, value, disabled = false, onSelect }: ScoreScaleProps) {
   return (
-    <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-      <span className="text-cz-3 text-xs">{label}</span>
+    <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+      {/* Fast etiket-bredde fra sm: skalaen starter i samme kolonne i alle
+          rækker, uanset om "Important to you?" (den længste) står fremme. */}
+      <span className="text-cz-3 text-xs sm:w-28 sm:shrink-0">{label}</span>
       <div role="radiogroup" aria-label={label} className="flex gap-1">
         {(SCALE as number[]).map((n) => (
           <button

@@ -115,3 +115,26 @@ test("pre-selecter KUN egne stemmer, andres lækker ikke ind (#1599 privacy)", a
   ).not.toBeChecked();
   await expect(racesItem.getByRole("radiogroup", { name: IMPORTANCE })).toHaveCount(0);
 });
+
+// Fund 3 (PR #6160): skalaernes venstrekant står ens i en besvaret række (to
+// trin fremme) og en ubesvaret række (kun "God idé?"). Kun højden må variere.
+test("skalaerne flugter i besvarede og ubesvarede rækker (#6150 spec §3.2)", async ({ page }) => {
+  await setup(page, []);
+  await page.getByLabel(ONLY_UNRATED).uncheck();
+  const answered = page.locator("li", { hasText: ROADMAP_ITEMS[1].title_da });
+  const open = page.locator("li", { hasText: ROADMAP_ITEMS[0].title_da });
+  await expect(answered.getByRole("radiogroup", { name: IMPORTANCE })).toBeVisible();
+  await expect(open.getByRole("radiogroup", { name: IMPORTANCE })).toHaveCount(0);
+
+  const x = async (row, name) => (await row.getByRole("radiogroup", { name }).boundingBox()).x;
+  const answeredIdea = await x(answered, IDEA);
+  const answeredImportance = await x(answered, IMPORTANCE);
+  const openIdea = await x(open, IDEA);
+  expect(Math.abs(answeredIdea - openIdea)).toBeLessThanOrEqual(1);
+  expect(Math.abs(answeredImportance - answeredIdea)).toBeLessThanOrEqual(1);
+
+  // Og den står fast, når andet trin folder ud i den ubesvarede række.
+  await open.getByRole("radiogroup", { name: IDEA }).getByRole("radio", { name: "4", exact: true }).click();
+  await expect(open.getByRole("radiogroup", { name: IMPORTANCE })).toBeVisible();
+  expect(Math.abs((await x(open, IDEA)) - openIdea)).toBeLessThanOrEqual(1);
+});

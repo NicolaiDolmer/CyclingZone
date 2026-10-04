@@ -9,6 +9,7 @@ import {
   stabilizePage,
   json,
   corsHeaders,
+  ROADMAP_ITEMS,
   TEST_USER,
 } from "./fixtures.js";
 
@@ -139,4 +140,58 @@ test("375 px: ingen vandret scroll på nogen fane", async ({ page }) => {
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth, `fanen ${tab}`).toBeLessThanOrEqual(375);
   }
+});
+
+// Fund 1 (PR #6160): på 375 px skal fanerækken og Vote-fanens områdefilter
+// hver stå på ÉN linje og scrolle vandret inde i rækken, så "Færdigt" kan nås.
+// Idéer i alle fem områder, så filteret har seks valg som i prod.
+test("375 px: fanerækken scroller til Færdigt, og fanerække og områdefilter står på én linje", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await loggedIn(page);
+  const extra = ["races", "training", "youth", "market", "club"].map((engine, i) => ({
+    id: `rm-extra-${i}`, engine, sort_order: 50 + i, title_en: `Idea ${i}.`, title_da: `Idé nummer ${i}.`,
+    approved: true, status: "active", horizon: "next", beta_since: null, beta_soon: false, live_soon: false,
+    created_at: "2026-09-20T00:00:00Z", shipped_at: null,
+  }));
+  await page.route("**/rest/v1/roadmap_items*", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, [...ROADMAP_ITEMS, ...extra]);
+  });
+  await page.goto("/roadmap?tab=vote");
+  const areas = page.getByRole("group", { name: /område/i });
+  await expect(areas).toBeVisible();
+
+  // Én linje: alle elementer i rækken har samme top og samme højde (ingen brudte labels).
+  const oneLine = (selector) => page.evaluate((sel) => {
+    const els = [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect());
+    return {
+      tops: Math.max(...els.map((r) => r.top)) - Math.min(...els.map((r) => r.top)),
+      heights: Math.max(...els.map((r) => r.height)) - Math.min(...els.map((r) => r.height)),
+      count: els.length,
+    };
+  }, selector);
+  const tabs = await oneLine('[role="tablist"] [role="tab"]');
+  expect(tabs.count).toBe(5);
+  expect(tabs.tops).toBeLessThanOrEqual(1);
+  expect(tabs.heights).toBeLessThanOrEqual(1);
+  const segs = await oneLine('main [role="group"] > button');
+  expect(segs.count).toBe(6);
+  expect(segs.tops).toBeLessThanOrEqual(1);
+  expect(segs.heights).toBeLessThanOrEqual(1);
+
+  // Fanerækken kan scrolles, til "Færdigt" står helt inden for rækken og skærmen.
+  const done = page.getByRole("tab", { name: /Færdigt/ });
+  await page.locator('[role="tablist"]').evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  const fit = await done.evaluate((el) => {
+    const t = el.getBoundingClientRect();
+    const l = el.closest('[role="tablist"]').getBoundingClientRect();
+    return { tabRight: t.right, listRight: l.right, tabLeft: t.left, listLeft: l.left };
+  });
+  expect(fit.tabRight).toBeLessThanOrEqual(fit.listRight + 1);
+  expect(fit.tabLeft).toBeGreaterThanOrEqual(fit.listLeft - 1);
+  expect(fit.listRight).toBeLessThanOrEqual(375);
+  await done.click();
+  await expect(page).toHaveURL(/[?&]tab=done/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });

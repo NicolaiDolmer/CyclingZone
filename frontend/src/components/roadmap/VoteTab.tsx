@@ -70,7 +70,12 @@ export default function VoteTab(props: VoteTabProps) {
 
   return (
     <Section aria-busy={loading || undefined}>
-      <SectionHeader title={t("vote.title")} meta={t("vote.hint")} />
+      {/* Telefon: titel og hint stakkes, så titlen aldrig brydes mod hintet. */}
+      <SectionHeader
+        title={t("vote.title")}
+        meta={t("vote.hint")}
+        className="flex-col gap-y-1 sm:flex-row sm:gap-y-3"
+      />
       {loading ? (
         <SkeletonRows withScale />
       ) : ideas.length === 0 && onlyUnrated ? (
@@ -83,8 +88,10 @@ export default function VoteTab(props: VoteTabProps) {
       ) : (
         <>
           {counts.length > 1 && (
+            // Én linje, der scroller vandret inde i rækken (spec §3.6): w-max
+            // hindrer at segmenterne presses sammen og bryder over flere linjer.
             <div className="mb-2 max-w-full overflow-x-auto">
-              <Segmented label={t("vote.areaLabel")} value={activeArea} onChange={setArea} options={options} />
+              <Segmented label={t("vote.areaLabel")} value={activeArea} onChange={setArea} options={options} className="w-max" />
             </div>
           )}
           <ul className={ROW_LIST}>

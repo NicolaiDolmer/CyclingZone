@@ -125,7 +125,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
     <SectionStack>
       {counts.length > 1 && (
         <div className="max-w-full overflow-x-auto">
-          <Segmented label={t("issues.areaLabel")} value={activeArea} onChange={setArea} options={options} />
+          <Segmented label={t("issues.areaLabel")} value={activeArea} onChange={setArea} options={options} className="w-max" />
         </div>
       )}
 

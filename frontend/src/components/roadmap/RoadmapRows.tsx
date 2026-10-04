@@ -17,9 +17,12 @@ export function NewDot({ label }: { label: string }) {
 
 export function RowTitle({ children, isNew, newLabel }: { children: ReactNode; isNew?: boolean; newLabel: string }) {
   return (
-    <span className="inline-flex items-start gap-2">
-      <span className="text-cz-1 text-sm leading-relaxed">{children}</span>
-      {isNew && <span className="mt-2"><NewDot label={newLabel} /></span>}
+    // Prikken står i en boks på præcis én tekstlinjes højde (1lh) og centreres
+    // i den: samme linje som titlen, lodret midt for første linje, og rækken
+    // bliver ikke højere end en række uden prik.
+    <span className="inline-flex items-start gap-2 text-sm leading-relaxed">
+      <span className="text-cz-1">{children}</span>
+      {isNew && <span className="flex h-[1lh] shrink-0 items-center"><NewDot label={newLabel} /></span>}
     </span>
   );
 }
