@@ -69,7 +69,12 @@ const LIVE_RESULTS = [
  * Mocker ét løb + dets stage-roles-kontekst. Returnerer en getter til den
  * sidst opfangede PUT-body.
  */
-async function mockTacticsRace(page, { race, validEfforts, overrides = [], results = [] }) {
+async function mockTacticsRace(page, {
+  race, validEfforts, overrides = [], results = [],
+  // #6095: beta-flaget for etape-valget i rollevælgeren + et valgfrit PUT-svar
+  // (fx 409 stage_roles_conflict). Default = 200 ok, som før.
+  roleScopeChoice = false, putResponse = null, riders = RIDERS,
+}) {
   let capturedBody = null;
   await page.route("**/rest/v1/races**", (route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
@@ -91,10 +96,10 @@ async function mockTacticsRace(page, { race, validEfforts, overrides = [], resul
         capturedBody = {};
       }
       return route.fulfill({
-        status: 200,
+        status: putResponse?.status ?? 200,
         contentType: "application/json",
         headers: corsHeaders(request),
-        body: JSON.stringify({ ok: true }),
+        body: JSON.stringify(putResponse?.body ?? { ok: true }),
       });
     }
     return route.fulfill({
@@ -107,8 +112,9 @@ async function mockTacticsRace(page, { race, validEfforts, overrides = [], resul
         valid_efforts: validEfforts,
         stages_completed: race.stages_completed,
         stage_count: race.stages,
-        riders: RIDERS,
+        riders,
         overrides,
+        role_scope_choice: roleScopeChoice,
       }),
     });
   });
@@ -222,12 +228,65 @@ test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre eta
   await saveBtn.click();
   await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
 
-  // Kun den ændrede rytter på etape 2 — OG etape 3's eksisterende intention,
-  // som et REPLACE-gem ellers ville slette.
+  // Hele kladden sendes stadig (en backend fra før #6095 er REPLACE for alt
+  // kommende) — men #6095: serveren må KUN erstatte etape 2, den eneste ændrede.
   expect(getBody().overrides).toEqual([
     { stage_number: 2, rider_id: "r1", race_role: "captain", effort: "all_out" },
     { stage_number: 3, rider_id: "r2", race_role: "helper", effort: "save" },
   ]);
+  expect(getBody().stages).toEqual([2]);
+  expect(getBody().base_versions).toEqual({ 2: "empty" });
+});
+
+// #6095: en anden fane/enhed har ændret etapen siden indlæsning. Gemmet må ikke
+// overskrive; fanen henter den nyeste udgave og siger det i én sætning.
+test("taktik (#6095): konflikt fra en anden fane overskriver intet og forklarer hvorfor", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockTacticsRace(page, {
+    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    putResponse: { status: 409, body: { error: "stage_roles_conflict", errors: ["stage_roles_conflict"] } },
+  });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
+  await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
+  await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
+  await expect(visible(panel.getByText("Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen."))).toBeVisible();
+  // Kladden er kasseret: fanen viser serverens udgave igen.
+  await expect(visible(panel.getByText("Standard: kaptajn. I dag: alt ud."))).toHaveCount(0);
+});
+
+// #6095 (beta): "etape N og løbet ud" er forvalgt; "kun etape N" ændrer kun den
+// åbne etape. Uden flaget findes valget ikke.
+test("taktik (#6095, beta): rollevælgeren har etape-valg, og 'kun etape 2' skriver kun etape 2", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const getBody = await mockTacticsRace(page, {
+    race: raceFixture({ stages: 4, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    roleScopeChoice: true,
+  });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await visible(panel.getByRole("button", { name: "Skift Rider Twos rolle" })).click();
+  const rest = visible(panel.getByRole("radio", { name: "Etape 2 og løbet ud" }));
+  const only = visible(panel.getByRole("radio", { name: "Kun etape 2" }));
+  await expect(rest).toHaveAttribute("aria-checked", "true");
+  await expect(only).toHaveAttribute("aria-checked", "false");
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/6095-role-scope-${testInfo.project.name}.png`) });
+
+  await only.click();
+  await visible(panel.getByRole("button", { name: /^Udbrudsjæger/ })).click();
+  await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
+  await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
+  expect(getBody().stages).toEqual([2]);
+  expect(getBody().overrides).toEqual([{ stage_number: 2, rider_id: "r2", race_role: "hunter", effort: "normal" }]);
 });
 
 test("taktik: en kørt etape kan åbnes, men er read-only", async ({ page }) => {
@@ -376,4 +435,21 @@ test.describe("#5290 tactics calendar date", () => {
       }
     });
   }
+});
+
+test("taktik (#6095): uden beta-flaget har rollevælgeren intet etape-valg", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockTacticsRace(page, {
+    race: raceFixture({ stages: 4, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+  });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await visible(panel.getByRole("button", { name: "Skift Rider Twos rolle" })).click();
+  await expect(panel.getByRole("radio")).toHaveCount(0);
+  await expect(visible(panel.getByText("Fra etape 2 og løbet ud"))).toBeVisible();
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/6095-role-noscope-${testInfo.project.name}.png`) });
 });

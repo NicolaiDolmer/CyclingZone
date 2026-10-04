@@ -831,7 +831,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       <div className="px-4 py-3 border-b border-cz-border flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm">{t("racePage.tactics.title")}</h2>
-          <p className="text-cz-3 text-xs mt-0.5">{t(isOneDay ? "racePage.tactics.helpRaceDay" : "racePage.tactics.help")}</p>
+          <p className="text-cz-3 text-xs mt-0.5">{t(isOneDay ? "racePage.tactics.helpRaceDay" : scopeChoice ? "racePage.tactics.helpScoped" : "racePage.tactics.help")}</p>
           {ordersGc && (
             <p data-testid="race-rules-revision" className="text-xs mt-1 text-cz-2">
               <span className="text-cz-3">{t("tacticsOrders.ordersGc.rulesLabel")}:</span>{" "}

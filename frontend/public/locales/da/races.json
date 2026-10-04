@@ -779,6 +779,7 @@
     "tactics": {
       "title": "Taktik",
       "help": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på den etape, du har åben.",
+      "helpScoped": "Du vælger selv, hvilke etaper en rolle gælder for. Intentionen og ordrerne er, hvad du vil have på den etape, du har åben.",
       "helpRaceDay": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på løbsdagen.",
       "colOrders": "Ordrer · etape {number}",
       "colOrdersRaceDay": "Ordrer · løbsdag",

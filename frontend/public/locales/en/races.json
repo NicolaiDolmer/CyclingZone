@@ -779,6 +779,7 @@
     "tactics": {
       "title": "Tactics",
       "help": "The role runs all race. The intention and the orders are what you want on the stage you have open.",
+      "helpScoped": "You choose which stages a role applies to. The intention and the orders are what you want on the stage you have open.",
       "helpRaceDay": "The role runs all race. The intention and the orders are what you want on race day.",
       "colOrders": "Orders · stage {number}",
       "colOrdersRaceDay": "Orders · race day",
