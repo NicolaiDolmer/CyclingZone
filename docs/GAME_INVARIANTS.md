@@ -123,6 +123,19 @@ Dette er et regressionsværn for process-lokal samtidighed, ikke et bevis for
 #5692's ejer-godkendte friskhedsmål eller fuld load-test. Schedulerbudget, holdbare
 claims/restarts, cross-process coordination og concurrent transport er separate.
 
+**Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
+`database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
+boolean-overloads paa den eksisterende RPC-transport. Kun service_role maa kalde
+dem; alle fem SECURITY DEFINER-overloads bruger `SET search_path = public, pg_temp`,
+med `pg_temp` eksplicit sidst. Katalogtesten kontrollerer dette efter foerste og
+gentagen apply. Argumentet skal vaere `p_concurrently = true`. False/NULL og manglende
+populated view/egnet UNIQUE-indeks fejler uden plain-refresh-fallback. De gamle
+nul-argument-funktioner bevares. Migrationen er additiv og aktiverer ingen Node-
+kaldesti eller scheduler. Node-PR #6153 holdes draft og frigives foerst efter
+saerskilt ejer-go, observeret SQL-apply, signatures/grants/schema-cache-verifikation
+og reel staging-transport. Dette er en deploy-kontrakt, ikke et prod-/load- eller
+femminutters-friskhedsbevis. Heartbeat kraever stadig fem vellykkede commits.
+
 ## Matviews eksponeret i API (fog of war-gennemgang 6/9, [#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870))
 
 Fire materialized views indeholder offentlige resultataggregater. #5176 flytter klientlæsningen bag `/api/rankings/*` med eksisterende login-kontrol, validerede filtre, eksplicitte kolonner og stabil server-paginering. Ejeren har godkendt to trin: PR #5183 udgiver læsningen; revoke-SQL ligger i `database/proposals/` og aktiveres først i en særskilt godkendt PR efter deploy- og klientkontrol. Første merge ændrer ingen database-rettigheder. Se [SUPABASE_SECURITY_ADVISORS.md](SUPABASE_SECURITY_ADVISORS.md). **Et matview kender ikke RLS**. Reglen er fortsat: et felt i API-kontrakten må kun være noget spilleren må se; et service_role-endpoint skal håndhæve denne kontrakt selv.
