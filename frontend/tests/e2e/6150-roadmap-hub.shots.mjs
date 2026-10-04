@@ -6,17 +6,24 @@
 // fixtures.js' installNetworkMocks + login, og derefter egne svar for
 // roadmap_items, known_issues, known_issue_updates, roadmap_votes,
 // known_issue_reports og /api/me/beta-access. Titlerne er de rigtige punkter fra
-// docs/drafts/2026-10-04-roadmap-indhold.md (afsnit 1, 2, 5.6 og 6c), på engelsk
-// som spilleren ser dem.
+// docs/drafts/2026-10-04-roadmap-indhold.md (afsnit 1, 2, 3, 5.6 og 6c), på
+// engelsk som spilleren ser dem, rettet efter ejerens godkendelser i afsnit 8
+// (4/10): minimumspris ud af Vote, skader nulstilles flyttet til planen, ingen
+// Pro-betaling og ingen skjult N15 på planen, ingen "For everyone soon", og
+// "Coming to beta" har kun N4. Kendte fejls titel og første opdatering er
+// ordret fra afsnit 3.
 //
 //   EFTER (branchen) = vite preview af branchens dist
 //   I DAG (main)     = vite preview af en main-build
 //   node tests/e2e/6150-roadmap-hub.shots.mjs <efter-url> <i-dag-url> <ud-mappe>
 //
+// <i-dag-url> = "reuse" genbruger raw-i-dag.png og boxes.before fra en tidligere
+// kørsel i ud-mappen (main-siden har ikke ændret sig), så kun EFTER tages om.
+//
 // Skriver raa PNG'er, boxes.json, foer-efter.html og foer-efter.png i ud-mappen.
 
 import { chromium } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -43,9 +50,10 @@ const da = (t) => t; // DA-titlerne vises ikke (EN-visning); feltet skal bare fi
 
 const ITEMS = [
   // Plan: i gang (afsnit 6c "In progress": N4, N9)
-  item({ status: "in_progress", engine: "training", title_en: "On the Program tab, pick the rider first and then his program." }),
+  item({ status: "in_progress", engine: "training", title_en: "On the Program tab, pick the rider first and then his program.", beta_soon: true }),
   item({ status: "in_progress", engine: "training", title_en: "Development 2.0: one clear development curve, racing that pays off by role, and a decline in older riders you can slow down." }),
-  // Plan: Next (afsnit 6c)
+  // Plan: Next (afsnit 8, liste 2: ejerens rækkefølge). "Potentiale ud af
+  // værdimodellen" mangler, fordi udkastet ikke har en EN-titel til det.
   item({ status: "planned", engine: "races", title_en: "Secondary rider type explained" }),
   item({ status: "planned", engine: "races", title_en: "Peak where in a stage race, main + backup goal" }),
   item({ status: "planned", engine: "training", title_en: "Race sharpener" }),
@@ -54,7 +62,8 @@ const ITEMS = [
   item({ status: "planned", engine: "club", title_en: "Send a message to another manager straight from his team page." }),
   item({ status: "planned", engine: "youth", title_en: "Move a rider from the transfer list to your U23 squad." }),
   item({ status: "planned", engine: "training", title_en: "Copy one day's training plan to the next days.", created_at: NEW }),
-  item({ status: "planned", engine: "races", title_en: "Teamwork and Leadership values for the riders already in the game, not only new ones." }),
+  item({ status: "planned", engine: "training", title_en: "Injuries reset at the season switch, the same way fatigue does." }),
+  item({ status: "planned", engine: "races", title_en: "A shared captain: a second rider with his own GC chance, without a free role's breakaway or a helper's sacrifice." }),
   item({ status: "planned", engine: "club", title_en: "A faster game: pages that open quickly, also on your phone." }),
   // Plan: Later (afsnit 6c)
   item({ status: "planned", horizon: "later", engine: "races", title_en: "Road captains and mentors" }),
@@ -64,22 +73,20 @@ const ITEMS = [
   item({ status: "planned", horizon: "later", engine: "races", title_en: "Conditional orders: tell a rider what to do if something happens, for example chase only if other teams help." }),
   item({ status: "planned", horizon: "later", engine: "races", title_en: "Team time trials: your riders ride together against the clock and get the team's time." }),
   // Beta (afsnit 6c, 5 punkter)
-  item({ status: "in_progress", engine: "training", title_en: "Train now: run today's training when it suits you, with the same result as the evening run.", beta_since: "2026-09-29T08:00:00Z", live_soon: true }),
+  item({ status: "in_progress", engine: "training", title_en: "Train now: run today's training when it suits you, with the same result as the evening run.", beta_since: "2026-09-29T08:00:00Z" }),
   item({ status: "in_progress", engine: "training", title_en: "Training groups: one plan for several riders, and each rider keeps his own copy.", beta_since: "2026-09-30T08:00:00Z" }),
   item({ status: "in_progress", engine: "training", title_en: "Ready-made training programs per race day.", beta_since: "2026-10-02T08:00:00Z" }),
   item({ status: "in_progress", engine: "races", title_en: "The season matrix in Planning fits your phone screen.", beta_since: "2026-10-01T08:00:00Z" }),
   item({ status: "in_progress", engine: "races", title_en: "Choose whether a role applies from this stage to the end, or to this stage only.", beta_since: "2026-10-03T08:00:00Z", created_at: NEW }),
-  // Vote: 12 af de 30 idéer (afsnit 6c)
+  // Vote: 10 af de 28 idéer (afsnit 6c minus de to, afsnit 8 tog ud)
   item({ engine: "races", title_en: "See a rider's age and abilities in a pop-up while you plan training or use the Planning board." }),
   item({ engine: "races", title_en: "Iconic races are written by hand, so a classic stays the same classic every season." }),
   item({ engine: "races", title_en: "AI teams field riders that fit their division, so Division 4 is no walkover." }),
   item({ engine: "training", title_en: "Each ability and power number explained in plain words when you hover over it or tap it." }),
-  item({ engine: "training", title_en: "Injuries reset at the season switch, the same way fatigue does." }),
   item({ engine: "training", title_en: "See on the training page how many days until each rider's next race." }),
   item({ engine: "youth", title_en: "Lower age limits for the youth classification and juniors." }),
   item({ engine: "youth", title_en: "Prize money in youth races." }),
   item({ engine: "market", title_en: "Filter the rider database by division." }),
-  item({ engine: "market", title_en: "Set a minimum price on your own riders, so offers below it are turned down automatically." }),
   item({ engine: "club", title_en: "A longer break between seasons, with time to plan the new one." }),
   item({ engine: "club", title_en: "See which riders the board counts as your stars." }),
   // Done (afsnit 1 "S" + afsnit 2 "Nye Done-rækker")
@@ -116,21 +123,22 @@ const issue = (o) => ({
   updated_at: "2026-10-01T08:00:00Z", closed_at: null, ...o,
 });
 const ISSUES = [
-  // Confirmed (afsnit 5.6)
-  issue({ status: "fixing", area: "training", title_en: "Fatigue and form moved too much", updated_at: "2026-10-03T08:00:00Z" }),
-  issue({ status: "confirmed", area: "races", title_en: "A dangerous GC rider in a breakaway gets no reaction", updated_at: "2026-10-02T08:00:00Z" }),
-  issue({ status: "confirmed", area: "training", title_en: "You can't put a rider back on the team program", updated_at: "2026-10-03T08:00:00Z" }),
-  // Reported, being checked (afsnit 5.6)
-  issue({ status: "checking", area: "club", title_en: "Board messages repeat" }),
-  issue({ status: "checking", area: "training", title_en: "Development feels slower" }),
-  issue({ status: "checking", area: "other", title_en: "Deleted reminders come back" }),
-  issue({ status: "checking", area: "races", title_en: "The race film repeats itself" }),
+  // Confirmed (fordeling fra afsnit 5.6, titler ordret fra afsnit 3)
+  issue({ status: "fixing", area: "training", title_en: "Fatigue and form moved far more in a day than they should.", updated_at: "2026-10-03T08:00:00Z" }),
+  issue({ status: "confirmed", area: "races", title_en: "A dangerous GC rider can get into the break without the GC teams reacting.", updated_at: "2026-10-02T08:00:00Z" }),
+  issue({ status: "confirmed", area: "training", title_en: "You can't remove a rider's own plan or put him back on the team program.", updated_at: "2026-10-03T08:00:00Z" }),
+  // Reported, being checked (fordeling fra afsnit 5.6, titler ordret fra afsnit 3)
+  issue({ status: "checking", area: "club", title_en: "Board messages repeat after you negotiate, and the 3-year plan prompt leads nowhere." }),
+  issue({ status: "checking", area: "training", title_en: "Riders seem to develop more slowly with the new training." }),
+  issue({ status: "checking", area: "other", title_en: "A squad selection reminder you deleted comes back." }),
   // Fixed seneste 14 dage (afsnit 5.6)
   issue({ status: "fixed", area: "races", title_en: "The chase pushed breakaway riders backwards", closed_at: "2026-10-02T12:00:00Z" }),
 ].map((i) => ({ ...i, title_da: i.title_en }));
+// Første opdatering for hver bekræftet fejl, ordret fra afsnit 3 (EN / DA).
 const UPDATES = [
-  { id: "u1", issue_id: ISSUES[0].id, body_en: "I have found the cause.", body_da: "Jeg har fundet årsagen.", created_at: "2026-09-30T10:00:00Z" },
-  { id: "u2", issue_id: ISSUES[0].id, body_en: "The first part of the fix is live.", body_da: "Første del af rettelsen er live.", created_at: "2026-10-03T10:00:00Z" },
+  { id: "u1", issue_id: ISSUES[0].id, body_en: "Fatigue and form were recalculated with the fixed model, and earlier training was restored for affected riders. A few cases are still being reviewed.", body_da: "Træthed og form er regnet om med den rettede model, og tidligere træning er genoprettet for de berørte ryttere. Nogle få tilfælde gennemgås stadig.", created_at: "2026-10-03T10:00:00Z" },
+  { id: "u2", issue_id: ISSUES[1].id, body_en: "On the new race rules, GC teams react with their free helpers when a threat is up the road. I still get reports of GC riders getting away, and I'm checking them against the standings before the stage.", body_da: "Med de nye løbsregler reagerer klassementsholdene med deres ledige hjælpere, når en trussel er kørt væk. Jeg får stadig meldinger om klassementsryttere, der slipper afsted, og tjekker dem op mod stillingen før etapen.", created_at: "2026-10-02T10:00:00Z" },
+  { id: "u3", issue_id: ISSUES[2].id, body_en: "Reported by players. I'm checking the training page and adding a way back to the team program if it's missing.", body_da: "Meldt ind af spillere. Jeg tjekker træningssiden og tilføjer en vej tilbage til holdets program, hvis den mangler.", created_at: "2026-10-03T09:00:00Z" },
 ];
 const REPORTS = [{ issue_id: ISSUES[3].id, user_id: uid }];
 
@@ -187,7 +195,12 @@ const boxes = {};
 
 // ---- I DAG (main)
 const PAD = 16;
-{
+const REUSE_BEFORE = BEFORE === "reuse";
+if (REUSE_BEFORE) {
+  const prev = resolve(OUT, "boxes.json");
+  if (!existsSync(prev) || !existsSync(resolve(OUT, "raw-i-dag.png"))) throw new Error("reuse kræver boxes.json og raw-i-dag.png i ud-mappen");
+  boxes.before = JSON.parse(readFileSync(prev, "utf8")).before;
+} else {
   const { context, page } = await open(browser, BEFORE, { width: 1440, height: 900, onlyUnrated: true });
   await page.goto("/roadmap");
   await page.getByText("See a rider's age", { exact: false }).first().waitFor({ timeout: 20000 });
@@ -210,7 +223,7 @@ const TABS = [
   { tab: "plan", wait: "Secondary rider type explained" },
   { tab: "beta", wait: "In beta now" },
   { tab: "vote", wait: "Ideas I am considering" },
-  { tab: "issues", wait: "Fatigue and form moved too much" },
+  { tab: "issues", wait: "Fatigue and form moved far more" },
   { tab: "done", wait: "Why a stage went the way it did" },
 ];
 boxes.after = {};
@@ -220,7 +233,6 @@ boxes.after = {};
     await page.goto(`/roadmap?tab=${tab}`);
     await page.getByText(wait).first().waitFor({ timeout: 20000 });
     if (tab === "plan") await page.getByText(/^Later · /).first().click(); // fold Later ud
-    if (tab === "issues") await page.getByText(/^Earlier updates/).first().click().catch(() => {});
     await page.waitForTimeout(800);
     const c = await rectOf(page.locator("main .max-w-4xl").first());
     const col = { x: c.x - PAD, y: c.y - PAD, w: c.w + 2 * PAD, h: c.h + 2 * PAD };
@@ -234,14 +246,14 @@ boxes.after = {};
     }
     if (tab === "beta") {
       b.join = await rel(col, page.getByText("Join the beta", { exact: true }));
-      b.soon = await rel(col, page.getByText("For everyone soon", { exact: true }));
+      b.soon = await rel(col, page.getByText("On the Program tab, pick the rider first", { exact: false }));
     }
     if (tab === "vote") {
       b.answered = await rel(col, page.getByText("See a rider's age", { exact: false }));
       b.open = await rel(col, page.getByText("Iconic races are written by hand", { exact: false }));
     }
     if (tab === "issues") {
-      b.updates = await rel(col, page.getByText("The first part of the fix is live.").locator("xpath=.."));
+      b.updates = await rel(col, page.getByText("Fatigue and form were recalculated", { exact: false }).locator("xpath=.."));
       b.checking = await rel(col, page.getByText("Players have reported these", { exact: false }));
       b.report = await rel(col, page.getByRole("button", { name: "Reported" }));
     }
@@ -340,20 +352,20 @@ const noteY = yB;
 html.push(`<div class="note" style="left:${xB}px;top:${noteY}px;width:${BW}px">I dag er alt én lang side uden faner: hvert område har sin egen blok, og hver idé har to skalaer under sig. Med billedets 12 idéer er siden ${B.screens} skærme lang i 1440 px; prod har flere punkter og er længere. Planlagte og igangværende punkter vises slet ikke (main henter kun status active og shipped).</div>`);
 html.push(`<div class="title" style="left:${xB}px">I DAG (main)</div>`);
 html.push(`<div class="title" style="left:${xR}px">EFTER #6150: /roadmap i fem faner</div>`);
-html.push(`<div class="sub" style="left:${xR}px">Ægte punkter fra roadmap-indholdsudkastet (afsnit 1, 2, 5.6 og 6c), mocket lokalt. Filteret "Only what I have not rated" er slået fra på 1440-billederne, så besvarede punkter ses.</div>`);
+html.push(`<div class="sub" style="left:${xR}px">Ægte punkter fra roadmap-indholdsudkastet (afsnit 1, 2, 3, 5.6 og 6c) efter ejerens godkendelser 4/10 (afsnit 8), mocket lokalt. Filteret "Only what I have not rated" er slået fra på 1440-billederne, så besvarede punkter ses.</div>`);
 
 const legend = [
   "Fem faner med tal: Plan og Vote viser, hvor mange du mangler at bedømme; Known issues viser bekræftede fejl. I dag: ingen faner.",
-  "Filteret \"Only what I have not rated\" (standard til, huskes) og tælleren \"Rated 6 of 28\".",
+  "Filteret \"Only what I have not rated\" (standard til, huskes) og tælleren \"Rated 6 of 27\".",
   "Plan har kun én skala, \"Important to you?\". I dag har hvert punkt to skalaer (idé + vigtighed).",
   "Later-folden: punkterne efter de næste ti ligger samlet og foldes ud.",
   "Gul prik ved punkter, der er nye siden sidste besøg.",
-  "Beta: \"Join the beta\" fører til ansøgningen under Profil; \"For everyone soon\" står først.",
-  "Vote i to trin: \"Important to you?\" kommer frem, når \"Good idea?\" er valgt (øverst besvaret, nedenunder ikke).",
-  "Known issues: bekræftet fejl med daterede opdateringer; ældre opdateringer i en fold.",
+  "Beta: \"Join the beta\" fører til ansøgningen under Profil; \"Coming to beta\" har kun \"pick the rider first\" (ejer 4/10).",
+  "Vote i to trin: \"Important to you?\" kommer frem, når \"Good idea?\" er valgt. Skalaerne står i samme kolonne i alle rækker.",
+  "Known issues: bekræftede fejl med dateret opdatering (første opdatering ordret fra udkastets afsnit 3).",
   "\"Reported, being checked\": det, spillerne har meldt ind, uden løfte. Knappen viser \"Reported\", når du selv har meldt.",
   "Done: features og rettede fejl i én liste, nyeste først.",
-  "Telefon: Vote med filteret slået til. Områdefilteret og fanerækken er for brede (se fund i PR'en).",
+  "Telefon: fanerækken og områdefilteret står på én linje og scroller vandret; korttitlen står over hintet.",
 ];
 const contentH = Math.max(y1, y2, y3, noteY + 160);
 const legendTop = contentH + 10;
