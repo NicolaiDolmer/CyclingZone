@@ -47,7 +47,7 @@ function observeChild(child: ChildProcess) {
   child.stderr?.on("data", chunk => { output += String(chunk); });
   const stopped = once(child, "exit");
   // Attach immediately so a spawn failure cannot become an unhandled rejection.
-  stopped.catch(() => {});
+  stopped.catch(err => { output += `process error: ${String(err)}`; });
   return { child, stopped, output: () => output };
 }
 
@@ -153,7 +153,7 @@ test("#5692 real RPC: plain refresh blocks readers; concurrent overload serves l
     const refreshing = refreshRankingMatviewsSafe(refreshClient, { nowFn: () => NOW });
     try {
       await eventually(async () => sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event = 'advisory' AND query LIKE '%refresh_team_race_points_mv%'") === "1");
-      const mode = sql("SELECT mode FROM pg_locks WHERE relation = 'public.team_race_points_mv'::regclass AND granted AND mode IN ('AccessExclusiveLock','ExclusiveLock')");
+      const mode = sql("SELECT CASE WHEN bool_or(mode='AccessExclusiveLock') THEN 'AccessExclusiveLock' ELSE 'ExclusiveLock' END FROM pg_locks WHERE relation = 'public.team_race_points_mv'::regclass AND granted AND mode IN ('AccessExclusiveLock','ExclusiveLock')");
       const rows = await client.from("team_race_points_mv").select("race_id,race_points").eq("team_id", TEAM).order("race_id");
       const response = await count();
       const body = await response.json();
@@ -167,6 +167,7 @@ test("#5692 real RPC: plain refresh blocks readers; concurrent overload serves l
 
   sql("INSERT INTO public.fixture_source VALUES (2,9)");
   const before = await duringRefresh(true);
+  t.diagnostic(`before: lock=${before.mode}, SELECT=${before.rows.error?.code}, route HTTP=${before.status}`);
   assert.equal(before.mode, "AccessExclusiveLock");
   assert.equal(before.rows.error?.code, "55P03");
   assert.equal(before.status, 500, "reproduce CYCLINGZONE-65 through the real rankings router");
@@ -187,6 +188,7 @@ test("#5692 real RPC: plain refresh blocks readers; concurrent overload serves l
     return result.error?.code === "22023";
   });
   const after = await duringRefresh(false);
+  t.diagnostic(`after: lock=${after.mode}, SELECT error=${after.rows.error?.code ?? "none"}, route HTTP=${after.status}`);
   assert.equal(after.mode, "ExclusiveLock");
   assert.equal(after.rows.error, null);
   assert.equal(after.rows.data?.length, 1, "refresh serves the last COMMITTED snapshot");
@@ -199,6 +201,14 @@ test("#5692 real RPC: plain refresh blocks readers; concurrent overload serves l
     { race_id: "40000000-0000-4000-8000-000000000001", race_points: 7 },
     { race_id: "40000000-0000-4000-8000-000000000002", race_points: 9 },
   ], "plain and concurrent refresh produce identical values");
+  assert.equal(sql("SELECT refreshed_at = '2026-10-04T10:00:00Z'::timestamptz FROM public.matview_refresh_heartbeat WHERE matview_group='ranking'"), "t");
+  sql("DROP INDEX public.team_race_points_mv_pk; INSERT INTO public.fixture_source VALUES (3,11)");
+  assert.equal(await refreshRankingMatviewsSafe(client, {
+    nowFn: () => new Date("2026-10-04T10:01:00Z"),
+  }), false, "missing UNIQUE must fail instead of falling back to a blocking refresh");
+  const unchanged = await count();
+  assert.equal(unchanged.status, 200);
+  assert.deepEqual(await unchanged.json(), { count: 2 });
   assert.equal(sql("SELECT refreshed_at = '2026-10-04T10:00:00Z'::timestamptz FROM public.matview_refresh_heartbeat WHERE matview_group='ranking'"), "t");
   t.diagnostic(`${version}; real PostgREST: before=AccessExclusiveLock/55P03/HTTP500; after=ExclusiveLock/no read error/HTTP200; old snapshot preserved, identical final values`);
 });
