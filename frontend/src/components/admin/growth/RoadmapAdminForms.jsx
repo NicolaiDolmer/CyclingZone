@@ -370,10 +370,12 @@ export function IssueUpdateModal({ open, issue, focus = "update", onClose, onSav
   const [form, setForm] = useState({ status: "checking", body_en: "", body_da: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [textSaved, setTextSaved] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm({ status: issue?.status ?? "checking", body_en: "", body_da: "" });
+      setTextSaved(false);
       setError("");
       setSaving(false);
     }
@@ -388,7 +390,7 @@ export function IssueUpdateModal({ open, issue, focus = "update", onClose, onSav
   async function handleSubmit(e) {
     e.preventDefault();
     if (partialText) { setError("Opdateringen skal skrives på både engelsk og dansk."); return; }
-    if (needsText && !hasText) { setError("Lukket uden fund kræver en opdatering med forklaringen."); return; }
+    if (needsText && !hasText && !textSaved) { setError("Lukket uden fund kræver en opdatering med forklaringen."); return; }
     if (!hasText && !stepChanged) { setError("Skriv en opdatering eller vælg et nyt trin."); return; }
     setSaving(true);
     setError("");
@@ -398,11 +400,18 @@ export function IssueUpdateModal({ open, issue, focus = "update", onClose, onSav
         issue_id: issue.issue_id, body_en: form.body_en.trim(), body_da: form.body_da.trim(),
       });
       if (err) { setSaving(false); setError(`Kunne ikke gemme opdateringen: ${err.message}`); return; }
+      // Teksten er gemt: tøm felterne, så et nyt forsøg på trinnet ikke
+      // indsætter den samme opdatering to gange.
+      setForm((prev) => ({ ...prev, body_en: "", body_da: "" }));
+      setTextSaved(true);
     }
     const patch = stepChanged ? issueStatusPatch(form.status, now) : { updated_at: now };
     const { error: err } = await supabase.from("known_issues").update(patch).eq("id", issue.issue_id);
     setSaving(false);
-    if (err) { setError(`Kunne ikke gemme trinnet: ${err.message}`); return; }
+    if (err) {
+      setError(`${hasText || textSaved ? "Opdateringen er gemt, men trinnet blev ikke gemt" : "Kunne ikke gemme trinnet"}: ${err.message}`);
+      return;
+    }
     onSaved();
   }
 
