@@ -476,6 +476,78 @@ Sidefund (ikke roadmap, bør undersøges for sig): formplanlæggerens peaks send
 
 Sidefund: Hjælp lover mindst 12 aktive timer på auktioner over frie ryttere, men en spillervalgt sluttid kan omgå det. Det forklarer klagerne over "1 time". Hjælp henviser til en liste over profilryttere, som kun findes på den gamle bestyrelsesside.
 
+### Ejerens afgørelser efter verificeringen (4/10)
+
+- **Alle 15 live-punkter ud af listerne** (de to tabeller ovenfor, inkl. sponsor efter berømmelse og driftsudgift i andre divisioner).
+- **Akademiryttere i holdudtagelsen (#4703) udgår:** seniorryttere kører seniorløb, U23 kører U23, junior kører junior.
+- **Akademilisten som Mit hold (#4381) udgår:** rytterlisten på akademisiden skal ikke findes fremover, nu hvor U23- og Junior-siderne findes. Forslag til akademisiden ligger i #6155.
+- **Ruter (ca980fca) deles:** Done: "Cobbles that count, and mountain stages decided on the final climb." / "Brosten der tæller, og bjergetaper der afgøres på slutstigningen." Nyt planlagt punkt: "Mountain stages with a long valley road before the last climb." / "Bjergetaper med en lang dalvej før sidste stigning." Stemmerne står på begge.
+- **Ikon for udtaget rytter (#4259) og løbslog pr. rytter (#3529):** ejeren tog ikke stilling. Begge tages ud som dækket (lås + løbsnavn i Planlægning; sæsonmatricen), medmindre ejeren siger andet.
+- **Idéer fra de lukkede kanaler må stå på Vote** uden kilde (grusvejsløb udgår som live).
+- **Udviklingstempoet (#5965)** står under "Reported, being checked", ikke som bekræftet fejl.
+- **Ca. 30 idéer ad gangen** på Vote; resten i idé-puljen.
+
+## 6c. Indhold ved start (forslag til ejer-godkendelse)
+
+Bygger kun på verificerede punkter (6b). DA-titler og beviser står i de afsnit, der henvises til. Rettelse 4/10: af de 23 tilbageværende gamle idéer har 8 mange stemmer (34-40) og 15 få (9-12); ejeren fik tallene oplyst omvendt (12/8), men valget "mest nyt" er uændret.
+
+### Vote: 30 synlige idéer (20 nye + de 10 gamle med få stemmer og højest vigtighed)
+
+| # | Omr. | Idé (EN) | Kilde | Ref |
+|---|---|---|---|---|
+| 1 | races | See a rider's age and abilities in a pop-up while you plan training or use the Planning board. | 6+ spillere | #2009 (6b) |
+| 2 | races | Iconic races are written by hand, so a classic stays the same classic every season. | 5+ spillere | #4122 + #3471 (6) |
+| 3 | races | AI teams field riders that fit their division, so Division 4 is no walkover. | 3+ spillere | #2457 (6) |
+| 4 | races | Watch a stage play out on the race page while it is being ridden, with the field moving along the profile. | Spørgeskema | #4916 (6b) |
+| 5 | races | After today's last race, Planning jumps to the next race day. | 2 spillere | #2030 (6) |
+| 6 | races | The calendar page shows your own status on each race: entered, withdrawn or squad set. | Gammel, 11 stemmer | 00000206 (6b) |
+| 7 | training | Each ability and power number explained in plain words when you hover over it or tap it. | 3+ spillere | #1833 (6b) |
+| 8 | training | Injuries reset at the season switch, the same way fatigue does. | 2 spillere, lovet "fremadrettet" 28/9 | #5865 (4) |
+| 9 | training | See on the training page how many days until each rider's next race. | 2 spillere | #4342 (6b) |
+| 10 | training | Your team's injury and crash history: see how many injuries and crashes your riders have had. | 1 spiller, ejeren positiv | #4942 (4) |
+| 11 | training | A training camp: pay to focus one ability hard for a while, and lose race days while you do it. | Gammel, 10 stemmer | 00000211 |
+| 12 | training | Your own labels on riders, so you can find them on the training page. | Gammel, 10 stemmer | 00000214 |
+| 13 | youth | Lower age limits for the youth classification and juniors. | 3 spillere | #6126 (4) |
+| 14 | youth | Homegrown riders: follow every rider from your academy, also after he leaves. | Ejerens idé | 5.4 |
+| 15 | youth | Prize money in youth races. | Gammel, 10 stemmer; 2 spillere 1/10 | 00000216 |
+| 16 | youth | A better scout charges less per report, so two scouts are never the same. | Gammel, 10 stemmer | 00000217 (6b) |
+| 17 | market | Filter the rider database by division. | 4+ spillere | #2399 (6b) |
+| 18 | market | The potential band stays steady between seasons, with its midpoint shown. | 3+ spillere | #5683 (6) |
+| 19 | market | A market value that does not give away a young rider's hidden potential. | Spørgeskema | #2798 (4) |
+| 20 | market | Set a minimum price on your own riders, so offers below it are turned down automatically. | 1 spiller, ejer-prioritet | #450 (6) |
+| 21 | market | Limits on deals between friends: a floor and a ceiling on what a rider can be traded for. | Gammel, 9 stemmer | 00000219 (6b) |
+| 22 | market | More than one wishlist, so you can sort the riders you follow. | Gammel, 9 stemmer | 00000220 |
+| 23 | market | See an injury on another team's rider on his profile, and how long he is out. | Gammel, 9 stemmer | 00000221 (6b) |
+| 24 | club | A longer break between seasons, with time to plan the new one. | 5 spillere; afstemning lovet 27/9 | #5833 (4) |
+| 25 | club | See which riders the board counts as your stars. | 4 spillere | #1928 (6b) |
+| 26 | club | Your sponsor's base amount paid race day by race day, like the rest. | 3 spillere | #3147 (6b) |
+| 27 | club | A way back for small clubs: cheaper ways to develop when you start late or fall behind. | 2 spillere | #1981 (5.4) |
+| 28 | club | Wages paid per race day, like upkeep, instead of in one go. | Ejeren + 1 spiller | 5.4 |
+| 29 | club | Medical, academy and commercial facilities that work: faster recovery, more academy places and more sponsor money. | Gammel, 9 stemmer | 00000224 (6b) |
+| 30 | club | Sponsors reworked: a main sponsor plus smaller side sponsors with their own goals. | Gammel, 9 stemmer | 00000223 |
+
+**Hviler i idé-puljen (stemmerne bevares og ses i analysen):** de 8 gamle med 34-40 stemmer (00000018 statistik, 00000021 museum, 00000022 venner, 00000011 forhandling, 00000012 rygter, 00000014 nationale mesterskaber, 00000013 sæsonplanlægger, 00000015 personale) · 5 gamle med få stemmer (00000228, 00000227, 00000205, 00000207, 00000218) · alle øvrige nye idéer fra afsnit 4, 5.4 og 6.
+
+Ikke på Vote: længere auktioner på frie ryttere (afgøres i forum-afstemningen #4714) · løbsfilmen samler gentagelser (står under "Reported, being checked").
+
+### Beta: 5 punkter (koblet til kontakten)
+
+| Punkt | Kontakt |
+|---|---|
+| Train now: run today's training when it suits you, with the same result as the evening run. (N5) | `training_train_now` |
+| Training groups: one plan for several riders, and each rider keeps his own copy. (N6) | `training_groups` |
+| Ready-made training programs per race day. (538c4798, uden delingsdelen) | `training_programs` |
+| The season matrix in Planning fits your phone screen. (N7) | `season_matrix_mobile` |
+| Choose whether a role applies from this stage to the end, or to this stage only. (ny) | `race_role_scope_choice` |
+
+### Plan
+
+- **In progress:** N4 vælg rytter først på Program-fanen (#6035) · N9 Udvikling 2.0 (#6110).
+- **Planned · Next:** 00000201 sekundær type på rytterens profil (LØFTE) · 00000203 vælg del af etapeløb at toppe i (LØFTE) · 00000208 åbnere (LØFTE) · 00000210 formtræning for færdige ryttere (LØFTE) · 00000008 egne unge stjerner (LØFTE) · N1 besked fra holdsiden (LØFTE) · N2 transferliste til U23 (LØFTE) · N3 kopiér dagsplan (LØFTE) · N15 Holdarbejde og Lederskab for eksisterende ryttere · N16 hurtigere spil · N17 Pro-betaling · delt kaptajn (#5981, lovet 1/10) · potentiale ud af værdimodellen (lovet 25/9).
+- **Planned · Later:** 00000019 vejkaptajner og mentorer · 00000226 dashboard og indbakke · 00000202 kør for en trøje (S5) · 00000204 holdmødet (S5) · 00000215 op- og nedrykning for ungdom (S5) · N10 kort pr. rytter (S5) · N11 betingede ordrer (S5) · N12 holdtidskørsel (S5) · N13 + N14 omdømme (S5) · N18 hold rytter ude af assistenten · N20 sælg til AI · 00000222 klubbens udseende · lang dalvej før sidste stigning (rest af ca980fca) · eget ikon for kuperede etaper (#6125, lovet 22/9) · auto-accept-pris (#2176) · log ind med Discord (#2161).
+
+Rækkefølgen inden for Next og Later lægges i planlægningssessionen (#6148).
+
 ## 7. Åbne spørgsmål til ejeren
 
 1. **Rytterværdier (00000017):** titlen lover "prices shaped by real auctions and transfers". Modellen bruger handler, men patch note 7.303 nævner det ikke. Done med nuværende titel, eller omskriv først?
