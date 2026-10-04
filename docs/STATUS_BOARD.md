@@ -19,7 +19,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (117d)
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (116d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (115d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (107d)
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (108d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (82d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (79d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (77d)
@@ -64,8 +64,8 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1299 Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch (114d)
 - #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (111d)
 - #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (109d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (107d)
-- …og 647 mere
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (108d)
+- …og 649 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
