@@ -5,14 +5,14 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-83 poster: live 63 · beta 3 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+86 poster: live 63 · beta 6 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
 
 ## race-engine
 
-**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-09-06 · v3 scoring components (`race-engine-v3-scoring`) 2026-09-06 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
+**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -52,7 +52,9 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| Training groups (`training-groups`) | beta | `training_groups` | [TRAINING_RULES](TRAINING_RULES.md) | #6000 | 2026-10-04 | Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only. |
 | Training programs per race day (`training-programs`) | beta | `training_programs` | [TRAINING_RULES](TRAINING_RULES.md) | #4629 | 2026-10-04 | PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil. |
+| Train now (no bonus) (`training-train-now`) | beta | `training_train_now` | [TRAINING_RULES](TRAINING_RULES.md) | #4847 | 2026-10-04 | Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
@@ -71,6 +73,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| Season matrix on mobile (`season-matrix-mobile`) | beta | `season_matrix_mobile` | - | #5124 | 2026-10-04 | Beta læst i prod 4/10; kun visning (frontend). Flip til alle er ejer-only. |
 | AI pool retirement (`ai-pool-retirement-v2`) | building | - | - | - | 2026-09-09 | v2-flag: off, afventer ejer-go. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 

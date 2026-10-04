@@ -57,8 +57,8 @@ features:
     flag: race_engine_v2_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 1306
-    verified: 2026-09-06
-    note: Autoritativ; flagnavn historisk.
+    verified: 2026-10-04
+    note: Hovedkontakt for motoren (flagnavn historisk); etaperne regnes af v4, mens race_engine_v4 er on.
 
   - id: race-engine-v3-scoring
     area: race-engine
@@ -68,8 +68,8 @@ features:
     flag: race_engine_v3_scoring
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 2353
-    verified: 2026-09-06
-    note: 4 score-faktorer i raceSimulator.
+    verified: 2026-10-04
+    note: 4 score-faktorer i raceSimulator. Skal blive on under v4 (v3-gaten resolver rolle + indsats, som v4 læser).
 
   - id: race-engine-v4
     area: race-engine
@@ -490,6 +490,28 @@ features:
     verified: 2026-10-04
     note: 'On for alle 1/10 (patch note 7.330; læst i prod 4/10). Inkl. auto-hvile #5620.'
 
+  - id: training-train-now
+    area: training
+    title_en: Train now (no bonus)
+    title_da: Træn nu (uden bonus)
+    state: beta
+    flag: training_train_now
+    ssot: docs/TRAINING_RULES.md
+    epic: 4847
+    verified: 2026-10-04
+    note: Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only.
+
+  - id: training-groups
+    area: training
+    title_en: Training groups
+    title_da: Træningsgrupper
+    state: beta
+    flag: training_groups
+    ssot: docs/TRAINING_RULES.md
+    epic: 6000
+    verified: 2026-10-04
+    note: Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only.
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy
@@ -576,6 +598,16 @@ features:
     ssot: docs/CALENDAR_RULES.md
     verified: 2026-09-24
     note: Tilmeldingskortet live 24/9 (flag on, S4-tilmelding).
+
+  - id: season-matrix-mobile
+    area: season
+    title_en: Season matrix on mobile
+    title_da: Sæsonmatrix på mobil
+    state: beta
+    flag: season_matrix_mobile
+    epic: 5124
+    verified: 2026-10-04
+    note: Beta læst i prod 4/10; kun visning (frontend). Flip til alle er ejer-only.
 
   - id: season-end-recap
     area: season
