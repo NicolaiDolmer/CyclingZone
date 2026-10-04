@@ -1,5 +1,46 @@
 export const PATCHES = [
 {
+  "version": "7.336",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Riders no longer race twice on one race day",
+        "body": "Two riders raced two races on the same race day after a transfer. Selection now checks every race a rider has already ridden that day, also races that have finished, and the assistant follows the same rule when it picks riders."
+      },
+      "da": {
+        "title": "Ryttere kører ikke længere to løb på én løbsdag",
+        "body": "To ryttere kørte to løb på samme løbsdag efter en transfer. Udtagelsen tjekker nu alle løb, rytteren allerede har kørt den dag, også løb der er afsluttet, og assistenten følger samme regel, når den udtager ryttere."
+      },
+      "refs": [
+        6009,
+        5860
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Races",
+      "en": {
+        "title": "Cobble specialists count on cobbled stages",
+        "body": "On cobbled and gravel stages, the gap after a sector now grows with how much weaker a rider is on cobbles, and cobble ability counts in the finale. Applies to races that started from 2 October."
+      },
+      "da": {
+        "title": "Brostensryttere tæller på brostensetaper",
+        "body": "På brostens- og grusetaper vokser tidstabet efter en sektor nu med, hvor meget svagere en rytter er på brosten, og brostensevnen tæller med i finalen. Gælder løb, der er startet fra 2. oktober."
+      },
+      "refs": [
+        6046
+      ]
+    }
+  ]
+},
+{
   "version": "7.335",
   "date": "2026-10-04",
   "changes": [
