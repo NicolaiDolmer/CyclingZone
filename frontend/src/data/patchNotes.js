@@ -1,5 +1,23 @@
 export const PATCHES = [
   {
+    "version": "7.339",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The site loads when your browser blocks site data",
+          "body": "With site data blocked in the browser, the site stopped on a blank page. It now loads."
+        },
+        "da": {
+          "title": "Siden indlæses, når din browser blokerer site-data",
+          "body": "Med site-data blokeret i browseren stoppede siden på en tom side. Den indlæses nu."
+        },
+        "refs": [6168]
+      }
+    ]
+  },
+  {
     "version": "7.338",
     "date": "2026-10-04",
     "changes": [
