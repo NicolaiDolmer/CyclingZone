@@ -89,7 +89,7 @@ test("filterByRollout: all, beta og now_live", () => {
 });
 
 // #6154: GET /api/feature-flags svarer kun paa PLAYER_VISIBLE_FLAG_KEYS. En note med et
-// `flag` uden for listen kan aldrig skifte maerke til "Now for everyone".
+// `flag` uden for listen kan aldrig skifte maerke til "Now live for all".
 // Kendt hul: training_daily_receipt staar ikke i STAGE_FLAGS (kun i trainingScoreFlag.js),
 // og endpointet kraever stadie-flag. Fjernes naar noeglen er lagt i kataloget.
 const KNOWN_GAPS = new Set(["training_daily_receipt"]);
