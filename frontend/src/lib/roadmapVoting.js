@@ -6,10 +6,8 @@
 // renommé, stab, museum og social bor dér (ejer-godkendt 11/6).
 export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 
-// Delt kolonne-liste mellem RoadmapPage (liste + admin-status-toggle) og
-// RoadmapAdminCreateForm (admin-insert) — #5177 spor 2 splittede AdminCreateForm
-// ud i egen lazy-loaded chunk (LCP: mindre JS for de ~99% der ikke er admin),
-// men begge steder skal stadig SELECT'e/INSERT'e de samme kolonner.
+// Delt kolonne-liste for roadmap_items-læsning (RoadmapPage og admin-fanen).
+// #6150: admin-formularen er flyttet fra /roadmap til /admin/growth (spor 3).
 // #5673: created_at tilføjet — kilden til roadmap-siden og -menupunktets nye
 // ulæst-prik (lib/roadmapUnread.ts: roadmap_items.created_at > sidst set).
 // #6150 (roadmap-hub): horizon (Next/Later) og beta-koblingens tre felter.
