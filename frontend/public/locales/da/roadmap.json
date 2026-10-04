@@ -64,6 +64,8 @@
     "confirmedHint": "Problemer jeg selv har set eller fundet årsagen til.",
     "checking": "Meldt ind, bliver tjekket",
     "checkingHint": "Spillere har meldt dem ind. Jeg har ikke bekræftet dem, og jeg lover ingen ændring.",
+    "checkingMore": "{count} flere",
+    "checkingMoreOwn": "{count} flere · {own} har du meldt",
     "status": {
       "checking": "Bliver tjekket",
       "confirmed": "Bekræftet",

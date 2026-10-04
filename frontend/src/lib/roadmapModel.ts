@@ -89,6 +89,13 @@ export function issueAreaCounts(issues: Array<{ area: string }>) {
   return countsInOrder(ISSUE_AREA_ORDER, issues.map((i) => ({ key: i.area })));
 }
 
+/** "Reported, being checked" viser de første 8 (ejerens rækkefølge); resten foldes. */
+export const CHECKING_VISIBLE = 8;
+
+export function splitChecking<T>(list: T[], visibleCount: number = CHECKING_VISIBLE): { visible: T[]; folded: T[] } {
+  return { visible: list.slice(0, visibleCount), folded: list.slice(visibleCount) };
+}
+
 export function splitIssues(issues: KnownIssue[] | null | undefined, now: Date = new Date()) {
   const list = issues ?? [];
   const cutoff = now.getTime() - RECENTLY_FIXED_DAYS * 86_400_000;

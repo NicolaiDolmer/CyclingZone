@@ -108,6 +108,29 @@ test("\"Rammer også mig\" slår til og fra", async ({ page }) => {
   expect(calls[1].url).toContain("user_id=eq.");
 });
 
+test("12 indmeldte fejl: 8 rækker ses, og folden \"4 flere\" viser resten", async ({ page }) => {
+  await loggedIn(page);
+  const checking = Array.from({ length: 12 }, (_, i) => ({
+    id: `ki-many-${i}`, area: "club", status: "checking", title_en: `Reported issue ${i}.`, title_da: `Indmeldt fejl nummer ${i}.`,
+    sort_order: 100 + i, created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", closed_at: null,
+  }));
+  await page.route("**/rest/v1/known_issues*", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, checking);
+  });
+  await page.goto("/roadmap?tab=issues");
+  const rows = page.locator("li", { hasText: /Indmeldt fejl nummer/ });
+  await expect(page.getByText("Indmeldt fejl nummer 0.")).toBeVisible();
+  await expect(page.getByText("Indmeldt fejl nummer 7.")).toBeVisible();
+  await expect(page.getByText("Indmeldt fejl nummer 8.")).toBeHidden();
+  const fold = page.locator("summary", { hasText: "4 flere" });
+  await expect(fold).toBeVisible();
+  await fold.click();
+  await expect(page.getByText("Indmeldt fejl nummer 11.")).toBeVisible();
+  await expect(rows).toHaveCount(12);
+});
+
 test("udlogget kan læse alt, men ser ingen skalaer og ingen tryk-knapper", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);

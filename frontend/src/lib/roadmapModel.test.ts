@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   parseTab, partitionItems, isRated, countUnrated, filterUnrated,
-  engineCounts, issueAreaCounts, splitIssues, buildDoneList, latestIssueUpdates,
+  engineCounts, issueAreaCounts, splitChecking, CHECKING_VISIBLE, splitIssues, buildDoneList, latestIssueUpdates,
   type RoadmapItem, type RoadmapVote, type KnownIssue,
 } from "./roadmapModel.ts";
 
@@ -93,6 +93,18 @@ test("engineCounts giver kun områder med punkter, i fast rækkefølge", () => {
 test("issueAreaCounts tager 'other' med til sidst", () => {
   const counts = issueAreaCounts([iss({ area: "other" }), iss({ area: "training" }), iss({ area: "other" })]);
   assert.deepEqual(counts, [{ key: "training", count: 1 }, { key: "other", count: 2 }]);
+});
+
+test("splitChecking: de første 8 vises, resten foldes, og 8 eller færre giver ingen fold", () => {
+  assert.equal(CHECKING_VISIBLE, 8);
+  const mk = (n: number) => Array.from({ length: n }, (_, i) => iss({ id: `c${i}`, sort_order: i }));
+  const many = splitChecking(mk(26));
+  assert.equal(many.visible.length, 8);
+  assert.equal(many.folded.length, 18);
+  assert.deepEqual(many.visible.map((i) => i.id), ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7"]);
+  assert.equal(many.folded[0].id, "c8");
+  assert.equal(splitChecking(mk(8)).folded.length, 0);
+  assert.equal(splitChecking(mk(0)).visible.length, 0);
 });
 
 test("splitIssues: bekræftede og indmeldte hver for sig, lukkede kun de seneste 14 dage", () => {

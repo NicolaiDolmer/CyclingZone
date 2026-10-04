@@ -64,6 +64,8 @@
     "confirmedHint": "Problems I have seen myself or found the cause of.",
     "checking": "Reported, being checked",
     "checkingHint": "Players have reported these. I have not confirmed them, and I am not promising a change.",
+    "checkingMore": "{count} more",
+    "checkingMoreOwn": "{count} more · {own} reported by you",
     "status": {
       "checking": "Being checked",
       "confirmed": "Confirmed",

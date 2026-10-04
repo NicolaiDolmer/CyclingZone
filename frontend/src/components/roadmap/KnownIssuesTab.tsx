@@ -4,7 +4,7 @@
 // bekræftet, og teksten lover ingen ændring. Spilleren ser kun sit eget tryk.
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { issueAreaCounts, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
+import { issueAreaCounts, splitChecking, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, CollapsibleSection, EmptyState, Section, SectionHeader, SectionStack, Segmented, StatusBadge } from "./roadmapUi.ts";
 import { RowMeta, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localBody, localTitle, shortDate } from "./roadmapFormat.ts";
@@ -120,6 +120,9 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
 
   const confirmedShown = inArea(confirmed);
   const checkingShown = inArea(checking);
+  const { visible: checkingVisible, folded: checkingFolded } = splitChecking(checkingShown);
+  const checkingRow = (i: KnownIssue) => row(i, t("issues.seeToo"), t("issues.reportedByPlayers"), true);
+  const ownFolded = checkingFolded.filter((i) => props.reports.has(i.id)).length;
 
   return (
     <SectionStack>
@@ -147,7 +150,17 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
         />
         <p className="mb-2 text-cz-3 text-xs">{t("issues.checkingHint")}</p>
         {checkingShown.length > 0 && (
-          <ul className={ROW_LIST}>{checkingShown.map((i) => row(i, t("issues.seeToo"), t("issues.reportedByPlayers"), true))}</ul>
+          <ul className={ROW_LIST}>{checkingVisible.map(checkingRow)}</ul>
+        )}
+        {checkingFolded.length > 0 && (
+          <CollapsibleSection
+            className="mt-3"
+            title={ownFolded > 0
+              ? t("issues.checkingMoreOwn", { count: checkingFolded.length, own: ownFolded })
+              : t("issues.checkingMore", { count: checkingFolded.length })}
+          >
+            <ul className={ROW_LIST}>{checkingFolded.map(checkingRow)}</ul>
+          </CollapsibleSection>
         )}
         {recentlyDismissed.length > 0 && (
           <CollapsibleSection className="mt-3" title={t("issues.dismissed")} meta={<span className="tabular-nums">{recentlyDismissed.length}</span>}>
