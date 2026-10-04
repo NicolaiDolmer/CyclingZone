@@ -10,7 +10,13 @@
     "placeholder": "Søg i opdateringer…"
   },
   "filter": {
-    "ariaLabel": "Filtrér efter kategori"
+    "ariaLabel": "Filtrér efter kategori",
+    "rollout": {
+      "ariaLabel": "Filtrér efter udrulning",
+      "all": "Alle",
+      "beta": "Beta",
+      "nowLive": "Nu for alle"
+    }
   },
   "category": {
     "all": "Alle",

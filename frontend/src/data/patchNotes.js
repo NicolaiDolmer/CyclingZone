@@ -398,7 +398,7 @@ export const PATCHES = [
         "refs": [5947, 6019]
       },
       {
-        "category": "new", "audience": "player", "rollout": "beta", "topic": "Planning",
+        "category": "new", "audience": "player", "rollout": "beta", "flag": "season_matrix_mobile", "topic": "Planning",
         "en": {
           "title": "Season matrix on the phone, in the beta group",
           "body": "On a phone, the season matrix in Planning now fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see."
@@ -525,7 +525,7 @@ export const PATCHES = [
     "date": "2026-09-30",
     "label": "Beta",
     "changes": [{
-      "category": "improved", "audience": "player", "rollout": "beta", "topic": "Training",
+      "category": "improved", "audience": "player", "rollout": "beta", "flag": "training_daily_receipt", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
         "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
@@ -1084,7 +1084,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "training_programs",
         "stage": "beta",
         "topic": "Training",
         "en": {
@@ -1615,7 +1615,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "youth_squad_pages",
         "topic": "Squad",
         "en": {
           "title": "U23 team and Junior team pages on a par with My Team, in the beta group",
@@ -1652,7 +1652,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "rider_best_role_display",
         "stage": "beta",
         "topic": "Riders",
         "en": {
