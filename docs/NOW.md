@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (3/10 aften): fast rytme fra nu, se [`OPERATING_PLAN.md`](OPERATING_PLAN.md)** (ejer-godkendt 3/10: morgen 08.30 + aften 20.15 i Claude Code, Codex bygger Stabilitet/Betaling/Fabrikken og rører aldrig NOW/MASTERPLAN). **(1)** Brand: #6095 gem af etapetaktik (ikke startet) og #5860 dobbeltbooking (sat op 3/10); #6115-kodefix PR #6128 reviewet 3/10: én blokering (sync med main, patch note 7.335 over 7.334), derefter ejer-go. #6061 forebyggelse live 3/10 (`2abc92efd`, migration post-verificeret); kompensation afventer genberegning + ejer-go i #6129. **(2)** Søn 4/10: Udvikling 2.0 D1-D4 (#6110, spillersignaler på issuet) + kort #5897 (#5912 kørt 1/10, kun spillersvar mangler). **(3)** Man 5/10: mandagsstyring m. Discord-fund #6122-#6126, træningspakken (#6053 parkeret til da, #6123, #6060, #5915, #5485), flip-listen beta → alle, lovet #5965; uptime-monitor → `/health/ready` (PR #6135). **Fra man 5/10 08.30:** beslutningsark ét ad gangen fra `docs/audits/2026-10-03-ejer-dashboard.md` (først #4514, #4714, #5901/#5902, #1461).
+> **🎯 Next action (4/10 aften): rytme i [`OPERATING_PLAN.md`](OPERATING_PLAN.md).** **(1) Man 5/10:** planlægningssession til 1/1-2027 (#6148, inkl. #2887 + #5981) · samlet nav-analyse mobil+pc m. Clarity (#6147) · Udvikling 2.0 D1-D7 (#6110; #3743 A + #4765 indgår) · uptime-monitor → `/health/ready` (PR #6135) · #6128 klar til go-kort (sync, patch 7.338, migration). **(2) Uge 41:** betaling på hverdage (#4514/#4512 låst: auto-træk, intet rykkerforløb, Pro stopper + besked; #6062) · moms #4511 · DMARC: ejeren laver test-signup (#1461) · staging-klargøring A (#5904, så #6136 kan måles) · #6134 jobkø i Postgres (C) · #5901 C + #5902 A byg · #6129 genberegn + go på hash. **(3) Codex:** bølge 5/10 i `docs/superpowers/plans/2026-10-05-codex-wave.json` (#5692 #6132 #6120 #5792). **(4)** #4714: ejeren poster forum-afstemning (10 svar, #6146 live).
 >
-> **✅ 3/10:** #6117, #6107, #6119 live; #6115-data repareret. Audit: `.claude/audits/audit-2026-10-03.md`.
+> **✅ 4/10:** #6095 rettet (#6141) + etape-valg bag beta (`race_role_scope_choice` = beta); patch 7.335-7.337; hard rule 35 strammet (#6140); review af Codex' nat (#6131/#6133/#6135/#6136); #3633-backups slettet.
 
 > **📌 #6110 Udvikling 2.0:** design-kort søn 4/10-man 5/10, byg uge 41.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv Claude Code-session. Codex arbejder på #6115 (PR #6128; claim på issuet).
+> **🤖 Working agent:** Ingen aktiv Claude Code-session. Codex: bølge 5/10 sendes af ejeren (plan i docs/superpowers/plans/2026-10-05-codex-wave.json).
