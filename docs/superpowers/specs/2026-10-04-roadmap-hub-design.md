@@ -176,6 +176,11 @@ Nye frontend-filer er `.ts`/`.tsx`. `RoadmapPage.jsx` (431 linjer i dag) bliver 
 
 Rutinen: når en PR lukker et issue, kører close-out scriptet i dry-run. Et fund skrives i PR'ens go-kort ("flytter roadmap-punktet X til Done"), så ejerens "merge" dækker flyttet. Flyttet sker først, når funktionen er live for alle, ikke i beta. Beskrives i `docs/GITHUB_WORKFLOW.md` under close-protokollen.
 
+### Samspil med masterplanen og roadbooken (ejer 4/10)
+
+- **Masterplanen:** `scripts/roadmap-drift.mjs` (read-only) kører ved §Aften og i mandagens styring. Den viser (a) issues i MASTERPLANs Brand, Bane 1 og "Lovet til spillerne", som hverken har et roadmap-punkt eller en kendt fejl, og (b) punkter og fejl, hvis issue er lukket eller `claude:done`, men som stadig står som planlagt, i gang eller åben. Et fund rettes samme dag eller står i dagens go-kort.
+- **Roadbooken på Discord:** intet postes automatisk (ejer 4/10: "kun udkast, du poster"). Ved hver ændring, spillerne kan se (nyt i beta, flyttet til Done, fejl bekræftet eller rettet, nye idéer på Vote), skriver Claude et færdigt opslag på engelsk med link til `/roadmap`, og ejeren poster det selv.
+
 ## 8. Indhold (særskilt, ejer-godkendt)
 
 Indholdet er ikke en del af byggeriet og godkendes for sig i `docs/drafts/2026-10-04-roadmap-indhold.md`:

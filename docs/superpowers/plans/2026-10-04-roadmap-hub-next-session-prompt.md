@@ -14,8 +14,13 @@ Byg roadmap-hubben fra ende til ende. Alt er designet og ejer-godkendt 4/10; du 
 5. Indhold: `docs/drafts/2026-10-04-roadmap-indhold.md` afsnit 5.6, 6b og 6c
 
 **Før du starter bølgen**
-- Tjek `.claude/run/wave-active.json`. Ejer Codex stadig maskinen, så stop og sig det; start ikke uden om værnet.
+- Tjek `.claude/run/wave-active.json` (låsen var fri 4/10 aften). Ejer en anden bølge maskinen, så stop og sig det; start ikke uden om værnet.
 - Kør bølgen med `dryRun: true` først og vis mig planen i tre linjer. Start den rigtige bølge bagefter uden at spørge igen.
+
+**Mens bølgen kører (ét ad gangen, svar mig med det samme)**
+1. Vurdér de fem åbne PR'er: #6128, #6053, #6153, #6136, #5827. For hver: klar til mit go, eller hvilken gate der mangler. Rør ikke Codex' PR'er ud over at læse dem.
+2. Go-kort for #6128 (tilbud annulleres ved holdskifte; brand) bygget på diffen, og for #6053 (vælg rytter først; lovet 1/10) med ét annoteret før/efter-billede og preview.
+3. Start trin 0 for løbsmotor-pakken (#6157: sandhedstjek af motorændringerne siden skiftet) som READ-ONLY, så pakken kan starte mandag morgen. Selve motor-pakken (#6156) bygges ikke i denne session.
 
 **Låste beslutninger (genåbn dem ikke)**
 - Fem faner: Plan, Beta, Vote, Known issues, Done. Ingen datoer på planen.
@@ -25,6 +30,8 @@ Byg roadmap-hubben fra ende til ende. Alt er designet og ejer-godkendt 4/10; du 
 - Beta-fanen følger kontakterne automatisk. Et flag-flip må ALDRIG kunne fejle på grund af roadmappet, og ingen rigtig kontakt røres under bygning eller test.
 - Ca. 30 idéer synlige ad gangen; resten i idé-puljen bagved.
 - Spillere ser kun deres egne stemmer og egne tryk.
+- Roadbooken på Discord: intet postes automatisk. Ved hver ændring spillerne kan se, skriver du et færdigt opslag på engelsk, som jeg selv poster.
+- Uge 41-rækkefølgen står i `docs/MASTERPLAN.md` (ejer-godkendt 4/10). Stabilitet kører hos Codex; rør ikke de issues.
 
 **Rækkefølge og gates**
 1. Spor 1 (migration, #6149) merges først. Vis mig go-kortet bygget på diffen. Efter mit "merge": post-verify mod prod straks (stemmetal og status-fordeling uændret, to triggere til stede), og regenerér schema-snapshot og typer.

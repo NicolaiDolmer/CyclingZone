@@ -35,6 +35,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #6128 fix(market): annullér åbne tilbud atomisk ved holdskifte (#6115) (0d) — groen
+- #6153 fix(rankings): prevent refresh from blocking readers (#5692) (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
@@ -71,7 +72,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 `claude:done` men stadig aabne — skal lukkes.
 
 - #4629 [design] Traeningsprogrammer: ugeplan med session pr. ugedag + 10-25 default-programmer (… (32d)
-- #6000 [træning] Træningsgrupper: én beslutning for flere ryttere (ejer 1/10) (2d)
+- #6000 [træning] Træningsgrupper: én beslutning for flere ryttere (ejer 1/10) (3d)
 - #6006 [bug/brand] Train now (beta) træner kun 10 af 45 ryttere: autopick-hold behandles som om… (2d)
 - #5124 [mobil] D-047-standarden til de fire haandrullede tabeller: Auktioner, Transferlisten, Da… (23d)
 - #5685 [traening/mobil] Et-tryks dagvalg (Hvile/Restitution/Pas) paa rytterraekken paa telefonen… (9d)

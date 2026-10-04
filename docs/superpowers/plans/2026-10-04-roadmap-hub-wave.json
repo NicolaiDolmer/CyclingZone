@@ -84,18 +84,20 @@
       "issue": 6152,
       "branch": "feat/6152-roadmap-flip-routine",
       "title": "[ops] Roadmap-hub: faerdig-rutine (roadmap-flip.mjs + close-protokol) - spor 4",
-      "scopeText": "Udfoer 'Spor 4' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en §7). Scriptet maa ALDRIG koeres med --apply af dig, og du maa ikke printe secrets (hard rule om secret-leaks i AGENTS.md).",
+      "scopeText": "Udfoer 'Spor 4' i docs/superpowers/plans/2026-10-04-roadmap-hub.md (laes ogsaa Global Constraints + Faelles kontrakt og spec'en §7). Scriptet maa ALDRIG koeres med --apply af dig, og du maa ikke printe secrets (hard rule om secret-leaks i AGENTS.md). Spor 4 omfatter ogsaa Task 4.3 (roadmap-drift.mjs, read-only tjek mod MASTERPLAN).",
       "model": "sonnet",
       "tier": "TARGETED",
       "ownership": [
         "scripts/roadmap-flip.mjs",
-        "scripts/roadmap-flip.test.mjs"
+        "scripts/roadmap-flip.test.mjs",
+        "scripts/roadmap-drift.mjs",
+        "scripts/roadmap-drift.test.mjs"
       ],
       "touches": [
         "docs/GITHUB_WORKFLOW.md"
       ],
       "verifyCommands": [
-        "node --test scripts/roadmap-flip.test.mjs",
+        "node --test scripts/roadmap-flip.test.mjs scripts/roadmap-drift.test.mjs",
         "pwsh -File scripts/check-agent-token-hygiene.ps1"
       ]
     },
