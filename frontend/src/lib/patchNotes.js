@@ -86,3 +86,17 @@ export function computeNewDays(dayDates, lastSeen) {
   if (!lastSeen) return new Set();
   return new Set((dayDates || []).filter((d) => d > lastSeen));
 }
+
+// Roadmap-hub (#5387): en beta-note følger sin kontakt. Er kontakten slået til
+// for alle, læses noten som "beta_to_live" uden at datafilen skal rettes.
+export function effectiveRollout(change, liveFlags) {
+  const written = change.rollout || (change.stage === "beta" ? "beta" : "live");
+  if (written === "beta" && change.flag && liveFlags && liveFlags[change.flag] === true) return "beta_to_live";
+  return written;
+}
+
+export function filterByRollout(changes, mode, liveFlags) {
+  if (mode === "beta") return changes.filter((c) => effectiveRollout(c, liveFlags) === "beta");
+  if (mode === "now_live") return changes.filter((c) => effectiveRollout(c, liveFlags) === "beta_to_live");
+  return changes;
+}

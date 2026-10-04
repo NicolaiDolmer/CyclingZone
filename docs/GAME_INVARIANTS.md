@@ -126,7 +126,9 @@ claims/restarts, cross-process coordination og concurrent transport er separate.
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
 boolean-overloads paa den eksisterende RPC-transport. Kun service_role maa kalde
-dem; argumentet skal vaere `p_concurrently = true`. False/NULL og manglende
+dem; alle fem SECURITY DEFINER-overloads bruger `SET search_path = public, pg_temp`,
+med `pg_temp` eksplicit sidst. Katalogtesten kontrollerer dette efter foerste og
+gentagen apply. Argumentet skal vaere `p_concurrently = true`. False/NULL og manglende
 populated view/egnet UNIQUE-indeks fejler uden plain-refresh-fallback. De gamle
 nul-argument-funktioner bevares. Migrationen er additiv og aktiverer ingen Node-
 kaldesti eller scheduler. Node-PR #6153 holdes draft og frigives foerst efter
