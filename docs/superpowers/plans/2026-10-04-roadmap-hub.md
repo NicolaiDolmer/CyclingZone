@@ -39,6 +39,7 @@
 | view `roadmap_item_scores` | `item_id, engine, title_en, approved, status, votes, avg_idea, avg_importance, steering_score, title_da, sort_order, horizon, issue_ref, idea_votes, sd_importance` |
 | view `known_issue_scores` | `issue_id, area, status, title_en, title_da, published, sort_order, issue_ref, created_at, fixed_at, reports, days_open` |
 | rpc `roadmap_admin_stats()` | én række: `voters, voters_14d, votes_total, voted_all, managed_teams` (nul rækker for ikke-admin) |
+| rpc `roadmap_split_item(p_source uuid, p_title_en text, p_title_da text, p_status text, p_horizon text, p_issue_ref int)` | returnerer det nye punkts `id`; kun admin; nyt punkt er `approved = false` med kopi af kildens stemmer |
 
 **Værdier:** `status` ∈ `active | planned | in_progress | shipped | archived` · `horizon` ∈ `next | later` · `area` ∈ `races | training | youth | market | club | other` · issue-`status` ∈ `investigating | fixing | fixed`.
 
@@ -87,6 +88,8 @@ test("spiller kan oprette og slette EGET report på en publiceret, ikke-rettet f
 test("spiller kan ikke oprette report på en rettet eller upubliceret fejl, og ikke for en anden bruger");
 test("spiller ser kun egne reports; known_issue_scores.reports er fuldt tal for admin");
 test("roadmap_admin_stats() giver én række til admin og nul rækker til spiller");
+test("roadmap_split_item: admin får nyt skjult punkt med samme område og en kopi af alle kildens stemmer; kilden er uændret");
+test("roadmap_split_item: en spiller afvises (42501), og intet punkt oprettes");
 ```
 
 Forventet værdi i score-testen: to stemmer (idea 6, importance 4) og (idea 4, importance 6) giver `avg_idea = 5.00`, `avg_importance = 5.00`, `steering_score = round((5*0.6 + 5*0.4) * sqrt(2), 2) = 7.07`.
@@ -328,6 +331,41 @@ $$;
 REVOKE ALL ON FUNCTION public.roadmap_admin_stats() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.roadmap_admin_stats() TO authenticated;
 
+-- 6. Del punkt (ejer 4/10): resten af et delvist leveret punkt bliver et nyt
+--    punkt, og stemmerne kopieres, så de står på begge. Det nye punkt er skjult
+--    (approved = false), til ejeren har godkendt teksten. Kilden røres ikke.
+CREATE OR REPLACE FUNCTION public.roadmap_split_item(
+  p_source UUID, p_title_en TEXT, p_title_da TEXT,
+  p_status TEXT DEFAULT 'planned', p_horizon TEXT DEFAULT 'next', p_issue_ref INTEGER DEFAULT NULL
+) RETURNS UUID
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_src roadmap_items%ROWTYPE;
+  v_new UUID;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501';
+  END IF;
+  IF btrim(coalesce(p_title_en, '')) = '' OR btrim(coalesce(p_title_da, '')) = '' THEN
+    RAISE EXCEPTION 'both titles are required';
+  END IF;
+  SELECT * INTO v_src FROM roadmap_items WHERE id = p_source;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'source item not found';
+  END IF;
+  INSERT INTO roadmap_items (engine, sort_order, title_en, title_da, approved, status, horizon, issue_ref)
+  VALUES (v_src.engine, v_src.sort_order, btrim(p_title_en), btrim(p_title_da), FALSE, p_status, p_horizon, p_issue_ref)
+  RETURNING id INTO v_new;
+  INSERT INTO roadmap_votes (item_id, user_id, idea_score, importance_score, created_at, updated_at)
+  SELECT v_new, user_id, idea_score, importance_score, created_at, updated_at
+  FROM roadmap_votes WHERE item_id = p_source;
+  RETURN v_new;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.roadmap_split_item(UUID, TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated;
+
 COMMENT ON TABLE known_issues IS
   'Kendte fejl på /roadmap (#5387). EN+DA i samme række; published gater visning (ejeren godkender teksten). status: investigating -> fixing -> fixed. issue_ref = GitHub-issue, bruges af scripts/roadmap-flip.mjs.';
 COMMENT ON TABLE known_issue_reports IS
@@ -349,7 +387,7 @@ COMMENT ON TABLE known_issue_reports IS
 - [ ] **Step 2: Kør testen til grøn**
 
 Run: `node --test backend/lib/testdb/roadmapHub.integration.test.js`
-Expected: PASS, 16 tests.
+Expected: PASS, 18 tests.
 
 - [ ] **Step 3: Kør RLS-audit og nabotests**
 
@@ -756,7 +794,8 @@ test("statusPatch sætter og nulstiller shipped_at", () => {
   3. "Idéer" (`rankIdeas`): god idé, vigtighed, score, stemmer. Handling "Til planen": `update({ status: "planned", horizon: "next", sort_order: nextSortOrder(plan) })`.
   4. "Kendte fejl" (`rankIssues`): trin, ramt, åben i dage. Handlinger: "Ny opdatering" (insert i `known_issue_updates` + `updated_at = now` på fejlen), "Trin" (`fixed` sætter `fixed_at = now`, andre trin nulstiller den).
 - [ ] `RoadmapAdminForms`: opret/ret punkt (område, EN, DA, status, horizon, issue_ref, godkendt) og opret/ret fejl (område, EN, DA, trin, issue_ref, publiceret). Validering: begge titler udfyldt. Fejl vises med `ErrorState`-anatomien; "Prøv igen" er secondary.
-- [ ] Alle skrivninger går direkte mod Supabase bag `is_admin()`-policies (samme mønster som den slettede `RoadmapAdminCreateForm.jsx`). Efter en skrivning genhentes de to views.
+- [ ] "Del punkt" (færdig-reglen, spec §2 punkt 6): handling på hver række i plan- og idé-tabellen. Formularen beder om restens titel (EN + DA), status og Next/Later og kalder `supabase.rpc("roadmap_split_item", { p_source, p_title_en, p_title_da, p_status, p_horizon, p_issue_ref })`. Det nye punkt vises med mærket "Skjult", til ejeren slår "godkendt" til. Formularen minder om næste skridt: ret det oprindelige punkts titel til det, der er live, og sæt det til færdig.
+- [ ] Alle øvrige skrivninger går direkte mod Supabase bag `is_admin()`-policies (samme mønster som den slettede `RoadmapAdminCreateForm.jsx`). Efter en skrivning genhentes de to views.
 - [ ] Rækker med `approved = false` / `published = false` vises med mærket "Skjult".
 - [ ] Dansk tekst, hardcoded som resten af admin. `npm run lint`, `node --test`, build, `node scripts/verify-affected.mjs`. Før/efter-billede, draft-PR, `Refs #5388`.
 

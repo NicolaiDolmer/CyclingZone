@@ -23,6 +23,7 @@ Målt i prod 4/10:
 3. **Idéer beholder begge skalaer** ("Good idea?" og "Important to you?", 1-6) præcis som i dag. Styringsscoren regnes som i dag: (Ø vigtighed · 0,6 + Ø god idé · 0,4) · √(antal stemmer). Ingen stemmer slettes eller nulstilles.
 4. **Kendte fejl får en fane** med tre trin, daterede ejer-opdateringer og knappen "Affects me too".
 5. **Analysen bor bagved** som ny fane under `/admin/growth`.
+6. **Færdig-reglen: del punktet.** Er kun en del af et punkt leveret, flytter det leverede til Done med en titel, der siger præcis hvad der er live, og resten bliver et nyt punkt på planen. Stemmerne kopieres, så de står på begge punkter (billede: `pr-screens/roadmap-4-10/faerdig-regel.png`).
 
 Uændrede, tidligere beslutninger: spillere ser kun deres egen stemme (11/6) · ingen datoer på planen, kun rækkefølge · EN først, DA under · ejeren godkender al spillertekst før den vises.
 
@@ -78,6 +79,7 @@ Ny fane "Roadmap" i `AdminGrowthPage` (T2, dansk tekst som resten af admin). Adm
 - **Idéer:** sorteret efter styringsscore. Kolonner: god idé, vigtighed, score, stemmer. Handling: "Til planen" (status `active` → `planned`; stemmerne følger med).
 - **Kendte fejl:** sorteret efter antal "rammer også mig". Kolonner: fejl, trin, ramt, åben i dage. Handlinger: ny opdatering (EN + DA), skift trin, ret titel.
 - **Opret:** nyt punkt eller ny fejl (EN + DA, område, synlig ja/nej).
+- **Del punkt:** på et punkt vælges "Del", og resten får sin egen titel (EN + DA), status og Next/Later. Det nye punkt oprettes skjult med en kopi af alle stemmer fra det oprindelige, så teksten kan godkendes, før det vises. Det oprindelige punkt får bagefter sin nye, præcise titel og flyttes til Done.
 
 Rækker med `approved = false` / `published = false` vises kun her, så tekst kan godkendes før den er synlig.
 
@@ -110,7 +112,11 @@ Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, 
 - RLS: publicerede fejl og deres opdateringer kan læses af anon og authenticated. Skrivning kun `is_admin()`. Reports: spilleren læser, opretter og sletter kun sine egne, og kun på publicerede fejl der ikke er rettet. Admin læser alle.
 - View `known_issue_scores` (`security_invoker`): antal reports pr. fejl og dage åben.
 
-### 5.5 Nøgletal
+### 5.5 Del punkt
+
+RPC `roadmap_split_item(source, title_en, title_da, status, horizon, issue_ref)` bag `is_admin()`: opretter et nyt punkt (samme område, `approved = false`) og kopierer alle stemmerækker fra kildepunktet til det nye. En spillers stemme kan ændres på hvert punkt for sig bagefter. Kildepunktet røres ikke.
+
+### 5.6 Nøgletal
 
 View eller RPC bag `is_admin()`, der giver de fire nøgletal i §4 i ét kald, så admin-fanen ikke henter alle stemmerækker til klienten.
 
