@@ -181,8 +181,10 @@ export const LET_GO_BRAKE_TUNING = Object.freeze({
   /** Effektive bremse-ryttere (fuld effort, friske) der giver den fulde bremse. */
   referenceBrakers: 4,
   /**
-   * #5978 (KUN orders_gc_v3, snoren): hoejeste bremse over snorens laengde.
-   * Under 1: et udbrud kan stadig vokse lidt, og ingen indhentning er garanteret.
+   * #5978 (KUN orders_gc_v3): bremsens loft for AL GC-bremse i revisionen
+   * (erstatter maxBrake, ogsaa ved en alvorlig trussel uden snor; breakaway.ts
+   * progressChase). Under 1: et udbrud kan stadig vokse lidt, og ingen
+   * indhentning er garanteret.
    * START-KANDIDAT, kalibreres privat (balance-internals/5978/).
    */
   leashMaxBrake: 0.9,
@@ -324,6 +326,11 @@ export function advanceTeamReaction(input: {
   plan?: TeamReactionPlan;
   /** #5978 (KUN orders_gc_v3): se planTeamReaction. */
   leash?: boolean;
+  /**
+   * #5978 (review af #5978, punkt 7, KUN med leash): etapens sidste segment.
+   * En reaktion der stadig holder pause her, afsluttes aerligt.
+   */
+  lastSegment?: boolean;
 }): { next: TeamReactionState; workers: string[]; events: TimelineEvent[] } {
   const prior = input.prior ?? IDLE_TEAM_REACTION;
   const plan = input.plan ?? planTeamReaction(input);
@@ -366,7 +373,12 @@ export function advanceTeamReaction(input: {
     // gruppe end jagtgruppen (fx bag en lille gruppe). Holdet kan ikke jage
     // derfra, men truslen er ikke under kontrol: reaktionen holder pause uden
     // at stoppe (ingen arbejde, intet event), og fortsaetter naar han er tilbage.
-    return { next: prior, workers: [], events };
+    // Review af #5978, punkt 7: varer pausen etapen ud, afsluttes reaktionen paa
+    // sidste segment, saa filmen aldrig viser "starter" uden "stopper".
+    if (input.lastSegment !== true) return { next: prior, workers: [], events };
+    const reason = input.threat.reason;
+    events.push(reactionEvent(input.km, input.teamId, "stopped", reason, input.threat, prior.mode));
+    return { next: { ...prior, status: "idle", reason }, workers: [], events };
   }
   if (prior.status === "reacting") {
     // #6187 (KUN orders_gc_v3): truslen sidder nu sammen med holdets egen mand.

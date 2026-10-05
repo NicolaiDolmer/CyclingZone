@@ -17,7 +17,6 @@ import {
   breakawayHook,
   computeNetChaseAdvantage,
   ownRidersOnWheel,
-  ownRiderWheelSitterIds,
   teamChasePlan,
   TEAM_TACTICS_ORDER_KIND,
 } from "./breakaway.ts";
@@ -182,9 +181,6 @@ test("#6187: on the wheel: own riders sit on when a threat to the team's GC ride
   // Ingen trussel i gruppen (kun harmloese ryttere): ingen sidder paa hjul.
   const harmless = initialState(["D3", "E4", "F2"], all);
   assert.deepEqual(ownRidersOnWheel({ groups: harmless.groups, riders: harmless.riders, entrants: all, gcContext: GC, route: ROUTE, km: 50 }), []);
-  // Uden klassement (raa kontekst "missing") sidder ingen paa hjul.
-  assert.equal(ownRiderWheelSitterIds({ groups: state.groups, riders: state.riders, entrants: all, gcContext: { status: "missing" }, route: ROUTE, km: 50 }).size, 0);
-  assert.deepEqual([...ownRiderWheelSitterIds({ groups: state.groups, riders: state.riders, entrants: all, gcContext: GC, route: ROUTE, km: 50 })], ["B1", "D3"]);
 });
 
 test("#6187: a team that lets the break go, with a rider up there and a threat beside him, gets the on-the-wheel line", () => {

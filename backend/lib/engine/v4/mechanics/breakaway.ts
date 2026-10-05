@@ -1360,16 +1360,6 @@ export function ownRidersOnWheel(input: {
 }
 
 /**
- * #6187: segmentLoop's kobling (tempoet): rider_ids der sidder paa hjul ved
- * segmentets start. Tom naar der ingen klassement-kontekst er.
- */
-export function ownRiderWheelSitterIds(input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext"> & { gcContext: unknown }): Set<string> {
-  const sitters = new Set<string>();
-  for (const s of ownRidersOnWheel({ ...input, gcContext: normalizeGcContext(input.gcContext) })) for (const id of s.rider_ids) sitters.add(id);
-  return sitters;
-}
-
-/**
  * #5978 (review af #6213, punkt 2): segmentLoop's kobling. Hjulsidderne ved
  * segmentets start (raa klassement-kontekst), saa tempoet og hooket bruger
  * samme saet (SegmentHookContext.ownRidersOnWheel). Kaldes KUN under
@@ -1433,6 +1423,8 @@ function finishGcReactions(input: {
   after: Readonly<Record<string, RiderState>>;
   prior: Readonly<Record<string, TeamReactionState>> | undefined;
   km: number;
+  /** #5978 (review af #5978, punkt 7): etapens sidste segment (kun brugt med snoren, v3). */
+  lastSegment: boolean;
 }): { teamReactions: Record<string, TeamReactionState> | null; events: TimelineEvent[] } {
   const events: TimelineEvent[] = [];
   let teamReactions: Record<string, TeamReactionState> | null = null;
@@ -1457,7 +1449,7 @@ function finishGcReactions(input: {
       teamId: decision.teamId,
       km: input.km,
       plan: decision.plan,
-      ...(input.setup.leash ? { leash: true } : {}),
+      ...(input.setup.leash ? { leash: true, ...(input.lastSegment ? { lastSegment: true } : {}) } : {}),
     });
     events.push(...advanced.events);
     if (advanced.next !== prior && !(prior === undefined && advanced.next.status === "idle" && advanced.next.reason === null)) {
@@ -1489,7 +1481,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const gcSetup = gcContext && (breakawayGroups.length > 0 || anyReacting) ? gcReactionSetup(state, ctx, gcContext) : null;
   if (breakawayGroups.length === 0) {
     if (!gcSetup) return { state, events };
-    const finished = finishGcReactions({ setup: gcSetup, before: state.riders, after: state.riders, prior: state.team_reactions, km: round2(ctx.segment.to_km) });
+    const finished = finishGcReactions({ setup: gcSetup, before: state.riders, after: state.riders, prior: state.team_reactions, km: round2(ctx.segment.to_km), lastSegment: ctx.segmentIndex === ctx.route.segments.length - 1 });
     if (!finished.teamReactions) return { state, events: finished.events };
     return { state: { ...state, team_reactions: finished.teamReactions }, events: finished.events };
   }
@@ -1754,7 +1746,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // #5978: bogfoer det faktiske reaktionsarbejde og kvitter tilstandsskift.
   let teamReactions: Record<string, TeamReactionState> | null = null;
   if (gcSetup) {
-    const finished = finishGcReactions({ setup: gcSetup, before: state.riders, after: updatedRiders, prior: state.team_reactions, km: round2(ctx.segment.to_km) });
+    const finished = finishGcReactions({ setup: gcSetup, before: state.riders, after: updatedRiders, prior: state.team_reactions, km: round2(ctx.segment.to_km), lastSegment: isLastSegment });
     events.push(...finished.events);
     teamReactions = finished.teamReactions;
   }
