@@ -20,6 +20,7 @@ import {
   runApply,
   writePrivateArtifacts,
   OWNER_GO_FLAG,
+  approvedListHash,
   BACKUP_RIDERS_TABLE,
 } from "./enforce5864ExpiredContracts.mjs";
 
@@ -34,17 +35,29 @@ const rider = (n, team, extra = {}) => ({
 });
 
 test("parseArgs: dry-run is the default", () => {
-  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, expectCount: null });
+  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, approvedHash: null });
 });
 
-test("parseArgs: apply requires the exact owner-go token and expect-count", () => {
+const HASH = "a".repeat(64);
+
+test("parseArgs: apply requires the exact owner-go token and the approved list hash", () => {
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
   assert.throws(() => parseArgs(["--apply", "--owner-go=yes"]), /Wrong owner-go/);
-  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG]), /expect-count/);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG]), /approved-list/);
   assert.throws(() => parseArgs([OWNER_GO_FLAG]), /only makes sense/);
-  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, "--expect-count=x"]), /non-negative/);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, "--approved-list=123"]), /64-char/);
   assert.throws(() => parseArgs(["--live"]), /Unknown option/);
-  assert.deepEqual(parseArgs(["--apply", OWNER_GO_FLAG, "--expect-count=3"]), { apply: true, ownerGo: true, expectCount: 3 });
+  assert.deepEqual(parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), { apply: true, ownerGo: true, approvedHash: HASH });
+});
+
+test("approvedListHash pins the exact rider set, not just the count", () => {
+  const plan = buildPlan(fixture());
+  const swapped = { ...plan, rows: [...plan.rows.slice(1), { ...plan.rows[0], riderId: uuid(99) }] };
+  assert.equal(swapped.rows.length, plan.rows.length);
+  assert.notEqual(approvedListHash(swapped), approvedListHash(plan));
+  const reordered = { ...plan, rows: [...plan.rows].reverse() };
+  assert.equal(approvedListHash(reordered), approvedListHash(plan), "order-independent");
+  assert.match(renderPublicSummary(plan), new RegExp(approvedListHash(plan)));
 });
 
 test("scope mirrors the normal expiry path's ownership filter, human teams only", () => {
@@ -228,8 +241,8 @@ function fakeSupabase({ backupIds = [], releasedIds = new Set() } = {}) {
 test("runApply refuses without owner-go and when the live list differs", async () => {
   const plan = buildPlan(fixture());
   const releaseFn = async () => { throw new Error("must not be called"); };
-  await assert.rejects(runApply({ supabase: fakeSupabase(), plan, threshold: 3, releaseFn, ownerGo: false, expectCount: 5 }), /owner-go/);
-  await assert.rejects(runApply({ supabase: fakeSupabase(), plan, threshold: 3, releaseFn, ownerGo: true, expectCount: 4 }), /Nothing was written/);
+  await assert.rejects(runApply({ supabase: fakeSupabase(), plan, threshold: 3, releaseFn, ownerGo: false, approvedHash: approvedListHash(plan) }), /owner-go/);
+  await assert.rejects(runApply({ supabase: fakeSupabase(), plan, threshold: 3, releaseFn, ownerGo: true, approvedHash: HASH }), /Nothing was written/);
 });
 
 test("runApply aborts before any write when the snapshot does not cover every rider", async () => {
@@ -237,7 +250,7 @@ test("runApply aborts before any write when the snapshot does not cover every ri
   let released = false;
   const releaseFn = async () => { released = true; return {}; };
   const supabase = fakeSupabase({ backupIds: [uuid(1)] });
-  await assert.rejects(runApply({ supabase, plan, threshold: 3, releaseFn, ownerGo: true, expectCount: 5 }), /Snapshot missing 4 of 5/);
+  await assert.rejects(runApply({ supabase, plan, threshold: 3, releaseFn, ownerGo: true, approvedHash: approvedListHash(plan) }), /Snapshot missing 4 of 5/);
   assert.equal(released, false);
   assert.equal(supabase.calls.some((c) => c.patch), false);
 });
@@ -254,7 +267,7 @@ test("runApply reuses the normal release path with the scoped fetcher, then norm
   };
   const supabase = fakeSupabase({ backupIds: ids, releasedIds: new Set([uuid(1), uuid(3), uuid(5)]) });
   const result = await runApply({
-    supabase, plan, threshold: 3, releaseFn, ownerGo: true, expectCount: 5,
+    supabase, plan, threshold: 3, releaseFn, ownerGo: true, approvedHash: approvedListHash(plan),
     fetchCandidates: async () => f.candidates,
   });
   assert.equal(receivedArgs.seasonNumber, 3);

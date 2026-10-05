@@ -42,9 +42,10 @@
 //   is_academy=false på de frigivne akademiryttere, `squad` bevares.
 //
 //   node backend/scripts/dev/enforce5864ExpiredContracts.mjs
-//   node backend/scripts/dev/enforce5864ExpiredContracts.mjs --apply --owner-go=5864-production --expect-count=<N>
-//   (N = "I scope" fra det dry-run ejeren godkendte; afviger den levende liste, afbrydes FØR skrivning)
+//   node backend/scripts/dev/enforce5864ExpiredContracts.mjs --apply --owner-go=5864-production --approved-list=<hash>
+//   (hash = "Liste-hash" fra det dry-run ejeren godkendte; afviger den levende rytter-mængde, afbrydes FØR skrivning)
 
+import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,23 +73,33 @@ const TEAM_EMBED = "team:team_id!inner(id, name, user_id, is_ai, is_frozen, is_b
 // ── Argumenter ──────────────────────────────────────────────────────────────
 
 export function parseArgs(argv) {
-  const opts = { apply: false, ownerGo: false, expectCount: null };
+  const opts = { apply: false, ownerGo: false, approvedHash: null };
   for (const arg of argv) {
     if (arg === "--apply") opts.apply = true;
     else if (arg === OWNER_GO_FLAG) opts.ownerGo = true;
     else if (arg.startsWith("--owner-go=")) throw new Error("Wrong owner-go token");
-    else if (arg.startsWith("--expect-count=")) {
-      const n = Number(arg.slice("--expect-count=".length));
-      if (!Number.isInteger(n) || n < 0) throw new Error("--expect-count must be a non-negative integer");
-      opts.expectCount = n;
+    else if (arg.startsWith("--approved-list=")) {
+      const h = arg.slice("--approved-list=".length);
+      if (!/^[a-f0-9]{64}$/.test(h)) throw new Error("--approved-list must be the 64-char list hash printed by the dry-run");
+      opts.approvedHash = h;
     } else throw new Error(`Unknown option: ${arg}`);
   }
   if (opts.ownerGo && !opts.apply) throw new Error("--owner-go only makes sense together with --apply");
   if (opts.apply && !opts.ownerGo) throw new Error(`--apply requires ${OWNER_GO_FLAG} (owner must have seen the live list)`);
-  if (opts.apply && opts.expectCount === null) {
-    throw new Error("--apply requires --expect-count=<in-scope count from the dry-run the owner approved>");
+  if (opts.apply && opts.approvedHash === null) {
+    throw new Error("--apply requires --approved-list=<list hash from the dry-run the owner approved>");
   }
   return opts;
+}
+
+/**
+ * Fingeraftryk af præcis den rytter-mængde (i scope) ejeren har set. Apply kræver
+ * eksakt match, så en rytter der er kommet til (eller faldet ud) siden dry-run'et
+ * aldrig frigives uden en ny liste, også selv om antallet er det samme.
+ */
+export function approvedListHash(plan) {
+  const ids = plan.rows.map((r) => String(r.riderId)).sort();
+  return createHash("sha256").update(ids.join("\n")).digest("hex");
 }
 
 // ── Rene klassifikationer ───────────────────────────────────────────────────
@@ -369,6 +380,7 @@ export function renderPrivateReport(plan, { generatedAt, activeSeason }) {
   lines.push(`- Ryttere i kaptajn-/A-kæde-strategi: ${t.ridersWithCaptainRefs}`);
   lines.push(`- Fremtidige løbstilmeldinger der fjernes: ${t.futureEntries} på ${t.ridersWithFutureEntries} ryttere (heraf kaptajnroller: ${t.futureCaptainEntries})`);
   lines.push(`- Åbne transferopslag der trækkes tilbage: ${t.openListings}`);
+  lines.push(`- Liste-hash (apply kræver \`--approved-list=\` med netop denne): \`${approvedListHash(plan)}\``);
   lines.push("");
   lines.push(`Minimum for start: ungdomstrup ${MIN_RACE_ENTRIES} ryttere (youthPoolAssignment.canStart), seniortrup divisionens min (DIVISION_SQUAD_LIMITS).`);
   lines.push("");
@@ -410,6 +422,7 @@ export function renderPublicSummary(plan) {
     `  I scope: ${t.inScope} | frigives: ${t.release} | udskudt (etapeløb): ${t.deferredActiveStageRace} | akademi-normalisering: ${t.youthNormalize}`,
     `  Hold: ${t.teams} (aktive ${t.teamsActive}, parkerede ${t.teamsParked}) | mister start i en trup: ${t.teamsLosingStart} (aktive ${t.activeTeamsLosingStart})`,
     `  Kaptajn-refs: ${t.ridersWithCaptainRefs} | fremtidige tilmeldinger: ${t.futureEntries} (kaptajn ${t.futureCaptainEntries}) | åbne opslag: ${t.openListings}`,
+    `  Liste-hash (til --approved-list): ${approvedListHash(plan)}`,
   ].join("\n");
 }
 
@@ -539,10 +552,10 @@ export async function assertSnapshotCovers(supabase, riderIds) {
  * Idempotent: en frigjort rytter har contract_end_season=null og findes ikke igen;
  * normaliseringen rammer kun `team_id is null AND is_academy = true`.
  */
-export async function runApply({ supabase, plan, threshold, releaseFn, ownerGo, expectCount, fetchCandidates = fetchHumanTeamCandidates }) {
+export async function runApply({ supabase, plan, threshold, releaseFn, ownerGo, approvedHash, fetchCandidates = fetchHumanTeamCandidates }) {
   if (!ownerGo) throw new Error(`Apply requires ${OWNER_GO_FLAG}`);
-  if (expectCount !== plan.rows.length) {
-    throw new Error(`Live list has ${plan.rows.length} riders in scope, owner approved ${expectCount}. Re-run dry-run and show the owner the new list. Nothing was written.`);
+  if (approvedHash !== approvedListHash(plan)) {
+    throw new Error("Live list differs from the list the owner approved. Re-run dry-run and show the owner the new list. Nothing was written.");
   }
   const planIds = plan.rows.map((r) => r.riderId);
   const releaseIds = plan.rows.filter((r) => r.outcome === "release_to_free_agent").map((r) => r.riderId);
@@ -593,7 +606,7 @@ async function main() {
     return;
   }
   const { releaseExpiredContractRiders } = await import("../../lib/contractExpiryRelease.js");
-  const result = await runApply({ supabase, plan, threshold, releaseFn: releaseExpiredContractRiders, ownerGo: opts.ownerGo, expectCount: opts.expectCount });
+  const result = await runApply({ supabase, plan, threshold, releaseFn: releaseExpiredContractRiders, ownerGo: opts.ownerGo, approvedHash: opts.approvedHash });
   const resultPath = join(PRIVATE_DIR, `apply-result-${generatedAt.replace(/[:.]/g, "-")}.json`);
   writeFileSync(resultPath, JSON.stringify(result, null, 2), "utf8");
   console.log(`Apply: ${JSON.stringify(result)}`);
