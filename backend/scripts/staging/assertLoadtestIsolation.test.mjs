@@ -61,6 +61,14 @@ test('assertIsolation: DB-gemte webhooks og manglende markoer blokerer', async (
   assert.ok(r.blockers.includes('DB_ENV_MARKER_MISSING'));
 });
 
+test('markoer-proben kraever praecis vaerdien loadtest-staging, ikke blot noeglen', async () => {
+  const f = fakeFetch({ app_config: 1 });
+  await assertIsolation(GOOD_ENV, f.impl);
+  const marker = f.calls.map(c => new URL(c.url)).find(u => u.pathname.endsWith('/app_config'));
+  assert.equal(marker.searchParams.get('key'), 'eq.cz_environment');
+  assert.equal(marker.searchParams.get('value'), 'eq."loadtest-staging"');
+});
+
 test('assertIsolation: netvaerksfejl og ukendt count er blockers, ikke en pass', async () => {
   const r1 = await assertIsolation(GOOD_ENV, async () => { throw new Error('boom https://x?apikey=k'); });
   assert.equal(r1.status, 'BLOCKED');

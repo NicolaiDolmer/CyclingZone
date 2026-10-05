@@ -38,7 +38,8 @@ export const DB_PROBES = [
   ['DB_DM_OUTBOX_NOT_EMPTY', 'discord_dm_outbox', 'id', {}, 0],
   ['DB_REAL_EMAILS_IN_USERS', 'users', 'id', { email: 'not.like.*@loadtest.invalid' }, 0],
   ['DB_DISCORD_IDS_IN_USERS', 'users', 'id', { discord_id: 'not.is.null' }, 0],
-  ['DB_ENV_MARKER_MISSING', 'app_config', 'key', { key: 'eq.cz_environment' }, 1],
+  // PostgREST caster filterværdien til kolonnens type (jsonb), så værdien skal matche præcist.
+  ['DB_ENV_MARKER_MISSING', 'app_config', 'key', { key: 'eq.cz_environment', value: 'eq."loadtest-staging"' }, 1],
 ];
 
 export async function checkDb(env, fetchImpl = fetch) {

@@ -20,7 +20,8 @@ export const SUMMARY_SQL = `select kind || ' ' || count(*) || ' ' || md5(string_
 from (<fingerprint-query>) f, lateral (select split_part(f.fp, '|', 1) as kind) k group by kind order by kind`;
 
 export function parse(text) {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  // ';' tillades som separator, fordi prods resumé leveres som én string_agg-celle.
+  const lines = text.split(/\r?\n|;/).map(l => l.trim()).filter(Boolean)
     .filter(l => !l.startsWith('['));
   if (lines.length && lines.every(l => /^[a-z_]+ \d+ [0-9a-f]{32}$/.test(l))) {
     const summary = new Map();
@@ -28,6 +29,8 @@ export function parse(text) {
     return { summary, full: null };
   }
   const full = lines.filter(l => /^[a-z_]+\|/.test(l));
+  // Tomt/ugenkendt input maa aldrig give "identical": to tomme filer ville ellers matche.
+  if (!full.length) throw new Error('FINGERPRINT_INPUT_EMPTY_OR_UNRECOGNISED');
   return { summary: summarize(full), full };
 }
 
@@ -72,6 +75,15 @@ export function compare(a, b) {
 
 export function runCli(argv, { read = p => readFileSync(p, 'utf8'), write = s => process.stdout.write(s) } = {}) {
   const [cmd, ...files] = argv;
+  try {
+    return runCommand(cmd, files, read, write);
+  } catch (err) {
+    write(`${JSON.stringify({ identical: false, error: err.message })}\n`);
+    return 2;
+  }
+}
+
+function runCommand(cmd, files, read, write) {
   if (cmd === 'summary' && files.length === 1) {
     for (const [k, v] of parse(read(files[0])).summary) write(`${k} ${v.count} ${v.md5}\n`);
     return 0;

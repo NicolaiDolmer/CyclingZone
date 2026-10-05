@@ -1,7 +1,8 @@
 -- anonymize-staging.sql - KUN load-test-staging (#5904). Fjerner prod-afledt persondata og alle
 -- DB-gemte eksterne kanaler fra schema public paa staging-branchen (en prod-kopi fra 23/8).
 --
--- Koeres via scripts/staging/prepare-loadtest-staging.ps1 (guard + ref-tjek foerst).
+-- Koeres med psql mod $env:STAGING_DB_URL EFTER Set-StagingEnv + Assert-LoadtestStagingTarget
+-- (kommandoen staar i docs/runbooks/STAGING_LOADTEST_PREP.md, afsnit 4). Kraever ejer-go.
 -- Idempotent.
 --
 -- 1) Eksterne kanaler: discord_settings (DB-gemte webhook-URL'er), alle outbox-tabeller.

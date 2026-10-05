@@ -63,6 +63,7 @@ foreach ($f in $ordered) {
     continue
   }
   & psql $db -v ON_ERROR_STOP=1 -q -c "INSERT INTO schema_migrations (filename) VALUES ('database/$f') ON CONFLICT DO NOTHING;"
+  if ($LASTEXITCODE -ne 0) { throw "kunne ikke registrere $f i schema_migrations (anvendt, men uregistreret - registrér manuelt foer genkoersel)" }
 }
 if ($failed.Count) { Write-Host "[apply] FEJLEDE ($($failed.Count)):"; $failed | ForEach-Object { Write-Host "  - $_" }; exit 1 }
 Write-Host "[apply] alle pending migrationer anvendt paa staging"

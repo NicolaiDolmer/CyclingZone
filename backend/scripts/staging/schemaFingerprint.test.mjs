@@ -50,6 +50,20 @@ test('compare: kind der kun findes paa den ene side er en afvigelse', () => {
   assert.deepEqual(r.mismatched, [{ kind: 'view', a: 0, b: 1 }]);
 });
 
+test('parse: prods resumé som én ;-separeret celle', () => {
+  const full = parse(FULL);
+  const oneCell = [...full.summary].map(([k, v]) => `${k} ${v.count} ${v.md5}`).join(';');
+  assert.deepEqual([...parse(oneCell).summary], [...full.summary]);
+});
+
+test('tomt eller ugenkendt input er en fejl, aldrig "identical" (exit 2)', () => {
+  assert.throws(() => parse(''), /FINGERPRINT_INPUT_EMPTY_OR_UNRECOGNISED/);
+  assert.throws(() => parse('noget helt andet'), /FINGERPRINT_INPUT_EMPTY_OR_UNRECOGNISED/);
+  const out = [];
+  assert.equal(runCli(['compare', 'a', 'b'], { read: () => '', write: s => out.push(s) }), 2);
+  assert.match(out.join(''), /"identical":false/);
+});
+
 test('runCli: exit-koder 0/1/2', () => {
   const files = { a: FULL, b: FULL, c: 'table|t|x' };
   const out = [];
