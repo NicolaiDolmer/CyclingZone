@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadFixture } from "./giroCaptainTimeLoss6088.mjs";
 import { standingsBefore } from "./ownRiderAhead6187.mjs";
+import { isShortUphillFinish } from "../lib/headToHeadAnchors.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -182,18 +183,8 @@ export function runReplay({ v4, data, revisions, seeds }) {
 
 // ── Scorecardets tidsankre (samme felt/seeds som v4FlipReadiness) ────────────
 
-/** Kort afslutning opad (#6199 del 3): sidste stigningsblok 3-7 km a 5-7 %, ikke hoejfjeld. */
-export function isShortUphillFinish(route) {
-  if (route.profile_type === "high_mountain") return false;
-  const segs = route.segments ?? [];
-  if (!segs.length || segs[segs.length - 1].kind !== "climb") return false;
-  let i = segs.length - 1;
-  while (i > 0 && segs[i - 1].kind === "climb") i--;
-  const block = segs.slice(i);
-  const km = block.reduce((a, s) => a + (s.to_km - s.from_km), 0);
-  const grad = km > 0 ? block.reduce((a, s) => a + (s.to_km - s.from_km) * (s.avg_gradient ?? 0), 0) / km : 0;
-  return km >= 3 && km <= 7 && grad >= 5 && grad <= 7;
-}
+// Samme klassifikation som scorecardets anker (headToHeadAnchors.isShortUphillFinish).
+export { isShortUphillFinish };
 
 export async function runAnchors({ revisions, seeds = ["s1", "s2", "s3", "s4", "s5"] }) {
   const { simulateStageV4 } = await import("../../lib/engine/v4/index.ts");
