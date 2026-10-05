@@ -347,3 +347,7 @@ Klausul-typen `top_half` (før 3/8) og `top_40pct` (efter) lever side om side i
   højere sponsor-base er opsiden" er designgrundlaget for §3.
 - `audits/2026-08-29-sponsor-board-decision-inventory.md` — beslutnings-arkæologien bag denne fil.
 - `GAME_INVARIANTS.md` — fortsat SSOT for konstanterne selv.
+
+## Visning af næste sæson (#5916, 5/10)
+
+Tilbudsvisningen bruger næste sæsons kendte etapetal. Mangler kalenderen, bruges kun holdets egen aktuelle pulje som eksplicit markeret estimat; den generiske divisor er ikke en kendt kalender. Ukendt sats vises som ukendt, mens aftalens sæsonpulje bevares. Aktive kontrakter viser den lagrede sats, som afregningen bruger. Træningsdage giver ikke etapeindkomst. Ingen ændring af valg, aktivering eller udbetaling.

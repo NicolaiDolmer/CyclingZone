@@ -28,8 +28,8 @@ export function projectOffer(offer, stageCount) {
   const share = Number(offer?.raceDayShare);
   const stages = Number(stageCount);
 
-  if (!(fraction > 0) || !Number.isFinite(share) || !(stages > 0)) {
-    return { rate: toAmount(offer?.perRaceDayRate), raceDayPool: null, certain: null, signing, upside: 0 };
+  if (!(fraction > 0) || !Number.isFinite(share)) {
+    return { rate: Number.isFinite(stages) && stages > 0 ? toAmount(offer?.perRaceDayRate) : null, raceDayPool: null, certain: null, signing, upside: 0 };
   }
 
   const target = Math.round(toAmount(offer?.guaranteedBase) / fraction);
@@ -38,7 +38,7 @@ export function projectOffer(offer, stageCount) {
   const objective = toAmount(clauses.find((c) => c?.type === "season_objective")?.amount);
 
   return {
-    rate: Math.round(raceDayPool / stages),
+    rate: Number.isFinite(stages) && stages > 0 ? Math.round(raceDayPool / stages) : null,
     raceDayPool,
     certain: toAmount(offer?.guaranteedBase) + raceDayPool,
     signing,

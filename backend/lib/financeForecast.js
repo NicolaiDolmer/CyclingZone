@@ -73,12 +73,10 @@ function percentile(sortedAscending, p) {
 
 // #3899 punkt 2 (låst design): "INTERVAL for det usikre (præmier, ud fra
 // divisionens pulje)". Metode: kvartilbånd (P25-P75) af MÅLT per-hold-præmie
-// blandt peers i samme division (divisionPrizeSamples — se route-handler for
-// hvordan stikprøven bygges). Båndets BREDDE udtrykkes som andel af divisionens
-// median og appliceres derefter RELATIVT på holdets eget punktestimat
-// (projectedPrize) — det giver et interval der er centreret på holdets egen
-// prognose, men hvis SPREDNING kommer fra faktisk observeret variation i
-// divisionen, ikke en vilkårlig ±20%-antagelse.
+// blandt peers i samme division (divisionPrizeSamples, se route-handler).
+// #5940: brug det observerede bånd direkte og udvid kun til holdets eget
+// punktestimat, hvis det ligger udenfor. En lille median må ikke multiplicere
+// intervallet op. Punktestimat, betalinger og økonomiske satser er uændrede.
 //
 // Fallback til ±20% (CONFIDENCE_BAND_PCT) når stikprøven er for lille
 // (< MIN_DIVISION_PRIZE_SAMPLE hold) eller medianen er 0 — begge cases hvor et
@@ -113,12 +111,11 @@ function computePrizeInterval(projectedPrize, divisionPrizeSamples) {
     };
   }
 
-  const lowRatio = Math.min(1, Math.max(0, (p50 - p25) / p50));
-  const highRatio = Math.max(0, (p75 - p50) / p50);
-
+  // #5940: retain the observed peer range and include the club's estimate.
+  // Dividing by a small median used to amplify the upper bound without limit.
   return {
-    low: Math.max(0, Math.round(projectedPrize * (1 - lowRatio))),
-    high: Math.round(projectedPrize * (1 + highRatio)),
+    low: Math.max(0, Math.round(Math.min(projectedPrize, p25))),
+    high: Math.round(Math.max(projectedPrize, p75)),
     method: "division_quartile_band",
     sample_size: samples.length,
     division_p25: Math.round(p25),

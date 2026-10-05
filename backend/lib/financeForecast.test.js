@@ -950,3 +950,17 @@ test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformle
   // Ved cpv = 100.000 koster rytteren præcis 100.000 × den globale sats.
   assert.equal(s3.projected_salary, -computeFrozenSalary({ current_production_value: 100_000 }));
 });
+
+test("#5940: a small peer median cannot multiply the upper prize estimate", () => {
+  const result = computeFinanceForecast({ team: { division: 3 }, targetSeasonNumber: 5,
+    riders: [{ prize_earnings_bonus: 200000 }], divisionPrizeSamples: [0, 100, 200, 300, 90000, 120000, 180000] });
+  assert.equal(result.prize_high, 200000);
+  assert.ok(result.prize_low >= 0);
+  assert.equal(result.projected_prize, 200000);
+});
+test("#5940: the interval includes the measured peer quartiles without scaling them", () => {
+  const result = computeFinanceForecast({ team: { division: 3 }, targetSeasonNumber: 5,
+    riders: [{ prize_earnings_bonus: 200 }], divisionPrizeSamples: [100, 200, 300, 400] });
+  assert.equal(result.prize_low, 175);
+  assert.equal(result.prize_high, 325);
+});

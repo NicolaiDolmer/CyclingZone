@@ -91,7 +91,7 @@
       "column": {
         "sponsor": "Sponsor",
         "guaranteed": "Garanteret",
-        "perStage": "Pr. etape",
+        "perStage": "Pr. løbsdag med deltagelse",
         "bonuses": "Bonusser oveni"
       },
       "empty": {
@@ -112,7 +112,7 @@
   "offers": {
     "title": "Vælg din sponsor",
     "subtitle": "Fem sponsorer, fem måder at tjene på i sæson {season}.",
-    "unitDefinition": "Din sponsor betaler pr. etape dit hold stiller til start i. Ikke pr. kalenderdag, og ikke pr. løbsdag.",
+    "unitDefinition": "Din sponsor betaler for hver etape, dit hold deltager i. Jeg viser det som en betalt løbsdag her. Træningsdage giver ikke denne betaling.",
     "unitCount": "Division {division} kører {count} etaper i sæson {season}, og hver eneste af dem betaler.",
     "unitPerDay": "De ligger fordelt over {days} kalenderdage, så de fleste dage bærer omkring {perDay} etaper.",
     "divisionNote": "Selve aftalen udbetaler det samme maksimum uanset hvilken division du vælger ovenfor. Divisionen ændrer kun hvor mange etaper du tjener det over, og det sætter raten pr. etape. Divisions-tillægget er en separat linje og vises ovenfor når det gælder.",
@@ -131,7 +131,11 @@
     "guaranteedShare": "{pct} % af aftalen er garanteret",
     "boardNote": "Bestyrelsens tilfredshed justerer den garanterede del med op til ±20 %. Den rører ikke etape-pengene eller bonusserne: de udbetales fuldt ud oveni, i takt med at du tjener dem.",
     "divisionAdjustmentUp": "Kører du i Division {division} på denne aftale, udbetales et divisions-tillæg på {amount} CZ$ oveni hver sæson, fordi aftalen er prissat til Division {signed}.",
-    "divisionAdjustmentDown": "Kører du i Division {division} på denne aftale, trækkes {amount} CZ$ hver sæson, fordi aftalen er prissat til Division {signed}."
+    "divisionAdjustmentDown": "Kører du i Division {division} på denne aftale, trækkes {amount} CZ$ hver sæson, fordi aftalen er prissat til Division {signed}.",
+    "calendarEstimate": "Jeg bruger din nuværende kalender til at anslå satsen, indtil næste sæsons kalender er klar. Sæsonbeløbet er det samme; satsen genberegnes, når aftalen starter.",
+    "calendarUnknown": "Næste sæsons kalender er ikke klar, så jeg kan endnu ikke vise en pålidelig sats pr. løbsdag. Sæsonbeløbet står nedenfor.",
+    "unitCountEstimate": "Estimatet bruger {count} løbsdage med en etape i din nuværende division {division}.",
+    "rateUnknown": "Afventer kalender"
   },
   "variant": {
     "safe": "Den sikre aftale",
@@ -153,7 +157,7 @@
   },
   "field": {
     "guaranteedBase": "Garanteret ved sæsonstart",
-    "perRaceDay": "Pr. etape",
+    "perRaceDay": "Pr. løbsdag med deltagelse",
     "raceDayMath": "{count} etaper × {rate} CZ$",
     "ifYouStartEveryStage": "Hvis du starter hver etape",
     "signingBonus": "Underskriftsbonus",

@@ -331,3 +331,7 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 The development-only `backend/scripts/dev/bestRoleRefitReport5443.mjs` fits role offsets from a season simulation using the same rounded best-role selection as 1a. It evaluates the candidate through the existing career-NPV engine with an explicit development adapter; production valuation dispatch and the committed v5 model are unchanged. Candidate files and per-rider reports remain under ignored `balance-internals/`.
 
 The report distinguishes team cash balances from the sum of rider valuations. It records coverage, unsampled roles, losses and synthetic one-point role transitions. A one-point sensitivity probe is not a measured training strategy: time, training costs and ability caps are not simulated by that probe. The current run is uncalibrated and is not approval for activation. A calibration target and the response to role-switch discontinuities remain owner decisions.
+
+## Præmieprognosens interval (#5940, 5/10)
+
+`financeForecast.computePrizeInterval` bruger divisionens målte kvartilspænd direkte og udvider det om nødvendigt til holdets eget punktestimat. Divisionens median bruges ikke som multiplikator. Det eksisterende fallback ved utilstrækkelige data bevares. Dette ændrer kun prognosens interval; punktestimat, præmieregler og udbetalinger er uændrede. SSOT for sponsorvisning: `SPONSOR_RULES.md`.
