@@ -33,7 +33,7 @@ test("#5953 a morning rider who was caught and subsequently won stays caught", (
       { km: 100, type: "finish", params: { top: [{ rider_id: "a", rank: 1 }] } },
     ] },
   };
-  assert.deepEqual(deriveBreakawayStatus(rankedFromV4Output(output)).get("a"), { in_breakaway: true, breakaway_caught: true });
+  assert.deepEqual(deriveBreakawayStatus(rankedFromV4Output(output)).get("a"), { in_breakaway: true, breakaway_caught: true, breakaway_dropped: false });
 });
 
 test("unknown morning-break outcome remains unknown internally without inventing a rank-based catch", () => {
@@ -47,5 +47,5 @@ test("unknown morning-break outcome remains unknown internally without inventing
   };
   const ranked = rankedFromV4Output(output);
   assert.equal(ranked.find(row => row.rider_id === "a")?.breakaway_status.breakaway_caught, null);
-  assert.deepEqual(deriveBreakawayStatus(ranked).get("a"), { in_breakaway: true, breakaway_caught: false }, "legacy NOT NULL flags do not infer a catch from rank; native history carries the unknown outcome");
+  assert.deepEqual(deriveBreakawayStatus(ranked).get("a"), { in_breakaway: true, breakaway_caught: false, breakaway_dropped: true }, "#6185 finish safety net: an unknown outcome behind a non-escapee is a drop, never a rank-based catch and never held home");
 });
