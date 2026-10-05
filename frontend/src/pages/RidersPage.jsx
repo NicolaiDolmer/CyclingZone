@@ -148,7 +148,7 @@ function AbilityLegend({ t, tRider }) {
 // Denne select + retnings-toggle eksponerer NØJAGTIG de samme sort-nøgler som
 // desktop-headerne og skriver til samme filters.sort/sort_dir via handleSort —
 // ingen ny sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
-function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
+function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn }) {
   // Samme nøgler + rækkefølge som desktop-kolonnerne (RidersPage's `columns`).
   // Labels genbruger table.*-nøglerne; stat-options bruger de internationale
   // korte evne-labels (oversættes ikke, jf. #487).
@@ -161,7 +161,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
     { key: "primary_type", label: t("table.type") },
     { key: "value", label: t("table.value") },
     { key: "salary", label: t("table.salary") },
-    { key: "popularity", label: t("table.popularity") },
+    { key: reputationOn ? "reputation" : "popularity", label: t(reputationOn ? "table.reputationLabel" : "table.popularity") },
   ];
   const options = [...baseOptions, ...statCols.map(({ key, label }) => ({ key, label }))];
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
@@ -746,6 +746,7 @@ export default function RidersPage() {
             sort={filters.sort}
             sortDir={filters.sort_dir}
             onSort={handleSort}
+            reputationOn={reputationOn}
             statCols={visibleStatCols}
             t={t}
           />

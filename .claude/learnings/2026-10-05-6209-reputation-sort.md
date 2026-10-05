@@ -1,0 +1,3 @@
+# Reputation sorting and star count
+
+Refs #6209. The UI displayed a transitional reputation value while the shared client comparator and paginated database query sorted the raw field. Both now use the same display value; database sorting collects the complete lightweight filtered set before paging. Mobile sorting follows the reputation flag, and unknown youth values remain last. Help explains that the board count is every qualifying rider, not a fixed top-seven selection; older goals retain their original criteria. No reputation or board calculations changed. Regression tests reproduce inverted order and missing-value placement.

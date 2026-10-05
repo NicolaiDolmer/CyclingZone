@@ -24,6 +24,7 @@ import {
 // et forkert (stille afkortet) resultat.
 import { fetchAllRows } from "./supabasePagination.js";
 import { riderBestRole } from "./riderRating.js";
+import { mergeReputationSortedIds } from "./reputationSort.ts";
 import { isBestRoleDisplayOn } from "./riderRatingMode.js";
 import { RIDER_TYPE_KEYS } from "./riderTypeKeys.js";
 
@@ -339,6 +340,28 @@ async function fetchRidersSortedByRating(supabase, { filters, from, to, riderSel
 // riders med abilities embedded (!inner kun når et evne-filter er aktivt, ellers
 // left join så evne-løse ryttere stadig vises). Evnerne flades op på rytter-objektet
 // (rider.climbing osv.) så render + klient-sort virker uændret.
+// #6209: sort the complete filtered lightweight set before slicing a page.
+// The visible reputation is derived, so ordering the raw DB column is wrong.
+async function fetchRidersSortedByReputation(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear }) {
+  function buildQuery() {
+    const abilityJoin = anyAbilityFilterActive(filters) ? ", " + abilSelect : "";
+    let q = supabase.from("riders").select("id, popularity, reputation" + abilityJoin);
+    q = applyRiderColumnFilters(q, filters, { prefix: "" }, seasonYear);
+    q = applyAbilityFilters(q, filters, { prefix: ABILITY_TABLE + "." });
+    return q.order("id", { ascending: true });
+  }
+  const allRows = await fetchAllRows(buildQuery);
+  const orderedIds = mergeReputationSortedIds(allRows, filters.sort_dir === "asc");
+  const pageIds = orderedIds.slice(from, to + 1);
+  if (!pageIds.length) return { rows: [], count: orderedIds.length };
+  // pagination-safe: pageIds is bounded to the requested page, at most 50 IDs.
+  const { data, error } = await supabase.from("riders")
+    .select(riderSelect + ", " + abilSelect).in("id", pageIds);
+  if (error) throw error;
+  const byId = new Map((data || []).map(flattenAbilities).map(r => [r.id, r]));
+  return { rows: pageIds.map(id => byId.get(id)).filter(Boolean), count: orderedIds.length };
+}
+
 export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, riderSelect, seasonYear = null }) {
   const from = (page - 1) * pageSize;
   const to = page * pageSize - 1;
@@ -370,6 +393,9 @@ export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, 
     return fetchRidersSortedBySalary(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
   }
   // #4035: se fetchRidersSortedByRating ovenfor — rating kan heller ikke ORDER BY'es direkte.
+  if (filters.sort === "reputation") {
+    return fetchRidersSortedByReputation(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
+  }
   if (filters.sort === "rating") {
     return fetchRidersSortedByRating(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
   }
