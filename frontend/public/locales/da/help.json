@@ -1694,8 +1694,8 @@
       "a": "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Bestyrelsessiden viser den mere detaljerede vurdering. Bestyrelsessiden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, nu med landenavn og flag på den nationale kerne. Derudover forklarer Board-siden nu tydeligere hvorfor bestyrelsen reagerer, ved at vise hvilke kategorier der driver vurderingen, hvad der holder den tilbage, og hvilke signaler fra historik, identitet eller profiler der spiller ind. De to steder læser samme board-data fra backend, så de bruger den samme sandhed."
     },
     "boardProfileRiders": {
-      "q": "Hvem er mit holds profilryttere?",
-      "a": "Bestyrelsessiden navngiver dem under stjerneprofilen. Når omdømme er aktivt, viser den samme tal som ryttersiderne, med et overgangsgulv ved hver rytters gamle popularitet. Listen ændrer sig, når du køber eller sælger ryttere. Et mål om stjerneryttere, som du allerede har aftalt, beholder sin oprindelige måling, til mandatet slutter; nye mål bruger det viste omdømme."
+      "q": "Hvilke ryttere tæller som mit holds stjerner?",
+      "a": "Jeg viser alle de ryttere, der tæller, ved navn under stjerneprofilen på Bestyrelse. Står der syv, er det det aktuelle antal, der opfylder kravet, ikke en regel om at vælge dine syv bedste ryttere. Når omdømme er aktivt, tæller ryttere i båndene Stjerne og Legende med, ud fra det samme omdømme som på ryttersiderne. Den gamle popularitet er stadig et gulv i overgangen. Sortér Mit hold efter omdømme for at sammenligne dem. Listen ændrer sig, når truppen eller dens omdømme ændrer sig. Et mål om stjerneryttere, du allerede har aftalt, beholder sin oprindelige måling, til mandatet slutter, så et ældre mål kan tælle anderledes end den aktuelle profil."
     },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",
