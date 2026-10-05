@@ -21,7 +21,7 @@ const at = (obj: unknown, path: string): unknown =>
 
 test("regel-revision: kun orders_gc_v1 er de nye regler; null/ukendt/legacy er legacy", () => {
   assert.equal(raceRulesRevision(ORDERS_GC_REVISION), "orders_gc_v1");
-  for (const raw of [null, undefined, "", "legacy", "orders_gc_v3", 1, {}]) {
+  for (const raw of [null, undefined, "", "legacy", "orders_gc_v9", 1, {}]) {
     assert.equal(raceRulesRevision(raw), "legacy", String(raw));
     assert.equal(isOrdersGcRevision(raw), false);
   }
@@ -29,6 +29,9 @@ test("regel-revision: kun orders_gc_v1 er de nye regler; null/ukendt/legacy er l
   // #6084: orders_gc_v2 = orders_gc_v1-pakken + bjergselektionen; samme flader.
   assert.equal(raceRulesRevision("orders_gc_v2"), "orders_gc_v1");
   assert.equal(isOrdersGcRevision("orders_gc_v2"), true);
+  // #6187: orders_gc_v3 = orders_gc_v2 + eget hold jagter aldrig sine egne; samme flader.
+  assert.equal(raceRulesRevision("orders_gc_v3"), "orders_gc_v1");
+  assert.equal(isOrdersGcRevision("orders_gc_v3"), true);
 });
 
 test("ordre-halvdelen: preview-gaten gælder legacy, orders_gc_v1 viser altid ordrerne", () => {
@@ -99,6 +102,7 @@ test("filmlinjernes tekst findes på begge sprog, uden tal og uden em-dash", () 
   const keys = [
     "gc_reaction_started", "gc_reaction_started_threat", "gc_reaction_contained", "gc_reaction_stopped",
     "gc_reaction_exhausted", "gc_reaction_no_workers", "gc_context_missing",
+    "own_riders_ahead", "own_riders_ahead_team",
   ];
   for (const lang of ["en", "da"] as const) {
     for (const key of keys) {
@@ -111,4 +115,30 @@ test("filmlinjernes tekst findes på begge sprog, uden tal og uden em-dash", () 
       assert.equal(typeof at(locales[lang], `tacticsOrders.ordersGc.${key}`), "string", `${lang}:${key}`);
     }
   }
+});
+
+// ── #6187 (orders_gc_v3): holdet jagter ikke, det har egne ryttere foran ─────
+
+const ownAhead = (params: Record<string, unknown>) => ({ km: 20, type: "own_riders_ahead", params: { team_id: "team-x", group_id: "breakaway-0", reason: "gc_reaction", ...params } });
+
+test("#6187: filmlinjen for et hold med egne ryttere foran navngiver GC-rytteren og hans holdkammerater", () => {
+  assert.deepEqual(
+    describeGcReactionEvent(ownAhead({ protected_rider_id: "gc", rider_ids: ["t1", "t2"] }), nameOf),
+    { key: "own_riders_ahead", params: { rider: "Ada Leader", riders: "Bo Rival, Cy Rival", count: 2 } },
+  );
+  // Uden kendt GC-rytter (fx en jagt-ordre uden klassement): linjen om holdkammeraterne alene.
+  assert.deepEqual(
+    describeGcReactionEvent(ownAhead({ rider_ids: ["t1"], reason: "chase_order" }), nameOf),
+    { key: "own_riders_ahead_team", params: { riders: "Bo Rival", count: 1 } },
+  );
+  // Intet navn at vise: ingen linje (aldrig et raat id).
+  assert.equal(describeGcReactionEvent(ownAhead({ protected_rider_id: "gc", rider_ids: ["ukendt"] }), nameOf), null);
+  assert.equal(describeGcReactionEvent(ownAhead({ protected_rider_id: "gc" }), nameOf), null);
+});
+
+test("#6187: løbsfilmen og navne-opslaget kender own_riders_ahead", () => {
+  const event = ownAhead({ protected_rider_id: "gc", rider_ids: ["t1"] });
+  const ids = collectRiderIds([event]);
+  assert.ok(ids.includes("gc") && ids.includes("t1"));
+  assert.equal(describeEvent(event, { riderNameById: names })?.key, "own_riders_ahead");
 });

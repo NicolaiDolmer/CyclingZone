@@ -43,8 +43,8 @@ end $$;
 update public.users u set
   email = 'loadtest-' || lpad(x.rn::text, 4, '0') || '@loadtest.invalid',
   username = 'loadtest_' || lpad(x.rn::text, 4, '0'),
-  discord_id = null, discord_handle = null, discord_dm_enabled = false, discord_dm_prefs = null,
-  email_prefs = null, consent_preferences = null, discord_dm_failure_count = 0
+  discord_id = null, discord_handle = null, discord_dm_enabled = false, discord_dm_prefs = default, -- NOT NULL i prod-skemaet: kolonnens default, aldrig null
+  email_prefs = default, consent_preferences = null, discord_dm_failure_count = 0
 from (select id, row_number() over (order by created_at, id) as rn from public.users) x
 where u.id = x.id;
 
