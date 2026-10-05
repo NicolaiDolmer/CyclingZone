@@ -80,6 +80,33 @@ test('legacy table edits do not require retroactive declarations but new exposur
   assert.ok(auditChangedSource('CREATE TABLE public.new_table(id uuid);').length);
 });
 
+test('new tables added to existing files require the full access contract', () => {
+  const legacy = 'CREATE TABLE public.old(id uuid); GRANT SELECT ON public.old TO anon;\n';
+  assert.ok(auditChangedSource(legacy + create, legacy).some(x => x.includes('data-api-access')));
+  assert.deepEqual(auditChangedSource(legacy + valid, legacy), []);
+  assert.deepEqual(auditChangedSource(legacy + 'ALTER TABLE public.old ADD COLUMN name text;', legacy), []);
+});
+
+test('a new table is checked against grants and RLS anywhere in the complete file', () => {
+  const legacy = 'CREATE TABLE public.old(id uuid);\n' + declaration + policy + reset + grants;
+  assert.deepEqual(auditChangedSource(legacy + create, legacy), []);
+  assert.ok(auditChangedSource(legacy + create.replace('ENABLE ROW LEVEL SECURITY', 'DISABLE ROW LEVEL SECURITY'), legacy).some(x => x.includes('RLS')));
+});
+
+test('recreating an old table requires explicit review and cannot reuse its old contract', () => {
+  assert.ok(auditChangedSource(valid + 'DROP TABLE public.example; ' + create, valid).some(x => x.includes('recreation')));
+  assert.deepEqual(auditChangedSource(valid + 'DROP TABLE public.example;', valid), []);
+});
+
+test('unchanged unsupported legacy declarations do not block unrelated edits', () => {
+  const legacy = 'CREATE TABLE public."Legacy"(id uuid);';
+  assert.deepEqual(auditChangedSource(legacy + ' ALTER TABLE public."Legacy" ADD COLUMN note text;', legacy), []);
+  const withRls = legacy + ' ALTER TABLE public."Legacy" ENABLE ROW LEVEL SECURITY;\n';
+  assert.ok(auditChangedSource(withRls + create, withRls).some(x => x.includes('data-api-access')));
+  assert.deepEqual(auditChangedSource(withRls + valid, withRls), []);
+  assert.throws(() => auditChangedSource(legacy + ' CREATE TABLE public."New"(id uuid);', legacy), /Mixed-case/);
+});
+
 test('valid multi-target and qualified-role grants cannot bypass exposure checks', () => {
   for (const sql of [
     'GRANT SELECT ON TABLE public.a, public.b TO anon;',

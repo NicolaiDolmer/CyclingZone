@@ -11,24 +11,33 @@ const TABLE_OPS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENC
 const SEQUENCE_OPS = ['USAGE', 'SELECT', 'UPDATE'];
 const IDENT = '(?:"[a-z_][a-z0-9_]*"|[a-z_][a-z0-9_]*)';
 const NAME = `(?:${IDENT}\\.)?${IDENT}`;
-function name(raw) {
-  if (/"[^"]*[A-Z][^"]*"/.test(raw)) throw Error('Mixed-case quoted identifiers require explicit parser support; do not guess object names.');
+function name(raw, unchangedLegacy = false) {
+  if (/"[^"]*[A-Z][^"]*"/.test(raw)) {
+    if (unchangedLegacy) return null;
+    throw Error('Mixed-case quoted identifiers require explicit parser support; do not guess object names.');
+  }
   const value = raw.trim().replaceAll('"', '').toLowerCase();
   return value.includes('.') ? value : `public.${value}`;
 }
 function freshAcl() { return new Map([...ROLES, 'public'].map(r => [r, new Set()])); }
+function createdTable(text, legacy = false) {
+  const m = text.match(new RegExp(`^CREATE\\s+(?:UNLOGGED\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(${NAME})(?=\\s|\\()`, 'i'));
+  if (legacy && m && /"[^"]*[A-Z][^"]*"/.test(m[1])) return null;
+  return m ? name(m[1]) : null;
+}
 
-export function auditSource(source, { checkNewTables = true } = {}) {
+export function auditSource(source, { checkNewTables = true, existingTables = new Set(), existingStatements = new Set(), exposureSource = source } = {}) {
   const findings = [];
   const statements = splitStatements(source);
   const tables = new Map();
   for (const { text } of statements) {
-    const m = text.match(new RegExp(`^CREATE\\s+(?:UNLOGGED\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(${NAME})(?=\\s|\\()`, 'i'));
-    if (checkNewTables && m && name(m[1]).startsWith('public.')) tables.set(name(m[1]), { text, rls: false, policies: [] });
-    else if (checkNewTables && /\bCREATE\s+(?:UNLOGGED\s+)?TABLE\b/i.test(text) && !m) findings.push('Unsupported dynamic CREATE TABLE: use auditable top-level DDL.');
+    if (existingStatements.has(text)) continue;
+    const table = createdTable(text);
+    if (checkNewTables && table?.startsWith('public.') && !existingTables.has(table)) tables.set(table, { text, rls: false, policies: [] });
+    else if (checkNewTables && !existingStatements.has(text) && /\bCREATE\s+(?:UNLOGGED\s+)?TABLE\b/i.test(text) && !table) findings.push('Unsupported dynamic CREATE TABLE: use auditable top-level DDL.');
   }
   // Exposure checks apply even without a CREATE TABLE in the same file.
-  for (const { text } of statements) {
+  for (const { text } of splitStatements(exposureSource)) {
     if (/^GRANT\b/i.test(text) || /^ALTER\s+DEFAULT\s+PRIVILEGES\b/i.test(text)) {
       const to = text.match(/\bTO\s+(.+)$/i);
       const clientRoles = to && /(?:^|,)\s*(?:GROUP\s+)?"?(?:anon|authenticated|public)"?(?=\s*(?:,|WITH\b|GRANTED\b|$))/i.test(to[1]);
@@ -61,6 +70,7 @@ export function auditSource(source, { checkNewTables = true } = {}) {
     try {
       const contract = JSON.parse(m[1]);
       if (typeof contract.table !== 'string' || !contract.reason?.trim()) throw Error('table and reason required');
+      if (!tables.has(name(contract.table, true))) continue;
       if (contracts.has(name(contract.table))) throw Error('duplicate declaration');
       contracts.set(name(contract.table), contract);
     } catch (error) { findings.push(`Invalid data-api-access: ${error.message}`); }
@@ -68,13 +78,16 @@ export function auditSource(source, { checkNewTables = true } = {}) {
   const acls = new Map(), resets = new Map();
   const objectKey = (kind, table) => `${kind}:${table}`;
   for (const { text } of statements) {
+    // Unsupported unchanged objects cannot satisfy a new supported table's
+    // contract. Ignore their names, while newly added forms still fail closed.
+    const objectName = raw => name(raw, existingStatements.has(text));
     const rls = text.match(new RegExp(`^ALTER\\s+TABLE\\s+(?:ONLY\\s+)?(${NAME})\\s+(ENABLE|DISABLE)\\s+ROW\\s+LEVEL\\s+SECURITY$`, 'i'));
-    if (rls && tables.has(name(rls[1]))) tables.get(name(rls[1])).rls = rls[2].toUpperCase() === 'ENABLE';
+    if (rls && tables.has(objectName(rls[1]))) tables.get(objectName(rls[1])).rls = rls[2].toUpperCase() === 'ENABLE';
     const policy = text.match(new RegExp(`^CREATE\\s+POLICY\\s+(?:"[^"]+"|\\w+)\\s+ON\\s+(${NAME})(?:\\s+AS\\s+(?:PERMISSIVE|RESTRICTIVE))?(?:\\s+FOR\\s+(SELECT|INSERT|UPDATE|DELETE|ALL))?(?:\\s+TO\\s+(.+?))?\\s+(?:USING|WITH\\s+CHECK)\\b`, 'i'));
-    if (policy && tables.has(name(policy[1]))) tables.get(name(policy[1])).policies.push({ name: text.match(/^CREATE\s+POLICY\s+("[^"]+"|\w+)/i)[1].replaceAll('"',''), op: (policy[2] || 'ALL').toUpperCase(), roles: (policy[3] || 'public').split(',').map(x => x.trim().replaceAll('"', '').toLowerCase()) });
+    if (policy && tables.has(objectName(policy[1]))) tables.get(objectName(policy[1])).policies.push({ name: text.match(/^CREATE\s+POLICY\s+("[^"]+"|\w+)/i)[1].replaceAll('"',''), op: (policy[2] || 'ALL').toUpperCase(), roles: (policy[3] || 'public').split(',').map(x => x.trim().replaceAll('"', '').toLowerCase()) });
     const dropPolicy = text.match(new RegExp(`^DROP\\s+POLICY\\s+(?:IF\\s+EXISTS\\s+)?("[^"]+"|\\w+)\\s+ON\\s+(${NAME})$`, 'i'));
-    if (dropPolicy && tables.has(name(dropPolicy[2]))) {
-      const state = tables.get(name(dropPolicy[2]));
+    if (dropPolicy && tables.has(objectName(dropPolicy[2]))) {
+      const state = tables.get(objectName(dropPolicy[2]));
       state.policies = state.policies.filter(p => p.name !== dropPolicy[1].replaceAll('"',''));
     }
     const grant = text.match(new RegExp(`^(GRANT|REVOKE)\\s+(.+?)\\s+ON\\s+(?:(TABLE|SEQUENCE)\\s+)?(.+?)\\s+(?:TO|FROM)\\s+(.+)$`, 'i'));
@@ -85,7 +98,9 @@ export function auditSource(source, { checkNewTables = true } = {}) {
       const ops = all ? (kind === 'SEQUENCE' ? SEQUENCE_OPS : TABLE_OPS) : rawOps.split(',').map(x => x.trim().toUpperCase());
       for (const rawName of rawNames.split(',')) {
         if (!new RegExp(`^${NAME}$`, 'i').test(rawName.trim().replace(/^ONLY\s+/i, ''))) continue;
-        const key = objectKey(kind, name(rawName.replace(/^ONLY\s+/i, '')));
+        const object = objectName(rawName.replace(/^ONLY\s+/i, ''));
+        if (!object) continue;
+        const key = objectKey(kind, object);
         if (!acls.has(key)) { acls.set(key, freshAcl()); resets.set(key, new Set()); }
         for (const role of rawRoles.split(',').map(x => x.trim().replaceAll('"', '').toLowerCase())) {
           if (!acls.get(key).has(role)) continue;
@@ -97,7 +112,7 @@ export function auditSource(source, { checkNewTables = true } = {}) {
         }
       }
     }
-    if (/^(?:DO|CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION)\b/i.test(text) && /\b(?:GRANT|REVOKE|CREATE\s+POLICY|DISABLE\s+ROW)\b/i.test(text)) findings.push('Unsupported dynamic privilege/policy DDL: verify it explicitly; do not broaden grants to silence this audit.');
+    if (!existingStatements.has(text) && /^(?:DO|CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION)\b/i.test(text) && /\b(?:GRANT|REVOKE|CREATE\s+POLICY|DISABLE\s+ROW)\b/i.test(text)) findings.push('Unsupported dynamic privilege/policy DDL: verify it explicitly; do not broaden grants to silence this audit.');
   }
   function checkAccess(kind, object, roles) {
     const key = objectKey(kind, object), acl = acls.get(key) || freshAcl();
@@ -142,10 +157,27 @@ export function auditSource(source, { checkNewTables = true } = {}) {
 export function auditChangedSource(source, previousSource = null) {
   if (previousSource === null) return auditSource(source);
   // Legacy CREATE TABLE contracts are not re-litigated after an unrelated edit.
-  // New exposure statements still fail in modified SQL files.
+  // A new table in an existing file still needs the entire access contract.
+  // Read the whole current file for its declaration, RLS, policies and grants;
+  // exposure findings are limited to added statements to avoid legacy noise.
   const previous = new Set(splitStatements(previousSource).map(s => s.text));
-  const added = splitStatements(source).filter(s => !previous.has(s.text)).map(s => s.text).join(';\n');
-  return auditSource(added, { checkNewTables: false });
+  // Unchanged unsupported identifiers belong to the legacy scanner's scope.
+  // A new/modified unsupported CREATE still throws in auditSource above.
+  const existingTables = new Set([...previous].map(text => createdTable(text, true)).filter(Boolean));
+  const currentStatements = splitStatements(source);
+  const addedStatements = currentStatements.filter(s => !previous.has(s.text));
+  const added = addedStatements.map(s => s.text).join(';\n');
+  const recreations = [];
+  for (const [index, { text }] of currentStatements.entries()) {
+    if (previous.has(text)) continue;
+    const drop = text.match(/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(.+?)(?:\s+(?:CASCADE|RESTRICT))?$/i);
+    if (!drop) continue;
+    for (const raw of drop[1].split(',')) {
+      const table = name(raw);
+      if (existingTables.has(table) && currentStatements.slice(index + 1).some(s => createdTable(s.text, true) === table)) recreations.push(`${table}: table recreation requires an explicit access/RLS review; previous grants and policies cannot satisfy it.`);
+    }
+  }
+  return [...recreations, ...auditSource(source, { existingTables, existingStatements: previous, exposureSource: added })];
 }
 
 function main() {
