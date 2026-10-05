@@ -1461,7 +1461,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       for (const order of parsedOrders) {
         if (order.breakaway_stance !== "chase" || !ownAheadTeamIds.has(order.team_id)) continue;
         if (teamRacingRiderIds(chaseGroup, order.team_id, state.riders, ctx.entrants).length === 0) continue;
-        announce(order.team_id, breakaway.id, teamRacingRiderIds(breakaway, order.team_id, state.riders, ctx.entrants), "chase_order", null);
+        const protectedId = gcContext ? protectedRiderForTeam({ gcContext, teamId: order.team_id, entrants: ctx.entrants }) : null;
+        announce(order.team_id, breakaway.id, teamRacingRiderIds(breakaway, order.team_id, state.riders, ctx.entrants), "chase_order", protectedId);
       }
     }
 
