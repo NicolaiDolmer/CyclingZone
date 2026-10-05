@@ -6,13 +6,13 @@
 
 ## 🔴 Brand (nu)
 
-⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (spec `2026-10-04-form-og-formtoppe-i-v4-design.md`; ejer 5/10: bygges, når de øvrige motorpunkter er designet, se Uge 41; embargo på roadmappet). Trin 0 ✅ (#6157) · 🟠 #6129 anvendt 5/10 (aftentjek; 7 blokerede efterkontrolleres) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (svar i næste roadbook) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (spec `2026-10-04-form-og-formtoppe-i-v4-design.md`; ejer 5/10: bygges, når de øvrige motorpunkter er designet, se Uge 41; embargo på roadmappet). Trin 0 ✅ (#6157) · 🟠 #6129 anvendt 5/10 (7 blokerede efterkontrolleres) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (svar i næste roadbook) · 🔵 #5897 217 bestyrelser (kort søn).
 
-## Uge 41 · rækkefølge (ejer 4/10)
+## Uge 41 · rækkefølge
 
-Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt, byg bag `orders_gc_v3`, flip ejer-only: 🟠 #6187 aftalt 5/10, i lane · derefter #5978+#6201 · #6185 · #6199+#6200 · #3460 · #2557 · #6137 #6186 #5059; #6156 efter) · **Supabase-stabilisering (#5893, ejer 5/10), i denne rækkefølge:** ① staging færdig #5904 (fingeraftryk → huller → #6170; Claude) samtidig med ② timeout-diagnose #6184 (PR #6196 synkes) + #5878 → ③ tunge kald, bevist på staging: #6102 (PR #6136, ejer-kør) · #3511 · #5692 sæsonskifte-refresh (før 25/10) → ④ ved siden af: #4269 (ejer opretter token) · #6104 · #6105 · #708 (Codex, før 30/10). Venter på ①: #6134 jobkø · #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
+Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt, byg bag `orders_gc_v3`, flip ejer-only: 🟠 i lane: #6187 (PR #6213) · #6185 del 1 · #6137 · venter på v3: #3460 halv støtte · #6185 del 2 · design mangler: #5978+#6201 · #6199+#6200 · #2557 · Arbejd+loft · #6186 #5059; #6156 efter) · **Supabase-stabilisering (#5893, ejer 5/10), i denne rækkefølge:** ① staging færdig #5904 (Claude) samtidig med ② timeout-diagnose #6184 (PR #6196 synkes) + #5878 → ③ tunge kald, bevist på staging: #6102 (PR #6136, ejer-kør) · #3511 · #5692 sæsonskifte-refresh (før 25/10) → ④ ved siden af: #4269 (ejer opretter token) · #6104 · #6105 · #708 (Codex, før 30/10). Venter på ①: #6134 jobkø · #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
 
-## Roadmap · Planned (ejer 5/10; spejles 1:1 i `roadmap_items.sort_order`)
+## Roadmap · Planned (spejles i `roadmap_items.sort_order`)
 
 **Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** #1177 · #2887 A · #2768 · #5573 · #4620 · #5113 · #5101 · #5575 · #5574 · #3463 · #6125 · #2176 · #4957 · #5106 · #3374 · #3513 · #2223 · #2161. #6203 søgning · #6204 admin · #6205 sync. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
 
@@ -40,7 +40,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse. **Afgjort 5/10:** #6187 B · #6134 venter staging · #5981 A · #2887 B/A · #5268 A.
+**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse. **Afgjort 5/10:** #6187 B · #6185 begge · #6137 visning · #3460 B · #6134 venter staging · #5981 A · #2887 B/A · #5268 A.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
