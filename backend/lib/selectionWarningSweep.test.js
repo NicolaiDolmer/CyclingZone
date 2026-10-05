@@ -7,6 +7,7 @@ import {
   racesNeedingSelectionWarning,
   teamsMissingSelection,
   runSelectionWarningSweep,
+  selectionWarningDedupKey,
 } from "./selectionWarningSweep.js";
 
 // #2180 · 36t-varsel: pure udvælgelses-logik + effektfuld sweep med injicerede
@@ -305,4 +306,63 @@ test("runSelectionWarningSweep: kaster hvis supabase mangler", async () => {
     () => runSelectionWarningSweep({ supabase: null }),
     /Supabase client required/
   );
+});
+
+// #6184 · Forhånds-dedup: allerede varslede (manager, løb) koster ingen kald.
+function dueSweepArgs(overrides = {}) {
+  return {
+    supabase: makeNoopSupabase(),
+    now: new Date("2026-08-04T12:00:00Z"),
+    fetchUpcomingScheduledRaces: async () => ({
+      seasonId: "s1",
+      races: [{ id: "r1", name: "Race One", status: "scheduled", stages_completed: 0, league_division_id: 1, race_class: "Class1" }],
+    }),
+    fetchScheduleByRace: async () => new Map([["r1", [{ scheduled_at: "2026-08-05T12:00:00Z" }]]]),
+    fetchHumanTeams: async () => [
+      { id: "t1", user_id: "u1", league_division_id: 1 },
+      { id: "t2", user_id: "u2", league_division_id: 1 },
+      { id: "t3", user_id: null, league_division_id: 1 },
+    ],
+    fetchEntryCountsByRace: async () => new Map(),
+    fetchWithdrawnTeamIdsByRace: async () => new Map(),
+    ...overrides,
+  };
+}
+
+test("#6184: forhånds-dedup springer allerede varslede managere over uden notify-kald", async () => {
+  const payload = buildSelectionWarningNotification({ raceId: "r1", raceName: "Race One" });
+  const notified = [];
+  let fetchArgs = null;
+  const stats = await runSelectionWarningSweep(dueSweepArgs({
+    notify: async (p) => { notified.push(p.teamId); return { delivered: true }; },
+    fetchRecentWarnings: async (args) => {
+      fetchArgs = args;
+      return new Set([selectionWarningDedupKey({ userId: "u1", relatedId: "r1", title: payload.title, message: payload.message })]);
+    },
+  }));
+  assert.deepEqual(fetchArgs.raceIds, ["r1"]);
+  assert.equal(fetchArgs.sinceIso, "2026-08-03T12:00:00.000Z", "samme 24t-vindue som notifyUser");
+  assert.deepEqual(notified, ["t2", "t3"], "u1 er dedup'et; ukendt ejer (t3) går stadig til notify");
+  assert.equal(stats.deduped, 1);
+  assert.equal(stats.warned, 2);
+});
+
+test("#6184: en anden beskedtekst (fx omdøbt løb) dedup'es IKKE af forhånds-opslaget", async () => {
+  const notified = [];
+  await runSelectionWarningSweep(dueSweepArgs({
+    notify: async (p) => { notified.push(p.teamId); return { delivered: true }; },
+    fetchRecentWarnings: async () => new Set([
+      selectionWarningDedupKey({ userId: "u1", relatedId: "r1", title: "Squad selection needed", message: "old text" }),
+    ]),
+  }));
+  assert.deepEqual(notified, ["t1", "t2", "t3"]);
+});
+
+test("#6184: injiceret notify uden fetchRecentWarnings → ingen forhånds-opslag (bagudkompatibelt)", async () => {
+  const notified = [];
+  const stats = await runSelectionWarningSweep(dueSweepArgs({
+    notify: async (p) => { notified.push(p.teamId); return { delivered: true }; },
+  }));
+  assert.equal(notified.length, 3);
+  assert.equal(stats.warned, 3);
 });
