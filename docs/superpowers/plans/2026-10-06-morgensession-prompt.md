@@ -23,7 +23,9 @@ Morgensession 6/10. Fortsættelse af planlægningssessionen 5/10 (#6148). **Unde
 3. **#6053 Programmer, vælg rytter først** (beta): ejeren var ikke helt glad. Se på det sammen med ham.
 4. **Train now → alle?** Discord 3-5/10: ingen beta-fejlmeldinger (kanalerne tavse siden 1/10); reelt 37 tryk fra 13 hold 1-5/10. Bed om beta-feedback samtidig med sæsonmatrixen, og afgør derefter.
 5. **Sæsonmatrix mobil (#5124):** bed beta-testerne om feedback i dag (ejer 5/10); skriv opslaget i ejerens tone (EN, DA under).
-6. **#5864 udløbne kontrakter** (236 ryttere, B "straks" 28/9): dry-run fra PR #6198; ejeren ser listen live før go.
+6. **#5864 udløbne kontrakter** (236 ryttere, B "straks" 28/9): PR #6198 klar (rod-årsag: sæsonskiftets kontraktudløb tog kun seniortruppen). Merge → dry-run → ejeren ser listen live → `--apply --owner-go=5864-production --approved-list=<hash>`.
+7b. **#6184 timeouts:** PR #6196 klar. Linjerne er tomgangs-keep-alive, ikke dræbte kald; rettelser: N+1 i selection-warning-sweep og board-auto-accept, stallWatchdog LIMIT 1, nyt race_results-indeks (CONCURRENTLY). **Rører boardAutoAccept.js ligesom #6197: synk efter #6197-merge.** Go-kort fra diffen.
+7c. Forslag fra #6197-workeren: Boardroom mangler flueben, selvom planen er underskrevet (52 pending 3-års + 35 1-års planer på menneskehold), så det bør undersøges og oprettes som issue.
 7. **#6130**: tørkørsel for de 6 hold uden mandat → go.
 
 **Nye fra Discord 5/10:** #6206 EXP-ikon U23/junior · #6207 rutematch 56 vs 51 · #6208 rapport hele point vs %% (idé) · **#6209 omdømme-sortering (ejer lovede rettelse 3/10 "in the coming week")** · #6210 to point i samme evne på én dag. Ubesvaret på Discord: "vi kunne træne når som helst, men nu kører den kl. 20?" (Q&A 2/10) · program med andet på løbsdag 2 og 4 (beta 4/10) · hvilke 7 tæller i omdømme. Holdet "Dolmer Racing" udgiver sig muligvis for ejeren.
