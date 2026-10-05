@@ -24,10 +24,6 @@ export function riderReputationBand(value: number | null | undefined): RiderRepu
   return "unknown";
 }
 
-export function riderReputationSortValue(rider: RiderReputationLike | null | undefined, enabled: boolean): number {
-  return riderReputationValue(rider, enabled) ?? -1;
-}
-
 export function riderReputationBandKey(rider: RiderReputationLike | null | undefined, enabled: boolean): string | null {
   const band = riderReputationBand(riderReputationValue(rider, enabled));
   return band ? `reputation.band.${band}` : null;

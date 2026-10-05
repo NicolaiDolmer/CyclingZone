@@ -36,7 +36,7 @@ import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { scoutSortValue } from "../../lib/scouting.js";
 import { formatNumber } from "../../lib/intl.js";
 import { useRiderReputation } from "../../lib/useRiderReputation.ts";
-import { riderReputationBandKey, riderReputationSortValue, riderReputationValue } from "../../lib/riderReputationView.ts";
+import { riderReputationBandKey, riderReputationValue } from "../../lib/riderReputationView.ts";
 import { isRiderInjured } from "../../lib/training.js";
 import { ABILITY_STATS } from "../../lib/abilities.js";
 import { DataTable, RiderBadges, RiderLink, Segmented, WithBestRole, type DataTableColumn } from "./squadUi.ts";
@@ -66,7 +66,7 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   _value: (r) => r._value,
   salary: (r) => r.salary,
   popularity: (r) => (Number.isFinite(r.popularity) ? r.popularity : null),
-  reputation: (r) => riderReputationSortValue(r, true),
+  reputation: (r) => riderReputationValue(r, true),
   contract_end_season: (r) => r.contract_end_season,
   ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, (r: Row) => Number(r[k]) || 0])),
 };

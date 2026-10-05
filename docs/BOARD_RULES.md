@@ -435,3 +435,7 @@ re-insert fejler (aldrig værre stillet end før kaldet). Backfill: `repairMissi
 - `audits/2026-06-20-board-mechanics.md`, `audits/2026-06-14-board-goal-calibration-findings.md` —
   kalibrerings-grundlaget for mål og tærskler.
 - `ECONOMY_RULES.md` §6 — bestyrelsens økonomiske dele, nu udfoldet her.
+
+## Omdømme-sortering og stjerneantal (#6209, 5/10)
+
+Sortering følger den viste overgangsværdi fra `riderReputationView`, også på tværs af sider i rytterdatabasen. Ukendte værdier placeres sidst. `boardIdentity.calculateStarProfile` tæller alle kvalificerende ryttere og returnerer de samme ryttere i navnelisten; et vist antal er ikke et fast top-antal. Hjælp skelner mellem den aktuelle profil og ældre aftalte måls frosne måling. Ingen kriterier, tærskler eller bestyrelsesmål ændres.

@@ -1694,8 +1694,8 @@
       "a": "The Dashboard shows a short board outlook with status and category scores, while the Board page shows the more detailed assessment. The Board page also shows the board's read of the team with specialisation, U25 share, national core, star profile and squad status, now with country name and flag on the national core. The Board page now also explains more clearly why the board reacts, by showing which categories drive the assessment, what's holding it back, and which signals from history, identity or profiles play in. The two places read the same board data from the backend, so they share the same truth."
     },
     "boardProfileRiders": {
-      "q": "Who are my team's profile riders?",
-      "a": "The Board page names them under the star profile tile. When reputation is enabled, it shows the same number as the rider pages, with a transition floor at each rider's old popularity. The list changes as you sign or sell riders. A star-rider goal you already agreed keeps its original measure until that mandate ends; new goals use the displayed reputation number."
+      "q": "Which riders count as my team's stars?",
+      "a": "I list every qualifying rider by name under the star profile on the Board page. If it says seven, that is the current number who qualify, not a rule that picks your seven best riders. With reputation enabled, riders in the Star and Legend bands count, using the same reputation shown on their rider pages. Their old popularity remains a floor during the transition. Sort My Team by reputation to compare them. The list changes when your squad or its reputation changes. A star-rider goal you already agreed keeps its original measure until that mandate ends, so an older goal can count differently from the current profile."
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",
