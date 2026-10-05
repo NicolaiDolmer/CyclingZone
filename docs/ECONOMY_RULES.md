@@ -334,6 +334,11 @@ The report distinguishes team cash balances from the sum of rider valuations. It
 
 ## Præmieprognosens interval (#5940, 5/10)
 
-`financeForecast.computePrizeInterval` bruger divisionens målte kvartilspænd direkte og udvider det om nødvendigt til holdets eget punktestimat. Divisionens median bruges ikke som multiplikator. Det eksisterende fallback ved utilstrækkelige data bevares. Dette ændrer kun prognosens interval; punktestimat, præmieregler og udbetalinger er uændrede. SSOT for sponsorvisning: `SPONSOR_RULES.md`.
-
-#6215 review: peers udvælges stabilt med id-sortering før det eksisterende loft. Sammenligningsgrundlaget er rullende præmieestimater for ryttere på de udvalgte hold, ikke faktiske udbetalinger fra én afsluttet sæson eller en garanti for et bestemt historisk niveau. Intervaldesign for stærke hold afventer ejerens særskilte beslutning.
+[Ejerens valg 5/10 kl. 22](https://github.com/NicolaiDolmer/CyclingZone/pull/6215#issuecomment-6001921688)
+er et fast, proportionalt spænd omkring holdets eget estimat, med bunden klemt
+til nul. Intervallet bruger den eksisterende band-konstant; divisionens kvartiler
+og peer-stikprøve er fjernet. Nettoets confidence-grænser følger samme spredning.
+Punktestimat, præmieregler og udbetalinger er uændrede. Båndets størrelse er et
+ejer-valg, ikke en målt historisk kvalitet eller statistisk garanti. Historiske
+sammenligninger må derfor ikke bruges som kalibreringsgodkendelse. SSOT for
+sponsorvisning: `SPONSOR_RULES.md`.
