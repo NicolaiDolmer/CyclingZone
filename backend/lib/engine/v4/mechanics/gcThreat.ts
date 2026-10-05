@@ -44,7 +44,10 @@ export type GcThreatReason =
   | "rival_close"
   | "rival_ahead"
   | "leader_jersey_at_risk"
-  | "leader_at_risk";
+  | "leader_at_risk"
+  // #6187 (KUN orders_gc_v3): den eneste trussel foran er holdets egne ryttere
+  // (eller sidder i en gruppe med en af holdets egne). Holdet jager ikke.
+  | "own_rider_ahead";
 
 export type GcThreat = {
   severity: GcThreatSeverity;
@@ -63,6 +66,11 @@ export type GcThreat = {
    * blandt truslens ryttere. Kun sat naar severity ikke er "none".
    */
   tolerated_lead_seconds?: number;
+  /**
+   * #6187 (KUN orders_gc_v3, reason "own_rider_ahead"): gruppen med holdets
+   * egen rytter, hvor den trussel holdet ikke jager, sidder.
+   */
+  own_rider_group_id?: string;
 };
 
 export const GC_THREAT_TUNING = Object.freeze({
@@ -207,6 +215,18 @@ export function assessGcThreat(input: {
    * "protected_in_other_group". Udeladt = ingen saadan begraensning.
    */
   chasingGroupIds?: ReadonlySet<string>;
+  /**
+   * #6187 (KUN orders_gc_v3): holdet vurderingen gaelder. Holdets egne ryttere
+   * er aldrig en trussel. Udeladt = ingen saadan undtagelse (orders_gc_v1/v2,
+   * bit-identisk).
+   */
+  ownTeamId?: string;
+  /**
+   * #6187 (KUN orders_gc_v3, kraever ownTeamId): en gruppe foran med en af
+   * holdets egne koerende ryttere vurderes slet ikke; holdet jager den ikke.
+   * Er det kun derfor der ingen trussel er, er grunden "own_rider_ahead".
+   */
+  skipOwnRiderGroups?: boolean;
 }): GcThreat {
   const tuning = GC_THREAT_TUNING;
   const gcContext = input.gcContext ?? null;
@@ -246,11 +266,17 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string };
   const candidates: Candidate[] = [];
   let anyClassified = false;
+  // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
+  // skipOwnRiderGroups heller ikke deres gruppe). Uden ownTeamId er `own` altid
+  // falsk, og vurderingen er praecis som foer.
+  const ownTeamId = input.ownTeamId;
+  const isOwn = (riderId: string) => ownTeamId !== undefined && input.entrants[riderId]?.team_id === ownTeamId;
   for (const group of ahead) {
     const lead = Math.max(0, protectedGroup.gap_seconds - group.gap_seconds);
+    const ownGroup = input.skipOwnRiderGroups === true && group.rider_ids.some((id) => isRacing(id) && isOwn(id));
     for (const riderId of group.rider_ids) {
       if (!isRacing(riderId)) continue;
       const standing = standingById.get(riderId);
@@ -285,22 +311,31 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0 });
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
 
-  candidates.sort(
-    (a, b) => severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || a.riderId.localeCompare(b.riderId),
-  );
-  const worst = candidates[0];
+  const bySeverity = (a: Candidate, b: Candidate) =>
+    severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || a.riderId.localeCompare(b.riderId);
+  const counted = candidates.filter((c) => !c.own).sort(bySeverity);
+  const suppressed = candidates.filter((c) => c.own).sort(bySeverity);
+  if (suppressed.length > 0 && (counted.length === 0 || counted[0].severity === "none")) {
+    // #6187: det eneste der ville have vaeret en trussel, er holdets egne
+    // (eller sidder sammen med dem). Holdet jager ikke sine egne.
+    if (suppressed[0].severity !== "none") {
+      return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "own_rider_ahead", own_rider_group_id: suppressed[0].groupId };
+    }
+    if (counted.length === 0) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
+  }
+  const worst = counted[0];
   if (worst.severity !== "none" && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
     return { ...base, threat_rider_ids: [], tied: worst.tied, severity: "none", reason: "protected_in_other_group" };
   }
   const threatRiderIds = worst.severity === "none"
     ? []
-    : candidates.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
-  const toleratedLead = Math.max(0, Math.min(...candidates.filter((c) => c.severity !== "none").map((c) => c.lead + c.margin)));
+    : counted.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
+  const toleratedLead = Math.max(0, Math.min(...counted.filter((c) => c.severity !== "none").map((c) => c.lead + c.margin)));
   return {
     ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied,
     ...(worst.severity !== "none" ? { tolerated_lead_seconds: toleratedLead } : {}),
