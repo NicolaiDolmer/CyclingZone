@@ -11,18 +11,20 @@ Arbejdsform (ejer 5/10): verdensklasse, god fart, token-effektivt. Undersøg fø
 **Læs først:** `docs/NOW.md`, `docs/MASTERPLAN.md`, og de seneste kommentarer på #6187 #5978 #6201 #6185 #6199 #3460 #6137 (alle har "Ejer-beslutning 5/10" med acceptkriterier). Billederne ejeren har set, ligger i `pr-screens/motor-5-10/`.
 
 **1. Tjek først**
-- Railway-deployet af `7d864d8bf` (#6213): stod på BUILDING i over 30 min 5/10 kl. 18, og "Deploy verify" blev rød på timeout to gange. Bekræft at deployet er SUCCESS, og genkør Deploy verify (`gh run rerun 37333454860 --failed`). Merge intet, før main er grøn.
-- Bølgen fra forrige session (`node scripts/wave-policy.mjs inspect`): er den færdig og ryddet op? Kører den stadig i den gamle session, så vent på den; start ikke en ny bølge oven i.
+- Railway-deployet af `7d864d8bf` (#6213) blev SUCCESS 5/10 kl. 18:03 efter 32 min byg; seneste Deploy verify er grøn. Bekræft at main er grøn, før du merger.
+- Bølgen fra 5/10 er færdig og ryddet op (markøren er væk). Alle seks spor har åbne, ikke-draft PR'er. Kør `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) for efterladte processer.
 - `gh workflow` "Supabase Log Watch" og "Advisor sweep": første kørsel med det nye token (ejer satte `SUPABASE_ACCESS_TOKEN` 5/10). Grøn?
 
 **2. Land PR'erne (uafhængigt review på diffen før hvert go-kort)**
 | PR | Hvad | Status 5/10 aften |
 |---|---|---|
-| #6217 | #6137 løbsfilm samler ens linjer | Klar. **Ejer-go givet 5/10 på før/efter-billedet:** merge, når CI + diff-tjek + CodeRabbit er grønne |
-| #6216 | #6185 del 1, mærket "Sat af" + backfill-script | Klar. Kræver ejer-go på før/efter-billede; backfill køres efter merge, når ejeren har set dry-run-tallene |
-| #6223 | #6199 + #6200 tidsmodel | I lane 5/10 |
-| #6224 | #5978 farlig rytter + de fire review-bemærkninger fra #6213 | I lane 5/10 |
-| (ny) | #3460 Spar kræfter halv støtte | I lane 5/10 |
+| #6217 | #6137 løbsfilm samler ens linjer | **Ejer-go givet 5/10** (merge ved grøn CI). Synket med main og typefejl rettet (`e81ab78a3`). 5/10 kl. 19:20: én af to `perf-gate`-kørsler rød, den anden grøn; undersøg, før du merger |
+| #6216 | #6185 del 1, mærket "Sat af" (rød pil ned, tryk viser tekst) + backfill-script + migration | **Ejer-go givet 5/10** på det nye billede (merge ved grøn CI). Uafhængigt review blev startet 5/10; resultatet står som kommentar på PR'en, hvis det nåede at komme. Backfill: dry-run først, ejeren ser tallene |
+| #6225 | #3460 Spar kræfter halv støtte | Klar, 3 filer. Mangler uafhængigt review og ejer-go |
+| #6223 | #6199 + #6200 tidsmodel | Klar fra lanen. Mangler uafhængigt review, scorecard-dom og ejer-go |
+| #6224 | #5978 farlig rytter + de fire review-bemærkninger fra #6213 | Klar fra lanen. Mangler uafhængigt review og ejer-go |
+
+Merge-rækkefølge for de tre, der deler `tuning.ts`, `segmentLoop.ts` og RULES: **#6225 → #6223 → #6224** (bølgens egen anbefaling). Lanernes fulde rapporter: `journal.jsonl` under workflow-kørslen `wf_204e6c67-e6b` (se bølgens resultat i forrige session), ellers PR-bodies.
 
 Derefter i samme bølge-rytme: **#6201** (bjerg typisk 6-12/loft 16, kuperet og rullende 5-9/loft 12, AI sender klatrer, farten følger antallet; bygges efter #5978, samme filer) og **#6185 del 2** (motoren udsender selv "sat af fra udbruddet").
 

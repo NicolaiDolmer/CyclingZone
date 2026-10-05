@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (5/10 aften): Session A: [`2026-10-05-session-a-motor-landing.md`](superpowers/plans/2026-10-05-session-a-motor-landing.md) (land motorpakken bag `orders_gc_v3`, mål, tænd-tjekliste). Derefter Session B: [`2026-10-05-session-b-morgenblok.md`](superpowers/plans/2026-10-05-session-b-morgenblok.md) (Udvikling 2.0 D1-D7, udgifter, #6053, Train now, #5864, #6130, #6196).** Først i A: Railway-deploy af `7d864d8bf` (stod på BUILDING, Deploy verify rød på timeout) · er bølgen fra 5/10 færdig? · Log Watch med nyt token. Codex ved siden af: #5916+#5940 (PR #6215) → #6209 (PR #6218) → #708 → #6202, derefter de tunge kald på #6184.
+> **🎯 Next action (5/10 aften): Session A: [`2026-10-05-session-a-motor-landing.md`](superpowers/plans/2026-10-05-session-a-motor-landing.md) (land motor-PR'erne #6217 #6216 #6225 #6223 #6224 bag `orders_gc_v3`, mål, tænd-tjekliste). Derefter Session B: [`2026-10-05-session-b-morgenblok.md`](superpowers/plans/2026-10-05-session-b-morgenblok.md) (Codex' fire PR'er #6215 #6218 #6220 #6222, Udvikling 2.0 D1-D7, udgifter, træning, #5864, #6130, #6196). Codex: ny session med [`2026-10-05-naeste-session-codex-stabilitet.md`](superpowers/plans/2026-10-05-naeste-session-codex-stabilitet.md) (tunge kald fra #6184, bevist på staging).**
 >
 > **5/10 (motor-design):** aftalt med ejeren med ægte etapedata: #6187 (merget, #6213, v3 slukket) · #5978 · #6201 · #6185 · #3460 · #6137 (go givet) · #6199+#6200 (mål fra virkelige løb). Kontrakterne står som seneste kommentar på hvert issue; billeder i `pr-screens/motor-5-10/`. Staging = prod-skema + data (#5904). Supabase-rækkefølge i MASTERPLAN. Kvalitets-issues: #6226 #6227 #6228 #6229 #6230. Læring: `.claude/learnings/2026-10-05-staging-restore-afbrudt-og-rensning-fejlede.md`.
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude-sessionen fra 5/10 står KUN åben for sin kørende bølge (laner #6199 #5978 #3460; ingen nye opgaver). Session A må starte, når `node scripts/wave-policy.mjs inspect` viser, at bølgen er væk; start ikke en ny bølge oven i.
+> **🤖 Working agent:** Ingen aktiv session (5/10 motor-design lukket; bølgen er færdig og ryddet op).
