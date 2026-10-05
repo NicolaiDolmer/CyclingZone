@@ -331,7 +331,9 @@ export function advanceTeamReaction(input: {
 
   // Ingen reaktion i dette segment.
   if (prior.status === "reacting") {
-    const reason = input.threat.severity === "none" ? "contained" : plan.reason;
+    // #6187 (KUN orders_gc_v3): truslen sidder nu sammen med holdets egen mand.
+    // Det er ikke "under kontrol"; holdet jager bare ikke sine egne.
+    const reason = input.threat.severity === "none" ? (input.threat.reason === "own_rider_ahead" ? "own_rider_ahead" : "contained") : plan.reason;
     events.push(reactionEvent(input.km, input.teamId, "stopped", reason, input.threat, prior.mode));
     return { next: { ...prior, status: "idle", reason }, workers: [], events };
   }

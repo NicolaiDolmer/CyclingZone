@@ -1170,7 +1170,9 @@
         "gc_reaction_batch_stopped": "{count} {scope, select, others {other teams} other {teams}} stopped reacting.",
         "gc_reaction_batch_exhausted": "{count} {scope, select, others {other teams} other {teams}} spent what they can on the reaction this stage and stopped working.",
         "gc_reaction_batch_no_workers": "{count} {scope, select, others {other teams} other {teams}} saw the threat, but had no free riders in the group to react.",
-        "gc_context_missing": "The GC standings before this stage are not available, so no team reacts to a GC threat today."
+        "gc_context_missing": "The GC standings before this stage are not available, so no team reacts to a GC threat today.",
+        "own_riders_ahead": "{rider}'s team does not chase. It has {riders} up the road.",
+        "own_riders_ahead_team": "The team of {riders} does not chase. It has {count, plural, one {him} other {them}} up the road."
       }
     },
     "recap": {
