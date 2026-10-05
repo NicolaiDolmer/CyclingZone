@@ -138,11 +138,16 @@ export function planTeamReaction(input: {
 
   // #5978 (KUN orders_gc_v3): lad-gaa-undtagelsen beskytter kun klassementet.
   if (input.leash && input.threat.one_day === true) return none("let_go_one_day");
+  // #5978 (KUN orders_gc_v3): snoren holder en igangvaerende forebyggende
+  // reaktion ogsaa naar truslen falder til moderat; den stopper kun naar
+  // hjaelperne eller budgettet er brugt. Snoren starter den ikke.
+  const leashHeld = input.leash === true && input.threat.leash_hold === true && prior.status === "reacting";
   // let_go: kun en alvorlig trussel, kun med budget tilbage, kun med hjaelpere.
-  if (input.threat.severity !== "serious") return none("let_go_not_serious");
+  if (input.threat.severity !== "serious" && !leashHeld) return none("let_go_not_serious");
   if (prior.status === "exhausted" || budgetRemaining <= 0) return none("budget_exhausted");
   if (input.availableWorkers.length === 0) return none("no_workers");
-  return { intensity: tuning.preventiveIntensity, mode: "preventive", budgetRemaining, reason: input.threat.reason };
+  const reason = input.threat.severity === "serious" ? input.threat.reason : "leash";
+  return { intensity: tuning.preventiveIntensity, mode: "preventive", budgetRemaining, reason };
 }
 
 /**

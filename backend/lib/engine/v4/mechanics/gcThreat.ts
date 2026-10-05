@@ -462,7 +462,10 @@ export function assessGcThreat(input: {
     if (counted.length === 0) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
   }
   const worst = counted[0];
-  if (worst.severity !== "none" && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
+  // #5978 (KUN orders_gc_v3): ogsaa naar snoren er den eneste trussel, kan
+  // holdet ikke jage fra en anden gruppe end jagtgruppen (samme pause/stop).
+  const leashOnly = model !== undefined && worst.severity === "none" && leashHeldBy(counted);
+  if ((worst.severity !== "none" || leashOnly) && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
     return { ...base, threat_rider_ids: [], tied: worst.tied, severity: "none", reason: "protected_in_other_group" };
   }
   const threatRiderIds = worst.severity === "none"
@@ -476,6 +479,16 @@ export function assessGcThreat(input: {
   };
 }
 
+/** #5978 (KUN orders_gc_v3): holder denne rytter snoren (reel rival under snorens margin)? */
+function holdsLeash(c: { margin: number; rival: boolean }): boolean {
+  return c.rival && c.margin < GC_THREAT_V3_TUNING.leashMarginSeconds;
+}
+
+/** #5978 (KUN orders_gc_v3): holder nogen af de talte ryttere snoren? */
+function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean }>): boolean {
+  return counted.some(holdsLeash);
+}
+
 /**
  * #5978 (KUN orders_gc_v3): snoren. En farlig rytter (reel rival, ikke holdets
  * egen) foran, hvis fremskrevne margin endnu er under snorens margin, holder
@@ -487,9 +500,8 @@ function withLeash(
   threat: GcThreat,
   counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number }>,
 ): GcThreat {
-  const leashMargin = GC_THREAT_V3_TUNING.leashMarginSeconds;
-  const held = counted.filter((c) => c.rival && c.margin < leashMargin);
-  const limiting = counted.filter((c) => c.severity !== "none" || (c.rival && c.margin < leashMargin));
+  const held = counted.filter(holdsLeash);
+  const limiting = counted.filter((c) => c.severity !== "none" || holdsLeash(c));
   const tolerated = limiting.length > 0
     ? { tolerated_lead_seconds: Math.max(0, Math.min(...limiting.map((c) => c.leashRoom))) }
     : {};
@@ -566,7 +578,8 @@ function assessOneDayThreat(input: {
     return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "harmless", leash_hold: false };
   }
   const worst = counted[0];
-  if (worst.severity !== "none" && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
+  // #5978: ogsaa naar snoren er den eneste trussel (samme pause/stop som i etapeloeb).
+  if ((worst.severity !== "none" || leashHeldBy(counted)) && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
     return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "protected_in_other_group" };
   }
   const threatRiderIds = worst.severity === "none" ? [] : counted.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();

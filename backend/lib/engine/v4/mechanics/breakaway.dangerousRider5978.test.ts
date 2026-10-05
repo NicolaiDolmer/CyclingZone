@@ -477,18 +477,134 @@ test("#5978 v3 (review 6d): let_go in a stage race: the preventive exception hol
   assert.equal(letGoBrakingTeams([{ teamId: "B", threat: leashOnly, stance: "let_go", plan: held }], "peloton-0", true).get("B"), 30);
 });
 
-test.todo("#5978 v3 (review 6d, contract gap): let_go in a stage race: a moderate threat while the leash holds should keep the preventive reaction going (code stops it as 'let_go_not_serious')", () => {
-  // Kontrakten (ejer 5/10, acceptkriterie 1 + RULES punkt 3): reaktionen stopper
-  // ikke, saa laenge den farlige rytter sidder der og margin ikke er naaet; kun
-  // naar hjaelperne eller budgettet er brugt. Koden (planTeamReaction) tager kun
-  // snoren i betragtning ved severity "none"; ved en moderat trussel falder et
-  // lad-gaa-hold igennem til "let_go_not_serious" og stopper, selv om leash_hold
-  // er sand. Rettes ikke her (review af #5978, punkt 6: test, ikke kode).
-  const serious: GcThreat = { severity: "serious", reason: "rival_ahead", protected_rider_id: "B0", chase_group_id: "peloton-0", threat_rider_ids: ["C1"], tied: false, tolerated_lead_seconds: 0, leash_hold: true, leash_rider_ids: ["C1"] };
-  const moderate: GcThreat = { severity: "moderate", reason: "rival_close", protected_rider_id: "B0", chase_group_id: "peloton-0", threat_rider_ids: ["C1"], tied: false, tolerated_lead_seconds: 30, leash_hold: true, leash_rider_ids: ["C1"] };
+// Kontrakten (ejer 5/10, acceptkriterie 1 + RULES punkt 3): reaktionen stopper
+// ikke, saa laenge den farlige rytter sidder der og margin ikke er naaet; kun
+// naar hjaelperne eller budgettet er brugt. Ogsaa naar truslen for et lad-gaa-hold
+// falder fra alvorlig til moderat (review af #5978, kontrakt-gab fra punkt 6d).
+const LET_GO_SERIOUS: GcThreat = { severity: "serious", reason: "rival_ahead", protected_rider_id: "B0", chase_group_id: "peloton-0", threat_rider_ids: ["C1"], tied: false, tolerated_lead_seconds: 0, leash_hold: true, leash_rider_ids: ["C1"] };
+const LET_GO_MODERATE: GcThreat = { severity: "moderate", reason: "rival_close", protected_rider_id: "B0", chase_group_id: "peloton-0", threat_rider_ids: ["C1"], tied: false, tolerated_lead_seconds: 30, leash_hold: true, leash_rider_ids: ["C1"] };
+
+test("#5978 v3 (review 6d, contract gap): let_go in a stage race: a moderate threat while the leash holds keeps the preventive reaction going until helpers or budget run out", () => {
   const base = { stance: "let_go" as const, availableWorkers: ["B2", "B3"], teamId: "B", leash: true };
-  const start = advanceTeamReaction({ prior: undefined, threat: serious, performedWork: 0.001, km: 30, ...base });
-  const next = advanceTeamReaction({ prior: start.next, threat: moderate, performedWork: 0.001, km: 40, ...base });
+  const start = advanceTeamReaction({ prior: undefined, threat: LET_GO_SERIOUS, performedWork: 0.001, km: 30, ...base });
+  assert.equal(start.next.status, "reacting");
+  const plan = planTeamReaction({ prior: start.next, threat: LET_GO_MODERATE, ...base });
+  assert.ok(plan.intensity > 0, "the leash still holds: the reaction keeps working");
+  assert.equal(plan.mode, "preventive");
+  assert.equal(plan.reason, "leash");
+  const next = advanceTeamReaction({ prior: start.next, threat: LET_GO_MODERATE, performedWork: 0.001, km: 40, ...base });
   assert.equal(next.next.status, "reacting", "the leash still holds: the reaction must not stop");
   assert.deepEqual(next.events, []);
+  assert.equal(next.next.preventive_work, start.next.preventive_work + 0.001, "the work is booked on the same budget");
+  // Og det hold bremser lad-gaa-fasen ved den moderate trussel, mens snoren holder.
+  assert.equal(letGoBrakingTeams([{ teamId: "B", threat: LET_GO_MODERATE, stance: "let_go", plan }], "peloton-0", true).get("B"), 30);
+  // Budgettet brugt: stopper aerligt som "budget_exhausted".
+  const spent = advanceTeamReaction({ prior: next.next, threat: LET_GO_MODERATE, performedWork: 1, km: 50, ...base });
+  assert.equal(spent.next.status, "exhausted");
+  assert.deepEqual(spent.events.map((e) => [e.params.status, e.params.reason]), [["exhausted", "budget_exhausted"]]);
+  // Ingen hjaelpere med kraefter: stopper aerligt som "no_workers", aldrig "let_go_not_serious".
+  const tired = advanceTeamReaction({ prior: next.next, threat: LET_GO_MODERATE, performedWork: 0, km: 50, ...base, availableWorkers: [] });
+  assert.equal(tired.next.status, "idle");
+  assert.deepEqual(tired.events.map((e) => [e.params.status, e.params.reason]), [["stopped", "no_workers"]]);
+  // Snoren starter stadig ikke lad-gaa-undtagelsen ved en moderat trussel.
+  assert.equal(planTeamReaction({ prior: undefined, threat: LET_GO_MODERATE, ...base }).reason, "let_go_not_serious");
+});
+
+test("#5978 v3 (review 6d, opposite direction): without the leash a let_go team still stops at a moderate threat, as before", () => {
+  const base = { stance: "let_go" as const, availableWorkers: ["B2", "B3"], teamId: "B" };
+  // orders_gc_v1/v2 (ingen snor): uaendret, stopper som "let_go_not_serious".
+  const start = advanceTeamReaction({ prior: undefined, threat: LET_GO_SERIOUS, performedWork: 0.001, km: 30, ...base });
+  const v2 = advanceTeamReaction({ prior: start.next, threat: LET_GO_MODERATE, performedWork: 0, km: 40, ...base });
+  assert.equal(v2.next.status, "idle");
+  assert.deepEqual(v2.events.map((e) => [e.params.status, e.params.reason]), [["stopped", "let_go_not_serious"]]);
+  // orders_gc_v3, men snoren holder ikke (margin naaet eller han er vaek): ogsaa uaendret.
+  const loose: GcThreat = { ...LET_GO_MODERATE, leash_hold: false, leash_rider_ids: undefined };
+  const v3Start = advanceTeamReaction({ prior: undefined, threat: LET_GO_SERIOUS, performedWork: 0.001, km: 30, ...base, leash: true });
+  const v3 = advanceTeamReaction({ prior: v3Start.next, threat: loose, performedWork: 0, km: 40, ...base, leash: true });
+  assert.equal(v3.next.status, "idle");
+  assert.deepEqual(v3.events.map((e) => [e.params.status, e.params.reason]), [["stopped", "let_go_not_serious"]]);
+});
+
+// Review af #5978 (variant set i koden): snoren er den ENESTE trussel (ingen
+// alvorlig/moderat rytter, men en farlig rytter sidder der under margin), og
+// holdets klassementsrytter sidder i en anden gruppe end jagtgruppen. Uden
+// rettelsen gav vurderingen ikke "protected_in_other_group": snoren holdt
+// reaktionen som "reacting" med hjaelperne i hans gruppe, som ingen jagt bruger
+// (intet arbejde), og etapens sidste segment afsluttede den ikke.
+
+/** C1 (farlig for B) i udbruddet; B0 + B2 i en gruppe bag feltet, `lead` s efter udbruddet. */
+function otherGroupState(all: Record<string, Entrant>, lead: number, prior: TeamReactionState): EngineState {
+  const st = hookState(all, ["C1"]);
+  return {
+    ...st,
+    groups: [
+      st.groups[0],
+      { ...st.groups[1], rider_ids: st.groups[1].rider_ids.filter((id) => id !== "B0" && id !== "B2") },
+      { id: "group-b", kind: "gruppetto", rider_ids: ["B0", "B2"], gap_seconds: lead, cohesion: 1 },
+    ],
+    riders: { ...st.riders, B0: { ...st.riders.B0, group_id: "group-b" }, B2: { ...st.riders.B2, group_id: "group-b" } },
+    team_reactions: { B: prior },
+  };
+}
+
+test("#5978 v3 (review, leash-only variant): the GC rider in another group pauses a reaction held only by the leash, like any other threat", () => {
+  const all = entrants({ C1: 70 });
+  const ctx = gc({ C1: 200 }); // B0 -> C1 = 180 s
+  // Sidste segment (130-160 km): forspring 75 s giver en fremskrevet margin mellem
+  // det moderate vindue og snorens margin: ingen alvorlig/moderat trussel, men snoren holder.
+  const state = otherGroupState(all, 75, { ...IDLE_TEAM_REACTION, status: "reacting", mode: "neutral", neutral_work: 0.01 });
+  const assess = (chasing?: ReadonlySet<string>) => assessGcThreat({
+    gcContext: ctx, groups: [state.groups[0], state.groups[2]], entrants: all, route: ROUTE, protectedRiderId: "B0", km: 130,
+    ownTeamId: "B", skipOwnRiderGroups: true, dangerModel: {}, ...(chasing ? { chasingGroupIds: chasing } : {}),
+  });
+  const leashOnly = assess();
+  assert.equal(leashOnly.severity, "none", "precondition: no serious or moderate rider");
+  assert.equal(leashOnly.leash_hold, true, "precondition: the leash holds");
+  // Hans gruppe jager ikke: samme dom som ved en alvorlig/moderat trussel.
+  const paused = assess(new Set(["peloton-0"]));
+  assert.equal(paused.reason, "protected_in_other_group");
+  assert.equal(paused.leash_hold ?? false, false);
+  // Hans gruppe jager: snoren holder som foer.
+  assert.equal(assess(new Set(["group-b"])).leash_hold, true);
+  // Uden DangerModel (orders_gc_v1/v2) aendres intet: ingen snor, ingen pause.
+  const v2 = assessGcThreat({ gcContext: ctx, groups: [state.groups[0], state.groups[2]], entrants: all, route: ROUTE, protectedRiderId: "B0", km: 130, chasingGroupIds: new Set(["peloton-0"]) });
+  assert.notEqual(v2.reason, "protected_in_other_group");
+  assert.equal(v2.leash_hold, undefined);
+  // Endagsloeb: samme dom (snoren alene, kaptajnen i en anden gruppe).
+  const demand = RACE_V4_TUNING.finale.demandVectorByFinaleType.long_climb!;
+  const oneDayAll = entrants({ C1: 72 });
+  const oneDayGroups = [state.groups[0], { ...state.groups[2], gap_seconds: GC_THREAT_V3_TUNING.oneDayAllowanceSeconds - GC_THREAT_V3_TUNING.leashMarginSeconds + 10 }];
+  const oneDay = (chasing?: ReadonlySet<string>) => assessGcThreat({
+    gcContext: { status: "one_day" }, groups: oneDayGroups, entrants: oneDayAll, route: ROUTE, protectedRiderId: "B0", km: 130,
+    ownTeamId: "B", skipOwnRiderGroups: true, dangerModel: { routeDemand: demand }, ...(chasing ? { chasingGroupIds: chasing } : {}),
+  });
+  assert.equal(oneDay().severity, "none", "precondition (one-day): no serious or moderate rider");
+  assert.equal(oneDay().leash_hold, true, "precondition (one-day): the leash holds");
+  assert.equal(oneDay(new Set(["peloton-0"])).reason, "protected_in_other_group");
+  assert.equal(oneDay(new Set(["group-b"])).leash_hold, true);
+
+  // Gennem hooket paa etapens sidste segment: afsluttet med den eksisterende grund.
+  const orders: TeamOrder[] = TEAMS.map((t) => ({ team_id: t, kind: TEAM_TACTICS_ORDER_KIND, params: { breakaway_stance: "neutral", riders: [] } }));
+  const hookAt = (s: EngineState, index: number) => {
+    const base = makeHookCtx({ segment: ROUTE.segments[index], segmentIndex: index, route: ROUTE, entrants: all, tuning: RACE_V4_TUNING, orders });
+    return breakawayHook(s, { ...base, rulesRevision: "orders_gc_v1", gcContext: ctx, ordersGcV3: true });
+  };
+  const forB = (events: TimelineEvent[]) => events.filter((e) => e.type === "gc_reaction" && e.params.team_id === "B");
+  const last = hookAt(state, ROUTE.segments.length - 1);
+  assert.deepEqual(forB(last.events).map((e) => [e.params.status, e.params.reason]), [["stopped", "protected_in_other_group"]]);
+  assert.equal(last.state.team_reactions?.B?.status, "idle");
+  assert.equal(last.state.team_reactions?.B?.neutral_work, 0.01, "nothing booked");
+
+  // Midt i etapen (50-60 km, mere terraen tilbage): pause uden event og uden arbejde.
+  // C1 laengere nede (B0 -> C1 = 240 s) og forspring 60 s: igen kun snoren.
+  const midCtx = gc({ C1: 260 });
+  const mid = otherGroupState(all, 60, { ...IDLE_TEAM_REACTION, status: "reacting", mode: "neutral", neutral_work: 0.01 });
+  const midThreat = assessGcThreat({ gcContext: midCtx, groups: [mid.groups[0], mid.groups[2]], entrants: all, route: ROUTE, protectedRiderId: "B0", km: 50, ownTeamId: "B", skipOwnRiderGroups: true, dangerModel: {} });
+  assert.equal(midThreat.severity, "none", "precondition (mid): no serious or moderate rider");
+  assert.equal(midThreat.leash_hold, true, "precondition (mid): the leash holds");
+  const base = makeHookCtx({ segment: ROUTE.segments[5], segmentIndex: 5, route: ROUTE, entrants: all, tuning: RACE_V4_TUNING, orders });
+  const midOut = breakawayHook(mid, { ...base, rulesRevision: "orders_gc_v1", gcContext: midCtx, ordersGcV3: true });
+  assert.deepEqual(forB(midOut.events), []);
+  assert.equal(midOut.state.team_reactions?.B?.status, "reacting");
+  assert.equal(midOut.state.team_reactions?.B?.neutral_work, 0.01, "a pause books nothing");
 });
