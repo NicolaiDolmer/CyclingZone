@@ -13,7 +13,7 @@
 // Tal skrives kun til stdout/--out (balance-internals/, gitignoreret).
 //
 // Koer:
-//   node backend/scripts/dev/timeModel6199.mjs [--rules=orders_gc_v2,orders_gc_v3] [--seeds=8] [--only=replay,anchors,tail,break] [--out=balance-internals/6199/x.json]
+//   node backend/scripts/dev/timeModel6199.mjs [--rules=orders_gc_v2,orders_gc_v3] [--seeds=8] [--only=replay,anchors,giro,tail,break] [--out=balance-internals/6199/x.json]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -214,6 +214,7 @@ export async function runAnchors({ revisions, seeds = ["s1", "s2", "s3", "s4", "
   const result = {};
   for (const rules of revisions) {
     const mt = [];
+    const mtGc = [];
     const su = { 10: [], 30: [], 50: [] };
     for (const seed of seeds) {
       for (const { row, route } of pick) {
@@ -222,13 +223,17 @@ export async function runAnchors({ revisions, seeds = ["s1", "s2", "s3", "s4", "
         const field = sampleField(makeRng(stableSeed(`${stageSeedStr}:field`)), population.riders, FIELD_SIZE);
         const out = simulateStageV4({ route, startlist: v4EntrantsFromPopulation(field), orders: [], seed: stageSeedStr, tuning: RACE_V4_TUNING, ...(rules === "legacy" ? {} : { rules_revision: rules }) });
         const gaps = gapsAtRanks(out.results.map((r) => ({ ...r, status: "finished" })));
-        if (mountain.some((m) => m.row === row)) mt.push(gaps[10]);
+        if (mountain.some((m) => m.row === row)) {
+          mt.push(gaps[10]);
+          if (!escapeWon(out)) mtGc.push(gaps[10]);
+        }
         if (shortUp.some((m) => m.row === row)) for (const n of [10, 30, 50]) su[n].push(gaps[n]);
       }
     }
     const mean = (xs) => xs.filter(Number.isFinite).reduce((a, b) => a + b, 0) / Math.max(1, xs.filter(Number.isFinite).length);
     result[rules] = {
       mountainTop10Mean: round1(mean(mt)), mountainN: mt.length,
+      mountainTop10GcDecidedMean: round1(mean(mtGc)), mountainGcDecidedN: mtGc.length,
       shortUphill: { n10: round1(mean(su[10])), n30: round1(mean(su[30])), n50: round1(mean(su[50])), n: su[10].length },
     };
   }
@@ -245,6 +250,49 @@ export async function runTail({ revisions }) {
   for (const rules of revisions) {
     const gate = evaluateTailGate(runTailSpread({ population, stages, seeds: TAIL_GATE_SEEDS, fieldSize: FIELD_SIZE, rulesRevision: rules === "legacy" ? undefined : rules }));
     result[rules] = Object.fromEntries(gate.gatedRows.map((r) => [r.profileType, { value: round1(r.value * 100) / 100, status: r.status }]));
+  }
+  return result;
+}
+
+/** Vandt dagens udbrud (vinderen sad i morgenudbruddet og blev aldrig hentet)? */
+export function escapeWon(out) {
+  const formed = new Set(out.timeline.events.filter((e) => e.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  const caught = new Set(out.timeline.events.filter((e) => e.type === "breakaway_caught").flatMap((e) => e.params?.rider_ids ?? []));
+  const winner = [...out.results].filter((r) => r.status === "finished").sort((a, b) => a.time_seconds - b.time_seconds)[0]?.rider_id;
+  return winner !== undefined && formed.has(winner) && !caught.has(winner);
+}
+
+/**
+ * Bjergetaperne i det rigtige felt (Giro-fixturet, med holdordrer og
+ * klassement foer etape 11, koert under samme revision): nr. 10 til vinderen,
+ * samlet og for etaper hvor udbruddet ikke vandt.
+ */
+export function runGiroMountain({ v4, data, revisions, seeds }) {
+  const stages = data.profiles.slice().sort((a, b) => a.stage_number - b.stage_number);
+  const targets = stages.filter((p) => (p.profile_type === "mountain" || p.profile_type === "high_mountain") && p.finale_type === "long_climb");
+  const result = {};
+  for (const rules of revisions) {
+    const standings = standingsBefore({ v4, data, stageNumber: 11, rules });
+    const inRace = new Set(standings.map((s) => s.rider_id));
+    const entrants = fixtureEntrants(data, inRace);
+    const all = [];
+    const gc = [];
+    let escapeWins = 0;
+    for (let s = 1; s <= seeds; s++) {
+      for (const profile of targets) {
+        const out = v4.simulateStage({
+          entrants, stageProfile: profile, seedString: `${data.race.id}:${profile.stage_number}:m6199-${s}`, stageNumber: profile.stage_number,
+          teamOrderRows: data.orders, isStageRace: true, raceStages: stages, squad: data.race.squad ?? null,
+          rulesRevision: rules, gcStandings: standings,
+        }).v4Output;
+        const n10 = gapsAtRanks(out.results)[10];
+        all.push(n10);
+        if (escapeWon(out)) escapeWins += 1;
+        else gc.push(n10);
+      }
+    }
+    const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+    result[rules] = { n10Mean: round1(mean(all)), n10Median: round1(median(all)), gcDecidedN10Mean: round1(mean(gc)), escapeWins, n: all.length };
   }
   return result;
 }
@@ -303,13 +351,14 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   };
   const revisions = arg("rules", "orders_gc_v2,orders_gc_v3").split(",");
   const seeds = Number(arg("seeds", "8"));
-  const only = new Set(arg("only", "replay,anchors,tail,break").split(","));
+  const only = new Set(arg("only", "replay,anchors,giro,tail,break").split(","));
   const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
   const v4 = await loadRaceEngineV4();
   const data = loadFixture();
   const out = {};
   if (only.has("replay")) out.replay = runReplay({ v4, data, revisions, seeds });
   if (only.has("anchors")) out.anchors = await runAnchors({ revisions });
+  if (only.has("giro")) out.giroMountain = runGiroMountain({ v4, data, revisions, seeds: Math.min(seeds, 4) });
   if (only.has("tail")) out.tail = await runTail({ revisions });
   if (only.has("break")) out.breakLate = runBreakLate({ v4, data, revisions, seeds: Math.min(seeds, 3) });
   const text = JSON.stringify(out, null, 2);

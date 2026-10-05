@@ -45,16 +45,16 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // Andel af stigningen de afhaengte ryttere i snit koerer bag gruppen (de saettes af undervejs).
   climbGapExposure: 0.5,
   // Relativt fartab pr. enhed klatre-underskud (0-1 mod gruppens bedste klatrer).
-  climbGapAbilityWeight: 0.45,
+  climbGapAbilityWeight: 0.6,
   // Relativt fartab pr. enhed energi-underskud (tom reserve = 1).
-  climbGapEnergyWeight: 0.01,
+  climbGapEnergyWeight: 0.02,
   climbGapMaxRelativeLoss: 0.35,
   // Et split er altid mindst saa stort, at det overlever segmentets merge-trin.
   climbGapBoundsSeconds: [3, 900] as readonly [number, number],
   // De afhaengte samles i faa grupper efter eget hul (clusterSplitRiders).
-  clusterMinSeconds: 10,
-  clusterShare: 0.25,
-  clusterMaxGroups: 4,
+  clusterMinSeconds: 8,
+  clusterShare: 0.15,
+  clusterMaxGroups: 8,
   // En tom reserve tvinger kun rytteren af paa disse kategorier (ca. kat. 2 og op).
   wprimeForcedCategories: ["HC", "1", "2"] as readonly ClimbCategory[],
 
@@ -142,6 +142,18 @@ export function clusterSplitRiders(
     riderIds: c.riders.map((r) => r.riderId).sort(),
     gapSeconds: round2(c.riders.reduce((sum, r) => sum + r.gapSeconds, 0) / c.riders.length),
   }));
+}
+
+/**
+ * 2: loftet over finalens jagt paa en nedkoersel mod maal: hoejst
+ * `finishDescentMaxSecondsPerKm` pr. km og hoejst `finishDescentMaxGapShare`
+ * af hullet. Samme loft som regrupperingen, saa et hul ved toppen aldrig
+ * forsvinder paa nedkoerslen, uanset hvem der jager.
+ */
+export function finishDescentChaseCapSeconds(gapSeconds: number, lengthKm: number, t: TimeModelTuning = TIME_MODEL_V3_TUNING): number {
+  const gap = Number.isFinite(gapSeconds) ? Math.max(0, gapSeconds) : 0;
+  const km = Number.isFinite(lengthKm) ? Math.max(0, lengthKm) : 0;
+  return round2(Math.min(gap * t.finishDescentMaxGapShare, t.finishDescentMaxSecondsPerKm * km));
 }
 
 /** Dagens udbrud (samme definition som finale.isEscapeGroup). M5 ejer hullet til det. */

@@ -34,7 +34,7 @@ import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } f
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
-import { TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
+import { finishDescentChaseCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -444,7 +444,10 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // #5581: en gruppe af udelukkende grupetto-ryttere jager ikke (ude af
     // finalen, ejer-trappen 23/9). En blandet gruppe jager paa de koerendes ben.
     const onlyGrupetto = group.rider_ids.every((id) => entrants[id]?.effort === "grupetto");
-    const closingSeconds = onlyGrupetto ? 0 : netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
+    // #6200 (KUN orders_gc_v3): paa en nedkoersel mod maal lukker jagten hoejst
+    // det samme loft som regrupperingen (mechanics/timeModel.ts).
+    const descentCap = ctx.ordersGcV3 === true && segment.kind === "descent" ? finishDescentChaseCapSeconds(carriedGapSeconds, remainingKm) : Infinity;
+    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
