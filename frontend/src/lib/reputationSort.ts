@@ -11,3 +11,7 @@ export function mergeReputationSortedIds(rows: (RiderReputationLike & { id: stri
   return [...rows].sort((a,b) => compareDisplayedReputation(a,b,ascending)
     || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map(r => r.id);
 }
+
+export function reputationSortKey(sort: string, enabled: boolean): string {
+  return sort === "popularity" || sort === "reputation" ? (enabled ? "reputation" : "popularity") : sort;
+}

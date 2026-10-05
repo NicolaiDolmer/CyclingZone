@@ -23,3 +23,10 @@ test("global reputation ordering survives page boundaries, ties and missing valu
   assert.deepEqual(rows.map(r=>r.id),before);
   assert.deepEqual(ids.slice(1,4),["0000","0001","0002"]);
 });
+
+test("saved popularity/reputation URLs follow the visible measure; other sorts stay unchanged", async () => {
+  const { reputationSortKey } = await import("./reputationSort.ts");
+  assert.equal(reputationSortKey("popularity", true), "reputation");
+  assert.equal(reputationSortKey("reputation", false), "popularity");
+  assert.equal(reputationSortKey("salary", true), "salary");
+});
