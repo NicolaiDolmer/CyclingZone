@@ -34,7 +34,13 @@ test("reputation sorting spans every server page and uses the displayed number",
     return route.fallback();
   });
   await login(page);
+  // Wait for the sorted page hydration, not just the initial document load.
+  const sortedPageResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return response.request().method() === "GET" && url.pathname === "/rest/v1/riders" && (url.searchParams.get("id") || "").includes("sort-1003");
+  });
   await page.goto("/riders?sort=reputation&sort_dir=desc");
+  expect((await sortedPageResponse).ok()).toBeTruthy();
   const table=page.locator('[data-tour="riders-list"] table').filter({visible:true}).first();
   await expect(table.locator('tbody tr').first()).toContainText("Rider 1003");
   await expect(table.locator('tbody tr').nth(1)).toContainText("Rider 1004");

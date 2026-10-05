@@ -13,7 +13,7 @@ test("unknown reputation stays last; legacy popularity sort is unchanged", () =>
   assert.ok(compareRidersByFilter({popularity:90,reputation:0},{popularity:20,reputation:99},{sort:"popularity",sort_dir:"desc"})<0);
 });
 
-test("global reputation ordering survives page boundaries, ties and missing values", async () => {
+test("global reputation ordering survives page boundaries and breaks ties by id", async () => {
   const { mergeReputationSortedIds } = await import("./reputationSort.ts");
   const rows = Array.from({length: 1005}, (_,i) => ({id:String(i).padStart(4,"0"), popularity:i===1004?99:20, reputation:20}));
   const before = rows.map(r=>r.id);
