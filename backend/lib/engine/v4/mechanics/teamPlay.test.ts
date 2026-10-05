@@ -557,12 +557,24 @@ test("#3460 kontrakt: legacy/v1/v2 er UAENDRET — 3+ save-hjaelpere naar stadig
   const legacyTwoSave = captainBonus(repeat("save", 2), { v3: false });
   const v3TwoSave = captainBonus(repeat("save", 2), { v3: true });
   assert.ok(legacyTwoSave > v3TwoSave, "v3 er strengere end den gamle formel for et save-hold");
-  // Eksplicit rulesRevision "orders_gc_v2" (hvad hooksene ser under v2) ændrer intet.
-  const specs: Spec[] = [{ id: "cap", role: "captain", team: "T1" }, ...repeat("save", 3).map((effort, i) => ({ id: `h${i}`, role: "helper" as RiderRole, team: "T1", effort }))];
-  const base = scenario(specs);
-  const asV2 = teamPlayHook(base.state, { ...base.ctx, rulesRevision: "orders_gc_v2" }).state;
-  const asLegacy = teamPlayHook(base.state, base.ctx).state;
-  assert.deepEqual(asV2.riders, asLegacy.riders, "orders_gc_v2 er byte-identisk med legacy");
+  // Hooket laeser KUN ctx.ordersGcV3, aldrig rulesRevision; revisions-graensen
+  // sidder i segmentLoop.ts. Den testes hele vejen igennem (orders_gc_v3 naar
+  // hooket, orders_gc_v2 er uaendret mod en fastfrosset koersel) i
+  // ../segmentLoop.teamPlay.test.ts.
+});
+
+test("#3460 reducedEffortCeiling: fuld last giver NOEJAGTIGT det fulde loft, ogsaa for en save-pris under halv", () => {
+  // IEEE-754 (round-to-nearest): floor + (1 - floor) * 1 === 1 for ethvert
+  // floor i [0, 1], ogsaa under 0,5 hvor (1 - floor) selv afrundes. Testen
+  // laaser det, saa en senere omskrivning af udtrykket ikke stille giver et
+  // rent normal-hold et loft en ulp under det fulde.
+  for (const save of [0, 0.05, 0.1, 0.2, 0.25, 0.3, 1 / 3, 0.49999999999999994, 0.5, 0.7, 1]) {
+    const tuning = { ...TEAM_PLAY_TUNING, effortCostMultiplier: { ...TEAM_PLAY_TUNING.effortCostMultiplier, save } };
+    for (const ceiling of [CEILING, CEILING / 7, CEILING * 0.37, 1e-9, 1]) {
+      assert.equal(reducedEffortCeiling(ceiling, ceiling, tuning), ceiling, `save=${save}, loft=${ceiling}`);
+      assert.equal(reducedEffortCeiling(ceiling, ceiling * 3, tuning), ceiling, `save=${save}, loft=${ceiling}, last over loftet`);
+    }
+  }
 });
 
 test("#3460: normal/protect-hold er byte-identiske med og uden orders_gc_v3 (alle profiler)", () => {

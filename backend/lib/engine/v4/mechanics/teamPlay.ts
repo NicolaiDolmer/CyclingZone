@@ -211,6 +211,11 @@ export function countSupportingWorkers(
  * "fuld pris"-last, 0..1. `normal`/`protect` (fuld pris) = 1; `save`/
  * `grupetto` (den halve pris) = 0; mellemtrin skalerer lineaert. Bruges kun af
  * `reducedEffortCeiling`. Ukendt effort -> fuld pris (som helperCostMultiplier).
+ *
+ * KOBLING TIL PRISEN: "halv" laeses bevidst fra `effortCostMultiplier.save`
+ * (tuning.ts) — samme tal som spar-hjaelperens PRIS. Under orders_gc_v3 styrer
+ * det tal derfor ogsaa stoetteloftet: kalibreres prisen paa Spar kraefter om,
+ * flytter loftet sig med (#3460).
  */
 export function fullPriceWeight(
   effort: EffortLevel | undefined,
@@ -237,6 +242,10 @@ export function fullPriceWeight(
  * stoetten til at falde. Og det er aldrig over `ceiling`, saa garanti 2
  * (bounded) holder. For et rent normal-hold er resultatet uaendret: bonussen
  * er da hoejst `fullPriceBonus`, som aldrig overstiger det regnede loft.
+ *
+ * KOBLING TIL PRISEN: gulvet ("halvt loft") er `effortCostMultiplier.save`
+ * (tuning.ts), samme tal som spar-hjaelperens PRIS. Under orders_gc_v3 flytter
+ * en omkalibrering af den pris derfor ogsaa dette loft (#3460).
  */
 export function reducedEffortCeiling(
   ceiling: number,
