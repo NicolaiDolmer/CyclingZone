@@ -10,6 +10,9 @@
 //   breakaway_dropped = true      (ny kolonne, migration 2026-10-05-6185)
 //   breakaway_caught  = true for en "holdt hjem" der havde en ikke-udbryder foran
 //                       sig (sikkerhedsnettet ved maal)
+// "Sat af" kraever at rytteren blev opslugt af ikke-udbrydere ELLER havde en
+// ikke-udbryder foran sig i maal; en rytter der koerte fra udbruddet og kom i
+// maal foran alle ikke-udbrydere, holdt hjem (settleBreakawayOutcome).
 // Kun raekker med in_breakaway = true OG morgen-udbryder i tidslinjen roeres.
 // in_breakaway, rank, tider og point roeres aldrig.
 //
@@ -18,7 +21,14 @@
 //   node backend/scripts/backfill-6185-dropped-breakaway.js --dry-run --json
 //   node backend/scripts/backfill-6185-dropped-breakaway.js --since=2026-10-02   # default-dato
 //   node backend/scripts/backfill-6185-dropped-breakaway.js --race=<race-uuid>
+//   node backend/scripts/backfill-6185-dropped-breakaway.js --log=<sti.json>     # rollback-log (se nedenfor)
 //   node backend/scripts/backfill-6185-dropped-breakaway.js --apply --owner-go   # KRAEVER EJER-GO
+//
+// Rollback-log: hver koersel (ogsaa dry-run) skriver id + foer- og efter-vaerdier
+// for hver raekke der ville blive/bliver aendret (og hver raekke vagten stoppede)
+// til en JSON-fil. Default: backend/scripts/snapshots/6185/ (gitignoret, samme
+// sted som de andre lokale rollback-artefakter). Ved --apply skrives loggen
+// FOER skrivningen og opdateres bagefter med de id'er databasen bekraeftede.
 //
 // Kraever at migrationen database/2026-10-05-6185-race-results-breakaway-dropped.sql
 // er koert (ellers stopper --apply; dry-run viser stadig tallene).
@@ -32,13 +42,14 @@
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   deriveParticipationHistory,
   settleBreakawayOutcome,
-  bestNonEscapeeRank,
+  nonEscapeeAheadByRider,
   breakawayFlagsForOutcome,
 } from "../lib/raceParticipationHistory.ts";
 import { fetchAllRows } from "../lib/supabasePagination.js";
@@ -57,7 +68,42 @@ export function parseArgs(argv = process.argv.slice(2)) {
     json: argv.includes("--json"),
     since: value("since") ?? DEFAULT_SINCE,
     raceId: value("race"),
+    logPath: value("log"),
   };
+}
+
+export const DEFAULT_LOG_DIR = join(REPO_ROOT, "backend", "scripts", "snapshots", "6185");
+
+/** Default-sti for rollback-loggen: gitignoret, dateret, adskilt for dry-run og apply. */
+export function defaultLogPath({ apply, now = new Date() }) {
+  return join(DEFAULT_LOG_DIR, `backfill-${apply ? "apply" : "dry-run"}-${now.toISOString().replace(/[:.]/g, "-")}.json`);
+}
+
+/**
+ * REN: rollback-loggens indhold. En post pr. raekke der ville blive/bliver
+ * aendret (status "planned", efter --apply "applied" eller "not_applied" hvis
+ * databasens vagt sprang den over) og pr. raekke vagten stoppede ("blocked").
+ * `before` er de gemte vaerdier, `after` de vaerdier scriptet skriver; en
+ * rollback saetter `before` tilbage for id'erne med status "applied".
+ */
+export function buildRollbackLog(plan, { mode, appliedIds = null, now = new Date() } = {}) {
+  const applied = appliedIds ? new Set(appliedIds) : null;
+  const rows = [];
+  for (const stage of plan.perStage) {
+    for (const [list, kind] of [[stage.updates, "update"], [stage.blocked, "blocked"]]) {
+      for (const u of list) {
+        const status = kind === "blocked" ? "blocked" : applied ? (applied.has(u.id) ? "applied" : "not_applied") : "planned";
+        rows.push({ id: u.id, race_id: stage.race_id, stage_number: stage.stage_number, rider_id: u.rider_id, result_type: u.result_type, rank: u.rank, outcome: u.outcome, before: u.from, after: u.to, status });
+      }
+    }
+  }
+  return { issue: 6185, mode, written_at: now.toISOString(), since: plan.since, race_id: plan.raceId, has_column: plan.hasColumn, totals: plan.totals, rows };
+}
+
+export function writeRollbackLog(path, log) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(log, null, 2)}\n`, "utf8");
+  return path;
 }
 
 const FLAG_FIELDS = ["breakaway_caught", "breakaway_dropped"];
@@ -97,15 +143,16 @@ export function planStage({ events, rows }) {
   if (!history.complete || history.morningRiderIds.size === 0) {
     return { updates: [], blocked: [], skipped: history.complete ? "no_breakaway" : "incomplete_timeline", outcomes: {} };
   }
-  const best = bestNonEscapeeRank(stageRows.map((row) => ({ rank: row.rank, escapee: history.morningRiderIds.has(row.rider_id) })));
-  const rankByRider = new Map(stageRows.map((row) => [row.rider_id, row.rank]));
+  // Samme definition af "ikke-udbryder foran" som loebssiden (historyForStage)
+  // og motor-koerslen: tidslinjens morgen-saet, etape-placeringen. gc-raekker
+  // paa et endagslob foelger rytterens etape-placering.
+  const aheadByRider = nonEscapeeAheadByRider(history, stageRows);
   const updates = [];
   const blocked = [];
   const outcomes = { caught: 0, dropped: 0, survived: 0, unknown: 0 };
   for (const row of rows) {
     if (!row.in_breakaway || !row.rider_id || !history.morningRiderIds.has(row.rider_id)) continue;
-    const rank = rankByRider.get(row.rider_id);
-    const outcome = settleBreakawayOutcome(history.riders.get(row.rider_id), typeof rank === "number" ? rank > best : null);
+    const outcome = settleBreakawayOutcome(history.riders.get(row.rider_id), aheadByRider.get(row.rider_id) ?? null);
     if (row.result_type === "stage") outcomes[outcome ?? "unknown"] += 1;
     const target = breakawayFlagsForOutcome(true, outcome);
     const current = { breakaway_caught: row.breakaway_caught === true, breakaway_dropped: row.breakaway_dropped ?? null };
@@ -178,18 +225,30 @@ async function columnExists(supabase) {
   return !error;
 }
 
+/**
+ * Alle v4-etaper siden `since`, pagineret (PostgREST giver maks 1000 raekker
+ * pr. select). Stabil, unik sortering (created_at, race_id, stage_number), saa
+ * ingen etape tabes eller dubleres over en sidegraense.
+ */
+export async function fetchStageList(supabase, { since = DEFAULT_SINCE, raceId = null } = {}, pageSize = undefined) {
+  return fetchAllRows(() => {
+    let query = supabase
+      .from("race_stage_timelines")
+      .select("race_id, stage_number, created_at")
+      .eq("timeline_version", 2)
+      .gte("created_at", since);
+    if (raceId) query = query.eq("race_id", raceId);
+    return query
+      .order("created_at", { ascending: true })
+      .order("race_id", { ascending: true })
+      .order("stage_number", { ascending: true });
+  }, pageSize);
+}
+
 /** Plan over alle v4-etaper siden `since` (READ-ONLY). */
 export async function planBackfill({ supabase, since = DEFAULT_SINCE, raceId = null }) {
   const hasColumn = await columnExists(supabase);
-  let listQuery = supabase
-    .from("race_stage_timelines")
-    .select("race_id, stage_number, created_at")
-    .eq("timeline_version", 2)
-    .gte("created_at", since)
-    .order("created_at", { ascending: true });
-  if (raceId) listQuery = listQuery.eq("race_id", raceId);
-  const { data: stages, error } = await listQuery;
-  if (error) throw error;
+  const stages = await fetchStageList(supabase, { since, raceId });
 
   const perStage = [];
   const totals = {
@@ -197,7 +256,7 @@ export async function planBackfill({ supabase, since = DEFAULT_SINCE, raceId = n
     // Raekker pr. aendringstype, og hvor mange nedgraderinger vagten stoppede.
     by_change: {}, blocked_downgrades: 0, blocked_by_change: {},
   };
-  for (const stage of stages ?? []) {
+  for (const stage of stages) {
     const { data: timeline, error: timelineError } = await supabase
       .from("race_stage_timelines")
       .select("events")
@@ -228,13 +287,17 @@ export async function planBackfill({ supabase, since = DEFAULT_SINCE, raceId = n
  * Vagten mod nedgradering gaelder OGSAA i databasen: en patch der saetter et
  * flag til false, rammer kun raekker hvor flaget ikke er true (`breakaway_dropped
  * IS NULL`), saa en raekke der er aendret siden dry-run'en aldrig nedgraderes.
+ * En patch der saetter breakaway_dropped=true rammer kun raekker hvor
+ * breakaway_caught stadig er false: en raekke der er blevet "indhentet" siden
+ * dry-run'en, laves aldrig om til "sat af".
  * Patches fra planStage saetter kun breakaway_caught til true og
  * breakaway_dropped til true eller (fra NULL) false.
+ * Returnerer de id'er databasen bekraeftede (til rollback-loggen).
  */
 export async function applyBackfill({ supabase, plan, batchSize = APPLY_BATCH_SIZE }) {
   if (!plan.hasColumn) throw new Error("race_results.breakaway_dropped findes ikke: koer migrationen 2026-10-05-6185 foerst.");
   const updates = plan.perStage.flatMap((stage) => stage.updates);
-  let updated = 0;
+  const appliedIds = [];
   for (const batch of batchUpdates(updates, batchSize)) {
     let query = supabase
       .from("race_results")
@@ -244,11 +307,12 @@ export async function applyBackfill({ supabase, plan, batchSize = APPLY_BATCH_SI
     for (const field of FLAG_FIELDS) {
       if (batch.patch[field] === false) query = field === "breakaway_dropped" ? query.is(field, null) : query.eq(field, false);
     }
+    if (batch.patch.breakaway_dropped === true && batch.patch.breakaway_caught === undefined) query = query.eq("breakaway_caught", false);
     const { data, error } = await query.select("id");
     if (error) throw error;
-    updated += data?.length ?? 0;
+    for (const row of data ?? []) appliedIds.push(row.id);
   }
-  return { updated, planned: updates.length };
+  return { updated: appliedIds.length, planned: updates.length, appliedIds };
 }
 
 function printPlan(plan) {
@@ -287,12 +351,18 @@ async function main() {
   if (args.json) console.log(JSON.stringify({ since: plan.since, raceId: plan.raceId, hasColumn: plan.hasColumn, totals: plan.totals }, null, 2));
   else printPlan(plan);
 
+  const mode = args.apply ? "apply" : "dry-run";
+  const logPath = args.logPath ? resolve(args.logPath) : defaultLogPath({ apply: args.apply });
+  writeRollbackLog(logPath, buildRollbackLog(plan, { mode }));
+  console.log(`Rollback-log (id + foer/efter pr. raekke): ${logPath}`);
+
   if (!args.apply) {
     console.log("DRY-RUN — intet er skrevet. Koer med --apply --owner-go efter ejer-go.");
     process.exit(plan.totals.rows_to_update > 0 ? 1 : 0);
   }
   const result = await applyBackfill({ supabase, plan });
-  console.log(`Faerdig: ${result.updated} raekker opdateret. Koer dry-run igen: forventet 0.`);
+  writeRollbackLog(logPath, buildRollbackLog(plan, { mode, appliedIds: result.appliedIds }));
+  console.log(`Faerdig: ${result.updated} raekker opdateret (af ${result.planned} planlagte). Rollback-log opdateret: ${logPath}. Koer dry-run igen: forventet 0.`);
   process.exit(0);
 }
 

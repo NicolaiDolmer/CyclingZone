@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { deriveParticipationHistory, settleBreakawayOutcome, bestNonEscapeeRank, breakawayFlagsForOutcome } from "./raceParticipationHistory.ts";
+import { deriveParticipationHistory, settleBreakawayOutcome, bestNonEscapeeRank, breakawayFlagsForOutcome, nonEscapeeAheadByRider } from "./raceParticipationHistory.ts";
 import type { ParticipationEvent } from "./raceParticipationHistory.ts";
-import { PENISOLA_STAGE3_EVENTS, PENISOLA_STAGE3_RANKS, PENISOLA_DROPPED, PENISOLA_CAUGHT } from "./raceParticipationHistory.fixtures.ts";
+import { PENISOLA_STAGE3_EVENTS, PENISOLA_STAGE3_RANKS, PENISOLA_DROPPED, PENISOLA_CAUGHT, STAGE_2349_E1, STAGE_2349_E1_ROWS, STAGE_877_E4, STAGE_877_E4_ROWS } from "./raceParticipationHistory.fixtures.ts";
 const start = { km: 0, type: "stage_start", params: { field_count: 5 } };
 const finish = { km: 100, type: "finish", params: { top: [{ rider_id: "later", rank: 1 }] } };
 
@@ -108,8 +108,12 @@ test("#6185 being swallowed by the bunch after the drop keeps the drop", () => {
   ], ["a", "b", "p"]);
   assert.equal(history.riders.get("a")?.dropped, true);
   assert.equal(history.riders.get("a")?.caught, false);
+  assert.equal(history.riders.get("a")?.swallowed, true, "merged with non-escapees");
   assert.equal(history.riders.get("b")?.caught, true);
   assert.equal(history.riders.get("b")?.dropped, false);
+  // B1: dropped + swallowed by the bunch = "dropped", whatever the finish order.
+  assert.equal(settleBreakawayOutcome(history.riders.get("a"), false), "dropped");
+  assert.equal(settleBreakawayOutcome(history.riders.get("a"), true), "dropped");
 });
 
 test("#6185 a split after the catch is not a drop from the break", () => {
@@ -212,6 +216,17 @@ test("#6185 review: back in the break, a catch recorded only as the bunch's merg
 });
 
 test("#6185 review: split, merge back into the break, then held to the line counts as held home", () => {
+  // Sharp on the rejoin rule: right after the merge back (before any verdict)
+  // the riders are back in the break, not dropped. Without rejoinBreak they
+  // would still be dropped here.
+  const back = deriveParticipationHistory([...BJERG_UNTIL_SPLIT, mergeBack, BJERG_FINISH], BJERG_IDS);
+  for (const id of ["r07", "r13"]) {
+    assert.equal(back.riders.get(id)?.dropped, false, `${id} back in the break`);
+    assert.equal(back.riders.get(id)?.swallowed, false, `${id} not swallowed`);
+    // Back in the break with no verdict: unknown, never "dropped" (a drop
+    // with nobody but escapees ahead would read "survived" instead).
+    assert.equal(settleBreakawayOutcome(back.riders.get(id), false), null, id);
+  }
   const history = deriveParticipationHistory([...BJERG_UNTIL_SPLIT, mergeBack,
     { km: 105, type: "breakaway_survived", params: { group_id: "breakaway-0", rider_ids: ["r02", "r07", "r13"], gap_seconds: 41.2 } },
     BJERG_FINISH,
@@ -268,4 +283,90 @@ test("#6185 finish safety net: an uncaught escapee behind a non-escapee is never
   assert.equal(settleBreakawayOutcome(null, true), null);
   assert.deepEqual(breakawayFlagsForOutcome(true, null), { in_breakaway: true, breakaway_caught: false, breakaway_dropped: null });
   assert.deepEqual(breakawayFlagsForOutcome(true, "survived"), { in_breakaway: true, breakaway_caught: false, breakaway_dropped: false });
+});
+
+test("#6185 B1: a dropped rider is held home only when never swallowed and nobody but escapees is ahead", () => {
+  const dropped = { morning: true, caught: false, survived: false, dropped: true };
+  assert.equal(settleBreakawayOutcome(dropped, false), "survived");
+  assert.equal(settleBreakawayOutcome({ ...dropped, swallowed: false }, false), "survived");
+  assert.equal(settleBreakawayOutcome(dropped, true), "dropped");
+  assert.equal(settleBreakawayOutcome({ ...dropped, swallowed: true }, false), "dropped");
+  assert.equal(settleBreakawayOutcome({ ...dropped, swallowed: true }, true), "dropped");
+  // Unknown finish order keeps the drop.
+  assert.equal(settleBreakawayOutcome(dropped, null), "dropped");
+  assert.equal(settleBreakawayOutcome({ ...dropped, caught: true }, false), "caught");
+});
+
+test("#6185 B1: dropped and never formally swallowed, but a non-escapee ahead at the line, is dropped (bjerg-selektion as recorded)", () => {
+  const history = deriveParticipationHistory(BJERG_EVENTS, BJERG_IDS);
+  const ahead = nonEscapeeAheadByRider(history, BJERG.results);
+  for (const id of ["r07", "r13"]) {
+    assert.equal(history.riders.get(id)?.swallowed, false, `${id} never merged with non-escapees`);
+    assert.equal(ahead.get(id), true, `${id} has r01 ahead`);
+    assert.equal(settleBreakawayOutcome(history.riders.get(id), ahead.get(id)), "dropped", id);
+  }
+});
+
+// ── #6185 B1: the two prod stages (fixtures: raceParticipationHistory.fixtures.ts) ──
+
+test("#6185 B1 prod 2349508b e1: riders who rode away from the break and won are held home, never dropped", () => {
+  const history = deriveParticipationHistory(STAGE_2349_E1, STAGE_2349_E1_ROWS.map((row) => row.rider_id));
+  const ahead = nonEscapeeAheadByRider(history, STAGE_2349_E1_ROWS);
+  const outcome = (id: string) => settleBreakawayOutcome(history.riders.get(id), ahead.get(id) ?? null);
+  // Stage winner and runner-up: rode away at km 76, never met a non-escapee.
+  assert.equal(outcome("e1"), "survived");
+  assert.equal(outcome("e2"), "survived");
+  for (const id of ["e1", "e2"]) assert.equal(history.riders.get(id)?.swallowed, false, id);
+  // Left in breakaway-0 and caught at the line.
+  assert.equal(outcome("e5"), "caught");
+  assert.equal(outcome("e6"), "caught");
+  // Fell out of the forward piece and finished behind the later attackers a3/a4.
+  for (const id of ["e7", "e8", "e15", "e16"]) assert.equal(outcome(id), "dropped", id);
+  // The later attackers are not morning escapees, so they count as non-escapees.
+  assert.equal(ahead.get("e7"), true);
+  assert.equal(ahead.get("e2"), false);
+});
+
+test("#6185 B1 prod 877c67c1 e4: split from the break, never swallowed, 2nd with the best non-escapee 8th = held home", () => {
+  const history = deriveParticipationHistory(STAGE_877_E4, STAGE_877_E4_ROWS.map((row) => row.rider_id));
+  const ahead = nonEscapeeAheadByRider(history, STAGE_877_E4_ROWS);
+  const e2 = history.riders.get("e2");
+  assert.equal(e2?.dropped, true, "left the break at km 140");
+  assert.equal(e2?.swallowed, false);
+  assert.equal(ahead.get("e2"), false);
+  assert.equal(settleBreakawayOutcome(e2, ahead.get("e2")), "survived");
+  // e107 split off and was joined by a non-escapee (p106): swallowed, dropped.
+  assert.equal(history.riders.get("e107")?.swallowed, true);
+  assert.equal(settleBreakawayOutcome(history.riders.get("e107"), ahead.get("e107")), "dropped");
+});
+
+test("#6185 finale merge order: joining the winner's group is order-independent", () => {
+  // The forward piece's rider (dropped, never swallowed) and a non-escapee both
+  // end in finale-winner-0. Whichever merge comes first, he shares the line
+  // with a non-escapee: swallowed, so "dropped". Alone in it: held home.
+  const base: ParticipationEvent[] = [
+    { km: 0, type: "stage_start", params: {} },
+    { km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["e1", "e2"] } },
+    { km: 60, type: "peloton_splits", params: { group_id: "chase-4000", rider_ids: ["e1"], source_group_id: "breakaway-0" } },
+    { km: 100, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["e2"] } },
+  ];
+  const escapeeIn: ParticipationEvent = { km: 100, type: "group_merged", params: { group_id: "chase-4000", rider_ids: ["e1"], into_group_id: "finale-winner-0" } };
+  const bunchIn: ParticipationEvent = { km: 100, type: "group_merged", params: { group_id: "peloton-0", rider_ids: ["p3"], into_group_id: "finale-winner-0" } };
+  const end: ParticipationEvent = { km: 100, type: "finish", params: {} };
+  for (const order of [[escapeeIn, bunchIn], [bunchIn, escapeeIn]]) {
+    const history = deriveParticipationHistory([...base, ...order, end], ["e1", "e2", "p3"]);
+    assert.equal(history.riders.get("e1")?.swallowed, true);
+    assert.equal(settleBreakawayOutcome(history.riders.get("e1"), false), "dropped");
+  }
+  const alone = deriveParticipationHistory([...base, escapeeIn, end], ["e1", "e2", "p3"]);
+  assert.equal(alone.riders.get("e1")?.swallowed, false);
+  assert.equal(settleBreakawayOutcome(alone.riders.get("e1"), false), "survived");
+});
+
+test("#6185 nonEscapeeAheadByRider uses the timeline's morning set, not later attackers", () => {
+  const history = deriveParticipationHistory(STAGE_2349_E1, []);
+  const ahead = nonEscapeeAheadByRider(history, [{ rider_id: "e1", rank: 1 }, { rider_id: "a3", rank: 3 }, { rider_id: "e7", rank: 7 }, { rider_id: null, rank: 2 }, { rider_id: "x", rank: null }]);
+  assert.deepEqual([...ahead], [["e1", false], ["a3", false], ["e7", true]]);
+  // Every finisher an escapee: nobody has a non-escapee ahead.
+  assert.deepEqual([...nonEscapeeAheadByRider(history, [{ rider_id: "e1", rank: 1 }, { rider_id: "e2", rank: 2 }])], [["e1", false], ["e2", false]]);
 });

@@ -1,38 +1,50 @@
-import { deriveParticipationHistory, settleBreakawayOutcome } from "../../../backend/lib/raceParticipationHistory.ts";
+import { deriveParticipationHistory, settleBreakawayOutcome, nonEscapeeAheadByRider } from "../../../backend/lib/raceParticipationHistory.ts";
 import type { ParticipationEvent, ParticipationHistory, RiderParticipation } from "../../../backend/lib/raceParticipationHistory.ts";
 
 type ResultMarkerRow = { rider_id?: string | null; in_breakaway?: boolean | null; breakaway_caught?: boolean | null; breakaway_dropped?: boolean | null };
 type StageTimeline = { timeline_version?: number; stage_number?: number; events?: ParticipationEvent[] } | null;
-export type ResultParticipation = RiderParticipation & { verified: boolean };
+type FinishRow = { rider_id?: string | null; rank?: number | null };
+export type ResultParticipation = Omit<RiderParticipation, "swallowed"> & { verified: boolean };
+/**
+ * A stage's projected history plus, when the stage's finish order was given,
+ * per rider whether a non-escapee (by the timeline's morning set) finished
+ * ahead: the same answer the engine run and the backfill settle with.
+ */
+export type StageParticipationHistory = ParticipationHistory & { nonEscapeeAhead?: ReadonlyMap<string, boolean> };
 
-export function historyForStage(timeline: StageTimeline, stage: number, initialRiderIds: readonly string[] = []): ParticipationHistory | null {
+export function historyForStage(timeline: StageTimeline, stage: number, initialRiderIds: readonly string[] = [], finishRows: readonly FinishRow[] | null = null): StageParticipationHistory | null {
   if (!timeline || timeline.timeline_version !== 2 || timeline.stage_number !== stage || !Array.isArray(timeline.events)) return null;
   const history = deriveParticipationHistory(timeline.events, initialRiderIds);
   const formation = timeline.events.find(event => event.type === "breakaway_formed");
   const fullFormation = !formation || (typeof formation.params?.group_id === "string" && Array.isArray(formation.params?.rider_ids));
-  return history.complete && fullFormation ? history : null;
+  if (!history.complete || !fullFormation) return null;
+  return finishRows?.length ? { ...history, nonEscapeeAhead: nonEscapeeAheadByRider(history, finishRows) } : history;
 }
 
-export function participationForResult(result: ResultMarkerRow, history: ParticipationHistory | null): ResultParticipation | null {
+export function participationForResult(result: ResultMarkerRow, history: StageParticipationHistory | null): ResultParticipation | null {
   if (!result.rider_id) return null;
   // #6185: a persisted "dropped" (engine run or backfill, incl. the finish
-  // safety net) is never shown as "held home", with or without a timeline.
+  // safety net) is never shown as "held home" without a timeline.
   const persistedDropped = result.breakaway_dropped === true;
   if (history) {
     const recorded = history.riders.get(result.rider_id);
     const morning = recorded?.morning ?? false;
     const recordedDropped = recorded?.dropped ?? false;
-    // The persisted flags carry the finish safety net (engine run, backfill or
-    // withFinishSafetyNet). Settle with the SAME rule as the backend
-    // (settleBreakawayOutcome): a timeline "survived" with a non-escapee ahead
-    // is caught, so a backfilled breakaway_caught=true (or the frontend net's
-    // dropped flag before the backfill) never shows as "held home".
+    // Settle with the SAME rule and the SAME "non-escapee ahead" as the
+    // backend (settleBreakawayOutcome + nonEscapeeAheadByRider): true, false
+    // or, without the stage's finish order, the persisted net's dropped flag
+    // (true) or unknown (null). A timeline "survived" with a non-escapee ahead
+    // is caught, so a backfilled breakaway_caught=true never shows as "held
+    // home"; a dropped rider never swallowed and with nobody but escapees
+    // ahead held home.
+    const ahead = history.nonEscapeeAhead?.get(result.rider_id);
     const outcome = settleBreakawayOutcome({
       morning,
       caught: (recorded?.caught ?? false) || (result.breakaway_caught === true && !recordedDropped),
       survived: recorded?.survived ?? false,
       dropped: recordedDropped,
-    }, persistedDropped ? true : null);
+      swallowed: recorded?.swallowed ?? false,
+    }, typeof ahead === "boolean" ? ahead : persistedDropped ? true : null);
     return { morning, caught: outcome === "caught", survived: outcome === "survived", dropped: outcome === "dropped", laterAttack: recorded?.laterAttack ?? false, verified: true };
   }
   const morning = Boolean(result.in_breakaway);
@@ -49,7 +61,9 @@ type RankedResultRow = ResultMarkerRow & { result_type?: string | null; stage_nu
  * held on, so the row is read as dropped. Applied per (result_type,
  * stage_number) group; `rows` must hold complete groups (one fetched stage).
  * Covers rows written before the engine persisted `breakaway_dropped` and
- * every view that has no timeline (yet).
+ * every view that has no timeline (yet). With a timeline, the page settles on
+ * the timeline's own morning set instead (historyForStage `finishRows`): the
+ * stored in_breakaway can include later attackers on older v4 stages.
  */
 export function withFinishSafetyNet<T extends RankedResultRow>(rows: readonly T[] | null | undefined): Array<T & Pick<ResultMarkerRow, "breakaway_dropped">> {
   if (!rows?.length) return rows ? [...rows] : [];
@@ -85,7 +99,7 @@ export function breakawayMarkerState(participation: ResultParticipation): Breaka
   return { labelKey: "detail.breakaway.survived", muted: false, icon: "flag", tone: "accent" };
 }
 
-export function participationFlagsForResult(result: ResultMarkerRow, history: ParticipationHistory): { in_breakaway: boolean; breakaway_caught: boolean | null; breakaway_dropped: boolean } {
+export function participationFlagsForResult(result: ResultMarkerRow, history: StageParticipationHistory): { in_breakaway: boolean; breakaway_caught: boolean | null; breakaway_dropped: boolean } {
   const participation = participationForResult(result, history);
   return {
     in_breakaway: Boolean(participation?.morning),

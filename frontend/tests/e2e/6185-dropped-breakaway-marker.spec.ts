@@ -95,6 +95,9 @@ test("#6185 held home, caught and dropped differ in icon shape and tone (no hove
 
 test("#6185 a tap on the dropped marker shows its text and does not open the rider", async ({ page }, testInfo) => {
   await prepareRace(page, { withTimeline: false, rows: stateRows });
+  // Review: the mobile projects (hasTouch) really tap, so touch is proven, not a mouse click.
+  const touch = Boolean(testInfo.project.use.hasTouch);
+  const press = (locator: ReturnType<Page["locator"]>) => touch ? locator.tap() : locator.click();
   const url = page.url();
   const marker = page.locator('[aria-label="Udbrud: sat af fra udbruddet"]');
   const bubble = page.getByRole("tooltip");
@@ -105,7 +108,7 @@ test("#6185 a tap on the dropped marker shows its text and does not open the rid
   const target = (await marker.boundingBox())!;
   expect(target.width).toBeGreaterThanOrEqual(24);
   expect(target.height).toBeGreaterThanOrEqual(24);
-  await marker.click();
+  await press(marker);
   await expect(bubble).toHaveText("Udbrud: sat af fra udbruddet");
   await expect(bubble).toHaveCSS("opacity", "1");
   // The bubble is never clipped by the result table: fully inside the viewport.
@@ -115,7 +118,15 @@ test("#6185 a tap on the dropped marker shows its text and does not open the rid
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
   expect(page.url()).toBe(url);
   if (process.env.CZ_REVIEW_SCREENS === "1") await page.screenshot({ path: testInfo.outputPath("6185-tap.png") });
+  if (touch) {
+    // A second tap on the same marker closes it, and still does not open the rider.
+    await press(marker);
+    await expect(bubble).toHaveCount(0);
+    expect(page.url()).toBe(url);
+    await press(marker);
+    await expect(bubble).toHaveText("Udbrud: sat af fra udbruddet");
+  }
   // Tapping elsewhere closes it again.
-  await page.getByRole("heading", { name: "Etape 1 · målrækkefølge", exact: true }).click();
+  await press(page.getByRole("heading", { name: "Etape 1 · målrækkefølge", exact: true }));
   await expect(bubble).toHaveCount(0);
 });

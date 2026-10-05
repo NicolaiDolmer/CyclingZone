@@ -206,7 +206,7 @@ function riderName(res) {
 const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
 const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
 
-// #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, hover virker
+// #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, et andet tryk på samme markør skjuler den, hover virker
 // på desktop. Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal
 // med fixed position (følger markøren ved scroll/resize): resultattabellens
 // scroller klipper ellers boblen (mobil, sidste række).
@@ -228,6 +228,16 @@ function MarkerTip({ label, className = "", children }) {
     setPos({ left: Math.max(8, Math.min(left, window.innerWidth - maxWidth - 8)), top: rect.bottom - MARKER_HIT_INSET, maxWidth });
   }, []);
   const hide = useCallback(() => setPos(null), []);
+  // #6185 review: hover (kun mus) viser; et tryk skifter (andet tryk paa samme
+  // maerke lukker). Pointer-typen skelner, saa touch-browserens emulerede
+  // mouseenter ikke aabner boblen lige foer trykket lukker den igen.
+  const lastPointerRef = useRef("mouse");
+  const onPointerEnter = useCallback((e) => { if (e.pointerType === "mouse") show(); }, [show]);
+  const onPointerLeave = useCallback((e) => { if (e.pointerType === "mouse") hide(); }, [hide]);
+  const onClick = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (lastPointerRef.current === "mouse" || !pos) show(); else hide();
+  }, [pos, show, hide]);
   useEffect(() => {
     if (!pos) return undefined;
     const onKey = (e) => { if (e.key === "Escape") hide(); };
@@ -247,8 +257,9 @@ function MarkerTip({ label, className = "", children }) {
   return (
     <span className="ms-1 inline-flex align-middle">
       <span ref={ref} role="img" aria-label={label}
-        onMouseEnter={show} onMouseLeave={hide}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); show(); }}
+        onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}
+        onPointerDown={(e) => { lastPointerRef.current = e.pointerType || "mouse"; }}
+        onClick={onClick}
         className={`-m-[2.5px] inline-flex cursor-help p-[4.5px] ${className}`}>
         {children}
       </span>
@@ -697,8 +708,12 @@ export default function RaceDetailPage() {
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
   const { timeline: oneDayTimeline } = useStageTimeline(race?.race_type === "single" && results.length ? raceId : null, 1);
-  const oneDayParticipation = useMemo(() => historyForStage(oneDayTimeline, 1,
-    results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean)), [oneDayTimeline, results]);
+  const oneDayParticipation = useMemo(() => {
+    const dayRows = results.filter(row => row.result_type === "gc" || row.result_type === "stage");
+    // #6185: "ikke-udbryder foran" efter etape-placeringen, som backfillen (gc kun hvis der ingen etape-raekker er).
+    const stageRows = dayRows.filter(row => row.result_type === "stage");
+    return historyForStage(oneDayTimeline, 1, dayRows.map(row => row.rider_id).filter(Boolean), stageRows.length ? stageRows : dayRows);
+  }, [oneDayTimeline, results]);
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
 
@@ -1716,8 +1731,10 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     () => effectiveEffortByRider(stageRoles, teamOrders, stage, { v4: isV4Timeline }),
     [stageRoles, teamOrders, stage, isV4Timeline],
   );
-  const participationHistory = useMemo(() => historyForStage(timeline, stage,
-    (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean)), [timeline, stage, results]);
+  const participationHistory = useMemo(() => {
+    const stageRows = (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage);
+    return historyForStage(timeline, stage, stageRows.map((row) => row.rider_id).filter(Boolean), stageRows); // #6185
+  }, [timeline, stage, results]);
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
     return { ...row, ...participationFlagsForResult(row, participationHistory) };

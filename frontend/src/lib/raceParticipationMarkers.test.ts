@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { participationForResult, historyForStage, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "./raceParticipationMarkers.ts";
-import { PENISOLA_STAGE3_EVENTS, PENISOLA_STAGE3_RANKS, PENISOLA_DROPPED, PENISOLA_CAUGHT } from "../../../backend/lib/raceParticipationHistory.fixtures.ts";
+import { PENISOLA_STAGE3_EVENTS, PENISOLA_STAGE3_RANKS, PENISOLA_DROPPED, PENISOLA_CAUGHT, STAGE_2349_E1, STAGE_2349_E1_ROWS, STAGE_877_E4, STAGE_877_E4_ROWS } from "../../../backend/lib/raceParticipationHistory.fixtures.ts";
 const timeline = { timeline_version: 2, stage_number: 6, events: [
   { km: 0, type: "stage_start", params: { field_count: 3 } },
   { km: 12, type: "breakaway_formed", params: { group_id: "escape", rider_ids: ["morning"] } },
@@ -144,4 +144,41 @@ test("#6185 the three marker states differ in icon SHAPE or tone, so they read a
   // Only the dropped state leaves the flag shape.
   assert.equal(held.icon, "flag");
   assert.equal(caught.icon, "flag");
+});
+
+// ── #6185 B1: same answer as the engine run and the backfill ────────────────
+function pageRows(finish: { rider_id: string; rank: number }[], { escapees, caught }: { escapees: string[]; caught: string[] }) {
+  return finish.map(({ rider_id, rank }) => ({ result_type: "stage", stage_number: 1, rank, rider_id, in_breakaway: escapees.includes(rider_id), breakaway_caught: caught.includes(rider_id) }));
+}
+const labelOf = (row: Parameters<typeof participationForResult>[0], history: Parameters<typeof participationForResult>[1]) => breakawayMarkerState(participationForResult(row, history)!).labelKey;
+
+test("#6185 B1 prod 2349508b e1 on the race page: the stage winner and runner-up read 'held home', never 'dropped'", () => {
+  // Stored rows: older v4 rows also flag the later attackers a3/a4 as in_breakaway.
+  const rows = withFinishSafetyNet(pageRows(STAGE_2349_E1_ROWS, { escapees: ["e1", "e2", "a3", "a4", "e5", "e6", "e7", "e8", "e15", "e16"], caught: ["e15", "e16"] }));
+  const history = historyForStage({ timeline_version: 2, stage_number: 1, events: STAGE_2349_E1 }, 1, rows.map((row) => row.rider_id), rows);
+  assert.ok(history);
+  // The explicit "no non-escapee ahead" (false) reaches the settle step.
+  assert.equal(history.nonEscapeeAhead?.get("e1"), false);
+  assert.equal(history.nonEscapeeAhead?.get("e7"), true, "a3/a4 count as non-escapees by the timeline, as in the backend");
+  const byId = new Map(rows.map((row) => [row.rider_id, row]));
+  for (const id of ["e1", "e2"]) assert.equal(labelOf(byId.get(id)!, history), "detail.breakaway.survived", id);
+  for (const id of ["e5", "e6"]) assert.equal(labelOf(byId.get(id)!, history), "detail.breakaway.caught", id);
+  for (const id of ["e7", "e8", "e15", "e16"]) assert.equal(labelOf(byId.get(id)!, history), "detail.breakaway.dropped", id);
+  // The report flags follow the same answer.
+  assert.deepEqual(participationFlagsForResult(byId.get("e2")!, history), { in_breakaway: true, breakaway_caught: false, breakaway_dropped: false });
+});
+
+test("#6185 B1 prod 877c67c1 e4 on the race page: split off, never swallowed, 2nd = held home", () => {
+  const rows = withFinishSafetyNet(pageRows(STAGE_877_E4_ROWS, { escapees: ["e1", "e2", "e3", "e4", "e5", "e6", "e7", "e107"], caught: ["e1", "e3", "e4", "e5", "e6", "e7", "e107"] }));
+  const history = historyForStage({ timeline_version: 2, stage_number: 1, events: STAGE_877_E4 }, 1, rows.map((row) => row.rider_id), rows);
+  const byId = new Map(rows.map((row) => [row.rider_id, row]));
+  assert.equal(labelOf(byId.get("e2")!, history), "detail.breakaway.survived");
+  assert.equal(labelOf(byId.get("e107")!, history), "detail.breakaway.dropped");
+});
+
+test("#6185 B1 Penisola with the finish order: dropped riders behind a non-escapee stay dropped", () => {
+  const rows = withFinishSafetyNet(Object.entries(PENISOLA_STAGE3_RANKS).map(([id, rank]) => ({ result_type: "stage", stage_number: 3, rank, rider_id: id, in_breakaway: id.startsWith("e"), breakaway_caught: id === "e3" || id === "e6" })));
+  const history = historyForStage(penisola, 3, penisolaIds, rows);
+  for (const row of rows.filter((r) => (PENISOLA_DROPPED as readonly string[]).includes(r.rider_id))) assert.equal(labelOf(row, history), "detail.breakaway.dropped", row.rider_id);
+  for (const row of rows.filter((r) => (PENISOLA_CAUGHT as readonly string[]).includes(r.rider_id))) assert.equal(labelOf(row, history), "detail.breakaway.caught", row.rider_id);
 });

@@ -854,8 +854,9 @@ export function deriveBreakawayStatus(ranked = []) {
   for (const r of ranked) {
     if (r.breakaway_status && typeof r.breakaway_status.in_breakaway === "boolean" && (typeof r.breakaway_status.breakaway_caught === "boolean" || r.breakaway_status.breakaway_caught === null)) {
       // #6185: caught / dropped / held home + finish safety net; breakaway_dropped keeps null for unknown.
+      // A dropped rider never swallowed by non-escapees and with none ahead at the line held home.
       const s = r.breakaway_status;
-      out.set(r.rider_id, breakawayFlagsForOutcome(s.in_breakaway, settleBreakawayOutcome({ morning: s.in_breakaway, caught: s.breakaway_caught === true, survived: s.breakaway_caught === false, dropped: s.breakaway_dropped === true }, r.rank > bestNonEscapeeRank)));
+      out.set(r.rider_id, breakawayFlagsForOutcome(s.in_breakaway, settleBreakawayOutcome({ morning: s.in_breakaway, caught: s.breakaway_caught === true, survived: s.breakaway_caught === false, dropped: s.breakaway_dropped === true, swallowed: s.breakaway_swallowed === true }, r.rank > bestNonEscapeeRank)));
       continue;
     }
     const inBreakaway = (r.components?.breakaway || 0) > 0;

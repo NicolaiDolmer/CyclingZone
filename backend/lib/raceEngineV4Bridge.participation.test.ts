@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { rankedFromV4Output } from "./raceEngineV4Bridge.js";
 import { deriveBreakawayStatus } from "./raceSimulator.js";
+import { STAGE_2349_E1, STAGE_2349_E1_ROWS, STAGE_877_E4, STAGE_877_E4_ROWS } from "./raceParticipationHistory.fixtures.ts";
 
 test("#5953 v4 output flags formation members, not later group members", () => {
   const output = {
@@ -48,4 +49,20 @@ test("unknown morning-break outcome remains unknown internally without inventing
   const ranked = rankedFromV4Output(output);
   assert.equal(ranked.find(row => row.rider_id === "a")?.breakaway_status.breakaway_caught, null);
   assert.deepEqual(deriveBreakawayStatus(ranked).get("a"), { in_breakaway: true, breakaway_caught: false, breakaway_dropped: true }, "#6185 finish safety net: an unknown outcome behind a non-escapee is a drop, never a rank-based catch and never held home");
+});
+test("#6185 B1 live run: riders who rode away from the break and finished ahead of every non-escapee are held home (prod 2349508b e1, 877c67c1 e4)", () => {
+  const statusFor = (events: unknown[], rows: { rider_id: string; rank: number }[]) => deriveBreakawayStatus(rankedFromV4Output({
+    results: rows.map((row) => ({ rider_id: row.rider_id, rank: row.rank, time_seconds: 1000 + row.rank, status: "finished" })),
+    timeline: { events },
+  }));
+  const held = { in_breakaway: true, breakaway_caught: false, breakaway_dropped: false };
+  const dropped = { in_breakaway: true, breakaway_caught: false, breakaway_dropped: true };
+  const stage1 = statusFor(STAGE_2349_E1, STAGE_2349_E1_ROWS);
+  assert.deepEqual(stage1.get("e1"), held, "stage winner");
+  assert.deepEqual(stage1.get("e2"), held, "runner-up");
+  for (const id of ["e7", "e8", "e15", "e16"]) assert.deepEqual(stage1.get(id), dropped, id);
+  assert.equal(stage1.get("a3")?.in_breakaway, false, "later attacker is not a morning escapee");
+  const stage4 = statusFor(STAGE_877_E4, STAGE_877_E4_ROWS);
+  assert.deepEqual(stage4.get("e2"), held);
+  assert.deepEqual(stage4.get("e107"), dropped, "split off and joined by a non-escapee");
 });
