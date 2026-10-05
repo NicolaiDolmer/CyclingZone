@@ -10724,6 +10724,7 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       .from("teams")
       .select("id")
       .eq("division", team.division)
+      .order("id")
       .limit(DIVISION_PRIZE_SAMPLE_TEAM_CAP);
     if (divisionTeamsRes.error) throw divisionTeamsRes.error;
     const divisionTeamIds = (divisionTeamsRes.data || []).map((t) => t.id);

@@ -351,3 +351,5 @@ Klausul-typen `top_half` (før 3/8) og `top_40pct` (efter) lever side om side i
 ## Visning af næste sæson (#5916, 5/10)
 
 Tilbudsvisningen bruger næste sæsons kendte etapetal. Mangler kalenderen, bruges kun holdets egen aktuelle pulje som eksplicit markeret estimat; den generiske divisor er ikke en kendt kalender. Ukendt sats vises som ukendt, mens aftalens sæsonpulje bevares. Aktive kontrakter viser den lagrede sats, som afregningen bruger. Træningsdage giver ikke etapeindkomst. Ingen ændring af valg, aktivering eller udbetaling.
+
+#6215 review: alle satslabels bruger etape som enhed. Estimeret etapetal markeres også i tilbuddenes overskrift. Forklaringen skelner mellem genberegning ved første aktivering og den frosne sats i resterende sæsoner af en flersæsonsaftale.

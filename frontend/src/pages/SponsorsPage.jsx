@@ -659,7 +659,7 @@ export default function SponsorsPage() {
                     title={t("page.next.title")}
                     meta={
                       offersOpen && activeDivision != null && Number(offerStages) > 0
-                        ? t("page.next.meta", {
+                        ? t(offerCalendar.estimated ? "page.next.metaEstimated" : "page.next.meta", {
                             count: offers.length,
                             division: activeDivision,
                             stages: Number(offerStages),

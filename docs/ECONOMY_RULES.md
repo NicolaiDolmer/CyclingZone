@@ -335,3 +335,5 @@ The report distinguishes team cash balances from the sum of rider valuations. It
 ## Præmieprognosens interval (#5940, 5/10)
 
 `financeForecast.computePrizeInterval` bruger divisionens målte kvartilspænd direkte og udvider det om nødvendigt til holdets eget punktestimat. Divisionens median bruges ikke som multiplikator. Det eksisterende fallback ved utilstrækkelige data bevares. Dette ændrer kun prognosens interval; punktestimat, præmieregler og udbetalinger er uændrede. SSOT for sponsorvisning: `SPONSOR_RULES.md`.
+
+#6215 review: peers udvælges stabilt med id-sortering før det eksisterende loft. Sammenligningsgrundlaget er rullende præmieestimater for ryttere på de udvalgte hold, ikke faktiske udbetalinger fra én afsluttet sæson eller en garanti for et bestemt historisk niveau. Intervaldesign for stærke hold afventer ejerens særskilte beslutning.
