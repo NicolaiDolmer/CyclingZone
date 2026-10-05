@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (planlægning 5/10 afsluttet; næste: morgenprompt 6/10).
+> **🤖 Working agent:** Claude (Fable), hoved-checkout, 5/10 eftermiddag: løbsmotor-design med ejeren (#6157: #6187 → #5978/#6201 → #6185 → #6199/#6200 → #3460 → #2557 → #6137), byg via wave; staging-fingeraftryk (#5904). Merge-kø 5/10 verificeret (#6183 + #6211 i prod).
