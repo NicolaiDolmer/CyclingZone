@@ -50,8 +50,14 @@ foreach ($f in $ordered) {
   $path = Join-Path $repo "database/$f"
   if (Select-String -Path $path -Pattern 'K(Ø|OE)RES IKKE AUTOMATISK|MANUAL[- ]ONLY' -Quiet) { throw "$f er markeret manuel-only - stopper (samme regel som auto-migrate)" }
   Write-Host "[apply] $f"
-  & psql $db -v ON_ERROR_STOP=1 -q -f $path 2>&1 | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" }
-  if ($LASTEXITCODE -ne 0) {
+  # Windows-checkouts har CRLF (core.autocrlf); prod applies fra Linux-CI med LF. Uden
+  # normalisering faar funktionskroppe '\r' og schema-fingeraftrykket afviger fra prod.
+  $lf = [IO.Path]::GetTempFileName()
+  [IO.File]::WriteAllText($lf, ([IO.File]::ReadAllText($path) -replace "`r`n", "`n"), [Text.UTF8Encoding]::new($false))
+  & psql $db -v ON_ERROR_STOP=1 -q -f $lf 2>&1 | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" }
+  $code = $LASTEXITCODE
+  Remove-Item -Force $lf -ErrorAction SilentlyContinue
+  if ($code -ne 0) {
     $failed += $f
     if (-not $ContinueOnError) { throw "migration fejlede: $f (intet registreret for denne fil)" }
     continue
