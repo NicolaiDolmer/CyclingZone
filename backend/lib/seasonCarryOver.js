@@ -149,6 +149,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "#5928: per-rider date settlement receipts. Engine idempotency state, not manager configuration; copying receipts would block valid new-season settlement.",
   },
   {
+    table: "training_compensation_receipts",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#6061/#6129: one-off compensation ledger for historical training slots. Engine idempotency state for its own season, not manager configuration.",
+  },
+  {
     table: "training_rider_ticks",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "#5928: per-rider training receipts are historical engine output; copying them would suppress valid new-season growth.",
