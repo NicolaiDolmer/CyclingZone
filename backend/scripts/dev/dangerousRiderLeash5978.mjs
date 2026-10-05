@@ -229,6 +229,44 @@ export function runScorecard({ v4, data, revisions = REVISIONS, seeds = 4, chain
   return result;
 }
 
+/**
+ * Endagsloeb (samme ruter koert som endagsloeb, ingen klassement): "farlig" =
+ * en af feltets 10 bedste paa dagens rute (finalens evne-krav, samme vektor
+ * som motoren). Maaler de samme to tal som runScorecard.
+ */
+export function runOneDayScorecard({ v4, data, revisions = REVISIONS, seeds = 3, demandFor }) {
+  const stages = stagesOf(data).filter((p) => !String(p.profile_type).startsWith("itt"));
+  const entrants = entrantsOf(data);
+  const abilitiesById = new Map(data.abilities.map((a) => [a.rider_id, a]));
+  const result = {};
+  for (const rules of revisions) {
+    const row = { stages: 0, withDangerous: 0, dangerousHeld: 0, breaks: 0, breaksHeld: 0 };
+    for (const p of stages) {
+      const demand = demandFor(p);
+      const score = (id) => Object.entries(demand).reduce((s, [k, w]) => s + w * Math.min(99, Math.max(0, abilitiesById.get(id)?.[k] ?? 0)) / 99, 0);
+      const top10 = new Set(entrants.map((e) => e.rider_id).sort((a, b) => score(b) - score(a) || a.localeCompare(b)).slice(0, 10));
+      for (let s = 1; s <= seeds; s++) {
+        const out = v4.simulateStage({
+          entrants, stageProfile: p, seedString: `${data.race.id}:${p.stage_number}:oneday5978-${s}`, stageNumber: 1,
+          teamOrderRows: [], isStageRace: false, raceStages: null, squad: data.race.squad ?? null, rulesRevision: rules, gcStandings: null,
+        }).v4Output;
+        const events = out.timeline.events;
+        const formed = events.find((e) => e.type === "breakaway_formed");
+        const survived = events.find((e) => e.type === "breakaway_survived" && e.params?.group_id === formed?.params?.group_id);
+        row.stages += 1;
+        if (formed) row.breaks += 1;
+        if (survived) row.breaksHeld += 1;
+        if (formed && formed.params.rider_ids.some((id) => top10.has(id))) {
+          row.withDangerous += 1;
+          if (survived && (survived.params?.rider_ids ?? []).some((id) => top10.has(id))) row.dangerousHeld += 1;
+        }
+      }
+    }
+    result[rules] = row;
+  }
+  return result;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const arg = (name, fallback) => {
     const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -243,5 +281,16 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const chain = standingsChain({ v4, data, lastStage: Math.max(...data.profiles.map((p) => p.stage_number)) });
   if (mode !== "scorecard") out.anchor = runDangerousRiderLeash({ v4, data, seeds, chain });
   if (mode !== "anchor") out.scorecard = runScorecard({ v4, data, seeds: Number(arg("scoreSeeds", "3")), chain });
+  if (mode === "oneday" || mode === "both") {
+    const { RACE_V4_TUNING } = await import("../../lib/engine/v4/tuning.ts");
+    const { routeFromStageProfileRow } = await import("../../lib/engine/v4/adapters/routeAdapter.ts");
+    const { fieldFinaleTypeBehindBreakaway } = await import("../../lib/engine/v4/finale.ts");
+    const demandFor = (profile) => {
+      const route = routeFromStageProfileRow(profile);
+      const finale = route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(route) : route.finale_type;
+      return (finale && RACE_V4_TUNING.finale.demandVectorByFinaleType[finale]) || {};
+    };
+    out.oneDay = runOneDayScorecard({ v4, data, seeds: Number(arg("scoreSeeds", "3")), demandFor });
+  }
   console.log(JSON.stringify(out, null, 2));
 }

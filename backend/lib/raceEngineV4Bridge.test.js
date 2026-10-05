@@ -529,6 +529,20 @@ test("#5978 buildV4StageInput: orders_gc_v1 bærer altid en eksplicit gc_context
   assert.deepEqual(buildV4StageInput({ ...args, isStageRace: false }).gc_context, { status: "one_day" });
 });
 
+test("#5978 buildV4StageInput: kun orders_gc_v3 bærer stages_remaining (etaper efter i dag)", () => {
+  const raceStages = [1, 2, 3, 4].map((n) => ({ stage_number: n }));
+  const args = {
+    modules: gcModules(), entrants: GC_ENTRANTS, stageProfile: stageProfile(), seedString: "race:2", stageNumber: 2, isStageRace: true,
+    raceStages, gcStandings: [{ rider_id: "b", time: 10 }, { rider_id: "a", time: 25 }],
+  };
+  assert.equal(buildV4StageInput({ ...args, rulesRevision: "orders_gc_v3" }).gc_context.stages_remaining, 2);
+  for (const rulesRevision of ["orders_gc_v1", "orders_gc_v2"]) {
+    assert.equal("stages_remaining" in buildV4StageInput({ ...args, rulesRevision }).gc_context, false, rulesRevision);
+  }
+  // Uden etape-rækker: intet felt (motoren regner da ingen kommende etaper).
+  assert.equal("stages_remaining" in buildV4StageInput({ ...args, raceStages: null, rulesRevision: "orders_gc_v3" }).gc_context, false);
+});
+
 // Runnerens to kaldsteder (raceRunner.js er en delt fil; koblingen testes her).
 test("#5978 runner: kun orders_gc_v1 sender klassementet FØR etapen, på begge stier", async () => {
   const { buildRaceResults, buildStageRowsAccumulated } = await import("./raceRunner.js");
