@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml`. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen. Færdigt står IKKE her (patch notes + git-log).
 
-**Reglen:** 🔴 brand foran alt (10/9) · **gør det lovede færdigt** (21/9; dato først, ældste først, samme dato parallelt) · beta → alle før nyt · Bane 2 forretning viger aldrig · Bane 3 færdiggør (>70 %) før nyt. Rytme + kanal-split + seks spor: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) (ejer 3/10) og [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md). Ejer-godkendt 1/10; status-synk 3/10 (audit + Discord).
+**Reglen:** 🔴 brand foran alt (10/9) · **gør det lovede færdigt** (21/9; dato først, ældste først, samme dato parallelt) · beta → alle før nyt · Bane 2 forretning viger aldrig · Bane 3 færdiggør (>70 %) før nyt. Rytme + kanal-split + seks spor: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) (ejer 3/10) og [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
 
 ## 🔴 Brand (nu)
 
@@ -10,11 +10,11 @@
 
 ## Uge 41 · rækkefølge (ejer 4/10)
 
-Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt, byg bag `orders_gc_v3`, flip ejer-only: 🟠 #6187 aftalt 5/10, i lane · derefter #5978+#6201 · #6185 · #6199+#6200 · #3460 · #2557 · #6137 #6186 #5059; #6156 efter) · **Supabase-stabilisering (#5893, ejer 5/10), i denne rækkefølge:** ① staging færdig #5904 (fingeraftryk → huller → #6170; Claude) samtidig med ② timeout-diagnose #6184 (PR #6196 synkes) + #5878 (kurver + Supabase-svar på 28/9 og 2/10) → ③ tunge kald, bevist på staging: #6102 (PR #6136, ejer-kør) · #3511 · #5692 sæsonskifte-refresh (før 25/10) → ④ ved siden af: #4269 (ejer opretter token) · #6104 · #6105 · #708 (Codex, før 30/10). Venter på ①: #6134 jobkø · #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
+Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt, byg bag `orders_gc_v3`, flip ejer-only: 🟠 #6187 aftalt 5/10, i lane · derefter #5978+#6201 · #6185 · #6199+#6200 · #3460 · #2557 · #6137 #6186 #5059; #6156 efter) · **Supabase-stabilisering (#5893, ejer 5/10), i denne rækkefølge:** ① staging færdig #5904 (fingeraftryk → huller → #6170; Claude) samtidig med ② timeout-diagnose #6184 (PR #6196 synkes) + #5878 → ③ tunge kald, bevist på staging: #6102 (PR #6136, ejer-kør) · #3511 · #5692 sæsonskifte-refresh (før 25/10) → ④ ved siden af: #4269 (ejer opretter token) · #6104 · #6105 · #708 (Codex, før 30/10). Venter på ①: #6134 jobkø · #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
 
 ## Roadmap · Planned (ejer 5/10; spejles 1:1 i `roadmap_items.sort_order`)
 
-**Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** #1177 · #2887 A · #2768 · #5573 · #4620 · #5113 · #5101 · #5575 · #5574 · #3463 · #6125 · #2176 · #4957 · #5106 · #3374 · #3513 · #2223 · #2161. #6203 søgning · #6204 admin · #6205 sync. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md) (ny roadmap-sektion, UI-PR). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
+**Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** #1177 · #2887 A · #2768 · #5573 · #4620 · #5113 · #5101 · #5575 · #5574 · #3463 · #6125 · #2176 · #4957 · #5106 · #3374 · #3513 · #2223 · #2161. #6203 søgning · #6204 admin · #6205 sync. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
@@ -36,11 +36,11 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Bane 3 · Færdiggør
 
-#6081 merge-køen melder rød for tidligt · #5692 matview-lås (SQL i prod 4/10; Node #6153 se uge 41; rest: sæsonskiftets refresh) · #5792 smoke + #6132 + #6120 (blokeret på filmandat; nyt mandat i plan-fil) · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 (først #5115) · #6064/#6065 bølge-værn · #5145 (parkeret).
+#6081 merge-køen melder rød for tidligt · #5692 (rest: sæsonskiftets refresh, se uge 41) · #5792 smoke + #6132 + #6120 · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 (først #5115) · #6064/#6065 bølge-værn · #5145 (parkeret).
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · staging-rensning/disk/S4-struktur (#6183) · kort F statusfejl · #6122 bestyrelse. **Afgjort 5/10:** #6129 · #6153 · #3813 · #6126 idéer · #6134 venter staging · #6157 alle 4 grupper · #5981 A · #2887 B/A · #5268 A (fra 1/10) · #4449 afløst af v6 · 8 løfter + 16 GDD-punkter (2027-fil).
+**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse. **Afgjort 5/10:** #6187 B · #6134 venter staging · #5981 A · #2887 B/A · #5268 A.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
