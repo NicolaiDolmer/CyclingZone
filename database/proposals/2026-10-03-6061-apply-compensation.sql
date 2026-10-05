@@ -1,4 +1,8 @@
--- PREPARED, NOT APPLIED. Owner-approved current-plan calculation, not prod-go.
+-- APPLIED IN PROD 5/10 as migration 6061_apply_training_compensation (table,
+-- trigger, first writer). The WRITER BELOW IS SUPERSEDED (#6129): it compared
+-- whole rows incl. presence/UI columns and took the full plan file as payload.
+-- Current writer + source hash function: database/2026-10-05-6129-compensation-slim-source.sql.
+-- Do not re-apply this file on its own; it is kept as the base for the table/trigger.
 -- Refs #6061. Separate compensation ledger: no replay of historic condition/races.
 CREATE TABLE IF NOT EXISTS public.training_compensation_receipts (
  rider_id uuid NOT NULL, season_id uuid NOT NULL, game_day integer NOT NULL,
