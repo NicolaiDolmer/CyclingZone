@@ -20,7 +20,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6217 ux(race-film): saml gentagne ens haendelser paa samme km (Refs #6137) (0d) — roed
 - #6218 fix(reputation): sort displayed values and explain board star counts (0d) — groen
 - #6223 fix(race-engine): faelles tidsmodel for stigning og nedkoersel (orders_gc_v3, #6199 #6200) (0d) — groen
-- #6216 fix(race): egen tilstand for udbryder sat af fra udbruddet (Refs #6185) (0d) — groen
+- #6216 fix(race): egen tilstand for udbryder sat af fra udbruddet (Refs #6185) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -56,6 +56,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **Ikke-draft med roed tilstand:**
 
 - #6217 ux(race-film): saml gentagne ens haendelser paa samme km (Refs #6137) (0d) — roed
+- #6216 fix(race): egen tilstand for udbryder sat af fra udbruddet (Refs #6185) (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.

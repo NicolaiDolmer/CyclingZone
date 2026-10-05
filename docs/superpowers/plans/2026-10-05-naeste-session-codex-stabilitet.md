@@ -10,6 +10,15 @@ Codex-session i C:\Dev\CyclingZone. Formål: **fjern de tungeste databasekald fr
 
 **Læs først:** seneste kommentarer på #6184 (måling 5/10 med tabel og rækkefølge), #5904 (staging-status 5/10: skema = prod, data indlæst, renset), #5893, #5692, #3511, #6102.
 
+**Lært 5/10 (følg det):**
+- "Klar" betyder grøn CI på PR'ens nyeste commit, inkl. typecheck, lint og de berørte e2e-shards. Tjek selv `gh pr view N --json statusCheckRollup`, før du melder klar.
+- Lav selv et uafhængigt read-only review af diffen (frisk proces), før du melder en PR klar, og skriv dommen i PR-body. Claude reviewer igen, før ejeren ser den.
+- Efter at Claude har merget noget, der rører samme filer: synk din branch med main (merge, ikke rebase), før du venter på CI.
+- Stop aldrig en "hængende" databasekommando, før du har målt, om den arbejder (tabelstørrelse, ventetilstand). Læs `.claude/learnings/2026-10-05-staging-restore-afbrudt-og-rensning-fejlede.md`.
+- Persondata på staging: indlæs aldrig `users` uden at køre rensningen umiddelbart efter og verificere `ikke-anonyme = 0`.
+
+**Førsteret: dine fire PR'er fra 5/10 (#6215 #6218 #6220 #6222).** Claude reviewer og merger dem i sin næste session. Kommer der review-fund som PR-kommentar, retter du dem FØR du går videre med sporene herunder, og svarer på PR'en med hvad du ændrede.
+
 **0. Staging-gaten:** kør isolationstjekket (`backend/scripts/staging/assertLoadtestIsolation.mjs` via `scripts/staging/with-loadtest-staging.ps1`) og dine #6170-prerequisites. Blokerer noget, så skriv det på #5904 og stop; ret ikke staging-data selv.
 
 **Spor, i denne rækkefølge (måling 5/10, andel af top 20-forespørgslernes tid):**
