@@ -11,6 +11,7 @@
 // ikke kalibrerede tal.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 import {
   breakawayHook,
@@ -21,10 +22,11 @@ import {
   TEAM_TACTICS_ORDER_KIND,
 } from "./breakaway.ts";
 import { groupEffortTempo } from "../segmentLoop.ts";
+import { simulateStageV4 } from "../index.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
 import type {
-  AbilityKey, Entrant, EngineState, GcContext, RiderState, RouteV2, SegmentHookContext, TeamOrder, TimelineEvent,
+  AbilityKey, Entrant, EngineState, GcContext, RiderState, RouteV2, SegmentHookContext, StageInput, TeamOrder, TimelineEvent,
 } from "../types.ts";
 
 const KEYS: AbilityKey[] = [
@@ -220,9 +222,62 @@ test("#6187: on the wheel the break goes slower (less resistance) and the sitter
   assert.deepEqual(groupEffortTempo(cp, () => "normal", 0.34, undefined, undefined), normal);
 });
 
-test("#6187: orders_gc_v2 hook output is identical with and without the new code path flag off", () => {
-  const a = run(["B1", "C0", "D3"], { v3: false });
-  const b = run(["B1", "C0", "D3"], { v3: false });
-  assert.deepEqual(a.state, b.state);
-  assert.equal("own_rider_ahead_teams" in a.state, false);
+// ── Ægte koersler (review af #6213, punkt 3) ─────────────────────────────────
+// Hele motoren (simulateStageV4) under den revision etapen er bundet til, ikke
+// hooket med en haandbygget kontekst. Bjergruten giver orders_gc_v2 dens egen
+// bjergfase, saa "v2" her er praecis den koersel prod laver.
+
+const PINNED_ROUTE: RouteV2 = {
+  distance_km: 160, profile_type: "mountain", finale_type: "long_climb",
+  segments: [
+    ...Array.from({ length: 10 }, (_, i) => ({ kind: "flat" as const, from_km: i * 10, to_km: (i + 1) * 10 })),
+    { kind: "climb" as const, from_km: 100, to_km: 115, category: "1" as const, avg_gradient: 7, top_elevation_m: 1500 },
+    { kind: "descent" as const, from_km: 115, to_km: 130 },
+    { kind: "climb" as const, from_km: 130, to_km: 160, category: "HC" as const, avg_gradient: 7.5, top_elevation_m: 2100 },
+  ],
+  weather: { kind: "sun", wind_exposure: 0 },
+  waypoints: [{ kind: "finish", index: 0, name: "Maal", km: 160, summit_finish: true }],
+};
+
+/** Udbrudsforsoeg fra B1 (holdets egen nr. 4), C0 (rival) og D3 (hjaelper). */
+function pinnedInput(rulesRevision: "legacy" | "orders_gc_v1" | "orders_gc_v2" | "orders_gc_v3", seed: string, gcContext: GcContext = GC): StageInput {
+  const all = entrants();
+  const tryBreak = new Set(["B1", "C0", "D3"]);
+  const orders: TeamOrder[] = TEAMS.map((t) => ({
+    team_id: t, kind: TEAM_TACTICS_ORDER_KIND,
+    params: { breakaway_stance: "neutral", riders: [0, 1, 2, 3, 4].map((i) => ({ rider_id: `${t}${i}`, try_break: tryBreak.has(`${t}${i}`) })) },
+  }));
+  return {
+    route: PINNED_ROUTE, startlist: Object.values(all), orders, seed, tuning: RACE_V4_TUNING,
+    ...(rulesRevision === "legacy" ? {} : { rules_revision: rulesRevision, gc_context: gcContext }),
+  };
+}
+
+const digest = (out: unknown) => createHash("sha256").update(JSON.stringify(out)).digest("hex").slice(0, 16);
+
+// Fastfrosset paa main foer #5978 (efter #6213). Legacy, orders_gc_v1 og
+// orders_gc_v2 maa ikke rykke af v3-arbejdet. Rykker en af dem, er en kendt
+// revision aendret: det er en fejl, ikke en ny baseline.
+const PINNED_DIGESTS: Record<string, string> = {
+  "legacy:s1": "06881f0fb6669d39", "legacy:s2": "74256eaedf0fa1dd",
+  "orders_gc_v1:s1": "58bc40ac4f1a0478", "orders_gc_v1:s2": "3d73f27372205a44",
+  "orders_gc_v2:s1": "51042eab3a06c23b", "orders_gc_v2:s2": "a4a2da4b8dbb43dc",
+  "orders_gc_v2:oneday": "e0c898a1477fc387",
+};
+
+test("#6187/#5978: legacy, orders_gc_v1 and orders_gc_v2 full-engine output is pinned (real runs, not the hook)", () => {
+  const actual: Record<string, string> = {};
+  for (const key of Object.keys(PINNED_DIGESTS)) {
+    const [rev, seed] = key.split(":") as ["legacy" | "orders_gc_v1" | "orders_gc_v2", string];
+    const gcContext: GcContext = seed === "oneday" ? { status: "one_day" } : GC;
+    actual[key] = digest(simulateStageV4(pinnedInput(rev, `pinned-6187-${seed}`, gcContext)));
+  }
+  assert.deepEqual(actual, PINNED_DIGESTS);
+});
+
+test("#6187: the pinned v2 run is a real v2 run: v3 on the same input differs", () => {
+  const v2 = simulateStageV4(pinnedInput("orders_gc_v2", "pinned-6187-s1"));
+  const v3 = simulateStageV4(pinnedInput("orders_gc_v3", "pinned-6187-s1"));
+  assert.notEqual(digest(v2), digest(v3));
+  assert.equal(v2.timeline.events.some((e) => e.type === "own_riders_ahead"), false);
 });
