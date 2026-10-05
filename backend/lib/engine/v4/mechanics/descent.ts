@@ -335,6 +335,29 @@ export function regroupOnDescentV3(
   return out;
 }
 
+/**
+ * #6199/#6200 (KUN orders_gc_v3): bogen over hvad regroupOnDescentV3 lukkede
+ * paa en nedkoersel mod maal, group_id -> hullet ved toppen og det lukkede.
+ * finale.ts laeser den, saa regruppering og jagt tilsammen holder sig under
+ * loftet. null naar intet blev lukket (finalen bruger da loftet paa sit hul).
+ */
+export function finishDescentRegroupBook(
+  before: readonly RaceGroup[],
+  after: readonly RaceGroup[],
+): Record<string, { topGapSeconds: number; closedSeconds: number }> | null {
+  const afterById = new Map(after.map((g) => [g.id, g.gap_seconds]));
+  let book: Record<string, { topGapSeconds: number; closedSeconds: number }> | null = null;
+  for (const group of before) {
+    const gapAfter = afterById.get(group.id);
+    if (gapAfter === undefined) continue;
+    const closed = round2(group.gap_seconds - gapAfter);
+    if (!(closed > 0)) continue;
+    book ??= {};
+    book[group.id] = { topGapSeconds: group.gap_seconds, closedSeconds: closed };
+  }
+  return book;
+}
+
 type AttackCandidate = { riderId: string; descending: number };
 type AttackerSelection = { attackers: AttackCandidate[]; groupMinDescending: number };
 
@@ -421,6 +444,11 @@ export const descentHook: DescentHook = (
       extra,
       isFinishDescent,
     );
+  // #6199/#6200 (KUN orders_gc_v3): paa en nedkoersel mod maal bogfoeres hvad
+  // regrupperingen lukkede, saa finalens jagt paa samme segment kun faar resten
+  // af loftet (finishDescentRemainingCapSeconds). Kun sat naar noget blev lukket.
+  const regroupBook = ctx.ordersGcV3 === true && isFinishDescent ? finishDescentRegroupBook(state.groups, groups) : null;
+  if (regroupBook) state = { ...state, finish_descent_regroup: regroupBook };
   let riders: Record<string, RiderState> = state.riders;
   let chasers = state.incident_chasers;
   let seq = 0;

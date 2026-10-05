@@ -156,6 +156,26 @@ export function finishDescentChaseCapSeconds(gapSeconds: number, lengthKm: numbe
   return round2(Math.min(gap * t.finishDescentMaxGapShare, t.finishDescentMaxSecondsPerKm * km));
 }
 
+/**
+ * 2: det der er tilbage af loftet til finalens jagt paa en nedkoersel mod maal,
+ * naar regrupperingen paa samme segment allerede har lukket `regroupClosedSeconds`
+ * af et hul paa `topGapSeconds` ved toppen. Loftet gaelder de to lag TILSAMMEN:
+ * regruppering + jagt lukker aldrig mere end finishDescentChaseCapSeconds(hullet
+ * ved toppen), og jagten aldrig mere end loftet paa sit eget, resterende hul.
+ * Uden en regruppering (null) er det loftet paa det resterende hul.
+ */
+export function finishDescentRemainingCapSeconds(
+  carriedGapSeconds: number,
+  lengthKm: number,
+  regroup: { topGapSeconds: number; closedSeconds: number } | null | undefined,
+  t: TimeModelTuning = TIME_MODEL_V3_TUNING,
+): number {
+  const ownCap = finishDescentChaseCapSeconds(carriedGapSeconds, lengthKm, t);
+  if (!regroup) return ownCap;
+  const closed = Number.isFinite(regroup.closedSeconds) ? Math.max(0, regroup.closedSeconds) : 0;
+  return round2(Math.max(0, Math.min(ownCap, finishDescentChaseCapSeconds(regroup.topGapSeconds, lengthKm, t) - closed)));
+}
+
 /** Dagens udbrud (samme definition som finale.isEscapeGroup). M5 ejer hullet til det. */
 export function isEscapeGroupV3(group: Pick<RaceGroup, "kind" | "origin">): boolean {
   return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");

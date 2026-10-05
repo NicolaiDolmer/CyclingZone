@@ -34,7 +34,7 @@ import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } f
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
-import { finishDescentChaseCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
+import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -405,7 +405,10 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // jagten (se bunchCatchWindowSeconds + tuning.ts's bunchCatch*-kommentar).
   // #6199 (KUN orders_gc_v3): ikke paa en afslutning opad. Feltets antal giver
   // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
-  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && segment.kind === "climb");
+  // #6200: heller ikke paa en nedkoersel mod maal, hvor antals-vinduet ellers
+  // kunne folde en gruppe ind forbi loftet (hoejst halvdelen af hullet).
+  const v3FinishDescent = ctx.ordersGcV3 === true && segment.kind === "descent";
+  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && (segment.kind === "climb" || segment.kind === "descent"));
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
@@ -444,9 +447,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // #5581: en gruppe af udelukkende grupetto-ryttere jager ikke (ude af
     // finalen, ejer-trappen 23/9). En blandet gruppe jager paa de koerendes ben.
     const onlyGrupetto = group.rider_ids.every((id) => entrants[id]?.effort === "grupetto");
-    // #6200 (KUN orders_gc_v3): paa en nedkoersel mod maal lukker jagten hoejst
-    // det samme loft som regrupperingen (mechanics/timeModel.ts).
-    const descentCap = ctx.ordersGcV3 === true && segment.kind === "descent" ? finishDescentChaseCapSeconds(carriedGapSeconds, remainingKm) : Infinity;
+    // #6200 (KUN orders_gc_v3): paa en nedkoersel mod maal deler jagten loftet
+    // med regrupperingen paa samme segment: tilsammen hoejst ca. 1,5 s pr. km og
+    // hoejst halvdelen af hullet ved toppen (mechanics/timeModel.ts).
+    const descentCap = v3FinishDescent
+      ? finishDescentRemainingCapSeconds(carriedGapSeconds, remainingKm, state.finish_descent_regroup?.[group.id])
+      : Infinity;
     const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
@@ -887,6 +893,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     ),
   ];
 
-  const nextState: EngineState = { ...state, groups: newGroups, finish_order: finishOrder };
+  // #6200: bogen fra nedkoerslens regruppering er brugt op her (types.ts).
+  const base: EngineState = { ...state };
+  delete base.finish_descent_regroup;
+  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder };
   return { state: nextState, events };
 };

@@ -15,14 +15,18 @@ import {
   clusterSplitRiders,
   finishDescentChaseCapSeconds,
   finishDescentClosingSeconds,
+  finishDescentRemainingCapSeconds,
   isEscapeGroupV3,
   TIME_MODEL_V3_TUNING,
   valleyRegroupTempoV3,
   wprimeForcedCategoryAllowed,
 } from "./timeModel.ts";
-import { regroupOnDescentV3 } from "./descent.ts";
+import { descentHook, finishDescentRegroupBook, regroupOnDescentV3 } from "./descent.ts";
 import { selectionPhaseFor } from "./mountainSelection.ts";
-import type { Entrant, RaceGroup, Segment } from "../types.ts";
+import { finaleHook } from "../finale.ts";
+import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
+import { RACE_V4_TUNING } from "../tuning.ts";
+import type { AbilityKey, EngineState, Entrant, RaceGroup, RiderState, RouteV2, Segment, SegmentHookContext } from "../types.ts";
 
 const T = TIME_MODEL_V3_TUNING;
 
@@ -196,6 +200,104 @@ test("2: finalens jagt paa nedkoerslen har samme loft", () => {
   assert.equal(finishDescentChaseCapSeconds(300, 8), T.finishDescentMaxSecondsPerKm * 8);
   assert.equal(finishDescentChaseCapSeconds(10, 8), 10 * T.finishDescentMaxGapShare);
   assert.equal(finishDescentChaseCapSeconds(0, 8), 0);
+});
+
+test("2: jagtens rest-loft traekker regrupperingen fra loftet paa hullet ved toppen", () => {
+  // Hul 20 s ved toppen, 10 km: loftet er min(10, 15) = 10 s. Regrupperingen lukkede 9 s.
+  assert.equal(finishDescentRemainingCapSeconds(11, 10, { topGapSeconds: 20, closedSeconds: 9 }), 1);
+  // Regrupperingen brugte hele loftet: jagten faar intet.
+  assert.equal(finishDescentRemainingCapSeconds(10, 10, { topGapSeconds: 20, closedSeconds: 10 }), 0);
+  // Aldrig mere end loftet paa jagtens eget hul.
+  assert.equal(finishDescentRemainingCapSeconds(4, 10, { topGapSeconds: 300, closedSeconds: 0 }), 2);
+  // Uden regruppering: loftet paa det resterende hul.
+  assert.equal(finishDescentRemainingCapSeconds(300, 8, null), finishDescentChaseCapSeconds(300, 8));
+});
+
+test("2: bogen over regrupperingen har kun grupper hvis hul blev lukket", () => {
+  const before = [group("front", 0, ["a"]), group("g2", 60, ["b"]), group("g3", 90, ["c"])];
+  const after = [group("front", 0, ["a"]), group("g2", 52, ["b"]), group("g3", 90, ["c"])];
+  assert.deepEqual(finishDescentRegroupBook(before, after), { g2: { topGapSeconds: 60, closedSeconds: 8 } });
+  assert.equal(finishDescentRegroupBook(before, before), null);
+});
+
+// Samlet invariant (review-fund paa #6199): regrupperingen (descentHook) og finalens
+// jagt (finaleHook) koerer paa SAMME nedkoersel mod maal. Tilsammen maa de hoejst
+// lukke min(halvdelen af hullet ved toppen, 1,5 s pr. km), ogsaa for en gruppe der
+// baade er den bedre nedkoerer og har al jagtkraften.
+const FULL_ABILITY_KEYS: AbilityKey[] = [
+  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
+  "endurance", "recovery", "durability", "descending", "cobblestone",
+  "positioning", "aggression", "tactics",
+];
+
+function fullEntrant(riderId: string, overrides: Partial<Record<AbilityKey, number>>): Entrant {
+  const abilities = {} as Record<AbilityKey, number>;
+  for (const key of FULL_ABILITY_KEYS) abilities[key] = overrides[key] ?? 50;
+  return { rider_id: riderId, abilities, role: "free_role", effort: "normal", condition: 1 };
+}
+
+function riderState(riderId: string, groupId: string): RiderState {
+  return {
+    rider_id: riderId, group_id: groupId, cp: 0.5, wprimeMax: 1, wprime: 1, dayform: 0,
+    seconds_over_cp: 0, work_norm: 0, incidents: 0, status: "racing", time_seconds: 0,
+  };
+}
+
+function runFinishDescent(topGap: number, km: number, ordersGcV3: boolean): { book: EngineState["finish_descent_regroup"]; chaseGap: number | null; finalState: EngineState } {
+  const frontIds = ["f1", "f2", "f3"];
+  const chaseIds = ["c1", "c2", "c3"];
+  const entrants: Record<string, Entrant> = {};
+  // Fronten: svage nedkoerere, svage forsvarere. Jagten: klart bedre nedkoerere med al jagtkraften.
+  for (const id of frontIds) entrants[id] = fullEntrant(id, { descending: 40, tempo: 1, endurance: 1, durability: 1 });
+  for (const id of chaseIds) entrants[id] = fullEntrant(id, { descending: 99, tempo: 99, endurance: 99, aggression: 99 });
+  const riders: Record<string, RiderState> = {
+    ...Object.fromEntries(frontIds.map((id) => [id, riderState(id, "front")])),
+    ...Object.fromEntries(chaseIds.map((id) => [id, riderState(id, "chase")])),
+  };
+  const segments: Segment[] = [
+    { kind: "climb", from_km: 0, to_km: 10, category: "1", avg_gradient: 7, top_elevation_m: 1500 },
+    // Teknik 1: ingen nedkoerselsangreb, kun regruppering + finalens jagt.
+    { kind: "descent", from_km: 10, to_km: 10 + km, technicality: 1 },
+  ] as Segment[];
+  const route: RouteV2 = {
+    distance_km: 10 + km, profile_type: "hilly", finale_type: "descent", segments,
+    weather: { kind: "sun", wind_exposure: 0.1 }, waypoints: [],
+  };
+  const ctx: SegmentHookContext = {
+    ...makeHookCtx({ segment: segments[1], segmentIndex: 1, route, entrants, tuning: RACE_V4_TUNING, seed: "6199-descent-cap" }),
+    ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
+  };
+  const state: EngineState = {
+    km: 10,
+    groups: [group("front", 0, frontIds), group("chase", topGap, chaseIds, { kind: "chase" })],
+    riders,
+    virtual_gc: Object.fromEntries([...frontIds, ...chaseIds].map((id) => [id, 0])),
+  };
+  const afterDescent = descentHook(state, ctx).state;
+  const finalState = finaleHook(afterDescent, ctx).state;
+  const chaseGroup = finalState.groups.find((g) => g.rider_ids.includes("c1"));
+  const frontGroup = finalState.groups.find((g) => g.rider_ids.includes("f1"));
+  const chaseGap = chaseGroup && frontGroup && chaseGroup.id !== frontGroup.id ? chaseGroup.gap_seconds - frontGroup.gap_seconds : null;
+  return { book: afterDescent.finish_descent_regroup, chaseGap, finalState };
+}
+
+test("2: regruppering + finalens jagt lukker tilsammen hoejst loftet paa hullet ved toppen", () => {
+  for (const km of [3, 8, 15]) {
+    for (const topGap of [8, 12, 20, 40, 120, 600]) {
+      const { book, chaseGap, finalState } = runFinishDescent(topGap, km, true);
+      const cap = finishDescentChaseCapSeconds(topGap, km);
+      assert.ok(book?.chase && book.chase.closedSeconds > 0, `regrupperingen lukkede noget (hul ${topGap}, ${km} km)`);
+      assert.notEqual(chaseGap, null, `jagten foldes ikke ind (hul ${topGap}, ${km} km)`);
+      const closed = topGap - chaseGap!;
+      assert.ok(closed <= cap + 0.02, `lukket ${closed} <= loft ${cap} (hul ${topGap}, ${km} km)`);
+      assert.ok(closed <= topGap * T.finishDescentMaxGapShare + 0.02, `aldrig mere end halvdelen af ${topGap}`);
+      assert.equal(finalState.finish_descent_regroup, undefined, "bogen er brugt op i finalen");
+    }
+  }
+});
+
+test("2: uden orders_gc_v3 bogfoeres intet", () => {
+  assert.equal(runFinishDescent(40, 8, false).book, undefined);
 });
 
 test("2: klatring taeller med i placeringen i en nedkoerselsfinale", () => {
