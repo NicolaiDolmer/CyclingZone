@@ -23,6 +23,8 @@ function asGrouped(line: Parameters<typeof isGroupedCopy>[0]) {
   return line;
 }
 const names = new Map(Array.from({ length: 40 }, (_, i) => [`r${i}`, `Rider ${i}`]));
+const lineOf = (e: Parameters<typeof describeEvent>[0]) => describeEvent(e, { riderNameById: names });
+const nameOf = (id: unknown) => names.get(id as string) ?? null;
 
 // Anker: etape med 21 group_merged + 2 gc_reaction + 3 finale_attack på samme km.
 function anchorStage() {
@@ -74,7 +76,7 @@ test("start og stop samles hver for sig", () => {
     reaction(50, "t3", "r32", "stopped"), reaction(50, "t4", "r33", "stopped"),
     reaction(50, "t5", "r34", "stopped", { reason: "contained" }), reaction(50, "t6", "r35", "stopped", { reason: "contained" }),
   ]);
-  assert.deepEqual(out.map((e) => describeGroupedEvent(e, (id) => names.get(id as string) ?? null)?.key), [
+  assert.deepEqual(out.map((e) => describeGroupedEvent(e, nameOf, lineOf)?.key), [
     "gc_reaction_batch_started", "gc_reaction_batch_stopped", "gc_reaction_batch_contained",
   ]);
   assert.deepEqual(out.map((e) => e.grouped?.count), [2, 2, 2]);
@@ -135,11 +137,108 @@ test("andre typer samles aldrig: uheld, nedkørsels-angreb og afgørelse står s
 
 test("angreb navngives kun når alle navne kendes og listen er kort", () => {
   const five = groupRepeatedFeedEvents(["r1", "r2", "r3", "r4", "r5"].map((r) => attack(7, r)));
-  assert.equal(describeGroupedEvent(five[0], (id) => names.get(id as string) ?? null)?.key, "finale_attack_batch");
+  assert.equal(describeGroupedEvent(five[0], nameOf, lineOf)?.key, "finale_attack_batch");
+  // Et ukendt navn tæller ikke med (#4026): her er kun én tilbage, og den står som sin egen linje.
   const unknown = groupRepeatedFeedEvents([attack(7, "r1"), attack(7, "ghost")]);
-  const d = describeGroupedEvent(unknown[0], (id) => names.get(id as string) ?? null);
-  assert.equal(d?.key, "finale_attack_batch");
+  const d = describeGroupedEvent(unknown[0], nameOf, lineOf);
+  assert.deepEqual(d, { key: "finale_attack", params: { rider: "Rider 1" } });
   assert.equal(JSON.stringify(d).includes("ghost"), false);
+});
+
+const split = (km: number, ...riders: string[]) => ({ km, type: "peloton_splits", params: { rider_ids: riders } });
+
+test("peloton_splits på samme km samles til én linje", () => {
+  const out = groupRepeatedFeedEvents([split(120, "r1", "r2"), split(120, "r3"), split(120, "r4")]);
+  assert.equal(out.length, 1);
+  const g = asGrouped(lineOf(out[0]));
+  assert.equal(g.key, "peloton_split_batch");
+  assert.equal(g.params.count, 3);
+  assert.equal(g.params.scope, "all");
+});
+
+test("status exhausted og unavailable samles hver for sig", () => {
+  const out = groupRepeatedFeedEvents([
+    reaction(140, "t1", "r30", "exhausted"), reaction(140, "t2", "r31", "exhausted"),
+    reaction(140, "t3", "r32", "unavailable"), reaction(140, "t4", "r33", "unavailable"),
+  ]);
+  const lines = out.map((e) => asGrouped(lineOf(e)));
+  assert.deepEqual(lines.map((l) => [l.key, l.params.count]), [
+    ["gc_reaction_batch_exhausted", 2],
+    ["gc_reaction_batch_no_workers", 2],
+  ]);
+});
+
+test("tom og null-input giver en tom liste", () => {
+  assert.deepEqual(groupRepeatedFeedEvents([]), []);
+  assert.deepEqual(groupRepeatedFeedEvents(null), []);
+  assert.deepEqual(groupRepeatedFeedEvents(undefined), []);
+  assert.deepEqual(groupRepeatedFeedEvents(null, { ownRiderIds: null }), []);
+  assert.deepEqual(buildFilmTimeline({ events: [], distanceKm: 100 }).feedEvents, []);
+});
+
+test("hændelser uden km blandes ikke med km 0", () => {
+  const noKm = (rider: string) => ({ type: "group_merged", params: { rider_ids: [rider] } });
+  const out = groupRepeatedFeedEvents([noKm("r1"), noKm("r2"), merged(0, "r3")]);
+  assert.equal(out.length, 2);
+  assert.equal(out[0].km, undefined);
+  assert.equal(out[0].grouped?.count, 2);
+  assert.equal(out[1].km, 0);
+  assert.equal(out[1].grouped, undefined);
+});
+
+test("egen rytter genkendes også når id-typen er forskellig (tal mod streng)", () => {
+  const numeric = [
+    { km: 30, type: "group_merged", params: { rider_ids: [7] } },
+    { km: 30, type: "group_merged", params: { rider_ids: [8] } },
+    { km: 30, type: "group_merged", params: { rider_ids: [9] } },
+  ];
+  const out = groupRepeatedFeedEvents(numeric, { ownRiderIds: ["7"] });
+  assert.ok(out.includes(numeric[0]), "egen rytter med tal-id skal stå på egen linje");
+  assert.deepEqual(out.map((e) => [e.grouped?.count, e.grouped?.scope]), [[undefined, undefined], [2, "others"]]);
+
+  const strings = [attack(31, "7"), attack(31, "8"), attack(31, "9")];
+  const back = groupRepeatedFeedEvents(strings, { ownRiderIds: [7] });
+  assert.ok(back.includes(strings[0]), "egen rytter med streng-id skal stå på egen linje");
+  assert.equal(back[1].grouped?.count, 2);
+});
+
+test("hændelser uden navne bliver ikke til en samlet linje", () => {
+  // Hver for sig skjules de (#4026); samlet må de heller ikke dukke op.
+  const hidden = [
+    reaction(150, "t1", "ghost-1"), reaction(150, "t2", "ghost-2"),
+    { km: 150, type: "group_merged", params: { group_id: "g1" } },
+    { km: 150, type: "group_merged", params: { group_id: "g2", rider_ids: ["ghost-3"] } },
+    split(150, "ghost-4"), split(150),
+    attack(150, "ghost-5"), attack(150, "ghost-6"),
+  ];
+  assert.deepEqual(hidden.map(lineOf), Array(hidden.length).fill(null));
+  const built = buildFilmTimeline({ events: hidden, distanceKm: 180 });
+  assert.deepEqual(built.feedEvents.map(lineOf).filter(Boolean), []);
+});
+
+test("kun beskrivelige medlemmer tæller; én tilbage vises som den enkelte linje", () => {
+  // Én navngiven + én uden navn: den navngivne står som sin egen, uændrede linje.
+  const one = groupRepeatedFeedEvents([reaction(160, "t1", "r30"), reaction(160, "t2", "ghost")]);
+  assert.equal(one.length, 1);
+  assert.deepEqual(lineOf(one[0]), lineOf(reaction(160, "t1", "r30")));
+  // Uden navn står først: linjen er stadig den navngivne rytters.
+  const first = groupRepeatedFeedEvents([attack(161, "ghost"), attack(161, "r2")]);
+  assert.deepEqual(lineOf(first[0]), { key: "finale_attack", params: { rider: "Rider 2" } });
+  // Tre medlemmer, ét uden navn: antallet er 2.
+  const three = groupRepeatedFeedEvents([merged(162, "r1"), { km: 162, type: "group_merged", params: {} }, merged(162, "r2")]);
+  const g = asGrouped(lineOf(three[0]));
+  assert.equal(g.key, "group_merged_batch");
+  assert.equal(g.params.count, 2);
+  // Samme regel ved direkte kald.
+  assert.equal(describeGroupedEvent(groupRepeatedFeedEvents([attack(163, "ghost"), attack(163, "ghost-2")])[0], nameOf, lineOf), null);
+});
+
+test("egne ryttere står fortsat på egen linje, når de øvrige mangler navne", () => {
+  const events = [reaction(170, "t1", "r30"), reaction(170, "t2", "ghost-1"), reaction(170, "t3", "ghost-2")];
+  const out = groupRepeatedFeedEvents(events, { ownRiderIds: ["r30"] });
+  assert.ok(out.includes(events[0]));
+  const lines = out.map(lineOf).filter(Boolean);
+  assert.deepEqual(lines, [lineOf(events[0])]);
 });
 
 test("buildFilmTimeline: egne ryttere gives videre, uden dem samles der stadig", () => {
@@ -171,4 +270,6 @@ test("tekster: alle nøgler findes på EN og DA og bøjes korrekt", () => {
   assert.equal(copy("da", "gc_reaction_batch_started", { count: 11, scope: "all" }), "11 hold reagerede.");
   assert.equal(copy("en", "group_merged_batch", { count: 20, scope: "others" }), "20 other groups came back together.");
   assert.equal(copy("da", "group_merged_batch", { count: 20, scope: "others" }), "20 andre grupper samlet igen.");
+  assert.equal(copy("en", "gc_reaction_batch_exhausted", { count: 2, scope: "all" }), "2 teams spent what they could on the reaction this stage and stopped working.");
+  assert.equal(copy("da", "gc_reaction_batch_exhausted", { count: 2, scope: "all" }), "2 hold brugte det, de kunne, på reaktionen på denne etape og stoppede arbejdet.");
 });

@@ -245,7 +245,9 @@ export function collectRiderIds(events) {
  */
 export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (!event?.type) return null;
-  if (event.grouped) return describeGroupedEvent(event, (id) => riderName(id, riderNameById));
+  if (event.grouped) {
+    return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
+  }
   const p = event.params || {};
   const breakawayParams = () => {
     const names = resolvedRiderNames(p.rider_ids, riderNameById);

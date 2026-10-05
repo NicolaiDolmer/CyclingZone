@@ -85,8 +85,10 @@ export function groupRepeatedFeedEvents(
   { ownRiderIds = [] }: { ownRiderIds?: Iterable<unknown> | null } = {},
 ): GroupedFilmEvent[] {
   const list = events ?? [];
-  const own = new Set<unknown>(ownRiderIds ?? []);
-  const isOwn = (event: FilmEvent) => own.size > 0 && mentionedRiderIds(event).some((id) => own.has(id));
+  // Normaliseret til streng på begge sider: et tal-id (7) og et streng-id ("7")
+  // er samme rytter (samme værn som stageSplitTimes' str()).
+  const own = new Set<string>(Array.from(ownRiderIds ?? [], (id) => String(id)));
+  const isOwn = (event: FilmEvent) => own.size > 0 && mentionedRiderIds(event).some((id) => own.has(String(id)));
 
   const buckets = new Map<string, FilmEvent[]>();
   const ownKeys = new Set<string>();
@@ -125,19 +127,31 @@ const GC_BATCH_KEY: Record<string, string> = {
   unavailable: "gc_reaction_batch_no_workers",
 };
 
+export type FilmLine = { key: string; params: unknown };
+
 /**
  * Filmlinje for en samlet hændelse (`event.grouped`). Samme kontrakt som
  * describeEvent: { key, params } eller null. Kun antal, aldrig tal fra motoren;
  * angreb navngives når alle navne kendes og listen er kort (#4026: aldrig et
  * råt id).
+ *
+ * Kun medlemmer `describeMember` selv ville vise, tæller med: en hændelse der
+ * hver for sig er skjult (navnet kan ikke slås op), må ikke dukke op som en del
+ * af en samlet linje. Er der ingen tilbage, vises ingen linje; er der ét, vises
+ * det som sin egen, uændrede linje.
  */
 export function describeGroupedEvent(
   event: GroupedFilmEvent,
   nameOf: (id: unknown) => string | null,
-): GroupedFilmCopy | null {
+  describeMember: (member: FilmEvent) => FilmLine | null,
+): GroupedFilmCopy | FilmLine | null {
   const grouped = event.grouped;
   if (!grouped) return null;
-  const { count, scope } = grouped;
+  const members = grouped.events.filter((member) => describeMember(member) !== null);
+  if (members.length === 0) return null;
+  if (members.length === 1) return describeMember(members[0]);
+  const count = members.length;
+  const { scope } = grouped;
   const p = paramsOf(event);
   switch (event.type) {
     case "group_merged":
@@ -145,7 +159,7 @@ export function describeGroupedEvent(
     case "peloton_splits":
       return { key: "peloton_split_batch", params: { count, scope } };
     case "finale_attack": {
-      const names = grouped.events.map((e) => nameOf(paramsOf(e).rider_id));
+      const names = members.map((e) => nameOf(paramsOf(e).rider_id));
       if (scope === "all" && count <= MAX_NAMED_RIDERS && names.every(Boolean)) {
         return { key: "finale_attack_named_batch", params: { riders: names.join(", "), count, scope } };
       }

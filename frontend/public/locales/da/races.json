@@ -1168,7 +1168,7 @@
         "gc_reaction_batch_started": "{count} {scope, select, others {andre hold} other {hold}} reagerede.",
         "gc_reaction_batch_contained": "{count} {scope, select, others {andre hold} other {hold}} stoppede arbejdet. Truslen er under kontrol.",
         "gc_reaction_batch_stopped": "{count} {scope, select, others {andre hold} other {hold}} stoppede reaktionen.",
-        "gc_reaction_batch_exhausted": "{count} {scope, select, others {andre hold} other {hold}} brugte det, de kan, på reaktionen på denne etape og stoppede arbejdet.",
+        "gc_reaction_batch_exhausted": "{count} {scope, select, others {andre hold} other {hold}} brugte det, de kunne, på reaktionen på denne etape og stoppede arbejdet.",
         "gc_reaction_batch_no_workers": "{count} {scope, select, others {andre hold} other {hold}} så truslen, men havde ingen ledige ryttere i gruppen til at reagere.",
         "gc_context_missing": "Klassementet før etapen er ikke tilgængeligt, så intet hold reagerer på en trussel i klassementet i dag.",
         "own_riders_ahead": "Holdet omkring {rider} jagter ikke. Det har {riders} foran.",
