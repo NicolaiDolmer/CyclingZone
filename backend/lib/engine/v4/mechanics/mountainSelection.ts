@@ -30,7 +30,7 @@
 // REN: ingen IO, ingen rng. Legacy og orders_gc_v1 ser aldrig en fase
 // (segmentLoop saetter kun `mountainSelectionPhase` under orders_gc_v2).
 
-import type { ProfileType, Segment, RulesRevision } from "../types.ts";
+import type { ProfileType, Segment, RulesRevision, SegmentHookContext } from "../types.ts";
 import { MOUNTAIN_SELECTION_V2_TUNING, type MountainSelectionV2Knobs } from "../tuning.ts";
 
 export type MountainSelectionPhase = "pre_final" | "final";
@@ -80,6 +80,26 @@ export function mountainSelectionPhaseFor(
   if (!profileTypes.includes(profileType)) return undefined;
   if (finalStartIndex < 0) return undefined;
   return segmentIndex < finalStartIndex ? "pre_final" : "final";
+}
+
+/** #6199 (KUN orders_gc_v3): profiler der derudover faar den bloede selektion (kun selektionen, ikke M5). */
+export const V3_EXTRA_SELECTION_PROFILE_TYPES: readonly ProfileType[] = Object.freeze(["rolling"]);
+
+/**
+ * Fasen klatre-selektionen ser. Under orders_gc_v2 og op: segmentLoops fase.
+ * #6199 (KUN orders_gc_v3): rullende etaper faar samme bloede selektion som
+ * bjerg (split-taersklen og den tomme reserve foer finalestigningen). Kun
+ * selektionen: M5 (udbrud/jagt) og tempo-neutraliseringen ser stadig kun
+ * segmentLoops fase, saa den rullende udbrudsbalance (#6073) er uroert.
+ */
+export function selectionPhaseFor(
+  ctx: Pick<SegmentHookContext, "mountainSelectionPhase" | "ordersGcV3" | "route" | "segmentIndex">,
+): MountainSelectionPhase | undefined {
+  if (ctx.mountainSelectionPhase) return ctx.mountainSelectionPhase;
+  if (ctx.ordersGcV3 !== true || !V3_EXTRA_SELECTION_PROFILE_TYPES.includes(ctx.route.profile_type)) return undefined;
+  const finalStart = finalClimbStartIndex(ctx.route.segments);
+  if (finalStart < 0) return undefined;
+  return ctx.segmentIndex < finalStart ? "pre_final" : "final";
 }
 
 /** B: split-taersklen i fasen. Uaendret uden for "pre_final". */

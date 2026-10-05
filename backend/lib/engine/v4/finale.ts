@@ -34,6 +34,7 @@ import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } f
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
+import { TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -525,8 +526,10 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
 
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
   // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
+  // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
+  const v3DescentDemand = ctx.ordersGcV3 === true && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
   const demandVector = cobbledFinaleDemandVector(
-    (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR,
+    v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
     ctx,
   );
   // #6073: paa en udbrudsfinale gaelder udbrudsdemand kun for udbruddet selv;
@@ -680,6 +683,8 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let cumulativeGap = 0;
   let prevScore: number | null = null;
   let tailStarted = false;
+  const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  let tierTopScore = -Infinity;
 
   // ── Massefinale (#4615, felt-sammenhaengs-ankeret) ──────────────────────────
   // En massespurt afgoeres paa PLACERING, ikke paa tid: hele den ankomne pulje
@@ -723,7 +728,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       return;
     }
 
-    if (prevScore === null || entry.score < prevScore) {
+    // #6199 (KUN orders_gc_v3): taet score giver samme tid. En ny tier kun naar
+    // scoren ligger mindst `finaleTieScoreEpsilon` under tierens foerste rytter.
+    const newTier = prevScore === null
+      || (tieEpsilon === null ? entry.score < prevScore : tierTopScore - entry.score >= tieEpsilon);
+    if (newTier) {
+      tierTopScore = entry.score;
       if (prevScore !== null) {
         const scoreDelta = prevScore - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;

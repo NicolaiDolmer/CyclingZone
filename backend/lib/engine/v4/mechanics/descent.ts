@@ -75,6 +75,7 @@ import {
   threeKmRuleApplies,
 } from "./incidents.ts";
 import { weatherAdjustedRiskBase } from "./weather.ts";
+import { finishDescentClosingSeconds, TIME_MODEL_V3_TUNING } from "./timeModel.ts";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -284,6 +285,55 @@ export function regroupOnDescent(
   return out;
 }
 
+/** #6199: dagens udbrud (samme definition som finale.isEscapeGroup). M5 ejer hullet til det. */
+function isEscape(group: RaceGroup): boolean {
+  return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");
+}
+
+/**
+ * #6199 + #6200 (KUN orders_gc_v3): regrupperingen i den faelles tidsmodel
+ * (mechanics/timeModel.ts).
+ *   - Midt paa etapen (B): en gruppe kan koere op igen paa nedkoerslen. Samme
+ *     form som regroupOnDescent (absolut + proportionalt led, teknik og evne).
+ *   - Mod maal (2): hoejst ca. 1,5 s pr. km for en klart bedre nedkoerer og
+ *     hoejst halvdelen af hullet (finishDescentClosingSeconds).
+ * Dagens udbrud roeres aldrig og er aldrig et maal for regrupperingen (M5 ejer
+ * det hul, #5812); en gruppe kan heller ikke komme forbi det. Garantierne fra
+ * regroupOnDescent gaelder uaendret: et hul kan kun krympe, raekkefoelgen er
+ * invariant, og der flyttes kun gruppe-gaps.
+ */
+export function regroupOnDescentV3(
+  groups: readonly RaceGroup[],
+  entrants: SegmentHookContext["entrants"],
+  lengthKm: number,
+  technicality: number,
+  isFinishDescent: boolean,
+  t: typeof TIME_MODEL_V3_TUNING = TIME_MODEL_V3_TUNING,
+): RaceGroup[] {
+  if (groups.length <= 1) return groups.map((g) => ({ ...g }));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const midExtra: DescentExtra = { ...DESCENT_EXTRA_TUNING, regroupSecondsPerKm: t.midDescentSecondsPerKm, regroupGapFractionPerKm: t.midDescentGapFractionPerKm };
+  const out: RaceGroup[] = [];
+  let reference: { gap: number; descending: number } | null = null; // naermeste ikke-udbrud foran
+  let floorGap = -Infinity; // gruppen umiddelbart foran (raekkefoelgen er invariant)
+  for (const group of sorted) {
+    const descending = groupDescendingMean(group.rider_ids, entrants);
+    if (isEscape(group) || reference === null) {
+      out.push({ ...group });
+    } else {
+      const gapToAhead = Math.max(0, group.gap_seconds - reference.gap);
+      const closed = isFinishDescent
+        ? finishDescentClosingSeconds(gapToAhead, lengthKm, technicality, descending, reference.descending, t)
+        : computeRegroupSeconds(gapToAhead, lengthKm, technicality, descending, reference.descending, midExtra, false);
+      out.push({ ...group, gap_seconds: round2(Math.max(floorGap, group.gap_seconds - closed)) });
+    }
+    const placed = out[out.length - 1];
+    floorGap = placed.gap_seconds;
+    if (!isEscape(group)) reference = { gap: placed.gap_seconds, descending };
+  }
+  return out;
+}
+
 type AttackCandidate = { riderId: string; descending: number };
 type AttackerSelection = { attackers: AttackCandidate[]; groupMinDescending: number };
 
@@ -358,14 +408,18 @@ export const descentHook: DescentHook = (
   //    inden nogen kan angribe paa den. Gaelder ALLE nedkoersler — ogsaa de
   //    ikke-tekniske, hvor der aldrig angribes.
   const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
-  let groups: RaceGroup[] = regroupOnDescent(
-    state.groups,
-    ctx.entrants,
-    segmentLengthKm,
-    segment.technicality,
-    extra,
-    ctx.segmentIndex === ctx.route.segments.length - 1,
-  );
+  const isFinishDescent = ctx.segmentIndex === ctx.route.segments.length - 1;
+  // #6199 + #6200 (KUN orders_gc_v3): den faelles tidsmodel (regroupOnDescentV3).
+  let groups: RaceGroup[] = ctx.ordersGcV3 === true
+    ? regroupOnDescentV3(state.groups, ctx.entrants, segmentLengthKm, segment.technicality, isFinishDescent)
+    : regroupOnDescent(
+      state.groups,
+      ctx.entrants,
+      segmentLengthKm,
+      segment.technicality,
+      extra,
+      isFinishDescent,
+    );
   let riders: Record<string, RiderState> = state.riders;
   let chasers = state.incident_chasers;
   let seq = 0;
