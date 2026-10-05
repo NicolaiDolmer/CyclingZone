@@ -28,7 +28,7 @@ import {
   planTeamReaction,
 } from "./teamChaseReaction.ts";
 import { resolveMorningBreakFormation, DANGEROUS_ATTEMPT_TUNING, type FormationRider } from "./breakawayPermission.ts";
-import { breakawayHook, mergeChasePlans, TEAM_TACTICS_ORDER_KIND } from "./breakaway.ts";
+import { breakawayHook, mergeChasePlans, ownRidersOnWheel, ownRidersOnWheelRaw, TEAM_TACTICS_ORDER_KIND } from "./breakaway.ts";
 import { runSegmentLoop } from "../segmentLoop.ts";
 import { LIVE_MECHANIC_HOOKS } from "../index.ts";
 import { splitGroup } from "../groups.ts";
@@ -275,6 +275,40 @@ test("#5978 (review 2): the hook uses the wheel-sitters segmentLoop computed at 
   assert.deepEqual(lines(none.events), []);
   const given = breakawayHook(state, { ...ctx, ownRidersOnWheel: [{ team_id: "D", group_id: "breakaway-0", rider_ids: ["D9"], protected_rider_id: "D0" }] });
   assert.deepEqual(lines(given.events).map((e) => e.params.rider_ids), [["D9"]]);
+});
+
+// ── Review af #5978, punkt 1: paa hjul bruger reaktionens DangerModel ────────
+
+test("#5978 (review 1 of #5978): on the wheel uses the reaction's danger model: a team with something to defend outside the top 10", () => {
+  const all = entrants();
+  // Hold A's bedste mand (A1) staar nr. 12, 2:30 efter; C1 (+10 s bag ham) er i udbruddet med A's egen A3.
+  const ctx = gc({ X1: 10, X2: 11, X3: 12, X4: 13, X5: 14, X6: 15, A1: 150, C1: 160 }, 8);
+  const standings = ctx.status === "standings" ? ctx.standings.filter((s) => s.rider_id !== "A0") : [];
+  const ctxNoA0: GcContext = { ...(ctx as Extract<GcContext, { status: "standings" }>), leader_id: "B0", standings: standings.map((s, i) => ({ ...s, rank: i + 1 })) };
+  const state = hookState(all, ["A3", "C1"]);
+  const base = { groups: state.groups, riders: state.riders, entrants: all, gcContext: ctxNoA0, route: ROUTE, km: 20 };
+  // Reaktionen (v3) reagerer for hold A ...
+  const threat = assessGcThreat({ gcContext: ctxNoA0, groups: state.groups, entrants: all, route: ROUTE, protectedRiderId: "A1", km: 20, ownTeamId: "A", dangerModel: { stagesRemaining: 8 } });
+  assert.notEqual(threat.severity, "none");
+  // ... saa A3 sidder paa hjul under v3. Uden DangerModel (#6187-vurderingen) har A intet at forsvare.
+  assert.deepEqual(ownRidersOnWheel(base), []);
+  const expected = [{ team_id: "A", group_id: "breakaway-0", rider_ids: ["A3"], protected_rider_id: "A1" }];
+  assert.deepEqual(ownRidersOnWheel({ ...base, dangerModel: { stagesRemaining: 8 } }), expected);
+  // segmentLoop's kobling bygger samme model fra klassement-konteksten (etaper tilbage).
+  assert.deepEqual(ownRidersOnWheelRaw({ ...base, tuning: RACE_V4_TUNING }), expected);
+});
+
+test("#5978 (review 1 of #5978): on the wheel in a one-day race: the captain who can win is protected", () => {
+  const all = entrants({ C1: 72 });
+  const state = hookState(all, ["B1", "C1"]);
+  // Forspring 200 s: C1 kan vinde i dag og truer B0 (kaptajn der kan vinde); B1 er B's egen.
+  const g = groups(["B1", "C1"], all, 200);
+  const base = { groups: g, riders: state.riders, entrants: all, gcContext: { status: "one_day" } as GcContext, route: ROUTE, km: 20 };
+  assert.deepEqual(ownRidersOnWheel(base), [], "#6187 assessment: nothing in a one-day race");
+  const expected = [{ team_id: "B", group_id: "breakaway-0", rider_ids: ["B1"], protected_rider_id: "B0" }];
+  const demand = RACE_V4_TUNING.finale.demandVectorByFinaleType.long_climb!;
+  assert.deepEqual(ownRidersOnWheel({ ...base, dangerModel: { routeDemand: demand } }), expected);
+  assert.deepEqual(ownRidersOnWheelRaw({ ...base, tuning: RACE_V4_TUNING }), expected);
 });
 
 // ── Review af #6213, punkt 4: paa hjul ende-til-ende ─────────────────────────

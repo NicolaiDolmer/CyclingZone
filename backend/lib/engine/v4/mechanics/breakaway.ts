@@ -104,7 +104,7 @@ import {
   type ReactionStance,
   type TeamReactionPlan,
 } from "./teamChaseReaction.ts";
-import type { GcContext, RouteV2, TeamReactionState } from "../types.ts";
+import type { EngineTuning, GcContext, RouteV2, TeamReactionState } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 
@@ -1205,12 +1205,17 @@ function gcReactionActive(ctx: BreakawayHookContext): boolean {
  * udbrudsfinale maales paa feltets finale bag udbruddet).
  */
 function dangerModelFor(ctx: BreakawayHookContext, gcContext: GcContext): DangerModel {
+  return dangerModelOf(ctx.route, ctx.tuning, gcContext);
+}
+
+/** #5978: dangerModelFor uden hook-konteksten (segmentLoop's hjul-kobling). */
+function dangerModelOf(route: RouteV2, tuning: EngineTuning, gcContext: GcContext): DangerModel {
   if (gcContext.status === "standings") {
     return gcContext.stages_remaining !== undefined ? { stagesRemaining: gcContext.stages_remaining } : {};
   }
   if (gcContext.status !== "one_day") return {};
-  const finaleType = ctx.route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(ctx.route) : ctx.route.finale_type;
-  const demand = finaleType ? ctx.tuning.finale.demandVectorByFinaleType[finaleType] : undefined;
+  const finaleType = route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(route) : route.finale_type;
+  const demand = finaleType ? tuning.finale.demandVectorByFinaleType[finaleType] : undefined;
   return demand ? { routeDemand: demand } : {};
 }
 
@@ -1303,6 +1308,10 @@ export type OwnRidersOnWheel = { team_id: string; group_id: string; rider_ids: s
  * gruppen rummer en trussel mod holdets GC-rytter bag dem. Truslen er samme
  * vurdering som GC-reaktionens (assessGcThreat), minus holdets egne. Holdets
  * GC-rytter selv i gruppen = intet at beskytte (han koerer sit eget loeb).
+ * #5978 (review af #5978, punkt 1): under orders_gc_v3 faar vurderingen samme
+ * DangerModel som reaktionen (potentiale, resterende etaper, hvem har noget at
+ * forsvare, endagsloebets kaptajn), og snoren taeller som trussel (det hold der
+ * holder snoren, jager stadig). Udeladt dangerModel = #6187-vurderingen.
  * Ren og deterministisk (hold og grupper sorteret).
  */
 export function ownRidersOnWheel(input: {
@@ -1312,9 +1321,12 @@ export function ownRidersOnWheel(input: {
   gcContext: GcContext;
   route: RouteV2;
   km: number;
+  dangerModel?: DangerModel;
 }): OwnRidersOnWheel[] {
   const out: OwnRidersOnWheel[] = [];
-  if (input.gcContext.status !== "standings") return out;
+  const model = input.dangerModel;
+  const oneDay = input.gcContext.status === "one_day" && model?.routeDemand !== undefined;
+  if (input.gcContext.status !== "standings" && !oneDay) return out;
   const racing = new Set(Object.values(input.riders).filter((r) => r.status === "racing").map((r) => r.rider_id));
   for (const group of findBreakawayGroups([...input.groups])) {
     const byTeam = new Map<string, string[]>();
@@ -1323,7 +1335,9 @@ export function ownRidersOnWheel(input: {
       if (teamId) byTeam.set(teamId, [...(byTeam.get(teamId) ?? []), riderId]);
     }
     for (const teamId of [...byTeam.keys()].sort((a, b) => a.localeCompare(b))) {
-      const protectedRiderId = protectedRiderForTeam({ gcContext: input.gcContext, teamId, entrants: input.entrants });
+      const protectedRiderId = oneDay
+        ? oneDayProtectedRider({ teamId, groups: input.groups, entrants: input.entrants, routeDemand: model!.routeDemand!, racingRiderIds: racing })
+        : protectedRiderForTeam({ gcContext: input.gcContext, teamId, entrants: input.entrants });
       if (!protectedRiderId || group.rider_ids.includes(protectedRiderId)) continue;
       const protectedGroup = input.groups.find((g) => g.rider_ids.includes(protectedRiderId));
       if (!protectedGroup) continue;
@@ -1336,8 +1350,9 @@ export function ownRidersOnWheel(input: {
         km: input.km,
         racingRiderIds: racing,
         ownTeamId: teamId,
+        ...(model ? { dangerModel: model } : {}),
       });
-      if (threat.severity === "none") continue;
+      if (threat.severity === "none" && threat.leash_hold !== true) continue;
       out.push({ team_id: teamId, group_id: group.id, rider_ids: [...(byTeam.get(teamId) ?? [])].sort((a, b) => a.localeCompare(b)), protected_rider_id: protectedRiderId });
     }
   }
@@ -1350,17 +1365,24 @@ export function ownRidersOnWheel(input: {
  */
 export function ownRiderWheelSitterIds(input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext"> & { gcContext: unknown }): Set<string> {
   const sitters = new Set<string>();
-  for (const s of ownRidersOnWheelRaw(input)) for (const id of s.rider_ids) sitters.add(id);
+  for (const s of ownRidersOnWheel({ ...input, gcContext: normalizeGcContext(input.gcContext) })) for (const id of s.rider_ids) sitters.add(id);
   return sitters;
 }
 
 /**
  * #5978 (review af #6213, punkt 2): segmentLoop's kobling. Hjulsidderne ved
  * segmentets start (raa klassement-kontekst), saa tempoet og hooket bruger
- * samme saet (SegmentHookContext.ownRidersOnWheel).
+ * samme saet (SegmentHookContext.ownRidersOnWheel). Kaldes KUN under
+ * orders_gc_v3, og faar derfor altid reaktionens DangerModel (review af #5978,
+ * punkt 1): etaper tilbage fra klassement-konteksten, endagsloebets krav-vektor
+ * fra finalen.
  */
-export function ownRidersOnWheelRaw(input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext"> & { gcContext: unknown }): OwnRidersOnWheel[] {
-  return ownRidersOnWheel({ ...input, gcContext: normalizeGcContext(input.gcContext) });
+export function ownRidersOnWheelRaw(
+  input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext" | "dangerModel"> & { gcContext: unknown; tuning: EngineTuning },
+): OwnRidersOnWheel[] {
+  const { tuning, ...rest } = input;
+  const gcContext = normalizeGcContext(input.gcContext);
+  return ownRidersOnWheel({ ...rest, gcContext, dangerModel: dangerModelOf(input.route, tuning, gcContext) });
 }
 
 /** #6187: holdets koerende ryttere i gruppen, sorteret. */
@@ -1500,7 +1522,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // tilstanden ved segmentets start (det tempoet blev regnet paa); hooket bruger
   // samme saet. Kaldt uden (direkte hook-tests) regnes det her.
   const onWheel = ordersGcV3 && gcContext
-    ? (ctx.ownRidersOnWheel ? [...ctx.ownRidersOnWheel] : ownRidersOnWheel({ groups: state.groups, riders: state.riders, entrants: ctx.entrants, gcContext, route: ctx.route, km: ctx.segment.from_km }))
+    ? (ctx.ownRidersOnWheel ? [...ctx.ownRidersOnWheel] : ownRidersOnWheel({ groups: state.groups, riders: state.riders, entrants: ctx.entrants, gcContext, route: ctx.route, km: ctx.segment.from_km, dangerModel: dangerModelFor(ctx, gcContext) }))
     : [];
   const wheelSitterIds = new Set(onWheel.flatMap((w) => w.rider_ids));
   const planByBreakaway = new Map<string, ReturnType<typeof teamChasePlan>>();

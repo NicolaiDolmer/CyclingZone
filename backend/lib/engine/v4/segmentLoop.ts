@@ -841,7 +841,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     let tempoByGroup = new Map<string, GroupTempo>();
     // #6187 (KUN orders_gc_v3): egne udbrydere paa hjul foerer ikke (mechanics/breakaway.ts).
     // #5978: hooket faar samme saet (ctx.ownRidersOnWheel), ikke et nyt fra hook-tidspunktet.
-    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km }) : undefined;
+    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning }) : undefined;
     const wheelSitterIds = onWheelAtStart ? new Set(onWheelAtStart.flatMap((w) => w.rider_ids)) : undefined;
     for (const group of state.groups) {
       const tempo = computeGroupTempo(
