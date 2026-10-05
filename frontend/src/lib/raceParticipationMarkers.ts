@@ -68,12 +68,21 @@ export function withFinishSafetyNet<T extends RankedResultRow>(rows: readonly T[
   });
 }
 
-/** #6185: which label the morning-break marker shows, and whether it is muted. */
-export function breakawayMarkerState(participation: ResultParticipation): { labelKey: string; muted: boolean } {
-  if (participation.caught) return { labelKey: "detail.breakaway.caught", muted: true };
-  if (participation.dropped) return { labelKey: "detail.breakaway.dropped", muted: true };
-  if (participation.verified && !participation.survived) return { labelKey: "detail.breakaway.participated", muted: true };
-  return { labelKey: "detail.breakaway.survived", muted: false };
+export type BreakawayMarkerIcon = "flag" | "dropped";
+export type BreakawayMarkerTone = "accent" | "muted" | "danger";
+export type BreakawayMarkerState = { labelKey: string; muted: boolean; icon: BreakawayMarkerIcon; tone: BreakawayMarkerTone };
+
+/**
+ * #6185: which label, icon and tone the morning-break marker shows. "Dropped
+ * from the break" has its own icon SHAPE (arrow down, not the flag) and the
+ * danger tone, so held home / caught / dropped read apart without hover and
+ * on touch. Held home = accent flag, caught = muted flag, dropped = red arrow.
+ */
+export function breakawayMarkerState(participation: ResultParticipation): BreakawayMarkerState {
+  if (participation.caught) return { labelKey: "detail.breakaway.caught", muted: true, icon: "flag", tone: "muted" };
+  if (participation.dropped) return { labelKey: "detail.breakaway.dropped", muted: true, icon: "dropped", tone: "danger" };
+  if (participation.verified && !participation.survived) return { labelKey: "detail.breakaway.participated", muted: true, icon: "flag", tone: "muted" };
+  return { labelKey: "detail.breakaway.survived", muted: false, icon: "flag", tone: "accent" };
 }
 
 export function participationFlagsForResult(result: ResultMarkerRow, history: ParticipationHistory): { in_breakaway: boolean; breakaway_caught: boolean | null; breakaway_dropped: boolean } {

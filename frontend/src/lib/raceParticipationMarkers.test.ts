@@ -51,12 +51,12 @@ test("#6185 anchor: Penisola stage 3 dropped escapees get the dropped marker, ne
     const participation = participationForResult({ rider_id: id, in_breakaway: true, breakaway_caught: false }, history);
     assert.equal(participation?.dropped, true, id);
     assert.equal(participation?.survived, false, id);
-    assert.deepEqual(breakawayMarkerState(participation!), { labelKey: "detail.breakaway.dropped", muted: true });
+    assert.deepEqual(breakawayMarkerState(participation!), { labelKey: "detail.breakaway.dropped", muted: true, icon: "dropped", tone: "danger" });
     assert.deepEqual(participationFlagsForResult({ rider_id: id, in_breakaway: true, breakaway_caught: false }, history!), { in_breakaway: true, breakaway_caught: null, breakaway_dropped: true });
   }
   for (const id of PENISOLA_CAUGHT) {
     const participation = participationForResult({ rider_id: id, in_breakaway: true, breakaway_caught: true }, history);
-    assert.deepEqual(breakawayMarkerState(participation!), { labelKey: "detail.breakaway.caught", muted: true });
+    assert.deepEqual(breakawayMarkerState(participation!), { labelKey: "detail.breakaway.caught", muted: true, icon: "flag", tone: "muted" });
   }
 });
 
@@ -66,7 +66,7 @@ test("#6185 without a timeline a persisted dropped flag still wins over 'held ho
   assert.equal(breakawayMarkerState(legacyDropped!).labelKey, "detail.breakaway.dropped");
   // Not yet assessed (NULL) keeps today's legacy reading.
   const unknown = participationForResult({ rider_id: "x", in_breakaway: true, breakaway_caught: false, breakaway_dropped: null }, null);
-  assert.deepEqual(breakawayMarkerState(unknown!), { labelKey: "detail.breakaway.survived", muted: false });
+  assert.deepEqual(breakawayMarkerState(unknown!), { labelKey: "detail.breakaway.survived", muted: false, icon: "flag", tone: "accent" });
   // A caught row is never relabelled as dropped.
   const caught = participationForResult({ rider_id: "y", in_breakaway: true, breakaway_caught: true, breakaway_dropped: true }, null);
   assert.equal(breakawayMarkerState(caught!).labelKey, "detail.breakaway.caught");
@@ -101,7 +101,7 @@ test("#6185 timeline 'survived' + finish safety net reads as caught, same as the
   assert.equal(breakawayMarkerState(participationForResult(netted, history)!).labelKey, "detail.breakaway.caught");
   // No non-escapee ahead: the engine's verdict stands.
   const held = participationForResult({ rider_id: "morning", in_breakaway: true, breakaway_caught: false, breakaway_dropped: false }, history);
-  assert.deepEqual(breakawayMarkerState(held!), { labelKey: "detail.breakaway.survived", muted: false });
+  assert.deepEqual(breakawayMarkerState(held!), { labelKey: "detail.breakaway.survived", muted: false, icon: "flag", tone: "accent" });
 });
 
 test("#6185 the dropped marker has EN and DA copy", async () => {
@@ -130,4 +130,18 @@ test("#6185 finish safety net on stored rows: uncaught escapee behind a non-esca
   assert.equal(held[0].breakaway_dropped, undefined, "stage 1: held on");
   assert.equal(held[3].breakaway_dropped, true, "stage 2 is its own group");
   assert.deepEqual(withFinishSafetyNet(null), []);
+});
+
+test("#6185 the three marker states differ in icon SHAPE or tone, so they read apart without hover", () => {
+  const base = { morning: true, laterAttack: false, verified: true };
+  const held = breakawayMarkerState({ ...base, caught: false, survived: true, dropped: false });
+  const caught = breakawayMarkerState({ ...base, caught: true, survived: false, dropped: false });
+  const dropped = breakawayMarkerState({ ...base, caught: false, survived: false, dropped: true });
+  assert.notEqual(dropped.icon, held.icon);
+  assert.notEqual(dropped.icon, caught.icon);
+  assert.equal(new Set([held.tone, caught.tone, dropped.tone]).size, 3);
+  assert.equal(new Set([held.labelKey, caught.labelKey, dropped.labelKey]).size, 3);
+  // Only the dropped state leaves the flag shape.
+  assert.equal(held.icon, "flag");
+  assert.equal(caught.icon, "flag");
 });

@@ -14,6 +14,8 @@ import { Flag } from "../components/Flag";
 import {
   FlagIcon,
   ArrowUpIcon,
+  ArrowDownIcon,
+  Portal,
   PageLoader,
   Button,
   CategoryTag,
@@ -35,6 +37,7 @@ import {
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+import { tooltipClass } from "../components/ui/tooltipStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
@@ -199,8 +202,60 @@ function riderName(res) {
   return res.rider_name || "—";
 }
 
+// #6185: ikon-FORM + tone pr. tilstand (klassenavne ordret, så Tailwinds scanner finder dem).
+const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
+const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
+
+// #6185: markøren er tap-tilgængelig på touch. Markøren er fokuserbar (tabIndex),
+// så et tryk fokuserer den og viser teksten; hover/fokus virker stadig på desktop.
+// Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal med fixed
+// position (følger markøren ved scroll/resize): resultattabellens scroller klipper
+// ellers boblen (mobil, sidste række).
+// preventDefault stopper at trykket navigerer via RiderLink-ankeret markøren ligger i.
+function MarkerTip({ label, className = "", children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const show = useCallback(() => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const maxWidth = Math.min(224, window.innerWidth - 16);
+    setPos({ left: Math.max(8, Math.min(rect.left, window.innerWidth - maxWidth - 8)), top: rect.bottom, maxWidth });
+  }, []);
+  const hide = useCallback(() => setPos(null), []);
+  useEffect(() => {
+    if (!pos) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") hide(); };
+    window.addEventListener("scroll", show, true);
+    window.addEventListener("resize", show);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", show, true);
+      window.removeEventListener("resize", show);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pos, show, hide]);
+  return (
+    <span className="ms-1 inline-flex align-middle">
+      <span ref={ref} role="img" tabIndex={0} aria-label={label}
+        onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); show(); }}
+        className={`inline-flex cursor-help rounded-sm p-0.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent ${className}`}>
+        {children}
+      </span>
+      {pos && (
+        <Portal>
+          <span role="tooltip" className={`${tooltipClass({ side: "bottom" })} whitespace-normal`}
+            style={{ position: "fixed", left: pos.left, top: pos.top, right: "auto", bottom: "auto", transform: "none", maxWidth: pos.maxWidth, opacity: 1 }}>
+            {label}
+          </span>
+        </Portal>
+      )}
+    </span>
+  );
+}
+
 // #1499 Deskriptiv udbruds-markør: vises kun for ryttere der var i (morgen-)udbruddet.
-// Holdt hjem (survived) = accent-toned; indhentet (caught) = dæmpet. Tooltip via title.
+// #6185: holdt hjem = accent-flag; indhentet = dæmpet flag; sat af = rød pil ned.
 function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
@@ -208,18 +263,18 @@ function BreakawayMarker({ result, t, history = null }) {
   // #6185: tre tilstande (indhentet / sat af / holdt hjem) — se breakawayMarkerState.
   const markerState = breakawayMarkerState(participation);
   const label = t(markerState.labelKey);
+  const StateIcon = BREAKAWAY_MARKER_ICON[markerState.icon] ?? FlagIcon;
   return (
     <>
       {participation.morning && (
-        <span className={`ms-1 inline-flex align-middle ${markerState.muted ? "text-cz-3" : "text-cz-accent-t"}`}
-          title={`${markerLabel}: ${label}`} aria-label={`${markerLabel}: ${label}`}>
-          <FlagIcon size={13} aria-hidden="true" />
-        </span>
+        <MarkerTip label={`${markerLabel}: ${label}`} className={BREAKAWAY_MARKER_TONE[markerState.tone]}>
+          <StateIcon size={15} aria-hidden="true" />
+        </MarkerTip>
       )}
       {participation.laterAttack && (
-        <span className="ms-1 inline-flex align-middle text-cz-2" title={t("detail.breakaway.laterAttack")} aria-label={t("detail.breakaway.laterAttack")}>
-          <ArrowUpIcon size={13} aria-hidden="true" />
-        </span>
+        <MarkerTip label={t("detail.breakaway.laterAttack")} className="text-cz-2">
+          <ArrowUpIcon size={15} aria-hidden="true" />
+        </MarkerTip>
       )}
     </>
   );
