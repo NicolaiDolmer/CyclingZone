@@ -1,5 +1,53 @@
 export const PATCHES = [
   {
+    "version": "7.340",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The roadmap is one page with five tabs",
+          "body": "Plan shows what I am building and what comes next, and you rate how important each planned item is to you. Vote holds the ideas I am considering. Beta shows what the beta group has now. Known issues moved here from Help, with my updates and a button to tell me it affects you too. Done lists what is finished."
+        },
+        "da": {
+          "title": "Roadmappen er én side med fem faner",
+          "body": "Plan viser, hvad jeg bygger, og hvad der kommer bagefter, og du vurderer, hvor vigtigt hvert planlagt punkt er for dig. Stem har de idéer, jeg overvejer. Beta viser, hvad beta-gruppen har nu. Kendte fejl er flyttet hertil fra Hjælp, med mine opdateringer og en knap til at fortælle mig, at det også rammer dig. Færdigt viser det, der er færdigt."
+        },
+        "refs": [5387, 6150]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "Filter patch notes by Beta or Now live for all",
+          "body": "A new filter on this page shows everything, only what the beta group has, or what has moved from beta to everyone. A beta note changes its label by itself when the feature is switched on for everyone."
+        },
+        "da": {
+          "title": "Filtrér patch notes på Beta eller Nu for alle",
+          "body": "Et nyt filter på denne side viser alt, kun det beta-gruppen har, eller det, der er gået fra beta til alle. En beta-note skifter selv mærke, når funktionen slås til for alle."
+        },
+        "refs": [6154]
+      }
+    ]
+  },
+  {
+    "version": "7.339",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The site loads when your browser blocks site data",
+          "body": "With site data blocked in the browser, the site stopped on a blank page. It now loads."
+        },
+        "da": {
+          "title": "Siden indlæses, når din browser blokerer site-data",
+          "body": "Med site-data blokeret i browseren stoppede siden på en tom side. Den indlæses nu."
+        },
+        "refs": [6168]
+      }
+    ]
+  },
+  {
     "version": "7.338",
     "date": "2026-10-04",
     "changes": [
@@ -380,7 +428,7 @@ export const PATCHES = [
         "refs": [5947, 6019]
       },
       {
-        "category": "new", "audience": "player", "rollout": "beta", "topic": "Planning",
+        "category": "new", "audience": "player", "rollout": "beta", "flag": "season_matrix_mobile", "topic": "Planning",
         "en": {
           "title": "Season matrix on the phone, in the beta group",
           "body": "On a phone, the season matrix in Planning now fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see."
@@ -507,7 +555,7 @@ export const PATCHES = [
     "date": "2026-09-30",
     "label": "Beta",
     "changes": [{
-      "category": "improved", "audience": "player", "rollout": "beta", "topic": "Training",
+      "category": "improved", "audience": "player", "rollout": "beta", "flag": "training_daily_receipt", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
         "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
@@ -1066,7 +1114,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "training_programs",
         "stage": "beta",
         "topic": "Training",
         "en": {
@@ -1597,7 +1645,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "youth_squad_pages",
         "topic": "Squad",
         "en": {
           "title": "U23 team and Junior team pages on a par with My Team, in the beta group",
@@ -1634,7 +1682,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "rider_best_role_display",
         "stage": "beta",
         "topic": "Riders",
         "en": {

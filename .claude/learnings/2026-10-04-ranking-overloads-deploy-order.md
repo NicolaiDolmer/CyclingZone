@@ -21,3 +21,11 @@ Lesson: a green combined PR is not a dependency-order guarantee. Make the
 database prerequisite independently reviewable and keep rollback signatures.
 SQL-only preparation has no current player change; release notes belong to the
 later owner-approved Node activation.
+
+Owner review follow-up 4/10: all five boolean definers now declare
+`SET search_path = public, pg_temp`, with temporary schema explicitly last.
+The same hardening was requested on #6159 but initially missed here. Qualified
+view names do not replace a consistent definer search-path contract. Query
+pg_proc.proconfig for each signature after first and repeat apply: the old
+public/pg_catalog setting fails the regression; the hardened setting passes.
+Legacy definitions remain unchanged. No production apply or exploit claim.

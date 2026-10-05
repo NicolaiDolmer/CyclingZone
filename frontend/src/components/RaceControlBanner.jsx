@@ -60,7 +60,7 @@ export default function RaceControlBanner() {
             <p className="min-w-0 flex-1 text-sm leading-snug">
               <span className="font-semibold">{title}</span>
               {body && <span> {body}</span>}
-              <Link to="/help?section=knownIssues" className="ms-2 whitespace-nowrap underline hover:no-underline">
+              <Link to="/roadmap?tab=issues" className="ms-2 whitespace-nowrap underline hover:no-underline">
                 {t("opsNotice.knownIssuesLink")}
               </Link>
             </p>

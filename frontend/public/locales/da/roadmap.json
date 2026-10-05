@@ -1,101 +1,140 @@
 {
   "meta": {
     "title": "Roadmap · Cycling Zone",
-    "description": "Hvad der bygges som det næste i Cycling Zone, og hvordan spillerne bedømmer planerne."
+    "description": "Hvad der bygges i Cycling Zone, hvad spillerne kan stemme på, hvad der er i beta, og hvilke fejl der bliver rettet."
   },
   "page": {
     "title": "Roadmap",
-    "subtitle": "Hvor Cycling Zone er på vej hen"
+    "subtitle": "Hvad jeg bygger, hvad du kan stemme på, og hvad jeg retter."
   },
   "labels": {
-    "today": "Hvor det er i dag",
-    "next": "Hvor det er på vej hen",
     "new": "Ny"
   },
+  "loginToVote": {
+    "text": "Log ind for at bedømme planerne og melde fejl.",
+    "link": "Log ind"
+  },
+  "filter": {
+    "onlyUnrated": "Kun det jeg ikke har bedømt",
+    "rated": "Bedømt {rated} af {total}"
+  },
+  "tabs": {
+    "label": "Roadmappens afsnit",
+    "plan": "Plan",
+    "beta": "Beta",
+    "vote": "Stem",
+    "issues": "Kendte fejl",
+    "done": "Færdigt"
+  },
   "voting": {
-    "intro": "Bedøm planerne herunder. Dine stemmer er med til at afgøre, hvad der bliver bygget som det næste. Hvad der kommer efter sæson 4, beslutter jeg sammen med dig i Roadmap-trådene på forummet.",
-    "idea": "Hvor god en idé?",
-    "importance": "Hvor vigtigt er det for dig?",
+    "idea": "God idé?",
+    "importance": "Vigtigt for dig?",
     "saved": "Gemt",
     "error": "Din stemme blev ikke gemt. Prøv igen."
   },
-  "shipped": {
-    "title": "Allerede bygget",
-    "subtitle": "Ting fra roadmappet der nu er live i spillet."
+  "plan": {
+    "inProgress": "I gang",
+    "planned": "Planlagt",
+    "plannedHint": "Cirka i denne rækkefølge",
+    "later": "Senere · {count} mere"
   },
-  "admin": {
-    "panel": "Admin · roadmap-vedligehold",
-    "markShipped": "Markér som bygget",
-    "markShippedConfirm": "Flyt dette item til \"Allerede bygget\"? Spillere ser det i historik-sektionen og kan ikke længere stemme på det.",
-    "markActive": "Flyt tilbage til roadmap",
-    "markActiveConfirm": "Flyt dette item tilbage til det aktive roadmap? Spillere kan stemme på det igen.",
-    "createTitle": "Tilføj en roadmap-idé",
-    "engine": "Motor",
-    "sortOrder": "Sortering",
-    "titleEn": "Titel (engelsk)",
-    "titleDa": "Titel (dansk)",
-    "approved": "Godkendt (synlig for spillere)",
-    "status": "Status",
-    "statusActive": "Aktiv (på roadmappet)",
-    "statusShipped": "Bygget (historik)",
-    "statusArchived": "Arkiveret (skjult)",
-    "create": "Tilføj idé",
-    "creating": "Tilføjer…",
-    "created": "Idé tilføjet.",
-    "saving": "Gemmer…",
-    "error": "Det blev ikke gemt. Prøv igen.",
-    "missingFields": "Udfyld begge titler før du tilføjer."
+  "beta": {
+    "inBeta": "I beta nu",
+    "inBetaHint": "Beta-testerne har dem. Alle andre får dem, når de er klar.",
+    "coming": "På vej i beta",
+    "badgeInBeta": "I beta",
+    "badgeSoon": "Snart for alle",
+    "badgeNext": "Næste i beta",
+    "since": "i beta siden {date}",
+    "join": "Kom med i beta",
+    "member": "Du er med i beta",
+    "pending": "Anmodning sendt"
+  },
+  "vote": {
+    "title": "Idéer jeg overvejer",
+    "hint": "Dine bedømmelser afgør, hvad der rykker op på planen",
+    "areaLabel": "Område",
+    "all": "Alle",
+    "forum": "Har du selv en idé? Skriv den i forummet"
+  },
+  "issues": {
+    "areaLabel": "Område",
+    "all": "Alle",
+    "confirmed": "Bekræftet",
+    "confirmedHint": "Problemer jeg selv har set eller fundet årsagen til.",
+    "checking": "Meldt ind, bliver tjekket",
+    "checkingHint": "Spillere har meldt dem ind. Jeg har ikke bekræftet dem, og jeg lover ingen ændring.",
+    "checkingMore": "{count} flere",
+    "checkingMoreOwn": "{count} flere · {own} har du meldt",
+    "status": {
+      "checking": "Bliver tjekket",
+      "confirmed": "Bekræftet",
+      "fixing": "Rettes nu",
+      "fixed": "Rettet",
+      "dismissed": "Intet problem fundet"
+    },
+    "affectsMe": "Rammer også mig",
+    "seeToo": "Jeg ser det også",
+    "reported": "Meldt",
+    "reportError": "Det blev ikke gemt. Prøv igen.",
+    "updated": "opdateret {date}",
+    "reportedByPlayers": "meldt ind af spillere",
+    "earlierUpdates": "Tidligere opdateringer · {count}",
+    "dismissed": "Tjekket, intet problem fundet · seneste 14 dage",
+    "fixed": "Rettet de seneste 14 dage"
+  },
+  "done": {
+    "title": "Færdigt",
+    "hint": "Nyeste først",
+    "feature": "Funktion",
+    "fix": "Rettelse",
+    "showMore": "Vis flere"
+  },
+  "empty": {
+    "plan": {
+      "title": "Vis de planer du har bedømt",
+      "description": "Du har bedømt alt på planen.",
+      "action": "Vis alle"
+    },
+    "planNone": {
+      "title": "Bedøm idéerne i stedet",
+      "description": "Der er ikke noget planlagt lige nu.",
+      "action": "Gå til Stem"
+    },
+    "vote": {
+      "title": "Vis de idéer du har bedømt",
+      "description": "Du har bedømt alle idéer.",
+      "action": "Vis alle"
+    },
+    "voteNone": {
+      "title": "Del din egen idé",
+      "description": "Der er ingen idéer at stemme på lige nu.",
+      "action": "Gå til forummet"
+    },
+    "beta": {
+      "title": "Kom med i beta",
+      "description": "Der er ikke noget i beta lige nu. Nye funktioner dukker op her, når de går i beta.",
+      "memberTitle": "Se hvad der er planlagt",
+      "memberAction": "Gå til Plan"
+    },
+    "issues": {
+      "title": "Sig til, hvis noget ser forkert ud",
+      "description": "Der er ingen kendte fejl lige nu.",
+      "action": "Send feedback",
+      "loginAction": "Log ind"
+    },
+    "done": {
+      "title": "Se hvad der er planlagt",
+      "description": "Der er ikke noget færdigt endnu.",
+      "action": "Gå til Plan"
+    }
   },
   "engines": {
-    "races": {
-      "title": "Løb",
-      "today": "En fuld sæsonkalender med planlagte løb, resultater, stillinger, præmiepenge og historik, plus en løbsfilm af hver afsluttet etape.",
-      "next": [
-        "En klogere sæsonplanlægger: overlappende løb, træthed og kvalifikationsregler du kan planlægge en hel sæson omkring.",
-        "Nationale mesterskaber, VM og EM: kør for dit land, vind trøjen, og bliv landstræner.",
-        "Realistiske løbsruter modelleret efter rigtig cykling.",
-        "Løbs-matematikken forklaret i klare ord, uden at afsløre de præcise tal."
-      ]
-    },
-    "training": {
-      "title": "Træning",
-      "today": "Daglig træning: vælg en session til hver rytter hver dag, planlæg formtoppe, og lad assistenten foreslå en plan.",
-      "next": [
-        "Træning pr. løbsdag: én ny træningsside, hvor du planlægger hver rytter omkring hans løb.",
-        "Træningsscoren for alle: se hvor god hver træningsdag var, og styr dine rytteres udvikling sæson efter sæson.",
-        "Trænere som en ægte ressource: balancér træningsbelastningen og risikér nedslidning hvis du presser for hårdt.",
-        "Færdige træningsprogrammer, og senere en måde at dele dine egne på."
-      ]
-    },
-    "youth": {
-      "title": "Ungdomsudvikling",
-      "today": "Dit eget akademi og en talentspejder: find unge ryttere, udvikl dem, og bestem på Graduation Day, hvem der rykker op.",
-      "next": [
-        "Dine egne unge stjerner: vælg hvilket land dine unge ryttere kommer fra, og styr hvilke ryttertyper dit akademi får frem.",
-        "U23- og juniortrupper: to rigtige trupper under dit førstehold, med en vej fra akademiet til toppen."
-      ]
-    },
-    "market": {
-      "title": "Transfers & auktioner",
-      "today": "Live-auktioner, autobud, transfers, byttehandler og forhandlinger med andre managers.",
-      "next": [
-        "Dybere forhandling mellem managers.",
-        "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om.",
-        "Rytterværdier der giver mening: værdien følger rytterens evner og det, markedet reelt betaler, og jeg forklarer, hvordan den bliver sat."
-      ]
-    },
-    "club": {
-      "title": "Klub & verden",
-      "today": "En bestyrelse med mål, du skal nå, klubøkonomi med konsekvenser, din egen stab, og et forum og beskeder til at tale med andre managers.",
-      "next": [
-        "Optjen renommé: statistik, rekorder og historie der bygger din klubs omdømme i verden.",
-        "Vejkaptajner, mentorer og holdarbejde: ryttere der løfter holdet omkring sig.",
-        "Et klubmuseum: mestre, legendariske ryttere og løbene folk stadig taler om.",
-        "Venner og følg-funktion: følg managers og ryttere på tværs af verden.",
-        "Forhandl bestyrelsens mål op, for en større belønning.",
-        "Inviter en ven og byg jeres rivalisering sammen.",
-        "Et levende verdensfeed med resultater, transfers og rivaliseringer."
-      ]
-    }
+    "races": { "title": "Løb" },
+    "training": { "title": "Træning" },
+    "youth": { "title": "Ungdomsudvikling" },
+    "market": { "title": "Transfers & auktioner" },
+    "club": { "title": "Klub & verden" },
+    "other": { "title": "Andet" }
   }
 }

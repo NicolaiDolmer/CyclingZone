@@ -4,9 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (4/10 aften): rytme i [`OPERATING_PLAN.md`](OPERATING_PLAN.md).** **(1) Man 5/10:** **🔴 løbsmotor-pakken (ejer 4/10): #6156 form + formtoppe virker ikke i v4.** Trin 0 read-only → 4 laner; spec i #6156 · planlægningssession til 1/1-2027 (#6148, inkl. #2887 + #5981) · nav-analyse mobil+pc m. Clarity (#6147) · Udvikling 2.0 D1-D7 (#6110; #3743 A + #4765 indgår; byg uge 41) · go-kort #6128 (sync, patch 7.338, migration) + #6053. **(2) Uge 41:** betaling på hverdage (#4514/#4512 låst: auto-træk, intet rykkerforløb, Pro stopper + besked; #6062) · moms #4511 · DMARC: ejeren laver test-signup (#1461) · staging-klargøring A (#5904, så #6136 kan måles) · #6134 jobkø i Postgres (C) · #5901 C + #5902 A byg · #6129 genberegn + go på hash. **(3) Codex:** stabilitet om natten (prompt i `superpowers/plans/2026-10-04-codex-stabilitet-prompt.md`); bølgen 4/10 gav PR #6153 (draft), #6132/#6120/#5792 blokeret på filmandat. **(4)** #4714: ejeren poster forum-afstemning (10 svar, #6146 live).
+> **🎯 Next action (5/10): rytme i [`OPERATING_PLAN.md`](OPERATING_PLAN.md).** **(1) Brand (ejer-ja 4/10):** ca. 20 ryttere på 9 spillerhold har ikke trænet i S4 og misser hver aften (#6129: sæt starttilstand + kompensation, go på hash) · 🔴 løbsmotor-pakken #6156 (trin 0 ligger på #6157 → 4 laner). **(2) Morgensession:** prompt `superpowers/plans/2026-10-05-morgensession-prompt.md` (morgenblok, GitHub-audit planlægges, uge 41-opfølgning #6174 #6175 #6172 #6165 #6164). **(3) Man 5/10:** planlægningssession til 1/1-2027 (#6148, inkl. #2887, #5981 og tidspunkt for søndagens værdikørsel, som kørte kl. 06:45 4/10) · nav-analyse (#6147) · Udvikling 2.0 (#6110) · go-kort #6053 (to CodeRabbit-fund + sync mangler). **(4) Uge 41 (se MASTERPLAN):** staging-klargøring A (#5904, ny Claude-session; #6136 + #6153 venter) · #6134 jobkø (ejer-valg) · betaling #6062 · moms #4511 · #4714 forum-afstemning.
 >
-> **🗺️ Roadmap-hub (#5387) bygges NU (ejer 4/10):** start-prompt `superpowers/plans/2026-10-04-roadmap-hub-next-session-prompt.md`. Indhold §6c i `drafts/2026-10-04-roadmap-indhold.md`, ejer-go før apply. Uge 41: se MASTERPLAN.
+> **🗺️ Roadmap-hub (#5387) er LIVE 4/10** (spillersiden #6160 + indhold, post-verificeret: 29 idéer, 29 planlagt, 7 i gang, 28 Done, 52 kendte fejl, 1.163 stemmer). Patch note 7.340 i PR #6173 (ejer-go givet, merges ved grøn CI). Rest: #6175, ryttertyper #3813, ejeren poster roadbook-opslaget.
+>
+> **Merget 4/10:** #6128 (oprydning #6164) · #6169 · #6166 · #6167. Nye: #6165 · #6171 · #6172.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session. Ejeren starter to nye 4/10 aften: Claude Code (roadmap-bølge) og Codex (stabilitet).
+> **🤖 Working agent:** Ingen aktiv session (roadmap + Codex stoppet 4/10 sent).

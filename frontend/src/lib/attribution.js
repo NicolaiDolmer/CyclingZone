@@ -82,6 +82,15 @@ export function buildFirstTouchRecord({ search, referrer, path, origin, firstSee
   return record;
 }
 
+// CYCLINGZONE-8V: merely READING `window.localStorage` throws a SecurityError
+// when the browser blocks site data. As a default parameter that read ran
+// OUTSIDE the try below, so captureFirstTouch() killed boot in main.jsx (white
+// page). Resolve storage lazily, inside each try, instead (same idea as
+// safeSessionStorage in chunkErrors.js, #5159).
+function resolveLocalStorage() {
+  return window.localStorage;
+}
+
 // Runs on every load but writes ONCE — the first visit wins. Args are injectable
 // for unit-testing; defaults read the real browser context.
 export function captureFirstTouch({
@@ -89,21 +98,22 @@ export function captureFirstTouch({
   referrer = document.referrer,
   path = window.location.pathname,
   origin = typeof window !== "undefined" ? window.location.origin : null,
-  storage = window.localStorage,
+  storage,
   now = () => new Date().toISOString(),
 } = {}) {
   try {
-    if (storage.getItem(STORAGE_KEY)) return; // first-touch wins — never overwrite
+    const store = storage ?? resolveLocalStorage();
+    if (store.getItem(STORAGE_KEY)) return; // first-touch wins — never overwrite
     const record = buildFirstTouchRecord({ search, referrer, path, origin, firstSeenAt: now() });
-    storage.setItem(STORAGE_KEY, JSON.stringify(record));
+    store.setItem(STORAGE_KEY, JSON.stringify(record));
   } catch {
     // localStorage unavailable (private mode / blocked) — attribution is best-effort.
   }
 }
 
-export function getAttribution(storage = window.localStorage) {
+export function getAttribution(storage) {
   try {
-    const raw = storage.getItem(STORAGE_KEY);
+    const raw = (storage ?? resolveLocalStorage()).getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -132,7 +142,7 @@ function stripClickIds(record) {
 // supabase.auth.signUp() persists them server-side in
 // auth.users.raw_user_meta_data, which the owner has not signed off on (see
 // the CLICK_ID_KEYS comment above).
-export function getAttributionForBackend(storage = window.localStorage) {
+export function getAttributionForBackend(storage) {
   return stripClickIds(getAttribution(storage));
 }
 

@@ -33,7 +33,7 @@ import {
   buildNavDotFlags, resolveNavDot,
 } from "../lib/patchNotesUnread.js";
 import {
-  isRoadmapUnread, readLastSeenRoadmap,
+  isRoadmapUnread, readLastSeenRoadmap, latestRoadmapCreatedAt,
 } from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
@@ -293,14 +293,11 @@ async function fetchForumUnread(headers) {
 // og patch-notes-prikkerne.
 async function fetchLatestRoadmapDate() {
   try {
-    const { data, error } = await supabase
-      .from("roadmap_items")
-      .select("created_at")
-      .eq("approved", true)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (error || !data?.length) return null;
-    return data[0].created_at ?? null;
+    // #6150: nyeste af roadmap-punkter og publicerede kendte fejl (Known issues-fanen).
+    const latest = (table, flag) => supabase.from(table).select("created_at")
+      .eq(flag, true).order("created_at", { ascending: false }).limit(1);
+    const [items, issues] = await Promise.all([latest("roadmap_items", "approved"), latest("known_issues", "published")]);
+    return latestRoadmapCreatedAt([...(items.error ? [] : items.data ?? []), ...(issues.error ? [] : issues.data ?? [])]);
   } catch {
     return null;
   }

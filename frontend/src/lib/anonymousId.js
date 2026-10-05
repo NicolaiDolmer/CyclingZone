@@ -27,12 +27,15 @@ function randomId() {
 
 // Returns a stable anonymous device id, minting and persisting one on first
 // call. `storage` is injectable for unit-testing; defaults to localStorage.
-export function getAnonymousId(storage = window.localStorage) {
+// CYCLINGZONE-8V: `window.localStorage` is read inside the try — the lookup
+// itself throws when the browser blocks site data.
+export function getAnonymousId(storage) {
   try {
-    const existing = storage.getItem(ANON_ID_KEY);
+    const store = storage ?? window.localStorage;
+    const existing = store.getItem(ANON_ID_KEY);
     if (existing) return existing;
     const id = randomId();
-    storage.setItem(ANON_ID_KEY, id);
+    store.setItem(ANON_ID_KEY, id);
     return id;
   } catch {
     // localStorage unavailable (private mode / blocked). Return a per-call id so

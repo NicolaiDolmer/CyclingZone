@@ -126,12 +126,14 @@ claims/restarts, cross-process coordination og concurrent transport er separate.
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
 boolean-overloads paa den eksisterende RPC-transport. Kun service_role maa kalde
-dem; argumentet skal vaere `p_concurrently = true`. False/NULL og manglende
+dem; alle fem SECURITY DEFINER-overloads bruger `SET search_path = public, pg_temp`,
+med `pg_temp` eksplicit sidst. Katalogtesten kontrollerer dette efter foerste og
+gentagen apply. Argumentet skal vaere `p_concurrently = true`. False/NULL og manglende
 populated view/egnet UNIQUE-indeks fejler uden plain-refresh-fallback. De gamle
 nul-argument-funktioner bevares. Migrationen er additiv og aktiverer ingen Node-
-kaldesti eller scheduler. Node-PR #6153 holdes draft og frigives foerst efter
-saerskilt ejer-go, observeret SQL-apply, signatures/grants/schema-cache-verifikation
-og reel staging-transport. Dette er en deploy-kontrakt, ikke et prod-/load- eller
+kaldesti eller scheduler. SQL er lagt i prod og post-verificeret (5 signatures, 4/10). Node-PR #6153
+frigives efter ejer-go 5/10 uden at vente paa staging; reel staging-transport
+maales bagefter som separat accept i #5904. Dette er en deploy-kontrakt, ikke et prod-/load- eller
 femminutters-friskhedsbevis. Heartbeat kraever stadig fem vellykkede commits.
 
 ## Matviews eksponeret i API (fog of war-gennemgang 6/9, [#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870))

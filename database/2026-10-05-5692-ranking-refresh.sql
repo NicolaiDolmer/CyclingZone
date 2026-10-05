@@ -16,6 +16,8 @@
 -- the Node helper sends the named boolean argument and cannot select them.
 -- They must be inventoried before claiming every possible DB writer is safe.
 -- Each call remains its own transaction; the heartbeat follows all five commits.
+-- Definer search_path: trusted public, then explicitly last pg_temp.
+-- https://www.postgresql.org/docs/17/sql-createfunction.html#SQL-CREATEFUNCTION-SECURITY
 -- Rollback: restore the previous Node commit; drop ONLY these boolean overloads
 -- in a separately approved SQL action. Old no-argument functions are untouched.
 
@@ -23,7 +25,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION public.refresh_rider_rankings_mv(p_concurrently boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, pg_catalog
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF p_concurrently IS DISTINCT FROM true THEN
@@ -37,7 +39,7 @@ GRANT EXECUTE ON FUNCTION public.refresh_rider_rankings_mv(boolean) TO service_r
 
 CREATE OR REPLACE FUNCTION public.refresh_team_standings_ext_mv(p_concurrently boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, pg_catalog
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF p_concurrently IS DISTINCT FROM true THEN
@@ -51,7 +53,7 @@ GRANT EXECUTE ON FUNCTION public.refresh_team_standings_ext_mv(boolean) TO servi
 
 CREATE OR REPLACE FUNCTION public.refresh_team_race_points_mv(p_concurrently boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, pg_catalog
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF p_concurrently IS DISTINCT FROM true THEN
@@ -65,7 +67,7 @@ GRANT EXECUTE ON FUNCTION public.refresh_team_race_points_mv(boolean) TO service
 
 CREATE OR REPLACE FUNCTION public.refresh_global_rank_mv(p_concurrently boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, pg_catalog
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF p_concurrently IS DISTINCT FROM true THEN
@@ -79,7 +81,7 @@ GRANT EXECUTE ON FUNCTION public.refresh_global_rank_mv(boolean) TO service_role
 
 CREATE OR REPLACE FUNCTION public.refresh_youth_rider_rankings_mv(p_concurrently boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, pg_catalog
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF p_concurrently IS DISTINCT FROM true THEN

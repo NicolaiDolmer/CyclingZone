@@ -106,10 +106,21 @@ export async function runWave(options, supplied = {}) {
   }
 }
 
-function codexCommand() {
-  if (process.platform !== 'win32') return { file: 'codex', prefix: [] };
-  const source = execFileSync('pwsh', ['-NoProfile', '-Command', '(Get-Command codex -ErrorAction Stop).Source'], { encoding: 'utf8' }).trim();
-  return source.endsWith('.ps1') ? { file: 'pwsh', prefix: ['-NoProfile', '-File', source] } : { file: source, prefix: [] };
+export function codexCommand({ platform = process.platform, localAppData = process.env.LOCALAPPDATA, discover = () => JSON.parse(execFileSync('pwsh',
+  ['-NoProfile', '-Command', '@(Get-Command codex -All -ErrorAction Stop | ForEach-Object { $_.Source }) | ConvertTo-Json -Compress'],
+  { encoding: 'utf8', timeout: 10000 }).trim()) } = {}) {
+  if (platform !== 'win32') return { file: 'codex', prefix: [] };
+  const discovered = discover();
+  const sources = (Array.isArray(discovered) ? discovered : [discovered]).filter(source => typeof source === 'string' && source.trim());
+  // Desktop app updates its bundled CLI independently of the npm shim. Prefer
+  // the app binary already on PATH; do not pin a version/hash or change models.
+  const appBin = localAppData && `${path.win32.resolve(localAppData, 'OpenAI', 'Codex', 'bin').toLowerCase()}\\`;
+  const source = sources.find(candidate => appBin
+    && path.win32.resolve(candidate).toLowerCase().startsWith(appBin)
+    && path.win32.basename(candidate).toLowerCase() === 'codex.exe') || sources[0];
+  if (!source) throw Error('No Codex CLI found');
+  return path.win32.extname(source).toLowerCase() === '.ps1'
+    ? { file: 'pwsh', prefix: ['-NoProfile', '-File', source] } : { file: source, prefix: [] };
 }
 
 export async function runAgent(role, track, context) {

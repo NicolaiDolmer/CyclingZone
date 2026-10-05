@@ -15,6 +15,7 @@ const {
   arraysEqual,
   importCheck,
   missingRollout,
+  missingFlag,
 } = require("./check-patch-notes-version.js");
 
 test("#6014: nye player-changes kræver rollout; historiske og interne gør ikke", () => {
@@ -29,6 +30,21 @@ test("#6014: nye player-changes kræver rollout; historiske og interne gør ikke
   ];
   assert.deepEqual(missingRollout(patches, ["2.0"]), ["2.1#1", "2.1#3"]);
   assert.deepEqual(missingRollout(patches, ["2.1", "2.0"]), []);
+});
+
+test("#6154: nye beta-noter kraever flag; historiske, live og interne gør ikke", () => {
+  const patches = [
+    { version: "2.1", changes: [
+      { audience: "player", rollout: "beta", flag: "k" },
+      { audience: "player", rollout: "beta" },
+      { audience: "player", stage: "beta" },
+      { audience: "player", rollout: "live" },
+      { audience: "internal", rollout: "beta" },
+    ] },
+    { version: "2.0", changes: [{ audience: "player", rollout: "beta" }] },
+  ];
+  assert.deepEqual(missingFlag(patches, ["2.0"]), ["2.1#1", "2.1#2"]);
+  assert.deepEqual(missingFlag(patches, ["2.1", "2.0"]), []);
 });
 
 const TOKEN = "[patch-notes-snapshot-ok]";

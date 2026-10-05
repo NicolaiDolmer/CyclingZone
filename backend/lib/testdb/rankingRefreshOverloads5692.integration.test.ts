@@ -37,6 +37,18 @@ test('#5692 SQL-only: additive overloads, grants, mode enforcement and idempoten
     WHERE pronamespace='public'::regnamespace AND proname LIKE 'refresh_%' AND pronargs=1`);
   assert.equal(overloads.rows[0].n, 5, 'all five boolean overloads must exist before Node activation');
 
+  async function assertSafeSearchPaths() {
+    for (const view of views) {
+      const signature = `public.refresh_${view}(boolean)`;
+      const config = await db.query<{ proconfig: string[] }>(
+        'SELECT proconfig FROM pg_proc WHERE oid=$1::regprocedure', [signature]);
+      assert.deepEqual(config.rows[0].proconfig, ['search_path=public, pg_temp'],
+        `${signature} must explicitly place pg_temp last`);
+    }
+  }
+
+  await t.test('all five definers explicitly place pg_temp last', assertSafeSearchPaths);
+
   await t.test('all five are service-only definers and retain no-argument rollback functions', async () => {
     for (const view of views) {
       const signature = `public.refresh_${view}(boolean)`;
@@ -84,6 +96,7 @@ test('#5692 SQL-only: additive overloads, grants, mode enforcement and idempoten
 
   await t.test('repeat apply preserves data, legacy definitions and exactly five overloads', async () => {
     await db.exec(readFileSync(migration, 'utf8'));
+    await assertSafeSearchPaths();
     const after = await db.query(`SELECT proname, pg_get_functiondef(oid) AS definition
       FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname LIKE 'refresh_%' AND pronargs=0 ORDER BY proname`);
     assert.deepEqual(after.rows, legacy.rows);
