@@ -91,7 +91,7 @@
       "column": {
         "sponsor": "Sponsor",
         "guaranteed": "Guaranteed",
-        "perStage": "Per race day entered",
+        "perStage": "Per race day",
         "bonuses": "Bonuses on top"
       },
       "empty": {
