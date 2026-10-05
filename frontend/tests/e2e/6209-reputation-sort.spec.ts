@@ -26,6 +26,7 @@ test("reputation sorting spans every server page and uses the displayed number",
     }
     if (select.includes("firstname") && url.searchParams.has("order")) {
       const [key, direction] = (url.searchParams.get("order") || "reputation.desc").split(".");
+      if (key !== "reputation" && key !== "popularity") return route.fallback();
       const ordered=[...rows].sort((a,b) => direction === "asc" ? Number(a[key])-Number(b[key]) : Number(b[key])-Number(a[key]));
       const offset=Number(url.searchParams.get("offset") || 0), limit=Number(url.searchParams.get("limit") || 50);
       return route.fulfill({status:200,contentType:"application/json",headers:{...corsHeaders(req),"content-range":offset+"-"+(offset+limit-1)+"/1005"},body:JSON.stringify(ordered.slice(offset,offset+limit))});
