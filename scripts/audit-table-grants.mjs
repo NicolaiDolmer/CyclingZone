@@ -18,14 +18,40 @@ function name(raw) {
 }
 function freshAcl() { return new Map([...ROLES, 'public'].map(r => [r, new Set()])); }
 
-export function auditSource(source) {
+export function auditSource(source, { checkNewTables = true } = {}) {
   const findings = [];
   const statements = splitStatements(source);
   const tables = new Map();
   for (const { text } of statements) {
     const m = text.match(new RegExp(`^CREATE\\s+(?:UNLOGGED\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(${NAME})(?=\\s|\\()`, 'i'));
-    if (m && name(m[1]).startsWith('public.')) tables.set(name(m[1]), { text, rls: false, policies: [] });
-    else if (/\bCREATE\s+(?:UNLOGGED\s+)?TABLE\b/i.test(text) && !m) findings.push('Unsupported dynamic CREATE TABLE: use auditable top-level DDL.');
+    if (checkNewTables && m && name(m[1]).startsWith('public.')) tables.set(name(m[1]), { text, rls: false, policies: [] });
+    else if (checkNewTables && /\bCREATE\s+(?:UNLOGGED\s+)?TABLE\b/i.test(text) && !m) findings.push('Unsupported dynamic CREATE TABLE: use auditable top-level DDL.');
+  }
+  // Exposure checks apply even without a CREATE TABLE in the same file.
+  for (const { text } of statements) {
+    if (/^GRANT\b/i.test(text) || /^ALTER\s+DEFAULT\s+PRIVILEGES\b/i.test(text)) {
+      const to = text.match(/\bTO\s+(.+)$/i);
+      const clientRoles = to && /(?:^|,)\s*(?:GROUP\s+)?"?(?:anon|authenticated|public)"?(?=\s*(?:,|WITH\b|GRANTED\b|$))/i.test(to[1]);
+      if (clientRoles && (/\bON\s+ALL\s+(?:TABLES|SEQUENCES|FUNCTIONS|ROUTINES)\s+IN\s+SCHEMA\b/i.test(text)
+        || /^ALTER\s+DEFAULT\s+PRIVILEGES\b/i.test(text))) {
+        findings.push('Broad client grants/default privileges are not permitted: declare access per object.');
+      }
+      const standalone = text.match(/^(?:GRANT)\s+.+?\s+ON\s+(?:(TABLE|SEQUENCE|FUNCTION|PROCEDURE|ROUTINE|SCHEMA)\s+)?(.+?)\s+TO\s+(.+)$/i);
+      if (standalone && (!standalone[1] || standalone[1].toUpperCase() === 'TABLE')
+        && /(?:^|,)\s*(?:GROUP\s+)?"?(?:anon|public)"?(?=\s*(?:,|WITH\b|GRANTED\b|$))/i.test(standalone[3])) {
+        for (const target of standalone[2].split(',').map(raw => raw.trim().replace(/^ONLY\s+/i, ''))) {
+          if (!new RegExp(`^${NAME}$`, 'i').test(target)) continue;
+          const table = name(target);
+          if (table.startsWith('public.') && !tables.has(table)) findings.push(`${table}: anonymous/PUBLIC grant needs an explicit reviewed access decision; no new-table contract here.`);
+        }
+      }
+    }
+    if (/^(?:SELECT|WITH)\b/i.test(text) && /\bINTO\s+(?:(?:TEMP(?:ORARY)?|UNLOGGED)\s+)?(?:TABLE\s+)?"?public"?\./i.test(text)) {
+      findings.push('SELECT INTO public creates a table outside the access template; use explicit CREATE TABLE.');
+    }
+    if (/^ALTER\s+TABLE\b/i.test(text) && /\bSET\s+SCHEMA\s+"?public"?$/i.test(text)) {
+      findings.push('Moving a table into public requires an explicit access/RLS review.');
+    }
   }
   if (!tables.size) return findings;
   const contracts = new Map();
@@ -58,8 +84,8 @@ export function auditSource(source) {
       const all = /^ALL(?:\s+PRIVILEGES)?$/i.test(rawOps.trim());
       const ops = all ? (kind === 'SEQUENCE' ? SEQUENCE_OPS : TABLE_OPS) : rawOps.split(',').map(x => x.trim().toUpperCase());
       for (const rawName of rawNames.split(',')) {
-        if (!new RegExp(`^${NAME}$`, 'i').test(rawName.trim())) continue;
-        const key = objectKey(kind, name(rawName));
+        if (!new RegExp(`^${NAME}$`, 'i').test(rawName.trim().replace(/^ONLY\s+/i, ''))) continue;
+        const key = objectKey(kind, name(rawName.replace(/^ONLY\s+/i, '')));
         if (!acls.has(key)) { acls.set(key, freshAcl()); resets.set(key, new Set()); }
         for (const role of rawRoles.split(',').map(x => x.trim().replaceAll('"', '').toLowerCase())) {
           if (!acls.get(key).has(role)) continue;
@@ -113,18 +139,35 @@ export function auditSource(source) {
   return findings;
 }
 
+export function auditChangedSource(source, previousSource = null) {
+  if (previousSource === null) return auditSource(source);
+  // Legacy CREATE TABLE contracts are not re-litigated after an unrelated edit.
+  // New exposure statements still fail in modified SQL files.
+  const previous = new Set(splitStatements(previousSource).map(s => s.text));
+  const added = splitStatements(source).filter(s => !previous.has(s.text)).map(s => s.text).join(';\n');
+  return auditSource(added, { checkNewTables: false });
+}
+
 function main() {
   const args = process.argv.slice(2);
   let files;
+  let base;
   if (args[0] === '--base') {
     if (args.length !== 2) throw Error('Usage: --base COMMIT or SQL_FILE...');
-    const base = execFileSync('git', ['rev-parse', '--verify', '--end-of-options', `${args[1]}^{commit}`], { encoding: 'utf8' }).trim();
+    base = execFileSync('git', ['rev-parse', '--verify', '--end-of-options', `${args[1]}^{commit}`], { encoding: 'utf8' }).trim();
     files = execFileSync('git', ['diff', '--name-only', '--diff-filter=AM', '-z', base, 'HEAD', '--', 'database'], { encoding: 'utf8' }).split('\0').filter(p => p.endsWith('.sql'));
   } else {
     if (!args.length || args.some(a => a.startsWith('--'))) throw Error('Usage: audit-table-grants.mjs --base COMMIT | SQL_FILE...');
     files = args;
   }
-  const results = files.map(file => ({ file, findings: auditSource(readFileSync(file, 'utf8')) }));
+  const results = files.map(file => {
+    let previousSource = null;
+    if (base) {
+      const exists = execFileSync('git', ['ls-tree', '--name-only', base, '--', file], { encoding: 'utf8' }).trim();
+      if (exists) previousSource = execFileSync('git', ['show', `${base}:${file}`], { encoding: 'utf8' });
+    }
+    return { file, findings: auditChangedSource(readFileSync(file, 'utf8'), previousSource) };
+  });
   for (const result of results) for (const finding of result.findings) console.error(`${result.file}: ${finding}`);
   const count = results.reduce((n,r) => n + r.findings.length, 0);
   console.log(`Table grant audit: ${files.length} SQL files, ${count} findings. Static check only; catalog/policy semantics require read-only verification.`);

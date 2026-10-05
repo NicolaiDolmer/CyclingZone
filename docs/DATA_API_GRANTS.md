@@ -68,3 +68,5 @@ a broad grant. Test the actual read/write as each intended role on an isolated
 database before release. The inventory returns metadata only, not player rows.
 An applicable policy with no corresponding privilege is a review finding,
 not authorization to grant access. No production repair is automatic.
+
+Review contract (#6220): new SQL files get the full new-table audit. Modified legacy files check newly added exposure statements, without retroactively requiring new declarations for old CREATE TABLE statements. Blanket client/default-privilege grants fail in either case. Standalone anon/PUBLIC table grants also fail without a new-table contract. SELECT INTO public and SET SCHEMA public fail closed and require explicit review. This remains a static table guard, not full function/view coverage or a required branch-protection check.

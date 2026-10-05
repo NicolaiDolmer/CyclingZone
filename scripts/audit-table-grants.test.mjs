@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { auditSource } from './audit-table-grants.mjs';
+import { auditSource, auditChangedSource } from './audit-table-grants.mjs';
 const declaration = '-- data-api-access: {"table":"public.example","roles":{"anon":[],"authenticated":["SELECT"],"service_role":["SELECT","INSERT"]},"reason":"Owner reads; server writes"}\n';
 const create = 'CREATE TABLE IF NOT EXISTS public.example (id uuid PRIMARY KEY, owner_id uuid);\nALTER TABLE public.example ENABLE ROW LEVEL SECURITY;\n';
 const policy = 'CREATE POLICY owner_read ON public.example FOR SELECT TO authenticated USING (owner_id = auth.uid());\n';
@@ -50,3 +50,43 @@ test('explicit serial-sequence access passes and a grant on another sequence can
   assert.ok(auditSource(source.replace('GRANT USAGE ON SEQUENCE public.example_id_seq','GRANT USAGE ON SEQUENCE public.other_id_seq')).some(x=>x.includes('USAGE')));
 });
 test('column grants do not silently masquerade as table-wide access', () => assert.ok(auditSource(valid.replace('GRANT SELECT ON TABLE','GRANT SELECT (id) ON TABLE')).some(x=>x.includes('authenticated SELECT'))));
+
+test('broad client grants fail even in files with no CREATE TABLE', () => {
+  for (const source of [
+    'GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;',
+    'GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;',
+    'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO PUBLIC;',
+    'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;',
+    'GRANT SELECT ON TABLE public.other TO anon;',
+    'GRANT SELECT ON public.other TO PUBLIC;',
+  ]) assert.ok(auditSource(source).length, source);
+  assert.ok(auditSource(valid + 'GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;').length);
+});
+
+test('ONLY names are parsed as table names and preserve access contracts', () => {
+  assert.deepEqual(auditSource(valid.replace('ON TABLE public.example', 'ON TABLE ONLY public.example')), []);
+});
+
+test('new public tables through SELECT INTO and SET SCHEMA fail closed', () => {
+  assert.ok(auditSource('SELECT id INTO public.created_from_select FROM private.old;').length);
+  assert.ok(auditSource('ALTER TABLE staging.q SET SCHEMA public;').length);
+});
+
+test('legacy table edits do not require retroactive declarations but new exposures fail', () => {
+  const legacy = 'CREATE TABLE public.old(id uuid); GRANT SELECT ON public.old TO anon;';
+  assert.deepEqual(auditChangedSource(legacy + ' ALTER TABLE public.old ADD COLUMN name text;', legacy), []);
+  assert.ok(auditChangedSource(legacy + ' GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;', legacy).length);
+  assert.ok(auditChangedSource(legacy + ' GRANT INSERT ON public.old TO PUBLIC;', legacy).length);
+  assert.ok(auditChangedSource('CREATE TABLE public.new_table(id uuid);').length);
+});
+
+test('valid multi-target and qualified-role grants cannot bypass exposure checks', () => {
+  for (const sql of [
+    'GRANT SELECT ON TABLE public.a, public.b TO anon;',
+    'GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon GRANTED BY postgres;',
+    'GRANT SELECT ON ALL TABLES IN SCHEMA public TO GROUP anon;',
+    'ALTER DEFAULT PRIVILEGES GRANT SELECT ON TABLES TO GROUP authenticated;',
+    'SELECT 1 INTO "public".created;',
+    'WITH x AS (SELECT 1) SELECT * INTO public.created FROM x;',
+  ]) assert.ok(auditSource(sql).length, sql);
+});
