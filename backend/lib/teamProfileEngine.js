@@ -10,6 +10,7 @@ import { withSeniorSquadScope } from "./squads.js";
 import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { ensureMidSeasonSponsor } from "./midSeasonSponsor.js";
+import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
 import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, YOUTH_GROUP_SIZE, pickYouthGroupForNewTeam } from "./youthPoolAssignment.js";
 import {
   INITIAL_BALANCE,
@@ -612,6 +613,8 @@ export async function upsertOwnTeamProfile({
   // #5676: DI så testen kan verificere ungdomsgruppe-koblingen uden at mocke
   // hele league_divisions/teams-læse-kæden.
   assignYouthGroups = assignYouthGroupsForNewTeam,
+  // #6130: DI saa testen kan verificere mandat-koblingen ved holddannelse.
+  ensureFormationMandate = ensureMandateForTeamFormation,
 } = {}) {
   if (!supabase?.from) {
     throw createHttpError(500, "Supabase client is required");
@@ -736,6 +739,10 @@ export async function upsertOwnTeamProfile({
         { tags: { component: "team-create-board-goal-calibration" }, extra: { teamId: team.id } },
       );
     }
+
+    // #6130: mandatet oprettes ved selve holddannelsen, ikke foerst ved DNA-valget
+    // (hold der aldrig valgte DNA stod uden mandat i dagevis). Kaster aldrig, idempotent.
+    await ensureFormationMandate(supabase, { teamId: team.id });
 
     // #3730: sponsorkontrakt + forholdsmæssig udbetaling for RESTEN af den kørende sæson.
     // Uden den findes holdet ikke når season_start_sponsor udbetales, og får hverken

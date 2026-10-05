@@ -33,6 +33,8 @@ const noopReconcileCalendar = async () => ({ skipped: "test-noop" });
 // #5676: hold ungdomsgruppe-koblingen ude af de eksisterende tests (no-op). Tests
 // der vil verificere koblingen sender deres egen stub eller den ægte funktion.
 const noopAssignYouthGroups = async () => ({ assigned: {} });
+// #6130: hold mandat-koblingen ude af de eksisterende tests (no-op).
+const noopFormationMandate = async () => ({ skipped: "test-noop" });
 function upsert(args) {
   return upsertOwnTeamProfile({
     allocateStarterSquad: noopAllocate,
@@ -41,6 +43,7 @@ function upsert(args) {
     reconcileAiTeams: noopReconcileAiTeams,
     reconcilePoolCalendar: noopReconcileCalendar,
     assignYouthGroups: noopAssignYouthGroups,
+    ensureFormationMandate: noopFormationMandate,
     ...args,
   });
 }
@@ -1732,4 +1735,68 @@ test("#5676 upsertOwnTeamProfile: kobler ungdomsgruppe-placeringen ind for et NY
   const stored = supabase.state.teams.find((t) => t.id === result.team.id);
   assert.equal(stored.u23_league_division_id, u23Groups[0].id);
   assert.equal(stored.junior_league_division_id, juniorGroups[0].id);
+});
+
+// #6130 · Holddannelsen skal selv give holdet sit bestyrelsesmandat. Foer fixet
+// kom mandatet foerst ved DNA-valget, saa hold der endnu ikke havde valgt DNA
+// (eller aldrig fik et identitets-grundlag) stod uden mandat.
+test("#6130 nyt hold (created===true) faar mandat ved holddannelsen", async () => {
+  const supabase = createSupabaseDouble();
+  const calls = [];
+  const recordingMandate = async (_sb, args) => { calls.push(args); return { mandate_id: "m-1" }; };
+
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    name: "Fresh Squad",
+    managerName: "Manager",
+    ensureFormationMandate: recordingMandate,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(calls.length, 1, "mandat-hooket kaldt praecis een gang");
+  assert.equal(calls[0].teamId, result.team.id, "mandat for det nye holds id");
+});
+
+test("#6130 rename (created===false) kalder IKKE mandat-hooket", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [{
+      id: "team-1", user_id: "user-1", name: "Old Name", manager_name: "Old Manager",
+      balance: INITIAL_BALANCE, sponsor_income: SPONSOR_INCOME_BASE,
+    }],
+    boardProfiles: [{ id: "board-1", team_id: "team-1" }],
+  });
+  const calls = [];
+  const recordingMandate = async (_sb, args) => { calls.push(args); return null; };
+
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "New Name",
+    managerName: "New Manager",
+    ensureFormationMandate: recordingMandate,
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(calls.length, 0);
+});
+
+test("#6130 default-hooket er den aegte ensureMandateForTeamFormation og vaelter aldrig signup", async () => {
+  // Ingen DI for mandatet: den aegte funktion koerer mod double'en og returnerer
+  // et skip i stedet for at kaste, saa signup lykkes.
+  const supabase = createSupabaseDouble();
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Fresh Squad",
+    managerName: "Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: noopReconcileAiTeams,
+    reconcilePoolCalendar: noopReconcileCalendar,
+    assignYouthGroups: noopAssignYouthGroups,
+  });
+  assert.equal(result.created, true);
 });
