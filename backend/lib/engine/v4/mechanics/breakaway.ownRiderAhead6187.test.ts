@@ -232,7 +232,7 @@ const PINNED_ROUTE: RouteV2 = {
   segments: [
     ...Array.from({ length: 10 }, (_, i) => ({ kind: "flat" as const, from_km: i * 10, to_km: (i + 1) * 10 })),
     { kind: "climb" as const, from_km: 100, to_km: 115, category: "1" as const, avg_gradient: 7, top_elevation_m: 1500 },
-    { kind: "descent" as const, from_km: 115, to_km: 130 },
+    { kind: "descent" as const, from_km: 115, to_km: 130, technicality: 2 as const },
     { kind: "climb" as const, from_km: 130, to_km: 160, category: "HC" as const, avg_gradient: 7.5, top_elevation_m: 2100 },
   ],
   weather: { kind: "sun", wind_exposure: 0 },
