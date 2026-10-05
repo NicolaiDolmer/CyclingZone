@@ -21,6 +21,8 @@ const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
 // #6067: orders_gc_v1's GC-reaktion (importen står her, ikke øverst, så den
 // ikke kolliderer med #6050's import i samme fil).
 import { describeGcReactionEvent } from "./ordersGcSurface.ts";
+// #6137: gentagne ens hændelser på samme km bliver én linje (kun visningen).
+import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGrouping.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -90,10 +92,10 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [] } = {}) {
   const sorted = [...(events || [])].sort((a, b) => (a?.km ?? 0) - (b?.km ?? 0));
-  const feedEvents = sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided"));
+  const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
     .map((e) => ({ km: e.km, category: e.params?.category ?? null, name: e.params?.name ?? null }));
@@ -243,6 +245,7 @@ export function collectRiderIds(events) {
  */
 export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (!event?.type) return null;
+  if (event.grouped) return describeGroupedEvent(event, (id) => riderName(id, riderNameById));
   const p = event.params || {};
   const breakawayParams = () => {
     const names = resolvedRiderNames(p.rider_ids, riderNameById);
