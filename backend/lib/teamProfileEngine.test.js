@@ -1800,3 +1800,15 @@ test("#6130 default-hooket er den aegte ensureMandateForTeamFormation og vaelter
   });
   assert.equal(result.created, true);
 });
+
+test("#6130 et kastende mandat-hook vaelter ikke signup", async () => {
+  const supabase = createSupabaseDouble();
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    name: "Fresh Squad",
+    managerName: "Manager",
+    ensureFormationMandate: async () => { throw new Error("boom"); },
+  });
+  assert.equal(result.created, true);
+});

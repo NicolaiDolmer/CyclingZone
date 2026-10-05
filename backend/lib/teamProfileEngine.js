@@ -741,8 +741,23 @@ export async function upsertOwnTeamProfile({
     }
 
     // #6130: mandatet oprettes ved selve holddannelsen, ikke foerst ved DNA-valget
-    // (hold der aldrig valgte DNA stod uden mandat i dagevis). Kaster aldrig, idempotent.
-    await ensureFormationMandate(supabase, { teamId: team.id });
+    // (hold der aldrig valgte DNA stod uden mandat i dagevis). Idempotent. BEVIDST
+    // IKKE-FATAL som de andre trin: et manglende mandat repareres af backfill6130.
+    try {
+      const mandateOutcome = await ensureFormationMandate(supabase, { teamId: team.id });
+      if (mandateOutcome?.skipped === "error") {
+        console.error(`[teamProfileEngine] #6130 mandat FEJLEDE for nyt hold ${team.id} (ikke-fatal):`, mandateOutcome.reason);
+      }
+    } catch (mandateError) {
+      console.error(
+        `[teamProfileEngine] #6130 mandat FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        mandateError?.message || mandateError,
+      );
+      sentryCapture(
+        mandateError instanceof Error ? mandateError : new Error(String(mandateError)),
+        { tags: { component: "team-create-formation-mandate" }, extra: { teamId: team.id } },
+      );
+    }
 
     // #3730: sponsorkontrakt + forholdsmæssig udbetaling for RESTEN af den kørende sæson.
     // Uden den findes holdet ikke når season_start_sponsor udbetales, og får hverken
