@@ -444,6 +444,60 @@ test("2 (review af #6223): regruppering, nedkoerselsangreb, udbrudsjagt og final
   assert.deepEqual(violations.slice(0, 10), [], `${violations.length} overtraedelser`);
 });
 
+// Andet review af #6223: tre grupper i kaede (front, gruppe A, gruppe B bag A).
+// Loftet gaelder lukningen mod FRONTEN, for hver gruppe for sig. Gruppe A jager
+// ikke (ingen jagtevne), gruppe B er klart bedre nedkoerere med al jagtkraften.
+function chainGroups(gapA: number, gapB: number): ScenarioGroup[] {
+  const many = (prefix: string, n: number, abilities: Partial<Record<AbilityKey, number>>) =>
+    Array.from({ length: n }, (_, i) => [`${prefix}${i}`, abilities] as [string, Partial<Record<AbilityKey, number>>]);
+  return [
+    { id: "front", kind: "peloton", gap: 0, riders: many("f", 4, { descending: 40, tempo: 60, endurance: 60, durability: 60 }) },
+    { id: "groupA", kind: "chase", gap: gapA, riders: many("a", 3, { descending: 40, tempo: 1, endurance: 1, aggression: 1 }) },
+    { id: "groupB", kind: "chase", gap: gapB, riders: [...many("ba", 3, { descending: 99, ...STRONG }), ...many("bb", 3, { descending: 60, ...STRONG })] },
+  ];
+}
+
+test("2 (andet review af #6223): tre grupper i kaede holder loftet mod fronten for begge grupper bag den", () => {
+  const violations: string[] = [];
+  let bClosed = 0;
+  let checkedA = 0;
+  for (const km of [3, 8, 15]) {
+    for (const [gapA, gapB] of [[12, 20], [20, 30], [40, 60], [120, 200]]) {
+      for (const technicality of [1, 2, 3]) {
+        for (let s = 0; s < 6; s++) {
+          const run = runLastDescentSegment(chainGroups(gapA, gapB), km, technicality, `6223-chain-${km}-${gapA}-${gapB}-${technicality}-${s}`, true);
+          const finalGap = gapByRider(run.finalState.groups);
+          const front = finalGap.get("f0")!;
+          if (gapB - (finalGap.get("bb0")! - front) > 0) bClosed += 1;
+          if (finalGap.has("a0")) checkedA += 1;
+          // finishDescentCapViolations maaler hver rytter (ogsaa A's og B's) mod fronten ved toppen.
+          for (const v of finishDescentCapViolations(run, km)) violations.push(`${km} km, A ${gapA}, B ${gapB}, teknik ${technicality}, seed ${s}: ${v}`);
+        }
+      }
+    }
+  }
+  assert.ok(bClosed > 0, "gruppe B lukker noget paa nedkoerslen (testen er ikke tom)");
+  assert.ok(checkedA > 0, "gruppe A er med i maal og bliver maalt");
+  assert.deepEqual(violations.slice(0, 10), [], `${violations.length} overtraedelser`);
+});
+
+test("2 (andet review af #6223): i finalen kan en gruppe bag fronten passere gruppen foran sig (loftet gaelder kun mod fronten)", () => {
+  // Dokumenterer den faktiske adfaerd (RULES "Én tidsmodel" punkt 4): finalens jagt
+  // lofter hver gruppe for sig mod fronten, ikke mod gruppen umiddelbart foran.
+  const km = 8;
+  const run = runLastDescentSegment(chainGroups(20, 30), km, 2, "6223-chain-pass", true);
+  const finalGap = gapByRider(run.finalState.groups);
+  const front = finalGap.get("f0")!;
+  const a = finalGap.get("a0")! - front;
+  const b = finalGap.get("bb0")! - front;
+  // I selve nedkoerselshooket (regruppering + angreb) ligger B stadig bag A.
+  const afterDescent = gapByRider(run.afterDescent.groups);
+  assert.ok(afterDescent.get("bb0")! > afterDescent.get("a0")!, "efter nedkoerselshooket er B stadig bag A");
+  assert.ok(b < a, `B (${b} s) passerer A (${a} s) i finalen`);
+  assert.ok(30 - b <= finishDescentChaseCapSeconds(30, km) + 0.05, "B holder stadig loftet mod fronten");
+  assert.ok(20 - a <= finishDescentChaseCapSeconds(20, km) + 0.05, "A holder stadig loftet mod fronten");
+});
+
 test("2 (review af #6223): uden orders_gc_v3 er nedkoerselsangrebet uaendret (fast gevinst, ingen bog)", () => {
   const run = runLastDescentSegment(scenarioGroups("chase_attack", 40), 3, 3, "6223-legacy", false);
   const attack = run.descentEvents.find((e) => e.type === "finale_attack");
