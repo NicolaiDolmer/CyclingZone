@@ -224,7 +224,8 @@ export type GcStanding = { rider_id: string; rank: number; gap_seconds: number }
  *   "missing"     = et etapeloeb uden brugbart klassement (diagnosticeres)
  */
 export type GcContext =
-  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[] }
+  // #5978 (ADDITIVT, valgfrit, KUN orders_gc_v3): stages_remaining = etaper tilbage efter i dag.
+  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[]; stages_remaining?: number }
   | { status: "first_stage"; stage_number: number }
   | { status: "one_day" }
   | { status: "missing"; stage_number?: number };
@@ -706,6 +707,9 @@ export type SegmentHookContext = {
   // #6187 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v3 (og senere).
   // Udeladt = holdene jagter som under orders_gc_v2 (mechanics/breakaway.ts).
   ordersGcV3?: true;
+  // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
+  // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
+  ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;
   // #5978 (ADDITIVT og VALGFRIT): StageInput.gc_context, KUN sat under
   // orders_gc_v1 (segmentLoop). Legacy-hooks ser aldrig feltet.
   gcContext?: GcContext | null;

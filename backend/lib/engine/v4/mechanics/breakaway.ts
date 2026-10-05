@@ -74,7 +74,7 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { isBunchCatchRoute } from "../finale.ts";
+import { fieldFinaleTypeBehindBreakaway, isBunchCatchRoute } from "../finale.ts";
 import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 import {
@@ -83,7 +83,15 @@ import {
   type FormationRider,
   type FormationStance,
 } from "./breakawayPermission.ts";
-import { assessGcThreat, normalizeGcContext, protectedRiderForTeam, type GcThreat } from "./gcThreat.ts";
+import {
+  assessGcThreat,
+  formationDangerTeams,
+  normalizeGcContext,
+  oneDayProtectedRider,
+  protectedRiderForTeam,
+  type DangerModel,
+  type GcThreat,
+} from "./gcThreat.ts";
 import {
   advanceTeamReaction,
   availableReactionWorkers,
@@ -365,11 +373,18 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   const stances = new Map<string, FormationStance>();
   for (const order of parseBreakawayOrders(ctx.orders)) stances.set(order.team_id, order.breakaway_stance);
 
+  // #5978 (KUN orders_gc_v3): et forsoeg fra en farlig rytter moeder haardere
+  // modreaktion fra de hold der har noget at forsvare (gcThreat.formationDangerTeams).
+  const gcContext = ctx.ordersGcV3 === true ? normalizeGcContext(ctx.gcContext) : null;
+  const dangerTeams = gcContext && (gcContext.status === "standings" || gcContext.status === "one_day")
+    ? formationDangerLookup(state, ctx, gcContext, sourceGroup)
+    : undefined;
   const formation = resolveMorningBreakFormation({
     riders: formationRiders,
     stances,
     roll: (stream, riderId) => ctx.rngFor(stream === "attempt" ? "breakaway_attempt" : "breakaway_attempt_success", riderId)(),
     maxSize: Math.min(MAX_BREAKAWAY_SIZE, formationRiders.length - 1),
+    ...(dangerTeams ? { dangerTeams } : {}),
   });
   if (formation.attempted.length === 0) return { state, events };
 
@@ -412,6 +427,26 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   }
 
   return { state: { ...state, groups, ...(riders ? { riders } : {}) }, events };
+}
+
+/**
+ * #5978 (KUN orders_gc_v3): for hvilke hold er et forsoeg fra rytteren farligt?
+ * Vurderet fra kildegruppen uden forspring, paa hele dagens rute.
+ */
+function formationDangerLookup(
+  state: EngineState,
+  ctx: BreakawayHookContext,
+  gcContext: GcContext,
+  sourceGroup: RaceGroup,
+): ((riderId: string) => readonly string[]) | undefined {
+  const dangerModel = dangerModelFor(ctx, gcContext);
+  if (gcContext.status === "one_day" && !dangerModel.routeDemand) return undefined;
+  const racingRiderIds = new Set(Object.values(state.riders).filter((r) => r.status === "racing").map((r) => r.rider_id));
+  const teamIds = [...new Set(sourceGroup.rider_ids.map((id) => teamIdOf(ctx.entrants[id])).filter((id): id is string => !!id))];
+  return (riderId: string) => formationDangerTeams({
+    gcContext, riderId, teamIds, groups: [sourceGroup], entrants: ctx.entrants, route: ctx.route,
+    km: ctx.route.segments[0]?.from_km ?? 0, racingRiderIds, dangerModel,
+  });
 }
 
 // ── Jagt-interesse (#2416) ─────────────────────────────────────────────────────
@@ -837,6 +872,24 @@ function teamChasePlanWithReactions(
   return { signal: clamp(signal, -1, 1), chaserWork };
 }
 
+/** #5978: arbejdet pr. rytter flettet som max (fast, sorteret raekkefoelge). */
+export function mergeWork(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const id of [...new Set([...a.keys(), ...b.keys()])].sort((x, y) => x.localeCompare(y))) {
+    out.set(id, Math.max(a.get(id) ?? 0, b.get(id) ?? 0));
+  }
+  return out;
+}
+
+/**
+ * #5978 (review af #6213, punkt 1, KUN orders_gc_v3): to jagtplaner for samme
+ * jagtgruppe (hver sit udbrud) flettet: en rytter der jager mindst ét af
+ * udbruddene, betaler sit stoerste arbejde én gang.
+ */
+export function mergeChasePlans(a: TeamChasePlan, b: TeamChasePlan): TeamChasePlan {
+  return { signal: Math.max(a.signal, b.signal), chaserWork: mergeWork(a.chaserWork, b.chaserWork) };
+}
+
 /**
  * Jagtens pris (#5570): hver jaeger betaler en andel af sin EGEN CP via
  * `team_cp_factor` — samme valuta, samme additive bogfoering og samme
@@ -1144,6 +1197,21 @@ function gcReactionActive(ctx: BreakawayHookContext): boolean {
 }
 
 /**
+ * #5978 (KUN orders_gc_v3): hvad farlighed maales paa. Etapeloeb: etaper tilbage
+ * (klassement-konteksten). Endagsloeb: dagens evne-vektor (finalens krav; en
+ * udbrudsfinale maales paa feltets finale bag udbruddet).
+ */
+function dangerModelFor(ctx: BreakawayHookContext, gcContext: GcContext): DangerModel {
+  if (gcContext.status === "standings") {
+    return gcContext.stages_remaining !== undefined ? { stagesRemaining: gcContext.stages_remaining } : {};
+  }
+  if (gcContext.status !== "one_day") return {};
+  const finaleType = ctx.route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(ctx.route) : ctx.route.finale_type;
+  const demand = finaleType ? ctx.tuning.finale.demandVectorByFinaleType[finaleType] : undefined;
+  return demand ? { routeDemand: demand } : {};
+}
+
+/**
  * Hvert holds GC-vurdering og reaktionsplan for segmentet, ud fra tilstanden
  * ved segmentets start. Kun hold med en klassificeret GC-rytter vurderes; et
  * hold uden GC-interesse har intet at reagere paa (almindelig default).
@@ -1151,7 +1219,10 @@ function gcReactionActive(ctx: BreakawayHookContext): boolean {
 function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContext: GcContext): GcReactionSetup {
   const decisions: TeamGcDecision[] = [];
   const reactionsByChaseGroup: GcReactionSetup["reactionsByChaseGroup"] = new Map();
-  if (gcContext.status !== "standings") return { decisions, reactionsByChaseGroup };
+  // #5978 (KUN orders_gc_v3): farlighed med potentiale, snoren og endagsloebet.
+  const dangerModel = ctx.ordersGcV3 === true ? dangerModelFor(ctx, gcContext) : undefined;
+  const oneDay = gcContext.status === "one_day" && dangerModel?.routeDemand !== undefined;
+  if (gcContext.status !== "standings" && !oneDay) return { decisions, reactionsByChaseGroup };
 
   const breakawayGroups = findBreakawayGroups(state.groups);
   const chasingGroupIds = new Set<string>();
@@ -1173,7 +1244,9 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
     : 0;
 
   for (const teamId of [...teamIds].sort((a, b) => a.localeCompare(b))) {
-    const protectedRiderId = protectedRiderForTeam({ gcContext, teamId, entrants: ctx.entrants });
+    const protectedRiderId = oneDay
+      ? oneDayProtectedRider({ teamId, groups: state.groups, entrants: ctx.entrants, routeDemand: dangerModel!.routeDemand!, racingRiderIds })
+      : protectedRiderForTeam({ gcContext, teamId, entrants: ctx.entrants });
     if (!protectedRiderId) continue;
     // Truslen vurderes KUN mod dagens udbrudsgrupper (det M5's jagt kan virke
     // paa) og GC-rytterens egen gruppe.
@@ -1189,6 +1262,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
       chasingGroupIds,
       // #6187: under orders_gc_v3 jager et hold aldrig en gruppe med egen mand i.
       ...(ctx.ordersGcV3 ? { ownTeamId: teamId, skipOwnRiderGroups: true } : {}),
+      ...(dangerModel ? { dangerModel } : {}),
     });
     const stance: ReactionStance = stanceByTeam.get(teamId) ?? "neutral";
     const groupRiderIds = threat.chase_group_id
@@ -1196,7 +1270,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
       : [];
     const workers = availableReactionWorkers({ teamId, groupRiderIds, entrants: ctx.entrants, riders: state.riders });
     const prior = state.team_reactions?.[teamId];
-    let plan = planTeamReaction({ prior, threat, stance, availableWorkers: workers });
+    let plan = planTeamReaction({ prior, threat, stance, availableWorkers: workers, ...(dangerModel ? { leash: true } : {}) });
     if (plan.mode === "preventive") {
       // OEVRE skon paa segmentets pris ved fuld intensitet: alle hjaelpere
       // jager hele segmentet alene (ingen deling). Den faktiske pris er <= den.
@@ -1273,8 +1347,17 @@ export function ownRidersOnWheel(input: {
  */
 export function ownRiderWheelSitterIds(input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext"> & { gcContext: unknown }): Set<string> {
   const sitters = new Set<string>();
-  for (const s of ownRidersOnWheel({ ...input, gcContext: normalizeGcContext(input.gcContext) })) for (const id of s.rider_ids) sitters.add(id);
+  for (const s of ownRidersOnWheelRaw(input)) for (const id of s.rider_ids) sitters.add(id);
   return sitters;
+}
+
+/**
+ * #5978 (review af #6213, punkt 2): segmentLoop's kobling. Hjulsidderne ved
+ * segmentets start (raa klassement-kontekst), saa tempoet og hooket bruger
+ * samme saet (SegmentHookContext.ownRidersOnWheel).
+ */
+export function ownRidersOnWheelRaw(input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext"> & { gcContext: unknown }): OwnRidersOnWheel[] {
+  return ownRidersOnWheel({ ...input, gcContext: normalizeGcContext(input.gcContext) });
 }
 
 /** #6187: holdets koerende ryttere i gruppen, sorteret. */
@@ -1409,8 +1492,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // GC-rytter. Holdet faar etapens ene forklarende linje foerste gang reglen
   // aendrer noget for det. Under orders_gc_v1/v2 er alt herunder tomt.
   const ordersGcV3 = ctx.ordersGcV3 === true;
+  // #5978 (review af #6213, punkt 2): segmentLoop har sat hjulsidderne ud fra
+  // tilstanden ved segmentets start (det tempoet blev regnet paa); hooket bruger
+  // samme saet. Kaldt uden (direkte hook-tests) regnes det her.
   const onWheel = ordersGcV3 && gcContext
-    ? ownRidersOnWheel({ groups: state.groups, riders: state.riders, entrants: ctx.entrants, gcContext, route: ctx.route, km: ctx.segment.from_km })
+    ? (ctx.ownRidersOnWheel ? [...ctx.ownRidersOnWheel] : ownRidersOnWheel({ groups: state.groups, riders: state.riders, entrants: ctx.entrants, gcContext, route: ctx.route, km: ctx.segment.from_km }))
     : [];
   const wheelSitterIds = new Set(onWheel.flatMap((w) => w.rider_ids));
   const planByBreakaway = new Map<string, ReturnType<typeof teamChasePlan>>();
@@ -1443,8 +1529,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // (samme dom som GC-bremsen), daempes det ekstra som naar hele feltet lader
     // gaa (#6074's gulv), saa en GC-rytter med udbrudsordre ikke faar et forspring
     // der goer ham til klassementets foerer etape efter etape.
+    // #5978 (KUN orders_gc_v3): ogsaa et hold der holder snoren paa en rytter i udbruddet.
+    const inBreak = (d: TeamGcDecision) => d.threat.threat_rider_ids.some((id) => breakaway.rider_ids.includes(id))
+      || (ordersGcV3 && (d.threat.leash_rider_ids ?? []).some((id) => breakaway.rider_ids.includes(id)));
     const dangerous = gcSetup !== null
-      && letGoBrakingTeams(gcSetup.decisions.filter((d) => d.threat.threat_rider_ids.some((id) => breakaway.rider_ids.includes(id))), chaseGroup.id).size > 0;
+      && letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).size > 0;
     // #6088: et udbrud med staerke ryttere faar ikke det ekstra loft.
     const strength = ordersGcV1 ? breakawayStrength(breakaway.rider_ids, fieldRiderIds, ctx.entrants) : undefined;
     // #6073 (KUN orders_gc_v2 paa rullende): mindre ekstra plads (rollingBreakaway.ts).
@@ -1499,12 +1588,21 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       }));
     }
     const priorWork = workByChaseGroup.get(chaseGroup.id);
-    workByChaseGroup.set(chaseGroup.id, { plan: chasePlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
+    // #5978 (review af #6213, punkt 1, KUN orders_gc_v3): planerne kan vaere
+    // forskellige pr. udbrud (egne ryttere foran). Arbejdet flettes pr. rytter
+    // (max) paa tvaers af udbruddene bag samme jagtgruppe, saa raekkefoelgen
+    // aldrig afgoer om et hold betaler. Under v1/v2 er planerne ens: sidste vinder.
+    const mergedPlan = ordersGcV3 && priorWork ? mergeChasePlans(priorWork.plan, chasePlan) : chasePlan;
+    workByChaseGroup.set(chaseGroup.id, { plan: mergedPlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
     if (ordersGcV3) planByBreakaway.set(breakaway.id, chasePlan); // #6187: filmens "hvem hentede" pr. udbrud
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
-    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id), entrants: ctx.entrants, riders: state.riders }) : null;
+    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders }) : null;
     const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
-    if (brake && braked && braked.brakedShare > 0) brakeByChaseGroup.set(chaseGroup.id, { work: brake.work, km: Math.max(brakeByChaseGroup.get(chaseGroup.id)?.km ?? 0, letGoKm * braked.brakedShare) });
+    if (brake && braked && braked.brakedShare > 0) {
+      const priorBrake = brakeByChaseGroup.get(chaseGroup.id);
+      const work = ordersGcV3 && priorBrake ? mergeWork(priorBrake.work, brake.work) : brake.work; // #5978: som jagt-arbejdet
+      brakeByChaseGroup.set(chaseGroup.id, { work, km: Math.max(priorBrake?.km ?? 0, letGoKm * braked.brakedShare) });
+    }
 
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,

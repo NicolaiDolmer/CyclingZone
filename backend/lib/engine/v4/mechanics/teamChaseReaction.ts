@@ -104,6 +104,14 @@ export function planTeamReaction(input: {
   threat: GcThreat;
   stance: ReactionStance;
   availableWorkers: readonly string[];
+  /**
+   * #5978 (KUN orders_gc_v3): snoren. Et hold der reagerer, slipper ikke, saa
+   * laenge truslen siger `leash_hold` (den farlige rytter sidder der, og
+   * margin er ikke naaet); det stopper kun naar hjaelperne eller budgettet er
+   * brugt. Endagsloebets trussel giver ingen lad-gaa-undtagelse (ejer 30/9).
+   * Udeladt = orders_gc_v1/v2, bit-identisk.
+   */
+  leash?: boolean;
 }): TeamReactionPlan {
   const prior = input.prior ?? IDLE_TEAM_REACTION;
   const tuning = TEAM_REACTION_TUNING;
@@ -112,7 +120,15 @@ export function planTeamReaction(input: {
 
   // Eksplicit jagt: ordren styrer, undtagelsens budget gaelder ikke.
   if (input.stance === "chase") return none("explicit_chase");
-  if (input.threat.severity === "none") return none(input.threat.reason);
+  if (input.threat.severity === "none") {
+    if (input.leash && input.threat.leash_hold === true && prior.status === "reacting" && prior.mode) {
+      if (input.availableWorkers.length === 0) return none("no_workers");
+      if (prior.mode === "neutral") return { intensity: tuning.neutralModerateIntensity, mode: "neutral", budgetRemaining, reason: "leash" };
+      if (budgetRemaining <= 0) return none("budget_exhausted");
+      return { intensity: tuning.preventiveIntensity, mode: "preventive", budgetRemaining, reason: "leash" };
+    }
+    return none(input.threat.reason);
+  }
 
   if (input.stance === "neutral") {
     if (input.availableWorkers.length === 0) return none("no_workers");
@@ -120,6 +136,8 @@ export function planTeamReaction(input: {
     return { intensity, mode: "neutral", budgetRemaining, reason: input.threat.reason };
   }
 
+  // #5978 (KUN orders_gc_v3): lad-gaa-undtagelsen beskytter kun klassementet.
+  if (input.leash && input.threat.one_day === true) return none("let_go_one_day");
   // let_go: kun en alvorlig trussel, kun med budget tilbage, kun med hjaelpere.
   if (input.threat.severity !== "serious") return none("let_go_not_serious");
   if (prior.status === "exhausted" || budgetRemaining <= 0) return none("budget_exhausted");
@@ -178,12 +196,14 @@ export type LetGoBrakeDecision = {
  * jagtordre ved en reel trussel. Vaerdien er det forspring holdet tolererer
  * (GcThreat.tolerated_lead_seconds; mangler det, 0 = ingen tolerance).
  */
-export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chaseGroupId: string): Map<string, number> {
+export function letGoBrakingTeams(decisions: readonly LetGoBrakeDecision[], chaseGroupId: string, leash = false): Map<string, number> {
   const out = new Map<string, number>();
   for (const d of decisions) {
     if (d.threat.chase_group_id !== chaseGroupId) continue;
-    if (d.threat.severity !== "serious") continue;
     const reacting = d.plan.intensity > 0;
+    // #5978 (KUN orders_gc_v3): et hold der holder snoren, bremser ogsaa.
+    const leashBrake = leash && reacting && (d.threat.severity === "moderate" || d.threat.leash_hold === true);
+    if (d.threat.severity !== "serious" && !leashBrake) continue;
     const threatenedChase = d.stance === "chase";
     if (!reacting && !threatenedChase) continue;
     const tolerated = d.threat.tolerated_lead_seconds;
@@ -293,6 +313,8 @@ export function advanceTeamReaction(input: {
   teamId: string;
   km: number;
   plan?: TeamReactionPlan;
+  /** #5978 (KUN orders_gc_v3): se planTeamReaction. */
+  leash?: boolean;
 }): { next: TeamReactionState; workers: string[]; events: TimelineEvent[] } {
   const prior = input.prior ?? IDLE_TEAM_REACTION;
   const plan = input.plan ?? planTeamReaction(input);
@@ -333,7 +355,13 @@ export function advanceTeamReaction(input: {
   if (prior.status === "reacting") {
     // #6187 (KUN orders_gc_v3): truslen sidder nu sammen med holdets egen mand.
     // Det er ikke "under kontrol"; holdet jager bare ikke sine egne.
-    const reason = input.threat.severity === "none" ? (input.threat.reason === "own_rider_ahead" ? "own_rider_ahead" : "contained") : plan.reason;
+    // #5978 (KUN orders_gc_v3): mens snoren holder, er truslen ikke "under
+    // kontrol"; holdet stopper kun fordi hjaelperne eller budgettet er brugt.
+    const leashHeld = input.threat.severity === "none" && input.threat.leash_hold === true
+      && (plan.reason === "no_workers" || plan.reason === "budget_exhausted");
+    const reason = leashHeld
+      ? plan.reason
+      : input.threat.severity === "none" ? (input.threat.reason === "own_rider_ahead" ? "own_rider_ahead" : "contained") : plan.reason;
     events.push(reactionEvent(input.km, input.teamId, "stopped", reason, input.threat, prior.mode));
     return { next: { ...prior, status: "idle", reason }, workers: [], events };
   }

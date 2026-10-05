@@ -47,7 +47,12 @@ export type GcThreatReason =
   | "leader_at_risk"
   // #6187 (KUN orders_gc_v3): den eneste trussel foran er holdets egne ryttere
   // (eller sidder i en gruppe med en af holdets egne). Holdet jager ikke.
-  | "own_rider_ahead";
+  | "own_rider_ahead"
+  // #5978 (KUN orders_gc_v3, endagsloeb): en rytter der paa evner kan vinde paa
+  // dagens rute sidder foran holdets kaptajn, som selv kan vinde.
+  | "winner_ahead"
+  // #5978 (KUN orders_gc_v3, endagsloeb): holdet har ingen kaptajn der kan vinde.
+  | "no_contender";
 
 export type GcThreat = {
   severity: GcThreatSeverity;
@@ -71,7 +76,114 @@ export type GcThreat = {
    * egen rytter, hvor den trussel holdet ikke jager, sidder.
    */
   own_rider_group_id?: string;
+  /**
+   * #5978 (KUN orders_gc_v3, "snoren"): en farlig rytter sidder stadig foran,
+   * og forspringet er endnu ikke under hans afstand minus snorens margin. Et
+   * hold der allerede reagerer, stopper ikke som "contained" (teamChaseReaction).
+   */
+  leash_hold?: boolean;
+  /** #5978 (KUN orders_gc_v3): de farlige ryttere snoren holder (sorteret). */
+  leash_rider_ids?: string[];
+  /** #5978 (KUN orders_gc_v3): truslen er et endagsloebs (evne, ikke klassement). */
+  one_day?: boolean;
 };
+
+/**
+ * #5978 (KUN orders_gc_v3): hvad farlighed maales paa ud over dagens tidshul.
+ * Udeladt = orders_gc_v1/v2-vurderingen, bit-identisk.
+ */
+export type DangerModel = {
+  /** Etaper tilbage efter i dag (GcContext.stages_remaining). Udeladt = 0. */
+  stagesRemaining?: number;
+  /** Endagsloeb: dagens evne-vektor (finalens krav). Udeladt = ingen endagsvurdering. */
+  routeDemand?: Readonly<Partial<Record<AbilityKey, number>>>;
+};
+
+/**
+ * #5978 (KUN orders_gc_v3) START-KANDIDATER, kalibreres privat
+ * (balance-internals/5978/). Ejer-design 5/10: hoej risiko, hoej gevinst.
+ */
+export const GC_THREAT_V3_TUNING = Object.freeze({
+  // Pr. resterende etape, skaleret med (styrkeforhold - 1): en staerkere
+  // GC-rytter vinder tid paa de kommende etaper, en svagere taber den.
+  futureSecondsPerStage: 40,
+  // Hvem har noget at forsvare: GC-rytteren er inden for dette af foereren
+  // (plus et tillaeg pr. resterende etape), eller blandt de forreste.
+  defendBaseSeconds: 180,
+  defendSecondsPerStage: 45,
+  // Snoren: et hold der reagerer, holder forspringet under den farlige rytters
+  // (fremskrevne) afstand minus denne margin, saa laenge han sidder der.
+  leashMarginSeconds: 75,
+  // Endagsloeb: det forspring et hold med en kaptajn der kan vinde, giver en
+  // anden vinderkandidat (snoren maales fra det).
+  oneDayAllowanceSeconds: 150,
+  // Endagsloeb: "kan vinde" = dagens evne mindst denne andel af feltets bedste.
+  oneDayCanWinShare: 0.9,
+});
+
+/** #5978: rytterens evne paa dagens rute (sum af krav-vaegt x normaliseret evne). */
+export function routeAbility(entrant: Entrant | undefined, demand: Readonly<Partial<Record<AbilityKey, number>>>): number {
+  const abilities = entrant?.abilities;
+  if (!abilities) return 0;
+  let sum = 0;
+  for (const key of Object.keys(demand) as AbilityKey[]) {
+    const weight = Number(demand[key]) || 0;
+    if (weight > 0) sum += weight * (clamp(Number(abilities[key]) || 0, 0, 99) / 99);
+  }
+  return sum;
+}
+
+/** #5978: feltets bedste evne paa dagens rute blandt de koerende i grupperne. */
+function fieldBestRouteAbility(
+  groups: readonly RaceGroup[],
+  entrants: Readonly<Record<string, Entrant>>,
+  demand: Readonly<Partial<Record<AbilityKey, number>>>,
+  isRacing: (id: string) => boolean,
+): number {
+  let best = 0;
+  for (const group of groups) for (const id of group.rider_ids) if (isRacing(id)) best = Math.max(best, routeAbility(entrants[id], demand));
+  return best;
+}
+
+/**
+ * #5978 (KUN orders_gc_v3, endagsloeb): holdets kaptajn der selv kan vinde paa
+ * dagens rute (bedste kaptajn/sprint-kaptajn paa evne), eller null.
+ */
+export function oneDayProtectedRider(input: {
+  teamId: string;
+  groups: readonly RaceGroup[];
+  entrants: Readonly<Record<string, Entrant>>;
+  routeDemand: Readonly<Partial<Record<AbilityKey, number>>>;
+  racingRiderIds?: ReadonlySet<string>;
+}): string | null {
+  const isRacing = (id: string) => (input.racingRiderIds ? input.racingRiderIds.has(id) : true);
+  const best = fieldBestRouteAbility(input.groups, input.entrants, input.routeDemand, isRacing);
+  if (!(best > 0)) return null;
+  let pick: { id: string; ability: number } | null = null;
+  for (const group of input.groups) {
+    for (const id of group.rider_ids) {
+      const entrant = input.entrants[id];
+      if (!isRacing(id) || entrant?.team_id !== input.teamId || !LEADER_ROLES.has(String(entrant.role))) continue;
+      const ability = routeAbility(entrant, input.routeDemand);
+      if (!pick || ability > pick.ability || (ability === pick.ability && id < pick.id)) pick = { id, ability };
+    }
+  }
+  return pick && pick.ability >= GC_THREAT_V3_TUNING.oneDayCanWinShare * best ? pick.id : null;
+}
+
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+
+/** #5978: har holdets GC-rytter noget at forsvare (KUN orders_gc_v3)? */
+function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRemaining: number): boolean {
+  if (isLeader || standing.rank <= GC_THREAT_TUNING.protectRankLimit) return true;
+  const t = GC_THREAT_V3_TUNING;
+  return standing.gap_seconds <= t.defendBaseSeconds + t.defendSecondsPerStage * Math.max(0, stagesRemaining);
+}
+
+function stagesRemainingOf(model: DangerModel | undefined): number {
+  const n = Number(model?.stagesRemaining);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 
 export const GC_THREAT_TUNING = Object.freeze({
   // Et hold har GC-interesse naar dets bedste rytter er blandt de forreste i
@@ -144,7 +256,12 @@ export function normalizeGcContext(raw: unknown): GcContext {
       standings.sort((a, b) => a.rank - b.rank || a.rider_id.localeCompare(b.rider_id));
       const rawLeader = ctx["leader_id"];
       const leaderId = typeof rawLeader === "string" && seen.has(rawLeader) ? rawLeader : standings[0].rider_id;
-      return { status: "standings", stage_number: stageNumber, leader_id: leaderId, standings };
+      // #5978 (ADDITIVT, kun sat af broen under orders_gc_v3): etaper tilbage efter i dag.
+      const stagesRemaining = Number(ctx["stages_remaining"]);
+      const remaining = ctx["stages_remaining"] !== undefined && Number.isInteger(stagesRemaining) && stagesRemaining >= 0
+        ? { stages_remaining: stagesRemaining }
+        : {};
+      return { status: "standings", stage_number: stageNumber, leader_id: leaderId, standings, ...remaining };
     }
     case "missing":
       return hasStage ? { status: "missing", stage_number: stageNumber } : { status: "missing" };
@@ -227,11 +344,21 @@ export function assessGcThreat(input: {
    * Er det kun derfor der ingen trussel er, er grunden "own_rider_ahead".
    */
   skipOwnRiderGroups?: boolean;
+  /**
+   * #5978 (KUN orders_gc_v3): farlighed = tid + evne + resterende etaper, hvem
+   * har noget at forsvare, snoren og endagsloebets evne-vurdering. Udeladt =
+   * orders_gc_v1/v2-vurderingen, bit-identisk.
+   */
+  dangerModel?: DangerModel;
 }): GcThreat {
   const tuning = GC_THREAT_TUNING;
   const gcContext = input.gcContext ?? null;
+  const model = input.dangerModel;
   if (!gcContext || gcContext.status === "missing") return { ...NO_THREAT_BASE, severity: "none", reason: "no_context" };
-  if (gcContext.status === "one_day") return { ...NO_THREAT_BASE, severity: "none", reason: "one_day" };
+  if (gcContext.status === "one_day") {
+    if (model?.routeDemand) return assessOneDayThreat({ ...input, routeDemand: model.routeDemand });
+    return { ...NO_THREAT_BASE, severity: "none", reason: "one_day" };
+  }
   if (gcContext.status === "first_stage") return { ...NO_THREAT_BASE, severity: "none", reason: "first_stage" };
 
   const protectedId = input.protectedRiderId;
@@ -240,7 +367,11 @@ export function assessGcThreat(input: {
   if (!protectedId || !protectedStanding) return { ...NO_THREAT_BASE, severity: "none", reason: "no_protected_rider" };
 
   const isLeader = gcContext.leader_id === protectedId;
-  if (!isLeader && protectedStanding.rank > tuning.protectRankLimit) {
+  const stagesRemaining = stagesRemainingOf(model);
+  const interested = model
+    ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining)
+    : isLeader || protectedStanding.rank <= tuning.protectRankLimit;
+  if (!interested) {
     return { ...NO_THREAT_BASE, protected_rider_id: protectedId, severity: "none", reason: "no_gc_interest" };
   }
 
@@ -266,7 +397,7 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
@@ -285,9 +416,11 @@ export function assessGcThreat(input: {
       const deficit = standing.gap_seconds - protectedStanding.gap_seconds;
       const strengthRaw = protectedStrength > 0 ? gcAbility(input.entrants[riderId]) / protectedStrength : 1;
       const strength = clamp(strengthRaw, ratioLo, ratioHi);
+      // #5978 (KUN orders_gc_v3): de kommende etaper taeller med (evne x antal).
+      const future = model ? stagesRemaining * GC_THREAT_V3_TUNING.futureSecondsPerStage * (strength - 1) : 0;
       const potential = Math.max(
         0,
-        Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1),
+        Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1) + future,
       );
       const margin = deficit - lead - potential;
       const isRival = strengthRaw >= tuning.rivalStrengthMin;
@@ -311,7 +444,7 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id });
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -335,9 +468,165 @@ export function assessGcThreat(input: {
   const threatRiderIds = worst.severity === "none"
     ? []
     : counted.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
+  if (model) return withLeash({ ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied }, counted);
   const toleratedLead = Math.max(0, Math.min(...counted.filter((c) => c.severity !== "none").map((c) => c.lead + c.margin)));
   return {
     ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied,
     ...(worst.severity !== "none" ? { tolerated_lead_seconds: toleratedLead } : {}),
   };
+}
+
+/**
+ * #5978 (KUN orders_gc_v3): snoren. En farlig rytter (reel rival, ikke holdets
+ * egen) foran, hvis fremskrevne margin endnu er under snorens margin, holder
+ * snoren. Det tolererede forspring (GC-bremsen) er hans afstand minus margin.
+ */
+function withLeash(
+  threat: GcThreat,
+  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; lead: number; rival: boolean }>,
+): GcThreat {
+  const leashMargin = GC_THREAT_V3_TUNING.leashMarginSeconds;
+  const held = counted.filter((c) => c.rival && c.margin < leashMargin);
+  const limiting = counted.filter((c) => c.severity !== "none" || (c.rival && c.margin < leashMargin));
+  const tolerated = limiting.length > 0
+    ? { tolerated_lead_seconds: Math.max(0, Math.min(...limiting.map((c) => c.lead + c.margin - leashMargin))) }
+    : {};
+  return {
+    ...threat,
+    ...tolerated,
+    leash_hold: held.length > 0,
+    ...(held.length > 0 ? { leash_rider_ids: held.map((c) => c.riderId).sort() } : {}),
+  };
+}
+
+/**
+ * #5978 (KUN orders_gc_v3): endagsloebets vurdering, maalt paa evne. Holdets
+ * kaptajn kan selv vinde paa dagens rute (oneDayProtectedRider); en anden
+ * rytter foran, der ogsaa kan vinde og er en reel rival paa dagens evne, er
+ * farlig. Margin = det tolererede forspring minus det faktiske.
+ */
+function assessOneDayThreat(input: {
+  groups: readonly RaceGroup[];
+  entrants: Readonly<Record<string, Entrant>>;
+  protectedRiderId: string | null;
+  racingRiderIds?: ReadonlySet<string>;
+  chasingGroupIds?: ReadonlySet<string>;
+  ownTeamId?: string;
+  skipOwnRiderGroups?: boolean;
+  routeDemand: Readonly<Partial<Record<AbilityKey, number>>>;
+}): GcThreat {
+  const tuning = GC_THREAT_TUNING;
+  const v3 = GC_THREAT_V3_TUNING;
+  const oneDay = { one_day: true as const };
+  const protectedId = input.protectedRiderId;
+  if (!protectedId) return { ...NO_THREAT_BASE, severity: "none", reason: "no_contender", ...oneDay };
+  const isRacing = (riderId: string) => (input.racingRiderIds ? input.racingRiderIds.has(riderId) : true);
+  const protectedGroup = input.groups.find((g) => g.rider_ids.includes(protectedId));
+  if (!protectedGroup || !isRacing(protectedId)) {
+    return { ...NO_THREAT_BASE, protected_rider_id: protectedId, severity: "none", reason: "protected_not_racing", ...oneDay };
+  }
+  const base = { protected_rider_id: protectedId, chase_group_id: protectedGroup.id, ...oneDay };
+  const ahead = input.groups
+    .filter((g) => g.id !== protectedGroup.id && g.gap_seconds < protectedGroup.gap_seconds)
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  if (ahead.length === 0) {
+    const protectedLeads = input.groups.some((g) => g.id !== protectedGroup.id);
+    return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: protectedLeads ? "protected_ahead" : "nothing_ahead" };
+  }
+  const best = fieldBestRouteAbility(input.groups, input.entrants, input.routeDemand, isRacing);
+  const protectedAbility = routeAbility(input.entrants[protectedId], input.routeDemand);
+  const isOwn = (riderId: string) => input.ownTeamId !== undefined && input.entrants[riderId]?.team_id === input.ownTeamId;
+  type Candidate = { riderId: string; severity: GcThreatSeverity; margin: number; lead: number; own: boolean; groupId: string; rival: boolean };
+  const candidates: Candidate[] = [];
+  for (const group of ahead) {
+    const lead = Math.max(0, protectedGroup.gap_seconds - group.gap_seconds);
+    const ownGroup = input.skipOwnRiderGroups === true && group.rider_ids.some((id) => isRacing(id) && isOwn(id));
+    for (const riderId of group.rider_ids) {
+      if (!isRacing(riderId)) continue;
+      const ability = routeAbility(input.entrants[riderId], input.routeDemand);
+      const rival = best > 0 && ability >= v3.oneDayCanWinShare * best
+        && (protectedAbility > 0 ? ability / protectedAbility : 1) >= tuning.rivalStrengthMin;
+      if (!rival) continue;
+      const margin = v3.oneDayAllowanceSeconds - lead;
+      const severity: GcThreatSeverity = margin <= 0 ? "serious" : margin <= tuning.moderateWindowSeconds ? "moderate" : "none";
+      candidates.push({ riderId, severity, margin, lead, own: ownGroup || isOwn(riderId), groupId: group.id, rival });
+    }
+  }
+  const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
+  const bySeverity = (a: Candidate, b: Candidate) =>
+    severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || a.riderId.localeCompare(b.riderId);
+  const counted = candidates.filter((c) => !c.own).sort(bySeverity);
+  const suppressed = candidates.filter((c) => c.own).sort(bySeverity);
+  if (counted.length === 0) {
+    if (suppressed.length > 0) {
+      return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "own_rider_ahead", own_rider_group_id: suppressed[0].groupId };
+    }
+    return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "harmless", leash_hold: false };
+  }
+  const worst = counted[0];
+  if (worst.severity !== "none" && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
+    return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "protected_in_other_group" };
+  }
+  const threatRiderIds = worst.severity === "none" ? [] : counted.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
+  return withLeash(
+    { ...base, severity: worst.severity, reason: worst.severity === "none" ? "harmless" : "winner_ahead", threat_rider_ids: threatRiderIds, tied: false },
+    counted,
+  );
+}
+
+/**
+ * #5978 (KUN orders_gc_v3, dannelsen): de hold for hvem et forsoeg fra
+ * `riderId` er farligt, foer der er noget forspring (lead 0, hele dagens
+ * resterende terraen). Samme farlighed som snoren: en reel rival hvis
+ * fremskrevne margin er under snorens margin. Holdets egne taeller aldrig.
+ * Ren og deterministisk (sorteret).
+ */
+export function formationDangerTeams(input: {
+  gcContext: GcContext | null | undefined;
+  riderId: string;
+  teamIds: readonly string[];
+  groups: readonly RaceGroup[];
+  entrants: Readonly<Record<string, Entrant>>;
+  route: RouteV2;
+  km: number;
+  racingRiderIds?: ReadonlySet<string>;
+  dangerModel: DangerModel;
+}): string[] {
+  const gcContext = input.gcContext ?? null;
+  if (!gcContext || (gcContext.status !== "standings" && gcContext.status !== "one_day")) return [];
+  if (gcContext.status === "one_day" && !input.dangerModel.routeDemand) return [];
+  const riderTeam = input.entrants[input.riderId]?.team_id;
+  // Rytteren alene foran sin egen gruppe, uden forspring: samme vurdering som
+  // paa vejen, med lead 0.
+  const source = input.groups.find((g) => g.rider_ids.includes(input.riderId));
+  if (!source) return [];
+  const probe: RaceGroup = { ...source, id: `${source.id}#attempt`, rider_ids: [input.riderId], gap_seconds: source.gap_seconds - 1e-9 };
+  const rest: RaceGroup = { ...source, rider_ids: source.rider_ids.filter((id) => id !== input.riderId) };
+  const groups = [probe, rest];
+  const out: string[] = [];
+  for (const teamId of [...input.teamIds].sort((a, b) => a.localeCompare(b))) {
+    if (teamId === riderTeam) continue;
+    const protectedRiderId = gcContext.status === "one_day"
+      ? oneDayProtectedRider({ teamId, groups, entrants: input.entrants, routeDemand: input.dangerModel.routeDemand!, racingRiderIds: input.racingRiderIds })
+      : protectedRiderForTeam({ gcContext, teamId, entrants: input.entrants });
+    if (!protectedRiderId || protectedRiderId === input.riderId) continue;
+    if (gcContext.status === "one_day") {
+      // Endagsloeb: en vinderkandidat er farlig fra start (intet tidshul at maale).
+      const demand = input.dangerModel.routeDemand!;
+      const isRacing = (id: string) => (input.racingRiderIds ? input.racingRiderIds.has(id) : true);
+      const best = fieldBestRouteAbility(groups, input.entrants, demand, isRacing);
+      const ability = routeAbility(input.entrants[input.riderId], demand);
+      const protectedAbility = routeAbility(input.entrants[protectedRiderId], demand);
+      const rival = best > 0 && ability >= GC_THREAT_V3_TUNING.oneDayCanWinShare * best
+        && (protectedAbility > 0 ? ability / protectedAbility : 1) >= GC_THREAT_TUNING.rivalStrengthMin;
+      if (rival) out.push(teamId);
+      continue;
+    }
+    const threat = assessGcThreat({
+      gcContext, groups, entrants: input.entrants, route: input.route, protectedRiderId, km: input.km,
+      racingRiderIds: input.racingRiderIds, ownTeamId: teamId, dangerModel: input.dangerModel,
+    });
+    if (threat.leash_hold === true || threat.severity !== "none") out.push(teamId);
+  }
+  return out;
 }
