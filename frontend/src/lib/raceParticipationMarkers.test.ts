@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { participationForResult, historyForStage, participationFlagsForResult, breakawayMarkerState } from "./raceParticipationMarkers.ts";
+import { participationForResult, historyForStage, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "./raceParticipationMarkers.ts";
 import { PENISOLA_STAGE3_EVENTS, PENISOLA_STAGE3_RANKS, PENISOLA_DROPPED, PENISOLA_CAUGHT } from "../../../backend/lib/raceParticipationHistory.fixtures.ts";
 const timeline = { timeline_version: 2, stage_number: 6, events: [
   { km: 0, type: "stage_start", params: { field_count: 3 } },
@@ -85,4 +85,24 @@ test("#6185 the dropped marker has EN and DA copy", async () => {
     const races = JSON.parse(await readFile(new URL(`../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
     assert.equal(races.detail.breakaway.dropped, text, lang);
   }
+});
+
+test("#6185 finish safety net on stored rows: uncaught escapee behind a non-escapee reads as dropped", () => {
+  const rows = Object.entries(PENISOLA_STAGE3_RANKS).map(([id, rank]) => ({ result_type: "stage", stage_number: 3, rank, rider_id: id, in_breakaway: id.startsWith("e"), breakaway_caught: id === "e3" || id === "e6" }));
+  const netted = withFinishSafetyNet(rows);
+  for (const id of PENISOLA_DROPPED) {
+    const row = netted.find(r => r.rider_id === id)!;
+    assert.equal(breakawayMarkerState(participationForResult(row, null)!).labelKey, "detail.breakaway.dropped", id);
+  }
+  for (const id of PENISOLA_CAUGHT) assert.equal(netted.find(r => r.rider_id === id)?.breakaway_dropped, undefined);
+  // An escapee ahead of every non-escapee really held on.
+  const held = withFinishSafetyNet([
+    { result_type: "stage", stage_number: 1, rank: 1, rider_id: "a", in_breakaway: true, breakaway_caught: false },
+    { result_type: "stage", stage_number: 1, rank: 2, rider_id: "p", in_breakaway: false, breakaway_caught: false },
+    { result_type: "stage", stage_number: 2, rank: 1, rider_id: "p", in_breakaway: false, breakaway_caught: false },
+    { result_type: "stage", stage_number: 2, rank: 2, rider_id: "a", in_breakaway: true, breakaway_caught: false },
+  ]);
+  assert.equal(held[0].breakaway_dropped, undefined, "stage 1: held on");
+  assert.equal(held[3].breakaway_dropped, true, "stage 2 is its own group");
+  assert.deepEqual(withFinishSafetyNet(null), []);
 });

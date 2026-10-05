@@ -60,7 +60,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -565,7 +565,7 @@ export default function RaceDetailPage() {
 
     setMyTeamId(myTeamId);
     setRace(raceRow);
-    setResults(rows);
+    setResults(withFinishSafetyNet(rows)); // #6185
     setStagePointsRows(stagePointsRowsResult);
     // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
     // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
@@ -601,7 +601,7 @@ export default function RaceDetailPage() {
       })
       .then((newRows) => {
         if (cancelled) return;
-        if (newRows.length) setResults((prev) => [...prev, ...newRows]);
+        if (newRows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(newRows)]); // #6185
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {

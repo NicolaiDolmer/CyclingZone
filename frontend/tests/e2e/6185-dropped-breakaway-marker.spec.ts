@@ -43,3 +43,10 @@ test("#6185 dropped escapees get their own marker, never 'held home'", async ({ 
   await expect(page.locator('[aria-label="Morgenudbrud: holdt hjem til mål"]')).toHaveCount(0);
   if (process.env.CZ_REVIEW_SCREENS === "1") await page.screenshot({ path: testInfo.outputPath("6185-after.png"), fullPage: true });
 });
+
+test("#6185 without a timeline the stored rows still never read as 'held home'", async ({ page }) => {
+  await prepareRace(page, { withTimeline: false });
+  await expect(page.locator('[aria-label="Udbrud: sat af fra udbruddet"]')).toHaveCount(4);
+  await expect(page.locator('[aria-label="Udbrud: indhentet"]')).toHaveCount(2);
+  await expect(page.locator('[aria-label="Udbrud: holdt hjem til mål"]')).toHaveCount(0);
+});
