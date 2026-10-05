@@ -444,6 +444,7 @@ export function runHeadToHead({
   seedInput = "head-to-head-v4-stub",
   fieldSize = null,
   orderMode = "none",
+  rulesRevision = undefined, // #6199: v4 under en regel-revision; udeladt = legacy (uaendret)
 }) {
   if (!population?.riders?.length) throw new Error("population.riders mangler eller er tom");
   if (!Array.isArray(stages) || stages.length === 0) throw new Error("stages mangler eller er tom");
@@ -506,6 +507,7 @@ export function runHeadToHead({
       orders,
       seed: stageSeedStr,
       tuning: RACE_V4_TUNING,
+      ...(rulesRevision ? { rules_revision: rulesRevision } : {}),
     });
 
     rows.push({
