@@ -115,20 +115,26 @@ migrationen er anvendt (auto-migrate). Målt mod baseline ovenfor:
 | "Thread killed"-linjer pr. time om natten | ca. 185 | lavere. Tallet er et sekundært mål, fordi det afhænger af burst-størrelsen og ikke af fejl |
 | 5xx på `/rest/v1/*` uden for genstarter | ca. 30 | under 10 (resten er MV-refresh, #6167) |
 
-Forespørgsler (Supabase MCP `query_logs`):
+Forespørgsler (Supabase MCP `query_logs`). Sæt ALTID `iso_timestamp_start`
+og `iso_timestamp_end` på kaldet, så vinduet er præcis det 24 timers vindue,
+der måles (fx døgnet der starter 24 timer efter deploy). Uden dem dækker
+`query_logs` "de seneste 24 timer" og kan blande baseline med det nye.
+Baseline-vinduet var `2026-10-04T11:00:00Z` til `2026-10-05T11:00:00Z`.
 
 ```sql
--- Linjer pr. time
+-- 1) Linjer pr. time (hele målevinduet)
 select toStartOfHour(timestamp) h, count(*) from logs
 where source='postgrest_logs' and event_message like 'Warp server error: Thread killed%'
 group by h order by h;
 
--- Burst-andel om natten (vindue 22:00-04:00 UTC)
+-- 2) Burst-andel om natten. Kør med et 6 timers vindue 22:00-04:00 UTC
+--    (iso_timestamp_start/-end), eller brug timefilteret herunder.
 select toMinute(timestamp) % 5 m5, count(*) from logs
 where source='edge_logs' and log_attributes['request.path'] like '/rest/v1/%'
+  and (toHour(timestamp) >= 22 or toHour(timestamp) < 4)
 group by m5 order by m5;
 
--- Langsomme/fejlende REST-kald
+-- 3) Langsomme/fejlende REST-kald (hele målevinduet)
 select log_attributes['request.path'] p, log_attributes['response.status_code'] st, count(*)
 from logs where source='edge_logs' and log_attributes['request.path'] like '/rest/v1/%'
   and (toInt32OrZero(log_attributes['response.status_code']) >= 500

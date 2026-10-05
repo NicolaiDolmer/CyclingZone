@@ -275,13 +275,22 @@ export async function runSelectionWarningSweep({
   const seniorCounts = suppressLowRoster
     ? await fetchSeniorCounts({ supabase, teamIds: humanTeams.map((t) => t.id) })
     : null;
-  const recentWarningKeys = fetchRecentWarnings
-    ? await fetchRecentWarnings({
-      supabase,
-      raceIds: dueRaceIds,
-      sinceIso: new Date(now.getTime() - SELECTION_WARNING_DEDUP_WINDOW_MS).toISOString(),
-    })
-    : null;
+  let recentWarningKeys = null;
+  if (fetchRecentWarnings) {
+    try {
+      recentWarningKeys = await fetchRecentWarnings({
+        supabase,
+        raceIds: dueRaceIds,
+        sinceIso: new Date(now.getTime() - SELECTION_WARNING_DEDUP_WINDOW_MS).toISOString(),
+      });
+    } catch (err) {
+      // Forhånds-dedup er kun en optimering: fejler den, går alle kandidater
+      // til notify, som selv dedup'er pr. række (adfærden før #6184).
+      console.error("  ⚠️  selection-warning: batch dedup prefetch failed, falling back to per-team dedup:", err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "selection-warning-prefetch" } });
+      recentWarningKeys = null;
+    }
+  }
 
   for (const race of dueRaces) {
     const eligibleTeams = humanTeams.filter((t) =>

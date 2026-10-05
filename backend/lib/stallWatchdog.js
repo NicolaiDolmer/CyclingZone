@@ -331,6 +331,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
   // race_results via pkey, 30+ kald > 5 s og en 500 ved 60 s. Nu to LIMIT 1-
   // opslag pr. løb, sekventielt (ingen parallel-burst mod PostgREST), dækket af
   // idx_race_results_race_id_imported_at + idx_race_results.
+  const prizeCandidateIds = new Set(prizeCandidates.map((r) => r.id));
   for (const raceId of anchorIds) {
     const latest = await run(
       supabase
@@ -342,7 +343,9 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
       "race_results(latest)"
     );
     lastResultByRace[raceId] = latest[0]?.imported_at ?? null;
-    if (latest.length) {
+    // racesWithPrize bruges kun til at filtrere prize-kandidater — spring
+    // opslaget over for rene finalize-ankre (og når auto-prize er slukket).
+    if (latest.length && prizeCandidateIds.has(raceId)) {
       const prize = await run(
         supabase.from("race_results").select("id").eq("race_id", raceId).gt("prize_money", 0).limit(1),
         "race_results(prize)"

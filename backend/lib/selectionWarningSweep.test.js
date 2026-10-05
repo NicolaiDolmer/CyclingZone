@@ -358,6 +358,16 @@ test("#6184: en anden beskedtekst (fx omdøbt løb) dedup'es IKKE af forhånds-o
   assert.deepEqual(notified, ["t1", "t2", "t3"]);
 });
 
+test("#6184: forhånds-dedup fejler → alle kandidater går stadig til notify", async () => {
+  const notified = [];
+  const stats = await runSelectionWarningSweep(dueSweepArgs({
+    notify: async (p) => { notified.push(p.teamId); return { delivered: true }; },
+    fetchRecentWarnings: async () => { throw new Error("timeout"); },
+  }));
+  assert.deepEqual(notified, ["t1", "t2", "t3"]);
+  assert.equal(stats.warned, 3);
+});
+
 test("#6184: injiceret notify uden fetchRecentWarnings → ingen forhånds-opslag (bagudkompatibelt)", async () => {
   const notified = [];
   const stats = await runSelectionWarningSweep(dueSweepArgs({
