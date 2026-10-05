@@ -47,6 +47,7 @@
 import type { AbilityKey, FinaleType, ProfileType, RiderRole } from "../types.ts";
 import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./teamOrderContract.ts";
 import { validateTeamOrder } from "./teamOrderContract.ts";
+import { isOrdersGcV2OrLater } from "../../../raceEngineRulesRevision.ts";
 
 export type AiRosterEntrant = {
   rider_id: string;
@@ -333,7 +334,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     // (hoejst MAX_BREAK_CANDIDATES i alt). Neutrale hold og jagt-hold sender
     // ingen ekstra. Et forsoeg er aldrig en garanti: motoren afgoer stadig
     // hvem der kommer afsted (mechanics/breakawayPermission.ts).
-    if (input.rules_revision === "orders_gc_v2") {
+    if (isOrdersGcV2OrLater(input.rules_revision)) { // #6187: v3 arver v2
       const v2RankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
       const eligible = input.roster
         .filter((r) => !grupettoIds.has(r.rider_id))
