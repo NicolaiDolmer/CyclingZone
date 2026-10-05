@@ -1437,6 +1437,7 @@
       "label": "Morgenudbrud",
       "survived": "holdt hjem til mål",
       "caught": "indhentet",
+      "dropped": "sat af fra udbruddet",
       "participated": "deltog",
       "laterAttack": "Senere angreb",
       "legacyLabel": "Udbrud"

@@ -60,7 +60,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult, participationFlagsForResult } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState } from "../lib/raceParticipationMarkers.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -205,13 +205,13 @@ function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
   const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
-  const label = participation.caught ? t("detail.breakaway.caught")
-    : participation.verified && !participation.survived ? t("detail.breakaway.participated")
-    : t("detail.breakaway.survived");
+  // #6185: tre tilstande (indhentet / sat af / holdt hjem) — se breakawayMarkerState.
+  const markerState = breakawayMarkerState(participation);
+  const label = t(markerState.labelKey);
   return (
     <>
       {participation.morning && (
-        <span className={`ms-1 inline-flex align-middle ${participation.caught || (participation.verified && !participation.survived) ? "text-cz-3" : "text-cz-accent-t"}`}
+        <span className={`ms-1 inline-flex align-middle ${markerState.muted ? "text-cz-3" : "text-cz-accent-t"}`}
           title={`${markerLabel}: ${label}`} aria-label={`${markerLabel}: ${label}`}>
           <FlagIcon size={13} aria-hidden="true" />
         </span>
