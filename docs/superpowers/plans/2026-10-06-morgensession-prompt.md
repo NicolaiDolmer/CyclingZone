@@ -21,10 +21,12 @@ Morgensession 6/10. Fortsættelse af planlægningssessionen 5/10 (#6148). **Unde
 1. **Udvikling 2.0 D1-D7 (#6110)** + ekstra kort #4765 (svaghedernes rate). Var aftalt 4-5/10, og byggeriet er aftalt fra 6/10. **Første prioritet.**
 2. **Løbsmotoren:** ét samlet billede med alle diagnoser, derefter designsamtaler ét punkt ad gangen, visuelt. Rækkefølge: eget hold jagter (#6187) → hvem må i udbrud + størrelse (#5978 #6201) → afsat udbryder (#6185) → tidsmodel stigning/nedkørsel (#6199 + #6200, én fælles model) → Spar kræfter (#3460) → v4-grænser + scorecard (#2557) → løbsfilm (#6137) → tekster (#6186 #5059). **Form og formtoppe (#6156) bygges først, når resten er undersøgt og designet** (ejer 5/10). Ingen known_issue for #6156 (embargo, beslutning 3 i spec 4/10).
 3. **#6053 Programmer, vælg rytter først** (beta): ejeren var ikke helt glad. Se på det sammen med ham.
-4. **Train now → alle?** Brug Discord-gennemgangen 5/10 (`scratchpad` er tabt; gentag hvis nødvendigt): melder beta-spillerne stadig problemer? Reelt 37 tryk fra 13 hold 1-5/10.
+4. **Train now → alle?** Discord 3-5/10: ingen beta-fejlmeldinger (kanalerne tavse siden 1/10); reelt 37 tryk fra 13 hold 1-5/10. Bed om beta-feedback samtidig med sæsonmatrixen, og afgør derefter.
 5. **Sæsonmatrix mobil (#5124):** bed beta-testerne om feedback i dag (ejer 5/10); skriv opslaget i ejerens tone (EN, DA under).
 6. **#5864 udløbne kontrakter** (236 ryttere, B "straks" 28/9): dry-run fra PR #6198; ejeren ser listen live før go.
 7. **#6130**: tørkørsel for de 6 hold uden mandat → go.
+
+**Nye fra Discord 5/10:** #6206 EXP-ikon U23/junior · #6207 rutematch 56 vs 51 · #6208 rapport hele point vs %% (idé) · **#6209 omdømme-sortering (ejer lovede rettelse 3/10 "in the coming week")** · #6210 to point i samme evne på én dag. Ubesvaret på Discord: "vi kunne træne når som helst, men nu kører den kl. 20?" (Q&A 2/10) · program med andet på løbsdag 2 og 4 (beta 4/10) · hvilke 7 tæller i omdømme. Holdet "Dolmer Racing" udgiver sig muligvis for ejeren.
 
 **Denne uge (aftalt 5/10)**
 #6184 timeouts (PR #6196) · #708 grants før 30/10 · #5979 · #5940 + #5916 visning · #6138 · #6062 billing · #6121 Sentry v11 (privacy-gate) · #4714 beslut + indfør · Holdarbejde-opfyldning (#5268 A; 7.739 NULL) · #6202 Vercel-builds · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · 2027-sektion på roadmappet (UI-PR, ejer ser skærmbillede) · #6203 søgning · #6204 admin-faner/filtre/sortering · #6205 sync MASTERPLAN↔roadmap↔roadbook (høj).
