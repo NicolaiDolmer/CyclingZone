@@ -312,7 +312,8 @@ export function regroupOnDescentV3(
 ): RaceGroup[] {
   if (groups.length <= 1) return groups.map((g) => ({ ...g }));
   const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
-  const midExtra: DescentExtra = { ...DESCENT_EXTRA_TUNING, regroupSecondsPerKm: t.midDescentSecondsPerKm, regroupGapFractionPerKm: t.midDescentGapFractionPerKm };
+  // DESCENT_EXTRA_TUNING er `as const` (midtvejs-leddene er typet som 0); v3 laegger sine egne vaerdier ind.
+  const midExtra = { ...DESCENT_EXTRA_TUNING, regroupSecondsPerKm: t.midDescentSecondsPerKm, regroupGapFractionPerKm: t.midDescentGapFractionPerKm } as unknown as DescentExtra;
   const out: RaceGroup[] = [];
   let reference: { gap: number; descending: number } | null = null; // naermeste ikke-udbrud foran
   let floorGap = -Infinity; // gruppen umiddelbart foran (raekkefoelgen er invariant)
