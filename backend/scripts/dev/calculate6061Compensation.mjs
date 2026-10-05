@@ -13,7 +13,7 @@ import { copenhagenDateString, copenhagenWeekdayKey } from '../../lib/copenhagen
 import { resolveProgram } from '../../lib/dailyTraining.js';
 import { applyFatigueRules, loadTeamFatigueRules, previousDateString } from '../../lib/trainingFatigueRules.ts';
 import { createHash } from 'node:crypto';
-import {captureCompensationSource,sameSource} from './compensation6061Source.mjs';
+import {captureSourceHashes,changedSourceTables,normalizeScope,buildApplyPayload,serializeApplyPayload} from './compensation6061Source.mjs';
 
 // Strict counterpart of the engine's best-effort loader: a failed bonus lookup
 // is unknown during compensation, never silently a neutral paid-service value.
@@ -124,8 +124,9 @@ async function main(){
  const opts=parseArgs(process.argv.slice(2));const {createClient}=await import('@supabase/supabase-js');
  const supabase=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY,{auth:{persistSession:false}});
  const initial=await loadRecoveryInputs(supabase,opts);const ids=[...new Set(initial.work.flatMap(w=>w.quarantined_rider_ids))];
- const scope={ids,teamIds:[...new Set(initial.work.map(w=>w.team_id))],seasonIds:[...new Set(initial.work.map(w=>w.season_id))]};
- const sourceChecks=await captureCompensationSource(supabase,scope);
+ const scope=normalizeScope({ids,teamIds:initial.work.map(w=>w.team_id),seasonIds:initial.work.map(w=>w.season_id)});
+ // Hash first, read second, hash again: identical hashes bracket every input.
+ const hashesBefore=await captureSourceHashes(supabase,scope,opts.through);
  const state=await loadRecoveryInputs(supabase,opts);
  const [fullRiders,abilityRows,seasons]=await Promise.all([
   fetchAllRowsChunkedIn(ids,c=>supabase.from('riders').select('*').in('id',c).order('id')),
@@ -146,16 +147,21 @@ async function main(){
   fetchAllRowsChunkedIn(raceIds,c=>supabase.from('race_stage_profiles').select('race_id,stage_number,profile_type').in('race_id',c).order('race_id').order('stage_number')),
   fetchAllRowsChunkedIn(raceIds,c=>supabase.from('race_simulation_runs').select('race_id,stage_number,entrant_snapshot').eq('stage_number',1).in('race_id',c).order('race_id').order('stage_number')),
  ]);
+ const selections=await fetchAllRowsChunkedIn(ids,c=>supabase.from('race_entry_days').select('race_id,rider_id,season_id,game_day,team_id').in('rider_id',c).order('race_id').order('rider_id').order('game_day'));
  const results=[];
  for(let from=0;from<ids.length;from+=100){const chunk=ids.slice(from,from+100);results.push(...await fetchAllRowsChunkedIn(raceIds,c=>supabase.from('race_results').select('id,race_id,stage_number,rider_id,result_type').in('race_id',c).in('rider_id',chunk).order('id')));}
- const {stageBySlot,boundBySlot}=buildHistoricalRaceEvidence({ids,raceRows,scheduleRows,profiles,firstRuns,results,loads:state.loads,through:opts.through,selections:sourceChecks.find(c=>c.table==='race_entry_days').rows});
+ const {stageBySlot,boundBySlot}=buildHistoricalRaceEvidence({ids,raceRows,scheduleRows,profiles,firstRuns,results,loads:state.loads,through:opts.through,selections});
  const result=await calculateCompensation({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot});
- if(!sameSource(sourceChecks,await captureCompensationSource(supabase,scope)))throw new Error('Source changed during calculation; repeat dry-run');
- result.source_checks=sourceChecks;
+ const changed=changedSourceTables(hashesBefore,await captureSourceHashes(supabase,scope,opts.through));
+ if(changed.length)throw new Error(`Source changed during calculation (${changed.join(',')}); repeat dry-run`);
+ result.source_scope=scope;result.source_hashes=hashesBefore;
+ const payload=serializeApplyPayload(buildApplyPayload(result,{scope,sourceHashes:hashesBefore}));
  const directory=resolve(fileURLToPath(new URL('../../..',import.meta.url)),'balance-internals','6061');
  mkdirSync(directory,{recursive:true});
  writeFileSync(resolve(directory,'compensation-current-plans.json'),JSON.stringify(result,null,2));
- writeFileSync(resolve(directory,'compensation-inputs.json'),JSON.stringify({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot},null,2));
- console.log(JSON.stringify(result.summary));
+ writeFileSync(resolve(directory,'compensation-inputs.json'),JSON.stringify({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot,selections},null,2));
+ // The only file the writer accepts. Approve its exact sha256, not the review file.
+ writeFileSync(resolve(directory,'compensation-apply-payload.json'),payload.raw);
+ console.log(JSON.stringify({...result.summary,apply_payload_bytes:payload.bytes,apply_payload_sha256:payload.sha256}));
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))main().catch(error=>{console.error(error.message);process.exitCode=1;});
