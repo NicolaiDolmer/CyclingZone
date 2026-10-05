@@ -132,13 +132,18 @@ export function changeLabel(from, patch) {
 
 /**
  * REN: hvilke raekker paa EN etape skal rettes? `rows` = etapens race_results
- * (result_type stage, plus endagslobs gc-raekker der baerer samme flag).
+ * (result_type stage og gc; et endagslob har kun gc-raekker).
  * Returnerer { updates, blocked, skipped } uden IO. `updates[].patch` holder
  * kun de aendrede felter; en raekke hvor et gemt true ville blive false,
  * havner i `blocked` (vagt mod nedgradering) og skrives ikke.
  */
 export function planStage({ events, rows }) {
-  const stageRows = rows.filter((row) => row.result_type === "stage" && row.rider_id);
+  // Etape-raekkerne er maalrækkefoelgen. Et endagslob gemmer kun gc-raekker
+  // (ingen stage-raekker), og der ER gc-placeringen maalrækkefoelgen; samme
+  // fallback som loebssiden (RaceDetailPage oneDayParticipation). Startfeltet
+  // skal med, ellers kan projektionen ikke se en sammenkobling med feltet.
+  const stageOnly = rows.filter((row) => row.result_type === "stage" && row.rider_id);
+  const stageRows = stageOnly.length ? stageOnly : rows.filter((row) => row.result_type === "gc" && row.rider_id);
   const history = deriveParticipationHistory(events ?? [], stageRows.map((row) => row.rider_id));
   if (!history.complete || history.morningRiderIds.size === 0) {
     return { updates: [], blocked: [], skipped: history.complete ? "no_breakaway" : "incomplete_timeline", outcomes: {} };
@@ -153,7 +158,7 @@ export function planStage({ events, rows }) {
   for (const row of rows) {
     if (!row.in_breakaway || !row.rider_id || !history.morningRiderIds.has(row.rider_id)) continue;
     const outcome = settleBreakawayOutcome(history.riders.get(row.rider_id), aheadByRider.get(row.rider_id) ?? null);
-    if (row.result_type === "stage") outcomes[outcome ?? "unknown"] += 1;
+    if (row.result_type === "stage" || !stageOnly.length) outcomes[outcome ?? "unknown"] += 1;
     const target = breakawayFlagsForOutcome(true, outcome);
     const current = { breakaway_caught: row.breakaway_caught === true, breakaway_dropped: row.breakaway_dropped ?? null };
     // Kun raekker hvis VISTE tilstand aendres: sat af (ny) eller indhentet

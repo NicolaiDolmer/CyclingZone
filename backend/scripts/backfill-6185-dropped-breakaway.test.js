@@ -238,3 +238,15 @@ test("#6185 backfill stage list is paginated past the PostgREST cap with a stabl
   assert.deepEqual(calls[0].orders, ["created_at", "race_id", "stage_number"]);
   assert.deepEqual(calls[0].filters, [["eq", "timeline_version", 2], ["gte", "created_at", "2026-09-28"]]);
 });
+
+test("#6185 backfill: a one-day race stores only gc rows, and the gc order is the finish order", () => {
+  // Prod: race_type single has gc (+ team) rows on stage 1, no stage rows.
+  const asGc = (rows) => rows.map((row) => ({ ...row, id: row.id.replace("row-", "gc-"), result_type: "gc" }));
+  const forward = planStage({ events: STAGE_2349_E1, rows: asGc(storedRows(STAGE_2349_E1_ROWS, { escapees: ["e1", "e2", "a3", "a4", "e5", "e6", "e7", "e8", "e15", "e16"], caught: ["e15", "e16"] })) });
+  assert.deepEqual(forward.outcomes, { caught: 2, dropped: 4, survived: 2, unknown: 0 });
+  assert.equal([...forward.updates, ...forward.blocked].some((u) => u.rider_id === "e1" || u.rider_id === "e2"), false);
+  // The start list comes from the gc rows too, so a merge with the bunch is seen.
+  const penisola = planStage({ events: PENISOLA_STAGE3_EVENTS, rows: asGc(penisolaRows()) });
+  assert.deepEqual(penisola.outcomes, { caught: 2, dropped: 4, survived: 0, unknown: 0 });
+  assert.deepEqual(penisola.updates.map((u) => u.rider_id).sort(), [...PENISOLA_DROPPED].sort());
+});
