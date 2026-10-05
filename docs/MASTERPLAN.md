@@ -10,7 +10,7 @@
 
 ## Uge 41 · rækkefølge (ejer 4/10)
 
-Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt: #6185 #6186 #6187 #3460 #5059 #2557) · stabilitet #6184 #708 (før 30/10) #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053 · #6180 · staging #6183 (3 ejer-valg). ✅ 5/10: #6129 · #6153 · audit. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
+Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt: #6185 #6186 #6187 #3460 #5059 #2557) · stabilitet #6184 #708 (før 30/10) #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053 · #6180 · staging #6183 (3 ejer-valg). ✅ 5/10: #6129 · #6153 · audit. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
 
 ## Roadmap · Planned (ejer 5/10; spejles 1:1 i `roadmap_items.sort_order`)
 

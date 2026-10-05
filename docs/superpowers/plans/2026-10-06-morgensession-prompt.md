@@ -4,7 +4,7 @@ Kopiér alt under stregen ind som første besked i en ny Claude Code-session i `
 
 ---
 
-Morgensession 6/10. Fortsættelse af planlægningssessionen 5/10 (#6148). **Undersøg altid før du spørger:** læs issuets ejer-kommentarer, søg PR'er og mål prod, før et beslutningskort. Kort stilles 4 ad gangen i popup, med nøgletal i selve spørgsmålet. Udskyd aldrig noget uden aftale, og skriv aldrig egne tidsskøn.
+Morgensession 6/10. **Fokus: løbsmotoren er det vigtigste i denne session (ejer 5/10).** Fortsættelse af planlægningssessionen 5/10 (#6148). **Undersøg altid før du spørger:** læs issuets ejer-kommentarer, søg PR'er og mål prod, før et beslutningskort. Kort stilles 4 ad gangen i popup, med nøgletal i selve spørgsmålet. Udskyd aldrig noget uden aftale, og skriv aldrig egne tidsskøn.
 
 **Læs først**
 1. `docs/NOW.md` og `docs/MASTERPLAN.md` (uge 41 + Roadmap · Planned)
@@ -15,13 +15,14 @@ Morgensession 6/10. Fortsættelse af planlægningssessionen 5/10 (#6148). **Unde
 - #6129: har de 20 ryttere trænet aftenen 5/10 (`training_rider_ticks` 5/10), ingen ny `needs_reconciliation`, og er Sentry CYCLINGZONE-7X stille? Sæt da known_issue #6129 til fixed.
 - #6153: ingen 500 på `/api/rankings/*` siden 5/10 10:40; de nye `p_concurrently`-kald bruges.
 - Merge-køen 5/10: #6195 #6197 #6180 #6183. Post-verify. Patch note 7.341 er den skrevet og merget?
-- Staging: blev `refresh-staging.ps1 -Full` færdig? Kør derefter `scripts/staging/anonymize-staging.sql` og pseudonymisér `auth.users` (ejer-go 5/10: erstat med syntetiske), isolationstjek grønt, og #6170-prerequisites. Så kan Codex måle.
+- Staging: kopi + rens er gjort 5/10 (1.889.644 resultater, 0 webhooks, 300 auth pseudonymiseret). Restoren blev afbrudt ved 60 min, og `app_config` manglede sin unique-nøgle, så kør schema-fingeraftrykket mod prod og ret huller, derefter isolationstjek, #6170-prerequisites og Codex-måling.
 
 **Morgenblok (ejer, 4 kort ad gangen)**
-1. **Udvikling 2.0 D1-D7 (#6110)** + ekstra kort #4765 (svaghedernes rate). Var aftalt 4-5/10, og byggeriet er aftalt fra 6/10. **Første prioritet.**
-2. **Løbsmotoren:** ét samlet billede med alle diagnoser, derefter designsamtaler ét punkt ad gangen, visuelt. Rækkefølge: eget hold jagter (#6187) → hvem må i udbrud + størrelse (#5978 #6201) → afsat udbryder (#6185) → tidsmodel stigning/nedkørsel (#6199 + #6200, én fælles model) → Spar kræfter (#3460) → v4-grænser + scorecard (#2557) → løbsfilm (#6137) → tekster (#6186 #5059). **Form og formtoppe (#6156) bygges først, når resten er undersøgt og designet** (ejer 5/10). Ingen known_issue for #6156 (embargo, beslutning 3 i spec 4/10).
+1. **Løbsmotoren, FØRSTE prioritet (ejer 5/10):** ét samlet billede med alle diagnoser, derefter designsamtaler ét punkt ad gangen, visuelt. Rækkefølge: eget hold jagter (#6187) → hvem må i udbrud + størrelse (#5978 #6201) → afsat udbryder (#6185) → tidsmodel stigning/nedkørsel (#6199 + #6200, én fælles model) → Spar kræfter (#3460) → v4-grænser + scorecard (#2557) → løbsfilm (#6137) → tekster (#6186 #5059). **Form og formtoppe (#6156) bygges først, når resten er undersøgt og designet** (ejer 5/10). Ingen known_issue for #6156 (embargo, beslutning 3 i spec 4/10).
+2. **Udvikling 2.0 D1-D7 (#6110)** + ekstra kort #4765 (svaghedernes rate). Var aftalt 4-5/10, byggeri aftalt fra 6/10.
+2b. **Udgifter (ejer 5/10: vi bruger for mange penge):** gennemgå Vercel Usage sammen med ejeren (han åbner dashboardet), Supabase (staging-branch ca. 100 kr/md, nedgradér efter måling), Railway; mål og plan for at få dem ned. Grundlag: #6202 (builds på docs-commits), #6184 (auth-cache), PostHog-proxy via Vercel siden 8/9.
 3. **#6053 Programmer, vælg rytter først** (beta): ejeren var ikke helt glad. Se på det sammen med ham.
-4. **Train now → alle?** Discord 3-5/10: ingen beta-fejlmeldinger (kanalerne tavse siden 1/10); reelt 37 tryk fra 13 hold 1-5/10. Bed om beta-feedback samtidig med sæsonmatrixen, og afgør derefter.
+4. **Train now:** bliver i beta. Fra tråden "Feedback: New training system" er to ting ikke rettet: lås efter træning (især telefon, #6139) og gevinst ikke synlig på rytterfanen (#6111). Bonus til aktive managers er afgjort nej 29/9 (#4847), men spillerne har ikke fået svar. Skriv et svar i ejerens tone.
 5. **Sæsonmatrix mobil (#5124):** bed beta-testerne om feedback i dag (ejer 5/10); skriv opslaget i ejerens tone (EN, DA under).
 6. **#5864 udløbne kontrakter** (236 ryttere, B "straks" 28/9): PR #6198 klar (rod-årsag: sæsonskiftets kontraktudløb tog kun seniortruppen). Merge → dry-run → ejeren ser listen live → `--apply --owner-go=5864-production --approved-list=<hash>`.
 7b. **#6184 timeouts:** PR #6196 klar. Linjerne er tomgangs-keep-alive, ikke dræbte kald; rettelser: N+1 i selection-warning-sweep og board-auto-accept, stallWatchdog LIMIT 1, nyt race_results-indeks (CONCURRENTLY). **Rører boardAutoAccept.js ligesom #6197: synk efter #6197-merge.** Go-kort fra diffen.
@@ -31,10 +32,10 @@ Morgensession 6/10. Fortsættelse af planlægningssessionen 5/10 (#6148). **Unde
 **Nye fra Discord 5/10:** #6206 EXP-ikon U23/junior · #6207 rutematch 56 vs 51 · #6208 rapport hele point vs %% (idé) · **#6209 omdømme-sortering (ejer lovede rettelse 3/10 "in the coming week")** · #6210 to point i samme evne på én dag. Ubesvaret på Discord: "vi kunne træne når som helst, men nu kører den kl. 20?" (Q&A 2/10) · program med andet på løbsdag 2 og 4 (beta 4/10) · hvilke 7 tæller i omdømme. Holdet "Dolmer Racing" udgiver sig muligvis for ejeren.
 
 **Denne uge (aftalt 5/10)**
-#6184 timeouts (PR #6196) · #708 grants før 30/10 · #5979 · #5940 + #5916 visning · #6138 · #6062 billing · #6121 Sentry v11 (privacy-gate) · #4714 beslut + indfør · Holdarbejde-opfyldning (#5268 A; 7.739 NULL) · #6202 Vercel-builds · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · 2027-sektion på roadmappet (UI-PR, ejer ser skærmbillede) · #6203 søgning · #6204 admin-faner/filtre/sortering · #6205 sync MASTERPLAN↔roadmap↔roadbook (høj).
+#6212 patch notes: fast struktur til Discord i ejerens tone (generator `node scripts/patch-notes-discord.mjs <version>` findes; brug den til hver patch note) · #6184 timeouts (PR #6196) · #708 grants før 30/10 · #5979 · #5940 + #5916 visning · #6138 · #6062 billing · #6121 Sentry v11 (privacy-gate) · #4714 beslut + indfør · Holdarbejde-opfyldning (#5268 A; 7.739 NULL) · #6202 Vercel-builds · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · 2027-sektion på roadmappet (UI-PR, ejer ser skærmbillede) · #6203 søgning · #6204 admin-faner/filtre/sortering · #6205 sync MASTERPLAN↔roadmap↔roadbook (høj).
 **Før S5 (25/10):** #6109 · #5865 · #5842 (tidspunkt) · #5833 afstemning (startdag, slutdag, pausens længde) · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
 **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 i S5 · #5833-afstemning · (fog of war-afstemning #5107 senere på ugen).
-**Ejer-skridt:** aflæs Vercel Usage · nedgradér/sluk staging efter målingen (ca. 100 kr/md).
+**Ejer-skridt:** Vercel Usage gennemgås SAMMEN i morgenblokken (punkt 2b) · nedgradér/sluk staging efter målingen (ca. 100 kr/md). Beta-opslaget om rollevalget er sendt 5/10. Patch note 7.341 (#6211) merges automatisk efter køen 5/10; tjek og post Discord-teksten fra generatoren. "Dolmer Racing": ejeren har selv meldt ud 3/10.
 
 **Regler der bed 5/10 (gemt i memory):** wave via `Workflow({name:"wave"})`, ikke scriptPath · `active` = Idé på roadmappet · tjek embargo før known_issue · roadmap + MASTERPLAN opdateres i samme tur som hver beslutning.
 
