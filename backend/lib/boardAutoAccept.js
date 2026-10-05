@@ -220,6 +220,7 @@ export async function processBoardAutoAcceptCron({
   const boardsByTeamId = await loadBoardsByTeamId({
     supabase,
     teamIds: (humanTeams || []).map((t) => t.id).filter(Boolean),
+    captureExceptionFn,
   });
 
   for (const team of humanTeams || []) {
@@ -286,7 +287,7 @@ async function loadLastSeenByUserId({ supabase, userIds }) {
  *
  * @returns {Promise<Map<string, object[]>|null>}
  */
-async function loadBoardsByTeamId({ supabase, teamIds }) {
+async function loadBoardsByTeamId({ supabase, teamIds, captureExceptionFn }) {
   const map = new Map();
   if (!teamIds?.length) return map;
   try {
@@ -303,7 +304,12 @@ async function loadBoardsByTeamId({ supabase, teamIds }) {
     }
     return map;
   } catch (error) {
+    // best-effort: batchet er kun en optimering — fallback'en er det gamle,
+    // fuldt funktionelle per-hold-opslag. Fejlen rapporteres, ikke skjult.
     console.error("  ⚠️  board auto-accept: batch-opslag af board_profiles fejlede — falder tilbage til per-hold-opslag:", error?.message || error);
+    if (captureExceptionFn) {
+      captureExceptionFn(error, { tags: { cron: "board-auto-accept", stage: "board-batch-load" } });
+    }
     return null;
   }
 }
