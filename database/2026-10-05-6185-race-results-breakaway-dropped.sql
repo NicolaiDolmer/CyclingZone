@@ -16,9 +16,17 @@
 -- kolonne tilfoejet (NULL naar noeglen mangler, aldrig coalesce til false).
 -- Grants bevares af CREATE OR REPLACE. Ingen data roeres her; backfill af
 -- koerte v4-etaper er et separat script med dry-run
--- (backend/scripts/backfill-6185-dropped-breakaway.mjs).
+-- (backend/scripts/backfill-6185-dropped-breakaway.js).
+--
+-- Lock-timeout (praecedens: 2026-09-04-4754): race_results er en varm tabel.
+-- ADD COLUMN er metadata-only (nullable, uden default), men kraever et kort
+-- ACCESS EXCLUSIVE-lock. SET LOCAL lock_timeout = '3s' faar migrationen til at
+-- fejle hurtigt (og kan koeres igen), i stedet for at staa i koe bag en lang
+-- transaktion og blokere alle laesere og skrivere af race_results imens.
 
 BEGIN;
+
+SET LOCAL lock_timeout = '3s';
 
 ALTER TABLE public.race_results
   ADD COLUMN IF NOT EXISTS breakaway_dropped boolean;

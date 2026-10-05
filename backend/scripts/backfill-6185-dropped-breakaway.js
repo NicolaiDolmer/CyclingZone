@@ -23,7 +23,9 @@
 // Kraever at migrationen database/2026-10-05-6185-race-results-breakaway-dropped.sql
 // er koert (ellers stopper --apply; dry-run viser stadig tallene).
 // Idempotent: kun raekker hvis vaerdier afviger skrives; en gentagen koersel
-// finder 0 aendringer.
+// finder 0 aendringer. Vagt mod nedgradering: et gemt true paa
+// breakaway_caught eller breakaway_dropped saettes aldrig til false (raekken
+// springes over og taelles i dry-run'en). Skrivning sker i batches.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role)
 // Exit: 0 = intet arbejde, 1 = dry-run fandt raekker at rette, 2 = kald-/konfigurationsfejl.
@@ -58,20 +60,47 @@ export function parseArgs(argv = process.argv.slice(2)) {
   };
 }
 
+const FLAG_FIELDS = ["breakaway_caught", "breakaway_dropped"];
+export const APPLY_BATCH_SIZE = 200;
+
+/**
+ * REN: kun de felter der faktisk aendres, og om nogen af dem ville
+ * NEDGRADERE (true -> false). En nedgradering skrives aldrig: scriptet
+ * maa kun tilfoeje "sat af" eller "indhentet", aldrig fjerne et gemt true.
+ */
+export function diffFlags(from, to) {
+  const patch = {};
+  const downgrades = [];
+  for (const field of FLAG_FIELDS) {
+    if (to[field] === from[field] || (to[field] === null && from[field] === null)) continue;
+    if (from[field] === true && to[field] !== true) downgrades.push(field);
+    patch[field] = to[field];
+  }
+  return { patch, downgrades };
+}
+
+/** Kort, stabil etiket for en aendringstype, fx "breakaway_dropped:null->true". */
+export function changeLabel(from, patch) {
+  return Object.keys(patch).sort().map((field) => `${field}:${from[field]}->${patch[field]}`).join(", ");
+}
+
 /**
  * REN: hvilke raekker paa EN etape skal rettes? `rows` = etapens race_results
  * (result_type stage, plus endagslobs gc-raekker der baerer samme flag).
- * Returnerer { updates, skipped } uden IO.
+ * Returnerer { updates, blocked, skipped } uden IO. `updates[].patch` holder
+ * kun de aendrede felter; en raekke hvor et gemt true ville blive false,
+ * havner i `blocked` (vagt mod nedgradering) og skrives ikke.
  */
 export function planStage({ events, rows }) {
   const stageRows = rows.filter((row) => row.result_type === "stage" && row.rider_id);
   const history = deriveParticipationHistory(events ?? [], stageRows.map((row) => row.rider_id));
   if (!history.complete || history.morningRiderIds.size === 0) {
-    return { updates: [], skipped: history.complete ? "no_breakaway" : "incomplete_timeline", outcomes: {} };
+    return { updates: [], blocked: [], skipped: history.complete ? "no_breakaway" : "incomplete_timeline", outcomes: {} };
   }
   const best = bestNonEscapeeRank(stageRows.map((row) => ({ rank: row.rank, escapee: history.morningRiderIds.has(row.rider_id) })));
   const rankByRider = new Map(stageRows.map((row) => [row.rider_id, row.rank]));
   const updates = [];
+  const blocked = [];
   const outcomes = { caught: 0, dropped: 0, survived: 0, unknown: 0 };
   for (const row of rows) {
     if (!row.in_breakaway || !row.rider_id || !history.morningRiderIds.has(row.rider_id)) continue;
@@ -87,17 +116,49 @@ export function planStage({ events, rows }) {
       ? current.breakaway_dropped !== true || current.breakaway_caught
       : target.breakaway_caught !== current.breakaway_caught;
     if (!changesState) continue;
-    updates.push({
+    const to = { breakaway_caught: target.breakaway_caught, breakaway_dropped: target.breakaway_dropped };
+    const { patch, downgrades } = diffFlags(current, to);
+    if (Object.keys(patch).length === 0) continue;
+    const update = {
       id: row.id,
       rider_id: row.rider_id,
       result_type: row.result_type,
       rank: row.rank,
       outcome: outcome ?? "unknown",
       from: current,
-      to: { breakaway_caught: target.breakaway_caught, breakaway_dropped: target.breakaway_dropped },
-    });
+      to,
+      patch,
+      change: changeLabel(current, patch),
+    };
+    if (downgrades.length) blocked.push({ ...update, downgrades });
+    else updates.push(update);
   }
-  return { updates, skipped: null, outcomes };
+  return { updates, blocked, skipped: null, outcomes };
+}
+
+/** REN: antal raekker pr. aendringstype (til dry-run-oversigten). */
+export function countByChange(list) {
+  const counts = {};
+  for (const item of list) counts[item.change] = (counts[item.change] ?? 0) + 1;
+  return counts;
+}
+
+/**
+ * REN: samler opdateringer med IDENTISK patch i batches (ét UPDATE ... WHERE
+ * id IN (...) pr. batch i stedet for én raekke ad gangen).
+ */
+export function batchUpdates(updates, size = APPLY_BATCH_SIZE) {
+  const byPatch = new Map();
+  for (const update of updates) {
+    const key = JSON.stringify(Object.keys(update.patch).sort().map((field) => [field, update.patch[field]]));
+    if (!byPatch.has(key)) byPatch.set(key, { patch: update.patch, ids: [] });
+    byPatch.get(key).ids.push(update.id);
+  }
+  const batches = [];
+  for (const { patch, ids } of byPatch.values()) {
+    for (let i = 0; i < ids.length; i += size) batches.push({ patch, ids: ids.slice(i, i + size) });
+  }
+  return batches;
 }
 
 const RESULT_COLUMNS = "id, race_id, stage_number, result_type, rank, rider_id, in_breakaway, breakaway_caught";
@@ -131,7 +192,11 @@ export async function planBackfill({ supabase, since = DEFAULT_SINCE, raceId = n
   if (error) throw error;
 
   const perStage = [];
-  const totals = { stages: 0, stages_with_updates: 0, rows_to_update: 0, dropped: 0, caught: 0, survived: 0, unknown: 0, skipped: {} };
+  const totals = {
+    stages: 0, stages_with_updates: 0, rows_to_update: 0, dropped: 0, caught: 0, survived: 0, unknown: 0, skipped: {},
+    // Raekker pr. aendringstype, og hvor mange nedgraderinger vagten stoppede.
+    by_change: {}, blocked_downgrades: 0, blocked_by_change: {},
+  };
   for (const stage of stages ?? []) {
     const { data: timeline, error: timelineError } = await supabase
       .from("race_stage_timelines")
@@ -146,30 +211,44 @@ export async function planBackfill({ supabase, since = DEFAULT_SINCE, raceId = n
     totals.stages += 1;
     if (plan.skipped) { totals.skipped[plan.skipped] = (totals.skipped[plan.skipped] ?? 0) + 1; continue; }
     for (const key of ["dropped", "caught", "survived", "unknown"]) totals[key] += plan.outcomes[key];
-    if (plan.updates.length) {
-      totals.stages_with_updates += 1;
+    for (const [change, count] of Object.entries(countByChange(plan.updates))) totals.by_change[change] = (totals.by_change[change] ?? 0) + count;
+    for (const [change, count] of Object.entries(countByChange(plan.blocked))) totals.blocked_by_change[change] = (totals.blocked_by_change[change] ?? 0) + count;
+    totals.blocked_downgrades += plan.blocked.length;
+    if (plan.updates.length || plan.blocked.length) {
+      if (plan.updates.length) totals.stages_with_updates += 1;
       totals.rows_to_update += plan.updates.length;
-      perStage.push({ race_id: stage.race_id, stage_number: stage.stage_number, updates: plan.updates });
+      perStage.push({ race_id: stage.race_id, stage_number: stage.stage_number, updates: plan.updates, blocked: plan.blocked });
     }
   }
   return { since, raceId, hasColumn, totals, perStage };
 }
 
-export async function applyBackfill({ supabase, plan }) {
+/**
+ * Skriver planen i batches (samme patch -> ét UPDATE ... WHERE id IN (...)).
+ * Vagten mod nedgradering gaelder OGSAA i databasen: en patch der saetter et
+ * flag til false, rammer kun raekker hvor flaget ikke er true (`breakaway_dropped
+ * IS NULL`), saa en raekke der er aendret siden dry-run'en aldrig nedgraderes.
+ * Patches fra planStage saetter kun breakaway_caught til true og
+ * breakaway_dropped til true eller (fra NULL) false.
+ */
+export async function applyBackfill({ supabase, plan, batchSize = APPLY_BATCH_SIZE }) {
   if (!plan.hasColumn) throw new Error("race_results.breakaway_dropped findes ikke: koer migrationen 2026-10-05-6185 foerst.");
+  const updates = plan.perStage.flatMap((stage) => stage.updates);
   let updated = 0;
-  for (const stage of plan.perStage) {
-    for (const update of stage.updates) {
-      const { error } = await supabase
-        .from("race_results")
-        .update(update.to)
-        .eq("id", update.id)
-        .eq("in_breakaway", true);
-      if (error) throw error;
-      updated += 1;
+  for (const batch of batchUpdates(updates, batchSize)) {
+    let query = supabase
+      .from("race_results")
+      .update(batch.patch)
+      .in("id", batch.ids)
+      .eq("in_breakaway", true);
+    for (const field of FLAG_FIELDS) {
+      if (batch.patch[field] === false) query = field === "breakaway_dropped" ? query.is(field, null) : query.eq(field, false);
     }
+    const { data, error } = await query.select("id");
+    if (error) throw error;
+    updated += data?.length ?? 0;
   }
-  return { updated };
+  return { updated, planned: updates.length };
 }
 
 function printPlan(plan) {
@@ -179,10 +258,15 @@ function printPlan(plan) {
   console.log(`Etaper laest: ${t.stages} · sprunget over: ${JSON.stringify(t.skipped)}`);
   console.log(`Udbryder-udfald (stage-raekker): sat af ${t.dropped} · indhentet ${t.caught} · holdt hjem ${t.survived} · ukendt ${t.unknown}`);
   console.log(`Raekker der rettes: ${t.rows_to_update} paa ${t.stages_with_updates} etaper`);
+  console.log("Pr. aendringstype:");
+  for (const [change, count] of Object.entries(t.by_change)) console.log(`  ${count} × ${change}`);
+  console.log(`Nedgraderinger stoppet af vagten (true -> false skrives aldrig): ${t.blocked_downgrades}`);
+  for (const [change, count] of Object.entries(t.blocked_by_change)) console.log(`  ${count} × ${change}`);
   for (const stage of plan.perStage) {
     const byOutcome = {};
     for (const update of stage.updates) byOutcome[update.outcome] = (byOutcome[update.outcome] ?? 0) + 1;
-    console.log(`  ${stage.race_id} etape ${stage.stage_number}: ${stage.updates.length} raekker ${JSON.stringify(byOutcome)} · placeringer ${stage.updates.filter((u) => u.result_type === "stage").map((u) => u.rank).join(", ")}`);
+    const blockedNote = stage.blocked.length ? ` · stoppet ${stage.blocked.length} (placeringer ${stage.blocked.map((u) => u.rank).join(", ")})` : "";
+    console.log(`  ${stage.race_id} etape ${stage.stage_number}: ${stage.updates.length} raekker ${JSON.stringify(byOutcome)} · placeringer ${stage.updates.filter((u) => u.result_type === "stage").map((u) => u.rank).join(", ")}${blockedNote}`);
   }
 }
 
