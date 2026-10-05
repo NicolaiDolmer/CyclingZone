@@ -4,11 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (5/10): rytme i [`OPERATING_PLAN.md`](OPERATING_PLAN.md).** **(1) Brand (ejer-ja 4/10):** ca. 20 ryttere på 9 spillerhold har ikke trænet i S4 og misser hver aften (#6129: sæt starttilstand + kompensation, go på hash) · 🔴 løbsmotor-pakken #6156 (trin 0 ligger på #6157 → 4 laner). **(2) Morgensession:** prompt `superpowers/plans/2026-10-05-morgensession-prompt.md` (morgenblok, GitHub-audit planlægges, uge 41-opfølgning #6174 #6175 #6172 #6165 #6164). **(3) Man 5/10:** planlægningssession til 1/1-2027 (#6148, inkl. #2887, #5981 og tidspunkt for søndagens værdikørsel, som kørte kl. 06:45 4/10) · nav-analyse (#6147) · Udvikling 2.0 (#6110) · go-kort #6053 (to CodeRabbit-fund + sync mangler). **(4) Uge 41 (se MASTERPLAN):** staging-klargøring A (#5904, ny Claude-session; #6136 + #6153 venter) · #6134 jobkø (ejer-valg) · betaling #6062 · moms #4511 · #4714 forum-afstemning.
+> **🎯 Next action (5/10): planlægningssessionen #6148 kører** (kort 1 tidslinje = aftalte datoer, se `pr-screens/planning-5-10/`). Fem read-only undersøgelser 5/10 (løfter roadbook/Discord, flag/beta, MASTERPLAN↔roadmap, GDD/SSOT↔roadmap + 2027-liste, planer↔MASTERPLAN) samles til ét kort-forløb. **Løbsmotor:** alle 4 fundgrupper skal bygges, designet visuelt med ejeren ét punkt ad gangen (#6157; #6185 #6186 #6187 #3460 #5059 #2557). **Staging-worker #5904 kører.** #6134 venter på staging. **Aftentjek #6129** efter kl. 20.
 >
-> **🗺️ Roadmap-hub (#5387) er LIVE 4/10** (spillersiden #6160 + indhold, post-verificeret: 29 idéer, 29 planlagt, 7 i gang, 28 Done, 52 kendte fejl, 1.163 stemmer). Patch note 7.340 i PR #6173 (ejer-go givet, merges ved grøn CI). Rest: #6175, ryttertyper #3813, ejeren poster roadbook-opslaget.
->
-> **Merget 4/10:** #6128 (oprydning #6164) · #6169 · #6166 · #6167. Nye: #6165 · #6171 · #6172.
+> **Afsluttet 5/10:** #6129 anvendt 10:25 (330 kvitteringer, 20 starttilstande) · #6179 + #6153 merget (rangliste uden spærring) · #6180 (hjælp, venter merge) · roadmap: rækkefølge Next/Later, idéer, kendte fejl · nye issues #6181 #6182 #6184-#6187.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
