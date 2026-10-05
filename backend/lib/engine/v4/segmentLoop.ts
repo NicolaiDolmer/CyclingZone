@@ -86,6 +86,7 @@ import { isLetGoChaseGroup, ownRiderWheelSitterIds } from "./mechanics/breakaway
 import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
+import { valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -946,6 +947,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // terraen. Se neutralizeBreakawayTempoDrift.
     const mountainPhase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
     tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
+    // #6199 (KUN orders_gc_v3): i dalen efter en top kan et hul ikke vokse (mechanics/timeModel.ts).
+    if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.

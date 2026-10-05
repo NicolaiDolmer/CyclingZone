@@ -19,7 +19,7 @@
 //
 // REN: ingen IO, ingen rng.
 
-import type { AbilityKey, ClimbCategory } from "../types.ts";
+import type { AbilityKey, ClimbCategory, RaceGroup, Segment } from "../types.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -43,11 +43,11 @@ export const TIME_MODEL_V3_TUNING = freeze({
   climbVerticalSpeedKmh: 1.7,
   climbSpeedBoundsKmh: [12, 40] as readonly [number, number],
   // Andel af stigningen de afhaengte ryttere i snit koerer bag gruppen (de saettes af undervejs).
-  climbGapExposure: 0.6,
+  climbGapExposure: 0.5,
   // Relativt fartab pr. enhed klatre-underskud (0-1 mod gruppens bedste klatrer).
-  climbGapAbilityWeight: 1.2,
+  climbGapAbilityWeight: 0.45,
   // Relativt fartab pr. enhed energi-underskud (tom reserve = 1).
-  climbGapEnergyWeight: 0.08,
+  climbGapEnergyWeight: 0.01,
   climbGapMaxRelativeLoss: 0.35,
   // Et split er altid mindst saa stort, at det overlever segmentets merge-trin.
   climbGapBoundsSeconds: [3, 900] as readonly [number, number],
@@ -61,6 +61,8 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // ── B: en gruppe kan koere op igen efter en top midt paa etapen ─────────────
   midDescentSecondsPerKm: 4,
   midDescentGapFractionPerKm: 0.04,
+  // I dalen efter en top kan hullet ikke vokse for grupper inden for denne raekkevidde (s).
+  valleyReachSeconds: 180,
 
   // ── 2: nedkoersel mod maal ──────────────────────────────────────────────────
   finishDescentMaxSecondsPerKm: 1.5,
@@ -140,6 +142,55 @@ export function clusterSplitRiders(
     riderIds: c.riders.map((r) => r.riderId).sort(),
     gapSeconds: round2(c.riders.reduce((sum, r) => sum + r.gapSeconds, 0) / c.riders.length),
   }));
+}
+
+/** Dagens udbrud (samme definition som finale.isEscapeGroup). M5 ejer hullet til det. */
+export function isEscapeGroupV3(group: Pick<RaceGroup, "kind" | "origin">): boolean {
+  return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");
+}
+
+/**
+ * B: i dalen efter en top (fladt/rullende terraen efter etapens foerste
+ * stigning) kan hullet mellem to grupper ikke vokse, saa laenge den bagerste
+ * ligger inden for `valleyReachSeconds` af gruppen foran. Den kan stadig
+ * krympe (en stoerre gruppe koerer hurtigere i laeet). Gruppen foran er den
+ * naermeste gruppe der ikke er dagens udbrud (M5 ejer det hul). Grupper i en
+ * uheldsjagt (state.incident_chasers) roeres ikke: deres tempo er sat af
+ * jagt-blokken. Grupper laengere bag (grupettoen) driver som foer.
+ *
+ * Returnerer samme Map naar intet aendres (bit-identisk uden effekt).
+ */
+export function valleyRegroupTempoV3<T extends { dtSeconds: number }>(
+  groups: readonly RaceGroup[],
+  tempoByGroup: Map<string, T>,
+  segments: readonly Pick<Segment, "kind">[],
+  segmentIndex: number,
+  incidentChasers: Readonly<Record<string, unknown>> | undefined,
+  t: TimeModelTuning = TIME_MODEL_V3_TUNING,
+): Map<string, T> {
+  const kind = segments[segmentIndex]?.kind;
+  if (kind !== "flat" && kind !== "rolling") return tempoByGroup;
+  if (!segments.slice(0, segmentIndex).some((s) => s.kind === "climb")) return tempoByGroup;
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  let out: Map<string, T> | null = null;
+  let reference: { gap: number; dtSeconds: number } | null = null;
+  for (const group of sorted) {
+    if (isEscapeGroupV3(group)) continue;
+    const own = (out ?? tempoByGroup).get(group.id);
+    if (!own) continue;
+    const inIncidentChase = incidentChasers !== undefined && group.rider_ids.some((id) => incidentChasers[id] !== undefined);
+    if (
+      reference !== null
+      && !inIncidentChase
+      && group.gap_seconds - reference.gap <= t.valleyReachSeconds
+      && own.dtSeconds > reference.dtSeconds
+    ) {
+      out ??= new Map(tempoByGroup);
+      out.set(group.id, { ...own, dtSeconds: reference.dtSeconds });
+    }
+    reference = { gap: group.gap_seconds, dtSeconds: (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds };
+  }
+  return out ?? tempoByGroup;
 }
 
 /** A: maa en tom reserve tvinge rytteren af paa denne stigning? Kun fra ca. kat. 2. */

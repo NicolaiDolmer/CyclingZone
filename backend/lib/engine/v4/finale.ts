@@ -403,7 +403,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
 
   // #4914: paa en massefinale paa flad/rullende profil taeller feltets ANTAL i
   // jagten (se bunchCatchWindowSeconds + tuning.ts's bunchCatch*-kommentar).
-  const bunchCatch = isBunchCatchRoute(route);
+  // #6199 (KUN orders_gc_v3): ikke paa en afslutning opad. Feltets antal giver
+  // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
+  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && segment.kind === "climb");
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
