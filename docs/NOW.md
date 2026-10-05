@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (5/10): planlægningssessionen #6148 kører** (kort 1 tidslinje = aftalte datoer, se `pr-screens/planning-5-10/`). Fem read-only undersøgelser 5/10 (løfter roadbook/Discord, flag/beta, MASTERPLAN↔roadmap, GDD/SSOT↔roadmap + 2027-liste, planer↔MASTERPLAN) samles til ét kort-forløb. **Løbsmotor:** alle 4 fundgrupper skal bygges, designet visuelt med ejeren ét punkt ad gangen (#6157; #6185 #6186 #6187 #3460 #5059 #2557). **Staging-worker #5904 kører.** #6134 venter på staging. **Aftentjek #6129** efter kl. 20.
+> **🎯 Next action (6/10): start med [`2026-10-06-morgensession-prompt.md`](superpowers/plans/2026-10-06-morgensession-prompt.md).** Først: aftentjek #6129 (20 ryttere trænet?) + #6153 (ingen rangliste-500) + staging-kopi → rens → syntetiske logins. Morgenblok: **Udvikling 2.0 D1-D7 (#6110, byg fra 6/10)** · løbsmotor: samlet billede af diagnoserne 5/10 → designsamtaler ét punkt ad gangen (#6187 #5978 #6201 #6185 #6199+#6200 #3460 #2557 #6137); **#6156 bygges først derefter** · #6053 med ejeren · Train now-flip · #5864 + #6130 go.
 >
-> **Afsluttet 5/10:** #6129 anvendt 10:25 (330 kvitteringer, 20 starttilstande) · #6179 + #6153 merget (rangliste uden spærring) · #6180 (hjælp, venter merge) · roadmap: rækkefølge Next/Later, idéer, kendte fejl · nye issues #6181 #6182 #6184-#6187.
+> **5/10 (planlægningssession #6148):** #6129 anvendt · #6153 + #6179 merget · merge-kø #6195 #6197 #6180 #6183 · roadmap = MASTERPLAN (rækkefølge, 8 løfter, 16 GDD-punkter, 2027-liste) · motor-diagnoser på issues · udgifter: staging-branch er eneste nye faste post · deps: intet brændende, major-plan 1/12.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code 5/10 (#6129 før kl. 17, #6153).
+> **🤖 Working agent:** Ingen aktiv session (planlægning 5/10 afsluttet; næste: morgenprompt 6/10).
