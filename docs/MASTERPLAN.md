@@ -6,11 +6,11 @@
 
 ## 🔴 Brand (nu)
 
-⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. **Trin 0 først:** tjek hvad der allerede er løst + kvaliteten af de 22 motorændringer siden flippet · 🔴 #6129 ca. 20 ryttere på 9 spillerhold har ikke trænet i S4 og misser hver aften (målt 4/10; starttilstand + kompensation, ejer-go) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. **Trin 0 først:** tjek hvad der allerede er løst + kvaliteten af de 22 motorændringer siden flippet · 🔴 #6129 20 ryttere har ikke trænet i S4 og misser hver aften (ejer-go 5/10: 28 ryttere/330 dage; første writer crashede DB 09:07, slank writer PR #6179 → ny hash → kørsel **før kl. 17**) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
 
 ## Uge 41 · rækkefølge (ejer 4/10)
 
-1 #6129 + løbsmotor-pakken (start man 5/10) · 2 go-kort #6053 · ✅ roadmap-hub #5387 live 4/10; opfølgning i uge 41 (ejer 4/10): #6174 sikkerhed · #6175 · #6172 merge-kø · #6165 bundle-model · #6164 gamle tilbud + inaktive managers · GitHub-audit (planlægges 5/10) · **stabilitet rykker op** (ejer: infrastrukturen skal fungere fantastisk igen; Codex om natten, se release-gate 1) · løfter · beta → alle · Udvikling 2.0 · betaling. Én bølge ad gangen: Claude om dagen, Codex om natten. Overblik: `pr-screens/roadmap-4-10/samlet-plan-uge41.png`.
+1 #6129 + løbsmotor-pakken (start man 5/10) · **1b #6153 rangliste-500 frigives uden staging-ventetid (ejer 5/10)** · 2 go-kort #6053 · #6180 hjælpetekst ryttertyper (#3813) · ✅ roadmap-hub #5387 live 4/10; opfølgning i uge 41 (ejer 4/10): #6174 sikkerhed · #6175 · #6172 merge-kø · #6165 bundle-model · #6164 gamle tilbud + inaktive managers · GitHub-audit (planlægges 5/10) · **stabilitet rykker op** (ejer: infrastrukturen skal fungere fantastisk igen; Codex om natten, se release-gate 1) · løfter · beta → alle · Udvikling 2.0 · betaling. Én bølge ad gangen: Claude om dagen, Codex om natten. Overblik: `pr-screens/roadmap-4-10/samlet-plan-uge41.png`.
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
@@ -32,11 +32,11 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Bane 3 · Færdiggør
 
-#6081 merge-køen melder rød for tidligt · #5692 matview-lås (PR #6153 draft: SQL lægges i prod først, ejer-go) · #5792 smoke + #6132 + #6120 (blokeret på filmandat; nyt mandat i plan-fil) · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 (først #5115) · #6064/#6065 bølge-værn · #5145 (parkeret).
+#6081 merge-køen melder rød for tidligt · #5692 matview-lås (SQL i prod 4/10; Node #6153 se uge 41; rest: sæsonskiftets refresh) · #5792 smoke + #6132 + #6120 (blokeret på filmandat; nyt mandat i plan-fil) · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 (først #5115) · #6064/#6065 bølge-værn · #5145 (parkeret).
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Søn 4/10-man 5/10:** Udvikling 2.0 D1-D7 (#6110) · Mentale evner #5268 (A: eksisterende ryttere røres ikke, 0 ratingfald · B: ratingneutral omregning) · #5827 point-flyt (følger #5268) · fast søndagstidspunkt for værdikørslen (#5842; kører kl. 06 indtil da) · #5833 pause mellem sæsoner til S5 · #6129 kompensation for tabte træningsdage (16 ryttere/130 slots). **Ny triage man 5/10:** Discord-fund #6122-#6126.
+**Søn 4/10-man 5/10:** Udvikling 2.0 D1-D7 (#6110) · Mentale evner #5268 (A: eksisterende ryttere røres ikke, 0 ratingfald · B: ratingneutral omregning) · #5827 point-flyt (følger #5268) · fast søndagstidspunkt for værdikørslen (#5842; kører kl. 06 indtil da) · #5833 pause mellem sæsoner til S5. **Afgjort 5/10:** #6129 go · #6153 uden staging · #3813 (FM-agtig rollevisning = senere UI-punkt) · aldersgrænser #6126 = kun idéer, ikke planlagt. **Planlægningssession #6148 (5/10):** kø til 1/1-2027 + anti-feature-liste (ikke-lave / udskudt til 2027) + Discord-input (bestyrelsen #6122 mest presserende; nye #6181 transferpenge, #6182 assistent-regler). Rest: kort 3b #5904 staging, 3c #6134 jobkø, kort 4 #6157.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
