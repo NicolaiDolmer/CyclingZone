@@ -172,7 +172,7 @@ jobs:
         run: npm run typecheck
       # #6202: build-selection CLI/helpers are outside src/** and tests/e2e/**.
       - name: Type-check build-selection tools (#6202)
-        run: npx tsc --noEmit --types node --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --strict --skipLibCheck scripts/vercel-build-decision.ts scripts/vercel-ignore-build.ts scripts/vercel-ignore-build.test.ts
+        run: npx tsc --ignoreConfig --noEmit --types node --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --strict --skipLibCheck scripts/vercel-build-decision.ts scripts/vercel-ignore-build.ts scripts/vercel-ignore-build.test.ts
 
       # #5534: hard rule 31 kraever nu .ts/.tsx for nye frontend-filer, ogsaa
       # e2e-specs — men frontend/tsconfig.json's include daekker kun src/**, saa
