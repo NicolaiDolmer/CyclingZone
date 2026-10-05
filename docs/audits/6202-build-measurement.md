@@ -26,9 +26,10 @@ rather than checking only each commit's parent.
 | Same fixed deployment set | Build decisions | Skips |
 |---|---:|---:|
 | Existing policy | 48 | 0 |
-| Proposed policy | 15 | 33 |
+| Full-history replay (best case) | 15 | 33 |
+| Missing base and no usable origin (conservative bound) | 48 | 0 |
 
-That is 33 fewer build decisions in this sample (68.75%). It is a historical
+The replay permits at most 33 fewer build decisions in this sample; the conservative unavailable-base bound saves none. The observed preview clone lacks origin, so fetching a missing base is not a verified path to savings. This is a historical
 projection, not a measured reduction in production usage or cost. The replay
 assumes requested builds succeed and the recorded base is available; the real
 filter builds conservatively if metadata/fetch/diff fails. Actual dependency

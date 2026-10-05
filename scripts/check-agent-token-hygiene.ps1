@@ -254,7 +254,7 @@ $agentsMdAnchors = @(
   @{ Anchor = "vaegur-tiden|vægur-tiden"; Rule = "16 test maa ikke laese vaegur" },
   @{ Anchor = "Offentlighedspolitik for balance-tal"; Rule = "17 balance-tal er private" },
   @{ Anchor = "guard-commit-branch"; Rule = "18 commit bag branch-guard" },
-  @{ Anchor = "skip-logik paa prod-deploy|skip-logik på prod-deploy"; Rule = "19 main bygger altid" },
+  @{ Anchor = "skip-logik paa prod-deploy|skip-logik på prod-deploy"; Rule = "19 konservativ build-selektion" },
   @{ Anchor = "Deploy-verify"; Rule = "20 deploy-verify er del af merge" },
   @{ Anchor = "Per-agent-timeout"; Rule = "21 timeout skaleres med samtidighed" },
   @{ Anchor = "Dispatch-forfilter"; Rule = "22 forfilter foer hver spawn" },

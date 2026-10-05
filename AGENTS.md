@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen (Codex genindført 9/9, [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065))._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er arbejdskontrakten for begge agenter._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
@@ -60,7 +60,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 19. **skip-logik på prod-deploy** (#6202): main følger sidste succesfulde deploy; frontend/afhængigheder eller ukendt grundlag bygger. Kontrakt: `docs/VERCEL_BUILD_RULES.md`.
 
-20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out.
+20. **Deploy-verify er en del af merge-handlingen.** Railway success kræves efter hver salve; Vercel READY kræves ved frontend/byggeinputs eller ukendt grundlag. Rene uafhængige ændringer kan beholde seneste frontend-deploy. `docs/VERCEL_BUILD_RULES.md`.
 
 21. **Per-agent-timeout dimensioneres efter samtidighed.** En timeout der er rimelig for én agent alene er forkert under fuldt tryk: skalér med antal samtidige agenter eller launch i forskudte chunks.
 

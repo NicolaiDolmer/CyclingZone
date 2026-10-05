@@ -3,7 +3,7 @@
 // No Vercel request, deployment or external write is performed.
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { needsFrontendBuild } from '../frontend/scripts/vercel-ignore-build.ts';
+import { needsFrontendBuild } from '../frontend/scripts/vercel-build-decision.ts';
 
 const manifest = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const git = args => execFileSync('git', args, { encoding: 'utf8', timeout: 15000 });

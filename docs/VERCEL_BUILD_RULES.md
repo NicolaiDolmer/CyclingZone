@@ -12,7 +12,7 @@ requirement (the build already invokes a TypeScript script directly).
 
 The comparison base is `VERCEL_GIT_PREVIOUS_SHA`, the last successful deployment
 for this project and branch, not HEAD's parent. If the commit is absent from a
-shallow checkout, the script tries one bounded fetch of that exact SHA. Missing
+shallow checkout, the script attempts one bounded fetch of that exact SHA. This is not guaranteed: the observed Vercel preview clone has no origin remote, so a missing base causes a full build. No remote is added by this PR. Missing
 metadata, Git errors or a failed fetch build conservatively. Same-commit
 redeploys build so environment/configuration changes can still be released.
 Rename detection is disabled so a move out of frontend still rebuilds it.
@@ -41,3 +41,24 @@ the owner explicitly needs a rebuild.
 
 Sources: [Vercel Ignored Build Step](https://vercel.com/kb/guide/how-do-i-use-the-ignored-build-step-field-on-vercel),
 [last successful deployment SHA](https://github.com/vercel/vercel/discussions/7251).
+
+## CLI and release verification (#6222 review)
+
+The standalone ignore-build CLI always runs its decision, including through a
+junction alias. It defaults to BUILD; pure helpers live in
+`frontend/scripts/vercel-build-decision.ts` and have no process-exit side effects.
+`verify-deploy.ps1` calls the same conservative path classifier through
+`scripts/frontend-deployment-needed.mjs`: Railway remains required; Vercel is
+required for frontend/shared/unknown inputs, but not for positively classified
+independent paths. Missing local commit/parent history or invalid output requires
+Vercel. This classifies the current merge against its first parent; it is not
+proof of a skipped build or a new READY deployment. Live smoke checks remain.
+
+The full-history replay is an upper savings bound, not an expected production
+reduction. The missing-base/no-origin case may build every commit. Preview
+branches also currently fall back to building when their origin fetch fails;
+preview savings and remote repair remain outside this PR. Actual build starts,
+skips, previous-SHA availability and Usage must be measured after owner release.
+Frontend source-map verification follows the same requirement: independent merges do not require maps uploaded for a new SHA when no new frontend build is required. The unchanged GitHub deploy-verify workflow still has its narrower path-prefix check; shared/root-input verification there remains a documented follow-up, not a claim of complete workflow alignment.
+
+The existing frontend-build CI job now typechecks the three build-selection TypeScript tools explicitly with Node types. The normal app typecheck only includes src/**, so its success alone is not tools-typecheck evidence.

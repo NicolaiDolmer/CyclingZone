@@ -222,7 +222,7 @@ _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel
 
 - _Fejlklassen har bidt 5 gange (11/6, 12/6, 13/6, 6/8, 18/8). Sidste gang skiftede hoved-checkoutets branch tre gange inden for én session, mens en parallel session havde ucommitteret arbejde i træet. Se `.claude/learnings/2026-08-06-shared-checkout-cross-session-commit.md`._
 
-**Regel 19 - Aldrig skip-logik paa prod-deploy-grenen**
+**Regel 19 - Konservativ build-selektion efter sidste succesfulde deploy (#6202)**
 
 - _To hændelser på to dage: 17/8 mistede prod-deploys (skip-logikken åd ægte ændringer); 18/8 stod alle prod-deploys i ERROR fordi `VERCEL_GIT_PREVIOUS_SHA` lå uden for Vercels shallow clone og exit 128 tolkes som deploy-fejl ([#3838](https://github.com/NicolaiDolmer/CyclingZone/issues/3838))._
 
