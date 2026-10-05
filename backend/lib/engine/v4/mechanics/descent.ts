@@ -75,7 +75,12 @@ import {
   threeKmRuleApplies,
 } from "./incidents.ts";
 import { weatherAdjustedRiskBase } from "./weather.ts";
-import { finishDescentClosingSeconds, TIME_MODEL_V3_TUNING } from "./timeModel.ts";
+import {
+  bookFinishDescentClosure,
+  finishDescentAttackGainCapSeconds,
+  finishDescentClosingSeconds,
+  TIME_MODEL_V3_TUNING,
+} from "./timeModel.ts";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -358,6 +363,38 @@ export function finishDescentRegroupBook(
   return book;
 }
 
+/**
+ * Review af #6223 (KUN orders_gc_v3, nedkoersel mod maal): hvor en angribende
+ * gruppe stod ved toppen, og hvad regrupperingen allerede har lukket, maalt mod
+ * gruppen umiddelbart foran ved toppen (ogsaa dagens udbrud) og mod fronten ved
+ * toppen. `ahead`/`front` er null for gruppen der var forrest. Raekkefoelgen ved
+ * toppen er (gap_seconds, id), samme som regrupperingen bruger.
+ */
+export function finishDescentTopRefs(
+  topGroups: readonly RaceGroup[],
+  regrouped: readonly RaceGroup[],
+  group: RaceGroup,
+): {
+  topGapSeconds: number;
+  closedSeconds: number;
+  ahead: { topGapSeconds: number; closedSeconds: number } | null;
+  front: { topGapSeconds: number; closedSeconds: number } | null;
+} | null {
+  const sorted = [...topGroups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const idx = sorted.findIndex((g) => g.id === group.id);
+  if (idx < 0) return null;
+  const sTop = sorted[idx].gap_seconds;
+  const topGapSeconds = round2(sTop - sorted[0].gap_seconds);
+  const closedSeconds = round2(sTop - group.gap_seconds);
+  const aheadTop = idx > 0 ? sorted[idx - 1] : null;
+  const aheadNow = aheadTop ? regrouped.find((g) => g.id === aheadTop.id) : undefined;
+  const ahead = aheadTop && aheadNow
+    ? { topGapSeconds: round2(sTop - aheadTop.gap_seconds), closedSeconds: round2((sTop - aheadTop.gap_seconds) - (group.gap_seconds - aheadNow.gap_seconds)) }
+    : null;
+  const front = idx > 0 ? { topGapSeconds, closedSeconds } : null;
+  return { topGapSeconds, closedSeconds, ahead, front };
+}
+
 type AttackCandidate = { riderId: string; descending: number };
 type AttackerSelection = { attackers: AttackCandidate[]; groupMinDescending: number };
 
@@ -447,8 +484,13 @@ export const descentHook: DescentHook = (
   // #6199/#6200 (KUN orders_gc_v3): paa en nedkoersel mod maal bogfoeres hvad
   // regrupperingen lukkede, saa finalens jagt paa samme segment kun faar resten
   // af loftet (finishDescentRemainingCapSeconds). Kun sat naar noget blev lukket.
-  const regroupBook = ctx.ordersGcV3 === true && isFinishDescent ? finishDescentRegroupBook(state.groups, groups) : null;
+  const v3FinishDescent = ctx.ordersGcV3 === true && isFinishDescent;
+  const topGroups = state.groups; // grupperne ved toppen (foer regrupperingen)
+  const regroupBook = v3FinishDescent ? finishDescentRegroupBook(topGroups, groups) : null;
   if (regroupBook) state = { ...state, finish_descent_regroup: regroupBook };
+  // Review af #6223 (KUN orders_gc_v3): angrebene nedenfor deler samme loft og
+  // skriver i samme bog (finishDescentAttackGainCapSeconds/bookFinishDescentClosure).
+  let book = state.finish_descent_regroup;
   let riders: Record<string, RiderState> = state.riders;
   let chasers = state.incident_chasers;
   let seq = 0;
@@ -495,7 +537,14 @@ export const descentHook: DescentHook = (
     if (attackers.length === 0) continue;
 
     const attackerMinDescending = attackers.reduce((m, a) => Math.min(m, a.descending), attackers[0].descending);
-    const gainSeconds = computeAttackGainSeconds(attackerMinDescending, groupMinDescending, ctx.tuning.descent);
+    let gainSeconds = computeAttackGainSeconds(attackerMinDescending, groupMinDescending, ctx.tuning.descent);
+    // Review af #6223 (KUN orders_gc_v3, nedkoersel mod maal): gevinsten holder
+    // sig under loftet; kan angrebet intet vinde, angribes der ikke.
+    const v3Top = v3FinishDescent ? finishDescentTopRefs(topGroups, groupsToScan, group) : null;
+    if (v3Top) {
+      gainSeconds = Math.min(gainSeconds, finishDescentAttackGainCapSeconds(segmentLengthKm, v3Top.ahead, v3Top.front));
+      if (!(gainSeconds > 0)) continue;
+    }
 
     const attackerIds = attackers.map((a) => a.riderId);
     const kind = newGroupKind(group.kind, attackerIds.length);
@@ -508,6 +557,7 @@ export const descentHook: DescentHook = (
     const origin = group.origin === "breakaway" ? undefined : "descent";
     groups = splitGroup(groups, group.id, attackerIds, { id: newGroupId, kind, gapSecondsDelta: -gainSeconds, origin });
     changed = true;
+    if (v3Top) book = bookFinishDescentClosure(book, newGroupId, v3Top.topGapSeconds, v3Top.closedSeconds + gainSeconds);
 
     events.push({
       km: round2(segment.to_km),
@@ -620,6 +670,8 @@ export const descentHook: DescentHook = (
         if (resolved.outcome === "time_loss") {
           chasers = addIncidentChaser(chasers, attacker.riderId, helperNearby ? "assisted" : "alone");
         }
+        // Review af #6223 (KUN orders_gc_v3): styrteren beholder kun kildegruppens lukning i bogen.
+        if (v3Top) book = bookFinishDescentClosure(book, soloId, v3Top.topGapSeconds, v3Top.closedSeconds);
         seq += 1;
         changed = true;
       }
@@ -655,6 +707,7 @@ export const descentHook: DescentHook = (
     }
   }
 
+  if (book !== state.finish_descent_regroup) state = { ...state, finish_descent_regroup: book };
   if (newIncidents.length > 0) {
     // #5582: registret roeres kun, naar et nedkoersels-styrt kostede tid.
     const withChasers = chasers === state.incident_chasers ? {} : { incident_chasers: chasers };

@@ -10,9 +10,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  bookFinishDescentClosure,
   climbSplitGapSeconds,
   climbTimeSeconds,
   clusterSplitRiders,
+  finishDescentAttackGainCapSeconds,
   finishDescentChaseCapSeconds,
   finishDescentClosingSeconds,
   finishDescentRemainingCapSeconds,
@@ -22,6 +24,7 @@ import {
   wprimeForcedCategoryAllowed,
 } from "./timeModel.ts";
 import { descentHook, finishDescentRegroupBook, regroupOnDescentV3 } from "./descent.ts";
+import { breakawayHook } from "./breakaway.ts";
 import { selectionPhaseFor } from "./mountainSelection.ts";
 import { finaleHook } from "../finale.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
@@ -294,6 +297,174 @@ test("2: regruppering + finalens jagt lukker tilsammen hoejst loftet paa hullet 
       assert.equal(finalState.finish_descent_regroup, undefined, "bogen er brugt op i finalen");
     }
   }
+});
+
+// ── Review af #6223: alle fire maader et hul kan lukkes paa ──────────────────
+// Regrupperingen (M3), nedkoerselsangrebet (M3), udbrudsjagten (M5) og finalens
+// jagt (M4) koerer i den raekkefoelge segmentLoop koerer dem paa sidste segment.
+// Under v3 lukker de tilsammen aldrig mere end loftet paa hullet ved toppen, og
+// inde i en gruppe vinder den bedste nedkoerer aldrig mere end loftet pr. km.
+
+type ScenarioGroup = { id: string; kind: RaceGroup["kind"]; origin?: RaceGroup["origin"]; gap: number; riders: Array<[string, Partial<Record<AbilityKey, number>>]> };
+
+const STRONG = { tempo: 95, flat: 95, endurance: 95, aggression: 95, positioning: 90, tactics: 90 };
+const WEAK = { tempo: 20, flat: 20, endurance: 20, durability: 20, positioning: 20 };
+
+function scenarioGroups(name: "chase_attack" | "front_attack" | "escape_m5", topGap: number): ScenarioGroup[] {
+  const many = (prefix: string, n: number, abilities: Partial<Record<AbilityKey, number>>) =>
+    Array.from({ length: n }, (_, i) => [`${prefix}${i}`, abilities] as [string, Partial<Record<AbilityKey, number>>]);
+  if (name === "chase_attack") {
+    // Fronten: svage nedkoerere. Jagten: tre klart bedre nedkoerere der angriber + jagtkraft.
+    return [
+      { id: "front", kind: "peloton", gap: 0, riders: many("f", 4, { descending: 40, ...WEAK }) },
+      { id: "chase", kind: "chase", gap: topGap, riders: [...many("ca", 3, { descending: 99, ...STRONG }), ...many("cb", 3, { descending: 60, ...STRONG })] },
+    ];
+  }
+  if (name === "front_attack") {
+    // Den bedste nedkoerer sidder i gruppen der kom foerst over toppen.
+    return [
+      { id: "front", kind: "peloton", gap: 0, riders: [...many("fa", 2, { descending: 99 }), ...many("fb", 4, { descending: 50 })] },
+      { id: "chase", kind: "chase", gap: topGap, riders: many("c", 4, { descending: 90, ...STRONG }) },
+    ];
+  }
+  // Dagens udbrud foran; feltet bag har baade nedkoerselsangribere og jagtkraft.
+  return [
+    { id: "escape", kind: "breakaway", origin: "breakaway", gap: 0, riders: many("e", 2, { descending: 40, ...WEAK }) },
+    { id: "field", kind: "peloton", gap: topGap, riders: [...many("pa", 3, { descending: 99, ...STRONG }), ...many("pb", 17, { descending: 60, ...STRONG })] },
+  ];
+}
+
+function rebaselined(groups: RaceGroup[]): RaceGroup[] {
+  const min = Math.min(...groups.map((g) => g.gap_seconds));
+  return min === 0 ? groups : groups.map((g) => ({ ...g, gap_seconds: g.gap_seconds - min }));
+}
+
+function runLastDescentSegment(spec: ScenarioGroup[], km: number, technicality: number, seed: string, ordersGcV3: boolean) {
+  const entrants: Record<string, Entrant> = {};
+  const riders: Record<string, RiderState> = {};
+  const groups: RaceGroup[] = [];
+  for (const g of spec) {
+    groups.push(group(g.id, g.gap, g.riders.map(([id]) => id), { kind: g.kind, ...(g.origin ? { origin: g.origin } : {}) }));
+    for (const [id, abilities] of g.riders) {
+      entrants[id] = fullEntrant(id, abilities);
+      riders[id] = riderState(id, g.id);
+    }
+  }
+  const segments: Segment[] = [
+    { kind: "climb", from_km: 0, to_km: 10, category: "1", avg_gradient: 7, top_elevation_m: 1500 },
+    { kind: "descent", from_km: 10, to_km: 10 + km, technicality },
+  ] as Segment[];
+  const route: RouteV2 = {
+    distance_km: 10 + km, profile_type: "mountain", finale_type: "descent", segments,
+    weather: { kind: "sun", wind_exposure: 0.1 }, waypoints: [],
+  };
+  const ctx: SegmentHookContext = {
+    ...makeHookCtx({ segment: segments[1], segmentIndex: 1, route, entrants, tuning: RACE_V4_TUNING, seed }),
+    ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
+  };
+  const top: EngineState = { km: 10, groups, riders, virtual_gc: Object.fromEntries(Object.keys(riders).map((id) => [id, 0])) };
+  // Samme raekkefoelge som segmentLoop paa sidste segment: M3, M5, rebaseline, finalen.
+  const afterDescent = descentHook(top, ctx);
+  const afterBreakaway = breakawayHook(afterDescent.state, ctx).state;
+  const finalState = finaleHook({ ...afterBreakaway, groups: rebaselined(afterBreakaway.groups) }, ctx).state;
+  return { top, afterDescent: afterDescent.state, descentEvents: afterDescent.events, afterBreakaway, finalState };
+}
+
+function gapByRider(groups: readonly RaceGroup[]): Map<string, number> {
+  return new Map(groups.flatMap((g) => g.rider_ids.map((id) => [id, g.gap_seconds] as const)));
+}
+
+/** Overtraedelser af loftet paa en nedkoersel mod maal (tom liste = invarianten holder). */
+function finishDescentCapViolations(run: ReturnType<typeof runLastDescentSegment>, km: number): string[] {
+  const out: string[] = [];
+  const perKmCap = T.finishDescentMaxSecondsPerKm * km;
+  const eps = 0.05;
+  // Inde i en gruppe: ingen rytter kommer mere end loftet pr. km foran sin egen gruppe.
+  const afterDescent = gapByRider(run.afterDescent.groups);
+  for (const g of run.top.groups) {
+    const remainder = run.afterDescent.groups.find((x) => x.id === g.id);
+    if (!remainder) continue;
+    for (const id of g.rider_ids) {
+      const won = remainder.gap_seconds - (afterDescent.get(id) ?? remainder.gap_seconds);
+      if (won > perKmCap + eps) out.push(`${id} vandt ${won} s i ${g.id} (loft ${perKmCap})`);
+    }
+  }
+  for (const e of run.descentEvents) {
+    const gained = Number(e.params?.gained_seconds ?? 0);
+    if (e.type === "finale_attack" && gained > perKmCap + eps) out.push(`angreb ${gained} s > ${perKmCap}`);
+  }
+  // Mod gruppen der kom foerst over toppen: aldrig mere end loftet paa hullet ved toppen.
+  const topGap = gapByRider(run.top.groups);
+  const finalGap = gapByRider(run.finalState.groups);
+  const frontTop = Math.min(...run.top.groups.map((g) => g.gap_seconds));
+  const frontIds = run.top.groups.filter((g) => g.gap_seconds === frontTop).flatMap((g) => g.rider_ids);
+  const reference = Math.min(...frontIds.map((id) => finalGap.get(id) ?? Infinity));
+  for (const [id, t] of topGap) {
+    const gap = t - frontTop;
+    if (gap <= 0 || run.finalState.riders[id]?.status !== "racing" || !finalGap.has(id)) continue;
+    const closed = gap - (finalGap.get(id)! - reference);
+    const cap = finishDescentChaseCapSeconds(gap, km);
+    if (closed > cap + eps) out.push(`${id} lukkede ${round2(closed)} s af ${gap} (loft ${cap})`);
+  }
+  return out;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+test("2 (review af #6223): regruppering, nedkoerselsangreb, udbrudsjagt og finalens jagt holder tilsammen loftet, over mange seeds", () => {
+  const violations: string[] = [];
+  let attacks = 0;
+  let m5Closures = 0;
+  for (const name of ["chase_attack", "front_attack", "escape_m5"] as const) {
+    for (const km of [3, 8, 15]) {
+      for (const topGap of [12, 40, 120, 600]) {
+        for (const technicality of [2, 3]) {
+          for (let s = 0; s < 6; s++) {
+            const run = runLastDescentSegment(scenarioGroups(name, topGap), km, technicality, `6223-${name}-${km}-${topGap}-${technicality}-${s}`, true);
+            attacks += run.descentEvents.filter((e) => e.type === "finale_attack").length;
+            // M5 flyttede jagten mod udbruddet paa nedkoerslen.
+            const sep = (st: EngineState) => {
+              const escape = st.groups.find((g) => g.id === "escape");
+              const field = st.groups.find((g) => g.id === "field");
+              return escape && field ? field.gap_seconds - escape.gap_seconds : null;
+            };
+            const before = sep(run.afterDescent);
+            const after = sep(run.afterBreakaway);
+            if (name === "escape_m5" && before !== null && after !== null && after < before) m5Closures += 1;
+            for (const v of finishDescentCapViolations(run, km)) violations.push(`${name} ${km} km, hul ${topGap}, teknik ${technicality}, seed ${s}: ${v}`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(attacks > 0, "scenarierne giver nedkoerselsangreb");
+  assert.ok(m5Closures > 0, "udbrudsjagten (M5) lukker noget paa nedkoerslen");
+  assert.deepEqual(violations.slice(0, 10), [], `${violations.length} overtraedelser`);
+});
+
+test("2 (review af #6223): uden orders_gc_v3 er nedkoerselsangrebet uaendret (fast gevinst, ingen bog)", () => {
+  const run = runLastDescentSegment(scenarioGroups("chase_attack", 40), 3, 3, "6223-legacy", false);
+  const attack = run.descentEvents.find((e) => e.type === "finale_attack");
+  assert.ok(attack, "angrebet sker");
+  const gained = Number(attack!.params?.gained_seconds);
+  assert.ok(gained >= RACE_V4_TUNING.descent.attackWindowSeconds[0], "fuld gevinst uden loftet");
+  assert.equal(run.afterDescent.finish_descent_regroup, undefined);
+});
+
+test("2 (review af #6223): angrebets loft og bogen", () => {
+  // Forrest ved toppen: kun loftet pr. km.
+  assert.equal(finishDescentAttackGainCapSeconds(8, null, null), T.finishDescentMaxSecondsPerKm * 8);
+  // Bag en gruppe: regruppering + gevinst under loftet paa hullet ved toppen.
+  assert.equal(finishDescentAttackGainCapSeconds(8, { topGapSeconds: 10, closedSeconds: 2 }, { topGapSeconds: 10, closedSeconds: 2 }), 3);
+  assert.equal(finishDescentAttackGainCapSeconds(8, { topGapSeconds: 10, closedSeconds: 6 }, null), 0, "aldrig negativ");
+  // Fronten er den strammeste: kaede af grupper.
+  assert.equal(finishDescentAttackGainCapSeconds(8, { topGapSeconds: 300, closedSeconds: 0 }, { topGapSeconds: 310, closedSeconds: 10 }), 2);
+  assert.deepEqual(bookFinishDescentClosure(undefined, "g", 40, 3), { g: { topGapSeconds: 40, closedSeconds: 3 } });
+  assert.deepEqual(bookFinishDescentClosure({ g: { topGapSeconds: 40, closedSeconds: 3 } }, "g", 99, 2), { g: { topGapSeconds: 40, closedSeconds: 5 } });
+  const book = { g: { topGapSeconds: 40, closedSeconds: 3 } };
+  assert.equal(bookFinishDescentClosure(book, "g", 40, 0), book, "intet lukket: samme bog");
 });
 
 test("2: uden orders_gc_v3 bogfoeres intet", () => {

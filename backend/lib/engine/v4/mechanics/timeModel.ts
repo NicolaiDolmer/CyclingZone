@@ -176,6 +176,57 @@ export function finishDescentRemainingCapSeconds(
   return round2(Math.max(0, Math.min(ownCap, finishDescentChaseCapSeconds(regroup.topGapSeconds, lengthKm, t) - closed)));
 }
 
+/**
+ * 2 (review af #6223): loftet over et nedkoerselsangrebs (M3) gevinst paa en
+ * nedkoersel mod maal. Tre graenser, den mindste vinder:
+ *   - inde i gruppen: hoejst loftet pr. km (den bedste nedkoerer vinder aldrig mere);
+ *   - mod gruppen umiddelbart foran ved toppen (ogsaa dagens udbrud): det
+ *     regrupperingen allerede har lukket + gevinsten holder sig under loftet paa
+ *     hullet ved toppen, saa angriberen aldrig passerer den;
+ *   - mod fronten ved toppen: samme delte loft som regrupperingen, M5's jagt og
+ *     finalens jagt (bogen, finishDescentRemainingCapSeconds).
+ * `ahead`/`front` er null for gruppen der var forrest ved toppen. Et negativt
+ * `closedSeconds` (gruppen foran koerte selv fra) giver plads, aldrig mere end loftet.
+ */
+export function finishDescentAttackGainCapSeconds(
+  lengthKm: number,
+  ahead: { topGapSeconds: number; closedSeconds: number } | null,
+  front: { topGapSeconds: number; closedSeconds: number } | null,
+  t: TimeModelTuning = TIME_MODEL_V3_TUNING,
+): number {
+  const km = Number.isFinite(lengthKm) ? Math.max(0, lengthKm) : 0;
+  let cap = t.finishDescentMaxSecondsPerKm * km;
+  for (const ref of [ahead, front]) {
+    if (!ref) continue;
+    const closed = Number.isFinite(ref.closedSeconds) ? ref.closedSeconds : 0;
+    cap = Math.min(cap, finishDescentChaseCapSeconds(ref.topGapSeconds, km, t) - closed);
+  }
+  return round2(Math.max(0, cap));
+}
+
+/**
+ * 2 (review af #6223): laegger `closedSeconds` til bogen for `groupId` paa en
+ * nedkoersel mod maal (regruppering, M3-angreb, M5's jagt), saa finalens jagt
+ * kun faar resten af loftet. `topGapSeconds` bruges kun, naar gruppen ikke staar
+ * i bogen i forvejen. Ren: returnerer en ny bog; uaendret ved 0 eller mindre.
+ */
+export function bookFinishDescentClosure(
+  book: Record<string, { topGapSeconds: number; closedSeconds: number }> | undefined,
+  groupId: string,
+  topGapSeconds: number,
+  closedSeconds: number,
+): Record<string, { topGapSeconds: number; closedSeconds: number }> | undefined {
+  if (!(closedSeconds > 0)) return book;
+  const prior = book?.[groupId];
+  return {
+    ...(book ?? {}),
+    [groupId]: {
+      topGapSeconds: prior?.topGapSeconds ?? round2(Math.max(0, topGapSeconds)),
+      closedSeconds: round2((prior?.closedSeconds ?? 0) + closedSeconds),
+    },
+  };
+}
+
 /** Dagens udbrud (samme definition som finale.isEscapeGroup). M5 ejer hullet til det. */
 export function isEscapeGroupV3(group: Pick<RaceGroup, "kind" | "origin">): boolean {
   return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");

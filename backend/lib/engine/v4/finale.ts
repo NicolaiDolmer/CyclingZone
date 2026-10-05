@@ -720,7 +720,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     if (inTailZone) {
       if (!tailStarted) {
         // Haleklump: ét gap-skridt bag sidste oploeste tier, resten deler tid.
-        const scoreDelta = prevScore !== null ? Math.max(0, prevScore - entry.score) : 0;
+        // Review af #6223 (KUN orders_gc_v3): fra den forrige tiers foerste rytter (se tier-grenen).
+        const tailReference = tieEpsilon === null || !Number.isFinite(tierTopScore) ? prevScore : tierTopScore;
+        const scoreDelta = tailReference !== null ? Math.max(0, tailReference - entry.score) : 0;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
         cumulativeGap += step;
@@ -744,9 +746,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     const newTier = prevScore === null
       || (tieEpsilon === null ? entry.score < prevScore : tierTopScore - entry.score >= tieEpsilon);
     if (newTier) {
+      // Review af #6223 (KUN orders_gc_v3): skridtet regnes fra den forrige tiers
+      // FOERSTE rytter, saa en rytters tid stadig foelger hans score-afstand til
+      // vinderen; samme tid i en tier maa ikke goere ryttere bag den hurtigere.
+      const tierReference = tieEpsilon === null ? prevScore : tierTopScore;
       tierTopScore = entry.score;
-      if (prevScore !== null) {
-        const scoreDelta = prevScore - entry.score;
+      if (prevScore !== null && tierReference !== null) {
+        const scoreDelta = tierReference - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
         cumulativeGap += step;
