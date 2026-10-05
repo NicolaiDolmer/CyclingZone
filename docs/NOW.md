@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (6/10): start med [`2026-10-06-morgensession-prompt.md`](superpowers/plans/2026-10-06-morgensession-prompt.md).** Først: aftentjek #6129 (20 ryttere trænet?) + #6153 (ingen rangliste-500) + staging-kopi → rens → syntetiske logins. Morgenblok: **Udvikling 2.0 D1-D7 (#6110, byg fra 6/10)** · løbsmotor: samlet billede af diagnoserne 5/10 → designsamtaler ét punkt ad gangen (#6187 #5978 #6201 #6185 #6199+#6200 #3460 #2557 #6137); **#6156 bygges først derefter** · #6053 med ejeren · Train now-flip · #5864 + #6130 go.
+> **🎯 Next action (5/10 eftermiddag): næste Claude-session: [`2026-10-05-naeste-session-claude.md`](superpowers/plans/2026-10-05-naeste-session-claude.md) (løbsmotoren først) · Codex ved siden af: [`2026-10-05-naeste-session-codex.md`](superpowers/plans/2026-10-05-naeste-session-codex.md).** Først: aftentjek #6129 (20 ryttere trænet?) + #6153 (ingen rangliste-500) + staging-kopi → rens → syntetiske logins. Morgenblok: **Udvikling 2.0 D1-D7 (#6110, byg fra 6/10)** · løbsmotor: samlet billede af diagnoserne 5/10 → designsamtaler ét punkt ad gangen (#6187 #5978 #6201 #6185 #6199+#6200 #3460 #2557 #6137); **#6156 bygges først derefter** · #6053 med ejeren · Train now-flip · #5864 + #6130 go.
 >
 > **5/10 (planlægningssession #6148):** #6129 anvendt · #6153 + #6179 merget · merge-kø #6195 #6197 #6180 #6183 · roadmap = MASTERPLAN (rækkefølge, 8 løfter, 16 GDD-punkter, 2027-liste) · motor-diagnoser på issues · udgifter: staging-branch er eneste nye faste post · deps: intet brændende, major-plan 1/12.
 
