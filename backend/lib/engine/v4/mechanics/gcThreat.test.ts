@@ -223,3 +223,53 @@ test("#5955: early on a long stage the open-terrain projection is capped, so a r
   const real = assess({ gcContext: gc, km: 0, groups: groups(["rival"], deficit, ["lead", "aHelp", "weak", "far", "bCap"]) });
   assert.equal(real.severity, "serious");
 });
+
+// ── #6187 (KUN orders_gc_v3): holdkammerater er aldrig en trussel ───────────
+
+const OWN_ENTRANTS: Record<string, Entrant> = { ...ENTRANTS, aMate: entrant("aMate", "A", 76, "helper") };
+const OWN_GC = standings([["lead", 0], ["aMate", 20], ["rival", 30], ["bCap", 60], ["far", 1800], ["weak", 2400], ["aHelp", 3000]]);
+const assessOwn = (over: Partial<Parameters<typeof assessGcThreat>[0]>) =>
+  assessGcThreat({ gcContext: OWN_GC, groups: [], entrants: OWN_ENTRANTS, route: FLAT, protectedRiderId: "lead", km: 100, ...over });
+
+test("#6187: a teammate up the road is never a threat under orders_gc_v3 (own_rider_ahead); unchanged without it", () => {
+  const g = groups(["aMate"], 60, ["lead", "aHelp", "rival", "weak", "far", "bCap"]);
+  const v2 = assessOwn({ groups: g });
+  assert.equal(v2.severity, "serious", "orders_gc_v2 still sees the teammate as a threat (unchanged)");
+  assert.deepEqual(v2.threat_rider_ids, ["aMate"]);
+  const v3 = assessOwn({ groups: g, ownTeamId: "A" });
+  assert.equal(v3.severity, "none");
+  assert.equal(v3.reason, "own_rider_ahead");
+  assert.deepEqual(v3.threat_rider_ids, []);
+  assert.equal(v3.own_rider_group_id, "breakaway-0");
+  assert.equal(v3.tolerated_lead_seconds, undefined);
+});
+
+test("#6187: own rider ahead + a rival in the same group: the rival alone is the threat, and the group is not chased", () => {
+  const g = groups(["aMate", "rival"], 60, ["lead", "aHelp", "weak", "far", "bCap"]);
+  const teammateExcluded = assessOwn({ groups: g, ownTeamId: "A" });
+  assert.equal(teammateExcluded.severity, "serious");
+  assert.deepEqual(teammateExcluded.threat_rider_ids, ["rival"], "the teammate is never on the threat list");
+  const noChase = assessOwn({ groups: g, ownTeamId: "A", skipOwnRiderGroups: true });
+  assert.equal(noChase.severity, "none");
+  assert.equal(noChase.reason, "own_rider_ahead");
+  assert.equal(noChase.own_rider_group_id, "breakaway-0");
+});
+
+test("#6187: once the own rider is dropped (or caught) the group is a threat again and may be chased", () => {
+  const dropped = assessOwn({ groups: groups(["rival"], 60, ["lead", "aMate", "aHelp", "weak", "far", "bCap"]), ownTeamId: "A", skipOwnRiderGroups: true });
+  assert.equal(dropped.severity, "serious");
+  assert.deepEqual(dropped.threat_rider_ids, ["rival"]);
+  // En udgaaet rytter i gruppen taeller heller ikke som egen mand foran.
+  const notRacing = assessOwn({
+    groups: groups(["aMate", "rival"], 60, ["lead", "aHelp", "weak", "far", "bCap"]),
+    ownTeamId: "A", skipOwnRiderGroups: true,
+    racingRiderIds: new Set(["lead", "aHelp", "rival", "weak", "far", "bCap"]),
+  });
+  assert.equal(notRacing.severity, "serious");
+});
+
+test("#6187: a harmless own group stays an ordinary harmless verdict, not own_rider_ahead", () => {
+  const t = assessOwn({ groups: groups(["aHelp", "weak"], 30, ["lead", "aMate", "rival", "far", "bCap"]), ownTeamId: "A", skipOwnRiderGroups: true });
+  assert.equal(t.severity, "none");
+  assert.notEqual(t.reason, "own_rider_ahead", "nothing was suppressed: the group was never a threat");
+});
