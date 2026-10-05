@@ -24,10 +24,26 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
     if (!value) { value = { morning: false, caught: false, survived: false, dropped: false, laterAttack: false }; riders.set(id, value); }
     return value;
   };
-  // A dropped rider keeps that state: being swallowed by the bunch afterwards
-  // is the consequence of the drop, not a catch of the break.
-  const catchMorning = (ids: Iterable<string>) => {
-    for (const id of ids) if (morningRiderIds.has(id)) { const value = entry(id); if (value.dropped) continue; value.caught = true; value.survived = false; }
+  // A dropped rider keeps that state when a merge sweeps him up: being
+  // swallowed by the bunch afterwards is the consequence of the drop, not a
+  // catch of the break. An explicit `breakaway_caught` that names him is
+  // different: the engine lists the members of the break group at the catch,
+  // so he was back in the break when it was caught.
+  const catchMorning = (ids: Iterable<string>, explicit = false) => {
+    for (const id of ids) if (morningRiderIds.has(id)) {
+      const value = entry(id);
+      if (value.dropped && !explicit) continue;
+      value.caught = true; value.survived = false; value.dropped = false;
+    }
+  };
+  // #6185 review: a dropped escapee who merges into a group that still holds
+  // an active morning escapee (and nobody else) is back in the break.
+  // engine/v4 does this: mergeGroupsDetailed folds a split behind the break
+  // back into it when the gap closes, sometimes in the same segment.
+  const rejoinBreak = (combined: ReadonlySet<string>) => {
+    const active = [...combined].some((id) => { const value = riders.get(id); return !!value?.morning && !value.dropped && !value.caught; });
+    if (!active) return;
+    for (const id of combined) { const value = riders.get(id); if (value?.morning && value.dropped && !value.caught) value.dropped = false; }
   };
   // #6185: leaving the break behind (split backwards, lost time, or the
   // engine's own future `breakaway_dropped` event) before any catch.
@@ -70,10 +86,11 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       const combined = new Set([...target, ...incoming]);
       // Only actual known members can prove a reunion with non-escapees.
       if ([...combined].some((id) => !morningRiderIds.has(id))) catchMorning(combined);
+      else rejoinBreak(combined);
       groups.delete(groupId);
       groups.set(p.into_group_id, combined);
     } else if (event.type === "breakaway_caught") {
-      catchMorning(ids);
+      catchMorning(ids, true);
     } else if (event.type === "breakaway_survived") {
       // The engine's verdict at the line: a rider who fell behind his break
       // mates but still stayed clear of the bunch did hold on.

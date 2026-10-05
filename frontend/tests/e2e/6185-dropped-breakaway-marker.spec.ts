@@ -99,8 +99,13 @@ test("#6185 a tap on the dropped marker shows its text and does not open the rid
   const marker = page.locator('[aria-label="Udbrud: sat af fra udbruddet"]');
   const bubble = page.getByRole("tooltip");
   await expect(bubble).toHaveCount(0);
+  // Review: the marker sits inside the rider link, so it is not focusable itself
+  // (no nested-interactive), and its tap target is at least 24 px.
+  expect(await marker.evaluate((el) => (el as HTMLElement).tabIndex)).toBe(-1);
+  const target = (await marker.boundingBox())!;
+  expect(target.width).toBeGreaterThanOrEqual(24);
+  expect(target.height).toBeGreaterThanOrEqual(24);
   await marker.click();
-  await expect(marker).toBeFocused();
   await expect(bubble).toHaveText("Udbrud: sat af fra udbruddet");
   await expect(bubble).toHaveCSS("opacity", "1");
   // The bubble is never clipped by the result table: fully inside the viewport.

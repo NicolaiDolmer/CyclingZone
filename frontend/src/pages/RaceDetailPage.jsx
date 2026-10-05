@@ -206,12 +206,17 @@ function riderName(res) {
 const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
 const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
 
-// #6185: markøren er tap-tilgængelig på touch. Markøren er fokuserbar (tabIndex),
-// så et tryk fokuserer den og viser teksten; hover/fokus virker stadig på desktop.
-// Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal med fixed
-// position (følger markøren ved scroll/resize): resultattabellens scroller klipper
-// ellers boblen (mobil, sidste række).
+// #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, hover virker
+// på desktop. Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal
+// med fixed position (følger markøren ved scroll/resize): resultattabellens
+// scroller klipper ellers boblen (mobil, sidste række).
 // preventDefault stopper at trykket navigerer via RiderLink-ankeret markøren ligger i.
+// #6185 review: markøren ligger INDE i ankeret, så den er bevidst IKKE fokuserbar
+// (ingen tabIndex: et fokuserbart element i et link er nested-interactive).
+// Tilstanden når skærmlæsere via linkets navn (role="img" + aria-label).
+// Trykfladen er 24 px (p-[4.5px] om 15 px-ikonet); den negative margin æder den
+// ekstra polstring, så layout og udseende er uændret (samme 19 px-boks som før).
+const MARKER_HIT_INSET = 2.5;
 function MarkerTip({ label, className = "", children }) {
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
@@ -219,27 +224,32 @@ function MarkerTip({ label, className = "", children }) {
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
     const maxWidth = Math.min(224, window.innerWidth - 16);
-    setPos({ left: Math.max(8, Math.min(rect.left, window.innerWidth - maxWidth - 8)), top: rect.bottom, maxWidth });
+    const left = rect.left + MARKER_HIT_INSET;
+    setPos({ left: Math.max(8, Math.min(left, window.innerWidth - maxWidth - 8)), top: rect.bottom - MARKER_HIT_INSET, maxWidth });
   }, []);
   const hide = useCallback(() => setPos(null), []);
   useEffect(() => {
     if (!pos) return undefined;
     const onKey = (e) => { if (e.key === "Escape") hide(); };
+    // Et tryk et andet sted lukker boblen (markøren kan ikke miste fokus, den har intet).
+    const onPointerDown = (e) => { if (!ref.current?.contains(e.target)) hide(); };
     window.addEventListener("scroll", show, true);
     window.addEventListener("resize", show);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       window.removeEventListener("scroll", show, true);
       window.removeEventListener("resize", show);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [pos, show, hide]);
   return (
     <span className="ms-1 inline-flex align-middle">
-      <span ref={ref} role="img" tabIndex={0} aria-label={label}
-        onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
+      <span ref={ref} role="img" aria-label={label}
+        onMouseEnter={show} onMouseLeave={hide}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); show(); }}
-        className={`inline-flex cursor-help rounded-sm p-0.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent ${className}`}>
+        className={`-m-[2.5px] inline-flex cursor-help p-[4.5px] ${className}`}>
         {children}
       </span>
       {pos && (
