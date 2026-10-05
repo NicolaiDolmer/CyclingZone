@@ -180,6 +180,12 @@ export const LET_GO_BRAKE_TUNING = Object.freeze({
   maxBrake: 0.3,
   /** Effektive bremse-ryttere (fuld effort, friske) der giver den fulde bremse. */
   referenceBrakers: 4,
+  /**
+   * #5978 (KUN orders_gc_v3, snoren): hoejeste bremse over snorens laengde.
+   * Under 1: et udbrud kan stadig vokse lidt, og ingen indhentning er garanteret.
+   * START-KANDIDAT, kalibreres privat (balance-internals/5978/).
+   */
+  leashMaxBrake: 0.9,
 });
 
 /** Et holds beslutning for segmentet, som bremsen laeser den (strukturel type). */
@@ -225,8 +231,11 @@ export function letGoBrake(input: {
   braking: ReadonlyMap<string, number>;
   entrants: Readonly<Record<string, Entrant>>;
   riders: Readonly<Record<string, RiderState>>;
+  /** #5978 (KUN orders_gc_v3): bremsens loft (LET_GO_BRAKE_TUNING.leashMaxBrake). Udeladt = maxBrake. */
+  maxBrake?: number;
 }): { fraction: number; work: Map<string, number>; toleratedSeconds: number } {
   const tuning = LET_GO_BRAKE_TUNING;
+  const maxBrake = input.maxBrake ?? tuning.maxBrake;
   const work = new Map<string, number>();
   const none = { fraction: 0, work: new Map<string, number>(), toleratedSeconds: Infinity };
   if (input.braking.size === 0) return none;
@@ -243,7 +252,7 @@ export function letGoBrake(input: {
     toleratedSeconds = Math.min(toleratedSeconds, input.braking.get(teamId) ?? 0);
   }
   if (!(pull > 0) || !(tuning.referenceBrakers > 0)) return none;
-  const fraction = tuning.maxBrake * Math.max(0, Math.min(1, pull / tuning.referenceBrakers));
+  const fraction = maxBrake * Math.max(0, Math.min(1, pull / tuning.referenceBrakers));
   return { fraction, work, toleratedSeconds };
 }
 
@@ -352,6 +361,13 @@ export function advanceTeamReaction(input: {
   }
 
   // Ingen reaktion i dette segment.
+  if (prior.status === "reacting" && input.leash === true && input.threat.reason === "protected_in_other_group") {
+    // #5978 (KUN orders_gc_v3): holdets GC-rytter sidder et oejeblik i en anden
+    // gruppe end jagtgruppen (fx bag en lille gruppe). Holdet kan ikke jage
+    // derfra, men truslen er ikke under kontrol: reaktionen holder pause uden
+    // at stoppe (ingen arbejde, intet event), og fortsaetter naar han er tilbage.
+    return { next: prior, workers: [], events };
+  }
   if (prior.status === "reacting") {
     // #6187 (KUN orders_gc_v3): truslen sidder nu sammen med holdets egen mand.
     // Det er ikke "under kontrol"; holdet jager bare ikke sine egne.

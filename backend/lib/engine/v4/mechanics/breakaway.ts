@@ -99,6 +99,7 @@ import {
   brakedLetGoGrowth,
   letGoBrake,
   letGoBrakingTeams,
+  LET_GO_BRAKE_TUNING,
   planTeamReaction,
   type ReactionStance,
   type TeamReactionPlan,
@@ -1189,6 +1190,8 @@ type GcReactionSetup = {
   decisions: TeamGcDecision[];
   /** jagtgruppe-id -> (team_id -> reaktion), til teamChasePlan's `reactions`. */
   reactionsByChaseGroup: Map<string, Map<string, { intensity: number; workers: readonly string[] }>>;
+  /** #5978 (KUN orders_gc_v3): snoren er i spil (se planTeamReaction). */
+  leash?: boolean;
 };
 
 /** Er GC-reaktionen i spil for dette hook-kald? KUN orders_gc_v1. */
@@ -1222,7 +1225,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
   // #5978 (KUN orders_gc_v3): farlighed med potentiale, snoren og endagsloebet.
   const dangerModel = ctx.ordersGcV3 === true ? dangerModelFor(ctx, gcContext) : undefined;
   const oneDay = gcContext.status === "one_day" && dangerModel?.routeDemand !== undefined;
-  if (gcContext.status !== "standings" && !oneDay) return { decisions, reactionsByChaseGroup };
+  if (gcContext.status !== "standings" && !oneDay) return { decisions, reactionsByChaseGroup, ...(dangerModel ? { leash: true } : {}) };
 
   const breakawayGroups = findBreakawayGroups(state.groups);
   const chasingGroupIds = new Set<string>();
@@ -1287,7 +1290,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
       reactionsByChaseGroup.set(threat.chase_group_id, byTeam);
     }
   }
-  return { decisions, reactionsByChaseGroup };
+  return { decisions, reactionsByChaseGroup, ...(dangerModel ? { leash: true } : {}) };
 }
 
 // ── #6187 (KUN orders_gc_v3): eget hold jagter aldrig sine egne ──────────────
@@ -1432,6 +1435,7 @@ function finishGcReactions(input: {
       teamId: decision.teamId,
       km: input.km,
       plan: decision.plan,
+      ...(input.setup.leash ? { leash: true } : {}),
     });
     events.push(...advanced.events);
     if (advanced.next !== prior && !(prior === undefined && advanced.next.status === "idle" && advanced.next.reason === null)) {
@@ -1596,7 +1600,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     workByChaseGroup.set(chaseGroup.id, { plan: mergedPlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
     if (ordersGcV3) planByBreakaway.set(breakaway.id, chasePlan); // #6187: filmens "hvem hentede" pr. udbrud
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
-    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders }) : null;
+    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders, ...(ordersGcV3 ? { maxBrake: LET_GO_BRAKE_TUNING.leashMaxBrake } : {}) }) : null;
     const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
     if (brake && braked && braked.brakedShare > 0) {
       const priorBrake = brakeByChaseGroup.get(chaseGroup.id);

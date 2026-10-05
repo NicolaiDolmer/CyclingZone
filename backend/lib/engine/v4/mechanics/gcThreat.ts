@@ -397,7 +397,7 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
@@ -444,7 +444,7 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival });
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival, leashRoom: deficit - Math.max(0, future) - GC_THREAT_V3_TUNING.leashMarginSeconds });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -479,17 +479,19 @@ export function assessGcThreat(input: {
 /**
  * #5978 (KUN orders_gc_v3): snoren. En farlig rytter (reel rival, ikke holdets
  * egen) foran, hvis fremskrevne margin endnu er under snorens margin, holder
- * snoren. Det tolererede forspring (GC-bremsen) er hans afstand minus margin.
+ * snoren. Det tolererede forspring (GC-bremsen) er snorens laengde
+ * (`leashRoom`): hans afstand (plus det han vinder paa de kommende etaper)
+ * minus margin; i endagsloeb det tolererede forspring minus margin.
  */
 function withLeash(
   threat: GcThreat,
-  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; lead: number; rival: boolean }>,
+  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number }>,
 ): GcThreat {
   const leashMargin = GC_THREAT_V3_TUNING.leashMarginSeconds;
   const held = counted.filter((c) => c.rival && c.margin < leashMargin);
   const limiting = counted.filter((c) => c.severity !== "none" || (c.rival && c.margin < leashMargin));
   const tolerated = limiting.length > 0
-    ? { tolerated_lead_seconds: Math.max(0, Math.min(...limiting.map((c) => c.lead + c.margin - leashMargin))) }
+    ? { tolerated_lead_seconds: Math.max(0, Math.min(...limiting.map((c) => c.leashRoom))) }
     : {};
   return {
     ...threat,
@@ -536,7 +538,7 @@ function assessOneDayThreat(input: {
   const best = fieldBestRouteAbility(input.groups, input.entrants, input.routeDemand, isRacing);
   const protectedAbility = routeAbility(input.entrants[protectedId], input.routeDemand);
   const isOwn = (riderId: string) => input.ownTeamId !== undefined && input.entrants[riderId]?.team_id === input.ownTeamId;
-  type Candidate = { riderId: string; severity: GcThreatSeverity; margin: number; lead: number; own: boolean; groupId: string; rival: boolean };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; margin: number; lead: number; own: boolean; groupId: string; rival: boolean; leashRoom: number };
   const candidates: Candidate[] = [];
   for (const group of ahead) {
     const lead = Math.max(0, protectedGroup.gap_seconds - group.gap_seconds);
@@ -549,7 +551,7 @@ function assessOneDayThreat(input: {
       if (!rival) continue;
       const margin = v3.oneDayAllowanceSeconds - lead;
       const severity: GcThreatSeverity = margin <= 0 ? "serious" : margin <= tuning.moderateWindowSeconds ? "moderate" : "none";
-      candidates.push({ riderId, severity, margin, lead, own: ownGroup || isOwn(riderId), groupId: group.id, rival });
+      candidates.push({ riderId, severity, margin, lead, own: ownGroup || isOwn(riderId), groupId: group.id, rival, leashRoom: v3.oneDayAllowanceSeconds - v3.leashMarginSeconds });
     }
   }
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
