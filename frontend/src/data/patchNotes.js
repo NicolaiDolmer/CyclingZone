@@ -7,11 +7,11 @@ export const PATCHES = [
         "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
         "en": {
           "title": "Riders who missed evening training got their days back",
-          "body": "Some riders who joined a team between 29/9 and 3/10 did not train in the evening. They have their missed training days back, and they train normally again from tonight. A few riders with a more complicated history are reviewed separately."
+          "body": "Riders who joined a team between 29/9 and 3/10 and missed evening training have those days back, and they train normally again from tonight. A few riders with a more complicated history are reviewed separately."
         },
         "da": {
           "title": "Ryttere, der missede aftentræning, har fået deres dage tilbage",
-          "body": "Nogle ryttere, der kom på et hold mellem 29/9 og 3/10, trænede ikke om aftenen. De har fået de missede træningsdage tilbage og træner normalt igen fra i aften. Et par ryttere med en mere kompliceret historik bliver gennemgået separat."
+          "body": "Ryttere, der kom på et hold mellem 29/9 og 3/10 og missede aftentræning, har fået de dage tilbage og træner normalt igen fra i aften. Et par ryttere med en mere kompliceret historik bliver gennemgået separat."
         },
         "refs": [6129, 6061]
       },
@@ -19,11 +19,11 @@ export const PATCHES = [
         "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
         "en": {
           "title": "Rankings no longer fail while they update",
-          "body": "The rankings could show an error while they were being updated. They now update in the background, and you see the last finished version in the meantime."
+          "body": "Rankings now update in the background, and you see the last finished version in the meantime. Before, they could show an error while updating."
         },
         "da": {
           "title": "Ranglisterne fejler ikke længere, mens de opdateres",
-          "body": "Ranglisterne kunne vise en fejl, mens de blev opdateret. Nu opdateres de i baggrunden, og imens ser du den seneste færdige version."
+          "body": "Ranglisterne opdateres nu i baggrunden, og imens ser du den seneste færdige version. Før kunne de vise en fejl under opdateringen."
         },
         "refs": [5692]
       },
@@ -31,11 +31,11 @@ export const PATCHES = [
         "category": "fixed", "audience": "player", "rollout": "live", "topic": "Board",
         "en": {
           "title": "The board stops repeating itself",
-          "body": "Board messages kept coming after you had signed your mandate, and one asked for a 3-year plan you could not make. The old plan reminders are gone. New teams also get their board mandate when they are created."
+          "body": "You get one reminder before your mandate deadline and one last call, and no more messages about a 3-year plan you cannot open. New teams also get their board mandate when they are created."
         },
         "da": {
           "title": "Bestyrelsen gentager sig ikke længere",
-          "body": "Bestyrelsesbeskeder blev ved med at komme, efter du havde underskrevet dit mandat, og én bad om en 3-års plan, du ikke kunne lave. De gamle plan-påmindelser er væk. Nye hold får også deres bestyrelsesmandat, når de oprettes."
+          "body": "Du får én påmindelse før fristen for dit mandat og én sidste påmindelse, og ingen beskeder om en 3-års plan, du ikke kan åbne. Nye hold får også deres bestyrelsesmandat, når de oprettes."
         },
         "refs": [6122, 6130]
       },
@@ -43,11 +43,11 @@ export const PATCHES = [
         "category": "improved", "audience": "player", "rollout": "live", "topic": "Help",
         "en": {
           "title": "Help explains rider types more precisely",
-          "body": "Help now says that each type covers several abilities, not only the one in its name, so a GC rider can also reach high in time trials. The shares for abilities outside both roles and for craft are corrected."
+          "body": "Each rider type covers several abilities, not only the one in its name, so a GC rider can also reach high in time trials. The shares for abilities outside both roles and for craft are corrected."
         },
         "da": {
           "title": "Hjælp forklarer ryttertyper mere præcist",
-          "body": "Hjælp siger nu, at hver type dækker flere evner end den, den er opkaldt efter, så en GC-rytter også kan nå højt i enkeltstart. Andelene for evner uden for begge roller og for håndværk er rettet."
+          "body": "Hver ryttertype dækker flere evner end den, den er opkaldt efter, så en GC-rytter også kan nå højt i enkeltstart. Andelene for evner uden for begge roller og for håndværk er rettet."
         },
         "refs": [3813]
       }
