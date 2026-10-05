@@ -1413,12 +1413,14 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     ? ownRidersOnWheel({ groups: state.groups, riders: state.riders, entrants: ctx.entrants, gcContext, route: ctx.route, km: ctx.segment.from_km })
     : [];
   const wheelSitterIds = new Set(onWheel.flatMap((w) => w.rider_ids));
+  const planByBreakaway = new Map<string, ReturnType<typeof teamChasePlan>>();
   const announcedTeams = new Set(state.own_rider_ahead_teams ?? []);
   const ownAheadEvents: TimelineEvent[] = [];
   const announce = (teamId: string, groupId: string, riderIds: readonly string[], reason: "gc_reaction" | "chase_order" | "on_wheel", protectedRiderId: string | null) => {
     if (announcedTeams.has(teamId) || riderIds.length === 0) return;
     announcedTeams.add(teamId);
-    ownAheadEvents.push(ownRiderAheadEvent(round2(ctx.segment.from_km), teamId, groupId, riderIds, reason, protectedRiderId));
+    // Aldrig foer udbruddet er dannet (linjen ville staa foer "udbrud dannet" i filmen).
+    ownAheadEvents.push(ownRiderAheadEvent(round2(Math.max(ctx.segment.from_km, formationKm)), teamId, groupId, riderIds, reason, protectedRiderId));
   };
   if (ordersGcV3 && gcSetup) {
     for (const d of gcSetup.decisions) {
@@ -1498,6 +1500,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     }
     const priorWork = workByChaseGroup.get(chaseGroup.id);
     workByChaseGroup.set(chaseGroup.id, { plan: chasePlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
+    if (ordersGcV3) planByBreakaway.set(breakaway.id, chasePlan); // #6187: filmens "hvem hentede" pr. udbrud
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
     const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id), entrants: ctx.entrants, riders: state.riders }) : null;
     const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
@@ -1594,7 +1597,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         type: "breakaway_caught",
         // #6050 (ADDITIV, kun fortaelling): hvem hentede udbruddet. chasing_team_ids =
         // de hold der havde ryttere i jagt-arbejde i det segment hvor hullet lukkede.
-        params: { group_id: breakaway.id, rider_ids: [...breakaway.rider_ids], ...catchActorParams(chase, workByChaseGroup.get(chaseId)?.plan.chaserWork, ctx.entrants) },
+        // #6187 (KUN orders_gc_v3): planen for netop DETTE udbrud, saa et hold der
+        // ikke jagede det (egen mand foran) aldrig staar som den der hentede det.
+        params: { group_id: breakaway.id, rider_ids: [...breakaway.rider_ids], ...catchActorParams(chase, (ordersGcV3 ? planByBreakaway.get(breakawayId) : workByChaseGroup.get(chaseId)?.plan)?.chaserWork, ctx.entrants) },
       });
     } else if (isLastSegment) {
       events.push({
