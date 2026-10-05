@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import IntlMessageFormat from "intl-messageformat";
-import { describeGroupedEvent, groupRepeatedFeedEvents } from "./stageTimelineGrouping.ts";
+import { describeGroupedEvent, groupRepeatedFeedEvents, isGroupedCopy } from "./stageTimelineGrouping.ts";
 import { buildFilmTimeline, describeEvent } from "./stageTimelineFilm.js";
 
 const locales = {
@@ -17,6 +17,11 @@ const merged = (km: number, ...riders: string[]) => ({ km, type: "group_merged",
 const reaction = (km: number, team: string, protectedRider: string, status = "started", extra: Record<string, unknown> = {}) =>
   ({ km, type: "gc_reaction", params: { team_id: team, status, protected_rider_id: protectedRider, ...extra } });
 const attack = (km: number, rider: string) => ({ km, type: "finale_attack", params: { rider_id: rider } });
+// Indsnævrer en beskrevet linje til en samlet linje; fejler testen hvis den ikke er det.
+function asGrouped(line: Parameters<typeof isGroupedCopy>[0]) {
+  assert.ok(isGroupedCopy(line), "forventede en samlet linje");
+  return line;
+}
 const names = new Map(Array.from({ length: 40 }, (_, i) => [`r${i}`, `Rider ${i}`]));
 
 // Anker: etape med 21 group_merged + 2 gc_reaction + 3 finale_attack på samme km.
@@ -39,9 +44,9 @@ test("anker: 26 linjer på samme km bliver højst 5 (uden egne ryttere: 3)", () 
   assert.equal(atKm.length, 3);
   const lines = atKm.map((e) => describeEvent(e, { riderNameById: names }));
   assert.deepEqual(lines.map((l) => l?.key), ["group_merged_batch", "gc_reaction_batch_started", "finale_attack_named_batch"]);
-  assert.equal(lines[0]?.params.count, 21);
-  assert.equal(lines[1]?.params.count, 2);
-  assert.equal(lines[2]?.params.riders, "Rider 1, Rider 2, Rider 3");
+  assert.equal(asGrouped(lines[0]).params.count, 21);
+  assert.equal(asGrouped(lines[1]).params.count, 2);
+  assert.equal(asGrouped(lines[2]).params.riders, "Rider 1, Rider 2, Rider 3");
   // Motoren/den rå liste er uændret.
   assert.equal(built.events.filter((e) => e.km === 175).length, 26);
 });
@@ -90,7 +95,7 @@ test("egne ryttere forsvinder aldrig: deres hændelser står som egne, uændrede
   assert.equal(describeEvent(events[4], { riderNameById: names })?.key, "gc_reaction_started");
   // De øvrige samles og tæller kun de øvrige.
   const batch = lines.filter(({ e }) => e.grouped);
-  assert.deepEqual(batch.map(({ d }) => [d?.key, d?.params.count, d?.params.scope]), [
+  assert.deepEqual(batch.map(({ d }) => { const g = asGrouped(d); return [g.key, g.params.count, g.params.scope]; }), [
     ["group_merged_batch", 2, "others"],
     ["gc_reaction_batch_started", 2, "others"],
     ["finale_attack_batch", 2, "others"],
@@ -103,7 +108,9 @@ test("egen rytter som trussel i en GC-reaktion beholder også sin linje", () => 
     { ownRiderIds: new Set(["r5"]) },
   );
   assert.equal(out.length, 2);
-  assert.equal(out[0].params?.rider_ids?.[0], "r5");
+  const firstIds = out[0].params?.rider_ids;
+  assert.ok(Array.isArray(firstIds));
+  assert.equal(firstIds[0], "r5");
   assert.equal(out[1].grouped?.count, 2);
 });
 

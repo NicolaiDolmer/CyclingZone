@@ -18,7 +18,17 @@ export type GroupedFilmEvent = FilmEvent & {
   grouped?: { count: number; scope: "all" | "others"; events: FilmEvent[] };
 };
 
-type FilmCopy = { key: string; params: Record<string, unknown> };
+/** Params for en samlet linje: kun antal/omfang og evt. navne, aldrig motor-tal. */
+export type GroupedFilmParams = { count: number; scope: "all" | "others"; riders?: string };
+export type GroupedFilmCopy = { key: string; params: GroupedFilmParams };
+
+/** Type-guard: er en beskrevet filmlinje en samlet linje (bærer count + scope)? */
+export function isGroupedCopy(line: { key: string; params: unknown } | null | undefined): line is GroupedFilmCopy {
+  const p = line?.params;
+  if (typeof p !== "object" || p === null) return false;
+  const { count, scope } = p as Record<string, unknown>;
+  return typeof count === "number" && (scope === "all" || scope === "others");
+}
 
 // Over dette antal navne bliver en samlet angrebs-linje et tællertal; en linje
 // med ti navne er ikke en broadcast-linje.
@@ -124,7 +134,7 @@ const GC_BATCH_KEY: Record<string, string> = {
 export function describeGroupedEvent(
   event: GroupedFilmEvent,
   nameOf: (id: unknown) => string | null,
-): FilmCopy | null {
+): GroupedFilmCopy | null {
   const grouped = event.grouped;
   if (!grouped) return null;
   const { count, scope } = grouped;
@@ -137,7 +147,7 @@ export function describeGroupedEvent(
     case "finale_attack": {
       const names = grouped.events.map((e) => nameOf(paramsOf(e).rider_id));
       if (scope === "all" && count <= MAX_NAMED_RIDERS && names.every(Boolean)) {
-        return { key: "finale_attack_named_batch", params: { riders: names.join(", "), count } };
+        return { key: "finale_attack_named_batch", params: { riders: names.join(", "), count, scope } };
       }
       return { key: "finale_attack_batch", params: { count, scope } };
     }
