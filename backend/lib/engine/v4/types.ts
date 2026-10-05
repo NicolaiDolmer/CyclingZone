@@ -210,7 +210,7 @@ export type StageInput = {
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
-export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2";
+export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2" | "orders_gc_v3";
 
 /** #5978: én rytters plads i det publicerede klassement foer etapen. */
 export type GcStanding = { rider_id: string; rank: number; gap_seconds: number };
@@ -654,6 +654,9 @@ export type EngineState = {
   // tilstand. Kun saat under orders_gc_v1 (mechanics/breakaway.ts). Baeres
   // gennem hele segment-loopet, saa arbejdet deles paa tvaers af start/stop.
   team_reactions?: Record<string, TeamReactionState>;
+  // #6187 (ADDITIVT, valgfrit, KUN orders_gc_v3): hold der allerede har faaet
+  // etapens ene "holdet foerer ikke, det har folk foran"-linje (breakaway.ts).
+  own_rider_ahead_teams?: string[];
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
@@ -700,6 +703,9 @@ export type SegmentHookContext = {
   // #6073 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v2 paa rullende profil
   // (mechanics/rollingBreakaway.ts). Udeladt = lad-gaa-balancen er uaendret.
   rollingBreakawayV2?: true;
+  // #6187 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v3 (og senere).
+  // Udeladt = holdene jagter som under orders_gc_v2 (mechanics/breakaway.ts).
+  ordersGcV3?: true;
   // #5978 (ADDITIVT og VALGFRIT): StageInput.gc_context, KUN sat under
   // orders_gc_v1 (segmentLoop). Legacy-hooks ser aldrig feltet.
   gcContext?: GcContext | null;

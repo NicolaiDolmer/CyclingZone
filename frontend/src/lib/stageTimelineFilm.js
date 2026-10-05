@@ -366,6 +366,7 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
     // #6067: orders_gc_v1's ærlige kvitteringer, uden tal.
     case "gc_reaction":
     case "gc_context":
+    case "own_riders_ahead": // #6187 (orders_gc_v3)
       return describeGcReactionEvent(event, (id) => riderName(id, riderNameById));
     default:
       return null;

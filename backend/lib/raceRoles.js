@@ -19,6 +19,8 @@
 // / RACE_V3_TEAM_RACE_WEIGHT) så scripts/sweepS1WorkCost.mjs kan køre et
 // joint grid i child-processer UDEN at redigere denne fil pr. celle. Prod/CI
 // sætter ALDRIG disse envs → tallene nedenfor er de gældende. Ingen secrets.
+import { isOrdersGcRulesRevision } from "./raceEngineRulesRevision.ts";
+
 const envNum = (name, def) => {
   const raw = process.env[name];
   if (raw == null || raw === "") return def;
@@ -416,7 +418,7 @@ function saveFatigueMultiplier(profileType, rulesRevision) {
   const legacy = RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE;
   // #6084: orders_gc_v2 = hele orders_gc_v1-pakken + bjergselektionen, saa
   // v2 arver v1's profil-afhaengige save-traethed.
-  if (rulesRevision !== "orders_gc_v1" && rulesRevision !== "orders_gc_v2") return legacy;
+  if (!isOrdersGcRulesRevision(rulesRevision)) return legacy;
   const m = ORDERS_GC_V1_SAVE_FATIGUE_BY_PROFILE[profileType];
   if (!Number.isFinite(m)) return legacy;
   // Trappen må ikke vende: grupetto <= save < normal.

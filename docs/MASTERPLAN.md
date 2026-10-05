@@ -10,7 +10,7 @@
 
 ## Uge 41 · rækkefølge
 
-Alt parallelt: løbsmotor-pakken (byg bag `orders_gc_v3`, flip ejer-only: 🟠 i lane: #6187 · #6185 del 1 · #6137 · venter på v3: #3460 halv støtte · #6185 del 2 · efter #6187: #5978 (svært af sted + snor) → #6201 (bjerg 6-12, loft 16) · design mangler: #6199+#6200 · #2557 · Arbejd+loft · #6186 #5059; #6156 efter) · **Supabase-stabilisering (#5893):** ① staging færdig #5904 (Claude) samtidig med ② timeout-diagnose #6184 (PR #6196 synkes) + #5878 → ③ tunge kald, bevist på staging: #6102 (PR #6136, ejer-kør) · #3511 · #5692 sæsonskifte-refresh (før 25/10) → ④ ved siden af: #4269 (ejer opretter token) · #6104 · #6105 · #708 (Codex, før 30/10). Venter på ①: #6134 jobkø · #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
+Alt parallelt: løbsmotor-pakken (byg bag `orders_gc_v3`, flip ejer-only: 🟠 i lane: #6187 · #6185 del 1 · #6137 · venter på v3: #3460 halv støtte · #6185 del 2 · efter #6187: #5978 (svært af sted + snor) → #6201 (bjerg 6-12, loft 16) · #6199+#6200 tidsmodel · design mangler: #2557 · Arbejd+loft · #6186 #5059; #6156 efter) · **Supabase-stabilisering (#5893):** ① staging færdig #5904 (Claude) samtidig med ② timeout-diagnose #6184 (PR #6196 synkes) + #5878 → ③ tunge kald på staging (måling #6184): liveness-tælling · rangliste ved hændelse #5692 (før 25/10) · #3511 · #6102 (PR #6136, ejer-kør) · Realtime → ④ ved siden af: #4269 (ejer opretter token) · #6104 · #6105 · #708 (Codex, før 30/10). Venter på ①: #6134 jobkø · #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6210 maks +1 · #6212 patch notes · #6062 · #6121 privacy · roadmap #6174 #6175 #6172 #6165 #6164 · #6053. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
 
 ## Roadmap · Planned (spejles i `roadmap_items.sort_order`)
 
@@ -28,7 +28,7 @@ Alt parallelt: løbsmotor-pakken (byg bag `orders_gc_v3`, flip ejer-only: 🟠 i
 
 ## Release-gate (beta → "færdigt spil", ejer 30/9)
 
-1. **Stabilitet:** 0 brand i 7 dage · aftentræning < 2 min (#5911) · #5904 · #6134  · chunk #5162 · Supabase-stabilisering #5893 (#6102 #6104 #6105) · API på eget domæne. 2. **Motor:** #6156 · v4-drift-vagt grøn · v2-etaper holder mod testen · #5978 · #5951 · #4914. 3. **Træning:** alle beta-features til alle. 4. **Økonomi:** #5916 · #5842 · #5443-tjekliste ajourført. 5. **Fastholdelse:** #4964. 6. **Mobil:** #5131. 7. **Billing:** #4514 · #4512 · #4511 · #6062 periode uden faktura.
+1. **Stabilitet:** 0 brand i 7 dage · #5911 < 2 min · #5904 · #6134  · chunk #5162 · Supabase-stabilisering #5893 (#6102 #6104 #6105) · API på eget domæne. 2. **Motor:** #6156 · v4-drift-vagt grøn · v2-etaper holder mod testen · #5978 · #5951 · #4914. 3. **Træning:** alle beta-features til alle. 4. **Økonomi:** #5916 · #5842 · #5443-tjekliste ajourført. 5. **Fastholdelse:** #4964. 6. **Mobil:** #5131. 7. **Billing:** #4514 · #4512 · #4511 · #6062 periode uden faktura.
 
 ## Bane 2 · Forretning (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
