@@ -297,3 +297,48 @@ test("#4839 processMandateAutoAcceptCron: off → stadig no-op, også som motor-
   assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 });
   assert.equal(supabase._state.mandates[0].status, "proposed");
 });
+
+// ── #6122: højst én T-3 og én T-1 pr. mandat ─────────────────────────────────
+
+function t3Fixture({ notifications = [] } = {}) {
+  const openedAt = new Date("2026-09-27T10:00:00Z");
+  return {
+    // Korte vindue (last_seen null): T-3 fra dag 2, T-1 fra dag 4.
+    now: new Date(openedAt.getTime() + 3 * 24 * 60 * 60 * 1000),
+    supabase: makeCronSupabase({
+      flagValue: "on",
+      mandates: [{ id: "m1", team_id: "t1", season_number: 5, status: "proposed", proposed_at: openedAt.toISOString(), auto_accept_deadline: null }],
+      teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
+      users: [{ id: "u1", last_seen: null }],
+      notifications,
+    }),
+  };
+}
+
+test("#6122 processMandateAutoAcceptCron: første T-3-tick sender påmindelsen", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(result.reminders_sent, 1);
+  assert.equal(notified[0].metadata.titleCode, "notif.boardMandateT3Reminder.title");
+  assert.deepEqual(supabase._state.notificationQueries[0], {
+    user_id: "u1",
+    type: "board_update",
+    related_id: "m1",
+    "metadata->>titleCode": "notif.boardMandateT3Reminder.title",
+  });
+});
+
+test("#6122 processMandateAutoAcceptCron: T-3 allerede sendt (anden daysLeft-tekst) → ingen ny påmindelse næste døgn", async () => {
+  const { supabase, now } = t3Fixture({
+    notifications: [{
+      id: "n1", user_id: "u1", type: "board_update", related_id: "m1",
+      metadata: { titleCode: "notif.boardMandateT3Reminder.title" },
+    }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(notified.length, 0, "24t-tekst-dedup ville have sendt igen; mandat-nøglen gør ikke");
+  assert.equal(result.reminders_sent, 0);
+  assert.equal(result.errors, 0);
+});

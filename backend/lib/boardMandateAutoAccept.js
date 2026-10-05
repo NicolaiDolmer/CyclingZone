@@ -159,14 +159,14 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
 
   if (daysSinceOpen >= thresholds.T_MINUS_1) {
     result.reminder_sent = await sendReminder({
-      team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical: true,
+      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical: true,
     });
     return result;
   }
 
   if (daysSinceOpen >= thresholds.T_MINUS_3) {
     result.reminder_sent = await sendReminder({
-      team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical: false,
+      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical: false,
     });
     return result;
   }
@@ -192,13 +192,21 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
  * titleCode) i stedet for at stole på tekst-lighed.
  */
 async function hasOpeningNotice({ supabase, userId, mandateId }) {
+  return hasMandateNotice({ supabase, userId, mandateId, type: "board_update", titleCode: MANDATE_OPENED_TITLE_CODE });
+}
+
+// #6122 · Dedupe-nøgle (manager, type, mandat, titleCode) uden tidsvindue.
+// Reminder-teksten bærer "{daysLeft}", så notifyUser's 24t-tekst-dedup lod
+// T-3 og T-1 fyre igen HVERT døgn i deres vindue (aktive managere: op til 5
+// beskeder + Discord-DM pr. mandat). Nu: højst én T-3 og én T-1 pr. mandat.
+async function hasMandateNotice({ supabase, userId, mandateId, type, titleCode }) {
   const { data, error } = await supabase
     .from("notifications")
     .select("id")
     .eq("user_id", userId)
-    .eq("type", "board_update")
+    .eq("type", type)
     .eq("related_id", mandateId)
-    .eq("metadata->>titleCode", MANDATE_OPENED_TITLE_CODE)
+    .eq("metadata->>titleCode", titleCode)
     .limit(1);
   if (error) throw new Error(`notifications lookup failed: ${error.message}`);
   return Array.isArray(data) && data.length > 0;
@@ -223,20 +231,23 @@ async function sendOpeningNotice({ supabase, team, mandate, notifyUser, now, day
   return Boolean(result?.delivered);
 }
 
-async function sendReminder({ team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical }) {
+async function sendReminder({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical }) {
   if (!team.user_id) return false;
+  const type = critical ? "board_critical" : "board_update";
+  const titleCode = critical ? "notif.boardMandateT1Reminder.title" : "notif.boardMandateT3Reminder.title";
+  if (await hasMandateNotice({ supabase, userId: team.user_id, mandateId: mandate.id, type, titleCode })) return false;
   const daysLeft = Math.max(1, Math.ceil(thresholds.AUTO_ACCEPT - daysSinceOpen));
   const isSingle = daysLeft === 1;
   const result = await notifyUser({
     userId: team.user_id,
-    type: critical ? "board_critical" : "board_update",
+    type,
     title: critical ? "Last chance: sign your annual mandate" : "The board is waiting for your annual mandate",
     message: critical
       ? `The board signs on its own in ${daysLeft} day${isSingle ? "" : "s"}. Open the annual meeting now.`
       : `You have ${daysLeft} days left to negotiate your annual mandate. If you don't act, the board will sign for you.`,
     relatedId: mandate.id,
     metadata: {
-      titleCode: critical ? "notif.boardMandateT1Reminder.title" : "notif.boardMandateT3Reminder.title",
+      titleCode,
       messageCode: critical
         ? (isSingle ? "notif.boardMandateT1Reminder.messageSingle" : "notif.boardMandateT1Reminder.messageMulti")
         : "notif.boardMandateT3Reminder.message",

@@ -207,6 +207,36 @@ test("#3579: et backlogget hold får varslet FØR nedtællingen, målt fra rollo
   assert.equal(notifications[0].metadata.titleCode, "notif.boardPlanOpened.title");
 });
 
+// ── #6122 · mandat-modellen 'on' → plan-cronen er tavs ───────────────────
+
+function withMandateFlag(state, value) {
+  state.app_config = [{ key: "board_mandate_model_enabled", value }];
+  return state;
+}
+
+test("#6122: mandat-model 'on' → ingen plan-påmindelse (planen kan ikke forhandles i Boardroom)", async () => {
+  const state = withMandateFlag(baseState({ teamCreatedAt: new Date(NOW.getTime() - 2 * DAY_MS).toISOString() }), "on");
+  const { summary, notifications } = await runCron(state, NOW);
+  assert.equal(notifications.length, 0);
+  assert.equal(summary.reminders_sent, 0);
+  assert.equal(summary.errors, 0);
+});
+
+test("#6122: mandat-model 'on' → auto-accept kører stadig, men uden besked", async () => {
+  const state = withMandateFlag(baseState({ teamCreatedAt: new Date(NOW.getTime() - 5 * DAY_MS).toISOString() }), "on");
+  const { summary, notifications } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(notifications.length, 0);
+  assert.equal(state.board_profiles.find((b) => b.plan_type === "5yr").negotiation_status, "completed");
+});
+
+test("#6122: mandat-model 'beta' → almindelige managere ser stadig den gamle side og får påmindelsen", async () => {
+  const state = withMandateFlag(baseState({ teamCreatedAt: new Date(NOW.getTime() - 2 * DAY_MS).toISOString() }), "beta");
+  const { notifications } = await runCron(state, NOW);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].metadata.titleCode, "notif.boardT3Reminder.title");
+});
+
 test("nyt hold, dag 2 siden åbning: T-3 info-reminder (board_update)", async () => {
   const opened = new Date(NOW.getTime() - 2 * DAY_MS);
   const state = baseState({ teamCreatedAt: opened.toISOString() });
