@@ -6,25 +6,25 @@
 
 ## 🔴 Brand (nu)
 
-⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. **Trin 0 først:** tjek hvad der allerede er løst + kvaliteten af de 22 motorændringer siden flippet · 🟠 #6129 anvendt 5/10 kl. 10:25 (aftentjek; 7 blokerede efterkontrolleres) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (genoprettet 1/10; mangler svarudkast til spillerne) · 🔵 #5897 217 bestyrelser (kort søn).
+⚪ **#6156 form + formtoppe virker ikke i v4 siden 28/9** (ejer 4/10: byg starter man 5/10; spec `2026-10-04-form-og-formtoppe-i-v4-design.md`). Kører som **løbsmotor-pakke, 4 laner**: #6156 · udbrud/jagt #5951 #5978 · genmål i v4 #3460 #5059 #2557 #3426 #3965 #5907 · kalibrering #4914 #4197 #5515. Trin 0 ✅ (#6157) · 🟠 #6129 anvendt 5/10 kl. 10:25 (aftentjek; 7 blokerede efterkontrolleres) · 🟠 #5928 træthed 5x · 🟠 v2-etaper mod den endelige test · 🟠 #5912 tabte træningsdage 28/9 (svar i næste roadbook) · 🔵 #5897 217 bestyrelser (kort søn).
 
 ## Uge 41 · rækkefølge (ejer 4/10)
 
-1 #6129 + løbsmotor-pakken (start man 5/10) · ✅ #6153 (5/10) · 2 go-kort #6053 · #6180 hjælpetekst ryttertyper (#3813) · ✅ roadmap-hub #5387 live 4/10; opfølgning i uge 41 (ejer 4/10): #6174 sikkerhed · #6175 · #6172 merge-kø · #6165 bundle-model · #6164 gamle tilbud + inaktive managers · GitHub-audit (planlægges 5/10) · **stabilitet rykker op** (ejer: infrastrukturen skal fungere fantastisk igen; Codex om natten, se release-gate 1) · løfter · beta → alle · Udvikling 2.0 · betaling. Én bølge ad gangen: Claude om dagen, Codex om natten. Overblik: `pr-screens/roadmap-4-10/samlet-plan-uge41.png`.
+Alt parallelt: løbsmotor-pakken (design med ejer pr. punkt: #6185 #6186 #6187 #3460 #5059 #2557) · stabilitet #6184 #708 (før 30/10) #5911 · træningspakken + beta→alle · Udvikling 2.0 (+#4765) · Holdarbejde-opfyldning (#5268 A, 7.739 NULL) · løfter #5831 #5917 #5979 #6060 · #4714 (beslut + indfør) · #5940 + #5916 · #6138 · #6062 · #6121 privacy · roadmap-opfølgning #6174 #6175 #6172 #6165 #6164 · #6053 · #6180 · staging #6183 (3 ejer-valg). ✅ 5/10: #6129 · #6153 · audit. **Før S5 (25/10):** #6109 · #5865 · #5842 · #5833 afstemning · ungdoms-upkeep 0 i S5 meldes ud. **Uge 43-46:** #6190.
 
 ## Roadmap · Planned (ejer 5/10; spejles 1:1 i `roadmap_items.sort_order`)
 
-**Next:** 1 stabilitet (#5878 #6184 #5911) · 2 #5831 · 3 #5917 · 4 #6060 · 5 #5105 · 6 #3813 · 7 #5981 · 8 #5074 · 9 #5238 formtræning · 10 #5865 · 11 #5131 · 12 race sharpener · 13 værdier uden potentiale. **Later (efter stemmer):** #1177 · #2768 · #5573 · #4620 · #5113 · #5101 · #5575 · #5574 · #3463 · … · #3513 · #2223 · #2161. Grundlag: løfter først, så spillerstemmer + staff-chat 5/10 ("det der hænger, før nyt"). Mentorer/trøjemål op i Next = punkt til #6148.
+**Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** #1177 · #2887 A · #2768 · #5573 · #4620 · #5113 · #5101 · #5575 · #5574 · #3463 · #6125 · #2176 · #4957 · #5106 · #3374 · #3513 · #2223 · #2161. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md) (ny roadmap-sektion, UI-PR). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
-🔵 **Flip-liste beta → alle** (flip lukker alle i samme tur): `training_train_now` (#6006/#6027/#4847) · `training_programs` (#4629) · `training_groups` (#6000) · `season_matrix_mobile` (#5124) · dagvalg #5685 · historik #5947. **Træningspakke man 5/10:** #6035 (PR #6053) · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · **lovet:** #5965 analyse. Derefter #5949 · #5630 · #5539 · #5911 < 2 min (kun delvist).
+🔵 **Flip-liste beta → alle** (flip lukker alle i samme tur): `training_train_now` (#6006/#6027/#4847) · `training_programs` (#4629) · `training_groups` (#6000) · `season_matrix_mobile` (#5124) · `race_role_scope_choice` (#6095) · dagvalg #5685 · historik #5947. **Træningspakke man 5/10:** #6035 (PR #6053) · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · **lovet:** #5965 analyse. Derefter #5949 · #5630 · #5539 · #5911 < 2 min (kun delvist).
 
 🔵 **Udvikling 2.0 [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110) (ejer 3/10, S4):** design søn 4/10-man 5/10 (kort D1-D7, ét ad gangen) → byg uge 41 (6.-10/10): kurve B #3564 · løbsdag + rolle #5950 · tilbagegang/løbsbremse #6109 (klar før S4→S5) · én kurve for AI/frie #6059. Spec `2026-10-03-udvikling-2-design.md`.
 
 ## Bane 1 · Lovet til spillerne (dato først)
 
-27/9 #5831 · 28/9 #5917 · 30/9 #5979 · 1/10 #6035 · 2/10 #6060 (alle ⚪; rækkefølge = roadmap ovenfor).
+31/8 #4522 · 19/8+15/9 #3984 · 27/9 #5831 · 28/9 #5917 · 30/9 #5979 #5940 · 1/10 #6035 · 2/10 #6060 · 4/10 #4714 (rækkefølge = roadmap).
 
 ## Release-gate (beta → "færdigt spil", ejer 30/9)
 
@@ -40,7 +40,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Åbne:** Udvikling 2.0 D1-D7 (#6110) · mentale evner #5268 (A: 0 ratingfald · B: ratingneutral) + #5827 · søndagstidspunkt værdikørsel (#5842) · #5833 pause til S5 · kort 4 #6157 · #6148 planlægning (kø til 1/1-2027, anti-feature-liste, #6122/#6181/#6182). **Afgjort 5/10:** #6129 · #6153 uden staging · #3813 · #6126 kun idéer · #6134 venter på staging (#5904 i gang) · roadmap-rækkefølge.
+**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · staging-rensning/disk/S4-struktur (#6183) · kort F statusfejl · #6122 bestyrelse. **Afgjort 5/10:** #6129 · #6153 · #3813 · #6126 idéer · #6134 venter staging · #6157 alle 4 grupper · #5981 A · #2887 B/A · #5268 A (fra 1/10) · #4449 afløst af v6 · 8 løfter + 16 GDD-punkter (2027-fil).
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
