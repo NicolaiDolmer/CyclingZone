@@ -66,6 +66,18 @@ Ejer-beslutning 5/10. `orders_gc_v3` er hele `orders_gc_v2`-pakken plus reglerne
 
 Anker: `backend/scripts/dev/ownRiderAhead6187.mjs` + `.test.mjs` kører Giro-etapen hvor fejlen blev set (bjergetape 7 i det anonymiserede felt fra #6088) over flere seeds. Under `orders_gc_v2` jager holdet sit eget udbrud; under `orders_gc_v3` gør intet hold det. Prod-etapens eget seed er saltet og kan ikke genskabes, og klassementet før etapen er simuleret (etape 1-6 i rækkefølge), så holdets ordre for etapen er sat til prod-situationen (neutral, to holdkammerater i udbrud foran holdets bedste mand). Kode: `mechanics/gcThreat.ts`, `mechanics/breakaway.ts` (`ownRidersOnWheel`, `teamChasePlan`), `segmentLoop.ts` (fronten i gruppens tempo).
 
+## Én tidsmodel for stigning og nedkørsel under `orders_gc_v3` (#6199 + #6200)
+
+Ejer-beslutning 5/10 (kontrakten står i den seneste kommentar på #6199). Gælder kun under `orders_gc_v3`; legacy, `orders_gc_v1` og `orders_gc_v2` er byte-identiske med før. Kode: `mechanics/timeModel.ts` (konstanterne og de rene regler), kaldt fra `mechanics/climbSelection.ts`, `mechanics/descent.ts`, `mechanics/mountainSelection.ts`, `finale.ts` og ét kald i `segmentLoop.ts`.
+
+1. **Hullet på en stigning følger stigningen.** Et split får ikke længere et fast trin. Hver afhængt rytter får sit eget hul ud fra stigningens tid (længde og stejlhed) og hvor meget svagere han klatrer end gruppens bedste, og de afhængte samles i nogle få grupper efter hullet. En svagere klatrer får aldrig et mindre hul end en stærkere på samme stigning.
+2. **En tom reserve sætter kun af fra ca. kat. 2.** På kat. 3 og 4 afgør selektions-scoren alene. Rullende etaper får samme bløde selektion før finalestigningen som bjerg og kuperet (kun selektionen; udbruds-jagten på rullende er uændret).
+3. **Grupper kan samles igen efter en top midt på etapen.** På nedkørslen kan en gruppe køre op igen (længde, teknik og nedkørselsevne), og i dalen bagefter kan hullet ikke vokse for en gruppe tæt nok på gruppen foran; det kan stadig krympe. Dagens udbrud røres ikke af reglen (jagten på udbruddet ejes af udbrudsmekanikken), og ingen gruppe kan komme forbi det.
+4. **Nedkørsel mod mål.** Små huller kan lukkes, aldrig minutter: højst ca. 1,5 s pr. km for en klart bedre nedkører (afhængigt af længde og teknik), og højst halvdelen af hullet. Samme loft gælder finalens jagt på nedkørslen. Klatring tæller med i placeringen i en nedkørselsfinale.
+5. **Tæt score giver samme tid i en selektiv finale.** Ryttere hvis finale-score ligger tæt på tierens første rytter, kommer i mål på samme tid. På en afslutning opad henter feltet ikke længere grupper ind med sit antal (det gælder kun massefinaler på fladt/rullende).
+
+Mål (ejer 5/10, ankertabellen §7b): på en bjergetape er nr. 10 60-150 s efter vinderen (erstatter 180-240 s fra #2415). På en kort afslutning opad (ca. 3-7 km à 5-7 %, ikke højfjeld) er nr. 10 inden for 20 s, nr. 30 inden for 90 s og nr. 50 inden for 300 s; det er et nyt anker i scorecardet (`short_uphill_finish_gaps`; kommer i §7b-tabellen ved næste refresh af baseline-filen), og tallene justeres, når der er målt på virkelige løb. Hale-gaten (§9 række 13) er uændret. Scorecardet kan køres under en revision med `node backend/scripts/v4FlipReadiness.mjs --rules=orders_gc_v3`. Måling og replay-ankre (to genskabte etaper fra løbet i #6199 med det anonymiserede felt fra #6088): `backend/scripts/dev/timeModel6199.mjs`; tal i `balance-internals/6199/`.
+
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
 
@@ -679,7 +691,7 @@ node backend/scripts/buildV4AnchorBaseline.mjs && node backend/scripts/renderV4A
 | Sprinter-vinderrate paa flat (top-20%-sprint-evne vinder) | >= 90.0% (race:gate + #3149 (mor-spec §5: "sprinter-vinderrate paa flat >= 90%")) | 86.3 % (80.0 %-91.4 %) [FAIL] | 98.9 % (94.3 %-100.0 %) [PASS] |
 | ITT-korrelation (time_trial-evne vs. placering, synlig) | spearman > 0.3 (race:gate + #3149 (mor-spec §5: "ITT-korrelation synlig" — tærskel valgt af denne harness)) | 0.76 (0.74-0.78) [PASS] | 0.83 (0.81-0.85) [PASS] |
 | Bonussekunder GC-effekt bounded (maks ~10s/etape) | <= 10s/etape pr. rytter (#2413-kravet (mor-spec §5)) | 13s (13s-13s) [FAIL] | 10s (10s-10s) [PASS] |
-| Bjergetape top-10-spredning, topankomster (#2415) | 180-240s (~3-4 min) (#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)) | 111s (107s-116s) [FAIL] | 197s (164s-220s) [PASS] |
+| Bjergetape top-10-spredning, topankomster (#6199) | 60-150s (1:00-2:30) (ejer 5/10 (#6199 del 2, virkelige Grand Tour-topankomster): nr. 10 er 1:00-2:30 efter vinderen. Erstatter #2415's 180-240 s) | 111s (107s-116s) [PASS] | 197s (164s-220s) [FAIL] |
 | GT-vindermargin (#2415) | 60-480s (1-8 min) (#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)) | n/a | n/a |
 
 <!-- v4-anchors:end -->
