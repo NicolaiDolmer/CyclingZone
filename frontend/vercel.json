@@ -135,5 +135,5 @@
       ]
     }
   ],
-  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*)exit 0;;main)exit 1;;*)git fetch -q --depth=50 origin main||exit 1;b=$(git merge-base HEAD FETCH_HEAD)||exit 1;git diff --quiet $b HEAD -- .;;esac"
+  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*)exit 0;;main)node scripts/vercel-ignore-build.ts;;*)git fetch -q --depth=50 origin main||exit 1;b=$(git merge-base HEAD FETCH_HEAD)||exit 1;git diff --quiet $b HEAD -- .;;esac"
 }

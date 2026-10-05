@@ -13,7 +13,7 @@ Forslaget kræver separat ejer-go og ligger uden for auto-migrate.
 
 | Lag | Teknologi | Deploy |
 |-----|-----------|--------|
-| Frontend | React 18 + Vite + Tailwind CSS | Vercel |
+| Frontend | React 18 + Vite + Tailwind CSS | Vercel; production build selection: [VERCEL_BUILD_RULES.md](VERCEL_BUILD_RULES.md) |
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
 | Error tracking | Sentry (`@sentry/node`, `@sentry/react`) | Railway + Vercel |

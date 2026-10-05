@@ -58,7 +58,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 18. **Commit i hoved-checkoutet kun bag den blokerende branch-guard.** Kør `bash scripts/guard-commit-branch.sh <forventet-branch> && git commit ...`. Committer du via `git -C <dir>` (worktree-workers), så giv guarden SAMME mappe: `bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit ...`; uden `<dir>` tjekker den shell-cwd, som agent-shells nulstiller mellem kald — hændelsen bag: [`docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter`](docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter). Guarden exiter 1 ved mismatch og ved detached HEAD. `git branch --show-current` er IKKE en guard: den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad. Blokerer guarden, så gentag ALDRIG uden den; en blokeret guard er signalet om at checkoutet står forkert. Er der fremmed ucommitteret arbejde i træet, så skift ikke branch (et `checkout` bærer deres filer med) men commit via `git worktree add <tmp> <branch>`.
 
-19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main.
+19. **Afgrænset skip-logik på prod-deploy-grenen** (ejer 5/10, #6202). main må kun springe frontend-build over efter sammenligning med sidste succesfulde deploy, når kun kendte uafhængige filer er ændret. Frontend, mulige build-afhængigheder, ukendt Git-grundlag og samme-commit redeploy bygger. Kontrakt: `docs/VERCEL_BUILD_RULES.md`.
 
 20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out.
 
