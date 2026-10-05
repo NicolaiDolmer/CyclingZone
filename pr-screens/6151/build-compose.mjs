@@ -72,7 +72,7 @@ body{margin:0;background:#fff;font-family:Arial,Helvetica,sans-serif;width:${tot
 ${[0, 1, 2, 3, 4, 5].map((i) => `.leg:nth-of-type(${i + 1}){top:${legendTop + i * 34}px}`).join("")}
 </style></head><body>${parts.join("")}<div id="legend">${legend}</div></body></html>`;
 // nth-of-type regner kun div'er under #legend, så brug eksplicitte tops i stedet
-const html2 = html.replace(/\.leg:nth-of-type[^}]*}/g, "").replace('<div id="legend">', "<div id=\"legend\">")
+const html2 = html.replace(/\.leg:nth-of-type[^}]*}/g, "")
   .replace(/<div class="leg">/g, (() => { let i = 0; return () => `<div class="leg" style="top:${legendTop + i++ * 34}px">`; })());
 writeFileSync(resolve(dir, "6151-foer-efter.html"), html2);
 
