@@ -79,6 +79,31 @@ test("#6185 a persisted dropped flag (finish safety net) also applies on top of 
   assert.equal(breakawayMarkerState(participation!).labelKey, "detail.breakaway.dropped");
 });
 
+test("#6185 timeline 'survived' + finish safety net reads as caught, same as the backend", () => {
+  const survivedTimeline = { ...timeline, events: [
+    ...timeline.events.filter(event => event.type !== "breakaway_caught" && event.type !== "finish"),
+    { km: 100, type: "breakaway_survived", params: { group_id: "escape", rider_ids: ["morning"] } },
+    { km: 100, type: "finish", params: { top: [{ rider_id: "attacker", rank: 1 }] } },
+  ] };
+  const history = historyForStage(survivedTimeline, 6, ["morning", "attacker", "passive"]);
+  assert.ok(history);
+  assert.equal(history.riders.get("morning")?.survived, true);
+  // After the backfill / engine net: breakaway_caught=true, breakaway_dropped=false.
+  const backfilled = participationForResult({ rider_id: "morning", in_breakaway: true, breakaway_caught: true, breakaway_dropped: false }, history);
+  assert.equal(breakawayMarkerState(backfilled!).labelKey, "detail.breakaway.caught");
+  assert.deepEqual(participationFlagsForResult({ rider_id: "morning", in_breakaway: true, breakaway_caught: true, breakaway_dropped: false }, history), { in_breakaway: true, breakaway_caught: true, breakaway_dropped: false });
+  // Before the backfill: the frontend net flags the row dropped; with the timeline it agrees with the backend (caught).
+  const [netted] = withFinishSafetyNet([
+    { result_type: "stage", stage_number: 6, rank: 2, rider_id: "morning", in_breakaway: true, breakaway_caught: false },
+    { result_type: "stage", stage_number: 6, rank: 1, rider_id: "attacker", in_breakaway: false, breakaway_caught: false },
+  ]);
+  assert.equal(netted.breakaway_dropped, true);
+  assert.equal(breakawayMarkerState(participationForResult(netted, history)!).labelKey, "detail.breakaway.caught");
+  // No non-escapee ahead: the engine's verdict stands.
+  const held = participationForResult({ rider_id: "morning", in_breakaway: true, breakaway_caught: false, breakaway_dropped: false }, history);
+  assert.deepEqual(breakawayMarkerState(held!), { labelKey: "detail.breakaway.survived", muted: false });
+});
+
 test("#6185 the dropped marker has EN and DA copy", async () => {
   const { readFile } = await import("node:fs/promises");
   for (const [lang, text] of [["en", "dropped from the break"], ["da", "sat af fra udbruddet"]]) {

@@ -1,4 +1,4 @@
-import { deriveParticipationHistory } from "../../../backend/lib/raceParticipationHistory.ts";
+import { deriveParticipationHistory, settleBreakawayOutcome } from "../../../backend/lib/raceParticipationHistory.ts";
 import type { ParticipationEvent, ParticipationHistory, RiderParticipation } from "../../../backend/lib/raceParticipationHistory.ts";
 
 type ResultMarkerRow = { rider_id?: string | null; in_breakaway?: boolean | null; breakaway_caught?: boolean | null; breakaway_dropped?: boolean | null };
@@ -21,9 +21,19 @@ export function participationForResult(result: ResultMarkerRow, history: Partici
   if (history) {
     const recorded = history.riders.get(result.rider_id);
     const morning = recorded?.morning ?? false;
-    const caught = recorded?.caught ?? false;
-    const dropped = morning && !caught && (Boolean(recorded?.dropped) || persistedDropped);
-    return { morning, caught, survived: !dropped && (recorded?.survived ?? false), dropped, laterAttack: recorded?.laterAttack ?? false, verified: true };
+    const recordedDropped = recorded?.dropped ?? false;
+    // The persisted flags carry the finish safety net (engine run, backfill or
+    // withFinishSafetyNet). Settle with the SAME rule as the backend
+    // (settleBreakawayOutcome): a timeline "survived" with a non-escapee ahead
+    // is caught, so a backfilled breakaway_caught=true (or the frontend net's
+    // dropped flag before the backfill) never shows as "held home".
+    const outcome = settleBreakawayOutcome({
+      morning,
+      caught: (recorded?.caught ?? false) || (result.breakaway_caught === true && !recordedDropped),
+      survived: recorded?.survived ?? false,
+      dropped: recordedDropped,
+    }, persistedDropped ? true : null);
+    return { morning, caught: outcome === "caught", survived: outcome === "survived", dropped: outcome === "dropped", laterAttack: recorded?.laterAttack ?? false, verified: true };
   }
   const morning = Boolean(result.in_breakaway);
   const caught = morning && Boolean(result.breakaway_caught);
@@ -41,7 +51,7 @@ type RankedResultRow = ResultMarkerRow & { result_type?: string | null; stage_nu
  * Covers rows written before the engine persisted `breakaway_dropped` and
  * every view that has no timeline (yet).
  */
-export function withFinishSafetyNet<T extends RankedResultRow>(rows: readonly T[] | null | undefined): T[] {
+export function withFinishSafetyNet<T extends RankedResultRow>(rows: readonly T[] | null | undefined): Array<T & Pick<ResultMarkerRow, "breakaway_dropped">> {
   if (!rows?.length) return rows ? [...rows] : [];
   const best = new Map<string, number>();
   const keyOf = (row: T) => `${row.result_type ?? ""}|${row.stage_number ?? 1}`;
