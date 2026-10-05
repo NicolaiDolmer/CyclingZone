@@ -22,5 +22,7 @@ test("#5916: next season shows a provisional rate matching the current calendar"
   await expect(page.getByText("480 CZ$", { exact: true })).toBeVisible();
   await expect(page.getByText(/Jeg bruger din nuværende kalender/)).toBeVisible();
   await expect(page.getByText("1.120 CZ$", { exact: true })).toHaveCount(0);
-  await page.screenshot({ path: evidenceShotPath("pr-screens/5916/after-" + testInfo.project.name + ".png"), fullPage: true });
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("columnheader", {name:/Pr\. (etape|løbsdag)/}).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/5916/after-" + testInfo.project.name + ".png"), fullPage: false });
 });
