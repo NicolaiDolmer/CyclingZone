@@ -13,13 +13,14 @@ Arbejdsform (ejer 5/10): verdensklasse, god fart, token-effektivt. Undersøg fø
 **1. Tjek først**
 - Railway-deployet af `7d864d8bf` (#6213) blev SUCCESS 5/10 kl. 18:03 efter 32 min byg; seneste Deploy verify er grøn. Bekræft at main er grøn, før du merger.
 - Bølgen fra 5/10 er færdig og ryddet op (markøren er væk). Alle seks spor har åbne, ikke-draft PR'er. Kør `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) for efterladte processer.
+- Masterplan-artifacten (https://claude.ai/artifact/UoZexVskbfA5xmvTnML4Bn) mangler beslutningerne fra 5/10 efter kl. 17: tidsmodellens mål, merge af #6187 og de nye PR'er. Opdatér den som noget af det første.
 - `gh workflow` "Supabase Log Watch" og "Advisor sweep": første kørsel med det nye token (ejer satte `SUPABASE_ACCESS_TOKEN` 5/10). Grøn?
 
 **2. Land PR'erne (uafhængigt review på diffen før hvert go-kort)**
 | PR | Hvad | Status 5/10 aften |
 |---|---|---|
 | #6217 | #6137 løbsfilm samler ens linjer | **Ejer-go givet 5/10** (merge ved grøn CI). Synket med main og typefejl rettet (`e81ab78a3`). 5/10 kl. 19:20: én af to `perf-gate`-kørsler rød, den anden grøn; undersøg, før du merger |
-| #6216 | #6185 del 1, mærket "Sat af" (rød pil ned, tryk viser tekst) + backfill-script + migration | **Ejer-go givet 5/10** på det nye billede (merge ved grøn CI). Uafhængigt review blev startet 5/10; resultatet står som kommentar på PR'en, hvis det nåede at komme. Backfill: dry-run først, ejeren ser tallene |
+| #6216 | #6185 del 1, mærket "Sat af" (rød pil ned, tryk viser tekst) + backfill-script + migration | **Ejer-go givet 5/10** på det nye billede, men **uafhængigt review 5/10 er BLOKERENDE** (se seneste kommentar på PR'en): (1) en rytter, der kommer tilbage i udbruddet, bliver stående som "sat af"; (2) e2e er rød, fordi `title` blev fjernet. Ret begge + bemærkningerne, nyt review, derefter merge. Backfill: dry-run først, ejeren ser tallene og vælger startdato (28/9 eller 2/10) |
 | #6225 | #3460 Spar kræfter halv støtte | Klar, 3 filer. Mangler uafhængigt review og ejer-go |
 | #6223 | #6199 + #6200 tidsmodel | Klar fra lanen. Mangler uafhængigt review, scorecard-dom og ejer-go |
 | #6224 | #5978 farlig rytter + de fire review-bemærkninger fra #6213 | Klar fra lanen. Mangler uafhængigt review og ejer-go |
