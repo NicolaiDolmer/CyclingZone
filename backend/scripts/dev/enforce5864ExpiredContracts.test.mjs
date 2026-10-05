@@ -167,7 +167,7 @@ test("public summary contains no rider ids or team names; private report does", 
   assert.ok(priv.includes(uuid(1)));
   assert.ok(priv.includes("Team A"));
   assert.ok(priv.includes("UDSKUDT"));
-  assert.equal(/—/.test(priv + pub), false, "no em-dash");
+  assert.equal((priv + pub).includes(String.fromCharCode(0x2014)), false, "no em-dash");
 });
 
 test("writePrivateArtifacts writes report, json, snapshot and restore", () => {
