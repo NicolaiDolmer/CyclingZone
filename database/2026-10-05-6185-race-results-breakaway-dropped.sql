@@ -187,4 +187,13 @@ BEGIN
 END;
 $function$;
 
+-- SECURITY DEFINER uden intern guard: EXECUTE forbliver service_role-only
+-- (#3765/#2858). CREATE OR REPLACE bevarer grants; gentaget her eksplicit og idempotent.
+REVOKE ALL     ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) FROM anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.apply_race_results_batch(uuid, integer[], jsonb) TO service_role;
+REVOKE ALL     ON FUNCTION public.apply_stage_result(uuid, integer, integer, integer, jsonb) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.apply_stage_result(uuid, integer, integer, integer, jsonb) FROM anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.apply_stage_result(uuid, integer, integer, integer, jsonb) TO service_role;
+
 COMMIT;

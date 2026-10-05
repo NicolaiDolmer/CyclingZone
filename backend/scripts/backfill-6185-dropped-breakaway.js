@@ -39,6 +39,7 @@ import {
   bestNonEscapeeRank,
   breakawayFlagsForOutcome,
 } from "../lib/raceParticipationHistory.ts";
+import { fetchAllRows } from "../lib/supabasePagination.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -102,15 +103,13 @@ export function planStage({ events, rows }) {
 const RESULT_COLUMNS = "id, race_id, stage_number, result_type, rank, rider_id, in_breakaway, breakaway_caught";
 
 async function fetchStageRows(supabase, raceId, stageNumber, { withDropped }) {
-  const { data, error } = await supabase
+  return fetchAllRows(() => supabase
     .from("race_results")
     .select(withDropped ? `${RESULT_COLUMNS}, breakaway_dropped` : RESULT_COLUMNS)
     .eq("race_id", raceId)
     .eq("stage_number", stageNumber)
     .in("result_type", ["stage", "gc"])
-    .order("id", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+    .order("id", { ascending: true }));
 }
 
 async function columnExists(supabase) {
