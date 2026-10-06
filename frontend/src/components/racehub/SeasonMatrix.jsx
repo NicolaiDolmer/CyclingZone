@@ -384,7 +384,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                 const peak = peakDaysByRider.get(rider.id)?.get(day.gameDay);
                 const hasError = saveError?.raceId === selectedMobileRace.id;
                 const isDraftCell = dirtyIdSet.has(selectedMobileRace.id);
-                return <td key={day.key} className={`border-b border-cz-border p-0 text-center ${peak ? "bg-cz-accent/10" : ""} ${hasError ? "outline-solid outline-1 -outline-offset-1 outline-cz-danger" : isDraftCell ? "outline-solid outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : ""}`}>
+                return <td key={day.key} className={`border-b border-cz-border p-0 text-center ${peak ? "bg-cz-accent/10" : ""} ${hasError ? "outline-solid outline-1 -outline-offset-1 outline-cz-danger" : isDraftCell ? "outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : ""}`}>
                   <button
                     type="button"
                     onClick={(e) => openCellPopover(e, { kind: role == null ? "empty" : "filled", raceId: selectedMobileRace.id, riderId: rider.id })}
@@ -518,7 +518,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                             key={seg.day}
                             className={`border-b p-0 ${peak ? "bg-cz-accent/10" : ""} ${
                               hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
-                                : isDraftCell ? "border-cz-border outline-solid outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
+                                : isDraftCell ? "border-cz-border outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
                             }`}
                             style={{ width: colWidth }}
                           >
@@ -547,7 +547,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                           colSpan={seg.colSpan}
                           className={`border-b p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${
                             hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
-                              : isDraftCell ? "border-cz-border outline-solid outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
+                              : isDraftCell ? "border-cz-border outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
                           }`}
                           style={{ width: colWidth * seg.colSpan }}
                         >
