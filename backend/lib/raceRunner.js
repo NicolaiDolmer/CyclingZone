@@ -156,6 +156,7 @@ import {
 // simulateStage; motoren selv læser aldrig rutefelterne (bit-identisk).
 import { computePassages } from "./racePassages.js";
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
+import { recordFirstRaceWithOwnSquadInBackground } from "./posthogServer.ts"; // #6278
 
 // #1995: flush parkerede holdskifter (pending_team_id → team_id) når et etapeløb
 // er finaliseret. Idempotent → sikker ved recovery-genkørsel (bevidst UDEN
@@ -2455,6 +2456,8 @@ export async function simulateRace({
     captureException(err, { tags: { flow: "race-run", stage: "race-status-completed" }, raceId: race.id });
     throw err;
   }
+  // #6278: kerne-rejsens milepæl, efter commit. Fire-and-forget, kaster aldrig.
+  recordFirstRaceWithOwnSquadInBackground({ supabase, race, resultRows });
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   await flushDeferredTransfersSafe({ supabase, race });
@@ -3524,6 +3527,8 @@ export async function simulateStageByIndex({
       seasonNumber: seasonBefore?.number ?? null,
     });
     }); // ── #4147: slut på "enrichment"-trinnet ───────────────────────────────────
+    // #6278: kerne-rejsens milepæl, efter den committede apply_stage_result. Fire-and-forget.
+    recordFirstRaceWithOwnSquadInBackground({ supabase, race, resultRows, stageNumber });
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
