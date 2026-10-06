@@ -94,6 +94,8 @@ $Timeout = 1800
 $SlotDir = ""
 $Label = ""
 $Status = $false
+$Runtime = ""
+$Worktree = [System.IO.Path]::GetFullPath($PWD.ProviderPath)
 $cmd = @()
 
 $argv = @($args)
@@ -109,6 +111,7 @@ while ($i -lt $argv.Count) {
   if ($a -ieq '-Timeout' -and ($i + 1) -lt $argv.Count) { $Timeout = [int]$argv[$i + 1]; $i += 2; continue }
   if ($a -ieq '-SlotDir' -and ($i + 1) -lt $argv.Count) { $SlotDir = [string]$argv[$i + 1]; $i += 2; continue }
   if ($a -ieq '-Label' -and ($i + 1) -lt $argv.Count) { $Label = [string]$argv[$i + 1]; $i += 2; continue }
+  if ($a -ieq '-Runtime' -and ($i + 1) -lt $argv.Count) { $Runtime = [string]$argv[$i + 1]; $i += 2; continue }
   if ($a -ieq '-Status') { $Status = $true; $i++; continue }
   # Alt andet = starten paa kommandoen (saa "-- " kan udelades).
   while ($i -lt $argv.Count) { $cmd += [string]$argv[$i]; $i++ }
@@ -120,6 +123,17 @@ function Write-Fail([string]$msg) {
   # give exit 1 i stedet for den exit-kode vi vil signalere.
   [Console]::Error.WriteLine($msg)
 }
+
+# Runtime is coordination metadata, not an authentication boundary.
+if (-not $Runtime) {
+  if ($env:CZ_VERIFY_RUNTIME) { $Runtime = $env:CZ_VERIFY_RUNTIME }
+  elseif ($env:CODEX_THREAD_ID -or $env:CODEX_SESSION_ID) { $Runtime = 'codex' }
+  elseif ($env:CLAUDECODE) { $Runtime = 'claude' }
+  else { $Runtime = 'unknown' }
+}
+$Runtime = $Runtime.ToLowerInvariant()
+if ($Runtime -notin @('codex','claude','unknown')) { Write-Fail 'verify-lock: Runtime must be codex, claude or unknown.'; exit 2 }
+if ($Max -lt 1 -or $Max -gt 2) { Write-Fail 'verify-lock: Max must be 1 or 2.'; exit 2 }
 
 # --- Slot-mappe --------------------------------------------------------------
 if (-not $SlotDir) {
@@ -203,7 +217,7 @@ function Read-SlotInfo([string]$path) {
   # lokal tid bag vores ryg, saa startedAt kommer ud som den blev skrevet.
   $doc = [System.Text.Json.JsonDocument]::Parse($text)
   try {
-    $info = [ordered]@{ pid = 0; startedAt = ""; acquiredAt = ""; label = "" }
+    $info = [ordered]@{ pid = 0; startedAt = ""; acquiredAt = ""; label = ""; runtime = "unknown"; worktree = "" }
     foreach ($prop in $doc.RootElement.EnumerateObject()) {
       $v = $prop.Value
       switch ($prop.Name) {
@@ -284,13 +298,61 @@ function Get-LiveSlots([int]$OwnPid = 0) {
   return $live.ToArray()
 }
 
+# A waiting record survives retries. It is never counted as a running slot by
+# older wrappers. Admission is serialized through a persistent FileShare.None
+# gate; do not unlink the gate when releasing its handle.
+function Get-LiveWaiters {
+  $result = New-Object System.Collections.Generic.List[object]
+  foreach ($file in @(Get-ChildItem -LiteralPath $SlotDir -Filter 'waiting-*.json' -File -ErrorAction SilentlyContinue)) {
+    try {
+      $info = Read-SlotInfo $file.FullName
+      if (Test-SlotOwnerAlive $info.pid $info.startedAt) { $result.Add([pscustomobject]@{ Name=$file.Name; Info=$info }) }
+      else { $null = Remove-SlotFile $file.FullName 1 }
+    } catch [System.IO.FileNotFoundException], [System.IO.DirectoryNotFoundException] { continue }
+    catch {
+      if (((Get-Date).ToUniversalTime() - $file.LastWriteTimeUtc).TotalSeconds -lt $UnreadableGraceSec) {
+        $result.Add([pscustomobject]@{ Name=$file.Name; Info=[pscustomobject]@{runtime='unknown';pid=0} })
+      } else { $null = Remove-SlotFile $file.FullName 1 }
+    }
+  }
+  return $result.ToArray()
+}
+
+function Get-DeclaredRuntime($record) {
+  if ($null -ne $record.Info -and $record.Info.runtime -in @('codex','claude')) { return $record.Info.runtime }
+  return 'unknown'
+}
+
+function Get-WaveRuntime {
+  $path = Join-Path (Split-Path -Parent $SlotDir) 'wave-active.json'
+  try {
+    $wave = Read-SlotInfo $path
+    if ($wave.runtime -in @('claude','codex')) { return $wave.runtime }
+  } catch { # best-effort priority only; malformed metadata never unlocks a wave.
+  }
+  return ''
+}
+
+function Test-RuntimeEligible([string]$family, $running, $waiting) {
+  # Old live slots lack runtime identity. Wait for those to end; never guess or
+  # preempt them to enforce a new per-runtime guarantee.
+  if (@($running | Where-Object { (Get-DeclaredRuntime $_) -eq 'unknown' }).Count) { return $false }
+  if ($family -eq 'unknown' -and @($running).Count -gt 0) { return $false }
+  $same = @($running | Where-Object { (Get-DeclaredRuntime $_) -eq $family }).Count
+  $other = @(@($running) + @($waiting) | Where-Object { (Get-DeclaredRuntime $_) -ne $family }).Count
+  $limit = if ($family -eq 'claude' -and $other -eq 0) { $Max } else { 1 }
+  return $same -lt $limit
+}
+
 if ($Status) {
   $slots = @(Get-LiveSlots)
   Write-Host "=== verify-lock status ($($slots.Count)/$Max slots i brug) ===" -ForegroundColor Cyan
   Write-Host "Slot-mappe: $SlotDir"
   foreach ($s in $slots) {
     if ($null -ne $s.Info) {
-      Write-Host ("  pid={0} siden={1} label={2}" -f $s.Info.pid, $s.Info.acquiredAt, $s.Info.label)
+      $acquired = ConvertTo-UtcInstant $s.Info.acquiredAt
+      $ageMinutes = if ($null -ne $acquired) { [math]::Round([math]::Max(0,((Get-Date).ToUniversalTime()-$acquired).TotalMinutes),1) } else { "unknown" }
+      Write-Host ("  pid={0} runtime={1} worktree={2} alderMin={3} siden={4} label={5}" -f $s.Info.pid, $s.Info.runtime, $s.Info.worktree, $ageMinutes, $s.Info.acquiredAt, $s.Info.label)
     } else {
       Write-Host "  (ulaeselig: $($s.Name))"
     }
@@ -342,38 +404,66 @@ $labelText = if ($Label) { $Label } else { ($cmd -join " ") }
 $deadline = (Get-Date).AddSeconds($Timeout)
 $slotFile = $null
 $candidate = $null
+$waitingFile = $null
 $waited = 0
 $exit = 1
 
+# Inherited ownership is only meaningful for this same slot map. Private
+# fixture maps stay independent. Nested commands fail fast instead of waiting
+# for a place held by their own parent.
+if ($env:CZ_VERIFY_LOCK_HELD_SLOT) {
+  $held = $env:CZ_VERIFY_LOCK_HELD_SLOT
+  if ([System.IO.Path]::GetDirectoryName($held) -eq $SlotDir -and (Test-Path -LiteralPath $held)) {
+    try { $owner = Read-SlotInfo $held; if (Test-SlotOwnerAlive $owner.pid $owner.startedAt) { Write-Fail 'verify-lock: nested verification in the same slot map; run it under the existing outer command.'; exit 75 } }
+    catch { Write-Fail 'verify-lock: nested ownership could not be verified.'; exit 75 }
+  }
+}
+
 try {
+  $waitingName = "waiting-$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfff'))-$myPid-$([guid]::NewGuid().ToString('N').Substring(0,8)).json"
+  $waitingFile = Join-Path $SlotDir $waitingName
+  $waitingPayload = [ordered]@{pid=$myPid;startedAt=$myStart;acquiredAt=(Get-Date).ToString('o');label=$labelText;runtime=$Runtime;worktree=$Worktree}
+  Write-SlotFile $waitingFile ([pscustomobject]$waitingPayload | ConvertTo-Json -Compress)
   while ($true) {
     Clear-Pending 1
 
-    $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfff")
-    $name = "slot-$stamp-$myPid-$([guid]::NewGuid().ToString('N').Substring(0,8)).json"
-    $candidate = Join-Path $SlotDir $name
-    $payload = [ordered]@{ pid = $myPid }
-    if ($myStart) { $payload.startedAt = $myStart }
-    $payload.acquiredAt = (Get-Date).ToString("o")
-    $payload.label = $labelText
-    Write-SlotFile $candidate ([pscustomobject]$payload | ConvertTo-Json -Compress)
-
-    $live = @(Get-LiveSlots -OwnPid $myPid)
-    foreach ($s in $live) { if ($s.Own -and $s.Name -ne $name) { Add-Pending $s.FullName } }
-    $ranked = @($live | Where-Object { -not ($_.Own -and $_.Name -ne $name) } | ForEach-Object { $_.Name })
-    $rank = [array]::IndexOf($ranked, $name)
-    if ($rank -ge 0 -and $rank -lt $Max) {
-      $slotFile = $candidate
-      $candidate = $null
-      break
-    }
-
-    if (-not (Remove-SlotFile $candidate)) {
-      Add-Pending $candidate
-      [Console]::Error.WriteLine("[verify-lock] slot-fil holdes aaben af en anden proces, sletning udskudt: $name")
-    }
-    $candidate = $null
-    $inUse = @($ranked | Where-Object { $_ -ne $name }).Count
+    $gate = $null
+    $inUse = 0
+    try {
+      try { $gate = [System.IO.File]::Open((Join-Path $SlotDir '.admission.lock'), [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None) }
+      catch [System.IO.IOException] { $gate = $null }
+      if ($null -ne $gate) {
+        $running = @(Get-LiveSlots -OwnPid $myPid | Where-Object { -not $_.Own })
+        $inUse = $running.Count
+        $runningIds = @($running | Where-Object { $null -ne $_.Info } | ForEach-Object { $_.Info.pid })
+        $waiting = @(Get-LiveWaiters | Where-Object { $_.Info.pid -notin $runningIds })
+        $waveRuntime = Get-WaveRuntime
+        $eligible = @($waiting | Where-Object { Test-RuntimeEligible (Get-DeclaredRuntime $_) $running $waiting } |
+          Sort-Object @{Expression={if ((Get-DeclaredRuntime $_) -eq $waveRuntime) {0}else{1}}}, Name)
+        # A short-lived ticket is still published for old wrapper compatibility.
+        # Losers delete it before releasing admission, with the original retry
+        # path for pinned/deferred own files (#5566).
+        $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfff')
+        $name = "slot-$stamp-$myPid-$([guid]::NewGuid().ToString('N').Substring(0,8)).json"
+        $candidate = Join-Path $SlotDir $name
+        $payload = [ordered]@{pid=$myPid;startedAt=$myStart;acquiredAt=(Get-Date).ToString('o');label=$labelText;runtime=$Runtime;worktree=$Worktree}
+        Write-SlotFile $candidate ([pscustomobject]$payload | ConvertTo-Json -Compress)
+        $live = @(Get-LiveSlots -OwnPid $myPid)
+        foreach ($slot in $live) { if ($slot.Own -and $slot.Name -ne $name) { Add-Pending $slot.FullName } }
+        $ranked = @($live | Where-Object { -not ($_.Own -and $_.Name -ne $name) } | ForEach-Object { $_.Name })
+        $rank = [array]::IndexOf($ranked,$name)
+        if ($inUse -lt $Max -and $eligible.Count -gt 0 -and $eligible[0].Name -eq $waitingName -and $rank -ge 0 -and $rank -lt $Max) {
+          $slotFile=$candidate; $candidate=$null
+        } else {
+          if (-not (Remove-SlotFile $candidate)) {
+            Add-Pending $candidate
+            [Console]::Error.WriteLine("[verify-lock] slot-fil holdes aaben af en anden proces, sletning udskudt: $name")
+          }
+          $candidate=$null
+        }
+      }
+    } finally { if ($null -ne $gate) { $gate.Dispose() } }
+    if ($slotFile) { break }
 
     if ((Get-Date) -ge $deadline) {
       Write-Fail "verify-lock: ingen ledig slot inden for $Timeout s (Max=$Max, i brug=$inUse). Koer 'pwsh -File scripts/verify-lock.ps1 -Status' for at se hvem der holder dem."
@@ -407,7 +497,12 @@ try {
       # til en terminerende fejl naar ErrorActionPreference er Stop.
       $ErrorActionPreference = "Continue"
       $PSNativeCommandUseErrorActionPreference = $false
-      & $exe @rest
+      $previousHeld = $env:CZ_VERIFY_LOCK_HELD_SLOT
+      $previousRuntime = $env:CZ_VERIFY_RUNTIME
+      $env:CZ_VERIFY_LOCK_HELD_SLOT = $slotFile
+      $env:CZ_VERIFY_RUNTIME = $Runtime
+      try { & $exe @rest }
+      finally { $env:CZ_VERIFY_LOCK_HELD_SLOT=$previousHeld; $env:CZ_VERIFY_RUNTIME=$previousRuntime }
       $exit = $LASTEXITCODE
       if ($null -eq $exit) { $exit = 0 }
     } catch {
@@ -419,7 +514,7 @@ try {
   # Ryd ALLE egne slot-filer: det vundne slot, en evt. kandidat (afbrudt midt i
   # en runde), de udskudte og alt i mappen med egen PID i navnet.
   $mine = New-Object System.Collections.Generic.List[string]
-  foreach ($p in @(@($slotFile, $candidate) + @($script:pending))) {
+  foreach ($p in @(@($slotFile, $candidate, $waitingFile) + @($script:pending))) {
     if ($p -and -not $mine.Contains($p)) { $mine.Add($p) }
   }
   foreach ($f in @(Get-ChildItem -LiteralPath $SlotDir -Filter "slot-*.json" -File -ErrorAction SilentlyContinue)) {

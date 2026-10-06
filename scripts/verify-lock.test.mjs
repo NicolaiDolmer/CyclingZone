@@ -42,6 +42,8 @@ const DEFERRED = "sletning udskudt";
 const baseEnv = { ...process.env };
 delete baseEnv.CZ_VERIFY_LOCK_TEST_FAIL_DELETES;
 delete baseEnv.CZ_VERIFY_SLOT_DIR;
+delete baseEnv.CZ_VERIFY_LOCK_HELD_SLOT;
+baseEnv.CZ_VERIFY_RUNTIME = 'claude';
 
 let work;
 let slotDir;
@@ -163,7 +165,7 @@ function runThroughLock(id) {
         "-Label", `test-${id}`,
         "--", "node", dummy, String(id), markerDir,
       ],
-      { stdio: "ignore" },
+      { stdio: "ignore", env: baseEnv },
     );
     child.on("close", (code) => resolve(code));
   });
@@ -249,6 +251,78 @@ function startLock(dir, flags, command, extraEnv = {}) {
   run.done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
   return run;
 }
+
+function runtimeHolder(dir, runtime, id, max = 2) {
+  const marker = join(dir, `entered-${id}`), stop = join(dir, `stop-${id}`);
+  const run = startLock(dir, ['-Runtime', runtime, '-Max', String(max), '-Timeout', '30'], ['node', holdScript, marker, stop]);
+  return Object.assign(run, { marker, stop });
+}
+
+async function entered(run) {
+  assert.ok(await waitFor(() => existsSync(run.marker) || run.child.exitCode !== null, 10000));
+  assert.ok(existsSync(run.marker), `holder failed: ${run.stderr}`);
+}
+
+async function waiting(run) {
+  assert.ok(await waitFor(() => run.stdout.includes('venter paa slot') || existsSync(run.marker) || run.child.exitCode !== null, 10000));
+  assert.ok(run.stdout.includes('venter paa slot'), `expected waiting admission: ${run.stderr}`);
+  assert.equal(existsSync(run.marker), false);
+}
+
+async function releaseHolders(runs) {
+  for (const run of runs) writeFileSync(run.stop, 'stop');
+  await withTimeout(Promise.all(runs.map(run => run.done)), 40000, 'runtime holders');
+}
+
+test('Codex cannot occupy two places even without another runtime', { skip: !hasPwsh }, async t => {
+  const dir = freshDir('codex-one'); const runs = [];
+  t.after(() => releaseHolders(runs));
+  const first = runtimeHolder(dir, 'codex', 'first'); runs.push(first); await entered(first);
+  const second = runtimeHolder(dir, 'codex', 'second'); runs.push(second); await waiting(second);
+  writeFileSync(first.stop, 'stop'); await entered(second);
+});
+
+test('a waiting Codex gets the released place before a second Claude admission', { skip: !hasPwsh }, async t => {
+  const dir = freshDir('runtime-fair'); const runs = [];
+  t.after(() => releaseHolders(runs));
+  const a = runtimeHolder(dir, 'claude', 'a'); runs.push(a); await entered(a);
+  const b = runtimeHolder(dir, 'claude', 'b'); runs.push(b); await entered(b);
+  const codex = runtimeHolder(dir, 'codex', 'codex'); runs.push(codex); await waiting(codex);
+  const later = runtimeHolder(dir, 'claude', 'later'); runs.push(later); await waiting(later);
+  writeFileSync(a.stop, 'stop'); await entered(codex);
+  assert.equal(existsSync(later.marker), false);
+  writeFileSync(b.stop, 'stop'); await entered(later);
+});
+
+test('the declared wave runtime has first admission when both wait', { skip: !hasPwsh }, async t => {
+  const root = freshDir('wave-priority'), dir = join(root, 'slots'); mkdirSync(dir);
+  writeFileSync(join(root, 'wave-active.json'), JSON.stringify({ runtime: 'claude', waveId: 'fixture' }));
+  const runs = []; t.after(() => releaseHolders(runs));
+  const holder = runtimeHolder(dir, 'claude', 'holder', 1); runs.push(holder); await entered(holder);
+  const codex = runtimeHolder(dir, 'codex', 'codex', 1); runs.push(codex); await waiting(codex);
+  const claude = runtimeHolder(dir, 'claude', 'claude', 1); runs.push(claude); await waiting(claude);
+  writeFileSync(holder.stop, 'stop'); await entered(claude);
+  assert.equal(existsSync(codex.marker), false);
+  writeFileSync(claude.stop, 'stop'); await entered(codex);
+});
+
+test('nested verification in the same slot map fails immediately instead of deadlocking', { skip: !hasPwsh }, () => {
+  const dir = freshDir('nested-runtime');
+  const result = lockSync(dir, ['-Runtime', 'codex'], ['pwsh', '-NoProfile', '-File', SCRIPT, '-Runtime', 'codex', '-SlotDir', dir, '-Timeout', '2', '--', 'node', '-e', 'process.exit(0)']);
+  assert.equal(result.status, 75);
+  assert.match(result.stderr, /nested|indlejret/i);
+});
+
+test('active slot metadata and status identify runtime, worktree and age', { skip: !hasPwsh }, async t => {
+  const dir = freshDir('runtime-status'); const runs = [];
+  t.after(() => releaseHolders(runs));
+  const holder = runtimeHolder(dir, 'codex', 'metadata'); runs.push(holder); await entered(holder);
+  const slot = slotFiles(dir).map(name => JSON.parse(readFileSync(join(dir,name),'utf8'))).find(info => info.pid === holder.child.pid);
+  assert.equal(slot.runtime,'codex'); assert.ok(slot.worktree);
+  const status=lockSync(dir,['-Status'],[]);
+  assert.equal(status.status,0);
+  assert.match(status.stdout,/runtime=codex.*worktree=.*alderMin=/);
+});
 
 test("maks 2 kommandoer koerer samtidig naar 3 startes med -Max 2", { skip: !hasPwsh && "pwsh mangler" }, async () => {
   const codes = await Promise.all([0, 1, 2].map((i) => runThroughLock(i)));

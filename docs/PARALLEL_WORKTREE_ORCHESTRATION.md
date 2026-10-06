@@ -22,6 +22,17 @@ Runneren optager planen under den faelles boelgelaas, opretter worktrees sekvent
 
 Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
 
+**Runtime-fordeling (#6226):** `verify-lock.ps1 -Runtime codex|claude` registrerer
+runtime/worktree i plads- og ventefiler; `-Status` viser ogsaa pladsens alder.
+Runtime kan arves via `CZ_VERIFY_RUNTIME`, ellers aflæses Codex-/Claude-miljøet.
+Codex har altid maks een plads. Claude kan bruge to alene, men nye optag er maks
+een pr. runtime naar en anden runtime koerer eller venter. Bølgens deklarerede
+runtime har køprioritet blandt berettigede ventere; kørende arbejde afbrydes ikke.
+Atomisk admission bruger en vedvarende file-lock. Ukendt/legacy runtime behandles
+konservativt; blandede gamle wrappers giver ingen ny runtime-garanti før de er
+afsluttet/opgraderet. Nested verifikation i samme pladsmappe fejler straks med 75.
+Metadata er koordinationskontrol under samme OS-bruger, ikke en sikkerheds-ACL.
+
 | Egenskab | Haandhaevelse og graense |
 |---|---|
 | Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
