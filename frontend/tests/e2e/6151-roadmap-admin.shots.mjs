@@ -125,6 +125,7 @@ async function installRoadmapRoutes(page) {
     return ok(route, UPDATES);
   });
   await page.route(/\/api\/admin\/feature-flags(\?|$)/, (route) => ok(route, { flags: FLAGS }));
+  await page.route(/\/api\/admin\/roadmap\/stats(\?|$)/, (route) => ok(route, { stats: STATS }));
 }
 
 async function openAdmin(browser, base, withRoadmap) {

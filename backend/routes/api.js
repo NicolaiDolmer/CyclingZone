@@ -15,6 +15,7 @@ import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
+import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -991,6 +992,10 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
 
 // #3750 · Ejer-only: requireAdmin + OWNER_USER_IDS-allowlist (backend/lib/ownerGate.js).
 // Bruges til flader der kun ejeren må se, selv om andre konti har admin-rollen.

@@ -103,16 +103,17 @@ export default function GrowthRoadmapTab() {
     setLoadError("");
     try {
       const [statsRes, scoresRes, itemsRes, issuesRes, updatesRes] = await Promise.all([
-        supabase.rpc("roadmap_admin_stats"),
+        apiFetch(`${API}/api/admin/roadmap/stats`, { headers: await getAuth() }, { source: "admin-roadmap-stats" }),
         supabase.from("roadmap_item_scores").select("*"),
         supabase.from("roadmap_items").select("id, flag_key, beta_since, beta_soon, live_soon"),
         supabase.from("known_issue_scores").select("*"),
         supabase.from("known_issue_updates").select("issue_id, body_da, created_at")
           .order("created_at", { ascending: false }).limit(500),
       ]);
-      const failed = [statsRes, scoresRes, itemsRes, issuesRes, updatesRes].find((r) => r.error);
+      if (!statsRes.ok) throw new Error(statsRes.data?.error || "Forbindelsen fejlede");
+      const failed = [scoresRes, itemsRes, issuesRes, updatesRes].find((r) => r.error);
       if (failed) throw new Error(failed.error.message);
-      setStats((statsRes.data ?? [])[0] ?? null);
+      setStats(statsRes.data?.stats ?? null);
       setRows(mergeItemRows(scoresRes.data ?? [], itemsRes.data ?? []));
       setIssues(issuesRes.data ?? []);
       setUpdates(updatesRes.data ?? []);
