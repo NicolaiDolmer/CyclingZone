@@ -225,6 +225,19 @@ export function planReviewAttempt(attempt) {
   };
 }
 
+export function classifyBuildRecoveryFailure(outcome) {
+  if (!outcome || outcome.settled !== true) return null;
+  const rejected = outcome.error !== null && outcome.error !== undefined;
+  const value = rejected ? outcome.error : outcome.value;
+  const text = String((value && value.message) || value || '').trim();
+  const api = text.match(/^API Error:\s*(5\d{2})(?:\s|:|$)/i);
+  if (api && (rejected || !/[\r\n]/.test(text))) return { reason: `api-${api[1]}`, terminalEvidence: 'agent-settled' };
+  if (outcome.terminalConfirmed === true && /^API (?:Error|Response Error):\s*(?:response|request)\s+(?:timed out|timeout)\b/i.test(text)) {
+    return { reason: 'response-timeout', terminalEvidence: 'explicit-terminal' };
+  }
+  return null;
+}
+
 /**
  * Skal der koeres en graceful stop-agent der redder ucommittet arbejde?
  * Kan tilstanden ikke maales, koeres den - et dirty worktree der bliver
