@@ -20,7 +20,7 @@ function harness(builds, { review = 'GODKENDT', probe = 'hard-cap' } = {}) {
       if (options.label.startsWith('ret ')) return 'Fixed in the same worktree';
       return { verdict: review, summary: 'fixture', pr: 'none', findings: review === 'BLOKERENDE' ? [{ severity: 'blokerende', what: 'Fixture bug', file: 'scripts/x.mjs' }] : [] };
     }
-    if (options.label.startsWith('frys-probe ')) return { ok: true, verdict: probe, reason: 'fixture', lastCommitAgeMinutes: 1, extendMinutes: 5, stopsWave: false, dirty: false, unpushed: 0 };
+    if (options.label.startsWith('frys-probe ')) return typeof probe === 'function' ? probe() : { ok: true, verdict: probe, reason: 'fixture', lastCommitAgeMinutes: 1, extendMinutes: 5, stopsWave: false, dirty: false, unpushed: 0 };
     const result = builds[buildIndex++];
     if (result instanceof Error) throw result;
     return typeof result === 'function' ? result() : result;
@@ -154,4 +154,29 @@ test('terminal API failure at the original hard cap never starts recovery', asyn
   assert.equal(h.builders().length, 1);
   assert.equal(result.tracks[0].recovery.outcome, 'budget-exhausted');
   assert.equal(h.calls.filter(call => call.phase === 'Review').length, 0);
+});
+
+test('a recovery completed during a pre-cap frozen probe still receives review', async () => {
+  let finishBuild, finishProbe;
+  const h = harness([Error('API Error: 529 Overloaded'), () => new Promise(resolve => { finishBuild = resolve; })],
+    { probe: () => new Promise(resolve => { finishProbe = resolve; }) });
+  await h.fireWindow();
+  finishBuild('Built'); await h.flush();
+  finishProbe({ ok: true, verdict: 'frozen', reason: 'fixture', lastCommitAgeMinutes: 50, stopsWave: true, dirty: false, unpushed: 0 });
+  const result = await h.run;
+  assert.equal(h.builders().length, 2);
+  assert.equal(result.tracks[0].recovery.outcome, 'completed');
+  assert.equal(result.tracks[0].review, 'GODKENDT');
+});
+
+test('an original builder API error during a pre-cap probe is consumed and resumed once', async () => {
+  let rejectBuild, finishProbe;
+  const h = harness([() => new Promise((_, reject) => { rejectBuild = reject; }), 'Built'],
+    { probe: () => new Promise(resolve => { finishProbe = resolve; }) });
+  await h.fireWindow();
+  rejectBuild(Error('API Error: 529 Overloaded')); await h.flush();
+  finishProbe({ ok: true, verdict: 'frozen', reason: 'fixture', lastCommitAgeMinutes: 50, stopsWave: true, dirty: false, unpushed: 0 });
+  const result = await h.run;
+  assert.equal(h.builders().length, 2);
+  assert.equal(result.tracks[0].review, 'GODKENDT');
 });

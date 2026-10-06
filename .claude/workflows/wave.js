@@ -1354,13 +1354,16 @@ async function runTrack(track, trackTimeoutMinutes) {
   // failure can start one recovery in the same worktree, within the same cap.
   const startedMinute = clock.minute
   let resumes = 0
+  let settledBuildOutcome = null
   function startBuild() {
+    settledBuildOutcome = null
+    const recordOutcome = (outcome) => { settledBuildOutcome = outcome; return outcome }
     const promise = Promise.resolve().then(() => resumes === 0
       ? agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
       : agent(recoveryBrief(track, row.recovery.reason), { label: `${label} (recovery 1/1)`, phase: 'Laner', model: track.model }))
     return promise.then(
-      value => ({ settled: true, value, error: null }),
-      error => ({ settled: true, value: null, error, terminalConfirmed: error && error.terminalConfirmed === true }),
+      value => recordOutcome({ settled: true, value, error: null }),
+      error => recordOutcome({ settled: true, value: null, error, terminalConfirmed: error && error.terminalConfirmed === true }),
     )
   }
   let buildPromise = startBuild()
@@ -1417,6 +1420,10 @@ async function runTrack(track, trackTimeoutMinutes) {
     // tage fejl paa, naar loftet er defineret som absolut.
     elapsedMinutes += WAVE_FREEZE.PROBE_TIMEOUT_MINUTES
     const probe = await probeBranch(track, elapsedMinutes)
+    // A terminal result arriving during the probe takes precedence over a
+    // pre-cap freeze snapshot. Never extend an unfinished builder at the cap.
+    if (probe.verdict !== 'extend' && settledBuildOutcome !== null
+      && elapsedMinutes < WAVE_FREEZE.TRACK_HARD_CAP_MINUTES) continue
     const ageText = probe.lastCommitAgeMinutes === null ? 'ukendt' : `${Math.round(probe.lastCommitAgeMinutes)} min siden`
     if (probe.verdict === 'extend') {
       waitMinutes = probe.extendMinutes

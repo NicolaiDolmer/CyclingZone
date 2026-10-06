@@ -291,6 +291,8 @@ starter aldrig en ekstra writer. Genoptagelsen beholder det oprindelige
 tidsbudget og det normale uafhaengige review. WIP, eksisterende PR og pushes
 maales foer videre arbejde; der resettes ikke. Log og sporrapport viser aarsag,
 forsog og udfald. En anden terminal fejl giver ingen tredje builder.
+Et afsluttet resultat under en pre-cap frys-probe behandles foer probens gamle
+snapshot kan stoppe sporet; en uafsluttet builder ved hard cap genstartes ikke.
 
 Maalingen sker via en kort read-only probe-agent i worktreet (`git log -1 --format=%ct`, `git status --porcelain`, `git rev-list --count @{u}..HEAD`), som koerer `node scripts/wave-freeze.mjs` for selve dommen. Regelen er ren, testet kode - [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) med [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs); `wave.js` spejler konstanterne (workflow-scripts kan ikke importere), og testen fejler hvis de to drifter fra hinanden.
 
