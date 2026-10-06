@@ -63,4 +63,4 @@ Frontend source-map verification follows the same requirement: independent merge
 
 The existing frontend-build CI job now typechecks the three build-selection TypeScript tools explicitly with Node types. The normal app typecheck only includes src/**, so its success alone is not tools-typecheck evidence.
 
-Owner safe-variant go: 5 October 23:50, PR #6222. Every backend/lib/ path builds; backend/routes/ alone still skips. There is no individual-file exception. Environment changes require Redeploy in Vercel; a documentation-only push may be skipped.
+Owner safe-variant go: 5 October 23:50, PR #6222. Every backend/lib/ path builds; backend/routes/ alone still skips. There is no individual-file exception.
