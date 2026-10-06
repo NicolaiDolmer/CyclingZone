@@ -468,6 +468,20 @@ function planReviewAttempt(attempt) {
   }
 }
 
+// SPEJLING of classifyBuildRecoveryFailure in scripts/wave-freeze.mjs.
+function classifyBuildRecoveryFailure(outcome) {
+  if (!outcome || outcome.settled !== true) return null
+  const rejected = outcome.error !== null && outcome.error !== undefined
+  const value = rejected ? outcome.error : outcome.value
+  const text = String((value && value.message) || value || '').trim()
+  const api = text.match(/^API Error:\s*(5\d{2})(?:\s|:|$)/i)
+  if (api && (rejected || !/[\r\n]/.test(text))) return { reason: `api-${api[1]}`, terminalEvidence: 'agent-settled' }
+  if (outcome.terminalConfirmed === true && /^API (?:Error|Response Error):\s*(?:response|request)\s+(?:timed out|timeout)\b/i.test(text)) {
+    return { reason: 'response-timeout', terminalEvidence: 'explicit-terminal' }
+  }
+  return null
+}
+
 // SPEJLING af needsGracefulStop() i scripts/wave-freeze.mjs.
 // 'hard-cap' undtages: dér lever branchen, saa lane-agenten arbejder stadig i
 // worktreet (en timeout afbryder ikke agenten). To agenter der committer samme
@@ -707,6 +721,24 @@ function laneBrief(track) {
 // et udloebet vindue ikke doemmes paa agentens tavshed alene. Regnestykket
 // ligger i scripts/wave-freeze.mjs, og proben kalder den CLI - saa dommen
 // kommer fra den testede kilde og ikke fra en agents hovedregning.
+function recoveryBrief(track, reason) {
+  return [
+    `WAVE-LANE: #${track.issue} ${track.branch} (recovery 1/1)`,
+    '',
+    ...subStepScopeLines(`genoptag #${track.issue} i samme worktree`, 'worker'),
+    '',
+    `Den tidligere agent er observeret terminal (${reason}). Dette er eneste automatiske genoptagelse.`,
+    `SAMME worktree: ${track.worktree}; SAMME branch: ${track.branch}.`,
+    'FOER arbejdet: maal branch, git status, lokale/upushede commits og eksisterende draft-PR.',
+    'Bevar eksisterende arbejde. Ingen reset, stash, ny branch, nyt worktree eller dublet-PR.',
+    'Fortsaet fra maalt WIP-status; gentag ikke afsluttede handlinger blindt.',
+    'Hvis en anden writer stadig koerer, STOP uden at skrive.',
+    'Orkestratoren koerer det normale uafhaengige review efter aflevering.',
+    '',
+    laneBrief(track),
+  ].join('\n')
+}
+
 function probePrompt(track, elapsedMinutes) {
   return [
     `READ-ONLY: frys-probe paa #${track.issue} ${track.branch} (#5178)`,
@@ -1318,19 +1350,62 @@ async function runTrack(track, trackTimeoutMinutes) {
   const label = `#${track.issue} ${track.branch}`
   const row = { issue: track.issue, branch: track.branch, model: track.model, tier: track.tier }
 
-  // EEN agent, flere ventevinduer. Promise'et spawnes praecis en gang og
-  // races mod et vindue ad gangen; loeber vinduet ud, maales branchen, og
-  // lever den, ventes der videre paa SAMME agent (#5178).
-  const buildPromise = agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
+  // A waiting-window expiry keeps the same writer alive. Only a settled API
+  // failure can start one recovery in the same worktree, within the same cap.
+  const startedMinute = clock.minute
+  let resumes = 0
+  function startBuild() {
+    const promise = Promise.resolve().then(() => resumes === 0
+      ? agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
+      : agent(recoveryBrief(track, row.recovery.reason), { label: `${label} (recovery 1/1)`, phase: 'Laner', model: track.model }))
+    return promise.then(
+      value => ({ settled: true, value, error: null }),
+      error => ({ settled: true, value: null, error, terminalConfirmed: error && error.terminalConfirmed === true }),
+    )
+  }
+  let buildPromise = startBuild()
   let elapsedMinutes = 0
   let waitMinutes = trackTimeoutMinutes
   let build = TIMED_OUT
   let stopProbe = null
 
   for (;;) {
-    build = await withTimeout(buildPromise, waitMinutes * 60 * 1000, label)
+    const outcome = await withTimeout(buildPromise, waitMinutes * 60 * 1000, label)
+    if (outcome !== TIMED_OUT) {
+      const failure = classifyBuildRecoveryFailure(outcome)
+      if (failure) {
+        elapsedMinutes = Math.max(elapsedMinutes, clock.minute - startedMinute + 1)
+        const remaining = WAVE_FREEZE.TRACK_HARD_CAP_MINUTES - elapsedMinutes
+        if (resumes === 0 && remaining > 0) {
+          row.recovery = { attempts: 1, reason: failure.reason, terminalEvidence: failure.terminalEvidence, outcome: 'resuming', worktree: track.worktree }
+          log(`${label}: ${failure.reason}; tidligere agent terminal (${failure.terminalEvidence}). Genoptager 1/1 i SAMME worktree ${track.worktree}; normalt review bevares.`)
+          resumes = 1
+          waitMinutes = Math.min(trackTimeoutMinutes, remaining)
+          buildPromise = startBuild()
+          continue
+        }
+        row.status = 'fejl'
+        row.note = resumes === 1 ? 'Genoptagelse 1/1 fejlede; ingen tredje writer. Arbejdet er bevaret.' : 'Terminal API-fejl ved det haarde loft; ingen genoptagelse.'
+        row.recovery = { ...(row.recovery || {}), attempts: resumes, reason: failure.reason, terminalEvidence: failure.terminalEvidence,
+          outcome: resumes === 1 ? 'exhausted' : 'budget-exhausted', worktree: track.worktree, review: 'ikke gennemfoert' }
+        log(`${label}: ${row.note}`)
+        return row
+      }
+      if (outcome.error !== null) {
+        row.status = 'fejl'
+        row.note = String((outcome.error && outcome.error.message) || outcome.error)
+        if (row.recovery) row.recovery.outcome = 'failed'
+        return row
+      }
+      build = outcome.value
+      if (row.recovery) {
+        row.recovery.outcome = build === null ? 'no-response' : 'completed'
+        log(`${label}: genoptagelse 1/1 afsluttet; ${build === null ? 'intet svar' : 'fortsaetter til normalt review'}.`)
+      }
+      break
+    }
+    build = TIMED_OUT
     elapsedMinutes += waitMinutes
-    if (build !== TIMED_OUT) break
 
     // Proben koster ogsaa tid (op til PROBE_TIMEOUT_MINUTES), og uden Date.now()
     // kan scriptet ikke maale hvor laenge den faktisk tog. Vi bogfoerer derfor
@@ -1404,6 +1479,7 @@ async function runTrack(track, trackTimeoutMinutes) {
   }
   if (!review) {
     row.review = 'ikke gennemfoert'
+    if (row.recovery) row.recovery.review = row.review
     row.note = `Reviewer svarede ikke i ${WAVE_FREEZE.REVIEW_MAX_ATTEMPTS} forsoeg - PR'en skal menneske-reviewes foer merge.`
     return row
   }
@@ -1417,6 +1493,7 @@ async function runTrack(track, trackTimeoutMinutes) {
     for (const f of evidence.downgraded) log(`Reviewer-fund nedgraderet paa ${label}: ${f.file ? f.file + ': ' : ''}${f.what} - ${f.note}`)
   }
   row.review = review.verdict
+  if (row.recovery) row.recovery.review = row.review
   row.reviewSummary = review.summary
   row.pr = review.pr || 'ingen'
 
@@ -1862,7 +1939,7 @@ return {
   tailIdle,
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
-  stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop })),
+  stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop, recovery: s.recovery })),
   unstarted,
   tracks: results,
 }
