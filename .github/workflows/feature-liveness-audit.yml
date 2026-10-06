@@ -26,6 +26,8 @@ on:
       - 'backend/lib/**'
       - 'backend/server.js'
       - 'backend/scripts/audit-feature-liveness.js'
+      - 'backend/scripts/feature-liveness-report.js'
+      - 'backend/scripts/feature-liveness-report.test.js'
       - 'frontend/src/**'
       - '.github/workflows/feature-liveness-audit.yml'
   # #639 (Option D): run Detector C (migration-drift) after a migration lands,
@@ -118,7 +120,7 @@ jobs:
             SKIP_FLAG="--skip=A,B,D,E"
           fi
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG --json > feature-liveness.json
-          node backend/scripts/audit-feature-liveness.js $SKIP_FLAG | tee feature-liveness.txt
+          node backend/scripts/feature-liveness-report.js feature-liveness.json | tee feature-liveness.txt
           total=$(node -e "const d=require('./feature-liveness.json');console.log(d.total_findings)")
           echo "total=$total" >> "$GITHUB_OUTPUT"
 
