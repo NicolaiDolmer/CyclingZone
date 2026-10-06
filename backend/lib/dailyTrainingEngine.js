@@ -82,6 +82,55 @@ function addDaysToDate(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
+// #6210 (doktrin, MASTERPLAN): maks +1 pr. evne pr. rytter pr. DATO. En dato baerer
+// flere loebsdage, og hvert loebsdags-tick har sit eget +1-loft (#4801), saa to
+// stier samme dato (Train now om morgenen, aftenens sweep, en loebsdag som tick)
+// kunne hver give et point i samme evne. Vaernet sidder HER, i den ene funktion
+// alle tre stier gaar igennem (runTeamTrainingDay), lige foer skrivningen.
+export const ABILITY_GAIN_CAP_PER_DATE = 1;
+
+/** PURE: summer allerede krediterede hele point pr. evne fra datoens tidligere rapporter. */
+export function sumDateGains(reportRows = []) {
+  const used = {};
+  for (const row of reportRows) {
+    for (const [ability, n] of Object.entries(row?.gains ?? {})) {
+      const points = Number(n);
+      if (Number.isFinite(points) && points > 0) used[ability] = (used[ability] ?? 0) + points;
+    }
+  }
+  return used;
+}
+
+/**
+ * PURE: klip et ticks gevinster saa evnen hoejst stiger ABILITY_GAIN_CAP_PER_DATE
+ * paa datoen. Et klippet point gaar ikke tabt: det laegges tilbage paa fremdrifts-
+ * baren og baeres til naeste dato, samme carry-over som loebsdags-loftet (#4750).
+ * Muterer ikke input. Uden klip returneres samme objekt.
+ */
+export function capTickGainsPerDate({ tickResult, abilities, usedGains = {}, cap = ABILITY_GAIN_CAP_PER_DATE }) {
+  if (!tickResult?.gains) return tickResult;
+  let next = null;
+  for (const [ability, n] of Object.entries(tickResult.gains)) {
+    const gained = Number(n) || 0;
+    const allowance = Math.max(0, cap - (Number(usedGains[ability]) || 0));
+    if (gained <= allowance) continue;
+    next ??= {
+      ...tickResult,
+      abilities: { ...tickResult.abilities },
+      progress: { ...tickResult.progress },
+      gains: { ...tickResult.gains },
+      capped_by_date: {},
+    };
+    const excess = gained - allowance;
+    next.abilities[ability] = Number(abilities?.[ability] ?? 0) + allowance;
+    next.progress[ability] = Number(next.progress[ability] ?? 0) + excess;
+    if (allowance > 0) next.gains[ability] = allowance;
+    else delete next.gains[ability];
+    next.capped_by_date[ability] = excess;
+  }
+  return next ?? tickResult;
+}
+
 // #6009: matcher etape-opslagets etape den kanoniske belastning for loebsdagen?
 // Etape-opslaget (raceDayStageLookup) vaelger den FOERSTE etape, hvis en rytter
 // har to resultater paa samme loebsdag (dobbeltbooking, brud paa #4209). Ledgeren
@@ -376,6 +425,16 @@ export async function runTeamTrainingDay({
   }
 
   const riderIds = riders.map((r) => r.id);
+  // #6210: datoens tidligere loebsdags-rapporter paa stien uden dato-kvitteringer.
+  // Med conditionPerDate er kilden kvitteringerne (dateReceipts, rytter-noeglet).
+  let sameDateRunReports = [];
+  if (useRaceDayKey && !conditionPerDate) {
+    const { data, error } = await supabase.from("training_day_runs").select("game_day, report")
+      .eq("team_id", teamId).eq("season_id", seasonId).eq("squad", squadKey).eq("tick_date", tickDate);
+    if (error) throw new Error(`same-date training reports: ${error.message}`);
+    sameDateRunReports = (data ?? []).filter((row) => Number(row.game_day) !== raceDay)
+      .flatMap((row) => row.report?.riders ?? []);
+  }
   if (conditionPerDate) {
     const { data, error } = await supabase.from('training_race_loads')
       // Full ledger records keep this reader compatible before the recovery
@@ -851,6 +910,15 @@ export async function runTeamTrainingDay({
       } else {
         tickResult = applyDailyTick(sharedTickArgs);
       }
+      // #6210: maks +1 pr. evne pr. dato, paa tvaers af datoens loebsdage og stier.
+      // Den gamle kalenderdags-sti har kun ét tick pr. dato og er uroert.
+      if (useRaceDayKey) {
+        const usedGains = conditionPerDate
+          ? sumDateGains(dateReceipts.filter((row) => row.rider_id === rider.id
+            && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report))
+          : sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
+        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+      }
     }
 
     // Træthed + form for næste dag. #3459 D3: recoveryBase/recoveryFraction følger
@@ -1094,6 +1162,8 @@ export async function runTeamTrainingDay({
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},
       gains_detail: gainsDetail,
+      // #6210: point udskudt til naeste dato af dato-loftet (kun naar det bandt).
+      ...(tickResult?.capped_by_date ? { gains_deferred_by_date_cap: tickResult.capped_by_date } : {}),
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens
       // bidrag til "på vej mod næste point"-baren, aldrig til ny trænings-logik.
       progress_before: preProgress,
