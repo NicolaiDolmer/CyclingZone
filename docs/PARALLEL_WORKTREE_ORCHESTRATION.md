@@ -284,6 +284,16 @@ Eskalering ved haandholdt opfoelgning: 30 min uden push -> krav om status og oej
 | Reviewer | 30 min, **opus** | Praecis **eet** automatisk gen-spawn foer sporet meldes uden review. Et blokerende data-/skema-fund uden opslag i `database/schema-snapshot.json`, en read-only `SELECT ... FROM` eller fil:linje fra diffen nedgraderes til bemaerkning (#5567, #5602) |
 | Draft-PR / push | 30 min / 15 min | Uaendret - brief-generatoren skriver dem ind i hver lane |
 
+**Terminal API-fejl (#6227):** En afsluttet builder med en entydig API 529/5xx-
+fejl kan genoptages automatisk een gang i samme worktree og branch. En timeout
+uden svar kraever eksplicit terminal-bevis; et udloebet lokalt ventevindue
+starter aldrig en ekstra writer. Genoptagelsen beholder det oprindelige
+tidsbudget og det normale uafhaengige review. WIP, eksisterende PR og pushes
+maales foer videre arbejde; der resettes ikke. Log og sporrapport viser aarsag,
+forsog og udfald. En anden terminal fejl giver ingen tredje builder.
+Et afsluttet resultat under en pre-cap frys-probe behandles foer probens gamle
+snapshot kan stoppe sporet; en uafsluttet builder ved hard cap genstartes ikke.
+
 Maalingen sker via en kort read-only probe-agent i worktreet (`git log -1 --format=%ct`, `git status --porcelain`, `git rev-list --count @{u}..HEAD`), som koerer `node scripts/wave-freeze.mjs` for selve dommen. Regelen er ren, testet kode - [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) med [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs); `wave.js` spejler konstanterne (workflow-scripts kan ikke importere), og testen fejler hvis de to drifter fra hinanden.
 
 Kan branchen ikke maales, doemmes der **frys** - konservativt: en frossen agent holder sin plads i samtidigheds-loftet, og usynligt reduceret kapacitet kostede 2,5 time natten 5-6/9.

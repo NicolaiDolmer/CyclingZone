@@ -753,7 +753,7 @@ function normalizeFunction(text) {
 test("#5562/#5567: de spejlede funktioner er identiske i wave.js og modulet", () => {
   const waveSrc = readFileSync(WAVE_JS_PATH, "utf8");
   const moduleSrc = readFileSync(MODULE_PATH, "utf8");
-  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines"]) {
+  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines", "classifyBuildRecoveryFailure"]) {
     const inWave = extractFunction(waveSrc, name);
     const inModule = extractFunction(moduleSrc, name);
     assert.ok(inWave, `wave.js mangler den spejlede funktion ${name}()`);
@@ -805,7 +805,7 @@ test("#6058: ALLE boelgens agent-prompts starter med scope-vaernet", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
   const kinds = {
     setupPrompt: "setup", intakePrompt: "setup", intakeCheckPrompt: "setup", probePrompt: "setup", cleanupPrompt: "setup",
-    laneBrief: "worker", stopPrompt: "worker", reviewPrompt: "worker", fixPrompt: "worker",
+    laneBrief: "worker", recoveryBrief: "worker", stopPrompt: "worker", reviewPrompt: "worker", fixPrompt: "worker",
   };
   for (const [name, kind] of Object.entries(kinds)) {
     const fn = extractFunction(src, name);
