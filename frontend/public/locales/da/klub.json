@@ -93,7 +93,6 @@
   },
   "errors": {
     "insufficient_funds": "Ikke nok saldo til den opgradering.",
-    "insufficient_available_balance": "Ikke nok disponible penge: en del af din saldo er låst i auktionsbud.",
     "max_tier": "Dette spor er allerede fuldt udbygget.",
     "role_occupied": "Du har allerede staff i denne rolle.",
     "staff_tier_exceeds_facility": "Opgradér faciliteten før du ansætter en højere-tier chef.",

@@ -51,7 +51,6 @@
       "staff_not_found": "This staff member isn't on your team anymore.",
       "already_released": "Already released.",
       "insufficient_funds": "You can't afford the severance ({amount} CZ$).",
-      "insufficient_available_balance": "Not enough available money: part of your balance is locked in auction bids.",
       "facilities_disabled": "Staff management isn't available yet.",
       "auth": "You need to be signed in to do that.",
       "network": "Connection failed. Try again in a moment.",

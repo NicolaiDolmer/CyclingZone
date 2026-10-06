@@ -28,11 +28,6 @@ const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
 
 // Domænefejl → HTTP-status. facilities_disabled er altid 403; resten 400 med
 // mindre ruten har en specifik override (409 role_occupied, 404 no_active_staff).
-// #6237: insufficient_available_balance bærer det låste beløb, så UI'et kan vise det.
-function lockedFields(result) {
-  return result.locked != null ? { locked: result.locked, available: result.available } : {};
-}
-
 function statusForError(error, overrides = {}) {
   if (error === "facilities_disabled") return 403;
   return overrides[error] ?? 400;
@@ -141,7 +136,7 @@ export async function postFacilityUpgradeHandler(
   { flags = DEFAULT_FLAGS, purchaseFacilityUpgrade = defaultPurchase } = {}
 ) {
   const result = await purchaseFacilityUpgrade({ teamId, track, seasonId, seasonNumber }, supabaseClient, flags);
-  if (!result.ok) return { status: statusForError(result.error), body: { error: result.error, ...lockedFields(result) } };
+  if (!result.ok) return { status: statusForError(result.error), body: { error: result.error } };
   return { status: 200, body: result };
 }
 
@@ -195,7 +190,7 @@ export async function postStaffHireHandler(
   if (!result.ok) {
     return {
       status: statusForError(result.error, { role_occupied: 409, candidate_already_hired: 409 }),
-      body: { error: result.error, ...lockedFields(result) },
+      body: { error: result.error },
     };
   }
   return { status: 200, body: result };
@@ -231,7 +226,6 @@ export async function postStaffReleaseHandler(
       status: statusForError(result.error, { staff_not_found: 404, already_released: 409 }),
       body: {
         error: result.error,
-        ...lockedFields(result),
         ...(result.severance != null ? { severance: result.severance } : {}),
         ...(result.balance != null ? { balance: result.balance } : {}),
       },

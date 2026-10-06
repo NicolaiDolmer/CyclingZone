@@ -305,8 +305,6 @@ export default function AcademyPage() {
     if (err === "not_offered") return t("error.notOffered");
     // #2796: begge faldt før igennem til den generiske besked (+ Sentry-500).
     if (err === "insufficient_balance") return t("error.insufficientBalance");
-    // #6237: signing-fee ville bruge penge låst i auktionsbud.
-    if (err === "insufficient_available_balance") return t("error.insufficientAvailableBalance");
     if (err === "already_assigned") return t("error.alreadyAssigned");
     // #4213: stale tilbud — rytteren er i mellemtiden ejet af et andet hold.
     if (err === "rider_owned") return t("error.riderOwned");

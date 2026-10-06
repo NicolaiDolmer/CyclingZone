@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isAuctionCommitmentTable, auctionCommitmentTable } from "./availableBalanceMock.js";
 
 import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate, seedAcademyCohortForTeam, referenceYearForSeason } from "./academyIntake.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -562,8 +561,6 @@ function makeSignRejectSupabase({
   deferred = false, // #4423: tving RPC'en til at returnere { ok:true, deferred:true, ... }
   intakeSource, // #5844: undefined = rækken har ingen source (før migrationen)
   sourceColumnMissing = false, // #5844: select af `source` giver 42703
-  teamBalance, // #6237: holdets rå saldo (undefined = ikke sat; så er fee > saldo)
-  leadingAuctions = [], // #6237: førende bud der låser penge
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -572,7 +569,6 @@ function makeSignRejectSupabase({
 
   const supabase = {
     from(table) {
-      if (isAuctionCommitmentTable(table)) return auctionCommitmentTable(table, { leading: leadingAuctions });
       if (table === "academy_intake") {
         let whereEqs = {};
         let selectedCols = "";
@@ -653,10 +649,7 @@ function makeSignRejectSupabase({
           select() { return teamsApi; },
           eq() { return teamsApi; },
           single() {
-            return Promise.resolve({
-              data: { user_id: "user-1", ...(teamBalance !== undefined ? { balance: teamBalance } : {}) },
-              error: null,
-            });
+            return Promise.resolve({ data: { user_id: "user-1" }, error: null });
           },
           // #2594: signAcademyCandidate slår holdets division op for at prissætte
           // lønnen (per-division sats).
@@ -1162,36 +1155,4 @@ test("seedAcademyCohortForTeam (#5844): source sendes kun når den er sat", asyn
   assert.ok(gift.every((r) => r.source === "board_gift" && r.status === "offered"));
   const riders = inserts.find((x) => x.table === "riders").rows;
   assert.ok(riders.every((r) => { const a = ageForSeason(r.birthdate, 4); return a >= 19 && a <= 21; }));
-});
-
-// #6237: signing-fee må ikke betales med penge låst i auktionsbud.
-test("signAcademyCandidate (#6237): fee ville bruge penge låst i bud → insufficient_available_balance, ingen RPC", async () => {
-  const probe = makeSignRejectSupabase({ teamBalance: 1_000_000_000 });
-  await signAcademyCandidate(probe, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
-  const fee = Number(probe._rpcCalls[0]._args.p_price);
-  assert.ok(fee > 0, "testen kræver en betalt signing");
-
-  const supabase = makeSignRejectSupabase({
-    teamBalance: fee + 10,
-    leadingAuctions: [{ id: "a1", current_price: 11 }],
-  });
-  await assert.rejects(
-    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 }),
-    (err) => err.message === "insufficient_available_balance" && err.locked === 11 && err.available === fee - 1,
-  );
-  assert.equal(supabase._rpcCalls.length, 0, "ingen RPC — gaten afviser først");
-  assert.equal(supabase._intakeUpdates.length, 0, "tilbuddet bevares");
-});
-
-test("signAcademyCandidate (#6237): præcis nok disponibelt efter bud → signeringen går igennem", async () => {
-  const probe = makeSignRejectSupabase({ teamBalance: 1_000_000_000 });
-  await signAcademyCandidate(probe, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
-  const fee = Number(probe._rpcCalls[0]._args.p_price);
-
-  const supabase = makeSignRejectSupabase({
-    teamBalance: fee + 10,
-    leadingAuctions: [{ id: "a1", current_price: 10 }],
-  });
-  await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
-  assert.equal(supabase._rpcCalls.length, 1);
 });

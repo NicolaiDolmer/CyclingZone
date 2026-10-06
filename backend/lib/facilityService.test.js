@@ -3,7 +3,6 @@
 // increment_balance_with_audit, som debitTeam rammer via balanceRpc).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isAuctionCommitmentTable, auctionCommitmentTable } from "./availableBalanceMock.js";
 
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
@@ -20,10 +19,8 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createFacilitySupabase({ team, facilities = [], staff = [], leadingAuctions = [], proxies = [] }) {
+function createFacilitySupabase({ team, facilities = [], staff = [] }) {
   const state = {
-    leadingAuctions,
-    proxies,
     team: clone(team),
     facilities: clone(facilities),
     staff: clone(staff),
@@ -47,9 +44,6 @@ function createFacilitySupabase({ team, facilities = [], staff = [], leadingAuct
       return Promise.resolve({ data: state.team.balance, error: null });
     },
     from(table) {
-      if (isAuctionCommitmentTable(table)) {
-        return auctionCommitmentTable(table, { leading: state.leadingAuctions, proxies: state.proxies });
-      }
       if (table === "teams") {
         return {
           select(columns) {
@@ -866,73 +860,4 @@ test("release: true-concurrent race (idempotent debit-skip via idempotency_key) 
   assert.deepEqual(second, { ok: true, severance: 8_000, role: "training", name: "Coach Testsen", skipped: true });
   // Balance uændret af det 2. (skippede) kald.
   assert.equal(supabase.state.team.balance, 50_000 - 8_000);
-});
-
-// ─── #6237: disponibel saldo (penge låst i auktionsbud) ──────────────────────
-
-test("#6237 purchase: penge låst i førende bud kan ikke bruges på anlæg — insufficient_available_balance, ingen debit", async () => {
-  const price = FACILITY_TIER_PRICE[1];
-  const supabase = createFacilitySupabase({
-    team: { id: "team-1", balance: price + 10 },
-    leadingAuctions: [{ id: "a1", current_price: 11 }],
-  });
-  const result = await purchaseFacilityUpgrade({ ...BASE_ARGS, track: "training" }, supabase, ENABLED);
-  assert.deepEqual(result, { ok: false, error: "insufficient_available_balance", locked: 11, available: price - 1 });
-  assert.equal(supabase.state.finance_transactions.length, 0);
-  assert.equal(supabase.state.team.balance, price + 10);
-});
-
-test("#6237 purchase: proxy-loft tæller som låst; præcis nok disponibelt går igennem", async () => {
-  const price = FACILITY_TIER_PRICE[1];
-  const blocked = createFacilitySupabase({
-    team: { id: "team-1", balance: price + 10 },
-    proxies: [{ auction_id: "a2", max_amount: 11, auction: { status: "active" } }],
-  });
-  const r1 = await purchaseFacilityUpgrade({ ...BASE_ARGS, track: "training" }, blocked, ENABLED);
-  assert.equal(r1.error, "insufficient_available_balance");
-
-  const ok = createFacilitySupabase({
-    team: { id: "team-1", balance: price + 10 },
-    leadingAuctions: [{ id: "a1", current_price: 10 }],
-  });
-  const r2 = await purchaseFacilityUpgrade({ ...BASE_ARGS, track: "training" }, ok, ENABLED);
-  assert.equal(r2.ok, true);
-});
-
-test("#6237 purchase: rå saldo for lav giver stadig insufficient_funds (uændret kode)", async () => {
-  const supabase = createFacilitySupabase({
-    team: { id: "team-1", balance: 1 },
-    leadingAuctions: [{ id: "a1", current_price: 1 }],
-  });
-  const result = await purchaseFacilityUpgrade({ ...BASE_ARGS, track: "training" }, supabase, ENABLED);
-  assert.equal(result.error, "insufficient_funds");
-});
-
-test("#6237 hire: ansættelse blokeres når saldoen er låst i bud", async () => {
-  const supabase = createFacilitySupabase({
-    team: { id: "team-1", balance: 100_000 },
-    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
-    leadingAuctions: [{ id: "a1", current_price: 99_999 }],
-  });
-  const candidate = generateStaffCandidates({ teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5 })[0];
-  const result = await hireStaff({ ...BASE_ARGS, role: "training", candidateName: candidate.name }, supabase, ENABLED);
-  assert.equal(result.ok, false);
-  assert.equal(result.error, "insufficient_available_balance");
-  assert.equal(result.locked, 99_999);
-  assert.equal(supabase.state.staff.length, 0);
-});
-
-test("#6237 release: fratrædelse blokeres når saldoen er låst i bud, ingen debit", async () => {
-  const supabase = createFacilitySupabase({
-    team: { id: "team-1", balance: 50_000 },
-    staff: [{ id: "staff-9", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2, name: "Coach Testsen" }],
-    leadingAuctions: [{ id: "a1", current_price: 45_000 }],
-  });
-  const result = await releaseStaff({ ...BASE_ARGS, staffId: "staff-9" }, supabase, ENABLED);
-  assert.equal(result.ok, false);
-  assert.equal(result.error, "insufficient_available_balance");
-  assert.equal(result.locked, 45_000);
-  assert.equal(result.severance, 8_000);
-  assert.equal(supabase.state.finance_transactions.length, 0);
-  assert.equal(supabase.state.staff[0].status, "active");
 });
