@@ -248,4 +248,3 @@ De 150 sekunder er samtidig et vindue hvor den gamle og den nye proces kører si
 
 **Kendt gæld:** Railways config-as-code (`railway.json`) er markeret deprecated med udløb 2026-12-01 til fordel for Infrastructure as Code. Begge felter ovenfor skal migreres inden da, ellers falder de tilbage til dashboard-værdierne.
 
-Environment changes require **Redeploy in Vercel** (or an explicit production CLI deployment). A documentation-only push can be skipped by the frontend build filter and is not a reliable way to release environment changes.
