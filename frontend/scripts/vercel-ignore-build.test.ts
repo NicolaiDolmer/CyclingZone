@@ -1,6 +1,71 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { needsFrontendBuild } from './vercel-build-decision.ts';
+import { previewBuildDecision } from './vercel-build-decision.ts';
+
+test('preview compares the cumulative whole-repo PR diff without an origin remote', () => {
+  const calls: string[][] = [];
+  const git = (paths: string) => (args: string[]) => {
+    calls.push(args);
+    if (args[0] === 'rev-parse') return 'b'.repeat(40);
+    if (args[0] === 'merge-base') return 'a'.repeat(40);
+    if (args[0] === 'diff') return paths;
+    return '';
+  };
+  assert.equal(previewBuildDecision(undefined, git('docs/example.md\0backend/routes/x.js\0')).build, false);
+  assert.ok(calls.some(args => args[0] === 'fetch' && args.includes('https://github.com/NicolaiDolmer/CyclingZone.git')));
+  assert.ok(calls.some(args => args[0] === 'diff' && args.includes('--no-renames') && args.at(-1) === '--'));
+  for (const file of ['frontend/src/App.jsx', 'backend/lib/x.ts', 'package-lock.json', 'scripts/x.mjs']) {
+    assert.equal(previewBuildDecision(undefined, git(file + '\0docs/latest.md\0')).build, true, file);
+  }
+});
+
+test('preview comparison failures and same-commit manual redeploys build', () => {
+  assert.equal(previewBuildDecision(undefined, () => { throw new Error('fetch unavailable'); }).build, true);
+  const sha = 'a'.repeat(40);
+  assert.equal(previewBuildDecision(sha, () => sha).build, true);
+  assert.equal(previewBuildDecision(undefined, args => args[0] === 'merge-base' ? '' : 'b'.repeat(40)).build, true);
+});
+
+test('real originless Git checkout includes frontend changes before the latest docs commit', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join, resolve } = await import('node:path');
+  const prefix = join(tmpdir(), 'cz-preview-originless-');
+  const fixture = mkdtempSync(prefix);
+  const git = (args: string[]) => execFileSync('git', ['-C', fixture, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const commit = (message: string) => {
+    git(['add', '.']);
+    git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.hooksPath=NUL', 'commit', '-m', message]);
+  };
+  try {
+    git(['init', '--initial-branch=main']);
+    mkdirSync(join(fixture, 'docs'));
+    writeFileSync(join(fixture, 'docs', 'base.md'), 'base');
+    commit('base');
+    git(['switch', '-c', 'preview']);
+    mkdirSync(join(fixture, 'frontend'));
+    writeFileSync(join(fixture, 'frontend', 'input.ts'), 'export const input = 1;');
+    commit('frontend input');
+    writeFileSync(join(fixture, 'docs', 'latest.md'), 'later docs');
+    commit('later docs');
+    assert.equal(git(['remote']).trim(), '');
+    assert.equal(git(['diff', '--name-only', 'HEAD^', 'HEAD']).trim(), 'docs/latest.md');
+    const decision = previewBuildDecision(undefined, args => {
+      if (args[0] === 'fetch') {
+        assert.equal(args[3], 'https://github.com/NicolaiDolmer/CyclingZone.git');
+        return git([...args.slice(0, 3), fixture, ...args.slice(4)]);
+      }
+      return git(args);
+    });
+    assert.equal(decision.build, true, decision.reason);
+    assert.equal(git(['remote']).trim(), '');
+  } finally {
+    if (!resolve(fixture).startsWith(resolve(prefix))) throw new Error('Unsafe fixture cleanup path');
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
 
 test('docs, backend and marketing changes alone do not rebuild the frontend', () => {
   for (const path of ['docs/NOW.md','backend/routes/example.js','database/example.sql','marketing/app/page.tsx','.claude/learnings/example.md','AGENTS.md']) assert.equal(needsFrontendBuild([path]),false,path);
