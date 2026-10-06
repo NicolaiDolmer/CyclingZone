@@ -105,27 +105,31 @@ function AbilityRow({ abilityKey, points, ceiling }) {
   );
 }
 
-// Sæsonakse under en kategori: samme kolonner som AbilityRow, labels placeret
-// på punkternes x-positioner i sparkline-kolonnen.
+// Sæsonakse under en kategori: samme kolonner som AbilityRow. Tegnes som SVG med
+// samme viewBox-bredde og skala som Sparkline (begge centreres af
+// preserveAspectRatio), så hvert label står præcis under sit punkt.
+const AXIS_H = 12;
 function SeasonAxis({ seasons, nowLabel }) {
   const n = seasons.length;
   const labels = seasonAxisLabels(seasons, { nowLabel });
   return (
     <div className="flex items-center gap-3 pt-1" aria-hidden="true">
       <div className="w-10 shrink-0" />
-      <div className="relative flex-1 min-w-0 h-4">
-        {labels.map(({ i, label }) => {
-          const align = n <= 1 ? "-translate-x-1/2" : i === 0 ? "" : i === n - 1 ? "-translate-x-full" : "-translate-x-1/2";
-          return (
-            <span
+      <div className="flex-1 min-w-0">
+        <svg viewBox={`0 0 ${VB.w} ${AXIS_H}`} className="block w-full h-3 overflow-visible">
+          {labels.map(({ i, label }) => (
+            <text
               key={i}
-              className={`absolute top-0 font-data text-3xs tabular-nums text-cz-3 whitespace-nowrap ${align}`}
-              style={{ left: `${(xAtIndex(i, n) / VB.w) * 100}%` }}
+              x={xAtIndex(i, n).toFixed(1)}
+              y={AXIS_H - 2}
+              textAnchor={n <= 1 ? "middle" : i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
+              className="font-data text-3xs tabular-nums"
+              fill="var(--text-3)"
             >
               {label}
-            </span>
-          );
-        })}
+            </text>
+          ))}
+        </svg>
       </div>
       <div className="w-9 shrink-0" />
       <div className="w-11 shrink-0" />
