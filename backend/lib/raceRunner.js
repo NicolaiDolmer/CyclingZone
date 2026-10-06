@@ -202,6 +202,7 @@ async function flushDeferredAcademySigningsSafe({ supabase, race }) {
 function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, resultRows }) {
   const pushIndiv = ({
     result_type, rank, rider_id, stage_number, finish_time = null, in_breakaway = false, breakaway_caught = false,
+    breakaway_dropped = null, // #6185: tredje udbrudstilstand; null = ikke vurderet
     // Sub-2 (#2770): passage-lag-aggregater — NULL (default) = legacy/ingen rutedata.
     // Etape-niveau-gate (kald-stedets ansvar): når passage-laget er aktivt for en
     // etape bærer ALLE dens 'stage'-rækker numeriske værdier (0 for ikke-scorere),
@@ -226,6 +227,7 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
       prize_money: prizeMoneyForPoints(pts, race),
       in_breakaway,
       breakaway_caught,
+      breakaway_dropped,
       sprint_points,
       kom_points,
       bonus_seconds,

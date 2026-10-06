@@ -4467,6 +4467,7 @@ export type Database = {
         Row: {
           bonus_seconds: number | null
           breakaway_caught: boolean
+          breakaway_dropped: boolean | null
           entrant_key: string | null
           entrant_uid: string | null
           finish_time: string | null
@@ -4489,6 +4490,7 @@ export type Database = {
         Insert: {
           bonus_seconds?: number | null
           breakaway_caught?: boolean
+          breakaway_dropped?: boolean | null
           entrant_key?: string | null
           entrant_uid?: string | null
           finish_time?: string | null
@@ -4511,6 +4513,7 @@ export type Database = {
         Update: {
           bonus_seconds?: number | null
           breakaway_caught?: boolean
+          breakaway_dropped?: boolean | null
           entrant_key?: string | null
           entrant_uid?: string | null
           finish_time?: string | null

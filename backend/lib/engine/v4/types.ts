@@ -658,6 +658,12 @@ export type EngineState = {
   // #6187 (ADDITIVT, valgfrit, KUN orders_gc_v3): hold der allerede har faaet
   // etapens ene "holdet foerer ikke, det har folk foran"-linje (breakaway.ts).
   own_rider_ahead_teams?: string[];
+  // #6199/#6200 (ADDITIVT, valgfrit, KUN orders_gc_v3): hvad regrupperingen paa
+  // en nedkoersel mod maal (mechanics/descent.ts) allerede har lukket, group_id
+  // -> hullet ved toppen og det lukkede. finale.ts traekker det fra jagtens loft
+  // paa samme segment, saa de to lag tilsammen aldrig lukker mere end loftet
+  // (mechanics/timeModel.ts's finishDescentRemainingCapSeconds), og sletter feltet.
+  finish_descent_regroup?: Record<string, { topGapSeconds: number; closedSeconds: number }>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
