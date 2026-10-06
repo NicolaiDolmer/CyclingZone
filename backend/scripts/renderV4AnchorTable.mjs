@@ -38,6 +38,7 @@ function fmtPct(v) {
 const DISPLAY_BY_ID = {
   field_cohesion_flat: fmtPct,
   descent_vs_summit_gap_ratio: (v) => v.toFixed(2),
+  descent_gap_closure_contract: (v) => v.toFixed(2),
   descent_attack_gain_bounds: (v) => `${Math.round(v)}s`,
   punch_correlation: (v) => v.toFixed(2),
   cobblestone_lift_on_sectors: (v) => v.toFixed(3),

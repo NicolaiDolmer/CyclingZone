@@ -49,10 +49,11 @@ import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 
 import { runHeadToHead } from "./headToHeadV4.js";
-import { ANCHOR_BANDS, aggregateScorecards, buildScorecard, isShortUphillFinish } from "./lib/headToHeadAnchors.js";
+import { ANCHOR_BANDS, aggregateScorecards, buildScorecard, descentGapClosure, isShortUphillFinish } from "./lib/headToHeadAnchors.js";
+import { isOrdersGcV3OrLater } from "../lib/raceEngineRulesRevision.ts";
 import { evaluateTailGate, runTailSpread } from "./v4TailSpread.js";
 import { displayFor } from "./renderV4AnchorTable.mjs";
-import { sampleField } from "./lib/headToHeadStats.js";
+import { median, sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { stableSeed } from "../lib/raceSimulator.js";
 import { loadRaceEngineV4, rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
@@ -692,8 +693,11 @@ export function renderPrivateReport(result) {
     lines.push("| Anker | Baand | v4 middel | seeds bestaaet | etaper i alt | pr. plads |");
     lines.push("|---|---|---|---|---|---|");
     for (const a of rf.anchors) {
-      const byRank = a.byRank ? Object.entries(a.byRank).map(([n, v]) => `nr. ${n}: ${f1(v)} s`).join(", ") : "-";
-      lines.push(`| ${a.label} | ${a.bandLabel} | ${a.id === "short_uphill_finish_gaps" ? (a.value == null ? "n/a" : a.value.toFixed(2)) : `${f1(a.value)} s`} ${a.verdict} | ${a.seedsPass}/${a.seedsMeasured} | ${a.n} | ${byRank} |`);
+      const byRank = a.byRank ? Object.entries(a.byRank).map(([n, v]) => `nr. ${n}: ${f1(v)} s`).join(", ")
+        : a.id === "descent_gap_closure_contract" && a.closurePerKm != null
+          ? `${a.closurePerKm.toFixed(2)} s/km, ${(a.closureShare * 100).toFixed(1)} % af hullet (median)` : "-";
+      const ratioAnchor = a.id === "short_uphill_finish_gaps" || a.id === "descent_gap_closure_contract";
+      lines.push(`| ${a.label} | ${a.bandLabel} | ${ratioAnchor ? (a.value == null ? "n/a" : a.value.toFixed(2)) : `${f1(a.value)} s`} ${a.verdict} | ${a.seedsPass}/${a.seedsMeasured} | ${a.n} | ${byRank} |`);
     }
     lines.push("");
     lines.push("| Etapetype | etaper | rytter-starter | OTL | OTL % | etaper m. OTL | reddet % | udgaaet % |");
@@ -854,8 +858,14 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
   const ranks = Object.keys(shortBand.maxByRank).map(Number);
   const rateAcc = new Map();
   const perSeed = [];
+  // #6257: under orders_gc_v3 maales nedkoersels-kontrakten ogsaa i det realistiske
+  // felt (samme maaling som headToHeadAnchors.descentGapClosure, samme aggregering:
+  // median over etaper i et seed, derefter median over seeds).
+  const measureDescentContract = isOrdersGcV3OrLater(rulesRevision);
+  const descentPerSeed = [];
   for (const seed of seeds) {
     const obs = [];
+    const descentMeasures = [];
     for (const row of stages) {
       const route = routeFromStageProfileRow(row);
       const isMountain = isMountainTopFinish(route);
@@ -865,6 +875,10 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
         teamOrderRows: [], isStageRace: true, raceStages: null, squad: null, rulesRevision: rulesRevision ?? "legacy", gcStandings: null,
       }).v4Output;
       accumulateStageRates(rateAcc, row.profile_type, output);
+      if (measureDescentContract) {
+        const m = descentGapClosure({ raw: { route, v4Output: output } });
+        if (m) descentMeasures.push(m);
+      }
       if (isMountain || isShort) {
         obs.push({
           isMountain,
@@ -888,6 +902,15 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
       };
     };
     perSeed.push({ seed, favorites: seedValues(obs.filter((o) => !o.escapeWon)), all: seedValues(obs) });
+    if (measureDescentContract) {
+      const band = ANCHOR_BANDS.descentGapClosureContract;
+      const perKm = median(descentMeasures.map((m) => m.perKm));
+      const share = median(descentMeasures.map((m) => m.share));
+      descentPerSeed.push({
+        n: descentMeasures.length, perKm, share,
+        value: descentMeasures.length === 0 ? null : Math.max(perKm / band.maxSecondsPerKm, share / band.maxShare),
+      });
+    }
   }
   const inBand = (v, b) => v !== null && (b.min === undefined || v >= b.min) && (b.max === undefined || v <= b.max);
   const verdict = (v, b) => (v === null ? "N/A" : inBand(v, b) ? "PASS" : "FAIL");
@@ -921,11 +944,29 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
       },
     ];
   };
+  const descentAnchor = () => {
+    const measured = descentPerSeed.filter((d) => d.value !== null);
+    const value = measured.length ? median(measured.map((d) => d.value)) : null;
+    return {
+      id: "descent_gap_closure_contract",
+      subset: "all",
+      label: "Nedkoersel mod maal: nr. 10's hul lukker hoejst loftet (kontrakt, #6257)",
+      bandLabel: "<= 1 (hoejst 1,5 s/km og hoejst 50 %)",
+      value,
+      closurePerKm: measured.length ? median(measured.map((d) => d.perKm)) : null,
+      closureShare: measured.length ? median(measured.map((d) => d.share)) : null,
+      verdict: verdict(value, { max: 1 }),
+      seedsPass: measured.filter((d) => d.value <= 1).length,
+      seedsMeasured: measured.length,
+      n: sum(descentPerSeed.map((d) => d.n)),
+    };
+  };
   return {
     fieldRiders: entrants.length,
     anchors: [
       ...anchorsFor("favorites", ", etaper udbruddet ikke vandt"),
       ...anchorsFor("all", ", alle etaper (inkl. udbrudssejre)"),
+      ...(measureDescentContract ? [descentAnchor()] : []),
     ],
     seedCount: seeds.length,
     rates: summarizeRates(rateAcc),

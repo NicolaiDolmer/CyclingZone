@@ -536,6 +536,7 @@ export function runHeadToHead({
         route,
         tuning: RACE_V4_TUNING,
         stageRow,
+        rulesRevision: rulesRevision ?? null, // #6257: ankre vaelger regel-afhaengigt maal
         roles,
         v3Passages: computePassages({
           ranked: v3Output.ranked,
