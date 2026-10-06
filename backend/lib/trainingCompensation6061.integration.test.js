@@ -1,6 +1,6 @@
 // #6061 writer + #6129 slim source hashes, against the real SQL (PGlite).
-// Order mirrors prod: the 3/10 proposal (table, trigger, first writer) is
-// applied first, then the forward migration replaces the writer.
+// Use the registered production migrations: ledger/trigger first, slim writer
+// second. Replaying the ledger must not replace the current writer (#6219).
 import {test,before,after,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {PGlite} from '@electric-sql/pglite';
@@ -43,9 +43,9 @@ before(async()=>{
  CREATE TABLE race_entry_days(race_id uuid,rider_id uuid,season_id uuid,game_day integer,team_id uuid);
  GRANT SELECT,UPDATE ON ALL TABLES IN SCHEMA public TO service_role;
  GRANT INSERT ON rider_condition TO service_role;`);
- const proposal=await readFile(new URL('../../database/proposals/2026-10-03-6061-apply-compensation.sql',import.meta.url),'utf8');
+ const ledger=await readFile(new URL('../../database/2026-10-05-6061-compensation-ledger.sql',import.meta.url),'utf8');
  const migration=await readFile(new URL('../../database/2026-10-05-6129-compensation-slim-source.sql',import.meta.url),'utf8');
- await db.exec(proposal);await db.exec(migration);await db.exec(migration);
+ await db.exec(ledger);await db.exec(migration);await db.exec(ledger);await db.exec(migration);
 });
 after(async()=>db?.close());
 beforeEach(async()=>{
