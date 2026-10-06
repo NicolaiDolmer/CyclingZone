@@ -143,6 +143,7 @@ if (-not $SlotDir) {
     $root = (& git rev-parse --show-toplevel 2>$null)
     if (-not $root) { Write-Fail "verify-lock: ikke i et git-repo, og ingen -SlotDir/CZ_VERIFY_SLOT_DIR angivet."; exit 2 }
     $root = $root.Trim().Replace('/', '\')
+    $Worktree = $root
     # git-common-dir loeser op til HOVED-repoet, saa alle worktrees deler samme
     # slot-mappe. Uden dette ville hvert worktree faa sin egen semafor og loftet
     # ville vaere 2 PR. WORKTREE i stedet for 2 pr. maskine - altsaa ingen semafor.
