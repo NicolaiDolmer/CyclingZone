@@ -494,7 +494,11 @@ export const descentHook: DescentHook = (
   // regrupperingen lukkede, saa finalens jagt paa samme segment kun faar resten
   // af loftet (finishDescentRemainingCapSeconds). Kun sat naar noget blev lukket.
   const v3FinishDescent = ctx.ordersGcV3 === true && isFinishDescent;
-  const topGroups = state.groups; // grupperne ved toppen (foer regrupperingen)
+  // Grupperne efter segmentets tempo-tik, foer regrupperingen. Paa en v3-nedkoersel
+  // mod maal kan tempo-tikket kun aabne et hul, aldrig lukke det (#6200,
+  // segmentLoop.ts 4a), saa hullet her er aldrig mindre end hullet ved toppen,
+  // og loftet kan ikke omgaas af tempo-tikket.
+  const topGroups = state.groups;
   const regroupBook = v3FinishDescent ? finishDescentRegroupBook(topGroups, groups) : null;
   if (regroupBook) state = { ...state, finish_descent_regroup: regroupBook };
   // Review af #6223 (KUN orders_gc_v3): angrebene nedenfor deler samme loft og
