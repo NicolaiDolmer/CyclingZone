@@ -62,6 +62,10 @@ export const REPO_ROOT = resolve(__dirname, "../../..");
 export const PRIVATE_DIR = join(REPO_ROOT, "balance-internals", "5864");
 
 export const OWNER_GO_FLAG = "--owner-go=5864-production";
+// Ejer-beslutning 6/10 (#5864): frigiv NU kun ryttere der ikke er brugt i den aktive
+// sæson (ingen race_entries, hverken manuelt eller via assistenten). Brugte ryttere
+// venter til sæsonskiftet og frigives sammen med alle andre udløb.
+export const ONLY_UNUSED_FLAG = "--only-unused";
 export const BACKUP_RIDERS_TABLE = "backup_5864_riders";
 export const BACKUP_ENTRIES_TABLE = "backup_5864_race_entries";
 export const BACKUP_LISTINGS_TABLE = "backup_5864_transfer_listings";
@@ -73,9 +77,10 @@ const TEAM_EMBED = "team:team_id!inner(id, name, user_id, is_ai, is_frozen, is_b
 // ── Argumenter ──────────────────────────────────────────────────────────────
 
 export function parseArgs(argv) {
-  const opts = { apply: false, ownerGo: false, approvedHash: null };
+  const opts = { apply: false, ownerGo: false, approvedHash: null, onlyUnused: false };
   for (const arg of argv) {
     if (arg === "--apply") opts.apply = true;
+    else if (arg === ONLY_UNUSED_FLAG) opts.onlyUnused = true;
     else if (arg === OWNER_GO_FLAG) opts.ownerGo = true;
     else if (arg.startsWith("--owner-go=")) throw new Error("Wrong owner-go token");
     else if (arg.startsWith("--approved-list=")) {
@@ -375,6 +380,7 @@ export function renderPrivateReport(plan, { generatedAt, activeSeason }) {
   lines.push(`- I scope: ${t.inScope} (trup: ${JSON.stringify(t.bySquad)}, kontrakt-slut: ${JSON.stringify(t.byContractEndSeason)})`);
   lines.push(`- Frigives nu: ${t.release} (heraf ${t.youthNormalize} akademiryttere der får is_academy=false)`);
   lines.push(`- Udskudt fordi de kører et etapeløb: ${t.deferredActiveStageRace} (fanges af en ny apply-kørsel efter løbet)`);
+  if (t.onlyUnused) lines.push(`- Udskudt til sæsonskiftet, fordi de er brugt i den aktive sæson (${ONLY_UNUSED_FLAG}, ejer 6/10): ${t.deferredUsedThisSeason}`);
   lines.push(`- Hold berørt: ${t.teams} (aktive ${t.teamsActive}, parkerede ${t.teamsParked})`);
   lines.push(`- Hold der mister evnen til at stille til start i mindst én trup: ${t.teamsLosingStart} (aktive hold: ${t.activeTeamsLosingStart}) ${JSON.stringify(t.lostStartBySquad)}`);
   lines.push(`- Ryttere i kaptajn-/A-kæde-strategi: ${t.ridersWithCaptainRefs}`);
@@ -420,6 +426,7 @@ export function renderPublicSummary(plan) {
     `#5864 dry-run (read-only). Tærskel contract_end_season <= ${t.threshold}.`,
     `  Kandidater på menneskehold: ${t.candidatesAllHumanTeams} | uden for scope: ${t.outOfScope} ${JSON.stringify(t.outOfScopeByReason)}`,
     `  I scope: ${t.inScope} | frigives: ${t.release} | udskudt (etapeløb): ${t.deferredActiveStageRace} | akademi-normalisering: ${t.youthNormalize}`,
+    ...(t.onlyUnused ? [`  ${ONLY_UNUSED_FLAG}: udskudt til sæsonskiftet fordi brugt i aktiv sæson: ${t.deferredUsedThisSeason}`] : []),
     `  Hold: ${t.teams} (aktive ${t.teamsActive}, parkerede ${t.teamsParked}) | mister start i en trup: ${t.teamsLosingStart} (aktive ${t.activeTeamsLosingStart})`,
     `  Kaptajn-refs: ${t.ridersWithCaptainRefs} | fremtidige tilmeldinger: ${t.futureEntries} (kaptajn ${t.futureCaptainEntries}) | åbne opslag: ${t.openListings}`,
     `  Liste-hash (til --approved-list): ${approvedListHash(plan)}`,
@@ -496,11 +503,44 @@ async function fetchOpenListings(supabase, riderIds) {
   );
 }
 
-export async function loadPlan(supabase) {
+/** Ryttere (blandt riderIds) med mindst én race_entry i et løb i den aktive sæson. */
+export async function fetchUsedThisSeason(supabase, riderIds) {
+  if (!riderIds.length) return new Set();
+  const { data: season, error } = await supabase
+    .from("seasons").select("id").eq("status", "active")
+    .order("number", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(`season id lookup: ${error.message}`);
+  if (!season?.id) throw new Error("No active season id found");
+  const rows = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
+    supabase.from("race_entries")
+      .select("rider_id, races!inner(season_id)")
+      .in("rider_id", chunk)
+      .eq("races.season_id", season.id)
+      .order("rider_id")
+  );
+  return new Set(rows.map((r) => r.rider_id));
+}
+
+/** Ren opdeling: brugte ryttere udskydes til sæsonskiftet, resten bliver i scope. */
+export function splitUnused(inScope, usedIds) {
+  const keep = [];
+  const deferredUsed = [];
+  for (const r of inScope) (usedIds.has(r.id) ? deferredUsed : keep).push(r);
+  return { keep, deferredUsed };
+}
+
+export async function loadPlan(supabase, { onlyUnused = false } = {}) {
   const activeSeason = await fetchActiveSeasonNumber(supabase);
   const threshold = activeSeason - 1;
   const candidates = await fetchHumanTeamCandidates(supabase, threshold);
-  const inScope = candidates.filter((r) => isInScopeTeam(r.team));
+  let inScope = candidates.filter((r) => isInScopeTeam(r.team));
+  let deferredUsedThisSeason = 0;
+  if (onlyUnused) {
+    const used = await fetchUsedThisSeason(supabase, inScope.map((r) => r.id));
+    const split = splitUnused(inScope, used);
+    inScope = split.keep;
+    deferredUsedThisSeason = split.deferredUsed.length;
+  }
   const teamIds = [...new Set(inScope.map((r) => r.team_id))];
   const riderIds = inScope.map((r) => r.id);
   const [roster, strategies, futureEntries, openListings, racing] = await Promise.all([
@@ -510,7 +550,12 @@ export async function loadPlan(supabase) {
     fetchOpenListings(supabase, riderIds),
     getRidersInActiveStageRace(supabase, riderIds),
   ]);
-  const plan = buildPlan({ candidates, roster, racingIds: new Set(racing), strategies, futureEntries, openListings, threshold });
+  const scopedCandidates = onlyUnused
+    ? candidates.filter((r) => !isInScopeTeam(r.team) || inScope.some((x) => x.id === r.id))
+    : candidates;
+  const plan = buildPlan({ candidates: scopedCandidates, roster, racingIds: new Set(racing), strategies, futureEntries, openListings, threshold });
+  plan.totals.onlyUnused = onlyUnused;
+  plan.totals.deferredUsedThisSeason = deferredUsedThisSeason;
   return { plan, activeSeason, threshold };
 }
 
@@ -595,7 +640,7 @@ async function main() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
   const generatedAt = new Date().toISOString();
-  const { plan, activeSeason, threshold } = await loadPlan(supabase);
+  const { plan, activeSeason, threshold } = await loadPlan(supabase, { onlyUnused: opts.onlyUnused });
   const files = writePrivateArtifacts(plan, { activeSeason, generatedAt, suffix: opts.apply ? "pre-apply" : "dry-run" });
   console.log(renderPublicSummary(plan));
   console.log(`  Privat rapport: ${files.report}`);

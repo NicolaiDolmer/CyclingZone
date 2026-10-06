@@ -35,7 +35,7 @@ const rider = (n, team, extra = {}) => ({
 });
 
 test("parseArgs: dry-run is the default", () => {
-  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, approvedHash: null });
+  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, approvedHash: null, onlyUnused: false });
 });
 
 const HASH = "a".repeat(64);
@@ -47,7 +47,7 @@ test("parseArgs: apply requires the exact owner-go token and the approved list h
   assert.throws(() => parseArgs([OWNER_GO_FLAG]), /only makes sense/);
   assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, "--approved-list=123"]), /64-char/);
   assert.throws(() => parseArgs(["--live"]), /Unknown option/);
-  assert.deepEqual(parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), { apply: true, ownerGo: true, approvedHash: HASH });
+  assert.deepEqual(parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), { apply: true, ownerGo: true, approvedHash: HASH, onlyUnused: false });
 });
 
 test("approvedListHash pins the exact rider set, not just the count", () => {
@@ -277,4 +277,14 @@ test("runApply reuses the normal release path with the scoped fetcher, then norm
   assert.deepEqual(update.patch, { is_academy: false });
   assert.ok(update.filters.some((x) => x[0] === "is" && x[1] === "team_id" && x[2] === null), "only riders that are free agents now");
   assert.ok(update.filters.some((x) => x[0] === "eq" && x[1] === "is_academy" && x[2] === true));
+});
+
+test("--only-unused: brugte ryttere i aktiv sæson udskydes, resten bliver i scope (ejer 6/10)", async () => {
+  const { parseArgs, splitUnused, ONLY_UNUSED_FLAG } = await import("./enforce5864ExpiredContracts.mjs");
+  assert.equal(parseArgs([ONLY_UNUSED_FLAG]).onlyUnused, true);
+  assert.equal(parseArgs([]).onlyUnused, false);
+  const inScope = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  const { keep, deferredUsed } = splitUnused(inScope, new Set(["b"]));
+  assert.deepEqual(keep.map((r) => r.id), ["a", "c"]);
+  assert.deepEqual(deferredUsed.map((r) => r.id), ["b"]);
 });
