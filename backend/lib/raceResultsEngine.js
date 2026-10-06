@@ -143,6 +143,8 @@ export async function applyRaceResults({
     // #1499: deskriptive udbruds-etiketter (false for importerede/PCM-rækker uden flag).
     in_breakaway: row.in_breakaway === true,
     breakaway_caught: row.breakaway_caught === true,
+    // #6185: tredje tilstand ("sat af fra udbruddet"); kun med naar vurderet, null bevares.
+    ...(typeof row.breakaway_dropped === "boolean" ? { breakaway_dropped: row.breakaway_dropped } : {}),
     // Sub-2 (#2770): passage-lag-aggregater — bevidst INGEN coalesce til 0 (NULL =
     // legacy/ingen rutedata eller PCM-import, samme semantik som apply_stage_result-RPC'en).
     sprint_points: row.sprint_points ?? null,

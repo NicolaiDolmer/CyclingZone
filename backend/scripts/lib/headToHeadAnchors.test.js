@@ -16,6 +16,8 @@ import {
   scoreTypeIntegrity,
   scoreBonusSecondsBounded,
   scoreGapRealism,
+  scoreShortUphillFinish,
+  isShortUphillFinish,
   scoreGtWinnerMargin,
   scoreIttTimeRealism,
   largestSameTimeShare,
@@ -631,16 +633,16 @@ test("scoreBonusSecondsBounded: maaler stoerste SAMLEDE bonus én rytter fik paa
 
 // ── scoreGapRealism ──────────────────────────────────────────────────────
 
-test("scoreGapRealism: mountain-etape med 198s top-10-spredning -> PASS (#2415-baand 180-240s)", () => {
+test("scoreGapRealism: mountain-etape med 108s top-10-spredning -> PASS (#6199-baand 60-150s)", () => {
   // spreadAtRank(times, 10) laeser index 9 (0-indekseret 10.-mindste) af 11
-  // sorterede vaerdier [0,22,44,...,220] -> index 9 = 198.
+  // sorterede vaerdier [0,12,24,...,120] -> index 9 = 108.
   const row = makeRow({
     profile_type: "mountain", finale_type: "long_climb",
-    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: i * 22 })),
-    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 100 + i * 22 })),
+    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: i * 12 })),
+    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 100 + i * 12 })),
   });
   const [mountainAnchor, gtAnchor] = scoreGapRealism([row]);
-  assert.equal(mountainAnchor.v3.value, 198);
+  assert.equal(mountainAnchor.v3.value, 108);
   assert.equal(mountainAnchor.v3.verdict, "PASS");
   assert.equal(gtAnchor.v3.verdict, "N/A"); // kraever saeson-GC, aldrig maalbart her
 });
@@ -650,8 +652,8 @@ test("scoreGapRealism: bjergetape med NEDKOERSELS-finale taeller IKKE med (ejer 
   // til nedkoersels-ankeret, ikke til #2415's topankomst-baand.
   const summit = makeRow({
     profile_type: "mountain", finale_type: "long_climb",
-    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: i * 22 })),
-    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 100 + i * 22 })),
+    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: i * 12 })),
+    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 100 + i * 12 })),
   });
   const descentFinale = makeRow({
     profile_type: "mountain", finale_type: "descent",
@@ -665,6 +667,63 @@ test("scoreGapRealism: bjergetape med NEDKOERSELS-finale taeller IKKE med (ejer 
   assert.equal(both.v3.sampleCount, onlySummit.v3.sampleCount, "nedkoerselsfinalen maa ikke tælles med");
   assert.equal(both.v3.value, onlySummit.v3.value, "nedkoerselsfinalen maa ikke flytte gennemsnittet");
   assert.equal(both.v3.verdict, "PASS");
+});
+
+test("#6199 scoreGapRealism: den gamle 198s-spredning ligger nu over baandet 60-150s -> FAIL", () => {
+  const row = makeRow({
+    profile_type: "mountain", finale_type: "long_climb",
+    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: i * 22 })),
+    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 100 + i * 22 })),
+  });
+  const [mountainAnchor] = scoreGapRealism([row]);
+  assert.equal(mountainAnchor.v4.value, 198);
+  assert.equal(mountainAnchor.v4.verdict, "FAIL");
+});
+
+// ── scoreShortUphillFinish (#6199 del 3) ─────────────────────────────────
+
+function uphillRoute({ km = 5.8, grad = 5.8, profile_type = "rolling" } = {}) {
+  return [
+    { kind: "rolling", from_km: 0, to_km: 150 },
+    { kind: "climb", from_km: 150, to_km: 150 + km, category: "3", avg_gradient: grad, top_elevation_m: 700 },
+  ].map((s) => ({ ...s, profile_type }));
+}
+
+function uphillRow({ gapAt, km, grad, profile_type = "rolling", n = 60 }) {
+  const row = makeRow({
+    profile_type, finale_type: "reduced_sprint",
+    v3Entries: Array.from({ length: n }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: gapAt(i + 1) })),
+    v4Entries: Array.from({ length: n }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 1000 + gapAt(i + 1) })),
+  });
+  row.raw.route.segments = uphillRoute({ km, grad, profile_type });
+  return row;
+}
+
+test("#6199 isShortUphillFinish: 3-7 km a 5-7 %, ikke hoejfjeld, sidste segment en stigning", () => {
+  assert.equal(isShortUphillFinish({ profile_type: "rolling", segments: uphillRoute() }), true);
+  assert.equal(isShortUphillFinish({ profile_type: "high_mountain", segments: uphillRoute() }), false);
+  assert.equal(isShortUphillFinish({ profile_type: "mountain", segments: uphillRoute({ km: 12, grad: 7.5 }) }), false);
+  assert.equal(isShortUphillFinish({ profile_type: "hilly", segments: uphillRoute({ km: 2, grad: 6 }) }), false);
+  assert.equal(isShortUphillFinish({ profile_type: "hilly", segments: [...uphillRoute(), { kind: "descent", from_km: 156, to_km: 160, technicality: 2 }] }), false);
+});
+
+test("#6199 scoreShortUphillFinish: alle tre lofter holder -> PASS; ét brudt -> FAIL", () => {
+  // nr. 10 = 10s, nr. 30 = 60s, nr. 50 = 200s: alle under lofterne.
+  const ok = uphillRow({ gapAt: (rank) => (rank <= 10 ? rank - 1 : rank <= 30 ? rank * 2 : rank * 4) });
+  const pass = scoreShortUphillFinish([ok]);
+  assert.equal(pass.id, "short_uphill_finish_gaps");
+  assert.equal(pass.v4.verdict, "PASS");
+  assert.ok(pass.v4.value <= 1);
+  // nr. 30 = 150s bryder loftet paa 90s, selv om nr. 10 og nr. 50 holder.
+  const bad = uphillRow({ gapAt: (rank) => (rank <= 10 ? rank - 1 : rank <= 30 ? rank * 5 : 250) });
+  const fail = scoreShortUphillFinish([bad]);
+  assert.equal(fail.v4.verdict, "FAIL");
+  assert.ok(Math.abs(fail.v4.value - 150 / 90) < 1e-9);
+});
+
+test("#6199 scoreShortUphillFinish: ingen korte afslutninger opad -> N/A", () => {
+  const mountain = makeRow({ profile_type: "mountain", finale_type: "long_climb", v3Entries: [], v4Entries: [] });
+  assert.equal(scoreShortUphillFinish([mountain]).v4.verdict, "N/A");
 });
 
 // ── scoreIttTimeRealism (#5576) ─────────────────────────────────────────
@@ -771,7 +830,7 @@ test("buildScorecard: returnerer alle forventede anker-id'er, formatScorecard pr
     "field_cohesion_flat", "descent_vs_summit_gap_ratio", "descent_attack_gain_bounds",
     "punch_correlation", "cobblestone_lift_on_sectors", "favorite_win_rate", "same_team_top10_share_4plus",
     "breakaway_rate_per_terrain", "sprinter_win_rate_flat", "itt_correlation",
-    "bonus_seconds_bounded", "mountain_top10_spread", "gt_winner_margin",
+    "bonus_seconds_bounded", "mountain_top10_spread", "short_uphill_finish_gaps", "gt_winner_margin",
     "itt_top10_spread_per_40km", "itt_largest_same_time_share",
   ]) {
     assert.ok(ids.includes(expectedId), `mangler anker "${expectedId}" i scorecardet`);
@@ -807,7 +866,7 @@ test("forward-guard: ETHVERT anker-id fra buildScorecard() findes i AGGREGATION_
   const teamByRider = new Map([["a", "t1"], ["b", "t2"]]);
   const scorecard = buildScorecard([flatRow], { teamByRider, abilitiesByRider, v4EntrantsById });
 
-  assert.equal(scorecard.length, 15, "buildScorecard skal producere 15 ankre — opdatér denne test hvis et anker tilfoejes/fjernes");
+  assert.equal(scorecard.length, 16, "buildScorecard skal producere 16 ankre — opdatér denne test hvis et anker tilfoejes/fjernes");
   for (const anchor of scorecard) {
     assert.ok(
       Object.prototype.hasOwnProperty.call(AGGREGATION_BAND_BY_ANCHOR_ID, anchor.id),

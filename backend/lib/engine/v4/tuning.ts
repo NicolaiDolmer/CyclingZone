@@ -1299,6 +1299,10 @@ const teamPlayExtra = {
   // 1.5) og arbejder samtidig ikke for holdet (0 her). Derfor sit eget saet
   // konstanter og ikke et delt haandtag med EFFORT_COST_EXTRA_TUNING.
   // Ankret er raceRoles.RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_* 1:1.
+  // #3460 (KUN orders_gc_v3): `save` styrer OGSAA kaptajnens stoetteloft for
+  // spar-hold (mechanics/teamPlay.ts's fullPriceWeight/reducedEffortCeiling:
+  // "Spar kraefter giver altid halv stoette"). Kalibreres prisen paa save om,
+  // flytter det loft sig med.
   effortCostMultiplier: {
     grupetto: 0.5, // samme halve pris som save (v3: bevidst IKKE lavere — en lavere pris end save ville vaere en resultat-FORDEL, og grupetto maa ikke give en saadan)
     save: 0.5, // koerer bevidst inden for sig selv: halv pris

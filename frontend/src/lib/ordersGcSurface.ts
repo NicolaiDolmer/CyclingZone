@@ -17,13 +17,18 @@ export const ORDERS_GC_REVISION = "orders_gc_v1";
 
 export type RulesRevision = "legacy" | "orders_gc_v1";
 
+// Arvelinjen (backend/lib/raceEngineRulesRevision.ts): hver revision er hele
+// den forrige plus sit eget, så alle vises som orders_gc_v1 på fladerne.
+const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3"]);
+
 /**
  * Løbets effektive regel-revision for spillerfladerne. #6084: orders_gc_v2 er
  * hele orders_gc_v1-pakken plus en motorændring uden egen flade, så den vises
- * som orders_gc_v1. Alt andet er legacy.
+ * som orders_gc_v1. #6187: orders_gc_v3 ligeså (dens eneste flade er en
+ * filmlinje). Alt andet er legacy.
  */
 export function raceRulesRevision(raw: unknown): RulesRevision {
-  return raw === ORDERS_GC_REVISION || raw === "orders_gc_v2" ? ORDERS_GC_REVISION : "legacy";
+  return ORDERS_GC_LINEAGE.has(raw) ? ORDERS_GC_REVISION : "legacy";
 }
 
 export function isOrdersGcRevision(raw: unknown): boolean {
@@ -60,6 +65,8 @@ type FilmCopy = { key: string; params: Record<string, unknown> };
  *   exhausted   den forebyggende reaktions arbejdsbudget for etapen er brugt
  *   unavailable holdet har ingen ledige hjælpere i GC-rytterens gruppe
  * gc_context.status "missing" = klassementet før etapen mangler (diagnose).
+ * own_riders_ahead (#6187, orders_gc_v3): holdet jagter ikke, fordi det har
+ *   egne ryttere (`rider_ids`) foran. Højst én pr. hold pr. etape.
  */
 export function describeGcReactionEvent(
   event: FilmEvent | null | undefined,
@@ -68,6 +75,16 @@ export function describeGcReactionEvent(
   const p = event?.params ?? {};
   if (event?.type === "gc_context") {
     return p.status === "missing" ? { key: "gc_context_missing", params: {} } : null;
+  }
+  if (event?.type === "own_riders_ahead") {
+    const ids = Array.isArray(p.rider_ids) ? p.rider_ids : [];
+    const names = ids.map((id) => nameOf(id)).filter((n): n is string => Boolean(n));
+    if (!names.length) return null;
+    const riders = names.join(", ");
+    const gcRider = nameOf(p.protected_rider_id);
+    return gcRider
+      ? { key: "own_riders_ahead", params: { rider: gcRider, riders, count: names.length } }
+      : { key: "own_riders_ahead_team", params: { riders, count: names.length } };
   }
   if (event?.type !== "gc_reaction") return null;
   const rider = nameOf(p.protected_rider_id);

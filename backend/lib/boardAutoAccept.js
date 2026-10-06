@@ -50,6 +50,7 @@ import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
 import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
+import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 // #4557 · Tærskel-konstanterne + resolveThresholds flyttet til
@@ -222,6 +223,14 @@ export async function processBoardAutoAcceptCron({
     teamIds: (humanTeams || []).map((t) => t.id).filter(Boolean),
     captureExceptionFn,
   });
+  // #6122 · Med mandat-modellen 'on' ser ALLE managere Boardroom/årsmødet
+  // (BoardroomRoute.jsx), og den gamle plan-forhandling findes ikke længere som
+  // handling. Prod 5/10: plan-påmindelserne ("The board is waiting for your
+  // 3-year plan") fyrede stadig parallelt med mandat-påmindelserne, også efter
+  // at manageren havde underskrevet sit mandat. LÆSE-gaten (ingen opts) er
+  // bevidst: i 'beta' ser almindelige managere stadig den gamle side og skal
+  // stadig have påmindelserne. Auto-accept kører fortsat, bare uden besked.
+  const silent = await isBoardMandateModelEnabled(supabase);
 
   for (const team of humanTeams || []) {
     summary.teams_checked += 1;
@@ -235,6 +244,7 @@ export async function processBoardAutoAcceptCron({
         rolloutFloor,
         lastSeenByUserId,
         preloadedBoards: boardsByTeamId ? (boardsByTeamId.get(team.id) || []) : undefined,
+        silent,
       });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -323,8 +333,11 @@ async function processTeamAutoAccept({
   rolloutFloor = AUTO_ACCEPT_ROLLOUT_FLOOR,
   lastSeenByUserId = new Map(),
   preloadedBoards,
+  silent = false,
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
+  // #6122 · silent = mandat-modellen er 'on': ingen plan-beskeder (se cron-entry).
+  const notify = silent ? async () => ({ delivered: false, reason: "mandate_model_on" }) : notifyUser;
 
   // Find første pending plan_type i 5yr→3yr→1yr-orden.
   //
@@ -390,7 +403,7 @@ async function processTeamAutoAccept({
       activeSeason,
       planType: pendingPlanType,
       existingBoard: pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
     });
     result.auto_accepted = accepted;
@@ -402,7 +415,7 @@ async function processTeamAutoAccept({
       team,
       planType: pendingPlanType,
       pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
       daysSinceOpen,
       thresholds,
@@ -416,7 +429,7 @@ async function processTeamAutoAccept({
       team,
       planType: pendingPlanType,
       pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
       daysSinceOpen,
       thresholds,
@@ -434,7 +447,7 @@ async function processTeamAutoAccept({
       team,
       planType: pendingPlanType,
       pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
     });
     result.reminder_sent = sent;

@@ -14,6 +14,8 @@ import { Flag } from "../components/Flag";
 import {
   FlagIcon,
   ArrowUpIcon,
+  ArrowDownIcon,
+  Portal,
   PageLoader,
   Button,
   CategoryTag,
@@ -35,6 +37,7 @@ import {
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+import { tooltipClass } from "../components/ui/tooltipStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
@@ -60,7 +63,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult, participationFlagsForResult } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -199,27 +202,100 @@ function riderName(res) {
   return res.rider_name || "—";
 }
 
+// #6185: ikon-FORM + tone pr. tilstand (klassenavne ordret, så Tailwinds scanner finder dem).
+const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
+const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
+
+// #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, et andet tryk på samme markør skjuler den, hover virker
+// på desktop. Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal
+// med fixed position (følger markøren ved scroll/resize): resultattabellens
+// scroller klipper ellers boblen (mobil, sidste række).
+// preventDefault stopper at trykket navigerer via RiderLink-ankeret markøren ligger i.
+// #6185 review: markøren ligger INDE i ankeret, så den er bevidst IKKE fokuserbar
+// (ingen tabIndex: et fokuserbart element i et link er nested-interactive).
+// Tilstanden når skærmlæsere via linkets navn (role="img" + aria-label).
+// Trykfladen er 24 px (p-[4.5px] om 15 px-ikonet); den negative margin æder den
+// ekstra polstring, så layout og udseende er uændret (samme 19 px-boks som før).
+const MARKER_HIT_INSET = 2.5;
+function MarkerTip({ label, className = "", children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const show = useCallback(() => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const maxWidth = Math.min(224, window.innerWidth - 16);
+    const left = rect.left + MARKER_HIT_INSET;
+    setPos({ left: Math.max(8, Math.min(left, window.innerWidth - maxWidth - 8)), top: rect.bottom - MARKER_HIT_INSET, maxWidth });
+  }, []);
+  const hide = useCallback(() => setPos(null), []);
+  // #6185 review: hover (kun mus) viser; et tryk skifter (andet tryk paa samme
+  // maerke lukker). Pointer-typen skelner, saa touch-browserens emulerede
+  // mouseenter ikke aabner boblen lige foer trykket lukker den igen.
+  const lastPointerRef = useRef("mouse");
+  const onPointerEnter = useCallback((e) => { if (e.pointerType === "mouse") show(); }, [show]);
+  const onPointerLeave = useCallback((e) => { if (e.pointerType === "mouse") hide(); }, [hide]);
+  const onClick = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (lastPointerRef.current === "mouse" || !pos) show(); else hide();
+  }, [pos, show, hide]);
+  useEffect(() => {
+    if (!pos) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") hide(); };
+    // Et tryk et andet sted lukker boblen (markøren kan ikke miste fokus, den har intet).
+    const onPointerDown = (e) => { if (!ref.current?.contains(e.target)) hide(); };
+    window.addEventListener("scroll", show, true);
+    window.addEventListener("resize", show);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("scroll", show, true);
+      window.removeEventListener("resize", show);
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [pos, show, hide]);
+  return (
+    <span className="ms-1 inline-flex align-middle">
+      <span ref={ref} role="img" aria-label={label}
+        onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}
+        onPointerDown={(e) => { lastPointerRef.current = e.pointerType || "mouse"; }}
+        onClick={onClick}
+        className={`-m-[2.5px] inline-flex cursor-help p-[4.5px] ${className}`}>
+        {children}
+      </span>
+      {pos && (
+        <Portal>
+          <span role="tooltip" className={`${tooltipClass({ side: "bottom" })} whitespace-normal`}
+            style={{ position: "fixed", left: pos.left, top: pos.top, right: "auto", bottom: "auto", transform: "none", maxWidth: pos.maxWidth, opacity: 1 }}>
+            {label}
+          </span>
+        </Portal>
+      )}
+    </span>
+  );
+}
+
 // #1499 Deskriptiv udbruds-markør: vises kun for ryttere der var i (morgen-)udbruddet.
-// Holdt hjem (survived) = accent-toned; indhentet (caught) = dæmpet. Tooltip via title.
+// #6185: holdt hjem = accent-flag; indhentet = dæmpet flag; sat af = rød pil ned.
 function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
   const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
-  const label = participation.caught ? t("detail.breakaway.caught")
-    : participation.verified && !participation.survived ? t("detail.breakaway.participated")
-    : t("detail.breakaway.survived");
+  // #6185: tre tilstande (indhentet / sat af / holdt hjem) — se breakawayMarkerState.
+  const markerState = breakawayMarkerState(participation);
+  const label = t(markerState.labelKey);
+  const StateIcon = BREAKAWAY_MARKER_ICON[markerState.icon] ?? FlagIcon;
   return (
     <>
       {participation.morning && (
-        <span className={`ms-1 inline-flex align-middle ${participation.caught || (participation.verified && !participation.survived) ? "text-cz-3" : "text-cz-accent-t"}`}
-          title={`${markerLabel}: ${label}`} aria-label={`${markerLabel}: ${label}`}>
-          <FlagIcon size={13} aria-hidden="true" />
-        </span>
+        <MarkerTip label={`${markerLabel}: ${label}`} className={BREAKAWAY_MARKER_TONE[markerState.tone]}>
+          <StateIcon size={15} aria-hidden="true" />
+        </MarkerTip>
       )}
       {participation.laterAttack && (
-        <span className="ms-1 inline-flex align-middle text-cz-2" title={t("detail.breakaway.laterAttack")} aria-label={t("detail.breakaway.laterAttack")}>
-          <ArrowUpIcon size={13} aria-hidden="true" />
-        </span>
+        <MarkerTip label={t("detail.breakaway.laterAttack")} className="text-cz-2">
+          <ArrowUpIcon size={15} aria-hidden="true" />
+        </MarkerTip>
       )}
     </>
   );
@@ -565,7 +641,7 @@ export default function RaceDetailPage() {
 
     setMyTeamId(myTeamId);
     setRace(raceRow);
-    setResults(rows);
+    setResults(withFinishSafetyNet(rows)); // #6185
     setStagePointsRows(stagePointsRowsResult);
     // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
     // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
@@ -601,7 +677,7 @@ export default function RaceDetailPage() {
       })
       .then((newRows) => {
         if (cancelled) return;
-        if (newRows.length) setResults((prev) => [...prev, ...newRows]);
+        if (newRows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(newRows)]); // #6185
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {
@@ -632,8 +708,12 @@ export default function RaceDetailPage() {
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
   const { timeline: oneDayTimeline } = useStageTimeline(race?.race_type === "single" && results.length ? raceId : null, 1);
-  const oneDayParticipation = useMemo(() => historyForStage(oneDayTimeline, 1,
-    results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean)), [oneDayTimeline, results]);
+  const oneDayParticipation = useMemo(() => {
+    const dayRows = results.filter(row => row.result_type === "gc" || row.result_type === "stage");
+    // #6185: "ikke-udbryder foran" efter etape-placeringen, som backfillen (gc kun hvis der ingen etape-raekker er).
+    const stageRows = dayRows.filter(row => row.result_type === "stage");
+    return historyForStage(oneDayTimeline, 1, dayRows.map(row => row.rider_id).filter(Boolean), stageRows.length ? stageRows : dayRows);
+  }, [oneDayTimeline, results]);
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
 
@@ -1651,8 +1731,10 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     () => effectiveEffortByRider(stageRoles, teamOrders, stage, { v4: isV4Timeline }),
     [stageRoles, teamOrders, stage, isV4Timeline],
   );
-  const participationHistory = useMemo(() => historyForStage(timeline, stage,
-    (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean)), [timeline, stage, results]);
+  const participationHistory = useMemo(() => {
+    const stageRows = (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage);
+    return historyForStage(timeline, stage, stageRows.map((row) => row.rider_id).filter(Boolean), stageRows); // #6185
+  }, [timeline, stage, results]);
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
     return { ...row, ...participationFlagsForResult(row, participationHistory) };

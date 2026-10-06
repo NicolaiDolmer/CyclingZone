@@ -1,5 +1,113 @@
 export const PATCHES = [
   {
+    "version": "7.342",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Riders dropped from the breakaway are shown as dropped",
+          "body": "Race results now show a separate state for a rider who was dropped by his own breakaway. Before, he could be shown as having held on to the finish. Stages since 28/9 are corrected."
+        },
+        "da": {
+          "title": "Ryttere, der blev sat af i udbruddet, vises som sat af",
+          "body": "Løbsresultaterne viser nu en egen tilstand for en rytter, der blev sat af sit eget udbrud. Før kunne han stå som holdt hjem. Etaper siden 28/9 er rettet."
+        },
+        "refs": [6185]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The race film groups repeated events",
+          "body": "Identical events at the same kilometre now appear as one line, so the finish is easier to read."
+        },
+        "da": {
+          "title": "Løbsfilmen samler gentagne hændelser",
+          "body": "Ens hændelser på samme kilometer står nu som én linje, så afslutningen er lettere at læse."
+        },
+        "refs": [6137]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Riders",
+        "en": {
+          "title": "Sorting by reputation follows the number you see",
+          "body": "The order now matches the reputation shown, also across pages in the rider database. Help explains which riders count as stars, and the board's number is the count of riders who qualify, not a fixed group of seven."
+        },
+        "da": {
+          "title": "Sortering efter omdømme følger det tal, du ser",
+          "body": "Rækkefølgen følger nu det viste omdømme, også på tværs af sider i rytterdatabasen. Hjælp forklarer, hvilke ryttere der tæller som stjerner, og bestyrelsens tal er antallet, der opfylder kravet, ikke en fast gruppe på syv."
+        },
+        "refs": [6209]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The login page works in browsers that block site data",
+          "body": "The login page no longer fails when the browser blocks stored site data."
+        },
+        "da": {
+          "title": "Login-siden virker i browsere, der blokerer site-data",
+          "body": "Login-siden fejler ikke længere, når browseren blokerer gemte site-data."
+        },
+        "refs": [6243]
+      }
+    ]
+  },
+  {
+    "version": "7.341",
+    "date": "2026-10-05",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Riders who missed evening training got their days back",
+          "body": "Riders who joined a team between 29/9 and 3/10 and missed evening training have those days back, and they train normally again from tonight. A few riders with a more complicated history are reviewed separately."
+        },
+        "da": {
+          "title": "Ryttere, der missede aftentræning, har fået deres dage tilbage",
+          "body": "Ryttere, der kom på et hold mellem 29/9 og 3/10 og missede aftentræning, har fået de dage tilbage og træner normalt igen fra i aften. Et par ryttere med en mere kompliceret historik bliver gennemgået separat."
+        },
+        "refs": [6129, 6061]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "Rankings no longer fail while they update",
+          "body": "Rankings now update in the background, and you see the last finished version in the meantime. Before, they could show an error while updating."
+        },
+        "da": {
+          "title": "Ranglisterne fejler ikke længere, mens de opdateres",
+          "body": "Ranglisterne opdateres nu i baggrunden, og imens ser du den seneste færdige version. Før kunne de vise en fejl under opdateringen."
+        },
+        "refs": [5692]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Board",
+        "en": {
+          "title": "The board stops repeating itself",
+          "body": "You get one reminder before your mandate deadline and one last call, and no more messages about a 3-year plan you cannot open. New teams also get their board mandate when they are created."
+        },
+        "da": {
+          "title": "Bestyrelsen gentager sig ikke længere",
+          "body": "Du får én påmindelse før fristen for dit mandat og én sidste påmindelse, og ingen beskeder om en 3-års plan, du ikke kan åbne. Nye hold får også deres bestyrelsesmandat, når de oprettes."
+        },
+        "refs": [6122, 6130]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Help",
+        "en": {
+          "title": "Help explains rider types more precisely",
+          "body": "Each rider type covers several abilities, not only the one in its name, so a GC rider can also reach high in time trials. The shares for abilities outside both roles and for craft are corrected."
+        },
+        "da": {
+          "title": "Hjælp forklarer ryttertyper mere præcist",
+          "body": "Hver ryttertype dækker flere evner end den, den er opkaldt efter, så en GC-rytter også kan nå højt i enkeltstart. Andelene for evner uden for begge roller og for håndværk er rettet."
+        },
+        "refs": [3813]
+      }
+    ]
+  },
+  {
     "version": "7.340",
     "date": "2026-10-04",
     "changes": [

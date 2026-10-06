@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (6/10): start med [`2026-10-06-morgensession-prompt.md`](superpowers/plans/2026-10-06-morgensession-prompt.md).** Først: aftentjek #6129 (20 ryttere trænet?) + #6153 (ingen rangliste-500) + staging-kopi → rens → syntetiske logins. Morgenblok: **Udvikling 2.0 D1-D7 (#6110, byg fra 6/10)** · løbsmotor: samlet billede af diagnoserne 5/10 → designsamtaler ét punkt ad gangen (#6187 #5978 #6201 #6185 #6199+#6200 #3460 #2557 #6137); **#6156 bygges først derefter** · #6053 med ejeren · Train now-flip · #5864 + #6130 go.
+> **🎯 Next action (6/10): [`2026-10-06-dagsplan.md`](superpowers/plans/2026-10-06-dagsplan.md) (Claude) + [`2026-10-06-codex-dag.md`](superpowers/plans/2026-10-06-codex-dag.md) (Codex).**
 >
-> **5/10 (planlægningssession #6148):** #6129 anvendt · #6153 + #6179 merget · merge-kø #6195 #6197 #6180 #6183 · roadmap = MASTERPLAN (rækkefølge, 8 løfter, 16 GDD-punkter, 2027-liste) · motor-diagnoser på issues · udgifter: staging-branch er eneste nye faste post · deps: intet brændende, major-plan 1/12.
+> **5/10 (motor):** kontrakterne står som seneste kommentar på hvert issue (#6187 #5978 #6201 #6185 #3460 #6137 #6199 #6200); krav før v3 tændes på #5978 #3460 #6223. Staging = prod-skema + data (#5904). Læring: `.claude/learnings/2026-10-05-*.md` (review FØR merge-session; rettelser to ad gangen; tjek GitHub-status ved CI i kø; "klar" = grøn CI).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (planlægning 5/10 afsluttet; næste: morgenprompt 6/10).
+> **🤖 Working agent:** Claude 6/10: blok 1 merge. Codex: `2026-10-06-codex-dag.md`.

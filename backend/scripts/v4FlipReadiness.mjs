@@ -728,7 +728,7 @@ export function replaceBlock(existingText, block) {
  * Koerer (1)+(3) i ét pas pr. seed og kaster de raa etape-outputs vaek efter
  * hvert seed (5 x 141 etaper med fulde tidslinjer holdes ikke i hukommelsen).
  */
-export function measureHeadToHead({ population, stages, seeds = HEAD_TO_HEAD_SEEDS, fieldSize = FIELD_SIZE }) {
+export function measureHeadToHead({ population, stages, seeds = HEAD_TO_HEAD_SEEDS, fieldSize = FIELD_SIZE, rulesRevision = undefined }) {
   const teamByRider = new Map(population.riders.map((r) => [r.id, r.team_id ?? null]));
   const abilitiesByRider = new Map(population.riders.map((r) => [r.id, r.abilities]));
   // Samme opslag som headToHeadV4.main() bygger over HELE populationen (bruges
@@ -737,7 +737,7 @@ export function measureHeadToHead({ population, stages, seeds = HEAD_TO_HEAD_SEE
   const scorecards = [];
   const rateAcc = new Map();
   for (const seed of seeds) {
-    const rows = runHeadToHead({ population, stages, seedInput: seed, fieldSize, orderMode: "none" });
+    const rows = runHeadToHead({ population, stages, seedInput: seed, fieldSize, orderMode: "none", rulesRevision });
     scorecards.push(buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById }));
     for (const row of rows) accumulateStageRates(rateAcc, row.profileType, row.raw?.v4Output);
   }
@@ -783,6 +783,8 @@ async function main() {
   const privatePath = argValue("private-out", "balance-internals/5515-v4-flip-klar/v4-flip-klar-tal.md");
   const jsonPath = argValue("json");
   const skipTests = process.argv.includes("--skip-tests");
+  // #6199: --rules=orders_gc_v3 maaler ankre og hale-gate under en regel-revision (udeladt = legacy).
+  const rulesRevision = argValue("rules") ?? undefined;
 
   const population = JSON.parse(readFileSync(abs(POPULATION_FILE), "utf8"));
   const stagesFile = JSON.parse(readFileSync(abs(STAGES_FILE), "utf8"));
@@ -790,9 +792,9 @@ async function main() {
 
   const t0 = performance.now();
   console.log(`[5515] head-to-head ${seeds.join(",")} x ${stages.length} etaper, felt ${FIELD_SIZE} ...`);
-  const { anchors, rates } = measureHeadToHead({ population, stages, seeds });
+  const { anchors, rates } = measureHeadToHead({ population, stages, seeds, rulesRevision });
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
-  const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE }));
+  const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);
   const perf = runPerf({ population, stages, fieldSizes: perfSizes });
   let infraTests = null;
@@ -813,6 +815,7 @@ async function main() {
       seeds,
       tail_seeds: tailSeeds,
       field_size: FIELD_SIZE,
+      rules_revision: rulesRevision ?? "legacy",
       host: hostLabel(),
       node: process.version,
       report_path: reportPath,

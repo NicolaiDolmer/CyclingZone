@@ -7,6 +7,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$script:RequiresVercelDeployment = $true
 
 function Resolve-GitPath {
   $gitCommand = Get-Command git -ErrorAction SilentlyContinue
@@ -125,6 +126,20 @@ function Test-DeploymentStatus {
     Railway = "railway"
   }
 
+  # #6202: use the same conservative input classifier as the Vercel filter.
+  # Failed/empty classifier output never suppresses a required deployment.
+  $requiresVercel = $true
+  try {
+    $classification = & node (Join-Path $PSScriptRoot 'frontend-deployment-needed.mjs') $script:Sha
+    if ($LASTEXITCODE -ne 0) { throw 'classifier failed' }
+    $decision = ($classification -join "`n") | ConvertFrom-Json
+    if ($decision.required -isnot [bool]) { throw 'classifier returned unknown decision' }
+    $requiresVercel = $decision.required
+  } catch {
+    Write-Warning 'Frontend deployment classification unavailable: require Vercel.'
+  }
+  $script:RequiresVercelDeployment = $requiresVercel
+  if (-not $requiresVercel) { $needed.Remove('Vercel') }
   $messages = @()
   $allOk = $true
   $anyPending = $false
@@ -200,6 +215,10 @@ function Test-LiveSmoke {
 }
 
 function Test-SentrySourceMaps {
+  if (-not $script:RequiresVercelDeployment) {
+    Write-Host "[ok] No new frontend build required; no new frontend source maps required."
+    return
+  }
   $authToken = $env:SENTRY_AUTH_TOKEN
   $org = $env:SENTRY_ORG
   $project = $env:SENTRY_PROJECT

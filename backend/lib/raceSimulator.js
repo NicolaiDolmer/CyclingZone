@@ -36,6 +36,7 @@ import { rollIncidents } from "./raceIncidents.js";
 // traeningskvalitet), IKKE fra rng. Kaldes KUN når v3=true; ingen vinduer / ingen
 // peakDay → 0, så flag-off (og v3-løb uden peak-plan) er bit-identisk.
 import { peakComponentForStage } from "./racePeaks.js";
+import { settleBreakawayOutcome, breakawayFlagsForOutcome } from "./raceParticipationHistory.ts";
 // #4357: kun brugt til at RAPPORTERE en dobbelt-kaptajn-konflikt i buildTeamContext
 // (telemetri, no-op når Sentry ikke er initialiseret) — ændrer intet ved funktionens
 // egen determinisme (samme seed+input → samme output, uanset om kaldet fejler/no-op'er).
@@ -852,11 +853,10 @@ export function deriveBreakawayStatus(ranked = []) {
   }
   for (const r of ranked) {
     if (r.breakaway_status && typeof r.breakaway_status.in_breakaway === "boolean" && (typeof r.breakaway_status.breakaway_caught === "boolean" || r.breakaway_status.breakaway_caught === null)) {
-      out.set(r.rider_id, {
-        in_breakaway: r.breakaway_status.in_breakaway,
-        // Persistent compatibility flags are NOT NULL; unknown remains in native history.
-        breakaway_caught: r.breakaway_status.in_breakaway && r.breakaway_status.breakaway_caught === true,
-      });
+      // #6185: caught / dropped / held home + finish safety net; breakaway_dropped keeps null for unknown.
+      // A dropped rider never swallowed by non-escapees and with none ahead at the line held home.
+      const s = r.breakaway_status;
+      out.set(r.rider_id, breakawayFlagsForOutcome(s.in_breakaway, settleBreakawayOutcome({ morning: s.in_breakaway, caught: s.breakaway_caught === true, survived: s.breakaway_caught === false, dropped: s.breakaway_dropped === true, swallowed: s.breakaway_swallowed === true }, r.rank > bestNonEscapeeRank)));
       continue;
     }
     const inBreakaway = (r.components?.breakaway || 0) > 0;
