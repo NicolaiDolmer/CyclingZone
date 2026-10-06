@@ -80,6 +80,7 @@
   "error": {
     "capacity": "Your scout is already at full capacity. See the active jobs list, your existing job is still queued and will report as scheduled.",
     "insufficient_funds": "Not enough balance to cover the travel cost.",
+    "insufficient_available_balance": "Not enough available money: part of your balance is locked in auction bids.",
     "invalid_target_pool": "Invalid targeting choice. Try again.",
     "no_active_season": "No active season right now.",
     "auth": "You need to be logged in.",

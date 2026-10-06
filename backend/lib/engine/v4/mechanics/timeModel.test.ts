@@ -25,6 +25,7 @@ import {
 } from "./timeModel.ts";
 import { descentHook, finishDescentRegroupBook, regroupOnDescentV3 } from "./descent.ts";
 import { breakawayHook } from "./breakaway.ts";
+import { climbSelectionHook } from "./climbSelection.ts";
 import { selectionPhaseFor } from "./mountainSelection.ts";
 import { finaleHook } from "../finale.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
@@ -530,6 +531,62 @@ test("2: klatring taeller med i placeringen i en nedkoerselsfinale", () => {
   assert.ok((T.descentFinaleDemand.descending ?? 0) > 0);
   const sum = Object.values(T.descentFinaleDemand).reduce((a, b) => a + (b ?? 0), 0);
   assert.ok(Math.abs(sum - 1) < 1e-9, "vaegtene summer til 1 som de oevrige finale-typer");
+});
+
+// ── Maaling 6/10: gruppettoen og regrupperingen ──────────────────────────────
+
+test("B (maaling 6/10): midt paa etapen kan hullet mellem to grupper aldrig vokse", () => {
+  const entrants = entrantsWithDescending({ f: 60, a: 60, b: 60, c: 40, d: 80 });
+  const groups = [
+    group("front", 0, ["f"]),
+    group("a", 2000, ["a"], { kind: "gruppetto" }),
+    group("b", 2010, ["b"], { kind: "gruppetto" }),
+    group("c", 2400, ["c"], { kind: "gruppetto" }),
+    group("d", 2405, ["d"], { kind: "gruppetto" }),
+  ];
+  for (const [km, tech] of [[4, 1], [10, 2], [15, 3]] as const) {
+    const out = new Map(regroupOnDescentV3(groups, entrants, km, tech, false).map((g) => [g.id, g.gap_seconds]));
+    const order = ["front", "a", "b", "c", "d"];
+    for (let i = 1; i < order.length; i++) {
+      const before = groups[i].gap_seconds - groups[i - 1].gap_seconds;
+      const after = out.get(order[i])! - out.get(order[i - 1])!;
+      assert.ok(after >= 0, `${order[i]}: raekkefoelgen holder (${km} km, teknik ${tech})`);
+      assert.ok(after <= before + 1e-6, `${order[i]}: hullet til gruppen foran vokser ikke (${before} -> ${after})`);
+      assert.ok(out.get(order[i])! <= groups[i].gap_seconds + 1e-6, `${order[i]}: hullet til fronten vokser ikke`);
+    }
+    // To grupper der kom over toppen taet sammen, kommer ned taet sammen.
+    assert.ok(out.get("b")! - out.get("a")! <= 10 + 1e-6);
+  }
+});
+
+test("A (maaling 6/10): de der falder af en gruppetto paa stigningen, falder af som én gruppe (kun orders_gc_v3)", () => {
+  const ids = Array.from({ length: 30 }, (_, i) => `g${String(i).padStart(2, "0")}`);
+  const entrants: Record<string, Entrant> = {};
+  // Spredt klatre-evne, saa de afhaengte faar vidt forskellige huller.
+  ids.forEach((id, i) => { entrants[id] = fullEntrant(id, { climbing: 95 - i * 3 }); });
+  const segment = { kind: "climb", from_km: 0, to_km: 15, category: "1", avg_gradient: 8, top_elevation_m: 1800 } as Segment;
+  const route: RouteV2 = {
+    distance_km: 15, profile_type: "mountain", finale_type: "long_climb", segments: [segment],
+    weather: { kind: "sun", wind_exposure: 0.1 }, waypoints: [],
+  };
+  const run = (kind: RaceGroup["kind"]) => {
+    const state: EngineState = {
+      km: 0,
+      groups: [group("tail", 600, ids, { kind })],
+      riders: Object.fromEntries(ids.map((id) => [id, riderState(id, "tail")])),
+      virtual_gc: Object.fromEntries(ids.map((id) => [id, 0])),
+    };
+    const ctx: SegmentHookContext = {
+      ...makeHookCtx({ segment, segmentIndex: 0, route, entrants, tuning: RACE_V4_TUNING, seed: "6199-gruppetto" }),
+      ordersGcV3: true as const,
+    };
+    return climbSelectionHook(state, ctx).state.groups.filter((g) => g.id !== "tail");
+  };
+  const fromChase = run("chase");
+  assert.ok(fromChase.length >= 2, "en almindelig gruppe deles i klynger efter hullet");
+  const fromGruppetto = run("gruppetto");
+  assert.equal(fromGruppetto.length, 1, "en gruppetto deles ikke i klynger");
+  assert.deepEqual([...fromGruppetto[0].rider_ids].sort(), fromChase.flatMap((g) => g.rider_ids).sort(), "de samme ryttere falder af");
 });
 
 test("tuning er deep-frosset", () => {

@@ -15,6 +15,7 @@ import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
+import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -529,6 +530,7 @@ import {
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { loadTeamSeasonEntries, raceIdsMissingWindow, withEntryRaceWindows, writeRegeneratedLineups } from "../lib/raceHubAutofill.js";
+import { loadRegenerateBindingLocks, writeRegeneratedLineupsPreservingTarget } from "../lib/raceEntryGeneratorBindings.ts";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import {
   buildSelectionDeadlineReminder,
@@ -991,6 +993,10 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
 
 // #3750 · Ejer-only: requireAdmin + OWNER_USER_IDS-allowlist (backend/lib/ownerGate.js).
 // Bruges til flader der kun ejeren må se, selv om andre konti har admin-rollen.
@@ -6513,12 +6519,17 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
     }));
+    // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
+    lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
+      targetRaceIds: target.map((r) => r.id), riderIds: riders.map((r) => r.rider_id) }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
     // #5789: skrivningen (frys-guard #2074, slip af ryttere der flyttes mellem dagens
     // løb, delete-så-insert pr. løb, navngiven #3420-fejl) bor i raceHubAutofill.js.
-    const { regenerated } = await writeRegeneratedLineups({
+    // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
+    const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
+      write: async (args) => await writeRegeneratedLineups({ ...args }),
     });
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {

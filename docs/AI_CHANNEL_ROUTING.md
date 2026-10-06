@@ -1,6 +1,6 @@
 # AI-kanaler og opgaveansvar
 
-Læs ved kanalvalg. Roller/claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md). Mandat: [AGENTS.md](../AGENTS.md). Resultatansvar/pilot: [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md). Opdateret 29/9/2026, Refs #605 #1341 #5467.
+Læs ved kanalvalg. Roller/claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md). Mandat: [AGENTS.md](../AGENTS.md). Resultatansvar/pilot: [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md). Opdateret 6/10/2026, Refs #605 #1341 #5467.
 
 Claude Code og Codex kan begge eje et helt godkendt forløb: undersøgelse, design, implementation, verifikation, reviewkoordinering og release efter mandat. Vælg efter faktisk adgang og opgavens behov; et ekstra kanalskift kræves ikke af opgavetypen alene. Ejeren skal ikke transportere prompts mellem agenter.
 
@@ -15,6 +15,18 @@ Claude Code og Codex kan begge eje et helt godkendt forløb: undersøgelse, desi
 | Asynkront arbejde | Eksplicit bestilt opgave/automation med resultat og stopgrænser | Tavshed er ikke godkendelse; ingen ny monitor uden bestilling |
 
 **Arbejdsform besluttet 24/9:** specs kan forberedes i cloud dagen før; lokal implementering følger den færdige godkendte spec. UI-kort bærer preview-link og desktop-/mobilbilleder, så ejeren kan give go fra telefonen. Denne mulighed består; den kræver ikke et nyt kanal-hop, hvis den valgte hovedsession allerede har design og mandat.
+
+## Fordeling Claude Code ↔ Codex (ejer 6/10)
+
+Målt 6/10: Codex brugte 4-5 timer på #5692 (25 filer, +2.200 linjer, staging-målinger, flere reviewrunder). Grundigt, men for langsomt til store tværgående eller hastende opgaver.
+
+| Opgavetype | Kanal | Regel |
+|---|---|---|
+| Brand, hastende, spillervendt, stor/tværgående (motor, træning, nye features) | Claude Code-bølge (`Workflow({name:"wave"})`, op til 4 laner) | Parallelle laner, reviewer pr. spor, Claude merger efter rule 35 |
+| Små, afgrænsede ops/infra/CI-opgaver, én PR hver | Codex | Max ca. 1 time pr. opgave; status som PR-kommentar hvert 30. min; ikke klar efter 90 min → push draft, skriv hvad der mangler, næste opgave |
+| Måle- eller staging-tunge undersøgelser | Den kanal der har adgangen; tidsgrænse skrives i prompten | Kun berørte tests + preflight lokalt; CI er den fulde gate |
+
+Prompten til Codex har altid en prioriteret liste, tidsgrænsen og stopreglen. Claude reviewer og merger Codex' PR'er.
 
 ## Handoff og værktøjer
 

@@ -40,7 +40,8 @@ export function participationForResult(result: ResultMarkerRow, history: StagePa
     const ahead = history.nonEscapeeAhead?.get(result.rider_id);
     const outcome = settleBreakawayOutcome({
       morning,
-      caught: (recorded?.caught ?? false) || (result.breakaway_caught === true && !recordedDropped),
+      // #6234: a stored catch flag with nobody but escapees ahead at the line came from a piece of the break, not a catch.
+      caught: (recorded?.caught ?? false) || (result.breakaway_caught === true && !recordedDropped && ahead !== false),
       survived: recorded?.survived ?? false,
       dropped: recordedDropped,
       swallowed: recorded?.swallowed ?? false,
