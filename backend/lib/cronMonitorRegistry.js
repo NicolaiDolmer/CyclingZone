@@ -127,7 +127,6 @@ export const CRON_MONITOR_24H = {
 // (manglende entry ELLER dødt entry uden opkald).
 export const ALL_CRON_MONITORS = [
   ["auctions", CRON_MONITOR_1MIN],
-  ["deadline-day", CRON_MONITOR_5MIN],
   ["squad-enforcement", CRON_MONITOR_5MIN],
   ["selection-warning", CRON_MONITOR_5MIN],
   ["senior-start-reminder", CRON_MONITOR_5MIN],

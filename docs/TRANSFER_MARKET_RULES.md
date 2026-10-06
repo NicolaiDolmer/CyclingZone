@@ -103,6 +103,7 @@ og finalize-gaten håndhæver trup-loftet **hårdt** (§7).
 
 Målt 30/8: `transfer_windows` har 2 rækker, begge `status='closed'` med `closes_at=NULL` -
 død data. Ingen kode må ankre noget i den tabel (kostede en fejlklasse, se §12).
+Deadline Day-cron'en og Final Whistle-kravet i sæsonskifte-readiness er fjernet (#6120).
 
 ---
 

@@ -155,7 +155,6 @@ const CLEARED_2997 = [
   "backend/lib/loanEngine.js",
   "backend/lib/proxyBidding.js",
   "backend/lib/academyGraduation.js",
-  "backend/lib/deadlineDayReport.js",
   "backend/lib/riderBidTimeline.js",
   "backend/lib/prizePayoutEngine.js",
 ];
