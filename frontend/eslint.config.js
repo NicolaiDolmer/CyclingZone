@@ -68,11 +68,11 @@ export default [
         "error",
         {
           selector: "Literal[value=/(?:slate|gray)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]",
-          message: "Dark mode S3: brug cz-tokens (text-cz-1/2/3, bg-cz-card, border-cz-border, …) i stedet for Tailwind slate-*/gray-*. Se frontend/tailwind.config.js for fulde token-liste.",
+          message: "Dark mode S3: brug cz-tokens (text-cz-1/2/3, bg-cz-card, border-cz-border, …) i stedet for Tailwind slate-*/gray-*. Se @theme i frontend/src/index.css for fulde token-liste.",
         },
         {
           selector: "TemplateElement[value.raw=/(?:slate|gray)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]",
-          message: "Dark mode S3: brug cz-tokens (text-cz-1/2/3, bg-cz-card, border-cz-border, …) i stedet for Tailwind slate-*/gray-*. Se frontend/tailwind.config.js for fulde token-liste.",
+          message: "Dark mode S3: brug cz-tokens (text-cz-1/2/3, bg-cz-card, border-cz-border, …) i stedet for Tailwind slate-*/gray-*. Se @theme i frontend/src/index.css for fulde token-liste.",
         },
         {
           selector: "Literal[value=/(?:text|border|ring|divide|outline)-(?:white|black)\\/\\d+\\b/]",
