@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (6/10): [`2026-10-06-dagsplan.md`](superpowers/plans/2026-10-06-dagsplan.md) (Claude) + [`2026-10-06-codex-dag.md`](superpowers/plans/2026-10-06-codex-dag.md) (Codex).**
+> **🎯 Next action (6/10 aften):** [`2026-10-06-naeste-session-nat.md`](superpowers/plans/2026-10-06-naeste-session-nat.md): merge-gennemgang → natpakke-prompt (#6265 #6279 #6280 + PostHog-taending, KUN med ejer-OK) → Tailwind 4 (#6271, merge senest 13/10) + 10x sideloebende → beta-exit-liste → race engine-tjek → roadmap. Merget 6/10: #6269 #6270 #6247 #6277 #6260 #6259.
 >
 > **5/10 (motor):** kontrakterne står som seneste kommentar på hvert issue (#6187 #5978 #6201 #6185 #3460 #6137 #6199 #6200); krav før v3 tændes på #5978 #3460 #6223. Staging = prod-skema + data (#5904). Læring: `.claude/learnings/2026-10-05-*.md` (review FØR merge-session; rettelser to ad gangen; tjek GitHub-status ved CI i kø; "klar" = grøn CI).
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude 6/10 (dagsplan): bølge #6257 #6132 #6120, merge-kø. Codex: #5692 (rører seasonTransition.js; merges før #6120).
+> **🤖 Working agent:** Ingen aktiv session.
