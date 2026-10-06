@@ -1,0 +1,76 @@
+{
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "eventRegistered": true,
+  "wakeupResult": "coalesced",
+  "publicationWaitMs": 0.35149999999998727,
+  "completionMs": 68049.2473,
+  "refreshCalls": 5,
+  "allComplete": true,
+  "calls": [
+    {
+      "name": "get_ranking_refresh_work_state",
+      "durationMs": 219.1811000000016,
+      "errorCode": null
+    },
+    {
+      "name": "claim_ranking_refresh_work",
+      "durationMs": 137.94810000000143,
+      "errorCode": null
+    },
+    {
+      "name": "renew_ranking_refresh_work",
+      "durationMs": 71.02249999999913,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 1798.1633999999976,
+      "errorCode": null
+    },
+    {
+      "name": "renew_ranking_refresh_work",
+      "durationMs": 83.68549999999959,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 2045.8954000000012,
+      "errorCode": null
+    },
+    {
+      "name": "renew_ranking_refresh_work",
+      "durationMs": 67.806700000001,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 3104.1745999999985,
+      "errorCode": null
+    },
+    {
+      "name": "renew_ranking_refresh_work",
+      "durationMs": 66.57210000000487,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 91.66820000000007,
+      "errorCode": null
+    },
+    {
+      "name": "renew_ranking_refresh_work",
+      "durationMs": 68.48940000000584,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 158.1661999999924,
+      "errorCode": null
+    },
+    {
+      "name": "finish_ranking_refresh_work",
+      "durationMs": 67.61320000000705,
+      "errorCode": null
+    }
+  ]
+}

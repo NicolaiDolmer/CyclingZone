@@ -244,6 +244,18 @@ test("(d) ingen results overhovedet → ingen finding", () => {
 
 // ── (e) matview-refresh-stall (#2196 Del 2) ───────────────────────────────────
 
+test('#5692: clean durable work suppresses timestamp-only ranking lag', () => {
+  const findings = evaluateStallFindings({ now: NOW,
+    standings: { maxStandingsUpdated: hoursAgo(0.05), maxResultsImported: hoursAgo(0.1) },
+    matviewHeartbeat: hoursAgo(1), rankingWork: { pending: false, pendingAgeMs: 0 } });
+  assert.equal(findings.filter(f => f.type === 'matview').length, 0);
+});
+
+test('#5692: old pending work alarms even for a historical/ownership event without a new result timestamp', () => {
+  const findings = evaluateStallFindings({ now: NOW, rankingWork: { pending: true, pendingAgeMs: 300_001 } });
+  assert.equal(findings.filter(f => f.type === 'matview').length, 1);
+});
+
 test("(e) heartbeat >30min bag friske results → matview-finding", () => {
   const findings = evaluateStallFindings({
     now: NOW,

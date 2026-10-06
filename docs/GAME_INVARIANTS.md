@@ -121,7 +121,44 @@ kun ubetinget Safe eller udløbet maksimal udskydelse tilsidesætter dem.
 En fejl i første pass forbruger ikke opfølgningen.
 Dette er et regressionsværn for process-lokal samtidighed, ikke et bevis for
 #5692's ejer-godkendte friskhedsmål eller fuld load-test. Schedulerbudget, holdbare
-claims/restarts, cross-process coordination og concurrent transport er separate.
+claims/restarts og cross-process coordination er suppleret af event-kontrakten nedenfor.
+
+### Durable ranking events (#5692, ejer 2/10 + prioritet 6/10)
+
+Etaperesultat og aktuelt klassement publiceres efter gemning/validering uden at
+vente på global beregning. Globale ranglister beregnes samlet i baggrunden,
+normalt senest fem minutter efter færdig finalisering; sidste færdige data kan
+læses imens. Dette er ejerens mål, ikke et regressionsgulv.
+
+`ranking_refresh_work_state` registrerer ændringer i samme transaction som
+`race_results`, `races`, `riders`, `season_standings`, `seasons`, `teams` og
+`team_global_rank_points`. Statement-triggere sammenligner kun ranglisternes
+projektioner; rollback, uændrede værdier og rytter-rating alene skaber ikke work.
+Historiske rettelser og ændret nuværende rytterejerskab tæller også. Eksisterende
+view-definitioner og alle historiske læsninger bevares.
+
+Den holdbare claim fanger requested-versionen ved start. Kun samme ejer/token
+kan kvittere netop denne version efter alle fem refreshes. Senere ændringer
+forbliver pending til en opfølgning. Lease fornyes før hvert RPC; fælles DB-writer
+lock beskytter hver concurrent refresh mod overlap, også ved tabt lease.
+Fejl beholder work og sidste completion/heartbeat; ingen plain-refresh fallback.
+Heartbeat og completed-version opdateres atomisk. De fem views publiceres stadig
+i separate transaktioner, så dette lover ikke én atomisk fem-view-publicering.
+
+Cron checker work hvert minut og kører ingen full refresh på clean state.
+Finalization-hooken planlægger en samlet baggrundswakeup og returnerer straks.
+Træningsprioritet må udskyde indtil to minutter fra den holdbare ældste ændring;
+ventetid/genstart nulstiller ikke alderen. Safe er en eksplicit forced repair og
+kvitterer ikke busy som færdig. Watchdog bruger pending work, ikke alene import-
+timestamp; et clean snapshot får ikke en ny beregningstid på uændrede ticks.
+
+Sæsonskiftets mutation og sæson-start-snapshot bevarer rækkefølge og atomicitet;
+den direkte globale refresh deler writer-lock og bruger CONCURRENTLY. Mutation
+må ikke retries blindt. Legacy nul-argument-RPC'er er bevaret til rollback;
+ukendte eksterne callers er ikke bevist af runtime-inventory.
+
+Staging-bevis: [måling](audits/5692-event-driven-staging.md). Kun staging er
+ændret af Codex; prod-apply og release tilhører Claude efter review/merge.
 
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
