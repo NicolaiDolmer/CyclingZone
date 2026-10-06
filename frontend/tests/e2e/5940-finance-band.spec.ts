@@ -44,7 +44,7 @@ for (const scenario of [{ name: 'strong', division: 1, estimate: 200000, realize
         : 'Mit estimat for dit hold, plus/minus 20 %; ikke et målt spænd';
       await expect(card.getByText(description, { exact: true })).toBeVisible();
       await card.scrollIntoViewIfNeeded();
-      await card.screenshot({ path: evidenceShotPath(`pr-screens/5940/${scenario.name}-${current}-${testInfo.project.name}.png`) });
+      await card.screenshot({ path: evidenceShotPath(`pr-screens/6215/${scenario.name}-${current}-${testInfo.project.name}.png`) });
     }
   });
 }

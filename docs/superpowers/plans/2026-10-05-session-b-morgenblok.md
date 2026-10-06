@@ -1,5 +1,7 @@
 # Prompt: Session B (Claude Code) - morgenblok: Udvikling 2.0, udgifter, træning, go-kort
 
+> **Erstattet 6/10** af `2026-10-06-dagsplan.md` (Claude) og `2026-10-06-codex-dag.md` (Codex). Brug ikke denne som prompt.
+
 Model: **Claude Fable 5.1**, indsats **høj**. Kopiér alt under stregen. Køres EFTER session A er lukket (eller mens ingen motor-bølge kører i en anden session; viser NOW.md en aktiv session, så STOP og spørg).
 
 ---
