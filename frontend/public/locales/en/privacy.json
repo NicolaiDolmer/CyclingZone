@@ -3,7 +3,7 @@
     "title": "Privacy policy",
     "langSwitchLabel": "Dansk",
     "back": "Back",
-    "intro": "Last updated: 3 August 2026. Cycling Zone is an open beta operated by Dolmer Digital (Danish CVR 46524861). We process as little data as possible, and you decide what we may measure."
+    "intro": "Last updated: 6 October 2026. Cycling Zone is an open beta operated by Dolmer Digital (Danish CVR 46524861). We process as little data as possible, and you decide what we may measure."
   },
   "sections": {
     "controller": {
@@ -19,6 +19,7 @@
         "<bold>Optional:</bold> your Discord ID if you add it to receive DM notifications.",
         "<bold>Technical:</bold> IP address in access logs for up to 30 days, used for operations and security.",
         "<bold>Analytics (consent only):</bold> anonymous behavioural data via Microsoft Clarity (e.g. where users click in vain or scroll in frustration), anonymous traffic/source statistics via Google Analytics (e.g. which page you arrived from) and anonymous page views via Vercel Web Analytics (e.g. how many people visit a page). Used only to fix bad UX and understand where players find the game.",
+        "<bold>Product analytics via PostHog (runs unless you reject analytics):</bold> page views and key steps in the game (for example sign-up, team created, first bid and first training), to see where new players get stuck. PostHog sets no cookies and stores nothing in your browser: every page load gets a new random ID. Once you log in, these events are linked to your internal account ID (never your email or name), so visits can be connected across sessions. Rejecting the \"Analytics\" category turns PostHog off immediately. The legal basis is legitimate interest in improving the game (GDPR art. 6(1)(f)), and rejecting analytics is how you object.",
         "<bold>Acquisition source (legitimate interest):</bold> when you create an account we record how you first reached the site (a referring link, any campaign tags in the URL, and the page you landed on) so we can see which channels bring new players. First-party only, no cross-site tracking, and you can object at any time.",
         "<bold>Aggregate traffic statistics (no consent needed):</bold> we count anonymous, aggregated page views and engagement (e.g. how many visitors a page received and whether they engaged) without cookies and without storing IP addresses or any data that can identify you. We also record which page a visit came from and any campaign tags in the URL, so we can see which channels bring visitors. That is information about the referring link, not about you. Because it cannot be linked to you, this requires no consent.",
         "<bold>Fair play (legitimate interest):</bold> to detect and document multi-account cheating, we record technical signals when an account is created and when value-bearing actions happen in the game (for example accepted transfers, auction bids and loans taken): IP address, browser information (user agent), language setting and timezone. This data is used solely for fair-play enforcement, is never visible to other players, is not shared with third parties, and is deleted automatically after 180 days. If you delete your account, it is deleted with it. The legal basis is our legitimate interest in a fair game (GDPR art. 6(1)(f)), and you can object at any time."
@@ -44,6 +45,7 @@
         "<bold>Supabase (EU, Frankfurt):</bold> database and authentication (data processing agreement in place).",
         "<bold>Vercel:</bold> frontend hosting (EU/US edge). Vercel sees IP addresses in access logs.",
         "<bold>Railway:</bold> backend hosting.",
+        "<bold>PostHog (EU cloud):</bold> product analytics without cookies. Turned off if you reject the \"Analytics\" category.",
         "<bold>Microsoft Clarity:</bold> only loaded if you have accepted the \"Analytics\" category.",
         "<bold>Google Analytics:</bold> only loaded if you have accepted the \"Analytics\" category. Ad signals are turned off.",
         "<bold>Vercel Web Analytics:</bold> only loaded if you have accepted the \"Analytics\" category.",
@@ -85,7 +87,7 @@
         "<bold>Consent choices</bold> (<code>cz_consent_v1</code> in localStorage): so we remember your selection and don't ask again.",
         "<bold>Version pinning</bold> (<code>__vdpl</code>): keeps your browser on the version of the app you loaded, so the page does not break mid-session."
       ],
-      "outro": "These do not require consent under the ePrivacy directive (strictly necessary). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> and <bold>Vercel Web Analytics</bold> are only loaded if you have actively accepted the \"Analytics\" category. You can change your choice on this page at any time."
+      "outro": "These do not require consent under the ePrivacy directive (strictly necessary). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> and <bold>Vercel Web Analytics</bold> are only loaded if you have actively accepted the \"Analytics\" category. <bold>PostHog</bold> stores nothing in your browser (no cookies, no localStorage) and is turned off if you reject \"Analytics\". You can change your choice on this page at any time."
     },
     "currentChoices": {
       "heading": "Your current choices",
