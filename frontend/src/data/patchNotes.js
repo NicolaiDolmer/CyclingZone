@@ -1,5 +1,47 @@
 export const PATCHES = [
   {
+    "version": "7.344",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Races",
+        "en": {
+          "title": "Choose how far a role reaches, now for everyone",
+          "body": "When you change a rider's role on the Tactics tab of a stage race, you choose Stage N and the rest of the race, or Stage N only. Earlier stages keep their roles. Beta testers have used it since 4 October."
+        },
+        "da": {
+          "title": "Vælg hvor langt en rolle rækker, nu for alle",
+          "body": "Når du skifter en rytters rolle på Taktik-fanen i et etapeløb, vælger du Etape N og løbet ud eller Kun etape N. Tidligere etaper beholder deres roller. Beta-testerne har brugt det siden 4. oktober."
+        },
+        "refs": [6095]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Planning",
+        "en": {
+          "title": "The season matrix fits your phone, now for everyone",
+          "body": "On a phone, the season matrix in Planning fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see. No more sideways scrolling."
+        },
+        "da": {
+          "title": "Sæsonmatrixen passer til din telefon, nu for alle",
+          "body": "På telefonen passer sæsonmatrixen i Planlægning til skærmen: én række linser i fuld bredde, og Før og Senere flytter de løbsdage, du ser. Ingen vandret scroll."
+        },
+        "refs": [5124]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Rankings",
+        "en": {
+          "title": "Rankings update about a minute after a result",
+          "body": "The rankings now update shortly after a race result is in, usually within about a minute, instead of on a fixed timer. When nothing has changed, they are not rebuilt, which takes load off the database."
+        },
+        "da": {
+          "title": "Ranglisterne opdateres cirka et minut efter et resultat",
+          "body": "Ranglisterne opdateres nu kort efter, at et løbsresultat er klar, typisk inden for cirka et minut, i stedet for på et fast ur. Når intet er ændret, bygges de ikke om, og det letter databasen."
+        },
+        "refs": [5692]
+      }
+    ]
+  },
+  {
     "version": "7.343",
     "date": "2026-10-06",
     "changes": [

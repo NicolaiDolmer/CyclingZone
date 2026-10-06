@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-87 poster: live 64 · beta 6 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+87 poster: live 67 · beta 3 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,11 +20,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## race-day
 
-**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
-
-| Feature | State | Flag | SSOT | Epic | Verified | Note |
-| --- | --- | --- | --- | --- | --- | --- |
-| Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) | beta | `race_role_scope_choice` | - | #6095 | 2026-10-04 | PR #6141; beta sat af Claude 4/10 kl. 10.26 efter ejer-go, læst tilbage i prod. Off gendanner #4980-vælgeren. |
+**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
 
 ## market
 
@@ -69,11 +65,10 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## season
 
-**live:** AI team retirement (`ai-team-retire`) 2026-09-06 · Season recap (`season-end-recap`) 2026-09-06 · Season signup (`season-signup`) 2026-09-24 · Season transition (`season-transition`) 2026-09-06
+**live:** AI team retirement (`ai-team-retire`) 2026-09-06 · Season recap (`season-end-recap`) 2026-09-06 · Season matrix on mobile (`season-matrix-mobile`) 2026-10-06 · Season signup (`season-signup`) 2026-09-24 · Season transition (`season-transition`) 2026-09-06
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Season matrix on mobile (`season-matrix-mobile`) | beta | `season_matrix_mobile` | - | #5124 | 2026-10-04 | Beta læst i prod 4/10; kun visning (frontend). Flip til alle er ejer-only. |
 | AI pool retirement (`ai-pool-retirement-v2`) | building | - | - | - | 2026-09-09 | v2-flag: off, afventer ejer-go. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 
@@ -115,11 +110,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## comms
 
-**live:** Discord welcome inbox notification (`discord-welcome-inbox`) 2026-09-15 · In-app player survey (`in-app-survey`) 2026-09-08 · Manager-to-manager DM (`manager-dm-v1`) 2026-09-17 · Roadmap hub (five tabs) (`roadmap-hub`) 2026-10-04
-
-| Feature | State | Flag | SSOT | Epic | Verified | Note |
-| --- | --- | --- | --- | --- | --- | --- |
-| Email retention loop (`email-loop`) | beta | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-14 | Win-back afventer ejer-go (#2760). |
+**live:** Discord welcome inbox notification (`discord-welcome-inbox`) 2026-09-15 · Email retention loop (`email-loop`) 2026-10-06 · In-app player survey (`in-app-survey`) 2026-09-08 · Manager-to-manager DM (`manager-dm-v1`) 2026-09-17 · Roadmap hub (five tabs) (`roadmap-hub`) 2026-10-04
 
 ## billing
 
