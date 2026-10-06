@@ -92,6 +92,16 @@ Ejer-beslutning 5/10 (kontrakten står i den seneste kommentar på #6199). Gæld
 
 Mål (ejer 5/10, ankertabellen §7b): på en bjergetape er nr. 10 60-150 s efter vinderen (erstatter 180-240 s fra #2415). På en kort afslutning opad (ca. 3-7 km à 5-7 %, ikke højfjeld) er nr. 10 inden for 20 s, nr. 30 inden for 90 s og nr. 50 inden for 300 s; det er et nyt anker i scorecardet (`short_uphill_finish_gaps`; kommer i §7b-tabellen ved næste refresh af baseline-filen), og tallene justeres, når der er målt på virkelige løb. Hale-gaten (§9 række 13) er uændret. Scorecardet kan køres under en revision med `node backend/scripts/v4FlipReadiness.mjs --rules=orders_gc_v3`. Måling og replay-ankre (to genskabte etaper fra løbet i #6199 med det anonymiserede felt fra #6088): `backend/scripts/dev/timeModel6199.mjs`; tal i `balance-internals/6199/`.
 
+## Sat af fra udbruddet under `orders_gc_v3` (#6185 del 2 + #6234)
+
+Ejer-beslutning 5/10 (#6185, designsamtale punkt 3): en udbryder ender i én af tre tilstande: holdt hjem, indhentet eller sat af fra udbruddet. Gælder kun under `orders_gc_v3`; legacy, `orders_gc_v1` og `orders_gc_v2` er byte-identiske med før (låst af fastfrosne etape-digests i `mechanics/breakawayDropped6185.test.ts`).
+
+1. **Motoren melder "sat af".** Når en udbryder havner i et stykke af udbruddet (gruppe med udbruddets oprindelse, men ikke selve udbrudsgruppen) bag udbruddet, udsender M5 `breakaway_dropped` (stykkets gruppe, udbruddets gruppe, rytterne; ingen tal) på det segment hvor det skete. Et stykke foran udbruddet (et angreb) er ikke sat af. Hver rytter meldes én gang; kommer han tilbage i udbruddet og sættes af igen, meldes han igen. Et uheldsoffer meldes ikke: uheldets egen linje fortæller det. `breakaway_formed` bærer `drops_reported`, så historikken ved at motoren melder selv.
+2. **Et afsat stykke er ikke en indhentning.** Lukker et stykke af udbruddet hullet til udbruddet, smelter det ind i udbruddet (`group_merged`), og udbruddet forbliver et udbrud. `breakaway_caught` udsendes kun, når ikke-udbrydere (feltet eller en jagtgruppe uden for udbruddet) henter udbruddet.
+3. **Historikken og filmen.** `backend/lib/raceParticipationHistory.ts` bruger motorens hændelse, når etapen har den; et split læses da ikke som "sat af". Ældre etaper bruger projektionen fra del 1 (split, tidstab, sammenlægning). En gammel `breakaway_caught`, hvor jagtgruppen kun rummede udbrydere, tæller ikke som indhentning, og et gemt indhentnings-flag uden ikke-udbrydere foran i mål vises ikke som "indhentet". Løbsfilmen viser hændelsen med én kort linje (EN+DA).
+
+Kode: `mechanics/chaseGroup.ts` (`isBreakawayPiece`, `rejoinBreakawayPiece`, `breakawayDropEvents`, `withBreakawayDrops`), kaldt fra `mechanics/breakaway.ts`. Gemte flag på kørte etaper rettes ikke her (særskilt dry-run, ejer-go).
+
 
 ## En brugt løbsdag følger rytteren (#5860, ejer-go 30/9)
 
