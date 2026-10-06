@@ -91,7 +91,7 @@ import {
   SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
-import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
+import { flushPendingSignup, logFirstEvent, logTeamCreated, logTeamDrafted } from "../lib/logEvent";
 // #4997 — NPS-prompten var kun monteret på Resultater-fanen på egen holdside;
 // se komponent-monteringen nederst i filen.
 import NpsPrompt from "../components/NpsPrompt.jsx";
@@ -871,7 +871,9 @@ export default function DashboardPage() {
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
   useEffect(() => {
     if (team?.id) flushPendingSignup();
-  }, [team?.id]);
+    // #4321: kerne-rejsens "hold oprettet" (kun nye hold, se logTeamCreated).
+    if (team?.id) logTeamCreated(team.created_at);
+  }, [team?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #1583: onboarding_completed-funnel-event når alle steps er nået (4/4).
   // logFirstEvent de-dup'er pr. bruger, så eventet kun fyrer én gang.

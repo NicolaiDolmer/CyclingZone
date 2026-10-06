@@ -5,16 +5,24 @@
 // posthogIntegration.jsx. Opdelingen findes fordi logEvent.js skal kunne
 // spejle sine events uden at importere en .jsx-fil.
 //
-// Designvalg (ejer-beslutning 27/8 + 8/9, se #4321):
+// Designvalg (ejer-beslutning 27/8 + 8/9 + 6/10, se #4321 og
+// docs/superpowers/specs/2026-10-06-ejer-beslutninger-stabilitet-10x.md #2+#3):
 //   - Additivt lag. player_events og signup_attribution bliver i Postgres og
 //     er fortsat sandheden; PostHog erstatter intet. GA4 og Clarity beholdes.
-//   - Kun efter analytics-samtykke, og kun i PROD. Ingen requests før accept.
+//   - COOKIELØS (6/10): persistence "memory". SDK'et skriver ALDRIG cookies,
+//     localStorage eller sessionStorage, heller ikke lite's support-probe (se
+//     MemoryOnlyPostHog nedenfor). Konsekvens: ny anonym id pr. page load;
+//     identify() efter login binder en brugers sessioner sammen.
+//   - Gate (6/10): kun i PROD, og for alle besøgende UNDTAGEN dem der aktivt
+//     har afvist analytics. Ubesvaret banner = PostHog kører (cookieløst).
+//     Selve beslutningen er isPosthogAllowed() nedenfor; wiringen er i
+//     posthogIntegration.jsx. Intet nyt banner.
 //   - Reverse proxy (/ingest) frem for eu.i.posthog.com direkte, så
 //     adblockere ikke spiser en femtedel af trafikken. Se frontend/vercel.json.
 //   - autocapture er SLÅET FRA: vi spejler vores egne, navngivne events
 //     (KNOWN_EVENTS i logEvent.js) i stedet for en støjsky af DOM-klik.
-//   - session recording er SLÅET FRA: Clarity dækker replay indtil de fire
-//     ugers parallel drift er evalueret (#4321 afgrænsning).
+//   - session recording er SLÅET FRA: session-optagelser bliver i Clarity
+//     (ejer 6/10).
 //   - identify() får KUN den interne UUID. Aldrig e-mail, navn eller holdnavn.
 //
 // SDK: posthog-js-lite (#5055). posthog-js vejede 88,7 KB gzip — den STØRSTE
@@ -52,9 +60,44 @@ const API_HOST = "/ingest";
 
 export const POSTHOG_ENABLED = Boolean(import.meta.env?.PROD) && Boolean(PROJECT_KEY);
 
+// --- Gaten (ejer 6/10) ------------------------------------------------------
+// PostHog kører for alle UNDTAGEN dem der aktivt har afvist analytics.
+//
+// `stored` er et BESVARET samtykke-objekt (form som cz_consent_v1 /
+// users.consent_preferences) eller null/undefined når banneret er ubesvaret.
+// consent.jsx normaliserer `analytics` til `raw.analytics === true`, så ethvert
+// besvaret objekt uden analytics: true er en afvisning. Det samme gælder et
+// tilbagekaldt samtykke (accepteret, senere slået fra): det er bare et nyere
+// besvaret objekt med analytics: false.
+export function isPosthogAllowed(stored) {
+  if (!stored || typeof stored !== "object") return true;
+  return stored.analytics === true;
+}
+
+// Hvilket samtykke der gælder, med SAMME forrang som ConsentProvider: findes en
+// DB-værdi (users.consent_preferences), vinder den over den lokale. Det lukker
+// tilfældet "afvist på enhed A, første besøg på enhed B": den lokale værdi er
+// tom, men profilen bærer afvisningen, og vi må ikke identify'e den bruger.
+export function resolveEffectiveConsent(localConsent, remoteConsent) {
+  if (remoteConsent && typeof remoteConsent === "object") return remoteConsent;
+  if (localConsent && typeof localConsent === "object") return localConsent;
+  return null;
+}
+
 // Den ene klient-instans. Sat af startPosthog(), aldrig genskabt.
 let client = null;
 let posthogStarted = false;
+// Sand efter optOutPosthog() indtil startPosthog() opter ind igen. Holdes her
+// (ikke kun i SDK'et), så logEvent.js billigt kan spørge om spejlingen er aktiv
+// uden at lave et identitets-opslag for ingenting.
+let posthogOptedOut = false;
+// Den UUID klienten er identify'et som i denne page load (null = anonym).
+let identifiedUserId = null;
+// Bruger-events (logEvent-spejlingen) der kom FØR identify. De bindes til den
+// rigtige person ved at vente på identify i stedet for at gå afsted på den
+// anonyme memory-id. Kun i hukommelsen; ryddes ved opt-out/reset.
+const pendingUserEvents = [];
+const MAX_PENDING_USER_EVENTS = 50;
 
 // SDK'et dynamic-importeres så det ikke lander i main bundle (samme mønster
 // som Clarity, #479).
@@ -64,6 +107,13 @@ function loadPosthog() {
 
 export function isPosthogStarted() {
   return posthogStarted;
+}
+
+// Sand når et capture faktisk vil blive sendt: SDK'et kører og står ikke
+// opted out. logEvent.js bruger den til at springe identitets-opslaget over
+// når hverken Postgres eller PostHog skal have eventet.
+export function isPosthogCapturing() {
+  return posthogStarted && Boolean(client) && !posthogOptedOut;
 }
 
 // Kampagne-parametre. posthog-js læste dem selv af URL'en og hængte dem på hvert
@@ -105,10 +155,12 @@ function capture(name, properties) {
 }
 
 // optIn()/optOut() er async i core'en, men laver kun en synkron
-// localStorage-skrivning bag en wrap(). Vi venter ikke på dem; vi sluger bare
-// afvisningen, så samtykke-flowet aldrig kan give en unhandled rejection.
+// persistence-skrivning (her: hukommelsen) bag en wrap(). Vi venter ikke på
+// dem; vi sluger bare afvisningen, så samtykke-flowet aldrig kan give en
+// unhandled rejection.
 function optIn() {
   if (!client) return;
+  posthogOptedOut = false;
   try {
     Promise.resolve(client.optIn()).catch(() => {});
   } catch { /* best-effort */ }
@@ -118,14 +170,79 @@ function shouldSkipForAutomation() {
   return typeof navigator !== "undefined" && isLikelyAutomation(navigator);
 }
 
-// Starter PostHog. Kaldes KUN når analytics-samtykke er givet (se
+// lite's konstruktør kalder getStorage(persistence, this.getWindow()). Med et
+// window-objekt PROBER den localStorage og sessionStorage (skriver og sletter
+// nøglen "__mplssupport__") FØR den kigger på persistence-typen, også ved
+// "memory". Det er en storage-skrivning, selv om den er kortvarig og uden
+// identifikator. Ved at returnere undefined fra getWindow() UNDER
+// konstruktionen springer lite proben over og går direkte til
+// createMemoryStorage(). Efter konstruktionen svarer getWindow() normalt, så
+// $current_url, $browser, $screen_* osv. stadig kommer med på hvert event.
+// Verificeret mod posthog-js-lite 4.12.1 (dist/index.mjs, getStorage og
+// PostHog-konstruktøren); vagtet runtime i posthogIntegration.test.js.
+function memoryOnlyClass(PostHog) {
+  return class MemoryOnlyPostHog extends PostHog {
+    constructor(apiKey, options) {
+      super(apiKey, options);
+      this.czConstructed = true;
+    }
+
+    getWindow() {
+      return this.czConstructed ? super.getWindow() : undefined;
+    }
+  };
+}
+
+// Init-konfigurationen. Eksporteret så testen kan bygge en ægte lite-klient
+// med PRÆCIS samme indstillinger og bevise at intet rammer browser-storage.
+export const POSTHOG_OPTIONS = Object.freeze({
+  // Relativ sti gennem vores egen reverse proxy. Core'en bruger host som
+  // ren streng-præfiks (`${host}/batch/`), så en relativ sti virker og
+  // resolves mod vores origin — det er hele pointen med /ingest.
+  host: API_HOST,
+  // Cookieløs (ejer 6/10): anonym id, distinct id, opt-out-status og
+  // event-kø lever kun i hukommelsen og dør med fanen. Ingen cookies, ingen
+  // localStorage, ingen sessionStorage.
+  persistence: "memory",
+  // Person-profiler kun for identificerede brugere: anonyme besøg tæller
+  // stadig i web analytics, men bruger ikke person-kvote.
+  personProfiles: "identified_only",
+  // Send hvert event med det samme. Lite har ingen unload-flush, så en
+  // default-batch (20 events / 10 s) ville tabe $pageview for enhver
+  // besøgende der forlader siden hurtigt — altså netop bounce-tilfældet.
+  flushAt: 1,
+  // Vi spejler vores egne navngivne events; DOM-autocapture ville
+  // fordoble støjen og gøre funnels sværere at læse.
+  autocapture: false,
+  // SPA: React Router skifter side uden page load. Vi fyrer $pageview selv
+  // ved hvert route-skift (capturePosthogPageview) frem for at lade lite
+  // patche history.pushState.
+  captureHistoryEvents: false,
+  // Vi bruger ingen feature flags eller surveys her. Uden de to flag ville
+  // init koste en ekstra rundtur til /flags og /api/surveys.
+  preloadFeatureFlags: false,
+  disableSurveys: true,
+  // Content-Encoding: gzip gennem Vercel-rewritet er ikke verificeret, og
+  // payloaden er et enkelt event ad gangen — komprimeringen ville spare
+  // nogle hundrede bytes mod en uverificeret proxy-antagelse.
+  disableCompression: true,
+});
+
+// Bygger klienten. Adskilt fra startPosthog() så testen kan køre den mod den
+// ægte posthog-js-lite-pakke uden PROD/env-nøgle.
+export function createPosthogClient(PostHog, projectKey, overrides) {
+  const MemoryOnlyPostHog = memoryOnlyClass(PostHog);
+  return new MemoryOnlyPostHog(projectKey, { ...POSTHOG_OPTIONS, ...(overrides || {}) });
+}
+
+// Starter PostHog. Kaldes KUN når gaten tillader det (se
 // posthogIntegration.jsx). Idempotent.
 export async function startPosthog() {
   if (!POSTHOG_ENABLED) return;
   if (posthogStarted) {
-    // Samtykke givet igen efter en tilbagekaldelse i SAMME session: klienten
+    // Samtykke givet igen efter en afvisning i SAMME page load: klienten
     // kører allerede, men står opted out. Uden dette ville den tavst blive
-    // ved med at kassere events. Se optIn-kommentaren længere nede.
+    // ved med at kassere events.
     optIn();
     return;
   }
@@ -139,41 +256,12 @@ export async function startPosthog() {
   try {
     const PostHog = await loadPosthog();
     if (posthogStarted) return; // re-entry guard
-    client = new PostHog(PROJECT_KEY, {
-      // Relativ sti gennem vores egen reverse proxy. Core'en bruger host som
-      // ren streng-præfiks (`${host}/batch/`), så en relativ sti virker og
-      // resolves mod vores origin — det er hele pointen med /ingest.
-      host: API_HOST,
-      // Person-profiler kun for identificerede brugere: anonyme besøg tæller
-      // stadig i web analytics, men bruger ikke person-kvote.
-      personProfiles: "identified_only",
-      // Send hvert event med det samme. Lite har ingen unload-flush, så en
-      // default-batch (20 events / 10 s) ville tabe $pageview for enhver
-      // besøgende der forlader siden hurtigt — altså netop bounce-tilfældet.
-      flushAt: 1,
-      // Vi spejler vores egne navngivne events; DOM-autocapture ville
-      // fordoble støjen og gøre funnels sværere at læse.
-      autocapture: false,
-      // SPA: React Router skifter side uden page load. Vi fyrer $pageview selv
-      // ved hvert route-skift (capturePosthogPageview) frem for at lade lite
-      // patche history.pushState.
-      captureHistoryEvents: false,
-      // Vi bruger ingen feature flags eller surveys her. Uden de to flag ville
-      // init koste en ekstra rundtur til /flags og /api/surveys.
-      preloadFeatureFlags: false,
-      disableSurveys: true,
-      // Content-Encoding: gzip gennem Vercel-rewritet er ikke verificeret, og
-      // payloaden er et enkelt event ad gangen — komprimeringen ville spare
-      // nogle hundrede bytes mod en uverificeret proxy-antagelse.
-      disableCompression: true,
-    });
-    // Opt-out PERSISTERES i localStorage og slår defaultOptIn: core læser
-    // `getPersistedProperty(OptedOut) ?? !defaultOptIn`. En besøgende der
-    // engang trak sit samtykke tilbage ville derfor forblive tavs for evigt,
-    // også efter at have givet samtykke igen på et senere besøg — en STILLE
-    // fejl uden en eneste log-linje. (Samme fælde fandtes med posthog-js'
-    // opt_out_capturing(), som heller ikke blev modsvaret af et opt_in-kald;
-    // den er altså ikke ny med #5055, men rettes her.)
+    client = createPosthogClient(PostHog, PROJECT_KEY);
+    // Med memory-persistence starter hver page load uden persisteret opt-out,
+    // så optIn() er strengt taget overflødigt her. Det står der stadig som
+    // forsvar: skifter nogen persistence tilbage til localStorage, ville et
+    // persisteret opt-out ellers overleve et senere samtykke i stilhed
+    // (core læser `getPersistedProperty(OptedOut) ?? !defaultOptIn`).
     optIn();
     posthogStarted = true;
   } catch (err) {
@@ -183,7 +271,7 @@ export async function startPosthog() {
 
 // Manuelt $pageview ved SPA-navigation (captureHistoryEvents: false ovenfor).
 export function capturePosthogPageview() {
-  if (!posthogStarted || !client) return;
+  if (!isPosthogCapturing()) return;
   try {
     capture("$pageview");
   } catch { /* best-effort — telemetri må aldrig bryde en navigation */ }
@@ -191,37 +279,70 @@ export function capturePosthogPageview() {
 
 // Spejler et player_event til PostHog. Aldrig blokerende, aldrig kastende:
 // Postgres-skrivningen i logEvent.js er sandheden, dette er kopien.
-export function capturePosthogEvent(name, properties) {
-  if (!posthogStarted || !client || !name) return;
+//
+// userId (valgfri): den bruger eventet hører til. Er klienten endnu ikke
+// identify'et som netop den bruger, holdes eventet i hukommelsen og sendes
+// når identifyPosthog() kører, så det lander på personen og ikke på en anonym
+// memory-id der aldrig bliver koblet.
+export function capturePosthogEvent(name, properties, { userId } = {}) {
+  if (!isPosthogCapturing() || !name) return;
+  if (userId && identifiedUserId !== String(userId)) {
+    if (pendingUserEvents.length < MAX_PENDING_USER_EVENTS) {
+      pendingUserEvents.push({ userId: String(userId), name, properties });
+    }
+    return;
+  }
   try {
     capture(name, properties);
   } catch { /* best-effort — spejlingen må aldrig påvirke spillet */ }
 }
 
+function flushPendingUserEvents() {
+  const queued = pendingUserEvents.splice(0, pendingUserEvents.length);
+  for (const ev of queued) {
+    // Events fra en anden bruger (logout/login på samme fane før identify)
+    // smides væk frem for at blive bundet til den forkerte person.
+    if (ev.userId !== identifiedUserId) continue;
+    try {
+      capture(ev.name, ev.properties);
+    } catch { /* best-effort */ }
+  }
+}
+
 // KUN den interne UUID. #2041 (Clarity-identify-fælden): identify må aldrig
 // få e-mail eller andet der kan læses som PII i en tredjeparts UI.
+// Kaldes ved HVER page load efter login: memory-persistence giver en ny anonym
+// id pr. load, og identify er det der binder brugerens sessioner sammen.
 export function identifyPosthog(userId) {
-  if (!posthogStarted || !client || !userId) return;
+  if (!isPosthogCapturing() || !userId) return;
+  const id = String(userId);
   try {
-    client.identify(String(userId));
+    client.identify(id);
+    identifiedUserId = id;
   } catch { /* best-effort — identify må aldrig bryde brugerflowet */ }
+  if (identifiedUserId === id) flushPendingUserEvents();
 }
 
 // Ved logout: bryd koblingen mellem den næste anonyme session og den bruger
 // der lige loggede ud (delte enheder).
 export function resetPosthog() {
+  identifiedUserId = null;
+  pendingUserEvents.length = 0;
   if (!posthogStarted || !client) return;
   try {
     client.reset();
   } catch { /* best-effort */ }
 }
 
-// Tilbagekaldt samtykke: SDK'et kan ikke rives ned rent (samme som Clarity/GA),
-// men optOut() stopper afsendelsen med det samme og husker valget i lite's egen
-// persistence. Vores egen consent-gate i posthogIntegration.jsx er stadig den
-// primære spærre — startPosthog() kaldes slet ikke uden analytics-samtykke.
+// Afvist analytics (også midt i en session): SDK'et kan ikke rives ned rent
+// (samme som Clarity/GA), men optOut() stopper afsendelsen med det samme.
+// Med memory-persistence huskes valget kun i denne page load; ved næste load
+// starter posthogIntegration.jsx slet ikke SDK'et, fordi gaten læser det
+// gemte samtykke. Ventende bruger-events smides væk.
 export function optOutPosthog() {
+  pendingUserEvents.length = 0;
   if (!posthogStarted || !client) return;
+  posthogOptedOut = true;
   try {
     Promise.resolve(client.optOut()).catch(() => {});
   } catch { /* best-effort */ }
