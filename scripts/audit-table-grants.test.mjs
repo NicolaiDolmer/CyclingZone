@@ -1,5 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, renameSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+test('promoting a renamed proposal still checks its new table against the full contract', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'grants-promotion-'));
+  const env = { ...process.env, GIT_AUTHOR_DATE: '2026-10-06T06:00:00Z', GIT_COMMITTER_DATE: '2026-10-06T06:00:00Z' };
+  const git = (...args) => execFileSync('git', args, { cwd, env, encoding: 'utf8' });
+  try {
+    git('init', '-b', 'fixture');
+    git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.test');
+    git('config', 'diff.renames', 'true');
+    mkdirSync(join(cwd, 'database/proposals'), { recursive: true });
+    writeFileSync(join(cwd, 'database/proposals/x.sql'), 'CREATE TABLE IF NOT EXISTS public.new_promoted_table(id uuid);\n');
+    git('add', '.'); git('commit', '-m', 'fixture base');
+    const base = git('rev-parse', 'HEAD').trim();
+    renameSync(join(cwd, 'database/proposals/x.sql'), join(cwd, 'database/2026-10-06-promoted.sql'));
+    git('add', '.'); git('commit', '-m', 'fixture promotion');
+    assert.match(git('diff', '--name-status', base, 'HEAD'), /R100/);
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('./audit-table-grants.mjs', import.meta.url)), '--base', base], { cwd, env, encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /new_promoted_table.*data-api-access/);
+  } finally {
+    assert.ok(resolve(cwd).startsWith(resolve(tmpdir()) + sep) && cwd.includes('grants-promotion-'));
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
 import { auditSource, auditChangedSource } from './audit-table-grants.mjs';
 const declaration = '-- data-api-access: {"table":"public.example","roles":{"anon":[],"authenticated":["SELECT"],"service_role":["SELECT","INSERT"]},"reason":"Owner reads; server writes"}\n';
 const create = 'CREATE TABLE IF NOT EXISTS public.example (id uuid PRIMARY KEY, owner_id uuid);\nALTER TABLE public.example ENABLE ROW LEVEL SECURITY;\n';

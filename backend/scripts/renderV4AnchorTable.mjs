@@ -48,6 +48,7 @@ const DISPLAY_BY_ID = {
   itt_correlation: (v) => v.toFixed(2),
   bonus_seconds_bounded: (v) => `${Math.round(v)}s`,
   mountain_top10_spread: (v) => `${Math.round(v)}s`,
+  short_uphill_finish_gaps: (v) => v.toFixed(2),
   gt_winner_margin: (v) => `${Math.round(v)}s`,
 };
 

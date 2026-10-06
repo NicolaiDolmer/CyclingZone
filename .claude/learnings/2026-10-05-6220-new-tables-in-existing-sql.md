@@ -14,3 +14,5 @@ Evidence: initial new-table regressions failed before correction; fresh
 read-only review reproduced the recreation and mixed-case legacy gaps.
 Final 26 tests pass, including actual PGlite role checks and repeat template
 apply. No live database write or production permission change.
+
+6 October follow-up: --diff-filter=AM omitted R100 proposal promotions. An actual Git rename reproduced 0 audited files; --no-renames makes the destination receive the full new-file contract. The new CLI regression proves RED/GREEN.

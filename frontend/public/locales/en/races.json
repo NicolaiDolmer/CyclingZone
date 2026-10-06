@@ -1448,6 +1448,7 @@
       "label": "Morning breakaway",
       "survived": "stayed away to the finish",
       "caught": "caught",
+      "dropped": "dropped from the break",
       "participated": "participated",
       "laterAttack": "Later attack",
       "legacyLabel": "Breakaway"

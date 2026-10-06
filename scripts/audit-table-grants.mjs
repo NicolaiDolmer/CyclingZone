@@ -187,7 +187,7 @@ function main() {
   if (args[0] === '--base') {
     if (args.length !== 2) throw Error('Usage: --base COMMIT or SQL_FILE...');
     base = execFileSync('git', ['rev-parse', '--verify', '--end-of-options', `${args[1]}^{commit}`], { encoding: 'utf8' }).trim();
-    files = execFileSync('git', ['diff', '--name-only', '--diff-filter=AM', '-z', base, 'HEAD', '--', 'database'], { encoding: 'utf8' }).split('\0').filter(p => p.endsWith('.sql'));
+    files = execFileSync('git', ['diff', '--no-renames', '--name-only', '--diff-filter=AM', '-z', base, 'HEAD', '--', 'database'], { encoding: 'utf8' }).split('\0').filter(p => p.endsWith('.sql'));
   } else {
     if (!args.length || args.some(a => a.startsWith('--'))) throw Error('Usage: audit-table-grants.mjs --base COMMIT | SQL_FILE...');
     files = args;

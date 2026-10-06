@@ -139,6 +139,21 @@ export type FormationRoll = (stream: "attempt" | "success", riderId: string) => 
 
 const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
 
+/**
+ * #5978 (KUN orders_gc_v3, ejer-design 5/10: hoej risiko, hoej gevinst):
+ * et forsoeg fra en farlig rytter. START-KANDIDATER, kalibreres privat
+ * (balance-internals/5978/).
+ *  - pressureWeight: fradrag i succes pr. enhed ekstra modstand fra de hold der
+ *    har noget at forsvare (hvert holds fulde reaktion = 1, fra dets arbejdere).
+ *  - maxPressure: loft over den ekstra modstand.
+ *  - attemptCostFactor: et farligt forsoeg koster rytteren dette gange normalprisen.
+ */
+export const DANGEROUS_ATTEMPT_TUNING = Object.freeze({
+  pressureWeight: 0.12,
+  maxPressure: 3,
+  attemptCostFactor: 2.5,
+});
+
 function emptyFormation(): MorningBreakFormation {
   return { attempted: [], escaped: [], failed: [], reactingTeamIds: [], attemptCost: new Map(), reactionCost: new Map() };
 }
@@ -167,6 +182,12 @@ export function resolveMorningBreakFormation(input: {
   roll: FormationRoll;
   maxSize: number;
   tuning?: typeof MORNING_BREAK_FORMATION_TUNING;
+  /**
+   * #5978 (KUN orders_gc_v3): de hold for hvem et forsoeg fra rytteren er
+   * farligt (gcThreat.formationDangerTeams). Kaldes kun for ryttere der faktisk
+   * forsoeger. Udeladt = orders_gc_v1/v2-dannelsen, bit-identisk.
+   */
+  dangerTeams?: (riderId: string) => readonly string[];
 }): MorningBreakFormation {
   const t = input.tuning ?? MORNING_BREAK_FORMATION_TUNING;
   const riders = [...input.riders].sort((a, b) => a.rider_id.localeCompare(b.rider_id));
@@ -188,12 +209,27 @@ export function resolveMorningBreakFormation(input: {
   if (attempted.length === 0) return emptyFormation();
   const attemptedIds = new Set(attempted.map((r) => r.rider_id));
 
-  // 2. Forsoegets pris.
+  // #5978 (KUN orders_gc_v3): farlige forsoeg og de hold der har noget at forsvare imod dem.
+  const represented = new Set(attempted.map((r) => r.team_id).filter((id): id is string => !!id));
+  const dangerTo = new Map<string, string[]>();
+  if (input.dangerTeams) {
+    for (const rider of attempted) {
+      const teams = [...input.dangerTeams(rider.rider_id)]
+        .filter((teamId) => !represented.has(teamId) && (input.stances.get(teamId) ?? "neutral") !== "let_go")
+        .sort((a, b) => a.localeCompare(b));
+      if (teams.length > 0) dangerTo.set(rider.rider_id, teams);
+    }
+  }
+  const defendingTeams = new Set([...dangerTo.values()].flat());
+
+  // 2. Forsoegets pris. #5978: et farligt forsoeg skal koeres haardere og koster mere.
   const attemptCost = new Map<string, number>();
-  for (const rider of attempted) attemptCost.set(rider.rider_id, Math.max(0, t.attemptCostFraction));
+  for (const rider of attempted) {
+    const factor = dangerTo.has(rider.rider_id) ? DANGEROUS_ATTEMPT_TUNING.attemptCostFactor : 1;
+    attemptCost.set(rider.rider_id, Math.max(0, t.attemptCostFraction) * factor);
+  }
 
   // 3. Rivalholdenes faktiske modreaktion.
-  const represented = new Set(attempted.map((r) => r.team_id).filter((id): id is string => !!id));
   const fieldEngine = riders.reduce((s, r) => s + clamp(r.engine, 0, 1), 0) / riders.length;
   const [engineLo, engineHi] = t.relativeEngineBounds;
   const workersByTeam = new Map<string, Array<{ riderId: string; work: number; pull: number }>>();
@@ -211,6 +247,7 @@ export function resolveMorningBreakFormation(input: {
   let pressure = 0;
   const reactingTeamIds: string[] = [];
   const reactionWork = new Map<string, number>();
+  const teamPull = new Map<string, number>();
   for (const teamId of [...workersByTeam.keys()].sort((a, b) => a.localeCompare(b))) {
     const stance = input.stances.get(teamId) ?? "neutral";
     const share = stance === "chase" ? 1 : stance === "neutral" ? clamp(t.neutralReactionShare, 0, 1) : 0;
@@ -220,9 +257,19 @@ export function resolveMorningBreakFormation(input: {
     if (!(pull > 0)) continue;
     pressure += share * clamp(pull / t.referenceWorkers, 0, 1);
     reactingTeamIds.push(teamId);
-    for (const w of workers) reactionWork.set(w.riderId, share * w.work);
+    // #5978: et hold med noget at forsvare lukker et farligt forsoeg fuldt (som jag).
+    const workShare = defendingTeams.has(teamId) ? 1 : share;
+    for (const w of workers) reactionWork.set(w.riderId, workShare * w.work);
+    if (defendingTeams.has(teamId)) teamPull.set(teamId, clamp(pull / t.referenceWorkers, 0, 1));
   }
   pressure = clamp(pressure, 0, t.maxPressure);
+  // #5978: den ekstra modstand mod netop et farligt forsoeg, fra de forsvarende
+  // holds faktiske arbejdere (ingen arbejdere = ingen ekstra modstand).
+  const dangerPressure = new Map<string, number>();
+  for (const [riderId, teams] of dangerTo) {
+    const sum = teams.reduce((s, teamId) => s + (teamPull.get(teamId) ?? 0), 0);
+    dangerPressure.set(riderId, clamp(sum, 0, DANGEROUS_ATTEMPT_TUNING.maxPressure));
+  }
 
   // Reaktionens pris deles som jagtens (applyChaseCost): flere arbejdere end
   // referencen betaler hver mindre.
@@ -246,15 +293,13 @@ export function resolveMorningBreakFormation(input: {
   const orderedBonus = Math.max(0, Number.isFinite(t.orderedSuccessBonus) ? t.orderedSuccessBonus : 0);
   for (const rider of attempted) {
     const ordered = orderedIds.has(rider.rider_id);
-    const p = clamp(
-      t.successBase
-        + (ordered ? orderedBonus : 0)
-        + t.successStrengthGain * (clamp(rider.strength, 0, 1) - fieldStrength)
-        - t.successPressureWeight * pressure
-        - t.successCrowdWeight * crowd,
-      pLo,
-      pHi,
-    );
+    const raw = t.successBase
+      + (ordered ? orderedBonus : 0)
+      + t.successStrengthGain * (clamp(rider.strength, 0, 1) - fieldStrength)
+      - t.successPressureWeight * pressure
+      - t.successCrowdWeight * crowd;
+    const danger = dangerPressure.get(rider.rider_id);
+    const p = clamp(danger === undefined ? raw : raw - DANGEROUS_ATTEMPT_TUNING.pressureWeight * danger, pLo, pHi);
     const r = input.roll("success", rider.rider_id);
     if (r < p) successes.push({ riderId: rider.rider_id, margin: p - r, ordered });
   }

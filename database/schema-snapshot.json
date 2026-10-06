@@ -2658,6 +2658,7 @@
         "imported_at",
         "in_breakaway",
         "breakaway_caught",
+        "breakaway_dropped",
         "sprint_points",
         "kom_points",
         "bonus_seconds",

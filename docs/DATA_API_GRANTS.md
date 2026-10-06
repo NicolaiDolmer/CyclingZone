@@ -70,3 +70,5 @@ An applicable policy with no corresponding privilege is a review finding,
 not authorization to grant access. No production repair is automatic.
 
 Review contract (#6220): new SQL files get the full new-table audit. Modified legacy files check newly added exposure statements, without retroactively requiring new declarations for old CREATE TABLE statements. A table newly introduced in an existing file still receives the full contract check against that complete current file, including declarations, grants, policies and RLS outside the added statements. Blanket client/default-privilege grants fail in either case. Standalone anon/PUBLIC table grants also fail without a new-table contract. SELECT INTO public and SET SCHEMA public fail closed and require explicit review. This remains a static table guard, not full function/view coverage or a required branch-protection check.
+
+Proposal promotion is audited with rename detection disabled: its destination is a new SQL file even when Git would label the move R100. The real-Git promotion regression covers this path (#6220, 6 October).
