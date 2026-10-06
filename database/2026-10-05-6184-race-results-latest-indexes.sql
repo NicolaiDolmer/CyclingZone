@@ -35,6 +35,13 @@
 -- rollback: database/manual/2026-10-05-6184-race-results-latest-indexes-cleanup.sql.
 -- =============================================================================
 
+-- 6/10: foerste apply blev afbrudt af statement_timeout efter ca. 2,5 min
+-- (idx_race_results_race_id_imported_at blev INVALID og er ryddet op med
+-- DROP INDEX CONCURRENTLY). Et CONCURRENTLY-byg paa ca. 1,9 mio. raekker skal
+-- have lov at koere faerdigt (ejer-valg 6/10: loft 20 min). Gaelder kun denne psql-session (auto-migrate
+-- koerer hver fil i sin egen `psql -f`).
+SET statement_timeout = '20min';
+
 DO $$
 DECLARE
   bad text;
