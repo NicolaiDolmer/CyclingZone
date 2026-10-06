@@ -121,7 +121,6 @@ import {
 import {
   CRON_MONITOR_1MIN,
   CRON_MONITOR_5MIN,
-  CRON_MONITOR_10MIN,
   CRON_MONITOR_15MIN,
   CRON_MONITOR_30MIN,
   CRON_MONITOR_60MIN,
@@ -1334,10 +1333,11 @@ async function runRaceFinalizeWatchCron() {
 // rider_rankings_mv/team_standings_ext_mv/team_race_points_mv aggregerer fra
 // race_results og refreshes primært ved race-finalization (raceRunner.js). Denne
 // periodiske fallback fanger enhver misset refresh (fx en fejlet finalization-sti)
-// + holder ranglisten fersk under et igangværende etapeløb (mellem-etaper). Best-
-// effort i sig selv (refreshRankingMatviewsSafe sluger + logger fejl).
+// + holder ranglisten fersk under et igangværende etapeløb (mellem-etaper).
+// Uændrede ticks er billige; fejl markeres i cron-monitoren og work beholdes.
 async function runRankingMatviewRefreshCron() {
-  await refreshRankingMatviewsGated(supabase, { captureExceptionFn: sentryCapture });
+  const result = await refreshRankingMatviewsGated(supabase, { captureExceptionFn: sentryCapture });
+  if (result === false) throw new Error('Ranking refresh coordinator did not complete');
 }
 
 // ─── Global Rank ugentligt bevægelses-snapshot (#2453) ────────────────────────
@@ -2100,13 +2100,13 @@ export function startCron() {
     15 * 60 * 1000
   );
 
-  // Every 10 minutes: rangliste-matview refresh (#2175) — fallback for race-
-  // finalization-hooken + fersk-holder under igangværende etapeløb. Best-effort;
+  // Every minute: drain durable ranking changes; clean ticks never refresh views.
+  // Fallback for race-finalization-hooken under igangværende etapeløb;
   // bevidst INGEN immediate-run (finalization-hooken dækker friske resultater, og
   // en refresh skal ikke fyre ved hver genstart — mirror stage-scheduler-mønstret).
   setInterval(
-    trackedTick("ranking matview refresh", monitorCron("ranking-matview-refresh", runRankingMatviewRefreshCron, CRON_MONITOR_10MIN)),
-    10 * 60 * 1000
+    trackedTick("ranking matview refresh", monitorCron("ranking-matview-refresh", runRankingMatviewRefreshCron, CRON_MONITOR_1MIN)),
+    60 * 1000
   );
 
   // Every 24h: Global Rank ugentligt bevægelses-snapshot (#2453) — dagligt tjek,

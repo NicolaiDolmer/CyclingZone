@@ -165,7 +165,7 @@ export const ALL_CRON_MONITORS = [
   // #4147 — halv-finaliserings-vagt. Read-only; ikke gated bag et flag (en vagt der
   // som default er slukket er præcis den fejl den findes for at fange).
   ["race-finalize-watch", CRON_MONITOR_15MIN],
-  ["ranking-matview-refresh", CRON_MONITOR_10MIN],
+  ["ranking-matview-refresh", CRON_MONITOR_1MIN],
   ["global-rank-weekly-snapshot", CRON_MONITOR_24H],
   ["stall-watchdog", CRON_MONITOR_30MIN],
   ["traffic-retention", CRON_MONITOR_24H],

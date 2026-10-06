@@ -71,6 +71,14 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
 
+### Ranking refresh events (#5692, staging verification 6/10)
+`ranking_refresh_work_state` records relevant source changes transactionally.
+Backend polling drains captured versions through service-only claim, renewal,
+token-fenced concurrent refresh and atomic completion RPCs. Clean ticks perform
+no full refresh; result publication schedules background work. SQL must be
+applied before the backend change. Contract and staging evidence:
+[GAME_INVARIANTS.md](GAME_INVARIANTS.md#durable-ranking-events-5692-ejer-210--prioritet-610).
+
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`
 i ét `app_config`-opslag. Svaret evalueres pr. viewer gennem `evaluateFlagStage`:
