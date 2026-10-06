@@ -1127,6 +1127,7 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {is} other {are}} caught. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} did the chasing.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {is} other {are}} caught by the peloton.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
+        "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "incident_crash_time_loss": "{rider} goes down and loses {seconds} sec.",
         "incident_crash_hard": "{rider} goes down hard: {seconds} sec. lost, and {days, plural, one {# day} other {# days}} on the sidelines.",
