@@ -6,7 +6,7 @@
 // Laasen nedenfor koerer hele etapen gennem simulateStageV4 med alle live-hooks
 // og AI-ordrer bygget gennem prod-adapterens vej (buildStageOrderPlan), og
 // sammenligner en digest af StageOutput med en vaerdi fastfrosset mod koden
-// FOER #6201 (main paa cbeb70c65). Tre ruter (flad, kuperet, bjerg) rammer
+// FOER #6201 (main efter #6253, 093a3b1ec). Tre ruter (flad, kuperet, bjerg) rammer
 // dannelsen, AI-ordren og udbruddets fart. Giver en af dem en anden digest for
 // legacy, orders_gc_v1 eller orders_gc_v2, er det et laek ud af v3. Aendrer en
 // LEGITIM senere aendring etapen, opdateres tallene sammen med den.
@@ -122,7 +122,7 @@ function stageDigest(routeName: keyof typeof ROUTES, revision: RulesRevision, se
 
 const SEEDS = ["6201-pin-a", "6201-pin-b"];
 
-// Fastfrosset mod koden FOER #6201 (main cbeb70c65).
+// Fastfrosset mod koden FOER #6201 (main 093a3b1ec; v1/v2-fastfrysningen er uaendret siden cbeb70c65).
 const PINNED_PRE_6201: Record<string, string> = {
   "flat/6201-pin-a/legacy": "6f086d048dc87c1949963405",
   "flat/6201-pin-a/orders_gc_v1": "1a601a7872ac2bc3edbff5e3",
@@ -158,14 +158,17 @@ test("#6201 v3 slukket: legacy/v1/v2 giver en byte-identisk etape med koden foer
   assert.deepEqual(actual, PINNED_PRE_6201);
 });
 
-// orders_gc_v3 paa samme etaper FOER #6201 (main cbeb70c65). Flad er med for
-// fuldstaendighedens skyld: dens dannelse er uaendret, men et lille udbrud
-// koerer langsommere, saa den kan aendre sig.
+// orders_gc_v3 paa samme etaper FOER #6201, men EFTER #6253 (tidsmodellen):
+// beregnet paa main 093a3b1ec, som har #6253 men ikke #6201. Fladt er med
+// for fuldstaendighedens skyld: dens dannelse er uaendret, men et lille
+// udbrud koerer langsommere, saa den kan aendre sig.
 const PINNED_V3_PRE_6201: Record<string, string> = {
-  "hilly/6201-pin-a/orders_gc_v3": "335bff19e6579829b840d174",
-  "hilly/6201-pin-b/orders_gc_v3": "bc2a253254e7c3584698af18",
-  "mountain/6201-pin-a/orders_gc_v3": "9ffafdc98317b790c3d6a72d",
-  "mountain/6201-pin-b/orders_gc_v3": "dce04f2249b2d18af6beaabb",
+  "flat/6201-pin-a/orders_gc_v3": "80c2e9b83f736fd351e7c253",
+  "flat/6201-pin-b/orders_gc_v3": "3200d69ecc91d800c5cfbd47",
+  "hilly/6201-pin-a/orders_gc_v3": "1b77bf8ecee12e677114a701",
+  "hilly/6201-pin-b/orders_gc_v3": "355a2c2f6d43389a872c1874",
+  "mountain/6201-pin-a/orders_gc_v3": "4f9ab37d122ead93affbcf1e",
+  "mountain/6201-pin-b/orders_gc_v3": "7456dfe9055d5bd61d322c48",
 };
 
 test("#6201 foelsomhed: kuperet og bjerg under orders_gc_v3 giver en anden etape end foer, ellers beviste digesten intet", () => {
