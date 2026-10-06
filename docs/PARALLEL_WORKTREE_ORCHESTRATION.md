@@ -20,6 +20,17 @@ Paa Windows finder runneren alle `codex`-kommandoer paa PATH og foretraekker des
 
 Runneren optager planen under den faelles boelgelaas, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
 
+**Git-metadata (#6214):** Worker/fixer bruger CLI'ens `--approve-for-me`, som
+bevarer workspace-write og giver automatisk review af specifikke nødvendige
+kommandoer ved en sandbox-grænse. Det erstatter `--sandbox workspace-write`;
+CLI'en afviser begge flag sammen. Reviewer/undersøgelse forbliver read-only.
+Der gives ingen blanketadgang til hovedcheckoutets `.git`. Efter hvert setup
+skal en fast permission-probe skabe/slette egne markører i privat Git-dir,
+object-store og eget branch-ref-navn og aflevere et matchende lokalt bevis,
+før nogen implementerings-worker startes. Afvist/manglende bevis stopper batchen.
+Bevarede worktrees genstartes ikke med ny `--run`: mål branch/WIP/PR, observer
+den gamle writer som terminal, og gentag proben før ejerens afgrænsede recovery.
+
 Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
 
 | Egenskab | Haandhaevelse og graense |
