@@ -34,6 +34,12 @@ test('another process owns the pass, so the caller does not duplicate it', async
   assert.equal(await runRankingRefreshWork(db, async () => { throw new Error('Must not refresh'); }, options), 'coalesced');
 });
 
+test('SQL cooldown (min interval/backoff) skips heavy work without reporting a failure', async () => {
+  const db = client({ status: 'cooldown' });
+  assert.equal(await runRankingRefreshWork(db, async () => { throw new Error('Must not refresh'); }, options), 'cooldown');
+  assert.deepEqual(db.calls.map(call => call.name), ['claim_ranking_refresh_work']);
+});
+
 test('failure retains dirtiness and failed token fencing cannot report success', async () => {
   const db = client({ status: 'claimed', target_version: '2', token });
   assert.equal(await runRankingRefreshWork(db, async () => false, options), false);

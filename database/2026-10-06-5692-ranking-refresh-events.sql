@@ -2,6 +2,9 @@
 -- SSOT: docs/GAME_INVARIANTS.md. Existing ranking values/definitions stay intact.
 -- data-api-access: {"table":"public.ranking_refresh_work_state","reason":"Backend ranking coordinator only","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE"]}}
 BEGIN;
+-- Review 6/10: DROP/CREATE TRIGGER takes ACCESS EXCLUSIVE on hot tables; never queue
+-- player reads behind a long-running refresh. A timeout fails the migration cleanly (re-run is idempotent).
+SET LOCAL lock_timeout = '5s';
 
 CREATE TABLE IF NOT EXISTS public.ranking_refresh_work_state (
   matview_group text PRIMARY KEY CHECK (matview_group = 'ranking'),
@@ -17,6 +20,9 @@ CREATE TABLE IF NOT EXISTS public.ranking_refresh_work_state (
   CHECK ((lease_token IS NULL AND leased_version IS NULL AND lease_expires_at IS NULL)
     OR (lease_token IS NOT NULL AND leased_version IS NOT NULL AND lease_expires_at IS NOT NULL))
 );
+-- Review 6/10: DB-protection. Min. interval between passes + exponential backoff after failures.
+ALTER TABLE public.ranking_refresh_work_state ADD COLUMN IF NOT EXISTS consecutive_failures integer NOT NULL DEFAULT 0;
+ALTER TABLE public.ranking_refresh_work_state ADD COLUMN IF NOT EXISTS last_failed_at timestamptz;
 ALTER TABLE public.ranking_refresh_work_state ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.ranking_refresh_work_state FROM PUBLIC,anon,authenticated,service_role;
 GRANT SELECT,INSERT,UPDATE ON TABLE public.ranking_refresh_work_state TO service_role;
@@ -47,6 +53,15 @@ BEGIN
       dirty_since=coalesce(dirty_since,v_now) WHERE matview_group='ranking' RETURNING * INTO s;
   END IF;
   IF s.requested_version=s.completed_version THEN RETURN jsonb_build_object('status','clean'); END IF;
+  -- Normal freshness contract is <= 5 min (owner 2/10): a 4-min floor keeps it while capping
+  -- full passes at 15/hour however often source events arrive. Forced repair bypasses both gates.
+  IF p_force IS NOT TRUE AND s.last_completed_at IS NOT NULL AND s.last_completed_at>v_now-interval '4 minutes' THEN
+    RETURN jsonb_build_object('status','cooldown');
+  END IF;
+  IF p_force IS NOT TRUE AND s.consecutive_failures>0 AND s.last_failed_at IS NOT NULL
+    AND s.last_failed_at>v_now-least(interval '30 minutes',interval '4 minutes'*power(2,least(s.consecutive_failures,4)-1)) THEN
+    RETURN jsonb_build_object('status','cooldown');
+  END IF;
   IF s.lease_token IS NOT NULL AND s.lease_expires_at>v_now THEN RETURN jsonb_build_object('status','busy'); END IF;
   IF NOT pg_try_advisory_xact_lock(hashtextextended('cz-ranking-refresh',0)) THEN RETURN jsonb_build_object('status','busy'); END IF;
   UPDATE public.ranking_refresh_work_state SET lease_token=p_token,leased_version=requested_version,
@@ -83,11 +98,13 @@ BEGIN
   IF p_success IS TRUE THEN
     UPDATE public.ranking_refresh_work_state SET completed_version=p_target_version,
       dirty_since=CASE WHEN requested_version=p_target_version THEN NULL ELSE dirty_since END,
-      last_completed_at=v_now,lease_token=NULL,leased_version=NULL,lease_expires_at=NULL WHERE matview_group='ranking';
+      last_completed_at=v_now,consecutive_failures=0,last_failed_at=NULL,
+      lease_token=NULL,leased_version=NULL,lease_expires_at=NULL WHERE matview_group='ranking';
     INSERT INTO public.matview_refresh_heartbeat(matview_group,refreshed_at) VALUES('ranking',v_now)
     ON CONFLICT(matview_group) DO UPDATE SET refreshed_at=excluded.refreshed_at;
   ELSE
-    UPDATE public.ranking_refresh_work_state SET lease_token=NULL,leased_version=NULL,lease_expires_at=NULL WHERE matview_group='ranking';
+    UPDATE public.ranking_refresh_work_state SET lease_token=NULL,leased_version=NULL,lease_expires_at=NULL,
+      consecutive_failures=consecutive_failures+1,last_failed_at=v_now WHERE matview_group='ranking';
   END IF;
   RETURN true;
 END;

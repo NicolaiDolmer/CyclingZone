@@ -23,7 +23,7 @@ export async function getRankingRefreshWorkState(client: Client, now: Date): Pro
 /** Database admission is authoritative across clients/processes and restarts. */
 export async function runRankingRefreshWork(client: Client, pass: Pass, {
   testNowFn, tokenFn = randomUUID, force = false, captureExceptionFn,
-}: Options = {}): Promise<boolean | 'coalesced'> {
+}: Options = {}): Promise<boolean | 'coalesced' | 'cooldown'> {
   const token = tokenFn();
   // Production omits p_now: SQL takes authoritative time after row admission.
   const timeArgs = () => testNowFn ? { p_now: testNowFn().toISOString() } : {};
@@ -35,6 +35,8 @@ export async function runRankingRefreshWork(client: Client, pass: Pass, {
     const claim = data as Record<string, unknown>;
     if (claim.status === 'clean') return true;
     if (claim.status === 'busy') return 'coalesced';
+    // SQL min-interval/backoff gate: work stays pending, the 1-min cron retries. Not a failure.
+    if (claim.status === 'cooldown') return 'cooldown';
     if (claim.status !== 'claimed' || claim.token !== token || typeof claim.target_version !== 'string'
       || !/^\d{1,19}$/.test(claim.target_version) || BigInt(claim.target_version) > 9223372036854775807n) return false;
     const target = claim.target_version;

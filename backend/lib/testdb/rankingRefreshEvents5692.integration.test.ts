@@ -40,7 +40,14 @@ test('#5692 durable dirty work, fencing, grants, transaction events and rollover
     return (await db.query<{ value: { requested_version: string; completed_version: string; pending: boolean } }>(
       'SELECT public.get_ranking_refresh_work_state($1::timestamptz) AS value', [NOW])).rows[0].value;
   }
-  async function claim(token = A, at = NOW) {
+  // Scenarios below test fencing/events, not the min-interval/backoff gate: age
+  // the gate state first. The gate itself has its own scenario at the end.
+  async function ageGates() {
+    await db.exec(`UPDATE public.ranking_refresh_work_state SET last_completed_at=last_completed_at-interval '1 day',
+      last_failed_at=NULL,consecutive_failures=0 WHERE matview_group='ranking';`);
+  }
+  async function claim(token = A, at = NOW, gated = false) {
+    if (!gated) await ageGates();
     return (await db.query<{ value: { status: string; target_version: string } }>(
       'SELECT public.claim_ranking_refresh_work($1::uuid,false,$2::timestamptz) AS value', [token,at])).rows[0].value;
   }
@@ -110,6 +117,27 @@ test('#5692 durable dirty work, fencing, grants, transaction events and rollover
   });
   await t.test('reapplying preserves generation and pending work', async () => {
     const before=await state(); await db.exec(migration); assert.deepEqual(await state(),before);
+  });
+  await t.test('min interval and failure backoff protect the database; forced repair bypasses them', async () => {
+    const T = (m: number) => new Date(Date.parse(NOW) + m * 60_000).toISOString();
+    await db.exec(`UPDATE public.ranking_refresh_work_state SET lease_token=NULL,leased_version=NULL,lease_expires_at=NULL;`);
+    await db.exec('UPDATE public.riders SET team_id=NULL;');
+    const w=await claim(A,T(100)); assert.equal(w.status,'claimed');
+    assert.equal(await finish(A,w.target_version,true,T(100)),true);
+    await db.exec(`UPDATE public.riders SET team_id='${B}';`);
+    assert.equal((await claim(A,T(103),true)).status,'cooldown','3 min after a pass: no new full pass');
+    const after=await claim(A,T(104.1),true); assert.equal(after.status,'claimed','4-min floor keeps the 5-min contract');
+    assert.equal(await finish(A,after.target_version,false,T(104.2)),true);
+    assert.equal((await claim(A,T(107),true)).status,'cooldown','1st failure backs off 4 min');
+    const retry=await claim(A,T(108.3),true); assert.equal(retry.status,'claimed');
+    assert.equal(await finish(A,retry.target_version,false,T(108.4)),true);
+    assert.equal((await claim(A,T(115),true)).status,'cooldown','2nd failure backs off 8 min');
+    const forced=(await db.query<{ value: { status: string; target_version: string } }>(
+      'SELECT public.claim_ranking_refresh_work($1::uuid,true,$2::timestamptz) AS value',[B,T(115)])).rows[0].value;
+    assert.equal(forced.status,'claimed','forced repair bypasses cooldown');
+    assert.equal(await finish(B,forced.target_version,true,T(115.1)),true);
+    const s=(await db.query<{ f: number }>(`SELECT consecutive_failures AS f FROM public.ranking_refresh_work_state`)).rows[0];
+    assert.equal(s.f,0,'success resets the backoff');
   });
   await t.test('all seven dependency tables capture statement insert/update/delete/truncate', async () => {
     const scenarios = [
