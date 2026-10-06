@@ -266,7 +266,9 @@ function MarkerTip({ label, className = "", children }) {
       {pos && (
         <Portal>
           <span role="tooltip" className={`${tooltipClass({ side: "bottom" })} whitespace-normal`}
-            style={{ position: "fixed", left: pos.left, top: pos.top, right: "auto", bottom: "auto", transform: "none", maxWidth: pos.maxWidth, opacity: 1 }}>
+            /* #6271: Tailwind 4 writes `-translate-x-1/2` as the `translate`
+               property, so `transform: none` alone no longer cancels it. */
+            style={{ position: "fixed", left: pos.left, top: pos.top, right: "auto", bottom: "auto", transform: "none", translate: "none", maxWidth: pos.maxWidth, opacity: 1 }}>
             {label}
           </span>
         </Portal>
