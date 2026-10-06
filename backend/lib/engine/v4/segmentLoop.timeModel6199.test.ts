@@ -85,7 +85,11 @@ const ROUTES: Record<"descent_finish" | "rolling", RouteV2> = {
 
 function stageDigest(routeName: keyof typeof ROUTES, revision: RulesRevision, seed: string): string {
   const input: StageInput = { route: ROUTES[routeName], startlist: field(), orders: [], seed, tuning: RACE_V4_TUNING, rules_revision: revision };
-  return createHash("sha256").update(JSON.stringify(simulateStageV4(input))).digest("hex").slice(0, 24);
+  // Afrundet til 1e-6 foer hash: Linux (glibc) og Windows kan afvige paa sidste bit i Math.cos/log
+  // (rng.ts), saa en raa digest lavet paa Windows fejlede i CI uden at motoren var aendret (6/10).
+  const quantized = JSON.stringify(simulateStageV4(input), (_k, v) =>
+    typeof v === "number" && !Number.isInteger(v) ? Math.round(v * 1e6) / 1e6 : v);
+  return createHash("sha256").update(quantized).digest("hex").slice(0, 24);
 }
 
 const SEEDS = ["6199-pin-a", "6199-pin-b"];
@@ -95,29 +99,32 @@ const SEEDS = ["6199-pin-a", "6199-pin-b"];
 // (feltet har intet klassement og ingen spar-hjaelpere, saa #6187 og #3460 er
 // inaktive); forskellen under v3 er derfor tidsmodellens.
 const PINNED_PRE_6223: Record<string, string> = {
-  "descent_finish/6199-pin-a/legacy": "09b2cefb52c90f1980d2c686",
-  "descent_finish/6199-pin-a/orders_gc_v1": "f4ecaf4e07b1d62000fda02b",
-  "descent_finish/6199-pin-a/orders_gc_v2": "71daceae32119def55e27a0f",
-  "descent_finish/6199-pin-b/legacy": "5c45238839fdde851dcf8b25",
-  "descent_finish/6199-pin-b/orders_gc_v1": "f49c26c0d8c35ab4e4e8f376",
-  "descent_finish/6199-pin-b/orders_gc_v2": "c58744b6c433ad1c3cb457ec",
-  "rolling/6199-pin-a/legacy": "63a088b4f566ea2cfed0faa1",
-  "rolling/6199-pin-a/orders_gc_v1": "4ab0712f239be34fdb887f1e",
-  "rolling/6199-pin-a/orders_gc_v2": "4ab0712f239be34fdb887f1e",
-  "rolling/6199-pin-b/legacy": "4e25b4cc2d3f4ab5b16745ff",
-  "rolling/6199-pin-b/orders_gc_v1": "af53170f6194128fc1f2d440",
-  "rolling/6199-pin-b/orders_gc_v2": "af53170f6194128fc1f2d440",
+  "descent_finish/6199-pin-a/legacy": "4ea54e74c93f1cafbf2f11c5",
+  "descent_finish/6199-pin-a/orders_gc_v1": "922a0ae0f4774304f763ca84",
+  "descent_finish/6199-pin-a/orders_gc_v2": "d1f6caeedcf09a80f7b11364",
+  "descent_finish/6199-pin-b/legacy": "1933aa55ea45e2eec661be43",
+  "descent_finish/6199-pin-b/orders_gc_v1": "29df7986ac17d3bc770c4a8e",
+  "descent_finish/6199-pin-b/orders_gc_v2": "3ce78d7971ad467aaf287e62",
+  "rolling/6199-pin-a/legacy": "611acdf6c6bbacaf050baa37",
+  "rolling/6199-pin-a/orders_gc_v1": "195535f8d169b19e13db2988",
+  "rolling/6199-pin-a/orders_gc_v2": "195535f8d169b19e13db2988",
+  "rolling/6199-pin-b/legacy": "dde6bb8fba67716cebe23abd",
+  "rolling/6199-pin-b/orders_gc_v1": "31e250b9da048b4ccbfe6326",
+  "rolling/6199-pin-b/orders_gc_v2": "31e250b9da048b4ccbfe6326",
 };
 
 test("#6199/#6200 v3 slukket: legacy/v1/v2 giver en byte-identisk etape med koden foer #6223 (fastfrosset digest)", () => {
+  const actual: Record<string, string> = {};
   for (const routeName of Object.keys(ROUTES) as Array<keyof typeof ROUTES>) {
     for (const seed of SEEDS) {
       for (const revision of ["legacy", "orders_gc_v1", "orders_gc_v2"] as RulesRevision[]) {
         const key = `${routeName}/${seed}/${revision}`;
-        assert.equal(stageDigest(routeName, revision, seed), PINNED_PRE_6223[key], key);
+        actual[key] = stageDigest(routeName, revision, seed);
       }
     }
   }
+  // Hele tabellen paa een gang, saa en CI-afvigelse viser alle beroerte noegler.
+  assert.deepEqual(actual, PINNED_PRE_6223);
 });
 
 test("#6199/#6200 foelsomhed: samme etaper under orders_gc_v3 giver en anden etape, ellers beviste digesten intet", () => {
