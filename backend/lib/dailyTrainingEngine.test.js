@@ -1511,7 +1511,7 @@ test("#4846 (flag on): historik-snapshot skrives pr. løbsdag uden tavs kasserin
   // #6210: maks +1 pr. evne pr. DATO, saa de to loebsdage samme dato poppe i hver
   // sin halvdel af evnerne (ellers klipper dato-loftet loebsdag 13's point).
   const half = Math.ceil(VISIBLE_ABILITIES.length / 2);
-  const nearlyThere = (keys) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, keys.includes(k) ? 0.99 : 0]));
+  const nearlyThere = (keys) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, keys.includes(k) ? 0.9999 : 0]));
   const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere(VISIBLE_ABILITIES.slice(0, half)) })] });
   seedRaceDayTick(state, { gameDay: 12 });
 
