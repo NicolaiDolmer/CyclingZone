@@ -125,14 +125,19 @@ test("gate: besvaret objekt uden analytics: true tæller som afvisning (samme no
   assert.equal(isPosthogAllowed({ analytics: "true" }), false);
 });
 
-test("gate: DB-samtykket vinder over det lokale (samme forrang som ConsentProvider)", () => {
+test("gate: en afvisning lokalt ELLER i DB lukker (mest restriktive vinder)", () => {
   // Afvist på enhed A, første besøg på enhed B: lokalt ubesvaret, profilen
   // bærer afvisningen ⇒ ingen PostHog, og dermed ingen identify.
   assert.equal(isPosthogAllowed(resolveEffectiveConsent(null, REJECTED)), false);
-  // Lokalt accepteret, men DB siger afvist ⇒ DB vinder.
+  // Lokalt accepteret, men DB siger afvist ⇒ lukket.
   assert.equal(isPosthogAllowed(resolveEffectiveConsent(ACCEPTED, REJECTED)), false);
-  // Lokalt afvist, DB accepteret (nyere valg på en anden enhed) ⇒ DB vinder.
-  assert.equal(isPosthogAllowed(resolveEffectiveConsent(REJECTED, ACCEPTED)), true);
+  // Afviser NU i banneret mens DB-skrivningen stadig er undervejs (profilen
+  // bærer det gamle ja) ⇒ lukket med det samme, ikke først når DB svarer.
+  assert.equal(isPosthogAllowed(resolveEffectiveConsent(REVOKED, ACCEPTED)), false);
+  // Begge accepteret ⇒ åben.
+  assert.equal(isPosthogAllowed(resolveEffectiveConsent(ACCEPTED, ACCEPTED)), true);
+  // Lokalt ubesvaret, DB accepteret ⇒ åben.
+  assert.equal(isPosthogAllowed(resolveEffectiveConsent(null, ACCEPTED)), true);
 });
 
 // --- Memory-persistence mod den ægte posthog-js-lite -------------------------

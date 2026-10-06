@@ -74,14 +74,24 @@ export function isPosthogAllowed(stored) {
   return stored.analytics === true;
 }
 
-// Hvilket samtykke der gælder, med SAMME forrang som ConsentProvider: findes en
-// DB-værdi (users.consent_preferences), vinder den over den lokale. Det lukker
-// tilfældet "afvist på enhed A, første besøg på enhed B": den lokale værdi er
-// tom, men profilen bærer afvisningen, og vi må ikke identify'e den bruger.
+// Hvilket samtykke der gælder for PostHog: det MEST restriktive af det lokale
+// (cz_consent_v1) og DB-værdien (users.consent_preferences). En afvisning et
+// hvilket som helst sted lukker gaten.
+//   - "Afvist på enhed A, første besøg på enhed B": lokalt tomt, profilen bærer
+//     afvisningen ⇒ lukket, og vi identify'er ikke den bruger.
+//   - "Afviser nu i banneret": saveConsent() opdaterer det lokale med det samme,
+//     men profilen først når DB-skrivningen er lykkedes. Lod vi DB-værdien vinde
+//     (som ConsentProvider gør ved synk), ville PostHog køre videre i det vindue,
+//     og i al evighed hvis skrivningen fejler.
+// Omvendt (lokal afvisning, nyere accept i DB fra en anden enhed) er gaten
+// lukket indtil ConsentProvider har synket DB-værdien ned lokalt. Det er den
+// sikre retning at tage fejl i.
 export function resolveEffectiveConsent(localConsent, remoteConsent) {
-  if (remoteConsent && typeof remoteConsent === "object") return remoteConsent;
-  if (localConsent && typeof localConsent === "object") return localConsent;
-  return null;
+  const local = localConsent && typeof localConsent === "object" ? localConsent : null;
+  const remote = remoteConsent && typeof remoteConsent === "object" ? remoteConsent : null;
+  if (local && !isPosthogAllowed(local)) return local;
+  if (remote && !isPosthogAllowed(remote)) return remote;
+  return remote || local;
 }
 
 // Den ene klient-instans. Sat af startPosthog(), aldrig genskabt.

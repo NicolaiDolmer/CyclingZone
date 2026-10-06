@@ -26,9 +26,10 @@ import {
 export default function PosthogIntegration() {
   const { consent, hasResponded } = useConsent();
   const { userId, profile, loading: profileLoading } = useUserProfile();
-  // Samme forrang som ConsentProvider: DB-værdien vinder over den lokale. Vi
-  // læser profilen direkte (ikke kun den synkede context-værdi), så en
-  // afvisning fra en anden enhed gælder i SAMME render som profilen lander.
+  // Den mest restriktive af lokal værdi og DB-værdi (se
+  // resolveEffectiveConsent). Vi læser profilen direkte (ikke kun den synkede
+  // context-værdi), så en afvisning fra en anden enhed gælder i SAMME render
+  // som profilen lander, og en afvisning i banneret gælder før DB-skrivningen.
   const effectiveConsent = resolveEffectiveConsent(
     hasResponded ? consent : null,
     profile?.consent_preferences,
