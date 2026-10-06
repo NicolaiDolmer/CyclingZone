@@ -8,7 +8,12 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 @layer theme, base, components, utilities;
-@import 'tailwindcss/theme.css' layer(theme);
+/* theme(inline): stock scales (spacing, text sizes, tracking …) are written
+   into the utilities as values (`padding: .5rem`, like v3) instead of
+   `calc(var(--spacing) * 2)` + a :root block of every variable. Nothing in src
+   reads Tailwind's theme variables at runtime; it keeps the CSS ~0.8 KB gz
+   smaller. */
+@import 'tailwindcss/theme.css' layer(theme) theme(inline);
 /* source(none) + the two @source lines = v3's `content` glob. Without it v4
    scans the whole project (tests, scripts, patch-note prose) and generates
    CSS for every word that happens to be a class name. #5449: `ts`/`tsx` MUST
