@@ -59,12 +59,25 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
     for (const id of ids) if (morningRiderIds.has(id)) { const value = entry(id); if (value.caught || value.survived) continue; value.dropped = true; }
   };
   let formationSeen = false;
+  // #6185 part 2: the engine (orders_gc_v3) reports drops itself and marks the
+  // formation with `drops_reported`. Its `breakaway_dropped` events then decide
+  // who left the break; a split is no longer read as a drop (a split ahead is
+  // an attack, not a drop). Older stages keep the split projection.
+  let engineDrops = false;
+  // #6234: a `breakaway_caught` whose pursuer held escapees only (a dropped
+  // piece of the break closing the gap) is not a catch. Older engines emitted
+  // it; the piece's merge into the break that follows is a rejoin.
+  const catchByEscapeesOnly = (chaseGroupId: unknown): boolean => {
+    const members = typeof chaseGroupId === "string" ? groups.get(chaseGroupId) : undefined;
+    return !!members && members.size > 0 && [...members].every((id) => morningRiderIds.has(id));
+  };
   for (const event of events) {
     const p = event.params ?? {};
     const ids = riderIds(p.rider_ids);
     const groupId = typeof p.group_id === "string" ? p.group_id : null;
     if (event.type === "breakaway_formed" && !formationSeen) {
       formationSeen = true;
+      engineDrops = p.drops_reported === true;
       for (const id of ids) { morningRiderIds.add(id); entry(id).morning = true; }
       if (groupId) groups.set(groupId, new Set(ids));
       const source = typeof p.source_group_id === "string" ? p.source_group_id : "peloton-0";
@@ -84,10 +97,11 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       if (source) for (const id of ids) groups.get(source)?.delete(id);
       if (groupId) groups.set(groupId, new Set(ids));
       // A split takes the named riders out of their source group, ahead of it
-      // or behind it (the event does not say which).
-      dropMorning(ids);
+      // or behind it (the event does not say which). Projection only: skipped
+      // when the engine reports drops itself.
+      if (!engineDrops) dropMorning(ids);
     } else if (event.type === "breakaway_dropped") {
-      // #6185 part 2 (engine, later): an explicit drop event wins when present.
+      // #6185 part 2: the engine's own drop event (orders_gc_v3).
       dropMorning(ids);
     } else if (event.type === "group_merged" && groupId && typeof p.into_group_id === "string") {
       const target = groups.get(p.into_group_id) ?? new Set<string>();
@@ -99,7 +113,7 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       groups.delete(groupId);
       groups.set(p.into_group_id, combined);
     } else if (event.type === "breakaway_caught") {
-      catchMorning(ids, true);
+      if (!catchByEscapeesOnly(p.chase_group_id)) catchMorning(ids, true);
     } else if (event.type === "breakaway_survived") {
       // The engine's verdict at the line: the riders it names were in the
       // group of kind `breakaway` at the finish, so they held on, even after

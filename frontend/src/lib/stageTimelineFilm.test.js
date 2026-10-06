@@ -487,3 +487,18 @@ test("#3463: ttt-nøglerne findes i BEGGE locale-filer og lækker ingen tal", as
     );
   }
 });
+
+test('#6185 del 2: breakaway_dropped gets its own short line in EN and DA, without numbers', async () => {
+  const d = describeEvent({ type: 'breakaway_dropped', km: 52, params: { group_id: 'chase-1000', from_group_id: 'breakaway-0', rider_ids: ['rider-1', 'rider-2'] } }, { riderNameById: riderNameByIdFixture() });
+  assert.deepEqual(d, { key: 'breakaway_dropped', params: { riders: 'Ada Pedersen, Mikkel Hansen', count: 2 } });
+  assert.equal(describeEvent({ type: 'breakaway_dropped', km: 52, params: { rider_ids: ['unknown'] } }, { riderNameById: new Map() }), null);
+  const { readFileSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public', 'locales');
+  for (const lang of ['en', 'da']) {
+    const text = JSON.parse(readFileSync(join(localesDir, lang, 'races.json'), 'utf8')).detail.film.event.breakaway_dropped;
+    assert.ok(text, lang + ': missing detail.film.event.breakaway_dropped');
+    assert.ok(!/\{(seconds|gap|km)\}|%/.test(text), lang + ': no numbers (fog of war)');
+  }
+});

@@ -1,4 +1,4 @@
-import { findChaseGroup } from "./chaseGroup.ts";
+import { findChaseGroup, isBreakawayPiece, rejoinBreakawayPiece, withBreakawayDrops } from "./chaseGroup.ts";
 // backend/lib/engine/v4/mechanics/breakaway.ts
 // Race Engine v4 F3 (#4030, #3855): M5 - udbrud v2, jagt-interesse-modellen
 // fra #2416, foldet ind som v4's udbrudsmekanik (mor-spec §3.3/§4 M5).
@@ -1712,7 +1712,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     if (!breakaway || !chase) continue;
     const newGap = chase.gap_seconds - breakaway.gap_seconds;
     const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
-    if (caught) {
+    // #6234 (KUN orders_gc_v3): et afsat stykke af udbruddet der lukker hullet, er kommet tilbage, ikke en indhentning.
+    if (caught && ordersGcV3 && isBreakawayPiece(chase)) {
+      groups = rejoinBreakawayPiece(groups, chase.id, breakawayId);
+      events.push({ km: round2(ctx.segment.to_km), type: "group_merged", params: { group_id: chase.id, into_group_id: breakawayId, rider_ids: [...chase.rider_ids] } });
+    } else if (caught) {
       groups = groups.map(group => group.id === breakawayId ? { ...group, gap_seconds: Math.min(group.gap_seconds, chase.gap_seconds) } : group);
       events.push({
         km: round2(ctx.segment.to_km),
@@ -1782,6 +1786,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
  * muteres, samme (state, ctx) -> samme output.
  */
 export const breakawayHook: BreakawayHook = (state: EngineState, ctx: BreakawayHookContext): SegmentHookResult => {
+  const result = breakawayHookCore(state, ctx);
+  // #6185 del 2 (KUN orders_gc_v3): motoren melder selv "sat af fra udbruddet" (chaseGroup.ts).
+  return ctx.ordersGcV3 === true ? withBreakawayDrops(result, round2(ctx.segment.to_km)) : result;
+};
+
+const breakawayHookCore: BreakawayHook = (state: EngineState, ctx: BreakawayHookContext): SegmentHookResult => {
   if (ctx.segmentIndex === FORMATION_SEGMENT_INDEX && findBreakawayGroups(state.groups).length === 0) {
     // #5955: regel-revisionen vaelger dannelses-politikken. Legacy (default,
     // fixtures og alle loeb bundet foer orders_gc_v1) er uaendret.
