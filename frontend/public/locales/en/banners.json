@@ -28,7 +28,7 @@
       },
       "analytics": {
         "label": "Analytics",
-        "desc": "I anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics), which features get used (PostHog) and page views (Vercel Web Analytics), so I can fix bad UX."
+        "desc": "I anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics) and page views (Vercel Web Analytics), so I can fix bad UX. PostHog counts page views and key steps in the game without cookies and links them to your account ID once you log in. Rejecting analytics turns PostHog off too."
       },
       "marketing": {
         "label": "Marketing",
