@@ -51,6 +51,7 @@
       "staff_not_found": "Denne staff er ikke på dit hold længere.",
       "already_released": "Allerede opsagt.",
       "insufficient_funds": "Du har ikke råd til severance ({amount} CZ$).",
+      "insufficient_available_balance": "Ikke nok disponible penge: en del af din saldo er låst i auktionsbud.",
       "facilities_disabled": "Staff-styring er ikke tilgængelig endnu.",
       "auth": "Du skal være logget ind for at gøre det.",
       "network": "Forbindelsen fejlede. Prøv igen om lidt.",
