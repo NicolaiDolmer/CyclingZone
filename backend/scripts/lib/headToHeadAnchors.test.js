@@ -8,6 +8,9 @@ import {
   judge,
   scoreFieldCohesion,
   scoreDescentVsSummitRatio,
+  scoreDescentGapContract,
+  descentGapClosure,
+  rowsUseV3Rules,
   scoreDescentAttackBounds,
   scorePunchCorrelation,
   scoreCobblestoneLift,
@@ -900,4 +903,133 @@ test("aggregateScorecards: doemmer 3-seed-MIDDEL, kopierer ikke foerste seeds do
   assert.equal(aggregated.v4.verdict, "PASS", "middelvaerdien (11.67s) er indenfor 10-20s-baandet, men seed 1 alene (25s) var FAIL");
   assert.ok(Math.abs(aggregated.v4.value - 11.666666666666666) < 1e-9);
   assert.deepEqual(aggregated.v4.spread, { min: 5, max: 25, seeds: 3 });
+});
+
+// ── #6257: nedkoersels-kontrakt (orders_gc_v3) mod det gamle ratio-anker ────
+
+// En etape med nedkoersel mod maal (sidste segment 4 km). Rytter "r10" er nr. 10
+// i maal og ligger `topGap` s efter fronten ved toppen; i maal ligger han `finishGap` efter.
+function descentContractRow({ topGap, finishGap, rulesRevision, lastKind = "descent", withSnapshot = true }) {
+  const fronts = ["f1", "f2"];
+  const others = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"];
+  const results = [
+    { rider_id: "f1", rank: 1, time_seconds: 1000 },
+    { rider_id: "f2", rank: 2, time_seconds: 1000.5 },
+    ...others.map((id, i) => ({ rider_id: id, rank: 3 + i, time_seconds: 1001 + i })),
+    { rider_id: "r10", rank: 10, time_seconds: 1000 + finishGap },
+  ].map((x) => ({ group_id: "g", status: "finished", ...x }));
+  return {
+    raw: {
+      rulesRevision,
+      route: {
+        profile_type: "mountain", finale_type: "descent",
+        segments: [
+          { kind: "climb", from_km: 90, to_km: 96 },
+          { kind: lastKind, from_km: 96, to_km: 100 },
+        ],
+      },
+      tuning: RACE_V4_TUNING,
+      stageRow: { race_id: "r" },
+      v3Output: { ranked: [] },
+      v4Output: {
+        results,
+        timeline: { events: [] },
+        groupSnapshots: withSnapshot ? [
+          { km: 90, groups: [] },
+          { km: 96, groups: [
+            { group_id: "front", kind: "peloton", rider_ids: [...fronts, ...others], gap_seconds: 0 },
+            { group_id: "chase", kind: "chase", rider_ids: ["r10"], gap_seconds: topGap },
+          ] },
+          { km: 100, groups: [] },
+        ] : [],
+      },
+    },
+  };
+}
+
+test("descentGapClosure: maaler lukningen fra toppen til maal i s, s/km og andel af hullet", () => {
+  // Hul 40 s ved toppen, 34 s i maal over 4 km -> 6 s lukket = 1,5 s/km = 15 %.
+  const m = descentGapClosure(descentContractRow({ topGap: 40, finishGap: 34 }));
+  assert.equal(m.closedSeconds, 6);
+  assert.equal(m.perKm, 1.5);
+  assert.equal(m.share, 0.15);
+});
+
+test("descentGapClosure: ikke maalbar uden nedkoersel til sidst, uden snapshot eller naar nr. 10 er i front", () => {
+  assert.equal(descentGapClosure(descentContractRow({ topGap: 40, finishGap: 34, lastKind: "flat" })), null);
+  assert.equal(descentGapClosure(descentContractRow({ topGap: 40, finishGap: 34, withSnapshot: false })), null);
+  assert.equal(descentGapClosure(descentContractRow({ topGap: 0, finishGap: 0 })), null);
+});
+
+test("scoreDescentGapContract: inden for begge lofter -> PASS (kun v4; v3-motoren har ikke reglen)", () => {
+  const a = scoreDescentGapContract([descentContractRow({ topGap: 40, finishGap: 36 })]); // 1 s/km, 10 %
+  assert.equal(a.id, "descent_gap_closure_contract");
+  assert.equal(a.v4.verdict, "PASS");
+  assert.equal(a.v3.verdict, "N/A");
+  assert.ok(a.v4.value < 1);
+});
+
+test("scoreDescentGapContract: bryder s/km-loftet eller 50 %-loftet -> FAIL", () => {
+  // 8 s lukket paa 4 km = 2 s/km (over 1,5), men kun 20 % af 40 s.
+  assert.equal(scoreDescentGapContract([descentContractRow({ topGap: 40, finishGap: 32 })]).v4.verdict, "FAIL");
+  // 6 s lukket = 1,5 s/km, men 60 % af et hul paa 10 s (over halvdelen).
+  assert.equal(scoreDescentGapContract([descentContractRow({ topGap: 10, finishGap: 4 })]).v4.verdict, "FAIL");
+});
+
+test("scoreDescentGapContract: median over etaper, saa en enkelt udlaeber ikke afgoer dommen", () => {
+  const rows = [
+    descentContractRow({ topGap: 40, finishGap: 38 }),
+    descentContractRow({ topGap: 40, finishGap: 37 }),
+    descentContractRow({ topGap: 40, finishGap: 20 }), // udlaeber
+  ];
+  assert.equal(scoreDescentGapContract(rows).v4.verdict, "PASS");
+});
+
+test("scoreDescentGapContract: ingen maalbare etaper -> N/A, aldrig et gaettet tal", () => {
+  const a = scoreDescentGapContract([descentContractRow({ topGap: 0, finishGap: 0 })]);
+  assert.equal(a.v4.verdict, "N/A");
+  assert.equal(a.v4.value, null);
+});
+
+test("rowsUseV3Rules: kun orders_gc_v3 og senere; legacy, v1 og v2 er det ikke", () => {
+  assert.equal(rowsUseV3Rules([{ raw: { rulesRevision: "orders_gc_v3" } }]), true);
+  for (const rev of [undefined, null, "legacy", "orders_gc_v1", "orders_gc_v2"]) {
+    assert.equal(rowsUseV3Rules([{ raw: { rulesRevision: rev } }]), false, String(rev));
+  }
+  assert.equal(rowsUseV3Rules([{ raw: {} }], "orders_gc_v3"), true);
+});
+
+test("buildScorecard: v3-regler faar kontrakt-ankeret i stedet for ratioen; v2 og legacy beholder det gamle", () => {
+  const ctx = { teamByRider: new Map(), abilitiesByRider: new Map(), v4EntrantsById: {} };
+  const idsFor = (rulesRevision) =>
+    buildScorecard([descentContractRow({ topGap: 40, finishGap: 36, rulesRevision })], ctx).map((a) => a.id);
+
+  const v3 = idsFor("orders_gc_v3");
+  assert.ok(v3.includes("descent_gap_closure_contract"));
+  assert.ok(!v3.includes("descent_vs_summit_gap_ratio"));
+  for (const id of v3) assert.ok(Object.hasOwn(AGGREGATION_BAND_BY_ANCHOR_ID, id), `${id} mangler i AGGREGATION_BAND_BY_ANCHOR_ID`);
+  for (const rev of ["orders_gc_v2", "orders_gc_v1", "legacy", undefined]) {
+    const ids = idsFor(rev);
+    assert.ok(ids.includes("descent_vs_summit_gap_ratio"), String(rev));
+    assert.ok(!ids.includes("descent_gap_closure_contract"), String(rev));
+  }
+  assert.equal(v3.length, idsFor("orders_gc_v2").length, "samme antal ankre i begge veje");
+});
+
+test("aggregateScorecards: kontrakt-ankeret doemmes paa MEDIANEN over seeds", () => {
+  const cell = (value) => ({
+    value, sampleCount: 3, verdict: value <= 1 ? "PASS" : "FAIL", naReason: null, display: String,
+    closurePerKm: value, closureShare: value / 2,
+  });
+  const card = (value) => [{
+    id: "descent_gap_closure_contract", label: "x", bandLabel: "x", source: "x",
+    v3: { value: null, sampleCount: 0, verdict: "N/A", naReason: "x", display: String },
+    v4: cell(value),
+  }];
+  // Middel af (0.5, 0.6, 3) er 1,37 (FAIL), medianen er 0,6 (PASS).
+  const [agg] = aggregateScorecards([card(0.5), card(0.6), card(3)]);
+  assert.equal(agg.v4.value, 0.6);
+  assert.equal(agg.v4.verdict, "PASS");
+  assert.deepEqual(agg.v4.spread, { min: 0.5, max: 3, seeds: 3 });
+  assert.equal(agg.v3.verdict, "N/A");
 });

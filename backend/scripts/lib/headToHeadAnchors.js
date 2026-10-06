@@ -23,7 +23,8 @@
 import { observeRace, aggregateObservations } from "../../lib/raceDominanceMetrics.js";
 import { isTimeTrial } from "../../lib/raceStageProfileGenerator.js";
 import { observeStageV4, cohesionFraction, spreadAtRank, descentAttackGainStats } from "./headToHeadObservers.js";
-import { mean, spearmanCorrelation, percentile, fmt, fmtPct } from "./headToHeadStats.js";
+import { mean, median, spearmanCorrelation, percentile, fmt, fmtPct } from "./headToHeadStats.js";
+import { isOrdersGcV3OrLater } from "../../lib/raceEngineRulesRevision.ts";
 
 // ---------------------------------------------------------------------------
 // Baand (kilder citeret pr. mor-spec §5 + #2415)
@@ -37,6 +38,14 @@ export const ANCHOR_BANDS = {
   descentToSummitGapRatio: {
     max: 0.5,
     source: "#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)",
+  },
+  // #6257 (ejer 6/10): under orders_gc_v3 maaler dette kontrakt-anker i stedet for
+  // nedkoersels/summit-ratioen. Tallene er ejerens regel fra #6200 (RACE_ENGINE_RULES
+  // "Nedkoersel mod maal"): et hul kan hoejst lukke ca. 1,5 s/km og hoejst halvdelen.
+  descentGapClosureContract: {
+    maxSecondsPerKm: 1.5,
+    maxShare: 0.5,
+    source: "ejer 6/10 (#6257, regel fra #6200): nr. 10's hul fra sidste top til maal lukker hoejst 1,5 s/km og hoejst 50 % (median over seeds)",
   },
   descentAttackGainSeconds: {
     min: 10, max: 20,
@@ -205,6 +214,79 @@ export function scoreDescentVsSummitRatio(rows) {
     source: band.source,
     v3: { ...judge(v3.value, band, v3.n, "kraever baade descent- og long_climb-finale-etaper i input"), display: (v) => fmt(v, 2) },
     v4: { ...judge(v4.value, band, v4.n, "kraever baade descent- og long_climb-finale-etaper i input"), display: (v) => fmt(v, 2) },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2b. #6257: nedkoersels-kontrakten (kun orders_gc_v3 og senere). Maaler ejerens
+//     regel direkte i stedet for en gab-ratio mellem to etape-arketyper.
+// ---------------------------------------------------------------------------
+
+/** Er raekken koert under orders_gc_v3 eller senere? Revisionen ligger paa raa.rulesRevision (headToHeadV4.runHeadToHead). */
+export function rowsUseV3Rules(rows, rulesRevision = undefined) {
+  const revision = rulesRevision ?? rows.find((r) => r.raw?.rulesRevision)?.raw?.rulesRevision;
+  return isOrdersGcV3OrLater(revision);
+}
+
+/**
+ * Nr. 10's hul fra sidste top til maal paa EEN etape med nedkoersel mod maal.
+ * "Toppen" er gruppe-snapshottet ved nedkoerselssegmentets start; "fronten" er
+ * den gruppe der foerer dér, og dens tid i maal er dens hurtigste rytters.
+ * Returnerer null naar etapen ikke kan maales (ingen nedkoersel til sidst, nr. 10
+ * ikke i maal, nr. 10 allerede i front-gruppen, eller intet snapshot ved toppen).
+ * @returns {{closedSeconds:number, perKm:number, share:number}|null}
+ */
+export function descentGapClosure(row) {
+  const segs = row.raw?.route?.segments ?? [];
+  const last = segs[segs.length - 1];
+  if (!last || last.kind !== "descent") return null;
+  const descentKm = last.to_km - last.from_km;
+  if (!(descentKm > 0)) return null;
+
+  const snapshots = row.raw.v4Output?.groupSnapshots ?? [];
+  const top = [...snapshots].reverse().find((s) => s.km <= last.from_km + 1e-6);
+  if (!top) return null;
+
+  const finishers = (row.raw.v4Output?.results ?? [])
+    .filter((x) => x.status !== "abandoned")
+    .sort((a, b) => a.rank - b.rank);
+  const rider10 = finishers[9];
+  if (!rider10) return null;
+
+  const group10 = top.groups.find((g) => g.rider_ids.includes(rider10.rider_id));
+  if (!group10 || !(group10.gap_seconds > 0)) return null;
+  const frontIds = new Set(top.groups.filter((g) => g.gap_seconds === 0).flatMap((g) => g.rider_ids));
+  const frontTimes = finishers.filter((x) => frontIds.has(x.rider_id)).map((x) => x.time_seconds);
+  if (frontTimes.length === 0) return null;
+
+  const finishGap = rider10.time_seconds - Math.min(...frontTimes);
+  const closedSeconds = group10.gap_seconds - finishGap;
+  return { closedSeconds, perKm: closedSeconds / descentKm, share: closedSeconds / group10.gap_seconds };
+}
+
+/**
+ * Dommen er den vaerste af de to lofter, hver maalt som median over etaperne:
+ * vaerdi = max(s/km / 1,5, andel / 0,5), PASS naar <= 1. Median (ikke middel)
+ * saa en enkelt udlaeber-etape ikke afgoer dommen.
+ */
+export function scoreDescentGapContract(rows) {
+  const band = ANCHOR_BANDS.descentGapClosureContract;
+  const measures = rows.map(descentGapClosure).filter((m) => m !== null);
+  const perKm = median(measures.map((m) => m.perKm));
+  const share = median(measures.map((m) => m.share));
+  const value = measures.length === 0 ? null : Math.max(perKm / band.maxSecondsPerKm, share / band.maxShare);
+  const naNote = "ingen etaper med nedkoersel mod maal og et maalbart hul ved toppen i input";
+  return {
+    id: "descent_gap_closure_contract",
+    label: "Nedkoersel mod maal: nr. 10's hul lukker hoejst loftet (kontrakt, #6257)",
+    bandLabel: "<= 1 (hoejst 1,5 s/km og hoejst 50 % af hullet)",
+    source: band.source,
+    v3: { ...judge(null, {}, 0, "kontrakten er en orders_gc_v3-regel i v4-motoren; v3-motoren har den ikke"), display: (v) => fmt(v, 2) },
+    v4: {
+      ...judge(value, { max: 1 }, measures.length, naNote),
+      display: (v) => fmt(v, 2),
+      ...(value === null ? {} : { closurePerKm: perKm, closureShare: share }),
+    },
   };
 }
 
@@ -1047,15 +1129,18 @@ export function scoreIttTimeRealism(rows) {
  * simulerede) rows fra headToHeadV4.js's runHeadToHead().
  * @param {Array} rows  rows med .raw = { v3Output, v4Output, route, tuning, stageRow }
  * @param {object} ctx
+ * @param {string} [ctx.rulesRevision]  overstyrer rows' egen revision (raw.rulesRevision); udeladt = legacy
  * @param {Map<string,string|null>} ctx.teamByRider
  * @param {Map<string,object>} ctx.abilitiesByRider  rider_id -> abilities-record
  * @param {Record<string,object>} ctx.v4EntrantsById  rider_id -> v4 Entrant (for observeStageV4)
  * @returns {Array<{id:string,label:string,bandLabel:string,source:string,v3:object,v4:object}>}
  */
-export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById }) {
+export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById, rulesRevision }) {
   return [
     scoreFieldCohesion(rows),
-    scoreDescentVsSummitRatio(rows),
+    // #6257: under orders_gc_v3 maaler kontrakt-ankeret i stedet for ratioen
+    // (samme plads i raekken); legacy/v1/v2 beholder #3426-ankeret uaendret.
+    rowsUseV3Rules(rows, rulesRevision) ? scoreDescentGapContract(rows) : scoreDescentVsSummitRatio(rows),
     scoreDescentAttackBounds(rows),
     scorePunchCorrelation(rows, abilitiesByRider),
     scoreCobblestoneLift(rows, abilitiesByRider),
@@ -1099,6 +1184,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
 export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
   descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
+  descent_gap_closure_contract: { max: 1 },
   descent_attack_gain_bounds: ANCHOR_BANDS.descentAttackGainSeconds,
   punch_correlation: { min: 0.2 },
   cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
@@ -1115,8 +1201,25 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   itt_largest_same_time_share: ANCHOR_BANDS.ittLargestSameTimeShare,
 };
 
+// #6257: kontrakt-ankeret doemmes paa MEDIANEN over seeds (ejer 6/10), ikke middel.
+function aggregateMedianCells(cells) {
+  const measured = cells.filter((c) => c.verdict !== "N/A" && Number.isFinite(c.value));
+  if (measured.length === 0) return { ...cells[0], sampleCount: 0, spread: null };
+  const values = measured.map((c) => c.value);
+  const sampleCount = measured.reduce((sum, c) => sum + c.sampleCount, 0);
+  const judged = judge(median(values), { max: 1 }, sampleCount);
+  return {
+    ...judged,
+    display: cells[0].display,
+    closurePerKm: median(measured.map((c) => c.closurePerKm)),
+    closureShare: median(measured.map((c) => c.closureShare)),
+    spread: { min: Math.min(...values), max: Math.max(...values), seeds: values.length },
+  };
+}
+
 const PER_ANCHOR_AGGREGATORS = {
   breakaway_rate_per_terrain: aggregateBreakawayCells,
+  descent_gap_closure_contract: aggregateMedianCells,
 };
 
 export function aggregateScorecards(scorecards) {
@@ -1194,6 +1297,9 @@ export function formatScorecard(scorecard) {
     lines.push(`  Baand: ${anchor.bandLabel}  (kilde: ${anchor.source})`);
     lines.push(`  v3: ${formatCell(anchor.v3)}`);
     lines.push(`  v4: ${formatCell(anchor.v4)}`);
+    if (Number.isFinite(anchor.v4?.closurePerKm)) {
+      lines.push(`    median lukning: ${fmt(anchor.v4.closurePerKm, 2)} s/km, ${fmtPct(anchor.v4.closureShare)} af hullet`);
+    }
     lines.push(...formatPerTerrain(anchor));
     lines.push(...formatFavoriteDefinitions(anchor.favoriteDefinitions));
   }
