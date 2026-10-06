@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { tailwindV3AlphaPlugin } from "./vite-plugins/tailwind-v3-alpha.ts";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -144,6 +146,13 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // #6271: Tailwind 4 via its Vite plugin (replaces the PostCSS plugin +
+    // autoprefixer + postcss.config.js). Config lives in src/index.css @theme.
+    // optimize:false + tailwindV3AlphaPlugin right after it: see that file —
+    // Tailwind's optimizer would merge the colour fallbacks the plugin has to
+    // fix; Vite's own lightningcss minify flattens + prefixes instead.
+    tailwindcss({ optimize: false }),
+    tailwindV3AlphaPlugin(),
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),

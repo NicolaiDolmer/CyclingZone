@@ -111,8 +111,8 @@ function TierCard({ tier, highlighted = false }) {
 function SectionHeader({ title, sub, className = "" }) {
   return (
     <div className={"max-w-2xl " + className}>
-      <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight leading-none">{title}</h2>
-      {sub && <p className="text-cz-2 text-sm sm:text-base mt-3 leading-relaxed">{sub}</p>}
+      <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight leading-none sm:leading-10">{title}</h2>
+      {sub && <p className="text-cz-2 text-sm sm:text-base mt-3 leading-relaxed sm:leading-6">{sub}</p>}
     </div>
   );
 }
@@ -242,10 +242,10 @@ export default function FounderSupporterPage() {
             <p className="text-cz-accent-t text-xs font-bold uppercase tracking-[0.2em] mb-4">
               {t("heroEyebrow")}
             </p>
-            <h1 className="text-cz-1 font-display text-5xl sm:text-6xl lg:text-7xl tracking-tight leading-[0.92]">
+            <h1 className="text-cz-1 font-display text-5xl sm:text-6xl lg:text-7xl tracking-tight leading-[0.92] sm:leading-none">
               {t("heroHeadline")}
             </h1>
-            <p className="text-cz-2 text-base sm:text-lg mt-6 max-w-2xl leading-relaxed">
+            <p className="text-cz-2 text-base sm:text-lg mt-6 max-w-2xl leading-relaxed sm:leading-7">
               {t("heroSub")}
               <strong className="text-cz-1">{t("heroSubStrong")}</strong>
             </p>
@@ -286,7 +286,7 @@ export default function FounderSupporterPage() {
                 <CheckIcon className="w-6 h-6 text-cz-accent-t shrink-0" />
                 {t("promiseTitle")}
               </h2>
-              <p className="text-cz-1 text-base sm:text-lg leading-relaxed">{t("promiseBody")}</p>
+              <p className="text-cz-1 text-base sm:text-lg leading-relaxed sm:leading-7">{t("promiseBody")}</p>
               <p className="text-cz-3 text-xs mt-4 italic">{t("promiseFootnote")}</p>
             </div>
           </div>
@@ -383,7 +383,7 @@ export default function FounderSupporterPage() {
         {/* ----- FAQ ----- */}
         <section className="px-4 sm:px-6 py-12 sm:py-16">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight leading-none mb-8">{t("faqTitle")}</h2>
+            <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight leading-none sm:leading-10 mb-8">{t("faqTitle")}</h2>
             <div className="bg-cz-card border border-cz-border rounded-cz px-5 sm:px-6">
               {t("faqItems", { returnObjects: true }).map((item, i) => (
                 <FaqItem key={i} idx={i} q={item.q} a={item.a} />

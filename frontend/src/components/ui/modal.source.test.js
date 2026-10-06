@@ -28,5 +28,5 @@ test("DialogSurface bruger panelClass + reveal-klasse + valgfri X-luk-knap", () 
 });
 
 test("scrim er uden blur (A9)", () => {
-  assert.ok(!/backdrop-blur/.test(src), "ingen backdrop-blur-sm");
+  assert.ok(!/backdrop-blur/.test(src), "ingen backdrop-blur");
 });

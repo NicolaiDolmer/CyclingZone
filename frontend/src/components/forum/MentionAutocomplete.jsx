@@ -138,7 +138,7 @@ export default function MentionAutocomplete({ textareaId, value, onChange, t }) 
 
     return () => {
       el.removeEventListener("focus", handleFocus);
-      el.removeEventListener("blur-sm", handleBlur);
+      el.removeEventListener("blur", handleBlur);
       el.removeEventListener("input", handleInput);
       el.removeEventListener("keyup", syncCaret);
       el.removeEventListener("click", syncCaret);

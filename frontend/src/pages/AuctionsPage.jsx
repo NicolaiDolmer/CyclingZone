@@ -1938,7 +1938,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
   const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
-    // Thead's shadow-xs er fjernet — hairline-rulen på tr'en herunder (border-b)
+    // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
     // er nu den eneste adskillelse, jf. cz-table-recipen.
     <thead className="sticky top-0 z-table-head bg-cz-card">
       <tr className="border-b border-cz-border">

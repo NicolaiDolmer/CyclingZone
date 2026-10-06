@@ -48,7 +48,7 @@ test("wrap: rounded-cz + hairline på bg-card, ingen skygge", () => {
   assert.ok(WRAP.includes("rounded-cz "));
   assert.ok(WRAP.includes("border-cz-border"));
   assert.ok(WRAP.includes("bg-cz-card"));
-  assert.ok(!WRAP.includes("shadow-sm"));
+  assert.ok(!WRAP.includes("shadow"));
 });
 
 test("header-celle: text-2xs uppercase tracking .06em i text-3", () => {
@@ -108,7 +108,7 @@ test("sticky kolonne: opak bg + 1px højre-rule + mobil-min-bredde — ALDRIG r�
   assert.ok(c.includes("border-r"));
   assert.ok(c.includes("bg-cz-card"));
   assert.ok(c.includes("min-w-[148px]"));
-  assert.ok(!c.includes("shadow-sm"), "sticky-skyggen er erstattet af opak celle + højre-rule");
+  assert.ok(!c.includes("shadow"), "sticky-skyggen er erstattet af opak celle + højre-rule");
 });
 
 test("zone-rækker: fuld-række-tint, ingen hover, 2px separator kun på boundary", () => {
