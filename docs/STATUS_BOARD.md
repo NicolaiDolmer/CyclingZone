@@ -9,27 +9,25 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (2d) — groen
+- #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (3d) — groen
 - #6198 chore(5864): dry-run + ejer-gated haandhaevelse af udloebne kontrakter (1d) — groen
 - #6254 fix(ops): migrate Supabase Log Watch to unified logs endpoint (0d) — groen
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (0d) — groen
-- #6259 chore(cron): fjern død Deadline Day-cron og afstem sæsonskifte-readiness (0d) — groen
-- #6260 chore(race-engine): v3-nedkoerselsanker maaler ejerens regel (Refs #6257) (0d) — groen
-- #6247 fix(race-engine): udbruddets størrelse følger etapeprofilen (orders_gc_v3, #6201) (0d) — groen
 - #6265 fix(db): indeks-migrationen for #6184 faar et loft paa 20 min i sessionen (0d) — groen
-- #6269 docs(patch-notes): 7.343 - præmieprognose, udbrudsetiketter, scouting, udtagelse (0d) — groen
-- #6270 chore(deps): sharp 0.35.5 i roden og marketing (Dependabot #66 #67) (0d) — groen
+- #6281 fix(ops): resume a terminal API lane once and keep its review (0d) — groen
+- #6279 feat(analytics): server-side PostHog-milepael foerste loeb med egen trup (Refs #6278) (0d) — groen
+- #6280 feat(analytics): PostHog cookielos foer login, identify efter login, kerne-rejsen (Refs #… (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
 
 - #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (120d)
 - #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (120d)
-- #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (118d)
-- #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (117d)
+- #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (119d)
+- #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (118d)
 - #1461 security(email): DMARC enforcement — p=none → quarantine → reject (110d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (84d)
-- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (81d)
+- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (82d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (79d)
 - #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (75d)
 - #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (73d)
@@ -43,16 +41,15 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (0d) — groen
-- #6259 chore(cron): fjern død Deadline Day-cron og afstem sæsonskifte-readiness (0d) — groen
-- #6247 fix(race-engine): udbruddets størrelse følger etapeprofilen (orders_gc_v3, #6201) (0d) — groen
-- #6269 docs(patch-notes): 7.343 - præmieprognose, udbrudsetiketter, scouting, udtagelse (0d) — groen
+- #6280 feat(analytics): PostHog cookielos foer login, identify efter login, kerne-rejsen (Refs #… (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
-- #5827 5268 rating-neutral mental ability dry run V3 (7d) — groen
+- #5827 5268 rating-neutral mental ability dry run V3 (8d) — groen
 - #6136 fix(watchdog): bound result metadata with SQL summaries (#6102) (2d) — groen
 - #6170 test(loadtest): fail closed on staging data prerequisites (#5904) (0d) — groen
+- #6282 fix(ops): fair verification places by runtime and wave priority (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
@@ -71,12 +68,12 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (75d)
 - #2884 [feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vind… (73d)
 - #3154 [ops] Ejer-direktiv 26/7: backlog ned til ~200 åbne issues på 7-14 dage + fuld prioriteri… (68d)
+- #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (61d)
 - #3461 [bug/balance] Restitutionens timing: 'Træn i dag' om morgenen brænder dagens eneste resti… (61d)
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (60d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (58d)
-- #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (49d)
-- #4010 Supabase-hærdning: realtime-MalformedJWT, sponsor-sweep, offset-paginering og getUser() p… (47d)
-- …og 686 mere
+- #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (50d)
+- …og 690 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -87,10 +84,12 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #5124 [mobil] D-047-standarden til de fire haandrullede tabeller: Auktioner, Transferlisten, Da… (25d)
 - #6027 [træning] Train now giver ingen synlig respons: rapporten skjuler løbsdag 1-4 indtil dato… (4d)
 - #5947 [bug] Udviklingshistorikken: gårsdagens stigninger mangler hos nogle ryttere, andre steg… (6d)
-- #4847 [træning] "Træn nu" tilbage uden bonus: tidsuafhængigt resultat, dagen afgøres i begge re… (30d)
+- #4847 [træning] "Træn nu" tilbage uden bonus: tidsuafhængigt resultat, dagen afgøres i begge re… (31d)
 - #5845 [docs] Ejer-direktiv 27/9: roadmappen opdateres torsdag 1/10 (8d)
 - #6095 [bug] Gem af etapetaktik overskriver alle etapers intentioner: Giro-intentioner for 17 et… (4d)
 - #3460 [bug/balance] effort er ikke koblet til kaptajnens støtte — 'Spar kræfter' er gratis, 'Ar… (61d)
 - #6219 [proposals-drift] Forslag er anvendt i prod uden at være forfremmet (1d)
 - #6174 [security] Flyt roadmap_split_item og roadmap_resync_flags bag backend (revoke fra authen… (1d)
-- #6221 [supabase-advisor-sweep] Nye advisor-fund uden for accept-listen (0d)
+- #6221 [supabase-advisor-sweep] Nye advisor-fund uden for accept-listen (1d)
+- #5692 [infra] Rangliste-refresh blokerer læsere: billigere beregning, CONCURRENTLY og fælles ko… (11d)
+- #6120 [ops/dead-code] Fjern død Deadline Day-cron: læser transfer_windows hver 5. min uden funk… (3d)
