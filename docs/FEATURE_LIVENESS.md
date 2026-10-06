@@ -15,6 +15,24 @@ Fund er **ikke** automatisk bugs. Nogle er bevidste (en webhook HAR ingen
 frontend-kalder; en outbox ER tom når alt er leveret). Dem suppresser vi i
 scriptets whitelists — og det er netop dér en vagt kan rådne.
 
+## Én måling pr. workflow-run (#6184)
+
+CI kører `audit-feature-liveness.js` én gang med `--json`. Tekstrapporten
+renderes bagefter af `feature-liveness-report.js feature-liveness.json` uden
+databaseadgang. CLI'ens normale tekstformat bruger samme formatter. JSON og
+tekst viser dermed samme timestamp, detectorer og fund, også hvis data ændres
+under workflowet. Et fejlende audit- eller rendering-trin stopper workflowet.
+
+`feature_liveness_table_counts()` og dens præcise tællinger er uændrede:
+Detector A kalder RPC'en én gang pr. audit (plus eksisterende timeout-retries),
+og kører ikke i post-migrationsauditten, som kun bruger Detector C. Optimeringen
+fjerner det tidligere ekstra RPC-kald og alle øvrige gentagne detector-reads
+til tekstrapporten. Den gør ikke det tilbageværende RPC-kald billigere og bruger
+ikke potentielt stale katalogestimater som bevis for en tom tabel.
+
+Staging-bevis: `docs/audits/6184-feature-liveness-staging.json`. Ingen migration,
+prod-skrivning, spillerregel eller whitelist ændres.
+
 ## Reglen for en whitelist-entry
 
 Hver entry skal bære to ting i en kommentar lige over sig:

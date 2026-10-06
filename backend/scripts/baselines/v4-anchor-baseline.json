@@ -320,13 +320,13 @@
     },
     {
       "id": "mountain_top10_spread",
-      "label": "Bjergetape top-10-spredning, topankomster (#2415)",
-      "band_label": "180-240s (~3-4 min)",
-      "source": "#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)",
+      "label": "Bjergetape top-10-spredning, topankomster (#6199)",
+      "band_label": "60-150s (1:00-2:30)",
+      "source": "ejer 5/10 (#6199 del 2, virkelige Grand Tour-topankomster): nr. 10 er 1:00-2:30 efter vinderen. Erstatter #2415's 180-240 s",
       "v3": {
         "value": 110.94285714285715,
         "sampleCount": 105,
-        "verdict": "FAIL",
+        "verdict": "PASS",
         "naReason": null,
         "spread": {
           "min": 107.14285714285714,
@@ -337,7 +337,7 @@
       "v4": {
         "value": 197.23504761904792,
         "sampleCount": 105,
-        "verdict": "PASS",
+        "verdict": "FAIL",
         "naReason": null,
         "spread": {
           "min": 164.06238095238137,

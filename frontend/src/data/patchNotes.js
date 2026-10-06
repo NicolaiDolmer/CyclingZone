@@ -1,5 +1,59 @@
 export const PATCHES = [
   {
+    "version": "7.342",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Riders dropped from the breakaway are shown as dropped",
+          "body": "Race results now show a separate state for a rider who was dropped by his own breakaway. Before, he could be shown as having held on to the finish. Stages since 28/9 are corrected."
+        },
+        "da": {
+          "title": "Ryttere, der blev sat af i udbruddet, vises som sat af",
+          "body": "Løbsresultaterne viser nu en egen tilstand for en rytter, der blev sat af sit eget udbrud. Før kunne han stå som holdt hjem. Etaper siden 28/9 er rettet."
+        },
+        "refs": [6185]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The race film groups repeated events",
+          "body": "Identical events at the same kilometre now appear as one line, so the finish is easier to read."
+        },
+        "da": {
+          "title": "Løbsfilmen samler gentagne hændelser",
+          "body": "Ens hændelser på samme kilometer står nu som én linje, så afslutningen er lettere at læse."
+        },
+        "refs": [6137]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Riders",
+        "en": {
+          "title": "Sorting by reputation follows the number you see",
+          "body": "The order now matches the reputation shown, also across pages in the rider database. Help explains which riders count as stars, and the board's number is the count of riders who qualify, not a fixed group of seven."
+        },
+        "da": {
+          "title": "Sortering efter omdømme følger det tal, du ser",
+          "body": "Rækkefølgen følger nu det viste omdømme, også på tværs af sider i rytterdatabasen. Hjælp forklarer, hvilke ryttere der tæller som stjerner, og bestyrelsens tal er antallet, der opfylder kravet, ikke en fast gruppe på syv."
+        },
+        "refs": [6209]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The login page works in browsers that block site data",
+          "body": "The login page no longer fails when the browser blocks stored site data."
+        },
+        "da": {
+          "title": "Login-siden virker i browsere, der blokerer site-data",
+          "body": "Login-siden fejler ikke længere, når browseren blokerer gemte site-data."
+        },
+        "refs": [6243]
+      }
+    ]
+  },
+  {
     "version": "7.341",
     "date": "2026-10-05",
     "changes": [

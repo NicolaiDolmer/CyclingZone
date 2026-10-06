@@ -176,6 +176,7 @@ CREATE TABLE race_results (
   prize_money BIGINT DEFAULT 0,
   in_breakaway BOOLEAN NOT NULL DEFAULT false,     -- #1499: deskriptiv udbruds-etiket (escapee); påvirker ikke rang/point
   breakaway_caught BOOLEAN NOT NULL DEFAULT false, -- #1499: escapee indhentet før mål (ikke-escapee finishede foran)
+  breakaway_dropped BOOLEAN, -- #6185: escapee sat af fra udbruddet; NULL = ikke vurderet
   imported_at TIMESTAMPTZ DEFAULT NOW()
 );
 
