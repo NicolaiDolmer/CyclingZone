@@ -114,8 +114,10 @@ export async function queryLogs(token, ref, startIso, endIso, fetchImpl = fetch)
   if (!body || body.error != null || !Array.isArray(body.result)) throw new Error('Management-API invalid log result');
   return body.result.map(r => {
     const cnt = Number(r?.cnt);
+    const numericCount = typeof r?.cnt === 'number'
+      || typeof r?.cnt === 'string' && /^\d+$/.test(r.cnt);
     if (!r || !SOURCES.includes(r.source) || typeof r.bucket !== 'string'
-      || r.cnt == null || !Number.isSafeInteger(cnt) || cnt < 0) throw new Error('Management-API invalid log row');
+      || !numericCount || !Number.isSafeInteger(cnt) || cnt < 0) throw new Error('Management-API invalid log row');
     return { source: r.source, bucket: r.bucket, cnt };
   });
 }

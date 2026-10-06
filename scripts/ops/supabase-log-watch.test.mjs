@@ -22,7 +22,9 @@ test('log query uses the replacement endpoint and an explicit bounded window', a
 });
 
 test('HTTP 200 query errors and malformed rows cannot appear as a quiet log window', async () => {
-  for (const body of [{ result: null, error: 'PRIVATE_QUERY_DETAIL' }, {}, { result: [{}] }, { result: [{ source: 'edge_logs', bucket: 'x', cnt: 'not-a-count' }] }]) {
+  const invalidCounts = ['not-a-count', '', ' ', true, false, [], [0], {}, null, -1, 0.5];
+  for (const body of [{ result: null, error: 'PRIVATE_QUERY_DETAIL' }, {}, { result: [{}] },
+    ...invalidCounts.map(cnt => ({ result: [{ source: 'edge_logs', bucket: 'x', cnt }] }))]) {
     await assert.rejects(() => logWatch.queryLogs('synthetic-token', 'a'.repeat(20), START, END, async () => ({ ok: true, json: async () => body })), error => {
       assert.doesNotMatch(error.message, /PRIVATE_QUERY_DETAIL/);
       return true;
