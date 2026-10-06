@@ -96,6 +96,33 @@ test("#4350 storage der kaster (private mode) må ikke vælte udlogningen", () =
   assert.doesNotThrow(() => clearSessionExpiredFlash(throwing));
 });
 
+// CYCLINGZONE-8W: i browsere med blokeret site-data kaster selve OPSLAGET
+// `sessionStorage` (SecurityError, DOMException code 18), ikke kun getItem.
+// LoginPage læser flaget i en useState-initializer, så et kast her væltede
+// hele login-siden. Testen stubber det globale opslag, så den rammer den
+// implicitte default-vej (intet storage-argument), ikke en injiceret storage.
+test("CYCLINGZONE-8W selve sessionStorage-opslaget kaster (blokeret site-data) = ingen besked, intet kast", () => {
+  const hadOwn = Object.prototype.hasOwnProperty.call(globalThis, "sessionStorage");
+  const previous = hadOwn ? Object.getOwnPropertyDescriptor(globalThis, "sessionStorage") : null;
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    get() {
+      throw new DOMException(
+        "Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.",
+        "SecurityError",
+      );
+    },
+  });
+  try {
+    assert.equal(peekSessionExpiredFlash(), false);
+    assert.equal(markSessionExpired(), false);
+    assert.doesNotThrow(() => clearSessionExpiredFlash());
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "sessionStorage", previous);
+    else delete globalThis.sessionStorage;
+  }
+});
+
 test("#4350 en levende bruger er aldrig en afvisning", () => {
   assert.equal(isDefinitiveAuthDenial({ user: { id: "u1" }, error: null }), false);
   assert.equal(isDefinitiveAuthDenial({ user: { id: "u1" }, error: { status: 401 } }), false);

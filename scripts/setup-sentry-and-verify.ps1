@@ -33,7 +33,7 @@
   Spring vercel env add-trinet over. Kør smoke-test mod allerede-sat DSN.
 
 .PARAMETER SkipRedeploy
-  Spring redeploy over. Du skal selv pushe en commit eller køre 'vercel --prod'.
+  Spring redeploy over. Du skal selv vælge Redeploy i Vercel eller køre 'vercel --prod'.
 
 .PARAMETER OverwriteExisting
   Overskriv eksisterende env vars uden at spørge.
@@ -203,7 +203,7 @@ if (-not $SkipRedeploy) {
       Write-Host "  OK Redeploy trigget" -ForegroundColor Green
     }
   } else {
-    Write-Host "  -- Springer redeploy over (du skal selv pushe en commit eller koere 'vercel --prod')" -ForegroundColor Gray
+    Write-Host "  -- Springer redeploy over (du skal selv vaelge Redeploy i Vercel eller koere 'vercel --prod')" -ForegroundColor Gray
   }
 } else {
   Write-Step 3 5 "Springer redeploy over (-SkipRedeploy)"

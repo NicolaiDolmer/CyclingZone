@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { needsFrontendBuild, SHARED_BUILD_INPUTS } from './vercel-build-decision.ts';
+import { needsFrontendBuild } from './vercel-build-decision.ts';
 
 test('docs, backend and marketing changes alone do not rebuild the frontend', () => {
-  for (const path of ['docs/NOW.md','backend/lib/example.js','database/example.sql','marketing/app/page.tsx','.claude/learnings/example.md','AGENTS.md']) assert.equal(needsFrontendBuild([path]),false,path);
+  for (const path of ['docs/NOW.md','backend/routes/example.js','database/example.sql','marketing/app/page.tsx','.claude/learnings/example.md','AGENTS.md']) assert.equal(needsFrontendBuild([path]),false,path);
 });
 test('frontend and possible shared build inputs always build', () => {
-  for (const path of ['frontend/src/App.jsx','frontend/public/locales/en/help.json','frontend/package-lock.json','scripts/generate-assets.mjs','package-lock.json','.npmrc','shared/contracts.ts','new-package/index.js']) assert.equal(needsFrontendBuild([path]),true,path);
+  for (const path of ['backend/lib/x.ts','backend/lib/nested/x.js','backend/lib/raceParticipationHistory.ts','frontend/src/App.jsx','frontend/public/locales/en/help.json','frontend/package-lock.json','scripts/generate-assets.mjs','package-lock.json','.npmrc','shared/contracts.ts','new-package/index.js']) assert.equal(needsFrontendBuild([path]),true,path);
 });
 test('a deleted or renamed frontend path still triggers a build', () => {
   assert.equal(needsFrontendBuild(['frontend/src/old.ts','backend/old.ts']),true);
@@ -46,7 +46,7 @@ test('literal relative imports outside frontend remain build inputs', async () =
   const {execFileSync}=await import('node:child_process');
   const fs=await import('node:fs'); const path=await import('node:path');const {fileURLToPath}=await import('node:url');
   const root=fileURLToPath(new URL('../../',import.meta.url));
-  const files=execFileSync('git',['-C',root,'ls-files','-z','--','frontend/src','frontend/scripts','frontend/vite-plugins','frontend/vite.config.js',...SHARED_BUILD_INPUTS],{encoding:'utf8'}).split('\0').filter(f=>/\.(?:[cm]?[jt]sx?|css)$/.test(f)&&!f.includes('.test.'));
+  const files=execFileSync('git',['-C',root,'ls-files','-z','--','frontend/src','frontend/scripts','frontend/vite-plugins','frontend/vite.config.js','backend/lib/raceParticipationHistory.ts'],{encoding:'utf8'}).split('\0').filter(f=>/\.(?:[cm]?[jt]sx?|css)$/.test(f)&&!f.includes('.test.'));
   for(const file of files){
     const source=fs.readFileSync(path.join(root,file),'utf8');
     for(const m of source.matchAll(/(?:from\s*|import\s*\(?|@import\s*)["'](\.[^"']*)["']/g)){
@@ -71,8 +71,8 @@ test('deployment verification follows known build inputs and fails closed', asyn
   const { frontendDeploymentRequirement } = await import('./vercel-build-decision.ts');
   const sha = 'b'.repeat(40), parent = 'a'.repeat(40);
   const git = (files: string) => (args: string[]) => args[0] === 'rev-parse' ? parent : files;
-  assert.equal(frontendDeploymentRequirement(sha, git('backend/lib/example.js\0')).required, false);
-  for (const file of ['frontend/src/App.jsx', 'backend/lib/raceParticipationHistory.ts', 'package-lock.json', 'unknown/file']) {
+  assert.equal(frontendDeploymentRequirement(sha, git('backend/routes/example.js\0')).required, false);
+  for (const file of ['frontend/src/App.jsx', 'backend/lib/x.ts', 'backend/lib/raceParticipationHistory.ts', 'package-lock.json', 'unknown/file']) {
     assert.equal(frontendDeploymentRequirement(sha, git(file+'\0')).required, true, file);
   }
   assert.equal(frontendDeploymentRequirement(sha, () => { throw Error('unavailable'); }).required, true);
@@ -93,4 +93,9 @@ test('independent merges do not require source maps for a frontend build that is
     Test-SentrySourceMaps; Write-Output 'SOURCE_MAP_SKIP_PASSED';`;
   const output = execFileSync('pwsh', ['-NoProfile', '-Command', code], { encoding: 'utf8' });
   assert.match(output, /SOURCE_MAP_SKIP_PASSED/);
+});
+
+test('backend library imports are covered while other backend imports are rejected', () => {
+  assert.equal(needsFrontendBuild(['backend/lib/new-shared.ts']), true);
+  assert.equal(needsFrontendBuild(['backend/routes/new-route.js']), false);
 });

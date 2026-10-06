@@ -1,11 +1,10 @@
-export const SHARED_BUILD_INPUTS: ReadonlySet<string> = new Set(["backend/lib/raceParticipationHistory.ts"]);
 const NON_FRONTEND_PREFIXES = ['backend/', 'database/', 'docs/', 'marketing/', 'pr-screens/', '.claude/', '.agents/', '.github/'];
 const NON_FRONTEND_FILES = new Set(['AGENTS.md', 'CLAUDE.md', 'README.md', 'ARCHITECTURE.md', 'LICENSE', 'LICENSE.md']);
 
 // Unknown paths build. In particular, root scripts, shared packages, lockfiles,
 // toolchain settings and newly introduced directories never silently skip.
 export function needsFrontendBuild(paths: string[]): boolean {
-  return paths.some(path => SHARED_BUILD_INPUTS.has(path) || !NON_FRONTEND_FILES.has(path) && !NON_FRONTEND_PREFIXES.some(prefix => path.startsWith(prefix)));
+  return paths.some(path => path.startsWith('backend/lib/') || !NON_FRONTEND_FILES.has(path) && !NON_FRONTEND_PREFIXES.some(prefix => path.startsWith(prefix)));
 }
 
 export type Git = (args: string[]) => string;

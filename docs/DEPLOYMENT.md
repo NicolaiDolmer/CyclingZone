@@ -247,3 +247,5 @@ Railways default for drain er **0 sekunder**: SIGTERM blev fulgt af SIGKILL uden
 De 150 sekunder er samtidig et vindue hvor den gamle og den nye proces kører side om side. Derfor stopper `gracefulShutdown` planlægningen af nye cron-ticks (`stopCronScheduling()` i `backend/cron.js`) **før** den venter. Igangværende ticks gøres færdige, nye startes ikke. Rækkefølgen er testdækket i `backend/cron.shutdownGuard.test.js`.
 
 **Kendt gæld:** Railways config-as-code (`railway.json`) er markeret deprecated med udløb 2026-12-01 til fordel for Infrastructure as Code. Begge felter ovenfor skal migreres inden da, ellers falder de tilbage til dashboard-værdierne.
+
+Environment changes require **Redeploy in Vercel** (or an explicit production CLI deployment). A documentation-only push can be skipped by the frontend build filter and is not a reliable way to release environment changes.

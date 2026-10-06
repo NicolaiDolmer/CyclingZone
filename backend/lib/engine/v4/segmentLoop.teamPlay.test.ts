@@ -13,18 +13,21 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 import { simulateStageV4 } from "./index.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
-import { teamPlayHook } from "./mechanics/teamPlay.ts";
+import { TEAM_PLAY_TUNING, teamPlayHook } from "./mechanics/teamPlay.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import { validateTimelineEvents } from "./timeline.ts";
 import type {
   AbilityKey,
+  EffortLevel,
   Entrant,
   ProfileType,
   RiderRole,
   RouteV2,
+  RulesRevision,
   Segment,
   StageInput,
   StageOutput,
@@ -320,5 +323,97 @@ test("BELASTNING: holdspillet roerer ALDRIG RiderLoad-kontraktens work_norm", ()
       withoutTeams.state.riders[spec.id].work_norm,
       `${spec.id}: hooket alene maa ikke flytte work_norm ét eneste trin`,
     );
+  }
+});
+
+// ── #3460 (KUN orders_gc_v3): revisions-graensen hele vejen gennem loopet ─────
+// Hooket laeser KUN ctx.ordersGcV3. Det er segmentLoop.ts der oversaetter
+// StageInput.rules_revision til flaget (isOrdersGcV3OrLater), saa graensen
+// testes her gennem hele etapekoerslen og ikke paa hooket isoleret.
+
+const CEILING = TEAM_PLAY_TUNING.captainMaxBonusFraction;
+const SAVE_SHARE = TEAM_PLAY_TUNING.effortCostMultiplier.save;
+
+/** Kaptajn + tre hjaelpere paa samme trin + seks frie ryttere uden holdkammerater. */
+function effortField(effort: EffortLevel): Entrant[] {
+  const specs: RiderSpec[] = [{ id: "cap", level: 60, role: "captain", team: "T1" }];
+  for (let i = 0; i < 3; i++) specs.push({ id: `h${i}`, level: 55, role: "helper", team: "T1" });
+  for (let i = 0; i < 6; i++) specs.push({ id: `f${i}`, level: 55, role: "free_role", team: `SOLO-f${i}` });
+  return entrantsOf(specs).map((e) => (e.role === "helper" ? { ...e, effort } : e));
+}
+
+/** Kaptajnens samlede bonus efter en hel etape gennem runSegmentLoop. */
+function captainBonusThroughLoop(revision: RulesRevision, effort: EffortLevel): number {
+  const input: StageInput = { ...stage(effortField(effort), routeOf("mountain"), "3460-wiring"), rules_revision: revision };
+  const { state } = runSegmentLoop(input, { ...DEFAULT_MECHANIC_HOOKS, teamPlay: teamPlayHook });
+  // Uden selektions-hooks koerer holdet samlet hele dagen; ellers maalte testen noget andet.
+  for (const id of ["h0", "h1", "h2"]) assert.equal(state.riders[id].group_id, state.riders.cap.group_id, `${id} i kaptajnens gruppe`);
+  return (state.riders.cap.team_cp_factor ?? 1) - 1;
+}
+
+test("#3460 WIRING: rules_revision orders_gc_v3 naar teamPlay gennem segment-loopet — et rent spar-hold giver halvt loft", () => {
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
+  const v2Normal = captainBonusThroughLoop("orders_gc_v2", "normal");
+  const v2Save = captainBonusThroughLoop("orders_gc_v2", "save");
+  const v3Save = captainBonusThroughLoop("orders_gc_v3", "save");
+  assert.ok(near(v2Normal, CEILING), `forudsaetning: tre normal-hjaelpere naar loftet (${v2Normal})`);
+  assert.ok(near(v2Save, CEILING), `orders_gc_v2: tre spar-hjaelpere naar stadig det fulde loft, som foer (${v2Save})`);
+  assert.ok(near(v3Save, CEILING * SAVE_SHARE), `orders_gc_v3: et rent spar-hold giver halvt loft (${v3Save})`);
+  assert.equal(captainBonusThroughLoop("orders_gc_v3", "grupetto"), v3Save, "grupetto er praecis som save");
+  assert.equal(captainBonusThroughLoop("orders_gc_v3", "normal"), v2Normal, "et normal-hold er uaendret under v3");
+  for (const revision of ["legacy", "orders_gc_v1"] as RulesRevision[]) {
+    assert.equal(captainBonusThroughLoop(revision, "save"), v2Save, `${revision}: identisk med orders_gc_v2`);
+  }
+});
+
+/** Seks hold med hver sin blanding af trin, saa alle grene i hooket koeres. */
+function mixedEffortField(): Entrant[] {
+  const efforts: EffortLevel[][] = [
+    ["save", "save", "save", "save"],
+    ["normal", "normal", "normal", "normal"],
+    ["normal", "save", "save", "grupetto"],
+    ["grupetto", "grupetto", "save", "protect"],
+    ["protect", "normal", "save", "all_out"],
+    ["all_out", "save", "normal", "save"],
+  ];
+  const out: Entrant[] = [];
+  efforts.forEach((teamEfforts, t) => {
+    out.push(...entrantsOf([{ id: `t${t}cap`, level: 50 + t * 3, role: "captain", team: `T${t}` }]));
+    teamEfforts.forEach((effort, h) => {
+      const [helper] = entrantsOf([{ id: `t${t}h${h}`, level: 40 + ((t * 7 + h * 5) % 25), role: h === 3 ? "hunter" : "helper", team: `T${t}` }]);
+      out.push({ ...helper, effort });
+    });
+  });
+  return out;
+}
+
+/** Hele etapen med alle live-hooks (simulateStageV4), som digest af den frosne StageOutput. */
+function stageDigest(profile: ProfileType, revision: RulesRevision): string {
+  const input: StageInput = { ...stage(mixedEffortField(), routeOf(profile), `3460-pin-${profile}`), rules_revision: revision };
+  return createHash("sha256").update(JSON.stringify(simulateStageV4(input))).digest("hex").slice(0, 24);
+}
+
+// Fastfrosset mod koden FOER #3460 (teamPlay.ts paa 7d864d8bf). Paa den kode
+// gav orders_gc_v3 her samme digest som orders_gc_v2 (feltet har intet
+// klassement, saa #6187 er inaktiv); forskellen nedenfor er derfor #3460's.
+// Aendrer en LEGITIM senere aendring etapen, opdateres tallene sammen med den.
+const PINNED_PRE_3460: Record<string, string> = {
+  "mountain/legacy": "0d8ea90462afd07b0bba76f1",
+  "mountain/orders_gc_v1": "9b2cc0673a1f8774edb3e647",
+  "mountain/orders_gc_v2": "9b2cc0673a1f8774edb3e647",
+  "flat/legacy": "4338f39d854c485d4dd79ef6",
+  "flat/orders_gc_v1": "0816e771c0c0c2469736a25f",
+  "flat/orders_gc_v2": "0816e771c0c0c2469736a25f",
+};
+
+test("#3460 v3 slukket: legacy/v1/v2 giver en byte-identisk etape med koden foer #3460 (fastfrosset digest)", () => {
+  for (const profile of ["mountain", "flat"] as ProfileType[]) {
+    for (const revision of ["legacy", "orders_gc_v1", "orders_gc_v2"] as RulesRevision[]) {
+      assert.equal(stageDigest(profile, revision), PINNED_PRE_3460[`${profile}/${revision}`], `${profile}/${revision}`);
+    }
+  }
+  // Foelsomhed: samme felt under orders_gc_v3 giver en anden etape, ellers beviste digesten intet.
+  for (const profile of ["mountain", "flat"] as ProfileType[]) {
+    assert.notEqual(stageDigest(profile, "orders_gc_v3"), PINNED_PRE_3460[`${profile}/orders_gc_v2`], `${profile}: v3 skal kunne ses`);
   }
 });

@@ -1,5 +1,7 @@
 # Prompt: Session A (Claude Code) - land motorpakken
 
+> **Erstattet 6/10** af `2026-10-06-dagsplan.md` (Claude) og `2026-10-06-codex-dag.md` (Codex). Brug ikke denne som prompt.
+
 Model: **Claude Fable 5.1**, indsats **høj**. Kopiér alt under stregen.
 
 ---

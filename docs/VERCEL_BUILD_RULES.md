@@ -19,7 +19,7 @@ Rename detection is disabled so a move out of frontend still rebuilds it.
 
 All frontend files build, including public assets, locales, config and tests.
 Root scripts, manifests/lockfiles, shared packages, toolchain settings and
-unknown paths also build. Only known independent directories (backend,
+unknown paths also build. All of backend/lib/ is a build input, including new files. Only known independent directories (the rest of backend,
 database, docs, marketing, screenshots and agent/GitHub metadata) and named
 root documentation files skip. Keep actual build dependencies out of this
 exclusion set. The import-coverage test checks literal relative source imports;
@@ -27,7 +27,7 @@ dynamic filesystem reads and new build commands still need diff review.
 
 Current build inputs were checked in frontend/package.json, vite.config.js,
 vite-plugins, generate-indexnow-key.ts and prerender.mjs: source/public/template
-reads stay inside frontend except the imported pure projection in backend/lib/raceParticipationHistory.ts, which is an explicit build input. Build changes that introduce outside inputs must
+reads stay inside frontend except the imported pure projection in backend/lib/raceParticipationHistory.ts, which is covered by the backend/lib/ rule. Build changes that introduce outside inputs must
 update this contract in the same PR. Unknown inputs intentionally favor safety
 over maximum savings.
 
@@ -62,3 +62,5 @@ skips, previous-SHA availability and Usage must be measured after owner release.
 Frontend source-map verification follows the same requirement: independent merges do not require maps uploaded for a new SHA when no new frontend build is required. The unchanged GitHub deploy-verify workflow still has its narrower path-prefix check; shared/root-input verification there remains a documented follow-up, not a claim of complete workflow alignment.
 
 The existing frontend-build CI job now typechecks the three build-selection TypeScript tools explicitly with Node types. The normal app typecheck only includes src/**, so its success alone is not tools-typecheck evidence.
+
+Owner safe-variant go: 5 October 23:50, PR #6222. Every backend/lib/ path builds; backend/routes/ alone still skips. There is no individual-file exception. Environment changes require Redeploy in Vercel; a documentation-only push may be skipped.

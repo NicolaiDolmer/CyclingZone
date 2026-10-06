@@ -10,6 +10,7 @@
 import { getRiderMarketValue, getRiderSalary } from "./marketValues.js";
 import { compareNationality } from "./countryUtils.js";
 import { riderOverallRating } from "./riderRating.js";
+import { compareDisplayedReputation } from "./reputationSort.ts";
 
 // #5805: navne-sorteringens nøgle — efternavn, så fornavn. Delt med U23/junior-
 // truppen (YouthSquadTable.tsx), så de tre trup-sider sorterer navne ens.
@@ -22,6 +23,7 @@ export function riderNameSortKey(rider) {
 // useClientRiderFilters i useRiderFilters.js). Server-sortering (fetchRidersPage/
 // RidersPage) har sin egen sti — se mergeSalarySortedIds nedenfor.
 export function compareRidersByFilter(a, b, filters) {
+  if (filters.sort === "reputation") return compareDisplayedReputation(a, b, filters.sort_dir === "asc");
   if (filters.sort === "firstname") {
     const aName = riderNameSortKey(a);
     const bName = riderNameSortKey(b);
