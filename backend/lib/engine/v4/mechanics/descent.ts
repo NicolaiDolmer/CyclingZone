@@ -333,10 +333,10 @@ export function regroupOnDescentV3(
       out.push({ ...group, gap_seconds: round2(Math.max(floorGap, group.gap_seconds - closed)) });
     } else {
       // #6199 (maaling 6/10): midt paa etapen krymper hullet til gruppen foran
-      // med det den selv lukker, regnet paa hullet VED TOPPEN, og gruppen
+      // med det gruppen selv lukker, regnet paa hullet VED TOPPEN, og gruppen
       // foelger med det gruppen foran vandt. Foer blev det regnet mod den
-      // allerede flyttede gruppe foran, saa to grupper der kom over toppen
-      // taet sammen blev skilt ad (hullet mellem dem kunne vokse), og en
+      // allerede flyttede gruppe foran, saa hullet mellem to grupper kunne
+      // VOKSE: to grupper der kom over toppen taet sammen blev skilt ad, og en
       // gruppetto blev delt i stumper, der hver var for smaa til redningen.
       const topGapToAhead = Math.max(0, group.gap_seconds - reference.topGap);
       const closed = computeRegroupSeconds(topGapToAhead, lengthKm, technicality, descending, reference.descending, midExtra, false);

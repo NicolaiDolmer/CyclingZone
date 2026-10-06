@@ -572,7 +572,7 @@ export function renderPublicBlock(result) {
     lines.push("");
     lines.push("| Anker | v4 | v4 seeds |");
     lines.push("|---|---|---|");
-    for (const a of rf.anchors) lines.push(`| ${a.label} | ${verdictMark(a.verdict)} | ${a.verdict === "N/A" ? "-" : `${a.seedsPass}/${rf.seedCount}`} |`);
+    for (const a of rf.anchors) lines.push(`| ${a.label} | ${verdictMark(a.verdict)} | ${a.verdict === "N/A" ? "-" : `${a.seedsPass}/${a.seedsMeasured}`} |`);
     lines.push("");
     lines.push(
       `- **OTL i det realistiske felt forekommer:** ${rf.rates.otlObserved ? "ja" : "nej"}` +
@@ -689,11 +689,11 @@ export function renderPrivateReport(result) {
     lines.push("");
     lines.push(`## 1b. Realistisk felt (#6199, ${meta.realistic_field_file ?? REALISTIC_FIELD_FILE}, ${rf.fieldRiders} ryttere, v4)`);
     lines.push("");
-    lines.push("| Anker | Baand | v4 middel | seeds bestaaet | etaper pr. seed | pr. plads |");
+    lines.push("| Anker | Baand | v4 middel | seeds bestaaet | etaper i alt | pr. plads |");
     lines.push("|---|---|---|---|---|---|");
     for (const a of rf.anchors) {
       const byRank = a.byRank ? Object.entries(a.byRank).map(([n, v]) => `nr. ${n}: ${f1(v)} s`).join(", ") : "-";
-      lines.push(`| ${a.label} | ${a.bandLabel} | ${a.id === "short_uphill_finish_gaps" ? (a.value == null ? "n/a" : a.value.toFixed(2)) : `${f1(a.value)} s`} ${a.verdict} | ${a.seedsPass}/${rf.seedCount} | ${a.n} | ${byRank} |`);
+      lines.push(`| ${a.label} | ${a.bandLabel} | ${a.id === "short_uphill_finish_gaps" ? (a.value == null ? "n/a" : a.value.toFixed(2)) : `${f1(a.value)} s`} ${a.verdict} | ${a.seedsPass}/${a.seedsMeasured} | ${a.n} | ${byRank} |`);
     }
     lines.push("");
     lines.push("| Etapetype | etaper | rytter-starter | OTL | OTL % | etaper m. OTL | reddet % | udgaaet % |");
@@ -826,12 +826,26 @@ function meanOf(xs) {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 }
 
+/** Vandt dagens udbrud (vinderen sad i morgenudbruddet og blev aldrig hentet)? Samme definition som dev/timeModel6199.mjs. */
+export function escapeWonStage(output) {
+  const events = output?.timeline?.events ?? [];
+  const formed = new Set(events.filter((e) => e.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  const caught = new Set(events.filter((e) => e.type === "breakaway_caught").flatMap((e) => e.params?.rider_ids ?? []));
+  const winner = (output?.results ?? []).filter((r) => r.status === "finished").sort((a, b) => a.time_seconds - b.time_seconds)[0]?.rider_id;
+  return winner !== undefined && formed.has(winner) && !caught.has(winner);
+}
+
 /**
  * #6199: koerer ALLE proxy-etaper med det realistiske felt (samme startliste
  * hver etape) og maaler de to tidsankre (samme baand og samme klassifikation
  * som scorecardet) plus uheld/OTL pr. etapetype. Dom pr. seed og paa middel.
  * Koeres gennem broen (`v4` = loadRaceEngineV4()), saa AI-holdenes ordrer er med;
  * ingen gemte holdordrer, intet klassement (etaperne er fra forskellige loeb).
+ *
+ * Hvert anker maales to gange: paa de etaper hvor dagens udbrud IKKE vandt
+ * (favoritterne afgjorde etapen; det er tidsmodellens maal og den primaere dom)
+ * og paa alle etaper (en udbrudssejr giver nr. 10 = feltets hul til udbruddet,
+ * som udbruds-ankrene ejer).
  */
 export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEAD_SEEDS, rulesRevision = undefined }) {
   const entrants = realisticFieldEntrants(fixture);
@@ -841,8 +855,7 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
   const rateAcc = new Map();
   const perSeed = [];
   for (const seed of seeds) {
-    const mountain = [];
-    const shortUp = Object.fromEntries(ranks.map((n) => [n, []]));
+    const obs = [];
     for (const row of stages) {
       const route = routeFromStageProfileRow(row);
       const isMountain = isMountainTopFinish(route);
@@ -852,46 +865,67 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
         teamOrderRows: [], isStageRace: true, raceStages: null, squad: null, rulesRevision: rulesRevision ?? "legacy", gcStandings: null,
       }).v4Output;
       accumulateStageRates(rateAcc, row.profile_type, output);
-      if (isMountain) mountain.push(gapAtRank(output.results, 10));
-      if (isShort) for (const n of ranks) shortUp[n].push(gapAtRank(output.results, n));
+      if (isMountain || isShort) {
+        obs.push({
+          isMountain,
+          isShort,
+          escapeWon: escapeWonStage(output),
+          gaps: Object.fromEntries([...new Set([10, ...ranks])].map((n) => [n, gapAtRank(output.results, n)])),
+        });
+      }
     }
-    const shortByRank = Object.fromEntries(ranks.map((n) => [n, meanOf(shortUp[n])]));
-    const ratios = ranks.map((n) => (shortByRank[n] === null ? null : shortByRank[n] / shortBand.maxByRank[n])).filter((r) => r !== null);
-    perSeed.push({
-      seed,
-      mountainTop10: meanOf(mountain),
-      mountainN: mountain.filter(Number.isFinite).length,
-      shortByRank,
-      shortRatio: ratios.length ? Math.max(...ratios) : null,
-      shortN: shortUp[ranks[0]]?.filter(Number.isFinite).length ?? 0,
-    });
+    const seedValues = (subset) => {
+      const mountain = subset.filter((o) => o.isMountain).map((o) => o.gaps[10]);
+      const shortRows = subset.filter((o) => o.isShort);
+      const shortByRank = Object.fromEntries(ranks.map((n) => [n, meanOf(shortRows.map((o) => o.gaps[n]))]));
+      const ratios = ranks.map((n) => (shortByRank[n] === null ? null : shortByRank[n] / shortBand.maxByRank[n])).filter((r) => r !== null);
+      return {
+        mountainTop10: meanOf(mountain),
+        mountainN: mountain.filter(Number.isFinite).length,
+        shortByRank,
+        shortRatio: ratios.length ? Math.max(...ratios) : null,
+        shortN: shortRows.length,
+      };
+    };
+    perSeed.push({ seed, favorites: seedValues(obs.filter((o) => !o.escapeWon)), all: seedValues(obs) });
   }
-  const mountainValue = meanOf(perSeed.map((s) => s.mountainTop10));
-  const shortRatio = meanOf(perSeed.map((s) => s.shortRatio));
   const inBand = (v, b) => v !== null && (b.min === undefined || v >= b.min) && (b.max === undefined || v <= b.max);
   const verdict = (v, b) => (v === null ? "N/A" : inBand(v, b) ? "PASS" : "FAIL");
-  return {
-    fieldRiders: entrants.length,
-    anchors: [
+  const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+  const anchorsFor = (key, suffix) => {
+    const mountainValue = meanOf(perSeed.map((s) => s[key].mountainTop10));
+    const shortRatio = meanOf(perSeed.map((s) => s[key].shortRatio));
+    return [
       {
         id: "mountain_top10_spread",
-        label: "Bjergetape top-10-spredning, topankomster (#6199)",
+        subset: key,
+        label: `Bjergetape top-10-spredning, topankomster (#6199)${suffix}`,
         bandLabel: `${mountainBand.min}-${mountainBand.max}s`,
         value: mountainValue,
         verdict: verdict(mountainValue, mountainBand),
-        seedsPass: perSeed.filter((s) => verdict(s.mountainTop10, mountainBand) === "PASS").length,
-        n: perSeed[0]?.mountainN ?? 0,
+        seedsPass: perSeed.filter((s) => verdict(s[key].mountainTop10, mountainBand) === "PASS").length,
+        seedsMeasured: perSeed.filter((s) => s[key].mountainTop10 !== null).length,
+        n: sum(perSeed.map((s) => s[key].mountainN)),
       },
       {
         id: "short_uphill_finish_gaps",
-        label: "Kort afslutning opad, nr. 10/30/50 til vinderen (#6199)",
+        subset: key,
+        label: `Kort afslutning opad, nr. 10/30/50 til vinderen (#6199)${suffix}`,
         bandLabel: "<= 1",
         value: shortRatio,
-        byRank: Object.fromEntries(ranks.map((n) => [n, meanOf(perSeed.map((s) => s.shortByRank[n]))])),
+        byRank: Object.fromEntries(ranks.map((n) => [n, meanOf(perSeed.map((s) => s[key].shortByRank[n]))])),
         verdict: verdict(shortRatio, { max: 1 }),
-        seedsPass: perSeed.filter((s) => verdict(s.shortRatio, { max: 1 }) === "PASS").length,
-        n: perSeed[0]?.shortN ?? 0,
+        seedsPass: perSeed.filter((s) => verdict(s[key].shortRatio, { max: 1 }) === "PASS").length,
+        seedsMeasured: perSeed.filter((s) => s[key].shortRatio !== null).length,
+        n: sum(perSeed.map((s) => s[key].shortN)),
       },
+    ];
+  };
+  return {
+    fieldRiders: entrants.length,
+    anchors: [
+      ...anchorsFor("favorites", ", etaper udbruddet ikke vandt"),
+      ...anchorsFor("all", ", alle etaper (inkl. udbrudssejre)"),
     ],
     seedCount: seeds.length,
     rates: summarizeRates(rateAcc),
