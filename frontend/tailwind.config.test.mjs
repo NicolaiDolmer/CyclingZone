@@ -14,7 +14,7 @@
 //      findes OG faktisk give CSS (kompileret med Tailwind selv, ikke gættet).
 //   2. Den BARE klasse (uden modifier) skal give præcis samme CSS-værdi som
 //      før, så tusinder af kaldsteder der ikke bruger `/NN` er uændrede.
-//   3. `/NN` på tokens giver v3's værdi efter vite-plugins/tailwind-v3-alpha.ts
+//   3. `/NN` på tokens giver v3's værdi efter vite-plugins/tailwind-v3-compat.ts
 //      (#6271), også i browsere uden color-mix.
 
 import test from "node:test";
@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 import { compile } from "@tailwindcss/node";
 
 import { readThemeTokens, themeNamespace } from "./src/lib/themeTokens.ts";
-import { restoreV3Alpha } from "./vite-plugins/tailwind-v3-alpha.ts";
+import { restoreV3Alpha } from "./vite-plugins/tailwind-v3-compat.ts";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const SRC = join(HERE, "src");
@@ -130,7 +130,7 @@ test("#5150: den bare klasse er uændret — color-mix rammer kun /NN-brug", asy
   assert.match(css, /\.bg-cz-accent \{\s*background-color: rgb\(var\(--accent\)\);\s*\}/);
 });
 
-test("#6271: /NN giver v3-værdien i alle browsere (vite-plugins/tailwind-v3-alpha.ts)", async () => {
+test("#6271: /NN giver v3-værdien i alle browsere (vite-plugins/tailwind-v3-compat.ts)", async () => {
   const css = restoreV3Alpha(await buildCss(["bg-cz-card/40", "bg-cz-accent/10", "ring-cz-accent/40", "bg-black/60"]));
   // Kanal-tokens: præcis v3's `rgb(var(--x) / a)` — ingen color-mix, intet @supports.
   assert.match(css, /\.bg-cz-accent\\\/10 \{\s*background-color: rgb\(var\(--accent\) \/ 10%\);\s*\}/);

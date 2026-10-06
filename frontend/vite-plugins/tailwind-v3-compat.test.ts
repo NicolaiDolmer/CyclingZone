@@ -1,8 +1,8 @@
-// #6271 — see tailwind-v3-alpha.ts for why the plugin exists.
+// #6271 — see tailwind-v3-compat.ts for why the plugin exists.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { restoreV3Alpha, tailwindV3AlphaPlugin } from "./tailwind-v3-alpha.ts";
+import { flattenLayers, restoreV3Alpha, splitTopLevel, tailwindV3CompatPlugin } from "./tailwind-v3-compat.ts";
 
 const SUPPORTS = "@supports (color: color-mix(in lab, red, red))";
 
@@ -54,12 +54,51 @@ test("CRLF-linjeskift matches også", () => {
 });
 
 test("pluginet rører kun CSS-moduler der har en color-mix-fallback", () => {
-  const plugin = tailwindV3AlphaPlugin();
+  const plugin = tailwindV3CompatPlugin();
   assert.equal(plugin.enforce, "pre");
   const transform = plugin.transform as (code: string, id: string) => unknown;
   assert.equal(transform.call(plugin, "const a = 1;", "/src/a.js"), null);
   assert.equal(transform.call(plugin, ".a { color: red; }", "/src/index.css"), null);
-  const css = pair("color", "rgb(var(--info))", "color-mix(in oklab, rgb(var(--info)) 50%, transparent)");
+  const css = `@layer utilities {\n${pair("color", "rgb(var(--info))", "color-mix(in oklab, rgb(var(--info)) 50%, transparent)")}}\n`;
   const res = transform.call(plugin, css, "/src/index.css") as { code: string };
   assert.match(res.code, /color: rgb\(var\(--info\) \/ 50%\);/);
+  assert.doesNotMatch(res.code, /@layer/);
+});
+
+test("splitTopLevel: kommentarer og strenge med { } ; afslutter ikke et element", () => {
+  const items = splitTopLevel(`/*! banner { ; */\n.a { content: "}"; }\n@layer x;\n@media (x) { .b { c: d; } }`);
+  assert.deepEqual(items, ["/*! banner { ; */", '.a { content: "}"; }', "@layer x;", "@media (x) { .b { c: d; } }"]);
+});
+
+test("flattenLayers: lag i erklæret rækkefølge, ulagdelte regler sidst (= v3-kaskaden)", () => {
+  const css = [
+    "/*! tailwindcss */",
+    "@layer properties;",
+    "@layer theme, base, components, utilities;",
+    "@layer theme { :root { --t: 1; } }",
+    "@layer utilities { .u { color: red; } }",
+    "@layer base { button { cursor: pointer; } }",
+    ":root { --own: 1; }",
+    "@layer utilities { .own-rule { color: blue; } }",
+    "@layer properties { * { --tw-x: 0; } }",
+    "@property --tw-x { syntax: \"*\"; inherits: false; }",
+  ].join("\n");
+  const out = flattenLayers(css);
+  assert.doesNotMatch(out, /@layer/);
+  const at = (needle: string) => out.indexOf(needle);
+  // properties < theme < base < utilities (Tailwind's) < utilities (own) < unlayered.
+  assert.ok(at("/*! tailwindcss */") === 0);
+  assert.ok(at("--tw-x: 0") < at("--t: 1"));
+  assert.ok(at("--t: 1") < at("cursor: pointer"));
+  assert.ok(at("cursor: pointer") < at(".u {"));
+  assert.ok(at(".u {") < at(".own-rule"));
+  assert.ok(at(".own-rule") < at("--own: 1"));
+  assert.ok(at("--own: 1") < at("@property --tw-x"));
+});
+
+test("flattenLayers: ukendte lag-konstruktioner → input returneres uændret", () => {
+  const anonymous = "@layer { .a { color: red; } }";
+  assert.equal(flattenLayers(anonymous), anonymous);
+  const nested = "@layer a { @layer b { .x { y: z; } } }";
+  assert.equal(flattenLayers(nested), nested);
 });

@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { tailwindV3AlphaPlugin } from "./vite-plugins/tailwind-v3-alpha.ts";
+import { tailwindV3CompatPlugin } from "./vite-plugins/tailwind-v3-compat.ts";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -148,11 +148,11 @@ export default defineConfig({
     react(),
     // #6271: Tailwind 4 via its Vite plugin (replaces the PostCSS plugin +
     // autoprefixer + postcss.config.js). Config lives in src/index.css @theme.
-    // optimize:false + tailwindV3AlphaPlugin right after it: see that file —
+    // optimize:false + tailwindV3CompatPlugin right after it: see that file —
     // Tailwind's optimizer would merge the colour fallbacks the plugin has to
     // fix; Vite's own lightningcss minify flattens + prefixes instead.
     tailwindcss({ optimize: false }),
-    tailwindV3AlphaPlugin(),
+    tailwindV3CompatPlugin(),
     worktreeIdPlugin(),
     releaseMetaPlugin(),
     patchNotesJsonPlugin(),
@@ -224,6 +224,15 @@ export default defineConfig({
     // måde som prod. Prod har token ⇒ uændret true; almindelige lokale builds
     // har hverken token eller CZ_SENTRY_TRANSFORM ⇒ uændret false.
     sourcemap: enableSentryPlugin,
+    // #6271: CSS only (JS keeps Vite's default target). Tailwind 4 writes
+    // native nesting and `@media (width >= 40rem)`; Vite's default CSS target
+    // (Chrome 111 / Safari 16.4) would ship them as-is, and an older browser
+    // then loses every hover/responsive rule. Tailwind 3 emitted plain
+    // `min-width` queries that every browser read. With this target
+    // lightningcss lowers both back to the v3 form. Floor = the oldest
+    // browser seen among players when #6271 was decided (Chrome Mobile 95);
+    // see vite-plugins/tailwind-v3-compat.ts for the rest of that story.
+    cssTarget: ["chrome90", "edge90", "firefox90", "safari15", "ios15"],
     // #5177: flag-icons' SVG'er må ALDRIG inlines som data-URI'er.
     //
     // `flag-icons/css/flag-icons.min.css` er kun 28 KB råt og peger på 542

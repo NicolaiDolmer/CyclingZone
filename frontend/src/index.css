@@ -456,6 +456,11 @@ video {
   --color-green-600: #16a34a;
   --color-blue-100: #dbeafe;
   --color-blue-500: #3b82f6;
+  /* Not inline on purpose: an inlined `bg-black/60` is folded to
+     `oklab(0% none none / .6)`, which browsers before Chrome 111 drop (no
+     modal scrim at all). As a variable it gets a static `#0009` fallback. */
+  --color-black: #000;
+  --color-white: #fff;
 
   /* v3: a `ring-*` without a colour class drew blue-500 at 50%; v4 draws
      currentColor. */
