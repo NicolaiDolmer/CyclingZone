@@ -30,7 +30,6 @@ import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
 import SavedFiltersBar from "../components/rider/SavedFiltersBar.jsx";
-import { useSubscription } from "../lib/useSubscription.js";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
@@ -242,8 +241,6 @@ export default function RidersPage() {
   }
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
-  // #4649: gemte filtre (del C) — Pro-gated i UI, se SavedFiltersBar.
-  const { isPro, isFounder } = useSubscription(myTeam?.id);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
   // #3012: fejl-feedback når en watchlist-toggle fejler, så den ikke tavst
@@ -730,7 +727,7 @@ export default function RidersPage() {
         userId={userId}
         filters={filters}
         onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
-        eligible={isPro || isFounder}
+        teamId={myTeam?.id}
       />
 
       {loading ? (

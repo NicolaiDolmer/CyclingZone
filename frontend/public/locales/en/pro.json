@@ -42,7 +42,14 @@
     "cta": "See Pro",
     "note": "Pro shows every ability across all seasons, not just the current one.",
     "ceilingLegend": "Scale ceiling (99)",
-    "empty": "No season history recorded yet."
+    "empty": "No season history recorded yet.",
+    "errorTitle": "Couldn't load season history",
+    "statusErrorTitle": "Couldn't check your Pro status",
+    "errorBody": "Nothing was lost. The rider's abilities are unchanged.",
+    "retry": "Try again",
+    "emptyTitle": "No abilities recorded yet",
+    "checkAgain": "Check again",
+    "now": "Now"
   },
   "savedFilters": {
     "title": "Saved filters",
@@ -53,6 +60,11 @@
     "remove": "Remove",
     "empty": "No saved filters yet.",
     "note": "Pro lets you save filters by name and jump back to them in one click.",
-    "cta": "See Pro"
+    "cta": "See Pro",
+    "removeNamed": "Remove {name}",
+    "duplicate": "You already have a filter with that name.",
+    "limit": "You've saved {max} filters, the maximum. Remove one to save a new one.",
+    "statusError": "I couldn't check your Pro status, so saved filters are hidden for now.",
+    "retry": "Try again"
   }
 }
