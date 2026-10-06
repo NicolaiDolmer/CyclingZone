@@ -198,10 +198,11 @@ test("#6286 live-opslaget fejler: historikken vises stadig, uden live-punkt", as
   assert.deepEqual(r.body.seasons, [{ season_number: 3, abilities: { climbing: 48 } }]);
 });
 
-test("#6286 withLivePoint: ukendt aktiv saeson knyttes til seneste historik-saeson", () => {
+test("#6286 withLivePoint: ukendt aktiv saeson laegges sidst uden at overskrive en afsluttet saeson", () => {
   const seasons = [{ season_number: 2, abilities: { climbing: 40 } }];
   assert.deepEqual(withLivePoint(seasons, { season_number: null, abilities: { climbing: 41 } }), [
-    { season_number: 2, abilities: { climbing: 41 }, live: true },
+    { season_number: 2, abilities: { climbing: 40 } },
+    { season_number: null, abilities: { climbing: 41 }, live: true },
   ]);
   assert.equal(withLivePoint(seasons, null), seasons);
 });

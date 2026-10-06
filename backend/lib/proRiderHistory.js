@@ -84,10 +84,12 @@ async function loadLivePoint(supabase, riderId, teamId) {
 
 // #6286: live-punktet ERSTATTER sin saesons historik-punkt (saesonen er ikke
 // slut endnu, saa dens seneste tilstand er den nuvaerende), ellers laegges det
-// sidst. Ukendt saeson: knyttes til den seneste historik-saeson.
+// sidst. Ukendt saeson (ingen aktiv saeson, fx mellem to saesoner): punktet
+// laegges sidst med season_number null (UI'et kalder det "Now"), saa en afsluttet
+// saesons slut-tilstand aldrig overskrives.
 export function withLivePoint(seasons, live) {
   if (!live) return seasons;
-  const seasonNumber = live.season_number ?? seasons.at(-1)?.season_number ?? null;
+  const seasonNumber = live.season_number ?? null;
   const rest = seasons.filter((s) => seasonNumber == null || s.season_number !== seasonNumber);
   return [...rest, { season_number: seasonNumber, abilities: live.abilities, live: true }]
     .sort((a, b) => (a.season_number ?? Infinity) - (b.season_number ?? Infinity));
