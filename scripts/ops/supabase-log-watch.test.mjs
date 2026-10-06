@@ -4,6 +4,40 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeFindings } from "./supabase-log-watch.mjs";
+import * as logWatch from "./supabase-log-watch.mjs";
+
+const START = '2026-10-05T06:00:00Z', END = '2026-10-06T06:00:00Z';
+
+test('log query uses the replacement endpoint and an explicit bounded window', async () => {
+  const rows = await logWatch.queryLogs('synthetic-token', 'a'.repeat(20), START, END, async (url, options) => {
+    assert.equal(url.pathname, '/v1/projects/' + 'a'.repeat(20) + '/analytics/endpoints/logs');
+    assert.equal(url.searchParams.get('iso_timestamp_start'), START);
+    assert.equal(url.searchParams.get('iso_timestamp_end'), END);
+    assert.match(url.searchParams.get('sql'), /from logs/);
+    assert.match(url.searchParams.get('sql'), /log_attributes\[/);
+    assert.equal(options.redirect, 'error');
+    return { ok: true, json: async () => ({ result: [{ source: 'edge_logs', bucket: '500 /api', cnt: '42' }], error: null }) };
+  });
+  assert.deepEqual(rows, [{ source: 'edge_logs', bucket: '500 /api', cnt: 42 }]);
+});
+
+test('HTTP 200 query errors and malformed rows cannot appear as a quiet log window', async () => {
+  for (const body of [{ result: null, error: 'PRIVATE_QUERY_DETAIL' }, {}, { result: [{}] }, { result: [{ source: 'edge_logs', bucket: 'x', cnt: 'not-a-count' }] }]) {
+    await assert.rejects(() => logWatch.queryLogs('synthetic-token', 'a'.repeat(20), START, END, async () => ({ ok: true, json: async () => body })), error => {
+      assert.doesNotMatch(error.message, /PRIVATE_QUERY_DETAIL/);
+      return true;
+    });
+  }
+});
+
+test('HTTP failures do not disclose response bodies and empty valid results stay valid', async () => {
+  await assert.rejects(() => logWatch.queryLogs('synthetic-token', 'a'.repeat(20), START, END, async () => ({ ok: false, status: 410, text: async () => 'PRIVATE_BODY' })), error => {
+    assert.match(error.message, /410/);
+    assert.doesNotMatch(error.message, /PRIVATE_BODY/);
+    return true;
+  });
+  assert.deepEqual(await logWatch.queryLogs('synthetic-token', 'a'.repeat(20), START, END, async () => ({ ok: true, json: async () => ({ result: [], error: null }) })), []);
+});
 
 test("no findings when current window is quiet and below thresholds", () => {
   const current = [{ source: "realtime_logs", bucket: "MalformedJWT", cnt: 5 }];
