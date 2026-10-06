@@ -13,6 +13,8 @@
 // Logikken bor i lib/roadmapAdminModel.ts, som er fuldt typet.
 import { useEffect, useId, useState } from "react";
 import { supabase } from "../../../lib/supabase";
+import { apiFetch } from "../../../lib/apiFetch.ts";
+import { useAdminAuth } from "../shared/useAdminAuth";
 import { ENGINE_ORDER } from "../../../lib/roadmapVoting.js";
 import {
   ISSUE_AREAS, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
@@ -192,6 +194,7 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
 
 // ── Del punkt (færdig-reglen) ───────────────────────────────────────────────
 export function SplitItemModal({ open, item, onClose, onSaved }) {
+  const { getAuth } = useAdminAuth();
   const uid = useId();
   const formId = `${uid}-split`;
   const [form, setForm] = useState({ title_en: "", title_da: "", status: "planned", horizon: "next", issue_ref: "" });
@@ -213,17 +216,19 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
     if (!validateTitles(form.title_en, form.title_da)) { setError("Begge titler skal udfyldes."); return; }
     setSaving(true);
     setError("");
-    const { error: err } = await supabase.rpc("roadmap_split_item", {
-      p_source: item.item_id,
-      p_title_en: form.title_en.trim(),
-      p_title_da: form.title_da.trim(),
-      p_status: form.status,
-      p_horizon: form.horizon,
-      p_issue_ref: parseIssueRef(form.issue_ref),
-    });
-    setSaving(false);
-    if (err) { setError(`Kunne ikke dele punktet: ${err.message}`); return; }
-    onSaved();
+    try {
+      const result = await apiFetch(`${import.meta.env.VITE_API_URL}/api/admin/roadmap/split`, {
+        method: "POST", headers: { ...await getAuth(), "Content-Type": "application/json" },
+        body: JSON.stringify({ source: item.item_id, title_en: form.title_en.trim(), title_da: form.title_da.trim(),
+          status: form.status, horizon: form.horizon, issue_ref: parseIssueRef(form.issue_ref) }),
+      }, { source: "admin-roadmap-split" });
+      if (!result.ok) { setError(`Kunne ikke dele punktet: ${result.data?.error || "Forbindelsen fejlede"}`); return; }
+      onSaved();
+    } catch {
+      setError("Kunne ikke dele punktet: Forbindelsen fejlede");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

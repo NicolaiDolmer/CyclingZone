@@ -15,6 +15,7 @@ import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
+import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -991,6 +992,10 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
 
 // #3750 · Ejer-only: requireAdmin + OWNER_USER_IDS-allowlist (backend/lib/ownerGate.js).
 // Bruges til flader der kun ejeren må se, selv om andre konti har admin-rollen.
@@ -10709,40 +10714,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     // (defaultRunSeasonPayroll). Fail-safe null → false via evaluateFlagStage.
     const facilitiesEnabled = evaluateFlagStage(facilitiesEnabledStage);
 
-    // #3899 (låst design punkt 2): præmie-intervallets kvartilbånd baseres på
-    // MÅLT per-hold-præmie blandt peers i samme division. Stikprøven bruger
-    // riders.prize_earnings_bonus (samme rullende-avg-felt som holdets eget
-    // punktestimat ovenfor) summeret pr. hold — ikke finance_transactions
-    // (mange rækker pr. hold pr. sæson). Holdantal begrænses til 40 peers
-    // (rigeligt for et kvartilbånd), men selv 40 hold kan bære >1000 ryttere
-    // (D3 ~1460 ryttere totalt i prod, jf. races/distribution-routen ovenfor)
-    // — riders-loadet SKAL derfor paginere (fetchAllRows), ikke et nøgent
-    // .select(), ellers trunkerer PostgREST stille ved 1000 og skævvrider
-    // kvartilbåndet mod de først-returnerede rækker (#3331-mønstret).
-    const DIVISION_PRIZE_SAMPLE_TEAM_CAP = 40;
-    const divisionTeamsRes = await supabase
-      .from("teams")
-      .select("id")
-      .eq("division", team.division)
-      .limit(DIVISION_PRIZE_SAMPLE_TEAM_CAP);
-    if (divisionTeamsRes.error) throw divisionTeamsRes.error;
-    const divisionTeamIds = (divisionTeamsRes.data || []).map((t) => t.id);
-    let divisionPrizeSamples = [];
-    if (divisionTeamIds.length >= 1) {
-      const divisionRiderRows = await fetchAllRows(() =>
-        supabase
-          .from("riders")
-          .select("team_id, prize_earnings_bonus")
-          .in("team_id", divisionTeamIds)
-          .order("id"));
-      const perTeamPrize = new Map();
-      for (const r of divisionRiderRows) {
-        const prev = perTeamPrize.get(r.team_id) || 0;
-        perTeamPrize.set(r.team_id, prev + (r.prize_earnings_bonus || 0));
-      }
-      divisionPrizeSamples = [...perTeamPrize.values()];
-    }
-
     // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
     // #1187: budget_modifier følger nu satisfaction LIVE pr. løbsweekend, så
     // forecastet afspejler altid den aktuelle modifier.
@@ -10846,8 +10817,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       facilitiesEnabled,
       // #4385: upkeep pr. seniorløbsdag når flaget er on (fail-safe off).
       upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
-      // #3899: kvartilbånd-stikprøven for præmie-intervallet.
-      divisionPrizeSamples,
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.

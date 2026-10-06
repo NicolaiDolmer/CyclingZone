@@ -40,7 +40,10 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { climbSplitGapSeconds, clusterSplitRiders, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+
+// #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
+const GRUPPETTO_SINGLE_CLUSTER_TUNING = Object.freeze({ ...TIME_MODEL_V3_TUNING, clusterMaxGroups: 1 });
 
 /**
  * #5580 (M1 punkt 1, indsatstrappen model 3): indsatsens GEVINST paa
@@ -439,11 +442,14 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // rytter faar sit eget hul (laengde x stejlhed x evneforskel), og rytterne
     // samles i faa grupper efter hullet (mechanics/timeModel.ts). Ellers: én
     // gruppe med det gamle trin.
+    // #6199 (maaling 6/10): en gruppetto deles ikke i flere klynger. De der
+    // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
+    // ellers deles halen i stumper der hver for sig er for smaa til redningen.
     const parts = ctx.ordersGcV3 === true
       ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
         riderId: s.riderId,
         gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01),
-      })))
+      })), group.kind === "gruppetto" ? GRUPPETTO_SINGLE_CLUSTER_TUNING : TIME_MODEL_V3_TUNING)
       : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
 
     for (const part of parts) {

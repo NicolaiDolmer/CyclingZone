@@ -317,6 +317,14 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 
 **RPC-adgang:** `get_cohort_retention`, `get_sprint_metrics` og `get_retention_scorecard_activity` er siden 6/9 kun kaldbare af `service_role` ([#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870), `database/2026-09-06-4870-revoke-metrics-rpcs.sql`). Kald dem gennem admin-endpointet, ikke fra browseren.
 
+**Roadmap-admin (#6221/#6174):** stats, del-punkt og flag-resync går gennem
+`GET /api/admin/roadmap/stats`, `POST /api/admin/roadmap/split` og
+`POST /api/admin/roadmap/resync`, alle bag backendens `requireAdmin`.
+`roadmap_admin_stats`, `roadmap_split_item` og `roadmap_resync_flags` er
+service-only efter `2026-10-06-6221-roadmap-service-rpcs.sql`; browseren har
+ingen EXECUTE-adgang, heller ikke med admin-rollen. Drift-scriptets eksisterende
+service-kald til resync bevares. Claude applies migrationen efter merge.
+
 **PostHog-MCP:** read-only under `read-data-schema` og `execute-sql`. Skriv aldrig til PostHog fra en session.
 
 **Retention på rå telemetri:** `traffic_events` og `identity_events` slettes efter 180 dage af daglige cron-job (`backend/cron.js`). `identity_events` bærer IP og user agent og er derfor personoplysninger; `traffic_events` er PII-fri, men slettes alligevel.

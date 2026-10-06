@@ -276,7 +276,7 @@ test("prissætnings-forklaringen overlevede modalen: enhed, division og tillæg 
 
   // #2862: enheden er en etape, oversat til holdets egne tal.
   await expect(
-    page.getByText(/Din sponsor betaler pr. etape dit hold stiller til start i/),
+    page.getByText(/Din sponsor betaler for hver etape, dit hold deltager i/),
   ).toBeVisible();
   await expect(
     page.getByText(/Division 2 kører 124 etaper i sæson 4, og hver eneste af dem betaler/),
