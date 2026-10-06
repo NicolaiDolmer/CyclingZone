@@ -817,7 +817,7 @@ function isMountainTopFinish(route) {
 }
 
 function gapAtRank(results, rank) {
-  const times = results.filter((r) => r.status !== "abandoned").map((r) => r.time_seconds).sort((a, b) => a - b);
+  const times = results.filter((r) => r.status !== "abandoned").map((r) => Number(r.time_seconds)).filter(Number.isFinite).sort((a, b) => a - b);
   return times.length >= rank ? times[rank - 1] - times[0] : null;
 }
 
