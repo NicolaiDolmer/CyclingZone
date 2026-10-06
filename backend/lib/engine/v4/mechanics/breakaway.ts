@@ -1563,8 +1563,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const strength = ordersGcV1 ? breakawayStrength(breakaway.rider_ids, fieldRiderIds, ctx.entrants) : undefined;
     // #6073 (KUN orders_gc_v2 paa rullende): mindre ekstra plads (rollingBreakaway.ts).
     const letGoBalance = rollingLetGoBalance(ctx.rollingBreakawayV2, letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, dangerous ? 1 : letGoShare, strength), ORDERS_GC_V1_LET_GO.maxGapFactorByProfile.rolling ?? 1);
-    // #6201 (KUN orders_gc_v3): farten foelger antallet i dagens udbrud (1-3 mand er langsommere).
-    const smallPace = ordersGcV3 && breakaway.origin === "breakaway" ? smallBreakPaceV3(breakaway.rider_ids.filter((id) => state.riders[id]?.status === "racing").length) : null;
+    // #6201 (KUN orders_gc_v3): farten foelger antallet der deler foeringerne i dagens udbrud
+    // (1-3 mand er langsommere). Ryttere paa hjul (#6187) koerer ikke foran og betaler ikke.
+    const smallBreakPullers = breakaway.rider_ids.filter((id) => state.riders[id]?.status === "racing" && !wheelSitterIds.has(id));
+    const smallPace = ordersGcV3 && breakaway.origin === "breakaway" ? smallBreakPaceV3(smallBreakPullers.length) : null;
     const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor * (smallPace?.growthScale ?? 1);
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);
     const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}), ...(ownAheadTeamIds ? { ownRiderAheadTeamIds: ownAheadTeamIds } : {}) });
@@ -1664,7 +1666,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
     // En GC-reaktion (et farligt udbrud) jager uden daempning.
     const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1);
-    if (smallPace) smallBreakWork.push({ riderIds: breakaway.rider_ids, pace: smallPace, km: letGoKm + chaseKm });
+    if (smallPace) smallBreakWork.push({ riderIds: smallBreakPullers, pace: smallPace, km: letGoKm + chaseKm });
     const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
