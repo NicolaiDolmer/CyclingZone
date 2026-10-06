@@ -62,7 +62,8 @@ const summary = {
   passes, calls, readers, rowCounts,
   totalRefreshCalls: calls.filter(call => call.name.startsWith('refresh_')).length,
   meanPassMs: passes.reduce((sum, pass) => sum + pass.durationMs, 0) / passes.length,
-  allSucceeded: passes.every(pass => pass.ok) && readers.every(read => !read.errorCode),
+  allSucceeded: passes.every(pass => pass.ok) && readers.every(read => !read.errorCode)
+    && (phase !== 'after' || !calls.some(call => call.name.startsWith('refresh_'))),
 };
 const output = process.argv[2];
 if (output) writeFileSync(output, JSON.stringify(summary, null, 2) + '\n');
