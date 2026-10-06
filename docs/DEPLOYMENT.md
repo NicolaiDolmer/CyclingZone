@@ -142,7 +142,7 @@ Source maps uploades kun når alle tre build-secrets (`SENTRY_AUTH_TOKEN`, `SENT
 4. Kør `pwsh -File scripts/verify-deploy.ps1`
    - Scriptet bekræfter at `HEAD` er `origin/main`
    - Poller GitHub Actions for den aktuelle commit
-   - Poller GitHub deployments for Vercel + Railway success
+   - Poller GitHub deployments for Railway success; Vercel success kræves ved frontend/byggeinputs eller ukendt sammenligningsgrundlag (#6202). Kendte uafhængige ændringer beholder seneste frontend-deploy
    - Smoke-tester backend `/health/ready` med afgrænsede retries og `/api/auctions`
    - Tjekker at frontend-aliaset svarer (Vercel kan være auth-protected)
 
