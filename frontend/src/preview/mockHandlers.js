@@ -1074,8 +1074,8 @@ export function apiResponse(pathname, search = "") {
       const sponsorVariable = seasonNumber === 2 ? 0 : 12000 * i; // kontrakt dækker sæson 2-3, variabel derefter
       const projectedSponsor = sponsorBase + sponsorVariable;
       const prizePoint = 210000 + i * 6000;
-      const prizeLow = Math.round(prizePoint * (0.82 - i * 0.01));
-      const prizeHigh = Math.round(prizePoint * (1.24 + i * 0.02));
+      const prizeLow = Math.round(prizePoint * 0.8);
+      const prizeHigh = Math.round(prizePoint * 1.2);
       // #3986: divisions-upkeep og stab/faciliteter er to adskilte linjer.
       const divisionUpkeep = -140000;
       const staffFacilities = -24910;
@@ -1126,8 +1126,6 @@ export function apiResponse(pathname, search = "") {
           board_modifier: 1.0,
           pullout_factor: 1.0,
           prize_basis: "rolling_avg",
-          prize_interval_method: "division_quartile_band",
-          prize_interval_sample_size: 18,
           salary_basis: usesProductionS3 ? "production_s3" : "status_quo",
           current_season_number: currentSeasonNumber + i,
           target_season_number: seasonNumber,
