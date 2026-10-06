@@ -455,7 +455,7 @@ test("#6201 farten foelger antallet: 1-3 mand er langsommere og betaler mere, fr
 
 test("#6201 et lille udbruds pris rammer kun de koerende udbrydere, i team_cp_factor med gulv", () => {
   const state = (id: string, status: RiderState["status"] = "racing"): RiderState => ({ ...riderState(id), status });
-  const riders: Record<string, RiderState> = { a: state("a"), b: state("b"), out: state("out", "dnf"), field: state("field") };
+  const riders: Record<string, RiderState> = { a: state("a"), b: state("b"), out: state("out", "abandoned"), field: state("field") };
   const next = applySmallBreakPullCost(riders, ["a", "b", "out"], smallBreakPaceV3(2), 0.5)!;
   assert.ok((next.a.team_cp_factor ?? 1) < (riders.a.team_cp_factor ?? 1));
   assert.equal(next.a.team_cp_factor, next.b.team_cp_factor);
