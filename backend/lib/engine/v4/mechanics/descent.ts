@@ -320,22 +320,31 @@ export function regroupOnDescentV3(
   // DESCENT_EXTRA_TUNING er `as const` (midtvejs-leddene er typet som 0); v3 laegger sine egne vaerdier ind.
   const midExtra = { ...DESCENT_EXTRA_TUNING, regroupSecondsPerKm: t.midDescentSecondsPerKm, regroupGapFractionPerKm: t.midDescentGapFractionPerKm } as unknown as DescentExtra;
   const out: RaceGroup[] = [];
-  let reference: { gap: number; descending: number } | null = null; // naermeste ikke-udbrud foran
+  // naermeste ikke-udbrud foran: hullet ved toppen (topGap) og efter regrupperingen (gap)
+  let reference: { gap: number; topGap: number; descending: number } | null = null;
   let floorGap = -Infinity; // gruppen umiddelbart foran (raekkefoelgen er invariant)
   for (const group of sorted) {
     const descending = groupDescendingMean(group.rider_ids, entrants);
     if (isEscape(group) || reference === null) {
       out.push({ ...group });
-    } else {
+    } else if (isFinishDescent) {
       const gapToAhead = Math.max(0, group.gap_seconds - reference.gap);
-      const closed = isFinishDescent
-        ? finishDescentClosingSeconds(gapToAhead, lengthKm, technicality, descending, reference.descending, t)
-        : computeRegroupSeconds(gapToAhead, lengthKm, technicality, descending, reference.descending, midExtra, false);
+      const closed = finishDescentClosingSeconds(gapToAhead, lengthKm, technicality, descending, reference.descending, t);
       out.push({ ...group, gap_seconds: round2(Math.max(floorGap, group.gap_seconds - closed)) });
+    } else {
+      // #6199 (maaling 6/10): midt paa etapen krymper hullet til gruppen foran
+      // med det gruppen selv lukker, regnet paa hullet VED TOPPEN, og gruppen
+      // foelger med det gruppen foran vandt. Foer blev det regnet mod den
+      // allerede flyttede gruppe foran, saa hullet mellem to grupper kunne
+      // VOKSE: to grupper der kom over toppen taet sammen blev skilt ad, og en
+      // gruppetto blev delt i stumper, der hver var for smaa til redningen.
+      const topGapToAhead = Math.max(0, group.gap_seconds - reference.topGap);
+      const closed = computeRegroupSeconds(topGapToAhead, lengthKm, technicality, descending, reference.descending, midExtra, false);
+      out.push({ ...group, gap_seconds: round2(Math.max(floorGap, reference.gap + topGapToAhead - closed)) });
     }
     const placed = out[out.length - 1];
     floorGap = placed.gap_seconds;
-    if (!isEscape(group)) reference = { gap: placed.gap_seconds, descending };
+    if (!isEscape(group)) reference = { gap: placed.gap_seconds, topGap: group.gap_seconds, descending };
   }
   return out;
 }
