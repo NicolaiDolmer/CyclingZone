@@ -1,5 +1,7 @@
 # Prompt: næste Codex-session - tunge databasekald, bevist på staging
 
+> **Erstattet 6/10** af `2026-10-06-dagsplan.md` (Claude) og `2026-10-06-codex-dag.md` (Codex). Brug ikke denne som prompt.
+
 Kopiér alt under stregen. Start den som en NY Codex-session (den gamle "Klargør fire CyclingZone-PR'er" lukkes; dens fire PR'er reviewes og merges af Claude Code).
 
 ---

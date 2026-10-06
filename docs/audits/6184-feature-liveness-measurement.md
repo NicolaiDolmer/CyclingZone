@@ -29,3 +29,12 @@ workflow latency, production savings or concurrent-load acceptance. Cache
 effects can influence timings. Normal invocation count is halved; retries can
 still add calls. The remaining exact-count RPC and its scan cost are unchanged.
 The existing production measurement's per-call time is not a staging baseline.
+
+## Recheck, 6 October 2026
+Fresh staging wrapper: ISOLATED. #6170 data prerequisites: DATA_PREREQUISITES_READY,
+1,889,644 race_results; loadTestPassed=false. Three paired samples, nine RPC calls,
+all complete arrays identical. Before: two calls, 536 rows, mean run 1242.16 ms,
+mean call 621.07 ms. After: one call, 268 rows, mean run 591.66 ms,
+mean call 591.65 ms. Raw samples refreshed in 6184-feature-liveness-staging.json.
+These are RPC-component timings with fixed before/after order and cache effects;
+the exact-count function and production scan cost are unchanged.

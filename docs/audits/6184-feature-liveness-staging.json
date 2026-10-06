@@ -10,60 +10,60 @@
       "mode": "before",
       "calls": 2,
       "rows": 536,
-      "elapsedMs": 1354.6832,
-      "meanCallMs": 677.3344500000001
+      "elapsedMs": 1462.0976,
+      "meanCallMs": 731.0435000000001
     },
     {
       "sample": 0,
       "mode": "after",
       "calls": 1,
       "rows": 268,
-      "elapsedMs": 567.3744999999999,
-      "meanCallMs": 567.3683000000001
+      "elapsedMs": 648.9859999999999,
+      "meanCallMs": 648.9814999999999
     },
     {
       "sample": 1,
       "mode": "before",
       "calls": 2,
       "rows": 536,
-      "elapsedMs": 1108.8125,
-      "meanCallMs": 554.4029
+      "elapsedMs": 1128.8667000000005,
+      "meanCallMs": 564.42815
     },
     {
       "sample": 1,
       "mode": "after",
       "calls": 1,
       "rows": 268,
-      "elapsedMs": 542.9188999999997,
-      "meanCallMs": 542.9118999999996
+      "elapsedMs": 553.3482999999997,
+      "meanCallMs": 553.3370000000004
     },
     {
       "sample": 2,
       "mode": "before",
       "calls": 2,
       "rows": 536,
-      "elapsedMs": 1128.9834,
-      "meanCallMs": 564.4884999999999
+      "elapsedMs": 1135.5125000000007,
+      "meanCallMs": 567.7519500000003
     },
     {
       "sample": 2,
       "mode": "after",
       "calls": 1,
       "rows": 268,
-      "elapsedMs": 569.2784000000001,
-      "meanCallMs": 569.2677000000003
+      "elapsedMs": 572.656,
+      "meanCallMs": 572.6352999999999
     }
   ],
   "before": {
     "callsPerRun": 2,
     "rowsPerRun": 536,
-    "meanRunMs": 1197.4930333333334,
-    "meanCallMs": 598.74195
+    "meanRunMs": 1242.1589333333338,
+    "meanCallMs": 621.0745333333334
   },
   "after": {
     "callsPerRun": 1,
     "rowsPerRun": 268,
-    "meanRunMs": 559.8572666666665,
-    "meanCallMs": 559.8493
+    "meanRunMs": 591.6634333333332,
+    "meanCallMs": 591.6512666666667
   }
 }
