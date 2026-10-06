@@ -1019,7 +1019,7 @@ test("buildScorecard: v3-regler faar kontrakt-ankeret i stedet for ratioen; v2 o
 test("aggregateScorecards: kontrakt-ankeret doemmes paa MEDIANEN over seeds", () => {
   const cell = (value) => ({
     value, sampleCount: 3, verdict: value <= 1 ? "PASS" : "FAIL", naReason: null, display: String,
-    closurePerKm: value, closureShare: value / 2,
+    closurePerKm: value, closureShare: value / 2, worstPerKm: value, worstShare: value / 2,
   });
   const card = (value) => [{
     id: "descent_gap_closure_contract", label: "x", bandLabel: "x", source: "x",
@@ -1032,4 +1032,34 @@ test("aggregateScorecards: kontrakt-ankeret doemmes paa MEDIANEN over seeds", ()
   assert.equal(agg.v4.verdict, "PASS");
   assert.deepEqual(agg.v4.spread, { min: 0.5, max: 3, seeds: 3 });
   assert.equal(agg.v3.verdict, "N/A");
+});
+
+test("aggregateScorecards: kontrakt-dommen tages paa komponent-medianerne, saa den stemmer med de viste maal", () => {
+  // Per-seed vaerdier er max af to normaliserede maal; medianen af dem ville give FAIL
+  // (2/1,5 i seed 1), men komponent-medianerne (0,5 s/km og 10 %) ligger begge under loftet.
+  const cell = (perKm, share) => ({
+    value: Math.max(perKm / 1.5, share / 0.5), sampleCount: 3, verdict: "PASS", naReason: null, display: String,
+    closurePerKm: perKm, closureShare: share, worstPerKm: perKm, worstShare: share,
+  });
+  const card = (perKm, share) => [{
+    id: "descent_gap_closure_contract", label: "x", bandLabel: "x", source: "x",
+    v3: { value: null, sampleCount: 0, verdict: "N/A", naReason: "x", display: String },
+    v4: cell(perKm, share),
+  }];
+  const [agg] = aggregateScorecards([card(2, 0.1), card(0.5, 0.4), card(0.5, 0.1)]);
+  assert.equal(agg.v4.closurePerKm, 0.5);
+  assert.equal(agg.v4.closureShare, 0.1);
+  assert.equal(agg.v4.verdict, "PASS");
+});
+
+test("scoreDescentGapContract: den vaerste enkelt-etape rapporteres men dommer ikke (median)", () => {
+  const rows = [
+    descentContractRow({ topGap: 40, finishGap: 38 }),
+    descentContractRow({ topGap: 40, finishGap: 37 }),
+    descentContractRow({ topGap: 40, finishGap: 20 }),
+  ];
+  const a = scoreDescentGapContract(rows);
+  assert.equal(a.v4.verdict, "PASS");
+  assert.equal(a.v4.worstPerKm, 5);
+  assert.equal(a.v4.worstShare, 0.5);
 });

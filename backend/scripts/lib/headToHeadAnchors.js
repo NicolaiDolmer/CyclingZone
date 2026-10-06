@@ -265,9 +265,12 @@ export function descentGapClosure(row) {
 }
 
 /**
- * Dommen er den vaerste af de to lofter, hver maalt som median over etaperne:
- * vaerdi = max(s/km / 1,5, andel / 0,5), PASS naar <= 1. Median (ikke middel)
- * saa en enkelt udlaeber-etape ikke afgoer dommen.
+ * Dommen er den vaerste af de to lofter, hver maalt som median over etaperne i
+ * seedet: vaerdi = max(s/km / 1,5, andel / 0,5), PASS naar <= 1 (ejerens "median",
+ * 6/10; en enkelt udlaeber-etape afgoer ikke dommen). Den vaerste enkelt-etape
+ * rapporteres ved siden af (worstPerKm/worstShare), men dommer ikke: maalet ligger
+ * ved snapshot-graensen foer nedkoerslens eget tempo-tik (RULES: "Hvor toppen maales"),
+ * saa en enkelt etapes tal er stoejfyldt som loft-test.
  */
 export function scoreDescentGapContract(rows) {
   const band = ANCHOR_BANDS.descentGapClosureContract;
@@ -285,7 +288,12 @@ export function scoreDescentGapContract(rows) {
     v4: {
       ...judge(value, { max: 1 }, measures.length, naNote),
       display: (v) => fmt(v, 2),
-      ...(value === null ? {} : { closurePerKm: perKm, closureShare: share }),
+      ...(value === null ? {} : {
+        closurePerKm: perKm,
+        closureShare: share,
+        worstPerKm: Math.max(...measures.map((m) => m.perKm)),
+        worstShare: Math.max(...measures.map((m) => m.share)),
+      }),
     },
   };
 }
@@ -1207,12 +1215,19 @@ function aggregateMedianCells(cells) {
   if (measured.length === 0) return { ...cells[0], sampleCount: 0, spread: null };
   const values = measured.map((c) => c.value);
   const sampleCount = measured.reduce((sum, c) => sum + c.sampleCount, 0);
-  const judged = judge(median(values), { max: 1 }, sampleCount);
+  // Dommen tages paa de to komponent-medianer (det der rapporteres), ikke paa
+  // medianen af per-seed-maksimummet, saa verdict og viste maal altid stemmer.
+  const band = ANCHOR_BANDS.descentGapClosureContract;
+  const closurePerKm = median(measured.map((c) => c.closurePerKm));
+  const closureShare = median(measured.map((c) => c.closureShare));
+  const judged = judge(Math.max(closurePerKm / band.maxSecondsPerKm, closureShare / band.maxShare), { max: 1 }, sampleCount);
   return {
     ...judged,
     display: cells[0].display,
-    closurePerKm: median(measured.map((c) => c.closurePerKm)),
-    closureShare: median(measured.map((c) => c.closureShare)),
+    closurePerKm,
+    closureShare,
+    worstPerKm: Math.max(...measured.map((c) => c.worstPerKm)),
+    worstShare: Math.max(...measured.map((c) => c.worstShare)),
     spread: { min: Math.min(...values), max: Math.max(...values), seeds: values.length },
   };
 }
@@ -1298,7 +1313,7 @@ export function formatScorecard(scorecard) {
     lines.push(`  v3: ${formatCell(anchor.v3)}`);
     lines.push(`  v4: ${formatCell(anchor.v4)}`);
     if (Number.isFinite(anchor.v4?.closurePerKm)) {
-      lines.push(`    median lukning: ${fmt(anchor.v4.closurePerKm, 2)} s/km, ${fmtPct(anchor.v4.closureShare)} af hullet`);
+      lines.push(`    median lukning: ${fmt(anchor.v4.closurePerKm, 2)} s/km, ${fmtPct(anchor.v4.closureShare)} af hullet; vaerste etape ${fmt(anchor.v4.worstPerKm, 2)} s/km, ${fmtPct(anchor.v4.worstShare)}`);
     }
     lines.push(...formatPerTerrain(anchor));
     lines.push(...formatFavoriteDefinitions(anchor.favoriteDefinitions));
