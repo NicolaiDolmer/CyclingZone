@@ -83,6 +83,7 @@
     "next": {
       "title": "Next season",
       "meta": "{count, plural, one {# offer} other {# offers}} · division {division} · {stages} stages",
+      "metaEstimated": "{count, plural, one {# offer} other {# offers}} · division {division} · {stages} stages (estimate)",
       "metaClosed": "Offers open when season {season} ends",
       "dealType": "{variant} · {count, plural, one {# season} other {# seasons}}",
       "ifEveryStage": "{amount} CZ$ if you ride every stage",
@@ -112,7 +113,7 @@
   "offers": {
     "title": "Choose your sponsor",
     "subtitle": "Five sponsors, five ways to earn in season {season}.",
-    "unitDefinition": "Your sponsor pays per stage your team starts. Not per calendar day, and not per race day.",
+    "unitDefinition": "Your sponsor pays for each stage your team starts. Training days do not earn this payment.",
     "unitCount": "Division {division} rides {count} stages in season {season}, and every one of them pays.",
     "unitPerDay": "They are spread over {days} calendar days, so most days carry about {perDay} stages.",
     "divisionNote": "The deal itself pays the same maximum whichever division you pick above. Division only changes how many stages you earn it over, and that sets the rate per stage. The division adjustment is a separate line and is shown above when it applies.",
@@ -131,7 +132,11 @@
     "guaranteedShare": "{pct}% of the deal is guaranteed",
     "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch per-stage money or bonuses: those are paid in full, on top, as you earn them.",
     "divisionAdjustmentUp": "If you race in Division {division} on this deal, a division adjustment of {amount} CZ$ is paid on top every season, because the deal is priced for Division {signed}.",
-    "divisionAdjustmentDown": "If you race in Division {division} on this deal, {amount} CZ$ is deducted every season, because the deal is priced for Division {signed}."
+    "divisionAdjustmentDown": "If you race in Division {division} on this deal, {amount} CZ$ is deducted every season, because the deal is priced for Division {signed}.",
+    "calendarEstimate": "I use your current calendar to estimate the rate for the first season of the deal until next season's calendar is ready. The rate is recalculated when the deal starts and stays fixed for the remaining seasons of a multi-season deal.",
+    "calendarUnknown": "Next season's calendar is not ready, so I cannot show a reliable rate per stage yet. The season total is shown below.",
+    "unitCountEstimate": "This estimate uses the {count} stages in your current division {division}.",
+    "rateUnknown": "Awaiting calendar"
   },
   "variant": {
     "safe": "The safe deal",
@@ -153,7 +158,7 @@
   },
   "field": {
     "guaranteedBase": "Guaranteed at season start",
-    "perRaceDay": "Per stage",
+    "perRaceDay": "Per stage entered",
     "raceDayMath": "{count} stages × {rate} CZ$",
     "ifYouStartEveryStage": "If you start every stage",
     "signingBonus": "Signing bonus",
