@@ -60,6 +60,7 @@ import { findChaseGroup } from "./chaseGroup.ts";
 //    SIDSTE segment, emitteres `breakaway_survived` (finale.ts afgoer derefter
 //    om forspringet baeres helt i maal eller indhentes i selve finalen).
 
+import { bookFinishDescentClosure, finishDescentRemainingCapSeconds } from "./timeModel.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -1576,8 +1577,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // Multiple targets share one pursuing group's movement instead of stacking it.
     const growthSeconds = grown - separation;
     const newBreakawayGap = breakaway.gap_seconds - growthSeconds;
-    const closingSeconds = netClosingSeconds + floorClosingSeconds;
+    // #6199/#6200 (review af #6223, KUN orders_gc_v3): paa en nedkoersel mod maal deler
+    // jagten loftet med regrupperingen, M3-angrebene og finalen (bogen, mechanics/timeModel.ts).
+    const v3DescentBook = ordersGcV3 && isLastSegment && ctx.segment.kind === "descent" ? (state.finish_descent_regroup ?? {}) : null;
+    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, netClosingSeconds + floorClosingSeconds);
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
+    const v3Booked = v3DescentBook ? bookFinishDescentClosure(state.finish_descent_regroup, chaseGroup.id, chaseGroup.gap_seconds, currentChase.gap_seconds - newChaseGap) : undefined;
+    if (v3Booked && v3Booked !== state.finish_descent_regroup) state = { ...state, finish_descent_regroup: v3Booked };
     groups = groups.map((g) => g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g.id === chaseGroup.id ? { ...g, gap_seconds: newChaseGap } : g);
     changed = true;
     pursuitByBreakaway.set(breakaway.id, chaseGroup.id);

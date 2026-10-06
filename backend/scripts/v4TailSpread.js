@@ -247,7 +247,8 @@ function entrantsForField(fieldRiders) {
  * Koerer v4 over kalenderen for hvert seed og returnerer én maaling pr.
  * (etape, seed). Ingen console-output — testbar.
  */
-export function runTailSpread({ population, stages, seeds = DEFAULT_SEEDS, fieldSize = DEFAULT_FIELD_SIZE }) {
+// #6199: rulesRevision (valgfri) koerer etaperne under en regel-revision; udeladt = legacy (uaendret).
+export function runTailSpread({ population, stages, seeds = DEFAULT_SEEDS, fieldSize = DEFAULT_FIELD_SIZE, rulesRevision = undefined }) {
   if (!population?.riders?.length) throw new Error("population.riders mangler eller er tom");
   if (!Array.isArray(stages) || stages.length === 0) throw new Error("stages mangler eller er tom");
 
@@ -267,6 +268,7 @@ export function runTailSpread({ population, stages, seeds = DEFAULT_SEEDS, field
         orders: [],
         seed: stageSeedStr,
         tuning: RACE_V4_TUNING,
+        ...(rulesRevision ? { rules_revision: rulesRevision } : {}),
       });
       measurements.push({
         seed,
