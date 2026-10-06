@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (6/10 aften):** [`2026-10-06-naeste-session-nat.md`](superpowers/plans/2026-10-06-naeste-session-nat.md): merge-gennemgang → natpakke-prompt (#6265 #6279 #6280 + PostHog-taending, KUN med ejer-OK) → Tailwind 4 (#6271, merge senest 13/10) + 10x sideloebende → beta-exit-liste → race engine-tjek → roadmap. Merget 6/10: #6269 #6270 #6247 #6277 #6260 #6259.
+> **🎯 Next action (7/10):** (1) **Dag 2-lækagen** #6291 (sept. D2 46 % → 15 %; ejer-go) + **attribution** #6292 (28 % egen side som kilde). (2) **PostHog-dashboard** 'Kerne-rejsen' (funnel + D1/D7) når events er set (#4321; PostHog live 6/10, uden cookies, verificeret). (3) **Tailwind 4** PR #6289 (bølge kørte natten over): tjek de 9 åbne punkter i Claudes audit-kommentar på PR'en, ét før/efter-billede til ejeren, merge senest 13/10; derefter vagterne #6290. (4) **Patch notes** samlet efter Tailwind-merge: Pro-rettelser (#6287) + PostHog-privatlivstekst (#6280). (5) **#5864**: rod-årsag i sæsonskiftet (ungdomstrupper) før 25/10; 77 brugte ryttere frigives ved skiftet (96 ubrugte frigivet 6/10 23:40, backup `backup_5864_*`). (6) Codex-kø: #6226 (ret Claudes review på #6282) → #6230 → #6172. Ejer-valg 7/10: #6248 langsigtet model (A/B).
 >
-> **5/10 (motor):** kontrakterne står som seneste kommentar på hvert issue (#6187 #5978 #6201 #6185 #3460 #6137 #6199 #6200); krav før v3 tændes på #5978 #3460 #6223. Staging = prod-skema + data (#5904). Læring: `.claude/learnings/2026-10-05-*.md` (review FØR merge-session; rettelser to ad gangen; tjek GitHub-status ved CI i kø; "klar" = grøn CI).
+> **6/10 aften (merget/live):** #6254 #6281 #6283 (patch 7.344) #6280+#6279+#6265 (PostHog live) #6287 (Pro-fejl) #6288. Flippet til alle: `race_role_scope_choice`, `season_matrix_mobile`. Nye issues: #6284 (+30:00-mur) #6285 (løbstests) #6290 #6291 #6292 #6293 #6294 #6295 #6296 (træning beta→alle). Ingen natsessioner: arbejd i sessionen til ejeren siger stop.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Ingen aktiv session. Tailwind-bølgen (#6271, PR #6289, worktree `chore-6271-tailwind-4`) kan stadig køre; den merger ikke selv.
