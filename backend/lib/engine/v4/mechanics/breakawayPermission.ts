@@ -21,8 +21,8 @@
 //
 // REN — ingen IO/Date/Math.random; lodtraekninger kommer ind som funktion.
 
-import type { EffortLevel, RiderRole, TeamOrder } from "../types.ts";
-import { MORNING_BREAK_FORMATION_TUNING } from "../tuning.ts";
+import type { EffortLevel, RiderRole, RiderState, TeamOrder } from "../types.ts";
+import { MORNING_BREAK_FORMATION_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -154,6 +154,106 @@ export const DANGEROUS_ATTEMPT_TUNING = Object.freeze({
   attemptCostFactor: 2.5,
 });
 
+/**
+ * #6201 (KUN orders_gc_v3, ejer-beslutning 5/10): udbruddets stoerrelse foelger
+ * etapens profil. Trappen (typisk / loft): flad 3-6 / 8 (uaendret), kuperet og
+ * rullende 5-9 / 12, bjerg og hoejfjeld 6-12 / 16. START-KANDIDATER, kalibreret
+ * privat (balance-internals/6201/).
+ *  - maxSize: loftet over dem der kommer afsted.
+ *  - room: hvor mange feltet typisk lader gaa; flere forsoeg end det goer det
+ *    svaerere for alle (feltet lukker det overfyldte hul), uden at fylde op og
+ *    uden at en travl morgen kollapser (skaleringen er multiplikativ).
+ *  - successBonus: tillaeg til succes paa dage hvor udbrud har bedre chance
+ *    (feltet lader lettere en stoerre gruppe gaa). Ingen garanti.
+ * Flad har ingen profil her: dannelsen er praecis som under orders_gc_v2.
+ */
+export const BREAKAWAY_SIZE_V3_TUNING = Object.freeze({
+  byProfile: Object.freeze({
+    hilly: Object.freeze({ maxSize: 12, room: 10, successBonus: 0.15 }),
+    rolling: Object.freeze({ maxSize: 12, room: 10, successBonus: 0.15 }),
+    mountain: Object.freeze({ maxSize: 16, room: 12, successBonus: 0.2 }),
+    high_mountain: Object.freeze({ maxSize: 16, room: 12, successBonus: 0.2 }),
+  }) as Readonly<Partial<Record<string, Readonly<{ maxSize: number; room: number; successBonus: number }>>>>,
+  /** Overfyldning: succes ganges med (room / forsoeg) ^ denne eksponent naar forsoeg > room. */
+  roomCrowdWeight: 0.7,
+  /** Loftet paa alle andre profiler (samme som orders_gc_v2). */
+  defaultMaxSize: 8,
+});
+
+export type BreakawaySizeProfile = { maxSize: number; room: number; successBonus: number; roomCrowdWeight: number };
+
+/** #6201: profilens trin, eller null (flad og alt andet: uaendret dannelse, loft 8). */
+export function breakawaySizeProfileV3(profileType: string | undefined): BreakawaySizeProfile | null {
+  const p = profileType ? BREAKAWAY_SIZE_V3_TUNING.byProfile[profileType] : undefined;
+  return p ? { ...p, roomCrowdWeight: BREAKAWAY_SIZE_V3_TUNING.roomCrowdWeight } : null;
+}
+
+/** #6201: loftet over morgenudbruddet under orders_gc_v3 for profilen. */
+export function breakawayMaxSizeV3(profileType: string | undefined): number {
+  return breakawaySizeProfileV3(profileType)?.maxSize ?? BREAKAWAY_SIZE_V3_TUNING.defaultMaxSize;
+}
+
+/**
+ * #6201 (KUN orders_gc_v3): farten foelger antallet. I et udbrud paa 1-3 mand
+ * deler faa ryttere foeringerne: gruppen koerer langsommere (hullet vokser
+ * langsommere og lukkes hurtigere) og rytterne bliver hurtigere traette (en
+ * ekstra pris i team_cp_factor-valutaen pr. koert km-andel). Ingen terning:
+ * en ren funktion af antallet. Fra `referenceRiders` mand og op er intet
+ * aendret. START-KANDIDATER, kalibreret privat (balance-internals/6201/).
+ */
+export const SMALL_BREAK_PACE_V3_TUNING = Object.freeze({
+  referenceRiders: 4,
+  /** Hullets vaekst i lad-gaa-fasen ganges med 1 - growthLoss x underskud. */
+  growthLoss: 0.5,
+  /** Jagtens lukning ganges med 1 + closingGain x underskud. */
+  closingGain: 0.6,
+  /** Ekstra pris for en hel etape i front ved fuldt underskud (andel af CP). */
+  pullCostFraction: 0.08,
+});
+
+export type SmallBreakPace = { growthScale: number; closingScale: number; pullCostFraction: number };
+
+/**
+ * #6201: udbruddets fart og pris ud fra antallet af koerende ryttere. Underskud
+ * = (reference - antal) / (reference - 1): 1 for en solo, 0 fra referencen.
+ * Null naar intet aendres (reference-antallet eller flere, eller tom gruppe).
+ */
+export function smallBreakPaceV3(riderCount: number, t: typeof SMALL_BREAK_PACE_V3_TUNING = SMALL_BREAK_PACE_V3_TUNING): SmallBreakPace | null {
+  const n = Math.floor(riderCount);
+  if (!(n >= 1) || n >= t.referenceRiders) return null;
+  const deficit = (t.referenceRiders - n) / (t.referenceRiders - 1);
+  return {
+    growthScale: 1 - t.growthLoss * deficit,
+    closingScale: 1 + t.closingGain * deficit,
+    pullCostFraction: t.pullCostFraction * deficit,
+  };
+}
+
+/**
+ * #6201: udbrydernes ekstra pris for de km de koerte i et lille udbrud, i samme
+ * valuta og med samme gulv/loft som jagtens pris. Null naar intet betales.
+ */
+export function applySmallBreakPullCost(
+  riders: Readonly<Record<string, RiderState>>,
+  breakawayRiderIds: readonly string[],
+  pace: SmallBreakPace | null,
+  kmShare: number,
+): Record<string, RiderState> | null {
+  if (!pace || !(kmShare > 0) || !(pace.pullCostFraction > 0)) return null;
+  const floor = TEAM_PLAY_EXTRA_TUNING.minCpFactor;
+  const ceiling = 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction;
+  const paid = pace.pullCostFraction * clamp(kmShare, 0, 1);
+  let next: Record<string, RiderState> | null = null;
+  for (const riderId of [...breakawayRiderIds].sort((a, b) => a.localeCompare(b))) {
+    const current = riders[riderId];
+    if (!current || current.status !== "racing") continue;
+    const factor = Number.isFinite(current.team_cp_factor) ? (current.team_cp_factor as number) : 1;
+    next ??= { ...riders };
+    next[riderId] = { ...current, team_cp_factor: clamp(factor - paid, floor, ceiling) };
+  }
+  return next;
+}
+
 function emptyFormation(): MorningBreakFormation {
   return { attempted: [], escaped: [], failed: [], reactingTeamIds: [], attemptCost: new Map(), reactionCost: new Map() };
 }
@@ -188,6 +288,11 @@ export function resolveMorningBreakFormation(input: {
    * forsoeger. Udeladt = orders_gc_v1/v2-dannelsen, bit-identisk.
    */
   dangerTeams?: (riderId: string) => readonly string[];
+  /**
+   * #6201 (KUN orders_gc_v3): profilens trin (breakawaySizeProfileV3). Udeladt
+   * = orders_gc_v1/v2-dannelsen, bit-identisk.
+   */
+  sizeProfile?: BreakawaySizeProfile;
 }): MorningBreakFormation {
   const t = input.tuning ?? MORNING_BREAK_FORMATION_TUNING;
   const riders = [...input.riders].sort((a, b) => a.rider_id.localeCompare(b.rider_id));
@@ -291,15 +396,21 @@ export function resolveMorningBreakFormation(input: {
   const [pLo, pHi] = t.successBounds;
   const successes: Array<{ riderId: string; margin: number; ordered: boolean }> = [];
   const orderedBonus = Math.max(0, Number.isFinite(t.orderedSuccessBonus) ? t.orderedSuccessBonus : 0);
+  // #6201: profilens tillaeg, og et overfyldt forsoeg (flere end feltet typisk
+  // lader gaa) goer det svaerere for alle. Skaleringen er multiplikativ, saa
+  // en travl morgen aldrig kollapser til 0-1 mand (#5955-regressionen).
+  const size = input.sizeProfile;
+  const profileShift = size ? size.successBonus : 0;
+  const crowdScale = size && attempted.length > size.room ? Math.pow(size.room / attempted.length, size.roomCrowdWeight) : 1;
   for (const rider of attempted) {
     const ordered = orderedIds.has(rider.rider_id);
-    const raw = t.successBase
+    const raw = profileShift + t.successBase
       + (ordered ? orderedBonus : 0)
       + t.successStrengthGain * (clamp(rider.strength, 0, 1) - fieldStrength)
       - t.successPressureWeight * pressure
       - t.successCrowdWeight * crowd;
     const danger = dangerPressure.get(rider.rider_id);
-    const p = clamp(danger === undefined ? raw : raw - DANGEROUS_ATTEMPT_TUNING.pressureWeight * danger, pLo, pHi);
+    const p = clamp(danger === undefined ? raw : raw - DANGEROUS_ATTEMPT_TUNING.pressureWeight * danger, pLo, pHi) * crowdScale;
     const r = input.roll("success", rider.rider_id);
     if (r < p) successes.push({ riderId: rider.rider_id, margin: p - r, ordered });
   }
