@@ -96,5 +96,6 @@ export default [
       ],
     },
   },
-  { ignores: ["node_modules/", "dist/", "playwright-report/", "test-results/"] },
+  // dist-ssr/ = the SSR build from `npm run build`, gitignored like dist/.
+  { ignores: ["node_modules/", "dist/", "dist-ssr/", "playwright-report/", "test-results/"] },
 ];
