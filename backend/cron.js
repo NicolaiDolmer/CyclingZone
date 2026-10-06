@@ -26,7 +26,6 @@ import {
 import {
   notifyAuctionWon,
   notifyBoardUpdateDM,
-  getDefaultWebhook,
   getResultWebhooksAndLabel,
   sendWebhook,
   getBotToken,
@@ -42,7 +41,6 @@ import { isRaceNotifyOutboxEnabled } from "./lib/raceNotifyOutboxFlag.js"; // #3
 import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
 import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
-import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
 import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #5867
@@ -305,30 +303,6 @@ async function logActivity(type, data = {}) {
     });
   } catch {
     // Activity feed must never block auction finalization.
-  }
-}
-
-// ─── Deadline Day ─────────────────────────────────────────────────────────────
-
-async function runDeadlineDayCron() {
-  const result = await processDeadlineDayCron({
-    supabase,
-    notifyTeamOwnerFn: (args) => notifyTeamOwnerShared({ supabase, ...args }),
-    sendDiscordWebhookFn: sendWebhook,
-    getDefaultWebhookFn: getDefaultWebhook,
-    captureExceptionFn: sentryCapture,
-    now: new Date(),
-  });
-  if (result.warnings) {
-    console.log(`📣 Deadline Day: ${result.warnings} advarsel(er) afsendt`);
-  }
-  if (result.errors) {
-    console.error(
-      `❌ Deadline Day: ${result.errors} advarsel(er) fejlede (per-team try/catch isolerede)`
-    );
-  }
-  if (result.whistleSent) {
-    console.log("🏁 Deadline Day: Final Whistle-rapport sendt til Discord");
   }
 }
 
@@ -1882,12 +1856,6 @@ export function startCron() {
     60 * 1000
   );
 
-  // Every 5 minutes: deadline day warnings + final whistle
-  setInterval(
-    trackedTick("deadline day", monitorCron("deadline-day", runDeadlineDayCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
-  );
-
   // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
   setInterval(
     trackedTick("squad enforcement", monitorCron("squad-enforcement", runSquadEnforcementCron, CRON_MONITOR_5MIN)),
@@ -1908,11 +1876,9 @@ export function startCron() {
 
   // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
   // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
-  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Final whistle og squad-tjek
-  // (deadline day-cron / squad enforcement-cron ovenfor) forbliver automatiske;
-  // kun selve sæson-skiftet er manuelt. (#1996: vindue-AUTO-luk er strukturelt
-  // inaktiv siden markedet blev altid-åbent 2026-06-22 — windows fødes 'closed',
-  // aldrig 'open', så fireAutoCloseIfDue i deadlineDayReport.js har intet at lukke.)
+  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Squad-tjek (squad
+  // enforcement-cron ovenfor) forbliver automatisk; kun selve sæson-skiftet er
+  // manuelt. (#6120: Deadline Day-cron'en er fjernet — markedet er altid åbent.)
   // Tændes igen ved SEASON_AUTO_TRANSITION_ENABLED=true i economyConstants.js.
   if (SEASON_AUTO_TRANSITION_ENABLED) {
     setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
