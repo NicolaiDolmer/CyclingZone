@@ -79,7 +79,7 @@ export default function TrainingProgramList({
                     <span className="font-semibold text-cz-1">{programName(program, lang)}</span>
                     {" · "}{programTagline(program, lang)}
                   </span>
-                  <span className="hidden flex-none font-data text-3xs uppercase tracking-[.05em] text-cz-3 md:inline">{forLabel(program)}</span>
+                  <span className="hidden flex-none font-data text-3xs uppercase tracking-wider text-cz-3 md:inline">{forLabel(program)}</span>
                 </button>
                 <select
                   value=""

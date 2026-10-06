@@ -60,7 +60,7 @@ function BenchmarkBar({ value, mean, variant = "headline" }) {
   return (
     <div className={`relative ${cfg.track} bg-cz-subtle rounded-full ${cfg.mt}`} aria-hidden="true">
       <div className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/80" style={{ width: `${fillPct}%` }} />
-      <div className={`absolute -top-[3px] w-0.5 ${cfg.tick} bg-cz-1`} style={{ left: `${tickPct}%` }} />
+      <div className={`absolute top-[-3px] w-0.5 ${cfg.tick} bg-cz-1`} style={{ left: `${tickPct}%` }} />
     </div>
   );
 }
@@ -70,7 +70,7 @@ function HeadlineCard({ label, big, unit, sub, riderVal, meanVal, divLabel }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-3xs font-semibold uppercase tracking-[0.1em] text-cz-3">{label}</span>
+        <span className="font-mono text-3xs font-semibold uppercase tracking-widest text-cz-3">{label}</span>
         <DeltaTag pct={deltaPct(riderVal, meanVal)} />
       </div>
       <div className="flex items-baseline gap-1.5 mt-[7px] mb-[3px]">
@@ -132,11 +132,11 @@ function CriticalPowerCard({ cp, lang, t }) {
       <div className="flex gap-[18px] flex-wrap">
         <div>
           <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtW(cp.cpWatts, lang)} <span className="text-2xs font-normal text-cz-3">W</span></div>
-          <div className="text-3xs text-cz-3 uppercase tracking-[0.05em]">{t("profile.physio.cp.cp")}</div>
+          <div className="text-3xs text-cz-3 uppercase tracking-wider">{t("profile.physio.cp.cp")}</div>
         </div>
         <div>
           <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtWkg(cp.wPrimeKj)} <span className="text-2xs font-normal text-cz-3">kJ</span></div>
-          <div className="text-3xs text-cz-3 uppercase tracking-[0.05em]">{t("profile.physio.cp.wprime")}</div>
+          <div className="text-3xs text-cz-3 uppercase tracking-wider">{t("profile.physio.cp.wprime")}</div>
         </div>
       </div>
       <p className="mt-2 text-2xs text-cz-2 leading-snug">{t("profile.physio.cp.read")}</p>
@@ -231,7 +231,7 @@ export default function RiderPhysiologyTab({ physiology, benchmark }) {
             <div className="inline-flex bg-cz-subtle rounded-cz p-0.5">
               {["wkg", "w"].map((u) => (
                 <button key={u} type="button" onClick={() => setUnit(u)} aria-pressed={unit === u}
-                  className={`min-h-[44px] px-4 rounded-[4px] text-2xs font-semibold transition-colors ${unit === u ? "bg-cz-card text-cz-1 shadow-sm" : "text-cz-3 hover:text-cz-2"}`}>
+                  className={`min-h-[44px] px-4 rounded-[4px] text-2xs font-semibold transition-colors ${unit === u ? "bg-cz-card text-cz-1 shadow-xs" : "text-cz-3 hover:text-cz-2"}`}>
                   {u === "wkg" ? "W/kg" : "W"}
                 </button>
               ))}

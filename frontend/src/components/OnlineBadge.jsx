@@ -16,7 +16,7 @@ export default function OnlineBadge({ isOnline, lastSeen }) {
   const { t } = useTranslation("common");
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-cz-pill flex-shrink-0 ${isOnline ? "bg-cz-success" : "bg-cz-border"}`} />
+      <span className={`w-2 h-2 rounded-cz-pill shrink-0 ${isOnline ? "bg-cz-success" : "bg-cz-border"}`} />
       <span className={`text-xs ${isOnline ? "text-cz-success" : "text-cz-3"}`}>
         {isOnline ? t("time.onlineNow") : timeAgo(lastSeen, t)}
       </span>

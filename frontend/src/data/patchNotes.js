@@ -3578,7 +3578,7 @@ export const PATCHES = [
         "category": "improved", "audience": "player", "topic": "Marketing",
         "en": {
           "title": "The public site got a small visual refresh",
-          "body": "The marketing site, not the game itself, moved to a new styling engine. Sections now alternate tone, the stage profile has an outline and a finish line, and riders in the standings are separated by a thin line."
+          "body": "The marketing site, not the game itself, moved to a new styling engine. Sections now alternate tone, the stage profile has an outline-solid and a finish line, and riders in the standings are separated by a thin line."
         },
         "da": {
           "title": "Det offentlige site fik et lille visuelt løft",
@@ -13893,7 +13893,7 @@ export const PATCHES = [
         "topic": "UI",
         "en": {
           "title": "Smoother auctions and standings",
-          "body": "Small motion touches across the live surfaces: the outbid toast now slides in instead of popping, the gold highlight on the leading bid fades softly when the lead changes, auctions show a countdown ring for the final 10 seconds (turning red for the last 3), standings rows glide to their new positions when points update, and the leader jersey chip pulses briefly when it lands on a new team. All animations respect your system's reduced motion setting."
+          "body": "Small motion touches across the live surfaces: the outbid toast now slides in instead of popping, the gold highlight on the leading bid fades softly when the lead changes, auctions show a countdown ring-3 for the final 10 seconds (turning red for the last 3), standings rows glide to their new positions when points update, and the leader jersey chip pulses briefly when it lands on a new team. All animations respect your system's reduced motion setting."
         },
         "da": {
           "title": "Blødere auktioner og rangliste",

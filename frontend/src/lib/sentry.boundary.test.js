@@ -37,7 +37,7 @@ test("fallback genbruger ErrorState + Button via DIREKTE imports (ikke barrel)",
 
 test("fallback er on-spec (rounded-cz container, ingen rounded-lg/shadow-sm slop)", () => {
   assert.ok(!/rounded-lg/.test(src), "brug rounded-cz, ikke rounded-lg");
-  assert.ok(!/shadow-sm/.test(src), "ingen shadow paa fallback-overflade (hairline)");
+  assert.ok(!/shadow-sm/.test(src), "ingen shadow-sm paa fallback-overflade (hairline)");
 });
 
 test("bevarer statisk EN/DA-copy (ingen i18n-runtime i boundary, #1170)", () => {

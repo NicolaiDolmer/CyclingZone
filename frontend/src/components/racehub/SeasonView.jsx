@@ -319,7 +319,7 @@ export default function SeasonView({ onSwitchView }) {
   const { rail, packed, laneTops, areaHeight, ticks, todayPct, focusIso, focusStats } = model;
 
   const bandClasses = (b) => {
-    if (b.monument) return "bg-cz-sidebar outline outline-2 outline-offset-1 outline-cz-accent";
+    if (b.monument) return "bg-cz-sidebar outline-solid outline-2 outline-offset-1 outline-cz-accent";
     if (b.multiDay) return "bg-cz-sidebar";
     return b.hasSelection
       ? "border border-cz-accent/50 bg-cz-accent/10"
@@ -384,7 +384,7 @@ export default function SeasonView({ onSwitchView }) {
               {todayPct != null && (
                 <>
                   <span className="absolute -bottom-px h-2 w-0.5 bg-cz-accent" style={{ left: `${todayPct}%` }} />
-                  <span className="absolute -bottom-4 font-data text-3xs font-bold tracking-[.1em] text-cz-accent-t" style={{ left: `${todayPct}%`, transform: "translateX(-50%)" }}>
+                  <span className="absolute -bottom-4 font-data text-3xs font-bold tracking-widest text-cz-accent-t" style={{ left: `${todayPct}%`, transform: "translateX(-50%)" }}>
                     {t("seasonView.today")}
                   </span>
                 </>
@@ -454,7 +454,7 @@ export default function SeasonView({ onSwitchView }) {
                 <span className="inline-block h-3 w-3 rounded-sm bg-cz-sidebar" />{t("seasonView.legend.gt")}
               </span>
               <span className="flex items-center gap-1.5 text-2xs text-cz-2">
-                <span className="inline-block h-3 w-3 rounded-sm bg-cz-sidebar outline outline-2 outline-offset-1 outline-cz-accent" />{t("seasonView.legend.monument")}
+                <span className="inline-block h-3 w-3 rounded-sm bg-cz-sidebar outline-solid outline-2 outline-offset-1 outline-cz-accent" />{t("seasonView.legend.monument")}
               </span>
               <span className="flex items-center gap-1.5 text-2xs text-cz-2">
                 <span className="inline-block h-3 w-3 rounded-sm border border-cz-accent/50 bg-cz-accent/10" />{t("seasonView.legend.selected")}

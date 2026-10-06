@@ -219,7 +219,7 @@ export default function RaceHistoryPage() {
                   {riderStats.map((s, i) => (
                     <RiderLink key={s.rider?.id || s.rider_name} id={s.rider?.id}
                       className="flex items-center gap-3 py-[13px] transition-colors hover:bg-cz-subtle cursor-pointer">
-                      <span className={`w-4 flex-shrink-0 text-center font-mono text-xs font-bold
+                      <span className={`w-4 shrink-0 text-center font-mono text-xs font-bold
                         ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                         {i + 1}
                       </span>
@@ -238,7 +238,7 @@ export default function RaceHistoryPage() {
                           ].filter(Boolean).join(" · ") || t("history.noWins")}
                         </p>
                       </div>
-                      <span className="flex-shrink-0 font-mono text-xs font-bold text-cz-accent-t">
+                      <span className="shrink-0 font-mono text-xs font-bold text-cz-accent-t">
                         {formatNumber(s.total_points)} pt
                       </span>
                     </RiderLink>
@@ -261,7 +261,7 @@ export default function RaceHistoryPage() {
                   const barColor = i === 0 ? "rgb(var(--accent))" : i === 1 ? "rgb(var(--accent) / 0.6)" : i === 2 ? "rgb(var(--accent) / 0.4)" : "rgb(var(--accent) / 0.25)";
                   return (
                     <div key={s.rider?.id || s.rider_name} className="flex items-center gap-3">
-                      <div className="w-28 flex-shrink-0 truncate text-right text-xs text-cz-2">
+                      <div className="w-28 shrink-0 truncate text-right text-xs text-cz-2">
                         {s.rider?.nationality_code && (
                           <Flag code={s.rider.nationality_code} className="me-0.5" />
                         )}
@@ -273,7 +273,7 @@ export default function RaceHistoryPage() {
                           style={{ width: `${Math.max(pct, 1)}%`, backgroundColor: barColor }}
                         />
                       </div>
-                      <div className="w-16 flex-shrink-0 text-right font-mono text-xs text-cz-2">
+                      <div className="w-16 shrink-0 text-right font-mono text-xs text-cz-2">
                         {formatNumber(s.total_points)}
                       </div>
                     </div>

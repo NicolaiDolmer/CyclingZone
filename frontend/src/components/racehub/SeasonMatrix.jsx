@@ -376,7 +376,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             const fit = lens === "routeMatch" && rider.abilities ? riderSuitability(rider.abilities, selectedMobileRace.demandVector).score : null;
             const loadDays = lens === "load" ? riderLoadDays(races, draftByRace, rider.id) : null;
             return <tr key={rider.id}>
-              <td className="border-b border-r border-cz-border px-2 py-2 align-middle text-xs font-medium text-cz-1 break-words">
+              <td className="border-b border-r border-cz-border px-2 py-2 align-middle text-xs font-medium text-cz-1 wrap-break-word">
                 {rider.name}
                 {loadDays != null && <span className="block text-2xs font-normal tabular-nums text-cz-3">{t("matrix.loadSuffix", { count: loadDays })}</span>}
               </td>
@@ -384,7 +384,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                 const peak = peakDaysByRider.get(rider.id)?.get(day.gameDay);
                 const hasError = saveError?.raceId === selectedMobileRace.id;
                 const isDraftCell = dirtyIdSet.has(selectedMobileRace.id);
-                return <td key={day.key} className={`border-b border-cz-border p-0 text-center ${peak ? "bg-cz-accent/10" : ""} ${hasError ? "outline outline-1 outline-offset-[-1px] outline-cz-danger" : isDraftCell ? "outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : ""}`}>
+                return <td key={day.key} className={`border-b border-cz-border p-0 text-center ${peak ? "bg-cz-accent/10" : ""} ${hasError ? "outline-solid outline-1 -outline-offset-1 outline-cz-danger" : isDraftCell ? "outline-solid outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : ""}`}>
                   <button
                     type="button"
                     onClick={(e) => openCellPopover(e, { kind: role == null ? "empty" : "filled", raceId: selectedMobileRace.id, riderId: rider.id })}
@@ -517,8 +517,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                           <td
                             key={seg.day}
                             className={`border-b p-0 ${peak ? "bg-cz-accent/10" : ""} ${
-                              hasError ? "border-cz-danger outline outline-1 outline-offset-[-1px] outline-cz-danger"
-                                : isDraftCell ? "border-cz-border outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : "border-cz-border"
+                              hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
+                                : isDraftCell ? "border-cz-border outline-solid outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
                             }`}
                             style={{ width: colWidth }}
                           >
@@ -546,8 +546,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                           key={race.id}
                           colSpan={seg.colSpan}
                           className={`border-b p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${
-                            hasError ? "border-cz-danger outline outline-1 outline-offset-[-1px] outline-cz-danger"
-                              : isDraftCell ? "border-cz-border outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : "border-cz-border"
+                            hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
+                              : isDraftCell ? "border-cz-border outline-solid outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
                           }`}
                           style={{ width: colWidth * seg.colSpan }}
                         >

@@ -69,7 +69,7 @@ function DirectionBadge({ direction, noSale = false }) {
   if (direction === "in") {
     return (
       <span className={`${base} bg-cz-success-bg text-cz-success`}>
-        <ArrowDownIcon size={12} className="flex-shrink-0" />
+        <ArrowDownIcon size={12} className="shrink-0" />
         {t("direction.in")}
       </span>
     );
@@ -77,14 +77,14 @@ function DirectionBadge({ direction, noSale = false }) {
   if (direction === "out") {
     return (
       <span className={`${base} bg-cz-danger-bg text-cz-danger`}>
-        <ArrowUpIcon size={12} className="flex-shrink-0" />
+        <ArrowUpIcon size={12} className="shrink-0" />
         {t("direction.out")}
       </span>
     );
   }
   return (
     <span className={`${base} bg-cz-info-bg text-cz-info`}>
-      <ExchangeIcon size={12} className="flex-shrink-0" />
+      <ExchangeIcon size={12} className="shrink-0" />
       {t("direction.swap")}
     </span>
   );
@@ -102,7 +102,7 @@ function RiderCell({ event }) {
     return (
       <span className="inline-flex items-center gap-1 text-cz-2">
         {primary}
-        <ExchangeIcon size={14} className="mx-0.5 text-cz-3 flex-shrink-0" />
+        <ExchangeIcon size={14} className="mx-0.5 text-cz-3 shrink-0" />
         <RiderLink id={event.rider_swapped.id} className="text-cz-1 hover:text-cz-accent-t">
           {event.rider_swapped.firstname} {event.rider_swapped.lastname}
         </RiderLink>

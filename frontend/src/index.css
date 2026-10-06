@@ -1,6 +1,77 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+@theme {
+  --radius-*: initial;
+  --radius-none: 0px;
+  --radius-sm: 0.125rem;
+  --radius: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-full: 9999px;
+  --radius-cz: var(--radius-sm);
+  --radius-cz-pill: var(--radius-pill);
+
+  --animate-ticker: ticker 60s linear infinite;
+
+  --text-3xs: 10px;
+  --text-3xs--line-height: 1.3;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.35;
+
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Inter Tight', 'Inter Tight Fallback', system-ui, sans-serif;
+  --font-data: 'Inter Tight', 'Inter Tight Fallback', system-ui, sans-serif;
+  --font-display: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+
+  --color-cz-accent: rgb(var(--accent));
+  --color-cz-accent-t: rgb(var(--accent-t));
+  --color-cz-success: rgb(var(--success));
+  --color-cz-danger: rgb(var(--danger));
+  --color-cz-warning: rgb(var(--warning));
+  --color-cz-info: rgb(var(--info));
+  --color-cz-discord: rgb(var(--discord));
+  --color-cz-discord-hover: rgb(var(--discord-hover));
+
+  --shadow-overlay: var(--shadow-overlay);
+
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1100;
+  --z-index-nav: 1150;
+  --z-index-overlay: 1200;
+  --z-index-modal: 1300;
+  --z-index-toast: 1400;
+  --z-index-table-col: 1;
+  --z-index-table-head: 2;
+
+  @keyframes ticker {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 * {
   box-sizing: border-box;

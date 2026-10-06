@@ -404,13 +404,13 @@ export default function AdminSeasonTab() {
             <label className="block text-cz-3 text-xs mb-1">Sæsonnummer</label>
             <input type="number" required placeholder="1" value={seasonForm.number}
               onChange={e => setSeasonForm(f => ({ ...f, number: e.target.value }))}
-              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-28 focus:outline-none focus:border-cz-accent" />
+              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-28 focus:outline-hidden focus:border-cz-accent" />
           </div>
           <div>
             <label className="block text-cz-3 text-xs mb-1">Løbsdage</label>
             <input type="number" value={seasonForm.race_days_total}
               onChange={e => setSeasonForm(f => ({ ...f, race_days_total: e.target.value }))}
-              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-28 focus:outline-none focus:border-cz-accent" />
+              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-28 focus:outline-hidden focus:border-cz-accent" />
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={loading.season}
@@ -429,7 +429,7 @@ export default function AdminSeasonTab() {
           <div className="flex-1">
             <label className="block text-cz-3 text-xs mb-1">Vælg sæson</label>
             <select value={calSeasonId} onChange={e => { setCalSeasonId(e.target.value); setCalPreview(null); setCalResult(null); }}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
@@ -534,7 +534,7 @@ export default function AdminSeasonTab() {
           <div className="flex-1">
             <label className="block text-cz-3 text-xs mb-1">Vælg sæson (den sæson der afsluttes)</label>
             <select value={previewSeason} onChange={e => setPreviewSeason(e.target.value)}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>

@@ -56,7 +56,7 @@ test("#5561: variabelnavnet matcher klassen i de tre bundbjælker", async () => 
   ];
   // Klassen står som ét bogstaveligt ord: en skabelonstreng her ville Tailwind
   // scanne som en (ugyldig) klasse og vælte CSS-minificeringen i buildet.
-  const expectedClass = "bottom-[var(--cz-mobile-nav-offset,0px)]";
+  const expectedClass = "bottom-(--cz-mobile-nav-offset,0px)";
   assert.ok(expectedClass.includes(MOBILE_NAV_OFFSET_VAR));
   for (const rel of files) {
     const src = await readFile(new URL(rel, import.meta.url), "utf8");

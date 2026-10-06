@@ -119,7 +119,7 @@ export default function RulesPage() {
                   to={`/help?faq=${id}`}
                   className="inline-flex items-start gap-1.5 text-sm text-cz-accent-t hover:underline"
                 >
-                  <ExternalLinkIcon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <ExternalLinkIcon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <span>{t(`faqLinks.${id}`)}</span>
                 </Link>
               </li>
@@ -139,7 +139,7 @@ export default function RulesPage() {
             {SECTION_DEFS.map((s) => (
               <Tab key={s.key} value={s.key}>
                 <span className="inline-flex items-center gap-1.5">
-                  <s.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                  <s.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                   {t(`sections.${s.key}.label`)}
                 </span>
               </Tab>
@@ -149,7 +149,7 @@ export default function RulesPage() {
       </div>
 
       <div className="flex gap-4">
-        <div className="hidden md:block w-40 flex-shrink-0">
+        <div className="hidden md:block w-40 shrink-0">
           <div className="sticky top-4 flex flex-col gap-1">
             {SECTION_DEFS.map((s) => (
               <button
@@ -164,7 +164,7 @@ export default function RulesPage() {
                       : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle border-transparent"
                   }`}
               >
-                <s.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                <s.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>{t(`sections.${s.key}.label`)}</span>
               </button>
             ))}
@@ -175,7 +175,7 @@ export default function RulesPage() {
         <div className="flex-1 min-w-0">
           {currentDef.gated && !academyEnabled && (
             <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4 flex items-start gap-2">
-              <InfoIcon className="w-4 h-4 flex-shrink-0 mt-0.5 text-cz-accent-t" />
+              <InfoIcon className="w-4 h-4 shrink-0 mt-0.5 text-cz-accent-t" />
               <p className="text-cz-2 text-sm leading-relaxed">{t("academyDisabledNote")}</p>
             </div>
           )}

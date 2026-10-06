@@ -674,12 +674,12 @@ test("tab-fokus tjekker foerst efter mere end fem minutter i baggrunden", () => 
     timers: { set: () => 1, clear: () => {} },
   });
 
-  listeners.get("blur")();
+  listeners.get("blur-sm")();
   clock += 60_000;
   listeners.get("focus")();
   assert.deepEqual(triggers, [], "et hurtigt alt-tab er ikke et deploy-vindue");
 
-  listeners.get("blur")();
+  listeners.get("blur-sm")();
   clock += 6 * 60_000;
   listeners.get("focus")();
   assert.deepEqual(triggers, ["focus"]);

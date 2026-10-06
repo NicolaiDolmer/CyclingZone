@@ -22,5 +22,5 @@ test("backdrop er scrim uden blur (anti-slop A9)", () => {
   const b = backdropClass();
   assert.ok(b.includes("inset-0"));
   assert.ok(b.includes("bg-black/60"));
-  assert.ok(!b.includes("backdrop-blur"), "ingen backdrop-blur");
+  assert.ok(!b.includes("backdrop-blur-sm"), "ingen backdrop-blur-sm");
 });

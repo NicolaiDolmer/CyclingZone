@@ -260,7 +260,7 @@ function MarkerTip({ label, className = "", children }) {
         onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}
         onPointerDown={(e) => { lastPointerRef.current = e.pointerType || "mouse"; }}
         onClick={onClick}
-        className={`-m-[2.5px] inline-flex cursor-help p-[4.5px] ${className}`}>
+        className={`m-[-2.5px] inline-flex cursor-help p-[4.5px] ${className}`}>
         {children}
       </span>
       {pos && (
@@ -312,8 +312,8 @@ function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
       value={value}
       onChange={e => onChange(e.target.value)}
       aria-label={t("detail.teamFilter.label")}
-      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-[14rem] cursor-pointer
-        focus:outline-none focus:ring-1 focus:ring-cz-accent
+      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-56 cursor-pointer
+        focus:outline-hidden focus:ring-1 focus:ring-cz-accent
         ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
       <option value="all">{t("detail.teamFilter.all")}</option>
       {hasMyTeam && <option value="mine">{t("detail.teamFilter.mine")}</option>}
@@ -346,7 +346,7 @@ function countdownText(date, nowMs, t) {
 function HeroStatBlock({ label, value, sub, last = false }) {
   return (
     <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</div>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
       {sub && <div className="font-data text-2xs text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
     </div>
@@ -1081,7 +1081,7 @@ export default function RaceDetailPage() {
         <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
             <div className="min-w-0">
-              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{race.name}</h1>
+              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{race.name}</h1>
               <div className="flex items-center gap-2 flex-wrap mt-2.5">
                 {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
                 <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>

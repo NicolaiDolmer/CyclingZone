@@ -60,7 +60,7 @@ function useBonusOfferActions({ offer, onResolved }) {
 
 function OfferActions({ busy, onAccept, onDecline, t }) {
   return (
-    <div className="flex flex-shrink-0 items-center gap-3.5">
+    <div className="flex shrink-0 items-center gap-3.5">
       <Button variant="secondary" size="sm" onClick={onAccept} loading={busy}>
         {t("bonusOffer.accept")}
       </Button>

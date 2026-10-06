@@ -10,15 +10,15 @@ const STATUS_TONE = {
 };
 
 const TONE_CLASS = {
-  success: "text-cz-success bg-cz-success/[.08]",
-  warning: "text-cz-warning bg-cz-warning/[.08]",
-  danger: "text-cz-danger bg-cz-danger/[.08]",
+  success: "text-cz-success bg-cz-success/8",
+  warning: "text-cz-warning bg-cz-warning/8",
+  danger: "text-cz-danger bg-cz-danger/8",
 };
 
 export default function StatusPill({ status, t }) {
   const tone = STATUS_TONE[status] || "warning";
   return (
-    <span className={`inline-block flex-shrink-0 rounded-cz-pill px-2.5 py-[3px] text-2xs font-semibold ${TONE_CLASS[tone]}`}>
+    <span className={`inline-block shrink-0 rounded-cz-pill px-2.5 py-[3px] text-2xs font-semibold ${TONE_CLASS[tone]}`}>
       {t(`boardroom.status.${status}`, { defaultValue: status })}
     </span>
   );

@@ -94,7 +94,7 @@ function TierCard({ tier, highlighted = false }) {
           <li key={i} className="flex items-start gap-2">
             <span
               className={
-                "mt-1 w-1 h-1 rounded-full flex-shrink-0 " +
+                "mt-1 w-1 h-1 rounded-full shrink-0 " +
                 (highlighted ? "bg-cz-accent" : "bg-cz-3")
               }
             />
@@ -130,7 +130,7 @@ function FaqItem({ q, a, idx }) {
         <ChevronDownIcon
           size={18}
           className={
-            "flex-shrink-0 text-cz-accent-t transition-transform duration-200 " +
+            "shrink-0 text-cz-accent-t transition-transform duration-200 " +
             (open ? "rotate-180" : "")
           }
           aria-hidden="true"
@@ -267,11 +267,11 @@ export default function FounderSupporterPage() {
 
             <ul className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-cz-border pt-6 text-cz-2 text-xs">
               <li className="inline-flex items-center gap-1.5">
-                <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
+                <CheckIcon size={14} className="text-cz-accent-t shrink-0" />
                 {t("badgeBeta")}
               </li>
               <li className="inline-flex items-center gap-1.5">
-                <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
+                <CheckIcon size={14} className="text-cz-accent-t shrink-0" />
                 {t("badgeFair")}
               </li>
             </ul>
@@ -283,7 +283,7 @@ export default function FounderSupporterPage() {
           <div className="max-w-3xl mx-auto">
             <div className="bg-cz-card border-l-2 border-cz-accent border-y border-r border-y-cz-border border-r-cz-border rounded-cz p-6 sm:p-8">
               <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight mb-3 flex items-center gap-2.5">
-                <CheckIcon className="w-6 h-6 text-cz-accent-t flex-shrink-0" />
+                <CheckIcon className="w-6 h-6 text-cz-accent-t shrink-0" />
                 {t("promiseTitle")}
               </h2>
               <p className="text-cz-1 text-base sm:text-lg leading-relaxed">{t("promiseBody")}</p>
@@ -310,7 +310,7 @@ export default function FounderSupporterPage() {
 
             <div className="mt-8 max-w-3xl bg-cz-subtle border-l-2 border-cz-accent border-y border-r border-y-cz-border border-r-cz-border rounded-cz p-5">
               <h3 className="text-cz-1 text-base font-semibold mb-2 flex items-center gap-2">
-                <StarIcon size={16} className="text-cz-accent-t flex-shrink-0" />
+                <StarIcon size={16} className="text-cz-accent-t shrink-0" />
                 {t("founderNoteTitle")}
               </h3>
               <p className="text-cz-2 text-sm leading-relaxed">{t("founderNoteBody")}</p>
@@ -326,13 +326,13 @@ export default function FounderSupporterPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-cz-card border border-cz-border rounded-cz p-5">
                 <h3 className="text-cz-1 text-base font-semibold mb-3 flex items-center gap-2">
-                  <CheckIcon className="w-4 h-4 text-cz-success flex-shrink-0" />
+                  <CheckIcon className="w-4 h-4 text-cz-success shrink-0" />
                   {t("soldCol")}
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {t("sold", { returnObjects: true }).map((item, i) => (
                     <li key={i} className="text-cz-2 text-sm flex items-start gap-2.5">
-                      <span className="mt-[7px] h-1 w-1 rounded-full bg-cz-success flex-shrink-0" aria-hidden="true" />
+                      <span className="mt-[7px] h-1 w-1 rounded-full bg-cz-success shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -341,13 +341,13 @@ export default function FounderSupporterPage() {
 
               <div className="bg-cz-card border border-cz-danger/30 rounded-cz p-5">
                 <h3 className="text-cz-1 text-base font-semibold mb-3 flex items-center gap-2">
-                  <XIcon className="w-4 h-4 text-cz-danger flex-shrink-0" />
+                  <XIcon className="w-4 h-4 text-cz-danger shrink-0" />
                   {t("notSoldCol")}
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {t("notSold", { returnObjects: true }).map((item, i) => (
                     <li key={i} className="text-cz-2 text-sm flex items-start gap-2.5">
-                      <span className="mt-[7px] h-1 w-1 rounded-full bg-cz-danger flex-shrink-0" aria-hidden="true" />
+                      <span className="mt-[7px] h-1 w-1 rounded-full bg-cz-danger shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}

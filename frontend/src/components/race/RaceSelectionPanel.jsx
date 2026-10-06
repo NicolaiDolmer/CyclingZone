@@ -1015,7 +1015,7 @@ function SelectionSortControl({ sort, onSort, fitLabel, t, viewMode, tRider }) {
             onClick={() => onSort(sort.sort)}
             aria-label={dirAria}
             title={dirAria}
-            className="flex-shrink-0 flex items-center justify-center px-2.5 py-1 rounded-cz border border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
+            className="shrink-0 flex items-center justify-center px-2.5 py-1 rounded-cz border border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
           >
             {sort.dir === "desc"
               ? <ArrowDownIcon size={14} aria-hidden="true" />

@@ -258,7 +258,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
   return (
     <tr data-auction-row={auction.id} className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
-      ${imWinning ? "bg-cz-accent/[0.08]" : isOverbid ? "bg-cz-warning/[0.05]" : isRecommended ? "bg-cz-accent/[0.05] outline outline-1 -outline-offset-1 outline-cz-accent/40" : ""}`}>
+      ${imWinning ? "bg-cz-accent/8" : isOverbid ? "bg-cz-warning/5" : isRecommended ? "bg-cz-accent/5 outline-solid outline-1 -outline-offset-1 outline-cz-accent/40" : ""}`}>
 
       {/* Rytter — sticky left. #228: rent navn, hverken land eller alders-/
           statusbadges blandes ind i navnecellen — begge har nu egen kolonne. */}
@@ -472,7 +472,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 wrapperClassName="contents"
                 feedbackClassName="text-3xs text-cz-danger max-w-[90px] leading-tight"
                 className="w-20 bg-cz-subtle border border-cz-border rounded-cz px-2 py-1.5
-                  text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+                  text-cz-1 font-mono text-xs focus:outline-hidden focus:border-cz-accent"
               />
               <button
                 type="button"
@@ -541,7 +541,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                     aria-label={t("auctions:bid.proxy.inputAria")}
                     wrapperClassName="contents"
                     feedbackClassName="text-3xs text-cz-danger max-w-[240px] leading-tight"
-                    className="w-20 bg-cz-subtle border border-cz-border rounded-cz px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-none focus:border-cz-accent"
+                    className="w-20 bg-cz-subtle border border-cz-border rounded-cz px-1.5 py-1 text-cz-1 font-mono text-3xs focus:outline-hidden focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -623,7 +623,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
     <Card
       data-auction-row={auction.id}
       borderClass={imWinning ? "border-cz-accent/40" : isOverbid ? "border-cz-warning/40" : isRecommended ? "border-cz-accent/40" : "border-cz-border"}
-      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : isOverbid ? "bg-cz-warning/[0.05]" : isRecommended ? "bg-cz-accent/5" : ""}`}
+      className={`p-4 transition-all ${imWinning ? "bg-cz-accent/10" : isOverbid ? "bg-cz-warning/5" : isRecommended ? "bg-cz-accent/5" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
@@ -694,7 +694,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             </div>
           </div>
         </div>
-        <div className="flex flex-shrink-0 items-start gap-2">
+        <div className="flex shrink-0 items-start gap-2">
           <div className="text-right" data-tour={isFirst ? "auctions-countdown" : undefined}>
             <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.time")}</p>
             <Countdown end={auction.calculated_end} status={auction.status} />
@@ -816,7 +816,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 data-tour={isFirst ? "auctions-bid-input" : undefined}
                 aria-label={t("auctions:bid.inputAria")}
                 wrapperClassName="min-w-0 flex-1"
-                className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-hidden focus:border-cz-accent"
               />
               <button
                 type="button"
@@ -886,7 +886,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                     placeholder={t("auctions:bid.proxy.placeholder")}
                     aria-label={t("auctions:bid.proxy.inputAria")}
                     wrapperClassName="min-w-0 w-32"
-                    className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                    className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-hidden focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -1938,7 +1938,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
   const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
-    // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
+    // Thead's shadow-xs er fjernet — hairline-rulen på tr'en herunder (border-b)
     // er nu den eneste adskillelse, jf. cz-table-recipen.
     <thead className="sticky top-0 z-table-head bg-cz-card">
       <tr className="border-b border-cz-border">
@@ -2065,7 +2065,7 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
         onClick={() => handleSort(currentKey)}
         aria-label={dirAria}
         title={dirAria}
-        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+        className="shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
           bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
       >
         {currentDir === "desc"

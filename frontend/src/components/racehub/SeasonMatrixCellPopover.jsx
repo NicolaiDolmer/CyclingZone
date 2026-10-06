@@ -106,7 +106,7 @@ export default function SeasonMatrixCellPopover({
       role="dialog"
       aria-label={ariaLabel}
       tabIndex={-1}
-      className="fixed z-overlay rounded-cz border border-cz-border bg-cz-elevated shadow-overlay p-2.5 outline-none"
+      className="fixed z-overlay rounded-cz border border-cz-border bg-cz-elevated shadow-overlay p-2.5 outline-hidden"
       style={{
         width: PANEL_WIDTH,
         left: coords?.left ?? -9999,

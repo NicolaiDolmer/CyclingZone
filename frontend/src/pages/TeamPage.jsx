@@ -381,7 +381,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSqua
                   wrapperClassName="flex-1"
                   className={`${controlClass({ error: auctionPriceError })} font-mono`} />
                 <Button onClick={handleAuctionSubmit} disabled={loading || auctionPriceError || Boolean(endTimeIssue)}
-                  className={ddActive && flash ? "!bg-cz-danger !text-white hover:brightness-110" : ""}>
+                  className={ddActive && flash ? "bg-cz-danger! text-white! hover:brightness-110" : ""}>
                   {loading ? t("actionModal.loadingShort") : (ddActive && flash) ? t("actionModal.auction.startFlashButton") : t("actionModal.auction.startButton")}
                 </Button>
               </div>
@@ -488,7 +488,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSqua
               )}
               <Button onClick={() => postRiderAction(releaseActionPath, "actionModal.release.successMsg")}
                 disabled={loading || (releaseQuote && releaseQuote.affordable === false)}
-                className="w-full !bg-cz-danger !text-white hover:brightness-110">
+                className="w-full bg-cz-danger! text-white! hover:brightness-110">
                 {loading ? t("actionModal.loadingShort") : t("actionModal.release.confirmButton")}
               </Button>
             </div>
@@ -558,7 +558,7 @@ function OwnAuctionBadge({ auction }) {
       to="/auctions?tab=my-situation"
       onClick={e => e.stopPropagation()}
       title={t("team:squad.ownAuctionTooltip", { price: formatNumber(auction.current_price), timeLeft })}
-      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
     >
       {t("rider:badges.label.auction")}
       <span className="font-mono normal-case tracking-normal">{formatNumber(auction.current_price)}</span>
@@ -579,7 +579,7 @@ function OwnTransferListingBadge({ listing }) {
       to="/transfers?tab=market"
       onClick={e => e.stopPropagation()}
       title={t("team:squad.ownTransferListingTooltip", { price: formatNumber(listing.asking_price) })}
-      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded flex-shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
+      className="inline-flex items-center gap-1 text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded shrink-0 bg-cz-accent/15 text-cz-accent-t hover:bg-cz-accent/25 transition-colors"
     >
       {t("rider:badges.label.listed")}
       <span className="font-mono normal-case tracking-normal">{formatNumber(listing.asking_price)}</span>
@@ -666,8 +666,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     // nedenfor). Mobil-folden er nation + alder + rating (se ratingColumn).
     render: (r) => (
       <>
-        {r._isIncoming && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
-        {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
+        {r._isIncoming && <span className="w-2 h-2 rounded-full bg-cz-success shrink-0" />}
+        {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-cz-danger shrink-0" />}
         <RiderLink id={r.id} stopPropagation
           className="text-cz-1 hover:text-cz-accent-t transition-colors">
           {r.firstname} {r.lastname}

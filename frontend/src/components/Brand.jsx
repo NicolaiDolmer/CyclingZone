@@ -67,7 +67,7 @@ export function Monogram({ className = "w-7 h-7", alt = "" }) {
       src="/brand/monogram-cz.svg"
       alt={alt}
       aria-hidden={alt === "" ? "true" : undefined}
-      className={`rounded-md flex-shrink-0 ${className}`}
+      className={`rounded-md shrink-0 ${className}`}
       draggable="false"
     />
   );

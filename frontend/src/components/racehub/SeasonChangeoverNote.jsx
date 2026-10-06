@@ -15,7 +15,7 @@ export default function SeasonChangeoverNote({ className = "" }) {
       <ul className="mt-2 space-y-1">
         {ITEM_KEYS.map((key) => (
           <li key={key} className="flex items-start gap-1.5 text-xs text-cz-2">
-            <span aria-hidden="true" className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-cz-3" />
+            <span aria-hidden="true" className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-cz-3" />
             {t(`seasonView.changeover.items.${key}`)}
           </li>
         ))}

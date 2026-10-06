@@ -50,7 +50,7 @@ export default function SelectionDeadlineReminder({ reminder }: { reminder: Sele
         <AlertTriangleIcon
           size={16}
           aria-hidden="true"
-          className={`mt-0.5 flex-shrink-0 ${REMINDER_TEXT_TONE_CLASS[tone]}`}
+          className={`mt-0.5 shrink-0 ${REMINDER_TEXT_TONE_CLASS[tone]}`}
         />
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-semibold ${REMINDER_TEXT_TONE_CLASS[tone]}`}>
@@ -74,7 +74,7 @@ export default function SelectionDeadlineReminder({ reminder }: { reminder: Sele
                 >
                   {race.name}
                 </Link>
-                <span className="flex flex-shrink-0 items-center gap-3">
+                <span className="flex shrink-0 items-center gap-3">
                   <span className="text-cz-3 text-xs tabular-nums whitespace-nowrap">
                     {t("selectionReminder.picked", {
                       picked: race.entry_count,

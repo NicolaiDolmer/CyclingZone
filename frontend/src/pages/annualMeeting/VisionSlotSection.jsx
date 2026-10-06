@@ -22,7 +22,7 @@ export default function VisionSlotSection({ visionSlot, choice, onChoose }) {
             {t("boardroom.meeting.visionSlot.targetSeason", { season: visionSlot.target_season_number })}
           </p>
         </div>
-        <div className="flex flex-shrink-0 gap-[6px]">
+        <div className="flex shrink-0 gap-[6px]">
           <button
             type="button"
             onClick={() => onChoose(true)}

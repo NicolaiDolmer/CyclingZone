@@ -29,7 +29,7 @@ export default function TerrainGlyph({ bucket = "sprint", className = "", width 
       width={width}
       height={height}
       preserveAspectRatio="none"
-      className={`block flex-shrink-0 ${className}`}
+      className={`block shrink-0 ${className}`}
       aria-hidden="true"
     >
       {/* baseline — "sea level" the silhouette rests on, drawn faint */}

@@ -113,8 +113,8 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
           <div key={row.rider_id} className="border-t border-cz-border">
             <button type="button" className={`grid min-h-[44px] w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2 py-3 text-left hover:bg-cz-subtle ${rowGrid}`}
               aria-expanded={open} aria-controls={detailId} onClick={()=>toggleRider(row.rider_id)}>
-              <span className="flex min-w-0 items-start gap-1.5"><ChevronDownIcon size={13} className={`mt-1 shrink-0 text-cz-3 ${open ? "rotate-180" : ""}`} aria-hidden="true" /><span className="min-w-0"><span className="break-words text-[13px] font-semibold text-cz-1">{row.name || row.rider_id}</span>{showScore && <span className="mt-1 block text-2xs text-cz-2 sm:hidden" data-testid="daily-receipt-mobile-score">{t("dailyReceipt.latestPassScore")}: <span className="font-data tabular-nums">{latestScore ?? "—"}</span></span>}</span></span>
-              <span className={`break-words text-xs ${gainTone}`}>{gainsLabel(row)}</span>
+              <span className="flex min-w-0 items-start gap-1.5"><ChevronDownIcon size={13} className={`mt-1 shrink-0 text-cz-3 ${open ? "rotate-180" : ""}`} aria-hidden="true" /><span className="min-w-0"><span className="wrap-break-word text-[13px] font-semibold text-cz-1">{row.name || row.rider_id}</span>{showScore && <span className="mt-1 block text-2xs text-cz-2 sm:hidden" data-testid="daily-receipt-mobile-score">{t("dailyReceipt.latestPassScore")}: <span className="font-data tabular-nums">{latestScore ?? "—"}</span></span>}</span></span>
+              <span className={`wrap-break-word text-xs ${gainTone}`}>{gainsLabel(row)}</span>
               {showScore && <span className="hidden text-right font-data text-xs tabular-nums text-cz-1 sm:block" data-testid="daily-receipt-latest-score">{latestScore ?? "—"}</span>}
               <span className="text-right font-data text-xs tabular-nums text-cz-1">{change(row.fatigue_before,row.fatigue,fatigueColor)}</span>
             </button>
@@ -127,7 +127,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
               <ol className="mb-4 grid grid-cols-3 gap-x-3 gap-y-3 sm:grid-cols-5">
                 {row.activities.map((activity,index)=><li key={index}>
                   <p className="font-data text-2xs tabular-nums text-cz-3">{activity.game_day != null ? t("dailyReceipt.raceDay",{day:activity.game_day+1}) : t("dailyReceipt.activity",{n:index+1})}</p>
-                  <p className="mt-1 break-words text-xs font-medium text-cz-1">{activityName(activity)}</p>
+                  <p className="mt-1 wrap-break-word text-xs font-medium text-cz-1">{activityName(activity)}</p>
                   {activity.intensity && activity.intensity !== "rest" && !activity.race_day && <p className="text-2xs text-cz-3">{tRider(`training.intensity_${activity.intensity}`)}</p>}
                   {showScore && !activity.race_day && !activity.injured && activity.intensity !== "rest" && <p className="mt-1 font-data text-xs tabular-nums text-cz-1" data-testid="daily-receipt-pass-score">{t("colScore")}: {visible ? receiptPassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,activity) ?? "—" : "—"}</p>}
                 </li>)}
@@ -145,8 +145,8 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
         );
       })}
       {waiting.map(rider => <div key={rider.rider_id} className={`grid min-h-[44px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2 border-t border-cz-border py-3 ${rowGrid}`} data-testid="daily-receipt-waiting">
-        <span className="flex min-w-0 items-start gap-1.5 pl-[19px]"><RiderLink id={rider.rider_id} className="break-words text-[13px] font-semibold text-cz-1">{rider.name || rider.rider_id}</RiderLink></span>
-        <span className="break-words text-xs text-cz-3">{t("dailyReceipt.waitingForRace")}</span>
+        <span className="flex min-w-0 items-start gap-1.5 pl-[19px]"><RiderLink id={rider.rider_id} className="wrap-break-word text-[13px] font-semibold text-cz-1">{rider.name || rider.rider_id}</RiderLink></span>
+        <span className="wrap-break-word text-xs text-cz-3">{t("dailyReceipt.waitingForRace")}</span>
         {showScore && <span className="hidden text-right font-data text-xs tabular-nums text-cz-3 sm:block">—</span>}
         <span className="text-right font-data text-xs tabular-nums text-cz-3">—</span>
       </div>)}

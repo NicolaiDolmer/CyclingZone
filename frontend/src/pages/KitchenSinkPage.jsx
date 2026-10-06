@@ -108,7 +108,7 @@ export default function KitchenSinkPage() {
 
       <Section title="Cards">
         <Card className="w-56 p-4">
-          <div className="mb-2 font-data text-2xs uppercase tracking-[.1em] text-cz-3">Team value</div>
+          <div className="mb-2 font-data text-2xs uppercase tracking-widest text-cz-3">Team value</div>
           <div className="font-data text-3xl font-semibold tabular-nums text-cz-1">€1.24M</div>
         </Card>
         <Card interactive className="w-56 p-4">
@@ -229,7 +229,7 @@ export default function KitchenSinkPage() {
           {ICON_ENTRIES.map(([name, Icon]) => (
             <div key={name} className="flex flex-col items-center gap-2 bg-cz-card px-2 py-3">
               <Icon size={20} className="text-cz-2" />
-              <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+              <span className="font-data text-3xs uppercase tracking-wider text-cz-3">
                 {name.replace(/Icon$/, "")}
               </span>
             </div>

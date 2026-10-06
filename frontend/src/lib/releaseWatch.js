@@ -590,7 +590,7 @@ export function installPendingNavigationInterceptor({
  *   · `visibilitychange` -> synlig igen efter mere end `backgroundThresholdMs`
  *   · `focus`/`pageshow` på window — desktop-alt-tab ændrer ofte IKKE
  *     `visibilityState`, så uden dem findes tab-fokus-stien reelt ikke på
- *     desktop. `blur` starter baggrunds-uret i netop det tilfælde.
+ *     desktop. `blur-sm` starter baggrunds-uret i netop det tilfælde.
  *   · et periodisk tjek mens fanen er synlig.
  *
  * Dobbelt-tjek er udelukket ved konstruktion: den første handler nulstiller
@@ -679,7 +679,7 @@ export function installReleaseWatchHandlers({
     doc.removeEventListener("visibilitychange", onVisibilityChange);
     target.removeEventListener("focus", onReturn);
     target.removeEventListener("pageshow", onReturn);
-    target.removeEventListener("blur", markHidden);
+    target.removeEventListener("blur-sm", markHidden);
     clearTimer(handle);
   };
 }

@@ -100,7 +100,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
     // Suffiks-konvention som resten af appen (formatCz/Historik): "1.490 CZ$".
     { key: "prize", value: `${formatNumber(totals.prize)} CZ$`, tone: "text-cz-success" },
   ];
-  const th = "font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-cz-3";
+  const th = "font-mono text-3xs font-semibold uppercase tracking-wider text-cz-3";
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -130,7 +130,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
           {totalDefs.map((d) => (
             <div key={d.key}>
               <div className={`font-mono tabular-nums text-xl font-bold ${d.tone ?? "text-cz-1"}`}>{d.value}</div>
-              <div className="text-3xs text-cz-3 uppercase tracking-[0.05em]">{t(`profile.results.totals.${d.key}`)}</div>
+              <div className="text-3xs text-cz-3 uppercase tracking-wider">{t(`profile.results.totals.${d.key}`)}</div>
             </div>
           ))}
         </div>
@@ -173,7 +173,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                       aria-controls={`rider-stage-rows-${race.raceId}`}
                       aria-label={race.name ?? t("results.fallbackDash")}
                       onClick={() => setExpanded((prev) => ({ ...prev, [race.raceId]: !prev[race.raceId] }))}
-                      className="flex items-center justify-center min-w-[44px] min-h-[44px] -my-2.5 -ms-2 flex-shrink-0 text-cz-3 hover:text-cz-1 transition-colors motion-reduce:transition-none cursor-pointer"
+                      className="flex items-center justify-center min-w-[44px] min-h-[44px] -my-2.5 -ms-2 shrink-0 text-cz-3 hover:text-cz-1 transition-colors motion-reduce:transition-none cursor-pointer"
                     >
                       <span className={`text-3xs transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} aria-hidden="true">▸</span>
                     </button>
@@ -185,7 +185,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                     {race.name ?? t("results.fallbackDash")}
                   </RaceLink>
                 </span>
-                <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
+                <span className={`${DESKTOP_ONLY} justify-self-start font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-px rounded bg-cz-subtle text-cz-2 whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}>
                   {race.raceClass ?? "-"}
                 </span>
                 <span className={`${DESKTOP_ONLY} text-2xs text-cz-2 whitespace-nowrap overflow-hidden text-ellipsis`}>{terrainText}</span>

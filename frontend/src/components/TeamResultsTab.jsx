@@ -157,7 +157,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
           <p className="text-cz-3 text-xs mt-0.5">{t("results.subtitle")}</p>
         </div>
         <select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}
-          className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+          className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
           <option value="all">{t("results.seasonFilterAll")}</option>
           {currentSeason != null && (
             <option value="current">{t("results.seasonFilterCurrent", { n: currentSeason })}</option>

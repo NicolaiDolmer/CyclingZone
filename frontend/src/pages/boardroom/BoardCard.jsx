@@ -22,14 +22,14 @@ function MemberTile({ member, selected, onSelect, t }) {
       <MonogramAvatar sizeClass="h-11 w-11" initials={member.initials} initialsClass="text-lg" navy>
         <span
           aria-hidden="true"
-          className={`absolute -bottom-[3px] -right-[3px] h-[10px] w-[10px] rounded-full border-2 border-cz-card ${MOOD_DOT[member.mood] || MOOD_DOT.neutral}`}
+          className={`absolute bottom-[-3px] right-[-3px] h-[10px] w-[10px] rounded-full border-2 border-cz-card ${MOOD_DOT[member.mood] || MOOD_DOT.neutral}`}
         />
       </MonogramAvatar>
       {/* #5633 · line-clamp-2 + min-h reserverer SAMME hoejde uanset navnets
           laengde ("underlige mellemrum i navnene", vaerre paa mobil) — uden
           det fik et 1-ords og et 3-ords navn i samme raekke forskellig
           tile-hoejde, og gitteret saa ujaevnt ud. */}
-      <p className="mt-[7px] line-clamp-2 min-h-[26px] w-full break-words text-2xs font-semibold leading-tight text-cz-1">
+      <p className="mt-[7px] line-clamp-2 min-h-[26px] w-full wrap-break-word text-2xs font-semibold leading-tight text-cz-1">
         {member.name}
       </p>
       <p className="mt-[2px] w-full truncate text-3xs uppercase tracking-[.08em] text-cz-3">
@@ -58,7 +58,7 @@ function MinuteRow({ minute, t }) {
       </p>
       {/* #5633 · memberName kan vaere null (boardRoom.js), og saa stod der
           " · TIRS." med et hul foran skilletegnet. */}
-      <p className="flex-shrink-0 whitespace-nowrap text-2xs uppercase tracking-[.06em] text-cz-3">
+      <p className="shrink-0 whitespace-nowrap text-2xs uppercase tracking-[.06em] text-cz-3">
         {[minute.memberName, formatWeekdayOnly(minute.occurredAt)].filter(Boolean).join(" · ")}
       </p>
     </div>
@@ -89,12 +89,12 @@ function ClubDnaLine({ canRechoose, onChange, t }) {
         <button
           type="button"
           onClick={onChange}
-          className="flex-shrink-0 self-start text-xs font-medium text-cz-accent-t transition-colors hover:underline sm:self-auto"
+          className="shrink-0 self-start text-xs font-medium text-cz-accent-t transition-colors hover:underline sm:self-auto"
         >
           {t("dna.rechoose.toggle")}
         </button>
       ) : (
-        <span className="flex-shrink-0 whitespace-nowrap font-data text-2xs uppercase tracking-[.08em] text-cz-3">
+        <span className="shrink-0 whitespace-nowrap font-data text-2xs uppercase tracking-[.08em] text-cz-3">
           {t("dna.locked.heading")}
         </span>
       )}

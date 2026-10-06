@@ -160,7 +160,7 @@ function useWinCelebration(data, isNew) {
 function HistoryRow({ entry, t }) {
   return (
     <li className="flex items-center gap-3 py-1.5 border-b border-cz-border last:border-0">
-      <span className="font-data text-xs w-8 text-right text-cz-3 tabular-nums flex-shrink-0">
+      <span className="font-data text-xs w-8 text-right text-cz-3 tabular-nums shrink-0">
         {entry.best_rank != null ? `#${entry.best_rank}` : "—"}
       </span>
       <Link
@@ -170,7 +170,7 @@ function HistoryRow({ entry, t }) {
       >
         {entry.name || "—"}
       </Link>
-      <span className="flex-shrink-0 text-right leading-tight">
+      <span className="shrink-0 text-right leading-tight">
         <span className="block font-data text-xs font-bold text-cz-1 tabular-nums">
           {t("dashboard:cards.myResult.pointsShort", { value: formatNumber(entry.points) })}
         </span>
@@ -251,14 +251,14 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
             {firstRaceMoment ? t("dashboard:cards.myResult.firstRaceTitle") : t("dashboard:cards.myResult.title")}
           </h2>
           {race && isNew && (
-            <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 flex-shrink-0">
+            <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 shrink-0">
               {t("dashboard:cards.myResult.newBadge")}
             </span>
           )}
         </div>
         {race && !firstRaceMoment && (
           <Link to={`/races/${race.id}`} state={{ from: "dashboard" }}
-            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline flex-shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline shrink-0">
             {t("dashboard:cards.myResult.linkFull")}
             <ChevronRightIcon size={13} aria-hidden="true" />
           </Link>
@@ -339,7 +339,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
                     )}
                   </div>
                   {p.finish_time && (
-                    <span className="font-mono text-xs text-cz-3 tabular-nums flex-shrink-0">{p.finish_time}</span>
+                    <span className="font-mono text-xs text-cz-3 tabular-nums shrink-0">{p.finish_time}</span>
                   )}
                 </div>
               ))}
@@ -347,7 +347,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
                   som holdets resultat-fane. */}
               {placements.slice(1, 1 + MAX_SECONDARY_ROWS).map((p, i) => (
                 <div key={p.rider_id ?? `${p.rider_name}-${i}`} className="flex items-center gap-3 py-1.5 border-b border-cz-border last:border-0">
-                  <span className="font-mono text-xs w-8 text-right text-cz-3 flex-shrink-0">#{p.rank ?? "—"}</span>
+                  <span className="font-mono text-xs w-8 text-right text-cz-3 shrink-0">#{p.rank ?? "—"}</span>
                   <div className="flex-1 min-w-0">
                     {p.rider_id ? (
                       <RiderLink id={p.rider_id} className="text-cz-2 text-sm hover:underline truncate block">
@@ -358,7 +358,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
                     )}
                   </div>
                   {p.finish_time && (
-                    <span className="font-mono text-xs text-cz-3 tabular-nums flex-shrink-0">{p.finish_time}</span>
+                    <span className="font-mono text-xs text-cz-3 tabular-nums shrink-0">{p.finish_time}</span>
                   )}
                 </div>
               ))}
@@ -463,7 +463,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
                     type="button"
                     onClick={() => setHistoryExpanded((v) => !v)}
                     aria-expanded={historyExpanded}
-                    className="text-xs font-medium text-cz-accent-t hover:underline flex-shrink-0"
+                    className="text-xs font-medium text-cz-accent-t hover:underline shrink-0"
                   >
                     {historyExpanded
                       ? t("dashboard:cards.myResult.showLess")

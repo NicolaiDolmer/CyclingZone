@@ -40,7 +40,7 @@ function parseIssueRef(value) {
 
 function SaveError({ message }) {
   return (
-    <p aria-live="polite" className="text-xs text-cz-danger min-h-[1rem]">
+    <p aria-live="polite" className="text-xs text-cz-danger min-h-4">
       {message || ""}
     </p>
   );

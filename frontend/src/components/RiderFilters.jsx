@@ -466,7 +466,7 @@ export default function RiderFilters({
       data-testid="filter-reset"
       onClick={onReset}
       disabled={!hasActiveFilters}
-      className={`text-xs transition-colors flex-shrink-0 ${
+      className={`text-xs transition-colors shrink-0 ${
         hasActiveFilters
           ? "text-cz-3 hover:text-cz-1 cursor-pointer"
           : "text-cz-3/40 cursor-not-allowed"
@@ -659,7 +659,7 @@ function Chip({ t, label, onRemove }) {
         text-xs px-3 min-h-[44px] rounded-cz-pill font-medium hover:bg-cz-accent/20 transition-colors"
     >
       {label}
-      <XIcon size={14} aria-hidden="true" className="flex-shrink-0" />
+      <XIcon size={14} aria-hidden="true" className="shrink-0" />
     </button>
   );
 }
