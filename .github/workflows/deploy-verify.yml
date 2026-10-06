@@ -257,9 +257,11 @@ jobs:
               echo "  Railway API-status (primaer kilde, #5489): $RAILWAY_API_STATUS"
               if [[ "$RAILWAY_API_STATUS" == "failed" ]]; then
                 echo "::error::Railway API meldte FAILED for ${SHA:0:7} — stopper med det samme (uden at afvente polling-deadline, #5489). Se scripts/railway-deploy-status.mjs' stderr-diagnostik i dette trins log ovenfor."
-                echo "railway=failed" >> "$GITHUB_OUTPUT"
-                echo "result=failed" >> "$GITHUB_OUTPUT"
-                echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
+                {
+                  echo "railway=failed"
+                  echo "result=failed"
+                  echo "vercel=$VERCEL_OK"
+                } >> "$GITHUB_OUTPUT"
                 exit 1
               fi
               if [[ "$RAILWAY_API_STATUS" == "success" ]]; then
@@ -296,9 +298,11 @@ jobs:
           done
 
           echo "::notice::Deployment verification pending; no release verification performed yet"
-          echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
-          echo "railway=$RAILWAY_OK" >> "$GITHUB_OUTPUT"
-          echo "result=pending" >> "$GITHUB_OUTPUT"
+          {
+            echo "vercel=$VERCEL_OK"
+            echo "railway=$RAILWAY_OK"
+            echo "result=pending"
+          } >> "$GITHUB_OUTPUT"
           exit 0
 
       - name: Deployment still pending
