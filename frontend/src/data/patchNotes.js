@@ -1,5 +1,59 @@
 export const PATCHES = [
   {
+    "version": "7.343",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Finance",
+        "en": {
+          "title": "Next season's prize forecast is your own estimate ±20 %",
+          "body": "The prize money forecast now shows your own estimate with a range of ±20 %, instead of a lopsided range that could start far below it. Sponsor amounts per stage are marked as provisional while next season's calendar is not ready. Payouts are unchanged."
+        },
+        "da": {
+          "title": "Næste sæsons præmieprognose er dit eget estimat ±20 %",
+          "body": "Prognosen for præmiepenge viser nu dit eget estimat med et spænd på ±20 % i stedet for et skævt spænd, der kunne starte langt under. Sponsorbeløb pr. etape står som foreløbige, så længe næste sæsons kalender ikke er klar. Udbetalinger er uændrede."
+        },
+        "refs": [5940, 5916]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Escapees are no longer shown as caught by their own group",
+          "body": "A breakaway rider who was only reached by riders dropped from the same breakaway now shows as held on or dropped, not caught. Placings, times and points are unchanged."
+        },
+        "da": {
+          "title": "Udbrydere vises ikke længere som indhentet af deres egen gruppe",
+          "body": "En udbryder, der kun blev nået af ryttere sat af fra samme udbrud, står nu som holdt hjem eller sat af, ikke indhentet. Placeringer, tider og point er uændrede."
+        },
+        "refs": [6234]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Scouting",
+        "en": {
+          "title": "Scouting can't use money locked in your bids",
+          "body": "Sending a scout (target or mission) no longer uses money that is locked in your auction bids. If it would, you get a clear message instead."
+        },
+        "da": {
+          "title": "Scouting kan ikke bruge penge, der er låst i dine bud",
+          "body": "At sende en spejder (mål eller mission) bruger ikke længere penge, der er låst i dine auktionsbud. Hvis det ville ske, får du en tydelig besked i stedet."
+        },
+        "refs": [6237]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Regenerating line-ups respects race days used at a former team",
+          "body": "When line-ups are regenerated, a rider is no longer picked for a race day he already used at his previous team, so the target race is not left empty."
+        },
+        "da": {
+          "title": "Ny udtagelse respekterer løbsdage brugt hos et tidligere hold",
+          "body": "Når udtagelsen laves om, bliver en rytter ikke længere sat på en løbsdag, han allerede har brugt hos sit tidligere hold, så målløbet ikke står tomt."
+        },
+        "refs": [6132]
+      }
+    ]
+  },
+  {
     "version": "7.342",
     "date": "2026-10-06",
     "changes": [
