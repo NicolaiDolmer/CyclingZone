@@ -55,7 +55,7 @@ import { displayFor } from "./renderV4AnchorTable.mjs";
 import { sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { stableSeed } from "../lib/raceSimulator.js";
-import { rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
+import { loadRaceEngineV4, rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
 import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING, TIME_LIMIT_EXTRA_TUNING } from "../lib/engine/v4/tuning.ts";
 import { incidentTimeLossByRider, timeLimitSecondsFor } from "../lib/engine/v4/mechanics/timeLimit.ts";
@@ -797,16 +797,19 @@ export function measureHeadToHead({ population, stages, seeds = HEAD_TO_HEAD_SEE
 // feltets dom i (1) beholdes som sekundaer rapport (#6199, maaling 6/10).
 export const REALISTIC_FIELD_FILE = "backend/scripts/baselines/giro-field-6088-2026-10-02.json";
 
-/** Startlisten fra Giro-fixturet (samme adapter som proxy-feltet, roller ignoreres: orders=none). */
+/**
+ * Startlisten fra Giro-fixturet i broens form (som raceRunner bygger den):
+ * hold, roller og om holdet er AI-styret. AI-holdene faar M14's ordrer (de
+ * jager, koerer for kaptajnen), saa et udbrud ikke vinder hver bjergetape med
+ * minutter, som det goer i proxy-feltets orders=none.
+ */
 export function realisticFieldEntrants(fixture) {
-  const teamByRider = new Map(fixture.entries.map((e) => [e.rider_id, e.team_id ?? null]));
-  const rows = fixture.abilities.filter((a) => teamByRider.has(a.rider_id));
-  return entrantsFromAbilitiesRows(rows, (riderId) => ({
-    role: "free_role",
-    effort: "normal",
-    condition: 1,
-    teamId: teamByRider.get(riderId) ?? null,
-  }));
+  const aiByTeam = new Map(fixture.teams.map((t) => [t.id, t.is_ai === true]));
+  const abilitiesById = new Map(fixture.abilities.map((a) => [a.rider_id, a]));
+  return fixture.entries.filter((e) => abilitiesById.has(e.rider_id)).map((e) => {
+    const { rider_id: _id, ...abilities } = abilitiesById.get(e.rider_id);
+    return { rider_id: e.rider_id, team_id: e.team_id ?? null, team_is_ai: aiByTeam.get(e.team_id) === true, race_role: e.race_role ?? null, effort: "normal", abilities };
+  });
 }
 
 function isMountainTopFinish(route) {
@@ -827,9 +830,11 @@ function meanOf(xs) {
  * #6199: koerer ALLE proxy-etaper med det realistiske felt (samme startliste
  * hver etape) og maaler de to tidsankre (samme baand og samme klassifikation
  * som scorecardet) plus uheld/OTL pr. etapetype. Dom pr. seed og paa middel.
+ * Koeres gennem broen (`v4` = loadRaceEngineV4()), saa AI-holdenes ordrer er med;
+ * ingen gemte holdordrer, intet klassement (etaperne er fra forskellige loeb).
  */
-export function measureRealisticField({ fixture, stages, seeds = HEAD_TO_HEAD_SEEDS, rulesRevision = undefined }) {
-  const startlist = realisticFieldEntrants(fixture);
+export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEAD_SEEDS, rulesRevision = undefined }) {
+  const entrants = realisticFieldEntrants(fixture);
   const mountainBand = ANCHOR_BANDS.mountainTop10SpreadSeconds;
   const shortBand = ANCHOR_BANDS.shortUphillFinishSeconds;
   const ranks = Object.keys(shortBand.maxByRank).map(Number);
@@ -842,10 +847,10 @@ export function measureRealisticField({ fixture, stages, seeds = HEAD_TO_HEAD_SE
       const route = routeFromStageProfileRow(row);
       const isMountain = isMountainTopFinish(route);
       const isShort = isShortUphillFinish(route);
-      const output = simulateStageV4({
-        route, startlist, orders: [], seed: `${seed}:${row.stage_number ?? 1}:realistic`, tuning: RACE_V4_TUNING,
-        ...(rulesRevision ? { rules_revision: rulesRevision } : {}),
-      });
+      const output = v4.simulateStage({
+        entrants, stageProfile: row, seedString: `${seed}:${row.stage_number ?? 1}:realistic`, stageNumber: row.stage_number ?? 1,
+        teamOrderRows: [], isStageRace: true, raceStages: null, squad: null, rulesRevision: rulesRevision ?? "legacy", gcStandings: null,
+      }).v4Output;
       accumulateStageRates(rateAcc, row.profile_type, output);
       if (isMountain) mountain.push(gapAtRank(output.results, 10));
       if (isShort) for (const n of ranks) shortUp[n].push(gapAtRank(output.results, n));
@@ -866,7 +871,7 @@ export function measureRealisticField({ fixture, stages, seeds = HEAD_TO_HEAD_SE
   const inBand = (v, b) => v !== null && (b.min === undefined || v >= b.min) && (b.max === undefined || v <= b.max);
   const verdict = (v, b) => (v === null ? "N/A" : inBand(v, b) ? "PASS" : "FAIL");
   return {
-    fieldRiders: startlist.length,
+    fieldRiders: entrants.length,
     anchors: [
       {
         id: "mountain_top10_spread",
@@ -939,7 +944,7 @@ async function main() {
   console.log(`[5515] head-to-head ${seeds.join(",")} x ${stages.length} etaper, felt ${FIELD_SIZE} ...`);
   const { anchors, rates } = measureHeadToHead({ population, stages, seeds, rulesRevision });
   console.log(`[6199] realistisk felt (${REALISTIC_FIELD_FILE}) ${seeds.join(",")} x ${stages.length} etaper ...`);
-  const realisticField = measureRealisticField({ fixture: JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8")), stages, seeds, rulesRevision });
+  const realisticField = measureRealisticField({ v4: await loadRaceEngineV4(), fixture: JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8")), stages, seeds, rulesRevision });
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
   const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);
