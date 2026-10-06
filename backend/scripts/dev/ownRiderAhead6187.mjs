@@ -115,17 +115,22 @@ export function teamChasesOwnBreakaway(events, groupSnapshots, teamByRider, team
   if (!formed) return [];
   const groupId = formed.params.group_id;
   const snapshots = [...(groupSnapshots ?? [])].sort((a, b) => a.km - b.km);
-  const membersAt = (km) => {
+  const membersAt = (km, strict = false) => {
     let hit = null;
-    for (const s of snapshots) if (s.km <= km + 1e-6) hit = s;
+    for (const s of snapshots) if (strict ? s.km < km - 1e-6 : s.km <= km + 1e-6) hit = s;
     return hit ? hit.groups.find((g) => g.group_id === groupId)?.rider_ids ?? [] : formed.params.rider_ids ?? [];
   };
+  // #6201: reaktionen besluttes paa segmentets start, saa udbruddet skal rumme
+  // holdets egne og truslen baade dér og ved reaktionens km (en trussel der
+  // naar udbruddet midt i segmentet, var ikke i det da holdet reagerede). Er
+  // udbruddet hentet, kan gruppen med dets id vaere holdets egen (den
+  // beskyttede rytter sidder i den); en reaktion derfra er ikke en jagt paa egne.
+  const chasesOwn = (members, e) => members.some((id) => teamByRider.get(id) === team)
+    && (e.params.rider_ids ?? []).some((id) => members.includes(id))
+    && !members.includes(e.params.protected_rider_id);
   return events
     .filter((e) => e.type === "gc_reaction" && e.params?.status === "started" && e.params.team_id === team)
-    .filter((e) => {
-      const members = membersAt(e.km);
-      return members.some((id) => teamByRider.get(id) === team) && (e.params.rider_ids ?? []).some((id) => members.includes(id));
-    })
+    .filter((e) => chasesOwn(membersAt(e.km), e) && chasesOwn(membersAt(e.km, true), e))
     .map((e) => e.km);
 }
 
