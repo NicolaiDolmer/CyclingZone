@@ -15,7 +15,14 @@ import { createHash } from "node:crypto";
 
 import { simulateStageV4 } from "../index.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
-import type { AbilityKey, Entrant, RiderRole, RouteV2, RulesRevision, Segment, StageInput, StageOutput } from "../types.ts";
+import { validateGroupMembership, validateTimelineEvents } from "../timeline.ts";
+import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
+import { breakawayHook } from "./breakaway.ts";
+import { breakawayDropEvents, isBreakawayPiece, rejoinBreakawayPiece } from "./chaseGroup.ts";
+import { deriveParticipationHistory } from "../../../raceParticipationHistory.ts";
+import type {
+  AbilityKey, EngineState, Entrant, RaceGroup, RiderRole, RiderState, RouteV2, RulesRevision, Segment, SegmentHookContext, StageInput, StageOutput,
+} from "../types.ts";
 
 const ABILITY_KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
@@ -128,4 +135,171 @@ test("#6234/#6185 v3 slukket: legacy/v1/v2 giver en byte-identisk etape med kode
   }
   if (process.env.PRINT_PINS_6234) console.log(JSON.stringify(actual, null, 2));
   assert.deepEqual(actual, PINNED_PRE_6234);
+});
+
+// ── Hook-niveau (#6234): et afsat stykke lukker hullet ────────────────────────
+
+const FLAT_ROUTE: RouteV2 = {
+  distance_km: 100, profile_type: "flat", finale_type: "bunch_sprint",
+  segments: Array.from({ length: 10 }, (_, i) => ({ kind: "flat" as const, from_km: i * 10, to_km: (i + 1) * 10 })),
+  weather: { kind: "sun", wind_exposure: 0 }, waypoints: [],
+};
+
+function riderState(id: string, group: string): RiderState {
+  return { rider_id: id, group_id: group, cp: 0.5, wprimeMax: 0.4, wprime: 0.4, dayform: 0, seconds_over_cp: 0, work_norm: 0, incidents: 0, status: "racing", time_seconds: 0 };
+}
+
+/** Udbrud (E0,E1) foran, et afsat stykke (E2-E4) lige bag, feltet langt bagude. */
+function pieceState(pieceGap: number): { state: EngineState; entrants: Record<string, Entrant> } {
+  const all = field();
+  const entrants = Object.fromEntries(all.map((e) => [e.rider_id, e]));
+  const escapees = ["t0r4", "t1r4"];
+  const piece = ["t2r4", "t3r4", "t4r4"];
+  const rest = all.map((e) => e.rider_id).filter((id) => !escapees.includes(id) && !piece.includes(id));
+  const groups: RaceGroup[] = [
+    { id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: escapees, gap_seconds: 0, cohesion: 1 },
+    { id: "chase-1000", kind: "chase", origin: "breakaway", rider_ids: piece, gap_seconds: pieceGap, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: rest, gap_seconds: 600, cohesion: 1 },
+  ];
+  const riders: Record<string, RiderState> = {};
+  for (const g of groups) for (const id of g.rider_ids) riders[id] = riderState(id, g.id);
+  return { state: { km: 40, groups, riders, virtual_gc: {} }, entrants };
+}
+
+function hookCtx(entrants: Record<string, Entrant>, v3: boolean, segmentIndex = 4): SegmentHookContext {
+  const base = makeHookCtx({ segment: FLAT_ROUTE.segments[segmentIndex], segmentIndex, route: FLAT_ROUTE, entrants, tuning: RACE_V4_TUNING });
+  return { ...base, rulesRevision: "orders_gc_v1", ...(v3 ? { ordersGcV3: true as const } : {}) };
+}
+
+test("#6234: under orders_gc_v2 a dropped piece closing the gap is reported as a catch (the bug, unchanged)", () => {
+  const { state, entrants } = pieceState(1);
+  const r = breakawayHook(state, hookCtx(entrants, false));
+  const caught = r.events.filter((e) => e.type === "breakaway_caught");
+  assert.equal(caught.length, 1);
+  assert.equal(caught[0].params.chase_group_id, "chase-1000");
+  assert.equal(r.events.some((e) => e.type === "breakaway_dropped"), false, "v2 never reports drops");
+});
+
+test("#6234: under orders_gc_v3 the piece rejoins the break: no catch, one merge, the break stays a break", () => {
+  const { state, entrants } = pieceState(1);
+  const r = breakawayHook(state, hookCtx(entrants, true));
+  assert.equal(r.events.some((e) => e.type === "breakaway_caught"), false, "a piece of the break never catches the break");
+  const merged = r.events.filter((e) => e.type === "group_merged");
+  assert.deepEqual(merged.map((e) => e.params), [{ group_id: "chase-1000", into_group_id: "breakaway-0", rider_ids: ["t2r4", "t3r4", "t4r4"] }]);
+  const breakaway = r.state.groups.find((g) => g.id === "breakaway-0");
+  assert.equal(breakaway?.kind, "breakaway", "the break keeps its kind although the piece was larger");
+  assert.deepEqual([...(breakaway?.rider_ids ?? [])].sort(), ["t0r4", "t1r4", "t2r4", "t3r4", "t4r4"]);
+  assert.equal(r.state.groups.some((g) => g.id === "chase-1000"), false);
+  assert.equal(r.events.some((e) => e.type === "breakaway_dropped"), false, "riders back in the break are not dropped");
+});
+
+test("#6234: under orders_gc_v3 non-escapees closing the gap is still a catch", () => {
+  const { state, entrants } = pieceState(1);
+  // Stykket er feltet her: samme ryttere, men uden udbruddets oprindelse.
+  const fieldPiece: EngineState = { ...state, groups: state.groups.map((g) => g.id === "chase-1000" ? { ...g, origin: undefined } : g) };
+  const r = breakawayHook(fieldPiece, hookCtx(entrants, true));
+  assert.equal(r.events.filter((e) => e.type === "breakaway_caught").length, 1);
+});
+
+test("#6185: under orders_gc_v3 a piece behind the break is reported once as dropped", () => {
+  const { state, entrants } = pieceState(200);
+  const first = breakawayHook(state, hookCtx(entrants, true, 4));
+  const drops = first.events.filter((e) => e.type === "breakaway_dropped");
+  assert.deepEqual(drops.map((e) => ({ km: e.km, ...e.params })), [
+    { km: 50, group_id: "chase-1000", from_group_id: "breakaway-0", rider_ids: ["t2r4", "t3r4", "t4r4"] },
+  ]);
+  for (const value of Object.values(drops[0].params)) assert.notEqual(typeof value, "number", "fog-gate: no numbers");
+  assert.deepEqual(first.state.breakaway_dropped_ids, ["t2r4", "t3r4", "t4r4"]);
+  const second = breakawayHook(first.state, hookCtx(entrants, true, 5));
+  assert.equal(second.events.some((e) => e.type === "breakaway_dropped"), false, "no second report for the same drop");
+});
+
+// ── Ren detektion (chaseGroup.ts) ────────────────────────────────────────────
+
+test("breakawayDropEvents: a piece ahead of the break (an attack) is not dropped; a solo behind is", () => {
+  const groups: RaceGroup[] = [
+    { id: "solo-2000", kind: "solo", origin: "breakaway", rider_ids: ["a"], gap_seconds: 0, cohesion: 1 },
+    { id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: ["b", "c"], gap_seconds: 20, cohesion: 1 },
+    { id: "solo-2001", kind: "solo", origin: "breakaway", rider_ids: ["d"], gap_seconds: 60, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: ["x", "y"], gap_seconds: 300, cohesion: 1 },
+  ];
+  const r = breakawayDropEvents(groups, [], 42);
+  assert.deepEqual(r.events, [{ km: 42, type: "breakaway_dropped", params: { group_id: "solo-2001", from_group_id: "breakaway-0", rider_ids: ["d"] } }]);
+  assert.deepEqual(r.dropped, ["d"]);
+});
+
+test("breakawayDropEvents: a rider back in the break leaves the list and can be dropped again; silent riders are listed without an event", () => {
+  const back: RaceGroup[] = [{ id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: ["b", "d"], gap_seconds: 0, cohesion: 1 }];
+  assert.deepEqual(breakawayDropEvents(back, ["d"], 10).dropped, []);
+  const again: RaceGroup[] = [back[0], { id: "chase-3000", kind: "chase", origin: "breakaway", rider_ids: ["e", "f"], gap_seconds: 30, cohesion: 1 }];
+  const r = breakawayDropEvents(again, [], 30, (id) => id === "f");
+  assert.deepEqual(r.events.map((e) => e.params.rider_ids), [["e"]]);
+  assert.deepEqual(r.dropped, ["e", "f"]);
+});
+
+test("breakawayDropEvents: without a break nothing is reported and the known list is kept", () => {
+  const caught: RaceGroup[] = [{ id: "peloton-0", kind: "peloton", rider_ids: ["a", "x"], gap_seconds: 0, cohesion: 1 }];
+  assert.deepEqual(breakawayDropEvents(caught, ["d"], 10), { events: [], dropped: ["d"] });
+});
+
+test("isBreakawayPiece / rejoinBreakawayPiece", () => {
+  assert.equal(isBreakawayPiece({ kind: "chase", origin: "breakaway" }), true);
+  assert.equal(isBreakawayPiece({ kind: "breakaway", origin: "breakaway" }), false);
+  assert.equal(isBreakawayPiece({ kind: "chase" }), false);
+  const groups: RaceGroup[] = [
+    { id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: ["a"], gap_seconds: 0, cohesion: 1 },
+    { id: "chase-1", kind: "chase", origin: "breakaway", rider_ids: ["b", "c"], gap_seconds: 1, cohesion: 0.5 },
+  ];
+  assert.deepEqual(rejoinBreakawayPiece(groups, "chase-1", "breakaway-0"), [
+    { id: "breakaway-0", kind: "breakaway", origin: "breakaway", rider_ids: ["a", "b", "c"], gap_seconds: 0, cohesion: 0.5 },
+  ]);
+  assert.equal(groups.length, 2, "input is not mutated");
+});
+
+// ── Hele etapen under orders_gc_v3 ───────────────────────────────────────────
+
+test("#6185/#6234 full stage under orders_gc_v3: drops reported at the split, no catch by escapees, a valid timeline, history uses the event", () => {
+  let stagesWithDrops = 0;
+  for (const routeName of Object.keys(ROUTES) as Array<keyof typeof ROUTES>) {
+    for (let s = 0; s < 12; s++) {
+      const out = stage(routeName, "orders_gc_v3", `6185-v3-${s}`);
+      const events = out.timeline.events;
+      assert.deepEqual(validateGroupMembership(events, out.groupSnapshots), [], `${routeName}/${s}: membership`);
+      const knownRiderIds = new Set(field().map((e) => e.rider_id));
+      assert.deepEqual(validateTimelineEvents(events, { distanceKm: ROUTES[routeName].distance_km, knownRiderIds }), [], `${routeName}/${s}: timeline`);
+      const formed = events.find((e) => e.type === "breakaway_formed");
+      if (!formed) continue;
+      assert.equal(formed.params.drops_reported, true);
+      const morning = new Set(formed.params.rider_ids as string[]);
+      const drops = events.filter((e) => e.type === "breakaway_dropped");
+      if (drops.length) stagesWithDrops++;
+      const reported = new Set<string>();
+      for (const drop of drops) {
+        for (const id of drop.params.rider_ids as string[]) {
+          assert.ok(morning.has(id), `${routeName}/${s}: ${id} was in the morning break`);
+          reported.add(id);
+        }
+      }
+      // Ingen indhentning foretaget af en gruppe der kun rummer udbrydere.
+      for (const caught of events.filter((e) => e.type === "breakaway_caught")) {
+        const split = events.find((e) => e.type === "peloton_splits" && e.params.group_id === caught.params.chase_group_id);
+        if (split) assert.ok((split.params.rider_ids as string[]).some((id) => !morning.has(id)), `${routeName}/${s}: caught by escapees only at km ${caught.km}`);
+      }
+      // Historikken: kun motorens melding og uheld saetter af (ingen projektion fra splits).
+      const history = deriveParticipationHistory(events);
+      const incidentRiders = new Set(events.filter((e) => e.type === "incident").map((e) => e.params.rider_id));
+      for (const id of morning) {
+        const rider = history.riders.get(id);
+        if (rider?.dropped && !incidentRiders.has(id)) assert.ok(reported.has(id), `${routeName}/${s}: ${id} dropped only by the engine's event`);
+      }
+    }
+  }
+  assert.ok(stagesWithDrops > 0, "the fixture stages must exercise a drop");
+});
+
+test("#6185: legacy/v1/v2 never report drops", () => {
+  for (const revision of ["legacy", "orders_gc_v1", "orders_gc_v2"] as RulesRevision[]) {
+    const out = stage("mountain", revision, "6185-v3-0");
+    assert.equal(out.timeline.events.some((e) => e.type === "breakaway_dropped" || e.params.drops_reported !== undefined), false, revision);
+  }
 });
