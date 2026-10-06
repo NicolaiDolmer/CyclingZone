@@ -3,7 +3,7 @@
     "title": "Privatlivspolitik",
     "langSwitchLabel": "English",
     "back": "Tilbage",
-    "intro": "Senest opdateret: 3. august 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861). Vi behandler så lidt data som muligt, og du bestemmer selv hvad vi må måle."
+    "intro": "Senest opdateret: 6. oktober 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861). Vi behandler så lidt data som muligt, og du bestemmer selv hvad vi må måle."
   },
   "sections": {
     "controller": {
@@ -19,6 +19,7 @@
         "<bold>Frivilligt:</bold> Discord-ID hvis du selv tilføjer det for at modtage DM-notifikationer.",
         "<bold>Teknisk:</bold> IP-adresse i adgangslogs i op til 30 dage til drift og sikkerhed.",
         "<bold>Analyse (kun med dit samtykke):</bold> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret), anonym trafik-/kildestatistik via Google Analytics (fx hvilken side du kom fra) og anonyme sidevisninger via Vercel Web Analytics (fx hvor mange der besøger en side). Bruges udelukkende til at rette dårlig UX og forstå hvor spillere finder spillet.",
+        "<bold>Produktanalyse via PostHog (kører, medmindre du afviser analyse):</bold> sidevisninger og vigtige trin i spillet (fx tilmelding, hold oprettet, første bud og første træning), så det kan ses hvor nye spillere går i stå. PostHog sætter ingen cookies og gemmer intet i din browser: hver sideindlæsning får et nyt tilfældigt id. Når du logger ind, kobles disse hændelser til dit interne konto-id (aldrig din e-mail eller dit navn), så besøg kan forbindes på tværs af sessioner. Afviser du \"Analyse\"-kategorien, slukkes PostHog med det samme. Grundlaget er legitim interesse i at forbedre spillet (GDPR art. 6, stk. 1, litra f), og du gør indsigelse ved at afvise analyse.",
         "<bold>Tilmeldingskilde (legitim interesse):</bold> når du opretter en konto, registrerer vi hvordan du først nåede siden (et henvisende link, eventuelle kampagne-tags i URL'en og den side du landede på), så vi kan se hvilke kanaler der bringer nye spillere. Kun first-party, ingen cross-site-tracking, og du kan til enhver tid gøre indsigelse.",
         "<bold>Aggregeret trafikstatistik (kræver ikke samtykke):</bold> vi tæller anonyme, aggregerede sidevisninger og engagement (fx hvor mange besøgende en side fik, og om de engagerede sig) uden cookies og uden at gemme IP-adresser eller andre data der kan identificere dig. Vi registrerer også hvilken side besøget kom fra og eventuelle kampagne-tags i URL'en, så vi kan se hvilke kanaler der bringer besøgende. Det er oplysninger om det henvisende link, ikke om dig. Da det ikke kan henføres til dig, kræver det ikke samtykke.",
         "<bold>Fair play (legitim interesse):</bold> for at kunne opdage og dokumentere snyd med flere konti registrerer vi tekniske signaler ved kontooprettelse og ved værdibærende handlinger i spillet (fx accepterede transfers, auktionsbud og optagne lån): IP-adresse, browser-oplysninger (user-agent), sprogindstilling og tidszone. Disse data bruges udelukkende til fair play-håndhævelse, er aldrig synlige for andre spillere, deles ikke med tredjeparter og slettes automatisk efter 180 dage. Sletter du din konto, slettes de sammen med den. Grundlaget er vores legitime interesse i et retfærdigt spil (GDPR art. 6, stk. 1, litra f), og du kan til enhver tid gøre indsigelse."
@@ -44,6 +45,7 @@
         "<bold>Supabase (EU, Frankfurt):</bold> database og autentificering (databehandleraftale i kraft).",
         "<bold>Vercel:</bold> hosting af frontend (EU/US edge). Vercel kan se IP i adgangslogs.",
         "<bold>Railway:</bold> hosting af backend.",
+        "<bold>PostHog (EU-cloud):</bold> produktanalyse uden cookies. Slukket hvis du afviser \"Analyse\"-kategorien.",
         "<bold>Microsoft Clarity:</bold> kun aktiveret hvis du har accepteret \"Analyse\"-kategorien.",
         "<bold>Google Analytics:</bold> kun aktiveret hvis du har accepteret \"Analyse\"-kategorien. Annonce-signaler er slået fra.",
         "<bold>Vercel Web Analytics:</bold> kun aktiveret hvis du har accepteret \"Analyse\"-kategorien.",
@@ -85,7 +87,7 @@
         "<bold>Samtykke-valg</bold> (<code>cz_consent_v1</code> i localStorage): så vi husker dine valg og ikke spørger igen.",
         "<bold>Version-fastholdelse</bold> (<code>__vdpl</code>): holder din browser på den version af spillet du indlæste, så siden ikke går i stykker midt i en session."
       ],
-      "outro": "Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> og <bold>Vercel Web Analytics</bold> indlæses kun hvis du aktivt har accepteret \"Analyse\"-kategorien. Du kan til enhver tid skifte valg her på siden."
+      "outro": "Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> og <bold>Vercel Web Analytics</bold> indlæses kun hvis du aktivt har accepteret \"Analyse\"-kategorien. <bold>PostHog</bold> gemmer intet i din browser (ingen cookies, ingen localStorage) og slukkes hvis du afviser \"Analyse\". Du kan til enhver tid skifte valg her på siden."
     },
     "currentChoices": {
       "heading": "Dit nuværende valg",

@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router";
 import { useConsent } from "./consent.jsx";
-import { supabase } from "./supabase";
-import { getAuthedUser } from "./getAuthedUser.js";
+import { useUserProfile } from "./userProfile.jsx";
 import {
   POSTHOG_ENABLED,
+  isPosthogAllowed,
+  resolveEffectiveConsent,
   startPosthog,
   capturePosthogPageview,
   identifyPosthog,
@@ -13,29 +14,43 @@ import {
 } from "./posthogClient.js";
 
 // PostHog-wiringen (#4321). SDK-håndteringen ligger i posthogClient.js; her
-// kobles den til consent, SPA-navigation og auth-tilstand, efter samme mønster
-// som clarityIntegration.jsx.
+// kobles den til samtykke, SPA-navigation og auth-tilstand.
 //
-// Monteres inde i ConsentProvider, inde i BrowserRouter (useLocation) og inde i
-// AnalyticsBoundary (CYCLINGZONE-5B: telemetri må aldrig tage spillet ned).
+// Gate (ejer 6/10, variant A): PostHog kører cookieløst (memory-persistence)
+// for alle besøgende UNDTAGEN dem der aktivt har afvist analytics. Ubesvaret
+// banner = kører. Afvisning undervejs = optOut med det samme. Intet nyt banner.
+//
+// Monteres inde i ConsentProvider (og dermed UserProfileProvider), inde i
+// BrowserRouter (useLocation) og inde i AnalyticsBoundary (CYCLINGZONE-5B:
+// telemetri må aldrig tage spillet ned).
 export default function PosthogIntegration() {
-  const { hasConsent } = useConsent();
-  const analyticsOn = hasConsent("analytics");
+  const { consent, hasResponded } = useConsent();
+  const { userId, profile, loading: profileLoading } = useUserProfile();
+  // Den mest restriktive af lokal værdi og DB-værdi (se
+  // resolveEffectiveConsent). Vi læser profilen direkte (ikke kun den synkede
+  // context-værdi), så en afvisning fra en anden enhed gælder i SAMME render
+  // som profilen lander, og en afvisning i banneret gælder før DB-skrivningen.
+  const effectiveConsent = resolveEffectiveConsent(
+    hasResponded ? consent : null,
+    profile?.consent_preferences,
+  );
+  const posthogOn = isPosthogAllowed(effectiveConsent);
   const location = useLocation();
-  // Sandt når vi har nået at starte SDK'et mindst én gang i denne
-  // browser-session — bruges så pageview-effekten ikke fyrer før init.
+  // Sandt når vi har nået at starte SDK'et mindst én gang i denne page load —
+  // bruges så pageview-effekten ikke fyrer før init.
   const startedRef = useRef(false);
   // Seneste identificerede bruger-id, så vi ikke kalder identify() på hver
-  // eneste navigation (PostHog de-dup'er selv, men kaldet koster en round-trip
-  // gennem den async modul-reference).
+  // eneste navigation.
   const identifiedRef = useRef(null);
 
   useEffect(() => {
     if (!POSTHOG_ENABLED) return;
-    if (!analyticsOn) {
-      // Tilbagekaldt samtykke: ingen ren teardown (samme som Clarity/GA), men
-      // opt-out stopper afsendelsen med det samme hvis SDK'et allerede kører.
+    if (!posthogOn) {
+      // Afvist (også midt i sessionen): ingen ren teardown (samme som
+      // Clarity/GA), men opt-out stopper afsendelsen med det samme. Næste
+      // page load starter slet ikke SDK'et.
       if (startedRef.current) optOutPosthog();
+      identifiedRef.current = null;
       return;
     }
     let cancelled = false;
@@ -46,53 +61,44 @@ export default function PosthogIntegration() {
       capturePosthogPageview();
     });
     return () => { cancelled = true; };
-  }, [analyticsOn]);
+  }, [posthogOn]);
 
-  // Identify på start + ved auth-skift. KUN den interne UUID sendes med
-  // (#2041: aldrig e-mail/navn til en tredjeparts analytics-UI). Logget-ud
-  // brugere identificeres bevidst ikke: person_profiles er "identified_only",
-  // så anonyme besøg tæller i web analytics uden at bruge person-kvote.
+  // Identify efter login, ved HVER page load: memory-persistence giver en ny
+  // anonym id pr. load, og identify er det der binder sessionerne sammen.
+  // KUN den interne UUID (#2041: aldrig e-mail/navn til en tredjeparts UI).
+  //
+  // Vi venter til profilen for netop denne bruger er hentet (userId sat og
+  // !profileLoading). Først da kender vi brugerens DB-samtykke; ellers kunne
+  // en bruger der har afvist på en anden enhed nå at blive identify'et i
+  // vinduet før profilen landede. Logget-ud brugere identificeres bevidst
+  // ikke: person_profiles er "identified_only".
+  const profileReady = Boolean(userId) && !profileLoading;
   useEffect(() => {
-    if (!analyticsOn || !POSTHOG_ENABLED) return;
+    if (!POSTHOG_ENABLED || !posthogOn) return;
     let cancelled = false;
-
-    async function identifyFromSession() {
-      let user = null;
-      try {
-        user = await getAuthedUser();
-      } catch { /* best-effort — uidentificeret trafik er stadig gyldig */ }
+    startPosthog().then(() => {
       if (cancelled) return;
-      if (user?.id) {
-        if (identifiedRef.current === user.id) return;
-        identifiedRef.current = user.id;
-        identifyPosthog(user.id);
-      } else if (identifiedRef.current) {
-        // Logget ud: bryd koblingen, så næste anonyme session på samme enhed
+      if (userId && profileReady) {
+        if (identifiedRef.current === userId) return;
+        identifiedRef.current = userId;
+        identifyPosthog(userId);
+      } else if (!userId && identifiedRef.current) {
+        // Logget ud: bryd koblingen, så næste anonyme session på samme fane
         // ikke hænger på den forrige bruger.
         identifiedRef.current = null;
         resetPosthog();
       }
-    }
-
-    identifyFromSession();
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
-        identifyFromSession();
-      }
     });
-    return () => {
-      cancelled = true;
-      sub?.subscription?.unsubscribe?.();
-    };
-  }, [analyticsOn]);
+    return () => { cancelled = true; };
+  }, [posthogOn, userId, profileReady]);
 
   // SPA-route-skift giver ingen page load, så $pageview fyres manuelt pr.
   // navigation (samme sted som Clarity re-identify'er). Den første pageview
   // fyres af start-effekten ovenfor; denne springer den over via startedRef.
   useEffect(() => {
-    if (!analyticsOn || !POSTHOG_ENABLED || !startedRef.current) return;
+    if (!posthogOn || !POSTHOG_ENABLED || !startedRef.current) return;
     capturePosthogPageview();
-  }, [analyticsOn, location.pathname]);
+  }, [posthogOn, location.pathname]);
 
   return null;
 }
