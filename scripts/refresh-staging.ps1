@@ -32,6 +32,7 @@ $ErrorActionPreference = "Stop"
 $repo = (git rev-parse --show-toplevel).Trim()
 Set-Location $repo
 . (Join-Path $repo "scripts/lib/Staging-Env.ps1")
+. (Join-Path $repo "scripts/lib/Refresh-Staging-Gates.ps1")
 
 foreach ($tool in @("pg_dump", "pg_restore", "psql", "infisical", "supabase")) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Mangler vaerktoej: $tool" }
@@ -80,19 +81,62 @@ if (-not $VerifyOnly) {
     Write-Host ("[ok] dump {0:N0} MB paa {1:N0} s" -f ((Get-Item $dumpFile).Length / 1MB), ((Get-Date) - $t0).TotalSeconds)
   }
 
-  $t1 = Get-Date
-  Write-Host "[..] restore -> staging $($env:STAGING_REF): auth.users (truncate+copy), derefter public (clean+if-exists)"
-  Invoke-Staging "psql `$env:STAGING_DB_URL -v ON_ERROR_STOP=1 -q -c 'truncate auth.users cascade;'"
-  Invoke-Staging "pg_restore -d `$env:STAGING_DB_URL --data-only --no-owner --no-acl '$authFile' 2>&1 | Select-String -Pattern 'error' | Select-Object -First 10; exit 0"
-  # pg_restore returnerer 1 ved harmloese advarsler (extensions/policies der allerede findes);
-  # de foerste 40 ikke-trivielle linjer vises, verify-trinnet afgoer GO/NO-GO.
-  Invoke-Staging "pg_restore -d `$env:STAGING_DB_URL --clean --if-exists --no-owner --no-acl --schema=public '$dumpFile' 2>&1 | Select-String -Pattern 'error' | Where-Object { `$_ -notmatch 'DROP |does not exist' } | Select-Object -First 40; exit 0"
-  Write-Host ("[ok] restore paa {0:N0} s" -f ((Get-Date) - $t1).TotalSeconds)
+  # Keep pg_restore's dependency ordering and complete clean phase intact.
+  # Large COPY sections remain separate visible steps in the same transaction.
+  $public=Join-Path $DumpDir 'public-restore.sql'; $auth=Join-Path $DumpDir 'auth-data.sql'
+  $guard=Join-Path $DumpDir 'restore-guard.sql'; $sanitize=Join-Path $DumpDir 'restore-sanitize.sql'
+  & pg_restore --clean --if-exists --no-owner --no-acl --schema=public -f $public $dumpFile
+  if($LASTEXITCODE -ne 0){throw 'Public archive extraction failed'}
+  & pg_restore --data-only --no-owner --no-acl -f $auth $authFile
+  if($LASTEXITCODE -ne 0){throw 'Auth archive extraction failed'}
+  # Stream instead of loading training_day_runs' large COPY payload into RAM.
+  $progress=Join-Path $DumpDir 'public-progress.sql'
+  $reader=[IO.StreamReader]::new($public,[Text.Encoding]::UTF8)
+  $writer=[IO.StreamWriter]::new($progress,$false,[Text.UTF8Encoding]::new($false)); $writer.NewLine="`n"
+  try {
+    while($null -ne ($line=$reader.ReadLine())) {
+      if($line -match '^COPY public\.(training_day_runs|training_rider_ticks) '){$writer.WriteLine('\echo RESTORE_STEP_'+$Matches[1])}
+      $writer.WriteLine($line)
+    }
+  } finally {$reader.Dispose();$writer.Dispose()}
+  @'
+set statement_timeout=0;
+set idle_in_transaction_session_timeout=0;
+set transaction_timeout=0;
+set session_replication_role=replica;
+'@ | Set-Content $guard -Encoding utf8
+  $anon=[IO.File]::ReadAllText((Join-Path $repo 'scripts/staging/anonymize-staging.sql'))
+  $anon=[regex]::Replace($anon,'(?im)^\s*(begin|commit);\s*$','')
+  $authPrivacy=@'
+set session_replication_role=origin;
+update auth.users set email='loadtest-' || id::text || '@loadtest.invalid', phone=null,
+  encrypted_password='', raw_user_meta_data='{}'::jsonb, raw_app_meta_data='{}'::jsonb;
+'@
+  [IO.File]::WriteAllText($sanitize,$authPrivacy+"`n"+$anon,[Text.UTF8Encoding]::new($false))
+  $authPrefix=[Text.Encoding]::UTF8.GetBytes("truncate auth.users cascade;`n")
+  [IO.File]::WriteAllBytes($auth,($authPrefix+[IO.File]::ReadAllBytes($auth)))
+  $restoreArgs=Get-RefreshRestoreArguments @($guard,$auth,$progress,$sanitize)
+  $quoted=($restoreArgs|ForEach-Object { "'"+($_.Replace("'","''"))+"'" }) -join ' '
+  Write-Host '[..] atomic restore: schema/auth/light data/training_day_runs/training_rider_ticks/indexes/cleanup'
+  Invoke-Staging "psql `$env:STAGING_DB_URL $quoted"
 }
 
-Write-Host "[..] verify: raekketaellinger prod vs staging"
-Invoke-WithProd "Write-Host '--- prod'; psql `$env:SUPABASE_DB_URL -q -f '$verifySql'"
-Invoke-Staging "Write-Host '--- staging'; psql `$env:STAGING_DB_URL -q -f '$verifySql'"
+$fingerprint=Join-Path $repo 'scripts/staging/schema-fingerprint-summary.sql'
+$prodFingerprint=Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$fingerprint'"
+$stageFingerprint=Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$fingerprint'"
+Assert-RefreshFingerprint ($prodFingerprint -join "`n") ($stageFingerprint -join "`n")
+
+# Deliberately the last database operation, including VerifyOnly.
+$privacyFile=Join-Path $DumpDir 'privacy-final.sql'
+@'
+select (select count(*) from public.users where email is null or email not like '%@loadtest.invalid'
+  or discord_id is not null or discord_handle is not null)
+ + (select count(*) from auth.users where email is null or email not like '%@loadtest.invalid'
+  or phone is not null or raw_user_meta_data <> '{}'::jsonb or raw_app_meta_data <> '{}'::jsonb);
+'@ | Set-Content $privacyFile -Encoding utf8
+$privacy=Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$privacyFile'"
+Assert-RefreshPrivacy ($privacy -join "`n")
+Write-Host '[ok] app-schema fingerprint matches; non-anonymous users=0'
 
 if ($Clean) { Remove-Item -Force $dumpFile, $authFile -ErrorAction SilentlyContinue; Write-Host "[ok] dump slettet" }
 Write-Host "[GO] staging '$BranchName' er en frisk prod-kopi. Koer cutover-scripts via scripts/with-staging.ps1."
