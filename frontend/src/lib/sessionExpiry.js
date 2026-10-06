@@ -89,8 +89,17 @@ function storageOrNull(storage) {
   // Prerender (entry-server.jsx) kører uden sessionStorage; en manglende besked
   // må aldrig vælte en side-render.
   if (storage) return storage;
-  if (typeof sessionStorage === "undefined") return null;
-  return sessionStorage;
+  // CYCLINGZONE-8W: selve OPSLAGET `sessionStorage` (også bag `typeof`) kaster
+  // SecurityError i browsere hvor site-data er blokeret. LoginPage kalder
+  // peekSessionExpiredFlash() i en useState-initializer, så et ufanget kast her
+  // væltede hele login-siden. Samme fejlklasse som #6168 (localStorage) og
+  // #5159 (chunkErrors): slå browser-API'et op INDE i try.
+  try {
+    if (typeof sessionStorage === "undefined") return null;
+    return sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 /** Markér at spilleren blev logget ud fordi serveren afviste sessionen. */
