@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er arbejdskontrakten for begge agenter._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kontrakten for begge._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
@@ -88,6 +88,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 ### Build-konventioner ([#4329](https://github.com/NicolaiDolmer/CyclingZone/issues/4329))
 
 31. **Nye frontend-filer skrives i `.ts`/`.tsx`.** Konventionen gælder kun NYE filer; ingen big-bang-migrering af de eksisterende ca. 880 `.js`/`.jsx`. Gælder også testfiler: nye i `.ts`/`.tsx`, eksisterende `.js`-tests urørt (#5428). `check-anti-slop.mjs` advarer, blokerer ikke.
+
+Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [migration-skabelonen](database/templates/new-public-table.sql); RLS erstatter ikke grants.
 
 32. **"Kan en type fange det?" — spørg FØR du foreslår en ny CI-guard.** `.github/workflows/ci.yml` har allerede ca. 15 håndbyggede ratchet-guard-jobs. Kan compileren fange fejlen (forkert felt-navn, manglende case, forkert type), tilføj typen i stedet. Guards reserveres til det compileren IKKE kan se: invarianter, RLS, paginerings-lofter, patch-notes-dækning, feature-liveness.
 

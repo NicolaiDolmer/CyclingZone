@@ -42,7 +42,9 @@
 // FREMTIDIGE tabeller. Filens egen post-verify siger eksplicit: "SELECT
 // revokes ikke — frontend-læsninger fortsætter uændret." Det betyder:
 //
-//   1. SELECT er og bliver auto-grantet til authenticated for ENHVER tabel,
+//   1. Historisk blev SELECT auto-grantet til authenticated. #708 supplerer
+//      dette legacy-lint med audit-table-grants.mjs for ALLE nye public-tabeller.
+//      Det følgende beskriver kun dette lints oprindelige cutover-scope,
 //      før og efter cutover. At kræve et eksplicit `GRANT SELECT` ville være
 //      permanent støj — hver eneste fremtidige migration med en SELECT-policy
 //      ville fejle uden grund. SELECT er derfor UDENFOR scope for dette lint.
@@ -94,7 +96,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStatements } from './lint-migration-idempotency.mjs';
 
 const TARGET_ROLE = 'authenticated';
-// SELECT is deliberately excluded — see the #2830 header comment above.
+// SELECT is excluded from this legacy write guard; #708 audits new-table access separately.
 const WRITE_OPS = ['INSERT', 'UPDATE', 'DELETE'];
 const IDENT = '(?:"?[A-Za-z_][A-Za-z0-9_]*"?)';
 const OPT_OUT = 'policy-grant-ok';
