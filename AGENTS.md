@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er arbejdskontrakten for begge agenter._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kontrakten for begge._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
