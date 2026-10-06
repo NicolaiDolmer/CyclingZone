@@ -1,10 +1,12 @@
 // #6278: kontrakt-tests for den server-side PostHog-klient og milepaelen
-// `first_race_with_own_squad` (de-dup via player_events, samtykke, fejl-sluk).
+// `first_race_with_own_squad` (de-dup via user_milestones, aldrig player_events,
+// samtykke, fejl-sluk).
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
   FIRST_RACE_WITH_OWN_SQUAD_EVENT,
   POSTHOG_EU_CAPTURE_URL,
+  USER_MILESTONES_TABLE,
   captureServerEvent,
   getPosthogProjectKey,
   hasDeclinedAnalytics,
@@ -142,7 +144,10 @@ test("selectNewMilestoneCandidates skips users that already have the event and d
 
 type Tables = Record<string, any[]>;
 
-function fakeSupabase(tables: Tables, opts: { insertError?: string; failTable?: string } = {}) {
+function fakeSupabase(
+  tables: Tables,
+  opts: { insertError?: { message: string; code?: string }; failTable?: string; failCode?: string; raceWinner?: string[] } = {},
+) {
   const log: Array<{ table: string; op: string; payload?: any }> = [];
   const inserted: any[] = [];
   const from = (table: string) => {
@@ -160,15 +165,28 @@ function fakeSupabase(tables: Tables, opts: { insertError?: string; failTable?: 
         filters.push((row) => row[col] === val);
         return builder;
       },
-      insert(rows: any[]) {
-        log.push({ table, op: "insert", payload: rows });
-        if (opts.insertError) return Promise.resolve({ data: null, error: { message: opts.insertError } });
-        inserted.push(...rows);
-        (tables[table] ||= []).push(...rows);
-        return Promise.resolve({ data: null, error: null });
+      // upsert(...).select(): ON CONFLICT (user_id, milestone) DO NOTHING RETURNING user_id
+      upsert(rows: any[], upsertOpts: any) {
+        log.push({ table, op: "upsert", payload: { rows, opts: upsertOpts } });
+        return {
+          select() {
+            if (opts.insertError) return Promise.resolve({ data: null, error: opts.insertError });
+            const store = (tables[table] ||= []);
+            // et samtidigt loeb naaede at skrive disse brugere foerst
+            for (const userId of opts.raceWinner ?? []) store.push({ user_id: userId, milestone: FIRST_RACE_WITH_OWN_SQUAD_EVENT });
+            const written: any[] = [];
+            for (const row of rows) {
+              if (store.some((r) => r.user_id === row.user_id && r.milestone === row.milestone)) continue;
+              store.push(row);
+              inserted.push(row);
+              written.push({ user_id: row.user_id });
+            }
+            return Promise.resolve({ data: written, error: null });
+          },
+        };
       },
       then(resolve: (v: any) => void, reject: (e: any) => void) {
-        if (opts.failTable === table) return Promise.resolve({ data: null, error: { message: "db down" } }).then(resolve, reject);
+        if (opts.failTable === table) return Promise.resolve({ data: null, error: { message: "db down", code: opts.failCode } }).then(resolve, reject);
         const data = (tables[table] || []).filter((row) => filters.every((f) => f(row)));
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
@@ -194,7 +212,7 @@ function baseTables(): Tables {
       { id: "t-ai", user_id: null, is_ai: true, is_bank: false, is_test_account: false },
       { id: "t-declined", user_id: "u-declined", is_ai: false, is_bank: false, is_test_account: false },
     ],
-    player_events: [{ user_id: "u-veteran", event_name: FIRST_RACE_WITH_OWN_SQUAD_EVENT }],
+    user_milestones: [{ user_id: "u-veteran", milestone: FIRST_RACE_WITH_OWN_SQUAD_EVENT }],
     users: [
       { id: "u-new", created_at: "2026-10-04T12:00:00.000Z", consent_preferences: null },
       { id: "u-declined", created_at: "2026-10-01T12:00:00.000Z", consent_preferences: { analytics: false } },
@@ -213,13 +231,18 @@ test("records the milestone once per new human user and sends PostHog only for n
     inserted.map((r) => r.user_id),
     ["u-declined", "u-new"],
   );
-  assert.ok(inserted.every((r) => r.event_name === FIRST_RACE_WITH_OWN_SQUAD_EVENT));
+  assert.ok(inserted.every((r) => r.milestone === FIRST_RACE_WITH_OWN_SQUAD_EVENT));
   const newRow = inserted.find((r) => r.user_id === "u-new");
   assert.equal(newRow.team_id, "t-new");
-  assert.deepEqual(newRow.event_data, { race_id: "race-1", stage_number: 1, squad: "senior", days_since_signup: 2, source: "server" });
-  // ét batch-insert og faste opslag, aldrig pr. rytter
-  assert.equal(log.filter((l) => l.op === "insert").length, 1);
+  assert.deepEqual(newRow.data, { race_id: "race-1", stage_number: 1, squad: "senior", days_since_signup: 2, source: "server" });
+  // ét batch-upsert mod user_milestones (ON CONFLICT DO NOTHING) og faste opslag, aldrig pr. rytter
+  const upserts = log.filter((l) => l.op === "upsert");
+  assert.equal(upserts.length, 1);
+  assert.equal(upserts[0].table, USER_MILESTONES_TABLE);
+  assert.deepEqual(upserts[0].payload.opts, { onConflict: "user_id,milestone", ignoreDuplicates: true });
   assert.equal(log.filter((l) => l.op === "select").length, 3);
+  // Milepaelen er IKKE brugeraktivitet: player_events roeres aldrig (#6278-review).
+  assert.equal(log.filter((l) => l.table === "player_events").length, 0);
   // PostHog: kun den ikke-afviste bruger, distinct_id = intern UUID
   assert.equal(calls.length, 1);
   assert.equal(calls[0].body.distinct_id, "u-new");
@@ -251,13 +274,35 @@ test("without a PostHog key the Postgres row is still written, but nothing is se
 });
 
 test("a failed insert sends nothing to PostHog (no copy without the Postgres truth)", async () => {
-  const { supabase } = fakeSupabase(baseTables(), { insertError: "permission denied" });
+  const { supabase } = fakeSupabase(baseTables(), { insertError: { message: "permission denied", code: "42501" } });
   const calls: Array<{ url: string; body: any }> = [];
   const reported: unknown[] = [];
   const res = await recordFirstRaceWithOwnSquad({ supabase, race, resultRows, apiKey: KEY, fetchImpl: okFetch(calls), now, reportError: (e) => reported.push(e) });
   assert.deepEqual(res, { recorded: 0, sent: 0, skipped: "insert_failed" });
   assert.equal(calls.length, 0);
   assert.equal(reported.length, 1);
+});
+
+test("a concurrent race that already wrote the row: only rows this call wrote are sent", async () => {
+  const { supabase } = fakeSupabase(baseTables(), { raceWinner: ["u-new"] });
+  const calls: Array<{ url: string; body: any }> = [];
+  const res = await recordFirstRaceWithOwnSquad({ supabase, race, resultRows, apiKey: KEY, fetchImpl: okFetch(calls), now });
+  // u-new blev skrevet af det andet loeb; kun u-declined er ny her, og den har afvist analytics
+  assert.deepEqual(res, { recorded: 1, sent: 0 });
+  assert.equal(calls.length, 0);
+});
+
+test("a missing user_milestones table (backend before migration) is a silent skip, not a Sentry report", async () => {
+  const reported: unknown[] = [];
+  for (const code of ["42P01", "PGRST205"]) {
+    const { supabase } = fakeSupabase(baseTables(), { failTable: USER_MILESTONES_TABLE, failCode: code });
+    const res = await recordFirstRaceWithOwnSquad({ supabase, race, resultRows, apiKey: KEY, now, reportError: (e) => reported.push(e) });
+    assert.deepEqual(res, { recorded: 0, sent: 0, skipped: "table_missing" });
+  }
+  const { supabase } = fakeSupabase(baseTables(), { insertError: { message: "relation does not exist", code: "42P01" } });
+  const res = await recordFirstRaceWithOwnSquad({ supabase, race, resultRows, apiKey: KEY, now, reportError: (e) => reported.push(e) });
+  assert.deepEqual(res, { recorded: 0, sent: 0, skipped: "table_missing" });
+  assert.equal(reported.length, 0);
 });
 
 test("a DB lookup error is swallowed and reported, never thrown", async () => {

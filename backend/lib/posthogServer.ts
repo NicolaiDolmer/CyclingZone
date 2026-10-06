@@ -7,9 +7,14 @@
 // bliver koert, saa en klient-event ville tabe netop de spillere tragten skal maale.
 //
 // Kontrakt (bindende, se #6278):
-//   • Postgres er sandheden og de-dup'en: en `player_events`-raekke med
-//     event_name = FIRST_RACE_WITH_OWN_SQUAD_EVENT pr. bruger. Findes raekken,
-//     sker der intet (hverken DB eller PostHog).
+//   • Postgres er sandheden og de-dup'en: en `user_milestones`-raekke med
+//     milestone = FIRST_RACE_WITH_OWN_SQUAD_EVENT pr. bruger (PRIMARY KEY
+//     (user_id, milestone)). Findes raekken, sker der intet (hverken DB eller PostHog).
+//   • ALDRIG i player_events: aktivitets-/retention-RPC'erne (get_sprint_metrics,
+//     get_cohort_retention, retention-scorecard, compute_growth_snapshot) taeller
+//     enhver player_events-raekke som brugeraktivitet. En server-skrevet raekke,
+//     mens manageren er offline, ville puste DAU/WAU/MAU og kohorte-D1/D7 op.
+//   • Manglende tabel (backend deployet foer migrationen) = stille skip, ingen Sentry.
 //   • PostHog faar en kopi via en afhaengighedsfri `fetch` til EU-endpointet,
 //     distinct_id = brugerens interne UUID (samme id som frontendens identify).
 //   • No-op mod PostHog naar env POSTHOG_PROJECT_KEY mangler. Raekken i Postgres
@@ -20,12 +25,10 @@
 //   • Maa ALDRIG blokere eller vaelte loebsfinaliseringen: kaldet er
 //     fire-and-forget, hver fejl sluges, PostHog-kaldet har timeout (~2 s).
 //   • Kaldes EFTER resultat-skrivningen er committet, aldrig inde i den, og med
-//     faste opslag pr. loeb (teams, player_events, users), aldrig pr. rytter.
-//
-// Kendt graense: to loeb der finaliseres i samme sekund for den samme nye
-// manager kan begge naa at skrive raekken (ingen unik-noegle, ingen migration).
-// Konsekvensen er en dublet-raekke/-event, aldrig et tab; analyse bruger
-// "foerste forekomst pr. bruger".
+//     faste opslag pr. loeb (teams, user_milestones, users), aldrig pr. rytter.
+//   • To loeb der finaliseres samtidig for den samme nye manager: insert'en er
+//     ON CONFLICT DO NOTHING og returnerer kun de raekker der faktisk blev skrevet,
+//     saa PostHog-kopien sendes én gang.
 
 import { captureException } from "./sentry.js";
 
@@ -33,13 +36,29 @@ export const POSTHOG_EU_CAPTURE_URL = "https://eu.i.posthog.com/i/v0/e/";
 export const POSTHOG_KEY_ENV = "POSTHOG_PROJECT_KEY";
 export const POSTHOG_DEFAULT_TIMEOUT_MS = 2000;
 export const FIRST_RACE_WITH_OWN_SQUAD_EVENT = "first_race_with_own_squad";
+export const USER_MILESTONES_TABLE = "user_milestones";
+// Tabellen findes ikke (endnu): Postgres 42P01 / PostgREST PGRST205.
+const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
 
 // PostgREST `.in()` bygger id-listen ind i URL'en. Et loebsfelt er langt under
 // denne graense, men chunking holder URL'en kort selv i et stort felt.
 const IN_CHUNK_SIZE = 150;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-type PgError = { message?: string } | null | undefined;
+type PgError = { message?: string; code?: string } | null | undefined;
+
+class LookupError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+function isMissingTable(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null | undefined)?.code;
+  return typeof code === "string" && MISSING_TABLE_CODES.has(code);
+}
 type Result<T> = { data: T | null; error: PgError };
 // Minimal kontrakt for den del af supabase-js vi bruger. Testen giver en fake.
 // Samme bevidste `any`-moenster som youthRaceOptOut.ts.
@@ -196,7 +215,7 @@ async function selectIn<T>(supabase: Supabase, table: string, columns: string, c
     let query = supabase.from(table).select(columns).in(column, part);
     if (extra) query = extra(query);
     const { data, error } = (await query) as Result<T[]>;
-    if (error) throw new Error(`${table} lookup failed: ${error.message ?? "unknown error"}`);
+    if (error) throw new LookupError(`${table} lookup failed: ${error.message ?? "unknown error"}`, error.code);
     rows.push(...(data ?? []));
   }
   return rows;
@@ -242,8 +261,8 @@ export async function recordFirstRaceWithOwnSquad(args: RecordMilestoneArgs): Pr
     const humanUserIds = [...new Set(teams.filter(isHumanTeam).map((t) => String(t.user_id)))].sort();
     if (!humanUserIds.length) return { recorded: 0, sent: 0, skipped: "no_human_teams" };
 
-    const existing = await selectIn<{ user_id: string }>(supabase, "player_events", "user_id", "user_id", humanUserIds, (q) =>
-      q.eq("event_name", FIRST_RACE_WITH_OWN_SQUAD_EVENT),
+    const existing = await selectIn<{ user_id: string }>(supabase, USER_MILESTONES_TABLE, "user_id", "user_id", humanUserIds, (q) =>
+      q.eq("milestone", FIRST_RACE_WITH_OWN_SQUAD_EVENT),
     );
     const candidates = selectNewMilestoneCandidates({ teams, existingUserIds: existing.map((r) => String(r.user_id)) });
     if (!candidates.length) return { recorded: 0, sent: 0, skipped: "already_recorded" };
@@ -262,10 +281,10 @@ export async function recordFirstRaceWithOwnSquad(args: RecordMilestoneArgs): Pr
       const createdAt = userById.get(c.userId)?.created_at;
       const createdMs = createdAt ? Date.parse(createdAt) : NaN;
       return {
-        team_id: c.teamId,
         user_id: c.userId,
-        event_name: FIRST_RACE_WITH_OWN_SQUAD_EVENT,
-        event_data: {
+        milestone: FIRST_RACE_WITH_OWN_SQUAD_EVENT,
+        team_id: c.teamId,
+        data: {
           race_id: race.id,
           stage_number: args.stageNumber ?? null,
           squad: race.squad ?? null,
@@ -277,22 +296,31 @@ export async function recordFirstRaceWithOwnSquad(args: RecordMilestoneArgs): Pr
       };
     });
 
-    const { error: insertError } = (await supabase.from("player_events").insert(rows)) as Result<unknown>;
+    // ON CONFLICT DO NOTHING + returning: kun de raekker DETTE kald faktisk skrev
+    // kommer tilbage, saa et samtidigt loeb for samme manager ikke sender igen.
+    const { data: written, error: insertError } = (await supabase
+      .from(USER_MILESTONES_TABLE)
+      .upsert(rows, { onConflict: "user_id,milestone", ignoreDuplicates: true })
+      .select("user_id")) as Result<Array<{ user_id: string }>>;
     if (insertError) {
+      if (isMissingTable(insertError)) return { recorded: 0, sent: 0, skipped: "table_missing" };
       // Ingen PostHog-kopi uden Postgres-raekken: ellers ville naeste etape sende igen.
-      report(new Error(`player_events ${FIRST_RACE_WITH_OWN_SQUAD_EVENT} insert failed: ${insertError.message ?? "unknown error"}`), "insert");
+      report(new Error(`${USER_MILESTONES_TABLE} ${FIRST_RACE_WITH_OWN_SQUAD_EVENT} insert failed: ${insertError.message ?? "unknown error"}`), "insert");
       return { recorded: 0, sent: 0, skipped: "insert_failed" };
     }
+    const writtenIds = new Set((written ?? []).map((r) => String(r.user_id)));
+    const recordedRows = rows.filter((row) => writtenIds.has(row.user_id));
+    if (!recordedRows.length) return { recorded: 0, sent: 0, skipped: "already_recorded" };
 
     const apiKey = args.apiKey === undefined ? getPosthogProjectKey() : args.apiKey;
-    if (!apiKey) return { recorded: rows.length, sent: 0, skipped: "no_posthog_key" };
+    if (!apiKey) return { recorded: recordedRows.length, sent: 0, skipped: "no_posthog_key" };
 
     const timestamp = now.toISOString();
-    const sends = rows
+    const sends = recordedRows
       .filter((row) => !hasDeclinedAnalytics(userById.get(row.user_id)?.consent_preferences))
       .map((row) =>
         captureServerEvent(
-          { event: FIRST_RACE_WITH_OWN_SQUAD_EVENT, distinctId: row.user_id, timestamp, properties: { ...row.event_data, team_id: row.team_id } },
+          { event: FIRST_RACE_WITH_OWN_SQUAD_EVENT, distinctId: row.user_id, timestamp, properties: { ...row.data, team_id: row.team_id } },
           {
             apiKey,
             fetchImpl: args.fetchImpl,
@@ -302,8 +330,10 @@ export async function recordFirstRaceWithOwnSquad(args: RecordMilestoneArgs): Pr
         ),
       );
     const outcomes = await Promise.all(sends);
-    return { recorded: rows.length, sent: outcomes.filter(Boolean).length };
+    return { recorded: recordedRows.length, sent: outcomes.filter(Boolean).length };
   } catch (err) {
+    // Backend er deployet foer migrationen: stille skip til tabellen findes.
+    if (isMissingTable(err)) return { recorded: 0, sent: 0, skipped: "table_missing" };
     // best-effort: milepaelen er analytics oven paa et allerede skrevet resultat.
     report(err, "record");
     return { recorded: 0, sent: 0, skipped: "error" };
