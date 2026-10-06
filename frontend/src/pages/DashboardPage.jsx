@@ -873,7 +873,7 @@ export default function DashboardPage() {
     if (team?.id) flushPendingSignup();
     // #4321: kerne-rejsens "hold oprettet" (kun nye hold, se logTeamCreated).
     if (team?.id) logTeamCreated(team.created_at);
-  }, [team?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [team?.id, team?.created_at]);
 
   // #1583: onboarding_completed-funnel-event når alle steps er nået (4/4).
   // logFirstEvent de-dup'er pr. bruger, så eventet kun fyrer én gang.
